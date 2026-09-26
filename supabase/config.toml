@@ -1,0 +1,36 @@
+project_id = "padel-friend"
+
+[api]
+port = 55321
+
+[db]
+port = 55322
+
+[studio]
+port = 55323
+
+[local_smtp]
+port = 55324
+
+[analytics]
+port = 55327
+
+[auth]
+site_url = "http://127.0.0.1:3000"
+additional_redirect_urls = [
+  "http://127.0.0.1:3000/auth/callback",
+  "http://localhost:3000/auth/callback",
+  "http://127.0.0.1:4173/auth/callback"
+]
+
+[auth.email]
+# Local only: makes the starter auth/notes example immediately testable.
+enable_confirmations = false
+
+# Optional local Google OAuth: uncomment after supplying both environment variables
+# in the shell running `pnpm db:start`. Keep the client secret out of this file.
+# [auth.external.google]
+# enabled = true
+# client_id = "env(SUPABASE_AUTH_EXTERNAL_GOOGLE_CLIENT_ID)"
+# secret = "env(SUPABASE_AUTH_EXTERNAL_GOOGLE_CLIENT_SECRET)"
+# skip_nonce_check = false

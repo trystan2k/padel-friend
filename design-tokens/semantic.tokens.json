@@ -1,0 +1,25 @@
+{
+  "surface": {
+    "page": {
+      "$type": "color",
+      "$value": "{palette.white}",
+      "$extensions": { "theme": { "dark": "{palette.night}" } }
+    },
+    "card": {
+      "$type": "color",
+      "$value": "{palette.blue-light}",
+      "$extensions": { "theme": { "dark": "{palette.ink}" } }
+    }
+  },
+  "text": {
+    "primary": {
+      "$type": "color",
+      "$value": "{palette.ink}",
+      "$extensions": { "theme": { "dark": "{palette.white}" } }
+    }
+  },
+  "action": {
+    "primary": { "$type": "color", "$value": "{palette.blue}" },
+    "text": { "$type": "color", "$value": "{palette.white}" }
+  }
+}

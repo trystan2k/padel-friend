@@ -1,0 +1,15 @@
+{
+  "palette": {
+    "white": { "$type": "color", "$value": "#ffffff" },
+    "ink": { "$type": "color", "$value": "#182233" },
+    "blue": { "$type": "color", "$value": "#315fe3" },
+    "blue-light": { "$type": "color", "$value": "#dce6ff" },
+    "night": { "$type": "color", "$value": "#101827" }
+  },
+  "space": {
+    "sm": { "$type": "dimension", "$value": "0.5rem" },
+    "md": { "$type": "dimension", "$value": "1rem" },
+    "lg": { "$type": "dimension", "$value": "2rem" }
+  },
+  "radius": { "card": { "$type": "dimension", "$value": "1rem" } }
+}

@@ -1,0 +1,20 @@
+@import url('../design-tokens/dist/tokens.css');
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: system-ui, sans-serif;
+  background: var(--surface-page);
+  color: var(--text-primary);
+}
+
+button,
+input,
+select {
+  font: inherit;
+}

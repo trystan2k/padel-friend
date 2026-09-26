@@ -1,0 +1,23 @@
+{
+  "title": "Padel Friend",
+  "description": "Padel Friend, built with TanStack Start, Cloudflare Workers and Supabase.",
+  "signIn": "Sign in",
+  "signOut": "Sign out",
+  "email": "Email",
+  "password": "Password",
+  "register": "Create account",
+  "login": "Sign in to your workspace",
+  "dashboard": "My notes",
+  "note": "New note",
+  "add": "Add note",
+  "empty": "No notes yet.",
+  "loading": "Loading…",
+  "error": "Something went wrong. Please try again.",
+  "language": "Language",
+  "theme": "Theme",
+  "light": "Light",
+  "dark": "Dark",
+  "checkEmail": "Check your email to confirm your account.",
+  "signInWithGoogle": "Continue with Google",
+  "googleSignInError": "Google sign-in was not completed. Please try again."
+}

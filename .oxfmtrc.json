@@ -1,0 +1,16 @@
+{
+  "printWidth": 100,
+  "tabWidth": 2,
+  "semi": true,
+  "singleQuote": true,
+  "trailingComma": "none",
+  "ignorePatterns": [
+    "dist/**",
+    "coverage/**",
+    "src/routeTree.gen.ts",
+    ".tanstack/**",
+    "src/lib/supabase/database.types.ts",
+    ".agents/**",
+    ".opencode/**"
+  ]
+}

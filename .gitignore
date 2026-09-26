@@ -1,0 +1,13 @@
+node_modules/
+dist/
+.wrangler/
+.tanstack/
+coverage/
+playwright-report/
+test-results/
+.env
+.env.local
+.dev.vars
+supabase/.branches/
+supabase/.temp/
+src/routeTree.gen.ts

@@ -1,0 +1,4 @@
+# Copy to .linear.toml and replace with your own Linear workspace and team key.
+workspace = "your-workspace"
+team_id = "TEAM"
+issue_sort = "priority"
