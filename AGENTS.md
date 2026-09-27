@@ -35,16 +35,16 @@ This project uses Linear for issue tracking and project management. GitHub is us
 
 ## Conventions
 
-- **Branch**: `feature/[linear-issue-id]-[title]` using the full Linear issue identifier, for example `feature/XXX-123-score-engine`
+- **Branch**: `feature/[linear-issue-id]-[title]` using the full Linear issue identifier, for example `feature/PAF-123-score-engine`
 - **Commit**: `[type]: [description]` (feat/fix/docs/style/refactor/test/chore)
 - **Indent**: 2 spaces
 - **Files**: snake_case/kebab-case | **Code**: camelCase
 - **Units**: px
-- **Linear Team**: `XXXXX` (<https://linear.app/trystanworkspace>)
-- **Linear Project**: `XXXXX` (<https://linear.app/trystanworkspace/project/yyyyyyyyy>)
+- **Linear Team**: `PadelFriend` (<https://linear.app/trystanworkspace2>)
+- **Linear Project**: `PadelFriend` (<https://linear.app/trystanworkspace2/project/padelfriend-d3c1aed70a18/overview>)
 - **Task Tracking**: Create Linear Issues first, then work on them.
-- **Issue IDs**: Use Linear issue identifier as task ID reference (e.g., `XXX-123`)
-- **Dependencies**: Use `Depends On` with issue links (e.g., `XXX-1`, `XXX-3`)
+- **Issue IDs**: Use Linear issue identifier as task ID reference (e.g., `PAF-123`)
+- **Dependencies**: Use `Depends On` with issue links (e.g., `PAF-1`, `PAF-3`)
 
 ## NPM Dependencies
 
