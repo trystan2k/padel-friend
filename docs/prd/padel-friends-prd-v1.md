@@ -26,7 +26,7 @@ The app solves six main problems:
 3. **Recording trustworthy results** — the match creator records actual teams/results and eligible players approve or reject them; unresolved results auto-approve after 48 hours if nobody rejects them.
 4. **Maintaining a fair dynamic skill level** — confirmed competitive results update each player's app-wide level based on team strength, result, player reliability, and expected outcome.
 5. **Running leagues/rankings** — communities can create rankings with a fixed end date or an open-ended/manual end and retain historical standings.
-6. **Providing rich statistics and history** — players can inspect match history, wins/losses/draws, sets, games, partners, opponents, head-to-head records, streaks, rating progression, community performance, and league/ranking performance.
+6. **Providing rich statistics and history** — players can inspect match history, wins/losses/draws, sets, games, partners, opponents, head-to-head records, streaks, rating progression, community performance, and League performance.
 
 This is **not** intended to reproduce Playtomic's commercial court-booking marketplace. There is no requirement for court inventory, club payments, split payments, subscriptions, or integration with Playtomic accounts.
 
@@ -81,7 +81,7 @@ Community members can create rankings and compare players during a defined perio
 
 ### G-07 — Deep statistics
 
-The app exposes useful statistics at player, match, Game Group, pair, opponent, community, league/ranking, and all-time levels.
+The app exposes useful statistics at player, match, Game Group, pair, opponent, community, League, and all-time levels.
 
 ### G-08 — Shared cloud state
 
@@ -154,7 +154,7 @@ Padel Friends additionally introduces:
 - non-member guest requests to public-community matches;
 - creator-managed multi-group Match Events;
 - Reserve handling in groups of four;
-- league/ranking creation by users.
+- League creation by users.
 
 ---
 
@@ -162,56 +162,56 @@ Padel Friends additionally introduces:
 
 The following decisions are confirmed requirements for V1 unless explicitly marked configurable.
 
-| Topic                                 | Confirmed rule                                                                                                                           |
-| ------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
-| Communities                           | Multiple communities per user                                                                                                            |
-| Community creation                    | Any authenticated user can create a community                                                                                            |
-| Community visibility                  | Public or Private                                                                                                                        |
-| Public community                      | Discoverable; authenticated non-members may view available matches and request to play                                                   |
-| Private community                     | Only members/invited users may access community matches                                                                                  |
-| Guest player                          | A non-member of a Public community may request a place; Match Creator must approve                                                       |
-| Guest FIFO                            | Registration order starts when the creator approves the guest request, not when the request was submitted                                |
-| Player profile                        | One app-wide player profile, reused across all communities                                                                               |
-| Skill scale                           | 0.0–7.0, matching the familiar Playtomic padel scale                                                                                     |
-| Initial skill                         | User chooses level once during app onboarding                                                                                            |
-| Initial reliability                   | 10%                                                                                                                                      |
-| Reliability maturation                | +6 percentage points per confirmed competitive Game Group, capped at 100%; reaches 100% after 15                                         |
-| Manual level changes                  | Players and Community Admins cannot directly modify a player's level                                                                     |
-| Level review                          | Player requests a review; only Platform/App Admin may approve and perform a manual correction                                            |
-| Level review effect                   | Approved manual correction is forward-only; past matches and historical ratings are not replayed because of the correction               |
-| Match event size                      | Any registration count; playable Game Groups are always 4 players                                                                        |
-| Reserve rule                          | Registrations that do not complete the next group of 4 remain Reserve                                                                    |
-| Reserve promotion                     | FIFO by accepted registration time                                                                                                       |
-| Creator removal                       | Creator may remove a registered player before cutoff; statuses are recalculated and next Reserve player is promoted as applicable        |
-| Registration cutoff                   | Defaults to 1 hour before match start; creator may adjust it                                                                             |
-| Team assignment                       | Creator chooses Predefined Teams or Post-Match Teams                                                                                     |
-| Multiple groups/courts                | One event-level venue; each Game Group may optionally have its own court name/number                                                     |
-| Match types                           | Competitive or Friendly                                                                                                                  |
-| Competitive ranking participation     | Competitive Match Event defaults to count toward the active community ranking when one exists; creator may disable ranking participation |
-| Venue                                 | Creator provides place, Google Maps link, and venue/court photo                                                                          |
-| Cost                                  | Optional informational per-player amount/currency; no payment processing                                                                 |
-| Level restriction                     | Optional; default range derived from creator level using -0.5 / +1.5, clamped to 0–7; creator can edit/disable                           |
-| Out-of-range member                   | May request creator approval instead of direct registration                                                                              |
-| Result entry                          | Match Creator is primary result recorder                                                                                                 |
-| Result approval, creator played       | One player from opposing team                                                                                                            |
-| Result approval, creator did not play | At least one player from each team                                                                                                       |
-| Auto-approval                         | Pending result auto-confirms 48 hours after submission if no eligible reviewer has rejected it, even if manual approvals are partial     |
-| Rejection                             | Prevents auto-confirmation and moves result to Disputed                                                                                  |
-| Rated Draw                            | Requires exactly one completed set won by each team and no completed third set                                                           |
-| Incomplete/abandoned result           | If play stops before each team has won one completed set, result is Incomplete/Abandoned and has no rating/ranking effect                |
-| Unfinished third set                  | May be recorded as incomplete; its current score does not decide winner; match outcome is Draw only if completed sets are tied 1–1       |
-| Third set                             | Normal padel set only; no deciding match-tiebreak format in V1                                                                           |
-| Score margin                          | Stored for statistics but does not directly multiply rating change                                                                       |
-| Historical pre-launch import          | Out of scope                                                                                                                             |
-| Sporting history                      | Visible to community members; public-community visibility follows community privacy rules                                                |
-| League/ranking duration               | Fixed End Date or Open Ended / Manual                                                                                                    |
-| Concurrent rankings                   | Maximum one active ranking per community in V1; schema prepared for more                                                                 |
-| Mid-ranking join                      | New community members may join an already-active ranking when they play their first eligible ranked match                                |
-| Friendly match                        | Never changes skill or league/ranking rating                                                                                             |
-| Major match changes                   | Competitive/Friendly, ranking participation, or materially changed date/time after registrations require participant reconfirmation      |
-| Minor match changes                   | Venue/court, price, notes and similar details may change with notifications                                                              |
-| Notifications                         | In-app required; push supported by PWA                                                                                                   |
-| Offline authoritative writes          | Not required                                                                                                                             |
+| Topic                                 | Confirmed rule                                                                                                                       |
+| ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| Communities                           | Multiple communities per user                                                                                                        |
+| Community creation                    | Any authenticated user can create a community                                                                                        |
+| Community visibility                  | Public or Private                                                                                                                    |
+| Public community                      | Discoverable; authenticated non-members may view available matches and request to play                                               |
+| Private community                     | Only members/invited users may access community matches                                                                              |
+| Guest player                          | A non-member of a Public community may request a place; Match Creator must approve                                                   |
+| Guest FIFO                            | Registration order starts when the creator approves the guest request, not when the request was submitted                            |
+| Player profile                        | One app-wide player profile, reused across all communities                                                                           |
+| Skill scale                           | 0.0–7.0, matching the familiar Playtomic padel scale                                                                                 |
+| Initial skill                         | User chooses level once during app onboarding                                                                                        |
+| Initial reliability                   | 10%                                                                                                                                  |
+| Reliability maturation                | +6 percentage points per confirmed competitive Game Group, capped at 100%; reaches 100% after 15                                     |
+| Manual level changes                  | Players and Community Admins cannot directly modify a player's level                                                                 |
+| Level review                          | Player requests a review; only Platform/App Admin may approve and perform a manual correction                                        |
+| Level review effect                   | Approved manual correction is forward-only; past matches and historical ratings are not replayed because of the correction           |
+| Match event size                      | Any registration count; playable Game Groups are always 4 players                                                                    |
+| Reserve rule                          | Registrations that do not complete the next group of 4 remain Reserve                                                                |
+| Reserve promotion                     | FIFO by accepted registration time                                                                                                   |
+| Creator removal                       | Creator may remove a registered player before cutoff; statuses are recalculated and next Reserve player is promoted as applicable    |
+| Registration cutoff                   | Defaults to 1 hour before match start; creator may adjust it                                                                         |
+| Team assignment                       | Creator chooses Predefined Teams or Post-Match Teams                                                                                 |
+| Multiple groups/courts                | One event-level venue; each Game Group may optionally have its own court name/number                                                 |
+| Match types                           | Competitive or Friendly                                                                                                              |
+| League inclusion                      | Eligible confirmed Competitive Game Groups inside the active League period count automatically; there is no per-match opt-out        |
+| Venue                                 | Creator provides place, Google Maps link, and venue/court photo                                                                      |
+| Cost                                  | Optional informational per-player amount/currency; no payment processing                                                             |
+| Level restriction                     | Optional; default range derived from creator level using -0.5 / +1.5, clamped to 0–7; creator can edit/disable                       |
+| Out-of-range member                   | May request creator approval instead of direct registration                                                                          |
+| Result entry                          | Match Creator is primary result recorder                                                                                             |
+| Result approval, creator played       | One player from opposing team                                                                                                        |
+| Result approval, creator did not play | At least one player from each team                                                                                                   |
+| Auto-approval                         | Pending result auto-confirms 48 hours after submission if no eligible reviewer has rejected it, even if manual approvals are partial |
+| Rejection                             | Prevents auto-confirmation and moves result to Disputed                                                                              |
+| Rated Draw                            | Requires exactly one completed set won by each team and no completed third set                                                       |
+| Incomplete/abandoned result           | If play stops before each team has won one completed set, result is Incomplete/Abandoned and has no rating/ranking effect            |
+| Unfinished third set                  | May be recorded as incomplete; its current score does not decide winner; match outcome is Draw only if completed sets are tied 1–1   |
+| Third set                             | Normal padel set only; no deciding match-tiebreak format in V1                                                                       |
+| Score margin                          | Stored for statistics but does not directly multiply rating change                                                                   |
+| Historical pre-launch import          | Out of scope                                                                                                                         |
+| Sporting history                      | Visible to community members; public-community visibility follows community privacy rules                                            |
+| League/ranking duration               | Fixed End Date or Open Ended / Manual                                                                                                |
+| Concurrent rankings                   | Maximum one active ranking per community in V1; schema prepared for more                                                             |
+| Mid-ranking join                      | New community members may join an already-active ranking when they play their first eligible ranked match                            |
+| Friendly match                        | Never changes skill or League standings                                                                                              |
+| Major match changes                   | Competitive/Friendly or materially changed date/time after registrations require participant reconfirmation                          |
+| Minor match changes                   | Venue/court, price, notes and similar details may change with notifications                                                          |
+| Notifications                         | In-app required; push supported by PWA                                                                                               |
+| Offline authoritative writes          | Not required                                                                                                                         |
 
 ---
 
@@ -223,12 +223,13 @@ A player has one long-term estimate of padel ability for the entire application.
 
 Properties:
 
-- belongs to the user, not to a specific community;
+- belongs to the user, not to a specific community or league;
 - uses a visible 0.0–7.0 scale;
 - initializes from the user's onboarding level;
-- changes only from confirmed Competitive Game Groups;
+- changes only from confirmed ratable Competitive Game Groups;
+- continues evolving for the lifetime of the player's account;
 - matches played in any eligible community may affect it;
-- Friendly Game Groups do not affect it;
+- Friendly and Incomplete/Abandoned Game Groups do not affect it;
 - includes a visible reliability percentage;
 - has immutable rating history.
 
@@ -238,7 +239,7 @@ Example:
 
 ## 7.2 Reliability
 
-Reliability expresses how established the app considers the player's current level.
+Reliability expresses how established the app considers the player's current global level.
 
 V1 rule:
 
@@ -246,19 +247,7 @@ V1 rule:
 reliability = min(100, 10 + 6 * confirmed_competitive_game_groups)
 ```
 
-Examples:
-
-| Competitive Game Groups | Reliability |
-| ----------------------: | ----------: |
-|                       0 |         10% |
-|                       1 |         16% |
-|                       5 |         40% |
-|                      10 |         70% |
-|                     15+ |        100% |
-
-Reliability is available from registration onward. There is no waiting period before the user has a valid level.
-
-Lower reliability should result in larger possible level corrections; higher reliability should result in more stable changes.
+Reliability is global and is **not** reset when a league starts or ends.
 
 ## 7.3 Community
 
@@ -267,23 +256,36 @@ A Community is an organizational space containing:
 - members;
 - admins;
 - Match Events;
-- leagues/rankings;
+- leagues;
 - community statistics;
 - saved venues/settings.
 
 A player can belong to several communities without having separate player levels.
 
-## 7.4 League / Ranking Rating
+## 7.4 League / League Standings
 
-A ranking may maintain a community/ranking-specific competitive state independent from the user's app-wide level.
+A League is a time-bounded or manually-ended competition inside one community.
 
-Properties:
+A League does **not** have its own skill rating.
 
-- associated with one community;
-- has Fixed End Date or Manual/Open End;
-- at most one active ranking per community in V1;
-- freezes when closed;
-- does not reset the player's app-wide skill.
+League standings are calculated only from eligible confirmed match results played during the league period.
+
+The player's app-wide 0–7 level:
+
+- continues updating normally while the league is running;
+- may be displayed next to the player for informational purposes;
+- is never used to calculate or order league standings.
+
+The league uses competition statistics such as:
+
+- wins;
+- losses;
+- draws;
+- sets won;
+- sets lost;
+- set differential.
+
+When the league ends, its final standings freeze, while the player's app-wide skill continues evolving.
 
 ## 7.5 Match Event vs. Game Group
 
@@ -306,7 +308,7 @@ A **Game Group** is one actual padel match:
 - Team B with 2 players;
 - its own score;
 - its own approval state;
-- its own rating/statistical effects.
+- its own global rating/statistical effects.
 
 ## 7.6 Registration and Reserve Status
 
@@ -339,7 +341,11 @@ A Game Group becomes authoritative after:
 - the required approval is received; or
 - 48 hours elapse after submission without a rejection.
 
-Only then do Competitive rating and official statistics apply.
+Only then do:
+
+- global Competitive rating/reliability update, when the result is ratable;
+- league standings update, when the Game Group is eligible for an active league;
+- official statistics update.
 
 ---
 
@@ -365,7 +371,7 @@ A Community Member can:
 - create Match Events;
 - invite players;
 - register for eligible community matches;
-- create a league/ranking;
+- create a League;
 - participate in community rankings;
 - view community statistics/history.
 
@@ -461,7 +467,7 @@ A non-member guest who is approved for a match:
 - receives a normal accepted registration at approval time;
 - can play and have the result affect their app-wide level;
 - appears in that Match Event's history/statistics;
-- is not eligible for the community's league/ranking standings unless they become a member.
+- is not eligible for the community's League standings unless they become a member.
 
 If a Match Event is explicitly bound to an active community ranking, only community members may participate in that ranked Game Group in V1. A non-member may be invited to join the community first or the event can be non-ranking.
 
@@ -532,7 +538,7 @@ The client must never be trusted to decide whether a user may:
 
 - join a match;
 - approve a result;
-- alter a league/ranking;
+- alter a League;
 - change a rating;
 - edit another user;
 - access unauthorized Private-community data.
@@ -586,7 +592,7 @@ When displaying a profile from inside a community, the UI can show:
 - app-wide current level/reliability;
 - community-specific match history;
 - community-specific statistics;
-- current community league/ranking position;
+- current community League position;
 - all-time community performance.
 
 ---
@@ -696,41 +702,38 @@ Reliability is preserved by default unless the Platform Admin explicitly chooses
 
 ## 13.1 Competitive Match
 
-A confirmed competitive match:
+A confirmed ratable Competitive Game Group:
 
-- updates global skill;
-- updates the active ranking-specific rating if the Game Group belongs to an active league/ranking;
-- affects competitive statistics;
+- updates app-wide skill;
+- updates app-wide reliability;
+- contributes to an active league's standings when it is an eligible league-period match;
+- affects Competitive statistics;
 - appears in rating history.
+
+League standings never use the player's app-wide skill level as a ranking input.
 
 ## 13.2 Friendly Match
 
-A friendly match:
+A Friendly Game Group:
 
-- never changes global skill;
-- never changes ranking-specific rating;
-- never changes leaderboard position due to rating;
+- never changes app-wide skill;
+- never changes reliability;
+- never counts toward league standings;
 - still stores the full score;
 - still appears in match history;
-- still contributes to friendly/all-match statistics.
+- still contributes to Friendly/All-match statistics.
 
-The application shall always distinguish:
+The application shall distinguish:
 
 - `All matches`
 - `Competitive`
 - `Friendly`
 
-This prevents friendly activity from distorting ranked statistics.
+## 13.3 Match Type Locking
 
-## 13.3 Match type locking
+Once another player has accepted/joined the Match Event, the creator must not silently switch between Competitive and Friendly.
 
-Once another player has accepted/joined the match, the creator must not silently switch between Competitive and Friendly.
-
-Recommended rule:
-
-- creator may change the type while alone;
-- once a second participant joins, changing type requires all current participants to reconfirm;
-- once the scheduled start time has passed, type cannot be changed except by an Admin with audit logging.
+A Competitive ↔ Friendly change is a Major change and requires participant reconfirmation.
 
 ---
 
@@ -810,13 +813,14 @@ A Match Event may contain any number of accepted registrations; playable Game Gr
 - Level restriction enabled/disabled.
 - Custom minimum/maximum level.
 - Invite specific players.
-- League/ranking participation.
 - "Court already booked" indicator.
 - Price per player.
 - Currency.
 - Payment note.
 - Maximum registrations.
 - Custom registration cutoff.
+
+There is no per-match "count toward league" toggle in V1. League inclusion is determined automatically from league period, community, participant eligibility, match type, and confirmed result.
 
 ## 15.3 Registration Cutoff
 
@@ -844,41 +848,17 @@ Required event-level presentation:
 - clickable Google Maps link;
 - venue/court photo.
 
-The photo may be uploaded or reused from a saved venue.
-
-Saved venue may prefill:
-
-- name;
-- address;
-- Maps link;
-- photo;
-- notes.
-
 For Match Events with more than one Game Group, each Game Group may optionally define:
 
 - court name;
 - court number;
 - short court note.
 
-Example:
-
-```text
-Group 1 → Court 3
-Group 2 → Court 4
-```
-
 No court-booking/inventory logic is required.
 
 ## 15.5 Per-Player Cost
 
 Creator may specify an informational amount.
-
-Example:
-
-```text
-€8.50 per player
-Court already booked. Pay the organizer after the match.
-```
 
 No payment collection occurs in V1.
 
@@ -891,78 +871,44 @@ If cost changes after registrations exist:
 
 Creator registers automatically unless future organizer-only mode is explicitly enabled.
 
-Creator has event-management capabilities described in Section 8.
-
 ## 15.7 Default Level Range
 
-Level restriction is optional.
-
-When enabled for a newly created match, the default range is calculated from the creator's current app-wide level:
+When level restriction is enabled:
 
 ```text
 default_min = max(0.0, creator_level - 0.5)
 default_max = min(7.0, creator_level + 1.5)
 ```
 
-Example:
-
-```text
-Creator level: 1.5
-Default range: 1.0–3.0
-```
-
-Creator can:
-
-- accept the default;
-- edit minimum;
-- edit maximum;
-- disable the restriction entirely.
-
-The 0–7 boundaries must always be enforced.
+Creator can edit or disable the range.
 
 ## 15.8 Range Eligibility
-
-For a Community Open Match:
 
 ### Community Member
 
 - in range => direct registration;
-- out of range => may send a registration request to Match Creator.
+- out of range => may request Match Creator approval.
 
 ### Non-Member of a Public Community
 
-- must always send a registration request;
-- range is displayed to both requester and creator;
-- creator can approve/reject even when requester is outside range.
+- must request Match Creator approval;
+- accepted FIFO time is approval time.
 
-If approved, accepted registration order is based on approval timestamp.
+## 15.9 League Inclusion
 
-## 15.9 Ranking Participation
+If the community has an Active League, every eligible confirmed Competitive Game Group whose `played_at` falls within the League period contributes automatically to League standings.
 
-If the community has an active league/ranking and the Match Event is Competitive:
+League inclusion is based on match facts, not player skill level.
 
-```text
-counts_toward_active_ranking = true
-```
+A League-eligible result:
 
-by default.
+- updates the player's app-wide level/reliability in the normal Competitive rating engine;
+- separately updates League standings counters;
+- does not create a League-specific skill rating.
 
-The creator may explicitly disable it before participants confirm the Match Event.
+Friendly and Incomplete/Abandoned Game Groups never count toward League standings.
 
-Effects:
-
-- `Competitive + counts_toward_active_ranking = true`
-  - affects app-wide level;
-  - affects active community ranking.
-- `Competitive + counts_toward_active_ranking = false`
-  - affects app-wide level;
-  - does not affect community ranking.
-- `Friendly`
-  - affects neither.
-
-If there is no active ranking, the flag is false/not applicable.
-
-A ranking-associated Game Group in V1 may include only community members.
+V1 League standings contain community members. Non-member guests can participate in normal Public-community Competitive matches and affect app-wide skill, but are not included in League standings.
 
 ## 15.10 Registration Capacity and Multiples of Four
 
@@ -971,17 +917,6 @@ playable_groups = floor(accepted_registration_count / 4)
 confirmed_players = playable_groups * 4
 reserve_players = accepted_registration_count % 4
 ```
-
-Examples:
-
-| Accepted registrations | Playable groups | Playing | Reserve |
-| ---------------------: | --------------: | ------: | ------: |
-|                      1 |               0 |       0 |       1 |
-|                      4 |               1 |       4 |       0 |
-|                      5 |               1 |       4 |       1 |
-|                      8 |               2 |       8 |       0 |
-|                     10 |               2 |       8 |       2 |
-|                     12 |               3 |      12 |       0 |
 
 ## 15.11 Reserve Promotion
 
@@ -1001,8 +936,6 @@ Only confirmed player list is authoritative before play. Creator records actual 
 
 ## 15.13 Changes After Registration Has Started
 
-Changes are classified as Minor or Major.
-
 ### Minor changes
 
 Examples:
@@ -1015,49 +948,45 @@ Examples:
 
 Behavior:
 
-- creator may change them;
-- all accepted/Reserve players are notified;
-- no participant reconfirmation is required.
+- notify participants;
+- no reconfirmation required.
 
 ### Major changes
 
 Examples:
 
 - Competitive ↔ Friendly;
-- `counts_toward_active_ranking` Yes ↔ No;
 - materially changing date/time.
 
 Behavior:
 
 - existing accepted registrations move to `RECONFIRMATION_REQUIRED`;
-- users must explicitly reconfirm participation;
-- creator cannot silently convert the competitive meaning of an already-accepted match.
+- users must explicitly reconfirm.
 
-For date/time, implementation should treat a change as material when it changes the scheduled calendar date or shifts start time by more than a configurable threshold. Recommended default threshold:
+Changing date/time can also change whether a Competitive result falls inside the Active League period, so the UI must explicitly warn participants when a Major date/time change changes League eligibility.
+
+Recommended material time threshold:
 
 ```text
 30 minutes
 ```
-
-The exact threshold should be a centralized product configuration.
 
 ## 15.14 Validation
 
 Reject:
 
 - duplicate user registration;
-- inactive/private-community unauthorized user;
-- invalid four-player group;
-- team not containing exactly two players;
+- unauthorized user;
+- invalid 4-player group;
+- team not containing exactly 2 players;
 - duplicated player across simultaneous Game Groups;
-- Reserve player in a played group;
+- Reserve player in played group;
 - player without initialized app-wide skill in Competitive group;
 - invalid Maps URL;
 - negative price;
 - unsupported currency;
 - invalid level range;
-- min/max outside 0–7;
-- registration cutoff at/after scheduled start time.
+- cutoff at/after match start.
 
 ---
 
@@ -1089,7 +1018,7 @@ Card/list information should include:
 - price per player, if provided;
 - approximate player level;
 - optional level requirement;
-- league/ranking indicator;
+- League indicator;
 - team mode: predefined or assigned after play;
 - notes indicator.
 
@@ -1113,7 +1042,7 @@ Recommended filters:
 - accepting registrations;
 - currently in Reserve;
 - suitable for my level;
-- league/ranking;
+- League;
 - created by.
 
 ## 16.3 My Matches
@@ -1546,7 +1475,7 @@ Behavior:
 - games actually played may be shown in detailed history;
 - it does not count as Win/Loss/Draw;
 - it does not affect app-wide level;
-- it does not affect league/ranking;
+- it does not affect League;
 - it does not increase reliability;
 - it should be labeled `Incomplete` or `Abandoned`.
 
@@ -1610,7 +1539,7 @@ Required manual confirmation:
 While pending:
 
 - no Competitive rating changes are applied;
-- official league/ranking/statistics do not update from that Game Group;
+- official League/statistics do not update from that Game Group;
 - all four players see the proposed teams/score;
 - eligible reviewers can Approve or Reject;
 - auto-confirm deadline is visible.
@@ -1660,7 +1589,7 @@ Server operation must be atomic/idempotent:
 3. mark Confirmed;
 4. persist score;
 5. calculate app-wide rating changes when result is Competitive and ratable;
-6. calculate ranking-specific changes when applicable;
+6. calculate League standings changes when applicable;
 7. append rating events;
 8. update statistics/leaderboards;
 9. notify participants;
@@ -1717,7 +1646,7 @@ The platform must:
 1. invalidate/reverse affected rating events;
 2. replay subsequent Competitive Game Groups chronologically;
 3. rebuild affected app-wide player rating state;
-4. rebuild affected ranking-specific state;
+4. rebuild affected League standing state;
 5. rebuild dependent statistics;
 6. preserve full audit history.
 
@@ -1892,7 +1821,7 @@ For every confirmed competitive Game Group, record each player's:
 - own team strength;
 - expected win probability or equivalent;
 - match ID;
-- league/ranking ID if relevant;
+- League ID if relevant;
 - timestamp;
 - algorithm version.
 
@@ -1900,26 +1829,28 @@ The profile shall show:
 
 - current level;
 - level progression chart;
-- league/ranking progression chart;
+- League progression chart;
 - recent rating events.
 
 ---
 
-# 28. Leagues / Rankings
+# 28. Leagues
 
-A League/Ranking is a time-scoped competitive leaderboard owned by one community.
+A League is a community competition whose standings are derived from match results during a defined period.
 
-## 28.1 Who Can Create a League/Ranking
+A League is **not** another skill-rating system.
 
-Any active Member may create a league/ranking unless the community disables member-created rankings.
+## 28.1 Who Can Create a League
 
-The creator becomes the `owner`.
+Any active Community Member may create a League unless the community disables member-created leagues.
 
-Admins can manage all rankings.
+The creator becomes the League owner.
 
-## 28.2 League/Ranking Properties
+Community Admins can manage all Leagues.
 
-A ranking includes:
+## 28.2 League Properties
+
+A League includes:
 
 - ID.
 - Community.
@@ -1929,8 +1860,7 @@ A ranking includes:
 - End mode.
 - Optional end date/time.
 - Status.
-- Minimum matches to qualify.
-- Rating configuration snapshot.
+- Optional minimum matches required for final-award eligibility.
 - Created/owned by.
 - Created at.
 - Closed/ended at.
@@ -1947,106 +1877,119 @@ Statuses:
 - `UPCOMING`
 - `ACTIVE`
 - `CLOSED`
-
-Optional:
-
-- `ARCHIVED`
+- optional `ARCHIVED`
 
 ## 28.3 Fixed End Date
 
 For `FIXED_DATE`:
 
 - `end_at` is required;
-- `end_at` must be after `start_at`;
-- when the end is reached, the ranking stops accepting new results by played timestamp;
-- final standings can be frozen automatically or through an immediate deterministic close job.
-
-The UI must clearly show the end date.
+- `end_at > start_at`;
+- only eligible Game Groups with `played_at` inside the League window count;
+- final standings freeze after the end boundary.
 
 ## 28.4 Open-Ended / Manual End
 
 For `MANUAL`:
 
 - `end_at` is null while active;
-- the ranking continues until its creator explicitly chooses **End League/Ranking**;
-- an Admin may also end it;
-- ending stores `closed_at` and `closed_by`.
+- the League remains active until owner or Community Admin ends it;
+- `closed_at` becomes the effective League end boundary;
+- later Game Groups do not count.
 
-Before ending, the creator sees a confirmation explaining that:
+## 28.5 Active League Policy
 
-- final standings will freeze;
-- later matches will not count;
-- global skill is not reset.
+V1 allows at most one `ACTIVE` League per community.
 
-## 28.5 Active Ranking Policy
+The schema should allow this restriction to be relaxed later.
 
-Recommended V1 default:
+## 28.6 Which Matches Count
 
-Only one ranking is `ACTIVE` for a community at a time.
+A confirmed Game Group contributes to League standings when all of the following are true:
 
-Reason:
+1. parent Match Event belongs to the League's community;
+2. Match Event/Game Group is Competitive;
+3. result is ratable: Win, Loss, or Draw;
+4. `played_at >= league.start_at`;
+5. for Fixed End Date, `played_at <= league.end_at`;
+6. for Manual End, `played_at <= league.closed_at` once closed;
+7. the player whose standing is being updated is an eligible League/community member for that period.
 
-- automatic association of competitive matches remains unambiguous;
-- users always know which current leaderboard a match affects.
+The League starts with zero statistics.
 
-The schema should not make concurrent rankings impossible forever. A future release may allow multiple active rankings with explicit per-match association.
+No matches played before `league.start_at` are imported into the League table, even though they remain part of the player's global rating/history.
 
-## 28.6 Match-to-Ranking Association
+## 28.7 Independence From Global Skill
 
-A confirmed competitive Game Group counts for a ranking when:
+While the League runs:
 
-- the parent event belongs to the community;
-- the parent event/Game Group is associated with that ranking;
-- played timestamp is on/after ranking start;
-- for Fixed End Date, played timestamp is on/before the configured end boundary;
-- for Manual End, played timestamp is before the recorded close time;
-- match type is Competitive.
+- the global 0–7 player level continues updating normally after Competitive matches;
+- reliability continues updating normally;
+- global rating history continues normally.
 
-Store the league/ranking ID on the event/Game Group once resolved so historical interpretation does not change accidentally.
+However:
 
-## 28.7 Friendly Matches
+```text
+global_level DOES NOT affect league_position
+global_reliability DOES NOT affect league_position
+rating_delta DOES NOT affect league_position
+```
 
-Friendly Game Groups do not change:
+The League table uses only League-period match results.
 
-- league/ranking-specific rating;
-- league/ranking position.
+## 28.8 Friendly and Incomplete Matches
 
-They can still be viewed in league-filtered activity if the UI offers `All`.
+Friendly and Incomplete/Abandoned Game Groups:
+
+- do not count as wins/losses/draws;
+- do not contribute sets to League standings;
+- do not affect League position.
 
 ---
 
-# 29. League / Ranking Initialization and Late Join
+# 29. League Participation and Late Join
 
-When a ranking starts:
+## 29.1 Initial State
 
-1. include eligible active community members as potential participants;
-2. initialize ranking-specific state when the player first participates in an eligible ranked Game Group;
-3. initialize that state from the player's current app-wide level at that moment;
-4. do not modify app-wide level simply because the ranking starts.
+Every League participant starts with League counters at zero:
 
-## 29.1 Members Joining After Ranking Start
+```text
+matches_played = 0
+wins = 0
+losses = 0
+draws = 0
+sets_won = 0
+sets_lost = 0
+set_differential = 0
+```
 
-A user who joins the community after the ranking has already started may still participate.
+No League state is initialized from the player's app-wide skill level.
 
-On their first eligible ranked Game Group:
+## 29.2 Existing Community Members
 
-- create their ranking-specific state;
-- initialize from their **current app-wide level**;
-- begin accumulating ranking results from that point forward.
+For members who are eligible when the League starts, all eligible Competitive Game Groups played from `league.start_at` onward count automatically.
 
-No retroactive ranking activity is created.
+## 29.3 Members Joining After League Start
 
-## 29.2 Members Leaving During a Ranking
+A user who joins the community after the League has already started may participate from that point forward.
+
+Their League counters begin at zero when they become eligible.
+
+Matches played before they became an eligible League/community member are not retroactively added.
+
+## 29.4 Members Leaving During a League
 
 If a user leaves or is removed from the community:
 
-- historical ranked Game Groups remain valid;
-- historical ranking position/results remain visible;
-- player cannot participate in additional ranked Game Groups for that community while inactive.
+- historical League results already earned remain in the table;
+- their final/current statistics remain visible;
+- new matches no longer contribute while membership is inactive.
 
-## 29.3 Minimum Matches for Final Award
+If they later rejoin while the same League is still active, future eligible matches may count from reactivation onward; historical League counters are preserved.
 
-A ranking creator may configure:
+## 29.5 Minimum Matches for Final Award
+
+The League owner may configure:
 
 ```text
 minimum_matches_for_final_award
@@ -2058,89 +2001,141 @@ Default:
 1
 ```
 
-Players can still appear in standings before reaching the configured minimum, but are marked not yet eligible for final award/champion status.
+Players below the threshold may remain visible but are marked not yet eligible for champion/final-award status.
 
 ---
 
-# 30. League / Ranking Leaderboard
+# 30. League Standings
 
-## 30.1 Primary Ranking Metric
+League position is determined only from League-period competition results.
 
-Use a conservative ranking-specific skill estimate or equivalent team-aware ranking score.
+## 30.1 Standings Counters
 
-Conceptually:
+For each eligible player:
 
-```text
-ranking_score = ranking_mu - confidence_multiplier * ranking_sigma
-```
-
-## 30.2 Eligibility
-
-Players can appear after their first confirmed Competitive Game Group in the ranking.
-
-The ranking may define:
+- Matches Played.
+- Wins.
+- Losses.
+- Draws.
+- Sets Won.
+- Sets Lost.
+- Set Differential:
 
 ```text
-minimum_matches_for_final_award
+set_differential = sets_won - sets_lost
 ```
 
-Default V1:
+Additional values such as Games Won/Lost may be displayed as statistics but are not required for the V1 ordering rules.
 
-```text
-1
-```
+## 30.2 Ordering Rules
 
-If a creator chooses a larger minimum, players below it remain visible but are marked `NOT_YET_ELIGIBLE_FOR_FINAL_AWARD`.
+V1 standings order:
 
-## 30.3 Membership Requirement
+1. **More Wins** — descending.
+2. **Fewer Losses** — ascending.
+3. **Better Set Differential** — descending.
+4. **More Sets Won** — descending.
+5. If still equal, players share the same position.
 
-Community ranking standings contain community members.
+Example:
 
-A non-member guest playing a Public-community Match Event:
+| Player |   W |   L |   D | Sets W | Sets L | Set +/- |
+| ------ | --: | --: | --: | -----: | -----: | ------: |
+| Ana    |   8 |   2 |   1 |     18 |      8 |     +10 |
+| Pedro  |   8 |   3 |   0 |     18 |     10 |      +8 |
+| Carlos |   7 |   1 |   2 |     16 |      7 |      +9 |
 
-- may affect app-wide skill;
-- appears in match statistics/history;
-- does not become ranked in the community league automatically.
+Ana ranks ahead of Pedro because both have 8 Wins but Ana has fewer Losses.
 
-Ranked Match Events should require participating players to be community members in V1.
+Pedro ranks ahead of Carlos because Wins are the primary criterion.
 
-## 30.4 Tiebreakers
+## 30.3 Draws
 
-If ranking scores are effectively identical:
+Draws are recorded and displayed.
 
-1. higher ranking mean skill;
-2. higher competitive win percentage;
-3. better set differential;
-4. better game differential;
-5. more competitive wins;
-6. otherwise shared position.
+A Draw:
 
-## 30.5 Ranking Close
+- increments `matches_played`;
+- increments `draws`;
+- contributes the completed sets won/lost to set totals;
+- does not increment Wins or Losses.
 
-On Fixed End Date or Manual End:
+There is no separate League skill adjustment for a Draw.
 
-- standings freeze;
-- final positions persist;
-- app-wide skill continues independently;
-- ranking remains viewable historically.
+The global skill engine may still change app-wide player levels after a Competitive Draw according to expected team strength. That global change is independent from League ordering.
+
+## 30.4 Membership Requirement
+
+League standings contain eligible Community Members.
+
+A non-member guest:
+
+- may affect their app-wide skill through a Competitive result;
+- appears in Match Event history;
+- is not added to League standings automatically.
+
+## 30.5 League Close
+
+When the League ends:
+
+- final result counters freeze;
+- final positions freeze;
+- historical League table remains viewable;
+- app-wide skill continues evolving independently.
 
 ---
 
-# 31. Optional Alternative Ranking Strategy
+# 31. Separation Between Global Skill and League Standings
 
-Some communities may later prefer a championship-points table instead of the default rating-based leaderboard.
+V1 deliberately maintains two independent concepts.
 
-A future ranking strategy may support:
+## Global Skill
 
-- Win = configurable points.
-- Draw = configurable points.
-- Loss = configurable points.
-- Optional bonus rules.
-- Optional minimum matches.
+Purpose:
 
-Implement this as a separate `ranking_strategy`, not mixed into the app-wide skill engine.
+- estimate the player's overall padel level over their entire app history.
 
-V1 default remains the uncertainty-aware ranking-specific skill model.
+Inputs include:
+
+- long-term Competitive match results;
+- partner/opponent skill;
+- reliability;
+- expected outcome.
+
+Output:
+
+```text
+0.0–7.0 player level + reliability
+```
+
+## League Standings
+
+Purpose:
+
+- determine who performed best during the League period.
+
+Inputs include only League-period eligible match statistics:
+
+- Wins.
+- Losses.
+- Draws.
+- Sets Won.
+- Sets Lost.
+
+Output:
+
+```text
+league position
+```
+
+No conversion exists between these two systems.
+
+A player can therefore:
+
+- have the highest global level but not lead the League;
+- have a lower global level but lead the League by producing better results during the League period.
+
+This distinction is a core V1 product requirement.
 
 ---
 
@@ -2157,7 +2152,7 @@ Authoritative inputs:
 - match type;
 - played date;
 - community;
-- league/ranking association;
+- League association;
 - rating events.
 
 Cached/materialized aggregates are allowed but must be rebuildable.
@@ -2213,13 +2208,13 @@ For each player, expose at minimum:
 - Current global level.
 - Reliability.
 - Community skill rank.
-- Active ranking position.
+- Active League position.
 - Starting level.
 - Highest level achieved.
 - Lowest established level achieved.
 - Rating delta in selected period.
 - Best community skill rank achieved.
-- Best ranking position achieved.
+- Best League position achieved.
 
 ### Form
 
@@ -2335,7 +2330,7 @@ Every confirmed Game Group detail should show:
 - date/time;
 - venue;
 - competitive/friendly;
-- league/ranking;
+- League;
 - Team A players;
 - Team B players;
 - pre-match levels;
@@ -2381,7 +2376,7 @@ These are secondary to core player statistics but valuable for engagement.
 
 ---
 
-# 39. Ranking Screens
+# 39. Ranking and League Screens
 
 ## 39.1 Community Skill Ranking
 
@@ -2389,51 +2384,54 @@ Within a selected community, members can be ordered by their **app-wide current 
 
 Columns/cards:
 
-- Rank within selected community.
+- Community skill rank.
 - Player.
 - App-wide level.
 - Reliability.
 - Competitive Game Groups.
 - W-L-D.
-- Win %.
-- Recent trend.
-- Rating delta over selected period.
+- Rating trend.
 
-Low-reliability users are shown normally with their reliability percentage; they are not hidden as "unranked."
+This is a view of long-term/global skill among community members.
 
-Non-member guest players are not included in the community member skill ranking.
+## 39.2 League Standings
 
-## 39.2 League / Ranking Screen
+The League screen must not order players by global skill.
 
 Columns/cards:
 
-- Position.
+- League Position.
 - Player.
-- Ranking-specific rating/score.
-- Matches.
+- Matches Played.
 - Wins.
 - Losses.
 - Draws.
-- Win %.
-- Sets +/−.
-- Games +/−.
-- Trend.
-- Final-award eligibility if a minimum was configured.
+- Sets Won.
+- Sets Lost.
+- Set Differential.
+- Final-award eligibility, if configured.
+- Optional app-wide level shown only as informational secondary data.
 
-Dropdown/history:
+League ordering follows Section 30.
 
-- Active Ranking.
-- Previous rankings.
-- Archived standings.
+## 39.3 League History
 
-## 39.3 Rank Movement
+Users can select:
 
-Show:
+- Active League.
+- Previous Leagues.
+- Archived League standings.
 
-- current position;
-- previous position;
-- movement after latest confirmed Competitive Game Group;
-- ranking-high position.
+## 39.4 Position Movement
+
+The UI may show:
+
+- current League position;
+- previous League position;
+- movement after latest eligible confirmed Game Group;
+- best League position reached.
+
+Position movement is derived from standings statistics, never from global rating delta.
 
 ---
 
@@ -2445,7 +2443,7 @@ Recommended sections:
 2. Current app-wide level.
 3. Reliability.
 4. Selected-community skill rank.
-5. Active league/ranking position.
+5. Active League position.
 6. W-L-D record.
 7. App-wide level progression chart.
 8. Active ranking progression.
@@ -2532,73 +2530,248 @@ Administration:
 
 # 43. Notifications
 
-The application requires an in-app notification center.
+Notifications are a **required V1 capability**.
 
-PWA push notifications are strongly recommended.
+The application must provide both:
 
-## 43.1 Community
+1. an **in-app notification center**; and
+2. **Web Push notifications** on browsers/devices that support Web Push and for which the user has granted permission.
 
-- invited to Private community;
-- public-community membership joined/approved;
-- removed from community;
-- Community Admin role changed.
+If Web Push is unavailable, unsupported, or permission is denied, the in-app notification center remains the authoritative fallback.
 
-## 43.2 Match Registration
+A user must never depend exclusively on Push to discover a critical state change.
 
-- invited to Match Event;
-- guest join request sent;
-- guest/out-of-range request approved;
-- request rejected;
-- player registered;
-- player self-withdrew;
-- creator removed you;
-- creator removed another player and your status changed;
-- promoted Reserve → Playing;
-- moved Playing → Reserve after withdrawal/removal;
-- complete new Game Group became possible;
-- event canceled;
-- event details/venue/price changed;
-- registration cutoff approaching.
+## 43.1 Notification Delivery Model
 
-## 43.3 Reserve / Incomplete Group
+A notification may have one or both delivery channels:
 
-- "3 more players needed";
-- "2 more players needed";
-- "1 more player needed";
-- quartet completed;
-- at cutoff: group did not reach 4;
-- at cutoff: event itself had fewer than 4.
+- `IN_APP`
+- `PUSH`
 
-## 43.4 Results
+Critical product events must always create an in-app notification.
 
-- creator can enter teams/results;
-- result submitted;
-- approval required;
-- result will auto-confirm at specific time;
-- reminder before 48-hour auto-confirm;
-- result manually approved;
-- result auto-confirmed;
-- result rejected/disputed;
-- corrected proposal submitted;
-- confirmed result amended.
+Where Push is supported and enabled, the same event should also generate a Push notification when appropriate.
 
-## 43.5 Level / Reliability
+Each notification should contain:
 
-- level updated;
-- reliability increased;
-- new personal high;
-- Level Review Request submitted;
-- Level Review Request approved/rejected.
+- notification type;
+- recipient user;
+- community ID when applicable;
+- related entity type/ID;
+- title;
+- short message;
+- action/deep link;
+- created timestamp;
+- read timestamp;
+- push-delivery status where applicable.
 
-## 43.6 League / Ranking
+The notification deep link should take the user directly to the relevant Community, Match Event, Game Group, result review, League, or profile screen.
 
-- ranking starts;
-- fixed end approaching;
-- ranking ended manually;
-- ranking closed;
-- final position available.
+## 43.2 Community Notifications
 
-Critical state notifications remain in-app even if push is disabled.
+### New Open Match Published
+
+When a new `COMMUNITY_OPEN` Match Event is published:
+
+- notify all active members of that community except the creator;
+- create an in-app notification;
+- send Push when available/enabled.
+
+Example:
+
+> New match in Padel Madrid Friends  
+> Saturday 18:00 · Padel Indoor Madrid · Competitive
+
+Tapping the notification opens the Match Event detail.
+
+For an `INVITE_ONLY` Match Event, do **not** notify the whole community. Only invited users receive invitation notifications.
+
+Public-community non-members do not automatically receive "new match" Push notifications merely because the community is Public. They may discover Public matches through the app.
+
+### Other Community Events
+
+Notify relevant users when:
+
+- invited to a Private community;
+- public-community membership is approved;
+- removed from a community;
+- Community Admin role changes.
+
+## 43.3 Match Invitation Notifications
+
+When a user is invited to a Match Event:
+
+- notify the invited user immediately;
+- include creator, date/time, venue, match type, current Playing/Reserve count, and price if present;
+- deep link directly to the Match Event;
+- expose Accept / Decline where supported by the UI.
+
+Invitation notification is sent regardless of whether the Match Event is Community Open or Invite Only.
+
+## 43.4 Match Registration / Participation Notifications
+
+Notify relevant users when:
+
+- a guest/out-of-range join request is received by the Match Creator;
+- join request is approved;
+- join request is rejected;
+- a player registers;
+- a player self-withdraws;
+- creator removes a player;
+- another player's removal changes the recipient's status;
+- player is promoted `RESERVE → CONFIRMED_PLAYING`;
+- player moves `CONFIRMED_PLAYING → RESERVE`;
+- a new complete Game Group becomes possible;
+- Match Event is canceled;
+- relevant Match Event details change;
+- venue changes;
+- price changes;
+- registration cutoff is approaching.
+
+### Reserve Promotion
+
+Reserve promotion is a critical notification.
+
+When a Reserve player becomes Playing:
+
+- create in-app notification immediately;
+- send Push immediately when possible;
+- clearly communicate that their place is now confirmed.
+
+Example:
+
+> You're in! 🎾  
+> Three more players joined and your group is now complete. You're confirmed for Saturday at 18:00.
+
+## 43.5 Reserve / Incomplete Group Notifications
+
+Notify Reserve players as the next quartet develops:
+
+- 3 more players needed;
+- 2 more players needed;
+- 1 more player needed;
+- quartet completed.
+
+At registration cutoff:
+
+### Incomplete Reserve Group
+
+Notify each `RESERVE_NOT_PLAYING` user:
+
+> Your group did not reach 4 players, so you are not included in this match.
+
+The message should clarify that already-complete Game Groups may still play.
+
+### Entire Event Incomplete
+
+If fewer than four players are accepted:
+
+- notify all registered players that no playable Game Group was formed.
+
+These are critical notifications and must always exist in-app.
+
+## 43.6 Result Notifications
+
+Result notifications are scoped to the four players of the affected Game Group plus the Match Creator when relevant.
+
+### Result Added
+
+When a Result Proposal is submitted:
+
+- notify all four players in that Game Group;
+- show the proposed score and outcome;
+- show who submitted it;
+- show the 48-hour auto-confirm deadline.
+
+Example:
+
+> Result added: 6-4, 4-6, 6-3  
+> Review the result before it is automatically confirmed.
+
+### Actionable Review
+
+Only users who are eligible to approve/reject under the result-approval rules receive actionable `Approve` / `Reject` controls.
+
+Other participants receive the informational notification but no invalid approval action.
+
+### Result Lifecycle
+
+Notify relevant participants when:
+
+- creator can now enter teams/results;
+- result is submitted;
+- approval/rejection is required;
+- auto-confirm deadline is approaching;
+- result is manually confirmed;
+- result is auto-confirmed after 48 hours;
+- result is rejected/disputed;
+- corrected proposal is submitted;
+- confirmed result is amended.
+
+When a Competitive result becomes confirmed, the same user may subsequently receive separate rating/reliability notifications.
+
+## 43.7 Level / Reliability Notifications
+
+Notify the player when:
+
+- app-wide level changes;
+- reliability increases;
+- a new personal high is reached;
+- Level Review Request is submitted;
+- Level Review Request is approved;
+- Level Review Request is rejected.
+
+Rating notifications should include old level, new level, and delta when applicable.
+
+## 43.8 League Notifications
+
+Notify relevant Community Members when:
+
+- a League starts;
+- Fixed End Date is approaching;
+- an Open-Ended League is manually ended;
+- a Fixed League closes;
+- final standings are available;
+- the user's League position changes materially, if this optional notification is enabled.
+
+## 43.9 Notification Preferences
+
+V1 should provide basic per-user notification preferences.
+
+At minimum:
+
+- Push enabled/disabled globally;
+- New community Match notifications;
+- Match invitations;
+- Match participation/status changes;
+- Result/review notifications;
+- Level/reliability notifications;
+- League notifications.
+
+Critical in-app notifications cannot be completely disabled for:
+
+- invitation requiring action;
+- Playing/Reserve status change;
+- creator removal;
+- Match cancellation;
+- venue/date/time/price change affecting an accepted participant;
+- Reserve group incomplete at cutoff;
+- result approval/rejection/dispute;
+- 48-hour result auto-confirmation.
+
+Push may always be disabled by the user or operating system/browser.
+
+## 43.10 Notification Deduplication and Idempotency
+
+The backend must prevent duplicate notifications for retried domain operations.
+
+Examples:
+
+- the same `ResultConfirmed` event must not generate five identical notifications;
+- a retried Reserve promotion must not produce duplicate Push alerts;
+- reconnecting a client must not recreate an already-persisted in-app notification.
+
+Notifications should be derived from stable domain-event IDs or equivalent idempotency keys.
 
 ---
 
@@ -2628,8 +2801,8 @@ Examples:
 
 - joining a match;
 - submitting a result;
-- approving a result;
-- changing a league/ranking.
+- approving/rejecting a result;
+- changing a League.
 
 The UI must never pretend an authoritative mutation succeeded while offline.
 
@@ -2637,11 +2810,51 @@ The UI must never pretend an authoritative mutation succeeded while offline.
 
 A future offline result draft may be stored locally, but must clearly remain unsynced until server confirmation.
 
-## NFR-PWA-007
+## NFR-PWA-007 — Web Push Is Required
 
-Push notifications should use standards-supported web push where available.
+The V1 implementation must support standards-based Web Push notifications on compatible browsers/devices.
 
-When push is unavailable, the application falls back to in-app notifications.
+This includes:
+
+- requesting notification permission only at an appropriate user-driven moment;
+- creating/storing Push subscriptions securely;
+- associating multiple subscriptions/devices with the same user;
+- sending Push from trusted backend infrastructure;
+- handling expired/invalid subscriptions;
+- deep-linking notification taps into the relevant application screen.
+
+Push delivery is best-effort because browser/OS delivery cannot be guaranteed.
+
+## NFR-PWA-008 — In-App Fallback
+
+Every critical notification event must also be persisted as an in-app notification.
+
+When:
+
+- Push is unsupported;
+- permission is denied;
+- subscription expires;
+- device is offline;
+- Push delivery fails;
+
+the user must still see the notification in the application's notification center.
+
+## NFR-PWA-009 — Installed and Browser Use
+
+Notification functionality must not require the user to install the PWA when the user's browser/platform supports Web Push without installation.
+
+Where an operating system requires installation for Push support, the UI should explain that requirement rather than treating it as an application error.
+
+## NFR-PWA-010 — Notification Badge / Unread State
+
+The UI shall expose an unread-notification indicator.
+
+At minimum:
+
+- unread count or unread marker;
+- mark one notification as read;
+- mark all as read;
+- opening the related entity can mark the notification as read.
 
 ---
 
@@ -2680,7 +2893,7 @@ Critical operations requiring transactional or optimistic concurrency protection
 - Game Group/team assignment;
 - result approval;
 - competing result submission;
-- league/ranking close;
+- League close;
 - match cancellation;
 - rating finalization;
 - admin amendment.
@@ -2836,7 +3049,7 @@ App-wide, one per user.
 - `joined_at`
 - `removed_at`
 
-## 47.7 LeagueRanking
+## 47.7 League
 
 - `id`
 - `community_id`
@@ -2848,32 +3061,34 @@ App-wide, one per user.
 - `end_at` nullable
 - `status`
 - `minimum_matches_for_final_award`
-- `ranking_strategy`
-- `rating_config_snapshot`
 - `closed_at`
 - `closed_by`
 
 Constraint for V1:
 
-- at most one `ACTIVE` LeagueRanking per community.
+- at most one `ACTIVE` League per community.
 
-## 47.8 RankingPlayerState
+## 47.8 LeaguePlayerStanding
 
-Created lazily when player first participates in an eligible ranked Game Group.
+A rebuildable/materialized League-period aggregate.
 
-- `league_ranking_id`
+- `league_id`
 - `user_id`
-- `initialized_from_app_level`
-- `initialized_at`
-- `mu`
-- `sigma`
-- `display_rating`
-- `rank_score`
-- `match_count`
+- `eligible_from`
+- `eligible_until` nullable
+- `matches_played`
+- `wins`
+- `losses`
+- `draws`
+- `sets_won`
+- `sets_lost`
+- `set_differential`
 - `eligible_for_final_award`
-- `current_rank`
-- `best_rank`
+- `current_position`
+- `best_position`
 - `updated_at`
+
+There are no `mu`, `sigma`, reliability, or skill fields in League standings.
 
 ## 47.9 Venue
 
@@ -2904,8 +3119,6 @@ Represents Match Event.
 - `team_assignment_mode`
 - `status`
 - `scoring_format = STANDARD_BEST_OF_3_NORMAL_SETS`
-- `league_ranking_id` nullable
-- `counts_toward_active_ranking`
 - `level_restriction_enabled`
 - `min_level` nullable
 - `max_level` nullable
@@ -2926,26 +3139,19 @@ Default:
 registration_cutoff_at = scheduled_start_at - 1 hour
 ```
 
+League inclusion is derived from community, Competitive type, player eligibility, result status, and `played_at` versus League period. A Match does not need a League skill/rating field.
+
 ## 47.11 MatchJoinRequest
-
-Used for:
-
-- Public-community non-member request;
-- out-of-range member request.
-
-Fields:
 
 - `id`
 - `match_id`
 - `user_id`
 - `request_type`
-- `status` (`PENDING`, `APPROVED`, `REJECTED`, `EXPIRED`, `CANCELLED`)
+- `status`
 - `requested_at`
 - `resolved_at`
 - `resolved_by`
 - `reason`
-
-Approved request creates a MatchParticipant using approval time as accepted FIFO time.
 
 ## 47.12 MatchParticipant
 
@@ -2960,20 +3166,12 @@ Approved request creates a MatchParticipant using approval time as accepted FIFO
 - `removal_reason`
 - `left_at`
 
-Statuses include:
-
-- `CONFIRMED_PLAYING`
-- `RESERVE`
-- `RESERVE_NOT_PLAYING`
-- `RECONFIRMATION_REQUIRED`
-- `WITHDRAWN`
-- `REMOVED_BY_CREATOR`
-
 ## 47.13 MatchGameGroup
 
 - `id`
 - `match_id`
 - `group_number`
+- `played_at`
 - `court_name` nullable
 - `court_number` nullable
 - `court_note` nullable
@@ -2981,6 +3179,8 @@ Statuses include:
 - `planned_before_match`
 - `created_at`
 - `resolved_at`
+
+`played_at` is authoritative for League period inclusion.
 
 ## 47.14 GameGroupParticipant
 
@@ -3015,8 +3215,6 @@ Statuses include:
 - `team_b_games`
 - `team_a_tiebreak_points` nullable
 - `team_b_tiebreak_points` nullable
-
-No match-tiebreak set type is required in V1.
 
 ## 47.17 ResultReview
 
@@ -3055,11 +3253,7 @@ App-wide rating ledger.
 - `created_at`
 - `invalidated_at`
 
-## 47.19 RankingRatingEvent
-
-Equivalent event scoped to one LeagueRanking and only created for eligible ranked results.
-
-## 47.20 Notification
+## 47.19 Notification
 
 - `id`
 - `user_id`
@@ -3071,7 +3265,7 @@ Equivalent event scoped to one LeagueRanking and only created for eligible ranke
 - `read_at`
 - `created_at`
 
-## 47.21 AuditEvent
+## 47.20 AuditEvent
 
 - `id`
 - `community_id` nullable
@@ -3092,36 +3286,34 @@ Equivalent event scoped to one LeagueRanking and only created for eligible ranke
 
 Authoritative:
 
-- membership;
-- Match Event;
-- registration order;
-- final registration/Reserve status at cutoff;
-- Match Game Groups;
-- actual team assignments;
-- confirmed result per Game Group;
+- users/player profiles;
+- community memberships and eligibility intervals;
+- Match Events;
+- accepted registration order;
+- final Game Groups and teams;
+- confirmed results;
 - result sets;
-- rating-event ledger;
-- league/ranking definition and close mode;
-- venue/Maps/photo references;
-- informational per-player cost;
+- Game Group `played_at`;
+- global rating-event ledger;
+- League definition and period;
 - audit log.
 
-## 48.2 Derived/materialized
+## 48.2 Derived / Materialized
 
 Rebuildable:
 
-- number of complete groups;
-- current Reserve list before cutoff;
-- current rating state;
-- current leaderboard;
+- current global player rating state;
+- current League standings;
+- LeaguePlayerStanding counters;
+- community skill ranking;
 - player statistics;
 - pair statistics;
 - opponent statistics;
 - charts;
 - streaks;
-- community aggregate statistics.
+- aggregate community statistics.
 
-This distinction is essential for reliable correction/replay.
+League standings must always be reproducible by filtering eligible confirmed Game Groups to the League period and aggregating their results.
 
 ---
 
@@ -3253,7 +3445,7 @@ Advanced future filters:
 - result;
 - partner;
 - opponent;
-- league/ranking.
+- League.
 
 ---
 
@@ -3447,7 +3639,7 @@ Backend shall emit structured events/metrics for:
 - result confirmed;
 - rating calculation failed;
 - rating replay started/completed/failed;
-- league/ranking close;
+- League close;
 - push notification failure.
 
 Errors should have correlation/request IDs.
@@ -3467,7 +3659,7 @@ Privacy-conscious product analytics may capture:
 - median result-confirmation time;
 - rejected-result rate;
 - weekly competitive matches;
-- league/ranking participation;
+- League participation;
 - PWA installation funnel if measurable;
 - notification interaction.
 
@@ -3477,173 +3669,173 @@ Do not send private community sporting content to third-party analytics unnecess
 
 # 61. Important Acceptance Criteria
 
-## AC-01 — Create multiple communities
+## AC-01 — Global skill is independent from League standings
 
-**Given** an authenticated user  
-**When** they create two communities  
-**Then** both exist independently  
-**And** each has its own memberships, Match Events, rankings, and settings  
-**And** the user's player level is the same app-wide level in both.
+**Given** a player has app-wide level 4.2  
+**And** another player has app-wide level 3.1  
+**When** a new League starts  
+**Then** neither player receives League wins/losses/sets from their historical rating  
+**And** both League records start at zero.
 
-## AC-02 — Public community discovery
+## AC-02 — Pre-League match excluded
 
-**Given** Community A is Public  
-**And** User X is authenticated but not a member  
-**When** User X browses communities  
-**Then** Community A and its eligible Public Match Events can be discovered.
+**Given** League starts on September 25 at 00:00  
+**And** a player won a Competitive Game Group on September 24  
+**Then** that result remains in global rating/history  
+**And** it contributes nothing to the League.
 
-## AC-03 — Guest approval establishes FIFO position
+## AC-03 — In-period Competitive match counts automatically
 
-**Given** a guest join request exists  
-**When** Match Creator approves it  
-**Then** accepted FIFO time equals approval time  
-**And** Playing/Reserve state is recalculated  
-**And** guest does not automatically become a community member.
+**Given** an Active League  
+**And** four eligible community members play a confirmed Competitive Game Group during the League period  
+**When** the result confirms  
+**Then** League standings update automatically  
+**And** no per-match League opt-in is required.
 
-## AC-04 — Default registration cutoff
+## AC-04 — Win updates League counters
 
-**Given** a Match Event starts at 20:00  
-**When** creator does not customize the cutoff  
-**Then** `registration_cutoff_at` is 19:00.
+**Given** Team A wins `6-4, 6-3`  
+**When** the result is eligible for the Active League  
+**Then** each Team A player receives:
 
-## AC-05 — Creator adjusts cutoff
+- +1 Match Played
+- +1 Win
+- +2 Sets Won
+- +0 Sets Lost
 
-**Given** a future Match Event  
-**When** creator changes cutoff to 18:30  
-**Then** registration closes at 18:30  
-**Provided** cutoff remains before scheduled start.
+**And** each Team B player receives:
 
-## AC-06 — Default level range
+- +1 Match Played
+- +1 Loss
+- +0 Sets Won
+- +2 Sets Lost.
 
-**Given** creator level is 1.5  
-**When** level restriction is enabled  
-**Then** default range is 1.0–3.0  
-**And** creator may edit or disable it.
+## AC-05 — Draw updates League counters
 
-## AC-07 — Initial level and reliability
+**Given** result is `6-4, 4-6` Draw  
+**When** it counts in the League  
+**Then** all four players receive +1 Match Played and +1 Draw  
+**And** all four receive 1 Set Won and 1 Set Lost  
+**And** nobody receives a Win or Loss.
 
-**Given** a new user selects level 2.7  
-**Then** app-wide level is 2.7  
-**And** reliability is 10%.
+## AC-06 — League ordering ignores player level
 
-## AC-08 — Reliability progression
+**Given** Player A level = 5.0 with 3 League Wins  
+**And** Player B level = 2.5 with 5 League Wins  
+**When** standings are ordered  
+**Then** Player B ranks ahead based on League results  
+**And** global level does not enter the ordering formula.
 
-**Given** 10 confirmed ratable Competitive Game Groups  
-**Then** reliability is 70%.
+## AC-07 — League tiebreak by losses
 
-**Given** 15 or more  
-**Then** reliability is 100%.
+**Given** Player A and B both have 5 Wins  
+**And** Player A has 1 Loss  
+**And** Player B has 2 Losses  
+**Then** Player A ranks ahead.
 
-## AC-09 — Level review is forward-only
+## AC-08 — League tiebreak by set differential
 
-**Given** a Platform Admin approves a level change from 2.7 to 3.2  
-**Then** current rating becomes 3.2 via an audited adjustment event  
-**And** prior Match Event results are not replayed solely because of the adjustment.
+**Given** two players have equal Wins and Losses  
+**And** Player A has set differential +8  
+**And** Player B has +5  
+**Then** Player A ranks ahead.
 
-## AC-10 — Reserve after fifth accepted registration
+## AC-09 — League tiebreak by sets won
 
-**Given** 4 Playing registrations  
-**When** fifth is accepted  
-**Then** fifth is Reserve.
+**Given** Wins, Losses, and Set Differential are equal  
+**And** Player A has more Sets Won  
+**Then** Player A ranks ahead.
 
-## AC-11 — Eighth accepted registration completes second group
+## AC-10 — Fully equal records share position
 
-**Given** #5–#7 are Reserve  
+**Given** two players are equal after all V1 League ordering criteria  
+**Then** they share the same position.
+
+## AC-11 — Global rating still updates during League
+
+**Given** an eligible Competitive Game Group counts toward League standings  
+**When** its result confirms  
+**Then** app-wide rating/reliability also update through the normal global rating engine  
+**And** the resulting rating delta does not influence League position.
+
+## AC-12 — Friendly excluded
+
+**Given** a Friendly Game Group occurs during an Active League  
+**Then** it contributes nothing to League standings.
+
+## AC-13 — Incomplete excluded
+
+**Given** a Competitive result is confirmed as Incomplete/Abandoned  
+**Then** it contributes nothing to League standings.
+
+## AC-14 — Late community member
+
+**Given** League started earlier  
+**And** a player becomes an eligible community member today  
+**Then** their League counters begin at zero today  
+**And** earlier matches are not retroactively added.
+
+## AC-15 — Member leaves League community
+
+**Given** a player has League results  
+**When** membership becomes inactive  
+**Then** historical League counters remain  
+**And** later matches while inactive do not count.
+
+## AC-16 — Fixed League close
+
+**Given** a Fixed End League  
+**When** `played_at` is later than the end boundary  
+**Then** that Game Group does not affect the closed League.
+
+## AC-17 — Manual League close
+
+**Given** an Open-Ended League  
+**When** owner/Admin ends it  
+**Then** `closed_at` freezes the League period  
+**And** later matches do not count.
+
+## AC-18 — Global level persists after League close
+
+**Given** League closes  
+**Then** League standings freeze  
+**And** app-wide level/reliability continue updating in future Competitive matches.
+
+## AC-19 — Public guest is not a League participant
+
+**Given** a non-member guest plays a Public-community Competitive Game Group  
+**Then** their global rating may update  
+**And** they are not inserted into community League standings.
+
+## AC-20 — Default registration cutoff
+
+**Given** Match Event starts at 20:00  
+**When** creator does not customize cutoff  
+**Then** cutoff is 19:00.
+
+## AC-21 — Reserve promotion
+
+**Given** accepted registrations #5–#7 are Reserve  
 **When** #8 is accepted  
 **Then** #5–#8 become Playing atomically.
 
-## AC-12 — Multiple courts
-
-**Given** 8 Playing users produce 2 Game Groups  
-**When** creator assigns courts  
-**Then** Group 1 may have Court 3 and Group 2 Court 4  
-**And** both retain the same event-level venue/Maps location.
-
-## AC-13 — Creator removes unavailable player
-
-**Given** 8 Playing users  
-**When** creator removes one before cutoff  
-**Then** removal is audited/notified  
-**And** FIFO is recalculated.
-
-## AC-14 — Official Draw
+## AC-22 — Official Draw validation
 
 **Given** `6-4, 4-6`  
 **Then** Draw is valid.
 
-## AC-15 — Draw with unfinished third
+## AC-23 — Stopped too early is Incomplete
 
-**Given** `6-4, 4-6, 5-2` with third set marked Incomplete  
-**Then** outcome is Draw regardless of current third-set lead.
-
-## AC-16 — Stopped too early is not a Draw
-
-**Given** `6-4, 3-2` with second set Incomplete  
-**When** result is recorded  
+**Given** `6-4, 3-2` with second set incomplete  
 **Then** outcome is Incomplete/Abandoned  
-**And** no app-wide rating, ranking rating, or reliability update occurs.
+**And** no global rating, reliability, or League standing update occurs.
 
-## AC-17 — Partial approval still auto-confirms
+## AC-24 — 48-hour auto-confirm
 
-**Given** creator did not play in a Game Group  
-**And** Team A approved but Team B did not  
-**And** nobody rejected  
+**Given** Pending result has no rejection  
 **When** 48 hours elapse  
-**Then** result auto-confirms exactly once.
-
-## AC-18 — Rejection blocks auto-confirm
-
-**Given** a Pending result  
-**When** eligible player rejects before 48 hours  
-**Then** it becomes Disputed  
-**And** must not auto-confirm.
-
-## AC-19 — Competitive defaults to active ranking
-
-**Given** community has an Active ranking  
-**When** creator makes a Competitive Match Event  
-**Then** `counts_toward_active_ranking` defaults to true.
-
-## AC-20 — Creator excludes competitive match from ranking
-
-**Given** active ranking exists  
-**When** creator disables ranking participation before participant confirmation  
-**Then** confirmed Competitive results affect app-wide level  
-**And** do not affect community ranking.
-
-## AC-21 — Late community member joins active ranking
-
-**Given** a ranking is already Active  
-**And** a user joins the community afterward  
-**When** they play their first eligible ranked Game Group  
-**Then** ranking-specific state is initialized from their current app-wide level at that time.
-
-## AC-22 — Member leaves active ranking community
-
-**Given** a player has ranked results  
-**When** membership becomes inactive  
-**Then** historical results/standing remain  
-**And** they cannot play new ranked Game Groups until membership is active again.
-
-## AC-23 — Minor change requires notification only
-
-**Given** players are already registered  
-**When** creator changes court number or price  
-**Then** players are notified  
-**And** registrations remain accepted.
-
-## AC-24 — Major change requires reconfirmation
-
-**Given** players are already registered  
-**When** creator changes Competitive to Friendly, ranking participation, calendar date, or materially changes start time  
-**Then** existing registrations become Reconfirmation Required  
-**And** participants must explicitly accept the new terms.
-
-## AC-25 — One active ranking per community
-
-**Given** one ranking is already Active  
-**When** another is activated  
-**Then** activation is rejected in V1.
+**Then** it confirms exactly once  
+**And** both global-rating and League-standing projections update as applicable.
 
 ---
 
@@ -4022,14 +4214,14 @@ These should remain downstream of the trusted result system.
 - no direct manual editing;
 - Platform Admin correction workflow.
 
-## Epic 6 — Leagues / Rankings
+## Epic 6 — Leagues
 
-- member-created ranking;
+- member-created League;
 - Fixed End Date;
 - Open Ended/Manual;
-- one active ranking/community;
-- member-only standings;
-- historical rankings.
+- one Active League/community;
+- W/L/D + set-based standings;
+- historical Leagues.
 
 ## Epic 7 — Statistics
 
@@ -4039,17 +4231,30 @@ These should remain downstream of the trusted result system.
 - partners;
 - opponents/head-to-head;
 - community filters;
-- ranking filters.
+- League filters.
 
 ## Epic 8 — PWA & Notifications
 
 - installable PWA;
-- mobile design;
-- in-app notifications;
-- push;
-- Reserve notifications;
+- mobile-first notification center;
+- persistent in-app notifications;
+- unread state/badge;
+- standards-based Web Push on supported browsers/devices;
+- notification permission/subscription lifecycle;
+- deep links from notifications;
+- New Community Match notification;
+- Match invitation notification;
 - guest-request notifications;
-- 48-hour result reminders/auto-confirm notifications.
+- Playing/Reserve status notifications;
+- Reserve → Playing Push notification;
+- result-added notification to all four Game Group players;
+- actionable result approval/rejection notifications;
+- 48-hour result reminder/auto-confirm notifications;
+- Match cancellation/detail-change notifications;
+- level/reliability notifications;
+- League notifications;
+- user notification preferences;
+- notification idempotency/deduplication.
 
 ## Epic 9 — Admin / Integrity
 
@@ -4205,24 +4410,25 @@ requestResultAmendment
 resolveResultDispute
 ```
 
-### Rating
+### Global Rating
 
 ```text
 getPlayerRating
 getRatingHistory
 previewRatingImpact
-rebuildRatings
+rebuildGlobalRatings
 ```
 
-### League / Ranking
+### League
 
 ```text
-createRanking
-activateRanking
-endRanking
-closeFixedDateRanking
-getRankingLeaderboard
-getRankingHistory
+createLeague
+activateLeague
+endLeague
+closeFixedDateLeague
+getLeagueStandings
+getLeagueHistory
+rebuildLeagueStandings
 ```
 
 ### Statistics
@@ -4252,9 +4458,13 @@ CommunityJoined
 CommunityMemberRemoved
 
 MatchCreated
+MatchPublished
 MatchJoinRequested
 MatchJoinRequestApproved
 MatchJoinRequestRejected
+MatchInvitationCreated
+MatchInvitationAccepted
+MatchInvitationDeclined
 MatchRegistered
 MatchParticipantWithdrawn
 MatchParticipantRemovedByCreator
@@ -4263,27 +4473,51 @@ ReservePlayerPromoted
 PlayableGroupFormed
 ReserveGroupIncompleteAtStart
 MatchRegistrationClosed
+MatchDetailsChanged
+MatchVenueChanged
+MatchPriceChanged
 MatchCancelled
 
 GameGroupsAssigned
 GameGroupTeamsAssigned
 
 ResultProposed
+ResultReviewRequired
 ResultApproved
 ResultRejected
+ResultAutoConfirmationApproaching
 ResultAutoConfirmed
 ResultConfirmed
 ResultAmended
 
 GlobalRatingUpdated
 ReliabilityUpdated
-RankingRatingUpdated
+LeagueStandingsUpdated
 
-RankingCreated
-RankingStarted
-RankingEndedManually
-RankingClosedAtFixedDate
+LeagueCreated
+LeagueStarted
+LeagueEndingSoon
+LeagueEndedManually
+LeagueClosedAtFixedDate
+
+NotificationCreated
+NotificationPushRequested
+NotificationPushDelivered
+NotificationPushFailed
+NotificationRead
 ```
+
+Notification handlers subscribe to the relevant domain events rather than embedding Push delivery directly inside core match/rating logic.
+
+Examples:
+
+- `MatchPublished` → New Community Match notification for eligible community members.
+- `MatchInvitationCreated` → invitation notification for invited user.
+- `ReservePlayerPromoted` → Playing confirmation notification.
+- `ResultProposed` → result-added notification to all four Game Group players.
+- `ResultReviewRequired` → actionable approval/rejection notification to eligible reviewers.
+- `ResultConfirmed` → result-confirmed notification.
+- `GlobalRatingUpdated` → level-change notification for affected player.
 
 ---
 
@@ -4293,104 +4527,144 @@ RankingClosedAtFixedDate
 
 High priority:
 
+- League period inclusion by `played_at`;
+- League eligibility by membership;
+- Wins/Losses/Draws aggregation;
+- Sets Won/Lost aggregation;
+- Set Differential;
+- League ordering;
+- proof that global skill is absent from League ordering;
 - Public/Private authorization;
 - guest request eligibility;
-- approval-time FIFO;
-- default cutoff = start - 60 minutes;
-- custom cutoff validation;
-- creator-level default range;
-- reliability formula;
-- forward-only level adjustment;
-- Reserve calculations;
-- creator removal/rebalance;
-- multi-court Game Group metadata;
-- official Draw validation;
-- Incomplete/Abandoned validation;
-- draw rating;
-- 48-hour auto-confirm including partial approvals;
-- rejection cancels auto-confirm;
-- ranking participation flag;
-- late ranking initialization;
-- Major vs Minor match-change classification;
-- ranking active-count constraint;
-- statistics formulas.
+- FIFO/Reserve;
+- score validation;
+- Draw/Incomplete handling;
+- 48-hour auto-confirm;
+- reliability/global rating logic;
+- notification recipient calculation;
+- notification preference filtering;
+- notification idempotency key generation;
+- Match Published notification eligibility;
+- result-review recipient eligibility.
 
-## 81.2 Rating Golden Tests
+## 81.2 Global Rating Golden Tests
 
 Fixtures:
 
-- equal teams, expected win;
-- weaker team upsets stronger;
-- stronger loses to weaker;
-- low vs high reliability;
+- expected win;
+- upset;
 - draw between equal teams;
 - weaker team draws stronger;
-- incomplete match has zero rating effect;
-- first Competitive Game Group at 10% reliability;
-- 15th Competitive Game Group reaches 100%;
-- admin forward-only adjustment does not replay history.
+- low vs high reliability;
+- Incomplete has zero rating effect.
 
-## 81.3 Integration Tests
+## 81.3 League Aggregation Tests
 
-- Public/Private community flows;
-- guest request → approval → FIFO;
-- default/custom cutoff;
-- #5 Reserve / #8 promotion;
-- creator removal;
-- 8-player event with two court numbers;
-- ranked Competitive default;
-- Competitive but excluded from ranking;
-- new member enters active ranking later;
-- member leaves ranking community;
-- Draw `6-4,4-6`;
-- Draw `6-4,4-6,5-2 incomplete`;
-- Incomplete `6-4,3-2 incomplete`;
-- manual approval;
-- partial approval + 48-hour auto-confirm;
-- rejection blocks auto-confirm;
-- Minor change notification only;
-- Major change reconfirmation;
-- Level Review forward-only;
-- one active ranking constraint.
+Fixtures:
 
-## 81.4 End-to-End
+- one win updates both winners identically;
+- one loss updates both losers identically;
+- Draw updates D and completed-set totals;
+- pre-League result excluded;
+- post-League result excluded;
+- Friendly excluded;
+- Incomplete excluded;
+- late member starts from zero;
+- membership inactive interval excluded;
+- corrected result rebuilds standings;
+- global rating change does not alter League ordering without a League-result change.
 
-1. Sign in and create profile.
-2. Create/join community.
-3. Create Match Event; verify cutoff defaults to one hour before start.
-4. Create multiple groups and Reserve players.
-5. Assign optional court numbers.
-6. Play match.
-7. Record Win/Loss/Draw/Incomplete result.
-8. Verify manual or 48-hour confirmation.
-9. Verify app-wide rating/reliability.
-10. Verify ranking changes only when enabled.
-11. Join an already-active ranking as a later community member.
-12. Perform Major event change and verify participant reconfirmation.
+## 81.4 Notification Integration Tests
+
+### New Community Match
+
+- publishing a Community Open Match creates notifications for active Community Members;
+- creator does not receive their own new-match notification;
+- Invite Only Match does not broadcast to the community;
+- Public-community non-members are not Push-subscribed automatically.
+
+### Invitation
+
+- invited user receives in-app notification;
+- Push requested when enabled/supported;
+- deep link resolves to correct Match Event.
+
+### Reserve Promotion
+
+- `RESERVE → CONFIRMED_PLAYING` produces one critical in-app notification;
+- Push is requested;
+- retried domain event does not duplicate notification.
+
+### Result Added
+
+- all four Game Group players receive result-added notification;
+- only eligible reviewers receive Approve/Reject actions;
+- submitter does not receive an invalid review action;
+- auto-confirm deadline is included.
+
+### Result Lifecycle
+
+- rejection produces dispute notification;
+- confirmation produces confirmation notification;
+- 48-hour auto-confirm creates confirmation notification exactly once.
+
+### Push Fallback
+
+- expired subscription is marked invalid;
+- Push failure does not delete in-app notification;
+- user without Push permission still receives in-app notification.
+
+## 81.5 General Integration Tests
+
+- create/start/end League;
+- confirm Competitive result inside League period;
+- update both global rating and League counters independently;
+- multiple Game Groups in one Match Event update all applicable players;
+- automatic 48-hour result confirmation updates League;
+- historical correction rebuilds League standings;
+- one Active League constraint.
+
+## 81.6 End-to-End
+
+1. Create community with two users.
+2. Enable Push on User B.
+3. User A publishes Community Open Match.
+4. Verify User B receives notification and can open Match Event.
+5. Invite another user and verify invitation notification.
+6. Fill first quartet and place another user in Reserve.
+7. Complete second quartet and verify Reserve → Playing notification.
+8. Submit a Game Group result.
+9. Verify all four players see result-added notification.
+10. Verify eligible opponent sees Approve/Reject.
+11. Confirm result.
+12. Verify result/rating notification flow.
+13. Disable Push and verify critical events still appear in-app.
 
 ---
 
-# 82. Rating Engine Test Invariants
+# 82. Global Rating and League Independence Test Invariants
 
-- Friendly => zero app-wide rating and reliability change.
-- Incomplete/Abandoned => zero app-wide rating, reliability, and ranking change.
-- Pending/Disputed => zero rating/reliability change.
-- Confirming same proposal twice => one rating event.
-- Four distinct Game Group participants required.
-- First confirmed ratable Competitive Game Group can change level.
-- Reliability starts at exactly 10%.
-- Reliability after `n` ratable Competitive Game Groups follows configured formula.
-- Reliability never exceeds 100%.
-- Fifteenth confirmed ratable Competitive Game Group => 100%.
-- Winner generally gains / loser generally loses relative to expected outcome.
-- Lower-rated team drawing higher-rated team generally gains.
-- Higher-rated team drawing lower-rated team generally loses.
-- Lower reliability may produce larger adjustment.
-- Competitive result excluded from community ranking still affects app-wide level.
-- Late ranking initialization uses current app-wide level at first eligible ranked Game Group.
-- Platform Admin manual level adjustment is forward-only.
-- Replay from identical match event history yields identical state.
-- Display level stays within 0–7.
+## Global Rating
+
+- Friendly => zero global rating/reliability change.
+- Incomplete/Abandoned => zero global rating/reliability change.
+- Pending/Disputed => zero global rating/reliability change.
+- First confirmed ratable Competitive Game Group can change global level.
+- Reliability starts at 10%.
+- Reliability reaches 100% after 15 ratable Competitive Game Groups.
+- Winner/loser/draw behavior follows expected-outcome rating model.
+- Display level remains 0–7.
+
+## League
+
+- League start never resets or modifies global level.
+- League start never initializes standings from global level.
+- League standings contain no `mu`, `sigma`, reliability, or rating delta.
+- Only eligible confirmed Competitive Win/Loss/Draw results inside League period contribute.
+- League ordering is deterministic from Wins, Losses, Sets Won/Lost.
+- A global rating change alone can never change League position.
+- Closing a League freezes League standings but does not freeze global skill.
+- Rebuilding League standings from the same eligible Game Groups produces identical standings.
 
 ---
 
@@ -4422,7 +4696,7 @@ A competitive Match Event is fully complete only when:
 - every played Game Group result is Confirmed;
 - rating events exist for all players in each confirmed Game Group;
 - current global rating states reflect all confirmed Game Groups;
-- league/ranking-specific rating events exist if applicable;
+- league/League standings events exist if applicable;
 - statistics include each confirmed Game Group exactly once;
 - event/game-group history exposes the results;
 - relevant participants have confirmation notifications;
@@ -4490,11 +4764,11 @@ After confirmation:
 - sets/games update under `All` and `Friendly`;
 - Competitive stats unchanged;
 - ratings unchanged;
-- league/ranking standings unchanged.
+- League standings unchanged.
 
 ---
 
-# 87. Example League / Ranking Behavior
+# 87. Example League Behavior
 
 Ranking:
 
@@ -4532,65 +4806,58 @@ An Open Ended ranking behaves the same except it closes only when creator/Admin 
 
 The V1 product decisions are now considered functionally closed:
 
-1. **Multiple communities:** supported.
-2. **Community visibility:** Public or Private.
-3. **Community creation:** any authenticated user.
-4. **Public guest play:** allowed through Match Creator approval without automatic membership.
-5. **Player profile/level:** app-wide.
-6. **Initial level:** user-selected 0.0–7.0 at onboarding.
-7. **Preferred side:** required onboarding field.
-8. **Initial reliability:** 10%.
-9. **Reliability maturity:** reaches 100% after 15 confirmed ratable Competitive Game Groups.
-10. **Rating starts:** first ratable Competitive Game Group can change level.
-11. **Manual level correction:** only Platform/App Admin after player Level Review Request.
-12. **Manual level correction behavior:** forward-only; no historical replay.
-13. **Registration cutoff:** default one hour before match start; creator may customize.
-14. **Creator played result approval:** one opposing-team player.
-15. **Creator did not play:** one approval from each team.
-16. **Auto-approval:** after 48 hours if still Pending and no rejection, including partial-approval states.
-17. **Draw:** requires exactly one completed set won by each team and no completed third set.
-18. **Incomplete early stop:** if completed sets are not tied 1–1, result is Incomplete/Abandoned with no rating/ranking effect.
-19. **Third-set format:** normal set only.
-20. **Historical pre-launch import:** not required.
-21. **Match level range:** optional, default creator level -0.5 / +1.5, editable.
-22. **Ranking participation:** Competitive defaults to active community ranking when one exists; creator may disable.
-23. **Ranking end:** Fixed Date or Open Ended/Manual.
-24. **Active rankings:** one per community in V1, architecture prepared for multiple.
-25. **Late ranking join:** new members can enter active ranking on first eligible ranked Game Group, initialized from current app-wide level.
-26. **Maximum event registrations:** none by default; optional creator maximum.
-27. **Playing/Reserve order:** FIFO by accepted registration time.
-28. **Creator removal:** creator may remove unavailable player before cutoff; next Reserve player recalculated/promoted.
-29. **Multiple Game Groups:** player appears in at most one simultaneous Game Group in same event.
-30. **Multiple courts:** each Game Group may optionally have court name/number while sharing event venue.
-31. **Minor changes:** notification only.
-32. **Major changes:** Competitive/Friendly, ranking participation, or material date/time change requires participant reconfirmation.
+1. Multiple Public/Private communities are supported.
+2. Player profile and 0–7 skill are app-wide.
+3. Initial reliability is 10% and reaches 100% after 15 ratable Competitive Game Groups.
+4. Manual level correction is Platform-Admin-only and forward-only.
+5. Registration cutoff defaults to one hour before match start.
+6. Playing/Reserve is FIFO by accepted registration time.
+7. Creator can remove an unavailable player before cutoff.
+8. Multiple Game Groups/courts are supported.
+9. Results support Win, Loss, Draw, and Incomplete/Abandoned.
+10. Draw requires completed sets tied 1–1 with no completed third set.
+11. Pending results auto-confirm after 48 hours if nobody rejects.
+12. League may be Fixed End or Open-Ended/Manual.
+13. V1 permits one Active League per community.
+14. League standings do not use player skill/rating.
+15. League counters start at zero when the League/player becomes eligible.
+16. All eligible confirmed Competitive Game Groups played during the League period contribute automatically.
+17. League order is Wins desc → Losses asc → Set Differential desc → Sets Won desc → shared position.
+18. Draws are tracked in League standings but do not create a separate points/rating system.
+19. Friendly and Incomplete/Abandoned results do not count toward League standings.
+20. Global player level/reliability continue updating independently during and after a League.
+21. A later-joining Community Member starts League counters at zero from eligibility onward.
+22. Public non-member guests do not enter Community League standings.
+23. Historical pre-launch import is out of scope.
+24. Major match type/date changes require participant reconfirmation.
+25. **Notifications are a required V1 capability.**
+26. **Every critical notification is persisted in-app.**
+27. **Web Push must be implemented on supported browsers/devices, with in-app fallback.**
+28. **Publishing a new Community Open Match notifies active Community Members except the creator.**
+29. **Match invitations notify the invited user.**
+30. **Reserve → Playing promotion generates an immediate critical notification.**
+31. **Submitting a result notifies all four Game Group players; only eligible reviewers receive Approve/Reject actions.**
+32. **Notification processing must be idempotent and prevent duplicate alerts.**
 
 ---
 
 # 89. Core Product Decisions
 
-1. **Use one app-wide player identity and skill level across communities.**
-2. **Keep community membership separate from guest Match Event participation.**
-3. **Use Public/Private communities with strict server-side authorization.**
-4. **Use creator approval for all Public-community non-member match requests.**
-5. **Use accepted/approval time for FIFO fairness.**
-6. **Keep Playing/Reserve deterministic and transparent.**
-7. **Use 0–7 level plus 10–100% reliability.**
-8. **Reach 100% reliability after 15 confirmed Competitive Game Groups.**
-9. **Use a team-aware uncertainty/expected-outcome rating model.**
-10. **Support draws and adjust rating according to expected team strength.**
-11. **Use normal third sets only in V1.**
-12. **Auto-confirm untouched results after 48 hours, but never after rejection.**
-13. **Require Platform Admin review for any manual player-level correction.**
-14. **Separate app-wide skill from community league/ranking state.**
-15. **Allow one active ranking per community in V1 while keeping schema extensible.**
-16. **Treat results/rating events as an auditable ledger.**
-17. **Do not implement pre-launch historical import in V1.**
-18. **Keep court booking/payment collection out of scope.**
-19. **Default registration cutoff to one hour before match start, creator-adjustable.**
-20. **Treat early-stopped matches as Incomplete unless completed sets are tied 1–1.**
-21. **Make manual level corrections forward-only.**
-22. **Require reconfirmation after material competitive/date/time changes.**
+1. **Keep one app-wide skill level across all communities.**
+2. **Keep League standings completely independent from app-wide skill.**
+3. **Treat League standings as a period-based competition table, not a rating system.**
+4. **Aggregate Wins, Losses, Draws, Sets Won and Sets Lost only from eligible League-period results.**
+5. **Never seed League position from a player's 0–7 level.**
+6. **Never use rating delta/reliability as a League tiebreaker.**
+7. **Allow global rating and League standing to update from the same Competitive result, but through independent projections.**
+8. **Use Public/Private communities with server-side authorization.**
+9. **Use creator approval for non-member Public-community match requests.**
+10. **Use accepted-time FIFO for Reserve fairness.**
+11. **Use team-aware expected-outcome logic only for global skill.**
+12. **Auto-confirm untouched Pending results after 48 hours.**
+13. **Keep confirmed results as auditable source-of-truth facts.**
+14. **Make League standings rebuildable from those facts.**
+15. **Keep court booking/payment collection out of scope.**
 
 ---
 
@@ -4683,7 +4950,7 @@ Suggested measures:
 - > = 90% of submitted results resolved.
 - Median result approval under 24 hours.
 - No unresolved rating inconsistencies.
-- Majority of active players check rankings/statistics during an active league/ranking.
+- Majority of active players check rankings/statistics during an active League.
 - Low number of admin interventions per 20 matches.
 - Near-zero duplicate/incorrect rating events.
 - High match-creation-to-played conversion.
@@ -4701,7 +4968,7 @@ Before full implementation, prototype these screens first:
 5. Add Result.
 6. Approve Result.
 7. Global Ranking.
-8. League / Ranking.
+8. League.
 9. Player Profile.
 10. Player Statistics.
 11. Match History Detail.
@@ -4916,100 +5183,98 @@ Reference material consulted:
 
 The product is ready when these loops work reliably.
 
-## Account / Community
+## Global Skill
 
 ```text
 Register
   ↓
-Create app-wide player profile
-(name + preferred side + initial 0–7 level)
+Choose initial 0–7 level
   ↓
 Reliability starts at 10%
   ↓
-Create or join multiple Public/Private communities
+Confirmed Competitive results across app lifetime
+  ↓
+Global skill/reliability continue evolving
+independently of any League
 ```
 
-## Match Creation / Registration
+## League
 
 ```text
-Creator creates Match Event
+Community Member creates League
   ↓
-Venue + Maps + photo + optional cost
+Choose start + Fixed End or Manual End
   ↓
-Default registration cutoff = 1 hour before start
+League counters start at zero
   ↓
-Optional level range based on creator
+Eligible Competitive results during League period count automatically
   ↓
-Competitive match defaults into active ranking
-(creator may disable)
+Aggregate W / L / D / Sets Won / Sets Lost
   ↓
-Players register/request approval
+Order League standings
   ↓
-Accepted users grouped FIFO in quartets
+League ends
   ↓
-Residual players remain Reserve
-  ↓
-Optional court name/number per Game Group
-  ↓
-At cutoff incomplete Reserve quartet is notified
+Standings freeze
 ```
 
-## Result
+## Match / Result
 
 ```text
-Complete groups play
+Creator publishes Match Event
   ↓
-Creator confirms/assigns actual teams
+Community Members receive new-match notification
   ↓
-Creator records:
-Win / Loss / Draw / Incomplete
+Invited users receive invitation notification
   ↓
-Draw requires completed sets tied 1–1
+Players register / Reserve logic applies
   ↓
-Eligible player(s) may approve or reject
+Reserve quartet becomes complete
   ↓
-Manual approvals complete → confirm immediately
-  OR
-Still pending after 48h + no rejection → auto-confirm
+Promoted players receive Playing notification
   ↓
-Ratable Competitive result updates
-app-wide level + reliability
+Complete Game Groups play
   ↓
-If ranking-enabled, ranking also updates
+Creator records score
+  ↓
+All four players receive result-added notification
+  ↓
+Eligible reviewers receive Approve / Reject action
+  ↓
+Manual confirmation OR 48h auto-confirm
+  ↓
+Confirmed result becomes source of truth
+  ↓
+Global rating updates if ratable Competitive
+  ↓
+League standings update if League-eligible
 ```
 
-## Ranking
+## Notification Guarantee
 
 ```text
-Community member creates ranking
+DOMAIN EVENT
   ↓
-Fixed End Date OR Open Ended
+Persist IN-APP notification
   ↓
-Only one Active ranking in community
+If Push supported + permission granted:
+request WEB PUSH delivery
   ↓
-Existing or later-joining members participate
-  ↓
-Late entrant initializes from current app-wide level
-  ↓
-Fixed date arrives OR creator/Admin ends it
-  ↓
-Final standings freeze
+Notification tap deep-links to relevant screen
 ```
+
+Critical events remain visible in-app even if Push is denied, unavailable, or fails.
 
 ## Player Level Review
 
 ```text
-Player believes level is wrong
-  ↓
-Submits Level Review Request
+Player submits Level Review Request
   ↓
 Platform Admin reviews
   ↓
 Approve or Reject
   ↓
-If approved: forward-only audited adjustment
-  ↓
-Past matches remain unchanged
+Approved correction is forward-only
 ```
 
 ---
