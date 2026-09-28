@@ -12,7 +12,8 @@ const styles = stylex.create({
   button: {
     backgroundColor: 'var(--color-green)',
     color: 'var(--color-surface)',
-    border: 0,
+    borderWidth: 0,
+    borderStyle: 'none',
     borderRadius: 'var(--radius-12)',
     padding: 'var(--space-8) var(--space-12)',
     cursor: 'pointer'

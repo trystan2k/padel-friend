@@ -1,7 +1,7 @@
 ---
 description: Senior bug-fix and small-change subagent that executes approved review follow-ups and minor improvements using stack-specific best practices and project conventions.
 mode: subagent
-model: opencode-go/gpt-5.6-luna
+model: opencode-go/gpt-6-luna
 reasoningEffort: high
 temperature: 0
 permission:

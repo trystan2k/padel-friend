@@ -40,6 +40,13 @@
       "$value": "{palette.green-soft}",
       "$extensions": { "theme": { "dark": "{palette.green-soft-dark}" } }
     },
+    "green-deep": { "$type": "color", "$value": "{palette.green-deep}" },
+    "hero-copy": { "$type": "color", "$value": "{palette.hero-copy}" },
+    "hero-muted": { "$type": "color", "$value": "{palette.hero-muted}" },
+    "hero-label": { "$type": "color", "$value": "{palette.hero-label}" },
+    "hero-accent": { "$type": "color", "$value": "{palette.hero-accent}" },
+    "hero-divider": { "$type": "color", "$value": "{palette.hero-divider}" },
+    "hero-avatar": { "$type": "color", "$value": "{palette.hero-avatar}" },
     "lime": { "$type": "color", "$value": "{palette.lime}" },
     "amber": {
       "$type": "color",
