@@ -113,7 +113,7 @@ Outputs:
 | Planning                     | subagent/execution-planner-specialist                                       | X min Y sec          |
 | Implementation               | subagent/implementation-specialist                                          | X min Y sec          |
 | QA                           | subagent/qa-gate-specialist                                                 | X min Y sec          |
-| Code and Architecture Review | subagent/code-review-specialist and subagent/architecture-review-specialist | X min Y sec          |
+| Code and Architecture Review | subagent/code-review-specialist, subagent/architecture-review-specialist and subagent/ux-ui-reviewer-specialist | X min Y sec          |
 | Development Logging          | subagent/development-log-specialist                                         | X min Y sec          |
 | Commit/Push                  | subagent/git-specialist                                                     | X min Y sec          |
 | PR Creation                  | subagent/git-specialist                                                     | X min Y sec          |
@@ -191,17 +191,19 @@ Follow these steps in order.
 
 6. Code and Architecture Review
    - **Start timer** for Code and Architecture Review phase.
-   - Ask `subagent/code-review-specialist` to perform full review of implemented changes.
-   - Ask `subagent/archarchitecture-review-specialist` to perform full review of implemented changes.
-   - Always pass the plan file path (from step 3) to `subagent/code-review-specialist` and `subagent/archarchitecture-review-specialist` for all reviews.
+   - Run all three reviewers **in parallel** (they are independent and can execute simultaneously):
+     - Ask `subagent/code-review-specialist` to perform full review of implemented changes.
+     - Ask `subagent/architecture-review-specialist` to perform full review of implemented changes.
+     - Ask `subagent/ux-ui-reviewer-specialist` to perform full UX/UI pixel-perfect review of implemented changes.
+   - Always pass the plan file path (from step 3) to all three reviewers for all reviews.
    - **Stop timer** and record Code and Architecture Review phase time.
 
 7. Fix and Re-verify Loop
    - If QA fails or review recommends action (even the optional ones, including `minor` or `nit` issues regarding performance or maintainability):
       - Triage each finding with Complexity Triage first: apply small fixes yourself directly; delegate the rest to the correct specialist (`subagent/bug-fixer-specialist`,`subagent/implementation-specialist` or `subagent/testing-automation-specialist`). Make sure to explicitly request fixes for all minor and nit issues reported by the reviewers.
      - Always pass the plan file path (from step 3) when delegating to `subagent/implementation-specialist` or `subagent/bug-fixer-specialist`.
-     - Re-run `subagent/qa-gate-specialist`.
-     - Always pass the plan file path (from step 3) when re-running `subagent/code-review-specialist` and `subagent/archarchitecture-review-specialist` for all reviews.
+      - Re-run `subagent/qa-gate-specialist`.
+      - Re-run all three reviewers **in parallel**: `subagent/code-review-specialist`, `subagent/architecture-review-specialist`, and `subagent/ux-ui-reviewer-specialist`. Always pass the plan file path (from step 3) for all reviews.
      - Accumulate time for each iteration under the respective phase (Implementation, QA, or Code and Architecture Review).
    - Repeat until QA passes and review outcome is acceptable.
 
@@ -276,6 +278,7 @@ This agent must delegate all executable actions to these specialists, except tri
 - `subagent/architecture-review-specialist` for architecture review and improvement.
 - `subagent/bug-fixer-specialist` for bug fixes and fixes.
 - `subagent/code-review-specialist` for review and improvement findings.
+- `subagent/ux-ui-reviewer-specialist` for UX/UI pixel-perfect design review.
 - `subagent/development-log-specialist` for Basic Memory development logs.
 - `subagent/execution-planner-specialist` for deepthink planning.
 - `subagent/git-specialist` for git and PR or MR operations.
