@@ -1,25 +1,55 @@
 {
-  "surface": {
-    "page": {
+  "color": {
+    "bg": {
       "$type": "color",
-      "$value": "{palette.white}",
-      "$extensions": { "theme": { "dark": "{palette.night}" } }
+      "$value": "{palette.bg}",
+      "$extensions": { "theme": { "dark": "{palette.bg-dark}" } }
     },
-    "card": {
+    "surface": {
       "$type": "color",
-      "$value": "{palette.blue-light}",
-      "$extensions": { "theme": { "dark": "{palette.ink}" } }
-    }
-  },
-  "text": {
-    "primary": {
+      "$value": "{palette.surface}",
+      "$extensions": { "theme": { "dark": "{palette.surface-dark}" } }
+    },
+    "surface-2": {
       "$type": "color",
-      "$value": "{palette.ink}",
-      "$extensions": { "theme": { "dark": "{palette.white}" } }
+      "$value": "{palette.surface-2}",
+      "$extensions": { "theme": { "dark": "{palette.surface-2-dark}" } }
+    },
+    "text": {
+      "$type": "color",
+      "$value": "{palette.text}",
+      "$extensions": { "theme": { "dark": "{palette.text-dark}" } }
+    },
+    "muted": {
+      "$type": "color",
+      "$value": "{palette.muted}",
+      "$extensions": { "theme": { "dark": "{palette.muted-dark}" } }
+    },
+    "line": {
+      "$type": "color",
+      "$value": "{palette.line}",
+      "$extensions": { "theme": { "dark": "{palette.line-dark}" } }
+    },
+    "green": {
+      "$type": "color",
+      "$value": "{palette.green}",
+      "$extensions": { "theme": { "dark": "{palette.green-dark}" } }
+    },
+    "green-soft": {
+      "$type": "color",
+      "$value": "{palette.green-soft}",
+      "$extensions": { "theme": { "dark": "{palette.green-soft-dark}" } }
+    },
+    "lime": { "$type": "color", "$value": "{palette.lime}" },
+    "amber": {
+      "$type": "color",
+      "$value": "{palette.amber}",
+      "$extensions": { "theme": { "dark": "{palette.amber-dark}" } }
+    },
+    "red": {
+      "$type": "color",
+      "$value": "{palette.red}",
+      "$extensions": { "theme": { "dark": "{palette.red-dark}" } }
     }
-  },
-  "action": {
-    "primary": { "$type": "color", "$value": "{palette.blue}" },
-    "text": { "$type": "color", "$value": "{palette.white}" }
   }
 }

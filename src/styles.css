@@ -8,9 +8,9 @@
 
 body {
   margin: 0;
-  font-family: system-ui, sans-serif;
-  background: var(--surface-page);
-  color: var(--text-primary);
+  font-family: var(--font-family-body);
+  background: var(--color-bg);
+  color: var(--color-text);
 }
 
 button,

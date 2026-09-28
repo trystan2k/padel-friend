@@ -4,8 +4,8 @@
     {
       "type": "frame",
       "id": "bi8Au",
-      "x": 0,
-      "y": 0,
+      "x": 1400,
+      "y": 9458,
       "name": "Padel Friends — visual direction",
       "clip": true,
       "width": 1200,
@@ -207,7 +207,7 @@
       "type": "frame",
       "id": "hKncV",
       "x": 0,
-      "y": 142,
+      "y": 2364,
       "name": "Home — light",
       "theme": {
         "mode": "light"
@@ -1033,8 +1033,8 @@
     {
       "type": "frame",
       "id": "AlfRD",
-      "x": 440,
-      "y": 142,
+      "x": 430,
+      "y": 2364,
       "name": "Home — dark mode",
       "theme": {
         "mode": "dark"
@@ -1631,8 +1631,8 @@
     {
       "type": "frame",
       "id": "ENn8Q",
-      "x": 880,
-      "y": 142,
+      "x": 860,
+      "y": 2364,
       "name": "Available matches",
       "theme": {
         "mode": "light"
@@ -2621,8 +2621,8 @@
     {
       "type": "frame",
       "id": "JLqMT",
-      "x": 1320,
-      "y": 142,
+      "x": 0,
+      "y": 3314,
       "name": "Match detail — public guest",
       "theme": {
         "mode": "light"
@@ -3942,7 +3942,7 @@
       "type": "frame",
       "id": "wHaAb",
       "x": 0,
-      "y": 1052,
+      "y": 5416,
       "name": "Create match",
       "theme": {
         "mode": "light"
@@ -4746,8 +4746,8 @@
     {
       "type": "frame",
       "id": "lKv9B",
-      "x": 440,
-      "y": 1052,
+      "x": 2500,
+      "y": 262,
       "name": "Record match result",
       "theme": {
         "mode": "light"
@@ -5494,8 +5494,8 @@
     {
       "type": "frame",
       "id": "sLXK7",
-      "x": 880,
-      "y": 1052,
+      "x": 2930,
+      "y": 262,
       "name": "Approve result",
       "theme": {
         "mode": "dark"
@@ -6381,8 +6381,8 @@
     {
       "type": "frame",
       "id": "y4Zeg",
-      "x": 1320,
-      "y": 1052,
+      "x": 5000,
+      "y": 262,
       "name": "Community skill ranking",
       "theme": {
         "mode": "light"
@@ -7587,8 +7587,8 @@
     {
       "type": "frame",
       "id": "ywfn7",
-      "x": 0,
-      "y": 1962,
+      "x": 2500,
+      "y": 5416,
       "name": "Active league",
       "theme": {
         "mode": "dark"
@@ -8831,8 +8831,8 @@
     {
       "type": "frame",
       "id": "vARtQ",
-      "x": 440,
-      "y": 1962,
+      "x": 5430,
+      "y": 262,
       "name": "Player profile",
       "theme": {
         "mode": "light"
@@ -10224,8 +10224,8 @@
     {
       "type": "frame",
       "id": "RN0yw",
-      "x": 880,
-      "y": 1962,
+      "x": 5860,
+      "y": 262,
       "name": "Player statistics",
       "theme": {
         "mode": "light"
@@ -11429,8 +11429,8 @@
     {
       "type": "frame",
       "id": "Qstxv",
-      "x": 1320,
-      "y": 1962,
+      "x": 2500,
+      "y": 2364,
       "name": "Discover communities",
       "theme": {
         "mode": "light"
@@ -12182,8 +12182,8 @@
     {
       "type": "frame",
       "id": "Ex7RD",
-      "x": 0,
-      "y": 2872,
+      "x": 2930,
+      "y": 2364,
       "name": "Community home",
       "theme": {
         "mode": "dark"
@@ -13161,8 +13161,8 @@
     {
       "type": "frame",
       "id": "BcpYH",
-      "x": 440,
-      "y": 2872,
+      "x": 3360,
+      "y": 262,
       "name": "Match history detail",
       "theme": {
         "mode": "light"
@@ -13750,8 +13750,8 @@
     {
       "type": "frame",
       "id": "CWJkF",
-      "x": 880,
-      "y": 2872,
+      "x": 3790,
+      "y": 262,
       "name": "Community dispute resolution",
       "theme": {
         "mode": "dark"
@@ -14240,8 +14240,8 @@
     {
       "type": "frame",
       "id": "gGNxk",
-      "x": 1320,
-      "y": 2872,
+      "x": 6290,
+      "y": 262,
       "name": "Level review — platform admin",
       "theme": {
         "mode": "light"
@@ -14738,8 +14738,8 @@
     {
       "type": "frame",
       "id": "PdRtP",
-      "x": 0,
-      "y": 4106,
+      "x": 860,
+      "y": 262,
       "name": "Onboarding — player setup",
       "theme": {
         "mode": "light"
@@ -15323,8 +15323,8 @@
     {
       "type": "frame",
       "id": "CLn9x",
-      "x": 440,
-      "y": 4106,
+      "x": 0,
+      "y": 6366,
       "name": "Match requests — organizer",
       "theme": {
         "mode": "light"
@@ -16151,8 +16151,8 @@
     {
       "type": "frame",
       "id": "cAqsQ",
-      "x": 880,
-      "y": 4106,
+      "x": 5000,
+      "y": 4264,
       "name": "Notifications",
       "theme": {
         "mode": "dark"
@@ -17295,8 +17295,8 @@
     {
       "type": "frame",
       "id": "kYI9H",
-      "x": 1320,
-      "y": 4106,
+      "x": 1290,
+      "y": 2364,
       "name": "Available matches — empty",
       "theme": {
         "mode": "light"
@@ -17858,8 +17858,8 @@
     {
       "type": "frame",
       "id": "eYIgj",
-      "x": 1790,
-      "y": 142,
+      "x": 430,
+      "y": 3314,
       "name": "Match detail — friendly",
       "theme": {
         "mode": "light"
@@ -19187,8 +19187,8 @@
     {
       "type": "frame",
       "id": "nNzWb",
-      "x": 2260,
-      "y": 142,
+      "x": 860,
+      "y": 3314,
       "name": "Match detail — competitive unranked",
       "theme": {
         "mode": "light"
@@ -20516,8 +20516,8 @@
     {
       "type": "frame",
       "id": "vAxZh",
-      "x": 1790,
-      "y": 1052,
+      "x": 430,
+      "y": 5416,
       "name": "Create match — players",
       "theme": {
         "mode": "light"
@@ -21265,8 +21265,8 @@
     {
       "type": "frame",
       "id": "b5RR4",
-      "x": 2260,
-      "y": 1052,
+      "x": 860,
+      "y": 5416,
       "name": "Create match — teams",
       "theme": {
         "mode": "light"
@@ -21852,8 +21852,8 @@
     {
       "type": "frame",
       "id": "RDV2r",
-      "x": 2730,
-      "y": 1052,
+      "x": 1290,
+      "y": 5416,
       "name": "Create match — review and publish",
       "theme": {
         "mode": "light"
@@ -22497,8 +22497,8 @@
     {
       "type": "frame",
       "id": "EGb2g",
-      "x": 1790,
-      "y": 4106,
+      "x": 430,
+      "y": 262,
       "name": "Onboarding — account",
       "theme": {
         "mode": "light"
@@ -22852,8 +22852,8 @@
     {
       "type": "frame",
       "id": "dSEX3",
-      "x": 2260,
-      "y": 4106,
+      "x": 1290,
+      "y": 262,
       "name": "Onboarding — community discovery",
       "theme": {
         "mode": "light"
@@ -23208,8 +23208,8 @@
     {
       "type": "frame",
       "id": "JO4DC",
-      "x": 2730,
-      "y": 4106,
+      "x": 0,
+      "y": 1212,
       "name": "Onboarding — create community",
       "theme": {
         "mode": "light"
@@ -23621,8 +23621,8 @@
     {
       "type": "frame",
       "id": "n6zFq",
-      "x": 2730,
-      "y": 3466,
+      "x": 0,
+      "y": 11816,
       "name": "State variants — loading, empty, error, offline, access",
       "theme": {
         "mode": "light"
@@ -24017,8 +24017,8 @@
     {
       "type": "frame",
       "id": "ausNa",
-      "x": 3240,
-      "y": 3466,
+      "x": 470,
+      "y": 11816,
       "name": "State variants — conflicts and offline writes",
       "theme": {
         "mode": "light"
@@ -24402,8 +24402,8 @@
     {
       "type": "frame",
       "id": "x2GG9U",
-      "x": 3750,
-      "y": 3466,
+      "x": 940,
+      "y": 11816,
       "name": "State variants — league and player history empties",
       "theme": {
         "mode": "light"
@@ -24647,8 +24647,8 @@
     {
       "type": "frame",
       "id": "JXjNs",
-      "x": 4260,
-      "y": 3466,
+      "x": 1410,
+      "y": 11816,
       "name": "State variants — pending result and auto-confirm",
       "theme": {
         "mode": "light"
@@ -24832,8 +24832,8 @@
     {
       "type": "frame",
       "id": "iyZrO",
-      "x": 3200,
-      "y": 4106,
+      "x": 3790,
+      "y": 2364,
       "name": "Private community invitation — accept",
       "theme": {
         "mode": "light"
@@ -25317,8 +25317,8 @@
     {
       "type": "frame",
       "id": "MrHkt",
-      "x": 3670,
-      "y": 4106,
+      "x": 2500,
+      "y": 3314,
       "name": "Private community invitation — pending approval",
       "theme": {
         "mode": "light"
@@ -25764,8 +25764,8 @@
     {
       "type": "frame",
       "id": "ah9u1",
-      "x": 4140,
-      "y": 4106,
+      "x": 2930,
+      "y": 3314,
       "name": "Private community invitation — denied or expired",
       "theme": {
         "mode": "light"
@@ -26273,8 +26273,8 @@
     {
       "type": "frame",
       "id": "wFqGR",
-      "x": 4610,
-      "y": 4106,
+      "x": 3360,
+      "y": 3314,
       "name": "Community admin — members",
       "theme": {
         "mode": "light"
@@ -26993,8 +26993,8 @@
     {
       "type": "frame",
       "id": "jQDkx",
-      "x": 3200,
-      "y": 5030,
+      "x": 3790,
+      "y": 3314,
       "name": "Community admin — member actions",
       "theme": {
         "mode": "light"
@@ -27421,8 +27421,8 @@
     {
       "type": "frame",
       "id": "N18Mu4",
-      "x": 3670,
-      "y": 5030,
+      "x": 2500,
+      "y": 4264,
       "name": "Community admin — settings",
       "theme": {
         "mode": "light"
@@ -27881,8 +27881,8 @@
     {
       "type": "frame",
       "id": "A5Vio",
-      "x": 4140,
-      "y": 5030,
+      "x": 2930,
+      "y": 4264,
       "name": "Community admin — saved venues",
       "theme": {
         "mode": "light"
@@ -28326,8 +28326,8 @@
     {
       "type": "frame",
       "id": "E5CS5K",
-      "x": 4610,
-      "y": 5030,
+      "x": 3360,
+      "y": 4264,
       "name": "Community admin — audit log",
       "theme": {
         "mode": "light"
@@ -28793,8 +28793,8 @@
     {
       "type": "frame",
       "id": "Fyhbv",
-      "x": 3200,
-      "y": 5954,
+      "x": 430,
+      "y": 4264,
       "name": "Match invitation — invited player",
       "theme": {
         "mode": "light"
@@ -29189,8 +29189,8 @@
     {
       "type": "frame",
       "id": "lJHUZ",
-      "x": 3670,
-      "y": 5954,
+      "x": 430,
+      "y": 6366,
       "name": "Match management — minor edit",
       "theme": {
         "mode": "light"
@@ -29585,8 +29585,8 @@
     {
       "type": "frame",
       "id": "t0SZec",
-      "x": 4140,
-      "y": 5954,
+      "x": 860,
+      "y": 6366,
       "name": "Match management — major change",
       "theme": {
         "mode": "light"
@@ -30015,8 +30015,8 @@
     {
       "type": "frame",
       "id": "oVtuS",
-      "x": 4610,
-      "y": 5954,
+      "x": 1290,
+      "y": 6366,
       "name": "Match reconfirmation required",
       "theme": {
         "mode": "light"
@@ -30443,8 +30443,8 @@
     {
       "type": "frame",
       "id": "uiRqp",
-      "x": 3200,
-      "y": 6878,
+      "x": 0,
+      "y": 7316,
       "name": "Match cutoff — unreconfirmed excluded",
       "theme": {
         "mode": "light"
@@ -30846,8 +30846,8 @@
     {
       "type": "frame",
       "id": "t1ywa",
-      "x": 3670,
-      "y": 6878,
+      "x": 860,
+      "y": 4264,
       "name": "Match participation — status variants",
       "theme": {
         "mode": "light"
@@ -31388,8 +31388,8 @@
     {
       "type": "frame",
       "id": "ik5JC",
-      "x": 4140,
-      "y": 6878,
+      "x": 2930,
+      "y": 5416,
       "name": "League creation",
       "theme": {
         "mode": "light"
@@ -31833,8 +31833,8 @@
     {
       "type": "frame",
       "id": "d6ANDN",
-      "x": 4610,
-      "y": 6878,
+      "x": 3360,
+      "y": 5416,
       "name": "League management — end confirmation",
       "theme": {
         "mode": "light"
@@ -32252,8 +32252,8 @@
     {
       "type": "frame",
       "id": "xbIxj",
-      "x": 3200,
-      "y": 7802,
+      "x": 3790,
+      "y": 5416,
       "name": "League history — audited correction",
       "theme": {
         "mode": "light"
@@ -32657,8 +32657,8 @@
     {
       "type": "frame",
       "id": "qWosG",
-      "x": 3670,
-      "y": 7802,
+      "x": 5000,
+      "y": 1212,
       "name": "Player level review — request",
       "theme": {
         "mode": "light"
@@ -33093,8 +33093,8 @@
     {
       "type": "frame",
       "id": "OKYtp",
-      "x": 4140,
-      "y": 7802,
+      "x": 5430,
+      "y": 1212,
       "name": "Player level review — status",
       "theme": {
         "mode": "light"
@@ -33538,8 +33538,8 @@
     {
       "type": "frame",
       "id": "y8ErQ",
-      "x": 4610,
-      "y": 7802,
+      "x": 5430,
+      "y": 4264,
       "name": "Notification preferences",
       "theme": {
         "mode": "light"
@@ -34037,8 +34037,8 @@
     {
       "type": "frame",
       "id": "nRn4M",
-      "x": 3200,
-      "y": 8726,
+      "x": 5860,
+      "y": 4264,
       "name": "Web Push setup — permission and fallback",
       "theme": {
         "mode": "light"
@@ -34578,8 +34578,8 @@
     {
       "type": "frame",
       "id": "adujr",
-      "x": 3670,
-      "y": 8726,
+      "x": 2500,
+      "y": 1212,
       "name": "Result amendment — request",
       "theme": {
         "mode": "light"
@@ -35021,8 +35021,8 @@
     {
       "type": "frame",
       "id": "s5TRC",
-      "x": 4140,
-      "y": 8726,
+      "x": 2930,
+      "y": 1212,
       "name": "Result amendment — corrected result review",
       "theme": {
         "mode": "light"
@@ -35464,8 +35464,8 @@
     {
       "type": "frame",
       "id": "uePpj",
-      "x": 4610,
-      "y": 8726,
+      "x": 1290,
+      "y": 3314,
       "name": "My Matches",
       "theme": {
         "mode": "light"
@@ -35894,8 +35894,8 @@
     {
       "type": "frame",
       "id": "w25dY",
-      "x": 4610,
-      "y": 9650,
+      "x": 0,
+      "y": 4264,
       "name": "Past Matches",
       "theme": {
         "mode": "light"
@@ -36363,8 +36363,8 @@
     {
       "type": "frame",
       "id": "OdU52",
-      "x": 5080,
-      "y": 9650,
+      "x": 3360,
+      "y": 2364,
       "name": "Community switcher",
       "theme": {
         "mode": "light"
@@ -36843,8 +36843,8 @@
     {
       "type": "frame",
       "id": "RgqPq",
-      "x": 5550,
-      "y": 9650,
+      "x": 3790,
+      "y": 4264,
       "name": "Community admin — access requests",
       "theme": {
         "mode": "light"
@@ -37308,8 +37308,8 @@
     {
       "type": "frame",
       "id": "q2TCnQ",
-      "x": 6020,
-      "y": 9650,
+      "x": 430,
+      "y": 7316,
       "name": "Match creator — remove player",
       "theme": {
         "mode": "light"
@@ -37752,8 +37752,8 @@
     {
       "type": "frame",
       "id": "Ht2Oq",
-      "x": 6490,
-      "y": 9650,
+      "x": 860,
+      "y": 7316,
       "name": "Match creator — cancel event",
       "theme": {
         "mode": "light"
@@ -38200,8 +38200,8 @@
     {
       "type": "frame",
       "id": "m7hh3",
-      "x": 6960,
-      "y": 9650,
+      "x": 1290,
+      "y": 7316,
       "name": "Match creator — withdraw or transfer",
       "theme": {
         "mode": "light"
@@ -38645,8 +38645,8 @@
     {
       "type": "frame",
       "id": "dmvWu",
-      "x": 7430,
-      "y": 9650,
+      "x": 0,
+      "y": 8266,
       "name": "Match creator — unavailable actions",
       "theme": {
         "mode": "light"
@@ -39137,8 +39137,8 @@
     {
       "type": "frame",
       "id": "RRuhH",
-      "x": 7900,
-      "y": 9650,
+      "x": 5860,
+      "y": 1212,
       "name": "Player statistics — form and breakdown",
       "theme": {
         "mode": "light"
@@ -39642,8 +39642,8 @@
     {
       "type": "frame",
       "id": "z6vIR",
-      "x": 8370,
-      "y": 9650,
+      "x": 6290,
+      "y": 1212,
       "name": "Player statistics — advanced outcomes",
       "theme": {
         "mode": "light"
@@ -40130,8 +40130,8 @@
     {
       "type": "frame",
       "id": "QVLTH",
-      "x": 8840,
-      "y": 9650,
+      "x": 5000,
+      "y": 2162,
       "name": "Player statistics — partnership records",
       "theme": {
         "mode": "light"
@@ -40574,8 +40574,8 @@
     {
       "type": "frame",
       "id": "GrkSH",
-      "x": 9310,
-      "y": 9650,
+      "x": 5430,
+      "y": 2162,
       "name": "Player statistics — pair record",
       "theme": {
         "mode": "light"
@@ -41068,8 +41068,8 @@
     {
       "type": "frame",
       "id": "khmeK",
-      "x": 9780,
-      "y": 9650,
+      "x": 5860,
+      "y": 2162,
       "name": "Player statistics — opponent head-to-head",
       "theme": {
         "mode": "light"
@@ -41512,8 +41512,8 @@
     {
       "type": "frame",
       "id": "o9iaC1",
-      "x": 10250,
-      "y": 9650,
+      "x": 5000,
+      "y": 3112,
       "name": "Community statistics — overview",
       "theme": {
         "mode": "light"
@@ -42017,8 +42017,8 @@
     {
       "type": "frame",
       "id": "m8Loju",
-      "x": 10720,
-      "y": 9650,
+      "x": 6290,
+      "y": 2162,
       "name": "Player statistics — filters",
       "theme": {
         "mode": "light"
@@ -42478,8 +42478,8 @@
     {
       "type": "frame",
       "id": "MYsDp",
-      "x": 10720,
-      "y": 10574,
+      "x": 1880,
+      "y": 11816,
       "name": "League creation — validation variants",
       "theme": {
         "mode": "light"
@@ -42633,8 +42633,8 @@
     {
       "type": "frame",
       "id": "tzBrY",
-      "x": 11230,
-      "y": 10574,
+      "x": 2350,
+      "y": 11816,
       "name": "Web Push — PWA install and failure states",
       "theme": {
         "mode": "light"
@@ -42770,6 +42770,1337 @@
           "fontFamily": "Inter",
           "fontSize": 12,
           "fontWeight": "medium"
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "c1TsP",
+      "x": 0,
+      "y": 9458,
+      "name": "Design tokens — full inventory",
+      "clip": true,
+      "width": 1320,
+      "height": 2300,
+      "fill": "$bg",
+      "layout": "vertical",
+      "gap": 20,
+      "padding": 40,
+      "children": [
+        {
+          "type": "text",
+          "id": "l62J1D",
+          "name": "Page title",
+          "fill": "$text",
+          "content": "Design tokens",
+          "fontFamily": "Manrope",
+          "fontSize": 34,
+          "fontWeight": "bold"
+        },
+        {
+          "type": "text",
+          "id": "A3WgR",
+          "name": "Page description",
+          "fill": "$muted",
+          "content": "Inventory compiled from current canvas screens · semantic variables plus literal values in use",
+          "fontFamily": "Inter",
+          "fontSize": 14,
+          "fontWeight": "normal"
+        },
+        {
+          "type": "frame",
+          "id": "RDuS7",
+          "name": "Semantic colors",
+          "width": "fill_container",
+          "layout": "vertical",
+          "gap": 10,
+          "children": [
+            {
+              "type": "text",
+              "id": "y4HZS",
+              "name": "Semantic colors heading",
+              "fill": "$green",
+              "content": "01 / Semantic colors · light and dark values",
+              "fontFamily": "Manrope",
+              "fontSize": 20,
+              "fontWeight": "bold"
+            },
+            {
+              "type": "frame",
+              "id": "NxqvS",
+              "name": "bg color row",
+              "width": "fill_container",
+              "gap": 12,
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "rectangle",
+                  "cornerRadius": 5,
+                  "id": "f3IG4",
+                  "name": "bg swatch",
+                  "fill": "$bg",
+                  "width": 24,
+                  "height": 24
+                },
+                {
+                  "type": "text",
+                  "id": "ym5Jw",
+                  "name": "bg token",
+                  "fill": "$text",
+                  "content": "$bg",
+                  "fontFamily": "Inter",
+                  "fontSize": 13,
+                  "fontWeight": "semibold"
+                },
+                {
+                  "type": "text",
+                  "id": "HEKzi",
+                  "name": "bg light",
+                  "fill": "$muted",
+                  "content": "Light  #F4F6F1",
+                  "fontFamily": "Inter",
+                  "fontSize": 12,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "FqiH0",
+                  "name": "bg dark",
+                  "fill": "$muted",
+                  "content": "Dark  #0C1714",
+                  "fontFamily": "Inter",
+                  "fontSize": 12,
+                  "fontWeight": "normal"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "vjGcA",
+              "name": "surface color row",
+              "width": "fill_container",
+              "gap": 12,
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "rectangle",
+                  "cornerRadius": 5,
+                  "id": "LAuGi",
+                  "name": "surface swatch",
+                  "fill": "$surface",
+                  "width": 24,
+                  "height": 24
+                },
+                {
+                  "type": "text",
+                  "id": "SDAVP",
+                  "name": "surface token",
+                  "fill": "$text",
+                  "content": "$surface",
+                  "fontFamily": "Inter",
+                  "fontSize": 13,
+                  "fontWeight": "semibold"
+                },
+                {
+                  "type": "text",
+                  "id": "E4q8zU",
+                  "name": "surface light",
+                  "fill": "$muted",
+                  "content": "Light  #FFFFFF",
+                  "fontFamily": "Inter",
+                  "fontSize": 12,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "tmxCg",
+                  "name": "surface dark",
+                  "fill": "$muted",
+                  "content": "Dark  #15231E",
+                  "fontFamily": "Inter",
+                  "fontSize": 12,
+                  "fontWeight": "normal"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "C4Amj",
+              "name": "surface2 color row",
+              "width": "fill_container",
+              "gap": 12,
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "rectangle",
+                  "cornerRadius": 5,
+                  "id": "sWqIc",
+                  "name": "surface2 swatch",
+                  "fill": "$surface2",
+                  "width": 24,
+                  "height": 24
+                },
+                {
+                  "type": "text",
+                  "id": "I72RE",
+                  "name": "surface2 token",
+                  "fill": "$text",
+                  "content": "$surface2",
+                  "fontFamily": "Inter",
+                  "fontSize": 13,
+                  "fontWeight": "semibold"
+                },
+                {
+                  "type": "text",
+                  "id": "Z63gXc",
+                  "name": "surface2 light",
+                  "fill": "$muted",
+                  "content": "Light  #E9EFE8",
+                  "fontFamily": "Inter",
+                  "fontSize": 12,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "DtN3z",
+                  "name": "surface2 dark",
+                  "fill": "$muted",
+                  "content": "Dark  #20312A",
+                  "fontFamily": "Inter",
+                  "fontSize": 12,
+                  "fontWeight": "normal"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "kT9Tf",
+              "name": "text color row",
+              "width": "fill_container",
+              "gap": 12,
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "rectangle",
+                  "cornerRadius": 5,
+                  "id": "mEZvN",
+                  "name": "text swatch",
+                  "fill": "$text",
+                  "width": 24,
+                  "height": 24
+                },
+                {
+                  "type": "text",
+                  "id": "y2k5NI",
+                  "name": "text token",
+                  "fill": "$text",
+                  "content": "$text",
+                  "fontFamily": "Inter",
+                  "fontSize": 13,
+                  "fontWeight": "semibold"
+                },
+                {
+                  "type": "text",
+                  "id": "BTZkl",
+                  "name": "text light",
+                  "fill": "$muted",
+                  "content": "Light  #12251D",
+                  "fontFamily": "Inter",
+                  "fontSize": 12,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "Zjci6",
+                  "name": "text dark",
+                  "fill": "$muted",
+                  "content": "Dark  #EFF5F0",
+                  "fontFamily": "Inter",
+                  "fontSize": 12,
+                  "fontWeight": "normal"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "yjziZ",
+              "name": "muted color row",
+              "width": "fill_container",
+              "gap": 12,
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "rectangle",
+                  "cornerRadius": 5,
+                  "id": "N5F8M6",
+                  "name": "muted swatch",
+                  "fill": "$muted",
+                  "width": 24,
+                  "height": 24
+                },
+                {
+                  "type": "text",
+                  "id": "jr578",
+                  "name": "muted token",
+                  "fill": "$text",
+                  "content": "$muted",
+                  "fontFamily": "Inter",
+                  "fontSize": 13,
+                  "fontWeight": "semibold"
+                },
+                {
+                  "type": "text",
+                  "id": "CqDg9",
+                  "name": "muted light",
+                  "fill": "$muted",
+                  "content": "Light  #5C6B62",
+                  "fontFamily": "Inter",
+                  "fontSize": 12,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "MCLfq",
+                  "name": "muted dark",
+                  "fill": "$muted",
+                  "content": "Dark  #A2B5AA",
+                  "fontFamily": "Inter",
+                  "fontSize": 12,
+                  "fontWeight": "normal"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "U5oWP",
+              "name": "line color row",
+              "width": "fill_container",
+              "gap": 12,
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "rectangle",
+                  "cornerRadius": 5,
+                  "id": "COwDk",
+                  "name": "line swatch",
+                  "fill": "$line",
+                  "width": 24,
+                  "height": 24
+                },
+                {
+                  "type": "text",
+                  "id": "VOcaO",
+                  "name": "line token",
+                  "fill": "$text",
+                  "content": "$line",
+                  "fontFamily": "Inter",
+                  "fontSize": 13,
+                  "fontWeight": "semibold"
+                },
+                {
+                  "type": "text",
+                  "id": "saUMf",
+                  "name": "line light",
+                  "fill": "$muted",
+                  "content": "Light  #6F7F75",
+                  "fontFamily": "Inter",
+                  "fontSize": 12,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "d9jxk1",
+                  "name": "line dark",
+                  "fill": "$muted",
+                  "content": "Dark  #748178",
+                  "fontFamily": "Inter",
+                  "fontSize": 12,
+                  "fontWeight": "normal"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "yaFE8",
+              "name": "green color row",
+              "width": "fill_container",
+              "gap": 12,
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "rectangle",
+                  "cornerRadius": 5,
+                  "id": "lDbKK",
+                  "name": "green swatch",
+                  "fill": "$green",
+                  "width": 24,
+                  "height": 24
+                },
+                {
+                  "type": "text",
+                  "id": "HT2YG",
+                  "name": "green token",
+                  "fill": "$text",
+                  "content": "$green",
+                  "fontFamily": "Inter",
+                  "fontSize": 13,
+                  "fontWeight": "semibold"
+                },
+                {
+                  "type": "text",
+                  "id": "Y4cum",
+                  "name": "green light",
+                  "fill": "$muted",
+                  "content": "Light  #0E714D",
+                  "fontFamily": "Inter",
+                  "fontSize": 12,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "YaVZS",
+                  "name": "green dark",
+                  "fill": "$muted",
+                  "content": "Dark  #77D99A",
+                  "fontFamily": "Inter",
+                  "fontSize": 12,
+                  "fontWeight": "normal"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "M4MJet",
+              "name": "greenSoft color row",
+              "width": "fill_container",
+              "gap": 12,
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "rectangle",
+                  "cornerRadius": 5,
+                  "id": "qNijw",
+                  "name": "greenSoft swatch",
+                  "fill": "$greenSoft",
+                  "width": 24,
+                  "height": 24
+                },
+                {
+                  "type": "text",
+                  "id": "LbdpW",
+                  "name": "greenSoft token",
+                  "fill": "$text",
+                  "content": "$greenSoft",
+                  "fontFamily": "Inter",
+                  "fontSize": 13,
+                  "fontWeight": "semibold"
+                },
+                {
+                  "type": "text",
+                  "id": "N5dOZ6",
+                  "name": "greenSoft light",
+                  "fill": "$muted",
+                  "content": "Light  #E0F3E8",
+                  "fontFamily": "Inter",
+                  "fontSize": 12,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "l6QbI2",
+                  "name": "greenSoft dark",
+                  "fill": "$muted",
+                  "content": "Dark  #1D3A2E",
+                  "fontFamily": "Inter",
+                  "fontSize": 12,
+                  "fontWeight": "normal"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "NAviD",
+              "name": "lime color row",
+              "width": "fill_container",
+              "gap": 12,
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "rectangle",
+                  "cornerRadius": 5,
+                  "id": "OBicH",
+                  "name": "lime swatch",
+                  "fill": "$lime",
+                  "width": 24,
+                  "height": 24
+                },
+                {
+                  "type": "text",
+                  "id": "Dqw8A",
+                  "name": "lime token",
+                  "fill": "$text",
+                  "content": "$lime",
+                  "fontFamily": "Inter",
+                  "fontSize": 13,
+                  "fontWeight": "semibold"
+                },
+                {
+                  "type": "text",
+                  "id": "R49Zm5",
+                  "name": "lime light",
+                  "fill": "$muted",
+                  "content": "Light  #C8F169",
+                  "fontFamily": "Inter",
+                  "fontSize": 12,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "lnvE4",
+                  "name": "lime dark",
+                  "fill": "$muted",
+                  "content": "Dark  #C8F169",
+                  "fontFamily": "Inter",
+                  "fontSize": 12,
+                  "fontWeight": "normal"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "lbVkM",
+              "name": "amber color row",
+              "width": "fill_container",
+              "gap": 12,
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "rectangle",
+                  "cornerRadius": 5,
+                  "id": "b4p7b",
+                  "name": "amber swatch",
+                  "fill": "$amber",
+                  "width": 24,
+                  "height": 24
+                },
+                {
+                  "type": "text",
+                  "id": "A2n2Oj",
+                  "name": "amber token",
+                  "fill": "$text",
+                  "content": "$amber",
+                  "fontFamily": "Inter",
+                  "fontSize": 13,
+                  "fontWeight": "semibold"
+                },
+                {
+                  "type": "text",
+                  "id": "NwIUK",
+                  "name": "amber light",
+                  "fill": "$muted",
+                  "content": "Light  #805700",
+                  "fontFamily": "Inter",
+                  "fontSize": 12,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "Hzlt4",
+                  "name": "amber dark",
+                  "fill": "$muted",
+                  "content": "Dark  #E8BB68",
+                  "fontFamily": "Inter",
+                  "fontSize": 12,
+                  "fontWeight": "normal"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "x69r1",
+              "name": "red color row",
+              "width": "fill_container",
+              "gap": 12,
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "rectangle",
+                  "cornerRadius": 5,
+                  "id": "ddLhx",
+                  "name": "red swatch",
+                  "fill": "$red",
+                  "width": 24,
+                  "height": 24
+                },
+                {
+                  "type": "text",
+                  "id": "MgKxs",
+                  "name": "red token",
+                  "fill": "$text",
+                  "content": "$red",
+                  "fontFamily": "Inter",
+                  "fontSize": 13,
+                  "fontWeight": "semibold"
+                },
+                {
+                  "type": "text",
+                  "id": "d81L7a",
+                  "name": "red light",
+                  "fill": "$muted",
+                  "content": "Light  #A43F37",
+                  "fontFamily": "Inter",
+                  "fontSize": 12,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "o9L2rc",
+                  "name": "red dark",
+                  "fill": "$muted",
+                  "content": "Dark  #FA8175",
+                  "fontFamily": "Inter",
+                  "fontSize": 12,
+                  "fontWeight": "normal"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "EuVGU",
+          "name": "Literal colors",
+          "width": "fill_container",
+          "layout": "vertical",
+          "gap": 10,
+          "children": [
+            {
+              "type": "text",
+              "id": "d2xTj",
+              "name": "Literal colors heading",
+              "fill": "$green",
+              "content": "02 / Literal colors · additional fills observed",
+              "fontFamily": "Manrope",
+              "fontSize": 20,
+              "fontWeight": "bold"
+            },
+            {
+              "type": "text",
+              "id": "rore2",
+              "name": "Literal color values",
+              "fill": "$text",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "#071810B8 · #08271FCC · #0D211A · #103A2B · #103A2C88 · #123F2F · #12845C · #163323 · #16442F · #173C2D · #1A3A2C · #1F563E · #25382F · #294A3B · #315D49 · #3A2523 · #59332E · #5D7467 · #684000 · #A9BCB1 · #A9CBB8 · #B5CDBE · #B7C9BE · #BEDBCB · #C4E1D0 · #C6DECF · #C7E9D3 · #CAE4D3 · #CFDDD3 · #D5B2AB · #D6F0DF · #D8E8DD · #D9E8DE · #DCE5DE · #DDF1E4 · #DDF3E6 · #DFECE2 · #E1EEE5 · #E2E8E3 · #E2F0E5 · #E5EAE6 · #E5EEE7 · #E5EFE7 · #E6ECE7 · #F1F7F2 · #F2F8F3 · #F4E4CF · #F5FBF6 · #F8E7E4 · #F8EEDB · #FFA397 · #FFFFFF · #FFFFFF20",
+              "lineHeight": 1.5,
+              "fontFamily": "Inter",
+              "fontSize": 12,
+              "fontWeight": "normal"
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "lcQmJ",
+          "name": "Spacing and shape",
+          "width": "fill_container",
+          "layout": "vertical",
+          "gap": 10,
+          "children": [
+            {
+              "type": "text",
+              "id": "qylPs",
+              "name": "Spacing and shape heading",
+              "fill": "$green",
+              "content": "03 / Spacing, radii and strokes · values observed",
+              "fontFamily": "Manrope",
+              "fontSize": 20,
+              "fontWeight": "bold"
+            },
+            {
+              "type": "text",
+              "id": "EdbUP",
+              "name": "Spacing values",
+              "fill": "$text",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "Gaps: 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 20 px\nPadding: 3–18 px (integer values)\nInset tuples: [0,4], [0,5], [0,8], [2,0], [4,1], [5,6], [5,8], [5,9], [6,0], [6,5], [6,8], [7,2], [7,3], [7,9], [7,10], [8,10], [8,12], [9,0], [9,10], [10,12], [12,14], [14,11], [15,11], [15,12], [18,18,14,18] px\nCorner radius: 5–20 px (integer values), plus 36 px\nStroke width: 1, 1.5, 2, 2.5 px",
+              "lineHeight": 1.5,
+              "fontFamily": "Inter",
+              "fontSize": 13,
+              "fontWeight": "normal"
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "puSJY",
+          "name": "Typography",
+          "width": "fill_container",
+          "layout": "vertical",
+          "gap": 10,
+          "children": [
+            {
+              "type": "text",
+              "id": "riczV",
+              "name": "Typography heading",
+              "fill": "$green",
+              "content": "04 / Typography · values observed",
+              "fontFamily": "Manrope",
+              "fontSize": 20,
+              "fontWeight": "bold"
+            },
+            {
+              "type": "text",
+              "id": "AE1I1",
+              "name": "Typography values",
+              "fill": "$text",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "Families: Inter, Manrope\nSizes: 10, 11, 11.5, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 27, 29, 32, 34 px\nWeights: normal, regular, medium, semibold, bold\nLine height: 1.1 · Letter spacing: 1.5",
+              "lineHeight": 1.5,
+              "fontFamily": "Inter",
+              "fontSize": 13,
+              "fontWeight": "normal"
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "N5U2X",
+          "name": "Border and effects inventory",
+          "width": "fill_container",
+          "layout": "vertical",
+          "gap": 10,
+          "children": [
+            {
+              "type": "text",
+              "id": "d8ZvL",
+              "name": "Border section title",
+              "fill": "$green",
+              "content": "05 / Borders, corners and effects",
+              "fontFamily": "Manrope",
+              "fontSize": 20,
+              "fontWeight": "bold"
+            },
+            {
+              "type": "text",
+              "id": "pFEG4",
+              "name": "Border details",
+              "fill": "$text",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "Stroke colors: $line · $green · $greenSoft · $surface · #0C1714 · #9AA69E\nStroke widths: 1, 1.5, 2, 2.5 px\nStroke alignment: outer · line caps: round · line joins: round\nCorner radii: 5–20 px (integer values), plus 36 px\nEffects: no shadow or blur effects found in current nodes",
+              "lineHeight": 1.5,
+              "fontFamily": "Inter",
+              "fontSize": 13,
+              "fontWeight": "normal"
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "jgwWi",
+          "name": "Other visual properties inventory",
+          "width": "fill_container",
+          "layout": "vertical",
+          "gap": 10,
+          "children": [
+            {
+              "type": "text",
+              "id": "VS2iq",
+              "name": "Other styles title",
+              "fill": "$green",
+              "content": "06 / Other visual properties",
+              "fontFamily": "Manrope",
+              "fontSize": 20,
+              "fontWeight": "bold"
+            },
+            {
+              "type": "text",
+              "id": "DSu8V",
+              "name": "Other styles values",
+              "fill": "$text",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "Opacity: 0.14\nText alignment: center, right (left is default)\nIcon library: Lucide · icons used: arrow-left, arrow-up, calendar-days, chart-no-axes-combined, chevron-down, circle-x, clipboard-check, clock-3, clock-alert, file-clock, house, image, list-filter, loader-circle, lock-keyhole, mail, refresh-cw, search, shield-check, timer, trending-up, triangle-alert, trophy, user-round, user-round-plus, users-round, wifi-off\nImage fills: generated.png plus 3 Unsplash assets\nLayout variants: vertical, none · absolute-positioned children present · clipping enabled on screen frames",
+              "lineHeight": 1.5,
+              "fontFamily": "Inter",
+              "fontSize": 13,
+              "fontWeight": "normal"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "wzWLt",
+      "x": 0,
+      "y": 262,
+      "name": "Login — signed-out entry",
+      "theme": {
+        "mode": "light"
+      },
+      "clip": true,
+      "width": 390,
+      "height": 844,
+      "fill": "$bg",
+      "layout": "vertical",
+      "gap": 20,
+      "padding": [
+        24,
+        18,
+        20,
+        18
+      ],
+      "justifyContent": "space_between",
+      "children": [
+        {
+          "type": "frame",
+          "id": "V1qyEE",
+          "name": "Login header",
+          "width": "fill_container",
+          "layout": "vertical",
+          "gap": 8,
+          "children": [
+            {
+              "type": "text",
+              "id": "v8zeQ",
+              "name": "Brand wordmark",
+              "fill": "$green",
+              "content": "PADEL FRIENDS",
+              "fontFamily": "Manrope",
+              "fontSize": 12,
+              "fontWeight": "bold",
+              "letterSpacing": 1.5
+            },
+            {
+              "type": "text",
+              "id": "UtFvk",
+              "name": "Login title",
+              "fill": "$text",
+              "content": "Welcome back",
+              "fontFamily": "Manrope",
+              "fontSize": 28,
+              "fontWeight": "bold"
+            },
+            {
+              "type": "text",
+              "id": "IElDF",
+              "name": "Login subtitle",
+              "fill": "$muted",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "Log in to find your next match.",
+              "fontFamily": "Inter",
+              "fontSize": 14,
+              "fontWeight": "normal"
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "o3Yj9",
+          "name": "Login form",
+          "width": "fill_container",
+          "layout": "vertical",
+          "gap": 14,
+          "children": [
+            {
+              "type": "frame",
+              "id": "wRcfs",
+              "name": "Google sign-in button",
+              "width": "fill_container",
+              "height": 50,
+              "fill": "$surface",
+              "cornerRadius": 12,
+              "stroke": "$line",
+              "strokeWidth": 1,
+              "gap": 10,
+              "padding": 12,
+              "justifyContent": "center",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "moQBW",
+                  "name": "Google provider mark",
+                  "fill": "$green",
+                  "content": "G",
+                  "fontFamily": "Manrope",
+                  "fontSize": 16,
+                  "fontWeight": "bold"
+                },
+                {
+                  "type": "text",
+                  "id": "jB5BY",
+                  "name": "Google sign-in label",
+                  "fill": "$text",
+                  "content": "CONTINUE WITH GOOGLE",
+                  "fontFamily": "Inter",
+                  "fontSize": 13,
+                  "fontWeight": "semibold"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "TKkuW",
+              "name": "Login divider",
+              "width": "fill_container",
+              "gap": 10,
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "rectangle",
+                  "id": "SSboZ",
+                  "name": "Divider left",
+                  "fill": "$line",
+                  "width": "fill_container",
+                  "height": 1
+                },
+                {
+                  "type": "text",
+                  "id": "DqF3z",
+                  "name": "Divider label",
+                  "fill": "$muted",
+                  "content": "OR",
+                  "fontFamily": "Inter",
+                  "fontSize": 11,
+                  "fontWeight": "semibold"
+                },
+                {
+                  "type": "rectangle",
+                  "id": "Q7u4R",
+                  "name": "Divider right",
+                  "fill": "$line",
+                  "width": "fill_container",
+                  "height": 1
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "bUin4",
+              "name": "Email field group",
+              "width": "fill_container",
+              "layout": "vertical",
+              "gap": 6,
+              "children": [
+                {
+                  "type": "text",
+                  "id": "VilIc",
+                  "name": "Email label",
+                  "fill": "$text",
+                  "content": "Email address",
+                  "fontFamily": "Inter",
+                  "fontSize": 12,
+                  "fontWeight": "semibold"
+                },
+                {
+                  "type": "frame",
+                  "id": "deM4E",
+                  "name": "Email input",
+                  "width": "fill_container",
+                  "height": 48,
+                  "fill": "$surface",
+                  "cornerRadius": 10,
+                  "stroke": "$line",
+                  "strokeWidth": 1,
+                  "padding": 12,
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "H8xAm",
+                      "name": "Email placeholder",
+                      "fill": "$muted",
+                      "content": "name@example.com",
+                      "fontFamily": "Inter",
+                      "fontSize": 14,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "vZdnh",
+              "name": "Password field group",
+              "width": "fill_container",
+              "layout": "vertical",
+              "gap": 6,
+              "children": [
+                {
+                  "type": "text",
+                  "id": "E9IG44",
+                  "name": "Password label",
+                  "fill": "$text",
+                  "content": "Password",
+                  "fontFamily": "Inter",
+                  "fontSize": 12,
+                  "fontWeight": "semibold"
+                },
+                {
+                  "type": "frame",
+                  "id": "zDHr5",
+                  "name": "Password input",
+                  "width": "fill_container",
+                  "height": 48,
+                  "fill": "$surface",
+                  "cornerRadius": 10,
+                  "stroke": "$line",
+                  "strokeWidth": 1,
+                  "padding": 12,
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "BDyv6",
+                      "name": "Password placeholder",
+                      "fill": "$muted",
+                      "content": "••••••••••••",
+                      "fontFamily": "Inter",
+                      "fontSize": 14,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "G05h3L",
+              "name": "Log in button",
+              "width": "fill_container",
+              "height": 50,
+              "fill": "$green",
+              "cornerRadius": 12,
+              "padding": 12,
+              "justifyContent": "center",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "jmgLz",
+                  "name": "Log in button label",
+                  "fill": "$bg",
+                  "content": "LOG IN",
+                  "fontFamily": "Inter",
+                  "fontSize": 14,
+                  "fontWeight": "bold"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "NRtkl",
+          "name": "Sign-up prompt",
+          "width": "fill_container",
+          "gap": 4,
+          "justifyContent": "center",
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "text",
+              "id": "jfQc1",
+              "name": "Sign-up prompt text",
+              "fill": "$muted",
+              "content": "New to Padel Friends?",
+              "fontFamily": "Inter",
+              "fontSize": 13,
+              "fontWeight": "normal"
+            },
+            {
+              "type": "text",
+              "id": "iFs1c",
+              "name": "Sign-up link",
+              "fill": "$green",
+              "content": "Create account",
+              "fontFamily": "Inter",
+              "fontSize": 13,
+              "fontWeight": "bold"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "R7ZBi1",
+      "x": 1940,
+      "y": 9616,
+      "name": "Favicon — 64 px",
+      "clip": true,
+      "width": 64,
+      "height": 64,
+      "fill": {
+        "type": "image",
+        "enabled": true,
+        "url": "padel-friends-app-icon.png",
+        "mode": "fill"
+      }
+    },
+    {
+      "type": "frame",
+      "id": "UW2iX",
+      "x": 1400,
+      "y": 9616,
+      "name": "PWA icon — 512 px",
+      "clip": true,
+      "width": 512,
+      "height": 512,
+      "fill": {
+        "type": "image",
+        "enabled": true,
+        "url": "padel-friends-app-icon.png",
+        "mode": "fill"
+      }
+    },
+    {
+      "type": "frame",
+      "id": "W1xIkQ",
+      "x": 0,
+      "y": 180,
+      "name": "Flow — Sign-in & onboarding",
+      "width": 1780,
+      "height": 56,
+      "fill": "$green",
+      "padding": [
+        0,
+        20
+      ],
+      "alignItems": "center",
+      "children": [
+        {
+          "type": "text",
+          "id": "oVfzw",
+          "name": "Flow title — Sign-in & onboarding",
+          "fill": "$lime",
+          "content": "Sign-in & onboarding",
+          "fontFamily": "Inter",
+          "fontSize": 24,
+          "fontWeight": "bold"
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "S9CktA",
+      "x": 0,
+      "y": 2282,
+      "name": "Flow — Explore & join matches",
+      "width": 1780,
+      "height": 56,
+      "fill": "$green",
+      "padding": [
+        0,
+        20
+      ],
+      "alignItems": "center",
+      "children": [
+        {
+          "type": "text",
+          "id": "S8ikh",
+          "name": "Flow title — Explore & join matches",
+          "fill": "$lime",
+          "content": "Explore & join matches",
+          "fontFamily": "Inter",
+          "fontSize": 24,
+          "fontWeight": "bold"
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "tCmpB",
+      "x": 0,
+      "y": 5334,
+      "name": "Flow — Create & manage a match",
+      "width": 1780,
+      "height": 56,
+      "fill": "$green",
+      "padding": [
+        0,
+        20
+      ],
+      "alignItems": "center",
+      "children": [
+        {
+          "type": "text",
+          "id": "cWi8g",
+          "name": "Flow title — Create & manage a match",
+          "fill": "$lime",
+          "content": "Create & manage a match",
+          "fontFamily": "Inter",
+          "fontSize": 24,
+          "fontWeight": "bold"
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "RhtqB",
+      "x": 2500,
+      "y": 180,
+      "name": "Flow — Results, approvals & disputes",
+      "width": 1780,
+      "height": 56,
+      "fill": "$green",
+      "padding": [
+        0,
+        20
+      ],
+      "alignItems": "center",
+      "children": [
+        {
+          "type": "text",
+          "id": "yypm3",
+          "name": "Flow title — Results, approvals & disputes",
+          "fill": "$lime",
+          "content": "Results, approvals & disputes",
+          "fontFamily": "Inter",
+          "fontSize": 24,
+          "fontWeight": "bold"
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "RNhC3",
+      "x": 2500,
+      "y": 2282,
+      "name": "Flow — Community discovery & administration",
+      "width": 1780,
+      "height": 56,
+      "fill": "$green",
+      "padding": [
+        0,
+        20
+      ],
+      "alignItems": "center",
+      "children": [
+        {
+          "type": "text",
+          "id": "vkxfn",
+          "name": "Flow title — Community discovery & administration",
+          "fill": "$lime",
+          "content": "Community discovery & administration",
+          "fontFamily": "Inter",
+          "fontSize": 24,
+          "fontWeight": "bold"
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "lBL0P",
+      "x": 2500,
+      "y": 5334,
+      "name": "Flow — Leagues",
+      "width": 1780,
+      "height": 56,
+      "fill": "$green",
+      "padding": [
+        0,
+        20
+      ],
+      "alignItems": "center",
+      "children": [
+        {
+          "type": "text",
+          "id": "N81BiH",
+          "name": "Flow title — Leagues",
+          "fill": "$lime",
+          "content": "Leagues",
+          "fontFamily": "Inter",
+          "fontSize": 24,
+          "fontWeight": "bold"
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "V8pq0d",
+      "x": 5000,
+      "y": 180,
+      "name": "Flow — Player profiles & performance",
+      "width": 1780,
+      "height": 56,
+      "fill": "$green",
+      "padding": [
+        0,
+        20
+      ],
+      "alignItems": "center",
+      "children": [
+        {
+          "type": "text",
+          "id": "LEqy8",
+          "name": "Flow title — Player profiles & performance",
+          "fill": "$lime",
+          "content": "Player profiles & performance",
+          "fontFamily": "Inter",
+          "fontSize": 24,
+          "fontWeight": "bold"
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "R3H8j",
+      "x": 5000,
+      "y": 4182,
+      "name": "Flow — Notifications & PWA setup",
+      "width": 1780,
+      "height": 56,
+      "fill": "$green",
+      "padding": [
+        0,
+        20
+      ],
+      "alignItems": "center",
+      "children": [
+        {
+          "type": "text",
+          "id": "BbW0C",
+          "name": "Flow title — Notifications & PWA setup",
+          "fill": "$lime",
+          "content": "Notifications & PWA setup",
+          "fontFamily": "Inter",
+          "fontSize": 24,
+          "fontWeight": "bold"
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "CxTAV",
+      "x": 0,
+      "y": 9376,
+      "name": "Flow — Design reference library",
+      "width": 1780,
+      "height": 56,
+      "fill": "$green",
+      "padding": [
+        0,
+        20
+      ],
+      "alignItems": "center",
+      "children": [
+        {
+          "type": "text",
+          "id": "uOoRs",
+          "name": "Flow title — Design reference library",
+          "fill": "$lime",
+          "content": "Design reference library",
+          "fontFamily": "Inter",
+          "fontSize": 24,
+          "fontWeight": "bold"
         }
       ]
     }

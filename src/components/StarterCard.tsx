@@ -3,18 +3,18 @@ import { Dialog } from '@base-ui/react/dialog';
 import { useTranslation } from 'react-i18next';
 
 const styles = stylex.create({
-  main: { maxWidth: 640, marginInline: 'auto', padding: 'var(--space-lg)' },
+  main: { maxWidth: 640, marginInline: 'auto', padding: 'var(--space-20)' },
   card: {
-    backgroundColor: 'var(--surface-card)',
-    borderRadius: 'var(--radius-card)',
-    padding: 'var(--space-lg)'
+    backgroundColor: 'var(--color-surface)',
+    borderRadius: 'var(--radius-16)',
+    padding: 'var(--space-20)'
   },
   button: {
-    backgroundColor: 'var(--action-primary)',
-    color: 'var(--action-text)',
+    backgroundColor: 'var(--color-green)',
+    color: 'var(--color-surface)',
     border: 0,
-    borderRadius: 'var(--radius-card)',
-    padding: 'var(--space-sm) var(--space-md)',
+    borderRadius: 'var(--radius-12)',
+    padding: 'var(--space-8) var(--space-12)',
     cursor: 'pointer'
   }
 });
