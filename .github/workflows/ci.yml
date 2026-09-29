@@ -25,8 +25,13 @@ jobs:
           pnpm exec supabase start
           pnpm exec supabase db reset
           status="$(pnpm exec supabase status -o env)"
-          eval "$(printf '%s\n' "$status" | grep -E '^(API_URL|PUBLISHABLE_KEY)=')"
-          if [[ ! ${API_URL:-} =~ ^http://(127\.0\.0\.1|localhost|\[::1\]):[0-9]+/?$ || -z ${PUBLISHABLE_KEY:-} ]]; then
+          API_URL="$(printf '%s\n' "$status" | sed -n 's/^API_URL=//p' | tail -n 1)"
+          PUBLISHABLE_KEY="$(printf '%s\n' "$status" | sed -n 's/^PUBLISHABLE_KEY=//p' | tail -n 1)"
+          API_URL="${API_URL#\"}"
+          API_URL="${API_URL%\"}"
+          PUBLISHABLE_KEY="${PUBLISHABLE_KEY#\"}"
+          PUBLISHABLE_KEY="${PUBLISHABLE_KEY%\"}"
+          if [[ -z ${API_URL:-} || ! ${API_URL:-} =~ ^http://(127\.0\.0\.1|localhost|\[::1\]):[0-9]+/?$ || -z ${PUBLISHABLE_KEY:-} ]]; then
             printf '%s\n' 'Local Supabase API_URL or PUBLISHABLE_KEY missing/invalid' >&2
             exit 1
           fi
