@@ -43580,7 +43580,7 @@
               "id": "UtFvk",
               "name": "Login title",
               "fill": "$text",
-              "content": "Welcome back",
+              "content": "Welcome",
               "fontFamily": "Manrope",
               "fontSize": 28,
               "fontWeight": "bold"

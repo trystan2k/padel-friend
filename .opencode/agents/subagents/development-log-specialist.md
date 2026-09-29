@@ -31,7 +31,7 @@ permission:
   lsp: allow
   external_directory: deny
   "mcp_serena*": deny
-  "mcp_engram*": deny
+  "engram*": deny
 ---
 
 # Agent: development-log-specialist
@@ -111,7 +111,7 @@ Effective permissions (frontmatter `permission`; legacy `tools` field not used):
 - `edit` (gates `write`/`edit`): scoped to `docs/development-logs/**` only. This is the one writable path; product source stays read-only.
 - `bash`: scoped — read-only git (`log`, `show`, `status`, `branch`) and `ls` only, for log metadata and verification.
 - `task`, `question`, `webfetch`, `websearch`, `todowrite`, `lsp`, `external_directory`: deny.
-- `mcp_serena*`, `mcp_engram*`: deny — Memory Notes only, per scope.
+- `mcp_serena*`, `engram*`: deny — Memory Notes only, per scope.
 
 Safety rules:
 

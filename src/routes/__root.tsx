@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { createI18n, resolveLocale } from '../i18n/config';
 import { getInitialLocale, saveLocale } from '../i18n/locale.functions';
 import { PwaRegistration } from '../components/PwaRegistration';
+import { DevStyleXInject } from '../components/DevStyleXInject';
 import '@fontsource/inter/400.css';
 import '@fontsource/inter/500.css';
 import '@fontsource/inter/600.css';
@@ -36,6 +37,7 @@ function Root() {
     <html lang={locale} data-theme={theme}>
       <head>
         <HeadContent />
+        <DevStyleXInject />
       </head>
       <body>
         <I18nextProvider i18n={i18n}>

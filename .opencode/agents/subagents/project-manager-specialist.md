@@ -28,7 +28,7 @@ permission:
     "/tmp/**": allow
     "*": deny
   "mcp_serena*": deny
-  "mcp_engram*": deny
+  "engram*": deny
 ---
 
 # Agent: project-manager-specialist
@@ -297,7 +297,7 @@ Effective permissions (frontmatter `permission`; legacy `tools` field not used):
 - `bash`: scoped — `linear` CLI plus `git status` and `ls` prerequisite checks only.
 - `edit` and `external_directory`: scoped to `/tmp/**` only — for `--description-file` / `--body-file` temp markdown per the linear-cli skill. No repo writes.
 - `task`, `question`, `webfetch`, `websearch`, `todowrite`, `lsp`: deny — no delegation, no user questions, no web research.
-- `mcp_serena*`, `mcp_engram*`: deny — no MCP integrations per scope.
+- `mcp_serena*`, `engram*`: deny — no MCP integrations per scope.
 
 ## Skills
 
