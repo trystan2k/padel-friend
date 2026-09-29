@@ -1,3 +1,4 @@
+import { isAvatarObjectKey } from './avatar-key';
 import { MAX_LEVEL, MIN_LEVEL } from './rating-config';
 
 export type PreferredSide = 'LEFT' | 'RIGHT' | 'EITHER';
@@ -20,8 +21,6 @@ export type AvatarUploadInput = { objectKey: string };
 
 export const AVATAR_MAX_BYTES = 2097152;
 export const AVATAR_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp'] as const;
-const AVATAR_OBJECT_KEY_PATTERN =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.(?:jpg|jpeg|png|webp)$/i;
 
 function objectWithKeys(value: unknown, allowed: readonly string[]): Record<string, unknown> {
   if (!isRecord(value) || Object.keys(value).some((key) => !allowed.includes(key)))
@@ -125,7 +124,7 @@ export function validateUpdatePlayerProfile(value: unknown): UpdatePlayerProfile
       result.avatar_url = null;
     } else if (
       typeof input.avatar_url !== 'string' ||
-      !AVATAR_OBJECT_KEY_PATTERN.test(input.avatar_url.trim())
+      !isAvatarObjectKey(input.avatar_url.trim())
     ) {
       throw new Error('INVALID_PLAYER_INPUT');
     } else {

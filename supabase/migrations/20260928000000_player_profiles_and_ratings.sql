@@ -4,7 +4,14 @@ create table public.player_profiles (
     char_length(btrim(display_name, E' \t\n\r\f\v')) between 1 and 80
     and display_name = btrim(display_name, E' \t\n\r\f\v')
   ),
-  avatar_url text check (avatar_url is null or (char_length(avatar_url) <= 256 and avatar_url like user_id::text || '/%')),
+  avatar_url text check (
+    avatar_url is null or (
+      char_length(avatar_url) <= 256
+      and left(avatar_url, char_length(user_id::text) + 1) = user_id::text || '/'
+      and substring(avatar_url from char_length(user_id::text) + 2) ~*
+        '^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\.(jpg|jpeg|png|webp)$'
+    )
+  ),
   preferred_side text not null check (preferred_side in ('LEFT', 'RIGHT', 'EITHER')),
   dominant_hand text check (dominant_hand in ('LEFT', 'RIGHT')),
   bio text check (char_length(bio) <= 280),
@@ -94,9 +101,14 @@ $$;
 revoke all on function public.onboard_player(text, text, numeric, text, text) from public, anon;
 grant execute on function public.onboard_player(text, text, numeric, text, text) to authenticated;
 
+-- Bucket publicness, size limit, and MIME types are migration-owned; re-assert them on conflict to correct hosted-project drift on deploy.
 insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
   values ('player-avatars', 'player-avatars', false, 2097152,
-          array['image/jpeg','image/png','image/webp']);
+          array['image/jpeg','image/png','image/webp'])
+on conflict (id) do update
+  set public = excluded.public,
+      file_size_limit = excluded.file_size_limit,
+      allowed_mime_types = excluded.allowed_mime_types;
 create policy "avatar owner select" on storage.objects for select to authenticated
   using (bucket_id = 'player-avatars' and (storage.foldername(name))[1] = (select auth.uid())::text
     and array_length(storage.foldername(name), 1) = 1);

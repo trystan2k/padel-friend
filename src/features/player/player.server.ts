@@ -1,4 +1,5 @@
 import { getServerClient } from '../../lib/supabase/server';
+import { AVATAR_FILENAME_PATTERN } from './avatar-key';
 
 export type PlayerClient = ReturnType<typeof getServerClient>;
 export const AVATAR_BUCKET = 'player-avatars';
@@ -26,7 +27,7 @@ async function signedAvatarUrl(
   const { data, error } = await client.storage
     .from(AVATAR_BUCKET)
     .createSignedUrl(objectKey, SIGNED_URL_SECONDS);
-  if (error) throw error;
+  if (error) return null;
   return data.signedUrl;
 }
 
@@ -53,9 +54,7 @@ export async function verifiedAvatarKey(client: PlayerClient, userId: string, ob
   if (
     !objectKey.startsWith(prefix) ||
     objectKey.length > 256 ||
-    !/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\.(?:jpg|jpeg|png|webp)$/i.test(
-      objectKey.slice(prefix.length)
-    )
+    !AVATAR_FILENAME_PATTERN.test(objectKey.slice(prefix.length))
   )
     throw new Error('INVALID_AVATAR_KEY');
   const filename = objectKey.slice(prefix.length);

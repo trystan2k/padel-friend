@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { describe, expect, it, vi } from 'vitest';
+import { sportingProfile } from '../src/features/player/player.server';
 
 // Integration suite against the LOCAL Supabase project only. Every client is built from the
 // public (publishable) key exactly like the browser, optionally carrying a real user JWT.
@@ -593,6 +594,114 @@ describe.skipIf(environment.env === null)(
       expect(ownerDelete.error).toBeNull();
       const gone = await alice.client.storage.from(bucket).download(aliceKey);
       expect(gone.error).not.toBeNull();
+    });
+
+    it('enforces the avatar_url CHECK on direct owner updates: nested/extra segments, non-v4 object UUIDs and an uppercased owner prefix rejected with 23514; a canonical v4 key, a mixed-case extension and NULL accepted', async () => {
+      const { client, userId } = await signUpPlayer('avatarurl');
+      await onboard(client, 'Avatar Url Player', 'LEFT', 3);
+
+      const v4Object = '22222222-2222-4222-8222-222222222222';
+      const validKey = `${userId}/${v4Object}.png`;
+      const setAvatar = (avatarUrl: string | null) =>
+        client.from('player_profiles').update({ avatar_url: avatarUrl }).eq('user_id', userId);
+      const currentAvatar = async () => (await ownProfile(client, userId))?.avatar_url;
+
+      // Starts clean: onboarding never sets an avatar.
+      expect(await currentAvatar()).toBeNull();
+
+      // Nested/extra path segments break the `^<owner>/<v4>.<ext>$` anchor → SQLSTATE 23514.
+      for (const nestedKey of [
+        `${userId}/nested/${v4Object}.png`,
+        `${userId}/${v4Object}/nested.png`,
+        `${userId}/${v4Object}/nested/${v4Object}.png`
+      ]) {
+        const rejected = await setAvatar(nestedKey);
+        expect(
+          rejected.error?.code,
+          `nested avatar key ${nestedKey} must violate the avatar_url CHECK`
+        ).toBe('23514');
+      }
+
+      // Version nibble != 4 and a variant nibble outside [89ab] are equally rejected.
+      for (const badObject of [
+        '22222222-2222-3222-8222-222222222222',
+        '22222222-2222-4222-c222-222222222222'
+      ]) {
+        const rejected = await setAvatar(`${userId}/${badObject}.png`);
+        expect(
+          rejected.error?.code,
+          `object uuid ${badObject} must violate the avatar_url CHECK`
+        ).toBe('23514');
+      }
+      expect(await currentAvatar()).toBeNull();
+
+      // Owner-prefix matching is exact (case-sensitive): an UPPERCASED owner UUID with an
+      // otherwise valid filename violates the `left(avatar_url, …) = user_id::text || '/'`
+      // equality → SQLSTATE 23514, and the stored value stays untouched.
+      const uppercasedPrefix = await setAvatar(`${userId.toUpperCase()}/${v4Object}.png`);
+      expect(
+        uppercasedPrefix.error?.code,
+        'an uppercased owner prefix must violate the avatar_url CHECK'
+      ).toBe('23514');
+      expect(await currentAvatar()).toBeNull();
+
+      // The canonical v4 key for the owner is accepted and read back verbatim.
+      const accepted = await setAvatar(validKey);
+      expect(accepted.error, `valid avatar key failed: ${accepted.error?.message}`).toBeNull();
+      expect(await currentAvatar()).toBe(validKey);
+
+      // A rejected write never clobbers an already-saved avatar_url.
+      const rejectedAfterSave = await setAvatar(`${userId}/nested/${v4Object}.png`);
+      expect(rejectedAfterSave.error?.code).toBe('23514');
+      expect(await currentAvatar()).toBe(validKey);
+
+      // Case-insensitivity is filename-scoped: a mixed-case extension on the SAME key is
+      // accepted and read back verbatim.
+      const upperExtensionKey = `${userId}/${v4Object}.PNG`;
+      const acceptedUpperExtension = await setAvatar(upperExtensionKey);
+      expect(
+        acceptedUpperExtension.error,
+        `mixed-case extension failed: ${acceptedUpperExtension.error?.message}`
+      ).toBeNull();
+      expect(await currentAvatar()).toBe(upperExtensionKey);
+
+      // Clearing back to NULL stays allowed.
+      const cleared = await setAvatar(null);
+      expect(cleared.error, `null avatar failed: ${cleared.error?.message}`).toBeNull();
+      expect(await currentAvatar()).toBeNull();
+    });
+
+    it('degrades an accepted-but-nonexistent avatar object key to a null signed URL instead of failing the profile read', async () => {
+      const { client, userId } = await signUpPlayer('ghostsign');
+      await onboard(client, 'Ghost Sign Player', 'LEFT', 3);
+
+      // A syntactically valid v4+variant key for an object the owner never uploaded passes
+      // the avatar_url CHECK and is stored verbatim.
+      const ghostKey = `${userId}/33333333-2222-4333-8444-555555555555.png`;
+      const stored = await client
+        .from('player_profiles')
+        .update({ avatar_url: ghostKey })
+        .eq('user_id', userId);
+      expect(stored.error, `ghost avatar key failed: ${stored.error?.message}`).toBeNull();
+      expect((await ownProfile(client, userId))?.avatar_url).toBe(ghostKey);
+
+      // The profile read path (sportingProfile) must NOT throw on the unresolvable key:
+      // Storage answers the sign request with NoSuchKey and the read degrades it to a null
+      // signed URL. This is the full server path against the real backend — no test double.
+      const ghostRead = await sportingProfile(client, userId);
+      expect(ghostRead.display_name).toBe('Ghost Sign Player');
+      expect(ghostRead.avatar_signed_url).toBeNull();
+
+      // Positive control: once the object really exists, the same read path signs it —
+      // proving the null above is the degradation path, not a universal outcome.
+      const png = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+      const uploaded = await client.storage.from('player-avatars').upload(ghostKey, png, {
+        contentType: 'image/png',
+        upsert: false
+      });
+      expect(uploaded.error, `owner avatar upload failed: ${uploaded.error?.message}`).toBeNull();
+      const withObject = await sportingProfile(client, userId);
+      expect(withObject.avatar_signed_url).toContain('/object/sign/');
     });
 
     it('exposes only sporting columns in the profile/rating rows — never auth email or security metadata', async () => {

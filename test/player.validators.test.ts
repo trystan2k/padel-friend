@@ -341,6 +341,42 @@ describe('avatar_url object key validation', () => {
     }
   });
 
+  it('accepts a canonical v4 object UUID with every legal variant nibble [89ab]', () => {
+    for (const variant of ['8', '9', 'a', 'b']) {
+      const key = avatarKey('png', `22222222-2222-4222-${variant}222-222222222222`);
+      expect(validateUpdatePlayerProfile({ avatar_url: key }).avatar_url).toBe(key);
+    }
+  });
+
+  it('accepts uppercase hex UUIDs and mixed-case extensions (case-insensitive)', () => {
+    const key = avatarKey('PnG', OBJECT_ID.toUpperCase(), USER_ID.toUpperCase());
+    expect(validateUpdatePlayerProfile({ avatar_url: key }).avatar_url).toBe(key);
+  });
+
+  it('rejects object UUIDs whose version nibble is not 4', () => {
+    for (const version of '012356789abcdef') {
+      const key = avatarKey('png', `22222222-2222-${version}222-8222-222222222222`);
+      expect(() => validateUpdatePlayerProfile({ avatar_url: key })).toThrow(INVALID_INPUT);
+    }
+  });
+
+  it('rejects object UUIDs whose variant nibble is outside [89ab]', () => {
+    for (const variant of '01234567cdef') {
+      const key = avatarKey('png', `22222222-2222-4222-${variant}222-222222222222`);
+      expect(() => validateUpdatePlayerProfile({ avatar_url: key })).toThrow(INVALID_INPUT);
+    }
+  });
+
+  it('rejects nested or extra path segments beyond <user>/<file>', () => {
+    for (const key of [
+      `${USER_ID}/nested/${OBJECT_ID}.png`,
+      `${USER_ID}/${OBJECT_ID}/nested.png`,
+      `${USER_ID}/${OBJECT_ID}/nested/${OBJECT_ID}.png`
+    ]) {
+      expect(() => validateUpdatePlayerProfile({ avatar_url: key })).toThrow(INVALID_INPUT);
+    }
+  });
+
   it('rejects non-string values', () => {
     for (const value of [5, true, {}, ['a.png']]) {
       expect(() => validateUpdatePlayerProfile({ avatar_url: value })).toThrow(INVALID_INPUT);
