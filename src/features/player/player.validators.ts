@@ -22,8 +22,6 @@ export type AvatarUploadInput = { objectKey: string };
 
 export const AVATAR_MAX_BYTES = 2097152;
 export const AVATAR_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp'] as const;
-const AVATAR_OBJECT_KEY_PATTERN =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.(?:jpg|jpeg|png|webp)$/i;
 
 function objectWithKeys(value: unknown, allowed: readonly string[]): Record<string, unknown> {
   if (!isRecord(value) || Object.keys(value).some((key) => !allowed.includes(key)))
