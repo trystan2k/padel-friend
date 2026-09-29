@@ -29,6 +29,8 @@ type LocaleCopy = {
     reliabilityHelp: string;
     sideLeft: string;
     save: string;
+    saving: string;
+    failed: string;
     validationName: string;
     validationSide: string;
     validationLevel: string;
@@ -459,5 +461,185 @@ test.describe('sign-out failure handling', () => {
     await page.getByRole('button', { name: en.signOut }).click();
     await expect(page.getByRole('heading', { name: en.title })).toBeVisible();
     expect(new URL(page.url()).pathname).toBe('/');
+  });
+});
+
+test.describe('onboarding save failure handling', () => {
+  // Block the service worker so the route below can intercept the server-function request
+  // deterministically (the flow itself does not depend on the service worker).
+  test.use({ serviceWorkers: 'block' });
+
+  test('a failed onboarding save shows the localized error, re-enables the form and can be retried', async ({
+    page
+  }) => {
+    const email = uniqueEmail();
+    await register(page, email);
+
+    // Valid input, so the ONLY possible failure source is the forced server outage below.
+    await page.getByLabel(en.onboarding.name).fill('Nia Retry');
+    await page.getByLabel(en.onboarding.level).fill('3.0');
+    const radio = page.getByRole('radio', { name: en.onboarding.sideLeft });
+    await radio.check();
+    // The form is hydrated once a controlled re-render keeps the radio checked.
+    await expect(radio).toBeChecked();
+
+    // TanStack Start invokes server functions via same-origin POSTs to /_serverFn/<id>:
+    // aborting the request rejects the onboardPlayer fetch, which the submit handler maps
+    // to the localized failure alert (any incidental GET server-function call passes
+    // through untouched).
+    await page.route('**/_serverFn/**', (route) => {
+      if (route.request().method() === 'POST') return route.abort();
+      return route.continue();
+    });
+    const saveRequested = page.waitForRequest(
+      (request) =>
+        request.method() === 'POST' && new URL(request.url()).pathname.startsWith('/_serverFn/')
+    );
+    await page.getByRole('button', { name: en.onboarding.save }).click();
+    await saveRequested;
+
+    // The submit handler's finally block cleared saving: the localized failure alert renders
+    // and the same submit button is enabled again — the form never stays stuck disabled, and
+    // navigation to the dashboard is withheld after the failed save.
+    await expect(page.getByText(en.onboarding.failed)).toBeVisible();
+    await expect(page.getByRole('button', { name: en.onboarding.save })).toBeEnabled();
+    expect(new URL(page.url()).pathname).toBe('/onboarding');
+
+    // With the outage gone, the same intact form state saves without re-entering anything.
+    await page.unroute('**/_serverFn/**');
+    await page.getByRole('button', { name: en.onboarding.save }).click();
+    await expect(page).toHaveURL(/\/dashboard$/);
+    await expect(page.getByRole('heading', { name: 'Nia Retry' })).toBeVisible();
+  });
+
+  test('an expired session on submit redirects to the login deep link without the generic failure alert', async ({
+    page
+  }) => {
+    const email = uniqueEmail();
+    // Playwright gates EVERY in-page observation (locators, evaluate, waitForFunction)
+    // while a navigation is pending — "waiting for navigation to finish" — so the held
+    // /login redirect below cannot be read with locators. The sampler installed here runs
+    // in the PAGE's own event loop and streams the submit control's disabled state and
+    // the failure alert's presence out through console messages, which arrive in the test
+    // process as push events while the navigation is held.
+    const heldFlightSamples: Array<{ disabled: boolean | null; failed: boolean }> = [];
+    let sampling = false;
+    page.on('console', (message) => {
+      if (sampling && message.text().startsWith('pf-onboard-sample:')) {
+        heldFlightSamples.push(JSON.parse(message.text().slice('pf-onboard-sample:'.length)));
+      }
+    });
+    await page.addInitScript((failedCopy) => {
+      window.setInterval(() => {
+        if (location.pathname !== '/onboarding') return;
+        const submit = document.querySelector('form button[type="submit"]');
+        console.log(
+          `pf-onboard-sample:${JSON.stringify({
+            disabled: submit instanceof HTMLButtonElement ? submit.disabled : null,
+            failed: document.body.textContent.includes(failedCopy)
+          })}`
+        );
+      }, 50);
+    }, en.onboarding.failed);
+
+    await register(page, email);
+
+    // Valid input, so the ONLY possible failure source is the session removal below.
+    await page.getByLabel(en.onboarding.name).fill('Ivo Expired');
+    await page.getByLabel(en.onboarding.level).fill('3.0');
+    const radio = page.getByRole('radio', { name: en.onboarding.sideLeft });
+    await radio.check();
+    // The form is hydrated once a controlled re-render keeps the radio checked.
+    await expect(radio).toBeChecked();
+
+    // Drop every cookie: the onboardPlayer server function resolves its claims from request
+    // cookies, so an empty cookie jar deterministically forces the UNAUTHENTICATED
+    // early-return in the submit handler — the exact path that used to leave the form stuck.
+    await page.context().clearCookies();
+
+    // Hold the onboardPlayer response at the network layer (the real cookie-less request is
+    // fetched, its replay is gated). While the result is in flight NO navigation has started,
+    // so this pending window is observable with locators: the submit control shows the
+    // localized saving label and stays disabled, and the generic failure alert is absent.
+    let releaseSaveResponse: () => void = () => {};
+    const saveResponseHeld = new Promise<void>((resolve) => {
+      releaseSaveResponse = resolve;
+    });
+    await page.route('**/_serverFn/**', async (route) => {
+      if (route.request().method() !== 'POST') return route.continue();
+      const response = await route.fetch();
+      await saveResponseHeld;
+      return route.fulfill({ response });
+    });
+
+    // Start collecting samples for the whole pending window: from this click until the
+    // held /login navigation is released, the control must never re-enable.
+    sampling = true;
+    await page.getByRole('button', { name: en.onboarding.save }).click();
+    await expect(page.getByRole('button', { name: en.onboarding.saving })).toBeDisabled();
+    await expect(page.getByText(en.onboarding.failed)).toHaveCount(0);
+
+    // Hold the handler's login navigation at the network layer as well:
+    // window.location.assign('/login?next=/onboarding') fires ONLY from the UNAUTHENTICATED
+    // branch, so the intercepted request proves which branch ran — the generic failure branch
+    // would stay on /onboarding with the alert rendered and never navigate.
+    let resolveHeldLoginRedirect: ((redirect: URL) => void) | undefined;
+    const heldLoginRedirect = new Promise<URL>((resolve) => {
+      resolveHeldLoginRedirect = resolve;
+    });
+    let releaseLoginNavigation: () => void = () => {};
+    const releaseGate = new Promise<void>((resolve) => {
+      releaseLoginNavigation = resolve;
+    });
+    await page.route(/\/login\?next=\/onboarding$/, async (route) => {
+      resolveHeldLoginRedirect?.(new URL(route.request().url()));
+      await releaseGate;
+      return route.continue();
+    });
+
+    // Replaying the held cookie-less response: the handler must take the UNAUTHENTICATED
+    // branch and navigate to the login deep link (never to /dashboard, never stay put).
+    releaseSaveResponse();
+    const loginRedirect = await heldLoginRedirect;
+    expect(loginRedirect.pathname).toBe('/login');
+    expect(loginRedirect.searchParams.get('next')).toBe('/onboarding');
+
+    // While the /login navigation ITSELF is held, the handler is parked in the
+    // UNAUTHENTICATED branch with `navigating` true: the finally cleanup stays skipped.
+    // The document is still the onboarding screen, and the samples collected during the
+    // hold must ALL report the submit control disabled and the generic failure alert
+    // absent — a regression that re-enables the form mid-navigation (or flashes the
+    // failure alert) flips a sample and fails here before the redirect lands.
+    expect(new URL(page.url()).pathname).toBe('/onboarding');
+    const heldWindowStart = heldFlightSamples.length;
+    await expect
+      .poll(
+        () => heldFlightSamples.slice(heldWindowStart).length,
+        'sampler must stream during the held /login navigation'
+      )
+      .toBeGreaterThanOrEqual(8);
+    const heldWindow = heldFlightSamples.slice(heldWindowStart);
+    expect(
+      heldWindow.every((sample) => sample.disabled === true),
+      'the save control must stay disabled for every held-navigation sample'
+    ).toBe(true);
+    expect(
+      heldWindow.some((sample) => sample.failed),
+      'the generic failure alert must stay absent during the held navigation'
+    ).toBe(false);
+
+    // Releasing the gate completes the redirect onto the login screen.
+    releaseLoginNavigation();
+    await page.waitForURL(/\/login\?/);
+    await waitHydrated(page);
+    const landed = new URL(page.url());
+    expect(landed.pathname).toBe('/login');
+    // The settled address bar carries the SANITIZED deep link: the login route's
+    // validateSearch runs normalizeReturnPath, whose auth-loop guard rewrites a
+    // /onboarding next value to /dashboard (otherwise login → onboarding → unauthenticated
+    // → login would loop forever). The exact assigned value next=/onboarding is asserted on
+    // the intercepted navigation request above.
+    expect(landed.searchParams.get('next')).toBe('/dashboard');
+    await expect(page.getByText(en.onboarding.failed)).toHaveCount(0);
   });
 });

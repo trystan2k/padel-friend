@@ -32,13 +32,19 @@ function Login() {
   async function signInWithGoogle() {
     setMessage('');
     setBusy(true);
-    const callback = new URL('/auth/callback', window.location.origin);
-    if (next !== '/dashboard') callback.searchParams.set('next', next);
-    const { error } = await getBrowserClient().auth.signInWithOAuth({
-      provider: 'google',
-      options: { redirectTo: callback.toString() }
-    });
-    if (error) {
+    try {
+      const callback = new URL('/auth/callback', window.location.origin);
+      if (next !== '/dashboard') callback.searchParams.set('next', next);
+      const { error } = await getBrowserClient().auth.signInWithOAuth({
+        provider: 'google',
+        options: { redirectTo: callback.toString() }
+      });
+      if (error) {
+        setMessage('googleSignInError');
+        setBusy(false);
+      }
+      // No error means navigation to the provider is in progress; keep the control disabled.
+    } catch {
       setMessage('googleSignInError');
       setBusy(false);
     }

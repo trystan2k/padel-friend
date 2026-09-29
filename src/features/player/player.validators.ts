@@ -32,15 +32,14 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
-function trimmedText(value: unknown, max: number, required: boolean): string {
+// Bio has no edge-whitespace constraint: trim, then enforce char_length <= 280.
+// Display names reject edge ASCII whitespace [ \t\n\r\f\v] per SQL btrim(display_name, E' \t\n\r\f\v').
+function trimmedText(value: unknown, max: number): string {
   if (typeof value !== 'string') throw new Error('INVALID_PLAYER_INPUT');
   const trimmed = value.trim();
-  // SQL btrim only strips spaces. Reject other edge whitespace, including tabs/newlines.
-  if (required && trimmed !== value.replace(/^ +| +$/g, ''))
-    throw new Error('INVALID_PLAYER_INPUT');
   // PostgreSQL char_length counts Unicode code points, not UTF-16 code units.
   const length = Array.from(trimmed).length;
-  if (length > max || (required && length === 0)) throw new Error('INVALID_PLAYER_INPUT');
+  if (length > max) throw new Error('INVALID_PLAYER_INPUT');
   return trimmed;
 }
 
@@ -91,9 +90,7 @@ export function validateOnboardPlayer(value: unknown): OnboardPlayerInput {
     preferred_side: preferredSide(input.preferred_side),
     initial_level: validateInitialLevel(input.initial_level),
     ...('dominant_hand' in input ? { dominant_hand: hand } : {}),
-    ...('bio' in input
-      ? { bio: input.bio === null ? null : trimmedText(input.bio, 280, false) }
-      : {})
+    ...('bio' in input ? { bio: input.bio === null ? null : trimmedText(input.bio, 280) } : {})
   };
 }
 
@@ -118,7 +115,7 @@ export function validateUpdatePlayerProfile(value: unknown): UpdatePlayerProfile
       throw new Error('INVALID_PLAYER_INPUT');
     result.dominant_hand = input.dominant_hand;
   }
-  if ('bio' in input) result.bio = input.bio === null ? null : trimmedText(input.bio, 280, false);
+  if ('bio' in input) result.bio = input.bio === null ? null : trimmedText(input.bio, 280);
   if ('avatar_url' in input) {
     if (input.avatar_url === null) {
       result.avatar_url = null;

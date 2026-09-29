@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
 import { readFileSync } from 'node:fs';
 
 const BASE_URL = 'http://127.0.0.1:4173';
@@ -7,6 +7,7 @@ type LocaleCopy = {
   title: string;
   description: string;
   signInWithGoogle: string;
+  googleSignInError: string;
   auth: {
     or: string;
     accountPrompt: string;
@@ -18,6 +19,18 @@ type LocaleCopy = {
 function localeCopy(locale: string): LocaleCopy {
   return JSON.parse(
     readFileSync(new URL(`../src/locales/${locale}/translation.json`, import.meta.url), 'utf8')
+  );
+}
+
+/**
+ * Waits until React has hydrated the server-rendered form: after the load event the JS still
+ * needs a couple of frames to attach listeners. Interacting earlier races hydration and the
+ * click is silently swallowed by the SSR button without a listener.
+ */
+async function waitHydrated(page: Page): Promise<void> {
+  await page.waitForLoadState('load');
+  await page.evaluate(
+    () => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)))
   );
 }
 
@@ -114,4 +127,166 @@ test('OAuth callback rejects missing or denied codes without redirecting off-sit
   await page.goto('/login?authError=1');
   await expect(page.getByRole('button', { name: 'Continue with Google' })).toBeVisible();
   await expect(page.getByText('Google sign-in was not completed. Please try again.')).toBeVisible();
+});
+
+test.describe('Google sign-in OAuth failure handling', () => {
+  // Block the service worker so route interception below is deterministic (same technique as
+  // the sign-out failure suite in onboarding.spec.ts).
+  test.use({ serviceWorkers: 'block' });
+
+  test('the OAuth start targets the Supabase authorize endpoint with Google and PKCE params and stays pending-disabled', async ({
+    page
+  }) => {
+    const copy = localeCopy('en');
+    let authorizeAttempts = 0;
+    // Hold the authorize navigation instead of aborting it outright (same gate/hold
+    // technique as the expired-session onboarding test): the start is a full-page
+    // window.location.assign navigation, so while the request is pending the login
+    // document stays mounted with busy kept true.
+    let releaseAuthorizeNavigation: () => void = () => {};
+    const authorizeNavigationHeld = new Promise<void>((resolve) => {
+      releaseAuthorizeNavigation = resolve;
+    });
+    await page.route('**/auth/v1/authorize**', async (route) => {
+      authorizeAttempts += 1;
+      await authorizeNavigationHeld;
+      return route.abort();
+    });
+
+    // Playwright gates EVERY in-page observation (locators, evaluate, waitForFunction)
+    // while a navigation is pending — "waiting for navigation to finish" — so the
+    // held-flight state cannot be read with locators. The sampler below runs in the
+    // PAGE's own event loop instead and streams the Google control's disabled state out
+    // through console messages, which arrive in the test process as push events while
+    // the navigation is held.
+    const heldFlightSamples: boolean[] = [];
+    let sampling = false;
+    page.on('console', (message) => {
+      if (sampling && message.text().startsWith('pf-google-disabled:')) {
+        heldFlightSamples.push(message.text() === 'pf-google-disabled:true');
+      }
+    });
+    await page.addInitScript(() => {
+      window.setInterval(() => {
+        const google = [...document.querySelectorAll('main button')].find(
+          (button): button is HTMLButtonElement =>
+            button instanceof HTMLButtonElement &&
+            button.querySelector('span[aria-hidden="true"]')?.textContent === 'G'
+        );
+        if (google) console.log(`pf-google-disabled:${String(google.disabled)}`);
+      }, 50);
+    });
+
+    await page.goto('/login');
+    await waitHydrated(page);
+    const google = page.getByRole('button', { name: copy.signInWithGoogle });
+
+    // The intercepted request IS what supabase-js issues for signInWithOAuth: the Supabase
+    // authorize endpoint with the Google provider, the PKCE challenge params and this app's
+    // /auth/callback as redirect target. The click is kicked off WITHOUT awaiting it: a
+    // locator click resolves only once its scheduled navigations settle, and the authorize
+    // navigation stays HELD below — so the request event is the deterministic
+    // "OAuth start happened" signal, and the click promise is settled after the release.
+    const authorizeRequested = page.waitForRequest('**/auth/v1/authorize**');
+    const googleClick = google.click().then(
+      () => 'clicked' as const,
+      () => 'refused' as const
+    );
+    const authorize = new URL((await authorizeRequested).url());
+    expect(authorize.pathname).toBe('/auth/v1/authorize');
+    expect(authorize.searchParams.get('provider')).toBe('google');
+    expect(authorize.searchParams.get('code_challenge_method')).toBe('s256');
+    expect(authorize.searchParams.get('code_challenge')).toBeTruthy();
+    // Trust boundary: redirect_to must point at THIS app's origin with exactly the
+    // /auth/callback pathname. A contains() check could never catch an off-origin redirect
+    // (https://evil.com/auth/callback contains the path too), so origin and pathname are
+    // asserted separately.
+    const redirectTo = authorize.searchParams.get('redirect_to') ?? '';
+    expect(redirectTo, 'authorize request must carry a redirect_to').toBeTruthy();
+    const callback = new URL(redirectTo, BASE_URL);
+    expect(callback.origin).toBe(BASE_URL);
+    expect(callback.pathname).toBe('/auth/callback');
+
+    // Pending-navigation window, observed while the authorize navigation is HELD: sample
+    // the flight for at least ~500ms (ten 50ms ticks) and require EVERY sample to report
+    // the control disabled — busy must stay true until the document is replaced. A
+    // regression that re-enables it mid-flight (e.g. a restored finally) flips samples to
+    // false and fails here.
+    sampling = true;
+    await expect
+      .poll(() => heldFlightSamples.length, 'sampler must stream during the held flight')
+      .toBeGreaterThanOrEqual(10);
+    expect(
+      heldFlightSamples.every((disabled) => disabled),
+      'the Google control must stay disabled for every held-flight sample'
+    ).toBe(true);
+    // With the control disabled for the whole held flight, a user retry cannot dispatch a
+    // click (disabled form controls never fire click events), so no second authorize
+    // request may have been issued either.
+    expect(authorizeAttempts, 'no second authorize request while the first is held').toBe(1);
+
+    // WHY there is no in-page failure assertion on the network path: supabase-js computes
+    // the PKCE challenge in-page and hands the authorize URL to window.location.assign — a
+    // full-page navigation, NOT a fetch whose rejection the app could observe. Aborting (or
+    // 5xx-fulfilling) that navigation replaces the document with the browser's network-error
+    // page at the Supabase origin, so the login screen — error alert, re-enabled button — is
+    // gone either way. The in-page catch recovery is covered by the test below, which fails
+    // the sign-in start in-page through the same signInWithOAuth call.
+    //
+    // WHY the returned-error branch (if (error) in signInWithGoogle) has no in-page test:
+    // it is unreachable with the real client stack. @supabase/auth-js 2.117.1 (resolved via
+    // @supabase/supabase-js) implements signInWithOAuth → _handleProviderSignIn WITHOUT a
+    // try/catch: the promise always resolves with { error: null }, and every failure (PKCE
+    // challenge generation, storage/cookie writes) REJECTS it — exactly the catch path the
+    // test below exercises. @supabase/ssr's createBrowserClient does not wrap
+    // signInWithOAuth either. Making signInWithOAuth resolve { error } would require
+    // patching the client prototype with behavior the library can never produce —
+    // fabricated, not reachable, coverage.
+    releaseAuthorizeNavigation();
+    expect(await googleClick, 'the click itself must succeed').toBe('clicked');
+  });
+
+  test('a failed OAuth start shows the localized error and re-enables the button for a retry', async ({
+    page
+  }) => {
+    const copy = localeCopy('en');
+    // Fail signInWithOAuth deterministically BEFORE the redirect: @supabase/ssr persists the
+    // PKCE verifier as a cookie through document.cookie; making THAT write throw exercises
+    // the component's catch (localized error, busy cleared) — the same code path a real
+    // authorize failure would have to reach in-page. The wrap passes every other cookie
+    // write through untouched.
+    await page.addInitScript(() => {
+      const descriptor = Object.getOwnPropertyDescriptor(Document.prototype, 'cookie');
+      if (!descriptor?.get || !descriptor.set) return;
+      const originalGet = descriptor.get.bind(document);
+      const originalSet = descriptor.set.bind(document);
+      Object.defineProperty(document, 'cookie', {
+        get() {
+          return originalGet();
+        },
+        set(value: string) {
+          if (value.includes('-code-verifier=')) {
+            throw new TypeError('cookie storage unavailable');
+          }
+          originalSet(value);
+        }
+      });
+    });
+
+    await page.goto('/login');
+    await waitHydrated(page);
+    const google = page.getByRole('button', { name: copy.signInWithGoogle });
+
+    await google.click();
+    await expect(page.getByText(copy.googleSignInError)).toBeVisible();
+    await expect(google).toBeEnabled();
+    expect(new URL(page.url()).pathname).toBe('/login');
+
+    // The failure is not one-shot: clicking again reports the failure again with the button
+    // still usable — the control never stays permanently disabled.
+    await google.click();
+    await expect(page.getByText(copy.googleSignInError)).toBeVisible();
+    await expect(google).toBeEnabled();
+    expect(new URL(page.url()).pathname).toBe('/login');
+  });
 });

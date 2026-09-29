@@ -43,6 +43,7 @@ export function PlayerOnboarding() {
     if (Object.keys(nextErrors).length || !side || initialLevel === undefined) return;
     setSaving(true);
     setFailed(false);
+    let navigating = false;
     try {
       await onboardPlayer({
         data: {
@@ -53,14 +54,17 @@ export function PlayerOnboarding() {
           bio: bio.trim() || null
         }
       });
+      navigating = true;
       window.location.assign('/dashboard');
     } catch (error) {
       if (error instanceof Error && error.message === 'UNAUTHENTICATED') {
+        navigating = true;
         window.location.assign('/login?next=/onboarding');
         return;
       }
       setFailed(true);
-      setSaving(false);
+    } finally {
+      if (!navigating) setSaving(false);
     }
   }
 

@@ -393,6 +393,71 @@ describe('bio length validation', () => {
   it('rejects 281 characters', () => {
     expect(() => validateUpdatePlayerProfile({ bio: 'a'.repeat(281) })).toThrow(INVALID_INPUT);
   });
+
+  it('trims surrounding whitespace BEFORE enforcing the 280 limit, so padding cannot smuggle a 281st character', () => {
+    expect(validateUpdatePlayerProfile({ bio: '  padded bio  ' }).bio).toBe('padded bio');
+    expect(validateUpdatePlayerProfile({ bio: `  ${'a'.repeat(280)}  ` }).bio).toHaveLength(280);
+    expect(() => validateUpdatePlayerProfile({ bio: ` ${'a'.repeat(281)} ` })).toThrow(
+      INVALID_INPUT
+    );
+  });
+
+  it('accepts a whitespace-only bio as an empty string — bio has no emptiness rule, unlike display names', () => {
+    expect(validateUpdatePlayerProfile({ bio: '   ' }).bio).toBe('');
+    expect(validateUpdatePlayerProfile({ bio: '\t\n' }).bio).toBe('');
+  });
+
+  it('counts Unicode code points, not UTF-16 code units', () => {
+    // '🏓' is one code point but two UTF-16 code units: 280 of them report a JS .length of
+    // 560 yet stay inside the 280 code-point limit.
+    expect(validateUpdatePlayerProfile({ bio: '🏓'.repeat(280) }).bio).toBe('🏓'.repeat(280));
+    expect(() => validateUpdatePlayerProfile({ bio: '🏓'.repeat(281) })).toThrow(INVALID_INPUT);
+  });
+
+  it('rejects non-string bios', () => {
+    for (const bio of [42, true, {}, ['bio']]) {
+      expect(() => validateUpdatePlayerProfile({ bio })).toThrow(INVALID_INPUT);
+    }
+  });
+
+  it('applies the same trim-then-limit and null handling to the onboarding payload bio', () => {
+    expect(
+      validateOnboardPlayer({
+        display_name: 'Ana',
+        preferred_side: 'LEFT',
+        initial_level: 3,
+        bio: '  padded onboarding bio  '
+      }).bio
+    ).toBe('padded onboarding bio');
+    expect(
+      validateOnboardPlayer({
+        display_name: 'Ana',
+        preferred_side: 'LEFT',
+        initial_level: 3,
+        bio: null
+      }).bio
+    ).toBeNull();
+    // An absent bio stays absent: the payload never carries a fabricated empty string.
+    expect(
+      validateOnboardPlayer({ display_name: 'Ana', preferred_side: 'LEFT', initial_level: 3 })
+    ).not.toHaveProperty('bio');
+    expect(() =>
+      validateOnboardPlayer({
+        display_name: 'Ana',
+        preferred_side: 'LEFT',
+        initial_level: 3,
+        bio: 'a'.repeat(281)
+      })
+    ).toThrow(INVALID_INPUT);
+    expect(() =>
+      validateOnboardPlayer({
+        display_name: 'Ana',
+        preferred_side: 'LEFT',
+        initial_level: 3,
+        bio: 42
+      })
+    ).toThrow(INVALID_INPUT);
+  });
 });
 
 describe('avatar file validation', () => {
