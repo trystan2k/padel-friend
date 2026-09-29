@@ -1,3 +1,5 @@
+@layer reset, priority1, priority2, priority3, priority4;
+
 @import url('../design-tokens/dist/tokens.css');
 
 *,
@@ -13,9 +15,11 @@ body {
   color: var(--color-text);
 }
 
-button,
-input,
-select,
-textarea {
-  font-family: var(--font-family-body);
+@layer reset {
+  button,
+  input,
+  select,
+  textarea {
+    font: inherit;
+  }
 }

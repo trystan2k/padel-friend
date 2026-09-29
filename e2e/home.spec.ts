@@ -113,6 +113,72 @@ test('the login screen localizes the OR divider, provider mark and account promp
   }
 });
 
+test('the login submit keeps the StyleX design typography in light and dark themes', async ({
+  page
+}) => {
+  for (const theme of ['light', 'dark'] as const) {
+    if (theme === 'dark')
+      await page.context().addCookies([{ name: 'theme', value: 'dark', url: BASE_URL }]);
+    await page.goto('/login');
+    await expect(page.locator('html')).toHaveAttribute('data-theme', theme);
+    // The submit control is StyleX-styled (ui.button): the design 13px/700 must win the
+    // cascade over the reset layer's font:inherit.
+    const submit = page.locator('form button[type="submit"]');
+    await expect(submit).toBeVisible();
+    const typography = await submit.evaluate((element) => {
+      const style = getComputedStyle(element);
+      return { fontSize: style.fontSize, fontWeight: style.fontWeight };
+    });
+    expect(typography, `submit control must keep the design typography (${theme} theme)`).toEqual({
+      fontSize: '13px',
+      fontWeight: '700'
+    });
+  }
+});
+
+test('the bare root selects inherit the body font metrics in light and dark themes', async ({
+  page
+}) => {
+  for (const theme of ['light', 'dark'] as const) {
+    if (theme === 'dark')
+      await page.context().addCookies([{ name: 'theme', value: 'dark', url: BASE_URL }]);
+    await page.goto('/');
+    await expect(page.locator('html')).toHaveAttribute('data-theme', theme);
+    // The root language/theme selects carry no StyleX styles: only the @layer reset
+    // font:inherit rule gives them the body typography. A regression there (or an unlayered
+    // font rule) drops them back onto the UA default, which diverges from body.
+    const metrics = await page.evaluate(() => {
+      const fontMetrics = (element: Element) => {
+        const style = getComputedStyle(element);
+        return {
+          fontFamily: style.fontFamily,
+          fontSize: style.fontSize,
+          fontWeight: style.fontWeight
+        };
+      };
+      return {
+        body: fontMetrics(document.body),
+        locale: fontMetrics(document.querySelector('#locale')!),
+        theme: fontMetrics(document.querySelector('#theme')!)
+      };
+    });
+    expect(
+      metrics.locale,
+      `language select must inherit the body font metrics (${theme} theme)`
+    ).toEqual(metrics.body);
+    expect(
+      metrics.theme,
+      `theme select must inherit the body font metrics (${theme} theme)`
+    ).toEqual(metrics.body);
+    // Pin the body itself so a shared drift (body AND selects moving together) still fails.
+    expect(metrics.body).toEqual({
+      fontFamily: expect.stringContaining('Inter'),
+      fontSize: '16px',
+      fontWeight: '400'
+    });
+  }
+});
+
 test('OAuth callback rejects missing or denied codes without redirecting off-site', async ({
   request,
   page

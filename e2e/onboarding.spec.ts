@@ -65,6 +65,7 @@ const es: LocaleCopy = JSON.parse(
 // (commented out in supabase/config.toml) and must be verified manually per the plan.
 
 const PASSWORD = 'Password123!';
+const BASE_URL = 'http://127.0.0.1:4173';
 
 function uniqueEmail(): string {
   return `e2e-onboard-${Date.now()}-${Math.random().toString(36).slice(2, 10)}@test.local`;
@@ -354,6 +355,36 @@ test('first-time onboarding accepts a padded display name and lands on the trimm
 
   await expect(page).toHaveURL(/\/dashboard$/);
   await expect(page.getByRole('heading', { name: 'Onboard Trim' })).toBeVisible();
+});
+
+test('the onboarding level chips keep the design typography in light and dark themes', async ({
+  page
+}) => {
+  for (const theme of ['light', 'dark'] as const) {
+    if (theme === 'dark')
+      await page.context().addCookies([{ name: 'theme', value: 'dark', url: BASE_URL }]);
+    const email = uniqueEmail();
+    await register(page, email);
+    await expect(page.getByRole('heading', { name: en.onboarding.title })).toBeVisible();
+    // The chips are StyleX-styled (ui.scaleChip): the design 12px/600 must win the cascade
+    // over the reset layer's font:inherit.
+    const chip = page.getByRole('button', {
+      name: en.onboarding.levelChoice.replace('{{level}}', '3.00')
+    });
+    await expect(chip).toBeVisible();
+    const typography = await chip.evaluate((element) => {
+      const style = getComputedStyle(element);
+      return { fontSize: style.fontSize, fontWeight: style.fontWeight };
+    });
+    expect(typography, `level chip must keep the design typography (${theme} theme)`).toEqual({
+      fontSize: '12px',
+      fontWeight: '600'
+    });
+    // Drop the session (and every other cookie) so the next iteration starts from a clean
+    // unauthenticated browser state instead of being bounced off /login by the onboarding
+    // gate.
+    await page.context().clearCookies();
+  }
 });
 
 test('signing out returns home and protected routes redirect back to login', async ({ page }) => {
