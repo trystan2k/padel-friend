@@ -24,6 +24,7 @@ export function PlayerOnboarding() {
   const selectedTenth = Math.round(Number(level) * 10);
   if (selectedTenth >= 0 && selectedTenth <= 70 && !scaleTenths.includes(selectedTenth))
     scaleTenths[2] = selectedTenth;
+  scaleTenths.sort((a, b) => a - b);
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();

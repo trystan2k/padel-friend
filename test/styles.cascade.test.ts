@@ -49,8 +49,8 @@ function skipString(source: string, openQuoteIndex: number): number {
  * Single quote/escape-aware pass masking CSS comments and quoted strings: every masked
  * character becomes a space, so offsets are preserved and no later scan can ever see text
  * inside a string or a comment. String and comment state is tracked together, which keeps
- * a comment marker inside a string string content (instead of a comment opener) and a
- * quote inside a comment comment content; unclosed constructs simply mask to the end.
+ * a comment marker inside a string stays string content (instead of opening a comment), and a
+ * quote inside a comment stays comment content; unclosed constructs simply mask to the end.
  */
 function maskCommentsAndStrings(source: string): string {
   const masked = source.split('');

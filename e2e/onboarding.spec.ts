@@ -171,6 +171,32 @@ test('a new signup is blocked by onboarding, rejects invalid input, then lands o
   await page.setViewportSize({ width: 390, height: 844 });
   const scale = page.getByRole('group', { name: en.onboarding.levelScale });
   await expect(scale.getByRole('button')).toHaveCount(6);
+
+  // Chip order is parsed from the locale-formatted accessible names ("Select level 1.00"):
+  // the level slice is isolated via the template's static prefix/suffix and read back as a
+  // number using the page's own decimal separator.
+  const templateParts: [string, string] = [
+    en.onboarding.levelChoice.slice(0, en.onboarding.levelChoice.indexOf('{{level}}')),
+    en.onboarding.levelChoice.slice(
+      en.onboarding.levelChoice.indexOf('{{level}}') + '{{level}}'.length
+    )
+  ];
+  const chipLevels = () =>
+    scale.getByRole('button').evaluateAll((buttons, [prefix, suffix]) => {
+      const decimal =
+        new Intl.NumberFormat(document.documentElement.lang || navigator.language)
+          .formatToParts(1.1)
+          .find((part) => part.type === 'decimal')?.value ?? '.';
+      return buttons.map((button) => {
+        const label = button.getAttribute('aria-label') ?? '';
+        if (!label.startsWith(prefix) || !label.endsWith(suffix)) return Number.NaN;
+        const formatted = label.slice(prefix.length, label.length - suffix.length);
+        return Number(formatted.replace(decimal, '.'));
+      });
+    }, templateParts);
+  // The pristine default scale reads strictly ascending: 0.0, 2.0, 3.0, 4.0, 5.0, 7.0.
+  expect(await chipLevels()).toEqual([0, 2, 3, 4, 5, 7]);
+
   const overflow = await scale
     .locator('div')
     .first()
@@ -192,6 +218,29 @@ test('a new signup is blocked by onboarding, rejects invalid input, then lands o
   await chip('7.00').click();
   await expect(page.locator('output')).toHaveText('7.00');
   await expect(chip('7.00')).toHaveAttribute('aria-pressed', 'true');
+
+  // Regression (non-monotonic chip row): typing a level OUTSIDE the default scale (1.0)
+  // substitutes a default chip and must keep the row strictly ascending — the old bug
+  // replaced scale index 2 BEFORE sorting and rendered 0.0, 2.0, 1.0, 4.0, 5.0, 7.0. The
+  // typed level must become the selected chip and the substituted one must vanish.
+  await levelInput.fill('1.0');
+  await expect(page.locator('output')).toHaveText('1.00');
+  const typedScale = await chipLevels();
+  let previous = Number.NEGATIVE_INFINITY;
+  expect(
+    typedScale.every((value) => {
+      const ordered = value > previous;
+      previous = value;
+      return ordered;
+    }),
+    'chip labels must stay strictly ascending after typing an off-scale level'
+  ).toBe(true);
+  expect(typedScale).toEqual([0, 1, 2, 4, 5, 7]);
+  const typedChip = chip('1.00');
+  await expect(typedChip).toBeVisible();
+  await expect(typedChip).toHaveAttribute('aria-pressed', 'true');
+  await expect(chip('3.00')).toHaveCount(0);
+
   // The numeric input remains the exact 0.1-step control.
   await levelInput.fill('6.4');
   await expect(page.locator('output')).toHaveText('6.40');
