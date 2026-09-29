@@ -3,6 +3,7 @@ import { useRef, useState, type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { getBrowserClient } from '../../lib/supabase/client';
 import { AvatarUpload } from './AvatarUpload';
+import { stripDisplayNameEdgeWhitespace } from './display-name';
 import { updateMyPlayerProfile } from './player.functions';
 import { playerInitials } from './player-initials';
 import { formatDisplayLevel } from './rating-config';
@@ -31,7 +32,8 @@ export function PlayerProfile({ initialProfile }: { initialProfile: Profile }) {
 
   async function save(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!name.trim() || Array.from(name.trim()).length > 80) {
+    const normalizedName = stripDisplayNameEdgeWhitespace(name);
+    if (!normalizedName || Array.from(normalizedName).length > 80) {
       setError('onboarding.validationName');
       nameRef.current?.focus();
       return;
@@ -41,7 +43,7 @@ export function PlayerProfile({ initialProfile }: { initialProfile: Profile }) {
     try {
       const next = await updateMyPlayerProfile({
         data: {
-          display_name: name.trim(),
+          display_name: normalizedName,
           preferred_side: side,
           dominant_hand: hand || null,
           bio: bio.trim() || null
@@ -184,7 +186,11 @@ export function PlayerProfile({ initialProfile }: { initialProfile: Profile }) {
             onChange={(event) => setName(event.target.value)}
             maxLength={80}
             required
-            aria-invalid={Boolean(error && (!name.trim() || Array.from(name.trim()).length > 80))}
+            aria-invalid={Boolean(
+              error &&
+              (!stripDisplayNameEdgeWhitespace(name) ||
+                Array.from(stripDisplayNameEdgeWhitespace(name)).length > 80)
+            )}
             {...stylex.props(ui.input)}
           />
           <fieldset {...stylex.props(ui.fieldset)}>

@@ -1,6 +1,7 @@
 import * as stylex from '@stylexjs/stylex';
 import { useRef, useState, type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
+import { stripDisplayNameEdgeWhitespace } from './display-name';
 import { onboardPlayer } from './player.functions';
 import { formatDisplayLevel, INITIAL_RELIABILITY_PERCENT } from './rating-config';
 import { validateInitialLevel, type PreferredSide } from './player.validators';
@@ -27,7 +28,8 @@ export function PlayerOnboarding() {
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const nextErrors: typeof errors = {};
-    if (!name.trim() || Array.from(name.trim()).length > 80)
+    const normalizedName = stripDisplayNameEdgeWhitespace(name);
+    if (!normalizedName || Array.from(normalizedName).length > 80)
       nextErrors.name = 'onboarding.validationName';
     if (!side) nextErrors.side = 'onboarding.validationSide';
     let initialLevel: number | undefined;
@@ -47,7 +49,7 @@ export function PlayerOnboarding() {
     try {
       await onboardPlayer({
         data: {
-          display_name: name.trim(),
+          display_name: normalizedName,
           preferred_side: side,
           initial_level: initialLevel,
           dominant_hand: hand || null,

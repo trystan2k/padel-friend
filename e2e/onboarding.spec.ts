@@ -315,9 +315,9 @@ test('a whitespace-padded save syncs the trimmed server values into display and 
   await register(page, email);
   await completeOnboarding(page, 'Sync Player', '3.0');
 
-  // Both forms submit name.trim(), so a PADDED display name must save cleanly (the old
-  // silent-failure bug) and sync the trimmed server value into the heading and the edit
-  // input. The padded bio is trimmed client-side too: its trimmed server value must sync
+  // Both forms strip only the ASCII edge class, so a PADDED display name must save cleanly
+  // (the old silent-failure bug) and sync the trimmed server value into the heading and the
+  // edit input. The padded bio is trimmed client-side too: its trimmed server value must sync
   // back the same way.
   await page.getByRole('button', { name: en.profile.edit }).click();
   await page.getByLabel(en.onboarding.name).fill('  Padded Name  ');
@@ -355,6 +355,120 @@ test('first-time onboarding accepts a padded display name and lands on the trimm
 
   await expect(page).toHaveURL(/\/dashboard$/);
   await expect(page.getByRole('heading', { name: 'Onboard Trim' })).toBeVisible();
+});
+
+test('an NBSP-edged display name is saved verbatim and persists with its NBSPs', async ({
+  page
+}) => {
+  const email = uniqueEmail();
+  await register(page, email);
+
+  // The two client forms normalize ONLY the ASCII edge class (space/tab/LF/CR/FF/VT), so an
+  // NBSP (U+00A0) edge must reach the server untouched and come back verbatim. This is the
+  // drift guard against the old String.prototype.trim() behavior, which silently stripped
+  // NBSP edges and diverged from the server policy.
+  const nbspName = '\u00A0Ana\u00A0';
+  await page.getByLabel(en.onboarding.name).fill(nbspName);
+  await page.getByLabel(en.onboarding.level).fill('3.0');
+  const radio = page.getByRole('radio', { name: en.onboarding.sideLeft });
+  await radio.check();
+  // The form is hydrated once a controlled re-render keeps the radio checked.
+  await expect(radio).toBeChecked();
+  await page.getByRole('button', { name: en.onboarding.save }).click();
+  await expect(page).toHaveURL(/\/dashboard$/);
+
+  // The identity card renders exactly one level-2 heading (the display name); locating it by
+  // level avoids the whitespace-normalized accessible-name matching. toHaveText normalizes
+  // every whitespace kind (an NBSP collapses like a space), so on its own it could NOT catch
+  // a Unicode-trim regression — the raw textContent equality below is the exact drift guard.
+  const nameHeading = page.getByRole('heading', { level: 2 });
+  await expect(nameHeading).toBeVisible();
+  await expect(nameHeading).toHaveText(nbspName);
+  expect(await nameHeading.textContent()).toBe(nbspName);
+
+  // The edit form is hydrated from the SERVER-synced profile state (setName(next.display_name)):
+  // toHaveValue compares raw input values without whitespace normalization, so the exact
+  // NBSP-edged value must have round-tripped through the database.
+  await page.getByRole('button', { name: en.profile.edit }).click();
+  await expect(page.getByLabel(en.onboarding.name)).toHaveValue(nbspName);
+
+  // A fresh guarded navigation re-reads the persisted row: the NBSPs survived storage, not
+  // just the in-memory profile state.
+  await settleAfterAuth(page);
+  const persistedHeading = page.getByRole('heading', { level: 2 });
+  await expect(persistedHeading).toBeVisible();
+  expect(await persistedHeading.textContent()).toBe(nbspName);
+});
+
+test('the emptiness rule is the ASCII class end-to-end: whitespace-only is rejected, NBSP-only saves', async ({
+  page
+}) => {
+  const email = uniqueEmail();
+  await register(page, email);
+
+  // ASCII whitespace-only (tab/space/LF): the client-side rule — the shared ASCII strip
+  // reducing the value to '' — rejects BEFORE any server call, with the localized validation
+  // message and no navigation.
+  await page.getByLabel(en.onboarding.name).fill('\t \n');
+  await page.getByLabel(en.onboarding.level).fill('3.0');
+  const radio = page.getByRole('radio', { name: en.onboarding.sideLeft });
+  await radio.check();
+  // The form is hydrated once a controlled re-render keeps the radio checked.
+  await expect(radio).toBeChecked();
+  await page.getByRole('button', { name: en.onboarding.save }).click();
+  await expect(page.getByText(en.onboarding.validationName)).toBeVisible();
+  expect(new URL(page.url()).pathname).toBe('/onboarding');
+
+  // NBSP-only is NOT empty under the ASCII-only rule, and every layer agrees: the client
+  // submits it, the server validator accepts it (no ASCII edge to reject, non-zero code-point
+  // length) and the SQL CHECK btrims only the ASCII class. The save must therefore succeed
+  // and persist the NBSPs verbatim — a client that re-introduces Unicode trim() would reject
+  // here and fail this test.
+  const nbspOnly = '\u00A0\u00A0';
+  await page.getByLabel(en.onboarding.name).fill(nbspOnly);
+  await page.getByRole('button', { name: en.onboarding.save }).click();
+  await expect(page).toHaveURL(/\/dashboard$/);
+  await expect(page.getByText(en.onboarding.validationName)).toHaveCount(0);
+
+  const nameHeading = page.getByRole('heading', { level: 2 });
+  await expect(nameHeading).toBeVisible();
+  expect(await nameHeading.textContent()).toBe(nbspOnly);
+
+  // The dashboard SSR'd from the freshly onboarded row: the edit form carrying the exact
+  // NBSP-only value proves the database kept it, whitespace normalization can never apply.
+  await page.getByRole('button', { name: en.profile.edit }).click();
+  await expect(page.getByLabel(en.onboarding.name)).toHaveValue(nbspOnly);
+});
+
+test('the profile edit form preserves NBSP edges and trims only ASCII edges on save', async ({
+  page
+}) => {
+  const email = uniqueEmail();
+  await register(page, email);
+  await completeOnboarding(page, 'Mila Edge', '3.0');
+
+  // Save through the PROFILE edit form: the same ASCII-only strip policy must hold there.
+  await page.getByRole('button', { name: en.profile.edit }).click();
+  const nbspName = '\u00A0Mila\u00A0';
+  await page.getByLabel(en.onboarding.name).fill(nbspName);
+  await page.getByRole('button', { name: en.profile.save }).click();
+
+  await expect(page.getByText(en.profile.saveFailed)).toHaveCount(0);
+  const nameHeading = page.getByRole('heading', { level: 2 });
+  await expect(nameHeading).toBeVisible();
+  await expect(nameHeading).toHaveText(nbspName);
+  expect(await nameHeading.textContent()).toBe(nbspName);
+
+  // Re-opening edit mode shows the refreshed server value with the NBSPs intact.
+  await page.getByRole('button', { name: en.profile.edit }).click();
+  await expect(page.getByLabel(en.onboarding.name)).toHaveValue(nbspName);
+
+  // And the ASCII-only trim still applies on the very same form: padded ASCII edges are
+  // stripped before the save lands.
+  await page.getByLabel(en.onboarding.name).fill('  Mila Twice  ');
+  await page.getByRole('button', { name: en.profile.save }).click();
+  await expect(page.getByRole('heading', { name: 'Mila Twice' })).toBeVisible();
+  expect(await page.getByRole('heading', { level: 2 }).textContent()).toBe('Mila Twice');
 });
 
 test('the onboarding level chips keep the design typography in light and dark themes', async ({
