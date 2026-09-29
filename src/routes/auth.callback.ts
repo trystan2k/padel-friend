@@ -1,5 +1,6 @@
 import { createServerClient, parseCookieHeader, serializeCookieHeader } from '@supabase/ssr';
 import { createFileRoute } from '@tanstack/react-router';
+import { normalizeReturnPath } from '../features/auth/return-path';
 import type { Database } from '../lib/supabase/database.types';
 
 export const Route = createFileRoute('/auth/callback')({
@@ -9,6 +10,7 @@ export const Route = createFileRoute('/auth/callback')({
         const url = new URL(request.url);
         const headers = new Headers({ 'Cache-Control': 'no-store' });
         const code = url.searchParams.get('code');
+        const next = normalizeReturnPath(url.searchParams.get('next'));
 
         if (code && !url.searchParams.has('error')) {
           const client = createServerClient<Database>(
@@ -32,12 +34,15 @@ export const Route = createFileRoute('/auth/callback')({
           );
           const { error } = await client.auth.exchangeCodeForSession(code);
           if (!error) {
-            headers.set('Location', new URL('/dashboard', url).toString());
+            headers.set('Location', new URL(next, url).toString());
             return new Response(null, { status: 303, headers });
           }
         }
 
-        headers.set('Location', new URL('/login?authError=1', url).toString());
+        const failure = new URL('/login', url);
+        failure.searchParams.set('authError', '1');
+        if (next !== '/dashboard') failure.searchParams.set('next', next);
+        headers.set('Location', failure.toString());
         return new Response(null, { status: 303, headers });
       }
     }

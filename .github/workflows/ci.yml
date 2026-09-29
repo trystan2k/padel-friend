@@ -18,6 +18,25 @@ jobs:
           node-version: '24'
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      # First backend-backed gate: boot the pinned local Supabase stack for integration and E2E.
+      - name: Provision local Supabase
+        run: |
+          set -euo pipefail
+          pnpm exec supabase start
+          pnpm exec supabase db reset
+          status="$(pnpm exec supabase status -o env)"
+          API_URL="$(printf '%s\n' "$status" | sed -n 's/^API_URL=//p' | tail -n 1)"
+          PUBLISHABLE_KEY="$(printf '%s\n' "$status" | sed -n 's/^PUBLISHABLE_KEY=//p' | tail -n 1)"
+          API_URL="${API_URL#\"}"
+          API_URL="${API_URL%\"}"
+          PUBLISHABLE_KEY="${PUBLISHABLE_KEY#\"}"
+          PUBLISHABLE_KEY="${PUBLISHABLE_KEY%\"}"
+          if [[ -z ${API_URL:-} || ! ${API_URL:-} =~ ^http://(127\.0\.0\.1|localhost|\[::1\]):[0-9]+/?$ || -z ${PUBLISHABLE_KEY:-} ]]; then
+            printf '%s\n' 'Local Supabase API_URL or PUBLISHABLE_KEY missing/invalid' >&2
+            exit 1
+          fi
+          printf 'VITE_SUPABASE_URL=%s\nVITE_SUPABASE_PUBLISHABLE_KEY=%s\n' "$API_URL" "$PUBLISHABLE_KEY" >> "$GITHUB_ENV"
+          printf 'VITE_SUPABASE_URL=%s\nVITE_SUPABASE_PUBLISHABLE_KEY=%s\n' "$API_URL" "$PUBLISHABLE_KEY" > .env
       - run: pnpm exec playwright install --with-deps chromium
       - run: pnpm build
       - run: pnpm knip

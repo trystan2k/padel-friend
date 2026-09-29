@@ -1,62 +1,63 @@
+import * as stylex from '@stylexjs/stylex';
 import { createFileRoute, useRouter } from '@tanstack/react-router';
-import { useState, type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
-import { addNote, listNotes } from '../features/notes/notes.functions';
-import { getBrowserClient } from '../lib/supabase/client';
+import { PlayerProfile } from '../features/player/PlayerProfile';
+import { getMyPlayerProfile } from '../features/player/player.functions';
+import { ui } from '../features/player/player-ui.styles';
 
 export const Route = createFileRoute('/_protected/dashboard')({
-  loader: () => listNotes(),
+  loader: () => getMyPlayerProfile(),
+  pendingComponent: LoadingProfile,
+  errorComponent: ProfileError,
   component: Dashboard
 });
 
 function Dashboard() {
+  return <PlayerProfile initialProfile={Route.useLoaderData()} />;
+}
+
+function LoadingProfile() {
   const { t } = useTranslation();
-  const notes = Route.useLoaderData();
-  const router = useRouter();
-  const [error, setError] = useState('');
-  async function submit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const form = event.currentTarget;
-    try {
-      const body = new FormData(form).get('body');
-      await addNote({ data: typeof body === 'string' ? body : '' });
-      form.reset();
-      await router.invalidate();
-    } catch {
-      setError(t('error'));
-    }
-  }
   return (
-    <main>
-      <h1>{t('dashboard')}</h1>
-      <form onSubmit={(event) => void submit(event)}>
-        <label>
-          {t('note')}
-          <input name="body" required maxLength={500} />
-        </label>
-        <button type="submit">{t('add')}</button>
-      </form>
-      {error && <p role="alert">{error}</p>}
-      {notes.length ? (
-        <ul>
-          {notes.map((note) => (
-            <li key={note.id}>{note.body}</li>
-          ))}
-        </ul>
-      ) : (
-        <p>{t('empty')}</p>
-      )}
+    <main {...stylex.props(ui.page)}>
+      <output {...stylex.props(ui.stateCard)}>
+        <span aria-hidden="true" {...stylex.props(ui.stateIcon)}>
+          ◌
+        </span>
+        <div {...stylex.props(ui.stateCopy)}>
+          <p {...stylex.props(ui.stateTitle)}>{t('profile.loadingTitle')}</p>
+          <p {...stylex.props(ui.stateDescription)}>{t('profile.loading')}</p>
+        </div>
+      </output>
+    </main>
+  );
+}
+
+function ProfileError({ error }: { error: unknown }) {
+  const { t } = useTranslation();
+  const router = useRouter();
+  const expired = error instanceof Error && error.message === 'UNAUTHENTICATED';
+  return (
+    <main {...stylex.props(ui.page)}>
+      <div role="alert" {...stylex.props(ui.stateCard)}>
+        <span aria-hidden="true" {...stylex.props(ui.stateIcon, ui.stateErrorIcon)}>
+          !
+        </span>
+        <div {...stylex.props(ui.stateCopy)}>
+          <p {...stylex.props(ui.stateTitle)}>{t('profile.errorTitle')}</p>
+          <p {...stylex.props(ui.stateDescription)}>
+            {t(expired ? 'auth.sessionExpired' : 'error')}
+          </p>
+        </div>
+      </div>
       <button
         type="button"
         onClick={() =>
-          void getBrowserClient()
-            .auth.signOut()
-            .then(() => {
-              window.location.href = '/';
-            })
+          expired ? window.location.assign('/login?next=/dashboard') : void router.invalidate()
         }
+        {...stylex.props(ui.button)}
       >
-        {t('signOut')}
+        {t('auth.retry')}
       </button>
     </main>
   );

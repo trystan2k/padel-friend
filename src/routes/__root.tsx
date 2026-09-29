@@ -4,6 +4,13 @@ import { useState } from 'react';
 import { createI18n, resolveLocale } from '../i18n/config';
 import { getInitialLocale, saveLocale } from '../i18n/locale.functions';
 import { PwaRegistration } from '../components/PwaRegistration';
+import '@fontsource/inter/400.css';
+import '@fontsource/inter/500.css';
+import '@fontsource/inter/600.css';
+import '@fontsource/inter/700.css';
+import '@fontsource/manrope/400.css';
+import '@fontsource/manrope/600.css';
+import '@fontsource/manrope/700.css';
 import { getInitialTheme, saveTheme } from '../features/theme/theme.functions';
 import '../styles.css';
 
