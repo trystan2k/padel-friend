@@ -46,7 +46,7 @@ export function PlayerOnboarding() {
     try {
       await onboardPlayer({
         data: {
-          display_name: name,
+          display_name: name.trim(),
           preferred_side: side,
           initial_level: initialLevel,
           dominant_hand: hand || null,

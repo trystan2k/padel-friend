@@ -11,6 +11,15 @@ import {
 const INVALID_INPUT = 'INVALID_PLAYER_INPUT';
 const INVALID_AVATAR = 'INVALID_AVATAR';
 
+// Storage object keys are "<owner uuid>/<object uuid>.<ext>". The owner uuid here is just a
+// well-formed prefix: proving the USER prefix belongs to nobody is the point — ownership is
+// verified by the server function, not the validator.
+const USER_ID = '11111111-1111-4111-8111-111111111111';
+const OBJECT_ID = '22222222-2222-4222-8222-222222222222';
+const OTHER_USER_ID = '33333333-3333-4333-8333-333333333333';
+const avatarKey = (extension = 'png', objectId = OBJECT_ID, userId = USER_ID) =>
+  `${userId}/${objectId}.${extension}`;
+
 describe('display name validation', () => {
   it('accepts a single character', () => {
     expect(
@@ -45,11 +54,46 @@ describe('display name validation', () => {
     }
   });
 
-  it('trims surrounding whitespace like the SQL btrim check', () => {
+  it('rejects any edge ASCII whitespace (space, tab, LF, CR, FF, VT) like the SQL btrim class', () => {
+    for (const name of [
+      ' Ana',
+      'Ana ',
+      '\tAna',
+      'Ana\t',
+      '\nAna',
+      'Ana\n',
+      '\rAna',
+      'Ana\r',
+      '\fAna',
+      'Ana\f',
+      '\vAna',
+      'Ana\v',
+      '  Ana  '
+    ]) {
+      expect(() =>
+        validateOnboardPlayer({ display_name: name, preferred_side: 'LEFT', initial_level: 0 })
+      ).toThrow(INVALID_INPUT);
+    }
+  });
+
+  it('accepts internal ASCII whitespace unchanged, like the SQL btrim check', () => {
+    for (const name of ['Ana Lee', 'Ana\tLee', 'Ana\nLee']) {
+      expect(
+        validateOnboardPlayer({ display_name: name, preferred_side: 'LEFT', initial_level: 0 })
+          .display_name
+      ).toBe(name);
+    }
+  });
+
+  it('accepts Unicode whitespace at the edges — the documented V1 policy, matching the SQL class', () => {
+    // V1 normalizes only the ASCII class E' \t\n\r\f\v': an NBSP (U+00A0) edge is in neither
+    // the SQL btrim class nor the TS validator's pattern, so BOTH layers accept and preserve
+    // it verbatim. This encodes the intended policy, not a bug.
+    const name = '\u00A0Ana\u00A0';
     expect(
-      validateOnboardPlayer({ display_name: '  Ana  ', preferred_side: 'LEFT', initial_level: 0 })
+      validateOnboardPlayer({ display_name: name, preferred_side: 'LEFT', initial_level: 0 })
         .display_name
-    ).toBe('Ana');
+    ).toBe(name);
   });
 
   it('counts Unicode code points, not UTF-16 code units', () => {
@@ -152,10 +196,12 @@ describe('initial level validation', () => {
 });
 
 describe('onboarding payload validation', () => {
-  it('accepts a valid payload and normalizes it', () => {
+  it('accepts a valid payload and normalizes the level string', () => {
+    // V1 ASCII policy: display names must arrive edge-clean — the server rejects (not trims)
+    // edge ASCII whitespace, so only the level string is normalized here.
     expect(
       validateOnboardPlayer({
-        display_name: ' Ana ',
+        display_name: 'Ana',
         preferred_side: 'RIGHT',
         initial_level: '3.5'
       })
@@ -211,8 +257,8 @@ describe('profile update validation', () => {
     expect(validateUpdatePlayerProfile({ bio: null })).toEqual({ bio: null });
     expect(validateUpdatePlayerProfile({ bio: '  hi  ' })).toEqual({ bio: 'hi' });
     expect(validateUpdatePlayerProfile({ avatar_url: null })).toEqual({ avatar_url: null });
-    expect(validateUpdatePlayerProfile({ avatar_url: 'u1/a.png' })).toEqual({
-      avatar_url: 'u1/a.png'
+    expect(validateUpdatePlayerProfile({ avatar_url: avatarKey() })).toEqual({
+      avatar_url: avatarKey()
     });
   });
 
@@ -232,10 +278,73 @@ describe('profile update validation', () => {
     expect(() => validateUpdatePlayerProfile({ dominant_hand: 'left' })).toThrow(INVALID_INPUT);
     expect(() => validateUpdatePlayerProfile({ dominant_hand: 1 })).toThrow(INVALID_INPUT);
     expect(() => validateUpdatePlayerProfile({ display_name: '' })).toThrow(INVALID_INPUT);
+    // Same ASCII edge-whitespace policy as onboarding: the update path rejects it too.
+    expect(() => validateUpdatePlayerProfile({ display_name: ' Ana ' })).toThrow(INVALID_INPUT);
     expect(() => validateUpdatePlayerProfile({ display_name: 'a'.repeat(81) })).toThrow(
       INVALID_INPUT
     );
     expect(() => validateUpdatePlayerProfile({ avatar_url: 5 })).toThrow(INVALID_INPUT);
+  });
+});
+
+describe('avatar_url object key validation', () => {
+  it('accepts a well-formed <uuid>/<uuid>.<ext> key and trims surrounding whitespace', () => {
+    expect(validateUpdatePlayerProfile({ avatar_url: `  ${avatarKey()}  ` })).toEqual({
+      avatar_url: avatarKey()
+    });
+  });
+
+  it('accepts every supported extension in any letter case', () => {
+    for (const extension of ['png', 'PNG', 'jpg', 'JPG', 'jpeg', 'Jpg', 'webp', 'WebP']) {
+      expect(validateUpdatePlayerProfile({ avatar_url: avatarKey(extension) }).avatar_url).toBe(
+        avatarKey(extension)
+      );
+    }
+  });
+
+  it('accepts any well-formed user prefix — ownership verification stays the server function job', () => {
+    const foreignKey = avatarKey('png', OBJECT_ID, OTHER_USER_ID);
+    expect(validateUpdatePlayerProfile({ avatar_url: foreignKey })).toEqual({
+      avatar_url: foreignKey
+    });
+  });
+
+  it('keeps absent and null avatar_url untouched', () => {
+    expect(validateUpdatePlayerProfile({ avatar_url: null })).toEqual({ avatar_url: null });
+    expect(validateUpdatePlayerProfile({ display_name: 'Ana' })).not.toHaveProperty('avatar_url');
+  });
+
+  it('rejects empty and whitespace-only values', () => {
+    for (const value of ['', '   ', '\t\n']) {
+      expect(() => validateUpdatePlayerProfile({ avatar_url: value })).toThrow(INVALID_INPUT);
+    }
+  });
+
+  it('rejects bare filenames and wrong-prefix shapes, including the old permissive shape', () => {
+    for (const value of [
+      'a.png',
+      'u1/a.png',
+      `/${OBJECT_ID}.png`,
+      `${USER_ID}/folder/${OBJECT_ID}.png`,
+      `${USER_ID}/${OBJECT_ID}.png/`,
+      `${USER_ID}/${OBJECT_ID}`
+    ]) {
+      expect(() => validateUpdatePlayerProfile({ avatar_url: value })).toThrow(INVALID_INPUT);
+    }
+  });
+
+  it('rejects unsupported extensions', () => {
+    for (const extension of ['gif', 'txt', 'avif']) {
+      expect(() => validateUpdatePlayerProfile({ avatar_url: avatarKey(extension) })).toThrow(
+        INVALID_INPUT
+      );
+    }
+  });
+
+  it('rejects non-string values', () => {
+    for (const value of [5, true, {}, ['a.png']]) {
+      expect(() => validateUpdatePlayerProfile({ avatar_url: value })).toThrow(INVALID_INPUT);
+    }
   });
 });
 

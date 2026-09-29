@@ -1,6 +1,9 @@
 create table public.player_profiles (
   user_id uuid primary key references auth.users(id) on delete cascade,
-  display_name text not null check (char_length(btrim(display_name)) between 1 and 80 and display_name = btrim(display_name)),
+  display_name text not null check (
+    char_length(btrim(display_name, E' \t\n\r\f\v')) between 1 and 80
+    and display_name = btrim(display_name, E' \t\n\r\f\v')
+  ),
   avatar_url text check (avatar_url is null or (char_length(avatar_url) <= 256 and avatar_url like user_id::text || '/%')),
   preferred_side text not null check (preferred_side in ('LEFT', 'RIGHT', 'EITHER')),
   dominant_hand text check (dominant_hand in ('LEFT', 'RIGHT')),
@@ -60,9 +63,8 @@ begin
   if v_user_id is null then
     raise exception 'Authentication required' using errcode = '28000';
   end if;
-  if p_display_name is null or char_length(pg_catalog.btrim(p_display_name)) not between 1 and 80
-    or p_display_name <> pg_catalog.btrim(p_display_name)
-    or p_display_name ~ '^[[:space:]]|[[:space:]]$'
+  if p_display_name is null or char_length(pg_catalog.btrim(p_display_name, E' \t\n\r\f\v')) not between 1 and 80
+    or p_display_name <> pg_catalog.btrim(p_display_name, E' \t\n\r\f\v')
     or p_preferred_side is null or p_preferred_side not in ('LEFT','RIGHT','EITHER')
     or (p_dominant_hand is not null and p_dominant_hand not in ('LEFT','RIGHT'))
     or (p_bio is not null and char_length(p_bio) > 280)

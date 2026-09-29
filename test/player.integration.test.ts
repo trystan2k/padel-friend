@@ -368,6 +368,69 @@ describe.skipIf(environment.env === null)(
       expect(deleted.error?.code).toBe('42501');
     });
 
+    it('rejects display names with leading or trailing whitespace at the SQL CHECK and in the RPC', async () => {
+      const { client, userId } = await signUpPlayer('whitespace');
+      await onboard(client, 'Whitespace Player', 'EITHER', 3);
+
+      // Owner UPDATE: the tightened CHECK rejects every member of the btrim whitespace class,
+      // including the whitespace-only name that the UI client guard blocks before submitting.
+      for (const name of [
+        '\tTabbed',
+        'Tabbed\t',
+        '\nNewlined',
+        'Newlined\r',
+        'Feed\f',
+        'Vertical\v',
+        ' Spaced',
+        '   '
+      ]) {
+        const rejected = await client
+          .from('player_profiles')
+          .update({ display_name: name })
+          .eq('user_id', userId);
+        expect(
+          rejected.error?.code,
+          `update with ${JSON.stringify(name)} must violate the display name CHECK`
+        ).toBe('23514');
+        expect((await ownProfile(client, userId))?.display_name).toBe('Whitespace Player');
+      }
+
+      // A clean name still updates for the same owner.
+      const renamed = await client
+        .from('player_profiles')
+        .update({ display_name: 'Clean Rename' })
+        .eq('user_id', userId);
+      expect(renamed.error, `clean rename failed: ${renamed.error?.message}`).toBeNull();
+      expect((await ownProfile(client, userId))?.display_name).toBe('Clean Rename');
+
+      // The RPC validates the same whitespace class on onboarding input before inserting,
+      // whitespace-only names included.
+      const fresh = await signUpPlayer('whitespacefresh');
+      for (const name of ['\tFresh Player', 'Fresh Player\t', 'Fresh Player\n', '   ']) {
+        const rejectedRpc = await fresh.client.rpc('onboard_player', {
+          p_display_name: name,
+          p_preferred_side: 'LEFT',
+          p_initial_level: 3
+        });
+        expect(
+          rejectedRpc.error?.code,
+          `onboard with ${JSON.stringify(name)} must be rejected`
+        ).toBe('22023');
+      }
+      // The rejected onboarding inputs created nothing.
+      expect(await ownProfile(fresh.client, fresh.userId)).toBeNull();
+      expect(await ownRating(fresh.client, fresh.userId)).toBeNull();
+
+      // Internal whitespace (even a tab) stays legitimate.
+      const internal = await fresh.client.rpc('onboard_player', {
+        p_display_name: 'Ana\tLee',
+        p_preferred_side: 'LEFT',
+        p_initial_level: 3
+      });
+      expect(internal.error, `internal tab failed: ${internal.error?.message}`).toBeNull();
+      expect((await ownProfile(fresh.client, fresh.userId))?.display_name).toBe('Ana\tLee');
+    });
+
     it('denies missing or invalid authentication', async () => {
       const { url, key } = env();
       const anon = createClient(url, key, {

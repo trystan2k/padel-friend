@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import {
   formatDisplayLevel,
@@ -19,6 +19,10 @@ const MIGRATION = readFileSync(
 );
 // Collapse whitespace so assertions target SQL literals, not line wrapping.
 const SQL = MIGRATION.replace(/\s+/g, ' ');
+// There is exactly ONE player migration — asserted by the migration-count contract below —
+// and the display-name whitespace tightening was folded into the base migration, so every
+// assertion below targets its effective final state, including the onboard_player body,
+// not just its signature.
 
 describe('rating config constants', () => {
   it('holds the v1 mapping values', () => {
@@ -42,12 +46,32 @@ describe('rating config constants', () => {
 });
 
 describe('rating config ↔ migration SQL contract', () => {
+  it('enumerates the migrations and keeps exactly one player migration', () => {
+    const migrationFiles = readdirSync(new URL('../supabase/migrations', import.meta.url));
+    const playerMigrations = migrationFiles.filter((file) => file.includes('player_profile'));
+    // Count plus exact filename: a second player migration or a renamed base file fails here.
+    expect(playerMigrations).toHaveLength(1);
+    expect(playerMigrations[0]).toBe('20260928000000_player_profiles_and_ratings.sql');
+    // The display-name follow-up was folded into the base migration and must stay deleted.
+    expect(migrationFiles).not.toContain(
+      '20260928010000_player_profile_display_name_whitespace.sql'
+    );
+  });
+
   it('seeds the rating row with the same constants the engine declares', () => {
     const expectedSeed =
       `values (v_user_id, p_initial_level, p_initial_level, ${INITIAL_SIGMA.toFixed(2)}, p_initial_level, ` +
       `${INITIAL_RELIABILITY_PERCENT}, ${INITIAL_CONFIRMED_COMPETITIVE_GAME_GROUPS}, p_initial_level, ` +
       `'${RATING_ENGINE}', '${RATING_ENGINE_VERSION}')`;
     expect(SQL).toContain(expectedSeed);
+  });
+
+  it('seeds the rating row inside the effective onboard_player body, not just beside the signature', () => {
+    // The seed insert must live in the single migration's RPC body so the declared
+    // five-argument function is the one producing the initial rating row.
+    expect(SQL.indexOf('create function public.onboard_player')).toBeLessThan(
+      SQL.indexOf('insert into public.global_player_ratings')
+    );
   });
 
   it('bounds the level columns to MIN_LEVEL..MAX_LEVEL', () => {
@@ -103,5 +127,28 @@ describe('rating config ↔ migration SQL contract', () => {
     // Bio: at most 280 characters when supplied (player.validators bio bound).
     expect(SQL).toContain('p_bio is not null and char_length(p_bio) > 280');
     expect(SQL).toContain('bio text check (char_length(bio) <= 280)');
+  });
+});
+
+describe('display name whitespace policy (single player migration)', () => {
+  // Same ASCII whitespace class the TS validator rejects at the edges: space, tab, LF, CR, FF, VT.
+  const WHITESPACE_CLASS = "E' \\t\\n\\r\\f\\v'";
+
+  it('defines the display name CHECK inline with the 1..80 bounds over the ASCII whitespace class', () => {
+    expect(SQL).toContain(`char_length(btrim(display_name, ${WHITESPACE_CLASS})) between 1 and 80`);
+    expect(SQL).toContain(`and display_name = btrim(display_name, ${WHITESPACE_CLASS})`);
+  });
+
+  it('keeps the five-argument onboard_player signature and applies the same whitespace rule to the RPC input', () => {
+    expect(SQL).toContain(
+      'create function public.onboard_player(p_display_name text, p_preferred_side text, ' +
+        'p_initial_level numeric, p_dominant_hand text default null, p_bio text default null)'
+    );
+    expect(SQL).toContain(
+      `p_display_name is null or char_length(pg_catalog.btrim(p_display_name, ${WHITESPACE_CLASS})) not between 1 and 80`
+    );
+    expect(SQL).toContain(
+      `p_display_name <> pg_catalog.btrim(p_display_name, ${WHITESPACE_CLASS})`
+    );
   });
 });

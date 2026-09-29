@@ -19,6 +19,8 @@ permission:
     "mkdir *": allow
     "ls *": allow
     "git status *": allow
+    "date": allow
+    "date *": allow
   webfetch: allow
   websearch: allow
   todowrite: allow
@@ -56,7 +58,7 @@ Before ANY implementation or fix action — especially bug fixes — triage comp
 Rules:
 
 - When in doubt, delegate — never force a change into the fast path.
-- Direct edits use `read`/`write`/`edit` (`bash` only for trivial local file ops like `mv`/`mkdir`/`ls` — never for git, Linear, tests, builds, or lint).
+- Direct edits use `read`/`write`/`edit` (`bash` only for trivial local file ops like `mv`/`mkdir`/`ls` and read-only `date` for time tracking — never for git, Linear, tests, builds, or lint).
 - Fast-path work skips no gates: QA, review, and user-approval-before-commit still apply; fixes are still re-verified.
 - In time tracking, record directly executed phases as `orchestrator (direct)` in the Subagent column.
 
@@ -266,7 +268,7 @@ Tool access is configured in this file's frontmatter via `permission` (the legac
 - `edit` (gates `write`/`edit`): allow — small-change fast path only (see Complexity Triage).
 - `skill`: allow — `grill-with-docs` / `brainstorming` interviews.
 - `question`: allow — user interviews and approval prompts.
-- `bash`: scoped — `mv`, `mkdir`, `ls`, and `git status` only; every other command (git write ops, Linear, tests, builds, lint) is denied and stays delegated.
+- `bash`: scoped — `mv`, `mkdir`, `ls`, `git status`, and read-only `date` (for time tracking) only; every other command (git write ops, Linear, tests, builds, lint) is denied and stays delegated.
 - `webfetch`, `websearch`, `todowrite`, `lsp`, `external_directory`: deny — not part of orchestration.
 - Serena MCP tools: left at default (allowed) — preferred for code search/intelligence when available; fall back to native tools otherwise.
 

@@ -305,6 +305,55 @@ test('the dashboard allows profile edits but exposes no level control, and avata
   await expect(avatar).toHaveAttribute('src', /\/object\/sign\//);
 });
 
+test('a whitespace-padded save syncs the trimmed server values into display and edit form', async ({
+  page
+}) => {
+  const email = uniqueEmail();
+  await register(page, email);
+  await completeOnboarding(page, 'Sync Player', '3.0');
+
+  // Both forms submit name.trim(), so a PADDED display name must save cleanly (the old
+  // silent-failure bug) and sync the trimmed server value into the heading and the edit
+  // input. The padded bio is trimmed client-side too: its trimmed server value must sync
+  // back the same way.
+  await page.getByRole('button', { name: en.profile.edit }).click();
+  await page.getByLabel(en.onboarding.name).fill('  Padded Name  ');
+  await page.getByLabel(en.profile.bio).fill('  Padded bio  ');
+  await page.getByRole('button', { name: en.profile.save }).click();
+
+  // Display reflects the trimmed values immediately after the save; a visible heading is
+  // only possible once the save resolved, so the missing failure alert below is reliable.
+  await expect(page.getByRole('heading', { name: 'Padded Name' })).toBeVisible();
+  await expect(page.getByText('Padded bio')).toBeVisible();
+  await expect(page.getByText(en.profile.saveFailed)).toHaveCount(0);
+
+  // Re-opening edit mode shows the refreshed local state, never the stale padded values.
+  await page.getByRole('button', { name: en.profile.edit }).click();
+  await expect(page.getByLabel(en.onboarding.name)).toHaveValue('Padded Name');
+  await expect(page.getByLabel(en.profile.bio)).toHaveValue('Padded bio');
+});
+
+test('first-time onboarding accepts a padded display name and lands on the trimmed profile', async ({
+  page
+}) => {
+  const email = uniqueEmail();
+  await register(page, email);
+
+  // The very first save is the flow that used to fail silently on padded input: the form
+  // now submits name.trim(), so the padded value must be accepted and navigate to the
+  // dashboard (navigation only happens after a successful save) showing the trimmed name.
+  await page.getByLabel(en.onboarding.name).fill('  Onboard Trim  ');
+  await page.getByLabel(en.onboarding.level).fill('3.0');
+  const radio = page.getByRole('radio', { name: en.onboarding.sideLeft });
+  await radio.check();
+  // The form is hydrated once a controlled re-render keeps the radio checked.
+  await expect(radio).toBeChecked();
+  await page.getByRole('button', { name: en.onboarding.save }).click();
+
+  await expect(page).toHaveURL(/\/dashboard$/);
+  await expect(page.getByRole('heading', { name: 'Onboard Trim' })).toBeVisible();
+});
+
 test('signing out returns home and protected routes redirect back to login', async ({ page }) => {
   const email = uniqueEmail();
   await register(page, email);

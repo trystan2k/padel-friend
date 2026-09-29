@@ -41,13 +41,17 @@ export function PlayerProfile({ initialProfile }: { initialProfile: Profile }) {
     try {
       const next = await updateMyPlayerProfile({
         data: {
-          display_name: name,
+          display_name: name.trim(),
           preferred_side: side,
           dominant_hand: hand || null,
           bio: bio.trim() || null
         }
       });
       setProfile(next);
+      setName(next.display_name);
+      setSide(next.preferred_side);
+      setHand(next.dominant_hand ?? '');
+      setBio(next.bio ?? '');
       setEditing(false);
     } catch (cause) {
       if (cause instanceof Error && cause.message === 'UNAUTHENTICATED') {

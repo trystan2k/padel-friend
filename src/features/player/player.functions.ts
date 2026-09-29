@@ -45,7 +45,7 @@ export const updateMyPlayerProfile = createServerFn({ method: 'POST' })
     const { client, userId } = await requireAuthenticatedClient();
     const { profile } = await playerRows(client, userId);
     if (!profile) throw new Error('PLAYER_NOT_ONBOARDED');
-    if (data.avatar_url) await verifiedAvatarKey(client, userId, data.avatar_url);
+    if (data.avatar_url != null) await verifiedAvatarKey(client, userId, data.avatar_url);
     const { error } = await client.from('player_profiles').update(data).eq('user_id', userId);
     if (error) throw error;
     return sportingProfile(client, userId);

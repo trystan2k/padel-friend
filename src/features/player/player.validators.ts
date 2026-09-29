@@ -20,6 +20,8 @@ export type AvatarUploadInput = { objectKey: string };
 
 export const AVATAR_MAX_BYTES = 2097152;
 export const AVATAR_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp'] as const;
+const AVATAR_OBJECT_KEY_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.(?:jpg|jpeg|png|webp)$/i;
 
 function objectWithKeys(value: unknown, allowed: readonly string[]): Record<string, unknown> {
   if (!isRecord(value) || Object.keys(value).some((key) => !allowed.includes(key)))
@@ -40,6 +42,17 @@ function trimmedText(value: unknown, max: number, required: boolean): string {
   // PostgreSQL char_length counts Unicode code points, not UTF-16 code units.
   const length = Array.from(trimmed).length;
   if (length > max || (required && length === 0)) throw new Error('INVALID_PLAYER_INPUT');
+  return trimmed;
+}
+
+function displayNameText(value: unknown): string {
+  if (typeof value !== 'string') throw new Error('INVALID_PLAYER_INPUT');
+  // V1 rejects edge ASCII whitespace only; Unicode whitespace (e.g. NBSP) is accepted and not normalized.
+  const trimmed = value.replace(/^[ \t\n\r\f\v]+|[ \t\n\r\f\v]+$/g, '');
+  if (trimmed !== value) throw new Error('INVALID_PLAYER_INPUT');
+  // PostgreSQL char_length counts Unicode code points, not UTF-16 code units.
+  const length = Array.from(trimmed).length;
+  if (length > 80 || length === 0) throw new Error('INVALID_PLAYER_INPUT');
   return trimmed;
 }
 
@@ -75,7 +88,7 @@ export function validateOnboardPlayer(value: unknown): OnboardPlayerInput {
   const hand = input.dominant_hand ?? null;
   if (hand !== null && hand !== 'LEFT' && hand !== 'RIGHT') throw new Error('INVALID_PLAYER_INPUT');
   return {
-    display_name: trimmedText(input.display_name, 80, true),
+    display_name: displayNameText(input.display_name),
     preferred_side: preferredSide(input.preferred_side),
     initial_level: validateInitialLevel(input.initial_level),
     ...('dominant_hand' in input ? { dominant_hand: hand } : {}),
@@ -95,7 +108,7 @@ export function validateUpdatePlayerProfile(value: unknown): UpdatePlayerProfile
   ]);
   if (!Object.keys(input).length) throw new Error('INVALID_PLAYER_INPUT');
   const result: UpdatePlayerProfileInput = {};
-  if ('display_name' in input) result.display_name = trimmedText(input.display_name, 80, true);
+  if ('display_name' in input) result.display_name = displayNameText(input.display_name);
   if ('preferred_side' in input) result.preferred_side = preferredSide(input.preferred_side);
   if ('dominant_hand' in input) {
     if (
@@ -108,9 +121,16 @@ export function validateUpdatePlayerProfile(value: unknown): UpdatePlayerProfile
   }
   if ('bio' in input) result.bio = input.bio === null ? null : trimmedText(input.bio, 280, false);
   if ('avatar_url' in input) {
-    if (input.avatar_url !== null && typeof input.avatar_url !== 'string')
+    if (input.avatar_url === null) {
+      result.avatar_url = null;
+    } else if (
+      typeof input.avatar_url !== 'string' ||
+      !AVATAR_OBJECT_KEY_PATTERN.test(input.avatar_url.trim())
+    ) {
       throw new Error('INVALID_PLAYER_INPUT');
-    result.avatar_url = input.avatar_url;
+    } else {
+      result.avatar_url = input.avatar_url.trim();
+    }
   }
   return result;
 }
