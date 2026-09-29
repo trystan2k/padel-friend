@@ -6,7 +6,7 @@ import { AvatarUpload } from './AvatarUpload';
 import { stripDisplayNameEdgeWhitespace } from './display-name';
 import { updateMyPlayerProfile } from './player.functions';
 import { playerInitials } from './player-initials';
-import { formatDisplayLevel } from './rating-config';
+import { formatDisplayLevel, MAX_LEVEL, MIN_LEVEL } from './rating-config';
 import { ui } from './player-ui.styles';
 
 type Profile = Awaited<ReturnType<typeof updateMyPlayerProfile>>;
@@ -142,20 +142,26 @@ export function PlayerProfile({ initialProfile }: { initialProfile: Profile }) {
         </div>
         <progress
           aria-label={t('profile.levelScale')}
-          max={7}
+          max={MAX_LEVEL}
           value={profile.display_level}
           {...stylex.props(ui.srOnly)}
         />
         <div aria-hidden="true" {...stylex.props(ui.progressTrack)}>
           <div
             {...stylex.props(ui.progressFill)}
-            style={{ width: `${(profile.display_level / 7) * 100}%` }}
+            style={{
+              width: `${((profile.display_level - MIN_LEVEL) / (MAX_LEVEL - MIN_LEVEL)) * 100}%`
+            }}
           />
         </div>
         <div {...stylex.props(ui.scaleCaption)}>
-          <span {...stylex.props(ui.scaleEndpoint)}>{formatDisplayLevel(0, i18n.language)}</span>
+          <span {...stylex.props(ui.scaleEndpoint)}>
+            {formatDisplayLevel(MIN_LEVEL, i18n.language)}
+          </span>
           <span>{t('profile.levelScale')}</span>
-          <span {...stylex.props(ui.scaleEndpoint)}>{formatDisplayLevel(7, i18n.language)}</span>
+          <span {...stylex.props(ui.scaleEndpoint)}>
+            {formatDisplayLevel(MAX_LEVEL, i18n.language)}
+          </span>
         </div>
         <div {...stylex.props(ui.row)}>
           <span>{t('profile.initialLevel')}</span>

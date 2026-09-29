@@ -3,7 +3,13 @@ import { useRef, useState, type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { stripDisplayNameEdgeWhitespace } from './display-name';
 import { onboardPlayer } from './player.functions';
-import { formatDisplayLevel, INITIAL_RELIABILITY_PERCENT } from './rating-config';
+import {
+  formatDisplayLevel,
+  INITIAL_RELIABILITY_PERCENT,
+  LEVEL_STEP,
+  MAX_LEVEL,
+  MIN_LEVEL
+} from './rating-config';
 import { validateInitialLevel, type PreferredSide } from './player.validators';
 import { ui } from './player-ui.styles';
 
@@ -20,9 +26,18 @@ export function PlayerOnboarding() {
   const [errors, setErrors] = useState<Partial<Record<'name' | 'side' | 'level', string>>>({});
   const [failed, setFailed] = useState(false);
   const [saving, setSaving] = useState(false);
-  const scaleTenths = [0, 20, 30, 40, 50, 70];
-  const selectedTenth = Math.round(Number(level) * 10);
-  if (selectedTenth >= 0 && selectedTenth <= 70 && !scaleTenths.includes(selectedTenth))
+  const scaleStepMultiplier = 1 / LEVEL_STEP;
+  const minLevelTenth = MIN_LEVEL * scaleStepMultiplier;
+  const maxLevelTenth = MAX_LEVEL * scaleStepMultiplier;
+  const scaleTenths = [MIN_LEVEL, 2, 3, 4, 5, MAX_LEVEL].map(
+    (chipLevel) => chipLevel * scaleStepMultiplier
+  );
+  const selectedTenth = Math.round(Number(level) * scaleStepMultiplier);
+  if (
+    selectedTenth >= minLevelTenth &&
+    selectedTenth <= maxLevelTenth &&
+    !scaleTenths.includes(selectedTenth)
+  )
     scaleTenths[2] = selectedTenth;
   scaleTenths.sort((a, b) => a - b);
 
@@ -125,20 +140,20 @@ export function PlayerOnboarding() {
             <legend {...stylex.props(ui.srOnly)}>{t('onboarding.levelScale')}</legend>
             <div {...stylex.props(ui.scale)}>
               {scaleTenths.map((tenth) => {
-                const value = (tenth / 10).toFixed(1);
+                const value = (tenth * LEVEL_STEP).toFixed(1);
                 return (
                   <button
                     key={tenth}
                     type="button"
                     aria-label={t('onboarding.levelChoice', {
-                      level: formatDisplayLevel(tenth / 10, i18n.language)
+                      level: formatDisplayLevel(tenth * LEVEL_STEP, i18n.language)
                     })}
                     aria-pressed={level === value}
                     onClick={() => setLevel(value)}
                     {...stylex.props(ui.scaleChip, level === value && ui.scaleSelected)}
                   >
                     {new Intl.NumberFormat(i18n.language, { maximumFractionDigits: 1 }).format(
-                      tenth / 10
+                      tenth * LEVEL_STEP
                     )}
                   </button>
                 );
@@ -154,9 +169,9 @@ export function PlayerOnboarding() {
             ref={levelRef}
             type="number"
             inputMode="decimal"
-            min="0"
-            max="7"
-            step="0.1"
+            min={MIN_LEVEL}
+            max={MAX_LEVEL}
+            step={LEVEL_STEP}
             value={level}
             onChange={(event) => setLevel(event.target.value)}
             required
