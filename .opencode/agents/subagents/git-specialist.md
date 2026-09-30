@@ -137,23 +137,27 @@ Before proceeding with commit or file operations:
 
 This subagent must not delegate to other subagents.
 
-## Create a Feature Branch
+## Create or reuse a feature branch
 
-Creates a new feature branch from the latest remote develop, with optional local develop update. `main` is production in this repo and only receives release merges; feature branches NEVER come from `main`. This approach supports parallel work with git worktrees.
+Creates a task branch from the repository's default development branch, or reuses a branch explicitly requested by the caller. Reopened work (for example PAF-1) must continue on its requested existing branch rather than creating a duplicate.
 
 ### Parameters
 
-- `branch_name`: Name of the feature branch to create (required)
-- `update_local_develop`: (optional) `true` to also update local develop branch (default: `false`)
+- `branch_name`: Requested feature branch name (required when creating a branch).
+- `reuse_branch`: (optional) Explicit existing branch to continue; takes precedence over branch creation.
+
+### Branch Policy
+
+1. Honor an explicitly requested `reuse_branch` first. If it is already current, leave it checked out; otherwise reuse that existing branch. Do not create a duplicate branch for reopened work.
+2. When creating a new branch, read the default development branch from `AGENTS.md`; if none is specified, use `origin/main`.
+3. Check for uncommitted changes and stash them before branch creation when needed.
+4. Fetch the selected remote base branch without checking out its local branch.
+5. Create the requested feature branch from the updated remote-tracking base. Follow the branch naming convention in `AGENTS.md`.
+6. Restore any stashed changes to the created/reused branch.
 
 ### Default Workflow (Remote-Only, Worktree-Safe)
 
-Use this approach by default. It works in all scenarios including when develop is checked out in another worktree.
-
-1. Check for uncommitted changes and stash if present
-2. Fetch origin/develop to update the remote tracking branch (does NOT checkout develop)
-3. Create and checkout new branch from origin/develop
-4. Restore stashed changes to the new branch (if any)
+Use when no explicit branch reuse was requested. For example, if `AGENTS.md` names `main`, fetch `origin main` and create from `origin/main`; when no default is declared, use `origin/main` directly.
 
 ```bash
 # Check for uncommitted changes and stash if needed
@@ -163,59 +167,17 @@ if [ -n "$(git status --porcelain)" ]; then
   STASHED=true
 fi
 
-# Fetch remote (doesn't touch local develop)
-git fetch origin develop
+# Set BASE_BRANCH from AGENTS.md; use main when no default is declared
+BASE_BRANCH=<branch-from-AGENTS.md-or-main>
+git fetch origin "$BASE_BRANCH"
+git checkout -b <branch_name> "origin/$BASE_BRANCH"
 
-# Create branch from updated remote tracking branch
-git checkout -b <branch_name> origin/develop
-
-# Restore stash if we stashed
 if [ "$STASHED" = true ]; then
   git stash pop
 fi
 ```
 
-### Alternative Workflow (With Local Main Update)
-
-Use this only when explicitly requested via `update_local_develop=true`. This requires checking out develop and will fail if develop is checked out in another worktree.
-
-1. Fetch origin/develop
-2. If currently on develop: pull latest, create new branch
-3. If NOT on develop: stash, checkout develop, pull, create new branch, restore stash
-
-```bash
-# Fetch remote
-git fetch origin develop
-
-# Check current branch
-CURRENT_BRANCH=$(git branch --show-current)
-
-if [ "$CURRENT_BRANCH" = "develop" ]; then
-  # Already on develop, just pull and create branch
-  git pull origin develop
-  git checkout -b <branch_name>
-else
-  # Not on develop, need to stash and switch
-  STASHED=false
-  if [ -n "$(git status --porcelain)" ]; then
-    git stash push -m "pre-branch-creation-$(date +%s)"
-    STASHED=true
-  fi
-
-  git checkout develop
-  git pull origin develop
-  git checkout -b <branch_name>
-
-  if [ "$STASHED" = true ]; then
-    git stash pop
-  fi
-fi
-```
-
-### Decision Logic
-
-- If `update_local_develop=true` → Use Alternative Workflow
-- Otherwise → Use Default Workflow (remote-only)
+For explicit reuse, verify the requested branch exists and continue on it; do not fetch a different base or create another branch. Worktree constraints still apply if the requested branch is checked out elsewhere.
 
 ## Pull update
 
@@ -267,7 +229,7 @@ When creating a PR using `gh pr create`, you **MUST** follow this exact pattern 
 
 ```bash
 TITLE="feat: your feature description"
-BASE="develop"
+BASE="main" # Replace with the default development branch from AGENTS.md when specified.
 BRANCH="feature/your-branch-name"
 ORG="your-organization"
 REPO="your-repository"
@@ -346,7 +308,7 @@ fi
 set -e
 TITLE="feat: add QA controls with Husky, Biome, and Commitlint"
 BRANCH="feature/PBW-030-qa-controls-husky-biome-commitlint"
-BASE="develop"
+BASE="main" # Replace with the default development branch from AGENTS.md when specified.
 # Use heredoc for exact body
 BODY=$(cat <<'EOF'
 ## Summary
@@ -390,7 +352,7 @@ content with 'quotes' and \"escapes\""
 cat > /tmp/pr_body.md <<'EOF'
 content
 EOF
-gh pr create --title "Title" --body-file /tmp/pr_body.md --base develop
+gh pr create --title "Title" --body-file /tmp/pr_body.md --base "$BASE"
 ```
 
 ### ✅ ALWAYS do this
@@ -399,7 +361,7 @@ gh pr create --title "Title" --body-file /tmp/pr_body.md --base develop
 # CORRECT: Heredoc variable assignment + --body pattern
 TITLE="Title"
 BRANCH="feature/my-branch"
-BASE="develop"
+BASE="main" # Replace with the default development branch from AGENTS.md when specified.
 BODY=$(cat <<'EOF'
 Multi-line
 content with 'quotes' and "escapes"

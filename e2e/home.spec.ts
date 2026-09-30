@@ -1,5 +1,6 @@
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test } from '@playwright/test';
 import { readFileSync } from 'node:fs';
+import { waitForHydratedPage } from './auth-helpers';
 
 const BASE_URL = 'http://127.0.0.1:4173';
 
@@ -11,26 +12,15 @@ type LocaleCopy = {
   auth: {
     or: string;
     accountPrompt: string;
-    emailAddress: string;
-    emailPlaceholder: string;
+    loginEmailLabel: string;
+    loginEmailPlaceholder: string;
+    loginSubmit: string;
   };
 };
 
 function localeCopy(locale: string): LocaleCopy {
   return JSON.parse(
     readFileSync(new URL(`../src/locales/${locale}/translation.json`, import.meta.url), 'utf8')
-  );
-}
-
-/**
- * Waits until React has hydrated the server-rendered form: after the load event the JS still
- * needs a couple of frames to attach listeners. Interacting earlier races hydration and the
- * click is silently swallowed by the SSR button without a listener.
- */
-async function waitHydrated(page: Page): Promise<void> {
-  await page.waitForLoadState('load');
-  await page.evaluate(
-    () => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)))
   );
 }
 
@@ -88,7 +78,7 @@ test('the protected redirect happens server-side without a public flash', async 
 
   await page.goto('/dashboard');
   expect(new URL(page.url()).pathname).toBe('/login');
-  await expect(page.getByRole('button', { name: 'Sign in' })).toBeVisible();
+  await expect(page.getByRole('button', { name: localeCopy('en').auth.loginSubmit })).toBeVisible();
 });
 
 test('the login screen localizes the OR divider, provider mark and account prompt', async ({
@@ -105,10 +95,10 @@ test('the login screen localizes the OR divider, provider mark and account promp
     await expect(google).toBeVisible();
     await expect(google.locator('span[aria-hidden="true"]')).toHaveText('G');
     await expect(page.getByText(copy.auth.accountPrompt)).toBeVisible();
-    // EMAIL ADDRESS-style label with a localized placeholder example and a decorative icon.
-    const emailField = page.getByLabel(copy.auth.emailAddress);
-    await expect(emailField).toHaveAttribute('placeholder', copy.auth.emailPlaceholder);
-    await expect(emailField.locator('..').locator('svg[aria-hidden="true"]')).toHaveCount(1);
+    // Welcome email uses its own localized example; the design has no mail icon.
+    const emailField = page.getByLabel(copy.auth.loginEmailLabel);
+    await expect(emailField).toHaveAttribute('placeholder', copy.auth.loginEmailPlaceholder);
+    await expect(emailField.locator('..').locator('svg[aria-hidden="true"]')).toHaveCount(0);
     await expect(page.locator('html')).toHaveAttribute('lang', locale);
   }
 });
@@ -121,7 +111,7 @@ test('the login submit keeps the StyleX design typography in light and dark them
       await page.context().addCookies([{ name: 'theme', value: 'dark', url: BASE_URL }]);
     await page.goto('/login');
     await expect(page.locator('html')).toHaveAttribute('data-theme', theme);
-    // The submit control is StyleX-styled (ui.button): the design 13px/700 must win the
+    // The Welcome submit control uses the design's 14px/700 typography, which must win the
     // cascade over the reset layer's font:inherit.
     const submit = page.locator('form button[type="submit"]');
     await expect(submit).toBeVisible();
@@ -130,7 +120,7 @@ test('the login submit keeps the StyleX design typography in light and dark them
       return { fontSize: style.fontSize, fontWeight: style.fontWeight };
     });
     expect(typography, `submit control must keep the design typography (${theme} theme)`).toEqual({
-      fontSize: '13px',
+      fontSize: '14px',
       fontWeight: '700'
     });
   }
@@ -244,7 +234,7 @@ test.describe('Google sign-in OAuth failure handling', () => {
     });
 
     await page.goto('/login');
-    await waitHydrated(page);
+    await waitForHydratedPage(page);
     const google = page.getByRole('button', { name: copy.signInWithGoogle });
 
     // The intercepted request IS what supabase-js issues for signInWithOAuth: the Supabase
@@ -340,7 +330,7 @@ test.describe('Google sign-in OAuth failure handling', () => {
     });
 
     await page.goto('/login');
-    await waitHydrated(page);
+    await waitForHydratedPage(page);
     const google = page.getByRole('button', { name: copy.signInWithGoogle });
 
     await google.click();

@@ -15,8 +15,22 @@ permission:
   skill: allow
   bash:
     "*": deny
-    "pnpm*": allow
-    "npx*": allow
+    "git reset*": deny
+    "pnpm db:reset*": deny
+    "pnpm db:types*": deny
+    "pnpm exec*": deny
+    "pnpm build": allow
+    "pnpm knip": allow
+    "pnpm typecheck": allow
+    "pnpm lint": allow
+    "pnpm format:check": allow
+    "pnpm test": allow
+    "pnpm test:e2e": allow
+    "pnpm tokens:build": allow
+    "pnpm exec playwright*": allow
+    "pnpm exec vitest*": allow
+    "pnpm exec supabase status*": allow
+    "pnpm exec supabase start*": allow
     "git status*": allow
     "git diff*": allow
     "ls*": allow

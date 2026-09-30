@@ -1,7 +1,7 @@
 ---
 description: Expert code review agent that evaluates task implementations for correctness, quality, best practices, and improvement opportunities using stack-specific skills.
 mode: subagent
-model: openai/gpt-6-sol
+model: openai/gpt-6.1-sol
 reasoningEffort: high
 temperature: 0
 permission:
@@ -88,6 +88,8 @@ Before reviewing:
 - O(n²) on unbounded data, N+1 queries, blocking I/O on hot paths
 
 **Behavior Changes** - If a behavioral change is introduced, raise it (especially if it's possibly unintentional).
+
+**UI Fidelity** - Pen.dev file governs visual intent (colors, type, spacing, layout, look). Judge visual fidelity alongside production UX, a11y, responsive behavior, i18n, and token use. Literal markup or pixel equality is not the target: flex/percent sizing, Base UI, tokens, ≥44px targets, and translation-safe layouts may improve the design without being defects. Pencil/Chromium rasterization differs; allow documented, justified nonzero per-screen screenshot tolerances, with exact structural/layout probes. Never widen budgets to mask structural defects.
 
 ---
 

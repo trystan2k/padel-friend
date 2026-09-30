@@ -10,6 +10,18 @@ const stylesSource = readFileSync(
   new URL('../src/features/player/player-ui.styles.ts', import.meta.url),
   'utf8'
 );
+const profileSource = readFileSync(
+  new URL('../src/features/player/PlayerProfile.tsx', import.meta.url),
+  'utf8'
+);
+const onboardingSource = readFileSync(
+  new URL('../src/features/player/PlayerOnboarding.tsx', import.meta.url),
+  'utf8'
+);
+const accountStylesSource = readFileSync(
+  new URL('../src/features/auth/account-signup.styles.ts', import.meta.url),
+  'utf8'
+);
 const semanticTokens: unknown = JSON.parse(
   readFileSync(new URL('../design-tokens/semantic.tokens.json', import.meta.url), 'utf8')
 );
@@ -22,6 +34,21 @@ function styleBlock(name: string): string {
   const captured = block?.[1];
   expect(captured, `stylex style '${name}' must stay declared in player-ui.styles.ts`).toBeTruthy();
   return captured!;
+}
+
+function contrastRatio(first: string, second: string): number {
+  function luminance(hex: string): number {
+    const channels = hex.match(/[\da-f]{2}/gi);
+    if (!channels || channels.length < 3) throw new Error(`expected a six-digit hex color: ${hex}`);
+    const [red = 0, green = 0, blue = 0] = channels.slice(0, 3).map((channel) => {
+      const value = Number.parseInt(channel, 16) / 255;
+      return value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4;
+    });
+    return 0.2126 * red + 0.7152 * green + 0.0722 * blue;
+  }
+
+  const values = [luminance(first), luminance(second)].sort((a, b) => b - a);
+  return ((values[0] ?? 0) + 0.05) / ((values[1] ?? 0) + 0.05);
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -40,6 +67,36 @@ function tokenValue(file: unknown, path: string[]): unknown {
 }
 
 describe('player dashboard state-card and metric styling contract', () => {
+  it('keeps profile endpoint captions full-width while onboarding uses a local inset', () => {
+    expect(styleBlock('scaleCaption')).toContain("width: '100%'");
+    expect(styleBlock('onboardingScaleCaption')).toContain("width: 'calc(80% + var(--space-3))'");
+    expect(profileSource).toContain('stylex.props(ui.progressTrack)');
+    expect(profileSource).toContain('stylex.props(ui.scaleCaption)');
+    expect(profileSource).toContain('formatDisplayLevel(MIN_LEVEL, i18n.language)');
+    expect(profileSource).toContain('formatDisplayLevel(MAX_LEVEL, i18n.language)');
+    expect(onboardingSource).toContain('ui.scaleCaption, ui.onboardingScaleCaption');
+  });
+
+  it('gives the onboarding name hit surface and every level chip at least 44px', () => {
+    expect(styleBlock('nameField')).toContain(
+      "minHeight: 'calc(var(--space-40) + var(--space-4))'"
+    );
+    expect(styleBlock('scale')).toContain("flexWrap: 'wrap'");
+    expect(styleBlock('scaleChip')).toContain("minWidth: 'calc(var(--space-40) + var(--space-4))'");
+    expect(styleBlock('scaleChip')).toContain(
+      "minHeight: 'calc(var(--space-40) + var(--space-4))'"
+    );
+  });
+
+  it('maps fixed hero titles to a semantic token with light and dark contrast', () => {
+    expect(styleBlock('heroTitle')).toContain("color: 'var(--color-on-hero)'");
+    expect(accountStylesSource).toMatch(/heroTitle:\s*\{[^}]*color: 'var\(--color-on-hero\)'/);
+    expect(tokenValue(semanticTokens, ['color', 'on-hero', '$value'])).toBe('{palette.surface}');
+    const surface = String(tokenValue(primitiveTokens, ['palette', 'surface', '$value']));
+    const hero = String(tokenValue(primitiveTokens, ['palette', 'green-deep', '$value']));
+    expect(contrastRatio(surface, hero)).toBeGreaterThanOrEqual(4.5);
+  });
+
   it('colors the error-state icon with the semantic red token and the loading icon with green', () => {
     expect(styleBlock('stateErrorIcon')).toContain("color: 'var(--color-red)'");
     expect(styleBlock('stateIcon')).toContain("color: 'var(--color-green)'");

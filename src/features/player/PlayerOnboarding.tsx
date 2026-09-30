@@ -1,6 +1,10 @@
 import * as stylex from '@stylexjs/stylex';
 import { useRef, useState, type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Button } from '../../components/ui/Button';
+import { HeroCard } from '../../components/ui/HeroCard';
+import { StepBadge } from '../../components/ui/StepBadge';
+import { SurfaceCard } from '../../components/ui/SurfaceCard';
 import { stripDisplayNameEdgeWhitespace } from './display-name';
 import { onboardPlayer } from './player.functions';
 import {
@@ -89,56 +93,57 @@ export function PlayerOnboarding() {
   return (
     <main {...stylex.props(ui.page, ui.onboardingPage)}>
       <div {...stylex.props(ui.topContent)}>
-        <span {...stylex.props(ui.step)}>{t('onboarding.step')}</span>
+        <StepBadge>{t('onboarding.step')}</StepBadge>
         <header {...stylex.props(ui.header)}>
           <h1 {...stylex.props(ui.title)}>{t('onboarding.title')}</h1>
           <p {...stylex.props(ui.subtitle)}>{t('onboarding.subtitle')}</p>
         </header>
       </div>
-      <div {...stylex.props(ui.hero)}>
+      <HeroCard>
         <h2 {...stylex.props(ui.heroTitle)}>{t('onboarding.levelHelp')}</h2>
         <p {...stylex.props(ui.heroCopy)}>{t('onboarding.scaleDescription')}</p>
-      </div>
+      </HeroCard>
       <form
         onSubmit={(event) => void submit(event)}
         noValidate
         {...stylex.props(ui.stack, ui.onboardingForm)}
       >
-        <div {...stylex.props(ui.card, ui.nameCard)}>
-          <label htmlFor="player-name" {...stylex.props(ui.label)}>
+        <SurfaceCard xstyle={ui.nameCard}>
+          <label htmlFor="player-name" {...stylex.props(ui.label, ui.nameField)}>
             {t('onboarding.name')}
+            <input
+              id="player-name"
+              ref={nameRef}
+              value={name}
+              onChange={(event) => setName(event.target.value)}
+              required
+              maxLength={80}
+              aria-invalid={Boolean(errors.name)}
+              aria-describedby={errors.name ? 'player-name-error' : undefined}
+              {...stylex.props(ui.input, ui.onboardingNameInput)}
+            />
           </label>
-          <input
-            id="player-name"
-            ref={nameRef}
-            value={name}
-            onChange={(event) => setName(event.target.value)}
-            required
-            maxLength={80}
-            aria-invalid={Boolean(errors.name)}
-            aria-describedby={errors.name ? 'player-name-error' : undefined}
-            {...stylex.props(ui.input)}
-          />
           {errors.name && (
             <p id="player-name-error" role="alert" {...stylex.props(ui.error)}>
               {t(errors.name)}
             </p>
           )}
-        </div>
-        <div {...stylex.props(ui.card)}>
-          <div {...stylex.props(ui.row)}>
-            <label htmlFor="player-level" {...stylex.props(ui.label)}>
-              {t('onboarding.level')}
-            </label>
-            <output htmlFor="player-level" {...stylex.props(ui.level)}>
+        </SurfaceCard>
+        <SurfaceCard>
+          <div {...stylex.props(ui.onboardingLevelHeading)}>
+            <span {...stylex.props(ui.label)}>{t('onboarding.level')}</span>
+            <output htmlFor="player-level" {...stylex.props(ui.level, ui.onboardingLevelValue)}>
               {level && Number.isFinite(Number(level))
-                ? formatDisplayLevel(Number(level), i18n.language)
+                ? new Intl.NumberFormat(i18n.language, {
+                    minimumFractionDigits: 1,
+                    maximumFractionDigits: 1
+                  }).format(Number(level))
                 : t('onboarding.validationLevel')}
             </output>
           </div>
           <fieldset {...stylex.props(ui.fieldset, ui.bareFieldset)}>
             <legend {...stylex.props(ui.srOnly)}>{t('onboarding.levelScale')}</legend>
-            <div {...stylex.props(ui.scale)}>
+            <div {...stylex.props(ui.scale, ui.onboardingScale)}>
               {scaleTenths.map((tenth) => {
                 const value = (tenth * LEVEL_STEP).toFixed(1);
                 return (
@@ -160,10 +165,73 @@ export function PlayerOnboarding() {
               })}
             </div>
           </fieldset>
-          <div {...stylex.props(ui.scaleCaption)}>
+          <div {...stylex.props(ui.scaleCaption, ui.onboardingScaleCaption)}>
             <span>{t('onboarding.beginner')}</span>
             <span>{t('onboarding.advanced')}</span>
           </div>
+        </SurfaceCard>
+        <fieldset
+          aria-invalid={Boolean(errors.side)}
+          aria-describedby={errors.side ? 'player-side-error' : undefined}
+          {...stylex.props(ui.card, ui.fieldset)}
+        >
+          <legend {...stylex.props(ui.srOnly)}>{t('onboarding.side')}</legend>
+          <span aria-hidden="true" {...stylex.props(ui.label)}>
+            {t('onboarding.side')}
+          </span>
+          <div {...stylex.props(ui.choices, ui.onboardingChoices)}>
+            {(['LEFT', 'RIGHT', 'EITHER'] as const).map((value, index) => (
+              <label key={value} {...stylex.props(ui.choice, side === value && ui.selected)}>
+                <input
+                  ref={index === 0 ? sideRef : undefined}
+                  type="radio"
+                  name="side"
+                  value={value}
+                  checked={side === value}
+                  onChange={() => setSide(value)}
+                  aria-describedby={errors.side ? 'player-side-error' : undefined}
+                  {...stylex.props(ui.radio)}
+                />
+                {t(
+                  value === 'LEFT'
+                    ? 'onboarding.sideLeftShort'
+                    : value === 'RIGHT'
+                      ? 'onboarding.sideRightShort'
+                      : 'onboarding.sideEitherShort'
+                )}
+              </label>
+            ))}
+          </div>
+          {errors.side && (
+            <p id="player-side-error" role="alert" {...stylex.props(ui.error)}>
+              {t(errors.side)}
+            </p>
+          )}
+        </fieldset>
+        <SurfaceCard>
+          <StepBadge>
+            {t('onboarding.reliabilityLabel', { value: INITIAL_RELIABILITY_PERCENT })}
+          </StepBadge>
+          <p {...stylex.props(ui.muted)}>{t('onboarding.reliabilityHelp')}</p>
+        </SurfaceCard>
+        {failed && (
+          <p role="alert" {...stylex.props(ui.error)}>
+            {t('onboarding.failed')}
+          </p>
+        )}
+        <Button type="submit" busy={saving} xstyle={ui.onboardingSubmit}>
+          {saving ? (
+            t('onboarding.saving')
+          ) : (
+            <>
+              {t('onboarding.save')} <span aria-hidden="true">→</span>
+            </>
+          )}
+        </Button>
+        <SurfaceCard xstyle={ui.onboardingExtras}>
+          <label htmlFor="player-level" {...stylex.props(ui.label)}>
+            {t('onboarding.preciseLevel')}
+          </label>
           <input
             id="player-level"
             ref={levelRef}
@@ -184,43 +252,8 @@ export function PlayerOnboarding() {
               {t(errors.level)}
             </p>
           )}
-        </div>
-        <fieldset
-          aria-invalid={Boolean(errors.side)}
-          aria-describedby={errors.side ? 'player-side-error' : undefined}
-          {...stylex.props(ui.card, ui.fieldset)}
-        >
-          <legend {...stylex.props(ui.label)}>{t('onboarding.side')}</legend>
-          <div {...stylex.props(ui.choices)}>
-            {(['LEFT', 'RIGHT', 'EITHER'] as const).map((value, index) => (
-              <label key={value} {...stylex.props(ui.choice, side === value && ui.selected)}>
-                <input
-                  ref={index === 0 ? sideRef : undefined}
-                  type="radio"
-                  name="side"
-                  value={value}
-                  checked={side === value}
-                  onChange={() => setSide(value)}
-                  aria-describedby={errors.side ? 'player-side-error' : undefined}
-                  {...stylex.props(ui.radio)}
-                />
-                {t(
-                  value === 'LEFT'
-                    ? 'onboarding.sideLeft'
-                    : value === 'RIGHT'
-                      ? 'onboarding.sideRight'
-                      : 'onboarding.sideEither'
-                )}
-              </label>
-            ))}
-          </div>
-          {errors.side && (
-            <p id="player-side-error" role="alert" {...stylex.props(ui.error)}>
-              {t(errors.side)}
-            </p>
-          )}
-        </fieldset>
-        <div {...stylex.props(ui.card)}>
+        </SurfaceCard>
+        <SurfaceCard>
           <label htmlFor="onboard-hand" {...stylex.props(ui.label)}>
             {t('profile.dominantHand')}
           </label>
@@ -250,28 +283,7 @@ export function PlayerOnboarding() {
             onChange={(event) => setBio(event.target.value)}
             {...stylex.props(ui.input, ui.textarea)}
           />
-        </div>
-        <div {...stylex.props(ui.card)}>
-          <strong {...stylex.props(ui.step)}>
-            {t('profile.reliability')}:{' '}
-            {t('profile.percent', { value: INITIAL_RELIABILITY_PERCENT })}
-          </strong>
-          <p {...stylex.props(ui.muted)}>{t('onboarding.reliabilityHelp')}</p>
-        </div>
-        {failed && (
-          <p role="alert" {...stylex.props(ui.error)}>
-            {t('onboarding.failed')}
-          </p>
-        )}
-        <button type="submit" disabled={saving} {...stylex.props(ui.button)}>
-          {saving ? (
-            t('onboarding.saving')
-          ) : (
-            <>
-              {t('onboarding.save')} <span aria-hidden="true">→</span>
-            </>
-          )}
-        </button>
+        </SurfaceCard>
       </form>
     </main>
   );
