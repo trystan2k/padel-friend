@@ -7,7 +7,7 @@ export const styles = stylex.create({
     justifyContent: 'center',
     gap: 'var(--space-8)',
     width: '100%',
-    borderWidth: 'var(--border-width-sm)',
+    borderWidth: 0,
     borderStyle: 'solid',
     borderRadius: 'var(--radius-12)',
     paddingInline: 'var(--space-12)',
@@ -23,11 +23,11 @@ export const styles = stylex.create({
   },
   primary: {
     backgroundColor: 'var(--color-green)',
-    borderColor: 'var(--color-green)',
     color: 'var(--color-bg)'
   },
   secondary: {
     backgroundColor: 'var(--color-surface)',
+    borderWidth: 'var(--border-width-sm)',
     borderColor: 'var(--color-line)',
     color: 'var(--color-text)'
   },

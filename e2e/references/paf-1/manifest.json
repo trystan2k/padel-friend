@@ -6,45 +6,43 @@
   },
   "sourceDesign": {
     "path": "docs/design/padel-friend.pen",
-    "sha256": "0b8cb41e125b1abba57a041581a8aeeb4bcd2dcca8da0c2866aab819eab9f6ca",
-    "penCliVersion": "0.3.9",
-    "exportCommand": "pen interactive --in <TEMP_COPY_OF_DESIGN> --out <TEMP_COPY_OF_DESIGN>; execute({ input: 'Export([\"wzWLt\",\"EGb2g\",\"PdRtP\"],\"png\",\"<TEMP_DIR>\",{scale:1})' })",
-    "provenanceNote": "Original PNG exports predate this review. Their historical CLI version and command are unknown; re-exporting these frames with CLI 0.3.9 at 1x yields different PNG bytes. The pinned digests below identify the reviewed files, not a claim of byte-reproducible historical export."
+    "sha256": "7cf0039337478833c64b3f3e5d8271bb3bd35f395dfd534af02200f8e3358875",
+    "exportCommand": "Pencil MCP execute on a TEMP copy: Export(['wzWLt','EGb2g','PdRtP'],'png','<TEMP_DIR>',{scale:1})",
+    "provenanceNote": "Current design is format 2.20; pen CLI 0.3.9 cannot read it. Pencil MCP exported 390x844 images from a temporary copy without editing the source."
   },
   "approvedReferences": {
     "login-welcome.png": {
       "frameId": "wzWLt",
-      "sha256": "cb7b3cb391116ee2e8004b9edf605270bbdae2c28161cbf34056bf7a4cadd82d"
+      "sha256": "e7cd35d04c4c9c6694a8d61b37dbc2b8c2cf355f49274d1aae2ec5c6142376b5"
     },
     "account.png": {
       "frameId": "EGb2g",
-      "sha256": "16fadc80a9ed6fc10830c11e0c5fa80da83b5010f0ce6704dac82ed3646490ca"
+      "sha256": "a9179a9971a07b532f9a72f5f157b7b773208713531f54fd3f40c3c7de56a8cb"
     },
     "player-setup.png": {
       "frameId": "PdRtP",
-      "sha256": "75be9e050b5978356916bcf3eeca97e35fc123513e429ac87fce164e8f373b49"
+      "sha256": "9926b8e27a11ef67cad5c8f2b36c981b7512b545071823e69ec3159a46a70114"
     },
     "account-adapted.png": {
       "sourceFrameId": "EGb2g",
-      "frameId": "VUOSU",
-      "sha256": "ad5aef3b85526ff6dd67b7cef64fef6fedb6a0ec014dcdf4d946e67fe797f98b",
-      "penCliVersion": "0.3.9",
-      "exportCommand": "Copy(\"EGb2g\",document,{name:\"Onboarding — account · email password adaptation\",x:900,y:262}); edit copied frame VUOSU; Export([\"VUOSU\"],\"png\",\"<TEMP_DIR>\",{scale:1})",
+      "frameId": "EGb2g",
+      "sha256": "a9179a9971a07b532f9a72f5f157b7b773208713531f54fd3f40c3c7de56a8cb",
+      "exportCommand": "Copy current EGb2g export; design now includes email/password adaptation directly",
       "userApprovedPasswordAdaptation": true,
-      "approvalNote": "User-approved password-label/helper and CREATE ACCOUNT adaptation. Source design remained untouched."
+      "approvalNote": "Updated source design itself includes email/password signup, support copy and CREATE ACCOUNT; adapted baseline matches exported account frame."
     }
   },
   "screenshotBaselines": {
     "login-welcome.png": {
-      "sha256": "cb7b3cb391116ee2e8004b9edf605270bbdae2c28161cbf34056bf7a4cadd82d",
+      "sha256": "e7cd35d04c4c9c6694a8d61b37dbc2b8c2cf355f49274d1aae2ec5c6142376b5",
       "derivedFrom": "login-welcome.png"
     },
     "account-adapted.png": {
-      "sha256": "ad5aef3b85526ff6dd67b7cef64fef6fedb6a0ec014dcdf4d946e67fe797f98b",
+      "sha256": "a9179a9971a07b532f9a72f5f157b7b773208713531f54fd3f40c3c7de56a8cb",
       "derivedFrom": "account-adapted.png"
     },
     "player-setup.png": {
-      "sha256": "a605579f41607220d45304d5fd99f386cef450b7733925e1f6b7496c16a01f7f",
+      "sha256": "3e03134c69f760d8b6146520c5c61f4cccefe0c9837624393b045eaaef03ec00",
       "derivedFrom": "player-setup.png",
       "derivation": "Decode approved source reference; paint only the two PAF-21 rectangles opaque #FF00FF; encode PNG with the pinned Playwright PNG implementation."
     }
@@ -52,8 +50,8 @@
   "playerSampleDataMask": {
     "maskColor": "#FF00FF",
     "rectangles": [
-      { "name": "name", "x": 18, "y": 246, "width": 110, "height": 30 },
-      { "name": "right", "x": 139, "y": 477, "width": 112, "height": 52 }
+      { "name": "name", "x": 32, "y": 258, "width": 110, "height": 22 },
+      { "name": "right", "x": 139, "y": 493, "width": 112, "height": 44 }
     ]
   }
 }

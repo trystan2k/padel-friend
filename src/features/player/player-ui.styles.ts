@@ -72,33 +72,72 @@ export const ui = stylex.create({
     flexDirection: 'column',
     gap: 'var(--space-9)'
   },
-  nameCard: {
-    borderRadius: 'var(--radius-12)',
-    padding: 'var(--space-4) var(--space-12)',
-    gap: 'var(--space-5)'
-  },
-  nameField: {
-    display: 'flex',
-    flexDirection: 'column',
-    justifyContent: 'center',
-    gap: 'var(--space-5)',
-    minHeight: 'calc(var(--space-40) + var(--space-4))'
-  },
-  onboardingNameInput: {
-    minHeight: 'var(--space-16)',
-    padding: 0,
-    backgroundColor: 'transparent',
-    fontWeight: 'var(--font-weight-semibold)'
-  },
+  onboardingCard: { gap: 'var(--space-9)' },
   onboardingLevelHeading: {
     display: 'flex',
     alignItems: 'flex-start',
     gap: 'var(--space-9)'
   },
   onboardingLevelValue: { fontSize: 'var(--font-size-29)' },
-  onboardingSubmit: { justifyContent: 'flex-start' },
-  onboardingExtras: { marginTop: 'var(--space-20)' },
-  onboardingScale: { paddingBlock: 0 },
+  onboardingExtras: { marginTop: 'calc(var(--space-40) * 3)' },
+  sliderGroup: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 'var(--space-3)',
+    minHeight: 'calc(var(--space-40) + var(--space-4))'
+  },
+  sliderTrack: {
+    position: 'relative',
+    width: '100%',
+    height: 'var(--space-20)',
+    display: 'flex',
+    alignItems: 'center',
+    borderRadius: 'var(--radius-7)',
+    backgroundColor: 'var(--color-surface-2)'
+  },
+  sliderFill: {
+    height: 'var(--space-14)',
+    borderRadius: 'var(--radius-7)',
+    backgroundColor: 'var(--color-green)'
+  },
+  sliderInput: {
+    position: 'absolute',
+    top: 'calc(-1 * var(--space-12))',
+    left: 0,
+    width: '100%',
+    height: 'calc(var(--space-40) + var(--space-4))',
+    margin: 0,
+    appearance: 'none',
+    backgroundColor: 'transparent',
+    cursor: 'pointer',
+    '::-webkit-slider-thumb': {
+      appearance: 'none',
+      width: 'var(--space-20)',
+      height: 'var(--space-20)',
+      borderRadius: 'var(--radius-20)',
+      borderWidth: 'var(--border-width-lg)',
+      borderStyle: 'solid',
+      borderColor: 'var(--color-surface)',
+      backgroundColor: 'var(--color-green)'
+    },
+    ':focus-visible': {
+      outline: 'var(--border-width-lg) solid var(--color-green)',
+      outlineOffset: 'var(--space-2)'
+    }
+  },
+  sliderLabels: {
+    position: 'relative',
+    display: 'flex',
+    justifyContent: 'space-between',
+    color: 'var(--color-muted)',
+    fontSize: 'var(--font-size-12)'
+  },
+  sliderCurrent: {
+    position: 'absolute',
+    transform: 'translateX(-50%)',
+    color: 'var(--color-green)',
+    fontWeight: 'var(--font-weight-bold)'
+  },
   onboardingChoices: { marginTop: 0 },
   profileCard: { padding: 'var(--space-14)', borderRadius: 'var(--radius-16)' },
   onboardingForm: { gap: 'var(--space-12)', marginTop: 'var(--space-2)' },
@@ -185,29 +224,6 @@ export const ui = stylex.create({
   },
   selected: { backgroundColor: 'var(--color-green-soft)', color: 'var(--color-green)' },
   radio: { position: 'absolute', opacity: 0, width: 'var(--space-1)', height: 'var(--space-1)' },
-  scale: {
-    display: 'flex',
-    flexWrap: 'wrap',
-    gap: 'var(--space-4)',
-    minWidth: 0,
-    paddingBlock: 'var(--space-6)'
-  },
-  scaleChip: {
-    fontFamily: 'var(--font-family-body)',
-    minWidth: 'calc(var(--space-40) + var(--space-4))',
-    minHeight: 'calc(var(--space-40) + var(--space-4))',
-    flex: '1 0 calc(var(--space-40) + var(--space-4))',
-    borderWidth: 0,
-    borderStyle: 'none',
-    borderRadius: 'var(--radius-9)',
-    backgroundColor: 'var(--color-surface-2)',
-    color: 'var(--color-muted)',
-    cursor: 'pointer',
-    fontSize: 'var(--font-size-12)',
-    fontWeight: 'var(--font-weight-semibold)',
-    ':focus-visible': { outline: 'var(--border-width-lg) solid var(--color-green)' }
-  },
-  scaleSelected: { backgroundColor: 'var(--color-green)', color: 'var(--color-bg)' },
   scaleCaption: {
     display: 'flex',
     width: '100%',

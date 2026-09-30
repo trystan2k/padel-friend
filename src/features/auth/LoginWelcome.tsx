@@ -80,40 +80,35 @@ export function LoginWelcome({ next: returnPath, authError }: LoginWelcomeProps)
           size="large"
           busy={busy}
           onClick={() => void signInWithGoogle()}
-          xstyle={styles.googleButton}
         >
           <span aria-hidden="true" {...stylex.props(styles.googleMark)}>
             G
           </span>
           {t('signInWithGoogle')}
         </Button>
-        <OrDivider label={<span {...stylex.props(styles.dividerLabel)}>{t('auth.or')}</span>} />
+        <OrDivider label={t('auth.or')} />
         <form onSubmit={(event) => void submit(event)} {...stylex.props(styles.form)}>
           <TextField
             id="login-email"
             name="email"
             type="email"
-            label={<span {...stylex.props(styles.fieldLabel)}>{t('auth.loginEmailLabel')}</span>}
+            label={t('auth.loginEmailLabel')}
             placeholder={t('auth.loginEmailPlaceholder')}
             autoComplete="email"
             required
             disabled={!ready || busy}
-            size="large"
-            xstyle={styles.input}
           />
           <PasswordField
             id="login-password"
             name="password"
-            label={<span {...stylex.props(styles.fieldLabel)}>{t('auth.loginPasswordLabel')}</span>}
+            label={t('auth.loginPasswordLabel')}
             placeholder={t('auth.loginPasswordPlaceholder')}
             required
             minLength={6}
             autoComplete="current-password"
             disabled={!ready || busy}
-            size="large"
-            xstyle={styles.input}
           />
-          <Button type="submit" size="large" disabled={!ready} busy={busy} xstyle={styles.submit}>
+          <Button type="submit" size="large" disabled={!ready} busy={busy}>
             {t('auth.loginSubmit')}
           </Button>
         </form>
@@ -124,12 +119,13 @@ export function LoginWelcome({ next: returnPath, authError }: LoginWelcomeProps)
         )}
       </div>
 
-      <div {...stylex.props(styles.prompt)}>
+      <div>
         <AccountPrompt
-          text={<span {...stylex.props(styles.promptText)}>{t('auth.accountPrompt')}</span>}
-          action={<span {...stylex.props(styles.promptText)}>{t('auth.signupLink')}</span>}
+          text={t('auth.accountPrompt')}
+          action={t('auth.signupLink')}
           to="/onboarding/account"
           search={{ next }}
+          xstyle={styles.promptText}
         />
       </div>
     </main>

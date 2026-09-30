@@ -3,7 +3,7 @@ import * as stylex from '@stylexjs/stylex';
 export const styles = stylex.create({
   root: { display: 'flex', flexDirection: 'column', gap: 'var(--space-6)' },
   label: {
-    color: 'var(--color-muted)',
+    color: 'var(--color-text)',
     fontFamily: 'var(--font-family-body)',
     fontSize: 'var(--font-size-12)',
     fontWeight: 'var(--font-weight-semibold)'
@@ -15,11 +15,12 @@ export const styles = stylex.create({
     borderWidth: 'var(--border-width-sm)',
     borderStyle: 'solid',
     borderColor: 'var(--color-line)',
-    borderRadius: 'var(--radius-10)',
+    borderRadius: 'var(--radius-8)',
     paddingInline: 'var(--space-12)',
     color: 'var(--color-text)',
     fontFamily: 'var(--font-family-body)',
-    fontSize: 'var(--font-size-13)',
+    fontSize: 'var(--font-size-14)',
+    minHeight: 'calc(var(--space-40) + var(--space-4))',
     '::placeholder': { color: 'var(--color-muted)', opacity: 1 },
     ':focus-visible': {
       outline: 'var(--border-width-lg) solid var(--color-green)',
@@ -28,9 +29,6 @@ export const styles = stylex.create({
     ':disabled': { opacity: 0.6, cursor: 'not-allowed' },
     '[aria-invalid="true"]': { borderColor: 'var(--color-red)' }
   },
-  filled: { backgroundColor: 'var(--color-bg)', borderWidth: 0 },
-  standard: { minHeight: 'calc(var(--space-40) + var(--space-4))' },
-  large: { minHeight: 'calc(var(--space-40) + var(--space-8))' },
   helper: { margin: 0, fontSize: 'var(--font-size-12)', color: 'var(--color-muted)' },
   error: { fontSize: 'var(--font-size-12)', color: 'var(--color-red)' }
 });

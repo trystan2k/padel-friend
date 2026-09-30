@@ -205,7 +205,7 @@ test('a new signup is blocked by onboarding, rejects invalid input, then lands o
   await expect(page.getByText(en.onboarding.reliabilityHelp)).toBeVisible();
 
   // Level control fidelity (design vARtQ): numeric input bounded to 0–7 with exact 0.1 steps
-  // alongside a six-chip flex scale with BEGINNER/ADVANCED captions (no ± steppers).
+  // alongside a native 0.1-step slider with BEGINNER/ADVANCED captions.
   await page.getByLabel(en.onboarding.preciseLevel).fill('3.0');
   const levelInput = page.getByLabel(en.onboarding.preciseLevel);
   await expect(levelInput).toHaveAttribute('min', '0');
@@ -214,111 +214,31 @@ test('a new signup is blocked by onboarding, rejects invalid input, then lands o
   await expect(page.getByText(en.onboarding.beginner, { exact: true })).toBeVisible();
   await expect(page.getByText(en.onboarding.advanced, { exact: true })).toBeVisible();
 
-  // Six chips (0.0 / 2.0 / 3.0 / 4.0 / 5.0 / 7.0) fill the card row: at a 390px phone viewport
-  // the chip row must not overflow, and the pressed chip mirrors the numeric input's level.
+  // The native slider offers every tenth while the numeric field preserves exact entry.
   await page.setViewportSize({ width: 390, height: 844 });
-  const scale = page.getByRole('group', { name: en.onboarding.levelScale });
-  await expect(scale.getByRole('button')).toHaveCount(6);
-  const nameHitbox = await page.getByLabel(en.onboarding.name).locator('..').boundingBox();
+  const scale = page.getByRole('slider', { name: en.onboarding.levelScale });
+  await expect(scale).toHaveAttribute('min', '0');
+  await expect(scale).toHaveAttribute('max', '7');
+  await expect(scale).toHaveAttribute('step', '0.1');
+  await expect(scale).toHaveValue('3');
+  const nameHitbox = await page.getByLabel(en.onboarding.name).boundingBox();
   expect(nameHitbox?.height).toBeGreaterThanOrEqual(44);
-  const nameCardStyles = await page
-    .locator('form > div')
-    .first()
-    .evaluate((card) => {
-      const style = getComputedStyle(card);
-      return { padding: style.padding, gap: style.gap, borderRadius: style.borderRadius };
-    });
-  expect(nameCardStyles).toEqual({ padding: '4px 12px', gap: '5px', borderRadius: '12px' });
-
-  // Level chips wrap at 320px rather than shrinking below the app's 44px touch-target policy.
   await page.setViewportSize({ width: 320, height: 844 });
-  const narrowChipBoxes = await scale.getByRole('button').evaluateAll((buttons) =>
-    buttons.map((button) => {
-      const { width, height } = button.getBoundingClientRect();
-      return { width, height };
-    })
+  const sliderBox = await scale.boundingBox();
+  expect(sliderBox?.height).toBeGreaterThanOrEqual(44);
+  const sliderTrack = scale.locator('..');
+  expect(await sliderTrack.evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(
+    true
   );
-  expect(
-    narrowChipBoxes.every(({ width, height }) => width >= 44 && height >= 44),
-    JSON.stringify(narrowChipBoxes)
-  ).toBe(true);
-  const narrowScale = await scale
-    .locator('div')
-    .first()
-    .evaluate((element) => ({
-      scrollWidth: element.scrollWidth,
-      clientWidth: element.clientWidth
-    }));
-  expect(narrowScale.scrollWidth).toBeLessThanOrEqual(narrowScale.clientWidth);
 
-  // Chip order is parsed from the locale-formatted accessible names ("Select level 1.00"):
-  // the level slice is isolated via the template's static prefix/suffix and read back as a
-  // number using the page's own decimal separator.
-  const templateParts: [string, string] = [
-    en.onboarding.levelChoice.slice(0, en.onboarding.levelChoice.indexOf('{{level}}')),
-    en.onboarding.levelChoice.slice(
-      en.onboarding.levelChoice.indexOf('{{level}}') + '{{level}}'.length
-    )
-  ];
-  const chipLevels = () =>
-    scale.getByRole('button').evaluateAll((buttons, [prefix, suffix]) => {
-      const decimal =
-        new Intl.NumberFormat(document.documentElement.lang || navigator.language)
-          .formatToParts(1.1)
-          .find((part) => part.type === 'decimal')?.value ?? '.';
-      return buttons.map((button) => {
-        const label = button.getAttribute('aria-label') ?? '';
-        if (!label.startsWith(prefix) || !label.endsWith(suffix)) return Number.NaN;
-        const formatted = label.slice(prefix.length, label.length - suffix.length);
-        return Number(formatted.replace(decimal, '.'));
-      });
-    }, templateParts);
-  // The pristine default scale reads strictly ascending: 0.0, 2.0, 3.0, 4.0, 5.0, 7.0.
-  expect(await chipLevels()).toEqual([0, 2, 3, 4, 5, 7]);
-
-  const overflow = await scale
-    .locator('div')
-    .first()
-    .evaluate((element) => ({
-      scrollWidth: element.scrollWidth,
-      clientWidth: element.clientWidth
-    }));
-  expect(overflow.scrollWidth).toBeLessThanOrEqual(overflow.clientWidth);
-  const chip = (level: string) =>
-    page.getByRole('button', { name: en.onboarding.levelChoice.replace('{{level}}', level) });
-  await expect(chip('3.00')).toHaveAttribute('aria-pressed', 'true');
-  await expect(chip('0.00')).toHaveAttribute('aria-pressed', 'false');
-  await expect(chip('7.00')).toHaveAttribute('aria-pressed', 'false');
-  // Chip clicks drive the shared level state across the full 0.0–7.0 range (floor and ceiling).
-  await chip('0.00').click();
+  await scale.focus();
+  await page.keyboard.press('Home');
   await expect(page.locator('output')).toHaveText('0.0');
-  await expect(chip('0.00')).toHaveAttribute('aria-pressed', 'true');
-  await expect(chip('3.00')).toHaveAttribute('aria-pressed', 'false');
-  await chip('7.00').click();
+  await page.keyboard.press('End');
   await expect(page.locator('output')).toHaveText('7.0');
-  await expect(chip('7.00')).toHaveAttribute('aria-pressed', 'true');
-
-  // Regression (non-monotonic chip row): typing a level OUTSIDE the default scale (1.0)
-  // substitutes a default chip and must keep the row strictly ascending — the old bug
-  // replaced scale index 2 BEFORE sorting and rendered 0.0, 2.0, 1.0, 4.0, 5.0, 7.0. The
-  // typed level must become the selected chip and the substituted one must vanish.
   await levelInput.fill('1.0');
+  await expect(scale).toHaveValue('1');
   await expect(page.locator('output')).toHaveText('1.0');
-  const typedScale = await chipLevels();
-  let previous = Number.NEGATIVE_INFINITY;
-  expect(
-    typedScale.every((value) => {
-      const ordered = value > previous;
-      previous = value;
-      return ordered;
-    }),
-    'chip labels must stay strictly ascending after typing an off-scale level'
-  ).toBe(true);
-  expect(typedScale).toEqual([0, 1, 2, 4, 5, 7]);
-  const typedChip = chip('1.00');
-  await expect(typedChip).toBeVisible();
-  await expect(typedChip).toHaveAttribute('aria-pressed', 'true');
-  await expect(chip('3.00')).toHaveCount(0);
 
   // The numeric input remains the exact 0.1-step control.
   await levelInput.fill('6.4');
@@ -608,44 +528,31 @@ test('the profile edit form preserves NBSP edges and trims only ASCII edges on s
   expect(await page.getByRole('heading', { level: 2 }).textContent()).toBe('Mila Twice');
 });
 
-test('the onboarding level chips keep the design typography in light and dark themes', async ({
-  page
-}) => {
+test('the onboarding slider stays operable in light and dark themes', async ({ page }) => {
   for (const theme of ['light', 'dark'] as const) {
     if (theme === 'dark')
       await page.context().addCookies([{ name: 'theme', value: 'dark', url: BASE_URL }]);
-    const email = uniqueEmail();
-    await register(page, email);
-    await expect(page.getByRole('heading', { name: en.onboarding.title })).toBeVisible();
-    // The chips are StyleX-styled (ui.scaleChip): the design 12px/600 must win the cascade
-    // over the reset layer's font:inherit.
-    const chip = page.getByRole('button', {
-      name: en.onboarding.levelChoice.replace('{{level}}', '3.00')
-    });
-    await expect(chip).toBeVisible();
-    const typography = await chip.evaluate((element) => {
-      const style = getComputedStyle(element);
-      return { fontSize: style.fontSize, fontWeight: style.fontWeight };
-    });
-    expect(typography, `level chip must keep the design typography (${theme} theme)`).toEqual({
-      fontSize: '12px',
-      fontWeight: '600'
-    });
-    // Drop the session (and every other cookie) so the next iteration starts from a clean
-    // unauthenticated browser state instead of being bounced off /login by the onboarding
-    // gate.
+    await register(page, uniqueEmail());
+    const slider = page.getByRole('slider', { name: en.onboarding.levelScale });
+    await expect(slider).toHaveValue('3');
+    await slider.focus();
+    await page.keyboard.press('ArrowRight');
+    await expect(slider).toHaveValue('3.1');
+    await expect(page.locator('output')).toHaveText('3.1');
     await page.context().clearCookies();
   }
 });
 
-test('signing out returns home and protected routes redirect back to login', async ({ page }) => {
+test('signing out redirects through root to login and protected routes stay gated', async ({
+  page
+}) => {
   const email = uniqueEmail();
   await register(page, email);
   await completeOnboarding(page, 'Rio Logout', '3.0');
 
   await waitForHydratedPage(page);
   await page.getByRole('button', { name: en.signOut }).click();
-  await expect(page.getByRole('heading', { name: en.title })).toBeVisible();
+  await expect(page.getByRole('heading', { name: en.auth.welcomeTitle })).toBeVisible();
 
   await page.goto('/dashboard');
   expect(new URL(page.url()).pathname).toBe('/login');
@@ -737,10 +644,8 @@ test('the Welcome screen shows brand and Google-first sign-in and routes newcome
   await expect(page.getByText(en.auth.returnPrompt)).toBeVisible();
 });
 
-test('onboarding validation uses the locale selected on a normal app screen', async ({ page }) => {
-  await page.goto('/');
-  await page.getByLabel(en.language).selectOption('es');
-  await page.waitForFunction(() => document.cookie.includes('locale=es'));
+test('onboarding validation uses the locale saved before entering auth', async ({ page }) => {
+  await page.context().addCookies([{ name: 'locale', value: 'es', url: BASE_URL }]);
   const email = uniqueEmail();
   await register(page, email, es);
 
@@ -748,7 +653,7 @@ test('onboarding validation uses the locale selected on a normal app screen', as
   await expect(page.getByText(es.onboarding.validationName)).toBeVisible();
   await expect(page.getByText(es.onboarding.validationSide)).toBeVisible();
   await expect(page.getByText(en.onboarding.validationName)).toHaveCount(0);
-  await expect(page.getByLabel(en.language)).toHaveCount(0);
+  await expect(page.locator('html')).toHaveAttribute('lang', 'es');
 });
 
 test.describe('sign-out failure handling', () => {
@@ -756,7 +661,7 @@ test.describe('sign-out failure handling', () => {
   // request deterministically (the flow itself does not depend on the service worker).
   test.use({ serviceWorkers: 'block' });
 
-  test('a failing sign-out shows a translated error and stays put; success navigates home', async ({
+  test('a failing sign-out shows a translated error and stays put; success reaches login', async ({
     page
   }) => {
     const email = uniqueEmail();
@@ -782,8 +687,8 @@ test.describe('sign-out failure handling', () => {
     // With the outage gone, the same control signs out and navigates home.
     await page.unroute('**/auth/v1/logout**');
     await page.getByRole('button', { name: en.signOut }).click();
-    await expect(page.getByRole('heading', { name: en.title })).toBeVisible();
-    expect(new URL(page.url()).pathname).toBe('/');
+    await expect(page.getByRole('heading', { name: en.auth.welcomeTitle })).toBeVisible();
+    expect(new URL(page.url()).pathname).toBe('/login');
   });
 });
 

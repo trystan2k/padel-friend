@@ -41,6 +41,7 @@ function onboardedAs(status: typeof ANON): void {
 // Use the generated route tree: it owns the file-route path/parent types and patches.
 const routerForGuards = createRouter({ routeTree, history: createMemoryHistory() });
 const LoginRoute = routerForGuards.routesById['/login'];
+const HomeRoute = routerForGuards.routesById['/'];
 const AccountRoute = routerForGuards.routesById['/onboarding_/account'];
 const OnboardingRoute = routerForGuards.routesById['/onboarding'];
 const ProtectedRoute = routerForGuards.routesById['/_protected'];
@@ -79,6 +80,7 @@ async function redirectOf(guard: Promise<unknown>): Promise<ReturnType<typeof th
 }
 
 const loginGuard = guardOf(LoginRoute.options, '/login');
+const homeGuard = guardOf(HomeRoute.options, '/');
 const accountGuard = guardOf(AccountRoute.options, '/onboarding/account');
 const onboardingGuard = guardOf(OnboardingRoute.options, '/onboarding');
 const protectedGuard = guardOf(ProtectedRoute.options, '/_protected');
@@ -110,6 +112,28 @@ beforeEach(() => {
   playerFunctions.getMyPlayerProfile
     .mockReset()
     .mockResolvedValue({ display_name: 'Route Player' });
+});
+
+describe('/ root guard (beforeLoad)', () => {
+  it('redirects anonymous visitors to login without rendering public content', async () => {
+    onboardedAs(ANON);
+    const redirect = await redirectOf(homeGuard({}));
+    expect(redirect.options.to).toBe('/login');
+    expect(redirect.headers.get('cache-control')).toBe('private, no-store');
+    expect(await landedOn('/')).toEqual({ pathname: '/login', search: {} });
+  });
+
+  it('sends both incomplete and complete players through the protected dashboard guard', async () => {
+    for (const [status, destination] of [
+      [INCOMPLETE, '/onboarding'],
+      [COMPLETE, '/dashboard']
+    ] as const) {
+      onboardedAs(status);
+      const redirect = await redirectOf(homeGuard({}));
+      expect(redirect.options.to).toBe('/dashboard');
+      expect(await landedOn('/')).toEqual({ pathname: destination, search: {} });
+    }
+  });
 });
 
 describe('/login guard (beforeLoad)', () => {

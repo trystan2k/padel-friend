@@ -1,4 +1,3 @@
-import { Field } from '@base-ui/react/field';
 import * as stylex from '@stylexjs/stylex';
 import { useEffect, useState, type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -8,6 +7,7 @@ import { HeroCard } from '../../components/ui/HeroCard';
 import { PasswordField } from '../../components/ui/PasswordField';
 import { StepBadge } from '../../components/ui/StepBadge';
 import { SurfaceCard } from '../../components/ui/SurfaceCard';
+import { TextField } from '../../components/ui/TextField';
 import { getBrowserClient } from '../../lib/supabase/client';
 import { styles } from './account-signup.styles';
 import { navigateAfterAuth } from './navigate';
@@ -77,36 +77,16 @@ export function AccountSignup({ next: returnPath }: { next?: string }) {
       ) : (
         <form onSubmit={(event) => void submit(event)} {...stylex.props(styles.form)}>
           <SurfaceCard xstyle={styles.card}>
-            <Field.Root {...stylex.props(styles.emailField)}>
-              <Field.Label htmlFor="signup-email" {...stylex.props(styles.label)}>
-                {t('auth.emailAddress')}
-              </Field.Label>
-              <label htmlFor="signup-email" {...stylex.props(styles.emailControl)}>
-                <svg
-                  aria-hidden="true"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  {...stylex.props(styles.mailIcon)}
-                >
-                  <rect x="2" y="4" width="20" height="16" rx="2" />
-                  <path d="m22 7-10 6L2 7" />
-                </svg>
-                <Field.Control
-                  id="signup-email"
-                  name="email"
-                  type="email"
-                  required
-                  autoComplete="email"
-                  disabled={!ready || busy}
-                  placeholder={t('auth.emailPlaceholder')}
-                  {...stylex.props(styles.emailInput)}
-                />
-              </label>
-            </Field.Root>
+            <TextField
+              id="signup-email"
+              name="email"
+              type="email"
+              required
+              autoComplete="email"
+              disabled={!ready || busy}
+              label={t('auth.emailAddress')}
+              placeholder={t('auth.emailPlaceholder')}
+            />
             <PasswordField
               id="signup-password"
               name="password"
@@ -114,12 +94,9 @@ export function AccountSignup({ next: returnPath }: { next?: string }) {
               minLength={6}
               required
               disabled={!ready || busy}
-              label={<span {...stylex.props(styles.label)}>{t('auth.signupPasswordLabel')}</span>}
+              label={t('auth.signupPasswordLabel')}
               helper={t('auth.signupEmailHelp')}
-              placeholder={t('auth.loginPasswordPlaceholder')}
-              appearance="filled"
-              xstyle={styles.passwordControl}
-              controlFrameXstyle={styles.passwordFrame}
+              placeholder={t('auth.signupPasswordPlaceholder')}
             />
           </SurfaceCard>
           <Button type="submit" disabled={!ready} busy={busy} xstyle={styles.submit}>

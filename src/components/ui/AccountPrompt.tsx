@@ -1,6 +1,8 @@
 import * as stylex from '@stylexjs/stylex';
-import { Link, type LinkProps } from '@tanstack/react-router';
+import type { LinkProps } from '@tanstack/react-router';
+import type { StyleXStyles } from '@stylexjs/stylex';
 import type { ReactNode } from 'react';
+import { TextLink } from './TextLink';
 import { styles } from './account-prompt.styles';
 
 type AccountPromptProps = {
@@ -8,15 +10,16 @@ type AccountPromptProps = {
   action: ReactNode;
   to: LinkProps['to'];
   search?: LinkProps['search'];
+  xstyle?: StyleXStyles;
 };
 
-export function AccountPrompt({ text, action, to, search }: AccountPromptProps) {
+export function AccountPrompt({ text, action, to, search, xstyle }: AccountPromptProps) {
   return (
-    <p {...stylex.props(styles.prompt)}>
+    <p {...stylex.props(styles.prompt, xstyle)}>
       {text}{' '}
-      <Link to={to} search={search} {...stylex.props(styles.link)}>
+      <TextLink to={to} search={search}>
         {action}
-      </Link>
+      </TextLink>
     </p>
   );
 }

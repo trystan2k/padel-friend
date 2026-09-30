@@ -14,6 +14,7 @@ type LocaleCopy = {
     signupLink: string;
     signupPasswordLabel: string;
     emailAddress: string;
+    welcomeTitle: string;
   };
   onboarding: {
     name: string;
@@ -75,7 +76,7 @@ async function createOnboardedUser(page: Page, email: string, name: string): Pro
   await expect(page).toHaveURL(/\/dashboard$/);
   await waitForHydratedPage(page);
   await page.getByRole('button', { name: en.signOut }).click();
-  await expect(page.getByRole('heading', { name: en.title })).toBeVisible();
+  await expect(page.getByRole('heading', { name: en.auth.welcomeTitle })).toBeVisible();
 }
 
 test('a protected deep link survives sign-in and a newcomer is gated before reaching it', async ({

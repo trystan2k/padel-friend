@@ -4,9 +4,9 @@ export const styles = stylex.create({
   card: {
     display: 'flex',
     flexDirection: 'column',
-    gap: 'var(--space-9)',
-    padding: 'var(--space-13)',
-    borderRadius: 'var(--radius-15)',
+    gap: 'var(--space-12)',
+    padding: 'var(--space-14)',
+    borderRadius: 'var(--radius-16)',
     backgroundColor: 'var(--color-surface)',
     color: 'var(--color-text)'
   },

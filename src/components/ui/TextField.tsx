@@ -8,10 +8,7 @@ export type TextFieldProps = Omit<ComponentProps<typeof Field.Control>, 'childre
   label: ReactNode;
   helper?: ReactNode;
   error?: ReactNode;
-  size?: 'standard' | 'large';
-  appearance?: 'outlined' | 'filled';
   xstyle?: StyleXStyles;
-  controlFrameXstyle?: StyleXStyles;
 };
 
 export function TextField({
@@ -19,14 +16,11 @@ export function TextField({
   helper,
   error,
   id,
-  size = 'standard',
-  appearance = 'outlined',
   className,
   style,
   'aria-describedby': describedBy,
   'aria-invalid': callerInvalid,
   xstyle,
-  controlFrameXstyle,
   ...controlProps
 }: TextFieldProps) {
   const generatedId = useId();
@@ -41,7 +35,7 @@ export function TextField({
     className: stylexClassName,
     style: stylexStyle,
     ...stylexProps
-  } = stylex.props(styles.control, appearance === 'filled' && styles.filled, styles[size], xstyle);
+  } = stylex.props(styles.control, xstyle);
   const mergedClassName =
     typeof className === 'function'
       ? (state: Parameters<typeof className>[0]) =>
@@ -69,7 +63,7 @@ export function TextField({
       <Field.Label htmlFor={controlId} {...stylex.props(styles.label)}>
         {label}
       </Field.Label>
-      {controlFrameXstyle ? <div {...stylex.props(controlFrameXstyle)}>{control}</div> : control}
+      {control}
       {helper && (
         <Field.Description id={helperId} {...stylex.props(styles.helper)}>
           {helper}

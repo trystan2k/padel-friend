@@ -42,22 +42,13 @@ export const styles = stylex.create({
     gap: 'var(--space-14)',
     marginBottom: 'var(--space-4)'
   },
-  googleButton: {
-    fontWeight: 'var(--font-weight-regular)',
-    gap: 'var(--space-10)'
-  },
   googleMark: {
-    color: 'var(--color-green)',
+    color: 'var(--color-text)',
     fontFamily: 'var(--font-family-heading)',
     fontSize: 'var(--font-size-16)',
     fontWeight: 'var(--font-weight-bold)'
   },
-  dividerLabel: { fontSize: 'var(--font-size-11)', fontWeight: 'var(--font-weight-regular)' },
   form: { display: 'flex', flexDirection: 'column', gap: 'var(--space-14)' },
-  fieldLabel: { color: 'var(--color-text)', fontWeight: 'var(--font-weight-regular)' },
-  input: { fontSize: 'var(--font-size-14)' },
-  submit: { fontSize: 'var(--font-size-14)' },
-  prompt: { fontSize: 'var(--font-size-13)' },
   promptText: { fontSize: 'var(--font-size-13)' },
   error: { margin: 0, color: 'var(--color-red)', fontSize: 'var(--font-size-12)' }
 });

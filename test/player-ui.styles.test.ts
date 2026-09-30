@@ -77,15 +77,11 @@ describe('player dashboard state-card and metric styling contract', () => {
     expect(onboardingSource).toContain('ui.scaleCaption, ui.onboardingScaleCaption');
   });
 
-  it('gives the onboarding name hit surface and every level chip at least 44px', () => {
-    expect(styleBlock('nameField')).toContain(
-      "minHeight: 'calc(var(--space-40) + var(--space-4))'"
-    );
-    expect(styleBlock('scale')).toContain("flexWrap: 'wrap'");
-    expect(styleBlock('scaleChip')).toContain("minWidth: 'calc(var(--space-40) + var(--space-4))'");
-    expect(styleBlock('scaleChip')).toContain(
-      "minHeight: 'calc(var(--space-40) + var(--space-4))'"
-    );
+  it('uses the shared name field and gives the level slider a 44px touch target', () => {
+    expect(onboardingSource).toContain('<TextField');
+    expect(onboardingSource).toContain('ref={nameRef}');
+    expect(onboardingSource).toContain('type="range"');
+    expect(styleBlock('sliderInput')).toContain("height: 'calc(var(--space-40) + var(--space-4))'");
   });
 
   it('maps fixed hero titles to a semantic token with light and dark contrast', () => {

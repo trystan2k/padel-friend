@@ -1,17 +1,12 @@
-import { Link, createFileRoute } from '@tanstack/react-router';
-import { useTranslation } from 'react-i18next';
-import { StarterCard } from '../components/StarterCard';
+import { createFileRoute, redirect } from '@tanstack/react-router';
+import { getOnboardingStatus } from '../features/player/player.functions';
 
-export const Route = createFileRoute('/')({ component: Home });
-
-function Home() {
-  const { t } = useTranslation();
-  return (
-    <>
-      <StarterCard />
-      <nav>
-        <Link to="/login">{t('signIn')}</Link>
-      </nav>
-    </>
-  );
-}
+export const Route = createFileRoute('/')({
+  beforeLoad: async () => {
+    const status = await getOnboardingStatus();
+    throw redirect({
+      to: status.authenticated ? '/dashboard' : '/login',
+      headers: { 'Cache-Control': 'private, no-store' }
+    });
+  }
+});
