@@ -22,6 +22,7 @@ type LocaleCopy = {
     signupLink: string;
     signupPasswordLabel: string;
     signupSignIn: string;
+    unauthorized: string;
     returnPrompt: string;
     accountStep: string;
     emailAddress: string;
@@ -298,6 +299,38 @@ test('a new signup is blocked by onboarding, rejects invalid input, then lands o
   await expect(page.getByText('TO', { exact: true }).first()).toBeVisible();
   // The sporting dashboard never exposes the login email (AC4).
   expect(await page.locator('main').textContent()).not.toContain(email);
+});
+
+test('a duplicate signup uses an enumeration-safe generic error and keeps sign-in recovery available', async ({
+  browser,
+  page
+}) => {
+  const email = uniqueEmail();
+  await register(page, email);
+
+  const duplicateContext = await browser.newContext();
+  try {
+    const duplicatePage = await duplicateContext.newPage();
+    await duplicatePage.goto(`${BASE_URL}/onboarding/account`);
+    await waitForHydratedPage(duplicatePage);
+    await duplicatePage.getByLabel(en.auth.emailAddress).fill(email);
+    await duplicatePage.getByLabel(en.auth.signupPasswordLabel).fill(PASSWORD);
+    await duplicatePage.getByRole('button', { name: en.auth.signupSubmit }).click();
+
+    const alert = duplicatePage.getByRole('alert');
+    await expect(alert).toHaveText(en.auth.unauthorized);
+    await expect(alert).not.toContainText(
+      /already registered|already exists|account with this email/i
+    );
+    await expect(duplicatePage.getByText(en.auth.returnPrompt)).toBeVisible();
+    const signInLink = duplicatePage.getByRole('link', { name: en.auth.signupSignIn });
+    await expect(signInLink).toBeVisible();
+    const signInHref = await signInLink.getAttribute('href');
+    if (signInHref === null) throw new Error('sign-in recovery link must have an href');
+    expect(new URL(signInHref, BASE_URL).pathname).toBe('/login');
+  } finally {
+    await duplicateContext.close();
+  }
 });
 
 test('a fresh browser context keeps the onboarding state', async ({ browser, page }) => {

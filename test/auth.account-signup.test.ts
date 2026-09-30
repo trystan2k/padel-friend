@@ -206,7 +206,32 @@ describe('AccountSignup', () => {
     expect(locationAssign).toHaveBeenCalledWith('/dashboard');
   });
 
-  it('shows the localized unauthorized alert and keeps the form when signUp fails', async () => {
+  it('uses an enumeration-safe generic error for duplicate emails and keeps sign-in reachable', async () => {
+    const user = userEvent.setup();
+    const error = Object.assign(new Error('User already registered'), {
+      code: 'user_already_exists'
+    });
+    supabaseBrowser.signUp.mockResolvedValueOnce({ data: null, error });
+    await renderSignup();
+
+    await user.type(screen.getByLabelText(en.auth.emailAddress), 'player@test.local');
+    await user.type(screen.getByLabelText(en.auth.signupPasswordLabel), 'Password123!');
+    submitForm();
+
+    const alert = await screen.findByRole('alert');
+    expect(alert.textContent).toBe(en.auth.unauthorized);
+    expect(alert.textContent).not.toMatch(
+      /already registered|already exists|account with this email/i
+    );
+    const signInLink = screen.getByRole('link', { name: en.auth.signupSignIn });
+    expect(signInLink).toBeTruthy();
+    expect(new URL(signInLink.getAttribute('href') ?? '', 'http://localhost').pathname).toBe(
+      '/login'
+    );
+    expect(locationAssign).not.toHaveBeenCalled();
+  });
+
+  it('shows the same generic unauthorized alert and keeps the form when signUp fails', async () => {
     const user = userEvent.setup();
     supabaseBrowser.signUp.mockResolvedValueOnce({ data: null, error: new Error('taken') });
     await renderSignup();

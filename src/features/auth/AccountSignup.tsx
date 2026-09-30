@@ -41,6 +41,7 @@ export function AccountSignup({ next: returnPath }: { next?: string }) {
     try {
       const { data, error } = await getBrowserClient().auth.signUp({ email, password });
       if (error) {
+        // Generic errors prevent enumeration; confirmation-enabled Supabase may return synthetic users.
         setMessage('auth.unauthorized');
         setBusy(false);
         return;

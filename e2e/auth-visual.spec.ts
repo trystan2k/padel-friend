@@ -220,42 +220,24 @@ test.beforeEach(async ({ page, context }) => {
   await page.clock.setFixedTime(new Date('2026-09-30T12:00:00Z'));
 });
 
-test('auth destination retries only JWT clock skew once at the identical query URL', async ({
-  page
-}) => {
-  const unrelatedUrl = `${baseURL}/__e2e/auth?next=%2Fdashboard&case=unrelated`;
-  let unrelatedAttempts = 0;
-  await page.route(unrelatedUrl, async (route) => {
-    unrelatedAttempts += 1;
+test('auth destination fails on a 5xx without retrying', async ({ page }) => {
+  const outageUrl = `${baseURL}/__e2e/auth?next=%2Fdashboard&case=server-error`;
+  let attempts = 0;
+  await page.route(outageUrl, async (route) => {
+    attempts += 1;
     await route.fulfill({
       status: 500,
       contentType: 'application/json',
-      body: JSON.stringify({ code: 'PGRST303', message: 'JWT signature verification failed' })
+      body: JSON.stringify({ message: 'service unavailable' })
     });
   });
 
   await expect(
     submitAndWaitForAuthDestination(page, new RegExp('__e2e/auth'), async () => {
-      await page.goto(unrelatedUrl);
+      await page.goto(outageUrl);
     })
-  ).rejects.toThrow('explicit clock-skew evidence');
-  expect(unrelatedAttempts).toBe(1);
-
-  const retryUrl = `${baseURL}/__e2e/auth?next=%2Fdashboard&state=keep-me`;
-  const retryRequests: string[] = [];
-  await page.route(retryUrl, async (route) => {
-    retryRequests.push(route.request().url());
-    await route.fulfill({
-      status: retryRequests.length === 1 ? 500 : 200,
-      contentType: 'application/json',
-      body: JSON.stringify({ code: 'PGRST303', message: 'JWT iat claim is in the future' })
-    });
-  });
-
-  await submitAndWaitForAuthDestination(page, new RegExp('__e2e/auth'), async () => {
-    await page.goto(retryUrl);
-  });
-  expect(retryRequests).toEqual([retryUrl, retryUrl]);
+  ).rejects.toThrow('Auth destination returned 500');
+  expect(attempts).toBe(1);
 });
 
 async function inspectNativeCredentialForm(

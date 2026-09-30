@@ -65,7 +65,7 @@
     "style-dictionary": "~5.5.0",
     "stylelint": "~17.14.1",
     "stylelint-config-standard": "~40.0.0",
-    "supabase": "^2.0.0",
+    "supabase": "~2.118.0",
     "typescript": "~7.0.2",
     "vite": "~8.1.5",
     "vitest": "~4.1.10",
