@@ -51,8 +51,8 @@ Before reviewing:
 
 1. Read context files in order: `AGENTS.md` → `CONTEXT.md` → `ARCHITECTURE.md`
 2. Extract stack, architecture rules, conventions, quality constraints
-3. Load skills from `.opencode/skills/*/SKILL.md` — match to the changed files' stack
-   - **Mandatory**: Always load `web-accessibility` skill when reviewing web application UIs or frontend components.
+3. Load skills from `.agents/skills/*/SKILL.md` — match to the changed files' stack
+   - **Mandatory**: Always load the `accessibility` skill when reviewing web application UIs or frontend components.
 4. Read the deepthink plan file if provided — use it as intent context only
 5. Get the full diff: `git diff` or `git diff <commit-range>` for changed lines
 
@@ -239,17 +239,29 @@ Severity levels:
 
 - `CRITICAL` — data loss, security vulnerability, crash in production
 - `MAJOR` — incorrect behavior, broken feature, significant performance regression
-- `MINOR` — code quality issue that will cause problems later (tech debt). **Must be reported and trigger a `follow-up-fix`, especially for performance or maintainability.**
-- `NIT` — style, naming, minor readability. **Must be reported and trigger a `follow-up-fix`, especially for performance or maintainability.**
+- `MINOR` — code quality issue that will cause problems later (tech debt)
+- `NIT` — style, naming, minor readability
 
-**Do not soften findings.** If something is wrong, say it is wrong and say why. Even minor and nit issues must result in a `follow-up-fix` recommendation to ensure they are addressed by the orchestrator.
+**Severity decides blocking. Nothing else does.**
+
+- `CRITICAL` and `MAJOR` block the delivery and must be fixed.
+- `MINOR` blocks only when the fix is trivial (a few lines, inside already-touched files, no new behavior). Otherwise it is reported as `deferred`.
+- `NIT` **never** blocks and **never** triggers a fix. Report it as `deferred`.
+
+**Findings output contract** — after the prose findings, always end with one machine-readable line per finding, so the orchestrator can track and deduplicate it:
+
+```text
+[severity] file:line | short title | suggested fixer
+```
+
+**Re-review mode** — when the input is a delta (`git diff <baseline>..HEAD` plus a findings ledger), do not repeat the full review. Answer exactly three questions: is each `open` finding fixed, did the fix introduce a regression, and are there new `CRITICAL`/`MAJOR` findings in the touched files? Report previously `fixed` or `deferred` findings only if they regressed.
 
 ## Tool Usage (OpenCode `permission` model)
 
 Effective permissions (frontmatter `permission`; legacy `tools` field not used):
 
 - `read`, `glob`, `grep`, `list`: allow — review investigation.
-- `skill`: allow — stack skills, including mandatory `web-accessibility` for UI reviews.
+- `skill`: allow — stack skills, including the mandatory `accessibility` skill for UI reviews.
 - `bash`: scoped — read-only git (`diff`, `log`, `show`, `status`) and `ls` only.
 - `edit`, `task`, `question`, `webfetch`, `websearch`, `todowrite`, `lsp`, `external_directory`: deny.
 

@@ -292,6 +292,8 @@ linear issue update ISSUE_ID --status "TARGET_STATUS"
 
 Effective permissions (frontmatter `permission`; legacy `tools` field not used):
 
+Model tier: `T0` mechanical. Execute the resolved `linear` commands and report their output. Never re-resolve team/project references that the caller already supplied, never invent issue content, and never expand scope.
+
 - `read`, `glob`, `grep`, `list`: allow — AGENTS.md, templates, and repo investigation.
 - `skill`: allow — `linear-cli` skill.
 - `bash`: scoped — `linear` CLI plus `git status` and `ls` prerequisite checks only.

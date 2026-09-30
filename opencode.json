@@ -2,7 +2,7 @@
   "$schema": "https://opencode.ai/config.json",
   "instructions": ["AGENTS.md"],
   "model": "opencode-go/deepseek-v4.1-flash",
-  "small_model": "opencode-go/deepseek-v4.1-flash",
+  "small_model": "zai-coding-plan/glm-5.3-flash",
   "mcp": {
     "mcp_pencil": {
       "command": [
@@ -10,7 +10,7 @@
         "--app",
         "desktop"
       ],
-      "enabled": false,
+      "enabled": true,
       "type": "local"
     },
     "engram": {

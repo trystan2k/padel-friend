@@ -97,6 +97,8 @@ Follow these steps:
 
 Effective permissions (frontmatter `permission`; legacy `tools` field not used):
 
+Model tier: `T0` mechanical. Execute the resolved git/provider commands and report their output. Never invent commit content or branch scope, never restage files to "improve" the set, and never widen a push.
+
 - `read`, `glob`, `grep`, `list`: allow — repo and provider-context investigation.
 - `skill`: allow — `git` skill family (e.g. git-master) when available.
 - `bash`: allow — required in full because the gh PR pattern uses heredocs, pipes, and shell variable assignments that cannot be allowlisted per command. Destructive git commands still require `confirmed=true` and remote publishes require `approved=true`.
@@ -232,13 +234,18 @@ fi
 7- Do not include any task number information in the commit message, unless it is explicitly requested
 8- Never include any information that is not related to the changes made in the code
 9- Never skip git hooks
-10- **CRITICAL - DISCOVER AND COMMIT ALL TASK-RELATED FILES**: - **ALWAYS** run `git status --porcelain` FIRST to discover ALL files (modified, added, untracked) - **ALWAYS** use `git add -A` to stage ALL files - do NOT cherry-pick individual files - This includes: implementation files, plan files (`docs/plan/*.md`) and development logs (`docs/development-logs/*.md`) - **NEVER** only commit files explicitly mentioned in the prompt if there are other task-related files - If you see files that seem unrelated to the task, ask the user before excluding them - The only exception is if the user explicitly requests to commit specific files only (rare)
+10- **CRITICAL - STAGE EXACTLY THE REQUESTED SCOPE**:
+   - **Default (single-shot commit)**: run `git status --porcelain` first, then `git add -A` and commit everything scope-related, including plan files (`docs/plan/*.md`), the context bundle, the findings ledger, and development logs (`docs/development-logs/*.md`). Never cherry-pick individual files in this mode.
+   - **Scoped commit (caller passes an explicit file list)**: stage exactly those paths. Before committing, run `git status --porcelain` and report any modified or untracked file that is NOT in the requested list; do not stage it, and do not delete or revert it.
+   - In scoped mode the caller's list is authoritative — never widen it to "improve" the commit and never narrow it.
+   - If you see files that seem unrelated to the task, ask the user before excluding them
 
 ## Push changes
 
-1- Push the changes to the remote repository
+1- Push the commits to the remote repository
 2- If there is any error, ask the user for help to resolve the error
 3- Never skip the git hooks
+4- **NEVER push more than once for the same delivery.** The pre-push hook runs the full quality gate, so each push costs a full gate run. If the caller asks for more than one push, return a failure explaining the cost and ask for a single push instead.
 
 ## Create a pull request description
 

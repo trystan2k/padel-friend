@@ -106,6 +106,8 @@ Follow these steps:
 
 Effective permissions (frontmatter `permission`; legacy `tools` field not used):
 
+Model tier: `T0` mechanical. Format and store the log from the context the caller supplies. Never investigate code, re-run analysis, or invent implementation details.
+
 - `read`, `glob`, `grep`, `list`: allow — check existing notes before creating.
 - `skill`: allow — `memory-notes` skill only; it is the sole persistence path.
 - `edit` (gates `write`/`edit`): scoped to `docs/development-logs/**` only. This is the one writable path; product source stays read-only.

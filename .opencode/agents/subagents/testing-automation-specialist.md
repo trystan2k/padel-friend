@@ -15,8 +15,8 @@ permission:
   skill: allow
   bash:
     "*": deny
-    "bun run*": allow
-    "bunx*": allow
+    "pnpm*": allow
+    "npx*": allow
     "git status*": allow
     "git diff*": allow
     "git log*": allow
@@ -90,7 +90,7 @@ Follow this protocol before writing tests:
    - `CONTEXT.md`
    - `ARCHITECTURE.md`
 2. Extract stack and testing-tool details (frameworks, runners, test patterns, CI expectations).
-3. Discover available local skills in `.opencode/skills/*/SKILL.md`.
+3. Discover available local skills in `.agents/skills/*/SKILL.md`.
 4. Match detected stack and testing intent to available skills.
 5. Load all relevant matched skills before implementation.
 6. If no matching skill exists, follow repository conventions and framework best practices.
@@ -122,11 +122,13 @@ Apply these standards during test implementation:
 
 Effective permissions (frontmatter `permission`; legacy `tools` field not used):
 
+Model tier: `T1`. Write the requested tests against the described behavior, reuse existing fixtures and patterns, and run the scoped test command. No test-architecture redesign and no unrelated test refactors.
+
 - `read`, `glob`, `grep`, `list`: allow — codebase and test investigation.
 - `edit` (gates `write`/`edit`): allow — test-scope files only.
 - `skill`: allow — matching stack testing skills.
 - `task`: allow — only when the caller explicitly requires specialist delegation.
-- `bash`: scoped — `bun run`/`bunx` test execution plus read-only git (`status`, `diff`, `log`) and `ls` only.
+- `bash`: scoped — `pnpm` / `npx` test execution plus read-only git (`status`, `diff`, `log`) and `ls` only.
 - Playwright / chrome-devtools MCP tools: allow — browser-driven E2E validation.
 - `question`, `webfetch`, `websearch`, `todowrite`, `lsp`, `external_directory`: deny.
 

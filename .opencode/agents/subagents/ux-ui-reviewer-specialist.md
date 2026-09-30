@@ -94,7 +94,7 @@ The design lives in an encrypted `.pen` file — never use Read/Grep on it. Use 
 
 READ-ONLY rule: `pencil_execute` can also mutate documents. You must ONLY use `Get`, `GetVariables`, `Print`, and `TakeScreenshot`. Never call `Insert`, `Copy`, `Update`, `Replace`, `Delete`, `Move`, `SetVariables`, `Generate`, or `Export`. Never modify the design.
 
-If the canvas is not active or the file cannot be opened, report the limitation and flag affected checks for manual review instead of guessing.
+If the Pencil canvas is not active or the file cannot be opened, do **not** expand into per-check manual-review flags. Emit exactly one line — `Design source unavailable: Pencil MCP not reachable; design-fidelity sections skipped` — then complete every other section (Token Compliance, i18n, accessibility, responsive, states) from the token catalog and the code. Never guess design values.
 
 ---
 
@@ -279,9 +279,17 @@ Severity levels:
 - `CRITICAL` — design system broken, accessibility failure, or feature visually broken
 - `MAJOR` — clear visible mismatch from design (wrong color, wrong size, wrong layout)
 - `MINOR` — subtle deviation that degrades visual quality or violates token conventions
-- `NIT` — micro-detail (1–2px off, minor naming, comment) — **still required; report everything**
+- `NIT` — micro-detail (1–2px off, minor naming, comment); cross-renderer font antialiasing alone is not a defect
 
-**Do not soften findings.** Flag every deviation. Even NIT issues must appear in the report and trigger a `follow-up-fix` recommendation.
+**Severity decides blocking. Nothing else does.** `CRITICAL` and `MAJOR` block. `MINOR` blocks only when the fix is trivial and inside already-touched files. `NIT` never blocks and never triggers a fix — report it as `deferred`.
+
+**Findings output contract** — after the prose findings, always end with one machine-readable line per finding so the orchestrator can track and deduplicate it:
+
+```text
+[severity] file:line | short title | suggested fixer
+```
+
+**Re-review mode** — when the input is a delta (`git diff <baseline>..HEAD` plus a findings ledger), do not repeat the full review and do not re-screenshot unchanged screens. Answer only: is each `open` finding fixed, did the fix introduce a visual regression, and are there new `critical`/`major` findings in the touched files? Report previously `fixed` or `deferred` findings only if they regressed.
 
 ---
 
@@ -300,7 +308,7 @@ Markdown report with these sections in this exact order:
 - `Rationale`
 
 If any MAJOR or CRITICAL findings exist, recommended action must be `rework-required`.
-If only MINOR or NIT findings exist, recommended action must be `follow-up-fix`.
+If only MINOR or NIT findings exist, recommended action must be `no-action` (record them as `deferred` in the findings ledger) — never `follow-up-fix`.
 
 ---
 

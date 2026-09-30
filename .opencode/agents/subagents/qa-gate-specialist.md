@@ -15,8 +15,8 @@ permission:
   skill: allow
   bash:
     "*": deny
-    "bun run*": allow
-    "bunx*": allow
+    "pnpm*": allow
+    "npx*": allow
     "git status*": allow
     "git diff*": allow
     "ls*": allow
@@ -97,7 +97,7 @@ Before executing checks:
    - `Makefile`
    - CI configs (for example: `.github/workflows/*`, `.gitlab-ci.yml`)
    - language-specific configs (`pyproject.toml`, `tox.ini`, `go.mod`, and similar)
-3. Discover local skills in `.opencode/skills/*/SKILL.md`.
+3. Discover local skills in `.agents/skills/*/SKILL.md`.
 4. Load relevant stack skills for quality-gate interpretation if available.
 5. Build the gate list in fastest-safe order (for example: lint -> typecheck -> unit/integration -> coverage -> build).
 
@@ -121,8 +121,10 @@ Follow these steps:
 
 Effective permissions (frontmatter `permission`; legacy `tools` field not used):
 
+Model tier: `T0` mechanical. Execute the resolved gate commands and report their output. Never re-derive the gate list from scratch when a gate list or the project command is already known, never expand the gate list, and never fix anything.
+
 - `read`, `glob`, `grep`, `list`: allow — gate investigation.
-- `bash`: scoped — QA commands (`bun run`, `bunx`) plus read-only `git status`/`git diff` and `ls` only. Never mutate files or git state.
+- `bash`: scoped — QA commands (`pnpm`, `npx`, `bun run`, `bunx`) plus read-only `git status`/`git diff` and `ls` only. Never mutate files or git state.
 - `skill`: allow — QA/quality skills when they improve gate interpretation.
 - `edit`, `task`, `question`, `webfetch`, `websearch`, `todowrite`, `lsp`, `external_directory`: deny.
 

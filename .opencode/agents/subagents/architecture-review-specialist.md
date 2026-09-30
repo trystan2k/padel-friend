@@ -81,6 +81,8 @@ Outputs:
 - `Recommended Action`: `no-action`, `follow-up-fix`, or `rework-required`
 - `Rationale`
 
+Blocking rule: any `critical` or `major` finding forces `rework-required`. `minor` and `nit` findings never force a blocking action on their own — they are recorded as `deferred` in the findings ledger. `follow-up-fix` is reserved for `critical`/`major` findings that are cheap to apply.
+
 ## Skill Loading and Stack Detection Protocol
 
 Follow this protocol before review:
@@ -90,7 +92,7 @@ Follow this protocol before review:
    - `CONTEXT.md`
    - `ARCHITECTURE.md`
 2. Extract stack, architecture rules, and quality constraints.
-3. Discover local skills in `.opencode/skills/*/SKILL.md`.
+3. Discover local skills in `.agents/skills/*/SKILL.md`.
 4. Match review scope and stack to the relevant skills.
 5. Load matched skills and apply their best-practice guidance during review.
 6. If no skill matches, follow repository conventions and language best practices.
@@ -116,8 +118,11 @@ Follow these steps:
    - test adequacy
    - validation coverage
    - migration or rollout safety
-9. Classify findings by severity (`critical`, `major`, `minor`, `nit`) and provide concrete remediation suggestions. **CRITICAL:** You must explicitly include `minor` and `nit` issues in your report, especially those regarding performance or maintainability.
-10. Return the structured summary and a recommended action for the requester. If `minor` or `nit` issues (especially performance/maintainability) are found, the recommended action must be `follow-up-fix` to ensure they are addressed.
+9. Classify findings by severity (`critical`, `major`, `minor`, `nit`) and provide concrete remediation suggestions. Report `minor` and `nit` findings, but do not escalate them: severity alone decides blocking.
+10. Return the structured summary and a recommended action for the requester.
+11. Append one machine-readable line per finding so the orchestrator can track and deduplicate it:
+    `[severity] file:line | short title | suggested fixer`
+12. **Re-review mode** — when the input is a delta (`git diff <baseline>..HEAD` plus a findings ledger), skip the full review and answer only: is each `open` finding fixed, did the fix introduce a regression, and are there new `critical`/`major` findings in the touched files?
 
 ## Tool Usage Rules (OpenCode `permission` model)
 
