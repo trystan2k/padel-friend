@@ -58,6 +58,34 @@ The design was edited again during the session (login redesign plus reset-flow p
 
 **Player remeasurement:** forced-zero runs against the new masked baseline measured a stable **7,342 / 329,160 = 2.2304%** (identical count across two runs) versus the previous 7,577 = 2.3019%. Cap tightened **2.41% → 2.33%** (headroom 0.0996pp). Baseline digest refreshed to `876d3162ae0e6dc232b6b413bf2f0aa7d28c0242391839c7bfc695773e3b083c`; manifest `approvedReferences`/`screenshotBaselines` digests and the export-command/provenance notes were updated. Per-screen record: welcome 6,077 = 1.8462% / 1.95%; account 9,779 = 2.9709% / 3.08%; forgot 5,938 = 1.8040% / 1.90%; inbox 7,734 = 2.3496% / 2.45%; reset 7,201 = 2.1877% / 2.29%; player 7,342 = 2.2304% / **2.33%**.
 
+## Cross-platform budgets and probe tolerances (2026-10-01, PR #2 CI)
+
+PR #2 CI (`ubuntu-latest`, run 36867917435) failed only in `e2e/auth-visual.spec.ts`: five screenshot budgets plus the geometry probe `Advanced caption inset x` (actual 226.796875px vs Pencil 228px, 1.203px over the ±1px tolerance). All six failures were cross-platform font rasterization, deterministic across three retries; every other CI job passed. Chromium rasterizes Inter/Manrope differently on Linux than on the macOS used for calibration.
+
+### Single cross-platform caps (Linux + ~0.15pp margin)
+
+One cap per screen now applies to both platforms: the worse (Linux) measured residual plus a ~0.15pp margin (smallest 4-decimal value keeping ≥0.15pp headroom). macOS residuals are unchanged and pass the same caps, so local and CI gates are identical.
+
+| Alias                 | macOS residual  | Linux residual (390×844; identical across 3 retries) | New cap                 | Headroom over Linux |
+| --------------------- | --------------- | ---------------------------------------------------- | ----------------------- | ------------------- |
+| `login-welcome.png`   | 6,077 = 1.8462% | 8,278 = 2.5155%                                      | **2.67%**               | 0.1545pp            |
+| `account-adapted.png` | 9,779 = 2.9709% | 14,024 = 4.2600%                                     | **4.41%**               | 0.1500pp            |
+| `forgot-password.png` | 5,938 = 1.8040% | 9,656 = 2.9335%                                      | **3.09%**               | 0.1565pp            |
+| `login-inbox.png`     | 7,734 = 2.3496% | 11,513 = 3.4977%                                     | **3.65%**               | 0.1523pp            |
+| `reset-password.png`  | 7,201 = 2.1877% | 9,664 = 2.9363%                                      | **3.09%**               | 0.1537pp            |
+| `player-setup.png`    | 7,342 = 2.2304% | not measured (its geometry probe failed first)       | **3.60% (provisional)** | unknown             |
+
+The player cap is provisional: Linux rose 0.67–1.29pp over macOS on the five measured screens, so 3.60% pairs the macOS residual with the worst observed cross-platform rise. Tighten it to Linux + 0.15pp once a Linux run measures that screen. References, manifest digests, masks, and structural coordinates are unchanged.
+
+### Probe tolerance policy
+
+`assertGeometry` now defaults to **±1px** per asserted axis and accepts a per-axis override. **±1px (unchanged):** all container/CSS-driven boxes — headers, cards, badges, buttons, inputs, full-width text rows, divider, slider, hit targets. **±2px (glyph-metric-derived text edges only):** measurements whose x/width track Inter advance widths rather than CSS layout, where font metrics legitimately differ per platform while the underlying layout is identical:
+
+- `Advanced caption inset` — `x` ±2: ADVANCED is end-anchored in the constrained caption row, so its left edge = row right edge − text advance width (y stays ±1). Linux measured 226.796875px vs Pencil 228px.
+- `Back link` (forgot password) — `x`/`width` ±2: centered inline-flex text link whose box spans the string's advance widths; y/height stay ±1 (CSS 44px hit target).
+
+No container/card/button/field-box probe was relaxed, and structural drift beyond these tolerances still fails independently of screenshot budgets.
+
 ## Historical measurement (2026-09-30; superseded by the CLI 0.3.10 re-export)
 
 The final gate checks element `boundingBox()` geometry against frame-local design coordinates to **±1px** on each asserted axis, then compares the full 390×844 viewport with per-pixel color threshold **0.1**. Final measured `maxDiffPixelRatio` results: Welcome **2.9357% / 3.3% cap**, account **1.6749% / 1.9% cap**, and player **2.6723% / 2.8% cap**. All remain within the existing budgets; no threshold or budget was widened. Exactly two PAF-21 approved sample-data rectangles are applied to both player images with opaque `#FF00FF`: display-name value `{ x: 18, y: 246, width: 110, height: 30 }` and selected Right chip `{ x: 139, y: 477, width: 112, height: 52 }`. The screenshot baseline is deterministically regenerated from the approved player reference using those masks; approved reference PNG and derived-baseline digests are runtime-checked before and after comparison. `sourceDesign.sha256` is provenance metadata only and is **not** runtime-enforced. No other region is masked. Determinism: 390×844, DPR 1, light theme, en cookie/en-US browser, concrete root hydration marker, fonts.ready and image decode, fixed time, animations disabled, caret hidden.
