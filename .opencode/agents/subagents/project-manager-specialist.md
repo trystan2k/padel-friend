@@ -18,6 +18,11 @@ permission:
   bash:
     "*": deny
     "linear*": allow
+    "cat *": allow
+    "echo *": allow
+    "printf *": allow
+    "jq *": allow
+    "mktemp*": allow
     "git status*": allow
     "ls*": allow
   webfetch: allow
@@ -187,8 +192,9 @@ _Note: Issue deletion is not supported by the CLI. Use status "Canceled" instead
 
 When creating a task issue, populate the description using the `task.md` template structure:
 
-```bash
-DESCRIPTION=$(cat <<'EOF'
+Use `edit` to write this description to `/tmp/task-description.md`:
+
+```markdown
 {description}
 
 ## Depends On
@@ -205,24 +211,21 @@ DESCRIPTION=$(cat <<'EOF'
 - [ ] All subtasks delivered
 - [ ] QA Control Gate passed
 - [ ] User review approved
-EOF
-)
+```
 
-linear issue create \
-  --title "{Task Name}" \
-  --description "$DESCRIPTION" \
-  --team "{Team}" \
-  --project "{Project}" \
-  --priority "{Priority}" \
-  --labels "task"
+Then create the issue with one CLI command:
+
+```bash
+linear issue create --title "{Task Name}" --description-file /tmp/task-description.md --team "{Team}" --project "{Project}" --priority "{Priority}" --labels "task"
 ```
 
 ### Sub-Issue
 
 When creating a sub-issue, populate the description using the `subtask.md` template structure and link to parent:
 
-```bash
-DESCRIPTION=$(cat <<'EOF'
+Use `edit` to write this description to `/tmp/subtask-description.md`:
+
+```markdown
 ## Description
 
 {description}
@@ -242,15 +245,12 @@ DESCRIPTION=$(cat <<'EOF'
 - [ ] Implementation complete
 - [ ] Tests added/updated (if applicable)
 - [ ] Verified on simulator/device, if applicable
-EOF
-)
+```
 
-linear issue create \
-  --title "Subtask: {Subtask Name}" \
-  --description "$DESCRIPTION" \
-  --team "{Team}" \
-  --parent "{Parent Issue ID}" \
-  --labels "subtask"
+Then create the sub-issue with one CLI command:
+
+```bash
+linear issue create --title "Subtask: {Subtask Name}" --description-file /tmp/subtask-description.md --team "{Team}" --parent "{Parent Issue ID}" --labels "subtask"
 ```
 
 ---
@@ -296,9 +296,10 @@ Model tier: `T0` mechanical. Execute the resolved `linear` commands and report t
 
 - `read`, `glob`, `grep`, `list`: allow — AGENTS.md, templates, and repo investigation.
 - `skill`: allow — `linear-cli` skill.
-- `bash`: scoped — `linear` CLI plus `git status` and `ls` prerequisite checks only.
-- `edit` and `external_directory`: scoped to `/tmp/**` only — for `--description-file` / `--body-file` temp markdown per the linear-cli skill. No repo writes.
-- `task`, `question`, `webfetch`, `websearch`, `todowrite`, `lsp`: deny — no delegation, no user questions, no web research.
+- `bash`: only `linear*`, `cat *`, `echo *`, `printf *`, `jq *`, `mktemp*`, `git status*`, and `ls*` are allowed; everything else is denied. `linear*` handles issue operations. Use `jq` to parse `--json` output.
+- For multi-line bodies, use `edit` to write a temporary file under `/tmp`, then pass it to one `linear ... --body-file` or `--description-file` command. Never modify repository files.
+- `edit` and `external_directory`: scoped to `/tmp/**` only — for temporary body/description files. No repo writes.
+- `task`, `question`, `todowrite`: deny — no delegation, no user questions, no web research.
 - `mcp_serena*`, `engram*`: deny — no MCP integrations per scope.
 
 ## Skills
