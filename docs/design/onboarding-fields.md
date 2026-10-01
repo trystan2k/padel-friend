@@ -1,6 +1,6 @@
 # Onboarding and player-profile fields
 
-**Status:** Dominant hand is done (design and implementation). Avatar in onboarding remains an open product decision; availability and private contact remain open decisions requiring migrations (contact also needs visibility rules).
+**Status:** Dominant hand is done (design and implementation). The remaining items — avatar in onboarding, preferred playing days/times, and private contact — are **deferred to a later Phase 2** and tracked in Linear as [`PAF-25`](https://linear.app/trystanworkspace2/issue/PAF-25/phase-2-player-profile-extras-avatar-in-onboarding-availability). They are not in current scope.
 
 ## 1. Purpose & sources
 
@@ -60,9 +60,9 @@ Current implementation validates the required display-name, side, and initial-le
 ## 4. UX follow-up status
 
 1. **P1 — Dominant hand — DONE.** `PdRtP` now includes an optional Left / Right / Prefer not to say segmented control inside the preferred-court-side card, before the reliability card and CTA. “Prefer not to say” is the default and submits `dominant_hand = null` without validation error. Implementation and en/pt-BR/es labels are updated; DB support already exists (`player_profiles.dominant_hand`).
-2. **P2 — Avatar — OPEN.** **What:** Decide whether to offer photo upload during onboarding. **Why:** PRD §11.2 lists avatar with initials fallback; current implementation exposes upload only on the profile screen. **DB status:** Exists (`player_profiles.avatar_url`; private avatar storage). **Recommendation:** Optional with initials/skip fallback; if included, place near display name/identity before the CTA. Keep later profile upload available.
-3. **P3 — Preferred playing days/times — OPEN.** **What:** Add an availability input and profile-edit experience. **Why:** PRD §11.3 lists this as optional; current schema and onboarding validators have no such field. **DB status:** New migration needed; no column exists. **Recommendation:** Optional, outside the required core flow—place under optional availability/profile details and define values before implementation; format not specified in docs.
-4. **P4 — Phone/contact data — OPEN.** **What:** Add a private contact field and controlled visibility behavior. **Why:** PRD §11.3 lists phone/contact as optional and private by default; §11.4 says auth email/security data must not be automatically exposed. **DB status:** New migration and explicit privacy/visibility rules needed; no column exists. **Recommendation:** Optional, in a separate private contact section (preferably profile/settings, not the sporting-profile card); never surface it as sporting-profile data.
+2. **P2 — Avatar — DEFERRED (Phase 2, PAF-25).** **What:** Decide whether to offer photo upload during onboarding. **Why:** PRD §11.2 lists avatar with initials fallback; current implementation exposes upload only on the profile screen. **DB status:** Exists (`player_profiles.avatar_url`; private avatar storage). **Recommendation:** Optional with initials/skip fallback; if included, place near display name/identity before the CTA. Keep later profile upload available.
+3. **P3 — Preferred playing days/times — DEFERRED (Phase 2, PAF-25).** **What:** Add an availability input and profile-edit experience. **Why:** PRD §11.3 lists this as optional; current schema and onboarding validators have no such field. **DB status:** New migration needed; no column exists. **Recommendation:** Optional, outside the required core flow—place under optional availability/profile details and define values before implementation; format not specified in docs.
+4. **P4 — Phone/contact data — DEFERRED (Phase 2, PAF-25).** **What:** Add a private contact field and controlled visibility behavior. **Why:** PRD §11.3 lists phone/contact as optional and private by default; §11.4 says auth email/security data must not be automatically exposed. **DB status:** New migration and explicit privacy/visibility rules needed; no column exists. **Recommendation:** Optional, in a separate private contact section (preferably profile/settings, not the sporting-profile card); never surface it as sporting-profile data.
 
 ## 5. Explicitly NOT onboarding/profile fields
 
@@ -91,7 +91,7 @@ Current implementation validates the required display-name, side, and initial-le
 - [ ] Create availability schema/API/profile-edit work for preferred playing days/times; define supported values first.
 - [ ] Create contact-data migration and explicit RLS/visibility rules; prevent sporting-profile exposure.
 
-Avatar, availability, and private contact remain product decisions/backlog; availability and contact require migrations (contact also needs visibility rules).
+Avatar, availability, and private contact are **deferred to Phase 2** and tracked in [`PAF-25`](https://linear.app/trystanworkspace2/issue/PAF-25/phase-2-player-profile-extras-avatar-in-onboarding-availability); the unchecked items above stay unchecked until that work is scheduled. Availability and contact require migrations (contact also needs visibility rules).
 
 [prd]: ../prd/padel-friends-prd-v1.md
 [migration]: ../../supabase/migrations/20260928000000_player_profiles_and_ratings.sql
