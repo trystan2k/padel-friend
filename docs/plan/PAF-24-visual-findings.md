@@ -66,16 +66,16 @@ PR #2 CI (`ubuntu-latest`, run 36867917435) failed only in `e2e/auth-visual.spec
 
 One cap per screen now applies to both platforms: the worse (Linux) measured residual plus a ~0.15pp margin (smallest 4-decimal value keeping ≥0.15pp headroom). macOS residuals are unchanged and pass the same caps, so local and CI gates are identical.
 
-| Alias                 | macOS residual  | Linux residual (390×844; identical across 3 retries) | New cap                 | Headroom over Linux |
-| --------------------- | --------------- | ---------------------------------------------------- | ----------------------- | ------------------- |
-| `login-welcome.png`   | 6,077 = 1.8462% | 8,278 = 2.5155%                                      | **2.67%**               | 0.1545pp            |
-| `account-adapted.png` | 9,779 = 2.9709% | 14,024 = 4.2600%                                     | **4.41%**               | 0.1500pp            |
-| `forgot-password.png` | 5,938 = 1.8040% | 9,656 = 2.9335%                                      | **3.09%**               | 0.1565pp            |
-| `login-inbox.png`     | 7,734 = 2.3496% | 11,513 = 3.4977%                                     | **3.65%**               | 0.1523pp            |
-| `reset-password.png`  | 7,201 = 2.1877% | 9,664 = 2.9363%                                      | **3.09%**               | 0.1537pp            |
-| `player-setup.png`    | 7,342 = 2.2304% | not measured (its geometry probe failed first)       | **3.60% (provisional)** | unknown             |
+| Alias                 | macOS residual  | Linux residual (390×844; identical across 3 retries) | New cap   | Headroom over Linux |
+| --------------------- | --------------- | ---------------------------------------------------- | --------- | ------------------- |
+| `login-welcome.png`   | 6,077 = 1.8462% | 8,278 = 2.5155%                                      | **2.67%** | 0.1545pp            |
+| `account-adapted.png` | 9,779 = 2.9709% | 14,024 = 4.2600%                                     | **4.41%** | 0.1500pp            |
+| `forgot-password.png` | 5,938 = 1.8040% | 9,656 = 2.9335%                                      | **3.09%** | 0.1565pp            |
+| `login-inbox.png`     | 7,734 = 2.3496% | 11,513 = 3.4977%                                     | **3.65%** | 0.1523pp            |
+| `reset-password.png`  | 7,201 = 2.1877% | 9,664 = 2.9363%                                      | **3.09%** | 0.1537pp            |
+| `player-setup.png`    | 7,342 = 2.2304% | 12,420 = 3.7730%                                     | **3.92%** | 0.1500pp            |
 
-The player cap is provisional: Linux rose 0.67–1.29pp over macOS on the five measured screens, so 3.60% pairs the macOS residual with the worst observed cross-platform rise. Tighten it to Linux + 0.15pp once a Linux run measures that screen. References, manifest digests, masks, and structural coordinates are unchanged.
+Every cap is now measured on both platforms. The player cap was provisional on the first cross-platform run (its geometry probe failed before the comparison) and is now set from the measured Linux residual (12,420 px = 3.7730%) on the following run. References, manifest digests, masks, and structural coordinates are unchanged.
 
 ### Probe tolerance policy
 

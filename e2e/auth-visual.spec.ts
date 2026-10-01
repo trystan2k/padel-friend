@@ -191,10 +191,8 @@ const VISUAL_BUDGETS: Record<VisualReference, number> = {
   'login-welcome.png': 0.0267,
   // macOS 9,779/329,160 = 2.9709%; Linux 14,024/329,160 = 4.2600% → 4.41% (margin 0.1500pp).
   'account-adapted.png': 0.0441,
-  // PROVISIONAL — Linux residual not yet measured (its geometry probe failed first in CI);
-  // macOS 7,342/329,160 = 2.2304%. Linux rose 0.67–1.29pp on the other screens, so 3.60% is the
-  // provisional cross-platform cap; tighten to Linux + 0.15pp once a Linux run measures it.
-  'player-setup.png': 0.036,
+  // macOS 7,342/329,160 = 2.2304%; Linux 12,420/329,160 = 3.7730% → 3.92% (margin 0.1500pp).
+  'player-setup.png': 0.0392,
   // macOS 5,938/329,160 = 1.8040%; Linux 9,656/329,160 = 2.9335% → 3.09% (margin 0.1565pp).
   'forgot-password.png': 0.0309,
   // macOS 7,734/329,160 = 2.3496%; Linux 11,513/329,160 = 3.4977% → 3.65% (margin 0.1523pp).
