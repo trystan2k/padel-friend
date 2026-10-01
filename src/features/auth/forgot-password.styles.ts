@@ -32,7 +32,6 @@ export const styles = stylex.create({
   subtitle: { margin: 0, color: 'var(--color-muted)', fontSize: 'var(--font-size-14)' },
   form: { display: 'flex', flexDirection: 'column', gap: 'var(--space-14)' },
   note: { margin: 0, color: 'var(--color-muted)', fontSize: 'var(--font-size-12)' },
-  submit: { fontSize: 'var(--font-size-13)' },
   footer: { display: 'flex', justifyContent: 'center', alignItems: 'center' },
   backLink: { minHeight: 'calc(var(--space-40) + var(--space-4))' },
   error: { margin: 0, color: 'var(--color-red)', fontSize: 'var(--font-size-12)' }
