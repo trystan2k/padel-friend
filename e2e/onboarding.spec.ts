@@ -31,6 +31,7 @@ type LocaleCopy = {
   onboarding: {
     title: string;
     name: string;
+    side: string;
     level: string;
     preciseLevel: string;
     levelChoice: string;
@@ -41,6 +42,9 @@ type LocaleCopy = {
     reliabilityHelp: string;
     sideLeft: string;
     sideLeftShort: string;
+    handLeft: string;
+    handRight: string;
+    handPreferNot: string;
     save: string;
     saving: string;
     failed: string;
@@ -63,6 +67,8 @@ type LocaleCopy = {
     confirmedGroups: string;
     saveFailed: string;
     signOutFailed: string;
+    dominantHand: string;
+    handNone: string;
   };
 };
 
@@ -71,6 +77,9 @@ const en: LocaleCopy = JSON.parse(
 );
 const es: LocaleCopy = JSON.parse(
   readFileSync(new URL('../src/locales/es/translation.json', import.meta.url), 'utf8')
+);
+const ptBr: LocaleCopy = JSON.parse(
+  readFileSync(new URL('../src/locales/pt-BR/translation.json', import.meta.url), 'utf8')
 );
 
 // Local coverage: full email/password signup → onboarding gate → save → dashboard → edit →
@@ -166,13 +175,88 @@ async function register(page: Page, email: string, copy: LocaleCopy = en): Promi
 async function completeOnboarding(page: Page, name: string, level: string): Promise<void> {
   await page.getByLabel(en.onboarding.name).fill(name);
   await page.getByLabel(en.onboarding.preciseLevel).fill(level);
-  const radio = page.getByRole('radio', { name: en.onboarding.sideLeftShort });
+  const radio = page
+    .getByRole('group', { name: en.onboarding.side })
+    .getByRole('radio', { name: en.onboarding.sideLeftShort });
   await radio.check();
   // The form is hydrated once a controlled re-render keeps the radio checked.
   await expect(radio).toBeChecked();
   await page.getByRole('button', { name: en.onboarding.save }).click();
   await expect(page).toHaveURL(/\/dashboard$/);
 }
+
+test('dominant hand stays optional and fits all locales at mobile width', async ({ page }) => {
+  await register(page, uniqueEmail());
+  await page.setViewportSize({ width: 320, height: 844 });
+
+  for (const { locale, copy } of [
+    { locale: 'en', copy: en },
+    { locale: 'pt-BR', copy: ptBr },
+    { locale: 'es', copy: es }
+  ] as const) {
+    await page.context().addCookies([{ name: 'locale', value: locale, url: BASE_URL }]);
+    const response = await page.reload({ waitUntil: 'domcontentloaded' });
+    expect(response?.status()).toBeLessThan(400);
+    await waitForHydratedPage(page);
+    await expect(page.locator('html')).toHaveAttribute('lang', locale);
+
+    const handGroup = page.getByRole('group', { name: copy.profile.dominantHand });
+    const preferNotRadio = page.getByRole('radio', { name: copy.onboarding.handPreferNot });
+    await expect(handGroup).toBeVisible();
+    await expect(preferNotRadio).toBeChecked();
+    await expect(preferNotRadio).not.toHaveAttribute('required', '');
+    await expect(handGroup.getByRole('radio', { name: copy.onboarding.handLeft })).toBeVisible();
+    await expect(handGroup.getByRole('radio', { name: copy.onboarding.handRight })).toBeVisible();
+
+    const responsiveLayout = await page.locator('#player-hand-options').evaluate((row) => {
+      const options = Array.from(row.querySelectorAll('label')).map((label) => {
+        const text = label.querySelector('span');
+        const bounds = label.getBoundingClientRect();
+        return {
+          height: bounds.height,
+          textFits: text !== null && text.scrollWidth <= text.clientWidth
+        };
+      });
+      return {
+        rowWidth: row.clientWidth,
+        rowScrollWidth: row.scrollWidth,
+        documentWidth: document.documentElement.clientWidth,
+        documentScrollWidth: document.documentElement.scrollWidth,
+        options
+      };
+    });
+    expect(responsiveLayout.options).toHaveLength(3);
+    expect(responsiveLayout.rowScrollWidth).toBe(responsiveLayout.rowWidth);
+    expect(responsiveLayout.documentScrollWidth).toBe(responsiveLayout.documentWidth);
+    expect(
+      responsiveLayout.options.every(({ height, textFits }) => height === 44 && textFits)
+    ).toBe(true);
+
+    if (locale === 'en') {
+      await preferNotRadio.focus();
+      await page.keyboard.press('ArrowLeft');
+      await expect(handGroup.getByRole('radio', { name: copy.onboarding.handRight })).toBeChecked();
+    }
+  }
+
+  await page.context().addCookies([{ name: 'locale', value: 'en', url: BASE_URL }]);
+  await page.reload({ waitUntil: 'domcontentloaded' });
+  await waitForHydratedPage(page);
+  await expect(page.getByRole('radio', { name: en.onboarding.handPreferNot })).toBeChecked();
+  await page.getByLabel(en.onboarding.name).fill('Optional Hand');
+  await page.getByLabel(en.onboarding.preciseLevel).fill('3.0');
+  await page
+    .getByRole('group', { name: en.onboarding.side })
+    .getByRole('radio', { name: en.onboarding.sideLeftShort })
+    .check();
+  await page.getByRole('button', { name: en.onboarding.save }).click();
+  await expect(page).toHaveURL(/\/dashboard$/);
+
+  await page.getByRole('button', { name: en.profile.edit }).click();
+  const dominantHandSelect = page.getByLabel(en.profile.dominantHand);
+  await expect(dominantHandSelect).toHaveValue('');
+  await expect(dominantHandSelect.locator('option:checked')).toHaveText(en.profile.handNone);
+});
 
 test('a new signup is blocked by onboarding, rejects invalid input, then lands on the dashboard', async ({
   page
@@ -249,7 +333,9 @@ test('a new signup is blocked by onboarding, rejects invalid input, then lands o
   // Valid save: onboarding shows design's one-decimal level; profile shows two decimals.
   await page.getByLabel(en.onboarding.name).fill('Taka Onboard');
   await page.getByLabel(en.onboarding.preciseLevel).fill('3.0');
-  const sideRadio = page.getByRole('radio', { name: en.onboarding.sideLeftShort });
+  const sideRadio = page
+    .getByRole('group', { name: en.onboarding.side })
+    .getByRole('radio', { name: en.onboarding.sideLeftShort });
   await sideRadio.check();
   // The form is hydrated once a controlled re-render keeps the radio checked.
   await expect(sideRadio).toBeChecked();
@@ -436,7 +522,9 @@ test('first-time onboarding accepts a padded display name and lands on the trimm
   // dashboard (navigation only happens after a successful save) showing the trimmed name.
   await page.getByLabel(en.onboarding.name).fill('  Onboard Trim  ');
   await page.getByLabel(en.onboarding.preciseLevel).fill('3.0');
-  const radio = page.getByRole('radio', { name: en.onboarding.sideLeftShort });
+  const radio = page
+    .getByRole('group', { name: en.onboarding.side })
+    .getByRole('radio', { name: en.onboarding.sideLeftShort });
   await radio.check();
   // The form is hydrated once a controlled re-render keeps the radio checked.
   await expect(radio).toBeChecked();
@@ -459,7 +547,9 @@ test('an NBSP-edged display name is saved verbatim and persists with its NBSPs',
   const nbspName = '\u00A0Ana\u00A0';
   await page.getByLabel(en.onboarding.name).fill(nbspName);
   await page.getByLabel(en.onboarding.preciseLevel).fill('3.0');
-  const radio = page.getByRole('radio', { name: en.onboarding.sideLeftShort });
+  const radio = page
+    .getByRole('group', { name: en.onboarding.side })
+    .getByRole('radio', { name: en.onboarding.sideLeftShort });
   await radio.check();
   // The form is hydrated once a controlled re-render keeps the radio checked.
   await expect(radio).toBeChecked();
@@ -501,7 +591,9 @@ test('the emptiness rule is the ASCII class end-to-end: whitespace-only is rejec
   // message and no navigation.
   await page.getByLabel(en.onboarding.name).fill('\t \n');
   await page.getByLabel(en.onboarding.preciseLevel).fill('3.0');
-  const radio = page.getByRole('radio', { name: en.onboarding.sideLeftShort });
+  const radio = page
+    .getByRole('group', { name: en.onboarding.side })
+    .getByRole('radio', { name: en.onboarding.sideLeftShort });
   await radio.check();
   // The form is hydrated once a controlled re-render keeps the radio checked.
   await expect(radio).toBeChecked();
@@ -739,7 +831,9 @@ test.describe('onboarding save failure handling', () => {
     // Valid input, so the ONLY possible failure source is the forced server outage below.
     await page.getByLabel(en.onboarding.name).fill('Nia Retry');
     await page.getByLabel(en.onboarding.preciseLevel).fill('3.0');
-    const radio = page.getByRole('radio', { name: en.onboarding.sideLeftShort });
+    const radio = page
+      .getByRole('group', { name: en.onboarding.side })
+      .getByRole('radio', { name: en.onboarding.sideLeftShort });
     await radio.check();
     // The form is hydrated once a controlled re-render keeps the radio checked.
     await expect(radio).toBeChecked();
@@ -808,7 +902,9 @@ test.describe('onboarding save failure handling', () => {
     // Valid input, so the ONLY possible failure source is the session removal below.
     await page.getByLabel(en.onboarding.name).fill('Ivo Expired');
     await page.getByLabel(en.onboarding.preciseLevel).fill('3.0');
-    const radio = page.getByRole('radio', { name: en.onboarding.sideLeftShort });
+    const radio = page
+      .getByRole('group', { name: en.onboarding.side })
+      .getByRole('radio', { name: en.onboarding.sideLeftShort });
     await radio.check();
     // The form is hydrated once a controlled re-render keeps the radio checked.
     await expect(radio).toBeChecked();

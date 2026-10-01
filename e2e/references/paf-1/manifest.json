@@ -6,9 +6,9 @@
   },
   "sourceDesign": {
     "path": "docs/design/padel-friend.pen",
-    "sha256": "7cf0039337478833c64b3f3e5d8271bb3bd35f395dfd534af02200f8e3358875",
-    "exportCommand": "pen interactive -i <TEMP>/design-copy.pen -o <TEMP>/out.pen; execute({ input: 'Export([\"wzWLt\",\"EGb2g\",\"PdRtP\"], \"png\", \"<TEMP>/export\", {scale:1})' }); exit()",
-    "provenanceNote": "pen CLI 0.3.10 re-exported frames wzWLt, EGb2g, and PdRtP from a temporary copy of the format 2.20 design at 1×; all PNGs are 390×844. Source design remains untouched. User re-approved the references on 2026-10-01."
+    "sha256": "ccb3a62dcb3dd0903a9a4557b06f9970cee355a877af393dedb3cc785fa8a76d",
+    "exportCommand": "pen interactive -i <TEMP>/design-copy.pen -o <TEMP>/out.pen; execute({ input: 'Export([\"PdRtP\"],\"png\",\"<TEMP>/export\",{scale:1})' })",
+    "provenanceNote": "Updated PdRtP frame re-exported with pen CLI 0.3.10 from a temporary copy of the format 2.20 design at 1×; PNG is 390×844. Source design remains untouched; other approved reference bytes remain unchanged."
   },
   "approvedReferences": {
     "login-welcome.png": {
@@ -21,7 +21,7 @@
     },
     "player-setup.png": {
       "frameId": "PdRtP",
-      "sha256": "d5ade21fbdb3b364a1378bf4b0006daa0a9bf13a3cbfd9d5cead4a0ebc4f4734"
+      "sha256": "c053b0de6c602d722715cc2c3d1a68a14cecdd1313d9ebe9bfcf6a6b1873bb64"
     },
     "account-adapted.png": {
       "sourceFrameId": "EGb2g",
@@ -42,7 +42,7 @@
       "derivedFrom": "account-adapted.png"
     },
     "player-setup.png": {
-      "sha256": "e8807c8664609a6b460a1e56e7a562a46532a95bd4b033a7d89e583232f550f1",
+      "sha256": "6dfb8af63fdb4de4d8bd12b2b2119d1bd9fb0cf1a991fec06b446de678c052d8",
       "derivedFrom": "player-setup.png",
       "derivation": "Decode approved source reference; paint only the two PAF-21 rectangles opaque #FF00FF; encode PNG with the pinned Playwright PNG implementation."
     }
@@ -51,7 +51,7 @@
     "maskColor": "#FF00FF",
     "rectangles": [
       { "name": "name", "x": 31, "y": 258, "width": 111, "height": 22 },
-      { "name": "right", "x": 139, "y": 493, "width": 112, "height": 47 }
+      { "name": "right", "x": 139, "y": 497, "width": 112, "height": 47 }
     ]
   }
 }

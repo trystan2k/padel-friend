@@ -20,7 +20,7 @@ export function PlayerOnboarding() {
   const [name, setName] = useState('');
   const [side, setSide] = useState<PreferredSide | null>(null);
   const [level, setLevel] = useState('3.0');
-  const [hand, setHand] = useState<'LEFT' | 'RIGHT' | ''>('');
+  const [hand, setHand] = useState<'LEFT' | 'RIGHT' | null>(null);
   const [bio, setBio] = useState('');
   const [errors, setErrors] = useState<Partial<Record<'name' | 'side' | 'level', string>>>({});
   const [failed, setFailed] = useState(false);
@@ -62,7 +62,7 @@ export function PlayerOnboarding() {
           display_name: normalizedName,
           preferred_side: side,
           initial_level: initialLevel,
-          dominant_hand: hand || null,
+          dominant_hand: hand,
           bio: bio.trim() || null
         }
       });
@@ -155,44 +155,81 @@ export function PlayerOnboarding() {
           </div>
         </SurfaceCard>
         <SurfaceCard xstyle={ui.onboardingCard}>
-          <fieldset
-            aria-invalid={Boolean(errors.side)}
-            aria-describedby={errors.side ? 'player-side-error' : undefined}
-            {...stylex.props(ui.fieldset, ui.bareFieldset)}
-          >
-            <legend {...stylex.props(ui.srOnly)}>{t('onboarding.side')}</legend>
-            <span aria-hidden="true" {...stylex.props(ui.label)}>
-              {t('onboarding.side')}
-            </span>
-            <div {...stylex.props(ui.choices, ui.onboardingChoices)}>
-              {(['LEFT', 'RIGHT', 'EITHER'] as const).map((value, index) => (
-                <label key={value} {...stylex.props(ui.choice, side === value && ui.selected)}>
-                  <input
-                    ref={index === 0 ? sideRef : undefined}
-                    type="radio"
-                    name="side"
-                    value={value}
-                    checked={side === value}
-                    onChange={() => setSide(value)}
-                    aria-describedby={errors.side ? 'player-side-error' : undefined}
-                    {...stylex.props(ui.radio)}
-                  />
-                  {t(
-                    value === 'LEFT'
-                      ? 'onboarding.sideLeftShort'
-                      : value === 'RIGHT'
-                        ? 'onboarding.sideRightShort'
-                        : 'onboarding.sideEitherShort'
-                  )}
-                </label>
-              ))}
-            </div>
-            {errors.side && (
-              <p id="player-side-error" role="alert" {...stylex.props(ui.error)}>
-                {t(errors.side)}
-              </p>
-            )}
-          </fieldset>
+          <div {...stylex.props(ui.onboardingChoiceStack)}>
+            <fieldset
+              aria-invalid={Boolean(errors.side)}
+              aria-describedby={errors.side ? 'player-side-error' : undefined}
+              {...stylex.props(ui.fieldset, ui.bareFieldset, ui.choiceSection)}
+            >
+              <legend {...stylex.props(ui.srOnly)}>{t('onboarding.side')}</legend>
+              <span aria-hidden="true" {...stylex.props(ui.label, ui.choiceLabel)}>
+                {t('onboarding.side')}
+              </span>
+              <div {...stylex.props(ui.choices, ui.onboardingChoices)}>
+                {(['LEFT', 'RIGHT', 'EITHER'] as const).map((value, index) => (
+                  <label key={value} {...stylex.props(ui.choice, side === value && ui.selected)}>
+                    <input
+                      ref={index === 0 ? sideRef : undefined}
+                      type="radio"
+                      name="side"
+                      value={value}
+                      checked={side === value}
+                      onChange={() => setSide(value)}
+                      aria-describedby={errors.side ? 'player-side-error' : undefined}
+                      {...stylex.props(ui.radio)}
+                    />
+                    {t(
+                      value === 'LEFT'
+                        ? 'onboarding.sideLeftShort'
+                        : value === 'RIGHT'
+                          ? 'onboarding.sideRightShort'
+                          : 'onboarding.sideEitherShort'
+                    )}
+                  </label>
+                ))}
+              </div>
+              {errors.side && (
+                <p id="player-side-error" role="alert" {...stylex.props(ui.error)}>
+                  {t(errors.side)}
+                </p>
+              )}
+            </fieldset>
+            <fieldset {...stylex.props(ui.fieldset, ui.bareFieldset, ui.handSection)}>
+              <legend {...stylex.props(ui.srOnly)}>{t('profile.dominantHand')}</legend>
+              <span aria-hidden="true" {...stylex.props(ui.label, ui.choiceLabel)}>
+                {t('profile.dominantHand')}
+              </span>
+              <div id="player-hand-options" {...stylex.props(ui.handChoices)}>
+                {[
+                  { value: 'LEFT' as const, label: t('onboarding.handLeft') },
+                  { value: 'RIGHT' as const, label: t('onboarding.handRight') },
+                  { value: null, label: t('onboarding.handPreferNot') }
+                ].map(({ value, label }) => (
+                  <label
+                    key={value ?? 'prefer-not'}
+                    {...stylex.props(ui.handChoice, hand === value && ui.selected)}
+                  >
+                    <input
+                      type="radio"
+                      name="dominant_hand"
+                      value={value ?? ''}
+                      checked={hand === value}
+                      onChange={() => setHand(value)}
+                      {...stylex.props(ui.radio)}
+                    />
+                    <span
+                      {...stylex.props(
+                        ui.handChoiceText,
+                        value === null && ui.handChoiceTextCompact
+                      )}
+                    >
+                      {label}
+                    </span>
+                  </label>
+                ))}
+              </div>
+            </fieldset>
+          </div>
         </SurfaceCard>
         <SurfaceCard xstyle={ui.onboardingCard}>
           <StepBadge>
@@ -240,25 +277,6 @@ export function PlayerOnboarding() {
           )}
         </SurfaceCard>
         <SurfaceCard>
-          <label htmlFor="onboard-hand" {...stylex.props(ui.label)}>
-            {t('profile.dominantHand')}
-          </label>
-          <select
-            id="onboard-hand"
-            value={hand}
-            onChange={(event) =>
-              setHand(
-                event.target.value === 'LEFT' || event.target.value === 'RIGHT'
-                  ? event.target.value
-                  : ''
-              )
-            }
-            {...stylex.props(ui.input)}
-          >
-            <option value="">{t('profile.handNone')}</option>
-            <option value="LEFT">{t('profile.handLeft')}</option>
-            <option value="RIGHT">{t('profile.handRight')}</option>
-          </select>
           <label htmlFor="onboard-bio" {...stylex.props(ui.label)}>
             {t('profile.bio')}
           </label>

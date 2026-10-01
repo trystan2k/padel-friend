@@ -15765,18 +15765,18 @@
               "strokeWidth": 1,
               "cornerRadius": 16,
               "padding": 14,
-              "descendants": {
-                "PNgzI": {
+              "children": [
+                {
                   "type": "frame",
-                  "id": "RR4G2",
-                  "name": "Preferred court side content",
-                  "width": "fill_container",
+                  "id": "hw48S",
+                  "name": "Preferred court side and dominant hand controls",
+                  "width": 326,
                   "layout": "vertical",
-                  "gap": 9,
+                  "gap": 10,
                   "children": [
                     {
                       "type": "text",
-                      "id": "BHnB7",
+                      "id": "Ba1Ea",
                       "name": "Preferred side label",
                       "fill": "$muted",
                       "content": "PREFERRED COURT SIDE",
@@ -15786,7 +15786,7 @@
                     },
                     {
                       "type": "frame",
-                      "id": "bSYiW",
+                      "id": "fIkmx",
                       "name": "Preferred side options",
                       "width": "fill_container",
                       "height": 44,
@@ -15795,20 +15795,19 @@
                       "children": [
                         {
                           "type": "frame",
-                          "id": "JA9X5",
+                          "id": "VlOte",
                           "name": "Left side option",
                           "width": "fill_container",
                           "height": 44,
                           "fill": "$surface2",
                           "cornerRadius": 10,
-                          "gap": 2,
                           "padding": 9,
                           "justifyContent": "center",
                           "alignItems": "center",
                           "children": [
                             {
                               "type": "text",
-                              "id": "QFNru",
+                              "id": "JXVSo",
                               "name": "Left side label",
                               "fill": "$text",
                               "content": "Left",
@@ -15820,20 +15819,19 @@
                         },
                         {
                           "type": "frame",
-                          "id": "XZPIo",
+                          "id": "vZRp6",
                           "name": "Right side option",
                           "width": "fill_container",
                           "height": 44,
                           "fill": "$greenSoft",
                           "cornerRadius": 10,
-                          "gap": 2,
                           "padding": 9,
                           "justifyContent": "center",
                           "alignItems": "center",
                           "children": [
                             {
                               "type": "text",
-                              "id": "y5zzF",
+                              "id": "Tpyx2",
                               "name": "Right side label",
                               "fill": "$green",
                               "content": "Right",
@@ -15845,20 +15843,19 @@
                         },
                         {
                           "type": "frame",
-                          "id": "m9cOzO",
+                          "id": "G99Yt",
                           "name": "Either side option",
                           "width": "fill_container",
                           "height": 44,
                           "fill": "$surface2",
                           "cornerRadius": 10,
-                          "gap": 2,
                           "padding": 9,
                           "justifyContent": "center",
                           "alignItems": "center",
                           "children": [
                             {
                               "type": "text",
-                              "id": "VOKKi",
+                              "id": "lEhaM",
                               "name": "Either side label",
                               "fill": "$text",
                               "content": "Either",
@@ -15869,10 +15866,116 @@
                           ]
                         }
                       ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "R50XhB",
+                      "name": "Dominant hand section",
+                      "width": "fill_container",
+                      "layout": "vertical",
+                      "gap": 6,
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "N9yqC",
+                          "name": "Dominant hand label",
+                          "fill": "$muted",
+                          "content": "DOMINANT HAND",
+                          "fontFamily": "Inter",
+                          "fontSize": 12,
+                          "fontWeight": "bold"
+                        },
+                        {
+                          "type": "frame",
+                          "id": "L4l35",
+                          "name": "Dominant hand options",
+                          "width": 326,
+                          "height": 44,
+                          "gap": 7,
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "frame",
+                              "id": "jDlQR",
+                              "name": "Left hand option",
+                              "width": "fill_container",
+                              "height": 44,
+                              "fill": "$surface2",
+                              "cornerRadius": 10,
+                              "padding": 6,
+                              "justifyContent": "center",
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "id": "ZnGh6",
+                                  "name": "Left hand label",
+                                  "fill": "$text",
+                                  "content": "Left",
+                                  "fontFamily": "Inter",
+                                  "fontSize": 12,
+                                  "fontWeight": "semibold"
+                                }
+                              ]
+                            },
+                            {
+                              "type": "frame",
+                              "id": "I5g4G",
+                              "name": "Right hand option",
+                              "width": "fill_container",
+                              "height": 44,
+                              "fill": "$surface2",
+                              "cornerRadius": 10,
+                              "padding": 6,
+                              "justifyContent": "center",
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "id": "zoFJK",
+                                  "name": "Right hand label",
+                                  "fill": "$text",
+                                  "content": "Right",
+                                  "fontFamily": "Inter",
+                                  "fontSize": 12,
+                                  "fontWeight": "semibold"
+                                }
+                              ]
+                            },
+                            {
+                              "type": "frame",
+                              "id": "KuZgY",
+                              "name": "Prefer not to say option",
+                              "width": "fill_container",
+                              "height": 44,
+                              "fill": "$greenSoft",
+                              "cornerRadius": 10,
+                              "padding": 6,
+                              "justifyContent": "center",
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "id": "K2lj1R",
+                                  "name": "Prefer not to say label",
+                                  "fill": "$green",
+                                  "textGrowth": "fixed-width",
+                                  "width": "fill_container",
+                                  "content": "Prefer not to say",
+                                  "textAlign": "center",
+                                  "fontFamily": "Inter",
+                                  "fontSize": 10,
+                                  "fontWeight": "semibold"
+                                }
+                              ]
+                            }
+                          ]
+                        }
+                      ]
                     }
                   ]
                 }
-              }
+              ]
             },
             {
               "id": "hx1tG",

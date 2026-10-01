@@ -18,6 +18,7 @@ type LocaleCopy = {
   };
   onboarding: {
     name: string;
+    side: string;
     preciseLevel: string;
     sideEitherShort: string;
     sideRightShort: string;
@@ -94,7 +95,10 @@ test('a protected deep link survives sign-in and a newcomer is gated before reac
   await register(page, email);
   await page.getByLabel(en.onboarding.name).fill('Dee Link');
   await page.getByLabel(en.onboarding.preciseLevel).fill('3.0');
-  await page.getByRole('radio', { name: en.onboarding.sideRightShort }).check();
+  await page
+    .getByRole('group', { name: en.onboarding.side })
+    .getByRole('radio', { name: en.onboarding.sideRightShort })
+    .check();
   await page.getByRole('button', { name: en.onboarding.save }).click();
   await expect(page).toHaveURL(/\/dashboard$/);
   await expect(page.getByRole('heading', { name: 'Dee Link' })).toBeVisible();

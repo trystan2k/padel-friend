@@ -139,6 +139,57 @@ export const ui = stylex.create({
     fontWeight: 'var(--font-weight-bold)'
   },
   onboardingChoices: { marginTop: 0 },
+  onboardingChoiceStack: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 'var(--space-10)'
+  },
+  choiceSection: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 'var(--space-10)'
+  },
+  choiceLabel: { lineHeight: 'var(--space-14)' },
+  handSection: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 'var(--space-6)'
+  },
+  handChoices: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 'var(--space-7)',
+    width: '100%',
+    minWidth: 0
+  },
+  handChoice: {
+    display: 'flex',
+    flex: 1,
+    minWidth: 0,
+    height: 'calc(var(--space-40) + var(--space-4))',
+    minHeight: 'calc(var(--space-40) + var(--space-4))',
+    boxSizing: 'border-box',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 'var(--space-6)',
+    backgroundColor: 'var(--color-surface-2)',
+    borderRadius: 'var(--radius-10)',
+    fontSize: 'var(--font-size-12)',
+    fontWeight: 'var(--font-weight-semibold)',
+    cursor: 'pointer',
+    ':focus-within': {
+      outline: 'var(--border-width-lg) solid var(--color-green)',
+      outlineOffset: 'var(--space-2)'
+    }
+  },
+  handChoiceText: {
+    display: 'block',
+    width: '100%',
+    minWidth: 0,
+    overflowWrap: 'anywhere',
+    textAlign: 'center'
+  },
+  handChoiceTextCompact: { fontSize: 'var(--font-size-10)' },
   profileCard: { padding: 'var(--space-14)', borderRadius: 'var(--radius-16)' },
   onboardingForm: { gap: 'var(--space-12)', marginTop: 'var(--space-2)' },
   label: {

@@ -72,7 +72,9 @@ type LocaleCopy = {
     level: string;
     levelScale: string;
     advanced: string;
+    handPreferNot: string;
   };
+  profile: { dominantHand: string };
 };
 
 const en: LocaleCopy = JSON.parse(
@@ -491,7 +493,9 @@ test('incomplete authenticated player setup matches frame PdRtP', async ({ page 
   );
   await ready(page);
   await expect(page.getByRole('heading', { name: en.onboarding.title })).toBeVisible();
-  // PdRtP frame coordinates: badge, hero, card stack, chips and CTA.
+  await expect(page.getByRole('group', { name: en.profile.dominantHand })).toBeVisible();
+  await expect(page.getByRole('radio', { name: en.onboarding.handPreferNot })).toBeChecked();
+  // PdRtP frame coordinates: badge, hero, card stack, hand row and CTA.
   await assertGeometry(
     page.locator('main > div').first().locator('span').first(),
     'Player step badge',
@@ -553,19 +557,25 @@ test('incomplete authenticated player setup matches frame PdRtP', async ({ page 
       height: 44
     }
   );
-  await assertGeometry(page.locator('form > div').nth(2), 'Preferred side card', {
+  await assertGeometry(page.locator('form > div').nth(2), 'Preferred side and hand card', {
     x: 18,
     y: 459,
     width: 354,
-    height: 92
+    height: 170
+  });
+  await assertGeometry(page.locator('#player-hand-options'), 'Dominant hand options row', {
+    x: 32,
+    y: 571,
+    width: 326,
+    height: 44
   });
   await assertGeometry(page.locator('form button[type="submit"]'), 'Save profile CTA', {
     x: 18,
-    y: 682,
+    y: 761,
     width: 354,
     height: 44
   });
   // Native 0.1-step slider maps 3.0 to 3/7 of the track (Pencil places 3.0 near its center).
-  // Centered choices and $bg thumb stroke: CLI 0.3.10 measured 9740/329160 = 2.9590%; 3.06% cap leaves 0.1010pp margin.
-  await compare(page, 'player-setup.png', 0.0306, true);
+  // Updated PdRtP at threshold 0.1: 7577/329160 = 2.3019%; 2.41% cap leaves 0.1081pp margin.
+  await compare(page, 'player-setup.png', 0.0241, true);
 });
