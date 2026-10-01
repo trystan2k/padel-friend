@@ -1,5 +1,7 @@
 # Onboarding and player-profile fields
 
+**Status:** Dominant hand is done (design and implementation). Avatar in onboarding remains an open product decision; availability and private contact remain open decisions requiring migrations (contact also needs visibility rules).
+
 ## 1. Purpose & sources
 
 Reference for the user-provided and system-managed data in onboarding and the app-wide player profile. Schema claims use the migration and generated types; current UI claims use the player feature and English copy; product intent uses the PRD and onboarding task.
@@ -24,7 +26,7 @@ Sources:
 | `player_profiles.display_name`                            | `text`, 1–80 characters; trimmed                                   | Yes — DB `NOT NULL`; PRD-required       | Yes — user input                     | Yes                                              | [PRD §11.1][prd]; [migration][migration]                   | Profile edit accepts this field.                                                                                    |
 | `player_profiles.avatar_url`                              | Nullable `text`; user-owned avatar storage key, max 256 characters | No — nullable                           | No                                   | Yes                                              | [PRD §11.2][prd]; [migration][migration]                   | Initials fallback allowed. Current upload flow lives on profile; stored value is a key, not the signed display URL. |
 | `player_profiles.preferred_side`                          | `text`: `LEFT`, `RIGHT`, `EITHER`                                  | Yes — DB `NOT NULL`; PRD-required       | Yes — user input                     | Yes                                              | [PRD §11.1][prd]; [migration][migration]                   |                                                                                                                     |
-| `player_profiles.dominant_hand`                           | Nullable `text`: `LEFT`, `RIGHT`                                   | No — nullable; PRD-optional             | Yes — optional                       | Yes                                              | [PRD §11.3][prd]; [migration][migration]                   |                                                                                                                     |
+| `player_profiles.dominant_hand`                           | Nullable `text`: `LEFT`, `RIGHT`                                   | No — nullable; PRD-optional             | Yes — optional                       | Yes                                              | [PRD §11.3][prd]; [migration][migration]                   | “Prefer not to say” submits `dominant_hand = null`.                                                                 |
 | `player_profiles.bio`                                     | Nullable `text`, max 280 characters                                | No — nullable; PRD-optional             | Yes — optional                       | Yes                                              | [PRD §11.3][prd]; [migration][migration]                   |                                                                                                                     |
 | `player_profiles.created_at`                              | `timestamptz`, defaults to `now()`                                 | Yes — DB `NOT NULL`; system-set         | No — set on profile creation         | No                                               | [PRD §11.2][prd]; [migration][migration]                   | Used as profile join date.                                                                                          |
 | `player_profiles.updated_at`                              | `timestamptz`, defaults to `now()`; updated by trigger             | Yes — DB `NOT NULL`; system-set         | No                                   | No — trigger-managed                             | [migration][migration]                                     |                                                                                                                     |
@@ -45,22 +47,22 @@ The PRD also names rating history (§11.2), which is not a column in either tabl
 
 ## 3. What onboarding currently captures
 
-| Field                | Required?                               | Current rendering                                                             |
-| -------------------- | --------------------------------------- | ----------------------------------------------------------------------------- |
-| Display name         | Required                                | Text field near top of `PlayerOnboarding`, before level and side.             |
-| Preferred court side | Required: Left, Right, or Either        | Radio choices after the main level slider.                                    |
-| Initial level        | Required: 0.0–7.0 in 0.1 steps          | Slider before the primary CTA; exact numeric input is rendered after the CTA. |
-| Dominant hand        | Optional: Left, Right, or Not specified | Select after the primary CTA, in the trailing extra-fields card.              |
-| Bio                  | Optional; up to 280 characters          | Text area after the primary CTA, beside dominant hand.                        |
+| Field                | Required?                                   | Current rendering                                                                                                                                                   |
+| -------------------- | ------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Display name         | Required                                    | Text field near top of `PlayerOnboarding`, before level and side.                                                                                                   |
+| Preferred court side | Required: Left, Right, or Either            | Radio choices after the main level slider.                                                                                                                          |
+| Initial level        | Required: 0.0–7.0 in 0.1 steps              | Slider before the primary CTA; exact-tenth numeric input remains after the CTA.                                                                                     |
+| Dominant hand        | Optional: Left, Right, or Prefer not to say | Three-option segmented control inside the preferred-court-side card, before the reliability card and CTA; defaults to “Prefer not to say” (`dominant_hand = null`). |
+| Bio                  | Optional; up to 280 characters              | Text area in a trailing card after the primary CTA.                                                                                                                 |
 
-Current implementation validates/saves all five fields. The exact-level number input and both optional fields are below the primary “Save player profile” CTA in code. Pen frame `PdRtP` shows display name, level slider, preferred side, reliability note, and CTA; it omits the exact-level input, dominant-hand select, and bio. On the profile screen, name, side, hand, and bio are editable; avatar upload is a separate profile action. Current labels/options are in English translation keys under `onboarding.*` and `profile.*`.
+Current implementation validates the required display-name, side, and initial-level fields; dominant hand and bio remain optional. “Prefer not to say” submits `dominant_hand = null` without a validation error. The hand control sits inside the preferred-court-side card, before the reliability card and primary “Save player profile” CTA. The exact-tenth numeric input and bio card remain after the CTA. Pen frame `PdRtP` shows the hand control but omits the exact-level input and bio. On the profile screen, name, side, hand, and bio are editable; hand keeps its own select with a clearing option, and avatar upload is a separate profile action. Current labels/options use `onboarding.*` and `profile.*` translation keys in en, pt-BR, and es.
 
-## 4. Gaps to add to the UX design (and later implement)
+## 4. UX follow-up status
 
-1. **P1 — Dominant hand.** **What:** Add hand selection to `PdRtP`. **Why:** PRD §11.3 lists it as optional; implementation already captures it and supports profile editing, but the pen frame omits it. **DB status:** Exists (`player_profiles.dominant_hand`). **Recommendation:** Keep optional to match the PRD; put in the main flow with side/profile details before the CTA, or explicitly decide otherwise.
-2. **P2 — Avatar.** **What:** Decide whether to offer photo upload during onboarding. **Why:** PRD §11.2 lists avatar with initials fallback; current implementation exposes upload only on the profile screen. **DB status:** Exists (`player_profiles.avatar_url`; private avatar storage). **Recommendation:** Optional with initials/skip fallback; if included, place near display name/identity before the CTA. Keep later profile upload available.
-3. **P3 — Preferred playing days/times.** **What:** Add an availability input and profile-edit experience. **Why:** PRD §11.3 lists this as optional; current schema and onboarding validators have no such field. **DB status:** New migration needed; no column exists. **Recommendation:** Optional, outside the required core flow—place under optional availability/profile details and define values before implementation; format not specified in docs.
-4. **P4 — Phone/contact data.** **What:** Add a private contact field and controlled visibility behavior. **Why:** PRD §11.3 lists phone/contact as optional and private by default; §11.4 says auth email/security data must not be automatically exposed. **DB status:** New migration and explicit privacy/visibility rules needed; no column exists. **Recommendation:** Optional, in a separate private contact section (preferably profile/settings, not the sporting-profile card); never surface it as sporting-profile data.
+1. **P1 — Dominant hand — DONE.** `PdRtP` now includes an optional Left / Right / Prefer not to say segmented control inside the preferred-court-side card, before the reliability card and CTA. “Prefer not to say” is the default and submits `dominant_hand = null` without validation error. Implementation and en/pt-BR/es labels are updated; DB support already exists (`player_profiles.dominant_hand`).
+2. **P2 — Avatar — OPEN.** **What:** Decide whether to offer photo upload during onboarding. **Why:** PRD §11.2 lists avatar with initials fallback; current implementation exposes upload only on the profile screen. **DB status:** Exists (`player_profiles.avatar_url`; private avatar storage). **Recommendation:** Optional with initials/skip fallback; if included, place near display name/identity before the CTA. Keep later profile upload available.
+3. **P3 — Preferred playing days/times — OPEN.** **What:** Add an availability input and profile-edit experience. **Why:** PRD §11.3 lists this as optional; current schema and onboarding validators have no such field. **DB status:** New migration needed; no column exists. **Recommendation:** Optional, outside the required core flow—place under optional availability/profile details and define values before implementation; format not specified in docs.
+4. **P4 — Phone/contact data — OPEN.** **What:** Add a private contact field and controlled visibility behavior. **Why:** PRD §11.3 lists phone/contact as optional and private by default; §11.4 says auth email/security data must not be automatically exposed. **DB status:** New migration and explicit privacy/visibility rules needed; no column exists. **Recommendation:** Optional, in a separate private contact section (preferably profile/settings, not the sporting-profile card); never surface it as sporting-profile data.
 
 ## 5. Explicitly NOT onboarding/profile fields
 
@@ -79,15 +81,17 @@ Current implementation validates/saves all five fields. The exact-level number i
 
 ### Pen design
 
-- [ ] Update `PdRtP` with dominant-hand selection; confirm optional/required choice and pre-CTA placement.
+- [x] Update `PdRtP` with optional dominant-hand selection before the CTA; “Prefer not to say” defaults to null.
 - [ ] Decide whether avatar belongs in onboarding; preserve initials fallback and profile upload.
 - [ ] Keep optional availability/contact distinct from required core onboarding; show private-by-default behavior for any contact UI.
 
 ### Implementation / backlog
 
+- [x] Implement optional dominant-hand control, nullable submission, and en/pt-BR/es labels; keep the profile-edit select with its clearing option.
 - [ ] Create availability schema/API/profile-edit work for preferred playing days/times; define supported values first.
 - [ ] Create contact-data migration and explicit RLS/visibility rules; prevent sporting-profile exposure.
-- [ ] Implement any chosen onboarding UI changes and test validation, save/edit flows, and translations across supported locales.
+
+Avatar, availability, and private contact remain product decisions/backlog; availability and contact require migrations (contact also needs visibility rules).
 
 [prd]: ../prd/padel-friends-prd-v1.md
 [migration]: ../../supabase/migrations/20260928000000_player_profiles_and_ratings.sql
