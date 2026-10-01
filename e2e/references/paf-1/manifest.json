@@ -7,26 +7,26 @@
   "sourceDesign": {
     "path": "docs/design/padel-friend.pen",
     "sha256": "7cf0039337478833c64b3f3e5d8271bb3bd35f395dfd534af02200f8e3358875",
-    "exportCommand": "Pencil MCP execute on a TEMP copy: Export(['wzWLt','EGb2g','PdRtP'],'png','<TEMP_DIR>',{scale:1})",
-    "provenanceNote": "Current design is format 2.20; pen CLI 0.3.9 cannot read it. Pencil MCP exported 390x844 images from a temporary copy without editing the source."
+    "exportCommand": "pen interactive -i <TEMP>/design-copy.pen -o <TEMP>/out.pen; execute({ input: 'Export([\"wzWLt\",\"EGb2g\",\"PdRtP\"], \"png\", \"<TEMP>/export\", {scale:1})' }); exit()",
+    "provenanceNote": "pen CLI 0.3.10 re-exported frames wzWLt, EGb2g, and PdRtP from a temporary copy of the format 2.20 design at 1×; all PNGs are 390×844. Source design remains untouched. User re-approved the references on 2026-10-01."
   },
   "approvedReferences": {
     "login-welcome.png": {
       "frameId": "wzWLt",
-      "sha256": "e7cd35d04c4c9c6694a8d61b37dbc2b8c2cf355f49274d1aae2ec5c6142376b5"
+      "sha256": "aec77d8182f050e1c1c2556fe1110496a80c5c28b67ecf593de9fef5284420fa"
     },
     "account.png": {
       "frameId": "EGb2g",
-      "sha256": "a9179a9971a07b532f9a72f5f157b7b773208713531f54fd3f40c3c7de56a8cb"
+      "sha256": "cd418a5e5f6ed91bc328d22d106ac915e7ea4d24aade711c5a0cf506bfa3a7cb"
     },
     "player-setup.png": {
       "frameId": "PdRtP",
-      "sha256": "9926b8e27a11ef67cad5c8f2b36c981b7512b545071823e69ec3159a46a70114"
+      "sha256": "d5ade21fbdb3b364a1378bf4b0006daa0a9bf13a3cbfd9d5cead4a0ebc4f4734"
     },
     "account-adapted.png": {
       "sourceFrameId": "EGb2g",
       "frameId": "EGb2g",
-      "sha256": "a9179a9971a07b532f9a72f5f157b7b773208713531f54fd3f40c3c7de56a8cb",
+      "sha256": "cd418a5e5f6ed91bc328d22d106ac915e7ea4d24aade711c5a0cf506bfa3a7cb",
       "exportCommand": "Copy current EGb2g export; design now includes email/password adaptation directly",
       "userApprovedPasswordAdaptation": true,
       "approvalNote": "Updated source design itself includes email/password signup, support copy and CREATE ACCOUNT; adapted baseline matches exported account frame."
@@ -34,15 +34,15 @@
   },
   "screenshotBaselines": {
     "login-welcome.png": {
-      "sha256": "e7cd35d04c4c9c6694a8d61b37dbc2b8c2cf355f49274d1aae2ec5c6142376b5",
+      "sha256": "aec77d8182f050e1c1c2556fe1110496a80c5c28b67ecf593de9fef5284420fa",
       "derivedFrom": "login-welcome.png"
     },
     "account-adapted.png": {
-      "sha256": "a9179a9971a07b532f9a72f5f157b7b773208713531f54fd3f40c3c7de56a8cb",
+      "sha256": "cd418a5e5f6ed91bc328d22d106ac915e7ea4d24aade711c5a0cf506bfa3a7cb",
       "derivedFrom": "account-adapted.png"
     },
     "player-setup.png": {
-      "sha256": "3e03134c69f760d8b6146520c5c61f4cccefe0c9837624393b045eaaef03ec00",
+      "sha256": "e8807c8664609a6b460a1e56e7a562a46532a95bd4b033a7d89e583232f550f1",
       "derivedFrom": "player-setup.png",
       "derivation": "Decode approved source reference; paint only the two PAF-21 rectangles opaque #FF00FF; encode PNG with the pinned Playwright PNG implementation."
     }
@@ -50,8 +50,8 @@
   "playerSampleDataMask": {
     "maskColor": "#FF00FF",
     "rectangles": [
-      { "name": "name", "x": 32, "y": 258, "width": 110, "height": 22 },
-      { "name": "right", "x": 139, "y": 493, "width": 112, "height": 44 }
+      { "name": "name", "x": 31, "y": 258, "width": 111, "height": 22 },
+      { "name": "right", "x": 139, "y": 493, "width": 112, "height": 47 }
     ]
   }
 }

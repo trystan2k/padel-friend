@@ -13,6 +13,7 @@ permission:
   list: allow
   edit: allow
   skill: allow
+  "mcp_pencil*": allow
   bash:
     "*": deny
     "pnpm build*": allow

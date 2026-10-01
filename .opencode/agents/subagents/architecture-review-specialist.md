@@ -13,6 +13,7 @@ permission:
   list: allow
   edit: deny
   skill: allow
+  "mcp_pencil*": allow
   bash:
     "*": deny
     "git diff*": allow

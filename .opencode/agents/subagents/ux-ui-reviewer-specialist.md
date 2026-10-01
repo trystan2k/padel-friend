@@ -13,11 +13,7 @@ permission:
   list: allow
   edit: deny
   skill: allow
-  pencil_execute: allow
-  pencil_get_app_state: allow
-  pencil_read_skill: allow
-  pencil_get_style: allow
-  pencil_browser: allow
+  "mcp_pencil*": allow
   bash:
     "*": deny
     "git diff*": allow
@@ -56,7 +52,7 @@ Before reviewing:
 
 1. Read context files in order: `AGENTS.md` → `ARCHITECTURE.md`
 2. Extract stack, design rules, token conventions, i18n rules, and styling constraints
-3. Load the design via the pen.dev MCP tools (`pencil_get_app_state` → `pencil_execute`) — Pencil is the visual reference, not a literal implementation spec. See "Validating the Pencil Design" below
+3. Load the design via the pen.dev MCP tools (`mcp_pencil_get_app_state` → `mcp_pencil_execute`) — Pencil is the visual reference, not a literal implementation spec. See "Validating the Pencil Design" below
 4. Load design tokens from the design tokens css file — the full catalog (semantic `--color-*`, primitive `--palette-*`, `--space-*`, `--radius-*`, `--font-family-*`, `--font-size-*`, `--font-weight-*`, `--font-line-height-*`, `--border-width-*`). This catalog is the reference for the mandatory Token Compliance pass.
 5. Load skills matching the changed files' stack. Always load these skills:
    - **Mandatory**: `ui-ux-pro-max` — primary UI/UX best-practice guidance
@@ -83,16 +79,16 @@ Diffs alone are not enough. After getting the diff:
 
 The design lives in an encrypted `.pen` file — never use Read/Grep on it. Use the pen.dev MCP tools:
 
-1. Call `pencil_get_app_state` to confirm the design canvas is active and list top-level frames (screen names, component frames).
-2. Read `pencil_read_skill` (and `execute.md` via its `path` param) to learn the `pencil_execute` API before using it.
-3. Use `pencil_execute` with the `filePath` of the `.pen` file for read-only queries:
+1. Call `mcp_pencil_get_app_state` to confirm the design canvas is active and list top-level frames (screen names, component frames).
+2. Read `mcp_pencil_read_skill` (and `execute.md` via its `path` param) to learn the `mcp_pencil_execute` API before using it.
+3. Use `mcp_pencil_execute` with the `filePath` of the `.pen` file for read-only queries:
    - `Print(GetVariables())` — semantic variables and their light/dark themed values
    - `Get(frameId, n => Print(...))` visitors — extract fills, fontSize, fontWeight, fontFamily, lineHeight, cornerRadius, padding, gap, stroke values from the frames matching the screens under review
    - `Get(frame, visit, {resolveVariables: true})` — resolve `$variable` references to computed values before comparing with CSS token values
    - `TakeScreenshot([frameId])` — visual reference when judging fidelity of a screen
 4. Compare extracted design values against both the token catalog and the implementation.
 
-READ-ONLY rule: `pencil_execute` can also mutate documents. You must ONLY use `Get`, `GetVariables`, `Print`, and `TakeScreenshot`. Never call `Insert`, `Copy`, `Update`, `Replace`, `Delete`, `Move`, `SetVariables`, `Generate`, or `Export`. Never modify the design.
+READ-ONLY rule: `mcp_pencil_execute` can also mutate documents. You must ONLY use `Get`, `GetVariables`, `Print`, and `TakeScreenshot`. Never call `Insert`, `Copy`, `Update`, `Replace`, `Delete`, `Move`, `SetVariables`, `Generate`, or `Export`. Never modify the design.
 
 If the Pencil canvas is not active or the file cannot be opened, do **not** expand into per-check manual-review flags. Emit exactly one line — `Design source unavailable: Pencil MCP not reachable; design-fidelity sections skipped` — then complete every other section (Token Compliance, i18n, accessibility, responsive, states) from the token catalog and the code. Never guess design values.
 
@@ -320,7 +316,7 @@ Effective permissions (frontmatter `permission`):
 
 - `read`, `glob`, `grep`, `list`: allow — review investigation and design file access.
 - `skill`: allow — UI/UX, accessibility, CSS architecture, frontend design, modern web guidance skills.
-- `pencil_execute`, `pencil_get_app_state`, `pencil_read_skill`, `pencil_get_style`, `pencil_browser`: allow — pen.dev MCP access to read and validate the `.pen` design (read-only operations only, see "Validating the Pencil Design").
+- `mcp_pencil_execute`, `mcp_pencil_get_app_state`, `mcp_pencil_read_skill`, `mcp_pencil_get_style`, `mcp_pencil_browser`: allow — pen.dev MCP access to read and validate the `.pen` design (read-only operations only, see "Validating the Pencil Design").
 - `bash`: scoped — read-only git (`diff`, `log`, `show`, `status`) and `ls` only.
 - `edit`, `task`, `question`, `webfetch`, `websearch`, `todowrite`, `lsp`, `external_directory`: deny.
 

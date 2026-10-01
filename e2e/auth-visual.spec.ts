@@ -410,8 +410,8 @@ test('Welcome matches frame wzWLt', async ({ page }) => {
       .getByRole('button', { name: en.auth.loginSubmit })
       .evaluate((button) => getComputedStyle(button).fontSize)
   ).toBe('13px');
-  // Updated reference: measured 8709/329160 = 2.65%, with exact control geometry above.
-  await compare(page, 'login-welcome.png', 0.028);
+  // CLI 0.3.10 reference: 8702/329160 = 2.6437%; 2.75% cap leaves 0.1063pp margin.
+  await compare(page, 'login-welcome.png', 0.0275);
 });
 
 test('account matches approved password adaptation of EGb2g', async ({ page }) => {
@@ -469,8 +469,8 @@ test('account matches approved password adaptation of EGb2g', async ({ page }) =
   expect(await accountHero.evaluate((hero) => getComputedStyle(hero).color)).toBe(
     'rgb(255, 255, 255)'
   );
-  // Updated 2.20 exporter rasterizes type differently; measured 9940/329160 = 3.02%.
-  await compare(page, 'account-adapted.png', 0.032);
+  // CLI 0.3.10 reference: 9779/329160 = 2.9709%; 3.08% cap leaves 0.1091pp margin.
+  await compare(page, 'account-adapted.png', 0.0308);
 });
 
 test('incomplete authenticated player setup matches frame PdRtP', async ({ page }) => {
@@ -566,6 +566,6 @@ test('incomplete authenticated player setup matches frame PdRtP', async ({ page 
     height: 44
   });
   // Native 0.1-step slider maps 3.0 to 3/7 of the track (Pencil places 3.0 near its center).
-  // Updated export typography + correct 3/7 range mapping measured 10055/329160 = 3.05%.
-  await compare(page, 'player-setup.png', 0.032, true);
+  // Centered choices and $bg thumb stroke: CLI 0.3.10 measured 9740/329160 = 2.9590%; 3.06% cap leaves 0.1010pp margin.
+  await compare(page, 'player-setup.png', 0.0306, true);
 });

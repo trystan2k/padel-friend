@@ -117,7 +117,7 @@ export const ui = stylex.create({
       borderRadius: 'var(--radius-20)',
       borderWidth: 'var(--border-width-lg)',
       borderStyle: 'solid',
-      borderColor: 'var(--color-surface)',
+      borderColor: 'var(--color-bg)',
       backgroundColor: 'var(--color-green)'
     },
     ':focus-visible': {
@@ -209,9 +209,9 @@ export const ui = stylex.create({
     flex: 1,
     minHeight: 'calc(var(--space-40) + var(--space-4))',
     alignItems: 'center',
-    justifyContent: 'flex-start',
-    paddingInline: 'var(--space-9)',
-    gap: 'var(--space-4)',
+    justifyContent: 'center',
+    padding: 'var(--space-9)',
+    gap: 'var(--space-2)',
     backgroundColor: 'var(--color-surface-2)',
     borderRadius: 'var(--radius-10)',
     fontSize: 'var(--font-size-12)',
