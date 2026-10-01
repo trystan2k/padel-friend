@@ -11,11 +11,12 @@ export const ui = stylex.create({
     flexDirection: 'column',
     gap: 'var(--space-10)',
     paddingBottom: 'var(--space-14)',
-    maxWidth: '100%',
+    width: '100%',
+    boxSizing: 'border-box',
+    maxWidth: 'calc(var(--space-40) * 12)',
     marginInline: 'auto'
   },
-  loginPage: { gap: 'var(--space-14)' },
-  onboardingPage: { gap: 'var(--space-12)' },
+  onboardingPage: { gap: 'var(--space-10)' },
   profilePage: { gap: 'var(--space-8)' },
   topContent: { display: 'flex', flexDirection: 'column', gap: 'var(--space-12)' },
   profileTop: { display: 'flex', flexDirection: 'column', gap: 'var(--space-13)' },
@@ -50,19 +51,18 @@ export const ui = stylex.create({
     backgroundColor: 'var(--color-green-deep)',
     borderRadius: 'var(--radius-18)',
     padding: 'var(--space-17)',
-    color: 'var(--palette-surface)',
+    color: 'var(--color-on-hero)',
     display: 'flex',
     flexDirection: 'column',
     gap: 'var(--space-7)'
   },
   heroTitle: {
     margin: 0,
+    color: 'var(--color-on-hero)',
     fontFamily: 'var(--font-family-heading)',
     fontSize: 'var(--font-size-19)',
     fontWeight: 'var(--font-weight-bold)'
   },
-  loginHeroTitle: { fontSize: 'var(--font-size-21)' },
-  loginHeroCopy: { color: 'var(--color-hero-copy)' },
   heroCopy: { margin: 0, color: 'var(--color-hero-label)', fontSize: 'var(--font-size-12)' },
   card: {
     backgroundColor: 'var(--color-surface)',
@@ -72,36 +72,131 @@ export const ui = stylex.create({
     flexDirection: 'column',
     gap: 'var(--space-9)'
   },
-  loginCard: { padding: 'var(--space-14)' },
-  nameCard: {
-    borderRadius: 'var(--radius-12)',
-    padding: 'var(--space-8) var(--space-12)',
-    gap: 'var(--space-5)'
+  onboardingCard: { gap: 'var(--space-9)' },
+  onboardingLevelHeading: {
+    display: 'flex',
+    alignItems: 'flex-start',
+    gap: 'var(--space-9)'
   },
+  onboardingLevelValue: { fontSize: 'var(--font-size-29)' },
+  onboardingExtras: { marginTop: 'calc(var(--space-40) * 3)' },
+  sliderGroup: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 'var(--space-3)',
+    minHeight: 'calc(var(--space-40) + var(--space-4))'
+  },
+  sliderTrack: {
+    position: 'relative',
+    width: '100%',
+    height: 'var(--space-20)',
+    display: 'flex',
+    alignItems: 'center',
+    borderRadius: 'var(--radius-7)',
+    backgroundColor: 'var(--color-surface-2)'
+  },
+  sliderFill: {
+    height: 'var(--space-14)',
+    borderRadius: 'var(--radius-7)',
+    backgroundColor: 'var(--color-green)'
+  },
+  sliderInput: {
+    position: 'absolute',
+    top: 'calc(-1 * var(--space-12))',
+    left: 0,
+    width: '100%',
+    height: 'calc(var(--space-40) + var(--space-4))',
+    margin: 0,
+    appearance: 'none',
+    backgroundColor: 'transparent',
+    cursor: 'pointer',
+    '::-webkit-slider-thumb': {
+      appearance: 'none',
+      width: 'var(--space-20)',
+      height: 'var(--space-20)',
+      borderRadius: 'var(--radius-20)',
+      borderWidth: 'var(--border-width-lg)',
+      borderStyle: 'solid',
+      borderColor: 'var(--color-bg)',
+      backgroundColor: 'var(--color-green)'
+    },
+    ':focus-visible': {
+      outline: 'var(--border-width-lg) solid var(--color-green)',
+      outlineOffset: 'var(--space-2)'
+    }
+  },
+  sliderLabels: {
+    position: 'relative',
+    display: 'flex',
+    justifyContent: 'space-between',
+    color: 'var(--color-muted)',
+    fontSize: 'var(--font-size-12)'
+  },
+  sliderCurrent: {
+    position: 'absolute',
+    transform: 'translateX(-50%)',
+    color: 'var(--color-green)',
+    fontWeight: 'var(--font-weight-bold)'
+  },
+  onboardingChoices: { marginTop: 0 },
+  onboardingChoiceStack: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 'var(--space-10)'
+  },
+  choiceSection: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 'var(--space-10)'
+  },
+  choiceLabel: { lineHeight: 'var(--space-14)' },
+  handSection: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 'var(--space-6)'
+  },
+  handChoices: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 'var(--space-7)',
+    width: '100%',
+    minWidth: 0
+  },
+  handChoice: {
+    display: 'flex',
+    flex: 1,
+    minWidth: 0,
+    height: 'calc(var(--space-40) + var(--space-4))',
+    minHeight: 'calc(var(--space-40) + var(--space-4))',
+    boxSizing: 'border-box',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 'var(--space-6)',
+    backgroundColor: 'var(--color-surface-2)',
+    borderRadius: 'var(--radius-10)',
+    fontSize: 'var(--font-size-12)',
+    fontWeight: 'var(--font-weight-semibold)',
+    cursor: 'pointer',
+    ':focus-within': {
+      outline: 'var(--border-width-lg) solid var(--color-green)',
+      outlineOffset: 'var(--space-2)'
+    }
+  },
+  handChoiceText: {
+    display: 'block',
+    width: '100%',
+    minWidth: 0,
+    overflowWrap: 'anywhere',
+    textAlign: 'center'
+  },
+  handChoiceTextCompact: { fontSize: 'var(--font-size-10)' },
   profileCard: { padding: 'var(--space-14)', borderRadius: 'var(--radius-16)' },
-  loginForm: { gap: 'var(--space-14)' },
-  onboardingForm: { gap: 'var(--space-12)' },
+  onboardingForm: { gap: 'var(--space-12)', marginTop: 'var(--space-2)' },
   label: {
     color: 'var(--color-muted)',
     fontSize: 'var(--font-size-12)',
     fontWeight: 'var(--font-weight-bold)'
   },
-  loginLabel: { fontWeight: 'var(--font-weight-semibold)' },
-  loginEmailField: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: 'var(--space-8)',
-    paddingInline: 'var(--space-12)',
-    backgroundColor: 'var(--color-bg)',
-    borderRadius: 'var(--radius-10)'
-  },
-  loginEmailIcon: {
-    width: 'var(--space-16)',
-    height: 'var(--space-16)',
-    flexShrink: 0,
-    color: 'var(--color-muted)'
-  },
-  loginEmailInput: { flex: 1, minWidth: 0, width: 'auto', paddingInline: 0 },
   input: {
     fontFamily: 'var(--font-family-body)',
     width: '100%',
@@ -113,6 +208,7 @@ export const ui = stylex.create({
     padding: 'var(--space-12)',
     color: 'var(--color-text)',
     fontSize: 'var(--font-size-13)',
+    '::placeholder': { color: 'var(--color-muted)', opacity: 1 },
     ':focus-visible': {
       outline: 'var(--border-width-lg) solid var(--color-green)',
       outlineOffset: 'var(--space-2)'
@@ -132,7 +228,6 @@ export const ui = stylex.create({
     cursor: 'pointer',
     fontSize: 'var(--font-size-13)',
     fontWeight: 'var(--font-weight-bold)',
-    textTransform: 'uppercase',
     ':focus-visible': {
       outline: 'var(--border-width-lg) solid var(--color-green)',
       outlineOffset: 'var(--space-2)'
@@ -165,9 +260,9 @@ export const ui = stylex.create({
     flex: 1,
     minHeight: 'calc(var(--space-40) + var(--space-4))',
     alignItems: 'center',
-    justifyContent: 'flex-start',
-    paddingInline: 'var(--space-9)',
-    gap: 'var(--space-4)',
+    justifyContent: 'center',
+    padding: 'var(--space-9)',
+    gap: 'var(--space-2)',
     backgroundColor: 'var(--color-surface-2)',
     borderRadius: 'var(--radius-10)',
     fontSize: 'var(--font-size-12)',
@@ -180,70 +275,16 @@ export const ui = stylex.create({
   },
   selected: { backgroundColor: 'var(--color-green-soft)', color: 'var(--color-green)' },
   radio: { position: 'absolute', opacity: 0, width: 'var(--space-1)', height: 'var(--space-1)' },
-  scale: {
-    display: 'flex',
-    gap: 'var(--space-4)',
-    minWidth: 0,
-    paddingBlock: 'var(--space-6)'
-  },
-  scaleChip: {
-    fontFamily: 'var(--font-family-body)',
-    minWidth: 0,
-    minHeight: 'calc(var(--space-40) + var(--space-4))',
-    flex: 1,
-    borderWidth: 0,
-    borderStyle: 'none',
-    borderRadius: 'var(--radius-9)',
-    backgroundColor: 'var(--color-surface-2)',
-    color: 'var(--color-muted)',
-    cursor: 'pointer',
-    fontSize: 'var(--font-size-12)',
-    fontWeight: 'var(--font-weight-semibold)',
-    ':focus-visible': { outline: 'var(--border-width-lg) solid var(--color-green)' }
-  },
-  scaleSelected: { backgroundColor: 'var(--color-green)', color: 'var(--color-bg)' },
   scaleCaption: {
     display: 'flex',
+    width: '100%',
     justifyContent: 'space-between',
     color: 'var(--color-muted)',
     fontSize: 'var(--font-size-12)',
     fontWeight: 'var(--font-weight-semibold)'
   },
+  onboardingScaleCaption: { width: 'calc(80% + var(--space-3))' },
   scaleEndpoint: { fontWeight: 'var(--font-weight-medium)' },
-  divider: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: 'var(--space-10)',
-    color: 'var(--color-muted)',
-    fontSize: 'var(--font-size-11-5)',
-    fontWeight: 'var(--font-weight-semibold)'
-  },
-  dividerRule: { height: 'var(--space-1)', flex: 1, backgroundColor: 'var(--color-hero-divider)' },
-  googleMark: {
-    fontFamily: 'var(--font-family-heading)',
-    fontSize: 'var(--font-size-15)',
-    fontWeight: 'var(--font-weight-bold)',
-    marginRight: 'var(--space-8)'
-  },
-  accountPrompt: {
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 'var(--space-4)',
-    color: 'var(--color-muted)',
-    fontSize: 'var(--font-size-12)'
-  },
-  accountAction: {
-    fontFamily: 'var(--font-family-body)',
-    color: 'var(--color-green)',
-    fontSize: 'var(--font-size-13)',
-    fontWeight: 'var(--font-weight-bold)',
-    backgroundColor: 'transparent',
-    borderWidth: 0,
-    borderStyle: 'none',
-    cursor: 'pointer',
-    padding: 'var(--space-8)'
-  },
   identityHero: { padding: 'var(--space-15)', gap: 'var(--space-12)' },
   heroSide: { color: 'var(--color-hero-accent)' },
   heroJoined: { color: 'var(--color-hero-muted)' },

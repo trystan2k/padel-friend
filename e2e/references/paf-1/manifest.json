@@ -1,0 +1,81 @@
+{
+  "runtimeEnforcement": {
+    "sourceDesignSha256": "Provenance metadata only; not runtime-enforced.",
+    "approvedReferencePngDigests": "Runtime-enforced by the auth-visual gate before screenshot comparisons.",
+    "derivedBaselineDigests": "Runtime-enforced by the auth-visual gate before and after screenshot comparisons."
+  },
+  "sourceDesign": {
+    "path": "docs/design/padel-friend.pen",
+    "sha256": "9326506c47cdd4526d7b3792b58b0286847b15e871831aeb34bf038f45f23148",
+    "exportCommand": "pen interactive -i <TEMP>/padel-friend-temp.pen -o <TEMP>/padel-friend-export.pen; execute({ input: 'Export([\"wzWLt\",\"FZlHy\",\"EGb2g\",\"PdRtP\",\"ieoni\",\"ZthyR\"], \"png\", \"<TEMP>/paf-1-refs\", {scale:1})' })",
+    "provenanceNote": "All six PAF-1 frames verified against the current design (sha256 above) with pen CLI 0.3.10 exports from a temporary copy; double export reproduced byte-identical PNGs. Only PdRtP had drifted (copy/ink refresh, identical layout, tiles and selected states); it was re-approved and re-exported. PNGs are 390×844 at 1×. Source design remains untouched; sample-data mask rectangles were re-verified to still cover the name field text and the selected Right side tile."
+  },
+  "approvedReferences": {
+    "login-welcome.png": {
+      "frameId": "wzWLt",
+      "sha256": "492635bcaff461081089cd8ced0367a38fd1c5acd67add1e6dfaafe8d67d7036"
+    },
+    "forgot-password.png": {
+      "frameId": "ieoni",
+      "sha256": "10489153d8bc369e55851af429c80ab2b6a73ca8c5e65df6a9beb20a518bb7e0"
+    },
+    "login-inbox.png": {
+      "frameId": "FZlHy",
+      "sha256": "4e320d33491f3b962ff0fd4b5f81587fd980f7fd072bbfe48e6e51ffe9362b7f"
+    },
+    "reset-password.png": {
+      "frameId": "ZthyR",
+      "sha256": "ec2666dc1302a1c943380c92af794ebebc90795f63f9a097e9ffb7b1cefe75e1"
+    },
+    "account.png": {
+      "frameId": "EGb2g",
+      "sha256": "cd418a5e5f6ed91bc328d22d106ac915e7ea4d24aade711c5a0cf506bfa3a7cb"
+    },
+    "player-setup.png": {
+      "frameId": "PdRtP",
+      "sha256": "65141e393854b0f94ce8d3e89d50eff4f97e2bf998ab1f521e4a3226b358a78b"
+    },
+    "account-adapted.png": {
+      "sourceFrameId": "EGb2g",
+      "frameId": "EGb2g",
+      "sha256": "cd418a5e5f6ed91bc328d22d106ac915e7ea4d24aade711c5a0cf506bfa3a7cb",
+      "exportCommand": "Copy current EGb2g export; design now includes email/password adaptation directly",
+      "userApprovedPasswordAdaptation": true,
+      "approvalNote": "Updated source design itself includes email/password signup, support copy and CREATE ACCOUNT; adapted baseline matches exported account frame."
+    }
+  },
+  "screenshotBaselines": {
+    "login-welcome.png": {
+      "sha256": "492635bcaff461081089cd8ced0367a38fd1c5acd67add1e6dfaafe8d67d7036",
+      "derivedFrom": "login-welcome.png"
+    },
+    "forgot-password.png": {
+      "sha256": "10489153d8bc369e55851af429c80ab2b6a73ca8c5e65df6a9beb20a518bb7e0",
+      "derivedFrom": "forgot-password.png"
+    },
+    "login-inbox.png": {
+      "sha256": "4e320d33491f3b962ff0fd4b5f81587fd980f7fd072bbfe48e6e51ffe9362b7f",
+      "derivedFrom": "login-inbox.png"
+    },
+    "reset-password.png": {
+      "sha256": "ec2666dc1302a1c943380c92af794ebebc90795f63f9a097e9ffb7b1cefe75e1",
+      "derivedFrom": "reset-password.png"
+    },
+    "account-adapted.png": {
+      "sha256": "cd418a5e5f6ed91bc328d22d106ac915e7ea4d24aade711c5a0cf506bfa3a7cb",
+      "derivedFrom": "account-adapted.png"
+    },
+    "player-setup.png": {
+      "sha256": "876d3162ae0e6dc232b6b413bf2f0aa7d28c0242391839c7bfc695773e3b083c",
+      "derivedFrom": "player-setup.png",
+      "derivation": "Decode approved source reference; paint only the two PAF-21 rectangles opaque #FF00FF; encode PNG with the pinned Playwright PNG implementation."
+    }
+  },
+  "playerSampleDataMask": {
+    "maskColor": "#FF00FF",
+    "rectangles": [
+      { "name": "name", "x": 31, "y": 258, "width": 111, "height": 22 },
+      { "name": "right", "x": 139, "y": 497, "width": 112, "height": 47 }
+    ]
+  }
+}

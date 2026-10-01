@@ -13,12 +13,21 @@ permission:
   list: allow
   edit: allow
   skill: allow
+  "mcp_pencil*": allow
   bash:
     "*": deny
-    "pnpm*": allow
-    "npx*": allow
-    "bun run*": allow
-    "bunx*": allow    
+    "pnpm build*": allow
+    "pnpm complete-check*": allow
+    "pnpm db:*": allow
+    "pnpm dev*": allow
+    "pnpm exec*": allow
+    "pnpm format:check*": allow
+    "pnpm knip*": allow
+    "pnpm lint*": allow
+    "pnpm preview*": allow
+    "pnpm test*": allow
+    "pnpm tokens:build*": allow
+    "pnpm typecheck*": allow
     "git status*": allow
     "git diff*": allow
     "git log*": allow
@@ -123,6 +132,7 @@ Apply these standards during implementation:
 - Preserve architecture boundaries and module responsibilities.
 - Prefer explicit, readable code over clever shortcuts.
 - Follow existing naming, error-handling, and testing patterns.
+- For UI, treat pen.dev file as visual source of truth (colors, typography, spacing, layout intent, overall look). Match as closely as possible while prioritizing production UX, accessibility, responsive layout, and i18n. Literal markup may differ: use fluid flex/percent sizing over fixed widths, Base UI primitives over hand-rolled widgets, tokens over literal pixels, ≥44px touch targets, and translated-text-safe layouts. Cross-renderer pixel identity is unattainable; use exact structural/layout probes and justified nonzero per-screen screenshot budgets, never budget increases masking defects.
 - Ensure backward compatibility unless task scope explicitly allows breaking change.
 
 ## Tool Usage Rules (OpenCode `permission` model)
@@ -144,4 +154,4 @@ Safety rules:
 
 ## Subagent Usage (If Applicable)
 
-This subagent should implement directly and must not delegate unless caller explicitly requires specialist delegation.
+This subagent implements directly, writes scoped unit tests when required, and delegates to `subagents/testing-automation-specialist` or `subagents/qa-gate-specialist` only when the caller explicitly requests it.

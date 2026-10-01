@@ -1,26 +1,39 @@
 import { expect, test, type Page } from '@playwright/test';
 import { readFileSync } from 'node:fs';
+import { submitAndWaitForAuthDestination, waitForHydratedPage } from './auth-helpers';
 
 type LocaleCopy = {
   title: string;
   signOut: string;
-  register: string;
-  signIn: string;
-  email: string;
-  password: string;
   language: string;
   signInWithGoogle: string;
   auth: {
+    welcomeBrand: string;
+    welcomeTitle: string;
+    welcomeSubtitle: string;
     or: string;
     accountPrompt: string;
+    loginEmailLabel: string;
+    loginEmailPlaceholder: string;
+    loginPasswordLabel: string;
+    loginPasswordPlaceholder: string;
+    loginSubmit: string;
+    signupSubmit: string;
+    signupLink: string;
+    signupPasswordLabel: string;
+    signupSignIn: string;
+    unauthorized: string;
     returnPrompt: string;
+    accountStep: string;
     emailAddress: string;
     emailPlaceholder: string;
   };
   onboarding: {
     title: string;
     name: string;
+    side: string;
     level: string;
+    preciseLevel: string;
     levelChoice: string;
     levelScale: string;
     beginner: string;
@@ -28,6 +41,10 @@ type LocaleCopy = {
     scaleDescription: string;
     reliabilityHelp: string;
     sideLeft: string;
+    sideLeftShort: string;
+    handLeft: string;
+    handRight: string;
+    handPreferNot: string;
     save: string;
     saving: string;
     failed: string;
@@ -50,6 +67,8 @@ type LocaleCopy = {
     confirmedGroups: string;
     saveFailed: string;
     signOutFailed: string;
+    dominantHand: string;
+    handNone: string;
   };
 };
 
@@ -58,6 +77,9 @@ const en: LocaleCopy = JSON.parse(
 );
 const es: LocaleCopy = JSON.parse(
   readFileSync(new URL('../src/locales/es/translation.json', import.meta.url), 'utf8')
+);
+const ptBr: LocaleCopy = JSON.parse(
+  readFileSync(new URL('../src/locales/pt-BR/translation.json', import.meta.url), 'utf8')
 );
 
 // Local coverage: full email/password signup → onboarding gate → save → dashboard → edit →
@@ -75,55 +97,166 @@ function avatarAlt(name: string): string {
   return en.profile.avatarAlt.replace('{{name}}', name);
 }
 
-/**
- * A just-issued local JWT can verify as "issued at future" for a moment (PGRST303, GoTrue
- * container clock skew vs. the Worker runtime): the first guarded SSR navigation after
- * sign-up/sign-in may render the router error page with a 500. One deterministic retry keeps
- * the suite stable; the steady-state behavior is asserted after the retry.
- */
-async function settleAfterAuth(page: Page): Promise<void> {
-  await page.waitForURL(/\/(dashboard|onboarding)$/);
-  const response = await page.goto('/dashboard');
-  if (response && response.status() >= 500) await page.goto('/dashboard');
-}
-
-/**
- * Waits until React has hydrated the server-rendered form: after the load event the JS still
- * needs a couple of frames to attach listeners. Interacting earlier races hydration and the
- * controlled form silently resets.
- */
-async function waitHydrated(page: Page): Promise<void> {
-  await page.waitForLoadState('load');
-  await page.evaluate(
-    () => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)))
-  );
-}
-
-async function register(page: Page, email: string): Promise<void> {
+async function register(page: Page, email: string, copy: LocaleCopy = en): Promise<void> {
   await page.goto('/login');
-  // First "Create account" button switches the form into registration mode.
-  await waitHydrated(page);
-  await page.getByRole('button', { name: en.register }).click();
-  await page.getByLabel(en.auth.emailAddress).fill(email);
-  await page.getByLabel(en.password).fill(PASSWORD);
-  // In registration mode the submit button is the only remaining "Create account" button.
-  await page.getByRole('button', { name: en.register }).click();
-  await settleAfterAuth(page);
+  await waitForHydratedPage(page);
+  // The ONLY route into registration is the real "Create account" LINK: /login has no
+  // register toggle anymore, it is the Welcome sign-in screen.
+  await page.getByRole('link', { name: copy.auth.signupLink }).click();
+  await expect(page).toHaveURL(/\/onboarding\/account/);
+  await waitForHydratedPage(page);
+  const signupEmail = page.locator('#signup-email');
+  await expect(signupEmail).toBeEnabled();
+  await signupEmail.fill(email);
+  if (process.env.DEBUG_AUTH_E2E === '1')
+    console.log(
+      'auth-e2e email after fill:',
+      await page.getByLabel(copy.auth.emailAddress).evaluate((input) => {
+        if (!(input instanceof HTMLInputElement)) throw new Error('expected an email input');
+        return {
+          tag: input.tagName,
+          id: input.id,
+          name: input.name,
+          value: input.value,
+          outerHTML: input.outerHTML
+        };
+      }),
+      await page
+        .locator('input[name="email"]')
+        .evaluateAll((inputs) => inputs.map((input) => input.outerHTML))
+    );
+  await page.getByLabel(copy.auth.signupPasswordLabel).fill(PASSWORD);
+  if (process.env.DEBUG_AUTH_E2E === '1')
+    console.log(
+      'auth-e2e email after password:',
+      await page.locator('input[name="email"]').inputValue()
+    );
+  if (process.env.DEBUG_AUTH_E2E === '1') {
+    console.log(
+      'auth-e2e pre click:',
+      await page.locator('form').evaluate((element) => {
+        if (!(element instanceof HTMLFormElement)) throw new Error('expected a native form');
+        return {
+          valid: element.checkValidity(),
+          fields: Array.from(element.querySelectorAll<HTMLInputElement>('input')).map((input) => ({
+            type: input.type,
+            name: input.name,
+            value: input.value,
+            disabled: input.disabled,
+            valid: input.validity.valid
+          }))
+        };
+      })
+    );
+    await page.locator('form').evaluate((form) => {
+      form.addEventListener('submit', () => {
+        document.documentElement.dataset.signupSubmitEvent = 'true';
+      });
+    });
+    page.on('pageerror', (error) => console.log('auth-e2e pageerror:', error.message));
+    page.on('request', (request) => {
+      if (request.url().includes('/auth/v1/signup'))
+        console.log('auth-e2e signup request:', request.url());
+    });
+    page.on('response', (response) => {
+      if (response.url().includes('/auth/v1/signup'))
+        console.log('auth-e2e signup response:', response.status());
+    });
+  }
+  await submitAndWaitForAuthDestination(page, /\/onboarding$/, () =>
+    page.getByRole('button', { name: copy.auth.signupSubmit }).click()
+  );
+  if (process.env.DEBUG_AUTH_E2E === '1')
+    console.log('auth-e2e post navigation:', page.url(), await page.locator('body').innerText());
   // Newcomers are blocked behind onboarding before they can see any protected content.
-  await expect(page).toHaveURL(/\/onboarding$/);
-  await waitHydrated(page);
+  await waitForHydratedPage(page);
 }
 
 async function completeOnboarding(page: Page, name: string, level: string): Promise<void> {
   await page.getByLabel(en.onboarding.name).fill(name);
-  await page.getByLabel(en.onboarding.level).fill(level);
-  const radio = page.getByRole('radio', { name: en.onboarding.sideLeft });
+  await page.getByLabel(en.onboarding.preciseLevel).fill(level);
+  const radio = page
+    .getByRole('group', { name: en.onboarding.side })
+    .getByRole('radio', { name: en.onboarding.sideLeftShort });
   await radio.check();
   // The form is hydrated once a controlled re-render keeps the radio checked.
   await expect(radio).toBeChecked();
   await page.getByRole('button', { name: en.onboarding.save }).click();
   await expect(page).toHaveURL(/\/dashboard$/);
 }
+
+test('dominant hand stays optional and fits all locales at mobile width', async ({ page }) => {
+  await register(page, uniqueEmail());
+  await page.setViewportSize({ width: 320, height: 844 });
+
+  for (const { locale, copy } of [
+    { locale: 'en', copy: en },
+    { locale: 'pt-BR', copy: ptBr },
+    { locale: 'es', copy: es }
+  ] as const) {
+    await page.context().addCookies([{ name: 'locale', value: locale, url: BASE_URL }]);
+    const response = await page.reload({ waitUntil: 'domcontentloaded' });
+    expect(response?.status()).toBeLessThan(400);
+    await waitForHydratedPage(page);
+    await expect(page.locator('html')).toHaveAttribute('lang', locale);
+
+    const handGroup = page.getByRole('group', { name: copy.profile.dominantHand });
+    const preferNotRadio = page.getByRole('radio', { name: copy.onboarding.handPreferNot });
+    await expect(handGroup).toBeVisible();
+    await expect(preferNotRadio).toBeChecked();
+    await expect(preferNotRadio).not.toHaveAttribute('required', '');
+    await expect(handGroup.getByRole('radio', { name: copy.onboarding.handLeft })).toBeVisible();
+    await expect(handGroup.getByRole('radio', { name: copy.onboarding.handRight })).toBeVisible();
+
+    const responsiveLayout = await page.locator('#player-hand-options').evaluate((row) => {
+      const options = Array.from(row.querySelectorAll('label')).map((label) => {
+        const text = label.querySelector('span');
+        const bounds = label.getBoundingClientRect();
+        return {
+          height: bounds.height,
+          textFits: text !== null && text.scrollWidth <= text.clientWidth
+        };
+      });
+      return {
+        rowWidth: row.clientWidth,
+        rowScrollWidth: row.scrollWidth,
+        documentWidth: document.documentElement.clientWidth,
+        documentScrollWidth: document.documentElement.scrollWidth,
+        options
+      };
+    });
+    expect(responsiveLayout.options).toHaveLength(3);
+    expect(responsiveLayout.rowScrollWidth).toBe(responsiveLayout.rowWidth);
+    expect(responsiveLayout.documentScrollWidth).toBe(responsiveLayout.documentWidth);
+    expect(
+      responsiveLayout.options.every(({ height, textFits }) => height === 44 && textFits)
+    ).toBe(true);
+
+    if (locale === 'en') {
+      await preferNotRadio.focus();
+      await page.keyboard.press('ArrowLeft');
+      await expect(handGroup.getByRole('radio', { name: copy.onboarding.handRight })).toBeChecked();
+    }
+  }
+
+  await page.context().addCookies([{ name: 'locale', value: 'en', url: BASE_URL }]);
+  await page.reload({ waitUntil: 'domcontentloaded' });
+  await waitForHydratedPage(page);
+  await expect(page.getByRole('radio', { name: en.onboarding.handPreferNot })).toBeChecked();
+  await page.getByLabel(en.onboarding.name).fill('Optional Hand');
+  await page.getByLabel(en.onboarding.preciseLevel).fill('3.0');
+  await page
+    .getByRole('group', { name: en.onboarding.side })
+    .getByRole('radio', { name: en.onboarding.sideLeftShort })
+    .check();
+  await page.getByRole('button', { name: en.onboarding.save }).click();
+  await expect(page).toHaveURL(/\/dashboard$/);
+
+  await page.getByRole('button', { name: en.profile.edit }).click();
+  const dominantHandSelect = page.getByLabel(en.profile.dominantHand);
+  await expect(dominantHandSelect).toHaveValue('');
+  await expect(dominantHandSelect.locator('option:checked')).toHaveText(en.profile.handNone);
+});
 
 test('a new signup is blocked by onboarding, rejects invalid input, then lands on the dashboard', async ({
   page
@@ -135,7 +268,7 @@ test('a new signup is blocked by onboarding, rejects invalid input, then lands o
   // The gate holds while the profile is incomplete.
   await page.goto('/dashboard');
   await expect(page).toHaveURL(/\/onboarding$/);
-  await waitHydrated(page);
+  await waitForHydratedPage(page);
 
   // Invalid submit: empty name, missing side.
   await page.getByRole('button', { name: en.onboarding.save }).click();
@@ -144,7 +277,7 @@ test('a new signup is blocked by onboarding, rejects invalid input, then lands o
 
   // Invalid level (not a tenth) shows the level error.
   await page.getByLabel(en.onboarding.name).fill('   ');
-  await page.getByLabel(en.onboarding.level).fill('3.05');
+  await page.getByLabel(en.onboarding.preciseLevel).fill('3.05');
   await page.getByRole('button', { name: en.onboarding.save }).click();
   await expect(page.getByText(en.onboarding.validationName)).toBeVisible();
   await expect(page.getByText(en.onboarding.validationLevel)).toBeVisible();
@@ -157,103 +290,56 @@ test('a new signup is blocked by onboarding, rejects invalid input, then lands o
   await expect(page.getByText(en.onboarding.reliabilityHelp)).toBeVisible();
 
   // Level control fidelity (design vARtQ): numeric input bounded to 0–7 with exact 0.1 steps
-  // alongside a six-chip flex scale with BEGINNER/ADVANCED captions (no ± steppers).
-  await page.getByLabel(en.onboarding.level).fill('3.0');
-  const levelInput = page.getByLabel(en.onboarding.level);
+  // alongside a native 0.1-step slider with BEGINNER/ADVANCED captions.
+  await page.getByLabel(en.onboarding.preciseLevel).fill('3.0');
+  const levelInput = page.getByLabel(en.onboarding.preciseLevel);
   await expect(levelInput).toHaveAttribute('min', '0');
   await expect(levelInput).toHaveAttribute('max', '7');
   await expect(levelInput).toHaveAttribute('step', '0.1');
   await expect(page.getByText(en.onboarding.beginner, { exact: true })).toBeVisible();
   await expect(page.getByText(en.onboarding.advanced, { exact: true })).toBeVisible();
 
-  // Six chips (0.0 / 2.0 / 3.0 / 4.0 / 5.0 / 7.0) fill the card row: at a 390px phone viewport
-  // the chip row must not overflow, and the pressed chip mirrors the numeric input's level.
+  // The native slider offers every tenth while the numeric field preserves exact entry.
   await page.setViewportSize({ width: 390, height: 844 });
-  const scale = page.getByRole('group', { name: en.onboarding.levelScale });
-  await expect(scale.getByRole('button')).toHaveCount(6);
+  const scale = page.getByRole('slider', { name: en.onboarding.levelScale });
+  await expect(scale).toHaveAttribute('min', '0');
+  await expect(scale).toHaveAttribute('max', '7');
+  await expect(scale).toHaveAttribute('step', '0.1');
+  await expect(scale).toHaveValue('3');
+  const nameHitbox = await page.getByLabel(en.onboarding.name).boundingBox();
+  expect(nameHitbox?.height).toBeGreaterThanOrEqual(44);
+  await page.setViewportSize({ width: 320, height: 844 });
+  const sliderBox = await scale.boundingBox();
+  expect(sliderBox?.height).toBeGreaterThanOrEqual(44);
+  const sliderTrack = scale.locator('..');
+  expect(await sliderTrack.evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(
+    true
+  );
 
-  // Chip order is parsed from the locale-formatted accessible names ("Select level 1.00"):
-  // the level slice is isolated via the template's static prefix/suffix and read back as a
-  // number using the page's own decimal separator.
-  const templateParts: [string, string] = [
-    en.onboarding.levelChoice.slice(0, en.onboarding.levelChoice.indexOf('{{level}}')),
-    en.onboarding.levelChoice.slice(
-      en.onboarding.levelChoice.indexOf('{{level}}') + '{{level}}'.length
-    )
-  ];
-  const chipLevels = () =>
-    scale.getByRole('button').evaluateAll((buttons, [prefix, suffix]) => {
-      const decimal =
-        new Intl.NumberFormat(document.documentElement.lang || navigator.language)
-          .formatToParts(1.1)
-          .find((part) => part.type === 'decimal')?.value ?? '.';
-      return buttons.map((button) => {
-        const label = button.getAttribute('aria-label') ?? '';
-        if (!label.startsWith(prefix) || !label.endsWith(suffix)) return Number.NaN;
-        const formatted = label.slice(prefix.length, label.length - suffix.length);
-        return Number(formatted.replace(decimal, '.'));
-      });
-    }, templateParts);
-  // The pristine default scale reads strictly ascending: 0.0, 2.0, 3.0, 4.0, 5.0, 7.0.
-  expect(await chipLevels()).toEqual([0, 2, 3, 4, 5, 7]);
-
-  const overflow = await scale
-    .locator('div')
-    .first()
-    .evaluate((element) => ({
-      scrollWidth: element.scrollWidth,
-      clientWidth: element.clientWidth
-    }));
-  expect(overflow.scrollWidth).toBeLessThanOrEqual(overflow.clientWidth);
-  const chip = (level: string) =>
-    page.getByRole('button', { name: en.onboarding.levelChoice.replace('{{level}}', level) });
-  await expect(chip('3.00')).toHaveAttribute('aria-pressed', 'true');
-  await expect(chip('0.00')).toHaveAttribute('aria-pressed', 'false');
-  await expect(chip('7.00')).toHaveAttribute('aria-pressed', 'false');
-  // Chip clicks drive the shared level state across the full 0.0–7.0 range (floor and ceiling).
-  await chip('0.00').click();
-  await expect(page.locator('output')).toHaveText('0.00');
-  await expect(chip('0.00')).toHaveAttribute('aria-pressed', 'true');
-  await expect(chip('3.00')).toHaveAttribute('aria-pressed', 'false');
-  await chip('7.00').click();
-  await expect(page.locator('output')).toHaveText('7.00');
-  await expect(chip('7.00')).toHaveAttribute('aria-pressed', 'true');
-
-  // Regression (non-monotonic chip row): typing a level OUTSIDE the default scale (1.0)
-  // substitutes a default chip and must keep the row strictly ascending — the old bug
-  // replaced scale index 2 BEFORE sorting and rendered 0.0, 2.0, 1.0, 4.0, 5.0, 7.0. The
-  // typed level must become the selected chip and the substituted one must vanish.
+  await scale.focus();
+  await page.keyboard.press('Home');
+  await expect(page.locator('output')).toHaveText('0.0');
+  await page.keyboard.press('End');
+  await expect(page.locator('output')).toHaveText('7.0');
   await levelInput.fill('1.0');
-  await expect(page.locator('output')).toHaveText('1.00');
-  const typedScale = await chipLevels();
-  let previous = Number.NEGATIVE_INFINITY;
-  expect(
-    typedScale.every((value) => {
-      const ordered = value > previous;
-      previous = value;
-      return ordered;
-    }),
-    'chip labels must stay strictly ascending after typing an off-scale level'
-  ).toBe(true);
-  expect(typedScale).toEqual([0, 1, 2, 4, 5, 7]);
-  const typedChip = chip('1.00');
-  await expect(typedChip).toBeVisible();
-  await expect(typedChip).toHaveAttribute('aria-pressed', 'true');
-  await expect(chip('3.00')).toHaveCount(0);
+  await expect(scale).toHaveValue('1');
+  await expect(page.locator('output')).toHaveText('1.0');
 
   // The numeric input remains the exact 0.1-step control.
   await levelInput.fill('6.4');
-  await expect(page.locator('output')).toHaveText('6.40');
+  await expect(page.locator('output')).toHaveText('6.4');
   await page.setViewportSize({ width: 1280, height: 720 });
 
-  // Valid save: level 3.0 must render with two decimals and the documented initial state.
+  // Valid save: onboarding shows design's one-decimal level; profile shows two decimals.
   await page.getByLabel(en.onboarding.name).fill('Taka Onboard');
-  await page.getByLabel(en.onboarding.level).fill('3.0');
-  const sideRadio = page.getByRole('radio', { name: en.onboarding.sideLeft });
+  await page.getByLabel(en.onboarding.preciseLevel).fill('3.0');
+  const sideRadio = page
+    .getByRole('group', { name: en.onboarding.side })
+    .getByRole('radio', { name: en.onboarding.sideLeftShort });
   await sideRadio.check();
   // The form is hydrated once a controlled re-render keeps the radio checked.
   await expect(sideRadio).toBeChecked();
-  await expect(page.locator('output')).toHaveText('3.00');
+  await expect(page.locator('output')).toHaveText('3.0');
   await page.getByRole('button', { name: en.onboarding.save }).click();
   await expect(page).toHaveURL(/\/dashboard$/);
   await expect(page.getByRole('heading', { name: en.profile.title })).toBeVisible();
@@ -286,11 +372,51 @@ test('a new signup is blocked by onboarding, rejects invalid input, then lands o
   const track = levelCard.locator('[aria-hidden="true"]');
   await expect(track).toHaveCount(1);
   expect(await track.evaluate((element) => getComputedStyle(element).height)).toBe('14px');
+  const caption = levelCard.getByText(en.profile.levelScale, { exact: true }).locator('..');
+  const [trackBox, captionBox] = await Promise.all([track.boundingBox(), caption.boundingBox()]);
+  expect(trackBox).not.toBeNull();
+  expect(captionBox).not.toBeNull();
+  expect(Math.abs(captionBox!.x - trackBox!.x)).toBeLessThanOrEqual(1);
+  expect(
+    Math.abs(captionBox!.x + captionBox!.width - (trackBox!.x + trackBox!.width))
+  ).toBeLessThanOrEqual(1);
   await expect(page.getByText(en.profile.confirmedGroups).locator('..')).toContainText('0');
   // Initials fallback before any avatar upload (identity card and avatar widget both show it).
   await expect(page.getByText('TO', { exact: true }).first()).toBeVisible();
   // The sporting dashboard never exposes the login email (AC4).
   expect(await page.locator('main').textContent()).not.toContain(email);
+});
+
+test('a duplicate signup uses an enumeration-safe generic error and keeps sign-in recovery available', async ({
+  browser,
+  page
+}) => {
+  const email = uniqueEmail();
+  await register(page, email);
+
+  const duplicateContext = await browser.newContext();
+  try {
+    const duplicatePage = await duplicateContext.newPage();
+    await duplicatePage.goto(`${BASE_URL}/onboarding/account`);
+    await waitForHydratedPage(duplicatePage);
+    await duplicatePage.getByLabel(en.auth.emailAddress).fill(email);
+    await duplicatePage.getByLabel(en.auth.signupPasswordLabel).fill(PASSWORD);
+    await duplicatePage.getByRole('button', { name: en.auth.signupSubmit }).click();
+
+    const alert = duplicatePage.getByRole('alert');
+    await expect(alert).toHaveText(en.auth.unauthorized);
+    await expect(alert).not.toContainText(
+      /already registered|already exists|account with this email/i
+    );
+    await expect(duplicatePage.getByText(en.auth.returnPrompt)).toBeVisible();
+    const signInLink = duplicatePage.getByRole('link', { name: en.auth.signupSignIn });
+    await expect(signInLink).toBeVisible();
+    const signInHref = await signInLink.getAttribute('href');
+    if (signInHref === null) throw new Error('sign-in recovery link must have an href');
+    expect(new URL(signInHref, BASE_URL).pathname).toBe('/login');
+  } finally {
+    await duplicateContext.close();
+  }
 });
 
 test('a fresh browser context keeps the onboarding state', async ({ browser, page }) => {
@@ -316,7 +442,7 @@ test('the dashboard allows profile edits but exposes no level control, and avata
   await completeOnboarding(page, 'Mila Edit', '3.0');
 
   // No level control anywhere on the dashboard: the rating is immutable from the UI.
-  await expect(page.getByLabel(en.onboarding.level)).toHaveCount(0);
+  await expect(page.getByLabel(en.onboarding.preciseLevel)).toHaveCount(0);
 
   await page.getByRole('button', { name: en.profile.edit }).click();
   await page.getByLabel(en.onboarding.name).fill('Mila Edited');
@@ -395,8 +521,10 @@ test('first-time onboarding accepts a padded display name and lands on the trimm
   // now submits name.trim(), so the padded value must be accepted and navigate to the
   // dashboard (navigation only happens after a successful save) showing the trimmed name.
   await page.getByLabel(en.onboarding.name).fill('  Onboard Trim  ');
-  await page.getByLabel(en.onboarding.level).fill('3.0');
-  const radio = page.getByRole('radio', { name: en.onboarding.sideLeft });
+  await page.getByLabel(en.onboarding.preciseLevel).fill('3.0');
+  const radio = page
+    .getByRole('group', { name: en.onboarding.side })
+    .getByRole('radio', { name: en.onboarding.sideLeftShort });
   await radio.check();
   // The form is hydrated once a controlled re-render keeps the radio checked.
   await expect(radio).toBeChecked();
@@ -418,8 +546,10 @@ test('an NBSP-edged display name is saved verbatim and persists with its NBSPs',
   // NBSP edges and diverged from the server policy.
   const nbspName = '\u00A0Ana\u00A0';
   await page.getByLabel(en.onboarding.name).fill(nbspName);
-  await page.getByLabel(en.onboarding.level).fill('3.0');
-  const radio = page.getByRole('radio', { name: en.onboarding.sideLeft });
+  await page.getByLabel(en.onboarding.preciseLevel).fill('3.0');
+  const radio = page
+    .getByRole('group', { name: en.onboarding.side })
+    .getByRole('radio', { name: en.onboarding.sideLeftShort });
   await radio.check();
   // The form is hydrated once a controlled re-render keeps the radio checked.
   await expect(radio).toBeChecked();
@@ -443,7 +573,8 @@ test('an NBSP-edged display name is saved verbatim and persists with its NBSPs',
 
   // A fresh guarded navigation re-reads the persisted row: the NBSPs survived storage, not
   // just the in-memory profile state.
-  await settleAfterAuth(page);
+  const response = await page.reload({ waitUntil: 'domcontentloaded' });
+  expect(response?.status()).toBeLessThan(400);
   const persistedHeading = page.getByRole('heading', { level: 2 });
   await expect(persistedHeading).toBeVisible();
   expect(await persistedHeading.textContent()).toBe(nbspName);
@@ -459,8 +590,10 @@ test('the emptiness rule is the ASCII class end-to-end: whitespace-only is rejec
   // reducing the value to '' — rejects BEFORE any server call, with the localized validation
   // message and no navigation.
   await page.getByLabel(en.onboarding.name).fill('\t \n');
-  await page.getByLabel(en.onboarding.level).fill('3.0');
-  const radio = page.getByRole('radio', { name: en.onboarding.sideLeft });
+  await page.getByLabel(en.onboarding.preciseLevel).fill('3.0');
+  const radio = page
+    .getByRole('group', { name: en.onboarding.side })
+    .getByRole('radio', { name: en.onboarding.sideLeftShort });
   await radio.check();
   // The form is hydrated once a controlled re-render keeps the radio checked.
   await expect(radio).toBeChecked();
@@ -520,106 +653,132 @@ test('the profile edit form preserves NBSP edges and trims only ASCII edges on s
   expect(await page.getByRole('heading', { level: 2 }).textContent()).toBe('Mila Twice');
 });
 
-test('the onboarding level chips keep the design typography in light and dark themes', async ({
-  page
-}) => {
+test('the onboarding slider stays operable in light and dark themes', async ({ page }) => {
   for (const theme of ['light', 'dark'] as const) {
     if (theme === 'dark')
       await page.context().addCookies([{ name: 'theme', value: 'dark', url: BASE_URL }]);
-    const email = uniqueEmail();
-    await register(page, email);
-    await expect(page.getByRole('heading', { name: en.onboarding.title })).toBeVisible();
-    // The chips are StyleX-styled (ui.scaleChip): the design 12px/600 must win the cascade
-    // over the reset layer's font:inherit.
-    const chip = page.getByRole('button', {
-      name: en.onboarding.levelChoice.replace('{{level}}', '3.00')
-    });
-    await expect(chip).toBeVisible();
-    const typography = await chip.evaluate((element) => {
-      const style = getComputedStyle(element);
-      return { fontSize: style.fontSize, fontWeight: style.fontWeight };
-    });
-    expect(typography, `level chip must keep the design typography (${theme} theme)`).toEqual({
-      fontSize: '12px',
-      fontWeight: '600'
-    });
-    // Drop the session (and every other cookie) so the next iteration starts from a clean
-    // unauthenticated browser state instead of being bounced off /login by the onboarding
-    // gate.
+    await register(page, uniqueEmail());
+    const slider = page.getByRole('slider', { name: en.onboarding.levelScale });
+    await expect(slider).toHaveValue('3');
+    await slider.focus();
+    await page.keyboard.press('ArrowRight');
+    await expect(slider).toHaveValue('3.1');
+    await expect(page.locator('output')).toHaveText('3.1');
     await page.context().clearCookies();
   }
 });
 
-test('signing out returns home and protected routes redirect back to login', async ({ page }) => {
+test('signing out redirects through root to login and protected routes stay gated', async ({
+  page
+}) => {
   const email = uniqueEmail();
   await register(page, email);
   await completeOnboarding(page, 'Rio Logout', '3.0');
 
-  await waitHydrated(page);
+  await waitForHydratedPage(page);
   await page.getByRole('button', { name: en.signOut }).click();
-  await expect(page.getByRole('heading', { name: en.title })).toBeVisible();
+  await expect(page.getByRole('heading', { name: en.auth.welcomeTitle })).toBeVisible();
 
   await page.goto('/dashboard');
   expect(new URL(page.url()).pathname).toBe('/login');
   expect(new URL(page.url()).searchParams.get('next')).toBe('/dashboard');
-  await expect(page.getByLabel(en.auth.emailAddress)).toBeVisible();
+  // The bounced destination is the Welcome screen, not a bare sign-in form.
+  await expect(page.getByRole('heading', { name: en.auth.welcomeTitle })).toBeVisible();
+  await expect(page.getByLabel(en.auth.loginEmailLabel)).toBeVisible();
 });
 
-test('the login screen shows the OR divider, provider mark and account prompt while the flow still signs in', async ({
+test('the Welcome screen shows brand and Google-first sign-in and routes newcomers to the account page', async ({
   page
 }) => {
-  const email = uniqueEmail();
   await page.goto('/login');
-  await waitHydrated(page);
+  await waitForHydratedPage(page);
 
-  // Round-2 field copy: the email input is announced by an EMAIL ADDRESS-style label with an
-  // adjacent decorative icon, and carries a localized placeholder example address.
-  const emailField = page.getByLabel(en.auth.emailAddress);
-  await expect(emailField).toHaveAttribute('placeholder', en.auth.emailPlaceholder);
-  const emailLabel = page.locator('label').filter({ hasText: en.auth.emailAddress });
-  await expect(emailLabel).toHaveCount(1);
-  const labelStyle = await emailLabel.evaluate((element) => {
-    const style = getComputedStyle(element);
-    return { fontSize: style.fontSize, fontWeight: style.fontWeight };
-  });
-  expect(labelStyle).toEqual({ fontSize: '12px', fontWeight: '600' });
-  await expect(emailField.locator('..').locator('svg[aria-hidden="true"]')).toHaveCount(1);
+  // Welcome copy (design wzWLt): brand wordmark, title and subtitle.
+  await expect(page.getByText(en.auth.welcomeBrand, { exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: en.auth.welcomeTitle })).toBeVisible();
+  await expect(page.getByText(en.auth.welcomeSubtitle)).toBeVisible();
+
+  // Round-2 field copy carries over to the Welcome sign-in form: EMAIL ADDRESS-style email
+  // label with a placeholder example, and a password field with the current-password hint.
+  const emailField = page.getByLabel(en.auth.loginEmailLabel);
+  await expect(emailField).toHaveAttribute('autocomplete', 'email');
+  await expect(emailField).toHaveAttribute('placeholder', en.auth.loginEmailPlaceholder);
+  await expect(page.getByLabel(en.auth.loginPasswordLabel)).toHaveAttribute(
+    'autocomplete',
+    'current-password'
+  );
+  await expect(page.getByLabel(en.auth.loginPasswordLabel)).toHaveAttribute(
+    'placeholder',
+    en.auth.loginPasswordPlaceholder
+  );
 
   // OR divider flanked by rules, with the localized Google provider button and its "G" mark.
   await expect(page.getByText(en.auth.or, { exact: true })).toBeVisible();
   const google = page.getByRole('button', { name: en.signInWithGoogle });
   await expect(google).toBeVisible();
   await expect(google.locator('span[aria-hidden="true"]')).toHaveText('G');
-  // Account prompt invites the newcomer to switch into registration mode.
-  await expect(page.getByText(en.auth.accountPrompt)).toBeVisible();
+  await expect(page.getByRole('button', { name: en.auth.loginSubmit })).toBeVisible();
 
-  // The password flow still signs the player up and lands on the onboarding gate.
-  await page.getByRole('button', { name: en.register }).click();
+  // DOM order is Google-first (design wzWLt): Google button, OR divider, email, password,
+  // LOG IN — and NO register toggle or signup submit on the Welcome screen.
+  const order = [
+    google,
+    page.getByText(en.auth.or, { exact: true }),
+    emailField,
+    page.getByLabel(en.auth.loginPasswordLabel),
+    page.getByRole('button', { name: en.auth.loginSubmit })
+  ];
+  for (let index = 0; index < order.length - 1; index += 1) {
+    const first = await order[index]!.elementHandle();
+    const second = await order[index + 1]!.elementHandle();
+    if (!first || !second) throw new Error('expected ordered Welcome controls');
+    expect(
+      await first.evaluate((element, other) => {
+        return (element.compareDocumentPosition(other) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0;
+      }, second),
+      `element ${index} must precede element ${index + 1} on the Welcome screen`
+    ).toBe(true);
+  }
+  await expect(page.getByRole('button', { name: en.auth.signupSubmit })).toHaveCount(0);
+
+  // The bottom prompt is a REAL link to the account page carrying the sanitized next.
+  await expect(page.getByText(en.auth.accountPrompt)).toBeVisible();
+  const createAccount = page.getByRole('link', { name: en.auth.signupLink });
+  const href = await createAccount.getAttribute('href');
+  expect(href?.startsWith('/onboarding/account?')).toBe(true);
+  expect(new URL(href ?? '', BASE_URL).searchParams.get('next')).toBe('/dashboard');
+
+  // Following the link lands on the distinct account signup URL with the next preserved.
+  await createAccount.click();
+  await expect(page).toHaveURL(/\/onboarding\/account\?next=%2Fdashboard$/);
+  await waitForHydratedPage(page);
+
+  // The account page is its own step: badge, email/password signup and a back-link to the
+  // Welcome screen — never a re-skinned login form.
+  await expect(page.getByText(en.auth.accountStep)).toBeVisible();
+  await expect(page.getByLabel(en.auth.emailAddress)).toBeVisible();
+  await expect(page.getByLabel(en.auth.signupPasswordLabel)).toHaveAttribute(
+    'autocomplete',
+    'new-password'
+  );
+  await expect(page.getByRole('button', { name: en.auth.signupSubmit })).toBeVisible();
+  const signInLink = page.getByRole('link', { name: en.auth.signupSignIn });
+  const signInHref = await signInLink.getAttribute('href');
+  if (signInHref === null) throw new Error('sign-in link must have an href');
+  expect(new URL(signInHref, BASE_URL).pathname).toBe('/login');
   await expect(page.getByText(en.auth.returnPrompt)).toBeVisible();
-  await page.getByLabel(en.auth.emailAddress).fill(email);
-  await page.getByLabel(en.password).fill(PASSWORD);
-  await page.getByRole('button', { name: en.register }).click();
-  await settleAfterAuth(page);
-  await expect(page).toHaveURL(/\/onboarding$/);
 });
 
-test('validation errors re-render in the active locale after switching the language', async ({
-  page
-}) => {
+test('onboarding validation uses the locale saved before entering auth', async ({ page }) => {
+  await page.context().addCookies([{ name: 'locale', value: 'es', url: BASE_URL }]);
   const email = uniqueEmail();
-  await register(page, email);
+  await register(page, email, es);
 
-  // Submit the empty form: the errors are stored as keys and rendered in the active locale.
-  await page.getByRole('button', { name: en.onboarding.save }).click();
-  await expect(page.getByText(en.onboarding.validationName)).toBeVisible();
-  await expect(page.getByText(en.onboarding.validationSide)).toBeVisible();
-
-  // Switching language must re-translate the SAME alerts without a resubmit or reload.
-  await page.getByLabel(en.language).selectOption('es');
+  await page.getByRole('button', { name: es.onboarding.save }).click();
   await expect(page.getByText(es.onboarding.validationName)).toBeVisible();
   await expect(page.getByText(es.onboarding.validationSide)).toBeVisible();
   await expect(page.getByText(en.onboarding.validationName)).toHaveCount(0);
-  await expect(page.getByText(en.onboarding.validationSide)).toHaveCount(0);
+  await expect(page.locator('html')).toHaveAttribute('lang', 'es');
 });
 
 test.describe('sign-out failure handling', () => {
@@ -627,7 +786,7 @@ test.describe('sign-out failure handling', () => {
   // request deterministically (the flow itself does not depend on the service worker).
   test.use({ serviceWorkers: 'block' });
 
-  test('a failing sign-out shows a translated error and stays put; success navigates home', async ({
+  test('a failing sign-out shows a translated error and stays put; success reaches login', async ({
     page
   }) => {
     const email = uniqueEmail();
@@ -645,7 +804,7 @@ test.describe('sign-out failure handling', () => {
     );
     // The dashboard was reached via a full navigation: wait for React to attach handlers
     // before clicking, otherwise the click is silently swallowed (SSR button, no listener).
-    await waitHydrated(page);
+    await waitForHydratedPage(page);
     await page.getByRole('button', { name: en.signOut }).click();
     await expect(page.getByText(en.profile.signOutFailed)).toBeVisible();
     expect(new URL(page.url()).pathname).toBe('/dashboard');
@@ -653,8 +812,8 @@ test.describe('sign-out failure handling', () => {
     // With the outage gone, the same control signs out and navigates home.
     await page.unroute('**/auth/v1/logout**');
     await page.getByRole('button', { name: en.signOut }).click();
-    await expect(page.getByRole('heading', { name: en.title })).toBeVisible();
-    expect(new URL(page.url()).pathname).toBe('/');
+    await expect(page.getByRole('heading', { name: en.auth.welcomeTitle })).toBeVisible();
+    expect(new URL(page.url()).pathname).toBe('/login');
   });
 });
 
@@ -671,8 +830,10 @@ test.describe('onboarding save failure handling', () => {
 
     // Valid input, so the ONLY possible failure source is the forced server outage below.
     await page.getByLabel(en.onboarding.name).fill('Nia Retry');
-    await page.getByLabel(en.onboarding.level).fill('3.0');
-    const radio = page.getByRole('radio', { name: en.onboarding.sideLeft });
+    await page.getByLabel(en.onboarding.preciseLevel).fill('3.0');
+    const radio = page
+      .getByRole('group', { name: en.onboarding.side })
+      .getByRole('radio', { name: en.onboarding.sideLeftShort });
     await radio.check();
     // The form is hydrated once a controlled re-render keeps the radio checked.
     await expect(radio).toBeChecked();
@@ -740,8 +901,10 @@ test.describe('onboarding save failure handling', () => {
 
     // Valid input, so the ONLY possible failure source is the session removal below.
     await page.getByLabel(en.onboarding.name).fill('Ivo Expired');
-    await page.getByLabel(en.onboarding.level).fill('3.0');
-    const radio = page.getByRole('radio', { name: en.onboarding.sideLeft });
+    await page.getByLabel(en.onboarding.preciseLevel).fill('3.0');
+    const radio = page
+      .getByRole('group', { name: en.onboarding.side })
+      .getByRole('radio', { name: en.onboarding.sideLeftShort });
     await radio.check();
     // The form is hydrated once a controlled re-render keeps the radio checked.
     await expect(radio).toBeChecked();
@@ -822,10 +985,11 @@ test.describe('onboarding save failure handling', () => {
       'the generic failure alert must stay absent during the held navigation'
     ).toBe(false);
 
-    // Releasing the gate completes the redirect onto the login screen.
+    // Releasing the gate completes the redirect onto the login screen: the expired session
+    // lands on the WELCOME screen (brand + sign-in), never on a bare error or stale form.
     releaseLoginNavigation();
     await page.waitForURL(/\/login\?/);
-    await waitHydrated(page);
+    await waitForHydratedPage(page);
     const landed = new URL(page.url());
     expect(landed.pathname).toBe('/login');
     // The settled address bar carries the SANITIZED deep link: the login route's
@@ -834,6 +998,8 @@ test.describe('onboarding save failure handling', () => {
     // → login would loop forever). The exact assigned value next=/onboarding is asserted on
     // the intercepted navigation request above.
     expect(landed.searchParams.get('next')).toBe('/dashboard');
+    await expect(page.getByRole('heading', { name: en.auth.welcomeTitle })).toBeVisible();
+    await expect(page.getByRole('button', { name: en.auth.loginSubmit })).toBeVisible();
     await expect(page.getByText(en.onboarding.failed)).toHaveCount(0);
   });
 });

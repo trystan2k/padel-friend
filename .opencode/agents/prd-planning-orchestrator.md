@@ -13,6 +13,7 @@ permission:
   list: allow
   edit: allow
   skill: allow
+  "mcp_pencil*": allow
   bash: deny
   webfetch: allow
   websearch: allow
@@ -35,6 +36,7 @@ This agent:
 - Performs structured brainstorming of implementation options and recommends one approach.
 - Ensures stack decisions are explicit for frontend, backend, database, infrastructure/deployment, and testing. If it is not defined in AGENT.md or CONTEXT.md, ask the user.
 - Produces a complete tasks proposal with dependencies, acceptance criteria, and test strategy.
+- For UI tasks, defines visual acceptance from `docs/design/padel-friend.pen` (colors, type, spacing, layout intent, overall look) alongside production UX, a11y, responsive, and i18n quality. Allows flex/percent sizing, Base UI, design tokens, ≥44px targets, and translation-safe layouts instead of literal design markup. Specifies exact structural/layout probes plus documented, justified nonzero per-screen screenshot tolerances for Pencil/Chromium raster differences; never demands pixel identity or hides structural defects by widening budgets.
 
 This agent must NOT:
 

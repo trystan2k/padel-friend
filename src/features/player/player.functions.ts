@@ -22,15 +22,20 @@ export const onboardPlayer = createServerFn({ method: 'POST' })
   .validator(validateOnboardPlayer)
   .handler(async ({ data }) => {
     const { client, userId } = await requireAuthenticatedClient();
-    const { error } = await client.rpc('onboard_player', {
-      p_display_name: data.display_name,
-      p_preferred_side: data.preferred_side,
-      p_initial_level: data.initial_level,
-      ...(data.dominant_hand ? { p_dominant_hand: data.dominant_hand } : {}),
-      ...(data.bio != null ? { p_bio: data.bio } : {})
-    });
-    if (error?.code === '23514') throw new Error('INCOMPLETE_PLAYER_STATE');
-    if (error) throw error;
+    try {
+      const { error } = await client.rpc('onboard_player', {
+        p_display_name: data.display_name,
+        p_preferred_side: data.preferred_side,
+        p_initial_level: data.initial_level,
+        ...(data.dominant_hand ? { p_dominant_hand: data.dominant_hand } : {}),
+        ...(data.bio != null ? { p_bio: data.bio } : {})
+      });
+      if (error) throw error;
+    } catch (error) {
+      if (typeof error === 'object' && error !== null && 'code' in error && error.code === '23514')
+        throw new Error('INCOMPLETE_PLAYER_STATE', { cause: error });
+      throw error;
+    }
     return sportingProfile(client, userId);
   });
 

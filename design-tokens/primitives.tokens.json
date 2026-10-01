@@ -93,6 +93,7 @@
       "24": { "$type": "dimension", "$value": "24px" },
       "25": { "$type": "dimension", "$value": "25px" },
       "27": { "$type": "dimension", "$value": "27px" },
+      "28": { "$type": "dimension", "$value": "28px" },
       "29": { "$type": "dimension", "$value": "29px" },
       "32": { "$type": "dimension", "$value": "32px" },
       "34": { "$type": "dimension", "$value": "34px" }
@@ -106,6 +107,9 @@
     "line-height": {
       "tight": { "$type": "number", "$value": 1.1 },
       "body": { "$type": "number", "$value": 1.5 }
+    },
+    "letter-spacing": {
+      "1-5": { "$type": "dimension", "$value": "1.5px" }
     }
   },
   "border-width": {

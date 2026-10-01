@@ -7,16 +7,17 @@ const SIGNED_URL_SECONDS = 60;
 const PROFILE_FIELDS = 'display_name, avatar_url, preferred_side, dominant_hand, bio, created_at';
 const RATING_FIELDS =
   'initial_display_level, display_level, highest_display_level, reliability_percent, confirmed_competitive_game_groups';
-
 export async function playerRows(client: PlayerClient, userId: string) {
-  const [profile, rating] = await Promise.all([
+  const [profileResult, ratingResult] = await Promise.all([
     client.from('player_profiles').select(PROFILE_FIELDS).eq('user_id', userId).maybeSingle(),
     client.from('global_player_ratings').select(RATING_FIELDS).eq('user_id', userId).maybeSingle()
   ]);
-  if (profile.error) throw profile.error;
-  if (rating.error) throw rating.error;
-  if (Boolean(profile.data) !== Boolean(rating.data)) throw new Error('INCOMPLETE_PLAYER_STATE');
-  return { profile: profile.data, rating: rating.data };
+  if (profileResult.error) throw profileResult.error;
+  if (ratingResult.error) throw ratingResult.error;
+  const profile = profileResult.data;
+  const rating = ratingResult.data;
+  if (Boolean(profile) !== Boolean(rating)) throw new Error('INCOMPLETE_PLAYER_STATE');
+  return { profile, rating };
 }
 
 async function signedAvatarUrl(

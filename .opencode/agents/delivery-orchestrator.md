@@ -12,6 +12,7 @@ permission:
   list: allow
   edit: allow
   skill: allow
+  "mcp_pencil*": allow
   question: allow
   bash:
     "*": deny

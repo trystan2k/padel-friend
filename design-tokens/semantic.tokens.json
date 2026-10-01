@@ -41,6 +41,7 @@
       "$extensions": { "theme": { "dark": "{palette.green-soft-dark}" } }
     },
     "green-deep": { "$type": "color", "$value": "{palette.green-deep}" },
+    "on-hero": { "$type": "color", "$value": "{palette.surface}" },
     "hero-copy": { "$type": "color", "$value": "{palette.hero-copy}" },
     "hero-muted": { "$type": "color", "$value": "{palette.hero-muted}" },
     "hero-label": { "$type": "color", "$value": "{palette.hero-label}" },

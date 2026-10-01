@@ -1,21 +1,27 @@
 import { expect, test, type Page } from '@playwright/test';
 import { readFileSync } from 'node:fs';
+import { submitAndWaitForAuthDestination, waitForHydratedPage } from './auth-helpers';
 
 type LocaleCopy = {
   title: string;
   signOut: string;
-  register: string;
-  signIn: string;
-  password: string;
   googleSignInError: string;
   auth: {
+    loginEmailLabel: string;
+    loginPasswordLabel: string;
+    loginSubmit: string;
+    signupSubmit: string;
+    signupLink: string;
+    signupPasswordLabel: string;
     emailAddress: string;
+    welcomeTitle: string;
   };
   onboarding: {
     name: string;
-    level: string;
-    sideEither: string;
-    sideRight: string;
+    side: string;
+    preciseLevel: string;
+    sideEitherShort: string;
+    sideRightShort: string;
     save: string;
   };
 };
@@ -35,58 +41,43 @@ function uniqueEmail(): string {
   return `e2e-return-${Date.now()}-${Math.random().toString(36).slice(2, 10)}@test.local`;
 }
 
-/**
- * One deterministic retry for the transient "JWT issued at future" (PGRST303) window right
- * after sign-in: GoTrue's container clock can be minimally ahead of the Worker runtime, so the
- * first guarded SSR navigation may 500. Steady-state behavior is asserted after the retry.
- */
-async function settleAfterAuth(page: Page): Promise<void> {
-  await page.waitForURL(/\/(dashboard|onboarding)$/);
-  const response = await page.goto('/dashboard');
-  if (response && response.status() >= 500) await page.goto('/dashboard');
-}
-
-/**
- * Waits until React has hydrated the server-rendered form: after the load event the JS still
- * needs a couple of frames to attach listeners. Interacting earlier races hydration and the
- * controlled form silently resets.
- */
-async function waitHydrated(page: Page): Promise<void> {
-  await page.waitForLoadState('load');
-  await page.evaluate(
-    () => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)))
-  );
-}
-
 async function register(page: Page, email: string): Promise<void> {
   await page.goto('/login');
-  await waitHydrated(page);
-  await page.getByRole('button', { name: en.register }).click();
-  await page.getByLabel(en.auth.emailAddress).fill(email);
-  await page.getByLabel(en.password).fill(PASSWORD);
-  await page.getByRole('button', { name: en.register }).click();
-  await settleAfterAuth(page);
-  await expect(page).toHaveURL(/\/onboarding$/);
-  await waitHydrated(page);
+  await waitForHydratedPage(page);
+  // Registration is reached ONLY through the real "Create account" link on the Welcome
+  // screen: /login itself never renders a signup form.
+  await page.getByRole('link', { name: en.auth.signupLink }).click();
+  await expect(page).toHaveURL(/\/onboarding\/account/);
+  await waitForHydratedPage(page);
+  const signupEmail = page.locator('#signup-email');
+  await expect(signupEmail).toBeEnabled();
+  await signupEmail.fill(email);
+  await page.getByLabel(en.auth.signupPasswordLabel).fill(PASSWORD);
+  await submitAndWaitForAuthDestination(page, /\/onboarding$/, () =>
+    page.getByRole('button', { name: en.auth.signupSubmit }).click()
+  );
+  await waitForHydratedPage(page);
 }
 
 async function signIn(page: Page, email: string): Promise<void> {
-  await waitHydrated(page);
-  await page.getByLabel(en.auth.emailAddress).fill(email);
-  await page.getByLabel(en.password).fill(PASSWORD);
-  await page.getByRole('button', { name: en.signIn }).click();
-  await settleAfterAuth(page);
+  await waitForHydratedPage(page);
+  await page.getByLabel(en.auth.loginEmailLabel).fill(email);
+  await page.getByLabel(en.auth.loginPasswordLabel).fill(PASSWORD);
+  await submitAndWaitForAuthDestination(page, /\/dashboard$/, () =>
+    page.getByRole('button', { name: en.auth.loginSubmit }).click()
+  );
 }
 
 async function createOnboardedUser(page: Page, email: string, name: string): Promise<void> {
   await register(page, email);
   await page.getByLabel(en.onboarding.name).fill(name);
-  await page.getByLabel(en.onboarding.level).fill('3.0');
-  await page.getByRole('radio', { name: en.onboarding.sideEither }).check();
+  await page.getByLabel(en.onboarding.preciseLevel).fill('3.0');
+  await page.getByRole('radio', { name: en.onboarding.sideEitherShort }).check();
   await page.getByRole('button', { name: en.onboarding.save }).click();
   await expect(page).toHaveURL(/\/dashboard$/);
+  await waitForHydratedPage(page);
   await page.getByRole('button', { name: en.signOut }).click();
-  await expect(page.getByRole('heading', { name: en.title })).toBeVisible();
+  await expect(page.getByRole('heading', { name: en.auth.welcomeTitle })).toBeVisible();
 }
 
 test('a protected deep link survives sign-in and a newcomer is gated before reaching it', async ({
@@ -103,8 +94,11 @@ test('a protected deep link survives sign-in and a newcomer is gated before reac
   // New account: the onboarding gate intercepts, then the save lands on /dashboard.
   await register(page, email);
   await page.getByLabel(en.onboarding.name).fill('Dee Link');
-  await page.getByLabel(en.onboarding.level).fill('3.0');
-  await page.getByRole('radio', { name: en.onboarding.sideRight }).check();
+  await page.getByLabel(en.onboarding.preciseLevel).fill('3.0');
+  await page
+    .getByRole('group', { name: en.onboarding.side })
+    .getByRole('radio', { name: en.onboarding.sideRightShort })
+    .check();
   await page.getByRole('button', { name: en.onboarding.save }).click();
   await expect(page).toHaveURL(/\/dashboard$/);
   await expect(page.getByRole('heading', { name: 'Dee Link' })).toBeVisible();
@@ -120,23 +114,17 @@ test('an existing account signing in returns to the protected deep link', async 
   expect(new URL(page.url()).pathname).toBe('/login');
   expect(new URL(page.url()).searchParams.get('next')).toBe('/dashboard?src=return%26check');
 
-  // Sign in WITHOUT the settling helper: its unconditional /dashboard goto would mask a dropped
-  // deep link, so the landing URL is asserted before any helper navigation can run.
-  await waitHydrated(page);
-  await page.getByLabel(en.auth.emailAddress).fill(email);
-  await page.getByLabel(en.password).fill(PASSWORD);
-  await page.getByRole('button', { name: en.signIn }).click();
-  await page.waitForURL(/\/dashboard\?/);
+  await waitForHydratedPage(page);
+  await page.getByLabel(en.auth.loginEmailLabel).fill(email);
+  await page.getByLabel(en.auth.loginPasswordLabel).fill(PASSWORD);
+  await submitAndWaitForAuthDestination(page, /\/dashboard\?src=return%26check$/, () =>
+    page.getByRole('button', { name: en.auth.loginSubmit }).click()
+  );
   const landed = new URL(page.url());
   expect(landed.pathname).toBe('/dashboard');
   expect(landed.search).toBe('?src=return%26check');
   expect(landed.searchParams.get('src')).toBe('return&check');
-
-  // One deterministic retry for the transient "JWT issued at future" 500 (PGRST303) window:
-  // the retry reloads the SAME deep-link URL — it must never fall back to /dashboard.
-  const heading = page.getByRole('heading', { name: 'Rex Return' });
-  if (!(await heading.isVisible())) await page.reload();
-  await expect(heading).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Rex Return' })).toBeVisible();
 });
 
 test('a hostile next parameter falls back to /dashboard', async ({ page }) => {

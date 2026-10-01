@@ -15,10 +15,18 @@ permission:
   skill: allow
   bash:
     "*": deny
-    "pnpm*": allow
-    "npx*": allow
-    "bun run*": allow
-    "bunx*": allow    
+    "pnpm build*": allow
+    "pnpm complete-check*": allow
+    "pnpm db:*": allow
+    "pnpm dev*": allow
+    "pnpm exec*": allow
+    "pnpm format:check*": allow
+    "pnpm knip*": allow
+    "pnpm lint*": allow
+    "pnpm preview*": allow
+    "pnpm test*": allow
+    "pnpm tokens:build*": allow
+    "pnpm typecheck*": allow
     "git status*": allow
     "git diff*": allow
     "git log*": allow
@@ -145,4 +153,4 @@ Safety rules:
 
 ## Subagent Usage (If Applicable)
 
-This subagent should implement directly and must not delegate unless caller explicitly requires specialist delegation.
+This subagent implements directly, writes scoped unit tests when required, and delegates to `subagents/testing-automation-specialist` or `subagents/qa-gate-specialist` only when the caller explicitly requests it.
