@@ -7,6 +7,7 @@ describe('normalizeReturnPath', () => {
     expect(normalizeReturnPath('/matches?tab=history#top')).toBe('/matches?tab=history#top');
     expect(normalizeReturnPath('/dashboard?src=e2e#top')).toBe('/dashboard?src=e2e#top');
     expect(normalizeReturnPath('/community/nearby')).toBe('/community/nearby');
+    expect(normalizeReturnPath('/reset-password')).toBe('/reset-password');
   });
 
   it('keeps encoded query and fragment delimiters verbatim as user data', () => {

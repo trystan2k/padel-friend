@@ -6,14 +6,15 @@ import { Button } from '../../components/ui/Button';
 import { OrDivider } from '../../components/ui/OrDivider';
 import { PasswordField } from '../../components/ui/PasswordField';
 import { TextField } from '../../components/ui/TextField';
+import { TextLink } from '../../components/ui/TextLink';
 import { getBrowserClient } from '../../lib/supabase/client';
 import { styles } from './login-welcome.styles';
 import { navigateAfterAuth } from './navigate';
 import { normalizeReturnPath } from './return-path';
 
-type LoginWelcomeProps = { next?: string; authError?: boolean };
+type LoginWelcomeProps = { next?: string; authError?: boolean; resetSent?: boolean };
 
-export function LoginWelcome({ next: returnPath, authError }: LoginWelcomeProps) {
+export function LoginWelcome({ next: returnPath, authError, resetSent }: LoginWelcomeProps) {
   const { t } = useTranslation();
   const next = normalizeReturnPath(returnPath);
   const [ready, setReady] = useState(false);
@@ -74,6 +75,13 @@ export function LoginWelcome({ next: returnPath, authError }: LoginWelcomeProps)
         <p {...stylex.props(styles.subtitle)}>{t('auth.welcomeSubtitle')}</p>
       </header>
 
+      {resetSent && (
+        <output aria-live="polite" {...stylex.props(styles.notice)}>
+          <h2 {...stylex.props(styles.noticeTitle)}>{t('auth.inboxNoticeTitle')}</h2>
+          <p {...stylex.props(styles.noticeCopy)}>{t('auth.inboxNoticeCopy')}</p>
+        </output>
+      )}
+
       <div {...stylex.props(styles.actions)}>
         <Button
           variant="secondary"
@@ -108,6 +116,15 @@ export function LoginWelcome({ next: returnPath, authError }: LoginWelcomeProps)
             autoComplete="current-password"
             disabled={!ready || busy}
           />
+          <div {...stylex.props(styles.forgotRow)}>
+            <TextLink
+              to="/forgot-password"
+              search={returnPath ? { next } : undefined}
+              xstyle={styles.forgotLink}
+            >
+              {t('auth.forgotLink')}
+            </TextLink>
+          </div>
           <Button type="submit" size="large" disabled={!ready} busy={busy}>
             {t('auth.loginSubmit')}
           </Button>

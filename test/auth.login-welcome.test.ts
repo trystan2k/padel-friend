@@ -61,7 +61,7 @@ function providers(node: ReactElement) {
   return createElement(I18nextProvider, { i18n }, node);
 }
 
-type WelcomeProps = { next?: string; authError?: boolean };
+type WelcomeProps = { next?: string; authError?: boolean; resetSent?: boolean };
 
 async function renderWelcome(props: WelcomeProps = {}) {
   const rootRoute = createRootRoute({
@@ -114,12 +114,35 @@ describe('LoginWelcome', () => {
     const or = screen.getByText(en.auth.or, { exact: true });
     const email = screen.getByLabelText(en.auth.loginEmailLabel);
     const password = screen.getByLabelText(en.auth.loginPasswordLabel);
+    const forgot = screen.getByRole('link', { name: en.auth.forgotLink });
     const submit = screen.getByRole('button', { name: en.auth.loginSubmit });
 
     expect(precedes(google, or)).toBe(true);
     expect(precedes(or, email)).toBe(true);
     expect(precedes(email, password)).toBe(true);
-    expect(precedes(password, submit)).toBe(true);
+    expect(precedes(password, forgot)).toBe(true);
+    expect(precedes(forgot, submit)).toBe(true);
+  });
+
+  it('links to password recovery and preserves an optional validated next path', async () => {
+    await renderWelcome({ next: '/matches?tab=history' });
+
+    const link = screen.getByRole('link', { name: en.auth.forgotLink });
+    const href = new URL(link.getAttribute('href') ?? '', 'http://localhost');
+    expect(href.pathname).toBe('/forgot-password');
+    expect(href.searchParams.get('next')).toBe('/matches?tab=history');
+    expect(link.tagName).toBe('A');
+    expect(link.tabIndex).toBe(0);
+  });
+
+  it('announces the reset confirmation state without replacing the login form', async () => {
+    await renderWelcome({ resetSent: true });
+
+    const notice = screen.getByRole('status');
+    expect(notice.textContent).toContain(en.auth.inboxNoticeTitle);
+    expect(notice.textContent).toContain(en.auth.inboxNoticeCopy);
+    expect(screen.getByLabelText(en.auth.loginEmailLabel)).toBeTruthy();
+    expect(screen.getByRole('button', { name: en.auth.loginSubmit })).toBeTruthy();
   });
 
   it('keeps the correct autocomplete hints and placeholder copy on both fields', async () => {

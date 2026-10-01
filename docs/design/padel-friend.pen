@@ -45113,7 +45113,6 @@
         20,
         18
       ],
-      "justifyContent": "space_between",
       "children": [
         {
           "type": "frame",
@@ -45262,6 +45261,28 @@
                   "fill": "$muted"
                 }
               }
+            },
+            {
+              "type": "frame",
+              "id": "Cutg4",
+              "name": "Forgot password action row",
+              "width": "fill_container",
+              "justifyContent": "end",
+              "children": [
+                {
+                  "id": "W0DfD",
+                  "type": "ref",
+                  "ref": "QFH5u",
+                  "name": "Forgot your password link",
+                  "descendants": {
+                    "XuJGu": {
+                      "content": "Forgot your password?",
+                      "fill": "$green",
+                      "fontWeight": "bold"
+                    }
+                  }
+                }
+              ]
             },
             {
               "id": "uZGP2",
@@ -45746,6 +45767,566 @@
           "height": 1,
           "layout": "vertical",
           "gap": 12
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "ieoni",
+      "x": 430,
+      "y": 1225,
+      "name": "Forgot password",
+      "clip": true,
+      "width": 390,
+      "height": 844,
+      "fill": "$bg",
+      "layout": "vertical",
+      "gap": 20,
+      "padding": [
+        24,
+        18,
+        20,
+        18
+      ],
+      "children": [
+        {
+          "type": "frame",
+          "id": "Z5Smbp",
+          "name": "Forgot password header",
+          "width": "fill_container",
+          "layout": "vertical",
+          "gap": 8,
+          "children": [
+            {
+              "type": "text",
+              "id": "oRUUA",
+              "name": "Forgot password brand",
+              "fill": "$green",
+              "content": "PADEL FRIENDS",
+              "fontFamily": "Manrope",
+              "fontSize": 12,
+              "fontWeight": "bold",
+              "letterSpacing": 1.5
+            },
+            {
+              "type": "text",
+              "id": "U8arh",
+              "name": "Forgot password title",
+              "fill": "$text",
+              "content": "Forgot your password?",
+              "fontFamily": "Manrope",
+              "fontSize": 26,
+              "fontWeight": "bold"
+            },
+            {
+              "type": "text",
+              "id": "Zrzbi",
+              "name": "Forgot password description",
+              "fill": "$muted",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "Enter the email address linked to your account. We’ll send a secure link to reset your password.",
+              "fontFamily": "Inter",
+              "fontSize": 14,
+              "fontWeight": "normal"
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "FVd2F",
+          "name": "Reset email form",
+          "width": "fill_container",
+          "layout": "vertical",
+          "gap": 14,
+          "children": [
+            {
+              "id": "X76nO",
+              "type": "ref",
+              "ref": "Ilxwe",
+              "name": "Reset email input",
+              "width": "fill_container",
+              "descendants": {
+                "oMjkx": {
+                  "content": "Email address",
+                  "enabled": true
+                },
+                "QFlEH": {
+                  "enabled": false
+                },
+                "ZSAFW": {
+                  "content": "name@example.com",
+                  "fill": "$muted"
+                }
+              }
+            },
+            {
+              "type": "text",
+              "id": "gWQMz",
+              "name": "Email privacy note",
+              "fill": "$muted",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "If an account exists for this email, you’ll receive a reset link.",
+              "fontFamily": "Inter",
+              "fontSize": 12,
+              "fontWeight": "normal"
+            },
+            {
+              "id": "JU3bn",
+              "type": "ref",
+              "ref": "B3Uqv",
+              "name": "Send reset link button",
+              "width": "fill_container",
+              "height": 50,
+              "descendants": {
+                "xWUkK": {
+                  "content": "SEND RESET LINK",
+                  "fill": "$bg",
+                  "fontWeight": "bold"
+                }
+              }
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "YehaN",
+          "name": "Back to sign in footer",
+          "width": "fill_container",
+          "justifyContent": "center",
+          "alignItems": "center",
+          "children": [
+            {
+              "id": "T5lfFV",
+              "type": "ref",
+              "ref": "QFH5u",
+              "name": "Back to sign in link",
+              "descendants": {
+                "XuJGu": {
+                  "content": "BACK TO SIGN IN",
+                  "fill": "$green",
+                  "fontWeight": "bold"
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "FZlHy",
+      "x": 860,
+      "y": 1225,
+      "name": "Login — check your inbox",
+      "clip": true,
+      "width": 390,
+      "height": 844,
+      "fill": "$bg",
+      "layout": "vertical",
+      "gap": 20,
+      "padding": [
+        24,
+        18,
+        20,
+        18
+      ],
+      "children": [
+        {
+          "type": "frame",
+          "id": "U14TJC",
+          "name": "Inbox login header",
+          "width": "fill_container",
+          "layout": "vertical",
+          "gap": 8,
+          "children": [
+            {
+              "type": "text",
+              "id": "UeHKI",
+              "name": "Inbox brand",
+              "fill": "$green",
+              "content": "PADEL FRIENDS",
+              "fontFamily": "Manrope",
+              "fontSize": 12,
+              "fontWeight": "bold",
+              "letterSpacing": 1.5
+            },
+            {
+              "type": "text",
+              "id": "Hh9ZF",
+              "name": "Inbox login title",
+              "fill": "$text",
+              "content": "Welcome",
+              "fontFamily": "Manrope",
+              "fontSize": 28,
+              "fontWeight": "bold"
+            },
+            {
+              "type": "text",
+              "id": "VKeBr",
+              "name": "Inbox login subtitle",
+              "fill": "$muted",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "Log in to find your next match.",
+              "fontFamily": "Inter",
+              "fontSize": 14,
+              "fontWeight": "normal"
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "OAdf9",
+          "name": "Password reset inbox notice",
+          "width": "fill_container",
+          "fill": "$greenSoft",
+          "cornerRadius": 12,
+          "layout": "vertical",
+          "gap": 4,
+          "padding": 12,
+          "children": [
+            {
+              "type": "text",
+              "id": "WuZHS",
+              "name": "Inbox notice title",
+              "fill": "$green",
+              "content": "Check your inbox",
+              "fontFamily": "Inter",
+              "fontSize": 13,
+              "fontWeight": "bold"
+            },
+            {
+              "type": "text",
+              "id": "UkwYT",
+              "name": "Inbox notice copy",
+              "fill": "$text",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "If an account exists for that email, a password reset link is on its way. Open it to create a new password.",
+              "fontFamily": "Inter",
+              "fontSize": 12,
+              "fontWeight": "normal"
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "HOMRm",
+          "name": "Inbox state login form",
+          "width": "fill_container",
+          "layout": "vertical",
+          "gap": 14,
+          "children": [
+            {
+              "id": "cOi7P",
+              "type": "ref",
+              "ref": "B3Uqv",
+              "name": "Google sign-in button",
+              "width": "fill_container",
+              "height": 50,
+              "fill": "$surface",
+              "cornerRadius": 12,
+              "stroke": "$line",
+              "strokeWidth": 1,
+              "descendants": {
+                "xWUkK": {
+                  "content": "G   CONTINUE WITH GOOGLE",
+                  "fill": "$text",
+                  "fontWeight": "bold"
+                }
+              }
+            },
+            {
+              "type": "frame",
+              "id": "idzfe",
+              "name": "Login divider",
+              "width": "fill_container",
+              "gap": 10,
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "rectangle",
+                  "id": "DhxR2",
+                  "name": "Divider left",
+                  "fill": "$line",
+                  "width": "fill_container",
+                  "height": 1
+                },
+                {
+                  "type": "text",
+                  "id": "mgcWs",
+                  "name": "Divider label",
+                  "fill": "$muted",
+                  "content": "OR",
+                  "fontFamily": "Inter",
+                  "fontSize": 11,
+                  "fontWeight": "semibold"
+                },
+                {
+                  "type": "rectangle",
+                  "id": "j8tnxc",
+                  "name": "Divider right",
+                  "fill": "$line",
+                  "width": "fill_container",
+                  "height": 1
+                }
+              ]
+            },
+            {
+              "id": "Y87WF",
+              "type": "ref",
+              "ref": "Ilxwe",
+              "name": "Login email field",
+              "width": "fill_container",
+              "descendants": {
+                "oMjkx": {
+                  "content": "Email address",
+                  "enabled": true
+                },
+                "QFlEH": {
+                  "enabled": false
+                },
+                "ZSAFW": {
+                  "content": "name@example.com",
+                  "fill": "$muted"
+                }
+              }
+            },
+            {
+              "id": "OxZMc",
+              "type": "ref",
+              "ref": "Ilxwe",
+              "name": "Login password field",
+              "width": "fill_container",
+              "descendants": {
+                "oMjkx": {
+                  "content": "Password",
+                  "enabled": true
+                },
+                "QFlEH": {
+                  "enabled": false
+                },
+                "ZSAFW": {
+                  "content": "Enter password",
+                  "fill": "$muted"
+                }
+              }
+            },
+            {
+              "type": "frame",
+              "id": "wgx2y",
+              "name": "Inbox forgot password row",
+              "width": "fill_container",
+              "justifyContent": "end",
+              "children": [
+                {
+                  "id": "RhLNn",
+                  "type": "ref",
+                  "ref": "QFH5u",
+                  "name": "Forgot password link",
+                  "descendants": {
+                    "XuJGu": {
+                      "content": "Forgot your password?",
+                      "fill": "$green",
+                      "fontWeight": "bold"
+                    }
+                  }
+                }
+              ]
+            },
+            {
+              "id": "VRHP3",
+              "type": "ref",
+              "ref": "B3Uqv",
+              "name": "Inbox state log in button",
+              "width": "fill_container",
+              "height": 50,
+              "descendants": {
+                "xWUkK": {
+                  "content": "LOG IN",
+                  "fill": "$bg",
+                  "fontWeight": "bold"
+                }
+              }
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "Iyq25",
+          "name": "Inbox sign up footer",
+          "width": "fill_container",
+          "gap": 4,
+          "justifyContent": "center",
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "text",
+              "id": "ZZCR2",
+              "name": "Inbox sign up prompt",
+              "fill": "$muted",
+              "content": "New to Padel Friends?",
+              "fontFamily": "Inter",
+              "fontSize": 13,
+              "fontWeight": "normal"
+            },
+            {
+              "id": "gMnIn",
+              "type": "ref",
+              "ref": "QFH5u",
+              "name": "Inbox create account link",
+              "descendants": {
+                "XuJGu": {
+                  "content": "Create account",
+                  "fill": "$green",
+                  "fontWeight": "bold"
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "ZthyR",
+      "x": 1290,
+      "y": 1225,
+      "name": "Create new password",
+      "clip": true,
+      "width": 390,
+      "height": 844,
+      "fill": "$bg",
+      "layout": "vertical",
+      "gap": 20,
+      "padding": [
+        24,
+        18,
+        20,
+        18
+      ],
+      "children": [
+        {
+          "type": "frame",
+          "id": "kn0tH",
+          "name": "New password header",
+          "width": "fill_container",
+          "layout": "vertical",
+          "gap": 8,
+          "children": [
+            {
+              "type": "text",
+              "id": "zQZKq",
+              "name": "New password brand",
+              "fill": "$green",
+              "content": "PADEL FRIENDS",
+              "fontFamily": "Manrope",
+              "fontSize": 12,
+              "fontWeight": "bold",
+              "letterSpacing": 1.5
+            },
+            {
+              "type": "text",
+              "id": "T9tZqC",
+              "name": "New password title",
+              "fill": "$text",
+              "content": "Create a new password",
+              "fontFamily": "Manrope",
+              "fontSize": 26,
+              "fontWeight": "bold"
+            },
+            {
+              "type": "text",
+              "id": "lu4SC",
+              "name": "New password description",
+              "fill": "$muted",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "Choose a new password for your account.",
+              "fontFamily": "Inter",
+              "fontSize": 14,
+              "fontWeight": "normal"
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "tnC1m",
+          "name": "New password form",
+          "width": "fill_container",
+          "layout": "vertical",
+          "gap": 14,
+          "children": [
+            {
+              "id": "d3X9X",
+              "type": "ref",
+              "ref": "Ilxwe",
+              "name": "New password field",
+              "width": "fill_container",
+              "descendants": {
+                "oMjkx": {
+                  "content": "New password",
+                  "enabled": true
+                },
+                "QFlEH": {
+                  "enabled": false
+                },
+                "ZSAFW": {
+                  "content": "Enter new password",
+                  "fill": "$muted"
+                }
+              }
+            },
+            {
+              "id": "dPUV5",
+              "type": "ref",
+              "ref": "Ilxwe",
+              "name": "Confirm password field",
+              "width": "fill_container",
+              "descendants": {
+                "oMjkx": {
+                  "content": "Confirm new password",
+                  "enabled": true
+                },
+                "QFlEH": {
+                  "enabled": false
+                },
+                "ZSAFW": {
+                  "content": "Re-enter new password",
+                  "fill": "$muted"
+                }
+              }
+            },
+            {
+              "type": "text",
+              "id": "p8nb6H",
+              "name": "Password requirements helper",
+              "fill": "$muted",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "Use at least 8 characters. Both entries must match.",
+              "fontFamily": "Inter",
+              "fontSize": 12,
+              "fontWeight": "normal"
+            },
+            {
+              "id": "eLjl1",
+              "type": "ref",
+              "ref": "B3Uqv",
+              "name": "Update password button",
+              "width": "fill_container",
+              "height": 50,
+              "descendants": {
+                "xWUkK": {
+                  "content": "UPDATE PASSWORD",
+                  "fill": "$bg",
+                  "fontWeight": "bold"
+                }
+              }
+            }
+          ]
         }
       ]
     }

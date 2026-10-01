@@ -38,7 +38,13 @@ function Root() {
   const { locale: initialLocale, theme: initialTheme } = Route.useRouteContext();
   const isAuthJourney = useRouterState({
     select: (state) =>
-      ['/login', '/onboarding', '/onboarding/account'].includes(state.location.pathname)
+      [
+        '/login',
+        '/onboarding',
+        '/onboarding/account',
+        '/forgot-password',
+        '/reset-password'
+      ].includes(state.location.pathname)
   });
   const [locale, setLocale] = useState(() => resolveLocale(initialLocale));
   const [theme, setTheme] = useState(initialTheme);

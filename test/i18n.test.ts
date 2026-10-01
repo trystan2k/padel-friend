@@ -15,6 +15,8 @@ describe('localized SSR resources', () => {
   it('keeps all locales in sync', () => {
     expect(Object.keys(es).sort()).toEqual(Object.keys(en).sort());
     expect(Object.keys(pt).sort()).toEqual(Object.keys(en).sort());
+    expect(Object.keys(es.auth).sort()).toEqual(Object.keys(en.auth).sort());
+    expect(Object.keys(pt.auth).sort()).toEqual(Object.keys(en.auth).sort());
     expect(createI18n('es').t('title')).toBe(es.title);
   });
 });

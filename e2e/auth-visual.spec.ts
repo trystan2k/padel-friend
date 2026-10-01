@@ -63,8 +63,26 @@ type LocaleCopy = {
     emailAddress: string;
     signupPasswordLabel: string;
     loginSubmit: string;
+    forgotLink: string;
     welcomeTitle: string;
     accountTitle: string;
+    forgotTitle: string;
+    forgotEmailNote: string;
+    forgotSubmit: string;
+    backToSignIn: string;
+    inboxNoticeTitle: string;
+    inboxNoticeCopy: string;
+    loginEmailLabel: string;
+    loginEmailPlaceholder: string;
+    loginPasswordLabel: string;
+    loginPasswordPlaceholder: string;
+    or: string;
+    accountPrompt: string;
+    resetTitle: string;
+    resetNewPasswordLabel: string;
+    resetConfirmPasswordLabel: string;
+    resetRequirements: string;
+    resetSubmit: string;
   };
   onboarding: {
     title: string;
@@ -363,35 +381,77 @@ test('Welcome matches frame wzWLt', async ({ page }) => {
   await page.goto('/login');
   await expect(page.getByRole('heading', { name: en.auth.welcomeTitle })).toBeVisible();
   await ready(page);
-  // wzWLt coordinates relative to its 390×844 frame (not the canvas origin).
+  // Independent measurements from the approved 390×844 PNG: header ink y28–108, Google outline
+  // y130–181, field contours y242–287 / y321–366, forgot-link ink y383–394, CTA fill y409–458,
+  // and signup ink y482–492. Probe boxes below map those painted bounds back to element frames.
   await assertGeometry(page.locator('main > header'), 'Welcome header', {
     x: 18,
     y: 24,
-    width: 354
+    width: 354,
+    height: 87
   });
-  await assertGeometry(page.getByRole('button', { name: en.signInWithGoogle }), 'Google CTA', {
+  const googleButton = page.getByRole('button', { name: en.signInWithGoogle });
+  await assertGeometry(googleButton, 'Google CTA', {
     x: 18,
+    y: 131,
     width: 354,
     height: 50
   });
   await assertGeometry(page.locator('#login-email'), 'Welcome email input', {
     x: 18,
-    y: 421,
+    y: 243,
     width: 354,
     height: 44
   });
   await assertGeometry(page.locator('#login-password'), 'Welcome password input', {
     x: 18,
-    y: 500,
+    y: 322,
     width: 354,
     height: 44
   });
+  const forgotLink = page.getByRole('link', { name: en.auth.forgotLink });
+  await assertGeometry(forgotLink.locator('..'), 'Forgot password row', {
+    x: 18,
+    y: 380,
+    width: 354,
+    height: 15
+  });
   await assertGeometry(page.getByRole('button', { name: en.auth.loginSubmit }), 'Login CTA', {
     x: 18,
-    y: 558,
+    y: 409,
     width: 354,
     height: 50
   });
+  await assertGeometry(page.locator('main > div:last-child'), 'Sign-up prompt container', {
+    x: 18,
+    y: 479,
+    width: 354,
+    height: 15
+  });
+  const effectiveTarget = await forgotLink.evaluate((link) => {
+    const hitArea = getComputedStyle(link, '::before');
+    return {
+      width: Number.parseFloat(hitArea.width),
+      height: Number.parseFloat(hitArea.height),
+      position: getComputedStyle(link).position
+    };
+  });
+  expect(effectiveTarget.width).toBeGreaterThanOrEqual(44);
+  expect(effectiveTarget.height).toBe(44);
+  expect(effectiveTarget.position).toBe('relative');
+
+  await googleButton.focus();
+  await page.keyboard.press('Tab');
+  await page.keyboard.press('Tab');
+  await page.keyboard.press('Tab');
+  await expect(forgotLink).toBeFocused();
+  const focusRing = await forgotLink.evaluate((link) => {
+    const style = getComputedStyle(link);
+    return { outlineStyle: style.outlineStyle, outlineWidth: style.outlineWidth };
+  });
+  expect(focusRing).toEqual({ outlineStyle: 'solid', outlineWidth: '2px' });
+  await forgotLink.evaluate((link) => link.blur());
+
   const googleOverrides = await page
     .getByRole('button', { name: en.signInWithGoogle })
     .evaluate((button) => ({
@@ -412,8 +472,8 @@ test('Welcome matches frame wzWLt', async ({ page }) => {
       .getByRole('button', { name: en.auth.loginSubmit })
       .evaluate((button) => getComputedStyle(button).fontSize)
   ).toBe('13px');
-  // CLI 0.3.10 reference: 8702/329160 = 2.6437%; 2.75% cap leaves 0.1063pp margin.
-  await compare(page, 'login-welcome.png', 0.0275);
+  // CLI 0.3.10 measured: 6077/329160 = 1.8462%; 1.95% cap leaves 0.1038pp margin.
+  await compare(page, 'login-welcome.png', 0.0195);
 });
 
 test('account matches approved password adaptation of EGb2g', async ({ page }) => {
@@ -576,6 +636,162 @@ test('incomplete authenticated player setup matches frame PdRtP', async ({ page 
     height: 44
   });
   // Native 0.1-step slider maps 3.0 to 3/7 of the track (Pencil places 3.0 near its center).
-  // Updated PdRtP at threshold 0.1: 7577/329160 = 2.3019%; 2.41% cap leaves 0.1081pp margin.
-  await compare(page, 'player-setup.png', 0.0241, true);
+  // Updated PdRtP at threshold 0.1: 7342/329160 = 2.2304%; 2.33% cap leaves 0.0996pp margin.
+  await compare(page, 'player-setup.png', 0.0233, true);
+});
+
+test('forgot password matches frame ieoni', async ({ page }) => {
+  await page.goto('/forgot-password');
+  await expect(page.getByRole('heading', { name: en.auth.forgotTitle })).toBeVisible();
+  await ready(page);
+
+  // Reference PNG measurements: field outline x18–371/y166–211; note ink y227–239;
+  // CTA fill x18–371/y254–303; back-link ink x144–244/y327–336.
+  await assertGeometry(page.locator('main > header'), 'Forgot-password header', {
+    x: 18,
+    y: 24,
+    width: 354,
+    height: 103
+  });
+  await assertGeometry(page.locator('#forgot-email'), 'Forgot-password email field', {
+    x: 18,
+    y: 167,
+    width: 354,
+    height: 44
+  });
+  await assertGeometry(page.getByText(en.auth.forgotEmailNote, { exact: true }), 'Privacy note', {
+    x: 18,
+    y: 226,
+    width: 354,
+    height: 15
+  });
+  await assertGeometry(page.getByRole('button', { name: en.auth.forgotSubmit }), 'Reset-link CTA', {
+    x: 18,
+    y: 254,
+    width: 354,
+    height: 50
+  });
+  await assertGeometry(page.getByRole('link', { name: en.auth.backToSignIn }), 'Back link', {
+    x: 144,
+    y: 325,
+    width: 102,
+    height: 44
+  });
+  // CLI 0.3.10 measured: 5938/329160 = 1.8040%; 1.90% cap leaves 0.0960pp margin.
+  await compare(page, 'forgot-password.png', 0.019);
+});
+
+test('login inbox matches frame FZlHy', async ({ page }) => {
+  await page.goto('/login?reset=sent');
+  await expect(page.getByRole('heading', { name: en.auth.inboxNoticeTitle })).toBeVisible();
+  await ready(page);
+
+  // FZlHy pixel measurements: header ends at the y111 frame line; notice fill spans
+  // y131–204; Google border y224–275; divider ink y292–299; email/password outlines
+  // y336–381/y415–460; forgot ink y477–488; login fill y503–552; sign-up ink y576–586.
+  await assertGeometry(page.locator('main > header'), 'Inbox header', {
+    x: 18,
+    y: 24,
+    width: 354,
+    height: 87
+  });
+  await assertGeometry(page.locator('main > output'), 'Inbox notice card', {
+    x: 18,
+    y: 131,
+    width: 354,
+    height: 74
+  });
+  await assertGeometry(
+    page.getByRole('button', { name: en.signInWithGoogle }),
+    'Inbox Google button',
+    { x: 18, y: 225, width: 354, height: 50 }
+  );
+  await assertGeometry(page.getByText(en.auth.or, { exact: true }).locator('..'), 'Divider row', {
+    x: 18,
+    y: 289,
+    width: 354,
+    height: 15
+  });
+  await assertGeometry(page.locator('#login-email'), 'Inbox email field', {
+    x: 18,
+    y: 337,
+    width: 354,
+    height: 44
+  });
+  await assertGeometry(page.locator('#login-password'), 'Inbox password field', {
+    x: 18,
+    y: 416,
+    width: 354,
+    height: 44
+  });
+  await assertGeometry(
+    page.getByRole('link', { name: en.auth.forgotLink }).locator('..'),
+    'Inbox forgot-link row',
+    { x: 18, y: 475, width: 354, height: 15 }
+  );
+  await assertGeometry(page.getByRole('button', { name: en.auth.loginSubmit }), 'Inbox login CTA', {
+    x: 18,
+    y: 503,
+    width: 354,
+    height: 50
+  });
+  await assertGeometry(
+    page.getByText(en.auth.accountPrompt, { exact: false }).locator('..'),
+    'Sign-up prompt',
+    { x: 18, y: 574, width: 354, height: 15 }
+  );
+  // CLI 0.3.10 measured: 7734/329160 = 2.3496%; 2.45% cap leaves 0.1004pp margin.
+  await compare(page, 'login-inbox.png', 0.0245);
+});
+
+test('create new password matches frame ZthyR with an authenticated session', async ({ page }) => {
+  const email = `e2e-visual-reset-${Date.now()}-${Math.random().toString(36).slice(2, 10)}@test.local`;
+  await page.goto('/login');
+  await ready(page);
+  await page.getByRole('link', { name: en.auth.signupLink }).click();
+  await expect(page).toHaveURL(/\/onboarding\/account/);
+  await ready(page);
+  await page.locator('#signup-email').fill(email);
+  await page.getByLabel(en.auth.signupPasswordLabel).fill(password);
+  await submitAndWaitForAuthDestination(page, /\/onboarding$/, () =>
+    page.getByRole('button', { name: en.auth.signupSubmit }).click()
+  );
+  await ready(page);
+
+  await page.goto('/reset-password');
+  await expect(page.getByRole('heading', { name: en.auth.resetTitle })).toBeVisible();
+  await ready(page);
+  // ZthyR measured from the PNG: new-password outline y149–194; confirmation y228–273;
+  // requirements ink y290–299; update button fill y316–365.
+  await assertGeometry(page.locator('main > header'), 'Reset-password header', {
+    x: 18,
+    y: 24,
+    width: 354,
+    height: 87
+  });
+  await assertGeometry(page.locator('#reset-password'), 'New password field', {
+    x: 18,
+    y: 150,
+    width: 354,
+    height: 44
+  });
+  await assertGeometry(page.locator('#reset-password-confirmation'), 'Confirm password field', {
+    x: 18,
+    y: 229,
+    width: 354,
+    height: 44
+  });
+  await assertGeometry(
+    page.locator('#reset-password-confirmation-helper'),
+    'Password requirements helper',
+    { x: 18, y: 288, width: 354, height: 15 }
+  );
+  await assertGeometry(page.getByRole('button', { name: en.auth.resetSubmit }), 'Update CTA', {
+    x: 18,
+    y: 316,
+    width: 354,
+    height: 50
+  });
+  // CLI 0.3.10 measured: 7201/329160 = 2.1877%; 2.29% cap leaves 0.1023pp margin.
+  await compare(page, 'reset-password.png', 0.0229);
 });

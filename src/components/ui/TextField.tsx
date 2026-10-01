@@ -7,6 +7,7 @@ import { styles } from './text-field.styles';
 export type TextFieldProps = Omit<ComponentProps<typeof Field.Control>, 'children' | 'size'> & {
   label: ReactNode;
   helper?: ReactNode;
+  helperXstyle?: StyleXStyles;
   error?: ReactNode;
   xstyle?: StyleXStyles;
 };
@@ -14,6 +15,7 @@ export type TextFieldProps = Omit<ComponentProps<typeof Field.Control>, 'childre
 export function TextField({
   label,
   helper,
+  helperXstyle,
   error,
   id,
   className,
@@ -65,7 +67,7 @@ export function TextField({
       </Field.Label>
       {control}
       {helper && (
-        <Field.Description id={helperId} {...stylex.props(styles.helper)}>
+        <Field.Description id={helperId} {...stylex.props(styles.helper, helperXstyle)}>
           {helper}
         </Field.Description>
       )}

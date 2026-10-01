@@ -45,6 +45,8 @@ const HomeRoute = routerForGuards.routesById['/'];
 const AccountRoute = routerForGuards.routesById['/onboarding_/account'];
 const OnboardingRoute = routerForGuards.routesById['/onboarding'];
 const ProtectedRoute = routerForGuards.routesById['/_protected'];
+const ForgotPasswordRoute = routerForGuards.routesById['/forgot-password'];
+const ResetPasswordRoute = routerForGuards.routesById['/reset-password'];
 
 // The route guards destructure only `search`/`location` from the router-provided context, but
 // TanStack's declared BeforeLoadContext is a router-internal generic a unit test cannot
@@ -84,6 +86,8 @@ const homeGuard = guardOf(HomeRoute.options, '/');
 const accountGuard = guardOf(AccountRoute.options, '/onboarding/account');
 const onboardingGuard = guardOf(OnboardingRoute.options, '/onboarding');
 const protectedGuard = guardOf(ProtectedRoute.options, '/_protected');
+const forgotPasswordGuard = guardOf(ForgotPasswordRoute.options, '/forgot-password');
+const resetPasswordGuard = guardOf(ResetPasswordRoute.options, '/reset-password');
 
 // Full-router loads follow real redirect chains through the real route tree (no rendering), so
 // each terminal state proves the whole guard pipeline, including the target route's
@@ -161,6 +165,34 @@ describe('/login guard (beforeLoad)', () => {
     ] as const) {
       const redirect = await redirectOf(loginGuard({ search }));
       expect(redirect.options.href, `search ${JSON.stringify(search)}`).toBe(expectedHref);
+    }
+  });
+});
+
+describe('/forgot-password guard (beforeLoad)', () => {
+  it('shows the reset request form to an anonymous visitor', async () => {
+    onboardedAs(ANON);
+    await expect(forgotPasswordGuard({ search: { next: '/matches' } })).resolves.toBeUndefined();
+  });
+
+  it('redirects an authenticated player to the dashboard', async () => {
+    onboardedAs(INCOMPLETE);
+    const redirect = await redirectOf(forgotPasswordGuard({}));
+    expect(redirect.options.to).toBe('/dashboard');
+  });
+});
+
+describe('/reset-password guard (beforeLoad)', () => {
+  it('redirects an anonymous visitor to the reset request form', async () => {
+    onboardedAs(ANON);
+    const redirect = await redirectOf(resetPasswordGuard({}));
+    expect(redirect.options.to).toBe('/forgot-password');
+  });
+
+  it('allows authenticated players regardless of onboarding completion', async () => {
+    for (const status of [INCOMPLETE, COMPLETE]) {
+      onboardedAs(status);
+      await expect(resetPasswordGuard({})).resolves.toBeUndefined();
     }
   });
 });
@@ -262,7 +294,12 @@ describe('search validation on the auth routes', () => {
       next: '/dashboard',
       authError: true
     });
-    expect(validateSearch({ authError: '0' })).toEqual({});
+    expect(validateSearch({ authError: '0', reset: 'unknown' })).toEqual({});
+    expect(validateSearch({ reset: 'sent' })).toEqual({ reset: 'sent' });
+    expect(validateSearch({ next: '/dashboard', reset: 'sent' })).toEqual({
+      next: '/dashboard',
+      reset: 'sent'
+    });
   });
 
   it('normalizes the account next the same way', () => {
@@ -278,6 +315,22 @@ describe('auth route chains (memory-router loads, no rendering)', () => {
   it('keeps an anonymous visitor on /login Welcome', async () => {
     onboardedAs(ANON);
     expect(await landedOn('/login')).toEqual({ pathname: '/login', search: {} });
+  });
+
+  it('keeps an anonymous visitor on /forgot-password and validates its next path', async () => {
+    onboardedAs(ANON);
+    expect(await landedOn('/forgot-password?next=%2Fmatches')).toEqual({
+      pathname: '/forgot-password',
+      search: { next: '/matches' }
+    });
+  });
+
+  it('redirects an anonymous /reset-password visit to /forgot-password', async () => {
+    onboardedAs(ANON);
+    expect(await landedOn('/reset-password')).toEqual({
+      pathname: '/forgot-password',
+      search: {}
+    });
   });
 
   it('keeps an anonymous visitor on the account signup route', async () => {
