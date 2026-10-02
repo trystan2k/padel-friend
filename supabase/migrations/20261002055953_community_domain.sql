@@ -24,10 +24,20 @@ create table public.community_members (
   status public.community_membership_status not null,
   valid_from timestamptz not null default now(),
   valid_until timestamptz,
+  -- League eligibility begins at activation, not at the pending request's valid_from.
+  activated_at timestamptz,
   created_at timestamptz not null default now(),
   constraint membership_interval check (
-    (valid_until is null and status in ('active', 'pending')) or
-    (valid_until > valid_from and status = 'inactive')
+    (status in ('active', 'pending') and valid_until is null) or
+    (status = 'inactive' and valid_until is not null and valid_until > valid_from)
+  ),
+  constraint membership_activation check (
+    (status = 'pending' and activated_at is null) or
+    (status = 'active' and activated_at is not null) or
+    status = 'inactive'
+  ),
+  constraint membership_activation_interval check (
+    valid_until is null or activated_at is null or valid_until >= activated_at
   )
 );
 create unique index community_members_open on public.community_members (community_id, user_id) where valid_until is null;
@@ -175,12 +185,21 @@ begin
   if tg_op = 'DELETE' then
     raise exception 'Membership history cannot be deleted' using errcode = '23514';
   end if;
+  if tg_op = 'INSERT' then
+    -- Activation, not request creation, starts League eligibility (activated_at..valid_until).
+    new.activated_at := case when new.status = 'active' then now() else null end;
+    return new;
+  end if;
   if old.community_id is distinct from new.community_id or old.user_id is distinct from new.user_id
     or old.valid_from is distinct from new.valid_from or old.created_at is distinct from new.created_at
-    or old.id is distinct from new.id or old.status = 'inactive'
+    or old.id is distinct from new.id or old.activated_at is distinct from new.activated_at
+    or old.status = 'inactive'
     or (old.status = 'active' and new.status = 'pending')
     or (old.status = 'pending' and new.role is distinct from old.role) then
     raise exception 'Invalid membership transition' using errcode = '23514';
+  end if;
+  if old.status = 'pending' and new.status = 'active' then
+    new.activated_at := now();
   end if;
   if old.status = 'active' and old.role = 'admin'
     and (new.status <> 'active' or new.role <> 'admin' or new.valid_until is not null) then
@@ -194,7 +213,7 @@ begin
   return new;
 end;
 $$;
-create trigger community_member_guard before update or delete on public.community_members
+create trigger community_member_guard before insert or update or delete on public.community_members
   for each row execute function public.guard_community_member();
 
 create function public.guard_community_invitation() returns trigger
@@ -203,7 +222,7 @@ begin
   if old.id is distinct from new.id or old.community_id is distinct from new.community_id
     or old.invitee_user_id is distinct from new.invitee_user_id or old.issued_by is distinct from new.issued_by
     or old.token_hash is distinct from new.token_hash or old.expires_at is distinct from new.expires_at
-    or old.created_at is distinct from new.created_at or old.redeemed_at is distinct from new.redeemed_at
+    or old.created_at is distinct from new.created_at
     or old.revoked_at is not null or old.redeemed_at is not null then
     raise exception 'Invitation cannot be reopened or reassigned' using errcode = '23514';
   end if;
@@ -212,6 +231,19 @@ end;
 $$;
 create trigger community_invitation_guard before update on public.community_invitations
   for each row execute function public.guard_community_invitation();
+
+create function public.touch_community_updated_at() returns trigger
+language plpgsql security definer set search_path = '' as $$
+begin
+  new.updated_at := now();
+  return new;
+end;
+$$;
+create trigger communities_touch_updated_at before update on public.communities
+  for each row execute function public.touch_community_updated_at();
+create trigger community_venues_touch_updated_at before update on public.community_venues
+  for each row execute function public.touch_community_updated_at();
+revoke all on function public.touch_community_updated_at() from public, anon, authenticated;
 
 create function public.audit_community_change() returns trigger
 language plpgsql security definer set search_path = '' as $$
