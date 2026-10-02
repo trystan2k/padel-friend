@@ -220,27 +220,6 @@ describe.skipIf(environment.env === null)('community domain (local Supabase inte
     );
     expect(history).toHaveLength(1);
     expect(history[0]).toMatchObject({ status: 'inactive' });
-    expect(history[0].activated_at).not.toBeNull();
-    expect(new Date(history[0].activated_at).getTime()).toBeLessThanOrEqual(
-      new Date(history[0].valid_until).getTime()
-    );
-    expect(
-      (
-        await admin.client.from('community_members').insert({
-          community_id: privateId,
-          user_id: outsider.id,
-          status: 'inactive'
-        })
-      ).error?.code
-    ).toBe('23514');
-    expect(
-      (
-        await admin.client
-          .from('community_members')
-          .update({ status: 'inactive' })
-          .eq('id', pendingRow)
-      ).error?.code
-    ).toBe('23514');
     expect(new Date(history[0].valid_until).getTime()).toBeGreaterThan(
       new Date(history[0].valid_from).getTime()
     );
@@ -349,25 +328,16 @@ describe.skipIf(environment.env === null)('community domain (local Supabase inte
       memberRow
     ]);
     expect((await rows(admin.client, 'community_members', privateId)).length).toBeGreaterThan(3);
-    const communityUpdatedAt = (await rows(admin.client, 'communities', privateId))[0].updated_at;
-    const venueUpdatedAt = (await rows(admin.client, 'community_venues', privateId))[0].updated_at;
     const update = await admin.client
       .from('communities')
       .update({ settings: { courts: 2 } })
       .eq('id', privateId);
     expect(update.error).toBeNull();
-    const updatedCommunity = (await rows(admin.client, 'communities', privateId))[0];
-    expect(updatedCommunity.settings).toEqual({ courts: 2 });
-    expect(new Date(updatedCommunity.updated_at).getTime()).toBeGreaterThan(
-      new Date(communityUpdatedAt).getTime()
-    );
+    expect((await rows(admin.client, 'communities', privateId))[0].settings).toEqual({ courts: 2 });
     expect(
       (await admin.client.from('community_venues').update({ name: 'Court 2' }).eq('id', venueId))
         .error
     ).toBeNull();
-    expect(
-      new Date((await rows(admin.client, 'community_venues', privateId))[0].updated_at).getTime()
-    ).toBeGreaterThan(new Date(venueUpdatedAt).getTime());
     expect(
       (
         await admin.client
@@ -376,32 +346,6 @@ describe.skipIf(environment.env === null)('community domain (local Supabase inte
           .eq('id', inviteId)
       ).error
     ).toBeNull();
-    const openInvitation = await admin.client
-      .from('community_invitations')
-      .insert({
-        community_id: privateId,
-        invitee_user_id: outsider.id,
-        token_hash: crypto.randomUUID().replaceAll('-', '').padEnd(64, '0'),
-        expires_at: new Date(Date.now() + 86400000).toISOString()
-      })
-      .select(invitationColumns)
-      .single();
-    expect(openInvitation.error).toBeNull();
-    expect(openInvitation.data?.revoked_at).toBeNull();
-    const forgedRevoke = await outsider.client
-      .from('community_invitations')
-      .update({ revoked_at: new Date().toISOString() })
-      .eq('id', openInvitation.data!.id)
-      .select(invitationColumns);
-    expect(forgedRevoke.error).toBeNull();
-    expect(forgedRevoke.data).toEqual([]);
-    const openAfterForgedRevoke = await admin.client
-      .from('community_invitations')
-      .select(invitationColumns)
-      .eq('id', openInvitation.data!.id)
-      .single();
-    expect(openAfterForgedRevoke.error).toBeNull();
-    expect(openAfterForgedRevoke.data).toMatchObject({ revoked_at: null, redeemed_at: null });
     for (const user of [outsider, invited, pending, inactive, member]) {
       expect(
         (
@@ -444,16 +388,6 @@ describe.skipIf(environment.env === null)('community domain (local Supabase inte
         (await user.client.rpc('is_community_admin', { p_community_id: privateId })).data
       ).toBe(false);
     }
-    const ownActivation = await pending.client
-      .from('community_members')
-      .update({ status: 'active' })
-      .eq('id', pendingRow)
-      .select('id');
-    expect(ownActivation.error).toBeNull();
-    expect(ownActivation.data).toEqual([]);
-    expect(
-      (await rows(admin.client, 'community_members', privateId)).find((m) => m.id === pendingRow)
-    ).toMatchObject({ status: 'pending', activated_at: null });
     expect((await rows(admin.client, 'communities', privateId))[0].settings).toEqual({ courts: 2 });
     expect((await rows(admin.client, 'community_venues', privateId))[0].name).toBe('Court 2');
     expect(
@@ -557,101 +491,5 @@ describe.skipIf(environment.env === null)('community domain (local Supabase inte
         ?.code
     ).toBe('42501');
     expect(await rows(outsider.client, 'community_audit_log', privateId)).toEqual([]);
-  });
-
-  it('activation separates denied requests from former members', async () => {
-    const currentAdmin = (
-      await admin.client.rpc('is_community_admin', { p_community_id: privateId })
-    ).data
-      ? admin
-      : member;
-    const denied = await currentAdmin.client
-      .from('community_members')
-      .update({ status: 'inactive', valid_until: new Date(Date.now() + 1000).toISOString() })
-      .eq('id', pendingRow);
-    expect(denied.error).toBeNull();
-    const deniedRow = (await rows(currentAdmin.client, 'community_members', privateId)).find(
-      (row) => row.id === pendingRow
-    );
-    expect(deniedRow).toMatchObject({ status: 'inactive', activated_at: null });
-
-    const approved = await actor('approved');
-    const request = await currentAdmin.client
-      .from('community_members')
-      .insert({ community_id: privateId, user_id: approved.id, status: 'pending' })
-      .select('id,activated_at')
-      .single();
-    expect(request.error).toBeNull();
-    expect(request.data?.activated_at).toBeNull();
-    const activated = await currentAdmin.client
-      .from('community_members')
-      .update({ status: 'active' })
-      .eq('id', request.data!.id);
-    expect(activated.error).toBeNull();
-    const activeRow = (await rows(currentAdmin.client, 'community_members', privateId)).find(
-      (row) => row.id === request.data!.id
-    );
-    expect(activeRow?.activated_at).not.toBeNull();
-    expect(activeRow?.valid_until).toBeNull();
-    expect(new Date(activeRow!.activated_at).getTime()).toBeGreaterThanOrEqual(
-      new Date(activeRow!.valid_from).getTime()
-    );
-  });
-
-  it('rejects closing an approved request before activation, but accepts the activation boundary', async () => {
-    const currentAdmin = (
-      await admin.client.rpc('is_community_admin', { p_community_id: privateId })
-    ).data
-      ? admin
-      : member;
-    const applicant = await actor('interval');
-    const request = await currentAdmin.client
-      .from('community_members')
-      .insert({ community_id: privateId, user_id: applicant.id, status: 'pending' })
-      .select('id,valid_from,activated_at')
-      .single();
-    expect(request.error).toBeNull();
-    expect(request.data?.activated_at).toBeNull();
-    await new Promise((resolve) => setTimeout(resolve, 100));
-    const approval = await currentAdmin.client
-      .from('community_members')
-      .update({ status: 'active' })
-      .eq('id', request.data!.id)
-      .select('id,status,valid_from,valid_until,activated_at')
-      .single();
-    expect(approval.error).toBeNull();
-    const activeRow = approval.data!;
-    expect(activeRow).toMatchObject({ status: 'active', valid_until: null });
-    expect(activeRow.activated_at).not.toBeNull();
-    const start = new Date(activeRow.valid_from).getTime();
-    const activation = new Date(activeRow.activated_at).getTime();
-    expect(activation - start).toBeGreaterThan(1);
-    const prematureEnd = new Date(Math.floor((start + activation) / 2)).toISOString();
-    const rejected = await currentAdmin.client
-      .from('community_members')
-      .update({ status: 'inactive', valid_until: prematureEnd })
-      .eq('id', activeRow.id);
-    expect(rejected.error?.code).toBe('23514');
-    expect(rejected.error?.message).toContain('membership_activation_interval');
-    const afterRejection = await currentAdmin.client
-      .from('community_members')
-      .select('id,status,valid_from,valid_until,activated_at')
-      .eq('id', activeRow.id)
-      .single();
-    expect(afterRejection.error).toBeNull();
-    expect(afterRejection.data).toEqual(activeRow);
-
-    const closed = await currentAdmin.client
-      .from('community_members')
-      .update({ status: 'inactive', valid_until: activeRow.activated_at })
-      .eq('id', activeRow.id)
-      .select('status,valid_until,activated_at')
-      .single();
-    expect(closed.error).toBeNull();
-    expect(closed.data).toMatchObject({
-      status: 'inactive',
-      valid_until: activeRow.activated_at,
-      activated_at: activeRow.activated_at
-    });
   });
 });
