@@ -1,10 +1,4 @@
-export type Json =
-  | string
-  | number
-  | boolean
-  | null
-  | { [key: string]: Json | undefined }
-  | Json[]
+export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[]
 
 export type Database = {
   graphql_public: {
@@ -16,12 +10,7 @@ export type Database = {
     }
     Functions: {
       graphql: {
-        Args: {
-          extensions?: Json
-          operationName?: string
-          query?: string
-          variables?: Json
-        }
+        Args: { extensions?: Json; operationName?: string; query?: string; variables?: Json }
         Returns: Json
       }
     }
@@ -34,6 +23,218 @@ export type Database = {
   }
   public: {
     Tables: {
+      communities: {
+        Row: {
+          city_label: string | null
+          created_at: string
+          created_by: string
+          description: string | null
+          id: string
+          logo_path: string | null
+          name: string
+          settings: NonNullable<Json>
+          updated_at: string
+          visibility: Database["public"]["Enums"]["community_visibility"]
+        }
+        Insert: {
+          city_label?: string | null
+          created_at?: string
+          created_by: string
+          description?: string | null
+          id?: string
+          logo_path?: string | null
+          name: string
+          settings?: NonNullable<Json>
+          updated_at?: string
+          visibility: Database["public"]["Enums"]["community_visibility"]
+        }
+        Update: {
+          city_label?: string | null
+          created_at?: string
+          created_by?: string
+          description?: string | null
+          id?: string
+          logo_path?: string | null
+          name?: string
+          settings?: NonNullable<Json>
+          updated_at?: string
+          visibility?: Database["public"]["Enums"]["community_visibility"]
+        }
+        Relationships: []
+      }
+      community_audit_log: {
+        Row: {
+          action: string
+          actor_user_id: string | null
+          community_id: string
+          details: NonNullable<Json>
+          entity: string
+          entity_id: string
+          id: string
+          occurred_at: string
+        }
+        Insert: {
+          action: string
+          actor_user_id?: string | null
+          community_id: string
+          details?: NonNullable<Json>
+          entity: string
+          entity_id: string
+          id?: string
+          occurred_at?: string
+        }
+        Update: {
+          action?: string
+          actor_user_id?: string | null
+          community_id?: string
+          details?: NonNullable<Json>
+          entity?: string
+          entity_id?: string
+          id?: string
+          occurred_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "community_audit_log_community_id_fkey"
+            columns: ["community_id"]
+            isOneToOne: false
+            referencedRelation: "communities"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      community_invitations: {
+        Row: {
+          community_id: string
+          created_at: string
+          expires_at: string
+          id: string
+          invitee_user_id: string
+          issued_by: string
+          redeemed_at: string | null
+          revoked_at: string | null
+          token_hash: string
+        }
+        Insert: {
+          community_id: string
+          created_at?: string
+          expires_at: string
+          id?: string
+          invitee_user_id: string
+          issued_by?: string
+          redeemed_at?: string | null
+          revoked_at?: string | null
+          token_hash: string
+        }
+        Update: {
+          community_id?: string
+          created_at?: string
+          expires_at?: string
+          id?: string
+          invitee_user_id?: string
+          issued_by?: string
+          redeemed_at?: string | null
+          revoked_at?: string | null
+          token_hash?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "community_invitations_community_id_fkey"
+            columns: ["community_id"]
+            isOneToOne: false
+            referencedRelation: "communities"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      community_members: {
+        Row: {
+          activated_at: string | null
+          community_id: string
+          created_at: string
+          id: string
+          role: Database["public"]["Enums"]["community_member_role"]
+          status: Database["public"]["Enums"]["community_membership_status"]
+          user_id: string
+          valid_from: string
+          valid_until: string | null
+        }
+        Insert: {
+          activated_at?: string | null
+          community_id: string
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["community_member_role"]
+          status: Database["public"]["Enums"]["community_membership_status"]
+          user_id: string
+          valid_from?: string
+          valid_until?: string | null
+        }
+        Update: {
+          activated_at?: string | null
+          community_id?: string
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["community_member_role"]
+          status?: Database["public"]["Enums"]["community_membership_status"]
+          user_id?: string
+          valid_from?: string
+          valid_until?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "community_members_community_id_fkey"
+            columns: ["community_id"]
+            isOneToOne: false
+            referencedRelation: "communities"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      community_venues: {
+        Row: {
+          address: string | null
+          community_id: string
+          created_at: string
+          created_by: string
+          id: string
+          maps_url: string | null
+          name: string
+          photo_path: string | null
+          updated_at: string
+        }
+        Insert: {
+          address?: string | null
+          community_id: string
+          created_at?: string
+          created_by?: string
+          id?: string
+          maps_url?: string | null
+          name: string
+          photo_path?: string | null
+          updated_at?: string
+        }
+        Update: {
+          address?: string | null
+          community_id?: string
+          created_at?: string
+          created_by?: string
+          id?: string
+          maps_url?: string | null
+          name?: string
+          photo_path?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "community_venues_community_id_fkey"
+            columns: ["community_id"]
+            isOneToOne: false
+            referencedRelation: "communities"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       global_player_ratings: {
         Row: {
           confirmed_competitive_game_groups: number
@@ -146,6 +347,18 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      can_read_community: { Args: { p_community_id: string }; Returns: boolean }
+      create_community: {
+        Args: {
+          p_city_label?: string
+          p_description?: string
+          p_name: string
+          p_visibility: Database["public"]["Enums"]["community_visibility"]
+        }
+        Returns: string
+      }
+      is_community_admin: { Args: { p_community_id: string }; Returns: boolean }
+      is_community_member: { Args: { p_community_id: string }; Returns: boolean }
       onboard_player: {
         Args: {
           p_bio?: string
@@ -158,7 +371,9 @@ export type Database = {
       }
     }
     Enums: {
-      [_ in never]: never
+      community_member_role: "admin" | "member"
+      community_membership_status: "active" | "pending" | "inactive"
+      community_visibility: "public" | "private"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -173,6 +388,8 @@ export type Database = {
           created_at: string | null
           file_size_limit: number | null
           id: string
+          lifecycle_configuration: Json | null
+          lifecycle_configuration_generation: string | null
           name: string
           owner: string | null
           owner_id: string | null
@@ -187,6 +404,8 @@ export type Database = {
           created_at?: string | null
           file_size_limit?: number | null
           id: string
+          lifecycle_configuration?: Json | null
+          lifecycle_configuration_generation?: string | null
           name: string
           owner?: string | null
           owner_id?: string | null
@@ -201,6 +420,8 @@ export type Database = {
           created_at?: string | null
           file_size_limit?: number | null
           id?: string
+          lifecycle_configuration?: Json | null
+          lifecycle_configuration_generation?: string | null
           name?: string
           owner?: string | null
           owner_id?: string | null
@@ -268,7 +489,7 @@ export type Database = {
           catalog_id: string
           created_at: string
           id: string
-          metadata: Json
+          metadata: NonNullable<Json>
           name: string
           updated_at: string
         }
@@ -277,7 +498,7 @@ export type Database = {
           catalog_id: string
           created_at?: string
           id?: string
-          metadata?: Json
+          metadata?: NonNullable<Json>
           name: string
           updated_at?: string
         }
@@ -286,7 +507,7 @@ export type Database = {
           catalog_id?: string
           created_at?: string
           id?: string
-          metadata?: Json
+          metadata?: NonNullable<Json>
           name?: string
           updated_at?: string
         }
@@ -408,7 +629,7 @@ export type Database = {
           name?: string | null
           owner?: string | null
           owner_id?: string | null
-          path_tokens?: string[] | null
+          path_tokens?: never
           updated_at?: string | null
           user_metadata?: Json | null
           version?: string | null
@@ -425,7 +646,7 @@ export type Database = {
           name?: string | null
           owner?: string | null
           owner_id?: string | null
-          path_tokens?: string[] | null
+          path_tokens?: never
           updated_at?: string | null
           user_metadata?: Json | null
           version?: string | null
@@ -590,14 +811,8 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      allow_any_operation: {
-        Args: { expected_operations: string[] }
-        Returns: boolean
-      }
-      allow_only_operation: {
-        Args: { expected_operation: string }
-        Returns: boolean
-      }
+      allow_any_operation: { Args: { expected_operations: string[] }; Returns: boolean }
+      allow_only_operation: { Args: { expected_operation: string }; Returns: boolean }
       can_insert_object: {
         Args: { bucketid: string; metadata: Json; name: string; owner: string }
         Returns: undefined
@@ -610,7 +825,7 @@ export type Database = {
         Returns: string
       }
       get_size_by_bucket: {
-        Args: never
+        Args: { delete_markers?: string; noncurrent_versions?: string }
         Returns: {
           bucket_id: string
           size: number
@@ -624,6 +839,7 @@ export type Database = {
           next_key_token?: string
           next_upload_token?: string
           prefix_param: string
+          raw_prefix_param?: string
         }
         Returns: {
           created_at: string
@@ -634,28 +850,38 @@ export type Database = {
       list_objects_with_delimiter: {
         Args: {
           _bucket_id: string
+          delete_markers?: string
           delimiter_param: string
           max_keys?: number
           next_token?: string
+          next_token_archived_at?: string
+          next_token_version?: string
+          noncurrent_versions?: string
           prefix_param: string
           sort_order?: string
           start_after?: string
         }
         Returns: {
+          archived_at: string
           created_at: string
           id: string
+          is_delete_marker: boolean
+          is_versioned: boolean
           last_accessed_at: string
           metadata: Json
           name: string
           updated_at: string
+          version: string
         }[]
       }
-      operation: { Args: never; Returns: string }
+      operation: { Args: Record<PropertyKey, never>; Returns: string }
       search: {
         Args: {
           bucketname: string
+          delete_markers?: string
           levels?: number
           limits?: number
+          noncurrent_versions?: string
           offsets?: number
           prefix: string
           search?: string
@@ -663,16 +889,22 @@ export type Database = {
           sortorder?: string
         }
         Returns: {
+          archived_at: string
           created_at: string
           id: string
+          is_delete_marker: boolean
+          is_versioned: boolean
           last_accessed_at: string
           metadata: Json
           name: string
           updated_at: string
+          version: string
         }[]
       }
       search_by_timestamp: {
         Args: {
+          delete_markers?: string
+          noncurrent_versions?: string
           p_bucket_id: string
           p_level: number
           p_limit: number
@@ -681,36 +913,50 @@ export type Database = {
           p_sort_column_after: string
           p_sort_order: string
           p_start_after: string
+          p_start_after_version?: string
         }
         Returns: {
+          archived_at: string
           created_at: string
           id: string
+          is_delete_marker: boolean
+          is_versioned: boolean
           key: string
           last_accessed_at: string
           metadata: Json
           name: string
           updated_at: string
+          version: string
         }[]
       }
       search_v2: {
         Args: {
           bucket_name: string
+          delete_markers?: string
           levels?: number
           limits?: number
+          noncurrent_versions?: string
           prefix: string
           sort_column?: string
           sort_column_after?: string
           sort_order?: string
           start_after?: string
+          start_after_archived_at?: string
+          start_after_is_continuation?: boolean
+          start_after_version?: string
         }
         Returns: {
+          archived_at: string
           created_at: string
           id: string
+          is_delete_marker: boolean
+          is_versioned: boolean
           key: string
           last_accessed_at: string
           metadata: Json
           name: string
           updated_at: string
+          version: string
         }[]
       }
     }
@@ -737,19 +983,15 @@ export type Tables<
     ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
         DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
     : never) = never,
-> = DefaultSchemaTableNameOrOptions extends {
-  schema: keyof DatabaseWithoutInternals
-}
+> = DefaultSchemaTableNameOrOptions extends { schema: keyof DatabaseWithoutInternals }
   ? (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
       DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
       Row: infer R
     }
     ? R
     : never
-  : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema["Tables"] &
-        DefaultSchema["Views"])
-    ? (DefaultSchema["Tables"] &
-        DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
+  : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
+    ? (DefaultSchema["Tables"] & DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
         Row: infer R
       }
       ? R
@@ -765,9 +1007,7 @@ export type TablesInsert<
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
     : never) = never,
-> = DefaultSchemaTableNameOrOptions extends {
-  schema: keyof DatabaseWithoutInternals
-}
+> = DefaultSchemaTableNameOrOptions extends { schema: keyof DatabaseWithoutInternals }
   ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
       Insert: infer I
     }
@@ -790,9 +1030,7 @@ export type TablesUpdate<
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
     : never) = never,
-> = DefaultSchemaTableNameOrOptions extends {
-  schema: keyof DatabaseWithoutInternals
-}
+> = DefaultSchemaTableNameOrOptions extends { schema: keyof DatabaseWithoutInternals }
   ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
       Update: infer U
     }
@@ -815,9 +1053,7 @@ export type Enums<
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
     : never) = never,
-> = DefaultSchemaEnumNameOrOptions extends {
-  schema: keyof DatabaseWithoutInternals
-}
+> = DefaultSchemaEnumNameOrOptions extends { schema: keyof DatabaseWithoutInternals }
   ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
   : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"]
     ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
@@ -832,9 +1068,7 @@ export type CompositeTypes<
   }
     ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
     : never) = never,
-> = PublicCompositeTypeNameOrOptions extends {
-  schema: keyof DatabaseWithoutInternals
-}
+> = PublicCompositeTypeNameOrOptions extends { schema: keyof DatabaseWithoutInternals }
   ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
   : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
     ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
@@ -845,7 +1079,11 @@ export const Constants = {
     Enums: {},
   },
   public: {
-    Enums: {},
+    Enums: {
+      community_member_role: ["admin", "member"],
+      community_membership_status: ["active", "pending", "inactive"],
+      community_visibility: ["public", "private"],
+    },
   },
   storage: {
     Enums: {
@@ -853,4 +1091,3 @@ export const Constants = {
     },
   },
 } as const
-
