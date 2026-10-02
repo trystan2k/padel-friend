@@ -9,8 +9,17 @@
     "coverage/**",
     "src/routeTree.gen.ts",
     ".tanstack/**",
-    "src/lib/supabase/database.types.ts",
     ".agents/**",
     ".opencode/**"
+  ],
+  "overrides": [
+    {
+      "files": ["src/lib/supabase/database.types.ts"],
+      "options": {
+        "semi": false,
+        "singleQuote": false,
+        "trailingComma": "all"
+      }
+    }
   ]
 }
