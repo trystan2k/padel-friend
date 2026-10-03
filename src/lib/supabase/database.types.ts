@@ -30,6 +30,7 @@ export type Database = {
           created_by: string
           description: string | null
           id: string
+          join_policy: Database["public"]["Enums"]["community_join_policy"]
           logo_path: string | null
           name: string
           settings: NonNullable<Json>
@@ -42,6 +43,7 @@ export type Database = {
           created_by: string
           description?: string | null
           id?: string
+          join_policy?: Database["public"]["Enums"]["community_join_policy"]
           logo_path?: string | null
           name: string
           settings?: NonNullable<Json>
@@ -54,6 +56,7 @@ export type Database = {
           created_by?: string
           description?: string | null
           id?: string
+          join_policy?: Database["public"]["Enums"]["community_join_policy"]
           logo_path?: string | null
           name?: string
           settings?: NonNullable<Json>
@@ -352,6 +355,7 @@ export type Database = {
         Args: {
           p_city_label?: string
           p_description?: string
+          p_join_policy: Database["public"]["Enums"]["community_join_policy"]
           p_name: string
           p_visibility: Database["public"]["Enums"]["community_visibility"]
         }
@@ -371,6 +375,7 @@ export type Database = {
       }
     }
     Enums: {
+      community_join_policy: "instant" | "admin_approval"
       community_member_role: "admin" | "member"
       community_membership_status: "active" | "pending" | "inactive"
       community_visibility: "public" | "private"
@@ -1080,6 +1085,7 @@ export const Constants = {
   },
   public: {
     Enums: {
+      community_join_policy: ["instant", "admin_approval"],
       community_member_role: ["admin", "member"],
       community_membership_status: ["active", "pending", "inactive"],
       community_visibility: ["public", "private"],
