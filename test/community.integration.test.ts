@@ -2,6 +2,36 @@ import { readFileSync } from 'node:fs';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { describe, expect, it, vi } from 'vitest';
 
+const serverClient = vi.hoisted(() => ({ current: null as SupabaseClient | null }));
+vi.mock('@tanstack/react-start', () => ({
+  createServerFn: () => {
+    let validate: (value: unknown) => unknown = (value) => value;
+    const builder = {
+      validator: (fn: (value: unknown) => unknown) => {
+        validate = fn;
+        return builder;
+      },
+      handler:
+        (fn: (context: { data: unknown }) => unknown) => async (options: { data: unknown }) =>
+          fn({ data: validate(options.data) })
+    };
+    return builder;
+  }
+}));
+vi.mock('@tanstack/react-start/server', () => ({
+  setResponseHeader: vi.fn<(name: string, value: string) => void>()
+}));
+vi.mock('../src/lib/supabase/server', () => ({
+  getServerClient: () => {
+    if (!serverClient.current) throw new Error('Missing integration client');
+    return serverClient.current;
+  }
+}));
+import {
+  createCommunity,
+  updateCommunitySettings
+} from '../src/features/community/community.functions';
+
 vi.setConfig({ testTimeout: 30000, hookTimeout: 30000 });
 type LocalEnv = { url: string; key: string; source: 'environment' | '.env file' };
 const LOOPBACK_HOSTS = new Set(['127.0.0.1', 'localhost']);
@@ -76,13 +106,16 @@ describe.skipIf(environment.env === null)('community domain (local Supabase inte
     expect(signup.error).toBeNull();
     const token = signup.data.session?.access_token;
     expect(token, 'local email confirmations must be disabled').toBeTruthy();
-    return {
-      id: signup.data.user!.id,
-      client: createClient(url, key, {
-        auth: { persistSession: false, autoRefreshToken: false },
-        global: { headers: { Authorization: `Bearer ${token}` } }
-      })
-    };
+    const client = createClient(url, key, {
+      auth: { persistSession: false, autoRefreshToken: false },
+      global: { headers: { Authorization: `Bearer ${token}` } }
+    });
+    const session = await client.auth.setSession({
+      access_token: token!,
+      refresh_token: signup.data.session!.refresh_token
+    });
+    expect(session.error).toBeNull();
+    return { id: signup.data.user!.id, client };
   }
   async function rows(
     client: SupabaseClient,
@@ -126,7 +159,8 @@ describe.skipIf(environment.env === null)('community domain (local Supabase inte
     async function create(name: string, visibility: 'private' | 'public') {
       const result = await admin.client.rpc('create_community', {
         p_name: name,
-        p_visibility: visibility
+        p_visibility: visibility,
+        p_join_policy: visibility === 'private' ? 'admin_approval' : 'instant'
       });
       expect(result.error).toBeNull();
       if (typeof result.data !== 'string') throw new Error('create_community returned no ID');
@@ -173,11 +207,25 @@ describe.skipIf(environment.env === null)('community domain (local Supabase inte
       .single();
     expect(venue.error).toBeNull();
     venueId = venue.data!.id;
-    expect(await rows(admin.client, 'communities', privateId)).toHaveLength(1);
-    const first = (await rows(admin.client, 'community_members', privateId)).find(
-      (m) => m.user_id === admin.id
+    expect((await rows(admin.client, 'communities', privateId))[0].join_policy).toBe(
+      'admin_approval'
     );
-    expect(first).toMatchObject({ role: 'admin', status: 'active', valid_until: null });
+    expect((await rows(admin.client, 'communities', publicId))[0].join_policy).toBe('instant');
+    expect(await rows(admin.client, 'communities', privateId)).toHaveLength(1);
+    for (const communityId of [privateId, publicId]) {
+      const creatorMembership = (await rows(admin.client, 'community_members', communityId)).filter(
+        (membership) => membership.user_id === admin.id
+      );
+      expect(creatorMembership).toHaveLength(1);
+      expect(creatorMembership[0]).toMatchObject({
+        role: 'admin',
+        status: 'active',
+        valid_until: null
+      });
+      expect(Date.parse(creatorMembership[0].activated_at)).toBeGreaterThanOrEqual(
+        Date.parse(creatorMembership[0].valid_from)
+      );
+    }
     expect(
       (await admin.client.from('communities').select('id').eq('id', publicId)).data
     ).toHaveLength(1);
@@ -186,14 +234,37 @@ describe.skipIf(environment.env === null)('community domain (local Supabase inte
         (
           await admin.client.rpc('create_community', {
             p_name: 'Enum ' + crypto.randomUUID(),
-            p_visibility: visibility
+            p_visibility: visibility,
+            p_join_policy: visibility === 'private' ? 'admin_approval' : 'instant'
           })
         ).error
       ).toBeNull();
     }
     expect(
-      (await admin.client.rpc('create_community', { p_name: 'Invalid', p_visibility: 'secret' }))
-        .error?.code
+      (
+        await admin.client.rpc('create_community', {
+          p_name: 'Invalid policy',
+          p_visibility: 'public',
+          p_join_policy: 'unknown'
+        })
+      ).error?.code
+    ).toBe('22P02');
+    expect(
+      (
+        await admin.client.rpc('create_community', {
+          p_name: 'Old signature',
+          p_visibility: 'public'
+        })
+      ).error?.code
+    ).toBe('PGRST202');
+    expect(
+      (
+        await admin.client.rpc('create_community', {
+          p_name: 'Invalid',
+          p_visibility: 'secret',
+          p_join_policy: 'instant'
+        })
+      ).error?.code
     ).toBe('22P02');
     expect(
       (
@@ -212,6 +283,114 @@ describe.skipIf(environment.env === null)('community domain (local Supabase inte
         })
       ).error?.code
     ).toBe('22P02');
+  });
+
+  it('server functions enforce creator bootstrap and admin-only settings with real JWTs', async () => {
+    serverClient.current = admin.client;
+    const created = await createCommunity({
+      data: {
+        name: 'Function ' + crypto.randomUUID(),
+        visibility: 'private',
+        join_policy: 'instant',
+        description: null
+      }
+    });
+    const second = await createCommunity({
+      data: {
+        name: 'Second ' + crypto.randomUUID(),
+        visibility: 'public',
+        join_policy: 'admin_approval'
+      }
+    });
+    expect(second.id).not.toBe(created.id);
+    for (const [id, policy] of [
+      [created.id, 'instant'],
+      [second.id, 'admin_approval']
+    ] as const) {
+      const community = await rows(admin.client, 'communities', id);
+      expect(community).toHaveLength(1);
+      expect(community[0]).toMatchObject({ join_policy: policy, created_by: admin.id });
+      const membership = await rows(admin.client, 'community_members', id);
+      expect(membership).toHaveLength(1);
+      expect(membership[0]).toMatchObject({
+        user_id: admin.id,
+        role: 'admin',
+        status: 'active',
+        valid_until: null
+      });
+      const start = Date.parse(membership[0].valid_from);
+      const activated = Date.parse(membership[0].activated_at);
+      expect(Number.isFinite(start)).toBe(true);
+      expect(activated).toBeGreaterThanOrEqual(start);
+      expect(activated).toBeLessThanOrEqual(Date.now() + 5000);
+    }
+    const insert = await admin.client.from('community_members').insert({
+      community_id: created.id,
+      user_id: member.id,
+      status: 'active'
+    });
+    expect(insert.error).toBeNull();
+    const changed = await updateCommunitySettings({
+      data: {
+        community_id: created.id,
+        visibility: 'public',
+        join_policy: 'admin_approval',
+        settings: { courts: 3 }
+      }
+    });
+    expect(changed).toMatchObject({
+      id: created.id,
+      visibility: 'public',
+      join_policy: 'admin_approval',
+      settings: { courts: 3 }
+    });
+    const baseline = (await rows(admin.client, 'communities', created.id))[0];
+    const audits = await rows(admin.client, 'community_audit_log', created.id);
+    for (const denied of [member, outsider]) {
+      serverClient.current = denied.client;
+      await expect(
+        updateCommunitySettings({
+          data: {
+            community_id: created.id,
+            join_policy: 'instant'
+          }
+        })
+      ).rejects.toThrow('NOT_COMMUNITY_ADMIN');
+    }
+    serverClient.current = outsider.client;
+    await expect(
+      updateCommunitySettings({
+        data: {
+          community_id: crypto.randomUUID(),
+          name: 'Missing'
+        }
+      })
+    ).rejects.toThrow('NOT_COMMUNITY_ADMIN');
+    serverClient.current = anon();
+    await expect(
+      createCommunity({
+        data: {
+          name: 'No access',
+          visibility: 'public',
+          join_policy: 'instant'
+        }
+      })
+    ).rejects.toThrow('UNAUTHENTICATED');
+    await expect(
+      updateCommunitySettings({
+        data: {
+          community_id: created.id,
+          name: 'No access'
+        }
+      })
+    ).rejects.toThrow('UNAUTHENTICATED');
+    expect((await rows(admin.client, 'communities', created.id))[0]).toEqual(baseline);
+    expect(
+      (await rows(admin.client, 'community_audit_log', created.id))
+        .map((event) => event.id)
+        .sort((a, b) => a.localeCompare(b))
+    ).toEqual(audits.map((event) => event.id).sort((a, b) => a.localeCompare(b)));
+    serverClient.current = null;
   });
 
   it('AC3: closed intervals survive, cannot reopen/delete, and rejoin creates another row', async () => {
@@ -499,7 +678,13 @@ describe.skipIf(environment.env === null)('community domain (local Supabase inte
     for (const name of ['is_community_member', 'is_community_admin', 'can_read_community'] as const)
       expect((await anon().rpc(name, { p_community_id: privateId })).error?.code).toBe('42501');
     expect(
-      (await anon().rpc('create_community', { p_name: 'Anon', p_visibility: 'public' })).error?.code
+      (
+        await anon().rpc('create_community', {
+          p_name: 'Anon',
+          p_visibility: 'public',
+          p_join_policy: 'instant'
+        })
+      ).error?.code
     ).toBe('42501');
   });
 
