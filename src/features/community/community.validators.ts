@@ -3,6 +3,21 @@ import type { Database } from '../../lib/supabase/database.types';
 type Visibility = Database['public']['Enums']['community_visibility'];
 type JoinPolicy = Database['public']['Enums']['community_join_policy'];
 type Settings = Database['public']['Tables']['communities']['Update']['settings'];
+type CommunityRow = Database['public']['Tables']['communities']['Row'];
+export type PublicCommunity = Pick<
+  CommunityRow,
+  | 'id'
+  | 'name'
+  | 'description'
+  | 'logo_path'
+  | 'city_label'
+  | 'visibility'
+  | 'join_policy'
+  | 'created_at'
+  | 'updated_at'
+>;
+export type ListPublicCommunitiesInput = { search?: string; offset: number; limit: number };
+export type GetPublicCommunityInput = { community_id: string };
 
 export type CreateCommunityInput = {
   name: string;
@@ -26,7 +41,8 @@ function invalid(): never {
 }
 
 function pgText(value: string): string {
-  if (value.includes('\u0000') || /[\uD800-\uDFFF]/u.test(value)) invalid();
+  if (value.includes('\u0000') || Array.from(value).some((char) => /^[\uD800-\uDFFF]$/u.test(char)))
+    invalid();
   return value;
 }
 
@@ -150,4 +166,36 @@ export function validateUpdateCommunitySettings(value: unknown): UpdateCommunity
     ...('logo_path' in input ? { logo_path: optionalText(input.logo_path, 256) } : {}),
     ...('settings' in input ? { settings: settings(input.settings) } : {})
   };
+}
+
+export function validateListPublicCommunities(value: unknown): ListPublicCommunitiesInput {
+  const input = objectWithKeys(value, ['search', 'offset', 'limit']);
+  const offset = 'offset' in input ? input.offset : 0;
+  const limit = 'limit' in input ? input.limit : 20;
+  if (
+    typeof offset !== 'number' ||
+    !Number.isSafeInteger(offset) ||
+    offset < 0 ||
+    offset > 10000 ||
+    typeof limit !== 'number' ||
+    !Number.isSafeInteger(limit) ||
+    limit < 1 ||
+    limit > 50
+  )
+    invalid();
+  if (!('search' in input)) return { offset, limit };
+  if (typeof input.search !== 'string') invalid();
+  const search = pgText(input.search.trim());
+  if (Array.from(search).length > 80) invalid();
+  return { offset, limit, ...(search ? { search } : {}) };
+}
+
+export function validateGetPublicCommunity(value: unknown): GetPublicCommunityInput {
+  const input = objectWithKeys(value, ['community_id']);
+  if (
+    typeof input.community_id !== 'string' ||
+    !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(input.community_id)
+  )
+    invalid();
+  return { community_id: input.community_id };
 }

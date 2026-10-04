@@ -29,6 +29,8 @@ vi.mock('../src/lib/supabase/server', () => ({
 }));
 import {
   createCommunity,
+  getPublicCommunity,
+  listPublicCommunities,
   updateCommunitySettings
 } from '../src/features/community/community.functions';
 
@@ -283,6 +285,86 @@ describe.skipIf(environment.env === null)('community domain (local Supabase inte
         })
       ).error?.code
     ).toBe('22P02');
+  });
+
+  it('public discovery uses real JWTs and keeps private IDs and fields out of payloads', async () => {
+    const publicName: unknown = (await rows(admin.client, 'communities', publicId))[0].name;
+    const privateName: unknown = (await rows(admin.client, 'communities', privateId))[0].name;
+    if (typeof publicName !== 'string' || typeof privateName !== 'string')
+      throw new Error('Missing community fixture names');
+    const seeded = await admin.client
+      .from('communities')
+      .update({ settings: { private_note: 'not for discovery' } })
+      .eq('id', publicId);
+    expect(seeded.error).toBeNull();
+    const safeKeys = [
+      'city_label',
+      'created_at',
+      'description',
+      'id',
+      'join_policy',
+      'logo_path',
+      'name',
+      'updated_at',
+      'visibility'
+    ];
+    serverClient.current = anon();
+    await expect(listPublicCommunities({ data: {} })).rejects.toThrow('UNAUTHENTICATED');
+    await expect(getPublicCommunity({ data: { community_id: publicId } })).rejects.toThrow(
+      'UNAUTHENTICATED'
+    );
+    await expect(getPublicCommunity({ data: { community_id: privateId } })).rejects.toThrow(
+      'UNAUTHENTICATED'
+    );
+
+    const literalName = `Literal %_\\ ${crypto.randomUUID()}`;
+    const literal = await admin.client.rpc('create_community', {
+      p_name: literalName,
+      p_visibility: 'public',
+      p_join_policy: 'instant'
+    });
+    expect(literal.error).toBeNull();
+    for (const user of [outsider, member, admin]) {
+      serverClient.current = user.client;
+      const literalSearch = await listPublicCommunities({
+        data: { search: literalName.toUpperCase() }
+      });
+      expect(literalSearch.communities.map((community) => community.id)).toContain(literal.data);
+      const listing = await listPublicCommunities({ data: {} });
+      expect(listing.communities.some((community) => community.id === publicId)).toBe(true);
+      expect(listing.communities.some((community) => community.id === privateId)).toBe(false);
+      for (const community of listing.communities)
+        expect(Object.keys(community).sort()).toEqual(safeKeys);
+      const searched = await listPublicCommunities({ data: { search: publicName.toUpperCase() } });
+      expect(searched.communities.map((community) => community.id)).toContain(publicId);
+      expect(searched.communities.every((community) => community.visibility === 'public')).toBe(
+        true
+      );
+      expect((await listPublicCommunities({ data: { search: privateName } })).communities).toEqual(
+        []
+      );
+      const detail = await getPublicCommunity({ data: { community_id: publicId } });
+      expect(detail?.id).toBe(publicId);
+      expect(Object.keys(detail!).sort()).toEqual(safeKeys);
+      expect(await getPublicCommunity({ data: { community_id: privateId } })).toBeNull();
+      expect(await getPublicCommunity({ data: { community_id: crypto.randomUUID() } })).toBeNull();
+    }
+    // PAF-4 owns match SELECT policy/tests; no matches table exists yet.
+    // RLS protects private rows, not public columns: direct SELECT * of public rows remains unrestricted.
+    const filtered = await outsider.client.from('communities').select('*').eq('id', privateId);
+    const privateList = await outsider.client
+      .from('communities')
+      .select('id')
+      .eq('visibility', 'private');
+    const unfiltered = await outsider.client.from('communities').select('id');
+    for (const result of [filtered, privateList, unfiltered]) expect(result.error).toBeNull();
+    expect(filtered.data).toEqual([]);
+    expect(privateList.data).toEqual([]);
+    expect(unfiltered.data?.map((community) => community.id)).not.toContain(privateId);
+    for (const user of [member, admin])
+      expect(await rows(user.client, 'communities', privateId)).toHaveLength(1);
+    expect((await anon().from('communities').select('id')).error?.code).toBe('42501');
+    serverClient.current = null;
   });
 
   it('server functions enforce creator bootstrap and admin-only settings with real JWTs', async () => {
