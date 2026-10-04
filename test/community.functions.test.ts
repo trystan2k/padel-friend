@@ -102,6 +102,42 @@ describe('community server functions', () => {
     expect(mocks.getServerClient).not.toHaveBeenCalled();
   });
 
+  it('rejects PostgreSQL-invalid text before client access', async () => {
+    for (const input of [
+      { ...createInput, name: 'Pad\u0000el' },
+      { ...createInput, name: 'Pad\uD800el' },
+      { ...createInput, description: 'Pad\uDC00el' },
+      { ...createInput, city_label: 'Pad\u0000el' }
+    ])
+      await expect(createCommunity({ data: input })).rejects.toThrow('INVALID_COMMUNITY_INPUT');
+
+    for (const input of [
+      { community_id: id, name: 'Pad\uDC00el' },
+      { community_id: id, logo_path: 'Pad\u0000el' },
+      { community_id: id, settings: { label: 'Pad\u0000el' } },
+      { community_id: id, settings: { 'Pad\u0000el': true } },
+      { community_id: id, settings: { nested: [{ 'Pad\uD800el': 'value' }] } },
+      { community_id: id, settings: { nested: ['Pad\uDC00el'] } }
+    ])
+      await expect(updateCommunitySettings({ data: input })).rejects.toThrow(
+        'INVALID_COMMUNITY_INPUT'
+      );
+    expect(mocks.getServerClient).not.toHaveBeenCalled();
+  });
+
+  it('accepts valid surrogate pairs as PostgreSQL text', async () => {
+    const authenticated = client();
+    mocks.getServerClient.mockReturnValue(authenticated);
+    await expect(
+      createCommunity({ data: { ...createInput, name: 'Pad\uD83C\uDFBE' } })
+    ).resolves.toEqual({ id });
+    await expect(
+      updateCommunitySettings({
+        data: { community_id: id, settings: { '\uD83C\uDFBE': '\uD83C\uDFBE' } }
+      })
+    ).resolves.toEqual(row);
+  });
+
   it('requires live claims for both mutations', async () => {
     const unauthenticated = client(false);
     mocks.getServerClient.mockReturnValue(unauthenticated);

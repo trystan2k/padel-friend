@@ -25,6 +25,11 @@ function invalid(): never {
   throw new Error('INVALID_COMMUNITY_INPUT');
 }
 
+function pgText(value: string): string {
+  if (value.includes('\u0000') || /[\uD800-\uDFFF]/u.test(value)) invalid();
+  return value;
+}
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
@@ -42,13 +47,13 @@ function name(value: unknown): string {
     Array.from(value).length > 80
   )
     invalid();
-  return value;
+  return pgText(value);
 }
 
 function optionalText(value: unknown, max: number): string | null {
   if (value === null) return null;
   if (typeof value !== 'string' || Array.from(value).length > max) invalid();
-  return value;
+  return pgText(value);
 }
 
 function visibility(value: unknown): Visibility {
@@ -62,7 +67,11 @@ function joinPolicy(value: unknown): JoinPolicy {
 }
 
 function isJson(value: unknown, seen: WeakSet<object>): value is NonNullable<Settings> {
-  if (value === null || typeof value === 'string' || typeof value === 'boolean') return true;
+  if (typeof value === 'string') {
+    pgText(value);
+    return true;
+  }
+  if (value === null || typeof value === 'boolean') return true;
   if (typeof value === 'number') return Number.isFinite(value);
   if (typeof value !== 'object' || seen.has(value)) return false;
   const prototype = Object.getPrototypeOf(value);
@@ -73,7 +82,10 @@ function isJson(value: unknown, seen: WeakSet<object>): value is NonNullable<Set
         { length: value.length },
         (_, index) => index in value && isJson(value[index], seen)
       ).every(Boolean)
-    : Object.values(value).every((item) => isJson(item, seen));
+    : Object.entries(value).every(([key, item]) => {
+        pgText(key);
+        return isJson(item, seen);
+      });
   seen.delete(value);
   return valid;
 }
