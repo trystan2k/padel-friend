@@ -51,7 +51,7 @@ function client(
   const query = {
     select: vi.fn<(columns: string) => unknown>(),
     eq: vi.fn<(column: string, value: string) => unknown>(),
-    ilike: vi.fn<(column: string, pattern: string) => unknown>(),
+    filter: vi.fn<(column: string, operator: string, pattern: string) => unknown>(),
     order: vi.fn<(column: string, options: { ascending: boolean }) => unknown>(),
     range:
       vi.fn<
@@ -61,7 +61,7 @@ function client(
   };
   query.select.mockReturnValue(query);
   query.eq.mockReturnValue(query);
-  query.ilike.mockReturnValue(query);
+  query.filter.mockReturnValue(query);
   query.order.mockReturnValue(query);
   query.range.mockResolvedValue({ data: rows, error });
   query.maybeSingle.mockResolvedValue({ data: detail, error });
@@ -145,7 +145,7 @@ describe('public community discovery server functions', () => {
     expect(authenticated.from).toHaveBeenCalledExactlyOnceWith('communities');
     expect(authenticated.query.select).toHaveBeenCalledExactlyOnceWith(columns);
     expect(authenticated.query.eq).toHaveBeenCalledExactlyOnceWith('visibility', 'public');
-    expect(authenticated.query.ilike).not.toHaveBeenCalled();
+    expect(authenticated.query.filter).not.toHaveBeenCalled();
     expect(authenticated.query.order.mock.calls).toEqual([
       ['created_at', { ascending: false }],
       ['id', { ascending: false }]
@@ -160,7 +160,7 @@ describe('public community discovery server functions', () => {
       communities: [row],
       next_offset: null
     });
-    expect(authenticated.query.ilike).not.toHaveBeenCalled();
+    expect(authenticated.query.filter).not.toHaveBeenCalled();
     expect(authenticated.query.range).toHaveBeenCalledWith(0, 20);
     const empty = client(true, []);
     mocks.getServerClient.mockReturnValue(empty);
@@ -170,17 +170,49 @@ describe('public community discovery server functions', () => {
     });
   });
 
-  it('escapes literal SQL LIKE metacharacters without losing Unicode or case', async () => {
+  it('escapes regex metacharacters for case-insensitive literal substring search', async () => {
     const authenticated = client();
     mocks.getServerClient.mockReturnValue(authenticated);
-    await listPublicCommunities({ data: { search: '  PáDel%_\\🎾  ', offset: 10000, limit: 50 } });
-    expect(authenticated.query.ilike).toHaveBeenCalledExactlyOnceWith(
+    await listPublicCommunities({
+      data: { search: '  PáDel%_\\🎾.*[x]  ', offset: 10000, limit: 50 }
+    });
+    expect(authenticated.query.filter).toHaveBeenCalledExactlyOnceWith(
       'name',
-      '%PáDel\\%\\_\\\\🎾%'
+      'imatch',
+      'PáDel%_\\\\🎾\\.\\*\\[x\\]'
     );
     expect(authenticated.query.range).toHaveBeenCalledWith(10000, 10050);
     await listPublicCommunities({ data: { search: '🎾'.repeat(80) } });
-    expect(authenticated.query.ilike).toHaveBeenLastCalledWith('name', `%${'🎾'.repeat(80)}%`);
+    expect(authenticated.query.filter).toHaveBeenLastCalledWith('name', 'imatch', '🎾'.repeat(80));
+  });
+
+  it('never advertises an offset beyond the validator cap', async () => {
+    const full = Array.from({ length: 51 }, () => row);
+    mocks.getServerClient.mockReturnValue(client(true, full));
+    await expect(
+      listPublicCommunities({ data: { offset: 9950, limit: 50 } })
+    ).resolves.toMatchObject({
+      communities: full.slice(0, 50),
+      next_offset: 10000
+    });
+    await expect(
+      listPublicCommunities({ data: { offset: 10000, limit: 50 } })
+    ).resolves.toMatchObject({
+      communities: full.slice(0, 50),
+      next_offset: null
+    });
+    mocks.getServerClient.mockReturnValue(client(true, full.slice(0, 50)));
+    await expect(
+      listPublicCommunities({ data: { offset: 9950, limit: 50 } })
+    ).resolves.toMatchObject({
+      next_offset: null
+    });
+    mocks.getServerClient.mockReturnValue(client(true, [row, row]));
+    await expect(
+      listPublicCommunities({ data: { offset: 9999, limit: 2 } })
+    ).resolves.toMatchObject({
+      next_offset: null
+    });
   });
 
   it('returns only public detail; private and absent IDs share null response', async () => {

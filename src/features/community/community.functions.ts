@@ -20,7 +20,8 @@ export const listPublicCommunities = createServerFn({ method: 'GET' })
       .from('communities')
       .select(publicCommunityColumns)
       .eq('visibility', 'public');
-    if (search) query = query.ilike('name', `%${search.replace(/[%_\\]/g, '\\$&')}%`);
+    if (search)
+      query = query.filter('name', 'imatch', search.replace(/[\\^$.|?*+(){}[\]]/g, '\\$&'));
     const { data: rows, error } = await query
       .order('created_at', { ascending: false })
       .order('id', { ascending: false })
@@ -29,7 +30,7 @@ export const listPublicCommunities = createServerFn({ method: 'GET' })
     const communities: PublicCommunity[] = (rows ?? []).slice(0, limit);
     return {
       communities,
-      next_offset: (rows?.length ?? 0) > limit ? offset + limit : null
+      next_offset: (rows?.length ?? 0) > limit && offset + limit <= 10000 ? offset + limit : null
     };
   });
 
