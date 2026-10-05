@@ -324,6 +324,39 @@ describe.skipIf(environment.env === null)('community domain (local Supabase inte
       p_join_policy: 'instant'
     });
     expect(literal.error).toBeNull();
+    const suffix = crypto.randomUUID();
+    const probeNames = [
+      `Star*Club-${suffix}`,
+      `StarXClub-${suffix}`,
+      `Percent%Club-${suffix}`,
+      `PercentXClub-${suffix}`,
+      `Under_Club-${suffix}`,
+      `UnderXClub-${suffix}`
+    ];
+    const probeIds: string[] = [];
+    for (const name of probeNames) {
+      const created = await admin.client.rpc('create_community', {
+        p_name: name,
+        p_visibility: 'public',
+        p_join_policy: 'instant'
+      });
+      expect(created.error).toBeNull();
+      probeIds.push(created.data);
+    }
+    serverClient.current = outsider.client;
+    for (const [search, included, excluded] of [
+      ['*', [0], [1, 2, 3, 4, 5]],
+      ['Star*', [0], [1]],
+      ['StarX', [1], [0]],
+      ['%', [2], [3]],
+      ['Percent%', [2], [3]],
+      ['Under_', [4], [5]]
+    ] as const) {
+      const result = await listPublicCommunities({ data: { search, limit: 50 } });
+      const ids = result.communities.map((community) => community.id);
+      for (const index of included) expect(ids).toContain(probeIds[index]);
+      for (const index of excluded) expect(ids).not.toContain(probeIds[index]);
+    }
     for (const user of [outsider, member, admin]) {
       serverClient.current = user.client;
       const literalSearch = await listPublicCommunities({
