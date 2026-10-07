@@ -70,6 +70,30 @@ async function requireAdmin(communityId: string) {
   return client;
 }
 
+export const getCommunityAdminContext = createServerFn({ method: 'GET' })
+  .validator((value: unknown) => {
+    if (!value || typeof value !== 'object' || Array.isArray(value))
+      throw new Error('INVALID_COMMUNITY_INPUT');
+    if (
+      !('community_id' in value) ||
+      Object.keys(value).length !== 1 ||
+      typeof value.community_id !== 'string' ||
+      !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value.community_id)
+    )
+      throw new Error('INVALID_COMMUNITY_INPUT');
+    return { community_id: value.community_id };
+  })
+  .handler(async ({ data }) => {
+    const client = await requireAdmin(data.community_id);
+    const { data: community, error } = await client
+      .from('communities')
+      .select('id,name,city_label,description,visibility,join_policy')
+      .eq('id', data.community_id)
+      .single();
+    if (error) throw error;
+    return community;
+  });
+
 export const searchCommunityMembers = createServerFn({ method: 'GET' })
   .validator(validateSearchMembers)
   .handler(async ({ data }) => {
