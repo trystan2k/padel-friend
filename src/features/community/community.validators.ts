@@ -18,6 +18,8 @@ export type PublicCommunity = Pick<
 >;
 export type ListPublicCommunitiesInput = { search?: string; offset: number; limit: number };
 export type GetPublicCommunityInput = { community_id: string };
+export type JoinCommunityInput = { community_id: string };
+export type AcceptInvitationInput = { token: string };
 
 export type CreateCommunityInput = {
   name: string;
@@ -79,6 +81,15 @@ function visibility(value: unknown): Visibility {
 
 function joinPolicy(value: unknown): JoinPolicy {
   if (value !== 'instant' && value !== 'admin_approval') invalid();
+  return value;
+}
+
+function communityId(value: unknown): string {
+  if (
+    typeof value !== 'string' ||
+    !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value)
+  )
+    invalid();
   return value;
 }
 
@@ -150,14 +161,9 @@ export function validateUpdateCommunitySettings(value: unknown): UpdateCommunity
     'logo_path',
     'settings'
   ]);
-  if (
-    typeof input.community_id !== 'string' ||
-    !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(input.community_id) ||
-    Object.keys(input).length < 2
-  )
-    invalid();
+  if (Object.keys(input).length < 2) invalid();
   return {
-    community_id: input.community_id,
+    community_id: communityId(input.community_id),
     ...('name' in input ? { name: name(input.name) } : {}),
     ...('visibility' in input ? { visibility: visibility(input.visibility) } : {}),
     ...('join_policy' in input ? { join_policy: joinPolicy(input.join_policy) } : {}),
@@ -192,10 +198,16 @@ export function validateListPublicCommunities(value: unknown): ListPublicCommuni
 
 export function validateGetPublicCommunity(value: unknown): GetPublicCommunityInput {
   const input = objectWithKeys(value, ['community_id']);
-  if (
-    typeof input.community_id !== 'string' ||
-    !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(input.community_id)
-  )
-    invalid();
-  return { community_id: input.community_id };
+  return { community_id: communityId(input.community_id) };
+}
+
+export function validateJoinCommunity(value: unknown): JoinCommunityInput {
+  const input = objectWithKeys(value, ['community_id']);
+  return { community_id: communityId(input.community_id) };
+}
+
+export function validateAcceptInvitation(value: unknown): AcceptInvitationInput {
+  const input = objectWithKeys(value, ['token']);
+  if (typeof input.token !== 'string' || !/^[0-9a-f]{64}$/.test(input.token)) invalid();
+  return { token: input.token };
 }

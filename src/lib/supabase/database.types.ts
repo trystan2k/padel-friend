@@ -350,6 +350,13 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      accept_community_invitation: {
+        Args: { p_token: string }
+        Returns: {
+          community_id: string
+          status: Database["public"]["Enums"]["community_membership_status"]
+        }[]
+      }
       can_read_community: { Args: { p_community_id: string }; Returns: boolean }
       create_community: {
         Args: {
@@ -363,6 +370,13 @@ export type Database = {
       }
       is_community_admin: { Args: { p_community_id: string }; Returns: boolean }
       is_community_member: { Args: { p_community_id: string }; Returns: boolean }
+      join_public_community: {
+        Args: { p_community_id: string }
+        Returns: {
+          community_id: string
+          status: Database["public"]["Enums"]["community_membership_status"]
+        }[]
+      }
       onboard_player: {
         Args: {
           p_bio?: string

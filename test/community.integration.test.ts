@@ -28,8 +28,10 @@ vi.mock('../src/lib/supabase/server', () => ({
   }
 }));
 import {
+  acceptInvitation,
   createCommunity,
   getPublicCommunity,
+  joinCommunity,
   listPublicCommunities,
   updateCommunitySettings
 } from '../src/features/community/community.functions';
@@ -954,4 +956,283 @@ describe.skipIf(environment.env === null)('community domain (local Supabase inte
       activated_at: activeRow.activated_at
     });
   });
+
+  it('joins public and invitee-bound private communities with atomic, policy-aware membership', async () => {
+    const [owner, instantUser, applicant, invitee, secondInvitee, thief] = await Promise.all([
+      actor('join-owner'),
+      actor('join-instant'),
+      actor('join-applicant'),
+      actor('join-invitee'),
+      actor('join-second'),
+      actor('join-thief')
+    ]);
+    async function community(
+      visibility: 'public' | 'private',
+      policy: 'instant' | 'admin_approval'
+    ) {
+      const created = await owner.client.rpc('create_community', {
+        p_name: `Join ${crypto.randomUUID()}`,
+        p_visibility: visibility,
+        p_join_policy: policy
+      });
+      expect(created.error).toBeNull();
+      return created.data!;
+    }
+    async function invitation(communityId: string, user: Actor, expiry = Date.now() + 86400000) {
+      const raw = Array.from(crypto.getRandomValues(new Uint8Array(32)), (byte) =>
+        byte.toString(16).padStart(2, '0')
+      ).join('');
+      const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(raw));
+      const tokenHash = Array.from(new Uint8Array(digest), (byte) =>
+        byte.toString(16).padStart(2, '0')
+      ).join('');
+      const seeded = await owner.client
+        .from('community_invitations')
+        .insert({
+          community_id: communityId,
+          invitee_user_id: user.id,
+          token_hash: tokenHash,
+          expires_at: new Date(expiry).toISOString()
+        })
+        .select('id')
+        .single();
+      expect(seeded.error).toBeNull();
+      return { raw, id: seeded.data!.id };
+    }
+    async function membership(communityId: string, user: Actor) {
+      const found = await owner.client
+        .from('community_members')
+        .select('*')
+        .eq('community_id', communityId)
+        .eq('user_id', user.id);
+      expect(found.error).toBeNull();
+      return found.data ?? [];
+    }
+    const publicInstant = await community('public', 'instant');
+    const publicApproval = await community('public', 'admin_approval');
+    const privateInstant = await community('private', 'instant');
+    const privateApproval = await community('private', 'admin_approval');
+    serverClient.current = instantUser.client;
+    expect(await joinCommunity({ data: { community_id: publicInstant } })).toEqual({
+      community_id: publicInstant,
+      status: 'active'
+    });
+    expect(await membership(publicInstant, instantUser)).toMatchObject([
+      {
+        role: 'member',
+        status: 'active',
+        valid_until: null,
+        user_id: instantUser.id
+      }
+    ]);
+    expect((await membership(publicInstant, instantUser))[0].activated_at).not.toBeNull();
+    await expect(joinCommunity({ data: { community_id: publicInstant } })).rejects.toThrow(
+      'ALREADY_MEMBER_OR_PENDING'
+    );
+
+    serverClient.current = applicant.client;
+    expect(await joinCommunity({ data: { community_id: publicApproval } })).toEqual({
+      community_id: publicApproval,
+      status: 'pending'
+    });
+    expect(await membership(publicApproval, applicant)).toMatchObject([
+      {
+        role: 'member',
+        status: 'pending',
+        activated_at: null,
+        valid_until: null
+      }
+    ]);
+    expect(await rows(applicant.client, 'community_members', publicApproval)).toHaveLength(1);
+    expect(
+      (await applicant.client.rpc('is_community_member', { p_community_id: publicApproval })).data
+    ).toBe(false);
+    await expect(joinCommunity({ data: { community_id: publicApproval } })).rejects.toThrow(
+      'ALREADY_MEMBER_OR_PENDING'
+    );
+    for (const id of [privateInstant, crypto.randomUUID()])
+      await expect(joinCommunity({ data: { community_id: id } })).rejects.toThrow(
+        'COMMUNITY_NOT_ELIGIBLE'
+      );
+
+    const bound = await invitation(privateInstant, invitee);
+    serverClient.current = thief.client;
+    await expect(acceptInvitation({ data: { token: bound.raw } })).rejects.toThrow(
+      'INVITATION_NOT_FOR_USER'
+    );
+    expect(
+      (
+        await owner.client
+          .from('community_invitations')
+          .select('redeemed_at')
+          .eq('id', bound.id)
+          .single()
+      ).data?.redeemed_at
+    ).toBeNull();
+    expect(await membership(privateInstant, thief)).toHaveLength(0);
+    serverClient.current = invitee.client;
+    expect(await acceptInvitation({ data: { token: bound.raw } })).toEqual({
+      community_id: privateInstant,
+      status: 'active'
+    });
+    expect(await membership(privateInstant, invitee)).toMatchObject([
+      {
+        role: 'member',
+        status: 'active',
+        valid_until: null
+      }
+    ]);
+    expect((await membership(privateInstant, invitee))[0].activated_at).not.toBeNull();
+    expect(
+      (
+        await owner.client
+          .from('community_invitations')
+          .select('redeemed_at')
+          .eq('id', bound.id)
+          .single()
+      ).data?.redeemed_at
+    ).not.toBeNull();
+    await expect(acceptInvitation({ data: { token: bound.raw } })).rejects.toThrow(
+      'INVITATION_USED'
+    );
+
+    const approvalToken = await invitation(privateApproval, secondInvitee);
+    serverClient.current = secondInvitee.client;
+    expect(await acceptInvitation({ data: { token: approvalToken.raw } })).toEqual({
+      community_id: privateApproval,
+      status: 'pending'
+    });
+    expect(await membership(privateApproval, secondInvitee)).toMatchObject([
+      {
+        role: 'member',
+        status: 'pending',
+        activated_at: null,
+        valid_until: null
+      }
+    ]);
+    expect(await rows(secondInvitee.client, 'community_members', privateApproval)).toHaveLength(1);
+    for (const table of ['communities', 'community_venues', 'community_audit_log'] as const)
+      expect(await rows(secondInvitee.client, table, privateApproval)).toEqual([]);
+    for (const helper of [
+      'is_community_member',
+      'can_read_community',
+      'is_community_admin'
+    ] as const)
+      expect(
+        (await secondInvitee.client.rpc(helper, { p_community_id: privateApproval })).data
+      ).toBe(false);
+    const venue = await owner.client
+      .from('community_venues')
+      .insert({ community_id: privateApproval, name: 'Private court' });
+    expect(venue.error).toBeNull();
+    expect(await rows(secondInvitee.client, 'community_venues', privateApproval)).toEqual([]);
+    expect(
+      (await rows(owner.client, 'community_members', privateApproval)).some(
+        (row) => row.user_id === secondInvitee.id && row.status === 'pending'
+      )
+    ).toBe(true);
+    expect(
+      (await rows(owner.client, 'community_audit_log', privateApproval)).some(
+        (event) => event.entity === 'community_invitations' && event.action === 'UPDATE'
+      )
+    ).toBe(true);
+    expect(
+      (
+        await secondInvitee.client
+          .from('community_members')
+          .insert({ community_id: privateApproval, user_id: thief.id, status: 'active' })
+      ).error?.code
+    ).toBe('42501');
+    expect(
+      (
+        await secondInvitee.client
+          .from('community_invitations')
+          .update({ redeemed_at: new Date().toISOString() })
+          .eq('id', approvalToken.id)
+      ).error?.code
+    ).toBe('42501');
+
+    const duplicate = await invitation(privateApproval, secondInvitee);
+    await expect(acceptInvitation({ data: { token: duplicate.raw } })).rejects.toThrow(
+      'ALREADY_MEMBER_OR_PENDING'
+    );
+    expect(
+      (
+        await owner.client
+          .from('community_invitations')
+          .select('redeemed_at')
+          .eq('id', duplicate.id)
+          .single()
+      ).data?.redeemed_at
+    ).toBeNull();
+    serverClient.current = thief.client;
+    await expect(
+      acceptInvitation({ data: { token: crypto.randomUUID().replaceAll('-', '').repeat(2) } })
+    ).rejects.toThrow('INVITATION_INVALID');
+    expect(
+      (await thief.client.rpc('accept_community_invitation', { p_token: 'bad' })).error?.code
+    ).toBe('PJ001');
+    const expired = await invitation(privateInstant, thief, Date.now() + 1200);
+    await new Promise((resolve) => setTimeout(resolve, 1500));
+    await expect(acceptInvitation({ data: { token: expired.raw } })).rejects.toThrow(
+      'INVITATION_EXPIRED'
+    );
+    expect(
+      (
+        await owner.client
+          .from('community_invitations')
+          .select('redeemed_at')
+          .eq('id', expired.id)
+          .single()
+      ).data?.redeemed_at
+    ).toBeNull();
+    const revoked = await invitation(privateApproval, thief);
+    expect(
+      (
+        await owner.client
+          .from('community_invitations')
+          .update({ revoked_at: new Date().toISOString() })
+          .eq('id', revoked.id)
+      ).error
+    ).toBeNull();
+    await expect(acceptInvitation({ data: { token: revoked.raw } })).rejects.toThrow(
+      'INVITATION_REVOKED'
+    );
+
+    const raceCommunity = await community('private', 'instant');
+    const racing = await invitation(raceCommunity, thief);
+    const [first, second] = await Promise.all([
+      thief.client.rpc('accept_community_invitation', { p_token: racing.raw }),
+      thief.client.rpc('accept_community_invitation', { p_token: racing.raw })
+    ]);
+    expect([first, second].filter((result) => !result.error)).toHaveLength(1);
+    expect(
+      [first, second].filter((result) => result.error).map((result) => result.error?.code)
+    ).toEqual(['PJ003']);
+    expect(await membership(raceCommunity, thief)).toHaveLength(1);
+    const publicRace = await community('public', 'instant');
+    const [joined, duplicateJoin] = await Promise.all([
+      thief.client.rpc('join_public_community', { p_community_id: publicRace }),
+      thief.client.rpc('join_public_community', { p_community_id: publicRace })
+    ]);
+    expect([joined, duplicateJoin].filter((result) => !result.error)).toHaveLength(1);
+    expect(
+      [joined, duplicateJoin].filter((result) => result.error).map((result) => result.error?.code)
+    ).toEqual(['PJ006']);
+    expect(await membership(publicRace, thief)).toHaveLength(1);
+    serverClient.current = anon();
+    await expect(joinCommunity({ data: { community_id: publicRace } })).rejects.toThrow(
+      'UNAUTHENTICATED'
+    );
+    await expect(acceptInvitation({ data: { token: racing.raw } })).rejects.toThrow(
+      'UNAUTHENTICATED'
+    );
+    expect(
+      (await anon().rpc('join_public_community', { p_community_id: publicRace })).error?.code
+    ).toBe('42501');
+    expect(
+      (await anon().rpc('accept_community_invitation', { p_token: racing.raw })).error?.code
+    ).toBe('42501');
+    serverClient.current = null;
+  }, 90000);
 });
