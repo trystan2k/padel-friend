@@ -1,9 +1,9 @@
 import * as stylex from '@stylexjs/stylex';
 import { useRef, useState, type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
+import { stripEdgeWhitespace } from '../../lib/edge-whitespace';
 import { getBrowserClient } from '../../lib/supabase/client';
 import { AvatarUpload } from './AvatarUpload';
-import { stripDisplayNameEdgeWhitespace } from './display-name';
 import { updateMyPlayerProfile } from './player.functions';
 import { playerInitials } from './player-initials';
 import { formatDisplayLevel, MAX_LEVEL, MIN_LEVEL } from './rating-config';
@@ -32,7 +32,7 @@ export function PlayerProfile({ initialProfile }: { initialProfile: Profile }) {
 
   async function save(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const normalizedName = stripDisplayNameEdgeWhitespace(name);
+    const normalizedName = stripEdgeWhitespace(name);
     if (!normalizedName || Array.from(normalizedName).length > 80) {
       setError('onboarding.validationName');
       nameRef.current?.focus();
@@ -194,8 +194,7 @@ export function PlayerProfile({ initialProfile }: { initialProfile: Profile }) {
             required
             aria-invalid={Boolean(
               error &&
-              (!stripDisplayNameEdgeWhitespace(name) ||
-                Array.from(stripDisplayNameEdgeWhitespace(name)).length > 80)
+              (!stripEdgeWhitespace(name) || Array.from(stripEdgeWhitespace(name)).length > 80)
             )}
             {...stylex.props(ui.input)}
           />

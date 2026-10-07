@@ -8,7 +8,7 @@ import { Button } from '../../components/ui/Button';
 import { StepBadge } from '../../components/ui/StepBadge';
 import { SurfaceCard } from '../../components/ui/SurfaceCard';
 import { TextField } from '../../components/ui/TextField';
-import { stripDisplayNameEdgeWhitespace } from '../player/display-name';
+import { stripEdgeWhitespace } from '../../lib/edge-whitespace';
 import { createCommunity, joinCommunity, listPublicCommunities } from './community.functions';
 import type { PublicCommunity } from './community.validators';
 import { ui } from './community-onboarding.styles';
@@ -308,7 +308,7 @@ function CreateCommunityView({ onBack }: { onBack: () => void }) {
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (creating) return;
-    const normalized = stripDisplayNameEdgeWhitespace(name);
+    const normalized = stripEdgeWhitespace(name);
     if (!normalized || Array.from(normalized).length > 80) {
       setNameError(true);
       nameRef.current?.focus();

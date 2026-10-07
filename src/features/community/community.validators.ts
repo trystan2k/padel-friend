@@ -1,3 +1,4 @@
+import { hasEdgeWhitespace } from '../../lib/edge-whitespace';
 import type { Database } from '../../lib/supabase/database.types';
 
 type Visibility = Database['public']['Enums']['community_visibility'];
@@ -61,7 +62,7 @@ function name(value: unknown): string {
   if (
     typeof value !== 'string' ||
     value.length === 0 ||
-    /^[ \t\n\r\f\v]|[ \t\n\r\f\v]$/.test(value) ||
+    hasEdgeWhitespace(value) ||
     Array.from(value).length > 80
   )
     invalid();
