@@ -38,8 +38,16 @@ export const listPublicCommunities = createServerFn({ method: 'GET' })
       .from('communities')
       .select(publicCommunityColumns)
       .eq('visibility', 'public');
-    if (search)
-      query = query.filter('name', 'imatch', search.replace(/[\\^$.|?*+(){}[\]]/g, '\\$&'));
+    if (search) {
+      // Quote each PostgREST value after escaping regex metacharacters. A user-supplied
+      // comma, quote or parenthesis must stay inside the pattern, never become filter syntax.
+      const pattern = search
+        .replace(/[\\^$.|?*+(){}[\]]/g, '\\$&')
+        .replace(/\\/g, '\\\\')
+        .replace(/"/g, '\\"');
+      const quoted = `"${pattern}"`;
+      query = query.or(`name.imatch.${quoted},city_label.imatch.${quoted}`);
+    }
     const { data: rows, error } = await query
       .order('created_at', { ascending: false })
       .order('id', { ascending: false })

@@ -24,6 +24,7 @@ type LocaleCopy = {
     sideRightShort: string;
     save: string;
   };
+  communityOnboarding: { skip: string };
 };
 
 const en: LocaleCopy = JSON.parse(
@@ -74,6 +75,9 @@ async function createOnboardedUser(page: Page, email: string, name: string): Pro
   await page.getByLabel(en.onboarding.preciseLevel).fill('3.0');
   await page.getByRole('radio', { name: en.onboarding.sideEitherShort }).check();
   await page.getByRole('button', { name: en.onboarding.save }).click();
+  await expect(page).toHaveURL(/\/onboarding\/community$/);
+  await waitForHydratedPage(page);
+  await page.getByRole('button', { name: en.communityOnboarding.skip }).click();
   await expect(page).toHaveURL(/\/dashboard$/);
   await waitForHydratedPage(page);
   await page.getByRole('button', { name: en.signOut }).click();
@@ -100,6 +104,9 @@ test('a protected deep link survives sign-in and a newcomer is gated before reac
     .getByRole('radio', { name: en.onboarding.sideRightShort })
     .check();
   await page.getByRole('button', { name: en.onboarding.save }).click();
+  await expect(page).toHaveURL(/\/onboarding\/community$/);
+  await waitForHydratedPage(page);
+  await page.getByRole('button', { name: en.communityOnboarding.skip }).click();
   await expect(page).toHaveURL(/\/dashboard$/);
   await expect(page.getByRole('heading', { name: 'Dee Link' })).toBeVisible();
 });

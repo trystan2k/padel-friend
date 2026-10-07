@@ -29,6 +29,7 @@ type LocaleCopy = {
     sideLeftShort: string;
     save: string;
   };
+  communityOnboarding: { skip: string };
 };
 
 const en: LocaleCopy = JSON.parse(
@@ -63,6 +64,9 @@ async function createOnboardedUser(page: Page, email: string): Promise<void> {
     .getByRole('radio', { name: en.onboarding.sideLeftShort })
     .check();
   await page.getByRole('button', { name: en.onboarding.save }).click();
+  await expect(page).toHaveURL(/\/onboarding\/community$/);
+  await waitForHydratedPage(page);
+  await page.getByRole('button', { name: en.communityOnboarding.skip }).click();
   await expect(page).toHaveURL(/\/dashboard$/);
   await waitForHydratedPage(page);
   await page.getByRole('button', { name: en.signOut }).click();

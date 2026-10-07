@@ -345,7 +345,36 @@ describe.skipIf(environment.env === null)('community domain (local Supabase inte
       expect(created.error).toBeNull();
       probeIds.push(created.data);
     }
+    const cityOnly = `City-(x),"\\-${crypto.randomUUID()}`;
+    const cityRow = await admin.client.rpc('create_community', {
+      p_name: `Unrelated-${crypto.randomUUID()}`,
+      p_visibility: 'public',
+      p_join_policy: 'instant',
+      p_city_label: cityOnly
+    });
+    const hiddenCity = await admin.client.rpc('create_community', {
+      p_name: `Hidden-${crypto.randomUUID()}`,
+      p_visibility: 'private',
+      p_join_policy: 'admin_approval',
+      p_city_label: cityOnly
+    });
+    expect(cityRow.error).toBeNull();
+    expect(hiddenCity.error).toBeNull();
     serverClient.current = outsider.client;
+    for (const term of [
+      cityOnly,
+      'CITY-(X),"\\-',
+      ')',
+      '"',
+      '\\',
+      '") , visibility.eq.private, name.imatch.("'
+    ]) {
+      const results = await listPublicCommunities({ data: { search: term, limit: 50 } });
+      expect(results.communities.map(({ id }) => id).includes(cityRow.data)).toBe(
+        term !== '") , visibility.eq.private, name.imatch.("'
+      );
+      expect(results.communities.map(({ id }) => id)).not.toContain(hiddenCity.data);
+    }
     for (const [search, included, excluded] of [
       ['*', [0], [1, 2, 3, 4, 5]],
       ['Star*', [0], [1]],
@@ -1198,7 +1227,11 @@ describe.skipIf(environment.env === null)('community domain (local Supabase inte
       (
         await owner.client
           .from('community_invitations')
-          .update({ revoked_at: new Date().toISOString() })
+          .update({
+            revoked_at: new Date(
+              Math.max(Date.now(), Date.parse(revoked.createdAt) + 1000)
+            ).toISOString()
+          })
           .eq('id', revoked.id)
       ).error
     ).toBeNull();

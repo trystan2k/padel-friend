@@ -67,7 +67,7 @@ export function PlayerOnboarding() {
         }
       });
       navigating = true;
-      window.location.assign('/dashboard');
+      window.location.assign('/onboarding/community');
     } catch (error) {
       if (error instanceof Error && error.message === 'UNAUTHENTICATED') {
         navigating = true;
