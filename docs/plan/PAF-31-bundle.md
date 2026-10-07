@@ -4,9 +4,9 @@
 
 - **Issue:** PAF-31 — PAF-2.6 — Admin governance: requests, membership, roles, settings, venues, audit
 - **Parent:** PAF-2 (T02)
-- **Branch:** `feature/PAF-31-admin-governance` (STACKED on `origin/feature/PAF-30-onboarding-community-discovery` @ `ab81a95`; PR targets the PAF-30 branch)
+- **Branch:** `feature/PAF-31-admin-governance` (STACKED on `origin/feature/PAF-30-onboarding-community-discovery` @ `7bfa8ce`; PR targets the PAF-30 branch). The branch was rebased onto the updated PAF-30 base (which gained `7bfa8ce`, `0fb279a`, `dd865cd`).
 - **Delivery:** PAF-31 is split into 2 stacked PRs (user-approved): **PR1 = backend (plan slices A+B)** ← this bundle; PR2 = UI (slices C+D), later.
-- **Commit:** `3c3b297` — `feat: add community admin governance backend` (plus a pre-existing `988f9c3` `.opencode` config commit on the branch)
+- **Commit:** `8bdba11` — `feat: add community admin governance backend` (rebased from `3c3b297`; plus `.opencode` config commits `7980674`/`5aec543` on the branch)
 - **Plan file:** `docs/plan/Plan PAF-31 PAF-2.6 — Admin governance requests, membership, roles, settings, venues, audit.md`
 
 ## Acceptance criteria (all 8, but PR1 covers the backend half; UI ACs verified in PR2)
