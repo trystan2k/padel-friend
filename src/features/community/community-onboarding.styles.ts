@@ -94,7 +94,6 @@ export const ui = stylex.create({
   status: { margin: 0, fontSize: 'var(--font-size-12)', color: 'var(--color-green)' },
   error: { margin: 0, fontSize: 'var(--font-size-12)', color: 'var(--color-red)' },
   form: { display: 'flex', flexDirection: 'column', gap: 'var(--space-10)' },
-  nameField: { gap: 'var(--space-6)' },
   label: {
     color: 'var(--color-muted)',
     fontSize: 'var(--font-size-12)',
