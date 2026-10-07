@@ -197,6 +197,7 @@ export type Database = {
       community_venues: {
         Row: {
           address: string | null
+          archived_at: string | null
           community_id: string
           created_at: string
           created_by: string
@@ -208,6 +209,7 @@ export type Database = {
         }
         Insert: {
           address?: string | null
+          archived_at?: string | null
           community_id: string
           created_at?: string
           created_by?: string
@@ -219,6 +221,7 @@ export type Database = {
         }
         Update: {
           address?: string | null
+          archived_at?: string | null
           community_id?: string
           created_at?: string
           created_by?: string
@@ -368,6 +371,14 @@ export type Database = {
         }
         Returns: string
       }
+      govern_community_member: {
+        Args: { p_action: string; p_community_id: string; p_membership_id: string }
+        Returns: {
+          membership_id: string
+          role: Database["public"]["Enums"]["community_member_role"]
+          status: Database["public"]["Enums"]["community_membership_status"]
+        }[]
+      }
       is_community_admin: { Args: { p_community_id: string }; Returns: boolean }
       is_community_member: { Args: { p_community_id: string }; Returns: boolean }
       join_public_community: {
@@ -386,6 +397,27 @@ export type Database = {
           p_preferred_side: string
         }
         Returns: undefined
+      }
+      search_community_members: {
+        Args: {
+          p_community_id: string
+          p_limit?: number
+          p_offset?: number
+          p_query?: string
+          p_status?: Database["public"]["Enums"]["community_membership_status"]
+        }
+        Returns: {
+          activated_at: string
+          display_level: number
+          display_name: string
+          membership_id: string
+          reliability_percent: number
+          role: Database["public"]["Enums"]["community_member_role"]
+          status: Database["public"]["Enums"]["community_membership_status"]
+          user_id: string
+          valid_from: string
+          valid_until: string
+        }[]
       }
     }
     Enums: {
