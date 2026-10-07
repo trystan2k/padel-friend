@@ -232,9 +232,9 @@ test('Pencil structure: discovery and create preserve exact CSS boxes', async ({
   });
   const upper = await visualDiff(page, 'community-create.png', [], 448);
   console.log(`JO4DC unaffected region: ${upper}/174720 (${((upper / 174720) * 100).toFixed(3)}%)`);
-  // 12,665 / 174,720 = 7.249% before optional fields: Pencil/Chromium
+  // 12,611 / 174,720 = 7.218% before optional fields: Pencil/Chromium
   // glyph rasterization and native input/radio treatment, not displaced boxes.
-  expect(upper / 174720).toBeLessThanOrEqual(0.074);
+  expect(upper / 174720).toBeLessThanOrEqual(0.0737);
 });
 
 test('create view compares against JO4DC Pencil reference', async ({ page }) => {
@@ -250,13 +250,17 @@ test('create view compares against JO4DC Pencil reference', async ({ page }) => 
   try {
     await expect(page).toHaveScreenshot('community-create.png', {
       threshold: 0.1,
-      // 38,295 / 329,160 = 11.634%; 0.15pp headroom. Only the optional
-      // 44px fields and their downstream flow differ; exact boxes above and
-      // below that card plus a separate strict upper-region visual gate apply.
-      maxDiffPixelRatio: 0.1179,
+      // 38,251 / 329,160 = 11.621% measured by Playwright after the style fixes;
+      // 0.15pp headroom. Mandatory 44px optional controls shift lower content;
+      // exact geometry and an independent upper-region cap still apply.
+      maxDiffPixelRatio: 0.1177,
       animations: 'disabled',
       caret: 'hide'
     });
+    const different = await visualDiff(page, 'community-create.png', []);
+    console.log(
+      `JO4DC visual residual: ${different}/329160 (${((different / 329160) * 100).toFixed(3)}%)`
+    );
   } finally {
     expect(
       readFileSync(
@@ -327,8 +331,62 @@ test('discovery view compares card structure and actions against dSEX3 Pencil re
   console.log(
     `dSEX3 visual residual: ${different}/329160 (${((different / 329160) * 100).toFixed(3)}%)`
   );
-  // 11,568 / 329,160 = 3.514%; 0.15pp headroom for font rasterization.
-  expect(different / 329160).toBeLessThanOrEqual(0.0367);
+  // 11,255 / 329,160 = 3.419%; 0.15pp headroom for font rasterization.
+  expect(different / 329160).toBeLessThanOrEqual(0.0357);
+});
+
+test('live search keeps keyboard focus across debounce and server results', async ({ page }) => {
+  await player(page);
+  const input = page.getByRole('searchbox', { name: en.communityOnboarding.searchLabel });
+  await input.focus();
+  await input.pressSequentially('NeverMatch');
+  await expect(page).toHaveURL(/q=NeverMatch/);
+  await expect(page.getByText(en.communityOnboarding.emptySearch)).toBeVisible();
+  await expect(input).toBeFocused();
+  await input.pressSequentially('Again');
+  await expect(page).toHaveURL(/q=NeverMatchAgain/);
+  await expect(input).toHaveValue('NeverMatchAgain');
+  await expect(input).toBeFocused();
+});
+
+test('successful create resets after browser Back and create re-entry', async ({ page }) => {
+  await player(page);
+  const search = page.getByRole('searchbox', { name: en.communityOnboarding.searchLabel });
+  await search.fill('Madrid');
+  await expect(page).toHaveURL(/q=Madrid/);
+  await page.getByRole('button', { name: en.communityOnboarding.createEntry }).click();
+  await page.getByLabel(en.communityOnboarding.nameLabel).fill(`First ${crypto.randomUUID()}`);
+  await page.getByRole('button', { name: en.communityOnboarding.createSubmit }).click();
+  await expect(page.getByText(en.communityOnboarding.created)).toBeVisible();
+  await page.goBack();
+  await expect(search).toHaveValue('Madrid');
+  await page.getByRole('button', { name: en.communityOnboarding.createEntry }).click();
+  await expect(page.getByLabel(en.communityOnboarding.nameLabel)).toHaveValue('');
+  await expect(
+    page.getByRole('button', { name: en.communityOnboarding.createSubmit })
+  ).toBeVisible();
+  await expect(page.getByText(en.communityOnboarding.created)).toHaveCount(0);
+});
+
+test('browser Back restores settled query after Create consumes a pending search edit', async ({
+  page
+}) => {
+  await player(page);
+  const search = page.getByRole('searchbox', { name: en.communityOnboarding.searchLabel });
+  await search.fill('Mad');
+  await expect(page).toHaveURL(/\?q=Mad$/);
+  await search.fill('Madrid');
+  await page.getByRole('button', { name: en.communityOnboarding.createEntry }).click();
+  await expect(page).toHaveURL(/\?q=Madrid&view=create$/);
+  await expect(
+    page.getByRole('heading', { name: en.communityOnboarding.createTitle })
+  ).toBeVisible();
+  await page.goBack();
+  await expect(page).toHaveURL(/\?q=Mad$/);
+  await expect(search).toHaveValue('Mad');
+  await page.waitForTimeout(400);
+  await expect(page).toHaveURL(/\?q=Mad$/);
+  await expect(search).toHaveValue('Mad');
 });
 
 test('guest and incomplete users cannot read discovery or create', async ({ page }) => {

@@ -43,11 +43,5 @@ export const Route = createFileRoute('/onboarding_/community')({
 function CommunityRoute() {
   const search = Route.useSearch();
   const data = Route.useLoaderData();
-  return (
-    <CommunityOnboarding
-      key={`${search.view ?? 'discovery'}:${search.q ?? ''}`}
-      search={search}
-      data={data}
-    />
-  );
+  return <CommunityOnboarding search={search} data={data} />;
 }

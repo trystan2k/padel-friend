@@ -88,6 +88,8 @@ describe('community onboarding', () => {
     const user = userEvent.setup();
     mount(undefined, { communities: [], next_offset: null, failed: true });
     expect(screen.getByRole('alert').textContent).toContain('Could not load');
+    await user.click(screen.getByRole('button', { name: 'TRY AGAIN' }));
+    expect(mocks.invalidate).toHaveBeenCalledOnce();
     await user.type(screen.getByRole('searchbox', { name: 'Search community' }), 'Madrid');
     await waitFor(() =>
       expect(mocks.navigate).toHaveBeenCalledWith({
@@ -98,8 +100,178 @@ describe('community onboarding', () => {
     );
     await user.click(screen.getByRole('button', { name: 'I’LL DO THIS LATER' }));
     expect(mocks.navigate).toHaveBeenCalledWith({ to: '/dashboard' });
-    await user.click(screen.getByRole('button', { name: 'TRY AGAIN' }));
+  });
+
+  it('keeps focus and newer draft through query responses, and retains membership by id', async () => {
+    const user = userEvent.setup();
+    mocks.join.mockResolvedValue({ status: 'active' });
+    const i18n = createI18n('en');
+    const initial = { communities: [row], next_offset: null, failed: false };
+    const view = (q: string | undefined, data = initial) => (
+      <I18nextProvider i18n={i18n}>
+        <CommunityOnboarding search={q ? { q } : {}} data={data} />
+      </I18nextProvider>
+    );
+    const mounted = render(view(undefined));
+    const input = screen.getByRole('searchbox', { name: 'Search community' });
+    await user.click(screen.getByRole('button', { name: 'JOIN COMMUNITY' }));
+    await waitFor(() => expect(screen.getByText('Joined community')).toBeTruthy());
+    await user.click(input);
+    await user.type(input, 'Mad');
+    await waitFor(() =>
+      expect(mocks.navigate).toHaveBeenCalledWith({
+        to: '/onboarding/community',
+        search: { q: 'Mad' },
+        replace: true
+      })
+    );
+    mounted.rerender(view('Mad', initial));
+    expect(document.activeElement).toBe(input);
+    await user.type(input, 'rid');
+    mounted.rerender(view('Mad', { communities: [], next_offset: null, failed: false }));
+    expect(input).toHaveProperty('value', 'Madrid');
+    expect(document.activeElement).toBe(input);
+    await waitFor(() =>
+      expect(mocks.navigate).toHaveBeenCalledWith({
+        to: '/onboarding/community',
+        search: { q: 'Madrid' },
+        replace: true
+      })
+    );
+    mounted.rerender(view('Madrid', initial));
+    expect(screen.getByText('Joined community')).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'JOIN COMMUNITY' }).hasAttribute('disabled')).toBe(
+      true
+    );
+  });
+
+  it('does not restore a pending search after the user clears its draft', async () => {
+    const user = userEvent.setup();
+    const i18n = createI18n('en');
+    const data = { communities: [], next_offset: null, failed: false };
+    const view = (q?: string) => (
+      <I18nextProvider i18n={i18n}>
+        <CommunityOnboarding search={q ? { q } : {}} data={data} />
+      </I18nextProvider>
+    );
+    const mounted = render(view());
+    const input = screen.getByRole('searchbox', { name: 'Search community' });
+    await user.type(input, 'Mad');
+    await waitFor(() =>
+      expect(mocks.navigate).toHaveBeenCalledWith({
+        to: '/onboarding/community',
+        search: { q: 'Mad' },
+        replace: true
+      })
+    );
+    await user.clear(input);
+    mounted.rerender(view('Mad'));
+    expect(input).toHaveProperty('value', '');
+    expect(document.activeElement).toBe(input);
+    await waitFor(() =>
+      expect(mocks.navigate).toHaveBeenCalledWith({
+        to: '/onboarding/community',
+        search: {},
+        replace: true
+      })
+    );
+    mounted.rerender(view());
+    expect(input).toHaveProperty('value', '');
+    expect(document.activeElement).toBe(input);
+  });
+
+  it('restores a history query after Create consumes an unsent draft, rejecting late search', async () => {
+    const user = userEvent.setup();
+    const i18n = createI18n('en');
+    const data = { communities: [], next_offset: null, failed: false };
+    const view = (q: string, create = false) => (
+      <I18nextProvider i18n={i18n}>
+        <CommunityOnboarding
+          search={{ q, ...(create ? { view: 'create' as const } : {}) }}
+          data={data}
+        />
+      </I18nextProvider>
+    );
+    const mounted = render(view('Mad'));
+    await user.type(screen.getByRole('searchbox', { name: 'Search community' }), 'rid');
+    await user.click(screen.getByRole('button', { name: /CREATE A COMMUNITY/ }));
+    expect(mocks.navigate).toHaveBeenCalledWith({
+      to: '/onboarding/community',
+      search: { q: 'Madrid', view: 'create' }
+    });
+    mounted.rerender(view('Madrid', true));
+    window.dispatchEvent(new PopStateEvent('popstate'));
+    mounted.rerender(view('Mad'));
+    expect(screen.getByRole('searchbox', { name: 'Search community' })).toHaveProperty(
+      'value',
+      'Mad'
+    );
+    mounted.rerender(view('Madrid'));
+    expect(screen.getByRole('searchbox', { name: 'Search community' })).toHaveProperty(
+      'value',
+      'Mad'
+    );
+    mounted.rerender(view('Mad'));
+    await new Promise((resolve) => setTimeout(resolve, 400));
+    expect(mocks.navigate).toHaveBeenCalledTimes(1);
+  });
+
+  it('resumes pagination after a successful same-query loader retry', async () => {
+    const i18n = createI18n('en');
+    const first = { communities: [row], next_offset: 20, failed: false };
+    const refreshed = { ...first };
+    const view = (data: typeof first) => (
+      <I18nextProvider i18n={i18n}>
+        <CommunityOnboarding search={{}} data={data} />
+      </I18nextProvider>
+    );
+    mocks.list.mockRejectedValueOnce(new Error('unavailable')).mockResolvedValueOnce({
+      communities: [],
+      next_offset: null
+    });
+    const mounted = render(view(first));
+    await userEvent.click(screen.getByRole('button', { name: 'LOAD MORE' }));
+    expect(await screen.findByText('Could not load communities.')).toBeTruthy();
+    await userEvent.click(screen.getByRole('button', { name: 'TRY AGAIN' }));
     expect(mocks.invalidate).toHaveBeenCalledOnce();
+    mounted.rerender(view(refreshed));
+    await userEvent.click(screen.getByRole('button', { name: 'LOAD MORE' }));
+    await waitFor(() => expect(mocks.list).toHaveBeenCalledTimes(2));
+    expect(mocks.list).toHaveBeenLastCalledWith({ data: { offset: 20, limit: 20 } });
+  });
+
+  it('opens a fresh create form after success and return to discovery', async () => {
+    const i18n = createI18n('en');
+    const data = { communities: [], next_offset: null, failed: false };
+    const view = (create: boolean) => (
+      <I18nextProvider i18n={i18n}>
+        <CommunityOnboarding search={create ? { view: 'create' } : {}} data={data} />
+      </I18nextProvider>
+    );
+    mocks.create.mockResolvedValue({ id: row.id });
+    const mounted = render(view(false));
+    mounted.rerender(view(true));
+    await userEvent.type(screen.getByRole('textbox', { name: 'COMMUNITY NAME' }), 'First club');
+    await userEvent.click(screen.getByRole('button', { name: 'CREATE COMMUNITY' }));
+    expect(await screen.findByText('Your community is ready.')).toBeTruthy();
+    mounted.rerender(view(false));
+    mounted.rerender(view(true));
+    expect(screen.queryByText('Your community is ready.')).toBeNull();
+    expect(screen.getByRole('textbox', { name: 'COMMUNITY NAME' })).toHaveProperty('value', '');
+    expect(screen.getByRole('button', { name: 'CREATE COMMUNITY' })).toBeTruthy();
+  });
+
+  it('retries a failed join and accepts the next server outcome', async () => {
+    mocks.join
+      .mockRejectedValueOnce(new Error('unavailable'))
+      .mockResolvedValueOnce({ status: 'pending' });
+    mount();
+    const button = screen.getByRole('button', { name: 'JOIN COMMUNITY' });
+    await userEvent.click(button);
+    expect(await screen.findByText('Could not join. Please try again.')).toBeTruthy();
+    await userEvent.click(button);
+    await waitFor(() => expect(screen.getByText('Request sent')).toBeTruthy());
+    expect(mocks.join).toHaveBeenCalledTimes(2);
   });
 
   it('validates name, maps visibility to join policy and omits blank optional fields', async () => {

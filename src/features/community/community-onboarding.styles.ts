@@ -46,7 +46,15 @@ export const ui = stylex.create({
     overflow: 'hidden',
     clipPath: 'inset(50%)'
   },
-  searchInput: { paddingLeft: 'calc(var(--space-40) - var(--space-4))' },
+  searchInput: {
+    borderWidth: 'var(--border-width-sm)',
+    borderStyle: 'solid',
+    borderColor: 'var(--color-line)',
+    borderRadius: 'var(--radius-8)',
+    fontSize: 'var(--font-size-14)',
+    paddingInline: 'var(--space-12)',
+    paddingLeft: 'calc(var(--space-12) + var(--space-16) + var(--space-8))'
+  },
   searchIcon: {
     position: 'absolute',
     left: 'var(--space-12)',
@@ -77,10 +85,11 @@ export const ui = stylex.create({
   },
   cardAction: {
     marginTop: 'auto',
+    borderWidth: 0,
     backgroundColor: 'var(--color-green-soft)',
     color: 'var(--color-green)'
   },
-  requestAction: { backgroundColor: 'transparent' },
+  requestAction: { backgroundColor: 'transparent', color: 'var(--color-text)' },
   transparentAction: { backgroundColor: 'transparent', borderWidth: 0 },
   status: { margin: 0, fontSize: 'var(--font-size-12)', color: 'var(--color-green)' },
   error: { margin: 0, fontSize: 'var(--font-size-12)', color: 'var(--color-red)' },
@@ -89,7 +98,7 @@ export const ui = stylex.create({
   label: {
     color: 'var(--color-muted)',
     fontSize: 'var(--font-size-12)',
-    fontWeight: 'var(--font-weight-bold)',
+    fontWeight: 'var(--font-weight-semibold)',
     lineHeight: 'var(--font-size-15)'
   },
   visibilityCard: { gap: 'var(--space-8)', padding: 'var(--space-14)' },
@@ -102,7 +111,7 @@ export const ui = stylex.create({
     padding: 'var(--space-10)',
     boxSizing: 'border-box',
     borderRadius: 'var(--radius-10)',
-    backgroundColor: 'var(--color-surface-2)',
+    backgroundColor: 'var(--color-bg)',
     cursor: 'pointer',
     ':focus-within': { outline: 'var(--border-width-lg) solid var(--color-green)' }
   },
@@ -123,6 +132,7 @@ export const ui = stylex.create({
     fontWeight: 'var(--font-weight-semibold)',
     lineHeight: 'var(--font-size-15)'
   },
+  selectedTitle: { fontWeight: 'var(--font-weight-bold)' },
   optionHelp: {
     fontSize: 'var(--font-size-12)',
     color: 'var(--color-muted)',
