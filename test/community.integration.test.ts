@@ -994,10 +994,10 @@ describe.skipIf(environment.env === null)('community domain (local Supabase inte
           token_hash: tokenHash,
           expires_at: new Date(expiry).toISOString()
         })
-        .select('id')
+        .select('id, created_at')
         .single();
       expect(seeded.error).toBeNull();
-      return { raw, id: seeded.data!.id };
+      return { raw, id: seeded.data!.id, createdAt: seeded.data!.created_at };
     }
     async function membership(communityId: string, user: Actor) {
       const found = await owner.client
@@ -1083,18 +1083,25 @@ describe.skipIf(environment.env === null)('community domain (local Supabase inte
       }
     ]);
     expect((await membership(privateInstant, invitee))[0].activated_at).not.toBeNull();
-    expect(
-      (
-        await owner.client
-          .from('community_invitations')
-          .select('redeemed_at')
-          .eq('id', bound.id)
-          .single()
-      ).data?.redeemed_at
-    ).not.toBeNull();
+    const redeemed = await owner.client
+      .from('community_invitations')
+      .select('redeemed_at')
+      .eq('id', bound.id)
+      .single();
+    expect(redeemed.error).toBeNull();
+    const redeemedAt = Date.parse(redeemed.data!.redeemed_at ?? '');
+    expect(Number.isNaN(redeemedAt)).toBe(false);
+    expect(redeemedAt).toBeGreaterThanOrEqual(Date.parse(bound.createdAt));
     await expect(acceptInvitation({ data: { token: bound.raw } })).rejects.toThrow(
       'INVITATION_USED'
     );
+    const afterReuse = await owner.client
+      .from('community_invitations')
+      .select('redeemed_at')
+      .eq('id', bound.id)
+      .single();
+    expect(afterReuse.error).toBeNull();
+    expect(afterReuse.data!.redeemed_at).toBe(redeemed.data!.redeemed_at);
 
     const approvalToken = await invitation(privateApproval, secondInvitee);
     serverClient.current = secondInvitee.client;
