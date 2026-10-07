@@ -25,29 +25,42 @@ function throwGovernanceError(error: { code: string; message?: string }): never 
     throw new Error('ALREADY_MEMBER_OR_PENDING');
   throw error;
 }
-function memberAction(action: 'approve' | 'deny' | 'remove' | 'reactivate' | 'promote' | 'demote') {
-  return createServerFn({ method: 'POST' })
-    .validator(validateMemberAction)
-    .handler(async ({ data }) => {
-      const { client } = await requireAuthenticatedClient();
-      const { data: result, error } = await client
-        .rpc('govern_community_member', {
-          p_community_id: data.community_id,
-          p_membership_id: data.membership_id,
-          p_action: action
-        })
-        .single();
-      if (error) throwGovernanceError(error);
-      if (!result) throw new Error('COMMUNITY_GOVERNANCE_FAILED');
-      return result;
-    });
+type MemberAction = 'approve' | 'deny' | 'remove' | 'reactivate' | 'promote' | 'demote';
+
+async function runMemberAction(
+  data: ReturnType<typeof validateMemberAction>,
+  action: MemberAction
+) {
+  const { client } = await requireAuthenticatedClient();
+  const { data: result, error } = await client
+    .rpc('govern_community_member', {
+      p_community_id: data.community_id,
+      p_membership_id: data.membership_id,
+      p_action: action
+    })
+    .single();
+  if (error) throwGovernanceError(error);
+  if (!result) throw new Error('COMMUNITY_GOVERNANCE_FAILED');
+  return result;
 }
-export const approveCommunityMember = memberAction('approve');
-export const denyCommunityMember = memberAction('deny');
-export const removeCommunityMember = memberAction('remove');
-export const reactivateCommunityMember = memberAction('reactivate');
-export const promoteCommunityMember = memberAction('promote');
-export const demoteCommunityMember = memberAction('demote');
+export const approveCommunityMember = createServerFn({ method: 'POST' })
+  .validator(validateMemberAction)
+  .handler(({ data }) => runMemberAction(data, 'approve'));
+export const denyCommunityMember = createServerFn({ method: 'POST' })
+  .validator(validateMemberAction)
+  .handler(({ data }) => runMemberAction(data, 'deny'));
+export const removeCommunityMember = createServerFn({ method: 'POST' })
+  .validator(validateMemberAction)
+  .handler(({ data }) => runMemberAction(data, 'remove'));
+export const reactivateCommunityMember = createServerFn({ method: 'POST' })
+  .validator(validateMemberAction)
+  .handler(({ data }) => runMemberAction(data, 'reactivate'));
+export const promoteCommunityMember = createServerFn({ method: 'POST' })
+  .validator(validateMemberAction)
+  .handler(({ data }) => runMemberAction(data, 'promote'));
+export const demoteCommunityMember = createServerFn({ method: 'POST' })
+  .validator(validateMemberAction)
+  .handler(({ data }) => runMemberAction(data, 'demote'));
 
 async function requireAdmin(communityId: string) {
   const { client } = await requireAuthenticatedClient();
@@ -192,7 +205,12 @@ export const issueInvitation = createServerFn({ method: 'POST' })
         error.message.includes('community_invitations_invitee_user_id_fkey')
       )
         throw new Error('INVITEE_NOT_FOUND');
-      if (error.code === '42501') throw new Error('NOT_COMMUNITY_ADMIN');
+      if (
+        error.code === '42501' &&
+        error.message.includes('row-level security policy') &&
+        error.message.includes('community_invitations')
+      )
+        throw new Error('NOT_COMMUNITY_ADMIN');
       throw error;
     }
     if (!invitation) throw new Error('INVITATION_ISSUE_FAILED');

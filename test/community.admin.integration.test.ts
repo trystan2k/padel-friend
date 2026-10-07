@@ -112,7 +112,8 @@ async function audit(admin: Actor, id: string) {
   const result = await admin.client
     .from('community_audit_log')
     .select('id,actor_user_id,entity,entity_id,action,details')
-    .eq('community_id', id);
+    .eq('community_id', id)
+    .order('id');
   expect(result.error).toBeNull();
   return result.data!;
 }
@@ -167,20 +168,54 @@ describe('community governance with real JWTs', () => {
       });
       expect(direct.error?.code).toBe('42501');
       serverClient.current = admin.client;
+      const originalBefore = await admin.client
+        .from('community_members')
+        .select('id,status,role,valid_from,valid_until,activated_at')
+        .eq('id', targetId)
+        .single();
+      expect(originalBefore.error).toBeNull();
       const changed = await fn({ data: input });
       expect(changed).toMatchObject({ status: expectedStatus, role: expectedRole });
-      expect(changed.membership_id === targetId).toBe(name !== 'reactivate');
       const original = await admin.client
         .from('community_members')
-        .select('status,valid_until,activated_at')
+        .select('id,status,role,valid_from,valid_until,activated_at')
         .eq('id', targetId)
         .single();
       expect(original.error).toBeNull();
-      expect(name === 'reactivate' ? original.data?.status : 'inactive').toBe('inactive');
-      expect(name === 'deny' ? original.data?.activated_at : null).toBeNull();
-      expect(
-        ['deny', 'remove', 'reactivate'].includes(name) ? original.data?.valid_until : 'closed'
-      ).not.toBeNull();
+      let current = original;
+      if (name === 'reactivate') {
+        current = await admin.client
+          .from('community_members')
+          .select('id,status,role,valid_from,valid_until,activated_at')
+          .eq('id', changed.membership_id)
+          .single();
+      }
+      if (!originalBefore.data || !original.data || !current.data)
+        throw new Error('Persisted membership row missing');
+      expect(current.error).toBeNull();
+      expect(changed.membership_id === targetId).toBe(name !== 'reactivate');
+      expect(original.data).toMatchObject(
+        name === 'reactivate'
+          ? originalBefore.data
+          : {
+              id: targetId,
+              status: expectedStatus,
+              role: expectedRole,
+              valid_from: originalBefore.data.valid_from
+            }
+      );
+      expect(current.data).toMatchObject({
+        id: changed.membership_id,
+        status: expectedStatus,
+        role: expectedRole
+      });
+      expect(current.data?.valid_until === null).toBe(expectedStatus === 'active');
+      expect(Boolean(current.data?.activated_at)).toBe(name !== 'deny');
+      expect(Boolean(current.data?.valid_from)).toBe(true);
+      const intervalIsOrdered =
+        name !== 'reactivate' ||
+        Date.parse(current.data.valid_from) >= Date.parse(original.data.valid_until);
+      expect(intervalIsOrdered).toBe(true);
       const after = await audit(admin, id);
       expect(after).toHaveLength(before.length + 1);
       expect(after.filter((row) => !before.some((previous) => previous.id === row.id))).toEqual([

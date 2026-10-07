@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({ client: vi.fn<() => unknown>(), header: vi.fn<() => void>() }));
@@ -27,6 +28,7 @@ import {
   issueInvitation,
   searchCommunityMembers
 } from '../src/features/community/community-admin.functions';
+import { validateVenue } from '../src/features/community/community-admin.validators';
 
 const community_id = '11111111-1111-4111-8111-111111111111';
 const membership_id = '22222222-2222-4222-8222-222222222222';
@@ -71,6 +73,29 @@ beforeEach(() => {
   mocks.header.mockReset();
 });
 describe('admin function boundary', () => {
+  it('declares all governance endpoints as module-level createServerFn chains', () => {
+    const source = readFileSync(
+      new URL('../src/features/community/community-admin.functions.ts', import.meta.url),
+      'utf8'
+    );
+    for (const name of [
+      'approveCommunityMember',
+      'denyCommunityMember',
+      'removeCommunityMember',
+      'reactivateCommunityMember',
+      'promoteCommunityMember',
+      'demoteCommunityMember'
+    ])
+      expect(source).toMatch(new RegExp(`export const ${name} = createServerFn\\(`));
+  });
+  it('accepts PostgreSQL-valid Unicode edge whitespace in venue names', () => {
+    expect(validateVenue({ community_id, name: '\u00a0Court\u00a0' }).name).toBe(
+      '\u00a0Court\u00a0'
+    );
+    expect(() => validateVenue({ community_id, name: ' Court' })).toThrow(
+      'INVALID_COMMUNITY_INPUT'
+    );
+  });
   it('rejects unknown action fields and invalid IDs before client access', async () => {
     for (const fn of functions) {
       for (const data of [
@@ -123,6 +148,46 @@ describe('admin function boundary', () => {
     await expect(approveCommunityMember({ data: { community_id, membership_id } })).rejects.toBe(
       unexpected
     );
+  });
+  it('maps invitation RLS denial only and preserves infrastructure 42501 errors', async () => {
+    const attemptIssue = async (writeError: { code: string; message: string }) => {
+      const invitationQuery = {
+        select: () => invitationQuery,
+        single: async () => ({ data: null, error: writeError })
+      };
+      const pendingQuery = {
+        select: () => pendingQuery,
+        eq: () => pendingQuery,
+        is: () => pendingQuery,
+        limit: () => Promise.resolve({ data: [], error: null })
+      };
+      const communityQuery = {
+        select: () => communityQuery,
+        eq: () => communityQuery,
+        single: async () => ({ data: { visibility: 'private' }, error: null })
+      };
+      const client = {
+        auth: {
+          getClaims: async () => ({ data: { claims: { sub: membership_id } }, error: null })
+        },
+        rpc: async () => ({ data: true, error: null }),
+        from: (table: string) => {
+          if (table === 'communities') return communityQuery;
+          if (table === 'community_members') return pendingQuery;
+          return { insert: () => invitationQuery };
+        }
+      };
+      mocks.client.mockReturnValue(client);
+      return issueInvitation({ data: { community_id, invitee_user_id: membership_id } });
+    };
+    await expect(
+      attemptIssue({
+        code: '42501',
+        message: 'new row violates row-level security policy for table "community_invitations"'
+      })
+    ).rejects.toThrow('NOT_COMMUNITY_ADMIN');
+    const infrastructureError = { code: '42501', message: 'permission denied for relation' };
+    await expect(attemptIssue(infrastructureError)).rejects.toBe(infrastructureError);
   });
   it('rejects malformed member search and never exposes unvalidated SQL input', async () => {
     for (const query of ['\u0000', '\uD800', 'x'.repeat(81)])

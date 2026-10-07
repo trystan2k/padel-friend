@@ -1,4 +1,5 @@
 import type { Database } from '../../lib/supabase/database.types';
+import { hasEdgeWhitespace } from '../../lib/edge-whitespace';
 
 type Status = Database['public']['Enums']['community_membership_status'];
 export type MemberActionInput = { community_id: string; membership_id: string };
@@ -37,7 +38,7 @@ function text(value: unknown, max: number, required = false): string | null {
   if (value === null && !required) return null;
   if (
     typeof value !== 'string' ||
-    (required && (!value || value.trim() !== value)) ||
+    (required && (!value || hasEdgeWhitespace(value))) ||
     Array.from(value).length > max ||
     value.includes('\u0000') ||
     Array.from(value).some((char) => /^[\uD800-\uDFFF]$/u.test(char))
