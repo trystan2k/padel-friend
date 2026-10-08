@@ -449,7 +449,9 @@ test('real admin requests, membership, settings, venues and audit stay protected
   await expect(page.getByRole('heading', { name: en.communityAdmin.title.requests })).toBeVisible();
   await geometry(page, 'Pending Player');
   // Mask only unsupported resolved/notification content and fixture-dependent applicant values; keep card geometry exact.
-  await visualDiff(page, 'RgqPq.png', 21_000, [
+  // macOS ~14,818; Linux 15,713 (+895). 18,500 leaves 2,787px headroom.
+  // ≥2,500px safety margin, rounded up to the next 500.
+  await visualDiff(page, 'RgqPq.png', 18_500, [
     [0, 309, 390, 147],
     [28, 124, 334, 20],
     [28, 151, 334, 36]
@@ -480,7 +482,9 @@ test('real admin requests, membership, settings, venues and audit stay protected
   await assertLinkHitArea(page.getByRole('link', { name: 'Backup Admin' }));
   // Mask fixture identity/metrics, role badges, avatars and the unsupported invitation copy only;
   // card layout, search and geometry stay exact and unmasked.
-  await visualDiff(page, 'wFqGR.png', 18_000, [
+  // macOS ~11,902; Linux 12,720 (+818). 15,500 leaves 2,780px headroom.
+  // ≥2,500px safety margin, rounded up to the next 500.
+  await visualDiff(page, 'wFqGR.png', 15_500, [
     [18, 46, 354, 22],
     [25, 82, 340, 26],
     [28, 243, 34, 44],
@@ -504,9 +508,9 @@ test('real admin requests, membership, settings, venues and audit stay protected
   await geometry(page);
   await memberControlsGeometry(page);
   // Mask only dynamic member identity/metrics and community name; card/action geometry stays probed.
-  // Linux CI measured 19,038 changed pixels vs macOS's 17,397; 20,000 allows 962px for
-  // Inter font rasterization variance while keeping every ±1px structural probe unchanged.
-  await visualDiff(page, 'jQDkx.png', 20_000, [
+  // macOS ~17,397; Linux 19,038 (+1,641, largest observed delta); 22,000 leaves 2,962px.
+  // ≥2,500px safety margin, rounded up to the next 500.
+  await visualDiff(page, 'jQDkx.png', 22_000, [
     [18, 46, 354, 22],
     [28, 124, 334, 20],
     [28, 145, 334, 20]
@@ -528,7 +532,9 @@ test('real admin requests, membership, settings, venues and audit stay protected
   await waitForHydratedPage(page);
   await geometry(page);
   await settingsGeometry(page);
-  await visualDiff(page, 'N18Mu4.png', 19_000, [
+  // macOS ~18,616; Linux 19,853 (+1,237). 22,500 leaves 2,647px headroom.
+  // ≥2,500px safety margin, rounded up to the next 500.
+  await visualDiff(page, 'N18Mu4.png', 22_500, [
     [18, 46, 354, 22],
     [18, 230, 354, 120]
   ]);
@@ -575,7 +581,9 @@ test('real admin requests, membership, settings, venues and audit stay protected
   );
   // Mask fixture venue names and dynamic/unsupported detail copy only; card edges, action labels,
   // and the supported Open map links remain part of the pixel comparison.
-  await visualDiff(page, 'A5Vio.png', 18_000, [
+  // macOS ~16,362; Linux estimate 18,003 (+1,641, largest observed delta); 21,000 leaves 2,997px.
+  // ≥2,500px safety margin, rounded up to the next 500.
+  await visualDiff(page, 'A5Vio.png', 21_000, [
     [32, 140, 180, 15],
     [32, 161, 240, 15],
     [32, 264, 180, 15],
@@ -596,7 +604,9 @@ test('real admin requests, membership, settings, venues and audit stay protected
   // Actor identity is intentionally a translated generic fallback; timestamps are fixture-dependent.
   // The fourth Pencil event ("League result corrected") and the 3-row paging control are the
   // approved unsupported/adapted region, so the band below the third event stays masked.
-  await visualDiff(page, 'E5CS5K.png', 18_000, [
+  // macOS ~15,485; Linux estimate 17,126 (+1,641, largest observed delta); 20,000 leaves 2,874px.
+  // ≥2,500px safety margin, rounded up to the next 500.
+  await visualDiff(page, 'E5CS5K.png', 20_000, [
     [18, 140, 354, 24],
     [18, 210, 354, 24],
     [18, 280, 354, 24],
