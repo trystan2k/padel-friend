@@ -145,7 +145,7 @@ export function CommunityAdminDenied({ error }: { error?: unknown }) {
   const denied = error instanceof Error && error.message === 'NOT_COMMUNITY_ADMIN';
   const missing = error instanceof Error && error.message === 'COMMUNITY_MEMBER_NOT_FOUND';
   return (
-    <main {...stylex.props(styles.page)}>
+    <section {...stylex.props(styles.page)}>
       <SurfaceCard role="alert" xstyle={styles.card}>
         <h1 {...stylex.props(styles.title)}>
           {t(
@@ -166,16 +166,16 @@ export function CommunityAdminDenied({ error }: { error?: unknown }) {
           )}
         </p>
       </SurfaceCard>
-    </main>
+    </section>
   );
 }
 
 export function CommunityAdminLoading() {
   const { t } = useTranslation();
   return (
-    <main {...stylex.props(styles.page)}>
+    <section {...stylex.props(styles.page)}>
       <output {...stylex.props(styles.copy)}>{t('communityAdmin.loading')}</output>
-    </main>
+    </section>
   );
 }
 

@@ -7,14 +7,16 @@ import { listMyAdminCommunities } from '../features/community/community-admin.fu
 import { getMyPlayerProfile } from '../features/player/player.functions';
 import { ui } from '../features/player/player-ui.styles';
 
+export async function loadDashboardData() {
+  const [profile, adminCommunities] = await Promise.all([
+    getMyPlayerProfile(),
+    listMyAdminCommunities().catch(() => [])
+  ]);
+  return { profile, adminCommunities };
+}
+
 export const Route = createFileRoute('/_protected/dashboard')({
-  loader: async () => {
-    const [profile, adminCommunities] = await Promise.all([
-      getMyPlayerProfile(),
-      listMyAdminCommunities()
-    ]);
-    return { profile, adminCommunities };
-  },
+  loader: loadDashboardData,
   pendingComponent: LoadingProfile,
   errorComponent: ProfileError,
   component: Dashboard
