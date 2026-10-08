@@ -6,7 +6,7 @@ import {
 } from '../features/community/CommunityAdmin';
 import {
   getCommunityAdminContext,
-  searchCommunityMembers
+  getCommunityMemberById
 } from '../features/community/community-admin.functions';
 
 export const Route = createFileRoute(
@@ -16,10 +16,10 @@ export const Route = createFileRoute(
     const community = await getCommunityAdminContext({
       data: { community_id: params.communityId }
     });
-    const members = await searchCommunityMembers({
-      data: { community_id: params.communityId, query: '', offset: 0, limit: 50 }
+    const member = await getCommunityMemberById({
+      data: { community_id: params.communityId, membership_id: params.membershipId }
     });
-    return { community, members, membershipId: params.membershipId };
+    return { community, members: [member], membershipId: params.membershipId };
   },
   pendingComponent: CommunityAdminLoading,
   errorComponent: CommunityAdminDenied,

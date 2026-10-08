@@ -15,7 +15,7 @@ export const Route = createFileRoute('/_protected/community/$communityId/admin/m
       data: { community_id: params.communityId }
     });
     const members = await searchCommunityMembers({
-      data: { community_id: params.communityId, query: '', offset: 0, limit: 50 }
+      data: { community_id: params.communityId, query: '', status: 'active', offset: 0, limit: 50 }
     });
     return { community, members };
   },

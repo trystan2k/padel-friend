@@ -1,6 +1,6 @@
 import * as stylex from '@stylexjs/stylex';
 import { Link, Outlet, useParams, useRouter } from '@tanstack/react-router';
-import { useMemo, useState, type FormEvent, type ReactNode } from 'react';
+import { useCallback, useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '../../components/ui/Button';
 import { SurfaceCard } from '../../components/ui/SurfaceCard';
@@ -13,6 +13,7 @@ import {
   denyCommunityMember,
   editCommunityVenue,
   listCommunityAudit,
+  listCommunityVenues,
   promoteCommunityMember,
   reactivateCommunityMember,
   removeCommunityMember,
@@ -31,11 +32,24 @@ type Context = {
   join_policy: Database['public']['Enums']['community_join_policy'];
 };
 type Member = Database['public']['Functions']['search_community_members']['Returns'][number];
-type Venue = Database['public']['Tables']['community_venues']['Row'];
+type Venue = Pick<
+  Database['public']['Tables']['community_venues']['Row'],
+  | 'id'
+  | 'community_id'
+  | 'name'
+  | 'address'
+  | 'maps_url'
+  | 'photo_path'
+  | 'created_at'
+  | 'updated_at'
+  | 'archived_at'
+>;
 type Audit = Pick<
   Database['public']['Tables']['community_audit_log']['Row'],
   'id' | 'actor_user_id' | 'entity' | 'entity_id' | 'action' | 'details' | 'occurred_at'
 >;
+const EMPTY_MEMBERS: Member[] = [];
+const EMPTY_VENUES: Venue[] = [];
 type Screen = 'requests' | 'members' | 'member' | 'settings' | 'venues' | 'audit';
 
 type Props = {
@@ -48,10 +62,29 @@ type Props = {
 };
 
 function dateLabel(value: string, locale: string) {
-  return new Intl.DateTimeFormat(locale, { dateStyle: 'medium' }).format(new Date(value));
+  return new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeZone: 'UTC' }).format(
+    new Date(value)
+  );
+}
+function auditDateLabel(value: string, locale: string) {
+  return new Intl.DateTimeFormat(locale, {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+    timeZone: 'UTC'
+  }).format(new Date(value));
 }
 function auditEventKey(event: Audit) {
   const action = event.action.toLowerCase();
+  const details = event.details;
+  if (
+    event.entity === 'community_members' &&
+    action === 'insert' &&
+    typeof details === 'object' &&
+    details !== null &&
+    'status' in details &&
+    details.status === 'pending'
+  )
+    return 'communityAdmin.audit.requestCreated';
   if (event.entity === 'community_venues')
     return action === 'insert'
       ? 'communityAdmin.audit.venueAdded'
@@ -66,6 +99,22 @@ function auditEventKey(event: Audit) {
       ? 'communityAdmin.audit.invitationAdded'
       : 'communityAdmin.audit.invitationUpdated';
   return 'communityAdmin.audit.unknown';
+}
+function auditMemberDetails(event: Audit) {
+  if (event.entity !== 'community_members' || typeof event.details !== 'object' || !event.details)
+    return null;
+  const role =
+    'role' in event.details && (event.details.role === 'admin' || event.details.role === 'member')
+      ? event.details.role
+      : null;
+  const status =
+    'status' in event.details &&
+    (event.details.status === 'active' ||
+      event.details.status === 'pending' ||
+      event.details.status === 'inactive')
+      ? event.details.status
+      : null;
+  return role && status ? { role, status } : null;
 }
 function initials(name: string) {
   return name
@@ -94,14 +143,27 @@ export function CommunityAdminShell() {
 export function CommunityAdminDenied({ error }: { error?: unknown }) {
   const { t } = useTranslation();
   const denied = error instanceof Error && error.message === 'NOT_COMMUNITY_ADMIN';
+  const missing = error instanceof Error && error.message === 'COMMUNITY_MEMBER_NOT_FOUND';
   return (
     <main {...stylex.props(styles.page)}>
       <SurfaceCard role="alert" xstyle={styles.card}>
         <h1 {...stylex.props(styles.title)}>
-          {t(denied ? 'communityAdmin.accessDeniedTitle' : 'communityAdmin.errorTitle')}
+          {t(
+            denied
+              ? 'communityAdmin.accessDeniedTitle'
+              : missing
+                ? 'communityAdmin.title.member'
+                : 'communityAdmin.errorTitle'
+          )}
         </h1>
         <p {...stylex.props(styles.copy)}>
-          {t(denied ? 'communityAdmin.accessDenied' : 'communityAdmin.error.generic')}
+          {t(
+            denied
+              ? 'communityAdmin.accessDenied'
+              : missing
+                ? 'communityAdmin.empty.member'
+                : 'communityAdmin.error.generic'
+          )}
         </p>
       </SurfaceCard>
     </main>
@@ -117,11 +179,42 @@ export function CommunityAdminLoading() {
   );
 }
 
-export function CommunityAdminScreen({
+export function CommunityAdminEntries({
+  communities
+}: {
+  communities: { id: string; name: string }[];
+}) {
+  const { t } = useTranslation();
+  if (!communities.length) return null;
+  return (
+    <section
+      aria-label={t('communityAdmin.yourCommunities')}
+      {...stylex.props(styles.adminEntries)}
+    >
+      <h2 {...stylex.props(styles.sectionTitle)}>{t('communityAdmin.yourCommunities')}</h2>
+      {communities.map((item) => (
+        <Link
+          key={item.id}
+          to="/community/$communityId/admin/requests"
+          params={{ communityId: item.id }}
+          {...stylex.props(styles.adminEntryLink)}
+        >
+          {item.name}
+        </Link>
+      ))}
+    </section>
+  );
+}
+
+export function CommunityAdminScreen(props: Props) {
+  return <CommunityAdminView key={props.community.id} {...props} />;
+}
+
+function CommunityAdminView({
   screen,
   community,
-  members = [],
-  venues = [],
+  members = EMPTY_MEMBERS,
+  venues = EMPTY_VENUES,
   audit = [],
   membershipId
 }: Props) {
@@ -130,7 +223,22 @@ export function CommunityAdminScreen({
   const params = useParams({ strict: false });
   const communityId = params.communityId ?? '';
   const [query, setQuery] = useState('');
-  const [searchResults, setSearchResults] = useState<Member[] | null>(null);
+  const [searchResults, setSearchResults] = useState<{
+    query: string;
+    status: Member['status'];
+    rows: Member[];
+    hasMore: boolean;
+  } | null>(null);
+  const [additionalRequests, setAdditionalRequests] = useState<Member[]>([]);
+  const [hasLoadedMoreRequests, setHasLoadedMoreRequests] = useState(false);
+  const [hasMoreRequests, setHasMoreRequests] = useState(members.length === 50);
+  const [additionalVenues, setAdditionalVenues] = useState<Venue[]>([]);
+  const [hasLoadedMoreVenues, setHasLoadedMoreVenues] = useState(false);
+  const [hasMoreVenues, setHasMoreVenues] = useState(venues.length === 50);
+  const [searchLoading, setSearchLoading] = useState(false);
+  const [hasLoadedMoreMembers, setHasLoadedMoreMembers] = useState(false);
+  const searchRequest = useRef(0);
+  const hasSearchedMembers = useRef(false);
   const [additionalAudit, setAdditionalAudit] = useState<Audit[] | null>(null);
   const [hasMoreAudit, setHasMoreAudit] = useState(audit.length === 3);
   const [memberFilter, setMemberFilter] = useState<Member['status']>('active');
@@ -161,41 +269,64 @@ export function CommunityAdminScreen({
     { key: 'audit', to: '/community/$communityId/admin/audit' }
   ] as const;
   const member = members.find((item) => item.membership_id === membershipId);
-  const visibleMembers = useMemo(
-    () =>
-      (searchResults ?? members).filter(
-        (item) =>
-          item.status === memberFilter &&
-          item.display_name
-            .toLocaleLowerCase(locale)
-            .includes(query.trim().toLocaleLowerCase(locale))
-      ),
-    [locale, memberFilter, members, query, searchResults]
-  );
+  const submittedQuery = query.trim();
+  const currentSearch =
+    searchResults?.query === submittedQuery && searchResults.status === memberFilter
+      ? searchResults
+      : null;
+  const initialActiveResults = submittedQuery === '' && memberFilter === 'active' && !searchResults;
+  const visibleMembers = currentSearch?.rows ?? (initialActiveResults ? members : []);
+  const hasMoreMembers = currentSearch?.hasMore ?? (initialActiveResults && members.length === 50);
+  const searchingMembers =
+    searchLoading ||
+    (!initialActiveResults && !currentSearch && searchResults !== null) ||
+    (submittedQuery !== '' && !currentSearch) ||
+    (memberFilter !== 'active' && !currentSearch);
+
+  useEffect(() => {
+    setAdditionalRequests([]);
+    setHasLoadedMoreRequests(false);
+    setHasMoreRequests(members.length === 50);
+  }, [members]);
+  useEffect(() => {
+    setAdditionalVenues([]);
+    setHasLoadedMoreVenues(false);
+    setHasMoreVenues(venues.length === 50);
+  }, [venues]);
 
   async function refresh() {
     setMessage('');
     setErrorKey('');
     await router.invalidate();
   }
-  async function run(action: () => Promise<unknown>, success: string): Promise<boolean> {
-    if (busy) return false;
+  async function run(action: () => Promise<unknown>, success: string): Promise<unknown> {
+    if (busy) return null;
     setBusy(true);
     setErrorKey('');
     setMessage('');
     try {
-      await action();
+      const result = await action();
+      setAdditionalRequests([]);
+      setHasLoadedMoreRequests(false);
+      setHasMoreRequests(members.length === 50);
+      setAdditionalVenues([]);
+      setHasLoadedMoreVenues(false);
+      setHasMoreVenues(venues.length === 50);
       setMessage(success);
-      await router.invalidate();
-      return true;
+      try {
+        await router.invalidate();
+      } catch {
+        setErrorKey('generic');
+      }
+      return result;
     } catch (error) {
       setErrorKey(failed(error));
-      return false;
+      return null;
     } finally {
       setBusy(false);
     }
   }
-  function memberAction(
+  async function memberAction(
     action: 'approve' | 'deny' | 'remove' | 'reactivate' | 'promote' | 'demote',
     id: string
   ) {
@@ -208,7 +339,18 @@ export function CommunityAdminScreen({
       promote: promoteCommunityMember,
       demote: demoteCommunityMember
     };
-    return run(() => actions[action]({ data }), t(`communityAdmin.result.${action}`));
+    const result = await run(() => actions[action]({ data }), t(`communityAdmin.result.${action}`));
+    if (
+      action === 'reactivate' &&
+      typeof result === 'object' &&
+      result !== null &&
+      'membership_id' in result &&
+      typeof result.membership_id === 'string'
+    )
+      await router.navigate({
+        to: '/community/$communityId/admin/members/$membershipId',
+        params: { communityId: community.id, membershipId: result.membership_id }
+      });
   }
   function requestMemberAction(
     action: 'approve' | 'deny' | 'remove' | 'reactivate' | 'promote' | 'demote',
@@ -221,8 +363,8 @@ export function CommunityAdminScreen({
     setConfirmation(null);
     void memberAction(action, id);
   }
-  const actions = (person: Member): ReactNode => (
-    <div {...stylex.props(styles.actions)}>
+  const actions = (person: Member, requestCard = false): ReactNode => (
+    <div {...stylex.props(styles.actions, requestCard && styles.requestActions)}>
       {confirmation?.id === person.membership_id && (
         <>
           <output {...stylex.props(styles.copy)}>
@@ -319,14 +461,92 @@ export function CommunityAdminScreen({
     setVenueFormOpen(false);
     setVenueDraft({ id: '', name: '', address: '', maps_url: '' });
   }
-  async function search(filterStatus = memberFilter) {
-    if (busy) return;
+  const fetchMembers = useCallback(
+    async (filterQuery: string, filterStatus: Member['status'], offset = 0) => {
+      const requestId = ++searchRequest.current;
+      hasSearchedMembers.current = true;
+      setSearchLoading(true);
+      setErrorKey('');
+      try {
+        const results = await searchCommunityMembers({
+          data: {
+            community_id: community.id,
+            query: filterQuery,
+            status: filterStatus,
+            offset,
+            limit: 50
+          }
+        });
+        if (requestId !== searchRequest.current) return;
+        setSearchResults((previous) => ({
+          query: filterQuery,
+          status: filterStatus,
+          rows:
+            offset > 0 && previous?.query === filterQuery && previous.status === filterStatus
+              ? [...previous.rows, ...results]
+              : results,
+          hasMore: results.length === 50
+        }));
+      } catch (error) {
+        if (requestId === searchRequest.current) setErrorKey(failed(error));
+      } finally {
+        if (requestId === searchRequest.current) setSearchLoading(false);
+      }
+    },
+    [community.id]
+  );
+  useEffect(() => {
+    if (submittedQuery === '' && memberFilter === 'active' && !hasSearchedMembers.current)
+      return undefined;
+    const timer = setTimeout(() => void fetchMembers(submittedQuery, memberFilter), 250);
+    return () => clearTimeout(timer);
+  }, [fetchMembers, submittedQuery, memberFilter]);
+  async function loadMoreMembers() {
+    if (searchLoading || !hasMoreMembers) return;
+    setHasLoadedMoreMembers(true);
+    if (currentSearch) {
+      await fetchMembers(currentSearch.query, currentSearch.status, currentSearch.rows.length);
+      return;
+    }
+    setSearchResults({ query: '', status: 'active', rows: members, hasMore: true });
+    await fetchMembers('', 'active', members.length);
+  }
+  async function loadMoreRequests() {
+    if (busy || !hasMoreRequests) return;
     setBusy(true);
+    setHasLoadedMoreRequests(true);
     try {
-      const results = await searchCommunityMembers({
-        data: { community_id: community.id, query, status: filterStatus, offset: 0, limit: 50 }
+      const page = await searchCommunityMembers({
+        data: {
+          community_id: community.id,
+          query: '',
+          status: 'pending',
+          offset: members.length + additionalRequests.length,
+          limit: 50
+        }
       });
-      setSearchResults(results);
+      setAdditionalRequests((previous) => [...previous, ...page]);
+      setHasMoreRequests(page.length === 50);
+    } catch (error) {
+      setErrorKey(failed(error));
+    } finally {
+      setBusy(false);
+    }
+  }
+  async function loadMoreVenues() {
+    if (busy || !hasMoreVenues) return;
+    setBusy(true);
+    setHasLoadedMoreVenues(true);
+    try {
+      const page = await listCommunityVenues({
+        data: {
+          community_id: community.id,
+          offset: venues.length + additionalVenues.length,
+          limit: 50
+        }
+      });
+      setAdditionalVenues((previous) => [...previous, ...page]);
+      setHasMoreVenues(page.length === 50);
     } catch (error) {
       setErrorKey(failed(error));
     } finally {
@@ -349,8 +569,16 @@ export function CommunityAdminScreen({
     }
   }
 
+  async function retry() {
+    if (screen === 'members') await fetchMembers(submittedQuery, memberFilter);
+    else await refresh();
+  }
+
   return (
-    <section aria-labelledby="admin-screen-title" {...stylex.props(styles.content)}>
+    <section
+      aria-labelledby="admin-screen-title"
+      {...stylex.props(styles.content, screen === 'venues' && styles.venueContent)}
+    >
       <header {...stylex.props(styles.header)}>
         <div {...stylex.props(styles.screenHeading)}>
           <Link
@@ -374,30 +602,37 @@ export function CommunityAdminScreen({
         <>
           <p {...stylex.props(styles.banner)}>{t('communityAdmin.requestBanner')}</p>
           <div {...stylex.props(styles.list)}>
-            {members
-              .filter((person) => person.status === 'pending')
-              .map((person) => (
-                <SurfaceCard key={person.membership_id} xstyle={[styles.card, styles.requestCard]}>
-                  <h3 {...stylex.props(styles.cardTitle)}>{person.display_name}</h3>
-                  <p {...stylex.props(styles.copy)}>
-                    {t('communityAdmin.levelLabel', {
-                      level: new Intl.NumberFormat(locale, { maximumFractionDigits: 1 }).format(
-                        person.display_level
-                      ),
-                      reliability: new Intl.NumberFormat(locale).format(person.reliability_percent)
-                    })}
-                  </p>
-                  <p {...stylex.props(styles.copy)}>
-                    {t('communityAdmin.requestMeta', {
-                      date: dateLabel(person.valid_from, locale),
-                      privacy: t('communityAdmin.requestPrivacy')
-                    })}
-                  </p>
-                  {actions(person)}
-                </SurfaceCard>
-              ))}
-            {!members.some((person) => person.status === 'pending') && (
+            {[...members, ...additionalRequests].map((person) => (
+              <SurfaceCard key={person.membership_id} xstyle={[styles.card, styles.requestCard]}>
+                <h3 {...stylex.props(styles.cardCompactTitle)}>{person.display_name}</h3>
+                <p {...stylex.props(styles.copy)}>
+                  {t('communityAdmin.levelLabel', {
+                    level: new Intl.NumberFormat(locale, { maximumFractionDigits: 1 }).format(
+                      person.display_level
+                    ),
+                    reliability: new Intl.NumberFormat(locale).format(person.reliability_percent)
+                  })}
+                </p>
+                <p {...stylex.props(styles.copy, styles.requestMeta)}>
+                  {t('communityAdmin.requestMeta', {
+                    date: dateLabel(person.valid_from, locale),
+                    privacy: t('communityAdmin.requestPrivacy')
+                  })}
+                </p>
+                {actions(person, true)}
+              </SurfaceCard>
+            ))}
+            {!members.length && !additionalRequests.length && (
               <p>{t('communityAdmin.empty.requests')}</p>
+            )}
+            {hasMoreRequests ? (
+              <Button variant="secondary" busy={busy} onClick={() => void loadMoreRequests()}>
+                {t('communityAdmin.loadMore')}
+              </Button>
+            ) : (
+              hasLoadedMoreRequests && (
+                <p {...stylex.props(styles.copy)}>{t('communityAdmin.endOfList')}</p>
+              )
             )}
             <p {...stylex.props(styles.note)}>{t('communityAdmin.requestHistoryUnavailable')}</p>
           </div>
@@ -411,22 +646,23 @@ export function CommunityAdminScreen({
           <form
             onSubmit={(event) => {
               event.preventDefault();
-              void search();
             }}
             {...stylex.props(styles.searchForm)}
           >
-            <TextField
-              id="admin-member-search"
-              label={
-                <span {...stylex.props(styles.visuallyHidden)}>
-                  {t('communityAdmin.searchLabel')}
-                </span>
-              }
-              type="search"
-              value={query}
-              placeholder={t('communityAdmin.searchPlaceholder')}
-              onChange={(event) => setQuery(event.target.value)}
-            />
+            <div {...stylex.props(styles.searchField)}>
+              <TextField
+                id="admin-member-search"
+                label={
+                  <span {...stylex.props(styles.visuallyHidden)}>
+                    {t('communityAdmin.searchLabel')}
+                  </span>
+                }
+                type="search"
+                value={query}
+                placeholder={t('communityAdmin.searchPlaceholder')}
+                onChange={(event) => setQuery(event.target.value)}
+              />
+            </div>
           </form>
           <div aria-label={t('communityAdmin.memberFilters')} {...stylex.props(styles.filterTabs)}>
             {(['active', 'pending', 'inactive'] as const).map((status) => (
@@ -436,7 +672,6 @@ export function CommunityAdminScreen({
                 aria-pressed={memberFilter === status}
                 onClick={() => {
                   setMemberFilter(status);
-                  void search(status);
                 }}
                 {...stylex.props(
                   styles.filterTab,
@@ -447,6 +682,11 @@ export function CommunityAdminScreen({
               </button>
             ))}
           </div>
+          {searchingMembers && (
+            <output aria-live="polite" {...stylex.props(styles.copy)}>
+              {t('communityAdmin.searchLoading')}
+            </output>
+          )}
           <div {...stylex.props(styles.list, styles.memberList)}>
             {visibleMembers.map((person) => (
               <SurfaceCard
@@ -464,7 +704,7 @@ export function CommunityAdminScreen({
                       params={{ communityId, membershipId: person.membership_id }}
                       {...stylex.props(styles.memberLink)}
                     >
-                      <h3 {...stylex.props(styles.cardTitle)}>{person.display_name}</h3>
+                      <h3 {...stylex.props(styles.cardCompactTitle)}>{person.display_name}</h3>
                     </Link>
                     <span {...stylex.props(styles.roleBadge)}>
                       {t(`communityAdmin.role.${person.role}`)}
@@ -486,8 +726,19 @@ export function CommunityAdminScreen({
                 </div>
               </SurfaceCard>
             ))}
-            {!visibleMembers.length && <p>{t('communityAdmin.empty.members')}</p>}
+            {!visibleMembers.length && !searchingMembers && (
+              <p>{t('communityAdmin.empty.members')}</p>
+            )}
           </div>
+          {hasMoreMembers ? (
+            <Button variant="secondary" busy={searchLoading} onClick={() => void loadMoreMembers()}>
+              {t('communityAdmin.loadMore')}
+            </Button>
+          ) : (
+            hasLoadedMoreMembers && (
+              <p {...stylex.props(styles.copy)}>{t('communityAdmin.endOfList')}</p>
+            )
+          )}
           <p {...stylex.props(styles.note)}>{t('communityAdmin.levelReadOnly')}</p>
         </>
       )}
@@ -681,13 +932,13 @@ export function CommunityAdminScreen({
             </SurfaceCard>
           )}
           <div {...stylex.props(styles.list)}>
-            {venues.map((venue) => (
+            {[...venues, ...additionalVenues].map((venue) => (
               <SurfaceCard
                 key={venue.id}
                 data-testid="community-venue-card"
                 xstyle={[styles.card, styles.venueCard]}
               >
-                <h3 {...stylex.props(styles.cardTitle)}>{venue.name}</h3>
+                <h3 {...stylex.props(styles.cardCompactTitle)}>{venue.name}</h3>
                 <div {...stylex.props(styles.venueMeta)}>
                   <p {...stylex.props(styles.copy)}>
                     {venue.address || community.city_label || t('communityAdmin.cityUnavailable')}
@@ -697,7 +948,7 @@ export function CommunityAdminScreen({
                       href={venue.maps_url}
                       target="_blank"
                       rel="noreferrer"
-                      {...stylex.props(styles.memberLink)}
+                      {...stylex.props(styles.memberLink, styles.venueMapLink)}
                     >
                       {t('communityAdmin.venue.openMap')}
                     </a>
@@ -738,8 +989,19 @@ export function CommunityAdminScreen({
                 </div>
               </SurfaceCard>
             ))}
-            {!venues.length && <p>{t('communityAdmin.empty.venues')}</p>}
+            {!venues.length && !additionalVenues.length && (
+              <p>{t('communityAdmin.empty.venues')}</p>
+            )}
           </div>
+          {hasMoreVenues ? (
+            <Button variant="secondary" busy={busy} onClick={() => void loadMoreVenues()}>
+              {t('communityAdmin.loadMore')}
+            </Button>
+          ) : (
+            hasLoadedMoreVenues && (
+              <p {...stylex.props(styles.copy)}>{t('communityAdmin.endOfList')}</p>
+            )
+          )}
           <p {...stylex.props(styles.note)}>{t('communityAdmin.venue.historyNote')}</p>
         </>
       )}
@@ -747,15 +1009,19 @@ export function CommunityAdminScreen({
         <div {...stylex.props(styles.list)}>
           <p {...stylex.props(styles.banner)}>{t('communityAdmin.audit.recentChanges')}</p>
           {auditRows.map((event) => (
-            <SurfaceCard key={event.id} data-testid="community-audit-event" xstyle={styles.card}>
+            <SurfaceCard
+              key={event.id}
+              data-testid="community-audit-event"
+              xstyle={[styles.card, styles.auditCard]}
+            >
               <p {...stylex.props(styles.auditAction)}>
                 {t(auditEventKey(event), { defaultValue: t('communityAdmin.audit.unknown') })}
+                {auditMemberDetails(event) &&
+                  ` · ${t(`communityAdmin.role.${auditMemberDetails(event)?.role}`)} · ${t(`communityAdmin.status.${auditMemberDetails(event)?.status}`)}`}
               </p>
               <p {...stylex.props(styles.copy)}>
-                {event.actor_user_id
-                  ? t('communityAdmin.audit.actorAvailable')
-                  : t('communityAdmin.audit.unknownActor')}{' '}
-                · {dateLabel(event.occurred_at, locale)}
+                {t('communityAdmin.audit.unknownActor')} ·{' '}
+                {auditDateLabel(event.occurred_at, locale)}
               </p>
               {event.entity === 'community_members' && (
                 <Link
@@ -783,7 +1049,7 @@ export function CommunityAdminScreen({
         </p>
       )}
       {errorKey && (
-        <Button variant="secondary" onClick={() => void refresh()}>
+        <Button variant="secondary" onClick={() => void retry()}>
           {t('communityAdmin.retry')}
         </Button>
       )}

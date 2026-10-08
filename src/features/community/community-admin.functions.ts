@@ -62,6 +62,36 @@ export const demoteCommunityMember = createServerFn({ method: 'POST' })
   .validator(validateMemberAction)
   .handler(({ data }) => runMemberAction(data, 'demote'));
 
+export const listMyAdminCommunities = createServerFn({ method: 'GET' }).handler(async () => {
+  const { client, userId } = await requireAuthenticatedClient();
+  const { data: memberships, error } = await client
+    .from('community_members')
+    .select('community_id')
+    .eq('user_id', userId)
+    .eq('role', 'admin')
+    .eq('status', 'active')
+    .is('valid_until', null);
+  if (error) throw error;
+  const checks = await Promise.all(
+    (memberships ?? []).map(async ({ community_id }) => {
+      const { data, error: checkError } = await client.rpc('is_community_admin', {
+        p_community_id: community_id
+      });
+      if (checkError) throw checkError;
+      return data ? community_id : null;
+    })
+  );
+  const ids = checks.filter((id): id is string => id !== null);
+  if (!ids.length) return [];
+  const { data: communities, error: communityError } = await client
+    .from('communities')
+    .select('id,name')
+    .in('id', ids)
+    .order('name');
+  if (communityError) throw communityError;
+  return communities ?? [];
+});
+
 async function requireAdmin(communityId: string) {
   const { client } = await requireAuthenticatedClient();
   const { data, error } = await client.rpc('is_community_admin', { p_community_id: communityId });
@@ -92,6 +122,20 @@ export const getCommunityAdminContext = createServerFn({ method: 'GET' })
       .single();
     if (error) throw error;
     return community;
+  });
+
+export const getCommunityMemberById = createServerFn({ method: 'GET' })
+  .validator(validateMemberAction)
+  .handler(async ({ data }) => {
+    const { client } = await requireAuthenticatedClient();
+    const { data: rows, error } = await client.rpc('get_community_member_by_id', {
+      p_community_id: data.community_id,
+      p_membership_id: data.membership_id
+    });
+    if (error) throwGovernanceError(error);
+    const member = rows?.[0];
+    if (!member) throw new Error('COMMUNITY_MEMBER_NOT_FOUND');
+    return member;
   });
 
 export const searchCommunityMembers = createServerFn({ method: 'GET' })

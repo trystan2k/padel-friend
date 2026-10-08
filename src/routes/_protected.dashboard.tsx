@@ -2,18 +2,32 @@ import * as stylex from '@stylexjs/stylex';
 import { createFileRoute, useRouter } from '@tanstack/react-router';
 import { useTranslation } from 'react-i18next';
 import { PlayerProfile } from '../features/player/PlayerProfile';
+import { CommunityAdminEntries } from '../features/community/CommunityAdmin';
+import { listMyAdminCommunities } from '../features/community/community-admin.functions';
 import { getMyPlayerProfile } from '../features/player/player.functions';
 import { ui } from '../features/player/player-ui.styles';
 
 export const Route = createFileRoute('/_protected/dashboard')({
-  loader: () => getMyPlayerProfile(),
+  loader: async () => {
+    const [profile, adminCommunities] = await Promise.all([
+      getMyPlayerProfile(),
+      listMyAdminCommunities()
+    ]);
+    return { profile, adminCommunities };
+  },
   pendingComponent: LoadingProfile,
   errorComponent: ProfileError,
   component: Dashboard
 });
 
 function Dashboard() {
-  return <PlayerProfile initialProfile={Route.useLoaderData()} />;
+  const { profile, adminCommunities } = Route.useLoaderData();
+  return (
+    <>
+      <PlayerProfile initialProfile={profile} />
+      <CommunityAdminEntries communities={adminCommunities} />
+    </>
+  );
 }
 
 function LoadingProfile() {

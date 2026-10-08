@@ -38,6 +38,7 @@ export const styles = stylex.create({
     overflowWrap: 'anywhere'
   },
   content: { display: 'flex', flexDirection: 'column', gap: 'var(--space-8)', minWidth: 0 },
+  venueContent: { gap: 'var(--space-10)' },
   screenHeading: { display: 'flex', alignItems: 'center', gap: 'var(--space-6)' },
   titleGroup: { display: 'flex', flexDirection: 'column', gap: 'var(--space-3)', minWidth: 0 },
   backLink: {
@@ -83,7 +84,7 @@ export const styles = stylex.create({
     lineHeight: 'var(--font-size-15)',
     overflowWrap: 'anywhere'
   },
-  list: { display: 'flex', flexDirection: 'column', gap: 'var(--space-6)' },
+  list: { display: 'flex', flexDirection: 'column', gap: 'var(--space-10)' },
   card: {
     display: 'flex',
     flexDirection: 'column',
@@ -95,6 +96,7 @@ export const styles = stylex.create({
     minHeight: 'calc(var(--space-40) * 5)',
     boxSizing: 'border-box'
   },
+  requestMeta: { minHeight: 'calc(var(--font-size-15) * 2)' },
   cardTitle: {
     margin: 0,
     fontFamily: 'var(--font-family-heading)',
@@ -102,19 +104,28 @@ export const styles = stylex.create({
     fontWeight: 'var(--font-weight-bold)',
     overflowWrap: 'anywhere'
   },
+  cardCompactTitle: {
+    margin: 0,
+    fontFamily: 'var(--font-family-body)',
+    fontSize: 'var(--font-size-12)',
+    lineHeight: 'var(--font-size-15)',
+    fontWeight: 'var(--font-weight-semibold)',
+    overflowWrap: 'anywhere'
+  },
   memberProfileTitle: {
     margin: 0,
     fontFamily: 'var(--font-family-heading)',
     fontSize: 'var(--font-size-14)',
+    lineHeight: 'var(--font-size-17)',
     fontWeight: 'var(--font-weight-semibold)',
     overflowWrap: 'anywhere'
   },
-  memberProfileCard: { minHeight: 'calc(var(--space-40) + var(--space-20) + var(--space-10))' },
+  memberProfileCard: { minHeight: 'calc(var(--space-40) + var(--space-20) + var(--space-6))' },
   rolePanel: {
     display: 'flex',
     flexDirection: 'column',
     gap: 'var(--space-2)',
-    padding: 'var(--space-10)',
+    padding: 'var(--space-12)',
     borderRadius: 'var(--radius-12)',
     backgroundColor: 'var(--color-surface-2)'
   },
@@ -131,6 +142,7 @@ export const styles = stylex.create({
     lineHeight: 'var(--font-size-15)'
   },
   actions: { display: 'flex', flexWrap: 'wrap', gap: 'var(--space-4)' },
+  requestActions: { gap: 'var(--space-6)' },
   searchForm: { display: 'flex', flexWrap: 'wrap', alignItems: 'end', gap: 'var(--space-6)' },
   visuallyHidden: {
     position: 'absolute',
@@ -149,7 +161,7 @@ export const styles = stylex.create({
     alignItems: 'center',
     gap: 'var(--space-8)',
     boxSizing: 'border-box',
-    minHeight: 'calc(var(--space-40) + var(--space-20) + var(--space-10))',
+    minHeight: 'calc(var(--space-40) + var(--space-20) + var(--space-11))',
     padding: 'var(--space-6) var(--space-10)'
   },
   memberDetails: {
@@ -210,17 +222,33 @@ export const styles = stylex.create({
     borderWidth: 0
   },
   memberLink: {
+    position: 'relative',
     color: 'var(--color-green)',
     textDecoration: 'underline',
     textUnderlineOffset: 'var(--space-2)',
     overflowWrap: 'anywhere',
+    '::before': {
+      content: "''",
+      position: 'absolute',
+      left: 'calc(-1 * var(--space-4))',
+      top: '50%',
+      transform: 'translateY(-50%)',
+      width: 'calc(100% + var(--space-8))',
+      minWidth: 'calc(var(--space-40) + var(--space-4))',
+      height: 'calc(var(--space-40) + var(--space-4))'
+    },
     ':focus-visible': {
       outline: 'var(--border-width-lg) solid var(--color-green)',
       outlineOffset: 'var(--space-2)'
     }
   },
   venueActions: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-4)' },
-  venueCard: { gap: 'var(--space-4)', padding: 'var(--space-10)' },
+  venueCard: {
+    boxSizing: 'border-box',
+    minHeight: 'calc(var(--space-40) * 2 + var(--space-20) + var(--space-14))',
+    gap: 'var(--space-6)',
+    padding: 'var(--space-14)'
+  },
   venueAction: { backgroundColor: 'var(--color-surface-2)', borderWidth: 0 },
   venueMeta: {
     display: 'flex',
@@ -229,7 +257,9 @@ export const styles = stylex.create({
     gap: 'var(--space-6)',
     flexWrap: 'wrap'
   },
+  venueMapLink: { fontSize: 'var(--font-size-12)', lineHeight: 'var(--font-size-15)' },
   form: { display: 'flex', flexDirection: 'column', gap: 'var(--space-6)', minWidth: 0 },
+  searchField: { flex: 1, minWidth: 0 },
   settingsForm: { gap: 'var(--space-10)' },
   fieldLabel: {
     color: 'var(--color-muted)',
@@ -312,18 +342,44 @@ export const styles = stylex.create({
     backgroundColor: 'var(--color-green-soft)',
     color: 'var(--color-text)',
     fontSize: 'var(--font-size-12)',
-    lineHeight: 'var(--font-size-18)',
+    lineHeight: 'var(--font-size-15)',
     overflowWrap: 'anywhere'
   },
+  auditCard: { gap: 'var(--space-4)' },
   auditAction: {
     margin: 0,
     color: 'var(--color-text)',
     fontSize: 'var(--font-size-12)',
+    lineHeight: 'var(--font-size-15)',
     fontWeight: 'var(--font-weight-semibold)',
     overflowWrap: 'anywhere'
   },
   status: { margin: 0, color: 'var(--color-green)', fontSize: 'var(--font-size-14)' },
   error: { margin: 0, color: 'var(--color-red)', fontSize: 'var(--font-size-14)' },
+  adminEntries: {
+    boxSizing: 'border-box',
+    width: '100%',
+    maxWidth: 'calc(var(--space-40) * 12)',
+    marginInline: 'auto',
+    padding: 'var(--space-10) var(--space-18)',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 'var(--space-4)',
+    backgroundColor: 'var(--color-surface)'
+  },
+  adminEntryLink: {
+    minHeight: 'calc(var(--space-40) + var(--space-4))',
+    display: 'flex',
+    alignItems: 'center',
+    color: 'var(--color-green)',
+    fontSize: 'var(--font-size-12)',
+    fontWeight: 'var(--font-weight-semibold)',
+    overflowWrap: 'anywhere',
+    ':focus-visible': {
+      outline: 'var(--border-width-lg) solid var(--color-green)',
+      outlineOffset: 'var(--space-2)'
+    }
+  },
   bottomNav: {
     position: 'fixed',
     zIndex: 1,
@@ -338,8 +394,7 @@ export const styles = stylex.create({
     gap: 'var(--space-2)',
     padding: 'var(--space-4)',
     borderRadius: 'var(--radius-18)',
-    backgroundColor: 'var(--color-surface)',
-    boxShadow: '0 var(--space-2) var(--space-10) rgb(0 0 0 / 12%)'
+    backgroundColor: 'var(--color-surface)'
   },
   bottomNavLink: {
     flex: 1,

@@ -42,6 +42,22 @@ describe('community admin routes', () => {
     expect(functions).toContain("if (!data) throw new Error('NOT_COMMUNITY_ADMIN')");
   });
 
+  it('loads member detail by scoped membership ID and keeps roster pages status-scoped', () => {
+    const detail = source(
+      '../src/routes/_protected.community.$communityId.admin.members.$membershipId.tsx'
+    );
+    expect(detail).toContain('getCommunityMemberById');
+    expect(detail).not.toContain('searchCommunityMembers');
+    const members = source('../src/routes/_protected.community.$communityId.admin.members.tsx');
+    expect(members).toContain("status: 'active'");
+    expect(members).toContain('limit: 50');
+    const requests = source('../src/routes/_protected.community.$communityId.admin.requests.tsx');
+    expect(requests).toContain("status: 'pending'");
+    const screen = source('../src/features/community/CommunityAdmin.tsx');
+    expect(screen).toContain('status: filterStatus');
+    expect(screen).toContain('offset,');
+  });
+
   it('imports explicit module-level membership endpoints into the route-owned UI', () => {
     const ui = source('../src/features/community/CommunityAdmin.tsx');
     for (const endpoint of [

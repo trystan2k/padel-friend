@@ -11,8 +11,10 @@ vi.mock('@tanstack/react-start', () => ({
         validate = fn;
         return builder;
       },
-      handler: (fn: (context: { data: unknown }) => unknown) => (options: { data: unknown }) =>
-        fn({ data: validate(options.data) })
+      handler:
+        (fn: (context: { data: unknown }) => unknown) =>
+        (options: { data?: unknown } = {}) =>
+          fn({ data: validate(options.data) })
     };
     return builder;
   }
@@ -26,7 +28,9 @@ import {
   demoteCommunityMember,
   denyCommunityMember,
   editCommunityVenue,
+  getCommunityMemberById,
   issueInvitation,
+  listMyAdminCommunities,
   listCommunityAudit,
   listCommunityVenues,
   promoteCommunityMember,
@@ -328,7 +332,12 @@ describe('community governance with real JWTs', () => {
   it('scoped search, audit and venues deny members/outsiders and reject malformed search', async () => {
     const id = await community(admin);
     await membership(admin, id, member, 'active');
+    serverClient.current = admin.client;
+    expect(await listMyAdminCommunities()).toContainEqual(expect.objectContaining({ id }));
+    serverClient.current = member.client;
+    expect(await listMyAdminCommunities()).not.toContainEqual(expect.objectContaining({ id }));
     const other = await community(outsider);
+    const foreignMembershipId = await membership(outsider, other, target, 'active');
     const page = { community_id: id, offset: 0, limit: 20 };
     for (const fn of [listCommunityAudit, listCommunityVenues]) {
       for (const user of [member, outsider]) {
@@ -365,6 +374,22 @@ describe('community governance with real JWTs', () => {
       data: { ...page, query: 'mem', status: 'active' }
     });
     expect(found).toHaveLength(1);
+    const direct = await getCommunityMemberById({
+      data: { community_id: id, membership_id: found[0]!.membership_id }
+    });
+    expect(direct.membership_id).toBe(found[0]!.membership_id);
+    await expect(
+      getCommunityMemberById({ data: { community_id: id, membership_id: foreignMembershipId } })
+    ).rejects.toThrow('COMMUNITY_MEMBER_NOT_FOUND');
+    serverClient.current = member.client;
+    await expect(
+      getCommunityMemberById({ data: { community_id: id, membership_id: found[0]!.membership_id } })
+    ).rejects.toThrow('NOT_COMMUNITY_ADMIN');
+    serverClient.current = anon();
+    await expect(
+      getCommunityMemberById({ data: { community_id: id, membership_id: found[0]!.membership_id } })
+    ).rejects.toThrow('UNAUTHENTICATED');
+    serverClient.current = admin.client;
     expect((await searchCommunityMembers({ data: { ...page, status: 'pending' } })).length).toBe(0);
     expect(Object.keys(found[0]!).sort()).toEqual(
       [

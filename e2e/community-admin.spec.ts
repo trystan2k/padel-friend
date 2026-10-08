@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '../src/lib/supabase/database.types';
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Locator, type Page } from '@playwright/test';
 import { waitForHydratedPage } from './auth-helpers';
 
 type Copy = {
@@ -16,13 +16,26 @@ type Copy = {
   };
   communityAdmin: {
     title: Record<string, string>;
+    navigation: string;
     accessDeniedTitle: string;
     action: Record<string, string>;
     confirmAction: string;
     search: string;
+    loadMore: string;
+    inviteUnavailable: string;
+    levelReadOnly: string;
     settings: { name: string; city: string; details: string };
     save: string;
-    venue: { add: string; name: string; address: string; mapsUrl: string; archive: string };
+    venue: {
+      add: string;
+      name: string;
+      address: string;
+      mapsUrl: string;
+      archive: string;
+      openMap: string;
+      historyNote: string;
+    };
+    audit: { openMember: string; recentChanges: string };
     accessDenied: string;
   };
 };
@@ -178,88 +191,194 @@ async function visualDiff(
   ).toBeLessThanOrEqual(budget);
 }
 
+// Pencil source geometry (padel-friend.pen frames, 390×844): page margin x18, content width 354,
+// bottom navigation x18/y774 354×56. All box probes are exact ±1px for CSS boxes. Static-page
+// probes are frame-relative: global locale/theme controls above <main> shift the document, so
+// absolute y expectations are compared against the frame offset (main top) captured per screen.
+async function mainOffset(page: Page) {
+  const main = await page.locator('main').boundingBox();
+  expect(main).not.toBeNull();
+  return main!.y;
+}
+
+async function bottomNavGeometry(page: Page) {
+  const nav = page.getByRole('navigation', { name: en.communityAdmin.navigation });
+  const box = await nav.boundingBox();
+  expect(box).not.toBeNull();
+  expect(Math.abs(box!.x - 18)).toBeLessThanOrEqual(1);
+  expect(Math.abs(box!.y - 774)).toBeLessThanOrEqual(1);
+  expect(Math.abs(box!.width - 354)).toBeLessThanOrEqual(1);
+  expect(Math.abs(box!.height - 56)).toBeLessThanOrEqual(1);
+  const links = await nav.getByRole('link').all();
+  expect(links).toHaveLength(5);
+  for (const link of links) {
+    const linkBox = await link.boundingBox();
+    expect(linkBox).not.toBeNull();
+    // Pencil tabs are 44px; rendered links keep the ≥44px touch target (48px at 354 width).
+    expect(linkBox!.height).toBeGreaterThanOrEqual(44);
+  }
+  expect(await nav.locator('[aria-current="page"]').count()).toBe(1);
+}
+
 async function geometry(page: Page, expectedPending?: string) {
   const section = page.locator('main > section');
   const box = await section.boundingBox();
   expect(box).not.toBeNull();
   expect(Math.abs(box!.x - 18)).toBeLessThanOrEqual(1);
   expect(Math.abs(box!.width - 354)).toBeLessThanOrEqual(1);
+  await bottomNavGeometry(page);
   if (expectedPending) {
     const card = page.getByRole('heading', { name: expectedPending }).locator('xpath=..');
     const cardBox = await card.boundingBox();
     expect(cardBox).not.toBeNull();
     expect(Math.abs(cardBox!.x - 18)).toBeLessThanOrEqual(1);
+    // RgqPq pending card at y109 from the 390×844 frame (section starts at y18).
     expect(Math.abs(cardBox!.y - (box!.y + 91))).toBeLessThanOrEqual(1);
     expect(Math.abs(cardBox!.width - 354)).toBeLessThanOrEqual(1);
     expect(Math.abs(cardBox!.height - 200)).toBeLessThanOrEqual(1);
+    const approve = await card
+      .getByRole('button', { name: en.communityAdmin.action.approve })
+      .boundingBox();
+    const deny = await card
+      .getByRole('button', { name: en.communityAdmin.action.deny })
+      .boundingBox();
+    expect(approve).not.toBeNull();
+    expect(deny).not.toBeNull();
+    expect(Math.abs(approve!.y - (cardBox!.y + 92))).toBeLessThanOrEqual(1);
+    expect(Math.abs(deny!.y - (cardBox!.y + 142))).toBeLessThanOrEqual(1);
+    expect(Math.abs(approve!.height - 44)).toBeLessThanOrEqual(1);
+    expect(Math.abs(deny!.height - 44)).toBeLessThanOrEqual(1);
   }
 }
 
 async function memberCardGeometry(page: Page) {
+  const offset = await mainOffset(page);
   const cards = await page.getByTestId('community-member-card').all();
   expect(cards).toHaveLength(3);
   const boxes = await Promise.all(cards.map((card) => card.boundingBox()));
-  for (const box of boxes) {
+  // wFqGR member cards: y234/y315/y396, 354×71, 10px gaps.
+  const expectedY = [234, 315, 396];
+  for (const [index, box] of boxes.entries()) {
     expect(box).not.toBeNull();
     expect(Math.abs(box!.x - 18)).toBeLessThanOrEqual(1);
+    expect(Math.abs(box!.y - (offset + expectedY[index]!))).toBeLessThanOrEqual(1);
     expect(Math.abs(box!.width - 354)).toBeLessThanOrEqual(1);
-    expect(Math.abs(box!.height - 70)).toBeLessThanOrEqual(1);
+    expect(Math.abs(box!.height - 71)).toBeLessThanOrEqual(1);
   }
-  for (let index = 1; index < boxes.length; index++)
-    expect(Math.abs(boxes[index]!.y - boxes[index - 1]!.y - 80)).toBeLessThanOrEqual(1);
+  const invite = await page
+    .getByRole('button', { name: en.communityAdmin.inviteUnavailable })
+    .boundingBox();
+  expect(invite).not.toBeNull();
+  expect(Math.abs(invite!.y - (offset + 72))).toBeLessThanOrEqual(1);
+  expect(Math.abs(invite!.height - 44)).toBeLessThanOrEqual(1);
+  const search = await page.locator('#admin-member-search').boundingBox();
+  expect(search).not.toBeNull();
+  expect(Math.abs(search!.x - 18)).toBeLessThanOrEqual(1);
+  expect(Math.abs(search!.width - 354)).toBeLessThanOrEqual(1);
+  expect(Math.abs(search!.height - 44)).toBeLessThanOrEqual(1);
+}
+
+async function assertLinkHitArea(link: Locator) {
+  const area = await link.evaluate((element) => {
+    const pseudo = getComputedStyle(element, '::before');
+    return {
+      width: Number.parseFloat(pseudo.width),
+      height: Number.parseFloat(pseudo.height),
+      position: getComputedStyle(element).position
+    };
+  });
+  expect(area.position).toBe('relative');
+  expect(area.width).toBeGreaterThanOrEqual(44);
+  expect(area.height).toBe(44);
 }
 
 async function memberControlsGeometry(page: Page) {
-  for (const selector of ['community-member-profile', 'community-member-role-panel']) {
-    const box = await page.getByTestId(selector).boundingBox();
-    expect(box).not.toBeNull();
-    expect(Math.abs(box!.x - 18)).toBeLessThanOrEqual(1);
-    expect(Math.abs(box!.width - 354)).toBeLessThanOrEqual(1);
-  }
   const profile = await page.getByTestId('community-member-profile').boundingBox();
   expect(profile).not.toBeNull();
-  expect(Math.abs(profile!.height - 70)).toBeLessThanOrEqual(1);
+  expect(Math.abs(profile!.x - 18)).toBeLessThanOrEqual(1);
+  expect(Math.abs(profile!.width - 354)).toBeLessThanOrEqual(1);
+  // jQDkx member profile card is 354×66.
+  expect(Math.abs(profile!.height - 66)).toBeLessThanOrEqual(1);
+  const rolePanel = await page.getByTestId('community-member-role-panel').boundingBox();
+  expect(rolePanel).not.toBeNull();
+  expect(Math.abs(rolePanel!.x - 18)).toBeLessThanOrEqual(1);
+  expect(Math.abs(rolePanel!.width - 354)).toBeLessThanOrEqual(1);
+  // jQDkx role control is 354×72.
+  expect(Math.abs(rolePanel!.height - 72)).toBeLessThanOrEqual(1);
   const actions = await page
     .getByRole('button', { name: en.communityAdmin.action.promote })
     .boundingBox();
   expect(actions).not.toBeNull();
-  expect(Math.abs(actions!.height - 44)).toBeLessThanOrEqual(1);
+  // Pencil draws a 40px control; shipped controls keep the ≥44px touch target.
+  expect(actions!.height).toBeGreaterThanOrEqual(44);
 }
 
 async function settingsGeometry(page: Page) {
-  for (const [selector, height] of [
-    ['settings-visibility-label', 44],
-    ['settings-visibility-control', 44],
-    ['settings-join-policy-control', 44]
-  ] as const) {
+  // N18Mu4 settings rows: visibility y72, public control y126, join control y180, each 354×44.
+  const offset = await mainOffset(page);
+  const expectedRows = [
+    ['settings-visibility-label', 72],
+    ['settings-visibility-control', 126],
+    ['settings-join-policy-control', 180]
+  ] as const;
+  for (const [selector, y] of expectedRows) {
     const box = await page.getByTestId(selector).boundingBox();
     expect(box).not.toBeNull();
     expect(Math.abs(box!.x - 18)).toBeLessThanOrEqual(1);
+    expect(Math.abs(box!.y - (offset + y))).toBeLessThanOrEqual(1);
     expect(Math.abs(box!.width - 354)).toBeLessThanOrEqual(1);
-    expect(Math.abs(box!.height - height)).toBeLessThanOrEqual(1);
+    expect(Math.abs(box!.height - 44)).toBeLessThanOrEqual(1);
   }
+  const save = await page.getByRole('button', { name: en.communityAdmin.save }).boundingBox();
+  expect(save).not.toBeNull();
+  expect(Math.abs(save!.height - 44)).toBeLessThanOrEqual(1);
 }
 
 async function venueGeometry(page: Page) {
-  const card = await page.getByTestId('community-venue-card').boundingBox();
-  expect(card).not.toBeNull();
-  expect(Math.abs(card!.x - 18)).toBeLessThanOrEqual(1);
-  expect(Math.abs(card!.width - 354)).toBeLessThanOrEqual(1);
-  expect(Math.abs(card!.height - 114)).toBeLessThanOrEqual(1);
+  const offset = await mainOffset(page);
+  const cards = await page.getByTestId('community-venue-card').all();
+  expect(cards).toHaveLength(2);
+  const boxes = await Promise.all(cards.map((card) => card.boundingBox()));
+  // A5Vio venue cards are 354×114 at source-relative y126 and y250, with a 10px gap.
+  const expectedY = [126, 250];
+  for (const [index, box] of boxes.entries()) {
+    expect(box).not.toBeNull();
+    expect(Math.abs(box!.x - 18)).toBeLessThanOrEqual(1);
+    expect(Math.abs(box!.y - (offset + expectedY[index]!))).toBeLessThanOrEqual(1);
+    expect(Math.abs(box!.width - 354)).toBeLessThanOrEqual(1);
+    expect(Math.abs(box!.height - 114)).toBeLessThanOrEqual(1);
+  }
+  expect(Math.abs(boxes[1]!.y - boxes[0]!.y - 124)).toBeLessThanOrEqual(1);
+  const note = await page.getByText(en.communityAdmin.venue.historyNote).boundingBox();
+  expect(note).not.toBeNull();
+  expect(Math.abs(note!.x - 18)).toBeLessThanOrEqual(1);
+  expect(Math.abs(note!.width - 354)).toBeLessThanOrEqual(1);
+  // A5Vio flow annotation starts 248px below the first venue card.
+  expect(Math.abs(note!.height - 35)).toBeLessThanOrEqual(1);
+  expect(Math.abs(note!.y - (boxes[0]!.y + 248))).toBeLessThanOrEqual(1);
   const add = await page.getByRole('button', { name: en.communityAdmin.venue.add }).boundingBox();
   expect(add).not.toBeNull();
   expect(Math.abs(add!.height - 44)).toBeLessThanOrEqual(1);
+  const archive = await cards[0]!
+    .getByRole('button', { name: en.communityAdmin.venue.archive })
+    .boundingBox();
+  expect(archive).not.toBeNull();
+  expect(Math.abs(archive!.height - 44)).toBeLessThanOrEqual(1);
 }
 
 async function auditGeometry(page: Page) {
   const cards = await page.getByTestId('community-audit-event').all();
   expect(cards).toHaveLength(3);
   const boxes = await Promise.all(cards.map((card) => card.boundingBox()));
-  for (const box of boxes) {
+  // E5CS5K audit events: y111/y183/y255, 354×62, 10px gaps.
+  const offset = await mainOffset(page);
+  const expectedY = [111, 183, 255];
+  for (const [index, box] of boxes.entries()) {
     expect(box).not.toBeNull();
     expect(Math.abs(box!.x - 18)).toBeLessThanOrEqual(1);
+    expect(Math.abs(box!.y - (offset + expectedY[index]!))).toBeLessThanOrEqual(1);
     expect(Math.abs(box!.width - 354)).toBeLessThanOrEqual(1);
-    expect(Math.abs(box!.height - 64)).toBeLessThanOrEqual(1);
+    expect(Math.abs(box!.height - 62)).toBeLessThanOrEqual(1);
   }
 }
 
@@ -271,8 +390,9 @@ test('real admin requests, membership, settings, venues and audit stay protected
   const owner = await createActor('Owner Admin');
   const request = await createActor('Pending Player');
   const backup = await createActor('Backup Admin');
+  const communityName = `Padel ${crypto.randomUUID().slice(0, 5)}`;
   const created = await owner.client.rpc('create_community', {
-    p_name: `Padel ${crypto.randomUUID().slice(0, 5)}`,
+    p_name: communityName,
     p_visibility: 'public',
     p_join_policy: 'admin_approval'
   });
@@ -288,6 +408,20 @@ test('real admin requests, membership, settings, venues and audit stay protected
     .select('id')
     .single();
   if (backupMembership.error) throw backupMembership.error;
+  // Second real venue (admin RLS insert) so the venues screen shows the supported two-card
+  // structure of the A5Vio frame instead of masking it away; "South Court" sorts after the
+  // UI-created "North Court" so card order stays deterministic.
+  const seededVenue = await owner.client
+    .from('community_venues')
+    .insert({
+      community_id: communityId,
+      name: 'South Court',
+      address: 'Madrid',
+      maps_url: 'https://maps.example.test/south-court'
+    })
+    .select('id')
+    .single();
+  if (seededVenue.error) throw seededVenue.error;
   const pending = await owner.client.rpc('search_community_members', {
     p_community_id: communityId,
     p_query: '',
@@ -308,6 +442,7 @@ test('real admin requests, membership, settings, venues and audit stay protected
   await guestContext.close();
 
   await signIn(page, owner);
+  await expect(page.getByRole('link', { name: communityName })).toBeVisible();
   const route = `/community/${communityId}/admin`;
   await page.goto(`${route}/requests`);
   await waitForHydratedPage(page);
@@ -342,20 +477,27 @@ test('real admin requests, membership, settings, venues and audit stay protected
   await page.getByRole('heading', { name: en.communityAdmin.title.members }).waitFor();
   await geometry(page);
   await memberCardGeometry(page);
-  // Mask fixture names/metrics and unsupported invitation copy only; card/layout geometry remains exact.
+  await assertLinkHitArea(page.getByRole('link', { name: 'Backup Admin' }));
+  // Mask fixture identity/metrics, role badges, avatars and the unsupported invitation copy only;
+  // card layout, search and geometry stay exact and unmasked.
   await visualDiff(page, 'wFqGR.png', 18_000, [
     [18, 46, 354, 22],
     [25, 82, 340, 26],
-    [25, 136, 340, 26],
-    [25, 242, 340, 24],
-    [25, 267, 340, 20],
-    [25, 288, 340, 20],
-    [25, 322, 340, 24],
-    [25, 347, 340, 20],
-    [25, 368, 340, 20],
-    [25, 402, 340, 24],
-    [25, 427, 340, 20],
-    [25, 448, 340, 20]
+    [28, 243, 34, 44],
+    [294, 239, 79, 31],
+    [25, 239, 340, 25],
+    [25, 263, 340, 18],
+    [25, 280, 340, 18],
+    [28, 324, 34, 44],
+    [294, 320, 79, 31],
+    [25, 320, 340, 25],
+    [25, 344, 340, 18],
+    [25, 361, 340, 18],
+    [28, 405, 34, 44],
+    [294, 401, 79, 31],
+    [25, 401, 340, 25],
+    [25, 425, 340, 18],
+    [25, 442, 340, 18]
   ]);
   await page.getByRole('link', { name: 'Backup Admin' }).click();
   await expect(page).toHaveURL(new RegExp(`/admin/members/${backupRow.membership_id}$`));
@@ -373,6 +515,7 @@ test('real admin requests, membership, settings, venues and audit stay protected
   const memberContext = await browser.newContext({ viewport: { width: 390, height: 844 } });
   const memberPage = await memberContext.newPage();
   await signIn(memberPage, request);
+  await expect(memberPage.getByRole('link', { name: communityName })).toHaveCount(0);
   await memberPage.goto(`${route}/members`);
   await expect(
     memberPage.getByRole('heading', { name: en.communityAdmin.accessDeniedTitle })
@@ -403,6 +546,7 @@ test('real admin requests, membership, settings, venues and audit stay protected
   }
   await page.locator('#locale').selectOption('en');
   await expect(page.locator('html')).toHaveAttribute('lang', 'en');
+  await page.context().addCookies([{ name: 'locale', value: 'en', url: 'http://127.0.0.1:4173' }]);
   await page.waitForLoadState('networkidle');
   await page.setViewportSize({ width: 320, height: 844 });
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(320);
@@ -410,7 +554,10 @@ test('real admin requests, membership, settings, venues and audit stay protected
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
 
   await page.goto(`${route}/venues`);
+  await page.context().addCookies([{ name: 'locale', value: 'en', url: 'http://127.0.0.1:4173' }]);
+  await page.reload();
   await waitForHydratedPage(page);
+  await expect(page.locator('html')).toHaveAttribute('lang', 'en');
   await geometry(page);
   await page.getByRole('button', { name: en.communityAdmin.venue.add }).click();
   await page.getByLabel(en.communityAdmin.venue.name).fill('North Court');
@@ -421,23 +568,42 @@ test('real admin requests, membership, settings, venues and audit stay protected
   await page.reload();
   await waitForHydratedPage(page);
   await venueGeometry(page);
-  // The Pencil reference's second saved venue is a sample row with no fixture-backed counterpart.
-  await visualDiff(page, 'A5Vio.png', 18_000, [[0, 248, 390, 120]]);
-  await page.getByRole('button', { name: en.communityAdmin.venue.archive }).click();
+  await assertLinkHitArea(
+    page.getByRole('link', { name: en.communityAdmin.venue.openMap }).first()
+  );
+  // Mask fixture venue names and dynamic/unsupported detail copy only; card edges, action labels,
+  // and the supported Open map links remain part of the pixel comparison.
+  await visualDiff(page, 'A5Vio.png', 18_000, [
+    [32, 140, 180, 15],
+    [32, 161, 240, 15],
+    [32, 264, 180, 15],
+    [32, 285, 240, 15]
+  ]);
+  await page
+    .getByTestId('community-venue-card')
+    .first()
+    .getByRole('button', { name: en.communityAdmin.venue.archive })
+    .click();
   await expect(page.getByText('Venue archived.')).toBeVisible();
 
   await page.goto(`${route}/audit`);
   await waitForHydratedPage(page);
   await auditGeometry(page);
-  await expect(page.getByText(/Community admin ·/).first()).toBeVisible();
+  await expect(page.getByText(/Actor identity unavailable ·/).first()).toBeVisible();
   await expect(page.getByText(/League result corrected/)).toHaveCount(0);
   // Actor identity is intentionally a translated generic fallback; timestamps are fixture-dependent.
+  // The fourth Pencil event ("League result corrected") and the 3-row paging control are the
+  // approved unsupported/adapted region, so the band below the third event stays masked.
   await visualDiff(page, 'E5CS5K.png', 18_000, [
     [18, 140, 354, 24],
     [18, 210, 354, 24],
     [18, 280, 354, 24],
-    [18, 317, 354, 48]
+    [18, 317, 354, 72]
   ]);
+  await page.getByRole('button', { name: en.communityAdmin.loadMore }).click();
+  await assertLinkHitArea(
+    page.getByRole('link', { name: en.communityAdmin.audit.openMember }).first()
+  );
 
   await page.goto(`${route}/members/${ownerRow.membership_id}`);
   await waitForHydratedPage(page);

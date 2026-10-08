@@ -20,6 +20,7 @@ vi.mock('@tanstack/react-start/server', () => ({ setResponseHeader: mocks.header
 vi.mock('../src/lib/supabase/server', () => ({ getServerClient: mocks.client }));
 import {
   approveCommunityMember,
+  getCommunityMemberById,
   denyCommunityMember,
   removeCommunityMember,
   reactivateCommunityMember,
@@ -96,6 +97,58 @@ describe('admin function boundary', () => {
       'INVALID_COMMUNITY_INPUT'
     );
   });
+  it('looks up a membership by scoped ID and separates missing rows from database failures', async () => {
+    const member = {
+      membership_id,
+      user_id: '33333333-3333-4333-8333-333333333333',
+      display_name: 'Outside first page',
+      role: 'member',
+      status: 'inactive',
+      valid_from: '2026-10-01T00:00:00Z',
+      valid_until: '2026-10-02T00:00:00Z',
+      activated_at: '2026-10-01T00:00:00Z',
+      display_level: 3,
+      reliability_percent: 80
+    };
+    const rpc = vi.fn<
+      () => Promise<{
+        data: (typeof member)[] | null;
+        error: { code: string; message?: string } | null;
+      }>
+    >();
+    rpc.mockResolvedValue({ data: [member], error: null });
+    const client = {
+      auth: {
+        getClaims: vi
+          .fn<
+            () => Promise<{
+              data: { claims: { sub: string } } | null;
+              error: Error | null;
+            }>
+          >()
+          .mockResolvedValue({ data: { claims: { sub: membership_id } }, error: null })
+      },
+      rpc
+    };
+    mocks.client.mockReturnValue(client);
+    await expect(
+      getCommunityMemberById({ data: { community_id, membership_id } })
+    ).resolves.toEqual(member);
+    expect(client.rpc).toHaveBeenCalledWith('get_community_member_by_id', {
+      p_community_id: community_id,
+      p_membership_id: membership_id
+    });
+    client.rpc.mockResolvedValueOnce({ data: [], error: null });
+    await expect(getCommunityMemberById({ data: { community_id, membership_id } })).rejects.toThrow(
+      'COMMUNITY_MEMBER_NOT_FOUND'
+    );
+    const readFailure = { code: 'XX000', message: 'database unavailable' };
+    client.rpc.mockResolvedValueOnce({ data: null, error: readFailure });
+    await expect(getCommunityMemberById({ data: { community_id, membership_id } })).rejects.toBe(
+      readFailure
+    );
+  });
+
   it('rejects unknown action fields and invalid IDs before client access', async () => {
     for (const fn of functions) {
       for (const data of [
