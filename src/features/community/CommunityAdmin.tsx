@@ -664,7 +664,10 @@ function CommunityAdminView({
               />
             </div>
           </form>
-          <div aria-label={t('communityAdmin.memberFilters')} {...stylex.props(styles.filterTabs)}>
+          <fieldset
+            aria-label={t('communityAdmin.memberFilters')}
+            {...stylex.props(styles.filterTabs)}
+          >
             {(['active', 'pending', 'inactive'] as const).map((status) => (
               <button
                 key={status}
@@ -681,7 +684,7 @@ function CommunityAdminView({
                 {t(`communityAdmin.status.${status}`)}
               </button>
             ))}
-          </div>
+          </fieldset>
           {searchingMembers && (
             <output aria-live="polite" {...stylex.props(styles.copy)}>
               {t('communityAdmin.searchLoading')}

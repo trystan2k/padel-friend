@@ -164,6 +164,7 @@ describe('community admin UI', () => {
       </I18nextProvider>
     );
     const search = screen.getByRole('searchbox', { name: 'Search members' });
+    expect(screen.getByRole('group', { name: 'Filter community members' })).toBeTruthy();
     await user.type(search, 'Alicia');
     await user.keyboard('{Enter}');
     await waitFor(() =>

@@ -184,7 +184,14 @@ export const styles = stylex.create({
     fontSize: 'var(--font-size-11)',
     fontWeight: 'var(--font-weight-bold)'
   },
-  filterTabs: { display: 'flex', gap: 'var(--space-4)' },
+  filterTabs: {
+    display: 'flex',
+    gap: 'var(--space-4)',
+    minWidth: 0,
+    margin: 0,
+    padding: 0,
+    borderWidth: 0
+  },
   filterTab: {
     flex: 1,
     minHeight: 'calc(var(--space-40) + var(--space-4))',

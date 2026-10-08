@@ -189,8 +189,6 @@
     "loading": "Cargando perfil del jugador…"
   },
   "communityAdmin": {
-    "adminOnly": "ADMINISTRACIÓN DE LA COMUNIDAD",
-    "communityAdminOnly": "Solo las personas administradoras activas de la comunidad pueden ver o cambiar esta información.",
     "communityAdminSubtitle": "{{community}} · Solo admin",
     "navigation": "Administración de la comunidad",
     "yourCommunities": "Administración de la comunidad",
@@ -226,7 +224,6 @@
     "memberJoined": "Miembro desde {{date}}",
     "search": "BUSCAR",
     "inviteUnavailable": "INVITAR MIEMBRO · NO DISPONIBLE",
-    "requestedOn": "Solicitada el {{date}}",
     "requestMeta": "Solicitada el {{date}} · {{privacy}}",
     "memberMeta": "{{status}} · {{role}} · desde {{date}}",
     "memberAdminProfile": "{{name}} · nivel {{level}} · {{reliability}}% de fiabilidad",
@@ -307,7 +304,6 @@
       "invitationAdded": "Invitación emitida",
       "invitationUpdated": "Invitación actualizada",
       "recentChanges": "CAMBIOS RECIENTES",
-      "actorAvailable": "Admin de la comunidad",
       "unknownActor": "Identidad del autor no disponible",
       "openMember": "Ver miembro"
     },

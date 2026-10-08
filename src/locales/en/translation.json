@@ -189,8 +189,6 @@
     "loading": "Loading player profile…"
   },
   "communityAdmin": {
-    "adminOnly": "COMMUNITY ADMIN",
-    "communityAdminOnly": "Only active community admins can view or change this information.",
     "communityAdminSubtitle": "{{community}} · Admin only",
     "navigation": "Community administration",
     "yourCommunities": "Community administration",
@@ -226,7 +224,6 @@
     "memberJoined": "Member since {{date}}",
     "search": "SEARCH",
     "inviteUnavailable": "INVITE MEMBER · UNAVAILABLE",
-    "requestedOn": "Requested {{date}}",
     "requestMeta": "Requested {{date}} · {{privacy}}",
     "memberMeta": "{{status}} · {{role}} · since {{date}}",
     "memberAdminProfile": "{{name}} · Level {{level}} · {{reliability}}% reliability",
@@ -307,7 +304,6 @@
       "invitationAdded": "Invitation issued",
       "invitationUpdated": "Invitation updated",
       "recentChanges": "RECENT CHANGES",
-      "actorAvailable": "Community admin",
       "unknownActor": "Actor identity unavailable",
       "openMember": "View member"
     },
