@@ -332,11 +332,14 @@ describe('community governance with real JWTs', () => {
   it('scoped search, audit and venues deny members/outsiders and reject malformed search', async () => {
     const id = await community(admin);
     await membership(admin, id, member, 'active');
+    const other = await community(outsider);
     serverClient.current = admin.client;
     expect(await listMyAdminCommunities()).toContainEqual(expect.objectContaining({ id }));
+    expect(await listMyAdminCommunities()).not.toContainEqual(
+      expect.objectContaining({ id: other })
+    );
     serverClient.current = member.client;
     expect(await listMyAdminCommunities()).not.toContainEqual(expect.objectContaining({ id }));
-    const other = await community(outsider);
     const foreignMembershipId = await membership(outsider, other, target, 'active');
     const page = { community_id: id, offset: 0, limit: 20 };
     for (const fn of [listCommunityAudit, listCommunityVenues]) {

@@ -18,12 +18,6 @@ export const styles = stylex.create({
     overflowY: 'auto'
   },
   header: { display: 'flex', flexDirection: 'column', gap: 0 },
-  eyebrow: {
-    margin: 0,
-    color: 'var(--color-green)',
-    fontSize: 'var(--font-size-12)',
-    fontWeight: 'var(--font-weight-bold)'
-  },
   title: {
     margin: 0,
     fontFamily: 'var(--font-family-heading)',
@@ -272,23 +266,6 @@ export const styles = stylex.create({
     color: 'var(--color-muted)',
     fontSize: 'var(--font-size-12)',
     fontWeight: 'var(--font-weight-semibold)'
-  },
-  select: {
-    boxSizing: 'border-box',
-    minHeight: 'calc(var(--space-40) + var(--space-4))',
-    width: '100%',
-    paddingInline: 'var(--space-10)',
-    borderWidth: 'var(--border-width-sm)',
-    borderStyle: 'solid',
-    borderColor: 'var(--color-line)',
-    borderRadius: 'var(--radius-8)',
-    backgroundColor: 'var(--color-surface)',
-    color: 'var(--color-text)',
-    font: 'inherit',
-    ':focus-visible': {
-      outline: 'var(--border-width-lg) solid var(--color-green)',
-      outlineOffset: 'var(--space-2)'
-    }
   },
   settingsCard: {
     boxSizing: 'border-box',

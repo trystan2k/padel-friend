@@ -70,18 +70,10 @@ export const listMyAdminCommunities = createServerFn({ method: 'GET' }).handler(
     .eq('user_id', userId)
     .eq('role', 'admin')
     .eq('status', 'active')
-    .is('valid_until', null);
+    .is('valid_until', null)
+    .lte('valid_from', new Date().toISOString());
   if (error) throw error;
-  const checks = await Promise.all(
-    (memberships ?? []).map(async ({ community_id }) => {
-      const { data, error: checkError } = await client.rpc('is_community_admin', {
-        p_community_id: community_id
-      });
-      if (checkError) throw checkError;
-      return data ? community_id : null;
-    })
-  );
-  const ids = checks.filter((id): id is string => id !== null);
+  const ids = (memberships ?? []).map(({ community_id }) => community_id);
   if (!ids.length) return [];
   const { data: communities, error: communityError } = await client
     .from('communities')

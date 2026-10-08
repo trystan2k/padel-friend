@@ -10,8 +10,10 @@ vi.mock('@tanstack/react-start', () => ({
         validate = fn;
         return builder;
       },
-      handler: (fn: (context: { data: unknown }) => unknown) => (options: { data: unknown }) =>
-        fn({ data: validate(options.data) })
+      handler:
+        (fn: (context: { data: unknown }) => unknown) =>
+        (options: { data: unknown } = { data: undefined }) =>
+          fn({ data: validate(options.data) })
     };
     return builder;
   }
@@ -27,6 +29,7 @@ import {
   promoteCommunityMember,
   demoteCommunityMember,
   issueInvitation,
+  listMyAdminCommunities,
   searchCommunityMembers
 } from '../src/features/community/community-admin.functions';
 import { validateVenue } from '../src/features/community/community-admin.validators';
@@ -74,6 +77,75 @@ beforeEach(() => {
   mocks.header.mockReset();
 });
 describe('admin function boundary', () => {
+  it('filters future-valid admin memberships in one server query without per-row RPCs', async () => {
+    const futureCommunityId = '44444444-4444-4444-8444-444444444444';
+    const memberships = [
+      { community_id, valid_from: new Date(Date.now() - 60_000).toISOString() },
+      { community_id: futureCommunityId, valid_from: new Date(Date.now() + 60_000).toISOString() }
+    ];
+    const membershipQuery = {
+      select: vi.fn<(columns: string) => unknown>(),
+      eq: vi.fn<(column: string, value: string) => unknown>(),
+      is: vi.fn<(column: string, value: null) => unknown>(),
+      lte: vi.fn<
+        (
+          column: string,
+          value: string
+        ) => Promise<{ data: { community_id: string }[]; error: null }>
+      >()
+    };
+    membershipQuery.select.mockReturnValue(membershipQuery);
+    membershipQuery.eq.mockReturnValue(membershipQuery);
+    membershipQuery.is.mockReturnValue(membershipQuery);
+    membershipQuery.lte.mockImplementation((column: string, value: string) =>
+      Promise.resolve({
+        data: memberships
+          .filter(({ valid_from }) =>
+            column === 'valid_from' ? Date.parse(valid_from) <= Date.parse(value) : true
+          )
+          .map(({ community_id: id }) => ({ community_id: id })),
+        error: null
+      })
+    );
+    const communityQuery = {
+      select: vi.fn<(columns: string) => unknown>(),
+      in: vi.fn<(column: string, values: string[]) => unknown>(),
+      order:
+        vi.fn<(column: string) => Promise<{ data: { id: string; name: string }[]; error: null }>>()
+    };
+    communityQuery.select.mockReturnValue(communityQuery);
+    communityQuery.in.mockReturnValue(communityQuery);
+    communityQuery.order.mockResolvedValue({
+      data: [{ id: community_id, name: 'Current admin community' }],
+      error: null
+    });
+    const client = {
+      auth: {
+        getClaims: vi
+          .fn<() => Promise<{ data: { claims: { sub: string } }; error: null }>>()
+          .mockResolvedValue({
+            data: { claims: { sub: membership_id } },
+            error: null
+          })
+      },
+      from: vi.fn<(table: string) => typeof membershipQuery | typeof communityQuery>((table) =>
+        table === 'community_members' ? membershipQuery : communityQuery
+      ),
+      rpc: vi.fn<() => unknown>()
+    };
+    mocks.client.mockReturnValue(client);
+
+    await expect(listMyAdminCommunities()).resolves.toEqual([
+      { id: community_id, name: 'Current admin community' }
+    ]);
+    expect(membershipQuery.eq).toHaveBeenNthCalledWith(1, 'user_id', membership_id);
+    expect(membershipQuery.eq).toHaveBeenNthCalledWith(2, 'role', 'admin');
+    expect(membershipQuery.eq).toHaveBeenNthCalledWith(3, 'status', 'active');
+    expect(membershipQuery.is).toHaveBeenCalledWith('valid_until', null);
+    expect(membershipQuery.lte).toHaveBeenCalledWith('valid_from', expect.any(String));
+    expect(communityQuery.in).toHaveBeenCalledWith('id', [community_id]);
+    expect(client.rpc).not.toHaveBeenCalled();
+  });
   it('declares all governance endpoints as module-level createServerFn chains', () => {
     const source = readFileSync(
       new URL('../src/features/community/community-admin.functions.ts', import.meta.url),
