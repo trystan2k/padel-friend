@@ -1,4 +1,5 @@
 import { readFileSync } from 'node:fs';
+import { spawn } from 'node:child_process';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
 
@@ -133,6 +134,111 @@ beforeAll(async () => {
   ]);
 });
 
+type LocalSqlResult = {
+  code: number | null;
+  stdout: string;
+  stderr: string;
+};
+
+function startLocalSql(sql: string) {
+  const child = spawn(
+    'pnpm',
+    ['exec', 'supabase', 'db', 'query', '--local', '--output-format', 'json', sql],
+    { cwd: process.cwd(), stdio: ['ignore', 'pipe', 'pipe'] }
+  );
+  let stdout = '';
+  let stderr = '';
+  child.stdout.setEncoding('utf8');
+  child.stderr.setEncoding('utf8');
+  child.stdout.on('data', (chunk: string) => (stdout += chunk));
+  child.stderr.on('data', (chunk: string) => (stderr += chunk));
+  const done = new Promise<LocalSqlResult>((resolve) => {
+    child.once('error', (error) => resolve({ code: null, stdout, stderr: `${stderr}${error}` }));
+    child.once('close', (code) => resolve({ code, stdout, stderr }));
+  });
+  return { done };
+}
+
+async function executeLocalSql(sql: string) {
+  const result = await startLocalSql(sql).done;
+  if (result.code !== 0)
+    throw new Error(`Local SQL failed (${result.code}): ${result.stderr || result.stdout}`);
+  return result.stdout;
+}
+
+type LocalSqlRow = Record<string, unknown>;
+
+function isLocalSqlRow(value: unknown): value is LocalSqlRow {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+async function queryLocalSql(sql: string): Promise<LocalSqlRow[]> {
+  const stdout = await executeLocalSql(sql);
+  const start = stdout.indexOf('[');
+  const end = stdout.lastIndexOf(']');
+  if (start < 0 || end < start) throw new Error(`Local SQL returned no JSON rows: ${stdout}`);
+  const parsed: unknown = JSON.parse(stdout.slice(start, end + 1));
+  if (!Array.isArray(parsed)) throw new Error(`Local SQL returned invalid rows: ${stdout}`);
+  const values: unknown[] = parsed;
+  const rows = values.filter(isLocalSqlRow);
+  if (rows.length !== values.length) throw new Error(`Local SQL returned invalid rows: ${stdout}`);
+  return rows;
+}
+
+async function waitForLocalRows(
+  sql: string,
+  ready: (rows: LocalSqlRow[]) => boolean,
+  description: string
+): Promise<LocalSqlRow[]> {
+  const deadline = Date.now() + 20000;
+  let rows: LocalSqlRow[] = [];
+  while (Date.now() < deadline) {
+    rows = await queryLocalSql(sql);
+    if (ready(rows)) return rows;
+    await new Promise<void>((resolve) => setTimeout(resolve, 75));
+  }
+  throw new Error(`Timed out waiting for ${description}: ${JSON.stringify(rows)}`);
+}
+
+function timestampMicroseconds(value: string): bigint {
+  const groups =
+    /^(?<year>\d{4})-(?<month>\d{2})-(?<day>\d{2})T(?<hour>\d{2}):(?<minute>\d{2}):(?<second>\d{2})(?:\.(?<fraction>\d+))?(?<zone>Z|[+-]\d{2}:\d{2})$/.exec(
+      value
+    )?.groups;
+  const zone = groups?.zone;
+  if (!groups || !zone) throw new Error(`Invalid PostgreSQL timestamp: ${value}`);
+  const localSeconds = BigInt(
+    Date.UTC(
+      Number(groups.year),
+      Number(groups.month) - 1,
+      Number(groups.day),
+      Number(groups.hour),
+      Number(groups.minute),
+      Number(groups.second)
+    ) / 1000
+  );
+  const zoneOffsetMinutes =
+    zone === 'Z'
+      ? 0
+      : (Number(zone.slice(1, 3)) * 60 + Number(zone.slice(4, 6))) * (zone[0] === '+' ? 1 : -1);
+  const fraction = (groups.fraction ?? '').padEnd(6, '0').slice(0, 6);
+  return (localSeconds - BigInt(zoneOffsetMinutes * 60)) * 1_000_000n + BigInt(fraction || '0');
+}
+
+function expectReactivationChronology(
+  previous: { valid_until: string | null },
+  replacement: { valid_from: string; activated_at: string | null }
+) {
+  if (!previous.valid_until || !replacement.activated_at)
+    throw new Error('Expected closed prior interval and activated replacement interval');
+  expect(
+    timestampMicroseconds(replacement.valid_from) >= timestampMicroseconds(previous.valid_until)
+  ).toBe(true);
+  expect(
+    timestampMicroseconds(replacement.activated_at) >= timestampMicroseconds(replacement.valid_from)
+  ).toBe(true);
+}
+
 describe('community governance with real JWTs', () => {
   const actions = [
     ['approve', approveCommunityMember, 'pending', 'member', 'active', 'member'],
@@ -217,10 +323,7 @@ describe('community governance with real JWTs', () => {
       expect(current.data?.valid_until === null).toBe(expectedStatus === 'active');
       expect(Boolean(current.data?.activated_at)).toBe(name !== 'deny');
       expect(Boolean(current.data?.valid_from)).toBe(true);
-      const intervalIsOrdered =
-        name !== 'reactivate' ||
-        Date.parse(current.data.valid_from) >= Date.parse(original.data.valid_until);
-      expect(intervalIsOrdered).toBe(true);
+      if (name === 'reactivate') expectReactivationChronology(original.data, current.data);
       const after = await audit(admin, id);
       expect(after).toHaveLength(before.length + 1);
       expect(after.filter((row) => !before.some((previous) => previous.id === row.id))).toEqual([
@@ -328,6 +431,200 @@ describe('community governance with real JWTs', () => {
       rows.data!.filter((row) => row.role === 'admin' && row.status === 'active')
     ).toHaveLength(1);
     expect(await audit(surviving, id2)).toHaveLength(4);
+  });
+
+  it('orders reactivation queued behind a removal at microsecond precision', async () => {
+    const communityId = await community(admin);
+    const previousId = await membership(admin, communityId, target, 'active');
+    const previousResult = await admin.client
+      .from('community_members')
+      .select('id,status,role,valid_from,valid_until,activated_at')
+      .eq('id', previousId)
+      .single();
+    expect(previousResult.error).toBeNull();
+    if (!previousResult.data) throw new Error('Previous membership row missing');
+
+    const suffix = crypto.randomUUID().replaceAll('-', '');
+    const functionName = `test_pause_membership_${suffix}`;
+    const triggerName = `test_pause_membership_${suffix}`;
+    const applicationName = `paf32-${suffix}`;
+    const advisoryNamespace = 32032;
+    const lockKey = `pg_catalog.hashtext('${communityId}'::text), ${advisoryNamespace}`;
+    const outstanding: Promise<unknown>[] = [];
+    let holderPid: number | undefined;
+    let holderCommand: ReturnType<typeof startLocalSql> | undefined;
+
+    try {
+      await executeLocalSql(`
+        create function public.${functionName}() returns trigger
+        language plpgsql set search_path = '' as $$
+        begin
+          if old.id = '${previousId}'::uuid and old.status = 'active' and new.status = 'inactive' then
+            perform pg_catalog.pg_advisory_xact_lock(${lockKey});
+          end if;
+          return new;
+        end;
+        $$;
+      `);
+      await executeLocalSql(`
+        create trigger ${triggerName}
+        before update on public.community_members
+        for each row execute function public.${functionName}();
+      `);
+
+      // Test-only advisory lock pauses removal after its community lock is held.
+      holderCommand = startLocalSql(`
+        with session_settings as materialized (
+          select pg_catalog.set_config('application_name', '${applicationName}', false)
+        ), held_lock as materialized (
+          select pg_catalog.pg_advisory_lock(${lockKey}) from session_settings
+        )
+        select pg_catalog.pg_sleep(30) from held_lock;
+      `);
+      const [holder] = await waitForLocalRows(
+        `select a.pid as value
+          from pg_catalog.pg_stat_activity a
+          join pg_catalog.pg_locks l on l.pid = a.pid
+          where a.application_name = '${applicationName}'
+            and l.locktype = 'advisory' and l.granted`,
+        (rows) => rows.length === 1,
+        'test advisory lock to be held'
+      );
+      holderPid = Number(holder?.value);
+      if (!Number.isInteger(holderPid)) throw new Error('Test advisory lock backend missing');
+
+      const removalTask = Promise.resolve(
+        admin.client.rpc('govern_community_member', {
+          p_community_id: communityId,
+          p_membership_id: previousId,
+          p_action: 'remove'
+        })
+      );
+      outstanding.push(removalTask);
+      const [removalWait] = await waitForLocalRows(
+        `select pid as value
+          from pg_catalog.pg_stat_activity
+          where wait_event_type = 'Lock'
+            and ${holderPid} = any(pg_catalog.pg_blocking_pids(pid))`,
+        (rows) => rows.length === 1,
+        'removal to hold the community lock and wait in its update trigger'
+      );
+      const removalPid = Number(removalWait?.value);
+      if (!Number.isInteger(removalPid)) throw new Error('Queued removal backend missing');
+
+      const reactivationTask = Promise.resolve(
+        admin.client.rpc('govern_community_member', {
+          p_community_id: communityId,
+          p_membership_id: previousId,
+          p_action: 'reactivate'
+        })
+      );
+      outstanding.push(reactivationTask);
+      await waitForLocalRows(
+        `select pid as value
+          from pg_catalog.pg_stat_activity
+          where wait_event_type = 'Lock'
+            and ${removalPid} = any(pg_catalog.pg_blocking_pids(pid))`,
+        (rows) => rows.length > 0,
+        'reactivation to wait behind the locked removal'
+      );
+
+      const [terminated] = await queryLocalSql(
+        `select pg_catalog.pg_terminate_backend(${holderPid}) as value`
+      );
+      expect(terminated?.value).toBe(true);
+      await holderCommand.done;
+
+      const [removed, reactivated] = await Promise.all([removalTask, reactivationTask]);
+      expect(removed.error).toBeNull();
+      expect(reactivated.error).toBeNull();
+      const replacementId = reactivated.data?.[0]?.membership_id;
+      if (!replacementId) throw new Error('Replacement membership was not returned');
+
+      const [previous, replacement] = await Promise.all([
+        admin.client
+          .from('community_members')
+          .select('id,status,role,valid_from,valid_until,activated_at')
+          .eq('id', previousId)
+          .single(),
+        admin.client
+          .from('community_members')
+          .select('id,status,role,valid_from,valid_until,activated_at')
+          .eq('id', replacementId)
+          .single()
+      ]);
+      expect(previous.error).toBeNull();
+      expect(replacement.error).toBeNull();
+      expect(previous.data?.status).toBe('inactive');
+      expect(replacement.data).toMatchObject({
+        id: replacementId,
+        status: 'active',
+        role: 'member',
+        valid_until: null
+      });
+      if (!previous.data || !replacement.data) throw new Error('Persisted interval missing');
+      expectReactivationChronology(previous.data, replacement.data);
+    } finally {
+      try {
+        await queryLocalSql(
+          `select pg_catalog.pg_terminate_backend(pid) as value
+            from pg_catalog.pg_stat_activity
+            where application_name = '${applicationName}'`
+        );
+      } catch {
+        // Preserve the original assertion failure; local backend may already be gone.
+      }
+      if (holderCommand) await holderCommand.done;
+      await Promise.allSettled(outstanding);
+      await executeLocalSql(`drop trigger if exists ${triggerName} on public.community_members`);
+      await executeLocalSql(`drop function if exists public.${functionName}()`);
+    }
+  }, 90000);
+
+  it('orders sequential leave then reactivation at microsecond precision', async () => {
+    const communityId = await community(admin);
+    const previousId = await membership(admin, communityId, member, 'active');
+    const before = await member.client
+      .from('community_members')
+      .select('id,status,role,valid_from,valid_until,activated_at')
+      .eq('id', previousId)
+      .single();
+    expect(before.error).toBeNull();
+    if (!before.data) throw new Error('Previous membership row missing');
+
+    expect(
+      (await member.client.rpc('leave_community', { p_community_id: communityId })).error
+    ).toBeNull();
+    const previous = await admin.client
+      .from('community_members')
+      .select('id,status,role,valid_from,valid_until,activated_at')
+      .eq('id', previousId)
+      .single();
+    expect(previous.error).toBeNull();
+    expect(previous.data).toMatchObject({
+      id: previousId,
+      status: 'inactive',
+      valid_from: before.data.valid_from,
+      activated_at: before.data.activated_at
+    });
+    if (!previous.data) throw new Error('Closed membership row missing');
+
+    const reactivated = await admin.client.rpc('govern_community_member', {
+      p_community_id: communityId,
+      p_membership_id: previousId,
+      p_action: 'reactivate'
+    });
+    expect(reactivated.error).toBeNull();
+    const replacementId = reactivated.data?.[0]?.membership_id;
+    if (!replacementId) throw new Error('Replacement membership was not returned');
+    const replacement = await admin.client
+      .from('community_members')
+      .select('id,status,role,valid_from,valid_until,activated_at')
+      .eq('id', replacementId)
+      .single();
+    expect(replacement.error).toBeNull();
+    if (!replacement.data) throw new Error('Replacement interval missing');
+    expectReactivationChronology(previous.data, replacement.data);
   });
 
   it('scoped search, audit and venues deny members/outsiders and reject malformed search', async () => {
