@@ -1,3 +1,4 @@
+import { hasEdgeWhitespace } from '../../lib/edge-whitespace';
 import type { Database } from '../../lib/supabase/database.types';
 
 type Visibility = Database['public']['Enums']['community_visibility'];
@@ -18,6 +19,14 @@ export type PublicCommunity = Pick<
 >;
 export type ListPublicCommunitiesInput = { search?: string; offset: number; limit: number };
 export type GetPublicCommunityInput = { community_id: string };
+export type JoinCommunityInput = { community_id: string };
+export type LeaveCommunityInput = { community_id: string };
+export type AcceptInvitationInput = { token: string };
+export type GetMyMembershipTimelineInput = {
+  community_id?: string;
+  offset: number;
+  limit: number;
+};
 
 export type CreateCommunityInput = {
   name: string;
@@ -59,7 +68,7 @@ function name(value: unknown): string {
   if (
     typeof value !== 'string' ||
     value.length === 0 ||
-    /^[ \t\n\r\f\v]|[ \t\n\r\f\v]$/.test(value) ||
+    hasEdgeWhitespace(value) ||
     Array.from(value).length > 80
   )
     invalid();
@@ -79,6 +88,15 @@ function visibility(value: unknown): Visibility {
 
 function joinPolicy(value: unknown): JoinPolicy {
   if (value !== 'instant' && value !== 'admin_approval') invalid();
+  return value;
+}
+
+function communityId(value: unknown): string {
+  if (
+    typeof value !== 'string' ||
+    !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value)
+  )
+    invalid();
   return value;
 }
 
@@ -150,14 +168,9 @@ export function validateUpdateCommunitySettings(value: unknown): UpdateCommunity
     'logo_path',
     'settings'
   ]);
-  if (
-    typeof input.community_id !== 'string' ||
-    !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(input.community_id) ||
-    Object.keys(input).length < 2
-  )
-    invalid();
+  if (Object.keys(input).length < 2) invalid();
   return {
-    community_id: input.community_id,
+    community_id: communityId(input.community_id),
     ...('name' in input ? { name: name(input.name) } : {}),
     ...('visibility' in input ? { visibility: visibility(input.visibility) } : {}),
     ...('join_policy' in input ? { join_policy: joinPolicy(input.join_policy) } : {}),
@@ -192,10 +205,45 @@ export function validateListPublicCommunities(value: unknown): ListPublicCommuni
 
 export function validateGetPublicCommunity(value: unknown): GetPublicCommunityInput {
   const input = objectWithKeys(value, ['community_id']);
+  return { community_id: communityId(input.community_id) };
+}
+
+export function validateJoinCommunity(value: unknown): JoinCommunityInput {
+  const input = objectWithKeys(value, ['community_id']);
+  return { community_id: communityId(input.community_id) };
+}
+
+export function validateLeaveCommunity(value: unknown): LeaveCommunityInput {
+  const input = objectWithKeys(value, ['community_id']);
+  return { community_id: communityId(input.community_id) };
+}
+
+export function validateGetMyMembershipTimeline(value: unknown): GetMyMembershipTimelineInput {
+  const input = objectWithKeys(value, ['community_id', 'offset', 'limit']);
+  const offset = 'offset' in input ? input.offset : 0;
+  const limit = 'limit' in input ? input.limit : 20;
   if (
-    typeof input.community_id !== 'string' ||
-    !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(input.community_id)
+    typeof offset !== 'number' ||
+    !Number.isSafeInteger(offset) ||
+    offset < 0 ||
+    offset > 10000 ||
+    typeof limit !== 'number' ||
+    !Number.isSafeInteger(limit) ||
+    limit < 1 ||
+    limit > 50
   )
     invalid();
-  return { community_id: input.community_id };
+  return {
+    ...(Object.hasOwn(input, 'community_id')
+      ? { community_id: communityId(input.community_id) }
+      : {}),
+    offset,
+    limit
+  };
+}
+
+export function validateAcceptInvitation(value: unknown): AcceptInvitationInput {
+  const input = objectWithKeys(value, ['token']);
+  if (typeof input.token !== 'string' || !/^[0-9a-f]{64}$/.test(input.token)) invalid();
+  return { token: input.token };
 }

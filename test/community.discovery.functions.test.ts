@@ -52,6 +52,7 @@ function client(
     select: vi.fn<(columns: string) => unknown>(),
     eq: vi.fn<(column: string, value: string) => unknown>(),
     filter: vi.fn<(column: string, operator: string, pattern: string) => unknown>(),
+    or: vi.fn<(filters: string) => unknown>(),
     order: vi.fn<(column: string, options: { ascending: boolean }) => unknown>(),
     range:
       vi.fn<
@@ -62,6 +63,7 @@ function client(
   query.select.mockReturnValue(query);
   query.eq.mockReturnValue(query);
   query.filter.mockReturnValue(query);
+  query.or.mockReturnValue(query);
   query.order.mockReturnValue(query);
   query.range.mockResolvedValue({ data: rows, error });
   query.maybeSingle.mockResolvedValue({ data: detail, error });
@@ -170,20 +172,25 @@ describe('public community discovery server functions', () => {
     });
   });
 
-  it('escapes regex metacharacters for case-insensitive literal substring search', async () => {
+  it('escapes regex and PostgREST syntax in both searchable columns', async () => {
     const authenticated = client();
     mocks.getServerClient.mockReturnValue(authenticated);
     await listPublicCommunities({
       data: { search: '  PáDel%_\\🎾.*[x]  ', offset: 10000, limit: 50 }
     });
-    expect(authenticated.query.filter).toHaveBeenCalledExactlyOnceWith(
-      'name',
-      'imatch',
-      'PáDel%_\\\\🎾\\.\\*\\[x\\]'
+    expect(authenticated.query.or).toHaveBeenCalledExactlyOnceWith(
+      'name.imatch."PáDel%_\\\\\\\\🎾\\\\.\\\\*\\\\[x\\\\]",city_label.imatch."PáDel%_\\\\\\\\🎾\\\\.\\\\*\\\\[x\\\\]"'
     );
+    expect(authenticated.query.eq).toHaveBeenCalledWith('visibility', 'public');
     expect(authenticated.query.range).toHaveBeenCalledWith(10000, 10050);
+    await listPublicCommunities({ data: { search: '") , visibility.eq.private, name.imatch.("' } });
+    const filter = authenticated.query.or.mock.lastCall?.[0] ?? '';
+    expect(filter).toContain('\\"');
+    expect(filter).toContain('\\(');
     await listPublicCommunities({ data: { search: '🎾'.repeat(80) } });
-    expect(authenticated.query.filter).toHaveBeenLastCalledWith('name', 'imatch', '🎾'.repeat(80));
+    expect(authenticated.query.or).toHaveBeenLastCalledWith(
+      `name.imatch."${'🎾'.repeat(80)}",city_label.imatch."${'🎾'.repeat(80)}"`
+    );
   });
 
   it('never advertises an offset beyond the validator cap', async () => {

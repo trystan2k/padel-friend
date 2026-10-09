@@ -1,5 +1,5 @@
+import { hasEdgeWhitespace, stripEdgeWhitespace } from '../../lib/edge-whitespace';
 import { isAvatarObjectKey } from './avatar-key';
-import { hasDisplayNameEdgeWhitespace, stripDisplayNameEdgeWhitespace } from './display-name';
 import { MAX_LEVEL, MIN_LEVEL } from './rating-config';
 
 export type PreferredSide = 'LEFT' | 'RIGHT' | 'EITHER';
@@ -47,8 +47,8 @@ function trimmedText(value: unknown, max: number): string {
 function displayNameText(value: unknown): string {
   if (typeof value !== 'string') throw new Error('INVALID_PLAYER_INPUT');
   // V1 rejects edge ASCII whitespace only; Unicode whitespace (e.g. NBSP) is accepted and not normalized.
-  if (hasDisplayNameEdgeWhitespace(value)) throw new Error('INVALID_PLAYER_INPUT');
-  const normalized = stripDisplayNameEdgeWhitespace(value);
+  if (hasEdgeWhitespace(value)) throw new Error('INVALID_PLAYER_INPUT');
+  const normalized = stripEdgeWhitespace(value);
   // PostgreSQL char_length counts Unicode code points, not UTF-16 code units.
   const length = Array.from(normalized).length;
   if (length > 80 || length === 0) throw new Error('INVALID_PLAYER_INPUT');
