@@ -2,7 +2,7 @@
 description: Expert code review agent that evaluates task implementations for correctness, quality, best practices, and improvement opportunities using stack-specific skills.
 mode: subagent
 model: openai/gpt-6.1-sol
-reasoningEffort: high
+reasoningEffort: medium
 temperature: 0
 permission:
   task: deny

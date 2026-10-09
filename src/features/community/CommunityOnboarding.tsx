@@ -111,7 +111,9 @@ export function CommunityOnboarding({ search, data }: { search: Search; data: Pa
         [community.id]:
           error instanceof Error && error.message === 'ALREADY_MEMBER_OR_PENDING'
             ? 'alreadyMember'
-            : 'joinFailed'
+            : error instanceof Error && error.message === 'MEMBERSHIP_INACTIVE'
+              ? 'membershipInactive'
+              : 'joinFailed'
       }));
     } finally {
       setJoining(null);
