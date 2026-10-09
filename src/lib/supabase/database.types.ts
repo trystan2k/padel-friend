@@ -371,6 +371,21 @@ export type Database = {
         }
         Returns: string
       }
+      get_community_member_by_id: {
+        Args: { p_community_id: string; p_membership_id: string }
+        Returns: {
+          activated_at: string
+          display_level: number
+          display_name: string
+          membership_id: string
+          reliability_percent: number
+          role: Database["public"]["Enums"]["community_member_role"]
+          status: Database["public"]["Enums"]["community_membership_status"]
+          user_id: string
+          valid_from: string
+          valid_until: string
+        }[]
+      }
       govern_community_member: {
         Args: { p_action: string; p_community_id: string; p_membership_id: string }
         Returns: {
@@ -386,6 +401,15 @@ export type Database = {
         Returns: {
           community_id: string
           status: Database["public"]["Enums"]["community_membership_status"]
+        }[]
+      }
+      leave_community: {
+        Args: { p_community_id: string }
+        Returns: {
+          community_id: string
+          membership_id: string
+          status: Database["public"]["Enums"]["community_membership_status"]
+          valid_until: string
         }[]
       }
       onboard_player: {

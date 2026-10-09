@@ -62,6 +62,28 @@ export const demoteCommunityMember = createServerFn({ method: 'POST' })
   .validator(validateMemberAction)
   .handler(({ data }) => runMemberAction(data, 'demote'));
 
+export const listMyAdminCommunities = createServerFn({ method: 'GET' }).handler(async () => {
+  const { client, userId } = await requireAuthenticatedClient();
+  const { data: memberships, error } = await client
+    .from('community_members')
+    .select('community_id')
+    .eq('user_id', userId)
+    .eq('role', 'admin')
+    .eq('status', 'active')
+    .is('valid_until', null)
+    .lte('valid_from', new Date().toISOString());
+  if (error) throw error;
+  const ids = (memberships ?? []).map(({ community_id }) => community_id);
+  if (!ids.length) return [];
+  const { data: communities, error: communityError } = await client
+    .from('communities')
+    .select('id,name')
+    .in('id', ids)
+    .order('name');
+  if (communityError) throw communityError;
+  return communities ?? [];
+});
+
 async function requireAdmin(communityId: string) {
   const { client } = await requireAuthenticatedClient();
   const { data, error } = await client.rpc('is_community_admin', { p_community_id: communityId });
@@ -69,6 +91,44 @@ async function requireAdmin(communityId: string) {
   if (!data) throw new Error('NOT_COMMUNITY_ADMIN');
   return client;
 }
+
+export const getCommunityAdminContext = createServerFn({ method: 'GET' })
+  .validator((value: unknown) => {
+    if (!value || typeof value !== 'object' || Array.isArray(value))
+      throw new Error('INVALID_COMMUNITY_INPUT');
+    if (
+      !('community_id' in value) ||
+      Object.keys(value).length !== 1 ||
+      typeof value.community_id !== 'string' ||
+      !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value.community_id)
+    )
+      throw new Error('INVALID_COMMUNITY_INPUT');
+    return { community_id: value.community_id };
+  })
+  .handler(async ({ data }) => {
+    const client = await requireAdmin(data.community_id);
+    const { data: community, error } = await client
+      .from('communities')
+      .select('id,name,city_label,description,visibility,join_policy')
+      .eq('id', data.community_id)
+      .single();
+    if (error) throw error;
+    return community;
+  });
+
+export const getCommunityMemberById = createServerFn({ method: 'GET' })
+  .validator(validateMemberAction)
+  .handler(async ({ data }) => {
+    const { client } = await requireAuthenticatedClient();
+    const { data: rows, error } = await client.rpc('get_community_member_by_id', {
+      p_community_id: data.community_id,
+      p_membership_id: data.membership_id
+    });
+    if (error) throwGovernanceError(error);
+    const member = rows?.[0];
+    if (!member) throw new Error('COMMUNITY_MEMBER_NOT_FOUND');
+    return member;
+  });
 
 export const searchCommunityMembers = createServerFn({ method: 'GET' })
   .validator(validateSearchMembers)

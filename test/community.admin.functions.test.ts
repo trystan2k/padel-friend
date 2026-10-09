@@ -10,8 +10,10 @@ vi.mock('@tanstack/react-start', () => ({
         validate = fn;
         return builder;
       },
-      handler: (fn: (context: { data: unknown }) => unknown) => (options: { data: unknown }) =>
-        fn({ data: validate(options.data) })
+      handler:
+        (fn: (context: { data: unknown }) => unknown) =>
+        (options: { data: unknown } = { data: undefined }) =>
+          fn({ data: validate(options.data) })
     };
     return builder;
   }
@@ -20,12 +22,14 @@ vi.mock('@tanstack/react-start/server', () => ({ setResponseHeader: mocks.header
 vi.mock('../src/lib/supabase/server', () => ({ getServerClient: mocks.client }));
 import {
   approveCommunityMember,
+  getCommunityMemberById,
   denyCommunityMember,
   removeCommunityMember,
   reactivateCommunityMember,
   promoteCommunityMember,
   demoteCommunityMember,
   issueInvitation,
+  listMyAdminCommunities,
   searchCommunityMembers
 } from '../src/features/community/community-admin.functions';
 import { validateVenue } from '../src/features/community/community-admin.validators';
@@ -73,6 +77,75 @@ beforeEach(() => {
   mocks.header.mockReset();
 });
 describe('admin function boundary', () => {
+  it('filters future-valid admin memberships in one server query without per-row RPCs', async () => {
+    const futureCommunityId = '44444444-4444-4444-8444-444444444444';
+    const memberships = [
+      { community_id, valid_from: new Date(Date.now() - 60_000).toISOString() },
+      { community_id: futureCommunityId, valid_from: new Date(Date.now() + 60_000).toISOString() }
+    ];
+    const membershipQuery = {
+      select: vi.fn<(columns: string) => unknown>(),
+      eq: vi.fn<(column: string, value: string) => unknown>(),
+      is: vi.fn<(column: string, value: null) => unknown>(),
+      lte: vi.fn<
+        (
+          column: string,
+          value: string
+        ) => Promise<{ data: { community_id: string }[]; error: null }>
+      >()
+    };
+    membershipQuery.select.mockReturnValue(membershipQuery);
+    membershipQuery.eq.mockReturnValue(membershipQuery);
+    membershipQuery.is.mockReturnValue(membershipQuery);
+    membershipQuery.lte.mockImplementation((column: string, value: string) =>
+      Promise.resolve({
+        data: memberships
+          .filter(({ valid_from }) =>
+            column === 'valid_from' ? Date.parse(valid_from) <= Date.parse(value) : true
+          )
+          .map(({ community_id: id }) => ({ community_id: id })),
+        error: null
+      })
+    );
+    const communityQuery = {
+      select: vi.fn<(columns: string) => unknown>(),
+      in: vi.fn<(column: string, values: string[]) => unknown>(),
+      order:
+        vi.fn<(column: string) => Promise<{ data: { id: string; name: string }[]; error: null }>>()
+    };
+    communityQuery.select.mockReturnValue(communityQuery);
+    communityQuery.in.mockReturnValue(communityQuery);
+    communityQuery.order.mockResolvedValue({
+      data: [{ id: community_id, name: 'Current admin community' }],
+      error: null
+    });
+    const client = {
+      auth: {
+        getClaims: vi
+          .fn<() => Promise<{ data: { claims: { sub: string } }; error: null }>>()
+          .mockResolvedValue({
+            data: { claims: { sub: membership_id } },
+            error: null
+          })
+      },
+      from: vi.fn<(table: string) => typeof membershipQuery | typeof communityQuery>((table) =>
+        table === 'community_members' ? membershipQuery : communityQuery
+      ),
+      rpc: vi.fn<() => unknown>()
+    };
+    mocks.client.mockReturnValue(client);
+
+    await expect(listMyAdminCommunities()).resolves.toEqual([
+      { id: community_id, name: 'Current admin community' }
+    ]);
+    expect(membershipQuery.eq).toHaveBeenNthCalledWith(1, 'user_id', membership_id);
+    expect(membershipQuery.eq).toHaveBeenNthCalledWith(2, 'role', 'admin');
+    expect(membershipQuery.eq).toHaveBeenNthCalledWith(3, 'status', 'active');
+    expect(membershipQuery.is).toHaveBeenCalledWith('valid_until', null);
+    expect(membershipQuery.lte).toHaveBeenCalledWith('valid_from', expect.any(String));
+    expect(communityQuery.in).toHaveBeenCalledWith('id', [community_id]);
+    expect(client.rpc).not.toHaveBeenCalled();
+  });
   it('declares all governance endpoints as module-level createServerFn chains', () => {
     const source = readFileSync(
       new URL('../src/features/community/community-admin.functions.ts', import.meta.url),
@@ -96,6 +169,58 @@ describe('admin function boundary', () => {
       'INVALID_COMMUNITY_INPUT'
     );
   });
+  it('looks up a membership by scoped ID and separates missing rows from database failures', async () => {
+    const member = {
+      membership_id,
+      user_id: '33333333-3333-4333-8333-333333333333',
+      display_name: 'Outside first page',
+      role: 'member',
+      status: 'inactive',
+      valid_from: '2026-10-01T00:00:00Z',
+      valid_until: '2026-10-02T00:00:00Z',
+      activated_at: '2026-10-01T00:00:00Z',
+      display_level: 3,
+      reliability_percent: 80
+    };
+    const rpc = vi.fn<
+      () => Promise<{
+        data: (typeof member)[] | null;
+        error: { code: string; message?: string } | null;
+      }>
+    >();
+    rpc.mockResolvedValue({ data: [member], error: null });
+    const client = {
+      auth: {
+        getClaims: vi
+          .fn<
+            () => Promise<{
+              data: { claims: { sub: string } } | null;
+              error: Error | null;
+            }>
+          >()
+          .mockResolvedValue({ data: { claims: { sub: membership_id } }, error: null })
+      },
+      rpc
+    };
+    mocks.client.mockReturnValue(client);
+    await expect(
+      getCommunityMemberById({ data: { community_id, membership_id } })
+    ).resolves.toEqual(member);
+    expect(client.rpc).toHaveBeenCalledWith('get_community_member_by_id', {
+      p_community_id: community_id,
+      p_membership_id: membership_id
+    });
+    client.rpc.mockResolvedValueOnce({ data: [], error: null });
+    await expect(getCommunityMemberById({ data: { community_id, membership_id } })).rejects.toThrow(
+      'COMMUNITY_MEMBER_NOT_FOUND'
+    );
+    const readFailure = { code: 'XX000', message: 'database unavailable' };
+    client.rpc.mockResolvedValueOnce({ data: null, error: readFailure });
+    await expect(getCommunityMemberById({ data: { community_id, membership_id } })).rejects.toBe(
+      readFailure
+    );
+  });
+
   it('rejects unknown action fields and invalid IDs before client access', async () => {
     for (const fn of functions) {
       for (const data of [
