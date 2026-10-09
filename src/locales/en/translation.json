@@ -35,6 +35,7 @@
     "joined": "Joined community",
     "requestPending": "Request sent",
     "alreadyMember": "Already a member or request pending",
+    "membershipInactive": "Your membership is inactive. Contact a community Admin to reactivate it.",
     "joinFailed": "Could not join. Please try again.",
     "emptySearch": "No communities match your search.",
     "noCommunities": "No public communities yet.",
