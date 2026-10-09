@@ -91,7 +91,7 @@ Rules:
 - Never include issue, epic, or task identifiers in the commit message, the commit body, or the PR title/body unless the user explicitly asks.
 - Stage exactly the files of the unit of work, using the per-task file list captured in the context bundle. Do not sweep unrelated or later-task files into an early commit.
 - **Push once, at the end.** The pre-push hook runs the full gate, so one push means one full-gate run. Never push per commit.
-- One PR per scope (see Delivery Scopes). If the branch diff against the base exceeds **800 changed lines or 20 files**, stop before the review phase and ask the user to split the scope into smaller PRs. Never open an oversized PR.
+- One PR per scope (see Delivery Scopes). Keep the branch diff against the base under roughly **1500 changed lines or 40 files** as a **recommendation** to avoid an unwieldy PR — this is a soft guideline, not a hard limit. If a task legitimately needs more, keep it in the same PR and proceed; never split a coherent unit of work solely to satisfy the guideline.
 
 ## Golden Rule
 
@@ -225,7 +225,7 @@ Follow these steps in order.
 
 6. Code and Architecture Review
    - **Start timer** for Code and Architecture Review phase.
-   - **PR size gate**: compute the diff against the base branch (`git diff --shortstat <base>..HEAD`). If it exceeds 800 changed lines or 20 files, stop here, report the size to the user, and ask how to split the scope. Do not review, fix, or open an oversized PR.
+   - **PR size check (recommendation)**: compute the diff against the base branch (`git diff --shortstat <base>..HEAD`). If it exceeds roughly 1500 changed lines or 40 files, note the size to the user and suggest splitting only if the scope is genuinely separable. This is a soft guideline, not a gate — do not stop the review, block fixes, or refuse to open the PR because of it.
    - Build the **context bundle once**: `docs/plan/<ID>-bundle.md`, containing the scope title and description, every unit of work with its acceptance criteria, the plan file path and its implementation-step summary, the per-unit changed-file list and commit hash, the full diff, and the fast-gate result. Every downstream reviewer and fixer receives **this one path** instead of re-deriving context. Write it once; update only the QA-result line when a gate is re-run.
    - Determine the **review scope** from the changed-file list in the bundle:
      - `subagent/code-review-specialist` — always.
