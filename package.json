@@ -24,7 +24,7 @@
     "db:start": "supabase start",
     "db:stop": "supabase stop",
     "db:reset": "supabase db reset",
-    "db:types": "supabase gen types typescript --local --schema public,storage,graphql_public > src/lib/supabase/database.types.ts"
+    "db:types": "pnpm exec supabase gen types typescript --local --schema public,storage,graphql_public > src/lib/supabase/database.types.ts && pnpm exec oxfmt --write src/lib/supabase/database.types.ts"
   },
   "dependencies": {
     "@base-ui/react": "~1.7.0",
