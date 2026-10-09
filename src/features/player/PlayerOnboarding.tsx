@@ -6,7 +6,7 @@ import { HeroCard } from '../../components/ui/HeroCard';
 import { StepBadge } from '../../components/ui/StepBadge';
 import { SurfaceCard } from '../../components/ui/SurfaceCard';
 import { TextField } from '../../components/ui/TextField';
-import { stripDisplayNameEdgeWhitespace } from './display-name';
+import { stripEdgeWhitespace } from '../../lib/edge-whitespace';
 import { onboardPlayer } from './player.functions';
 import { INITIAL_RELIABILITY_PERCENT, LEVEL_STEP, MAX_LEVEL, MIN_LEVEL } from './rating-config';
 import { validateInitialLevel, type PreferredSide } from './player.validators';
@@ -38,7 +38,7 @@ export function PlayerOnboarding() {
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const nextErrors: typeof errors = {};
-    const normalizedName = stripDisplayNameEdgeWhitespace(name);
+    const normalizedName = stripEdgeWhitespace(name);
     if (!normalizedName || Array.from(normalizedName).length > 80)
       nextErrors.name = 'onboarding.validationName';
     if (!side) nextErrors.side = 'onboarding.validationSide';
@@ -67,7 +67,7 @@ export function PlayerOnboarding() {
         }
       });
       navigating = true;
-      window.location.assign('/dashboard');
+      window.location.assign('/onboarding/community');
     } catch (error) {
       if (error instanceof Error && error.message === 'UNAUTHENTICATED') {
         navigating = true;

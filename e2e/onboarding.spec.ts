@@ -52,6 +52,7 @@ type LocaleCopy = {
     validationSide: string;
     validationLevel: string;
   };
+  communityOnboarding: { skip: string };
   profile: {
     title: string;
     edit: string;
@@ -172,6 +173,15 @@ async function register(page: Page, email: string, copy: LocaleCopy = en): Promi
   await waitForHydratedPage(page);
 }
 
+async function skipCommunity(page: Page): Promise<void> {
+  await expect(page).toHaveURL(/\/onboarding\/community$/);
+  await waitForHydratedPage(page);
+  await page.getByRole('button', { name: en.communityOnboarding.skip }).click();
+  await expect(page).toHaveURL(/\/dashboard$/);
+  await expect(page.getByRole('heading', { name: en.profile.title })).toBeVisible();
+  await waitForHydratedPage(page);
+}
+
 async function completeOnboarding(page: Page, name: string, level: string): Promise<void> {
   await page.getByLabel(en.onboarding.name).fill(name);
   await page.getByLabel(en.onboarding.preciseLevel).fill(level);
@@ -182,7 +192,7 @@ async function completeOnboarding(page: Page, name: string, level: string): Prom
   // The form is hydrated once a controlled re-render keeps the radio checked.
   await expect(radio).toBeChecked();
   await page.getByRole('button', { name: en.onboarding.save }).click();
-  await expect(page).toHaveURL(/\/dashboard$/);
+  await skipCommunity(page);
 }
 
 test('dominant hand stays optional and fits all locales at mobile width', async ({ page }) => {
@@ -250,7 +260,7 @@ test('dominant hand stays optional and fits all locales at mobile width', async 
     .getByRole('radio', { name: en.onboarding.sideLeftShort })
     .check();
   await page.getByRole('button', { name: en.onboarding.save }).click();
-  await expect(page).toHaveURL(/\/dashboard$/);
+  await skipCommunity(page);
 
   await page.getByRole('button', { name: en.profile.edit }).click();
   const dominantHandSelect = page.getByLabel(en.profile.dominantHand);
@@ -341,7 +351,7 @@ test('a new signup is blocked by onboarding, rejects invalid input, then lands o
   await expect(sideRadio).toBeChecked();
   await expect(page.locator('output')).toHaveText('3.0');
   await page.getByRole('button', { name: en.onboarding.save }).click();
-  await expect(page).toHaveURL(/\/dashboard$/);
+  await skipCommunity(page);
   await expect(page.getByRole('heading', { name: en.profile.title })).toBeVisible();
 
   // The profile header action is a 44×44 icon-only button carrying its own accessible name
@@ -530,7 +540,7 @@ test('first-time onboarding accepts a padded display name and lands on the trimm
   await expect(radio).toBeChecked();
   await page.getByRole('button', { name: en.onboarding.save }).click();
 
-  await expect(page).toHaveURL(/\/dashboard$/);
+  await skipCommunity(page);
   await expect(page.getByRole('heading', { name: 'Onboard Trim' })).toBeVisible();
 });
 
@@ -554,7 +564,7 @@ test('an NBSP-edged display name is saved verbatim and persists with its NBSPs',
   // The form is hydrated once a controlled re-render keeps the radio checked.
   await expect(radio).toBeChecked();
   await page.getByRole('button', { name: en.onboarding.save }).click();
-  await expect(page).toHaveURL(/\/dashboard$/);
+  await skipCommunity(page);
 
   // The identity card renders exactly one level-2 heading (the display name); locating it by
   // level avoids the whitespace-normalized accessible-name matching. toHaveText normalizes
@@ -609,7 +619,7 @@ test('the emptiness rule is the ASCII class end-to-end: whitespace-only is rejec
   const nbspOnly = '\u00A0\u00A0';
   await page.getByLabel(en.onboarding.name).fill(nbspOnly);
   await page.getByRole('button', { name: en.onboarding.save }).click();
-  await expect(page).toHaveURL(/\/dashboard$/);
+  await skipCommunity(page);
   await expect(page.getByText(en.onboarding.validationName)).toHaveCount(0);
 
   const nameHeading = page.getByRole('heading', { level: 2 });
@@ -863,7 +873,7 @@ test.describe('onboarding save failure handling', () => {
     // With the outage gone, the same intact form state saves without re-entering anything.
     await page.unroute('**/_serverFn/**');
     await page.getByRole('button', { name: en.onboarding.save }).click();
-    await expect(page).toHaveURL(/\/dashboard$/);
+    await skipCommunity(page);
     await expect(page.getByRole('heading', { name: 'Nia Retry' })).toBeVisible();
   });
 
