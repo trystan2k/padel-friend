@@ -312,4 +312,19 @@ describe('community onboarding', () => {
     await userEvent.click(screen.getByRole('button', { name: 'CREATE COMMUNITY' }));
     expect(await screen.findByText('Could not create community. Please try again.')).toBeTruthy();
   });
+
+  it('shows inactive membership as terminal instead of offering a retry', async () => {
+    mocks.join.mockRejectedValue(new Error('MEMBERSHIP_INACTIVE'));
+    mount();
+    const button = screen.getByRole('button', { name: 'JOIN COMMUNITY' });
+    await userEvent.click(button);
+    expect(
+      await screen.findByText(
+        'Your membership is inactive. Contact a community Admin to reactivate it.'
+      )
+    ).toBeTruthy();
+    expect(button.hasAttribute('disabled')).toBe(true);
+    await userEvent.click(button);
+    expect(mocks.join).toHaveBeenCalledOnce();
+  });
 });

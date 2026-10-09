@@ -41,6 +41,7 @@ import {
 } from '../src/features/community/community-admin.functions';
 import {
   acceptInvitation,
+  leaveCommunity,
   updateCommunitySettings
 } from '../src/features/community/community.functions';
 
@@ -334,7 +335,11 @@ describe('community governance with real JWTs', () => {
     await membership(admin, id, member, 'active');
     const other = await community(outsider);
     serverClient.current = admin.client;
-    expect(await listMyAdminCommunities()).toContainEqual(expect.objectContaining({ id }));
+    await vi.waitFor(
+      async () =>
+        expect(await listMyAdminCommunities()).toContainEqual(expect.objectContaining({ id })),
+      { timeout: 5000, interval: 25 }
+    );
     expect(await listMyAdminCommunities()).not.toContainEqual(
       expect.objectContaining({ id: other })
     );
@@ -541,5 +546,55 @@ describe('community governance with real JWTs', () => {
       data: { community_id: id, join_policy: 'admin_approval' }
     });
     expect(updated.settings).toEqual({ keep: 'yes' });
+  });
+
+  it('blocks final-admin leave and serializes simultaneous admin departures', async () => {
+    const soloCommunity = await community(admin);
+    const soloAdmin = await admin.client
+      .from('community_members')
+      .select('id,status,role,valid_until')
+      .eq('community_id', soloCommunity)
+      .eq('user_id', admin.id)
+      .single();
+    expect(soloAdmin.error).toBeNull();
+    const soloAudit = await audit(admin, soloCommunity);
+    serverClient.current = admin.client;
+    await expect(leaveCommunity({ data: { community_id: soloCommunity } })).rejects.toThrow(
+      'FINAL_COMMUNITY_ADMIN'
+    );
+    expect(
+      (await admin.client.rpc('leave_community', { p_community_id: soloCommunity })).error?.code
+    ).toBe('PL002');
+    const unchanged = await admin.client
+      .from('community_members')
+      .select('id,status,role,valid_until')
+      .eq('id', soloAdmin.data!.id)
+      .single();
+    expect(unchanged.error).toBeNull();
+    expect(unchanged.data).toEqual(soloAdmin.data);
+    expect(await audit(admin, soloCommunity)).toEqual(soloAudit);
+
+    const sharedCommunity = await community(admin);
+    await membership(admin, sharedCommunity, alternate, 'active', 'admin');
+    const before = await audit(admin, sharedCommunity);
+    const [adminLeave, alternateLeave] = await Promise.all([
+      admin.client.rpc('leave_community', { p_community_id: sharedCommunity }),
+      alternate.client.rpc('leave_community', { p_community_id: sharedCommunity })
+    ]);
+    expect([adminLeave, alternateLeave].filter(({ error }) => !error)).toHaveLength(1);
+    expect([adminLeave, alternateLeave].find(({ error }) => error)?.error?.code).toBe('PL002');
+    const survivor = adminLeave.error ? admin : alternate;
+    const persisted = await survivor.client
+      .from('community_members')
+      .select('user_id,role,status,valid_until')
+      .eq('community_id', sharedCommunity);
+    expect(persisted.error).toBeNull();
+    expect(
+      persisted.data?.filter(
+        (row) => row.role === 'admin' && row.status === 'active' && row.valid_until === null
+      )
+    ).toHaveLength(1);
+    expect(await audit(survivor, sharedCommunity)).toHaveLength(before.length + 1);
+    serverClient.current = null;
   });
 });

@@ -403,6 +403,15 @@ export type Database = {
           status: Database["public"]["Enums"]["community_membership_status"]
         }[]
       }
+      leave_community: {
+        Args: { p_community_id: string }
+        Returns: {
+          community_id: string
+          membership_id: string
+          status: Database["public"]["Enums"]["community_membership_status"]
+          valid_until: string
+        }[]
+      }
       onboard_player: {
         Args: {
           p_bio?: string

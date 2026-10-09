@@ -35,6 +35,7 @@
     "joined": "Você entrou na comunidade",
     "requestPending": "Pedido enviado",
     "alreadyMember": "Você já participa ou tem um pedido pendente",
+    "membershipInactive": "Sua associação está inativa. Entre em contato com um administrador da comunidade para reativá-la.",
     "joinFailed": "Não foi possível entrar. Tente novamente.",
     "emptySearch": "Nenhuma comunidade corresponde à busca.",
     "noCommunities": "Ainda não há comunidades públicas.",
