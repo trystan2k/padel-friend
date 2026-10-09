@@ -31,7 +31,9 @@ import {
   acceptInvitation,
   createCommunity,
   getPublicCommunity,
+  getMyMembershipTimeline,
   joinCommunity,
+  leaveCommunity,
   listPublicCommunities,
   updateCommunitySettings
 } from '../src/features/community/community.functions';
@@ -345,7 +347,36 @@ describe.skipIf(environment.env === null)('community domain (local Supabase inte
       expect(created.error).toBeNull();
       probeIds.push(created.data);
     }
+    const cityOnly = `City-(x),"\\-${crypto.randomUUID()}`;
+    const cityRow = await admin.client.rpc('create_community', {
+      p_name: `Unrelated-${crypto.randomUUID()}`,
+      p_visibility: 'public',
+      p_join_policy: 'instant',
+      p_city_label: cityOnly
+    });
+    const hiddenCity = await admin.client.rpc('create_community', {
+      p_name: `Hidden-${crypto.randomUUID()}`,
+      p_visibility: 'private',
+      p_join_policy: 'admin_approval',
+      p_city_label: cityOnly
+    });
+    expect(cityRow.error).toBeNull();
+    expect(hiddenCity.error).toBeNull();
     serverClient.current = outsider.client;
+    for (const term of [
+      cityOnly,
+      'CITY-(X),"\\-',
+      ')',
+      '"',
+      '\\',
+      '") , visibility.eq.private, name.imatch.("'
+    ]) {
+      const results = await listPublicCommunities({ data: { search: term, limit: 50 } });
+      expect(results.communities.map(({ id }) => id).includes(cityRow.data)).toBe(
+        term !== '") , visibility.eq.private, name.imatch.("'
+      );
+      expect(results.communities.map(({ id }) => id)).not.toContain(hiddenCity.data);
+    }
     for (const [search, included, excluded] of [
       ['*', [0], [1, 2, 3, 4, 5]],
       ['Star*', [0], [1]],
@@ -1198,7 +1229,11 @@ describe.skipIf(environment.env === null)('community domain (local Supabase inte
       (
         await owner.client
           .from('community_invitations')
-          .update({ revoked_at: new Date().toISOString() })
+          .update({
+            revoked_at: new Date(
+              Math.max(Date.now(), Date.parse(revoked.createdAt) + 1000)
+            ).toISOString()
+          })
           .eq('id', revoked.id)
       ).error
     ).toBeNull();
@@ -1240,6 +1275,347 @@ describe.skipIf(environment.env === null)('community domain (local Supabase inte
     expect(
       (await anon().rpc('accept_community_invitation', { p_token: racing.raw })).error?.code
     ).toBe('42501');
+    serverClient.current = null;
+  }, 90000);
+
+  it('closes self-leave and removal intervals, blocks inactive re-entry, and exposes only owned timeline rows', async () => {
+    const [owner, leaver, invitee, lifecycleOutsider] = await Promise.all([
+      actor('lifecycle-owner'),
+      actor('lifecycle-leaver'),
+      actor('lifecycle-invitee'),
+      actor('lifecycle-outsider')
+    ]);
+    async function create(
+      visibility: 'public' | 'private',
+      joinPolicy: 'instant' | 'admin_approval'
+    ) {
+      const result = await owner.client.rpc('create_community', {
+        p_name: `Lifecycle ${crypto.randomUUID()}`,
+        p_visibility: visibility,
+        p_join_policy: joinPolicy
+      });
+      expect(result.error).toBeNull();
+      if (typeof result.data !== 'string') throw new Error('Community fixture creation failed');
+      return result.data;
+    }
+    async function invite(communityId: string, inviteeActor: Actor) {
+      const raw = Array.from(crypto.getRandomValues(new Uint8Array(32)), (byte) =>
+        byte.toString(16).padStart(2, '0')
+      ).join('');
+      const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(raw));
+      const tokenHash = Array.from(new Uint8Array(digest), (byte) =>
+        byte.toString(16).padStart(2, '0')
+      ).join('');
+      const inserted = await owner.client
+        .from('community_invitations')
+        .insert({
+          community_id: communityId,
+          invitee_user_id: inviteeActor.id,
+          token_hash: tokenHash,
+          expires_at: new Date(Date.now() + 86400000).toISOString()
+        })
+        .select('id')
+        .single();
+      expect(inserted.error).toBeNull();
+      return { id: inserted.data!.id, raw };
+    }
+    async function playerRows(user: Actor) {
+      const profile = await user.client
+        .from('player_profiles')
+        .select('*')
+        .eq('user_id', user.id)
+        .single();
+      const rating = await user.client
+        .from('global_player_ratings')
+        .select('*')
+        .eq('user_id', user.id)
+        .single();
+      expect(profile.error).toBeNull();
+      expect(rating.error).toBeNull();
+      return { profile: profile.data, rating: rating.data };
+    }
+    for (const user of [leaver, invitee]) {
+      const onboarded = await user.client.rpc('onboard_player', {
+        p_display_name: `Lifecycle ${crypto.randomUUID().slice(0, 8)}`,
+        p_preferred_side: 'EITHER',
+        p_initial_level: 3.2
+      });
+      expect(onboarded.error).toBeNull();
+    }
+    const leaverPlayerRows = await playerRows(leaver);
+    const inviteePlayerRows = await playerRows(invitee);
+
+    const lifecyclePublicId = await create('public', 'instant');
+    serverClient.current = leaver.client;
+    await expect(
+      joinCommunity({ data: { community_id: lifecyclePublicId } })
+    ).resolves.toMatchObject({
+      community_id: lifecyclePublicId,
+      status: 'active'
+    });
+    const beforeLeave = (await rows(owner.client, 'community_members', lifecyclePublicId)).find(
+      (row) => row.user_id === leaver.id
+    )!;
+    const auditBeforeLeave = await rows(owner.client, 'community_audit_log', lifecyclePublicId);
+    await expect(
+      leaveCommunity({ data: { community_id: lifecyclePublicId } })
+    ).resolves.toMatchObject({
+      membership_id: beforeLeave.id,
+      community_id: lifecyclePublicId,
+      status: 'inactive'
+    });
+    const afterLeave = (await rows(owner.client, 'community_members', lifecyclePublicId)).find(
+      (row) => row.id === beforeLeave.id
+    )!;
+    expect(afterLeave).toMatchObject({
+      id: beforeLeave.id,
+      user_id: leaver.id,
+      role: beforeLeave.role,
+      status: 'inactive',
+      valid_from: beforeLeave.valid_from,
+      activated_at: beforeLeave.activated_at
+    });
+    expect(afterLeave.valid_until).toBeTruthy();
+    const { status: _beforeStatus, valid_until: _beforeUntil, ...beforeFields } = beforeLeave;
+    const { status: _afterStatus, valid_until: _afterUntil, ...afterFields } = afterLeave;
+    expect(afterFields).toEqual(beforeFields);
+    const auditAfterLeave = await rows(owner.client, 'community_audit_log', lifecyclePublicId);
+    expect(auditAfterLeave).toHaveLength(auditBeforeLeave.length + 1);
+    const leaveEvents = auditAfterLeave.filter(
+      (event) => !auditBeforeLeave.some((previous) => previous.id === event.id)
+    );
+    expect(leaveEvents).toHaveLength(1);
+    expect(leaveEvents[0]).toMatchObject({
+      actor_user_id: leaver.id,
+      entity: 'community_members',
+      entity_id: beforeLeave.id,
+      action: 'UPDATE',
+      details: { role: beforeLeave.role, status: 'inactive' }
+    });
+    await expect(leaveCommunity({ data: { community_id: lifecyclePublicId } })).rejects.toThrow(
+      'COMMUNITY_MEMBERSHIP_NOT_OPEN'
+    );
+    serverClient.current = lifecycleOutsider.client;
+    await expect(leaveCommunity({ data: { community_id: lifecyclePublicId } })).rejects.toThrow(
+      'COMMUNITY_MEMBERSHIP_NOT_OPEN'
+    );
+    await expect(leaveCommunity({ data: { community_id: crypto.randomUUID() } })).rejects.toThrow(
+      'COMMUNITY_MEMBERSHIP_NOT_OPEN'
+    );
+    serverClient.current = leaver.client;
+    await expect(joinCommunity({ data: { community_id: lifecyclePublicId } })).rejects.toThrow(
+      'MEMBERSHIP_INACTIVE'
+    );
+    expect(
+      (
+        await leaver.client.rpc('join_public_community', {
+          p_community_id: lifecyclePublicId
+        })
+      ).error?.code
+    ).toBe('PJ008');
+    expect(
+      (await rows(owner.client, 'community_members', lifecyclePublicId)).filter(
+        (row) => row.user_id === leaver.id
+      )
+    ).toHaveLength(1);
+    const timeline = await getMyMembershipTimeline({
+      data: { community_id: lifecyclePublicId }
+    });
+    expect(timeline).toEqual({
+      intervals: [
+        {
+          membership_id: beforeLeave.id,
+          community_id: lifecyclePublicId,
+          role: beforeLeave.role,
+          status: 'inactive',
+          valid_from: beforeLeave.valid_from,
+          valid_until: afterLeave.valid_until,
+          activated_at: beforeLeave.activated_at
+        }
+      ],
+      next_offset: null
+    });
+    expect(
+      (await anon().rpc('leave_community', { p_community_id: lifecyclePublicId })).error?.code
+    ).toBe('42501');
+
+    const approvalId = await create('public', 'admin_approval');
+    serverClient.current = lifecycleOutsider.client;
+    await expect(joinCommunity({ data: { community_id: approvalId } })).resolves.toMatchObject({
+      community_id: approvalId,
+      status: 'pending'
+    });
+    const lifecyclePendingRow = (await rows(owner.client, 'community_members', approvalId)).find(
+      (row) => row.user_id === lifecycleOutsider.id
+    )!;
+    expect(lifecyclePendingRow.activated_at).toBeNull();
+    await expect(leaveCommunity({ data: { community_id: approvalId } })).resolves.toMatchObject({
+      membership_id: lifecyclePendingRow.id,
+      community_id: approvalId,
+      status: 'inactive'
+    });
+    const withdrawn = (await rows(owner.client, 'community_members', approvalId)).find(
+      (row) => row.id === lifecyclePendingRow.id
+    )!;
+    expect(withdrawn).toMatchObject({
+      status: 'inactive',
+      valid_from: lifecyclePendingRow.valid_from,
+      activated_at: null
+    });
+    expect(withdrawn.valid_until).toBeTruthy();
+    await expect(joinCommunity({ data: { community_id: approvalId } })).rejects.toThrow(
+      'MEMBERSHIP_INACTIVE'
+    );
+
+    const lifecyclePrivateId = await create('private', 'admin_approval');
+    const venue = await owner.client
+      .from('community_venues')
+      .insert({ community_id: lifecyclePrivateId, name: 'Lifecycle Court' })
+      .select('id,name')
+      .single();
+    expect(venue.error).toBeNull();
+    const venueSnapshot = venue.data;
+    const originalInvitation = await invite(lifecyclePrivateId, invitee);
+    serverClient.current = invitee.client;
+    await expect(acceptInvitation({ data: { token: originalInvitation.raw } })).resolves.toEqual({
+      community_id: lifecyclePrivateId,
+      status: 'pending'
+    });
+    const lifecyclePending = (
+      await rows(owner.client, 'community_members', lifecyclePrivateId)
+    ).find((row) => row.user_id === invitee.id)!;
+    expect(lifecyclePending.activated_at).toBeNull();
+    expect(
+      (
+        await owner.client.rpc('govern_community_member', {
+          p_community_id: lifecyclePrivateId,
+          p_membership_id: lifecyclePending.id,
+          p_action: 'approve'
+        })
+      ).error
+    ).toBeNull();
+    const active = (await rows(owner.client, 'community_members', lifecyclePrivateId)).find(
+      (row) => row.id === lifecyclePending.id
+    )!;
+    expect(active.status).toBe('active');
+    const removal = await owner.client.rpc('govern_community_member', {
+      p_community_id: lifecyclePrivateId,
+      p_membership_id: active.id,
+      p_action: 'remove'
+    });
+    expect(removal.error).toBeNull();
+    const removed = (await rows(owner.client, 'community_members', lifecyclePrivateId)).find(
+      (row) => row.id === active.id
+    )!;
+    expect(removed).toMatchObject({
+      id: active.id,
+      status: 'inactive',
+      valid_from: active.valid_from,
+      activated_at: active.activated_at
+    });
+    expect(removed.valid_until).toBeTruthy();
+    const removedSnapshot = { ...removed };
+    expect(await rows(invitee.client, 'community_members', lifecyclePrivateId)).toMatchObject([
+      { id: removed.id, status: 'inactive', valid_until: removed.valid_until }
+    ]);
+    expect(
+      (
+        await invitee.client
+          .from('community_venues')
+          .select('id,name')
+          .eq('community_id', lifecyclePrivateId)
+      ).data
+    ).toEqual([]);
+
+    const blockedInvitation = await invite(lifecyclePrivateId, invitee);
+    serverClient.current = invitee.client;
+    await expect(acceptInvitation({ data: { token: blockedInvitation.raw } })).rejects.toThrow(
+      'MEMBERSHIP_INACTIVE'
+    );
+    expect(
+      (
+        await invitee.client.rpc('accept_community_invitation', {
+          p_token: blockedInvitation.raw
+        })
+      ).error?.code
+    ).toBe('PJ008');
+    const unused = await owner.client
+      .from('community_invitations')
+      .select('redeemed_at')
+      .eq('id', blockedInvitation.id)
+      .single();
+    expect(unused.error).toBeNull();
+    expect(unused.data?.redeemed_at).toBeNull();
+    expect(
+      (await rows(owner.client, 'community_members', lifecyclePrivateId)).filter(
+        (row) => row.user_id === invitee.id
+      )
+    ).toHaveLength(1);
+
+    const reactivated = await owner.client.rpc('govern_community_member', {
+      p_community_id: lifecyclePrivateId,
+      p_membership_id: removed.id,
+      p_action: 'reactivate'
+    });
+    expect(reactivated.error).toBeNull();
+    const replacementId = reactivated.data?.[0]?.membership_id;
+    expect(replacementId).toBeTruthy();
+    expect(replacementId).not.toBe(removed.id);
+    expect(
+      (await rows(owner.client, 'community_members', lifecyclePrivateId)).find(
+        (row) => row.id === removed.id
+      )
+    ).toEqual(removedSnapshot);
+    expect(
+      (await rows(owner.client, 'community_members', lifecyclePrivateId)).find(
+        (row) => row.id === replacementId
+      )
+    ).toMatchObject({ status: 'active', role: 'member', valid_until: null });
+    expect(
+      (
+        await invitee.client
+          .from('community_venues')
+          .select('id,name')
+          .eq('community_id', lifecyclePrivateId)
+      ).data
+    ).toEqual([venueSnapshot]);
+    expect(
+      (await owner.client.from('community_venues').select('id,name').eq('id', venueSnapshot!.id))
+        .data
+    ).toEqual([venueSnapshot]);
+    await expect(acceptInvitation({ data: { token: blockedInvitation.raw } })).rejects.toThrow(
+      'ALREADY_MEMBER_OR_PENDING'
+    );
+    expect(
+      (
+        await owner.client
+          .from('community_invitations')
+          .select('redeemed_at')
+          .eq('id', blockedInvitation.id)
+          .single()
+      ).data?.redeemed_at
+    ).toBeNull();
+
+    serverClient.current = invitee.client;
+    const inviteeTimeline = await getMyMembershipTimeline({
+      data: { community_id: lifecyclePrivateId }
+    });
+    expect(inviteeTimeline.intervals).toHaveLength(2);
+    expect(
+      inviteeTimeline.intervals.map(({ membership_id, status }) => ({ membership_id, status }))
+    ).toEqual([
+      { membership_id: removed.id, status: 'inactive' },
+      { membership_id: replacementId, status: 'active' }
+    ]);
+    serverClient.current = owner.client;
+    const ownerTimeline = await getMyMembershipTimeline({
+      data: { community_id: lifecyclePrivateId }
+    });
+    expect(ownerTimeline.intervals).toHaveLength(1);
+    expect(ownerTimeline.intervals[0]?.membership_id).not.toBe(removed.id);
+    expect(ownerTimeline.intervals[0]?.membership_id).not.toBe(replacementId);
+    expect(await playerRows(leaver)).toEqual(leaverPlayerRows);
+    expect(await playerRows(invitee)).toEqual(inviteePlayerRows);
     serverClient.current = null;
   }, 90000);
 });

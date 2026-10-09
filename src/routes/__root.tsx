@@ -42,6 +42,7 @@ function Root() {
         '/login',
         '/onboarding',
         '/onboarding/account',
+        '/onboarding/community',
         '/forgot-password',
         '/reset-password'
       ].includes(state.location.pathname)

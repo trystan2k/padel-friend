@@ -1,8 +1,8 @@
 ---
 description: Senior implementation agent that executes approved tasks and deepthink plans using stack-specific best practices and project conventions.
 mode: subagent
-model: openai/gpt-6-sol
-reasoningEffort: medium
+model: openai/gpt-6-luna
+reasoningEffort: high
 temperature: 0
 permission:
   task: allow

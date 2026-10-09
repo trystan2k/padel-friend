@@ -16,6 +16,14 @@ const playerFunctions = vi.hoisted(() => ({
   completeAvatarUpload: vi.fn<() => Promise<void>>()
 }));
 vi.mock('../src/features/player/player.functions', () => playerFunctions);
+const discovery = vi.hoisted(() => ({
+  listPublicCommunities: vi.fn<() => Promise<{ communities: []; next_offset: null }>>()
+}));
+vi.mock('../src/features/community/community.functions', () => ({
+  listPublicCommunities: discovery.listPublicCommunities,
+  joinCommunity: vi.fn<() => void>(),
+  createCommunity: vi.fn<() => void>()
+}));
 
 // The app root's beforeLoad reads the locale/theme server functions during router.load();
 // they are irrelevant to the auth guards, so both modules are stubbed for the test tree.
@@ -43,6 +51,7 @@ const routerForGuards = createRouter({ routeTree, history: createMemoryHistory()
 const LoginRoute = routerForGuards.routesById['/login'];
 const HomeRoute = routerForGuards.routesById['/'];
 const AccountRoute = routerForGuards.routesById['/onboarding_/account'];
+const CommunityRoute = routerForGuards.routesById['/onboarding_/community'];
 const OnboardingRoute = routerForGuards.routesById['/onboarding'];
 const ProtectedRoute = routerForGuards.routesById['/_protected'];
 const ForgotPasswordRoute = routerForGuards.routesById['/forgot-password'];
@@ -84,6 +93,7 @@ async function redirectOf(guard: Promise<unknown>): Promise<ReturnType<typeof th
 const loginGuard = guardOf(LoginRoute.options, '/login');
 const homeGuard = guardOf(HomeRoute.options, '/');
 const accountGuard = guardOf(AccountRoute.options, '/onboarding/account');
+const communityGuard = guardOf(CommunityRoute.options, '/onboarding/community');
 const onboardingGuard = guardOf(OnboardingRoute.options, '/onboarding');
 const protectedGuard = guardOf(ProtectedRoute.options, '/_protected');
 const forgotPasswordGuard = guardOf(ForgotPasswordRoute.options, '/forgot-password');
@@ -112,10 +122,59 @@ async function landedOn(initialEntry: string): Promise<{
 }
 
 beforeEach(() => {
+  discovery.listPublicCommunities
+    .mockReset()
+    .mockResolvedValue({ communities: [], next_offset: null });
   playerFunctions.getOnboardingStatus.mockReset();
   playerFunctions.getMyPlayerProfile
     .mockReset()
     .mockResolvedValue({ display_name: 'Route Player' });
+});
+
+describe('/onboarding/community route', () => {
+  it('opts out of the /onboarding parent and guards before loading discovery', async () => {
+    expect(CommunityRoute.parentRoute.id).toBe('__root__');
+    onboardedAs(ANON);
+    const guest = await redirectOf(communityGuard({}));
+    expect(guest.options.to).toBe('/login');
+    expect(guest.options.search).toEqual({ next: '/onboarding/community' });
+    expect(await landedOn('/onboarding/community')).toEqual({
+      pathname: '/login',
+      search: { next: '/dashboard' }
+    });
+    onboardedAs(INCOMPLETE);
+    expect((await redirectOf(communityGuard({}))).options.to).toBe('/onboarding');
+    expect(await landedOn('/onboarding/community?view=create')).toEqual({
+      pathname: '/onboarding',
+      search: {}
+    });
+    expect(discovery.listPublicCommunities).not.toHaveBeenCalled();
+    onboardedAs(COMPLETE);
+    await expect(communityGuard({})).resolves.toBeUndefined();
+    expect(await landedOn('/onboarding/community?view=create&q=Padel')).toEqual({
+      pathname: '/onboarding/community',
+      search: { q: 'Padel', view: 'create' }
+    });
+    expect(discovery.listPublicCommunities).not.toHaveBeenCalled();
+    expect(await landedOn('/onboarding/community?q=Paris')).toEqual({
+      pathname: '/onboarding/community',
+      search: { q: 'Paris' }
+    });
+    expect(discovery.listPublicCommunities).toHaveBeenCalledWith({
+      data: { search: 'Paris', offset: 0, limit: 20 }
+    });
+  });
+
+  it('bounds and normalizes search without accepting other view values', () => {
+    const validator = (search: Record<string, unknown>): unknown => {
+      const validate: unknown = CommunityRoute.options.validateSearch;
+      if (typeof validate !== 'function') throw new Error('missing search validator');
+      return Reflect.apply(validate, undefined, [search]);
+    };
+    expect(validator({ q: '  Madrid  ', view: 'create' })).toEqual({ q: 'Madrid', view: 'create' });
+    expect(validator({ q: 'x'.repeat(81), view: 'admin' })).toEqual({});
+    expect(validator({ q: 'bad\u0000value' })).toEqual({});
+  });
 });
 
 describe('/ root guard (beforeLoad)', () => {

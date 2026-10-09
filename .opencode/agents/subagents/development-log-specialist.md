@@ -12,11 +12,8 @@ permission:
   grep: allow
   list: allow
   edit:
-    "docs/development-logs/**": allow
     "*": deny
-  write:
     "docs/development-logs/**": allow
-    "*": deny
   skill: allow
   bash:
     "*": deny

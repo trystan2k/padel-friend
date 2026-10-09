@@ -118,7 +118,8 @@ describe('community join server functions', () => {
     ['PJ004', 'INVITATION_REVOKED'],
     ['PJ005', 'INVITATION_NOT_FOR_USER'],
     ['PJ006', 'ALREADY_MEMBER_OR_PENDING'],
-    ['PJ007', 'COMMUNITY_NOT_ELIGIBLE']
+    ['PJ007', 'COMMUNITY_NOT_ELIGIBLE'],
+    ['PJ008', 'MEMBERSHIP_INACTIVE']
   ])('maps exact SQLSTATE %s to %s', async (code, message) => {
     mocks.getServerClient.mockReturnValue(client(true, 'active', { code }));
     await expect(joinCommunity({ data: { community_id: id } })).rejects.toThrow(message);

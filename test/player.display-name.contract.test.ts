@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { parseAst } from 'vite';
 import { describe, expect, it } from 'vitest';
-import { DISPLAY_NAME_EDGE_WHITESPACE } from '../src/features/player/display-name';
+import { EDGE_WHITESPACE } from '../src/lib/edge-whitespace';
 
 const VALIDATORS_SOURCE = readFileSync(
   new URL('../src/features/player/player.validators.ts', import.meta.url),
@@ -238,28 +238,28 @@ function displayTrimViolations(
 
 describe('display-name ASCII edge-whitespace rule single-source contract', () => {
   it('is imported from the shared module in every display-name-handling layer', () => {
-    expect(VALIDATORS_SOURCE).toContain("from './display-name'");
-    expect(ONBOARDING_SOURCE).toContain("from './display-name'");
-    expect(PROFILE_SOURCE).toContain("from './display-name'");
+    expect(VALIDATORS_SOURCE).toContain("from '../../lib/edge-whitespace'");
+    expect(ONBOARDING_SOURCE).toContain("from '../../lib/edge-whitespace'");
+    expect(PROFILE_SOURCE).toContain("from '../../lib/edge-whitespace'");
   });
 
   it('imports both helpers in the validator and the strip helper in both forms', () => {
     expect(VALIDATORS_SOURCE).toContain(
-      "import { hasDisplayNameEdgeWhitespace, stripDisplayNameEdgeWhitespace } from './display-name';"
+      "import { hasEdgeWhitespace, stripEdgeWhitespace } from '../../lib/edge-whitespace';"
     );
     expect(ONBOARDING_SOURCE).toContain(
-      "import { stripDisplayNameEdgeWhitespace } from './display-name';"
+      "import { stripEdgeWhitespace } from '../../lib/edge-whitespace';"
     );
     expect(PROFILE_SOURCE).toContain(
-      "import { stripDisplayNameEdgeWhitespace } from './display-name';"
+      "import { stripEdgeWhitespace } from '../../lib/edge-whitespace';"
     );
   });
 
   it('gates display names through the shared helpers in the validator, with no local trim', () => {
     const displayNameTextBody = /function displayNameText[\s\S]*?\n\}/.exec(VALIDATORS_SOURCE)?.[0];
     expect(displayNameTextBody, 'displayNameText must stay in player.validators.ts').toBeTruthy();
-    expect(displayNameTextBody).toContain('hasDisplayNameEdgeWhitespace(value)');
-    expect(displayNameTextBody).toContain('stripDisplayNameEdgeWhitespace(value)');
+    expect(displayNameTextBody).toContain('hasEdgeWhitespace(value)');
+    expect(displayNameTextBody).toContain('stripEdgeWhitespace(value)');
     expect(
       displayNameTextBody,
       'the display-name gate must never apply a Unicode trim'
@@ -275,8 +275,8 @@ describe('display-name ASCII edge-whitespace rule single-source contract', () =>
     // NBSP edges while trimming only ASCII edges ("the profile edit form preserves NBSP
     // edges and trims only ASCII edges on save"). The assertions below fail if those e2e
     // guards are removed or renamed, so this contract never overclaims what it proves.
-    expect(ONBOARDING_SOURCE).toContain('stripDisplayNameEdgeWhitespace(name)');
-    expect(PROFILE_SOURCE).toContain('stripDisplayNameEdgeWhitespace(name)');
+    expect(ONBOARDING_SOURCE).toContain('stripEdgeWhitespace(name)');
+    expect(PROFILE_SOURCE).toContain('stripEdgeWhitespace(name)');
     expect(E2E_ONBOARDING_SOURCE).toContain(
       'an NBSP-edged display name is saved verbatim and persists with its NBSPs'
     );
@@ -404,7 +404,7 @@ describe('display-name ASCII edge-whitespace rule single-source contract', () =>
 
   it('keeps the shared class identical to the SQL btrim ASCII class in the migration', () => {
     // [ \t\n\r\f\v] minus its regex brackets is exactly the class spelled in the E'' literal.
-    const asciiClass = DISPLAY_NAME_EDGE_WHITESPACE.source.replace(/^\[/, '').replace(/\]$/, '');
+    const asciiClass = EDGE_WHITESPACE.source.replace(/^\[/, '').replace(/\]$/, '');
     expect(MIGRATION).toContain(`btrim(display_name, E'${asciiClass}')`);
   });
 });

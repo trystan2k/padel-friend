@@ -736,6 +736,28 @@ describe.skipIf(environment.env === null)(
       ]);
       expect(JSON.stringify(profile)).not.toContain(email);
       expect(JSON.stringify(rating)).not.toContain(email);
+
+      const sporting = await sportingProfile(client, userId);
+      expect(Object.keys(sporting).sort()).toEqual(
+        [
+          'display_name',
+          'avatar_signed_url',
+          'preferred_side',
+          'dominant_hand',
+          'bio',
+          'initial_display_level',
+          'display_level',
+          'highest_display_level',
+          'reliability_percent',
+          'confirmed_competitive_game_groups',
+          'joined_at'
+        ].sort()
+      );
+      const sportingPayload = JSON.stringify(sporting);
+      expect(sportingPayload).not.toContain(email);
+      expect(sportingPayload).not.toMatch(
+        /email|phone|password|identities|app_metadata|user_metadata|access_token|refresh_token|session_id|raw_user_meta_data|raw_app_meta_data|rating_engine|rating_engine_version|\bmu\b|\bsigma\b/i
+      );
     });
 
     it('reports a rowless authenticated state through the raw tables (getOnboardingStatus completeness source)', async () => {

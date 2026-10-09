@@ -1,3 +1,4 @@
+import { hasEdgeWhitespace } from '../../lib/edge-whitespace';
 import type { Database } from '../../lib/supabase/database.types';
 
 type Visibility = Database['public']['Enums']['community_visibility'];
@@ -19,7 +20,13 @@ export type PublicCommunity = Pick<
 export type ListPublicCommunitiesInput = { search?: string; offset: number; limit: number };
 export type GetPublicCommunityInput = { community_id: string };
 export type JoinCommunityInput = { community_id: string };
+export type LeaveCommunityInput = { community_id: string };
 export type AcceptInvitationInput = { token: string };
+export type GetMyMembershipTimelineInput = {
+  community_id?: string;
+  offset: number;
+  limit: number;
+};
 
 export type CreateCommunityInput = {
   name: string;
@@ -61,7 +68,7 @@ function name(value: unknown): string {
   if (
     typeof value !== 'string' ||
     value.length === 0 ||
-    /^[ \t\n\r\f\v]|[ \t\n\r\f\v]$/.test(value) ||
+    hasEdgeWhitespace(value) ||
     Array.from(value).length > 80
   )
     invalid();
@@ -204,6 +211,35 @@ export function validateGetPublicCommunity(value: unknown): GetPublicCommunityIn
 export function validateJoinCommunity(value: unknown): JoinCommunityInput {
   const input = objectWithKeys(value, ['community_id']);
   return { community_id: communityId(input.community_id) };
+}
+
+export function validateLeaveCommunity(value: unknown): LeaveCommunityInput {
+  const input = objectWithKeys(value, ['community_id']);
+  return { community_id: communityId(input.community_id) };
+}
+
+export function validateGetMyMembershipTimeline(value: unknown): GetMyMembershipTimelineInput {
+  const input = objectWithKeys(value, ['community_id', 'offset', 'limit']);
+  const offset = 'offset' in input ? input.offset : 0;
+  const limit = 'limit' in input ? input.limit : 20;
+  if (
+    typeof offset !== 'number' ||
+    !Number.isSafeInteger(offset) ||
+    offset < 0 ||
+    offset > 10000 ||
+    typeof limit !== 'number' ||
+    !Number.isSafeInteger(limit) ||
+    limit < 1 ||
+    limit > 50
+  )
+    invalid();
+  return {
+    ...(Object.hasOwn(input, 'community_id')
+      ? { community_id: communityId(input.community_id) }
+      : {}),
+    offset,
+    limit
+  };
 }
 
 export function validateAcceptInvitation(value: unknown): AcceptInvitationInput {
