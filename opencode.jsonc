@@ -1,0 +1,44 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "instructions": ["AGENTS.md"],
+  "model": "opencode-go/deepseek-v4.1-flash",
+  "mcp": {
+    "servers": {
+      "mcp_pencil": {
+        "type": "local",
+        "command": [
+          "/Applications/Pen.app/Contents/Resources/app.asar.unpacked/out/mcp-server-darwin-arm64",
+          "--app",
+          "desktop"
+        ],
+        "enabled": true
+      },
+      "engram": {
+        "type": "local",
+        "command": ["/opt/homebrew/bin/engram", "mcp", "--tools=agent"],
+        "enabled": true
+      },
+      "mcp_serena": {
+        "type": "local",
+        "command": [
+          "uvx",
+          "--from",
+          "git+https://github.com/oraios/serena",
+          "serena",
+          "start-mcp-server",
+          "--enable-web-dashboard",
+          "false",
+          "--project",
+          "padel-friend",
+          "--mode",
+          "interactive",
+          "--mode",
+          "editing",
+          "--mode",
+          "no-memories"
+        ],
+        "enabled": true
+      }
+    }
+  }
+}
