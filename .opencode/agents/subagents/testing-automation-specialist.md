@@ -15,6 +15,11 @@ permission:
   skill: allow
   bash:
     "*": deny
+    "pnpm audit*": allow
+    "pnpm dedupe*": allow
+    "pnpm install*": allow
+    "pnpm outdated*": allow
+    "pnpm why*": allow
     "pnpm build*": allow
     "pnpm complete-check*": allow
     "pnpm db:*": allow
