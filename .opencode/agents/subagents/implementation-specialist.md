@@ -21,6 +21,12 @@ permission:
     "pnpm install*": allow
     "pnpm outdated*": allow
     "pnpm why*": allow
+    "corepack pnpm audit*": allow
+    "corepack pnpm install*": allow
+    "corepack pnpm outdated*": allow
+    "corepack pnpm update*": allow
+    "corepack pnpm view*": allow
+    "corepack pnpm why*": allow
     "pnpm build*": allow
     "pnpm complete-check*": allow
     "pnpm db:*": allow
