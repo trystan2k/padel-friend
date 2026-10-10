@@ -9,7 +9,8 @@ import {
   validateLeaveCommunity,
   validateJoinCommunity,
   validateListPublicCommunities,
-  validateUpdateCommunitySettings
+  validateUpdateCommunitySettings,
+  validateGetCommunitySettings
 } from './community.validators';
 
 const publicCommunityColumns =
@@ -182,12 +183,31 @@ export const updateCommunitySettings = createServerFn({ method: 'POST' })
     const { client } = await requireAuthenticatedClient();
     const { community_id, ...changes } = data;
     const { data: updated, error } = await client
-      .from('communities')
-      .update(changes)
-      .eq('id', community_id)
-      .select('id,name,visibility,join_policy,description,city_label,logo_path,settings,updated_at')
-      .maybeSingle();
-    if (error) throw error;
+      .rpc('update_community_settings', {
+        p_community_id: community_id,
+        p_changes: changes
+      })
+      .single();
+    if (error) {
+      if (error.code === 'PG001') throw new Error('NOT_COMMUNITY_ADMIN');
+      if (error.code === '28000') throw new Error('UNAUTHENTICATED');
+      throw error;
+    }
     if (!updated) throw new Error('NOT_COMMUNITY_ADMIN');
     return updated;
+  });
+
+export const getCommunitySettings = createServerFn({ method: 'GET' })
+  .validator(validateGetCommunitySettings)
+  .handler(async ({ data }) => {
+    const { client } = await requireAuthenticatedClient();
+    const { data: result, error } = await client
+      .rpc('get_community_settings', { p_community_id: data.community_id })
+      .maybeSingle();
+    if (error) {
+      if (error.code === 'PG001') throw new Error('NOT_COMMUNITY_MEMBER');
+      if (error.code === '28000') throw new Error('UNAUTHENTICATED');
+      throw error;
+    }
+    return result;
   });

@@ -128,13 +128,22 @@ describe.skipIf(environment.env === null)('community domain (local Supabase inte
     table: 'communities' | 'community_members' | 'community_venues' | 'community_audit_log',
     communityId: string
   ) {
-    const query = client.from(table).select('*');
-    const result =
-      table === 'communities'
-        ? await query.eq('id', communityId)
-        : await query.eq('community_id', communityId);
-    expect(result.error).toBeNull();
+    if (table === 'communities') {
+      const result = await client
+        .from('communities')
+        .select(
+          'id,name,description,logo_path,city_label,visibility,join_policy,created_at,updated_at'
+        )
+        .eq('id', communityId);
+      expectNoError(result);
+      return result.data ?? [];
+    }
+    const result = await client.from(table).select('*').eq('community_id', communityId);
+    expectNoError(result);
     return result.data ?? [];
+  }
+  function expectNoError(result: { error: unknown }) {
+    expect(result.error).toBeNull();
   }
   const invitationColumns =
     'id,community_id,invitee_user_id,issued_by,expires_at,redeemed_at,revoked_at,created_at';
@@ -416,8 +425,8 @@ describe.skipIf(environment.env === null)('community domain (local Supabase inte
       expect(await getPublicCommunity({ data: { community_id: crypto.randomUUID() } })).toBeNull();
     }
     // PAF-4 owns match SELECT policy/tests; no matches table exists yet.
-    // RLS protects private rows, not public columns: direct SELECT * of public rows remains unrestricted.
-    const filtered = await outsider.client.from('communities').select('*').eq('id', privateId);
+    // Community column ACLs deny SELECT *; safe direct fields remain row-isolated.
+    const filtered = await outsider.client.from('communities').select('id').eq('id', privateId);
     const privateList = await outsider.client
       .from('communities')
       .select('id')
@@ -457,7 +466,7 @@ describe.skipIf(environment.env === null)('community domain (local Supabase inte
     ] as const) {
       const community = await rows(admin.client, 'communities', id);
       expect(community).toHaveLength(1);
-      expect(community[0]).toMatchObject({ join_policy: policy, created_by: admin.id });
+      expect(community[0]).toMatchObject({ join_policy: policy });
       const membership = await rows(admin.client, 'community_members', id);
       expect(membership).toHaveLength(1);
       expect(membership[0]).toMatchObject({
@@ -683,9 +692,12 @@ describe.skipIf(environment.env === null)('community domain (local Supabase inte
       .update({ settings: { courts: 2 } })
       .eq('id', privateId);
     expect(update.error).toBeNull();
-    const updatedCommunity = (await rows(admin.client, 'communities', privateId))[0];
-    expect(updatedCommunity.settings).toEqual({ courts: 2 });
-    expect(new Date(updatedCommunity.updated_at).getTime()).toBeGreaterThan(
+    const updatedCommunity = await admin.client
+      .rpc('get_community_settings', { p_community_id: privateId })
+      .single();
+    expect(updatedCommunity.data).toMatchObject({ settings: { courts: 2 } });
+    const publicFields = (await rows(admin.client, 'communities', privateId))[0];
+    expect(new Date(publicFields.updated_at).getTime()).toBeGreaterThan(
       new Date(communityUpdatedAt).getTime()
     );
     expect(
@@ -781,7 +793,10 @@ describe.skipIf(environment.env === null)('community domain (local Supabase inte
     expect(
       (await rows(admin.client, 'community_members', privateId)).find((m) => m.id === pendingRow)
     ).toMatchObject({ status: 'pending', activated_at: null });
-    expect((await rows(admin.client, 'communities', privateId))[0].settings).toEqual({ courts: 2 });
+    expect(
+      (await admin.client.rpc('get_community_settings', { p_community_id: privateId }).single())
+        .data
+    ).toMatchObject({ settings: { courts: 2 } });
     expect((await rows(admin.client, 'community_venues', privateId))[0].name).toBe('Court 2');
     expect(
       (await rows(admin.client, 'community_members', privateId)).find((m) => m.id === memberRow)

@@ -24,16 +24,22 @@ vi.mock('../src/lib/supabase/server', () => ({ getServerClient: mocks.getServerC
 
 import {
   createCommunity,
-  updateCommunitySettings
+  updateCommunitySettings,
+  getCommunitySettings
 } from '../src/features/community/community.functions';
 
 const id = '11111111-1111-4111-8111-111111111111';
 const createInput = { name: 'Padel', visibility: 'private', join_policy: 'instant' } as const;
 const row = { id, name: 'Padel', visibility: 'public', join_policy: 'admin_approval' };
 function client(claimed = true, updated: unknown = row, error: unknown = null) {
-  const rpc = vi
-    .fn<() => Promise<{ data: string; error: unknown }>>()
-    .mockResolvedValue({ data: id, error });
+  const rpc = vi.fn<(name: string) => unknown>((name: string) => {
+    const result = { data: name === 'create_community' ? id : updated, error };
+    return name === 'update_community_settings'
+      ? { single: async () => result }
+      : name === 'get_community_settings'
+        ? { maybeSingle: async () => result }
+        : Promise.resolve(result);
+  });
   const maybeSingle = vi
     .fn<() => Promise<{ data: unknown; error: unknown }>>()
     .mockResolvedValue({ data: updated, error });
@@ -146,7 +152,7 @@ describe('community server functions', () => {
       updateCommunitySettings({ data: { community_id: id, name: 'New' } })
     ).rejects.toThrow('UNAUTHENTICATED');
     expect(unauthenticated.rpc).not.toHaveBeenCalled();
-    expect(unauthenticated.update).not.toHaveBeenCalled();
+    expect(unauthenticated.rpc).not.toHaveBeenCalled();
     expect(mocks.setResponseHeader).toHaveBeenCalledWith('Cache-Control', 'private, no-store');
   });
 
@@ -171,7 +177,7 @@ describe('community server functions', () => {
     expect(authenticated.from).not.toHaveBeenCalled();
   });
 
-  it('sends only validated settings to the RLS-guarded row and returns it', async () => {
+  it('sends only validated settings through the atomic RPC', async () => {
     const authenticated = client();
     mocks.getServerClient.mockReturnValue(authenticated);
     await expect(
@@ -184,16 +190,10 @@ describe('community server functions', () => {
         }
       })
     ).resolves.toEqual(row);
-    expect(authenticated.from).toHaveBeenCalledWith('communities');
-    expect(authenticated.update).toHaveBeenCalledWith({
-      visibility: 'public',
-      join_policy: 'admin_approval',
-      settings: {}
+    expect(authenticated.rpc).toHaveBeenCalledWith('update_community_settings', {
+      p_community_id: id,
+      p_changes: { visibility: 'public', join_policy: 'admin_approval', settings: {} }
     });
-    expect(authenticated.eq).toHaveBeenCalledWith('id', id);
-    expect(authenticated.select).toHaveBeenCalledWith(
-      'id,name,visibility,join_policy,description,city_label,logo_path,settings,updated_at'
-    );
   });
 
   it('maps zero matching rows to NOT_COMMUNITY_ADMIN, including missing IDs', async () => {
@@ -203,6 +203,17 @@ describe('community server functions', () => {
     ).rejects.toThrow('NOT_COMMUNITY_ADMIN');
   });
 
+  it('maps authorization and authentication errors from the atomic settings RPC', async () => {
+    mocks.getServerClient.mockReturnValue(client(true, null, { code: 'PG001' }));
+    await expect(
+      updateCommunitySettings({ data: { community_id: id, name: 'Denied' } })
+    ).rejects.toThrow('NOT_COMMUNITY_ADMIN');
+    mocks.getServerClient.mockReturnValue(client(true, null, { code: '28000' }));
+    await expect(
+      updateCommunitySettings({ data: { community_id: id, name: 'Unauthenticated' } })
+    ).rejects.toThrow('UNAUTHENTICATED');
+  });
+
   it('propagates database failures without disguising them as authorization errors', async () => {
     const error = new Error('database unavailable');
     mocks.getServerClient.mockReturnValue(client(true, null, error));
@@ -210,5 +221,27 @@ describe('community server functions', () => {
     await expect(
       updateCommunitySettings({ data: { community_id: id, name: 'Other' } })
     ).rejects.toBe(error);
+  });
+
+  it('reads settings with validated args, claims, no-store and member error mapping', async () => {
+    const authenticated = client();
+    mocks.getServerClient.mockReturnValue(authenticated);
+    await expect(getCommunitySettings({ data: { community_id: id } })).resolves.toEqual(row);
+    expect(authenticated.rpc).toHaveBeenCalledWith('get_community_settings', {
+      p_community_id: id
+    });
+    await expect(getCommunitySettings({ data: { community_id: 'bad' } })).rejects.toThrow(
+      'INVALID_COMMUNITY_INPUT'
+    );
+    expect(mocks.setResponseHeader).toHaveBeenCalledWith('Cache-Control', 'private, no-store');
+
+    mocks.getServerClient.mockReturnValue(client(true, null, { code: 'PG001' }));
+    await expect(getCommunitySettings({ data: { community_id: id } })).rejects.toThrow(
+      'NOT_COMMUNITY_MEMBER'
+    );
+    mocks.getServerClient.mockReturnValue(client(true, null, { code: '28000' }));
+    await expect(getCommunitySettings({ data: { community_id: id } })).rejects.toThrow(
+      'UNAUTHENTICATED'
+    );
   });
 });
