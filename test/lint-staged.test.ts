@@ -20,13 +20,34 @@ const originalStatus = execFileSync('git', ['status', '--porcelain'], {
   encoding: 'utf8'
 });
 
+// Git-local variables exported by the parent process (e.g. inside a linked-worktree hook)
+// would redirect scratch `git`/`lint-staged` subprocesses at the PARENT repository.
+const gitLocalEnvKeys = [
+  'GIT_DIR',
+  'GIT_INDEX_FILE',
+  'GIT_WORK_TREE',
+  'GIT_COMMON_DIR',
+  'GIT_OBJECT_DIRECTORY',
+  'GIT_ALTERNATE_OBJECT_DIRECTORIES',
+  'GIT_PREFIX',
+  'GIT_NAMESPACE',
+  'GIT_CEILING_DIRECTORIES'
+] as const;
+
+function scratchEnv(extra: NodeJS.ProcessEnv = {}): NodeJS.ProcessEnv {
+  const env: NodeJS.ProcessEnv = { ...process.env, ...extra };
+  for (const key of gitLocalEnvKeys) delete env[key];
+  return env;
+}
+
 function createFixture(configText = originalConfig): string {
   const dir = mkdtempSync(path.join(os.tmpdir(), 'lint-staged-probe-'));
   tempDirs.push(dir);
-  execFileSync('git', ['init', '-q'], { cwd: dir });
-  execFileSync('git', ['config', 'user.email', 'probe@example.test'], { cwd: dir });
-  execFileSync('git', ['config', 'user.name', 'Lint Probe'], { cwd: dir });
-  execFileSync('git', ['config', 'commit.gpgsign', 'false'], { cwd: dir });
+  const env = scratchEnv();
+  execFileSync('git', ['init', '-q'], { cwd: dir, env });
+  execFileSync('git', ['config', 'user.email', 'probe@example.test'], { cwd: dir, env });
+  execFileSync('git', ['config', 'user.name', 'Lint Probe'], { cwd: dir, env });
+  execFileSync('git', ['config', 'commit.gpgsign', 'false'], { cwd: dir, env });
   writeFileSync(path.join(dir, '.lintstagedrc.json'), configText);
   copyFileSync(path.join(repoRoot, '.oxlintrc.json'), path.join(dir, '.oxlintrc.json'));
   return dir;
@@ -34,11 +55,10 @@ function createFixture(configText = originalConfig): string {
 
 function runHook(dir: string): ReturnType<typeof spawnSync> {
   const bin = path.join(repoRoot, 'node_modules', '.bin');
-  const env = {
-    ...process.env,
+  const env = scratchEnv({
     PATH: `${bin}${path.delimiter}${process.env.PATH ?? ''}`,
     HUSKY: '0'
-  };
+  });
   const pnpm = spawnSync('pnpm', ['exec', 'lint-staged'], { cwd: dir, env, encoding: 'utf8' });
   if (!pnpm.error && pnpm.status === 0) return pnpm;
   // pnpm exec requires a project context; lint-staged itself is installed in this repository.
@@ -54,7 +74,7 @@ function stage(dir: string, relativePath: string, source: string): void {
   const filePath = path.join(dir, relativePath);
   mkdirSync(path.dirname(filePath), { recursive: true });
   writeFileSync(filePath, source);
-  execFileSync('git', ['add', relativePath], { cwd: dir });
+  execFileSync('git', ['add', relativePath], { cwd: dir, env: scratchEnv() });
 }
 
 afterEach(() => {

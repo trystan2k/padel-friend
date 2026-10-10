@@ -13,16 +13,16 @@ read grant. This is role-wide: an Admin's direct `SELECT *` also fails intention
 
 - `public.get_community_settings(p_community_id uuid)` requires a non-anonymous
   authenticated user who is a current active community member. Returns only `id` and
-  `settings`. Missing or unauthorized communities raise `PG001`; missing authentication
-  raises `28000`.
+  `settings`. Missing or unauthorized communities raise `PG001`; callable authenticated-role requests
+  that fail the in-function authentication guard raise `28000`.
 - `public.update_community_settings(p_community_id uuid, p_changes jsonb)` requires a
   non-anonymous authenticated current Admin. The RPC locks the community row before
   checking current Admin status, validates a non-empty whitelist patch, and applies
   static assignments. Omitted fields remain unchanged; nullable text set to JSON null
   clears the field; supplied settings replace the JSON object. Returns only
   `id,name,visibility,join_policy,description,city_label,logo_path,settings,updated_at`.
-  Missing/unauthorized communities raise `PG001`; missing authentication raises `28000`;
-  malformed patches raise `22023` (or table constraint errors for invalid database text).
+  Missing/unauthorized communities raise `PG001`; callable authenticated-role requests
+  that fail the in-function authentication guard raise `28000`; malformed patches raise `22023` (or table constraint errors for invalid database text).
 
 Both functions use `SECURITY DEFINER`, empty `search_path`, and fully-qualified names.
 Execution is revoked from `PUBLIC` and `anon`, then granted to `authenticated` only.
@@ -31,13 +31,18 @@ the community-first row lock. Existing timestamp and audit triggers continue to 
 
 ## Role matrix
 
-| Actor                               | Safe direct columns        | `settings` / `created_by` direct or `SELECT *` | Settings reader                         | Settings writer    |
-| ----------------------------------- | -------------------------- | ---------------------------------------------- | --------------------------------------- | ------------------ |
-| Unauthenticated / `anon`            | No community rows          | Denied                                         | Denied (`28000`)                        | Denied (`28000`)   |
-| Anonymous sign-in (`authenticated`) | No community rows          | Denied                                         | Denied (`28000` / membership rejection) | Denied (`28000`)   |
-| Authenticated nonmember             | Public rows only           | Denied                                         | Denied (`PG001`)                        | Denied (`PG001`)   |
-| Active Member                       | Rows allowed by row policy | Denied                                         | Own membership only                     | Denied (`PG001`)   |
-| Active Admin                        | Rows allowed by row policy | Denied                                         | Own membership only                     | Own community only |
+| Actor                               | Safe direct columns        | `settings` / `created_by` direct or `SELECT *` | Settings reader                         | Settings writer                   |
+| ----------------------------------- | -------------------------- | ---------------------------------------------- | --------------------------------------- | --------------------------------- |
+| Unauthenticated / `anon`            | No community rows          | Denied                                         | Denied (`42501`; EXECUTE revoked)       | Denied (`42501`; EXECUTE revoked) |
+| Anonymous sign-in (`authenticated`) | No community rows          | Denied                                         | Denied (`28000` / membership rejection) | Denied (`28000`)                  |
+| Authenticated nonmember             | Public rows only           | Denied                                         | Denied (`PG001`)                        | Denied (`PG001`)                  |
+| Active Member                       | Rows allowed by row policy | Denied                                         | Own membership only                     | Denied (`PG001`)                  |
+| Active Admin                        | Rows allowed by row policy | Denied                                         | Own membership only                     | Own community only                |
+
+Direct `anon` RPC calls fail with `42501` because `EXECUTE` is revoked before either
+function's authentication guard can run. `28000` applies only when an authenticated-role
+request can call the RPC but fails its in-function authentication guard (for example, an
+anonymous JWT claim).
 
 Direct authenticated `SELECT *` failure is intentional, including for Admins. Callers
 requiring settings must use the narrow RPC/server-function path; never restore broad

@@ -135,10 +135,14 @@ describe.skipIf(environment.env === null)('community column isolation (local Sup
       actor('ColumnMember'),
       actor('ColumnOutsider')
     ]);
+    // Fresh, never-signed-in client: `anon` signed the actors in above and now holds a
+    // session, so it would test "authenticated + missing community" instead of anon denial.
+    const anonymous = base();
     expect(
-      (await anon.rpc('get_community_settings', { p_community_id: crypto.randomUUID() })).error
-    ).not.toBeNull();
-    const anonymousSignIn = await anon.auth.signInAnonymously();
+      (await anonymous.rpc('get_community_settings', { p_community_id: crypto.randomUUID() })).error
+        ?.code
+    ).toBe('42501');
+    const anonymousSignIn = await anonymous.auth.signInAnonymously();
     // Local Auth configuration disables anonymous sign-in; DB helper rejection is separately
     // enforced in SQL by the auth.jwt()->>'is_anonymous' check.
     expect(anonymousSignIn.error?.code).toBe('anonymous_provider_disabled');
