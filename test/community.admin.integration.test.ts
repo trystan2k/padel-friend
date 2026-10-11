@@ -1,7 +1,7 @@
-import { readFileSync } from 'node:fs';
 import { spawn } from 'node:child_process';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
+import { assertLocalSupabaseEnvInCi, localSupabaseEnv } from './helpers/local-supabase-env';
 
 const serverClient = vi.hoisted(() => ({ current: null as SupabaseClient | null }));
 vi.mock('@tanstack/react-start', () => ({
@@ -47,20 +47,11 @@ import {
 } from '../src/features/community/community.functions';
 
 vi.setConfig({ testTimeout: 60000, hookTimeout: 60000 });
-const vars = new Map(
-  readFileSync(new URL('../.env', import.meta.url), 'utf8')
-    .split('\n')
-    .filter((line) => line.includes('=') && !line.trim().startsWith('#'))
-    .map((line) => {
-      const at = line.indexOf('=');
-      return [line.slice(0, at), line.slice(at + 1).replace(/^['"]|['"]$/g, '')];
-    })
-);
-const url = process.env.VITE_SUPABASE_URL ?? vars.get('VITE_SUPABASE_URL') ?? '';
-const key =
-  process.env.VITE_SUPABASE_PUBLISHABLE_KEY ?? vars.get('VITE_SUPABASE_PUBLISHABLE_KEY') ?? '';
-if (!['localhost', '127.0.0.1'].includes(new URL(url).hostname))
-  throw new Error('Integration requires loopback backend');
+const environment = localSupabaseEnv({ filePath: new URL('../.env', import.meta.url).pathname });
+if (!environment.env)
+  process.stderr.write(`[community.admin.integration] suite NOT RUN: ${environment.reason}\n`);
+const url = environment.env?.url ?? '';
+const key = environment.env?.key ?? '';
 function anon() {
   return createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
 }
@@ -124,15 +115,6 @@ async function audit(admin: Actor, id: string) {
   return result.data!;
 }
 let admin: Actor, member: Actor, outsider: Actor, target: Actor, alternate: Actor;
-beforeAll(async () => {
-  [admin, member, outsider, target, alternate] = await Promise.all([
-    actor('Admin'),
-    actor('Member'),
-    actor('Outsider'),
-    actor('Target'),
-    actor('Alternate')
-  ]);
-});
 
 type LocalSqlResult = {
   code: number | null;
@@ -239,7 +221,22 @@ function expectReactivationChronology(
   ).toBe(true);
 }
 
-describe('community governance with real JWTs', () => {
+describe('community governance — CI backend guard', () => {
+  it('fails closed without local backend in CI', () => {
+    expect(() => assertLocalSupabaseEnvInCi(environment.env, process.env.CI)).not.toThrow();
+  });
+});
+
+describe.skipIf(environment.env === null)('community governance with real JWTs', () => {
+  beforeAll(async () => {
+    [admin, member, outsider, target, alternate] = await Promise.all([
+      actor('Admin'),
+      actor('Member'),
+      actor('Outsider'),
+      actor('Target'),
+      actor('Alternate')
+    ]);
+  });
   const actions = [
     ['approve', approveCommunityMember, 'pending', 'member', 'active', 'member'],
     ['deny', denyCommunityMember, 'pending', 'member', 'inactive', 'member'],
@@ -738,6 +735,19 @@ describe('community governance with real JWTs', () => {
     expect(await audit(admin, id)).toEqual(before);
     serverClient.current = admin.client;
     const venue = await addCommunityVenue({ data: { community_id: id, name: 'Court' } });
+    const insertedAudit = (await audit(admin, id)).filter(
+      (row) => row.entity === 'community_venues'
+    );
+    expect(insertedAudit.find((row) => row.action === 'INSERT')).toMatchObject({
+      actor_user_id: admin.id,
+      entity: 'community_venues',
+      entity_id: venue.id,
+      action: 'INSERT',
+      details: { archived: false }
+    });
+    expect(insertedAudit.find((row) => row.action === 'INSERT')?.details).toEqual({
+      archived: false
+    });
     const other = await community(outsider);
     serverClient.current = outsider.client;
     await expect(
@@ -745,6 +755,14 @@ describe('community governance with real JWTs', () => {
     ).rejects.toThrow('COMMUNITY_VENUE_NOT_FOUND');
     serverClient.current = admin.client;
     await editCommunityVenue({ data: { community_id: id, venue_id: venue.id, name: 'Court two' } });
+    const editedAudit = (await audit(admin, id)).filter((row) => row.entity === 'community_venues');
+    expect(editedAudit.find((row) => row.action === 'UPDATE')).toMatchObject({
+      actor_user_id: admin.id,
+      entity_id: venue.id,
+      action: 'UPDATE',
+      details: { archived: false }
+    });
+    const beforeDeniedArchive = await audit(admin, id);
     for (const user of [member, outsider]) {
       serverClient.current = user.client;
       await expect(
@@ -754,6 +772,7 @@ describe('community governance with real JWTs', () => {
         archiveCommunityVenue({ data: { community_id: id, venue_id: venue.id } })
       ).rejects.toThrow('NOT_COMMUNITY_ADMIN');
     }
+    expect(await audit(admin, id)).toEqual(beforeDeniedArchive);
     serverClient.current = admin.client;
     await expect(
       issueInvitation({ data: { community_id: id, invitee_user_id: member.id } })
@@ -765,6 +784,28 @@ describe('community governance with real JWTs', () => {
       data: { community_id: id, venue_id: venue.id }
     });
     expect(archived.archived_at).toBeTruthy();
+    const archivedAudit = (await audit(admin, id)).filter(
+      (row) => row.entity === 'community_venues'
+    );
+    const archiveEvent = archivedAudit.find(
+      (row) => row.details && 'archived' in row.details && row.details.archived === true
+    );
+    expect(archiveEvent).toMatchObject({
+      actor_user_id: admin.id,
+      entity_id: venue.id,
+      action: 'UPDATE',
+      details: { archived: true }
+    });
+    expect(archiveEvent?.details).toEqual({ archived: true });
+    expect(archiveEvent?.details).not.toEqual(
+      editedAudit.find((row) => row.action === 'UPDATE')?.details
+    );
+    const persistedVenue = await admin.client
+      .from('community_venues')
+      .select('archived_at')
+      .eq('id', venue.id)
+      .single();
+    expect(persistedVenue.data?.archived_at).toBe(archived.archived_at);
     expect(await listCommunityVenues({ data: { community_id: id } })).toEqual([]);
     const issued = await issueInvitation({
       data: { community_id: id, invitee_user_id: target.id }
@@ -812,6 +853,23 @@ describe('community governance with real JWTs', () => {
     const after = await audit(admin, id);
     expect(after.filter((row) => row.entity === 'community_venues')).toHaveLength(3);
     expect(after.filter((row) => row.entity === 'community_invitations')).toHaveLength(5);
+    expect(after.filter((row) => row.entity === 'communities')).toHaveLength(1);
+    expect(after.filter((row) => row.entity === 'community_members')).toHaveLength(3);
+    expect(after.find((row) => row.entity === 'communities')?.details).toMatchObject({
+      visibility: 'private'
+    });
+    expect(after.filter((row) => row.entity === 'community_members')).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ details: { role: 'admin', status: 'active' } }),
+        expect.objectContaining({ details: { role: 'member', status: 'active' } })
+      ])
+    );
+    expect(after.filter((row) => row.entity === 'community_invitations')).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ details: { revoked: false } }),
+        expect.objectContaining({ details: { revoked: true } })
+      ])
+    );
     expect(JSON.stringify(after)).not.toContain(issued.token);
     serverClient.current = admin.client;
     const events = await listCommunityAudit({ data: { community_id: id } });

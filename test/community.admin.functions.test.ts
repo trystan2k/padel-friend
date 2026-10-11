@@ -275,6 +275,27 @@ describe('admin function boundary', () => {
       unexpected
     );
   });
+  it.each(['40P01', '40001'])(
+    'maps retryable SQLSTATE %s once for every membership action without automatic retry',
+    async (code) => {
+      for (const fn of functions) {
+        const failure = { code, message: 'transaction conflict' };
+        const { rpc } = mockClient(failure);
+        await expect(fn({ data: { community_id, membership_id } })).rejects.toThrow(
+          'COMMUNITY_GOVERNANCE_CONFLICT_RETRYABLE'
+        );
+        expect(rpc).toHaveBeenCalledTimes(1);
+      }
+    }
+  );
+  it('preserves unknown governance errors and invokes the RPC exactly once', async () => {
+    const unknown = { code: 'XX000', message: 'unmapped failure' };
+    for (const fn of functions) {
+      const { rpc } = mockClient(unknown);
+      await expect(fn({ data: { community_id, membership_id } })).rejects.toBe(unknown);
+      expect(rpc).toHaveBeenCalledTimes(1);
+    }
+  });
   it('maps invitation RLS denial only and preserves infrastructure 42501 errors', async () => {
     const attemptIssue = async (writeError: { code: string; message: string }) => {
       const invitationQuery = {
@@ -321,6 +342,37 @@ describe('admin function boundary', () => {
         'INVALID_COMMUNITY_INPUT'
       );
     expect(mocks.client).not.toHaveBeenCalled();
+  });
+  it('returns nullable roster timestamps and ratings without manufacturing values', async () => {
+    const row = {
+      membership_id,
+      user_id: '33333333-3333-4333-8333-333333333333',
+      display_name: 'Unknown ratings',
+      role: 'member',
+      status: 'active',
+      valid_from: '2026-10-01T00:00:00Z',
+      valid_until: null,
+      activated_at: null,
+      display_level: null,
+      reliability_percent: null
+    };
+    const rpc = vi.fn<() => Promise<{ data: (typeof row)[]; error: null }>>().mockResolvedValue({
+      data: [row],
+      error: null
+    });
+    mocks.client.mockReturnValue({
+      auth: { getClaims: async () => ({ data: { claims: { sub: membership_id } }, error: null }) },
+      rpc
+    });
+    await expect(searchCommunityMembers({ data: { community_id, query: '' } })).resolves.toEqual([
+      row
+    ]);
+    expect(rpc).toHaveBeenCalledWith('search_community_members', {
+      p_community_id: community_id,
+      p_query: '',
+      p_offset: 0,
+      p_limit: 20
+    });
   });
   it('does not generate token when claims fail', async () => {
     const { rpc } = mockClient(null, false);
