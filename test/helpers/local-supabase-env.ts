@@ -1,4 +1,5 @@
 import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 
 export type LocalSupabaseEnv = {
   url: string;
@@ -10,13 +11,32 @@ type Env = Record<string, string | undefined>;
 
 const LOOPBACK_HOSTS = new Set(['127.0.0.1', 'localhost']);
 
+function stripSurroundingQuotes(value: string): string {
+  return value.replace(/^['"]|['"]$/g, '');
+}
+
+function isPlaceholderKey(key: string): boolean {
+  return /^(replace-with|your[-_])/i.test(key);
+}
+
+/**
+ * Resolves the repo-root `.env` from a module's `import.meta.url`.
+ * `new URL(...).pathname` stays percent-encoded, so checkouts with spaces or
+ * Unicode in their path could never load `.env`; `fileURLToPath` decodes it.
+ */
+export function dotEnvPathFromImportMetaUrl(importMetaUrl: string): string {
+  return fileURLToPath(new URL('../.env', importMetaUrl));
+}
+
 function usableLocalEnv(
   rawUrl: string | undefined,
-  key: string | undefined,
+  rawKey: string | undefined,
   source: LocalSupabaseEnv['source']
 ): LocalSupabaseEnv | null {
-  if (!rawUrl || !key || /^(replace-with|your[-_])/i.test(key)) return null;
-  const url = rawUrl.replace(/^['"]|['"]$/g, '');
+  if (!rawUrl || !rawKey) return null;
+  const url = stripSurroundingQuotes(rawUrl);
+  const key = stripSurroundingQuotes(rawKey);
+  if (!url || !key || isPlaceholderKey(key)) return null;
   try {
     const parsed = new URL(url);
     if (!['http:', 'https:'].includes(parsed.protocol) || !LOOPBACK_HOSTS.has(parsed.hostname))
@@ -46,7 +66,7 @@ export function localSupabaseEnv(options: { env?: Env; filePath: string; readFil
   const environment = options.env ?? process.env;
   const url = environment.VITE_SUPABASE_URL;
   const key = environment.VITE_SUPABASE_PUBLISHABLE_KEY;
-  if (url && key && !/^(replace-with|your[-_])/i.test(key)) {
+  if (url && key && !isPlaceholderKey(stripSurroundingQuotes(key))) {
     const localEnv = usableLocalEnv(url, key, 'environment');
     return {
       env: localEnv,
