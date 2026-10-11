@@ -386,6 +386,13 @@ export type Database = {
           valid_until: string
         }[]
       }
+      get_community_settings: {
+        Args: { p_community_id: string }
+        Returns: {
+          id: string
+          settings: Json
+        }[]
+      }
       govern_community_member: {
         Args: { p_action: string; p_community_id: string; p_membership_id: string }
         Returns: {
@@ -441,6 +448,20 @@ export type Database = {
           user_id: string
           valid_from: string
           valid_until: string
+        }[]
+      }
+      update_community_settings: {
+        Args: { p_changes: Json; p_community_id: string }
+        Returns: {
+          city_label: string
+          description: string
+          id: string
+          join_policy: Database["public"]["Enums"]["community_join_policy"]
+          logo_path: string
+          name: string
+          settings: Json
+          updated_at: string
+          visibility: Database["public"]["Enums"]["community_visibility"]
         }[]
       }
     }

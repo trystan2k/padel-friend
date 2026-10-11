@@ -19,6 +19,7 @@ permission:
     "pnpm db:reset*": deny
     "pnpm db:types*": deny
     "pnpm exec*": deny
+    "pnpm complete-check*": allow
     "pnpm build": allow
     "pnpm knip": allow
     "pnpm typecheck": allow

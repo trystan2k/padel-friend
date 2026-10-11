@@ -1,5 +1,5 @@
 {
-  "!(src/lib/supabase/database.types.ts)*.{ts,tsx,js,mjs}": "oxlint --fix --deny-warnings",
+  "*.{ts,tsx,js,mjs}": "oxlint --fix --deny-warnings",
   "*.css": "stylelint --fix",
   "*": "oxfmt --no-error-on-unmatched-pattern"
 }

@@ -35,6 +35,7 @@ This project uses Linear for issue tracking and project management. GitHub is us
 
 ## Conventions
 
+- **Base branch**: `main` (this repo has no `develop`; `main` is the default/integration branch and PRs target `main`)
 - **Branch**: `feature/[linear-issue-id]-[title]` using the full Linear issue identifier, for example `feature/PAF-123-score-engine`
 - **Commit**: `[type]: [description]` (feat/fix/docs/style/refactor/test/chore)
 - **Indent**: 2 spaces

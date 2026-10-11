@@ -44,6 +44,8 @@ export type UpdateCommunitySettingsInput = { community_id: string } & Partial<{
   logo_path: string | null;
   settings: Settings;
 }>;
+export type GetCommunitySettingsInput = { community_id: string };
+export type CommunitySettingsPatch = Omit<UpdateCommunitySettingsInput, 'community_id'>;
 
 function invalid(): never {
   throw new Error('INVALID_COMMUNITY_INPUT');
@@ -169,8 +171,30 @@ export function validateUpdateCommunitySettings(value: unknown): UpdateCommunity
     'settings'
   ]);
   if (Object.keys(input).length < 2) invalid();
+  const { community_id, ...changes } = input;
   return {
-    community_id: communityId(input.community_id),
+    community_id: communityId(community_id),
+    ...validateCommunitySettingsPatch(changes)
+  };
+}
+
+export function validateGetCommunitySettings(value: unknown): GetCommunitySettingsInput {
+  const input = objectWithKeys(value, ['community_id']);
+  return { community_id: communityId(input.community_id) };
+}
+
+export function validateCommunitySettingsPatch(value: unknown): CommunitySettingsPatch {
+  const input = objectWithKeys(value, [
+    'name',
+    'visibility',
+    'join_policy',
+    'description',
+    'city_label',
+    'logo_path',
+    'settings'
+  ]);
+  if (Object.keys(input).length === 0) invalid();
+  return {
     ...('name' in input ? { name: name(input.name) } : {}),
     ...('visibility' in input ? { visibility: visibility(input.visibility) } : {}),
     ...('join_policy' in input ? { join_policy: joinPolicy(input.join_policy) } : {}),

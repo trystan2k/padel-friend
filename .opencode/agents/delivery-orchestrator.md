@@ -68,7 +68,7 @@ Resolve the scope from the identifier the user gave, then apply the matching col
 | Pull request | one PR for the issue | one PR for the epic, containing the per-task commits |
 | Status moves | the issue and its delivered sub-issues | the epic and its tasks |
 
-Both scopes use the same base branch: the development branch named in `AGENTS.md` (this repo: `develop`). Never branch from `main` — `main` is production and only receives release merges.
+Both scopes use the same base branch: the development branch named in `AGENTS.md` (this repo: `main`). This repo has no `develop` branch; `main` is the default/integration branch and receives feature merges.
 
 ## Complexity Triage (Small-Change Fast Path)
 
@@ -179,7 +179,7 @@ Follow these steps in order.
 
    **Step 1.2: Create Feature Branch (MUST WAIT FOR STEP 1.1)**
    - Ask `subagent/git-specialist` to create the feature branch using the remote-only approach (worktree-safe):
-     - Fetch the development branch from `AGENTS.md` (this repo: `origin/develop`) to update the remote tracking branch. Do NOT check out `main` or the local `develop` branch.
+     - Fetch the development branch from `AGENTS.md` (this repo: `origin/main`) to update the remote tracking branch. Do NOT check out the local `main` branch.
      - If uncommitted changes exist, stash them before branch creation.
      - Create and check out the new branch directly from the remote tracking branch.
      - Branch name: `feature/<ID>-<title-slug>`, using the pattern defined in `AGENTS.md`. One branch per scope; all tasks of an epic share it.

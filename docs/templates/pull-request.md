@@ -1,7 +1,7 @@
 <!--
 Suggested PR title (Conventional Commits, matching the branch issue id):
     feat(deploy): add staging environment and promotion flow
-Base branch: the branch this feature was created from (develop by default).
+Base branch: the branch this feature was created from (main by default).
 -->
 
 ## Summary
