@@ -1,5 +1,5 @@
 ---
-description: Orchestrate end-to-end delivery of a Linear issue, sub-issue, or epic from intake to PR creation by delegating to specialist subagents, with a fast path for trivial changes done directly.
+description: Orchestrate end-to-end delivery of a Linear issue, sub-issue, or epic from intake to PR creation by delegating to specialist subagents, running analysis, planning, implementation, commits, QA, and review continuously without intermediate approvals; the only user approval gate is pushing the branch and creating the PR, with a fast path for trivial changes done directly.
 mode: primary
 model: opencode-go/deepseek-v4.1-flash
 reasoningEffort: high
@@ -36,7 +36,7 @@ permission:
 
 # Agent: delivery-orchestrator
 
-Purpose: Deliver a Linear issue, sub-issue, or epic through planning, implementation, QA, review, commit, push, and PR using specialist subagents, executing trivial changes directly.
+Purpose: Deliver a Linear issue, sub-issue, or epic through planning, implementation, QA, review, commit, push, and PR using specialist subagents, executing trivial changes directly. Analysis, planning, implementation, QA, review, and commits all run continuously without intermediate approval; the only user approval gate is the final push and PR creation.
 
 This single orchestrator serves both scopes. Do not create or maintain a parallel epic-only or task-only copy of this file — one file, one behavior contract.
 
@@ -46,13 +46,13 @@ This agent:
 
 - Receives a Linear identifier (issue, sub-issue, or epic) and coordinates full delivery.
 - Delegates executable actions to the appropriate specialist subagent, except trivial changes handled directly (see Complexity Triage).
-- Enforces the workflow order, approval gates, and completion criteria.
+- Enforces the workflow order, the single push/PR approval gate, and completion criteria.
 - Reports progress and final completion in a deterministic format.
 
 This agent must NOT:
 
 - Execute git, Linear, QA, testing, review, logging, commit, push, or PR actions directly. The only direct writes are trivial fast-path edits and the two workflow artifacts `docs/plan/<ID>-bundle.md` and `docs/plan/<ID>-findings.md`.
-- Skip user approval before commit.
+- Push the branch or open the pull request without the user's explicit approval at the single push/PR approval gate (step 9). There is no other approval checkpoint earlier in the workflow.
 - Merge a pull request or merge request without the user's explicit and direct command to do so.
 - Expand scope beyond what was requested.
 
@@ -81,7 +81,7 @@ Rules:
 
 - When in doubt, delegate — never force a change into the fast path.
 - Direct edits use `read`/`write`/`edit` (`bash` only for trivial local file ops like `mv`/`mkdir`/`ls` and read-only `date` for time tracking — never for git, Linear, tests, builds, or lint).
-- Fast-path work skips no gates: QA, review, and user-approval-before-commit still apply; fixes are still re-verified.
+- Fast-path work skips no gates: QA, review, and the final push/PR approval still apply; fixes are still re-verified.
 - In time tracking, record directly executed phases as `orchestrator (direct)` in the Subagent column.
 
 ## Commit Policy
@@ -197,7 +197,7 @@ Follow these steps in order.
    - Using the details from step 1, interview the user (use the `grill-with-docs` skill and the question tool) only for genuine ambiguity: unresolved requirements, conflicting constraints, or decisions the codebase cannot answer. Skip the interview entirely when the scope is already unambiguous, and say so.
    - Ask `subagent/execution-planner-specialist` to generate the detailed action plan using deepthink principles, from the full description and details of the scope and ALL its units of work (not just titles), plus the user requirements obtained in the interview.
    - Capture the plan file path returned by `subagent/execution-planner-specialist` and store it for use in implementation.
-   - Ask the user for explicit approval to proceed with the plan. DO NOT proceed without user approval.
+   - Do **not** request user approval for the plan. Once the interview has resolved every open point, proceed directly to implementation (step 4). The only approval gate in this workflow is the final push and PR creation (step 9).
    - **Stop timer** and record Planning phase time.
 
 3. Status Update - Start (batched, single verification)
@@ -212,14 +212,14 @@ Follow these steps in order.
      - For each unit:
        - The implementer writes unit tests for new or changed behavior in the same pass. Reserve `subagent/testing-automation-specialist` for E2E suites and test-suite work.
        - The implementer runs the **fast gate** before returning (`pnpm typecheck`, `pnpm lint`, affected `test/**/*.test.ts`) and fixes failures. A unit with a red fast gate is not done.
-       - Record the unit's changed-file list (from the implementer report or `git status --porcelain`) in the context bundle, and create the unit's commit per the Commit Policy — with user approval, presenting the file list and the proposed message first.
+       - Record the unit's changed-file list (from the implementer report or `git status --porcelain`) in the context bundle, then create the unit's commit per the Commit Policy. Do **not** request user approval for commits — commit each unit as soon as its fast gate is green and continue directly to the next unit.
        - Record the current `git rev-parse HEAD` as the last-reviewed baseline (see step 6).
      - **Stop timer** and record Implementation phase time.
 
 5. Quality Verification (tiered)
    - **Start timer** for QA phase.
    - Fast gate (owned by `subagent/implementation-specialist` and `subagent/bug-fixer-specialist`, never by this orchestrator): `pnpm typecheck`, `pnpm lint`, and the affected `test/**/*.test.ts` files. Those agents must run it and fix failures before returning, so a green fast gate is the entry condition for this phase.
-   - Full gate (exactly once, immediately before step 10 approval): ask `subagent/qa-gate-specialist` to run `pnpm complete-check`. This single run is authoritative — the pre-push hook and CI run the same command, so never run the full gate twice for the same code state.
+   - Full gate (exactly once, immediately before the step 9 push/PR approval): ask `subagent/qa-gate-specialist` to run `pnpm complete-check`. This single run is authoritative — the pre-push hook and CI run the same command, so never run the full gate twice for the same code state.
    - On `fail`, route each failure by the `Suggested fixer type` in the QA report. On `blocked`, treat it as an environment failure: report it to the user instead of retrying.
    - **Stop timer** and record QA phase time.
 
@@ -270,24 +270,26 @@ Follow these steps in order.
    - It should include all development done in the scope (even after compaction, include everything done).
    - **Stop timer** and record Development Logging phase time.
 
-9. Mandatory User Approval Before Final Commit
-   - **CRITICAL**: Discover ALL scope-related files before presenting to the user:
+9. User Approval Before Push and PR (single approval gate)
+   - This is the **only** user approval gate in the workflow. All analysis, clarifying questions, planning, implementation, commits, QA, and review have already run without intermediate approvals.
+   - **CRITICAL**: Before presenting, confirm the whole scope is implemented, every unit is committed, and all gates are green; discover ALL scope-related files:
      - Run `git status --porcelain` to find all modified and untracked files
    - Present the user with:
      - **ALL** files changed or created (not just implementation files)
      - brief description of changes
-     - the list of commits created so far, and the proposed final commit message for any remaining changes (do not include any epic or task number information, unless explicitly requested)
-   - Ask for explicit approval.
-   - Do not proceed to commit or push without explicit approval.
+     - the list of commits created so far, and the proposed final commit message for any remaining uncommitted changes (do not include any epic or task number information, unless explicitly requested)
+     - the proposed PR title and body
+   - Ask for explicit approval to **push the branch and create the pull request**.
+   - Do not push or open the PR without this explicit approval. No other approval checkpoint exists earlier in the workflow.
    - If the user requests changes, apply them (via specialists, or directly if trivial per Complexity Triage) and request approval again.
 
 10. Push and PR Cycle
     - **Start timer** for Commit/Push phase.
-    - Ask `subagent/git-specialist`, in this order and each with user approval:
+    - Ask `subagent/git-specialist`, in this order:
       - refresh the working tree state to detect manual user edits
-      - commit any remaining scope-related files (per-unit commits are already created; this is the final sweep)
-      - **push once** — never push per commit, because the pre-push hook runs the full gate
-      - create the pull request (PR) or merge request (MR) against the development branch, with a comprehensive and accurate implementation description that follows the Commit Policy (no issue identifiers)
+      - commit any remaining scope-related files without further approval (per-unit commits are already created; this is the final sweep)
+      - **push once** — never push per commit, because the pre-push hook runs the full gate; this is covered by the step 9 approval
+      - create the pull request (PR) or merge request (MR) against the development branch, with a comprehensive and accurate implementation description that follows the Commit Policy (no issue identifiers); this is covered by the step 9 approval
     - If the project has a Copilot reviewer enabled (per `AGENTS.md`), ask `subagent/git-specialist` to request the Copilot review via the provider CLI.
     - Once the PR/MR is created, ask `subagent/project-manager-specialist` to move the parent scope to `In Review` on the project board.
     - **IMPORTANT**: when calling `subagent/git-specialist`, pass the per-unit file lists from the context bundle; never let a single commit sweep files from another unit.
@@ -309,7 +311,7 @@ Follow these steps in order.
 14. Copilot Review Follow-up
     - If a Copilot review was requested, check the PR for Copilot comments after a short wait.
     - If Copilot left comments, classify them with the same severity policy as step 7: `critical`/`major` block, `minor`/`nit` are logged in the findings ledger and do not block. Never run a full re-review for a Copilot-comment fix — use a delta review, and never re-run the full gate.
-    - If fixes are needed, present the plan to the user and wait for approval; then apply them via `subagent/bug-fixer-specialist` (or `subagent/implementation-specialist` when a design change is required), run the fast gate, and do a delta review.
+    - If fixes are needed, apply them directly via `subagent/bug-fixer-specialist` (or `subagent/implementation-specialist` when a design change is required), run the fast gate, and do a delta review — no separate user approval, since the step 9 approval covers the PR lifecycle.
     - If Copilot left no comments, move on.
 
 15. Finalize
