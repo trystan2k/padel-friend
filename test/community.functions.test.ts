@@ -234,7 +234,7 @@ describe('community server functions', () => {
     );
     expect(mocks.setResponseHeader).toHaveBeenCalledWith('Cache-Control', 'private, no-store');
 
-    mocks.getServerClient.mockReturnValue(client(true, null, { code: 'PG001' }));
+    mocks.getServerClient.mockReturnValue(client(true, null, { code: 'PG006' }));
     await expect(getCommunitySettings({ data: { community_id: id } })).rejects.toThrow(
       'NOT_COMMUNITY_MEMBER'
     );

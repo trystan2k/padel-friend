@@ -11,7 +11,7 @@ begin
     raise exception 'Authentication required' using errcode = '28000';
   end if;
   if not public.is_community_member(p_community_id) then
-    raise exception 'Active community membership required' using errcode = 'PG001';
+    raise exception 'Active community membership required' using errcode = 'PG006';
   end if;
   return query select c.id, c.settings from public.communities c where c.id = p_community_id;
 end;

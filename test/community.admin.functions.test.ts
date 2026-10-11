@@ -258,6 +258,7 @@ describe('admin function boundary', () => {
     for (const [code, expected] of Object.entries({
       '28000': 'UNAUTHENTICATED',
       PG001: 'NOT_COMMUNITY_ADMIN',
+      PG006: 'NOT_COMMUNITY_MEMBER',
       PG002: 'FINAL_COMMUNITY_ADMIN',
       PG003: 'COMMUNITY_MEMBER_NOT_FOUND',
       PG004: 'INVALID_MEMBERSHIP_TRANSITION',

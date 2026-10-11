@@ -13,7 +13,7 @@ read grant. This is role-wide: an Admin's direct `SELECT *` also fails intention
 
 - `public.get_community_settings(p_community_id uuid)` requires a non-anonymous
   authenticated user who is a current active community member. Returns only `id` and
-  `settings`. Missing or unauthorized communities raise `PG001`; callable authenticated-role requests
+  `settings`. Missing or unauthorized communities raise `PG006`; callable authenticated-role requests
   that fail the in-function authentication guard raise `28000`.
 - `public.update_community_settings(p_community_id uuid, p_changes jsonb)` requires a
   non-anonymous authenticated current Admin. The RPC locks the community row before
@@ -35,7 +35,7 @@ the community-first row lock. Existing timestamp and audit triggers continue to 
 | ----------------------------------- | -------------------------- | ---------------------------------------------- | --------------------------------------- | --------------------------------- |
 | Unauthenticated / `anon`            | No community rows          | Denied                                         | Denied (`42501`; EXECUTE revoked)       | Denied (`42501`; EXECUTE revoked) |
 | Anonymous sign-in (`authenticated`) | No community rows          | Denied                                         | Denied (`28000` / membership rejection) | Denied (`28000`)                  |
-| Authenticated nonmember             | Public rows only           | Denied                                         | Denied (`PG001`)                        | Denied (`PG001`)                  |
+| Authenticated nonmember             | Public rows only           | Denied                                         | Denied (`PG006`)                        | Denied (`PG001`)                  |
 | Active Member                       | Rows allowed by row policy | Denied                                         | Own membership only                     | Denied (`PG001`)                  |
 | Active Admin                        | Rows allowed by row policy | Denied                                         | Own membership only                     | Own community only                |
 

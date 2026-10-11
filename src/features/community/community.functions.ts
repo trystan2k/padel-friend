@@ -205,7 +205,7 @@ export const getCommunitySettings = createServerFn({ method: 'GET' })
       .rpc('get_community_settings', { p_community_id: data.community_id })
       .maybeSingle();
     if (error) {
-      if (error.code === 'PG001') throw new Error('NOT_COMMUNITY_MEMBER');
+      if (error.code === 'PG006') throw new Error('NOT_COMMUNITY_MEMBER');
       if (error.code === '28000') throw new Error('UNAUTHENTICATED');
       throw error;
     }

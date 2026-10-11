@@ -248,7 +248,7 @@ describe.skipIf(environment.env === null)('community column isolation (local Sup
 
     expect(
       (await outsider.client.rpc('get_community_settings', { p_community_id: id })).error?.code
-    ).toBe('PG001');
+    ).toBe('PG006');
     expect(
       (
         await outsider.client.rpc('update_community_settings', {
@@ -260,7 +260,7 @@ describe.skipIf(environment.env === null)('community column isolation (local Sup
     expect(
       (await admin.client.rpc('get_community_settings', { p_community_id: crypto.randomUUID() }))
         .error?.code
-    ).toBe('PG001');
+    ).toBe('PG006');
     expect(
       (
         await admin.client.rpc('update_community_settings', {
