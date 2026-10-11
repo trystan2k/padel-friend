@@ -121,6 +121,95 @@ describe('community lifecycle validators', () => {
 });
 
 describe('community lifecycle server functions', () => {
+  it.each([
+    {
+      name: 'empty exhausted page',
+      offset: 0,
+      limit: 2,
+      rowCount: 0,
+      nextOffset: null,
+      truncated: false
+    },
+    {
+      name: 'more rows with continuation',
+      offset: 0,
+      limit: 2,
+      rowCount: 3,
+      nextOffset: 2,
+      truncated: false
+    },
+    {
+      name: 'exactly 10000 remains reachable',
+      offset: 9950,
+      limit: 50,
+      rowCount: 51,
+      nextOffset: 10000,
+      truncated: false
+    },
+    {
+      name: 'near ceiling suppresses continuation',
+      offset: 9951,
+      limit: 50,
+      rowCount: 51,
+      nextOffset: null,
+      truncated: true
+    },
+    {
+      name: 'at ceiling with lookahead is truncated',
+      offset: 10000,
+      limit: 1,
+      rowCount: 2,
+      nextOffset: null,
+      truncated: true
+    },
+    {
+      name: 'at ceiling without lookahead is exhausted',
+      offset: 10000,
+      limit: 1,
+      rowCount: 1,
+      nextOffset: null,
+      truncated: false
+    }
+  ])('timeline pagination: $name', async ({ offset, limit, rowCount, nextOffset, truncated }) => {
+    const fixtureRows = Array.from({ length: rowCount }, (_, index) => ({
+      id: `${index + 1}`.padStart(8, '0'),
+      community_id: communityId,
+      role: 'member',
+      status: 'inactive',
+      valid_from: '2026-01-01T00:00:00Z',
+      valid_until: null,
+      activated_at: null,
+      user_id: userId,
+      private_column: 'must not escape'
+    }));
+    const actor = client({ timelineRows: fixtureRows });
+    mocks.getServerClient.mockReturnValue(actor);
+    const result = await getMyMembershipTimeline({
+      data: { community_id: communityId, offset, limit }
+    });
+
+    expect(result).toMatchObject({ next_offset: nextOffset, truncated });
+    expect(Object.keys(result).sort()).toEqual(['intervals', 'next_offset', 'truncated']);
+    for (const interval of result.intervals) {
+      expect(Object.keys(interval).sort()).toEqual([
+        'activated_at',
+        'community_id',
+        'membership_id',
+        'role',
+        'status',
+        'valid_from',
+        'valid_until'
+      ]);
+    }
+    expect(actor.query.range).toHaveBeenCalledExactlyOnceWith(offset, offset + limit);
+    expect(actor.query.eq).toHaveBeenNthCalledWith(1, 'user_id', userId);
+    expect(actor.query.eq).toHaveBeenNthCalledWith(2, 'community_id', communityId);
+    expect(actor.query.order).toHaveBeenNthCalledWith(1, 'community_id', { ascending: true });
+    expect(actor.query.order).toHaveBeenNthCalledWith(2, 'valid_from', { ascending: true });
+    expect(actor.query.order).toHaveBeenNthCalledWith(3, 'id', { ascending: true });
+    expect(mocks.setResponseHeader).toHaveBeenCalledWith('Cache-Control', 'private, no-store');
+  });
+
   it('leaves through the exact RPC, returns an allowlisted result, and disables shared caching', async () => {
     const actor = client({
       rpcData: {
@@ -237,7 +326,8 @@ describe('community lifecycle server functions', () => {
           activated_at: '2026-02-01T00:00:00Z'
         }
       ],
-      next_offset: 4
+      next_offset: 4,
+      truncated: false
     });
     expect(actor.from).toHaveBeenCalledExactlyOnceWith('community_members');
     expect(actor.query.select).toHaveBeenCalledExactlyOnceWith(
@@ -252,7 +342,7 @@ describe('community lifecycle server functions', () => {
     expect(mocks.setResponseHeader).toHaveBeenCalledWith('Cache-Control', 'private, no-store');
   });
 
-  it('caps timeline continuation at offset limit and returns empty owner-scoped results', async () => {
+  it('reports ceiling truncation separately from exhaustion', async () => {
     const actor = client({
       timelineRows: [
         {
@@ -288,7 +378,8 @@ describe('community lifecycle server functions', () => {
           activated_at: '2026-01-01T00:00:00Z'
         }
       ],
-      next_offset: null
+      next_offset: null,
+      truncated: true
     });
     expect(actor.query.range).toHaveBeenCalledExactlyOnceWith(10000, 10001);
     expect(actor.query.eq).toHaveBeenCalledExactlyOnceWith('user_id', userId);
@@ -297,7 +388,8 @@ describe('community lifecycle server functions', () => {
     mocks.getServerClient.mockReturnValue(empty);
     await expect(getMyMembershipTimeline({ data: {} })).resolves.toEqual({
       intervals: [],
-      next_offset: null
+      next_offset: null,
+      truncated: false
     });
   });
 

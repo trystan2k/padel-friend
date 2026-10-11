@@ -1,3 +1,4 @@
+import { spawn } from 'node:child_process';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { describe, expect, it, vi } from 'vitest';
 import { assertLocalSupabaseEnvInCi, localSupabaseEnv } from './helpers/local-supabase-env';
@@ -100,6 +101,25 @@ describe.skipIf(environment.env === null)('community domain (local Supabase inte
   }
   function expectNoError(result: { error: unknown }) {
     expect(result.error).toBeNull();
+  }
+  async function executeLocalFixtureSql(sql: string) {
+    const child = spawn(
+      'pnpm',
+      ['exec', 'supabase', 'db', 'query', '--local', '--output-format', 'json', sql],
+      { cwd: process.cwd(), stdio: ['ignore', 'pipe', 'pipe'] }
+    );
+    let stdout = '';
+    let stderr = '';
+    child.stdout.setEncoding('utf8').on('data', (chunk: string) => (stdout += chunk));
+    child.stderr.setEncoding('utf8').on('data', (chunk: string) => (stderr += chunk));
+    const result = await new Promise<{ code: number | null; error?: Error }>((resolve) => {
+      child.once('error', (error) => resolve({ code: null, error }));
+      child.once('close', (code) => resolve({ code }));
+    });
+    if (result.code !== 0)
+      throw new Error(
+        `Local timeline fixture SQL failed: ${result.error ?? `${stdout}\n${stderr}`}`
+      );
   }
   const invitationColumns =
     'id,community_id,invitee_user_id,issued_by,expires_at,redeemed_at,revoked_at,created_at';
@@ -1456,7 +1476,8 @@ describe.skipIf(environment.env === null)('community domain (local Supabase inte
           activated_at: beforeLeave.activated_at
         }
       ],
-      next_offset: null
+      next_offset: null,
+      truncated: false
     });
     expect(
       (await anon().rpc('leave_community', { p_community_id: lifecyclePublicId })).error?.code
@@ -1639,6 +1660,144 @@ describe.skipIf(environment.env === null)('community domain (local Supabase inte
     expect(ownerTimeline.intervals[0]?.membership_id).not.toBe(replacementId);
     expect(await playerRows(leaver)).toEqual(leaverPlayerRows);
     expect(await playerRows(invitee)).toEqual(inviteePlayerRows);
+    serverClient.current = null;
+  }, 90000);
+
+  it('paginates persisted timeline history completely and deterministically', async () => {
+    const [owner, timelineActor, decoy, emptyActor] = await Promise.all([
+      actor('timeline-page-owner'),
+      actor('timeline-page-subject'),
+      actor('timeline-page-decoy'),
+      actor('timeline-page-empty')
+    ]);
+    async function createTimelineCommunity() {
+      const result = await owner.client.rpc('create_community', {
+        p_name: `Timeline ${crypto.randomUUID()}`,
+        p_visibility: 'private',
+        p_join_policy: 'admin_approval'
+      });
+      expect(result.error).toBeNull();
+      if (typeof result.data !== 'string')
+        throw new Error('Timeline community fixture creation failed');
+      return result.data;
+    }
+    const communityIds = await Promise.all([
+      createTimelineCommunity(),
+      createTimelineCommunity(),
+      createTimelineCommunity()
+    ]);
+    const fixtureIds = [
+      crypto.randomUUID(),
+      crypto.randomUUID(),
+      crypto.randomUUID(),
+      crypto.randomUUID(),
+      crypto.randomUUID(),
+      crypto.randomUUID(),
+      crypto.randomUUID()
+    ] as const;
+    const fixtures = [
+      {
+        community_id: communityIds[0],
+        valid_from: '2020-01-01T00:00:00.000001Z',
+        id: fixtureIds[0]
+      },
+      {
+        community_id: communityIds[0],
+        valid_from: '2020-01-01T00:00:00.000001Z',
+        id: fixtureIds[1]
+      },
+      {
+        community_id: communityIds[0],
+        valid_from: '2020-02-01T00:00:00.000002Z',
+        id: fixtureIds[2]
+      },
+      {
+        community_id: communityIds[1],
+        valid_from: '2020-01-01T00:00:00.000003Z',
+        id: fixtureIds[3]
+      },
+      {
+        community_id: communityIds[1],
+        valid_from: '2020-02-01T00:00:00.000004Z',
+        id: fixtureIds[4]
+      },
+      {
+        community_id: communityIds[2],
+        valid_from: '2020-01-01T00:00:00.000005Z',
+        id: fixtureIds[5]
+      },
+      {
+        community_id: communityIds[2],
+        valid_from: '2020-02-01T00:00:00.000006Z',
+        id: fixtureIds[6]
+      }
+    ];
+    const fixtureValues = fixtures.map((fixture, index) => {
+      const until = index < 2 ? '2020-01-02T00:00:00.000001Z' : '2020-03-01T00:00:00.000000Z';
+      return `('${fixture.id}'::uuid, '${fixture.community_id}'::uuid, '${timelineActor.id}'::uuid, 'member', 'inactive', '${fixture.valid_from}'::timestamptz, '${until}'::timestamptz)`;
+    });
+    const decoyValues = communityIds
+      .slice(0, 2)
+      .map(
+        (community_id, index) =>
+          `(gen_random_uuid(), '${community_id}'::uuid, '${decoy.id}'::uuid, 'member', 'inactive', '2020-04-0${index + 1}T00:00:00.000001Z'::timestamptz, '2020-05-0${index + 1}T00:00:00.000001Z'::timestamptz)`
+      );
+    await executeLocalFixtureSql(`
+      insert into public.community_members
+        (id, community_id, user_id, role, status, valid_from, valid_until)
+      values ${[...fixtureValues, ...decoyValues].join(', ')};
+    `);
+
+    const expectedAll = [...fixtures]
+      .sort(
+        (a, b) =>
+          a.community_id.localeCompare(b.community_id) ||
+          a.valid_from.localeCompare(b.valid_from) ||
+          a.id.localeCompare(b.id)
+      )
+      .map(({ id }) => id);
+    async function traverse(
+      subject: Actor,
+      limit: 1 | 2,
+      community_id?: string,
+      expected: string[] = []
+    ) {
+      const ids: string[] = [];
+      let offset = 0;
+      let exhausted = false;
+      for (let pageCount = 0; pageCount < 20; pageCount += 1) {
+        serverClient.current = subject.client;
+        const page = await getMyMembershipTimeline({
+          data: community_id ? { offset, limit, community_id } : { offset, limit }
+        });
+        ids.push(...page.intervals.map((interval) => interval.membership_id));
+        expect(page.truncated).toBe(false);
+        if (page.next_offset === null) {
+          exhausted = true;
+          break;
+        }
+        offset = page.next_offset;
+      }
+      expect(exhausted, `Timeline pagination exceeded iteration bound for limit ${limit}`).toBe(
+        true
+      );
+      expect(ids).toEqual(expected);
+      expect(new Set(ids).size).toBe(ids.length);
+    }
+    for (const limit of [1, 2] as const) {
+      await traverse(timelineActor, limit, undefined, expectedAll);
+      await traverse(
+        timelineActor,
+        limit,
+        communityIds[0],
+        expectedAll.filter(
+          (id) => fixtures.find((fixture) => fixture.id === id)?.community_id === communityIds[0]
+        )
+      );
+      await traverse(emptyActor, limit, undefined, []);
+    }
+    expect(expectedAll).toHaveLength(7);
+    expect(expectedAll).not.toContain(decoy.id);
     serverClient.current = null;
   }, 90000);
 });

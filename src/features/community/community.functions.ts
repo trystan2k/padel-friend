@@ -159,6 +159,9 @@ export const getMyMembershipTimeline = createServerFn({ method: 'GET' })
       .range(data.offset, data.offset + data.limit);
     if (error) throw error;
     const page = rows ?? [];
+    const hasLookahead = page.length > data.limit;
+    const nextOffset =
+      hasLookahead && data.offset + data.limit <= 10000 ? data.offset + data.limit : null;
     const intervals = page.slice(0, data.limit).map((row) => ({
       membership_id: row.id,
       community_id: row.community_id,
@@ -170,10 +173,8 @@ export const getMyMembershipTimeline = createServerFn({ method: 'GET' })
     }));
     return {
       intervals,
-      next_offset:
-        page.length > data.limit && data.offset + data.limit <= 10000
-          ? data.offset + data.limit
-          : null
+      next_offset: nextOffset,
+      truncated: hasLookahead && nextOffset === null
     };
   });
 

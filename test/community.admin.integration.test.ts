@@ -170,14 +170,16 @@ async function queryLocalSql(sql: string): Promise<LocalSqlRow[]> {
 async function waitForLocalRows(
   sql: string,
   ready: (rows: LocalSqlRow[]) => boolean,
-  description: string
+  description: string,
+  timeoutMs = 20000,
+  pollIntervalMs = 75
 ): Promise<LocalSqlRow[]> {
-  const deadline = Date.now() + 20000;
+  const deadline = Date.now() + timeoutMs;
   let rows: LocalSqlRow[] = [];
   while (Date.now() < deadline) {
     rows = await queryLocalSql(sql);
     if (ready(rows)) return rows;
-    await new Promise<void>((resolve) => setTimeout(resolve, 75));
+    await new Promise<void>((resolve) => setTimeout(resolve, pollIntervalMs));
   }
   throw new Error(`Timed out waiting for ${description}: ${JSON.stringify(rows)}`);
 }
@@ -440,55 +442,53 @@ describe.skipIf(environment.env === null)('community governance with real JWTs',
       .single();
     expect(previousResult.error).toBeNull();
     if (!previousResult.data) throw new Error('Previous membership row missing');
+    const auditCountBefore = (await audit(admin, communityId)).length;
 
     const suffix = crypto.randomUUID().replaceAll('-', '');
-    const functionName = `test_pause_membership_${suffix}`;
-    const triggerName = `test_pause_membership_${suffix}`;
-    const applicationName = `paf32-${suffix}`;
-    const advisoryNamespace = 32032;
-    const lockKey = `pg_catalog.hashtext('${communityId}'::text), ${advisoryNamespace}`;
+    const marker = `paf44-holder-${suffix}`;
     const outstanding: Promise<unknown>[] = [];
     let holderPid: number | undefined;
     let holderCommand: ReturnType<typeof startLocalSql> | undefined;
 
     try {
-      await executeLocalSql(`
-        create function public.${functionName}() returns trigger
-        language plpgsql set search_path = '' as $$
-        begin
-          if old.id = '${previousId}'::uuid and old.status = 'active' and new.status = 'inactive' then
-            perform pg_catalog.pg_advisory_xact_lock(${lockKey});
-          end if;
-          return new;
-        end;
-        $$;
-      `);
-      await executeLocalSql(`
-        create trigger ${triggerName}
-        before update on public.community_members
-        for each row execute function public.${functionName}();
-      `);
-
-      // Test-only advisory lock pauses removal after its community lock is held.
-      holderCommand = startLocalSql(`
-        with session_settings as materialized (
-          select pg_catalog.set_config('application_name', '${applicationName}', false)
-        ), held_lock as materialized (
-          select pg_catalog.pg_advisory_lock(${lockKey}) from session_settings
-        )
-        select pg_catalog.pg_sleep(30) from held_lock;
-      `);
-      const [holder] = await waitForLocalRows(
-        `select a.pid as value
-          from pg_catalog.pg_stat_activity a
-          join pg_catalog.pg_locks l on l.pid = a.pid
-          where a.application_name = '${applicationName}'
-            and l.locktype = 'advisory' and l.granted`,
-        (rows) => rows.length === 1,
-        'test advisory lock to be held'
+      holderCommand = startLocalSql(
+        `/* ${marker} */ select pg_catalog.pg_sleep(900) from (select id from public.communities where id = '${communityId}'::uuid for update) locked;`
       );
+      let holder: LocalSqlRow | undefined;
+      try {
+        [holder] = await waitForLocalRows(
+          `select a.pid as value
+          from pg_catalog.pg_stat_activity a
+          where a.query like '%${marker}%'
+            and a.state = 'active' and a.pid <> pg_catalog.pg_backend_pid()`,
+          (rows) => rows.length === 1,
+          'marked holder backend',
+          10000,
+          200
+        );
+      } catch (error) {
+        const childResult = await Promise.race([
+          holderCommand.done,
+          new Promise<{ pending: true }>((resolve) =>
+            setTimeout(() => resolve({ pending: true }), 1000)
+          )
+        ]);
+        throw new Error(
+          `Holder backend not observed; child output: ${JSON.stringify(childResult)}`,
+          { cause: error }
+        );
+      }
       holderPid = Number(holder?.value);
-      if (!Number.isInteger(holderPid)) throw new Error('Test advisory lock backend missing');
+      if (!Number.isInteger(holderPid)) throw new Error('Marked holder backend missing');
+
+      const lockProbe = await startLocalSql(
+        `select id from public.communities where id = '${communityId}'::uuid for update nowait;`
+      ).done;
+      const probeOutput = `${lockProbe.stdout}\n${lockProbe.stderr}`;
+      if (lockProbe.code === 0 || !/55P03|could not obtain lock/i.test(probeOutput))
+        throw new Error(
+          `Holder did not prove the community row lock (code=${lockProbe.code}): ${probeOutput}`
+        );
 
       const removalTask = Promise.resolve(
         admin.client.rpc('govern_community_member', {
@@ -504,7 +504,8 @@ describe.skipIf(environment.env === null)('community governance with real JWTs',
           where wait_event_type = 'Lock'
             and ${holderPid} = any(pg_catalog.pg_blocking_pids(pid))`,
         (rows) => rows.length === 1,
-        'removal to hold the community lock and wait in its update trigger'
+        'removal to wait for the community row lock',
+        200
       );
       const removalPid = Number(removalWait?.value);
       if (!Number.isInteger(removalPid)) throw new Error('Queued removal backend missing');
@@ -523,7 +524,8 @@ describe.skipIf(environment.env === null)('community governance with real JWTs',
           where wait_event_type = 'Lock'
             and ${removalPid} = any(pg_catalog.pg_blocking_pids(pid))`,
         (rows) => rows.length > 0,
-        'reactivation to wait behind the locked removal'
+        'reactivation to wait behind the locked removal',
+        200
       );
 
       const [terminated] = await queryLocalSql(
@@ -561,20 +563,24 @@ describe.skipIf(environment.env === null)('community governance with real JWTs',
       });
       if (!previous.data || !replacement.data) throw new Error('Persisted interval missing');
       expectReactivationChronology(previous.data, replacement.data);
+      expect(await audit(admin, communityId)).toHaveLength(auditCountBefore + 2);
     } finally {
       try {
         await queryLocalSql(
           `select pg_catalog.pg_terminate_backend(pid) as value
             from pg_catalog.pg_stat_activity
-            where application_name = '${applicationName}'`
+            where query like '%${marker}%'
+              and pid <> pg_catalog.pg_backend_pid()`
         );
       } catch {
         // Preserve the original assertion failure; local backend may already be gone.
       }
-      if (holderCommand) await holderCommand.done;
+      if (holderCommand)
+        await Promise.race([
+          holderCommand.done,
+          new Promise((resolve) => setTimeout(resolve, 3000))
+        ]);
       await Promise.allSettled(outstanding);
-      await executeLocalSql(`drop trigger if exists ${triggerName} on public.community_members`);
-      await executeLocalSql(`drop function if exists public.${functionName}()`);
     }
   }, 90000);
 
