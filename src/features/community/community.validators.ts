@@ -135,11 +135,56 @@ function settings(value: unknown): Settings {
   )
     invalid();
   try {
-    if (new TextEncoder().encode(JSON.stringify(value)).length > 4096) invalid();
+    if (jsonbTextBytes(value) > 4096) invalid();
   } catch {
     invalid();
   }
   return value;
+}
+
+function expandJsonNumber(value: number): string {
+  const source = JSON.stringify(value);
+  const exponentIndex = source.toLowerCase().indexOf('e');
+  if (exponentIndex < 0) return source;
+  const coefficient = source.slice(0, exponentIndex);
+  const exponent = Number(source.slice(exponentIndex + 1));
+  const negative = coefficient.startsWith('-');
+  const unsigned = negative ? coefficient.slice(1) : coefficient;
+  const point = unsigned.indexOf('.') < 0 ? unsigned.length : unsigned.indexOf('.');
+  const digits = unsigned.replace('.', '');
+  const position = point + exponent;
+  const decimal =
+    position <= 0
+      ? `0.${'0'.repeat(-position)}${digits}`
+      : position >= digits.length
+        ? `${digits}${'0'.repeat(position - digits.length)}`
+        : `${digits.slice(0, position)}.${digits.slice(position)}`;
+  return `${negative ? '-' : ''}${decimal}`;
+}
+
+function jsonbTextBytes(value: unknown): number {
+  if (value === null || typeof value !== 'object') {
+    const text = typeof value === 'number' ? expandJsonNumber(value) : JSON.stringify(value);
+    return new TextEncoder().encode(text).length;
+  }
+  if (Array.isArray(value)) {
+    return (
+      2 + value.reduce((size, item, index) => size + (index ? 2 : 0) + jsonbTextBytes(item), 0)
+    );
+  }
+  return (
+    2 +
+    Object.entries(value).reduce((size, [key, item], index) => {
+      const separator = index ? 2 : 0;
+      return (
+        size +
+        separator +
+        new TextEncoder().encode(JSON.stringify(key)).length +
+        2 +
+        jsonbTextBytes(item)
+      );
+    }, 0)
+  );
 }
 
 export function validateCreateCommunity(value: unknown): CreateCommunityInput {

@@ -191,6 +191,13 @@ export const updateCommunitySettings = createServerFn({ method: 'POST' })
     if (error) {
       if (error.code === 'PG001') throw new Error('NOT_COMMUNITY_ADMIN');
       if (error.code === '28000') throw new Error('UNAUTHENTICATED');
+      const diagnostic = [error.message, error.details, error.hint].filter(Boolean).join(' ');
+      const knownConstraint =
+        ('constraint' in error && error.constraint === 'communities_settings_check') ||
+        /(?:^|["'\s])communities_settings_check(?:["'\s]|$)/.test(diagnostic);
+      if (error.code === '23514' && knownConstraint) throw new Error('INVALID_COMMUNITY_INPUT');
+      if (error.code === '22023' && error.message === 'Invalid community patch')
+        throw new Error('INVALID_COMMUNITY_INPUT');
       throw error;
     }
     if (!updated) throw new Error('NOT_COMMUNITY_ADMIN');

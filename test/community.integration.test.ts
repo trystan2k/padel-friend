@@ -502,7 +502,59 @@ describe.skipIf(environment.env === null)('community domain (local Supabase inte
       settings: { courts: 3 }
     });
     const baseline = (await rows(admin.client, 'communities', created.id))[0];
-    const audits = await rows(admin.client, 'community_audit_log', created.id);
+    let audits = await rows(admin.client, 'community_audit_log', created.id);
+    const hiddenId = await admin.client.rpc('create_community', {
+      p_name: 'Hidden ' + crypto.randomUUID(),
+      p_visibility: 'private',
+      p_join_policy: 'admin_approval'
+    });
+    expect(hiddenId.error).toBeNull();
+    if (typeof hiddenId.data !== 'string') throw new Error('create_community returned no ID');
+    serverClient.current = outsider.client;
+    const hiddenAudits = await rows(admin.client, 'community_audit_log', hiddenId.data);
+    await expect(
+      updateCommunitySettings({ data: { community_id: hiddenId.data, name: 'Hidden edit' } })
+    ).rejects.toThrow('NOT_COMMUNITY_ADMIN');
+    await expect(
+      updateCommunitySettings({ data: { community_id: crypto.randomUUID(), name: 'Missing' } })
+    ).rejects.toThrow('NOT_COMMUNITY_ADMIN');
+    expect(await rows(admin.client, 'communities', hiddenId.data)).toHaveLength(1);
+    expect(
+      (await rows(admin.client, 'community_audit_log', hiddenId.data)).map((event) => event.id)
+    ).toEqual(hiddenAudits.map((event) => event.id));
+
+    const secondAdmin = await actor('demoted-admin');
+    const secondMember = await admin.client
+      .from('community_members')
+      .insert({
+        community_id: created.id,
+        user_id: secondAdmin.id,
+        status: 'active',
+        role: 'admin'
+      })
+      .select('id')
+      .single();
+    expect(secondMember.error).toBeNull();
+    if (!secondMember.data) throw new Error('second admin membership missing');
+    const demoted = await admin.client
+      .from('community_members')
+      .update({ role: 'member' })
+      .eq('id', secondMember.data.id);
+    expect(demoted.error).toBeNull();
+    const demotedBaseline = (await rows(admin.client, 'communities', created.id))[0];
+    const demotedAudits = await rows(admin.client, 'community_audit_log', created.id);
+    serverClient.current = secondAdmin.client;
+    await expect(
+      updateCommunitySettings({ data: { community_id: created.id, name: 'Demoted edit' } })
+    ).rejects.toThrow('NOT_COMMUNITY_ADMIN');
+    await expect(
+      updateCommunitySettings({ data: { community_id: crypto.randomUUID(), name: 'Missing' } })
+    ).rejects.toThrow('NOT_COMMUNITY_ADMIN');
+    expect((await rows(admin.client, 'communities', created.id))[0]).toEqual(demotedBaseline);
+    expect(
+      (await rows(admin.client, 'community_audit_log', created.id)).map((event) => event.id)
+    ).toEqual(demotedAudits.map((event) => event.id));
+    audits = demotedAudits;
     for (const denied of [member, outsider]) {
       serverClient.current = denied.client;
       await expect(
