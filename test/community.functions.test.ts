@@ -152,7 +152,6 @@ describe('community server functions', () => {
       updateCommunitySettings({ data: { community_id: id, name: 'New' } })
     ).rejects.toThrow('UNAUTHENTICATED');
     expect(unauthenticated.rpc).not.toHaveBeenCalled();
-    expect(unauthenticated.rpc).not.toHaveBeenCalled();
     expect(mocks.setResponseHeader).toHaveBeenCalledWith('Cache-Control', 'private, no-store');
   });
 

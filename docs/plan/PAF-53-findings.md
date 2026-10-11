@@ -8,6 +8,7 @@ Single source of truth for the review fix loop. Append-only.
 | F2  | minor    | src/lib/supabase/database.types.ts:456                  | Settings RPC result types nullable columns (city_label/description/logo_path) as non-null                | deferred | deferred                      | 1         |
 | F3  | minor    | test/community.column-isolation.integration.test.ts:139 | Anonymous-denial probe reuses a signup client that already holds an authenticated session                | fixed    | testing-automation-specialist | 1         |
 | F4  | minor    | docs/security/community-column-isolation.md:36          | Role matrix promises 28000 for unauthenticated direct RPC; anon is rejected with 42501 (EXECUTE revoked) | fixed    | bug-fixer-specialist          | 1         |
+| F5  | nit      | test/community.functions.test.ts:155                    | Redundant duplicate rpc assertion (former update check)                                                  | fixed    | testing-automation-specialist | 1         |
 
 ## Notes
 
