@@ -18,9 +18,11 @@ Sources: full review of `8c705c2..5dec5d4` by `code-review-specialist`, `archite
 | F10 | minor    | src/features/community/CommunityAdminViews.tsx:23         | Views import the shell module, creating circular module ownership                                                 | deferred | deferred             | 1         |
 | F11 | minor    | e2e/community-admin.spec.ts:940                           | Locale matrix does not prove admin keyboard reachability                                                          | deferred | deferred             | 1         |
 | F12 | minor    | src/features/community/community-onboarding.styles.ts:151 | Floating label references nonexistent token `--line-height-tight`                                                 | fixed    | bug-fixer-specialist | 1         |
+| F13 | minor    | src/routes/__root.tsx:84                                  | Latest failed locale save leaves a superseded cookie; restore the committed preference                            | deferred | deferred             | 1         |
 
 ## Iteration 1 outcome
 
 - **Fixed (7):** F2, F3, F4, F5, F6, F7, F12 — every one landed with a regression test that failed before the fix and passed after.
-- **Deferred (5):** F1, F8, F9, F10, F11 — not fixed in this delivery; handed off as a follow-up issue.
+- **Deferred (6):** F1, F8, F9, F10, F11, F13 — not fixed in this delivery; handed off as a follow-up issue.
+- **Delta re-review (5dec5d4..6f8db58):** `code-review-specialist` and `ux-ui-reviewer-specialist` both report every fixed row as actually fixed, **no regressions** and **no new critical/major findings**. `code-review-specialist` raised the single new minor edge case recorded above as F13 (overlapping locale selections before the first save settles). The `architecture-review-specialist` delta was skipped by design: the fix commit is behaviour-only inside existing seams (no structural/architecture change), and the new module boundaries were already verified in the full architecture review.
 - **Separate QA failure also fixed in this iteration (not a review finding):** `test/community.integration.test.ts` fixture helper modelled an imagined `{"rows": […]}` CLI layout while `supabase` CLI v2 prints a top-level JSON array (and psql command tags for no-row statements); the two guarded tests now pass deterministically (file run ×4, plus the 3-file integration combo = 38/38).
