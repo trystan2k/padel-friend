@@ -1107,6 +1107,13 @@ describe.skipIf(environment.env === null)('community governance with real JWTs',
     await expect(
       issueInvitation({ data: { community_id: id, invitee_user_id: crypto.randomUUID() } })
     ).rejects.toThrow('INVITEE_NOT_FOUND');
+    const unarchivedVenue = await admin.client
+      .from('community_venues')
+      .select('archived_at')
+      .eq('id', venue.id)
+      .single();
+    expect(unarchivedVenue.error).toBeNull();
+    expect(unarchivedVenue.data?.archived_at).toBeNull();
     const archived = await archiveCommunityVenue({
       data: { community_id: id, venue_id: venue.id }
     });
@@ -1123,7 +1130,11 @@ describe.skipIf(environment.env === null)('community governance with real JWTs',
       action: 'UPDATE',
       details: { archived: true }
     });
-    expect(archiveEvent?.details).toEqual({ archived: true });
+    expect(archiveEvent?.details).toEqual({
+      archived: true,
+      changed_fields: ['archived_at'],
+      transitions: { archived: { before: false, after: true } }
+    });
     expect(archiveEvent?.details).not.toEqual(
       editedAudit.find((row) => row.action === 'UPDATE')?.details
     );
