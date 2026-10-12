@@ -148,7 +148,7 @@ export const ui = stylex.create({
     zIndex: 1,
     color: 'var(--color-muted)',
     fontSize: 'var(--font-size-10)',
-    lineHeight: 'var(--line-height-tight)',
+    lineHeight: 'var(--font-line-height-tight)',
     pointerEvents: 'none'
   },
   labeledInput: { paddingTop: 'var(--space-16)' },

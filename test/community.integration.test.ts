@@ -135,7 +135,31 @@ describe.skipIf(environment.env === null)('community domain (local Supabase inte
     const row: unknown = resultRows[0];
     return typeof row === 'object' && row !== null && 'id' in row && typeof row.id === 'string';
   }
-  async function executeLocalFixtureSql(sql: string): Promise<unknown> {
+  function isPlainRowObject(value: unknown): value is Record<string, unknown> {
+    return typeof value === 'object' && value !== null && !Array.isArray(value);
+  }
+  // `supabase db query --local --output-format json` (CLI v2.118) prints the
+  // statement's rows as a top-level JSON array of row objects; older CLI
+  // revisions nested them under a `rows` key. Model both, nothing else.
+  function toLocalFixtureResult(value: unknown): { rows: Array<Record<string, unknown>> } | null {
+    const candidate: unknown[] | null = Array.isArray(value)
+      ? value
+      : isPlainRowObject(value) && Array.isArray(value.rows)
+        ? value.rows
+        : null;
+    if (candidate === null) return null;
+    const fixtureRows: Array<Record<string, unknown>> = [];
+    for (const row of candidate) {
+      if (!isPlainRowObject(row)) return null;
+      fixtureRows.push(row);
+    }
+    return { rows: fixtureRows };
+  }
+  // Fixture SQL only ever references the SHA-256 token hash, never the raw
+  // invitation token, so raw CLI output is safe to surface in diagnostics.
+  async function executeLocalFixtureSql(sql: string): Promise<{
+    rows: Array<Record<string, unknown>>;
+  }> {
     const child = spawn(
       'pnpm',
       ['exec', 'supabase', 'db', 'query', '--local', '--output-format', 'json', sql],
@@ -149,38 +173,31 @@ describe.skipIf(environment.env === null)('community domain (local Supabase inte
       child.once('error', (error) => resolve({ code: null, error }));
       child.once('close', (code) => resolve({ code }));
     });
+    const rawOutput = `stdout:\n${stdout}\nstderr:\n${stderr}`;
     if (result.code !== 0)
       throw new Error(
-        `Local timeline fixture SQL failed: ${result.error ?? `${stdout}\n${stderr}`}`
+        `Local fixture SQL failed (exit ${result.code}): ${result.error ?? rawOutput}`
       );
-    try {
-      for (let start = stdout.indexOf('{'); start >= 0; start = stdout.indexOf('{', start + 1)) {
-        let depth = 0;
-        let quoted = false;
-        let escaped = false;
-        for (let index = start; index < stdout.length; index += 1) {
-          const character = stdout[index];
-          if (quoted) {
-            if (escaped) escaped = false;
-            else if (character === '\\') escaped = true;
-            else if (character === '"') quoted = false;
-            continue;
-          }
-          if (character === '"') quoted = true;
-          else if (character === '{') depth += 1;
-          else if (character === '}' && --depth === 0) {
-            try {
-              return JSON.parse(stdout.slice(start, index + 1));
-            } catch {
-              break;
-            }
-          }
-        }
+    const trimmed = stdout.trim();
+    // Row-returning statements print JSON (empty `[]` when zero rows match);
+    // statements without RETURNING print the psql command tag, e.g. `INSERT 0 9`.
+    let parsed: unknown;
+    if (
+      trimmed === '' ||
+      /^(INSERT|UPDATE|DELETE|MERGE|MOVE|FETCH|COPY)\s+\d+(\s+\d+)?$/i.test(trimmed)
+    ) {
+      parsed = [];
+    } else {
+      try {
+        parsed = JSON.parse(trimmed);
+      } catch {
+        throw new Error(`Local fixture SQL returned non-JSON stdout: ${rawOutput}`);
       }
-      return stdout.trim();
-    } catch {
-      return stdout.trim();
     }
+    const fixtureResult = toLocalFixtureResult(parsed);
+    if (!fixtureResult)
+      throw new Error(`Local fixture SQL returned an unexpected JSON shape: ${rawOutput}`);
+    return fixtureResult;
   }
   const invitationColumns =
     'id,community_id,invitee_user_id,issued_by,expires_at,redeemed_at,revoked_at,created_at';
@@ -1571,14 +1588,16 @@ describe.skipIf(environment.env === null)('community domain (local Supabase inte
     const hash = Array.from(new Uint8Array(digest), (byte) =>
       byte.toString(16).padStart(2, '0')
     ).join('');
-    const seeded: unknown = await executeLocalFixtureSql(`
+    const seeded = await executeLocalFixtureSql(`
       insert into public.community_invitations
         (community_id, invitee_user_id, issued_by, token_hash, expires_at)
       values ('${created.data}'::uuid, '${invitee.id}'::uuid, '${owner.id}'::uuid, '${hash}', clock_timestamp() + interval '5 seconds')
       returning id, created_at, expires_at;
     `);
     if (!isExpiredInvitationResult(seeded))
-      throw new Error('Expired invitation fixture returned an unexpected CLI JSON result');
+      throw new Error(
+        `Expired invitation fixture returned an unexpected CLI JSON result: ${JSON.stringify(seeded)}`
+      );
     const row = seeded.rows[0];
     if (!row) throw new Error('Expired invitation fixture returned no row');
     expect(Date.parse(row.expires_at)).toBeGreaterThan(Date.parse(row.created_at));
@@ -1968,14 +1987,16 @@ describe.skipIf(environment.env === null)('community domain (local Supabase inte
       const hash = Array.from(new Uint8Array(digest), (byte) =>
         byte.toString(16).padStart(2, '0')
       ).join('');
-      const seeded: unknown = await executeLocalFixtureSql(`
+      const seeded = await executeLocalFixtureSql(`
         insert into public.community_invitations
           (community_id, invitee_user_id, issued_by, token_hash, expires_at)
         values ('${communityId}'::uuid, '${invitee.id}'::uuid, '${owner.id}'::uuid, '${hash}', clock_timestamp() + interval '1 day')
         returning id;
       `);
       if (!isSqlRowsWithId(seeded))
-        throw new Error('Invitation fixture returned an unexpected CLI result');
+        throw new Error(
+          `Invitation fixture returned an unexpected CLI result: ${JSON.stringify(seeded)}`
+        );
       const inserted = seeded.rows[0];
       if (!inserted) throw new Error('Invitation fixture returned no inserted row');
       return { id: inserted.id, raw };

@@ -454,9 +454,11 @@ function MemberView(props: ViewProps<'member'>) {
   const communityId = params.communityId ?? '';
   const { busy, setBusy, message, setMessage, errorKey, setErrorKey } = useAdminMutationState();
   const [confirmation, setConfirmation] = useState<'demote' | 'remove' | null>(null);
-  const [completedConfirmation, setCompletedConfirmation] = useState<'demote' | 'remove' | null>(
-    null
-  );
+  const [completedConfirmation, setCompletedConfirmation] = useState<{
+    action: 'demote' | 'remove';
+    membershipId: string;
+  } | null>(null);
+  const [refreshError, setRefreshError] = useState(false);
   const headingRef = useRef<HTMLHeadingElement>(null);
   const cancelRef = useRef<HTMLElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
@@ -468,6 +470,7 @@ function MemberView(props: ViewProps<'member'>) {
     if (busy) return false;
     setBusy(true);
     setErrorKey('');
+    setRefreshError(false);
     setMessage('');
     const actions = {
       approve: approveCommunityMember,
@@ -477,32 +480,75 @@ function MemberView(props: ViewProps<'member'>) {
       promote: promoteCommunityMember,
       demote: demoteCommunityMember
     };
+    let result: unknown;
     try {
-      const result = await actions[action]({
+      result = await actions[action]({
         data: { community_id: community.id, membership_id: membershipId }
       });
-      setMessage(t(`communityAdmin.result.${action}`));
+    } catch (error) {
+      setErrorKey(failed(error));
+      setBusy(false);
+      return false;
+    }
+
+    setMessage(t(`communityAdmin.result.${action}`));
+    try {
       await router.invalidate();
-      if (action === 'reactivate' && 'membership_id' in result) {
+      if (
+        action === 'reactivate' &&
+        typeof result === 'object' &&
+        result !== null &&
+        'membership_id' in result &&
+        typeof result.membership_id === 'string'
+      ) {
         await router.navigate({
           to: '/community/$communityId/admin/members/$membershipId',
           params: { communityId: community.id, membershipId: result.membership_id }
         });
       }
-      return true;
-    } catch (error) {
-      setErrorKey(failed(error));
-      return false;
-    } finally {
-      setBusy(false);
+    } catch {
+      setErrorKey('generic');
+      setRefreshError(true);
     }
+    setBusy(false);
+    return true;
   }
 
   function requestMemberAction(
-    action: 'approve' | 'deny' | 'remove' | 'reactivate' | 'promote' | 'demote'
+    action: 'approve' | 'deny' | 'remove' | 'reactivate' | 'promote' | 'demote',
+    trigger?: HTMLButtonElement
   ) {
-    if (action === 'remove' || action === 'demote') setConfirmation(action);
-    else void memberAction(action);
+    if (action === 'remove' || action === 'demote') {
+      if (trigger) triggerRef.current = trigger;
+      setConfirmation(action);
+    } else {
+      void memberAction(action).then((succeeded) => {
+        if (succeeded) setCompletedConfirmation(null);
+      });
+    }
+  }
+
+  async function confirmMemberAction() {
+    if (!confirmation || busy) return;
+    if (await memberAction(confirmation)) {
+      setCompletedConfirmation({ action: confirmation, membershipId });
+      setConfirmation(null);
+    }
+  }
+
+  async function retryRefresh() {
+    if (busy) return;
+    setBusy(true);
+    try {
+      await router.invalidate();
+      setErrorKey('');
+      setRefreshError(false);
+    } catch {
+      setErrorKey('generic');
+      setRefreshError(true);
+    } finally {
+      setBusy(false);
+    }
   }
 
   return (
@@ -573,26 +619,31 @@ function MemberView(props: ViewProps<'member'>) {
         )}
         {member.status === 'active' &&
           member.role === 'admin' &&
-          completedConfirmation !== 'demote' && (
+          !(
+            completedConfirmation?.membershipId === membershipId &&
+            completedConfirmation.action === 'demote'
+          ) && (
             <Button
-              ref={triggerRef}
               variant="secondary"
               busy={busy}
-              onClick={() => requestMemberAction('demote')}
+              onClick={(event) => requestMemberAction('demote', event.currentTarget)}
             >
               {t('communityAdmin.action.demote')}
             </Button>
           )}
-        {member.status === 'active' && completedConfirmation !== 'remove' && (
-          <Button
-            ref={triggerRef}
-            variant="secondary"
-            busy={busy}
-            onClick={() => requestMemberAction('remove')}
-          >
-            {t('communityAdmin.action.remove')}
-          </Button>
-        )}
+        {member.status === 'active' &&
+          !(
+            completedConfirmation?.membershipId === membershipId &&
+            completedConfirmation.action === 'remove'
+          ) && (
+            <Button
+              variant="secondary"
+              busy={busy}
+              onClick={(event) => requestMemberAction('remove', event.currentTarget)}
+            >
+              {t('communityAdmin.action.remove')}
+            </Button>
+          )}
       </div>
       <AlertDialog.Root
         open={confirmation !== null}
@@ -632,18 +683,23 @@ function MemberView(props: ViewProps<'member'>) {
                 })}
               </AlertDialog.Title>
               <div {...stylex.props(styles.actions)}>
-                <Button
-                  busy={busy}
-                  onClick={async () => {
-                    if (!confirmation || busy) return;
-                    if (await memberAction(confirmation)) {
-                      setCompletedConfirmation(confirmation);
-                      setConfirmation(null);
-                    }
-                  }}
-                >
+                <Button busy={busy} onClick={() => void confirmMemberAction()}>
                   {t('communityAdmin.confirmAction')}
                 </Button>
+                {confirmation && errorKey && !refreshError && (
+                  <>
+                    <p role="alert" {...stylex.props(styles.error)}>
+                      {t(`communityAdmin.error.${errorKey}`)}
+                    </p>
+                    <Button
+                      variant="secondary"
+                      busy={busy}
+                      onClick={() => void confirmMemberAction()}
+                    >
+                      {t('communityAdmin.retry')}
+                    </Button>
+                  </>
+                )}
                 <AlertDialog.Close
                   render={
                     <Button
@@ -666,13 +722,13 @@ function MemberView(props: ViewProps<'member'>) {
       </AlertDialog.Root>
       <p {...stylex.props(styles.note)}>{t('communityAdmin.levelReadOnly')}</p>
       {message && <output {...stylex.props(styles.status)}>{message}</output>}
-      {errorKey && (
+      {errorKey && (!confirmation || refreshError) && (
         <p role="alert" {...stylex.props(styles.error)}>
           {t(`communityAdmin.error.${errorKey}`)}
         </p>
       )}
-      {errorKey && (
-        <Button variant="secondary" onClick={() => void router.invalidate()}>
+      {errorKey && (!confirmation || refreshError) && (
+        <Button variant="secondary" busy={busy} onClick={() => void retryRefresh()}>
           {t('communityAdmin.retry')}
         </Button>
       )}
@@ -822,6 +878,7 @@ function VenuesView({ community, venues }: ViewProps<'venues'>) {
   const [hasMoreVenues, setHasMoreVenues] = useState(venues.length === 50);
   const [venueDraft, setVenueDraft] = useState({ id: '', name: '', address: '', maps_url: '' });
   const [venueFormOpen, setVenueFormOpen] = useState(false);
+  const [paginationPending, setPaginationPending] = useState(false);
   const sourceRef = useRef(venues);
   const requestGeneration = useRef(0);
   const { busy, setBusy, message, setMessage, errorKey, setErrorKey } = useAdminMutationState();
@@ -830,13 +887,14 @@ function VenuesView({ community, venues }: ViewProps<'venues'>) {
     if (sourceRef.current === venues) return;
     sourceRef.current = venues;
     requestGeneration.current += 1;
+    setPaginationPending(false);
     setAdditionalVenues([]);
     setHasLoadedMoreVenues(false);
     setHasMoreVenues(venues.length === 50);
   }, [venues]);
 
   async function run(action: () => Promise<unknown>, success: string) {
-    if (busy) return false;
+    if (busy || paginationPending) return false;
     setBusy(true);
     setErrorKey('');
     setMessage('');
@@ -882,8 +940,8 @@ function VenuesView({ community, venues }: ViewProps<'venues'>) {
   }
 
   async function loadMoreVenues() {
-    if (busy || !hasMoreVenues) return;
-    setBusy(true);
+    if (busy || paginationPending || !hasMoreVenues) return;
+    setPaginationPending(true);
     setHasLoadedMoreVenues(true);
     const source = venues;
     const generation = ++requestGeneration.current;
@@ -902,14 +960,16 @@ function VenuesView({ community, venues }: ViewProps<'venues'>) {
       if (sourceRef.current === source && requestGeneration.current === generation)
         setErrorKey(failed(error));
     } finally {
-      if (requestGeneration.current === generation) setBusy(false);
+      if (requestGeneration.current === generation) setPaginationPending(false);
     }
   }
 
   return (
     <AdminViewFrame communityId={communityId} communityName={community.name} screen="venues">
       {!venueFormOpen && (
-        <Button onClick={() => setVenueFormOpen(true)}>{t('communityAdmin.venue.add')}</Button>
+        <Button busy={busy || paginationPending} onClick={() => setVenueFormOpen(true)}>
+          {t('communityAdmin.venue.add')}
+        </Button>
       )}
       {venueFormOpen && (
         <SurfaceCard xstyle={styles.card}>
@@ -941,7 +1001,7 @@ function VenuesView({ community, venues }: ViewProps<'venues'>) {
               onChange={(event) => setVenueDraft({ ...venueDraft, maps_url: event.target.value })}
             />
             <p {...stylex.props(styles.note)}>{t('communityAdmin.photoUnavailable')}</p>
-            <Button type="submit" busy={busy}>
+            <Button type="submit" busy={busy || paginationPending}>
               {t('communityAdmin.save')}
             </Button>
           </form>
@@ -983,6 +1043,7 @@ function VenuesView({ community, venues }: ViewProps<'venues'>) {
               <Button
                 variant="secondary"
                 xstyle={styles.venueAction}
+                busy={busy || paginationPending}
                 onClick={() => {
                   setVenueDraft({
                     id: venue.id,
@@ -998,7 +1059,7 @@ function VenuesView({ community, venues }: ViewProps<'venues'>) {
               <Button
                 variant="secondary"
                 xstyle={styles.venueAction}
-                busy={busy}
+                busy={busy || paginationPending}
                 onClick={() =>
                   void run(
                     () =>
@@ -1017,7 +1078,11 @@ function VenuesView({ community, venues }: ViewProps<'venues'>) {
         {!venues.length && !additionalVenues.length && <p>{t('communityAdmin.empty.venues')}</p>}
       </div>
       {hasMoreVenues ? (
-        <Button variant="secondary" busy={busy} onClick={() => void loadMoreVenues()}>
+        <Button
+          variant="secondary"
+          busy={busy || paginationPending}
+          onClick={() => void loadMoreVenues()}
+        >
           {t('communityAdmin.loadMore')}
         </Button>
       ) : (
@@ -1053,7 +1118,8 @@ function AuditView(props: ViewProps<'audit'>) {
   const auditGeneration = useRef(0);
   const [hasMoreAudit, setHasMoreAudit] = useState(audit.length === 3);
   const [hasLoadedMoreAudit, setHasLoadedMoreAudit] = useState(false);
-  const { busy, setBusy, message, setMessage, errorKey, setErrorKey } = useAdminMutationState();
+  const { message, setMessage, errorKey, setErrorKey } = useAdminMutationState();
+  const [paginationPending, setPaginationPending] = useState(false);
   const locale = i18n.resolvedLanguage || i18n.language;
   const auditRows = additionalAudit.source === audit ? [...audit, ...additionalAudit.rows] : audit;
 
@@ -1061,14 +1127,15 @@ function AuditView(props: ViewProps<'audit'>) {
     if (auditSourceRef.current === audit) return;
     auditSourceRef.current = audit;
     auditGeneration.current += 1;
+    setPaginationPending(false);
     setAdditionalAudit({ source: audit, rows: [] });
     setHasMoreAudit(audit.length === 3);
     setHasLoadedMoreAudit(false);
   }, [audit]);
 
   async function loadMoreAudit() {
-    if (busy || !hasMoreAudit) return;
-    setBusy(true);
+    if (paginationPending || !hasMoreAudit) return;
+    setPaginationPending(true);
     setHasLoadedMoreAudit(true);
     const source = audit;
     const generation = ++auditGeneration.current;
@@ -1086,7 +1153,7 @@ function AuditView(props: ViewProps<'audit'>) {
       if (auditSourceRef.current === source && auditGeneration.current === generation)
         setErrorKey(failed(error));
     } finally {
-      if (auditGeneration.current === generation) setBusy(false);
+      if (auditGeneration.current === generation) setPaginationPending(false);
     }
   }
 
@@ -1121,7 +1188,7 @@ function AuditView(props: ViewProps<'audit'>) {
         ))}
         {!auditRows.length && <p>{t('communityAdmin.empty.audit')}</p>}
         {hasMoreAudit ? (
-          <Button variant="secondary" busy={busy} onClick={() => void loadMoreAudit()}>
+          <Button variant="secondary" busy={paginationPending} onClick={() => void loadMoreAudit()}>
             {t('communityAdmin.loadMore')}
           </Button>
         ) : (

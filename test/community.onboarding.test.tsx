@@ -3,6 +3,7 @@ import { cleanup, render, screen, fireEvent, waitFor } from '@testing-library/re
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { I18nextProvider } from 'react-i18next';
+import { readFileSync } from 'node:fs';
 import { createI18n } from '../src/i18n/config';
 import { CommunityOnboarding } from '../src/features/community/CommunityOnboarding';
 import type { PublicCommunity } from '../src/features/community/community.validators';
@@ -48,6 +49,15 @@ const row: PublicCommunity = {
   created_at: '2026-10-01T00:00:00Z',
   updated_at: '2026-10-01T00:00:00Z'
 };
+
+it('uses the existing tight line-height token for floating labels', () => {
+  const stylesheet = readFileSync('src/features/community/community-onboarding.styles.ts', 'utf8');
+  const tokenCatalog = readFileSync('design-tokens/primitives.tokens.json', 'utf8');
+
+  expect(stylesheet).toContain("lineHeight: 'var(--font-line-height-tight)'");
+  expect(stylesheet).not.toContain('var(--line-height-tight)');
+  expect(tokenCatalog).toMatch(/"line-height"\s*:\s*{\s*"tight"\s*:/);
+});
 
 function mount(
   view?: 'create',
