@@ -159,6 +159,9 @@ export const getMyMembershipTimeline = createServerFn({ method: 'GET' })
       .range(data.offset, data.offset + data.limit);
     if (error) throw error;
     const page = rows ?? [];
+    const hasLookahead = page.length > data.limit;
+    const nextOffset =
+      hasLookahead && data.offset + data.limit <= 10000 ? data.offset + data.limit : null;
     const intervals = page.slice(0, data.limit).map((row) => ({
       membership_id: row.id,
       community_id: row.community_id,
@@ -170,10 +173,8 @@ export const getMyMembershipTimeline = createServerFn({ method: 'GET' })
     }));
     return {
       intervals,
-      next_offset:
-        page.length > data.limit && data.offset + data.limit <= 10000
-          ? data.offset + data.limit
-          : null
+      next_offset: nextOffset,
+      truncated: hasLookahead && nextOffset === null
     };
   });
 
@@ -191,6 +192,13 @@ export const updateCommunitySettings = createServerFn({ method: 'POST' })
     if (error) {
       if (error.code === 'PG001') throw new Error('NOT_COMMUNITY_ADMIN');
       if (error.code === '28000') throw new Error('UNAUTHENTICATED');
+      const diagnostic = [error.message, error.details, error.hint].filter(Boolean).join(' ');
+      const knownConstraint =
+        ('constraint' in error && error.constraint === 'communities_settings_check') ||
+        /(?:^|["'\s])communities_settings_check(?:["'\s]|$)/.test(diagnostic);
+      if (error.code === '23514' && knownConstraint) throw new Error('INVALID_COMMUNITY_INPUT');
+      if (error.code === '22023' && error.message === 'Invalid community patch')
+        throw new Error('INVALID_COMMUNITY_INPUT');
       throw error;
     }
     if (!updated) throw new Error('NOT_COMMUNITY_ADMIN');

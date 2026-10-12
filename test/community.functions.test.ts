@@ -108,6 +108,34 @@ describe('community server functions', () => {
     expect(mocks.getServerClient).not.toHaveBeenCalled();
   });
 
+  it('sizes settings as PostgreSQL JSONB text, including exact byte boundaries', async () => {
+    const payload = (bytes: number) => ({ x: 'a'.repeat(bytes - 9) });
+    const authenticated = client();
+    mocks.getServerClient.mockReturnValue(authenticated);
+    for (const bytes of [4095, 4096]) {
+      await expect(
+        updateCommunitySettings({ data: { community_id: id, settings: payload(bytes) } })
+      ).resolves.toEqual(row);
+    }
+    await expect(
+      updateCommunitySettings({ data: { community_id: id, settings: payload(4097) } })
+    ).rejects.toThrow('INVALID_COMMUNITY_INPUT');
+    for (const fixture of [
+      { nested: [{ empty: {} }, []] },
+      { emptyObject: {}, emptyArray: [] },
+      { ключ: '🎾\\"' },
+      { expanded: 1e21 },
+      { expanded: 1e-7 },
+      { expanded: 5e-324 },
+      { negativeZero: -0 }
+    ])
+      await expect(
+        updateCommunitySettings({ data: { community_id: id, settings: fixture } })
+      ).resolves.toEqual(row);
+    expect(mocks.getServerClient).toHaveBeenCalledTimes(9);
+    expect(authenticated.rpc).toHaveBeenCalledTimes(9);
+  });
+
   it('rejects PostgreSQL-invalid text before client access', async () => {
     for (const input of [
       { ...createInput, name: 'Pad\u0000el' },
@@ -211,6 +239,30 @@ describe('community server functions', () => {
     await expect(
       updateCommunitySettings({ data: { community_id: id, name: 'Unauthenticated' } })
     ).rejects.toThrow('UNAUTHENTICATED');
+  });
+
+  it('maps only known settings validation failures to input errors', async () => {
+    for (const error of [
+      { code: '23514', message: 'violates check constraint "communities_settings_check"' },
+      { code: '23514', constraint: 'communities_settings_check' },
+      { code: '22023', message: 'Invalid community patch' }
+    ]) {
+      mocks.getServerClient.mockReturnValue(client(true, null, error));
+      await expect(
+        updateCommunitySettings({ data: { community_id: id, name: 'Updated' } })
+      ).rejects.toThrow('INVALID_COMMUNITY_INPUT');
+    }
+    for (const error of [
+      { code: '23514', message: 'settings validation failed' },
+      { code: '23514', message: 'communities_settings_check_suffix' },
+      { code: '22023', message: 'Other invalid argument' },
+      { code: '42501', message: 'permission denied' }
+    ]) {
+      mocks.getServerClient.mockReturnValue(client(true, null, error));
+      await expect(
+        updateCommunitySettings({ data: { community_id: id, name: 'Updated' } })
+      ).rejects.toBe(error);
+    }
   });
 
   it('propagates database failures without disguising them as authorization errors', async () => {

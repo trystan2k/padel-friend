@@ -1,11 +1,11 @@
 # PAF-27 Findings Ledger
 
-| id  | severity | location                                          | title                                                                   | status   | owner                     | iteration |
-| --- | -------- | ------------------------------------------------- | ----------------------------------------------------------------------- | -------- | ------------------------- | --------- |
-| F1  | minor    | src/features/community/community.validators.ts:90 | Settings JSON byte cap differs from PostgreSQL JSONB limit              | deferred | deferred                  | 1         |
-| F2  | minor    | src/features/community/community.validators.ts:65 | PostgreSQL-invalid strings (NUL, unpaired surrogates) pass validation   | fixed    | implementation-specialist | 1         |
-| F3  | minor    | src/features/community/community.functions.ts:31  | JSONB size CHECK failures lack stable input-error mapping               | deferred | deferred                  | 1         |
-| F4  | minor    | test/community.integration.test.ts:349            | Handler denial coverage omits hidden-private targets and demoted admins | deferred | deferred                  | 1         |
+| id  | severity | location                                          | title                                                                   | status | owner                     | iteration |
+| --- | -------- | ------------------------------------------------- | ----------------------------------------------------------------------- | ------ | ------------------------- | --------- |
+| F1  | minor    | src/features/community/community.validators.ts:90 | Settings JSON byte cap differs from PostgreSQL JSONB limit              | fixed  | implementation-specialist | 1         |
+| F2  | minor    | src/features/community/community.validators.ts:65 | PostgreSQL-invalid strings (NUL, unpaired surrogates) pass validation   | fixed  | implementation-specialist | 1         |
+| F3  | minor    | src/features/community/community.functions.ts:31  | JSONB size CHECK failures lack stable input-error mapping               | fixed  | implementation-specialist | 1         |
+| F4  | minor    | test/community.integration.test.ts:349            | Handler denial coverage omits hidden-private targets and demoted admins | fixed  | implementation-specialist | 1         |
 
 ## Notes
 
@@ -14,3 +14,9 @@
 - F1 and F3 are the same theme (settings JSONB size parity / CHECK error mapping); deferred — the DB still protects stored data.
 - F4 is a test-coverage gap; deferred.
 - F1/F3/F4 will be handed off as a follow-up issue.
+
+## Resolution evidence — PAF-36
+
+- F1: Validator now counts UTF-8 bytes of JSONB-style text, including spaced separators and expanded numeric exponents. `test/community.functions.test.ts` covers exact 4095/4096/4097 boundaries, nested/empty containers, Unicode and exponent values; oversized input is rejected before client/auth access.
+- F3: Settings RPC maps SQLSTATE 23514 only for exact `communities_settings_check` diagnostics and 22023 only with exact `Invalid community patch` message. Other database/auth errors remain unchanged; tested in `test/community.functions.test.ts`.
+- F4: Real-JWT integration test includes hidden-private and demoted-admin targets, each compared with missing-ID denial; surviving admin verifies row/audit unchanged. Requires local Supabase to execute.

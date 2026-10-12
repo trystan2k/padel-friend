@@ -1,6 +1,11 @@
-import { readFileSync } from 'node:fs';
+import { spawn } from 'node:child_process';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { describe, expect, it, vi } from 'vitest';
+import {
+  assertLocalSupabaseEnvInCi,
+  dotEnvPathFromImportMetaUrl,
+  localSupabaseEnv
+} from './helpers/local-supabase-env';
 
 const serverClient = vi.hoisted(() => ({ current: null as SupabaseClient | null }));
 vi.mock('@tanstack/react-start', () => ({
@@ -39,57 +44,13 @@ import {
 } from '../src/features/community/community.functions';
 
 vi.setConfig({ testTimeout: 30000, hookTimeout: 30000 });
-type LocalEnv = { url: string; key: string; source: 'environment' | '.env file' };
-const LOOPBACK_HOSTS = new Set(['127.0.0.1', 'localhost']);
-function usableLocalEnv(
-  rawUrl: string | undefined,
-  key: string | undefined,
-  source: LocalEnv['source']
-): LocalEnv | null {
-  if (!rawUrl || !key || key.startsWith('replace-with')) return null;
-  const url = rawUrl.replace(/^["']+|["']+$/g, '');
-  try {
-    if (!LOOPBACK_HOSTS.has(new URL(url).hostname)) return null;
-  } catch {
-    return null;
-  }
-  return { url, key, source };
-}
-function localSupabaseEnv(): { env: LocalEnv | null; reason: string } {
-  const url = process.env.VITE_SUPABASE_URL;
-  const key = process.env.VITE_SUPABASE_PUBLISHABLE_KEY;
-  if (url && key && !key.startsWith('replace-with')) {
-    return {
-      env: usableLocalEnv(url, key, 'environment'),
-      reason: `Non-loopback environment URL: ${url}`
-    };
-  }
-  try {
-    const vars = new Map(
-      readFileSync(new URL('../.env', import.meta.url), 'utf8')
-        .split('\n')
-        .filter((line) => line.includes('=') && !line.trim().startsWith('#'))
-        .map((line) => {
-          const index = line.indexOf('=');
-          return [line.slice(0, index).trim(), line.slice(index + 1).trim()] as const;
-        })
-    );
-    const fileUrl = vars.get('VITE_SUPABASE_URL');
-    const fileKey = vars.get('VITE_SUPABASE_PUBLISHABLE_KEY');
-    return {
-      env: usableLocalEnv(fileUrl, fileKey, '.env file'),
-      reason: `Missing or non-loopback .env URL: ${fileUrl ?? 'unset'}`
-    };
-  } catch {
-    return { env: null, reason: 'Missing loopback Supabase environment and .env' };
-  }
-}
-const environment = localSupabaseEnv();
+type LocalEnv = NonNullable<ReturnType<typeof localSupabaseEnv>['env']>;
+const environment = localSupabaseEnv({ filePath: dotEnvPathFromImportMetaUrl(import.meta.url) });
 if (!environment.env)
   process.stderr.write(`[community.integration] suite NOT RUN: ${environment.reason}\n`);
 describe('community domain — CI backend guard', () => {
   it('fails closed without local backend in CI', () => {
-    expect(process.env.CI === undefined || environment.env !== null).toBe(true);
+    expect(() => assertLocalSupabaseEnvInCi(environment.env, process.env.CI)).not.toThrow();
   });
 });
 
@@ -144,6 +105,25 @@ describe.skipIf(environment.env === null)('community domain (local Supabase inte
   }
   function expectNoError(result: { error: unknown }) {
     expect(result.error).toBeNull();
+  }
+  async function executeLocalFixtureSql(sql: string) {
+    const child = spawn(
+      'pnpm',
+      ['exec', 'supabase', 'db', 'query', '--local', '--output-format', 'json', sql],
+      { cwd: process.cwd(), stdio: ['ignore', 'pipe', 'pipe'] }
+    );
+    let stdout = '';
+    let stderr = '';
+    child.stdout.setEncoding('utf8').on('data', (chunk: string) => (stdout += chunk));
+    child.stderr.setEncoding('utf8').on('data', (chunk: string) => (stderr += chunk));
+    const result = await new Promise<{ code: number | null; error?: Error }>((resolve) => {
+      child.once('error', (error) => resolve({ code: null, error }));
+      child.once('close', (code) => resolve({ code }));
+    });
+    if (result.code !== 0)
+      throw new Error(
+        `Local timeline fixture SQL failed: ${result.error ?? `${stdout}\n${stderr}`}`
+      );
   }
   const invitationColumns =
     'id,community_id,invitee_user_id,issued_by,expires_at,redeemed_at,revoked_at,created_at';
@@ -502,7 +482,59 @@ describe.skipIf(environment.env === null)('community domain (local Supabase inte
       settings: { courts: 3 }
     });
     const baseline = (await rows(admin.client, 'communities', created.id))[0];
-    const audits = await rows(admin.client, 'community_audit_log', created.id);
+    let audits = await rows(admin.client, 'community_audit_log', created.id);
+    const hiddenId = await admin.client.rpc('create_community', {
+      p_name: 'Hidden ' + crypto.randomUUID(),
+      p_visibility: 'private',
+      p_join_policy: 'admin_approval'
+    });
+    expect(hiddenId.error).toBeNull();
+    if (typeof hiddenId.data !== 'string') throw new Error('create_community returned no ID');
+    serverClient.current = outsider.client;
+    const hiddenAudits = await rows(admin.client, 'community_audit_log', hiddenId.data);
+    await expect(
+      updateCommunitySettings({ data: { community_id: hiddenId.data, name: 'Hidden edit' } })
+    ).rejects.toThrow('NOT_COMMUNITY_ADMIN');
+    await expect(
+      updateCommunitySettings({ data: { community_id: crypto.randomUUID(), name: 'Missing' } })
+    ).rejects.toThrow('NOT_COMMUNITY_ADMIN');
+    expect(await rows(admin.client, 'communities', hiddenId.data)).toHaveLength(1);
+    expect(
+      (await rows(admin.client, 'community_audit_log', hiddenId.data)).map((event) => event.id)
+    ).toEqual(hiddenAudits.map((event) => event.id));
+
+    const secondAdmin = await actor('demoted-admin');
+    const secondMember = await admin.client
+      .from('community_members')
+      .insert({
+        community_id: created.id,
+        user_id: secondAdmin.id,
+        status: 'active',
+        role: 'admin'
+      })
+      .select('id')
+      .single();
+    expect(secondMember.error).toBeNull();
+    if (!secondMember.data) throw new Error('second admin membership missing');
+    const demoted = await admin.client
+      .from('community_members')
+      .update({ role: 'member' })
+      .eq('id', secondMember.data.id);
+    expect(demoted.error).toBeNull();
+    const demotedBaseline = (await rows(admin.client, 'communities', created.id))[0];
+    const demotedAudits = await rows(admin.client, 'community_audit_log', created.id);
+    serverClient.current = secondAdmin.client;
+    await expect(
+      updateCommunitySettings({ data: { community_id: created.id, name: 'Demoted edit' } })
+    ).rejects.toThrow('NOT_COMMUNITY_ADMIN');
+    await expect(
+      updateCommunitySettings({ data: { community_id: crypto.randomUUID(), name: 'Missing' } })
+    ).rejects.toThrow('NOT_COMMUNITY_ADMIN');
+    expect((await rows(admin.client, 'communities', created.id))[0]).toEqual(demotedBaseline);
+    expect(
+      (await rows(admin.client, 'community_audit_log', created.id)).map((event) => event.id)
+    ).toEqual(demotedAudits.map((event) => event.id));
+    audits = demotedAudits;
     for (const denied of [member, outsider]) {
       serverClient.current = denied.client;
       await expect(
@@ -1448,7 +1480,8 @@ describe.skipIf(environment.env === null)('community domain (local Supabase inte
           activated_at: beforeLeave.activated_at
         }
       ],
-      next_offset: null
+      next_offset: null,
+      truncated: false
     });
     expect(
       (await anon().rpc('leave_community', { p_community_id: lifecyclePublicId })).error?.code
@@ -1631,6 +1664,144 @@ describe.skipIf(environment.env === null)('community domain (local Supabase inte
     expect(ownerTimeline.intervals[0]?.membership_id).not.toBe(replacementId);
     expect(await playerRows(leaver)).toEqual(leaverPlayerRows);
     expect(await playerRows(invitee)).toEqual(inviteePlayerRows);
+    serverClient.current = null;
+  }, 90000);
+
+  it('paginates persisted timeline history completely and deterministically', async () => {
+    const [owner, timelineActor, decoy, emptyActor] = await Promise.all([
+      actor('timeline-page-owner'),
+      actor('timeline-page-subject'),
+      actor('timeline-page-decoy'),
+      actor('timeline-page-empty')
+    ]);
+    async function createTimelineCommunity() {
+      const result = await owner.client.rpc('create_community', {
+        p_name: `Timeline ${crypto.randomUUID()}`,
+        p_visibility: 'private',
+        p_join_policy: 'admin_approval'
+      });
+      expect(result.error).toBeNull();
+      if (typeof result.data !== 'string')
+        throw new Error('Timeline community fixture creation failed');
+      return result.data;
+    }
+    const communityIds = await Promise.all([
+      createTimelineCommunity(),
+      createTimelineCommunity(),
+      createTimelineCommunity()
+    ]);
+    const fixtureIds = [
+      crypto.randomUUID(),
+      crypto.randomUUID(),
+      crypto.randomUUID(),
+      crypto.randomUUID(),
+      crypto.randomUUID(),
+      crypto.randomUUID(),
+      crypto.randomUUID()
+    ] as const;
+    const fixtures = [
+      {
+        community_id: communityIds[0],
+        valid_from: '2020-01-01T00:00:00.000001Z',
+        id: fixtureIds[0]
+      },
+      {
+        community_id: communityIds[0],
+        valid_from: '2020-01-01T00:00:00.000001Z',
+        id: fixtureIds[1]
+      },
+      {
+        community_id: communityIds[0],
+        valid_from: '2020-02-01T00:00:00.000002Z',
+        id: fixtureIds[2]
+      },
+      {
+        community_id: communityIds[1],
+        valid_from: '2020-01-01T00:00:00.000003Z',
+        id: fixtureIds[3]
+      },
+      {
+        community_id: communityIds[1],
+        valid_from: '2020-02-01T00:00:00.000004Z',
+        id: fixtureIds[4]
+      },
+      {
+        community_id: communityIds[2],
+        valid_from: '2020-01-01T00:00:00.000005Z',
+        id: fixtureIds[5]
+      },
+      {
+        community_id: communityIds[2],
+        valid_from: '2020-02-01T00:00:00.000006Z',
+        id: fixtureIds[6]
+      }
+    ];
+    const fixtureValues = fixtures.map((fixture, index) => {
+      const until = index < 2 ? '2020-01-02T00:00:00.000001Z' : '2020-03-01T00:00:00.000000Z';
+      return `('${fixture.id}'::uuid, '${fixture.community_id}'::uuid, '${timelineActor.id}'::uuid, 'member', 'inactive', '${fixture.valid_from}'::timestamptz, '${until}'::timestamptz)`;
+    });
+    const decoyValues = communityIds
+      .slice(0, 2)
+      .map(
+        (community_id, index) =>
+          `(gen_random_uuid(), '${community_id}'::uuid, '${decoy.id}'::uuid, 'member', 'inactive', '2020-04-0${index + 1}T00:00:00.000001Z'::timestamptz, '2020-05-0${index + 1}T00:00:00.000001Z'::timestamptz)`
+      );
+    await executeLocalFixtureSql(`
+      insert into public.community_members
+        (id, community_id, user_id, role, status, valid_from, valid_until)
+      values ${[...fixtureValues, ...decoyValues].join(', ')};
+    `);
+
+    const expectedAll = [...fixtures]
+      .sort(
+        (a, b) =>
+          a.community_id.localeCompare(b.community_id) ||
+          a.valid_from.localeCompare(b.valid_from) ||
+          a.id.localeCompare(b.id)
+      )
+      .map(({ id }) => id);
+    async function traverse(
+      subject: Actor,
+      limit: 1 | 2,
+      community_id?: string,
+      expected: string[] = []
+    ) {
+      const ids: string[] = [];
+      let offset = 0;
+      let exhausted = false;
+      for (let pageCount = 0; pageCount < 20; pageCount += 1) {
+        serverClient.current = subject.client;
+        const page = await getMyMembershipTimeline({
+          data: community_id ? { offset, limit, community_id } : { offset, limit }
+        });
+        ids.push(...page.intervals.map((interval) => interval.membership_id));
+        expect(page.truncated).toBe(false);
+        if (page.next_offset === null) {
+          exhausted = true;
+          break;
+        }
+        offset = page.next_offset;
+      }
+      expect(exhausted, `Timeline pagination exceeded iteration bound for limit ${limit}`).toBe(
+        true
+      );
+      expect(ids).toEqual(expected);
+      expect(new Set(ids).size).toBe(ids.length);
+    }
+    for (const limit of [1, 2] as const) {
+      await traverse(timelineActor, limit, undefined, expectedAll);
+      await traverse(
+        timelineActor,
+        limit,
+        communityIds[0],
+        expectedAll.filter(
+          (id) => fixtures.find((fixture) => fixture.id === id)?.community_id === communityIds[0]
+        )
+      );
+      await traverse(emptyActor, limit, undefined, []);
+    }
+    expect(expectedAll).toHaveLength(7);
+    expect(expectedAll).not.toContain(decoy.id);
     serverClient.current = null;
   }, 90000);
 });

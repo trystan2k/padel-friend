@@ -19,3 +19,11 @@
 - F2–F4 are small fixes applied now (error-mapping precision, validator parity, test assertion strength).
 - F5–F9 deferred (test env loader, archive audit detail, roster DTO typing, reactivation chronology, lock-order documentation) → follow-up issue.
 - The `.opencode` config commits on the branch (7980674/5aec543) are outside PAF-31 scope.
+
+## Follow-up resolution evidence — PAF-42 (2026-10-11)
+
+- F5: extracted the loopback-only environment-first loader into `test/helpers/local-supabase-env.ts`; both integration suites use it. `test/local-supabase-env.test.ts` covers environment-only selection, quoted URL, file fallback/missing file, invalid/remote URL, remote-pair no-fallback, missing/placeholder credentials, and CI fail-closed behavior. Admin actor setup now resides inside its skipped-on-missing-backend suite.
+- F6: forward migration `20261011171955_community_venue_archive_audit.sql` replaces only `audit_community_change`, retains its security definer/search_path and revoke, and adds only `{archived: boolean}` for venues. Venue integration assertions distinguish insert/edit from archive and check persisted archive state, hidden listing, denied-write audit stability, and other audit entities.
+- F7: feature DTO `src/features/community/community-admin.types.ts` widens only SQL-nullable roster fields; server and UI use it without editing generated types. Null ratings render localized unavailable copy; valid values remain formatted. Unit server/UI fixtures cover null and valid ratings.
+- F8: already fixed; preserved without a duplicate migration. `supabase/migrations/20261009061318_community_reactivation_interval_order.sql:18-27,45-57` takes community then membership locks and uses `greatest(clock_timestamp(), max(closed valid_until))`; existing microsecond chronology assertions remain.
+- F9: documented canonical order and direct-write reverse-lock risk in `docs/security/community-governance-lock-order.md`; governance helper links to it. SQLSTATE `40P01`/`40001` map to `COMMUNITY_GOVERNANCE_CONFLICT_RETRYABLE`; unit tests exercise both through all six actions, preserve unknown errors, and verify one RPC call.

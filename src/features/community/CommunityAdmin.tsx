@@ -21,6 +21,7 @@ import {
 } from './community-admin.functions';
 import { updateCommunitySettings } from './community.functions';
 import type { Database } from '../../lib/supabase/database.types';
+import type { CommunityMemberSearchResult } from './community-admin.types';
 import { styles } from './community-admin.styles';
 
 type Context = {
@@ -31,7 +32,7 @@ type Context = {
   visibility: Database['public']['Enums']['community_visibility'];
   join_policy: Database['public']['Enums']['community_join_policy'];
 };
-type Member = Database['public']['Functions']['search_community_members']['Returns'][number];
+type Member = CommunityMemberSearchResult;
 type Venue = Pick<
   Database['public']['Tables']['community_venues']['Row'],
   | 'id'
@@ -259,6 +260,16 @@ function CommunityAdminView({
   const [venueDraft, setVenueDraft] = useState({ id: '', name: '', address: '', maps_url: '' });
   const [venueFormOpen, setVenueFormOpen] = useState(false);
   const locale = i18n.resolvedLanguage || i18n.language;
+  const memberRatingLabel = (person: Member) => {
+    if (person.display_level === null || person.reliability_percent === null)
+      return t('communityAdmin.ratingsUnavailable');
+    return t('communityAdmin.levelLabel', {
+      level: new Intl.NumberFormat(locale, { maximumFractionDigits: 1 }).format(
+        person.display_level
+      ),
+      reliability: new Intl.NumberFormat(locale).format(person.reliability_percent)
+    });
+  };
   const heading = t(`communityAdmin.title.${screen}`);
   const auditRows = additionalAudit === null ? audit : [...audit, ...additionalAudit];
   const navItems = [
@@ -605,14 +616,7 @@ function CommunityAdminView({
             {[...members, ...additionalRequests].map((person) => (
               <SurfaceCard key={person.membership_id} xstyle={[styles.card, styles.requestCard]}>
                 <h3 {...stylex.props(styles.cardCompactTitle)}>{person.display_name}</h3>
-                <p {...stylex.props(styles.copy)}>
-                  {t('communityAdmin.levelLabel', {
-                    level: new Intl.NumberFormat(locale, { maximumFractionDigits: 1 }).format(
-                      person.display_level
-                    ),
-                    reliability: new Intl.NumberFormat(locale).format(person.reliability_percent)
-                  })}
-                </p>
+                <p {...stylex.props(styles.copy)}>{memberRatingLabel(person)}</p>
                 <p {...stylex.props(styles.copy, styles.requestMeta)}>
                   {t('communityAdmin.requestMeta', {
                     date: dateLabel(person.valid_from, locale),
@@ -718,14 +722,7 @@ function CommunityAdminView({
                       date: dateLabel(person.valid_from, locale)
                     })}
                   </p>
-                  <p {...stylex.props(styles.copy)}>
-                    {t('communityAdmin.levelLabel', {
-                      level: new Intl.NumberFormat(locale, { maximumFractionDigits: 1 }).format(
-                        person.display_level
-                      ),
-                      reliability: new Intl.NumberFormat(locale).format(person.reliability_percent)
-                    })}
-                  </p>
+                  <p {...stylex.props(styles.copy)}>{memberRatingLabel(person)}</p>
                 </div>
               </SurfaceCard>
             ))}
@@ -757,13 +754,17 @@ function CommunityAdminView({
                 xstyle={[styles.card, styles.memberProfileCard]}
               >
                 <h3 {...stylex.props(styles.memberProfileTitle)}>
-                  {t('communityAdmin.memberAdminProfile', {
-                    name: member.display_name,
-                    level: new Intl.NumberFormat(locale, { maximumFractionDigits: 1 }).format(
-                      member.display_level
-                    ),
-                    reliability: new Intl.NumberFormat(locale).format(member.reliability_percent)
-                  })}
+                  {member.display_level === null || member.reliability_percent === null
+                    ? t('communityAdmin.memberAdminProfileMissing', { name: member.display_name })
+                    : t('communityAdmin.memberAdminProfile', {
+                        name: member.display_name,
+                        level: new Intl.NumberFormat(locale, { maximumFractionDigits: 1 }).format(
+                          member.display_level
+                        ),
+                        reliability: new Intl.NumberFormat(locale).format(
+                          member.reliability_percent
+                        )
+                      })}
                 </h3>
                 <p {...stylex.props(styles.copy)}>
                   {t('communityAdmin.memberMeta', {

@@ -1,7 +1,11 @@
-import { readFileSync } from 'node:fs';
 import { spawn } from 'node:child_process';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
+import {
+  assertLocalSupabaseEnvInCi,
+  dotEnvPathFromImportMetaUrl,
+  localSupabaseEnv
+} from './helpers/local-supabase-env';
 
 const serverClient = vi.hoisted(() => ({ current: null as SupabaseClient | null }));
 vi.mock('@tanstack/react-start', () => ({
@@ -47,20 +51,11 @@ import {
 } from '../src/features/community/community.functions';
 
 vi.setConfig({ testTimeout: 60000, hookTimeout: 60000 });
-const vars = new Map(
-  readFileSync(new URL('../.env', import.meta.url), 'utf8')
-    .split('\n')
-    .filter((line) => line.includes('=') && !line.trim().startsWith('#'))
-    .map((line) => {
-      const at = line.indexOf('=');
-      return [line.slice(0, at), line.slice(at + 1).replace(/^['"]|['"]$/g, '')];
-    })
-);
-const url = process.env.VITE_SUPABASE_URL ?? vars.get('VITE_SUPABASE_URL') ?? '';
-const key =
-  process.env.VITE_SUPABASE_PUBLISHABLE_KEY ?? vars.get('VITE_SUPABASE_PUBLISHABLE_KEY') ?? '';
-if (!['localhost', '127.0.0.1'].includes(new URL(url).hostname))
-  throw new Error('Integration requires loopback backend');
+const environment = localSupabaseEnv({ filePath: dotEnvPathFromImportMetaUrl(import.meta.url) });
+if (!environment.env)
+  process.stderr.write(`[community.admin.integration] suite NOT RUN: ${environment.reason}\n`);
+const url = environment.env?.url ?? '';
+const key = environment.env?.key ?? '';
 function anon() {
   return createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
 }
@@ -124,15 +119,6 @@ async function audit(admin: Actor, id: string) {
   return result.data!;
 }
 let admin: Actor, member: Actor, outsider: Actor, target: Actor, alternate: Actor;
-beforeAll(async () => {
-  [admin, member, outsider, target, alternate] = await Promise.all([
-    actor('Admin'),
-    actor('Member'),
-    actor('Outsider'),
-    actor('Target'),
-    actor('Alternate')
-  ]);
-});
 
 type LocalSqlResult = {
   code: number | null;
@@ -140,14 +126,37 @@ type LocalSqlResult = {
   stderr: string;
 };
 
-function startLocalSql(sql: string) {
-  const child = spawn(
-    'pnpm',
-    ['exec', 'supabase', 'db', 'query', '--local', '--output-format', 'json', sql],
-    { cwd: process.cwd(), stdio: ['ignore', 'pipe', 'pipe'] }
-  );
+type LocalSqlCommand = {
+  done: Promise<LocalSqlResult>;
+  readonly pid: number | undefined;
+  /**
+   * Idempotently stop the spawned process tree: SIGTERM, wait for close, then
+   * probe the process group and escalate SIGKILL while any member survives —
+   * leader exit alone never suppresses group cleanup.
+   */
+  stop: (gracePeriodMs?: number) => Promise<void>;
+  /** True while any member of the child's process group is still alive. */
+  isGroupAlive: () => boolean;
+};
+
+const CHILD_STOP_GRACE_MS = 1000;
+const TEARDOWN_DEADLINE_MS = 10000;
+const TEARDOWN_MARGIN_MS = 500;
+const LOCAL_SQL_DEADLINE_MS = 20000;
+const QUEUE_PROBE_TIMEOUT_MS = 20000;
+const QUEUE_PROBE_POLL_MS = 200;
+
+function startLocalProcess(command: string, args: string[]): LocalSqlCommand {
+  // detached: true makes the child a process-group leader so stop() can signal the
+  // whole tree (pnpm → supabase CLI → psql) instead of orphaning grandchildren.
+  const child = spawn(command, args, {
+    cwd: process.cwd(),
+    stdio: ['ignore', 'pipe', 'pipe'],
+    detached: process.platform !== 'win32'
+  });
   let stdout = '';
   let stderr = '';
+  let stopped = false;
   child.stdout.setEncoding('utf8');
   child.stderr.setEncoding('utf8');
   child.stdout.on('data', (chunk: string) => (stdout += chunk));
@@ -156,11 +165,92 @@ function startLocalSql(sql: string) {
     child.once('error', (error) => resolve({ code: null, stdout, stderr: `${stderr}${error}` }));
     child.once('close', (code) => resolve({ code, stdout, stderr }));
   });
-  return { done };
+  const exited = () => child.exitCode !== null || child.signalCode !== null;
+  const signalTree = (signal: NodeJS.Signals) => {
+    try {
+      if (child.pid !== undefined) process.kill(-child.pid, signal);
+    } catch {
+      // Process group already gone; fall back to a direct (no-op) signal.
+      child.kill(signal);
+    }
+  };
+  const isGroupAlive = (): boolean => {
+    if (child.pid === undefined) return false;
+    try {
+      process.kill(-child.pid, 0);
+      return true;
+    } catch (error) {
+      // ESRCH (no such group) means everyone is gone; EPERM means the group
+      // still exists but we lack permission to signal it.
+      return (
+        typeof error === 'object' && error !== null && 'code' in error && error.code === 'EPERM'
+      );
+    }
+  };
+  const waitForClose = (ms: number) =>
+    new Promise<boolean>((resolve) => {
+      if (exited()) {
+        resolve(true);
+        return;
+      }
+      const timer = setTimeout(() => resolve(false), ms);
+      child.once('close', () => {
+        clearTimeout(timer);
+        resolve(true);
+      });
+    });
+  const stop = async (gracePeriodMs = CHILD_STOP_GRACE_MS): Promise<void> => {
+    if (stopped) return;
+    stopped = true;
+    if (!exited()) {
+      signalTree('SIGTERM');
+      await waitForClose(gracePeriodMs);
+    }
+    // The leader may already be gone while a descendant (e.g. an orphaned psql)
+    // survives; group cleanup must not depend on the leader's exit. SIGKILL is
+    // delivered asynchronously, so drain the group before returning.
+    if (isGroupAlive()) {
+      signalTree('SIGKILL');
+      for (let waitedMs = 0; waitedMs < gracePeriodMs && isGroupAlive(); waitedMs += 25)
+        await sleep(25);
+    }
+  };
+  return { done, pid: child.pid, stop, isGroupAlive };
+}
+
+function startLocalSql(sql: string): LocalSqlCommand {
+  return startLocalProcess('pnpm', [
+    'exec',
+    'supabase',
+    'db',
+    'query',
+    '--local',
+    '--output-format',
+    'json',
+    sql
+  ]);
+}
+
+/**
+ * Runs one local SQL command through a retained handle. If the command stalls
+ * past the deadline, the deadline abandons the await AND the spawned process is
+ * stopped through the handle — no SQL helper may leave a child running.
+ */
+async function runLocalSqlBounded(
+  sql: string,
+  deadlineMs = LOCAL_SQL_DEADLINE_MS
+): Promise<LocalSqlResult> {
+  const command = startLocalSql(sql);
+  try {
+    return await withDeadline(command.done, deadlineMs, 'local SQL command');
+  } catch (error) {
+    await command.stop();
+    throw error;
+  }
 }
 
 async function executeLocalSql(sql: string) {
-  const result = await startLocalSql(sql).done;
+  const result = await runLocalSqlBounded(sql);
   if (result.code !== 0)
     throw new Error(`Local SQL failed (${result.code}): ${result.stderr || result.stdout}`);
   return result.stdout;
@@ -188,16 +278,105 @@ async function queryLocalSql(sql: string): Promise<LocalSqlRow[]> {
 async function waitForLocalRows(
   sql: string,
   ready: (rows: LocalSqlRow[]) => boolean,
-  description: string
+  description: string,
+  timeoutMs = 20000,
+  pollIntervalMs = 75
 ): Promise<LocalSqlRow[]> {
-  const deadline = Date.now() + 20000;
+  const deadline = Date.now() + timeoutMs;
   let rows: LocalSqlRow[] = [];
   while (Date.now() < deadline) {
     rows = await queryLocalSql(sql);
     if (ready(rows)) return rows;
-    await new Promise<void>((resolve) => setTimeout(resolve, 75));
+    await new Promise<void>((resolve) => setTimeout(resolve, pollIntervalMs));
   }
   throw new Error(`Timed out waiting for ${description}: ${JSON.stringify(rows)}`);
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function withDeadline<T>(task: Promise<T>, deadlineMs: number, label: string): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([
+      task,
+      new Promise<never>((_, reject) => {
+        timer = setTimeout(
+          () => reject(new Error(`Timed out after ${deadlineMs}ms: ${label}`)),
+          deadlineMs
+        );
+      })
+    ]);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+function markerBackendQuery(marker: string): string {
+  return `select pid as value
+    from pg_catalog.pg_stat_activity
+    where query like '%${marker}%' and pid <> pg_catalog.pg_backend_pid()`;
+}
+
+type HolderTeardown = {
+  marker: string;
+  /** Overrides the marker sweep statement (used by the stalled-sweep test). */
+  sweepSql?: string;
+  holder?: LocalSqlCommand;
+  rpcAbort?: AbortController;
+  outstanding?: readonly Promise<unknown>[];
+};
+
+type HolderTeardownResult = {
+  elapsedMs: number;
+  sweep?: LocalSqlResult;
+};
+
+/**
+ * Bounded, idempotent teardown for the queued-chronology holder, split into
+ * four reserved slices of the overall deadline (sweep command, sweep-child
+ * stop, holder-child stop, outstanding settle) so no single stage can starve
+ * the others. The marker sweep spawns through a RETAINED handle: a stalled
+ * sweep is abandoned by its slice and then killed through the handle. Never
+ * throws; safe to call after a failed assertion and safe to call more than
+ * once.
+ */
+async function releaseHolderAndSweep(
+  teardown: HolderTeardown,
+  deadlineMs = TEARDOWN_DEADLINE_MS
+): Promise<HolderTeardownResult> {
+  const startedAt = Date.now();
+  const sliceMs = Math.floor((deadlineMs - TEARDOWN_MARGIN_MS) / 4);
+  const sweepCommand = startLocalSql(
+    teardown.sweepSql ??
+      `select pg_catalog.pg_terminate_backend(pid) as value
+        from pg_catalog.pg_stat_activity
+        where query like '%${teardown.marker}%'
+          and pid <> pg_catalog.pg_backend_pid()`
+  );
+  let sweep: LocalSqlResult | undefined;
+  try {
+    sweep = await withDeadline(sweepCommand.done, sliceMs, 'marker backend sweep');
+  } catch {
+    // Stalled or failed sweep: bound the stop inside its own slice, then
+    // collect the killed child's result. The holder stop below is the backstop.
+    await withDeadline(sweepCommand.stop(), sliceMs, 'stalled sweep child stop').catch(
+      () => undefined
+    );
+    sweep = await Promise.race([sweepCommand.done, sleep(250).then(() => undefined)]);
+  }
+  teardown.rpcAbort?.abort();
+  if (teardown.holder) {
+    try {
+      await withDeadline(teardown.holder.stop(), sliceMs, 'holder child stop');
+    } catch {
+      // Never let teardown mask the original failure with its own error.
+    }
+  }
+  if (teardown.outstanding?.length)
+    await Promise.race([Promise.allSettled([...teardown.outstanding]), sleep(sliceMs)]);
+  return { elapsedMs: Date.now() - startedAt, sweep };
 }
 
 function timestampMicroseconds(value: string): bigint {
@@ -239,7 +418,55 @@ function expectReactivationChronology(
   ).toBe(true);
 }
 
-describe('community governance with real JWTs', () => {
+describe('community governance — CI backend guard', () => {
+  it('fails closed without local backend in CI', () => {
+    expect(() => assertLocalSupabaseEnvInCi(environment.env, process.env.CI)).not.toThrow();
+  });
+});
+
+describe('LocalSqlCommand process-group cleanup', () => {
+  it('reaps descendants that outlive their process-group leader', async () => {
+    // The shell exits immediately; the TERM-immune sleep survives as an orphan
+    // in the same process group (SIG_IGN is inherited across fork/exec).
+    const orphan = startLocalProcess('sh', [
+      '-c',
+      'trap "" TERM; sleep 60 >/dev/null 2>&1 & exit 0'
+    ]);
+    await orphan.done;
+    expect(orphan.pid).not.toBeUndefined();
+    expect(orphan.isGroupAlive()).toBe(true);
+    await orphan.stop();
+    // Group escalation must reap the orphan even though the leader already exited.
+    expect(orphan.isGroupAlive()).toBe(false);
+  }, 20000);
+
+  it.skipIf(environment.env === null)(
+    'stops a stalled cleanup command within its deadline slice',
+    async () => {
+      const { elapsedMs, sweep } = await releaseHolderAndSweep({
+        marker: 'paf44-stalled-sweep-',
+        sweepSql: 'select pg_catalog.pg_sleep(4) as value'
+      });
+      expect(elapsedMs).toBeLessThan(TEARDOWN_DEADLINE_MS);
+      // The stalled sweep command was abandoned by its slice and then killed
+      // through its retained handle (signaled, not exited).
+      expect(sweep).toBeDefined();
+      expect(sweep?.code).toBeNull();
+    },
+    30000
+  );
+});
+
+describe.skipIf(environment.env === null)('community governance with real JWTs', () => {
+  beforeAll(async () => {
+    [admin, member, outsider, target, alternate] = await Promise.all([
+      actor('Admin'),
+      actor('Member'),
+      actor('Outsider'),
+      actor('Target'),
+      actor('Alternate')
+    ]);
+  });
   const actions = [
     ['approve', approveCommunityMember, 'pending', 'member', 'active', 'member'],
     ['deny', denyCommunityMember, 'pending', 'member', 'inactive', 'member'],
@@ -443,97 +670,112 @@ describe('community governance with real JWTs', () => {
       .single();
     expect(previousResult.error).toBeNull();
     if (!previousResult.data) throw new Error('Previous membership row missing');
+    const auditCountBefore = (await audit(admin, communityId)).length;
 
     const suffix = crypto.randomUUID().replaceAll('-', '');
-    const functionName = `test_pause_membership_${suffix}`;
-    const triggerName = `test_pause_membership_${suffix}`;
-    const applicationName = `paf32-${suffix}`;
-    const advisoryNamespace = 32032;
-    const lockKey = `pg_catalog.hashtext('${communityId}'::text), ${advisoryNamespace}`;
+    const marker = `paf44-holder-${suffix}`;
+    const rpcAbort = new AbortController();
     const outstanding: Promise<unknown>[] = [];
+    const queueRpc = <T>(task: () => T): Promise<T> => {
+      const tracked = Promise.resolve().then(task);
+      outstanding.push(tracked);
+      return tracked;
+    };
     let holderPid: number | undefined;
-    let holderCommand: ReturnType<typeof startLocalSql> | undefined;
+    let holderCommand: LocalSqlCommand | undefined;
 
     try {
-      await executeLocalSql(`
-        create function public.${functionName}() returns trigger
-        language plpgsql set search_path = '' as $$
-        begin
-          if old.id = '${previousId}'::uuid and old.status = 'active' and new.status = 'inactive' then
-            perform pg_catalog.pg_advisory_xact_lock(${lockKey});
-          end if;
-          return new;
-        end;
-        $$;
-      `);
-      await executeLocalSql(`
-        create trigger ${triggerName}
-        before update on public.community_members
-        for each row execute function public.${functionName}();
-      `);
-
-      // Test-only advisory lock pauses removal after its community lock is held.
-      holderCommand = startLocalSql(`
-        with session_settings as materialized (
-          select pg_catalog.set_config('application_name', '${applicationName}', false)
-        ), held_lock as materialized (
-          select pg_catalog.pg_advisory_lock(${lockKey}) from session_settings
-        )
-        select pg_catalog.pg_sleep(30) from held_lock;
-      `);
-      const [holder] = await waitForLocalRows(
-        `select a.pid as value
+      holderCommand = startLocalSql(
+        `/* ${marker} */ select pg_catalog.pg_sleep(900) from (select id from public.communities where id = '${communityId}'::uuid for update) locked;`
+      );
+      let holder: LocalSqlRow | undefined;
+      try {
+        [holder] = await waitForLocalRows(
+          `select a.pid as value
           from pg_catalog.pg_stat_activity a
-          join pg_catalog.pg_locks l on l.pid = a.pid
-          where a.application_name = '${applicationName}'
-            and l.locktype = 'advisory' and l.granted`,
-        (rows) => rows.length === 1,
-        'test advisory lock to be held'
-      );
+          where a.query like '%${marker}%'
+            and a.state = 'active' and a.pid <> pg_catalog.pg_backend_pid()`,
+          (rows) => rows.length === 1,
+          'marked holder backend',
+          10000,
+          200
+        );
+      } catch (error) {
+        const childResult = await Promise.race([
+          holderCommand.done,
+          new Promise<{ pending: true }>((resolve) =>
+            setTimeout(() => resolve({ pending: true }), 1000)
+          )
+        ]);
+        throw new Error(
+          `Holder backend not observed; child output: ${JSON.stringify(childResult)}`,
+          { cause: error }
+        );
+      }
       holderPid = Number(holder?.value);
-      if (!Number.isInteger(holderPid)) throw new Error('Test advisory lock backend missing');
+      if (!Number.isInteger(holderPid)) throw new Error('Marked holder backend missing');
 
-      const removalTask = Promise.resolve(
-        admin.client.rpc('govern_community_member', {
-          p_community_id: communityId,
-          p_membership_id: previousId,
-          p_action: 'remove'
-        })
+      const lockProbe = await runLocalSqlBounded(
+        `select id from public.communities where id = '${communityId}'::uuid for update nowait;`,
+        10000
       );
-      outstanding.push(removalTask);
+      const probeOutput = `${lockProbe.stdout}\n${lockProbe.stderr}`;
+      if (lockProbe.code === 0 || !/55P03|could not obtain lock/i.test(probeOutput))
+        throw new Error(
+          `Holder did not prove the community row lock (code=${lockProbe.code}): ${probeOutput}`
+        );
+
+      const removalTask = queueRpc(() =>
+        admin.client
+          .rpc('govern_community_member', {
+            p_community_id: communityId,
+            p_membership_id: previousId,
+            p_action: 'remove'
+          })
+          .abortSignal(rpcAbort.signal)
+      );
       const [removalWait] = await waitForLocalRows(
         `select pid as value
           from pg_catalog.pg_stat_activity
           where wait_event_type = 'Lock'
             and ${holderPid} = any(pg_catalog.pg_blocking_pids(pid))`,
         (rows) => rows.length === 1,
-        'removal to hold the community lock and wait in its update trigger'
+        'removal to wait for the community row lock',
+        QUEUE_PROBE_TIMEOUT_MS,
+        QUEUE_PROBE_POLL_MS
       );
       const removalPid = Number(removalWait?.value);
       if (!Number.isInteger(removalPid)) throw new Error('Queued removal backend missing');
 
-      const reactivationTask = Promise.resolve(
-        admin.client.rpc('govern_community_member', {
-          p_community_id: communityId,
-          p_membership_id: previousId,
-          p_action: 'reactivate'
-        })
+      const reactivationTask = queueRpc(() =>
+        admin.client
+          .rpc('govern_community_member', {
+            p_community_id: communityId,
+            p_membership_id: previousId,
+            p_action: 'reactivate'
+          })
+          .abortSignal(rpcAbort.signal)
       );
-      outstanding.push(reactivationTask);
       await waitForLocalRows(
         `select pid as value
           from pg_catalog.pg_stat_activity
           where wait_event_type = 'Lock'
             and ${removalPid} = any(pg_catalog.pg_blocking_pids(pid))`,
         (rows) => rows.length > 0,
-        'reactivation to wait behind the locked removal'
+        'reactivation to wait behind the locked removal',
+        QUEUE_PROBE_TIMEOUT_MS,
+        QUEUE_PROBE_POLL_MS
       );
 
       const [terminated] = await queryLocalSql(
         `select pg_catalog.pg_terminate_backend(${holderPid}) as value`
       );
       expect(terminated?.value).toBe(true);
-      await holderCommand.done;
+      await withDeadline(
+        holderCommand.done,
+        TEARDOWN_DEADLINE_MS,
+        'holder exit after explicit release'
+      );
 
       const [removed, reactivated] = await Promise.all([removalTask, reactivationTask]);
       expect(removed.error).toBeNull();
@@ -564,20 +806,102 @@ describe('community governance with real JWTs', () => {
       });
       if (!previous.data || !replacement.data) throw new Error('Persisted interval missing');
       expectReactivationChronology(previous.data, replacement.data);
+      expect(await audit(admin, communityId)).toHaveLength(auditCountBefore + 2);
     } finally {
-      try {
-        await queryLocalSql(
-          `select pg_catalog.pg_terminate_backend(pid) as value
-            from pg_catalog.pg_stat_activity
-            where application_name = '${applicationName}'`
-        );
-      } catch {
-        // Preserve the original assertion failure; local backend may already be gone.
-      }
-      if (holderCommand) await holderCommand.done;
-      await Promise.allSettled(outstanding);
-      await executeLocalSql(`drop trigger if exists ${triggerName} on public.community_members`);
-      await executeLocalSql(`drop function if exists public.${functionName}()`);
+      // Bounded, idempotent teardown: aborts pending RPCs, sweeps tagged backends,
+      // stops the retained child (SIGTERM → SIGKILL), then settles outstanding
+      // promises within the deadline. Safe even after a failed assertion.
+      await releaseHolderAndSweep({ marker, holder: holderCommand, rpcAbort, outstanding });
+    }
+  }, 90000);
+
+  it('bounds teardown and leaves no tagged backend or child when holder release fails', async () => {
+    const communityId = await community(admin);
+    const suffix = crypto.randomUUID().replaceAll('-', '');
+    const marker = `paf44-failed-release-${suffix}`;
+    const rpcAbort = new AbortController();
+    const outstanding: Promise<unknown>[] = [];
+    const queueRpc = <T>(task: () => T): Promise<T> => {
+      const tracked = Promise.resolve().then(task);
+      outstanding.push(tracked);
+      return tracked;
+    };
+    let holder: LocalSqlCommand | undefined;
+    try {
+      holder = startLocalSql(
+        `/* ${marker} */ select pg_catalog.pg_sleep(900) from (select id from public.communities where id = '${communityId}'::uuid for update) locked;`
+      );
+      await waitForLocalRows(
+        markerBackendQuery(marker),
+        (rows) => rows.length === 1,
+        'failure-path holder backend',
+        10000,
+        200
+      );
+      const [holderRow] = await queryLocalSql(markerBackendQuery(marker));
+      const holderPid = Number(holderRow?.value);
+      if (!Number.isInteger(holderPid)) throw new Error('Failure-path holder backend missing');
+
+      // Make the explicit holder release fail: terminate a pid that cannot exist.
+      const [failedRelease] = await queryLocalSql(
+        'select pg_catalog.pg_terminate_backend(2147483647) as value'
+      );
+      expect(failedRelease?.value).toBe(false);
+      expect(await queryLocalSql(markerBackendQuery(marker))).toHaveLength(1);
+
+      // Queue an RPC behind the live lock so teardown must cancel a pending request.
+      // Intentionally unawaited: it stays blocked until the teardown aborts it.
+      void queueRpc(() =>
+        admin.client
+          .rpc('govern_community_member', {
+            p_community_id: communityId,
+            p_membership_id: crypto.randomUUID(),
+            p_action: 'remove'
+          })
+          .abortSignal(rpcAbort.signal)
+      );
+      await waitForLocalRows(
+        `select pid as value
+          from pg_catalog.pg_stat_activity
+          where wait_event_type = 'Lock'
+            and ${holderPid} = any(pg_catalog.pg_blocking_pids(pid))`,
+        (rows) => rows.length === 1,
+        'failure-path removal to wait behind the lock',
+        QUEUE_PROBE_TIMEOUT_MS,
+        QUEUE_PROBE_POLL_MS
+      );
+
+      const { elapsedMs, sweep } = await releaseHolderAndSweep({
+        marker,
+        holder,
+        rpcAbort,
+        outstanding
+      });
+      expect(elapsedMs).toBeLessThan(TEARDOWN_DEADLINE_MS);
+      // The sweep statement terminated the tagged holder backend.
+      expect(sweep).toBeDefined();
+      expect(await queryLocalSql(markerBackendQuery(marker))).toHaveLength(0);
+      // The retained holder child is gone and its process group is empty.
+      expect(holder?.isGroupAlive()).toBe(false);
+      const probe = await runLocalSqlBounded(
+        `select id from public.communities where id = '${communityId}'::uuid for update nowait;`,
+        10000
+      );
+      if (probe.code !== 0)
+        throw new Error(`Community row lock not released (code=${probe.code}): ${probe.stderr}`);
+
+      // Second pass proves the teardown is idempotent and stays bounded.
+      const { elapsedMs: secondPassMs } = await releaseHolderAndSweep({
+        marker,
+        holder,
+        rpcAbort,
+        outstanding
+      });
+      expect(secondPassMs).toBeLessThan(TEARDOWN_DEADLINE_MS);
+      expect(await queryLocalSql(markerBackendQuery(marker))).toHaveLength(0);
+    } finally {
+      if (holder) await holder.stop();
+      await releaseHolderAndSweep({ marker, holder, rpcAbort, outstanding });
     }
   }, 90000);
 
@@ -738,6 +1062,19 @@ describe('community governance with real JWTs', () => {
     expect(await audit(admin, id)).toEqual(before);
     serverClient.current = admin.client;
     const venue = await addCommunityVenue({ data: { community_id: id, name: 'Court' } });
+    const insertedAudit = (await audit(admin, id)).filter(
+      (row) => row.entity === 'community_venues'
+    );
+    expect(insertedAudit.find((row) => row.action === 'INSERT')).toMatchObject({
+      actor_user_id: admin.id,
+      entity: 'community_venues',
+      entity_id: venue.id,
+      action: 'INSERT',
+      details: { archived: false }
+    });
+    expect(insertedAudit.find((row) => row.action === 'INSERT')?.details).toEqual({
+      archived: false
+    });
     const other = await community(outsider);
     serverClient.current = outsider.client;
     await expect(
@@ -745,6 +1082,14 @@ describe('community governance with real JWTs', () => {
     ).rejects.toThrow('COMMUNITY_VENUE_NOT_FOUND');
     serverClient.current = admin.client;
     await editCommunityVenue({ data: { community_id: id, venue_id: venue.id, name: 'Court two' } });
+    const editedAudit = (await audit(admin, id)).filter((row) => row.entity === 'community_venues');
+    expect(editedAudit.find((row) => row.action === 'UPDATE')).toMatchObject({
+      actor_user_id: admin.id,
+      entity_id: venue.id,
+      action: 'UPDATE',
+      details: { archived: false }
+    });
+    const beforeDeniedArchive = await audit(admin, id);
     for (const user of [member, outsider]) {
       serverClient.current = user.client;
       await expect(
@@ -754,6 +1099,7 @@ describe('community governance with real JWTs', () => {
         archiveCommunityVenue({ data: { community_id: id, venue_id: venue.id } })
       ).rejects.toThrow('NOT_COMMUNITY_ADMIN');
     }
+    expect(await audit(admin, id)).toEqual(beforeDeniedArchive);
     serverClient.current = admin.client;
     await expect(
       issueInvitation({ data: { community_id: id, invitee_user_id: member.id } })
@@ -765,6 +1111,28 @@ describe('community governance with real JWTs', () => {
       data: { community_id: id, venue_id: venue.id }
     });
     expect(archived.archived_at).toBeTruthy();
+    const archivedAudit = (await audit(admin, id)).filter(
+      (row) => row.entity === 'community_venues'
+    );
+    const archiveEvent = archivedAudit.find(
+      (row) => row.details && 'archived' in row.details && row.details.archived === true
+    );
+    expect(archiveEvent).toMatchObject({
+      actor_user_id: admin.id,
+      entity_id: venue.id,
+      action: 'UPDATE',
+      details: { archived: true }
+    });
+    expect(archiveEvent?.details).toEqual({ archived: true });
+    expect(archiveEvent?.details).not.toEqual(
+      editedAudit.find((row) => row.action === 'UPDATE')?.details
+    );
+    const persistedVenue = await admin.client
+      .from('community_venues')
+      .select('archived_at')
+      .eq('id', venue.id)
+      .single();
+    expect(persistedVenue.data?.archived_at).toBe(archived.archived_at);
     expect(await listCommunityVenues({ data: { community_id: id } })).toEqual([]);
     const issued = await issueInvitation({
       data: { community_id: id, invitee_user_id: target.id }
@@ -812,6 +1180,23 @@ describe('community governance with real JWTs', () => {
     const after = await audit(admin, id);
     expect(after.filter((row) => row.entity === 'community_venues')).toHaveLength(3);
     expect(after.filter((row) => row.entity === 'community_invitations')).toHaveLength(5);
+    expect(after.filter((row) => row.entity === 'communities')).toHaveLength(1);
+    expect(after.filter((row) => row.entity === 'community_members')).toHaveLength(3);
+    expect(after.find((row) => row.entity === 'communities')?.details).toMatchObject({
+      visibility: 'private'
+    });
+    expect(after.filter((row) => row.entity === 'community_members')).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ details: { role: 'admin', status: 'active' } }),
+        expect.objectContaining({ details: { role: 'member', status: 'active' } })
+      ])
+    );
+    expect(after.filter((row) => row.entity === 'community_invitations')).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ details: { revoked: false } }),
+        expect.objectContaining({ details: { revoked: true } })
+      ])
+    );
     expect(JSON.stringify(after)).not.toContain(issued.token);
     serverClient.current = admin.client;
     const events = await listCommunityAudit({ data: { community_id: id } });

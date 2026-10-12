@@ -1,5 +1,6 @@
 import { createServerFn } from '@tanstack/react-start';
 import { requireAuthenticatedClient } from '../auth/auth.server';
+import type { CommunityMemberSearchResult } from './community-admin.types';
 import {
   validateInvitation,
   validateMemberAction,
@@ -13,6 +14,8 @@ import {
 
 const governanceErrors: Record<string, string> = {
   '28000': 'UNAUTHENTICATED',
+  '40P01': 'COMMUNITY_GOVERNANCE_CONFLICT_RETRYABLE',
+  '40001': 'COMMUNITY_GOVERNANCE_CONFLICT_RETRYABLE',
   PG001: 'NOT_COMMUNITY_ADMIN',
   PG006: 'NOT_COMMUNITY_MEMBER',
   PG002: 'FINAL_COMMUNITY_ADMIN',
@@ -32,6 +35,8 @@ async function runMemberAction(
   data: ReturnType<typeof validateMemberAction>,
   action: MemberAction
 ) {
+  // Membership transitions use the canonical community → membership lock order; see
+  // docs/security/community-governance-lock-order.md. Do not retry failed RPCs automatically.
   const { client } = await requireAuthenticatedClient();
   const { data: result, error } = await client
     .rpc('govern_community_member', {
@@ -133,7 +138,7 @@ export const getCommunityMemberById = createServerFn({ method: 'GET' })
 
 export const searchCommunityMembers = createServerFn({ method: 'GET' })
   .validator(validateSearchMembers)
-  .handler(async ({ data }) => {
+  .handler(async ({ data }): Promise<CommunityMemberSearchResult[]> => {
     const { client } = await requireAuthenticatedClient();
     const { data: rows, error } = await client.rpc('search_community_members', {
       p_community_id: data.community_id,

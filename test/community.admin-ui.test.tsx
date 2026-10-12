@@ -66,7 +66,6 @@ import {
   CommunityAdminEntries,
   CommunityAdminScreen
 } from '../src/features/community/CommunityAdmin';
-import type { Database } from '../src/lib/supabase/database.types';
 
 const community = {
   id: '11111111-1111-4111-8111-111111111111',
@@ -76,7 +75,7 @@ const community = {
   visibility: 'private',
   join_policy: 'admin_approval'
 } as const;
-type Member = Database['public']['Functions']['search_community_members']['Returns'][number];
+type Member = import('../src/features/community/community-admin.types').CommunityMemberSearchResult;
 const member: Member = {
   membership_id: '22222222-2222-4222-8222-222222222222',
   user_id: '33333333-3333-4333-8333-333333333333',
@@ -195,6 +194,45 @@ describe('community admin UI', () => {
     );
     await user.click(screen.getByRole('button', { name: 'CONFIRM CHANGE' }));
     await waitFor(() => expect(mocks.remove).toHaveBeenCalledOnce());
+  });
+
+  it('shows unavailable nullable ratings on requests, roster, and detail without changing valid ratings', () => {
+    const noRatings: Member = {
+      ...member,
+      display_name: 'No rating player',
+      display_level: null,
+      reliability_percent: null,
+      activated_at: null,
+      valid_until: null
+    };
+    for (const view of ['requests', 'members', 'member'] as const) {
+      cleanup();
+      const displayed =
+        view === 'members' ? { ...noRatings, status: 'active' as const } : noRatings;
+      render(
+        <I18nextProvider i18n={createI18n('en')}>
+          <CommunityAdminScreen
+            screen={view}
+            community={community}
+            members={[displayed]}
+            membershipId={displayed.membership_id}
+          />
+        </I18nextProvider>
+      );
+      expect(screen.getByText(/ratings unavailable/i)).toBeTruthy();
+      expect(document.body.textContent).not.toContain('NaN');
+      expect(document.body.textContent).not.toContain('Invalid Date');
+      expect(document.body.textContent).not.toContain('Level 0');
+    }
+
+    cleanup();
+    const activeMember = { ...member, status: 'active' as const };
+    render(
+      <I18nextProvider i18n={createI18n('en')}>
+        <CommunityAdminScreen screen="members" community={community} members={[activeMember]} />
+      </I18nextProvider>
+    );
+    expect(screen.getByText('App-wide level 3.4 · reliability 82%')).toBeTruthy();
   });
 
   it('debounces changed searches and replaces narrowed results when search clears', async () => {
