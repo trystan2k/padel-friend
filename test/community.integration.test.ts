@@ -42,6 +42,7 @@ import {
   listPublicCommunities,
   updateCommunitySettings
 } from '../src/features/community/community.functions';
+import { reactivateCommunityMember } from '../src/features/community/community-admin.functions';
 
 vi.setConfig({ testTimeout: 30000, hookTimeout: 30000 });
 type LocalEnv = NonNullable<ReturnType<typeof localSupabaseEnv>['env']>;
@@ -109,7 +110,32 @@ describe.skipIf(environment.env === null)('community domain (local Supabase inte
   function expectNoError(result: { error: unknown }) {
     expect(result.error).toBeNull();
   }
-  async function executeLocalFixtureSql(sql: string) {
+  function isExpiredInvitationResult(
+    value: unknown
+  ): value is { rows: Array<{ id: string; created_at: string; expires_at: string }> } {
+    if (typeof value !== 'object' || value === null || !('rows' in value)) return false;
+    const { rows: resultRows } = value;
+    if (!Array.isArray(resultRows) || resultRows.length !== 1) return false;
+    const row: unknown = resultRows[0];
+    return (
+      typeof row === 'object' &&
+      row !== null &&
+      'id' in row &&
+      typeof row.id === 'string' &&
+      'created_at' in row &&
+      typeof row.created_at === 'string' &&
+      'expires_at' in row &&
+      typeof row.expires_at === 'string'
+    );
+  }
+  function isSqlRowsWithId(value: unknown): value is { rows: Array<{ id: string }> } {
+    if (typeof value !== 'object' || value === null || !('rows' in value)) return false;
+    const { rows: resultRows } = value;
+    if (!Array.isArray(resultRows) || resultRows.length !== 1) return false;
+    const row: unknown = resultRows[0];
+    return typeof row === 'object' && row !== null && 'id' in row && typeof row.id === 'string';
+  }
+  async function executeLocalFixtureSql(sql: string): Promise<unknown> {
     const child = spawn(
       'pnpm',
       ['exec', 'supabase', 'db', 'query', '--local', '--output-format', 'json', sql],
@@ -127,6 +153,34 @@ describe.skipIf(environment.env === null)('community domain (local Supabase inte
       throw new Error(
         `Local timeline fixture SQL failed: ${result.error ?? `${stdout}\n${stderr}`}`
       );
+    try {
+      for (let start = stdout.indexOf('{'); start >= 0; start = stdout.indexOf('{', start + 1)) {
+        let depth = 0;
+        let quoted = false;
+        let escaped = false;
+        for (let index = start; index < stdout.length; index += 1) {
+          const character = stdout[index];
+          if (quoted) {
+            if (escaped) escaped = false;
+            else if (character === '\\') escaped = true;
+            else if (character === '"') quoted = false;
+            continue;
+          }
+          if (character === '"') quoted = true;
+          else if (character === '{') depth += 1;
+          else if (character === '}' && --depth === 0) {
+            try {
+              return JSON.parse(stdout.slice(start, index + 1));
+            } catch {
+              break;
+            }
+          }
+        }
+      }
+      return stdout.trim();
+    } catch {
+      return stdout.trim();
+    }
   }
   const invitationColumns =
     'id,community_id,invitee_user_id,issued_by,expires_at,redeemed_at,revoked_at,created_at';
@@ -1257,10 +1311,15 @@ describe.skipIf(environment.env === null)('community domain (local Supabase inte
           token_hash: tokenHash,
           expires_at: new Date(expiry).toISOString()
         })
-        .select('id, created_at')
+        .select('id, created_at, expires_at')
         .single();
       expect(seeded.error).toBeNull();
-      return { raw, id: seeded.data!.id, createdAt: seeded.data!.created_at };
+      return {
+        raw,
+        id: seeded.data!.id,
+        createdAt: seeded.data!.created_at,
+        expiresAt: seeded.data!.expires_at
+      };
     }
     async function membership(communityId: string, user: Actor) {
       const found = await owner.client
@@ -1442,20 +1501,6 @@ describe.skipIf(environment.env === null)('community domain (local Supabase inte
     expect(
       (await thief.client.rpc('accept_community_invitation', { p_token: 'bad' })).error?.code
     ).toBe('PJ001');
-    const expired = await invitation(privateInstant, thief, Date.now() + 1200);
-    await new Promise((resolve) => setTimeout(resolve, 1500));
-    await expect(acceptInvitation({ data: { token: expired.raw } })).rejects.toThrow(
-      'INVITATION_EXPIRED'
-    );
-    expect(
-      (
-        await owner.client
-          .from('community_invitations')
-          .select('redeemed_at')
-          .eq('id', expired.id)
-          .single()
-      ).data?.redeemed_at
-    ).toBeNull();
     const revoked = await invitation(privateApproval, thief);
     expect(
       (
@@ -1509,6 +1554,57 @@ describe.skipIf(environment.env === null)('community domain (local Supabase inte
     ).toBe('42501');
     serverClient.current = null;
   }, 90000);
+
+  it('seeds expired invitation from database clock and waits for stored expiry', async () => {
+    const [owner, invitee] = await Promise.all([actor('expiry-owner'), actor('expiry-invitee')]);
+    const created = await owner.client.rpc('create_community', {
+      p_name: `Expiry fixture ${crypto.randomUUID()}`,
+      p_visibility: 'private',
+      p_join_policy: 'instant'
+    });
+    expect(created.error).toBeNull();
+    if (typeof created.data !== 'string') throw new Error('Community fixture creation failed');
+    const raw = Array.from(crypto.getRandomValues(new Uint8Array(32)), (byte) =>
+      byte.toString(16).padStart(2, '0')
+    ).join('');
+    const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(raw));
+    const hash = Array.from(new Uint8Array(digest), (byte) =>
+      byte.toString(16).padStart(2, '0')
+    ).join('');
+    const seeded: unknown = await executeLocalFixtureSql(`
+      insert into public.community_invitations
+        (community_id, invitee_user_id, issued_by, token_hash, expires_at)
+      values ('${created.data}'::uuid, '${invitee.id}'::uuid, '${owner.id}'::uuid, '${hash}', clock_timestamp() + interval '5 seconds')
+      returning id, created_at, expires_at;
+    `);
+    if (!isExpiredInvitationResult(seeded))
+      throw new Error('Expired invitation fixture returned an unexpected CLI JSON result');
+    const row = seeded.rows[0];
+    if (!row) throw new Error('Expired invitation fixture returned no row');
+    expect(Date.parse(row.expires_at)).toBeGreaterThan(Date.parse(row.created_at));
+    const expiry = Date.parse(row.expires_at);
+    if (!Number.isFinite(expiry)) throw new Error('Expired invitation fixture has invalid expiry');
+    const deadline = Date.now() + 15000;
+    while (Date.now() < expiry + 250 && Date.now() < deadline)
+      await new Promise((resolve) => setTimeout(resolve, 100));
+    if (Date.now() < expiry + 250)
+      throw new Error('Invitation did not reach expiry before bounded wait deadline');
+    serverClient.current = invitee.client;
+    await expect(acceptInvitation({ data: { token: raw } })).rejects.toThrow('INVITATION_EXPIRED');
+    const unchanged = await owner.client
+      .from('community_invitations')
+      .select('id,redeemed_at,revoked_at')
+      .eq('id', row.id)
+      .single();
+    expect(unchanged.error).toBeNull();
+    expect(unchanged.data?.redeemed_at).toBeNull();
+    expect(unchanged.data?.revoked_at).toBeNull();
+    expect(
+      (await rows(owner.client, 'community_members', created.data)).filter(
+        (membership) => membership.user_id === invitee.id
+      )
+    ).toEqual([]);
+  }, 30000);
 
   it('closes self-leave and removal intervals, blocks inactive re-entry, and exposes only owned timeline rows', async () => {
     const [owner, leaver, invitee, lifecycleOutsider] = await Promise.all([
@@ -1762,6 +1858,8 @@ describe.skipIf(environment.env === null)('community domain (local Supabase inte
 
     const blockedInvitation = await invite(lifecyclePrivateId, invitee);
     serverClient.current = invitee.client;
+    serverClient.current = invitee.client;
+    serverClient.current = invitee.client;
     await expect(acceptInvitation({ data: { token: blockedInvitation.raw } })).rejects.toThrow(
       'MEMBERSHIP_INACTIVE'
     );
@@ -1785,13 +1883,11 @@ describe.skipIf(environment.env === null)('community domain (local Supabase inte
       )
     ).toHaveLength(1);
 
-    const reactivated = await owner.client.rpc('govern_community_member', {
-      p_community_id: lifecyclePrivateId,
-      p_membership_id: removed.id,
-      p_action: 'reactivate'
+    serverClient.current = owner.client;
+    const reactivated = await reactivateCommunityMember({
+      data: { community_id: lifecyclePrivateId, membership_id: removed.id }
     });
-    expect(reactivated.error).toBeNull();
-    const replacementId = reactivated.data?.[0]?.membership_id;
+    const replacementId = reactivated.membership_id;
     expect(replacementId).toBeTruthy();
     expect(replacementId).not.toBe(removed.id);
     expect(
@@ -1816,6 +1912,7 @@ describe.skipIf(environment.env === null)('community domain (local Supabase inte
       (await owner.client.from('community_venues').select('id,name').eq('id', venueSnapshot!.id))
         .data
     ).toEqual([venueSnapshot]);
+    serverClient.current = invitee.client;
     await expect(acceptInvitation({ data: { token: blockedInvitation.raw } })).rejects.toThrow(
       'ALREADY_MEMBER_OR_PENDING'
     );
@@ -1850,6 +1947,238 @@ describe.skipIf(environment.env === null)('community domain (local Supabase inte
     expect(await playerRows(leaver)).toEqual(leaverPlayerRows);
     expect(await playerRows(invitee)).toEqual(inviteePlayerRows);
     serverClient.current = null;
+  }, 90000);
+
+  it('closed membership history rejects public and private rejoin until admin reactivation', async () => {
+    async function createHistoryCommunity(owner: Actor, visibility: 'public' | 'private') {
+      const created = await owner.client.rpc('create_community', {
+        p_name: `Closed history ${crypto.randomUUID()}`,
+        p_visibility: visibility,
+        p_join_policy: visibility === 'public' ? 'instant' : 'admin_approval'
+      });
+      expect(created.error).toBeNull();
+      if (typeof created.data !== 'string') throw new Error('Community fixture creation failed');
+      return created.data;
+    }
+    async function addInvitation(owner: Actor, communityId: string, invitee: Actor) {
+      const raw = Array.from(crypto.getRandomValues(new Uint8Array(32)), (byte) =>
+        byte.toString(16).padStart(2, '0')
+      ).join('');
+      const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(raw));
+      const hash = Array.from(new Uint8Array(digest), (byte) =>
+        byte.toString(16).padStart(2, '0')
+      ).join('');
+      const seeded: unknown = await executeLocalFixtureSql(`
+        insert into public.community_invitations
+          (community_id, invitee_user_id, issued_by, token_hash, expires_at)
+        values ('${communityId}'::uuid, '${invitee.id}'::uuid, '${owner.id}'::uuid, '${hash}', clock_timestamp() + interval '1 day')
+        returning id;
+      `);
+      if (!isSqlRowsWithId(seeded))
+        throw new Error('Invitation fixture returned an unexpected CLI result');
+      const inserted = seeded.rows[0];
+      if (!inserted) throw new Error('Invitation fixture returned no inserted row');
+      return { id: inserted.id, raw };
+    }
+    async function seedAndClose(owner: Actor, former: Actor, communityId: string) {
+      serverClient.current = former.client;
+      await expect(joinCommunity({ data: { community_id: communityId } })).resolves.toMatchObject({
+        status: 'active'
+      });
+      const initial = (await rows(owner.client, 'community_members', communityId)).find(
+        (row) => row.user_id === former.id
+      )!;
+      serverClient.current = former.client;
+      await leaveCommunity({ data: { community_id: communityId } });
+      return (await rows(owner.client, 'community_members', communityId)).find(
+        (row) => row.id === initial.id
+      )!;
+    }
+    const [publicOwner, publicFormer, privateOwner, privateFormer] = await Promise.all([
+      actor('history-public-owner'),
+      actor('history-public-former'),
+      actor('history-private-owner'),
+      actor('history-private-former')
+    ]);
+    const historyPublicId = await createHistoryCommunity(publicOwner, 'public');
+    const publicOld = await seedAndClose(publicOwner, publicFormer, historyPublicId);
+    const publicClosed = { ...publicOld };
+    const tokenBucketId = await createHistoryCommunity(publicOwner, 'private');
+    const publicInvitation = await addInvitation(publicOwner, tokenBucketId, publicFormer);
+    serverClient.current = publicFormer.client;
+    await expect(joinCommunity({ data: { community_id: historyPublicId } })).rejects.toThrow(
+      'MEMBERSHIP_INACTIVE'
+    );
+    expect(
+      (await rows(publicOwner.client, 'community_members', historyPublicId)).filter(
+        (row) => row.user_id === publicFormer.id
+      )
+    ).toEqual([publicClosed]);
+    const publicTokenState = await publicOwner.client
+      .from('community_invitations')
+      .select('id,redeemed_at,revoked_at')
+      .eq('id', publicInvitation.id)
+      .single();
+    expect(publicTokenState.error).toBeNull();
+    expect(publicTokenState.data).toMatchObject({ redeemed_at: null, revoked_at: null });
+    serverClient.current = publicOwner.client;
+    const publicReactivation = await reactivateCommunityMember({
+      data: { community_id: historyPublicId, membership_id: publicOld.id }
+    });
+    const publicHistory = (
+      await rows(publicOwner.client, 'community_members', historyPublicId)
+    ).filter((row) => row.user_id === publicFormer.id);
+    expect(publicHistory.find((row) => row.id === publicOld.id)).toEqual(publicClosed);
+    const publicActive = publicHistory.find((row) => row.id === publicReactivation.membership_id)!;
+    expect(publicActive).toMatchObject({ role: 'member', status: 'active', valid_until: null });
+    expect(publicActive.id).not.toBe(publicOld.id);
+    expect(publicHistory.filter((row) => row.valid_until === null)).toHaveLength(1);
+    expect(publicOld.valid_until).toBeTruthy();
+    expect(Date.parse(publicActive.valid_from)).toBeGreaterThanOrEqual(
+      Date.parse(publicOld.valid_until)
+    );
+    expect(Date.parse(publicActive.activated_at)).toBeGreaterThanOrEqual(
+      Date.parse(publicActive.valid_from)
+    );
+
+    const historyPrivateId = await createHistoryCommunity(privateOwner, 'private');
+    serverClient.current = privateOwner.client;
+    const seededMembership = await privateOwner.client
+      .from('community_members')
+      .insert({ community_id: historyPrivateId, user_id: privateFormer.id, status: 'active' })
+      .select('id')
+      .single();
+    expect(seededMembership.error).toBeNull();
+    const freshToken = await addInvitation(privateOwner, historyPrivateId, privateFormer);
+    const closedResult = await privateOwner.client
+      .from('community_members')
+      .update({ status: 'inactive', valid_until: new Date(Date.now() + 5000).toISOString() })
+      .eq('id', seededMembership.data!.id);
+    expect(closedResult.error).toBeNull();
+    const privateClosedRow = (
+      await rows(privateOwner.client, 'community_members', historyPrivateId)
+    ).find((row) => row.id === seededMembership.data!.id)!;
+    const privateSnapshot = { ...privateClosedRow };
+    serverClient.current = privateFormer.client;
+    await expect(acceptInvitation({ data: { token: freshToken.raw } })).rejects.toThrow(
+      'MEMBERSHIP_INACTIVE'
+    );
+    const privateHistory = (
+      await rows(privateOwner.client, 'community_members', historyPrivateId)
+    ).filter((row) => row.user_id === privateFormer.id);
+    expect(privateHistory).toEqual([privateSnapshot]);
+    const tokenState = await privateOwner.client
+      .from('community_invitations')
+      .select('id,redeemed_at,revoked_at')
+      .eq('id', freshToken.id)
+      .single();
+    expect(tokenState.error).toBeNull();
+    expect(tokenState.data).toMatchObject({ redeemed_at: null, revoked_at: null });
+    serverClient.current = privateOwner.client;
+    const privateReactivation = await reactivateCommunityMember({
+      data: { community_id: historyPrivateId, membership_id: privateClosedRow.id }
+    });
+    const reactivatedRows = (
+      await rows(privateOwner.client, 'community_members', historyPrivateId)
+    ).filter((row) => row.user_id === privateFormer.id);
+    expect(reactivatedRows.find((row) => row.id === privateClosedRow.id)).toEqual(privateSnapshot);
+    const privateActive = reactivatedRows.find(
+      (row) => row.id === privateReactivation.membership_id
+    )!;
+    expect(privateActive).toMatchObject({ role: 'member', status: 'active', valid_until: null });
+    expect(privateActive.id).not.toBe(privateClosedRow.id);
+    expect(reactivatedRows.filter((row) => row.valid_until === null)).toHaveLength(1);
+    expect(privateClosedRow.valid_until).toBeTruthy();
+    expect(Date.parse(privateActive.valid_from)).toBeGreaterThanOrEqual(
+      Date.parse(privateClosedRow.valid_until)
+    );
+    expect(Date.parse(privateActive.activated_at)).toBeGreaterThanOrEqual(
+      Date.parse(privateActive.valid_from)
+    );
+  }, 90000);
+
+  it('visibility flip rejects acceptance without consuming invitation or creating membership', async () => {
+    const [owner, invitee] = await Promise.all([
+      actor('visibility-flip-owner'),
+      actor('visibility-flip-invitee')
+    ]);
+    const created = await owner.client.rpc('create_community', {
+      p_name: `Visibility flip ${crypto.randomUUID()}`,
+      p_visibility: 'private',
+      p_join_policy: 'instant'
+    });
+    expect(created.error).toBeNull();
+    if (typeof created.data !== 'string') throw new Error('Community fixture creation failed');
+    const communityId = created.data;
+    const raw = Array.from(crypto.getRandomValues(new Uint8Array(32)), (byte) =>
+      byte.toString(16).padStart(2, '0')
+    ).join('');
+    const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(raw));
+    const tokenHash = Array.from(new Uint8Array(digest), (byte) =>
+      byte.toString(16).padStart(2, '0')
+    ).join('');
+    const invitation = await owner.client
+      .from('community_invitations')
+      .insert({
+        community_id: communityId,
+        invitee_user_id: invitee.id,
+        token_hash: tokenHash,
+        expires_at: new Date(Date.now() + 86400000).toISOString()
+      })
+      .select('id')
+      .single();
+    expect(invitation.error).toBeNull();
+    const auditBefore = await rows(owner.client, 'community_audit_log', communityId);
+    const flipped = await owner.client
+      .from('communities')
+      .update({ visibility: 'public' })
+      .eq('id', communityId);
+    expect(flipped.error).toBeNull();
+    serverClient.current = invitee.client;
+    await expect(acceptInvitation({ data: { token: raw } })).rejects.toThrow(
+      'COMMUNITY_NOT_ELIGIBLE'
+    );
+    const invitationAfterReject = await owner.client
+      .from('community_invitations')
+      .select('id,redeemed_at,revoked_at')
+      .eq('id', invitation.data!.id)
+      .single();
+    expect(invitationAfterReject.error).toBeNull();
+    expect(invitationAfterReject.data?.redeemed_at).toBeNull();
+    expect(invitationAfterReject.data?.revoked_at).toBeNull();
+    expect(
+      (await rows(owner.client, 'community_members', communityId)).filter(
+        (row) => row.user_id === invitee.id
+      )
+    ).toEqual([]);
+    const auditsAfterReject = await rows(owner.client, 'community_audit_log', communityId);
+    expect(
+      auditsAfterReject
+        .filter((event) => !auditBefore.some((old) => old.id === event.id))
+        .filter(
+          (event) =>
+            (event.entity === 'community_invitations' && event.action === 'UPDATE') ||
+            (event.entity === 'community_members' && event.action === 'INSERT')
+        )
+    ).toEqual([]);
+    const flippedBack = await owner.client
+      .from('communities')
+      .update({ visibility: 'private' })
+      .eq('id', communityId);
+    expect(flippedBack.error).toBeNull();
+    await expect(acceptInvitation({ data: { token: raw } })).resolves.toMatchObject({
+      community_id: communityId,
+      status: 'active'
+    });
+    expect(
+      (
+        await owner.client
+          .from('community_invitations')
+          .select('id,redeemed_at,revoked_at')
+          .eq('id', invitation.data!.id)
+          .single()
+      ).data?.redeemed_at
+    ).toBeTruthy();
   }, 90000);
 
   it('paginates persisted timeline history completely and deterministically', async () => {
