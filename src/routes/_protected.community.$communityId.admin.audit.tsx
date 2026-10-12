@@ -21,5 +21,8 @@ export const Route = createFileRoute('/_protected/community/$communityId/admin/a
   },
   pendingComponent: CommunityAdminLoading,
   errorComponent: CommunityAdminDenied,
-  component: () => <CommunityAdminScreen {...Route.useLoaderData()} screen="audit" />
+  component: () => {
+    const data = Route.useLoaderData();
+    return <CommunityAdminScreen screen="audit" community={data.community} audit={data.audit} />;
+  }
 });

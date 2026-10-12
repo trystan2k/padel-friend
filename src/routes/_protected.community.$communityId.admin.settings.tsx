@@ -10,5 +10,8 @@ export const Route = createFileRoute('/_protected/community/$communityId/admin/s
   loader: ({ params }) => getCommunityAdminContext({ data: { community_id: params.communityId } }),
   pendingComponent: CommunityAdminLoading,
   errorComponent: CommunityAdminDenied,
-  component: () => <CommunityAdminScreen screen="settings" community={Route.useLoaderData()} />
+  component: () => {
+    const community = Route.useLoaderData();
+    return <CommunityAdminScreen screen="settings" community={community} />;
+  }
 });

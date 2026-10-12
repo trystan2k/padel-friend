@@ -67,12 +67,12 @@ function Root() {
               <select
                 id="locale"
                 value={locale}
-                onChange={(event) => {
+                onChange={async (event) => {
                   const next = resolveLocale(event.target.value);
+                  await i18n.changeLanguage(next);
+                  await saveLocale({ data: next });
                   setLocale(next);
-                  void i18n.changeLanguage(next);
                   document.documentElement.lang = next;
-                  void saveLocale({ data: next });
                 }}
               >
                 <option value="en">English</option>

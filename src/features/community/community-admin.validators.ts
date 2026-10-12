@@ -50,6 +50,10 @@ export function validateMemberAction(value: unknown): MemberActionInput {
   const input = record(value, ['community_id', 'membership_id']);
   return { community_id: uuid(input.community_id), membership_id: uuid(input.membership_id) };
 }
+export function validateCommunityId(value: unknown): { community_id: string } {
+  const input = record(value, ['community_id']);
+  return { community_id: uuid(input.community_id) };
+}
 export function validatePage(value: unknown): PageInput {
   const input = record(value, ['community_id', 'offset', 'limit']);
   return page(input);

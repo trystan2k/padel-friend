@@ -30,7 +30,8 @@ import {
   demoteCommunityMember,
   issueInvitation,
   listMyAdminCommunities,
-  searchCommunityMembers
+  searchCommunityMembers,
+  getCommunityAdminContext
 } from '../src/features/community/community-admin.functions';
 import { validateVenue } from '../src/features/community/community-admin.validators';
 
@@ -77,6 +78,110 @@ beforeEach(() => {
   mocks.header.mockReset();
 });
 describe('admin function boundary', () => {
+  it.each([null, [], {}, { community_id: 'not-a-uuid' }, { community_id, extra: true }])(
+    'rejects invalid admin-context payload before client access: %j',
+    (data) => {
+      expect(() => getCommunityAdminContext({ data })).toThrow('INVALID_COMMUNITY_INPUT');
+      expect(mocks.client).not.toHaveBeenCalled();
+    }
+  );
+  it('rejects inherited-only community IDs and accepts uppercase UUIDs', async () => {
+    const inherited = Object.create({ community_id });
+    expect(() => getCommunityAdminContext({ data: inherited })).toThrow('INVALID_COMMUNITY_INPUT');
+    expect(mocks.client).not.toHaveBeenCalled();
+
+    const uppercaseId = community_id.toUpperCase();
+    const communityQuery = {
+      select: vi.fn<(columns: string) => unknown>(),
+      eq: vi.fn<(column: string, value: string) => unknown>(),
+      single: vi.fn<() => Promise<{ data: { id: string }; error: null }>>().mockResolvedValue({
+        data: { id: uppercaseId },
+        error: null
+      })
+    };
+    communityQuery.select.mockImplementation(() => communityQuery);
+    communityQuery.eq.mockImplementation(() => communityQuery);
+    const client = {
+      auth: {
+        getClaims: vi
+          .fn<() => Promise<{ data: { claims: { sub: string } }; error: null }>>()
+          .mockResolvedValue({ data: { claims: { sub: membership_id } }, error: null })
+      },
+      rpc: vi.fn<() => Promise<{ data: boolean; error: null }>>().mockResolvedValue({
+        data: true,
+        error: null
+      }),
+      from: vi.fn<(table: string) => typeof communityQuery>().mockReturnValue(communityQuery)
+    };
+    mocks.client.mockReturnValue(client);
+    await expect(
+      getCommunityAdminContext({ data: { community_id: uppercaseId } })
+    ).resolves.toEqual({ id: uppercaseId });
+    expect(client.auth.getClaims).toHaveBeenCalledOnce();
+    expect(mocks.header).toHaveBeenCalledWith('Cache-Control', 'private, no-store');
+  });
+  it('does not read communities or admin data when live admin authorization denies access', async () => {
+    const rpc = vi.fn<() => Promise<{ data: boolean; error: null }>>().mockResolvedValue({
+      data: false,
+      error: null
+    });
+    const from = vi.fn<(table: string) => never>();
+    const client = {
+      auth: {
+        getClaims: vi
+          .fn<() => Promise<{ data: { claims: { sub: string } }; error: null }>>()
+          .mockResolvedValue({ data: { claims: { sub: membership_id } }, error: null })
+      },
+      rpc,
+      from
+    };
+    mocks.client.mockReturnValue(client);
+    await expect(getCommunityAdminContext({ data: { community_id } })).rejects.toThrow(
+      'NOT_COMMUNITY_ADMIN'
+    );
+    expect(client.auth.getClaims).toHaveBeenCalledOnce();
+    expect(mocks.header).toHaveBeenCalledWith('Cache-Control', 'private, no-store');
+    expect(rpc).toHaveBeenCalledWith('is_community_admin', { p_community_id: community_id });
+    expect(from).not.toHaveBeenCalled();
+  });
+  it('reads only the safe community context fields after live authorization', async () => {
+    const communityQuery = {
+      select: vi.fn<(columns: string) => unknown>(),
+      eq: vi.fn<(column: string, value: string) => unknown>(),
+      single: vi
+        .fn<() => Promise<{ data: { id: string; name: string }; error: null }>>()
+        .mockResolvedValue({
+          data: { id: community_id, name: 'Safe' },
+          error: null
+        })
+    };
+    communityQuery.select.mockImplementation(() => communityQuery);
+    communityQuery.eq.mockImplementation(() => communityQuery);
+    const client = {
+      auth: {
+        getClaims: vi
+          .fn<() => Promise<{ data: { claims: { sub: string } }; error: null }>>()
+          .mockResolvedValue({ data: { claims: { sub: membership_id } }, error: null })
+      },
+      rpc: vi.fn<() => Promise<{ data: boolean; error: null }>>().mockResolvedValue({
+        data: true,
+        error: null
+      }),
+      from: vi.fn<(table: string) => typeof communityQuery>().mockReturnValue(communityQuery)
+    };
+    mocks.client.mockReturnValue(client);
+    await expect(getCommunityAdminContext({ data: { community_id } })).resolves.toEqual({
+      id: community_id,
+      name: 'Safe'
+    });
+    expect(client.from).toHaveBeenCalledOnce();
+    expect(client.from).toHaveBeenCalledWith('communities');
+    expect(communityQuery.select).toHaveBeenCalledWith(
+      'id,name,city_label,description,visibility,join_policy'
+    );
+    expect(communityQuery.eq).toHaveBeenCalledWith('id', community_id);
+    expect(communityQuery.single).toHaveBeenCalledOnce();
+  });
   it('filters future-valid admin memberships in one server query without per-row RPCs', async () => {
     const futureCommunityId = '44444444-4444-4444-8444-444444444444';
     const memberships = [
