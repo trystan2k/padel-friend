@@ -12,11 +12,24 @@ const mocks = vi.hoisted(() => ({
   invalidate: vi.fn<() => void>(),
   join: vi.fn<() => Promise<unknown>>(),
   create: vi.fn<() => Promise<unknown>>(),
-  list: vi.fn<() => Promise<unknown>>()
+  list: vi.fn<() => Promise<unknown>>(),
+  routerState: { pending: false }
 }));
 vi.mock('@tanstack/react-router', () => ({
   useNavigate: () => mocks.navigate,
-  useRouter: () => ({ invalidate: mocks.invalidate })
+  useRouter: () => ({ invalidate: mocks.invalidate }),
+  useRouterState: ({
+    select
+  }: {
+    select: (state: {
+      matches: { routeId: string; status: string; isFetching: boolean }[];
+    }) => unknown;
+  }) =>
+    select({
+      matches: mocks.routerState.pending
+        ? [{ routeId: '/onboarding_/community', status: 'pending', isFetching: true }]
+        : []
+    })
 }));
 vi.mock('../src/features/community/community.functions', () => ({
   joinCommunity: mocks.join,
@@ -61,11 +74,113 @@ function mount(
 }
 
 beforeEach(() => {
-  for (const mock of Object.values(mocks)) mock.mockReset();
+  mocks.navigate.mockReset();
+  mocks.invalidate.mockReset();
+  mocks.join.mockReset();
+  mocks.create.mockReset();
+  mocks.list.mockReset();
+  mocks.routerState.pending = false;
 });
 afterEach(cleanup);
 
 describe('community onboarding', () => {
+  it.each(['en', 'pt-BR', 'es'] as const)(
+    'announces draft and route pending state in %s, keeps search focused and suppresses empty results',
+    async (locale) => {
+      const i18n = createI18n(locale);
+      const data = { communities: [], next_offset: null, failed: false };
+      const view = (q?: string) => (
+        <I18nextProvider i18n={i18n}>
+          <CommunityOnboarding search={q ? { q } : {}} data={data} />
+        </I18nextProvider>
+      );
+      const mounted = render(view());
+      const input = screen.getByRole('searchbox', {
+        name: i18n.t('communityOnboarding.searchLabel')
+      });
+      await userEvent.type(input, 'No match');
+      expect(screen.getByRole('status').textContent).toBe(
+        i18n.t('communityOnboarding.searchLoading')
+      );
+      expect(document.querySelector('[aria-busy="true"]')).toBeTruthy();
+      expect(input.hasAttribute('disabled')).toBe(false);
+      expect(document.activeElement).toBe(input);
+      mocks.routerState.pending = true;
+      mounted.rerender(view('No match'));
+      expect(screen.getByRole('status').textContent).toBe(
+        i18n.t('communityOnboarding.searchLoading')
+      );
+      expect(screen.queryByText(i18n.t('communityOnboarding.emptySearch'))).toBeNull();
+      expect(document.querySelector('[aria-busy="true"]')).toBeTruthy();
+      expect(screen.getByRole('status').closest('[aria-busy="true"]')).toBeNull();
+      mocks.routerState.pending = false;
+      mounted.rerender(view('No match'));
+      expect(screen.queryByText(i18n.t('communityOnboarding.searchLoading'))).toBeNull();
+      expect(document.activeElement).toBe(input);
+    }
+  );
+
+  it.each(['en', 'pt-BR', 'es'] as const)(
+    'keeps filled optional labels visible in %s',
+    async (locale) => {
+      const i18n = createI18n(locale);
+      render(
+        <I18nextProvider i18n={i18n}>
+          <CommunityOnboarding
+            search={{ view: 'create' }}
+            data={{ communities: [], next_offset: null, failed: false }}
+          />
+        </I18nextProvider>
+      );
+      const description = screen.getByLabelText(i18n.t('communityOnboarding.descriptionLabel'));
+      const city = screen.getByLabelText(i18n.t('communityOnboarding.cityLabel'));
+      await userEvent.type(description, 'Description');
+      await userEvent.type(city, 'Lisbon');
+      expect(description.id).toBe('community-description');
+      expect(city.id).toBe('community-city');
+      expect(description.value).toBe('Description');
+      expect(city.value).toBe('Lisbon');
+      expect(description.labels?.[0]?.htmlFor).toBe(description.id);
+      expect(city.labels?.[0]?.htmlFor).toBe(city.id);
+    }
+  );
+
+  it('blocks duplicate retry while same-route invalidation is fetching and retains load-more busy state', async () => {
+    const i18n = createI18n('en');
+    const failed = { communities: [], next_offset: null, failed: true };
+    const view = () => (
+      <I18nextProvider i18n={i18n}>
+        <CommunityOnboarding search={{}} data={failed} />
+      </I18nextProvider>
+    );
+    const mounted = render(view());
+    mocks.routerState.pending = true;
+    mounted.rerender(view());
+    const retry = screen.getByRole('button', { name: i18n.t('communityOnboarding.retry') });
+    expect(retry.hasAttribute('disabled')).toBe(true);
+    expect(screen.getByRole('status')).toBeTruthy();
+    mocks.routerState.pending = false;
+    mounted.rerender(view());
+    expect(
+      screen
+        .getByRole('button', { name: i18n.t('communityOnboarding.retry') })
+        .hasAttribute('disabled')
+    ).toBe(false);
+    expect(mocks.invalidate).not.toHaveBeenCalled();
+  });
+
+  it('keeps load more busy until its page promise settles', async () => {
+    let finish!: (value: { communities: PublicCommunity[]; next_offset: null }) => void;
+    mocks.list.mockReturnValue(new Promise((resolve) => (finish = resolve)));
+    mount(undefined, { communities: [row], next_offset: 20, failed: false });
+    const button = screen.getByRole('button', { name: 'LOAD MORE' });
+    await userEvent.click(button);
+    expect(button.getAttribute('aria-busy')).toBe('true');
+    expect(button.hasAttribute('disabled')).toBe(true);
+    finish({ communities: [], next_offset: null });
+    await waitFor(() => expect(screen.queryByRole('button', { name: 'LOAD MORE' })).toBeNull());
+  });
+
   it('shows real city and policy only, joins with server-authoritative outcomes and supports skip', async () => {
     mocks.join
       .mockResolvedValueOnce({ status: 'active' })
