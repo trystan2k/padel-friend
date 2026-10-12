@@ -15,16 +15,7 @@ permission:
     "/tmp/**": allow
     "*": deny
   skill: allow
-  bash:
-    "*": deny
-    "linear*": allow
-    "cat *": allow
-    "echo *": allow
-    "printf *": allow
-    "jq *": allow
-    "mktemp*": allow
-    "git status*": allow
-    "ls*": allow
+  bash: allow
   webfetch: allow
   websearch: allow
   todowrite: deny
@@ -296,7 +287,7 @@ Model tier: `T0` mechanical. Execute the resolved `linear` commands and report t
 
 - `read`, `glob`, `grep`, `list`: allow — AGENTS.md, templates, and repo investigation.
 - `skill`: allow — `linear-cli` skill.
-- `bash`: only `linear*`, `cat *`, `echo *`, `printf *`, `jq *`, `mktemp*`, `git status*`, and `ls*` are allowed; everything else is denied. `linear*` handles issue operations. Use `jq` to parse `--json` output.
+- `bash`: allow — full shell access. Primary tool is `linear` for issue operations. Use `jq` to parse `--json` output. Still subject to the Safety Rules below: run only commands needed for the resolved Linear action plus safe prerequisite checks; never run destructive commands outside the `linear` CLI or touch product source code.
 - For multi-line bodies, use `edit` to write a temporary file under `/tmp`, then pass it to one `linear ... --body-file` or `--description-file` command. Never modify repository files.
 - `edit` and `external_directory`: scoped to `/tmp/**` only — for temporary body/description files. No repo writes.
 - `task`, `question`, `todowrite`: deny — no delegation, no user questions, no web research.
