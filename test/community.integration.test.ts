@@ -1877,8 +1877,6 @@ describe.skipIf(environment.env === null)('community domain (local Supabase inte
 
     const blockedInvitation = await invite(lifecyclePrivateId, invitee);
     serverClient.current = invitee.client;
-    serverClient.current = invitee.client;
-    serverClient.current = invitee.client;
     await expect(acceptInvitation({ data: { token: blockedInvitation.raw } })).rejects.toThrow(
       'MEMBERSHIP_INACTIVE'
     );

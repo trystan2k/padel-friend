@@ -120,6 +120,10 @@ Earlier runs (recorded for transparency, both superseded):
 
 The pre-push hook and CI run this same command, so the push re-validates the identical gate.
 
+## Copilot review follow-up (PR #14)
+
+Copilot reviewed the pushed head `dfd724eb` and left exactly **one** inline finding (`Low`): three identical consecutive `serverClient.current = invitee.client;` assignments at `test/community.integration.test.ts:1879-1881` — a copy/paste artifact introduced by this epic. Recorded as **F14** in `docs/plan/PAF-50-findings.md` and fixed in iteration 2 (a single assignment kept; no assertion or behaviour changed) with the fast gate re-run green (`test/community.integration.test.ts` 18/18, typecheck, lint, `oxfmt` clean). No other Copilot findings, and no human reviews or comments exist on the PR. CI on the reviewed head: `GitGuardian Security Checks` and `checks` both passing. Copilot asked for human review because of the new SQL audit migration, the locale-persistence rewrite and the size of the admin refactor (its diff view truncates because of the large committed planning bundle).
+
 ## PR size (recommendation)
 
 `git diff --shortstat 8c705c2..6f8db58` → **34 files changed, 10,841 insertions(+), 1,281 deletions(-)**, of which the planning/development-log artifacts are ~6,550 lines (this bundle embeds the diff). Excluding `docs/plan` and `docs/development-logs`: **30 files changed, 4,284 insertions(+), 1,270 deletions(-)**.

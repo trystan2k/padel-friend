@@ -19,6 +19,13 @@ Sources: full review of `8c705c2..5dec5d4` by `code-review-specialist`, `archite
 | F11 | minor    | e2e/community-admin.spec.ts:940                           | Locale matrix does not prove admin keyboard reachability                                                          | deferred | deferred             | 1         |
 | F12 | minor    | src/features/community/community-onboarding.styles.ts:151 | Floating label references nonexistent token `--line-height-tight`                                                 | fixed    | bug-fixer-specialist | 1         |
 | F13 | minor    | src/routes/__root.tsx:84                                  | Latest failed locale save leaves a superseded cookie; restore the committed preference                            | deferred | deferred             | 1         |
+| F14 | minor    | test/community.integration.test.ts:1879                   | Copilot review: three identical consecutive `serverClient.current` assignments (copy/paste artifact)              | fixed    | bug-fixer-specialist | 2         |
+
+## Iteration 2 (Copilot PR review follow-up)
+
+- Copilot reviewed PR #14 and raised exactly one inline finding (`Low`): three identical consecutive `serverClient.current = invitee.client;` assignments at `test/community.integration.test.ts:1879-1881` — a copy/paste artifact introduced by this epic. Recorded as **F14**, fixed in iteration 2 (single assignment kept; no assertion or behaviour changed), fast gate re-run green (`test/community.integration.test.ts` 18/18, typecheck, lint, oxfmt clean).
+- Copilot's review overview otherwise reported no other findings; it flagged the PR as warranting human review because of the new SQL audit migration, the concurrency-sensitive locale persistence rewrite and the size of the admin refactor (its diff view was truncated by the large committed planning bundle).
+- No human reviews or human comments exist on PR #14.
 
 ## Iteration 1 outcome
 
