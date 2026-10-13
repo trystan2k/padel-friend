@@ -27,7 +27,7 @@ Code/commits/PRs: normal. Off: "stop caveman" / "normal mode".
 
 ## Toolchain notes
 
-- E2E always runs against a fresh preview: `playwright.config.ts` sets `reuseExistingServer: false` and `pnpm e2e:serve` frees port 4173 before rebuilding. Never rely on a running preview; a stale bundle fakes failures.
+- E2E always runs against a fresh preview: `playwright.config.ts` frees port 4173 at config load (before Playwright's webServer check) and sets `reuseExistingServer: false`. Never rely on a running preview; a stale bundle fakes failures.
 - Registry operations (`pnpm audit`/`view`/`install`) can hit transient `ETIMEDOUT`/`ENOTFOUND` (pnpm bundled-node fetch). Retry once, then fall back to `corepack pnpm <command>` or `pnpm install --frozen-lockfile --offline`; verify connectivity with `npm view`/`curl`.
 - `docs/plan/**` are mid-task workflow artifacts and are excluded from `oxfmt`, so an unformatted bundle/findings file never fails the format gate.
 

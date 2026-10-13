@@ -19,7 +19,6 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run --coverage",
     "test:e2e": "playwright test",
-    "e2e:serve": "node scripts/free-port.mjs 4173 && pnpm build && pnpm preview --port 4173",
     "knip": "knip",
     "deps:audit": "pnpm audit",
     "deps:audit:json": "pnpm audit --json",
