@@ -15,7 +15,9 @@ export const styles = stylex.create({
     backgroundColor: 'var(--color-bg)',
     color: 'var(--color-text)',
     fontFamily: 'var(--font-family-body)',
-    overflowY: 'auto'
+    overflowY: 'auto',
+    scrollPaddingBottom:
+      'calc(var(--space-14) + var(--space-40) + var(--space-16) + var(--space-4))'
   },
   header: { display: 'flex', flexDirection: 'column', gap: 0 },
   title: {
@@ -32,6 +34,43 @@ export const styles = stylex.create({
     overflowWrap: 'anywhere'
   },
   content: { display: 'flex', flexDirection: 'column', gap: 'var(--space-8)', minWidth: 0 },
+  confirmBackdrop: {
+    position: 'fixed',
+    inset: 0,
+    backgroundColor: 'var(--color-text)',
+    opacity: 0.6
+  },
+  confirmViewport: {
+    position: 'fixed',
+    inset: 0,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 'var(--space-8)',
+    overflowY: 'auto'
+  },
+  confirmDialog: {
+    boxSizing: 'border-box',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 'var(--space-8)',
+    width: 'min(100%, calc(var(--space-40) * 9))',
+    padding: 'var(--space-12)',
+    borderRadius: 'var(--radius-12)',
+    backgroundColor: 'var(--color-surface)',
+    color: 'var(--color-text)',
+    borderWidth: 'var(--border-width-sm)',
+    borderStyle: 'solid',
+    borderColor: 'var(--color-line)',
+    overflowWrap: 'anywhere'
+  },
+  confirmTitle: {
+    margin: 0,
+    fontSize: 'var(--font-size-14)',
+    lineHeight: 'var(--font-size-20)',
+    fontWeight: 'var(--font-weight-semibold)',
+    overflowWrap: 'anywhere'
+  },
   venueContent: { gap: 'var(--space-10)' },
   screenHeading: { display: 'flex', alignItems: 'center', gap: 'var(--space-6)' },
   titleGroup: { display: 'flex', flexDirection: 'column', gap: 'var(--space-3)', minWidth: 0 },
@@ -47,6 +86,7 @@ export const styles = stylex.create({
     fontFamily: 'var(--font-family-heading)',
     fontSize: 'var(--font-size-20)',
     fontWeight: 'var(--font-weight-bold)',
+    // Decorative aria-hidden chevron uses a unitless single-em line box for glyph centering; its 44px hit box is independent of line-height. The tight (1.1) and body (1.5) tokens are text-leading metrics, not equivalent icon metrics.
     lineHeight: 1,
     textDecoration: 'none',
     ':focus-visible': {
@@ -85,6 +125,29 @@ export const styles = stylex.create({
     alignItems: 'stretch',
     gap: 'var(--space-6)',
     padding: 'var(--space-14)'
+  },
+  errorActions: { display: 'flex', flexWrap: 'wrap', gap: 'var(--space-4)' },
+  errorAction: {
+    boxSizing: 'border-box',
+    minHeight: 'calc(var(--space-40) + var(--space-4))',
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingInline: 'var(--space-10)',
+    borderWidth: 0,
+    borderRadius: 'var(--radius-10)',
+    backgroundColor: 'var(--color-green-soft)',
+    color: 'var(--color-green)',
+    font: 'inherit',
+    fontSize: 'var(--font-size-12)',
+    fontWeight: 'var(--font-weight-semibold)',
+    textDecoration: 'none',
+    overflowWrap: 'anywhere',
+    ':focus-visible': {
+      outline: 'var(--border-width-lg) solid var(--color-green)',
+      outlineOffset: 'var(--space-2)'
+    },
+    ':disabled': { opacity: 0.6 }
   },
   requestCard: {
     minHeight: 'calc(var(--space-40) * 5)',
@@ -241,6 +304,14 @@ export const styles = stylex.create({
     ':focus-visible': {
       outline: 'var(--border-width-lg) solid var(--color-green)',
       outlineOffset: 'var(--space-2)'
+    },
+    '@media (max-width: 360px)': {
+      display: 'inline-flex',
+      alignItems: 'center',
+      boxSizing: 'border-box',
+      minWidth: 'calc(var(--space-40) + var(--space-4))',
+      minHeight: 'calc(var(--space-40) + var(--space-4))',
+      paddingInline: 'var(--space-4)'
     }
   },
   venueActions: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-4)' },
@@ -250,7 +321,14 @@ export const styles = stylex.create({
     gap: 'var(--space-6)',
     padding: 'var(--space-14)'
   },
-  venueAction: { backgroundColor: 'var(--color-surface-2)', borderWidth: 0 },
+  venueAction: {
+    backgroundColor: 'var(--color-surface-2)',
+    borderWidth: 0,
+    '@media (max-width: 360px)': {
+      minWidth: 'calc(var(--space-40) + var(--space-4))',
+      minHeight: 'calc(var(--space-40) + var(--space-4))'
+    }
+  },
   venueMeta: {
     display: 'flex',
     alignItems: 'center',

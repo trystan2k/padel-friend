@@ -23,6 +23,8 @@ export const Route = createFileRoute('/_protected/community/$communityId/admin/r
   errorComponent: CommunityAdminDenied,
   component: () => {
     const data = Route.useLoaderData();
-    return <CommunityAdminScreen screen="requests" {...data} />;
+    return (
+      <CommunityAdminScreen screen="requests" community={data.community} members={data.members} />
+    );
   }
 });

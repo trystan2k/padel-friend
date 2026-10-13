@@ -3,6 +3,7 @@ import { requireAuthenticatedClient } from '../auth/auth.server';
 import type { CommunityMemberSearchResult } from './community-admin.types';
 import {
   validateInvitation,
+  validateCommunityId,
   validateMemberAction,
   validatePage,
   validateRevokeInvitation,
@@ -99,18 +100,7 @@ async function requireAdmin(communityId: string) {
 }
 
 export const getCommunityAdminContext = createServerFn({ method: 'GET' })
-  .validator((value: unknown) => {
-    if (!value || typeof value !== 'object' || Array.isArray(value))
-      throw new Error('INVALID_COMMUNITY_INPUT');
-    if (
-      !('community_id' in value) ||
-      Object.keys(value).length !== 1 ||
-      typeof value.community_id !== 'string' ||
-      !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value.community_id)
-    )
-      throw new Error('INVALID_COMMUNITY_INPUT');
-    return { community_id: value.community_id };
-  })
+  .validator(validateCommunityId)
   .handler(async ({ data }) => {
     const client = await requireAdmin(data.community_id);
     const { data: community, error } = await client

@@ -29,6 +29,7 @@ export const ui = stylex.create({
   },
   subtitle: { margin: 0, fontSize: 'var(--font-size-12)', color: 'var(--color-muted)' },
   content: { display: 'flex', flexDirection: 'column', gap: 'var(--space-10)', minWidth: 0 },
+  results: { display: 'flex', flexDirection: 'column', gap: 'var(--space-10)', minWidth: 0 },
   intro: { display: 'flex', flexDirection: 'column', gap: 'var(--space-5)' },
   createIntro: { gap: 'var(--space-4)' },
   lead: {
@@ -139,6 +140,18 @@ export const ui = stylex.create({
   },
   optional: { gap: 0, padding: 'var(--space-12)', borderRadius: 'var(--radius-14)' },
   optionalHeading: { marginBottom: 'var(--space-7)' },
+  optionalField: { position: 'relative', minHeight: 'calc(var(--space-40) + var(--space-4))' },
+  floatingLabel: {
+    position: 'absolute',
+    top: 'var(--space-3)',
+    left: 'var(--space-8)',
+    zIndex: 1,
+    color: 'var(--color-muted)',
+    fontSize: 'var(--font-size-10)',
+    lineHeight: 'var(--font-line-height-tight)',
+    pointerEvents: 'none'
+  },
+  labeledInput: { paddingTop: 'var(--space-16)' },
   optionalInput: {
     width: '100%',
     minHeight: 'calc(var(--space-40) + var(--space-4))',

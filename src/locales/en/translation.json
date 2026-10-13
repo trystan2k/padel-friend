@@ -23,6 +23,7 @@
     "lead": "Play with people nearby",
     "help": "Public communities are visible to everyone. You can join more communities later.",
     "searchLabel": "Search community",
+    "searchLoading": "Searching communities…",
     "searchPlaceholder": "Search by name or city",
     "join": "JOIN COMMUNITY",
     "requestToJoin": "REQUEST TO JOIN",

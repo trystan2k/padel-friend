@@ -6,6 +6,7 @@ import { expect, test, type Locator, type Page } from '@playwright/test';
 import { waitForHydratedPage } from './auth-helpers';
 
 type Copy = {
+  language: string;
   auth: { loginEmailLabel: string; loginPasswordLabel: string; loginSubmit: string };
   onboarding: {
     name: string;
@@ -15,6 +16,7 @@ type Copy = {
     save: string;
   };
   communityAdmin: {
+    backToDashboard: string;
     title: Record<string, string>;
     navigation: string;
     accessDeniedTitle: string;
@@ -125,6 +127,30 @@ async function signIn(page: Page, actor: Actor) {
   await page.getByRole('button', { name: en.auth.loginSubmit }).click();
   await expect(page).toHaveURL(/\/dashboard$/);
   await waitForHydratedPage(page);
+}
+
+async function assertNoConfidentialPayload(page: Page, paths: string[], sentinels: string[]) {
+  const observed: string[] = [];
+  const collect = async (response: import('@playwright/test').Response) => {
+    try {
+      observed.push(await response.text());
+    } catch {
+      // Browser may cancel a response while navigating; successful payloads remain collected.
+    }
+  };
+  page.on('response', collect);
+  for (const path of paths) {
+    const documentResponse = await page.goto(path);
+    if (documentResponse) observed.push(await documentResponse.text());
+    await page.waitForLoadState('networkidle');
+    await waitForHydratedPage(page);
+    observed.push(await page.locator('body').innerText());
+  }
+  page.off('response', collect);
+  const payload = observed.join('\n');
+  for (const sentinel of sentinels) {
+    expect(payload, `confidential sentinel leaked: ${sentinel}`).not.toContain(sentinel);
+  }
 }
 
 async function visualDiff(
@@ -313,6 +339,23 @@ async function memberControlsGeometry(page: Page) {
   expect(actions!.height).toBeGreaterThanOrEqual(44);
 }
 
+async function backLinkGeometry(page: Page) {
+  const link = page.getByRole('link', { name: en.communityAdmin.backToDashboard });
+  const linkBox = await link.boundingBox();
+  expect(linkBox).not.toBeNull();
+  expect(linkBox!.width).toBeGreaterThanOrEqual(44);
+  expect(linkBox!.height).toBeGreaterThanOrEqual(44);
+  const icon = link.locator('[aria-hidden="true"]');
+  const iconBox = await icon.boundingBox();
+  expect(iconBox).not.toBeNull();
+  expect(
+    Math.abs(iconBox!.x + iconBox!.width / 2 - (linkBox!.x + linkBox!.width / 2))
+  ).toBeLessThanOrEqual(1);
+  expect(
+    Math.abs(iconBox!.y + iconBox!.height / 2 - (linkBox!.y + linkBox!.height / 2))
+  ).toBeLessThanOrEqual(1);
+}
+
 async function settingsGeometry(page: Page) {
   // N18Mu4 settings rows: visibility y72, public control y126, join control y180, each 354×44.
   const offset = await mainOffset(page);
@@ -478,6 +521,7 @@ test('real admin requests, membership, settings, venues and audit stay protected
   await waitForHydratedPage(page);
   await page.getByRole('heading', { name: en.communityAdmin.title.members }).waitFor();
   await geometry(page);
+  await backLinkGeometry(page);
   await memberCardGeometry(page);
   await assertLinkHitArea(page.getByRole('link', { name: 'Backup Admin' }));
   // Mask fixture identity/metrics, role badges, avatars and the unsupported invitation copy only;
@@ -630,4 +674,279 @@ test('real admin requests, membership, settings, venues and audit stay protected
     page.getByRole('heading', { name: en.communityAdmin.accessDeniedTitle })
   ).toBeVisible();
   expect(requestRow.status).toBe('active');
+});
+
+test('unauthorized community admin routes never disclose confidential fixture payloads', async ({
+  browser
+}) => {
+  test.setTimeout(120_000);
+  const suffix = crypto.randomUUID();
+  const ownerName = `Private Owner ${suffix.slice(0, 8)}`;
+  const activeName = `Private Active ${suffix.slice(0, 8)}`;
+  const pendingName = `Private Pending ${suffix.slice(0, 8)}`;
+  const owner = await createActor(ownerName);
+  const active = await createActor(activeName);
+  const pending = await createActor(pendingName);
+  const outsider = await createActor(`Private Outsider ${suffix.slice(0, 8)}`);
+  const confidential = {
+    description: `PRIVATE_DESCRIPTION_${suffix}`,
+    setting: `PRIVATE_SETTING_${suffix}`,
+    venue: `PRIVATE_VENUE_${suffix}`,
+    address: `PRIVATE_ADDRESS_${suffix}`,
+    audit: `PRIVATE_AUDIT_${suffix}`
+  };
+  const community = await owner.client.rpc('create_community', {
+    p_name: `Private ${suffix.slice(0, 8)}`,
+    p_visibility: 'private',
+    p_description: confidential.description,
+    p_join_policy: 'admin_approval'
+  });
+  if (community.error || typeof community.data !== 'string')
+    throw community.error ?? new Error('Private community fixture creation failed');
+  const communityId = community.data;
+  const ownerCommunity = await owner.client
+    .from('communities')
+    .update({ settings: { confidential: confidential.setting } })
+    .eq('id', communityId);
+  if (ownerCommunity.error) throw ownerCommunity.error;
+  const activeMembership = await owner.client
+    .from('community_members')
+    .insert({ community_id: communityId, user_id: active.id, role: 'member', status: 'active' })
+    .select('id')
+    .single();
+  if (activeMembership.error) throw activeMembership.error;
+  const pendingMembership = await owner.client
+    .from('community_members')
+    .insert({ community_id: communityId, user_id: pending.id, role: 'member', status: 'pending' })
+    .select('id')
+    .single();
+  if (pendingMembership.error) throw pendingMembership.error;
+  const venue = await owner.client
+    .from('community_venues')
+    .insert({
+      community_id: communityId,
+      name: confidential.venue,
+      address: confidential.address,
+      maps_url: 'https://maps.example.test/private'
+    })
+    .select('id')
+    .single();
+  if (venue.error) throw venue.error;
+  const auditRows = await owner.client
+    .from('community_audit_log')
+    .select('id, entity_id')
+    .eq('community_id', communityId);
+  if (auditRows.error || !auditRows.data?.length)
+    throw auditRows.error ?? new Error('Expected private community audit fixture');
+  const ownerRoster = await owner.client.rpc('search_community_members', {
+    p_community_id: communityId,
+    p_query: '',
+    p_offset: 0,
+    p_limit: 50
+  });
+  if (
+    ownerRoster.error ||
+    !ownerRoster.data?.some((row: { user_id: string }) => row.user_id === active.id)
+  )
+    throw ownerRoster.error ?? new Error('Owner could not observe confidential roster fixture');
+
+  const base = `/community/${communityId}/admin`;
+  const destinations = [
+    `${base}/requests`,
+    `${base}/members`,
+    `${base}/members/${activeMembership.data.id}`,
+    `${base}/settings`,
+    `${base}/venues`,
+    `${base}/audit`
+  ];
+  const sentinels = [
+    activeName,
+    pendingName,
+    confidential.description,
+    confidential.setting,
+    confidential.venue,
+    confidential.address,
+    pendingMembership.data.id,
+    venue.data.id,
+    ...auditRows.data
+      .flatMap((row: { id: string; entity_id: string }) => [row.id, row.entity_id])
+      .filter((id: string) => id !== communityId && id !== activeMembership.data.id)
+  ];
+
+  // Owner must be able to observe fixture values before the same payloads are tested against denials.
+  const ownerContext = await browser.newContext();
+  const ownerPage = await ownerContext.newPage();
+  await signIn(ownerPage, owner);
+  await ownerPage.goto(`${base}/venues`);
+  await waitForHydratedPage(ownerPage);
+  await expect(ownerPage.getByRole('heading', { name: confidential.venue })).toBeVisible();
+  await ownerPage.goto(`${base}/members`);
+  await waitForHydratedPage(ownerPage);
+  await expect(ownerPage.getByText(activeName)).toBeVisible();
+  await ownerPage.goto(`${base}/settings`);
+  await waitForHydratedPage(ownerPage);
+  await ownerPage.getByText(en.communityAdmin.settings.details).click();
+  await expect(ownerPage.locator('#community-admin-description')).toHaveValue(
+    confidential.description
+  );
+  await ownerContext.close();
+
+  const guestContext = await browser.newContext();
+  const guestPage = await guestContext.newPage();
+  await assertNoConfidentialPayload(guestPage, destinations, sentinels);
+  await guestContext.close();
+  for (const actor of [active, pending, outsider]) {
+    const context = await browser.newContext();
+    const page = await context.newPage();
+    await signIn(page, actor);
+    await assertNoConfidentialPayload(page, destinations, sentinels);
+    await context.close();
+  }
+});
+
+const narrowDestinations = [
+  'requests',
+  'members',
+  'member',
+  'settings',
+  'venues',
+  'audit'
+] as const;
+const narrowLocales = [
+  ['en', en],
+  ['pt-BR', pt],
+  ['es', es]
+] as const;
+
+test.describe('community admin 320px locale matrix', () => {
+  test.use({ viewport: { width: 320, height: 844 } });
+
+  for (const destination of narrowDestinations) {
+    for (const [locale] of narrowLocales) {
+      test(`${destination} heading and controls fit at 320px (${locale})`, async ({ page }) => {
+        test.setTimeout(120_000);
+        const owner = await createActor(`Narrow ${destination} ${locale}`);
+        const applicant = await createActor(`Narrow applicant ${destination} ${locale}`);
+        const requester = await createActor(`Narrow requester ${destination} ${locale}`);
+        const created = await owner.client.rpc('create_community', {
+          p_name: `Narrow ${crypto.randomUUID().slice(0, 6)}`,
+          p_visibility: 'public',
+          p_join_policy: 'admin_approval'
+        });
+        if (created.error || typeof created.data !== 'string')
+          throw created.error ?? new Error('Narrow-screen community fixture creation failed');
+        const communityId = created.data;
+        const base = `/community/${communityId}/admin`;
+        const active = await owner.client
+          .from('community_members')
+          .insert({
+            community_id: communityId,
+            user_id: applicant.id,
+            role: 'member',
+            status: 'active'
+          })
+          .select('id')
+          .single();
+        if (active.error) throw active.error;
+        const pending = await owner.client
+          .from('community_members')
+          .insert({
+            community_id: communityId,
+            user_id: requester.id,
+            role: 'member',
+            status: 'pending'
+          })
+          .select('id')
+          .single();
+        if (pending.error) throw pending.error;
+        const venue = await owner.client.from('community_venues').insert({
+          community_id: communityId,
+          name: 'Narrow court',
+          address: 'Madrid',
+          maps_url: 'https://maps.example.test/narrow'
+        });
+        if (venue.error) throw venue.error;
+
+        await signIn(page, owner);
+        await page.locator('#locale').selectOption(locale);
+        await expect(page.locator('html')).toHaveAttribute('lang', locale);
+        const path =
+          destination === 'member' ? `${base}/members/${active.data.id}` : `${base}/${destination}`;
+        await page.goto(path);
+        await waitForHydratedPage(page);
+        const localeCopy = locale === 'pt-BR' ? pt : locale === 'es' ? es : en;
+        const localeControl = page.locator('#locale');
+        await expect(localeControl).toBeVisible();
+        await expect(localeControl).toHaveAccessibleName(localeCopy.language);
+        const titleKey = destination === 'member' ? 'member' : destination;
+        const screenHeading = page.getByRole('heading', {
+          name: localeCopy.communityAdmin.title[titleKey],
+          exact: true
+        });
+        await expect(screenHeading).toHaveCount(1);
+        await expect(screenHeading).toBeVisible();
+        if (destination === 'settings') {
+          await page.getByText(localeCopy.communityAdmin.settings.details).click();
+          await expect(page.locator('#community-admin-description')).toBeVisible();
+        }
+        if (destination === 'requests')
+          await expect(
+            page.getByText(`Narrow requester ${destination} ${locale}`, { exact: true })
+          ).toBeVisible();
+        if (destination === 'venues')
+          await expect(page.getByRole('heading', { name: 'Narrow court' })).toBeVisible();
+        if (destination === 'audit')
+          await expect(page.getByTestId('community-audit-event').first()).toBeVisible();
+
+        const dimensions = await page.evaluate(() => ({
+          document: document.documentElement.scrollWidth,
+          main: document.querySelector('main')?.scrollWidth ?? 0,
+          viewport: document.documentElement.clientWidth
+        }));
+        expect(dimensions.document).toBeLessThanOrEqual(dimensions.viewport);
+        expect(dimensions.main).toBeLessThanOrEqual(dimensions.viewport);
+        const adminNavigation = page.getByRole('navigation', {
+          name: localeCopy.communityAdmin.navigation
+        });
+        const contentControls = page.locator(
+          'main button:visible:not(nav button), main a:visible:not(nav a), main input:visible:not(nav input), main select:visible:not(nav select), main textarea:visible:not(nav textarea)'
+        );
+        const navigationControls = adminNavigation.locator(
+          'button:visible, a:visible, input:visible, select:visible, textarea:visible'
+        );
+        const controls = contentControls.or(navigationControls);
+        for (const control of await controls.all()) {
+          const box = await control.boundingBox();
+          expect(box, 'visible interactive control must have a hit region').not.toBeNull();
+          const accessibleName =
+            (await control.getAttribute('aria-label')) ?? (await control.innerText());
+          expect(box!.width, `interactive control ${accessibleName}`).toBeGreaterThanOrEqual(44);
+          expect(box!.height, `interactive control ${accessibleName}`).toBeGreaterThanOrEqual(44);
+        }
+        const nav = adminNavigation;
+        const navBox = await nav.boundingBox();
+        expect(navBox).not.toBeNull();
+        for (const control of await contentControls.all()) {
+          await control.scrollIntoViewIfNeeded();
+          const box = await control.boundingBox();
+          expect(box, 'scrolled interactive control must have a hit region').not.toBeNull();
+          const overlapsBottomNav =
+            box!.y < navBox!.y + navBox!.height && box!.y + box!.height > navBox!.y;
+          expect(
+            overlapsBottomNav,
+            'scrolled interactive control must not be obscured by bottom navigation'
+          ).toBe(false);
+        }
+        await page.keyboard.press('Tab');
+        await expect(page.locator(':focus')).toHaveCount(1);
+        await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+        await expect(nav).toBeVisible();
+        const lastControl = contentControls.last();
+        await lastControl.scrollIntoViewIfNeeded();
+        const finalControl = await lastControl.boundingBox();
+        expect(finalControl, 'last interactive action must remain visible').not.toBeNull();
+        expect(finalControl!.y + finalControl!.height).toBeLessThanOrEqual(navBox!.y);
+      });
+    }
+  }
 });

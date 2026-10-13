@@ -19,9 +19,19 @@ export const Route = createFileRoute(
     const member = await getCommunityMemberById({
       data: { community_id: params.communityId, membership_id: params.membershipId }
     });
-    return { community, members: [member], membershipId: params.membershipId };
+    return { community, member, membershipId: params.membershipId };
   },
   pendingComponent: CommunityAdminLoading,
   errorComponent: CommunityAdminDenied,
-  component: () => <CommunityAdminScreen {...Route.useLoaderData()} screen="member" />
+  component: () => {
+    const data = Route.useLoaderData();
+    return (
+      <CommunityAdminScreen
+        screen="member"
+        community={data.community}
+        member={data.member}
+        membershipId={data.membershipId}
+      />
+    );
+  }
 });

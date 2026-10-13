@@ -23,6 +23,7 @@
     "lead": "Jogue com pessoas por perto",
     "help": "Comunidades públicas são visíveis para todos. Você pode entrar em outras depois.",
     "searchLabel": "Buscar comunidade",
+    "searchLoading": "Buscando comunidades…",
     "searchPlaceholder": "Busque por nome ou cidade",
     "join": "ENTRAR NA COMUNIDADE",
     "requestToJoin": "PEDIR PARA ENTRAR",

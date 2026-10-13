@@ -6,7 +6,7 @@ import {
   useRouterState
 } from '@tanstack/react-router';
 import { I18nextProvider } from 'react-i18next';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { createI18n, resolveLocale } from '../i18n/config';
 import { getInitialLocale, saveLocale } from '../i18n/locale.functions';
 import { PwaRegistration } from '../components/PwaRegistration';
@@ -50,6 +50,9 @@ function Root() {
   const [locale, setLocale] = useState(() => resolveLocale(initialLocale));
   const [theme, setTheme] = useState(initialTheme);
   const [i18n] = useState(() => createI18n(locale));
+  const localeRef = useRef(locale);
+  const localeRequest = useRef(0);
+  const localeQueue = useRef(Promise.resolve());
   useEffect(() => {
     document.documentElement.dataset.appHydrated = 'true';
   }, []);
@@ -69,10 +72,35 @@ function Root() {
                 value={locale}
                 onChange={(event) => {
                   const next = resolveLocale(event.target.value);
-                  setLocale(next);
-                  void i18n.changeLanguage(next);
-                  document.documentElement.lang = next;
-                  void saveLocale({ data: next });
+                  const request = ++localeRequest.current;
+                  localeQueue.current = localeQueue.current
+                    .catch(() => undefined)
+                    .then(async () => {
+                      const previous = localeRef.current;
+                      let persisted = false;
+                      try {
+                        await saveLocale({ data: next });
+                        persisted = true;
+                        if (request !== localeRequest.current) return;
+                        await i18n.changeLanguage(next);
+                        if (request !== localeRequest.current) {
+                          await i18n.changeLanguage(previous);
+                          return;
+                        }
+                        localeRef.current = next;
+                        setLocale(next);
+                        document.documentElement.lang = next;
+                      } catch {
+                        if (persisted && localeRef.current === previous) {
+                          try {
+                            await i18n.changeLanguage(previous);
+                            await saveLocale({ data: previous });
+                          } catch {
+                            // Keep the rendered locale unchanged if preference recovery also fails.
+                          }
+                        }
+                      }
+                    });
                 }}
               >
                 <option value="en">English</option>
