@@ -13,7 +13,16 @@ permission:
   list: allow
   edit: deny
   skill: allow
-  bash: allow
+  bash:
+    "*": allow
+    "git reset*": deny
+    "git checkout*": deny
+    "git restore*": deny
+    "git stash*": deny
+    "git commit*": deny
+    "git push*": deny
+    "pnpm db:reset*": deny
+    "pnpm db:types*": deny
   webfetch: allow
   websearch: deny
   todowrite: deny
@@ -120,7 +129,7 @@ Effective permissions (frontmatter `permission`; legacy `tools` field not used):
 Model tier: `T0` mechanical. Execute the resolved gate commands and report their output. Never re-derive the gate list from scratch when a gate list or the project command is already known, never expand the gate list, and never fix anything.
 
 - `read`, `glob`, `grep`, `list`: allow — gate investigation.
-- `bash`: allow — full shell so gate commands run without prefix-glob denials (`pnpm complete-check`, `pnpm exec playwright`, `CI=1 pnpm ...`, `pnpm db:*`). Run gates with native `bash` (no Serena 240s cap) so long Playwright runs complete.
+- `bash`: allow by default so gate commands run without prefix-glob denials (`pnpm complete-check`, `pnpm exec playwright`, `CI=1 pnpm ...`, `pnpm exec supabase status`). Targeted denies still hard-block the contract-breaking destructive commands: `git reset`/`checkout`/`restore`/`stash`/`commit`/`push` and `pnpm db:reset`/`pnpm db:types`. Run gates with native `bash` (no Serena 240s cap) so long Playwright runs complete.
 - `skill`: allow — QA/quality skills when they improve gate interpretation.
 - `edit`, `task`, `question`, `websearch`, `todowrite`, `lsp`: deny.
 - `webfetch`: allow — documentation lookup for gate interpretation.
