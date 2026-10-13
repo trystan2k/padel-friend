@@ -10,7 +10,8 @@
     "src/routeTree.gen.ts",
     ".tanstack/**",
     ".agents/**",
-    ".opencode/**"
+    ".opencode/**",
+    "docs/plan/**"
   ],
   "overrides": [
     {

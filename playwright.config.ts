@@ -7,9 +7,11 @@ export default defineConfig({
   use: { baseURL: 'http://127.0.0.1:4173', trace: 'on-first-retry' },
   projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
   webServer: {
-    command: 'pnpm build && pnpm preview --port 4173',
+    command: 'pnpm e2e:serve',
     url: 'http://127.0.0.1:4173',
-    reuseExistingServer: !process.env.CI,
+    // Never reuse a running preview: a leftover server silently serves a stale
+    // bundle and fakes E2E failures. `e2e:serve` frees the port and rebuilds.
+    reuseExistingServer: false,
     timeout: 120000
   }
 });
