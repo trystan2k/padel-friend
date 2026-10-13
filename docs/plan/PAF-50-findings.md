@@ -20,6 +20,14 @@ Sources: full review of `8c705c2..5dec5d4` by `code-review-specialist`, `archite
 | F12 | minor    | src/features/community/community-onboarding.styles.ts:151 | Floating label references nonexistent token `--line-height-tight`                                                 | fixed    | bug-fixer-specialist | 1         |
 | F13 | minor    | src/routes/__root.tsx:84                                  | Latest failed locale save leaves a superseded cookie; restore the committed preference                            | deferred | deferred             | 1         |
 | F14 | minor    | test/community.integration.test.ts:1879                   | Copilot review: three identical consecutive `serverClient.current` assignments (copy/paste artifact)              | fixed    | bug-fixer-specialist | 2         |
+| F15 | minor    | src/features/community/community-admin.styles.ts:62       | Copilot review round 2: `border` shorthand instead of longhands (also line 135)                                   | fixed    | bug-fixer-specialist | 3         |
+
+## Iteration 3 (Copilot review round 2)
+
+- Copilot re-reviewed head `44319a9` and confirmed the round-1 finding as resolved; it reported **0 open findings** but flagged one "previously missed" item from unchanged code (`Low`): `src/features/community/community-admin.styles.ts:62` and `:135` use the `border` **shorthand** while the file (five `borderWidth: 0` sites) and the codebase use **longhands**, and StyleX recommends longhands because shorthand/longhand merges can behave unpredictably. Verified accurate by the orchestrator: those two lines were the only remaining `border:` shorthands in `src/**`.
+- Recorded as **F15** and fixed in iteration 3: line 62 → `borderWidth`/`borderStyle`/`borderColor` longhands using the existing tokens; line 135 → `borderWidth: 0` matching the file's own convention. The built CSS asset hash is unchanged and the six 390px screenshots stay under their unchanged budgets (Playwright admin suite 20/20). Fast gate: 60 vitest tests, typecheck, lint, `oxfmt` clean.
+- Note: this finding exists only in the review body (no inline comment or thread), so there is no GitHub thread to resolve for it.
+- Standing Copilot verdict remains "needs a closer look / human review" because of the new SQL audit migration, the locale-persistence concurrency rewrite and the admin refactor size.
 
 ## Iteration 2 (Copilot PR review follow-up)
 

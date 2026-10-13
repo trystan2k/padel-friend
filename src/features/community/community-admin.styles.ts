@@ -59,7 +59,9 @@ export const styles = stylex.create({
     borderRadius: 'var(--radius-12)',
     backgroundColor: 'var(--color-surface)',
     color: 'var(--color-text)',
-    border: 'var(--border-width-sm) solid var(--color-line)',
+    borderWidth: 'var(--border-width-sm)',
+    borderStyle: 'solid',
+    borderColor: 'var(--color-line)',
     overflowWrap: 'anywhere'
   },
   confirmTitle: {
@@ -132,7 +134,7 @@ export const styles = stylex.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingInline: 'var(--space-10)',
-    border: 0,
+    borderWidth: 0,
     borderRadius: 'var(--radius-10)',
     backgroundColor: 'var(--color-green-soft)',
     color: 'var(--color-green)',
