@@ -13,40 +13,14 @@ permission:
   list: allow
   edit: allow
   skill: allow
-  bash:
-    "*": deny
-    "pnpm audit*": allow
-    "pnpm dedupe*": allow
-    "pnpm install*": allow
-    "pnpm outdated*": allow
-    "pnpm why*": allow
-    "corepack pnpm audit*": allow
-    "corepack pnpm install*": allow
-    "corepack pnpm outdated*": allow
-    "corepack pnpm update*": allow
-    "corepack pnpm view*": allow
-    "corepack pnpm why*": allow
-    "pnpm build*": allow
-    "pnpm complete-check*": allow
-    "pnpm db:*": allow
-    "pnpm dev*": allow
-    "pnpm exec*": allow
-    "pnpm format:check*": allow
-    "pnpm knip*": allow
-    "pnpm lint*": allow
-    "pnpm preview*": allow
-    "pnpm test*": allow
-    "pnpm tokens:build*": allow
-    "pnpm typecheck*": allow
-    "git status*": allow
-    "git diff*": allow
-    "git log*": allow
-    "ls*": allow
+  bash: allow
   webfetch: allow
   websearch: allow
   todowrite: deny
   lsp: allow
-  external_directory: deny
+  external_directory:
+    "*": deny
+    "/tmp/**": allow
 ---
 
 # Agent: bug-fixer-specialist
@@ -153,8 +127,12 @@ Model tier: `T1`. Apply the approved fix exactly as specified, add the regressio
 - `edit` (gates `write`/`edit`): allow — task-scope fixes only.
 - `skill`: allow — matching stack best-practice skills.
 - `task`: allow — for delegating verification testing (e.g. `testing-automation-specialist`) when needed.
-- `bash`: scoped — `pnpm` / `npx` verification commands plus read-only git (`status`, `diff`, `log`) and `ls` only. Never run mutating git commands unless explicitly requested.
-- `question`, `webfetch`, `websearch`, `todowrite`, `lsp`, `external_directory`: deny.
+- `bash`: allow — full shell. Run `pnpm` verification commands, scoped tests, and read-only git freely; use native `bash` for shell work (no Serena 240s cap) and Serena MCP for code search/intelligence. `git restore`/`git checkout`/`git stash` are permitted to undo your own in-progress edits only, never unrelated files.
+- `question`: deny — no user prompts from this subagent.
+- `webfetch`, `websearch`: allow — documentation research during fixes.
+- `todowrite`: deny.
+- `lsp`: allow — code intelligence.
+- `external_directory`: deny by default; `/tmp/**` allowed only for scratch artifacts (gate logs, temporary files).
 
 Safety rules:
 

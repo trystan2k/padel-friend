@@ -13,40 +13,14 @@ permission:
   list: allow
   edit: allow
   skill: allow
-  bash:
-    "*": deny
-    "pnpm audit*": allow
-    "pnpm dedupe*": allow
-    "pnpm install*": allow
-    "pnpm outdated*": allow
-    "pnpm why*": allow
-    "corepack pnpm audit*": allow
-    "corepack pnpm install*": allow
-    "corepack pnpm outdated*": allow
-    "corepack pnpm update*": allow
-    "corepack pnpm view*": allow
-    "corepack pnpm why*": allow
-    "pnpm build*": allow
-    "pnpm complete-check*": allow
-    "pnpm db:*": allow
-    "pnpm dev*": allow
-    "pnpm exec*": allow
-    "pnpm format:check*": allow
-    "pnpm knip*": allow
-    "pnpm lint*": allow
-    "pnpm preview*": allow
-    "pnpm test*": allow
-    "pnpm tokens:build*": allow
-    "pnpm typecheck*": allow
-    "git status*": allow
-    "git diff*": allow
-    "git log*": allow
-    "ls*": allow
+  bash: allow
   webfetch: allow
   websearch: allow
   todowrite: deny
   lsp: allow
-  external_directory: deny
+  external_directory:
+    "*": deny
+    "/tmp/**": allow
   "mcp_chrome-devtools*": allow
   "mcp_playwright*": allow
 ---
@@ -149,9 +123,13 @@ Model tier: `T1`. Write the requested tests against the described behavior, reus
 - `edit` (gates `write`/`edit`): allow — test-scope files only.
 - `skill`: allow — matching stack testing skills.
 - `task`: allow — only when the caller explicitly requires specialist delegation.
-- `bash`: scoped — `pnpm` / `npx` test execution plus read-only git (`status`, `diff`, `log`) and `ls` only.
+- `bash`: allow — full shell. Run test commands, Vitest/Playwright, and read-only git freely; use native `bash` for long E2E runs (no Serena 240s cap) and Serena MCP for code search/intelligence. `git restore`/`git checkout`/`git stash` are permitted to undo your own in-progress test edits only, never unrelated files.
 - Playwright / chrome-devtools MCP tools: allow — browser-driven E2E validation.
-- `question`, `webfetch`, `websearch`, `todowrite`, `lsp`, `external_directory`: deny.
+- `question`: deny — no user prompts from this subagent.
+- `webfetch`, `websearch`: allow — documentation research.
+- `todowrite`: deny.
+- `lsp`: allow — code intelligence.
+- `external_directory`: deny by default; `/tmp/**` allowed only for scratch artifacts (e.g. Playwright output, test logs).
 
 Safety rules:
 

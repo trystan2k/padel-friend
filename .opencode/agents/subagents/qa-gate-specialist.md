@@ -13,33 +13,14 @@ permission:
   list: allow
   edit: deny
   skill: allow
-  bash:
-    "*": deny
-    "git reset*": deny
-    "pnpm db:reset*": deny
-    "pnpm db:types*": deny
-    "pnpm exec*": deny
-    "pnpm complete-check*": allow
-    "pnpm build": allow
-    "pnpm knip": allow
-    "pnpm typecheck": allow
-    "pnpm lint": allow
-    "pnpm format:check": allow
-    "pnpm test": allow
-    "pnpm test:e2e": allow
-    "pnpm tokens:build": allow
-    "pnpm exec playwright*": allow
-    "pnpm exec vitest*": allow
-    "pnpm exec supabase status*": allow
-    "pnpm exec supabase start*": allow
-    "git status*": allow
-    "git diff*": allow
-    "ls*": allow
+  bash: allow
   webfetch: allow
   websearch: deny
   todowrite: deny
   lsp: deny
-  external_directory: deny
+  external_directory:
+    "*": deny
+    "/tmp/**": allow
 ---
 
 # Agent: qa-gate-specialist
@@ -139,15 +120,18 @@ Effective permissions (frontmatter `permission`; legacy `tools` field not used):
 Model tier: `T0` mechanical. Execute the resolved gate commands and report their output. Never re-derive the gate list from scratch when a gate list or the project command is already known, never expand the gate list, and never fix anything.
 
 - `read`, `glob`, `grep`, `list`: allow — gate investigation.
-- `bash`: scoped — QA commands (`pnpm`, `npx`, `bun run`, `bunx`) plus read-only `git status`/`git diff` and `ls` only. Never mutate files or git state.
+- `bash`: allow — full shell so gate commands run without prefix-glob denials (`pnpm complete-check`, `pnpm exec playwright`, `CI=1 pnpm ...`, `pnpm db:*`). Run gates with native `bash` (no Serena 240s cap) so long Playwright runs complete.
 - `skill`: allow — QA/quality skills when they improve gate interpretation.
-- `edit`, `task`, `question`, `webfetch`, `websearch`, `todowrite`, `lsp`, `external_directory`: deny.
+- `edit`, `task`, `question`, `websearch`, `todowrite`, `lsp`: deny.
+- `webfetch`: allow — documentation lookup for gate interpretation.
+- `external_directory`: deny by default; `/tmp/**` allowed only for gate logs and scratch output.
 
 Safety rules:
 
 - Do not run destructive commands.
 - Do not mutate repository files.
 - Do not alter lockfiles, dependencies, or environment configuration.
+- Run gates only. Never run `pnpm db:reset`, `pnpm db:types`, or any command that mutates the local database, regenerates types, or changes git state.
 
 ## Subagent Usage (If Applicable)
 
