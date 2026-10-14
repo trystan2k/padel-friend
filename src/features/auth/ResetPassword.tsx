@@ -1,10 +1,11 @@
 import * as stylex from '@stylexjs/stylex';
 import { useNavigate } from '@tanstack/react-router';
-import { useEffect, useState, type FormEvent } from 'react';
+import { useState, type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '../../components/ui/Button';
 import { PasswordField } from '../../components/ui/PasswordField';
 import { getBrowserClient } from '../../lib/supabase/client';
+import { useHydrated } from '../../lib/use-hydrated';
 import { styles } from './reset-password.styles';
 
 type ValidationError = 'short' | 'mismatch' | null;
@@ -12,12 +13,10 @@ type ValidationError = 'short' | 'mismatch' | null;
 export function ResetPassword() {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const [ready, setReady] = useState(false);
+  const ready = useHydrated();
   const [busy, setBusy] = useState(false);
   const [validationError, setValidationError] = useState<ValidationError>(null);
   const [requestFailed, setRequestFailed] = useState(false);
-
-  useEffect(() => setReady(true), []);
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();

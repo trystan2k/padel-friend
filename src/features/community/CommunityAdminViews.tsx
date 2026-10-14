@@ -125,7 +125,7 @@ function MembersView({ community, members }: ViewProps<'members'>) {
       return undefined;
     const timer = setTimeout(() => void fetchMembers(submittedQuery, memberFilter), 250);
     return () => clearTimeout(timer);
-  }, [fetchMembers, submittedQuery, memberFilter, members]);
+  }, [fetchMembers, submittedQuery, memberFilter]);
 
   async function loadMoreMembers() {
     if (searchLoading || !canLoadMore) return;
@@ -253,14 +253,17 @@ function RequestsView(props: ViewProps<'requests'>) {
   const [additionalRequests, setAdditionalRequests] = useState<CommunityAdminMember[]>([]);
   const [hasLoadedMoreRequests, setHasLoadedMoreRequests] = useState(false);
   const [hasMoreRequests, setHasMoreRequests] = useState(members.length === 50);
+  const [pagedMembers, setPagedMembers] = useState(members);
   const { busy, setBusy, message, setMessage, errorKey, setErrorKey } = useAdminMutationState();
   const locale = i18n.resolvedLanguage || i18n.language;
 
-  useEffect(() => {
+  // Reset pagination during render when the loader hands over a fresh list.
+  if (pagedMembers !== members) {
+    setPagedMembers(members);
     setAdditionalRequests([]);
     setHasLoadedMoreRequests(false);
     setHasMoreRequests(members.length === 50);
-  }, [members]);
+  }
 
   async function loadMoreRequests() {
     if (busy || !hasMoreRequests) return;

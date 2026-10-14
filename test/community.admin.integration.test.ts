@@ -448,10 +448,13 @@ describe('LocalSqlCommand process-group cleanup', () => {
         sweepSql: 'select pg_catalog.pg_sleep(4) as value'
       });
       expect(elapsedMs).toBeLessThan(TEARDOWN_DEADLINE_MS);
-      // The stalled sweep command was abandoned by its slice and then killed
-      // through its retained handle (signaled, not exited).
+      // Killed through the retained handle, never a clean exit: pnpm 12's
+      // `pnpm exec` wrapper exits 130 for a SIGTERM-killed child (pnpm 11 died by
+      // signal, giving null), and a runner slow enough to force the SIGKILL
+      // escalation also reports null. A clean exit would mean the stalled sweep
+      // reached its own query deadline instead of being reaped.
       expect(sweep).toBeDefined();
-      expect(sweep?.code).toBeNull();
+      expect([null, 130]).toContain(sweep?.code);
     },
     30000
   );

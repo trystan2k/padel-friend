@@ -4,7 +4,7 @@ Follow this checklist for **each project created from this template**. Replace e
 
 ## 1. Accounts, tools and repository
 
-- Create accounts/workspaces in [GitHub](https://github.com), [Cloudflare](https://dash.cloudflare.com), [Supabase](https://supabase.com/dashboard), [Google Cloud](https://console.cloud.google.com) and [Linear](https://linear.app). Install Node 24+, pnpm 11+, Docker and (for local E2E) Playwright Chromium.
+- Create accounts/workspaces in [GitHub](https://github.com), [Cloudflare](https://dash.cloudflare.com), [Supabase](https://supabase.com/dashboard), [Google Cloud](https://console.cloud.google.com) and [Linear](https://linear.app). Install Node 26+, pnpm 12+, Docker and (for local E2E) Playwright Chromium.
 - Create a GitHub repository from this template. Rename `package.json` (`name`), `wrangler.jsonc` (production Worker `name` and `env.preview.name`), `supabase/config.toml` (`project_id`), the app's title, PWA manifest/icon, and release package/version as appropriate. Worker names must be unique in the Cloudflare account. Push to `main`.
 - Copy `.linear.toml.example` to `.linear.toml`, fill in your Linear workspace/team, create the Linear project, and replace the example team/issue prefix in `AGENTS.md`. Track work as Linear issues and use the issue ID in feature branches/PRs.
 - In GitHub, enable Actions and protect `main` with the **CI / checks** required status check. The workflows use `main` and the `release-please--branches--main` release PR branch. Review GitHub `production` and `preview` environments (approval rules, branch restrictions, and environment-specific variables).

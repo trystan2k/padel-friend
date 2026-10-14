@@ -1,11 +1,12 @@
 import * as stylex from '@stylexjs/stylex';
 import { useNavigate } from '@tanstack/react-router';
-import { useEffect, useState, type FormEvent } from 'react';
+import { useState, type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '../../components/ui/Button';
 import { TextField } from '../../components/ui/TextField';
 import { TextLink } from '../../components/ui/TextLink';
 import { getBrowserClient } from '../../lib/supabase/client';
+import { useHydrated } from '../../lib/use-hydrated';
 import { styles } from './forgot-password.styles';
 import { normalizeReturnPath } from './return-path';
 
@@ -28,12 +29,10 @@ export function ForgotPassword({ next: returnPath }: ForgotPasswordProps) {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const next = normalizeReturnPath(returnPath);
-  const [ready, setReady] = useState(false);
+  const ready = useHydrated();
   const [busy, setBusy] = useState(false);
   const [emailInvalid, setEmailInvalid] = useState(false);
   const [requestFailed, setRequestFailed] = useState(false);
-
-  useEffect(() => setReady(true), []);
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();

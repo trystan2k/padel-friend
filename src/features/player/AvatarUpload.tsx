@@ -22,11 +22,9 @@ export function AvatarUpload({ name, avatarUrl, onUploaded }: Props) {
   const initials = playerInitials(name);
 
   useEffect(() => {
-    if (!file) return undefined;
-    const url = URL.createObjectURL(file);
-    setPreview(url);
-    return () => URL.revokeObjectURL(url);
-  }, [file]);
+    if (!preview) return undefined;
+    return () => URL.revokeObjectURL(preview);
+  }, [preview]);
 
   function chooseFile(selected: File | undefined) {
     setError('');
@@ -36,6 +34,7 @@ export function AvatarUpload({ name, avatarUrl, onUploaded }: Props) {
     try {
       validateAvatarFile({ type: selected.type, size: selected.size });
       setFile(selected);
+      setPreview(URL.createObjectURL(selected));
     } catch {
       setError('profile.avatarInvalid');
     }

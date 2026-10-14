@@ -12,10 +12,10 @@ jobs:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
         with:
-          version: 11.0.8
+          version: 12.13.0
       - uses: actions/setup-node@v4
         with:
-          node-version: '24'
+          node-version: '26'
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       # First backend-backed gate: boot the pinned local Supabase stack for integration and E2E.

@@ -1,5 +1,5 @@
 import * as stylex from '@stylexjs/stylex';
-import { useEffect, useState, type FormEvent } from 'react';
+import { useState, type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { AccountPrompt } from '../../components/ui/AccountPrompt';
 import { Button } from '../../components/ui/Button';
@@ -9,6 +9,7 @@ import { StepBadge } from '../../components/ui/StepBadge';
 import { SurfaceCard } from '../../components/ui/SurfaceCard';
 import { TextField } from '../../components/ui/TextField';
 import { getBrowserClient } from '../../lib/supabase/client';
+import { useHydrated } from '../../lib/use-hydrated';
 import { styles } from './account-signup.styles';
 import { navigateAfterAuth } from './navigate';
 import { normalizeReturnPath } from './return-path';
@@ -16,13 +17,10 @@ import { normalizeReturnPath } from './return-path';
 export function AccountSignup({ next: returnPath }: { next?: string }) {
   const { t } = useTranslation();
   const next = normalizeReturnPath(returnPath);
-  const [ready, setReady] = useState(false);
+  const ready = useHydrated();
   const [message, setMessage] = useState('');
   const [busy, setBusy] = useState(false);
   const [confirmationRequired, setConfirmationRequired] = useState(false);
-
-  // Server-rendered controls stay inert until React can handle submissions.
-  useEffect(() => setReady(true), []);
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();

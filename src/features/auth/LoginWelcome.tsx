@@ -1,5 +1,5 @@
 import * as stylex from '@stylexjs/stylex';
-import { useEffect, useState, type FormEvent } from 'react';
+import { useState, type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { AccountPrompt } from '../../components/ui/AccountPrompt';
 import { Button } from '../../components/ui/Button';
@@ -8,6 +8,7 @@ import { PasswordField } from '../../components/ui/PasswordField';
 import { TextField } from '../../components/ui/TextField';
 import { TextLink } from '../../components/ui/TextLink';
 import { getBrowserClient } from '../../lib/supabase/client';
+import { useHydrated } from '../../lib/use-hydrated';
 import { styles } from './login-welcome.styles';
 import { navigateAfterAuth } from './navigate';
 import { normalizeReturnPath } from './return-path';
@@ -17,11 +18,9 @@ type LoginWelcomeProps = { next?: string; authError?: boolean; resetSent?: boole
 export function LoginWelcome({ next: returnPath, authError, resetSent }: LoginWelcomeProps) {
   const { t } = useTranslation();
   const next = normalizeReturnPath(returnPath);
-  const [ready, setReady] = useState(false);
+  const ready = useHydrated();
   const [message, setMessage] = useState('');
   const [busy, setBusy] = useState(false);
-
-  useEffect(() => setReady(true), []);
 
   async function signInWithGoogle() {
     setMessage('');
