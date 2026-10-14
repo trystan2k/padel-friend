@@ -13,6 +13,7 @@ permission:
   edit: allow
   skill: allow
   "mcp_pencil*": allow
+  "mcp_serena*shell*": deny
   question: allow
   bash:
     "*": deny
@@ -332,7 +333,7 @@ Tool access is configured in this file's frontmatter via `permission` (the legac
 - `webfetch`, `websearch`: allow — plan-time research only; not used for git, Linear, QA, or review actions.
 - `todowrite`, `lsp`: allow — progress tracking and code intelligence.
 - `external_directory`: deny — not part of orchestration.
-- Serena MCP tools: left at default (allowed) — preferred for code search/intelligence when available; fall back to native tools otherwise.
+- Serena MCP tools: allowed for code search/intelligence, but the Serena shell tool (`mcp_serena*shell*`) is denied — the orchestrator never runs shell; all mutating work stays delegated. Fall back to native tools when Serena is unavailable.
 
 ## Model Routing Tiers
 

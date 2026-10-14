@@ -380,6 +380,16 @@ gh pr create --title "$TITLE" --body "$BODY" --base "$BASE" --head "$BRANCH"
 4- Only stop and report failure if both the direct command and the API fallback fail.
 5- If the project does not use GitHub, report that Copilot review request via gh is not supported.
 
+## Stacked pull requests (squash-only repo)
+
+This repository rejects merge commits and merges PRs with squash. When working with a stack of dependent branches:
+
+- Keep the stack shallow (1-2 levels). Deep stacks are fragile because each squash-merge rewrites the base branch history.
+- After a base PR is squash-merged, do not merge the child as-is. Rebase the child onto the updated base with `git rebase --onto origin/<base> <old-base-sha> <child-branch>`, then push with `--force-with-lease`.
+- Before rebasing, verify with `git log --oneline <old-base-sha>..<child-branch>` that only the child's own commits are replayed.
+- Merge the stack bottom-up, one PR at a time, and confirm `gh pr view <number> --json mergeStateStatus` is `CLEAN` before requesting the next merge.
+- Never use `--no-verify` to get past the pre-push gate; fix the failure instead.
+
 ## Any other git command
 
 1- If the user requests any other git command, execute it as requested, for example a git diff, git log, git status, etc.
