@@ -14,6 +14,7 @@ permission:
   edit: deny
   skill: allow
   "mcp_pencil*": allow
+  "mcp_serena*shell*": deny
   bash:
     "*": deny
     "git diff*": allow

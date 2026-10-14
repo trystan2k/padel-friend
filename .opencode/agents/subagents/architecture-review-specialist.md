@@ -14,6 +14,7 @@ permission:
   edit: deny
   skill: allow
   "mcp_pencil*": allow
+  "mcp_serena*shell*": deny
   bash:
     "*": deny
     "git diff*": allow
@@ -133,6 +134,7 @@ Effective permissions (frontmatter `permission`; legacy `tools` field not used):
 - `read`, `glob`, `grep`, `list`: allow — review investigation.
 - `skill`: allow — stack-specific best-practice skills.
 - `bash`: scoped — read-only git (`diff`, `log`, `show`, `status`) and `ls` only.
+- `mcp_serena*shell*`: deny — the Serena shell tool is blocked; review uses the read-only bash allowlist. Other Serena tools (search/intelligence) stay allowed.
 - `edit`, `task`, `question`, `webfetch`, `websearch`, `todowrite`, `lsp`, `external_directory`: deny.
 
 Safety rules:

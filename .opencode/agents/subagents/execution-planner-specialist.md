@@ -16,6 +16,7 @@ permission:
     "*": deny
   skill: allow
   bash: deny
+  "mcp_serena*shell*": deny
   webfetch: allow
   websearch: allow
   todowrite: deny
@@ -136,6 +137,7 @@ Effective permissions (frontmatter `permission`; legacy `tools` field not used):
 - `read`, `glob`, `grep`, `list`: allow — repository analysis.
 - `edit` (gates `write`/`edit`): scoped to `docs/plan/**` only — the plan file is the sole writable artifact. No product-code edits.
 - `skill`: allow — planning/stack skills when they improve the plan.
+- `mcp_serena*shell*`: deny — the Serena shell tool is blocked; planning stays read-only. Other Serena tools (search/intelligence) stay allowed.
 - `bash`, `task`, `question`, `webfetch`, `websearch`, `todowrite`, `lsp`, `external_directory`: deny — analysis and plan-writing only, no execution, delegation, or research.
 
 ## Subagent Usage (If Applicable)
