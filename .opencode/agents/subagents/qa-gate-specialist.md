@@ -15,31 +15,37 @@ permission:
   skill: allow
   bash:
     "*": deny
-    "git reset*": deny
-    "pnpm db:reset*": deny
-    "pnpm db:types*": deny
-    "pnpm exec*": deny
     "pnpm complete-check*": allow
-    "pnpm build": allow
-    "pnpm knip": allow
-    "pnpm typecheck": allow
-    "pnpm lint": allow
-    "pnpm format:check": allow
-    "pnpm test": allow
-    "pnpm test:e2e": allow
-    "pnpm tokens:build": allow
+    "pnpm build*": allow
+    "pnpm knip*": allow
+    "pnpm typecheck*": allow
+    "pnpm lint*": allow
+    "pnpm format:check*": allow
+    "pnpm test*": allow
+    "pnpm tokens:build*": allow
+    "pnpm db:start*": allow
+    "pnpm db:stop*": allow
     "pnpm exec playwright*": allow
     "pnpm exec vitest*": allow
     "pnpm exec supabase status*": allow
     "pnpm exec supabase start*": allow
+    "pnpm exec supabase stop*": allow
     "git status*": allow
     "git diff*": allow
+    "git log*": allow
+    "git show*": allow
+    "git rev-parse*": allow
     "ls*": allow
+    "cat *": allow
+    "head *": allow
+    "tail *": allow
   webfetch: allow
   websearch: deny
   todowrite: deny
   lsp: deny
-  external_directory: deny
+  external_directory:
+    "*": deny
+    "/tmp/**": allow
 ---
 
 # Agent: qa-gate-specialist
@@ -139,15 +145,18 @@ Effective permissions (frontmatter `permission`; legacy `tools` field not used):
 Model tier: `T0` mechanical. Execute the resolved gate commands and report their output. Never re-derive the gate list from scratch when a gate list or the project command is already known, never expand the gate list, and never fix anything.
 
 - `read`, `glob`, `grep`, `list`: allow — gate investigation.
-- `bash`: scoped — QA commands (`pnpm`, `npx`, `bun run`, `bunx`) plus read-only `git status`/`git diff` and `ls` only. Never mutate files or git state.
+- `bash`: fail-closed allowlist — this agent is report-only, so only the gate commands are permitted and everything else is denied by default. Allowed: `pnpm complete-check`, `pnpm build`, `pnpm knip`, `pnpm typecheck`, `pnpm lint`, `pnpm format:check`, `pnpm test`, `pnpm test:e2e`, `pnpm tokens:build`, `pnpm db:start`, `pnpm db:stop`, `pnpm exec playwright|vitest`, `pnpm exec supabase status|start|stop`, read-only git (`status`/`diff`/`log`/`show`/`rev-parse`), `ls`, and `cat`/`head`/`tail` for logs. Denied by default: `pnpm db:reset`, `pnpm db:types`, and every git-state change. Never prefix a command with an env assignment (`CI=1 pnpm ...`) — OpenCode matches the whole command from the start, so it will not match the allowlist; use `pnpm test:e2e` (which starts a fresh preview) instead.
 - `skill`: allow — QA/quality skills when they improve gate interpretation.
-- `edit`, `task`, `question`, `webfetch`, `websearch`, `todowrite`, `lsp`, `external_directory`: deny.
+- `edit`, `task`, `question`, `websearch`, `todowrite`, `lsp`: deny.
+- `webfetch`: allow — documentation lookup for gate interpretation.
+- `external_directory`: deny by default; `/tmp/**` allowed only for gate logs and scratch output.
 
 Safety rules:
 
 - Do not run destructive commands.
 - Do not mutate repository files.
 - Do not alter lockfiles, dependencies, or environment configuration.
+- Run gates only. Never run `pnpm db:reset`, `pnpm db:types`, or any command that mutates the local database, regenerates types, or changes git state.
 
 ## Subagent Usage (If Applicable)
 
