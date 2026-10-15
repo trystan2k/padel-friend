@@ -239,8 +239,15 @@
     "rolePanelTitle": "Rol en la comunidad",
     "rolePanelActive": "{{role}} · promover o cambiar de rol",
     "rolePanelInactive": "Miembro inactivo · reactivar",
-    "status": { "active": "Activo", "pending": "Pendiente", "inactive": "Inactivo" },
-    "role": { "admin": "Admin", "member": "Miembro" },
+    "status": {
+      "active": "Activo",
+      "pending": "Pendiente",
+      "inactive": "Inactivo"
+    },
+    "role": {
+      "admin": "Admin",
+      "member": "Miembro"
+    },
     "action": {
       "approve": "Aprobar solicitud",
       "deny": "Rechazar solicitud",
@@ -270,10 +277,26 @@
       "description": "Descripción",
       "visibility": "Visibilidad",
       "joinPolicy": "Aprobación de membresía",
-      "details": "Editar detalles de la comunidad"
+      "details": "Editar detalles de la comunidad",
+      "timezone": "Zona horaria de la comunidad",
+      "currency": "Moneda",
+      "memberCreatedLeagues": "Permitir que los miembros creen ligas",
+      "timezoneMadrid": "Madrid (Europe/Madrid)",
+      "timezoneUtc": "UTC",
+      "currencyEur": "Euro (EUR)",
+      "currencyPreview": "Vista previa — no es saldo ni precio",
+      "leaguePreferenceOnly": "Preferencia guardada; la creación de ligas aún no está disponible",
+      "defaultsSaved": "Preferencias guardadas.",
+      "invalidDefaults": "Estas preferencias no son válidas. Actualiza e inténtalo de nuevo."
     },
-    "visibility": { "public": "Pública · visible", "private": "Privada · solo invitación" },
-    "joinPolicy": { "instant": "Acceso libre", "adminApproval": "Requiere aprobación de admin" },
+    "visibility": {
+      "public": "Pública · visible",
+      "private": "Privada · solo invitación"
+    },
+    "joinPolicy": {
+      "instant": "Acceso libre",
+      "adminApproval": "Requiere aprobación de admin"
+    },
     "settingsUnavailable": "La zona horaria, la moneda y los valores de liga no están disponibles hasta que los admitan los ajustes de la comunidad.",
     "settingsAdminNote": "Los admins controlan el acceso. El nivel del jugador es de solo lectura.",
     "save": "GUARDAR CAMBIOS",
@@ -295,9 +318,20 @@
       "mapsUrl": "Enlace seguro del mapa (opcional)",
       "openMap": "Abrir mapa",
       "archive": "Archivar pista",
-      "historyNote": "Las pistas archivadas siguen disponibles en el historial de partidos."
+      "historyNote": "Las pistas archivadas siguen disponibles en el historial de partidos.",
+      "photo": {
+        "label": "Foto del lugar",
+        "help": "JPEG, PNG o WebP. Máximo 2 MiB.",
+        "upload": "Subir foto",
+        "uploading": "Subiendo foto…",
+        "uploaded": "Foto subida",
+        "invalid": "Elige una imagen JPEG, PNG o WebP válida de hasta 2 MiB.",
+        "failed": "No se pudo subir la foto. Inténtalo de nuevo.",
+        "previewAlt": "Vista previa de la foto del lugar",
+        "retry": "Reintentar",
+        "clearSelection": "Quitar selección"
+      }
     },
-    "photoUnavailable": "La carga de fotos de pistas no está disponible.",
     "audit": {
       "unknown": "Cambio en la comunidad",
       "venueAdded": "Pista añadida",
@@ -311,13 +345,56 @@
       "invitationUpdated": "Invitación actualizada",
       "recentChanges": "CAMBIOS RECIENTES",
       "unknownActor": "Identidad del autor no disponible",
-      "openMember": "Ver miembro"
+      "openMember": "Ver miembro",
+      "leagueCorrectionsUnavailable": "Los eventos de auditoría de correcciones de liga no están disponibles hasta que existan resultados y un flujo autorizado de corrección."
     },
     "error": {
       "session": "Tu sesión ha caducado. Inicia sesión de nuevo.",
       "generic": "No se pudo completar. Actualiza e inténtalo de nuevo.",
       "finalAdmin": "La comunidad debe mantener al menos una persona admin activa.",
       "transition": "La membresía ha cambiado. Actualiza antes de volver a intentarlo."
+    },
+    "matchCountUnavailable": "Recuento de partidos no disponible — el historial de partidos aún no está disponible",
+    "requestMessage": {
+      "action": "Enviar actualización",
+      "title": "Mensaje para solicitante pendiente",
+      "label": "Mensaje",
+      "help": "Solo texto. Es unidireccional: no se admiten respuestas, correo ni entrega en vivo.",
+      "send": "Enviar mensaje",
+      "sending": "Enviando…",
+      "sent": "Mensaje enviado",
+      "empty": "Escribe un mensaje",
+      "notPending": "Esta solicitud ya no está pendiente",
+      "failed": "No se pudo enviar el mensaje"
     }
+  },
+  "communityInbox": {
+    "title": "Bandeja de entrada de la comunidad",
+    "empty": "Aún no hay mensajes",
+    "loading": "Cargando bandeja…",
+    "error": "Bandeja no disponible",
+    "retry": "Reintentar",
+    "markRead": "Marcar como leído",
+    "read": "Leído",
+    "loadMore": "Cargar más",
+    "oneWayNotice": "Los mensajes son unidireccionales. No se admiten respuestas, correo ni entrega en vivo."
+  },
+  "communityInvites": {
+    "title": "Invitar personas",
+    "searchLabel": "Buscar nombres visibles con consentimiento",
+    "searchHelp": "Cualquier administrador de una comunidad privada podrá encontrar tu nombre visible. No se exponen correos.",
+    "searching": "Buscando…",
+    "noResults": "No se encontraron personas elegibles.",
+    "select": "Seleccionar",
+    "invite": "Emitir invitación",
+    "issued": "Token de invitación de un solo uso emitido",
+    "copyLink": "Copiar enlace",
+    "copied": "Copiado",
+    "shareHelp": "El envío por enlace no está disponible. Comparte este token de un solo uso de forma segura.",
+    "error": "No se pudo completar la invitación.",
+    "discoverableLabel": "Permitir que administradores de comunidades privadas encuentren mi nombre",
+    "discoverableHelp": "Cualquier administrador de una comunidad privada puede encontrar tu nombre consentido. No se exponen correos.",
+    "discoverabilitySaved": "Preferencia de descubrimiento guardada.",
+    "discoverabilityError": "No se pudo guardar la preferencia."
   }
 }

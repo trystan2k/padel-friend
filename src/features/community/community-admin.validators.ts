@@ -1,5 +1,6 @@
 import type { Database } from '../../lib/supabase/database.types';
 import { hasEdgeWhitespace } from '../../lib/edge-whitespace';
+import { isCommunityAdminDefaults, type CommunityAdminDefaults } from './community-settings';
 
 type Status = Database['public']['Enums']['community_membership_status'];
 export type MemberActionInput = { community_id: string; membership_id: string };
@@ -10,7 +11,6 @@ export type VenueInput = {
   name: string;
   address?: string | null;
   maps_url?: string | null;
-  photo_path?: string | null;
 };
 
 function invalid(): never {
@@ -53,6 +53,14 @@ export function validateMemberAction(value: unknown): MemberActionInput {
 export function validateCommunityId(value: unknown): { community_id: string } {
   const input = record(value, ['community_id']);
   return { community_id: uuid(input.community_id) };
+}
+export function validateAdminDefaults(value: unknown): {
+  community_id: string;
+  defaults: CommunityAdminDefaults;
+} {
+  const input = record(value, ['community_id', 'defaults']);
+  if (!isCommunityAdminDefaults(input.defaults)) invalid();
+  return { community_id: uuid(input.community_id), defaults: input.defaults };
 }
 export function validatePage(value: unknown): PageInput {
   const input = record(value, ['community_id', 'offset', 'limit']);
@@ -100,7 +108,7 @@ export function validateRevokeInvitation(value: unknown): {
   return { community_id: uuid(input.community_id), invitation_id: uuid(input.invitation_id) };
 }
 export function validateVenue(value: unknown): VenueInput {
-  const input = record(value, ['community_id', 'name', 'address', 'maps_url', 'photo_path']);
+  const input = record(value, ['community_id', 'name', 'address', 'maps_url']);
   const name = text(input.name, 120, true)!;
   const mapsUrl = input.maps_url === undefined ? undefined : text(input.maps_url, 2048);
   if (mapsUrl !== undefined && mapsUrl !== null && !mapsUrl.startsWith('https://')) invalid();
@@ -108,19 +116,11 @@ export function validateVenue(value: unknown): VenueInput {
     community_id: uuid(input.community_id),
     name,
     ...('address' in input ? { address: text(input.address, 300) } : {}),
-    ...('maps_url' in input ? { maps_url: mapsUrl } : {}),
-    ...('photo_path' in input ? { photo_path: text(input.photo_path, 256) } : {})
+    ...('maps_url' in input ? { maps_url: mapsUrl } : {})
   };
 }
 export function validateVenueEdit(value: unknown): VenueInput & { venue_id: string } {
-  const input = record(value, [
-    'community_id',
-    'venue_id',
-    'name',
-    'address',
-    'maps_url',
-    'photo_path'
-  ]);
+  const input = record(value, ['community_id', 'venue_id', 'name', 'address', 'maps_url']);
   const { venue_id, ...changes } = input;
   return { ...validateVenue(changes), venue_id: uuid(venue_id) };
 }

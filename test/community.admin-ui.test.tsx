@@ -19,7 +19,8 @@ const mocks = vi.hoisted(() => ({
   addVenue: vi.fn<() => Promise<unknown>>(),
   editVenue: vi.fn<() => Promise<unknown>>(),
   archiveVenue: vi.fn<() => Promise<unknown>>(),
-  updateSettings: vi.fn<() => Promise<unknown>>()
+  updateSettings: vi.fn<() => Promise<unknown>>(),
+  sendRequestMessage: vi.fn<() => Promise<unknown>>()
 }));
 
 vi.mock('@tanstack/react-router', () => ({
@@ -61,8 +62,12 @@ vi.mock('../src/features/community/community-admin.functions', () => ({
 vi.mock('../src/features/community/community.functions', () => ({
   updateCommunitySettings: mocks.updateSettings
 }));
+vi.mock('../src/features/community/community-request.functions', () => ({
+  sendCommunityRequestMessage: mocks.sendRequestMessage
+}));
 
 import { createI18n } from '../src/i18n/config';
+import { CommunityInbox } from '../src/features/community/CommunityInbox';
 import {
   CommunityAdminDenied,
   CommunityAdminEntries,
@@ -97,14 +102,29 @@ function mount(
 ) {
   const props =
     screenName === 'requests' || screenName === 'members'
-      ? { screen: screenName, community, members: [member] }
+      ? {
+          screen: screenName,
+          community,
+          members: [member],
+          ...(screenName === 'requests' ? { timezone: 'Europe/Madrid' as const } : {})
+        }
       : screenName === 'member'
         ? { screen: screenName, community, member, membershipId: member.membership_id }
         : screenName === 'venues'
           ? { screen: screenName, community, venues: [] }
           : screenName === 'audit'
             ? { screen: screenName, community, audit: [] }
-            : { screen: screenName, community };
+            : screenName === 'settings'
+              ? {
+                  screen: screenName,
+                  community,
+                  defaults: {
+                    timezone: 'Europe/Madrid',
+                    currency: 'EUR',
+                    member_created_leagues_enabled: true
+                  }
+                }
+              : { screen: screenName, community };
   return render(
     <I18nextProvider i18n={createI18n(locale)}>
       <CommunityAdminScreen {...props} />
@@ -121,10 +141,53 @@ beforeEach(() => {
   mocks.search.mockResolvedValue([member]);
   mocks.listVenues.mockResolvedValue([]);
   mocks.listAudit.mockResolvedValue([]);
+  mocks.sendRequestMessage.mockResolvedValue({ message_id: 'message-id' });
 });
 afterEach(cleanup);
 
 describe('community admin UI', () => {
+  it('composes request updates through the dialog and reports send errors', async () => {
+    const user = userEvent.setup();
+    mount('requests');
+    await user.click(screen.getByRole('button', { name: 'Send update' }));
+    await user.type(screen.getByLabelText('Message'), 'Hello applicant');
+    mocks.sendRequestMessage.mockRejectedValueOnce(new Error('failed'));
+    await user.click(screen.getByRole('button', { name: 'Send message' }));
+    expect((await screen.findByRole('alert')).textContent).toContain('Could not send message');
+    mocks.sendRequestMessage.mockResolvedValueOnce({ message_id: 'message-id' });
+    await user.click(screen.getByRole('button', { name: 'Send message' }));
+    await waitFor(() => expect(mocks.sendRequestMessage).toHaveBeenCalled());
+  });
+
+  it('renders XSS-like inbox text literally and keeps load failure distinct from empty', () => {
+    const body = '<img src=x onerror=alert(1)>';
+    render(
+      <I18nextProvider i18n={createI18n('en')}>
+        <CommunityInbox
+          initialItems={[
+            {
+              notification_id: 'n',
+              message_id: 'm',
+              body,
+              created_at: '2026-01-01T00:00:00Z',
+              read_at: null
+            }
+          ]}
+          loadError={false}
+        />
+      </I18nextProvider>
+    );
+    expect(screen.getByText(body)).toBeTruthy();
+    expect(document.querySelector('img')).toBeNull();
+    cleanup();
+    render(
+      <I18nextProvider i18n={createI18n('en')}>
+        <CommunityInbox initialItems={null} loadError />
+      </I18nextProvider>
+    );
+    expect(screen.getByRole('alert').textContent).toContain('Inbox unavailable');
+    expect(screen.queryByText('No messages yet')).toBeNull();
+  });
   it('renders only supplied authorized community admin destinations', () => {
     const { rerender } = render(
       <I18nextProvider i18n={createI18n('en')}>
@@ -403,7 +466,12 @@ describe('community admin UI', () => {
     mocks.search.mockResolvedValueOnce([nextRequest]);
     const requestView = render(
       <I18nextProvider i18n={createI18n('en')}>
-        <CommunityAdminScreen screen="requests" community={community} members={firstRequests} />
+        <CommunityAdminScreen
+          screen="requests"
+          community={community}
+          members={firstRequests}
+          timezone="Europe/Madrid"
+        />
       </I18nextProvider>
     );
     await userEvent.click(screen.getByRole('button', { name: 'LOAD MORE CHANGES' }));
@@ -462,7 +530,12 @@ describe('community admin UI', () => {
     mocks.search.mockResolvedValueOnce([]);
     render(
       <I18nextProvider i18n={createI18n('en')}>
-        <CommunityAdminScreen screen="requests" community={community} members={firstPage} />
+        <CommunityAdminScreen
+          screen="requests"
+          community={community}
+          members={firstPage}
+          timezone="Europe/Madrid"
+        />
       </I18nextProvider>
     );
     await userEvent.click(screen.getByRole('button', { name: 'LOAD MORE CHANGES' }));
@@ -523,7 +596,9 @@ describe('community admin UI', () => {
 
   it('resets settings draft when the community identity changes', async () => {
     const first = mount('settings');
-    await userEvent.click(screen.getByText('Edit community details'));
+    await userEvent.click(
+      screen.getByText('Community admins control access. Player level stays read-only.')
+    );
     const city = screen.getByLabelText('City or area');
     await userEvent.clear(city);
     await userEvent.type(city, 'Community A draft');
@@ -534,23 +609,32 @@ describe('community admin UI', () => {
     };
     first.rerender(
       <I18nextProvider i18n={createI18n('en')}>
-        <CommunityAdminScreen screen="settings" community={secondCommunity} />
+        <CommunityAdminScreen
+          screen="settings"
+          community={secondCommunity}
+          defaults={{
+            timezone: 'Europe/Madrid',
+            currency: 'EUR',
+            member_created_leagues_enabled: true
+          }}
+        />
       </I18nextProvider>
     );
-    await userEvent.click(screen.getByText('Edit community details'));
+    await userEvent.click(
+      screen.getByText('Community admins control access. Player level stays read-only.')
+    );
     expect(screen.getByLabelText('City or area').value).toBe('Community B');
   });
 
-  it('marks unsupported settings and venue photo uploads unavailable without inventing values', async () => {
+  it('renders supported settings controls without an unsupported photo placeholder', async () => {
     const settingsView = mount('settings');
-    expect(
-      screen.getByText(/Timezone, currency, and league defaults are unavailable/)
-    ).toBeTruthy();
-    expect(screen.queryByText(/Europe\/Madrid|EUR|Enabled/)).toBeNull();
+    expect(screen.getByRole('combobox', { name: 'Community time zone' })).toBeTruthy();
+    expect(screen.getByText('Preference saved; league creation is not supported yet')).toBeTruthy();
+    expect(screen.getByTestId('settings-currency-control').textContent).toContain('Euro (EUR)');
     settingsView.unmount();
     mount('venues');
     await userEvent.click(screen.getByRole('button', { name: 'Add a venue' }));
-    expect(screen.getByText('Venue photo upload is unavailable.')).toBeTruthy();
+    expect(screen.queryByText('Venue photo upload is unavailable.')).toBeNull();
   });
 
   it('uses neutral audit actors and displays only whitelisted role/status evidence', () => {
@@ -886,9 +970,20 @@ describe('community admin UI', () => {
     const searchCount = mocks.search.mock.calls.length;
     view.rerender(
       <I18nextProvider i18n={createI18n('en')}>
-        <CommunityAdminScreen screen="settings" community={community} />
+        <CommunityAdminScreen
+          screen="settings"
+          community={community}
+          defaults={{
+            timezone: 'Europe/Madrid',
+            currency: 'EUR',
+            member_created_leagues_enabled: true
+          }}
+        />
       </I18nextProvider>
     );
+    expect(screen.getByRole('combobox', { name: 'Community time zone' })).toBeTruthy();
+    expect(screen.getByText('Preference saved; league creation is not supported yet')).toBeTruthy();
+    expect(screen.getByTestId('settings-currency-control').textContent).toContain('Euro (EUR)');
     expect(mocks.search).toHaveBeenCalledTimes(searchCount);
     view.rerender(
       <I18nextProvider i18n={createI18n('en')}>

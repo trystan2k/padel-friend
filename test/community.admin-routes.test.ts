@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const calls = vi.hoisted(() => ({
   context: vi.fn<(input: { data: unknown }) => Promise<unknown>>(),
+  defaults: vi.fn<(input: { data: unknown }) => Promise<unknown>>(),
   members: vi.fn<(input: { data: unknown }) => Promise<unknown>>(),
   member: vi.fn<(input: { data: unknown }) => Promise<unknown>>(),
   venues: vi.fn<(input: { data: unknown }) => Promise<unknown>>(),
@@ -14,6 +15,7 @@ const calls = vi.hoisted(() => ({
 
 vi.mock('../src/features/community/community-admin.functions', () => ({
   getCommunityAdminContext: calls.context,
+  getCommunityAdminDefaults: calls.defaults,
   searchCommunityMembers: calls.members,
   getCommunityMemberById: calls.member,
   listCommunityVenues: calls.venues,
@@ -106,6 +108,11 @@ function invokeBeforeLoad(route: unknown, context: unknown): unknown {
 }
 
 beforeEach(() => {
+  calls.defaults.mockResolvedValue({
+    timezone: 'Europe/Madrid',
+    currency: 'EUR',
+    member_created_leagues_enabled: true
+  });
   vi.clearAllMocks();
   calls.context.mockResolvedValue(community);
   calls.members.mockResolvedValue([{ membership_id: membershipId }]);
@@ -196,10 +203,18 @@ describe('community admin executable routes', () => {
   });
 
   it('runs admin and settings context loaders with their route params', async () => {
+    calls.defaults.mockResolvedValue({
+      timezone: 'Europe/Madrid',
+      currency: 'EUR',
+      member_created_leagues_enabled: true
+    });
     await expect(loader(AdminRoute)({ params: routeParams })).resolves.toEqual(community);
     expect(calls.context).toHaveBeenCalledExactlyOnceWith({ data: { community_id: communityId } });
     calls.context.mockClear();
-    await expect(loader(SettingsRoute)({ params: routeParams })).resolves.toEqual(community);
+    await expect(loader(SettingsRoute)({ params: routeParams })).resolves.toEqual({
+      community,
+      defaults: { timezone: 'Europe/Madrid', currency: 'EUR', member_created_leagues_enabled: true }
+    });
     expect(calls.context).toHaveBeenCalledExactlyOnceWith({ data: { community_id: communityId } });
     expect(calls.members).not.toHaveBeenCalled();
     expect(calls.venues).not.toHaveBeenCalled();

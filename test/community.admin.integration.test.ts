@@ -34,6 +34,8 @@ import {
   denyCommunityMember,
   editCommunityVenue,
   getCommunityMemberById,
+  getCommunityAdminDefaults,
+  updateCommunityAdminDefaults,
   issueInvitation,
   listMyAdminCommunities,
   listCommunityAudit,
@@ -469,6 +471,69 @@ describe.skipIf(environment.env === null)('community governance with real JWTs',
       actor('Target'),
       actor('Alternate')
     ]);
+  });
+  it('persists validated admin defaults without replacing unrelated settings namespaces', async () => {
+    const id = await community(admin);
+    expect(
+      (
+        await admin.client.rpc('update_community_settings', {
+          p_community_id: id,
+          p_changes: { settings: { legacy: { retained: true } } }
+        })
+      ).error
+    ).toBeNull();
+    serverClient.current = admin.client;
+    expect(await getCommunityAdminDefaults({ data: { community_id: id } })).toEqual({
+      timezone: 'Europe/Madrid',
+      currency: 'EUR',
+      member_created_leagues_enabled: true
+    });
+    const invalidValues = [
+      { timezone: 'Bad/Zone', currency: 'EUR', member_created_leagues_enabled: true },
+      { timezone: 'UTC', currency: 'USD', member_created_leagues_enabled: true },
+      { timezone: 'UTC', currency: 'EUR', member_created_leagues_enabled: 'true' },
+      { timezone: 'UTC', currency: 'EUR', member_created_leagues_enabled: true, unexpected: true }
+    ];
+    for (const invalid of invalidValues) {
+      expect(
+        (
+          await admin.client.rpc('update_community_admin_defaults', {
+            p_community_id: id,
+            p_defaults: invalid
+          })
+        ).error
+      ).not.toBeNull();
+      expect(
+        (
+          await admin.client.rpc('update_community_settings', {
+            p_community_id: id,
+            p_changes: { settings: { admin_defaults: invalid } }
+          })
+        ).error
+      ).not.toBeNull();
+    }
+    const defaults = { timezone: 'UTC', currency: 'EUR', member_created_leagues_enabled: false };
+    await expect(
+      updateCommunityAdminDefaults({ data: { community_id: id, defaults } })
+    ).resolves.toEqual(defaults);
+    const stored = await admin.client.rpc('get_community_settings', { p_community_id: id });
+    expect(stored.error).toBeNull();
+    expect(stored.data?.[0]?.settings).toMatchObject({
+      legacy: { retained: true },
+      admin_defaults: defaults
+    });
+    serverClient.current = admin.client;
+    await expect(getCommunityAdminDefaults({ data: { community_id: id } })).resolves.toEqual(
+      defaults
+    );
+    await membership(admin, id, member, 'active');
+    serverClient.current = member.client;
+    const memberRead = await member.client.rpc('get_community_settings', { p_community_id: id });
+    expect(memberRead.error).toBeNull();
+    serverClient.current = outsider.client;
+    await expect(getCommunityAdminDefaults({ data: { community_id: id } })).rejects.toThrow(
+      'NOT_COMMUNITY_ADMIN'
+    );
   });
   const actions = [
     ['approve', approveCommunityMember, 'pending', 'member', 'active', 'member'],

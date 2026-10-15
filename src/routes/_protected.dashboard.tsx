@@ -5,14 +5,20 @@ import { PlayerProfile } from '../features/player/PlayerProfile';
 import { CommunityAdminEntries } from '../features/community/CommunityAdmin';
 import { listMyAdminCommunities } from '../features/community/community-admin.functions';
 import { getMyPlayerProfile } from '../features/player/player.functions';
+import { listMyCommunityNotifications } from '../features/community/community-request.functions';
+import { CommunityInbox } from '../features/community/CommunityInbox';
 import { ui } from '../features/player/player-ui.styles';
+import { InvitationDiscoverability } from '../features/community/InvitationDiscoverability';
 
 export async function loadDashboardData() {
-  const [profile, adminCommunities] = await Promise.all([
+  const [profile, adminCommunities, inbox] = await Promise.all([
     getMyPlayerProfile(),
-    listMyAdminCommunities().catch(() => [])
+    listMyAdminCommunities().catch(() => []),
+    listMyCommunityNotifications({ data: { offset: 0, limit: 20 } })
+      .then((items) => ({ items, error: false }))
+      .catch(() => ({ items: null, error: true }))
   ]);
-  return { profile, adminCommunities };
+  return { profile, adminCommunities, inbox };
 }
 
 export const Route = createFileRoute('/_protected/dashboard')({
@@ -23,11 +29,13 @@ export const Route = createFileRoute('/_protected/dashboard')({
 });
 
 function Dashboard() {
-  const { profile, adminCommunities } = Route.useLoaderData();
+  const { profile, adminCommunities, inbox } = Route.useLoaderData();
   return (
     <>
       <PlayerProfile initialProfile={profile} />
       <CommunityAdminEntries communities={adminCommunities} />
+      <CommunityInbox initialItems={inbox.items} loadError={inbox.error} />
+      <InvitationDiscoverability />
     </>
   );
 }

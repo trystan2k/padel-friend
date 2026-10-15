@@ -239,8 +239,15 @@
     "rolePanelTitle": "Community role",
     "rolePanelActive": "{{role}} · promote or demote",
     "rolePanelInactive": "Inactive member · reactivate",
-    "status": { "active": "Active", "pending": "Pending", "inactive": "Inactive" },
-    "role": { "admin": "Admin", "member": "Member" },
+    "status": {
+      "active": "Active",
+      "pending": "Pending",
+      "inactive": "Inactive"
+    },
+    "role": {
+      "admin": "Admin",
+      "member": "Member"
+    },
     "action": {
       "approve": "Approve request",
       "deny": "Deny request",
@@ -270,10 +277,26 @@
       "description": "Description",
       "visibility": "Visibility",
       "joinPolicy": "Membership approval",
-      "details": "Edit community details"
+      "details": "Edit community details",
+      "timezone": "Community time zone",
+      "currency": "Currency",
+      "memberCreatedLeagues": "Allow members to create leagues",
+      "timezoneMadrid": "Madrid (Europe/Madrid)",
+      "timezoneUtc": "UTC",
+      "currencyEur": "Euro (EUR)",
+      "currencyPreview": "Format preview — not a balance or price",
+      "leaguePreferenceOnly": "Preference saved; league creation is not supported yet",
+      "defaultsSaved": "Preferences saved.",
+      "invalidDefaults": "These preferences are invalid. Refresh and try again."
     },
-    "visibility": { "public": "Public · discoverable", "private": "Private · invite-only" },
-    "joinPolicy": { "instant": "Open joining", "adminApproval": "Admin approval required" },
+    "visibility": {
+      "public": "Public · discoverable",
+      "private": "Private · invite-only"
+    },
+    "joinPolicy": {
+      "instant": "Open joining",
+      "adminApproval": "Admin approval required"
+    },
     "settingsUnavailable": "Timezone, currency, and league defaults are unavailable until supported by community settings.",
     "settingsAdminNote": "Community admins control access. Player level stays read-only.",
     "save": "SAVE CHANGES",
@@ -295,9 +318,20 @@
       "mapsUrl": "Secure map link (optional)",
       "openMap": "Open map",
       "archive": "Archive venue",
-      "historyNote": "Archived venues remain available in past match history."
+      "historyNote": "Archived venues remain available in past match history.",
+      "photo": {
+        "label": "Venue photo",
+        "help": "JPEG, PNG, or WebP. Maximum 2 MiB.",
+        "upload": "Upload photo",
+        "uploading": "Uploading photo…",
+        "uploaded": "Photo uploaded",
+        "invalid": "Choose a valid JPEG, PNG, or WebP image up to 2 MiB.",
+        "failed": "Photo upload failed. Try again.",
+        "previewAlt": "Venue photo preview",
+        "retry": "Try again",
+        "clearSelection": "Clear selection"
+      }
     },
-    "photoUnavailable": "Venue photo upload is unavailable.",
     "audit": {
       "unknown": "Community change",
       "venueAdded": "Venue added",
@@ -311,13 +345,56 @@
       "invitationUpdated": "Invitation updated",
       "recentChanges": "RECENT CHANGES",
       "unknownActor": "Actor identity unavailable",
-      "openMember": "View member"
+      "openMember": "View member",
+      "leagueCorrectionsUnavailable": "League-result correction audit events are unavailable until league results and an authorized correction workflow exist."
     },
     "error": {
       "session": "Your session expired. Sign in again.",
       "generic": "Could not complete the change. Refresh and try again.",
       "finalAdmin": "The community must keep at least one active admin.",
       "transition": "This membership changed. Refresh before trying again."
+    },
+    "matchCountUnavailable": "Match count unavailable — match history is not supported yet",
+    "requestMessage": {
+      "action": "Send update",
+      "title": "Message pending applicant",
+      "label": "Message",
+      "help": "Plain text only. This is one-way: replies, email and live delivery are not supported.",
+      "send": "Send message",
+      "sending": "Sending…",
+      "sent": "Message sent",
+      "empty": "Enter a message",
+      "notPending": "This request is no longer pending",
+      "failed": "Could not send message"
     }
+  },
+  "communityInbox": {
+    "title": "Community inbox",
+    "empty": "No messages yet",
+    "loading": "Loading inbox…",
+    "error": "Inbox unavailable",
+    "retry": "Retry",
+    "markRead": "Mark as read",
+    "read": "Read",
+    "loadMore": "Load more",
+    "oneWayNotice": "Messages are one-way. Replies, email and live delivery are not supported."
+  },
+  "communityInvites": {
+    "title": "Inviting people",
+    "searchLabel": "Search opted-in display names",
+    "searchHelp": "Any private-community Admin may find your display name when enabled. Emails are never exposed.",
+    "searching": "Searching…",
+    "noResults": "No eligible invitees found.",
+    "select": "Select",
+    "invite": "Issue invitation",
+    "issued": "One-time invitation token issued",
+    "copyLink": "Copy link",
+    "copied": "Copied",
+    "shareHelp": "Link delivery unsupported. Share this one-time token securely.",
+    "error": "Could not complete invitation action.",
+    "discoverableLabel": "Allow private-community Admins to find my display name",
+    "discoverableHelp": "Any Admin of a private community can find your opted-in display name. No emails are exposed.",
+    "discoverabilitySaved": "Discoverability preference saved.",
+    "discoverabilityError": "Could not save discoverability preference."
   }
 }

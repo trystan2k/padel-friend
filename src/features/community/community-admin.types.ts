@@ -1,4 +1,5 @@
 import type { Database } from '../../lib/supabase/database.types';
+import type { CommunityAdminDefaults, CommunityTimezone } from './community-settings';
 
 type GeneratedMemberSearchResult =
   Database['public']['Functions']['search_community_members']['Returns'][number];
@@ -18,6 +19,12 @@ export type CommunityAdminCommunity = Pick<
   'id' | 'name' | 'city_label' | 'description' | 'visibility' | 'join_policy'
 >;
 export type CommunityAdminMember = CommunityMemberSearchResult;
+export type CommunityMemberMatchSummary =
+  | { status: 'available'; count: number }
+  | { status: 'unsupported'; count: null; reason: 'match_source_unavailable' };
+export function unsupportedCommunityMatchSummary(): CommunityMemberMatchSummary {
+  return { status: 'unsupported', count: null, reason: 'match_source_unavailable' };
+}
 export type CommunityAdminVenue = Pick<
   Database['public']['Tables']['community_venues']['Row'],
   | 'id'
@@ -25,11 +32,10 @@ export type CommunityAdminVenue = Pick<
   | 'name'
   | 'address'
   | 'maps_url'
-  | 'photo_path'
   | 'created_at'
   | 'updated_at'
   | 'archived_at'
->;
+> & { photo_signed_url: string | null };
 export type CommunityAdminAudit = Pick<
   Database['public']['Tables']['community_audit_log']['Row'],
   'id' | 'actor_user_id' | 'entity' | 'entity_id' | 'action' | 'details' | 'occurred_at'
@@ -38,13 +44,13 @@ export type CommunityAdminAudit = Pick<
 type CommunityProps = { community: CommunityAdminCommunity };
 type MemberCollectionProps = CommunityProps & { members: CommunityAdminMember[] };
 export type CommunityAdminScreenProps =
-  | (MemberCollectionProps & { screen: 'requests' })
+  | (MemberCollectionProps & { screen: 'requests'; timezone: CommunityTimezone })
   | (MemberCollectionProps & { screen: 'members' })
   | (CommunityProps & {
       screen: 'member';
       member: CommunityAdminMember;
       membershipId: string;
     })
-  | (CommunityProps & { screen: 'settings' })
+  | (CommunityProps & { screen: 'settings'; defaults: CommunityAdminDefaults })
   | (CommunityProps & { screen: 'venues'; venues: CommunityAdminVenue[] })
   | (CommunityProps & { screen: 'audit'; audit: CommunityAdminAudit[] });

@@ -6,6 +6,7 @@ import { SurfaceCard } from '../../components/ui/SurfaceCard';
 import type { CommunityAdminScreenProps } from './community-admin.types';
 import { styles } from './community-admin.styles';
 import { CommunityAdminDispatcher } from './CommunityAdminViews';
+import { formatCommunityRequestTimestamp, type CommunityTimezone } from './community-settings';
 
 type Props = CommunityAdminScreenProps;
 
@@ -13,6 +14,9 @@ export function dateLabel(value: string, locale: string) {
   return new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeZone: 'UTC' }).format(
     new Date(value)
   );
+}
+export function communityDateLabel(value: string, locale: string, timeZone: CommunityTimezone) {
+  return formatCommunityRequestTimestamp(value, locale, timeZone);
 }
 export function initials(name: string) {
   return name

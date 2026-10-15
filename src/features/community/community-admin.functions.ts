@@ -1,7 +1,14 @@
 import { createServerFn } from '@tanstack/react-start';
 import { requireAuthenticatedClient } from '../auth/auth.server';
+import { signVenuePhoto } from './community-venue-photo.server';
 import type { CommunityMemberSearchResult } from './community-admin.types';
 import {
+  DEFAULT_COMMUNITY_ADMIN_DEFAULTS,
+  parseCommunityAdminDefaults,
+  type CommunityAdminDefaults
+} from './community-settings';
+import {
+  validateAdminDefaults,
   validateInvitation,
   validateCommunityId,
   validateMemberAction,
@@ -112,6 +119,36 @@ export const getCommunityAdminContext = createServerFn({ method: 'GET' })
     return community;
   });
 
+export const getCommunityAdminDefaults = createServerFn({ method: 'GET' })
+  .validator(validateCommunityId)
+  .handler(async ({ data }): Promise<CommunityAdminDefaults> => {
+    const client = await requireAdmin(data.community_id);
+    const { data: rows, error } = await client.rpc('get_community_settings', {
+      p_community_id: data.community_id
+    });
+    if (error) throw error;
+    const stored: unknown = rows?.[0]?.settings;
+    if (stored === null || stored === undefined) return DEFAULT_COMMUNITY_ADMIN_DEFAULTS;
+    if (typeof stored !== 'object' || Array.isArray(stored))
+      return DEFAULT_COMMUNITY_ADMIN_DEFAULTS;
+    const namespace = Reflect.get(stored, 'admin_defaults');
+    return namespace === undefined
+      ? DEFAULT_COMMUNITY_ADMIN_DEFAULTS
+      : parseCommunityAdminDefaults(namespace);
+  });
+
+export const updateCommunityAdminDefaults = createServerFn({ method: 'POST' })
+  .validator(validateAdminDefaults)
+  .handler(async ({ data }): Promise<CommunityAdminDefaults> => {
+    const client = await requireAdmin(data.community_id);
+    const { data: result, error } = await client.rpc('update_community_admin_defaults', {
+      p_community_id: data.community_id,
+      p_defaults: data.defaults
+    });
+    if (error) throw error;
+    return parseCommunityAdminDefaults(result);
+  });
+
 export const getCommunityMemberById = createServerFn({ method: 'GET' })
   .validator(validateMemberAction)
   .handler(async ({ data }) => {
@@ -171,7 +208,19 @@ export const listCommunityVenues = createServerFn({ method: 'GET' })
       .order('id')
       .range(data.offset, data.offset + data.limit - 1);
     if (error) throw error;
-    return rows ?? [];
+    return Promise.all(
+      (rows ?? []).map(async (row) => ({
+        id: row.id,
+        community_id: row.community_id,
+        name: row.name,
+        address: row.address,
+        maps_url: row.maps_url,
+        created_at: row.created_at,
+        updated_at: row.updated_at,
+        archived_at: row.archived_at,
+        photo_signed_url: await signVenuePhoto(client, row.photo_path)
+      }))
+    );
   });
 
 export const addCommunityVenue = createServerFn({ method: 'POST' })

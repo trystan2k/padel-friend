@@ -153,6 +153,30 @@ export type Database = {
           },
         ]
       }
+      community_invitee_directory_preferences: {
+        Row: {
+          created_at: string
+          user_id: string
+        }
+        ComputedFields: never
+        Insert: {
+          created_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "community_invitee_directory_preferences_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "player_profiles"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
       community_members: {
         Row: {
           activated_at: string | null
@@ -194,6 +218,91 @@ export type Database = {
             columns: ["community_id"]
             isOneToOne: false
             referencedRelation: "communities"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      community_notifications: {
+        Row: {
+          created_at: string
+          id: string
+          kind: string
+          read_at: string | null
+          recipient_user_id: string
+          request_message_id: string
+        }
+        ComputedFields: never
+        Insert: {
+          created_at?: string
+          id?: string
+          kind: string
+          read_at?: string | null
+          recipient_user_id: string
+          request_message_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          kind?: string
+          read_at?: string | null
+          recipient_user_id?: string
+          request_message_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "community_notifications_request_message_id_fkey"
+            columns: ["request_message_id"]
+            isOneToOne: true
+            referencedRelation: "community_request_messages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      community_request_messages: {
+        Row: {
+          body: string
+          client_request_id: string
+          community_id: string
+          created_at: string
+          id: string
+          membership_id: string
+          recipient_user_id: string
+          sender_user_id: string
+        }
+        ComputedFields: never
+        Insert: {
+          body: string
+          client_request_id: string
+          community_id: string
+          created_at?: string
+          id?: string
+          membership_id: string
+          recipient_user_id: string
+          sender_user_id: string
+        }
+        Update: {
+          body?: string
+          client_request_id?: string
+          community_id?: string
+          created_at?: string
+          id?: string
+          membership_id?: string
+          recipient_user_id?: string
+          sender_user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "community_request_messages_community_id_fkey"
+            columns: ["community_id"]
+            isOneToOne: false
+            referencedRelation: "communities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "community_request_messages_membership_id_fkey"
+            columns: ["membership_id"]
+            isOneToOne: false
+            referencedRelation: "community_members"
             referencedColumns: ["id"]
           },
         ]
@@ -379,6 +488,10 @@ export type Database = {
         }
         Returns: string
       }
+      finalize_community_venue_photo: {
+        Args: { p_community_id: string; p_object_key: string; p_venue_id: string }
+        Returns: undefined
+      }
       get_community_member_by_id: {
         Args: { p_community_id: string; p_membership_id: string }
         Returns: {
@@ -401,6 +514,7 @@ export type Database = {
           settings: Json
         }[]
       }
+      get_effective_community_admin_defaults: { Args: { p_settings: Json }; Returns: Json }
       govern_community_member: {
         Args: { p_action: string; p_community_id: string; p_membership_id: string }
         Returns: {
@@ -425,6 +539,13 @@ export type Database = {
           membership_id: string
           status: Database["public"]["Enums"]["community_membership_status"]
           valid_until: string
+        }[]
+      }
+      mark_community_notification_read: {
+        Args: { p_notification_id: string }
+        Returns: {
+          notification_id: string
+          read_at: string
         }[]
       }
       onboard_player: {
@@ -452,6 +573,14 @@ export type Database = {
           visibility: Database["public"]["Enums"]["community_visibility"]
         }[]
       }
+      safe_venue_photo_uuid: { Args: { p_value: string }; Returns: string }
+      search_community_invitees: {
+        Args: { p_community_id: string; p_limit?: number; p_query: string }
+        Returns: {
+          display_name: string
+          user_id: string
+        }[]
+      }
       search_community_members: {
         Args: {
           p_community_id: string
@@ -473,6 +602,22 @@ export type Database = {
           valid_until: string
         }[]
       }
+      send_community_request_message: {
+        Args: {
+          p_body: string
+          p_client_request_id: string
+          p_community_id: string
+          p_membership_id: string
+        }
+        Returns: {
+          created_at: string
+          message_id: string
+        }[]
+      }
+      update_community_admin_defaults: {
+        Args: { p_community_id: string; p_defaults: Json }
+        Returns: Json
+      }
       update_community_settings: {
         Args: { p_changes: Json; p_community_id: string }
         Returns: {
@@ -487,6 +632,8 @@ export type Database = {
           visibility: Database["public"]["Enums"]["community_visibility"]
         }[]
       }
+      valid_community_admin_defaults: { Args: { p_defaults: Json }; Returns: boolean }
+      valid_community_venue_photo_key: { Args: { p_key: string }; Returns: boolean }
     }
     Enums: {
       community_join_policy: "instant" | "admin_approval"

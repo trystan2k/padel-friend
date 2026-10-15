@@ -8,7 +8,7 @@ export const styles = stylex.create({
     maxWidth: 'calc(var(--space-40) * 12)',
     marginInline: 'auto',
     padding: 'var(--space-18) var(--space-18) var(--space-14)',
-    paddingBottom: 'calc(var(--space-18) + var(--space-40) + var(--space-16))',
+    paddingBottom: 'calc(var(--space-18) + var(--space-40) + var(--space-16) + var(--space-40))',
     display: 'flex',
     flexDirection: 'column',
     gap: 'var(--space-10)',
@@ -17,7 +17,7 @@ export const styles = stylex.create({
     fontFamily: 'var(--font-family-body)',
     overflowY: 'auto',
     scrollPaddingBottom:
-      'calc(var(--space-14) + var(--space-40) + var(--space-16) + var(--space-4))'
+      'calc(var(--space-14) + var(--space-40) + var(--space-16) + var(--space-40) + var(--space-4))'
   },
   header: { display: 'flex', flexDirection: 'column', gap: 0 },
   title: {
@@ -70,6 +70,22 @@ export const styles = stylex.create({
     lineHeight: 'var(--font-size-20)',
     fontWeight: 'var(--font-weight-semibold)',
     overflowWrap: 'anywhere'
+  },
+  messageForm: { display: 'grid', gap: 'var(--space-6)' },
+  messageTextarea: {
+    boxSizing: 'border-box',
+    width: '100%',
+    minHeight: 'calc(var(--space-40) * 2)',
+    padding: 'var(--space-12)',
+    borderWidth: 'var(--border-width-sm)',
+    borderStyle: 'solid',
+    borderColor: 'var(--color-line)',
+    borderRadius: 'var(--radius-8)',
+    backgroundColor: 'var(--color-surface)',
+    color: 'var(--color-text)',
+    fontFamily: 'var(--font-family-body)',
+    fontSize: 'var(--font-size-14)',
+    resize: 'vertical'
   },
   venueContent: { gap: 'var(--space-10)' },
   screenHeading: { display: 'flex', alignItems: 'center', gap: 'var(--space-6)' },
@@ -151,7 +167,16 @@ export const styles = stylex.create({
   },
   requestCard: {
     minHeight: 'calc(var(--space-40) * 5)',
-    boxSizing: 'border-box'
+    boxSizing: 'border-box',
+    position: 'relative'
+  },
+  requestMessageTrigger: {
+    position: 'absolute',
+    top: 'var(--space-8)',
+    right: 'var(--space-8)',
+    width: 'calc(var(--space-40) + var(--space-4))',
+    minWidth: 'calc(var(--space-40) + var(--space-4))',
+    paddingInline: 0
   },
   requestMeta: { minHeight: 'calc(var(--font-size-15) * 2)' },
   cardTitle: {
@@ -367,16 +392,92 @@ export const styles = stylex.create({
     fontSize: 'var(--font-size-12)',
     fontWeight: 'var(--font-weight-semibold)',
     textAlign: 'center',
+    scrollMarginBottom:
+      'calc(var(--space-14) + var(--space-40) + var(--space-16) + var(--space-40) + var(--space-4))',
     ':focus-visible': {
       outline: 'var(--border-width-lg) solid var(--color-green)',
       outlineOffset: 'var(--space-2)'
     }
   },
-  settingsUnavailableCard: {
+  settingsDefaultsCard: {
+    boxSizing: 'border-box',
+    height: 'calc((var(--space-40) + var(--space-4)) * 2 + var(--space-20) + var(--space-1))',
     display: 'flex',
     flexDirection: 'column',
-    gap: 'var(--space-4)',
-    padding: 'var(--space-10)'
+    gap: 0,
+    padding: '0 var(--space-10)'
+  },
+  settingsTimezoneRow: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 'var(--space-8)',
+    height: 'calc(var(--space-40) + var(--space-4))',
+    minHeight: 'calc(var(--space-40) + var(--space-4))'
+  },
+  settingsCurrencyRow: {
+    boxSizing: 'border-box',
+    height: 'var(--space-20)',
+    minHeight: 'var(--space-20)',
+    margin: 0,
+    overflow: 'hidden',
+    color: 'var(--color-muted)',
+    fontSize: 'var(--font-size-10)',
+    lineHeight: 'var(--font-size-10)',
+    whiteSpace: 'nowrap'
+  },
+  settingsLeagueRow: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 'var(--space-8)',
+    height: 'calc(var(--space-40) + var(--space-4))',
+    minHeight: 'calc(var(--space-40) + var(--space-4))'
+  },
+  settingsLeagueCopy: {
+    display: 'flex',
+    flexDirection: 'column',
+    justifyContent: 'center',
+    gap: 0,
+    minWidth: 0
+  },
+  settingsLeagueNote: {
+    color: 'var(--color-muted)',
+    fontSize: 'var(--font-size-10)',
+    lineHeight: 'var(--font-size-12)',
+    overflowWrap: 'anywhere'
+  },
+  settingsFooterNote: {
+    flex: 1,
+    color: 'var(--color-muted)',
+    fontSize: 'var(--font-size-10)',
+    lineHeight: 'var(--font-size-12)',
+    textAlign: 'right'
+  },
+  settingsTimezoneSelect: {
+    width: 'min(60%, 14rem)',
+    minHeight: 'calc(var(--space-40) + var(--space-4))'
+  },
+  settingsSaveControl: {
+    scrollMarginBottom:
+      'calc(var(--space-14) + var(--space-40) + var(--space-16) + var(--space-40) + var(--space-4))'
+  },
+  settingsSwitch: {
+    boxSizing: 'border-box',
+    width: 'calc(var(--space-40) + var(--space-4))',
+    minWidth: 'calc(var(--space-40) + var(--space-4))',
+    height: 'calc(var(--space-40) + var(--space-4))',
+    display: 'inline-flex',
+    alignItems: 'center',
+    padding: 'var(--space-2)',
+    borderRadius: 'var(--radius-20)',
+    backgroundColor: 'var(--color-green)'
+  },
+  settingsSwitchThumb: {
+    width: 'var(--space-20)',
+    height: 'var(--space-20)',
+    borderRadius: 'var(--radius-20)',
+    backgroundColor: 'var(--color-surface-1)'
   },
   details: {
     display: 'flex',
@@ -392,6 +493,8 @@ export const styles = stylex.create({
     fontSize: 'var(--font-size-12)',
     fontWeight: 'var(--font-weight-semibold)',
     cursor: 'pointer',
+    scrollMarginBottom:
+      'calc(var(--space-14) + var(--space-40) + var(--space-16) + var(--space-40) + var(--space-4))',
     ':focus-visible': {
       outline: 'var(--border-width-lg) solid var(--color-green)',
       outlineOffset: 'var(--space-2)'
@@ -408,6 +511,10 @@ export const styles = stylex.create({
     overflowWrap: 'anywhere'
   },
   auditCard: { gap: 'var(--space-4)' },
+  auditUnsupportedNotice: {
+    margin: 0,
+    marginBottom: 'calc(0px - var(--space-10))'
+  },
   auditAction: {
     margin: 0,
     color: 'var(--color-text)',
