@@ -554,6 +554,13 @@ export type Database = {
           status: Database["public"]["Enums"]["community_membership_status"]
         }[]
       }
+      accept_my_notification_invitation: {
+        Args: { p_notification_id: string }
+        Returns: {
+          community_id: string
+          status: Database["public"]["Enums"]["community_membership_status"]
+        }[]
+      }
       can_read_community: { Args: { p_community_id: string }; Returns: boolean }
       count_my_unread_notifications: { Args: Record<PropertyKey, never>; Returns: number }
       create_community: {
@@ -602,6 +609,16 @@ export type Database = {
         Returns: {
           notification_id: string
           time_zone: string
+        }[]
+      }
+      get_my_notification_target: {
+        Args: { p_notification_id: string }
+        Returns: {
+          community_id: string
+          community_name: string
+          invitation_id: string
+          membership_status: string
+          target_status: string
         }[]
       }
       govern_community_member: {

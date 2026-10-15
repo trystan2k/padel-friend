@@ -399,5 +399,21 @@
     "discoverableHelp": "Qualquer administrador de comunidade privada poderá encontrar seu nome consentido. E-mails não são expostos.",
     "discoverabilitySaved": "Preferência de descoberta salva.",
     "discoverabilityError": "Não foi possível salvar a preferência."
+  },
+  "notifications": {
+    "title": "Notificação",
+    "subtitle": "Detalhes da notificação",
+    "back": "Voltar às notificações",
+    "accept": "Aceitar convite",
+    "accepting": "Aceitando…",
+    "accepted": "Convite aceito",
+    "targetUnavailable": "Esta notificação não está mais disponível.",
+    "targetError": "A ação falhou. Tente novamente.",
+    "retry": "Tentar novamente",
+    "invitationContext": "Você foi convidado para esta comunidade privada.",
+    "activeMembership": "Sua associação está ativa.",
+    "pendingMembership": "Sua associação está pendente.",
+    "loading": "Carregando notificação…",
+    "error": "Não foi possível carregar a notificação."
   }
 }

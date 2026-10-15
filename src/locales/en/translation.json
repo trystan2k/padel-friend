@@ -399,5 +399,21 @@
     "discoverableHelp": "Any Admin of a private community can find your opted-in display name. No emails are exposed.",
     "discoverabilitySaved": "Discoverability preference saved.",
     "discoverabilityError": "Could not save discoverability preference."
+  },
+  "notifications": {
+    "title": "Notification",
+    "subtitle": "Notification details",
+    "back": "Back to notifications",
+    "accept": "Accept invitation",
+    "accepting": "Accepting…",
+    "accepted": "Invitation accepted",
+    "targetUnavailable": "This notification is no longer available.",
+    "targetError": "Action failed. Please try again.",
+    "retry": "Try again",
+    "invitationContext": "You have been invited to this private community.",
+    "activeMembership": "Your membership is active.",
+    "pendingMembership": "Your membership is pending.",
+    "loading": "Loading notification…",
+    "error": "Could not load notification."
   }
 }
