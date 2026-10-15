@@ -431,6 +431,46 @@ export type Database = {
         }
         Relationships: []
       }
+      notifications: {
+        Row: {
+          category: string
+          community_id: string | null
+          created_at: string
+          event_key: string
+          id: string
+          kind: string
+          read_at: string | null
+          recipient_user_id: string
+          target_id: string
+          target_type: string
+        }
+        ComputedFields: never
+        Insert: {
+          category: string
+          community_id?: string | null
+          created_at?: string
+          event_key: string
+          id?: string
+          kind: string
+          read_at?: string | null
+          recipient_user_id: string
+          target_id: string
+          target_type: string
+        }
+        Update: {
+          category?: string
+          community_id?: string | null
+          created_at?: string
+          event_key?: string
+          id?: string
+          kind?: string
+          read_at?: string | null
+          recipient_user_id?: string
+          target_id?: string
+          target_type?: string
+        }
+        Relationships: []
+      }
       player_profiles: {
         Row: {
           avatar_url: string | null
@@ -478,6 +518,7 @@ export type Database = {
         }[]
       }
       can_read_community: { Args: { p_community_id: string }; Returns: boolean }
+      count_my_unread_notifications: { Args: Record<PropertyKey, never>; Returns: number }
       create_community: {
         Args: {
           p_city_label?: string
@@ -552,6 +593,7 @@ export type Database = {
           valid_until: string
         }[]
       }
+      mark_all_notifications_read: { Args: { p_before: string }; Returns: number }
       mark_community_notification_read: {
         Args: { p_notification_id: string }
         Returns: {
@@ -559,6 +601,7 @@ export type Database = {
           read_at: string
         }[]
       }
+      mark_notification_read: { Args: { p_notification_id: string }; Returns: string }
       onboard_player: {
         Args: {
           p_bio?: string
@@ -568,6 +611,18 @@ export type Database = {
           p_preferred_side: string
         }
         Returns: undefined
+      }
+      persist_notification: {
+        Args: {
+          p_category: string
+          p_community_id: string
+          p_event_key: string
+          p_kind: string
+          p_recipient_user_id: string
+          p_target_id: string
+          p_target_type: string
+        }
+        Returns: string
       }
       public_community_discovery: {
         Args: Record<PropertyKey, never>
