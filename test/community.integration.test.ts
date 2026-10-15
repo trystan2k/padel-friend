@@ -511,6 +511,8 @@ describe.skipIf(environment.env === null)('community domain (local Supabase inte
     serverClient.current = null;
   });
 
+  // Longest membership-matrix round-trip chain in the suite; measured >5s under
+  // full-suite worker contention, so it carries an explicit timeout.
   it('counts only active open memberships, including Admins, once after reactivation, and preserves zero', async () => {
     const created = await admin.client.rpc('create_community', {
       p_name: `Count matrix ${crypto.randomUUID()}`,
@@ -579,7 +581,7 @@ describe.skipIf(environment.env === null)('community domain (local Supabase inte
     expect((await detail())?.member_count).toBe(3);
 
     serverClient.current = null;
-  });
+  }, 15000);
 
   it('denies anonymous RPC execution and never serializes private fields', async () => {
     const anonymousRole = await anon().rpc('public_community_discovery');
@@ -829,6 +831,8 @@ describe.skipIf(environment.env === null)('community domain (local Supabase inte
     ).toBe('42501');
   });
 
+  // Full invitation-visibility matrix across several actors; measured >3s under
+  // full-suite worker contention, so it carries an explicit timeout.
   it('AC4: private rows hidden filtered and unfiltered; only own invitation is exposed', async () => {
     const assertInactiveOnly = async () => {
       const history = (await rows(admin.client, 'community_members', privateId)).filter(
@@ -899,7 +903,7 @@ describe.skipIf(environment.env === null)('community domain (local Supabase inte
       '42501'
     );
     await assertInactiveOnly();
-  });
+  }, 15000);
 
   it('AC5: admin alone mutates rows/settings; member sees own interval, not roster', async () => {
     const assertInactiveOnly = async () => {

@@ -340,6 +340,9 @@ describe.skipIf(!environment.env)('community request delivery (real local Supaba
     ).toBeNull();
   });
 
+  // Spawns the Supabase CLI twice (batched setup/teardown SQL); each CLI boot is
+  // a real process spawn plus a local-DB round trip, which alone can exceed 1s
+  // on slow CI runners, so this test carries an explicit timeout.
   it('rolls back the message insert when notification creation fails', async () => {
     const { admin, communityId, membershipId } = await fixture();
     const sql = (statement: string) =>
@@ -347,10 +350,8 @@ describe.skipIf(!environment.env)('community request delivery (real local Supaba
         encoding: 'utf8'
       });
     sql(
-      "create or replace function public.test_reject_community_notification() returns trigger language plpgsql as $$ begin raise exception 'injected notification failure'; end $$"
-    );
-    sql(
-      'create trigger test_reject_community_notification before insert on public.community_notifications for each row execute function public.test_reject_community_notification()'
+      "do $outer$ begin execute 'create or replace function public.test_reject_community_notification() returns trigger language plpgsql as $$ begin raise exception ''injected notification failure''; end $$'; " +
+        "execute 'create trigger test_reject_community_notification before insert on public.community_notifications for each row execute function public.test_reject_community_notification()'; end $outer$;"
     );
     try {
       const requestId = crypto.randomUUID();
@@ -367,11 +368,11 @@ describe.skipIf(!environment.env)('community request delivery (real local Supaba
       expect(rows.data).toEqual([]);
     } finally {
       sql(
-        'drop trigger if exists test_reject_community_notification on public.community_notifications'
+        "do $outer$ begin execute 'drop trigger if exists test_reject_community_notification on public.community_notifications'; " +
+          "execute 'drop function if exists public.test_reject_community_notification()'; end $outer$;"
       );
-      sql('drop function if exists public.test_reject_community_notification()');
     }
-  });
+  }, 15000);
 
   it('rejects all terminal governance outcomes before sending', async () => {
     const { admin, communityId, membershipId } = await fixture();

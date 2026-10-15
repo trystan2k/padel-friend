@@ -12,6 +12,8 @@ const rawToken = () =>
     byte.toString(16).padStart(2, '0')
   ).join('');
 describe('invitee directory (real local Supabase JWTs)', () => {
+  // Directory scan fans out across many members; measured >4s under full-suite
+  // worker contention, so it carries an explicit timeout.
   it('returns only opted-in invitees to current private-community admins and honors withdrawal', async () => {
     const { url, key } = environment.env!;
     const createActor = async (label: string) => {
@@ -234,7 +236,7 @@ describe('invitee directory (real local Supabase JWTs)', () => {
     expect(
       (await person.client.from('community_invitee_directory_preferences').select('user_id')).data
     ).toEqual([]);
-  });
+  }, 15000);
 });
 
 function personName(actor: { name?: string }) {
