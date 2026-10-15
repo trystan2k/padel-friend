@@ -340,6 +340,31 @@ describe.skipIf(!environment.env)('community request delivery (real local Supaba
     ).toBeNull();
   });
 
+  it('returns batch timezones only for notifications received by the caller', async () => {
+    const { admin, applicant, outsider, communityId, membershipId } = await fixture();
+    expect(
+      (await send(admin.client, communityId, membershipId, 'Timezone lookup')).error
+    ).toBeNull();
+    const notification = (
+      await applicant.client.from('community_notifications').select('id').single()
+    ).data;
+    expect(notification).toBeTruthy();
+
+    const received = await applicant.client.rpc('get_my_community_notification_timezones', {
+      p_notification_ids: [notification!.id]
+    });
+    expect(received.error).toBeNull();
+    expect(received.data).toEqual([
+      { notification_id: notification!.id, time_zone: 'Europe/Madrid' }
+    ]);
+
+    const unauthorized = await outsider.client.rpc('get_my_community_notification_timezones', {
+      p_notification_ids: [notification!.id]
+    });
+    expect(unauthorized.error).toBeNull();
+    expect(unauthorized.data).toEqual([]);
+  });
+
   // Spawns the Supabase CLI twice (batched setup/teardown SQL); each CLI boot is
   // a real process spawn plus a local-DB round trip, which alone can exceed 1s
   // on slow CI runners, so this test carries an explicit timeout.

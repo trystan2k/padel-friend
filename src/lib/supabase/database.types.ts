@@ -519,6 +519,13 @@ export type Database = {
         Args: { p_notification_id: string }
         Returns: string
       }
+      get_my_community_notification_timezones: {
+        Args: { p_notification_ids: string[] }
+        Returns: {
+          notification_id: string
+          time_zone: string
+        }[]
+      }
       govern_community_member: {
         Args: { p_action: string; p_community_id: string; p_membership_id: string }
         Returns: {

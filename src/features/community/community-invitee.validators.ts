@@ -4,7 +4,10 @@ export function validateInviteeSearch(value: unknown) {
   const input = value as { community_id?: unknown; query?: unknown };
   if (Object.keys(input).some((key) => !['community_id', 'query'].includes(key)))
     throw new Error('INVALID_INVITEE_SEARCH');
-  if (typeof input.community_id !== 'string' || !/^[0-9a-f-]{36}$/i.test(input.community_id))
+  if (
+    typeof input.community_id !== 'string' ||
+    !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(input.community_id)
+  )
     throw new Error('INVALID_INVITEE_SEARCH');
   if (
     typeof input.query !== 'string' ||

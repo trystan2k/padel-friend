@@ -14,6 +14,21 @@ describe('invitee discovery validators', () => {
     ).toBe('A_%.*');
     expect(validateDiscoverability({ enabled: false })).toEqual({ enabled: false });
   });
+  it('accepts a real UUID and rejects malformed UUID-shaped community IDs', () => {
+    const validId = '123e4567-e89b-42d3-a456-426614174000';
+    expect(validateInviteeSearch({ community_id: validId, query: 'player' }).community_id).toBe(
+      validId
+    );
+    for (const communityId of [
+      '-'.repeat(36),
+      '123e4567e89b-42d3-a456-4266-14174000',
+      '123e4567-e89b-42d3-a456-42661417400z',
+      '123e4567-e89b-42d3-a456-42661417400'
+    ])
+      expect(() => validateInviteeSearch({ community_id: communityId, query: 'player' })).toThrow(
+        'INVALID_INVITEE_SEARCH'
+      );
+  });
   it('rejects short searches, malformed IDs, and extra consent fields', () => {
     expect(() => validateInviteeSearch({ community_id: 'x', query: 'ab' })).toThrow(
       'INVALID_INVITEE_SEARCH'

@@ -41,25 +41,32 @@ export const listMyCommunityNotifications = createServerFn({ method: 'GET' })
       .order('id', { ascending: false })
       .range(data.offset, data.offset + data.limit - 1);
     if (error) throw error;
-    return Promise.all(
-      (rows ?? []).map(async (row) => {
-        const message = row.community_request_messages;
-        const { data: timeZone, error: timezoneError } = await client.rpc(
-          'get_my_community_notification_timezone',
-          { p_notification_id: row.id }
-        );
-        if (timezoneError || !isCommunityTimezone(timeZone))
-          throw timezoneError ?? new Error('NOTIFICATION_TIMEZONE_UNAVAILABLE');
-        return {
-          notification_id: row.id,
-          message_id: message.id,
-          body: message.body,
-          created_at: message.created_at,
-          read_at: row.read_at,
-          time_zone: timeZone
-        };
-      })
+    const notificationRows = rows ?? [];
+    if (notificationRows.length === 0) return [];
+
+    const { data: timeZones, error: timezoneError } = await client.rpc(
+      'get_my_community_notification_timezones',
+      { p_notification_ids: notificationRows.map((row) => row.id) }
     );
+    if (timezoneError) throw timezoneError;
+
+    const timeZonesByNotificationId = new Map<string, string>();
+    for (const row of timeZones ?? [])
+      timeZonesByNotificationId.set(row.notification_id, row.time_zone);
+
+    return notificationRows.map((row) => {
+      const message = row.community_request_messages;
+      const timeZone = timeZonesByNotificationId.get(row.id) ?? null;
+      if (!isCommunityTimezone(timeZone)) throw new Error('NOTIFICATION_TIMEZONE_UNAVAILABLE');
+      return {
+        notification_id: row.id,
+        message_id: message.id,
+        body: message.body,
+        created_at: message.created_at,
+        read_at: row.read_at,
+        time_zone: timeZone
+      };
+    });
   });
 
 export const markCommunityNotificationRead = createServerFn({ method: 'POST' })

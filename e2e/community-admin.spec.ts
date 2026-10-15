@@ -517,8 +517,8 @@ test('real admin requests, membership, settings, venues and audit stay protected
   await expect(page.getByRole('heading', { name: en.communityAdmin.title.requests })).toBeVisible();
   await geometry(page, 'Pending Player');
   // Mask only unsupported resolved/notification content and fixture-dependent applicant values; keep card geometry exact.
-  // macOS ~14,818; Linux 15,713 (+895). 18,500 leaves 2,787px headroom.
-  // ≥2,500px safety margin, rounded up to the next 500.
+  // Measured macOS 14,864; Linux 15,723; 2,777px headroom. Linux CI evidence: docs/visual/community-admin-residuals.md.
+  // Original cap-selection target: ≥2,500px headroom, rounded up to the next 500.
   await visualDiff(page, 'RgqPq.png', 18_500, [
     [0, 309, 390, 147],
     [28, 124, 334, 20],
@@ -551,8 +551,8 @@ test('real admin requests, membership, settings, venues and audit stay protected
   await assertLinkHitArea(page.getByRole('link', { name: 'Backup Admin' }));
   // Mask fixture identity/metrics, role badges, avatars and the unsupported invitation copy only;
   // card layout, search and geometry stay exact and unmasked.
-  // macOS ~11,902; Linux 12,720 (+818). 15,500 leaves 2,780px headroom.
-  // ≥2,500px safety margin, rounded up to the next 500.
+  // Measured macOS 14,198; Linux 15,435; 65px headroom. Linux CI evidence and flakiness risk: docs/visual/community-admin-residuals.md.
+  // Original cap-selection target: ≥2,500px headroom, rounded up to the next 500.
   await visualDiff(page, 'wFqGR.png', 15_500, [
     [18, 46, 354, 22],
     [25, 82, 340, 26],
@@ -577,8 +577,8 @@ test('real admin requests, membership, settings, venues and audit stay protected
   await geometry(page);
   await memberControlsGeometry(page);
   // Mask only dynamic member identity/metrics and community name; card/action geometry stays probed.
-  // macOS ~17,397; Linux 19,038 (+1,641, largest observed delta); 22,000 leaves 2,962px.
-  // ≥2,500px safety margin, rounded up to the next 500.
+  // Measured macOS 17,397; Linux 19,038; 2,962px headroom. Linux CI evidence: docs/visual/community-admin-residuals.md.
+  // Original cap-selection target: ≥2,500px headroom, rounded up to the next 500.
   await visualDiff(page, 'jQDkx.png', 22_000, [
     [18, 46, 354, 22],
     [28, 124, 334, 20],
@@ -601,8 +601,8 @@ test('real admin requests, membership, settings, venues and audit stay protected
   await waitForHydratedPage(page);
   await geometry(page);
   await settingsGeometry(page);
-  // macOS ~18,616; Linux 19,853 (+1,237). 22,500 leaves 2,647px headroom.
-  // ≥2,500px safety margin, rounded up to the next 500.
+  // Measured macOS 17,750; Linux 18,920; 3,580px headroom. Linux CI evidence: docs/visual/community-admin-residuals.md.
+  // Original cap-selection target: ≥2,500px headroom, rounded up to the next 500.
   await visualDiff(page, 'N18Mu4.png', 22_500, [
     [18, 46, 354, 22],
     [18, 230, 354, 120]
@@ -650,8 +650,8 @@ test('real admin requests, membership, settings, venues and audit stay protected
   );
   // Mask fixture venue names and dynamic/unsupported detail copy only; card edges, action labels,
   // and the supported Open map links remain part of the pixel comparison.
-  // macOS ~16,362; Linux estimate 18,003 (+1,641, largest observed delta); 21,000 leaves 2,997px.
-  // ≥2,500px safety margin, rounded up to the next 500.
+  // Measured macOS 16,351; Linux 17,771; 3,229px headroom. Linux CI evidence: docs/visual/community-admin-residuals.md.
+  // Original cap-selection target: ≥2,500px headroom, rounded up to the next 500.
   await visualDiff(page, 'A5Vio.png', 21_000, [
     [32, 140, 180, 15],
     [32, 161, 240, 15],
@@ -673,8 +673,8 @@ test('real admin requests, membership, settings, venues and audit stay protected
   // Actor identity is intentionally a translated generic fallback; timestamps are fixture-dependent.
   // The fourth Pencil event ("League result corrected") and the 3-row paging control are the
   // approved unsupported/adapted region, so the band below the third event stays masked.
-  // macOS ~15,485; Linux estimate 17,126 (+1,641, largest observed delta); 20,000 leaves 2,874px.
-  // ≥2,500px safety margin, rounded up to the next 500.
+  // Measured macOS 16,174; Linux 17,044; 2,956px headroom. Linux CI evidence: docs/visual/community-admin-residuals.md.
+  // Original cap-selection target: ≥2,500px headroom, rounded up to the next 500.
   await visualDiff(page, 'E5CS5K.png', 20_000, [
     [18, 140, 354, 24],
     [18, 210, 354, 24],

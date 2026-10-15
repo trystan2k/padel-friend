@@ -69,17 +69,28 @@ describe('community request validators', () => {
       'INVALID_COMMUNITY_INPUT'
     );
   });
-  it('maps inbox rows to the private-message DTO in stable server ordering', async () => {
+  it('maps inbox rows with one timezone RPC per page in stable server ordering', async () => {
     const rows = [
       {
-        id: 'notification',
+        id: 'notification-1',
         created_at: '2026-01-02T00:00:00Z',
         read_at: null,
-        request_message_id: 'message',
+        request_message_id: 'message-1',
         community_request_messages: {
-          id: 'message',
+          id: 'message-1',
           body: '<b>text</b>',
           created_at: '2026-01-01T00:00:00Z'
+        }
+      },
+      {
+        id: 'notification-2',
+        created_at: '2026-01-01T00:00:00Z',
+        read_at: null,
+        request_message_id: 'message-2',
+        community_request_messages: {
+          id: 'message-2',
+          body: 'second message',
+          created_at: '2025-12-31T00:00:00Z'
         }
       }
     ];
@@ -97,25 +108,45 @@ describe('community request validators', () => {
     query.order.mockReturnValue(query);
     query.range.mockResolvedValue({ data: rows, error: null });
     const rpc = vi
-      .fn<() => Promise<{ data: string; error: null }>>()
-      .mockResolvedValue({ data: 'UTC', error: null });
+      .fn<
+        () => Promise<{
+          data: { notification_id: string; time_zone: string }[];
+          error: null;
+        }>
+      >()
+      .mockResolvedValue({
+        data: [
+          { notification_id: 'notification-1', time_zone: 'UTC' },
+          { notification_id: 'notification-2', time_zone: 'Europe/Madrid' }
+        ],
+        error: null
+      });
     mocks.client = { from: vi.fn<() => typeof query>(() => query), rpc };
     const result = await listMyCommunityNotifications({ data: { offset: 0, limit: 20 } });
     expect(result).toEqual([
       {
-        notification_id: 'notification',
-        message_id: 'message',
+        notification_id: 'notification-1',
+        message_id: 'message-1',
         body: '<b>text</b>',
         created_at: '2026-01-01T00:00:00Z',
         read_at: null,
         time_zone: 'UTC'
+      },
+      {
+        notification_id: 'notification-2',
+        message_id: 'message-2',
+        body: 'second message',
+        created_at: '2025-12-31T00:00:00Z',
+        read_at: null,
+        time_zone: 'Europe/Madrid'
       }
     ]);
     expect(Object.keys(result[0]!).sort()).toEqual(
       ['notification_id', 'message_id', 'body', 'created_at', 'read_at', 'time_zone'].sort()
     );
-    expect(rpc).toHaveBeenCalledWith('get_my_community_notification_timezone', {
-      p_notification_id: 'notification'
+    expect(rpc).toHaveBeenCalledTimes(1);
+    expect(rpc).toHaveBeenCalledWith('get_my_community_notification_timezones', {
+      p_notification_ids: ['notification-1', 'notification-2']
     });
     expect(query.order).toHaveBeenNthCalledWith(1, 'created_at', { ascending: false });
     expect(query.order).toHaveBeenNthCalledWith(2, 'id', { ascending: false });
