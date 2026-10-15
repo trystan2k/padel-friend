@@ -31,6 +31,9 @@
 | F29 | minor    | src/features/community/InviteeSearch.tsx:98                       | Search error never cleared, suppressing later successful results             | fixed   | bug-fixer-specialist         | 6         |
 | F30 | minor    | src/features/community/CommunityInbox.tsx:80                      | Unreachable stale-page guard in `loadMore` (dead code)                       | fixed   | bug-fixer-specialist         | 6         |
 | F31 | minor    | test/community.admin-ui.test.tsx:418                              | Empty-state assertion can pass before the replacement search runs            | fixed   | testing-automation-specialist | 6         |
+| F32 | minor    | src/features/community/InviteeSearch.tsx:58                       | Copied confirmation persists across a newly issued invitation token          | fixed   | bug-fixer-specialist         | 7         |
+| F33 | major    | src/features/community/InviteeSearch.tsx:66                       | Generation guard discards an unrecoverable issued invitation token           | fixed   | bug-fixer-specialist         | 7         |
+| F34 | nit      | test/community.admin-ui.test.tsx:524                              | Failure test cannot detect an unrelated token being displayed                | deferred | deferred                     | 7         |
 
 ## Notes
 

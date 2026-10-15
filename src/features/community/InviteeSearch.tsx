@@ -16,17 +16,26 @@ const inviteeStyles = stylex.create({
   }
 });
 
+type IssuedInvitation = {
+  token: string;
+  inviteeId: string;
+  inviteeName: string;
+};
+
 export function InviteeSearch({ communityId }: { communityId: string }) {
   const { t } = useTranslation();
   const [query, setQuery] = useState('');
   const [rows, setRows] = useState<{ user_id: string; display_name: string }[]>([]);
   const [selected, setSelected] = useState<string | null>(null);
-  const [token, setToken] = useState('');
-  const [copied, setCopied] = useState(false);
+  const [invitation, setInvitation] = useState<IssuedInvitation | null>(null);
+  const [copiedInvitation, setCopiedInvitation] = useState<IssuedInvitation | null>(null);
   const [loading, setLoading] = useState(false);
+  const [issuing, setIssuing] = useState(false);
   const [error, setError] = useState(false);
   const [open, setOpen] = useState(false);
   const generation = useRef(0);
+  const issuanceInFlight = useRef(false);
+  const invitationRef = useRef<IssuedInvitation | null>(null);
   useEffect(() => {
     let stale = false;
     const current = ++generation.current;
@@ -38,6 +47,7 @@ export function InviteeSearch({ communityId }: { communityId: string }) {
               data: { community_id: communityId, query: query.trim() }
             })
               .then((result) => {
+                // Search results are replaceable; stale responses must not replace newer results.
                 if (!stale && generation.current === current) setRows(result);
               })
               .catch(() => {
@@ -54,23 +64,37 @@ export function InviteeSearch({ communityId }: { communityId: string }) {
     };
   }, [communityId, query]);
   async function invite() {
-    if (!selected) return;
+    if (!selected || issuanceInFlight.current) return;
+    const inviteeId = selected;
+    const inviteeName = rows.find((person) => person.user_id === inviteeId)?.display_name;
+    if (!inviteeName) return;
+    // Issuance responses contain the only plaintext token; never discard a successful response as stale.
+    issuanceInFlight.current = true;
+    setIssuing(true);
     setError(false);
+    setCopiedInvitation(null);
     try {
       const result = await issueInvitation({
-        data: { community_id: communityId, invitee_user_id: selected }
+        data: { community_id: communityId, invitee_user_id: inviteeId }
       });
-      setToken(result.token);
+      const issuedInvitation = { token: result.token, inviteeId, inviteeName };
+      invitationRef.current = issuedInvitation;
+      setInvitation(issuedInvitation);
     } catch {
       setError(true);
+    } finally {
+      issuanceInFlight.current = false;
+      setIssuing(false);
     }
   }
   async function copyToken() {
+    if (!invitation) return;
+    const currentInvitation = invitation;
     try {
-      await navigator.clipboard.writeText(token);
-      setCopied(true);
+      await navigator.clipboard.writeText(currentInvitation.token);
+      if (invitationRef.current === currentInvitation) setCopiedInvitation(currentInvitation);
     } catch {
-      setError(true);
+      if (invitationRef.current === currentInvitation) setError(true);
     }
   }
   return (
@@ -92,10 +116,12 @@ export function InviteeSearch({ communityId }: { communityId: string }) {
                   value={query}
                   onChange={(event) => {
                     generation.current += 1;
+                    invitationRef.current = null;
+                    setCopiedInvitation(null);
                     setLoading(false);
                     setError(false);
                     setSelected(null);
-                    setToken('');
+                    setInvitation(null);
                     setRows([]);
                     setQuery(event.target.value);
                   }}
@@ -114,24 +140,36 @@ export function InviteeSearch({ communityId }: { communityId: string }) {
                     name="invitee"
                     value={person.user_id}
                     checked={selected === person.user_id}
-                    onChange={() => setSelected(person.user_id)}
+                    onChange={() => {
+                      if (selected === person.user_id) return;
+                      setCopiedInvitation(null);
+                      setError(false);
+                      setSelected(person.user_id);
+                    }}
                   />{' '}
                   {person.display_name} — {t('communityInvites.select')}
                 </label>
               ))}
-              <Button type="button" disabled={!selected} onClick={() => void invite()}>
+              <Button
+                type="button"
+                disabled={!selected || issuing}
+                busy={issuing}
+                onClick={() => void invite()}
+              >
                 {t('communityInvites.invite')}
               </Button>
-              {token && (
+              {invitation && (
                 <div>
                   <output>
-                    {t('communityInvites.issued')}: <code>{token}</code>.{' '}
-                    {t('communityInvites.shareHelp')}
+                    {t('communityInvites.issued')}: {invitation.inviteeName} —{' '}
+                    <code>{invitation.token}</code>. {t('communityInvites.shareHelp')}
                   </output>
                   <Button type="button" onClick={() => void copyToken()}>
                     {t('communityInvites.copyLink')}
                   </Button>
-                  {copied && <output aria-live="polite">{t('communityInvites.copied')}</output>}
+                  {copiedInvitation === invitation && (
+                    <output aria-live="polite">{t('communityInvites.copied')}</output>
+                  )}
                 </div>
               )}
               {error && <p role="alert">{t('communityInvites.error')}</p>}

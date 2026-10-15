@@ -170,6 +170,55 @@ beforeEach(() => {
 });
 afterEach(cleanup);
 
+function mockClipboard() {
+  const descriptor = Object.getOwnPropertyDescriptor(navigator, 'clipboard');
+  const writeText = vi.fn<(token: string) => Promise<void>>().mockResolvedValue(undefined);
+  Object.defineProperty(navigator, 'clipboard', {
+    configurable: true,
+    value: { writeText }
+  });
+  return {
+    writeText,
+    restore() {
+      if (descriptor) Object.defineProperty(navigator, 'clipboard', descriptor);
+      else Reflect.deleteProperty(navigator, 'clipboard');
+    }
+  };
+}
+
+async function searchInvitees(
+  input: HTMLElement,
+  query: string,
+  rows: { user_id: string; display_name: string }[]
+) {
+  mocks.searchInvitees.mockResolvedValueOnce(rows);
+  vi.useFakeTimers();
+  try {
+    fireEvent.change(input, { target: { value: query } });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(250);
+    });
+  } finally {
+    vi.useRealTimers();
+  }
+}
+
+async function openInviteeSearch(rows: { user_id: string; display_name: string }[]) {
+  const user = userEvent.setup();
+  render(
+    <I18nextProvider i18n={createI18n('en')}>
+      <InviteeSearch communityId={community.id} />
+    </I18nextProvider>
+  );
+  await user.click(screen.getByRole('button', { name: 'Issue invitation' }));
+  const dialog = screen.getByRole('dialog');
+  const input = within(dialog).getByRole('textbox', {
+    name: 'Search opted-in display names'
+  });
+  await searchInvitees(input, 'applicants', rows);
+  return { user, dialog, input };
+}
+
 describe('community admin UI', () => {
   it('composes request updates through the dialog and reports send errors', async () => {
     const user = userEvent.setup();
@@ -376,6 +425,162 @@ describe('community admin UI', () => {
       )
     ).toEqual(Array.from({ length: 41 }, (_, index) => `Request ${index}`));
   });
+  it('does not carry copied confirmation from applicant A to applicant B', async () => {
+    let clipboard: ReturnType<typeof mockClipboard> | undefined;
+    try {
+      const { user, dialog } = await openInviteeSearch([
+        { user_id: 'applicant-a', display_name: 'Applicant A' },
+        { user_id: 'applicant-b', display_name: 'Applicant B' }
+      ]);
+      clipboard = mockClipboard();
+      await user.click(within(dialog).getByRole('radio', { name: /Applicant A/ }));
+      mocks.issueInvitation.mockResolvedValueOnce({ token: 'token-a' });
+      await user.click(within(dialog).getByRole('button', { name: 'Issue invitation' }));
+      expect(await within(dialog).findByText('token-a')).toBeTruthy();
+      await user.click(within(dialog).getByRole('button', { name: 'Copy link' }));
+      expect(await within(dialog).findByText('Copied')).toBeTruthy();
+
+      await user.click(within(dialog).getByRole('radio', { name: /Applicant B/ }));
+      expect(within(dialog).queryByText('Copied')).toBeNull();
+      mocks.issueInvitation.mockResolvedValueOnce({ token: 'token-b' });
+      await user.click(within(dialog).getByRole('button', { name: 'Issue invitation' }));
+
+      expect(await within(dialog).findByText('token-b')).toBeTruthy();
+      expect(within(dialog).queryByText('token-a')).toBeNull();
+      expect(within(dialog).queryByText('Copied')).toBeNull();
+      expect(clipboard.writeText).toHaveBeenCalledTimes(1);
+      expect(clipboard.writeText).toHaveBeenCalledWith('token-a');
+    } finally {
+      clipboard?.restore();
+    }
+  });
+
+  it('preserves a successful invitation response for its original applicant after selection changes', async () => {
+    let resolveInvitation!: (result: { token: string }) => void;
+    const pendingInvitation = new Promise<{ token: string }>(
+      (resolve) => (resolveInvitation = resolve)
+    );
+    const { user, dialog } = await openInviteeSearch([
+      { user_id: 'applicant-a', display_name: 'Applicant A' },
+      { user_id: 'applicant-b', display_name: 'Applicant B' }
+    ]);
+    await user.click(within(dialog).getByRole('radio', { name: /Applicant A/ }));
+    mocks.issueInvitation.mockReturnValueOnce(pendingInvitation);
+    await user.click(within(dialog).getByRole('button', { name: 'Issue invitation' }));
+    expect(mocks.issueInvitation).toHaveBeenCalledWith({
+      data: { community_id: community.id, invitee_user_id: 'applicant-a' }
+    });
+
+    await user.click(within(dialog).getByRole('radio', { name: /Applicant B/ }));
+    await act(async () => resolveInvitation({ token: 'stale-token-a' }));
+
+    expect(within(dialog).getByText('stale-token-a')).toBeTruthy();
+    const issuedOutput = within(dialog).getByText(
+      (_, element) =>
+        element?.tagName === 'OUTPUT' && element.textContent?.includes('stale-token-a')
+    );
+    expect(issuedOutput.textContent).toContain('Applicant A');
+    expect(issuedOutput.textContent).not.toContain('Applicant B');
+  });
+
+  it('prevents duplicate invitation requests and preserves the single returned token', async () => {
+    let resolveInvitation!: (result: { token: string }) => void;
+    const pendingInvitation = new Promise<{ token: string }>(
+      (resolve) => (resolveInvitation = resolve)
+    );
+    const { user, dialog } = await openInviteeSearch([
+      { user_id: 'applicant-a', display_name: 'Applicant A' }
+    ]);
+    await user.click(within(dialog).getByRole('radio', { name: /Applicant A/ }));
+    mocks.issueInvitation.mockReturnValueOnce(pendingInvitation);
+    const issueButton = within(dialog).getByRole('button', { name: 'Issue invitation' });
+
+    act(() => {
+      fireEvent.click(issueButton);
+      fireEvent.click(issueButton);
+    });
+
+    expect(mocks.issueInvitation).toHaveBeenCalledTimes(1);
+    expect(issueButton.hasAttribute('disabled')).toBe(true);
+    expect(issueButton.getAttribute('aria-busy')).toBe('true');
+    await act(async () => resolveInvitation({ token: 'single-token-a' }));
+
+    expect(within(dialog).getByText('single-token-a')).toBeTruthy();
+    expect(mocks.issueInvitation).toHaveBeenCalledTimes(1);
+  });
+
+  it('shows a retryable issuance error without displaying a token after failure', async () => {
+    const { user, dialog } = await openInviteeSearch([
+      { user_id: 'applicant-a', display_name: 'Applicant A' }
+    ]);
+    await user.click(within(dialog).getByRole('radio', { name: /Applicant A/ }));
+    mocks.issueInvitation
+      .mockRejectedValueOnce(new Error('issuance failed'))
+      .mockResolvedValueOnce({ token: 'retry-token-a' });
+    const issueButton = within(dialog).getByRole('button', { name: 'Issue invitation' });
+
+    await user.click(issueButton);
+    expect(await within(dialog).findByRole('alert')).toBeTruthy();
+    expect(within(dialog).queryByText('retry-token-a')).toBeNull();
+    expect(issueButton.hasAttribute('disabled')).toBeFalsy();
+
+    await user.click(issueButton);
+
+    expect(await within(dialog).findByText('retry-token-a')).toBeTruthy();
+    expect(mocks.issueInvitation).toHaveBeenCalledTimes(2);
+  });
+
+  it('confirms copying only after the current applicant token is copied', async () => {
+    let clipboard: ReturnType<typeof mockClipboard> | undefined;
+    try {
+      const { user, dialog } = await openInviteeSearch([
+        { user_id: 'applicant-b', display_name: 'Applicant B' }
+      ]);
+      clipboard = mockClipboard();
+      await user.click(within(dialog).getByRole('radio', { name: /Applicant B/ }));
+      mocks.issueInvitation.mockResolvedValueOnce({ token: 'token-b' });
+      await user.click(within(dialog).getByRole('button', { name: 'Issue invitation' }));
+      expect(await within(dialog).findByText('token-b')).toBeTruthy();
+      expect(within(dialog).queryByText('Copied')).toBeNull();
+
+      await user.click(within(dialog).getByRole('button', { name: 'Copy link' }));
+
+      expect(await within(dialog).findByText('Copied')).toBeTruthy();
+      expect(clipboard.writeText).toHaveBeenCalledTimes(1);
+      expect(clipboard.writeText).toHaveBeenCalledWith('token-b');
+    } finally {
+      clipboard?.restore();
+    }
+  });
+
+  it('clears copied confirmation and token when starting a new invitee search', async () => {
+    let clipboard: ReturnType<typeof mockClipboard> | undefined;
+    try {
+      const { user, dialog, input } = await openInviteeSearch([
+        { user_id: 'applicant-a', display_name: 'Applicant A' }
+      ]);
+      clipboard = mockClipboard();
+      await user.click(within(dialog).getByRole('radio', { name: /Applicant A/ }));
+      mocks.issueInvitation.mockResolvedValueOnce({ token: 'token-a' });
+      await user.click(within(dialog).getByRole('button', { name: 'Issue invitation' }));
+      await within(dialog).findByText('token-a');
+      await user.click(within(dialog).getByRole('button', { name: 'Copy link' }));
+      expect(await within(dialog).findByText('Copied')).toBeTruthy();
+
+      await searchInvitees(input, 'new applicants', [
+        { user_id: 'applicant-b', display_name: 'Applicant B' }
+      ]);
+
+      expect(within(dialog).queryByText('Copied')).toBeNull();
+      expect(within(dialog).queryByText('token-a')).toBeNull();
+      expect(within(dialog).getByRole('radio', { name: /Applicant B/ })).toBeTruthy();
+      expect(clipboard.writeText).toHaveBeenCalledTimes(1);
+      expect(clipboard.writeText).toHaveBeenCalledWith('token-a');
+    } finally {
+      clipboard?.restore();
+    }
+  });
+
   it('clears a failed invitee search before rendering results for the next query', async () => {
     mocks.searchInvitees
       .mockRejectedValueOnce(new Error('search failed'))
@@ -429,6 +634,43 @@ describe('community admin UI', () => {
     await act(async () => resolveEmptySearch([]));
     expect(await screen.findByText('No eligible invitees found.')).toBeTruthy();
     expect(screen.queryByRole('alert')).toBeNull();
+  });
+
+  it('does not let a superseded invitee search overwrite newer results', async () => {
+    let resolveOldSearch!: (rows: { user_id: string; display_name: string }[]) => void;
+    const oldSearch = new Promise<{ user_id: string; display_name: string }[]>(
+      (resolve) => (resolveOldSearch = resolve)
+    );
+    mocks.searchInvitees
+      .mockReturnValueOnce(oldSearch)
+      .mockResolvedValueOnce([{ user_id: 'new-result', display_name: 'Current Applicant' }]);
+    const user = userEvent.setup();
+    render(
+      <I18nextProvider i18n={createI18n('en')}>
+        <InviteeSearch communityId={community.id} />
+      </I18nextProvider>
+    );
+    await user.click(screen.getByRole('button', { name: 'Issue invitation' }));
+    const search = screen.getByRole('textbox', { name: 'Search opted-in display names' });
+    vi.useFakeTimers();
+    try {
+      fireEvent.change(search, { target: { value: 'older query' } });
+      await act(async () => vi.advanceTimersByTimeAsync(250));
+      expect(mocks.searchInvitees).toHaveBeenCalledTimes(1);
+
+      fireEvent.change(search, { target: { value: 'current query' } });
+      await act(async () => vi.advanceTimersByTimeAsync(250));
+      expect(screen.getByRole('radio', { name: /Current Applicant/ })).toBeTruthy();
+
+      await act(async () =>
+        resolveOldSearch([{ user_id: 'old-result', display_name: 'Superseded Applicant' }])
+      );
+
+      expect(screen.getByRole('radio', { name: /Current Applicant/ })).toBeTruthy();
+      expect(screen.queryByRole('radio', { name: /Superseded Applicant/ })).toBeNull();
+    } finally {
+      vi.useRealTimers();
+    }
   });
   it('renders only supplied authorized community admin destinations', () => {
     const { rerender } = render(
