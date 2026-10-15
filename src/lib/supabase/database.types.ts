@@ -37,6 +37,7 @@ export type Database = {
           updated_at: string
           visibility: Database["public"]["Enums"]["community_visibility"]
         }
+        ComputedFields: never
         Insert: {
           city_label?: string | null
           created_at?: string
@@ -76,6 +77,7 @@ export type Database = {
           id: string
           occurred_at: string
         }
+        ComputedFields: never
         Insert: {
           action: string
           actor_user_id?: string | null
@@ -118,6 +120,7 @@ export type Database = {
           revoked_at: string | null
           token_hash: string
         }
+        ComputedFields: never
         Insert: {
           community_id: string
           created_at?: string
@@ -162,6 +165,7 @@ export type Database = {
           valid_from: string
           valid_until: string | null
         }
+        ComputedFields: never
         Insert: {
           activated_at?: string | null
           community_id: string
@@ -207,6 +211,7 @@ export type Database = {
           photo_path: string | null
           updated_at: string
         }
+        ComputedFields: never
         Insert: {
           address?: string | null
           archived_at?: string | null
@@ -256,6 +261,7 @@ export type Database = {
           updated_at: string
           user_id: string
         }
+        ComputedFields: never
         Insert: {
           confirmed_competitive_game_groups: number
           display_level: number
@@ -301,6 +307,7 @@ export type Database = {
           id: string
           user_id: string
         }
+        ComputedFields: never
         Insert: {
           body: string
           created_at?: string
@@ -326,6 +333,7 @@ export type Database = {
           updated_at: string
           user_id: string
         }
+        ComputedFields: never
         Insert: {
           avatar_url?: string | null
           bio?: string | null
@@ -494,6 +502,7 @@ export type Database = {
           updated_at: string | null
           versioning_status: string
         }
+        ComputedFields: never
         Insert: {
           allowed_mime_types?: string[] | null
           avif_autodetection?: boolean | null
@@ -538,6 +547,7 @@ export type Database = {
           type: Database["storage"]["Enums"]["buckettype"]
           updated_at: string
         }
+        ComputedFields: never
         Insert: {
           created_at?: string
           deleted_at?: string | null
@@ -565,6 +575,7 @@ export type Database = {
           type: Database["storage"]["Enums"]["buckettype"]
           updated_at: string
         }
+        ComputedFields: never
         Insert: {
           created_at?: string
           id: string
@@ -589,6 +600,7 @@ export type Database = {
           name: string
           updated_at: string
         }
+        ComputedFields: never
         Insert: {
           bucket_name: string
           catalog_id: string
@@ -631,6 +643,7 @@ export type Database = {
           shard_key: string | null
           updated_at: string
         }
+        ComputedFields: never
         Insert: {
           bucket_name: string
           catalog_id: string
@@ -681,6 +694,7 @@ export type Database = {
           id: number
           name: string
         }
+        ComputedFields: never
         Insert: {
           executed_at?: string | null
           hash: string
@@ -713,6 +727,7 @@ export type Database = {
           user_metadata: Json | null
           version: string | null
         }
+        ComputedFields: never
         Insert: {
           archived_at?: string | null
           bucket_id?: string | null
@@ -770,6 +785,7 @@ export type Database = {
           user_metadata: Json | null
           version: string
         }
+        ComputedFields: never
         Insert: {
           bucket_id: string
           created_at?: string
@@ -817,6 +833,7 @@ export type Database = {
           upload_id: string
           version: string
         }
+        ComputedFields: never
         Insert: {
           bucket_id: string
           created_at?: string
@@ -870,6 +887,7 @@ export type Database = {
           name: string
           updated_at: string
         }
+        ComputedFields: never
         Insert: {
           bucket_id: string
           created_at?: string

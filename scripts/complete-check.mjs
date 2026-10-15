@@ -4,6 +4,7 @@ import { spawnSync } from 'node:child_process';
 // where each stage runs separately. A cheap failing stage (e.g. format:check)
 // must never hide test or E2E results.
 const stages = [
+  { name: 'db:types:check', command: 'pnpm db:types:check' },
   { name: 'build', command: 'pnpm build' },
   { name: 'knip', command: 'pnpm knip' },
   { name: 'typecheck', command: 'pnpm typecheck' },
