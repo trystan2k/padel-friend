@@ -452,5 +452,30 @@
       "community_membership_denied": "Your community membership was declined.",
       "community_membership_removed": "Your community membership was removed."
     }
+  },
+  "notificationPreferences": {
+    "preferencesLink": "Notification preferences",
+    "title": "Notification preferences",
+    "back": "Back to notifications",
+    "context": "In-app notifications remain available even when Web Push is off.",
+    "pushTitle": "Web Push",
+    "pushHelper": "Save which updates you would like to receive through Web Push.",
+    "pushUnavailable": "Delivery is not available yet. These switches save your preferences only; no notifications will be delivered.",
+    "categories": {
+      "community": "Community & invitations",
+      "matches": "Match updates",
+      "results": "Results & approvals",
+      "rankings": "Level & reliability",
+      "leagues": "Leagues & standings"
+    },
+    "criticalTitle": "Critical in-app notifications",
+    "criticalHelper": "Community invitations, approvals, denials, and removals always stay in your in-app notifications.",
+    "alwaysOn": "ALWAYS ON",
+    "save": "Save preferences",
+    "saving": "Saving preferences…",
+    "saved": "Preferences saved.",
+    "error": "Could not save preferences. Your changes are still here; try again.",
+    "loading": "Loading notification preferences…",
+    "offline": "You are offline. Reconnect to save your preferences."
   }
 }

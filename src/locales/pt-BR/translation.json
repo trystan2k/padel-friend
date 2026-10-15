@@ -452,5 +452,30 @@
       "community_membership_denied": "Sua participação na comunidade foi recusada.",
       "community_membership_removed": "Sua participação na comunidade foi removida."
     }
+  },
+  "notificationPreferences": {
+    "preferencesLink": "Preferências de notificações",
+    "title": "Preferências de notificações",
+    "back": "Voltar às notificações",
+    "context": "As notificações no app continuam disponíveis mesmo com o Push desativado.",
+    "pushTitle": "Notificações Push",
+    "pushHelper": "Salve quais atualizações gostaria de receber por Push.",
+    "pushUnavailable": "O envio ainda não está disponível. Estas opções apenas salvam suas preferências; nenhuma notificação será enviada.",
+    "categories": {
+      "community": "Comunidade e convites",
+      "matches": "Atualizações de partidas",
+      "results": "Resultados e aprovações",
+      "rankings": "Nível e confiabilidade",
+      "leagues": "Ligas e classificações"
+    },
+    "criticalTitle": "Notificações críticas no app",
+    "criticalHelper": "Convites, aprovações, recusas e remoções da comunidade permanecem sempre nas notificações do app.",
+    "alwaysOn": "SEMPRE ATIVAS",
+    "save": "Salvar preferências",
+    "saving": "Salvando preferências…",
+    "saved": "Preferências salvas.",
+    "error": "Não foi possível salvar. Suas alterações continuam aqui; tente novamente.",
+    "loading": "Carregando preferências de notificações…",
+    "offline": "Você está sem conexão. Reconecte-se para salvar suas preferências."
   }
 }

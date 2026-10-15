@@ -1,7 +1,7 @@
 import * as stylex from '@stylexjs/stylex';
-import { Link } from '@tanstack/react-router';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Link } from '@tanstack/react-router';
 import type { NotificationCategory, NotificationPage } from './notification-model';
 import { groupNotifications } from './notification-model';
 import { styles } from './notifications.styles';
@@ -23,6 +23,9 @@ export function NotificationsPage({ initial }: { initial: NotificationPage }) {
             <h1>{t('notifications.title')}</h1>
             <p>{t('notifications.subtitle')}</p>
           </div>
+          <Link to="/notifications/preferences" {...stylex.props(styles.link)}>
+            {t('notificationPreferences.preferencesLink')}
+          </Link>
         </header>
         <nav aria-label={t('notifications.filters.label')} {...stylex.props(styles.filters)}>
           {categories.map((key) => (

@@ -452,5 +452,30 @@
       "community_membership_denied": "Rechazaron tu membresía en la comunidad.",
       "community_membership_removed": "Se eliminó tu membresía en la comunidad."
     }
+  },
+  "notificationPreferences": {
+    "preferencesLink": "Preferencias de notificaciones",
+    "title": "Preferencias de notificaciones",
+    "back": "Volver a notificaciones",
+    "context": "Las notificaciones en la aplicación siguen disponibles aunque Push esté desactivado.",
+    "pushTitle": "Notificaciones Push",
+    "pushHelper": "Guarda qué actualizaciones quieres recibir mediante Push.",
+    "pushUnavailable": "La entrega aún no está disponible. Estas opciones solo guardan tus preferencias; no se enviarán notificaciones.",
+    "categories": {
+      "community": "Comunidad e invitaciones",
+      "matches": "Actualizaciones de partidos",
+      "results": "Resultados y aprobaciones",
+      "rankings": "Nivel y fiabilidad",
+      "leagues": "Ligas y clasificaciones"
+    },
+    "criticalTitle": "Notificaciones críticas en la aplicación",
+    "criticalHelper": "Las invitaciones, aprobaciones, denegaciones y expulsiones de la comunidad siempre permanecen en tus notificaciones.",
+    "alwaysOn": "SIEMPRE ACTIVAS",
+    "save": "Guardar preferencias",
+    "saving": "Guardando preferencias…",
+    "saved": "Preferencias guardadas.",
+    "error": "No se pudieron guardar. Tus cambios siguen aquí; inténtalo de nuevo.",
+    "loading": "Cargando preferencias de notificaciones…",
+    "offline": "No tienes conexión. Vuelve a conectarte para guardar tus preferencias."
   }
 }
