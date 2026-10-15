@@ -195,16 +195,14 @@ describe.skipIf(!environment.env)('community request delivery (real local Supaba
     ).not.toBeNull();
     expect(
       (
-        await admin.client
-          .from('community_request_messages')
-          .insert({
-            community_id: communityId,
-            membership_id: membershipId,
-            sender_user_id: admin.id,
-            recipient_user_id: outsider.id,
-            body: 'forged',
-            client_request_id: crypto.randomUUID()
-          })
+        await admin.client.from('community_request_messages').insert({
+          community_id: communityId,
+          membership_id: membershipId,
+          sender_user_id: admin.id,
+          recipient_user_id: outsider.id,
+          body: 'forged',
+          client_request_id: crypto.randomUUID()
+        })
       ).error
     ).not.toBeNull();
     expect(

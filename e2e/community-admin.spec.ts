@@ -211,6 +211,31 @@ async function visualDiff(
     { expected: source.toString('base64'), received: actual.toString('base64'), masks }
   );
   console.info(`${file} visual diff: ${difference}/${budget} changed pixels`);
+  const actualImage = await page.screenshot();
+  const testInfo = test.info();
+  await testInfo.attach(`visual-residual-${file}.json`, {
+    body: Buffer.from(
+      JSON.stringify(
+        {
+          screen: file.replace('.png', ''),
+          png: file,
+          changedPixels: difference,
+          budget,
+          width: 390,
+          height: 844,
+          referenceHash: createHash('sha256').update(source).digest('hex'),
+          masksHash: createHash('sha256').update(JSON.stringify(masks)).digest('hex'),
+          platform: process.platform,
+          commit: process.env.GITHUB_SHA ?? 'local-unrecorded'
+        },
+        null,
+        2
+      )
+    ),
+    contentType: 'application/json'
+  });
+  await testInfo.attach(`visual-actual-${file}`, { body: actualImage, contentType: 'image/png' });
+  await testInfo.attach(`visual-reference-${file}`, { body: source, contentType: 'image/png' });
   expect(
     difference,
     `${file}: per-screen changed-pixel budget ${budget}; actual ${difference}`

@@ -132,14 +132,12 @@ describe('invitee directory (real local Supabase JWTs)', () => {
       new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(inviteToken))),
       (byte) => byte.toString(16).padStart(2, '0')
     ).join('');
-    const invitation = await admin.client
-      .from('community_invitations')
-      .insert({
-        community_id: cid,
-        invitee_user_id: invited.id,
-        token_hash: inviteHash,
-        expires_at: new Date(Date.now() + 60_000).toISOString()
-      });
+    const invitation = await admin.client.from('community_invitations').insert({
+      community_id: cid,
+      invitee_user_id: invited.id,
+      token_hash: inviteHash,
+      expires_at: new Date(Date.now() + 60_000).toISOString()
+    });
     expect(invitation.error).toBeNull();
     const acceptToken = rawToken();
     const acceptHash = Array.from(
@@ -148,14 +146,12 @@ describe('invitee directory (real local Supabase JWTs)', () => {
     ).join('');
     expect(
       (
-        await admin.client
-          .from('community_invitations')
-          .insert({
-            community_id: cid,
-            invitee_user_id: nonAdmin.id,
-            token_hash: acceptHash,
-            expires_at: new Date(Date.now() + 60_000).toISOString()
-          })
+        await admin.client.from('community_invitations').insert({
+          community_id: cid,
+          invitee_user_id: nonAdmin.id,
+          token_hash: acceptHash,
+          expires_at: new Date(Date.now() + 60_000).toISOString()
+        })
       ).error
     ).toBeNull();
     expect(
@@ -175,14 +171,12 @@ describe('invitee directory (real local Supabase JWTs)', () => {
       .eq('invitee_user_id', inactive.id);
     expect(
       (
-        await admin.client
-          .from('community_invitations')
-          .insert({
-            community_id: cid,
-            invitee_user_id: inactive.id,
-            token_hash: inactiveHash,
-            expires_at: new Date(Date.now() + 60_000).toISOString()
-          })
+        await admin.client.from('community_invitations').insert({
+          community_id: cid,
+          invitee_user_id: inactive.id,
+          token_hash: inactiveHash,
+          expires_at: new Date(Date.now() + 60_000).toISOString()
+        })
       ).error
     ).toBeNull();
     expect(
