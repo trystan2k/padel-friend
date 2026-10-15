@@ -401,19 +401,56 @@
     "discoverabilityError": "No se pudo guardar la preferencia."
   },
   "notifications": {
-    "title": "Notificación",
-    "subtitle": "Detalles de la notificación",
+    "title": "Notificaciones",
+    "subtitle": "Novedades sobre tu comunidad de pádel.",
+    "markAllRead": "MARCAR TODAS COMO LEÍDAS",
+    "markRead": "Marcar como leída",
+    "view": "Ver notificación",
+    "today": "Notificaciones de hoy",
+    "earlier": "Notificaciones anteriores",
+    "loading": "Cargando notificaciones…",
+    "error": "No se pudieron cargar las notificaciones.",
+    "retry": "Reintentar",
+    "loadMore": "Cargar más",
+    "offline": "Estás sin conexión. Las acciones no están disponibles.",
+    "stale": "La información puede estar desactualizada.",
+    "generic": "Tienes una nueva notificación.",
+    "dateUtc": "Horas mostradas en UTC.",
+    "utc": "UTC",
+    "unread_one": "{{count}} notificación sin leer",
+    "unread_other": "{{count}} notificaciones sin leer",
+    "badgeUnknown": "Notificaciones",
+    "badge_one": "{{count}} notificación sin leer",
+    "badge_other": "{{count}} notificaciones sin leer",
+    "targetUnavailable": "Este destino de notificación ya no está disponible.",
+    "invitationContext": "Recibiste una invitación para unirte a esta comunidad.",
+    "activeMembership": "Tu membresía en la comunidad está activa.",
+    "pendingMembership": "Tu membresía en la comunidad está pendiente de aprobación.",
+    "targetError": "No se pudieron cargar los detalles de la notificación.",
     "back": "Volver a las notificaciones",
     "accept": "Aceptar invitación",
-    "accepting": "Aceptando…",
+    "accepting": "Aceptando invitación…",
     "accepted": "Invitación aceptada",
-    "targetUnavailable": "Esta notificación ya no está disponible.",
-    "targetError": "La acción falló. Inténtalo de nuevo.",
-    "retry": "Reintentar",
-    "invitationContext": "Te han invitado a esta comunidad privada.",
-    "activeMembership": "Tu membresía está activa.",
-    "pendingMembership": "Tu membresía está pendiente.",
-    "loading": "Cargando notificación…",
-    "error": "No se pudo cargar la notificación."
+    "filters": {
+      "label": "Categorías de notificaciones",
+      "all": "Todas",
+      "matches": "Partidos",
+      "results": "Resultados",
+      "community": "Comunidad",
+      "rankings": "Clasificaciones"
+    },
+    "empty": {
+      "all": "Aún no hay notificaciones.",
+      "matches": "No hay notificaciones de partidos.",
+      "results": "No hay notificaciones de resultados.",
+      "community": "No hay notificaciones de comunidad.",
+      "rankings": "No hay notificaciones de clasificaciones."
+    },
+    "kinds": {
+      "community_invitation": "Recibiste una invitación a una comunidad.",
+      "community_membership_approved": "Aprobaron tu membresía en la comunidad.",
+      "community_membership_denied": "Rechazaron tu membresía en la comunidad.",
+      "community_membership_removed": "Se eliminó tu membresía en la comunidad."
+    }
   }
 }

@@ -401,19 +401,56 @@
     "discoverabilityError": "Could not save discoverability preference."
   },
   "notifications": {
-    "title": "Notification",
-    "subtitle": "Notification details",
+    "title": "Notifications",
+    "subtitle": "Updates about your padel community.",
+    "markAllRead": "MARK ALL READ",
+    "markRead": "Mark as read",
+    "view": "View notification",
+    "today": "Today notifications",
+    "earlier": "Earlier notifications",
+    "loading": "Loading notifications…",
+    "error": "Could not load notifications.",
+    "retry": "Try again",
+    "loadMore": "Load more",
+    "offline": "You are offline. Actions are unavailable.",
+    "stale": "Updates may be out of date.",
+    "generic": "You have a new notification.",
+    "dateUtc": "Times shown in UTC.",
+    "utc": "UTC",
+    "unread_one": "{{count}} unread notification",
+    "unread_other": "{{count}} unread notifications",
+    "badgeUnknown": "Notifications",
+    "badge_one": "{{count}} unread notification",
+    "badge_other": "{{count}} unread notifications",
+    "targetUnavailable": "This notification target is no longer available.",
+    "invitationContext": "You received an invitation to join this community.",
+    "activeMembership": "Your community membership is active.",
+    "pendingMembership": "Your community membership is pending approval.",
+    "targetError": "Could not load notification details.",
     "back": "Back to notifications",
     "accept": "Accept invitation",
-    "accepting": "Accepting…",
+    "accepting": "Accepting invitation…",
     "accepted": "Invitation accepted",
-    "targetUnavailable": "This notification is no longer available.",
-    "targetError": "Action failed. Please try again.",
-    "retry": "Try again",
-    "invitationContext": "You have been invited to this private community.",
-    "activeMembership": "Your membership is active.",
-    "pendingMembership": "Your membership is pending.",
-    "loading": "Loading notification…",
-    "error": "Could not load notification."
+    "filters": {
+      "label": "Notification categories",
+      "all": "All",
+      "matches": "Matches",
+      "results": "Results",
+      "community": "Community",
+      "rankings": "Rankings"
+    },
+    "empty": {
+      "all": "No notifications yet.",
+      "matches": "No match notifications.",
+      "results": "No result notifications.",
+      "community": "No community notifications.",
+      "rankings": "No ranking notifications."
+    },
+    "kinds": {
+      "community_invitation": "You received a community invitation.",
+      "community_membership_approved": "Your community membership was approved.",
+      "community_membership_denied": "Your community membership was declined.",
+      "community_membership_removed": "Your community membership was removed."
+    }
   }
 }

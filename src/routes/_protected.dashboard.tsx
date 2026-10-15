@@ -9,16 +9,20 @@ import { listMyCommunityNotifications } from '../features/community/community-re
 import { CommunityInbox } from '../features/community/CommunityInbox';
 import { ui } from '../features/player/player-ui.styles';
 import { InvitationDiscoverability } from '../features/community/InvitationDiscoverability';
+import { getMyUnreadNotificationCount } from '../features/notifications/notifications.functions';
+import { NotificationBadge } from '../features/notifications/NotificationBadge';
 
 export async function loadDashboardData() {
-  const [profile, adminCommunities, inbox] = await Promise.all([
+  const [profile, adminCommunities, inbox, notificationCount] = await Promise.all([
     getMyPlayerProfile(),
     listMyAdminCommunities().catch(() => []),
     listMyCommunityNotifications({ data: { offset: 0, limit: 20 } })
       .then((items) => ({ items, error: false }))
-      .catch(() => ({ items: null, error: true }))
+      .catch(() => ({ items: null, error: true })),
+    getMyUnreadNotificationCount().catch(() => null)
   ]);
-  return { profile, adminCommunities, inbox };
+  const dashboardData = { profile, adminCommunities, inbox };
+  return { ...dashboardData, notificationCount: notificationCount ?? undefined };
 }
 
 export const Route = createFileRoute('/_protected/dashboard')({
@@ -29,9 +33,12 @@ export const Route = createFileRoute('/_protected/dashboard')({
 });
 
 function Dashboard() {
-  const { profile, adminCommunities, inbox } = Route.useLoaderData();
+  const { profile, adminCommunities, inbox, notificationCount } = Route.useLoaderData();
   return (
     <>
+      <header>
+        <NotificationBadge count={notificationCount ?? null} />
+      </header>
       <PlayerProfile initialProfile={profile} />
       <CommunityAdminEntries communities={adminCommunities} />
       <CommunityInbox initialItems={inbox.items} loadError={inbox.error} />

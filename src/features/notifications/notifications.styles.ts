@@ -25,5 +25,34 @@ export const styles = stylex.create({
     alignItems: 'center',
     color: 'var(--color-text-link)'
   },
-  button: { minHeight: '44px', paddingInline: 'var(--space-4)' }
+  button: { minHeight: '44px', paddingInline: 'var(--space-4)' },
+  badgeLink: {
+    minHeight: '44px',
+    minWidth: '44px',
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 'var(--space-2)',
+    paddingInline: 'var(--space-3)',
+    borderRadius: 'var(--radius-12)',
+    backgroundColor: 'var(--color-green-soft)',
+    color: 'var(--color-green)',
+    textDecoration: 'none'
+  },
+  unread: {
+    borderInlineStart: 'var(--border-width-lg) solid var(--color-green)',
+    backgroundColor: 'var(--color-green-soft)'
+  },
+  row: {
+    padding: 'var(--space-4)',
+    borderRadius: 'var(--radius-12)',
+    backgroundColor: 'var(--color-surface)',
+    marginBlock: 'var(--space-3)'
+  },
+  filters: {
+    display: 'flex',
+    gap: 'var(--space-2)',
+    flexWrap: 'wrap',
+    marginBlock: 'var(--space-4)'
+  }
 });

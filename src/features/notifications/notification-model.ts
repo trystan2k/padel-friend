@@ -15,3 +15,57 @@ export function toNotificationDto(
     read_at: row.read_at
   };
 }
+
+export type NotificationCategory = 'all' | 'matches' | 'results' | 'community' | 'rankings';
+export type NotificationPage = {
+  items: NotificationDto[];
+  nextCursor: { createdAt: string; id: string } | null;
+  unreadCount: number;
+  asOf: string;
+};
+
+export function groupNotifications(items: NotificationDto[], now: Date, locale: string) {
+  const today = new Intl.DateTimeFormat(locale, {
+    timeZone: 'UTC',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit'
+  }).format(now);
+  const format = new Intl.DateTimeFormat(locale, {
+    timeZone: 'UTC',
+    dateStyle: 'medium',
+    timeStyle: 'short'
+  });
+  return {
+    today: items.filter(
+      (item) =>
+        new Intl.DateTimeFormat(locale, {
+          timeZone: 'UTC',
+          year: 'numeric',
+          month: '2-digit',
+          day: '2-digit'
+        }).format(new Date(item.created_at)) === today
+    ),
+    earlier: items.filter(
+      (item) =>
+        new Intl.DateTimeFormat(locale, {
+          timeZone: 'UTC',
+          year: 'numeric',
+          month: '2-digit',
+          day: '2-digit'
+        }).format(new Date(item.created_at)) !== today
+    ),
+    format: (value: string) => format.format(new Date(value))
+  };
+}
+
+export function notificationBadge(
+  count: number | null,
+  t: (key: string, options?: Record<string, unknown>) => string
+) {
+  if (count === null) return { visual: null, label: t('notifications.badgeUnknown') };
+  return {
+    visual: count > 99 ? '99+' : String(count),
+    label: t(count === 1 ? 'notifications.badge_one' : 'notifications.badge_other', { count })
+  };
+}
