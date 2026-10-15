@@ -34,6 +34,7 @@ import type {
   CommunityAdminScreenProps,
   CommunityAdminVenue
 } from './community-admin.types';
+import { unsupportedCommunityMatchSummary } from './community-admin.types';
 import { styles } from './community-admin.styles';
 import { VenuePhotoUpload } from './VenuePhotoUpload';
 import { InviteeSearch } from './InviteeSearch';
@@ -42,6 +43,7 @@ type ScreenName = CommunityAdminScreenProps['screen'];
 type ViewProps<Screen extends ScreenName> = Extract<CommunityAdminScreenProps, { screen: Screen }>;
 
 function MembersView({ community, members }: ViewProps<'members'>) {
+  const matchSummary = unsupportedCommunityMatchSummary();
   const { t, i18n } = useTranslation();
   const params = useParams({ strict: false });
   const communityId = params.communityId ?? '';
@@ -154,7 +156,18 @@ function MembersView({ community, members }: ViewProps<'members'>) {
 
   return (
     <AdminViewFrame communityId={communityId} communityName={community.name} screen="members">
-      <InviteeSearch key={communityId} communityId={communityId} />
+      {community.visibility === 'private' ? (
+        <InviteeSearch key={communityId} communityId={communityId} />
+      ) : (
+        <Button
+          disabled
+          aria-label={t('communityAdmin.inviteUnavailable')}
+          title={t('communityAdmin.inviteeSearchPrivateOnly')}
+          xstyle={styles.unavailableInvite}
+        >
+          {t('communityAdmin.inviteUnavailable')}
+        </Button>
+      )}
       <form onSubmit={(event) => event.preventDefault()} {...stylex.props(styles.searchForm)}>
         <div {...stylex.props(styles.searchField)}>
           <TextField
@@ -221,7 +234,9 @@ function MembersView({ community, members }: ViewProps<'members'>) {
         ))}
         {!visibleMembers.length && !searchingMembers && <p>{t('communityAdmin.empty.members')}</p>}
       </div>
-      <p {...stylex.props(styles.note)}>{t('communityAdmin.matchCountUnavailable')}</p>
+      {matchSummary.status === 'unsupported' && (
+        <p {...stylex.props(styles.note)}>{t('communityAdmin.matchCountUnavailable')}</p>
+      )}
       {canLoadMore ? (
         <Button
           variant="secondary"
@@ -323,12 +338,8 @@ function RequestsView(props: ViewProps<'requests'>) {
         {[...members, ...additionalRequests].map((person) => (
           <SurfaceCard key={person.membership_id} xstyle={[styles.card, styles.requestCard]}>
             <h3 {...stylex.props(styles.cardCompactTitle)}>{person.display_name}</h3>
-            <p {...stylex.props(styles.copy)}>{ratingLabel(person, t, locale)}</p>
-            <p {...stylex.props(styles.copy, styles.requestMeta)}>
-              {t('communityAdmin.requestMeta', {
-                date: communityDateLabel(person.valid_from, locale, timezone),
-                privacy: t('communityAdmin.requestPrivacy')
-              })}
+            <p {...stylex.props(styles.copy, styles.requestRating)}>
+              {ratingLabel(person, t, locale)}
             </p>
             <div {...stylex.props(styles.actions, styles.requestActions)}>
               <Button busy={busy} onClick={() => void memberAction(person, 'approve')}>
@@ -347,6 +358,12 @@ function RequestsView(props: ViewProps<'requests'>) {
               membershipId={person.membership_id}
               t={t}
             />
+            <p {...stylex.props(styles.copy, styles.requestMeta)}>
+              {t('communityAdmin.requestMeta', {
+                date: communityDateLabel(person.valid_from, locale, timezone),
+                privacy: t('communityAdmin.requestPrivacy')
+              })}
+            </p>
           </SurfaceCard>
         ))}
         {!members.length && !additionalRequests.length && (
@@ -463,6 +480,7 @@ function AdminViewFrame({
 
 function MemberView(props: ViewProps<'member'>) {
   const { community, member, membershipId } = props;
+  const matchSummary = unsupportedCommunityMatchSummary();
   const { t, i18n } = useTranslation();
   const router = useRouter();
   const params = useParams({ strict: false });
@@ -590,9 +608,12 @@ function MemberView(props: ViewProps<'member'>) {
                 ),
                 reliability: new Intl.NumberFormat(locale).format(member.reliability_percent)
               })}
-          {' · '}
-          <span aria-label={t('communityAdmin.matchCountUnavailable')}>—</span>
         </h3>
+        {matchSummary.status === 'unsupported' && (
+          <p {...stylex.props(styles.memberMatchUnavailable)}>
+            {t('communityAdmin.matchCountUnavailable')}
+          </p>
+        )}
         <p {...stylex.props(styles.copy)}>
           {t('communityAdmin.memberMeta', {
             status: t(`communityAdmin.status.${member.status}`),
@@ -862,13 +883,25 @@ function SettingsView(props: ViewProps<'settings'>) {
               </Select.Trigger>
               <Select.Portal>
                 <Select.Positioner>
-                  <Select.Popup>
-                    <Select.Item value="Europe/Madrid">
+                  <Select.Popup {...stylex.props(styles.settingsTimezonePopup)}>
+                    <Select.Item
+                      value="Europe/Madrid"
+                      {...stylex.props(
+                        styles.settingsTimezoneItem,
+                        adminDefaults.timezone === 'Europe/Madrid' && styles.settingTimezoneSelected
+                      )}
+                    >
                       <Select.ItemText>
                         {t('communityAdmin.settings.timezoneMadrid')}
                       </Select.ItemText>
                     </Select.Item>
-                    <Select.Item value="UTC">
+                    <Select.Item
+                      value="UTC"
+                      {...stylex.props(
+                        styles.settingsTimezoneItem,
+                        adminDefaults.timezone === 'UTC' && styles.settingTimezoneSelected
+                      )}
+                    >
                       <Select.ItemText>{t('communityAdmin.settings.timezoneUtc')}</Select.ItemText>
                     </Select.Item>
                   </Select.Popup>
@@ -898,14 +931,22 @@ function SettingsView(props: ViewProps<'settings'>) {
               inputRef={(input) => {
                 if (input) input.style.display = 'none';
               }}
-              {...stylex.props(styles.settingsSwitch)}
+              {...stylex.props(
+                styles.settingsSwitch,
+                adminDefaults.member_created_leagues_enabled && styles.settingsSwitchChecked
+              )}
               checked={adminDefaults.member_created_leagues_enabled}
               onCheckedChange={(checked) =>
                 setAdminDefaults({ ...adminDefaults, member_created_leagues_enabled: checked })
               }
               aria-label={t('communityAdmin.settings.memberCreatedLeagues')}
             >
-              <Switch.Thumb {...stylex.props(styles.settingsSwitchThumb)} />
+              <Switch.Thumb
+                {...stylex.props(
+                  styles.settingsSwitchThumb,
+                  adminDefaults.member_created_leagues_enabled && styles.settingsSwitchThumbChecked
+                )}
+              />
             </Switch.Root>
           </div>
         </SurfaceCard>
@@ -1129,6 +1170,7 @@ function VenuesView({ community, venues }: ViewProps<'venues'>) {
             />
             {venueDraft.id && (
               <VenuePhotoUpload
+                key={venueDraft.id}
                 communityId={community.id}
                 venueId={venueDraft.id}
                 photoUrl={
@@ -1255,6 +1297,8 @@ function RequestMessageComposer({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<'empty' | 'failed' | 'notPending' | null>(null);
   const [sent, setSent] = useState(false);
+  const requestId = useRef(crypto.randomUUID());
+  const lastPayload = useRef('');
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError(null);
@@ -1262,19 +1306,26 @@ function RequestMessageComposer({
       setError('empty');
       return;
     }
+    const payload = body.trim();
+    if (lastPayload.current !== payload) {
+      lastPayload.current = payload;
+      requestId.current = crypto.randomUUID();
+    }
     setBusy(true);
     try {
       await sendCommunityRequestMessage({
         data: {
           community_id: communityId,
           membership_id: membershipId,
-          body: body.trim(),
-          client_request_id: crypto.randomUUID()
+          body: payload,
+          client_request_id: requestId.current
         }
       });
       setSent(true);
       setOpen(false);
       setBody('');
+      lastPayload.current = '';
+      requestId.current = crypto.randomUUID();
     } catch (failure) {
       const notPending = failure instanceof Error && failure.message === 'REQUEST_NOT_PENDING';
       setError(notPending ? 'notPending' : 'failed');

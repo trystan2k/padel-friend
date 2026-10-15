@@ -1,9 +1,20 @@
+import * as stylex from '@stylexjs/stylex';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   getMyInviteeDiscoverability,
   setMyInviteeDiscoverability
 } from './community-invitee.functions';
+
+const styles = stylex.create({
+  consentLabel: {
+    boxSizing: 'border-box',
+    minHeight: 'calc(var(--space-40) + var(--space-4))',
+    display: 'flex',
+    alignItems: 'center',
+    gap: 'var(--space-6)'
+  }
+});
 
 export function InvitationDiscoverability() {
   const { t } = useTranslation();
@@ -30,7 +41,7 @@ export function InvitationDiscoverability() {
   }
   return (
     <section aria-busy={busy}>
-      <label>
+      <label {...stylex.props(styles.consentLabel)}>
         <input
           type="checkbox"
           checked={enabled}

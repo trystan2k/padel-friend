@@ -1,5 +1,5 @@
 import * as stylex from '@stylexjs/stylex';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { getBrowserClient } from '../../lib/supabase/client';
 import { finalizeCommunityVenuePhoto } from './community-venue-photo.functions';
@@ -20,9 +20,9 @@ const styles = stylex.create({
     objectFit: 'cover',
     borderRadius: 'var(--radius-8)'
   },
-  button: { minHeight: 'var(--space-40)', width: 'fit-content' },
+  button: { minHeight: 'calc(var(--space-40) + var(--space-4))', width: 'fit-content' },
   status: { margin: 0, color: 'var(--color-muted)' },
-  error: { margin: 0, color: 'var(--color-danger)' }
+  error: { margin: 0, color: 'var(--color-red)' }
 });
 
 export function VenuePhotoUpload({ communityId, venueId, photoUrl, onUploaded }: Props) {
@@ -30,8 +30,15 @@ export function VenuePhotoUpload({ communityId, venueId, photoUrl, onUploaded }:
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState(false);
+  const [error, setError] = useState<'validation' | 'upload' | null>(null);
   const [uploaded, setUploaded] = useState(false);
+  const active = useRef(true);
+  useEffect(() => {
+    active.current = true;
+    return () => {
+      active.current = false;
+    };
+  }, []);
   useEffect(
     () => () => {
       if (preview) URL.revokeObjectURL(preview);
@@ -39,7 +46,7 @@ export function VenuePhotoUpload({ communityId, venueId, photoUrl, onUploaded }:
     [preview]
   );
   function choose(fileSelection?: File) {
-    setError(false);
+    setError(null);
     setUploaded(false);
     setFile(null);
     if (preview) URL.revokeObjectURL(preview);
@@ -50,13 +57,13 @@ export function VenuePhotoUpload({ communityId, venueId, photoUrl, onUploaded }:
       setFile(fileSelection);
       setPreview(URL.createObjectURL(fileSelection));
     } catch {
-      setError(true);
+      setError('validation');
     }
   }
   async function upload() {
     if (!file) return;
     setBusy(true);
-    setError(false);
+    setError(null);
     try {
       const client = getBrowserClient();
       const { data, error: authError } = await client.auth.getClaims();
@@ -68,15 +75,17 @@ export function VenuePhotoUpload({ communityId, venueId, photoUrl, onUploaded }:
         .from(COMMUNITY_VENUE_PHOTO_BUCKET)
         .upload(key, file, { upsert: false, contentType: file.type });
       if (uploadError) throw uploadError;
+      if (!active.current) return;
       await finalizeCommunityVenuePhoto({
         data: { community_id: communityId, venue_id: venueId, object_key: key }
       });
+      if (!active.current) return;
       setFile(null);
       setPreview(null);
       setUploaded(true);
       onUploaded();
     } catch {
-      setError(true);
+      setError('upload');
     } finally {
       setBusy(false);
     }
@@ -112,7 +121,7 @@ export function VenuePhotoUpload({ communityId, venueId, photoUrl, onUploaded }:
           >
             {busy
               ? t('communityAdmin.venue.photo.uploading')
-              : error
+              : error === 'upload'
                 ? t('communityAdmin.venue.photo.retry')
                 : t('communityAdmin.venue.photo.upload')}
           </button>
@@ -136,7 +145,11 @@ export function VenuePhotoUpload({ communityId, venueId, photoUrl, onUploaded }:
       )}
       {error && (
         <p role="alert" {...stylex.props(styles.error)}>
-          {t(file ? 'communityAdmin.venue.photo.invalid' : 'communityAdmin.venue.photo.failed')}
+          {t(
+            error === 'validation'
+              ? 'communityAdmin.venue.photo.invalid'
+              : 'communityAdmin.venue.photo.failed'
+          )}
         </p>
       )}
     </div>

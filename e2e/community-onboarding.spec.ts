@@ -840,8 +840,12 @@ test('city search finds real public community; join follows instant vs approval 
     expect(session.error).toBeNull();
     const ids: string[] = [];
     for (const policy of ['instant', 'admin_approval'] as const) {
+      // Short single-line names keep both discovery cards at the designed dSEX3 geometry
+      // (one 19px title row inside the 142px card). A wrapped random-UUID name would
+      // overflow the designed card height and shift every probe below it, measuring content
+      // overflow instead of the frame.
       const created = await client.rpc('create_community', {
-        p_name: `${policy} ${crypto.randomUUID()}`,
+        p_name: `${policy === 'instant' ? 'Instant' : 'Approval'} ${city}`,
         p_city_label: city,
         p_visibility: 'public',
         p_join_policy: policy
@@ -856,17 +860,22 @@ test('city search finds real public community; join follows instant vs approval 
     const cards = joiner
       .locator('main > div:last-child [aria-busy="false"] > div')
       .filter({ has: joiner.getByRole('heading', { level: 3 }) });
-    await geometry(cards.nth(0), { x: 18, y: 240, width: 354, height: 161 });
-    await geometry(cards.nth(1), { x: 18, y: 411, width: 354, height: 161 });
+    // Pencil dSEX3 frame: the discovery card is 142px tall (y 240, join button y 324, next
+    // card y 392). The member-count line occupies the existing text column inside that
+    // designed height — it fills the slack above the bottom-pinned action, so the card, the
+    // entry buttons and the skip button keep their frame positions (same probes as the
+    // dSEX3 structural test above, which is anchored to the sha-pinned reference PNG).
+    await geometry(cards.nth(0), { x: 18, y: 240, width: 354, height: 142 });
+    await geometry(cards.nth(1), { x: 18, y: 392, width: 354, height: 142 });
     await geometry(joiner.getByRole('button', { name: en.communityOnboarding.createEntry }), {
       x: 18,
-      y: 582,
+      y: 544,
       width: 354,
       height: 44
     });
     await geometry(joiner.getByRole('button', { name: en.communityOnboarding.skip }), {
       x: 18,
-      y: 636,
+      y: 598,
       width: 354,
       height: 44
     });

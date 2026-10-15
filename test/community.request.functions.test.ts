@@ -96,7 +96,10 @@ describe('community request validators', () => {
     query.select.mockReturnValue(query);
     query.order.mockReturnValue(query);
     query.range.mockResolvedValue({ data: rows, error: null });
-    mocks.client = { from: vi.fn<() => typeof query>(() => query) };
+    const rpc = vi
+      .fn<() => Promise<{ data: string; error: null }>>()
+      .mockResolvedValue({ data: 'UTC', error: null });
+    mocks.client = { from: vi.fn<() => typeof query>(() => query), rpc };
     const result = await listMyCommunityNotifications({ data: { offset: 0, limit: 20 } });
     expect(result).toEqual([
       {
@@ -104,12 +107,16 @@ describe('community request validators', () => {
         message_id: 'message',
         body: '<b>text</b>',
         created_at: '2026-01-01T00:00:00Z',
-        read_at: null
+        read_at: null,
+        time_zone: 'UTC'
       }
     ]);
     expect(Object.keys(result[0]!).sort()).toEqual(
-      ['notification_id', 'message_id', 'body', 'created_at', 'read_at'].sort()
+      ['notification_id', 'message_id', 'body', 'created_at', 'read_at', 'time_zone'].sort()
     );
+    expect(rpc).toHaveBeenCalledWith('get_my_community_notification_timezone', {
+      p_notification_id: 'notification'
+    });
     expect(query.order).toHaveBeenNthCalledWith(1, 'created_at', { ascending: false });
     expect(query.order).toHaveBeenNthCalledWith(2, 'id', { ascending: false });
     expect(query.range).toHaveBeenCalledWith(0, 19);

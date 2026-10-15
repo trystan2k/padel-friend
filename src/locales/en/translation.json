@@ -355,6 +355,7 @@
       "transition": "This membership changed. Refresh before trying again."
     },
     "matchCountUnavailable": "Match count unavailable — match history is not supported yet",
+    "inviteeSearchPrivateOnly": "Invitee search is available only in private communities.",
     "requestMessage": {
       "action": "Send update",
       "title": "Message pending applicant",
@@ -377,6 +378,8 @@
     "markRead": "Mark as read",
     "read": "Read",
     "loadMore": "Load more",
+    "mutationError": "Could not mark this message as read",
+    "pageError": "Could not load more messages",
     "oneWayNotice": "Messages are one-way. Replies, email and live delivery are not supported."
   },
   "communityInvites": {

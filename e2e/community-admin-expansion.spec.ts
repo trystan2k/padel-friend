@@ -268,7 +268,7 @@ test('private Admin invites an opted-in player; withdrawal removes directory res
   await signIn(page, admin);
   await page.goto(`/community/${communityId}/admin/members`);
   await waitForHydratedPage(page);
-  await page.getByRole('button', { name: en.communityAdmin.inviteUnavailable }).click();
+  await page.getByRole('button', { name: en.communityInvites.invite }).click();
   const dialog = page.getByRole('dialog');
   await dialog.getByLabel(en.communityInvites.searchLabel).fill(inviteeName);
   const result = dialog.locator(`input[name="invitee"][value="${invitee.id}"]`);

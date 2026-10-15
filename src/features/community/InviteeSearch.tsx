@@ -66,7 +66,7 @@ export function InviteeSearch({ communityId }: { communityId: string }) {
   }
   return (
     <Dialog.Root open={open} onOpenChange={setOpen}>
-      <Dialog.Trigger render={<Button aria-label={t('communityAdmin.inviteUnavailable')} />}>
+      <Dialog.Trigger render={<Button aria-label={t('communityInvites.invite')} />}>
         {t('communityInvites.invite')}
       </Dialog.Trigger>
       <Dialog.Portal>
@@ -92,11 +92,14 @@ export function InviteeSearch({ communityId }: { communityId: string }) {
               </label>
               <p id="invitee-search-help">{t('communityInvites.searchHelp')}</p>
               {loading && <p aria-live="polite">{t('communityInvites.searching')}</p>}
-              {!loading && query.trim().length >= 3 && rows.length === 0 && (
+              {!loading && !error && query.trim().length >= 3 && rows.length === 0 && (
                 <p>{t('communityInvites.noResults')}</p>
               )}
               {rows.map((person) => (
-                <label key={person.user_id}>
+                <label
+                  key={person.user_id}
+                  style={{ minHeight: '44px', display: 'flex', alignItems: 'center' }}
+                >
                   <input
                     type="radio"
                     name="invitee"
@@ -107,9 +110,9 @@ export function InviteeSearch({ communityId }: { communityId: string }) {
                   {person.display_name} — {t('communityInvites.select')}
                 </label>
               ))}
-              <button type="button" disabled={!selected} onClick={() => void invite()}>
+              <Button type="button" disabled={!selected} onClick={() => void invite()}>
                 {t('communityInvites.invite')}
-              </button>
+              </Button>
               {token && (
                 <div>
                   <output>

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  COMMUNITY_TIMEZONES,
   DEFAULT_COMMUNITY_ADMIN_DEFAULTS,
   formatCommunityCurrencyPreview,
   formatCommunityRequestTimestamp,
@@ -17,6 +18,7 @@ describe('community admin defaults validation', () => {
   });
 
   it('accepts only the exact supported shape', () => {
+    expect(COMMUNITY_TIMEZONES).toEqual(['Europe/Madrid', 'UTC']);
     expect(isCommunityAdminDefaults(DEFAULT_COMMUNITY_ADMIN_DEFAULTS)).toBe(true);
     expect(isCommunityAdminDefaults({ ...DEFAULT_COMMUNITY_ADMIN_DEFAULTS, extra: true })).toBe(
       false
@@ -26,6 +28,12 @@ describe('community admin defaults validation', () => {
     );
     expect(
       isCommunityAdminDefaults({ ...DEFAULT_COMMUNITY_ADMIN_DEFAULTS, timezone: 'Not/AZone' })
+    ).toBe(false);
+    expect(
+      isCommunityAdminDefaults({
+        ...DEFAULT_COMMUNITY_ADMIN_DEFAULTS,
+        timezone: 'America/New_York'
+      })
     ).toBe(false);
     expect(
       isCommunityAdminDefaults({
@@ -51,5 +59,9 @@ describe('community admin defaults validation', () => {
     expect(before).not.toEqual(after);
     expect(before).toMatch(/GMT|CET/);
     expect(after).toMatch(/GMT|CEST/);
+    const serverRender = formatCommunityRequestTimestamp('2026-03-29T01:30:00Z', 'en-GB', 'UTC');
+    const hydrationRender = formatCommunityRequestTimestamp('2026-03-29T01:30:00Z', 'en-GB', 'UTC');
+    expect(hydrationRender).toBe(serverRender);
+    expect(serverRender).toMatch(/UTC/);
   });
 });

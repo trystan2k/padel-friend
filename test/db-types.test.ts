@@ -3,6 +3,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { generateTypes } from '../scripts/db-types.mjs';
+import type { generateTypes as GenerateTypes } from '../scripts/db-types.d.mts';
 
 const directories: string[] = [];
 async function fixture() {
@@ -109,16 +110,15 @@ describe('database type generation', () => {
       await writeFile(args.at(-1)!, 'normalized\n');
       return { code: 0, signal: null, stdout: '', stderr: '' };
     };
-    await generateTypes({
+    const options: NonNullable<Parameters<typeof GenerateTypes>[0]> = {
       check: true,
       rootDir: f.dir,
       destinationPath: f.destination,
       runProcess
-    });
+    };
+    await generateTypes(options);
     await writeFile(f.destination, 'different');
-    await expect(
-      generateTypes({ check: true, rootDir: f.dir, destinationPath: f.destination, runProcess })
-    ).rejects.toThrow('Run pnpm db:types');
+    await expect(generateTypes(options)).rejects.toThrow('Run pnpm db:types');
     expect(await readFile(f.destination, 'utf8')).toBe('different');
   });
 });

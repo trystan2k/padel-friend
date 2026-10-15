@@ -355,6 +355,7 @@
       "transition": "La membresía ha cambiado. Actualiza antes de volver a intentarlo."
     },
     "matchCountUnavailable": "Recuento de partidos no disponible — el historial de partidos aún no está disponible",
+    "inviteeSearchPrivateOnly": "La búsqueda de invitados solo está disponible en comunidades privadas.",
     "requestMessage": {
       "action": "Enviar actualización",
       "title": "Mensaje para solicitante pendiente",
@@ -377,6 +378,8 @@
     "markRead": "Marcar como leído",
     "read": "Leído",
     "loadMore": "Cargar más",
+    "mutationError": "No se pudo marcar este mensaje como leído",
+    "pageError": "No se pudieron cargar más mensajes",
     "oneWayNotice": "Los mensajes son unidireccionales. No se admiten respuestas, correo ni entrega en vivo."
   },
   "communityInvites": {

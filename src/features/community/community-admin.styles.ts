@@ -166,19 +166,22 @@ export const styles = stylex.create({
     ':disabled': { opacity: 0.6 }
   },
   requestCard: {
+    height: 'calc(var(--space-40) * 5)',
     minHeight: 'calc(var(--space-40) * 5)',
     boxSizing: 'border-box',
-    position: 'relative'
+    display: 'grid',
+    gridTemplateColumns: 'minmax(0, 1fr) auto',
+    alignContent: 'start'
   },
   requestMessageTrigger: {
-    position: 'absolute',
-    top: 'var(--space-8)',
-    right: 'var(--space-8)',
+    gridColumn: '2',
+    gridRow: '1 / span 2',
     width: 'calc(var(--space-40) + var(--space-4))',
     minWidth: 'calc(var(--space-40) + var(--space-4))',
     paddingInline: 0
   },
-  requestMeta: { minHeight: 'calc(var(--font-size-15) * 2)' },
+  requestMeta: { minHeight: 'calc(var(--font-size-15) * 2)', gridColumn: '1 / -1' },
+  requestRating: { gridColumn: '1', gridRow: '2' },
   cardTitle: {
     margin: 0,
     fontFamily: 'var(--font-family-heading)',
@@ -202,7 +205,10 @@ export const styles = stylex.create({
     fontWeight: 'var(--font-weight-semibold)',
     overflowWrap: 'anywhere'
   },
-  memberProfileCard: { minHeight: 'calc(var(--space-40) + var(--space-20) + var(--space-6))' },
+  memberProfileCard: {
+    position: 'relative',
+    minHeight: 'calc(var(--space-40) + var(--space-20) + var(--space-6))'
+  },
   rolePanel: {
     display: 'flex',
     flexDirection: 'column',
@@ -224,7 +230,13 @@ export const styles = stylex.create({
     lineHeight: 'var(--font-size-15)'
   },
   actions: { display: 'flex', flexWrap: 'wrap', gap: 'var(--space-4)' },
-  requestActions: { gap: 'var(--space-6)' },
+  requestActions: {
+    gap: 'var(--space-6)',
+    gridColumn: '1 / -1',
+    gridRow: 4,
+    position: 'relative',
+    top: 'calc(0px - var(--space-8))'
+  },
   searchForm: { display: 'flex', flexWrap: 'wrap', alignItems: 'end', gap: 'var(--space-6)' },
   visuallyHidden: {
     position: 'absolute',
@@ -401,10 +413,10 @@ export const styles = stylex.create({
   },
   settingsDefaultsCard: {
     boxSizing: 'border-box',
-    height: 'calc((var(--space-40) + var(--space-4)) * 2 + var(--space-20) + var(--space-1))',
+    minHeight: 'calc((var(--space-40) + var(--space-4)) * 2 + var(--space-20) + var(--space-1))',
     display: 'flex',
     flexDirection: 'column',
-    gap: 0,
+    gap: 'var(--space-2)',
     padding: '0 var(--space-10)'
   },
   settingsTimezoneRow: {
@@ -417,14 +429,12 @@ export const styles = stylex.create({
   },
   settingsCurrencyRow: {
     boxSizing: 'border-box',
-    height: 'var(--space-20)',
     minHeight: 'var(--space-20)',
     margin: 0,
-    overflow: 'hidden',
     color: 'var(--color-muted)',
     fontSize: 'var(--font-size-10)',
-    lineHeight: 'var(--font-size-10)',
-    whiteSpace: 'nowrap'
+    lineHeight: 'var(--font-size-15)',
+    overflowWrap: 'anywhere'
   },
   settingsLeagueRow: {
     display: 'flex',
@@ -471,13 +481,63 @@ export const styles = stylex.create({
     alignItems: 'center',
     padding: 'var(--space-2)',
     borderRadius: 'var(--radius-20)',
-    backgroundColor: 'var(--color-green)'
+    backgroundColor: 'var(--color-muted)',
+    transition: 'background-color 150ms ease',
+    ':focus-visible': {
+      outline: 'var(--border-width-lg) solid var(--color-green)',
+      outlineOffset: 'var(--space-2)'
+    }
   },
   settingsSwitchThumb: {
     width: 'var(--space-20)',
     height: 'var(--space-20)',
     borderRadius: 'var(--radius-20)',
-    backgroundColor: 'var(--color-surface-1)'
+    backgroundColor: 'var(--color-surface)',
+    transform: 'translateX(0)',
+    transition: 'transform 150ms ease'
+  },
+  settingsSwitchChecked: { backgroundColor: 'var(--color-green)' },
+  settingsSwitchThumbChecked: { transform: 'translateX(var(--space-16))' },
+  settingsTimezonePopup: {
+    zIndex: 10,
+    minWidth: 'calc(var(--space-40) * 3)',
+    padding: 'var(--space-2)',
+    borderWidth: 'var(--border-width-sm)',
+    borderStyle: 'solid',
+    borderColor: 'var(--color-line)',
+    borderRadius: 'var(--radius-8)',
+    backgroundColor: 'var(--color-surface)',
+    color: 'var(--color-text)',
+    fontFamily: 'var(--font-family-body)',
+    fontSize: 'var(--font-size-14)'
+  },
+  settingsTimezoneItem: {
+    boxSizing: 'border-box',
+    minHeight: 'calc(var(--space-40) + var(--space-4))',
+    display: 'flex',
+    alignItems: 'center',
+    paddingInline: 'var(--space-10)',
+    borderRadius: 'var(--radius-6)',
+    cursor: 'pointer',
+    ':hover': { backgroundColor: 'var(--color-surface-2)' },
+    ':focus': { backgroundColor: 'var(--color-surface-2)', outline: 'none' }
+  },
+  settingTimezoneSelected: {
+    color: 'var(--color-green)',
+    fontWeight: 'var(--font-weight-bold)'
+  },
+  memberMatchUnavailable: {
+    position: 'absolute',
+    top: 'calc(var(--space-14) + var(--font-size-17) + var(--space-4))',
+    left: 'var(--space-10)',
+    right: 'var(--space-10)',
+    margin: 0,
+    padding: 0,
+    backgroundColor: 'var(--color-surface)',
+    color: 'var(--color-text)',
+    fontSize: 'var(--font-size-10)',
+    lineHeight: 'var(--font-size-12)',
+    overflowWrap: 'anywhere'
   },
   details: {
     display: 'flex',

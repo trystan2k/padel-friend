@@ -1,4 +1,5 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
+import { execFileSync } from 'node:child_process';
 import { deflateSync } from 'node:zlib';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
 import { dotEnvPathFromImportMetaUrl, localSupabaseEnv } from './helpers/local-supabase-env';
@@ -251,11 +252,105 @@ localOnly('private venue photo authorization and finalization with real local St
     expect((await upload(photoAdmin.client, wrongOwner, png, 'image/png')).error).not.toBeNull();
   });
 
+  it('rejects direct finalize RPC calls with forged object metadata and cross-scope paths', async () => {
+    const otherCommunity = await photoAdmin.client.rpc('create_community', {
+      p_name: `Photo RPC Scope ${crypto.randomUUID()}`,
+      p_visibility: 'private',
+      p_join_policy: 'instant'
+    });
+    if (otherCommunity.error || typeof otherCommunity.data !== 'string')
+      throw otherCommunity.error ?? new Error('Second community setup failed');
+    const otherVenue = await photoAdmin.client
+      .from('community_venues')
+      .insert({ community_id: otherCommunity.data, name: 'Other RPC Scope Court' })
+      .select('id')
+      .single();
+    if (otherVenue.error || !otherVenue.data)
+      throw otherVenue.error ?? new Error('Second venue setup failed');
+
+    const cases = [
+      {
+        objectKey: keyFor(communityId, venueId, photoAdmin.id, 'png'),
+        objectOwner: photoAdmin.id,
+        size: String(2 * 1024 * 1024 + 1),
+        mimetype: 'image/png',
+        targetCommunityId: communityId,
+        targetVenueId: venueId,
+        expectedMessage: 'Invalid venue photo object'
+      },
+      {
+        objectKey: keyFor(communityId, venueId, photoAdmin.id, 'png'),
+        objectOwner: outsider.id,
+        size: '100',
+        mimetype: 'image/png',
+        targetCommunityId: communityId,
+        targetVenueId: venueId,
+        expectedMessage: 'Invalid venue photo object'
+      },
+      {
+        objectKey: keyFor(communityId, venueId, photoAdmin.id, 'jpg'),
+        objectOwner: photoAdmin.id,
+        size: '100',
+        mimetype: 'image/png',
+        targetCommunityId: communityId,
+        targetVenueId: venueId,
+        expectedMessage: 'Invalid venue photo object'
+      },
+      {
+        objectKey: keyFor(communityId, venueId, photoAdmin.id, 'png'),
+        objectOwner: photoAdmin.id,
+        size: '100',
+        mimetype: 'image/png',
+        targetCommunityId: otherCommunity.data,
+        targetVenueId: otherVenue.data.id,
+        expectedMessage: 'Invalid venue photo key'
+      }
+    ] as const;
+    const values = cases
+      .map(
+        ({ objectKey, objectOwner, size, mimetype }) =>
+          `('community-venue-photos', '${objectKey}', '${objectOwner}'::uuid, ` +
+          `jsonb_build_object('size', '${size}', 'mimetype', '${mimetype}'))`
+      )
+      .join(', ');
+    const objectKeys = cases.map(({ objectKey }) => `'${objectKey}'`).join(', ');
+    const sql = (statement: string) =>
+      execFileSync('pnpm', ['exec', 'supabase', 'db', 'query', '--local', statement], {
+        encoding: 'utf8'
+      });
+
+    sql(`insert into storage.objects (bucket_id, name, owner, metadata) values ${values}`);
+    try {
+      for (const testCase of cases) {
+        const result = await photoAdmin.client.rpc('finalize_community_venue_photo', {
+          p_community_id: testCase.targetCommunityId,
+          p_venue_id: testCase.targetVenueId,
+          p_object_key: testCase.objectKey
+        });
+        expect(result.error?.message).toContain(testCase.expectedMessage);
+      }
+    } finally {
+      sql(
+        `do $$ begin perform set_config('storage.allow_delete_query', 'true', true); ` +
+          `delete from storage.objects where bucket_id = 'community-venue-photos' ` +
+          `and name in (${objectKeys}); end $$;`
+      );
+    }
+  });
+
   it('denies anonymous and plain-member uploads while permitting member SELECT in the private community scope', async () => {
     const objectKey = keyFor(communityId, venueId, photoAdmin.id, 'png');
     expect((await upload(photoAdmin.client, objectKey, png, 'image/png')).error).toBeNull();
     const read = await member.client.storage.from('community-venue-photos').download(objectKey);
     expect(read.error).toBeNull();
+    const outsiderRead = await outsider.client.storage
+      .from('community-venue-photos')
+      .download(objectKey);
+    expect(outsiderRead.error).not.toBeNull();
+    const anonymousRead = await anonymous()
+      .storage.from('community-venue-photos')
+      .download(objectKey);
+    expect(anonymousRead.error).not.toBeNull();
     const memberKey = keyFor(communityId, venueId, member.id, 'png');
     expect((await upload(member.client, memberKey, png, 'image/png')).error).not.toBeNull();
     const anonymousUpload = await upload(
@@ -265,6 +360,43 @@ localOnly('private venue photo authorization and finalization with real local St
       'image/png'
     );
     expect(anonymousUpload.error).not.toBeNull();
+  });
+
+  it('applies canonical valid_from membership checks to private photo reads', async () => {
+    const objectKey = keyFor(communityId, venueId, photoAdmin.id, 'png');
+    expect((await upload(photoAdmin.client, objectKey, png, 'image/png')).error).toBeNull();
+    const futureMembershipId = crypto.randomUUID();
+    execFileSync(
+      'pnpm',
+      [
+        'exec',
+        'supabase',
+        'db',
+        'query',
+        '--local',
+        `insert into public.community_members ` +
+          `(id, community_id, user_id, role, status, valid_from) values ` +
+          `('${futureMembershipId}', '${communityId}', '${outsider.id}', 'member', 'active', ` +
+          `now() + interval '1 day')`
+      ],
+      { encoding: 'utf8' }
+    );
+    try {
+      expect(
+        (await outsider.client.rpc('is_community_member', { p_community_id: communityId })).data
+      ).toBe(false);
+      const futureMemberRead = await outsider.client.storage
+        .from('community-venue-photos')
+        .download(objectKey);
+      expect(futureMemberRead.error).not.toBeNull();
+    } finally {
+      const removed = await owner.client.rpc('govern_community_member', {
+        p_community_id: communityId,
+        p_membership_id: futureMembershipId,
+        p_action: 'remove'
+      });
+      expect(removed.error).toBeNull();
+    }
   });
 
   it('rejects revoked Admin and archived venue finalization without replacing the previous path', async () => {

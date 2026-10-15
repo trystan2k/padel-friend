@@ -20,7 +20,9 @@ const mocks = vi.hoisted(() => ({
   editVenue: vi.fn<() => Promise<unknown>>(),
   archiveVenue: vi.fn<() => Promise<unknown>>(),
   updateSettings: vi.fn<() => Promise<unknown>>(),
-  sendRequestMessage: vi.fn<() => Promise<unknown>>()
+  sendRequestMessage: vi.fn<() => Promise<unknown>>(),
+  listNotifications: vi.fn<() => Promise<unknown>>(),
+  markRead: vi.fn<() => Promise<unknown>>()
 }));
 
 vi.mock('@tanstack/react-router', () => ({
@@ -63,7 +65,9 @@ vi.mock('../src/features/community/community.functions', () => ({
   updateCommunitySettings: mocks.updateSettings
 }));
 vi.mock('../src/features/community/community-request.functions', () => ({
-  sendCommunityRequestMessage: mocks.sendRequestMessage
+  sendCommunityRequestMessage: mocks.sendRequestMessage,
+  listMyCommunityNotifications: mocks.listNotifications,
+  markCommunityNotificationRead: mocks.markRead
 }));
 
 import { createI18n } from '../src/i18n/config';
@@ -142,6 +146,8 @@ beforeEach(() => {
   mocks.listVenues.mockResolvedValue([]);
   mocks.listAudit.mockResolvedValue([]);
   mocks.sendRequestMessage.mockResolvedValue({ message_id: 'message-id' });
+  mocks.listNotifications.mockResolvedValue([]);
+  mocks.markRead.mockResolvedValue({ read_at: '2026-01-01T00:00:00Z' });
 });
 afterEach(cleanup);
 
@@ -174,6 +180,7 @@ describe('community admin UI', () => {
             }
           ]}
           loadError={false}
+          timeZone="Europe/Madrid"
         />
       </I18nextProvider>
     );
@@ -182,11 +189,67 @@ describe('community admin UI', () => {
     cleanup();
     render(
       <I18nextProvider i18n={createI18n('en')}>
-        <CommunityInbox initialItems={null} loadError />
+        <CommunityInbox initialItems={null} loadError timeZone="Europe/Madrid" />
       </I18nextProvider>
     );
     expect(screen.getByRole('alert').textContent).toContain('Inbox unavailable');
     expect(screen.queryByText('No messages yet')).toBeNull();
+  });
+  it('keeps items visible after mark-read errors and retries the item', async () => {
+    mocks.markRead.mockRejectedValueOnce(new Error('mutation failed'));
+    const user = userEvent.setup();
+    render(
+      <I18nextProvider i18n={createI18n('en')}>
+        <CommunityInbox
+          initialItems={[
+            {
+              notification_id: 'n1',
+              message_id: 'm1',
+              body: 'Visible request',
+              created_at: '2026-01-01T00:00:00Z',
+              read_at: null
+            }
+          ]}
+          loadError={false}
+          timeZone="Europe/Madrid"
+        />
+      </I18nextProvider>
+    );
+    await user.click(screen.getByRole('button', { name: 'Mark as read' }));
+    expect(await screen.findByText('Could not mark this message as read')).toBeTruthy();
+    expect(screen.getByText('Visible request')).toBeTruthy();
+    await user.click(screen.getByRole('button', { name: 'Retry' }));
+    await waitFor(() => expect(mocks.markRead).toHaveBeenCalledTimes(2));
+  });
+  it('preserves loaded items when a page fails and retries at same offset', async () => {
+    const items = Array.from({ length: 20 }, (_, index) => ({
+      notification_id: `n${index}`,
+      message_id: `m${index}`,
+      body: `Request ${index}`,
+      created_at: '2026-01-01T00:00:00Z',
+      read_at: '2026-01-02T00:00:00Z'
+    }));
+    mocks.listNotifications.mockRejectedValueOnce(new Error('page failed')).mockResolvedValueOnce([
+      {
+        notification_id: 'n20',
+        message_id: 'm20',
+        body: 'Request 20',
+        created_at: '2025-12-31T00:00:00Z',
+        read_at: null
+      }
+    ]);
+    const user = userEvent.setup();
+    render(
+      <I18nextProvider i18n={createI18n('en')}>
+        <CommunityInbox initialItems={items} loadError={false} timeZone="Europe/Madrid" />
+      </I18nextProvider>
+    );
+    await user.click(screen.getByRole('button', { name: 'Load more' }));
+    expect(await screen.findByText('Could not load more messages')).toBeTruthy();
+    expect(screen.getByText('Request 0')).toBeTruthy();
+    await user.click(screen.getByRole('button', { name: 'Retry' }));
+    expect(await screen.findByText('Request 20')).toBeTruthy();
+    expect(mocks.listNotifications).toHaveBeenLastCalledWith({ data: { offset: 20, limit: 20 } });
   });
   it('renders only supplied authorized community admin destinations', () => {
     const { rerender } = render(

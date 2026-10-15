@@ -455,7 +455,9 @@ test('the dashboard allows profile edits but exposes no level control, and avata
   await expect(page.getByLabel(en.onboarding.preciseLevel)).toHaveCount(0);
 
   await page.getByRole('button', { name: en.profile.edit }).click();
-  await page.getByLabel(en.onboarding.name).fill('Mila Edited');
+  // The dashboard also renders an invitee-discovery consent checkbox whose label contains
+  // "display name"; scoping to <main> (the profile region) keeps the query on the edit input.
+  await page.locator('main').getByLabel(en.onboarding.name).fill('Mila Edited');
   await page.getByLabel(en.profile.bio).fill('Right side player.');
   await page.getByRole('button', { name: en.profile.save }).click();
   await expect(page.getByRole('heading', { name: 'Mila Edited' })).toBeVisible();
@@ -505,7 +507,9 @@ test('a whitespace-padded save syncs the trimmed server values into display and 
   // edit input. The padded bio is trimmed client-side too: its trimmed server value must sync
   // back the same way.
   await page.getByRole('button', { name: en.profile.edit }).click();
-  await page.getByLabel(en.onboarding.name).fill('  Padded Name  ');
+  // Scope to <main>: the invitee-discovery checkbox outside main also matches the
+  // "display name" label text, so the unscoped query would be ambiguous.
+  await page.locator('main').getByLabel(en.onboarding.name).fill('  Padded Name  ');
   await page.getByLabel(en.profile.bio).fill('  Padded bio  ');
   await page.getByRole('button', { name: en.profile.save }).click();
 
@@ -517,7 +521,7 @@ test('a whitespace-padded save syncs the trimmed server values into display and 
 
   // Re-opening edit mode shows the refreshed local state, never the stale padded values.
   await page.getByRole('button', { name: en.profile.edit }).click();
-  await expect(page.getByLabel(en.onboarding.name)).toHaveValue('Padded Name');
+  await expect(page.locator('main').getByLabel(en.onboarding.name)).toHaveValue('Padded Name');
   await expect(page.getByLabel(en.profile.bio)).toHaveValue('Padded bio');
 });
 
@@ -566,11 +570,13 @@ test('an NBSP-edged display name is saved verbatim and persists with its NBSPs',
   await page.getByRole('button', { name: en.onboarding.save }).click();
   await skipCommunity(page);
 
-  // The identity card renders exactly one level-2 heading (the display name); locating it by
-  // level avoids the whitespace-normalized accessible-name matching. toHaveText normalizes
-  // every whitespace kind (an NBSP collapses like a space), so on its own it could NOT catch
-  // a Unicode-trim regression — the raw textContent equality below is the exact drift guard.
-  const nameHeading = page.getByRole('heading', { level: 2 });
+  // The identity card in <main> renders the dashboard's only level-2 heading (the display
+  // name): main is the profile region, while the Community inbox h2 lives outside it.
+  // Locating by level avoids the whitespace-normalized accessible-name matching.
+  // toHaveText normalizes every whitespace kind (an NBSP collapses like a space), so on its
+  // own it could NOT catch a Unicode-trim regression — the raw textContent equality below is
+  // the exact drift guard.
+  const nameHeading = page.locator('main').getByRole('heading', { level: 2 });
   await expect(nameHeading).toBeVisible();
   await expect(nameHeading).toHaveText(nbspName);
   expect(await nameHeading.textContent()).toBe(nbspName);
@@ -579,13 +585,13 @@ test('an NBSP-edged display name is saved verbatim and persists with its NBSPs',
   // toHaveValue compares raw input values without whitespace normalization, so the exact
   // NBSP-edged value must have round-tripped through the database.
   await page.getByRole('button', { name: en.profile.edit }).click();
-  await expect(page.getByLabel(en.onboarding.name)).toHaveValue(nbspName);
+  await expect(page.locator('main').getByLabel(en.onboarding.name)).toHaveValue(nbspName);
 
   // A fresh guarded navigation re-reads the persisted row: the NBSPs survived storage, not
   // just the in-memory profile state.
   const response = await page.reload({ waitUntil: 'domcontentloaded' });
   expect(response?.status()).toBeLessThan(400);
-  const persistedHeading = page.getByRole('heading', { level: 2 });
+  const persistedHeading = page.locator('main').getByRole('heading', { level: 2 });
   await expect(persistedHeading).toBeVisible();
   expect(await persistedHeading.textContent()).toBe(nbspName);
 });
@@ -622,14 +628,14 @@ test('the emptiness rule is the ASCII class end-to-end: whitespace-only is rejec
   await skipCommunity(page);
   await expect(page.getByText(en.onboarding.validationName)).toHaveCount(0);
 
-  const nameHeading = page.getByRole('heading', { level: 2 });
+  const nameHeading = page.locator('main').getByRole('heading', { level: 2 });
   await expect(nameHeading).toBeVisible();
   expect(await nameHeading.textContent()).toBe(nbspOnly);
 
   // The dashboard SSR'd from the freshly onboarded row: the edit form carrying the exact
   // NBSP-only value proves the database kept it, whitespace normalization can never apply.
   await page.getByRole('button', { name: en.profile.edit }).click();
-  await expect(page.getByLabel(en.onboarding.name)).toHaveValue(nbspOnly);
+  await expect(page.locator('main').getByLabel(en.onboarding.name)).toHaveValue(nbspOnly);
 });
 
 test('the profile edit form preserves NBSP edges and trims only ASCII edges on save', async ({
@@ -642,25 +648,29 @@ test('the profile edit form preserves NBSP edges and trims only ASCII edges on s
   // Save through the PROFILE edit form: the same ASCII-only strip policy must hold there.
   await page.getByRole('button', { name: en.profile.edit }).click();
   const nbspName = '\u00A0Mila\u00A0';
-  await page.getByLabel(en.onboarding.name).fill(nbspName);
+  // Scoped to <main> so the invitee-discovery consent checkbox (whose label also says
+  // "display name") cannot collide with the profile edit input.
+  await page.locator('main').getByLabel(en.onboarding.name).fill(nbspName);
   await page.getByRole('button', { name: en.profile.save }).click();
 
   await expect(page.getByText(en.profile.saveFailed)).toHaveCount(0);
-  const nameHeading = page.getByRole('heading', { level: 2 });
+  const nameHeading = page.locator('main').getByRole('heading', { level: 2 });
   await expect(nameHeading).toBeVisible();
   await expect(nameHeading).toHaveText(nbspName);
   expect(await nameHeading.textContent()).toBe(nbspName);
 
   // Re-opening edit mode shows the refreshed server value with the NBSPs intact.
   await page.getByRole('button', { name: en.profile.edit }).click();
-  await expect(page.getByLabel(en.onboarding.name)).toHaveValue(nbspName);
+  await expect(page.locator('main').getByLabel(en.onboarding.name)).toHaveValue(nbspName);
 
   // And the ASCII-only trim still applies on the very same form: padded ASCII edges are
   // stripped before the save lands.
-  await page.getByLabel(en.onboarding.name).fill('  Mila Twice  ');
+  await page.locator('main').getByLabel(en.onboarding.name).fill('  Mila Twice  ');
   await page.getByRole('button', { name: en.profile.save }).click();
   await expect(page.getByRole('heading', { name: 'Mila Twice' })).toBeVisible();
-  expect(await page.getByRole('heading', { level: 2 }).textContent()).toBe('Mila Twice');
+  expect(await page.locator('main').getByRole('heading', { level: 2 }).textContent()).toBe(
+    'Mila Twice'
+  );
 });
 
 test('the onboarding slider stays operable in light and dark themes', async ({ page }) => {

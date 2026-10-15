@@ -355,6 +355,7 @@
       "transition": "Esta associação mudou. Atualize antes de tentar novamente."
     },
     "matchCountUnavailable": "Contagem de partidas indisponível — o histórico de partidas ainda não é compatível",
+    "inviteeSearchPrivateOnly": "A busca por convidados está disponível somente em comunidades privadas.",
     "requestMessage": {
       "action": "Enviar atualização",
       "title": "Mensagem para pessoa candidata",
@@ -377,6 +378,8 @@
     "markRead": "Marcar como lida",
     "read": "Lida",
     "loadMore": "Carregar mais",
+    "mutationError": "Não foi possível marcar esta mensagem como lida",
+    "pageError": "Não foi possível carregar mais mensagens",
     "oneWayNotice": "As mensagens são unidirecionais. Respostas, e-mail e entrega ao vivo não são compatíveis."
   },
   "communityInvites": {

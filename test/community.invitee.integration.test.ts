@@ -127,6 +127,22 @@ describe('invitee directory (real local Supabase JWTs)', () => {
       ).error
     ).not.toBeNull();
 
+    // Every actor asserted as excluded later must first opt in, so the later
+    // exclusion can only come from membership history or a live invitation and
+    // not from a missing directory preference. Each opted-in actor is proven
+    // searchable immediately after opting in, before any membership or
+    // invitation row exists for them.
+    for (const actor of [nonAdmin, inactive, pending, invited]) {
+      expect(
+        (
+          await actor.client
+            .from('community_invitee_directory_preferences')
+            .insert({ user_id: actor.id })
+        ).error
+      ).toBeNull();
+      expect(rowIds((await search(admin.client, actor.name)).data)).toEqual([actor.id]);
+    }
+
     const inviteToken = rawToken();
     const inviteHash = Array.from(
       new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(inviteToken))),
@@ -192,9 +208,20 @@ describe('invitee directory (real local Supabase JWTs)', () => {
           .insert({ community_id: cid, user_id: pending.id, role: 'member', status: 'pending' })
       ).error
     ).toBeNull();
+    // Opted-in positive control: in this exact final state the query still
+    // returns an eligible opted-in player, so the exclusions below cannot pass
+    // vacuously on an empty result set.
+    expect(rowIds((await search(admin.client, personName(person))).data)).toEqual([person.id]);
+    // Each actor below is opted in and was returned before gaining membership
+    // history or a live invitation, so an empty result now proves the
+    // corresponding exclusion predicate (the stronger exact-empty form also
+    // rules out extra stray rows).
     for (const actor of [nonAdmin, inactive, pending, invited])
-      expect(rowIds((await search(admin.client, actor.name)).data)).not.toContain(actor.id);
-    expect(rowIds((await search(admin.client, invited.name)).data)).not.toContain(invited.id);
+      expect((await search(admin.client, actor.name)).data).toEqual([]);
+    // Dedicated live-invitation exclusion assertion: the invited actor is
+    // opted in, so an exact-name empty result proves the live-invitation
+    // predicate rather than a missing opt-in.
+    expect((await search(admin.client, invited.name)).data).toEqual([]);
     expect(
       (
         await person.client

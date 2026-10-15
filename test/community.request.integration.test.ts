@@ -160,6 +160,42 @@ describe.skipIf(!environment.env)('community request delivery (real local Supaba
       await applicant.client.from('community_notifications').select('id').single()
     ).data;
     expect(notification).toBeTruthy();
+    expect(
+      (
+        await applicant.client.rpc('get_my_community_notification_timezone', {
+          p_notification_id: notification!.id
+        })
+      ).data
+    ).toBe('Europe/Madrid');
+    expect(
+      (
+        await admin.client.rpc('update_community_admin_defaults', {
+          p_community_id: communityId,
+          p_defaults: {
+            timezone: 'UTC',
+            currency: 'EUR',
+            member_created_leagues_enabled: true
+          }
+        })
+      ).error
+    ).toBeNull();
+    expect(
+      (
+        await applicant.client.rpc('get_my_community_notification_timezone', {
+          p_notification_id: notification!.id
+        })
+      ).data
+    ).toBe('UTC');
+    expect(
+      (
+        await outsider.client.rpc('get_my_community_notification_timezone', {
+          p_notification_id: notification!.id
+        })
+      ).data
+    ).toBeNull();
+    expect(
+      (await applicant.client.from('communities').select('settings').eq('id', communityId)).error
+    ).not.toBeNull();
     const mark = () =>
       applicant.client.rpc('mark_community_notification_read', {
         p_notification_id: notification!.id

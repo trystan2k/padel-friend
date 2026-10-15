@@ -515,6 +515,10 @@ export type Database = {
         }[]
       }
       get_effective_community_admin_defaults: { Args: { p_settings: Json }; Returns: Json }
+      get_my_community_notification_timezone: {
+        Args: { p_notification_id: string }
+        Returns: string
+      }
       govern_community_member: {
         Args: { p_action: string; p_community_id: string; p_membership_id: string }
         Returns: {

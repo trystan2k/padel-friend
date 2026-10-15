@@ -51,6 +51,7 @@ import {
   leaveCommunity,
   updateCommunitySettings
 } from '../src/features/community/community.functions';
+import { isCommunityAdminDefaults } from '../src/features/community/community-settings';
 
 vi.setConfig({ testTimeout: 60000, hookTimeout: 60000 });
 const environment = localSupabaseEnv({ filePath: dotEnvPathFromImportMetaUrl(import.meta.url) });
@@ -472,7 +473,7 @@ describe.skipIf(environment.env === null)('community governance with real JWTs',
       actor('Alternate')
     ]);
   });
-  it('persists validated admin defaults without replacing unrelated settings namespaces', async () => {
+  it('keeps SQL and TypeScript timezone domains identical and round-trips defaults through both writers', async () => {
     const id = await community(admin);
     expect(
       (
@@ -488,8 +489,22 @@ describe.skipIf(environment.env === null)('community governance with real JWTs',
       currency: 'EUR',
       member_created_leagues_enabled: true
     });
+    const timezoneValues = ['Europe/Madrid', 'UTC', 'America/New_York'] as const;
+    for (const timezone of timezoneValues) {
+      const candidate = {
+        timezone,
+        currency: 'EUR',
+        member_created_leagues_enabled: true
+      };
+      const sqlValidation = await admin.client.rpc('valid_community_admin_defaults', {
+        p_defaults: candidate
+      });
+      expect(sqlValidation.error).toBeNull();
+      expect(sqlValidation.data).toBe(isCommunityAdminDefaults(candidate));
+    }
     const invalidValues = [
       { timezone: 'Bad/Zone', currency: 'EUR', member_created_leagues_enabled: true },
+      { timezone: 'America/New_York', currency: 'EUR', member_created_leagues_enabled: true },
       { timezone: 'UTC', currency: 'USD', member_created_leagues_enabled: true },
       { timezone: 'UTC', currency: 'EUR', member_created_leagues_enabled: 'true' },
       { timezone: 'UTC', currency: 'EUR', member_created_leagues_enabled: true, unexpected: true }
@@ -513,6 +528,12 @@ describe.skipIf(environment.env === null)('community governance with real JWTs',
       ).not.toBeNull();
     }
     const defaults = { timezone: 'UTC', currency: 'EUR', member_created_leagues_enabled: false };
+    const directUpdate = await admin.client.rpc('update_community_admin_defaults', {
+      p_community_id: id,
+      p_defaults: defaults
+    });
+    expect(directUpdate.error).toBeNull();
+    expect(directUpdate.data).toEqual(defaults);
     await expect(
       updateCommunityAdminDefaults({ data: { community_id: id, defaults } })
     ).resolves.toEqual(defaults);
@@ -525,6 +546,20 @@ describe.skipIf(environment.env === null)('community governance with real JWTs',
     serverClient.current = admin.client;
     await expect(getCommunityAdminDefaults({ data: { community_id: id } })).resolves.toEqual(
       defaults
+    );
+    const genericDefaults = {
+      timezone: 'Europe/Madrid',
+      currency: 'EUR',
+      member_created_leagues_enabled: true
+    };
+    const genericUpdate = await admin.client.rpc('update_community_settings', {
+      p_community_id: id,
+      p_changes: { settings: { legacy: { retained: true }, admin_defaults: genericDefaults } }
+    });
+    expect(genericUpdate.error).toBeNull();
+    serverClient.current = admin.client;
+    await expect(getCommunityAdminDefaults({ data: { community_id: id } })).resolves.toEqual(
+      genericDefaults
     );
     await membership(admin, id, member, 'active');
     serverClient.current = member.client;
