@@ -30,6 +30,8 @@
     "createEntry": "+  CREATE A COMMUNITY",
     "skip": "I’LL DO THIS LATER",
     "cityPolicy": "{{city}} · {{policy}}",
+    "memberCount_one": "{{formattedCount}} member",
+    "memberCount_other": "{{formattedCount}} members",
     "cityUnknown": "City not listed",
     "openJoin": "Open join",
     "approvalRequired": "Approval required",

@@ -480,14 +480,16 @@ test('discovery view compares card structure and actions against dSEX3 Pencil re
   await geometry(cards.nth(1), { x: 18, y: 392, width: 354, height: 142 });
   const firstTitle = cards.nth(0).getByRole('heading', { level: 3 });
   const secondTitle = cards.nth(1).getByRole('heading', { level: 3 });
-  const firstMeta = cards.nth(0).locator('p');
-  const secondMeta = cards.nth(1).locator('p');
+  const firstMeta = cards.nth(0).locator('p').nth(0);
+  const secondMeta = cards.nth(1).locator('p').nth(0);
   // Pencil dSEX3 source: content inset 14; name box 19px high; 7px vertical gap;
-  // metadata box 15px high. Current text block fills the 326px card content column.
+  // Metadata and member-count lines occupy the existing text column.
   await geometry(firstTitle, { x: 32, y: 254, width: 326, height: 19 });
   await geometry(firstMeta, { x: 32, y: 280, width: 326, height: 15 });
+  await geometry(cards.nth(0).locator('p').nth(1), { x: 32, y: 302, width: 326, height: 15 });
   await geometry(secondTitle, { x: 32, y: 406, width: 326, height: 19 });
   await geometry(secondMeta, { x: 32, y: 432, width: 326, height: 15 });
+  await geometry(cards.nth(1).locator('p').nth(1), { x: 32, y: 454, width: 326, height: 15 });
   for (const title of [firstTitle, secondTitle])
     await typography(title, {
       family: 'Manrope',
@@ -498,6 +500,14 @@ test('discovery view compares card structure and actions against dSEX3 Pencil re
     });
   for (const meta of [firstMeta, secondMeta])
     await typography(meta, {
+      family: 'Inter',
+      size: '12px',
+      weight: '400',
+      lineHeight: 'normal',
+      color: 'rgb(92, 107, 98)'
+    });
+  for (const count of [cards.nth(0).locator('p').nth(1), cards.nth(1).locator('p').nth(1)])
+    await typography(count, {
       family: 'Inter',
       size: '12px',
       weight: '400',
@@ -846,17 +856,17 @@ test('city search finds real public community; join follows instant vs approval 
     const cards = joiner
       .locator('main > div:last-child [aria-busy="false"] > div')
       .filter({ has: joiner.getByRole('heading', { level: 3 }) });
-    await geometry(cards.nth(0), { x: 18, y: 240, width: 354, height: 142 });
-    await geometry(cards.nth(1), { x: 18, y: 392, width: 354, height: 142 });
+    await geometry(cards.nth(0), { x: 18, y: 240, width: 354, height: 161 });
+    await geometry(cards.nth(1), { x: 18, y: 411, width: 354, height: 161 });
     await geometry(joiner.getByRole('button', { name: en.communityOnboarding.createEntry }), {
       x: 18,
-      y: 544,
+      y: 582,
       width: 354,
       height: 44
     });
     await geometry(joiner.getByRole('button', { name: en.communityOnboarding.skip }), {
       x: 18,
-      y: 598,
+      y: 636,
       width: 354,
       height: 44
     });

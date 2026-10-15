@@ -437,6 +437,21 @@ export type Database = {
         }
         Returns: undefined
       }
+      public_community_discovery: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          city_label: string
+          created_at: string
+          description: string
+          id: string
+          join_policy: Database["public"]["Enums"]["community_join_policy"]
+          logo_path: string
+          member_count: number
+          name: string
+          updated_at: string
+          visibility: Database["public"]["Enums"]["community_visibility"]
+        }[]
+      }
       search_community_members: {
         Args: {
           p_community_id: string

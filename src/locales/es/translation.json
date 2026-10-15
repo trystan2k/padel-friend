@@ -30,6 +30,8 @@
     "createEntry": "+  CREAR UNA COMUNIDAD",
     "skip": "LO HARÉ MÁS TARDE",
     "cityPolicy": "{{city}} · {{policy}}",
+    "memberCount_one": "{{formattedCount}} miembro",
+    "memberCount_other": "{{formattedCount}} miembros",
     "cityUnknown": "Ciudad no indicada",
     "openJoin": "Acceso libre",
     "approvalRequired": "Requiere aprobación",

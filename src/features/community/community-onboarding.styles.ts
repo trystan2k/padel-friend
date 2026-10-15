@@ -84,6 +84,12 @@ export const ui = stylex.create({
     color: 'var(--color-muted)',
     overflowWrap: 'anywhere'
   },
+  memberCount: {
+    margin: 0,
+    fontSize: 'var(--font-size-12)',
+    color: 'var(--color-muted)',
+    overflowWrap: 'anywhere'
+  },
   cardAction: {
     marginTop: 'auto',
     borderWidth: 0,

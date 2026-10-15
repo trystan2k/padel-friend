@@ -21,7 +21,7 @@ function expired(error: unknown): boolean {
 }
 
 export function CommunityOnboarding({ search, data }: { search: Search; data: Page }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const navigate = useNavigate();
   const router = useRouter();
   const routePending = useRouterState({
@@ -250,6 +250,14 @@ export function CommunityOnboarding({ search, data }: { search: Search; data: Pa
                       community.join_policy === 'instant'
                         ? 'communityOnboarding.openJoin'
                         : 'communityOnboarding.approvalRequired'
+                    )
+                  })}
+                </p>
+                <p {...stylex.props(ui.memberCount)}>
+                  {t('communityOnboarding.memberCount', {
+                    count: community.member_count,
+                    formattedCount: new Intl.NumberFormat(i18n.resolvedLanguage).format(
+                      community.member_count
                     )
                   })}
                 </p>

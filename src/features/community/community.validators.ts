@@ -16,7 +16,40 @@ export type PublicCommunity = Pick<
   | 'join_policy'
   | 'created_at'
   | 'updated_at'
->;
+> & { member_count: number };
+
+export function validatePublicCommunity(value: unknown): PublicCommunity {
+  if (!isRecord(value)) invalid();
+  const row = value;
+  const count = row.member_count;
+  if (
+    typeof count !== 'number' ||
+    !Number.isSafeInteger(count) ||
+    count < 0 ||
+    typeof row.id !== 'string' ||
+    typeof row.name !== 'string' ||
+    (row.description !== null && typeof row.description !== 'string') ||
+    (row.logo_path !== null && typeof row.logo_path !== 'string') ||
+    (row.city_label !== null && typeof row.city_label !== 'string') ||
+    row.visibility !== 'public' ||
+    (row.join_policy !== 'instant' && row.join_policy !== 'admin_approval') ||
+    typeof row.created_at !== 'string' ||
+    typeof row.updated_at !== 'string'
+  )
+    invalid();
+  return {
+    id: row.id,
+    name: row.name,
+    description: row.description,
+    logo_path: row.logo_path,
+    city_label: row.city_label,
+    visibility: row.visibility,
+    join_policy: row.join_policy,
+    created_at: row.created_at,
+    updated_at: row.updated_at,
+    member_count: count
+  };
+}
 export type ListPublicCommunitiesInput = { search?: string; offset: number; limit: number };
 export type GetPublicCommunityInput = { community_id: string };
 export type JoinCommunityInput = { community_id: string };
