@@ -431,6 +431,43 @@ export type Database = {
         }
         Relationships: []
       }
+      notification_preferences: {
+        Row: {
+          critical_in_app_enabled: boolean
+          push_community: boolean
+          push_enabled: boolean
+          push_leagues: boolean
+          push_matches: boolean
+          push_rankings: boolean
+          push_results: boolean
+          updated_at: string
+          user_id: string
+        }
+        ComputedFields: never
+        Insert: {
+          critical_in_app_enabled?: boolean
+          push_community?: boolean
+          push_enabled?: boolean
+          push_leagues?: boolean
+          push_matches?: boolean
+          push_rankings?: boolean
+          push_results?: boolean
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          critical_in_app_enabled?: boolean
+          push_community?: boolean
+          push_enabled?: boolean
+          push_leagues?: boolean
+          push_matches?: boolean
+          push_rankings?: boolean
+          push_results?: boolean
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       notifications: {
         Row: {
           category: string
@@ -679,6 +716,33 @@ export type Database = {
           created_at: string
           message_id: string
         }[]
+      }
+      set_my_notification_preferences: {
+        Args: {
+          p_push_community: boolean
+          p_push_enabled: boolean
+          p_push_leagues: boolean
+          p_push_matches: boolean
+          p_push_rankings: boolean
+          p_push_results: boolean
+        }
+        Returns: {
+          critical_in_app_enabled: boolean
+          push_community: boolean
+          push_enabled: boolean
+          push_leagues: boolean
+          push_matches: boolean
+          push_rankings: boolean
+          push_results: boolean
+          updated_at: string
+          user_id: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "notification_preferences"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       update_community_admin_defaults: {
         Args: { p_community_id: string; p_defaults: Json }
