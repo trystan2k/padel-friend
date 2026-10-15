@@ -17,6 +17,7 @@ export function useNotifications(
   const [error, setError] = useState(false);
   const [online, setOnline] = useState(true);
   const [mutating, setMutating] = useState(false);
+  const onlineRef = useRef(true);
   const [cursor, setCursor] = useState(initial.nextCursor);
   const [asOf, setAsOf] = useState(initial.asOf);
   const generation = useRef(0);
@@ -27,7 +28,9 @@ export function useNotifications(
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const refresh = async (append = false) => {
-    if (!online || (typeof navigator !== 'undefined' && !navigator.onLine)) {
+    // Read liveness from the ref: the online-event handler schedules this refresh before the
+    // setOnline re-render, so a captured state would still hold the stale offline value.
+    if (!onlineRef.current || (typeof navigator !== 'undefined' && !navigator.onLine)) {
       setLoading(false);
       return;
     }
@@ -76,7 +79,10 @@ export function useNotifications(
 
   useEffect(() => {
     mounted.current = true;
-    const setConnection = () => setOnline(typeof navigator === 'undefined' || navigator.onLine);
+    const setConnection = () => {
+      onlineRef.current = typeof navigator === 'undefined' || navigator.onLine;
+      setOnline(onlineRef.current);
+    };
     const onOnline = () => {
       setConnection();
       scheduleRefresh();

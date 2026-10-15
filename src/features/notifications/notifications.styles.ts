@@ -7,7 +7,7 @@ export const styles = stylex.create({
     backgroundColor: 'var(--color-background-primary)'
   },
   panel: {
-    maxWidth: 'var(--size-content-lg)',
+    maxWidth: 'calc(var(--space-40) * 12)',
     marginInline: 'auto',
     padding: 'var(--space-6)',
     borderRadius: 'var(--radius-12)',
@@ -40,7 +40,9 @@ export const styles = stylex.create({
     textDecoration: 'none'
   },
   unread: {
-    borderInlineStart: 'var(--border-width-lg) solid var(--color-green)',
+    borderInlineStartWidth: 'var(--border-width-lg)',
+    borderInlineStartStyle: 'solid',
+    borderInlineStartColor: 'var(--color-green)',
     backgroundColor: 'var(--color-green-soft)'
   },
   row: {

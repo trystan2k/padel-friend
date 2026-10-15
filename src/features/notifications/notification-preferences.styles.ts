@@ -8,7 +8,7 @@ export const preferenceStyles = stylex.create({
     backgroundColor: 'var(--color-background-primary)'
   },
   panel: {
-    maxWidth: 'var(--size-content-lg)',
+    maxWidth: 'calc(var(--space-40) * 12)',
     marginInline: 'auto',
     padding: 'var(--space-6)',
     borderRadius: 'var(--radius-12)',
