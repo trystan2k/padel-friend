@@ -7,6 +7,15 @@ import { issueInvitation } from './community-admin.functions';
 import { searchCommunityInvitees } from './community-invitee.functions';
 import { styles } from './community-admin.styles';
 
+const inviteeStyles = stylex.create({
+  option: {
+    boxSizing: 'border-box',
+    minHeight: 'calc(var(--space-40) + var(--space-4))',
+    display: 'flex',
+    alignItems: 'center'
+  }
+});
+
 export function InviteeSearch({ communityId }: { communityId: string }) {
   const { t } = useTranslation();
   const [query, setQuery] = useState('');
@@ -96,10 +105,7 @@ export function InviteeSearch({ communityId }: { communityId: string }) {
                 <p>{t('communityInvites.noResults')}</p>
               )}
               {rows.map((person) => (
-                <label
-                  key={person.user_id}
-                  style={{ minHeight: '44px', display: 'flex', alignItems: 'center' }}
-                >
+                <label key={person.user_id} {...stylex.props(inviteeStyles.option)}>
                   <input
                     type="radio"
                     name="invitee"

@@ -22,7 +22,9 @@ const mocks = vi.hoisted(() => ({
   updateSettings: vi.fn<() => Promise<unknown>>(),
   sendRequestMessage: vi.fn<() => Promise<unknown>>(),
   listNotifications: vi.fn<() => Promise<unknown>>(),
-  markRead: vi.fn<() => Promise<unknown>>()
+  markRead: vi.fn<() => Promise<unknown>>(),
+  getDiscoverability: vi.fn<() => Promise<{ enabled: boolean }>>(),
+  setDiscoverability: vi.fn<() => Promise<{ enabled: boolean }>>()
 }));
 
 vi.mock('@tanstack/react-router', () => ({
@@ -69,9 +71,17 @@ vi.mock('../src/features/community/community-request.functions', () => ({
   listMyCommunityNotifications: mocks.listNotifications,
   markCommunityNotificationRead: mocks.markRead
 }));
+vi.mock('../src/features/community/community-invitee.functions', async (importOriginal) => ({
+  ...(await importOriginal<
+    typeof import('../src/features/community/community-invitee.functions')
+  >()),
+  getMyInviteeDiscoverability: mocks.getDiscoverability,
+  setMyInviteeDiscoverability: mocks.setDiscoverability
+}));
 
 import { createI18n } from '../src/i18n/config';
 import { CommunityInbox } from '../src/features/community/CommunityInbox';
+import { InvitationDiscoverability } from '../src/features/community/InvitationDiscoverability';
 import {
   CommunityAdminDenied,
   CommunityAdminEntries,
@@ -148,6 +158,8 @@ beforeEach(() => {
   mocks.sendRequestMessage.mockResolvedValue({ message_id: 'message-id' });
   mocks.listNotifications.mockResolvedValue([]);
   mocks.markRead.mockResolvedValue({ read_at: '2026-01-01T00:00:00Z' });
+  mocks.getDiscoverability.mockResolvedValue({ enabled: false });
+  mocks.setDiscoverability.mockResolvedValue({ enabled: true });
 });
 afterEach(cleanup);
 
@@ -176,11 +188,11 @@ describe('community admin UI', () => {
               message_id: 'm',
               body,
               created_at: '2026-01-01T00:00:00Z',
-              read_at: null
+              read_at: null,
+              time_zone: 'Europe/Madrid'
             }
           ]}
           loadError={false}
-          timeZone="Europe/Madrid"
         />
       </I18nextProvider>
     );
@@ -189,11 +201,58 @@ describe('community admin UI', () => {
     cleanup();
     render(
       <I18nextProvider i18n={createI18n('en')}>
-        <CommunityInbox initialItems={null} loadError timeZone="Europe/Madrid" />
+        <CommunityInbox initialItems={null} loadError />
       </I18nextProvider>
     );
     expect(screen.getByRole('alert').textContent).toContain('Inbox unavailable');
     expect(screen.queryByText('No messages yet')).toBeNull();
+  });
+  it('formats each inbox timestamp with its own timezone', () => {
+    render(
+      <I18nextProvider i18n={createI18n('en')}>
+        <CommunityInbox
+          initialItems={[
+            {
+              notification_id: 'utc',
+              message_id: 'm-utc',
+              body: 'UTC notification',
+              created_at: '2026-01-01T00:30:00Z',
+              read_at: '2026-01-02T00:00:00Z',
+              time_zone: 'UTC'
+            },
+            {
+              notification_id: 'madrid',
+              message_id: 'm-madrid',
+              body: 'Madrid notification',
+              created_at: '2026-01-01T00:30:00Z',
+              read_at: '2026-01-02T00:00:00Z',
+              time_zone: 'Europe/Madrid'
+            }
+          ]}
+          loadError={false}
+        />
+      </I18nextProvider>
+    );
+
+    expect(screen.getByText('Jan 1, 2026, 12:30 AM UTC')).toBeTruthy();
+    expect(screen.getByText('Jan 1, 2026, 1:30 AM GMT+1')).toBeTruthy();
+  });
+  it('shows discoverability confirmation only after a successful change', async () => {
+    const user = userEvent.setup();
+    render(
+      <I18nextProvider i18n={createI18n('en')}>
+        <InvitationDiscoverability />
+      </I18nextProvider>
+    );
+
+    const checkbox = await screen.findByRole('checkbox');
+    await waitFor(() => expect(checkbox.hasAttribute('disabled')).toBe(false));
+    expect(screen.queryByText('Discoverability preference saved.')).toBeNull();
+
+    await user.click(checkbox);
+
+    expect(await screen.findByText('Discoverability preference saved.')).toBeTruthy();
+    expect(mocks.setDiscoverability).toHaveBeenCalledWith({ data: { enabled: true } });
   });
   it('keeps items visible after mark-read errors and retries the item', async () => {
     mocks.markRead.mockRejectedValueOnce(new Error('mutation failed'));
@@ -207,11 +266,11 @@ describe('community admin UI', () => {
               message_id: 'm1',
               body: 'Visible request',
               created_at: '2026-01-01T00:00:00Z',
-              read_at: null
+              read_at: null,
+              time_zone: 'Europe/Madrid'
             }
           ]}
           loadError={false}
-          timeZone="Europe/Madrid"
         />
       </I18nextProvider>
     );
@@ -227,7 +286,8 @@ describe('community admin UI', () => {
       message_id: `m${index}`,
       body: `Request ${index}`,
       created_at: '2026-01-01T00:00:00Z',
-      read_at: '2026-01-02T00:00:00Z'
+      read_at: '2026-01-02T00:00:00Z',
+      time_zone: 'Europe/Madrid' as const
     }));
     mocks.listNotifications.mockRejectedValueOnce(new Error('page failed')).mockResolvedValueOnce([
       {
@@ -235,13 +295,14 @@ describe('community admin UI', () => {
         message_id: 'm20',
         body: 'Request 20',
         created_at: '2025-12-31T00:00:00Z',
-        read_at: null
+        read_at: null,
+        time_zone: 'Europe/Madrid'
       }
     ]);
     const user = userEvent.setup();
     render(
       <I18nextProvider i18n={createI18n('en')}>
-        <CommunityInbox initialItems={items} loadError={false} timeZone="Europe/Madrid" />
+        <CommunityInbox initialItems={items} loadError={false} />
       </I18nextProvider>
     );
     await user.click(screen.getByRole('button', { name: 'Load more' }));

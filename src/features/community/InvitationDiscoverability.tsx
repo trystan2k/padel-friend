@@ -21,6 +21,7 @@ export function InvitationDiscoverability() {
   const [enabled, setEnabled] = useState(false);
   const [busy, setBusy] = useState(true);
   const [error, setError] = useState(false);
+  const [saved, setSaved] = useState(false);
   useEffect(() => {
     void getMyInviteeDiscoverability()
       .then(({ enabled: value }) => setEnabled(value))
@@ -28,12 +29,15 @@ export function InvitationDiscoverability() {
       .finally(() => setBusy(false));
   }, []);
   async function change(value: boolean) {
+    setSaved(false);
     setBusy(true);
     setError(false);
     try {
       const result = await setMyInviteeDiscoverability({ data: { enabled: value } });
       setEnabled(result.enabled);
+      setSaved(true);
     } catch {
+      setSaved(false);
       setError(true);
     } finally {
       setBusy(false);
@@ -52,7 +56,7 @@ export function InvitationDiscoverability() {
       </label>
       <p>{t('communityInvites.discoverableHelp')}</p>
       {error && <p role="alert">{t('communityInvites.discoverabilityError')}</p>}
-      {!busy && !error && <p aria-live="polite">{t('communityInvites.discoverabilitySaved')}</p>}
+      {saved && <p aria-live="polite">{t('communityInvites.discoverabilitySaved')}</p>}
     </section>
   );
 }
