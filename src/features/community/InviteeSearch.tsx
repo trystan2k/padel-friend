@@ -91,6 +91,9 @@ export function InviteeSearch({ communityId }: { communityId: string }) {
                 <input
                   value={query}
                   onChange={(event) => {
+                    generation.current += 1;
+                    setLoading(false);
+                    setError(false);
                     setSelected(null);
                     setToken('');
                     setRows([]);

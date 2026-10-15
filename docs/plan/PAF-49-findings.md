@@ -28,6 +28,9 @@
 | F26 | major    | src/features/community/InvitationDiscoverability.tsx:55            | Saved confirmation renders on initial mount before any save                  | fixed   | bug-fixer-specialist         | 5         |
 | F27 | major    | test/community.admin-ui.test.tsx:183                              | Dead `timeZone` prop; fixtures omit `time_zone`, hiding the timezone path    | fixed   | bug-fixer-specialist         | 5         |
 | F28 | minor    | src/features/community/InviteeSearch.tsx:101                      | Inline 44px style bypasses StyleX tokens                                     | fixed   | bug-fixer-specialist         | 5         |
+| F29 | minor    | src/features/community/InviteeSearch.tsx:98                       | Search error never cleared, suppressing later successful results             | fixed   | bug-fixer-specialist         | 6         |
+| F30 | minor    | src/features/community/CommunityInbox.tsx:80                      | Unreachable stale-page guard in `loadMore` (dead code)                       | fixed   | bug-fixer-specialist         | 6         |
+| F31 | minor    | test/community.admin-ui.test.tsx:418                              | Empty-state assertion can pass before the replacement search runs            | fixed   | testing-automation-specialist | 6         |
 
 ## Notes
 

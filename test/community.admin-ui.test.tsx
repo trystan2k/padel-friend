@@ -15,7 +15,9 @@ const mocks = vi.hoisted(() => ({
   reactivate: vi.fn<() => Promise<unknown>>(),
   promote: vi.fn<() => Promise<unknown>>(),
   demote: vi.fn<() => Promise<unknown>>(),
+  issueInvitation: vi.fn<() => Promise<unknown>>(),
   search: vi.fn<() => Promise<unknown>>(),
+  searchInvitees: vi.fn<() => Promise<unknown>>(),
   addVenue: vi.fn<() => Promise<unknown>>(),
   editVenue: vi.fn<() => Promise<unknown>>(),
   archiveVenue: vi.fn<() => Promise<unknown>>(),
@@ -50,6 +52,7 @@ vi.mock('@tanstack/react-router', () => ({
   useRouter: () => ({ invalidate: mocks.invalidate, navigate: mocks.navigate })
 }));
 vi.mock('../src/features/community/community-admin.functions', () => ({
+  issueInvitation: mocks.issueInvitation,
   approveCommunityMember: mocks.approve,
   denyCommunityMember: mocks.deny,
   removeCommunityMember: mocks.remove,
@@ -75,12 +78,14 @@ vi.mock('../src/features/community/community-invitee.functions', async (importOr
   ...(await importOriginal<
     typeof import('../src/features/community/community-invitee.functions')
   >()),
+  searchCommunityInvitees: mocks.searchInvitees,
   getMyInviteeDiscoverability: mocks.getDiscoverability,
   setMyInviteeDiscoverability: mocks.setDiscoverability
 }));
 
 import { createI18n } from '../src/i18n/config';
 import { CommunityInbox } from '../src/features/community/CommunityInbox';
+import { InviteeSearch } from '../src/features/community/InviteeSearch';
 import { InvitationDiscoverability } from '../src/features/community/InvitationDiscoverability';
 import {
   CommunityAdminDenied,
@@ -158,6 +163,8 @@ beforeEach(() => {
   mocks.sendRequestMessage.mockResolvedValue({ message_id: 'message-id' });
   mocks.listNotifications.mockResolvedValue([]);
   mocks.markRead.mockResolvedValue({ read_at: '2026-01-01T00:00:00Z' });
+  mocks.issueInvitation.mockResolvedValue({ token: 'invite-token' });
+  mocks.searchInvitees.mockResolvedValue([]);
   mocks.getDiscoverability.mockResolvedValue({ enabled: false });
   mocks.setDiscoverability.mockResolvedValue({ enabled: true });
 });
@@ -311,6 +318,117 @@ describe('community admin UI', () => {
     await user.click(screen.getByRole('button', { name: 'Retry' }));
     expect(await screen.findByText('Request 20')).toBeTruthy();
     expect(mocks.listNotifications).toHaveBeenLastCalledWith({ data: { offset: 20, limit: 20 } });
+  });
+  it('serializes inbox pages and appends each result in page order', async () => {
+    const firstPage = Array.from({ length: 20 }, (_, index) => ({
+      notification_id: `n${index}`,
+      message_id: `m${index}`,
+      body: `Request ${index}`,
+      created_at: '2026-01-01T00:00:00Z',
+      read_at: '2026-01-02T00:00:00Z',
+      time_zone: 'Europe/Madrid' as const
+    }));
+    const nextPage = Array.from({ length: 20 }, (_, index) => ({
+      notification_id: `n${index + 20}`,
+      message_id: `m${index + 20}`,
+      body: `Request ${index + 20}`,
+      created_at: '2025-12-31T00:00:00Z',
+      read_at: null,
+      time_zone: 'Europe/Madrid' as const
+    }));
+    let resolveNextPage!: (rows: typeof nextPage) => void;
+    const pendingPage = new Promise<typeof nextPage>((resolve) => (resolveNextPage = resolve));
+    mocks.listNotifications.mockReturnValueOnce(pendingPage).mockResolvedValueOnce([
+      {
+        ...nextPage[0],
+        notification_id: 'n40',
+        message_id: 'm40',
+        body: 'Request 40'
+      }
+    ]);
+    const user = userEvent.setup();
+    render(
+      <I18nextProvider i18n={createI18n('en')}>
+        <CommunityInbox initialItems={firstPage} loadError={false} />
+      </I18nextProvider>
+    );
+
+    const loadMore = screen.getByRole('button', { name: 'Load more' });
+    await user.click(loadMore);
+    await waitFor(() => expect(loadMore.hasAttribute('disabled')).toBe(true));
+    await user.click(loadMore);
+    expect(mocks.listNotifications).toHaveBeenCalledTimes(1);
+
+    await act(async () => resolveNextPage(nextPage));
+    await screen.findByText('Request 39');
+    await user.click(screen.getByRole('button', { name: 'Load more' }));
+    await screen.findByText('Request 40');
+
+    expect(mocks.listNotifications).toHaveBeenNthCalledWith(1, {
+      data: { offset: 20, limit: 20 }
+    });
+    expect(mocks.listNotifications).toHaveBeenNthCalledWith(2, {
+      data: { offset: 40, limit: 20 }
+    });
+    expect(
+      Array.from(document.querySelectorAll('article')).map(
+        (article) => article.querySelector('p')?.textContent
+      )
+    ).toEqual(Array.from({ length: 41 }, (_, index) => `Request ${index}`));
+  });
+  it('clears a failed invitee search before rendering results for the next query', async () => {
+    mocks.searchInvitees
+      .mockRejectedValueOnce(new Error('search failed'))
+      .mockResolvedValueOnce([{ user_id: 'invitee-id', display_name: 'Alicia Searchable' }]);
+    const user = userEvent.setup();
+    render(
+      <I18nextProvider i18n={createI18n('en')}>
+        <InviteeSearch communityId={community.id} />
+      </I18nextProvider>
+    );
+    await user.click(screen.getByRole('button', { name: 'Issue invitation' }));
+    const search = screen.getByRole('textbox', { name: 'Search opted-in display names' });
+    await user.type(search, 'failure');
+    expect(await screen.findByRole('alert')).toBeTruthy();
+
+    await user.clear(search);
+    await user.type(search, 'success');
+
+    expect(await screen.findByRole('radio', { name: /Alicia Searchable/ })).toBeTruthy();
+    expect(screen.queryByRole('alert')).toBeNull();
+  });
+  it('shows empty state after a failed invitee search is followed by no results', async () => {
+    let resolveEmptySearch!: (rows: { user_id: string; display_name: string }[]) => void;
+    const emptySearch = new Promise<{ user_id: string; display_name: string }[]>((resolve) => {
+      resolveEmptySearch = resolve;
+    });
+    mocks.searchInvitees
+      .mockRejectedValueOnce(new Error('search failed'))
+      .mockReturnValueOnce(emptySearch);
+    const user = userEvent.setup();
+    render(
+      <I18nextProvider i18n={createI18n('en')}>
+        <InviteeSearch communityId={community.id} />
+      </I18nextProvider>
+    );
+    await user.click(screen.getByRole('button', { name: 'Issue invitation' }));
+    const search = screen.getByRole('textbox', { name: 'Search opted-in display names' });
+    await user.type(search, 'failure');
+    expect(await screen.findByRole('alert')).toBeTruthy();
+
+    await user.clear(search);
+    await user.type(search, 'empty');
+
+    await waitFor(() =>
+      expect(mocks.searchInvitees).toHaveBeenNthCalledWith(2, {
+        data: { community_id: community.id, query: 'empty' }
+      })
+    );
+    expect(await screen.findByText('Searching…')).toBeTruthy();
+    expect(screen.queryByText('No eligible invitees found.')).toBeNull();
+    await act(async () => resolveEmptySearch([]));
+    expect(await screen.findByText('No eligible invitees found.')).toBeTruthy();
+    expect(screen.queryByRole('alert')).toBeNull();
   });
   it('renders only supplied authorized community admin destinations', () => {
     const { rerender } = render(

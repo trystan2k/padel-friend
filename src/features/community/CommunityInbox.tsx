@@ -77,7 +77,6 @@ export function CommunityInbox({
       const result = await listMyCommunityNotifications({
         data: { offset: requestedPage * 20, limit: 20 }
       });
-      if (requestedPage !== page) return;
       setItems((current) => {
         const seen = new Set(current.map((item) => item.notification_id));
         const additions = result.filter((item) => {
