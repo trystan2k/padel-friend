@@ -37,6 +37,8 @@ jobs:
           fi
           printf 'VITE_SUPABASE_URL=%s\nVITE_SUPABASE_PUBLISHABLE_KEY=%s\n' "$API_URL" "$PUBLISHABLE_KEY" >> "$GITHUB_ENV"
           printf 'VITE_SUPABASE_URL=%s\nVITE_SUPABASE_PUBLISHABLE_KEY=%s\n' "$API_URL" "$PUBLISHABLE_KEY" > .env
+      - name: Check generated database types
+        run: pnpm db:types:check
       - run: pnpm exec playwright install --with-deps chromium
       - run: pnpm build
       - run: pnpm knip

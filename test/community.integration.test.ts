@@ -42,7 +42,10 @@ import {
   listPublicCommunities,
   updateCommunitySettings
 } from '../src/features/community/community.functions';
-import { reactivateCommunityMember } from '../src/features/community/community-admin.functions';
+import {
+  promoteCommunityMember,
+  reactivateCommunityMember
+} from '../src/features/community/community-admin.functions';
 
 vi.setConfig({ testTimeout: 30000, hookTimeout: 30000 });
 type LocalEnv = NonNullable<ReturnType<typeof localSupabaseEnv>['env']>;
@@ -382,6 +385,7 @@ describe.skipIf(environment.env === null)('community domain (local Supabase inte
       'id',
       'join_policy',
       'logo_path',
+      'member_count',
       'name',
       'updated_at',
       'visibility'
@@ -504,6 +508,96 @@ describe.skipIf(environment.env === null)('community domain (local Supabase inte
     for (const user of [member, admin])
       expect(await rows(user.client, 'communities', privateId)).toHaveLength(1);
     expect((await anon().from('communities').select('id')).error?.code).toBe('42501');
+    serverClient.current = null;
+  });
+
+  // Longest membership-matrix round-trip chain in the suite; measured >5s under
+  // full-suite worker contention, so it carries an explicit timeout.
+  it('counts only active open memberships, including Admins, once after reactivation, and preserves zero', async () => {
+    const created = await admin.client.rpc('create_community', {
+      p_name: `Count matrix ${crypto.randomUUID()}`,
+      p_visibility: 'public',
+      p_join_policy: 'instant'
+    });
+    expect(created.error).toBeNull();
+    const communityId = created.data;
+    if (typeof communityId !== 'string') throw new Error('Missing count fixture community');
+    async function add(
+      userId: string,
+      status: 'active' | 'pending' | 'inactive',
+      role: 'admin' | 'member',
+      validUntil: string | null = null
+    ) {
+      const untilValue =
+        status === 'inactive' && validUntil === null ? new Date().toISOString() : validUntil;
+      const until = untilValue === null ? 'null' : `'${untilValue}'::timestamptz`;
+      const inserted = await executeLocalFixtureSql(
+        `insert into public.community_members (community_id,user_id,status,role,valid_from,valid_until) values ('${communityId}','${userId}','${status}','${role}',now()-interval '1 day',${until}) returning id`
+      );
+      const insertedRow = inserted.rows[0];
+      if (inserted.rows.length !== 1 || typeof insertedRow?.id !== 'string')
+        throw new Error('Membership fixture insert returned no ID');
+      return insertedRow.id;
+    }
+    const activeMemberId = await add(member.id, 'active', 'member');
+    await add(pending.id, 'pending', 'member');
+    await add(inactive.id, 'inactive', 'member');
+    await add(invited.id, 'inactive', 'member', new Date().toISOString());
+    const adminMemberId = await add(outsider.id, 'active', 'member');
+    serverClient.current = admin.client;
+    await promoteCommunityMember({
+      data: { community_id: communityId, membership_id: adminMemberId }
+    });
+
+    serverClient.current = publicActor.client;
+    const list = () => listPublicCommunities({ data: { search: 'Count matrix', limit: 50 } });
+    const detail = () => getPublicCommunity({ data: { community_id: communityId } });
+    expect((await list()).communities.find((item) => item.id === communityId)?.member_count).toBe(
+      3
+    );
+    expect((await detail())?.member_count).toBe(3);
+
+    serverClient.current = member.client;
+    await expect(leaveCommunity({ data: { community_id: communityId } })).resolves.toMatchObject({
+      status: 'inactive',
+      valid_until: expect.any(String)
+    });
+    serverClient.current = publicActor.client;
+    expect((await detail())?.member_count).toBe(2);
+
+    serverClient.current = admin.client;
+    await reactivateCommunityMember({
+      data: { community_id: communityId, membership_id: activeMemberId }
+    });
+    serverClient.current = publicActor.client;
+    expect((await detail())?.member_count).toBe(3);
+    const history = await admin.client
+      .from('community_members')
+      .select('id,status,valid_until')
+      .eq('community_id', communityId)
+      .eq('user_id', member.id);
+    expect(history.error).toBeNull();
+    expect(history.data).toHaveLength(2);
+    expect((await detail())?.member_count).toBe(3);
+
+    serverClient.current = null;
+  }, 15000);
+
+  it('denies anonymous RPC execution and never serializes private fields', async () => {
+    const anonymousRole = await anon().rpc('public_community_discovery');
+    expect(anonymousRole.error?.code).toBe('42501');
+    const anonymous = anon();
+    const anonymousSignIn = await anonymous.auth.signInAnonymously();
+    expect(anonymousSignIn.error?.code).toBe('anonymous_provider_disabled');
+    serverClient.current = admin.client;
+    const payload = JSON.stringify({
+      list: await listPublicCommunities({ data: {} }),
+      private: await getPublicCommunity({ data: { community_id: privateId } })
+    });
+    expect(payload).not.toContain('settings');
+    expect(payload).not.toContain('created_by');
+    expect(payload).not.toContain(privateId);
+    expect(await getPublicCommunity({ data: { community_id: privateId } })).toBeNull();
     serverClient.current = null;
   });
 
@@ -737,6 +831,8 @@ describe.skipIf(environment.env === null)('community domain (local Supabase inte
     ).toBe('42501');
   });
 
+  // Full invitation-visibility matrix across several actors; measured >3s under
+  // full-suite worker contention, so it carries an explicit timeout.
   it('AC4: private rows hidden filtered and unfiltered; only own invitation is exposed', async () => {
     const assertInactiveOnly = async () => {
       const history = (await rows(admin.client, 'community_members', privateId)).filter(
@@ -807,7 +903,7 @@ describe.skipIf(environment.env === null)('community domain (local Supabase inte
       '42501'
     );
     await assertInactiveOnly();
-  });
+  }, 15000);
 
   it('AC5: admin alone mutates rows/settings; member sees own interval, not roster', async () => {
     const assertInactiveOnly = async () => {

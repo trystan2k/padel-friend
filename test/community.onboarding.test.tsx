@@ -45,6 +45,7 @@ const row: PublicCommunity = {
   description: null,
   logo_path: null,
   visibility: 'public',
+  member_count: 3,
   join_policy: 'instant',
   created_at: '2026-10-01T00:00:00Z',
   updated_at: '2026-10-01T00:00:00Z'
@@ -94,6 +95,48 @@ beforeEach(() => {
 afterEach(cleanup);
 
 describe('community onboarding', () => {
+  it.each(['en', 'pt-BR', 'es'] as const)(
+    'formats zero, singular and large discovery counts in %s',
+    (locale) => {
+      const i18n = createI18n(locale);
+      const values = [0, 1, 1240];
+      const communities = values.map((member_count, index) => ({
+        ...row,
+        id: `${index + 1}1111111-1111-4111-8111-111111111111`,
+        name: `Count fixture ${index}`,
+        member_count
+      }));
+      render(
+        <I18nextProvider i18n={i18n}>
+          <CommunityOnboarding
+            search={{}}
+            data={{ communities, next_offset: null, failed: false }}
+          />
+        </I18nextProvider>
+      );
+      for (const count of values) {
+        const formattedCount = new Intl.NumberFormat(i18n.resolvedLanguage).format(count);
+        expect(
+          screen.getByText(i18n.t('communityOnboarding.memberCount', { count, formattedCount }))
+        ).toBeTruthy();
+      }
+    }
+  );
+
+  it('shows a discovery error without fabricating a zero count', () => {
+    const i18n = createI18n('en');
+    render(
+      <I18nextProvider i18n={i18n}>
+        <CommunityOnboarding
+          search={{}}
+          data={{ communities: [], next_offset: null, failed: true }}
+        />
+      </I18nextProvider>
+    );
+    expect(screen.getByRole('alert').textContent).toBe(i18n.t('communityOnboarding.loadFailed'));
+    expect(screen.queryByText(/0 members/)).toBeNull();
+  });
+
   it.each(['en', 'pt-BR', 'es'] as const)(
     'announces draft and route pending state in %s, keeps search focused and suppresses empty results',
     async (locale) => {
@@ -198,7 +241,7 @@ describe('community onboarding', () => {
     mount();
     expect(screen.getByText('Chamberí · Open join')).toBeTruthy();
     expect(screen.getByText('Retiro · Approval required')).toBeTruthy();
-    expect(screen.queryByText(/members|typical player level/i)).toBeNull();
+    expect(screen.getAllByText('3 members')).toHaveLength(2);
     await userEvent.click(screen.getByRole('button', { name: 'JOIN COMMUNITY' }));
     await waitFor(() => expect(screen.getByText('Joined community')).toBeTruthy());
     await userEvent.click(screen.getByRole('button', { name: 'REQUEST TO JOIN' }));

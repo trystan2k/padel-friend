@@ -87,6 +87,9 @@ describe.skipIf(environment.env === null)('community column isolation (local Sup
     if (!environment.env) throw new Error(environment.reason);
     return environment.env;
   }
+  // Single test exercises dozens of column-ACL and settings-RPC round trips;
+  // measured >3s under full-suite worker contention, so it carries an explicit
+  // timeout.
   it('enforces direct column ACLs and member/admin settings RPC authorization', async () => {
     const { url, key } = env();
     async function queryLocal(sql: string) {
@@ -285,5 +288,5 @@ describe.skipIf(environment.env === null)('community column isolation (local Sup
       (await updateCommunitySettings({ data: { community_id: id, settings: { server: true } } }))
         .settings
     ).toEqual({ server: true });
-  });
+  }, 15000);
 });

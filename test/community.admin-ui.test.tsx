@@ -15,11 +15,18 @@ const mocks = vi.hoisted(() => ({
   reactivate: vi.fn<() => Promise<unknown>>(),
   promote: vi.fn<() => Promise<unknown>>(),
   demote: vi.fn<() => Promise<unknown>>(),
+  issueInvitation: vi.fn<() => Promise<unknown>>(),
   search: vi.fn<() => Promise<unknown>>(),
+  searchInvitees: vi.fn<() => Promise<unknown>>(),
   addVenue: vi.fn<() => Promise<unknown>>(),
   editVenue: vi.fn<() => Promise<unknown>>(),
   archiveVenue: vi.fn<() => Promise<unknown>>(),
-  updateSettings: vi.fn<() => Promise<unknown>>()
+  updateSettings: vi.fn<() => Promise<unknown>>(),
+  sendRequestMessage: vi.fn<() => Promise<unknown>>(),
+  listNotifications: vi.fn<() => Promise<unknown>>(),
+  markRead: vi.fn<() => Promise<unknown>>(),
+  getDiscoverability: vi.fn<() => Promise<{ enabled: boolean }>>(),
+  setDiscoverability: vi.fn<() => Promise<{ enabled: boolean }>>()
 }));
 
 vi.mock('@tanstack/react-router', () => ({
@@ -45,6 +52,7 @@ vi.mock('@tanstack/react-router', () => ({
   useRouter: () => ({ invalidate: mocks.invalidate, navigate: mocks.navigate })
 }));
 vi.mock('../src/features/community/community-admin.functions', () => ({
+  issueInvitation: mocks.issueInvitation,
   approveCommunityMember: mocks.approve,
   denyCommunityMember: mocks.deny,
   removeCommunityMember: mocks.remove,
@@ -61,8 +69,24 @@ vi.mock('../src/features/community/community-admin.functions', () => ({
 vi.mock('../src/features/community/community.functions', () => ({
   updateCommunitySettings: mocks.updateSettings
 }));
+vi.mock('../src/features/community/community-request.functions', () => ({
+  sendCommunityRequestMessage: mocks.sendRequestMessage,
+  listMyCommunityNotifications: mocks.listNotifications,
+  markCommunityNotificationRead: mocks.markRead
+}));
+vi.mock('../src/features/community/community-invitee.functions', async (importOriginal) => ({
+  ...(await importOriginal<
+    typeof import('../src/features/community/community-invitee.functions')
+  >()),
+  searchCommunityInvitees: mocks.searchInvitees,
+  getMyInviteeDiscoverability: mocks.getDiscoverability,
+  setMyInviteeDiscoverability: mocks.setDiscoverability
+}));
 
 import { createI18n } from '../src/i18n/config';
+import { CommunityInbox } from '../src/features/community/CommunityInbox';
+import { InviteeSearch } from '../src/features/community/InviteeSearch';
+import { InvitationDiscoverability } from '../src/features/community/InvitationDiscoverability';
 import {
   CommunityAdminDenied,
   CommunityAdminEntries,
@@ -97,14 +121,29 @@ function mount(
 ) {
   const props =
     screenName === 'requests' || screenName === 'members'
-      ? { screen: screenName, community, members: [member] }
+      ? {
+          screen: screenName,
+          community,
+          members: [member],
+          ...(screenName === 'requests' ? { timezone: 'Europe/Madrid' as const } : {})
+        }
       : screenName === 'member'
         ? { screen: screenName, community, member, membershipId: member.membership_id }
         : screenName === 'venues'
           ? { screen: screenName, community, venues: [] }
           : screenName === 'audit'
             ? { screen: screenName, community, audit: [] }
-            : { screen: screenName, community };
+            : screenName === 'settings'
+              ? {
+                  screen: screenName,
+                  community,
+                  defaults: {
+                    timezone: 'Europe/Madrid',
+                    currency: 'EUR',
+                    member_created_leagues_enabled: true
+                  }
+                }
+              : { screen: screenName, community };
   return render(
     <I18nextProvider i18n={createI18n(locale)}>
       <CommunityAdminScreen {...props} />
@@ -121,10 +160,518 @@ beforeEach(() => {
   mocks.search.mockResolvedValue([member]);
   mocks.listVenues.mockResolvedValue([]);
   mocks.listAudit.mockResolvedValue([]);
+  mocks.sendRequestMessage.mockResolvedValue({ message_id: 'message-id' });
+  mocks.listNotifications.mockResolvedValue([]);
+  mocks.markRead.mockResolvedValue({ read_at: '2026-01-01T00:00:00Z' });
+  mocks.issueInvitation.mockResolvedValue({ token: 'invite-token' });
+  mocks.searchInvitees.mockResolvedValue([]);
+  mocks.getDiscoverability.mockResolvedValue({ enabled: false });
+  mocks.setDiscoverability.mockResolvedValue({ enabled: true });
 });
 afterEach(cleanup);
 
+function mockClipboard() {
+  const descriptor = Object.getOwnPropertyDescriptor(navigator, 'clipboard');
+  const writeText = vi.fn<(token: string) => Promise<void>>().mockResolvedValue(undefined);
+  Object.defineProperty(navigator, 'clipboard', {
+    configurable: true,
+    value: { writeText }
+  });
+  return {
+    writeText,
+    restore() {
+      if (descriptor) Object.defineProperty(navigator, 'clipboard', descriptor);
+      else Reflect.deleteProperty(navigator, 'clipboard');
+    }
+  };
+}
+
+async function searchInvitees(
+  input: HTMLElement,
+  query: string,
+  rows: { user_id: string; display_name: string }[]
+) {
+  mocks.searchInvitees.mockResolvedValueOnce(rows);
+  vi.useFakeTimers();
+  try {
+    fireEvent.change(input, { target: { value: query } });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(250);
+    });
+  } finally {
+    vi.useRealTimers();
+  }
+}
+
+async function openInviteeSearch(rows: { user_id: string; display_name: string }[]) {
+  const user = userEvent.setup();
+  render(
+    <I18nextProvider i18n={createI18n('en')}>
+      <InviteeSearch communityId={community.id} />
+    </I18nextProvider>
+  );
+  await user.click(screen.getByRole('button', { name: 'Issue invitation' }));
+  const dialog = screen.getByRole('dialog');
+  const input = within(dialog).getByRole('textbox', {
+    name: 'Search opted-in display names'
+  });
+  await searchInvitees(input, 'applicants', rows);
+  return { user, dialog, input };
+}
+
 describe('community admin UI', () => {
+  it('composes request updates through the dialog and reports send errors', async () => {
+    const user = userEvent.setup();
+    mount('requests');
+    await user.click(screen.getByRole('button', { name: 'Send update' }));
+    await user.type(screen.getByLabelText('Message'), 'Hello applicant');
+    mocks.sendRequestMessage.mockRejectedValueOnce(new Error('failed'));
+    await user.click(screen.getByRole('button', { name: 'Send message' }));
+    expect((await screen.findByRole('alert')).textContent).toContain('Could not send message');
+    mocks.sendRequestMessage.mockResolvedValueOnce({ message_id: 'message-id' });
+    await user.click(screen.getByRole('button', { name: 'Send message' }));
+    await waitFor(() => expect(mocks.sendRequestMessage).toHaveBeenCalled());
+  });
+
+  it('renders XSS-like inbox text literally and keeps load failure distinct from empty', () => {
+    const body = '<img src=x onerror=alert(1)>';
+    render(
+      <I18nextProvider i18n={createI18n('en')}>
+        <CommunityInbox
+          initialItems={[
+            {
+              notification_id: 'n',
+              message_id: 'm',
+              body,
+              created_at: '2026-01-01T00:00:00Z',
+              read_at: null,
+              time_zone: 'Europe/Madrid'
+            }
+          ]}
+          loadError={false}
+        />
+      </I18nextProvider>
+    );
+    expect(screen.getByText(body)).toBeTruthy();
+    expect(document.querySelector('img')).toBeNull();
+    cleanup();
+    render(
+      <I18nextProvider i18n={createI18n('en')}>
+        <CommunityInbox initialItems={null} loadError />
+      </I18nextProvider>
+    );
+    expect(screen.getByRole('alert').textContent).toContain('Inbox unavailable');
+    expect(screen.queryByText('No messages yet')).toBeNull();
+  });
+  it('formats each inbox timestamp with its own timezone', () => {
+    render(
+      <I18nextProvider i18n={createI18n('en')}>
+        <CommunityInbox
+          initialItems={[
+            {
+              notification_id: 'utc',
+              message_id: 'm-utc',
+              body: 'UTC notification',
+              created_at: '2026-01-01T00:30:00Z',
+              read_at: '2026-01-02T00:00:00Z',
+              time_zone: 'UTC'
+            },
+            {
+              notification_id: 'madrid',
+              message_id: 'm-madrid',
+              body: 'Madrid notification',
+              created_at: '2026-01-01T00:30:00Z',
+              read_at: '2026-01-02T00:00:00Z',
+              time_zone: 'Europe/Madrid'
+            }
+          ]}
+          loadError={false}
+        />
+      </I18nextProvider>
+    );
+
+    expect(screen.getByText('Jan 1, 2026, 12:30 AM UTC')).toBeTruthy();
+    expect(screen.getByText('Jan 1, 2026, 1:30 AM GMT+1')).toBeTruthy();
+  });
+  it('shows discoverability confirmation only after a successful change', async () => {
+    const user = userEvent.setup();
+    render(
+      <I18nextProvider i18n={createI18n('en')}>
+        <InvitationDiscoverability />
+      </I18nextProvider>
+    );
+
+    const checkbox = await screen.findByRole('checkbox');
+    await waitFor(() => expect(checkbox.hasAttribute('disabled')).toBe(false));
+    expect(screen.queryByText('Discoverability preference saved.')).toBeNull();
+
+    await user.click(checkbox);
+
+    expect(await screen.findByText('Discoverability preference saved.')).toBeTruthy();
+    expect(mocks.setDiscoverability).toHaveBeenCalledWith({ data: { enabled: true } });
+  });
+  it('keeps items visible after mark-read errors and retries the item', async () => {
+    mocks.markRead.mockRejectedValueOnce(new Error('mutation failed'));
+    const user = userEvent.setup();
+    render(
+      <I18nextProvider i18n={createI18n('en')}>
+        <CommunityInbox
+          initialItems={[
+            {
+              notification_id: 'n1',
+              message_id: 'm1',
+              body: 'Visible request',
+              created_at: '2026-01-01T00:00:00Z',
+              read_at: null,
+              time_zone: 'Europe/Madrid'
+            }
+          ]}
+          loadError={false}
+        />
+      </I18nextProvider>
+    );
+    await user.click(screen.getByRole('button', { name: 'Mark as read' }));
+    expect(await screen.findByText('Could not mark this message as read')).toBeTruthy();
+    expect(screen.getByText('Visible request')).toBeTruthy();
+    await user.click(screen.getByRole('button', { name: 'Retry' }));
+    await waitFor(() => expect(mocks.markRead).toHaveBeenCalledTimes(2));
+  });
+  it('preserves loaded items when a page fails and retries at same offset', async () => {
+    const items = Array.from({ length: 20 }, (_, index) => ({
+      notification_id: `n${index}`,
+      message_id: `m${index}`,
+      body: `Request ${index}`,
+      created_at: '2026-01-01T00:00:00Z',
+      read_at: '2026-01-02T00:00:00Z',
+      time_zone: 'Europe/Madrid' as const
+    }));
+    mocks.listNotifications.mockRejectedValueOnce(new Error('page failed')).mockResolvedValueOnce([
+      {
+        notification_id: 'n20',
+        message_id: 'm20',
+        body: 'Request 20',
+        created_at: '2025-12-31T00:00:00Z',
+        read_at: null,
+        time_zone: 'Europe/Madrid'
+      }
+    ]);
+    const user = userEvent.setup();
+    render(
+      <I18nextProvider i18n={createI18n('en')}>
+        <CommunityInbox initialItems={items} loadError={false} />
+      </I18nextProvider>
+    );
+    await user.click(screen.getByRole('button', { name: 'Load more' }));
+    expect(await screen.findByText('Could not load more messages')).toBeTruthy();
+    expect(screen.getByText('Request 0')).toBeTruthy();
+    await user.click(screen.getByRole('button', { name: 'Retry' }));
+    expect(await screen.findByText('Request 20')).toBeTruthy();
+    expect(mocks.listNotifications).toHaveBeenLastCalledWith({ data: { offset: 20, limit: 20 } });
+  });
+  it('serializes inbox pages and appends each result in page order', async () => {
+    const firstPage = Array.from({ length: 20 }, (_, index) => ({
+      notification_id: `n${index}`,
+      message_id: `m${index}`,
+      body: `Request ${index}`,
+      created_at: '2026-01-01T00:00:00Z',
+      read_at: '2026-01-02T00:00:00Z',
+      time_zone: 'Europe/Madrid' as const
+    }));
+    const nextPage = Array.from({ length: 20 }, (_, index) => ({
+      notification_id: `n${index + 20}`,
+      message_id: `m${index + 20}`,
+      body: `Request ${index + 20}`,
+      created_at: '2025-12-31T00:00:00Z',
+      read_at: null,
+      time_zone: 'Europe/Madrid' as const
+    }));
+    let resolveNextPage!: (rows: typeof nextPage) => void;
+    const pendingPage = new Promise<typeof nextPage>((resolve) => (resolveNextPage = resolve));
+    mocks.listNotifications.mockReturnValueOnce(pendingPage).mockResolvedValueOnce([
+      {
+        ...nextPage[0],
+        notification_id: 'n40',
+        message_id: 'm40',
+        body: 'Request 40'
+      }
+    ]);
+    const user = userEvent.setup();
+    render(
+      <I18nextProvider i18n={createI18n('en')}>
+        <CommunityInbox initialItems={firstPage} loadError={false} />
+      </I18nextProvider>
+    );
+
+    const loadMore = screen.getByRole('button', { name: 'Load more' });
+    await user.click(loadMore);
+    await waitFor(() => expect(loadMore.hasAttribute('disabled')).toBe(true));
+    await user.click(loadMore);
+    expect(mocks.listNotifications).toHaveBeenCalledTimes(1);
+
+    await act(async () => resolveNextPage(nextPage));
+    await screen.findByText('Request 39');
+    await user.click(screen.getByRole('button', { name: 'Load more' }));
+    await screen.findByText('Request 40');
+
+    expect(mocks.listNotifications).toHaveBeenNthCalledWith(1, {
+      data: { offset: 20, limit: 20 }
+    });
+    expect(mocks.listNotifications).toHaveBeenNthCalledWith(2, {
+      data: { offset: 40, limit: 20 }
+    });
+    expect(
+      Array.from(document.querySelectorAll('article')).map(
+        (article) => article.querySelector('p')?.textContent
+      )
+    ).toEqual(Array.from({ length: 41 }, (_, index) => `Request ${index}`));
+  });
+  it('does not carry copied confirmation from applicant A to applicant B', async () => {
+    let clipboard: ReturnType<typeof mockClipboard> | undefined;
+    try {
+      const { user, dialog } = await openInviteeSearch([
+        { user_id: 'applicant-a', display_name: 'Applicant A' },
+        { user_id: 'applicant-b', display_name: 'Applicant B' }
+      ]);
+      clipboard = mockClipboard();
+      await user.click(within(dialog).getByRole('radio', { name: /Applicant A/ }));
+      mocks.issueInvitation.mockResolvedValueOnce({ token: 'token-a' });
+      await user.click(within(dialog).getByRole('button', { name: 'Issue invitation' }));
+      expect(await within(dialog).findByText('token-a')).toBeTruthy();
+      await user.click(within(dialog).getByRole('button', { name: 'Copy link' }));
+      expect(await within(dialog).findByText('Copied')).toBeTruthy();
+
+      await user.click(within(dialog).getByRole('radio', { name: /Applicant B/ }));
+      expect(within(dialog).queryByText('Copied')).toBeNull();
+      mocks.issueInvitation.mockResolvedValueOnce({ token: 'token-b' });
+      await user.click(within(dialog).getByRole('button', { name: 'Issue invitation' }));
+
+      expect(await within(dialog).findByText('token-b')).toBeTruthy();
+      expect(within(dialog).queryByText('token-a')).toBeNull();
+      expect(within(dialog).queryByText('Copied')).toBeNull();
+      expect(clipboard.writeText).toHaveBeenCalledTimes(1);
+      expect(clipboard.writeText).toHaveBeenCalledWith('token-a');
+    } finally {
+      clipboard?.restore();
+    }
+  });
+
+  it('preserves a successful invitation response for its original applicant after selection changes', async () => {
+    let resolveInvitation!: (result: { token: string }) => void;
+    const pendingInvitation = new Promise<{ token: string }>(
+      (resolve) => (resolveInvitation = resolve)
+    );
+    const { user, dialog } = await openInviteeSearch([
+      { user_id: 'applicant-a', display_name: 'Applicant A' },
+      { user_id: 'applicant-b', display_name: 'Applicant B' }
+    ]);
+    await user.click(within(dialog).getByRole('radio', { name: /Applicant A/ }));
+    mocks.issueInvitation.mockReturnValueOnce(pendingInvitation);
+    await user.click(within(dialog).getByRole('button', { name: 'Issue invitation' }));
+    expect(mocks.issueInvitation).toHaveBeenCalledWith({
+      data: { community_id: community.id, invitee_user_id: 'applicant-a' }
+    });
+
+    await user.click(within(dialog).getByRole('radio', { name: /Applicant B/ }));
+    await act(async () => resolveInvitation({ token: 'stale-token-a' }));
+
+    expect(within(dialog).getByText('stale-token-a')).toBeTruthy();
+    const issuedOutput = within(dialog).getByText(
+      (_, element) =>
+        element?.tagName === 'OUTPUT' && element.textContent?.includes('stale-token-a')
+    );
+    expect(issuedOutput.textContent).toContain('Applicant A');
+    expect(issuedOutput.textContent).not.toContain('Applicant B');
+  });
+
+  it('prevents duplicate invitation requests and preserves the single returned token', async () => {
+    let resolveInvitation!: (result: { token: string }) => void;
+    const pendingInvitation = new Promise<{ token: string }>(
+      (resolve) => (resolveInvitation = resolve)
+    );
+    const { user, dialog } = await openInviteeSearch([
+      { user_id: 'applicant-a', display_name: 'Applicant A' }
+    ]);
+    await user.click(within(dialog).getByRole('radio', { name: /Applicant A/ }));
+    mocks.issueInvitation.mockReturnValueOnce(pendingInvitation);
+    const issueButton = within(dialog).getByRole('button', { name: 'Issue invitation' });
+
+    act(() => {
+      fireEvent.click(issueButton);
+      fireEvent.click(issueButton);
+    });
+
+    expect(mocks.issueInvitation).toHaveBeenCalledTimes(1);
+    expect(issueButton.hasAttribute('disabled')).toBe(true);
+    expect(issueButton.getAttribute('aria-busy')).toBe('true');
+    await act(async () => resolveInvitation({ token: 'single-token-a' }));
+
+    expect(within(dialog).getByText('single-token-a')).toBeTruthy();
+    expect(mocks.issueInvitation).toHaveBeenCalledTimes(1);
+  });
+
+  it('shows a retryable issuance error without displaying a token after failure', async () => {
+    const { user, dialog } = await openInviteeSearch([
+      { user_id: 'applicant-a', display_name: 'Applicant A' }
+    ]);
+    await user.click(within(dialog).getByRole('radio', { name: /Applicant A/ }));
+    mocks.issueInvitation
+      .mockRejectedValueOnce(new Error('issuance failed'))
+      .mockResolvedValueOnce({ token: 'retry-token-a' });
+    const issueButton = within(dialog).getByRole('button', { name: 'Issue invitation' });
+
+    await user.click(issueButton);
+    expect(await within(dialog).findByRole('alert')).toBeTruthy();
+    expect(within(dialog).queryByText('retry-token-a')).toBeNull();
+    expect(issueButton.hasAttribute('disabled')).toBeFalsy();
+
+    await user.click(issueButton);
+
+    expect(await within(dialog).findByText('retry-token-a')).toBeTruthy();
+    expect(mocks.issueInvitation).toHaveBeenCalledTimes(2);
+  });
+
+  it('confirms copying only after the current applicant token is copied', async () => {
+    let clipboard: ReturnType<typeof mockClipboard> | undefined;
+    try {
+      const { user, dialog } = await openInviteeSearch([
+        { user_id: 'applicant-b', display_name: 'Applicant B' }
+      ]);
+      clipboard = mockClipboard();
+      await user.click(within(dialog).getByRole('radio', { name: /Applicant B/ }));
+      mocks.issueInvitation.mockResolvedValueOnce({ token: 'token-b' });
+      await user.click(within(dialog).getByRole('button', { name: 'Issue invitation' }));
+      expect(await within(dialog).findByText('token-b')).toBeTruthy();
+      expect(within(dialog).queryByText('Copied')).toBeNull();
+
+      await user.click(within(dialog).getByRole('button', { name: 'Copy link' }));
+
+      expect(await within(dialog).findByText('Copied')).toBeTruthy();
+      expect(clipboard.writeText).toHaveBeenCalledTimes(1);
+      expect(clipboard.writeText).toHaveBeenCalledWith('token-b');
+    } finally {
+      clipboard?.restore();
+    }
+  });
+
+  it('clears copied confirmation and token when starting a new invitee search', async () => {
+    let clipboard: ReturnType<typeof mockClipboard> | undefined;
+    try {
+      const { user, dialog, input } = await openInviteeSearch([
+        { user_id: 'applicant-a', display_name: 'Applicant A' }
+      ]);
+      clipboard = mockClipboard();
+      await user.click(within(dialog).getByRole('radio', { name: /Applicant A/ }));
+      mocks.issueInvitation.mockResolvedValueOnce({ token: 'token-a' });
+      await user.click(within(dialog).getByRole('button', { name: 'Issue invitation' }));
+      await within(dialog).findByText('token-a');
+      await user.click(within(dialog).getByRole('button', { name: 'Copy link' }));
+      expect(await within(dialog).findByText('Copied')).toBeTruthy();
+
+      await searchInvitees(input, 'new applicants', [
+        { user_id: 'applicant-b', display_name: 'Applicant B' }
+      ]);
+
+      expect(within(dialog).queryByText('Copied')).toBeNull();
+      expect(within(dialog).queryByText('token-a')).toBeNull();
+      expect(within(dialog).getByRole('radio', { name: /Applicant B/ })).toBeTruthy();
+      expect(clipboard.writeText).toHaveBeenCalledTimes(1);
+      expect(clipboard.writeText).toHaveBeenCalledWith('token-a');
+    } finally {
+      clipboard?.restore();
+    }
+  });
+
+  it('clears a failed invitee search before rendering results for the next query', async () => {
+    mocks.searchInvitees
+      .mockRejectedValueOnce(new Error('search failed'))
+      .mockResolvedValueOnce([{ user_id: 'invitee-id', display_name: 'Alicia Searchable' }]);
+    const user = userEvent.setup();
+    render(
+      <I18nextProvider i18n={createI18n('en')}>
+        <InviteeSearch communityId={community.id} />
+      </I18nextProvider>
+    );
+    await user.click(screen.getByRole('button', { name: 'Issue invitation' }));
+    const search = screen.getByRole('textbox', { name: 'Search opted-in display names' });
+    await user.type(search, 'failure');
+    expect(await screen.findByRole('alert')).toBeTruthy();
+
+    await user.clear(search);
+    await user.type(search, 'success');
+
+    expect(await screen.findByRole('radio', { name: /Alicia Searchable/ })).toBeTruthy();
+    expect(screen.queryByRole('alert')).toBeNull();
+  });
+  it('shows empty state after a failed invitee search is followed by no results', async () => {
+    let resolveEmptySearch!: (rows: { user_id: string; display_name: string }[]) => void;
+    const emptySearch = new Promise<{ user_id: string; display_name: string }[]>((resolve) => {
+      resolveEmptySearch = resolve;
+    });
+    mocks.searchInvitees
+      .mockRejectedValueOnce(new Error('search failed'))
+      .mockReturnValueOnce(emptySearch);
+    const user = userEvent.setup();
+    render(
+      <I18nextProvider i18n={createI18n('en')}>
+        <InviteeSearch communityId={community.id} />
+      </I18nextProvider>
+    );
+    await user.click(screen.getByRole('button', { name: 'Issue invitation' }));
+    const search = screen.getByRole('textbox', { name: 'Search opted-in display names' });
+    await user.type(search, 'failure');
+    expect(await screen.findByRole('alert')).toBeTruthy();
+
+    await user.clear(search);
+    await user.type(search, 'empty');
+
+    await waitFor(() =>
+      expect(mocks.searchInvitees).toHaveBeenNthCalledWith(2, {
+        data: { community_id: community.id, query: 'empty' }
+      })
+    );
+    expect(await screen.findByText('Searching…')).toBeTruthy();
+    expect(screen.queryByText('No eligible invitees found.')).toBeNull();
+    await act(async () => resolveEmptySearch([]));
+    expect(await screen.findByText('No eligible invitees found.')).toBeTruthy();
+    expect(screen.queryByRole('alert')).toBeNull();
+  });
+
+  it('does not let a superseded invitee search overwrite newer results', async () => {
+    let resolveOldSearch!: (rows: { user_id: string; display_name: string }[]) => void;
+    const oldSearch = new Promise<{ user_id: string; display_name: string }[]>(
+      (resolve) => (resolveOldSearch = resolve)
+    );
+    mocks.searchInvitees
+      .mockReturnValueOnce(oldSearch)
+      .mockResolvedValueOnce([{ user_id: 'new-result', display_name: 'Current Applicant' }]);
+    const user = userEvent.setup();
+    render(
+      <I18nextProvider i18n={createI18n('en')}>
+        <InviteeSearch communityId={community.id} />
+      </I18nextProvider>
+    );
+    await user.click(screen.getByRole('button', { name: 'Issue invitation' }));
+    const search = screen.getByRole('textbox', { name: 'Search opted-in display names' });
+    vi.useFakeTimers();
+    try {
+      fireEvent.change(search, { target: { value: 'older query' } });
+      await act(async () => vi.advanceTimersByTimeAsync(250));
+      expect(mocks.searchInvitees).toHaveBeenCalledTimes(1);
+
+      fireEvent.change(search, { target: { value: 'current query' } });
+      await act(async () => vi.advanceTimersByTimeAsync(250));
+      expect(screen.getByRole('radio', { name: /Current Applicant/ })).toBeTruthy();
+
+      await act(async () =>
+        resolveOldSearch([{ user_id: 'old-result', display_name: 'Superseded Applicant' }])
+      );
+
+      expect(screen.getByRole('radio', { name: /Current Applicant/ })).toBeTruthy();
+      expect(screen.queryByRole('radio', { name: /Superseded Applicant/ })).toBeNull();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
   it('renders only supplied authorized community admin destinations', () => {
     const { rerender } = render(
       <I18nextProvider i18n={createI18n('en')}>
@@ -403,7 +950,12 @@ describe('community admin UI', () => {
     mocks.search.mockResolvedValueOnce([nextRequest]);
     const requestView = render(
       <I18nextProvider i18n={createI18n('en')}>
-        <CommunityAdminScreen screen="requests" community={community} members={firstRequests} />
+        <CommunityAdminScreen
+          screen="requests"
+          community={community}
+          members={firstRequests}
+          timezone="Europe/Madrid"
+        />
       </I18nextProvider>
     );
     await userEvent.click(screen.getByRole('button', { name: 'LOAD MORE CHANGES' }));
@@ -462,7 +1014,12 @@ describe('community admin UI', () => {
     mocks.search.mockResolvedValueOnce([]);
     render(
       <I18nextProvider i18n={createI18n('en')}>
-        <CommunityAdminScreen screen="requests" community={community} members={firstPage} />
+        <CommunityAdminScreen
+          screen="requests"
+          community={community}
+          members={firstPage}
+          timezone="Europe/Madrid"
+        />
       </I18nextProvider>
     );
     await userEvent.click(screen.getByRole('button', { name: 'LOAD MORE CHANGES' }));
@@ -523,7 +1080,9 @@ describe('community admin UI', () => {
 
   it('resets settings draft when the community identity changes', async () => {
     const first = mount('settings');
-    await userEvent.click(screen.getByText('Edit community details'));
+    await userEvent.click(
+      screen.getByText('Community admins control access. Player level stays read-only.')
+    );
     const city = screen.getByLabelText('City or area');
     await userEvent.clear(city);
     await userEvent.type(city, 'Community A draft');
@@ -534,23 +1093,32 @@ describe('community admin UI', () => {
     };
     first.rerender(
       <I18nextProvider i18n={createI18n('en')}>
-        <CommunityAdminScreen screen="settings" community={secondCommunity} />
+        <CommunityAdminScreen
+          screen="settings"
+          community={secondCommunity}
+          defaults={{
+            timezone: 'Europe/Madrid',
+            currency: 'EUR',
+            member_created_leagues_enabled: true
+          }}
+        />
       </I18nextProvider>
     );
-    await userEvent.click(screen.getByText('Edit community details'));
+    await userEvent.click(
+      screen.getByText('Community admins control access. Player level stays read-only.')
+    );
     expect(screen.getByLabelText('City or area').value).toBe('Community B');
   });
 
-  it('marks unsupported settings and venue photo uploads unavailable without inventing values', async () => {
+  it('renders supported settings controls without an unsupported photo placeholder', async () => {
     const settingsView = mount('settings');
-    expect(
-      screen.getByText(/Timezone, currency, and league defaults are unavailable/)
-    ).toBeTruthy();
-    expect(screen.queryByText(/Europe\/Madrid|EUR|Enabled/)).toBeNull();
+    expect(screen.getByRole('combobox', { name: 'Community time zone' })).toBeTruthy();
+    expect(screen.getByText('Preference saved; league creation is not supported yet')).toBeTruthy();
+    expect(screen.getByTestId('settings-currency-control').textContent).toContain('Euro (EUR)');
     settingsView.unmount();
     mount('venues');
     await userEvent.click(screen.getByRole('button', { name: 'Add a venue' }));
-    expect(screen.getByText('Venue photo upload is unavailable.')).toBeTruthy();
+    expect(screen.queryByText('Venue photo upload is unavailable.')).toBeNull();
   });
 
   it('uses neutral audit actors and displays only whitelisted role/status evidence', () => {
@@ -886,9 +1454,20 @@ describe('community admin UI', () => {
     const searchCount = mocks.search.mock.calls.length;
     view.rerender(
       <I18nextProvider i18n={createI18n('en')}>
-        <CommunityAdminScreen screen="settings" community={community} />
+        <CommunityAdminScreen
+          screen="settings"
+          community={community}
+          defaults={{
+            timezone: 'Europe/Madrid',
+            currency: 'EUR',
+            member_created_leagues_enabled: true
+          }}
+        />
       </I18nextProvider>
     );
+    expect(screen.getByRole('combobox', { name: 'Community time zone' })).toBeTruthy();
+    expect(screen.getByText('Preference saved; league creation is not supported yet')).toBeTruthy();
+    expect(screen.getByTestId('settings-currency-control').textContent).toContain('Euro (EUR)');
     expect(mocks.search).toHaveBeenCalledTimes(searchCount);
     view.rerender(
       <I18nextProvider i18n={createI18n('en')}>

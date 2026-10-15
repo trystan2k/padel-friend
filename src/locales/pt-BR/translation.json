@@ -30,6 +30,8 @@
     "createEntry": "+  CRIAR UMA COMUNIDADE",
     "skip": "FAÇO ISSO DEPOIS",
     "cityPolicy": "{{city}} · {{policy}}",
+    "memberCount_one": "{{formattedCount}} membro",
+    "memberCount_other": "{{formattedCount}} membros",
     "cityUnknown": "Cidade não informada",
     "openJoin": "Entrada livre",
     "approvalRequired": "Aprovação necessária",
@@ -237,8 +239,15 @@
     "rolePanelTitle": "Função na comunidade",
     "rolePanelActive": "{{role}} · promover ou rebaixar",
     "rolePanelInactive": "Membro inativo · reativar",
-    "status": { "active": "Ativo", "pending": "Pendente", "inactive": "Inativo" },
-    "role": { "admin": "Admin", "member": "Membro" },
+    "status": {
+      "active": "Ativo",
+      "pending": "Pendente",
+      "inactive": "Inativo"
+    },
+    "role": {
+      "admin": "Admin",
+      "member": "Membro"
+    },
     "action": {
       "approve": "Aprovar solicitação",
       "deny": "Recusar solicitação",
@@ -268,10 +277,26 @@
       "description": "Descrição",
       "visibility": "Visibilidade",
       "joinPolicy": "Aprovação de membros",
-      "details": "Editar detalhes da comunidade"
+      "details": "Editar detalhes da comunidade",
+      "timezone": "Fuso horário da comunidade",
+      "currency": "Moeda",
+      "memberCreatedLeagues": "Permitir que membros criem ligas",
+      "timezoneMadrid": "Madri (Europe/Madrid)",
+      "timezoneUtc": "UTC",
+      "currencyEur": "Euro (EUR)",
+      "currencyPreview": "Prévia de formato — não é saldo nem preço",
+      "leaguePreferenceOnly": "Preferência salva; a criação de ligas ainda não é compatível",
+      "defaultsSaved": "Preferências salvas.",
+      "invalidDefaults": "Estas preferências são inválidas. Atualize e tente novamente."
     },
-    "visibility": { "public": "Pública · descoberta", "private": "Privada · somente por convite" },
-    "joinPolicy": { "instant": "Entrada livre", "adminApproval": "Requer aprovação de admin" },
+    "visibility": {
+      "public": "Pública · descoberta",
+      "private": "Privada · somente por convite"
+    },
+    "joinPolicy": {
+      "instant": "Entrada livre",
+      "adminApproval": "Requer aprovação de admin"
+    },
     "settingsUnavailable": "Fuso horário, moeda e padrões de liga não estão disponíveis até serem suportados pelas configurações da comunidade.",
     "settingsAdminNote": "Admins controlam o acesso. O nível do jogador é somente leitura.",
     "save": "SALVAR ALTERAÇÕES",
@@ -293,9 +318,20 @@
       "mapsUrl": "Link seguro do mapa (opcional)",
       "openMap": "Abrir mapa",
       "archive": "Arquivar quadra",
-      "historyNote": "Quadras arquivadas continuam disponíveis no histórico de partidas."
+      "historyNote": "Quadras arquivadas continuam disponíveis no histórico de partidas.",
+      "photo": {
+        "label": "Foto do local",
+        "help": "JPEG, PNG ou WebP. Máximo de 2 MiB.",
+        "upload": "Enviar foto",
+        "uploading": "Enviando foto…",
+        "uploaded": "Foto enviada",
+        "invalid": "Escolha uma imagem JPEG, PNG ou WebP válida de até 2 MiB.",
+        "failed": "Falha ao enviar a foto. Tente novamente.",
+        "previewAlt": "Prévia da foto do local",
+        "retry": "Tentar novamente",
+        "clearSelection": "Limpar seleção"
+      }
     },
-    "photoUnavailable": "O envio de fotos de quadras não está disponível.",
     "audit": {
       "unknown": "Alteração na comunidade",
       "venueAdded": "Quadra adicionada",
@@ -309,13 +345,59 @@
       "invitationUpdated": "Convite atualizado",
       "recentChanges": "ALTERAÇÕES RECENTES",
       "unknownActor": "Identidade do autor indisponível",
-      "openMember": "Ver membro"
+      "openMember": "Ver membro",
+      "leagueCorrectionsUnavailable": "Eventos de auditoria de correção de resultados de ligas indisponíveis até existirem resultados e um fluxo autorizado de correção."
     },
     "error": {
       "session": "Sua sessão expirou. Entre novamente.",
       "generic": "Não foi possível concluir. Atualize e tente novamente.",
       "finalAdmin": "A comunidade precisa manter pelo menos um admin ativo.",
       "transition": "Esta associação mudou. Atualize antes de tentar novamente."
+    },
+    "matchCountUnavailable": "Contagem de partidas indisponível — o histórico de partidas ainda não é compatível",
+    "inviteeSearchPrivateOnly": "A busca por convidados está disponível somente em comunidades privadas.",
+    "requestMessage": {
+      "action": "Enviar atualização",
+      "title": "Mensagem para pessoa candidata",
+      "label": "Mensagem",
+      "help": "Somente texto. É uma via: respostas, e-mail e entrega ao vivo não são compatíveis.",
+      "send": "Enviar mensagem",
+      "sending": "Enviando…",
+      "sent": "Mensagem enviada",
+      "empty": "Digite uma mensagem",
+      "notPending": "Esta solicitação não está mais pendente",
+      "failed": "Não foi possível enviar a mensagem"
     }
+  },
+  "communityInbox": {
+    "title": "Caixa de entrada da comunidade",
+    "empty": "Nenhuma mensagem ainda",
+    "loading": "Carregando caixa de entrada…",
+    "error": "Caixa de entrada indisponível",
+    "retry": "Tentar novamente",
+    "markRead": "Marcar como lida",
+    "read": "Lida",
+    "loadMore": "Carregar mais",
+    "mutationError": "Não foi possível marcar esta mensagem como lida",
+    "pageError": "Não foi possível carregar mais mensagens",
+    "oneWayNotice": "As mensagens são unidirecionais. Respostas, e-mail e entrega ao vivo não são compatíveis."
+  },
+  "communityInvites": {
+    "title": "Convidar pessoas",
+    "searchLabel": "Buscar nomes de exibição consentidos",
+    "searchHelp": "Qualquer administrador de comunidade privada poderá encontrar seu nome de exibição. E-mails nunca são expostos.",
+    "searching": "Buscando…",
+    "noResults": "Nenhuma pessoa elegível encontrada.",
+    "select": "Selecionar",
+    "invite": "Enviar convite",
+    "issued": "Token de convite único emitido",
+    "copyLink": "Copiar link",
+    "copied": "Copiado",
+    "shareHelp": "Envio por link não disponível. Compartilhe este token único com segurança.",
+    "error": "Não foi possível concluir o convite.",
+    "discoverableLabel": "Permitir que administradores de comunidades privadas encontrem meu nome",
+    "discoverableHelp": "Qualquer administrador de comunidade privada poderá encontrar seu nome consentido. E-mails não são expostos.",
+    "discoverabilitySaved": "Preferência de descoberta salva.",
+    "discoverabilityError": "Não foi possível salvar a preferência."
   }
 }

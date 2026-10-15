@@ -28,8 +28,6 @@ import {
 } from '../src/features/community/community.functions';
 
 const id = '11111111-1111-4111-8111-111111111111';
-const columns =
-  'id,name,description,logo_path,city_label,visibility,join_policy,created_at,updated_at';
 const row = {
   id,
   name: 'Padel',
@@ -39,7 +37,8 @@ const row = {
   visibility: 'public',
   join_policy: 'instant',
   created_at: '2026-10-04T00:00:00Z',
-  updated_at: '2026-10-04T00:00:00Z'
+  updated_at: '2026-10-04T00:00:00Z',
+  member_count: 1
 };
 
 function client(
@@ -67,7 +66,8 @@ function client(
   query.order.mockReturnValue(query);
   query.range.mockResolvedValue({ data: rows, error });
   query.maybeSingle.mockResolvedValue({ data: detail, error });
-  const from = vi.fn<(table: string) => typeof query>().mockReturnValue(query);
+  const from = vi.fn<(table: string) => typeof query>();
+  const rpc = vi.fn<(name: string, args?: unknown) => typeof query>().mockReturnValue(query);
   return {
     auth: {
       getClaims: vi
@@ -84,6 +84,7 @@ function client(
         )
     },
     from,
+    rpc,
     query
   };
 }
@@ -144,9 +145,8 @@ describe('public community discovery server functions', () => {
       communities: [row],
       next_offset: 11
     });
-    expect(authenticated.from).toHaveBeenCalledExactlyOnceWith('communities');
-    expect(authenticated.query.select).toHaveBeenCalledExactlyOnceWith(columns);
-    expect(authenticated.query.eq).toHaveBeenCalledExactlyOnceWith('visibility', 'public');
+    expect(authenticated.rpc).toHaveBeenCalledExactlyOnceWith('public_community_discovery');
+    expect(authenticated.query.eq).not.toHaveBeenCalledWith('visibility', 'public');
     expect(authenticated.query.filter).not.toHaveBeenCalled();
     expect(authenticated.query.order.mock.calls).toEqual([
       ['created_at', { ascending: false }],
@@ -181,7 +181,6 @@ describe('public community discovery server functions', () => {
     expect(authenticated.query.or).toHaveBeenCalledExactlyOnceWith(
       'name.imatch."PáDel%_\\\\\\\\🎾\\\\.\\\\*\\\\[x\\\\]",city_label.imatch."PáDel%_\\\\\\\\🎾\\\\.\\\\*\\\\[x\\\\]"'
     );
-    expect(authenticated.query.eq).toHaveBeenCalledWith('visibility', 'public');
     expect(authenticated.query.range).toHaveBeenCalledWith(10000, 10050);
     await listPublicCommunities({ data: { search: '") , visibility.eq.private, name.imatch.("' } });
     const filter = authenticated.query.or.mock.lastCall?.[0] ?? '';
@@ -226,11 +225,8 @@ describe('public community discovery server functions', () => {
     const authenticated = client();
     mocks.getServerClient.mockReturnValue(authenticated);
     await expect(getPublicCommunity({ data: { community_id: id } })).resolves.toEqual(row);
-    expect(authenticated.query.select).toHaveBeenCalledExactlyOnceWith(columns);
-    expect(authenticated.query.eq.mock.calls).toEqual([
-      ['id', id],
-      ['visibility', 'public']
-    ]);
+    expect(authenticated.rpc).toHaveBeenCalledExactlyOnceWith('public_community_discovery');
+    expect(authenticated.query.eq.mock.calls).toEqual([['id', id]]);
     expect(authenticated.query.maybeSingle).toHaveBeenCalledOnce();
     for (const hidden of [null, null]) {
       mocks.getServerClient.mockReturnValue(client(true, [], hidden));

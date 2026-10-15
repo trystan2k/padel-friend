@@ -10,11 +10,9 @@ import {
   validateJoinCommunity,
   validateListPublicCommunities,
   validateUpdateCommunitySettings,
-  validateGetCommunitySettings
+  validateGetCommunitySettings,
+  validatePublicCommunity
 } from './community.validators';
-
-const publicCommunityColumns =
-  'id,name,description,logo_path,city_label,visibility,join_policy,created_at,updated_at' as const;
 
 const joinErrors: Record<string, string> = {
   '28000': 'UNAUTHENTICATED',
@@ -38,10 +36,7 @@ export const listPublicCommunities = createServerFn({ method: 'GET' })
   .handler(async ({ data }) => {
     const { client } = await requireAuthenticatedClient();
     const { offset, limit, search } = data;
-    let query = client
-      .from('communities')
-      .select(publicCommunityColumns)
-      .eq('visibility', 'public');
+    let query = client.rpc('public_community_discovery');
     if (search) {
       // Quote each PostgREST value after escaping regex metacharacters. A user-supplied
       // comma, quote or parenthesis must stay inside the pattern, never become filter syntax.
@@ -57,7 +52,9 @@ export const listPublicCommunities = createServerFn({ method: 'GET' })
       .order('id', { ascending: false })
       .range(offset, offset + limit);
     if (error) throw error;
-    const communities: PublicCommunity[] = (rows ?? []).slice(0, limit);
+    const communities: PublicCommunity[] = (rows ?? [])
+      .slice(0, limit)
+      .map(validatePublicCommunity);
     return {
       communities,
       next_offset: (rows?.length ?? 0) > limit && offset + limit <= 10000 ? offset + limit : null
@@ -69,13 +66,11 @@ export const getPublicCommunity = createServerFn({ method: 'GET' })
   .handler(async ({ data }) => {
     const { client } = await requireAuthenticatedClient();
     const { data: community, error } = await client
-      .from('communities')
-      .select(publicCommunityColumns)
+      .rpc('public_community_discovery')
       .eq('id', data.community_id)
-      .eq('visibility', 'public')
       .maybeSingle();
     if (error) throw error;
-    return community;
+    return community === null ? null : validatePublicCommunity(community);
   });
 
 export const createCommunity = createServerFn({ method: 'POST' })

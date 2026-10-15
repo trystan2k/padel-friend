@@ -37,6 +37,7 @@ export type Database = {
           updated_at: string
           visibility: Database["public"]["Enums"]["community_visibility"]
         }
+        ComputedFields: never
         Insert: {
           city_label?: string | null
           created_at?: string
@@ -76,6 +77,7 @@ export type Database = {
           id: string
           occurred_at: string
         }
+        ComputedFields: never
         Insert: {
           action: string
           actor_user_id?: string | null
@@ -118,6 +120,7 @@ export type Database = {
           revoked_at: string | null
           token_hash: string
         }
+        ComputedFields: never
         Insert: {
           community_id: string
           created_at?: string
@@ -150,6 +153,30 @@ export type Database = {
           },
         ]
       }
+      community_invitee_directory_preferences: {
+        Row: {
+          created_at: string
+          user_id: string
+        }
+        ComputedFields: never
+        Insert: {
+          created_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "community_invitee_directory_preferences_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "player_profiles"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
       community_members: {
         Row: {
           activated_at: string | null
@@ -162,6 +189,7 @@ export type Database = {
           valid_from: string
           valid_until: string | null
         }
+        ComputedFields: never
         Insert: {
           activated_at?: string | null
           community_id: string
@@ -194,6 +222,91 @@ export type Database = {
           },
         ]
       }
+      community_notifications: {
+        Row: {
+          created_at: string
+          id: string
+          kind: string
+          read_at: string | null
+          recipient_user_id: string
+          request_message_id: string
+        }
+        ComputedFields: never
+        Insert: {
+          created_at?: string
+          id?: string
+          kind: string
+          read_at?: string | null
+          recipient_user_id: string
+          request_message_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          kind?: string
+          read_at?: string | null
+          recipient_user_id?: string
+          request_message_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "community_notifications_request_message_id_fkey"
+            columns: ["request_message_id"]
+            isOneToOne: true
+            referencedRelation: "community_request_messages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      community_request_messages: {
+        Row: {
+          body: string
+          client_request_id: string
+          community_id: string
+          created_at: string
+          id: string
+          membership_id: string
+          recipient_user_id: string
+          sender_user_id: string
+        }
+        ComputedFields: never
+        Insert: {
+          body: string
+          client_request_id: string
+          community_id: string
+          created_at?: string
+          id?: string
+          membership_id: string
+          recipient_user_id: string
+          sender_user_id: string
+        }
+        Update: {
+          body?: string
+          client_request_id?: string
+          community_id?: string
+          created_at?: string
+          id?: string
+          membership_id?: string
+          recipient_user_id?: string
+          sender_user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "community_request_messages_community_id_fkey"
+            columns: ["community_id"]
+            isOneToOne: false
+            referencedRelation: "communities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "community_request_messages_membership_id_fkey"
+            columns: ["membership_id"]
+            isOneToOne: false
+            referencedRelation: "community_members"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       community_venues: {
         Row: {
           address: string | null
@@ -207,6 +320,7 @@ export type Database = {
           photo_path: string | null
           updated_at: string
         }
+        ComputedFields: never
         Insert: {
           address?: string | null
           archived_at?: string | null
@@ -256,6 +370,7 @@ export type Database = {
           updated_at: string
           user_id: string
         }
+        ComputedFields: never
         Insert: {
           confirmed_competitive_game_groups: number
           display_level: number
@@ -301,6 +416,7 @@ export type Database = {
           id: string
           user_id: string
         }
+        ComputedFields: never
         Insert: {
           body: string
           created_at?: string
@@ -326,6 +442,7 @@ export type Database = {
           updated_at: string
           user_id: string
         }
+        ComputedFields: never
         Insert: {
           avatar_url?: string | null
           bio?: string | null
@@ -371,6 +488,10 @@ export type Database = {
         }
         Returns: string
       }
+      finalize_community_venue_photo: {
+        Args: { p_community_id: string; p_object_key: string; p_venue_id: string }
+        Returns: undefined
+      }
       get_community_member_by_id: {
         Args: { p_community_id: string; p_membership_id: string }
         Returns: {
@@ -391,6 +512,18 @@ export type Database = {
         Returns: {
           id: string
           settings: Json
+        }[]
+      }
+      get_effective_community_admin_defaults: { Args: { p_settings: Json }; Returns: Json }
+      get_my_community_notification_timezone: {
+        Args: { p_notification_id: string }
+        Returns: string
+      }
+      get_my_community_notification_timezones: {
+        Args: { p_notification_ids: string[] }
+        Returns: {
+          notification_id: string
+          time_zone: string
         }[]
       }
       govern_community_member: {
@@ -419,6 +552,13 @@ export type Database = {
           valid_until: string
         }[]
       }
+      mark_community_notification_read: {
+        Args: { p_notification_id: string }
+        Returns: {
+          notification_id: string
+          read_at: string
+        }[]
+      }
       onboard_player: {
         Args: {
           p_bio?: string
@@ -428,6 +568,29 @@ export type Database = {
           p_preferred_side: string
         }
         Returns: undefined
+      }
+      public_community_discovery: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          city_label: string
+          created_at: string
+          description: string
+          id: string
+          join_policy: Database["public"]["Enums"]["community_join_policy"]
+          logo_path: string
+          member_count: number
+          name: string
+          updated_at: string
+          visibility: Database["public"]["Enums"]["community_visibility"]
+        }[]
+      }
+      safe_venue_photo_uuid: { Args: { p_value: string }; Returns: string }
+      search_community_invitees: {
+        Args: { p_community_id: string; p_limit?: number; p_query: string }
+        Returns: {
+          display_name: string
+          user_id: string
+        }[]
       }
       search_community_members: {
         Args: {
@@ -450,6 +613,22 @@ export type Database = {
           valid_until: string
         }[]
       }
+      send_community_request_message: {
+        Args: {
+          p_body: string
+          p_client_request_id: string
+          p_community_id: string
+          p_membership_id: string
+        }
+        Returns: {
+          created_at: string
+          message_id: string
+        }[]
+      }
+      update_community_admin_defaults: {
+        Args: { p_community_id: string; p_defaults: Json }
+        Returns: Json
+      }
       update_community_settings: {
         Args: { p_changes: Json; p_community_id: string }
         Returns: {
@@ -464,6 +643,8 @@ export type Database = {
           visibility: Database["public"]["Enums"]["community_visibility"]
         }[]
       }
+      valid_community_admin_defaults: { Args: { p_defaults: Json }; Returns: boolean }
+      valid_community_venue_photo_key: { Args: { p_key: string }; Returns: boolean }
     }
     Enums: {
       community_join_policy: "instant" | "admin_approval"
@@ -494,6 +675,7 @@ export type Database = {
           updated_at: string | null
           versioning_status: string
         }
+        ComputedFields: never
         Insert: {
           allowed_mime_types?: string[] | null
           avif_autodetection?: boolean | null
@@ -538,6 +720,7 @@ export type Database = {
           type: Database["storage"]["Enums"]["buckettype"]
           updated_at: string
         }
+        ComputedFields: never
         Insert: {
           created_at?: string
           deleted_at?: string | null
@@ -565,6 +748,7 @@ export type Database = {
           type: Database["storage"]["Enums"]["buckettype"]
           updated_at: string
         }
+        ComputedFields: never
         Insert: {
           created_at?: string
           id: string
@@ -589,6 +773,7 @@ export type Database = {
           name: string
           updated_at: string
         }
+        ComputedFields: never
         Insert: {
           bucket_name: string
           catalog_id: string
@@ -631,6 +816,7 @@ export type Database = {
           shard_key: string | null
           updated_at: string
         }
+        ComputedFields: never
         Insert: {
           bucket_name: string
           catalog_id: string
@@ -681,6 +867,7 @@ export type Database = {
           id: number
           name: string
         }
+        ComputedFields: never
         Insert: {
           executed_at?: string | null
           hash: string
@@ -713,6 +900,7 @@ export type Database = {
           user_metadata: Json | null
           version: string | null
         }
+        ComputedFields: never
         Insert: {
           archived_at?: string | null
           bucket_id?: string | null
@@ -770,6 +958,7 @@ export type Database = {
           user_metadata: Json | null
           version: string
         }
+        ComputedFields: never
         Insert: {
           bucket_id: string
           created_at?: string
@@ -817,6 +1006,7 @@ export type Database = {
           upload_id: string
           version: string
         }
+        ComputedFields: never
         Insert: {
           bucket_id: string
           created_at?: string
@@ -870,6 +1060,7 @@ export type Database = {
           name: string
           updated_at: string
         }
+        ComputedFields: never
         Insert: {
           bucket_id: string
           created_at?: string

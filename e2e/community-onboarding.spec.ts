@@ -480,14 +480,16 @@ test('discovery view compares card structure and actions against dSEX3 Pencil re
   await geometry(cards.nth(1), { x: 18, y: 392, width: 354, height: 142 });
   const firstTitle = cards.nth(0).getByRole('heading', { level: 3 });
   const secondTitle = cards.nth(1).getByRole('heading', { level: 3 });
-  const firstMeta = cards.nth(0).locator('p');
-  const secondMeta = cards.nth(1).locator('p');
+  const firstMeta = cards.nth(0).locator('p').nth(0);
+  const secondMeta = cards.nth(1).locator('p').nth(0);
   // Pencil dSEX3 source: content inset 14; name box 19px high; 7px vertical gap;
-  // metadata box 15px high. Current text block fills the 326px card content column.
+  // Metadata and member-count lines occupy the existing text column.
   await geometry(firstTitle, { x: 32, y: 254, width: 326, height: 19 });
   await geometry(firstMeta, { x: 32, y: 280, width: 326, height: 15 });
+  await geometry(cards.nth(0).locator('p').nth(1), { x: 32, y: 302, width: 326, height: 15 });
   await geometry(secondTitle, { x: 32, y: 406, width: 326, height: 19 });
   await geometry(secondMeta, { x: 32, y: 432, width: 326, height: 15 });
+  await geometry(cards.nth(1).locator('p').nth(1), { x: 32, y: 454, width: 326, height: 15 });
   for (const title of [firstTitle, secondTitle])
     await typography(title, {
       family: 'Manrope',
@@ -498,6 +500,14 @@ test('discovery view compares card structure and actions against dSEX3 Pencil re
     });
   for (const meta of [firstMeta, secondMeta])
     await typography(meta, {
+      family: 'Inter',
+      size: '12px',
+      weight: '400',
+      lineHeight: 'normal',
+      color: 'rgb(92, 107, 98)'
+    });
+  for (const count of [cards.nth(0).locator('p').nth(1), cards.nth(1).locator('p').nth(1)])
+    await typography(count, {
       family: 'Inter',
       size: '12px',
       weight: '400',
@@ -830,8 +840,12 @@ test('city search finds real public community; join follows instant vs approval 
     expect(session.error).toBeNull();
     const ids: string[] = [];
     for (const policy of ['instant', 'admin_approval'] as const) {
+      // Short single-line names keep both discovery cards at the designed dSEX3 geometry
+      // (one 19px title row inside the 142px card). A wrapped random-UUID name would
+      // overflow the designed card height and shift every probe below it, measuring content
+      // overflow instead of the frame.
       const created = await client.rpc('create_community', {
-        p_name: `${policy} ${crypto.randomUUID()}`,
+        p_name: `${policy === 'instant' ? 'Instant' : 'Approval'} ${city}`,
         p_city_label: city,
         p_visibility: 'public',
         p_join_policy: policy
@@ -846,6 +860,11 @@ test('city search finds real public community; join follows instant vs approval 
     const cards = joiner
       .locator('main > div:last-child [aria-busy="false"] > div')
       .filter({ has: joiner.getByRole('heading', { level: 3 }) });
+    // Pencil dSEX3 frame: the discovery card is 142px tall (y 240, join button y 324, next
+    // card y 392). The member-count line occupies the existing text column inside that
+    // designed height — it fills the slack above the bottom-pinned action, so the card, the
+    // entry buttons and the skip button keep their frame positions (same probes as the
+    // dSEX3 structural test above, which is anchored to the sha-pinned reference PNG).
     await geometry(cards.nth(0), { x: 18, y: 240, width: 354, height: 142 });
     await geometry(cards.nth(1), { x: 18, y: 392, width: 354, height: 142 });
     await geometry(joiner.getByRole('button', { name: en.communityOnboarding.createEntry }), {
