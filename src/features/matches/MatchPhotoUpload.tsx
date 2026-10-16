@@ -21,6 +21,8 @@ export function MatchPhotoUpload({
   photo,
   onChange,
   onBusyChange,
+  copying = false,
+  copyFailed = false,
   invalid = false
 }: {
   communityId: string;
@@ -28,6 +30,8 @@ export function MatchPhotoUpload({
   photo: string;
   onChange: (key: string) => void;
   onBusyChange?: (busy: boolean) => void;
+  copying?: boolean;
+  copyFailed?: boolean;
   invalid?: boolean;
 }) {
   const { t } = useTranslation();
@@ -78,9 +82,18 @@ export function MatchPhotoUpload({
         <input
           {...stylex.props(s.fileInput)}
           type="file"
-          aria-invalid={invalid || error}
-          aria-describedby={invalid ? 'photo-error' : error ? 'photo-upload-error' : undefined}
+          aria-invalid={invalid || error || copyFailed}
+          aria-describedby={
+            invalid
+              ? 'photo-error'
+              : error
+                ? 'photo-upload-error'
+                : copyFailed
+                  ? 'photo-copy-error'
+                  : undefined
+          }
           accept="image/jpeg,image/png,image/webp"
+          disabled={copying}
           onChange={async (e) => {
             const file = e.target.files?.[0];
             if (!file) return;
@@ -142,6 +155,12 @@ export function MatchPhotoUpload({
         </p>
       )}
       {busy && <p aria-live="polite">{t('matchCreate.photo.uploading')}</p>}
+      {copying && <p aria-live="polite">{t('matchCreate.photo.uploading')}</p>}
+      {copyFailed && (
+        <p id="photo-copy-error" role="alert">
+          {t('matchCreate.photo.unavailable')}
+        </p>
+      )}
       {error && (
         <p id="photo-upload-error" role="alert">
           {t('matchCreate.photo.unavailable')}

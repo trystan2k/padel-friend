@@ -75,11 +75,12 @@ function mount(
     ],
     next_offset: null,
     failed: false
-  }
+  },
+  next?: string
 ) {
   return render(
     <I18nextProvider i18n={createI18n('en')}>
-      <CommunityOnboarding search={view ? { view } : {}} data={data} />
+      <CommunityOnboarding search={view ? { view } : {}} data={data} next={next} />
     </I18nextProvider>
   );
 }
@@ -268,6 +269,36 @@ describe('community onboarding', () => {
     );
     await user.click(screen.getByRole('button', { name: 'I’LL DO THIS LATER' }));
     expect(mocks.navigate).toHaveBeenCalledWith({ to: '/dashboard' });
+  });
+
+  it('omits the default dashboard next and preserves real match deep links in navigation', async () => {
+    const user = userEvent.setup();
+    const data = { communities: [], next_offset: null, failed: false };
+    const defaultMounted = mount(undefined, data, '/dashboard');
+    await user.type(screen.getByRole('searchbox', { name: 'Search community' }), 'Madrid');
+    await waitFor(() =>
+      expect(mocks.navigate).toHaveBeenCalledWith({
+        to: '/onboarding/community',
+        search: { q: 'Madrid' },
+        replace: true
+      })
+    );
+    await user.click(screen.getByRole('button', { name: /CREATE A COMMUNITY/ }));
+    expect(mocks.navigate).toHaveBeenLastCalledWith({
+      to: '/onboarding/community',
+      search: { q: 'Madrid', view: 'create' }
+    });
+    defaultMounted.unmount();
+
+    mocks.navigate.mockClear();
+    const deepLink = '/matches/123e4567-e89b-42d3-a456-426614174000';
+    const deepMounted = mount(undefined, data, deepLink);
+    await user.click(screen.getByRole('button', { name: /CREATE A COMMUNITY/ }));
+    expect(mocks.navigate).toHaveBeenCalledWith({
+      to: '/onboarding/community',
+      search: { view: 'create', next: deepLink }
+    });
+    deepMounted.unmount();
   });
 
   it('keeps focus and newer draft through query responses, and retains membership by id', async () => {

@@ -903,12 +903,22 @@ test('invalid input cannot publish through the UI or the publication RPC', async
   try {
     const page = await context.newPage();
     await signIn(page, creator);
-    const countOwnEvents = async (): Promise<number> => {
-      const rows = await creator.client.from('match_events').select('id');
+    // The count is scoped to this test's own freshly created community: match_event_read
+    // RLS makes every community_open event in a public community visible to any
+    // authenticated user, so an unscoped count races with other spec files publishing
+    // fixtures into the same shared database concurrently (the visual suite inserts 18
+    // pagination fillers mid-run). Nothing outside this test knows this community, so any
+    // increase here would be a real publication of invalid input — the wizard publishes
+    // into the creator's first (only) community and the RPC attempts pass it explicitly.
+    const countCommunityEvents = async (): Promise<number> => {
+      const rows = await creator.client
+        .from('match_events')
+        .select('id')
+        .eq('community_id', communityId);
       if (rows.error) throw rows.error;
       return rows.data.length;
     };
-    const before = await countOwnEvents();
+    const before = await countCommunityEvents();
 
     const fillValidDraft = async (venue: string, date: string) => {
       await openCreateWizard(page);
@@ -970,7 +980,7 @@ test('invalid input cannot publish through the UI or the publication RPC', async
     await expect(page.getByRole('button', { name: en.matchCreate.publish })).toBeDisabled();
     await expect(page).toHaveURL(/\/matches\/create$/);
 
-    expect(await countOwnEvents()).toBe(before);
+    expect(await countCommunityEvents()).toBe(before);
 
     // Direct RPC: unsupported currency is impossible through the select, so the
     // protocol-level rejection is proven here alongside the other rules.
@@ -1033,7 +1043,7 @@ test('invalid input cannot publish through the UI or the publication RPC', async
       const stored = await creator.client.from('match_events').select('id').eq('id', draftId);
       expect(stored.data, attempt.label).toEqual([]);
     }
-    expect(await countOwnEvents()).toBe(before);
+    expect(await countCommunityEvents()).toBe(before);
   } finally {
     await context.close();
   }

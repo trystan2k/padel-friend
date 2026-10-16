@@ -11,7 +11,7 @@ import { onboardPlayer } from './player.functions';
 import { INITIAL_RELIABILITY_PERCENT, LEVEL_STEP, MAX_LEVEL, MIN_LEVEL } from './rating-config';
 import { validateInitialLevel, type PreferredSide } from './player.validators';
 import { ui } from './player-ui.styles';
-import { normalizeReturnPath } from '../auth/return-path';
+import { optionalReturnPath } from '../auth/return-path';
 
 export function PlayerOnboarding({ next: returnPath }: { next?: string }) {
   const { t, i18n } = useTranslation();
@@ -68,9 +68,8 @@ export function PlayerOnboarding({ next: returnPath }: { next?: string }) {
         }
       });
       navigating = true;
-      const target = returnPath
-        ? `/onboarding/community?${new URLSearchParams({ next: normalizeReturnPath(returnPath) }).toString()}`
-        : '/onboarding/community';
+      const search = new URLSearchParams(optionalReturnPath(returnPath)).toString();
+      const target = `/onboarding/community${search ? `?${search}` : ''}`;
       window.location.assign(target);
     } catch (error) {
       if (error instanceof Error && error.message === 'UNAUTHENTICATED') {

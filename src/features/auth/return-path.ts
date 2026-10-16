@@ -1,6 +1,11 @@
 const DEFAULT_RETURN_PATH = '/dashboard';
 const MAX_RETURN_PATH_LENGTH = 2048;
 
+export function optionalReturnPath(value: unknown): { next?: string } {
+  const path = normalizeReturnPath(value);
+  return path === DEFAULT_RETURN_PATH ? {} : { next: path };
+}
+
 export function normalizeReturnPath(value: unknown): string {
   if (typeof value !== 'string' || value.length > MAX_RETURN_PATH_LENGTH)
     return DEFAULT_RETURN_PATH;

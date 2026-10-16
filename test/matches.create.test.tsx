@@ -18,6 +18,7 @@ const mocks = vi.hoisted(() => ({
       }) => Promise<{ event_id: string }>
     >(),
   upload: vi.fn<(...args: any[]) => Promise<string>>(),
+  copy: vi.fn<(...args: any[]) => Promise<string>>(),
   remove: vi.fn<(...args: any[]) => Promise<void>>(),
   sign: vi.fn<(...args: any[]) => Promise<string>>(),
   navigate: vi.fn<(...args: any[]) => Promise<void>>(),
@@ -34,6 +35,7 @@ vi.mock('../src/features/matches/matches.functions', () => ({
   publishMatchEvent: mocks.publish
 }));
 vi.mock('../src/features/matches/match-photo.functions', () => ({
+  copySavedVenueMatchPhotoFn: mocks.copy,
   finalizeMatchPhotoUploadFn: mocks.upload,
   removeUnpublishedMatchPhotoFn: mocks.remove,
   signUnattachedMatchPhotoFn: mocks.sign
@@ -149,6 +151,7 @@ beforeEach(() => {
   mocks.search.mockResolvedValue([]);
   mocks.publish.mockResolvedValue({ event_id: 'match-id' });
   mocks.upload.mockResolvedValue('staged/photo.png');
+  mocks.copy.mockResolvedValue('staged/saved-venue.png');
   mocks.remove.mockResolvedValue(undefined);
   mocks.sign.mockResolvedValue('https://signed.test/photo');
   mocks.navigate.mockResolvedValue(undefined);
@@ -268,6 +271,36 @@ describe('create match wizard', () => {
     expect(input(en.matchCreate.fields.minLevel).value).toBe('2');
     await user.click(screen.getByRole('button', { name: en.matchCreate.next }));
     expect(screen.queryByText('Pat Player')).toBeNull();
+  });
+
+  it('copies an authorized saved-venue photo into the event photo path without requiring an upload', async () => {
+    const user = userEvent.setup();
+    const savedVenueId = '33333333-3333-4333-8333-333333333333';
+    mocks.options.mockResolvedValueOnce({
+      ...options(),
+      saved_venues: [
+        {
+          id: savedVenueId,
+          name: 'Saved court',
+          photo_path: 'community-venue-photos/source.jpg',
+          maps_url: 'https://www.google.com/maps/place/SavedCourt'
+        }
+      ]
+    });
+    await mount();
+    await user.selectOptions(select(en.matchCreate.fields.savedVenue), savedVenueId);
+    await waitFor(() => expect(mocks.copy).toHaveBeenCalledOnce());
+    expect(mocks.copy.mock.calls[0]?.[0].data).toMatchObject({
+      community_id: idA,
+      saved_venue_id: savedVenueId
+    });
+    await screen.findByRole('img', { name: en.matchCreate.fields.photo });
+    await fillRequired(user);
+    await goReview(user);
+    await user.click(button(en.matchCreate.publish));
+    await waitFor(() => expect(mocks.publish).toHaveBeenCalledOnce());
+    expect(mocks.publish.mock.calls[0]?.[0].data.input.photo_path).toBe('staged/saved-venue.png');
+    expect(mocks.upload).not.toHaveBeenCalled();
   });
 
   it('discards stale invitee search responses after a newer query resolves', async () => {

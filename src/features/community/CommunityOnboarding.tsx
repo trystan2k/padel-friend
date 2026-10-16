@@ -12,7 +12,7 @@ import { stripEdgeWhitespace } from '../../lib/edge-whitespace';
 import { createCommunity, joinCommunity, listPublicCommunities } from './community.functions';
 import type { PublicCommunity } from './community.validators';
 import { ui } from './community-onboarding.styles';
-import { normalizeReturnPath } from '../auth/return-path';
+import { normalizeReturnPath, optionalReturnPath } from '../auth/return-path';
 
 type Search = { q?: string; view?: 'create'; next?: string };
 type Page = { communities: PublicCommunity[]; next_offset: number | null; failed: boolean };
@@ -108,13 +108,13 @@ export function CommunityOnboarding({
         to: '/onboarding/community',
         search: {
           ...(nextQuery ? { q: nextQuery } : {}),
-          ...(returnPath ? { next: safeNext } : {})
+          ...optionalReturnPath(returnPath)
         },
         replace: true
       });
     }, 300);
     return () => clearTimeout(timer);
-  }, [draft, navigate, search.q, search.view, safeNext, returnPath]);
+  }, [draft, navigate, search.q, search.view, returnPath]);
 
   function login() {
     window.location.assign('/login?next=/onboarding/community');
@@ -200,7 +200,7 @@ export function CommunityOnboarding({
               to: '/onboarding/community',
               search: {
                 ...(draft.trim() ? { q: draft.trim() } : {}),
-                ...(returnPath ? { next: safeNext } : {})
+                ...optionalReturnPath(returnPath)
               }
             });
           }}
@@ -327,7 +327,7 @@ export function CommunityOnboarding({
                 search: {
                   ...(draft.trim() ? { q: draft.trim() } : {}),
                   view: 'create',
-                  ...(returnPath ? { next: safeNext } : {})
+                  ...optionalReturnPath(returnPath)
                 }
               });
             }}

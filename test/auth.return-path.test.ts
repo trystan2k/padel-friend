@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { normalizeReturnPath } from '../src/features/auth/return-path';
+import { normalizeReturnPath, optionalReturnPath } from '../src/features/auth/return-path';
 
 describe('normalizeReturnPath', () => {
   it('keeps relative app paths including query and hash', () => {
@@ -93,5 +93,15 @@ describe('normalizeReturnPath', () => {
     expect(normalizeReturnPath('dashboard')).toBe('/dashboard');
     expect(normalizeReturnPath(' /dashboard')).toBe('/dashboard');
     expect(normalizeReturnPath('dashboard?x=1')).toBe('/dashboard');
+  });
+});
+
+describe('optionalReturnPath', () => {
+  it('omits the default dashboard target but preserves a real deep link', () => {
+    expect(optionalReturnPath('/dashboard')).toEqual({});
+    expect(optionalReturnPath(undefined)).toEqual({});
+    expect(optionalReturnPath('/matches/123e4567-e89b-42d3-a456-426614174000')).toEqual({
+      next: '/matches/123e4567-e89b-42d3-a456-426614174000'
+    });
   });
 });

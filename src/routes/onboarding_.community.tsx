@@ -2,7 +2,7 @@ import { createFileRoute, redirect } from '@tanstack/react-router';
 import { CommunityOnboarding } from '../features/community/CommunityOnboarding';
 import { listPublicCommunities } from '../features/community/community.functions';
 import { getOnboardingStatus } from '../features/player/player.functions';
-import { normalizeReturnPath } from '../features/auth/return-path';
+import { normalizeReturnPath, optionalReturnPath } from '../features/auth/return-path';
 
 export const Route = createFileRoute('/onboarding_/community')({
   validateSearch: (
@@ -22,9 +22,9 @@ export const Route = createFileRoute('/onboarding_/community')({
   beforeLoad: async ({ search }) => {
     const status = await getOnboardingStatus();
     if (!status.authenticated)
-      throw redirect({ to: '/login', search: { next: '/onboarding/community' } });
+      throw redirect({ to: '/login', search: optionalReturnPath('/onboarding/community') });
     if (!status.complete)
-      throw redirect({ to: '/onboarding', search: { next: normalizeReturnPath(search.next) } });
+      throw redirect({ to: '/onboarding', search: optionalReturnPath(search.next) });
   },
   loaderDeps: ({ search }) => search,
   loader: async ({ deps }) => {
@@ -38,7 +38,7 @@ export const Route = createFileRoute('/onboarding_/community')({
       };
     } catch (error) {
       if (error instanceof Error && error.message === 'UNAUTHENTICATED')
-        throw redirect({ to: '/login', search: { next: '/onboarding/community' } });
+        throw redirect({ to: '/login', search: optionalReturnPath('/onboarding/community') });
       return { communities: [], next_offset: null, failed: true };
     }
   },

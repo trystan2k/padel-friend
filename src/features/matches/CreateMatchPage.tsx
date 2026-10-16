@@ -9,7 +9,7 @@ import { MatchReview } from './MatchReview';
 import { createMatchStyles as s } from './create-match.styles';
 import { localMatchInstant } from './match-time';
 import { getMatchCreationOptions, publishMatchEvent } from './matches.functions';
-import { removeUnpublishedMatchPhotoFn } from './match-photo.functions';
+import { copySavedVenueMatchPhotoFn, removeUnpublishedMatchPhotoFn } from './match-photo.functions';
 
 const blank: Draft = {
   type: 'friendly',
@@ -33,6 +33,9 @@ export function CreateMatchPage() {
   const optionsGeneration = useRef(0);
   const publishLock = useRef(false);
   const frozen = useRef<FrozenRequest | null>(null);
+  const photoRef = useRef('');
+  const copiedPhoto = useRef<{ key: string } | null>(null);
+  const photoCopyGeneration = useRef(0);
   const editedRange = useRef({ min: false, max: false });
   const [options, setOptions] = useState<Options>(emptyOptions);
   const [optionsLoading, setOptionsLoading] = useState(true);
@@ -42,11 +45,27 @@ export function CreateMatchPage() {
   const [invitees, setInvitees] = useState<any[]>([]);
   const [photo, setPhoto] = useState('');
   const [photoBusy, setPhotoBusy] = useState(false);
+  const [photoCopyBusy, setPhotoCopyBusy] = useState(false);
+  const [photoCopyError, setPhotoCopyError] = useState(false);
   const [eventId, setEventId] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const headingLabels = ['details', 'players', 'teams', 'review'] as const;
+
+  const changePhoto = useCallback((next: string) => {
+    photoRef.current = next;
+    if (copiedPhoto.current?.key !== next) copiedPhoto.current = null;
+    setPhoto(next);
+    if (next) setPhotoCopyError(false);
+  }, []);
+
+  useEffect(
+    () => () => {
+      photoCopyGeneration.current++;
+    },
+    []
+  );
 
   useEffect(() => {
     const generation = ++optionsGeneration.current;
@@ -99,11 +118,49 @@ export function CreateMatchPage() {
       if (key === 'maxLevel') editedRange.current.max = true;
       if (key === 'savedVenue') {
         const venue = options.saved_venues.find((item) => item.id === next);
+        const previousCopy = copiedPhoto.current;
+        const replacingCopy = Boolean(previousCopy && photoRef.current === previousCopy.key);
+        const currentPhoto = photoRef.current;
+        const generation = ++photoCopyGeneration.current;
+        setPhotoCopyBusy(false);
+        if (replacingCopy && previousCopy) {
+          changePhoto('');
+          void removeUnpublishedMatchPhotoFn({ data: { object_key: previousCopy.key } }).catch(
+            () => undefined
+          );
+        }
         setValue((current) => ({
           ...current,
           savedVenue: next,
           ...(venue ? { venueName: venue.name, mapsUrl: venue.maps_url ?? current.mapsUrl } : {})
         }));
+        setPhotoCopyError(false);
+        if (venue?.photo_path && (!currentPhoto || replacingCopy)) {
+          setPhotoCopyBusy(true);
+          void copySavedVenueMatchPhotoFn({
+            data: {
+              community_id: communityId,
+              event_id: eventId,
+              saved_venue_id: String(next)
+            }
+          })
+            .then((savedPhotoKey) => {
+              if (generation !== photoCopyGeneration.current || photoRef.current) {
+                void removeUnpublishedMatchPhotoFn({ data: { object_key: savedPhotoKey } }).catch(
+                  () => undefined
+                );
+                return;
+              }
+              copiedPhoto.current = { key: savedPhotoKey };
+              changePhoto(savedPhotoKey);
+            })
+            .catch(() => {
+              if (generation === photoCopyGeneration.current) setPhotoCopyError(true);
+            })
+            .finally(() => {
+              if (generation === photoCopyGeneration.current) setPhotoCopyBusy(false);
+            });
+        }
         return;
       }
       setValue((current) =>
@@ -112,17 +169,21 @@ export function CreateMatchPage() {
           : { ...current, [key]: next }
       );
     },
-    [options.saved_venues]
+    [changePhoto, communityId, eventId, options.saved_venues]
   );
 
   const selectCommunity = useCallback(
     (id: string) => {
       if (id === communityId) return;
-      const abandonedPhoto = photo;
+      const abandonedPhoto = photoRef.current;
+      photoCopyGeneration.current++;
+      copiedPhoto.current = null;
       optionsGeneration.current += 1;
       const generation = optionsGeneration.current;
       setCommunityId(id);
-      setPhoto('');
+      changePhoto('');
+      setPhotoCopyBusy(false);
+      setPhotoCopyError(false);
       setInvitees([]);
       setFieldErrors({});
       setError('');
@@ -170,7 +231,7 @@ export function CreateMatchPage() {
           if (generation === optionsGeneration.current) setOptionsLoading(false);
         });
     },
-    [communityId, options, photo]
+    [changePhoto, communityId, options]
   );
 
   const timezone =
@@ -368,8 +429,10 @@ export function CreateMatchPage() {
               communityId={communityId}
               eventId={eventId}
               photo={photo}
-              onChange={setPhoto}
+              onChange={changePhoto}
               onBusyChange={setPhotoBusy}
+              copying={photoCopyBusy}
+              copyFailed={photoCopyError}
               invalid={Boolean(fieldErrors.photo)}
             />
           </>
@@ -440,7 +503,7 @@ export function CreateMatchPage() {
           ) : (
             <button
               type="button"
-              disabled={busy || photoBusy || !photo}
+              disabled={busy || photoBusy || photoCopyBusy || !photo}
               {...stylex.props(s.button)}
               onClick={() => void publish(Date.now())}
             >

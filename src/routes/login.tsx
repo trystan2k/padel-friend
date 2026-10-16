@@ -1,6 +1,6 @@
 import { createFileRoute, redirect } from '@tanstack/react-router';
 import { LoginWelcome } from '../features/auth/LoginWelcome';
-import { normalizeReturnPath } from '../features/auth/return-path';
+import { normalizeReturnPath, optionalReturnPath } from '../features/auth/return-path';
 import { getOnboardingStatus } from '../features/player/player.functions';
 
 export const Route = createFileRoute('/login')({
@@ -15,7 +15,7 @@ export const Route = createFileRoute('/login')({
     const status = await getOnboardingStatus();
     if (!status.authenticated) return;
     if (!status.complete)
-      throw redirect({ to: '/onboarding', search: { next: normalizeReturnPath(search.next) } });
+      throw redirect({ to: '/onboarding', search: optionalReturnPath(search.next) });
     throw redirect({ href: normalizeReturnPath(search.next) });
   },
   component: Login
