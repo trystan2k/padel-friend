@@ -431,6 +431,83 @@ export type Database = {
         }
         Relationships: []
       }
+      notification_preferences: {
+        Row: {
+          critical_in_app_enabled: boolean
+          push_community: boolean
+          push_enabled: boolean
+          push_leagues: boolean
+          push_matches: boolean
+          push_rankings: boolean
+          push_results: boolean
+          updated_at: string
+          user_id: string
+        }
+        ComputedFields: never
+        Insert: {
+          critical_in_app_enabled?: boolean
+          push_community?: boolean
+          push_enabled?: boolean
+          push_leagues?: boolean
+          push_matches?: boolean
+          push_rankings?: boolean
+          push_results?: boolean
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          critical_in_app_enabled?: boolean
+          push_community?: boolean
+          push_enabled?: boolean
+          push_leagues?: boolean
+          push_matches?: boolean
+          push_rankings?: boolean
+          push_results?: boolean
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      notifications: {
+        Row: {
+          category: string
+          community_id: string | null
+          created_at: string
+          event_key: string
+          id: string
+          kind: string
+          read_at: string | null
+          recipient_user_id: string
+          target_id: string
+          target_type: string
+        }
+        ComputedFields: never
+        Insert: {
+          category: string
+          community_id?: string | null
+          created_at?: string
+          event_key: string
+          id?: string
+          kind: string
+          read_at?: string | null
+          recipient_user_id: string
+          target_id: string
+          target_type: string
+        }
+        Update: {
+          category?: string
+          community_id?: string | null
+          created_at?: string
+          event_key?: string
+          id?: string
+          kind?: string
+          read_at?: string | null
+          recipient_user_id?: string
+          target_id?: string
+          target_type?: string
+        }
+        Relationships: []
+      }
       player_profiles: {
         Row: {
           avatar_url: string | null
@@ -477,7 +554,15 @@ export type Database = {
           status: Database["public"]["Enums"]["community_membership_status"]
         }[]
       }
+      accept_my_notification_invitation: {
+        Args: { p_notification_id: string }
+        Returns: {
+          community_id: string
+          status: Database["public"]["Enums"]["community_membership_status"]
+        }[]
+      }
       can_read_community: { Args: { p_community_id: string }; Returns: boolean }
+      count_my_unread_notifications: { Args: Record<PropertyKey, never>; Returns: number }
       create_community: {
         Args: {
           p_city_label?: string
@@ -526,6 +611,17 @@ export type Database = {
           time_zone: string
         }[]
       }
+      get_my_notification_target: {
+        Args: { p_notification_id: string }
+        Returns: {
+          community_id: string
+          community_name: string
+          invitation_id: string
+          membership_status: string
+          target_status: string
+        }[]
+      }
+      get_my_notifications_as_of: { Args: Record<PropertyKey, never>; Returns: string }
       govern_community_member: {
         Args: { p_action: string; p_community_id: string; p_membership_id: string }
         Returns: {
@@ -552,6 +648,7 @@ export type Database = {
           valid_until: string
         }[]
       }
+      mark_all_notifications_read: { Args: { p_before: string }; Returns: number }
       mark_community_notification_read: {
         Args: { p_notification_id: string }
         Returns: {
@@ -559,6 +656,7 @@ export type Database = {
           read_at: string
         }[]
       }
+      mark_notification_read: { Args: { p_notification_id: string }; Returns: string }
       onboard_player: {
         Args: {
           p_bio?: string
@@ -568,6 +666,18 @@ export type Database = {
           p_preferred_side: string
         }
         Returns: undefined
+      }
+      persist_notification: {
+        Args: {
+          p_category: string
+          p_community_id: string
+          p_event_key: string
+          p_kind: string
+          p_recipient_user_id: string
+          p_target_id: string
+          p_target_type: string
+        }
+        Returns: string
       }
       public_community_discovery: {
         Args: Record<PropertyKey, never>
@@ -624,6 +734,33 @@ export type Database = {
           created_at: string
           message_id: string
         }[]
+      }
+      set_my_notification_preferences: {
+        Args: {
+          p_push_community: boolean
+          p_push_enabled: boolean
+          p_push_leagues: boolean
+          p_push_matches: boolean
+          p_push_rankings: boolean
+          p_push_results: boolean
+        }
+        Returns: {
+          critical_in_app_enabled: boolean
+          push_community: boolean
+          push_enabled: boolean
+          push_leagues: boolean
+          push_matches: boolean
+          push_rankings: boolean
+          push_results: boolean
+          updated_at: string
+          user_id: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "notification_preferences"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       update_community_admin_defaults: {
         Args: { p_community_id: string; p_defaults: Json }
