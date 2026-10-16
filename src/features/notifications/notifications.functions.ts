@@ -35,8 +35,17 @@ export const listMyNotifications = createServerFn({ method: 'GET' })
     const hasMore = page.length > data.limit;
     const items = page.slice(0, data.limit);
     const last = items.at(-1);
+    const matchIds = items.filter((row) => row.target_type === 'match_event').map((row) => row.id);
+    const { data: contexts, error: contextError } = matchIds.length
+      ? await client.rpc('get_my_match_notification_contexts', { p_notification_ids: matchIds })
+      : { data: [], error: null };
+    if (contextError) throw contextError;
+    const byId = new Map((contexts ?? []).map((context) => [context.notification_id, context]));
     return {
-      items: items.map(toNotificationDto),
+      items: items.map((row) => {
+        const context = byId.get(row.id);
+        return { ...toNotificationDto(row), ...(context ? { matchContext: context } : {}) };
+      }),
       nextCursor: hasMore && last ? { createdAt: last.created_at, id: last.id } : null,
       unreadCount: count ?? 0,
       asOf
@@ -104,6 +113,26 @@ export const getMyNotificationTarget = createServerFn({ method: 'GET' })
       .single();
     if (error) throw error;
     return result;
+  });
+export const getMyNotificationTargetV2 = createServerFn({ method: 'GET' })
+  .validator(validateNotificationId)
+  .handler(async ({ data }) => {
+    const { client } = await requireAuthenticatedClient();
+    const { data: result, error } = await client
+      .rpc('get_my_notification_target_v2', { p_notification_id: data.notificationId })
+      .single();
+    if (error) throw error;
+    return result;
+  });
+export const getMyMatchNotificationContext = createServerFn({ method: 'GET' })
+  .validator(validateNotificationId)
+  .handler(async ({ data }) => {
+    const { client } = await requireAuthenticatedClient();
+    const { data: contexts, error } = await client.rpc('get_my_match_notification_contexts', {
+      p_notification_ids: [data.notificationId]
+    });
+    if (error) throw error;
+    return contexts?.[0] ?? null;
   });
 export const acceptMyNotificationInvitation = createServerFn({ method: 'POST' })
   .validator(validateNotificationId)

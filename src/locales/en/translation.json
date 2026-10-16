@@ -451,7 +451,22 @@
       "community_invitation": "You received a community invitation.",
       "community_membership_approved": "Your community membership was approved.",
       "community_membership_denied": "Your community membership was declined.",
-      "community_membership_removed": "Your community membership was removed."
+      "community_membership_removed": "Your community membership was removed.",
+      "match_event_published": "A new open match is available",
+      "match_event_invitation": "You were invited to a match"
+    },
+    "match": {
+      "openEvent": "Open event",
+      "invitedBy": "Invited by {{name}}",
+      "startsAt": "Starts",
+      "venue": "Venue",
+      "type": "Type",
+      "playing_one": "{{count}} playing",
+      "playing_other": "{{count}} playing",
+      "reserve_one": "{{count}} reserve",
+      "reserve_other": "{{count}} reserves",
+      "pricePerPlayer": "Price per player",
+      "unavailable": "This match notification is no longer available."
     }
   },
   "notificationPreferences": {

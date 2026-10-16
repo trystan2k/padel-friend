@@ -27,6 +27,7 @@ vi.mock('@tanstack/react-router', async (importOriginal) => ({
 }));
 vi.mock('../src/features/notifications/notifications.functions', () => ({
   getMyNotificationTarget: mocks.target,
+  getMyNotificationTargetV2: mocks.target,
   markNotificationRead: mocks.markRead,
   acceptMyNotificationInvitation: mocks.accept
 }));
@@ -244,7 +245,7 @@ describe('notification detail page', () => {
   it('marks unread notifications read after mount only, never inside the loader', async () => {
     const loaded = await detailLoader({ notificationId });
 
-    expect(loaded).toEqual(unavailable);
+    expect(loaded).toEqual({ ...unavailable, matchContext: null });
     expect(mocks.target).toHaveBeenCalledTimes(1);
     expect(mocks.target).toHaveBeenCalledWith({ data: { notificationId } });
     expect(mocks.markRead).not.toHaveBeenCalled();

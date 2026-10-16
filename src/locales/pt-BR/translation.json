@@ -451,7 +451,22 @@
       "community_invitation": "Você recebeu um convite para uma comunidade.",
       "community_membership_approved": "Sua participação na comunidade foi aprovada.",
       "community_membership_denied": "Sua participação na comunidade foi recusada.",
-      "community_membership_removed": "Sua participação na comunidade foi removida."
+      "community_membership_removed": "Sua participação na comunidade foi removida.",
+      "match_event_published": "Uma nova partida aberta está disponível",
+      "match_event_invitation": "Você recebeu um convite para uma partida"
+    },
+    "match": {
+      "openEvent": "Abrir evento",
+      "invitedBy": "Convidado por {{name}}",
+      "startsAt": "Início",
+      "venue": "Local",
+      "type": "Tipo",
+      "playing_one": "{{count}} jogando",
+      "playing_other": "{{count}} jogando",
+      "reserve_one": "{{count}} reserva",
+      "reserve_other": "{{count}} reservas",
+      "pricePerPlayer": "Preço por jogador",
+      "unavailable": "Esta notificação de partida não está mais disponível."
     }
   },
   "notificationPreferences": {

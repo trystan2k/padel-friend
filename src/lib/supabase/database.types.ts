@@ -780,12 +780,40 @@ export type Database = {
           time_zone: string
         }[]
       }
+      get_my_match_notification_contexts: {
+        Args: { p_notification_ids: string[] }
+        Returns: {
+          creator_display_name: string
+          currency: string
+          event_type: Database["public"]["Enums"]["match_event_type"]
+          match_event_id: string
+          notification_id: string
+          playing_count: number
+          price_minor: number
+          reserve_count: number
+          scheduled_at: string
+          timezone: string
+          venue: string
+        }[]
+      }
       get_my_notification_target: {
         Args: { p_notification_id: string }
         Returns: {
           community_id: string
           community_name: string
           invitation_id: string
+          membership_status: string
+          target_status: string
+        }[]
+      }
+      get_my_notification_target_v2: {
+        Args: { p_notification_id: string }
+        Returns: {
+          community_id: string
+          community_name: string
+          invitation_id: string
+          match_available: boolean
+          match_event_id: string
           membership_status: string
           target_status: string
         }[]

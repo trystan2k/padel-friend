@@ -451,7 +451,22 @@
       "community_invitation": "Recibiste una invitación a una comunidad.",
       "community_membership_approved": "Aprobaron tu membresía en la comunidad.",
       "community_membership_denied": "Rechazaron tu membresía en la comunidad.",
-      "community_membership_removed": "Se eliminó tu membresía en la comunidad."
+      "community_membership_removed": "Se eliminó tu membresía en la comunidad.",
+      "match_event_published": "Hay un nuevo partido abierto disponible",
+      "match_event_invitation": "Te invitaron a un partido"
+    },
+    "match": {
+      "openEvent": "Abrir evento",
+      "invitedBy": "Invitado por {{name}}",
+      "startsAt": "Comienza",
+      "venue": "Lugar",
+      "type": "Tipo",
+      "playing_one": "{{count}} jugando",
+      "playing_other": "{{count}} jugando",
+      "reserve_one": "{{count}} reserva",
+      "reserve_other": "{{count}} reservas",
+      "pricePerPlayer": "Precio por jugador",
+      "unavailable": "Esta notificación de partido ya no está disponible."
     }
   },
   "notificationPreferences": {

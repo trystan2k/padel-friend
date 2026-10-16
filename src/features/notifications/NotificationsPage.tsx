@@ -39,6 +39,53 @@ export function NotificationsPage({ initial }: { initial: NotificationPage }) {
           <h3 {...stylex.props(styles.cardTitle)}>
             {t(`notifications.kinds.${row.kind}`, { defaultValue: t('notifications.generic') })}
           </h3>
+          {row.matchContext ? (
+            <div {...stylex.props(styles.cardMeta)}>
+              <p>
+                {t('notifications.match.invitedBy', {
+                  name: row.matchContext.creator_display_name
+                })}
+              </p>
+              <p>
+                {t('notifications.match.venue')}: {row.matchContext.venue}
+              </p>
+              <p>
+                {t('notifications.match.startsAt')}:{' '}
+                {new Intl.DateTimeFormat(i18n.language, {
+                  dateStyle: 'medium',
+                  timeStyle: 'short',
+                  timeZone: row.matchContext.timezone
+                }).format(new Date(row.matchContext.scheduled_at))}
+              </p>
+              <p>
+                {t(
+                  row.matchContext.playing_count === 1
+                    ? 'notifications.match.playing_one'
+                    : 'notifications.match.playing_other',
+                  { count: row.matchContext.playing_count }
+                )}
+              </p>
+              <p>
+                {t(
+                  row.matchContext.reserve_count === 1
+                    ? 'notifications.match.reserve_one'
+                    : 'notifications.match.reserve_other',
+                  { count: row.matchContext.reserve_count }
+                )}
+              </p>
+              {row.matchContext.price_minor !== null && row.matchContext.currency ? (
+                <p>
+                  {t('notifications.match.pricePerPlayer')}:{' '}
+                  {new Intl.NumberFormat(i18n.language, {
+                    style: 'currency',
+                    currency: row.matchContext.currency
+                  }).format(row.matchContext.price_minor / 100)}
+                </p>
+              ) : null}
+            </div>
+          ) : row.category === 'matches' ? (
+            <p>{t('notifications.match.unavailable')}</p>
+          ) : null}
           <p
             {...stylex.props(styles.cardMeta)}
             aria-label={`${grouped.format(row.created_at)} ${t('notifications.dateUtc')}`}
@@ -46,13 +93,25 @@ export function NotificationsPage({ initial }: { initial: NotificationPage }) {
             {grouped.format(row.created_at)} {t('notifications.utc')}
           </p>
           <div {...stylex.props(styles.actions)}>
-            <Link
-              to="/notifications/$notificationId"
-              params={{ notificationId: row.id }}
-              {...stylex.props(styles.link)}
-            >
-              {t('notifications.view')}
-            </Link>
+            {row.matchContext ? (
+              <a
+                href={`/matches/${encodeURIComponent(row.matchContext.match_event_id)}`}
+                onClick={() => {
+                  if (!row.read_at) void feed.markRead(row.id);
+                }}
+                {...stylex.props(styles.link)}
+              >
+                {t('notifications.match.openEvent')}
+              </a>
+            ) : (
+              <Link
+                to="/notifications/$notificationId"
+                params={{ notificationId: row.id }}
+                {...stylex.props(styles.link)}
+              >
+                {t('notifications.view')}
+              </Link>
+            )}
             {!row.read_at && (
               <button
                 type="button"

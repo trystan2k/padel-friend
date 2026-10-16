@@ -7,16 +7,19 @@ import {
   markNotificationRead
 } from './notifications.functions';
 import type { NotificationTarget } from './notification-target';
+import type { MatchNotificationContext } from './notification-target';
 import { styles } from './notifications.styles';
 import * as stylex from '@stylexjs/stylex';
 export function NotificationDetailPage({
   notificationId,
-  target: initialTarget
+  target: initialTarget,
+  matchContext
 }: {
   notificationId: string;
   target: NotificationTarget;
+  matchContext?: MatchNotificationContext | null;
 }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [target, setTarget] = useState(initialTarget);
   const [accepted, setAccepted] = useState(false);
   const [announcement, setAnnouncement] = useState<
@@ -137,7 +140,42 @@ export function NotificationDetailPage({
             : ''}
       </output>
       <section {...stylex.props(styles.panel)}>
-        {target.target_status === 'unavailable' ? (
+        {target.target_status === 'match_available' &&
+        target.match_available &&
+        target.match_event_id ? (
+          <>
+            <h1>{t('notifications.kinds.match_event_invitation')}</h1>
+            {matchContext ? (
+              <>
+                <p>
+                  {t('notifications.match.invitedBy', { name: matchContext.creator_display_name })}
+                </p>
+                <p>
+                  {t('notifications.match.venue')}: {matchContext.venue}
+                </p>
+                <p>
+                  {t('notifications.match.startsAt')}:{' '}
+                  {new Intl.DateTimeFormat(i18n.language, {
+                    dateStyle: 'medium',
+                    timeStyle: 'short',
+                    timeZone: matchContext.timezone
+                  }).format(new Date(matchContext.scheduled_at))}
+                </p>
+              </>
+            ) : (
+              <p>{t('notifications.match.unavailable')}</p>
+            )}
+            <a
+              href={`/matches/${encodeURIComponent(target.match_event_id)}`}
+              {...stylex.props(styles.link)}
+            >
+              {t('notifications.match.openEvent')}
+            </a>
+            <Link {...stylex.props(styles.link)} to="/notifications">
+              {t('notifications.back')}
+            </Link>
+          </>
+        ) : target.target_status === 'unavailable' ? (
           <>
             <h1>{t('notifications.targetUnavailable')}</h1>
             <Link {...stylex.props(styles.link)} to="/notifications">
