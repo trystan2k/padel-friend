@@ -122,8 +122,10 @@ describe('match event visibility integration', () => {
         (${q(privateCommunity)},${q(pending!.id)},'member','pending',now()-interval '1 minute',null);
       insert into public.community_members(community_id,user_id,role,status,valid_from,valid_until,activated_at)
         values (${q(publicCommunity)},${q(inactive!.id)},'member','inactive',now()-interval '2 minutes',now()-interval '1 minute',now()-interval '2 minutes'),
-          (${q(privateCommunity)},${q(inactive!.id)},'member','inactive',now()-interval '2 minutes',now()-interval '1 minute',now()-interval '2 minutes');
-      insert into public.match_events(id,community_id,created_by,starts_at,timezone,event_type,visibility,team_assignment_mode,venue_name,maps_url,photo_path,registration_cutoff_at)
+           (${q(privateCommunity)},${q(inactive!.id)},'member','inactive',now()-interval '2 minutes',now()-interval '1 minute',now()-interval '2 minutes');
+       -- Visibility fixture uses placeholder images; PAF-72 tests enforce real object binding.
+       alter table public.match_events disable trigger lock_match_photo_publication;
+       insert into public.match_events(id,community_id,created_by,starts_at,timezone,event_type,visibility,team_assignment_mode,venue_name,maps_url,photo_path,registration_cutoff_at)
        select v.id,v.community_id,${q(creator!.id)},now()+interval '2 days','UTC','friendly',v.visibility,'POST_MATCH_TEAMS','Fixture court','https://maps.google.com/maps/place/test','${crypto.randomUUID()}/photo.webp',now()+interval '1 day'
        from (values (${q(eventIdFor(`${publicCommunity}:community_open`))}::uuid,${q(publicCommunity)}::uuid,'community_open'::public.match_event_visibility),
          (${q(eventIdFor(`${publicCommunity}:invite_only`))}::uuid,${q(publicCommunity)}::uuid,'invite_only'::public.match_event_visibility),
@@ -132,8 +134,9 @@ describe('match event visibility integration', () => {
       insert into public.match_event_invites(match_event_id,invitee_user_id,invited_by)
          values (${q(eventIdFor(`${publicCommunity}:invite_only`))},${q(invitee!.id)},${q(creator!.id)}),
            (${q(eventIdFor(`${privateCommunity}:invite_only`))},${q(invitee!.id)},${q(creator!.id)});
-      insert into public.match_event_registrations(match_event_id,user_id,accepted_at)
-         values (${q(eventIdFor(`${publicCommunity}:invite_only`))},${q(accepted!.id)},now());
+       insert into public.match_event_registrations(match_event_id,user_id,accepted_at)
+          values (${q(eventIdFor(`${publicCommunity}:invite_only`))},${q(accepted!.id)},now());
+       alter table public.match_events enable trigger lock_match_photo_publication;
     end $$;`
       );
 

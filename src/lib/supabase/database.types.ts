@@ -862,6 +862,7 @@ export type Database = {
           visibility: Database["public"]["Enums"]["community_visibility"]
         }[]
       }
+      safe_match_photo_uuid: { Args: { p_value: string }; Returns: string }
       safe_venue_photo_uuid: { Args: { p_value: string }; Returns: string }
       search_community_invitees: {
         Args: { p_community_id: string; p_limit?: number; p_query: string }
@@ -951,6 +952,7 @@ export type Database = {
       valid_community_admin_defaults: { Args: { p_defaults: Json }; Returns: boolean }
       valid_community_venue_photo_key: { Args: { p_key: string }; Returns: boolean }
       valid_match_maps_url: { Args: { p_url: string }; Returns: boolean }
+      valid_match_photo_key: { Args: { p_key: string }; Returns: boolean }
     }
     Enums: {
       community_join_policy: "instant" | "admin_approval"

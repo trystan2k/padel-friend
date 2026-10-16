@@ -39,8 +39,10 @@ describe('match event schema integration', () => {
       v_published timestamptz;
       v_failed_event uuid;
       v_failed boolean := false;
-    begin
-      insert into public.communities(id,name,visibility,created_by) values (v_community,'Schema integration fixture','public',v_creator);
+     begin
+       -- Schema fixture uses placeholder paths; storage attachment is covered by PAF-72 integration tests.
+       alter table public.match_events disable trigger lock_match_photo_publication;
+       insert into public.communities(id,name,visibility,created_by) values (v_community,'Schema integration fixture','public',v_creator);
       insert into public.match_events(id,community_id,created_by,starts_at,timezone,event_type,visibility,team_assignment_mode,venue_name,maps_url,photo_path,registration_cutoff_at)
         values(v_event,v_community,v_creator,now()+interval '2 days','UTC','friendly','community_open','POST_MATCH_TEAMS','Court','https://maps.google.com/maps/x','${crypto.randomUUID()}/photo.webp',now()+interval '1 day');
       select count(*),min(r.accepted_at),min(e.published_at) into v_count,v_accepted,v_published
@@ -133,8 +135,9 @@ describe('match event schema integration', () => {
       if exists(select 1 from pg_constraint where conrelid='public.match_events'::regclass and pg_get_constraintdef(oid) ilike '%now()%') then raise exception 'now based CHECK found'; end if;
       -- The future-start trigger is a publication guard; bypass it to prove no schema CHECK rejects aging rows.
       alter table public.match_events disable trigger match_event_creator_registration;
-      insert into public.match_events(id,community_id,created_by,starts_at,timezone,event_type,visibility,team_assignment_mode,venue_name,maps_url,photo_path,registration_cutoff_at)
-        values(gen_random_uuid(),v_community,v_creator,now()-interval '2 days','UTC','friendly','community_open','POST_MATCH_TEAMS','Past court','https://maps.google.com/maps/x',gen_random_uuid()::text||'/p.webp',now()-interval '3 days');
+       insert into public.match_events(id,community_id,created_by,starts_at,timezone,event_type,visibility,team_assignment_mode,venue_name,maps_url,photo_path,registration_cutoff_at)
+         values(gen_random_uuid(),v_community,v_creator,now()-interval '2 days','UTC','friendly','community_open','POST_MATCH_TEAMS','Past court','https://maps.google.com/maps/x',gen_random_uuid()::text||'/p.webp',now()-interval '3 days');
+       alter table public.match_events enable trigger lock_match_photo_publication;
       alter table public.match_events enable trigger match_event_creator_registration;
     end $$`;
       const child = spawn(
