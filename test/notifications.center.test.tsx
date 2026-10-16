@@ -5,6 +5,7 @@ import type {
   NotificationCategory,
   NotificationPage
 } from '../src/features/notifications/notification-model';
+import en from '../src/locales/en/translation.json';
 import { NotificationsPage } from '../src/features/notifications/NotificationsPage';
 
 type ListNotifications = (options: {
@@ -20,7 +21,8 @@ type MarkOne = (options: { data: { notificationId: string } }) => Promise<string
 const mocks = vi.hoisted(() => ({
   list: vi.fn<ListNotifications>(),
   markAll: vi.fn<MarkAll>(),
-  markOne: vi.fn<MarkOne>()
+  markOne: vi.fn<MarkOne>(),
+  useEnglishResource: false
 }));
 
 vi.mock('../src/features/notifications/notifications.functions', () => ({
@@ -28,13 +30,20 @@ vi.mock('../src/features/notifications/notifications.functions', () => ({
   markAllNotificationsRead: mocks.markAll,
   markNotificationRead: mocks.markOne
 }));
-vi.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string, options?: { count?: number }) =>
-      options?.count === undefined ? key : `${key}:${options.count}`,
-    i18n: { language: 'en' }
-  })
-}));
+vi.mock('react-i18next', async () => {
+  const { default: resource } = await import('../src/locales/en/translation.json');
+  return {
+    useTranslation: () => ({
+      t: (key: string, options?: { count?: number }) => {
+        if (mocks.useEnglishResource && key === 'notifications.mutationError') {
+          return resource.notifications.mutationError;
+        }
+        return options?.count === undefined ? key : `${key}:${options.count}`;
+      },
+      i18n: { language: 'en' }
+    })
+  };
+});
 vi.mock('@tanstack/react-router', async () => {
   const { createElement } = await import('react');
   return {
@@ -79,6 +88,7 @@ const initial: NotificationPage = {
 describe('notification center', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mocks.useEnglishResource = false;
     mocks.list.mockResolvedValue(initial);
     mocks.markAll.mockResolvedValue(0);
     mocks.markOne.mockResolvedValue(asOf);
@@ -159,6 +169,18 @@ describe('notification center', () => {
     expect(
       header?.compareDocumentPosition(filters) & Node.DOCUMENT_POSITION_FOLLOWING
     ).toBeTruthy();
+  });
+
+  it('renders the English locale resource when a read mutation fails', async () => {
+    mocks.useEnglishResource = true;
+    mocks.markOne.mockRejectedValue(new Error('mark-read failed'));
+    render(<NotificationsPage initial={initial} />);
+
+    fireEvent.click(await screen.findByRole('button', { name: 'notifications.markRead' }));
+
+    const alert = await screen.findByRole('alert');
+    expect(alert.textContent).toBe(en.notifications.mutationError);
+    expect(alert.textContent).toMatch(/again|retry/i);
   });
 });
 

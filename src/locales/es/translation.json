@@ -414,6 +414,7 @@
     "loadMore": "Cargar más",
     "offline": "Estás sin conexión. Las acciones no están disponibles.",
     "stale": "La información puede estar desactualizada.",
+    "mutationError": "No se pudo marcar esta notificación como leída. Inténtalo de nuevo.",
     "generic": "Tienes una nueva notificación.",
     "dateUtc": "Horas mostradas en UTC.",
     "utc": "UTC",

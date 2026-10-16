@@ -414,6 +414,7 @@
     "loadMore": "Carregar mais",
     "offline": "Você está offline. Ações indisponíveis.",
     "stale": "As atualizações podem estar desatualizadas.",
+    "mutationError": "Não foi possível marcar esta notificação como lida. Tente novamente.",
     "generic": "Você tem uma nova notificação.",
     "dateUtc": "Horários exibidos em UTC.",
     "utc": "UTC",

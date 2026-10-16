@@ -414,6 +414,7 @@
     "loadMore": "Load more",
     "offline": "You are offline. Actions are unavailable.",
     "stale": "Updates may be out of date.",
+    "mutationError": "Could not mark this notification as read. Please try again.",
     "generic": "You have a new notification.",
     "dateUtc": "Times shown in UTC.",
     "utc": "UTC",

@@ -66,6 +66,9 @@ export function useNotifications(
   const mutationPending = useRef(false);
   const mounted = useRef(false);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isCurrentCategory = useEffectEvent(
+    (requestedCategory: NotificationCategory) => requestedCategory === category
+  );
 
   const refresh = async (append = false) => {
     // Read liveness from the ref: the online-event handler schedules this refresh before the
@@ -82,14 +85,20 @@ export function useNotifications(
     pending.current = true;
     trailing.current = false;
     const token = ++generation.current;
+    const requestedCategory = category;
     setLoading(true);
     try {
       const response: unknown = await listMyNotifications({
-        data: { category, ...(append && cursor ? { cursor } : {}), limit: 20 }
+        data: {
+          category: requestedCategory,
+          ...(append && cursor ? { cursor } : {}),
+          limit: 20
+        }
       });
       if (!isNotificationPage(response)) throw new Error('INVALID_NOTIFICATION_PAGE');
       const page = response;
-      if (token !== generation.current || !mounted.current) return;
+      if (token !== generation.current || !mounted.current || !isCurrentCategory(requestedCategory))
+        return;
       setRows((current) =>
         append
           ? [...current, ...page.items.filter((item) => !current.some((row) => row.id === item.id))]
@@ -98,7 +107,7 @@ export function useNotifications(
       setUnreadCount(page.unreadCount);
       setCursor(page.nextCursor);
       setAsOf(page.asOf);
-      setLoadedCategory(category);
+      setLoadedCategory(requestedCategory);
       setError(false);
     } catch {
       if (token === generation.current && mounted.current) setError(true);
@@ -207,7 +216,7 @@ export function useNotifications(
       mutationPending.current = false;
       if (mounted.current) {
         setMutating(false);
-        void refresh();
+        refreshLatest();
       }
     }
   };
@@ -216,7 +225,7 @@ export function useNotifications(
     if (!online || mutationPending.current) return;
 
     mutationPending.current = true;
-    const token = ++generation.current;
+    generation.current += 1;
     const cutoff = asOf;
     const patchedIds = rows
       .filter((row) => !row.read_at && row.created_at <= cutoff)
@@ -237,13 +246,13 @@ export function useNotifications(
             patchedIds.includes(row.id) && row.read_at === cutoff ? { ...row, read_at: null } : row
           )
         );
-        if (generation.current === token) setMutationError(true);
+        setMutationError(true);
       }
     } finally {
       mutationPending.current = false;
       if (mounted.current) {
         setMutating(false);
-        void refresh();
+        refreshLatest();
       }
     }
   };

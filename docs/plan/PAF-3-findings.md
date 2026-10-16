@@ -17,6 +17,9 @@
 | F15 | minor    | src/features/notifications/use-notifications.ts:59             | Successful reconciliation cleared a failed read-mutation error without explanation                                  | fixed  | bug-fixer-specialist           | 1         |
 | F16 | minor    | test/notifications.store.integration.test.ts:190               | Concurrency test ran its two helper calls sequentially, so it could not prove overlap                               | fixed  | testing-automation-specialist  | 1         |
 | F17 | minor    | supabase/migrations/20261015180000_notifications_store.sql:15  | No recipient+category composite index for the center's category feed                                                | deferred | deferred                     | 1         |
+| F18 | major    | src/features/notifications/use-notifications.ts:210           | Filter change during an in-flight read mutation could leave the selected feed permanently empty (mutation completion refreshed with the stale category and swallowed the queued trailing refresh) | fixed  | bug-fixer-specialist           | 2         |
+| F19 | minor    | src/features/notifications/use-notifications.ts:240           | A failed mark-all stayed silent when the category changed mid-mutation (error gated on the fetch generation)        | fixed  | bug-fixer-specialist           | 2         |
+| F20 | minor    | src/features/notifications/NotificationsPage.tsx:107          | `notifications.mutationError` was missing from every locale, so the center rendered a raw key                       | fixed  | bug-fixer-specialist           | 2         |
 
 ## Iteration notes
 
@@ -25,4 +28,12 @@ Iteration 1 closed every `critical`/`major` row plus the trivially-fixable `mino
 - **StyleX silently drops CSS shorthands**: `border: '…'` declarations in `notification-preferences.styles.ts` never applied, so the `<fieldset>` kept the browser's native `groove` border — the very defect F5 targeted. Converted every `border`/`borderBlockEnd`/`borderInlineStart` shorthand in the notification style files to width/style/color longhands (repo convention), then regenerated the two pending preferences baselines. Verified by the E2E computed-style probes in en/pt-BR/es.
 - **Local-DB fixture pollution (not a delivery regression)**: `test/community.invitee.integration.test.ts` accumulates non-unique fixture rows across repeated suite runs and the invitee-search RPC caps results, so the newest fixture eventually fell outside the window. Repaired by deleting only the 33 accumulated duplicate fixture rows (scoped by exact fixture name; no reset, no unrelated data touched). The test itself is left unchanged as out-of-scope; a unique-fixture-name follow-up is recommended.
 
-Delta review after iteration 1: see the orchestrator's final report. `deferred` rows are handed off, not fixed in this delivery.
+Delta review after iteration 1: the UX/UI re-review returned `no-action` (every previous UI/a11y finding resolved, no new critical/major). The code re-review confirmed F1–F14 and F16 resolved, judged **F15 only partially fixed**, and raised ONE new major — all three items (F18–F20) were fixed inside iteration 2, the loop's final iteration, with regression tests proven red before the fix and green after.
+
+## Iteration 2 (final)
+
+- **F18 (major, new)** — the refresh that runs when a read mutation completes now always uses the latest selected category; a response whose requested category is no longer selected is rejected, and a queued latest-category trailing refresh is preserved instead of swallowed. Regression tests cover mark-read and mark-all filter switches plus the locale-backed error render; all four failed before the fix (selected feed returned `[]`).
+- **F19 (minor)** — the mutation error is now surfaced whenever the component is mounted, independent of the fetch generation, without clobbering the new category's feed state.
+- **F20 (minor)** — `notifications.mutationError` added to en/pt-BR/es and asserted against the REAL locale resource.
+
+Fix iterations used: **2 of 2** (cap reached; no `open` rows remain — only the single `deferred` row F17).

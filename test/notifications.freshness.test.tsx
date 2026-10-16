@@ -37,12 +37,13 @@ const readId = '00000000-0000-4000-8000-000000000002';
 function notification(
   id: string,
   createdAt = cutoff,
-  readAt: string | null = null
+  readAt: string | null = null,
+  category: NotificationDto['category'] = 'community'
 ): NotificationDto {
   return {
     id,
     kind: 'community_invitation',
-    category: 'community',
+    category,
     created_at: createdAt,
     read_at: readAt
   };
@@ -175,6 +176,95 @@ describe('notification freshness', () => {
     await act(async () => result.current.refresh());
     await waitFor(() => expect(result.current.error).toBe(false));
     expect(result.current.mutationError).toBe(true);
+  });
+
+  it('loads the latest category after mark-read finishes and discards its old-category refresh', async () => {
+    const mutation = deferred<string>();
+    const matchesRow = notification(readId, cutoff, null, 'matches');
+    mocks.markOne.mockReturnValue(mutation.promise);
+    mocks.list.mockImplementation(async ({ data }) =>
+      data.category === 'matches' ? page([matchesRow]) : page([notification(unreadId)])
+    );
+    const initial = page([notification(unreadId)]);
+    const { result, rerender } = renderHook(
+      ({ category }: { category: NotificationCategory }) => useNotifications(initial, category),
+      { initialProps: { category: 'community' as NotificationCategory } }
+    );
+
+    act(() => {
+      void result.current.markRead(unreadId);
+    });
+    await waitFor(() => expect(mocks.markOne).toHaveBeenCalledTimes(1));
+    rerender({ category: 'matches' });
+    expect(result.current.rows).toEqual([]);
+
+    await act(async () => {
+      mutation.resolve(cutoff);
+      await mutation.promise;
+    });
+
+    await waitFor(() => expect(result.current.rows).toEqual([matchesRow]));
+    expect(mocks.list).toHaveBeenCalledWith({ data: { category: 'matches', limit: 20 } });
+    expect(result.current.loading).toBe(false);
+  });
+
+  it('loads the latest category after mark-all finishes without leaving the feed empty', async () => {
+    const mutation = deferred<number>();
+    const matchesRow = notification(readId, cutoff, null, 'matches');
+    mocks.markAll.mockReturnValue(mutation.promise);
+    mocks.list.mockImplementation(async ({ data }) =>
+      data.category === 'matches' ? page([matchesRow]) : page([notification(unreadId)])
+    );
+    const initial = page([notification(unreadId)]);
+    const { result, rerender } = renderHook(
+      ({ category }: { category: NotificationCategory }) => useNotifications(initial, category),
+      { initialProps: { category: 'community' as NotificationCategory } }
+    );
+
+    act(() => {
+      void result.current.markAll();
+    });
+    await waitFor(() => expect(mocks.markAll).toHaveBeenCalledTimes(1));
+    rerender({ category: 'matches' });
+    expect(result.current.rows).toEqual([]);
+
+    await act(async () => {
+      mutation.resolve(1);
+      await mutation.promise;
+    });
+
+    await waitFor(() => expect(result.current.rows).toEqual([matchesRow]));
+    expect(mocks.list).toHaveBeenCalledWith({ data: { category: 'matches', limit: 20 } });
+    expect(result.current.loading).toBe(false);
+  });
+
+  it('shows mark-all failure after a category change without overwriting the new feed', async () => {
+    const mutation = deferred<number>();
+    const matchesRow = notification(readId, cutoff, null, 'matches');
+    mocks.markAll.mockReturnValue(mutation.promise);
+    mocks.list.mockImplementation(async ({ data }) =>
+      data.category === 'matches' ? page([matchesRow]) : page([notification(unreadId)])
+    );
+    const initial = page([notification(unreadId)]);
+    const { result, rerender } = renderHook(
+      ({ category }: { category: NotificationCategory }) => useNotifications(initial, category),
+      { initialProps: { category: 'community' as NotificationCategory } }
+    );
+
+    act(() => {
+      void result.current.markAll();
+    });
+    await waitFor(() => expect(mocks.markAll).toHaveBeenCalledTimes(1));
+    rerender({ category: 'matches' });
+
+    await act(async () => {
+      mutation.reject(new Error('mark-all failed'));
+      await mutation.promise.catch(() => undefined);
+    });
+
+    await waitFor(() => expect(result.current.rows).toEqual([matchesRow]));
+    expect(result.current.mutationError).toBe(true);
+    expect(result.current.loading).toBe(false);
   });
 
   it('uses the last successful cutoff for mark-all and keeps newer notifications unread', async () => {
