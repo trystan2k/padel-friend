@@ -111,29 +111,44 @@ returns jsonb language sql stable security definer set search_path = '' as $$
     'payment_note',e.payment_note,'maximum_registrations',e.maximum_registrations,
     'registration_cutoff_at',e.registration_cutoff_at,'accepted_count',n.n,
     'playing_count',(n.n/4)*4,'reserve_count',n.n%4,'group_count',n.n/4,
-    'more_needed',4-(n.n%4),'caller_badge',b.badge)
+     'more_needed',4-(n.n%4),'caller_badge',b.badge,
+     'is_past',e.starts_at<=now(),
+     'registration_open',e.starts_at>now() and e.registration_cutoff_at>now() and (e.maximum_registrations is null or n.n<e.maximum_registrations),
+     'caller_eligibility',elig.value,
+     'caller_requires_approval',coalesce(elig.value in ('out_of_range','nonmember'),false))
   from public.match_events e join public.communities c on c.id=e.community_id
   left join public.player_profiles p on p.user_id=e.created_by
   left join public.global_player_ratings g on g.user_id=e.created_by
   cross join lateral (select count(*)::integer n from public.match_event_registrations r where r.match_event_id=e.id) n
-  cross join lateral (select case when e.created_by=auth.uid() then 'creator'
+   cross join lateral (select case when e.created_by=auth.uid() then 'creator'
     when exists(select 1 from (select r.user_id,row_number() over(order by r.accepted_at,r.id) pos from public.match_event_registrations r where r.match_event_id=e.id) q where q.user_id=auth.uid() and q.pos<=((n.n/4)*4)) then 'playing'
     when exists(select 1 from public.match_event_registrations r where r.match_event_id=e.id and r.user_id=auth.uid()) then 'reserve'
-    when exists(select 1 from public.match_event_invites i where i.match_event_id=e.id and i.invitee_user_id=auth.uid()) then 'invited' else null end badge) b
+     when exists(select 1 from public.match_event_invites i where i.match_event_id=e.id and i.invitee_user_id=auth.uid()) then 'invited' else null end badge) b
+   cross join lateral (select case
+     when e.created_by=auth.uid() then 'creator'
+     when exists(select 1 from public.match_event_invites i where i.match_event_id=e.id and i.invitee_user_id=auth.uid()) then 'invited'
+     when exists(select 1 from public.community_members m where m.community_id=e.community_id and m.user_id=auth.uid() and m.status='active') then
+       case when not e.restriction_enabled or exists(select 1 from public.global_player_ratings r where r.user_id=auth.uid() and r.display_level between e.min_level and e.max_level) then 'member' else 'out_of_range' end
+     when auth.uid() is not null and e.visibility='community_open' and c.visibility='public' then 'nonmember' else null end value) elig
   where e.id=p_event_id and public.can_read_match_event(e.id)
 $$;
-create or replace function public.list_match_events(p_entry text,p_community_id uuid,p_cursor text,p_limit integer,p_as_of timestamptz)
+create or replace function public.list_match_events(p_entry text,p_community_id uuid default null,p_cursor text default '',p_limit integer default 20,p_as_of timestamptz default now())
 returns setof jsonb language sql stable security definer set search_path = '' as $$
   with parsed as (select split_part(p_cursor,'|',1) instant,split_part(p_cursor,'|',2) id), cursor_values as (
     select case when p_cursor like '%|%' and id ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$' and pg_catalog.pg_input_is_valid(instant,'timestamptz') then instant::timestamptz end starts_at,
       case when p_cursor like '%|%' and id ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$' and pg_catalog.pg_input_is_valid(instant,'timestamptz') then id::uuid end event_id from parsed
   ), eligible as (
     select e.*,c.name community_name,p.display_name creator_name,g.display_level creator_level,n.n accepted_count,
-      case when e.created_by=auth.uid() then 'creator'
+       case when e.created_by=auth.uid() then 'creator'
        when exists(select 1 from (select r.user_id,row_number() over(order by r.accepted_at,r.id) pos from public.match_event_registrations r where r.match_event_id=e.id) q where q.user_id=auth.uid() and q.pos<=((n.n/4)*4)) then 'playing'
        when exists(select 1 from public.match_event_registrations r where r.match_event_id=e.id and r.user_id=auth.uid()) then 'reserve'
        when exists(select 1 from public.match_event_invites i where i.match_event_id=e.id and i.invitee_user_id=auth.uid()) then 'invited' else null end caller_badge
-    from public.match_events e join public.communities c on c.id=e.community_id
+       ,case when e.created_by=auth.uid() then 'creator'
+         when exists(select 1 from public.match_event_invites i where i.match_event_id=e.id and i.invitee_user_id=auth.uid()) then 'invited'
+         when exists(select 1 from public.community_members m where m.community_id=e.community_id and m.user_id=auth.uid() and m.status='active') then
+           case when not e.restriction_enabled or exists(select 1 from public.global_player_ratings r where r.user_id=auth.uid() and r.display_level between e.min_level and e.max_level) then 'member' else 'out_of_range' end
+         when auth.uid() is not null and e.visibility='community_open' and c.visibility='public' then 'nonmember' else null end caller_eligibility
+     from public.match_events e join public.communities c on c.id=e.community_id
     left join public.player_profiles p on p.user_id=e.created_by left join public.global_player_ratings g on g.user_id=e.created_by
     cross join lateral (select count(*)::integer n from public.match_event_registrations r where r.match_event_id=e.id) n
     where public.can_read_match_event(e.id) and (p_community_id is null or e.community_id=p_community_id)
@@ -149,7 +164,11 @@ returns setof jsonb language sql stable security definer set search_path = '' as
     'min_level',e.min_level,'max_level',e.max_level,'price_minor',e.price_minor,'currency',e.currency,'payment_note',e.payment_note,
     'maximum_registrations',e.maximum_registrations,'registration_cutoff_at',e.registration_cutoff_at,'accepted_count',e.accepted_count,
     'playing_count',(e.accepted_count/4)*4,'reserve_count',e.accepted_count%4,'group_count',e.accepted_count/4,
-    'more_needed',4-(e.accepted_count%4),'caller_badge',e.caller_badge,
+     'more_needed',4-(e.accepted_count%4),'caller_badge',e.caller_badge,
+     'is_past',e.starts_at<=coalesce(p_as_of,now()),
+     'registration_open',e.starts_at>coalesce(p_as_of,now()) and e.registration_cutoff_at>coalesce(p_as_of,now()) and (e.maximum_registrations is null or e.accepted_count<e.maximum_registrations),
+     'caller_eligibility',e.caller_eligibility,
+     'caller_requires_approval',coalesce(e.caller_eligibility in ('out_of_range','nonmember'),false),
     'cursor',to_char(e.starts_at,'YYYY-MM-DD"T"HH24:MI:SS.USOF')||'|'||e.id::text)
   from eligible e cross join cursor_values v
   where (v.starts_at is null or (p_entry='past' and (e.starts_at,e.id)<(v.starts_at,v.event_id)) or (p_entry<>'past' and (e.starts_at,e.id)>(v.starts_at,v.event_id)))

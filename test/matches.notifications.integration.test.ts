@@ -117,15 +117,13 @@ describe('match notification integration', () => {
 
       const stagePhoto = async (who: Actor, communityId: string, eventId: string) => {
         const path = `${communityId}/${eventId}/${who.id}/${crypto.randomUUID()}.png`;
-        const uploaded = await who.client.storage
-          .from('match-event-photos')
-          .upload(
-            path,
-            new Blob([Uint8Array.from([137, 80, 78, 71, 13, 10, 26, 10, 1, 2, 3])], {
-              type: 'image/png'
-            }),
-            { contentType: 'image/png' }
-          );
+        const uploaded = await who.client.storage.from('match-event-photos').upload(
+          path,
+          new Blob([Uint8Array.from([137, 80, 78, 71, 13, 10, 26, 10, 1, 2, 3])], {
+            type: 'image/png'
+          }),
+          { contentType: 'image/png' }
+        );
         expect(uploaded.error, 'photo upload fixture').toBeNull();
         return path;
       };

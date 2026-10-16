@@ -1,6 +1,10 @@
 export type MatchEventListItem = Record<string, string | number | boolean | null> & {
   event_id: string;
   photo_url: string | null;
+  is_past: boolean;
+  registration_open: boolean;
+  caller_eligibility: 'creator' | 'member' | 'out_of_range' | 'nonmember' | 'invited' | null;
+  caller_requires_approval: boolean;
 };
 export type MatchEventListResult = { items: MatchEventListItem[]; next_cursor: string | null };
 

@@ -73,6 +73,19 @@ export function MatchCard({ event }: { event: MatchEventListItem }) {
         </p>
       )}
       {badge && badge !== 'creator' && <strong>{t(`matches.badges.${badge}`)}</strong>}
+      {event.caller_eligibility === 'invited' && <p>{t('matches.detail.invitationInfo')}</p>}
+      {event.caller_eligibility === 'nonmember' && event.caller_requires_approval && (
+        <p>{t('matches.detail.guestApprovalRequired')}</p>
+      )}
+      {event.caller_eligibility === 'out_of_range' && event.caller_requires_approval && (
+        <p>{t('matches.detail.outOfRangeApprovalRequired')}</p>
+      )}
+      {event.is_past && (
+        <>
+          <p>{t('matches.detail.pastScheduled')}</p>
+          <p>{t('matches.detail.outcomeUnavailable')}</p>
+        </>
+      )}
     </article>
   );
 }

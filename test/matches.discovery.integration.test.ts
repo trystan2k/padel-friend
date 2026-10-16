@@ -33,6 +33,8 @@ async function fixtureSql(env: Env, sql: string): Promise<void> {
 const expectedDetailKeys = [
   'accepted_count',
   'caller_badge',
+  'caller_eligibility',
+  'caller_requires_approval',
   'community_id',
   'community_name',
   'court_booked',
@@ -50,12 +52,14 @@ const expectedDetailKeys = [
   'maximum_registrations',
   'min_level',
   'more_needed',
+  'is_past',
   'notes',
   'payment_note',
   'photo_path',
   'playing_count',
   'price_minor',
   'registration_cutoff_at',
+  'registration_open',
   'reserve_count',
   'restriction_enabled',
   'starts_at',
@@ -92,7 +96,7 @@ describe('match event discovery integration', () => {
     'returns readable event details without leakage, filters listings by entry rules, derives counts and FIFO badges, pages keysets and searches invitees',
     async () => {
       const { url, key } = environment.env!;
-      async function actor(label: string, displayName: string): Promise<Actor> {
+      async function actor(label: string, displayName: string, level = 3.2): Promise<Actor> {
         const signup = await createClient(url, key, {
           auth: { persistSession: false, autoRefreshToken: false }
         }).auth.signUp({
@@ -110,7 +114,7 @@ describe('match event discovery integration', () => {
             await client.rpc('onboard_player', {
               p_display_name: displayName,
               p_preferred_side: 'EITHER',
-              p_initial_level: 3.2
+              p_initial_level: level
             })
           ).error
         ).toBeNull();
@@ -120,6 +124,7 @@ describe('match event discovery integration', () => {
       const [
         creator,
         member,
+        outOfRange,
         admin2,
         invitee,
         accepted,
@@ -133,6 +138,7 @@ describe('match event discovery integration', () => {
       ] = await Promise.all([
         actor('disc-creator', 'Discovery Creator'),
         actor('disc-member', `Zebra ${token} Caller`),
+        actor('disc-out-of-range', 'Discovery Out Of Range', 5.2),
         actor('disc-admin', 'Discovery Admin'),
         actor('disc-invitee', 'Discovery Invitee'),
         actor('disc-accepted', 'Discovery Accepted'),
@@ -147,6 +153,7 @@ describe('match event discovery integration', () => {
       const actors: Record<string, Actor> = {
         creator: creator,
         member: member,
+        outOfRange: outOfRange,
         admin2: admin2,
         invitee: invitee,
         accepted: accepted,
@@ -186,10 +193,11 @@ describe('match event discovery integration', () => {
         communityId: string,
         startsAt: string,
         cutoff: string,
-        extra = ',null,null,null,null,false,null'
+        extra = ',null,null,null,null,false,null',
+        restricted = false
       ) =>
-        `insert into public.match_events(id,community_id,created_by,starts_at,timezone,event_type,visibility,team_assignment_mode,venue_name,maps_url,photo_path,registration_cutoff_at,maximum_registrations,price_minor,currency,duration_minutes,court_booked,notes)
-         values (${q(events[eventKey]!)},${q(communityId)},${q(creator.id)},${startsAt},'UTC','friendly','community_open','POST_MATCH_TEAMS','Discovery court','https://maps.google.com/maps/place/discovery',${photo()},${cutoff}${extra});`;
+        `insert into public.match_events(id,community_id,created_by,starts_at,timezone,event_type,visibility,team_assignment_mode,venue_name,maps_url,photo_path,registration_cutoff_at,maximum_registrations,price_minor,currency,duration_minutes,court_booked,notes,restriction_enabled,min_level,max_level)
+         values (${q(events[eventKey]!)},${q(communityId)},${q(creator.id)},${startsAt},'UTC','friendly','community_open','POST_MATCH_TEAMS','Discovery court','https://maps.google.com/maps/place/discovery',${photo()},${cutoff}${extra},${restricted},${restricted ? 3 : 'null'},${restricted ? 4 : 'null'});`;
       await fixtureSql(
         environment.env!,
         `do $$ begin
@@ -199,7 +207,8 @@ describe('match event discovery integration', () => {
         (${q(pageCommunity)},'Discovery paging','public',${q(creator.id)},'{}'::jsonb);
       insert into public.community_members(community_id,user_id,role,status,valid_from,activated_at) values
         (${q(publicCommunity)},${q(creator.id)},'admin','active',now()-interval '1 minute',now()-interval '1 minute'),
-        (${q(publicCommunity)},${q(member.id)},'member','active',now()-interval '1 minute',now()-interval '1 minute'),
+         (${q(publicCommunity)},${q(member.id)},'member','active',now()-interval '1 minute',now()-interval '1 minute'),
+         (${q(publicCommunity)},${q(outOfRange.id)},'member','active',now()-interval '1 minute',now()-interval '1 minute'),
         (${q(publicCommunity)},${q(admin2.id)},'admin','active',now()-interval '1 minute',now()-interval '1 minute'),
         (${q(publicCommunity)},${q(invitee.id)},'member','active',now()-interval '1 minute',now()-interval '1 minute'),
         (${q(publicCommunity)},${q(accepted.id)},'member','active',now()-interval '1 minute',now()-interval '1 minute'),
@@ -218,7 +227,7 @@ describe('match event discovery integration', () => {
       -- Publication photo binding is the publication suite's job; discovery
       -- fixtures disable the PAF-72 lock like the visibility suite does.
       alter table public.match_events disable trigger lock_match_photo_publication;
-      ${insertEvent('anchor', publicCommunity, "now()+interval '3 days'", "now()+interval '2 days'", ",null,1500,'BRL',90,true,'Discovered notes'")}
+       ${insertEvent('anchor', publicCommunity, "now()+interval '3 days'", "now()+interval '2 days'", ",null,1500,'BRL',90,true,'Discovered notes'", true)}
       ${insertEvent('full', publicCommunity, "now()+interval '2 days'", "now()+interval '1 day'", ',2,null,null,null,false,null')}
       insert into public.match_events(id,community_id,created_by,starts_at,timezone,event_type,visibility,team_assignment_mode,venue_name,maps_url,photo_path,registration_cutoff_at)
         values (${q(events.inviteOnly!)},${q(publicCommunity)},${q(creator.id)},now()+interval '2 days','UTC','friendly','invite_only','POST_MATCH_TEAMS','Invite court','https://maps.google.com/maps/place/invite',${photo()},now()+interval '1 day');
@@ -290,6 +299,16 @@ describe('match event discovery integration', () => {
       expect(detail!['price_minor']).toBe(1500);
       expect(detail!['currency']).toBe('BRL');
       expect(detail!['maximum_registrations']).toBeNull();
+      expect(detail!['is_past']).toBe(false);
+      expect(detail!['registration_open']).toBe(true);
+      expect((await detailOf(nonmember, events.anchor!))!['caller_eligibility']).toBe('nonmember');
+      expect((await detailOf(nonmember, events.anchor!))!['caller_requires_approval']).toBe(true);
+      expect((await detailOf(outOfRange, events.anchor!))!['caller_eligibility']).toBe(
+        'out_of_range'
+      );
+      expect((await detailOf(outOfRange, events.anchor!))!['caller_requires_approval']).toBe(true);
+      expect((await detailOf(member, events.anchor!))!['caller_eligibility']).toBe('member');
+      expect((await detailOf(accepted, events.anchor!))!['caller_eligibility']).toBe('member');
       expect(
         Math.abs(Date.parse(textOf(detail!['starts_at'])) - (Date.now() + 3 * 86_400_000))
       ).toBeLessThan(300_000);
@@ -367,6 +386,7 @@ describe('match event discovery integration', () => {
         events.pastMiddle,
         events.pastOldest
       ]);
+      expect((await list(creator, 'past', publicCommunity))[0]!['is_past']).toBe(true);
       expect((await list(accepted, 'past', publicCommunity)).map(eventIdOf)).toEqual([
         events.pastRecent
       ]);

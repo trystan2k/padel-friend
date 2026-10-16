@@ -21,7 +21,7 @@ export const createMatchStyles = stylex.create({
     backgroundColor: 'var(--color-surface)',
     color: 'var(--color-text)',
     ':focus-visible': {
-      outline: 'var(--border-width-md) solid var(--color-green)',
+      outline: 'var(--border-width-lg) solid var(--color-green)',
       outlineOffset: 'var(--space-1)'
     }
   },
@@ -35,9 +35,22 @@ export const createMatchStyles = stylex.create({
     color: 'var(--color-text)',
     cursor: 'pointer',
     ':focus-visible': {
-      outline: 'var(--border-width-md) solid var(--color-green)',
+      outline: 'var(--border-width-lg) solid var(--color-green)',
       outlineOffset: 'var(--space-1)'
     }
+  },
+  touchLabel: {
+    display: 'flex',
+    alignItems: 'center',
+    minBlockSize: 'calc(var(--space-40) + var(--space-4))',
+    paddingBlock: 'var(--space-2)'
+  },
+  fileInput: { minBlockSize: 'calc(var(--space-40) + var(--space-4))' },
+  photo: {
+    width: '100%',
+    aspectRatio: '16 / 9',
+    objectFit: 'cover',
+    borderRadius: 'var(--radius-8)'
   },
   error: { color: 'var(--color-text)' },
   muted: { color: 'var(--color-muted)' },

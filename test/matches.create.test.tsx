@@ -19,7 +19,9 @@ const mocks = vi.hoisted(() => ({
     >(),
   upload: vi.fn<(...args: any[]) => Promise<string>>(),
   remove: vi.fn<(...args: any[]) => Promise<void>>(),
-  navigate: vi.fn<(...args: any[]) => Promise<void>>()
+  sign: vi.fn<(...args: any[]) => Promise<string>>(),
+  navigate: vi.fn<(...args: any[]) => Promise<void>>(),
+  browserClient: vi.fn<(...args: any[]) => any>()
 }));
 vi.mock('@tanstack/react-router', async (original) => ({
   ...(await original<typeof import('@tanstack/react-router')>()),
@@ -32,10 +34,22 @@ vi.mock('../src/features/matches/matches.functions', () => ({
   publishMatchEvent: mocks.publish
 }));
 vi.mock('../src/features/matches/match-photo.functions', () => ({
-  uploadMatchPhotoFn: mocks.upload,
-  removeUnpublishedMatchPhotoFn: mocks.remove
+  finalizeMatchPhotoUploadFn: mocks.upload,
+  removeUnpublishedMatchPhotoFn: mocks.remove,
+  signUnattachedMatchPhotoFn: mocks.sign
+}));
+vi.mock('../src/lib/supabase/client', () => ({
+  getBrowserClient: mocks.browserClient
 }));
 import { CreateMatchPage } from '../src/features/matches/CreateMatchPage';
+
+// The component pre-validates magic bytes before the browser uploads, so fixture
+// files must start with a real PNG signature.
+const pngFixture = () =>
+  new File([new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10, 0, 0, 0, 13])], 'x.png', {
+    type: 'image/png'
+  });
+const uploadedKeys: string[] = [];
 
 const idA = '11111111-1111-4111-8111-111111111111';
 const idB = '22222222-2222-4222-8222-222222222222';
@@ -101,18 +115,18 @@ async function mount(locale = 'en') {
 }
 async function attachPhoto(
   user: ReturnType<typeof userEvent.setup>,
-  name = 'court.png',
   locale: { matchCreate: { fields: { photo: string } } } = en
-) {
-  mocks.upload.mockResolvedValueOnce(`owned/${name}`);
-  await user.upload(
-    input(locale.matchCreate.fields.photo),
-    new File(['photo bytes'], name, { type: 'image/png' })
-  );
+): Promise<string> {
+  // The component composes the staging key client-side and uploads through the mocked
+  // browser client; capture that key for the cleanup assertions below.
+  const before = uploadedKeys.length;
+  await user.upload(input(locale.matchCreate.fields.photo), pngFixture());
+  await waitFor(() => expect(uploadedKeys.length).toBeGreaterThan(before));
   await waitFor(() => expect(mocks.upload).toHaveBeenCalled());
   await waitFor(() =>
     expect(screen.getByRole('img', { name: locale.matchCreate.fields.photo })).toBeTruthy()
   );
+  return uploadedKeys[uploadedKeys.length - 1];
 }
 async function fillRequired(user: ReturnType<typeof userEvent.setup>) {
   await user.type(screen.getByLabelText(en.matchCreate.fields.date), '2030-05-20');
@@ -130,12 +144,27 @@ async function goReview(user: ReturnType<typeof userEvent.setup>, next = en.matc
 }
 beforeEach(() => {
   vi.clearAllMocks();
+  uploadedKeys.length = 0;
   mocks.options.mockResolvedValue(options());
   mocks.search.mockResolvedValue([]);
   mocks.publish.mockResolvedValue({ event_id: 'match-id' });
-  mocks.upload.mockResolvedValue('owned/photo.png');
+  mocks.upload.mockResolvedValue('staged/photo.png');
   mocks.remove.mockResolvedValue(undefined);
+  mocks.sign.mockResolvedValue('https://signed.test/photo');
   mocks.navigate.mockResolvedValue(undefined);
+  mocks.browserClient.mockReturnValue({
+    auth: {
+      getClaims: async () => ({ data: { claims: { sub: '44444444-4444-4444-4444-444444444444' } } })
+    },
+    storage: {
+      from: () => ({
+        upload: async (key: string) => {
+          uploadedKeys.push(key);
+          return { error: null };
+        }
+      })
+    }
+  });
 });
 afterEach(() => {
   cleanup();
@@ -157,7 +186,7 @@ describe('create match wizard', () => {
   it('validates required details on publish, localizes errors, associates them, and focuses first invalid input', async () => {
     const user = userEvent.setup();
     await mount('pt-BR');
-    await attachPhoto(user, 'court.png', pt);
+    await attachPhoto(user, pt);
     await goReview(user, pt.matchCreate.next);
     await user.click(screen.getByRole('button', { name: pt.matchCreate.publish }));
     expect((await screen.findAllByText(pt.matchCreate.errors.required)).length).toBeGreaterThan(0);
@@ -232,7 +261,7 @@ describe('create match wizard', () => {
     await user.click(screen.getByRole('button', { name: en.matchCreate.previous }));
     await user.selectOptions(select(en.matchCreate.fields.community), idB);
     await waitFor(() =>
-      expect(mocks.remove).toHaveBeenCalledWith({ data: { object_key: 'owned/court.png' } })
+      expect(mocks.remove).toHaveBeenCalledWith({ data: { object_key: uploadedKeys[0] } })
     );
     expect(select(en.matchCreate.fields.savedVenue).value).toBe('');
     expect(screen.queryByRole('img')).toBeNull();
@@ -267,15 +296,30 @@ describe('create match wizard', () => {
     await mount();
     await user.upload(
       input(en.matchCreate.fields.photo),
-      new File(['bytes'], 'stale.png', { type: 'image/png' })
+      new File([new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10, 0, 0, 0, 13])], 'stale.png', {
+        type: 'image/png'
+      })
     );
     await waitFor(() => expect(mocks.upload).toHaveBeenCalledOnce());
+    const stagedKey = uploadedKeys[0];
     await user.selectOptions(select(en.matchCreate.fields.community), idB);
-    upload.resolve('owned/stale.png');
+    upload.resolve('staged/stale.png');
     await waitFor(() =>
-      expect(mocks.remove).toHaveBeenCalledWith({ data: { object_key: 'owned/stale.png' } })
+      expect(mocks.remove).toHaveBeenCalledWith({ data: { object_key: stagedKey } })
     );
     expect(screen.queryByRole('img')).toBeNull();
+  });
+
+  it('renders a signed staged-photo preview and localized unavailable fallback', async () => {
+    const user = userEvent.setup();
+    await mount();
+    await attachPhoto(user);
+    const preview = await screen.findByRole('img', { name: en.matchCreate.fields.photo });
+    expect(preview.getAttribute('src')).toBe('https://signed.test/photo');
+    await user.click(screen.getByRole('button', { name: en.matchCreate.photo.remove }));
+    mocks.sign.mockRejectedValueOnce(new Error('unavailable'));
+    await user.upload(input(en.matchCreate.fields.photo), pngFixture());
+    expect(await screen.findByText(en.matchCreate.photo.unavailable)).toBeTruthy();
   });
 
   it('requires photo, supports replacement/removal cleanup, and disables publish until upload completes', async () => {
@@ -288,14 +332,14 @@ describe('create match wizard', () => {
     await user.click(screen.getByRole('button', { name: en.matchCreate.previous }));
     await user.click(screen.getByRole('button', { name: en.matchCreate.previous }));
     await user.click(screen.getByRole('button', { name: en.matchCreate.previous }));
-    await attachPhoto(user, 'first.png');
-    await attachPhoto(user, 'replacement.png');
+    const firstKey = await attachPhoto(user);
+    const replacementKey = await attachPhoto(user);
     await waitFor(() =>
-      expect(mocks.remove).toHaveBeenCalledWith({ data: { object_key: 'owned/first.png' } })
+      expect(mocks.remove).toHaveBeenCalledWith({ data: { object_key: firstKey } })
     );
     await user.click(screen.getByRole('button', { name: en.matchCreate.photo.remove }));
     await waitFor(() =>
-      expect(mocks.remove).toHaveBeenCalledWith({ data: { object_key: 'owned/replacement.png' } })
+      expect(mocks.remove).toHaveBeenCalledWith({ data: { object_key: replacementKey } })
     );
   });
 
@@ -344,9 +388,25 @@ describe('create match wizard', () => {
     mocks.options.mockResolvedValue(options());
     mocks.search.mockResolvedValue([]);
     mocks.publish.mockResolvedValue({ event_id: 'published' });
-    mocks.upload.mockResolvedValue('owned/photo.png');
+    mocks.upload.mockResolvedValue('staged/photo.png');
     mocks.remove.mockResolvedValue(undefined);
     mocks.navigate.mockResolvedValue(undefined);
+    uploadedKeys.length = 0;
+    mocks.browserClient.mockReturnValue({
+      auth: {
+        getClaims: async () => ({
+          data: { claims: { sub: '44444444-4444-4444-4444-444444444444' } }
+        })
+      },
+      storage: {
+        from: () => ({
+          upload: async (key: string) => {
+            uploadedKeys.push(key);
+            return { error: null };
+          }
+        })
+      }
+    });
     await mount();
     await user.clear(input(en.matchCreate.fields.price));
     await user.type(input(en.matchCreate.fields.price), '12.50');

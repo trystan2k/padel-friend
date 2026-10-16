@@ -48,7 +48,8 @@ export const listMatchEvents = createServerFn({ method: 'GET' })
     const { client } = await authenticatedClient();
     const { data: result, error } = await client.rpc('list_match_events', {
       p_entry: data.entry,
-      p_community_id: data.community_id ?? '',
+      // Omitted lists every authorized community; an empty string would fail the uuid cast.
+      ...(data.community_id ? { p_community_id: data.community_id } : {}),
       p_cursor: data.cursor,
       p_limit: data.limit,
       p_as_of: data.as_of

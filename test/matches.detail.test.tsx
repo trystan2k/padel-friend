@@ -41,6 +41,10 @@ const event = (id = 1, extra: Record<string, unknown> = {}) => ({
   group_count: 1,
   more_needed: 3,
   caller_badge: 'invited',
+  is_past: false,
+  registration_open: true,
+  caller_eligibility: 'invited',
+  caller_requires_approval: false,
   ...extra
 });
 function mount(
@@ -82,13 +86,28 @@ describe('match detail surface', () => {
   });
   it('formats monetary value by active locale and shows truthful approval text without join action', () => {
     mount(
-      event(2, { price_minor: 1250, currency: 'BRL', requires_approval: true, out_of_range: true }),
+      event(2, {
+        price_minor: 1250,
+        currency: 'BRL',
+        caller_eligibility: 'out_of_range',
+        caller_requires_approval: true
+      }),
       'pt-BR'
     );
     expect(screen.getByText(/R\$\s?12,50/)).toBeTruthy();
-    expect(screen.getByText(pt.matches.detail.guestApprovalRequired)).toBeTruthy();
     expect(screen.getByText(pt.matches.detail.outOfRangeApprovalRequired)).toBeTruthy();
     expect(screen.queryByRole('button', { name: /join|entrar|participar/i })).toBeNull();
+  });
+  it('shows guest approval information without registration action', () => {
+    mount(event(9, { caller_eligibility: 'nonmember', caller_requires_approval: true }));
+    expect(screen.getByText(en.matches.detail.guestApprovalRequired)).toBeTruthy();
+    expect(screen.queryByRole('button', { name: /join|register/i })).toBeNull();
+  });
+  it('renders past scheduled event with no result language or fabricated score', () => {
+    mount(event(8, { is_past: true, caller_badge: null }));
+    expect(screen.getByText(en.matches.detail.pastScheduled)).toBeTruthy();
+    expect(screen.getByText(en.matches.detail.outcomeUnavailable)).toBeTruthy();
+    expect(screen.queryByText(/\bscore\b|\bconfirmed\b|\bdisputed\b/i)).toBeNull();
   });
   it('labels creator acceptance distinctly from playing and supports localized formatting in Spanish', () => {
     mount(event(3, { caller_badge: 'creator', price_minor: 0, currency: 'EUR' }), 'es');

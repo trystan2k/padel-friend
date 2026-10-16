@@ -310,8 +310,12 @@ export function CreateMatchPage() {
       const result = await publishMatchEvent({
         data: { event_id: request.id, input: request.input, invitee_ids: request.inviteeIds }
       });
-      if (result?.event_id) await navigate({ to: '/matches' });
-      else setError('publishFailed');
+      if (result?.event_id) {
+        // Full-document refresh on successful publish: the dashboard preloads /matches
+        // before the event exists, so a client-side navigation would land on a stale
+        // Available list without the new publication.
+        await navigate({ to: '/matches', reloadDocument: true });
+      } else setError('publishFailed');
     } catch (cause) {
       const code = cause instanceof Error ? cause.message : '';
       const mapped: Record<string, string> = {
@@ -381,7 +385,7 @@ export function CreateMatchPage() {
           <fieldset>
             <legend>{t('matchCreate.helpers.teamMode')}</legend>
             {(['PREDEFINED_TEAMS', 'POST_MATCH_TEAMS'] as const).map((mode) => (
-              <label key={mode}>
+              <label key={mode} {...stylex.props(s.touchLabel)}>
                 <input
                   type="radio"
                   name="teamMode"

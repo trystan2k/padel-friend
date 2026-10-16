@@ -848,11 +848,11 @@ export type Database = {
       }
       list_match_events: {
         Args: {
-          p_as_of: string
-          p_community_id: string
-          p_cursor: string
+          p_as_of?: string
+          p_community_id?: string
+          p_cursor?: string
           p_entry: string
-          p_limit: number
+          p_limit?: number
         }
         Returns: Json[]
       }

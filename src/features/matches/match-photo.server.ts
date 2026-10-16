@@ -10,29 +10,35 @@ import {
 
 type AuthClient = Awaited<ReturnType<typeof requireAuthenticatedClient>>['client'];
 
-export async function uploadMatchPhoto(
+// The browser uploads the staged object directly (the established VenuePhotoUpload
+// pattern; POST server functions cannot carry a File through this TanStack Start
+// version), then this server-side finalize authorizes the exact key and re-verifies
+// the stored bytes before the key may be attached to a publication.
+export async function finalizeMatchPhotoUpload(
   client: AuthClient,
   userId: string,
   communityId: string,
   eventId: string,
-  file: File
+  objectKey: string
 ) {
-  if (
-    file.size < 1 ||
-    file.size > MATCH_PHOTO_MAX_BYTES ||
-    !['image/jpeg', 'image/png', 'image/webp'].includes(file.type)
-  )
-    throw new Error('INVALID_MATCH_PHOTO');
-  const bytes = new Uint8Array(await file.slice(0, 12).arrayBuffer());
-  if (!matchesMatchPhotoMagicBytes(file.type, bytes)) throw new Error('INVALID_MATCH_PHOTO');
-  const extension = file.type === 'image/jpeg' ? 'jpg' : file.type === 'image/png' ? 'png' : 'webp';
-  const key = validateMatchPhotoKey(
-    `${communityId}/${eventId}/${userId}/${crypto.randomUUID()}.${extension}`
-  );
-  const { error } = await client.storage
+  const key = validateMatchPhotoKey(objectKey);
+  const segments = key.split('/');
+  if (segments[0] !== communityId || segments[1] !== eventId || segments[2] !== userId)
+    throw new Error('INVALID_MATCH_PHOTO_KEY');
+  const { data: objects, error: listError } = await client.storage
     .from(MATCH_PHOTO_BUCKET)
-    .upload(key, file, { contentType: file.type, upsert: false });
-  if (error) throw error;
+    .list(`${communityId}/${eventId}/${userId}`, { search: segments[3] });
+  if (listError) throw listError;
+  const metadata = objects?.find((object) => object.name === segments[3]);
+  if (!metadata || !metadata.metadata || metadata.metadata.size > MATCH_PHOTO_MAX_BYTES)
+    throw new Error('INVALID_MATCH_PHOTO');
+  const { data: blob, error: downloadError } = await client.storage
+    .from(MATCH_PHOTO_BUCKET)
+    .download(key);
+  if (downloadError) throw downloadError;
+  if (blob.size < 1 || blob.size > MATCH_PHOTO_MAX_BYTES) throw new Error('INVALID_MATCH_PHOTO');
+  const bytes = new Uint8Array(await blob.slice(0, 12).arrayBuffer());
+  if (!matchesMatchPhotoMagicBytes(blob.type, bytes)) throw new Error('INVALID_MATCH_PHOTO');
   return key;
 }
 
@@ -97,4 +103,32 @@ export async function signMatchPhoto(client: AuthClient, eventId: string) {
   } catch {
     throw new Error('MATCH_PHOTO_UNAVAILABLE');
   }
+}
+
+export async function signUnattachedMatchPhoto(
+  client: AuthClient,
+  userId: string,
+  objectKey: string
+) {
+  setResponseHeader('Cache-Control', 'private, no-store');
+  const key = validateMatchPhotoKey(objectKey);
+  const [communityId, eventId, ownerId] = key.split('/');
+  if (!communityId || !eventId || ownerId !== userId) throw new Error('MATCH_PHOTO_UNAVAILABLE');
+  const { data: event, error: eventError } = await client
+    .from('match_events')
+    .select('photo_path, community_id')
+    .eq('id', eventId)
+    .maybeSingle();
+  if (eventError || (event && (event.community_id !== communityId || event.photo_path === key)))
+    throw new Error('MATCH_PHOTO_UNAVAILABLE');
+  const { data: objects, error: listError } = await client.storage
+    .from(MATCH_PHOTO_BUCKET)
+    .list(`${communityId}/${eventId}/${userId}`, { search: key.split('/')[3] });
+  if (listError || !objects?.some((object) => object.name === key.split('/')[3]))
+    throw new Error('MATCH_PHOTO_UNAVAILABLE');
+  const filename = key.split('/')[3];
+  if (!filename) throw new Error('MATCH_PHOTO_UNAVAILABLE');
+  const { data, error } = await client.storage.from(MATCH_PHOTO_BUCKET).createSignedUrl(key, 60);
+  if (error || !data?.signedUrl) throw new Error('MATCH_PHOTO_UNAVAILABLE');
+  return data.signedUrl;
 }

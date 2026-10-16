@@ -52,7 +52,9 @@ export function MatchDetailPage({
         ) : (
           <output>{t('matches.unavailable')}</output>
         )}
-        <Link to="/matches">{t('matches.back')}</Link>
+        <Link to="/matches" {...stylex.props(s.backLink)}>
+          {t('matches.back')}
+        </Link>
       </main>
     );
   const zone = typeof event.timezone === 'string' ? event.timezone : 'UTC';
@@ -134,15 +136,19 @@ export function MatchDetailPage({
         })}
       </p>
       {event.caller_badge === 'creator' && <p>{t('matches.detail.creatorAccepted')}</p>}
-      {event.caller_badge === 'invited' && <p>{t('matches.detail.invitationInfo')}</p>}
+      {event.caller_eligibility === 'invited' && <p>{t('matches.detail.invitationInfo')}</p>}
       <p>
         {t(
           'matches.visibility.' +
             (event.visibility === 'invite_only' ? 'invite_only' : 'community_open')
         )}
       </p>
-      {event.requires_approval === true && <p>{t('matches.detail.guestApprovalRequired')}</p>}
-      {event.out_of_range === true && <p>{t('matches.detail.outOfRangeApprovalRequired')}</p>}
+      {event.caller_eligibility === 'nonmember' && (
+        <p>{t('matches.detail.guestApprovalRequired')}</p>
+      )}
+      {event.caller_eligibility === 'out_of_range' && event.caller_requires_approval === true && (
+        <p>{t('matches.detail.outOfRangeApprovalRequired')}</p>
+      )}
       {event.is_past === true && (
         <>
           <p>{t('matches.detail.pastScheduled')}</p>
@@ -154,7 +160,12 @@ export function MatchDetailPage({
       </button>
       <label>
         {t('matches.detail.shareUrl')}
-        <input readOnly value={canonical} onFocus={(e) => e.currentTarget.select()} />
+        <input
+          {...stylex.props(s.input)}
+          readOnly
+          value={canonical}
+          onFocus={(e) => e.currentTarget.select()}
+        />
       </label>
       {copied && <output>{t('matches.detail.copied')}</output>}
       {shareError && <p role="alert">{t('matches.detail.copyFailed')}</p>}

@@ -58,6 +58,7 @@ export function MatchesPage({
           <Link
             key={tab}
             to={tabPaths[tab]}
+            activeOptions={{ exact: true }}
             aria-current={entry === tab ? 'page' : undefined}
             {...stylex.props(s.link)}
           >

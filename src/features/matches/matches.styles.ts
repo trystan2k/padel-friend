@@ -19,7 +19,7 @@ export const matchesStyles = stylex.create({
     color: 'var(--color-text)',
     borderRadius: 'var(--radius-8)',
     ':focus-visible': {
-      outline: 'var(--border-width-md) solid var(--color-green)',
+      outline: 'var(--border-width-lg) solid var(--color-green)',
       outlineOffset: 'var(--space-1)'
     }
   },
@@ -39,6 +39,12 @@ export const matchesStyles = stylex.create({
     objectFit: 'cover',
     borderRadius: 'var(--radius-8)'
   },
+  photo: {
+    width: '100%',
+    aspectRatio: '16 / 9',
+    objectFit: 'cover',
+    borderRadius: 'var(--radius-8)'
+  },
   row: { display: 'flex', flexWrap: 'wrap', gap: 'var(--space-2)', alignItems: 'center' },
   muted: { color: 'var(--color-muted)' },
   button: {
@@ -50,8 +56,22 @@ export const matchesStyles = stylex.create({
     color: 'var(--color-text)',
     cursor: 'pointer',
     ':focus-visible': {
-      outline: 'var(--border-width-md) solid var(--color-green)',
+      outline: 'var(--border-width-lg) solid var(--color-green)',
       outlineOffset: 'var(--space-1)'
     }
+  },
+  input: {
+    minHeight: 'calc(var(--space-40) + var(--space-4))',
+    paddingInline: 'var(--space-3)',
+    border: 'var(--border-width-sm) solid var(--color-line)',
+    borderRadius: 'var(--radius-8)',
+    backgroundColor: 'var(--color-surface)',
+    color: 'var(--color-text)'
+  },
+  backLink: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    minHeight: 'calc(var(--space-40) + var(--space-4))',
+    paddingInline: 'var(--space-3)'
   }
 });

@@ -80,6 +80,7 @@ export function MatchInviteePicker({
             {person.name ?? person.display_name}
             <button
               type="button"
+              {...stylex.props(s.button)}
               onClick={() =>
                 onChange(
                   selected.filter((x) => (x.id ?? x.user_id) !== (person.id ?? person.user_id))

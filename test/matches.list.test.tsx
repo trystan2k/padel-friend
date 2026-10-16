@@ -56,7 +56,11 @@ const event = (id: number, count: number, badge: string | null = null): MatchEve
   reserve_count: count % 4,
   group_count: Math.floor(count / 4),
   more_needed: 4 - (count % 4),
-  caller_badge: badge
+  caller_badge: badge,
+  is_past: false,
+  registration_open: true,
+  caller_eligibility: 'member',
+  caller_requires_approval: false
 });
 const copy = en.matches;
 function mount(props: Partial<ComponentProps<typeof MatchesPage>> = {}, locale = 'en') {
@@ -119,6 +123,39 @@ describe('match list surfaces', () => {
     cleanup();
     mount();
     expect(screen.queryByRole('button', { name: copy.loadMore })).toBeNull();
+  });
+  it.each([
+    ['available', '/matches', copy.tabs.available],
+    ['my', '/matches/my', copy.tabs.my],
+    ['past', '/matches/past', copy.tabs.past]
+  ] as const)('uses exact active matching for %s tab', (entry, path, label) => {
+    mount({ entry });
+    const links = screen.getAllByRole('link');
+    expect(
+      links.find((link) => link.getAttribute('href') === path)?.getAttribute('aria-current')
+    ).toBe('page');
+    expect(links.filter((link) => link.getAttribute('aria-current') === 'page')).toHaveLength(1);
+    expect(links.find((link) => link.textContent === label)?.getAttribute('aria-current')).toBe(
+      'page'
+    );
+  });
+  it('shows informational eligibility and truthful past scheduled state on cards', () => {
+    mount({
+      entry: 'past',
+      initialItems: [
+        { ...event(10, 0), is_past: true },
+        {
+          ...event(11, 0),
+          caller_eligibility: 'out_of_range',
+          caller_requires_approval: true
+        }
+      ]
+    });
+    expect(screen.getAllByText(copy.detail.pastScheduled)).toHaveLength(1);
+    expect(screen.getAllByText(copy.detail.outcomeUnavailable)).toHaveLength(1);
+    expect(screen.getByText(copy.detail.outOfRangeApprovalRequired)).toBeTruthy();
+    expect(screen.queryByText(/score|result|confirmed|disputed/i)).toBeNull();
+    expect(screen.queryByRole('button', { name: /join|register/i })).toBeNull();
   });
   it('shows distinct empty, error and offline states', async () => {
     mount();
