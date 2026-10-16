@@ -1,0 +1,300 @@
+{
+  "runtimeEnforcement": {
+    "sourceDesignSha256": "Provenance metadata; asserted by matches-visual.spec.ts before any comparison.",
+    "approvedReferencePngDigests": "Runtime-enforced by the matches-visual gate before screenshot comparisons.",
+    "derivedBaselineDigests": "Runtime-enforced by the matches-visual gate before and after screenshot comparisons, so --update-snapshots cannot silently replace a reviewed baseline."
+  },
+  "sourceDesign": {
+    "path": "docs/design/padel-friend.pen",
+    "sha256": "9326506c47cdd4526d7b3792b58b0286847b15e871831aeb34bf038f45f23148",
+    "exportCommand": "Pencil MCP only: copy docs/design/padel-friend.pen to a scratch file, then execute({ filePath: <scratch>, input: 'Export([\"wHaAb\",\"vAxZh\",\"b5RR4\",\"RDV2r\",\"JLqMT\",\"eYIgj\",\"ENn8Q\",\"kYI9H\",\"uePpj\",\"w25dY\",\"Fyhbv\",\"t1ywa\",\"n6zFq\"], \"png\", <scratch>/refs, {scale:1})' }); copy/rename exports into e2e/references/paf-4/ with the named references below. The encrypted source .pen is never read or grepped by other tooling.",
+    "provenanceNote": "All 13 PAF-4 frames verified present in the current design (sha256 above) and exported at scale 1 (390-wide phone frames) from a temporary copy, so the source design stayed untouched. Double export of wHaAb/ENn8Q/eYIgj reproduced byte-identical PNGs. Frames taller than 844px (wHaAb 916, eYIgj 872, ENn8Q 920) are cropped to the top 390x844 viewport region; below-the-fold layout of those frames is covered by structural probes instead of pixel comparison. n6zFq (Shared screen states) is a 431x561 board of compact patterns, not a full screen: it is exported for provenance and drives structural assertions only, never a pixel budget."
+  },
+  "approvedReferences": {
+    "create-details.png": {
+      "frameId": "wHaAb",
+      "sourceSize": "390x916",
+      "derivation": "Crop to top 390x844 (app viewport region).",
+      "sha256": "9e38010d6dae876e12f45626f199da5547c53d5015be27fbafe8fa30589f51de"
+    },
+    "create-players.png": {
+      "frameId": "vAxZh",
+      "sourceSize": "390x844",
+      "derivation": "Used as exported.",
+      "sha256": "124cf5c1c6e807bc62a17cda69721e238306a90c9b2de3a6459a6ae4cde52247"
+    },
+    "create-team-mode.png": {
+      "frameId": "b5RR4",
+      "sourceSize": "390x844",
+      "derivation": "Used as exported.",
+      "sha256": "0f2b36e49c41fe73a1d61bee4419b0ef2f6d7b5b41ccbd0238a2e8697adf79d1"
+    },
+    "create-review.png": {
+      "frameId": "RDV2r",
+      "sourceSize": "390x844",
+      "derivation": "Used as exported.",
+      "sha256": "fcf7be90a9b6c28c3f2c8fa078a72a91c4e966929983df9bf6ec617a1b6bd77c"
+    },
+    "detail-public-guest.png": {
+      "frameId": "JLqMT",
+      "sourceSize": "390x844",
+      "derivation": "Used as exported.",
+      "sha256": "974a3ddc16fa5e5997d1ec5981d4a6c941dd4d0be655b84eb208fd3c0e14ab96"
+    },
+    "detail-friendly-creator.png": {
+      "frameId": "eYIgj",
+      "sourceSize": "390x872",
+      "derivation": "Crop to top 390x844 (app viewport region).",
+      "sha256": "03dd9222d00ab236bcdadcbbe75d2a0370617414982d7b923eec2df2a9943185"
+    },
+    "available-populated.png": {
+      "frameId": "ENn8Q",
+      "sourceSize": "390x920",
+      "derivation": "Crop to top 390x844 (app viewport region).",
+      "sha256": "87502273c6b126eec23c5af1ced81f1fe4899b8c31ea671274218403e32f0f5d"
+    },
+    "available-empty.png": {
+      "frameId": "kYI9H",
+      "sourceSize": "390x844",
+      "derivation": "Used as exported.",
+      "sha256": "80d31604b7fa1c98765f43496f96d3289b9b78625381211a7087c2fd96a759c0"
+    },
+    "my-matches-invited.png": {
+      "frameId": "uePpj",
+      "sourceSize": "390x844",
+      "derivation": "Used as exported.",
+      "sha256": "0dc5180af17fcf483f7f669083d1f4030ece3e2379af3cb0e4ec20fbe5707cad"
+    },
+    "my-matches-reserve.png": {
+      "frameId": "t1ywa",
+      "sourceSize": "390x844",
+      "derivation": "Used as exported.",
+      "sha256": "d8f70e7d76ffbb95b5294afd617105987c1f60bc3892387b9db52d82a9ff093c"
+    },
+    "past-elapsed.png": {
+      "frameId": "w25dY",
+      "sourceSize": "390x844",
+      "derivation": "Used as exported.",
+      "sha256": "b7e2c89ce5094f9af4923cb0c974b92c2f77b633c6b254a060c75b03e63584af"
+    },
+    "detail-invitee.png": {
+      "frameId": "Fyhbv",
+      "sourceSize": "390x844",
+      "derivation": "Used as exported.",
+      "sha256": "2a91105c6f3b34977ac828c5d3a853d8d231535427c453f43e5b54c3ea322f8b"
+    },
+    "states-board.png": {
+      "frameId": "n6zFq",
+      "sourceSize": "431x561",
+      "derivation": "Used as exported. Provenance only: compact state-pattern board (loading / some details unavailable / error / offline / members only / keyboard focus), no full-screen frame exists, so loading, error, offline and unavailable states are structural probes plus self-baselined screenshots.",
+      "sha256": "bb0f6ded8fe47e4c35ccdcbc6228c399daf29a5c06c80a25b6a839ea7ae52135"
+    }
+  },
+  "screenshotBaselines": {
+    "create-details.png": {
+      "sha256": "9e38010d6dae876e12f45626f199da5547c53d5015be27fbafe8fa30589f51de",
+      "derivedFrom": "create-details.png (approved reference)"
+    },
+    "create-players.png": {
+      "sha256": "124cf5c1c6e807bc62a17cda69721e238306a90c9b2de3a6459a6ae4cde52247",
+      "derivedFrom": "create-players.png (approved reference)"
+    },
+    "create-team-mode.png": {
+      "sha256": "0f2b36e49c41fe73a1d61bee4419b0ef2f6d7b5b41ccbd0238a2e8697adf79d1",
+      "derivedFrom": "create-team-mode.png (approved reference)"
+    },
+    "create-review.png": {
+      "sha256": "fcf7be90a9b6c28c3f2c8fa078a72a91c4e966929983df9bf6ec617a1b6bd77c",
+      "derivedFrom": "create-review.png (approved reference)"
+    },
+    "available-populated.png": {
+      "sha256": "87502273c6b126eec23c5af1ced81f1fe4899b8c31ea671274218403e32f0f5d",
+      "derivedFrom": "available-populated.png (approved reference)"
+    },
+    "available-empty.png": {
+      "sha256": "80d31604b7fa1c98765f43496f96d3289b9b78625381211a7087c2fd96a759c0",
+      "derivedFrom": "available-empty.png (approved reference)"
+    },
+    "my-matches-invited.png": {
+      "sha256": "0dc5180af17fcf483f7f669083d1f4030ece3e2379af3cb0e4ec20fbe5707cad",
+      "derivedFrom": "my-matches-invited.png (approved reference)"
+    },
+    "my-matches-reserve.png": {
+      "sha256": "d8f70e7d76ffbb95b5294afd617105987c1f60bc3892387b9db52d82a9ff093c",
+      "derivedFrom": "my-matches-reserve.png (approved reference)"
+    },
+    "past-elapsed.png": {
+      "sha256": "b7e2c89ce5094f9af4923cb0c974b92c2f77b633c6b254a060c75b03e63584af",
+      "derivedFrom": "past-elapsed.png (approved reference)"
+    },
+    "detail-public-guest.png": {
+      "sha256": "974a3ddc16fa5e5997d1ec5981d4a6c941dd4d0be655b84eb208fd3c0e14ab96",
+      "derivedFrom": "detail-public-guest.png (approved reference)"
+    },
+    "detail-friendly-creator.png": {
+      "sha256": "03dd9222d00ab236bcdadcbbe75d2a0370617414982d7b923eec2df2a9943185",
+      "derivedFrom": "detail-friendly-creator.png (approved reference)"
+    },
+    "detail-invitee.png": {
+      "sha256": "2a91105c6f3b34977ac828c5d3a853d8d231535427c453f43e5b54c3ea322f8b",
+      "derivedFrom": "detail-invitee.png (approved reference)"
+    },
+    "create-details-dark.png": {
+      "sha256": "213130a398f884103569dcddf89015cbf0fcba6bde5b717f3bcee406700a858d",
+      "derivedFrom": "first honest capture (self-baseline; no dark frame exists in the design source)"
+    },
+    "available-populated-320.png": {
+      "sha256": "37f0ec6370ceb1be6a540bf26247b6d5884dca7005e35dc8d36b0b5aa701427f",
+      "derivedFrom": "first honest capture (self-baseline; design frames are 390-wide only)"
+    },
+    "available-populated-desktop.png": {
+      "sha256": "8a7b96755da22a5aca42de5ff25ae2869dc64b52ecd7a2ab6b03bb88a529026c",
+      "derivedFrom": "first honest capture (self-baseline; no desktop frame exists in the design source)"
+    },
+    "available-populated-pt-BR.png": {
+      "sha256": "ba7c07d6091a35f6272ae19d286a0394f240440e5ec874446e8376272274da33",
+      "derivedFrom": "first honest capture (self-baseline; design frames are English only)"
+    },
+    "available-populated-es.png": {
+      "sha256": "ac9e85d9a7ecdb2ded684cdc282c25383b66dac6371bf67c0cffb99a7a1b8c2d",
+      "derivedFrom": "first honest capture (self-baseline; design frames are English only)"
+    },
+    "available-populated-dark.png": {
+      "sha256": "a16ea20397e480a651764b7b2470c3cf5b06f94f871200a5a63e78d77f8939fd",
+      "derivedFrom": "first honest capture (self-baseline; no dark frame exists in the design source)"
+    },
+    "detail-friendly-creator-dark.png": {
+      "sha256": "2d9b7bdb9c8fb085b1e86313f865daf822ffa5c5f9f84c1253d815c05220872b",
+      "derivedFrom": "first honest capture (self-baseline; no dark frame exists in the design source)"
+    },
+    "past-empty.png": {
+      "sha256": "ff77426e35dfa9c903aae9b28ec73c735ee5192d7c6228a7929ac0cd35676337",
+      "derivedFrom": "first honest capture (self-baseline; no past-empty frame exists, w25dY is populated)"
+    },
+    "state-unavailable.png": {
+      "sha256": "de4f532a6ff58f808d49ba08900cbef4ea9fe68a9aa6279c92996c7772f0fe09",
+      "derivedFrom": "first honest capture (self-baseline; n6zFq is a state-pattern board, not a screen)"
+    },
+    "state-error.png": {
+      "sha256": "e0562964cefa02db77e3789bfb88f293b9befed9327232a41b0bfa9c61409d1c",
+      "derivedFrom": "first honest capture (self-baseline; n6zFq is a state-pattern board, not a screen)"
+    },
+    "state-loading.png": {
+      "sha256": "79e42ad3a46f764f8d83ba6ef528dee0ecad4591e8eaf2d749b83e947a671e9b",
+      "derivedFrom": "first honest capture (self-baseline; n6zFq is a state-pattern board, not a screen)"
+    },
+    "state-offline.png": {
+      "sha256": "c6cdeaff708f63334fd5fa9bc7b16b809f3ae92da787d47bafce1211d9c4b9fa",
+      "derivedFrom": "first honest capture (self-baseline; n6zFq is a state-pattern board, not a screen)"
+    }
+  },
+  "recordedServerResponses": {
+    "recorded-empty-available.response.json": {
+      "sha256": "e884641b68c9e1d7c631c440c066d2080b7a8a7eebeb24e15e95ec6008b36e5f",
+      "what": "Byte-exact list_match_events(entry=available) server-function response captured after the same prune e2e/global-setup.ts performs (zero match events in the local loopback database).",
+      "why": "Available is a global listing; once any public event exists it cannot be truthfully emptied inside a combined suite run. The suite replays this recorded response at the network boundary so the empty-state rendering (real application code) is deterministic in any run order."
+    }
+  },
+  "maskedAreas": {
+    "policy": "Masks cover only genuinely dynamic areas: venue-photo renderings (main img) and rendered start-instant text lines (first paragraph of each card / of the detail page / the review cutoff line). Whole fields, cards or sections are never masked.",
+    "maskColor": "#FF00FF"
+  },
+  "scopeAdaptations": {
+    "summary": "The T04 implementation deliberately renders a strict subset of the designer frames. These omissions are scope-aligned adaptations recorded here and in the plan — not hidden visual defects — and the first-honest-comparison budgets below reflect them.",
+    "items": [
+      "No Ranked/Unranked competition-status control and no Eligible League block (wHaAb, RDV2r, JLqMT): T04 has no Ranked/League state.",
+      "No public-match label on the 'Open to community' row (wHaAb): the visibility control offers exactly community_open and invite_only.",
+      "No filter chips (THIS WEEK/COMPETITIVE/MY LEVEL, This week/All types selects) on Available (ENn8Q, kYI9H): the listing contract has no filter set.",
+      "No date group headers or 'N open' counters on Available (ENn8Q): no fake counters.",
+      "No VIEW MATCH per-card action (ENn8Q): the whole card title is the link.",
+      "No SAVE control on create frames (wHaAb, vAxZh, b5RR4, RDV2r): wizard state is form-only; there are no persisted drafts.",
+      "No team assignment, no group format block (b5RR4): step 3 is the team-mode choice only.",
+      "No SET LIMIT / registration-order panel (vAxZh): maximum is a plain field and the FIFO rule renders as informational copy.",
+      "No photo hero overlay with venue name/description (JLqMT, eYIgj): detail renders the required photo, datetime, Maps link, price and notes as semantic fields.",
+      "No participants roster/grid or reserve queue (JLqMT, eYIgj): T04 shows accepted/playing/reserve/groups/more-needed counts only; detailed participant profiles are deferred.",
+      "No JOIN COMMUNITY TO PLAY / REQUEST TO PLAY registration actions (JLqMT, eYIgj) and no ACCEPT/DECLINE invitation actions (Fyhbv): T05 owns registration; T04 renders truthful informational approval/invitation context instead.",
+      "No result review, disputed/canceled/confirmed records or status variants beyond INVITED/RESERVE (uePpj, w25dY, t1ywa): T04 renders scheduled history only and never fabricates results.",
+      "No bottom navigation (Home/Matches/Community/Ranking/Profile) on any frame: the existing shell intentionally keeps working Matches/dashboard links instead of drawing inert destinations for screenshot parity.",
+      "The real shell renders language and theme selects above main; the design frames show neither (they show a LIGHT badge).",
+      "kYI9H 'Explore public communities' block and '+ CREATE A MATCH' action: out of T04 scope; the app renders the localized empty copy only (the missing in-app create entry link is a reported gap in the functional suite)."
+    ]
+  },
+  "knownDeviations": {
+    "sub44pxHitTargets": [
+      "Detail share-URL readonly input renders at 26px height (unstyled native input).",
+      "Create Details venue-photo native file input renders at 24px height (unstyled).",
+      "Team-mode radio labels and invitee 'Remove' buttons are unstyled and render below 44px height (measured values are attached to the test runs).",
+      "The unavailable state's Back link renders unstyled at 20px, while the loaded detail's Back link uses the shared 56px link style."
+    ],
+    "focusRing": "The token focus ring is --border-width-md (1.5px), which Chromium renders as 1px at 1x; the design states board (n6zFq) calls for a 2px visible ring. The ring is visible (solid green) and the measured value is attached to every keyboard-reachability probe; widening the token belongs to the owning UI unit.",
+    "tabAriaCurrent": "Non-current tabs inherit TanStack Link's default fuzzy active matching, so /matches/my also marks the Available tab with aria-current='page'. Exactly-one-current-tab behavior requires exact matching in MatchesPage (owning unit: PAF-75).",
+    "wizardPhotoPreview": "The create Details/Review photo previews render the raw staging object key as the img src (resolves to a route URL, naturalWidth 0, 20px alt-text box) instead of a signed URL, and carry no 16/9 treatment; the design frame shows a proper photo row. The card/detail images use signed URLs with the 16/9 cover treatment and are probed exactly.",
+    "note": "All measured values are attached to the test runs (attachments '<label> — sub-44px controls (known deviations)', 'tab <name> — stray aria-current (known deviation)', '<label> — measured focus ring'). Fixes belong to the owning UI unit (PAF-75); they are exempted from the gates with explicit named exceptions, never hidden."
+  },
+  "visualBudgets": {
+    "policy": "Reference-backed budgets equal the measured first honest app-vs-Pencil diff ratio plus a margin that only absorbs cross-platform font-rasterization residuals (PAF-1 measured ~0.75-1.3pp absolute on text-dense screens): +2pp for glyph-dominated screens (<20% measured), +1.5pp for layout-block-dominated screens (>=20%). Self-baselined viewports/locales/states keep a 2pp envelope around their first honest capture. Margins are never widened to hide a structural defect; structure is asserted exactly by the probes.",
+    "measuredFirstComparison": {
+      "create-details.png": {
+        "frameId": "wHaAb",
+        "measured": 0.13,
+        "budget": 0.15
+      },
+      "create-players.png": {
+        "frameId": "vAxZh",
+        "measured": 0.1,
+        "budget": 0.12
+      },
+      "create-team-mode.png": {
+        "frameId": "b5RR4",
+        "measured": 0.1,
+        "budget": 0.12
+      },
+      "create-review.png": {
+        "frameId": "RDV2r",
+        "measured": 0.14,
+        "budget": 0.16
+      },
+      "available-populated.png": {
+        "frameId": "ENn8Q",
+        "measured": 0.32,
+        "budget": 0.335
+      },
+      "available-empty.png": {
+        "frameId": "kYI9H",
+        "measured": 0.08,
+        "budget": 0.1
+      },
+      "my-matches-reserve.png": {
+        "frameId": "t1ywa",
+        "measured": 0.3,
+        "budget": 0.315
+      },
+      "my-matches-invited.png": {
+        "frameId": "uePpj",
+        "measured": 0.3,
+        "budget": 0.315
+      },
+      "past-elapsed.png": {
+        "frameId": "w25dY",
+        "measured": 0.3,
+        "budget": 0.315
+      },
+      "detail-invitee.png": {
+        "frameId": "Fyhbv",
+        "measured": 0.37,
+        "budget": 0.385
+      },
+      "detail-friendly-creator.png": {
+        "frameId": "eYIgj",
+        "measured": 0.48,
+        "budget": 0.495
+      },
+      "detail-public-guest.png": {
+        "frameId": "JLqMT",
+        "measured": 0.48,
+        "budget": 0.495
+      }
+    },
+    "calibration": "Measured on macOS (deviceScaleFactor 1) against the byte-identical double-exported Pencil references with only genuinely dynamic areas masked (venue photo renderings, rendered start-instant lines). Run with VISUAL_CALIBRATE=1 to re-measure; regular runs are hard gates."
+  }
+}
