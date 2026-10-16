@@ -767,6 +767,8 @@ export type Database = {
         }[]
       }
       get_effective_community_admin_defaults: { Args: { p_settings: Json }; Returns: Json }
+      get_match_creation_options: { Args: { p_community_id?: string }; Returns: Json }
+      get_match_event: { Args: { p_event_id: string }; Returns: Json }
       get_my_community_notification_timezone: {
         Args: { p_notification_id: string }
         Returns: string
@@ -816,6 +818,16 @@ export type Database = {
           valid_until: string
         }[]
       }
+      list_match_events: {
+        Args: {
+          p_as_of: string
+          p_community_id: string
+          p_cursor: string
+          p_entry: string
+          p_limit: number
+        }
+        Returns: Json[]
+      }
       mark_all_notifications_read: { Args: { p_before: string }; Returns: number }
       mark_community_notification_read: {
         Args: { p_notification_id: string }
@@ -825,6 +837,10 @@ export type Database = {
         }[]
       }
       mark_notification_read: { Args: { p_notification_id: string }; Returns: string }
+      match_event_local_start: {
+        Args: { p_date: string; p_time: string; p_zone: string }
+        Returns: string
+      }
       onboard_player: {
         Args: {
           p_bio?: string
@@ -862,6 +878,10 @@ export type Database = {
           visibility: Database["public"]["Enums"]["community_visibility"]
         }[]
       }
+      publish_match_event: {
+        Args: { p_event_id: string; p_input: Json; p_invitee_ids: string[] }
+        Returns: string
+      }
       safe_match_photo_uuid: { Args: { p_value: string }; Returns: string }
       safe_venue_photo_uuid: { Args: { p_value: string }; Returns: string }
       search_community_invitees: {
@@ -890,6 +910,13 @@ export type Database = {
           user_id: string
           valid_from: string
           valid_until: string
+        }[]
+      }
+      search_match_invitees: {
+        Args: { p_community_id: string; p_limit: number; p_query: string }
+        Returns: {
+          display_name: string
+          user_id: string
         }[]
       }
       send_community_request_message: {

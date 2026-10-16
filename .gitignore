@@ -3,6 +3,7 @@ dist/
 .wrangler/
 .tanstack/
 coverage/
+.vitest/
 playwright-report/
 test-results/
 .env

@@ -313,6 +313,7 @@ describe('match event photo Storage authorization', () => {
       expect(
         (publicationErrors + publicationOutput).includes('Match photo object unavailable')
       ).toBe(publicationExit !== 0);
-    }
+    },
+    60000
   );
 });

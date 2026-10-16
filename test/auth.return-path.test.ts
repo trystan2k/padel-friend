@@ -5,6 +5,9 @@ describe('normalizeReturnPath', () => {
   it('keeps relative app paths including query and hash', () => {
     expect(normalizeReturnPath('/dashboard')).toBe('/dashboard');
     expect(normalizeReturnPath('/matches?tab=history#top')).toBe('/matches?tab=history#top');
+    expect(normalizeReturnPath('/matches/123e4567-e89b-42d3-a456-426614174000')).toBe(
+      '/matches/123e4567-e89b-42d3-a456-426614174000'
+    );
     expect(normalizeReturnPath('/dashboard?src=e2e#top')).toBe('/dashboard?src=e2e#top');
     expect(normalizeReturnPath('/community/nearby')).toBe('/community/nearby');
     expect(normalizeReturnPath('/reset-password')).toBe('/reset-password');
@@ -35,13 +38,16 @@ describe('normalizeReturnPath', () => {
 
   it('falls back to /dashboard for protocol-relative and external targets', () => {
     expect(normalizeReturnPath('//evil.com')).toBe('/dashboard');
+    expect(normalizeReturnPath('/%2e%2e/evil')).toBe('/dashboard');
     expect(normalizeReturnPath('https://evil.com/dashboard')).toBe('/dashboard');
+    expect(normalizeReturnPath('https://evil.com/x')).toBe('/dashboard');
     expect(normalizeReturnPath('http://127.0.0.1:4173/dashboard')).toBe('/dashboard');
     expect(normalizeReturnPath('javascript:alert(1)')).toBe('/dashboard');
   });
 
   it('falls back for backslashes, control characters and C1 ranges', () => {
     expect(normalizeReturnPath('/\\evil.com')).toBe('/dashboard');
+    expect(normalizeReturnPath('\\evil')).toBe('/dashboard');
     expect(normalizeReturnPath('/foo\nbar')).toBe('/dashboard');
     expect(normalizeReturnPath('/foo\rbar')).toBe('/dashboard');
     expect(normalizeReturnPath('/foo\tbar')).toBe('/dashboard');

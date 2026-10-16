@@ -135,7 +135,7 @@ describe('/onboarding/community route', () => {
   it('opts out of the /onboarding parent and guards before loading discovery', async () => {
     expect(CommunityRoute.parentRoute.id).toBe('__root__');
     onboardedAs(ANON);
-    const guest = await redirectOf(communityGuard({}));
+    const guest = await redirectOf(communityGuard({ search: {} }));
     expect(guest.options.to).toBe('/login');
     expect(guest.options.search).toEqual({ next: '/onboarding/community' });
     expect(await landedOn('/onboarding/community')).toEqual({
@@ -143,10 +143,13 @@ describe('/onboarding/community route', () => {
       search: { next: '/dashboard' }
     });
     onboardedAs(INCOMPLETE);
-    expect((await redirectOf(communityGuard({}))).options.to).toBe('/onboarding');
+    expect(
+      (await redirectOf(communityGuard({ search: { view: 'create', next: '/dashboard' } }))).options
+        .to
+    ).toBe('/onboarding');
     expect(await landedOn('/onboarding/community?view=create')).toEqual({
       pathname: '/onboarding',
-      search: {}
+      search: { next: '/dashboard' }
     });
     expect(discovery.listPublicCommunities).not.toHaveBeenCalled();
     onboardedAs(COMPLETE);
@@ -194,7 +197,10 @@ describe('/ root guard (beforeLoad)', () => {
       onboardedAs(status);
       const redirect = await redirectOf(homeGuard({}));
       expect(redirect.options.to).toBe('/dashboard');
-      expect(await landedOn('/')).toEqual({ pathname: destination, search: {} });
+      expect(await landedOn('/')).toEqual({
+        pathname: destination,
+        search: destination === '/onboarding' ? { next: '/dashboard' } : {}
+      });
     }
   });
 });
@@ -296,8 +302,8 @@ describe('/onboarding guard (beforeLoad)', () => {
 
   it('sends a complete player to the dashboard', async () => {
     onboardedAs(COMPLETE);
-    const redirect = await redirectOf(onboardingGuard({}));
-    expect(redirect.options.to).toBe('/dashboard');
+    const redirect = await redirectOf(onboardingGuard({ search: {} }));
+    expect(redirect.options.href).toBe('/dashboard');
   });
 });
 
@@ -323,6 +329,7 @@ describe('/_protected guard (beforeLoad)', () => {
     onboardedAs(INCOMPLETE);
     const redirect = await redirectOf(protectedGuard({ location: { href: '/dashboard' } }));
     expect(redirect.options.to).toBe('/onboarding');
+    expect(redirect.options.search).toEqual({ next: '/dashboard' });
   });
 
   it('lets a complete player through to the protected content', async () => {
@@ -402,14 +409,17 @@ describe('auth route chains (memory-router loads, no rendering)', () => {
 
   it('routes an authenticated incomplete player from /login to player setup', async () => {
     onboardedAs(INCOMPLETE);
-    expect(await landedOn('/login')).toEqual({ pathname: '/onboarding', search: {} });
+    expect(await landedOn('/login')).toEqual({
+      pathname: '/onboarding',
+      search: { next: '/dashboard' }
+    });
   });
 
   it('routes an authenticated incomplete player from the account route to player setup', async () => {
     onboardedAs(INCOMPLETE);
     expect(await landedOn('/onboarding/account')).toEqual({
       pathname: '/onboarding',
-      search: {}
+      search: { next: '/dashboard' }
     });
   });
 

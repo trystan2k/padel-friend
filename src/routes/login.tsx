@@ -14,7 +14,8 @@ export const Route = createFileRoute('/login')({
   beforeLoad: async ({ search }) => {
     const status = await getOnboardingStatus();
     if (!status.authenticated) return;
-    if (!status.complete) throw redirect({ to: '/onboarding' });
+    if (!status.complete)
+      throw redirect({ to: '/onboarding', search: { next: normalizeReturnPath(search.next) } });
     throw redirect({ href: normalizeReturnPath(search.next) });
   },
   component: Login

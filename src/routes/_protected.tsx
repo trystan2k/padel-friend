@@ -12,7 +12,8 @@ export const Route = createFileRoute('/_protected')({
         headers: { 'Cache-Control': 'private, no-store' }
       });
     }
-    if (!status.complete) throw redirect({ to: '/onboarding' });
+    if (!status.complete)
+      throw redirect({ to: '/onboarding', search: { next: normalizeReturnPath(location.href) } });
   },
   component: () => <Outlet />
 });

@@ -20,6 +20,7 @@ export function normalizeReturnPath(value: unknown): string {
     path.length + suffix.length > MAX_RETURN_PATH_LENGTH ||
     !path.startsWith('/') ||
     path.startsWith('//') ||
+    path.split('/').some((segment) => segment === '..' || segment === '.') ||
     Array.from(path + decodedSuffix).some(
       (character) =>
         character === '\\' ||

@@ -2,9 +2,12 @@ import { createFileRoute, redirect } from '@tanstack/react-router';
 import { CommunityOnboarding } from '../features/community/CommunityOnboarding';
 import { listPublicCommunities } from '../features/community/community.functions';
 import { getOnboardingStatus } from '../features/player/player.functions';
+import { normalizeReturnPath } from '../features/auth/return-path';
 
 export const Route = createFileRoute('/onboarding_/community')({
-  validateSearch: (search: Record<string, unknown>): { q?: string; view?: 'create' } => {
+  validateSearch: (
+    search: Record<string, unknown>
+  ): { q?: string; view?: 'create'; next?: string } => {
     const q = typeof search.q === 'string' ? search.q.trim() : '';
     return {
       ...(q &&
@@ -12,14 +15,16 @@ export const Route = createFileRoute('/onboarding_/community')({
       !Array.from(q).some((char) => char.charCodeAt(0) === 0 || /^[\uD800-\uDFFF]$/u.test(char))
         ? { q }
         : {}),
-      ...(search.view === 'create' ? { view: 'create' as const } : {})
+      ...(search.view === 'create' ? { view: 'create' as const } : {}),
+      ...(search.next !== undefined ? { next: normalizeReturnPath(search.next) } : {})
     };
   },
-  beforeLoad: async () => {
+  beforeLoad: async ({ search }) => {
     const status = await getOnboardingStatus();
     if (!status.authenticated)
       throw redirect({ to: '/login', search: { next: '/onboarding/community' } });
-    if (!status.complete) throw redirect({ to: '/onboarding' });
+    if (!status.complete)
+      throw redirect({ to: '/onboarding', search: { next: normalizeReturnPath(search.next) } });
   },
   loaderDeps: ({ search }) => search,
   loader: async ({ deps }) => {
@@ -43,5 +48,5 @@ export const Route = createFileRoute('/onboarding_/community')({
 function CommunityRoute() {
   const search = Route.useSearch();
   const data = Route.useLoaderData();
-  return <CommunityOnboarding search={search} data={data} />;
+  return <CommunityOnboarding search={search} data={data} next={search.next} />;
 }
