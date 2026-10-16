@@ -2,6 +2,7 @@ import { createServerFn } from '@tanstack/react-start';
 import { requireAuthenticatedClient } from '../auth/auth.server';
 import { signMatchPhoto } from './match-photo.server';
 import type { MatchEventListItem, MatchEventListResult } from './match-model';
+import { matchesMatchPhotoMagicBytes, validateMatchPhotoKey } from './match-photo';
 import {
   validateMatchDetail,
   validateMatchInviteSearch,
@@ -124,7 +125,6 @@ export const publishMatchEvent = createServerFn({ method: 'POST' })
     if (photoError || !file || file.size < 1 || file.size > 2 * 1024 * 1024)
       throw new Error('MATCH_PHOTO_UNAVAILABLE');
     const type = file.type;
-    const { matchesMatchPhotoMagicBytes, validateMatchPhotoKey } = await import('./match-photo');
     try {
       validateMatchPhotoKey(photo);
     } catch {

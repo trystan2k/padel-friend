@@ -11,6 +11,7 @@ import { ui } from '../features/player/player-ui.styles';
 import { InvitationDiscoverability } from '../features/community/InvitationDiscoverability';
 import { getMyUnreadNotificationCount } from '../features/notifications/notifications.functions';
 import { NotificationBadge } from '../features/notifications/NotificationBadge';
+import { Link } from '@tanstack/react-router';
 
 export async function loadDashboardData() {
   const [profile, adminCommunities, inbox, notificationCount] = await Promise.all([
@@ -33,11 +34,15 @@ export const Route = createFileRoute('/_protected/dashboard')({
 });
 
 function Dashboard() {
+  const { t } = useTranslation();
   const { profile, adminCommunities, inbox, notificationCount } = Route.useLoaderData();
   return (
     <>
       <header>
         <NotificationBadge count={notificationCount ?? null} />
+        <nav aria-label={t('matches.navigationLabel')}>
+          <Link to="/matches">{t('matches.navigationLabel')}</Link>
+        </nav>
       </header>
       <PlayerProfile initialProfile={profile} />
       <CommunityAdminEntries communities={adminCommunities} />

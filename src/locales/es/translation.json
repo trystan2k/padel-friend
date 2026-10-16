@@ -493,5 +493,182 @@
     "error": "No se pudieron guardar. Tus cambios siguen aquí; inténtalo de nuevo.",
     "loading": "Cargando preferencias de notificaciones…",
     "offline": "No tienes conexión. Vuelve a conectarte para guardar tus preferencias."
+  },
+  "matches": {
+    "title": "Partidos",
+    "subtitle": "Encuentra y descubre partidos de pádel.",
+    "navigationLabel": "Partidos",
+    "create": "Crear partido",
+    "back": "Volver",
+    "loading": "Cargando partidos…",
+    "error": "No se pudieron cargar los partidos.",
+    "retry": "Reintentar",
+    "unavailable": "Este partido no está disponible.",
+    "offline": "Estás sin conexión.",
+    "stale": "Mostrando resultados guardados; actualiza al volver a estar conectado.",
+    "loadMore": "Cargar más",
+    "tabs": {
+      "available": "Disponibles",
+      "my": "Mis partidos",
+      "past": "Anteriores"
+    },
+    "empty": {
+      "available": "Aún no hay partidos disponibles.",
+      "my": "Aún no hay próximos partidos.",
+      "past": "Aún no hay partidos anteriores."
+    },
+    "type": {
+      "competitive": "Competitivo",
+      "friendly": "Amistoso"
+    },
+    "visibility": {
+      "community_open": "Abierto a la comunidad",
+      "invite_only": "Solo por invitación"
+    },
+    "teamMode": {
+      "PREDEFINED_TEAMS": "Equipos predefinidos",
+      "POST_MATCH_TEAMS": "Equipos después del partido"
+    },
+    "badges": {
+      "playing": "Jugando",
+      "reserve": "Reserva",
+      "invited": "Invitado",
+      "resultActionRequired": "Acción de resultado requerida"
+    },
+    "counts": {
+      "playing_one": "jugando",
+      "playing_other": "jugando",
+      "reserve_one": "reserva",
+      "reserve_other": "reservas",
+      "groups_one": "grupo",
+      "groups_other": "grupos",
+      "moreNeeded_one": "faltan",
+      "moreNeeded_other": "faltan"
+    },
+    "card": {
+      "creator": "Creador",
+      "approximateLevel": "Nivel aproximado",
+      "levelRange": "Rango de nivel",
+      "noLevelRestriction": "Sin restricción de nivel",
+      "maximum": "Máximo",
+      "notes": "Incluye notas",
+      "pricePerPlayer": "Precio por jugador",
+      "openMaps": "Abrir mapa de {{venue}}",
+      "photoAlt": "Lugar del partido"
+    },
+    "detail": {
+      "title": "Detalles del partido",
+      "participants": "Participantes",
+      "accepted": "Aceptado",
+      "creatorAccepted": "Creador aceptado",
+      "timezone": "Zona horaria",
+      "registrationClosed": "Inscripciones cerradas",
+      "guestApprovalRequired": "Se requiere aprobación para invitados",
+      "outOfRangeApprovalRequired": "Se requiere aprobación para tu nivel",
+      "invitationInfo": "Te invitaron a este partido.",
+      "pastScheduled": "Evento pasado programado; resultado no disponible.",
+      "outcomeUnavailable": "Resultado no disponible",
+      "share": "Compartir partido",
+      "shareUnavailable": "Compartir no disponible",
+      "copyLink": "Copiar enlace",
+      "copied": "Copiado",
+      "copyFailed": "No se pudo copiar. Selecciona la URL para copiarla.",
+      "shareUrl": "Enlace del partido"
+    }
+  },
+  "matchCreate": {
+    "title": "Crear partido",
+    "subtitle": "Publica un partido de pádel e invita jugadores.",
+    "noCommunities": "Únete a una comunidad para crear un partido.",
+    "discoverCommunities": "Descubrir comunidades",
+    "next": "Siguiente",
+    "previous": "Atrás",
+    "review": "Revisión",
+    "publish": "Publicar y enviar invitaciones",
+    "publishing": "Publicando…",
+    "published": "Publicado",
+    "informationalOnly": "Informativo; sin pago ni reserva.",
+    "steps": {
+      "details": "Detalles",
+      "players": "Jugadores",
+      "teams": "Modo de equipos",
+      "review": "Revisión"
+    },
+    "fields": {
+      "community": "Comunidad",
+      "date": "Fecha",
+      "startTime": "Hora de inicio",
+      "timezone": "Zona horaria",
+      "type": "Tipo de partido",
+      "visibility": "Visibilidad",
+      "venueName": "Nombre del lugar",
+      "savedVenue": "Lugar guardado",
+      "mapsUrl": "URL de Google Maps",
+      "photo": "Foto de la pista",
+      "courtNotes": "Notas de la pista",
+      "duration": "Duración prevista",
+      "notes": "Notas",
+      "levelRestriction": "Restricción de nivel",
+      "minLevel": "Nivel mínimo",
+      "maxLevel": "Nivel máximo",
+      "invitePlayers": "Invitar jugadores",
+      "courtBooked": "Pista ya reservada",
+      "price": "Precio",
+      "currency": "Moneda",
+      "paymentNote": "Nota de pago",
+      "maximumRegistrations": "Máximo de inscripciones",
+      "cutoff": "Cierre de inscripción"
+    },
+    "helpers": {
+      "required": "Obligatorio",
+      "optional": "Opcional",
+      "levelDefault": "Rango sugerido según tu nivel",
+      "defaultCutoff": "Predeterminado: una hora antes del inicio",
+      "customCutoff": "Elige un cierre anterior al inicio",
+      "photoRequirements": "JPEG, PNG o WebP; máximo 2 MiB.",
+      "noBooking": "No se realizará ninguna reserva.",
+      "noPayment": "No se cobrará ningún pago.",
+      "teamMode": "Elige el modo de equipos.",
+      "invitesOnPublish": "Las invitaciones se enviarán al publicar."
+    },
+    "invitees": {
+      "search": "Buscar jugadores",
+      "loading": "Cargando jugadores…",
+      "empty": "No se encontraron jugadores.",
+      "error": "No se pudieron cargar los jugadores.",
+      "selected": "Jugadores seleccionados",
+      "remove": "Quitar"
+    },
+    "photo": {
+      "choose": "Elegir foto",
+      "uploading": "Subiendo…",
+      "uploaded": "Foto subida",
+      "replace": "Cambiar foto",
+      "remove": "Quitar foto",
+      "unavailable": "Foto no disponible."
+    },
+    "errors": {
+      "required": "Este campo es obligatorio.",
+      "invalidInput": "Introduce un valor válido.",
+      "invalidMapsUrl": "Introduce una URL válida de Google Maps.",
+      "unsupportedCurrency": "Elige BRL, USD o EUR.",
+      "negativePrice": "El precio no puede ser negativo.",
+      "invalidPrice": "Introduce un precio válido.",
+      "pastStart": "El inicio debe ser futuro.",
+      "invalidDateTime": "Introduce una fecha y hora válidas.",
+      "invalidCutoff": "El cierre debe ser anterior al inicio.",
+      "invalidLevelRange": "Introduce un rango válido.",
+      "invalidCapacity": "Introduce un máximo válido.",
+      "invalidDuration": "Introduce una duración válida.",
+      "missingPhoto": "La foto de la pista es obligatoria.",
+      "invalidPhoto": "Elige una imagen compatible.",
+      "photoTooLarge": "La foto supera 2 MiB.",
+      "photoUnauthorized": "La carga de la foto no está autorizada.",
+      "notMember": "Debes ser miembro activo.",
+      "savedVenueUnavailable": "Lugar guardado no disponible.",
+      "inviteeUnavailable": "Uno o más invitados no están disponibles.",
+      "conflict": "Este partido entra en conflicto con una publicación existente.",
+      "publishFailed": "No se pudo publicar el partido."
+    }
   }
 }
