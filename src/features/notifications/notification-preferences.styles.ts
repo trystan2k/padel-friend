@@ -3,37 +3,58 @@ import * as stylex from '@stylexjs/stylex';
 export const preferenceStyles = stylex.create({
   page: {
     minHeight: '100%',
-    padding: 'var(--space-6)',
-    color: 'var(--color-text-primary)',
-    backgroundColor: 'var(--color-background-primary)'
+    padding: 'var(--space-16)',
+    color: 'var(--color-text)',
+    backgroundColor: 'var(--color-bg)',
+    fontFamily: 'var(--font-family-body)'
   },
   panel: {
     maxWidth: 'calc(var(--space-40) * 12)',
     marginInline: 'auto',
-    padding: 'var(--space-6)',
-    borderRadius: 'var(--radius-12)',
-    backgroundColor: 'var(--color-surface)'
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 'var(--space-12)'
   },
   back: {
     minHeight: '44px',
     display: 'inline-flex',
     alignItems: 'center',
-    color: 'var(--color-text-link)'
+    color: 'var(--color-text)',
+    fontSize: 'var(--font-size-20)',
+    fontWeight: 'var(--font-weight-bold)',
+    textDecoration: 'none'
   },
-  context: { marginBlock: 'var(--space-4)', color: 'var(--color-text-secondary)' },
-  group: { border: 0, padding: 0, marginBlock: 'var(--space-6)' },
-  legend: { fontWeight: 'var(--font-weight-semibold)', marginBlockEnd: 'var(--space-3)' },
+  title: { fontSize: 'var(--font-size-20)', lineHeight: 'var(--font-line-height-tight)' },
+  context: { margin: 0, color: 'var(--color-muted)', fontSize: 'var(--font-size-12)' },
+  group: {
+    boxSizing: 'border-box',
+    width: '100%',
+    borderWidth: 'var(--border-width-sm)',
+    borderStyle: 'solid',
+    borderColor: 'var(--color-line)',
+    borderRadius: 'var(--radius-14)',
+    padding: 'var(--space-16)',
+    margin: 0,
+    backgroundColor: 'var(--color-surface)'
+  },
+  legend: { fontSize: 'var(--font-size-12)', fontWeight: 'var(--font-weight-semibold)' },
   row: {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'space-between',
     gap: 'var(--space-4)',
-    minHeight: 'calc(var(--space-40) + var(--space-4))',
+    minHeight: '44px',
     paddingBlock: 'var(--space-2)',
-    borderBlockEnd: 'var(--border-width-sm) solid var(--color-line)'
+    borderBlockEndWidth: 'var(--border-width-sm)',
+    borderBlockEndStyle: 'solid',
+    borderBlockEndColor: 'var(--color-line)'
   },
   copy: { minWidth: 0, overflowWrap: 'anywhere' },
-  helper: { color: 'var(--color-text-secondary)', marginBlockStart: 'var(--space-2)' },
+  helper: {
+    color: 'var(--color-muted)',
+    marginBlockStart: 'var(--space-8)',
+    fontSize: 'var(--font-size-12)'
+  },
   switch: {
     boxSizing: 'border-box',
     width: 'calc(var(--space-40) + var(--space-4))',
@@ -42,7 +63,8 @@ export const preferenceStyles = stylex.create({
     display: 'inline-flex',
     alignItems: 'center',
     padding: 'var(--space-2)',
-    border: 0,
+    borderWidth: 0,
+    borderStyle: 'none',
     borderRadius: 'var(--radius-20)',
     backgroundColor: 'var(--color-muted)',
     ':focus-visible': {
@@ -60,9 +82,19 @@ export const preferenceStyles = stylex.create({
   },
   thumbChecked: { transform: 'translateX(var(--space-16))' },
   always: {
-    padding: 'var(--space-4)',
-    borderRadius: 'var(--radius-12)',
-    backgroundColor: 'var(--color-green-soft)'
+    padding: 'var(--space-12)',
+    borderRadius: 'var(--radius-14)',
+    backgroundColor: 'var(--color-green-soft)',
+    borderInlineStartWidth: 'var(--border-width-lg)',
+    borderInlineStartStyle: 'solid',
+    borderInlineStartColor: 'var(--color-green)'
+  },
+  alwaysTitle: { margin: 0, fontSize: 'var(--font-size-14)' },
+  alwaysCopy: { marginBlock: 'var(--space-4)', fontSize: 'var(--font-size-12)' },
+  alwaysBadge: {
+    fontSize: 'var(--font-size-12)',
+    color: 'var(--color-green)',
+    fontWeight: 'var(--font-weight-bold)'
   },
   save: { minHeight: '44px', paddingInline: 'var(--space-4)' }
 });

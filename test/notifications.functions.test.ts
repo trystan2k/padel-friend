@@ -62,6 +62,79 @@ describe('notification server functions', () => {
     ]).toHaveLength(6);
   });
 
+  it('round-trips a raw Postgres cursor from one list page into the next request', async () => {
+    const cursorId = '223e4567-e89b-12d3-a456-426614174001';
+    const newerTimestamp = '2026-10-15T12:00:00.123456+00:00';
+    const olderTimestamp = '2026-10-15T11:59:59.999999+00:00';
+    const rows: {
+      id: string;
+      kind: string;
+      category: string;
+      created_at: string;
+      read_at: null;
+    }[][] = [
+      [
+        {
+          id: cursorId,
+          kind: 'community_invitation',
+          category: 'community',
+          created_at: newerTimestamp,
+          read_at: null
+        },
+        {
+          id: '323e4567-e89b-12d3-a456-426614174002',
+          kind: 'community_invitation',
+          category: 'community',
+          created_at: olderTimestamp,
+          read_at: null
+        }
+      ],
+      [
+        {
+          id: '423e4567-e89b-12d3-a456-426614174003',
+          kind: 'community_membership_approved',
+          category: 'community',
+          created_at: olderTimestamp,
+          read_at: null
+        }
+      ]
+    ];
+    let page = 0;
+    const query = {
+      select: vi.fn<(...args: unknown[]) => unknown>(),
+      lte: vi.fn<(...args: unknown[]) => unknown>(),
+      eq: vi.fn<(...args: unknown[]) => unknown>(),
+      or: vi.fn<(...args: unknown[]) => unknown>(),
+      order: vi.fn<(...args: unknown[]) => unknown>(),
+      limit: vi.fn<() => Promise<{ data: (typeof rows)[number]; error: null }>>(async () => ({
+        data: rows[page++] ?? [],
+        error: null
+      }))
+    };
+    query.select.mockReturnValue(query);
+    query.lte.mockReturnValue(query);
+    query.eq.mockReturnValue(query);
+    query.or.mockReturnValue(query);
+    query.order.mockReturnValue(query);
+    const from = vi.fn<(...args: unknown[]) => unknown>(() => query);
+    const rpc = vi
+      .fn<(...args: unknown[]) => Promise<{ data: number; error: null }>>()
+      .mockResolvedValue({ data: 2, error: null });
+    mocks.client = { from, rpc };
+
+    const firstPage = await listMyNotifications({ data: { limit: 1 } });
+    expect(firstPage.items[0]?.created_at).toBe(newerTimestamp);
+    expect(firstPage.nextCursor).toEqual({ createdAt: newerTimestamp, id: cursorId });
+
+    const nextPage = await listMyNotifications({
+      data: { limit: 1, cursor: firstPage.nextCursor ?? undefined }
+    });
+    expect(query.or).toHaveBeenCalledWith(
+      `created_at.lt.${newerTimestamp},and(created_at.eq.${newerTimestamp},id.lt.${cursorId})`
+    );
+    expect(nextPage.items[0]?.created_at).toBe(olderTimestamp);
+  });
+
   it('returns missing-row defaults and selects the authenticated preference row', async () => {
     const maybeSingle = vi
       .fn<() => Promise<{ data: null; error: null }>>()

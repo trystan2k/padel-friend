@@ -1,5 +1,5 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
-import { execFileSync } from 'node:child_process';
+import { execFileSync, spawn } from 'node:child_process';
 import { describe, expect, it } from 'vitest';
 import { dotEnvPathFromImportMetaUrl, localSupabaseEnv } from './helpers/local-supabase-env';
 
@@ -47,6 +47,31 @@ describe.skipIf(!environment.env)('notification store (real local Supabase JWTs)
     execFileSync('pnpm', ['exec', 'supabase', 'db', 'query', '--local', statement], {
       encoding: 'utf8'
     });
+  // Asynchronous runner that reports its child process identity and exact lifetime. Unlike
+  // execFileSync it does not block the event loop, and the returned timestamps/pids let the
+  // test PROVE the two callers' sessions were alive at the same instant.
+  const sqlProbe = (statement: string) =>
+    new Promise<{ stdout: string; pid: number; startedAt: bigint; endedAt: bigint }>(
+      (resolve, reject) => {
+        const startedAt = process.hrtime.bigint();
+        const child = spawn('pnpm', ['exec', 'supabase', 'db', 'query', '--local', statement], {
+          stdio: ['ignore', 'pipe', 'pipe']
+        });
+        let output = '';
+        child.stdout.on('data', (chunk: Buffer) => {
+          output += chunk.toString('utf8');
+        });
+        child.stderr.on('data', (chunk: Buffer) => {
+          output += chunk.toString('utf8');
+        });
+        child.on('error', reject);
+        child.on('close', (code) => {
+          const endedAt = process.hrtime.bigint();
+          if (code === 0) resolve({ stdout: output, pid: child.pid ?? -1, startedAt, endedAt });
+          else reject(new Error(`supabase db query exited ${code}: ${output}`));
+        });
+      }
+    );
   const literal = (value: string) => `'${value.replaceAll("'", "''")}'`;
   const persistSql = (
     recipient: string,
@@ -91,16 +116,14 @@ describe.skipIf(!environment.env)('notification store (real local Supabase JWTs)
       ).toBe('42501');
       expect(
         (
-          await first.client
-            .from('notifications')
-            .insert({
-              recipient_user_id: first.id,
-              event_key: crypto.randomUUID(),
-              kind: 'x',
-              category: 'community',
-              target_type: 'x',
-              target_id: target
-            })
+          await first.client.from('notifications').insert({
+            recipient_user_id: first.id,
+            event_key: crypto.randomUUID(),
+            kind: 'x',
+            category: 'community',
+            target_type: 'x',
+            target_id: target
+          })
         ).error
       ).not.toBeNull();
       expect(
@@ -188,17 +211,35 @@ describe.skipIf(!environment.env)('notification store (real local Supabase JWTs)
         end;
       end $mismatch$;`);
 
+      // F16: the two helper invocations must GENUINELY overlap. sqlProbe spawns a separate
+      // supabase-db-query process per call, and both processes are spawned before either
+      // result is awaited. The interval assertion below FAILS if a future refactor returns to
+      // sequential blocking calls (second start would land after first end), so the test
+      // proves real concurrency instead of assuming it. Under READ COMMITTED the two
+      // persist_notification calls then race in concurrent database sessions and must
+      // resolve the unique (recipient, event_key) conflict to the SAME single row (no
+      // duplicate insert, loser returns the winner's id instead of raising).
       const concurrentEvent = `event:${crypto.randomUUID()}`;
       const concurrentTarget = crypto.randomUUID();
-      const calls = await Promise.all([
-        Promise.resolve().then(() =>
-          sql(persistSql(first.id, concurrentEvent, 'community_invitation', concurrentTarget))
-        ),
-        Promise.resolve().then(() =>
-          sql(persistSql(first.id, concurrentEvent, 'community_invitation', concurrentTarget))
-        )
-      ]);
-      const ids = calls.map((output) => output.match(/[0-9a-f]{8}-[0-9a-f-]{27,}/i)![0]);
+      const statement = persistSql(
+        first.id,
+        concurrentEvent,
+        'community_invitation',
+        concurrentTarget
+      );
+      const firstCall = sqlProbe(statement);
+      const secondCall = sqlProbe(statement);
+      const [firstResult, secondResult] = await Promise.all([firstCall, secondCall]);
+      expect(firstResult.pid).toBeGreaterThan(0);
+      expect(secondResult.pid).toBeGreaterThan(0);
+      expect(firstResult.pid).not.toBe(secondResult.pid);
+      expect(firstResult.startedAt < secondResult.endedAt).toBe(true);
+      expect(secondResult.startedAt < firstResult.endedAt).toBe(true);
+      const ids = [firstResult, secondResult].map((result) => {
+        const idMatch = result.stdout.match(/[0-9a-f]{8}-[0-9a-f-]{27,}/i);
+        if (!idMatch) throw new Error(`no notification id in query output: ${result.stdout}`);
+        return idMatch[0];
+      });
       expect(ids[0]).toBe(ids[1]);
       notificationIds.push(ids[0]!);
       expect(

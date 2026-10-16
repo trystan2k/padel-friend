@@ -4,7 +4,7 @@ import {
   expect,
   test,
   type Browser,
-  type BrowserContext,
+  type Locator,
   type Page,
   type Response
 } from '@playwright/test';
@@ -50,6 +50,7 @@ type Copy = {
     preferencesLink: string;
     title: string;
     back: string;
+    context: string;
     pushTitle: string;
     pushUnavailable: string;
     categories: {
@@ -75,6 +76,14 @@ type Copy = {
 
 const en: Copy = JSON.parse(
   readFileSync(new URL('../src/locales/en/translation.json', import.meta.url), 'utf8')
+);
+// Translated locales must render the same structural facts; they are typed against the same
+// shape so a missing key in pt-BR/es fails this suite, not a user.
+const ptBr: Copy = JSON.parse(
+  readFileSync(new URL('../src/locales/pt-BR/translation.json', import.meta.url), 'utf8')
+);
+const es: Copy = JSON.parse(
+  readFileSync(new URL('../src/locales/es/translation.json', import.meta.url), 'utf8')
 );
 const password = 'Password123!';
 const config = localConfig();
@@ -114,13 +123,14 @@ function localConfig() {
   return { url, key };
 }
 
-async function newContext(browser: Browser): Promise<BrowserContext> {
+async function newContext(browser: Browser, options: { colorScheme?: 'light' | 'dark' } = {}) {
+  const { colorScheme = 'light' } = options;
   // Notifications permission stays at its headless default (denied): the whole suite proves
   // in-app delivery never depends on Push permission. No context ever grants it.
   return browser.newContext({
     viewport: { width: 390, height: 844 },
     deviceScaleFactor: 1,
-    colorScheme: 'light',
+    colorScheme,
     serviceWorkers: 'block'
   });
 }
@@ -148,16 +158,21 @@ async function createActor(label: string): Promise<Actor> {
   return { id: signup.data.user.id, email, displayName, client };
 }
 
-async function signIn(page: Page, actor: Actor) {
+async function signIn(
+  page: Page,
+  actor: Actor,
+  options: { locale?: string; theme?: 'light' | 'dark'; copy?: Copy } = {}
+) {
+  const { locale = 'en', theme = 'light', copy = en } = options;
   await page.context().addCookies([
-    { name: 'locale', value: 'en', url: 'http://127.0.0.1:4173' },
-    { name: 'theme', value: 'light', url: 'http://127.0.0.1:4173' }
+    { name: 'locale', value: locale, url: 'http://127.0.0.1:4173' },
+    { name: 'theme', value: theme, url: 'http://127.0.0.1:4173' }
   ]);
   await page.goto('/login');
   await waitForHydratedPage(page);
-  await page.getByLabel(en.auth.loginEmailLabel).fill(actor.email);
-  await page.getByLabel(en.auth.loginPasswordLabel).fill(password);
-  await page.getByRole('button', { name: en.auth.loginSubmit }).click();
+  await page.getByLabel(copy.auth.loginEmailLabel).fill(actor.email);
+  await page.getByLabel(copy.auth.loginPasswordLabel).fill(password);
+  await page.getByRole('button', { name: copy.auth.loginSubmit }).click();
   await expect(page).toHaveURL(/\/dashboard$/);
   await waitForHydratedPage(page);
 }
@@ -310,7 +325,7 @@ test('invitation journey with Push permission denied: badge, center, detail, acc
       hasText: en.notifications.kinds.community_invitation
     });
     await expect(card).toHaveCount(1);
-    await expect(recipientPage.getByText(unreadText(1), { exact: true })).toBeVisible();
+    await expect(unreadChip(recipientPage, 1)).toBeVisible();
 
     // Open the notification detail through the card's separate semantic link.
     await card.getByRole('link', { name: en.notifications.view }).click();
@@ -321,9 +336,13 @@ test('invitation journey with Push permission denied: badge, center, detail, acc
 
     // Opening the detail marks it read server-side; acceptance joins the private community.
     await recipientPage.getByRole('button', { name: en.notifications.accept }).click();
-    await expect(
-      recipientPage.getByRole('button', { name: en.notifications.accepted })
-    ).toBeVisible();
+    // WCAG 4.1.3 fix behavior: the actionable button is REMOVED on success and the outcome is
+    // announced through the polite status output instead of a stale "accepted" button.
+    await expect(recipientPage.locator('main output')).toContainText(en.notifications.accepted);
+    await expect(recipientPage.getByRole('button', { name: en.notifications.accept })).toHaveCount(
+      0
+    );
+    await expect(recipientPage.getByText(en.notifications.activeMembership)).toBeVisible();
 
     // Full page reload: read state and target state persist from the database.
     await recipientPage.reload();
@@ -359,11 +378,11 @@ test('invitation journey with Push permission denied: badge, center, detail, acc
     await recipientPage.getByRole('link', { name: en.notifications.back }).click();
     await expect(recipientPage).toHaveURL(/\/notifications$/);
     await waitForHydratedPage(recipientPage);
-    await expect(recipientPage.getByText(unreadText(0), { exact: true })).toBeVisible();
+    await expect(unreadChip(recipientPage, 0)).toBeVisible();
     await expect(card.getByRole('button', { name: en.notifications.markRead })).toHaveCount(0);
     await recipientPage.reload();
     await waitForHydratedPage(recipientPage);
-    await expect(recipientPage.getByText(unreadText(0), { exact: true })).toBeVisible();
+    await expect(unreadChip(recipientPage, 0)).toBeVisible();
     expect((await recipient.client.rpc('count_my_unread_notifications')).data).toBe(0);
     await recipientPage.goto('/dashboard');
     await waitForHydratedPage(recipientPage);
@@ -621,7 +640,7 @@ test('mark-all-read honors its cutoff so a concurrently arriving notification st
     await signIn(page, recipient);
     await page.goto('/notifications');
     await waitForHydratedPage(page);
-    await expect(page.getByText(unreadText(2), { exact: true })).toBeVisible();
+    await expect(unreadChip(page, 2)).toBeVisible();
 
     // New event arrives AFTER the page's authoritative asOf cutoff was captured.
     const thirdCommunity = await createPrivateCommunity(
@@ -631,7 +650,7 @@ test('mark-all-read honors its cutoff so a concurrently arriving notification st
     await insertInvitation(admin, thirdCommunity, recipient);
 
     await page.getByRole('button', { name: en.notifications.markAllRead }).click();
-    await expect(page.getByText(unreadText(1), { exact: true })).toBeVisible();
+    await expect(unreadChip(page, 1)).toBeVisible();
     const unreadCards = page.locator('main li', {
       has: page.getByRole('button', { name: en.notifications.markRead })
     });
@@ -690,7 +709,7 @@ test('offline center disables mutations and recovers; preferences round-trip all
     await page.context().setOffline(false);
     await expect(page.getByText(en.notifications.offline)).toBeHidden();
     await expect(page.locator('main li')).toHaveCount(2);
-    await expect(page.getByText(unreadText(2), { exact: true })).toBeVisible();
+    await expect(unreadChip(page, 2)).toBeVisible();
 
     await page.goto('/notifications/preferences');
     await waitForHydratedPage(page);
@@ -761,6 +780,18 @@ test('offline center disables mutations and recovers; preferences round-trip all
 // facts are guarded by exact geometry/style probes, never by the budgets;
 // budgets must never be widened to mask a structural defect.
 //
+// Baselines were RECAPTURED for the corrected notification center (F4/F5 fix
+// iteration: styled header/filters/summary chip, grouped preferences). The
+// pre-recapture baselines (captured while the center still lacked its
+// selected-filter treatment and unread summary badge) were deleted; the new
+// set was written by the capture run and verified green by an immediate
+// second run.
+//
+// Budgets per screen (maxDiffPixelRatio): populated center mobile 4%, dark
+// populated center mobile 4%, empty center mobile 3%, preferences mobile 3%,
+// desktop 2%. Values unchanged from the reviewed delivery except the added
+// dark-theme screen, which reuses the text-heavy 4% populated precedent.
+//
 // Recorded deviation for review notes: the approved Pencil frames include an
 // app-wide bottom navigation, which is pre-existing product infrastructure
 // intentionally NOT implemented in PAF-3 (plan: "no new global nav/bottom
@@ -790,30 +821,290 @@ async function ready(page: Page): Promise<void> {
   });
 }
 
-async function assertCenterStructure(page: Page) {
-  await expect(page.getByRole('heading', { level: 1, name: en.notifications.title })).toBeVisible();
-  await expect(page.getByText(en.notifications.subtitle)).toBeVisible();
+async function assertCenterStructure(page: Page, copy: Copy = en) {
+  await expect(
+    page.getByRole('heading', { level: 1, name: copy.notifications.title })
+  ).toBeVisible();
+  await expect(page.getByText(copy.notifications.subtitle)).toBeVisible();
   const preferencesLink = page.getByRole('link', {
-    name: en.notificationPreferences.preferencesLink
+    name: copy.notificationPreferences.preferencesLink
   });
   await expect(preferencesLink).toBeVisible();
   await expect(preferencesLink).toHaveAttribute('href', '/notifications/preferences');
 
-  const nav = page.getByRole('navigation', { name: en.notifications.filters.label });
+  const nav = page.getByRole('navigation', { name: copy.notifications.filters.label });
   const expectedFilters = [
-    en.notifications.filters.all,
-    en.notifications.filters.matches,
-    en.notifications.filters.results,
-    en.notifications.filters.community,
-    en.notifications.filters.rankings
+    copy.notifications.filters.all,
+    copy.notifications.filters.matches,
+    copy.notifications.filters.results,
+    copy.notifications.filters.community,
+    copy.notifications.filters.rankings
   ];
   expect(await nav.getByRole('button').allInnerTexts()).toEqual(expectedFilters);
-  await expect(nav.getByRole('button', { name: en.notifications.filters.all })).toHaveAttribute(
+  await expect(nav.getByRole('button', { name: copy.notifications.filters.all })).toHaveAttribute(
     'aria-current',
     'page'
   );
 
-  await expect(page.getByRole('button', { name: en.notifications.markAllRead })).toBeVisible();
+  await expect(page.getByRole('button', { name: copy.notifications.markAllRead })).toBeVisible();
+  await assertAppliedCenterTypography(page, copy);
+  await assertHeaderActionPlacement(page, copy);
+  await assertSelectedFilterTreatment(page, copy);
+}
+
+// Resolves the value an element computes for a design-token reference and compares it with a
+// token-driven probe rendered in the same theme scope. Asserting "uses var(--token)" is exact
+// in both themes and cannot drift when the palette changes.
+async function expectTokenStyle(
+  locator: Locator,
+  property: string,
+  token: string,
+  why: string
+): Promise<void> {
+  const result = await locator.evaluate(
+    (element, { cssProperty, tokenName }) => {
+      const probe = document.createElement('div');
+      probe.setAttribute('aria-hidden', 'true');
+      probe.style.position = 'absolute';
+      probe.style.visibility = 'hidden';
+      probe.style.setProperty(cssProperty, `var(${tokenName})`);
+      (element.parentElement ?? element).appendChild(probe);
+      const probeValue = getComputedStyle(probe).getPropertyValue(cssProperty).trim();
+      const elementValue = getComputedStyle(element).getPropertyValue(cssProperty).trim();
+      probe.remove();
+      return { probeValue, elementValue };
+    },
+    { cssProperty: property, tokenName: token }
+  );
+  expect(result.elementValue, why).toBe(result.probeValue);
+}
+
+// F4 regression guard: the frames' typography must be APPLIED, not merely available. These
+// assertions read getComputedStyle values (what the user sees) and would have failed while the
+// center shipped unstyled headings (UA h1 32px serif) and unstyled card copy.
+async function assertAppliedCenterTypography(page: Page, copy: Copy = en) {
+  const title = page.getByRole('heading', { level: 1, name: copy.notifications.title });
+  expect(await title.evaluate((node) => getComputedStyle(node).fontFamily)).toMatch(/^Manrope/);
+  await expect(title).toHaveCSS('font-size', '24px');
+  const subtitle = page.getByText(copy.notifications.subtitle);
+  expect(await subtitle.evaluate((node) => getComputedStyle(node).fontFamily)).toMatch(/^Inter/);
+  await expect(subtitle).toHaveCSS('font-size', '12px');
+}
+
+// Populated-center-only typography: the section heading and card copy.
+async function assertPopulatedTypography(page: Page, copy: Copy = en) {
+  const sectionTitle = page.getByRole('heading', { level: 2, name: copy.notifications.today });
+  expect(await sectionTitle.evaluate((node) => getComputedStyle(node).fontFamily)).toMatch(
+    /^Manrope/
+  );
+  await expect(sectionTitle).toHaveCSS('font-size', '16px');
+  const card = page.locator('main li').first();
+  const cardTitle = card.getByRole('heading', { level: 3 });
+  expect(await cardTitle.evaluate((node) => getComputedStyle(node).fontFamily)).toMatch(/^Inter/);
+  await expect(cardTitle).toHaveCSS('font-size', '14px');
+  await expect(card.locator('p[aria-label]')).toHaveCSS('font-size', '12px');
+}
+
+// F4 regression guard: the mark-all-read action belongs to the page HEADER (beside the title),
+// precedes the filter group in DOM order, and is a >=44px target.
+async function assertHeaderActionPlacement(page: Page, copy: Copy = en) {
+  const button = page.getByRole('button', { name: copy.notifications.markAllRead });
+  const nav = page.getByRole('navigation', { name: copy.notifications.filters.label });
+  const navElement = await nav.elementHandle();
+  const placement = await button.evaluate((node, navNode) => {
+    const header = node.closest('header');
+    return {
+      inHeader: header !== null && header.contains(node),
+      headerHasTitle: header !== null && header.querySelector('h1') !== null,
+      precedesFilters:
+        header !== null &&
+        navNode !== null &&
+        !!(header.compareDocumentPosition(navNode) & Node.DOCUMENT_POSITION_FOLLOWING)
+    };
+  }, navElement);
+  expect(placement).toEqual({
+    inHeader: true,
+    headerHasTitle: true,
+    precedesFilters: true
+  });
+  await expect(button).toHaveCSS('min-height', '44px');
+  expect((await button.boundingBox())!.height).toBeGreaterThanOrEqual(44);
+}
+
+// F4 regression guard: the active filter must carry a DISTINCT computed treatment from an
+// inactive one. Shipped without styles.selectedFilter every button computed a transparent
+// background, so this exact pair would have failed.
+async function assertSelectedFilterTreatment(page: Page, copy: Copy = en) {
+  const nav = page.getByRole('navigation', { name: copy.notifications.filters.label });
+  const active = nav.getByRole('button', { name: copy.notifications.filters.all });
+  const inactive = nav.getByRole('button', { name: copy.notifications.filters.matches });
+  await expect(active).toHaveAttribute('aria-current', 'page');
+  await expectTokenStyle(active, 'background-color', '--color-surface', 'active filter surface');
+  await expectTokenStyle(active, 'color', '--color-text', 'active filter text');
+  await expect(inactive).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
+  const weights = await Promise.all([
+    active.evaluate((node) => getComputedStyle(node).fontWeight),
+    inactive.evaluate((node) => getComputedStyle(node).fontWeight)
+  ]);
+  expect(Number(weights[0])).toBeGreaterThan(Number(weights[1]));
+}
+
+// F4 regression guard: the unread summary badge ("Today" header) is a real element carrying
+// the green-soft token treatment, not plain inline text.
+async function assertSummaryBadge(page: Page, unreadCount: number, copy: Copy) {
+  const badge = unreadChip(page, unreadCount, copy);
+  await expect(badge).toHaveCount(1);
+  await expect(badge).toHaveText(unreadTextFor(copy, unreadCount));
+  await expectTokenStyle(badge, 'background-color', '--color-green-soft', 'summary badge chip');
+  await expectTokenStyle(badge, 'color', '--color-green', 'summary badge text');
+  const sectionHeader = page
+    .getByRole('heading', { level: 2, name: copy.notifications.today })
+    .locator('xpath=following-sibling::*[1]');
+  await expect(sectionHeader).toHaveText(unreadTextFor(copy, unreadCount));
+}
+
+// F4 regression guard: cards are list items WITHOUT browser bullets or the UA 40px
+// indentation. Shipped while the list had no list-style reset, so both computed facts below
+// would have failed.
+async function assertListSemantics(page: Page) {
+  const list = page.locator('main ul').first();
+  await expect(list).toHaveCSS('list-style-type', 'none');
+  await expect(list).toHaveCSS('padding-left', '0px');
+  await expect(list).toHaveCSS('margin-left', '0px');
+  const card = list.locator('li').first();
+  await expect(card).toHaveCSS('padding-left', '4px');
+}
+
+function unreadTextFor(copy: Copy, count: number): string {
+  return (count === 1 ? copy.notifications.unread_one : copy.notifications.unread_other).replace(
+    '{{count}}',
+    String(count)
+  );
+}
+
+// The corrected center renders the unread count in TWO elements: the persistent polite status
+// <output> (WCAG 4.1.3 fix) and the visible summary chip. Scope count assertions to the
+// visible chip so they never trip strict mode against the announcement.
+function unreadChip(page: Page, count: number, copy: Copy = en): Locator {
+  return page.locator('main span').filter({ hasText: unreadTextFor(copy, count) });
+}
+
+// Narrow-width guard for translated/dark coverage: no visible text element may overflow its
+// container horizontally (an unbreakable string or fixed-width row would compute a wider
+// scrollWidth than the client box).
+async function assertNoTextOverflow(page: Page) {
+  const offenders = await page.evaluate(() => {
+    const results: string[] = [];
+    const main = document.querySelector('main');
+    if (main && main.scrollWidth > main.clientWidth + 1) results.push('main overflow');
+    for (const node of document.querySelectorAll('main *')) {
+      if (!(node instanceof HTMLElement) || node.children.length > 0) continue;
+      const hasText = (node.textContent ?? '').trim().length > 0;
+      if (!hasText) continue;
+      const style = getComputedStyle(node);
+      if (style.display === 'none' || style.visibility === 'hidden') continue;
+      if (node.scrollWidth > node.clientWidth + 1)
+        results.push(`${node.tagName.toLowerCase()}: "${(node.textContent ?? '').trim()}"`);
+    }
+    return results;
+  });
+  expect(offenders).toEqual([]);
+}
+
+// F5 regression guard for the approved preferences hierarchy: approved element order, the
+// panel NOT painting one enclosing card, the push group using the designed token border
+// (never the UA fieldset default), per-category grouped rows, and applied typography
+// (20px back link/title, 12px context/legend) instead of oversized UA defaults.
+async function assertPreferencesStructure(page: Page, copy: Copy) {
+  const back = page.getByRole('link', { name: copy.notificationPreferences.back });
+  await expect(back).toBeVisible();
+  await expect(back).toHaveAttribute('href', '/notifications');
+  const title = page.getByRole('heading', { level: 1, name: copy.notificationPreferences.title });
+  await expect(title).toBeVisible();
+  const context = page.getByText(copy.notificationPreferences.context);
+  await expect(context).toBeVisible();
+  const fieldset = page.getByRole('group', { name: copy.notificationPreferences.pushTitle });
+  const critical = page.getByRole('region', { name: copy.notificationPreferences.criticalTitle });
+
+  // Approved DOM order: back link, context line, push group (legend + master + five category
+  // rows), ALWAYS ON panel, save control.
+  const order = await page.evaluate(
+    ({ backHandle, contextHandle, fieldsetHandle, criticalHandle }) => {
+      const follows = (before: Element | null, after: Element | null) =>
+        before !== null &&
+        after !== null &&
+        !!(before.compareDocumentPosition(after) & Node.DOCUMENT_POSITION_FOLLOWING);
+      return {
+        backBeforeContext: follows(backHandle, contextHandle),
+        contextBeforeGroup: follows(contextHandle, fieldsetHandle),
+        groupBeforeCritical: follows(fieldsetHandle, criticalHandle)
+      };
+    },
+    {
+      backHandle: await back.elementHandle(),
+      contextHandle: await context.elementHandle(),
+      fieldsetHandle: await fieldset.elementHandle(),
+      criticalHandle: await critical.elementHandle()
+    }
+  );
+  expect(order).toEqual({
+    backBeforeContext: true,
+    contextBeforeGroup: true,
+    groupBeforeCritical: true
+  });
+
+  // Five category rows, each its own grouped label surface pairing its text with its switch,
+  // in the approved order inside the push group.
+  const expectedOrder = [
+    copy.notificationPreferences.categories.community,
+    copy.notificationPreferences.categories.matches,
+    copy.notificationPreferences.categories.results,
+    copy.notificationPreferences.categories.rankings,
+    copy.notificationPreferences.categories.leagues
+  ];
+  const rows = fieldset.locator('label');
+  expect(await rows.count()).toBe(5);
+  const rowFacts = await rows.evaluateAll((elements) =>
+    elements.map((element) => ({
+      text: (element.querySelector('span')?.textContent ?? '').trim(),
+      hasSwitch: element.querySelector('button, input') !== null
+    }))
+  );
+  expect(rowFacts).toEqual(expectedOrder.map((text) => ({ text, hasSwitch: true })));
+
+  // Panel must NOT be one enclosing painted card (F5 fixed: background/border dropped from
+  // the section; the grouped surfaces are the fieldset and the ALWAYS ON panel).
+  const panel = page.locator('main > section').first();
+  await expect(panel).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
+  await expect(panel).toHaveCSS('border-top-style', 'none');
+
+  // Push group border is the designed token border, not a native UA fieldset border
+  // (Chrome default: 2px groove / outset) nor the removed border: 0.
+  await expect(fieldset).toHaveCSS('border-top-style', 'solid');
+  await expect(fieldset).toHaveCSS('border-top-width', '1px');
+  await expectTokenStyle(fieldset, 'border-color', '--color-line', 'push group border');
+  await expectTokenStyle(fieldset, 'background-color', '--color-surface', 'push group surface');
+  await expect(fieldset).toHaveCSS('border-radius', '14px');
+
+  // ALWAYS ON panel keeps the approved green-soft card with the green leading edge.
+  await expectTokenStyle(critical, 'background-color', '--color-green-soft', 'always-on card');
+  await expect(critical).toHaveCSS('border-inline-start-width', '2px');
+  await expectTokenStyle(critical, 'border-inline-start-color', '--color-green', 'always-on edge');
+
+  // Applied preferences typography: compact 20px back link/title, 12px context/legend.
+  expect(await back.evaluate((node) => getComputedStyle(node).fontFamily)).toMatch(/^Inter/);
+  await expect(back).toHaveCSS('font-size', '20px');
+  await expect(back).toHaveCSS('font-weight', '700');
+  await expect(title).toHaveCSS('font-size', '20px');
+  await expect(context).toHaveCSS('font-size', '12px');
+  const legend = fieldset.locator('legend');
+  await expect(legend).toHaveCSS('font-size', '12px');
+  await expect(legend).toHaveCSS('font-weight', '600');
+  const alwaysTitle = critical.getByRole('heading', {
+    level: 2,
+    name: copy.notificationPreferences.criticalTitle
+  });
+  await expect(alwaysTitle).toHaveCSS('font-size', '14px');
 }
 
 async function assertCardActions(page: Page) {
@@ -873,14 +1164,18 @@ test.describe('notification visual probes', () => {
     await badge.click();
     await expect(page).toHaveURL(/\/notifications$/);
     await assertCenterStructure(page);
-    await expect(page.getByText(unreadText(2), { exact: true })).toBeVisible();
+    await expect(unreadChip(page, 2)).toBeVisible();
     await expect(page.getByRole('heading', { name: en.notifications.today })).toBeVisible();
+    await assertSummaryBadge(page, 2, en);
     const { mark } = await assertCardActions(page);
+    await assertPopulatedTypography(page);
+    await assertListSemantics(page);
 
     const cards = page.locator('main li');
     await expect(cards).toHaveCount(2);
     await mark.click();
-    await expect(page.getByText(unreadText(1), { exact: true })).toBeVisible();
+    await expect(unreadChip(page, 1)).toBeVisible();
+    await assertSummaryBadge(page, 1, en);
     const readStyle = await cards.first().evaluate((item) => {
       const style = getComputedStyle(item);
       return { background: style.backgroundColor, border: style.borderLeftWidth };
@@ -977,6 +1272,10 @@ test.describe('notification visual probes', () => {
     for (let index = 1; index < expectedOrder.length; index += 1)
       await expect(switches.nth(index)).toBeChecked();
 
+    // Full approved hierarchy probe: order, grouped surfaces, token borders, typography.
+    await assertPreferencesStructure(page, en);
+    await expect(page.getByText(en.notificationPreferences.pushUnavailable)).toBeVisible();
+
     // Preferences group order: the push fieldset precedes the critical in-app panel, which is
     // a static ALWAYS ON status with no off affordance at all.
     const fieldsetHandle = await fieldset.elementHandle();
@@ -1042,7 +1341,7 @@ test.describe('notification desktop probes', () => {
     await page.goto('/notifications');
     await assertContentCap(page);
     await assertCenterStructure(page);
-    await expect(page.getByText(unreadText(2), { exact: true })).toBeVisible();
+    await expect(unreadChip(page, 2)).toBeVisible();
     await expect(page.getByRole('heading', { name: en.notifications.today })).toBeVisible();
     await assertCardActions(page);
 
@@ -1084,6 +1383,7 @@ test.describe('notification desktop probes', () => {
     ).toBeVisible();
     const critical = page.getByRole('region', { name: en.notificationPreferences.criticalTitle });
     await expect(critical.getByText(en.notificationPreferences.alwaysOn)).toBeVisible();
+    await assertPreferencesStructure(page, en);
 
     await ready(page);
     await expect(page).toHaveScreenshot('notifications-preferences-desktop.png', {
@@ -1093,4 +1393,148 @@ test.describe('notification desktop probes', () => {
       maxDiffPixelRatio: 0.02
     });
   });
+});
+
+// ---------------------------------------------------------------------------
+// Dark-theme and translated-locale coverage.
+//
+// Both probes assert the SAME structural facts as the light English baselines
+// (applied typography, header action placement, selected-filter treatment,
+// summary badge token, list semantics, preferences hierarchy) plus that no
+// visible text overflows its container at 390x844. Token-driven probes
+// (var(--color-green-soft) and friends) hold in both themes by construction;
+// literal rgb values are only asserted in the theme they were captured for.
+// ---------------------------------------------------------------------------
+
+test.describe('notification dark-theme probes', () => {
+  test('populated center keeps structure and token treatments in dark theme at 390x844', async ({
+    browser
+  }) => {
+    test.setTimeout(120_000);
+    const [admin, viewer] = await Promise.all([
+      createActor('Dark Admin'),
+      createActor('Dark Viewer')
+    ]);
+    await insertInvitation(
+      admin,
+      await createPrivateCommunity(admin, `Dark one ${crypto.randomUUID().slice(0, 6)}`),
+      viewer
+    );
+    await insertInvitation(
+      admin,
+      await createPrivateCommunity(admin, `Dark two ${crypto.randomUUID().slice(0, 6)}`),
+      viewer
+    );
+
+    const context = await newContext(browser, { colorScheme: 'dark' });
+    try {
+      const page = await context.newPage();
+      await signIn(page, viewer, { theme: 'dark' });
+      const badge = page.getByRole('link', { name: unreadText(2) });
+      await expect(badge).toBeVisible();
+      await badge.click();
+      await expect(page).toHaveURL(/\/notifications$/);
+      await assertCenterStructure(page);
+      await assertSummaryBadge(page, 2, en);
+      await assertPopulatedTypography(page);
+      await assertListSemantics(page);
+      await assertCardActions(page);
+
+      // Unread differentiation is token-driven: marking one card read must swap its
+      // background off the green-soft token while the unread card keeps it, with the
+      // green leading edge on the unread card only.
+      const cards = page.locator('main li');
+      await expect(cards).toHaveCount(2);
+      await cards.first().getByRole('button', { name: en.notifications.markRead }).click();
+      await expect(unreadChip(page, 1)).toBeVisible();
+      const unreadCard = cards.nth(1);
+      const { probeValue: greenSoftToken, elementValue: unreadBackground } =
+        await unreadCard.evaluate((item) => {
+          const probe = document.createElement('div');
+          probe.setAttribute('aria-hidden', 'true');
+          probe.style.position = 'absolute';
+          probe.style.visibility = 'hidden';
+          probe.style.setProperty('background-color', 'var(--color-green-soft)');
+          item.appendChild(probe);
+          const probeValue = getComputedStyle(probe).backgroundColor;
+          const own = getComputedStyle(item).backgroundColor;
+          probe.remove();
+          return { probeValue, elementValue: own };
+        });
+      expect(unreadBackground, 'unread card uses the green-soft token in dark theme').toBe(
+        greenSoftToken
+      );
+      const readBackground = await cards
+        .first()
+        .evaluate((item) => getComputedStyle(item).backgroundColor);
+      expect(readBackground).not.toBe(greenSoftToken);
+      await expect(unreadCard).toHaveCSS('border-inline-start-width', '2px');
+
+      await ready(page);
+      await expect(page).toHaveScreenshot('notifications-center-populated-dark.png', {
+        animations: 'disabled',
+        caret: 'hide',
+        threshold: 0.1,
+        maxDiffPixelRatio: 0.04,
+        mask: [page.locator('main li p[aria-label]')]
+      });
+    } finally {
+      await context.close();
+    }
+  });
+});
+
+test.describe('notification translated-locale probes', () => {
+  for (const [locale, copy] of [
+    ['pt-BR', ptBr],
+    ['es', es]
+  ] as const) {
+    test(`${locale}: center and preferences keep structure and contain text at 390x844`, async ({
+      page
+    }) => {
+      test.setTimeout(180_000);
+      const [admin, viewer] = await Promise.all([
+        createActor(`${locale} Admin`),
+        createActor(`${locale} Viewer`)
+      ]);
+      await insertInvitation(
+        admin,
+        await createPrivateCommunity(admin, `${locale} circle ${crypto.randomUUID().slice(0, 6)}`),
+        viewer
+      );
+
+      await signIn(page, viewer, { locale, copy });
+      const badge = page.getByRole('link', { name: unreadTextFor(copy, 1) });
+      await expect(badge).toBeVisible();
+      await badge.click();
+      await expect(page).toHaveURL(/\/notifications$/);
+      await waitForHydratedPage(page);
+      expect(await page.locator('html').getAttribute('lang')).toBe(locale);
+
+      // Same structural facts as the English baseline, in the translated surface.
+      await assertCenterStructure(page, copy);
+      await assertSummaryBadge(page, 1, copy);
+      await assertPopulatedTypography(page, copy);
+      await assertListSemantics(page);
+      const card = page.locator('main li').filter({
+        hasText: copy.notifications.kinds.community_invitation
+      });
+      await expect(card).toHaveCount(1);
+      await expect(card.getByRole('link', { name: copy.notifications.view })).toBeVisible();
+      await expect(card.getByRole('button', { name: copy.notifications.markRead })).toBeVisible();
+
+      // Preferences hierarchy in the translated surface.
+      await page.goto('/notifications/preferences');
+      await waitForHydratedPage(page);
+      await assertPreferencesStructure(page, copy);
+
+      // Narrow-width containment: no visible text may overflow its container.
+      await page.goBack();
+      await waitForHydratedPage(page);
+      await expect(
+        page.locator('main li').filter({ hasText: copy.notifications.kinds.community_invitation })
+      ).toHaveCount(1);
+      await assertNoTextOverflow(page);
+    });
+  }
 });

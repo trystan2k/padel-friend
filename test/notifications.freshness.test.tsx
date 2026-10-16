@@ -14,7 +14,7 @@ type ListNotifications = (options: {
     cursor?: { createdAt: string; id: string };
     limit: number;
   };
-}) => Promise<NotificationPage>;
+}) => Promise<NotificationPage | undefined>;
 type MarkAll = (options: { data: { before: string } }) => Promise<number>;
 type MarkOne = (options: { data: { notificationId: string } }) => Promise<string>;
 
@@ -98,6 +98,14 @@ describe('notification freshness', () => {
     expect(mocks.list).toHaveBeenCalledWith({ data: { category: 'all', limit: 20 } });
   });
 
+  it('turns a missing notification page into an explicit fetch error', async () => {
+    mocks.list.mockResolvedValueOnce(undefined);
+    const { result } = renderHook(() => useNotifications(page([]), 'all', true));
+
+    await waitFor(() => expect(result.current.error).toBe(true));
+    expect(result.current.loading).toBe(false);
+  });
+
   it('allows at most one trailing refresh for events during an in-flight request', async () => {
     makeVisible();
     const first = deferred<NotificationPage>();
@@ -161,6 +169,12 @@ describe('notification freshness', () => {
 
     expect(result.current.rows[0]?.read_at).toBeNull();
     expect(result.current.unreadCount).toBe(1);
+    expect(result.current.mutationError).toBe(true);
+
+    mocks.list.mockResolvedValue(page([notification(unreadId)], 1));
+    await act(async () => result.current.refresh());
+    await waitFor(() => expect(result.current.error).toBe(false));
+    expect(result.current.mutationError).toBe(true);
   });
 
   it('uses the last successful cutoff for mark-all and keeps newer notifications unread', async () => {

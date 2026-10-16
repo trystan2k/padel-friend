@@ -87,7 +87,7 @@ export function NotificationPreferencesPage({
         <Link to="/notifications" {...stylex.props(styles.back)}>
           {t('notificationPreferences.back')}
         </Link>
-        <h1>{t('notificationPreferences.title')}</h1>
+        <h1 {...stylex.props(styles.title)}>{t('notificationPreferences.title')}</h1>
         <p {...stylex.props(styles.context)}>{t('notificationPreferences.context')}</p>
         <p {...stylex.props(styles.helper)}>{t('notificationPreferences.pushUnavailable')}</p>
         <fieldset {...stylex.props(styles.group)}>
@@ -121,9 +121,13 @@ export function NotificationPreferencesPage({
           ))}
         </fieldset>
         <section aria-labelledby="critical-title" {...stylex.props(styles.always)}>
-          <h2 id="critical-title">{t('notificationPreferences.criticalTitle')}</h2>
-          <p>{t('notificationPreferences.criticalHelper')}</p>
-          <strong>{t('notificationPreferences.alwaysOn')}</strong>
+          <h2 id="critical-title" {...stylex.props(styles.alwaysTitle)}>
+            {t('notificationPreferences.criticalTitle')}
+          </h2>
+          <p {...stylex.props(styles.alwaysCopy)}>{t('notificationPreferences.criticalHelper')}</p>
+          <strong {...stylex.props(styles.alwaysBadge)}>
+            {t('notificationPreferences.alwaysOn')}
+          </strong>
         </section>
         {!online && <p>{t('notificationPreferences.offline')}</p>}
         <button

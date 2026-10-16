@@ -15,12 +15,29 @@ describe('notification validators', () => {
       })
     ).toMatchObject({ category: 'community', limit: 20 });
   });
+  it('accepts database ISO timestamps without changing offset or fractional precision', () => {
+    for (const createdAt of [
+      '2026-10-15T12:00:00.123456+00:00',
+      '2026-10-15T12:00:00.123456-07:30',
+      '2026-10-15T12:00:00.1+05:45',
+      '2026-10-15T12:00:00Z',
+      '2026-10-15T12:00:00.000Z'
+    ]) {
+      expect(validateListMyNotifications({ cursor: { createdAt, id } }).cursor?.createdAt).toBe(
+        createdAt
+      );
+    }
+  });
   it('rejects unknown fields, invalid category, oversized limit and bad cursor', () => {
     for (const input of [
       { recipientId: id },
       { category: 'other' },
       { limit: 51 },
-      { cursor: { createdAt: 'bad', id } }
+      { cursor: { createdAt: 'bad', id } },
+      { cursor: { createdAt: '2026-02-30T12:00:00.123456+00:00', id } },
+      { cursor: { createdAt: '2026-10-15T12:00:00.1234567+00:00', id } },
+      { cursor: { createdAt: '2026-10-15T12:00:00+99:00', id } },
+      { cursor: { createdAt: `${'2'.repeat(40)}garbage`, id } }
     ])
       expect(() => validateListMyNotifications(input)).toThrow('INVALID_COMMUNITY_INPUT');
   });

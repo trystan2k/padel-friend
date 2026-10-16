@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link } from '@tanstack/react-router';
 import { useTranslation } from 'react-i18next';
 import {
@@ -19,36 +19,123 @@ export function NotificationDetailPage({
   const { t } = useTranslation();
   const [target, setTarget] = useState(initialTarget);
   const [accepted, setAccepted] = useState(false);
+  const [announcement, setAnnouncement] = useState<
+    'accepted' | 'activeMembership' | 'pendingMembership' | null
+  >(null);
+  const [isOnline, setIsOnline] = useState<boolean | null>(null);
   const [pending, setPending] = useState(false);
-  const [error, setError] = useState(false);
+  const [targetError, setTargetError] = useState(false);
+  const [readError, setReadError] = useState(false);
+  const previousOnline = useRef<boolean | null>(null);
+
   useEffect(() => {
-    void markNotificationRead({ data: { notificationId } }).catch(() => setError(true));
-  }, [notificationId]);
+    const updateConnectivity = () => setIsOnline(window.navigator.onLine);
+    updateConnectivity();
+    window.addEventListener('online', updateConnectivity);
+    window.addEventListener('offline', updateConnectivity);
+    return () => {
+      window.removeEventListener('online', updateConnectivity);
+      window.removeEventListener('offline', updateConnectivity);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (isOnline !== true) return undefined;
+    let active = true;
+    void markNotificationRead({ data: { notificationId } })
+      .then(() => {
+        if (active) setReadError(false);
+      })
+      .catch(() => {
+        if (active) setReadError(true);
+      });
+    return () => {
+      active = false;
+    };
+  }, [isOnline, notificationId]);
+
+  useEffect(() => {
+    if (isOnline === null) return undefined;
+    const wasOffline = previousOnline.current === false;
+    previousOnline.current = isOnline;
+    if (!wasOffline || !isOnline) return undefined;
+
+    let active = true;
+    setTargetError(false);
+    void getMyNotificationTarget({ data: { notificationId } })
+      .then((nextTarget) => {
+        if (!active) return;
+        setTarget(nextTarget);
+        if (accepted && nextTarget.target_status === 'membership_available')
+          setAnnouncement(
+            nextTarget.membership_status === 'active' ? 'activeMembership' : 'pendingMembership'
+          );
+      })
+      .catch(() => {
+        if (active) setTargetError(true);
+      });
+    return () => {
+      active = false;
+    };
+  }, [accepted, isOnline, notificationId]);
+
   async function accept() {
+    if (pending || isOnline !== true || accepted) return;
     setPending(true);
-    setError(false);
+    setTargetError(false);
     try {
       await acceptMyNotificationInvitation({ data: { notificationId } });
       setAccepted(true);
+      setAnnouncement('accepted');
+      try {
+        setTarget(await getMyNotificationTarget({ data: { notificationId } }));
+      } catch {
+        setTargetError(true);
+      }
     } catch {
-      setError(true);
+      setTargetError(true);
     } finally {
       setPending(false);
     }
   }
+
   async function retry() {
+    if (pending || isOnline !== true) return;
     setPending(true);
-    setError(false);
-    try {
-      setTarget(await getMyNotificationTarget({ data: { notificationId } }));
-    } catch {
-      setError(true);
-    } finally {
-      setPending(false);
+    if (readError) {
+      try {
+        await markNotificationRead({ data: { notificationId } });
+        setReadError(false);
+      } catch {
+        setReadError(true);
+      }
     }
+    if (targetError) {
+      try {
+        const nextTarget = await getMyNotificationTarget({ data: { notificationId } });
+        setTarget(nextTarget);
+        setTargetError(false);
+        if (accepted && nextTarget.target_status === 'membership_available')
+          setAnnouncement(
+            nextTarget.membership_status === 'active' ? 'activeMembership' : 'pendingMembership'
+          );
+      } catch {
+        setTargetError(true);
+      }
+    }
+    setPending(false);
   }
+
+  const hasError = targetError || readError;
   return (
     <main {...stylex.props(styles.page)}>
+      <output aria-live="polite">
+        {isOnline === false
+          ? t('notifications.offline')
+          : announcement
+            ? t(`notifications.${announcement}`)
+            : ''}
+      </output>
       <section {...stylex.props(styles.panel)}>
         {target.target_status === 'unavailable' ? (
           <>
@@ -63,17 +150,15 @@ export function NotificationDetailPage({
             {target.target_status === 'invitation_available' ? (
               <>
                 <p>{t('notifications.invitationContext')}</p>
-                <button
-                  {...stylex.props(styles.button)}
-                  disabled={pending}
-                  onClick={() => void accept()}
-                >
-                  {accepted
-                    ? t('notifications.accepted')
-                    : pending
-                      ? t('notifications.accepting')
-                      : t('notifications.accept')}
-                </button>
+                {!accepted && (
+                  <button
+                    {...stylex.props(styles.button)}
+                    disabled={pending || isOnline !== true}
+                    onClick={() => void accept()}
+                  >
+                    {pending ? t('notifications.accepting') : t('notifications.accept')}
+                  </button>
+                )}
               </>
             ) : (
               <p>
@@ -84,11 +169,11 @@ export function NotificationDetailPage({
                 )}
               </p>
             )}
-            {error && <p role="alert">{t('notifications.targetError')}</p>}
-            {error && (
+            {hasError && <p role="alert">{t('notifications.targetError')}</p>}
+            {hasError && (
               <button
                 {...stylex.props(styles.button)}
-                disabled={pending}
+                disabled={pending || isOnline !== true}
                 onClick={() => void retry()}
               >
                 {t('notifications.retry')}

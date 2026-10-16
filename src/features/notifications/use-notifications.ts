@@ -6,6 +6,43 @@ import {
 } from './notifications.functions';
 import type { NotificationCategory, NotificationDto, NotificationPage } from './notification-model';
 
+const notificationCategories = new Set(['community', 'matches', 'results', 'rankings', 'leagues']);
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
+}
+
+function isNotificationDto(value: unknown): value is NotificationDto {
+  return (
+    isRecord(value) &&
+    typeof value.id === 'string' &&
+    typeof value.kind === 'string' &&
+    typeof value.category === 'string' &&
+    notificationCategories.has(value.category) &&
+    typeof value.created_at === 'string' &&
+    (typeof value.read_at === 'string' || value.read_at === null)
+  );
+}
+
+function isNotificationPage(value: unknown): value is NotificationPage {
+  if (
+    !isRecord(value) ||
+    !Array.isArray(value.items) ||
+    !value.items.every(isNotificationDto) ||
+    typeof value.unreadCount !== 'number' ||
+    !Number.isFinite(value.unreadCount) ||
+    typeof value.asOf !== 'string'
+  )
+    return false;
+
+  return (
+    value.nextCursor === null ||
+    (isRecord(value.nextCursor) &&
+      typeof value.nextCursor.createdAt === 'string' &&
+      typeof value.nextCursor.id === 'string')
+  );
+}
+
 export function useNotifications(
   initial: NotificationPage,
   category: NotificationCategory = 'all',
@@ -15,11 +52,14 @@ export function useNotifications(
   const [unreadCount, setUnreadCount] = useState<number | null>(initial.unreadCount);
   const [loading, setLoading] = useState(loadOnMount);
   const [error, setError] = useState(false);
+  const [mutationError, setMutationError] = useState(false);
   const [online, setOnline] = useState(true);
   const [mutating, setMutating] = useState(false);
   const onlineRef = useRef(true);
   const [cursor, setCursor] = useState(initial.nextCursor);
   const [asOf, setAsOf] = useState(initial.asOf);
+  const [loadedCategory, setLoadedCategory] = useState(category);
+  const previousCategory = useRef(category);
   const generation = useRef(0);
   const pending = useRef(false);
   const trailing = useRef(false);
@@ -44,9 +84,11 @@ export function useNotifications(
     const token = ++generation.current;
     setLoading(true);
     try {
-      const page = await listMyNotifications({
+      const response: unknown = await listMyNotifications({
         data: { category, ...(append && cursor ? { cursor } : {}), limit: 20 }
       });
+      if (!isNotificationPage(response)) throw new Error('INVALID_NOTIFICATION_PAGE');
+      const page = response;
       if (token !== generation.current || !mounted.current) return;
       setRows((current) =>
         append
@@ -56,6 +98,7 @@ export function useNotifications(
       setUnreadCount(page.unreadCount);
       setCursor(page.nextCursor);
       setAsOf(page.asOf);
+      setLoadedCategory(category);
       setError(false);
     } catch {
       if (token === generation.current && mounted.current) setError(true);
@@ -64,17 +107,29 @@ export function useNotifications(
       if (token === generation.current && mounted.current) setLoading(false);
       if (trailing.current && mounted.current && !mutationPending.current) {
         trailing.current = false;
-        queueMicrotask(() => void refresh());
+        queueMicrotask(refreshLatest);
       }
     }
   };
 
-  const refreshOnMount = useEffectEvent(() => {
+  const refreshLatest = useEffectEvent(() => {
     void refresh();
+  });
+  const refreshOnMount = useEffectEvent(() => {
+    refreshLatest();
+  });
+  const refreshOnCategoryChange = useEffectEvent(() => {
+    generation.current += 1;
+    trailing.current = false;
+    setRows([]);
+    setCursor(null);
+    setLoadedCategory(category);
+    setError(false);
+    refreshLatest();
   });
   const scheduleRefresh = useEffectEvent(() => {
     if (timer.current) clearTimeout(timer.current);
-    timer.current = setTimeout(() => void refresh(), 30);
+    timer.current = setTimeout(refreshLatest, 30);
   });
 
   useEffect(() => {
@@ -114,6 +169,12 @@ export function useNotifications(
     if (loadOnMount) refreshOnMount();
   }, [loadOnMount]);
 
+  useEffect(() => {
+    if (previousCategory.current === category) return;
+    previousCategory.current = category;
+    refreshOnCategoryChange();
+  }, [category]);
+
   const markRead = async (id: string) => {
     if (!online || mutationPending.current) return;
     const row = rows.find((item) => item.id === id);
@@ -129,6 +190,7 @@ export function useNotifications(
     setUnreadCount((count) => (count === null ? null : Math.max(0, count - 1)));
     try {
       await markNotificationRead({ data: { notificationId: id } });
+      setMutationError(false);
     } catch {
       if (mounted.current) {
         setRows((current) =>
@@ -139,7 +201,7 @@ export function useNotifications(
         if (generation.current === token) {
           setUnreadCount((count) => (count === null ? null : count + 1));
         }
-        setError(true);
+        setMutationError(true);
       }
     } finally {
       mutationPending.current = false;
@@ -167,6 +229,7 @@ export function useNotifications(
     );
     try {
       await markAllNotificationsRead({ data: { before: cutoff } });
+      setMutationError(false);
     } catch {
       if (mounted.current) {
         setRows((current) =>
@@ -174,7 +237,7 @@ export function useNotifications(
             patchedIds.includes(row.id) && row.read_at === cutoff ? { ...row, read_at: null } : row
           )
         );
-        if (generation.current === token) setError(true);
+        if (generation.current === token) setMutationError(true);
       }
     } finally {
       mutationPending.current = false;
@@ -186,10 +249,11 @@ export function useNotifications(
   };
 
   return {
-    rows,
+    rows: loadedCategory === category ? rows : [],
     unreadCount,
     loading,
     error,
+    mutationError,
     online,
     mutating,
     cursor,
