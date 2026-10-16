@@ -282,14 +282,12 @@ describe.skipIf(!environment.env)('community notification producers (local Supab
       `community.invitation:${invitationId}`
     );
 
-    const duplicateInvite = await admin.client
-      .from('community_invitations')
-      .insert({
-        community_id: communityId,
-        invitee_user_id: invitee.id,
-        token_hash: tokenHash(),
-        expires_at: expiresAt
-      });
+    const duplicateInvite = await admin.client.from('community_invitations').insert({
+      community_id: communityId,
+      invitee_user_id: invitee.id,
+      token_hash: tokenHash(),
+      expires_at: expiresAt
+    });
     expect(duplicateInvite.error).not.toBeNull();
     expect(duplicateInvite.error!.code).toBe('23505');
     expect(duplicateInvite.error!.message).toContain('community_invitations_open');

@@ -335,14 +335,12 @@ describe.skipIf(!environment.env)(
 
       expect(
         (
-          await admin.client
-            .from('community_members')
-            .insert({
-              community_id: communityId,
-              user_id: pendingMember.id,
-              role: 'member',
-              status: 'pending'
-            })
+          await admin.client.from('community_members').insert({
+            community_id: communityId,
+            user_id: pendingMember.id,
+            role: 'member',
+            status: 'pending'
+          })
         ).error
       ).toBeNull();
       sql(

@@ -12,7 +12,10 @@ export const listMyNotifications = createServerFn({ method: 'GET' })
   .validator(validateListMyNotifications)
   .handler(async ({ data }) => {
     const { client } = await requireAuthenticatedClient();
-    const asOf = new Date().toISOString();
+    // Mark-all validates against the database clock; keep the read cutoff on that same clock.
+    const { data: asOf, error: asOfError } = await client.rpc('get_my_notifications_as_of');
+    if (asOfError) throw asOfError;
+    if (typeof asOf !== 'string') throw new Error('INVALID_NOTIFICATION_CUTOFF');
     let query = client.from('notifications').select(columns).lte('created_at', asOf);
     if (data.category !== 'all') query = query.eq('category', data.category);
     if (data.cursor)

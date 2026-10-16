@@ -621,6 +621,7 @@ export type Database = {
           target_status: string
         }[]
       }
+      get_my_notifications_as_of: { Args: Record<PropertyKey, never>; Returns: string }
       govern_community_member: {
         Args: { p_action: string; p_community_id: string; p_membership_id: string }
         Returns: {

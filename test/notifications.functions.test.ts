@@ -34,6 +34,39 @@ import {
 } from '../src/features/notifications/notifications.functions';
 const id = '123e4567-e89b-12d3-a456-426614174000';
 describe('notification server functions', () => {
+  it('uses the database clock for the notification cutoff', async () => {
+    const databaseAsOf = '2026-10-16T12:34:56.000000+00:00';
+    const query = {
+      select: vi.fn<(...args: unknown[]) => unknown>(),
+      lte: vi.fn<(...args: unknown[]) => unknown>(),
+      eq: vi.fn<(...args: unknown[]) => unknown>(),
+      or: vi.fn<(...args: unknown[]) => unknown>(),
+      order: vi.fn<(...args: unknown[]) => unknown>(),
+      limit: vi.fn<() => Promise<{ data: never[]; error: null }>>().mockResolvedValue({
+        data: [],
+        error: null
+      })
+    };
+    query.select.mockReturnValue(query);
+    query.lte.mockReturnValue(query);
+    query.eq.mockReturnValue(query);
+    query.or.mockReturnValue(query);
+    query.order.mockReturnValue(query);
+    const from = vi.fn<(...args: unknown[]) => unknown>(() => query);
+    const rpc = vi
+      .fn<(...args: unknown[]) => Promise<{ data: unknown; error: null }>>()
+      .mockImplementation(async (functionName) => ({
+        data: functionName === 'get_my_notifications_as_of' ? databaseAsOf : 0,
+        error: null
+      }));
+    mocks.client = { from, rpc };
+
+    await listMyNotifications({ data: { limit: 20 } });
+
+    expect(rpc).toHaveBeenCalledWith('get_my_notifications_as_of');
+    expect(query.lte).toHaveBeenCalledWith('created_at', databaseAsOf);
+  });
+
   it('uses the whole-store count RPC after authenticated access', async () => {
     const rpc = vi
       .fn<(...args: unknown[]) => Promise<{ data: number; error: null }>>()
@@ -118,8 +151,11 @@ describe('notification server functions', () => {
     query.order.mockReturnValue(query);
     const from = vi.fn<(...args: unknown[]) => unknown>(() => query);
     const rpc = vi
-      .fn<(...args: unknown[]) => Promise<{ data: number; error: null }>>()
-      .mockResolvedValue({ data: 2, error: null });
+      .fn<(...args: unknown[]) => Promise<{ data: unknown; error: null }>>()
+      .mockImplementation(async (functionName) => ({
+        data: functionName === 'get_my_notifications_as_of' ? '2026-10-16T12:34:56.000Z' : 2,
+        error: null
+      }));
     mocks.client = { from, rpc };
 
     const firstPage = await listMyNotifications({ data: { limit: 1 } });
