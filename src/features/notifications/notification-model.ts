@@ -25,36 +25,21 @@ export type NotificationPage = {
 };
 
 export function groupNotifications(items: NotificationDto[], now: Date, locale: string) {
-  const today = new Intl.DateTimeFormat(locale, {
+  const dayFormatter = new Intl.DateTimeFormat(locale, {
     timeZone: 'UTC',
     year: 'numeric',
     month: '2-digit',
     day: '2-digit'
-  }).format(now);
+  });
+  const today = dayFormatter.format(now);
   const format = new Intl.DateTimeFormat(locale, {
     timeZone: 'UTC',
     dateStyle: 'medium',
     timeStyle: 'short'
   });
   return {
-    today: items.filter(
-      (item) =>
-        new Intl.DateTimeFormat(locale, {
-          timeZone: 'UTC',
-          year: 'numeric',
-          month: '2-digit',
-          day: '2-digit'
-        }).format(new Date(item.created_at)) === today
-    ),
-    earlier: items.filter(
-      (item) =>
-        new Intl.DateTimeFormat(locale, {
-          timeZone: 'UTC',
-          year: 'numeric',
-          month: '2-digit',
-          day: '2-digit'
-        }).format(new Date(item.created_at)) !== today
-    ),
+    today: items.filter((item) => dayFormatter.format(new Date(item.created_at)) === today),
+    earlier: items.filter((item) => dayFormatter.format(new Date(item.created_at)) !== today),
     format: (value: string) => format.format(new Date(value))
   };
 }

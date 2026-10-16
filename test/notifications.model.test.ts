@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import {
   groupNotifications,
   notificationBadge
@@ -30,6 +30,33 @@ describe('notification display model', () => {
     expect(grouped.earlier).toHaveLength(1);
     expect(grouped.format('2026-10-15T02:00:00Z')).toContain('Oct');
   });
+
+  it('constructs one UTC day formatter per grouping call regardless of item count', () => {
+    const dateTimeFormat = vi.spyOn(Intl, 'DateTimeFormat');
+    const items = Array.from({ length: 25 }, (_, index) => ({
+      id: String(index),
+      kind: 'x',
+      category: 'community' as const,
+      created_at: '2026-10-15T02:00:00Z',
+      read_at: null
+    }));
+
+    try {
+      groupNotifications(items, new Date('2026-10-15T10:00:00Z'), 'en');
+
+      const dayFormatterCalls = dateTimeFormat.mock.calls.filter(
+        ([, options]) =>
+          options?.year === 'numeric' &&
+          options.month === '2-digit' &&
+          options.day === '2-digit' &&
+          options.timeZone === 'UTC'
+      );
+      expect(dayFormatterCalls).toHaveLength(1);
+    } finally {
+      dateTimeFormat.mockRestore();
+    }
+  });
+
   it('caps only visual badge and preserves full count in label', () => {
     expect(notificationBadge(125, (key) => key)).toEqual({
       visual: '99+',

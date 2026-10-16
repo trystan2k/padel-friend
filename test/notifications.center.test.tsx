@@ -35,8 +35,17 @@ vi.mock('react-i18next', async () => {
   return {
     useTranslation: () => ({
       t: (key: string, options?: { count?: number }) => {
-        if (mocks.useEnglishResource && key === 'notifications.mutationError') {
-          return resource.notifications.mutationError;
+        if (mocks.useEnglishResource) {
+          if (key === 'notifications.today') return resource.notifications.today;
+          if (key === 'notifications.earlier') return resource.notifications.earlier;
+          if (key === 'notifications.mutationError') return resource.notifications.mutationError;
+          if (key === 'notifications.unread_one' || key === 'notifications.unread_other') {
+            const template =
+              key === 'notifications.unread_one'
+                ? resource.notifications.unread_one
+                : resource.notifications.unread_other;
+            return template.replace('{{count}}', String(options?.count ?? 0));
+          }
         }
         return options?.count === undefined ? key : `${key}:${options.count}`;
       },
@@ -109,6 +118,53 @@ describe('notification center', () => {
     );
   });
 
+  it('shows earlier-only notifications without an empty Today section and keeps the unread summary', () => {
+    mocks.useEnglishResource = true;
+    const earlierPage: NotificationPage = {
+      ...initial,
+      items: [{ ...initial.items[0], created_at: '2026-10-14T23:00:00.000Z' }]
+    };
+    mocks.list.mockResolvedValue(earlierPage);
+    const { container } = render(<NotificationsPage initial={earlierPage} />);
+
+    expect(screen.queryByRole('heading', { name: en.notifications.today })).toBeNull();
+    const earlierHeading = screen.getByRole('heading', { name: en.notifications.earlier });
+    const earlierHeader = earlierHeading.closest('header');
+    const unreadSummary = en.notifications.unread_other.replace('{{count}}', '3');
+    expect(earlierHeader?.textContent).toContain(unreadSummary);
+    expect(screen.getAllByText(unreadSummary)).toHaveLength(1);
+    expect(earlierHeader?.nextElementSibling?.tagName).toBe('UL');
+    expect(container.querySelectorAll('header').length).toBeGreaterThan(0);
+    expect(screen.getByRole('link', { name: 'notifications.view' })).toBeTruthy();
+  });
+
+  it('renders Today and Earlier sections with the unread summary in the Today header', () => {
+    mocks.useEnglishResource = true;
+    const mixedPage: NotificationPage = {
+      ...initial,
+      items: [
+        initial.items[0],
+        {
+          ...initial.items[0],
+          id: '00000000-0000-4000-8000-000000000002',
+          created_at: '2026-10-14T23:00:00.000Z'
+        }
+      ]
+    };
+    mocks.list.mockResolvedValue(mixedPage);
+    const { container } = render(<NotificationsPage initial={mixedPage} />);
+
+    const todayHeading = screen.getByRole('heading', { name: en.notifications.today });
+    const todayHeader = todayHeading.closest('header');
+    const earlierHeading = screen.getByRole('heading', { name: en.notifications.earlier });
+    const unreadSummary = en.notifications.unread_other.replace('{{count}}', '3');
+    expect(todayHeader?.textContent).toContain(unreadSummary);
+    expect(screen.getAllByText(unreadSummary)).toHaveLength(1);
+    expect(todayHeader?.nextElementSibling?.tagName).toBe('UL');
+    expect(earlierHeading.closest('header')?.nextElementSibling?.tagName).toBe('UL');
+    expect(container.querySelectorAll('ul')).toHaveLength(2);
+  });
+
   it('loads selected category and renders the translated empty state when no rows match', async () => {
     mocks.list.mockResolvedValue({ ...initial, items: [], unreadCount: 3 });
     render(<NotificationsPage initial={initial} />);
@@ -122,6 +178,8 @@ describe('notification center', () => {
     );
     expect(await screen.findByText('notifications.empty.matches')).toBeTruthy();
     expect(screen.queryByRole('link', { name: 'notifications.view' })).toBeNull();
+    expect(screen.queryByRole('heading', { name: 'notifications.today' })).toBeNull();
+    expect(screen.queryByRole('heading', { name: 'notifications.earlier' })).toBeNull();
   });
 
   it('keeps a read notification read after switching filters and returning to All', async () => {

@@ -28,6 +28,10 @@ export function NotificationsPage({ initial }: { initial: NotificationPage }) {
   }, [feed.unreadCount, t]);
 
   const grouped = groupNotifications(feed.rows, new Date(feed.asOf), i18n.language);
+  const unreadSummary = t(
+    feed.unreadCount === 1 ? 'notifications.unread_one' : 'notifications.unread_other',
+    { count: feed.unreadCount ?? 0 }
+  );
   const list = (rows: typeof feed.rows) => (
     <ul {...stylex.props(styles.list)}>
       {rows.map((row) => (
@@ -120,21 +124,23 @@ export function NotificationsPage({ initial }: { initial: NotificationPage }) {
           </button>
         ) : feed.rows.length ? (
           <>
-            <header {...stylex.props(styles.sectionHeader)}>
-              <h2 {...stylex.props(styles.sectionTitle)}>{t('notifications.today')}</h2>
-              <span {...stylex.props(styles.unreadSummary)}>
-                {t(
-                  feed.unreadCount === 1
-                    ? 'notifications.unread_one'
-                    : 'notifications.unread_other',
-                  { count: feed.unreadCount ?? 0 }
-                )}
-              </span>
-            </header>
-            {list(grouped.today)}
+            {grouped.today.length > 0 && (
+              <>
+                <header {...stylex.props(styles.sectionHeader)}>
+                  <h2 {...stylex.props(styles.sectionTitle)}>{t('notifications.today')}</h2>
+                  <span {...stylex.props(styles.unreadSummary)}>{unreadSummary}</span>
+                </header>
+                {list(grouped.today)}
+              </>
+            )}
             {grouped.earlier.length > 0 && (
               <>
-                <h2 {...stylex.props(styles.sectionTitle)}>{t('notifications.earlier')}</h2>
+                <header {...stylex.props(styles.sectionHeader)}>
+                  <h2 {...stylex.props(styles.sectionTitle)}>{t('notifications.earlier')}</h2>
+                  {grouped.today.length === 0 && (
+                    <span {...stylex.props(styles.unreadSummary)}>{unreadSummary}</span>
+                  )}
+                </header>
                 {list(grouped.earlier)}
               </>
             )}
