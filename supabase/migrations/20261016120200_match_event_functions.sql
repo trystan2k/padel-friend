@@ -42,19 +42,28 @@ begin
   select * into v_row from public.match_events where id=p_event_id;
   v_existing := found;
   if v_existing and v_row.created_by<>v_uid then raise exception using errcode='42501'; end if;
-  select public.get_effective_community_admin_defaults(c.settings)->>'timezone'
-    into v_timezone from public.communities c where c.id=v_community;
+  if v_existing then
+    v_timezone := v_row.timezone;
+  else
+    select public.get_effective_community_admin_defaults(c.settings)->>'timezone'
+      into v_timezone from public.communities c where c.id=v_community;
+  end if;
 
   select r.display_level into v_creator_level from public.global_player_ratings r where r.user_id=v_uid;
-  if (p_input->>'event_type')='competitive' and v_creator_level is null then raise exception using errcode='23514'; end if;
+  if not v_existing and (p_input->>'event_type')='competitive' and v_creator_level is null then raise exception using errcode='23514'; end if;
   v_restriction_enabled := coalesce((p_input->>'restriction_enabled')::boolean,false);
   v_min_level := nullif(p_input->>'min_level','')::numeric;
   v_max_level := nullif(p_input->>'max_level','')::numeric;
   if v_restriction_enabled then
     if v_min_level is null and v_max_level is null then
-      if v_creator_level is null then raise exception using errcode='23514'; end if;
-      v_min_level := greatest(0,v_creator_level-0.5);
-      v_max_level := least(7,v_creator_level+1.5);
+      if v_existing then
+        v_min_level := v_row.min_level;
+        v_max_level := v_row.max_level;
+      else
+        if v_creator_level is null then raise exception using errcode='23514'; end if;
+        v_min_level := greatest(0,v_creator_level-0.5);
+        v_max_level := least(7,v_creator_level+1.5);
+      end if;
     elsif v_min_level is null or v_max_level is null then
       raise exception using errcode='23514';
     end if;

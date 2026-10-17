@@ -601,6 +601,48 @@ describe('create match wizard', () => {
     expect(mocks.remove).not.toHaveBeenCalledWith({ data: { object_key: replacementPhoto } });
   });
 
+  it('binds a saved-venue photo to the refreshed event identity after a failed publication', async () => {
+    const user = userEvent.setup();
+    const savedVenueId = '33333333-3333-4333-8333-333333333333';
+    const photoOptions = {
+      ...options(),
+      saved_venues: [
+        {
+          id: savedVenueId,
+          name: 'Saved court',
+          photo_path: 'community-venue-photos/source.jpg',
+          maps_url: 'https://www.google.com/maps/place/SavedCourt'
+        }
+      ]
+    };
+    mocks.options.mockResolvedValueOnce(photoOptions).mockResolvedValueOnce(photoOptions);
+    mocks.publish
+      .mockRejectedValueOnce(new Error('MATCH_PUBLISH_FAILED'))
+      .mockResolvedValueOnce({ event_id: 'ok' });
+    await mount();
+    await fillRequired(user);
+    await attachPhoto(user);
+    await goReview(user);
+    await user.click(button(en.matchCreate.publish));
+    await screen.findByText(en.matchCreate.errors.publishFailed);
+    const rejectedEventId = mocks.publish.mock.calls[0]?.[0].data.event_id;
+
+    await user.click(button(en.matchCreate.previous));
+    await user.click(button(en.matchCreate.previous));
+    await user.click(button(en.matchCreate.previous));
+    await user.selectOptions(select(en.matchCreate.fields.savedVenue), savedVenueId);
+    await waitFor(() => expect(mocks.copy).toHaveBeenCalledOnce());
+    const copiedEventId = mocks.copy.mock.calls[0]?.[0].data.event_id;
+    expect(copiedEventId).not.toBe(rejectedEventId);
+    await screen.findByRole('img', { name: en.matchCreate.fields.photo });
+
+    await goReview(user);
+    await user.click(button(en.matchCreate.publish));
+    await waitFor(() => expect(mocks.publish).toHaveBeenCalledTimes(2));
+    expect(mocks.publish.mock.calls[1]?.[0].data.event_id).toBe(copiedEventId);
+    expect(mocks.publish.mock.calls[1]?.[0].data.input.photo_path).toBe('staged/saved-venue.png');
+  });
+
   it('renders localized community discovery empty state and avoids unsupported controls or raw enum identifiers', async () => {
     mocks.options.mockResolvedValueOnce(options([], null, null));
     render(
@@ -630,5 +672,32 @@ describe('create match wizard', () => {
     );
     expect(await screen.findByText(en.matchCreate.errors.optionsUnavailable)).toBeTruthy();
     expect(screen.queryByText(en.matchCreate.noCommunities)).toBeNull();
+  });
+
+  it('retries a failed scoped options request without clearing current form selections', async () => {
+    const user = userEvent.setup();
+    const failedRequest = deferred<any>();
+    mocks.options
+      .mockResolvedValueOnce(options())
+      .mockResolvedValueOnce(options())
+      .mockReturnValueOnce(failedRequest.promise)
+      .mockResolvedValueOnce(options(undefined, 1, 5));
+    await mount();
+
+    await user.selectOptions(select(en.matchCreate.fields.community), idB);
+    await waitFor(() => expect(mocks.options).toHaveBeenCalledTimes(3));
+    await user.type(input(en.matchCreate.fields.venueName), 'Current court');
+    await user.type(input(en.matchCreate.fields.price), '12.50');
+    failedRequest.reject(new Error('offline'));
+
+    expect(await screen.findByText(en.matchCreate.errors.optionsUnavailable)).toBeTruthy();
+    await user.click(button(en.matches.retry));
+    await waitFor(() => expect(mocks.options).toHaveBeenCalledTimes(4));
+    await waitFor(() =>
+      expect(screen.queryByText(en.matchCreate.errors.optionsUnavailable)).toBeNull()
+    );
+    expect(mocks.options.mock.calls[3]?.[0]).toEqual({ data: { community_id: idB } });
+    expect(input(en.matchCreate.fields.venueName).value).toBe('Current court');
+    expect(input(en.matchCreate.fields.price).value).toBe('12.5');
   });
 });

@@ -559,6 +559,9 @@
     },
     "detail": {
       "title": "Detalhes da partida",
+      "overview": "Visão geral",
+      "participation": "Participação",
+      "eligibilityVisibility": "Elegibilidade e visibilidade",
       "participants": "Participantes",
       "accepted": "Aceito",
       "creatorAccepted": "Criador aceito",

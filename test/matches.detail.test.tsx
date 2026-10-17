@@ -76,6 +76,12 @@ afterEach(() => {
 describe('match detail surface', () => {
   it('renders complete authorized DTO context, counts, cost, photo and maps safely', () => {
     mount(event());
+    const groups = screen.getAllByRole('region');
+    expect(groups.map((group) => group.getAttribute('aria-labelledby'))).toEqual([
+      'match-overview-heading',
+      'match-participation-heading',
+      'match-eligibility-heading'
+    ]);
     expect(screen.getByRole('heading', { name: /Court Central/ })).toBeTruthy();
     expect(screen.getByRole('img', { name: en.matches.card.photoAlt }).getAttribute('src')).toBe(
       'https://example.test/photo.jpg'

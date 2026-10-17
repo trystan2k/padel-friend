@@ -141,51 +141,51 @@
     },
     "create-details-dark.png": {
       "sha256": "760ded08868af8dca063e885dff5d64127cecf64a6393f33646e50ab46307a6b",
-      "derivedFrom": "first honest capture of the corrected implementation with the same dynamic-area masks as every comparison (F26-F30 recalibration rebase; the previous capture predated the F26-F30 style corrections; no design frame exists: no dark frame exists in the design source)"
+      "derivedFrom": "first honest capture of the corrected implementation with the same dynamic-area masks as every comparison (copy-token + detail-restructure recalibration rebase; the previous capture predated the primary-action copy correction to --color-bg (reference-measured #f4f6f1 copy inside the green blocks) and the detail participation/participants section restructure; no design frame exists: no dark frame exists in the design source; re-capture reproduced the previous baseline byte-identically)"
     },
     "available-populated-320.png": {
-      "sha256": "24c3ab8ec92c6eeed249986a8ba9d4921d4321f142167a37ad13cb38c48f820c",
-      "derivedFrom": "first honest capture of the corrected implementation with the same dynamic-area masks as every comparison (F26-F30 recalibration rebase; the previous capture predated the F26-F30 style corrections; no design frame exists: design frames are 390-wide only)"
+      "sha256": "6b1b8e0c0adbe7621eab1ee1c4d6b95cac8a10bd98ee9c64eab5038b1e968c17",
+      "derivedFrom": "first honest capture of the corrected implementation with the same dynamic-area masks as every comparison (copy-token + detail-restructure recalibration rebase; the previous capture predated the primary-action copy correction to --color-bg (reference-measured #f4f6f1 copy inside the green blocks) and the detail participation/participants section restructure; no design frame exists: design frames are 390-wide only)"
     },
     "available-populated-desktop.png": {
-      "sha256": "2173e233284d6a850c13455a67710505ffeba5821b4ffd118484a69789e3e073",
-      "derivedFrom": "first honest capture of the corrected implementation with the same dynamic-area masks as every comparison (F26-F30 recalibration rebase; the previous capture predated the F26-F30 style corrections; no design frame exists: no desktop frame exists in the design source)"
+      "sha256": "42dafe9403e010f7258c4b15792a58f1d2c88a976f36ecc297f3b1ca3f716cac",
+      "derivedFrom": "first honest capture of the corrected implementation with the same dynamic-area masks as every comparison (copy-token + detail-restructure recalibration rebase; the previous capture predated the primary-action copy correction to --color-bg (reference-measured #f4f6f1 copy inside the green blocks) and the detail participation/participants section restructure; no design frame exists: no desktop frame exists in the design source)"
     },
     "available-populated-pt-BR.png": {
-      "sha256": "cdd30efe44e186b51c5c440e5327f5b983543332b5d35da0e9eba73b77862aa5",
-      "derivedFrom": "first honest capture of the corrected implementation with the same dynamic-area masks as every comparison (F26-F30 recalibration rebase; the previous capture predated the F26-F30 style corrections; no design frame exists: design frames are English only)"
+      "sha256": "56ab5cd6c0271015bb86004ce5ccd24c5e498936b7a320ce539479ce99928a8d",
+      "derivedFrom": "first honest capture of the corrected implementation with the same dynamic-area masks as every comparison (copy-token + detail-restructure recalibration rebase; the previous capture predated the primary-action copy correction to --color-bg (reference-measured #f4f6f1 copy inside the green blocks) and the detail participation/participants section restructure; no design frame exists: design frames are English only)"
     },
     "available-populated-es.png": {
-      "sha256": "d9b3762871793ee31f469529eae5f7c8f684ddf2e7e50e4cce37c0a1a78d3382",
-      "derivedFrom": "first honest capture of the corrected implementation with the same dynamic-area masks as every comparison (F26-F30 recalibration rebase; the previous capture predated the F26-F30 style corrections; no design frame exists: design frames are English only)"
+      "sha256": "fec44f984fb81390c14b16d360ce58bfbab6def5ec4b071ca047cac6fcd270db",
+      "derivedFrom": "first honest capture of the corrected implementation with the same dynamic-area masks as every comparison (copy-token + detail-restructure recalibration rebase; the previous capture predated the primary-action copy correction to --color-bg (reference-measured #f4f6f1 copy inside the green blocks) and the detail participation/participants section restructure; no design frame exists: design frames are English only)"
     },
     "available-populated-dark.png": {
-      "sha256": "fc0922f1e7789d5921bb09e48c35fa4d8b4a0eb4402f8e8f136fcab98d9aebfb",
-      "derivedFrom": "first honest capture of the corrected implementation with the same dynamic-area masks as every comparison (F26-F30 recalibration rebase; the previous capture predated the F26-F30 style corrections; no design frame exists: no dark frame exists in the design source)"
+      "sha256": "0bb0c2a74498cb987e939fbaf1ca742067f19030cbfeaf43794105260f83a280",
+      "derivedFrom": "first honest capture of the corrected implementation with the same dynamic-area masks as every comparison (copy-token + detail-restructure recalibration rebase; the previous capture predated the primary-action copy correction to --color-bg (reference-measured #f4f6f1 copy inside the green blocks) and the detail participation/participants section restructure; no design frame exists: no dark frame exists in the design source)"
     },
     "detail-friendly-creator-dark.png": {
-      "sha256": "ba80dcff62666390287f80fb869b323f1bb28ed53630ff724d004e22033f52e7",
-      "derivedFrom": "first honest capture of the corrected implementation with the same dynamic-area masks as every comparison (F26-F30 recalibration rebase; the previous capture predated the F26-F30 style corrections; no design frame exists: no dark frame exists in the design source)"
+      "sha256": "12e21ea0f5b3f615390ab926436008f7e4d3ba074751e90c8ef4111398235d34",
+      "derivedFrom": "first honest capture of the corrected implementation with the same dynamic-area masks as every comparison (copy-token + detail-restructure recalibration rebase; the previous capture predated the primary-action copy correction to --color-bg (reference-measured #f4f6f1 copy inside the green blocks) and the detail participation/participants section restructure; no design frame exists: no dark frame exists in the design source)"
     },
     "past-empty.png": {
-      "sha256": "722b43c05c65b0e43ac4563c59d621011305ba7889ebcc4029ad0fa52c431025",
-      "derivedFrom": "first honest capture of the corrected implementation with the same dynamic-area masks as every comparison (F26-F30 recalibration rebase; the previous capture predated the F26-F30 style corrections; no design frame exists: no past-empty frame exists, w25dY is populated)"
+      "sha256": "8165e398c7271b71ac5eb9c79694ddb5efbf255d41a00cb04ca0e08f0966d26e",
+      "derivedFrom": "first honest capture of the corrected implementation with the same dynamic-area masks as every comparison (copy-token + detail-restructure recalibration rebase; the previous capture predated the primary-action copy correction to --color-bg (reference-measured #f4f6f1 copy inside the green blocks) and the detail participation/participants section restructure; no design frame exists: no past-empty frame exists, w25dY is populated)"
     },
     "state-unavailable.png": {
       "sha256": "bd537400b4713e8b236ed204e31cf9fd9000a1e80469a01625b32e35749a9b33",
-      "derivedFrom": "first honest capture of the corrected implementation with the same dynamic-area masks as every comparison (F26-F30 recalibration rebase; the previous capture predated the F26-F30 style corrections; no design frame exists: n6zFq is a state-pattern board, not a screen)"
+      "derivedFrom": "first honest capture of the corrected implementation with the same dynamic-area masks as every comparison (copy-token + detail-restructure recalibration rebase; the previous capture predated the primary-action copy correction to --color-bg (reference-measured #f4f6f1 copy inside the green blocks) and the detail participation/participants section restructure; no design frame exists: n6zFq is a state-pattern board, not a screen; re-capture reproduced the previous baseline byte-identically)"
     },
     "state-error.png": {
-      "sha256": "39567e1e4fd5acf81733ec57b7df46a8a7787837bb304a119988da8af99af76d",
-      "derivedFrom": "first honest capture of the corrected implementation with the same dynamic-area masks as every comparison (F26-F30 recalibration rebase; the previous capture predated the F26-F30 style corrections; no design frame exists: n6zFq is a state-pattern board, not a screen)"
+      "sha256": "ec452491cc95f73bb07b26cf70072f73f5c5ca67049a4e714ff7705ad3cd1783",
+      "derivedFrom": "first honest capture of the corrected implementation with the same dynamic-area masks as every comparison (copy-token + detail-restructure recalibration rebase; the previous capture predated the primary-action copy correction to --color-bg (reference-measured #f4f6f1 copy inside the green blocks) and the detail participation/participants section restructure; no design frame exists: n6zFq is a state-pattern board, not a screen)"
     },
     "state-loading.png": {
-      "sha256": "c5abadebdb5f66713304eced3668a955a7c9e3f6e43251b7b7bc4680c134176e",
-      "derivedFrom": "first honest capture of the corrected implementation with the same dynamic-area masks as every comparison (F26-F30 recalibration rebase; the previous capture predated the F26-F30 style corrections; no design frame exists: n6zFq is a state-pattern board, not a screen)"
+      "sha256": "62a941208dac12e611d336154b5d272a23d3979459ac62867fb977d4cb27af69",
+      "derivedFrom": "first honest capture of the corrected implementation with the same dynamic-area masks as every comparison (copy-token + detail-restructure recalibration rebase; the previous capture predated the primary-action copy correction to --color-bg (reference-measured #f4f6f1 copy inside the green blocks) and the detail participation/participants section restructure; no design frame exists: n6zFq is a state-pattern board, not a screen)"
     },
     "state-offline.png": {
-      "sha256": "c5abadebdb5f66713304eced3668a955a7c9e3f6e43251b7b7bc4680c134176e",
-      "derivedFrom": "first honest capture of the corrected implementation with the same dynamic-area masks as every comparison (F26-F30 recalibration rebase; the previous capture predated the F26-F30 style corrections; no design frame exists: n6zFq is a state-pattern board, not a screen)"
+      "sha256": "62a941208dac12e611d336154b5d272a23d3979459ac62867fb977d4cb27af69",
+      "derivedFrom": "first honest capture of the corrected implementation with the same dynamic-area masks as every comparison (copy-token + detail-restructure recalibration rebase; the previous capture predated the primary-action copy correction to --color-bg (reference-measured #f4f6f1 copy inside the green blocks) and the detail participation/participants section restructure; no design frame exists: n6zFq is a state-pattern board, not a screen; by construction the same frozen viewport frame as state-loading.png (identical digest)"
     }
   },
   "recordedServerResponses": {
@@ -220,85 +220,85 @@
     ]
   },
   "knownDeviations": {
-    "resolved": "All previously recorded deviations are fixed and asserted exactly: exact-active tab aria-current=\"page\" on the active tab only (asserted document-wide by assertTabSet); sub-44px controls (detail share-URL input, create file input, team-mode radio labels, invitee Remove buttons, unavailable Back link) all meet the 44px target via token styles (assertPrimaryHitTargets passes with zero exemptions); the focus ring measures the design-required 2px (--border-width-lg, attached to every keyboard probe); wizard photo previews render signed URLs with the 16/9 treatment. The F26-F30 reference-fidelity deltas are also FIXED and now gated at their exact reference values: 18px --space-18 gutter axis on list/detail/create (assertGutterAxis), 8px list/detail + 10px create rhythm (assertRhythm), white --color-surface pill on the 44px --color-surface-2 track (assertTabSet), exact --radius-12 card corners (assertCardGrouping), and the full-width --color-green 44px continue action on every wizard step (assertFullWidthPrimaryAction). Source-level only: the styles files still carry dead border shorthand declarations that StyleX drops at build time (finding F31) - the rendered cards are borderless, exactly like the reference.",
+    "resolved": "All previously recorded deviations are fixed and asserted exactly: exact-active tab aria-current=\"page\" on the active tab only (asserted document-wide by assertTabSet); sub-44px controls (detail share-URL input, create file input, team-mode radio labels, invitee Remove buttons, unavailable Back link) all meet the 44px target via token styles (assertPrimaryHitTargets passes with zero exemptions); the focus ring measures the design-required 2px (--border-width-lg, attached to every keyboard probe); wizard photo previews render signed URLs with the 16/9 treatment. The F26-F30 reference-fidelity deltas are also FIXED and now gated at their exact reference values: 18px --space-18 gutter axis on list/detail/create (assertGutterAxis), 8px list/detail + 10px create rhythm (assertRhythm), white --color-surface pill on the 44px --color-surface-2 track (assertTabSet), exact --radius-12 card corners (assertCardGrouping), and the full-width --color-green 44px continue action on every wizard step (assertFullWidthPrimaryAction). Source-level only: the styles files still carry dead border shorthand declarations that StyleX drops at build time (finding F31) - the rendered cards are borderless, exactly like the reference. The primary-action copy token is now the reference-measured --color-bg (#f4f6f1, the exact second color inside the reference green blocks) on every green primary, asserted by assertPrimaryActionTokens.",
     "stateCaptures": "state-loading.png and state-offline.png are (by construction) the same frozen viewport frame: the offline banner renders above the scrolled load-more region, so the viewport is unchanged when it appears; the offline state itself is asserted structurally (banner text visible, load-more disabled, error section present)."
   },
   "visualBudgets": {
-    "policy": "Reference-backed budgets equal the measured honest app-vs-Pencil diff ratio of the FULLY CORRECTED implementation (F26-F30 fix round recalibration, VISUAL_CALIBRATE=1, recorded in measuredFirstComparison) plus a margin that only absorbs cross-renderer font-rasterization residuals (PAF-1 measured ~0.75-1.3pp absolute on text-dense screens): +2pp for screens measuring <20%, +1.5pp for screens measuring >=20%. Self-baselined viewports/locales/states keep a 2pp envelope around their first honest capture of the corrected implementation. Margins are never widened to hide a structural defect: every geometric attribute of the retained scope is gated exactly at its reference value by the structural probes (18px gutter axis, 8/10px rhythm, white-pill-on-surface-2 track, 12px card radius, green full-width continue actions, heading type, primary-action tokens, card grouping, aria-current), so no budget can absorb geometry drift in either direction. The remaining allowance is cross-renderer font residuals plus the documented deliberate scope omissions only.",
+    "policy": "Reference-backed budgets equal the measured honest app-vs-Pencil diff ratio of the corrected implementation (copy-token + detail-restructure recalibration, VISUAL_CALIBRATE=1, recorded in measuredFirstComparison) plus a margin that only absorbs cross-renderer font-rasterization residuals (PAF-1 measured ~0.75-1.3pp absolute on text-dense screens): +2pp for screens measuring <20%, +1.5pp for screens measuring >=20%. Self-baselined viewports/locales/states keep a 2pp envelope around their first honest capture of the corrected implementation. Margins are never widened to hide a structural defect: every geometric attribute of the retained scope is gated exactly at its reference value by the structural probes, which now ALSO gate rendered geometry (getBoundingClientRect): the real vertical distance between consecutive sibling cards/sections equals the pinned token exactly, no rhythm child carries a vertical margin (gap-only spacing), and each rhythm container's content box wraps its children exactly (grouping boundaries) - see assertRhythm. So margin-driven spacing (gap+margin stacks) fails structurally and no budget can absorb it. The remaining allowance is cross-renderer font residuals plus the documented deliberate scope omissions only.",
     "measuredFirstComparison": {
-      "note": "Measured against the implementation after the F26-F30 style corrections (18px --space-18 gutter axis, --space-8/--space-10 rhythm, white-pill-on-surface-2 tab track, --radius-12 cards, green full-width wizard continue actions). Listings and detail screens tightened versus the F18 recalibration because the corrected gutter/rhythm/tab geometry now matches the reference axis; the create Players and Team-mode screens grew because the corrected full-width green continue action renders a large solid block below longer retained field stacks than the design frames show (documented scope adaptation), where the previous surface-white secondary button blended into the background. preFixMeasured records the F18-recalibration measurement that preceded the F26-F30 fix round.",
-      "calibratedAt": "F26-F30 recalibration run (branch feature/PAF-4-t04-create-and-discover-match-events), VISUAL_CALIBRATE=1, all 12 reference-backed screens force-measured in one pass",
+      "note": "Measured against the implementation after the copy-token correction (primary-action copy --color-on-hero -> --color-bg, matching the reference-measured #f4f6f1 CTA copy) and the detail participation/participants section restructure. Detail budgets TIGHTENED versus the F26-F30 round because the corrected detail structure measures closer to the frames (detail-invitee 0.28 -> 0.21, detail-friendly-creator 0.40 -> 0.37, detail-public-guest 0.40 -> 0.36). Listing and create measurements are unchanged. Following the form-message UA-margin fix, create-review was re-measured at 0.29 with no structural violations; its budget is pinned at 0.305 (+1.5pp cross-renderer allowance).",
+      "calibratedAt": "copy-token + detail-restructure recalibration run (branch feature/PAF-4-t04-create-and-discover-match-events), VISUAL_CALIBRATE=1, all 12 reference-backed screens force-measured in one pass; self-baselined screens re-captured as the first honest capture of the corrected implementation",
       "create-details.png": {
         "frameId": "wHaAb",
         "measured": 0.13,
         "budget": 0.15,
-        "preFixMeasured": 0.14
+        "preFixMeasured": 0.13
       },
       "create-players.png": {
         "frameId": "vAxZh",
         "measured": 0.14,
         "budget": 0.16,
-        "preFixMeasured": 0.1
+        "preFixMeasured": 0.14
       },
       "create-team-mode.png": {
         "frameId": "b5RR4",
         "measured": 0.14,
         "budget": 0.16,
-        "preFixMeasured": 0.1
+        "preFixMeasured": 0.14
       },
       "create-review.png": {
         "frameId": "RDV2r",
-        "measured": 0.3,
-        "budget": 0.315,
-        "preFixMeasured": 0.29
+        "measured": 0.29,
+        "budget": 0.305,
+        "preFixMeasured": 0.3
       },
       "available-populated.png": {
         "frameId": "ENn8Q",
         "measured": 0.31,
         "budget": 0.325,
-        "preFixMeasured": 0.35
+        "preFixMeasured": 0.31
       },
       "available-empty.png": {
         "frameId": "kYI9H",
         "measured": 0.12,
         "budget": 0.14,
-        "preFixMeasured": 0.14
+        "preFixMeasured": 0.12
       },
       "my-matches-reserve.png": {
         "frameId": "t1ywa",
         "measured": 0.3,
         "budget": 0.315,
-        "preFixMeasured": 0.34
+        "preFixMeasured": 0.3
       },
       "my-matches-invited.png": {
         "frameId": "uePpj",
         "measured": 0.3,
         "budget": 0.315,
-        "preFixMeasured": 0.33
+        "preFixMeasured": 0.3
       },
       "past-elapsed.png": {
         "frameId": "w25dY",
         "measured": 0.3,
         "budget": 0.315,
-        "preFixMeasured": 0.33
+        "preFixMeasured": 0.3
       },
       "detail-invitee.png": {
         "frameId": "Fyhbv",
-        "measured": 0.28,
-        "budget": 0.295,
-        "preFixMeasured": 0.31
+        "measured": 0.21,
+        "budget": 0.225,
+        "preFixMeasured": 0.28
       },
       "detail-friendly-creator.png": {
         "frameId": "eYIgj",
-        "measured": 0.4,
-        "budget": 0.415,
+        "measured": 0.37,
+        "budget": 0.385,
         "preFixMeasured": 0.4
       },
       "detail-public-guest.png": {
         "frameId": "JLqMT",
-        "measured": 0.4,
-        "budget": 0.415,
-        "preFixMeasured": 0.39
+        "measured": 0.36,
+        "budget": 0.375,
+        "preFixMeasured": 0.4
       }
     },
     "calibration": "Measured on macOS (deviceScaleFactor 1) against the byte-identical double-exported Pencil references with only genuinely dynamic areas masked (venue photo renderings, rendered start-instant lines). VISUAL_CALIBRATE=1 force-measures EVERY reference-backed screen (budget 0 in calibration mode) and writes test-results/matches-visual-calibration.json; regular runs are hard gates at the pinned budgets."
@@ -311,7 +311,9 @@
       "Vertical rhythm: sibling cards 8px apart on the listings (ENn8Q card extents 243..369 / 378..504), detail section cards 7-8px (eYIgj, JLqMT), create-flow section cards 10px (wHaAb extents 114..336 / 347..631 / 642..766).",
       "Heading typography: h1 cap band 19-20px tall in every frame (ENn8Q/wHaAb y=25..44, eYIgj y=25..49 with descender) — only a 24px bold Manrope heading produces this among the token type scale.",
       "Primary action: 44px-tall #0e714d (--color-green) blocks with white copy (wHaAb y=777..820, eYIgj y=749..792), full content width.",
-      "Selected tab (ENn8Q y=83..126): 44px track filled #e9efe8 (--palette-surface-2) with the active tab as the only white #ffffff pill on it; inactive labels plain."
+      "Selected tab (ENn8Q y=83..126): 44px track filled #e9efe8 (--palette-surface-2) with the active tab as the only white #ffffff pill on it; inactive labels plain.",
+      "Primary-action copy tone: the reference CTA blocks hold exactly two colors - the #0e714d fill and #f4f6f1 copy (pixel histogram of wHaAb y=787..810 and eYIgj y=749..792) - i.e. --color-bg, not pure white.",
+      "Rendered rhythm geometry: the structural gates measure getBoundingClientRect() distances between consecutive sibling cards/sections and require them to equal the pinned token exactly with zero margin contribution on every child, plus exact content-box wrap of each rhythm container (grouping boundaries)."
     ],
     "deviations": [
       "F26-F30 (closed, fixed by the owning UI unit after the F18 re-gate): gutter axis now the exact 18px --space-18 token on all three surfaces; rhythm now --space-8 (list/detail) and --space-10 (create); the active tab is the white --color-surface pill on the full-width 44px --color-surface-2 track; card corners are --radius-12 exactly; the wizard continue action is the full-width --color-green 44px primary on every step. Each is asserted at its exact reference value by the structural gates, so no screenshot budget can absorb drift of these attributes.",

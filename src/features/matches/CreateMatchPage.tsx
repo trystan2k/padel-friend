@@ -134,14 +134,39 @@ export function CreateMatchPage() {
       formRef.current?.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus();
   }, [fieldErrors, step]);
 
+  const retryScopedOptions = useCallback(() => {
+    if (!communityId) return;
+    const generation = ++optionsGeneration.current;
+    setOptionsLoading(true);
+    setOptionsError(false);
+    void getMatchCreationOptions({ data: { community_id: communityId } })
+      .then((result: any) => {
+        if (generation !== optionsGeneration.current) return;
+        setOptions((current) => ({
+          ...current,
+          ...result,
+          communities: current.communities,
+          saved_venues: result?.saved_venues ?? []
+        }));
+      })
+      .catch(() => {
+        if (generation === optionsGeneration.current) setOptionsError(true);
+      })
+      .finally(() => {
+        if (generation === optionsGeneration.current) setOptionsLoading(false);
+      });
+  }, [communityId]);
+
   const change = useCallback(
     (key: string, next: unknown) => {
       if (key === 'minLevel') editedRange.current.min = true;
       if (key === 'maxLevel') editedRange.current.max = true;
+      let photoEventId = eventId;
       if (publicationFailed.current) {
         frozen.current = null;
         publicationFailed.current = false;
-        setEventId(crypto.randomUUID());
+        photoEventId = crypto.randomUUID();
+        setEventId(photoEventId);
         const abandoned = photoRef.current;
         photoRef.current = '';
         setPhoto('');
@@ -174,7 +199,7 @@ export function CreateMatchPage() {
           void copySavedVenueMatchPhotoFn({
             data: {
               community_id: communityId,
-              event_id: eventId,
+              event_id: photoEventId,
               saved_venue_id: String(next)
             }
           })
@@ -462,6 +487,19 @@ export function CreateMatchPage() {
         <p>{t('matchCreate.subtitle')}</p>
         <p>{t(`matchCreate.steps.${headingLabels[step]}`)}</p>
       </header>
+      {optionsError && (
+        <>
+          <p role="alert">{t('matchCreate.errors.optionsUnavailable')}</p>
+          <button
+            type="button"
+            disabled={optionsLoading}
+            {...stylex.props(s.button)}
+            onClick={retryScopedOptions}
+          >
+            {t('matches.retry')}
+          </button>
+        </>
+      )}
       <div ref={formRef} {...stylex.props(s.form)}>
         {step === 0 && (
           <>
@@ -526,12 +564,18 @@ export function CreateMatchPage() {
               count={invitees.length}
             />
             {fieldErrors.cutoff && (
-              <p role="alert">{t(`matchCreate.errors.${fieldErrors.cutoff}`)}</p>
+              <p {...stylex.props(s.formMessage)} role="alert">
+                {t(`matchCreate.errors.${fieldErrors.cutoff}`)}
+              </p>
             )}
-            <p>{t('matchCreate.helpers.invitesOnPublish')}</p>
+            <p {...stylex.props(s.formMessage)}>{t('matchCreate.helpers.invitesOnPublish')}</p>
           </>
         )}
-        {error && <p role="alert">{t(`matchCreate.errors.${error}`)}</p>}
+        {error && (
+          <p {...stylex.props(s.formMessage)} role="alert">
+            {t(`matchCreate.errors.${error}`)}
+          </p>
+        )}
         {requiredInvalid && (
           <output aria-live="polite">{t('matchCreate.errors.invalidInput')}</output>
         )}

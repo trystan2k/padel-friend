@@ -352,6 +352,42 @@ describe('match event publication integration', () => {
         .find((community) => community['id'] === madridCommunity);
       expect(madridOption?.['timezone']).toBe('Europe/Madrid');
 
+      // Replays resolve local wall time using the timezone snapshot stored on
+      // the event, even after the community default changes.
+      const timezoneReplayEvent = crypto.randomUUID();
+      const timezoneReplayPhoto = await stagePhoto(timezoneReplayEvent, madridCommunity);
+      const timezoneReplayInput = {
+        ...baseInput(madridCommunity),
+        date: '2030-01-15',
+        start_time: '10:00',
+        photo_path: timezoneReplayPhoto
+      };
+      const timezoneFirst = await creator.client.rpc('publish_match_event', {
+        p_event_id: timezoneReplayEvent,
+        p_input: timezoneReplayInput,
+        p_invitee_ids: []
+      });
+      expect(timezoneFirst.error).toBeNull();
+      await fixtureSql(
+        environment.env!,
+        `update public.communities set settings=jsonb_set(settings,'{admin_defaults,timezone}','"UTC"'::jsonb) where id=${q(madridCommunity)};`
+      );
+      const timezoneRetry = await creator.client.rpc('publish_match_event', {
+        p_event_id: timezoneReplayEvent,
+        p_input: timezoneReplayInput,
+        p_invitee_ids: []
+      });
+      expect(timezoneRetry.error).toBeNull();
+      expect(timezoneRetry.data).toBe(timezoneReplayEvent);
+      const timezoneReplayRows = await creator.client
+        .from('match_events')
+        .select('id, match_event_registrations(user_id), match_event_invites(invitee_user_id)')
+        .eq('id', timezoneReplayEvent);
+      expect(timezoneReplayRows.error).toBeNull();
+      expect(timezoneReplayRows.data).toHaveLength(1);
+      expect(timezoneReplayRows.data![0]!.match_event_registrations).toHaveLength(1);
+      expect(timezoneReplayRows.data![0]!.match_event_invites).toHaveLength(0);
+
       // Creator auto-registration: exactly one accepted registration whose
       // accepted_at equals published_at.
       const registrations = await creator.client
@@ -423,6 +459,51 @@ describe('match event publication integration', () => {
       expect(enabledNoBoundsEvent['restriction_enabled']).toBe(true);
       expect(enabledNoBoundsEvent['min_level']).toBe(2.7);
       expect(enabledNoBoundsEvent['max_level']).toBe(4.7);
+
+      // An implicit Competitive restriction is a publication-time snapshot;
+      // changing the creator's rating must not alter replay identity.
+      const ratingReplayEvent = crypto.randomUUID();
+      const ratingReplayPhoto = await stagePhoto(ratingReplayEvent);
+      const ratingReplayInput = {
+        ...baseInput(),
+        date: isoDate(3),
+        event_type: 'competitive',
+        restriction_enabled: 'true',
+        photo_path: ratingReplayPhoto
+      };
+      const ratingFirst = await creator.client.rpc('publish_match_event', {
+        p_event_id: ratingReplayEvent,
+        p_input: ratingReplayInput,
+        p_invitee_ids: []
+      });
+      expect(ratingFirst.error).toBeNull();
+      await fixtureSql(
+        environment.env!,
+        `update public.global_player_ratings set display_level=4.8, highest_display_level=4.8 where user_id=${q(creator.id)};`
+      );
+      const ratingRetry = await creator.client.rpc('publish_match_event', {
+        p_event_id: ratingReplayEvent,
+        p_input: ratingReplayInput,
+        p_invitee_ids: []
+      });
+      expect(ratingRetry.error).toBeNull();
+      expect(ratingRetry.data).toBe(ratingReplayEvent);
+      const ratingReplayRows = await creator.client
+        .from('match_events')
+        .select(
+          'id, min_level, max_level, match_event_registrations(user_id), match_event_invites(invitee_user_id)'
+        )
+        .eq('id', ratingReplayEvent);
+      expect(ratingReplayRows.error).toBeNull();
+      expect(ratingReplayRows.data).toHaveLength(1);
+      expect(ratingReplayRows.data![0]!.min_level).toBe(2.7);
+      expect(ratingReplayRows.data![0]!.max_level).toBe(4.7);
+      expect(ratingReplayRows.data![0]!.match_event_registrations).toHaveLength(1);
+      expect(ratingReplayRows.data![0]!.match_event_invites).toHaveLength(0);
+      await fixtureSql(
+        environment.env!,
+        `update public.global_player_ratings set display_level=3.2 where user_id=${q(creator.id)};`
+      );
 
       // A saved venue of the community is accepted when referenced.
       const withVenue = await publishWithPhoto({ saved_venue_id: venueId });

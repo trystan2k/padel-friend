@@ -41,6 +41,7 @@ type Copy = {
     detail: {
       title: string;
       participants: string;
+      participation: string;
       accepted: string;
       creatorAccepted: string;
       invitationInfo: string;
@@ -164,32 +165,35 @@ function assertBaselineUnchanged(baseline: string): void {
   ).toBe(derived.sha256);
 }
 
-// Per-screen screenshot budgets, recalibrated against the FULLY CORRECTED
-// implementation (F26–F30 fix round: --space-18 gutter axis, --space-8/--space-10
-// rhythm, white-pill-on-surface-2-track tabs, --radius-12 cards, green full-width
-// continue actions — each now asserted EXACTLY by the structural gates). Each
-// reference-backed budget is the measured honest app-vs-Pencil comparison of the
-// corrected UI (VISUAL_CALIBRATE=1 run, recorded in the manifest) plus a margin that
-// only absorbs cross-renderer font-rasterization residuals (PAF-1 measured
-// ~0.75–1.3pp absolute on text-dense screens): +2pp for screens measuring <20%,
-// +1.5pp for screens measuring ≥20%. Self-baselined viewports/locales/states keep a
-// 2pp envelope around their first honest capture of the corrected implementation.
-// No budget hides a structural defect: every geometric attribute of the retained
-// scope is gated exactly by the structural probes, and the five formerly open
-// fidelity deltas (F26–F30) are now asserted at their exact reference values.
+// Per-screen screenshot budgets, recalibrated against the corrected implementation
+// after the primary-action copy correction (--color-bg, the reference-measured #f4f6f1
+// CTA copy) and the detail participation/participants section restructure
+// (VISUAL_CALIBRATE=1 run, recorded in the manifest). Each reference-backed budget is
+// the measured honest app-vs-Pencil comparison plus a margin that only absorbs
+// cross-renderer font-rasterization residuals (PAF-1 measured ~0.75–1.3pp absolute on
+// text-dense screens): +2pp for screens measuring <20%, +1.5pp for screens measuring
+// ≥20%. The detail budgets TIGHTENED this round (0.295→0.225, 0.415→0.385, 0.415→0.375)
+// because the corrected detail structure measures closer to the frames. Self-baselined
+// viewports/locales/states keep a 2pp envelope around their first honest capture of the
+// corrected implementation.
+// No budget hides a structural defect: every geometric attribute of the retained scope
+// is gated exactly by the structural probes, which now also gate RENDERED geometry —
+// sibling-to-sibling distances equal the pinned token exactly, rhythm children carry
+// zero vertical margin, and each rhythm container's content box wraps its children
+// (grouping boundaries).
 const VISUAL_BUDGETS: Record<string, number> = {
   'create-details.png': 0.15,
   'create-players.png': 0.16,
   'create-team-mode.png': 0.16,
-  'create-review.png': 0.315,
+  'create-review.png': 0.305,
   'available-populated.png': 0.325,
   'available-empty.png': 0.14,
   'my-matches-invited.png': 0.315,
   'my-matches-reserve.png': 0.315,
   'past-elapsed.png': 0.315,
-  'detail-public-guest.png': 0.415,
-  'detail-friendly-creator.png': 0.415,
-  'detail-invitee.png': 0.295,
+  'detail-public-guest.png': 0.375,
+  'detail-friendly-creator.png': 0.385,
+  'detail-invitee.png': 0.225,
   'create-details-dark.png': 0.02,
   'available-populated-320.png': 0.02,
   'available-populated-desktop.png': 0.02,
@@ -209,9 +213,21 @@ const MASK_COLOR = '#FF00FF';
 // Calibration mode (VISUAL_CALIBRATE=1): first-honest-comparison measurements are
 // recorded and reported instead of failing the run, so all reference-backed screens can
 // be measured in a single pass before their budgets are pinned. Regular runs never set
-// this and every comparison is a hard gate.
+// this and every comparison is a hard gate. Structural-gate violations follow the same
+// rule in reverse: hard failures in regular runs, RECORDED (into the calibration
+// artifact and the report) in calibration runs so one serial pass still measures every
+// screen — a recorded violation must be fixed and re-measured before its budget is
+// trusted, which is why the manifest names any open violation next to its budget.
 const calibration: Record<string, string> = {};
+const structuralViolations: string[] = [];
 const calibrating = process.env.VISUAL_CALIBRATE === '1';
+
+function writeCalibrationArtifact(): void {
+  writeFileSync(
+    new URL('../test-results/matches-visual-calibration.json', import.meta.url),
+    JSON.stringify({ measurements: calibration, structuralViolations }, null, 1)
+  );
+}
 
 function baselinePath(baseline: string): string {
   return new URL(`./matches-visual.spec.ts-snapshots/${baseline}`, import.meta.url).pathname;
@@ -247,10 +263,7 @@ async function compare(page: Page, baseline: string, masks: Locator[] = []): Pro
     if (calibrating) {
       if (measured?.[1]) {
         calibration[baseline] = measured[1];
-        writeFileSync(
-          new URL('../test-results/matches-visual-calibration.json', import.meta.url),
-          JSON.stringify(calibration, null, 1)
-        );
+        writeCalibrationArtifact();
       }
       return;
     }
@@ -699,15 +712,18 @@ async function assertHeadingTypography(page: Page, label: string): Promise<void>
 }
 
 /** Reference measurement: primary actions render as 44px-tall #0e714d blocks with
- * near-white copy (create-details y=777..820, detail-friendly-creator y=749..792), i.e.
- * --color-green with --color-on-hero copy at the ≥44px target height (the review
- * publish button uses --color-bg as its copy token — both resolve to the surface
- * white). Pre-fix these controls rendered on the surface color with body copy color. */
+ * near-white copy (create-details y=777..820, detail-friendly-creator y=749..792). The
+ * reference copy tone is measured, not assumed: the pixel histogram of the green blocks
+ * (wHaAb y=787..810, eYIgj y=749..792) holds exactly TWO colors — the green fill and
+ * #f4f6f1, i.e. --color-bg, NOT pure white --color-on-hero. The implementation renders
+ * --color-bg copy, so the gate pins that token exactly (token-relative so the dark-theme
+ * run gates its own palette). Pre-fix these controls rendered on the surface color with
+ * body copy color. */
 async function assertPrimaryActionTokens(
   page: Page,
   action: Locator,
   label: string,
-  copyToken: '--color-on-hero' | '--color-bg' = '--color-on-hero'
+  copyToken: '--color-on-hero' | '--color-bg' = '--color-bg'
 ): Promise<void> {
   const green = await tokenColor(page, '--color-green');
   const copy = await tokenColor(page, copyToken);
@@ -859,7 +875,21 @@ async function assertGutterAxis(
  * (eYIgj 376..367-adjacent, JLqMT), and create-flow section cards 10px (wHaAb extents
  * 114..336 / 347..631 / 642..766). F27 is fixed: the list and detail grids pin the
  * --space-8 token and the create grids the --space-10 token exactly — the pre-fix
- * --space-4/--space-5 rhythms fail this gate. */
+ * --space-4/--space-5 rhythms fail this gate.
+ *
+ * Rendered-geometry gate (F18 completion): the declared token alone cannot prove the
+ * rendered rhythm — a margin-driven spacing (UA margins on bare children, or margins
+ * swapped in for the gap) leaves `rowGap` untouched while the real boxes drift apart,
+ * and the screenshot budget would absorb it. So this gate measures the RENDERED
+ * geometry with getBoundingClientRect(): (a) no measured child carries a vertical
+ * margin — the token gap is the only spacing mechanism on the rhythm axis; (b) the
+ * real vertical distance between every pair of consecutive siblings equals the token
+ * exactly (±0.05px, well under LayoutUnit resolution but far outside any margin
+ * contribution); (c) the container's content box wraps the children exactly — the
+ * first child sits on the content top edge and the last on the content bottom edge,
+ * so no hidden container padding contributes to the grouping boundaries. Together
+ * with the retained rowGap token assertion, any margin-based re-implementation fails
+ * here independent of the screenshot budgets. */
 async function assertRhythm(
   page: Page,
   label: string,
@@ -867,14 +897,93 @@ async function assertRhythm(
   token: '--space-8' | '--space-10'
 ): Promise<void> {
   const expected = await tokenValue(page, token);
-  const gap = await page.evaluate((target) => {
-    const node = document.querySelector(target);
-    return node ? getComputedStyle(node).rowGap : null;
+  const expectedPx = Number.parseFloat(expected);
+  const measured = await page.evaluate((target) => {
+    const container = document.querySelector(target);
+    if (!container) return null;
+    const containerStyle = getComputedStyle(container);
+    const containerBox = container.getBoundingClientRect();
+    const children = Array.from(container.children)
+      .filter((node): node is Element => node instanceof Element)
+      .filter((node) => {
+        const display = getComputedStyle(node).display;
+        return display !== 'none' && display !== 'contents';
+      })
+      .map((node) => {
+        const box = node.getBoundingClientRect();
+        const style = getComputedStyle(node);
+        return {
+          tag: node.tagName.toLowerCase(),
+          top: box.top,
+          bottom: box.bottom,
+          marginTop: Number.parseFloat(style.marginTop),
+          marginBottom: Number.parseFloat(style.marginBottom)
+        };
+      });
+    return {
+      rowGap: containerStyle.rowGap,
+      borderTop: Number.parseFloat(containerStyle.borderTopWidth),
+      borderBottom: Number.parseFloat(containerStyle.borderBottomWidth),
+      paddingTop: Number.parseFloat(containerStyle.paddingTop),
+      paddingBottom: Number.parseFloat(containerStyle.paddingBottom),
+      containerTop: containerBox.top,
+      containerBottom: containerBox.bottom,
+      children
+    };
   }, selector);
+  expect(measured, `${label}: ${selector} rhythm container must exist`).not.toBeNull();
+  const problems: string[] = [];
+  const require = (condition: boolean, message: string): void => {
+    if (!condition) problems.push(message);
+  };
+  require(measured!.rowGap ===
+    expected, `${label}: ${selector} rhythm must equal ${token} exactly (reference 8px list/detail, 10px create — F27 fixed)`);
+  for (const [index, child] of measured!.children.entries()) {
+    require(child.marginTop ===
+      0, `${label}: ${selector} child ${index} (${child.tag}) must carry no margin-top — the ${token} gap is the only spacing mechanism (rendered-geometry gate)`);
+    require(child.marginBottom ===
+      0, `${label}: ${selector} child ${index} (${child.tag}) must carry no margin-bottom — the ${token} gap is the only spacing mechanism (rendered-geometry gate)`);
+  }
+  if (measured!.children.length > 0) {
+    const contentTop = measured!.containerTop + measured!.borderTop + measured!.paddingTop;
+    const contentBottom =
+      measured!.containerBottom - measured!.borderBottom - measured!.paddingBottom;
+    require(numberClose(
+      measured!.children[0]!.top,
+      contentTop
+    ), `${label}: first ${selector} child must sit on the container content top edge (rendered grouping boundary; got ${measured!.children[0]!.top} vs ${contentTop})`);
+    const last = measured!.children[measured!.children.length - 1]!;
+    require(numberClose(
+      last.bottom,
+      contentBottom
+    ), `${label}: last ${selector} child (${last.tag}) must sit on the container content bottom edge (rendered grouping boundary; got ${last.bottom} vs ${contentBottom})`);
+  }
+  for (let index = 1; index < measured!.children.length; index += 1) {
+    const previous = measured!.children[index - 1]!;
+    const current = measured!.children[index]!;
+    require(numberClose(
+      current.top - previous.bottom,
+      expectedPx
+    ), `${label}: rendered distance between ${selector} siblings ${index - 1}→${index} (${previous.tag}→${current.tag}) must equal the ${token} gap exactly, not gap+margin (rendered-geometry gate; got ${current.top - previous.bottom} vs ${expectedPx})`);
+  }
+  if (problems.length === 0) return;
+  if (calibrating) {
+    // Measurement pass: record and keep measuring (see the calibration note above).
+    structuralViolations.push(...problems);
+    writeCalibrationArtifact();
+    return;
+  }
   expect(
-    gap,
-    `${label}: ${selector} rhythm must equal ${token} exactly (reference 8px list/detail, 10px create — F27 fixed)`
-  ).toBe(expected);
+    problems,
+    `${label}: rendered rhythm geometry must match the pinned token system with zero margin contribution`
+  ).toEqual([]);
+}
+
+/** Sub-LayoutUnit resolution tolerance: distances must equal the token exactly; only
+ * float accumulation noise (≪0.05px) is tolerated. Any real margin shows up in the
+ * first decimal and fails. */
+function numberClose(measured: number, expected: number): boolean {
+  return Math.abs(measured - expected) < 0.05;
 }
 
 async function assertTabSet(
@@ -1829,6 +1938,9 @@ test.describe.serial('PAF-4 match event visual and structural QA', () => {
     await assertHeadingTypography(page, 'invite detail');
     await assertGutterAxis(page, 'invite detail', '--space-18');
     await assertRhythm(page, 'invite detail', 'main', '--space-8');
+    // The grouped white section surfaces are the reference-measured "detail section
+    // cards" (eYIgj/JLqMT): gate their rendered spacing and box wrap directly.
+    await assertRhythm(page, 'invite detail', 'main > div', '--space-8');
     await assertPrimaryActionTokens(
       page,
       page.getByRole('button', { name: en.matches.detail.share }),
@@ -1910,7 +2022,10 @@ test.describe.serial('PAF-4 match event visual and structural QA', () => {
     await expect(page.getByText(`${en.matches.card.pricePerPlayer}: €12.00`)).toBeVisible();
     await expect(page.getByText('Timezone: UTC')).toBeVisible();
     await expect(
-      page.getByRole('heading', { level: 2, name: en.matches.detail.participants })
+      page.getByRole('heading', { level: 2, name: en.matches.detail.participation })
+    ).toBeVisible();
+    await expect(
+      page.getByRole('heading', { level: 3, name: en.matches.detail.participants })
     ).toBeVisible();
     await expect(
       page.getByText(`1 · ${en.matches.detail.accepted}`, { exact: false })
@@ -1929,6 +2044,9 @@ test.describe.serial('PAF-4 match event visual and structural QA', () => {
     await assertHeadingTypography(page, 'friendly detail 390');
     await assertGutterAxis(page, 'friendly detail 390', '--space-18');
     await assertRhythm(page, 'friendly detail 390', 'main', '--space-8');
+    // The grouped white section surfaces are the reference-measured "detail section
+    // cards" (eYIgj): gate their rendered spacing and box wrap directly.
+    await assertRhythm(page, 'friendly detail 390', 'main > div', '--space-8');
     await assertPrimaryActionTokens(
       page,
       page.getByRole('button', { name: en.matches.detail.share }),
@@ -1971,6 +2089,9 @@ test.describe.serial('PAF-4 match event visual and structural QA', () => {
     await assertHeadingTypography(guestPage, 'guest detail');
     await assertGutterAxis(guestPage, 'guest detail', '--space-18');
     await assertRhythm(guestPage, 'guest detail', 'main', '--space-8');
+    // The grouped white section surfaces are the reference-measured "detail section
+    // cards" (JLqMT): gate their rendered spacing and box wrap directly.
+    await assertRhythm(guestPage, 'guest detail', 'main > div', '--space-8');
     await assertPrimaryActionTokens(
       guestPage,
       guestPage.getByRole('button', { name: en.matches.detail.share }),
@@ -2079,7 +2200,7 @@ test.describe.serial('PAF-4 match event visual and structural QA', () => {
 
   test.afterAll(async () => {
     await test.info().attach('visual calibration measurements', {
-      body: JSON.stringify(calibration, null, 1)
+      body: JSON.stringify({ measurements: calibration, structuralViolations }, null, 1)
     });
     await Promise.all(family.contexts.splice(0).map((context) => context.close()));
   });

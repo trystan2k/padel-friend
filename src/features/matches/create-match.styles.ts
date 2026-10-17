@@ -10,6 +10,7 @@ export const createMatchStyles = stylex.create({
     color: 'var(--color-text)'
   },
   form: { display: 'grid', gap: 'var(--space-10)' },
+  formMessage: { margin: 0 },
   fields: { display: 'grid', gap: 'var(--space-3)' },
   field: { display: 'grid', gap: 'var(--space-1)' },
   input: {

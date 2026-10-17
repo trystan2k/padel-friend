@@ -37,4 +37,17 @@ describe('match styles', () => {
       'stylex.props(s.button, s.primaryButton)'
     );
   });
+  it('uses the theme-aware background foreground against green primary actions', () => {
+    const styles = readFileSync('src/features/matches/matches.styles.ts', 'utf8');
+    const createStyles = readFileSync('src/features/matches/create-match.styles.ts', 'utf8');
+    expect(
+      styles.match(/backgroundColor: 'var\(--color-green\)',\s*color: 'var\(--color-bg\)'/g)
+    ).toHaveLength(2);
+    expect(createStyles).toContain(
+      "backgroundColor: 'var(--color-green)',\n    color: 'var(--color-bg)'"
+    );
+    expect(readFileSync('design-tokens/dist/tokens.css', 'utf8')).toContain(
+      '--color-bg: var(--palette-bg-dark)'
+    );
+  });
 });

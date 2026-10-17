@@ -62,6 +62,14 @@ export const matchesStyles = stylex.create({
     borderRadius: 'var(--radius-12)',
     backgroundColor: 'var(--color-surface)'
   },
+  detailGroups: { display: 'grid', gap: 'var(--space-8)' },
+  detailGroup: {
+    display: 'grid',
+    gap: 'var(--space-3)',
+    padding: 'var(--space-18)',
+    borderRadius: 'var(--radius-12)',
+    backgroundColor: 'var(--color-surface)'
+  },
   image: {
     width: '100%',
     aspectRatio: '16 / 9',
@@ -81,7 +89,7 @@ export const matchesStyles = stylex.create({
     paddingInline: 'var(--space-3)',
     borderRadius: 'var(--radius-8)',
     backgroundColor: 'var(--color-green)',
-    color: 'var(--color-on-hero)',
+    color: 'var(--color-bg)',
     cursor: 'pointer',
     ':focus-visible': {
       outline: 'var(--border-width-lg) solid var(--color-green)',
@@ -96,7 +104,7 @@ export const matchesStyles = stylex.create({
     paddingInline: 'var(--space-4)',
     borderRadius: 'var(--radius-8)',
     backgroundColor: 'var(--color-green)',
-    color: 'var(--color-on-hero)',
+    color: 'var(--color-bg)',
     textDecoration: 'none',
     fontWeight: 'var(--font-weight-semibold)',
     ':focus-visible': {

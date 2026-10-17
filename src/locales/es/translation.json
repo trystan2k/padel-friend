@@ -559,6 +559,9 @@
     },
     "detail": {
       "title": "Detalles del partido",
+      "overview": "Resumen",
+      "participation": "Participación",
+      "eligibilityVisibility": "Elegibilidad y visibilidad",
       "participants": "Participantes",
       "accepted": "Aceptado",
       "creatorAccepted": "Creador aceptado",

@@ -559,6 +559,9 @@
     },
     "detail": {
       "title": "Match details",
+      "overview": "Overview",
+      "participation": "Participation",
+      "eligibilityVisibility": "Eligibility and visibility",
       "participants": "Participants",
       "accepted": "Accepted",
       "creatorAccepted": "Creator accepted",
