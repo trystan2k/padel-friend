@@ -35,7 +35,7 @@ Severity policy: `critical` + `major` block and MUST be fixed. `minor` is fixed 
 | F28 | major | src/features/matches/matches.styles.ts activeLink | Selected-tab treatment is a --color-green-soft pill on a track-less row; the reference renders the active tab as a white pill on the 44px #e9efe8 (surface-2) full-width track | fixed | implementation-specialist | 2 |
 | F29 | minor | src/features/matches/matches.styles.ts card | Card corner radius --radius-10 (10px) vs the reference's measured ~12px corner profile | fixed | implementation-specialist | 2 |
 | F30 | major | src/features/matches/CreateMatchPage.tsx | Wizard continue action (Details/Players/Teams Next) renders as a white secondary button; the reference renders the continue action as the full-width --color-green 44px primary on every step | fixed | implementation-specialist | 2 |
-| F31 | minor | src/features/matches/matches.styles.ts, src/features/matches/create-match.styles.ts | Dead `border:` shorthand declarations (cards/sections/surfaces): StyleX cannot split a shorthand with multiple var() substitutions and drops it at build time, so no border renders — the runtime is borderless exactly like the reference; the declarations are misleading source that would introduce a non-reference border if ever converted to longhands | open | implementation-specialist | 2 |
+| F31 | minor | src/features/matches/matches.styles.ts, src/features/matches/create-match.styles.ts | Dead `border:` shorthand declarations (cards/sections/surfaces): StyleX cannot split a shorthand with multiple var() substitutions and drops it at build time, so no border renders — the runtime is borderless exactly like the reference; the declarations are misleading source that would introduce a non-reference border if ever converted to longhands | fixed | implementation-specialist | 2 |
 
 ## Iteration 1 — fix-loop record
 
@@ -56,3 +56,24 @@ F26–F30 were surfaced by the F18 re-gate and are being fixed in the same itera
 F26–F30 fixed by the owning unit (implementation-specialist) and re-gated by testing-automation-specialist: gutter axis `--space-18` on list/detail/create, rhythm `--space-8` (list/detail) and `--space-10` (create), white `--color-surface` pill on the 44px `--color-surface-2` tab track, exact `--radius-12` card corners, full-width `--color-green` 44px continue action on every wizard step. All five are now asserted at their exact reference values by the tightened structural gates (`assertGutterAxis`, `assertRhythm`, `assertTabSet`, `assertCardGrouping`, new `assertFullWidthPrimaryAction`), and every per-screen budget was re-measured honestly (`VISUAL_CALIBRATE=1`) and re-pinned from the corrected UI.
 
 F31 (new, minor, no rendered delta): the styles files still declare `border:` shorthands that StyleX silently drops (un-splittable var() shorthand), so cards render borderless — exactly the reference treatment. Dead source code only; `assertCardGrouping` gates the reference truth (borderless + exact 12px radius), so any future border introduction fails the gate.
+
+## Iteration 2 — delta-review blockers
+
+The iteration-1 delta re-review (code + architecture + UX/UI) reopened or raised the following; all were fixed in iteration 2:
+
+- **N1 (critical)** — the new green primary actions used a fixed white foreground, measuring 1.72:1 on the DARK theme. Fixed by using the theme-aware `--color-bg` foreground on `--color-green`: **5.53:1 light / 10.60:1 dark**. Independently confirmed by the reference pixel histogram (the reference CTA copy is `#f4f6f1` = `--color-bg`, not white).
+- **F13 residual (major)** — the detail page flattened all retained facts onto one surface. Restored the reference grouping: overview / participation / eligibility-visibility as distinct sections with `--space-8` rhythm and the `--space-18` gutter, with new identical keys in en/pt-BR/es.
+- **F7 residual (major)** — after a rejected publication, choosing a saved venue copied its photo using the captured stale event id. The copy now uses the refreshed identity.
+- **F16 residual (major)** — scoped options requests still failed silently once communities existed. Now surfaced with the localized retry affordance, preserving selections.
+- **Replay immutability (major)** — replay re-derived `starts_at` from the community's CURRENT timezone and implicit level bounds from the creator's CURRENT rating, so an identical retry could wrongly conflict after either changed. Replay now compares against the event's own IMMUTABLE persisted snapshot (stored timezone, stored bounds).
+- **F18 completion (major)** — computed `rowGap` did not prove rendered geometry, so margins could still be absorbed by screenshot budgets. The gates now assert real `getBoundingClientRect()` sibling distances at the exact token values, zero user-agent margins, and exact content-box wrapping; budgets were re-measured and re-pinned (detail screens tightened to 0.225/0.375/0.385).
+- **Review-step UA-margin leak** — an informational paragraph leaked a 16px user-agent margin into the review rhythm (26px vs 10px). Fixed with a `margin: 0` form-message style; the whole wizard was audited for the same class of leak. The gate correctly refused to absorb it.
+- **Test-infra flake** — `test/lint-staged.test.ts` exceeded Vitest's 5s default under a loaded 80-worker run; explicit 30s/15s timeouts added (assertions unchanged).
+
+## Final status
+
+All blocking findings (`critical` + `major`) across F1–F31 are `fixed`. The fix loop stopped at the 2-iteration cap.
+
+**Deferred (not fixed in this delivery, tracked here): F20, F21, F22, F23, F24, F25** — all `minor`, each either not trivially fixable or a deliberate follow-up (see `## Deferred findings hand-off` in the completion summary / follow-up issue).
+
+Also recorded during verification, not a defect: `search_match_invitees` returns empty (not an error) for <3-char queries and non-members; `Past` intentionally shows scheduled history only (no result domain exists in T04); E2E unsupported-currency input is only expressible via the direct RPC, not the UI select.
