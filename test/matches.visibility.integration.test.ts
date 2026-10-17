@@ -134,8 +134,8 @@ describe('match event visibility integration', () => {
       insert into public.match_event_invites(match_event_id,invitee_user_id,invited_by)
          values (${q(eventIdFor(`${publicCommunity}:invite_only`))},${q(invitee!.id)},${q(creator!.id)}),
            (${q(eventIdFor(`${privateCommunity}:invite_only`))},${q(invitee!.id)},${q(creator!.id)});
-       insert into public.match_event_registrations(match_event_id,user_id,accepted_at)
-          values (${q(eventIdFor(`${publicCommunity}:invite_only`))},${q(accepted!.id)},now());
+       insert into public.match_event_registrations(match_event_id,user_id,accepted_at,accepted_order,participation_status,registration_source)
+          values (${q(eventIdFor(`${publicCommunity}:invite_only`))},${q(accepted!.id)},now(),2,'reserve','member');
        alter table public.match_events enable trigger lock_match_photo_publication;
     end $$;`
       );

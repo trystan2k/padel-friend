@@ -248,18 +248,21 @@ describe('match event discovery integration', () => {
         (${q(events.inviteOnly!)},${q(invitee.id)},${q(creator.id)},now()),
         (${q(events.inviteOnly!)},${q(both.id)},${q(creator.id)},now()),
         (${q(events.pastRecent!)},${q(invitee.id)},${q(creator.id)},now()-interval '1 day');
-      insert into public.match_event_registrations(match_event_id,user_id,accepted_at) values
-        (${q(events.full!)},${q(accepted.id)},now()+interval '1 minute'),
-        (${q(events.inviteOnly!)},${q(accepted.id)},now()+interval '1 minute'),
-        (${q(events.inviteOnly!)},${q(both.id)},now()+interval '2 minutes'),
-        (${q(events.pastRecent!)},${q(accepted.id)},now()-interval '2 hours'),
-        (${q(events.fourAccepted!)},${q(accepted.id)},now()+interval '1 minute'),
-        (${q(events.fourAccepted!)},${q(member.id)},now()+interval '2 minutes'),
-        (${q(events.fourAccepted!)},${q(admin2.id)},now()+interval '3 minutes'),
-        (${q(events.fiveAccepted!)},${q(accepted.id)},now()+interval '1 minute'),
-        (${q(events.fiveAccepted!)},${q(member.id)},now()+interval '2 minutes'),
-        (${q(events.fiveAccepted!)},${q(admin2.id)},now()+interval '3 minutes'),
-        (${q(events.fiveAccepted!)},${q(fifth.id)},now()+interval '4 minutes');
+      -- accepted_order mirrors the accepted_at FIFO so quartet derivation
+      -- (accepted_order, id) stays identical to the pre-lifecycle semantics;
+      -- the publication trigger already gave each creator order 1.
+      insert into public.match_event_registrations(match_event_id,user_id,accepted_at,accepted_order,participation_status,registration_source) values
+        (${q(events.full!)},${q(accepted.id)},now()+interval '1 minute',2,'reserve','member'),
+        (${q(events.inviteOnly!)},${q(accepted.id)},now()+interval '1 minute',2,'reserve','member'),
+        (${q(events.inviteOnly!)},${q(both.id)},now()+interval '2 minutes',3,'reserve','member'),
+        (${q(events.pastRecent!)},${q(accepted.id)},now()-interval '2 hours',2,'reserve','member'),
+        (${q(events.fourAccepted!)},${q(accepted.id)},now()+interval '1 minute',2,'reserve','member'),
+        (${q(events.fourAccepted!)},${q(member.id)},now()+interval '2 minutes',3,'reserve','member'),
+        (${q(events.fourAccepted!)},${q(admin2.id)},now()+interval '3 minutes',4,'reserve','member'),
+        (${q(events.fiveAccepted!)},${q(accepted.id)},now()+interval '1 minute',2,'reserve','member'),
+        (${q(events.fiveAccepted!)},${q(member.id)},now()+interval '2 minutes',3,'reserve','member'),
+        (${q(events.fiveAccepted!)},${q(admin2.id)},now()+interval '3 minutes',4,'reserve','member'),
+        (${q(events.fiveAccepted!)},${q(fifth.id)},now()+interval '4 minutes',5,'reserve','member');
       alter table public.match_events enable trigger lock_match_photo_publication;
     end $$;`
       );

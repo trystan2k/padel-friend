@@ -1317,7 +1317,9 @@ async function publishReserveFixture(
 async function ensureReserveRegistration(member: Actor, reserveId: string): Promise<void> {
   // Second accepted registration (trusted fixture insert): the host keeps FIFO #1, the
   // member lands in the reserve segment (2 accepted → 0 playing / 2 reserve) and must
-  // see the personal RESERVE badge.
+  // see the personal RESERVE badge. The anchors CHECK requires the accepted row to
+  // carry order/status/source, and the event's next accepted ordinal must advance
+  // past the fixture's order so PAF-5.2 allocations cannot collide with it.
   const existing = await member.client
     .from('match_event_registrations')
     .select('user_id')
@@ -1327,8 +1329,9 @@ async function ensureReserveRegistration(member: Actor, reserveId: string): Prom
   if (existing.error) throw existing.error;
   if (existing.data) return;
   await fixtureSql(
-    `insert into public.match_event_registrations(match_event_id,user_id,accepted_at) ` +
-      `values ('${reserveId}','${member.id}', now() + interval '2 seconds');`
+    `insert into public.match_event_registrations(match_event_id,user_id,accepted_at,accepted_order,participation_status,registration_source) ` +
+      `values ('${reserveId}','${member.id}', now() + interval '2 seconds', 2, 'reserve', 'member'); ` +
+      `update public.match_event_registration_state set next_accepted_ordinal = 3 where match_event_id = '${reserveId}';`
   );
 }
 
