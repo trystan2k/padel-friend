@@ -78,11 +78,11 @@ export function MatchDetailPage({
         }).format(event.price_minor / 100)
       : null;
   return (
-    <main {...stylex.props(s.page)}>
+    <main {...stylex.props(s.page, s.detailSurface)}>
       <Link to="/matches" {...stylex.props(s.link)}>
         {t('matches.back')}
       </Link>
-      <h1>
+      <h1 {...stylex.props(s.title)}>
         {t('matches.detail.title')}: {venue}
       </h1>
       {typeof event.photo_url === 'string' && (
@@ -101,6 +101,7 @@ export function MatchDetailPage({
           href={typeof event.maps_url === 'string' ? event.maps_url : ''}
           target="_blank"
           rel="noopener noreferrer"
+          {...stylex.props(s.cardLink)}
           aria-label={t('matches.card.openMaps', { venue })}
         >
           {venue}
@@ -111,8 +112,47 @@ export function MatchDetailPage({
           {t('matches.card.pricePerPlayer')}: {price}
         </p>
       )}
-      {typeof event.notes === 'string' && <p>{event.notes}</p>}
-      <h2>{t('matches.detail.participants')}</h2>
+      {typeof event.notes === 'string' && (
+        <p>
+          {t('matches.card.notes')}: {event.notes}
+        </p>
+      )}
+      {typeof event.court_notes === 'string' && (
+        <p>
+          {t('matches.detail.courtNotes')}: {event.court_notes}
+        </p>
+      )}
+      {typeof event.payment_note === 'string' && (
+        <p>
+          {t('matches.detail.paymentNote')}: {event.payment_note}
+        </p>
+      )}
+      {typeof event.duration_minutes === 'number' && (
+        <p>
+          {t('matches.detail.duration')}: {event.duration_minutes}
+        </p>
+      )}
+      {typeof event.restriction_enabled === 'boolean' && (
+        <p>
+          {event.restriction_enabled &&
+          typeof event.min_level === 'number' &&
+          typeof event.max_level === 'number'
+            ? `${t('matches.card.levelRange')}: ${event.min_level}–${event.max_level}`
+            : t('matches.card.noLevelRestriction')}
+        </p>
+      )}
+      {typeof event.team_assignment_mode === 'string' && (
+        <p>{t(`matches.teamMode.${event.team_assignment_mode}`)}</p>
+      )}
+      <p>
+        {event.maximum_registrations == null
+          ? t('matches.card.unlimited')
+          : typeof event.maximum_registrations === 'number'
+            ? `${t('matches.card.maximum')}: ${event.maximum_registrations}`
+            : null}
+      </p>
+      {event.registration_open === false && <p>{t('matches.detail.registrationClosed')}</p>}
+      <h2 {...stylex.props(s.sectionTitle)}>{t('matches.detail.participants')}</h2>
       <p>
         {typeof event.accepted_count === 'number' ? event.accepted_count : 0} ·{' '}
         {t('matches.detail.accepted')}

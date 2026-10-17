@@ -15,7 +15,23 @@ end $$;
 
 create or replace function public.publish_match_event(p_event_id uuid, p_input jsonb, p_invitee_ids uuid[])
 returns uuid language plpgsql security definer set search_path = '' as $$
-declare v_uid uuid := auth.uid(); v_community uuid; v_row public.match_events%rowtype; v_canonical jsonb; v_invites uuid[]; v_start timestamptz; v_cutoff timestamptz; v_price numeric; v_minor bigint; v_currency text; v_duration integer; v_creator_level numeric; v_restriction_enabled boolean; v_min_level numeric; v_max_level numeric;
+declare
+  v_uid uuid := auth.uid();
+  v_community uuid;
+  v_row public.match_events%rowtype;
+  v_existing boolean;
+  v_start timestamptz;
+  v_cutoff timestamptz;
+  v_timezone text;
+  v_price numeric;
+  v_minor bigint;
+  v_currency text;
+  v_duration integer;
+  v_maximum integer;
+  v_creator_level numeric;
+  v_restriction_enabled boolean;
+  v_min_level numeric;
+  v_max_level numeric;
 begin
   if v_uid is null or coalesce(auth.jwt()->>'is_anonymous','false')='true' then raise exception using errcode='28000'; end if;
   if p_input is null or jsonb_typeof(p_input)<>'object' or p_input - array['community_id','date','start_time','event_type','visibility','team_assignment_mode','venue_name','maps_url','photo_path','saved_venue_id','court_notes','duration_minutes','notes','court_booked','restriction_enabled','min_level','max_level','price','currency','payment_note','maximum_registrations','cutoff_at'] <> '{}'::jsonb then raise exception using errcode='22023'; end if;
@@ -23,19 +39,12 @@ begin
   perform 1 from public.communities c where c.id=v_community for update;
   if not found or not public.is_community_member(v_community) then raise exception using errcode='42501'; end if;
   perform pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtextextended(p_event_id::text, 73073));
-  v_canonical := p_input || jsonb_build_object('invitee_ids', coalesce(to_jsonb(p_invitee_ids),'[]'::jsonb));
   select * into v_row from public.match_events where id=p_event_id;
-  if found then
-    if v_row.created_by<>v_uid then raise exception using errcode='42501'; end if;
-    if v_row.community_id=(p_input->>'community_id')::uuid
-      and v_row.venue_name=p_input->>'venue_name' and v_row.maps_url=p_input->>'maps_url' and v_row.photo_path=p_input->>'photo_path'
-      and v_row.event_type=(p_input->>'event_type')::public.match_event_type and v_row.visibility=(p_input->>'visibility')::public.match_event_visibility
-      and v_row.team_assignment_mode=(p_input->>'team_assignment_mode')::public.match_team_assignment_mode
-      and v_row.starts_at=public.match_event_local_start(p_input->>'date',p_input->>'start_time',v_row.timezone)
-      and not exists(select 1 from unnest(coalesce(p_invitee_ids,'{}'::uuid[])) x where not exists(select 1 from public.match_event_invites i where i.match_event_id=p_event_id and i.invitee_user_id=x))
-      and not exists(select 1 from public.match_event_invites i where i.match_event_id=p_event_id and not (i.invitee_user_id=any(coalesce(p_invitee_ids,'{}'::uuid[])))) then return p_event_id; end if;
-    raise exception using errcode='P0001', message='MATCH_CONFLICT';
-  end if;
+  v_existing := found;
+  if v_existing and v_row.created_by<>v_uid then raise exception using errcode='42501'; end if;
+  select public.get_effective_community_admin_defaults(c.settings)->>'timezone'
+    into v_timezone from public.communities c where c.id=v_community;
+
   select r.display_level into v_creator_level from public.global_player_ratings r where r.user_id=v_uid;
   if (p_input->>'event_type')='competitive' and v_creator_level is null then raise exception using errcode='23514'; end if;
   v_restriction_enabled := coalesce((p_input->>'restriction_enabled')::boolean,false);
@@ -59,28 +68,61 @@ begin
     v_min_level := null;
     v_max_level := null;
   end if;
+
+  v_start := public.match_event_local_start(p_input->>'date',p_input->>'start_time',v_timezone);
+  v_cutoff := coalesce(nullif(p_input->>'cutoff_at','')::timestamptz,v_start-interval '1 hour');
+  if v_cutoff >= v_start then raise exception using errcode='22023'; end if;
+  if p_input ? 'duration_minutes' and nullif(p_input->>'duration_minutes','') is not null then
+    if p_input->>'duration_minutes' !~ '^[0-9]+$' then raise exception using errcode='22023'; end if;
+    v_duration := (p_input->>'duration_minutes')::integer;
+    if v_duration <= 0 then raise exception using errcode='22023'; end if;
+  end if;
+  if p_input ? 'currency' and p_input->>'currency' not in ('BRL','USD','EUR') then raise exception using errcode='22023'; end if;
+  v_currency := nullif(p_input->>'currency','');
+  if p_input ? 'price' and nullif(p_input->>'price','') is not null then
+    if p_input->>'price' !~ '^[0-9]+(\.[0-9]{1,2})?$' then raise exception using errcode='22023'; end if;
+    v_price := (p_input->>'price')::numeric;
+    v_minor := (round(v_price*100))::bigint;
+    if v_minor > 9007199254740991 then raise exception using errcode='22023'; end if;
+    v_currency := coalesce(v_currency,'BRL');
+  end if;
+  v_maximum := nullif(p_input->>'maximum_registrations','')::integer;
+
+  if v_existing then
+    if v_row.community_id is not distinct from v_community
+      and v_row.starts_at is not distinct from v_start
+      and v_row.timezone is not distinct from v_timezone
+      and v_row.event_type is not distinct from (p_input->>'event_type')::public.match_event_type
+      and v_row.visibility is not distinct from (p_input->>'visibility')::public.match_event_visibility
+      and v_row.team_assignment_mode is not distinct from (p_input->>'team_assignment_mode')::public.match_team_assignment_mode
+      and v_row.venue_name is not distinct from (p_input->>'venue_name')
+      and v_row.maps_url is not distinct from (p_input->>'maps_url')
+      and v_row.photo_path is not distinct from (p_input->>'photo_path')
+      and v_row.saved_venue_id is not distinct from nullif(p_input->>'saved_venue_id','')::uuid
+      and v_row.court_notes is not distinct from nullif(p_input->>'court_notes','')
+      and v_row.duration_minutes is not distinct from v_duration
+      and v_row.notes is not distinct from nullif(p_input->>'notes','')
+      and v_row.court_booked is not distinct from coalesce((p_input->>'court_booked')::boolean,false)
+      and v_row.restriction_enabled is not distinct from v_restriction_enabled
+      and v_row.min_level is not distinct from v_min_level
+      and v_row.max_level is not distinct from v_max_level
+      and v_row.price_minor is not distinct from v_minor
+      and v_row.currency is not distinct from v_currency
+      and v_row.payment_note is not distinct from nullif(p_input->>'payment_note','')
+      and v_row.maximum_registrations is not distinct from v_maximum
+      and v_row.registration_cutoff_at is not distinct from v_cutoff
+      and not exists(select 1 from unnest(coalesce(p_invitee_ids,'{}'::uuid[])) x where not exists(select 1 from public.match_event_invites i where i.match_event_id=p_event_id and i.invitee_user_id=x))
+      and not exists(select 1 from public.match_event_invites i where i.match_event_id=p_event_id and not (i.invitee_user_id=any(coalesce(p_invitee_ids,'{}'::uuid[])))) then
+      return p_event_id;
+    end if;
+    raise exception using errcode='P0001', message='MATCH_CONFLICT';
+  end if;
+
   if exists(select 1 from unnest(coalesce(p_invitee_ids,'{}'::uuid[])) x where x=v_uid or not exists(select 1 from public.community_members m where m.community_id=v_community and m.user_id=x and m.status='active')) then raise exception using errcode='23514'; end if;
   if p_input ? 'saved_venue_id' and p_input->>'saved_venue_id' is not null and not exists(select 1 from public.community_venues v where v.id=(p_input->>'saved_venue_id')::uuid and v.community_id=v_community and v.archived_at is null) then raise exception using errcode='23514'; end if;
   if not public.valid_match_maps_url(p_input->>'maps_url') then raise exception using errcode='22023'; end if;
-   v_start := public.match_event_local_start(p_input->>'date',p_input->>'start_time',coalesce((select c.settings->>'timezone' from public.communities c where c.id=v_community),'UTC'));
-   v_cutoff := coalesce(nullif(p_input->>'cutoff_at','')::timestamptz,v_start-interval '1 hour');
-   if v_cutoff >= v_start then raise exception using errcode='22023'; end if;
-   if p_input ? 'duration_minutes' and nullif(p_input->>'duration_minutes','') is not null then
-     if p_input->>'duration_minutes' !~ '^[0-9]+$' then raise exception using errcode='22023'; end if;
-     v_duration := (p_input->>'duration_minutes')::integer;
-     if v_duration <= 0 then raise exception using errcode='22023'; end if;
-   end if;
-   if p_input ? 'currency' and p_input->>'currency' not in ('BRL','USD','EUR') then raise exception using errcode='22023'; end if;
-   v_currency := nullif(p_input->>'currency','');
-   if p_input ? 'price' and nullif(p_input->>'price','') is not null then
-     if p_input->>'price' !~ '^[0-9]+(\.[0-9]{1,2})?$' then raise exception using errcode='22023'; end if;
-     v_price := (p_input->>'price')::numeric;
-     v_minor := (round(v_price*100))::bigint;
-     if v_minor > 9007199254740991 then raise exception using errcode='22023'; end if;
-     v_currency := coalesce(v_currency,'BRL');
-   end if;
   insert into public.match_events(id,community_id,created_by,starts_at,timezone,event_type,visibility,team_assignment_mode,venue_name,maps_url,photo_path,saved_venue_id,court_notes,duration_minutes,notes,court_booked,restriction_enabled,min_level,max_level,price_minor,currency,payment_note,maximum_registrations,registration_cutoff_at)
-    select p_event_id,v_community,v_uid,v_start,coalesce(c.settings->>'timezone','UTC'),(p_input->>'event_type')::public.match_event_type,(p_input->>'visibility')::public.match_event_visibility,(p_input->>'team_assignment_mode')::public.match_team_assignment_mode,p_input->>'venue_name',p_input->>'maps_url',p_input->>'photo_path',nullif(p_input->>'saved_venue_id','')::uuid,nullif(p_input->>'court_notes',''),v_duration,nullif(p_input->>'notes',''),coalesce((p_input->>'court_booked')::boolean,false),v_restriction_enabled,v_min_level,v_max_level,v_minor,v_currency,nullif(p_input->>'payment_note',''),nullif(p_input->>'maximum_registrations','')::integer,v_cutoff from public.communities c where c.id=v_community;
+    values(p_event_id,v_community,v_uid,v_start,v_timezone,(p_input->>'event_type')::public.match_event_type,(p_input->>'visibility')::public.match_event_visibility,(p_input->>'team_assignment_mode')::public.match_team_assignment_mode,p_input->>'venue_name',p_input->>'maps_url',p_input->>'photo_path',nullif(p_input->>'saved_venue_id','')::uuid,nullif(p_input->>'court_notes',''),v_duration,nullif(p_input->>'notes',''),coalesce((p_input->>'court_booked')::boolean,false),v_restriction_enabled,v_min_level,v_max_level,v_minor,v_currency,nullif(p_input->>'payment_note',''),v_maximum,v_cutoff);
   insert into public.match_event_invites(match_event_id,invitee_user_id,invited_by) select p_event_id,x,v_uid from (select distinct unnest(coalesce(p_invitee_ids,'{}'::uuid[])) x) q where x<>v_uid;
   return p_event_id;
 end $$;
@@ -88,7 +130,7 @@ end $$;
 create or replace function public.get_match_creation_options(p_community_id uuid default null)
 returns jsonb language sql stable security definer set search_path = '' as $$
  select jsonb_build_object(
- 'communities',coalesce((select jsonb_agg(jsonb_build_object('id',c.id,'name',c.name,'timezone',coalesce(c.settings->>'timezone','UTC'),'currency',coalesce(c.settings->>'currency','EUR'))) from public.communities c where public.is_community_member(c.id) and (p_community_id is null or c.id=p_community_id)),'[]'::jsonb),
+ 'communities',coalesce((select jsonb_agg(jsonb_build_object('id',c.id,'name',c.name,'timezone',public.get_effective_community_admin_defaults(c.settings)->>'timezone','currency',coalesce(c.settings->>'currency','EUR'))) from public.communities c where public.is_community_member(c.id) and (p_community_id is null or c.id=p_community_id)),'[]'::jsonb),
  'level_defaults',(select case when r.display_level is null then jsonb_build_object('min',null,'max',null,'level',null) else jsonb_build_object('min',greatest(0,r.display_level-0.5),'max',least(7,r.display_level+1.5),'level',r.display_level) end from public.global_player_ratings r where r.user_id=auth.uid()),
  'saved_venues',coalesce((select jsonb_agg(jsonb_build_object('id',v.id,'name',v.name,'photo_path',v.photo_path,'maps_url',v.maps_url) order by v.name,v.id) from public.community_venues v where p_community_id is not null and v.community_id=p_community_id and v.archived_at is null and public.is_community_member(v.community_id)),'[]'::jsonb))
 $$;

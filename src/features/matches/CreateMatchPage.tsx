@@ -33,12 +33,14 @@ export function CreateMatchPage() {
   const optionsGeneration = useRef(0);
   const publishLock = useRef(false);
   const frozen = useRef<FrozenRequest | null>(null);
+  const publicationFailed = useRef(false);
   const photoRef = useRef('');
   const copiedPhoto = useRef<{ key: string } | null>(null);
   const photoCopyGeneration = useRef(0);
   const editedRange = useRef({ min: false, max: false });
   const [options, setOptions] = useState<Options>(emptyOptions);
   const [optionsLoading, setOptionsLoading] = useState(true);
+  const [optionsError, setOptionsError] = useState(false);
   const [communityId, setCommunityId] = useState('');
   const [value, setValue] = useState<Draft>(blank);
   const [step, setStep] = useState(0);
@@ -54,6 +56,10 @@ export function CreateMatchPage() {
   const headingLabels = ['details', 'players', 'teams', 'review'] as const;
 
   const changePhoto = useCallback((next: string) => {
+    if (publicationFailed.current && next !== photoRef.current) {
+      frozen.current = null;
+      publicationFailed.current = false;
+    }
     photoRef.current = next;
     if (copiedPhoto.current?.key !== next) copiedPhoto.current = null;
     setPhoto(next);
@@ -91,10 +97,26 @@ export function CreateMatchPage() {
             minLevel: current.minLevel ?? next.level_defaults?.min,
             maxLevel: current.maxLevel ?? next.level_defaults?.max
           }));
+          // The unscoped response supplies memberships/defaults only. Fetch venue
+          // snapshots once the initial membership is known, just like later switches.
+          void getMatchCreationOptions({ data: { community_id: first.id } })
+            .then((scoped: any) => {
+              if (generation !== optionsGeneration.current) return;
+              setOptions((current) => ({
+                ...current,
+                ...scoped,
+                communities: next.communities,
+                saved_venues: scoped?.saved_venues ?? []
+              }));
+            })
+            .catch(() => {
+              if (generation === optionsGeneration.current) setOptionsError(true);
+            });
         }
+        setOptionsError(false);
       })
       .catch(() => {
-        if (generation === optionsGeneration.current) setOptions(emptyOptions);
+        if (generation === optionsGeneration.current) setOptionsError(true);
       })
       .finally(() => {
         if (generation === optionsGeneration.current) setOptionsLoading(false);
@@ -116,6 +138,18 @@ export function CreateMatchPage() {
     (key: string, next: unknown) => {
       if (key === 'minLevel') editedRange.current.min = true;
       if (key === 'maxLevel') editedRange.current.max = true;
+      if (publicationFailed.current) {
+        frozen.current = null;
+        publicationFailed.current = false;
+        setEventId(crypto.randomUUID());
+        const abandoned = photoRef.current;
+        photoRef.current = '';
+        setPhoto('');
+        if (abandoned)
+          void removeUnpublishedMatchPhotoFn({ data: { object_key: abandoned } }).catch(
+            () => undefined
+          );
+      }
       if (key === 'savedVenue') {
         const venue = options.saved_venues.find((item) => item.id === next);
         const previousCopy = copiedPhoto.current;
@@ -188,6 +222,7 @@ export function CreateMatchPage() {
       setFieldErrors({});
       setError('');
       frozen.current = null;
+      publicationFailed.current = false;
       editedRange.current = { min: false, max: false };
       const community = options.communities.find((item) => item.id === id);
       const nextEventId = crypto.randomUUID();
@@ -204,6 +239,7 @@ export function CreateMatchPage() {
           () => undefined
         );
       setOptionsLoading(true);
+      setOptionsError(false);
       void getMatchCreationOptions({ data: { community_id: id } })
         .then((result: any) => {
           if (generation !== optionsGeneration.current) return;
@@ -226,7 +262,9 @@ export function CreateMatchPage() {
                 : next.level_defaults?.max
           }));
         })
-        .catch(() => undefined)
+        .catch(() => {
+          if (generation === optionsGeneration.current) setOptionsError(true);
+        })
         .finally(() => {
           if (generation === optionsGeneration.current) setOptionsLoading(false);
         });
@@ -378,6 +416,7 @@ export function CreateMatchPage() {
         await navigate({ to: '/matches', reloadDocument: true });
       } else setError('publishFailed');
     } catch (cause) {
+      publicationFailed.current = true;
       const code = cause instanceof Error ? cause.message : '';
       const mapped: Record<string, string> = {
         MATCH_CONFLICT: 'conflict',
@@ -395,10 +434,20 @@ export function CreateMatchPage() {
 
   if (optionsLoading && !options.communities.length)
     return <main {...stylex.props(s.page)} aria-busy="true" />;
+  if (optionsError && !options.communities.length)
+    return (
+      <main {...stylex.props(s.page)}>
+        <h1 {...stylex.props(s.title)}>{t('matchCreate.title')}</h1>
+        <p role="alert">{t('matchCreate.errors.optionsUnavailable')}</p>
+        <button type="button" {...stylex.props(s.button)} onClick={() => window.location.reload()}>
+          {t('matches.retry')}
+        </button>
+      </main>
+    );
   if (!options.communities.length)
     return (
       <main {...stylex.props(s.page)}>
-        <h1>{t('matchCreate.title')}</h1>
+        <h1 {...stylex.props(s.title)}>{t('matchCreate.title')}</h1>
         <p>{t('matchCreate.noCommunities')}</p>
         <Link to="/onboarding/community">{t('matchCreate.discoverCommunities')}</Link>
       </main>
@@ -407,7 +456,7 @@ export function CreateMatchPage() {
   return (
     <main {...stylex.props(s.page)}>
       <header>
-        <h1 ref={heading} tabIndex={-1}>
+        <h1 {...stylex.props(s.title)} ref={heading} tabIndex={-1}>
           {t('matchCreate.title')}
         </h1>
         <p>{t('matchCreate.subtitle')}</p>
@@ -441,7 +490,10 @@ export function CreateMatchPage() {
           <MatchInviteePicker
             communityId={communityId}
             selected={invitees}
-            onChange={setInvitees}
+            onChange={(next) => {
+              if (frozen.current) frozen.current = null;
+              setInvitees(next);
+            }}
           />
         )}
         {step === 2 && (
@@ -492,7 +544,7 @@ export function CreateMatchPage() {
           {step < 3 ? (
             <button
               type="button"
-              {...stylex.props(s.button)}
+              {...stylex.props(s.button, s.primaryButton)}
               onClick={() => {
                 setError('');
                 setStep(step + 1);
@@ -504,7 +556,7 @@ export function CreateMatchPage() {
             <button
               type="button"
               disabled={busy || photoBusy || photoCopyBusy || !photo}
-              {...stylex.props(s.button)}
+              {...stylex.props(s.button, s.primaryButton)}
               onClick={() => void publish(Date.now())}
             >
               {t(busy ? 'matchCreate.publishing' : 'matchCreate.publish')}

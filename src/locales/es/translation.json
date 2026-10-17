@@ -554,7 +554,8 @@
       "notes": "Incluye notas",
       "pricePerPlayer": "Precio por jugador",
       "openMaps": "Abrir mapa de {{venue}}",
-      "photoAlt": "Lugar del partido"
+      "photoAlt": "Lugar del partido",
+      "unlimited": "Sin límite"
     },
     "detail": {
       "title": "Detalles del partido",
@@ -573,7 +574,10 @@
       "copyLink": "Copiar enlace",
       "copied": "Copiado",
       "copyFailed": "No se pudo copiar. Selecciona la URL para copiarla.",
-      "shareUrl": "Enlace del partido"
+      "shareUrl": "Enlace del partido",
+      "courtNotes": "Notas de la cancha",
+      "paymentNote": "Nota de pago",
+      "duration": "Duración prevista"
     }
   },
   "matchCreate": {
@@ -668,7 +672,8 @@
       "savedVenueUnavailable": "Lugar guardado no disponible.",
       "inviteeUnavailable": "Uno o más invitados no están disponibles.",
       "conflict": "Este partido entra en conflicto con una publicación existente.",
-      "publishFailed": "No se pudo publicar el partido."
+      "publishFailed": "No se pudo publicar el partido.",
+      "optionsUnavailable": "No se pudieron cargar las opciones de creación. Inténtalo de nuevo."
     }
   }
 }

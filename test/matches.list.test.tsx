@@ -170,4 +170,27 @@ describe('match list surfaces', () => {
     await userEvent.setup().click(screen.getByRole('button', { name: copy.loadMore }));
     expect(await screen.findByText(copy.offline)).toBeTruthy();
   });
+  it('replaces failed loader state when a retry returns events', () => {
+    const view = mount({ initialError: true });
+    view.rerender(
+      <I18nextProvider i18n={createI18n('en')}>
+        <MatchesPage entry="available" initialItems={[event(25, 1)]} initialError={false} />
+      </I18nextProvider>
+    );
+    expect(screen.getByRole('article').textContent).toContain('Court Central');
+    expect(screen.queryByRole('alert')).toBeNull();
+  });
+  it('recovers pagination when the browser reports reconnection', async () => {
+    Object.defineProperty(window.navigator, 'onLine', { configurable: true, value: false });
+    mocks.list.mockRejectedValueOnce(new Error('offline'));
+    const user = userEvent.setup();
+    mount({ initialItems: [event(26, 0)], initialCursor: 'cursor' });
+    await user.click(screen.getByRole('button', { name: copy.loadMore }));
+    expect(await screen.findByText(copy.offline)).toBeTruthy();
+    mocks.list.mockResolvedValueOnce({ items: [event(27, 1)], next_cursor: null });
+    Object.defineProperty(window.navigator, 'onLine', { configurable: true, value: true });
+    window.dispatchEvent(new Event('online'));
+    await user.click(await screen.findByRole('button', { name: copy.loadMore }));
+    expect(screen.getAllByRole('article')).toHaveLength(2);
+  });
 });

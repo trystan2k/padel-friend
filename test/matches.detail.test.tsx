@@ -1,5 +1,5 @@
 /** @vitest-environment jsdom */
-import { cleanup, render, screen } from '@testing-library/react';
+import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { I18nextProvider } from 'react-i18next';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -8,6 +8,12 @@ import en from '../src/locales/en/translation.json';
 import pt from '../src/locales/pt-BR/translation.json';
 import es from '../src/locales/es/translation.json';
 
+const routeMocks = vi.hoisted(() => ({
+  getMatchEvent: vi.fn<(options: { data: { event_id: string } }) => Promise<unknown>>()
+}));
+vi.mock('../src/features/matches/matches.functions', () => ({
+  getMatchEvent: routeMocks.getMatchEvent
+}));
 vi.mock('@tanstack/react-router', async (original) => ({
   ...(await original<typeof import('@tanstack/react-router')>()),
   Link: ({ children, to }: { children: import('react').ReactNode; to: string }) => (
@@ -15,6 +21,7 @@ vi.mock('@tanstack/react-router', async (original) => ({
   )
 }));
 import { MatchDetailPage, shareMatchLink } from '../src/features/matches/MatchDetailPage';
+import { loadMatchDetail } from '../src/routes/_protected.matches.$eventId';
 
 const event = (id = 1, extra: Record<string, unknown> = {}) => ({
   event_id: `00000000-0000-4000-8000-${String(id).padStart(12, '0')}`,
@@ -76,13 +83,33 @@ describe('match detail surface', () => {
     const maps = screen.getByRole('link', { name: 'Open map for Court Central' });
     expect(maps.getAttribute('rel')).toBe('noopener noreferrer');
     expect(screen.getByText(/€12\.50/)).toBeTruthy();
-    expect(screen.getByText('Bring water')).toBeTruthy();
+    expect(screen.getByText(/Notes included: Bring water/)).toBeTruthy();
     expect(screen.getByText(/5 · Accepted/)).toBeTruthy();
     expect(screen.getByText(/4 playing · 1 reserve · 1 group · 3 more needed/)).toBeTruthy();
     expect(screen.getByText('Invite only')).toBeTruthy();
     expect(screen.getByText(en.matches.detail.invitationInfo)).toBeTruthy();
     expect(screen.queryByText(/Club Hidden|saved_venue_id/i)).toBeNull();
     expect(screen.queryByRole('button', { name: /accept|decline/i })).toBeNull();
+  });
+  it('renders optional published constraints and court/payment facts truthfully', () => {
+    mount(
+      event(12, {
+        court_notes: 'Court 2',
+        payment_note: 'Pay the venue directly',
+        duration_minutes: 90,
+        restriction_enabled: true,
+        min_level: 2,
+        max_level: 5,
+        maximum_registrations: 8,
+        registration_open: false
+      })
+    );
+    expect(screen.getByText(/Court notes: Court 2/)).toBeTruthy();
+    expect(screen.getByText(/Payment note: Pay the venue directly/)).toBeTruthy();
+    expect(screen.getByText(/Expected duration: 90/)).toBeTruthy();
+    expect(screen.getByText(/Level range: 2–5/)).toBeTruthy();
+    expect(screen.getByText(/Maximum: 8/)).toBeTruthy();
+    expect(screen.getByText(en.matches.detail.registrationClosed)).toBeTruthy();
   });
   it('formats monetary value by active locale and shows truthful approval text without join action', () => {
     mount(
@@ -127,6 +154,39 @@ describe('match detail surface', () => {
     expect(screen.getByRole('alert').textContent).toContain(en.matches.error);
     await userEvent.setup().click(screen.getByRole('button', { name: en.matches.retry }));
     expect(retry).toHaveBeenCalledOnce();
+  });
+  it('keeps missing events unavailable and retries transient detail RPC failures', async () => {
+    const eventId = event(44).event_id;
+    routeMocks.getMatchEvent.mockResolvedValueOnce({ status: 'unavailable' });
+    const unavailable = await loadMatchDetail(eventId);
+    expect(unavailable).toEqual({ event: null, failed: false });
+    mount(unavailable.event);
+    expect(screen.getByText(en.matches.unavailable)).toBeTruthy();
+
+    cleanup();
+    routeMocks.getMatchEvent
+      .mockReset()
+      .mockResolvedValueOnce({ status: 'error' })
+      .mockResolvedValueOnce({ status: 'ok', event: event(44) });
+    let result = await loadMatchDetail(eventId);
+    expect(result).toEqual({ event: null, failed: true });
+    let view: ReturnType<typeof mount>;
+    const onRetry = async () => {
+      result = await loadMatchDetail(eventId);
+      view.rerender(
+        <I18nextProvider i18n={createI18n('en')}>
+          <MatchDetailPage event={result.event} loadError={result.failed} />
+        </I18nextProvider>
+      );
+    };
+    view = mount(result.event, 'en', { loadError: result.failed, onRetry });
+    expect(screen.getByRole('alert').textContent).toContain(en.matches.error);
+    await userEvent.setup().click(screen.getByRole('button', { name: en.matches.retry }));
+    await waitFor(() =>
+      expect(screen.getByRole('heading', { name: /Court Central/ })).toBeTruthy()
+    );
+    expect(routeMocks.getMatchEvent).toHaveBeenCalledTimes(2);
+    expect(screen.queryByRole('alert')).toBeNull();
   });
   it('uses navigator.share when available', async () => {
     const share = vi.fn<() => Promise<void>>().mockResolvedValue(undefined);

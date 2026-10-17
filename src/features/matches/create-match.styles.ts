@@ -3,20 +3,19 @@ import * as stylex from '@stylexjs/stylex';
 export const createMatchStyles = stylex.create({
   page: {
     display: 'grid',
-    gap: 'var(--space-5)',
+    gap: 'var(--space-10)',
     width: '100%',
     marginInline: 'auto',
-    padding: 'var(--space-4)',
+    padding: 'var(--space-18)',
     color: 'var(--color-text)'
   },
-  form: { display: 'grid', gap: 'var(--space-4)' },
+  form: { display: 'grid', gap: 'var(--space-10)' },
   fields: { display: 'grid', gap: 'var(--space-3)' },
   field: { display: 'grid', gap: 'var(--space-1)' },
   input: {
     minHeight: 'calc(var(--space-40) + var(--space-4))',
     width: '100%',
     paddingInline: 'var(--space-3)',
-    border: 'var(--border-width-sm) solid var(--color-line)',
     borderRadius: 'var(--radius-8)',
     backgroundColor: 'var(--color-surface)',
     color: 'var(--color-text)',
@@ -29,7 +28,6 @@ export const createMatchStyles = stylex.create({
   button: {
     minHeight: 'calc(var(--space-40) + var(--space-4))',
     paddingInline: 'var(--space-3)',
-    border: 'var(--border-width-sm) solid var(--color-line)',
     borderRadius: 'var(--radius-8)',
     backgroundColor: 'var(--color-surface)',
     color: 'var(--color-text)',
@@ -58,8 +56,31 @@ export const createMatchStyles = stylex.create({
     display: 'grid',
     gap: 'var(--space-3)',
     padding: 'var(--space-4)',
-    border: 'var(--border-width-sm) solid var(--color-line)',
+    borderRadius: 'var(--radius-12)',
+    backgroundColor: 'var(--color-surface)'
+  },
+  title: {
+    fontFamily: 'var(--font-family-heading)',
+    fontSize: 'var(--font-size-24)',
+    fontWeight: 'var(--font-weight-bold)'
+  },
+  section: {
+    display: 'grid',
+    gap: 'var(--space-3)',
+    padding: 'var(--space-4)',
     borderRadius: 'var(--radius-10)',
     backgroundColor: 'var(--color-surface)'
+  },
+  primaryButton: {
+    width: '100%',
+    backgroundColor: 'var(--color-green)',
+    color: 'var(--color-bg)',
+    borderColor: 'var(--color-green)'
+  },
+  reviewFacts: {
+    display: 'grid',
+    gap: 'var(--space-2)',
+    padding: 'var(--space-3)',
+    borderInlineStart: 'var(--border-width-lg) solid var(--color-green)'
   }
 });

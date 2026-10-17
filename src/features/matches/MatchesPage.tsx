@@ -1,6 +1,6 @@
 import * as stylex from '@stylexjs/stylex';
 import { Link, useRouter } from '@tanstack/react-router';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { listMatchEvents } from './matches.functions';
 import type { MatchEventListItem } from './match-model';
@@ -8,9 +8,10 @@ import { MatchCard } from './MatchCard';
 import { matchesStyles as s } from './matches.styles';
 
 export type MatchEntry = 'available' | 'my' | 'past';
+const EMPTY_ITEMS: MatchEventListItem[] = [];
 export function MatchesPage({
   entry,
-  initialItems = [],
+  initialItems = EMPTY_ITEMS,
   initialCursor = null,
   initialError = false
 }: {
@@ -21,22 +22,66 @@ export function MatchesPage({
 }) {
   const { t } = useTranslation();
   const router = useRouter();
-  const [items, setItems] = useState(initialItems);
-  const [cursor, setCursor] = useState(initialCursor);
-  const [error, setError] = useState(initialError);
+  const [listing, setListing] = useState({
+    sourceItems: initialItems,
+    sourceCursor: initialCursor,
+    sourceError: initialError,
+    items: initialItems,
+    cursor: initialCursor,
+    error: initialError,
+    generation: 0
+  });
+  if (
+    listing.sourceItems !== initialItems ||
+    listing.sourceCursor !== initialCursor ||
+    listing.sourceError !== initialError
+  ) {
+    setListing({
+      sourceItems: initialItems,
+      sourceCursor: initialCursor,
+      sourceError: initialError,
+      items: initialItems,
+      cursor: initialCursor,
+      error: initialError,
+      generation: listing.generation + 1
+    });
+  }
+  const { items, cursor, error } = listing;
   const [loading, setLoading] = useState(false);
   const [offline, setOffline] = useState(false);
+  useEffect(() => {
+    const online = () => setOffline(false);
+    const offlineEvent = () => setOffline(true);
+    if (typeof window === 'undefined') return undefined;
+    window.addEventListener('online', online);
+    window.addEventListener('offline', offlineEvent);
+    return () => {
+      window.removeEventListener('online', online);
+      window.removeEventListener('offline', offlineEvent);
+    };
+  }, []);
   async function loadMore() {
-    if (!cursor || loading) return;
+    if (!cursor || loading || (offline && typeof navigator !== 'undefined' && !navigator.onLine))
+      return;
+    const version = listing.generation;
     setLoading(true);
-    setError(false);
+    setListing((previous) => ({ ...previous, error: false }));
     try {
       const result = await listMatchEvents({ data: { entry, cursor, limit: 20 } });
-      setItems((previous) => [...previous, ...result.items]);
-      setCursor(result.next_cursor);
+      setListing((previous) =>
+        previous.generation === version
+          ? {
+              ...previous,
+              items: [...previous.items, ...result.items],
+              cursor: result.next_cursor
+            }
+          : previous
+      );
       setOffline(false);
     } catch {
-      setError(true);
+      setListing((previous) =>
+        previous.generation === version ? { ...previous, error: true } : previous
+      );
       setOffline(typeof navigator !== 'undefined' && !navigator.onLine);
     } finally {
       setLoading(false);
@@ -50,8 +95,11 @@ export function MatchesPage({
   return (
     <main {...stylex.props(s.page)}>
       <header {...stylex.props(s.heading)}>
-        <h1>{t('matches.title')}</h1>
+        <h1 {...stylex.props(s.title)}>{t('matches.title')}</h1>
         <p>{t('matches.subtitle')}</p>
+        <Link to="/matches/create" {...stylex.props(s.primaryAction)}>
+          {t('matches.create')}
+        </Link>
       </header>
       <nav aria-label={t('matches.navigationLabel')} {...stylex.props(s.tabs)}>
         {(['available', 'my', 'past'] as const).map((tab) => (
@@ -60,7 +108,7 @@ export function MatchesPage({
             to={tabPaths[tab]}
             activeOptions={{ exact: true }}
             aria-current={entry === tab ? 'page' : undefined}
-            {...stylex.props(s.link)}
+            {...stylex.props(s.link, entry === tab && s.activeLink)}
           >
             {t(`matches.tabs.${tab}`)}
           </Link>
@@ -83,7 +131,14 @@ export function MatchesPage({
           </button>
         </section>
       )}
-      {!initialError && items.length === 0 && <p>{t(`matches.empty.${entry}`)}</p>}
+      {!initialError && items.length === 0 && (
+        <section {...stylex.props(s.empty)}>
+          <p>{t(`matches.empty.${entry}`)}</p>
+          <Link to="/matches/create" {...stylex.props(s.primaryAction)}>
+            {t('matches.create')}
+          </Link>
+        </section>
+      )}
       <section aria-label={t(`matches.tabs.${entry}`)} {...stylex.props(s.list)}>
         {items.map((event) => (
           <MatchCard key={event.event_id} event={event} />

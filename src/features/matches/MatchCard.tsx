@@ -32,7 +32,11 @@ export function MatchCard({ event }: { event: MatchEventListItem }) {
         <img {...stylex.props(s.image)} src={event.photo_url} alt={t('matches.card.photoAlt')} />
       )}
       <h2>
-        <Link to="/matches/$eventId" params={{ eventId: event.event_id }}>
+        <Link
+          to="/matches/$eventId"
+          params={{ eventId: event.event_id }}
+          {...stylex.props(s.cardLink)}
+        >
           {venue}
         </Link>
       </h2>
@@ -49,11 +53,28 @@ export function MatchCard({ event }: { event: MatchEventListItem }) {
           href={String(event.maps_url ?? '')}
           target="_blank"
           rel="noopener noreferrer"
+          {...stylex.props(s.cardLink)}
           aria-label={t('matches.card.openMaps', { venue })}
         >
           {venue}
         </a>
       </p>
+      <p>
+        {event.restriction_enabled === true &&
+        typeof event.min_level === 'number' &&
+        typeof event.max_level === 'number'
+          ? `${t('matches.card.levelRange')}: ${event.min_level}–${event.max_level}`
+          : t('matches.card.noLevelRestriction')}
+      </p>
+      {typeof event.team_assignment_mode === 'string' && (
+        <p>{t(`matches.teamMode.${event.team_assignment_mode}`)}</p>
+      )}
+      <p>
+        {event.maximum_registrations == null
+          ? t('matches.card.unlimited')
+          : `${t('matches.card.maximum')}: ${event.maximum_registrations}`}
+      </p>
+      {!event.registration_open && <p>{t('matches.detail.registrationClosed')}</p>}
       <p>
         {t(
           event.event_type === 'competitive' ? 'matches.type.competitive' : 'matches.type.friendly'

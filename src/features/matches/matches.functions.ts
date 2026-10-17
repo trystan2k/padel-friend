@@ -11,6 +11,13 @@ import {
   validatePublishMatch
 } from './matches.validators';
 
+export type MatchEventProjection = Record<string, string | number | boolean | null>;
+
+export type MatchEventResult =
+  | { status: 'ok'; event: MatchEventProjection }
+  | { status: 'unavailable' }
+  | { status: 'error' };
+
 async function authenticatedClient() {
   const result = await requireAuthenticatedClient();
   const { data, error } = await result.client.auth.getClaims();
@@ -99,19 +106,34 @@ export const listMatchEvents = createServerFn({ method: 'GET' })
   });
 export const getMatchEvent = createServerFn({ method: 'GET' })
   .validator(validateMatchDetail)
-  .handler(async ({ data }) => {
+  .handler(async ({ data }): Promise<MatchEventResult> => {
     const { client } = await authenticatedClient();
     const { data: result, error } = await client.rpc('get_match_event', {
       p_event_id: data.event_id
     });
-    if (error || !result) return null;
+    if (error) return { status: 'error' };
+    if (!result) return { status: 'unavailable' };
     const event = Array.isArray(result) ? result[0] : result;
-    if (!event || typeof event !== 'object' || Array.isArray(event)) return null;
-    const eventRecord = Object.fromEntries(Object.entries(event));
+    if (event == null) return { status: 'unavailable' };
+    if (typeof event !== 'object' || Array.isArray(event)) return { status: 'error' };
+    const eventRecord: MatchEventProjection = {};
+    for (const [key, value] of Object.entries(event)) {
+      if (
+        value !== null &&
+        typeof value !== 'string' &&
+        typeof value !== 'number' &&
+        typeof value !== 'boolean'
+      )
+        return { status: 'error' };
+      eventRecord[key] = value;
+    }
     try {
-      return { ...eventRecord, photo_url: await signMatchPhoto(client, data.event_id) };
+      return {
+        status: 'ok',
+        event: { ...eventRecord, photo_url: await signMatchPhoto(client, data.event_id) }
+      };
     } catch {
-      return { ...eventRecord, photo_url: null };
+      return { status: 'ok', event: { ...eventRecord, photo_url: null } };
     }
   });
 export const publishMatchEvent = createServerFn({ method: 'POST' })

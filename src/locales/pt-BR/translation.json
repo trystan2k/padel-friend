@@ -554,7 +554,8 @@
       "notes": "Inclui observações",
       "pricePerPlayer": "Preço por jogador",
       "openMaps": "Abrir mapa de {{venue}}",
-      "photoAlt": "Local da partida"
+      "photoAlt": "Local da partida",
+      "unlimited": "Ilimitado"
     },
     "detail": {
       "title": "Detalhes da partida",
@@ -573,7 +574,10 @@
       "copyLink": "Copiar link",
       "copied": "Copiado",
       "copyFailed": "Não foi possível copiar. Selecione a URL para copiar.",
-      "shareUrl": "Link da partida"
+      "shareUrl": "Link da partida",
+      "courtNotes": "Observações da quadra",
+      "paymentNote": "Observação de pagamento",
+      "duration": "Duração prevista"
     }
   },
   "matchCreate": {
@@ -668,7 +672,8 @@
       "savedVenueUnavailable": "Local salvo indisponível.",
       "inviteeUnavailable": "Um ou mais convidados estão indisponíveis.",
       "conflict": "Esta partida conflita com uma publicação existente.",
-      "publishFailed": "Não foi possível publicar a partida."
+      "publishFailed": "Não foi possível publicar a partida.",
+      "optionsUnavailable": "Não foi possível carregar as opções de criação. Tente novamente."
     }
   }
 }

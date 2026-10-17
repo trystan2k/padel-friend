@@ -90,20 +90,23 @@ describe('match event publication integration', () => {
         actor('pub-stranger')
       ]);
       const publicCommunity = crypto.randomUUID();
+      const madridCommunity = crypto.randomUUID();
       const venueId = crypto.randomUUID();
       const q = (value: string) => `'${value.replaceAll("'", "''")}'`;
       await fixtureSql(
         environment.env!,
         `do $$ begin
-      insert into public.communities(id,name,visibility,created_by,settings)
-        values (${q(publicCommunity)},'Publication fixture','public',${q(creator.id)},'{}'::jsonb);
+      insert into public.communities(id,name,visibility,created_by,settings) values
+        (${q(publicCommunity)},'Publication fixture','public',${q(creator.id)},'{"admin_defaults":{"timezone":"UTC","currency":"EUR","member_created_leagues_enabled":true}}'::jsonb),
+        (${q(madridCommunity)},'Madrid timezone fixture','public',${q(creator.id)},'{"admin_defaults":{"timezone":"Europe/Madrid","currency":"EUR","member_created_leagues_enabled":true}}'::jsonb);
       insert into public.community_members(community_id,user_id,role,status,valid_from,activated_at) values
         (${q(publicCommunity)},${q(creator.id)},'admin','active',now()-interval '1 minute',now()-interval '1 minute'),
         (${q(publicCommunity)},${q(alice.id)},'member','active',now()-interval '1 minute',now()-interval '1 minute'),
         (${q(publicCommunity)},${q(bob.id)},'member','active',now()-interval '1 minute',now()-interval '1 minute'),
         (${q(publicCommunity)},${q(carol.id)},'member','active',now()-interval '1 minute',now()-interval '1 minute'),
         (${q(publicCommunity)},${q(foreign.id)},'member','active',now()-interval '1 minute',now()-interval '1 minute'),
-        (${q(publicCommunity)},${q(pending.id)},'member','pending',now()-interval '1 minute',null);
+        (${q(publicCommunity)},${q(pending.id)},'member','pending',now()-interval '1 minute',null),
+        (${q(madridCommunity)},${q(creator.id)},'admin','active',now()-interval '1 minute',now()-interval '1 minute');
       insert into public.community_members(community_id,user_id,role,status,valid_from,valid_until,activated_at)
         values (${q(publicCommunity)},${q(inactive.id)},'member','inactive',now()-interval '2 minutes',now()-interval '1 minute',now()-interval '2 minutes');
       insert into public.community_venues(id,community_id,name,created_by,maps_url)
@@ -121,8 +124,11 @@ describe('match event publication integration', () => {
       // {community}/{event}/{creator}/{object}.(jpg|jpeg|png|webp), so every
       // payload that reaches the INSERT stage gets a real object uploaded by
       // the creator first.
-      const stagePhoto = async (eventId: string): Promise<string> => {
-        const path = `${publicCommunity}/${eventId}/${creator.id}/${crypto.randomUUID()}.png`;
+      const stagePhoto = async (
+        eventId: string,
+        communityId = publicCommunity
+      ): Promise<string> => {
+        const path = `${communityId}/${eventId}/${creator.id}/${crypto.randomUUID()}.png`;
         const upload = await creator.client.storage
           .from('match-event-photos')
           .upload(path, png, { contentType: 'image/png' });
@@ -133,8 +139,8 @@ describe('match event publication integration', () => {
       const fakePhoto = (eventId: string) =>
         `${publicCommunity}/${eventId}/${creator.id}/${crypto.randomUUID()}.png`;
 
-      const baseInput = () => ({
-        community_id: publicCommunity,
+      const baseInput = (communityId = publicCommunity) => ({
+        community_id: communityId,
         date: isoDate(3),
         start_time: '10:00',
         event_type: 'friendly',
@@ -159,15 +165,16 @@ describe('match event publication integration', () => {
       // photo so a later failure is attributable to the rule under test.
       const publishWithPhoto = async (
         overrides: Record<string, unknown> = {},
-        inviteeIds: string[] = []
+        inviteeIds: string[] = [],
+        communityId = publicCommunity
       ) => {
         const eventId = crypto.randomUUID();
-        const photo = await stagePhoto(eventId);
+        const photo = await stagePhoto(eventId, communityId);
         return {
           eventId,
           result: await creator.client.rpc('publish_match_event', {
             p_event_id: eventId,
-            p_input: { ...baseInput(), photo_path: photo, ...overrides },
+            p_input: { ...baseInput(communityId), photo_path: photo, ...overrides },
             p_invitee_ids: inviteeIds
           })
         };
@@ -320,6 +327,30 @@ describe('match event publication integration', () => {
       const startsAtMs = Date.parse(textOf(event['starts_at']));
       expect(startsAtMs).toBe(Date.parse(`${isoDate(3)}T10:00:00Z`));
       expect(Date.parse(textOf(event['registration_cutoff_at']))).toBe(startsAtMs - 3_600_000);
+
+      // Effective community admin defaults drive both the stored timezone snapshot and local start conversion.
+      const madridEvent = await publishWithPhoto(
+        { date: '2030-01-15', start_time: '10:00' },
+        [],
+        madridCommunity
+      );
+      expect(madridEvent.result.error).toBeNull();
+      const madridDetail = await creator.client.rpc('get_match_event', {
+        p_event_id: madridEvent.eventId
+      });
+      const madridPayload = recordPayload(madridDetail.data);
+      expect(madridPayload['timezone']).toBe('Europe/Madrid');
+      expect(Date.parse(textOf(madridPayload['starts_at']))).toBe(
+        Date.parse('2030-01-15T09:00:00Z')
+      );
+      const creationOptions = await creator.client.rpc('get_match_creation_options', {
+        p_community_id: madridCommunity
+      });
+      expect(creationOptions.error).toBeNull();
+      const madridOption = listPayload(recordPayload(creationOptions.data)['communities'])
+        .map(recordPayload)
+        .find((community) => community['id'] === madridCommunity);
+      expect(madridOption?.['timezone']).toBe('Europe/Madrid');
 
       // Creator auto-registration: exactly one accepted registration whose
       // accepted_at equals published_at.
@@ -496,7 +527,27 @@ describe('match event publication integration', () => {
       // Idempotency: exact retry returns the same id and creates nothing new.
       const idemEvent = crypto.randomUUID();
       const idemPhoto = await stagePhoto(idemEvent);
-      const idemInput = { ...baseInput(), photo_path: idemPhoto };
+      const idemDate = isoDate(3);
+      const idemCutoff = new Date(
+        Date.parse(idemDate + 'T10:00:00Z') - 2 * 3_600_000
+      ).toISOString();
+      const idemInput = {
+        ...baseInput(),
+        date: idemDate,
+        photo_path: idemPhoto,
+        price: '12.50',
+        currency: 'EUR',
+        cutoff_at: idemCutoff,
+        maximum_registrations: '8',
+        restriction_enabled: 'true',
+        min_level: '2',
+        max_level: '5',
+        notes: 'Bring water',
+        court_notes: 'Gate A',
+        duration_minutes: '90',
+        payment_note: 'Pay organizer',
+        court_booked: 'true'
+      };
       const idemFirst = await creator.client.rpc('publish_match_event', {
         p_event_id: idemEvent,
         p_input: idemInput,
@@ -519,6 +570,32 @@ describe('match event publication integration', () => {
       expect(idemCounts.data).toHaveLength(1);
       expect(idemCounts.data![0]!.match_event_registrations).toHaveLength(1);
       expect(idemCounts.data![0]!.match_event_invites).toHaveLength(1);
+      // Every normalized optional publication fact participates in replay identity.
+      const changedOptionalFacts: Array<{ field: string; override: Record<string, unknown> }> = [
+        { field: 'price', override: { price: '13.50' } },
+        { field: 'currency', override: { currency: 'USD' } },
+        {
+          field: 'cutoff',
+          override: { cutoff_at: new Date(Date.parse(idemCutoff) - 3_600_000).toISOString() }
+        },
+        { field: 'maximum', override: { maximum_registrations: '9' } },
+        { field: 'minimum restriction bound', override: { min_level: '2.5' } },
+        { field: 'maximum restriction bound', override: { max_level: '5.5' } },
+        { field: 'notes', override: { notes: 'Bring extra water' } },
+        { field: 'court notes', override: { court_notes: 'Gate B' } },
+        { field: 'duration', override: { duration_minutes: '120' } },
+        { field: 'payment note', override: { payment_note: 'Pay at venue' } },
+        { field: 'booked flag', override: { court_booked: 'false' } }
+      ];
+      for (const { field, override } of changedOptionalFacts) {
+        const conflict = await creator.client.rpc('publish_match_event', {
+          p_event_id: idemEvent,
+          p_input: { ...idemInput, ...override },
+          p_invitee_ids: [alice.id]
+        });
+        expect(conflict.error?.code, `${field} should conflict`).toBe('P0001');
+        expect(conflict.error?.message).toContain('MATCH_CONFLICT');
+      }
       // Any payload or invite-set divergence conflicts.
       const venueConflict = await creator.client.rpc('publish_match_event', {
         p_event_id: idemEvent,
@@ -583,17 +660,20 @@ describe('match event publication integration', () => {
         .eq('id', rollbackEvent);
       expect(rollbackRows.error).toBeNull();
       expect(rollbackRows.data).toHaveLength(0);
-      // Rollback after the row was built: a past start passes every RPC
-      // validation and the photo lock, then fails on the creator-registration
-      // trigger, so the whole statement rolls back.
+      // Rollback after the row was built: with a genuinely staged photo a past
+      // start passes every RPC validation and the photo lock, then fails on the
+      // creator-registration trigger, so the whole statement rolls back. An
+      // empty or fake photo would be rejected by the photo lock before the
+      // trigger ever runs, hiding whether the future-start guard is enforced.
       const pastPhotoEvent = crypto.randomUUID();
-      await stagePhoto(pastPhotoEvent);
+      const pastPhoto = await stagePhoto(pastPhotoEvent);
       const pastPublish = await creator.client.rpc('publish_match_event', {
         p_event_id: pastPhotoEvent,
-        p_input: { ...baseInput(), date: isoDate(-2) },
+        p_input: { ...baseInput(), date: isoDate(-2), photo_path: pastPhoto },
         p_invitee_ids: [alice.id]
       });
-      expect(pastPublish.error).not.toBeNull();
+      expect(pastPublish.error?.code).toBe('23514');
+      expect(pastPublish.error?.message).toContain('Match must start in the future');
       const pastRows = await creator.client
         .from('match_events')
         .select('id, match_event_registrations(user_id), match_event_invites(invitee_user_id)')

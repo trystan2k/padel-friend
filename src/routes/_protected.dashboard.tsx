@@ -41,7 +41,8 @@ function Dashboard() {
       <header>
         <NotificationBadge count={notificationCount ?? null} />
         <nav aria-label={t('matches.navigationLabel')}>
-          <Link to="/matches">{t('matches.navigationLabel')}</Link>
+          <Link to="/matches">{t('matches.navigationLabel')}</Link>{' '}
+          <Link to="/matches/create">{t('matches.create')}</Link>
         </nav>
       </header>
       <PlayerProfile initialProfile={profile} />

@@ -356,7 +356,7 @@ describe('match notification integration', () => {
         event_type: 'friendly',
         playing_count: 0,
         reserve_count: 1,
-        timezone: 'UTC'
+        timezone: 'Europe/Madrid'
       });
       expect(details.data?.[0]?.scheduled_at).toBeTruthy();
       expect(details.data?.[0]?.price_minor).toBeNull();

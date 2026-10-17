@@ -3,13 +3,25 @@ import { Link } from '@tanstack/react-router';
 import { useTranslation } from 'react-i18next';
 import {
   acceptMyNotificationInvitation,
-  getMyNotificationTarget,
+  getMyMatchNotificationContext,
+  getMyNotificationTargetV2,
   markNotificationRead
 } from './notifications.functions';
 import type { NotificationTarget } from './notification-target';
 import type { MatchNotificationContext } from './notification-target';
 import { styles } from './notifications.styles';
 import * as stylex from '@stylexjs/stylex';
+
+async function resolveNotificationTarget(notificationId: string) {
+  const target = await getMyNotificationTargetV2({ data: { notificationId } });
+  const matchContext =
+    target.target_status === 'match_available' && target.match_available && target.match_event_id
+      ? await getMyMatchNotificationContext({ data: { notificationId } })
+      : null;
+
+  return { target, matchContext };
+}
+
 export function NotificationDetailPage({
   notificationId,
   target: initialTarget,
@@ -21,6 +33,7 @@ export function NotificationDetailPage({
 }) {
   const { t, i18n } = useTranslation();
   const [target, setTarget] = useState(initialTarget);
+  const [currentMatchContext, setCurrentMatchContext] = useState(matchContext ?? null);
   const [accepted, setAccepted] = useState(false);
   const [announcement, setAnnouncement] = useState<
     'accepted' | 'activeMembership' | 'pendingMembership' | null
@@ -65,10 +78,11 @@ export function NotificationDetailPage({
 
     let active = true;
     setTargetError(false);
-    void getMyNotificationTarget({ data: { notificationId } })
-      .then((nextTarget) => {
+    void resolveNotificationTarget(notificationId)
+      .then(({ target: nextTarget, matchContext: nextMatchContext }) => {
         if (!active) return;
         setTarget(nextTarget);
+        setCurrentMatchContext(nextMatchContext);
         if (accepted && nextTarget.target_status === 'membership_available')
           setAnnouncement(
             nextTarget.membership_status === 'active' ? 'activeMembership' : 'pendingMembership'
@@ -91,7 +105,9 @@ export function NotificationDetailPage({
       setAccepted(true);
       setAnnouncement('accepted');
       try {
-        setTarget(await getMyNotificationTarget({ data: { notificationId } }));
+        const next = await resolveNotificationTarget(notificationId);
+        setTarget(next.target);
+        setCurrentMatchContext(next.matchContext);
       } catch {
         setTargetError(true);
       }
@@ -115,12 +131,13 @@ export function NotificationDetailPage({
     }
     if (targetError) {
       try {
-        const nextTarget = await getMyNotificationTarget({ data: { notificationId } });
-        setTarget(nextTarget);
+        const next = await resolveNotificationTarget(notificationId);
+        setTarget(next.target);
+        setCurrentMatchContext(next.matchContext);
         setTargetError(false);
-        if (accepted && nextTarget.target_status === 'membership_available')
+        if (accepted && next.target.target_status === 'membership_available')
           setAnnouncement(
-            nextTarget.membership_status === 'active' ? 'activeMembership' : 'pendingMembership'
+            next.target.membership_status === 'active' ? 'activeMembership' : 'pendingMembership'
           );
       } catch {
         setTargetError(true);
@@ -145,25 +162,37 @@ export function NotificationDetailPage({
         target.match_event_id ? (
           <>
             <h1>{t('notifications.kinds.match_event_invitation')}</h1>
-            {matchContext ? (
+            {currentMatchContext ? (
               <>
                 <p>
-                  {t('notifications.match.invitedBy', { name: matchContext.creator_display_name })}
+                  {t('notifications.match.invitedBy', {
+                    name: currentMatchContext.creator_display_name
+                  })}
                 </p>
                 <p>
-                  {t('notifications.match.venue')}: {matchContext.venue}
+                  {t('notifications.match.venue')}: {currentMatchContext.venue}
                 </p>
                 <p>
                   {t('notifications.match.startsAt')}:{' '}
                   {new Intl.DateTimeFormat(i18n.language, {
                     dateStyle: 'medium',
                     timeStyle: 'short',
-                    timeZone: matchContext.timezone
-                  }).format(new Date(matchContext.scheduled_at))}
+                    timeZone: currentMatchContext.timezone
+                  }).format(new Date(currentMatchContext.scheduled_at))}
                 </p>
               </>
             ) : (
               <p>{t('notifications.match.unavailable')}</p>
+            )}
+            {hasError && <p role="alert">{t('notifications.targetError')}</p>}
+            {hasError && (
+              <button
+                {...stylex.props(styles.button)}
+                disabled={pending || isOnline !== true}
+                onClick={() => void retry()}
+              >
+                {t('notifications.retry')}
+              </button>
             )}
             <a
               href={`/matches/${encodeURIComponent(target.match_event_id)}`}

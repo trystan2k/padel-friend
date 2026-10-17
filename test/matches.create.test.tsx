@@ -205,7 +205,10 @@ describe('create match wizard', () => {
   it('applies authoritative level defaults, supports edits and disabling, and preserves edits across late options', async () => {
     const user = userEvent.setup();
     const refreshed = deferred<any>();
-    mocks.options.mockResolvedValueOnce(options()).mockReturnValueOnce(refreshed.promise);
+    mocks.options
+      .mockResolvedValueOnce(options())
+      .mockResolvedValueOnce(options())
+      .mockReturnValueOnce(refreshed.promise);
     await mount();
     const min = input(en.matchCreate.fields.minLevel);
     expect(min.value).toBe('2');
@@ -222,11 +225,22 @@ describe('create match wizard', () => {
     expect(screen.queryByLabelText(en.matchCreate.fields.minLevel)).toBeNull();
   });
 
+  it('loads saved venues using the initial community-scoped RPC response', async () => {
+    await mount();
+    await waitFor(() =>
+      expect(mocks.options).toHaveBeenCalledWith({ data: { community_id: idA } })
+    );
+    expect(
+      select(en.matchCreate.fields.savedVenue).querySelectorAll('option').length
+    ).toBeGreaterThan(1);
+  });
+
   it('ignores creation-options responses from an older community selection', async () => {
     const user = userEvent.setup();
     const stale = deferred<any>();
     const current = deferred<any>();
     mocks.options
+      .mockResolvedValueOnce(options())
       .mockResolvedValueOnce(options())
       .mockReturnValueOnce(stale.promise)
       .mockReturnValueOnce(current.promise);
@@ -276,7 +290,7 @@ describe('create match wizard', () => {
   it('copies an authorized saved-venue photo into the event photo path without requiring an upload', async () => {
     const user = userEvent.setup();
     const savedVenueId = '33333333-3333-4333-8333-333333333333';
-    mocks.options.mockResolvedValueOnce({
+    const photoOptions = {
       ...options(),
       saved_venues: [
         {
@@ -286,7 +300,8 @@ describe('create match wizard', () => {
           maps_url: 'https://www.google.com/maps/place/SavedCourt'
         }
       ]
-    });
+    };
+    mocks.options.mockResolvedValueOnce(photoOptions).mockResolvedValueOnce(photoOptions);
     await mount();
     await user.selectOptions(select(en.matchCreate.fields.savedVenue), savedVenueId);
     await waitFor(() => expect(mocks.copy).toHaveBeenCalledOnce());
@@ -353,6 +368,22 @@ describe('create match wizard', () => {
     mocks.sign.mockRejectedValueOnce(new Error('unavailable'));
     await user.upload(input(en.matchCreate.fields.photo), pngFixture());
     expect(await screen.findByText(en.matchCreate.photo.unavailable)).toBeTruthy();
+  });
+
+  it('resolves and decodes the signed review image', async () => {
+    const user = userEvent.setup();
+    await mount();
+    await fillRequired(user);
+    await attachPhoto(user);
+    await goReview(user);
+    const preview = await screen.findByRole('img', { name: en.matchCreate.fields.photo });
+    expect(preview.getAttribute('src')).toBe('https://signed.test/photo');
+    Object.defineProperties(preview, {
+      complete: { configurable: true, value: true },
+      naturalWidth: { configurable: true, value: 640 }
+    });
+    fireEvent.load(preview);
+    expect(preview.getAttribute('data-decoded')).toBe('true');
   });
 
   it('requires photo, supports replacement/removal cleanup, and disables publish until upload completes', async () => {
@@ -522,6 +553,54 @@ describe('create match wizard', () => {
     await waitFor(() => expect(mocks.navigate).toHaveBeenCalled());
   });
 
+  it('publishes corrected details after a rejection with a fresh publication identity', async () => {
+    const user = userEvent.setup();
+    mocks.publish
+      .mockRejectedValueOnce(new Error('MATCH_PUBLISH_FAILED'))
+      .mockResolvedValueOnce({ event_id: 'ok' });
+    await mount();
+    await fillRequired(user);
+    await attachPhoto(user);
+    await goReview(user);
+    await user.click(button(en.matchCreate.publish));
+    await screen.findByText(en.matchCreate.errors.publishFailed);
+    const rejectedId = mocks.publish.mock.calls[0]?.[0].data.event_id;
+    await user.click(button(en.matchCreate.previous));
+    await user.click(button(en.matchCreate.previous));
+    await user.click(button(en.matchCreate.previous));
+    await user.clear(input(en.matchCreate.fields.venueName));
+    await user.type(input(en.matchCreate.fields.venueName), 'Corrected court');
+    await attachPhoto(user);
+    await goReview(user);
+    await user.click(button(en.matchCreate.publish));
+    await waitFor(() => expect(mocks.publish).toHaveBeenCalledTimes(2));
+    expect(mocks.publish.mock.calls[1]?.[0].data.event_id).not.toBe(rejectedId);
+    expect(mocks.publish.mock.calls[1]?.[0].data.input.venue_name).toBe('Corrected court');
+  });
+
+  it('keeps a replacement photo bound after failed publication', async () => {
+    const user = userEvent.setup();
+    mocks.publish
+      .mockRejectedValueOnce(new Error('MATCH_PUBLISH_FAILED'))
+      .mockResolvedValueOnce({ event_id: 'ok' });
+    await mount();
+    await fillRequired(user);
+    const originalPhoto = await attachPhoto(user);
+    await goReview(user);
+    await user.click(button(en.matchCreate.publish));
+    await screen.findByText(en.matchCreate.errors.publishFailed);
+    await user.click(button(en.matchCreate.previous));
+    await user.click(button(en.matchCreate.previous));
+    await user.click(button(en.matchCreate.previous));
+    const replacementPhoto = await attachPhoto(user);
+    await goReview(user);
+    await user.click(button(en.matchCreate.publish));
+    await waitFor(() => expect(mocks.publish).toHaveBeenCalledTimes(2));
+    expect(mocks.publish.mock.calls[1]?.[0].data.input.photo_path).toBe(replacementPhoto);
+    expect(mocks.remove).toHaveBeenCalledWith({ data: { object_key: originalPhoto } });
+    expect(mocks.remove).not.toHaveBeenCalledWith({ data: { object_key: replacementPhoto } });
+  });
+
   it('renders localized community discovery empty state and avoids unsupported controls or raw enum identifiers', async () => {
     mocks.options.mockResolvedValueOnce(options([], null, null));
     render(
@@ -540,5 +619,16 @@ describe('create match wizard', () => {
         /ranked|league|filter|pay now|book now|register|PREDEFINED_TEAMS|POST_MATCH_TEAMS/i
       )
     ).toBeNull();
+  });
+
+  it('distinguishes options failure from an empty membership state', async () => {
+    mocks.options.mockRejectedValueOnce(new Error('offline'));
+    render(
+      <I18nextProvider i18n={createI18n('en')}>
+        <CreateMatchPage />
+      </I18nextProvider>
+    );
+    expect(await screen.findByText(en.matchCreate.errors.optionsUnavailable)).toBeTruthy();
+    expect(screen.queryByText(en.matchCreate.noCommunities)).toBeNull();
   });
 });

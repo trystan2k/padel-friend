@@ -35,7 +35,7 @@ export function MatchDetailsForm({
     </label>
   );
   return (
-    <div {...stylex.props(s.fields)}>
+    <div {...stylex.props(s.fields, s.section)}>
       <label {...stylex.props(s.field)}>
         {t('matchCreate.fields.community')}
         <select

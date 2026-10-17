@@ -3,14 +3,33 @@ import * as stylex from '@stylexjs/stylex';
 export const matchesStyles = stylex.create({
   page: {
     display: 'grid',
-    gap: 'var(--space-5)',
+    gap: 'var(--space-8)',
     width: '100%',
     marginInline: 'auto',
-    padding: 'var(--space-4)',
+    padding: 'var(--space-18)',
     color: 'var(--color-text)'
   },
   heading: { display: 'grid', gap: 'var(--space-2)' },
-  tabs: { display: 'flex', flexWrap: 'wrap', gap: 'var(--space-2)' },
+  title: {
+    margin: 0,
+    fontFamily: 'var(--font-family-heading)',
+    fontSize: 'var(--font-size-24)',
+    lineHeight: 'var(--font-line-height-tight)'
+  },
+  sectionTitle: {
+    margin: 0,
+    fontFamily: 'var(--font-family-heading)',
+    fontSize: 'var(--font-size-18)',
+    lineHeight: 'var(--font-line-height-tight)'
+  },
+  tabs: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    gap: 'var(--space-2)',
+    minHeight: 'calc(var(--space-40) + var(--space-4))',
+    borderRadius: 'var(--radius-12)',
+    backgroundColor: 'var(--color-surface-2)'
+  },
   link: {
     display: 'inline-flex',
     alignItems: 'center',
@@ -23,15 +42,25 @@ export const matchesStyles = stylex.create({
       outlineOffset: 'var(--space-1)'
     }
   },
-  list: { display: 'grid', gap: 'var(--space-4)' },
+  activeLink: {
+    backgroundColor: 'var(--color-surface)',
+    fontWeight: 'var(--font-weight-semibold)',
+    textDecoration: 'underline',
+    textUnderlineOffset: 'var(--space-1)'
+  },
+  list: { display: 'grid', gap: 'var(--space-8)' },
   card: {
     display: 'grid',
     gap: 'var(--space-3)',
     padding: 'var(--space-4)',
-    border: 'var(--border-width-sm) solid var(--color-line)',
-    borderRadius: 'var(--radius-10)',
+    borderRadius: 'var(--radius-12)',
     backgroundColor: 'var(--color-surface)',
     overflowWrap: 'anywhere'
+  },
+  detailSurface: {
+    padding: 'var(--space-18)',
+    borderRadius: 'var(--radius-12)',
+    backgroundColor: 'var(--color-surface)'
   },
   image: {
     width: '100%',
@@ -51,19 +80,50 @@ export const matchesStyles = stylex.create({
     minHeight: 'calc(var(--space-40) + var(--space-4))',
     paddingInline: 'var(--space-3)',
     borderRadius: 'var(--radius-8)',
-    border: 'var(--border-width-sm) solid var(--color-line)',
-    backgroundColor: 'var(--color-surface)',
-    color: 'var(--color-text)',
+    backgroundColor: 'var(--color-green)',
+    color: 'var(--color-on-hero)',
     cursor: 'pointer',
     ':focus-visible': {
       outline: 'var(--border-width-lg) solid var(--color-green)',
       outlineOffset: 'var(--space-1)'
     }
   },
+  primaryAction: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 'calc(var(--space-40) + var(--space-4))',
+    paddingInline: 'var(--space-4)',
+    borderRadius: 'var(--radius-8)',
+    backgroundColor: 'var(--color-green)',
+    color: 'var(--color-on-hero)',
+    textDecoration: 'none',
+    fontWeight: 'var(--font-weight-semibold)',
+    ':focus-visible': {
+      outline: 'var(--border-width-lg) solid var(--color-text)',
+      outlineOffset: 'var(--space-1)'
+    }
+  },
+  cardLink: {
+    color: 'var(--color-green)',
+    textDecoration: 'underline',
+    textUnderlineOffset: 'var(--space-1)',
+    ':focus-visible': {
+      outline: 'var(--border-width-lg) solid var(--color-green)',
+      outlineOffset: 'var(--space-1)'
+    }
+  },
+  empty: {
+    display: 'grid',
+    justifyItems: 'start',
+    gap: 'var(--space-3)',
+    padding: 'var(--space-5)',
+    borderRadius: 'var(--radius-10)',
+    backgroundColor: 'var(--color-surface)'
+  },
   input: {
     minHeight: 'calc(var(--space-40) + var(--space-4))',
     paddingInline: 'var(--space-3)',
-    border: 'var(--border-width-sm) solid var(--color-line)',
     borderRadius: 'var(--radius-8)',
     backgroundColor: 'var(--color-surface)',
     color: 'var(--color-text)'

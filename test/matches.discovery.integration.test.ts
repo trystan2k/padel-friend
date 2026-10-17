@@ -518,7 +518,12 @@ describe('match event discovery integration', () => {
       expect(creatorOptions.error).toBeNull();
       const creatorData = recordPayload(creatorOptions.data);
       expect(creatorData['communities']).toEqual([
-        { id: publicCommunity, name: 'Discovery public', timezone: 'UTC', currency: 'EUR' }
+        {
+          id: publicCommunity,
+          name: 'Discovery public',
+          timezone: 'Europe/Madrid',
+          currency: 'EUR'
+        }
       ]);
       expect(creatorData['level_defaults']).toEqual({ min: 2.7, max: 4.7, level: 3.2 });
       const venues = listPayload(creatorData['saved_venues']);
@@ -544,14 +549,24 @@ describe('match event discovery integration', () => {
         p_community_id: publicCommunity
       });
       expect(recordPayload(memberOptions.data)['communities']).toEqual([
-        { id: publicCommunity, name: 'Discovery public', timezone: 'UTC', currency: 'EUR' }
+        {
+          id: publicCommunity,
+          name: 'Discovery public',
+          timezone: 'Europe/Madrid',
+          currency: 'EUR'
+        }
       ]);
       const memberPrivateOptions = await member.client.rpc('get_match_creation_options', {
         p_community_id: privateCommunity
       });
       // member belongs to the private community too, so its saved venue appears.
       expect(recordPayload(memberPrivateOptions.data)['communities']).toEqual([
-        { id: privateCommunity, name: 'Discovery private', timezone: 'UTC', currency: 'EUR' }
+        {
+          id: privateCommunity,
+          name: 'Discovery private',
+          timezone: 'Europe/Madrid',
+          currency: 'EUR'
+        }
       ]);
       expect(recordPayload(memberPrivateOptions.data)['saved_venues']).toEqual([
         {

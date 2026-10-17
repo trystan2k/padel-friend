@@ -554,7 +554,8 @@
       "notes": "Notes included",
       "pricePerPlayer": "Price per player",
       "openMaps": "Open map for {{venue}}",
-      "photoAlt": "Match venue"
+      "photoAlt": "Match venue",
+      "unlimited": "Unlimited"
     },
     "detail": {
       "title": "Match details",
@@ -573,7 +574,10 @@
       "copyLink": "Copy link",
       "copied": "Copied",
       "copyFailed": "Could not copy link. Select the URL to copy it.",
-      "shareUrl": "Match link"
+      "shareUrl": "Match link",
+      "courtNotes": "Court notes",
+      "paymentNote": "Payment note",
+      "duration": "Expected duration"
     }
   },
   "matchCreate": {
@@ -668,7 +672,8 @@
       "savedVenueUnavailable": "Saved venue is unavailable.",
       "inviteeUnavailable": "One or more invitees are unavailable.",
       "conflict": "This match conflicts with an existing publication.",
-      "publishFailed": "Could not publish the match."
+      "publishFailed": "Could not publish the match.",
+      "optionsUnavailable": "Could not load match creation options. Try again."
     }
   }
 }

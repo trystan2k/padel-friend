@@ -95,6 +95,26 @@ describe('notification server functions', () => {
     ]).toHaveLength(6);
   });
 
+  it('preserves the legacy v1 community target resolver contract', async () => {
+    const communityTarget = {
+      target_status: 'invitation_available',
+      community_id: id,
+      community_name: 'Padel Norte',
+      invitation_id: '223e4567-e89b-12d3-a456-426614174001',
+      membership_status: null
+    };
+    const single = vi.fn<() => Promise<{ data: typeof communityTarget; error: null }>>();
+    single.mockResolvedValue({ data: communityTarget, error: null });
+    const rpc = vi.fn<(...args: unknown[]) => { single: typeof single }>(() => ({ single }));
+    mocks.client = { rpc };
+
+    await expect(getMyNotificationTarget({ data: { notificationId: id } })).resolves.toEqual(
+      communityTarget
+    );
+    expect(rpc).toHaveBeenCalledWith('get_my_notification_target', { p_notification_id: id });
+    expect(single).toHaveBeenCalledTimes(1);
+  });
+
   it('round-trips a raw Postgres cursor from one list page into the next request', async () => {
     const cursorId = '223e4567-e89b-12d3-a456-426614174001';
     const newerTimestamp = '2026-10-15T12:00:00.123456+00:00';

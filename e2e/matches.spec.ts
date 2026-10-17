@@ -14,6 +14,8 @@ type Copy = {
   matches: {
     navigationLabel: string;
     unavailable: string;
+    error: string;
+    retry: string;
     back: string;
     empty: { available: string; past: string };
     badges: { invited: string; resultActionRequired: string };
@@ -177,6 +179,14 @@ async function createCommunityViaRpc(
   });
   if (created.error || typeof created.data !== 'string')
     throw created.error ?? new Error('Community fixture failed');
+  // These journeys deliberately resolve event instants in the UTC zone; pin the
+  // effective admin defaults so a community never inherits a localized default
+  // (Europe/Madrid) that would shift every scheduled start.
+  await fixtureSql(
+    `update public.communities set settings = coalesce(settings,'{}'::jsonb) || ` +
+      `'{"timezone":"UTC","admin_defaults":{"timezone":"UTC","currency":"EUR","member_created_leagues_enabled":true}}'::jsonb ` +
+      `where id = '${created.data}';`
+  );
   return created.data;
 }
 
@@ -871,7 +881,7 @@ test('invite_only stays invisible until an explicit invitation and never auto-re
   }
 });
 
-test('unknown or malformed events resolve to the graceful unavailable state', async ({
+test('unknown events resolve to the graceful unavailable state, malformed ids to a retryable error', async ({
   browser
 }) => {
   test.setTimeout(120_000);
@@ -881,13 +891,17 @@ test('unknown or malformed events resolve to the graceful unavailable state', as
     const page = await context.newPage();
     await signIn(page, viewer);
     // There is no delete API (events are immutable), so a never-published UUID is the
-    // truthful stand-in for a missing/deleted event: identical unavailable resolution.
-    for (const target of [crypto.randomUUID(), 'not-a-uuid']) {
-      await page.goto(`/matches/${target}`);
-      await waitForHydratedPage(page);
-      await expect(page.getByText(en.matches.unavailable)).toBeVisible();
-      await expect(page.getByRole('link', { name: en.matches.back })).toBeVisible();
-    }
+    // truthful stand-in for a missing/deleted event: the graceful unavailable output.
+    await page.goto(`/matches/${crypto.randomUUID()}`);
+    await waitForHydratedPage(page);
+    await expect(page.getByText(en.matches.unavailable)).toBeVisible();
+    await expect(page.getByRole('link', { name: en.matches.back })).toBeVisible();
+    // A malformed id never reaches the RPC (validator rejects it before the lookup), so
+    // it resolves to the retryable error state, exactly like a transient detail failure.
+    await page.goto('/matches/not-a-uuid');
+    await waitForHydratedPage(page);
+    await expect(page.getByRole('alert')).toContainText(en.matches.error);
+    await expect(page.getByRole('button', { name: en.matches.retry })).toBeVisible();
     await page.getByRole('link', { name: en.matches.back }).click();
     await expect(page).toHaveURL(/\/matches$/);
   } finally {

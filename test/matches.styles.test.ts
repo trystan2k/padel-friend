@@ -21,4 +21,20 @@ describe('match styles', () => {
       'stylex.props(s.button)'
     );
   });
+  it('matches the measured match surfaces, rhythm, tab treatment, and card radius', () => {
+    const styles = readFileSync('src/features/matches/matches.styles.ts', 'utf8');
+    const createStyles = readFileSync('src/features/matches/create-match.styles.ts', 'utf8');
+    expect(styles).toContain("padding: 'var(--space-18)'");
+    expect(styles).toContain("gap: 'var(--space-8)',\n    width: '100%'");
+    expect(styles).toContain("gap: 'var(--space-8)' },");
+    expect(styles).toContain("backgroundColor: 'var(--color-surface-2)'");
+    expect(styles).toContain("backgroundColor: 'var(--color-surface)',\n    fontWeight");
+    expect(styles).toContain("borderRadius: 'var(--radius-12)'");
+    expect(createStyles).toContain("padding: 'var(--space-18)'");
+    expect(createStyles).toContain("form: { display: 'grid', gap: 'var(--space-10)' }");
+    expect(createStyles).toContain("width: '100%',\n    backgroundColor: 'var(--color-green)'");
+    expect(readFileSync('src/features/matches/CreateMatchPage.tsx', 'utf8')).toContain(
+      'stylex.props(s.button, s.primaryButton)'
+    );
+  });
 });
