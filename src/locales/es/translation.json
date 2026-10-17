@@ -453,7 +453,10 @@
       "community_membership_denied": "Rechazaron tu membresía en la comunidad.",
       "community_membership_removed": "Se eliminó tu membresía en la comunidad.",
       "match_event_published": "Hay un nuevo partido abierto disponible",
-      "match_event_invitation": "Te invitaron a un partido"
+      "match_event_invitation": "Te invitaron a un partido",
+      "match_registration_requested": "Nueva solicitud de ingreso",
+      "match_registration_approved": "Solicitud aprobada",
+      "match_registration_rejected": "Solicitud rechazada"
     },
     "match": {
       "openEvent": "Abrir evento",
@@ -466,6 +469,10 @@
       "reserve_one": "{{count}} reserva",
       "reserve_other": "{{count}} reservas",
       "pricePerPlayer": "Precio por jugador",
+      "registrationRequestBody": "{{name}} pidió unirse a {{event}}.",
+      "registrationApprovedPlayingBody": "Estás jugando · Grupo {{group}} en {{event}}. Aprobado a las {{time}}.",
+      "registrationApprovedReserveBody": "Estás de reserva · Nº {{position}} en {{event}}. Aprobado a las {{time}}.",
+      "registrationRejectedBody": "El organizador rechazó tu solicitud para {{event}}.",
       "unavailable": "Esta notificación de partido ya no está disponible."
     }
   },

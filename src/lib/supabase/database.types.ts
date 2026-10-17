@@ -839,6 +839,10 @@ export type Database = {
         }
         Returns: string
       }
+      decide_match_registration: {
+        Args: { p_decision: string; p_match_event_id: string; p_user_id: string }
+        Returns: Json
+      }
       finalize_community_venue_photo: {
         Args: { p_community_id: string; p_object_key: string; p_venue_id: string }
         Returns: undefined
@@ -882,6 +886,8 @@ export type Database = {
       get_my_match_notification_contexts: {
         Args: { p_notification_ids: string[] }
         Returns: {
+          caller_accepted_order: number
+          caller_participation: Database["public"]["Enums"]["match_registration_participation"]
           creator_display_name: string
           currency: string
           event_type: Database["public"]["Enums"]["match_event_type"]
@@ -889,12 +895,14 @@ export type Database = {
           notification_id: string
           playing_count: number
           price_minor: number
+          requester_display_name: string
           reserve_count: number
           scheduled_at: string
           timezone: string
           venue: string
         }[]
       }
+      get_my_match_registration: { Args: { p_match_event_id: string }; Returns: Json }
       get_my_notification_target: {
         Args: { p_notification_id: string }
         Returns: {
@@ -945,6 +953,10 @@ export type Database = {
           valid_until: string
         }[]
       }
+      list_match_event_registration_requests: {
+        Args: { p_match_event_id: string }
+        Returns: Json[]
+      }
       list_match_events: {
         Args: {
           p_as_of?: string
@@ -954,6 +966,43 @@ export type Database = {
           p_limit?: number
         }
         Returns: Json[]
+      }
+      lock_match_event_registration: {
+        Args: { p_event_id: string }
+        Returns: {
+          community_id: string
+          court_booked: boolean
+          court_notes: string | null
+          created_at: string
+          created_by: string
+          currency: string | null
+          duration_minutes: number | null
+          event_type: Database["public"]["Enums"]["match_event_type"]
+          id: string
+          maps_url: string
+          max_level: number | null
+          maximum_registrations: number | null
+          min_level: number | null
+          notes: string | null
+          payment_note: string | null
+          photo_path: string
+          price_minor: number | null
+          published_at: string
+          registration_cutoff_at: string
+          restriction_enabled: boolean
+          saved_venue_id: string | null
+          starts_at: string
+          team_assignment_mode: Database["public"]["Enums"]["match_team_assignment_mode"]
+          timezone: string
+          venue_name: string
+          visibility: Database["public"]["Enums"]["match_event_visibility"]
+        }
+        SetofOptions: {
+          from: "*"
+          to: "match_events"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       mark_all_notifications_read: { Args: { p_before: string }; Returns: number }
       mark_community_notification_read: {
@@ -967,6 +1016,10 @@ export type Database = {
       match_event_local_start: {
         Args: { p_date: string; p_time: string; p_zone: string }
         Returns: string
+      }
+      match_registration_is_member: {
+        Args: { p_community_id: string; p_user_id: string }
+        Returns: boolean
       }
       onboard_player: {
         Args: {
@@ -1008,6 +1061,10 @@ export type Database = {
       publish_match_event: {
         Args: { p_event_id: string; p_input: Json; p_invitee_ids: string[] }
         Returns: string
+      }
+      reconcile_match_registration_participation: {
+        Args: { p_match_event_id: string }
+        Returns: undefined
       }
       safe_match_photo_uuid: { Args: { p_value: string }; Returns: string }
       safe_venue_photo_uuid: { Args: { p_value: string }; Returns: string }
@@ -1085,6 +1142,7 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      submit_match_registration: { Args: { p_match_event_id: string }; Returns: Json }
       update_community_admin_defaults: {
         Args: { p_community_id: string; p_defaults: Json }
         Returns: Json

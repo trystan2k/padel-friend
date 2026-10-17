@@ -264,7 +264,11 @@ describe('match registration visibility integration', () => {
       const totalRows = 15;
       const creatorRows = await visibleRows(creator);
       expect(creatorRows).toHaveLength(totalRows);
-      expect(await visibleRows(admin)).toHaveLength(totalRows);
+      // Finding F10 (PAF-5.2): pending/resolution metadata is visible only to the
+      // requester and the creator; a community Admin is not an approver, so the
+      // admin roster read narrows to the accepted rows only (5 creator slots +
+      // the 2 explicitly accepted members).
+      expect(await visibleRows(admin)).toHaveLength(7);
       // Ordinary actors see exactly their own rows; hidden event ids never leak
       // through the roster table.
       const ownRow = async (who: Actor, eventKey: string) => {

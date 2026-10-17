@@ -22,6 +22,51 @@ async function resolveNotificationTarget(notificationId: string) {
   return { target, matchContext };
 }
 
+type RegistrationNotificationKind =
+  | 'match_registration_requested'
+  | 'match_registration_approved'
+  | 'match_registration_rejected';
+
+// Existing kinds keep their current invitation detail behaviour; only the three
+// PAF-5.2 registration kinds opt into their own typed heading and body (F2).
+function registrationNotificationKind(
+  kind: string | null | undefined
+): RegistrationNotificationKind | null {
+  return kind === 'match_registration_requested' ||
+    kind === 'match_registration_approved' ||
+    kind === 'match_registration_rejected'
+    ? kind
+    : null;
+}
+
+type ApprovedPlacement =
+  | { participation: 'playing'; group: number }
+  | { participation: 'reserve'; position: number };
+
+// The playing/reserve variant is chosen strictly from the projection's
+// caller_participation; the numeric group/position derive from the immutable
+// accepted ordinal so nothing is inferred from counts alone.
+function approvedPlacement(context: MatchNotificationContext): ApprovedPlacement | null {
+  const order = context.caller_accepted_order;
+  if (typeof order !== 'number' || !Number.isSafeInteger(order) || order < 1) return null;
+  if (context.caller_participation === 'playing')
+    return { participation: 'playing', group: Math.max(1, Math.ceil(order / 4)) };
+  if (context.caller_participation === 'reserve')
+    return { participation: 'reserve', position: Math.max(1, order - context.playing_count) };
+  return null;
+}
+
+function formatMatchTime(
+  value: string | null | undefined,
+  timeZone: string,
+  locale: string
+): string | null {
+  if (!value) return null;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return null;
+  return new Intl.DateTimeFormat(locale, { timeStyle: 'short', timeZone }).format(date);
+}
+
 export function NotificationDetailPage({
   notificationId,
   target: initialTarget,
@@ -146,6 +191,15 @@ export function NotificationDetailPage({
     setPending(false);
   }
 
+  const registrationKind = registrationNotificationKind(target.kind);
+  const approvedVariant =
+    registrationKind === 'match_registration_approved' && currentMatchContext
+      ? approvedPlacement(currentMatchContext)
+      : null;
+  const approvedAt =
+    registrationKind === 'match_registration_approved' && currentMatchContext
+      ? formatMatchTime(target.created_at, currentMatchContext.timezone, i18n.language)
+      : null;
   const hasError = targetError || readError;
   return (
     <main {...stylex.props(styles.page)}>
@@ -161,14 +215,49 @@ export function NotificationDetailPage({
         target.match_available &&
         target.match_event_id ? (
           <>
-            <h1>{t('notifications.kinds.match_event_invitation')}</h1>
+            <h1>
+              {registrationKind
+                ? t(`notifications.kinds.${registrationKind}`)
+                : t('notifications.kinds.match_event_invitation')}
+            </h1>
             {currentMatchContext ? (
               <>
-                <p>
-                  {t('notifications.match.invitedBy', {
-                    name: currentMatchContext.creator_display_name
-                  })}
-                </p>
+                {registrationKind === null ? (
+                  <p>
+                    {t('notifications.match.invitedBy', {
+                      name: currentMatchContext.creator_display_name
+                    })}
+                  </p>
+                ) : registrationKind === 'match_registration_requested' ? (
+                  <p>
+                    {t('notifications.match.registrationRequestBody', {
+                      name: currentMatchContext.requester_display_name ?? '',
+                      event: currentMatchContext.venue
+                    })}
+                  </p>
+                ) : registrationKind === 'match_registration_approved' ? (
+                  approvedVariant && approvedAt ? (
+                    <p>
+                      {approvedVariant.participation === 'playing'
+                        ? t('notifications.match.registrationApprovedPlayingBody', {
+                            group: approvedVariant.group,
+                            event: currentMatchContext.venue,
+                            time: approvedAt
+                          })
+                        : t('notifications.match.registrationApprovedReserveBody', {
+                            position: approvedVariant.position,
+                            event: currentMatchContext.venue,
+                            time: approvedAt
+                          })}
+                    </p>
+                  ) : null
+                ) : (
+                  <p>
+                    {t('notifications.match.registrationRejectedBody', {
+                      event: currentMatchContext.venue
+                    })}
+                  </p>
+                )}
                 <p>
                   {t('notifications.match.venue')}: {currentMatchContext.venue}
                 </p>
