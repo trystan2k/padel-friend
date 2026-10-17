@@ -93,7 +93,9 @@ describe('match list surfaces', () => {
   });
   it.each([
     ['en', 0, '0 playing', '4 more needed'],
-    ['pt-BR', 1, '1 reserva', '3 faltam'],
+    ['pt-BR', 3, '3 reservas', '1 falta'],
+    ['pt-BR', 4, '4 jogando', '4 faltam'],
+    ['es', 3, '3 reservas', '1 falta'],
     ['es', 4, '4 jugando', '4 faltan']
   ])('formats count plurals in %s', (locale, count, expected, needed) => {
     mount({ initialItems: [event(2, count)] }, locale);

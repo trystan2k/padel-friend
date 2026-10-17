@@ -97,6 +97,22 @@ describe('match detail surface', () => {
     expect(screen.queryByText(/Club Hidden|saved_venue_id/i)).toBeNull();
     expect(screen.queryByRole('button', { name: /accept|decline/i })).toBeNull();
   });
+  it.each([
+    ['pt-BR', '1 falta'],
+    ['es', '1 falta']
+  ])('renders singular more-needed count in %s', (locale, expected) => {
+    mount(
+      event(10, {
+        accepted_count: 7,
+        playing_count: 4,
+        reserve_count: 3,
+        group_count: 1,
+        more_needed: 1
+      }),
+      locale
+    );
+    expect(screen.getAllByRole('region')[1].textContent).toContain(expected);
+  });
   it('renders optional published constraints and court/payment facts truthfully', () => {
     mount(
       event(12, {
