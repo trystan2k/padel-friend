@@ -46,6 +46,9 @@ permission:
   external_directory:
     "*": deny
     "/tmp/**": allow
+    "/Users/trystan2k/.gitconfig": allow
+    "/Users/trystan2k/.gitignore": allow
+    "/Users/trystan2k/Documents/Thiago/Repos/dotfiles/symlinks/**": allow
 ---
 
 # Agent: qa-gate-specialist
@@ -149,7 +152,7 @@ Model tier: `T0` mechanical. Execute the resolved gate commands and report their
 - `skill`: allow — QA/quality skills when they improve gate interpretation.
 - `edit`, `task`, `question`, `websearch`, `todowrite`, `lsp`: deny.
 - `webfetch`: allow — documentation lookup for gate interpretation.
-- `external_directory`: deny by default; `/tmp/**` allowed only for gate logs and scratch output.
+- `external_directory`: deny by default; only the git config paths (`~/.gitconfig`, `~/.gitignore`, and the resolved dotfiles symlinks directory) and `/tmp/**` (for gate logs and scratch output) are allowed.
 
 Safety rules:
 

@@ -53,6 +53,8 @@ This project uses Linear for issue tracking and project management. GitHub is us
 - **Task Tracking**: Create Linear Issues first, then work on them.
 - **Issue IDs**: Use Linear issue identifier as task ID reference (e.g., `PAF-123`)
 - **Dependencies**: Use `Depends On` with issue links (e.g., `PAF-1`, `PAF-3`)
+- **PR ↔ Linear linking**: the PR description **may/should** link the Linear issue it resolves (and the Linear issue links the PR). The issue identifier must **not** appear in the PR title or in any commit subject/body.
+- **Never commit** machine-local or tool-pinned files (e.g. `mise.toml`, `.DS_Store`); they belong in `.gitignore`.
 
 ## NPM Dependencies
 
@@ -66,7 +68,7 @@ Whenever you need to install a new npm dependency, use the rules defined in .npm
 ## Development guidelines
 
 - Use React 19, TanStack Start SSR on Workers, Supabase for backend, Base UI for interactive primitives.
-- Create and track a Linear issue before feature work. Record dependencies in Linear. Branch `feature/TEAM-123-short-title`; reference issue in PR. Set the project's Linear workspace/team in `.linear.toml` after creating a repo.
+- Create and track a Linear issue before feature work. Record dependencies in Linear. Branch `feature/TEAM-123-short-title`. The PR description **should link the Linear issue it resolves** (and the Linear issue should link back to the PR), but the issue identifier must **never** appear in the PR title or in any commit subject/body. Set the project's Linear workspace/team in `.linear.toml` after creating a repo.
 - React components: `PascalCase.tsx`; other modules: `kebab-case.ts`; routes: TanStack file-route names; tests: `.test.ts` or `.spec.ts`.
 - Structure: `src/routes` for routing, `src/features` for domain/server functions, `src/components` for reusable UI, `src/lib` for infrastructure, `src/i18n` and `src/locales` for copy, `design-tokens` for theme values.
 - Use StyleX for component styles, Style Dictionary semantic CSS variables for theme values, and `src/styles.css` only for global reset. Use Base UI for accessible widgets.

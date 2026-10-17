@@ -32,7 +32,11 @@ permission:
   websearch: allow
   todowrite: allow
   lsp: allow
-  external_directory: deny
+  external_directory:
+    "*": deny
+    "/Users/trystan2k/.gitconfig": allow
+    "/Users/trystan2k/.gitignore": allow
+    "/Users/trystan2k/Documents/Thiago/Repos/dotfiles/symlinks/**": allow
 ---
 
 # Agent: delivery-orchestrator
@@ -332,7 +336,7 @@ Tool access is configured in this file's frontmatter via `permission` (the legac
 - `bash`: scoped — read-only inspection (`ls`, `git status`, `git diff`, `git log`, `git rev-parse`, `git show`, `git ls-files`), trivial file ops (`mv`, `mkdir`), and read-only `date` for time tracking. Every mutating command (git write ops, Linear, tests, builds, lint) is denied and stays delegated.
 - `webfetch`, `websearch`: allow — plan-time research only; not used for git, Linear, QA, or review actions.
 - `todowrite`, `lsp`: allow — progress tracking and code intelligence.
-- `external_directory`: deny — not part of orchestration.
+- `external_directory`: deny by default; only the git config paths (`~/.gitconfig`, `~/.gitignore`, and the resolved dotfiles symlinks directory) are allowed.
 - Serena MCP tools: allowed for code search/intelligence, but the Serena shell tool (`mcp_serena*shell*`) is denied — the orchestrator never runs shell; all mutating work stays delegated. Fall back to native tools when Serena is unavailable.
 
 ## Model Routing Tiers

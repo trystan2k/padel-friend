@@ -22,6 +22,9 @@ permission:
   lsp: allow
   external_directory:
     "/tmp/**": allow
+    "/Users/trystan2k/.gitconfig": allow
+    "/Users/trystan2k/.gitignore": allow
+    "/Users/trystan2k/Documents/Thiago/Repos/dotfiles/symlinks/**": allow
     "*": deny
   "mcp_serena*": deny
   "engram*": deny
@@ -289,7 +292,7 @@ Model tier: `T0` mechanical. Execute the resolved `linear` commands and report t
 - `skill`: allow — `linear-cli` skill.
 - `bash`: allow — full shell access. Primary tool is `linear` for issue operations. Use `jq` to parse `--json` output. Still subject to the Safety Rules below: run only commands needed for the resolved Linear action plus safe prerequisite checks; never run destructive commands outside the `linear` CLI or touch product source code.
 - For multi-line bodies, use `edit` to write a temporary file under `/tmp`, then pass it to one `linear ... --body-file` or `--description-file` command. Never modify repository files.
-- `edit` and `external_directory`: scoped to `/tmp/**` only — for temporary body/description files. No repo writes.
+- `edit`: scoped to `/tmp/**` only — for temporary body/description files. No repo writes. `external_directory`: deny by default; only the git config paths (`~/.gitconfig`, `~/.gitignore`, and the resolved dotfiles symlinks directory) and `/tmp/**` are allowed.
 - `task`, `question`, `todowrite`: deny — no delegation, no user questions, no web research.
 - `mcp_serena*`, `engram*`: deny — no MCP integrations per scope.
 

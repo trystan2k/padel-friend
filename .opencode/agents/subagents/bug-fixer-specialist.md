@@ -21,6 +21,9 @@ permission:
   external_directory:
     "*": deny
     "/tmp/**": allow
+    "/Users/trystan2k/.gitconfig": allow
+    "/Users/trystan2k/.gitignore": allow
+    "/Users/trystan2k/Documents/Thiago/Repos/dotfiles/symlinks/**": allow
 ---
 
 # Agent: bug-fixer-specialist
@@ -132,7 +135,7 @@ Model tier: `T1`. Apply the approved fix exactly as specified, add the regressio
 - `webfetch`, `websearch`: allow — documentation research during fixes.
 - `todowrite`: deny.
 - `lsp`: allow — code intelligence.
-- `external_directory`: deny by default; `/tmp/**` allowed only for scratch artifacts (gate logs, temporary files).
+- `external_directory`: deny by default; only the git config paths (`~/.gitconfig`, `~/.gitignore`, and the resolved dotfiles symlinks directory) and `/tmp/**` (for scratch artifacts: gate logs, temporary files) are allowed.
 
 Safety rules:
 

@@ -26,7 +26,11 @@ permission:
   websearch: allow
   todowrite: deny
   lsp: deny
-  external_directory: deny
+  external_directory:
+    "*": deny
+    "/Users/trystan2k/.gitconfig": allow
+    "/Users/trystan2k/.gitignore": allow
+    "/Users/trystan2k/Documents/Thiago/Repos/dotfiles/symlinks/**": allow
 ---
 
 # Agent: ux-ui-reviewer-specialist
@@ -319,7 +323,7 @@ Effective permissions (frontmatter `permission`):
 - `skill`: allow — UI/UX, accessibility, CSS architecture, frontend design, modern web guidance skills.
 - `mcp_pencil_execute`, `mcp_pencil_get_app_state`, `mcp_pencil_read_skill`, `mcp_pencil_get_style`, `mcp_pencil_browser`: allow — pen.dev MCP access to read and validate the `.pen` design (read-only operations only, see "Validating the Pencil Design").
 - `bash`: scoped — read-only git (`diff`, `log`, `show`, `status`) and `ls` only.
-- `edit`, `task`, `question`, `webfetch`, `websearch`, `todowrite`, `lsp`, `external_directory`: deny.
+- `edit`, `task`, `question`, `webfetch`, `websearch`, `todowrite`, `lsp`: deny. `external_directory`: deny by default; only the git config paths (`~/.gitconfig`, `~/.gitignore`, and the resolved dotfiles symlinks directory) are allowed.
 
 Never run destructive commands. Never modify files or the Pencil document.
 This agent must not delegate to other subagents.

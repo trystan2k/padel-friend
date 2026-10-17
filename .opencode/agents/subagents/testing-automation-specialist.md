@@ -21,6 +21,9 @@ permission:
   external_directory:
     "*": deny
     "/tmp/**": allow
+    "/Users/trystan2k/.gitconfig": allow
+    "/Users/trystan2k/.gitignore": allow
+    "/Users/trystan2k/Documents/Thiago/Repos/dotfiles/symlinks/**": allow
   "mcp_chrome-devtools*": allow
   "mcp_playwright*": allow
 ---
@@ -129,7 +132,7 @@ Model tier: `T1`. Write the requested tests against the described behavior, reus
 - `webfetch`, `websearch`: allow — documentation research.
 - `todowrite`: deny.
 - `lsp`: allow — code intelligence.
-- `external_directory`: deny by default; `/tmp/**` allowed only for scratch artifacts (e.g. Playwright output, test logs).
+- `external_directory`: deny by default; only the git config paths (`~/.gitconfig`, `~/.gitignore`, and the resolved dotfiles symlinks directory) and `/tmp/**` (for scratch artifacts: e.g. Playwright output, test logs) are allowed.
 
 Safety rules:
 
