@@ -1,5 +1,5 @@
 import * as stylex from '@stylexjs/stylex';
-import { createFileRoute, useRouter } from '@tanstack/react-router';
+import { createFileRoute, useRouter, Link } from '@tanstack/react-router';
 import { useTranslation } from 'react-i18next';
 import { PlayerProfile } from '../features/player/PlayerProfile';
 import { CommunityAdminEntries } from '../features/community/CommunityAdmin';
@@ -11,7 +11,6 @@ import { ui } from '../features/player/player-ui.styles';
 import { InvitationDiscoverability } from '../features/community/InvitationDiscoverability';
 import { getMyUnreadNotificationCount } from '../features/notifications/notifications.functions';
 import { NotificationBadge } from '../features/notifications/NotificationBadge';
-import { Link } from '@tanstack/react-router';
 
 export async function loadDashboardData() {
   const [profile, adminCommunities, inbox, notificationCount] = await Promise.all([
