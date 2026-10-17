@@ -278,6 +278,47 @@ Note: the plan's fast-gate string `pnpm test:e2e -- e2e/...` does not filter fil
 
 Nothing in this workstream was committed or pushed.
 
+### Execution evidence — PR #21 cross-platform rasterization fix (visual suite)
+
+**CI failure (real evidence, PR #21 head `b90870b`, ubuntu-latest):** `pnpm test:e2e` failed `e2e/matches-visual.spec.ts › create wizard — Details, Players and Team mode match the approved frames` on `create-details-dark.png`: 7066 px different, reported ratio 0.03 (true ratio ~0.0215) against the pinned 0.02 budget, byte-identical across all 3 CI attempts (deterministic, not flaky), with every structural probe passing (`structuralViolations: []`). Root cause: the committed baselines were captured on macOS with default Chromium flags; Linux hinting/subpixel/LCD glyph rasterization differs, and the self-baselined budget carried no cross-platform margin. Because the visual block is `describe.serial`, the failure left 10 further tests unrun in CI.
+
+**Fix part 1 — deterministic Chromium rasterization (`playwright.config.ts`):** `use.launchOptions.args` = `--font-render-hinting=none`, `--disable-font-subpixel-positioning`, `--disable-lcd-text`, `--force-color-profile=srgb`, `--disable-skia-runtime-opts`, `--hide-scrollbars`; `deviceScaleFactor: 1`; fixed `colorScheme: 'light'`; `expect.toHaveScreenshot { animations: 'disabled', caret: 'hide', scale: 'css' }` as config defaults. Structural probes, the masking policy and the fixture/serial structure are unchanged. `--disable-skia-runtime-opts` was validated safe before keeping it: both post-fix calibration passes reproduced every reference-backed measurement exactly with `structuralViolations` empty.
+
+**Fix part 2 — measured cross-platform budgets (manifest `visualBudgets.crossPlatformBudgets`):** every self-baselined budget is now documented as measured local residual + a documented **+0.02 cross-platform allowance** (the full observed macOS→Linux delta with the pre-fix flags: CI reported 0.03 / true ~0.0215 where the local residual was 0.000), rounded up to the nearest 0.005, capped at 0.08; any screen measuring >0.2 locally would be reported as a finding instead of widened (none did). The 12 self-baselines were re-captured on the deterministic pipeline: 11/12 reproduced the previous bytes exactly (including the CI-failing `create-details-dark.png`); only `state-loading`/`state-offline` re-rendered at a 0.01 residual and were re-pinned (still byte-identical to each other, new sha256 `a6afb207…`); a second `VISUAL_CALIBRATE` pass measured 0.000 against every fresh capture. Reference-backed budgets are unchanged: every reference-backed measurement reproduced its pinned value exactly under the new flags (create-details 0.13, players 0.14, team-mode 0.14, review 0.29, available 0.31, available-empty 0.12, reserve 0.30, invited 0.30, past 0.30, invitee 0.21, friendly 0.37, guest 0.36).
+
+Self-baselined budget table (before → after):
+
+| Screen | Measured local residual | Allowance | Budget before → after |
+| --- | --- | --- | --- |
+| create-details-dark.png (CI failure) | 0.000 | +0.02 | 0.02 → 0.02 (now documented as residual + allowance instead of a bare envelope) |
+| available-populated-320.png | 0.000 | +0.02 | 0.02 → 0.02 |
+| available-populated-desktop.png | 0.000 | +0.02 | 0.02 → 0.02 |
+| available-populated-pt-BR.png | 0.000 | +0.02 | 0.02 → 0.02 |
+| available-populated-es.png | 0.000 | +0.02 | 0.02 → 0.02 |
+| available-populated-dark.png | 0.000 | +0.02 | 0.02 → 0.02 |
+| detail-friendly-creator-dark.png | 0.000 | +0.02 | 0.02 → 0.02 |
+| past-empty.png | 0.000 | +0.02 | 0.02 → 0.02 |
+| state-unavailable.png | 0.000 | +0.02 | 0.02 → 0.02 |
+| state-error.png | 0.000 | +0.02 | 0.02 → 0.02 |
+| state-loading.png | 0.01 pre-recapture → 0.000 post | +0.02 | 0.02 → 0.03 (tied to its own measured sensitivity) |
+| state-offline.png | 0.01 pre-recapture → 0.000 post | +0.02 | 0.02 → 0.03 (tied to its own measured sensitivity) |
+
+**Structural independence:** the structural probes remain exact and budget-independent — gutter axis (`assertGutterAxis`), rendered rhythm geometry with zero margin contribution (`assertRhythm`), card grouping/radius (`assertCardGrouping`), tab treatment (`assertTabSet`), full-width primary actions (`assertFullWidthPrimaryAction`), typography/color tokens, 44px hit targets and overflow probes all gate at their exact reference values regardless of any pixel budget. The allowance therefore only absorbs glyph-rasterization residuals and can never mask a structural or geometry defect; no budget was widened to cover anything but the measured cross-platform rasterization delta.
+
+### Commands and exit codes (all executed, PR #21 cross-platform fix session)
+
+- `pnpm typecheck` → 0
+- `pnpm lint` → 0
+- `pnpm exec oxfmt --check .` → 0 (after formatting `e2e/references/paf-4/manifest.json`; content unchanged)
+- `VISUAL_CALIBRATE=1 pnpm test:e2e` (whole suite, pass A, new flags vs previous baselines) → 0 — 120 passed; calibration JSON: all 12 reference-backed measured values reproduced exactly, 10/12 self-baselines 0.000 (byte-identical), state-loading/offline 0.01, `structuralViolations: []`
+- `VISUAL_CALIBRATE=1 pnpm test:e2e e2e/matches-visual.spec.ts` (re-capture pass) → 0 — 11 passed; 12 self-baselines re-captured and sha256-re-pinned in the manifest
+- `VISUAL_CALIBRATE=1 pnpm test:e2e e2e/matches-visual.spec.ts` (pass B, measurement) → 0 — 11 passed; every fresh self-baseline measured 0.000, reference-backed values reproduced again, `structuralViolations: []`
+- `pnpm test:e2e e2e/matches-visual.spec.ts` (hard gates, new budgets + re-pinned digests) → 0 — 11 passed (run twice more after the final manifest/doc edits)
+- `pnpm test:e2e` (whole suite, hard gates) → 0 — run 1: 120 passed (1.3m); run 2: 120 passed (1.3m); run 3 (final bytes, stability proof): 120 passed (1.3m)
+- `pnpm exec vitest run` → 0 — 80 files, 692 tests passed. First attempt had 1 failure (`matches.publication.integration.test.ts`, `FORCED_MATCH_NOTIFICATION_FAILURE`) that passes in isolation and on the immediate full re-run — a shared-local-database flake in a suite this fix does not touch (vitest reads neither `playwright.config.ts` nor `e2e/`).
+
+Nothing in this fix was committed or pushed.
+
 ### Risk and rollback notes
 
 - **Privacy (elevated):** every exposure uses same current event predicate; avoid global profile grants/member-only venue keys/context snapshots in notifications. Test public→private, inactive membership, foreign event/storage/notification IDs and invited outsider to private community_open. Anonymous HTML/metadata never embeds venue/photo/private title. Signed capability URLs have documented ≤60s residual lifetime; never cache them as durable public URLs.

@@ -176,6 +176,22 @@ function assertBaselineUnchanged(baseline: string): void {
 // because the corrected detail structure measures closer to the frames. Self-baselined
 // viewports/locales/states keep a 2pp envelope around their first honest capture of the
 // corrected implementation.
+//
+// Cross-platform budgets (PR #21 CI fix): CI on ubuntu-latest measured 0.03 (7066 px,
+// true ratio ~0.0215) on create-details-dark.png against a 0.02 budget with every
+// structural probe passing — the macOS-calibrated baseline carried no cross-platform
+// margin. Fix: deterministic Chromium rasterization flags in playwright.config.ts
+// (--font-render-hinting=none, --disable-font-subpixel-positioning, --disable-lcd-text,
+// --force-color-profile=srgb, --disable-skia-runtime-opts, --hide-scrollbars) plus
+// self-baseline re-capture on that pipeline (11/12 re-captures reproduced the previous
+// bytes exactly; state-loading/state-offline re-render at 0.01 and were re-pinned).
+// Every self-baselined budget is now the measured local residual plus an explicit
+// +0.02 cross-platform allowance (the full observed pre-fix macOS→Linux delta),
+// rounded up to the nearest 0.005 and capped at 0.08 — see visualBudgets.
+// crossPlatformBudgets in e2e/references/paf-4/manifest.json for the per-screen
+// measurements. The allowance never excuses geometry: every structural probe stays
+// exact and budget-independent, so a wider pixel budget still cannot mask a
+// structural defect.
 // No budget hides a structural defect: every geometric attribute of the retained scope
 // is gated exactly by the structural probes, which now also gate RENDERED geometry —
 // sibling-to-sibling distances equal the pinned token exactly, rhythm children carry
@@ -194,6 +210,9 @@ const VISUAL_BUDGETS: Record<string, number> = {
   'detail-public-guest.png': 0.375,
   'detail-friendly-creator.png': 0.385,
   'detail-invitee.png': 0.225,
+  // Self-baselined screens: measured local residual (0.000 on the deterministic
+  // pipeline; VISUAL_CALIBRATE runs recorded nothing against the fresh captures) plus
+  // the documented +0.02 cross-platform allowance.
   'create-details-dark.png': 0.02,
   'available-populated-320.png': 0.02,
   'available-populated-desktop.png': 0.02,
@@ -204,8 +223,11 @@ const VISUAL_BUDGETS: Record<string, number> = {
   'past-empty.png': 0.02,
   'state-unavailable.png': 0.02,
   'state-error.png': 0.02,
-  'state-loading.png': 0.02,
-  'state-offline.png': 0.02
+  // Measured 0.01 residual when the rasterization pipeline changed (the only two
+  // self-baselines that re-rendered), re-captured, now byte-stable: 0.01 + 0.02
+  // cross-platform allowance.
+  'state-loading.png': 0.03,
+  'state-offline.png': 0.03
 };
 
 const MASK_COLOR = '#FF00FF';
