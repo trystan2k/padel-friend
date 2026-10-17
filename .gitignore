@@ -1,8 +1,11 @@
+.DS_Store
+mise.toml
 node_modules/
 dist/
 .wrangler/
 .tanstack/
 coverage/
+.vitest/
 playwright-report/
 test-results/
 .env

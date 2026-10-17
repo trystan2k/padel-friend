@@ -3,7 +3,10 @@ import * as stylex from '@stylexjs/stylex';
 import { Link, createFileRoute, useRouter, type ErrorComponentProps } from '@tanstack/react-router';
 import { useTranslation } from 'react-i18next';
 import { NotificationDetailPage } from '../features/notifications/NotificationDetailPage';
-import { getMyNotificationTarget } from '../features/notifications/notifications.functions';
+import {
+  getMyMatchNotificationContext,
+  getMyNotificationTargetV2
+} from '../features/notifications/notifications.functions';
 import { styles } from '../features/notifications/notifications.styles';
 
 function Pending() {
@@ -48,13 +51,27 @@ function Failed({ reset }: ErrorComponentProps) {
 }
 
 export const Route = createFileRoute('/_protected/notifications/$notificationId')({
-  loader: ({ params }) =>
-    getMyNotificationTarget({ data: { notificationId: params.notificationId } }),
+  loader: async ({ params }) => {
+    const target = await getMyNotificationTargetV2({
+      data: { notificationId: params.notificationId }
+    });
+    if (!target.match_event_id) return { ...target, matchContext: null };
+    const matchContext = await getMyMatchNotificationContext({
+      data: { notificationId: params.notificationId }
+    });
+    return { ...target, matchContext };
+  },
   pendingComponent: Pending,
   errorComponent: Failed,
   component: () => {
-    const target = Route.useLoaderData();
+    const { matchContext, ...target } = Route.useLoaderData();
     const { notificationId } = Route.useParams();
-    return <NotificationDetailPage notificationId={notificationId} target={target} />;
+    return (
+      <NotificationDetailPage
+        notificationId={notificationId}
+        target={target}
+        matchContext={matchContext}
+      />
+    );
   }
 });

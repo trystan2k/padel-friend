@@ -451,7 +451,22 @@
       "community_invitation": "You received a community invitation.",
       "community_membership_approved": "Your community membership was approved.",
       "community_membership_denied": "Your community membership was declined.",
-      "community_membership_removed": "Your community membership was removed."
+      "community_membership_removed": "Your community membership was removed.",
+      "match_event_published": "A new open match is available",
+      "match_event_invitation": "You were invited to a match"
+    },
+    "match": {
+      "openEvent": "Open event",
+      "invitedBy": "Invited by {{name}}",
+      "startsAt": "Starts",
+      "venue": "Venue",
+      "type": "Type",
+      "playing_one": "{{count}} playing",
+      "playing_other": "{{count}} playing",
+      "reserve_one": "{{count}} reserve",
+      "reserve_other": "{{count}} reserves",
+      "pricePerPlayer": "Price per player",
+      "unavailable": "This match notification is no longer available."
     }
   },
   "notificationPreferences": {
@@ -478,5 +493,190 @@
     "error": "Could not save preferences. Your changes are still here; try again.",
     "loading": "Loading notification preferences…",
     "offline": "You are offline. Reconnect to save your preferences."
+  },
+  "matches": {
+    "title": "Matches",
+    "subtitle": "Find and discover padel matches.",
+    "navigationLabel": "Matches",
+    "create": "Create match",
+    "back": "Back",
+    "loading": "Loading matches…",
+    "error": "Could not load matches.",
+    "retry": "Retry",
+    "unavailable": "This match is unavailable.",
+    "offline": "You are offline.",
+    "stale": "Showing saved results; refresh when online.",
+    "loadMore": "Load more",
+    "tabs": {
+      "available": "Available",
+      "my": "My Matches",
+      "past": "Past"
+    },
+    "empty": {
+      "available": "No available matches yet.",
+      "my": "No upcoming matches yet.",
+      "past": "No past matches yet."
+    },
+    "type": {
+      "competitive": "Competitive",
+      "friendly": "Friendly"
+    },
+    "visibility": {
+      "community_open": "Community open",
+      "invite_only": "Invite only"
+    },
+    "teamMode": {
+      "PREDEFINED_TEAMS": "Predefined teams",
+      "POST_MATCH_TEAMS": "Teams after match"
+    },
+    "badges": {
+      "playing": "Playing",
+      "reserve": "Reserve",
+      "invited": "Invited",
+      "resultActionRequired": "Result action required"
+    },
+    "counts": {
+      "playing_one": "playing",
+      "playing_other": "playing",
+      "reserve_one": "reserve",
+      "reserve_other": "reserve",
+      "groups_one": "group",
+      "groups_other": "groups",
+      "moreNeeded_one": "more needed",
+      "moreNeeded_other": "more needed"
+    },
+    "card": {
+      "creator": "Creator",
+      "approximateLevel": "Approximate level",
+      "levelRange": "Level range",
+      "noLevelRestriction": "No level restriction",
+      "maximum": "Maximum",
+      "notes": "Notes included",
+      "pricePerPlayer": "Price per player",
+      "openMaps": "Open map for {{venue}}",
+      "photoAlt": "Match venue",
+      "unlimited": "Unlimited"
+    },
+    "detail": {
+      "title": "Match details",
+      "overview": "Overview",
+      "participation": "Participation",
+      "eligibilityVisibility": "Eligibility and visibility",
+      "participants": "Participants",
+      "accepted": "Accepted",
+      "creatorAccepted": "Creator accepted",
+      "timezone": "Timezone",
+      "registrationClosed": "Registration closed",
+      "guestApprovalRequired": "Guest approval required",
+      "outOfRangeApprovalRequired": "Approval required for your level",
+      "invitationInfo": "You were invited to this match.",
+      "pastScheduled": "Scheduled past event; outcome not available.",
+      "outcomeUnavailable": "Outcome unavailable",
+      "share": "Share match",
+      "shareUnavailable": "Sharing unavailable",
+      "copyLink": "Copy link",
+      "copied": "Copied",
+      "copyFailed": "Could not copy link. Select the URL to copy it.",
+      "shareUrl": "Match link",
+      "courtNotes": "Court notes",
+      "paymentNote": "Payment note",
+      "duration": "Expected duration"
+    }
+  },
+  "matchCreate": {
+    "title": "Create match",
+    "subtitle": "Publish a padel match and invite players.",
+    "noCommunities": "Join a community before creating a match.",
+    "discoverCommunities": "Discover communities",
+    "next": "Next",
+    "previous": "Back",
+    "review": "Review",
+    "publish": "Publish & send invites",
+    "publishing": "Publishing…",
+    "published": "Published",
+    "informationalOnly": "Informational only; no payment or booking.",
+    "steps": {
+      "details": "Details",
+      "players": "Players",
+      "teams": "Team mode",
+      "review": "Review"
+    },
+    "fields": {
+      "community": "Community",
+      "date": "Date",
+      "startTime": "Start time",
+      "timezone": "Timezone",
+      "type": "Match type",
+      "visibility": "Visibility",
+      "venueName": "Venue name",
+      "savedVenue": "Saved venue",
+      "mapsUrl": "Google Maps URL",
+      "photo": "Venue photo",
+      "courtNotes": "Court notes",
+      "duration": "Expected duration",
+      "notes": "Notes",
+      "levelRestriction": "Level restriction",
+      "minLevel": "Minimum level",
+      "maxLevel": "Maximum level",
+      "invitePlayers": "Invite players",
+      "courtBooked": "Court already booked",
+      "price": "Price",
+      "currency": "Currency",
+      "paymentNote": "Payment note",
+      "maximumRegistrations": "Maximum registrations",
+      "cutoff": "Registration cutoff"
+    },
+    "helpers": {
+      "required": "Required",
+      "optional": "Optional",
+      "levelDefault": "Suggested range from your level",
+      "defaultCutoff": "Default: one hour before start",
+      "customCutoff": "Choose a custom cutoff before start",
+      "photoRequirements": "JPEG, PNG, or WebP; maximum 2 MiB.",
+      "noBooking": "No booking is made.",
+      "noPayment": "No payment is collected.",
+      "teamMode": "Choose team assignment mode.",
+      "invitesOnPublish": "Invitations are sent when you publish."
+    },
+    "invitees": {
+      "search": "Search players",
+      "loading": "Loading players…",
+      "empty": "No players found.",
+      "error": "Could not load players.",
+      "selected": "Selected players",
+      "remove": "Remove"
+    },
+    "photo": {
+      "choose": "Choose photo",
+      "uploading": "Uploading…",
+      "uploaded": "Photo uploaded",
+      "replace": "Replace photo",
+      "remove": "Remove photo",
+      "unavailable": "Photo unavailable."
+    },
+    "errors": {
+      "required": "This field is required.",
+      "invalidInput": "Enter a valid value.",
+      "invalidMapsUrl": "Enter a valid Google Maps URL.",
+      "unsupportedCurrency": "Choose BRL, USD, or EUR.",
+      "negativePrice": "Price cannot be negative.",
+      "invalidPrice": "Enter a valid price.",
+      "pastStart": "Start must be in the future.",
+      "invalidDateTime": "Enter a valid date and time.",
+      "invalidCutoff": "Cutoff must be before start.",
+      "invalidLevelRange": "Enter a valid level range.",
+      "invalidCapacity": "Enter a valid maximum.",
+      "invalidDuration": "Enter a valid duration.",
+      "missingPhoto": "A venue photo is required.",
+      "invalidPhoto": "Choose a supported image.",
+      "photoTooLarge": "Photo exceeds 2 MiB.",
+      "photoUnauthorized": "Photo upload is not authorized.",
+      "notMember": "You must be an active member.",
+      "savedVenueUnavailable": "Saved venue is unavailable.",
+      "inviteeUnavailable": "One or more invitees are unavailable.",
+      "conflict": "This match conflicts with an existing publication.",
+      "publishFailed": "Could not publish the match.",
+      "optionsUnavailable": "Could not load match creation options. Try again."
+    }
   }
 }

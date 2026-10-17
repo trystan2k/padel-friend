@@ -1,5 +1,5 @@
 import * as stylex from '@stylexjs/stylex';
-import { createFileRoute, useRouter } from '@tanstack/react-router';
+import { createFileRoute, useRouter, Link } from '@tanstack/react-router';
 import { useTranslation } from 'react-i18next';
 import { PlayerProfile } from '../features/player/PlayerProfile';
 import { CommunityAdminEntries } from '../features/community/CommunityAdmin';
@@ -33,11 +33,16 @@ export const Route = createFileRoute('/_protected/dashboard')({
 });
 
 function Dashboard() {
+  const { t } = useTranslation();
   const { profile, adminCommunities, inbox, notificationCount } = Route.useLoaderData();
   return (
     <>
       <header>
         <NotificationBadge count={notificationCount ?? null} />
+        <nav aria-label={t('matches.navigationLabel')}>
+          <Link to="/matches">{t('matches.navigationLabel')}</Link>{' '}
+          <Link to="/matches/create">{t('matches.create')}</Link>
+        </nav>
       </header>
       <PlayerProfile initialProfile={profile} />
       <CommunityAdminEntries communities={adminCommunities} />

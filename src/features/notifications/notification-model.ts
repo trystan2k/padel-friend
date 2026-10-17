@@ -1,9 +1,10 @@
 import type { Database } from '../../lib/supabase/database.types';
+import type { MatchNotificationContext } from './notification-target';
 export type NotificationRow = Database['public']['Tables']['notifications']['Row'];
 export type NotificationDto = Pick<
   NotificationRow,
   'id' | 'kind' | 'category' | 'created_at' | 'read_at'
->;
+> & { matchContext?: MatchNotificationContext };
 export function toNotificationDto(
   row: Pick<NotificationRow, 'id' | 'kind' | 'category' | 'created_at' | 'read_at'>
 ): NotificationDto {

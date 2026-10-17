@@ -1,7 +1,7 @@
 import { Radio } from '@base-ui/react/radio';
 import { RadioGroup } from '@base-ui/react/radio-group';
 import * as stylex from '@stylexjs/stylex';
-import { useEffect, useRef, useState, type FormEvent } from 'react';
+import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useRouter, useRouterState } from '@tanstack/react-router';
 import { Button } from '../../components/ui/Button';
@@ -12,15 +12,24 @@ import { stripEdgeWhitespace } from '../../lib/edge-whitespace';
 import { createCommunity, joinCommunity, listPublicCommunities } from './community.functions';
 import type { PublicCommunity } from './community.validators';
 import { ui } from './community-onboarding.styles';
+import { normalizeReturnPath, optionalReturnPath } from '../auth/return-path';
 
-type Search = { q?: string; view?: 'create' };
+type Search = { q?: string; view?: 'create'; next?: string };
 type Page = { communities: PublicCommunity[]; next_offset: number | null; failed: boolean };
 
 function expired(error: unknown): boolean {
   return error instanceof Error && error.message === 'UNAUTHENTICATED';
 }
 
-export function CommunityOnboarding({ search, data }: { search: Search; data: Page }) {
+export function CommunityOnboarding({
+  search,
+  data,
+  next: returnPath
+}: {
+  search: Search;
+  data: Page;
+  next?: string;
+}) {
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
   const router = useRouter();
@@ -44,6 +53,11 @@ export function CommunityOnboarding({ search, data }: { search: Search; data: Pa
   const historyNavigation = useRef(false);
   const previousSearch = useRef({ query: search.q ?? '', view: search.view });
   const query = search.q ?? '';
+  const safeNext = normalizeReturnPath(returnPath);
+  const finish = useCallback(() => {
+    if (returnPath) window.location.assign(safeNext);
+    else void navigate({ to: '/dashboard' });
+  }, [returnPath, safeNext, navigate]);
   const current = draft.trim() === query;
   const page = more?.query === query && more.source === data ? more.page : data;
   const rows = current ? page.communities : [];
@@ -92,12 +106,15 @@ export function CommunityOnboarding({ search, data }: { search: Search; data: Pa
       navigationOrigin.current = { query: nextQuery, revision };
       void navigate({
         to: '/onboarding/community',
-        search: { ...(nextQuery ? { q: nextQuery } : {}) },
+        search: {
+          ...(nextQuery ? { q: nextQuery } : {}),
+          ...optionalReturnPath(returnPath)
+        },
         replace: true
       });
     }, 300);
     return () => clearTimeout(timer);
-  }, [draft, navigate, search.q, search.view]);
+  }, [draft, navigate, search.q, search.view, returnPath]);
 
   function login() {
     window.location.assign('/login?next=/onboarding/community');
@@ -176,11 +193,15 @@ export function CommunityOnboarding({ search, data }: { search: Search; data: Pa
       </div>
       {create ? (
         <CreateCommunityView
+          onFinish={finish}
           onBack={() => {
             navigationOrigin.current = { query: draft.trim(), revision: editRevision.current };
             void navigate({
               to: '/onboarding/community',
-              search: { ...(draft.trim() ? { q: draft.trim() } : {}) }
+              search: {
+                ...(draft.trim() ? { q: draft.trim() } : {}),
+                ...optionalReturnPath(returnPath)
+              }
             });
           }}
         />
@@ -303,17 +324,17 @@ export function CommunityOnboarding({ search, data }: { search: Search; data: Pa
               navigationOrigin.current = { query: draft.trim(), revision: editRevision.current };
               void navigate({
                 to: '/onboarding/community',
-                search: { ...(draft.trim() ? { q: draft.trim() } : {}), view: 'create' }
+                search: {
+                  ...(draft.trim() ? { q: draft.trim() } : {}),
+                  view: 'create',
+                  ...optionalReturnPath(returnPath)
+                }
               });
             }}
           >
             {t('communityOnboarding.createEntry')}
           </Button>
-          <Button
-            variant="secondary"
-            xstyle={ui.transparentAction}
-            onClick={() => void navigate({ to: '/dashboard' })}
-          >
+          <Button variant="secondary" xstyle={ui.transparentAction} onClick={finish}>
             {t('communityOnboarding.skip')}
           </Button>
         </div>
@@ -322,9 +343,8 @@ export function CommunityOnboarding({ search, data }: { search: Search; data: Pa
   );
 }
 
-function CreateCommunityView({ onBack }: { onBack: () => void }) {
+function CreateCommunityView({ onBack, onFinish }: { onBack: () => void; onFinish: () => void }) {
   const { t } = useTranslation();
-  const navigate = useNavigate();
   const [name, setName] = useState('');
   const [visibility, setVisibility] = useState<'public' | 'private'>('public');
   const [description, setDescription] = useState('');
@@ -378,9 +398,7 @@ function CreateCommunityView({ onBack }: { onBack: () => void }) {
       {created ? (
         <>
           <output {...stylex.props(ui.status)}>{t('communityOnboarding.created')}</output>
-          <Button onClick={() => void navigate({ to: '/dashboard' })}>
-            {t('communityOnboarding.finish')}
-          </Button>
+          <Button onClick={onFinish}>{t('communityOnboarding.finish')}</Button>
         </>
       ) : (
         <>

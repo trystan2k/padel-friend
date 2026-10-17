@@ -1,12 +1,14 @@
 /** @vitest-environment jsdom */
-import { cleanup, render, screen, waitFor } from '@testing-library/react';
+import { act, cleanup, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { I18nextProvider } from 'react-i18next';
 import type { ComponentType } from 'react';
 
 const mocks = vi.hoisted(() => ({
-  target: vi.fn<(input: { data: { notificationId: string } }) => Promise<unknown>>(),
+  targetV1: vi.fn<(input: { data: { notificationId: string } }) => Promise<unknown>>(),
+  targetV2: vi.fn<(input: { data: { notificationId: string } }) => Promise<unknown>>(),
+  matchContext: vi.fn<(input: { data: { notificationId: string } }) => Promise<unknown>>(),
   markRead: vi.fn<(input: { data: { notificationId: string } }) => Promise<unknown>>(),
   accept: vi.fn<(input: { data: { notificationId: string } }) => Promise<unknown>>(),
   invalidate: vi.fn<() => Promise<void>>()
@@ -26,14 +28,19 @@ vi.mock('@tanstack/react-router', async (importOriginal) => ({
   }) => <a href={to}>{children}</a>
 }));
 vi.mock('../src/features/notifications/notifications.functions', () => ({
-  getMyNotificationTarget: mocks.target,
+  getMyNotificationTarget: mocks.targetV1,
+  getMyNotificationTargetV2: mocks.targetV2,
+  getMyMatchNotificationContext: mocks.matchContext,
   markNotificationRead: mocks.markRead,
   acceptMyNotificationInvitation: mocks.accept
 }));
 
 import { createI18n } from '../src/i18n/config';
 import en from '../src/locales/en/translation.json';
-import type { NotificationTarget } from '../src/features/notifications/notification-target';
+import type {
+  MatchNotificationContext,
+  NotificationTarget
+} from '../src/features/notifications/notification-target';
 import { NotificationDetailPage } from '../src/features/notifications/NotificationDetailPage';
 import { Route as NotificationDetailRoute } from '../src/routes/_protected.notifications.$notificationId';
 import { Route as NotificationListRoute } from '../src/routes/_protected.notifications.index';
@@ -66,6 +73,27 @@ const membership = (status: string): NotificationTarget => ({
   community_name: communityName,
   invitation_id: null,
   membership_status: status
+});
+const availableMatch: NotificationTarget = {
+  target_status: 'match_available',
+  community_id: communityId,
+  community_name: communityName,
+  invitation_id: null,
+  membership_status: null,
+  match_event_id: '33333333-3333-4333-8333-333333333333',
+  match_available: true
+};
+const matchContext = (venue: string): MatchNotificationContext => ({
+  match_event_id: availableMatch.match_event_id!,
+  creator_display_name: 'Alex',
+  scheduled_at: '2026-10-20T10:00:00.000Z',
+  timezone: 'UTC',
+  venue,
+  event_type: 'friendly',
+  playing_count: 0,
+  reserve_count: 1,
+  price_minor: null,
+  currency: null
 });
 
 function hasLoader(route: unknown): route is {
@@ -105,10 +133,14 @@ function isTarget(value: unknown): value is NotificationTarget {
   return typeof value === 'object' && value !== null && 'target_status' in value;
 }
 
-function mountPage(target: NotificationTarget) {
+function mountPage(target: NotificationTarget, context?: MatchNotificationContext | null) {
   return render(
     <I18nextProvider i18n={createI18n('en')}>
-      <NotificationDetailPage notificationId={notificationId} target={target} />
+      <NotificationDetailPage
+        notificationId={notificationId}
+        target={target}
+        matchContext={context}
+      />
     </I18nextProvider>
   );
 }
@@ -118,12 +150,16 @@ function setOnline(online: boolean) {
 }
 
 beforeEach(() => {
-  mocks.target.mockReset();
+  mocks.targetV1.mockReset();
+  mocks.targetV2.mockReset();
+  mocks.matchContext.mockReset();
   mocks.markRead.mockReset();
   mocks.accept.mockReset();
   mocks.invalidate.mockReset().mockResolvedValue(undefined);
   setOnline(true);
-  mocks.target.mockResolvedValue(unavailable);
+  mocks.targetV1.mockResolvedValue(unavailable);
+  mocks.targetV2.mockResolvedValue(unavailable);
+  mocks.matchContext.mockResolvedValue(null);
   mocks.markRead.mockResolvedValue('2026-10-15T00:00:00.000Z');
   mocks.accept.mockResolvedValue({ community_id: communityId, status: 'active' });
 });
@@ -143,7 +179,7 @@ describe('notification detail page', () => {
   it('renders the invited state and accepts through the server function using the notification id', async () => {
     let resolveAccept!: (result: unknown) => void;
     mocks.accept.mockReturnValueOnce(new Promise((resolve) => (resolveAccept = resolve)));
-    mocks.target.mockResolvedValueOnce(membership('active'));
+    mocks.targetV2.mockResolvedValueOnce(membership('active'));
     const user = userEvent.setup();
     mountPage(invited);
 
@@ -158,7 +194,7 @@ describe('notification detail page', () => {
     expect(screen.getByRole('status').getAttribute('aria-live')).toBe('polite');
     expect(await screen.findByText(copy.activeMembership)).toBeTruthy();
     expect(screen.queryByRole('button', { name: copy.accept })).toBeNull();
-    expect(mocks.target).toHaveBeenCalledWith({ data: { notificationId } });
+    expect(mocks.targetV2).toHaveBeenCalledWith({ data: { notificationId } });
     await waitFor(() => expect(mocks.markRead).toHaveBeenCalledTimes(1));
   });
 
@@ -181,18 +217,18 @@ describe('notification detail page', () => {
 
     expect(await screen.findByRole('heading', { name: communityName })).toBeTruthy();
     expect((await screen.findByRole('alert')).textContent).toBe(copy.targetError);
-    expect(mocks.target).not.toHaveBeenCalled();
+    expect(mocks.targetV2).not.toHaveBeenCalled();
 
     await user.click(screen.getByRole('button', { name: copy.retry }));
 
     await waitFor(() => expect(mocks.markRead).toHaveBeenCalledTimes(2));
     expect(screen.queryByRole('alert')).toBeNull();
-    expect(mocks.target).not.toHaveBeenCalled();
+    expect(mocks.targetV2).not.toHaveBeenCalled();
   });
 
   it('shows offline state, skips read writes, disables acceptance and reconciles on reconnect', async () => {
     setOnline(false);
-    mocks.target.mockResolvedValue(invited);
+    mocks.targetV2.mockResolvedValue(invited);
     mountPage(invited);
 
     expect(await screen.findByText(copy.offline)).toBeTruthy();
@@ -202,8 +238,48 @@ describe('notification detail page', () => {
     setOnline(true);
     window.dispatchEvent(new Event('online'));
     await waitFor(() => expect(mocks.markRead).toHaveBeenCalledTimes(1));
-    await waitFor(() => expect(mocks.target).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(mocks.targetV2).toHaveBeenCalledTimes(1));
+    expect(mocks.targetV1).not.toHaveBeenCalled();
     expect(screen.getByRole('button', { name: copy.accept })).toHaveProperty('disabled', false);
+  });
+
+  it('refreshes the authorized match target and context together after reconnect', async () => {
+    setOnline(false);
+    mocks.targetV2.mockResolvedValue(availableMatch);
+    mocks.matchContext.mockResolvedValue(matchContext('Updated club'));
+    mountPage(availableMatch, matchContext('Stale club'));
+
+    expect(await screen.findByText(/Stale club/)).toBeTruthy();
+    setOnline(true);
+    await act(async () => window.dispatchEvent(new Event('online')));
+
+    expect(await screen.findByText(/Updated club/)).toBeTruthy();
+    expect(screen.getByRole('link', { name: copy.match.openEvent }).getAttribute('href')).toBe(
+      `/matches/${availableMatch.match_event_id}`
+    );
+    expect(mocks.targetV2).toHaveBeenCalledWith({ data: { notificationId } });
+    expect(mocks.matchContext).toHaveBeenCalledWith({ data: { notificationId } });
+    expect(mocks.targetV1).not.toHaveBeenCalled();
+  });
+
+  it('uses v2 target and refreshes match context when retrying a failed reconnect', async () => {
+    setOnline(false);
+    mocks.targetV2.mockRejectedValueOnce(new Error('offline refresh failed'));
+    mountPage(availableMatch, matchContext('Stale club'));
+    expect(await screen.findByText(copy.offline)).toBeTruthy();
+    setOnline(true);
+    await act(async () => window.dispatchEvent(new Event('online')));
+
+    expect(await screen.findByRole('alert')).toBeTruthy();
+    mocks.targetV2.mockResolvedValueOnce(availableMatch);
+    mocks.matchContext.mockResolvedValueOnce(matchContext('Retried club'));
+    const user = userEvent.setup();
+    await user.click(screen.getByRole('button', { name: copy.retry }));
+
+    expect(await screen.findByText(/Retried club/)).toBeTruthy();
+    expect(mocks.targetV2).toHaveBeenCalledTimes(2);
+    expect(mocks.matchContext).toHaveBeenCalledTimes(1);
+    expect(mocks.targetV1).not.toHaveBeenCalled();
   });
 
   it('provides localized retry and safe back navigation for route loader errors', async () => {
@@ -244,9 +320,9 @@ describe('notification detail page', () => {
   it('marks unread notifications read after mount only, never inside the loader', async () => {
     const loaded = await detailLoader({ notificationId });
 
-    expect(loaded).toEqual(unavailable);
-    expect(mocks.target).toHaveBeenCalledTimes(1);
-    expect(mocks.target).toHaveBeenCalledWith({ data: { notificationId } });
+    expect(loaded).toEqual({ ...unavailable, matchContext: null });
+    expect(mocks.targetV2).toHaveBeenCalledTimes(1);
+    expect(mocks.targetV2).toHaveBeenCalledWith({ data: { notificationId } });
     expect(mocks.markRead).not.toHaveBeenCalled();
 
     if (!isTarget(loaded)) throw new Error('Loader returned no notification target');
@@ -254,6 +330,20 @@ describe('notification detail page', () => {
 
     await waitFor(() => expect(mocks.markRead).toHaveBeenCalledTimes(1));
     expect(mocks.markRead).toHaveBeenCalledWith({ data: { notificationId } });
-    expect(mocks.target).toHaveBeenCalledTimes(1);
+    expect(mocks.targetV2).toHaveBeenCalledTimes(1);
+  });
+
+  it('loads authorized match details through v2 target and context resolvers', async () => {
+    const context = matchContext('Authorized club');
+    mocks.targetV2.mockResolvedValueOnce(availableMatch);
+    mocks.matchContext.mockResolvedValueOnce(context);
+
+    await expect(detailLoader({ notificationId })).resolves.toEqual({
+      ...availableMatch,
+      matchContext: context
+    });
+    expect(mocks.targetV2).toHaveBeenCalledWith({ data: { notificationId } });
+    expect(mocks.matchContext).toHaveBeenCalledWith({ data: { notificationId } });
+    expect(mocks.targetV1).not.toHaveBeenCalled();
   });
 });

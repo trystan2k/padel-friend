@@ -701,7 +701,7 @@ test('signing out redirects through root to login and protected routes stay gate
 
   await page.goto('/dashboard');
   expect(new URL(page.url()).pathname).toBe('/login');
-  expect(new URL(page.url()).searchParams.get('next')).toBe('/dashboard');
+  expect(new URL(page.url()).searchParams.get('next')).toBeNull();
   // The bounced destination is the Welcome screen, not a bare sign-in form.
   await expect(page.getByRole('heading', { name: en.auth.welcomeTitle })).toBeVisible();
   await expect(page.getByLabel(en.auth.loginEmailLabel)).toBeVisible();

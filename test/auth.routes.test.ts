@@ -135,19 +135,26 @@ describe('/onboarding/community route', () => {
   it('opts out of the /onboarding parent and guards before loading discovery', async () => {
     expect(CommunityRoute.parentRoute.id).toBe('__root__');
     onboardedAs(ANON);
-    const guest = await redirectOf(communityGuard({}));
+    const guest = await redirectOf(communityGuard({ search: {} }));
     expect(guest.options.to).toBe('/login');
-    expect(guest.options.search).toEqual({ next: '/onboarding/community' });
+    expect(guest.options.search).toEqual({});
     expect(await landedOn('/onboarding/community')).toEqual({
       pathname: '/login',
-      search: { next: '/dashboard' }
+      search: {}
     });
     onboardedAs(INCOMPLETE);
-    expect((await redirectOf(communityGuard({}))).options.to).toBe('/onboarding');
+    expect(
+      (await redirectOf(communityGuard({ search: { view: 'create', next: '/dashboard' } }))).options
+        .to
+    ).toBe('/onboarding');
     expect(await landedOn('/onboarding/community?view=create')).toEqual({
       pathname: '/onboarding',
       search: {}
     });
+    const deepLink = '/matches/123e4567-e89b-42d3-a456-426614174000';
+    expect(
+      (await redirectOf(communityGuard({ search: { next: deepLink } }))).options.search
+    ).toEqual({ next: deepLink });
     expect(discovery.listPublicCommunities).not.toHaveBeenCalled();
     onboardedAs(COMPLETE);
     await expect(communityGuard({})).resolves.toBeUndefined();
@@ -194,7 +201,10 @@ describe('/ root guard (beforeLoad)', () => {
       onboardedAs(status);
       const redirect = await redirectOf(homeGuard({}));
       expect(redirect.options.to).toBe('/dashboard');
-      expect(await landedOn('/')).toEqual({ pathname: destination, search: {} });
+      expect(await landedOn('/')).toEqual({
+        pathname: destination,
+        search: {}
+      });
     }
   });
 });
@@ -286,7 +296,7 @@ describe('/onboarding guard (beforeLoad)', () => {
     onboardedAs(ANON);
     const redirect = await redirectOf(onboardingGuard({}));
     expect(redirect.options.to).toBe('/login');
-    expect(redirect.options.search).toEqual({ next: '/onboarding' });
+    expect(redirect.options.search).toEqual({});
   });
 
   it('keeps an authenticated incomplete player on the setup form', async () => {
@@ -296,8 +306,8 @@ describe('/onboarding guard (beforeLoad)', () => {
 
   it('sends a complete player to the dashboard', async () => {
     onboardedAs(COMPLETE);
-    const redirect = await redirectOf(onboardingGuard({}));
-    expect(redirect.options.to).toBe('/dashboard');
+    const redirect = await redirectOf(onboardingGuard({ search: {} }));
+    expect(redirect.options.href).toBe('/dashboard');
   });
 });
 
@@ -323,6 +333,11 @@ describe('/_protected guard (beforeLoad)', () => {
     onboardedAs(INCOMPLETE);
     const redirect = await redirectOf(protectedGuard({ location: { href: '/dashboard' } }));
     expect(redirect.options.to).toBe('/onboarding');
+    expect(redirect.options.search).toEqual({});
+    const deepLink = '/matches/123e4567-e89b-42d3-a456-426614174000';
+    expect(
+      (await redirectOf(protectedGuard({ location: { href: deepLink } }))).options.search
+    ).toEqual({ next: deepLink });
   });
 
   it('lets a complete player through to the protected content', async () => {
@@ -402,7 +417,10 @@ describe('auth route chains (memory-router loads, no rendering)', () => {
 
   it('routes an authenticated incomplete player from /login to player setup', async () => {
     onboardedAs(INCOMPLETE);
-    expect(await landedOn('/login')).toEqual({ pathname: '/onboarding', search: {} });
+    expect(await landedOn('/login')).toEqual({
+      pathname: '/onboarding',
+      search: {}
+    });
   });
 
   it('routes an authenticated incomplete player from the account route to player setup', async () => {
@@ -431,11 +449,10 @@ describe('auth route chains (memory-router loads, no rendering)', () => {
 
   it('gates an anonymous /onboarding visit behind the Welcome screen with a loop-free next', async () => {
     onboardedAs(ANON);
-    // The guard assigns next=/onboarding, but the login route's validateSearch rewrites an
-    // onboarding next to /dashboard: login → onboarding → login would otherwise loop.
+    // The guard's /onboarding target normalizes to the default dashboard and is omitted.
     expect(await landedOn('/onboarding')).toEqual({
       pathname: '/login',
-      search: { next: '/dashboard' }
+      search: {}
     });
   });
 

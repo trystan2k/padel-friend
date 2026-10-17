@@ -26,7 +26,11 @@ permission:
   websearch: deny
   todowrite: deny
   lsp: allow
-  external_directory: deny
+  external_directory:
+    "*": deny
+    "/Users/trystan2k/.gitconfig": allow
+    "/Users/trystan2k/.gitignore": allow
+    "/Users/trystan2k/Documents/Thiago/Repos/dotfiles/symlinks/**": allow
   "mcp_serena*": deny
   "engram*": deny
 ---
@@ -109,7 +113,7 @@ Model tier: `T0` mechanical. Format and store the log from the context the calle
 - `skill`: allow — `memory-notes` skill only; it is the sole persistence path.
 - `edit` (gates `write`/`edit`): scoped to `docs/development-logs/**` only. This is the one writable path; product source stays read-only.
 - `bash`: scoped — read-only git (`log`, `show`, `status`, `branch`) and `ls` only, for log metadata and verification.
-- `task`, `question`, `webfetch`, `websearch`, `todowrite`, `lsp`, `external_directory`: deny.
+- `task`, `question`, `webfetch`, `websearch`, `todowrite`, `lsp`: deny. `external_directory`: deny by default; only the git config paths (`~/.gitconfig`, `~/.gitignore`, and the resolved dotfiles symlinks directory) are allowed.
 - `mcp_serena*`, `engram*`: deny — Memory Notes only, per scope.
 
 Safety rules:

@@ -1,0 +1,132 @@
+import { spawn } from 'node:child_process';
+import { createClient } from '@supabase/supabase-js';
+import { describe, expect, it } from 'vitest';
+import { FIXTURE_EMAIL_LIKE, MATCH_FIXTURE_PRUNE_STATEMENTS } from '../e2e/global-setup';
+import {
+  assertLocalSupabaseEnvInCi,
+  dotEnvPathFromImportMetaUrl,
+  localSupabaseEnv
+} from './helpers/local-supabase-env';
+
+const environment = localSupabaseEnv({ filePath: dotEnvPathFromImportMetaUrl(import.meta.url) });
+
+function trustedSqlOutput(sql: string): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const child = spawn(
+      'pnpm',
+      ['exec', 'supabase', 'db', 'query', '--local', '--output-format', 'json', sql],
+      { cwd: process.cwd() }
+    );
+    let output = '';
+    child.stdout.setEncoding('utf8').on('data', (chunk: string) => (output += chunk));
+    child.stderr.setEncoding('utf8').on('data', (chunk: string) => (output += chunk));
+    child.once('error', reject);
+    child.once('close', () => resolve(output));
+  });
+}
+
+describe('e2e match fixture prune scoping', () => {
+  it('requires local Supabase in CI', () => {
+    expect(() => assertLocalSupabaseEnvInCi(environment.env, process.env.CI)).not.toThrow();
+  });
+
+  it.skipIf(!environment.env)(
+    'prunes only fixture-owned rows and never touches a normal local developer\u2019s match data',
+    async () => {
+      const { url, key } = environment.env!;
+      const fixtureDomain = FIXTURE_EMAIL_LIKE.replace('%', '');
+      const signUp = async (email: string): Promise<string> => {
+        const signup = await createClient(url, key, {
+          auth: { persistSession: false, autoRefreshToken: false }
+        }).auth.signUp({ email, password: 'Password123!' });
+        expect(signup.error, `signUp failed for ${email}`).toBeNull();
+        expect(signup.data.session, 'local email confirmations must be disabled').not.toBeNull();
+        return signup.data.user!.id;
+      };
+
+      // Three real local actors: two suite-style fixture accounts created through the
+      // dedicated marker domain, and one ordinary developer account whose email can
+      // never match the marker — exactly what a human's local account looks like.
+      const [fixtureOwner, fixtureInvitee, developer] = await Promise.all([
+        signUp(`prune-guard-owner-${crypto.randomUUID()}${fixtureDomain}`),
+        signUp(`prune-guard-invitee-${crypto.randomUUID()}${fixtureDomain}`),
+        signUp(`prune-guard-developer-${crypto.randomUUID()}@example.com`)
+      ]);
+      expect(fixtureDomain).toBe('@test.local');
+      expect('@example.com'.endsWith(fixtureDomain)).toBe(false);
+
+      const fixtureEvent = crypto.randomUUID();
+      const developerEvent = crypto.randomUUID();
+
+      // One atomic probe: build the fixture and developer rows, run the exact production
+      // prune statements, capture the post-prune row counts, then fail on purpose — the
+      // exception rolls the whole block back, so the shared database stays byte-identical
+      // while the report escapes through the error message. The table locks serialize the
+      // destructive window against concurrently running fixture suites.
+      const probe = `do $$
+declare
+  v_report jsonb;
+begin
+  alter table public.match_events disable trigger match_event_creator_registration;
+  alter table public.match_events disable trigger lock_match_photo_publication;
+  insert into public.communities(id,name,visibility,created_by,settings) values
+    ('${crypto.randomUUID()}','Prune guard fixture community','public','${fixtureOwner}','{}'::jsonb),
+    ('${crypto.randomUUID()}','Prune guard developer community','public','${developer}','{}'::jsonb);
+  insert into public.community_members(community_id,user_id,role,status,valid_from,activated_at)
+    select c.id, c.created_by, 'admin', 'active', now(), now()
+      from public.communities c
+      where c.created_by in ('${fixtureOwner}','${developer}');
+  insert into public.community_members(community_id,user_id,role,status,valid_from,activated_at) values
+    ((select id from public.communities where name='Prune guard fixture community'),'${fixtureInvitee}','member','active',now(),now());
+  insert into public.match_events(id,community_id,created_by,starts_at,timezone,event_type,visibility,team_assignment_mode,venue_name,maps_url,photo_path,registration_cutoff_at) values
+    ('${fixtureEvent}',(select id from public.communities where name='Prune guard fixture community'),'${fixtureOwner}', now()+interval '3 days','UTC','friendly','community_open','POST_MATCH_TEAMS','Prune guard fixture court','https://maps.google.com/maps/place/prune-guard-fixture','prune-guard/staged-fixture.png', now()+interval '2 days'),
+    ('${developerEvent}',(select id from public.communities where name='Prune guard developer community'),'${developer}', now()-interval '26 hours','UTC','friendly','community_open','POST_MATCH_TEAMS','Prune guard developer court','https://maps.google.com/maps/place/prune-guard-developer','prune-guard/staged-developer.png', now()-interval '27 hours');
+  insert into public.match_event_registrations(match_event_id,user_id,accepted_at) values
+    ('${fixtureEvent}','${fixtureOwner}',now()),
+    ('${developerEvent}','${developer}',now());
+  insert into public.match_event_invites(match_event_id,invitee_user_id,invited_by) values
+    ('${fixtureEvent}','${fixtureInvitee}','${fixtureOwner}'),
+    ('${developerEvent}','${developer}','${developer}');
+  lock table public.match_event_invites in share row exclusive mode;
+  lock table public.match_event_registrations in share row exclusive mode;
+  lock table public.match_events in share row exclusive mode;
+  ${MATCH_FIXTURE_PRUNE_STATEMENTS};
+  v_report := jsonb_build_object(
+    'fixture_event',(select count(*) from public.match_events where id='${fixtureEvent}'),
+    'fixture_registration',(select count(*) from public.match_event_registrations where match_event_id='${fixtureEvent}'),
+    'fixture_invite',(select count(*) from public.match_event_invites where match_event_id='${fixtureEvent}'),
+    'developer_event',(select count(*) from public.match_events where id='${developerEvent}'),
+    'developer_registration',(select count(*) from public.match_event_registrations where match_event_id='${developerEvent}'),
+    'developer_invite',(select count(*) from public.match_event_invites where match_event_id='${developerEvent}'),
+    'fixture_community',(select count(*) from public.communities where name='Prune guard fixture community'),
+    'developer_community',(select count(*) from public.communities where name='Prune guard developer community'));
+  raise exception 'PRUNE_GUARD_REPORT %', v_report::text;
+end $$;`;
+
+      const output = await trustedSqlOutput(probe);
+      // The CLI embeds the raised message as a JSON string, so the report's own quotes
+      // arrive escaped; capture up to the first unescaped quote, then unescape.
+      const reportMatch = output.match(/PRUNE_GUARD_REPORT ((?:[^"\\]|\\.)*)/);
+      expect(
+        reportMatch,
+        `Prune guard probe did not report: ${output.slice(0, 2000)}`
+      ).not.toBeNull();
+      const isRecord = (value: unknown): value is Record<string, unknown> =>
+        typeof value === 'object' && value !== null && !Array.isArray(value);
+      const parsed: unknown = JSON.parse(reportMatch![1]!.replace(/\\"/g, '"'));
+      const report = isRecord(parsed) ? parsed : {};
+      // Fixture-owned rows are gone: the event, its creator registration and its invitation.
+      expect(report['fixture_event']).toBe(0);
+      expect(report['fixture_registration']).toBe(0);
+      expect(report['fixture_invite']).toBe(0);
+      // Every row of a normal local developer survives untouched — event, registration
+      // and invitation — and the prune never leaves the match tables' scope.
+      expect(report['developer_event']).toBe(1);
+      expect(report['developer_registration']).toBe(1);
+      expect(report['developer_invite']).toBe(1);
+      expect(report['fixture_community']).toBe(1);
+      expect(report['developer_community']).toBe(1);
+    },
+    60_000
+  );
+});

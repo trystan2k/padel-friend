@@ -26,7 +26,11 @@ permission:
   websearch: allow
   todowrite: deny
   lsp: deny
-  external_directory: deny
+  external_directory:
+    "*": deny
+    "/Users/trystan2k/.gitconfig": allow
+    "/Users/trystan2k/.gitignore": allow
+    "/Users/trystan2k/Documents/Thiago/Repos/dotfiles/symlinks/**": allow
 ---
 
 # Agent: code-review-specialist
@@ -267,7 +271,7 @@ Effective permissions (frontmatter `permission`; legacy `tools` field not used):
 - `read`, `glob`, `grep`, `list`: allow — review investigation.
 - `skill`: allow — stack skills, including the mandatory `accessibility` skill for UI reviews.
 - `bash`: scoped — read-only git (`diff`, `log`, `show`, `status`) and `ls` only.
-- `edit`, `task`, `question`, `webfetch`, `websearch`, `todowrite`, `lsp`, `external_directory`: deny.
+- `edit`, `task`, `question`, `webfetch`, `websearch`, `todowrite`, `lsp`: deny. `external_directory`: deny by default; only the git config paths (`~/.gitconfig`, `~/.gitignore`, and the resolved dotfiles symlinks directory) are allowed.
 
 Never run destructive commands. Never modify files.
 This agent must not delegate to other subagents.

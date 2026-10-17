@@ -93,16 +93,26 @@ describe('lint-staged oxlint coverage', () => {
     expect(originalConfig).not.toContain('!(src/lib/supabase/database.types.ts)');
   });
 
-  it.each(['ts', 'tsx', 'js', 'mjs'])('catches nested .%s correctness errors', (extension) => {
-    const dir = createFixture();
-    const relativePath = `src/features/probe/deep/file.${extension}`;
-    stage(dir, relativePath, 'const value = missingProbeIdentifier;\n');
-    const result = runHook(dir);
-    expect(result.status).not.toBe(0);
-    expect(output(result)).toContain(relativePath);
-    expect(output(result)).toMatch(/eslint\(no-unused-vars\)/i);
-  });
+  // Spawns lint-staged once per extension (a real pnpm/node process chain per run);
+  // measured near the 5s default under full-suite worker contention, so each run
+  // carries an explicit timeout like the other process-spawning suites in this repo.
+  it.each(['ts', 'tsx', 'js', 'mjs'])(
+    'catches nested .%s correctness errors',
+    (extension) => {
+      const dir = createFixture();
+      const relativePath = `src/features/probe/deep/file.${extension}`;
+      stage(dir, relativePath, 'const value = missingProbeIdentifier;\n');
+      const result = runHook(dir);
+      expect(result.status).not.toBe(0);
+      expect(output(result)).toContain(relativePath);
+      expect(output(result)).toMatch(/eslint\(no-unused-vars\)/i);
+    },
+    30_000
+  );
 
+  // Spawns lint-staged twice (one scratch repo per scenario); measured 7.8s under a
+  // loaded full-suite run (80 workers), well over the 5s default, so it carries an
+  // explicit generous timeout instead of a weaker assertion.
   it('passes a clean nested file and ignores only generated database types', () => {
     const cleanDir = createFixture();
     stage(cleanDir, 'src/features/probe/deep/clean.ts', 'export const clean = true;\n');
@@ -118,11 +128,13 @@ describe('lint-staged oxlint coverage', () => {
     const generatedResult = runHook(generatedDir);
     expect(generatedResult.status).toBe(0);
     expect(existsSync(path.join(generatedDir, 'src/lib/supabase/database.types.ts'))).toBe(true);
-  });
+  }, 30_000);
 
+  // Spawns git (status) against the real repository; worker contention can add
+  // seconds to a single child spawn, so it carries an explicit timeout too.
   it('leaves the real repository index and working tree unchanged', () => {
     expect(
       execFileSync('git', ['status', '--porcelain'], { cwd: repoRoot, encoding: 'utf8' })
     ).toBe(originalStatus);
-  });
+  }, 15_000);
 });

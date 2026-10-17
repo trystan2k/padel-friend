@@ -409,6 +409,172 @@ export type Database = {
           },
         ]
       }
+      match_event_invites: {
+        Row: {
+          created_at: string
+          id: string
+          invited_by: string
+          invitee_user_id: string
+          match_event_id: string
+        }
+        ComputedFields: never
+        Insert: {
+          created_at?: string
+          id?: string
+          invited_by: string
+          invitee_user_id: string
+          match_event_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          invited_by?: string
+          invitee_user_id?: string
+          match_event_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "match_event_invites_match_event_id_fkey"
+            columns: ["match_event_id"]
+            isOneToOne: false
+            referencedRelation: "match_events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      match_event_registrations: {
+        Row: {
+          accepted_at: string
+          id: string
+          match_event_id: string
+          user_id: string
+        }
+        ComputedFields: never
+        Insert: {
+          accepted_at: string
+          id?: string
+          match_event_id: string
+          user_id: string
+        }
+        Update: {
+          accepted_at?: string
+          id?: string
+          match_event_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "match_event_registrations_match_event_id_fkey"
+            columns: ["match_event_id"]
+            isOneToOne: false
+            referencedRelation: "match_events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      match_events: {
+        Row: {
+          community_id: string
+          court_booked: boolean
+          court_notes: string | null
+          created_at: string
+          created_by: string
+          currency: string | null
+          duration_minutes: number | null
+          event_type: Database["public"]["Enums"]["match_event_type"]
+          id: string
+          maps_url: string
+          max_level: number | null
+          maximum_registrations: number | null
+          min_level: number | null
+          notes: string | null
+          payment_note: string | null
+          photo_path: string
+          price_minor: number | null
+          published_at: string
+          registration_cutoff_at: string
+          restriction_enabled: boolean
+          saved_venue_id: string | null
+          starts_at: string
+          team_assignment_mode: Database["public"]["Enums"]["match_team_assignment_mode"]
+          timezone: string
+          venue_name: string
+          visibility: Database["public"]["Enums"]["match_event_visibility"]
+        }
+        ComputedFields: never
+        Insert: {
+          community_id: string
+          court_booked?: boolean
+          court_notes?: string | null
+          created_at?: string
+          created_by: string
+          currency?: string | null
+          duration_minutes?: number | null
+          event_type: Database["public"]["Enums"]["match_event_type"]
+          id: string
+          maps_url: string
+          max_level?: number | null
+          maximum_registrations?: number | null
+          min_level?: number | null
+          notes?: string | null
+          payment_note?: string | null
+          photo_path: string
+          price_minor?: number | null
+          published_at?: string
+          registration_cutoff_at: string
+          restriction_enabled?: boolean
+          saved_venue_id?: string | null
+          starts_at: string
+          team_assignment_mode: Database["public"]["Enums"]["match_team_assignment_mode"]
+          timezone: string
+          venue_name: string
+          visibility: Database["public"]["Enums"]["match_event_visibility"]
+        }
+        Update: {
+          community_id?: string
+          court_booked?: boolean
+          court_notes?: string | null
+          created_at?: string
+          created_by?: string
+          currency?: string | null
+          duration_minutes?: number | null
+          event_type?: Database["public"]["Enums"]["match_event_type"]
+          id?: string
+          maps_url?: string
+          max_level?: number | null
+          maximum_registrations?: number | null
+          min_level?: number | null
+          notes?: string | null
+          payment_note?: string | null
+          photo_path?: string
+          price_minor?: number | null
+          published_at?: string
+          registration_cutoff_at?: string
+          restriction_enabled?: boolean
+          saved_venue_id?: string | null
+          starts_at?: string
+          team_assignment_mode?: Database["public"]["Enums"]["match_team_assignment_mode"]
+          timezone?: string
+          venue_name?: string
+          visibility?: Database["public"]["Enums"]["match_event_visibility"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "match_events_community_id_fkey"
+            columns: ["community_id"]
+            isOneToOne: false
+            referencedRelation: "communities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "match_events_saved_venue_id_fkey"
+            columns: ["saved_venue_id"]
+            isOneToOne: false
+            referencedRelation: "community_venues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       notes: {
         Row: {
           body: string
@@ -562,6 +728,7 @@ export type Database = {
         }[]
       }
       can_read_community: { Args: { p_community_id: string }; Returns: boolean }
+      can_read_match_event: { Args: { p_event_id: string }; Returns: boolean }
       count_my_unread_notifications: { Args: Record<PropertyKey, never>; Returns: number }
       create_community: {
         Args: {
@@ -600,6 +767,8 @@ export type Database = {
         }[]
       }
       get_effective_community_admin_defaults: { Args: { p_settings: Json }; Returns: Json }
+      get_match_creation_options: { Args: { p_community_id?: string }; Returns: Json }
+      get_match_event: { Args: { p_event_id: string }; Returns: Json }
       get_my_community_notification_timezone: {
         Args: { p_notification_id: string }
         Returns: string
@@ -611,12 +780,40 @@ export type Database = {
           time_zone: string
         }[]
       }
+      get_my_match_notification_contexts: {
+        Args: { p_notification_ids: string[] }
+        Returns: {
+          creator_display_name: string
+          currency: string
+          event_type: Database["public"]["Enums"]["match_event_type"]
+          match_event_id: string
+          notification_id: string
+          playing_count: number
+          price_minor: number
+          reserve_count: number
+          scheduled_at: string
+          timezone: string
+          venue: string
+        }[]
+      }
       get_my_notification_target: {
         Args: { p_notification_id: string }
         Returns: {
           community_id: string
           community_name: string
           invitation_id: string
+          membership_status: string
+          target_status: string
+        }[]
+      }
+      get_my_notification_target_v2: {
+        Args: { p_notification_id: string }
+        Returns: {
+          community_id: string
+          community_name: string
+          invitation_id: string
+          match_available: boolean
+          match_event_id: string
           membership_status: string
           target_status: string
         }[]
@@ -632,6 +829,7 @@ export type Database = {
       }
       is_community_admin: { Args: { p_community_id: string }; Returns: boolean }
       is_community_member: { Args: { p_community_id: string }; Returns: boolean }
+      is_private_match_event: { Args: { p_event_id: string }; Returns: boolean }
       join_public_community: {
         Args: { p_community_id: string }
         Returns: {
@@ -648,6 +846,16 @@ export type Database = {
           valid_until: string
         }[]
       }
+      list_match_events: {
+        Args: {
+          p_as_of?: string
+          p_community_id?: string
+          p_cursor?: string
+          p_entry: string
+          p_limit?: number
+        }
+        Returns: Json[]
+      }
       mark_all_notifications_read: { Args: { p_before: string }; Returns: number }
       mark_community_notification_read: {
         Args: { p_notification_id: string }
@@ -657,6 +865,10 @@ export type Database = {
         }[]
       }
       mark_notification_read: { Args: { p_notification_id: string }; Returns: string }
+      match_event_local_start: {
+        Args: { p_date: string; p_time: string; p_zone: string }
+        Returns: string
+      }
       onboard_player: {
         Args: {
           p_bio?: string
@@ -694,6 +906,11 @@ export type Database = {
           visibility: Database["public"]["Enums"]["community_visibility"]
         }[]
       }
+      publish_match_event: {
+        Args: { p_event_id: string; p_input: Json; p_invitee_ids: string[] }
+        Returns: string
+      }
+      safe_match_photo_uuid: { Args: { p_value: string }; Returns: string }
       safe_venue_photo_uuid: { Args: { p_value: string }; Returns: string }
       search_community_invitees: {
         Args: { p_community_id: string; p_limit?: number; p_query: string }
@@ -721,6 +938,13 @@ export type Database = {
           user_id: string
           valid_from: string
           valid_until: string
+        }[]
+      }
+      search_match_invitees: {
+        Args: { p_community_id: string; p_limit: number; p_query: string }
+        Returns: {
+          display_name: string
+          user_id: string
         }[]
       }
       send_community_request_message: {
@@ -782,12 +1006,17 @@ export type Database = {
       }
       valid_community_admin_defaults: { Args: { p_defaults: Json }; Returns: boolean }
       valid_community_venue_photo_key: { Args: { p_key: string }; Returns: boolean }
+      valid_match_maps_url: { Args: { p_url: string }; Returns: boolean }
+      valid_match_photo_key: { Args: { p_key: string }; Returns: boolean }
     }
     Enums: {
       community_join_policy: "instant" | "admin_approval"
       community_member_role: "admin" | "member"
       community_membership_status: "active" | "pending" | "inactive"
       community_visibility: "public" | "private"
+      match_event_type: "competitive" | "friendly"
+      match_event_visibility: "community_open" | "invite_only"
+      match_team_assignment_mode: "PREDEFINED_TEAMS" | "POST_MATCH_TEAMS"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1508,6 +1737,9 @@ export const Constants = {
       community_member_role: ["admin", "member"],
       community_membership_status: ["active", "pending", "inactive"],
       community_visibility: ["public", "private"],
+      match_event_type: ["competitive", "friendly"],
+      match_event_visibility: ["community_open", "invite_only"],
+      match_team_assignment_mode: ["PREDEFINED_TEAMS", "POST_MATCH_TEAMS"],
     },
   },
   storage: {

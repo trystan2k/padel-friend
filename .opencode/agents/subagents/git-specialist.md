@@ -18,7 +18,11 @@ permission:
   websearch: allow
   todowrite: deny
   lsp: allow
-  external_directory: deny
+  external_directory:
+    "*": deny
+    "/Users/trystan2k/.gitconfig": allow
+    "/Users/trystan2k/.gitignore": allow
+    "/Users/trystan2k/Documents/Thiago/Repos/dotfiles/symlinks/**": allow
 ---
 
 # Agent: git-specialist
@@ -102,7 +106,7 @@ Model tier: `T0` mechanical. Execute the resolved git/provider commands and repo
 - `read`, `glob`, `grep`, `list`: allow — repo and provider-context investigation.
 - `skill`: allow — `git` skill family (e.g. git-master) when available.
 - `bash`: allow — required in full because the gh PR pattern uses heredocs, pipes, and shell variable assignments that cannot be allowlisted per command. Destructive git commands still require `confirmed=true` and remote publishes require `approved=true`.
-- `edit`, `task`, `question`, `webfetch`, `websearch`, `todowrite`, `lsp`, `external_directory`: deny.
+- `edit`, `task`, `question`, `webfetch`, `websearch`, `todowrite`, `lsp`: deny. `external_directory`: deny by default; only the git config paths (`~/.gitconfig`, `~/.gitignore`, and the resolved dotfiles symlinks directory) are allowed.
 
 Safety rules:
 
