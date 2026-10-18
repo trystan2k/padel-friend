@@ -418,6 +418,13 @@ describe('match registration panel', () => {
     ).toBe('closed');
     expect(matchRegistrationAction(event({ caller_eligibility: 'invited' }), now)).toBe('invited');
   });
+
+  it('renders nothing for an invited caller with no registration row', () => {
+    // The invitation sentence is owned by the detail page's participation
+    // section (matches.detail.invitationInfo); the panel must not repeat it.
+    const { container } = mount(event({ caller_eligibility: 'invited' }), none);
+    expect(container.firstChild).toBeNull();
+  });
 });
 
 describe('match registration styles', () => {

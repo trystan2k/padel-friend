@@ -1964,7 +1964,7 @@ test.describe.serial('PAF-4 match event visual and structural QA', () => {
     await expect(
       page.getByRole('heading', { level: 1, name: `${en.matches.detail.title}: ${VENUES.invited}` })
     ).toBeVisible();
-    await expect(page.getByText(en.matches.detail.invitationInfo).first()).toBeVisible();
+    await expect(page.getByText(en.matches.detail.invitationInfo)).toBeVisible();
     const buttons = page.getByRole('button');
     await expect(buttons).toHaveCount(1);
     await expect(buttons).toHaveAccessibleName(en.matches.detail.share);

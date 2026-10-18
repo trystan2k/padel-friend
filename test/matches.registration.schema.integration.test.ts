@@ -438,21 +438,32 @@ describe('match registration schema integration', () => {
         if v_ordinal is distinct from 4 then raise exception 'backfill ordinal mismatch: %', v_ordinal; end if;
         alter table public.match_events enable trigger lock_match_photo_publication;
 
-        -- Every accepted roster in the database still orders by (creator first,
-        -- accepted_at, id); accepted ids and anchors were never rewritten.
+        -- The backfill rule is scoped to the event this suite owns. accepted_order
+        -- is the authoritative FIFO ordinal (assigned by the migration backfill and
+        -- the registration RPC); accepted_at is audit-only and the schema enforces
+        -- no correlation between the two. A database-wide scan is therefore invalid
+        -- by construction: any unrelated suite may legitimately seed accepted rows
+        -- directly with an accepted_at independent of their ordinal, and that is not
+        -- this suite's contract. Within this event, the backfilled roster must still
+        -- order by (creator first, accepted_at, id) with ids/anchors unrewritten.
+        select count(*) into v_ordinal from public.match_event_registrations
+         where match_event_id=v_event and lifecycle='accepted';
+        if v_ordinal <> 3 then
+          raise exception 'fixture accepted roster has % rows, expected 3', v_ordinal;
+        end if;
         select match_event_id into v_offender from (
           select r.match_event_id,
                  row_number() over (partition by r.match_event_id order by r.accepted_order) by_order,
                  row_number() over (partition by r.match_event_id order by (r.user_id = e.created_by) desc, r.accepted_at, r.id) by_rule
           from public.match_event_registrations r join public.match_events e on e.id = r.match_event_id
-          where r.lifecycle='accepted' and r.accepted_order is not null
+          where r.lifecycle='accepted' and r.accepted_order is not null and r.match_event_id=v_event
         ) ranked where by_order <> by_rule limit 1;
         if v_offender is not null then
           raise exception 'accepted_order diverges from (creator-first, accepted_at, id) on event %', v_offender;
         end if;
         select r.match_event_id into v_offender from public.match_event_registrations r
           join public.match_events e on e.id = r.match_event_id
-         where r.lifecycle='accepted' and r.user_id=e.created_by
+         where r.match_event_id=v_event and r.lifecycle='accepted' and r.user_id=e.created_by
            and r.accepted_order <> (select min(r2.accepted_order) from public.match_event_registrations r2
              where r2.match_event_id=r.match_event_id and r2.lifecycle='accepted')
          limit 1;

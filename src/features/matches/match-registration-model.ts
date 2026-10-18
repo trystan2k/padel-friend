@@ -3,8 +3,6 @@ import type { Database } from '../../lib/supabase/database.types';
 // PAF-5.2 roster/request projection DTOs. These are deliberately separate from
 // the flat T04 event DTO in match-model.ts; the RPC jsonb contracts are parsed
 // defensively here so malformed payloads can never reach the UI as raw columns.
-export type MatchRegistrationLifecycle =
-  Database['public']['Enums']['match_registration_lifecycle'];
 export type MatchRegistrationParticipation =
   Database['public']['Enums']['match_registration_participation'];
 export type MatchRegistrationSource = Database['public']['Enums']['match_registration_source'];

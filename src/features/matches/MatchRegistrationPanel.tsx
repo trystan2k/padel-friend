@@ -208,6 +208,12 @@ export function MatchRegistrationPanel({
 
   const action = controller.cutoffReached ? 'closed' : matchRegistrationAction(event, now);
 
+  // An invited caller has no registration row yet, so this panel has no place to
+  // show. The invitation sentence is owned by the detail page's participation
+  // section (matches.detail.invitationInfo); repeating it here would render the
+  // same user-facing paragraph twice on one screen. Render nothing instead.
+  if (registration.state === 'none' && action === 'invited') return null;
+
   const submitButton = (label: string, disabled: boolean) => (
     <button
       type="button"
@@ -545,12 +551,6 @@ export function MatchRegistrationPanel({
         {levelRange && <p {...stylex.props(s.meta)}>{levelRange}</p>}
         <FeedbackOutput message={feedbackMessage} />
         <p {...stylex.props(s.note)}>{t('matchRegistration.join.requestNote')}</p>
-      </div>
-    );
-  } else if (action === 'invited') {
-    body = (
-      <div {...stylex.props(s.body)}>
-        <p {...stylex.props(s.copy)}>{t('matches.detail.invitationInfo')}</p>
       </div>
     );
   } else if (action === 'join') {

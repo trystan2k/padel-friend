@@ -666,7 +666,11 @@ test.describe.serial('public community_open lifecycle', () => {
     await expect(buttons).toHaveCount(1);
     await expect(buttons).toHaveAccessibleName(en.matches.detail.share);
     const links = creatorPage.getByRole('link');
-    await expect(links).toHaveCount(2); // localized Back + the external Maps anchor
+    // Three links: the localized Back link, the external Maps anchor, and the
+    // PAF-5 registration panel's "View group" link
+    // (matchRegistration.request.viewGroup), which the creator's accepted
+    // placement renders inside the new "Your place in this match" region.
+    await expect(links).toHaveCount(3);
     for (const link of await links.all())
       expect((await link.textContent()) ?? '').not.toMatch(/book|pay|purchase|join|register/i);
 
