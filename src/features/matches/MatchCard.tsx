@@ -1,3 +1,4 @@
+import { StatusBadge } from '../../components/ui/StatusBadge';
 import * as stylex from '@stylexjs/stylex';
 import { Link } from '@tanstack/react-router';
 import { useTranslation } from 'react-i18next';
@@ -98,7 +99,9 @@ export function MatchCard({ event }: { event: MatchEventListItem }) {
           {t('matches.card.pricePerPlayer')}: {price}
         </p>
       )}
-      {badge && badge !== 'creator' && <strong>{t(`matches.badges.${badge}`)}</strong>}
+      {badge && badge !== 'creator' && (
+        <StatusBadge appearance="emphasis">{t(`matches.badges.${badge}`)}</StatusBadge>
+      )}
       {event.caller_eligibility === 'invited' && <p>{t('matches.detail.invitationInfo')}</p>}
       {event.caller_eligibility === 'nonmember' && event.caller_requires_approval && (
         <p>{t('matches.detail.guestApprovalRequired')}</p>

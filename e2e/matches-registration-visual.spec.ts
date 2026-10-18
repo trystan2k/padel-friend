@@ -1,6 +1,6 @@
 import { spawn } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, readFileSync, unlinkSync, writeFileSync } from 'node:fs';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import {
   expect,
@@ -11,6 +11,7 @@ import {
   type Page
 } from '@playwright/test';
 import { waitForHydratedPage } from './auth-helpers';
+import { runCleanupTasks, runMatchFixtureCleanup } from './match-fixture-cleanup';
 
 // PAF-5.6 visual gate (PAF-83). Companion to e2e/matches-registration.spec.ts — the
 // functional journeys live there and must stay untouched. Every screen pairs exact
@@ -299,6 +300,9 @@ async function compare(page: Page, baseline: string, masks: Locator[] = []): Pro
 
 const password = 'Password123!';
 const config = localConfig();
+const ownedActors = new Map<string, Actor>();
+const ownedEvents = new Set<string>();
+const uploadedPhotos: { actor: Actor; path: string }[] = [];
 
 test.use({
   viewport: { width: 390, height: 844 },
@@ -379,6 +383,8 @@ async function createActor(displayName: string, level = 3.2): Promise<Actor> {
   const client = createClient(config.url, config.key, {
     auth: { persistSession: false, autoRefreshToken: false }
   });
+  const actor = { id: signup.data.user.id, email, displayName, client };
+  ownedActors.set(actor.id, actor);
   const session = await client.auth.setSession(signup.data.session);
   if (session.error) throw session.error;
   const onboarded = await client.rpc('onboard_player', {
@@ -387,7 +393,7 @@ async function createActor(displayName: string, level = 3.2): Promise<Actor> {
     p_initial_level: level
   });
   if (onboarded.error) throw onboarded.error;
-  return { id: signup.data.user.id, email, displayName, client };
+  return actor;
 }
 
 async function signInWithPassword(email: string, displayName: string): Promise<Actor> {
@@ -399,7 +405,9 @@ async function signInWithPassword(email: string, displayName: string): Promise<A
   const claims = await client.auth.getClaims();
   const id = claims.data?.claims?.sub;
   if (typeof id !== 'string') throw new Error(`No subject claim for ${displayName}`);
-  return { id, email, displayName, client };
+  const actor = { id, email, displayName, client };
+  ownedActors.set(actor.id, actor);
+  return actor;
 }
 
 async function createPublicCommunity(admin: Actor): Promise<string> {
@@ -435,6 +443,7 @@ async function stagePhoto(actor: Actor, communityId: string, eventId: string): P
     .from('match-event-photos')
     .upload(path, matchPhoto(), { contentType: 'image/png' });
   if (upload.error) throw upload.error;
+  uploadedPhotos.push({ actor, path });
   return path;
 }
 
@@ -1476,11 +1485,37 @@ async function ensureVisualFixtures(): Promise<void> {
         family.rosterEventId
       ])
         if (!(await eventExists(host, eventId))) throw new Error('stored event is missing');
+      for (const eventId of [
+        family.joinEventId,
+        family.fullEventId,
+        family.closedEventId,
+        family.rosterEventId
+      ])
+        ownedEvents.add(eventId);
       return;
     } catch {
-      family.host = undefined;
-      family.joinViewer = undefined;
-      family.closedViewer = undefined;
+      Object.assign(family, {
+        host: undefined,
+        joinViewer: undefined,
+        joinRafael: undefined,
+        joinElisa: undefined,
+        pendingViewer: undefined,
+        declinedViewer: undefined,
+        fullViewer: undefined,
+        fullHeitor: undefined,
+        closedViewer: undefined,
+        closedAccepted: undefined,
+        expiredViewer: undefined,
+        rosterCaller: undefined,
+        notifA: undefined,
+        notifB: undefined,
+        communityId: undefined,
+        joinEventId: undefined,
+        fullEventId: undefined,
+        closedEventId: undefined,
+        rosterEventId: undefined,
+        extraActors: []
+      });
     }
   }
 
@@ -1542,6 +1577,7 @@ async function ensureVisualFixtures(): Promise<void> {
   // Rafael and Elisa carry the approved anchor: the Za6r4 board depicts genuine
   // APPROVED states (F27), so the fixture must produce them truthfully.
   family.joinEventId = crypto.randomUUID();
+  ownedEvents.add(family.joinEventId);
   await publishFixture(
     host,
     family.joinEventId,
@@ -1564,6 +1600,7 @@ async function ensureVisualFixtures(): Promise<void> {
   // FULL event: seven seeded members plus the promoted caller (order 8) behind
   // the creator complete two quartets of eight — the SYMLa MATCH FULL state.
   family.fullEventId = crypto.randomUUID();
+  ownedEvents.add(family.fullEventId);
   await publishFixture(
     host,
     family.fullEventId,
@@ -1592,6 +1629,7 @@ async function ensureVisualFixtures(): Promise<void> {
   // must exist BEFORE the event becomes due; the internal processor — the same
   // function the unattended scheduler calls — then expires it.
   family.closedEventId = crypto.randomUUID();
+  ownedEvents.add(family.closedEventId);
   await publishFixture(
     host,
     family.closedEventId,
@@ -1624,6 +1662,7 @@ async function ensureVisualFixtures(): Promise<void> {
   // ROSTER event: unlimited; two complete groups, guest on the second Group 2
   // row (order 6), two reserves and one reserve not playing (xC04T board).
   family.rosterEventId = crypto.randomUUID();
+  ownedEvents.add(family.rosterEventId);
   await publishFixture(
     host,
     family.rosterEventId,
@@ -2530,9 +2569,40 @@ test.describe.serial('PAF-5 registration visual and structural QA', () => {
   });
 
   test.afterAll(async () => {
-    await test.info().attach('registration visual calibration measurements', {
-      body: JSON.stringify({ measurements: calibration, structuralViolations }, null, 1)
-    });
-    await Promise.all(family.contexts.splice(0).map((context) => context.close()));
+    const errors: unknown[] = [];
+    try {
+      await test.info().attach('registration visual calibration measurements', {
+        body: JSON.stringify({ measurements: calibration, structuralViolations }, null, 1)
+      });
+    } catch (error) {
+      errors.push(error);
+    }
+    const closes = await Promise.allSettled(
+      family.contexts.splice(0).map((context) => context.close())
+    );
+    for (const result of closes) if (result.status === 'rejected') errors.push(result.reason);
+    try {
+      await runCleanupTasks([
+        async () => {
+          for (const photo of uploadedPhotos) {
+            const result = await photo.actor.client.storage
+              .from('match-event-photos')
+              .remove([photo.path]);
+            if (result.error) throw result.error;
+          }
+        },
+        () =>
+          runMatchFixtureCleanup({ eventIds: [...ownedEvents], actorIds: [...ownedActors.keys()] })
+      ]);
+    } catch (error) {
+      errors.push(error);
+    }
+    try {
+      unlinkSync(storedFixturesPath());
+    } catch (error) {
+      if (!(error instanceof Error && 'code' in error && error.code === 'ENOENT'))
+        errors.push(error);
+    }
+    if (errors.length) throw new AggregateError(errors, 'Visual match fixture teardown failed');
   });
 });

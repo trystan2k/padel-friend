@@ -81,20 +81,40 @@ begin
   insert into public.match_events(id,community_id,created_by,starts_at,timezone,event_type,visibility,team_assignment_mode,venue_name,maps_url,photo_path,registration_cutoff_at) values
     ('${fixtureEvent}',(select id from public.communities where name='Prune guard fixture community'),'${fixtureOwner}', now()+interval '3 days','UTC','friendly','community_open','POST_MATCH_TEAMS','Prune guard fixture court','https://maps.google.com/maps/place/prune-guard-fixture','prune-guard/staged-fixture.png', now()+interval '2 days'),
     ('${developerEvent}',(select id from public.communities where name='Prune guard developer community'),'${developer}', now()-interval '26 hours','UTC','friendly','community_open','POST_MATCH_TEAMS','Prune guard developer court','https://maps.google.com/maps/place/prune-guard-developer','prune-guard/staged-developer.png', now()-interval '27 hours');
-  insert into public.match_event_registrations(match_event_id,user_id,accepted_at,accepted_order,participation_status,registration_source) values
-    ('${fixtureEvent}','${fixtureOwner}',now(),1,'reserve','creator'),
-    ('${developerEvent}','${developer}',now(),1,'reserve','creator');
-  insert into public.match_event_invites(match_event_id,invitee_user_id,invited_by) values
-    ('${fixtureEvent}','${fixtureInvitee}','${fixtureOwner}'),
-    ('${developerEvent}','${developer}','${developer}');
+      insert into public.match_event_registrations(match_event_id,user_id,accepted_at,accepted_order,participation_status,registration_source) values
+        ('${fixtureEvent}','${fixtureOwner}',now(),1,'reserve','creator'),
+        ('${developerEvent}','${developer}',now(),1,'reserve','creator');
+      insert into public.match_event_registration_state(match_event_id,next_accepted_ordinal) values
+        ('${fixtureEvent}',2),('${developerEvent}',2);
+      insert into public.match_event_registration_attempts(match_event_id,user_id,requested_at,outcome,actor_id) values
+        ('${fixtureEvent}','${fixtureOwner}',now(),'pending','${fixtureOwner}');
+      insert into public.match_event_invites(match_event_id,invitee_user_id,invited_by) values
+        ('${fixtureEvent}','${fixtureInvitee}','${fixtureOwner}'),
+        ('${developerEvent}','${developer}','${developer}');
+      insert into public.notifications(recipient_user_id,event_key,kind,category,target_type,target_id,community_id) values
+        ('${fixtureOwner}','fixture-match-${fixtureEvent}','match_event_invitation','matches','match_event','${fixtureEvent}','${crypto.randomUUID()}'),
+        ('${developer}','developer-match-${developerEvent}','match_event_invitation','matches','match_event','${developerEvent}','${crypto.randomUUID()}'),
+        ('${fixtureOwner}','fixture-community-${fixtureEvent}','community_invitation','community','community_invitation','${crypto.randomUUID()}','${crypto.randomUUID()}');
   lock table public.match_event_invites in share row exclusive mode;
   lock table public.match_event_registrations in share row exclusive mode;
   lock table public.match_events in share row exclusive mode;
-  ${MATCH_FIXTURE_PRUNE_STATEMENTS};
-  v_report := jsonb_build_object(
+      ${MATCH_FIXTURE_PRUNE_STATEMENTS};
+      ${MATCH_FIXTURE_PRUNE_STATEMENTS};
+      begin
+        alter table public.match_events disable trigger match_event_immutable;
+        raise exception 'intentional cleanup rollback probe';
+      exception when others then null;
+      end;
+      v_report := jsonb_build_object(
     'fixture_event',(select count(*) from public.match_events where id='${fixtureEvent}'),
     'fixture_registration',(select count(*) from public.match_event_registrations where match_event_id='${fixtureEvent}'),
-    'fixture_invite',(select count(*) from public.match_event_invites where match_event_id='${fixtureEvent}'),
+        'fixture_invite',(select count(*) from public.match_event_invites where match_event_id='${fixtureEvent}'),
+        'fixture_notification',(select count(*) from public.notifications where event_key='fixture-match-${fixtureEvent}'),
+        'fixture_state',(select count(*) from public.match_event_registration_state where match_event_id='${fixtureEvent}'),
+        'fixture_attempt',(select count(*) from public.match_event_registration_attempts where match_event_id='${fixtureEvent}'),
+        'developer_notification',(select count(*) from public.notifications where event_key='developer-match-${developerEvent}'),
+        'unrelated_notification',(select count(*) from public.notifications where recipient_user_id='${fixtureOwner}' and category='community'),
+        'event_trigger_enabled',(select tgenabled='O' from pg_trigger where tgname='match_event_immutable'),
     'developer_event',(select count(*) from public.match_events where id='${developerEvent}'),
     'developer_registration',(select count(*) from public.match_event_registrations where match_event_id='${developerEvent}'),
     'developer_invite',(select count(*) from public.match_event_invites where match_event_id='${developerEvent}'),
@@ -119,11 +139,17 @@ end $$;`;
       expect(report['fixture_event']).toBe(0);
       expect(report['fixture_registration']).toBe(0);
       expect(report['fixture_invite']).toBe(0);
+      expect(report['fixture_notification']).toBe(0);
+      expect(report['fixture_state']).toBe(0);
+      expect(report['fixture_attempt']).toBe(0);
       // Every row of a normal local developer survives untouched — event, registration
       // and invitation — and the prune never leaves the match tables' scope.
       expect(report['developer_event']).toBe(1);
       expect(report['developer_registration']).toBe(1);
       expect(report['developer_invite']).toBe(1);
+      expect(report['developer_notification']).toBe(1);
+      expect(report['unrelated_notification']).toBe(1);
+      expect(report['event_trigger_enabled']).toBe(true);
       expect(report['fixture_community']).toBe(1);
       expect(report['developer_community']).toBe(1);
     },

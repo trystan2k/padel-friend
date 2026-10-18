@@ -2,6 +2,7 @@ import * as stylex from '@stylexjs/stylex';
 import { Link } from '@tanstack/react-router';
 import { useEffect, useEffectEvent, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { StatusBadge } from '../../components/ui/StatusBadge';
 import { notificationBadge } from './notification-model';
 import { getMyUnreadNotificationCount } from './notifications.functions';
 import { styles } from './notifications.styles';
@@ -84,7 +85,11 @@ export function NotificationBadge({ count }: { count: number | null }) {
     <>
       <Link to="/notifications" aria-label={badge.label} {...stylex.props(styles.badgeLink)}>
         {t('notifications.title')}
-        {badge.visual !== null && <span aria-hidden="true">{badge.visual}</span>}
+        {badge.visual !== null && (
+          <StatusBadge appearance="count" aria-hidden="true">
+            {badge.visual}
+          </StatusBadge>
+        )}
       </Link>
       <span {...stylex.props(styles.visuallyHidden)} aria-live="polite">
         {announcement}

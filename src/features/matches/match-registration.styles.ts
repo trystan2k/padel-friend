@@ -21,41 +21,6 @@ export const matchRegistrationStyles = stylex.create({
   },
   body: { display: 'grid', gap: 'var(--space-3)' },
   badgeRow: { display: 'flex', flexWrap: 'wrap', gap: 'var(--space-2)', alignItems: 'center' },
-  badge: {
-    display: 'inline-flex',
-    alignItems: 'center',
-    paddingBlock: 'var(--space-1)',
-    paddingInline: 'var(--space-3)',
-    borderRadius: 'var(--radius-8)',
-    fontFamily: 'var(--font-family-body)',
-    fontSize: 'var(--font-size-11)',
-    fontWeight: 'var(--font-weight-semibold)',
-    letterSpacing: 'var(--font-letter-spacing-1-5)',
-    textTransform: 'uppercase'
-  },
-  badgePlaying: {
-    backgroundColor: 'var(--color-green-soft)',
-    color: 'var(--color-green)'
-  },
-  badgeReserve: {
-    backgroundColor: 'var(--color-surface-2)',
-    color: 'var(--color-text)'
-  },
-  badgeMuted: {
-    backgroundColor: 'var(--color-surface-2)',
-    color: 'var(--color-muted)'
-  },
-  badgeDanger: {
-    backgroundColor: 'var(--color-surface-2)',
-    color: 'var(--color-red)',
-    borderWidth: 'var(--border-width-sm)',
-    borderStyle: 'solid',
-    borderColor: 'var(--color-red)'
-  },
-  badgeGuest: {
-    backgroundColor: 'var(--color-amber)',
-    color: 'var(--color-bg)'
-  },
   copy: { margin: 0, color: 'var(--color-text)' },
   meta: {
     margin: 0,
@@ -148,22 +113,6 @@ export const matchRegistrationStyles = stylex.create({
     letterSpacing: 'var(--font-letter-spacing-1-5)',
     textTransform: 'uppercase'
   },
-  rosterRow: {
-    display: 'flex',
-    flexWrap: 'wrap',
-    alignItems: 'center',
-    gap: 'var(--space-2)',
-    minHeight: 'calc(var(--space-40) + var(--space-4))',
-    paddingInline: 'var(--space-3)',
-    borderRadius: 'var(--radius-8)',
-    backgroundColor: 'var(--color-surface)'
-  },
-  rosterRowSelf: {
-    borderInlineStartWidth: 'var(--border-width-lg)',
-    borderInlineStartStyle: 'solid',
-    borderInlineStartColor: 'var(--color-green)'
-  },
-  rosterName: { margin: 0, fontWeight: 'var(--font-weight-semibold)' },
   queue: { display: 'grid', gap: 'var(--space-4)' },
   queueHeader: {
     display: 'flex',
@@ -186,14 +135,6 @@ export const matchRegistrationStyles = stylex.create({
     borderRadius: 'var(--radius-10)',
     backgroundColor: 'var(--color-surface-2)'
   },
-  requestHeader: {
-    display: 'flex',
-    flexWrap: 'wrap',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 'var(--space-2)'
-  },
-  requestName: { margin: 0, fontWeight: 'var(--font-weight-semibold)' },
   visuallyHidden: {
     position: 'absolute',
     width: 'var(--space-1)',
