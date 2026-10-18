@@ -527,15 +527,20 @@ async function fixtureRows(sql: string): Promise<Record<string, unknown>[]> {
     child.once('close', resolve);
   });
   if (code !== 0) throw new Error(`Trusted fixture query failed (${code}): ${stdout}\n${stderr}`);
-  const start = stdout.indexOf('{');
-  if (start < 0) throw new Error(`Fixture query returned no JSON: ${stdout.slice(0, 400)}`);
-  const parsed: unknown = JSON.parse(stdout.slice(start));
-  if (typeof parsed !== 'object' || parsed === null) return [];
-  const rows = (parsed as { rows?: unknown }).rows;
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(stdout.trim());
+  } catch {
+    throw new Error(`Fixture query returned no JSON: ${stdout.slice(0, 400)}`);
+  }
+  // The CLI v2.118 prints the statement's rows as a top-level JSON array of
+  // row objects (the banner goes to stderr); older CLI revisions nested them
+  // under a `rows` key. Model both, nothing else.
+  if (Array.isArray(parsed))
+    return parsed.filter((row): row is Record<string, unknown> => isRecord(row));
+  const rows = isRecord(parsed) ? parsed['rows'] : undefined;
   return Array.isArray(rows)
-    ? rows.filter((row): row is Record<string, unknown> => {
-        return typeof row === 'object' && row !== null && !Array.isArray(row);
-      })
+    ? rows.filter((row): row is Record<string, unknown> => isRecord(row))
     : [];
 }
 

@@ -44,12 +44,23 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 async function trustedRows(env: Env, sql: string): Promise<Record<string, unknown>[]> {
   const { code, stdout, stderr } = await runSupabaseQuery(env, sql);
   if (code !== 0) throw new Error(`Trusted fixture query failed (${code}): ${stdout}\n${stderr}`);
-  const start = stdout.indexOf('{');
-  if (start < 0) throw new Error(`Fixture query returned no JSON: ${stdout.slice(0, 400)}`);
-  const parsed: unknown = JSON.parse(stdout.slice(start));
-  if (!isRecord(parsed) || !Array.isArray(parsed['rows']))
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(stdout.trim());
+  } catch {
+    throw new Error(`Fixture query returned no JSON: ${stdout.slice(0, 400)}`);
+  }
+  // The CLI v2.118 prints the statement's rows as a top-level JSON array of
+  // row objects (the banner goes to stderr); older CLI revisions nested them
+  // under a `rows` key. Model both, nothing else.
+  const candidate: unknown[] | null = Array.isArray(parsed)
+    ? parsed
+    : isRecord(parsed) && Array.isArray(parsed['rows'])
+      ? parsed['rows']
+      : null;
+  if (candidate === null)
     throw new Error(`Fixture query returned unexpected JSON: ${stdout.slice(0, 400)}`);
-  return parsed['rows'].filter(isRecord);
+  return candidate.filter(isRecord);
 }
 
 /** Three real local users reused by every behavioral block of this suite. */
