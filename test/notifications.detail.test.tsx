@@ -346,4 +346,43 @@ describe('notification detail page', () => {
     expect(mocks.matchContext).toHaveBeenCalledWith({ data: { notificationId } });
     expect(mocks.targetV1).not.toHaveBeenCalled();
   });
+
+  it('renders the cutoff expired kind with its own heading and body copy', async () => {
+    mountPage(
+      { ...availableMatch, kind: 'match_registration_expired' },
+      matchContext('Expiry court')
+    );
+
+    expect(
+      await screen.findByRole('heading', { name: copy.kinds.match_registration_expired })
+    ).toBeTruthy();
+    expect(screen.getByText(copy.match.registrationExpiredBody)).toBeTruthy();
+    expect(screen.queryByText(copy.match.invitedBy)).toBeNull();
+    expect(screen.getByRole('link', { name: copy.match.openEvent }).getAttribute('href')).toBe(
+      `/matches/${availableMatch.match_event_id}`
+    );
+  });
+
+  it('renders the cutoff not-playing kind with its own heading and body copy', async () => {
+    mountPage(
+      { ...availableMatch, kind: 'match_registration_not_playing' },
+      matchContext('NotPlaying court')
+    );
+
+    expect(
+      await screen.findByRole('heading', { name: copy.kinds.match_registration_not_playing })
+    ).toBeTruthy();
+    expect(screen.getByText(copy.match.registrationNotPlayingBody)).toBeTruthy();
+    expect(screen.queryByText(copy.match.registrationExpiredBody)).toBeNull();
+  });
+
+  it('degrades a cutoff kind without match context to the kind heading and unavailable copy', async () => {
+    mountPage({ ...availableMatch, kind: 'match_registration_not_playing' }, null);
+
+    expect(
+      await screen.findByRole('heading', { name: copy.kinds.match_registration_not_playing })
+    ).toBeTruthy();
+    expect(screen.getByText(copy.match.unavailable)).toBeTruthy();
+    expect(screen.queryByText(copy.match.registrationNotPlayingBody)).toBeNull();
+  });
 });

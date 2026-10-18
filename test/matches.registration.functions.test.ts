@@ -399,6 +399,48 @@ describe('match registration jsonb parsers', () => {
       expect(parseMatchRegistrationQueue(payload)).toBeNull();
     }
   });
+
+  it('parses the additive reserve_not_playing_count on the queue row and refuses malformed values', () => {
+    const queueRow = {
+      event_id: eventId,
+      accepted_count: 5,
+      playing_count: 4,
+      reserve_count: 0,
+      reserve_not_playing_count: 1,
+      maximum_registrations: null,
+      registration_cutoff_at: now,
+      requests: []
+    };
+    // A post-cutoff payload carries the split count: ordinary Reserve never
+    // includes Reserve Not Playing.
+    expect(parseMatchRegistrationQueue(queueRow)).toEqual(queueRow);
+    // A pre-cutoff payload may omit the additive key; it stays absent instead
+    // of being fabricated as zero, and an explicit null is tolerated the same
+    // way.
+    const withoutCount = parseMatchRegistrationQueue({
+      ...queueRow,
+      reserve_not_playing_count: undefined
+    });
+    expect(withoutCount).not.toBeNull();
+    expect('reserve_not_playing_count' in withoutCount!).toBe(false);
+    expect(
+      'reserve_not_playing_count' in
+        parseMatchRegistrationQueue({
+          ...queueRow,
+          reserve_not_playing_count: null
+        })!
+    ).toBe(false);
+    // Any other malformed value degrades the WHOLE payload to null so the UI
+    // never renders a garbage count.
+    for (const malformed of ['1', -1, 1.5, true, []]) {
+      expect(() =>
+        parseMatchRegistrationQueue({ ...queueRow, reserve_not_playing_count: malformed })
+      ).not.toThrow();
+      expect(
+        parseMatchRegistrationQueue({ ...queueRow, reserve_not_playing_count: malformed })
+      ).toBeNull();
+    }
+  });
 });
 
 describe('registration server function contracts', () => {

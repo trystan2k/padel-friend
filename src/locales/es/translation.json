@@ -460,7 +460,9 @@
       "match_registration_playing": "Estás jugando",
       "match_registration_reserve": "Reserva · primero en entrar",
       "match_registration_promoted": "PROMOVIDO A JUGAR",
-      "match_registration_quartet_complete": "Tu cuarteto está completo"
+      "match_registration_quartet_complete": "Tu cuarteto está completo",
+      "match_registration_expired": "Solicitud caducada en el cierre",
+      "match_registration_not_playing": "Reserva sin jugar"
     },
     "match": {
       "openEvent": "Abrir evento",
@@ -482,6 +484,8 @@
       "registrationReserveBody": "Eres el nº {{position}} de la lista de reserva para {{event}}.",
       "registrationPromotedBody": "Tu cuarteto se completó. Ahora eres del Grupo {{group}}.",
       "registrationQuartetCompleteBody": "El Grupo {{group}} está completo — 4 jugadores confirmados para {{event}}.",
+      "registrationExpiredBody": "La inscripción cerró antes de una decisión. No se reservó ninguna plaza.",
+      "registrationNotPlayingBody": "El plazo pasó antes de que se completara un cuarteto. No se registrará ningún resultado del partido.",
       "unavailable": "Esta notificación de partido ya no está disponible."
     }
   },
@@ -548,6 +552,7 @@
     "badges": {
       "playing": "Jugando",
       "reserve": "Reserva",
+      "reserve_not_playing": "Sin jugar",
       "invited": "Invitado",
       "resultActionRequired": "Acción de resultado requerida"
     },

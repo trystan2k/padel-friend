@@ -23,6 +23,9 @@ export type MatchNotificationContext = {
   event_type: string;
   playing_count: number;
   reserve_count: number;
+  // Additive context count: ordinary Reserve excludes Reserve Not Playing, so a
+  // notification surface can distinguish the two. Optional for older contexts.
+  reserve_not_playing_count?: number;
   price_minor: number | null;
   currency: string | null;
   // Added by the PAF-5.2 context projection for registration notifications.

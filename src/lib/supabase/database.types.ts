@@ -897,6 +897,7 @@ export type Database = {
           price_minor: number
           requester_display_name: string
           reserve_count: number
+          reserve_not_playing_count: number
           scheduled_at: string
           timezone: string
           venue: string
@@ -1004,6 +1005,43 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      lock_match_event_registration_skip_locked: {
+        Args: { p_event_id: string }
+        Returns: {
+          community_id: string
+          court_booked: boolean
+          court_notes: string | null
+          created_at: string
+          created_by: string
+          currency: string | null
+          duration_minutes: number | null
+          event_type: Database["public"]["Enums"]["match_event_type"]
+          id: string
+          maps_url: string
+          max_level: number | null
+          maximum_registrations: number | null
+          min_level: number | null
+          notes: string | null
+          payment_note: string | null
+          photo_path: string
+          price_minor: number | null
+          published_at: string
+          registration_cutoff_at: string
+          restriction_enabled: boolean
+          saved_venue_id: string | null
+          starts_at: string
+          team_assignment_mode: Database["public"]["Enums"]["match_team_assignment_mode"]
+          timezone: string
+          venue_name: string
+          visibility: Database["public"]["Enums"]["match_event_visibility"]
+        }
+        SetofOptions: {
+          from: "*"
+          to: "match_events"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       mark_all_notifications_read: { Args: { p_before: string }; Returns: number }
       mark_community_notification_read: {
         Args: { p_notification_id: string }
@@ -1023,6 +1061,7 @@ export type Database = {
           accepted_count: number
           playing_count: number
           reserve_count: number
+          reserve_not_playing_count: number
         }[]
       }
       match_registration_is_member: {
@@ -1063,6 +1102,11 @@ export type Database = {
           p_target_type: string
         }
         Returns: string
+      }
+      process_due_match_event_registration_cutoffs: { Args: { p_limit?: number }; Returns: Json }
+      process_match_event_registration_cutoff: {
+        Args: { p_match_event_id: string; p_skip_locked?: boolean }
+        Returns: Json
       }
       public_community_discovery: {
         Args: Record<PropertyKey, never>

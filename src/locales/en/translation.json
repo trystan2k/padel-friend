@@ -460,7 +460,9 @@
       "match_registration_playing": "You’re Playing",
       "match_registration_reserve": "Reserve · first to join",
       "match_registration_promoted": "PROMOTED TO PLAYING",
-      "match_registration_quartet_complete": "Your quartet is complete"
+      "match_registration_quartet_complete": "Your quartet is complete",
+      "match_registration_expired": "Request expired at cutoff",
+      "match_registration_not_playing": "Reserve not playing"
     },
     "match": {
       "openEvent": "Open event",
@@ -482,6 +484,8 @@
       "registrationReserveBody": "You’re #{{position}} in the reserve queue for {{event}}.",
       "registrationPromotedBody": "Your quartet filled. You’re now Group {{group}}.",
       "registrationQuartetCompleteBody": "Group {{group}} is full — 4 players confirmed for {{event}}.",
+      "registrationExpiredBody": "Registration closed before a decision. No place was reserved.",
+      "registrationNotPlayingBody": "Cutoff passed before a quartet completed. No match result will be recorded.",
       "unavailable": "This match notification is no longer available."
     }
   },
@@ -548,6 +552,7 @@
     "badges": {
       "playing": "Playing",
       "reserve": "Reserve",
+      "reserve_not_playing": "Not playing",
       "invited": "Invited",
       "resultActionRequired": "Result action required"
     },

@@ -61,6 +61,7 @@ const expectedDetailKeys = [
   'registration_cutoff_at',
   'registration_open',
   'reserve_count',
+  'reserve_not_playing_count',
   'restriction_enabled',
   'starts_at',
   'team_assignment_mode',

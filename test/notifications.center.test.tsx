@@ -39,6 +39,10 @@ vi.mock('react-i18next', async () => {
           if (key === 'notifications.today') return resource.notifications.today;
           if (key === 'notifications.earlier') return resource.notifications.earlier;
           if (key === 'notifications.mutationError') return resource.notifications.mutationError;
+          if (key === 'notifications.kinds.match_registration_expired')
+            return resource.notifications.kinds.match_registration_expired;
+          if (key === 'notifications.kinds.match_registration_not_playing')
+            return resource.notifications.kinds.match_registration_not_playing;
           if (key === 'notifications.unread_one' || key === 'notifications.unread_other') {
             const template =
               key === 'notifications.unread_one'
@@ -116,6 +120,55 @@ describe('notification center', () => {
     await waitFor(() =>
       expect(mocks.list).toHaveBeenCalledWith({ data: { category: 'all', limit: 20 } })
     );
+  });
+
+  it('renders the cutoff kinds with their own translated titles and the split reserve count', () => {
+    mocks.useEnglishResource = true;
+    const cutoffPage: NotificationPage = {
+      ...initial,
+      items: [
+        {
+          id: '00000000-0000-4000-8000-000000000003',
+          kind: 'match_registration_expired',
+          category: 'matches',
+          created_at: asOf,
+          read_at: null,
+          matchContext: {
+            match_event_id: '00000000-0000-4000-8000-000000000005',
+            creator_display_name: 'Alex',
+            scheduled_at: '2026-10-20T10:00:00.000Z',
+            timezone: 'UTC',
+            venue: 'Cutoff court',
+            event_type: 'friendly',
+            playing_count: 4,
+            reserve_count: 0,
+            reserve_not_playing_count: 1,
+            price_minor: null,
+            currency: null
+          }
+        },
+        {
+          id: '00000000-0000-4000-8000-000000000004',
+          kind: 'match_registration_not_playing',
+          category: 'matches',
+          created_at: asOf,
+          read_at: null
+        }
+      ]
+    };
+    render(<NotificationsPage initial={cutoffPage} />);
+
+    // Each cutoff kind renders its own title, never the invitation heading.
+    expect(
+      screen.getByRole('heading', { name: en.notifications.kinds.match_registration_expired })
+    ).toBeTruthy();
+    expect(
+      screen.getByRole('heading', { name: en.notifications.kinds.match_registration_not_playing })
+    ).toBeTruthy();
+    // The context counts keep not-playing out of the ordinary reserve figure.
+    expect(screen.getByText('notifications.match.playing_other:4')).toBeTruthy();
+    expect(screen.getByText('notifications.match.reserve_other:0')).toBeTruthy();
+    expect(screen.queryByText('notifications.match.reserve_other:1')).toBeNull();
   });
 
   it('shows earlier-only notifications without an empty Today section and keeps the unread summary', () => {

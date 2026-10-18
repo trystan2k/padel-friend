@@ -306,6 +306,11 @@ export type MatchRegistrationQueue = {
   accepted_count: number;
   playing_count: number;
   reserve_count: number;
+  // `list_match_event_registration_requests` now also carries the Reserve Not
+  // Playing count so the creator queue can never merge it into ordinary
+  // Reserve. Optional because a pre-cutoff payload (and the existing parser
+  // fixture) may omit the additive key; when present it must be a valid count.
+  reserve_not_playing_count?: number;
   maximum_registrations: number | null;
   registration_cutoff_at: string;
   requests: MatchRegistrationRequest[];
@@ -355,6 +360,13 @@ export function parseMatchRegistrationQueue(value: unknown): MatchRegistrationQu
     if (parsedMaximum === null) return null;
     maximum_registrations = parsedMaximum;
   }
+  const rawReserveNotPlaying = value.reserve_not_playing_count;
+  let reserve_not_playing_count: number | undefined;
+  if (rawReserveNotPlaying !== null && rawReserveNotPlaying !== undefined) {
+    const parsedReserveNotPlaying = asCount(rawReserveNotPlaying);
+    if (parsedReserveNotPlaying === null) return null;
+    reserve_not_playing_count = parsedReserveNotPlaying;
+  }
   const requests: MatchRegistrationRequest[] = [];
   for (const raw of value.requests) {
     const request = parseRequest(raw);
@@ -366,6 +378,7 @@ export function parseMatchRegistrationQueue(value: unknown): MatchRegistrationQu
     accepted_count,
     playing_count,
     reserve_count,
+    ...(reserve_not_playing_count === undefined ? {} : { reserve_not_playing_count }),
     maximum_registrations,
     registration_cutoff_at,
     requests
