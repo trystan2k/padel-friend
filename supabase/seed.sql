@@ -22,5 +22,5 @@ begin
     raise notice 'PAF-5.4 scheduler: removed the local match registration cutoff job for deterministic tests.';
   end if;
 exception when others then
-  raise notice 'PAF-5.4 scheduler: local cutoff job removal skipped (%);', sqlerrm;
+  raise notice 'PAF-5.4 scheduler: local cutoff job removal skipped (%).', sqlerrm;
 end $$;
