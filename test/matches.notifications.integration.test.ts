@@ -398,29 +398,59 @@ describe('match notification integration', () => {
       );
       expect(await notificationsFor(active, historicId)).toEqual([]);
 
-      // Trigger-level fault proves event, creator registration, invite and notification all roll back.
+      // Trigger-level fault proves event, creator registration, invite and
+      // notification all roll back. The blocker is scoped to THIS test's
+      // fixture event (`when (new.target_id = failedId)`) because vitest runs
+      // suites in parallel against one shared local database: an unscoped
+      // blocker raises on every notifications insert with category 'matches'
+      // and poisons every suite running concurrently — F12: exactly that
+      // forced four registration-suite failures in a single full-gate run,
+      // and even with reliable cleanup the install window alone poisoned the
+      // cutoff suite in a full run. Scoping closes the poisoning window; the
+      // drop additionally lives in a `finally` that runs even when the
+      // assertions above throw (with `if exists`, so a partially-installed
+      // blocker still cleans up), and the residue probe after the `finally`
+      // fails loudly if anything survived.
+      const failedId = crypto.randomUUID();
       await fixtureSql(
         environment.env!,
         `create or replace function public.fail_match_notification_insert() returns trigger language plpgsql set search_path='' as $$ begin
-      if new.category='matches' then raise exception 'FORCED_MATCH_NOTIFICATION_FAILURE'; end if; return new; end $$;`
+      raise exception 'FORCED_MATCH_NOTIFICATION_FAILURE'; end $$;`
       );
       await fixtureSql(
         environment.env!,
-        'create trigger fail_match_notification_insert before insert on public.notifications for each row execute function public.fail_match_notification_insert();'
+        `create trigger fail_match_notification_insert before insert on public.notifications for each row when (new.target_id = '${failedId}') execute function public.fail_match_notification_insert();`
       );
-      const failedId = crypto.randomUUID();
-      const failedPhoto = await stagePhoto(creator, community, failedId);
-      const fail = await creator.client.rpc('publish_match_event', {
-        p_event_id: failedId,
-        p_input: { ...published.input, date: dateInDays(7), photo_path: failedPhoto },
-        p_invitee_ids: [active.id]
-      });
-      expect(fail.error?.message).toContain('FORCED_MATCH_NOTIFICATION_FAILURE');
+      try {
+        const failedPhoto = await stagePhoto(creator, community, failedId);
+        const fail = await creator.client.rpc('publish_match_event', {
+          p_event_id: failedId,
+          p_input: { ...published.input, date: dateInDays(7), photo_path: failedPhoto },
+          p_invitee_ids: [active.id]
+        });
+        expect(fail.error?.message).toContain('FORCED_MATCH_NOTIFICATION_FAILURE');
+      } finally {
+        await fixtureSql(
+          environment.env!,
+          'drop trigger if exists fail_match_notification_insert on public.notifications;'
+        );
+        await fixtureSql(
+          environment.env!,
+          'drop function if exists public.fail_match_notification_insert();'
+        );
+      }
+      // Residue probe: the shared database must be verifiably clean before
+      // any later assertion (or any later suite) runs against it.
       await fixtureSql(
         environment.env!,
-        'drop trigger fail_match_notification_insert on public.notifications;'
+        `do $$ begin
+      if exists (select 1 from pg_catalog.pg_trigger where tgname = 'fail_match_notification_insert' and not tgisinternal)
+         or exists (select 1 from pg_catalog.pg_proc p join pg_catalog.pg_namespace n on n.oid = p.pronamespace
+                     where n.nspname = 'public' and p.proname = 'fail_match_notification_insert') then
+        raise exception 'fail_match_notification_insert leaked into the shared local database';
+      end if;
+    end $$;`
       );
-      await fixtureSql(environment.env!, 'drop function public.fail_match_notification_insert();');
       expect(
         (await creator.client.from('match_events').select('id').eq('id', failedId)).data
       ).toEqual([]);

@@ -1211,6 +1211,19 @@ describe('match registration cutoff integration', () => {
         );
         await fixtureSql(`drop function if exists public.paf54_block_duefail_alert();`);
       }
+      // Loud residue check: a leftover blocker here would silently poison
+      // every later notifications insert for this event in the shared local
+      // database, so the cleanup must be provably complete.
+      const duefailResidue = await sqlRows(
+        `select
+           (select pg_catalog.count(*)::int from pg_catalog.pg_trigger
+             where tgname = 'paf54_block_duefail_alert' and not tgisinternal) as triggers,
+           (select pg_catalog.count(*)::int from pg_catalog.pg_proc p
+             join pg_catalog.pg_namespace n on n.oid = p.pronamespace
+            where n.nspname = 'public' and p.proname = 'paf54_block_duefail_alert') as functions`
+      );
+      expect(Number(duefailResidue[0]!['triggers'])).toBe(0);
+      expect(Number(duefailResidue[0]!['functions'])).toBe(0);
 
       // Job definition/permissions state: pg_cron is available and functional
       // locally; the migration names a singleton 1-minute job for the batch
@@ -1351,6 +1364,18 @@ describe('match registration cutoff integration', () => {
         // The fixture events belong to the suite's public community and are
         // removed by the shared cleanup test below.
       }
+      // Loud residue check, same contract as the other PAF54 blockers: the
+      // shared local database must be verifiably clean after the finally.
+      const starvationResidue = await sqlRows(
+        `select
+           (select pg_catalog.count(*)::int from pg_catalog.pg_trigger
+             where tgname = 'paf54_block_starvation_alert' and not tgisinternal) as triggers,
+           (select pg_catalog.count(*)::int from pg_catalog.pg_proc p
+             join pg_catalog.pg_namespace n on n.oid = p.pronamespace
+            where n.nspname = 'public' and p.proname = 'paf54_block_starvation_alert') as functions`
+      );
+      expect(Number(starvationResidue[0]!['triggers'])).toBe(0);
+      expect(Number(starvationResidue[0]!['functions'])).toBe(0);
     }
   );
 

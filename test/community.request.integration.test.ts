@@ -369,14 +369,17 @@ describe.skipIf(!environment.env)('community request delivery (real local Supaba
   // a real process spawn plus a local-DB round trip, which alone can exceed 1s
   // on slow CI runners, so this test carries an explicit timeout.
   it('rolls back the message insert when notification creation fails', async () => {
-    const { admin, communityId, membershipId } = await fixture();
+    // The blocker is scoped to THIS fixture's applicant (vitest runs suites
+    // in parallel against one shared local database, so an unscoped trigger
+    // on community_notifications would poison concurrent community suites).
+    const { admin, applicant, communityId, membershipId } = await fixture();
     const sql = (statement: string) =>
       execFileSync('pnpm', ['exec', 'supabase', 'db', 'query', '--local', statement], {
         encoding: 'utf8'
       });
     sql(
       "do $outer$ begin execute 'create or replace function public.test_reject_community_notification() returns trigger language plpgsql as $$ begin raise exception ''injected notification failure''; end $$'; " +
-        "execute 'create trigger test_reject_community_notification before insert on public.community_notifications for each row execute function public.test_reject_community_notification()'; end $outer$;"
+        `execute 'create trigger test_reject_community_notification before insert on public.community_notifications for each row when (new.recipient_user_id = ''${applicant.id}'') execute function public.test_reject_community_notification()'; end $outer$;`
     );
     try {
       const requestId = crypto.randomUUID();
@@ -397,6 +400,17 @@ describe.skipIf(!environment.env)('community request delivery (real local Supaba
           "execute 'drop function if exists public.test_reject_community_notification()'; end $outer$;"
       );
     }
+    // Loud residue check: the blocker is unscoped (any community_notifications
+    // insert raises), so a leftover would poison every later community suite
+    // in the shared local database. The cleanup must be provably complete.
+    sql(
+      'do $outer$ begin ' +
+        "if exists (select 1 from pg_catalog.pg_trigger where tgname = 'test_reject_community_notification' and not tgisinternal) " +
+        'or exists (select 1 from pg_catalog.pg_proc p join pg_catalog.pg_namespace n on n.oid = p.pronamespace ' +
+        "where n.nspname = 'public' and p.proname = 'test_reject_community_notification') then " +
+        "raise exception 'test_reject_community_notification leaked into the shared local database'; " +
+        'end if; end $outer$;'
+    );
   }, 15000);
 
   it('rejects all terminal governance outcomes before sending', async () => {

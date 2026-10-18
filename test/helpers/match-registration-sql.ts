@@ -225,9 +225,13 @@ export function makeRawRpc(restUrl: string, anonKey: string): RawRpc {
  * role runs with an 8 s statement_timeout — slow out-of-process probing would
  * miss the blocked window entirely. Postgres queues the waiters in a chain
  * (holder → contender A → contender B), so "proven overlap" means: exactly
- * `blockedExpected` (default two) backends for this event are blocked on
- * locks, at least one of them directly behind the holder, and no contender
- * waits on anything outside that chain. Once proven, the probe terminates the
+ * `blockedExpected` (default two) contender backends are blocked on THIS
+ * barrier's lock chain — counted via a one-level closure rooted at the
+ * holder, since pg_blocking_pids reports immediate blockers only — so
+ * lock-waiters from other vitest suites sharing the same local database
+ * (they match the same RPC-name fragment) can never satisfy or distort the
+ * count — at least one of them directly behind the
+ * holder, and no contender waits on anything outside that chain. Once proven, the probe terminates the
  * holder, so the contenders proceed back-to-back with zero gap. Overlap is
  * therefore observed, never assumed from Promise.all. The marker sweep in the
  * finally block kills any orphaned holder backend even if process-tree cleanup
@@ -261,24 +265,57 @@ export async function proveEventLockBarrier(params: {
     expect(Number.isInteger(holderPid), 'holder pid').toBe(true);
     // In-database poll: wait until both contenders are provably blocked on
     // this event's lock chain (rooted at the holder), then release them in
-    // the same transaction. The 5 s deadline stays inside the RPC role's
-    // 8 s statement_timeout.
+    // the same transaction. Contenders are counted via a one-level chain
+    // closure rooted at THIS barrier's holder: a backend counts as blocked
+    // when the holder is among its blocking pids, or when it is blocked by
+    // another token-matching waiter that the holder blocks directly. The
+    // closure is needed because pg_blocking_pids reports the immediate
+    // blocker only — in the canonical chain holder → A → B, blockers(A)
+    // contains the holder but blockers(B) contains A — so a naive
+    // holder-membership filter would only ever see contender A. Scoping to
+    // the closure keeps the count immune to parallel vitest suites sharing
+    // the local database: their lock-waiters match the same RPC-name LIKE
+    // fragment but never join this chain (previously counted, that noise
+    // made the proof unsatisfiable under full-suite load — observed as
+    // `blocked=4 holder_direct=1 stray=0`). The 6.5 s deadline is a widened
+    // HARNESS ceiling for that same load: contender arrival and probe
+    // startup can lag when every suite shares one Postgres + PostgREST, and
+    // the old 5 s ceiling tripped intermittently. It deliberately stays
+    // inside the RPC role's 8 s statement_timeout, so once the holder is
+    // terminated the released contenders keep >=1.5 s of their own statement
+    // budget to finish. The proof itself is unchanged and not relaxed:
+    // exactly `blockedExpected` contenders blocked on this chain, at least
+    // one of them directly behind the holder, zero strays.
     confirm = startSql(`do $barrier$
       declare
         v_blocked integer;
         v_holder_direct integer;
         v_stray integer;
-        v_deadline timestamptz := pg_catalog.clock_timestamp() + interval '5 seconds';
+        v_deadline timestamptz := pg_catalog.clock_timestamp() + interval '6.5 seconds';
        begin
         loop
-          select pg_catalog.count(*),
-                 pg_catalog.count(*) filter (where ${holderPid} = any(pg_catalog.pg_blocking_pids(pid)))
-            into v_blocked, v_holder_direct
-            from pg_catalog.pg_stat_activity
-           where wait_event_type = 'Lock'
-             and query like '%${params.rpcToken}%'
-             and pid <> pg_catalog.pg_backend_pid()
-             and pid <> ${holderPid};
+          select pg_catalog.count(*) into v_blocked
+            from pg_catalog.pg_stat_activity a
+           where a.wait_event_type = 'Lock'
+             and a.query like '%${params.rpcToken}%'
+             and a.pid <> pg_catalog.pg_backend_pid()
+             and a.pid <> ${holderPid}
+             and (
+                   ${holderPid} = any(pg_catalog.pg_blocking_pids(a.pid))
+                or exists (
+                     select 1 from pg_catalog.pg_stat_activity p
+                      where p.wait_event_type = 'Lock'
+                        and p.query like '%${params.rpcToken}%'
+                        and p.pid <> a.pid
+                        and ${holderPid} = any(pg_catalog.pg_blocking_pids(p.pid))
+                        and p.pid = any(pg_catalog.pg_blocking_pids(a.pid))));
+          select pg_catalog.count(*) into v_holder_direct
+            from pg_catalog.pg_stat_activity a
+           where a.wait_event_type = 'Lock'
+             and a.query like '%${params.rpcToken}%'
+             and ${holderPid} = any(pg_catalog.pg_blocking_pids(a.pid))
+             and a.pid <> pg_catalog.pg_backend_pid()
+             and a.pid <> ${holderPid};
           select pg_catalog.count(*) into v_stray
             from pg_catalog.pg_stat_activity a
            where a.wait_event_type = 'Lock'
