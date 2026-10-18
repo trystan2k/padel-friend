@@ -511,11 +511,47 @@ async function fixtureSql(sql: string): Promise<void> {
   if (code !== 0) throw new Error(`Trusted fixture SQL failed (${code}): ${stdout}\n${stderr}`);
 }
 
+/** Trusted read-only fixture query returning the CLI's JSON rows. */
+async function fixtureRows(sql: string): Promise<Record<string, unknown>[]> {
+  const child = spawn(
+    'pnpm',
+    ['exec', 'supabase', 'db', 'query', '--local', '--output-format', 'json', sql],
+    { cwd: process.cwd() }
+  );
+  let stdout = '';
+  let stderr = '';
+  child.stdout.setEncoding('utf8').on('data', (chunk: string) => (stdout += chunk));
+  child.stderr.setEncoding('utf8').on('data', (chunk: string) => (stderr += chunk));
+  const code = await new Promise<number | null>((resolve, reject) => {
+    child.once('error', reject);
+    child.once('close', resolve);
+  });
+  if (code !== 0) throw new Error(`Trusted fixture query failed (${code}): ${stdout}\n${stderr}`);
+  const start = stdout.indexOf('{');
+  if (start < 0) throw new Error(`Fixture query returned no JSON: ${stdout.slice(0, 400)}`);
+  const parsed: unknown = JSON.parse(stdout.slice(start));
+  if (typeof parsed !== 'object' || parsed === null) return [];
+  const rows = (parsed as { rows?: unknown }).rows;
+  return Array.isArray(rows)
+    ? rows.filter((row): row is Record<string, unknown> => {
+        return typeof row === 'object' && row !== null && !Array.isArray(row);
+      })
+    : [];
+}
+
 type SeededRow = {
   actor: Actor;
   order: number;
   part: 'playing' | 'reserve' | 'reserve_not_playing';
   source: 'member' | 'guest' | 'creator';
+  /**
+   * Seeds the organizer-approved anchor (`approved_at = accepted_at`, the exact
+   * shape a creator decision writes). The reviewed APPROVED requester states
+   * (Za6r4 approved playing/reserve cards, Cpd7L confirmed-place card) must come
+   * from a genuinely approved ledger row — never from the old direct-join
+   * conflation the panel no longer renders as APPROVED (F27).
+   */
+  approved?: boolean;
 };
 
 /** Seeds the accepted ledger behind the creator's own publication registration
@@ -523,15 +559,20 @@ type SeededRow = {
  * UI/RPC registrations can never collide with the fixture orders. */
 async function seedAcceptedRows(eventId: string, rows: SeededRow[]): Promise<void> {
   if (rows.length === 0) return;
-  const values = rows.map(
-    (row) =>
-      `('${eventId}','${row.actor.id}', now() - interval '${row.order * 3} minutes', ` +
+  const values = rows.map((row) => {
+    // now() is transaction-stable, so both expressions are the exact same
+    // instant — the lifecycle-anchors CHECK demands approved_at = accepted_at.
+    const acceptedAt = `now() - interval '${row.order * 3} minutes'`;
+    return (
+      `('${eventId}','${row.actor.id}', ${acceptedAt}, ` +
+      `${row.approved ? acceptedAt : 'null'}, ` +
       `${row.order}, '${row.part}', '${row.source}')`
-  );
+    );
+  });
   const maxOrder = Math.max(...rows.map((row) => row.order));
   await fixtureSql(
     `insert into public.match_event_registrations` +
-      `(match_event_id,user_id,accepted_at,accepted_order,participation_status,registration_source) ` +
+      `(match_event_id,user_id,accepted_at,approved_at,accepted_order,participation_status,registration_source) ` +
       `values ${values.join(',')}; ` +
       `update public.match_event_registration_state set next_accepted_ordinal = ${maxOrder + 1} ` +
       `where match_event_id = '${eventId}';`
@@ -551,9 +592,17 @@ async function decideRegistration(
   userId: string,
   decision: 'approve' | 'reject'
 ): Promise<void> {
+  const attempt = await fixtureRows(
+    `select a.id::text as id from public.match_event_registration_attempts a ` +
+      `where a.match_event_id = '${eventId}' and a.user_id = '${userId}' ` +
+      `order by a.requested_at desc, a.id desc limit 1;`
+  );
+  const attemptId = attempt[0]?.['id'];
+  if (typeof attemptId !== 'string')
+    throw new Error(`no registration attempt for ${userId} on ${eventId}`);
   const result = await actor.client.rpc('decide_match_registration', {
     p_match_event_id: eventId,
-    p_user_id: userId,
+    p_attempt_id: attemptId,
     p_decision: decision
   });
   if (result.error) throw result.error;
@@ -1485,6 +1534,8 @@ async function ensureVisualFixtures(): Promise<void> {
 
   // JOIN event: the creator registers at publication (order 1); seed orders
   // 2-6 so the ledger reads 4 playing + guest reserve #1 + member reserve #2.
+  // Rafael and Elisa carry the approved anchor: the Za6r4 board depicts genuine
+  // APPROVED states (F27), so the fixture must produce them truthfully.
   family.joinEventId = crypto.randomUUID();
   await publishFixture(
     host,
@@ -1498,11 +1549,11 @@ async function ensureVisualFixtures(): Promise<void> {
     })
   );
   await seedAcceptedRows(family.joinEventId, [
-    { actor: family.joinRafael, order: 2, part: 'playing', source: 'member' },
+    { actor: family.joinRafael, order: 2, part: 'playing', source: 'member', approved: true },
     { actor: joinPlayers[0]!, order: 3, part: 'playing', source: 'member' },
     { actor: joinPlayers[1]!, order: 4, part: 'playing', source: 'member' },
     { actor: joinPlayers[2]!, order: 5, part: 'reserve', source: 'guest' },
-    { actor: family.joinElisa, order: 6, part: 'reserve', source: 'member' }
+    { actor: family.joinElisa, order: 6, part: 'reserve', source: 'member', approved: true }
   ]);
 
   // FULL event: seven seeded members plus the promoted caller (order 8) behind
@@ -1525,7 +1576,9 @@ async function ensureVisualFixtures(): Promise<void> {
       part: 'playing' as const,
       source: 'member' as const
     })),
-    { actor: family.fullHeitor, order: 8, part: 'playing', source: 'member' }
+    // Cpd7L depicts the promoted caller's confirmed place as an approved state
+    // (F27): seed the approved anchor so the panel genuinely renders APPROVED.
+    { actor: family.fullHeitor, order: 8, part: 'playing', source: 'member', approved: true }
   ]);
 
   // CLOSED event: future start with the cutoff already passed (the only
@@ -1599,7 +1652,8 @@ async function ensureVisualFixtures(): Promise<void> {
 
 /** Requester states on the JOIN event (Za6r4 board): pending through the real
  * request RPC; declined through the real creator decision; the approved playing
- * and reserve states are the seeded ledger rows viewed by their own players. */
+ * and reserve states are the seeded ledger rows (approved_at = accepted_at)
+ * viewed by their own players — genuinely approved, per the reviewed frame. */
 async function ensureRequesterStates(): Promise<void> {
   await ensureVisualFixtures();
   const eventId = family.joinEventId!;
@@ -1915,6 +1969,9 @@ test.describe.serial('PAF-5 registration visual and structural QA', () => {
         }
       },
       {
+        // Za6r4 genuinely depicts APPROVED states (frame copy: "Approved at
+        // 09:41 · …"), so the fixture seeds approved_at for this viewer (F27)
+        // and the approved wording stays asserted.
         label: 'Za6r4 approved playing',
         actor: family.joinRafael!,
         eventId: family.joinEventId!,
@@ -1927,6 +1984,8 @@ test.describe.serial('PAF-5 registration visual and structural QA', () => {
         }
       },
       {
+        // Same approved-anchor fixture as the playing card (F27): APPROVED ·
+        // RESERVE is a real organizer decision in the frame, not a direct join.
         label: 'Za6r4 approved reserve',
         actor: family.joinElisa!,
         eventId: family.joinEventId!,
@@ -2207,7 +2266,9 @@ test.describe.serial('PAF-5 registration visual and structural QA', () => {
     );
 
     // Cpd7L: the promoted caller's accepted panel state plus the
-    // quartet-complete alert with its working deep link.
+    // quartet-complete alert with its working deep link. The frame depicts the
+    // confirmed place as an approved state, and the fixture seeds approved_at
+    // for this viewer, so the APPROVED wording stays asserted (F27).
     await assertRequesterState(fullAcceptedPage, en, 'Cpd7L promoted', {
       badge: fill(en.matchRegistration.request.approvedPlayingBadge, { group: 2 }),
       badgeTone: 'playing',

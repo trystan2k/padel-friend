@@ -4,6 +4,14 @@ create type public.match_registration_lifecycle as enum ('pending', 'accepted', 
 create type public.match_registration_participation as enum ('playing', 'reserve', 'reserve_not_playing');
 create type public.match_registration_source as enum ('creator', 'member', 'guest');
 
+-- F20: the blanket pre-PAF-5 immutability trigger rejects every UPDATE of
+-- public.match_event_registrations. It MUST be dropped before any backfill
+-- write: on a database that already holds registrations (hosted/production)
+-- the backfill would otherwise abort the whole migration with 23514. The new
+-- identity guard is installed only after the backfills complete (below), so it
+-- can never reject them either.
+drop trigger match_registration_immutable on public.match_event_registrations;
+
 alter table public.match_event_registrations
   alter column accepted_at drop not null,
   add column lifecycle public.match_registration_lifecycle not null default 'accepted',
@@ -15,18 +23,41 @@ alter table public.match_event_registrations
   add column resolved_at timestamptz,
   add column resolved_by uuid references auth.users(id) on delete restrict;
 
-update public.match_event_registrations
-set participation_status = 'reserve', registration_source = 'member';
-
+-- Backfill registration_source and the deterministic creator-first accepted
+-- order. Every pre-PAF-5 row was an accepted registration, so the creator's
+-- row sorts first and the rest follow accepted_at then id.
 with ordered as (
   select r.id, row_number() over (partition by r.match_event_id order by (r.user_id = e.created_by) desc, r.accepted_at, r.id) ordinal,
     (r.user_id = e.created_by) is_creator
   from public.match_event_registrations r join public.match_events e on e.id = r.match_event_id
+  where r.lifecycle = 'accepted'
 )
 update public.match_event_registrations r
 set accepted_order = ordered.ordinal,
     registration_source = case when ordered.is_creator then 'creator'::public.match_registration_source else 'member'::public.match_registration_source end
 from ordered where r.id = ordered.id;
+
+-- F30: backfill participation from the SAME derived rule the roster uses —
+-- the first floor(N/4)*4 accepted rows by (accepted_order, id) are Playing and
+-- the residual is Reserve — instead of a blanket 'reserve'. The rule stays
+-- cutoff-aware: when the event's cutoff has already passed the residual reads
+-- Reserve Not Playing, exactly like public.match_registration_roster does, so
+-- the first post-upgrade reconciliation is a no-op rather than emitting false
+-- historical promotion and quartet-complete alerts.
+with ranked as (
+  select r.id, r.match_event_id,
+    row_number() over (partition by r.match_event_id order by r.accepted_order, r.id) as position,
+    count(*) over (partition by r.match_event_id) as total
+  from public.match_event_registrations r
+  where r.lifecycle = 'accepted'
+)
+update public.match_event_registrations r
+set participation_status = case
+    when ranked.position <= (ranked.total / 4) * 4 then 'playing'::public.match_registration_participation
+    when e.registration_cutoff_at <= pg_catalog.clock_timestamp() then 'reserve_not_playing'::public.match_registration_participation
+    else 'reserve'::public.match_registration_participation end
+from ranked join public.match_events e on e.id = ranked.match_event_id
+where r.id = ranked.id;
 
 alter table public.match_event_registrations
   alter column registration_source set not null,
@@ -63,7 +94,8 @@ create table public.match_event_registration_attempts (
 );
 create index match_registration_attempts_identity_requested on public.match_event_registration_attempts(match_event_id, user_id, requested_at);
 
-drop trigger match_registration_immutable on public.match_event_registrations;
+-- Install the replacement identity guard only after every backfill write has
+-- completed, so it cannot reject the backfill either.
 create function public.guard_match_registration_identity() returns trigger
 language plpgsql security definer set search_path = '' as $$
 begin

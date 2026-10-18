@@ -41,6 +41,11 @@ const CONFLICT_CODES: ReadonlySet<MatchRegistrationErrorCode> = new Set([
   'invite_only'
 ]);
 
+// Largest delay a browser timer accepts; anything above it overflows the 32-bit
+// timer range and fires immediately, so the cutoff deadline is polled in
+// segments of at most this length.
+const MAX_TIMER_DELAY = 2 ** 31 - 1;
+
 function isOnlineNow() {
   return typeof navigator === 'undefined' || navigator.onLine;
 }
@@ -149,20 +154,37 @@ export function useMatchRegistration({
 
   // Cutoff-boundary refresh: an open screen revalidates with the server exactly
   // at the cutoff so the closed state is never decided by a stale client clock.
+  // PAF-5 review F22: a delay beyond 2^31−1 ms (~24.8 days) overflows browser
+  // timers and fires immediately, which would close an event that is still far in
+  // the future. The deadline is therefore polled in bounded segments, and the
+  // cutoff is only marked reached after the real deadline is checked against the
+  // clock.
   useEffect(() => {
     const target = cutoffAt ? Date.parse(cutoffAt) : Number.NaN;
     if (!Number.isFinite(target)) return undefined;
-    const delay = target - Date.now();
-    const timer = setTimeout(
-      () => {
+
+    const initialRemaining = target - Date.now();
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    let cancelled = false;
+
+    const check = () => {
+      if (cancelled) return;
+      const remaining = target - Date.now();
+      if (remaining <= 0) {
         setCutoff((current) =>
           current.eventId === eventId ? { eventId, reached: true } : current
         );
-        if (delay > 0) void invalidate();
-      },
-      Math.max(0, delay)
-    );
-    return () => clearTimeout(timer);
+        if (initialRemaining > 0) void invalidate();
+        return;
+      }
+      timer = setTimeout(check, Math.min(remaining, MAX_TIMER_DELAY));
+    };
+
+    check();
+    return () => {
+      cancelled = true;
+      if (timer) clearTimeout(timer);
+    };
   }, [cutoffAt, eventId, invalidate]);
 
   const submitAction = useCallback(async () => {
@@ -216,7 +238,7 @@ export function useMatchRequestQueue({ eventId }: { eventId: string }) {
   const invalidate = useInvalidate();
   const { online, onlineRef } = useConnectivity();
   const [pending, setPending] = useState(false);
-  const [decidingUserId, setDecidingUserId] = useState<string | null>(null);
+  const [decidingAttemptId, setDecidingAttemptId] = useState<string | null>(null);
   const [feedback, setFeedback] = useState<{
     eventId: string;
     value: MatchRequestQueueFeedback;
@@ -233,7 +255,7 @@ export function useMatchRequestQueue({ eventId }: { eventId: string }) {
   }, []);
 
   const decideAction = useCallback(
-    async (userId: string, decision: MatchRegistrationDecision) => {
+    async (attemptId: string, decision: MatchRegistrationDecision) => {
       if (pendingRef.current) return;
       if (!onlineRef.current || !isOnlineNow()) {
         setFeedback({ eventId, value: { kind: 'offline' } });
@@ -241,10 +263,10 @@ export function useMatchRequestQueue({ eventId }: { eventId: string }) {
       }
       pendingRef.current = true;
       setPending(true);
-      setDecidingUserId(userId);
+      setDecidingAttemptId(attemptId);
       try {
         const result = await decideMatchRegistration({
-          data: { event_id: eventId, user_id: userId, decision }
+          data: { event_id: eventId, attempt_id: attemptId, decision }
         });
         if (!mounted.current) return;
         if (result.status === 'approved')
@@ -260,7 +282,7 @@ export function useMatchRequestQueue({ eventId }: { eventId: string }) {
         pendingRef.current = false;
         if (mounted.current) {
           setPending(false);
-          setDecidingUserId(null);
+          setDecidingAttemptId(null);
         }
       }
     },
@@ -268,9 +290,9 @@ export function useMatchRequestQueue({ eventId }: { eventId: string }) {
   );
 
   const decide = useCallback(
-    (userId: string, decision: MatchRegistrationDecision) => {
-      lastAction.current = { eventId, run: () => void decideAction(userId, decision) };
-      void decideAction(userId, decision);
+    (attemptId: string, decision: MatchRegistrationDecision) => {
+      lastAction.current = { eventId, run: () => void decideAction(attemptId, decision) };
+      void decideAction(attemptId, decision);
     },
     [eventId, decideAction]
   );
@@ -284,7 +306,7 @@ export function useMatchRequestQueue({ eventId }: { eventId: string }) {
 
   return {
     pending,
-    decidingUserId,
+    decidingAttemptId,
     online,
     feedback: feedback && feedback.eventId === eventId ? feedback.value : null,
     decide,

@@ -50,17 +50,29 @@ describe('match registration cutoff integration', () => {
 
   const submit = (who: Actor, eventKey: string): PromiseLike<RpcResult> =>
     who.client.rpc('submit_match_registration', { p_match_event_id: events[eventKey]! });
-  const decide = (
+  /** The current attempt identity for (event, user), latest-first. */
+  const latestAttemptId = async (eventKey: string, userId: string): Promise<string> => {
+    const rows = await sqlRows(
+      `select id::text as id from public.match_event_registration_attempts
+        where match_event_id = '${events[eventKey]!}' and user_id = '${userId}'
+        order by requested_at desc, id desc limit 1`
+    );
+    expect(rows, `attempt for ${userId} on ${eventKey}`).toHaveLength(1);
+    return String(rows[0]!['id']);
+  };
+  const decide = async (
     who: Actor,
     eventKey: string,
     targetId: string,
     decision: 'approve' | 'reject'
-  ): PromiseLike<RpcResult> =>
-    who.client.rpc('decide_match_registration', {
+  ): Promise<RpcResult> => {
+    const attemptId = await latestAttemptId(eventKey, targetId);
+    return who.client.rpc('decide_match_registration', {
       p_match_event_id: events[eventKey]!,
-      p_user_id: targetId,
+      p_attempt_id: attemptId,
       p_decision: decision
     });
+  };
   const detailAs = async (who: Actor, eventKey: string): Promise<Record<string, unknown>> => {
     const result = await who.client.rpc('get_match_event', { p_event_id: events[eventKey]! });
     expect(result.error, `${who.name} detail read`).toBeNull();
@@ -82,6 +94,16 @@ describe('match registration cutoff integration', () => {
     const rows: unknown[] = Array.isArray(result.data) ? result.data : [];
     expect(rows, 'queue row').toHaveLength(1);
     return asRecord(rows[0]);
+  };
+  const ownRegistrationAs = async (
+    who: Actor,
+    eventKey: string
+  ): Promise<Record<string, unknown>> => {
+    const result = await who.client.rpc('get_my_match_registration', {
+      p_match_event_id: events[eventKey]!
+    });
+    expect(result.error, `${who.name} own registration read`).toBeNull();
+    return asRecord(result.data);
   };
   const inboxOf = async (who: Actor, eventKey: string): Promise<SqlRow[]> => {
     const result = await who.client
@@ -176,6 +198,29 @@ describe('match registration cutoff integration', () => {
     expect(rows, `state row for ${eventKey}`).toHaveLength(1);
     const marker = rows[0]!['marker'];
     return typeof marker === 'string' ? marker : null;
+  };
+  /** Durable per-event failure record the operator can query (F24). */
+  const failureRecordOf = async (eventKey: string): Promise<SqlRow> => {
+    const rows = await sqlRows(
+      `select cutoff_failure_count::int as failure_count,
+              cutoff_last_failure_sqlstate as sqlstate,
+              cutoff_last_failure_message as message,
+              cutoff_last_failure_at is not null as stamped,
+              cutoff_attempt_count::int as attempt_count
+         from public.match_event_registration_state
+        where match_event_id = '${events[eventKey]!}'`
+    );
+    expect(rows, `failure record for ${eventKey}`).toHaveLength(1);
+    return rows[0]!;
+  };
+  /** Cutoff marker by raw event id (used by the starvation fixtures). */
+  const cutoffProcessedById = async (eventId: string): Promise<boolean> => {
+    const rows = await sqlRows(
+      `select cutoff_processed_at is not null as processed
+         from public.match_event_registration_state where match_event_id = '${eventId}'`
+    );
+    expect(rows, `state row for ${eventId}`).toHaveLength(1);
+    return rows[0]!['processed'] === true;
   };
   /** Lifecycle/stored-participation rows ordered by accepted ordinal, pendings last. */
   const storedRows = async (eventKey: string): Promise<SqlRow[]> =>
@@ -344,6 +389,7 @@ describe('match registration cutoff integration', () => {
       'after',
       'blocked',
       'effective',
+      'ownread',
       'mixed',
       'complete',
       'thin',
@@ -412,6 +458,11 @@ describe('match registration cutoff integration', () => {
         acceptedMember('effective', 'm4', 5, 'reserve'),
         `update public.match_event_registration_state set next_accepted_ordinal = 6
           where match_event_id = ${q(events['effective']!)};`,
+        // Own-registration effective-read event: due, unprocessed, one pending.
+        insertEvent('ownread', due),
+        pendingGuest('ownread', 'g4'),
+        `update public.match_event_registration_state set next_accepted_ordinal = 2
+          where match_event_id = ${q(events['ownread']!)};`,
         // Mixed event: N=5 (first quartet playing + one reserve) and two pendings.
         insertEvent('mixed', due),
         creatorPlaying('mixed'),
@@ -467,6 +518,7 @@ describe('match registration cutoff integration', () => {
       after: 2,
       blocked: 2,
       effective: 6,
+      ownread: 2,
       mixed: 6,
       complete: 5,
       thin: 3,
@@ -568,6 +620,7 @@ describe('match registration cutoff integration', () => {
       expect(request.error, 'pre-cutoff request on blocked').toBeNull();
       const stateBefore = await registrationStateById(events.blocked!);
       expect(stateBefore).toEqual({ next: 3, revision: 1 });
+      const attemptG4 = await latestAttemptId('blocked', actors.g4!.id);
 
       // Hold the community row; fire a direct join and a creator approval;
       // prove BOTH are blocked on that chain inside the database; only then
@@ -578,7 +631,7 @@ describe('match registration cutoff integration', () => {
           rawRpc(actors.m5!, 'submit_match_registration', { p_match_event_id: events.blocked! }),
           rawRpc(actors.creator!, 'decide_match_registration', {
             p_match_event_id: events.blocked!,
-            p_user_id: actors.g4!.id,
+            p_attempt_id: attemptG4,
             p_decision: 'approve'
           })
         ],
@@ -651,6 +704,30 @@ describe('match registration cutoff integration', () => {
       expect(await registrationStateById(events.effective!)).toEqual(stateBefore);
       const storedAfter = await storedRowOf('effective', actors.m4!);
       expect(storedAfter['participation']).toBe('reserve');
+    }
+  );
+
+  it.skipIf(!environment.env)(
+    'projects the DB-time effective expiry on the caller own-registration read while due but unprocessed, writing nothing',
+    async () => {
+      const markerBefore = await cutoffMarker('ownread');
+      expect((await storedRowOf('ownread', actors.g4!))['lifecycle']).toBe('pending');
+
+      // F23: before the processor runs, the pending request already reads as
+      // expired because the DB clock is past the cutoff — the same effective
+      // projection the roster applies to reserve_not_playing.
+      const effective = await ownRegistrationAs(actors.g4!, 'ownread');
+      expect(effective).toMatchObject({ lifecycle: 'expired', registration_source: 'guest' });
+
+      // The read is side-effect free: no marker, stored lifecycle untouched.
+      expect(await cutoffMarker('ownread')).toBe(markerBefore);
+      expect((await storedRowOf('ownread', actors.g4!))['lifecycle']).toBe('pending');
+
+      // The processor persists the same effective state; the read agrees after.
+      const processed = await processCutoff('ownread');
+      expect(processed).toMatchObject({ processed: true, expired_count: 1 });
+      expect((await ownRegistrationAs(actors.g4!, 'ownread'))['lifecycle']).toBe('expired');
+      expect((await storedRowOf('ownread', actors.g4!))['lifecycle']).toBe('expired');
     }
   );
 
@@ -912,13 +989,14 @@ describe('match registration cutoff integration', () => {
     async () => {
       const stateBefore = await registrationStateById(events.raceapprove!);
       expect(stateBefore).toEqual({ next: 2, revision: 0 });
+      const attemptG2 = await latestAttemptId('raceapprove', actors.g2!.id);
 
       const [approvalOutcome, processorOutcome] = await raceBarrier({
         rpcPattern: 'decide_match_registration|process_match_event_registration_cutoff',
         fire: () => [
           rawRpc(actors.creator!, 'decide_match_registration', {
             p_match_event_id: events.raceapprove!,
-            p_user_id: actors.g2!.id,
+            p_attempt_id: attemptG2,
             p_decision: 'approve'
           }),
           processorAsRpc('raceapprove')
@@ -1070,7 +1148,7 @@ describe('match registration cutoff integration', () => {
                join public.match_events e on e.id = s.match_event_id
               where s.cutoff_processed_at is null
                 and e.registration_cutoff_at <= pg_catalog.clock_timestamp()
-              order by e.registration_cutoff_at, e.id`
+              order by s.cutoff_attempt_count, e.registration_cutoff_at, e.id`
           )
         ).map((row) => String(row['id']));
       const myDue = ['after', 'blocked', 'effective', 'catchup', 'due1', 'due2', 'duefail'];
@@ -1113,6 +1191,15 @@ describe('match registration cutoff integration', () => {
         expect(errors).toHaveLength(1);
         expect(asRecord(errors[0])).toMatchObject({ event_id: events.duefail });
         expect(String(asRecord(errors[0])['message'])).toContain('PAF54_DUEFAIL_PROOF');
+        // F24: the failure is retained durably on the state row, where an
+        // operator can actually see it — pg_cron only records "1 row" for a
+        // successful command, so the returned errors JSON never survives in
+        // cron.job_run_details.
+        const retained = await failureRecordOf('duefail');
+        expect(retained).toMatchObject({ failure_count: 1, sqlstate: 'P0001', stamped: true });
+        expect(String(retained['message'])).toContain('PAF54_DUEFAIL_PROOF');
+        // A healthy event in the same batch carries no failure record.
+        expect(await failureRecordOf('due1')).toMatchObject({ failure_count: 0, message: null });
         // Every one of MY due events completed except the isolated one.
         for (const eventKey of ['after', 'blocked', 'effective', 'catchup', 'due1', 'due2']) {
           expect(await cutoffMarker(eventKey), `${eventKey} processed by the batch`).not.toBeNull();
@@ -1187,6 +1274,9 @@ describe('match registration cutoff integration', () => {
         selected: remainingAfterFailure.length
       });
       expect(await cutoffMarker('duefail')).not.toBeNull();
+      // F24: the durable failure record is cleared once the event finally
+      // processes cleanly, so it always reflects the CURRENT outstanding set.
+      expect(await failureRecordOf('duefail')).toMatchObject({ failure_count: 0, message: null });
       const g4Alerts = cutoffAlerts(await inboxOf(actors.g4!, 'duefail'));
       expect(g4Alerts).toHaveLength(1);
       expectCutoffKey(g4Alerts[0]!, 'match.cutoff_expired', 'duefail', 1, actors.g4!);
@@ -1194,6 +1284,72 @@ describe('match registration cutoff integration', () => {
         const alerts = cutoffAlerts(await inboxOf(actors[label]!, 'duefail'));
         expect(alerts, `${label} duefail not-playing alert`).toHaveLength(1);
         expectCutoffKey(alerts[0]!, 'match.cutoff_not_playing', 'duefail', 1, actors[label]!);
+      }
+    }
+  );
+
+  it.skipIf(!environment.env)(
+    'rotates the batch cursor so a poisoned oldest prefix cannot starve later due events',
+    async () => {
+      const limit = 25;
+      const failingIds = Array.from({ length: limit }, () => crypto.randomUUID());
+      const targetId = crypto.randomUUID();
+      const q = (value: string) => `'${value.replaceAll("'", "''")}'`;
+      const eventColumns =
+        `id,community_id,created_by,starts_at,timezone,event_type,visibility,team_assignment_mode,` +
+        `venue_name,maps_url,photo_path,registration_cutoff_at`;
+      // Ancient cutoffs keep the poisoned prefix globally oldest, so a fixed
+      // oldest-first LIMIT would keep selecting it forever. Every fixture lives
+      // in the suite's public community; the blocker is scoped to the failing
+      // event ids so the target is never affected.
+      const eventInsert = (id: string, cutoff: string) =>
+        `insert into public.match_events(${eventColumns}) values
+          (${q(id)},${q(publicCommunity)},${q(actors.creator!.id)},now()+interval '10 days','UTC','friendly','community_open','POST_MATCH_TEAMS',
+           'Starvation court','https://maps.google.com/maps/place/starvation','${crypto.randomUUID()}/photo.webp',${cutoff});`;
+      const failingEvents = failingIds
+        .map((id, index) =>
+          eventInsert(id, `timestamptz '2000-01-01 00:00:00+00' + (${index} * interval '1 second')`)
+        )
+        .join('\n');
+      await fixtureSql(
+        [
+          `do $$ begin`,
+          `alter table public.match_events disable trigger lock_match_photo_publication;`,
+          `alter table public.match_events disable trigger match_event_published_notification;`,
+          failingEvents,
+          eventInsert(targetId, `timestamptz '2000-01-02 00:00:00+00'`),
+          `alter table public.match_events enable trigger match_event_published_notification;`,
+          `alter table public.match_events enable trigger lock_match_photo_publication;`,
+          `end $$;`
+        ].join('\n')
+      );
+      const failingArray = failingIds.map((id) => q(id)).join(',');
+      await fixtureSql(
+        `create function public.paf54_block_starvation_alert() returns trigger language plpgsql as $fn$ begin raise exception 'PAF54_STARVATION_PROOF' using errcode = 'P0001'; end $fn$;`
+      );
+      await fixtureSql(
+        `create trigger paf54_block_starvation_alert before insert on public.notifications for each row when (new.target_id = any(array[${failingArray}]::uuid[])) execute function public.paf54_block_starvation_alert();`
+      );
+      try {
+        // Tick 1: the poisoned prefix fills the batch and every event fails.
+        const tick1 = await processBatch(limit);
+        expect(tick1).toMatchObject({ failed: limit, selected: limit });
+        expect(await cutoffProcessedById(targetId), 'target not yet reached').toBe(false);
+
+        // Tick 2: the attempt cursor rotated the poisoned prefix to the back, so
+        // the never-attempted target is selected even though it is younger.
+        await processBatch(limit);
+        expect(
+          await cutoffProcessedById(targetId),
+          'the later due event must not be starved by the poisoned prefix'
+        ).toBe(true);
+      } finally {
+        await fixtureSql(
+          `drop trigger if exists paf54_block_starvation_alert on public.notifications;`
+        );
+        await fixtureSql(`drop function if exists public.paf54_block_starvation_alert();`);
+        // The fixture events belong to the suite's public community and are
+        // removed by the shared cleanup test below.
       }
     }
   );

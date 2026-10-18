@@ -11,7 +11,10 @@ begin;
 -- roughly one interval plus processing time; hard closure stays exact at the
 -- cutoff instant because joins/approvals evaluate the DB clock under lock.
 -- Overdue events that became due during downtime are caught up by the same
--- unprocessed-marker predicate; failures are observable in cron.job_run_details.
+-- unprocessed-marker predicate; failures are retained per event on
+-- match_event_registration_state (cutoff_failure_count / cutoff_last_failure_*)
+-- because pg_cron only records "1 row" for a successful command, never the
+-- batch's errors JSON.
 
 do $scheduler$
 begin

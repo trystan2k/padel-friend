@@ -177,6 +177,25 @@ describe('match detail surface', () => {
     await userEvent.setup().click(screen.getByRole('button', { name: en.matches.retry }));
     expect(retry).toHaveBeenCalledOnce();
   });
+  it('renders a retryable registration error region when the registration read fails', async () => {
+    const retry = vi.fn<() => void>();
+    render(
+      <I18nextProvider i18n={createI18n('en')}>
+        <MatchDetailPage event={event(20)} registration={null} registrationError onRetry={retry} />
+      </I18nextProvider>
+    );
+    const alert = screen.getByRole('alert');
+    expect(alert.textContent).toContain(en.matchRegistration.loadError.body);
+    expect(
+      screen.getByRole('heading', { name: en.matchRegistration.loadError.title })
+    ).toBeTruthy();
+    await userEvent
+      .setup()
+      .click(screen.getByRole('button', { name: en.matchRegistration.loadError.retry }));
+    expect(retry).toHaveBeenCalledOnce();
+    // The registration error surface does not depend on registration data.
+    expect(screen.queryByRole('button', { name: en.matchRegistration.join.button })).toBeNull();
+  });
   it('keeps missing events unavailable and retries transient detail RPC failures', async () => {
     const eventId = event(44).event_id;
     routeMocks.getMatchEvent.mockResolvedValueOnce({ status: 'unavailable' });

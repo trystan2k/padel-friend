@@ -32,10 +32,30 @@ import {
   loadCallerLevel,
   loadMatchRegistration,
   loadMatchRequestQueue,
-  loadMatchRoster
+  loadMatchRoster,
+  Route
 } from '../src/routes/_protected.matches.$eventId';
 
 const EVENT_ID = '00000000-0000-4000-8000-000000000001';
+
+type MatchDetailRoute = {
+  options: { loader: (context: { params: { eventId: string } }) => Promise<unknown> };
+};
+
+function hasLoader(route: unknown): route is MatchDetailRoute {
+  const options =
+    typeof route === 'object' && route !== null ? Reflect.get(route, 'options') : null;
+  return (
+    typeof options === 'object' &&
+    options !== null &&
+    typeof Reflect.get(options, 'loader') === 'function'
+  );
+}
+
+function routeLoader(): MatchDetailRoute['options']['loader'] {
+  if (!hasLoader(Route)) throw new Error('Match detail route has no loader');
+  return Route.options.loader;
+}
 
 describe('match detail registration route loaders', () => {
   it('loads the caller registration DTO without nesting the flat event projection', async () => {
@@ -121,5 +141,17 @@ describe('match detail registration route loaders', () => {
     expect(await loadCallerLevel()).toBeNull();
     mocks.getMyPlayerProfile.mockRejectedValueOnce(new Error('PLAYER_NOT_ONBOARDED'));
     expect(await loadCallerLevel()).toBeNull();
+  });
+
+  it('forwards a failed registration read through the route loader', async () => {
+    mocks.getMatchEvent.mockResolvedValue({ status: 'ok', event: { event_id: EVENT_ID } });
+    mocks.getMyMatchRegistration.mockResolvedValue({ status: 'unavailable' });
+    mocks.listMatchEventRegistrations.mockResolvedValue({ status: 'empty' });
+    mocks.getMyPlayerProfile.mockResolvedValue({ display_level: null });
+
+    const data = await routeLoader()({ params: { eventId: EVENT_ID } });
+    if (typeof data !== 'object' || data === null) throw new Error('route loader returned no data');
+    expect(Reflect.get(data, 'registration')).toBeNull();
+    expect(Reflect.get(data, 'registrationFailed')).toBe(true);
   });
 });

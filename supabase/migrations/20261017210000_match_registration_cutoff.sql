@@ -22,6 +22,23 @@ create index match_events_registration_cutoff_due
 create index match_event_registration_state_unprocessed
   on public.match_event_registration_state (match_event_id) where cutoff_processed_at is null;
 
+-- Durable processor bookkeeping on the per-event state row.
+--   * cutoff_attempt_count / cutoff_last_attempt_at are the fairness cursor:
+--     every selected event is stamped, so an event that keeps failing or
+--     staying lock-skipped rotates behind the never-attempted ones instead of
+--     pinning the oldest-first prefix and starving the rest.
+--   * the cutoff_failure_* columns retain the last per-event failure so an
+--     operator can see WHICH event failed and why long after the cron run:
+--     pg_cron only records "1 row" for a successful command, so the batch's
+--     returned errors JSON never survives in cron.job_run_details.
+alter table public.match_event_registration_state
+  add column cutoff_attempt_count bigint not null default 0 check (cutoff_attempt_count >= 0),
+  add column cutoff_last_attempt_at timestamptz,
+  add column cutoff_failure_count bigint not null default 0 check (cutoff_failure_count >= 0),
+  add column cutoff_last_failure_at timestamptz,
+  add column cutoff_last_failure_sqlstate text,
+  add column cutoff_last_failure_message text;
+
 -- 2. Effective status on read. The roster now derives Reserve Not Playing from
 -- the DB clock (or an already-persisted cutoff marker) instead of only from the
 -- stored column, so a client never sees remaining Reserve as playable after the
@@ -331,12 +348,24 @@ end $$;
 -- back while the rest complete), and events it cannot lock immediately are
 -- skipped for the next tick. Overdue events are picked up by the same
 -- unprocessed-marker predicate, so downtime is caught up automatically.
+--
+-- F25 fairness: the selection is ordered by the per-event attempt cursor
+-- (cutoff_attempt_count) first, then the cutoff instant. Every selected event is
+-- stamped, so a poisoned prefix of repeatedly-failing or lock-skipped events
+-- rotates behind the never-attempted ones and can no longer starve later due
+-- events, while the batch stays bounded and catch-up is unchanged.
+--
+-- F24 durability: per-event failures are retained on the state row
+-- (cutoff_failure_count / cutoff_last_failure_*), which survives the cron run.
+-- pg_cron only stores "1 row" for a successful command, so the returned errors
+-- JSON never reaches cron.job_run_details.
 create function public.process_due_match_event_registration_cutoffs(p_limit integer default 25)
 returns jsonb language plpgsql security definer set search_path = '' as $$
 declare
   v_limit integer := least(greatest(coalesce(p_limit, 25), 1), 100);
   v_event_id uuid;
   v_result jsonb;
+  v_reason text;
   v_processed integer := 0;
   v_skipped integer := 0;
   v_failed integer := 0;
@@ -348,20 +377,50 @@ begin
     join public.match_events e on e.id = s.match_event_id
     where s.cutoff_processed_at is null
       and e.registration_cutoff_at <= pg_catalog.clock_timestamp()
-    order by e.registration_cutoff_at, e.id
+    order by s.cutoff_attempt_count, e.registration_cutoff_at, e.id
     limit v_limit
   loop
     begin
       v_result := public.process_match_event_registration_cutoff(v_event_id, true);
+      v_reason := coalesce(v_result ->> 'reason', '');
       if coalesce((v_result ->> 'processed')::boolean, false) then
         v_processed := v_processed + 1;
       else
         v_skipped := v_skipped + 1;
       end if;
+      if v_reason in ('processed', 'already_processed') then
+        -- The event reached a terminal processor state: stamp the fairness
+        -- cursor and clear any stale failure record.
+        update public.match_event_registration_state s
+        set cutoff_attempt_count = s.cutoff_attempt_count + 1,
+            cutoff_last_attempt_at = pg_catalog.clock_timestamp(),
+            cutoff_failure_count = 0,
+            cutoff_last_failure_at = null,
+            cutoff_last_failure_sqlstate = null,
+            cutoff_last_failure_message = null
+        where s.match_event_id = v_event_id;
+      else
+        -- Lock-skipped or not due: stamp the cursor so the event rotates to the
+        -- back, but keep any outstanding failure record (nothing was resolved).
+        update public.match_event_registration_state s
+        set cutoff_attempt_count = s.cutoff_attempt_count + 1,
+            cutoff_last_attempt_at = pg_catalog.clock_timestamp()
+        where s.match_event_id = v_event_id;
+      end if;
     exception when others then
       v_failed := v_failed + 1;
       v_errors := v_errors || pg_catalog.jsonb_build_object(
         'event_id', v_event_id, 'sqlstate', SQLSTATE, 'message', SQLERRM);
+      -- Durable, operator-visible failure record; cleared only when the event
+      -- later reaches a terminal processor state.
+      update public.match_event_registration_state s
+      set cutoff_attempt_count = s.cutoff_attempt_count + 1,
+          cutoff_last_attempt_at = pg_catalog.clock_timestamp(),
+          cutoff_failure_count = s.cutoff_failure_count + 1,
+          cutoff_last_failure_at = pg_catalog.clock_timestamp(),
+          cutoff_last_failure_sqlstate = SQLSTATE,
+          cutoff_last_failure_message = SQLERRM
+      where s.match_event_id = v_event_id;
     end;
   end loop;
   return pg_catalog.jsonb_build_object(
@@ -481,6 +540,7 @@ begin
     'requests', coalesce((
       select jsonb_agg(jsonb_build_object(
         'user_id', r.user_id,
+        'attempt_id', pa.id,
         'display_name', p.display_name,
         'display_level', g.display_level,
         'registration_source', r.registration_source,
@@ -489,6 +549,10 @@ begin
       from public.match_event_registrations r
       left join public.player_profiles p on p.user_id = r.user_id
       left join public.global_player_ratings g on g.user_id = r.user_id
+      left join lateral (
+        select a.id from public.match_event_registration_attempts a
+        where a.match_event_id = r.match_event_id and a.user_id = r.user_id and a.outcome = 'pending'
+        order by a.requested_at desc, a.id desc limit 1) pa on true
       where r.match_event_id = v_event.id and r.lifecycle = 'pending'), '[]'::jsonb))
   from public.match_registration_counts(v_event.id) n;
 end $$;

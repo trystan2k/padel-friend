@@ -40,6 +40,7 @@ import {
 
 const eventId = '00000000-0000-4000-8000-000000000001';
 const requesterId = 'a3bb189e-8bf9-4888-9912-ace4e6543002';
+const attemptId = 'b7c2f9de-1111-4222-8333-444455556666';
 const now = '2026-10-17T12:00:00.000Z';
 
 // The exact jsonb shapes the four registration RPCs return on success.
@@ -358,6 +359,7 @@ describe('match registration jsonb parsers', () => {
       requests: [
         {
           user_id: requesterId,
+          attempt_id: attemptId,
           display_name: 'Requester',
           display_level: 3.5,
           registration_source: 'guest',
@@ -365,6 +367,7 @@ describe('match registration jsonb parsers', () => {
         },
         {
           user_id: '00000000-0000-4000-8000-000000000002',
+          attempt_id: '00000000-0000-4000-8000-0000000000a2',
           display_name: null,
           display_level: null,
           registration_source: 'member',
@@ -391,6 +394,8 @@ describe('match registration jsonb parsers', () => {
       { ...queueRow, requests: null },
       { ...queueRow, requests: [null] },
       { ...queueRow, requests: [{ ...queueRow.requests[0], user_id: 'bad' }] },
+      { ...queueRow, requests: [{ ...queueRow.requests[0], attempt_id: 'bad' }] },
+      { ...queueRow, requests: [{ ...queueRow.requests[0], attempt_id: null }] },
       { ...queueRow, requests: [{ ...queueRow.requests[0], registration_source: 'nobody' }] },
       { ...queueRow, requests: [{ ...queueRow.requests[0], requested_at: null }] },
       { ...queueRow, requests: [{ ...queueRow.requests[0], display_level: '3.5' }] }
@@ -585,7 +590,7 @@ describe('registration server function contracts', () => {
     });
     await expect(
       decideMatchRegistration({
-        data: { event_id: eventId, user_id: requesterId, decision: 'approve' }
+        data: { event_id: eventId, attempt_id: attemptId, decision: 'approve' }
       })
     ).resolves.toEqual({ status: 'error', code: 'forbidden' });
 
@@ -595,14 +600,14 @@ describe('registration server function contracts', () => {
     });
     await expect(
       decideMatchRegistration({
-        data: { event_id: eventId, user_id: requesterId, decision: 'reject' }
+        data: { event_id: eventId, attempt_id: attemptId, decision: 'reject' }
       })
     ).resolves.toEqual({ status: 'error', code: 'already_resolved' });
 
     client.rpc.mockResolvedValueOnce({ data: { ...acceptedPayload, replayed: true }, error: null });
     await expect(
       decideMatchRegistration({
-        data: { event_id: eventId, user_id: requesterId, decision: 'approve' }
+        data: { event_id: eventId, attempt_id: attemptId, decision: 'approve' }
       })
     ).resolves.toEqual({
       status: 'approved',
@@ -613,7 +618,7 @@ describe('registration server function contracts', () => {
     client.rpc.mockResolvedValueOnce({ data: rejectedPayload, error: null });
     await expect(
       decideMatchRegistration({
-        data: { event_id: eventId, user_id: requesterId, decision: 'reject' }
+        data: { event_id: eventId, attempt_id: attemptId, decision: 'reject' }
       })
     ).resolves.toEqual({
       status: 'rejected',
@@ -627,13 +632,13 @@ describe('registration server function contracts', () => {
     });
     await expect(
       decideMatchRegistration({
-        data: { event_id: eventId, user_id: requesterId, decision: 'approve' }
+        data: { event_id: eventId, attempt_id: attemptId, decision: 'approve' }
       })
     ).resolves.toEqual({ status: 'error', code: 'unavailable' });
     expect(client.rpc).toHaveBeenCalledTimes(5);
     expect(client.rpc).toHaveBeenNthCalledWith(1, 'decide_match_registration', {
       p_match_event_id: eventId,
-      p_user_id: requesterId,
+      p_attempt_id: attemptId,
       p_decision: 'approve'
     });
   });
@@ -767,7 +772,7 @@ describe('registration server function contracts', () => {
     ).rejects.toThrow('INVALID_MATCH_INPUT');
     await expect(
       decideMatchRegistration({
-        data: { event_id: eventId, user_id: requesterId, decision: 'maybe' }
+        data: { event_id: eventId, attempt_id: attemptId, decision: 'maybe' }
       })
     ).rejects.toThrow('INVALID_MATCH_INPUT');
     await expect(

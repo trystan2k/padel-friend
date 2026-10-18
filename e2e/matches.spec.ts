@@ -16,6 +16,8 @@ type Copy = {
     unavailable: string;
     error: string;
     retry: string;
+    loading: string;
+    loadMore: string;
     back: string;
     empty: { available: string; past: string };
     badges: { invited: string; resultActionRequired: string };
@@ -655,7 +657,18 @@ test.describe.serial('public community_open lifecycle', () => {
     await expect(creatorPage.getByText(/ranked|league/i)).toHaveCount(0);
     const tabs = creatorPage.getByRole('navigation', { name: en.matches.navigationLabel });
     await expect(tabs.getByRole('link')).toHaveCount(3);
-    await expect(creatorPage.getByRole('button')).toHaveCount(0);
+    // The only button this surface may expose is the pre-existing PAF-4 pagination
+    // control ("Load more", or its "Loading matches…" busy state), which renders
+    // whenever the shared Available listing spans more than one page — cross-suite
+    // fixtures can push it past the page size. It is not a booking, payment,
+    // Ranked, League or filter control and has its own dedicated pagination test
+    // in matches-visual.spec.ts, so it is explicitly allowed here; every OTHER
+    // button on the surface must stay absent.
+    await expect(
+      creatorPage
+        .getByRole('button')
+        .filter({ hasNotText: new RegExp(`^(${en.matches.loadMore}|${en.matches.loading})$`) })
+    ).toHaveCount(0);
     // The global shell language/theme selects live outside main; no filter inputs here.
     await expect(creatorPage.locator('main select, main input')).toHaveCount(0);
 

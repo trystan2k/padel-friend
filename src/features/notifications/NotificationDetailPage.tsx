@@ -103,6 +103,40 @@ function approvedPlacement(context: MatchNotificationContext): ApprovedPlacement
   return null;
 }
 
+type ReserveBody = { key: string; values: Record<string, unknown> };
+
+// PAF-5 review F29: the reserve notification was created when the caller joined
+// the reserve queue, but the context carries their CURRENT participation. Only a
+// caller still on reserve may read a present-tense queue position; a promoted or
+// no-longer-playing caller gets explicit historical wording, and a promoted
+// caller is never clamped to a fabricated #1 position. The venue and any number
+// come from the existing context fields, never invented data.
+function reserveBody(context: MatchNotificationContext): ReserveBody {
+  const event = context.venue;
+  if (context.caller_participation === 'reserve') {
+    const position = matchRegistrationReservePosition(
+      context.caller_accepted_order,
+      context.playing_count
+    );
+    if (position !== null)
+      return {
+        key: 'notifications.match.registrationReserveBody',
+        values: { position, event }
+      };
+  }
+  if (context.caller_participation === 'playing') {
+    const group = matchRegistrationGroup(context.caller_accepted_order);
+    if (group !== null)
+      return {
+        key: 'notifications.match.registrationReservePromotedBody',
+        values: { group, event }
+      };
+  }
+  if (context.caller_participation === 'reserve_not_playing')
+    return { key: 'notifications.match.registrationReserveNotPlayingBody', values: { event } };
+  return { key: 'notifications.match.registrationReservePastBody', values: { event } };
+}
+
 function formatMatchTime(
   value: string | null | undefined,
   timeZone: string,
@@ -253,12 +287,9 @@ export function NotificationDetailPage({
     registrationKind && currentMatchContext
       ? matchRegistrationGroup(currentMatchContext.caller_accepted_order)
       : null;
-  const fifoPosition =
-    registrationKind && currentMatchContext
-      ? matchRegistrationReservePosition(
-          currentMatchContext.caller_accepted_order,
-          currentMatchContext.playing_count
-        )
+  const reserveBodyCopy =
+    registrationKind === 'match_registration_reserve' && currentMatchContext
+      ? reserveBody(currentMatchContext)
       : null;
   const hasError = targetError || readError;
   return (
@@ -317,14 +348,9 @@ export function NotificationDetailPage({
                     </p>
                   )
                 ) : registrationKind === 'match_registration_reserve' ? (
-                  fifoPosition === null ? null : (
-                    <p>
-                      {t('notifications.match.registrationReserveBody', {
-                        position: fifoPosition,
-                        event: currentMatchContext.venue
-                      })}
-                    </p>
-                  )
+                  reserveBodyCopy ? (
+                    <p>{t(reserveBodyCopy.key, reserveBodyCopy.values)}</p>
+                  ) : null
                 ) : registrationKind === 'match_registration_promoted' ? (
                   fifoGroup === null ? null : (
                     <p>{t('notifications.match.registrationPromotedBody', { group: fifoGroup })}</p>

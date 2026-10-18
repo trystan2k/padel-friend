@@ -90,6 +90,7 @@ export const Route = createFileRoute('/_protected/matches/$eventId')({
         loadError={data.failed}
         onRetry={() => void router.invalidate()}
         registration={data.registration}
+        registrationError={data.registrationFailed}
         callerLevel={data.callerLevel}
         isCreator={data.isCreator}
         queue={data.queue}

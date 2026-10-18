@@ -10,6 +10,7 @@ import {
   type MatchRosterEntry,
   type MyMatchRegistration
 } from './match-registration-model';
+import { matchRegistrationErrorKey } from './match-registration-error-copy';
 import { matchRegistrationStyles as s } from './match-registration.styles';
 import { useMatchRegistration } from './use-match-registration';
 
@@ -187,7 +188,7 @@ export function MatchRegistrationPanel({
     if (feedback.kind === 'accepted') return t('matchRegistration.feedback.accepted');
     if (feedback.kind === 'pending') return t('matchRegistration.feedback.pending');
     if (feedback.kind === 'offline') return t('matchRegistration.feedback.offline');
-    return t(`matchRegistration.feedback.${feedback.code}`);
+    return t(matchRegistrationErrorKey(feedback.code));
   })();
 
   const remaining = maximum === null ? null : Math.max(0, maximum - counts.accepted);
@@ -393,11 +394,26 @@ export function MatchRegistrationPanel({
       registration.accepted_order,
       counts.playing
     );
+    // PAF-5 review F27: only an organizer decision carries `approved_at`. A
+    // direct join (or the creator's own slot) must not borrow the approval badge
+    // or an "Approved at …" sentence with a timestamp that does not exist.
+    const approvedWhen = clockTime(i18n.language, registration.approved_at, timeZone);
+    const isCreatorSlot = registration.registration_source === 'creator';
+    const isApproved = !isCreatorSlot && approvedWhen !== null;
+    const joinedWhen = clockTime(i18n.language, registration.accepted_at, timeZone) ?? '';
     const badgeLabel =
       participation === 'playing'
-        ? t('matchRegistration.request.approvedPlayingBadge', { group })
+        ? isCreatorSlot
+          ? t('matchRegistration.request.createdPlayingBadge', { group })
+          : isApproved
+            ? t('matchRegistration.request.approvedPlayingBadge', { group })
+            : t('matchRegistration.request.joinedPlayingBadge', { group })
         : participation === 'reserve'
-          ? t('matchRegistration.request.approvedReserveBadge', { position: reservePosition })
+          ? isCreatorSlot
+            ? t('matchRegistration.request.createdReserveBadge', { position: reservePosition })
+            : isApproved
+              ? t('matchRegistration.request.approvedReserveBadge', { position: reservePosition })
+              : t('matchRegistration.request.joinedReserveBadge', { position: reservePosition })
           : t('matchRegistration.badges.reserveNotPlaying');
     const tone =
       participation === 'playing'
@@ -405,12 +421,19 @@ export function MatchRegistrationPanel({
         : participation === 'reserve_not_playing'
           ? 'muted'
           : 'reserve';
-    const approvedWhen = clockTime(i18n.language, registration.approved_at, timeZone);
     const copy =
       participation === 'playing'
-        ? t('matchRegistration.request.approvedPlayingCopy', { when: approvedWhen })
+        ? isCreatorSlot
+          ? t('matchRegistration.request.createdPlayingCopy')
+          : isApproved
+            ? t('matchRegistration.request.approvedPlayingCopy', { when: approvedWhen })
+            : t('matchRegistration.request.joinedPlayingCopy', { when: joinedWhen })
         : participation === 'reserve'
-          ? t('matchRegistration.request.approvedReserveCopy', { when: approvedWhen })
+          ? isCreatorSlot
+            ? t('matchRegistration.request.createdReserveCopy')
+            : isApproved
+              ? t('matchRegistration.request.approvedReserveCopy', { when: approvedWhen })
+              : t('matchRegistration.request.joinedReserveCopy', { when: joinedWhen })
           : t('matchRegistration.closed.detail');
     body = (
       <div {...stylex.props(s.body)}>

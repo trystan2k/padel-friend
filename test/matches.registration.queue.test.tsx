@@ -34,6 +34,15 @@ import { MatchRequestQueue } from '../src/features/matches/MatchRequestQueue';
 const EVENT_ID = '00000000-0000-4000-8000-000000000001';
 const GUEST_ID = '00000000-0000-4000-8000-0000000000a1';
 const MEMBER_ID = '00000000-0000-4000-8000-0000000000b2';
+const ABOVE_ID = '00000000-0000-4000-8000-0000000000c3';
+const BELOW_ID = '00000000-0000-4000-8000-0000000000d4';
+const UNRATED_ID = '00000000-0000-4000-8000-0000000000e5';
+const REQUESTED_AT = '2026-10-18T10:00:00.000Z';
+const ATTEMPT_GUEST = '00000000-0000-4000-8000-000000000f01';
+const ATTEMPT_MEMBER = '00000000-0000-4000-8000-000000000f02';
+const ATTEMPT_ABOVE = '00000000-0000-4000-8000-000000000f03';
+const ATTEMPT_BELOW = '00000000-0000-4000-8000-000000000f04';
+const ATTEMPT_UNRATED = '00000000-0000-4000-8000-000000000f05';
 
 function queue(overrides: Partial<MatchRegistrationQueue> = {}): MatchRegistrationQueue {
   return {
@@ -47,6 +56,7 @@ function queue(overrides: Partial<MatchRegistrationQueue> = {}): MatchRegistrati
     requests: [
       {
         user_id: GUEST_ID,
+        attempt_id: ATTEMPT_GUEST,
         display_name: 'Paula Guest',
         display_level: null,
         registration_source: 'guest',
@@ -54,6 +64,7 @@ function queue(overrides: Partial<MatchRegistrationQueue> = {}): MatchRegistrati
       },
       {
         user_id: MEMBER_ID,
+        attempt_id: ATTEMPT_MEMBER,
         display_name: 'Rui Member',
         display_level: 6.5,
         registration_source: 'member',
@@ -67,7 +78,12 @@ function queue(overrides: Partial<MatchRegistrationQueue> = {}): MatchRegistrati
 function mount(
   value: MatchRegistrationQueue | null,
   locale = 'en',
-  props: { error?: boolean; onRetry?: () => void } = {}
+  props: {
+    error?: boolean;
+    onRetry?: () => void;
+    minLevel?: number | null;
+    maxLevel?: number | null;
+  } = {}
 ) {
   return render(
     <I18nextProvider i18n={createI18n(locale)}>
@@ -108,6 +124,77 @@ describe('match request queue', () => {
     expect(screen.getByText(/Above your 2.5–5 range · Requested .+/)).toBeTruthy();
   });
 
+  it('describes above-range, below-range, unrated and member requesters distinctly', () => {
+    mount(
+      queue({
+        requests: [
+          {
+            user_id: ABOVE_ID,
+            attempt_id: ATTEMPT_ABOVE,
+            display_name: 'Above Range',
+            display_level: 6.5,
+            registration_source: 'member',
+            requested_at: REQUESTED_AT
+          },
+          {
+            user_id: BELOW_ID,
+            attempt_id: ATTEMPT_BELOW,
+            display_name: 'Below Range',
+            display_level: 1.5,
+            registration_source: 'member',
+            requested_at: REQUESTED_AT
+          },
+          {
+            user_id: UNRATED_ID,
+            attempt_id: ATTEMPT_UNRATED,
+            display_name: 'Unrated Member',
+            display_level: null,
+            registration_source: 'member',
+            requested_at: REQUESTED_AT
+          },
+          {
+            user_id: GUEST_ID,
+            attempt_id: ATTEMPT_GUEST,
+            display_name: 'Paula Guest',
+            display_level: null,
+            registration_source: 'guest',
+            requested_at: REQUESTED_AT
+          }
+        ]
+      })
+    );
+    expect(screen.getByText(/Above your 2\.5–5 range · Requested/)).toBeTruthy();
+    expect(screen.getByText(/Below your 2\.5–5 range · Requested/)).toBeTruthy();
+    expect(screen.getByText(/No level set · range 2\.5–5 · Requested/)).toBeTruthy();
+    expect(screen.getByText(/Not a community member · Requested/)).toBeTruthy();
+    // Only the genuinely above-range requester is described as above range.
+    expect(screen.getAllByText(/Above your 2\.5–5 range/)).toHaveLength(1);
+    expect(screen.getAllByText(en.matchRegistration.queue.typeOutOfRange)).toHaveLength(2);
+    expect(screen.getByText(en.matchRegistration.queue.typeUnrated)).toBeTruthy();
+  });
+
+  it('describes a member neutrally when the event has no level restriction', () => {
+    mount(
+      queue({
+        requests: [
+          {
+            user_id: MEMBER_ID,
+            attempt_id: ATTEMPT_MEMBER,
+            display_name: 'Rui Member',
+            display_level: 6.5,
+            registration_source: 'member',
+            requested_at: REQUESTED_AT
+          }
+        ]
+      }),
+      'en',
+      { minLevel: null, maxLevel: null }
+    );
+    expect(screen.getByText(/Community member · Requested/)).toBeTruthy();
+    expect(screen.queryByText(/Not a community member/)).toBeNull();
+    expect(screen.queryByText(/Above your/)).toBeNull();
+  });
+
   it('renders nothing for an unauthorized caller with no queue payload', () => {
     const { container } = mount(null);
     expect(container.textContent).toBe('');
@@ -140,7 +227,7 @@ describe('match request queue', () => {
       .setup()
       .click(screen.getByRole('button', { name: 'Approve request from Paula Guest' }));
     expect(mocks.decide).toHaveBeenCalledWith({
-      data: { event_id: EVENT_ID, user_id: GUEST_ID, decision: 'approve' }
+      data: { event_id: EVENT_ID, attempt_id: ATTEMPT_GUEST, decision: 'approve' }
     });
     await waitFor(() =>
       expect(screen.getByText(en.matchRegistration.feedback.approved)).toBeTruthy()
@@ -155,7 +242,7 @@ describe('match request queue', () => {
       .setup()
       .click(screen.getByRole('button', { name: 'Decline request from Rui Member' }));
     expect(mocks.decide).toHaveBeenCalledWith({
-      data: { event_id: EVENT_ID, user_id: MEMBER_ID, decision: 'reject' }
+      data: { event_id: EVENT_ID, attempt_id: ATTEMPT_MEMBER, decision: 'reject' }
     });
     await waitFor(() =>
       expect(screen.getByText(en.matchRegistration.feedback.rejected)).toBeTruthy()
@@ -170,6 +257,19 @@ describe('match request queue', () => {
       .click(screen.getByRole('button', { name: 'Approve request from Paula Guest' }));
     await waitFor(() => expect(screen.getByText(en.matchRegistration.feedback.full)).toBeTruthy());
     expect(mocks.invalidate).toHaveBeenCalled();
+  });
+
+  it('renders translated copy for a snake_case decision error instead of the raw key', async () => {
+    mocks.decide.mockResolvedValue({ status: 'error', code: 'already_resolved' });
+    mount(queue());
+    await userEvent
+      .setup()
+      .click(screen.getByRole('button', { name: 'Approve request from Paula Guest' }));
+    await waitFor(() =>
+      expect(screen.getByText(en.matchRegistration.feedback.alreadyResolved)).toBeTruthy()
+    );
+    expect(screen.queryByText('matchRegistration.feedback.already_resolved')).toBeNull();
+    expect(screen.queryByText('matchRegistration.feedback.alreadyResolved')).toBeNull();
   });
 
   it('disables decisions and announces offline state', async () => {
@@ -191,6 +291,7 @@ describe('match request queue', () => {
         requests: [
           {
             user_id: GUEST_ID,
+            attempt_id: ATTEMPT_GUEST,
             display_name: null,
             display_level: null,
             registration_source: 'guest',

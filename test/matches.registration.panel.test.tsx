@@ -254,6 +254,51 @@ describe('match registration panel', () => {
     expect(screen.getByText(en.matchRegistration.badges.reserve)).toBeTruthy();
   });
 
+  it('renders a direct acceptance without approval wording or a missing timestamp', () => {
+    // A direct join has no organizer decision, so approved_at is null.
+    mount(event(), accepted({ accepted_order: 6, approved_at: null }));
+    expect(
+      screen.getByText(en.matchRegistration.request.joinedPlayingBadge.replace('{{group}}', '2'))
+    ).toBeTruthy();
+    expect(screen.getByText(/Joined at .+ · your place was confirmed instantly\./)).toBeTruthy();
+    expect(
+      screen.queryByText(
+        en.matchRegistration.request.approvedPlayingBadge.replace('{{group}}', '2')
+      )
+    ).toBeNull();
+    expect(screen.queryByText(/Approved at/)).toBeNull();
+  });
+
+  it('renders a direct reserve acceptance without approval wording', () => {
+    mount(
+      event({ accepted_count: 7, playing_count: 4, reserve_count: 3 }),
+      accepted({ participation: 'reserve', accepted_order: 7, position: 7, approved_at: null })
+    );
+    expect(
+      screen.getByText(en.matchRegistration.request.joinedReserveBadge.replace('{{position}}', '3'))
+    ).toBeTruthy();
+    expect(
+      screen.queryByText(
+        en.matchRegistration.request.approvedReserveBadge.replace('{{position}}', '3')
+      )
+    ).toBeNull();
+    expect(screen.queryByText(/Approved at/)).toBeNull();
+  });
+
+  it("renders the creator's own slot distinctly from an approval", () => {
+    mount(event(), accepted({ registration_source: 'creator', approved_at: null }));
+    expect(
+      screen.getByText(en.matchRegistration.request.createdPlayingBadge.replace('{{group}}', '2'))
+    ).toBeTruthy();
+    expect(screen.getByText(en.matchRegistration.request.createdPlayingCopy)).toBeTruthy();
+    expect(screen.queryByText(/Approved at/)).toBeNull();
+    expect(
+      screen.queryByText(
+        en.matchRegistration.request.approvedPlayingBadge.replace('{{group}}', '2')
+      )
+    ).toBeNull();
+  });
+
   it('renders a reserve-not-playing acceptance as a first-class badge', () => {
     mount(
       event({ reserve_not_playing_count: 1, reserve_count: 0 }),
@@ -357,6 +402,19 @@ describe('match registration panel', () => {
       .click(screen.getByRole('button', { name: en.matchRegistration.join.button }));
     await waitFor(() => expect(screen.getByText(en.matchRegistration.feedback.full)).toBeTruthy());
     expect(mocks.invalidate).toHaveBeenCalled();
+  });
+
+  it('renders translated copy for a snake_case error code instead of the raw key', async () => {
+    mocks.submit.mockResolvedValue({ status: 'error', code: 'pending_duplicate' });
+    mount(event(), none);
+    await userEvent
+      .setup()
+      .click(screen.getByRole('button', { name: en.matchRegistration.join.button }));
+    await waitFor(() =>
+      expect(screen.getByText(en.matchRegistration.feedback.pendingDuplicate)).toBeTruthy()
+    );
+    expect(screen.queryByText('matchRegistration.feedback.pending_duplicate')).toBeNull();
+    expect(screen.queryByText('matchRegistration.feedback.pendingDuplicate')).toBeNull();
   });
 
   it('retries a failed action and refreshes authoritative state after success', async () => {

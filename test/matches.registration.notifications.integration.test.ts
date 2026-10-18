@@ -41,17 +41,29 @@ describe('match registration FIFO notifications integration', () => {
 
   const submit = (who: Actor, eventKey: string): PromiseLike<{ error: unknown; data: unknown }> =>
     who.client.rpc('submit_match_registration', { p_match_event_id: events[eventKey]! });
-  const decide = (
+  /** The current attempt identity for (event, user), latest-first. */
+  const latestAttemptId = async (eventKey: string, userId: string): Promise<string> => {
+    const rows = await sqlRows(
+      `select id::text as id from public.match_event_registration_attempts
+        where match_event_id = '${events[eventKey]!}' and user_id = '${userId}'
+        order by requested_at desc, id desc limit 1`
+    );
+    expect(rows, `attempt for ${userId} on ${eventKey}`).toHaveLength(1);
+    return String(rows[0]!['id']);
+  };
+  const decide = async (
     who: Actor,
     eventKey: string,
     targetId: string,
     decision: 'approve' | 'reject'
-  ): PromiseLike<{ error: unknown; data: unknown }> =>
-    who.client.rpc('decide_match_registration', {
+  ): Promise<{ error: unknown; data: unknown }> => {
+    const attemptId = await latestAttemptId(eventKey, targetId);
+    return who.client.rpc('decide_match_registration', {
       p_match_event_id: events[eventKey]!,
-      p_user_id: targetId,
+      p_attempt_id: attemptId,
       p_decision: decision
     });
+  };
   const inboxOf = async (who: Actor, eventKey: string): Promise<SqlRow[]> => {
     const result = await who.client
       .from('notifications')

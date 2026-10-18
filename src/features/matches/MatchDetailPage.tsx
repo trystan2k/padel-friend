@@ -30,6 +30,7 @@ export function MatchDetailPage({
   onRetry = () => undefined,
   sharePlatform,
   registration = null,
+  registrationError = false,
   callerLevel = null,
   isCreator = false,
   queue = null,
@@ -41,6 +42,7 @@ export function MatchDetailPage({
   onRetry?: () => void;
   sharePlatform?: Pick<Navigator, 'share' | 'clipboard'>;
   registration?: MyMatchRegistration | null;
+  registrationError?: boolean;
   callerLevel?: number | null;
   isCreator?: boolean;
   queue?: MatchRegistrationQueue | null;
@@ -191,14 +193,28 @@ export function MatchDetailPage({
           {event.caller_badge === 'creator' && <p>{t('matches.detail.creatorAccepted')}</p>}
           {event.caller_eligibility === 'invited' && <p>{t('matches.detail.invitationInfo')}</p>}
         </section>
-        {registration && (
+        {registrationError ? (
+          <section
+            role="alert"
+            aria-labelledby="match-registration-error-heading"
+            {...stylex.props(s.detailGroup)}
+          >
+            <h2 id="match-registration-error-heading" {...stylex.props(s.sectionTitle)}>
+              {t('matchRegistration.loadError.title')}
+            </h2>
+            <p>{t('matchRegistration.loadError.body')}</p>
+            <button type="button" onClick={onRetry} {...stylex.props(s.button)}>
+              {t('matchRegistration.loadError.retry')}
+            </button>
+          </section>
+        ) : registration ? (
           <MatchRegistrationPanel
             event={event}
             registration={registration}
             callerLevel={callerLevel}
             roster={roster}
           />
-        )}
+        ) : null}
         {isCreator && (
           <MatchRequestQueue
             eventId={eventId}

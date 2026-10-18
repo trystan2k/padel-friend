@@ -340,16 +340,17 @@ begin
     'already_registered', false);
 end $$;
 
-create or replace function public.decide_match_registration(p_match_event_id uuid, p_user_id uuid, p_decision text)
+create or replace function public.decide_match_registration(p_match_event_id uuid, p_attempt_id uuid, p_decision text)
 returns jsonb language plpgsql security definer set search_path = '' as $$
 declare
   v_actor uuid := (select auth.uid());
   v_event public.match_events%rowtype;
+  v_attempt public.match_event_registration_attempts%rowtype;
   v_row public.match_event_registrations%rowtype;
+  v_user_id uuid;
   v_now timestamptz;
   v_ordinal bigint;
   v_count integer;
-  v_attempt_id uuid;
   v_member boolean;
   v_public boolean;
   v_lifecycle public.match_registration_lifecycle;
@@ -359,14 +360,11 @@ begin
   if v_actor is null or coalesce((select auth.jwt() ->> 'is_anonymous'), 'false') = 'true' then
     raise exception using errcode = '28000', message = 'Authentication required';
   end if;
-  if p_user_id is null then
-    raise exception using errcode = '22023', message = 'Match registration target required';
+  if p_attempt_id is null then
+    raise exception using errcode = '22023', message = 'Match registration attempt required';
   end if;
   if p_decision is null or p_decision not in ('approve', 'reject') then
     raise exception using errcode = '22023', message = 'Invalid registration decision';
-  end if;
-  if p_user_id = v_actor then
-    raise exception using errcode = '42501', message = 'Creator cannot decide their own registration';
   end if;
 
   v_event := public.lock_match_event_registration(p_match_event_id);
@@ -374,18 +372,34 @@ begin
     raise exception using errcode = '42501', message = 'Registration decisions are creator-only';
   end if;
 
+  -- Bind the decision to the immutable attempt identity and re-read that exact
+  -- attempt under the event/state lock. The attempt names the requester, so a
+  -- stale decision for an older attempt can never resolve a newer one: after a
+  -- rejection and a re-application the creator must name the NEW attempt.
+  select * into v_attempt from public.match_event_registration_attempts a
+  where a.id = p_attempt_id and a.match_event_id = p_match_event_id for update;
+  if not found then
+    raise exception using errcode = 'P0001', message = 'MATCH_REGISTRATION_NOT_FOUND';
+  end if;
+  v_user_id := v_attempt.user_id;
+  if v_user_id = v_actor then
+    raise exception using errcode = '42501', message = 'Creator cannot decide their own registration';
+  end if;
+
   select * into v_row from public.match_event_registrations r
-  where r.match_event_id = p_match_event_id and r.user_id = p_user_id for update;
+  where r.match_event_id = p_match_event_id and r.user_id = v_user_id for update;
   if not found then
     raise exception using errcode = 'P0001', message = 'MATCH_REGISTRATION_NOT_FOUND';
   end if;
 
-  -- Approving an already-approved request replays with the ORIGINAL anchors/time/order.
-  if v_row.lifecycle = 'accepted' then
+  -- A genuinely matching already-accepted attempt replays with the ORIGINAL
+  -- anchors/time/order. Every other terminal attempt is already resolved and a
+  -- decision can never revive it.
+  if v_attempt.outcome = 'accepted' then
     if p_decision = 'approve' then
       return jsonb_build_object(
         'event_id', p_match_event_id,
-        'user_id', p_user_id,
+        'user_id', v_user_id,
         'lifecycle', 'accepted',
         'participation', v_row.participation_status,
         'accepted_order', v_row.accepted_order,
@@ -396,7 +410,10 @@ begin
     end if;
     raise exception using errcode = 'P0001', message = 'MATCH_REGISTRATION_ALREADY_RESOLVED';
   end if;
-  -- A rejected/expired row can never silently become accepted.
+  if v_attempt.outcome <> 'pending' then
+    raise exception using errcode = 'P0001', message = 'MATCH_REGISTRATION_ALREADY_RESOLVED';
+  end if;
+  -- The canonical row must still be the open request this attempt belongs to.
   if v_row.lifecycle <> 'pending' then
     raise exception using errcode = 'P0001', message = 'MATCH_REGISTRATION_ALREADY_RESOLVED';
   end if;
@@ -412,7 +429,7 @@ begin
     -- Rating range is intentionally not re-checked: approving out-of-range requests
     -- is exactly what creator approval is for.
     if v_row.registration_source = 'member' then
-      v_member := public.match_registration_is_member(v_event.community_id, p_user_id);
+      v_member := public.match_registration_is_member(v_event.community_id, v_user_id);
       if not v_member then
         raise exception using errcode = 'P0001', message = 'MATCH_REGISTRATION_REQUESTER_INELIGIBLE';
       end if;
@@ -454,19 +471,11 @@ begin
     where r.id = v_row.id;
   end if;
 
-  select a.id into v_attempt_id from public.match_event_registration_attempts a
-  where a.match_event_id = p_match_event_id and a.user_id = p_user_id and a.outcome = 'pending'
-  order by a.requested_at desc, a.id desc limit 1 for update;
-  if v_attempt_id is not null then
-    update public.match_event_registration_attempts a
-    set outcome = v_lifecycle, decided_at = v_now, actor_id = v_actor
-    where a.id = v_attempt_id;
-  else
-    insert into public.match_event_registration_attempts(
-      match_event_id, user_id, requested_at, decided_at, outcome, actor_id)
-    values (p_match_event_id, p_user_id, coalesce(v_row.requested_at, v_now), v_now, v_lifecycle, v_actor)
-    returning id into v_attempt_id;
-  end if;
+  -- Resolve exactly the attempt the caller named (re-read and locked above); a
+  -- decision never guesses the "latest pending" attempt.
+  update public.match_event_registration_attempts a
+  set outcome = v_lifecycle, decided_at = v_now, actor_id = v_actor
+  where a.id = v_attempt.id;
 
   if p_decision = 'approve' then
     v_reconcile := public.reconcile_match_registration_participation(p_match_event_id, v_row.id);
@@ -474,12 +483,12 @@ begin
     -- Approval alert, once per attempt (replay is a no-op).
     perform public.persist_notification(
       v_row.user_id,
-      'match.registration_approved:' || v_row.id::text || ':' || v_attempt_id::text,
+      'match.registration_approved:' || v_row.id::text || ':' || v_attempt.id::text,
       'match_registration_approved', 'matches', 'match_event',
       p_match_event_id, v_event.community_id);
     return jsonb_build_object(
       'event_id', p_match_event_id,
-      'user_id', p_user_id,
+      'user_id', v_user_id,
       'lifecycle', 'accepted',
       'participation', v_participation,
       'accepted_order', v_ordinal,
@@ -491,12 +500,12 @@ begin
 
   perform public.persist_notification(
     v_row.user_id,
-    'match.registration_rejected:' || v_row.id::text || ':' || v_attempt_id::text,
+    'match.registration_rejected:' || v_row.id::text || ':' || v_attempt.id::text,
     'match_registration_rejected', 'matches', 'match_event',
     p_match_event_id, v_event.community_id);
   return jsonb_build_object(
     'event_id', p_match_event_id,
-    'user_id', p_user_id,
+    'user_id', v_user_id,
     'lifecycle', 'rejected',
     'registration_source', v_row.registration_source,
     'resolved_at', v_now,
@@ -678,6 +687,7 @@ begin
     'requests', coalesce((
       select jsonb_agg(jsonb_build_object(
         'user_id', r.user_id,
+        'attempt_id', pa.id,
         'display_name', p.display_name,
         'display_level', g.display_level,
         'registration_source', r.registration_source,
@@ -686,6 +696,10 @@ begin
       from public.match_event_registrations r
       left join public.player_profiles p on p.user_id = r.user_id
       left join public.global_player_ratings g on g.user_id = r.user_id
+      left join lateral (
+        select a.id from public.match_event_registration_attempts a
+        where a.match_event_id = r.match_event_id and a.user_id = r.user_id and a.outcome = 'pending'
+        order by a.requested_at desc, a.id desc limit 1) pa on true
       where r.match_event_id = v_event.id and r.lifecycle = 'pending'), '[]'::jsonb))
   from public.match_registration_counts(v_event.id) n;
 end $$;
@@ -701,7 +715,15 @@ begin
   end if;
   select jsonb_build_object(
     'event_id', e.id,
-    'lifecycle', r.lifecycle,
+    -- F23: effective lifecycle on read. A still-pending request on a closed
+    -- event (cutoff passed, or already processed) reads as expired immediately,
+    -- the same way the roster projects reserve_not_playing for a
+    -- due-but-unprocessed event. The read stays side-effect free; the cutoff
+    -- processor is still the only path that persists the expiry.
+    'lifecycle', case when r.lifecycle = 'pending'
+        and (e.registration_cutoff_at <= pg_catalog.clock_timestamp()
+          or s.cutoff_processed_at is not null)
+      then 'expired'::public.match_registration_lifecycle else r.lifecycle end,
     'participation', cr.participation_status,
     'accepted_order', r.accepted_order,
     'position', cr.roster_position,
@@ -712,6 +734,7 @@ begin
     'resolved_at', r.resolved_at)
   into v_result
   from public.match_events e
+  left join public.match_event_registration_state s on s.match_event_id = e.id
   left join public.match_event_registrations r
     on r.match_event_id = e.id and r.user_id = v_actor
   left join lateral (

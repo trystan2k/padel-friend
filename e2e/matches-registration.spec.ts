@@ -70,6 +70,10 @@ type Copy = {
       pendingBadge: string;
       approvedPlayingBadge: string;
       approvedReserveBadge: string;
+      joinedPlayingBadge: string;
+      joinedReserveBadge: string;
+      createdPlayingBadge: string;
+      createdPlayingCopy: string;
       declinedBadge: string;
       declinedCopy: string;
       requestAgain: string;
@@ -309,16 +313,24 @@ async function submitRegistration(
   return actor.client.rpc('submit_match_registration', { p_match_event_id: eventId });
 }
 
-/** Real authenticated creator decision through the shipped RPC. */
+/** Real authenticated creator decision through the shipped RPC (attempt-bound). */
 async function decideRegistration(
   actor: Actor,
   eventId: string,
   userId: string,
   decision: 'approve' | 'reject'
 ): Promise<{ data: unknown; error: RpcError }> {
+  const attempt = await fixtureRows(
+    `select a.id::text as id from public.match_event_registration_attempts a ` +
+      `where a.match_event_id = '${eventId}' and a.user_id = '${userId}' ` +
+      `order by a.requested_at desc, a.id desc limit 1;`
+  );
+  const attemptId = attempt[0]?.['id'];
+  if (typeof attemptId !== 'string')
+    throw new Error(`no registration attempt for ${userId} on ${eventId}`);
   return actor.client.rpc('decide_match_registration', {
     p_match_event_id: eventId,
-    p_user_id: userId,
+    p_attempt_id: attemptId,
     p_decision: decision
   });
 }
@@ -699,9 +711,11 @@ test.describe.serial('registration, FIFO and cutoff journeys', () => {
 
     await page.getByRole('button', { name: en.matchRegistration.join.button }).click();
     await expect(page.getByText(en.matchRegistration.feedback.accepted)).toBeVisible();
+    // Direct join (F27): a member accepted instantly through the CTA carries the
+    // JOINED badge — organizer approval wording is reserved for real decisions.
     // Second accepted of two: reserve queue placement #2 until a quartet completes.
     await expect(
-      page.getByText(fill(en.matchRegistration.request.approvedReserveBadge, { position: 2 }))
+      page.getByText(fill(en.matchRegistration.request.joinedReserveBadge, { position: 2 }))
     ).toBeVisible();
     await expect(page.getByRole('button', { name: en.matchRegistration.join.button })).toHaveCount(
       0
@@ -718,8 +732,9 @@ test.describe.serial('registration, FIFO and cutoff journeys', () => {
 
     await page.reload();
     await waitForHydratedPage(page);
+    // The member's own placement comes from the direct join (F27): JOINED wording.
     await expect(
-      page.getByText(fill(en.matchRegistration.request.approvedPlayingBadge, { group: 1 }))
+      page.getByText(fill(en.matchRegistration.request.joinedPlayingBadge, { group: 1 }))
     ).toBeVisible();
     const roster = rosterSection(page);
     await expect(
@@ -780,7 +795,7 @@ test.describe.serial('registration, FIFO and cutoff journeys', () => {
     await page.getByRole('link', { name: en.notifications.match.openEvent }).click();
     await expect(page).toHaveURL(new RegExp(`/matches/${eventId}$`));
     await expect(
-      page.getByText(fill(en.matchRegistration.request.approvedPlayingBadge, { group: 1 }))
+      page.getByText(fill(en.matchRegistration.request.joinedPlayingBadge, { group: 1 }))
     ).toBeVisible();
   });
 
@@ -810,6 +825,14 @@ test.describe.serial('registration, FIFO and cutoff journeys', () => {
 
     await creatorPage.goto(`/matches/${eventId}`);
     await waitForHydratedPage(creatorPage);
+    // F27: the creator's own slot is neither an approval nor a direct join —
+    // CREATOR badge with the timestampless copy (order 1, Group 1).
+    await expect(
+      creatorPage.getByText(fill(en.matchRegistration.request.createdPlayingBadge, { group: 1 }))
+    ).toBeVisible();
+    await expect(
+      creatorPage.getByText(en.matchRegistration.request.createdPlayingCopy)
+    ).toBeVisible();
     const card = requestQueueSection(creatorPage)
       .locator('li')
       .filter({ hasText: requester.displayName });
@@ -827,6 +850,8 @@ test.describe.serial('registration, FIFO and cutoff journeys', () => {
 
     // FIFO: approval behind the four earlier acceptances lands the requester in
     // the reserve queue at position #1 — request time reserved nothing.
+    // Genuine approval journey (F27): the creator decision wrote approved_at, so
+    // the APPROVED wording is the honest expectation here.
     await page.reload();
     await waitForHydratedPage(page);
     await expect(
@@ -903,6 +928,36 @@ test.describe.serial('registration, FIFO and cutoff journeys', () => {
     const retried = await registrationRowFor(eventId, requester.id);
     expect(retried!['lifecycle']).toBe('pending');
 
+    // F21: decisions are bound to the immutable ATTEMPT id. A stale decision
+    // naming the FIRST (rejected) attempt is refused with
+    // MATCH_REGISTRATION_ALREADY_RESOLVED and must not resolve the fresh
+    // re-application the creator never reviewed — the row stays pending and the
+    // attempts ledger is untouched.
+    const attempts = await fixtureRows(
+      `select a.id::text as id, a.outcome::text as outcome from public.match_event_registration_attempts a ` +
+        `where a.match_event_id = '${eventId}' and a.user_id = '${requester.id}' ` +
+        `order by a.requested_at asc, a.id asc;`
+    );
+    expect(attempts.map((row) => row['outcome'])).toEqual(['rejected', 'pending']);
+    const staleAttemptId = attempts[0]!['id'];
+    if (typeof staleAttemptId !== 'string') throw new Error('first attempt id missing');
+    const stale = await family.creator!.client.rpc('decide_match_registration', {
+      p_match_event_id: eventId,
+      p_attempt_id: staleAttemptId,
+      p_decision: 'approve'
+    });
+    expect(stale.error).not.toBeNull();
+    expect(stale.error!.message ?? '').toContain('MATCH_REGISTRATION_ALREADY_RESOLVED');
+    const staleRow = await registrationRowFor(eventId, requester.id);
+    expect(staleRow!['lifecycle']).toBe('pending');
+    expect(staleRow!['accepted_order']).toBeNull();
+    const attemptsAfterStale = await fixtureRows(
+      `select a.outcome::text as outcome from public.match_event_registration_attempts a ` +
+        `where a.match_event_id = '${eventId}' and a.user_id = '${requester.id}' ` +
+        `order by a.requested_at asc, a.id asc;`
+    );
+    expect(attemptsAfterStale.map((row) => row['outcome'])).toEqual(['rejected', 'pending']);
+
     // The creator sees the fresh attempt and declines it again; the ledger keeps
     // exactly one resolved row for this identity and each attempt alerted once.
     await creatorPage.reload();
@@ -958,6 +1013,8 @@ test.describe.serial('registration, FIFO and cutoff journeys', () => {
     await expect(creatorPage.getByText(en.matchRegistration.feedback.approved)).toBeVisible();
 
     // The guest is marked as a guest everywhere and still holds no membership row.
+    // Genuine approval journey (F27): the queue decision wrote approved_at, so
+    // the APPROVED wording is asserted here — the approval state must stay covered.
     expect(await communityMembershipCount(family.communityId!, guest.id)).toBe(0);
     await page.reload();
     await waitForHydratedPage(page);
@@ -1095,8 +1152,9 @@ test.describe.serial('registration, FIFO and cutoff journeys', () => {
     await waitForHydratedPage(page);
     await page.getByRole('button', { name: en.matchRegistration.join.button }).click();
     await expect(page.getByText(en.matchRegistration.feedback.accepted)).toBeVisible();
+    // Direct join (F27): the eighth acceptance is an instant CTA join — JOINED.
     await expect(
-      page.getByText(fill(en.matchRegistration.request.approvedPlayingBadge, { group: 2 }))
+      page.getByText(fill(en.matchRegistration.request.joinedPlayingBadge, { group: 2 }))
     ).toBeVisible();
 
     await expect(
@@ -1154,7 +1212,7 @@ test.describe.serial('registration, FIFO and cutoff journeys', () => {
     await page.getByRole('link', { name: en.notifications.match.openEvent }).click();
     await expect(page).toHaveURL(new RegExp(`/matches/${eventId}$`));
     await expect(
-      page.getByText(fill(en.matchRegistration.request.approvedPlayingBadge, { group: 2 }))
+      page.getByText(fill(en.matchRegistration.request.joinedPlayingBadge, { group: 2 }))
     ).toBeVisible();
   });
 
@@ -1184,8 +1242,9 @@ test.describe.serial('registration, FIFO and cutoff journeys', () => {
     await expect(
       roster.getByText(en.matchRegistration.roster.position.replace('{{position}}', '1'))
     ).toBeVisible();
+    // The quartet page still shows q4's own direct-join placement (F27: JOINED).
     await expect(
-      page.getByText(fill(en.matchRegistration.request.approvedPlayingBadge, { group: 2 }))
+      page.getByText(fill(en.matchRegistration.request.joinedPlayingBadge, { group: 2 }))
     ).toBeVisible();
 
     expect(await detailData(host, eventId)).toMatchObject({
@@ -1352,8 +1411,9 @@ test.describe.serial('registration, FIFO and cutoff journeys', () => {
 
     await page.goto(`/matches/${eventId}`);
     await waitForHydratedPage(page);
+    // Direct join (F27): the fifth acceptance is an instant join — JOINED · RESERVE.
     await expect(
-      page.getByText(fill(en.matchRegistration.request.approvedReserveBadge, { position: 1 }))
+      page.getByText(fill(en.matchRegistration.request.joinedReserveBadge, { position: 1 }))
     ).toBeVisible();
 
     const detail = await detailData(creator, eventId);
@@ -1472,11 +1532,12 @@ test.describe.serial('registration, FIFO and cutoff journeys', () => {
         .first()
     ).toBeVisible();
 
-    // Complete quartet stays playable on the match surface.
+    // Complete quartet stays playable on the match surface (the members joined
+    // directly, so their own placement reads JOINED — F27).
     await memberPage.goto(`/matches/${eventId}`);
     await waitForHydratedPage(memberPage);
     await expect(
-      memberPage.getByText(fill(en.matchRegistration.request.approvedPlayingBadge, { group: 1 }))
+      memberPage.getByText(fill(en.matchRegistration.request.joinedPlayingBadge, { group: 1 }))
     ).toBeVisible();
     await expect(
       rosterSection(memberPage).getByRole('heading', {

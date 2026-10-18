@@ -9,6 +9,7 @@ import {
 
 const eventId = '123e4567-e89b-12d3-a456-426614174000';
 const userId = 'a3bb189e-8bf9-4888-9912-ace4e6543002';
+const attemptId = 'b7c2f9de-1111-4222-8333-444455556666';
 const now = '2026-10-17T12:00:00.000Z';
 
 describe('match registration validators', () => {
@@ -19,11 +20,19 @@ describe('match registration validators', () => {
       event_id: eventId
     });
     expect(
-      validateDecideMatchRegistration({ event_id: eventId, user_id: userId, decision: 'approve' })
-    ).toEqual({ event_id: eventId, user_id: userId, decision: 'approve' });
+      validateDecideMatchRegistration({
+        event_id: eventId,
+        attempt_id: attemptId,
+        decision: 'approve'
+      })
+    ).toEqual({ event_id: eventId, attempt_id: attemptId, decision: 'approve' });
     expect(
-      validateDecideMatchRegistration({ event_id: eventId, user_id: userId, decision: 'reject' })
-    ).toEqual({ event_id: eventId, user_id: userId, decision: 'reject' });
+      validateDecideMatchRegistration({
+        event_id: eventId,
+        attempt_id: attemptId,
+        decision: 'reject'
+      })
+    ).toEqual({ event_id: eventId, attempt_id: attemptId, decision: 'reject' });
     expect(MATCH_REGISTRATION_DECISIONS).toEqual(['approve', 'reject']);
   });
 
@@ -62,12 +71,12 @@ describe('match registration validators', () => {
         'INVALID_MATCH_INPUT'
       );
       expect(() =>
-        validateDecideMatchRegistration({ event_id, user_id: userId, decision: 'approve' })
+        validateDecideMatchRegistration({ event_id, attempt_id: attemptId, decision: 'approve' })
       ).toThrow('INVALID_MATCH_INPUT');
       expect(() =>
         validateDecideMatchRegistration({
           event_id: eventId,
-          user_id: event_id,
+          attempt_id: event_id,
           decision: 'reject'
         })
       ).toThrow('INVALID_MATCH_INPUT');
@@ -76,9 +85,9 @@ describe('match registration validators', () => {
     expect(() =>
       validateDecideMatchRegistration({ event_id: eventId, decision: 'approve' })
     ).toThrow('INVALID_MATCH_INPUT');
-    expect(() => validateDecideMatchRegistration({ event_id: eventId, user_id: userId })).toThrow(
-      'INVALID_MATCH_INPUT'
-    );
+    expect(() =>
+      validateDecideMatchRegistration({ event_id: eventId, attempt_id: attemptId })
+    ).toThrow('INVALID_MATCH_INPUT');
   });
 
   it('rejects unknown keys so a client cannot inject server-derived fields', () => {
@@ -118,14 +127,14 @@ describe('match registration validators', () => {
         validateListMatchRegistrationRequests({ event_id: eventId, [key]: value })
       ).toThrow('INVALID_MATCH_INPUT');
     }
-    // The decision payload allows only event_id/user_id/decision; the same
+    // The decision payload allows only event_id/attempt_id/decision; the same
     // server-derived fields stay rejected on top of the valid trio.
     for (const [key, value] of Object.entries(smuggled)) {
-      if (key === 'user_id' || key === 'decision') continue;
+      if (key === 'attempt_id' || key === 'decision') continue;
       expect(() =>
         validateDecideMatchRegistration({
           event_id: eventId,
-          user_id: userId,
+          attempt_id: attemptId,
           decision: 'approve',
           [key]: value
         })
@@ -149,7 +158,7 @@ describe('match registration validators', () => {
       {}
     ]) {
       expect(() =>
-        validateDecideMatchRegistration({ event_id: eventId, user_id: userId, decision })
+        validateDecideMatchRegistration({ event_id: eventId, attempt_id: attemptId, decision })
       ).toThrow('INVALID_MATCH_INPUT');
     }
   });

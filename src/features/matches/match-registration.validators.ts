@@ -44,12 +44,12 @@ export function validateListMatchEventRegistrations(value: unknown) {
 }
 
 export function validateDecideMatchRegistration(value: unknown) {
-  const data = exact(value, ['event_id', 'user_id', 'decision']);
+  const data = exact(value, ['event_id', 'attempt_id', 'decision']);
   const decision = data.decision;
   if (decision !== 'approve' && decision !== 'reject') throw new Error('INVALID_MATCH_INPUT');
   return {
     event_id: validateMatchUuid(data.event_id),
-    user_id: validateMatchUuid(data.user_id),
+    attempt_id: validateMatchUuid(data.attempt_id),
     decision: decision satisfies MatchRegistrationDecision
   };
 }

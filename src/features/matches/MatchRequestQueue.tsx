@@ -2,6 +2,7 @@ import * as stylex from '@stylexjs/stylex';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { MatchRegistrationQueue, MatchRegistrationRequest } from './match-registration-model';
+import { matchRegistrationErrorKey } from './match-registration-error-copy';
 import { matchRegistrationStyles as s } from './match-registration.styles';
 import { useMatchRequestQueue } from './use-match-registration';
 
@@ -47,7 +48,7 @@ export function MatchRequestQueue({
     if (feedback.kind === 'approved') return t('matchRegistration.feedback.approved');
     if (feedback.kind === 'rejected') return t('matchRegistration.feedback.rejected');
     if (feedback.kind === 'offline') return t('matchRegistration.feedback.offline');
-    return t(`matchRegistration.feedback.${feedback.code}`);
+    return t(matchRegistrationErrorKey(feedback.code));
   })();
 
   if (error) {
@@ -69,18 +70,28 @@ export function MatchRequestQueue({
   if (!queue) return null;
 
   const requests = queue.requests;
-  const requestType = (request: MatchRegistrationRequest) => {
-    if (request.registration_source === 'guest') return 'guest' as const;
-    if (
-      minLevel !== null &&
-      maxLevel !== null &&
-      (request.display_level === null ||
-        request.display_level < minLevel ||
-        request.display_level > maxLevel)
-    )
-      return 'out_of_range' as const;
-    return null;
+  // PAF-5 review F31: an out-of-range request is not always above range, an
+  // unrated member is not out of range at all, and a member must never be
+  // described as a nonmember just because the event carries no level restriction.
+  type RequestContext = 'guest' | 'above_range' | 'below_range' | 'unrated' | 'member';
+  const requestContext = (request: MatchRegistrationRequest): RequestContext => {
+    if (request.registration_source === 'guest') return 'guest';
+    if (minLevel === null || maxLevel === null) return 'member';
+    if (request.display_level === null) return 'unrated';
+    if (request.display_level < minLevel) return 'below_range';
+    if (request.display_level > maxLevel) return 'above_range';
+    return 'member';
   };
+  const requestContextKey = (context: RequestContext): string =>
+    context === 'guest'
+      ? 'matchRegistration.queue.contextGuest'
+      : context === 'above_range'
+        ? 'matchRegistration.queue.contextAboveRange'
+        : context === 'below_range'
+          ? 'matchRegistration.queue.contextBelowRange'
+          : context === 'unrated'
+            ? 'matchRegistration.queue.contextUnrated'
+            : 'matchRegistration.queue.contextMember';
 
   return (
     <section aria-labelledby="match-requests-heading" {...stylex.props(s.panel, s.queue)}>
@@ -112,7 +123,7 @@ export function MatchRequestQueue({
       ) : (
         <ul {...stylex.props(s.requestList)}>
           {requests.map((request) => {
-            const type = requestType(request);
+            const context = requestContext(request);
             const name = request.display_name ?? t('matchRegistration.queue.requesterFallback');
             const when = relativeWhen(i18n.language, request.requested_at, now);
             const busy = controller.pending || !controller.online;
@@ -120,30 +131,33 @@ export function MatchRequestQueue({
               <li key={request.user_id} {...stylex.props(s.requestCard)}>
                 <div {...stylex.props(s.requestHeader)}>
                   <p {...stylex.props(s.requestName)}>{name}</p>
-                  {type === 'guest' && (
+                  {context === 'guest' && (
                     <span {...stylex.props(s.badge, s.badgeGuest)}>
                       {t('matchRegistration.queue.typeGuest')}
                     </span>
                   )}
-                  {type === 'out_of_range' && (
+                  {(context === 'above_range' || context === 'below_range') && (
                     <span {...stylex.props(s.badge, s.badgeDanger)}>
                       {t('matchRegistration.queue.typeOutOfRange')}
                     </span>
                   )}
+                  {context === 'unrated' && (
+                    <span {...stylex.props(s.badge, s.badgeDanger)}>
+                      {t('matchRegistration.queue.typeUnrated')}
+                    </span>
+                  )}
                 </div>
                 <p {...stylex.props(s.meta)}>
-                  {type === 'out_of_range'
-                    ? t('matchRegistration.queue.contextOutOfRange', {
-                        min: minLevel,
-                        max: maxLevel,
-                        when
-                      })
-                    : t('matchRegistration.queue.contextGuest', { when })}
+                  {t(requestContextKey(context), {
+                    min: minLevel,
+                    max: maxLevel,
+                    when
+                  })}
                 </p>
                 <div {...stylex.props(s.actions)}>
                   <button
                     type="button"
-                    onClick={() => controller.decide(request.user_id, 'approve')}
+                    onClick={() => controller.decide(request.attempt_id, 'approve')}
                     disabled={busy}
                     aria-label={t('matchRegistration.queue.approveLabel', { name })}
                     {...stylex.props(s.primaryButton, busy && s.disabledButton)}
@@ -152,7 +166,7 @@ export function MatchRequestQueue({
                   </button>
                   <button
                     type="button"
-                    onClick={() => controller.decide(request.user_id, 'reject')}
+                    onClick={() => controller.decide(request.attempt_id, 'reject')}
                     disabled={busy}
                     aria-label={t('matchRegistration.queue.declineLabel', { name })}
                     {...stylex.props(s.secondaryButton, busy && s.disabledButton)}

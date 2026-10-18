@@ -28,7 +28,7 @@ import {
 
 const EVENT_ID = '00000000-0000-4000-8000-000000000001';
 const OTHER_EVENT_ID = '00000000-0000-4000-8000-000000000002';
-const USER_ID = '00000000-0000-4000-8000-0000000000a1';
+const ATTEMPT_ID = '00000000-0000-4000-8000-0000000000a1';
 
 const none: MyMatchRegistration = { state: 'none' };
 
@@ -177,6 +177,47 @@ describe('useMatchRegistration controller', () => {
     expect(mocks.invalidate).toHaveBeenCalled();
   });
 
+  it('keeps registration open for a cutoff beyond the browser timer range', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-10-18T10:00:00.000Z'));
+    // Browsers clamp a timer delay above 2^31-1 ms to 0, which fires the timer
+    // immediately; reproduce that contract so an overflow regression is visible.
+    const fakeSetTimeout = globalThis.setTimeout;
+    const requestedDelays: number[] = [];
+    globalThis.setTimeout = (handler, timeout, ...rest) => {
+      const requested = timeout ?? 0;
+      requestedDelays.push(requested);
+      return fakeSetTimeout(handler, requested > 2_147_483_647 ? 0 : requested, ...rest);
+    };
+
+    const cutoffAt = '2026-11-20T10:00:00.000Z'; // ~33 days out, beyond the timer range
+    const { result } = renderHook(() =>
+      useMatchRegistration({ eventId: EVENT_ID, initialRegistration: none, cutoffAt })
+    );
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(0);
+    });
+    expect(result.current.cutoffReached).toBe(false);
+
+    // Every scheduled delay stays inside the browser timer range.
+    expect(requestedDelays.every((delay) => delay <= 2_147_483_647)).toBe(true);
+
+    // A single bounded segment must not be treated as the cutoff.
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(2_147_483_647);
+    });
+    expect(result.current.cutoffReached).toBe(false);
+    expect(mocks.invalidate).not.toHaveBeenCalled();
+
+    // Only the real deadline closes registration.
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(Date.parse(cutoffAt) - Date.now());
+    });
+    expect(result.current.cutoffReached).toBe(true);
+    expect(mocks.invalidate).toHaveBeenCalled();
+    globalThis.setTimeout = fakeSetTimeout;
+  });
+
   it('refreshes on focus return', async () => {
     renderHook(() => useMatchRegistration({ eventId: EVENT_ID, initialRegistration: none }));
     act(() => {
@@ -191,20 +232,20 @@ describe('useMatchRequestQueue controller', () => {
     const { result } = renderHook(() => useMatchRequestQueue({ eventId: EVENT_ID }));
     mocks.decide.mockResolvedValueOnce({ status: 'approved', replayed: false, registration: {} });
     await act(async () => {
-      result.current.decide(USER_ID, 'approve');
+      result.current.decide(ATTEMPT_ID, 'approve');
     });
     expect(result.current.feedback).toEqual({ kind: 'approved', replayed: false });
-    expect(result.current.decidingUserId).toBeNull();
+    expect(result.current.decidingAttemptId).toBeNull();
 
     mocks.decide.mockResolvedValueOnce({ status: 'rejected', replayed: false, registration: {} });
     await act(async () => {
-      result.current.decide(USER_ID, 'reject');
+      result.current.decide(ATTEMPT_ID, 'reject');
     });
     expect(result.current.feedback).toEqual({ kind: 'rejected', replayed: false });
 
     mocks.decide.mockResolvedValueOnce({ status: 'error', code: 'full' });
     await act(async () => {
-      result.current.decide(USER_ID, 'approve');
+      result.current.decide(ATTEMPT_ID, 'approve');
     });
     expect(result.current.feedback).toEqual({ kind: 'error', code: 'full' });
     // approve success, reject success and the full conflict each refresh.
@@ -217,7 +258,7 @@ describe('useMatchRequestQueue controller', () => {
       .mockResolvedValueOnce({ status: 'approved', replayed: true, registration: {} });
     const { result } = renderHook(() => useMatchRequestQueue({ eventId: EVENT_ID }));
     await act(async () => {
-      result.current.decide(USER_ID, 'approve');
+      result.current.decide(ATTEMPT_ID, 'approve');
     });
     expect(result.current.feedback).toEqual({ kind: 'error', code: 'unavailable' });
     await act(async () => {
@@ -232,11 +273,11 @@ describe('useMatchRequestQueue controller', () => {
     mocks.decide.mockReturnValue(first.promise);
     const { result } = renderHook(() => useMatchRequestQueue({ eventId: EVENT_ID }));
     act(() => {
-      result.current.decide(USER_ID, 'approve');
-      result.current.decide(USER_ID, 'reject');
+      result.current.decide(ATTEMPT_ID, 'approve');
+      result.current.decide(ATTEMPT_ID, 'reject');
     });
     expect(mocks.decide).toHaveBeenCalledTimes(1);
-    expect(result.current.decidingUserId).toBe(USER_ID);
+    expect(result.current.decidingAttemptId).toBe(ATTEMPT_ID);
     await act(async () => {
       first.resolve({ status: 'approved', replayed: false, registration: {} });
       await first.promise;
@@ -248,7 +289,7 @@ describe('useMatchRequestQueue controller', () => {
     });
     await waitFor(() => expect(result.current.online).toBe(false));
     act(() => {
-      result.current.decide(USER_ID, 'approve');
+      result.current.decide(ATTEMPT_ID, 'approve');
     });
     expect(mocks.decide).toHaveBeenCalledTimes(1);
     expect(result.current.feedback).toEqual({ kind: 'offline' });

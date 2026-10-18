@@ -293,6 +293,10 @@ export function parseMyMatchRegistration(value: unknown): MyMatchRegistration | 
 
 export type MatchRegistrationRequest = {
   user_id: string;
+  // The immutable attempt identity the creator must echo back to
+  // decide_match_registration, so a stale decision can never resolve a newer
+  // attempt after a rejection and re-application.
+  attempt_id: string;
   display_name: string | null;
   display_level: number | null;
   registration_source: MatchRegistrationSource;
@@ -322,16 +326,17 @@ export type MatchRegistrationQueueResult =
 function parseRequest(value: unknown): MatchRegistrationRequest | null {
   if (!isRecord(value)) return null;
   const user_id = asUuid(value.user_id);
+  const attempt_id = asUuid(value.attempt_id);
   const registration_source = asSource(value.registration_source);
   const requested_at = asText(value.requested_at);
-  if (!user_id || !registration_source || !requested_at) return null;
+  if (!user_id || !attempt_id || !registration_source || !requested_at) return null;
   const display_name = asNullableText(value.display_name);
   const rawLevel = value.display_level;
   let display_level: number | null;
   if (rawLevel === null || rawLevel === undefined) display_level = null;
   else if (typeof rawLevel === 'number' && Number.isFinite(rawLevel)) display_level = rawLevel;
   else return null;
-  return { user_id, display_name, display_level, registration_source, requested_at };
+  return { user_id, attempt_id, display_name, display_level, registration_source, requested_at };
 }
 
 export function parseMatchRegistrationQueue(value: unknown): MatchRegistrationQueue | null {

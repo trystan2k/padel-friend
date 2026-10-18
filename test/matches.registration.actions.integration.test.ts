@@ -227,17 +227,33 @@ describe('match registration actions integration', () => {
 
   const submit = (who: Actor, eventKey: string): PromiseLike<RpcResult> =>
     who.client.rpc('submit_match_registration', { p_match_event_id: events[eventKey]! });
-  const decide = (
+  /**
+   * The current attempt identity for (event, user) — the value the creator
+   * queue exposes and the client echoes back. Ordered latest-first so it names
+   * the newest attempt after a re-application.
+   */
+  const latestAttemptId = async (eventKey: string, userId: string): Promise<string> => {
+    const rows = await sqlRows(
+      `select id::text as id from public.match_event_registration_attempts
+        where match_event_id = '${events[eventKey]!}' and user_id = '${userId}'
+        order by requested_at desc, id desc limit 1`
+    );
+    expect(rows, `attempt for ${userId} on ${eventKey}`).toHaveLength(1);
+    return String(rows[0]!['id']);
+  };
+  const decide = async (
     who: Actor,
     eventKey: string,
     targetId: string,
     decision: 'approve' | 'reject'
-  ): PromiseLike<RpcResult> =>
-    who.client.rpc('decide_match_registration', {
+  ): Promise<RpcResult> => {
+    const attemptId = await latestAttemptId(eventKey, targetId);
+    return who.client.rpc('decide_match_registration', {
       p_match_event_id: events[eventKey]!,
-      p_user_id: targetId,
+      p_attempt_id: attemptId,
       p_decision: decision
     });
+  };
   const expectDomainError = async (
     promise: PromiseLike<RpcResult>,
     token: string
@@ -737,6 +753,7 @@ describe('match registration actions integration', () => {
     // First attempt: out-of-range member requests on the ranged event.
     const firstAttempt = await submit(actors.memberC!, 'ranged');
     expect(firstAttempt.error).toBeNull();
+    const firstAttemptId = await latestAttemptId('ranged', actors.memberC!.id);
     const rowAfterRequest = await creatorRow('ranged', actors.memberC!.id);
     expect(rowAfterRequest['lifecycle']).toBe('pending');
 
@@ -789,6 +806,23 @@ describe('match registration actions integration', () => {
     expect(requestsAfter).toHaveLength(requestsBefore.length + 1);
     expect(requestsBefore.every((key) => requestsAfter.includes(key))).toBe(true);
 
+    // F21: a stale decision naming the OLD (rejected) attempt must not resolve
+    // the NEW pending attempt the creator never reviewed.
+    await expectDomainError(
+      actors.creator!.client.rpc('decide_match_registration', {
+        p_match_event_id: events.ranged!,
+        p_attempt_id: firstAttemptId,
+        p_decision: 'approve'
+      }),
+      'MATCH_REGISTRATION_ALREADY_RESOLVED'
+    );
+    const rowAfterStale = await creatorRow('ranged', actors.memberC!.id);
+    expect(rowAfterStale['lifecycle']).toBe('pending');
+    expect(rowAfterStale['accepted_order']).toBeNull();
+    expect(
+      (await attemptsOf('ranged', actors.memberC!.id)).map((attempt) => attempt['outcome'])
+    ).toEqual(['rejected', 'pending']);
+
     // Approving the fresh attempt allocates the NEXT ordinal, never a reused one.
     const stateBefore = await registrationState('ranged');
     const approved = await decide(actors.creator!, 'ranged', actors.memberC!.id, 'approve');
@@ -804,6 +838,10 @@ describe('match registration actions integration', () => {
       `insert into public.match_event_registrations(match_event_id,user_id,lifecycle,requested_at,registration_source) values
         ('${events.ranged!}','${actors.memberB!.id}','expired',now()-interval '2 hours','member'),
         ('${events.ranged!}','${actors.memberD!.id}','expired',now()-interval '3 hours','member');`
+    );
+    await fixtureSql(
+      `insert into public.match_event_registration_attempts(match_event_id,user_id,requested_at,decided_at,outcome)
+        values ('${events.ranged!}','${actors.memberD!.id}',now()-interval '3 hours',now()-interval '3 hours','expired');`
     );
     const expiredSubmit = await submit(actors.memberB!, 'ranged');
     expect(expiredSubmit.error).toBeNull();
@@ -838,24 +876,47 @@ describe('match registration actions integration', () => {
       decide(actors.admin!, 'ranged', actors.memberNoRating!.id, 'approve'),
       '42501',
       'Registration decisions are creator-only'
-    ); // The creator cannot decide their own row.
-    await expectDeniedWithCode(
-      decide(actors.creator!, 'ranged', actors.creator!.id, 'approve'),
-      '42501',
-      'Creator cannot decide their own registration'
     );
-    // Unknown target registration.
+    // The creator cannot decide their own registration. The decision names an
+    // attempt, so seed the creator's own attempt and prove the guard fires on
+    // the requester derived from that attempt.
+    const creatorAttemptRows = await sqlRows(
+      `insert into public.match_event_registration_attempts(match_event_id,user_id,requested_at,outcome)
+        values ('${events.ranged!}','${actors.creator!.id}',now(),'pending')
+        returning id::text as id`
+    );
+    const creatorAttemptId = String(creatorAttemptRows[0]!['id']);
+    try {
+      await expectDeniedWithCode(
+        actors.creator!.client.rpc('decide_match_registration', {
+          p_match_event_id: events.ranged!,
+          p_attempt_id: creatorAttemptId,
+          p_decision: 'approve'
+        }),
+        '42501',
+        'Creator cannot decide their own registration'
+      );
+    } finally {
+      await fixtureSql(
+        `delete from public.match_event_registration_attempts where id = '${creatorAttemptId}';`
+      );
+    }
+    // Unknown attempt identity.
     await expectDomainError(
-      decide(actors.creator!, 'ranged', crypto.randomUUID(), 'approve'),
+      actors.creator!.client.rpc('decide_match_registration', {
+        p_match_event_id: events.ranged!,
+        p_attempt_id: crypto.randomUUID(),
+        p_decision: 'approve'
+      }),
       'MATCH_REGISTRATION_NOT_FOUND'
     );
-    // Invalid decision text and null target are parameter errors. The null
-    // target goes through a deliberately untyped client: the generated RPC map
+    // Invalid decision text and a null attempt are parameter errors. The null
+    // attempt goes through a deliberately untyped client: the generated RPC map
     // cannot express the null argument this server-side guard exists for.
     await expectDeniedWithCode(
       actors.creator!.client.rpc('decide_match_registration', {
         p_match_event_id: events.ranged!,
-        p_user_id: actors.memberNoRating!.id,
+        p_attempt_id: crypto.randomUUID(),
         p_decision: 'maybe'
       }),
       '22023',
@@ -864,11 +925,11 @@ describe('match registration actions integration', () => {
     await expectDeniedWithCode(
       untypedCreator!.rpc('decide_match_registration', {
         p_match_event_id: events.ranged!,
-        p_user_id: null,
+        p_attempt_id: null,
         p_decision: 'approve'
       }),
       '22023',
-      'Match registration target required'
+      'Match registration attempt required'
     );
     // Unknown events for both entry points.
     const missing = crypto.randomUUID();
@@ -879,7 +940,7 @@ describe('match registration actions integration', () => {
     await expectDomainError(
       actors.creator!.client.rpc('decide_match_registration', {
         p_match_event_id: missing,
-        p_user_id: actors.memberLate!.id,
+        p_attempt_id: crypto.randomUUID(),
         p_decision: 'approve'
       }),
       'MATCH_REGISTRATION_EVENT_NOT_FOUND'
@@ -1066,16 +1127,17 @@ describe('match registration actions integration', () => {
     expect(request.error).toBeNull();
     expect(asRecord(request.data)['lifecycle']).toBe('pending');
     const stateBefore = await registrationState('open');
+    const attemptId = await latestAttemptId('open', actors.guestApprove!.id);
 
     const [first, second] = await barrier('open', 'decide_match_registration', () => [
       rawRpc(actors.creator!, 'decide_match_registration', {
         p_match_event_id: events.open!,
-        p_user_id: actors.guestApprove!.id,
+        p_attempt_id: attemptId,
         p_decision: 'approve'
       }),
       rawRpc(actors.creator!, 'decide_match_registration', {
         p_match_event_id: events.open!,
-        p_user_id: actors.guestApprove!.id,
+        p_attempt_id: attemptId,
         p_decision: 'approve'
       })
     ]);
@@ -1115,16 +1177,17 @@ describe('match registration actions integration', () => {
     expect(request.error).toBeNull();
     expect(asRecord(request.data)['lifecycle']).toBe('pending');
     const stateBefore = await registrationState('open');
+    const attemptId = await latestAttemptId('open', actors.guestRace!.id);
 
     const [first, second] = await barrier('open', 'decide_match_registration', () => [
       rawRpc(actors.creator!, 'decide_match_registration', {
         p_match_event_id: events.open!,
-        p_user_id: actors.guestRace!.id,
+        p_attempt_id: attemptId,
         p_decision: 'approve'
       }),
       rawRpc(actors.creator!, 'decide_match_registration', {
         p_match_event_id: events.open!,
-        p_user_id: actors.guestRace!.id,
+        p_attempt_id: attemptId,
         p_decision: 'reject'
       })
     ]);

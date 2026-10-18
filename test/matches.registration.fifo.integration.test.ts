@@ -42,17 +42,29 @@ describe('match registration FIFO integration', () => {
 
   const submit = (who: Actor, eventKey: string): PromiseLike<RpcResult> =>
     who.client.rpc('submit_match_registration', { p_match_event_id: events[eventKey]! });
-  const decide = (
+  /** The current attempt identity for (event, user), latest-first. */
+  const latestAttemptId = async (eventKey: string, userId: string): Promise<string> => {
+    const rows = await sqlRows(
+      `select id::text as id from public.match_event_registration_attempts
+        where match_event_id = '${events[eventKey]!}' and user_id = '${userId}'
+        order by requested_at desc, id desc limit 1`
+    );
+    expect(rows, `attempt for ${userId} on ${eventKey}`).toHaveLength(1);
+    return String(rows[0]!['id']);
+  };
+  const decide = async (
     who: Actor,
     eventKey: string,
     targetId: string,
     decision: 'approve' | 'reject'
-  ): PromiseLike<RpcResult> =>
-    who.client.rpc('decide_match_registration', {
+  ): Promise<RpcResult> => {
+    const attemptId = await latestAttemptId(eventKey, targetId);
+    return who.client.rpc('decide_match_registration', {
       p_match_event_id: events[eventKey]!,
-      p_user_id: targetId,
+      p_attempt_id: attemptId,
       p_decision: decision
     });
+  };
   /** The creator reads any registration row through RLS (creator policy). */
   const rowOf = async (eventKey: string, userId: string): Promise<SqlRow> => {
     const result = await actors
@@ -500,6 +512,7 @@ describe('match registration FIFO integration', () => {
       expect(request.error).toBeNull();
       expect(asRecord(request.data)['lifecycle']).toBe('pending');
       const stateBefore = await registrationStateById(events.samereq!);
+      const attemptId = await latestAttemptId('samereq', actors.g6!.id);
 
       const [first, second] = await proveEventLockBarrier({
         communityId: publicCommunity,
@@ -508,12 +521,12 @@ describe('match registration FIFO integration', () => {
         fire: () => [
           rawRpc(actors.creator!, 'decide_match_registration', {
             p_match_event_id: events.samereq!,
-            p_user_id: actors.g6!.id,
+            p_attempt_id: attemptId,
             p_decision: 'approve'
           }),
           rawRpc(actors.creator!, 'decide_match_registration', {
             p_match_event_id: events.samereq!,
-            p_user_id: actors.g6!.id,
+            p_attempt_id: attemptId,
             p_decision: 'approve'
           })
         ]
@@ -568,6 +581,8 @@ describe('match registration FIFO integration', () => {
       }
       const stateBefore = await registrationStateById(events.tworeq!);
       expect(stateBefore).toEqual({ next: 2, revision: 0 });
+      const attemptG7 = await latestAttemptId('tworeq', actors.g7!.id);
+      const attemptG8 = await latestAttemptId('tworeq', actors.g8!.id);
 
       const [first, second] = await proveEventLockBarrier({
         communityId: publicCommunity,
@@ -576,12 +591,12 @@ describe('match registration FIFO integration', () => {
         fire: () => [
           rawRpc(actors.creator!, 'decide_match_registration', {
             p_match_event_id: events.tworeq!,
-            p_user_id: actors.g7!.id,
+            p_attempt_id: attemptG7,
             p_decision: 'approve'
           }),
           rawRpc(actors.creator!, 'decide_match_registration', {
             p_match_event_id: events.tworeq!,
-            p_user_id: actors.g8!.id,
+            p_attempt_id: attemptG8,
             p_decision: 'approve'
           })
         ]
@@ -638,6 +653,7 @@ describe('match registration FIFO integration', () => {
       expect(request.error).toBeNull();
       expect(asRecord(request.data)['lifecycle']).toBe('pending');
       const stateBefore = await registrationStateById(events.joinrace!);
+      const attemptG9 = await latestAttemptId('joinrace', actors.g9!.id);
 
       // One direct join and one creator approval contend. Both paths succeed
       // under the lock in SOME serialized order, but the outcome is
@@ -651,7 +667,7 @@ describe('match registration FIFO integration', () => {
           rawRpc(actors.m4!, 'submit_match_registration', { p_match_event_id: events.joinrace! }),
           rawRpc(actors.creator!, 'decide_match_registration', {
             p_match_event_id: events.joinrace!,
-            p_user_id: actors.g9!.id,
+            p_attempt_id: attemptG9,
             p_decision: 'approve'
           })
         ]

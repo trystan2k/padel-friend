@@ -50,7 +50,7 @@ export const decideMatchRegistration = createServerFn({ method: 'POST' })
     const { client } = await matchRegistrationClient();
     const { data: result, error } = await client.rpc('decide_match_registration', {
       p_match_event_id: data.event_id,
-      p_user_id: data.user_id,
+      p_attempt_id: data.attempt_id,
       p_decision: data.decision
     });
     if (error)

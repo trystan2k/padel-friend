@@ -483,6 +483,12 @@ export type Database = {
       }
       match_event_registration_state: {
         Row: {
+          cutoff_attempt_count: number
+          cutoff_failure_count: number
+          cutoff_last_attempt_at: string | null
+          cutoff_last_failure_at: string | null
+          cutoff_last_failure_message: string | null
+          cutoff_last_failure_sqlstate: string | null
           cutoff_processed_at: string | null
           match_event_id: string
           next_accepted_ordinal: number
@@ -490,12 +496,24 @@ export type Database = {
         }
         ComputedFields: never
         Insert: {
+          cutoff_attempt_count?: number
+          cutoff_failure_count?: number
+          cutoff_last_attempt_at?: string | null
+          cutoff_last_failure_at?: string | null
+          cutoff_last_failure_message?: string | null
+          cutoff_last_failure_sqlstate?: string | null
           cutoff_processed_at?: string | null
           match_event_id: string
           next_accepted_ordinal: number
           transition_revision?: number
         }
         Update: {
+          cutoff_attempt_count?: number
+          cutoff_failure_count?: number
+          cutoff_last_attempt_at?: string | null
+          cutoff_last_failure_at?: string | null
+          cutoff_last_failure_message?: string | null
+          cutoff_last_failure_sqlstate?: string | null
           cutoff_processed_at?: string | null
           match_event_id?: string
           next_accepted_ordinal?: number
@@ -840,7 +858,7 @@ export type Database = {
         Returns: string
       }
       decide_match_registration: {
-        Args: { p_decision: string; p_match_event_id: string; p_user_id: string }
+        Args: { p_attempt_id: string; p_decision: string; p_match_event_id: string }
         Returns: Json
       }
       finalize_community_venue_photo: {

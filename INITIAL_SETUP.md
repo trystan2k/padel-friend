@@ -89,12 +89,21 @@ PAF-5.4 processes the match registration cutoff unattended. The job expires stil
     'select public.process_due_match_event_registration_cutoffs(25)');
   ```
 - **Latency.** Hard closure is exact at the cutoff instant because joins/approvals evaluate the DB clock under the event lock. The unattended job only persists the transition and alerts, so the worst-case alert delay is about one interval plus processing time (~2 minutes). Overdue events that became due during downtime are caught up by the same unprocessed-marker predicate on the next tick; there is no lateness cutoff.
-- **Monitoring.** `cron.job_run_details` records every run. The batch returns `{"processed","skipped","failed","selected","errors"}`; a non-zero `failed` or non-empty `errors` means an event failed and will be retried next tick.
+- **Monitoring.** `cron.job_run_details` records every run's status, but for a `select` command pg_cron only stores the row count (`return_message = '1 row'`), so the batch's per-event errors are NOT visible there. Failures are instead retained durably on the per-event state row: the batch stamps `cutoff_failure_count`, `cutoff_last_failure_at`, `cutoff_last_failure_sqlstate` and `cutoff_last_failure_message`, cleared as soon as the event processes cleanly. An operator queries:
+  ```sql
+  select s.match_event_id, s.cutoff_failure_count, s.cutoff_last_failure_at,
+         s.cutoff_last_failure_sqlstate, s.cutoff_last_failure_message
+    from public.match_event_registration_state s
+   where s.cutoff_failure_count > 0
+   order by s.cutoff_last_failure_at desc;
+  ```
+  Run-level health is still available from cron:
   ```sql
   select start_time, status, return_message from cron.job_run_details
    where jobid = (select jobid from cron.job where jobname = 'padel-friend-match-registration-cutoff')
    order by start_time desc limit 20;
   ```
+  The batch also returns `{"processed","skipped","failed","selected","errors"}` when invoked directly; a non-zero `failed` or non-empty `errors` means an event failed and will be retried next tick.
 - **Recovery.** Each event runs in its own exception subtransaction, so a failing event's effects and marker roll back while the rest of the batch completes. Pause the scheduler, repair forward (never reopen the cutoff or erase accepted order), then re-schedule with the same singleton name:
   ```sql
   select cron.unschedule('padel-friend-match-registration-cutoff');
