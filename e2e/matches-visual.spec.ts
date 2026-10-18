@@ -52,6 +52,9 @@ type Copy = {
       shareUrl: string;
     };
   };
+  // PAF-5 added the real registration surface to the detail screens; the guest
+  // view now carries the genuine request CTA (see the guest test).
+  matchRegistration: { join: { requestButton: string } };
   matchCreate: {
     title: string;
     next: string;
@@ -149,6 +152,11 @@ function assertManifestProvenance(): void {
     ).toBe(approved.sha256);
   }
   for (const [baseline, derived] of Object.entries(visualManifest.screenshotBaselines)) {
+    // Calibration mode may (re)derive a baseline from a first honest capture
+    // (same branch as compare()); its digest is re-pinned in the manifest with
+    // provenance afterwards, and regular runs hard-fail on any missing or
+    // mismatched baseline.
+    if (calibrating && !existsSync(baselinePath(baseline))) continue;
     expect(
       digestFile(new URL(`./matches-visual.spec.ts-snapshots/${baseline}`, import.meta.url)),
       `${baseline} must match its reviewed derivation digest`
@@ -1956,7 +1964,7 @@ test.describe.serial('PAF-4 match event visual and structural QA', () => {
     await expect(
       page.getByRole('heading', { level: 1, name: `${en.matches.detail.title}: ${VENUES.invited}` })
     ).toBeVisible();
-    await expect(page.getByText(en.matches.detail.invitationInfo)).toBeVisible();
+    await expect(page.getByText(en.matches.detail.invitationInfo).first()).toBeVisible();
     const buttons = page.getByRole('button');
     await expect(buttons).toHaveCount(1);
     await expect(buttons).toHaveAccessibleName(en.matches.detail.share);
@@ -2104,11 +2112,20 @@ test.describe.serial('PAF-4 match event visual and structural QA', () => {
         name: `${en.matches.detail.title}: ${VENUES.friendly}`
       })
     ).toBeVisible();
-    await expect(guestPage.getByText(en.matches.detail.guestApprovalRequired)).toBeVisible();
+    await expect(
+      guestPage.getByText(en.matches.detail.guestApprovalRequired).first()
+    ).toBeVisible();
     await expect(guestPage.getByText(en.matches.visibility.community_open)).toBeVisible();
+    // PAF-5 intentional change: the public guest now gets the real request CTA
+    // next to the share action (previously T04 rendered informational context
+    // only, and this screen had exactly one button). The registration panel's
+    // request state adds the REQUEST TO JOIN primary; share stays.
     const guestButtons = guestPage.getByRole('button');
-    await expect(guestButtons).toHaveCount(1);
-    await expect(guestButtons).toHaveAccessibleName(en.matches.detail.share);
+    await expect(guestButtons).toHaveCount(2);
+    await expect(
+      guestPage.getByRole('button', { name: en.matchRegistration.join.requestButton })
+    ).toBeVisible();
+    await expect(guestPage.getByRole('button', { name: en.matches.detail.share })).toBeVisible();
     for (const link of await guestPage.getByRole('link').all())
       expect((await link.textContent()) ?? '').not.toMatch(/book|pay|purchase|join|register/i);
     await assertHeadingTypography(guestPage, 'guest detail');
