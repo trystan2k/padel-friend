@@ -958,6 +958,7 @@ export type Database = {
         Args: { p_match_event_id: string }
         Returns: Json[]
       }
+      list_match_event_registrations: { Args: { p_match_event_id: string }; Returns: Json[] }
       list_match_events: {
         Args: {
           p_as_of?: string

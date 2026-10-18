@@ -1,0 +1,125 @@
+import { describe, expect, it, vi } from 'vitest';
+import type { MyMatchRegistration } from '../src/features/matches/match-registration-model';
+
+const mocks = vi.hoisted(() => ({
+  getMatchEvent: vi.fn<(...args: unknown[]) => Promise<unknown>>(),
+  getMyMatchRegistration: vi.fn<(...args: unknown[]) => Promise<unknown>>(),
+  listMatchEventRegistrationRequests: vi.fn<(...args: unknown[]) => Promise<unknown>>(),
+  listMatchEventRegistrations: vi.fn<(...args: unknown[]) => Promise<unknown>>(),
+  getMyPlayerProfile: vi.fn<(...args: unknown[]) => Promise<unknown>>()
+}));
+
+vi.mock('../src/features/matches/matches.functions', () => ({
+  getMatchEvent: mocks.getMatchEvent
+}));
+vi.mock('../src/features/matches/match-registration.functions', () => ({
+  getMyMatchRegistration: mocks.getMyMatchRegistration,
+  listMatchEventRegistrationRequests: mocks.listMatchEventRegistrationRequests,
+  listMatchEventRegistrations: mocks.listMatchEventRegistrations,
+  submitMatchRegistration: vi.fn<(...args: unknown[]) => Promise<unknown>>(),
+  decideMatchRegistration: vi.fn<(...args: unknown[]) => Promise<unknown>>()
+}));
+vi.mock('../src/features/player/player.functions', () => ({
+  getMyPlayerProfile: mocks.getMyPlayerProfile
+}));
+vi.mock('@tanstack/react-router', async (original) => ({
+  ...(await original<typeof import('@tanstack/react-router')>()),
+  useRouter: () => ({ invalidate: vi.fn<() => Promise<void>>() }),
+  Link: ({ children }: { children: import('react').ReactNode }) => children
+}));
+
+import {
+  loadCallerLevel,
+  loadMatchRegistration,
+  loadMatchRequestQueue,
+  loadMatchRoster
+} from '../src/routes/_protected.matches.$eventId';
+
+const EVENT_ID = '00000000-0000-4000-8000-000000000001';
+
+describe('match detail registration route loaders', () => {
+  it('loads the caller registration DTO without nesting the flat event projection', async () => {
+    const registration: MyMatchRegistration = {
+      state: 'pending',
+      event_id: EVENT_ID,
+      registration_source: 'member',
+      requested_at: '2026-10-18T09:30:00.000Z'
+    };
+    mocks.getMyMatchRegistration.mockResolvedValue({ status: 'ok', registration });
+    expect(await loadMatchRegistration(EVENT_ID)).toEqual({
+      registration,
+      registrationFailed: false
+    });
+    expect(mocks.getMyMatchRegistration).toHaveBeenCalledWith({ data: { event_id: EVENT_ID } });
+  });
+
+  it('treats an unavailable registration read as a failed load', async () => {
+    mocks.getMyMatchRegistration.mockResolvedValueOnce({ status: 'unavailable' });
+    expect(await loadMatchRegistration(EVENT_ID)).toEqual({
+      registration: null,
+      registrationFailed: true
+    });
+    mocks.getMyMatchRegistration.mockRejectedValueOnce(new Error('boom'));
+    expect(await loadMatchRegistration(EVENT_ID)).toEqual({
+      registration: null,
+      registrationFailed: true
+    });
+  });
+
+  it('loads the creator queue and distinguishes empty from unavailable', async () => {
+    const queue = {
+      event_id: EVENT_ID,
+      accepted_count: 0,
+      playing_count: 0,
+      reserve_count: 0,
+      maximum_registrations: 8,
+      registration_cutoff_at: '2026-10-20T17:30:00.000Z',
+      requests: []
+    };
+    mocks.listMatchEventRegistrationRequests.mockResolvedValueOnce({ status: 'ok', queue });
+    expect(await loadMatchRequestQueue(EVENT_ID)).toEqual({ queue, queueFailed: false });
+
+    mocks.listMatchEventRegistrationRequests.mockResolvedValueOnce({ status: 'empty' });
+    expect(await loadMatchRequestQueue(EVENT_ID)).toEqual({ queue: null, queueFailed: false });
+
+    mocks.listMatchEventRegistrationRequests.mockResolvedValueOnce({ status: 'unavailable' });
+    expect(await loadMatchRequestQueue(EVENT_ID)).toEqual({ queue: null, queueFailed: true });
+  });
+
+  it('loads the accepted roster and degrades empty/unavailable/non-readable reads to absent', async () => {
+    const entries = [
+      {
+        display_name: 'Ada',
+        display_level: 3.5,
+        participation: 'playing',
+        group_number: 1,
+        reserve_position: null,
+        registration_source: 'member',
+        accepted_order: 1
+      }
+    ];
+    mocks.listMatchEventRegistrations.mockResolvedValueOnce({ status: 'ok', entries });
+    expect(await loadMatchRoster(EVENT_ID)).toEqual({ roster: entries });
+    expect(mocks.listMatchEventRegistrations).toHaveBeenCalledWith({
+      data: { event_id: EVENT_ID }
+    });
+
+    // Empty (a non-readable event returns no rows) and unavailable both degrade
+    // to an absent roster, never a throw.
+    mocks.listMatchEventRegistrations.mockResolvedValueOnce({ status: 'empty' });
+    expect(await loadMatchRoster(EVENT_ID)).toEqual({ roster: null });
+    mocks.listMatchEventRegistrations.mockResolvedValueOnce({ status: 'unavailable' });
+    expect(await loadMatchRoster(EVENT_ID)).toEqual({ roster: null });
+    mocks.listMatchEventRegistrations.mockRejectedValueOnce(new Error('boom'));
+    expect(await loadMatchRoster(EVENT_ID)).toEqual({ roster: null });
+  });
+
+  it('loads the caller level best-effort', async () => {
+    mocks.getMyPlayerProfile.mockResolvedValueOnce({ display_level: 3.82 });
+    expect(await loadCallerLevel()).toBe(3.82);
+    mocks.getMyPlayerProfile.mockResolvedValueOnce({ display_level: null });
+    expect(await loadCallerLevel()).toBeNull();
+    mocks.getMyPlayerProfile.mockRejectedValueOnce(new Error('PLAYER_NOT_ONBOARDED'));
+    expect(await loadCallerLevel()).toBeNull();
+  });
+});

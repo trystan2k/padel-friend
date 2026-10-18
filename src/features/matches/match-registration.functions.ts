@@ -4,15 +4,18 @@ import {
   matchRegistrationActionError,
   parseDecideMatchRegistrationResult,
   parseMatchRegistrationQueue,
+  parseMatchRoster,
   parseMyMatchRegistration,
   parseSubmitMatchRegistrationResult,
   type DecideMatchRegistrationResult,
   type MatchRegistrationQueueResult,
+  type MatchRosterResult,
   type MyMatchRegistrationResult,
   type SubmitMatchRegistrationResult
 } from './match-registration-model';
 import {
   validateDecideMatchRegistration,
+  validateListMatchEventRegistrations,
   validateListMatchRegistrationRequests,
   validateMyMatchRegistration,
   validateSubmitMatchRegistration
@@ -79,4 +82,21 @@ export const listMatchEventRegistrationRequests = createServerFn({ method: 'GET'
     if (row === undefined) return { status: 'empty' };
     const queue = parseMatchRegistrationQueue(row);
     return queue ? { status: 'ok', queue } : { status: 'unavailable' };
+  });
+
+// Browser-callable accepted-roster read. The server returns no rows to a caller
+// who cannot read the event, so a hidden event simply degrades to an absent
+// roster. Malformed rows degrade the whole read to unavailable rather than
+// reaching the UI.
+export const listMatchEventRegistrations = createServerFn({ method: 'GET' })
+  .validator(validateListMatchEventRegistrations)
+  .handler(async ({ data }): Promise<MatchRosterResult> => {
+    const { client } = await matchRegistrationClient();
+    const { data: result, error } = await client.rpc('list_match_event_registrations', {
+      p_match_event_id: data.event_id
+    });
+    if (error) return { status: 'unavailable' };
+    const entries = parseMatchRoster(result);
+    if (!entries) return { status: 'unavailable' };
+    return entries.length === 0 ? { status: 'empty' } : { status: 'ok', entries };
   });

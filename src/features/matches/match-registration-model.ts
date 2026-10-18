@@ -420,3 +420,87 @@ export function matchRegistrationReservePosition(
     return null;
   return Math.max(1, acceptedOrder - playingCount);
 }
+
+// --- Accepted roster read (PAF-5.1 gap) ---------------------------------------
+//
+// `list_match_event_registrations` projects the ordered accepted roster into a
+// flat, safe row per player: no user ids (the caller matches its own row by the
+// immutable accepted_order), no pending/rejected/expired rows and no resolution
+// metadata. Every field is a primitive so the jsonb contract stays defensively
+// parseable; a malformed payload degrades to null so the caller can render an
+// absent roster instead of throwing.
+
+export type MatchRosterEntry = {
+  display_name: string | null;
+  display_level: number | null;
+  participation: MatchRegistrationParticipation;
+  group_number: number | null;
+  reserve_position: number | null;
+  registration_source: MatchRegistrationSource;
+  accepted_order: number;
+};
+
+export type MatchRosterResult =
+  | { status: 'ok'; entries: MatchRosterEntry[] }
+  | { status: 'empty' }
+  | { status: 'unavailable' };
+
+function parseMatchRosterEntry(value: unknown): MatchRosterEntry | null {
+  if (!isRecord(value)) return null;
+  const participation = asParticipation(value.participation);
+  const registration_source = asSource(value.registration_source);
+  const accepted_order = asPositiveInteger(value.accepted_order);
+  if (!participation || !registration_source || accepted_order === null) return null;
+
+  const display_name = asNullableText(value.display_name);
+  const rawLevel = value.display_level;
+  let display_level: number | null;
+  if (rawLevel === null || rawLevel === undefined) display_level = null;
+  else if (typeof rawLevel === 'number' && Number.isFinite(rawLevel)) display_level = rawLevel;
+  else return null;
+
+  const rawGroup = value.group_number;
+  let group_number: number | null;
+  if (rawGroup === null || rawGroup === undefined) group_number = null;
+  else {
+    const parsedGroup = asPositiveInteger(rawGroup);
+    if (parsedGroup === null) return null;
+    group_number = parsedGroup;
+  }
+
+  const rawReserve = value.reserve_position;
+  let reserve_position: number | null;
+  if (rawReserve === null || rawReserve === undefined) reserve_position = null;
+  else {
+    const parsedReserve = asPositiveInteger(rawReserve);
+    if (parsedReserve === null) return null;
+    reserve_position = parsedReserve;
+  }
+
+  // The server contract carries a group for playing rows and a reserve position
+  // for the reserve tail; a row missing its own marker is malformed.
+  if (participation === 'playing' && group_number === null) return null;
+  if (participation !== 'playing' && reserve_position === null) return null;
+
+  return {
+    display_name,
+    display_level,
+    participation,
+    group_number,
+    reserve_position,
+    registration_source,
+    accepted_order
+  };
+}
+
+/** Parses the whole accepted-roster payload; null means the payload is unusable. */
+export function parseMatchRoster(value: unknown): MatchRosterEntry[] | null {
+  if (!Array.isArray(value)) return null;
+  const entries: MatchRosterEntry[] = [];
+  for (const raw of value) {
+    const entry = parseMatchRosterEntry(raw);
+    if (!entry) return null;
+    entries.push(entry);
+  }
+  return entries;
+}

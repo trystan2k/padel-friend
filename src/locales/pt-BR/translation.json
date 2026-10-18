@@ -699,5 +699,127 @@
       "publishFailed": "Não foi possível publicar a partida.",
       "optionsUnavailable": "Não foi possível carregar as opções de criação. Tente novamente."
     }
+  },
+  "matchRegistration": {
+    "aria": {
+      "status": "Status da inscrição",
+      "roster": "Elenco da partida",
+      "queue": "Solicitações de entrada"
+    },
+    "join": {
+      "sectionTitle": "Seu lugar nesta partida",
+      "openCopy": "Você está dentro da faixa e esta comunidade está aberta — entre agora e seu lugar é confirmado na hora.",
+      "button": "ENTRAR NA PARTIDA",
+      "capacity_one": "1 de {{maximum}} vaga restante",
+      "capacity_other": "{{remaining}} de {{maximum}} vagas restantes",
+      "levelRange": "Faixa de nível {{min}}–{{max}} · Você: {{level}}",
+      "levelRangeNoLevel": "Faixa de nível {{min}}–{{max}}",
+      "note": "Entradas diretas são confirmadas na hora e aparecem nas suas inscrições.",
+      "requestButton": "SOLICITAR ENTRADA",
+      "requestNote": "As solicitações são decididas pelo organizador. Sua posição na fila só começa se ele aprovar."
+    },
+    "full": {
+      "badge": "PARTIDA CHEIA",
+      "detail": "{{accepted}} de {{maximum}} vagas ocupadas.",
+      "copy": "Esta partida atingiu o máximo de {{maximum}} inscrições. Pergunte ao organizador se uma vaga abrir.",
+      "button": "PARTIDA CHEIA",
+      "note": "A lotação máxima bloqueia novas entradas e novas aprovações até abrir uma vaga."
+    },
+    "closed": {
+      "badge": "INSCRIÇÕES ENCERRADAS",
+      "detail": "Prazo encerrado · quartetos definidos.",
+      "rosterCount": "{{playing}} jogando · {{reserveNotPlaying}} reserva sem jogar",
+      "sectionTitle": "RESERVA SEM JOGAR",
+      "copy": "Inscrições encerradas em {{cutoff}}. Novas entradas e novas solicitações não são mais aceitas.",
+      "button": "INSCRIÇÕES ENCERRADAS",
+      "note": "O prazo é exato e definido pelo servidor. Os quartetos permanecem finais."
+    },
+    "request": {
+      "back": "‹   Status da sua solicitação",
+      "context": "Um estado por vez · as decisões do organizador são atualizadas ao vivo",
+      "pendingBadge": "SOLICITAÇÃO PENDENTE",
+      "pendingCopy": "Enviada ao organizador. Sua posição na fila só começa se ele aprovar.",
+      "pendingMeta": "Solicitada {{when}} · nenhuma vaga reservada ainda",
+      "viewMatch": "Ver partida",
+      "approvedPlayingBadge": "APROVADO · JOGANDO · Grupo {{group}}",
+      "approvedPlayingCopy": "Aprovado em {{when}} · sua posição na fila começou então.",
+      "viewGroup": "Ver grupo",
+      "approvedReserveBadge": "APROVADO · RESERVA · #{{position}}",
+      "approvedReserveCopy": "Aprovado em {{when}} · lugar FIFO, primeiro reserva se abrir uma vaga.",
+      "declinedBadge": "RECUSADA",
+      "declinedCopy": "O organizador recusou esta solicitação. Você pode solicitar novamente até as inscrições encerrarem.",
+      "requestAgain": "Solicitar novamente",
+      "expiredBadge": "EXPIRADA NO PRAZO",
+      "expiredCopy": "As inscrições encerraram antes de uma decisão. Nenhuma vaga foi reservada.",
+      "viewMatchHistory": "Ver histórico da partida",
+      "note": "O horário de aprovação define a posição na fila. Solicitações pendentes e expiradas nunca reservam vaga."
+    },
+    "roster": {
+      "groupTitle": "GRUPO {{group}}",
+      "reserveTitle": "FILA DE RESERVA",
+      "fifo": "FIFO · primeiro a entrar",
+      "notPlayingTitle": "SEM JOGAR",
+      "you": "Você",
+      "orderNote": "A ordem é definida pelo horário de aprovação e nunca é reordenada.",
+      "authoritativeNote": "A ordem aceita é definida pelo servidor. Convidados nunca viram membros.",
+      "playerFallback": "Jogador",
+      "level": "Nível {{level}}",
+      "position": "#{{position}}",
+      "count_one": "{{count}} jogador",
+      "count_other": "{{count}} jogadores"
+    },
+    "badges": {
+      "playing": "JOGANDO",
+      "reserve": "RESERVA",
+      "reserveNotPlaying": "RESERVA SEM JOGAR",
+      "guest": "CONVIDADO PÚBLICO",
+      "creator": "CRIADOR",
+      "member": "MEMBRO"
+    },
+    "queue": {
+      "title": "Solicitações de entrada",
+      "subtitle_one": "{{event}} · {{count}} para revisar",
+      "subtitle_other": "{{event}} · {{count}} para revisar",
+      "sort": "ORDENAR · MAIS RECENTES",
+      "count_one": "{{count}} SOLICITAÇÃO",
+      "count_other": "{{count}} SOLICITAÇÕES",
+      "fifoTitle": "A aprovação define a posição na fila",
+      "fifoCopy": "Quando você aprova um convidado, ele entra na fila de Jogando / Reserva naquele momento.",
+      "typeGuest": "CONVIDADO PÚBLICO",
+      "typeOutOfRange": "FORA DA FAIXA",
+      "contextGuest": "Não é membro da comunidade · Solicitada {{when}}",
+      "contextOutOfRange": "Acima da sua faixa {{min}}–{{max}} · Solicitada {{when}}",
+      "approve": "APROVAR",
+      "decline": "RECUSAR",
+      "empty": "Nenhuma solicitação pendente.",
+      "error": "Não foi possível carregar as solicitações.",
+      "loading": "Carregando solicitações…",
+      "retry": "Tentar novamente",
+      "requesterFallback": "Jogador convidado",
+      "approveLabel": "Aprovar solicitação de {{name}}",
+      "declineLabel": "Recusar solicitação de {{name}}"
+    },
+    "feedback": {
+      "accepted": "Seu lugar está confirmado.",
+      "pending": "Solicitação enviada ao organizador.",
+      "approved": "Solicitação aprovada.",
+      "rejected": "Solicitação recusada.",
+      "offline": "Você está offline. Reconecte para continuar.",
+      "error": "Algo deu errado. Tente novamente.",
+      "full": "Esta partida está cheia. Sua solicitação não foi criada.",
+      "duplicate": "Você já tem um lugar nesta partida.",
+      "pendingDuplicate": "Você já tem uma solicitação pendente.",
+      "closed": "As inscrições encerraram antes da sua ação.",
+      "inviteOnly": "Esta partida é somente por convite.",
+      "denied": "Você não é elegível para entrar nesta partida.",
+      "alreadyResolved": "Esta solicitação já foi decidida.",
+      "notFound": "Esta solicitação não está mais disponível.",
+      "requesterIneligible": "O solicitante não é mais elegível.",
+      "forbidden": "Somente o organizador pode decidir solicitações.",
+      "unauthenticated": "Entre para continuar.",
+      "unavailable": "O serviço está indisponível. Tente novamente.",
+      "invalid": "Essa ação não é válida.",
+      "retry": "Tentar novamente"
+    }
   }
 }

@@ -39,6 +39,10 @@ export function validateListMatchRegistrationRequests(value: unknown) {
   return eventEventId(value);
 }
 
+export function validateListMatchEventRegistrations(value: unknown) {
+  return eventEventId(value);
+}
+
 export function validateDecideMatchRegistration(value: unknown) {
   const data = exact(value, ['event_id', 'user_id', 'decision']);
   const decision = data.decision;

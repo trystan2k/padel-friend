@@ -2,6 +2,13 @@ import * as stylex from '@stylexjs/stylex';
 import { Link } from '@tanstack/react-router';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { MatchRegistrationPanel } from './MatchRegistrationPanel';
+import { MatchRequestQueue } from './MatchRequestQueue';
+import type {
+  MatchRegistrationQueue,
+  MatchRosterEntry,
+  MyMatchRegistration
+} from './match-registration-model';
 import { matchesStyles as s } from './matches.styles';
 
 export async function shareMatchLink(
@@ -21,12 +28,24 @@ export function MatchDetailPage({
   event,
   loadError = false,
   onRetry = () => undefined,
-  sharePlatform
+  sharePlatform,
+  registration = null,
+  callerLevel = null,
+  isCreator = false,
+  queue = null,
+  queueError = false,
+  roster = null
 }: {
   event: Record<string, unknown> | null;
   loadError?: boolean;
   onRetry?: () => void;
   sharePlatform?: Pick<Navigator, 'share' | 'clipboard'>;
+  registration?: MyMatchRegistration | null;
+  callerLevel?: number | null;
+  isCreator?: boolean;
+  queue?: MatchRegistrationQueue | null;
+  queueError?: boolean;
+  roster?: MatchRosterEntry[] | null;
 }) {
   const { t, i18n } = useTranslation();
   const [feedback, setFeedback] = useState<{ id: string; copied: boolean; failed: boolean } | null>(
@@ -172,6 +191,25 @@ export function MatchDetailPage({
           {event.caller_badge === 'creator' && <p>{t('matches.detail.creatorAccepted')}</p>}
           {event.caller_eligibility === 'invited' && <p>{t('matches.detail.invitationInfo')}</p>}
         </section>
+        {registration && (
+          <MatchRegistrationPanel
+            event={event}
+            registration={registration}
+            callerLevel={callerLevel}
+            roster={roster}
+          />
+        )}
+        {isCreator && (
+          <MatchRequestQueue
+            eventId={eventId}
+            eventName={venue}
+            queue={queue}
+            minLevel={typeof event.min_level === 'number' ? event.min_level : null}
+            maxLevel={typeof event.max_level === 'number' ? event.max_level : null}
+            error={queueError}
+            onRetry={onRetry}
+          />
+        )}
         <section aria-labelledby="match-eligibility-heading" {...stylex.props(s.detailGroup)}>
           <h2 id="match-eligibility-heading" {...stylex.props(s.sectionTitle)}>
             {t('matches.detail.eligibilityVisibility')}

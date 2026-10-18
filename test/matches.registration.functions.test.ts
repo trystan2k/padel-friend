@@ -33,6 +33,7 @@ import {
 import {
   decideMatchRegistration,
   getMyMatchRegistration,
+  listMatchEventRegistrations,
   listMatchEventRegistrationRequests,
   submitMatchRegistration
 } from '../src/features/matches/match-registration.functions';
@@ -721,6 +722,45 @@ describe('registration server function contracts', () => {
     });
   });
 
+  it('maps the accepted-roster read to ok/empty/unavailable with a safe projection', async () => {
+    const row = {
+      display_name: 'Ada',
+      display_level: 3.5,
+      participation: 'playing',
+      group_number: 1,
+      reserve_position: null,
+      registration_source: 'member',
+      accepted_order: 1
+    };
+    client.rpc.mockResolvedValueOnce({ data: [row], error: null });
+    await expect(listMatchEventRegistrations({ data: { event_id: eventId } })).resolves.toEqual({
+      status: 'ok',
+      entries: [row]
+    });
+    // A non-readable event returns an empty set, never an error or leaked rows.
+    client.rpc.mockResolvedValueOnce({ data: [], error: null });
+    await expect(listMatchEventRegistrations({ data: { event_id: eventId } })).resolves.toEqual({
+      status: 'empty'
+    });
+    // A malformed payload degrades the whole read to unavailable.
+    for (const data of [undefined, null, 'x', [{ ...row, accepted_order: 0 }]]) {
+      client.rpc.mockResolvedValueOnce({ data, error: null });
+      await expect(listMatchEventRegistrations({ data: { event_id: eventId } })).resolves.toEqual({
+        status: 'unavailable'
+      });
+    }
+    client.rpc.mockResolvedValueOnce({
+      data: null,
+      error: { code: '28000', message: 'Authentication required' }
+    });
+    await expect(listMatchEventRegistrations({ data: { event_id: eventId } })).resolves.toEqual({
+      status: 'unavailable'
+    });
+    expect(client.rpc).toHaveBeenNthCalledWith(1, 'list_match_event_registrations', {
+      p_match_event_id: eventId
+    });
+  });
+
   it('runs the narrow validators before any client work', async () => {
     await expect(
       submitMatchRegistration({ data: { event_id: eventId, user_id: requesterId } })
@@ -729,6 +769,9 @@ describe('registration server function contracts', () => {
       decideMatchRegistration({
         data: { event_id: eventId, user_id: requesterId, decision: 'maybe' }
       })
+    ).rejects.toThrow('INVALID_MATCH_INPUT');
+    await expect(
+      listMatchEventRegistrations({ data: { event_id: eventId, extra: true } })
     ).rejects.toThrow('INVALID_MATCH_INPUT');
     expect(mocks.requireAuthenticatedClient).not.toHaveBeenCalled();
     expect(client.rpc).not.toHaveBeenCalled();
