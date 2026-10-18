@@ -1,0 +1,162 @@
+{
+  "runtimeEnforcement": {
+    "sourceDesignSha256": "Provenance metadata; asserted by the PAF-5 visual spec before any comparison.",
+    "approvedReferencePngDigests": "Runtime-enforced by the PAF-5 visual gate before screenshot comparisons.",
+    "derivedBaselineDigests": "Runtime-enforced by the PAF-5 visual gate before and after screenshot comparisons, so --update-snapshots cannot silently replace a reviewed baseline."
+  },
+  "sourceDesign": {
+    "path": "docs/design/padel-friend.pen",
+    "sha256": "f6ba6ae6fd61c4ee8a73e9417a0dac3aa5d4e0cf8a3ff42d6c8e912396e31a51",
+    "exportCommand": "Pencil MCP only: copy docs/design/padel-friend.pen to a scratch file, then execute({ filePath: <scratch>, input: 'Export([\"fo8Zn\",\"SYMLa\",\"tYXlh\",\"Za6r4\",\"xC04T\",\"qNVpA\",\"Cpd7L\",\"Z0gRd\"], \"png\", <scratch>/out1, {scale:1})' }); copy/rename the exported <frameId>.png files into e2e/references/paf-5/ with the named references below. The encrypted source .pen is never read or grepped by other tooling.",
+    "provenanceNote": "All 8 PAF-5 frames verified present in the current design (sha256 above) and exported at scale 1 (390-wide phone frames) from a temporary copy, so the source design stayed untouched. Double export of all 8 frames reproduced byte-identical PNGs. The three detail frames (fo8Zn/SYMLa/tYXlh) are 872 tall and are stored UNCROPPED: unlike the PAF-4 crop-to-844 convention, a top-390x844 crop would truncate their bottom navigation (frame-local [18,802,354,56], i.e. y 802..858), which is approved frame content, so the full frame is retained and the visual-spec author decides any deterministic crop or mask. visualBudgets and screenshotBaselines are intentionally null: no PAF-5 implementation has been captured yet, and copying PAF-4 budgets onto new frames would be dishonest; both must be populated from a real implementation comparison by the visual-spec author."
+  },
+  "approvedReferences": {
+    "registration-direct-join.png": {
+      "frameId": "fo8Zn",
+      "sourceSize": "390x872",
+      "derivation": "Used as exported (full 390x872 frame, uncropped). A top-390x844 crop would truncate the bottom navigation at [18,802,354,56].",
+      "sha256": "b61acf805fd7ce580c4c149f76da7a238fd24c9a42751361e06600d6a725b9a7"
+    },
+    "registration-full.png": {
+      "frameId": "SYMLa",
+      "sourceSize": "390x872",
+      "derivation": "Used as exported (full 390x872 frame, uncropped). A top-390x844 crop would truncate the bottom navigation at [18,802,354,56].",
+      "sha256": "c504f721d5a8fe3cb21ea836e56cf9fcc1af88355f56688fc5d2a18fcc80a367"
+    },
+    "registration-closed.png": {
+      "frameId": "tYXlh",
+      "sourceSize": "390x872",
+      "derivation": "Used as exported (full 390x872 frame, uncropped). A top-390x844 crop would truncate the bottom navigation at [18,802,354,56].",
+      "sha256": "b7dd2b00aad67cccc43557cc21b82c15ab15fa37a3d5283546f131545e756837"
+    },
+    "requests-requester-states.png": {
+      "frameId": "Za6r4",
+      "sourceSize": "390x844",
+      "derivation": "Used as exported.",
+      "sha256": "69218c9dd09b3a50cd15652753c9c3d44a76d2b44fb3cbf2943b8e96a8e3a2dd"
+    },
+    "roster-participation-states.png": {
+      "frameId": "xC04T",
+      "sourceSize": "390x844",
+      "derivation": "Used as exported.",
+      "sha256": "9f190fc9ff18e14cd1d15973ae6bf22bdfb31bcbbeeb9d7babf19f399ed21ee7"
+    },
+    "notifications-quartet-playing.png": {
+      "frameId": "qNVpA",
+      "sourceSize": "390x844",
+      "derivation": "Used as exported.",
+      "sha256": "8cf10ac0a249b0ab12b2bb931ffbf54996deb4f5d22559f1816ad8f14dac9428"
+    },
+    "participation-quartet-filled.png": {
+      "frameId": "Cpd7L",
+      "sourceSize": "390x844",
+      "derivation": "Used as exported.",
+      "sha256": "04e01aabc7ebf06d8681d4f0ef393eaf8ea19605d7a694f93bf0431ec51c648a"
+    },
+    "notifications-registration-cutoff.png": {
+      "frameId": "Z0gRd",
+      "sourceSize": "390x844",
+      "derivation": "Used as exported.",
+      "sha256": "c3f9e1199467a3df709f4369dcb1c222e2645066c18cf4e244538f66a154ff35"
+    }
+  },
+  "screenshotBaselines": {
+    "registration-direct-join.png": {
+      "sha256": "b61acf805fd7ce580c4c149f76da7a238fd24c9a42751361e06600d6a725b9a7",
+      "derivedFrom": "registration-direct-join.png (approved reference; stored uncropped at its full 390x872 frame size — the app capture for this comparison runs at a 390x872 viewport, see matches-registration-visual.spec.ts)"
+    },
+    "registration-full.png": {
+      "sha256": "c504f721d5a8fe3cb21ea836e56cf9fcc1af88355f56688fc5d2a18fcc80a367",
+      "derivedFrom": "registration-full.png (approved reference; stored uncropped at its full 390x872 frame size — the app capture for this comparison runs at a 390x872 viewport, see matches-registration-visual.spec.ts)"
+    },
+    "registration-closed.png": {
+      "sha256": "b7dd2b00aad67cccc43557cc21b82c15ab15fa37a3d5283546f131545e756837",
+      "derivedFrom": "registration-closed.png (approved reference; stored uncropped at its full 390x872 frame size — the app capture for this comparison runs at a 390x872 viewport, see matches-registration-visual.spec.ts)"
+    },
+    "notifications-quartet-playing.png": {
+      "sha256": "8cf10ac0a249b0ab12b2bb931ffbf54996deb4f5d22559f1816ad8f14dac9428",
+      "derivedFrom": "notifications-quartet-playing.png (approved reference; used as exported at 390x844)"
+    },
+    "notifications-registration-cutoff.png": {
+      "sha256": "c3f9e1199467a3df709f4369dcb1c222e2645066c18cf4e244538f66a154ff35",
+      "derivedFrom": "notifications-registration-cutoff.png (approved reference; used as exported at 390x844)"
+    }
+  },
+  "visualBudgets": {
+    "policy": "Reference-backed budgets equal the measured honest app-vs-Pencil diff ratio of the real implementation (VISUAL_CALIBRATE=1, all five reference-backed screens measured in one pass, recorded in measuredFirstComparison) plus a margin that only absorbs cross-renderer font-rasterization residuals: +1.5pp for screens measuring >=20% (the PAF-1/PAF-4 measured rasterization-residual band on text-dense screens), rounded up to the nearest 0.005. The large measured ratios are dominated by DOCUMENTED scope adaptations (below and in recordedDeviations) - design blocks the reviewed implementation deliberately renders differently - never by ungated geometry: every structural attribute of the retained scope is gated budget-independently by the structural probes (registration CTA tokens/height, roster section order/rows/geometry, panel states and badge tones, notification list order/counts, hit targets, gutter axis, overflow). No budget can absorb a structural defect. Variants without approved frames (320, desktop, dark, pt-BR, es) are never self-baselined; they are gated by structural invariants only (see matches-registration-visual.spec.ts).",
+    "measuredFirstComparison": {
+      "calibratedAt": "PAF-5.6 visual-gate calibration run (branch feature/PAF-5-fifo-quartet-registration, VISUAL_CALIBRATE=1, all five reference-backed screens measured against the approved references with only genuinely dynamic areas masked: venue photo renderings, the detail datetime line, the closed-state cutoff sentence, notification created-at lines and match-context blocks)",
+      "registration-direct-join.png": {
+        "frameId": "fo8Zn",
+        "measured": 0.4,
+        "budget": 0.415
+      },
+      "registration-full.png": {
+        "frameId": "SYMLa",
+        "measured": 0.35,
+        "budget": 0.365
+      },
+      "registration-closed.png": {
+        "frameId": "tYXlh",
+        "measured": 0.36,
+        "budget": 0.375
+      },
+      "notifications-quartet-playing.png": {
+        "frameId": "qNVpA",
+        "measured": 0.35,
+        "budget": 0.365
+      },
+      "notifications-registration-cutoff.png": {
+        "frameId": "Z0gRd",
+        "measured": 0.44,
+        "budget": 0.455
+      }
+    },
+    "scopeAdaptations": {
+      "summary": "Residual-vs-omission breakdown of every remaining budget: the dominant share is the deliberate, reviewed differences between the design frames and the implemented registration surface (this unit implements the registration STATE layer of the frames on the existing T04/T05 detail and notification surfaces, not the frames' full page composition); the remainder is cross-renderer font residual absorbed by the margin. Every retained structural attribute is gated exactly by the structural probes.",
+      "items": [
+        "No bottom navigation (Home/Matches/Community/Ranking/Profile) in the app shell (fo8Zn/SYMLa/tYXlh y=774..830, qNVpA/Z0gRd y=774..830): the reviewed PAF-4 shell decision is retained - the app keeps working links instead of inert bottom-nav destinations, so the whole approved nav region differs.",
+        "No photo-hero overlay (venue headline + address/Open-map over the image) on the detail frames: the overview renders the photo and the Maps link as semantic fields (PAF-4 scope adaptation retained).",
+        "No COMPETITIVE / GLOBAL RATING ONLY badge row, no event-title card and no designed datetime row: the app renders the event as the T04 detail composition (h1 'Match details: venue', Overview/Participation/Eligibility sections).",
+        "Roster visibility: the frames draw 'Players in this match' to every viewer; the implementation scopes the roster region to the caller's own accepted registration (asserted explicitly: 0 regions for unregistered viewers; roster facts gated on accepted viewers).",
+        "Roster rows are 44px touch targets with wrap-under badges; the frames draw 20/25px single-line text rows with trailing badges. Row order, badge sequence and section grouping are gated exactly; the row height and badge wrap are the recorded a11y adaptation.",
+        "No initials avatars (AM/PL/CD/...), no rating figures (3.82) on roster rows: the app renders display name, 'Level N' meta, participation and source badges.",
+        "Notifications: no icon containers (38x38), no relative timestamps ('Just now', '5 min ago' - the app renders absolute created-at lines), no per-card explanatory footnote panels, plus the app's own filter chips, Today/Earlier group headers, unread summary and mark-read actions.",
+        "Notification list title granularity: the app renders the kind title ('You're Playing'); the frame adds the group to the list card ('You're Playing · Group 1') - the group appears on the notification DETAIL heading (gated in the Cpd7L test).",
+        "Notification rhythm: the frames pin an 8px card rhythm; the implementation uses its reviewed margin rhythm (measured per run and attached by assertNotificationList; recorded deviation, not absorbed silently)."
+      ]
+    },
+    "recordedDeviations": [
+      "Registration CTA width: the frames draw the registration CTA as a full-content-width 354x44 block (fo8Zn [18,652,354,44], SYMLa [18,591,354,44], tYXlh [18,674,354,44]); the implementation renders the CTA at its content width inside the panel actions row (measured, attached and recorded on every run by assertRegistrationCta; height >=44 and the reference-measured color tokens are gated exactly). REVIEW ITEM for the owning unit: decide full-width CTA layout or record permanently.",
+      "Roster visibility for unregistered viewers: frames fo8Zn/SYMLa/tYXlh draw the full roster to viewers without an accepted registration; the implementation scopes the roster region to accepted callers (asserted 0-region probe + accepted-viewer gates). REVIEW ITEM for the owning unit: either widen roster visibility or accept the scoped contract permanently.",
+      "Roster row height/wrap: frames draw 20/25px single-line rows; the implementation renders >=44px rows whose badges wrap to a second line on narrow content (44px touch targets + real display names). Order/grouping/badge sequence are gated exactly.",
+      "The xC04T board stacks the reserve queue AND the not-playing tail; the implementation renders the not-playing tail only after the cutoff transition (the projection normalizes reserve_not_playing into the reserve queue while registration is open - the design caption 'Reserve Not Playing is set at cutoff' states the same rule). The tail is gated on the cutoff-processed CLOSED event.",
+      "Notification list rows differ from the frame cards (no icons, absolute timestamps, app-only filter chips/headers/actions) - listed in scopeAdaptations; the 8px frame rhythm vs the implemented margin rhythm is measured and attached every run.",
+      "Notifications created by the publication producer (match_event_published broadcast) are outside the global-setup prune; the two notification viewers are stripped of those broadcast rows before their gates. FOLLOW-UP for the owning unit: consider pruning fixture notifications in e2e/global-setup.ts."
+    ]
+  },
+  "referenceMeasurements": {
+    "method": "Measured directly from the canvas geometry of the approved frames (Pencil Get bounds) and from the exported reference PNGs in e2e/references/paf-5/. Frame-local [x,y,width,height] rectangles. Asserted at runtime by the structural gates of the PAF-5 visual spec. Expectations are never derived from the implementation.",
+    "facts": [
+      "Shared frame geometry: every frame is 390px wide with one shared content gutter inset exactly 18px per side (frame-local content minX=18, maxX=371).",
+      "Bottom navigation: fo8Zn/SYMLa/tYXlh (872-tall frames) at [18,802,354,56]; Za6r4/xC04T/qNVpA/Cpd7L/Z0gRd (844-tall frames) at [18,774,354,56].",
+      "Standard bottom-nav tabs: x = 19, 89.4, 159.8, 230.2, 300.6; width 70.4; height 44; y = 808 on the tall detail frames (fo8Zn/SYMLa/tYXlh) and y = 780 on the others.",
+      "Bottom-nav exception: qNVpA and Cpd7L use tab x = 21, 90.6, 160.2, 229.8, 299.4; width 69.6; height 44; y = 780.",
+      "Detail frames shared blocks: venue [18,70,354,144]; overview [18,221,354,86]; competitive badge [27,230,116,23]; ranking badge [148,230,176,23].",
+      "fo8Zn (Match detail — direct join), 390x872: roster [18,314,354,242]; participation [18,563,354,82]; join button [18,652,354,44]; roster rows x=27 width=336 height=20 at y=379,404,429,454; reserve rows [27,499,336,25] and [27,527,336,20]; guest badge [227,499,106,25].",
+      "SYMLa (Match detail — registration full), 390x872: roster [18,314,354,169]; participation [18,490,354,64]; capacity badge [18,561,95,23]; disabled button [18,591,354,44]; two-column roster x=27 and x=200, width=163, both columns at y=379,404,429,454.",
+      "tYXlh (Match detail — registration closed), 390x872: cutoff status [18,314,354,39]; cutoff badge [18,314,156,23]; roster [18,360,354,236]; participation [18,603,354,64]; disabled button [18,674,354,44]; two-column roster y=425,450,475,500; not-playing divider [27,525,336,1]; not-playing row [27,549,336,20].",
+      "Za6r4 (Match requests — requester states), 390x844: back affordance [18,18,354,44]; five cards in order pending -> approved playing -> approved reserve -> declined -> expired at [18,90,354,126], [18,226,354,96], [18,332,354,109], [18,451,354,109], [18,570,354,109]; each card's action [27,<cardY>,336,44] at y=163,269,388,507,626.",
+      "xC04T (Match roster — participation states), 390x844: sections playing [18,70,354,264], reserve [18,344,354,81], not playing [18,435,354,77]; rows x=27 width=336; Group 1 rows at y=97,122,147,172; Group 2 rows at y=225,250,280,305 (guest row [27,250,336,25]); guest badge [226,250,106,25]; reserve rows y=373,396; not-playing row [27,462,336,23] with badge [181,462,155,23].",
+      "Cpd7L (Match participation — quartet filled), 390x844: back text [18,18,354,44]; three cards [18,90,354,96], [18,196,354,96], [18,302,354,96]; actions [27,133,336,44], [27,239,336,44], [27,345,336,44]; explanatory panel [18,408,354,46].",
+      "qNVpA (Notifications — quartet and playing states), 390x844: notification cards [18,70,354,64] and [18,142,354,64].",
+      "Z0gRd (Notifications — registration and cutoff), 390x844: six notification cards at y=70,142,214,286,358,430 with heights 64,64,64,64,64,77; icon container x=30, y=cardY+10, size 38x38; details x=76, y=cardY+10; card gap 8."
+    ],
+    "deviations": [
+      "Genuine sibling difference (not tolerance slack): qNVpA and Cpd7L use 3px bottom-nav horizontal padding versus 1px on the sibling frames, which shifts the tab widths and x positions (69.6 vs 70.4 wide; x 21..299.4 vs 19..300.6). Both are approved frames and are gated at their own measured values.",
+      "Genuine sibling difference (not tolerance slack): the Cpd7L explanatory panel uses padding 10 and height 46, versus padding 9 and height 44 on the other explanatory panels.",
+      "Genuine sibling difference (not tolerance slack): the three detail frames (fo8Zn/SYMLa/tYXlh) are 872 tall versus 844 for the other five frames, so the references are stored uncropped and a top-844 crop would truncate their bottom navigation. Any crop the visual gate applies must be explicit and deterministic.",
+      "No implementation-derived measurement is recorded yet: visualBudgets and screenshotBaselines are null until the visual-spec author captures the real implementation."
+    ]
+  }
+}

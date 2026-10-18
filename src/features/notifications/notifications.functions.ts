@@ -122,7 +122,15 @@ export const getMyNotificationTargetV2 = createServerFn({ method: 'GET' })
       .rpc('get_my_notification_target_v2', { p_notification_id: data.notificationId })
       .single();
     if (error) throw error;
-    return result;
+    // The store has no payload column, so the kind and creation instant are read
+    // from the recipient-scoped notification row to render typed copy.
+    const { data: header, error: headerError } = await client
+      .from('notifications')
+      .select('kind,created_at')
+      .eq('id', data.notificationId)
+      .maybeSingle();
+    if (headerError) throw headerError;
+    return { ...result, kind: header?.kind ?? null, created_at: header?.created_at ?? null };
   });
 export const getMyMatchNotificationContext = createServerFn({ method: 'GET' })
   .validator(validateNotificationId)

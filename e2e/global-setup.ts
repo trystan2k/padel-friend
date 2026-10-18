@@ -22,19 +22,23 @@ const fixtureEventIds = `(select e.id from public.match_events e where e.created
 /**
  * Trusted-SQL statements that delete exactly the match rows the suites own: events created
  * by a fixture account, plus registrations and invites that belong to those events or point
- * at a fixture account in either direction. The immutable triggers are bypassed only around
- * the deletes. Exported so the prune-scoping guard test can replay these exact statements
- * inside a rolled-back transaction and prove non-fixture rows survive.
+ * at a fixture account in either direction. The registration-state and attempt rows are
+ * removed first because both reference the event/registration identity with ON DELETE
+ * RESTRICT. The immutable triggers are bypassed only around the deletes. Exported so the
+ * prune-scoping guard test can replay these exact statements inside a rolled-back
+ * transaction and prove non-fixture rows survive.
  */
 export const MATCH_FIXTURE_PRUNE_STATEMENTS = [
   'alter table public.match_event_invites disable trigger match_invite_immutable',
-  'alter table public.match_event_registrations disable trigger match_registration_immutable',
+  'alter table public.match_event_registrations disable trigger match_registration_identity_guard',
   'alter table public.match_events disable trigger match_event_immutable',
+  `delete from public.match_event_registration_attempts a where a.match_event_id in ${fixtureEventIds} or a.user_id in ${fixtureUserIds}`,
+  `delete from public.match_event_registration_state s where s.match_event_id in ${fixtureEventIds}`,
   `delete from public.match_event_invites i where i.match_event_id in ${fixtureEventIds} or i.invitee_user_id in ${fixtureUserIds} or i.invited_by in ${fixtureUserIds}`,
   `delete from public.match_event_registrations r where r.match_event_id in ${fixtureEventIds} or r.user_id in ${fixtureUserIds}`,
   `delete from public.match_events e where e.created_by in ${fixtureUserIds}`,
   'alter table public.match_event_invites enable trigger match_invite_immutable',
-  'alter table public.match_event_registrations enable trigger match_registration_immutable',
+  'alter table public.match_event_registrations enable trigger match_registration_identity_guard',
   'alter table public.match_events enable trigger match_event_immutable'
 ].join('; ');
 

@@ -81,9 +81,9 @@ begin
   insert into public.match_events(id,community_id,created_by,starts_at,timezone,event_type,visibility,team_assignment_mode,venue_name,maps_url,photo_path,registration_cutoff_at) values
     ('${fixtureEvent}',(select id from public.communities where name='Prune guard fixture community'),'${fixtureOwner}', now()+interval '3 days','UTC','friendly','community_open','POST_MATCH_TEAMS','Prune guard fixture court','https://maps.google.com/maps/place/prune-guard-fixture','prune-guard/staged-fixture.png', now()+interval '2 days'),
     ('${developerEvent}',(select id from public.communities where name='Prune guard developer community'),'${developer}', now()-interval '26 hours','UTC','friendly','community_open','POST_MATCH_TEAMS','Prune guard developer court','https://maps.google.com/maps/place/prune-guard-developer','prune-guard/staged-developer.png', now()-interval '27 hours');
-  insert into public.match_event_registrations(match_event_id,user_id,accepted_at) values
-    ('${fixtureEvent}','${fixtureOwner}',now()),
-    ('${developerEvent}','${developer}',now());
+  insert into public.match_event_registrations(match_event_id,user_id,accepted_at,accepted_order,participation_status,registration_source) values
+    ('${fixtureEvent}','${fixtureOwner}',now(),1,'reserve','creator'),
+    ('${developerEvent}','${developer}',now(),1,'reserve','creator');
   insert into public.match_event_invites(match_event_id,invitee_user_id,invited_by) values
     ('${fixtureEvent}','${fixtureInvitee}','${fixtureOwner}'),
     ('${developerEvent}','${developer}','${developer}');

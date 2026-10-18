@@ -52,6 +52,9 @@ type Copy = {
       shareUrl: string;
     };
   };
+  // PAF-5 added the real registration surface to the detail screens; the guest
+  // view now carries the genuine request CTA (see the guest test).
+  matchRegistration: { join: { requestButton: string } };
   matchCreate: {
     title: string;
     next: string;
@@ -149,6 +152,11 @@ function assertManifestProvenance(): void {
     ).toBe(approved.sha256);
   }
   for (const [baseline, derived] of Object.entries(visualManifest.screenshotBaselines)) {
+    // Calibration mode may (re)derive a baseline from a first honest capture
+    // (same branch as compare()); its digest is re-pinned in the manifest with
+    // provenance afterwards, and regular runs hard-fail on any missing or
+    // mismatched baseline.
+    if (calibrating && !existsSync(baselinePath(baseline))) continue;
     expect(
       digestFile(new URL(`./matches-visual.spec.ts-snapshots/${baseline}`, import.meta.url)),
       `${baseline} must match its reviewed derivation digest`
@@ -1317,7 +1325,9 @@ async function publishReserveFixture(
 async function ensureReserveRegistration(member: Actor, reserveId: string): Promise<void> {
   // Second accepted registration (trusted fixture insert): the host keeps FIFO #1, the
   // member lands in the reserve segment (2 accepted → 0 playing / 2 reserve) and must
-  // see the personal RESERVE badge.
+  // see the personal RESERVE badge. The anchors CHECK requires the accepted row to
+  // carry order/status/source, and the event's next accepted ordinal must advance
+  // past the fixture's order so PAF-5.2 allocations cannot collide with it.
   const existing = await member.client
     .from('match_event_registrations')
     .select('user_id')
@@ -1327,8 +1337,9 @@ async function ensureReserveRegistration(member: Actor, reserveId: string): Prom
   if (existing.error) throw existing.error;
   if (existing.data) return;
   await fixtureSql(
-    `insert into public.match_event_registrations(match_event_id,user_id,accepted_at) ` +
-      `values ('${reserveId}','${member.id}', now() + interval '2 seconds');`
+    `insert into public.match_event_registrations(match_event_id,user_id,accepted_at,accepted_order,participation_status,registration_source) ` +
+      `values ('${reserveId}','${member.id}', now() + interval '2 seconds', 2, 'reserve', 'member'); ` +
+      `update public.match_event_registration_state set next_accepted_ordinal = 3 where match_event_id = '${reserveId}';`
   );
 }
 
@@ -2101,11 +2112,20 @@ test.describe.serial('PAF-4 match event visual and structural QA', () => {
         name: `${en.matches.detail.title}: ${VENUES.friendly}`
       })
     ).toBeVisible();
-    await expect(guestPage.getByText(en.matches.detail.guestApprovalRequired)).toBeVisible();
+    await expect(
+      guestPage.getByText(en.matches.detail.guestApprovalRequired).first()
+    ).toBeVisible();
     await expect(guestPage.getByText(en.matches.visibility.community_open)).toBeVisible();
+    // PAF-5 intentional change: the public guest now gets the real request CTA
+    // next to the share action (previously T04 rendered informational context
+    // only, and this screen had exactly one button). The registration panel's
+    // request state adds the REQUEST TO JOIN primary; share stays.
     const guestButtons = guestPage.getByRole('button');
-    await expect(guestButtons).toHaveCount(1);
-    await expect(guestButtons).toHaveAccessibleName(en.matches.detail.share);
+    await expect(guestButtons).toHaveCount(2);
+    await expect(
+      guestPage.getByRole('button', { name: en.matchRegistration.join.requestButton })
+    ).toBeVisible();
+    await expect(guestPage.getByRole('button', { name: en.matches.detail.share })).toBeVisible();
     for (const link of await guestPage.getByRole('link').all())
       expect((await link.textContent()) ?? '').not.toMatch(/book|pay|purchase|join|register/i);
     await assertHeadingTypography(guestPage, 'guest detail');

@@ -48,6 +48,13 @@ import { Route as NotificationListRoute } from '../src/routes/_protected.notific
 // Rendered strings are asserted against the REAL en locale resource below, so
 // any hardcoded copy in the component breaks these expectations.
 const copy = en.notifications;
+
+function fill(template: string, values: Record<string, string | number>): string {
+  return Object.entries(values).reduce(
+    (text, [key, value]) => text.replace(`{{${key}}}`, String(value)),
+    template
+  );
+}
 const notificationId = '9f1c3b2a-7d4e-4c8a-9b2f-1e6d5a7c3b40';
 const communityId = '11111111-1111-4111-8111-111111111111';
 const invitationId = '22222222-2222-4222-8222-222222222222';
@@ -83,7 +90,10 @@ const availableMatch: NotificationTarget = {
   match_event_id: '33333333-3333-4333-8333-333333333333',
   match_available: true
 };
-const matchContext = (venue: string): MatchNotificationContext => ({
+const matchContext = (
+  venue: string,
+  extra: Partial<MatchNotificationContext> = {}
+): MatchNotificationContext => ({
   match_event_id: availableMatch.match_event_id!,
   creator_display_name: 'Alex',
   scheduled_at: '2026-10-20T10:00:00.000Z',
@@ -93,7 +103,8 @@ const matchContext = (venue: string): MatchNotificationContext => ({
   playing_count: 0,
   reserve_count: 1,
   price_minor: null,
-  currency: null
+  currency: null,
+  ...extra
 });
 
 function hasLoader(route: unknown): route is {
@@ -345,5 +356,108 @@ describe('notification detail page', () => {
     expect(mocks.targetV2).toHaveBeenCalledWith({ data: { notificationId } });
     expect(mocks.matchContext).toHaveBeenCalledWith({ data: { notificationId } });
     expect(mocks.targetV1).not.toHaveBeenCalled();
+  });
+
+  it('renders the cutoff expired kind with its own heading and body copy', async () => {
+    mountPage(
+      { ...availableMatch, kind: 'match_registration_expired' },
+      matchContext('Expiry court')
+    );
+
+    expect(
+      await screen.findByRole('heading', { name: copy.kinds.match_registration_expired })
+    ).toBeTruthy();
+    expect(screen.getByText(copy.match.registrationExpiredBody)).toBeTruthy();
+    expect(screen.queryByText(copy.match.invitedBy)).toBeNull();
+    expect(screen.getByRole('link', { name: copy.match.openEvent }).getAttribute('href')).toBe(
+      `/matches/${availableMatch.match_event_id}`
+    );
+  });
+
+  it('renders the cutoff not-playing kind with its own heading and body copy', async () => {
+    mountPage(
+      { ...availableMatch, kind: 'match_registration_not_playing' },
+      matchContext('NotPlaying court')
+    );
+
+    expect(
+      await screen.findByRole('heading', { name: copy.kinds.match_registration_not_playing })
+    ).toBeTruthy();
+    expect(screen.getByText(copy.match.registrationNotPlayingBody)).toBeTruthy();
+    expect(screen.queryByText(copy.match.registrationExpiredBody)).toBeNull();
+  });
+
+  it('degrades a cutoff kind without match context to the kind heading and unavailable copy', async () => {
+    mountPage({ ...availableMatch, kind: 'match_registration_not_playing' }, null);
+
+    expect(
+      await screen.findByRole('heading', { name: copy.kinds.match_registration_not_playing })
+    ).toBeTruthy();
+    expect(screen.getByText(copy.match.unavailable)).toBeTruthy();
+    expect(screen.queryByText(copy.match.registrationNotPlayingBody)).toBeNull();
+  });
+
+  it('renders a present-tense reserve position only while the caller is still on reserve', async () => {
+    mountPage(
+      { ...availableMatch, kind: 'match_registration_reserve' },
+      matchContext('Reserve court', {
+        caller_participation: 'reserve',
+        caller_accepted_order: 7,
+        playing_count: 4
+      })
+    );
+
+    expect(
+      await screen.findByText(
+        fill(copy.match.registrationReserveBody, { position: 3, event: 'Reserve court' })
+      )
+    ).toBeTruthy();
+    expect(screen.queryByText(copy.match.registrationReservePromotedBody)).toBeNull();
+    expect(screen.queryByText(copy.match.registrationReserveNotPlayingBody)).toBeNull();
+  });
+
+  it('uses historical wording for a caller promoted since the reserve alert', async () => {
+    mountPage(
+      { ...availableMatch, kind: 'match_registration_reserve' },
+      matchContext('Promoted court', {
+        caller_participation: 'playing',
+        caller_accepted_order: 2,
+        playing_count: 4
+      })
+    );
+
+    expect(
+      await screen.findByText(
+        fill(copy.match.registrationReservePromotedBody, { group: 1, event: 'Promoted court' })
+      )
+    ).toBeTruthy();
+    // The old present-tense copy clamped a promoted caller to a fabricated #1.
+    expect(
+      screen.queryByText(
+        fill(copy.match.registrationReserveBody, { position: 1, event: 'Promoted court' })
+      )
+    ).toBeNull();
+  });
+
+  it('uses historical wording for a caller no longer playing after the reserve alert', async () => {
+    mountPage(
+      { ...availableMatch, kind: 'match_registration_reserve' },
+      matchContext('Closed court', {
+        caller_participation: 'reserve_not_playing',
+        caller_accepted_order: 9,
+        playing_count: 4
+      })
+    );
+
+    expect(
+      await screen.findByText(
+        fill(copy.match.registrationReserveNotPlayingBody, { event: 'Closed court' })
+      )
+    ).toBeTruthy();
+    expect(
+      screen.queryByText(
+        fill(copy.match.registrationReserveBody, { position: 5, event: 'Closed court' })
+      )
+    ).toBeNull();
   });
 });

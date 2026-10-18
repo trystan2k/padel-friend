@@ -1,21 +1,26 @@
 import * as stylex from '@stylexjs/stylex';
 import { Link } from '@tanstack/react-router';
 import { useTranslation } from 'react-i18next';
-import { getMatchBadge, getMatchParticipation, type MatchEventListItem } from './match-model';
+import {
+  getMatchBadge,
+  matchCallerBadge,
+  matchEventCounts,
+  type MatchEventListItem
+} from './match-model';
 import { matchesStyles as s } from './matches.styles';
 
 export function MatchCard({ event }: { event: MatchEventListItem }) {
   const { t, i18n } = useTranslation();
-  const accepted = Number(event.accepted_count ?? 0);
-  const counts = getMatchParticipation(accepted);
+  // Explicit flat counts keep Reserve Not Playing out of the ordinary Reserve
+  // figure; only a payload without them falls back to quartet derivation.
+  const counts = matchEventCounts(event);
   const badge =
-    typeof event.caller_badge === 'string'
-      ? event.caller_badge
-      : getMatchBadge({
-          creator: event.is_creator === true,
-          accepted: event.is_accepted === true,
-          invited: event.is_invited === true
-        });
+    matchCallerBadge(event.caller_badge) ??
+    getMatchBadge({
+      creator: event.is_creator === true,
+      accepted: event.is_accepted === true,
+      invited: event.is_invited === true
+    });
   const starts = typeof event.starts_at === 'string' ? event.starts_at : '';
   const zone = typeof event.timezone === 'string' ? event.timezone : 'UTC';
   const venue = String(event.venue_name ?? '');

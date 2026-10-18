@@ -106,11 +106,34 @@ describe('match list surfaces', () => {
     ['creator', 'Playing', false],
     ['playing', 'Playing', true],
     ['reserve', 'Reserve', true],
+    ['reserve_not_playing', 'Not playing', true],
     ['invited', 'Invited', true]
   ] as const)('renders badge %s correctly', (badge, visible, shown) => {
     mount({ entry: 'my', initialItems: [event(3, 4, badge)] });
     expect(Boolean(screen.queryByText(visible))).toBe(shown);
     expect(screen.queryByText(copy.badges.resultActionRequired)).toBeNull();
+  });
+  it('labels the reserve_not_playing badge from the localized catalog and keeps the counts split', () => {
+    // Post-cutoff event: one residual reserve flipped to not-playing. The
+    // card must render "1 reserve" (not 2) and the dedicated badge label.
+    mount({
+      entry: 'my',
+      initialItems: [
+        {
+          ...event(30, 6, 'reserve_not_playing'),
+          playing_count: 4,
+          reserve_count: 1,
+          reserve_not_playing_count: 1,
+          registration_open: false
+        }
+      ]
+    });
+    const card = screen.getByRole('article');
+    expect(card.textContent).toContain(copy.badges.reserve_not_playing);
+    expect(card.textContent).toContain('4 playing');
+    expect(card.textContent).toContain('1 reserve');
+    expect(card.textContent).not.toContain('2 reserve');
+    expect(screen.queryByText(copy.badges.reserve)).toBeNull();
   });
   it('sets current tab, has no unsupported controls, and only shows load more for a cursor', () => {
     mount({ initialItems: [event(4, 4)], initialCursor: 'next' });
