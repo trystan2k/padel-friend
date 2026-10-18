@@ -9,6 +9,10 @@ import {
 } from './notifications.functions';
 import type { NotificationTarget } from './notification-target';
 import type { MatchNotificationContext } from './notification-target';
+import {
+  matchRegistrationGroup,
+  matchRegistrationReservePosition
+} from '../matches/match-registration-model';
 import { styles } from './notifications.styles';
 import * as stylex from '@stylexjs/stylex';
 
@@ -25,18 +29,52 @@ async function resolveNotificationTarget(notificationId: string) {
 type RegistrationNotificationKind =
   | 'match_registration_requested'
   | 'match_registration_approved'
-  | 'match_registration_rejected';
+  | 'match_registration_rejected'
+  | 'match_registration_playing'
+  | 'match_registration_reserve'
+  | 'match_registration_promoted'
+  | 'match_registration_quartet_complete';
 
-// Existing kinds keep their current invitation detail behaviour; only the three
-// PAF-5.2 registration kinds opt into their own typed heading and body (F2).
+// Existing kinds keep their current invitation detail behaviour; the PAF-5.2
+// request/decision kinds and the PAF-5.3 FIFO quartet kinds opt into their own
+// typed heading and body through this single allowlist (F2).
+const REGISTRATION_NOTIFICATION_KINDS: readonly RegistrationNotificationKind[] = [
+  'match_registration_requested',
+  'match_registration_approved',
+  'match_registration_rejected',
+  'match_registration_playing',
+  'match_registration_reserve',
+  'match_registration_promoted',
+  'match_registration_quartet_complete'
+];
+
+function isRegistrationNotificationKind(kind: string): kind is RegistrationNotificationKind {
+  return REGISTRATION_NOTIFICATION_KINDS.some((candidate) => candidate === kind);
+}
+
 function registrationNotificationKind(
   kind: string | null | undefined
 ): RegistrationNotificationKind | null {
-  return kind === 'match_registration_requested' ||
-    kind === 'match_registration_approved' ||
-    kind === 'match_registration_rejected'
-    ? kind
-    : null;
+  if (kind === null || kind === undefined) return null;
+  return isRegistrationNotificationKind(kind) ? kind : null;
+}
+
+type TranslateFn = (key: string, options?: Record<string, unknown>) => string;
+
+// The playing heading carries the quartet group; the other FIFO titles are
+// static. When the immutable accepted ordinal is unavailable the heading degrades
+// to the generic notification copy rather than rendering a literal placeholder.
+function registrationHeading(
+  t: TranslateFn,
+  kind: RegistrationNotificationKind | null,
+  group: number | null
+): string {
+  if (kind === null) return t('notifications.kinds.match_event_invitation');
+  if (kind === 'match_registration_playing')
+    return group === null
+      ? t('notifications.kinds.match_registration_playing')
+      : t('notifications.match.registrationPlayingTitle', { group });
+  return t(`notifications.kinds.${kind}`);
 }
 
 type ApprovedPlacement =
@@ -47,12 +85,17 @@ type ApprovedPlacement =
 // caller_participation; the numeric group/position derive from the immutable
 // accepted ordinal so nothing is inferred from counts alone.
 function approvedPlacement(context: MatchNotificationContext): ApprovedPlacement | null {
-  const order = context.caller_accepted_order;
-  if (typeof order !== 'number' || !Number.isSafeInteger(order) || order < 1) return null;
-  if (context.caller_participation === 'playing')
-    return { participation: 'playing', group: Math.max(1, Math.ceil(order / 4)) };
-  if (context.caller_participation === 'reserve')
-    return { participation: 'reserve', position: Math.max(1, order - context.playing_count) };
+  if (context.caller_participation === 'playing') {
+    const group = matchRegistrationGroup(context.caller_accepted_order);
+    return group === null ? null : { participation: 'playing', group };
+  }
+  if (context.caller_participation === 'reserve') {
+    const position = matchRegistrationReservePosition(
+      context.caller_accepted_order,
+      context.playing_count
+    );
+    return position === null ? null : { participation: 'reserve', position };
+  }
   return null;
 }
 
@@ -200,6 +243,19 @@ export function NotificationDetailPage({
     registrationKind === 'match_registration_approved' && currentMatchContext
       ? formatMatchTime(target.created_at, currentMatchContext.timezone, i18n.language)
       : null;
+  // FIFO kinds derive their group/position from the caller's immutable accepted
+  // ordinal (and the derived playing headcount) carried by the context.
+  const fifoGroup =
+    registrationKind && currentMatchContext
+      ? matchRegistrationGroup(currentMatchContext.caller_accepted_order)
+      : null;
+  const fifoPosition =
+    registrationKind && currentMatchContext
+      ? matchRegistrationReservePosition(
+          currentMatchContext.caller_accepted_order,
+          currentMatchContext.playing_count
+        )
+      : null;
   const hasError = targetError || readError;
   return (
     <main {...stylex.props(styles.page)}>
@@ -215,11 +271,7 @@ export function NotificationDetailPage({
         target.match_available &&
         target.match_event_id ? (
           <>
-            <h1>
-              {registrationKind
-                ? t(`notifications.kinds.${registrationKind}`)
-                : t('notifications.kinds.match_event_invitation')}
-            </h1>
+            <h1>{registrationHeading(t, registrationKind, fifoGroup)}</h1>
             {currentMatchContext ? (
               <>
                 {registrationKind === null ? (
@@ -251,6 +303,37 @@ export function NotificationDetailPage({
                           })}
                     </p>
                   ) : null
+                ) : registrationKind === 'match_registration_playing' ? (
+                  fifoGroup === null ? null : (
+                    <p>
+                      {t('notifications.match.registrationPlayingBody', {
+                        group: fifoGroup,
+                        event: currentMatchContext.venue
+                      })}
+                    </p>
+                  )
+                ) : registrationKind === 'match_registration_reserve' ? (
+                  fifoPosition === null ? null : (
+                    <p>
+                      {t('notifications.match.registrationReserveBody', {
+                        position: fifoPosition,
+                        event: currentMatchContext.venue
+                      })}
+                    </p>
+                  )
+                ) : registrationKind === 'match_registration_promoted' ? (
+                  fifoGroup === null ? null : (
+                    <p>{t('notifications.match.registrationPromotedBody', { group: fifoGroup })}</p>
+                  )
+                ) : registrationKind === 'match_registration_quartet_complete' ? (
+                  fifoGroup === null ? null : (
+                    <p>
+                      {t('notifications.match.registrationQuartetCompleteBody', {
+                        group: fifoGroup,
+                        event: currentMatchContext.venue
+                      })}
+                    </p>
+                  )
                 ) : (
                   <p>
                     {t('notifications.match.registrationRejectedBody', {

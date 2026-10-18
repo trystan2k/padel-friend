@@ -1165,9 +1165,14 @@ describe('match registration actions integration', () => {
     const winnerAlerts = await notificationsOf(actors.guestRace!, expectedKind, events.open);
     expect(winnerAlerts.map((alert) => String(alert['kind']))).toEqual([expectedKind]);
     expect(await notificationsOf(actors.guestRace!, oppositeKind, events.open)).toEqual([]);
-    // The requester holds exactly one logical alert either way.
+    // The requester holds exactly one decision alert, plus the derived FIFO
+    // status effect when the winning decision was an approval into Reserve.
     const inbox = await allNotifications(actors.guestRace!);
-    expect(inbox).toHaveLength(1);
+    expect(inbox.map((entry) => String(entry['kind'])).sort((a, b) => a.localeCompare(b))).toEqual(
+      approveWon
+        ? ['match_registration_approved', 'match_registration_reserve']
+        : ['match_registration_rejected']
+    );
   });
 
   it('admits exactly one contender for the last finite capacity slot', async () => {
@@ -1313,15 +1318,33 @@ describe('match registration actions integration', () => {
     expect(hidden.error).toBeNull();
     expect(hidden.data).toBeNull();
 
-    // Recipient scoping: alerts are readable only by their recipients.
+    // Recipient scoping: alerts are readable only by their recipients. The
+    // creator is also a participant on this event, so the inbox now carries the
+    // FIFO quartet effects alongside the creator-side request alerts.
+    const creatorKinds = new Set([
+      'match_registration_requested',
+      'match_registration_playing',
+      'match_registration_reserve',
+      'match_registration_promoted',
+      'match_registration_quartet_complete'
+    ]);
     const creatorInbox = await allNotifications(actors.creator!);
     expect(creatorInbox.length).toBeGreaterThan(0);
     for (const row of creatorInbox) {
       expect(row['recipient_user_id']).toBe(actors.creator!.id);
-      expect(row['kind']).toBe('match_registration_requested');
+      expect(creatorKinds.has(String(row['kind']))).toBe(true);
     }
+    // guest1 was approved into Reserve (approval + Reserve place) and later
+    // promoted when the quartet completed (promotion + group completion).
     const guestInbox = await allNotifications(actors.guest1!);
-    expect(guestInbox.map((row) => row['kind'])).toEqual(['match_registration_approved']);
+    expect(
+      guestInbox.map((entry) => String(entry['kind'])).sort((a, b) => a.localeCompare(b))
+    ).toEqual([
+      'match_registration_approved',
+      'match_registration_promoted',
+      'match_registration_quartet_complete',
+      'match_registration_reserve'
+    ]);
     expect(await allNotifications(actors.privateOutsider!)).toEqual([]);
   });
 });

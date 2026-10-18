@@ -371,3 +371,39 @@ export function parseMatchRegistrationQueue(value: unknown): MatchRegistrationQu
     requests
   };
 }
+
+// --- FIFO quartet group / reserve position ------------------------------------
+//
+// The four PAF-5.3 FIFO notification kinds render a quartet group number and a
+// reserve queue position. Both derive from the immutable accepted ordinal (plus
+// the derived playing headcount) that the notification context already carries,
+// so the arithmetic lives here instead of being duplicated in the notification
+// layer. A missing or non-positive ordinal yields null so callers never render a
+// fabricated group or position.
+
+/** Quartet group for a 1-based accepted ordinal: seats 1-4 are group 1, 5-8 group 2, ... */
+export function matchRegistrationGroup(acceptedOrder: number | null | undefined): number | null {
+  if (
+    typeof acceptedOrder !== 'number' ||
+    !Number.isSafeInteger(acceptedOrder) ||
+    acceptedOrder < 1
+  )
+    return null;
+  return Math.ceil(acceptedOrder / 4);
+}
+
+/** Reserve queue position: the accepted ordinal minus the playing seats ahead of it. */
+export function matchRegistrationReservePosition(
+  acceptedOrder: number | null | undefined,
+  playingCount: number | null | undefined
+): number | null {
+  if (
+    typeof acceptedOrder !== 'number' ||
+    !Number.isSafeInteger(acceptedOrder) ||
+    acceptedOrder < 1
+  )
+    return null;
+  if (typeof playingCount !== 'number' || !Number.isSafeInteger(playingCount) || playingCount < 0)
+    return null;
+  return Math.max(1, acceptedOrder - playingCount);
+}

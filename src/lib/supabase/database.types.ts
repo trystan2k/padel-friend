@@ -1017,9 +1017,30 @@ export type Database = {
         Args: { p_date: string; p_time: string; p_zone: string }
         Returns: string
       }
+      match_registration_counts: {
+        Args: { p_match_event_id: string }
+        Returns: {
+          accepted_count: number
+          playing_count: number
+          reserve_count: number
+        }[]
+      }
       match_registration_is_member: {
         Args: { p_community_id: string; p_user_id: string }
         Returns: boolean
+      }
+      match_registration_roster: {
+        Args: { p_match_event_id: string }
+        Returns: {
+          accepted_order: number
+          accepted_total: number
+          participation_status: Database["public"]["Enums"]["match_registration_participation"]
+          playing_total: number
+          registration_id: string
+          reserve_total: number
+          roster_position: number
+          user_id: string
+        }[]
       }
       onboard_player: {
         Args: {
@@ -1063,8 +1084,8 @@ export type Database = {
         Returns: string
       }
       reconcile_match_registration_participation: {
-        Args: { p_match_event_id: string }
-        Returns: undefined
+        Args: { p_accepted_registration_id?: string; p_match_event_id: string }
+        Returns: Json
       }
       safe_match_photo_uuid: { Args: { p_value: string }; Returns: string }
       safe_venue_photo_uuid: { Args: { p_value: string }; Returns: string }

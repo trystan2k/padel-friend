@@ -456,7 +456,11 @@
       "match_event_invitation": "Te invitaron a un partido",
       "match_registration_requested": "Nueva solicitud de ingreso",
       "match_registration_approved": "Solicitud aprobada",
-      "match_registration_rejected": "Solicitud rechazada"
+      "match_registration_rejected": "Solicitud rechazada",
+      "match_registration_playing": "Estás jugando",
+      "match_registration_reserve": "Reserva · primero en entrar",
+      "match_registration_promoted": "PROMOVIDO A JUGAR",
+      "match_registration_quartet_complete": "Tu cuarteto está completo"
     },
     "match": {
       "openEvent": "Abrir evento",
@@ -473,6 +477,11 @@
       "registrationApprovedPlayingBody": "Estás jugando · Grupo {{group}} en {{event}}. Aprobado a las {{time}}.",
       "registrationApprovedReserveBody": "Estás de reserva · Nº {{position}} en {{event}}. Aprobado a las {{time}}.",
       "registrationRejectedBody": "El organizador rechazó tu solicitud para {{event}}.",
+      "registrationPlayingTitle": "Estás jugando · Grupo {{group}}",
+      "registrationPlayingBody": "Tu plaza en {{event}} está confirmada. El Grupo {{group}} juega primero.",
+      "registrationReserveBody": "Eres el nº {{position}} de la lista de reserva para {{event}}.",
+      "registrationPromotedBody": "Tu cuarteto se completó. Ahora eres del Grupo {{group}}.",
+      "registrationQuartetCompleteBody": "El Grupo {{group}} está completo — 4 jugadores confirmados para {{event}}.",
       "unavailable": "Esta notificación de partido ya no está disponible."
     }
   },

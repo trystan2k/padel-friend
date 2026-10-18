@@ -456,7 +456,11 @@
       "match_event_invitation": "You were invited to a match",
       "match_registration_requested": "New join request",
       "match_registration_approved": "Request approved",
-      "match_registration_rejected": "Request declined"
+      "match_registration_rejected": "Request declined",
+      "match_registration_playing": "You’re Playing",
+      "match_registration_reserve": "Reserve · first to join",
+      "match_registration_promoted": "PROMOTED TO PLAYING",
+      "match_registration_quartet_complete": "Your quartet is complete"
     },
     "match": {
       "openEvent": "Open event",
@@ -473,6 +477,11 @@
       "registrationApprovedPlayingBody": "You’re Playing · Group {{group}} in {{event}}. Approved at {{time}}.",
       "registrationApprovedReserveBody": "You’re Reserve · #{{position}} in {{event}}. Approved at {{time}}.",
       "registrationRejectedBody": "The organizer declined your request for {{event}}.",
+      "registrationPlayingTitle": "You’re Playing · Group {{group}}",
+      "registrationPlayingBody": "Your place in {{event}} is confirmed. Group {{group}} plays first.",
+      "registrationReserveBody": "You’re #{{position}} in the reserve queue for {{event}}.",
+      "registrationPromotedBody": "Your quartet filled. You’re now Group {{group}}.",
+      "registrationQuartetCompleteBody": "Group {{group}} is full — 4 players confirmed for {{event}}.",
       "unavailable": "This match notification is no longer available."
     }
   },
