@@ -17,17 +17,37 @@ permission:
   question: allow
   bash:
     "*": deny
+    "ls": allow
+    "ls *": allow
+    "pwd": allow
+    "date": allow
+    "date *": allow
+    "cat *": allow
+    "head *": allow
+    "tail *": allow
+    "wc *": allow
+    "echo *": allow
+    "printf *": allow
+    "sort*": allow
+    "uniq*": allow
+    "find *": allow
+    "grep *": allow
+    "rg *": allow
+    "cd *": allow
     "mv *": allow
     "mkdir *": allow
-    "ls *": allow
     "git status *": allow
     "git diff*": allow
     "git log*": allow
     "git rev-parse*": allow
     "git show*": allow
     "git ls-files*": allow
-    "date": allow
-    "date *": allow
+    "gh pr checks*": allow
+    "gh pr view*": allow
+    "gh pr list*": allow
+    "gh pr diff*": allow
+    "curl -I*": allow
+    "curl --head*": allow
   webfetch: allow
   websearch: allow
   todowrite: allow
@@ -85,7 +105,7 @@ Before ANY implementation or fix action — especially bug fixes — triage comp
 Rules:
 
 - When in doubt, delegate — never force a change into the fast path.
-- Direct edits use `read`/`write`/`edit` (`bash` only for trivial local file ops like `mv`/`mkdir`/`ls` and read-only `date` for time tracking — never for git, Linear, tests, builds, or lint).
+- Direct edits use `read`/`write`/`edit` (`bash` only for read-only inspection — `ls`/`cat`/`head`/`tail`/`wc`/`find`/`grep`/`rg`/`echo`, `mv`/`mkdir` file ops, `date` for time tracking, and read-only `git`/`gh pr`/`curl -I` — never for git write ops, Linear, tests, builds, or lint).
 - Fast-path work skips no gates: QA, review, and the final push/PR approval still apply; fixes are still re-verified.
 - In time tracking, record directly executed phases as `orchestrator (direct)` in the Subagent column.
 
@@ -333,7 +353,7 @@ Tool access is configured in this file's frontmatter via `permission` (the legac
 - `edit` (gates `write`/`edit`): allow — small-change fast path (see Complexity Triage) plus exactly two workflow artifacts: `docs/plan/<ID>-bundle.md` and `docs/plan/<ID>-findings.md`. No other file is ever written directly.
 - `skill`: allow — `grill-with-docs` / `brainstorming` interviews.
 - `question`: allow — user interviews and approval prompts.
-- `bash`: scoped — read-only inspection (`ls`, `git status`, `git diff`, `git log`, `git rev-parse`, `git show`, `git ls-files`), trivial file ops (`mv`, `mkdir`), and read-only `date` for time tracking. Every mutating command (git write ops, Linear, tests, builds, lint) is denied and stays delegated.
+- `bash`: scoped — read-only inspection (`ls`, `pwd`, `cat`, `head`, `tail`, `wc`, `echo`, `printf`, `sort`, `uniq`, `find`, `grep`, `rg`, `cd`, `date`), read-only `git` (`status`, `diff`, `log`, `rev-parse`, `show`, `ls-files`), read-only provider reads (`gh pr checks|view|list|diff`, `curl -I`/`--head`), and trivial file ops (`mv`, `mkdir`). The read-only set exists so inspection pipelines (`ls -R … | head`, `echo "---" && git status`) do not get denied. Every mutating command (git write ops, `pnpm`, tests, builds, lint, deploy CLIs, Linear) stays denied and delegated; never add a mutating pattern here.
 - `webfetch`, `websearch`: allow — plan-time research only; not used for git, Linear, QA, or review actions.
 - `todowrite`, `lsp`: allow — progress tracking and code intelligence.
 - `external_directory`: deny by default; only the git config paths (`~/.gitconfig`, `~/.gitignore`, and the resolved dotfiles symlinks directory) are allowed.

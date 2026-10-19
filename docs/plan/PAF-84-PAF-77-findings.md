@@ -6,6 +6,7 @@
 | F4 | minor | src/components/ui/StatusBadge.tsx:5 | Shared visual tones retain match-domain vocabulary (playing/reserve/guest) instead of generic presentation tones | deferred | deferred | 1 |
 | F5 | minor | src/features/matches/match-model.ts:10 | Optionalised card fields leave the planned schema-aligned DTO and boundary decoder work incomplete | deferred | deferred | 1 |
 | F6 | minor | supabase/migrations/20261016120200_match_event_functions.sql:166 | Already-accepted invitees now also see approval-required wording alongside their playing/reserve state | fixed | bug-fixer-specialist | 1 |
+| F7 | nit | src/components/ui/status-badge.styles.ts:27 | Unused `emphasis` style key: `StatusBadge` renders a bare `<strong>` for the emphasis appearance and never spreads `styles.emphasis` (Copilot review, Low severity) | deferred | deferred | 1 |
 
 Status values: `open` | `fixed` | `deferred`. `owner` is the fixing agent or `deferred`.
 Reviewers: code-review-specialist (always), architecture-review-specialist (feature/lib/migrations/config changed), ux-ui-reviewer-specialist (UI changed).
