@@ -8,16 +8,10 @@ const quiet = {
   error: vi.fn<(...args: unknown[]) => void>()
 };
 
-function successfulRunner(calls: string[][], snapshotShape: 'rows' | 'array' = 'rows') {
+function successfulRunner(calls: string[][]) {
   return (command: string, args: string[]) => {
     calls.push([command, ...args]);
-    const stdout = args.includes('status')
-      ? status
-      : args.some((arg) => arg.includes('select public.paf_upgrade_snapshot'))
-        ? snapshotShape === 'rows'
-          ? 'NOTICE: advisory metadata\n{"rows":[{"paf_upgrade_snapshot":"stable"}]}\ncomplete'
-          : 'NOTICE: advisory metadata\n[{"paf_upgrade_snapshot":"stable"}]\ncomplete'
-        : '';
+    const stdout = args.includes('status') ? status : '';
     return { status: 0, stdout, stderr: '' };
   };
 }
@@ -93,16 +87,19 @@ describe('populated migration-up harness safety and ordering', () => {
     expect(assertionIndex).toBeGreaterThan(upIndex);
   });
 
-  it('parses bare-array snapshot payload with surrounding CLI noise', () => {
+  it('checks the repeated snapshot inside the database without parsing CLI output', () => {
     const calls: string[][] = [];
     runHarness({
       env: { CI: 'true', POPULATED_UPGRADE_OPT_IN: '1' },
-      run: successfulRunner(calls, 'array'),
+      run: successfulRunner(calls),
       log: quiet
     });
     expect(
-      calls.filter((call) => call.some((arg) => arg.includes('select public.paf_upgrade_snapshot')))
-    ).toHaveLength(2);
+      calls.filter((call) => call.includes('select public.paf_upgrade_assert_snapshot()'))
+    ).toHaveLength(1);
+    expect(
+      calls.some((call) => call.some((arg) => arg.includes('select public.paf_upgrade_snapshot')))
+    ).toBe(false);
   });
 
   it('preserves migration failure while restoring latest schema', () => {

@@ -64,5 +64,18 @@ begin
 
   raise notice 'PAF populated upgrade assertions passed';
   raise notice 'PASS: populated upgrade data and invariants asserted';
+  execute 'create table public.paf_upgrade_snapshot_before (snapshot text not null)';
+  execute 'insert into public.paf_upgrade_snapshot_before values (public.paf_upgrade_snapshot())';
+  execute $ddl$create function public.paf_upgrade_assert_snapshot() returns void language plpgsql as $fn$
+  declare v_before text; v_after text;
+  begin
+    select snapshot into strict v_before from public.paf_upgrade_snapshot_before;
+    v_after := public.paf_upgrade_snapshot();
+    if v_before is distinct from v_after then
+      raise exception 'Repeated migration up changed fixture snapshot: before=%, after=%', v_before, v_after;
+    end if;
+    raise notice 'Repeated migration up fixture snapshot unchanged: %', v_after;
+  end
+  $fn$$ddl$;
 end
 $paf_assertions$;
