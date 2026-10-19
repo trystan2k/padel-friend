@@ -86,7 +86,7 @@ git diff origin/main..HEAD     # whole delivery
 | Unit B F25 | full matrix green: 12 viewport×theme×locale combos, both labels 44.00px height, wrap proven at 120px |
 | Unit B F22 | `typecheck` 0, `lint` 0, 56 focused tests green |
 | E2E regression fix | `matches-visual` 12 passed with zero skipped (serial chain unbroken), `matches-registration-visual` 7 passed |
-| QA (full gate) | _pending — runs once, immediately before the push approval_ |
+| QA (full gate) | `pnpm complete-check` — **PASS**, all 8 stages green on HEAD `e9b6847` (db:types:check, build, knip, typecheck, lint, format:check, test 912/912, test:e2e 142/142) |
 
 ## Known deferred / documented items carried with this delivery
 
