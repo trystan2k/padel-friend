@@ -182,6 +182,32 @@ describe('match list surfaces', () => {
     expect(screen.queryByText(/score|result|confirmed|disputed/i)).toBeNull();
     expect(screen.queryByRole('button', { name: /join|register/i })).toBeNull();
   });
+  it('shows invitation but suppresses approval wording only for accepted invitees', () => {
+    mount({
+      entry: 'my',
+      initialItems: [
+        {
+          ...event(31, 4, 'playing'),
+          caller_eligibility: 'out_of_range',
+          caller_requires_approval: true,
+          caller_is_invited: true
+        },
+        {
+          ...event(32, 0),
+          caller_eligibility: 'out_of_range',
+          caller_requires_approval: true,
+          caller_is_invited: true,
+          is_accepted: false
+        }
+      ]
+    });
+    const [acceptedCard, nonAcceptedCard] = screen.getAllByRole('article');
+    expect(within(acceptedCard).getByText(copy.detail.invitationInfo)).toBeTruthy();
+    expect(within(acceptedCard).getByText(copy.badges.playing)).toBeTruthy();
+    expect(within(acceptedCard).queryByText(copy.detail.outOfRangeApprovalRequired)).toBeNull();
+    expect(within(nonAcceptedCard).getByText(copy.detail.invitationInfo)).toBeTruthy();
+    expect(within(nonAcceptedCard).getByText(copy.detail.outOfRangeApprovalRequired)).toBeTruthy();
+  });
   it('shows distinct empty, error and offline states', async () => {
     mount();
     expect(screen.getByText(copy.empty.available)).toBeTruthy();

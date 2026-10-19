@@ -11,7 +11,11 @@ import {
   type Page
 } from '@playwright/test';
 import { waitForHydratedPage } from './auth-helpers';
-import { runCleanupTasks, runMatchFixtureCleanup } from './match-fixture-cleanup';
+import {
+  removeMatchFixturePhotos,
+  runCleanupInOrder,
+  runMatchFixtureCleanup
+} from './match-fixture-cleanup';
 
 // PAF-5.6 visual gate (PAF-83). Companion to e2e/matches-registration.spec.ts — the
 // functional journeys live there and must stay untouched. Every screen pairs exact
@@ -1788,6 +1792,38 @@ async function ensureNotificationFixtures(): Promise<void> {
 // Screens
 // ---------------------------------------------------------------------------
 
+test('match fixture cleanup waits for database deletion before photo removal', async () => {
+  const completed: string[] = [];
+  await runCleanupInOrder([
+    async () => {
+      completed.push('database committed');
+    },
+    async () => {
+      expect(completed).toEqual(['database committed']);
+      completed.push('photos removed');
+    }
+  ]);
+  expect(completed).toEqual(['database committed', 'photos removed']);
+});
+
+test('match fixture cleanup treats a no-op photo removal as residue', async () => {
+  const path = 'owned-event/owned-user/owned-photo.png';
+  await expect(
+    removeMatchFixturePhotos([
+      {
+        actor: {
+          client: {
+            storage: {
+              from: () => ({ remove: async () => ({ data: [], error: null }) })
+            }
+          }
+        },
+        path
+      }
+    ])
+  ).rejects.toThrow(`Match fixture photo remains after cleanup: ${path}`);
+});
+
 test.describe.serial('PAF-5 registration visual and structural QA', () => {
   test.beforeAll(() => {
     test.setTimeout(240_000);
@@ -2582,17 +2618,10 @@ test.describe.serial('PAF-5 registration visual and structural QA', () => {
     );
     for (const result of closes) if (result.status === 'rejected') errors.push(result.reason);
     try {
-      await runCleanupTasks([
-        async () => {
-          for (const photo of uploadedPhotos) {
-            const result = await photo.actor.client.storage
-              .from('match-event-photos')
-              .remove([photo.path]);
-            if (result.error) throw result.error;
-          }
-        },
+      await runCleanupInOrder([
         () =>
-          runMatchFixtureCleanup({ eventIds: [...ownedEvents], actorIds: [...ownedActors.keys()] })
+          runMatchFixtureCleanup({ eventIds: [...ownedEvents], actorIds: [...ownedActors.keys()] }),
+        () => removeMatchFixturePhotos(uploadedPhotos)
       ]);
     } catch (error) {
       errors.push(error);

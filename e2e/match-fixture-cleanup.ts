@@ -25,6 +25,37 @@ export async function runCleanupTasks(tasks: readonly (() => Promise<unknown>)[]
   if (errors.length) throw new AggregateError(errors, 'One or more fixture cleanup tasks failed');
 }
 
+export async function runCleanupInOrder(tasks: readonly (() => Promise<unknown>)[]): Promise<void> {
+  for (const task of tasks) await task();
+}
+
+type MatchFixturePhoto = {
+  actor: {
+    client: {
+      storage: {
+        from: (bucket: string) => {
+          remove: (paths: string[]) => Promise<{
+            data: { name: string }[] | null;
+            error: unknown;
+          }>;
+        };
+      };
+    };
+  };
+  path: string;
+};
+
+export async function removeMatchFixturePhotos(
+  photos: readonly MatchFixturePhoto[]
+): Promise<void> {
+  for (const photo of photos) {
+    const result = await photo.actor.client.storage.from('match-event-photos').remove([photo.path]);
+    if (result.error) throw result.error;
+    if (!result.data?.some((removed) => removed.name === photo.path))
+      throw new Error(`Match fixture photo remains after cleanup: ${photo.path}`);
+  }
+}
+
 /** Trusted ownership-only SQL; materializes event IDs before notifications or events are deleted. */
 export function buildMatchFixtureCleanupSql(owner: MatchFixtureOwner = {}): string {
   const actorPredicate = (column: string): string =>

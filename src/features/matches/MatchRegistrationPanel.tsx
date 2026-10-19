@@ -189,12 +189,15 @@ export function MatchRegistrationPanel({
     ? 'closed'
     : matchRegistrationAction(event, now);
   // An active member may be eligible by level but still needs an invite for an
-  // invite-only event. Keep that unregistered state separate from ordinary join.
+  // invite-only event. An invited caller requiring approval cannot submit a
+  // request to an invite-only event, so preserve the invitation-only state there too.
   const invitedWithoutRegistration =
     registration.state === 'none' &&
-    registrationAction === 'join' &&
     eventBoolean(event, 'caller_is_invited') === true &&
-    eventString(event, 'visibility') === 'invite_only';
+    eventString(event, 'visibility') === 'invite_only' &&
+    (registrationAction === 'join' ||
+      (registrationAction === 'request' &&
+        eventBoolean(event, 'caller_requires_approval') === true));
   const action = invitedWithoutRegistration ? 'invited' : registrationAction;
 
   // An invited caller has no registration row yet, so this panel has no place to

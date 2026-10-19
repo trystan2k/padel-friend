@@ -389,6 +389,52 @@ describe('listMatchEvents database-issued snapshot', () => {
     expect(result.next_cursor).toBe('cur-b');
   });
 
+  it('accepts PostgreSQL snapshot spelling for the same instant and rejects microsecond drift', async () => {
+    const requestedSnapshot = '2026-10-19T00:00:00.000Z';
+    const databaseSnapshot = '2026-10-19T00:00:00+00:00';
+    const equivalent = listClientWith(
+      [
+        {
+          event_id: EVENT_A,
+          title: 'Second page',
+          photo_path: null,
+          cursor: 'cur-a',
+          as_of: databaseSnapshot
+        }
+      ],
+      { data: [], error: null }
+    );
+    mocks.requireAuthenticatedClient.mockReset().mockResolvedValue({ client: equivalent.client });
+
+    const result = await listMatchEvents({ data: { ...baseInput, as_of: requestedSnapshot } });
+
+    expect(result.as_of).toBe(databaseSnapshot);
+    expect(equivalent.client.rpc).toHaveBeenCalledExactlyOnceWith('list_match_events', {
+      p_entry: 'available',
+      p_cursor: '',
+      p_limit: 20,
+      p_as_of: requestedSnapshot
+    });
+
+    const drifted = listClientWith(
+      [
+        {
+          event_id: EVENT_A,
+          title: 'Drifted page',
+          photo_path: null,
+          cursor: 'cur-a',
+          as_of: '2026-10-19T00:00:00.000001+00:00'
+        }
+      ],
+      { data: [], error: null }
+    );
+    mocks.requireAuthenticatedClient.mockReset().mockResolvedValue({ client: drifted.client });
+
+    await expect(
+      listMatchEvents({ data: { ...baseInput, as_of: requestedSnapshot } })
+    ).rejects.toThrow('MATCH_LIST_SNAPSHOT_MISMATCH');
+  });
+
   it('strips the row-only as_of and cursor fields from every card', async () => {
     const rows = [
       { event_id: EVENT_A, title: 'First', photo_path: null, cursor: 'cur-a' },

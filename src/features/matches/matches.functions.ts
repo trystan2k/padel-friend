@@ -18,6 +18,27 @@ export type MatchEventResult =
   | { status: 'unavailable' }
   | { status: 'error' };
 
+function snapshotInstant(value: string): bigint | null {
+  const match =
+    /^(\d{4}-\d{2}-\d{2}[Tt ]\d{2}:\d{2}:\d{2})(?:\.(\d+))?(Z|[+-]\d{2}:?\d{2})?$/i.exec(value);
+  if (match) {
+    const baseMilliseconds = Date.parse(`${match[1]}${match[3] ?? 'Z'}`);
+    if (!Number.isFinite(baseMilliseconds)) return null;
+    const fraction = match[2] ?? '';
+    // PostgreSQL timestamptz preserves microseconds; compare at that precision.
+    const microseconds = BigInt(fraction.slice(0, 6).padEnd(6, '0') || '0');
+    const roundedMicroseconds =
+      fraction.length > 6 && Number(fraction[6]) >= 5 ? microseconds + 1n : microseconds;
+    return BigInt(baseMilliseconds) * 1000n + roundedMicroseconds;
+  }
+
+  // Date.parse only retains milliseconds. Refuse fractional non-ISO forms rather
+  // than accidentally accepting a timestamp that differs below millisecond precision.
+  if (/[.,]\d{4,}/.test(value)) return null;
+  const milliseconds = Date.parse(value);
+  return Number.isFinite(milliseconds) ? BigInt(milliseconds) * 1000n : null;
+}
+
 async function authenticatedClient() {
   const result = await requireAuthenticatedClient();
   const { data, error } = await result.client.auth.getClaims();
@@ -73,15 +94,19 @@ export const listMatchEvents = createServerFn({ method: 'GET' })
       typeof rows[0].as_of === 'string'
         ? rows[0].as_of
         : null;
+    const expectedAsOf = data.as_of ?? asOf;
+    const expectedInstant = expectedAsOf === null ? null : snapshotInstant(expectedAsOf);
     if (
       asOf === null ||
+      expectedInstant === null ||
       rows.some(
         (row) =>
           typeof row !== 'object' ||
           row === null ||
           Array.isArray(row) ||
           !('as_of' in row) ||
-          row.as_of !== (data.as_of ?? asOf)
+          typeof row.as_of !== 'string' ||
+          snapshotInstant(row.as_of) !== expectedInstant
       )
     )
       throw new Error('MATCH_LIST_SNAPSHOT_MISMATCH');

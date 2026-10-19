@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { I18nextProvider } from 'react-i18next';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createI18n } from '../src/i18n/config';
+import type { MyMatchRegistration } from '../src/features/matches/match-registration-model';
 import en from '../src/locales/en/translation.json';
 import pt from '../src/locales/pt-BR/translation.json';
 import es from '../src/locales/es/translation.json';
@@ -149,6 +150,79 @@ describe('match detail surface', () => {
     expect(screen.getByText(pt.matches.detail.outOfRangeApprovalRequired)).toBeTruthy();
     expect(screen.getByText(pt.matches.detail.invitationInfo)).toBeTruthy();
     expect(screen.queryByRole('button', { name: /join|entrar|participar/i })).toBeNull();
+  });
+  it('keeps invite-only invited approval-required callers out of the request CTA while community-open callers can request', () => {
+    const invitedOutOfRange = {
+      caller_eligibility: 'out_of_range',
+      caller_is_invited: true,
+      caller_requires_approval: true
+    };
+    const registration: MyMatchRegistration = { state: 'none' };
+
+    const inviteOnly = event(21, { ...invitedOutOfRange, visibility: 'invite_only' });
+    const inviteOnlyView = render(
+      <I18nextProvider i18n={createI18n('en')}>
+        <MatchDetailPage event={inviteOnly} registration={registration} />
+      </I18nextProvider>
+    );
+    expect(screen.getByText(en.matches.detail.invitationInfo)).toBeTruthy();
+    expect(
+      screen.getAllByText(en.matches.detail.outOfRangeApprovalRequired).length
+    ).toBeGreaterThan(0);
+    expect(
+      screen.queryByRole('button', { name: en.matchRegistration.join.requestButton })
+    ).toBeNull();
+
+    inviteOnlyView.unmount();
+    const communityOpen = event(22, { ...invitedOutOfRange, visibility: 'community_open' });
+    render(
+      <I18nextProvider i18n={createI18n('en')}>
+        <MatchDetailPage event={communityOpen} registration={registration} />
+      </I18nextProvider>
+    );
+    expect(screen.getByText(en.matches.detail.invitationInfo)).toBeTruthy();
+    expect(
+      screen.getByRole('button', { name: en.matchRegistration.join.requestButton })
+    ).toBeTruthy();
+  });
+  it('shows participation and invitation without approval wording for an accepted invitee', () => {
+    const acceptedRegistration: MyMatchRegistration = {
+      state: 'accepted',
+      event_id: event(23).event_id,
+      participation: 'playing',
+      accepted_order: 1,
+      position: 1,
+      registration_source: 'member',
+      requested_at: '2026-10-18T09:00:00.000Z',
+      approved_at: null,
+      accepted_at: '2026-10-18T09:00:00.000Z'
+    };
+    render(
+      <I18nextProvider i18n={createI18n('en')}>
+        <MatchDetailPage
+          event={event(23, {
+            caller_eligibility: 'out_of_range',
+            caller_is_invited: true,
+            caller_requires_approval: true
+          })}
+          registration={acceptedRegistration}
+        />
+      </I18nextProvider>
+    );
+    expect(screen.getByText(en.matches.detail.invitationInfo)).toBeTruthy();
+    expect(screen.getByText(en.matchRegistration.badges.playing)).toBeTruthy();
+    expect(screen.queryByText(en.matches.detail.outOfRangeApprovalRequired)).toBeNull();
+  });
+  it('keeps approval requirement visible for a nonaccepted out-of-range invitee', () => {
+    mount(
+      event(24, {
+        caller_eligibility: 'out_of_range',
+        caller_is_invited: true,
+        caller_requires_approval: true
+      })
+    );
+    expect(screen.getByText(en.matches.detail.invitationInfo)).toBeTruthy();
+    expect(screen.getByText(en.matches.detail.outOfRangeApprovalRequired)).toBeTruthy();
   });
   it('shows guest approval information without registration action', () => {
     mount(event(9, { caller_eligibility: 'nonmember', caller_requires_approval: true }));

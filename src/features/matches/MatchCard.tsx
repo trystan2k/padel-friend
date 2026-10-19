@@ -22,6 +22,11 @@ export function MatchCard({ event }: { event: MatchEventListItem }) {
       accepted: event.is_accepted === true,
       invited: event.is_invited === true
     });
+  const callerAccepted =
+    event.is_accepted === true ||
+    badge === 'playing' ||
+    badge === 'reserve' ||
+    badge === 'reserve_not_playing';
   const starts = typeof event.starts_at === 'string' ? event.starts_at : '';
   const zone = typeof event.timezone === 'string' ? event.timezone : 'UTC';
   const venue = event.venue_name ?? '';
@@ -103,12 +108,12 @@ export function MatchCard({ event }: { event: MatchEventListItem }) {
         <StatusBadge appearance="emphasis">{t(`matches.badges.${badge}`)}</StatusBadge>
       )}
       {event.caller_is_invited && <p>{t('matches.detail.invitationInfo')}</p>}
-      {event.caller_eligibility === 'nonmember' && event.caller_requires_approval && (
-        <p>{t('matches.detail.guestApprovalRequired')}</p>
-      )}
-      {event.caller_eligibility === 'out_of_range' && event.caller_requires_approval && (
-        <p>{t('matches.detail.outOfRangeApprovalRequired')}</p>
-      )}
+      {!callerAccepted &&
+        event.caller_eligibility === 'nonmember' &&
+        event.caller_requires_approval && <p>{t('matches.detail.guestApprovalRequired')}</p>}
+      {!callerAccepted &&
+        event.caller_eligibility === 'out_of_range' &&
+        event.caller_requires_approval && <p>{t('matches.detail.outOfRangeApprovalRequired')}</p>}
       {event.is_past && (
         <>
           <p>{t('matches.detail.pastScheduled')}</p>

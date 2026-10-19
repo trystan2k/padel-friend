@@ -54,6 +54,7 @@ export function MatchDetailPage({
     null
   );
   const eventId = typeof event?.event_id === 'string' ? event.event_id : '';
+  const callerAccepted = registration?.state === 'accepted';
   const canonical =
     typeof window === 'undefined'
       ? `/matches/${eventId}`
@@ -256,13 +257,12 @@ export function MatchDetailPage({
                 (event.visibility === 'invite_only' ? 'invite_only' : 'community_open')
             )}
           </p>
-          {event.caller_eligibility === 'nonmember' && (
+          {!callerAccepted && event.caller_eligibility === 'nonmember' && (
             <p>{t('matches.detail.guestApprovalRequired')}</p>
           )}
           {event.caller_eligibility === 'out_of_range' &&
-            event.caller_requires_approval === true && (
-              <p>{t('matches.detail.outOfRangeApprovalRequired')}</p>
-            )}
+            event.caller_requires_approval === true &&
+            !callerAccepted && <p>{t('matches.detail.outOfRangeApprovalRequired')}</p>}
           {event.is_past === true && (
             <>
               <p>{t('matches.detail.pastScheduled')}</p>
