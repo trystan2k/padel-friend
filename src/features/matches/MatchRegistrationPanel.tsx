@@ -1,4 +1,6 @@
 import * as stylex from '@stylexjs/stylex';
+import { StatusBadge } from '../../components/ui/StatusBadge';
+import { RosterRow } from '../../components/ui/RosterRow';
 import { Link } from '@tanstack/react-router';
 import { useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -81,13 +83,9 @@ export function matchRegistrationAction(event: EventRecord, now: number): MatchR
     return 'closed';
   if (matchRegistrationIsFull(event)) return 'full';
   const eligibility = callerEligibility(event);
+  if (eventBoolean(event, 'caller_requires_approval') === true) return 'request';
   if (eligibility === 'invited') return 'invited';
-  if (
-    eligibility === 'out_of_range' ||
-    eligibility === 'nonmember' ||
-    eventBoolean(event, 'caller_requires_approval') === true
-  )
-    return 'request';
+  if (eligibility === 'out_of_range' || eligibility === 'nonmember') return 'request';
   if (eligibility === 'member') return 'join';
   return 'none';
 }
@@ -128,26 +126,6 @@ function cutoffLabel(language: string, iso: string | null, timeZone: string): st
     timeStyle: 'short',
     timeZone
   }).format(new Date(target));
-}
-
-function Badge({
-  tone,
-  children
-}: {
-  tone: 'playing' | 'reserve' | 'muted' | 'danger' | 'guest';
-  children: ReactNode;
-}) {
-  const toneStyle =
-    tone === 'playing'
-      ? s.badgePlaying
-      : tone === 'guest'
-        ? s.badgeGuest
-        : tone === 'danger'
-          ? s.badgeDanger
-          : tone === 'reserve'
-            ? s.badgeReserve
-            : s.badgeMuted;
-  return <span {...stylex.props(s.badge, toneStyle)}>{children}</span>;
 }
 
 function FeedbackOutput({ message }: { message: string | null }) {
@@ -207,7 +185,20 @@ export function MatchRegistrationPanel({
       : t('matchRegistration.join.levelRange', { min, max, level: callerLevel });
   })();
 
-  const action = controller.cutoffReached ? 'closed' : matchRegistrationAction(event, now);
+  const registrationAction = controller.cutoffReached
+    ? 'closed'
+    : matchRegistrationAction(event, now);
+  // An active member may be eligible by level but still needs an invite for an
+  // invite-only event. An invited caller requiring approval cannot submit a
+  // request to an invite-only event, so preserve the invitation-only state there too.
+  const invitedWithoutRegistration =
+    registration.state === 'none' &&
+    eventBoolean(event, 'caller_is_invited') === true &&
+    eventString(event, 'visibility') === 'invite_only' &&
+    (registrationAction === 'join' ||
+      (registrationAction === 'request' &&
+        eventBoolean(event, 'caller_requires_approval') === true));
+  const action = invitedWithoutRegistration ? 'invited' : registrationAction;
 
   // An invited caller has no registration row yet, so this panel has no place to
   // show. The invitation sentence is owned by the detail page's participation
@@ -272,28 +263,24 @@ export function MatchRegistrationPanel({
           ? t('matchRegistration.roster.you')
           : (entry.display_name ?? t('matchRegistration.roster.playerFallback'));
         return (
-          <div
-            key={entry.accepted_order}
-            {...stylex.props(s.rosterRow, isCaller && s.rosterRowSelf)}
-          >
-            <p {...stylex.props(s.rosterName)}>{name}</p>
+          <RosterRow key={entry.accepted_order} name={name} highlighted={isCaller}>
             {entry.display_level !== null && (
               <span {...stylex.props(s.meta)}>
                 {t('matchRegistration.roster.level', { level: entry.display_level })}
               </span>
             )}
-            <Badge tone={tone}>{participationBadge}</Badge>
+            <StatusBadge tone={tone}>{participationBadge}</StatusBadge>
             {(isCaller || entry.registration_source === 'guest') && (
-              <Badge tone={entry.registration_source === 'guest' ? 'guest' : 'muted'}>
+              <StatusBadge tone={entry.registration_source === 'guest' ? 'guest' : 'muted'}>
                 {t(sourceBadgeKey(entry.registration_source))}
-              </Badge>
+              </StatusBadge>
             )}
             {entry.participation !== 'playing' && entry.reserve_position !== null && (
               <span {...stylex.props(s.meta)}>
                 {t('matchRegistration.roster.position', { position: entry.reserve_position })}
               </span>
             )}
-          </div>
+          </RosterRow>
         );
       };
 
@@ -367,18 +354,17 @@ export function MatchRegistrationPanel({
             <p {...stylex.props(s.meta)}>{t('matchRegistration.roster.fifo')}</p>
           )}
           <p {...stylex.props(s.meta)}>{rosterCount(sectionCount)}</p>
-          <div {...stylex.props(s.rosterRow, s.rosterRowSelf)}>
-            <p {...stylex.props(s.rosterName)}>{t('matchRegistration.roster.you')}</p>
-            <Badge tone={tone}>{participationBadge}</Badge>
-            <Badge tone={registration.registration_source === 'guest' ? 'guest' : 'muted'}>
+          <RosterRow name={t('matchRegistration.roster.you')} highlighted>
+            <StatusBadge tone={tone}>{participationBadge}</StatusBadge>
+            <StatusBadge tone={registration.registration_source === 'guest' ? 'guest' : 'muted'}>
               {t(sourceBadgeKey(registration.registration_source))}
-            </Badge>
+            </StatusBadge>
             {participation === 'reserve' && reservePosition !== null && (
               <span {...stylex.props(s.meta)}>
                 {t('matchRegistration.roster.position', { position: reservePosition })}
               </span>
             )}
-          </div>
+          </RosterRow>
         </div>
         <p {...stylex.props(s.note)}>{t('matchRegistration.roster.orderNote')}</p>
         <p {...stylex.props(s.note)}>{t('matchRegistration.roster.authoritativeNote')}</p>
@@ -438,7 +424,7 @@ export function MatchRegistrationPanel({
     body = (
       <div {...stylex.props(s.body)}>
         <div {...stylex.props(s.badgeRow)}>
-          <Badge tone={tone}>{badgeLabel}</Badge>
+          <StatusBadge tone={tone}>{badgeLabel}</StatusBadge>
         </div>
         <p {...stylex.props(s.copy)}>{copy}</p>
         <div {...stylex.props(s.actions)}>
@@ -456,7 +442,7 @@ export function MatchRegistrationPanel({
     body = (
       <div {...stylex.props(s.body)}>
         <div {...stylex.props(s.badgeRow)}>
-          <Badge tone="reserve">{t('matchRegistration.request.pendingBadge')}</Badge>
+          <StatusBadge tone="reserve">{t('matchRegistration.request.pendingBadge')}</StatusBadge>
         </div>
         <p {...stylex.props(s.copy)}>{t('matchRegistration.request.pendingCopy')}</p>
         <p {...stylex.props(s.meta)}>
@@ -477,7 +463,7 @@ export function MatchRegistrationPanel({
     body = (
       <div {...stylex.props(s.body)}>
         <div {...stylex.props(s.badgeRow)}>
-          <Badge tone="danger">{t('matchRegistration.request.declinedBadge')}</Badge>
+          <StatusBadge tone="danger">{t('matchRegistration.request.declinedBadge')}</StatusBadge>
         </div>
         <p {...stylex.props(s.copy)}>{t('matchRegistration.request.declinedCopy')}</p>
         <div {...stylex.props(s.actions)}>
@@ -499,7 +485,7 @@ export function MatchRegistrationPanel({
     body = (
       <div {...stylex.props(s.body)}>
         <div {...stylex.props(s.badgeRow)}>
-          <Badge tone="muted">{t('matchRegistration.request.expiredBadge')}</Badge>
+          <StatusBadge tone="muted">{t('matchRegistration.request.expiredBadge')}</StatusBadge>
         </div>
         <p {...stylex.props(s.copy)}>{t('matchRegistration.request.expiredCopy')}</p>
         <div {...stylex.props(s.actions)}>
@@ -516,7 +502,7 @@ export function MatchRegistrationPanel({
     body = (
       <div {...stylex.props(s.body)}>
         <div {...stylex.props(s.badgeRow)}>
-          <Badge tone="muted">{t('matchRegistration.closed.badge')}</Badge>
+          <StatusBadge tone="muted">{t('matchRegistration.closed.badge')}</StatusBadge>
         </div>
         <p {...stylex.props(s.meta)}>{t('matchRegistration.closed.detail')}</p>
         <p {...stylex.props(s.counts)}>
@@ -543,7 +529,7 @@ export function MatchRegistrationPanel({
     body = (
       <div {...stylex.props(s.body)}>
         <div {...stylex.props(s.badgeRow)}>
-          <Badge tone="danger">{t('matchRegistration.full.badge')}</Badge>
+          <StatusBadge tone="danger">{t('matchRegistration.full.badge')}</StatusBadge>
         </div>
         <p {...stylex.props(s.meta)}>
           {t('matchRegistration.full.detail', { accepted: counts.accepted, maximum })}

@@ -1,3 +1,4 @@
+import { StatusBadge } from '../../components/ui/StatusBadge';
 import * as stylex from '@stylexjs/stylex';
 import { Link } from '@tanstack/react-router';
 import { useTranslation } from 'react-i18next';
@@ -21,9 +22,14 @@ export function MatchCard({ event }: { event: MatchEventListItem }) {
       accepted: event.is_accepted === true,
       invited: event.is_invited === true
     });
+  const callerAccepted =
+    event.is_accepted === true ||
+    badge === 'playing' ||
+    badge === 'reserve' ||
+    badge === 'reserve_not_playing';
   const starts = typeof event.starts_at === 'string' ? event.starts_at : '';
   const zone = typeof event.timezone === 'string' ? event.timezone : 'UTC';
-  const venue = String(event.venue_name ?? '');
+  const venue = event.venue_name ?? '';
   const price =
     typeof event.price_minor === 'number' && typeof event.currency === 'string'
       ? new Intl.NumberFormat(i18n.language, {
@@ -55,7 +61,7 @@ export function MatchCard({ event }: { event: MatchEventListItem }) {
       </p>
       <p>
         <a
-          href={String(event.maps_url ?? '')}
+          href={event.maps_url ?? ''}
           target="_blank"
           rel="noopener noreferrer"
           {...stylex.props(s.cardLink)}
@@ -84,7 +90,7 @@ export function MatchCard({ event }: { event: MatchEventListItem }) {
         {t(
           event.event_type === 'competitive' ? 'matches.type.competitive' : 'matches.type.friendly'
         )}{' '}
-        · {String(event.creator_name ?? '')} ({t('matches.card.approximateLevel')}:{' '}
+        · {event.creator_name ?? ''} ({t('matches.card.approximateLevel')}:{' '}
         {String(event.creator_level ?? '')})
       </p>
       <p>
@@ -98,14 +104,16 @@ export function MatchCard({ event }: { event: MatchEventListItem }) {
           {t('matches.card.pricePerPlayer')}: {price}
         </p>
       )}
-      {badge && badge !== 'creator' && <strong>{t(`matches.badges.${badge}`)}</strong>}
-      {event.caller_eligibility === 'invited' && <p>{t('matches.detail.invitationInfo')}</p>}
-      {event.caller_eligibility === 'nonmember' && event.caller_requires_approval && (
-        <p>{t('matches.detail.guestApprovalRequired')}</p>
+      {badge && badge !== 'creator' && (
+        <StatusBadge appearance="emphasis">{t(`matches.badges.${badge}`)}</StatusBadge>
       )}
-      {event.caller_eligibility === 'out_of_range' && event.caller_requires_approval && (
-        <p>{t('matches.detail.outOfRangeApprovalRequired')}</p>
-      )}
+      {event.caller_is_invited && <p>{t('matches.detail.invitationInfo')}</p>}
+      {!callerAccepted &&
+        event.caller_eligibility === 'nonmember' &&
+        event.caller_requires_approval && <p>{t('matches.detail.guestApprovalRequired')}</p>}
+      {!callerAccepted &&
+        event.caller_eligibility === 'out_of_range' &&
+        event.caller_requires_approval && <p>{t('matches.detail.outOfRangeApprovalRequired')}</p>}
       {event.is_past && (
         <>
           <p>{t('matches.detail.pastScheduled')}</p>

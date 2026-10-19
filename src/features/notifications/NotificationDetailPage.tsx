@@ -71,9 +71,14 @@ type TranslateFn = (key: string, options?: Record<string, unknown>) => string;
 function registrationHeading(
   t: TranslateFn,
   kind: RegistrationNotificationKind | null,
+  notificationKind: string | null | undefined,
   group: number | null
 ): string {
-  if (kind === null) return t('notifications.kinds.match_event_invitation');
+  if (notificationKind === 'match_event_published')
+    return t('notifications.kinds.match_event_published');
+  if (notificationKind === 'match_event_invitation')
+    return t('notifications.kinds.match_event_invitation');
+  if (kind === null) return t('notifications.generic');
   if (kind === 'match_registration_playing')
     return group === null
       ? t('notifications.kinds.match_registration_playing')
@@ -306,15 +311,23 @@ export function NotificationDetailPage({
         target.match_available &&
         target.match_event_id ? (
           <>
-            <h1>{registrationHeading(t, registrationKind, fifoGroup)}</h1>
+            <h1>{registrationHeading(t, registrationKind, target.kind, fifoGroup)}</h1>
             {currentMatchContext ? (
               <>
-                {registrationKind === null ? (
+                {target.kind === 'match_event_published' ? (
+                  <p>
+                    {t('notifications.match.publishedBy', {
+                      name: currentMatchContext.creator_display_name
+                    })}
+                  </p>
+                ) : target.kind === 'match_event_invitation' ? (
                   <p>
                     {t('notifications.match.invitedBy', {
                       name: currentMatchContext.creator_display_name
                     })}
                   </p>
+                ) : registrationKind === null ? (
+                  <p>{t('notifications.generic')}</p>
                 ) : registrationKind === 'match_registration_requested' ? (
                   <p>
                     {t('notifications.match.registrationRequestBody', {

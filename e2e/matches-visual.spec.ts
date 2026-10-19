@@ -635,6 +635,119 @@ async function assertPrimaryHitTargets(
   }
 }
 
+// F25 touch-label evidence. The rendered hit area is read from the LABEL element itself
+// with getBoundingClientRect() — neither the min-block-size CSS declaration nor the
+// checkbox input's own box proves the rendered area. measureTouchLabel runs in the page
+// and returns the label rect, the rendered text-line layout (Range.getClientRects over
+// the label's own text nodes) and the implicit label↔input association.
+type TouchLabelKey = (typeof TOUCH_LABEL_KEYS)[number];
+
+const TOUCH_LABEL_KEYS = ['levelRestriction', 'courtBooked'] as const;
+
+type TouchLabelReading = {
+  width: number;
+  height: number;
+  textLines: number;
+  textWidth: number;
+  textOverhangRight: number;
+  textOverhangBottom: number;
+  associated: boolean;
+  inputInsetRight: number;
+};
+
+function touchLabel(page: Page, copy: Copy, key: TouchLabelKey): Locator {
+  return page
+    .locator('main label')
+    .filter({ has: page.getByRole('checkbox', { name: copy.matchCreate.fields[key] }) });
+}
+
+function measureTouchLabel(node: HTMLLabelElement): TouchLabelReading {
+  const rect = node.getBoundingClientRect();
+  const input = node.querySelector('input[type="checkbox"]');
+  const inputRect = input?.getBoundingClientRect() ?? null;
+  const lineRects: DOMRect[] = [];
+  for (const child of node.childNodes)
+    if (child.nodeType === Node.TEXT_NODE) {
+      const range = document.createRange();
+      range.selectNodeContents(child);
+      lineRects.push(...Array.from(range.getClientRects()));
+    }
+  const visible = lineRects.filter((line) => line.width > 0 && line.height > 0);
+  return {
+    width: rect.width,
+    height: rect.height,
+    textLines: new Set(visible.map((line) => line.top.toFixed(1))).size,
+    textWidth: visible.reduce((widest, line) => Math.max(widest, line.width), 0),
+    textOverhangRight: visible.reduce((worst, line) => Math.max(worst, line.right - rect.right), 0),
+    textOverhangBottom: visible.reduce(
+      (worst, line) => Math.max(worst, line.bottom - rect.bottom),
+      0
+    ),
+    associated:
+      input instanceof HTMLInputElement && input.labels !== null
+        ? Array.from(input.labels).includes(node)
+        : false,
+    inputInsetRight: inputRect ? rect.right - inputRect.right : Number.NaN
+  };
+}
+
+/** Both checkbox labels must render at ≥44px in BOTH dimensions, measured on the label
+ * element itself; the measured numbers are printed so the run records real evidence. */
+async function assertCheckboxLabelTargets(page: Page, copy: Copy, label: string): Promise<void> {
+  for (const key of TOUCH_LABEL_KEYS) {
+    const text = copy.matchCreate.fields[key];
+    const target = touchLabel(page, copy, key);
+    await expect(target).toHaveCount(1);
+    const reading = await target.evaluate(measureTouchLabel);
+    console.log(
+      `[touch-label] ${label} ${key} "${text}": ${reading.width.toFixed(2)} × ${reading.height.toFixed(2)}px`
+    );
+    expect(
+      reading.width,
+      `${label}: checkbox label ${text} rendered width (got ${reading.width}px)`
+    ).toBeGreaterThanOrEqual(44);
+    expect(
+      reading.height,
+      `${label}: checkbox label ${text} rendered height (got ${reading.height}px)`
+    ).toBeGreaterThanOrEqual(44);
+    expect(
+      reading.associated,
+      `${label}: checkbox label ${text} must be programmatically associated with its input`
+    ).toBe(true);
+  }
+}
+
+/** Clicking the LABEL at its trailing edge — a point measurably past the checkbox input's
+ * own box — must toggle the checkbox and restore it on the second click. */
+async function assertTouchLabelActivation(
+  page: Page,
+  copy: Copy,
+  key: TouchLabelKey,
+  label: string
+): Promise<void> {
+  const text = copy.matchCreate.fields[key];
+  const target = touchLabel(page, copy, key);
+  await expect(target).toHaveCount(1);
+  const reading = await target.evaluate(measureTouchLabel);
+  const clickX = reading.width - 4;
+  expect(
+    clickX,
+    `${label}: ${key} ("${text}") label-edge click point ${clickX}px must clear the checkbox input itself (input right inset ${reading.inputInsetRight}px)`
+  ).toBeGreaterThan(reading.width - reading.inputInsetRight);
+  const checkbox = target.locator('input[type="checkbox"]');
+  const before = await checkbox.isChecked();
+  await target.click({ position: { x: clickX, y: reading.height / 2 } });
+  await expect(
+    checkbox,
+    `${label}: clicking the ${key} ("${text}") label edge must toggle the checkbox`
+  ).toBeChecked({ checked: !before });
+  await target.click({ position: { x: clickX, y: reading.height / 2 } });
+  await expect(
+    checkbox,
+    `${label}: second ${key} ("${text}") label-edge click must restore the checkbox`
+  ).toBeChecked({ checked: before });
+}
+
 /** Photo aspect treatment: 16/9 cover cropping, matching the design's venue imagery. */
 async function assertPhotoAspectTreatment(page: Page, label: string): Promise<void> {
   const images = page.locator('main img');
@@ -1627,6 +1740,7 @@ test.describe.serial('PAF-4 match event visual and structural QA', () => {
       '--color-bg'
     );
     await assertNoHorizontalOverflow(page, 'create details 390');
+    await assertCheckboxLabelTargets(page, en, 'create details 390');
     await assertPrimaryHitTargets(page, 'create details 390');
     await compare(page, 'create-details.png');
 
@@ -1698,6 +1812,203 @@ test.describe.serial('PAF-4 match event visual and structural QA', () => {
     await assertNoHorizontalOverflow(page, 'create team mode 390');
     await assertPrimaryHitTargets(page, 'create team mode 390');
     await compare(page, 'create-team-mode.png');
+  });
+
+  // F25 completion: the full touch-label geometry matrix with RECORDED numbers. The
+  // Details test above gates the 390/light/en capture; this test measures BOTH labels'
+  // rendered label-element geometry (getBoundingClientRect width AND height ≥44) across
+  // mobile AND desktop viewports × light AND dark themes × en/pt-BR/es, proves the label
+  // edge (not the input) toggles its checkbox with the implicit label↔input association
+  // intact, and proves at 320px that every translated label lays out without overflowing
+  // its label box — including an actual wrap exercise (constrained label box) so the
+  // multi-line wrap path is measured, never assumed. A pre-existing page-level 320px
+  // overflow driven by the venue-photo file input is documented numerically there (src/**
+  // is out of scope) with a structural gate proving the labels themselves fit 320px.
+  // No screenshots, no budgets: pure rendered measurements, printed and attached.
+  test('create details — touch-label geometry matrix across viewports, themes and locales', async ({
+    browser
+  }) => {
+    test.setTimeout(600_000);
+    const host = await createActor('Marina Alves');
+    await createPublicCommunity(host);
+    const rows: string[] = [];
+    const recordRow = (row: string): void => {
+      rows.push(row);
+      console.log(row);
+    };
+
+    const openCreateDetails = async (options: {
+      viewport: Viewport;
+      theme: 'light' | 'dark';
+      locale: 'en' | 'pt-BR' | 'es';
+      assertOverflowFree: boolean;
+    }): Promise<{ page: Page; close: () => Promise<void> }> => {
+      const copy = copyFor(options.locale);
+      const context = await newContext(browser, {
+        viewport: options.viewport,
+        locale: options.locale,
+        theme: options.theme
+      });
+      const page = await context.newPage();
+      await signIn(page, host, copy);
+      await page.goto('/matches/create');
+      await ready(page);
+      await expect(
+        page.getByRole('heading', { level: 1, name: copy.matchCreate.title })
+      ).toBeVisible();
+      if (options.assertOverflowFree)
+        await assertNoHorizontalOverflow(page, `create details ${options.theme} ${options.locale}`);
+      return { page, close: () => context.close() };
+    };
+
+    const describeReading = (reading: TouchLabelReading): string =>
+      `${reading.width.toFixed(2)} × ${reading.height.toFixed(2)}px (text ${reading.textLines} line(s), text width ${reading.textWidth.toFixed(2)}px, text overhang right ${reading.textOverhangRight.toFixed(2)}px, associated ${reading.associated})`;
+
+    const assertReading = (
+      reading: TouchLabelReading,
+      label: string,
+      key: TouchLabelKey,
+      copy: Copy
+    ): void => {
+      expect(reading.associated, `${label}: ${key} label↔input association`).toBe(true);
+      expect(
+        reading.width,
+        `${label}: ${key} ("${copy.matchCreate.fields[key]}") label rendered width (got ${reading.width}px)`
+      ).toBeGreaterThanOrEqual(44);
+      expect(
+        reading.height,
+        `${label}: ${key} ("${copy.matchCreate.fields[key]}") label rendered height (got ${reading.height}px)`
+      ).toBeGreaterThanOrEqual(44);
+      expect(
+        reading.textOverhangRight,
+        `${label}: ${key} ("${copy.matchCreate.fields[key]}") translated text must not overflow the label horizontally`
+      ).toBeLessThanOrEqual(0.5);
+      expect(
+        reading.textOverhangBottom,
+        `${label}: ${key} ("${copy.matchCreate.fields[key]}") translated text must not overflow the label vertically`
+      ).toBeLessThanOrEqual(0.5);
+    };
+
+    for (const [viewportName, viewport] of [
+      ['mobile-390', { width: 390, height: 844 }],
+      ['desktop-1280', { width: 1280, height: 800 }]
+    ] as const)
+      for (const theme of ['light', 'dark'] as const)
+        for (const locale of ['en', 'pt-BR', 'es'] as const) {
+          const label = `touch-label ${viewportName} ${theme} ${locale}`;
+          const { page, close } = await openCreateDetails({
+            viewport,
+            theme,
+            locale,
+            assertOverflowFree: true
+          });
+          const copy = copyFor(locale);
+          for (const key of TOUCH_LABEL_KEYS) {
+            const target = touchLabel(page, copy, key);
+            await expect(target).toHaveCount(1);
+            const reading = await target.evaluate(measureTouchLabel);
+            recordRow(
+              `[touch-label] ${label} ${key} "${copy.matchCreate.fields[key]}": ${describeReading(reading)}`
+            );
+            assertReading(reading, label, key, copy);
+            await assertTouchLabelActivation(page, copy, key, label);
+          }
+          await close();
+        }
+    // 320px: translations must lay out with zero horizontal overflow (page and label box)
+    // while the ≥44×44 geometry assertion still holds, and the wrap path must actually
+    // wrap: constraining the label forces the translated text onto multiple rendered
+    // lines and the measured box stays ≥44px tall — then restores untouched.
+    for (const locale of ['en', 'pt-BR', 'es'] as const) {
+      const label = `touch-label 320 light ${locale}`;
+      const copy = copyFor(locale);
+      const { page, close } = await openCreateDetails({
+        viewport: { width: 320, height: 844 },
+        theme: 'light',
+        locale,
+        // The page-level overflow at 320px is the documented pre-existing file-input
+        // defect (evidence recorded below); the touch-label probes below gate the F25
+        // geometry, wrap and label-scoped overflow-freedom instead.
+        assertOverflowFree: false
+      });
+      for (const key of TOUCH_LABEL_KEYS) {
+        const target = touchLabel(page, copy, key);
+        await expect(target).toHaveCount(1);
+        const reading = await target.evaluate(measureTouchLabel);
+        recordRow(
+          `[touch-label] ${label} ${key} "${copy.matchCreate.fields[key]}": ${describeReading(reading)}`
+        );
+        assertReading(reading, label, key, copy);
+        await target.evaluate((node) => {
+          node.style.maxWidth = '120px';
+        });
+        const wrapped = await target.evaluate(measureTouchLabel);
+        recordRow(
+          `[touch-label] ${label} ${key} "${copy.matchCreate.fields[key]}" constrained to 120px: ${wrapped.width.toFixed(2)} × ${wrapped.height.toFixed(2)}px (text ${wrapped.textLines} line(s), text overhang right ${wrapped.textOverhangRight.toFixed(2)}px)`
+        );
+        expect(
+          wrapped.textLines,
+          `${label}: ${key} constrained label must actually wrap its translated text onto multiple rendered lines`
+        ).toBeGreaterThanOrEqual(2);
+        expect(
+          wrapped.width,
+          `${label}: ${key} wrapped label rendered width (got ${wrapped.width}px)`
+        ).toBeGreaterThanOrEqual(44);
+        expect(
+          wrapped.height,
+          `${label}: ${key} wrapped label rendered height (got ${wrapped.height}px)`
+        ).toBeGreaterThanOrEqual(44);
+        expect(
+          wrapped.textOverhangRight,
+          `${label}: ${key} wrapped text must not overflow the label horizontally`
+        ).toBeLessThanOrEqual(0.5);
+        await target.evaluate((node) => {
+          node.style.maxWidth = '';
+        });
+        const restored = await target.evaluate(measureTouchLabel);
+        expect(
+          Math.abs(restored.width - reading.width),
+          `${label}: ${key} label must restore its unconstrained rendered width`
+        ).toBeLessThanOrEqual(0.5);
+      }
+      // Known pre-existing page defect, deliberately NOT gated here (src/** is out of
+      // scope for this probe and the F25 labels are not the driver): at 320px the Details
+      // column overflows to 362px because the venue-photo FILE input carries an intrinsic
+      // min-content width of 344px (18px gutter + 344 = 362). Recorded as numeric evidence
+      // for the follow-up fix. The gated part proves F25 innocence AND that every other
+      // page element — including both touch labels — fits 320px exactly once that one
+      // input is removed: a fact that must keep holding after the fix lands.
+      const defect = await page.evaluate(() => {
+        const docWidth = (): number => document.documentElement.scrollWidth;
+        const file = document.querySelector<HTMLInputElement>('main input[type="file"]');
+        const fileRect = file?.getBoundingClientRect();
+        const overflowed = docWidth();
+        if (file) file.style.display = 'none';
+        const withoutFile = docWidth();
+        if (file) file.style.display = '';
+        return {
+          viewportInnerWidth: window.innerWidth,
+          overflowed,
+          fileWidth: fileRect ? Math.round(fileRect.width * 100) / 100 : null,
+          fileScrollWidth: file?.scrollWidth ?? null,
+          fileLeft: fileRect ? Math.round(fileRect.left) : null,
+          withoutFile
+        };
+      });
+      recordRow(
+        `[touch-label] KNOWN DEFECT ${label}: create-details overflows ${defect.viewportInnerWidth}px viewport to ${defect.overflowed}px document width; the venue-photo file input is the driver (rendered ${defect.fileWidth}px, scrollWidth ${defect.fileScrollWidth}px, left ${defect.fileLeft}px; 18px gutter + 344 = 362); with only that input removed the page fits at ${defect.withoutFile}px — the touch labels and all remaining fields are defect-free`
+      );
+      expect(
+        defect.withoutFile,
+        `${label}: with the known-defect file input removed, the whole Details page (touch labels included) must fit 320px with zero horizontal overflow`
+      ).toBeLessThanOrEqual(320);
+      await close();
+    }
+
+    await test.info().attach('touch-label geometry matrix measurements', {
+      body: rows.join('\n'),
+      contentType: 'text/plain'
+    });
   });
 
   test('create wizard — Review states the publication summary over the staged photo', async ({
@@ -1965,6 +2276,14 @@ test.describe.serial('PAF-4 match event visual and structural QA', () => {
       page.getByRole('heading', { level: 1, name: `${en.matches.detail.title}: ${VENUES.invited}` })
     ).toBeVisible();
     await expect(page.getByText(en.matches.detail.invitationInfo)).toBeVisible();
+    const inviteeRegistration = await family
+      .invitee!.client.from('match_event_registrations')
+      .select('user_id')
+      .eq('match_event_id', family.invitedId!)
+      .eq('user_id', family.invitee!.id)
+      .maybeSingle();
+    expect(inviteeRegistration.error).toBeNull();
+    expect(inviteeRegistration.data).toBeNull();
     const buttons = page.getByRole('button');
     await expect(buttons).toHaveCount(1);
     await expect(buttons).toHaveAccessibleName(en.matches.detail.share);

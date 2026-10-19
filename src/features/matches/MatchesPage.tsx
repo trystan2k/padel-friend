@@ -13,11 +13,13 @@ export function MatchesPage({
   entry,
   initialItems = EMPTY_ITEMS,
   initialCursor = null,
+  initialAsOf = null,
   initialError = false
 }: {
   entry: MatchEntry;
   initialItems?: MatchEventListItem[];
   initialCursor?: string | null;
+  initialAsOf?: string | null;
   initialError?: boolean;
 }) {
   const { t } = useTranslation();
@@ -25,23 +27,28 @@ export function MatchesPage({
   const [listing, setListing] = useState({
     sourceItems: initialItems,
     sourceCursor: initialCursor,
+    sourceAsOf: initialAsOf,
     sourceError: initialError,
     items: initialItems,
     cursor: initialCursor,
+    asOf: initialAsOf,
     error: initialError,
     generation: 0
   });
   if (
     listing.sourceItems !== initialItems ||
     listing.sourceCursor !== initialCursor ||
+    listing.sourceAsOf !== initialAsOf ||
     listing.sourceError !== initialError
   ) {
     setListing({
       sourceItems: initialItems,
       sourceCursor: initialCursor,
+      sourceAsOf: initialAsOf,
       sourceError: initialError,
       items: initialItems,
       cursor: initialCursor,
+      asOf: initialAsOf,
       error: initialError,
       generation: listing.generation + 1
     });
@@ -67,7 +74,9 @@ export function MatchesPage({
     setLoading(true);
     setListing((previous) => ({ ...previous, error: false }));
     try {
-      const result = await listMatchEvents({ data: { entry, cursor, limit: 20 } });
+      const result = await listMatchEvents({
+        data: { entry, cursor, limit: 20, as_of: listing.asOf }
+      });
       setListing((previous) =>
         previous.generation === version
           ? {

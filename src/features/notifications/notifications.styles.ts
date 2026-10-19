@@ -112,14 +112,6 @@ export const styles = stylex.create({
   list: { listStyle: 'none', margin: 0, padding: 0 },
   cardTitle: { fontSize: 'var(--font-size-14)', marginBlock: 0 },
   cardMeta: { fontSize: 'var(--font-size-12)', color: 'var(--color-muted)' },
-  unreadSummary: {
-    display: 'inline-flex',
-    padding: 'var(--space-2) var(--space-3)',
-    borderRadius: 'var(--radius-12)',
-    backgroundColor: 'var(--color-green-soft)',
-    color: 'var(--color-green)',
-    fontSize: 'var(--font-size-12)'
-  },
   visuallyHidden: {
     position: 'absolute',
     width: 'var(--space-1)',

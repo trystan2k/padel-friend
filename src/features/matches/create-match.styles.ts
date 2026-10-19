@@ -40,7 +40,9 @@ export const createMatchStyles = stylex.create({
   },
   touchLabel: {
     display: 'flex',
+    flexWrap: 'wrap',
     alignItems: 'center',
+    minInlineSize: 'calc(var(--space-40) + var(--space-4))',
     minBlockSize: 'calc(var(--space-40) + var(--space-4))',
     paddingBlock: 'var(--space-2)'
   },

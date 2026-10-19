@@ -45,7 +45,7 @@ export function validateMatchList(value: unknown) {
     community_id: data.community_id == null ? null : validateMatchUuid(data.community_id),
     cursor: typeof data.cursor === 'string' ? data.cursor : '',
     limit,
-    as_of: typeof data.as_of === 'string' ? data.as_of : new Date().toISOString()
+    as_of: typeof data.as_of === 'string' ? data.as_of : null
   };
 }
 export function validateMatchDetail(value: unknown) {

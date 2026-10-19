@@ -96,7 +96,7 @@ export function MatchDetailsForm({
       {field('notes')}
       <fieldset>
         <legend>{t('matchCreate.fields.levelRestriction')}</legend>
-        <label>
+        <label {...stylex.props(s.touchLabel)}>
           <input
             type="checkbox"
             checked={value.levelRestriction !== false}
@@ -111,7 +111,7 @@ export function MatchDetailsForm({
           </div>
         )}
       </fieldset>
-      <label {...stylex.props(s.field)}>
+      <label {...stylex.props(s.touchLabel)}>
         <input
           type="checkbox"
           checked={Boolean(value.courtBooked)}

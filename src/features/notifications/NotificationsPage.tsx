@@ -2,6 +2,7 @@ import * as stylex from '@stylexjs/stylex';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from '@tanstack/react-router';
+import { StatusBadge } from '../../components/ui/StatusBadge';
 import type { NotificationCategory, NotificationPage } from './notification-model';
 import { groupNotifications } from './notification-model';
 import { styles } from './notifications.styles';
@@ -187,7 +188,7 @@ export function NotificationsPage({ initial }: { initial: NotificationPage }) {
               <>
                 <header {...stylex.props(styles.sectionHeader)}>
                   <h2 {...stylex.props(styles.sectionTitle)}>{t('notifications.today')}</h2>
-                  <span {...stylex.props(styles.unreadSummary)}>{unreadSummary}</span>
+                  <StatusBadge appearance="summary">{unreadSummary}</StatusBadge>
                 </header>
                 {list(grouped.today)}
               </>
@@ -197,7 +198,7 @@ export function NotificationsPage({ initial }: { initial: NotificationPage }) {
                 <header {...stylex.props(styles.sectionHeader)}>
                   <h2 {...stylex.props(styles.sectionTitle)}>{t('notifications.earlier')}</h2>
                   {grouped.today.length === 0 && (
-                    <span {...stylex.props(styles.unreadSummary)}>{unreadSummary}</span>
+                    <StatusBadge appearance="summary">{unreadSummary}</StatusBadge>
                   )}
                 </header>
                 {list(grouped.earlier)}

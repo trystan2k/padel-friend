@@ -1,5 +1,7 @@
 import * as stylex from '@stylexjs/stylex';
 import { useState } from 'react';
+import { StatusBadge } from '../../components/ui/StatusBadge';
+import { RosterRow } from '../../components/ui/RosterRow';
 import { useTranslation } from 'react-i18next';
 import type { MatchRegistrationQueue, MatchRegistrationRequest } from './match-registration-model';
 import { matchRegistrationErrorKey } from './match-registration-error-copy';
@@ -110,9 +112,9 @@ export function MatchRequestQueue({
         <span {...stylex.props(s.queueSort)}>{t('matchRegistration.queue.sort')}</span>
       </header>
       <p {...stylex.props(s.badgeRow)}>
-        <span {...stylex.props(s.badge, s.badgeReserve)}>
+        <StatusBadge tone="reserve">
           {t('matchRegistration.queue.count', { count: requests.length })}
-        </span>
+        </StatusBadge>
       </p>
       <div {...stylex.props(s.body)}>
         <h3 {...stylex.props(s.rosterTitle)}>{t('matchRegistration.queue.fifoTitle')}</h3>
@@ -129,24 +131,21 @@ export function MatchRequestQueue({
             const busy = controller.pending || !controller.online;
             return (
               <li key={request.user_id} {...stylex.props(s.requestCard)}>
-                <div {...stylex.props(s.requestHeader)}>
-                  <p {...stylex.props(s.requestName)}>{name}</p>
+                <RosterRow name={name} appearance="request-header">
                   {context === 'guest' && (
-                    <span {...stylex.props(s.badge, s.badgeGuest)}>
-                      {t('matchRegistration.queue.typeGuest')}
-                    </span>
+                    <StatusBadge tone="guest">{t('matchRegistration.queue.typeGuest')}</StatusBadge>
                   )}
                   {(context === 'above_range' || context === 'below_range') && (
-                    <span {...stylex.props(s.badge, s.badgeDanger)}>
+                    <StatusBadge tone="danger">
                       {t('matchRegistration.queue.typeOutOfRange')}
-                    </span>
+                    </StatusBadge>
                   )}
                   {context === 'unrated' && (
-                    <span {...stylex.props(s.badge, s.badgeDanger)}>
+                    <StatusBadge tone="danger">
                       {t('matchRegistration.queue.typeUnrated')}
-                    </span>
+                    </StatusBadge>
                   )}
-                </div>
+                </RosterRow>
                 <p {...stylex.props(s.meta)}>
                   {t(requestContextKey(context), {
                     min: minLevel,

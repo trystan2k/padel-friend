@@ -54,6 +54,7 @@ function event(extra: Record<string, unknown> = {}) {
     registration_open: true,
     caller_eligibility: 'member',
     caller_requires_approval: false,
+    caller_is_invited: false,
     caller_badge: 'member',
     restriction_enabled: true,
     min_level: 2.5,
@@ -162,6 +163,26 @@ describe('match registration panel', () => {
     await waitFor(() =>
       expect(screen.getByText(en.matchRegistration.feedback.pending)).toBeTruthy()
     );
+  });
+
+  it('requests approval for an out-of-range invitee while preserving invitation-only for an in-range invitee', () => {
+    mount(
+      event({
+        caller_eligibility: 'out_of_range',
+        caller_is_invited: true,
+        caller_requires_approval: true
+      }),
+      none
+    );
+    expect(screen.getByText(en.matchRegistration.join.requestButton)).toBeTruthy();
+    expect(screen.getByText(en.matches.detail.outOfRangeApprovalRequired)).toBeTruthy();
+
+    cleanup();
+    mount(event({ caller_eligibility: 'invited', caller_is_invited: true }), none);
+    expect(
+      screen.queryByRole('button', { name: en.matchRegistration.join.requestButton })
+    ).toBeNull();
+    expect(screen.queryByRole('button', { name: en.matchRegistration.join.button })).toBeNull();
   });
 
   it('renders the full capacity state as its own explicit blocked state', () => {

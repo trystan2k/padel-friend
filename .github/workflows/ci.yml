@@ -18,12 +18,30 @@ jobs:
           node-version: '26'
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      # First backend-backed gate: boot the pinned local Supabase stack for integration and E2E.
-      - name: Provision local Supabase
+      # First backend-backed gate: boot disposable local Supabase, prove populated upgrade, then restore latest schema.
+      - name: Start local Supabase
+        run: pnpm exec supabase start
+      - name: Test populated predecessor migration upgrade
+        id: populated-upgrade
+        env:
+          POPULATED_UPGRADE_OPT_IN: '1'
+        run: node scripts/test-populated-migration-up.mjs
+        continue-on-error: true
+      - name: Restore latest local Supabase schema
+        id: final-reset
+        if: always()
+        run: pnpm exec supabase db reset --local
+        continue-on-error: true
+      - name: Enforce populated upgrade and final reset results
+        if: always()
+        run: |
+          if [[ "${{ steps.populated-upgrade.outcome }}" == "failure" || "${{ steps.final-reset.outcome }}" == "failure" ]]; then
+            printf '%s\n' 'Populated migration upgrade or latest-schema restore failed' >&2
+            exit 1
+          fi
+      - name: Provision local Supabase environment
         run: |
           set -euo pipefail
-          pnpm exec supabase start
-          pnpm exec supabase db reset
           status="$(pnpm exec supabase status -o env)"
           API_URL="$(printf '%s\n' "$status" | sed -n 's/^API_URL=//p' | tail -n 1)"
           PUBLISHABLE_KEY="$(printf '%s\n' "$status" | sed -n 's/^PUBLISHABLE_KEY=//p' | tail -n 1)"
