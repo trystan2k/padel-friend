@@ -1,4 +1,5 @@
-begin;
+do $paf_fixture$
+begin
 
 -- Fixed fixture identities make the accepted_at/id tie-break reproducible.
 insert into auth.users (id, instance_id, aud, role, email, encrypted_password, email_confirmed_at, created_at, updated_at) values
@@ -48,4 +49,5 @@ select r.match_event_id,r.id,row_number() over (partition by r.match_event_id or
 from public.match_event_registrations r
 join public.match_events e on e.id=r.match_event_id
 where r.match_event_id in ('30000000-0000-4000-8000-000000000001','30000000-0000-4000-8000-000000000002');
-commit;
+end
+$paf_fixture$;

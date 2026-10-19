@@ -39,6 +39,41 @@ export function databaseHost(status) {
   return host;
 }
 
+function snapshotValue(output) {
+  const start = output.search(/[{[]/);
+  if (start < 0) throw new Error('Could not parse snapshot JSON payload: no JSON found');
+  let depth = 0;
+  let inString = false;
+  let escaped = false;
+  for (let index = start; index < output.length; index += 1) {
+    const char = output[index];
+    if (inString) {
+      if (escaped) escaped = false;
+      else if (char === '\\') escaped = true;
+      else if (char === '"') inString = false;
+      continue;
+    }
+    if (char === '"') inString = true;
+    else if (char === '{' || char === '[') depth += 1;
+    else if (char === '}' || char === ']') {
+      depth -= 1;
+      if (depth === 0) {
+        let payload;
+        try {
+          payload = JSON.parse(output.slice(start, index + 1));
+        } catch (error) {
+          throw new Error(`Could not parse snapshot JSON payload: ${error.message}`, {
+            cause: error
+          });
+        }
+        const rows = Array.isArray(payload) ? payload : payload?.rows;
+        return Array.isArray(rows) ? rows[0]?.paf_upgrade_snapshot : undefined;
+      }
+    }
+  }
+  throw new Error('Could not parse snapshot JSON payload: incomplete JSON');
+}
+
 export function runHarness({ env = process.env, run = spawnSync, log = console } = {}) {
   if (env.POPULATED_UPGRADE_OPT_IN !== '1')
     throw new Error('Set POPULATED_UPGRADE_OPT_IN=1 to opt into disposable local backend test');
@@ -133,8 +168,20 @@ export function runHarness({ env = process.env, run = spawnSync, log = console }
       '--local',
       'select public.paf_upgrade_snapshot()'
     ]);
-    if (before !== after) throw new Error('Repeated migration up changed fixture data');
-    log.log('[assert] repeated migration up leaves fixture data unchanged');
+    const beforeValue = snapshotValue(before);
+    const afterValue = snapshotValue(after);
+    if (typeof beforeValue !== 'string' || typeof afterValue !== 'string')
+      throw new Error(
+        `Snapshot value missing (before: ${String(beforeValue)}, after: ${String(afterValue)})`
+      );
+    log.log(
+      `[assert] repeated migration up snapshot hashes: before=${beforeValue} after=${afterValue}`
+    );
+    if (beforeValue !== afterValue)
+      throw new Error(
+        `Repeated migration up changed fixture data (before: ${beforeValue}, after: ${afterValue})`
+      );
+    log.log('[PASS] repeated migration up leaves fixture data unchanged');
   } catch (error) {
     originalError = error;
   } finally {
