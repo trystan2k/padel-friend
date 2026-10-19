@@ -2,7 +2,7 @@
   "$schema": "https://unpkg.com/knip@6/schema.json",
   "entry": ["design-tokens/style-dictionary.config.js", "src/routes/**/*.tsx"],
   "ignoreExportsUsedInFile": true,
-  "ignore": [".agents/**"],
+  "ignore": [".agents/**", "scripts/test-populated-migration-up.d.mts"],
   "ignoreIssues": {
     "src/routes/**/*.{ts,tsx}": ["exports"],
     "src/lib/supabase/database.types.ts": ["types", "exports"],
