@@ -191,7 +191,7 @@ export function MatchDetailPage({
             })}
           </p>
           {event.caller_badge === 'creator' && <p>{t('matches.detail.creatorAccepted')}</p>}
-          {event.caller_eligibility === 'invited' && <p>{t('matches.detail.invitationInfo')}</p>}
+          {event.caller_is_invited === true && <p>{t('matches.detail.invitationInfo')}</p>}
         </section>
         {registrationError ? (
           <section

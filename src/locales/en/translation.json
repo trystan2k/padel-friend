@@ -467,6 +467,7 @@
     "match": {
       "openEvent": "Open event",
       "invitedBy": "Invited by {{name}}",
+      "publishedBy": "Published by {{name}}",
       "startsAt": "Starts",
       "venue": "Venue",
       "type": "Type",

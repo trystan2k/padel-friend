@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import {
   validateMatchDetail,
   validateMatchInviteSearch,
@@ -29,5 +29,30 @@ describe('match validators', () => {
       'INVALID_MATCH_INPUT'
     );
     expect(() => validateMatchList({ entry: 'confirmed' })).toThrow('INVALID_MATCH_INPUT');
+  });
+  it('keeps an omitted list as_of null instead of stamping the clock', () => {
+    // Freeze the clock: the old validator injected new Date().toISOString()
+    // here, so an omitted as_of must still stay null under a fixed clock.
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-01-15T10:30:00.000Z'));
+    try {
+      expect(validateMatchList({ entry: 'available' })).toEqual({
+        entry: 'available',
+        community_id: null,
+        cursor: '',
+        limit: 20,
+        as_of: null
+      });
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+  it('passes an explicit valid as_of through unchanged and rejects invalid ones', () => {
+    const snapshot = '2026-01-01T00:00:00.000Z';
+    expect(validateMatchList({ entry: 'my', as_of: snapshot }).as_of).toBe(snapshot);
+    expect(validateMatchList({ entry: 'past', as_of: null }).as_of).toBeNull();
+    for (const bad of ['yesterday', '2026-13-45T99:99:99Z', 42]) {
+      expect(() => validateMatchList({ entry: 'my', as_of: bad })).toThrow('INVALID_MATCH_INPUT');
+    }
   });
 });

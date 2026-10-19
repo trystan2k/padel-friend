@@ -105,6 +105,38 @@ export async function signMatchPhoto(client: AuthClient, eventId: string) {
   }
 }
 
+export async function signMatchPhotoBatch(
+  client: AuthClient,
+  objectKeys: readonly string[]
+): Promise<Map<string, string>> {
+  setResponseHeader('Cache-Control', 'private, no-store');
+  const unique: string[] = [];
+  for (const key of objectKeys) {
+    try {
+      const valid = validateMatchPhotoKey(key);
+      if (!unique.includes(valid)) unique.push(valid);
+    } catch {
+      // Invalid keys are dropped; their rows get a null URL.
+    }
+  }
+  if (unique.length === 0) return new Map();
+  const { data, error } = await client.storage
+    .from(MATCH_PHOTO_BUCKET)
+    .createSignedUrls(unique, 60);
+  const signed = new Map<string, string>();
+  if (error) return signed;
+  for (const entry of data ?? []) {
+    if (
+      entry &&
+      typeof entry.path === 'string' &&
+      typeof entry.signedUrl === 'string' &&
+      entry.signedUrl
+    )
+      signed.set(entry.path, entry.signedUrl);
+  }
+  return signed;
+}
+
 export async function signUnattachedMatchPhoto(
   client: AuthClient,
   userId: string,

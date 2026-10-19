@@ -1,5 +1,5 @@
 /** @vitest-environment jsdom */
-import { cleanup, render, screen, within } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { I18nextProvider } from 'react-i18next';
 import type { ComponentProps } from 'react';
@@ -217,5 +217,102 @@ describe('match list surfaces', () => {
     window.dispatchEvent(new Event('online'));
     await user.click(await screen.findByRole('button', { name: copy.loadMore }));
     expect(screen.getAllByRole('article')).toHaveLength(2);
+  });
+  it('sends the identical page snapshot on loadMore and retry across the start and cutoff', async () => {
+    // The fixture event starts 2026-10-20T18:30Z with a 17:30Z cutoff; the
+    // frozen clock starts before both and jumps past both mid-test. The pages
+    // must keep the database-issued snapshot, never a freshly computed one.
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-10-19T10:00:00.000Z'));
+    const snapshot = '2026-01-01T00:00:00.000Z';
+    try {
+      mocks.list.mockRejectedValueOnce(new Error('load failed'));
+      mount({ initialItems: [event(1, 4)], initialCursor: 'page-2', initialAsOf: snapshot });
+      fireEvent.click(screen.getByRole('button', { name: copy.loadMore }));
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(0);
+      });
+      expect(mocks.list).toHaveBeenCalledExactlyOnceWith({
+        data: { entry: 'available', cursor: 'page-2', limit: 20, as_of: snapshot }
+      });
+      expect(screen.getByRole('alert').textContent).toContain(copy.error);
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(2 * 86_400_000);
+      });
+      mocks.list.mockResolvedValueOnce({
+        items: [event(41, 0)],
+        next_cursor: null,
+        as_of: snapshot
+      });
+      fireEvent.click(screen.getByRole('button', { name: copy.retry }));
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(0);
+      });
+      expect(mocks.list).toHaveBeenLastCalledWith({
+        data: { entry: 'available', cursor: 'page-2', limit: 20, as_of: snapshot }
+      });
+      expect(screen.getAllByRole('article')).toHaveLength(2);
+      expect(screen.queryByRole('button', { name: copy.retry })).toBeNull();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+  it('installs a new snapshot on refresh and drops a stale in-flight page entirely', async () => {
+    let resolveStale: (result: unknown) => void = () => {};
+    mocks.list.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          resolveStale = resolve;
+        })
+    );
+    const staleSnapshot = '2026-01-01T00:00:00.000Z';
+    const freshSnapshot = '2026-02-02T00:00:00.000Z';
+    const view = mount({
+      initialItems: [event(1, 4)],
+      initialCursor: 'stale-page',
+      initialAsOf: staleSnapshot
+    });
+    fireEvent.click(screen.getByRole('button', { name: copy.loadMore }));
+    expect(mocks.list).toHaveBeenCalledExactlyOnceWith({
+      data: { entry: 'available', cursor: 'stale-page', limit: 20, as_of: staleSnapshot }
+    });
+
+    // Refresh with new loader data: items, cursor AND snapshot install together.
+    view.rerender(
+      <I18nextProvider i18n={createI18n('en')}>
+        <MatchesPage
+          entry="available"
+          initialItems={[event(50, 8)]}
+          initialCursor="fresh-page"
+          initialAsOf={freshSnapshot}
+        />
+      </I18nextProvider>
+    );
+    expect(screen.getAllByRole('article')).toHaveLength(1);
+    expect(screen.getByRole('article').textContent).toContain('8 playing');
+
+    // The in-flight response belongs to the discarded generation: it may not
+    // append its card nor overwrite the fresh cursor or snapshot.
+    await act(async () => {
+      resolveStale({ items: [event(60, 0)], next_cursor: 'stale-cursor', as_of: staleSnapshot });
+    });
+    expect(screen.getAllByRole('article')).toHaveLength(1);
+    expect(screen.getByRole('article').textContent).toContain('8 playing');
+    expect(screen.queryByText('0 playing')).toBeNull();
+
+    // A loadMore under the refreshed generation proves the snapshot and cursor
+    // really are the new ones and that appends still work.
+    mocks.list.mockResolvedValueOnce({
+      items: [event(61, 0)],
+      next_cursor: null,
+      as_of: freshSnapshot
+    });
+    fireEvent.click(screen.getByRole('button', { name: copy.loadMore }));
+    await act(async () => {});
+    expect(mocks.list).toHaveBeenNthCalledWith(2, {
+      data: { entry: 'available', cursor: 'fresh-page', limit: 20, as_of: freshSnapshot }
+    });
+    expect(screen.getAllByRole('article')).toHaveLength(2);
+    expect(screen.queryByRole('button', { name: copy.loadMore })).toBeNull();
   });
 });

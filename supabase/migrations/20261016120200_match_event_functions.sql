@@ -147,9 +147,36 @@ create or replace function public.search_match_invitees(p_community_id uuid,p_qu
 returns table(user_id uuid,display_name text) language sql stable security definer set search_path = '' as $$
  select p.user_id,coalesce(p.display_name,'') from public.community_members m join public.player_profiles p on p.user_id=m.user_id
   where m.community_id=p_community_id and m.status='active' and public.is_community_member(p_community_id) and m.user_id <> auth.uid() and length(btrim(p_query))>=3 and p.display_name ilike '%'||replace(replace(replace(btrim(p_query),'\','\\'),'%','\%'),'_','\_')||'%' escape '\'
- order by p.display_name,p.user_id limit least(greatest(p_limit,1),20)
+  order by p.display_name,p.user_id limit least(greatest(p_limit,1),20)
+ $$;
+
+create or replace function public.match_event_caller_context(p_event_id uuid)
+returns table(caller_is_invited boolean, caller_eligibility text, caller_requires_approval boolean)
+language sql stable security definer set search_path = '' as $$
+  select
+    exists(select 1 from public.match_event_invites i where i.match_event_id=e.id and i.invitee_user_id=(select auth.uid())) as caller_is_invited,
+    case
+      when e.created_by=(select auth.uid()) then 'creator'
+      when exists(select 1 from public.community_members m where m.community_id=e.community_id and m.user_id=(select auth.uid()) and m.status='active') then
+        case when not e.restriction_enabled or exists(select 1 from public.global_player_ratings r where r.user_id=(select auth.uid()) and r.display_level between e.min_level and e.max_level) then 'member' else 'out_of_range' end
+      when (e.visibility='community_open' and c.visibility='public')
+        or exists(select 1 from public.match_event_invites i where i.match_event_id=e.id and i.invitee_user_id=(select auth.uid())) then 'nonmember'
+      else null::text
+    end as caller_eligibility,
+    case
+      when e.created_by=(select auth.uid()) then false
+      when exists(select 1 from public.community_members m where m.community_id=e.community_id and m.user_id=(select auth.uid()) and m.status='active') then
+        e.restriction_enabled and not exists(select 1 from public.global_player_ratings r where r.user_id=(select auth.uid()) and r.display_level between e.min_level and e.max_level)
+      when (e.visibility='community_open' and c.visibility='public')
+        or exists(select 1 from public.match_event_invites i where i.match_event_id=e.id and i.invitee_user_id=(select auth.uid())) then true
+      else false
+    end as caller_requires_approval
+  from public.match_events e join public.communities c on c.id=e.community_id
+  where e.id=p_event_id and public.can_read_match_event(e.id)
 $$;
-create or replace function public.get_match_event(p_event_id uuid)
+revoke execute on function public.match_event_caller_context(uuid) from public, anon, authenticated;
+
+ create or replace function public.get_match_event(p_event_id uuid)
 returns jsonb language sql stable security definer set search_path = '' as $$
   select jsonb_build_object(
     'event_id',e.id,'community_id',e.community_id,'community_name',c.name,
@@ -165,8 +192,9 @@ returns jsonb language sql stable security definer set search_path = '' as $$
      'more_needed',4-(n.n%4),'caller_badge',b.badge,
      'is_past',e.starts_at<=now(),
      'registration_open',e.starts_at>now() and e.registration_cutoff_at>now() and (e.maximum_registrations is null or n.n<e.maximum_registrations),
-     'caller_eligibility',elig.value,
-     'caller_requires_approval',coalesce(elig.value in ('out_of_range','nonmember'),false))
+      'caller_is_invited',caller.caller_is_invited,
+      'caller_eligibility',caller.caller_eligibility,
+      'caller_requires_approval',caller.caller_requires_approval)
   from public.match_events e join public.communities c on c.id=e.community_id
   left join public.player_profiles p on p.user_id=e.created_by
   left join public.global_player_ratings g on g.user_id=e.created_by
@@ -175,12 +203,7 @@ returns jsonb language sql stable security definer set search_path = '' as $$
     when exists(select 1 from (select r.user_id,row_number() over(order by r.accepted_at,r.id) pos from public.match_event_registrations r where r.match_event_id=e.id) q where q.user_id=auth.uid() and q.pos<=((n.n/4)*4)) then 'playing'
     when exists(select 1 from public.match_event_registrations r where r.match_event_id=e.id and r.user_id=auth.uid()) then 'reserve'
      when exists(select 1 from public.match_event_invites i where i.match_event_id=e.id and i.invitee_user_id=auth.uid()) then 'invited' else null end badge) b
-   cross join lateral (select case
-     when e.created_by=auth.uid() then 'creator'
-     when exists(select 1 from public.match_event_invites i where i.match_event_id=e.id and i.invitee_user_id=auth.uid()) then 'invited'
-     when exists(select 1 from public.community_members m where m.community_id=e.community_id and m.user_id=auth.uid() and m.status='active') then
-       case when not e.restriction_enabled or exists(select 1 from public.global_player_ratings r where r.user_id=auth.uid() and r.display_level between e.min_level and e.max_level) then 'member' else 'out_of_range' end
-     when auth.uid() is not null and e.visibility='community_open' and c.visibility='public' then 'nonmember' else null end value) elig
+    cross join lateral public.match_event_caller_context(e.id) caller
   where e.id=p_event_id and public.can_read_match_event(e.id)
 $$;
 create or replace function public.list_match_events(p_entry text,p_community_id uuid default null,p_cursor text default '',p_limit integer default 20,p_as_of timestamptz default now())
@@ -194,14 +217,11 @@ returns setof jsonb language sql stable security definer set search_path = '' as
        when exists(select 1 from (select r.user_id,row_number() over(order by r.accepted_at,r.id) pos from public.match_event_registrations r where r.match_event_id=e.id) q where q.user_id=auth.uid() and q.pos<=((n.n/4)*4)) then 'playing'
        when exists(select 1 from public.match_event_registrations r where r.match_event_id=e.id and r.user_id=auth.uid()) then 'reserve'
        when exists(select 1 from public.match_event_invites i where i.match_event_id=e.id and i.invitee_user_id=auth.uid()) then 'invited' else null end caller_badge
-       ,case when e.created_by=auth.uid() then 'creator'
-         when exists(select 1 from public.match_event_invites i where i.match_event_id=e.id and i.invitee_user_id=auth.uid()) then 'invited'
-         when exists(select 1 from public.community_members m where m.community_id=e.community_id and m.user_id=auth.uid() and m.status='active') then
-           case when not e.restriction_enabled or exists(select 1 from public.global_player_ratings r where r.user_id=auth.uid() and r.display_level between e.min_level and e.max_level) then 'member' else 'out_of_range' end
-         when auth.uid() is not null and e.visibility='community_open' and c.visibility='public' then 'nonmember' else null end caller_eligibility
+        ,caller.caller_eligibility,caller.caller_is_invited,caller.caller_requires_approval
      from public.match_events e join public.communities c on c.id=e.community_id
     left join public.player_profiles p on p.user_id=e.created_by left join public.global_player_ratings g on g.user_id=e.created_by
-    cross join lateral (select count(*)::integer n from public.match_event_registrations r where r.match_event_id=e.id) n
+     cross join lateral (select count(*)::integer n from public.match_event_registrations r where r.match_event_id=e.id) n
+     cross join lateral public.match_event_caller_context(e.id) caller
     where public.can_read_match_event(e.id) and (p_community_id is null or e.community_id=p_community_id)
       and case p_entry when 'available' then e.visibility='community_open' and e.starts_at>coalesce(p_as_of,now()) and e.registration_cutoff_at>coalesce(p_as_of,now()) and (e.maximum_registrations is null or n.n<e.maximum_registrations)
       when 'my' then e.starts_at>coalesce(p_as_of,now()) and (e.created_by=auth.uid() or exists(select 1 from public.match_event_registrations r where r.match_event_id=e.id and r.user_id=auth.uid()) or exists(select 1 from public.match_event_invites i where i.match_event_id=e.id and i.invitee_user_id=auth.uid()))
@@ -215,12 +235,14 @@ returns setof jsonb language sql stable security definer set search_path = '' as
     'min_level',e.min_level,'max_level',e.max_level,'price_minor',e.price_minor,'currency',e.currency,'payment_note',e.payment_note,
     'maximum_registrations',e.maximum_registrations,'registration_cutoff_at',e.registration_cutoff_at,'accepted_count',e.accepted_count,
     'playing_count',(e.accepted_count/4)*4,'reserve_count',e.accepted_count%4,'group_count',e.accepted_count/4,
-     'more_needed',4-(e.accepted_count%4),'caller_badge',e.caller_badge,
+      'more_needed',4-(e.accepted_count%4),'caller_badge',e.caller_badge,
+      'caller_is_invited',e.caller_is_invited,
      'is_past',e.starts_at<=coalesce(p_as_of,now()),
      'registration_open',e.starts_at>coalesce(p_as_of,now()) and e.registration_cutoff_at>coalesce(p_as_of,now()) and (e.maximum_registrations is null or e.accepted_count<e.maximum_registrations),
      'caller_eligibility',e.caller_eligibility,
-     'caller_requires_approval',coalesce(e.caller_eligibility in ('out_of_range','nonmember'),false),
-    'cursor',to_char(e.starts_at,'YYYY-MM-DD"T"HH24:MI:SS.USOF')||'|'||e.id::text)
+      'caller_requires_approval',e.caller_requires_approval,
+    'as_of',coalesce(p_as_of,now()),
+     'cursor',to_char(e.starts_at,'YYYY-MM-DD"T"HH24:MI:SS.USOF')||'|'||e.id::text)
   from eligible e cross join cursor_values v
   where (v.starts_at is null or (p_entry='past' and (e.starts_at,e.id)<(v.starts_at,v.event_id)) or (p_entry<>'past' and (e.starts_at,e.id)>(v.starts_at,v.event_id)))
   order by case when p_entry='past' then null else e.starts_at end asc,case when p_entry='past' then null else e.id end asc,

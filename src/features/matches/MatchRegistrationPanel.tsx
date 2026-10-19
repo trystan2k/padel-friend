@@ -83,13 +83,9 @@ export function matchRegistrationAction(event: EventRecord, now: number): MatchR
     return 'closed';
   if (matchRegistrationIsFull(event)) return 'full';
   const eligibility = callerEligibility(event);
+  if (eventBoolean(event, 'caller_requires_approval') === true) return 'request';
   if (eligibility === 'invited') return 'invited';
-  if (
-    eligibility === 'out_of_range' ||
-    eligibility === 'nonmember' ||
-    eventBoolean(event, 'caller_requires_approval') === true
-  )
-    return 'request';
+  if (eligibility === 'out_of_range' || eligibility === 'nonmember') return 'request';
   if (eligibility === 'member') return 'join';
   return 'none';
 }
@@ -189,7 +185,17 @@ export function MatchRegistrationPanel({
       : t('matchRegistration.join.levelRange', { min, max, level: callerLevel });
   })();
 
-  const action = controller.cutoffReached ? 'closed' : matchRegistrationAction(event, now);
+  const registrationAction = controller.cutoffReached
+    ? 'closed'
+    : matchRegistrationAction(event, now);
+  // An active member may be eligible by level but still needs an invite for an
+  // invite-only event. Keep that unregistered state separate from ordinary join.
+  const invitedWithoutRegistration =
+    registration.state === 'none' &&
+    registrationAction === 'join' &&
+    eventBoolean(event, 'caller_is_invited') === true &&
+    eventString(event, 'visibility') === 'invite_only';
+  const action = invitedWithoutRegistration ? 'invited' : registrationAction;
 
   // An invited caller has no registration row yet, so this panel has no place to
   // show. The invitation sentence is owned by the detail page's participation

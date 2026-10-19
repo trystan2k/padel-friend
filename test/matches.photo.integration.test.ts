@@ -1,13 +1,23 @@
 import { spawn } from 'node:child_process';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import type { Database } from '../src/lib/supabase/database.types';
-import { copySavedVenueMatchPhoto } from '../src/features/matches/match-photo.server';
+import {
+  copySavedVenueMatchPhoto,
+  signMatchPhotoBatch
+} from '../src/features/matches/match-photo.server';
 import {
   assertLocalSupabaseEnvInCi,
   dotEnvPathFromImportMetaUrl,
   localSupabaseEnv
 } from './helpers/local-supabase-env';
+
+// signMatchPhotoBatch sets a response header through the Start server runtime,
+// which has no request context under plain vitest; the authorization evidence
+// below comes from the real local Supabase storage and Postgres RLS policies.
+vi.mock('@tanstack/react-start/server', () => ({
+  setResponseHeader: vi.fn<(name: string, value: string) => void>()
+}));
 
 const environment = localSupabaseEnv({ filePath: dotEnvPathFromImportMetaUrl(import.meta.url) });
 type Env = NonNullable<typeof environment.env>;
@@ -33,6 +43,40 @@ async function fixtureSql(env: Env, sql: string): Promise<void> {
   });
   if (code !== 0) throw new Error(`Trusted fixture SQL failed (${code}): ${stdout}\n${stderr}`);
   void env;
+}
+
+// list_match_events answers setof jsonb, so row fields are narrowed with `in`
+// guards instead of assertions.
+function eventIdsOf(rows: unknown): string[] {
+  if (!Array.isArray(rows)) return [];
+  const ids: string[] = [];
+  for (const row of rows) {
+    if (
+      typeof row === 'object' &&
+      row !== null &&
+      'event_id' in row &&
+      typeof row.event_id === 'string'
+    )
+      ids.push(row.event_id);
+  }
+  return ids;
+}
+
+function photoPathsOf(rows: unknown, targetEventId: string): string[] {
+  if (!Array.isArray(rows)) return [];
+  const paths: string[] = [];
+  for (const row of rows) {
+    if (
+      typeof row === 'object' &&
+      row !== null &&
+      'event_id' in row &&
+      row.event_id === targetEventId &&
+      'photo_path' in row &&
+      typeof row.photo_path === 'string'
+    )
+      paths.push(row.photo_path);
+  }
+  return paths;
 }
 
 describe('match event photo Storage authorization', () => {
@@ -313,6 +357,121 @@ describe('match event photo Storage authorization', () => {
       expect(
         (publicationErrors + publicationOutput).includes('Match photo object unavailable')
       ).toBe(publicationExit !== 0);
+    },
+    60000
+  );
+
+  it.skipIf(!environment.env)(
+    'batch-signs only storage-authorized photos and keeps private events out of listings',
+    async () => {
+      const { url, key } = environment.env!;
+      async function actor(label: string): Promise<Actor> {
+        const signup = await createClient(url, key, {
+          auth: { persistSession: false, autoRefreshToken: false }
+        }).auth.signUp({
+          email: `${label}-${crypto.randomUUID()}@test.local`,
+          password: 'Password123!'
+        });
+        expect(signup.error).toBeNull();
+        expect(signup.data.session, 'local email confirmations must be disabled').not.toBeNull();
+        return {
+          id: signup.data.user!.id,
+          client: createClient<Database>(url, key, {
+            auth: { persistSession: false, autoRefreshToken: false },
+            global: { headers: { Authorization: `Bearer ${signup.data.session!.access_token}` } }
+          })
+        };
+      }
+      const [owner, member, stranger] = await Promise.all(
+        ['batch-owner', 'batch-member', 'batch-stranger'].map(actor)
+      );
+      const publicCommunity = crypto.randomUUID();
+      const privateCommunity = crypto.randomUUID();
+      const publicEvent = crypto.randomUUID();
+      const privateEvent = crypto.randomUUID();
+      const publicKey = `${publicCommunity}/${publicEvent}/${owner!.id}/${crypto.randomUUID()}.png`;
+      const privateKey = `${privateCommunity}/${privateEvent}/${owner!.id}/${crypto.randomUUID()}.png`;
+      const q = (value: string) => `'${value.replaceAll("'", "''")}'`;
+
+      const png = new Blob([Uint8Array.from([137, 80, 78, 71, 13, 10, 26, 10, 1, 2, 3, 4])], {
+        type: 'image/png'
+      });
+
+      await fixtureSql(
+        environment.env!,
+        `do $$ begin
+      insert into public.communities(id,name,visibility,created_by) values
+        (${q(publicCommunity)},'Batch public','public',${q(owner!.id)}),
+        (${q(privateCommunity)},'Batch private','private',${q(owner!.id)});
+      insert into public.community_members(community_id,user_id,role,status,valid_from,activated_at) values
+        (${q(publicCommunity)},${q(owner!.id)},'admin','active',now()-interval '1 minute',now()-interval '1 minute'),
+        (${q(publicCommunity)},${q(member!.id)},'member','active',now()-interval '1 minute',now()-interval '1 minute'),
+        (${q(privateCommunity)},${q(owner!.id)},'admin','active',now()-interval '1 minute',now()-interval '1 minute');
+    end $$;`
+      );
+
+      expect(
+        (
+          await owner!.client.storage
+            .from('match-event-photos')
+            .upload(publicKey, png, { contentType: 'image/png', upsert: false })
+        ).error
+      ).toBeNull();
+      expect(
+        (
+          await owner!.client.storage
+            .from('match-event-photos')
+            .upload(privateKey, png, { contentType: 'image/png', upsert: false })
+        ).error
+      ).toBeNull();
+
+      await fixtureSql(
+        environment.env!,
+        `do $$ begin
+      insert into public.match_events(id,community_id,created_by,starts_at,timezone,event_type,visibility,team_assignment_mode,venue_name,maps_url,photo_path,registration_cutoff_at)
+        values (${q(publicEvent)},${q(publicCommunity)},${q(owner!.id)},now()+interval '2 days','UTC','friendly','community_open','POST_MATCH_TEAMS','Court','https://maps.google.com/maps/place/x',${q(publicKey)},now()+interval '1 day'),
+          (${q(privateEvent)},${q(privateCommunity)},${q(owner!.id)},now()+interval '2 days','UTC','friendly','community_open','POST_MATCH_TEAMS','Court','https://maps.google.com/maps/place/x',${q(privateKey)},now()+interval '1 day');
+    end $$;`
+      );
+
+      const listingArgs = {
+        p_entry: 'available' as const,
+        p_community_id: publicCommunity,
+        p_cursor: '',
+        p_limit: 50,
+        p_as_of: new Date().toISOString()
+      };
+      const memberRows = await member!.client.rpc('list_match_events', listingArgs);
+      expect(memberRows.error).toBeNull();
+      const memberIds = eventIdsOf(memberRows.data);
+      expect(memberIds).toContain(publicEvent);
+      expect(memberIds).not.toContain(privateEvent);
+      const memberPhotoPaths = photoPathsOf(memberRows.data, publicEvent);
+      expect(memberPhotoPaths).toEqual([publicKey]);
+
+      const strangerRows = await stranger!.client.rpc('list_match_events', listingArgs);
+      expect(strangerRows.error).toBeNull();
+      expect(eventIdsOf(strangerRows.data)).not.toContain(privateEvent);
+
+      const memberPrivateRows = await member!.client.rpc('list_match_events', {
+        ...listingArgs,
+        p_community_id: privateCommunity
+      });
+      expect(memberPrivateRows.error).toBeNull();
+      expect(eventIdsOf(memberPrivateRows.data)).not.toContain(privateEvent);
+
+      // One mixed request: the unauthorized key must never yield a URL while
+      // the public key still signs for the same caller.
+      const strangerSigned = await signMatchPhotoBatch(stranger!.client, [privateKey, publicKey]);
+      expect(strangerSigned.has(privateKey)).toBe(false);
+      expect(typeof strangerSigned.get(publicKey)).toBe('string');
+
+      const memberSigned = await signMatchPhotoBatch(member!.client, [privateKey]);
+      expect(memberSigned.has(privateKey)).toBe(false);
+
+      const ownerSigned = await signMatchPhotoBatch(owner!.client, [privateKey]);
+      expect(typeof ownerSigned.get(privateKey)).toBe('string');
+      expect(ownerSigned.get(privateKey)).toMatch(/\/object\/sign\//);
     },
     60000
   );

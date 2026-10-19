@@ -374,6 +374,42 @@ describe('notification detail page', () => {
     );
   });
 
+  it('distinguishes broadcast publication from invitation and preserves copy on reconnect', async () => {
+    const published = { ...availableMatch, kind: 'match_event_published' };
+    setOnline(false);
+    mocks.targetV2.mockResolvedValue(published);
+    mocks.matchContext.mockResolvedValue(matchContext('Published court'));
+    mountPage(published, matchContext('Published court'));
+
+    expect(
+      await screen.findByRole('heading', { name: copy.kinds.match_event_published })
+    ).toBeTruthy();
+    expect(screen.getByText(fill(copy.match.publishedBy, { name: 'Alex' }))).toBeTruthy();
+    expect(screen.queryByText(copy.match.invitedBy)).toBeNull();
+    expect(screen.queryByRole('button', { name: copy.accept })).toBeNull();
+
+    setOnline(true);
+    await act(async () => window.dispatchEvent(new Event('online')));
+    expect(await screen.findByText(fill(copy.match.publishedBy, { name: 'Alex' }))).toBeTruthy();
+    expect(screen.getByRole('heading', { name: copy.kinds.match_event_published })).toBeTruthy();
+
+    cleanup();
+    mountPage({ ...availableMatch, kind: 'match_event_invitation' }, matchContext('Invite court'));
+    expect(
+      await screen.findByRole('heading', { name: copy.kinds.match_event_invitation })
+    ).toBeTruthy();
+    expect(screen.getByText(fill(copy.match.invitedBy, { name: 'Alex' }))).toBeTruthy();
+    expect(screen.queryByText(copy.match.publishedBy)).toBeNull();
+  });
+
+  it('uses generic copy for missing notification kind instead of invitation wording', async () => {
+    mountPage(availableMatch, matchContext('Unknown court'));
+
+    expect(await screen.findByRole('heading', { name: copy.generic })).toBeTruthy();
+    expect(screen.getAllByText(copy.generic)).toHaveLength(2);
+    expect(screen.queryByText(copy.match.invitedBy)).toBeNull();
+  });
+
   it('renders the cutoff not-playing kind with its own heading and body copy', async () => {
     mountPage(
       { ...availableMatch, kind: 'match_registration_not_playing' },

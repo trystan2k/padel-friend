@@ -1070,6 +1070,14 @@ export type Database = {
         }[]
       }
       mark_notification_read: { Args: { p_notification_id: string }; Returns: string }
+      match_event_caller_context: {
+        Args: { p_event_id: string }
+        Returns: {
+          caller_eligibility: string
+          caller_is_invited: boolean
+          caller_requires_approval: boolean
+        }[]
+      }
       match_event_local_start: {
         Args: { p_date: string; p_time: string; p_zone: string }
         Returns: string

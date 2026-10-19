@@ -51,6 +51,7 @@ const event = (id = 1, extra: Record<string, unknown> = {}) => ({
   is_past: false,
   registration_open: true,
   caller_eligibility: 'invited',
+  caller_is_invited: true,
   caller_requires_approval: false,
   ...extra
 });
@@ -139,12 +140,14 @@ describe('match detail surface', () => {
         price_minor: 1250,
         currency: 'BRL',
         caller_eligibility: 'out_of_range',
+        caller_is_invited: true,
         caller_requires_approval: true
       }),
       'pt-BR'
     );
     expect(screen.getByText(/R\$\s?12,50/)).toBeTruthy();
     expect(screen.getByText(pt.matches.detail.outOfRangeApprovalRequired)).toBeTruthy();
+    expect(screen.getByText(pt.matches.detail.invitationInfo)).toBeTruthy();
     expect(screen.queryByRole('button', { name: /join|entrar|participar/i })).toBeNull();
   });
   it('shows guest approval information without registration action', () => {

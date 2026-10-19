@@ -16,6 +16,8 @@ describe('match styles', () => {
     expect(styles).toContain(touchMinimum); // detail input and unavailable/back links
     expect(createStyles).toContain(touchMinimum); // file control and team radio labels
     expect(createStyles).toContain('touchLabel');
+    expect(createStyles).toContain("minInlineSize: 'calc(var(--space-40) + var(--space-4))'");
+    expect(createStyles).toContain("minBlockSize: 'calc(var(--space-40) + var(--space-4))'");
     expect(createStyles).toContain('fileInput');
     expect(readFileSync('src/features/matches/MatchInviteePicker.tsx', 'utf8')).toContain(
       'stylex.props(s.button)'

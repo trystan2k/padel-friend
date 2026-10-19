@@ -1,6 +1,6 @@
 import { createServerFn } from '@tanstack/react-start';
 import { requireAuthenticatedClient } from '../auth/auth.server';
-import { signMatchPhoto } from './match-photo.server';
+import { signMatchPhotoBatch, signMatchPhoto } from './match-photo.server';
 import type { MatchEventListItem, MatchEventListResult } from './match-model';
 import { matchesMatchPhotoMagicBytes, validateMatchPhotoKey } from './match-photo';
 import {
@@ -59,28 +59,70 @@ export const listMatchEvents = createServerFn({ method: 'GET' })
       ...(data.community_id ? { p_community_id: data.community_id } : {}),
       p_cursor: data.cursor,
       p_limit: data.limit,
-      p_as_of: data.as_of
+      p_as_of: data.as_of ?? undefined
     });
     if (error) throw new Error('MATCH_LIST_UNAVAILABLE');
     const rows = Array.isArray(result) ? result : [];
-    const items = await Promise.all(
-      rows.map(async (row) => {
-        if (
+    if (rows.length === 0)
+      return { items: [], next_cursor: null, as_of: null } satisfies MatchEventListResult;
+    const asOf =
+      typeof rows[0] === 'object' &&
+      rows[0] !== null &&
+      !Array.isArray(rows[0]) &&
+      'as_of' in rows[0] &&
+      typeof rows[0].as_of === 'string'
+        ? rows[0].as_of
+        : null;
+    if (
+      asOf === null ||
+      rows.some(
+        (row) =>
           typeof row !== 'object' ||
           row === null ||
           Array.isArray(row) ||
-          !('event_id' in row) ||
-          typeof row.event_id !== 'string'
-        )
-          return row;
-        const { cursor: _cursor, ...eventRow } = row;
+          !('as_of' in row) ||
+          row.as_of !== (data.as_of ?? asOf)
+      )
+    )
+      throw new Error('MATCH_LIST_SNAPSHOT_MISMATCH');
+    const eventRows: Record<string, unknown>[] = [];
+    const keys: string[] = [];
+    const rowKeys: (string | null)[] = [];
+    for (const row of rows) {
+      if (
+        typeof row !== 'object' ||
+        row === null ||
+        Array.isArray(row) ||
+        !('event_id' in row) ||
+        typeof row.event_id !== 'string'
+      ) {
+        eventRows.push({});
+        rowKeys.push(null);
+        continue;
+      }
+      const { cursor: _cursor, as_of: _asOf, ...eventRow } = row;
+      eventRows.push(eventRow);
+      const photoKey =
+        'photo_path' in row && typeof row.photo_path === 'string' ? row.photo_path : null;
+      let validKey: string | null = null;
+      if (photoKey !== null) {
         try {
-          return { ...eventRow, photo_url: await signMatchPhoto(client, row.event_id) };
+          validKey = validateMatchPhotoKey(photoKey);
+          keys.push(validKey);
         } catch {
-          return { ...eventRow, photo_url: null };
+          validKey = null;
         }
-      })
-    );
+      }
+      rowKeys.push(validKey);
+    }
+    const signed =
+      keys.length > 0 ? await signMatchPhotoBatch(client, keys) : new Map<string, string>();
+    const items = rows.map((row, index) => {
+      const eventRow = eventRows[index];
+      if (!eventRow || Object.keys(eventRow).length === 0) return row;
+      const key = rowKeys[index];
+      return { ...eventRow, photo_url: key ? (signed.get(key) ?? null) : null };
+    });
     const lastCursor = rows.at(-1);
     const typedItems = items.filter(
       (item): item is MatchEventListItem =>
@@ -94,6 +136,7 @@ export const listMatchEvents = createServerFn({ method: 'GET' })
     );
     return {
       items: typedItems,
+      as_of: asOf,
       next_cursor:
         rows.length === data.limit &&
         typeof lastCursor === 'object' &&

@@ -11,6 +11,7 @@ export const Route = createFileRoute('/_protected/matches/')({
         entry="available"
         initialItems={data?.items ?? EMPTY_ITEMS}
         initialCursor={data?.next_cursor ?? null}
+        initialAsOf={data?.as_of ?? null}
         initialError={!data}
       />
     );

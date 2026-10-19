@@ -175,6 +175,26 @@ afterEach(() => {
 });
 
 describe('create match wizard', () => {
+  it('makes level restriction and court booked labels clickable, styled, and keyboard operable', async () => {
+    const user = userEvent.setup();
+    await mount();
+    for (const [labelText, initial] of [
+      [en.matchCreate.fields.levelRestriction, true],
+      [en.matchCreate.fields.courtBooked, false]
+    ] as const) {
+      const control = input(labelText);
+      const label = control.closest('label');
+      expect(label).not.toBeNull();
+      expect(label?.htmlFor || control.id || label?.contains(control)).toBeTruthy();
+      expect(control.checked).toBe(initial);
+      await user.click(label!);
+      expect(control.checked).toBe(!initial);
+      control.focus();
+      await user.keyboard(' ');
+      expect(control.checked).toBe(initial);
+    }
+  });
+
   it('navigates forward/back and moves focus to each new step heading', async () => {
     const user = userEvent.setup();
     await mount();
