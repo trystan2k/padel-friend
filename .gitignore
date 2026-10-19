@@ -8,6 +8,7 @@ coverage/
 .vitest/
 playwright-report/
 test-results/
+artifacts/community-admin-visual/
 .env
 .env.local
 .dev.vars

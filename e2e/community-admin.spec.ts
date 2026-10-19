@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto';
-import { readFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '../src/lib/supabase/database.types';
 import { expect, test, type Locator, type Page } from '@playwright/test';
@@ -41,6 +42,11 @@ type Copy = {
     accessDenied: string;
   };
 };
+
+const visualEvidenceRunId =
+  process.env.GITHUB_RUN_ID && process.env.GITHUB_RUN_ATTEMPT
+    ? `${process.env.GITHUB_RUN_ID}-attempt-${process.env.GITHUB_RUN_ATTEMPT}`
+    : `local-${Date.now()}-${process.pid}`;
 
 const en: Copy = JSON.parse(
   readFileSync(new URL('../src/locales/en/translation.json', import.meta.url), 'utf8')
@@ -211,30 +217,45 @@ async function visualDiff(
     { expected: source.toString('base64'), received: actual.toString('base64'), masks }
   );
   console.info(`${file} visual diff: ${difference}/${budget} changed pixels`);
-  const actualImage = await page.screenshot();
   const testInfo = test.info();
+  const evidenceDirectory = join(
+    process.cwd(),
+    'artifacts/community-admin-visual',
+    visualEvidenceRunId,
+    testInfo.project.name,
+    testInfo.testId,
+    `repeat-${testInfo.repeatEachIndex}-retry-${testInfo.retry}`
+  );
+  mkdirSync(evidenceDirectory, { recursive: true });
+  const evidenceBase = join(evidenceDirectory, file.replace('.png', ''));
+  const { width, height } = await page.evaluate((png) => {
+    const image = new Image();
+    image.src = `data:image/png;base64,${png}`;
+    return new Promise<{ width: number; height: number }>((resolve, reject) => {
+      image.onload = () => resolve({ width: image.width, height: image.height });
+      image.onerror = reject;
+    });
+  }, actual.toString('base64'));
+  const residual = {
+    screen: file.replace('.png', ''),
+    png: file,
+    changedPixels: Number.isFinite(difference) ? difference : 'dimension-mismatch',
+    budget,
+    width,
+    height,
+    referenceHash: createHash('sha256').update(source).digest('hex'),
+    masksHash: createHash('sha256').update(JSON.stringify(masks)).digest('hex'),
+    platform: process.platform,
+    commit: process.env.GITHUB_SHA ?? 'local-unrecorded'
+  };
+  writeFileSync(`${evidenceBase}.json`, JSON.stringify(residual, null, 2));
+  writeFileSync(`${evidenceBase}-actual.png`, actual);
+  writeFileSync(`${evidenceBase}-reference.png`, source);
   await testInfo.attach(`visual-residual-${file}.json`, {
-    body: Buffer.from(
-      JSON.stringify(
-        {
-          screen: file.replace('.png', ''),
-          png: file,
-          changedPixels: difference,
-          budget,
-          width: 390,
-          height: 844,
-          referenceHash: createHash('sha256').update(source).digest('hex'),
-          masksHash: createHash('sha256').update(JSON.stringify(masks)).digest('hex'),
-          platform: process.platform,
-          commit: process.env.GITHUB_SHA ?? 'local-unrecorded'
-        },
-        null,
-        2
-      )
-    ),
+    body: Buffer.from(JSON.stringify(residual, null, 2)),
     contentType: 'application/json'
   });
-  await testInfo.attach(`visual-actual-${file}`, { body: actualImage, contentType: 'image/png' });
+  await testInfo.attach(`visual-actual-${file}`, { body: actual, contentType: 'image/png' });
   await testInfo.attach(`visual-reference-${file}`, { body: source, contentType: 'image/png' });
   expect(
     difference,
@@ -254,19 +275,32 @@ async function mainOffset(page: Page) {
 
 async function bottomNavGeometry(page: Page) {
   const nav = page.getByRole('navigation', { name: en.communityAdmin.navigation });
-  const box = await nav.boundingBox();
-  expect(box).not.toBeNull();
-  expect(Math.abs(box!.x - 18)).toBeLessThanOrEqual(1);
-  expect(Math.abs(box!.y - 774)).toBeLessThanOrEqual(1);
-  expect(Math.abs(box!.width - 354)).toBeLessThanOrEqual(1);
-  expect(Math.abs(box!.height - 56)).toBeLessThanOrEqual(1);
-  const links = await nav.getByRole('link').all();
-  expect(links).toHaveLength(5);
+  await expect(nav).toBeVisible();
+  const acquireBox = async (locator: Locator) => {
+    await expect
+      .poll(async () => {
+        const candidate = await locator.boundingBox();
+        return candidate && candidate.width > 0 && candidate.height > 0 ? candidate : null;
+      })
+      .not.toBeNull();
+    const box = await locator.boundingBox();
+    expect(box).not.toBeNull();
+    expect(box!.width).toBeGreaterThan(0);
+    expect(box!.height).toBeGreaterThan(0);
+    return box!;
+  };
+  const box = await acquireBox(nav);
+  expect(Math.abs(box.x - 18)).toBeLessThanOrEqual(1);
+  expect(Math.abs(box.y - 774)).toBeLessThanOrEqual(1);
+  expect(Math.abs(box.width - 354)).toBeLessThanOrEqual(1);
+  expect(Math.abs(box.height - 56)).toBeLessThanOrEqual(1);
+  const linksLocator = nav.getByRole('link');
+  await expect(linksLocator).toHaveCount(5);
+  const links = await linksLocator.all();
   for (const link of links) {
-    const linkBox = await link.boundingBox();
-    expect(linkBox).not.toBeNull();
+    const linkBox = await acquireBox(link);
     // Pencil tabs are 44px; rendered links keep the ≥44px touch target (48px at 354 width).
-    expect(linkBox!.height).toBeGreaterThanOrEqual(44);
+    expect(linkBox.height).toBeGreaterThanOrEqual(44);
   }
   expect(await nav.locator('[aria-current="page"]').count()).toBe(1);
 }
