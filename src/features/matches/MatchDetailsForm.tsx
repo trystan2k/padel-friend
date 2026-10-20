@@ -1,31 +1,64 @@
 import * as stylex from '@stylexjs/stylex';
+import type { HTMLInputTypeAttribute, InputHTMLAttributes } from 'react';
 import { useTranslation } from 'react-i18next';
+import type { MatchCreationOptions, MatchDraft } from './match-contracts';
 import { createMatchStyles as s } from './create-match.styles';
 
-export type Draft = Record<string, any>;
+export type Draft = MatchDraft;
+type TextField =
+  | 'date'
+  | 'startTime'
+  | 'venueName'
+  | 'mapsUrl'
+  | 'courtNotes'
+  | 'duration'
+  | 'notes'
+  | 'minLevel'
+  | 'maxLevel'
+  | 'price'
+  | 'paymentNote'
+  | 'maximumRegistrations'
+  | 'cutoff';
+type DraftChange = <K extends keyof MatchDraft>(key: K, value: MatchDraft[K]) => void;
+
+const eventTypes = ['competitive', 'friendly'] as const satisfies readonly MatchDraft['type'][];
+const visibilities = [
+  'community_open',
+  'invite_only'
+] as const satisfies readonly MatchDraft['visibility'][];
+const currencies = ['BRL', 'USD', 'EUR'] as const satisfies readonly MatchDraft['currency'][];
+
+function fieldValue(value: MatchDraft, key: TextField): string {
+  return value[key];
+}
+
 export function MatchDetailsForm({
   value,
   change,
   options,
   errors
 }: {
-  value: Draft;
-  change: (key: string, value: unknown) => void;
-  options: any;
+  value: MatchDraft;
+  change: DraftChange;
+  options: MatchCreationOptions;
   errors: Record<string, string>;
 }) {
   const { t } = useTranslation();
-  const field = (key: string, type = 'text', extra: Record<string, unknown> = {}) => (
+  const field = (
+    key: TextField,
+    type: HTMLInputTypeAttribute = 'text',
+    constraints: Pick<InputHTMLAttributes<HTMLInputElement>, 'min' | 'max' | 'step'> = {}
+  ) => (
     <label {...stylex.props(s.field)} key={key}>
       {t(`matchCreate.fields.${key}`)}
       <input
         {...stylex.props(s.input)}
         type={type}
-        value={value[key] ?? ''}
-        onChange={(event) => change(key, event.target.value)}
+        value={fieldValue(value, key)}
+        onChange={(event) => change(key, event.currentTarget.value)}
         aria-invalid={Boolean(errors[key])}
         aria-describedby={errors[key] ? `${key}-error` : undefined}
-        {...extra}
+        {...constraints}
       />
       {errors[key] && (
         <span id={`${key}-error`} role="alert">
@@ -34,18 +67,42 @@ export function MatchDetailsForm({
       )}
     </label>
   );
+  const enumSelect = <K extends 'type' | 'visibility'>(
+    key: K,
+    values: readonly MatchDraft[K][]
+  ) => (
+    <label key={key} {...stylex.props(s.field)}>
+      {t(`matchCreate.fields.${key}`)}
+      <select
+        {...stylex.props(s.input)}
+        value={value[key]}
+        onChange={(event) => {
+          const selected = values.find((candidate) => candidate === event.currentTarget.value);
+          if (selected !== undefined) change(key, selected);
+        }}
+      >
+        {values.map((option) => (
+          <option key={option} value={option}>
+            {t(`matches.${key === 'type' ? 'type' : 'visibility'}.${option}`)}
+          </option>
+        ))}
+      </select>
+    </label>
+  );
+  const community = options.communities.find((item) => item.id === value.community_id);
+
   return (
     <div {...stylex.props(s.fields, s.section)}>
       <label {...stylex.props(s.field)}>
         {t('matchCreate.fields.community')}
         <select
           {...stylex.props(s.input)}
-          value={value.community_id ?? ''}
-          onChange={(e) => change('community_id', e.target.value)}
+          value={value.community_id}
+          onChange={(event) => change('community_id', event.currentTarget.value)}
         >
-          {options.communities.map((c: any) => (
-            <option key={c.id} value={c.id}>
-              {c.name}
+          {options.communities.map((item) => (
+            <option key={item.id} value={item.id}>
+              {item.name}
             </option>
           ))}
         </select>
@@ -53,36 +110,19 @@ export function MatchDetailsForm({
       {field('date', 'date')}
       {field('startTime', 'time')}
       <p>
-        {t('matchCreate.fields.timezone')}:{' '}
-        {options.communities.find((c: any) => c.id === value.community_id)?.timezone ?? ''}
+        {t('matchCreate.fields.timezone')}: {community?.timezone ?? ''}
       </p>
-      {(['type', 'visibility'] as const).map((key) => (
-        <label key={key} {...stylex.props(s.field)}>
-          {t(`matchCreate.fields.${key}`)}
-          <select
-            {...stylex.props(s.input)}
-            value={value[key] ?? (key === 'type' ? 'friendly' : 'community_open')}
-            onChange={(e) => change(key, e.target.value)}
-          >
-            {(key === 'type' ? ['competitive', 'friendly'] : ['community_open', 'invite_only']).map(
-              (v) => (
-                <option key={v} value={v}>
-                  {t(`matches.${key === 'type' ? 'type' : 'visibility'}.${v}`)}
-                </option>
-              )
-            )}
-          </select>
-        </label>
-      ))}
+      {enumSelect('type', eventTypes)}
+      {enumSelect('visibility', visibilities)}
       <label {...stylex.props(s.field)}>
         {t('matchCreate.fields.savedVenue')}
         <select
           {...stylex.props(s.input)}
-          value={value.savedVenue ?? ''}
-          onChange={(e) => change('savedVenue', e.target.value)}
+          value={value.savedVenue}
+          onChange={(event) => change('savedVenue', event.currentTarget.value)}
         >
           <option value="">{t('matchCreate.helpers.optional')}</option>
-          {options.saved_venues.map((venue: any) => (
+          {options.saved_venues.map((venue) => (
             <option key={venue.id} value={venue.id}>
               {venue.name}
             </option>
@@ -99,12 +139,12 @@ export function MatchDetailsForm({
         <label {...stylex.props(s.touchLabel)}>
           <input
             type="checkbox"
-            checked={value.levelRestriction !== false}
-            onChange={(e) => change('levelRestriction', e.target.checked)}
+            checked={value.levelRestriction}
+            onChange={(event) => change('levelRestriction', event.currentTarget.checked)}
           />
           {t('matchCreate.fields.levelRestriction')}
         </label>
-        {value.levelRestriction !== false && (
+        {value.levelRestriction && (
           <div {...stylex.props(s.row)}>
             {field('minLevel', 'number', { step: 0.5, min: 0, max: 7 })}
             {field('maxLevel', 'number', { step: 0.5, min: 0, max: 7 })}
@@ -114,8 +154,8 @@ export function MatchDetailsForm({
       <label {...stylex.props(s.touchLabel)}>
         <input
           type="checkbox"
-          checked={Boolean(value.courtBooked)}
-          onChange={(e) => change('courtBooked', e.target.checked)}
+          checked={value.courtBooked}
+          onChange={(event) => change('courtBooked', event.currentTarget.checked)}
         />
         {t('matchCreate.fields.courtBooked')}
       </label>
@@ -124,13 +164,18 @@ export function MatchDetailsForm({
         {t('matchCreate.fields.currency')}
         <select
           {...stylex.props(s.input)}
+          value={value.currency}
           aria-invalid={Boolean(errors.currency)}
           aria-describedby={errors.currency ? 'currency-error' : undefined}
-          value={value.currency ?? 'EUR'}
-          onChange={(e) => change('currency', e.target.value)}
+          onChange={(event) => {
+            const selected = currencies.find(
+              (candidate) => candidate === event.currentTarget.value
+            );
+            if (selected) change('currency', selected);
+          }}
         >
-          {['BRL', 'USD', 'EUR'].map((c) => (
-            <option key={c}>{c}</option>
+          {currencies.map((currency) => (
+            <option key={currency}>{currency}</option>
           ))}
         </select>
         {errors.currency && (

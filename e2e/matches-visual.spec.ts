@@ -88,7 +88,7 @@ type Copy = {
     };
     helpers: { defaultCutoff: string };
     invitees: { search: string; selected: string };
-    photo: { remove: string };
+    photo: { remove: string; unavailable: string };
   };
 };
 
@@ -1820,11 +1820,8 @@ test.describe.serial('PAF-4 match event visual and structural QA', () => {
   // rendered label-element geometry (getBoundingClientRect width AND height ≥44) across
   // mobile AND desktop viewports × light AND dark themes × en/pt-BR/es, proves the label
   // edge (not the input) toggles its checkbox with the implicit label↔input association
-  // intact, and proves at 320px that every translated label lays out without overflowing
-  // its label box — including an actual wrap exercise (constrained label box) so the
-  // multi-line wrap path is measured, never assumed. A pre-existing page-level 320px
-  // overflow driven by the venue-photo file input is documented numerically there (src/**
-  // is out of scope) with a structural gate proving the labels themselves fit 320px.
+  // intact, and proves at 320px that the whole page and translated labels fit without
+  // horizontal overflow — including an actual wrap exercise.
   // No screenshots, no budgets: pure rendered measurements, printed and attached.
   test('create details — touch-label geometry matrix across viewports, themes and locales', async ({
     browser
@@ -1842,7 +1839,6 @@ test.describe.serial('PAF-4 match event visual and structural QA', () => {
       viewport: Viewport;
       theme: 'light' | 'dark';
       locale: 'en' | 'pt-BR' | 'es';
-      assertOverflowFree: boolean;
     }): Promise<{ page: Page; close: () => Promise<void> }> => {
       const copy = copyFor(options.locale);
       const context = await newContext(browser, {
@@ -1857,8 +1853,27 @@ test.describe.serial('PAF-4 match event visual and structural QA', () => {
       await expect(
         page.getByRole('heading', { level: 1, name: copy.matchCreate.title })
       ).toBeVisible();
-      if (options.assertOverflowFree)
-        await assertNoHorizontalOverflow(page, `create details ${options.theme} ${options.locale}`);
+      await assertNoHorizontalOverflow(
+        page,
+        `create details ${options.viewport.width} ${options.theme} ${options.locale}`
+      );
+      if (options.viewport.width === 320) {
+        const file = page.getByLabel(copy.matchCreate.fields.photo);
+        await expect(file).toBeVisible();
+        const box = await file.boundingBox();
+        expect(box).not.toBeNull();
+        expect(box!.x).toBeGreaterThanOrEqual(0);
+        expect(box!.x + box!.width).toBeLessThanOrEqual(320);
+        expect(box!.height).toBeGreaterThanOrEqual(44);
+        const widths = await page.evaluate(() => ({
+          viewport: window.innerWidth,
+          document: document.documentElement.scrollWidth,
+          body: document.body.scrollWidth
+        }));
+        recordRow(
+          `[overflow] 320 ${options.theme} ${options.locale}: viewport=${widths.viewport}px document=${widths.document}px body=${widths.body}px file=${box!.width.toFixed(2)}px`
+        );
+      }
       return { page, close: () => context.close() };
     };
 
@@ -1900,8 +1915,7 @@ test.describe.serial('PAF-4 match event visual and structural QA', () => {
           const { page, close } = await openCreateDetails({
             viewport,
             theme,
-            locale,
-            assertOverflowFree: true
+            locale
           });
           const copy = copyFor(locale);
           for (const key of TOUCH_LABEL_KEYS) {
@@ -1920,91 +1934,87 @@ test.describe.serial('PAF-4 match event visual and structural QA', () => {
     // while the ≥44×44 geometry assertion still holds, and the wrap path must actually
     // wrap: constraining the label forces the translated text onto multiple rendered
     // lines and the measured box stays ≥44px tall — then restores untouched.
-    for (const locale of ['en', 'pt-BR', 'es'] as const) {
-      const label = `touch-label 320 light ${locale}`;
-      const copy = copyFor(locale);
-      const { page, close } = await openCreateDetails({
-        viewport: { width: 320, height: 844 },
-        theme: 'light',
-        locale,
-        // The page-level overflow at 320px is the documented pre-existing file-input
-        // defect (evidence recorded below); the touch-label probes below gate the F25
-        // geometry, wrap and label-scoped overflow-freedom instead.
-        assertOverflowFree: false
-      });
-      for (const key of TOUCH_LABEL_KEYS) {
-        const target = touchLabel(page, copy, key);
-        await expect(target).toHaveCount(1);
-        const reading = await target.evaluate(measureTouchLabel);
-        recordRow(
-          `[touch-label] ${label} ${key} "${copy.matchCreate.fields[key]}": ${describeReading(reading)}`
-        );
-        assertReading(reading, label, key, copy);
-        await target.evaluate((node) => {
-          node.style.maxWidth = '120px';
+    for (const theme of ['light', 'dark'] as const)
+      for (const locale of ['en', 'pt-BR', 'es'] as const) {
+        const label = `touch-label 320 ${theme} ${locale}`;
+        const copy = copyFor(locale);
+        const { page, close } = await openCreateDetails({
+          viewport: { width: 320, height: 844 },
+          theme,
+          locale
         });
-        const wrapped = await target.evaluate(measureTouchLabel);
-        recordRow(
-          `[touch-label] ${label} ${key} "${copy.matchCreate.fields[key]}" constrained to 120px: ${wrapped.width.toFixed(2)} × ${wrapped.height.toFixed(2)}px (text ${wrapped.textLines} line(s), text overhang right ${wrapped.textOverhangRight.toFixed(2)}px)`
-        );
-        expect(
-          wrapped.textLines,
-          `${label}: ${key} constrained label must actually wrap its translated text onto multiple rendered lines`
-        ).toBeGreaterThanOrEqual(2);
-        expect(
-          wrapped.width,
-          `${label}: ${key} wrapped label rendered width (got ${wrapped.width}px)`
-        ).toBeGreaterThanOrEqual(44);
-        expect(
-          wrapped.height,
-          `${label}: ${key} wrapped label rendered height (got ${wrapped.height}px)`
-        ).toBeGreaterThanOrEqual(44);
-        expect(
-          wrapped.textOverhangRight,
-          `${label}: ${key} wrapped text must not overflow the label horizontally`
-        ).toBeLessThanOrEqual(0.5);
-        await target.evaluate((node) => {
-          node.style.maxWidth = '';
-        });
-        const restored = await target.evaluate(measureTouchLabel);
-        expect(
-          Math.abs(restored.width - reading.width),
-          `${label}: ${key} label must restore its unconstrained rendered width`
-        ).toBeLessThanOrEqual(0.5);
+        for (const key of TOUCH_LABEL_KEYS) {
+          const target = touchLabel(page, copy, key);
+          await expect(target).toHaveCount(1);
+          const reading = await target.evaluate(measureTouchLabel);
+          recordRow(
+            `[touch-label] ${label} ${key} "${copy.matchCreate.fields[key]}": ${describeReading(reading)}`
+          );
+          assertReading(reading, label, key, copy);
+          await target.evaluate((node) => {
+            node.style.maxWidth = '120px';
+          });
+          const wrapped = await target.evaluate(measureTouchLabel);
+          recordRow(
+            `[touch-label] ${label} ${key} "${copy.matchCreate.fields[key]}" constrained to 120px: ${wrapped.width.toFixed(2)} × ${wrapped.height.toFixed(2)}px (text ${wrapped.textLines} line(s), text overhang right ${wrapped.textOverhangRight.toFixed(2)}px)`
+          );
+          expect(
+            wrapped.textLines,
+            `${label}: ${key} constrained label must actually wrap its translated text onto multiple rendered lines`
+          ).toBeGreaterThanOrEqual(2);
+          expect(
+            wrapped.width,
+            `${label}: ${key} wrapped label rendered width (got ${wrapped.width}px)`
+          ).toBeGreaterThanOrEqual(44);
+          expect(
+            wrapped.height,
+            `${label}: ${key} wrapped label rendered height (got ${wrapped.height}px)`
+          ).toBeGreaterThanOrEqual(44);
+          expect(
+            wrapped.textOverhangRight,
+            `${label}: ${key} wrapped text must not overflow the label horizontally`
+          ).toBeLessThanOrEqual(0.5);
+          await target.evaluate((node) => {
+            node.style.maxWidth = '';
+          });
+          const restored = await target.evaluate(measureTouchLabel);
+          expect(
+            Math.abs(restored.width - reading.width),
+            `${label}: ${key} label must restore its unconstrained rendered width`
+          ).toBeLessThanOrEqual(0.5);
+        }
+        await assertNoHorizontalOverflow(page, label);
+        await close();
       }
-      // Known pre-existing page defect, deliberately NOT gated here (src/** is out of
-      // scope for this probe and the F25 labels are not the driver): at 320px the Details
-      // column overflows to 362px because the venue-photo FILE input carries an intrinsic
-      // min-content width of 344px (18px gutter + 344 = 362). Recorded as numeric evidence
-      // for the follow-up fix. The gated part proves F25 innocence AND that every other
-      // page element — including both touch labels — fits 320px exactly once that one
-      // input is removed: a fact that must keep holding after the fix lands.
-      const defect = await page.evaluate(() => {
-        const docWidth = (): number => document.documentElement.scrollWidth;
-        const file = document.querySelector<HTMLInputElement>('main input[type="file"]');
-        const fileRect = file?.getBoundingClientRect();
-        const overflowed = docWidth();
-        if (file) file.style.display = 'none';
-        const withoutFile = docWidth();
-        if (file) file.style.display = '';
-        return {
-          viewportInnerWidth: window.innerWidth,
-          overflowed,
-          fileWidth: fileRect ? Math.round(fileRect.width * 100) / 100 : null,
-          fileScrollWidth: file?.scrollWidth ?? null,
-          fileLeft: fileRect ? Math.round(fileRect.left) : null,
-          withoutFile
-        };
-      });
-      recordRow(
-        `[touch-label] KNOWN DEFECT ${label}: create-details overflows ${defect.viewportInnerWidth}px viewport to ${defect.overflowed}px document width; the venue-photo file input is the driver (rendered ${defect.fileWidth}px, scrollWidth ${defect.fileScrollWidth}px, left ${defect.fileLeft}px; 18px gutter + 344 = 362); with only that input removed the page fits at ${defect.withoutFile}px — the touch labels and all remaining fields are defect-free`
-      );
-      expect(
-        defect.withoutFile,
-        `${label}: with the known-defect file input removed, the whole Details page (touch labels included) must fit 320px with zero horizontal overflow`
-      ).toBeLessThanOrEqual(320);
-      await close();
-    }
+
+    const { page, close } = await openCreateDetails({
+      viewport: { width: 320, height: 844 },
+      theme: 'light',
+      locale: 'en'
+    });
+    const file = page.getByLabel(en.matchCreate.fields.photo);
+    await file.setInputFiles({
+      name: 'venue-photo-selected-filename-long-enough-to-exercise-intrinsic-sizing.png',
+      mimeType: 'image/png',
+      buffer: matchPhoto()
+    });
+    await expect(page.getByRole('button', { name: en.matchCreate.photo.remove })).toBeVisible({
+      timeout: 15_000
+    });
+    await assertNoHorizontalOverflow(page, 'create details 320 en long filename upload complete');
+    const uploadedBox = await file.boundingBox();
+    expect(uploadedBox).not.toBeNull();
+    expect(uploadedBox!.x + uploadedBox!.width).toBeLessThanOrEqual(320);
+    expect(uploadedBox!.height).toBeGreaterThanOrEqual(44);
+    await page.getByRole('button', { name: en.matchCreate.photo.remove }).click();
+    await file.setInputFiles({
+      name: 'invalid.txt',
+      mimeType: 'text/plain',
+      buffer: Buffer.from('bad')
+    });
+    await expect(page.getByRole('alert')).toContainText(en.matchCreate.photo.unavailable);
+    await assertNoHorizontalOverflow(page, 'create details 320 en upload error/helper');
+    await close();
 
     await test.info().attach('touch-label geometry matrix measurements', {
       body: rows.join('\n'),

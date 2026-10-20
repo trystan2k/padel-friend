@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { MatchRegistrationPanel } from './MatchRegistrationPanel';
 import { MatchRequestQueue } from './MatchRequestQueue';
+import type { MatchEventDetail } from './match-contracts';
 import type {
   MatchRegistrationQueue,
   MatchRosterEntry,
@@ -37,7 +38,7 @@ export function MatchDetailPage({
   queueError = false,
   roster = null
 }: {
-  event: Record<string, unknown> | null;
+  event: MatchEventDetail | null;
   loadError?: boolean;
   onRetry?: () => void;
   sharePlatform?: Pick<Navigator, 'share' | 'clipboard'>;
@@ -53,7 +54,7 @@ export function MatchDetailPage({
   const [feedback, setFeedback] = useState<{ id: string; copied: boolean; failed: boolean } | null>(
     null
   );
-  const eventId = typeof event?.event_id === 'string' ? event.event_id : '';
+  const eventId = event?.event_id ?? '';
   const callerAccepted = registration?.state === 'accepted';
   const canonical =
     typeof window === 'undefined'
@@ -79,8 +80,8 @@ export function MatchDetailPage({
         </Link>
       </main>
     );
-  const zone = typeof event.timezone === 'string' ? event.timezone : 'UTC';
-  const venue = typeof event.venue_name === 'string' ? event.venue_name : '';
+  const zone = event.timezone;
+  const venue = event.venue_name;
   async function share() {
     setFeedback({ id: eventId, copied: false, failed: false });
     try {
@@ -93,7 +94,7 @@ export function MatchDetailPage({
     }
   }
   const price =
-    typeof event.price_minor === 'number' && typeof event.currency === 'string'
+    event.price_minor !== null && event.currency !== null
       ? new Intl.NumberFormat(i18n.language, {
           style: 'currency',
           currency: event.currency
@@ -112,7 +113,7 @@ export function MatchDetailPage({
           <h2 id="match-overview-heading" {...stylex.props(s.sectionTitle)}>
             {t('matches.detail.overview')}
           </h2>
-          {typeof event.photo_url === 'string' && (
+          {event.photo_url !== null && (
             <img
               {...stylex.props(s.image)}
               src={event.photo_url}
@@ -129,7 +130,7 @@ export function MatchDetailPage({
           </p>
           <p>
             <a
-              href={typeof event.maps_url === 'string' ? event.maps_url : ''}
+              href={event.maps_url}
               target="_blank"
               rel="noopener noreferrer"
               {...stylex.props(s.cardLink)}
@@ -143,17 +144,17 @@ export function MatchDetailPage({
               {t('matches.card.pricePerPlayer')}: {price}
             </p>
           )}
-          {typeof event.notes === 'string' && (
+          {event.notes !== null && (
             <p>
               {t('matches.card.notes')}: {event.notes}
             </p>
           )}
-          {typeof event.court_notes === 'string' && (
+          {event.court_notes !== null && (
             <p>
               {t('matches.detail.courtNotes')}: {event.court_notes}
             </p>
           )}
-          {typeof event.payment_note === 'string' && (
+          {event.payment_note !== null && (
             <p>
               {t('matches.detail.paymentNote')}: {event.payment_note}
             </p>
@@ -164,35 +165,34 @@ export function MatchDetailPage({
             {t('matches.detail.participation')}
           </h2>
           <h3 {...stylex.props(s.sectionTitle)}>{t('matches.detail.participants')}</h3>
-          {typeof event.duration_minutes === 'number' && (
+          {event.duration_minutes !== null && (
             <p>
               {t('matches.detail.duration')}: {event.duration_minutes}
             </p>
           )}
           <p>
-            {typeof event.accepted_count === 'number' ? event.accepted_count : 0} ·{' '}
-            {t('matches.detail.accepted')}
+            {event.accepted_count} · {t('matches.detail.accepted')}
           </p>
           <p>
-            {typeof event.playing_count === 'number' ? event.playing_count : 0}{' '}
+            {event.playing_count}{' '}
             {t('matches.counts.playing', {
-              count: typeof event.playing_count === 'number' ? event.playing_count : 0
+              count: event.playing_count
             })}{' '}
-            · {typeof event.reserve_count === 'number' ? event.reserve_count : 0}{' '}
+            · {event.reserve_count}{' '}
             {t('matches.counts.reserve', {
-              count: typeof event.reserve_count === 'number' ? event.reserve_count : 0
+              count: event.reserve_count
             })}{' '}
-            · {typeof event.group_count === 'number' ? event.group_count : 0}{' '}
+            · {event.group_count}{' '}
             {t('matches.counts.groups', {
-              count: typeof event.group_count === 'number' ? event.group_count : 0
+              count: event.group_count
             })}{' '}
-            · {typeof event.more_needed === 'number' ? event.more_needed : 4}{' '}
+            · {event.more_needed}{' '}
             {t('matches.counts.moreNeeded', {
-              count: typeof event.more_needed === 'number' ? event.more_needed : 4
+              count: event.more_needed
             })}
           </p>
           {event.caller_badge === 'creator' && <p>{t('matches.detail.creatorAccepted')}</p>}
-          {event.caller_is_invited === true && <p>{t('matches.detail.invitationInfo')}</p>}
+          {event.caller_is_invited && <p>{t('matches.detail.invitationInfo')}</p>}
         </section>
         {registrationError ? (
           <section
@@ -221,8 +221,8 @@ export function MatchDetailPage({
             eventId={eventId}
             eventName={venue}
             queue={queue}
-            minLevel={typeof event.min_level === 'number' ? event.min_level : null}
-            maxLevel={typeof event.max_level === 'number' ? event.max_level : null}
+            minLevel={event.min_level}
+            maxLevel={event.max_level}
             error={queueError}
             onRetry={onRetry}
           />
@@ -231,39 +231,26 @@ export function MatchDetailPage({
           <h2 id="match-eligibility-heading" {...stylex.props(s.sectionTitle)}>
             {t('matches.detail.eligibilityVisibility')}
           </h2>
-          {typeof event.restriction_enabled === 'boolean' && (
-            <p>
-              {event.restriction_enabled &&
-              typeof event.min_level === 'number' &&
-              typeof event.max_level === 'number'
-                ? `${t('matches.card.levelRange')}: ${event.min_level}–${event.max_level}`
-                : t('matches.card.noLevelRestriction')}
-            </p>
-          )}
-          {typeof event.team_assignment_mode === 'string' && (
-            <p>{t(`matches.teamMode.${event.team_assignment_mode}`)}</p>
-          )}
+          <p>
+            {event.restriction_enabled && event.min_level !== null && event.max_level !== null
+              ? `${t('matches.card.levelRange')}: ${event.min_level}–${event.max_level}`
+              : t('matches.card.noLevelRestriction')}
+          </p>
+          <p>{t(`matches.teamMode.${event.team_assignment_mode}`)}</p>
           <p>
             {event.maximum_registrations == null
               ? t('matches.card.unlimited')
-              : typeof event.maximum_registrations === 'number'
-                ? `${t('matches.card.maximum')}: ${event.maximum_registrations}`
-                : null}
+              : `${t('matches.card.maximum')}: ${event.maximum_registrations}`}
           </p>
-          {event.registration_open === false && <p>{t('matches.detail.registrationClosed')}</p>}
-          <p>
-            {t(
-              'matches.visibility.' +
-                (event.visibility === 'invite_only' ? 'invite_only' : 'community_open')
-            )}
-          </p>
+          {!event.registration_open && <p>{t('matches.detail.registrationClosed')}</p>}
+          <p>{t(`matches.visibility.${event.visibility}`)}</p>
           {!callerAccepted && event.caller_eligibility === 'nonmember' && (
             <p>{t('matches.detail.guestApprovalRequired')}</p>
           )}
           {event.caller_eligibility === 'out_of_range' &&
-            event.caller_requires_approval === true &&
+            event.caller_requires_approval &&
             !callerAccepted && <p>{t('matches.detail.outOfRangeApprovalRequired')}</p>}
-          {event.is_past === true && (
+          {event.is_past && (
             <>
               <p>{t('matches.detail.pastScheduled')}</p>
               <p>{t('matches.detail.outcomeUnavailable')}</p>

@@ -4,7 +4,7 @@ import {
   getMatchParticipation,
   matchCallerBadge,
   matchEventCounts,
-  type MatchEventListItem
+  type MatchEventCountInput
 } from '../src/features/matches/match-model';
 
 describe('match participation model', () => {
@@ -46,14 +46,7 @@ describe('match caller badge', () => {
 });
 
 describe('match event counts', () => {
-  const base: MatchEventListItem = {
-    event_id: '00000000-0000-4000-8000-000000000001',
-    photo_url: null,
-    is_past: false,
-    registration_open: false,
-    caller_eligibility: null,
-    caller_requires_approval: false
-  };
+  const base: MatchEventCountInput = {};
   it('keeps reserve_not_playing out of the ordinary reserve figure when explicit counts are present', () => {
     // N=6 past the cutoff with one flipped reserve: a pre-cutoff quartet
     // derivation would report 2 reserves; the explicit counts must win.
@@ -87,7 +80,7 @@ describe('match event counts', () => {
     expect(counts).toMatchObject({ reserve: 1, reserveNotPlaying: 0 });
   });
   it('degrades a malformed reserve_not_playing_count safely to zero while keeping the explicit counts', () => {
-    const withRawCount = (raw: number): MatchEventListItem => ({
+    const withRawCount = (raw: number): MatchEventCountInput => ({
       ...base,
       accepted_count: 6,
       playing_count: 4,

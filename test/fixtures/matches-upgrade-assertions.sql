@@ -6,6 +6,26 @@ declare
   v_before bigint;
   v_after bigint;
 begin
+  if to_regprocedure('public.match_registration_roster(uuid,timestamp with time zone)') is null
+    or to_regprocedure('public.match_registration_counts(uuid,timestamp with time zone)') is null then
+    raise exception 'snapshot helper overload missing';
+  end if;
+  if has_function_privilege('anon','public.match_registration_roster(uuid,timestamp with time zone)','execute')
+    or has_function_privilege('authenticated','public.match_registration_roster(uuid,timestamp with time zone)','execute')
+    or has_function_privilege('anon','public.match_registration_counts(uuid,timestamp with time zone)','execute')
+    or has_function_privilege('authenticated','public.match_registration_counts(uuid,timestamp with time zone)','execute') then
+    raise exception 'snapshot helper overload exposed to browser role';
+  end if;
+  if not has_function_privilege('authenticated','public.get_match_event(uuid)','execute')
+    or has_function_privilege('anon','public.get_match_event(uuid)','execute')
+    or not has_function_privilege('authenticated','public.list_match_events(text,uuid,text,integer,timestamp with time zone)','execute')
+    or has_function_privilege('anon','public.list_match_events(text,uuid,text,integer,timestamp with time zone)','execute') then
+    raise exception 'read RPC browser grants incorrect';
+  end if;
+  if not (select relrowsecurity from pg_catalog.pg_class where oid='public.match_event_registration_state'::regclass)
+    or not (select relrowsecurity from pg_catalog.pg_class where oid='public.match_event_registration_attempts'::regclass) then
+    raise exception 'registration bookkeeping RLS is not enabled';
+  end if;
   if exists (select 1 from pg_catalog.pg_extension where extname='pg_cron') then
     begin
       delete from cron.job where jobname='match-registration-cutoff';

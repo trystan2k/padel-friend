@@ -35,6 +35,7 @@ vi.mock('../src/features/matches/match-photo.server', async (importOriginal) => 
 }));
 
 import { getMatchEvent, listMatchEvents } from '../src/features/matches/matches.functions';
+import { makeMatchRpcDetail, makeMatchRpcListRow } from './helpers/match-fixtures';
 
 const eventId = '00000000-0000-4000-8000-000000000001';
 
@@ -98,13 +99,22 @@ describe('getMatchEvent result contract', () => {
     expect(mocks.signMatchPhoto).not.toHaveBeenCalled();
   });
 
+  it('returns error for malformed detail payload without attempting photo signing', async () => {
+    client.rpc.mockResolvedValue({ data: { event_id: eventId, as_of: 'bad' }, error: null });
+    await expect(getMatchEvent({ data: { event_id: eventId } })).resolves.toEqual({
+      status: 'error'
+    });
+    expect(mocks.signMatchPhoto).not.toHaveBeenCalled();
+  });
+
   it('keeps authorized event projections and signed photo URLs', async () => {
-    const projection = { event_id: eventId, venue_name: 'Court Central' };
+    const projection = makeMatchRpcDetail({ event_id: eventId });
+    const { photo_path: _photoPath, ...signedProjection } = projection;
     client.rpc.mockResolvedValue({ data: projection, error: null });
 
     await expect(getMatchEvent({ data: { event_id: eventId } })).resolves.toEqual({
       status: 'ok',
-      event: { ...projection, photo_url: 'https://example.test/signed-photo' }
+      event: { ...signedProjection, photo_url: 'https://example.test/signed-photo' }
     });
     expect(client.auth.getClaims).toHaveBeenCalledOnce();
     expect(mocks.requireAuthenticatedClient).toHaveBeenCalledOnce();
@@ -130,12 +140,14 @@ const KEY_C = `${COMMUNITY_ID}/${EVENT_C}/${OWNER_ID}/19999999-9999-4999-8999-99
 // list_match_events always answers through one RPC; storage signing goes through
 // client.storage.from(bucket).createSignedUrls, while per-card event lookups
 // would show up as client.from('match_events') calls.
-function listClientWith(rows: unknown[], signed: BatchResponse) {
-  const snapshotRows = rows.map((row) =>
-    typeof row === 'object' && row !== null && !Array.isArray(row)
-      ? { as_of: '2026-01-01T00:00:00.000Z', ...row }
-      : row
-  );
+function listClientWith(rows: unknown, signed: BatchResponse) {
+  const snapshotRows = Array.isArray(rows)
+    ? rows.map((row) =>
+        typeof row === 'object' && row !== null && !Array.isArray(row)
+          ? { ...makeMatchRpcListRow({ as_of: '2026-01-01T00:00:00.000Z' }), ...row }
+          : row
+      )
+    : rows;
   const createSignedUrls = vi
     .fn<(paths: string[], expiresIn: number) => Promise<BatchResponse>>()
     .mockResolvedValue(signed);
@@ -235,7 +247,7 @@ describe('listMatchEvents batch photo signing', () => {
   it('never sends null or invalid photo paths for signing and nulls their URLs', async () => {
     const rows = [
       { event_id: EVENT_A, title: 'Signed', photo_path: KEY_A, cursor: 'cur-a' },
-      { event_id: EVENT_B, title: 'No photo', photo_path: null, cursor: 'cur-b' },
+      { event_id: EVENT_B, title: 'No photo', photo_path: '../../missing.png', cursor: 'cur-b' },
       { event_id: EVENT_C, title: 'Forged', photo_path: '../../escape.png', cursor: 'cur-c' }
     ];
     const { client, createSignedUrls } = listClientWith(rows, {
@@ -299,6 +311,18 @@ describe('listMatchEvents batch photo signing', () => {
     ]);
   });
 
+  it('returns valid cards with null photos when storage signing rejects', async () => {
+    const fixture = listClientWith([{ event_id: EVENT_A, photo_path: KEY_A, cursor: 'cursor-a' }], {
+      data: null,
+      error: null
+    });
+    fixture.createSignedUrls.mockRejectedValue(new Error('storage unavailable'));
+    mocks.requireAuthenticatedClient.mockReset().mockResolvedValue({ client: fixture.client });
+    const result = await listMatchEvents({ data: baseInput });
+    expect(result.items).toHaveLength(1);
+    expect(result.items[0]?.photo_url).toBeNull();
+  });
+
   it('makes no storage calls for an empty page or pages without usable photo paths', async () => {
     const empty = listClientWith([], { data: [], error: null });
     mocks.requireAuthenticatedClient.mockReset().mockResolvedValue({ client: empty.client });
@@ -313,8 +337,13 @@ describe('listMatchEvents batch photo signing', () => {
 
     const noPhotos = listClientWith(
       [
-        { event_id: EVENT_A, title: 'No photo', photo_path: null, cursor: 'cur-a' },
-        { event_id: EVENT_B, title: 'No photo either', cursor: 'cur-b' }
+        { event_id: EVENT_A, title: 'No photo', photo_path: '../../missing.png', cursor: 'cur-a' },
+        {
+          event_id: EVENT_B,
+          title: 'No photo either',
+          photo_path: '../../missing-too.png',
+          cursor: 'cur-b'
+        }
       ],
       { data: [], error: null }
     );
@@ -326,6 +355,21 @@ describe('listMatchEvents batch photo signing', () => {
       [EVENT_A, null],
       [EVENT_B, null]
     ]);
+  });
+
+  it('rejects malformed list rows before any storage signing', async () => {
+    const invalid = { ...makeMatchRpcListRow(), accepted_count: -1 };
+    const fixture = listClientWith([invalid], { data: [], error: null });
+    mocks.requireAuthenticatedClient.mockReset().mockResolvedValue({ client: fixture.client });
+    await expect(listMatchEvents({ data: baseInput })).rejects.toThrow('MATCH_LIST_UNAVAILABLE');
+    expect(fixture.createSignedUrls).not.toHaveBeenCalled();
+  });
+
+  it('rejects non-array list RPC payloads instead of returning an empty page', async () => {
+    const fixture = listClientWith({ unexpected: true }, { data: [], error: null });
+    mocks.requireAuthenticatedClient.mockReset().mockResolvedValue({ client: fixture.client });
+    await expect(listMatchEvents({ data: baseInput })).rejects.toThrow('MATCH_LIST_UNAVAILABLE');
+    expect(fixture.createSignedUrls).not.toHaveBeenCalled();
   });
 });
 
@@ -346,7 +390,7 @@ describe('listMatchEvents database-issued snapshot', () => {
   it('surfaces the database-issued as_of when the request omits a snapshot', async () => {
     const rows = [
       { event_id: EVENT_A, title: 'First', photo_path: KEY_A, cursor: 'cur-a' },
-      { event_id: EVENT_B, title: 'Second', photo_path: null, cursor: 'cur-b' }
+      { event_id: EVENT_B, title: 'Second', photo_path: '../../missing.png', cursor: 'cur-b' }
     ];
     const { client } = listClientWith(rows, { data: [], error: null });
     mocks.requireAuthenticatedClient.mockReset().mockResolvedValue({ client });
@@ -369,8 +413,20 @@ describe('listMatchEvents database-issued snapshot', () => {
   it('forwards the identical snapshot on the next page and echoes it back', async () => {
     const snapshot = '2026-02-02T03:04:05.678Z';
     const rows = [
-      { event_id: EVENT_A, title: 'First', photo_path: null, cursor: 'cur-a', as_of: snapshot },
-      { event_id: EVENT_B, title: 'Second', photo_path: null, cursor: 'cur-b', as_of: snapshot }
+      {
+        event_id: EVENT_A,
+        title: 'First',
+        photo_path: '../../missing.png',
+        cursor: 'cur-a',
+        as_of: snapshot
+      },
+      {
+        event_id: EVENT_B,
+        title: 'Second',
+        photo_path: '../../missing.png',
+        cursor: 'cur-b',
+        as_of: snapshot
+      }
     ];
     const { client } = listClientWith(rows, { data: [], error: null });
     mocks.requireAuthenticatedClient.mockReset().mockResolvedValue({ client });
@@ -397,7 +453,7 @@ describe('listMatchEvents database-issued snapshot', () => {
         {
           event_id: EVENT_A,
           title: 'Second page',
-          photo_path: null,
+          photo_path: '../../missing.png',
           cursor: 'cur-a',
           as_of: databaseSnapshot
         }
@@ -421,7 +477,7 @@ describe('listMatchEvents database-issued snapshot', () => {
         {
           event_id: EVENT_A,
           title: 'Drifted page',
-          photo_path: null,
+          photo_path: '../../missing.png',
           cursor: 'cur-a',
           as_of: '2026-10-19T00:00:00.000001+00:00'
         }
@@ -437,7 +493,7 @@ describe('listMatchEvents database-issued snapshot', () => {
 
   it('strips the row-only as_of and cursor fields from every card', async () => {
     const rows = [
-      { event_id: EVENT_A, title: 'First', photo_path: null, cursor: 'cur-a' },
+      { event_id: EVENT_A, title: 'First', photo_path: '../../missing.png', cursor: 'cur-a' },
       { event_id: EVENT_B, title: 'Second', cursor: 'cur-b' }
     ];
     const { client } = listClientWith(rows, { data: [], error: null });
@@ -458,11 +514,17 @@ describe('listMatchEvents database-issued snapshot', () => {
     // means the database re-evaluated the page instead of continuing it.
     const drifted = listClientWith(
       [
-        { event_id: EVENT_A, title: 'First', photo_path: null, cursor: 'cur-a', as_of: snapshot },
+        {
+          event_id: EVENT_A,
+          title: 'First',
+          photo_path: '../../missing.png',
+          cursor: 'cur-a',
+          as_of: snapshot
+        },
         {
           event_id: EVENT_B,
           title: 'Second',
-          photo_path: null,
+          photo_path: '../../missing.png',
           cursor: 'cur-b',
           as_of: '1999-12-31T23:59:59.000Z'
         }
@@ -477,11 +539,11 @@ describe('listMatchEvents database-issued snapshot', () => {
     // Without a request snapshot: rows must at least agree with each other.
     const divergent = listClientWith(
       [
-        { event_id: EVENT_A, title: 'First', photo_path: null, cursor: 'cur-a' },
+        { event_id: EVENT_A, title: 'First', photo_path: '../../missing.png', cursor: 'cur-a' },
         {
           event_id: EVENT_B,
           title: 'Second',
-          photo_path: null,
+          photo_path: '../../missing.png',
           cursor: 'cur-b',
           as_of: '1999-12-31T23:59:59.000Z'
         }

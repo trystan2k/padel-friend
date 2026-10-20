@@ -23,41 +23,52 @@ vi.mock('@tanstack/react-router', async (original) => ({
 }));
 import { MatchDetailPage, shareMatchLink } from '../src/features/matches/MatchDetailPage';
 import { loadMatchDetail } from '../src/routes/_protected.matches.$eventId';
+import type { MatchEventDetail } from '../src/features/matches/match-contracts';
+import { makeMatchDetail } from './helpers/match-fixtures';
 
-const event = (id = 1, extra: Record<string, unknown> = {}) => ({
-  event_id: `00000000-0000-4000-8000-${String(id).padStart(12, '0')}`,
-  community_id: '11111111-1111-4111-8111-111111111111',
-  community_name: 'Club Hidden',
-  creator_id: '22222222-2222-4222-8222-222222222222',
-  creator_name: 'Ana Silva',
-  creator_level: 3.5,
-  starts_at: '2026-10-20T18:30:00.000Z',
-  timezone: 'Europe/Madrid',
-  event_type: 'friendly',
-  visibility: 'invite_only',
-  team_assignment_mode: 'POST_MATCH_TEAMS',
-  venue_name: 'Court Central',
-  maps_url: 'https://www.google.com/maps/place/Court+Central',
-  photo_path: 'photo.jpg',
-  photo_url: 'https://example.test/photo.jpg',
-  notes: 'Bring water',
-  price_minor: 1250,
-  currency: 'EUR',
-  accepted_count: 5,
-  playing_count: 4,
-  reserve_count: 1,
-  group_count: 1,
-  more_needed: 3,
-  caller_badge: 'invited',
-  is_past: false,
-  registration_open: true,
-  caller_eligibility: 'invited',
-  caller_is_invited: true,
-  caller_requires_approval: false,
-  ...extra
-});
+const event = (id = 1, extra: Partial<MatchEventDetail> = {}): MatchEventDetail =>
+  makeMatchDetail({
+    event_id: `00000000-0000-4000-8000-${String(id).padStart(12, '0')}`,
+    community_id: '11111111-1111-4111-8111-111111111111',
+    community_name: 'Club Hidden',
+    creator_id: '22222222-2222-4222-8222-222222222222',
+    creator_name: 'Ana Silva',
+    creator_level: 3.5,
+    starts_at: '2026-10-20T18:30:00.000Z',
+    timezone: 'Europe/Madrid',
+    event_type: 'friendly',
+    visibility: 'invite_only',
+    team_assignment_mode: 'POST_MATCH_TEAMS',
+    venue_name: 'Court Central',
+    maps_url: 'https://www.google.com/maps/place/Court+Central',
+    photo_url: 'https://example.test/photo.jpg',
+    notes: 'Bring water',
+    court_notes: null,
+    duration_minutes: 90,
+    payment_note: null,
+    court_booked: true,
+    restriction_enabled: false,
+    min_level: null,
+    max_level: null,
+    registration_cutoff_at: '2026-10-20T17:30:00.000Z',
+    price_minor: 1250,
+    currency: 'EUR',
+    accepted_count: 5,
+    playing_count: 4,
+    reserve_count: 1,
+    reserve_not_playing_count: 0,
+    group_count: 1,
+    more_needed: 3,
+    caller_badge: 'invited',
+    is_past: false,
+    registration_open: true,
+    caller_eligibility: 'nonmember',
+    caller_is_invited: true,
+    caller_requires_approval: false,
+    ...extra
+  });
 function mount(
-  value: Record<string, unknown> | null,
+  value: MatchEventDetail | null,
   locale = 'en',
   props: { loadError?: boolean; onRetry?: () => void } = {}
 ) {
@@ -159,7 +170,14 @@ describe('match detail surface', () => {
     };
     const registration: MyMatchRegistration = { state: 'none' };
 
-    const inviteOnly = event(21, { ...invitedOutOfRange, visibility: 'invite_only' });
+    const startsAt = new Date(Date.now() + 4 * 60 * 60 * 1000).toISOString();
+    const cutoff = new Date(Date.now() + 3 * 60 * 60 * 1000).toISOString();
+    const inviteOnly = event(21, {
+      ...invitedOutOfRange,
+      visibility: 'invite_only',
+      starts_at: startsAt,
+      registration_cutoff_at: cutoff
+    });
     const inviteOnlyView = render(
       <I18nextProvider i18n={createI18n('en')}>
         <MatchDetailPage event={inviteOnly} registration={registration} />
@@ -174,7 +192,12 @@ describe('match detail surface', () => {
     ).toBeNull();
 
     inviteOnlyView.unmount();
-    const communityOpen = event(22, { ...invitedOutOfRange, visibility: 'community_open' });
+    const communityOpen = event(22, {
+      ...invitedOutOfRange,
+      visibility: 'community_open',
+      starts_at: startsAt,
+      registration_cutoff_at: cutoff
+    });
     render(
       <I18nextProvider i18n={createI18n('en')}>
         <MatchDetailPage event={communityOpen} registration={registration} />

@@ -4,16 +4,24 @@ import { RosterRow } from '../../components/ui/RosterRow';
 import { Link } from '@tanstack/react-router';
 import { useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import { getMatchParticipation, matchEventCounts, type MatchEventListItem } from './match-model';
+import { matchEventCounts } from './match-model';
+import type { MatchEventDetail } from './match-contracts';
 import {
   matchRegistrationGroup,
   matchRegistrationReservePosition,
   type MatchRegistrationSource,
+  type MatchRegistrationAction,
   type MatchRosterEntry,
   type MyMatchRegistration
 } from './match-registration-model';
 import { matchRegistrationErrorKey } from './match-registration-error-copy';
 import { matchRegistrationStyles as s } from './match-registration.styles';
+import {
+  participationTone,
+  registrationActionTone,
+  registrationSourceTone,
+  registrationStateTone
+} from './match-status-tone';
 import { useMatchRegistration } from './use-match-registration';
 
 // PAF-5.5: the player's own registration area on the match detail screen.
@@ -22,69 +30,60 @@ import { useMatchRegistration } from './use-match-registration';
 // placement) and the authoritative counts. Full capacity and the closed state
 // are explicit, separate states.
 
-type EventRecord = Record<string, unknown>;
+export type MatchRegistrationEvent = Pick<
+  MatchEventDetail,
+  | 'event_id'
+  | 'registration_cutoff_at'
+  | 'starts_at'
+  | 'timezone'
+  | 'accepted_count'
+  | 'playing_count'
+  | 'reserve_count'
+  | 'reserve_not_playing_count'
+  | 'group_count'
+  | 'more_needed'
+  | 'maximum_registrations'
+  | 'is_past'
+  | 'caller_eligibility'
+  | 'caller_requires_approval'
+  | 'caller_is_invited'
+  | 'restriction_enabled'
+  | 'min_level'
+  | 'max_level'
+  | 'visibility'
+>;
 
-function eventString(event: EventRecord, key: string): string | null {
-  const value = event[key];
-  return typeof value === 'string' && value.length > 0 ? value : null;
-}
-function eventNumber(event: EventRecord, key: string): number | null {
-  const value = event[key];
-  return typeof value === 'number' && Number.isFinite(value) ? value : null;
-}
-function eventBoolean(event: EventRecord, key: string): boolean | null {
-  const value = event[key];
-  return typeof value === 'boolean' ? value : null;
-}
-function callerEligibility(event: EventRecord): string | null {
-  const value = event.caller_eligibility;
-  return typeof value === 'string' ? value : null;
-}
-
-export function matchRegistrationCutoffPassed(event: EventRecord, now: number): boolean {
-  const cutoff = eventString(event, 'registration_cutoff_at');
-  if (!cutoff) return false;
-  const target = Date.parse(cutoff);
+export function matchRegistrationCutoffPassed(
+  event: Pick<MatchRegistrationEvent, 'registration_cutoff_at'>,
+  now: number
+): boolean {
+  const target = Date.parse(event.registration_cutoff_at);
   return Number.isFinite(target) && target <= now;
 }
 
-// Defensive narrowing: the route always hands the flat primitive detail
-// projection, but a malformed payload must not leak into the counts reader.
-function isMatchEventListItem(event: EventRecord): event is MatchEventListItem {
-  return typeof event.event_id === 'string';
+function eventCounts(event: MatchRegistrationEvent) {
+  return matchEventCounts(event);
 }
 
-function eventCounts(event: EventRecord) {
-  if (isMatchEventListItem(event)) return matchEventCounts(event);
-  const accepted = eventNumber(event, 'accepted_count') ?? 0;
-  const derived = getMatchParticipation(accepted);
-  return {
-    accepted,
-    playing: derived.playing,
-    reserve: derived.reserve,
-    reserveNotPlaying: eventNumber(event, 'reserve_not_playing_count') ?? 0,
-    groups: derived.groups,
-    moreNeeded: derived.moreNeeded
-  };
+export function matchRegistrationIsFull(
+  event: Pick<MatchRegistrationEvent, 'maximum_registrations' | 'accepted_count'>
+): boolean {
+  return (
+    event.maximum_registrations !== null && event.accepted_count >= event.maximum_registrations
+  );
 }
-
-export function matchRegistrationIsFull(event: EventRecord): boolean {
-  const maximum = eventNumber(event, 'maximum_registrations');
-  if (maximum === null) return false;
-  return eventCounts(event).accepted >= maximum;
-}
-
-export type MatchRegistrationAction = 'join' | 'request' | 'full' | 'closed' | 'invited' | 'none';
 
 // Smallest defensible eligibility gate: the server stays authoritative, this
 // only chooses which CTA (or explicit blocked state) to present.
-export function matchRegistrationAction(event: EventRecord, now: number): MatchRegistrationAction {
-  if (eventBoolean(event, 'is_past') === true || matchRegistrationCutoffPassed(event, now))
-    return 'closed';
+export function matchRegistrationAction(
+  event: MatchRegistrationEvent,
+  now: number
+): MatchRegistrationAction {
+  if (event.is_past || matchRegistrationCutoffPassed(event, now)) return 'closed';
   if (matchRegistrationIsFull(event)) return 'full';
-  const eligibility = callerEligibility(event);
-  if (eventBoolean(event, 'caller_requires_approval') === true) return 'request';
-  if (eligibility === 'invited') return 'invited';
+  if (event.caller_is_invited && event.visibility === 'invite_only') return 'invited';
+  const eligibility = event.caller_eligibility;
+  if (event.caller_requires_approval) return 'request';
   if (eligibility === 'out_of_range' || eligibility === 'nonmember') return 'request';
   if (eligibility === 'member') return 'join';
   return 'none';
@@ -142,14 +141,14 @@ export function MatchRegistrationPanel({
   callerLevel = null,
   roster = null
 }: {
-  event: EventRecord;
+  event: MatchRegistrationEvent;
   registration: MyMatchRegistration;
   callerLevel?: number | null;
   roster?: MatchRosterEntry[] | null;
 }) {
   const { t, i18n } = useTranslation();
-  const eventId = eventString(event, 'event_id') ?? '';
-  const cutoffAt = eventString(event, 'registration_cutoff_at');
+  const eventId = event.event_id;
+  const cutoffAt = event.registration_cutoff_at;
   const controller = useMatchRegistration({
     eventId,
     initialRegistration: registration,
@@ -157,8 +156,8 @@ export function MatchRegistrationPanel({
   });
   const now = useState(() => Date.now())[0];
   const counts = eventCounts(event);
-  const maximum = eventNumber(event, 'maximum_registrations');
-  const timeZone = eventString(event, 'timezone') ?? 'UTC';
+  const maximum = event.maximum_registrations;
+  const timeZone = event.timezone;
 
   const feedbackMessage = (() => {
     const feedback = controller.feedback;
@@ -176,9 +175,9 @@ export function MatchRegistrationPanel({
       : null;
 
   const levelRange = (() => {
-    if (eventBoolean(event, 'restriction_enabled') !== true) return null;
-    const min = eventNumber(event, 'min_level');
-    const max = eventNumber(event, 'max_level');
+    if (!event.restriction_enabled) return null;
+    const min = event.min_level;
+    const max = event.max_level;
     if (min === null || max === null) return null;
     return callerLevel === null
       ? t('matchRegistration.join.levelRangeNoLevel', { min, max })
@@ -193,11 +192,10 @@ export function MatchRegistrationPanel({
   // request to an invite-only event, so preserve the invitation-only state there too.
   const invitedWithoutRegistration =
     registration.state === 'none' &&
-    eventBoolean(event, 'caller_is_invited') === true &&
-    eventString(event, 'visibility') === 'invite_only' &&
+    event.caller_is_invited &&
+    event.visibility === 'invite_only' &&
     (registrationAction === 'join' ||
-      (registrationAction === 'request' &&
-        eventBoolean(event, 'caller_requires_approval') === true));
+      (registrationAction === 'request' && event.caller_requires_approval));
   const action = invitedWithoutRegistration ? 'invited' : registrationAction;
 
   // An invited caller has no registration row yet, so this panel has no place to
@@ -247,12 +245,7 @@ export function MatchRegistrationPanel({
 
       const renderEntry = (entry: MatchRosterEntry) => {
         const isCaller = entry.accepted_order === callerOrder;
-        const tone =
-          entry.participation === 'playing'
-            ? 'playing'
-            : entry.participation === 'reserve'
-              ? 'reserve'
-              : 'muted';
+        const tone = participationTone[entry.participation];
         const participationBadge =
           entry.participation === 'playing'
             ? t('matchRegistration.badges.playing')
@@ -271,7 +264,7 @@ export function MatchRegistrationPanel({
             )}
             <StatusBadge tone={tone}>{participationBadge}</StatusBadge>
             {(isCaller || entry.registration_source === 'guest') && (
-              <StatusBadge tone={entry.registration_source === 'guest' ? 'guest' : 'muted'}>
+              <StatusBadge tone={registrationSourceTone[entry.registration_source]}>
                 {t(sourceBadgeKey(entry.registration_source))}
               </StatusBadge>
             )}
@@ -338,8 +331,7 @@ export function MatchRegistrationPanel({
         : participation === 'reserve'
           ? t('matchRegistration.badges.reserve')
           : t('matchRegistration.badges.reserveNotPlaying');
-    const tone =
-      participation === 'playing' ? 'playing' : participation === 'reserve' ? 'reserve' : 'muted';
+    const tone = participationTone[participation];
     const sectionCount =
       participation === 'playing'
         ? counts.playing
@@ -356,7 +348,7 @@ export function MatchRegistrationPanel({
           <p {...stylex.props(s.meta)}>{rosterCount(sectionCount)}</p>
           <RosterRow name={t('matchRegistration.roster.you')} highlighted>
             <StatusBadge tone={tone}>{participationBadge}</StatusBadge>
-            <StatusBadge tone={registration.registration_source === 'guest' ? 'guest' : 'muted'}>
+            <StatusBadge tone={registrationSourceTone[registration.registration_source]}>
               {t(sourceBadgeKey(registration.registration_source))}
             </StatusBadge>
             {participation === 'reserve' && reservePosition !== null && (
@@ -401,12 +393,7 @@ export function MatchRegistrationPanel({
               ? t('matchRegistration.request.approvedReserveBadge', { position: reservePosition })
               : t('matchRegistration.request.joinedReserveBadge', { position: reservePosition })
           : t('matchRegistration.badges.reserveNotPlaying');
-    const tone =
-      participation === 'playing'
-        ? 'playing'
-        : participation === 'reserve_not_playing'
-          ? 'muted'
-          : 'reserve';
+    const tone = participationTone[participation];
     const copy =
       participation === 'playing'
         ? isCreatorSlot
@@ -442,7 +429,9 @@ export function MatchRegistrationPanel({
     body = (
       <div {...stylex.props(s.body)}>
         <div {...stylex.props(s.badgeRow)}>
-          <StatusBadge tone="reserve">{t('matchRegistration.request.pendingBadge')}</StatusBadge>
+          <StatusBadge tone={registrationStateTone.pending}>
+            {t('matchRegistration.request.pendingBadge')}
+          </StatusBadge>
         </div>
         <p {...stylex.props(s.copy)}>{t('matchRegistration.request.pendingCopy')}</p>
         <p {...stylex.props(s.meta)}>
@@ -463,7 +452,9 @@ export function MatchRegistrationPanel({
     body = (
       <div {...stylex.props(s.body)}>
         <div {...stylex.props(s.badgeRow)}>
-          <StatusBadge tone="danger">{t('matchRegistration.request.declinedBadge')}</StatusBadge>
+          <StatusBadge tone={registrationStateTone.rejected}>
+            {t('matchRegistration.request.declinedBadge')}
+          </StatusBadge>
         </div>
         <p {...stylex.props(s.copy)}>{t('matchRegistration.request.declinedCopy')}</p>
         <div {...stylex.props(s.actions)}>
@@ -485,7 +476,9 @@ export function MatchRegistrationPanel({
     body = (
       <div {...stylex.props(s.body)}>
         <div {...stylex.props(s.badgeRow)}>
-          <StatusBadge tone="muted">{t('matchRegistration.request.expiredBadge')}</StatusBadge>
+          <StatusBadge tone={registrationStateTone.expired}>
+            {t('matchRegistration.request.expiredBadge')}
+          </StatusBadge>
         </div>
         <p {...stylex.props(s.copy)}>{t('matchRegistration.request.expiredCopy')}</p>
         <div {...stylex.props(s.actions)}>
@@ -502,7 +495,9 @@ export function MatchRegistrationPanel({
     body = (
       <div {...stylex.props(s.body)}>
         <div {...stylex.props(s.badgeRow)}>
-          <StatusBadge tone="muted">{t('matchRegistration.closed.badge')}</StatusBadge>
+          <StatusBadge tone={registrationActionTone.closed}>
+            {t('matchRegistration.closed.badge')}
+          </StatusBadge>
         </div>
         <p {...stylex.props(s.meta)}>{t('matchRegistration.closed.detail')}</p>
         <p {...stylex.props(s.counts)}>
@@ -529,7 +524,9 @@ export function MatchRegistrationPanel({
     body = (
       <div {...stylex.props(s.body)}>
         <div {...stylex.props(s.badgeRow)}>
-          <StatusBadge tone="danger">{t('matchRegistration.full.badge')}</StatusBadge>
+          <StatusBadge tone={registrationActionTone.full}>
+            {t('matchRegistration.full.badge')}
+          </StatusBadge>
         </div>
         <p {...stylex.props(s.meta)}>
           {t('matchRegistration.full.detail', { accepted: counts.accepted, maximum })}
@@ -546,7 +543,7 @@ export function MatchRegistrationPanel({
     body = (
       <div {...stylex.props(s.body)}>
         <p {...stylex.props(s.copy)}>
-          {callerEligibility(event) === 'nonmember'
+          {event.caller_eligibility === 'nonmember'
             ? t('matches.detail.guestApprovalRequired')
             : t('matches.detail.outOfRangeApprovalRequired')}
         </p>

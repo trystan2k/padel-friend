@@ -1,64 +1,12 @@
-import type { Database } from '../../lib/supabase/database.types';
-
-export type MatchEventListItem = {
-  event_id: string;
-  photo_url: string | null;
-  is_past: boolean;
-  registration_open: boolean;
-  caller_eligibility: 'creator' | 'member' | 'out_of_range' | 'nonmember' | 'invited' | null;
-  caller_requires_approval: boolean;
-  accepted_count?: number;
-  playing_count?: number;
-  reserve_count?: number;
-  group_count?: number;
-  more_needed?: number;
-  caller_badge?: MatchCallerBadge | null;
-  is_creator?: boolean;
-  is_accepted?: boolean;
-  is_invited?: boolean;
-  caller_is_invited?: boolean;
-  starts_at?: string;
-  timezone?: string;
-  venue_name?: string;
-  maps_url?: string | null;
-  price_minor?: number | null;
-  currency?: string | null;
-  restriction_enabled?: boolean;
-  min_level?: number | null;
-  max_level?: number | null;
-  team_assignment_mode?: string | null;
-  maximum_registrations?: number | null;
-  event_type?: Database['public']['Enums']['match_event_type'];
-  creator_name?: string | null;
-  creator_level?: number | null;
-  visibility?: Database['public']['Enums']['match_event_visibility'];
-  notes?: string | null;
-  court_notes?: string | null;
-  payment_note?: string | null;
-  duration_minutes?: number | null;
-  // Additive flat primitive exposed by get_match_event / list_match_events since
-  // the cutoff lifecycle: ordinary Reserve (reserve_count) never includes
-  // Reserve Not Playing, so the two can no longer be conflated. Optional so an
-  // older payload or a pre-cutoff fixture stays valid.
-  reserve_not_playing_count?: number;
-};
-export type MatchEventListResult = {
-  items: MatchEventListItem[];
-  next_cursor: string | null;
-  as_of: string | null;
-};
+import type { MatchCallerBadge, MatchEventCard } from './match-contracts';
+export type { MatchCallerBadge, MatchEventCard } from './match-contracts';
+export type MatchEventListItem = MatchEventCard;
+export type { MatchEventListResult } from './match-contracts';
 
 // The flat DTO caller_badge is an enumerated participation value, not a free
 // string. Reserve Not Playing is a first-class member so a past-cutoff reader is
 // never labelled ordinary Reserve, and an unknown token degrades to null
 // instead of rendering a bogus `matches.badges.<garbage>` key.
-export type MatchCallerBadge =
-  | 'creator'
-  | 'playing'
-  | 'reserve'
-  | 'reserve_not_playing'
-  | 'invited';
-
 const MATCH_CALLER_BADGES: readonly MatchCallerBadge[] = [
   'creator',
   'playing',
@@ -92,13 +40,21 @@ export type MatchEventCounts = {
   moreNeeded: number;
 };
 
+/** Narrow pre-contract compatibility input for legacy count fallback parsing. */
+export type MatchEventCountInput = {
+  accepted_count?: unknown;
+  playing_count?: unknown;
+  reserve_count?: unknown;
+  reserve_not_playing_count?: unknown;
+  group_count?: unknown;
+  more_needed?: unknown;
+};
+
 // Explicit flat counts are authoritative: reserve_count already excludes Reserve
 // Not Playing, so a past-cutoff event is never displayed as if its not-playing
 // players were ordinary Reserve. A payload without the explicit keys falls back
 // to the pre-cutoff quartet derivation.
-export function matchEventCounts(
-  event: Omit<MatchEventListItem, 'playing_count'> & { playing_count?: unknown }
-): MatchEventCounts {
+export function matchEventCounts(event: MatchEventCountInput): MatchEventCounts {
   const accepted = explicitCount(event.accepted_count);
   const playing = explicitCount(event.playing_count);
   const reserve = explicitCount(event.reserve_count);

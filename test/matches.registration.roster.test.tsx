@@ -35,11 +35,12 @@ vi.mock('@tanstack/react-router', async (original) => ({
 }));
 
 import { MatchRegistrationPanel } from '../src/features/matches/MatchRegistrationPanel';
+import { makeMatchCard } from './helpers/match-fixtures';
 
 const EVENT_ID = '00000000-0000-4000-8000-000000000001';
 
 function event(extra: Record<string, unknown> = {}) {
-  return {
+  return makeMatchCard({
     event_id: EVENT_ID,
     venue_name: 'Court Central',
     timezone: 'UTC',
@@ -55,13 +56,13 @@ function event(extra: Record<string, unknown> = {}) {
     registration_open: true,
     caller_eligibility: 'member',
     caller_requires_approval: false,
-    caller_badge: 'member',
+    caller_badge: 'playing',
     restriction_enabled: false,
     min_level: null,
     max_level: null,
     is_past: false,
     ...extra
-  };
+  });
 }
 
 function accepted(

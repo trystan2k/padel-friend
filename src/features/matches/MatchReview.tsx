@@ -3,7 +3,18 @@ import { useTranslation } from 'react-i18next';
 import { useEffect, useState } from 'react';
 import { signUnattachedMatchPhotoFn } from './match-photo.functions';
 import { createMatchStyles as s } from './create-match.styles';
-export function MatchReview({ value, photo, count }: { value: any; photo: string; count: number }) {
+import type { MatchDraft } from './match-contracts';
+
+type ReviewValue = MatchDraft & { timezone: string; cutoffInstant: string };
+export function MatchReview({
+  value,
+  photo,
+  count
+}: {
+  value: ReviewValue;
+  photo: string;
+  count: number;
+}) {
   const { t, i18n } = useTranslation();
   const [preview, setPreview] = useState<{ key: string; url: string } | null>(null);
   const [previewFailed, setPreviewFailed] = useState<string | null>(null);
@@ -21,7 +32,7 @@ export function MatchReview({ value, photo, count }: { value: any; photo: string
       active = false;
     };
   }, [photo]);
-  const currency = ['BRL', 'USD', 'EUR'].includes(value.currency) ? value.currency : 'EUR';
+  const currency = value.currency;
   const cost =
     value.price === '' || value.price == null
       ? ''
@@ -40,7 +51,7 @@ export function MatchReview({ value, photo, count }: { value: any; photo: string
         <p>{t(`matches.type.${value.type}`)}</p>
         <p>{t(`matches.visibility.${value.visibility}`)}</p>
         <p>
-          {value.levelRestriction === false
+          {!value.levelRestriction
             ? t('matches.card.noLevelRestriction')
             : `${value.minLevel}–${value.maxLevel}`}
         </p>
@@ -61,7 +72,7 @@ export function MatchReview({ value, photo, count }: { value: any; photo: string
         />
       ) : null}
       {previewFailed === photo && <p role="alert">{t('matchCreate.photo.unavailable')}</p>}
-      <p>{t(`matches.teamMode.${value.teamMode ?? 'POST_MATCH_TEAMS'}`)}</p>
+      <p>{t(`matches.teamMode.${value.teamMode}`)}</p>
       {value.courtBooked && <p>{t('matchCreate.fields.courtBooked')}</p>}
       {value.paymentNote && <p>{value.paymentNote}</p>}
       {value.maximumRegistrations && (

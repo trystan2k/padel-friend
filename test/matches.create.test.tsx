@@ -44,6 +44,8 @@ vi.mock('../src/lib/supabase/client', () => ({
   getBrowserClient: mocks.browserClient
 }));
 import { CreateMatchPage } from '../src/features/matches/CreateMatchPage';
+import { makeMatchCreationOptions } from './helpers/match-fixtures';
+import { makeMatchInvitee } from './helpers/match-fixtures';
 
 // The component pre-validates magic bytes before the browser uploads, so fixture
 // files must start with a real PNG signature.
@@ -62,18 +64,19 @@ const options = (
   ],
   min: number | null = 2,
   max: number | null = 4
-) => ({
-  communities,
-  level_defaults: { min, max, level: 3 },
-  saved_venues: [
-    {
-      id: '33333333-3333-4333-8333-333333333333',
-      name: 'Saved court',
-      photo_path: null,
-      maps_url: null
-    }
-  ]
-});
+) =>
+  makeMatchCreationOptions({
+    communities,
+    level_defaults: { min, max, level: 3 },
+    saved_venues: [
+      {
+        id: '33333333-3333-4333-8333-333333333333',
+        name: 'Saved court',
+        photo_path: null,
+        maps_url: null
+      }
+    ]
+  });
 function deferred<T>() {
   let resolve!: (value: T) => void;
   let reject!: (reason?: unknown) => void;
@@ -291,7 +294,12 @@ describe('create match wizard', () => {
       '33333333-3333-4333-8333-333333333333'
     );
     await user.click(screen.getByRole('button', { name: en.matchCreate.next }));
-    mocks.search.mockResolvedValueOnce([{ id: 'player-id', name: 'Pat Player' }]);
+    mocks.search.mockResolvedValueOnce([
+      makeMatchInvitee({
+        user_id: '33333333-3333-4333-8333-333333333333',
+        display_name: 'Pat Player'
+      })
+    ]);
     await user.type(screen.getByLabelText(en.matchCreate.invitees.search), 'player');
     expect(await screen.findByText('Pat Player')).toBeTruthy();
     await user.click(screen.getByText('Pat Player'));
@@ -340,8 +348,8 @@ describe('create match wizard', () => {
 
   it('discards stale invitee search responses after a newer query resolves', async () => {
     const user = userEvent.setup();
-    const old = deferred<any[]>();
-    const fresh = deferred<any[]>();
+    const old = deferred<ReturnType<typeof makeMatchInvitee>[]>();
+    const fresh = deferred<ReturnType<typeof makeMatchInvitee>[]>();
     mocks.search.mockReturnValueOnce(old.promise).mockReturnValueOnce(fresh.promise);
     await mount();
     await user.click(screen.getByRole('button', { name: en.matchCreate.next }));
@@ -350,9 +358,19 @@ describe('create match wizard', () => {
     await waitFor(() => expect(mocks.search).toHaveBeenCalledOnce());
     await user.clear(search);
     await user.type(search, 'new');
-    fresh.resolve([{ id: 'new', name: 'New result' }]);
+    fresh.resolve([
+      makeMatchInvitee({
+        user_id: '44444444-4444-4444-8444-444444444444',
+        display_name: 'New result'
+      })
+    ]);
     await screen.findByText('New result');
-    old.resolve([{ id: 'old', name: 'Old result' }]);
+    old.resolve([
+      makeMatchInvitee({
+        user_id: '55555555-5555-4555-8555-555555555555',
+        display_name: 'Old result'
+      })
+    ]);
     await waitFor(() => expect(screen.queryByText('Old result')).toBeNull());
     expect(screen.getByText('New result')).toBeTruthy();
   });
@@ -427,7 +445,7 @@ describe('create match wizard', () => {
     );
   });
 
-  it('accepts zero and decimal informational prices, and limits currency options', async () => {
+  it('accepts zero and decimal informational prices, and exposes only supported currencies', async () => {
     const user = userEvent.setup();
     await mount();
     const price = input(en.matchCreate.fields.price);
@@ -443,13 +461,7 @@ describe('create match wizard', () => {
         .getAllByRole('option')
         .map((option) => option.textContent)
     ).toEqual(['BRL', 'USD', 'EUR']);
-    fireEvent.change(currency, { target: { value: 'GBP' } });
-    await fillRequired(user);
-    await attachPhoto(user);
-    await goReview(user);
-    await user.click(screen.getByRole('button', { name: en.matchCreate.publish }));
-    expect(await screen.findByText(en.matchCreate.errors.unsupportedCurrency)).toBeTruthy();
-    expect(mocks.publish).not.toHaveBeenCalled();
+    expect(within(currency).queryByRole('option', { name: 'GBP' })).toBeNull();
   });
 
   it('publishes zero and decimal informational prices with supported currencies, and clears disabled level bounds', async () => {

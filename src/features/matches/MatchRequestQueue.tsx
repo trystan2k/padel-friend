@@ -7,6 +7,7 @@ import type { MatchRegistrationQueue, MatchRegistrationRequest } from './match-r
 import { matchRegistrationErrorKey } from './match-registration-error-copy';
 import { matchRegistrationStyles as s } from './match-registration.styles';
 import { useMatchRequestQueue } from './use-match-registration';
+import { registrationActionTone } from './match-status-tone';
 
 // PAF-5.5 creator-only pending request queue with approve/decline. Rendered only
 // for the event creator (the server returns no rows to anyone else), so an
@@ -112,7 +113,7 @@ export function MatchRequestQueue({
         <span {...stylex.props(s.queueSort)}>{t('matchRegistration.queue.sort')}</span>
       </header>
       <p {...stylex.props(s.badgeRow)}>
-        <StatusBadge tone="reserve">
+        <StatusBadge tone={registrationActionTone.request}>
           {t('matchRegistration.queue.count', { count: requests.length })}
         </StatusBadge>
       </p>

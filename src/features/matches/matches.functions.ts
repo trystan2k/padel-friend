@@ -1,7 +1,21 @@
 import { createServerFn } from '@tanstack/react-start';
 import { requireAuthenticatedClient } from '../auth/auth.server';
 import { signMatchPhotoBatch, signMatchPhoto } from './match-photo.server';
-import type { MatchEventListItem, MatchEventListResult } from './match-model';
+import type {
+  MatchCreationOptions,
+  MatchEventCard,
+  MatchEventDetail,
+  MatchEventListResult,
+  MatchEventRpcListRow,
+  MatchInvitee
+} from './match-contracts';
+import {
+  decodeMatchCreationOptions,
+  decodeMatchInvitees,
+  decodeMatchRpcDetail,
+  decodeMatchRpcListRows,
+  signedMatchDetail
+} from './match-decoders';
 import { matchesMatchPhotoMagicBytes, validateMatchPhotoKey } from './match-photo';
 import {
   validateMatchDetail,
@@ -11,10 +25,8 @@ import {
   validatePublishMatch
 } from './matches.validators';
 
-export type MatchEventProjection = Record<string, string | number | boolean | null>;
-
 export type MatchEventResult =
-  | { status: 'ok'; event: MatchEventProjection }
+  | { status: 'ok'; event: MatchEventDetail }
   | { status: 'unavailable' }
   | { status: 'error' };
 
@@ -49,17 +61,21 @@ async function authenticatedClient() {
 
 export const getMatchCreationOptions = createServerFn({ method: 'GET' })
   .validator(validateMatchOptions)
-  .handler(async ({ data }) => {
+  .handler(async ({ data }): Promise<MatchCreationOptions> => {
     const { client } = await authenticatedClient();
     const { data: result, error } = await client.rpc('get_match_creation_options', {
       p_community_id: data.community_id ?? undefined
     });
     if (error) throw new Error('MATCH_OPTIONS_UNAVAILABLE');
-    return result;
+    try {
+      return decodeMatchCreationOptions(result);
+    } catch {
+      throw new Error('MATCH_OPTIONS_UNAVAILABLE');
+    }
   });
 export const searchMatchInvitees = createServerFn({ method: 'GET' })
   .validator(validateMatchInviteSearch)
-  .handler(async ({ data }) => {
+  .handler(async ({ data }): Promise<MatchInvitee[]> => {
     const { client } = await authenticatedClient();
     if (data.query.trim().length < 3) return [];
     const { data: result, error } = await client.rpc('search_match_invitees', {
@@ -68,11 +84,15 @@ export const searchMatchInvitees = createServerFn({ method: 'GET' })
       p_limit: data.limit
     });
     if (error) throw new Error('MATCH_INVITEES_UNAVAILABLE');
-    return result;
+    try {
+      return decodeMatchInvitees(result);
+    } catch {
+      throw new Error('MATCH_INVITEES_UNAVAILABLE');
+    }
   });
 export const listMatchEvents = createServerFn({ method: 'GET' })
   .validator(validateMatchList)
-  .handler(async ({ data }) => {
+  .handler(async ({ data }): Promise<MatchEventListResult> => {
     const { client } = await authenticatedClient();
     const { data: result, error } = await client.rpc('list_match_events', {
       p_entry: data.entry,
@@ -83,93 +103,53 @@ export const listMatchEvents = createServerFn({ method: 'GET' })
       p_as_of: data.as_of ?? undefined
     });
     if (error) throw new Error('MATCH_LIST_UNAVAILABLE');
-    const rows = Array.isArray(result) ? result : [];
+    let rows: MatchEventRpcListRow[];
+    try {
+      rows = decodeMatchRpcListRows(result);
+    } catch {
+      throw new Error('MATCH_LIST_UNAVAILABLE');
+    }
     if (rows.length === 0)
       return { items: [], next_cursor: null, as_of: null } satisfies MatchEventListResult;
-    const asOf =
-      typeof rows[0] === 'object' &&
-      rows[0] !== null &&
-      !Array.isArray(rows[0]) &&
-      'as_of' in rows[0] &&
-      typeof rows[0].as_of === 'string'
-        ? rows[0].as_of
-        : null;
+    const asOf = rows[0]?.as_of ?? null;
     const expectedAsOf = data.as_of ?? asOf;
     const expectedInstant = expectedAsOf === null ? null : snapshotInstant(expectedAsOf);
     if (
       asOf === null ||
       expectedInstant === null ||
-      rows.some(
-        (row) =>
-          typeof row !== 'object' ||
-          row === null ||
-          Array.isArray(row) ||
-          !('as_of' in row) ||
-          typeof row.as_of !== 'string' ||
-          snapshotInstant(row.as_of) !== expectedInstant
-      )
+      rows.some((row) => snapshotInstant(row.as_of) !== expectedInstant)
     )
       throw new Error('MATCH_LIST_SNAPSHOT_MISMATCH');
-    const eventRows: Record<string, unknown>[] = [];
-    const keys: string[] = [];
-    const rowKeys: (string | null)[] = [];
-    for (const row of rows) {
-      if (
-        typeof row !== 'object' ||
-        row === null ||
-        Array.isArray(row) ||
-        !('event_id' in row) ||
-        typeof row.event_id !== 'string'
-      ) {
-        eventRows.push({});
-        rowKeys.push(null);
-        continue;
+    const photoKeys = rows.flatMap((row) => {
+      try {
+        return [validateMatchPhotoKey(row.photo_path)];
+      } catch {
+        return [];
       }
-      const { cursor: _cursor, as_of: _asOf, ...eventRow } = row;
-      eventRows.push(eventRow);
-      const photoKey =
-        'photo_path' in row && typeof row.photo_path === 'string' ? row.photo_path : null;
-      let validKey: string | null = null;
-      if (photoKey !== null) {
-        try {
-          validKey = validateMatchPhotoKey(photoKey);
-          keys.push(validKey);
-        } catch {
-          validKey = null;
-        }
-      }
-      rowKeys.push(validKey);
-    }
-    const signed =
-      keys.length > 0 ? await signMatchPhotoBatch(client, keys) : new Map<string, string>();
-    const items = rows.map((row, index) => {
-      const eventRow = eventRows[index];
-      if (!eventRow || Object.keys(eventRow).length === 0) return row;
-      const key = rowKeys[index];
-      return { ...eventRow, photo_url: key ? (signed.get(key) ?? null) : null };
     });
-    const lastCursor = rows.at(-1);
-    const typedItems = items.filter(
-      (item): item is MatchEventListItem =>
-        typeof item === 'object' &&
-        item !== null &&
-        !Array.isArray(item) &&
-        'event_id' in item &&
-        typeof item.event_id === 'string' &&
-        'photo_url' in item &&
-        (item.photo_url === null || typeof item.photo_url === 'string')
-    );
+    let signed = new Map<string, string>();
+    if (photoKeys.length > 0) {
+      try {
+        signed = await signMatchPhotoBatch(client, photoKeys);
+      } catch {
+        // Storage failure must not turn a valid event list into an RPC failure.
+      }
+    }
+    const typedItems: MatchEventCard[] = rows.map((row) => {
+      const { photo_path: path, cursor: _cursor, as_of: _rowAsOf, ...projection } = row;
+      let key: string | null = null;
+      try {
+        key = validateMatchPhotoKey(path);
+      } catch {
+        /* malformed paths receive null URL */
+      }
+      return { ...projection, photo_url: key ? (signed.get(key) ?? null) : null };
+    });
+    const lastCursor = rows.at(-1)?.cursor;
     return {
       items: typedItems,
       as_of: asOf,
-      next_cursor:
-        rows.length === data.limit &&
-        typeof lastCursor === 'object' &&
-        lastCursor !== null &&
-        !Array.isArray(lastCursor) &&
-        typeof lastCursor.cursor === 'string'
-          ? lastCursor.cursor
-          : null
+      next_cursor: rows.length === data.limit ? (lastCursor ?? null) : null
     } satisfies MatchEventListResult;
   });
 export const getMatchEvent = createServerFn({ method: 'GET' })
@@ -183,30 +163,24 @@ export const getMatchEvent = createServerFn({ method: 'GET' })
     if (!result) return { status: 'unavailable' };
     const event = Array.isArray(result) ? result[0] : result;
     if (event == null) return { status: 'unavailable' };
-    if (typeof event !== 'object' || Array.isArray(event)) return { status: 'error' };
-    const eventRecord: MatchEventProjection = {};
-    for (const [key, value] of Object.entries(event)) {
-      if (
-        value !== null &&
-        typeof value !== 'string' &&
-        typeof value !== 'number' &&
-        typeof value !== 'boolean'
-      )
-        return { status: 'error' };
-      eventRecord[key] = value;
+    let decoded;
+    try {
+      decoded = decodeMatchRpcDetail(event);
+    } catch {
+      return { status: 'error' };
     }
     try {
       return {
         status: 'ok',
-        event: { ...eventRecord, photo_url: await signMatchPhoto(client, data.event_id) }
+        event: signedMatchDetail(decoded, await signMatchPhoto(client, data.event_id))
       };
     } catch {
-      return { status: 'ok', event: { ...eventRecord, photo_url: null } };
+      return { status: 'ok', event: signedMatchDetail(decoded, null) };
     }
   });
 export const publishMatchEvent = createServerFn({ method: 'POST' })
   .validator(validatePublishMatch)
-  .handler(async ({ data }) => {
+  .handler(async ({ data }): Promise<{ event_id: string }> => {
     const { client } = await authenticatedClient();
     const photo = data.input.photo_path;
     if (typeof photo !== 'string') throw new Error('MATCH_PHOTO_UNAVAILABLE');
@@ -225,7 +199,7 @@ export const publishMatchEvent = createServerFn({ method: 'POST' })
       throw new Error('MATCH_PHOTO_UNAVAILABLE');
     const { data: id, error } = await client.rpc('publish_match_event', {
       p_event_id: data.event_id,
-      p_input: JSON.parse(JSON.stringify(data.input)),
+      p_input: data.input,
       p_invitee_ids: data.invitee_ids
     });
     if (error || !id)

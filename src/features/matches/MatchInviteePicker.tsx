@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { searchMatchInvitees } from './matches.functions';
 import { createMatchStyles as s } from './create-match.styles';
+import type { MatchInvitee } from './match-contracts';
 
 export function MatchInviteePicker({
   communityId,
@@ -10,12 +11,12 @@ export function MatchInviteePicker({
   onChange
 }: {
   communityId: string;
-  selected: any[];
-  onChange: (value: any[]) => void;
+  selected: MatchInvitee[];
+  onChange: (value: MatchInvitee[]) => void;
 }) {
   const { t } = useTranslation();
   const [query, setQuery] = useState('');
-  const [response, setResponse] = useState<{ query: string; items: any[] }>({
+  const [response, setResponse] = useState<{ query: string; items: MatchInvitee[] }>({
     query: '',
     items: []
   });
@@ -29,8 +30,8 @@ export function MatchInviteePicker({
       };
     const timer = window.setTimeout(() => {
       void searchMatchInvitees({ data: { community_id: communityId, query, limit: 20 } })
-        .then((value: any) => {
-          if (active) setResponse({ query, items: value ?? [] });
+        .then((value) => {
+          if (active) setResponse({ query, items: value });
         })
         .catch(() => {
           if (active) setError(true);
@@ -64,26 +65,26 @@ export function MatchInviteePicker({
       {results.map((person) => (
         <button
           type="button"
-          key={person.id ?? person.user_id}
+          key={person.user_id}
           onClick={() => {
-            const id = person.id ?? person.user_id;
-            if (!selected.some((x) => (x.id ?? x.user_id) === id)) onChange([...selected, person]);
+            if (!selected.some((selectedPerson) => selectedPerson.user_id === person.user_id))
+              onChange([...selected, person]);
           }}
           {...stylex.props(s.button)}
         >
-          {person.name ?? person.display_name}
+          {person.display_name}
         </button>
       ))}
       <ul>
         {selected.map((person) => (
-          <li key={person.id ?? person.user_id}>
-            {person.name ?? person.display_name}
+          <li key={person.user_id}>
+            {person.display_name}
             <button
               type="button"
               {...stylex.props(s.button)}
               onClick={() =>
                 onChange(
-                  selected.filter((x) => (x.id ?? x.user_id) !== (person.id ?? person.user_id))
+                  selected.filter((selectedPerson) => selectedPerson.user_id !== person.user_id)
                 )
               }
             >
