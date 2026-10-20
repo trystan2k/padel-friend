@@ -133,11 +133,10 @@ Follow these steps:
    - test adequacy
    - validation coverage
    - migration or rollout safety
-9. Classify findings by severity (`critical`, `major`, `minor`, `nit`) and provide concrete remediation suggestions. Report `minor` and `nit` findings, but do not escalate them: severity alone decides blocking.
-10. Return the structured summary and a recommended action for the requester.
-11. Append one machine-readable line per finding so the orchestrator can track and deduplicate it:
-    `[severity] file:line | short title | suggested fixer`
-12. **Re-review mode** — when the input is a delta (`git diff <baseline>..HEAD` plus a findings ledger), skip the full review and answer only: is each `open` finding fixed, did the fix introduce a regression, and are there new `critical`/`major` findings in the touched files?
+9. Classify findings by severity and scope using the Completion-First Policy referenced in `Outputs`; provide evidence and concrete remediation suggestions.
+10. Return the structured summary and recommended action defined in `Outputs`.
+11. Append one machine-readable line per finding using the scoped format defined in `Outputs`, so the orchestrator can track and deduplicate it.
+12. For delta input, follow the delta-review contract in `Outputs` instead of repeating the full review.
 
 ## Tool Usage Rules (OpenCode `permission` model)
 
