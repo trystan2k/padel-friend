@@ -4,7 +4,15 @@ import { Dialog } from '@base-ui/react/dialog';
 import { Select } from '@base-ui/react/select';
 import { Switch } from '@base-ui/react/switch';
 import { Link, useParams, useRouter } from '@tanstack/react-router';
-import { useCallback, useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type FormEvent,
+  type ReactNode
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '../../components/ui/Button';
 import { SurfaceCard } from '../../components/ui/SurfaceCard';
@@ -267,30 +275,61 @@ function MembersView({ community, members }: ViewProps<'members'>) {
 }
 
 function RequestsView(props: ViewProps<'requests'>) {
-  const { community, members, timezone } = props;
+  const { community, members, timezone, datasetGeneration } = props;
   const { t, i18n } = useTranslation();
   const router = useRouter();
   const params = useParams({ strict: false });
   const communityId = params.communityId ?? '';
-  const [additionalRequests, setAdditionalRequests] = useState<CommunityAdminMember[]>([]);
-  const [hasLoadedMoreRequests, setHasLoadedMoreRequests] = useState(false);
-  const [hasMoreRequests, setHasMoreRequests] = useState(members.length === 50);
-  const [pagedMembers, setPagedMembers] = useState(members);
+  const [pageState, setPageState] = useState({
+    generation: datasetGeneration,
+    rows: [] as CommunityAdminMember[],
+    hasLoaded: false,
+    hasMore: members.length === 50
+  });
+  const [pageLoading, setPageLoading] = useState(false);
+  const pageOwner = useRef({ generation: datasetGeneration, requestId: 0, mounted: true });
+  const additionalRequests = pageState.generation === datasetGeneration ? pageState.rows : [];
+  const hasLoadedMoreRequests = pageState.generation === datasetGeneration && pageState.hasLoaded;
+  const hasMoreRequests =
+    pageState.generation === datasetGeneration ? pageState.hasMore : members.length === 50;
   const { busy, setBusy, message, setMessage, errorKey, setErrorKey } = useAdminMutationState();
   const locale = i18n.resolvedLanguage || i18n.language;
 
-  // Reset pagination during render when the loader hands over a fresh list.
-  if (pagedMembers !== members) {
-    setPagedMembers(members);
-    setAdditionalRequests([]);
-    setHasLoadedMoreRequests(false);
-    setHasMoreRequests(members.length === 50);
-  }
+  useLayoutEffect(() => {
+    if (pageOwner.current.generation === datasetGeneration) return;
+    pageOwner.current = {
+      ...pageOwner.current,
+      generation: datasetGeneration,
+      requestId: pageOwner.current.requestId + 1
+    };
+    setPageLoading(false);
+    setPageState({
+      generation: datasetGeneration,
+      rows: [],
+      hasLoaded: false,
+      hasMore: members.length === 50
+    });
+  }, [datasetGeneration, members.length]);
+  useEffect(() => {
+    pageOwner.current.mounted = true;
+    return () => {
+      pageOwner.current.mounted = false;
+      pageOwner.current.requestId += 1;
+    };
+  }, []);
 
   async function loadMoreRequests() {
-    if (busy || !hasMoreRequests) return;
-    setBusy(true);
-    setHasLoadedMoreRequests(true);
+    if (busy || pageLoading || !hasMoreRequests) return;
+    const token = datasetGeneration;
+    const requestId = ++pageOwner.current.requestId;
+    const ownsRequest = () =>
+      pageOwner.current.mounted &&
+      pageOwner.current.generation === token &&
+      pageOwner.current.requestId === requestId;
+    setPageLoading(true);
+    setPageState((previous) =>
+      previous.generation === token ? { ...previous, hasLoaded: true } : previous
+    );
     try {
       const page = await searchCommunityMembers({
         data: {
@@ -301,12 +340,16 @@ function RequestsView(props: ViewProps<'requests'>) {
           limit: 50
         }
       });
-      setAdditionalRequests((previous) => [...previous, ...page]);
-      setHasMoreRequests(page.length === 50);
+      if (!ownsRequest()) return;
+      setPageState((previous) =>
+        previous.generation === token && ownsRequest()
+          ? { ...previous, rows: [...previous.rows, ...page], hasMore: page.length === 50 }
+          : previous
+      );
     } catch (error) {
-      setErrorKey(failed(error));
+      if (ownsRequest()) setErrorKey(failed(error));
     } finally {
-      setBusy(false);
+      if (ownsRequest()) setPageLoading(false);
     }
   }
 
@@ -319,9 +362,12 @@ function RequestsView(props: ViewProps<'requests'>) {
       await (action === 'approve' ? approveCommunityMember : denyCommunityMember)({
         data: { community_id: community.id, membership_id: person.membership_id }
       });
-      setAdditionalRequests([]);
-      setHasLoadedMoreRequests(false);
-      setHasMoreRequests(members.length === 50);
+      setPageState({
+        generation: datasetGeneration,
+        rows: [],
+        hasLoaded: false,
+        hasMore: members.length === 50
+      });
       setMessage(t(`communityAdmin.result.${action}`));
       await router.invalidate();
     } catch (error) {
@@ -370,7 +416,11 @@ function RequestsView(props: ViewProps<'requests'>) {
           <p>{t('communityAdmin.empty.requests')}</p>
         )}
         {hasMoreRequests ? (
-          <Button variant="secondary" busy={busy} onClick={() => void loadMoreRequests()}>
+          <Button
+            variant="secondary"
+            busy={busy || pageLoading}
+            onClick={() => void loadMoreRequests()}
+          >
             {t('communityAdmin.loadMore')}
           </Button>
         ) : (

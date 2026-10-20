@@ -125,7 +125,9 @@ function mount(
           screen: screenName,
           community,
           members: [member],
-          ...(screenName === 'requests' ? { timezone: 'Europe/Madrid' as const } : {})
+          ...(screenName === 'requests'
+            ? { timezone: 'Europe/Madrid' as const, datasetGeneration: 1 }
+            : {})
         }
       : screenName === 'member'
         ? { screen: screenName, community, member, membershipId: member.membership_id }
@@ -955,6 +957,7 @@ describe('community admin UI', () => {
           community={community}
           members={firstRequests}
           timezone="Europe/Madrid"
+          datasetGeneration={1}
         />
       </I18nextProvider>
     );
@@ -1019,6 +1022,7 @@ describe('community admin UI', () => {
           community={community}
           members={firstPage}
           timezone="Europe/Madrid"
+          datasetGeneration={1}
         />
       </I18nextProvider>
     );
@@ -1027,6 +1031,157 @@ describe('community admin UI', () => {
     expect(mocks.search).toHaveBeenCalledWith({
       data: { community_id: community.id, query: '', status: 'pending', offset: 50, limit: 50 }
     });
+  });
+
+  it('discards an obsolete request page when loader generation changes', async () => {
+    let resolveOld!: (rows: Member[]) => void;
+    const oldPage = new Promise<Member[]>((resolve) => {
+      resolveOld = resolve;
+    });
+    const firstPage = Array.from({ length: 50 }, (_, index) => ({
+      ...member,
+      membership_id: `old-${index}`,
+      display_name: `Old ${index}`
+    }));
+    const fresh = [{ ...member, membership_id: 'fresh', display_name: 'Fresh first page' }];
+    mocks.search.mockReturnValueOnce(oldPage);
+    const i18n = createI18n('en');
+    const view = render(
+      <I18nextProvider i18n={i18n}>
+        <CommunityAdminScreen
+          screen="requests"
+          community={community}
+          members={firstPage}
+          timezone="Europe/Madrid"
+          datasetGeneration={1}
+        />
+      </I18nextProvider>
+    );
+    await userEvent.click(screen.getByRole('button', { name: 'LOAD MORE CHANGES' }));
+    expect(mocks.search).toHaveBeenCalledWith({
+      data: { community_id: community.id, query: '', status: 'pending', offset: 50, limit: 50 }
+    });
+    view.rerender(
+      <I18nextProvider i18n={i18n}>
+        <CommunityAdminScreen
+          screen="requests"
+          community={community}
+          members={fresh}
+          timezone="Europe/Madrid"
+          datasetGeneration={2}
+        />
+      </I18nextProvider>
+    );
+    await act(async () =>
+      resolveOld([{ ...member, membership_id: 'stale', display_name: 'Stale page row' }])
+    );
+    expect(screen.getByText('Fresh first page')).toBeTruthy();
+    expect(screen.queryByText('Stale page row')).toBeNull();
+  });
+
+  it('keeps current request pagination busy when obsolete page rejects', async () => {
+    let rejectOld!: (error: Error) => void;
+    let resolveCurrent!: (rows: Member[]) => void;
+    const old = new Promise<Member[]>((_resolve, reject) => {
+      rejectOld = reject;
+    });
+    const current = new Promise<Member[]>((resolve) => {
+      resolveCurrent = resolve;
+    });
+    const firstPage = Array.from({ length: 50 }, (_, index) => ({
+      ...member,
+      membership_id: `race-${index}`,
+      display_name: `Race ${index}`
+    }));
+    mocks.search.mockReturnValueOnce(old).mockReturnValueOnce(current);
+    const i18n = createI18n('en');
+    const view = render(
+      <I18nextProvider i18n={i18n}>
+        <CommunityAdminScreen
+          screen="requests"
+          community={community}
+          members={firstPage}
+          timezone="Europe/Madrid"
+          datasetGeneration={1}
+        />
+      </I18nextProvider>
+    );
+    await userEvent.click(screen.getByRole('button', { name: 'LOAD MORE CHANGES' }));
+    view.rerender(
+      <I18nextProvider i18n={i18n}>
+        <CommunityAdminScreen
+          screen="requests"
+          community={community}
+          members={firstPage}
+          timezone="Europe/Madrid"
+          datasetGeneration={2}
+        />
+      </I18nextProvider>
+    );
+    await userEvent.click(screen.getByRole('button', { name: 'LOAD MORE CHANGES' }));
+    await act(async () => rejectOld(new Error('obsolete')));
+    expect(screen.queryByRole('alert')).toBeNull();
+    expect(screen.getByRole('button', { name: 'LOAD MORE CHANGES' }).hasAttribute('disabled')).toBe(
+      true
+    );
+    await act(async () =>
+      resolveCurrent([
+        { ...member, membership_id: 'current-row', display_name: 'Current page row' }
+      ])
+    );
+    expect(screen.getByText('Current page row')).toBeTruthy();
+    expect(mocks.search).toHaveBeenLastCalledWith({
+      data: { community_id: community.id, query: '', status: 'pending', offset: 50, limit: 50 }
+    });
+  });
+
+  it('resets accumulated pages only when the explicit requests generation changes', async () => {
+    const firstPage = Array.from({ length: 50 }, (_, index) => ({
+      ...member,
+      membership_id: `reset-${index}`,
+      display_name: `Reset ${index}`
+    }));
+    mocks.search.mockResolvedValueOnce([
+      { ...member, membership_id: 'extra', display_name: 'Accumulated page' }
+    ]);
+    const i18n = createI18n('en');
+    const view = render(
+      <I18nextProvider i18n={i18n}>
+        <CommunityAdminScreen
+          screen="requests"
+          community={community}
+          members={firstPage}
+          timezone="Europe/Madrid"
+          datasetGeneration={1}
+        />
+      </I18nextProvider>
+    );
+    await userEvent.click(screen.getByRole('button', { name: 'LOAD MORE CHANGES' }));
+    expect(await screen.findByText('Accumulated page')).toBeTruthy();
+    view.rerender(
+      <I18nextProvider i18n={i18n}>
+        <CommunityAdminScreen
+          screen="requests"
+          community={community}
+          members={[...firstPage]}
+          timezone="Europe/Madrid"
+          datasetGeneration={1}
+        />
+      </I18nextProvider>
+    );
+    expect(screen.getByText('Accumulated page')).toBeTruthy();
+    view.rerender(
+      <I18nextProvider i18n={i18n}>
+        <CommunityAdminScreen
+          screen="requests"
+          community={community}
+          members={firstPage}
+          timezone="Europe/Madrid"
+          datasetGeneration={2}
+        />
+      </I18nextProvider>
+    );
+    expect(screen.queryByText('Accumulated page')).toBeNull();
   });
 
   it('loads the next venue page and shows end of list', async () => {

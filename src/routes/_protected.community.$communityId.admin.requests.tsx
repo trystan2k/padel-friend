@@ -1,4 +1,5 @@
 import { createFileRoute } from '@tanstack/react-router';
+import { useState } from 'react';
 import {
   CommunityAdminDenied,
   CommunityAdminLoading,
@@ -25,15 +26,24 @@ export const Route = createFileRoute('/_protected/community/$communityId/admin/r
   },
   pendingComponent: CommunityAdminLoading,
   errorComponent: CommunityAdminDenied,
-  component: () => {
-    const data = Route.useLoaderData();
-    return (
-      <CommunityAdminScreen
-        screen="requests"
-        community={data.community}
-        members={data.members}
-        timezone={data.timezone}
-      />
-    );
-  }
+  component: RequestsRoute
 });
+
+function RequestsRoute() {
+  const data = Route.useLoaderData({ structuralSharing: false });
+  const [published, setPublished] = useState({ data, generation: 1 });
+  let generation = published.generation;
+  if (published.data !== data) {
+    generation += 1;
+    setPublished({ data, generation });
+  }
+  return (
+    <CommunityAdminScreen
+      screen="requests"
+      community={data.community}
+      members={data.members}
+      timezone={data.timezone}
+      datasetGeneration={generation}
+    />
+  );
+}
