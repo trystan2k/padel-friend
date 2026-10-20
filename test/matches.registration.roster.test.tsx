@@ -4,6 +4,7 @@ import { readFileSync } from 'node:fs';
 import { I18nextProvider } from 'react-i18next';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createI18n } from '../src/i18n/config';
+import type { Locale } from '../src/i18n/config';
 import type {
   MatchRosterEntry,
   MyMatchRegistration
@@ -35,11 +36,12 @@ vi.mock('@tanstack/react-router', async (original) => ({
 }));
 
 import { MatchRegistrationPanel } from '../src/features/matches/MatchRegistrationPanel';
+import type { MatchEventCard } from '../src/features/matches/match-contracts';
 import { makeMatchCard } from './helpers/match-fixtures';
 
 const EVENT_ID = '00000000-0000-4000-8000-000000000001';
 
-function event(extra: Record<string, unknown> = {}) {
+function event(extra: Partial<MatchEventCard> = {}) {
   return makeMatchCard({
     event_id: EVENT_ID,
     venue_name: 'Court Central',
@@ -149,7 +151,7 @@ function mount(
   registration: MyMatchRegistration,
   roster: MatchRosterEntry[] | null,
   eventValue = event(),
-  locale = 'en'
+  locale: Locale = 'en'
 ) {
   return render(
     <I18nextProvider i18n={createI18n(locale)}>
@@ -322,7 +324,8 @@ describe('accepted roster panel', () => {
   });
 
   it('degrades an empty or unavailable roster to the caller placement row', () => {
-    for (const roster of [null, []] as const) {
+    const missingRosters: (MatchRosterEntry[] | null)[] = [null, []];
+    for (const roster of missingRosters) {
       cleanup();
       mount(accepted({ accepted_order: 2 }), roster);
       // The caller's own placement row survives, exactly as before the read.

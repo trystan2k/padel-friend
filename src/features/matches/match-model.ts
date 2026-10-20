@@ -1,7 +1,6 @@
 import type { MatchCallerBadge, MatchEventCard } from './match-contracts';
 export type { MatchCallerBadge, MatchEventCard } from './match-contracts';
 export type MatchEventListItem = MatchEventCard;
-export type { MatchEventListResult } from './match-contracts';
 
 // The flat DTO caller_badge is an enumerated participation value, not a free
 // string. Reserve Not Playing is a first-class member so a past-cutoff reader is

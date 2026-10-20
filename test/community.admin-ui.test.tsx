@@ -16,7 +16,7 @@ const mocks = vi.hoisted(() => ({
   promote: vi.fn<() => Promise<unknown>>(),
   demote: vi.fn<() => Promise<unknown>>(),
   issueInvitation: vi.fn<() => Promise<unknown>>(),
-  search: vi.fn<() => Promise<unknown>>(),
+  search: vi.fn<(input: { data: { query: string } }) => Promise<unknown>>(),
   searchInvitees: vi.fn<() => Promise<unknown>>(),
   addVenue: vi.fn<() => Promise<unknown>>(),
   editVenue: vi.fn<() => Promise<unknown>>(),
@@ -119,33 +119,38 @@ function mount(
   screenName: 'requests' | 'members' | 'member' | 'settings' | 'venues' | 'audit',
   locale: 'en' | 'es' | 'pt-BR' = 'en'
 ) {
-  const props =
-    screenName === 'requests' || screenName === 'members'
+  const base = { community };
+  const props: import('react').ComponentProps<typeof CommunityAdminScreen> =
+    screenName === 'requests'
       ? {
-          screen: screenName,
-          community,
+          screen: 'requests',
+          ...base,
           members: [member],
-          ...(screenName === 'requests'
-            ? { timezone: 'Europe/Madrid' as const, datasetGeneration: 1 }
-            : {})
+          timezone: 'Europe/Madrid',
+          datasetGeneration: 1
         }
-      : screenName === 'member'
-        ? { screen: screenName, community, member, membershipId: member.membership_id }
-        : screenName === 'venues'
-          ? { screen: screenName, community, venues: [] }
-          : screenName === 'audit'
-            ? { screen: screenName, community, audit: [] }
-            : screenName === 'settings'
-              ? {
-                  screen: screenName,
-                  community,
+      : screenName === 'members'
+        ? { screen: 'members', ...base, members: [member] }
+        : screenName === 'member'
+          ? {
+              screen: 'member',
+              ...base,
+              member,
+              membershipId: member.membership_id
+            }
+          : screenName === 'venues'
+            ? { screen: 'venues', ...base, venues: [] }
+            : screenName === 'audit'
+              ? { screen: 'audit', ...base, audit: [] }
+              : {
+                  screen: 'settings',
+                  ...base,
                   defaults: {
                     timezone: 'Europe/Madrid',
                     currency: 'EUR',
                     member_created_leagues_enabled: true
                   }
-                }
-              : { screen: screenName, community };
+                };
   return render(
     <I18nextProvider i18n={createI18n(locale)}>
       <CommunityAdminScreen {...props} />
@@ -837,8 +842,16 @@ describe('community admin UI', () => {
               member={displayed}
               membershipId={displayed.membership_id}
             />
+          ) : view === 'requests' ? (
+            <CommunityAdminScreen
+              screen="requests"
+              community={community}
+              members={[displayed]}
+              timezone="Europe/Madrid"
+              datasetGeneration={1}
+            />
           ) : (
-            <CommunityAdminScreen screen={view} community={community} members={[displayed]} />
+            <CommunityAdminScreen screen="members" community={community} members={[displayed]} />
           )}
         </I18nextProvider>
       );
@@ -978,6 +991,7 @@ describe('community admin UI', () => {
       address: null,
       maps_url: null,
       photo_path: null,
+      photo_signed_url: null,
       created_at: '2026-10-01T00:00:00Z',
       updated_at: '2026-10-01T00:00:00Z',
       archived_at: null
@@ -998,7 +1012,7 @@ describe('community admin UI', () => {
     const venueCard = screen
       .getByText('Page two venue')
       .closest('[data-testid="community-venue-card"]');
-    if (!venueCard) throw new Error('Page-two venue card not rendered');
+    if (!(venueCard instanceof HTMLElement)) throw new Error('Page-two venue card not rendered');
     await userEvent.click(within(venueCard).getByRole('button', { name: 'Archive venue' }));
     await waitFor(() => expect(screen.queryByText('Page two venue')).toBeNull());
     expect(screen.getAllByTestId('community-venue-card')).toHaveLength(50);
@@ -1288,6 +1302,7 @@ describe('community admin UI', () => {
       address: null,
       maps_url: null,
       photo_path: null,
+      photo_signed_url: null,
       created_at: '2026-10-01T00:00:00Z',
       updated_at: '2026-10-01T00:00:00Z',
       archived_at: null
@@ -1358,7 +1373,9 @@ describe('community admin UI', () => {
     await userEvent.click(
       screen.getByText('Community admins control access. Player level stays read-only.')
     );
-    expect(screen.getByLabelText('City or area').value).toBe('Community B');
+    const cityInput = screen.getByLabelText('City or area');
+    if (!(cityInput instanceof HTMLInputElement)) throw new TypeError('Expected an input');
+    expect(cityInput.value).toBe('Community B');
   });
 
   it('renders supported settings controls without an unsupported photo placeholder', async () => {
@@ -1496,6 +1513,7 @@ describe('community admin UI', () => {
       address: null,
       maps_url: null,
       photo_path: null,
+      photo_signed_url: null,
       created_at: '2026-10-01T00:00:00Z',
       updated_at: '2026-10-01T00:00:00Z',
       archived_at: null
@@ -1725,7 +1743,9 @@ describe('community admin UI', () => {
         <CommunityAdminScreen screen="members" community={community} members={[member]} />
       </I18nextProvider>
     );
-    expect(screen.getByRole('searchbox', { name: 'Search members' }).value).toBe('');
+    const searchInput = screen.getByRole('searchbox', { name: 'Search members' });
+    if (!(searchInput instanceof HTMLInputElement)) throw new TypeError('Expected an input');
+    expect(searchInput.value).toBe('');
   });
 
   it('isolates audit paging state when switching to another screen and back', async () => {

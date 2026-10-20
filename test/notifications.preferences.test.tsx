@@ -42,7 +42,7 @@ import { Route as NotificationPreferencesRoute } from '../src/routes/_protected.
 // any hardcoded copy in the component breaks these expectations.
 const copy = en.notificationPreferences;
 const loadCopy = en.notifications;
-const categoryNames = [
+const categoryNames: [string, string, string, string, string] = [
   copy.categories.community,
   copy.categories.matches,
   copy.categories.results,
@@ -57,11 +57,11 @@ const defaults = {
   push_rankings: true,
   push_leagues: true
 };
-const fullRow = {
+const fullRow: NonNullable<Awaited<ReturnType<typeof getMyNotificationPreferences>>> = {
   ...defaults,
   critical_in_app_enabled: true,
   updated_at: '2026-10-15T00:00:00.000Z'
-} as Awaited<ReturnType<typeof getMyNotificationPreferences>>;
+};
 
 function mount(initial: Awaited<ReturnType<typeof getMyNotificationPreferences>> = null) {
   return render(
@@ -197,7 +197,8 @@ describe('notification preferences page', () => {
     await user.click(screen.getByRole('button', { name: copy.save }));
 
     await waitFor(() => expect(mocks.save).toHaveBeenCalledTimes(1));
-    const call = mocks.save.mock.calls[0][0];
+    const call = mocks.save.mock.calls[0]?.[0];
+    if (!call) throw new Error('Expected a saved preferences payload');
     expect(Object.keys(call.data).sort()).toEqual(
       [
         'push_enabled',
@@ -295,7 +296,10 @@ describe('notification preferences page', () => {
 
     await user.click(screen.getByRole('button', { name: copy.save }));
     await waitFor(() => expect(mocks.save).toHaveBeenCalledTimes(2));
-    expect(mocks.save.mock.calls[1][0]).toEqual(mocks.save.mock.calls[0][0]);
+    const firstSave = mocks.save.mock.calls[0]?.[0];
+    const retrySave = mocks.save.mock.calls[1]?.[0];
+    if (!firstSave || !retrySave) throw new Error('Expected two save calls');
+    expect(retrySave).toEqual(firstSave);
     expect(await screen.findByText(copy.saved)).toBeTruthy();
     expect(screen.queryByRole('alert')).toBeNull();
   });

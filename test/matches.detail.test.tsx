@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { I18nextProvider } from 'react-i18next';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createI18n } from '../src/i18n/config';
+import type { Locale } from '../src/i18n/config';
 import type { MyMatchRegistration } from '../src/features/matches/match-registration-model';
 import en from '../src/locales/en/translation.json';
 import pt from '../src/locales/pt-BR/translation.json';
@@ -69,7 +70,7 @@ const event = (id = 1, extra: Partial<MatchEventDetail> = {}): MatchEventDetail 
   });
 function mount(
   value: MatchEventDetail | null,
-  locale = 'en',
+  locale: Locale = 'en',
   props: { loadError?: boolean; onRetry?: () => void } = {}
 ) {
   return render(
@@ -113,7 +114,7 @@ describe('match detail surface', () => {
   it.each([
     ['pt-BR', '1 falta'],
     ['es', '1 falta']
-  ])('renders singular more-needed count in %s', (locale, expected) => {
+  ] as const)('renders singular more-needed count in %s', (locale, expected) => {
     mount(
       event(10, {
         accepted_count: 7,
@@ -124,7 +125,7 @@ describe('match detail surface', () => {
       }),
       locale
     );
-    expect(screen.getAllByRole('region')[1].textContent).toContain(expected);
+    expect(screen.getAllByRole('region')[1]?.textContent).toContain(expected);
   });
   it('renders optional published constraints and court/payment facts truthfully', () => {
     mount(
@@ -163,7 +164,10 @@ describe('match detail surface', () => {
     expect(screen.queryByRole('button', { name: /join|entrar|participar/i })).toBeNull();
   });
   it('keeps invite-only invited approval-required callers out of the request CTA while community-open callers can request', () => {
-    const invitedOutOfRange = {
+    const invitedOutOfRange: Pick<
+      MatchEventDetail,
+      'caller_eligibility' | 'caller_is_invited' | 'caller_requires_approval'
+    > = {
       caller_eligibility: 'out_of_range',
       caller_is_invited: true,
       caller_requires_approval: true
@@ -341,16 +345,18 @@ describe('match detail surface', () => {
   it('falls back to clipboard and resets copied state when event id changes', async () => {
     const writeText = vi.fn<(text: string) => Promise<void>>().mockResolvedValue(undefined);
     const canonical = `${window.location.origin}/matches/${event(6).event_id}`;
-    expect(await shareMatchLink(canonical, { share: undefined, clipboard: { writeText } })).toBe(
-      'copied'
-    );
+    // Model a browser without navigator.share: production reads the platform
+    // from window.navigator when no sharePlatform prop is passed.
+    Object.defineProperty(window.navigator, 'share', { configurable: true, value: undefined });
+    Object.defineProperty(window.navigator, 'clipboard', {
+      configurable: true,
+      value: { writeText }
+    });
+    expect(await shareMatchLink(canonical, window.navigator)).toBe('copied');
     expect(writeText).toHaveBeenCalledWith(canonical);
     const view = render(
       <I18nextProvider i18n={createI18n('en')}>
-        <MatchDetailPage
-          event={event(6)}
-          sharePlatform={{ share: undefined, clipboard: { writeText } }}
-        />
+        <MatchDetailPage event={event(6)} />
       </I18nextProvider>
     );
     const user = userEvent.setup();
@@ -358,10 +364,7 @@ describe('match detail surface', () => {
     expect(screen.getByText(en.matches.detail.copied)).toBeTruthy();
     view.rerender(
       <I18nextProvider i18n={createI18n('en')}>
-        <MatchDetailPage
-          event={event(7)}
-          sharePlatform={{ share: undefined, clipboard: { writeText } }}
-        />
+        <MatchDetailPage event={event(7)} />
       </I18nextProvider>
     );
     expect(screen.queryByText(en.matches.detail.copied)).toBeNull();

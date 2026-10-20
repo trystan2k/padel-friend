@@ -97,6 +97,8 @@ const initial: NotificationPage = {
   unreadCount: 3,
   asOf
 };
+const seededNotification = initial.items[0];
+if (!seededNotification) throw new Error('Fixture must seed one notification');
 
 describe('notification center', () => {
   beforeEach(() => {
@@ -175,7 +177,7 @@ describe('notification center', () => {
     mocks.useEnglishResource = true;
     const earlierPage: NotificationPage = {
       ...initial,
-      items: [{ ...initial.items[0], created_at: '2026-10-14T23:00:00.000Z' }]
+      items: [{ ...seededNotification, created_at: '2026-10-14T23:00:00.000Z' }]
     };
     mocks.list.mockResolvedValue(earlierPage);
     const { container } = render(<NotificationsPage initial={earlierPage} />);
@@ -196,9 +198,9 @@ describe('notification center', () => {
     const mixedPage: NotificationPage = {
       ...initial,
       items: [
-        initial.items[0],
+        seededNotification,
         {
-          ...initial.items[0],
+          ...seededNotification,
           id: '00000000-0000-4000-8000-000000000002',
           created_at: '2026-10-14T23:00:00.000Z'
         }
@@ -238,7 +240,7 @@ describe('notification center', () => {
   it('keeps a read notification read after switching filters and returning to All', async () => {
     const readPage: NotificationPage = {
       ...initial,
-      items: [{ ...initial.items[0], read_at: asOf }],
+      items: [{ ...seededNotification, read_at: asOf }],
       unreadCount: 2
     };
     let allRequests = 0;
@@ -277,9 +279,8 @@ describe('notification center', () => {
     const filters = screen.getByRole('navigation', { name: 'notifications.filters.label' });
 
     expect(header?.contains(markAll)).toBe(true);
-    expect(
-      header?.compareDocumentPosition(filters) & Node.DOCUMENT_POSITION_FOLLOWING
-    ).toBeTruthy();
+    const headerPosition = header?.compareDocumentPosition(filters) ?? 0;
+    expect(headerPosition & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
   it('renders the English locale resource when a read mutation fails', async () => {

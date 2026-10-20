@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { I18nextProvider } from 'react-i18next';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createI18n } from '../src/i18n/config';
+import type { Locale } from '../src/i18n/config';
 import en from '../src/locales/en/translation.json';
 import pt from '../src/locales/pt-BR/translation.json';
 import es from '../src/locales/es/translation.json';
@@ -101,7 +102,7 @@ function select(label: string) {
   if (!(element instanceof HTMLSelectElement)) throw new TypeError('Expected select');
   return element;
 }
-async function mount(locale = 'en') {
+async function mount(locale: Locale = 'en') {
   const view = render(
     <I18nextProvider i18n={createI18n(locale)}>
       <CreateMatchPage />
@@ -131,7 +132,9 @@ async function attachPhoto(
   await waitFor(() =>
     expect(screen.getByRole('img', { name: locale.matchCreate.fields.photo })).toBeTruthy()
   );
-  return uploadedKeys[uploadedKeys.length - 1];
+  const key = uploadedKeys[uploadedKeys.length - 1];
+  if (key === undefined) throw new Error('Photo upload produced no object key');
+  return key;
 }
 async function fillRequired(user: ReturnType<typeof userEvent.setup>) {
   await user.type(screen.getByLabelText(en.matchCreate.fields.date), '2030-05-20');

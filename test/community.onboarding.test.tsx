@@ -62,7 +62,11 @@ it('uses the existing tight line-height token for floating labels', () => {
 
 function mount(
   view?: 'create',
-  data = {
+  data: {
+    communities: PublicCommunity[];
+    next_offset: number | null;
+    failed: boolean;
+  } = {
     communities: [
       row,
       {
@@ -188,6 +192,8 @@ describe('community onboarding', () => {
       );
       const description = screen.getByLabelText(i18n.t('communityOnboarding.descriptionLabel'));
       const city = screen.getByLabelText(i18n.t('communityOnboarding.cityLabel'));
+      if (!(description instanceof HTMLInputElement) || !(city instanceof HTMLInputElement))
+        throw new TypeError('Expected input elements');
       await userEvent.type(description, 'Description');
       await userEvent.type(city, 'Lisbon');
       expect(description.id).toBe('community-description');

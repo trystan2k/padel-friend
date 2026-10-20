@@ -10,7 +10,14 @@ import type {
 } from '../../src/features/matches/match-contracts';
 
 const id = '11111111-1111-4111-8111-111111111111';
-const photo = `${id}/cover.jpg`;
+// Publication-valid defaults: photo keys must be four UUID segments with an
+// image extension (validateMatchPhotoKey) and maps URLs must carry a non-root
+// path on an allowlisted Google Maps host (public.valid_match_maps_url). The
+// community/event/owner segments reuse the fixture identity so builders stay
+// identity-consistent and always produce publishable values.
+const mapsUrl = 'https://maps.google.com/maps/place/central-courts';
+const photoObjectId = '44444444-4444-4444-8444-444444444444';
+const photo = `${id}/${id}/${id}/${photoObjectId}.jpg`;
 type Counts = Pick<
   MatchEventCard,
   | 'accepted_count'
@@ -21,20 +28,41 @@ type Counts = Pick<
   | 'more_needed'
 >;
 
+// Derivation inputs must be nonnegative safe integers: Number.isSafeInteger
+// already rejects NaN, ±Infinity, fractional values, and integers beyond
+// 2**53 - 1, so the only extra check is the sign. Explicitly supplied count
+// overrides stay exempt — callers own their coherence (see below).
+function assertNonnegativeSafeInteger(name: 'accepted' | 'notPlaying', value: number): void {
+  if (!Number.isSafeInteger(value) || value < 0)
+    throw new RangeError(`${name} must be a nonnegative safe integer, received ${value}`);
+}
+
 export function matchCountScenario(
   input: { accepted: number; notPlaying?: number } & Partial<Counts>
 ): Counts {
   const accepted = input.accepted;
+  assertNonnegativeSafeInteger('accepted', accepted);
+  // Playing occupies the quartet multiples; the residual players sit on the
+  // reserve, and the not-playing participants are the tail of that residual
+  // reserve that stopped after the cutoff, leaving the rest still waiting.
   const playing = Math.floor(accepted / 4) * 4;
-  const reserve = accepted - playing;
+  const residualReserve = accepted - playing;
+  const notPlaying = input.notPlaying ?? 0;
+  assertNonnegativeSafeInteger('notPlaying', notPlaying);
+  if (notPlaying > residualReserve)
+    throw new Error(
+      `Impossible roster scenario: notPlaying=${notPlaying} exceeds the ${residualReserve} residual reserve players for accepted=${accepted}`
+    );
   const derived: Counts = {
     accepted_count: accepted,
     playing_count: playing,
-    reserve_count: reserve,
-    reserve_not_playing_count: input.notPlaying ?? 0,
+    reserve_count: residualReserve - notPlaying,
+    reserve_not_playing_count: notPlaying,
     group_count: Math.floor(accepted / 4),
-    more_needed: 4 - reserve
+    more_needed: 4 - residualReserve
   };
+  // Explicitly supplied counts bypass derivation entirely and are NOT
+  // re-validated: callers own coherence when overriding.
   return {
     accepted_count: input.accepted_count ?? derived.accepted_count,
     playing_count: input.playing_count ?? derived.playing_count,
@@ -58,7 +86,7 @@ const projection = {
   visibility: 'community_open',
   team_assignment_mode: 'POST_MATCH_TEAMS',
   venue_name: 'Central Courts',
-  maps_url: 'https://maps.google.com/?q=padel',
+  maps_url: mapsUrl,
   court_notes: null,
   duration_minutes: 90,
   notes: null,
@@ -109,9 +137,7 @@ export function makeMatchCreationOptions(
 ): MatchCreationOptions {
   const defaults = {
     communities: [{ id, name: 'Padel Club', timezone: 'Europe/Madrid', currency: 'EUR' }],
-    saved_venues: [
-      { id, name: 'Central Courts', maps_url: 'https://maps.google.com/?q=padel', photo_path: null }
-    ],
+    saved_venues: [{ id, name: 'Central Courts', maps_url: mapsUrl, photo_path: null }],
     level_defaults: { min: 3, max: 5, level: 3.5 }
   } satisfies MatchCreationOptions;
   return {
@@ -168,7 +194,7 @@ export function makeMatchPublishInput(
     visibility: 'community_open',
     team_assignment_mode: 'POST_MATCH_TEAMS',
     venue_name: 'Central Courts',
-    maps_url: 'https://maps.google.com/?q=padel',
+    maps_url: mapsUrl,
     photo_path: photo,
     saved_venue_id: null,
     court_notes: null,

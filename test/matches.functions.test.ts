@@ -107,6 +107,19 @@ describe('getMatchEvent result contract', () => {
     expect(mocks.signMatchPhoto).not.toHaveBeenCalled();
   });
 
+  it('returns an error for unsupported detail currency without attempting photo signing', async () => {
+    const projection = {
+      ...makeMatchRpcDetail({ event_id: eventId, price_minor: 500, currency: 'EUR' }),
+      currency: 'EURO'
+    };
+    client.rpc.mockResolvedValue({ data: projection, error: null });
+
+    await expect(getMatchEvent({ data: { event_id: eventId } })).resolves.toEqual({
+      status: 'error'
+    });
+    expect(mocks.signMatchPhoto).not.toHaveBeenCalled();
+  });
+
   it('keeps authorized event projections and signed photo URLs', async () => {
     const projection = makeMatchRpcDetail({ event_id: eventId });
     const { photo_path: _photoPath, ...signedProjection } = projection;
@@ -370,6 +383,23 @@ describe('listMatchEvents batch photo signing', () => {
     mocks.requireAuthenticatedClient.mockReset().mockResolvedValue({ client: fixture.client });
     await expect(listMatchEvents({ data: baseInput })).rejects.toThrow('MATCH_LIST_UNAVAILABLE');
     expect(fixture.createSignedUrls).not.toHaveBeenCalled();
+  });
+
+  it('rejects unsupported currencies before any photo signing', async () => {
+    const invalid = {
+      ...makeMatchRpcListRow({
+        as_of: '2026-01-01T00:00:00.000Z',
+        price_minor: 500,
+        currency: 'EUR'
+      }),
+      currency: 'EURO'
+    };
+    const fixture = listClientWith([invalid], { data: [], error: null });
+    mocks.requireAuthenticatedClient.mockReset().mockResolvedValue({ client: fixture.client });
+
+    await expect(listMatchEvents({ data: baseInput })).rejects.toThrow('MATCH_LIST_UNAVAILABLE');
+    expect(fixture.createSignedUrls).not.toHaveBeenCalled();
+    expect(mocks.signMatchPhoto).not.toHaveBeenCalled();
   });
 });
 

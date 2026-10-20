@@ -66,6 +66,7 @@ const eventTypes = ['friendly', 'competitive'] as const;
 const visibilities = ['community_open', 'invite_only'] as const;
 const teamModes = ['PREDEFINED_TEAMS', 'POST_MATCH_TEAMS'] as const;
 const eligibility = ['creator', 'member', 'out_of_range', 'nonmember'] as const;
+const currencies = ['BRL', 'USD', 'EUR'] as const;
 
 function decodeProjection(value: unknown) {
   const row = object(value);
@@ -96,7 +97,7 @@ function decodeProjection(value: unknown) {
     min_level: nullableField('min_level', safeNumber),
     max_level: nullableField('max_level', safeNumber),
     price_minor: nullableField('price_minor', count),
-    currency: nullableField('currency', text),
+    currency: nullableField('currency', (entry) => enumValue(entry, currencies)),
     payment_note: nullableField('payment_note', text),
     maximum_registrations: nullableField('maximum_registrations', count),
     registration_cutoff_at: required(row, 'registration_cutoff_at', timestamp),

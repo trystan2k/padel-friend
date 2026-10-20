@@ -39,6 +39,23 @@ describe('match RPC decoders', () => {
     });
   });
 
+  it('rejects unsupported currencies while preserving null and supported currencies', () => {
+    const detail = makeMatchRpcDetail({ price_minor: 500, currency: 'EUR' });
+    expect(decodeMatchRpcDetail(detail).currency).toBe('EUR');
+    expect(
+      decodeMatchRpcDetail({ ...detail, price_minor: null, currency: null }).currency
+    ).toBeNull();
+
+    const missingCurrency = (({ currency: _currency, ...rest }) => rest)(detail);
+    for (const corrupted of [
+      { ...detail, currency: '' },
+      { ...detail, currency: 'EURO' },
+      { ...detail, currency: 7 },
+      missingCurrency
+    ])
+      expect(() => decodeMatchRpcDetail(corrupted)).toThrow('INVALID_MATCH_RESPONSE');
+  });
+
   it('rejects missing required fields, wrong primitives, enums, counts and timestamps', () => {
     const detail = makeMatchRpcDetail();
     for (const corrupted of [

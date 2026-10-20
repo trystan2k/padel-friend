@@ -5,6 +5,7 @@ import { readFileSync } from 'node:fs';
 import { I18nextProvider } from 'react-i18next';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createI18n } from '../src/i18n/config';
+import type { Locale } from '../src/i18n/config';
 import type { MyMatchRegistration } from '../src/features/matches/match-registration-model';
 import en from '../src/locales/en/translation.json';
 import pt from '../src/locales/pt-BR/translation.json';
@@ -34,11 +35,12 @@ import {
   MatchRegistrationPanel,
   matchRegistrationAction
 } from '../src/features/matches/MatchRegistrationPanel';
+import type { MatchEventCard } from '../src/features/matches/match-contracts';
 import { makeMatchCard } from './helpers/match-fixtures';
 
 const EVENT_ID = '00000000-0000-4000-8000-000000000001';
 
-function event(extra: Record<string, unknown> = {}) {
+function event(extra: Partial<MatchEventCard> = {}) {
   // The event window is derived from the wall clock so the fixture can never
   // age into the cutoff-passed state: a hardcoded cutoff (previously
   // 2026-10-20T17:30Z) silently flipped every later run to the closed state.
@@ -106,9 +108,9 @@ const expired: MyMatchRegistration = {
 };
 
 function mount(
-  eventValue: Record<string, unknown>,
+  eventValue: MatchEventCard,
   registration: MyMatchRegistration,
-  locale = 'en',
+  locale: Locale = 'en',
   callerLevel: number | null = 3.82
 ) {
   return render(

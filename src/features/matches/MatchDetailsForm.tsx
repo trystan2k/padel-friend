@@ -4,7 +4,6 @@ import { useTranslation } from 'react-i18next';
 import type { MatchCreationOptions, MatchDraft } from './match-contracts';
 import { createMatchStyles as s } from './create-match.styles';
 
-export type Draft = MatchDraft;
 type TextField =
   | 'date'
   | 'startTime'

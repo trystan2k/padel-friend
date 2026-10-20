@@ -5,6 +5,7 @@ import { I18nextProvider } from 'react-i18next';
 import type { ComponentProps } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createI18n } from '../src/i18n/config';
+import type { Locale } from '../src/i18n/config';
 import en from '../src/locales/en/translation.json';
 
 const mocks = vi.hoisted(() => ({
@@ -64,7 +65,7 @@ const event = (
     caller_requires_approval: false
   });
 const copy = en.matches;
-function mount(props: Partial<ComponentProps<typeof MatchesPage>> = {}, locale = 'en') {
+function mount(props: Partial<ComponentProps<typeof MatchesPage>> = {}, locale: Locale = 'en') {
   return render(
     <I18nextProvider i18n={createI18n(locale)}>
       <MatchesPage entry="available" {...props} />
@@ -98,7 +99,7 @@ describe('match list surfaces', () => {
     ['pt-BR', 4, '4 jogando', '4 faltam'],
     ['es', 3, '3 reservas', '1 falta'],
     ['es', 4, '4 jugando', '4 faltan']
-  ])('formats count plurals in %s', (locale, count, expected, needed) => {
+  ] as const)('formats count plurals in %s', (locale, count, expected, needed) => {
     mount({ initialItems: [event(2, count)] }, locale);
     expect(screen.getByRole('article').textContent).toContain(expected);
     expect(screen.getByRole('article').textContent).toContain(needed);
@@ -197,12 +198,13 @@ describe('match list surfaces', () => {
           ...event(32, 0),
           caller_eligibility: 'out_of_range',
           caller_requires_approval: true,
-          caller_is_invited: true,
-          is_accepted: false
+          caller_is_invited: true
         }
       ]
     });
     const [acceptedCard, nonAcceptedCard] = screen.getAllByRole('article');
+    if (!(acceptedCard instanceof HTMLElement) || !(nonAcceptedCard instanceof HTMLElement))
+      throw new TypeError('Expected two article cards');
     expect(within(acceptedCard).getByText(copy.detail.invitationInfo)).toBeTruthy();
     expect(within(acceptedCard).getByText(copy.badges.playing)).toBeTruthy();
     expect(within(acceptedCard).queryByText(copy.detail.outOfRangeApprovalRequired)).toBeNull();

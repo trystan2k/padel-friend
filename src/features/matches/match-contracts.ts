@@ -1,29 +1,33 @@
 import type { Database } from '../../lib/supabase/database.types';
 
 type MatchRow = Database['public']['Tables']['match_events']['Row'];
-type StoredProjection = Pick<
-  MatchRow,
-  | 'community_id'
-  | 'court_booked'
-  | 'court_notes'
-  | 'currency'
-  | 'duration_minutes'
-  | 'event_type'
-  | 'maps_url'
-  | 'max_level'
-  | 'maximum_registrations'
-  | 'min_level'
-  | 'notes'
-  | 'payment_note'
-  | 'price_minor'
-  | 'registration_cutoff_at'
-  | 'restriction_enabled'
-  | 'starts_at'
-  | 'team_assignment_mode'
-  | 'timezone'
-  | 'venue_name'
-  | 'visibility'
->;
+export type MatchCurrency = 'BRL' | 'USD' | 'EUR';
+type StoredProjection = Omit<
+  Pick<
+    MatchRow,
+    | 'community_id'
+    | 'court_booked'
+    | 'court_notes'
+    | 'currency'
+    | 'duration_minutes'
+    | 'event_type'
+    | 'maps_url'
+    | 'max_level'
+    | 'maximum_registrations'
+    | 'min_level'
+    | 'notes'
+    | 'payment_note'
+    | 'price_minor'
+    | 'registration_cutoff_at'
+    | 'restriction_enabled'
+    | 'starts_at'
+    | 'team_assignment_mode'
+    | 'timezone'
+    | 'venue_name'
+    | 'visibility'
+  >,
+  'currency'
+> & { currency: MatchCurrency | null };
 type IdentityProjection = Pick<MatchRow, 'id' | 'created_by'>;
 type CallerEligibility = 'creator' | 'member' | 'out_of_range' | 'nonmember' | null;
 type MatchEventProjection = StoredProjection & {
@@ -87,7 +91,7 @@ export type MatchDraft = {
   type: EventType;
   visibility: Visibility;
   teamMode: TeamMode;
-  currency: 'BRL' | 'USD' | 'EUR';
+  currency: MatchCurrency;
   community_id: string;
   timezone: string | null;
   date: string;
@@ -128,7 +132,7 @@ export type MatchPublishInput = {
   min_level?: number | null;
   max_level?: number | null;
   price?: string | null;
-  currency?: 'BRL' | 'USD' | 'EUR';
+  currency?: MatchCurrency;
   payment_note?: string | null;
   maximum_registrations?: number | null;
   cutoff_at?: string | null;
