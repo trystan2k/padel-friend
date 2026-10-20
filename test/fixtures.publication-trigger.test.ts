@@ -9,14 +9,14 @@ interface SourceRecord {
 
 const repositoryRoot = fileURLToPath(new URL('../', import.meta.url));
 const helperPath = 'test/helpers/match-photo-fixtures.ts';
+const target = ['lock_match_photo', '_publication'].join('');
 const extensions = new Set(['.ts', '.tsx', '.js', '.jsx', '.mjs', '.cjs', '.mts', '.cts', '.sql']);
 
 function findViolations(source: string): boolean {
-  const trigger = ['lock_match_photo', '_publication'].join('');
   const commentsRemoved = source.replace(/\/\*[\s\S]*?\*\/|--[^\n]*/g, ' ');
   const separator = String.raw`(?:\s|\/\*[\s\S]*?\*\/|--[^\n]*(?:\n|$))*`;
   const qualifiedToggle = new RegExp(
-    String.raw`\bALTER${separator}TABLE${separator}[\s\S]*?${separator}(?:DISABLE|ENABLE)${separator}(?:(?:ALWAYS|REPLICA)${separator})?TRIGGER${separator}["']?${trigger}\b`,
+    String.raw`\bALTER${separator}TABLE${separator}[\s\S]*?${separator}(?:DISABLE|ENABLE)${separator}(?:(?:ALWAYS|REPLICA)${separator})?TRIGGER${separator}["']?${target}\b`,
     'i'
   );
   const blanketToggle = new RegExp(
@@ -24,13 +24,18 @@ function findViolations(source: string): boolean {
     'i'
   );
   const roleAssignment = new RegExp(
-    String.raw`(?:\bSET${separator}session_replication_role${separator}(?:=|TO)${separator}[^;]+|\bset_config${separator}\(${separator}'session_replication_role'${separator},)`,
+    String.raw`\bSET${separator}(?:LOCAL${separator}|SESSION${separator})?["']?session_replication_role["']?${separator}(?:=|TO)${separator}[^;]+`,
+    'i'
+  );
+  const roleViaSetConfig = new RegExp(
+    String.raw`\bset_config${separator}\(${separator}["']session_replication_role["']${separator},`,
     'i'
   );
   return (
     qualifiedToggle.test(source) ||
     blanketToggle.test(source) ||
-    roleAssignment.test(commentsRemoved)
+    roleAssignment.test(commentsRemoved) ||
+    roleViaSetConfig.test(commentsRemoved)
   );
 }
 
@@ -59,31 +64,38 @@ function walkTestSources(directory: string, relativeDirectory = 'test'): SourceR
     .sort((left, right) => left.path.localeCompare(right.path));
 }
 
+const unsafeSyntheticSources = [
+  ['ALTER TABLE storage.objects ', 'DISABLE TRIGGER ', target].join(''),
+  ['ALTER TABLE storage.objects ', 'ENABLE TRIGGER ', `'${target}'`].join(''),
+  ['ALTER TABLE storage.objects ', 'ENABLE ALWAYS TRIGGER ', target].join(''),
+  ['ALTER TABLE storage.objects ', 'ENABLE REPLICA TRIGGER ', `"${target}"`].join(''),
+  ['alter table storage.objects ', 'disable trigger ', target].join(''),
+  ['ALTER /* step */ TABLE storage.objects -- table\n ', 'DISABLE TRIGGER ', `'${target}'`].join(
+    ''
+  ),
+  ['ALTER TABLE storage.objects ', 'DISABLE TRIGGER ', 'ALL'].join(''),
+  ['ALTER TABLE storage.objects ', 'ENABLE TRIGGER ', 'USER'].join(''),
+  ['SET ', 'session_replication_role', " = 'replica'"].join(''),
+  ['SET LOCAL ', 'session_replication_role', ' = replica'].join(''),
+  ['SET SESSION ', 'session_replication_role', ' TO replica'].join(''),
+  ['SET LOCAL "', 'session_replication_role', '" = replica'].join(''),
+  ['SET /* scope */ LOCAL ', 'session_replication_role', ' = replica'].join(''),
+  ["SELECT set_config('", 'session_replication_role', "', 'replica', true)"].join(''),
+  ["SELECT set_config('", 'session_replication_role', "', 'origin', false)"].join('')
+];
+
 describe('publication trigger fixture guard', () => {
-  it('rejects unsafe SQL forms and accepts safe fixture source', () => {
-    const target = ['lock_match_photo', '_publication'].join('');
-    const violations = [
-      ['ALTER TABLE storage.objects ', 'DISABLE TRIGGER ', target].join(''),
-      ['ALTER TABLE storage.objects ', 'ENABLE TRIGGER ', `'${target}'`].join(''),
-      ['ALTER TABLE storage.objects ', 'ENABLE ALWAYS TRIGGER ', target].join(''),
-      ['ALTER TABLE storage.objects ', 'ENABLE REPLICA TRIGGER ', `"${target}"`].join(''),
-      ['alter table storage.objects ', 'disable trigger ', target].join(''),
-      [
-        'ALTER /* step */ TABLE storage.objects -- table\n ',
-        'DISABLE TRIGGER ',
-        `'${target}'`
-      ].join(''),
-      ['ALTER TABLE storage.objects ', 'DISABLE TRIGGER ', 'ALL'].join(''),
-      ['ALTER TABLE storage.objects ', 'ENABLE TRIGGER ', 'USER'].join(''),
-      ['SET ', 'session_replication_role', " = 'replica'"].join(''),
-      ["SELECT set_config('", 'session_replication_role', "', 'replica', true)"].join('')
-    ];
-    const synthetic = violations.map((source, index) => ({
+  it.each(
+    unsafeSyntheticSources.map((source, index) => ({
       path: `synthetic-${index}.sql`,
       source
-    }));
-    expect(() => assertSourcesSafe(synthetic)).toThrow(/synthetic-0\.sql/);
-    expect(() => assertSourcesSafe(synthetic)).toThrow(helperPath);
+    }))
+  )('rejects unsafe synthetic record $path', ({ path, source }) => {
+    expect(() => assertSourcesSafe([{ path, source }])).toThrow(path);
+    expect(() => assertSourcesSafe([{ path, source }])).toThrow(helperPath);
+  });
+
+  it('accepts safe fixture source', () => {
     expect(() =>
       assertSourcesSafe([{ path: helperPath, source: `/** documentation mentions ${target} */` }])
     ).not.toThrow();
