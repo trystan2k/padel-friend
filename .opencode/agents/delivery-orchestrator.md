@@ -42,6 +42,7 @@ permission:
     "git rev-parse*": allow
     "git show*": allow
     "git ls-files*": allow
+    "git branch*": allow
     "gh pr checks*": allow
     "gh pr view*": allow
     "gh pr list*": allow
