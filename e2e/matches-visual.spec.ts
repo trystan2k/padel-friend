@@ -215,9 +215,10 @@ const VISUAL_BUDGETS: Record<string, number> = {
   'my-matches-invited.png': 0.315,
   'my-matches-reserve.png': 0.315,
   'past-elapsed.png': 0.315,
-  'detail-public-guest.png': 0.375,
-  'detail-friendly-creator.png': 0.385,
-  'detail-invitee.png': 0.225,
+  // Approved +0.005 residual for the >=44px root locale control's 20px header growth.
+  'detail-public-guest.png': 0.38,
+  'detail-friendly-creator.png': 0.39,
+  'detail-invitee.png': 0.23,
   // Self-baselined screens: measured local residual (0.000 on the deterministic
   // pipeline; VISUAL_CALIBRATE runs recorded nothing against the fresh captures) plus
   // the documented +0.02 cross-platform allowance.
