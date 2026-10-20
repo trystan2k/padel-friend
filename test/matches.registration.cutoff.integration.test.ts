@@ -1,6 +1,7 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { describe, expect, it, vi } from 'vitest';
 import type { Database } from '../src/lib/supabase/database.types';
+import { matchPhotoFixture } from './helpers/match-photo-fixtures';
 import {
   assertLocalSupabaseEnvInCi,
   dotEnvPathFromImportMetaUrl,
@@ -404,13 +405,20 @@ describe('match registration cutoff integration', () => {
       events[eventKey] = crypto.randomUUID();
     publicCommunity = crypto.randomUUID();
     const q = (value: string) => `'${value.replaceAll("'", "''")}'`;
+    const photoFixtures = Object.fromEntries(
+      Object.keys(events).map((eventKey) => [
+        eventKey,
+        matchPhotoFixture(publicCommunity, events[eventKey]!, actors.creator!.id)
+      ])
+    );
     const insertEvent = (eventKey: string, cutoffExpression: string) =>
-      `insert into public.match_events(
+      `${photoFixtures[eventKey]!.sql}
+       insert into public.match_events(
         id,community_id,created_by,starts_at,timezone,event_type,visibility,team_assignment_mode,
         venue_name,maps_url,photo_path,restriction_enabled,min_level,max_level,maximum_registrations,registration_cutoff_at)
         values (${q(events[eventKey]!)},${q(publicCommunity)},${q(actors.creator!.id)},
           now() + interval '10 days','UTC','friendly','community_open','POST_MATCH_TEAMS',
-          'Cutoff court','https://maps.google.com/maps/place/cutoff','${crypto.randomUUID()}/photo.webp',
+          'Cutoff court','https://maps.google.com/maps/place/cutoff','${photoFixtures[eventKey]!.path}',
           false,null,null,null,${cutoffExpression});`;
     // Accepted member row at a given ordinal with an explicit stored
     // participation state, mirroring what the FIFO engine persists.
@@ -441,7 +449,6 @@ describe('match registration cutoff integration', () => {
             `${index === 0 ? '' : ','}(${q(publicCommunity)},${q(actors[label]!.id)},'member','active',now()-interval '1 minute',now()-interval '1 minute')`
         ),
         `;`,
-        `alter table public.match_events disable trigger lock_match_photo_publication;`,
         // The publication alert would pollute exact inbox assertions; every
         // cutoff producer under test stays live.
         `alter table public.match_events disable trigger match_event_published_notification;`,
@@ -509,7 +516,6 @@ describe('match registration cutoff integration', () => {
         // Long-overdue catch-up event.
         insertEvent('catchup', `pg_catalog.clock_timestamp() - interval '2 hours'`),
         `alter table public.match_events enable trigger match_event_published_notification;`,
-        `alter table public.match_events enable trigger lock_match_photo_publication;`,
         `end $$;`
       ].join('\n')
     );
@@ -1311,14 +1317,21 @@ describe('match registration cutoff integration', () => {
       const eventColumns =
         `id,community_id,created_by,starts_at,timezone,event_type,visibility,team_assignment_mode,` +
         `venue_name,maps_url,photo_path,registration_cutoff_at`;
+      const starvationPhotos = new Map<string, ReturnType<typeof matchPhotoFixture>>(
+        [...failingIds, targetId].map((id) => [
+          id,
+          matchPhotoFixture(publicCommunity, id, actors.creator!.id)
+        ])
+      );
       // Ancient cutoffs keep the poisoned prefix globally oldest, so a fixed
       // oldest-first LIMIT would keep selecting it forever. Every fixture lives
       // in the suite's public community; the blocker is scoped to the failing
       // event ids so the target is never affected.
       const eventInsert = (id: string, cutoff: string) =>
-        `insert into public.match_events(${eventColumns}) values
+        `${starvationPhotos.get(id)!.sql}
+         insert into public.match_events(${eventColumns}) values
           (${q(id)},${q(publicCommunity)},${q(actors.creator!.id)},now()+interval '10 days','UTC','friendly','community_open','POST_MATCH_TEAMS',
-           'Starvation court','https://maps.google.com/maps/place/starvation','${crypto.randomUUID()}/photo.webp',${cutoff});`;
+           'Starvation court','https://maps.google.com/maps/place/starvation','${starvationPhotos.get(id)!.path}',${cutoff});`;
       const failingEvents = failingIds
         .map((id, index) =>
           eventInsert(id, `timestamptz '2000-01-01 00:00:00+00' + (${index} * interval '1 second')`)
@@ -1327,12 +1340,10 @@ describe('match registration cutoff integration', () => {
       await fixtureSql(
         [
           `do $$ begin`,
-          `alter table public.match_events disable trigger lock_match_photo_publication;`,
           `alter table public.match_events disable trigger match_event_published_notification;`,
           failingEvents,
           eventInsert(targetId, `timestamptz '2000-01-02 00:00:00+00'`),
           `alter table public.match_events enable trigger match_event_published_notification;`,
-          `alter table public.match_events enable trigger lock_match_photo_publication;`,
           `end $$;`
         ].join('\n')
       );

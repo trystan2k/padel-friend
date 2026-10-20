@@ -2,6 +2,7 @@ import { spawn } from 'node:child_process';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { describe, expect, it } from 'vitest';
 import type { Database } from '../src/lib/supabase/database.types';
+import { matchPhotoFixture } from './helpers/match-photo-fixtures';
 import {
   assertLocalSupabaseEnvInCi,
   dotEnvPathFromImportMetaUrl,
@@ -234,6 +235,9 @@ describe('match registration schema integration', () => {
       const eventId = crypto.randomUUID();
       const bareEventId = crypto.randomUUID();
       const secondEventId = crypto.randomUUID();
+      const eventPhoto = matchPhotoFixture(communityId, eventId, creator);
+      const secondEventPhoto = matchPhotoFixture(communityId, secondEventId, creator);
+      const bareEventPhoto = matchPhotoFixture(communityId, bareEventId, creator);
       expect(
         await fixtureSql(
           env,
@@ -254,11 +258,11 @@ describe('match registration schema integration', () => {
           values (v_community,'Registration schema fixture','public',v_creator);
         insert into public.community_members(community_id,user_id,role,status,valid_from,activated_at)
           values (v_community,v_creator,'admin','active',now()-interval '1 minute',now()-interval '1 minute');
-        -- Fixture images are placeholders; storage attachment is PAF-72's job.
-        alter table public.match_events disable trigger lock_match_photo_publication;
-        insert into public.match_events(id,community_id,created_by,starts_at,timezone,event_type,visibility,team_assignment_mode,venue_name,maps_url,photo_path,registration_cutoff_at)
-          values(v_event,v_community,v_creator,now()+interval '4 days','UTC','friendly','community_open','POST_MATCH_TEAMS','Schema court','https://maps.google.com/maps/x',gen_random_uuid()::text||'/photo.webp',now()+interval '3 days'),
-                (v_second_event,v_community,v_creator,now()+interval '4 days','UTC','friendly','community_open','POST_MATCH_TEAMS','Schema court','https://maps.google.com/maps/x',gen_random_uuid()::text||'/photo.webp',now()+interval '3 days');
+         ${eventPhoto.sql}
+         ${secondEventPhoto.sql}
+         insert into public.match_events(id,community_id,created_by,starts_at,timezone,event_type,visibility,team_assignment_mode,venue_name,maps_url,photo_path,registration_cutoff_at)
+           values(v_event,v_community,v_creator,now()+interval '4 days','UTC','friendly','community_open','POST_MATCH_TEAMS','Schema court','https://maps.google.com/maps/x','${eventPhoto.path}',now()+interval '3 days'),
+                 (v_second_event,v_community,v_creator,now()+interval '4 days','UTC','friendly','community_open','POST_MATCH_TEAMS','Schema court','https://maps.google.com/maps/x','${secondEventPhoto.path}',now()+interval '3 days');
         -- Publication creates the state row and the creator slot together.
         select next_accepted_ordinal, transition_revision into v_ordinal, v_revision from public.match_event_registration_state where match_event_id=v_event;
         if v_ordinal is distinct from 2 or v_revision is distinct from 0 then
@@ -360,10 +364,11 @@ describe('match registration schema integration', () => {
           raise exception 'delete was accepted';
         exception when check_violation then null; end;
 
-        -- State table rules: positive ordinal, non-negative revision, one row per event.
-        alter table public.match_events disable trigger match_event_creator_registration;
-        insert into public.match_events(id,community_id,created_by,starts_at,timezone,event_type,visibility,team_assignment_mode,venue_name,maps_url,photo_path,registration_cutoff_at)
-          values(v_bare,v_community,v_creator,now()+interval '6 days','UTC','friendly','community_open','POST_MATCH_TEAMS','Schema court','https://maps.google.com/maps/x',gen_random_uuid()::text||'/photo.webp',now()+interval '5 days');
+         -- State table rules: positive ordinal, non-negative revision, one row per event.
+         alter table public.match_events disable trigger match_event_creator_registration;
+         ${bareEventPhoto.sql}
+         insert into public.match_events(id,community_id,created_by,starts_at,timezone,event_type,visibility,team_assignment_mode,venue_name,maps_url,photo_path,registration_cutoff_at)
+           values(v_bare,v_community,v_creator,now()+interval '6 days','UTC','friendly','community_open','POST_MATCH_TEAMS','Schema court','https://maps.google.com/maps/x','${bareEventPhoto.path}',now()+interval '5 days');
         alter table public.match_events enable trigger match_event_creator_registration;
         begin
           insert into public.match_event_registration_state(match_event_id,next_accepted_ordinal) values (v_bare,0);
@@ -398,7 +403,6 @@ describe('match registration schema integration', () => {
           values (v_event, v_second, now(), 'accepted', now(), v_creator),
                  (v_event, v_second, now(), 'pending', null, null),
                  (v_event, v_second, now(), 'expired', null, v_creator);
-        alter table public.match_events enable trigger lock_match_photo_publication;
        end $$;`
         )
       ).toBe('DO');
@@ -413,6 +417,7 @@ describe('match registration schema integration', () => {
       const { creator, first, second } = await registrationActors(env);
       const communityId = crypto.randomUUID();
       const replayEventId = crypto.randomUUID();
+      const replayPhoto = matchPhotoFixture(communityId, replayEventId, creator);
       expect(
         await fixtureSql(
           env,
@@ -428,12 +433,12 @@ describe('match registration schema integration', () => {
        begin
         insert into public.communities(id,name,visibility,created_by)
           values (v_community,'Registration backfill fixture','public',v_creator);
-        alter table public.match_events disable trigger lock_match_photo_publication;
+         ${replayPhoto.sql}
         -- State-less event: the backfill under test is the migration's
         -- INSERT..SELECT for events without a registration-state row.
         alter table public.match_events disable trigger match_event_creator_registration;
         insert into public.match_events(id,community_id,created_by,starts_at,timezone,event_type,visibility,team_assignment_mode,venue_name,maps_url,photo_path,registration_cutoff_at)
-          values(v_event,v_community,v_creator,now()+interval '6 days','UTC','friendly','community_open','POST_MATCH_TEAMS','Backfill court','https://maps.google.com/maps/x',gen_random_uuid()::text||'/photo.webp',now()+interval '5 days');
+           values(v_event,v_community,v_creator,now()+interval '6 days','UTC','friendly','community_open','POST_MATCH_TEAMS','Backfill court','https://maps.google.com/maps/x','${replayPhoto.path}',now()+interval '5 days');
         alter table public.match_events enable trigger match_event_creator_registration;
         -- Pre-backfill shape: creator first, then accepted_at, id.
         insert into public.match_event_registrations(match_event_id,user_id,accepted_at,accepted_order,participation_status,registration_source) values
@@ -447,7 +452,6 @@ describe('match registration schema integration', () => {
         group by e.id;
         select next_accepted_ordinal into v_ordinal from public.match_event_registration_state where match_event_id=v_event;
         if v_ordinal is distinct from 4 then raise exception 'backfill ordinal mismatch: %', v_ordinal; end if;
-        alter table public.match_events enable trigger lock_match_photo_publication;
 
         -- The backfill rule is scoped to the event this suite owns. accepted_order
         -- is the authoritative FIFO ordinal (assigned by the migration backfill and

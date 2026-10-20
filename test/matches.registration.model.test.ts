@@ -1,6 +1,7 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { describe, expect, it, vi } from 'vitest';
 import type { Database } from '../src/lib/supabase/database.types';
+import { matchPhotoFixture } from './helpers/match-photo-fixtures';
 import {
   assertLocalSupabaseEnvInCi,
   dotEnvPathFromImportMetaUrl,
@@ -307,12 +308,13 @@ function insertEventSql(
   communityId: string,
   maximum: string
 ): string {
-  return `insert into public.match_events(
+  const photo = matchPhotoFixture(communityId, eventId, creatorId);
+  return `${photo.sql}\ninsert into public.match_events(
       id,community_id,created_by,starts_at,timezone,event_type,visibility,team_assignment_mode,
       venue_name,maps_url,photo_path,restriction_enabled,min_level,max_level,maximum_registrations,registration_cutoff_at)
       values (${q(eventId)},${q(communityId)},${q(creatorId)},
         now() + interval '10 days','UTC','friendly','community_open','POST_MATCH_TEAMS',
-        'Model court','https://maps.google.com/maps/place/model','${crypto.randomUUID()}/photo.webp',
+        'Model court','https://maps.google.com/maps/place/model',${q(photo.path)},
         false,null,null,${maximum},now() + interval '7 days');`;
 }
 
@@ -341,7 +343,6 @@ function modelFixtureSql(actors: ActorSet, countEvents: Map<number, string>): st
   const statements: string[] = [
     `do $$ begin`,
     ...communityFixture(communityId, actors),
-    `alter table public.match_events disable trigger lock_match_photo_publication;`,
     // N=0: no creator slot at all, state created manually.
     `alter table public.match_events disable trigger match_event_creator_registration;`,
     insertEventSql(countEvents.get(0)!, actors.creator.id, communityId, 'null'),
@@ -362,7 +363,6 @@ function modelFixtureSql(actors: ActorSet, countEvents: Map<number, string>): st
       );
     }
   }
-  statements.push(`alter table public.match_events enable trigger lock_match_photo_publication;`);
   statements.push(`end $$;`);
   return statements.join('\n');
 }
@@ -373,7 +373,6 @@ function capacityFixtureSql(actors: ActorSet, capacityEvents: Map<string, string
   return [
     `do $$ begin`,
     ...communityFixture(communityId, actors),
-    `alter table public.match_events disable trigger lock_match_photo_publication;`,
     ...[...capacityEvents.entries()].map(([capacity, eventId]) =>
       insertEventSql(
         eventId,
@@ -382,7 +381,6 @@ function capacityFixtureSql(actors: ActorSet, capacityEvents: Map<string, string
         capacity === 'null' ? 'null' : capacity
       )
     ),
-    `alter table public.match_events enable trigger lock_match_photo_publication;`,
     `end $$;`
   ].join('\n');
 }

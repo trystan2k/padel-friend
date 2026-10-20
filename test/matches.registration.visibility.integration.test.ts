@@ -2,6 +2,7 @@ import { spawn } from 'node:child_process';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { describe, expect, it } from 'vitest';
 import type { Database } from '../src/lib/supabase/database.types';
+import { matchPhotoFixture } from './helpers/match-photo-fixtures';
 import {
   assertLocalSupabaseEnvInCi,
   dotEnvPathFromImportMetaUrl,
@@ -122,9 +123,20 @@ describe('match registration visibility integration', () => {
         exclPast: crypto.randomUUID()
       };
       const q = (value: string) => `'${value.replaceAll("'", "''")}'`;
+      const photoFixtures = Object.fromEntries(
+        Object.entries(events).map(([eventKey, eventId]) => [
+          eventKey,
+          matchPhotoFixture(
+            eventKey.startsWith('priv') ? privateCommunity : publicCommunity,
+            eventId,
+            creator.id
+          )
+        ])
+      );
       const insertEvent = (eventKey: string, communityId: string, visibility: string) =>
-        `insert into public.match_events(id,community_id,created_by,starts_at,timezone,event_type,visibility,team_assignment_mode,venue_name,maps_url,photo_path,registration_cutoff_at)
-       values (${q(events[eventKey]!)},${q(communityId)},${q(creator.id)},now()+interval '3 days','UTC','friendly',${q(visibility)},'POST_MATCH_TEAMS','Visibility court','https://maps.google.com/maps/place/visibility','${crypto.randomUUID()}/photo.webp',now()+interval '2 days');`;
+        `${photoFixtures[eventKey]!.sql}
+       insert into public.match_events(id,community_id,created_by,starts_at,timezone,event_type,visibility,team_assignment_mode,venue_name,maps_url,photo_path,registration_cutoff_at)
+       values (${q(events[eventKey]!)},${q(communityId)},${q(creator.id)},now()+interval '3 days','UTC','friendly',${q(visibility)},'POST_MATCH_TEAMS','Visibility court','https://maps.google.com/maps/place/visibility','${photoFixtures[eventKey]!.path}',now()+interval '2 days');`;
       await fixtureSql(
         environment.env!,
         `do $$ begin
@@ -142,17 +154,16 @@ describe('match registration visibility integration', () => {
         (${q(privateCommunity)},${q(memberPending.id)},'member','pending',now()-interval '1 minute',null);
       insert into public.community_members(community_id,user_id,role,status,valid_from,valid_until,activated_at)
         values (${q(publicCommunity)},${q(memberInactive.id)},'member','inactive',now()-interval '2 minutes',now()-interval '1 minute',now()-interval '2 minutes');
-      -- Visibility fixture uses placeholder images; PAF-72 tests enforce real object binding.
-      alter table public.match_events disable trigger lock_match_photo_publication;
-      ${insertEvent('pubOpen', publicCommunity, 'community_open')}
+       ${insertEvent('pubOpen', publicCommunity, 'community_open')}
       ${insertEvent('pubInvite', publicCommunity, 'invite_only')}
       ${insertEvent('privOpen', privateCommunity, 'community_open')}
       ${insertEvent('privInvite', privateCommunity, 'invite_only')}
       ${insertEvent('exclFuture', publicCommunity, 'community_open')}
       -- Past events skip the future-start creator registration trigger.
       alter table public.match_events disable trigger match_event_creator_registration;
-      insert into public.match_events(id,community_id,created_by,starts_at,timezone,event_type,visibility,team_assignment_mode,venue_name,maps_url,photo_path,registration_cutoff_at)
-        values (${q(events.exclPast!)},${q(publicCommunity)},${q(creator.id)},now()-interval '2 hours','UTC','friendly','community_open','POST_MATCH_TEAMS','Visibility court','https://maps.google.com/maps/place/visibility','${crypto.randomUUID()}/photo.webp',now()-interval '3 hours');
+       ${photoFixtures.exclPast!.sql}
+       insert into public.match_events(id,community_id,created_by,starts_at,timezone,event_type,visibility,team_assignment_mode,venue_name,maps_url,photo_path,registration_cutoff_at)
+         values (${q(events.exclPast!)},${q(publicCommunity)},${q(creator.id)},now()-interval '2 hours','UTC','friendly','community_open','POST_MATCH_TEAMS','Visibility court','https://maps.google.com/maps/place/visibility','${photoFixtures.exclPast!.path}',now()-interval '3 hours');
       alter table public.match_events enable trigger match_event_creator_registration;
       insert into public.match_event_invites(match_event_id,invitee_user_id,invited_by) values
         (${q(events.pubInvite!)},${q(invitee.id)},${q(creator.id)});
@@ -173,7 +184,6 @@ describe('match registration visibility integration', () => {
       update public.match_event_registrations set resolved_at=now(), resolved_by=${q(creator.id)}
         where lifecycle in ('rejected','expired')
           and match_event_id in (${q(events.pubInvite!)},${q(events.privOpen!)},${q(events.exclFuture!)},${q(events.exclPast!)});
-      alter table public.match_events enable trigger lock_match_photo_publication;
     end $$;`
       );
 
