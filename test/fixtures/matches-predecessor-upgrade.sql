@@ -19,14 +19,15 @@ insert into public.community_members (community_id,user_id,role,status,valid_fro
   ('20000000-0000-4000-8000-000000000001','10000000-0000-4000-8000-000000000004','member','active',now()-interval '1 day',now()-interval '1 day'),
   ('20000000-0000-4000-8000-000000000001','10000000-0000-4000-8000-000000000005','member','active',now()-interval '1 day',now()-interval '1 day');
 
--- Only fixture-trigger side effects are bypassed. Registration creation stays enabled.
-alter table public.match_events disable trigger lock_match_photo_publication;
+-- Only notification side effects are bypassed. Registration creation and photo validation stay enabled.
 alter table public.match_events disable trigger match_event_published_notification;
+insert into storage.objects (bucket_id, name, owner_id, metadata) values
+  ('match-event-photos','20000000-0000-4000-8000-000000000001/30000000-0000-4000-8000-000000000001/10000000-0000-4000-8000-000000000001/90000000-0000-4000-8000-000000000001.webp','10000000-0000-4000-8000-000000000001','{"size":"1024","mimetype":"image/webp"}'::jsonb),
+  ('match-event-photos','20000000-0000-4000-8000-000000000001/30000000-0000-4000-8000-000000000002/10000000-0000-4000-8000-000000000001/90000000-0000-4000-8000-000000000002.webp','10000000-0000-4000-8000-000000000001','{"size":"1024","mimetype":"image/webp"}'::jsonb);
 insert into public.match_events (id,community_id,created_by,starts_at,timezone,event_type,visibility,team_assignment_mode,venue_name,maps_url,photo_path,restriction_enabled,min_level,max_level,maximum_registrations,registration_cutoff_at)
 values
-  ('30000000-0000-4000-8000-000000000001','20000000-0000-4000-8000-000000000001','10000000-0000-4000-8000-000000000001',now()+interval '10 days','UTC','friendly','community_open','POST_MATCH_TEAMS','Upgrade Court','https://maps.google.com/maps/place/upgrade','fixture/future.webp',false,null,null,null,now()+interval '5 days'),
-  ('30000000-0000-4000-8000-000000000002','20000000-0000-4000-8000-000000000001','10000000-0000-4000-8000-000000000001',now()+interval '10 days','UTC','friendly','community_open','POST_MATCH_TEAMS','Upgrade Court','https://maps.google.com/maps/place/upgrade','fixture/cutoff.webp',false,null,null,null,now()-interval '1 day');
-alter table public.match_events enable trigger lock_match_photo_publication;
+  ('30000000-0000-4000-8000-000000000001','20000000-0000-4000-8000-000000000001','10000000-0000-4000-8000-000000000001',now()+interval '10 days','UTC','friendly','community_open','POST_MATCH_TEAMS','Upgrade Court','https://maps.google.com/maps/place/upgrade','20000000-0000-4000-8000-000000000001/30000000-0000-4000-8000-000000000001/10000000-0000-4000-8000-000000000001/90000000-0000-4000-8000-000000000001.webp',false,null,null,null,now()+interval '5 days'),
+  ('30000000-0000-4000-8000-000000000002','20000000-0000-4000-8000-000000000001','10000000-0000-4000-8000-000000000001',now()+interval '10 days','UTC','friendly','community_open','POST_MATCH_TEAMS','Upgrade Court','https://maps.google.com/maps/place/upgrade','20000000-0000-4000-8000-000000000001/30000000-0000-4000-8000-000000000002/10000000-0000-4000-8000-000000000001/90000000-0000-4000-8000-000000000002.webp',false,null,null,null,now()-interval '1 day');
 alter table public.match_events enable trigger match_event_published_notification;
 
 -- Four legacy member rows plus the normally-created creator row = five accepted per event.

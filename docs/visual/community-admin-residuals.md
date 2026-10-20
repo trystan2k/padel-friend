@@ -21,11 +21,17 @@ The Linux column's six values are measured results from one green CI run: [run 3
 
 The macOS values were measured locally on this branch using the same fixtures. The Linux measurements apply to tested SHA `552c672c1e13cb2a8fa0135e16011c4f2876a1a6`; subsequent documentation and review-fix commits do not alter the visual layer, so they do not change the measured visual evidence.
 
-### Margin and artifact follow-ups
+### Margin monitoring and retained evidence
 
-Members (`wFqGR.png`) passes tightly: 15,435 of 15,500 changed pixels, 99.6% of the budget consumed and only 65px of headroom. This narrow margin carries flakiness risk. Track a follow-up to monitor repeat-run variance; do not widen the budget or change the probe as part of this record.
+Members (`wFqGR.png`) passes tightly: 15,435 of 15,500 changed pixels, 99.6% of the budget consumed and only 65px of headroom. This narrow margin carries flakiness risk. Each local repeat is recorded as an independent signal; no red run is discarded. Linux repeats are pending; do not widen the budget or change the probe.
 
-CI did not upload the helper's per-screen JSON/PNG residual attachments for this run. The `test-reports` artifact contained only `coverage/` HTML; `test-results/` was empty because all E2E tests passed. Track an artifact-retention improvement: write residual attachments to an explicit artifact directory and upload that directory (or retain `test-results/` with `if: always()`). No workflow change is included here.
+CI did not upload the helper's per-screen JSON/PNG residual attachments for this run. The `test-reports` artifact contained only `coverage/` HTML; `test-results/` was empty because all E2E tests passed. The helper now writes compared screenshot evidence to `artifacts/community-admin-visual/`, which CI uploads with `if: always()` alongside Playwright attachments. New evidence is pending CI execution.
+
+### Environment-limited coverage
+
+- A live zero-member community is unreachable through the API: schema requires an active Admin and the local role cannot disable triggers. The discovery read-model zero-count `COALESCE` path is therefore covered only at UI level.
+- An authenticated anonymous JWT cannot be produced locally because anonymous sign-in is disabled. The in-function anonymous-identity rejection is covered only indirectly by `anon` role EXECUTE denial and unauthenticated denial.
+- These constraints are not prerequisites for unrelated features. Do not fabricate fixtures or weaken security to cover them.
 
 ## Historical / inherited Linux evidence (not final-layout certification)
 

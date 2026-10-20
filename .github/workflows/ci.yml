@@ -72,4 +72,5 @@ jobs:
           path: |
             coverage/
             test-results/
+            artifacts/community-admin-visual/
           if-no-files-found: ignore

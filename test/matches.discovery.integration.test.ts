@@ -2,6 +2,7 @@ import { spawn } from 'node:child_process';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { describe, expect, it } from 'vitest';
 import type { Database } from '../src/lib/supabase/database.types';
+import { matchPhotoFixture } from './helpers/match-photo-fixtures';
 import {
   assertLocalSupabaseEnvInCi,
   dotEnvPathFromImportMetaUrl,
@@ -192,7 +193,6 @@ describe('match event discovery integration', () => {
       const venueB = crypto.randomUUID();
       const venueC = crypto.randomUUID();
       const q = (value: string) => `'${value.replaceAll("'", "''")}'`;
-      const photo = () => `'${crypto.randomUUID()}/photo.webp'`;
       const insertEvent = (
         eventKey: string,
         communityId: string,
@@ -200,9 +200,13 @@ describe('match event discovery integration', () => {
         cutoff: string,
         extra = ',null,null,null,null,false,null',
         restricted = false
-      ) =>
-        `insert into public.match_events(id,community_id,created_by,starts_at,timezone,event_type,visibility,team_assignment_mode,venue_name,maps_url,photo_path,registration_cutoff_at,maximum_registrations,price_minor,currency,duration_minutes,court_booked,notes,restriction_enabled,min_level,max_level)
-         values (${q(events[eventKey]!)},${q(communityId)},${q(creator.id)},${startsAt},'UTC','friendly','community_open','POST_MATCH_TEAMS','Discovery court','https://maps.google.com/maps/place/discovery',${photo()},${cutoff}${extra},${restricted},${restricted ? 3 : 'null'},${restricted ? 4 : 'null'});`;
+      ) => {
+        const photo = matchPhotoFixture(communityId, events[eventKey]!, creator.id);
+        return `${photo.sql}
+        insert into public.match_events(id,community_id,created_by,starts_at,timezone,event_type,visibility,team_assignment_mode,venue_name,maps_url,photo_path,registration_cutoff_at,maximum_registrations,price_minor,currency,duration_minutes,court_booked,notes,restriction_enabled,min_level,max_level)
+         values (${q(events[eventKey]!)},${q(communityId)},${q(creator.id)},${startsAt},'UTC','friendly','community_open','POST_MATCH_TEAMS','Discovery court','https://maps.google.com/maps/place/discovery',${q(photo.path)},${cutoff}${extra},${restricted},${restricted ? 3 : 'null'},${restricted ? 4 : 'null'});`;
+      };
+      const inviteOnlyPhoto = matchPhotoFixture(publicCommunity, events.inviteOnly!, creator.id);
       await fixtureSql(
         environment.env!,
         `do $$ begin
@@ -228,14 +232,12 @@ describe('match event discovery integration', () => {
         (${q(venueA)},${q(publicCommunity)},'Alpha venue',${q(creator.id)},'https://maps.app.goo.gl/alpha'),
         (${q(venueB)},${q(publicCommunity)},'Archived venue',${q(creator.id)},'https://maps.app.goo.gl/archived'),
         (${q(venueC)},${q(privateCommunity)},'Private venue',${q(creator.id)},'https://maps.app.goo.gl/private');
-      update public.community_venues set archived_at=now() where id=${q(venueB)};
-      -- Publication photo binding is the publication suite's job; discovery
-      -- fixtures disable the PAF-72 lock like the visibility suite does.
-      alter table public.match_events disable trigger lock_match_photo_publication;
-       ${insertEvent('anchor', publicCommunity, "now()+interval '3 days'", "now()+interval '2 days'", ",null,1500,'BRL',90,true,'Discovered notes'", true)}
-      ${insertEvent('full', publicCommunity, "now()+interval '2 days'", "now()+interval '1 day'", ',2,null,null,null,false,null')}
-      insert into public.match_events(id,community_id,created_by,starts_at,timezone,event_type,visibility,team_assignment_mode,venue_name,maps_url,photo_path,registration_cutoff_at)
-        values (${q(events.inviteOnly!)},${q(publicCommunity)},${q(creator.id)},now()+interval '2 days','UTC','friendly','invite_only','POST_MATCH_TEAMS','Invite court','https://maps.google.com/maps/place/invite',${photo()},now()+interval '1 day');
+       update public.community_venues set archived_at=now() where id=${q(venueB)};
+        ${insertEvent('anchor', publicCommunity, "now()+interval '3 days'", "now()+interval '2 days'", ",null,1500,'BRL',90,true,'Discovered notes'", true)}
+       ${insertEvent('full', publicCommunity, "now()+interval '2 days'", "now()+interval '1 day'", ',2,null,null,null,false,null')}
+       ${inviteOnlyPhoto.sql}
+       insert into public.match_events(id,community_id,created_by,starts_at,timezone,event_type,visibility,team_assignment_mode,venue_name,maps_url,photo_path,registration_cutoff_at)
+         values (${q(events.inviteOnly!)},${q(publicCommunity)},${q(creator.id)},now()+interval '2 days','UTC','friendly','invite_only','POST_MATCH_TEAMS','Invite court','https://maps.google.com/maps/place/invite',${q(inviteOnlyPhoto.path)},now()+interval '1 day');
       ${insertEvent('cutoffElapsed', publicCommunity, "now()+interval '30 minutes'", "now()-interval '30 minutes'")}
       ${insertEvent('fourAccepted', publicCommunity, "now()+interval '4 days'", "now()+interval '3 days'", ',8,null,null,null,false,null')}
       ${insertEvent('fiveAccepted', publicCommunity, "now()+interval '4 days'", "now()+interval '3 days'")}
@@ -272,8 +274,7 @@ describe('match event discovery integration', () => {
         (${q(events.fiveAccepted!)},${q(member.id)},now()+interval '2 minutes',3,'reserve','member'),
         (${q(events.fiveAccepted!)},${q(admin2.id)},now()+interval '3 minutes',4,'reserve','member'),
         (${q(events.fiveAccepted!)},${q(fifth.id)},now()+interval '4 minutes',5,'reserve','member');
-      alter table public.match_events enable trigger lock_match_photo_publication;
-    end $$;`
+     end $$;`
       );
 
       const detailOf = async (who: Actor, eventId: string) => {
@@ -637,7 +638,9 @@ describe('match event caller context regression (F24 invited members)', () => {
         open: crypto.randomUUID()
       };
       const q = (value: string) => `'${value.replaceAll("'", "''")}'`;
-      const photo = () => `'${crypto.randomUUID()}/photo.webp'`;
+      const restrictedPhoto = matchPhotoFixture(communityId, events.restricted!, creator.id);
+      const inviteOnlyPhoto = matchPhotoFixture(communityId, events.inviteOnly!, creator.id);
+      const openPhoto = matchPhotoFixture(communityId, events.open!, creator.id);
       // One public community; the restricted event (levels 3-4) carries the
       // invited-member matrix, the invite_only event hosts nonmember invitees,
       // and the unrestricted open event takes plain nonmember visitors. The
@@ -656,15 +659,17 @@ describe('match event caller context regression (F24 invited members)', () => {
         (${q(communityId)},${q(acceptedInvitee.id)},'member','active',now()-interval '1 minute',now()-interval '1 minute'),
         (${q(communityId)},${q(adminObserver.id)},'admin','active',now()-interval '1 minute',now()-interval '1 minute');
       -- F24 case 3 fixture: onboard_player always seeds a rating row, so drop
-      -- it to get an active member with no rating row at all.
-      delete from public.global_player_ratings where user_id=${q(unrated.id)};
-      alter table public.match_events disable trigger lock_match_photo_publication;
-      insert into public.match_events(id,community_id,created_by,starts_at,timezone,event_type,visibility,team_assignment_mode,venue_name,maps_url,photo_path,registration_cutoff_at,maximum_registrations,price_minor,currency,duration_minutes,court_booked,notes,restriction_enabled,min_level,max_level)
-        values (${q(events.restricted!)},${q(communityId)},${q(creator.id)},now()+interval '3 days','UTC','friendly','community_open','POST_MATCH_TEAMS','F24 restricted court','https://maps.google.com/maps/place/f24-restricted',${photo()},now()+interval '2 days',null,null,null,null,false,null,true,3,4);
-      insert into public.match_events(id,community_id,created_by,starts_at,timezone,event_type,visibility,team_assignment_mode,venue_name,maps_url,photo_path,registration_cutoff_at,maximum_registrations,price_minor,currency,duration_minutes,court_booked,notes,restriction_enabled,min_level,max_level)
-        values (${q(events.inviteOnly!)},${q(communityId)},${q(creator.id)},now()+interval '3 days','UTC','friendly','invite_only','POST_MATCH_TEAMS','F24 invite court','https://maps.google.com/maps/place/f24-invite',${photo()},now()+interval '2 days',null,null,null,null,false,null,false,null,null);
-      insert into public.match_events(id,community_id,created_by,starts_at,timezone,event_type,visibility,team_assignment_mode,venue_name,maps_url,photo_path,registration_cutoff_at,maximum_registrations,price_minor,currency,duration_minutes,court_booked,notes,restriction_enabled,min_level,max_level)
-        values (${q(events.open!)},${q(communityId)},${q(creator.id)},now()+interval '3 days','UTC','friendly','community_open','POST_MATCH_TEAMS','F24 open court','https://maps.google.com/maps/place/f24-open',${photo()},now()+interval '2 days',null,null,null,null,false,null,false,null,null);
+       -- it to get an active member with no rating row at all.
+       delete from public.global_player_ratings where user_id=${q(unrated.id)};
+       ${restrictedPhoto.sql}
+       insert into public.match_events(id,community_id,created_by,starts_at,timezone,event_type,visibility,team_assignment_mode,venue_name,maps_url,photo_path,registration_cutoff_at,maximum_registrations,price_minor,currency,duration_minutes,court_booked,notes,restriction_enabled,min_level,max_level)
+         values (${q(events.restricted!)},${q(communityId)},${q(creator.id)},now()+interval '3 days','UTC','friendly','community_open','POST_MATCH_TEAMS','F24 restricted court','https://maps.google.com/maps/place/f24-restricted',${q(restrictedPhoto.path)},now()+interval '2 days',null,null,null,null,false,null,true,3,4);
+       ${inviteOnlyPhoto.sql}
+       insert into public.match_events(id,community_id,created_by,starts_at,timezone,event_type,visibility,team_assignment_mode,venue_name,maps_url,photo_path,registration_cutoff_at,maximum_registrations,price_minor,currency,duration_minutes,court_booked,notes,restriction_enabled,min_level,max_level)
+         values (${q(events.inviteOnly!)},${q(communityId)},${q(creator.id)},now()+interval '3 days','UTC','friendly','invite_only','POST_MATCH_TEAMS','F24 invite court','https://maps.google.com/maps/place/f24-invite',${q(inviteOnlyPhoto.path)},now()+interval '2 days',null,null,null,null,false,null,false,null,null);
+       ${openPhoto.sql}
+       insert into public.match_events(id,community_id,created_by,starts_at,timezone,event_type,visibility,team_assignment_mode,venue_name,maps_url,photo_path,registration_cutoff_at,maximum_registrations,price_minor,currency,duration_minutes,court_booked,notes,restriction_enabled,min_level,max_level)
+         values (${q(events.open!)},${q(communityId)},${q(creator.id)},now()+interval '3 days','UTC','friendly','community_open','POST_MATCH_TEAMS','F24 open court','https://maps.google.com/maps/place/f24-open',${q(openPhoto.path)},now()+interval '2 days',null,null,null,null,false,null,false,null,null);
       insert into public.match_event_invites(match_event_id,invitee_user_id,invited_by,created_at) values
         (${q(events.restricted!)},${q(outOfRange.id)},${q(creator.id)},now()),
         (${q(events.restricted!)},${q(inRange.id)},${q(creator.id)},now()),
@@ -674,8 +679,7 @@ describe('match event caller context regression (F24 invited members)', () => {
       insert into public.match_event_registrations(match_event_id,user_id,accepted_at,accepted_order,participation_status,registration_source) values
         (${q(events.inviteOnly!)},${q(acceptedInvitee.id)},now()+interval '1 minute',2,'reserve','member'),
         (${q(events.open!)},${q(acceptedInvitee.id)},now()+interval '1 minute',2,'reserve','member');
-      alter table public.match_events enable trigger lock_match_photo_publication;
-    end $$;`
+     end $$;`
       );
 
       const detailOf = async (who: Actor, eventId: string) => {
@@ -930,10 +934,12 @@ describe('match event caller context regression (F24 invited members)', () => {
         justPast: crypto.randomUUID()
       };
       const q = (value: string) => `'${value.replaceAll("'", "''")}'`;
-      const photo = () => `'${crypto.randomUUID()}/photo.webp'`;
-      const insert = (eventKey: string, startsAt: string, cutoffAt: string) =>
-        `insert into public.match_events(id,community_id,created_by,starts_at,timezone,event_type,visibility,team_assignment_mode,venue_name,maps_url,photo_path,registration_cutoff_at)
-         values (${q(events[eventKey]!)},${q(communityId)},${q(creator.id)},${startsAt},'UTC','friendly','community_open','POST_MATCH_TEAMS','Snapshot court','https://maps.google.com/maps/place/snapshot',${photo()},${cutoffAt});`;
+      const insert = (eventKey: string, startsAt: string, cutoffAt: string) => {
+        const photo = matchPhotoFixture(communityId, events[eventKey]!, creator.id);
+        return `${photo.sql}
+        insert into public.match_events(id,community_id,created_by,starts_at,timezone,event_type,visibility,team_assignment_mode,venue_name,maps_url,photo_path,registration_cutoff_at)
+         values (${q(events[eventKey]!)},${q(communityId)},${q(creator.id)},${startsAt},'UTC','friendly','community_open','POST_MATCH_TEAMS','Snapshot court','https://maps.google.com/maps/place/snapshot',${q(photo.path)},${cutoffAt});`;
+      };
       await fixtureSql(
         environment.env!,
         `do $$ begin
@@ -942,8 +948,7 @@ describe('match event caller context regression (F24 invited members)', () => {
       insert into public.community_members(community_id,user_id,role,status,valid_from,activated_at) values
         (${q(communityId)},${q(creator.id)},'admin','active',now()-interval '1 minute',now()-interval '1 minute'),
         (${q(communityId)},${q(member.id)},'member','active',now()-interval '1 minute',now()-interval '1 minute');
-      alter table public.match_events disable trigger lock_match_photo_publication;
-      -- The creator-registration trigger also enforces "starts in the future"
+       -- The creator-registration trigger also enforces "starts in the future"
       -- against the wall clock; the whole point here is to pin instants around
       -- the FIXED snapshot, so it stays disabled for every insert. Creator
       -- listing membership comes from created_by, not from a registration.
@@ -960,8 +965,7 @@ describe('match event caller context regression (F24 invited members)', () => {
       -- the wall clock is still behind its start when the fixtures run.
       ${insert('justPast', at(-2_000), at(-3_000))}
       alter table public.match_events enable trigger match_event_creator_registration;
-      alter table public.match_events enable trigger lock_match_photo_publication;
-      insert into public.match_event_registrations(match_event_id,user_id,accepted_at,accepted_order,participation_status,registration_source) values
+       insert into public.match_event_registrations(match_event_id,user_id,accepted_at,accepted_order,participation_status,registration_source) values
         (${q(events.boundaryA!)},${q(member.id)},now()+interval '1 minute',2,'reserve','member');
     end $$;`
       );

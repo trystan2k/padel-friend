@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import {
   validateDiscoverability,
   validateInviteeSearch
@@ -36,22 +36,5 @@ describe('invitee discovery validators', () => {
     expect(() => validateDiscoverability({ enabled: true, user_id: 'forged' })).toThrow(
       'INVALID_DISCOVERABILITY'
     );
-  });
-});
-
-describe('invitee search stale response protection', () => {
-  it('does not apply a response after its source identity is invalidated', async () => {
-    let generation = 0;
-    let result = '';
-    const request = vi.fn<() => Promise<string>>(
-      () => new Promise<string>((resolve) => setTimeout(() => resolve('old source'), 10))
-    );
-    const current = ++generation;
-    const pending = request().then((value) => {
-      if (generation === current) result = value;
-    });
-    generation++;
-    await pending;
-    expect(result).toBe('');
   });
 });

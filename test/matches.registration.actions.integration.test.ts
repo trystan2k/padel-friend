@@ -2,6 +2,7 @@ import { spawn } from 'node:child_process';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { describe, expect, it, vi } from 'vitest';
 import type { Database } from '../src/lib/supabase/database.types';
+import { matchPhotoFixture } from './helpers/match-photo-fixtures';
 import {
   assertLocalSupabaseEnvInCi,
   dotEnvPathFromImportMetaUrl,
@@ -560,12 +561,14 @@ describe('match registration actions integration', () => {
       const [minLevel, maxLevel] = options.restriction ?? [null, null];
       const maximum = options.maximum === undefined ? 'null' : String(options.maximum);
       const cutoff = options.cutoff ?? "now() + interval '7 days'";
-      return `insert into public.match_events(
+      const communityId = options.community ?? publicCommunity;
+      const photo = matchPhotoFixture(communityId, events[eventKey]!, actors.creator!.id);
+      return `${photo.sql}\ninsert into public.match_events(
         id,community_id,created_by,starts_at,timezone,event_type,visibility,team_assignment_mode,
         venue_name,maps_url,photo_path,restriction_enabled,min_level,max_level,maximum_registrations,registration_cutoff_at)
-        values (${q(events[eventKey]!)},${q(options.community ?? publicCommunity)},${q(actors.creator!.id)},
+        values (${q(events[eventKey]!)},${q(communityId)},${q(actors.creator!.id)},
           now() + interval '10 days','UTC','friendly',${q(options.visibility ?? 'community_open')},'POST_MATCH_TEAMS',
-          'Actions court','https://maps.google.com/maps/place/actions','${crypto.randomUUID()}/photo.webp',
+          'Actions court','https://maps.google.com/maps/place/actions',${q(photo.path)},
           ${options.restriction ? 'true' : 'false'},${minLevel === null ? 'null' : minLevel},${maxLevel === null ? 'null' : maxLevel},${maximum},${cutoff});`;
     };
     await fixtureSql(
@@ -587,7 +590,6 @@ describe('match registration actions integration', () => {
             )
             .join(',')};`,
         `delete from public.global_player_ratings where user_id = ${q(actors.memberNoRating!.id)};`,
-        `alter table public.match_events disable trigger lock_match_photo_publication;`,
         insertEvent('open'),
         insertEvent('ranged', { restriction: [3, 4] }),
         insertEvent('invite', { visibility: 'invite_only' }),
@@ -599,7 +601,6 @@ describe('match registration actions integration', () => {
         insertEvent('capacity2', { maximum: 2 }),
         insertEvent('unlimited'),
         insertEvent('queue'),
-        `alter table public.match_events enable trigger lock_match_photo_publication;`,
         `end $$;`
       ].join('\n')
     );

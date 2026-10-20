@@ -103,7 +103,8 @@ describe('invitee directory (real local Supabase JWTs)', () => {
     expect((await search(admin.client, person.name.slice(0, 3), 1)).error).toBeNull();
     expect((await search(admin.client, 'x'.repeat(80), 20)).error).toBeNull();
 
-    const special = await createActor('Literal 100%_.* Name');
+    const specialMarker = crypto.randomUUID();
+    const special = await createActor(`Literal 100%_.* ${specialMarker} Name`);
     expect(
       (
         await special.client
@@ -111,8 +112,24 @@ describe('invitee directory (real local Supabase JWTs)', () => {
           .insert({ user_id: special.id })
       ).error
     ).toBeNull();
-    expect(rowIds((await search(admin.client, '100%_.*')).data)).toContain(special.id);
-    expect(rowIds((await search(admin.client, '100%_x')).data)).not.toContain(special.id);
+    const collisionMarker = crypto.randomUUID();
+    const collisionActors = await Promise.all(
+      Array.from({ length: 21 }, (_, index) =>
+        createActor(`Literal 100%_.* ${collisionMarker} Candidate ${index}`)
+      )
+    );
+    const collisionOptIns = await Promise.all(
+      collisionActors.map((actor) =>
+        actor.client.from('community_invitee_directory_preferences').insert({ user_id: actor.id })
+      )
+    );
+    expect(collisionOptIns.map(({ error }) => error)).toEqual(Array(21).fill(null));
+    const literalSearch = await search(admin.client, `100%_.* ${specialMarker}`);
+    expect(literalSearch.error).toBeNull();
+    expect(rowIds(literalSearch.data)).toEqual([special.id]);
+    const literalNegativeSearch = await search(admin.client, `100%_x ${specialMarker}`);
+    expect(literalNegativeSearch.error).toBeNull();
+    expect(rowIds(literalNegativeSearch.data)).not.toContain(special.id);
     expect(
       (
         await admin.client
@@ -236,7 +253,7 @@ describe('invitee directory (real local Supabase JWTs)', () => {
     expect(
       (await person.client.from('community_invitee_directory_preferences').select('user_id')).data
     ).toEqual([]);
-  }, 15000);
+  }, 60000);
 });
 
 function personName(actor: { name?: string }) {

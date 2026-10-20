@@ -1,6 +1,7 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { describe, expect, it, vi } from 'vitest';
 import type { Database } from '../src/lib/supabase/database.types';
+import { matchPhotoFixture } from './helpers/match-photo-fixtures';
 import {
   assertLocalSupabaseEnvInCi,
   dotEnvPathFromImportMetaUrl,
@@ -100,13 +101,20 @@ describe('match registration FIFO notifications integration', () => {
     events.rollback = crypto.randomUUID();
     publicCommunity = crypto.randomUUID();
     const q = (value: string) => `'${value.replaceAll("'", "''")}'`;
+    const photoFixtures = Object.fromEntries(
+      Object.keys(events).map((eventKey) => [
+        eventKey,
+        matchPhotoFixture(publicCommunity, events[eventKey]!, actors.creator!.id)
+      ])
+    );
     const insertEvent = (eventKey: string) =>
-      `insert into public.match_events(
+      `${photoFixtures[eventKey]!.sql}
+       insert into public.match_events(
         id,community_id,created_by,starts_at,timezone,event_type,visibility,team_assignment_mode,
         venue_name,maps_url,photo_path,restriction_enabled,min_level,max_level,maximum_registrations,registration_cutoff_at)
         values (${q(events[eventKey]!)},${q(publicCommunity)},${q(actors.creator!.id)},
           now() + interval '10 days','UTC','friendly','community_open','POST_MATCH_TEAMS',
-          'Notif court','https://maps.google.com/maps/place/notif','${crypto.randomUUID()}/photo.webp',
+          'Notif court','https://maps.google.com/maps/place/notif','${photoFixtures[eventKey]!.path}',
           false,null,null,null,now() + interval '7 days');`;
     const memberRows = ['m1', 'm2', 'm3', 'm4', 'm5', 'm6', 'm7', 'm8', 'm9']
       .map(
@@ -121,14 +129,12 @@ describe('match registration FIFO notifications integration', () => {
           (${q(publicCommunity)},'Notif public fixture','public',${q(actors.creator!.id)});`,
         `insert into public.community_members(community_id,user_id,role,status,valid_from,activated_at) values
           (${q(publicCommunity)},${q(actors.creator!.id)},'admin','active',now()-interval '1 minute',now()-interval '1 minute'),${memberRows};`,
-        `alter table public.match_events disable trigger lock_match_photo_publication;`,
         // The publication alert is T04 behavior and would pollute the exact
         // creator inbox assertions below; every other producer stays live.
         `alter table public.match_events disable trigger match_event_published_notification;`,
         insertEvent('kinds'),
         insertEvent('rollback'),
         `alter table public.match_events enable trigger match_event_published_notification;`,
-        `alter table public.match_events enable trigger lock_match_photo_publication;`,
         `end $$;`
       ].join('\n')
     );

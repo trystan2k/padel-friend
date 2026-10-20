@@ -1,6 +1,7 @@
 import { spawn } from 'node:child_process';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { describe, expect, it } from 'vitest';
+import { matchPhotoFixture } from './helpers/match-photo-fixtures';
 import {
   assertLocalSupabaseEnvInCi,
   dotEnvPathFromImportMetaUrl,
@@ -385,14 +386,14 @@ describe('match notification integration', () => {
 
       // A pre-existing event has no retroactive producer delivery.
       const historicId = crypto.randomUUID();
+      const historicPhoto = matchPhotoFixture(community, historicId, creator.id);
       await fixtureSql(
         environment.env!,
         `do $$ begin
       alter table public.match_events disable trigger match_event_published_notification;
-      alter table public.match_events disable trigger lock_match_photo_publication;
+      ${historicPhoto.sql}
       insert into public.match_events(id,community_id,created_by,starts_at,timezone,event_type,visibility,team_assignment_mode,venue_name,maps_url,photo_path,registration_cutoff_at)
-      values (${q(historicId)},${q(community)},${q(creator.id)},now()+interval '10 days','UTC','friendly','community_open','POST_MATCH_TEAMS','Historic fixture','https://maps.google.com/maps/place/historic','${published.photo_path}',now()+interval '9 days');
-      alter table public.match_events enable trigger lock_match_photo_publication;
+      values (${q(historicId)},${q(community)},${q(creator.id)},now()+interval '10 days','UTC','friendly','community_open','POST_MATCH_TEAMS','Historic fixture','https://maps.google.com/maps/place/historic',${q(historicPhoto.path)},now()+interval '9 days');
       alter table public.match_events enable trigger match_event_published_notification;
     end $$;`
       );

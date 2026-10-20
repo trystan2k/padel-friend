@@ -2,6 +2,7 @@ import { spawn } from 'node:child_process';
 import { createClient } from '@supabase/supabase-js';
 import { describe, expect, it } from 'vitest';
 import { FIXTURE_EMAIL_LIKE, MATCH_FIXTURE_PRUNE_STATEMENTS } from '../e2e/global-setup';
+import { matchPhotoFixture } from './helpers/match-photo-fixtures';
 import {
   assertLocalSupabaseEnvInCi,
   dotEnvPathFromImportMetaUrl,
@@ -57,6 +58,10 @@ describe('e2e match fixture prune scoping', () => {
 
       const fixtureEvent = crypto.randomUUID();
       const developerEvent = crypto.randomUUID();
+      const fixtureCommunity = crypto.randomUUID();
+      const developerCommunity = crypto.randomUUID();
+      const fixturePhoto = matchPhotoFixture(fixtureCommunity, fixtureEvent, fixtureOwner);
+      const developerPhoto = matchPhotoFixture(developerCommunity, developerEvent, developer);
 
       // One atomic probe: build the fixture and developer rows, run the exact production
       // prune statements, capture the post-prune row counts, then fail on purpose — the
@@ -68,10 +73,11 @@ declare
   v_report jsonb;
 begin
   alter table public.match_events disable trigger match_event_creator_registration;
-  alter table public.match_events disable trigger lock_match_photo_publication;
+  ${fixturePhoto.sql}
+  ${developerPhoto.sql}
   insert into public.communities(id,name,visibility,created_by,settings) values
-    ('${crypto.randomUUID()}','Prune guard fixture community','public','${fixtureOwner}','{}'::jsonb),
-    ('${crypto.randomUUID()}','Prune guard developer community','public','${developer}','{}'::jsonb);
+    ('${fixtureCommunity}','Prune guard fixture community','public','${fixtureOwner}','{}'::jsonb),
+    ('${developerCommunity}','Prune guard developer community','public','${developer}','{}'::jsonb);
   insert into public.community_members(community_id,user_id,role,status,valid_from,activated_at)
     select c.id, c.created_by, 'admin', 'active', now(), now()
       from public.communities c
@@ -79,8 +85,8 @@ begin
   insert into public.community_members(community_id,user_id,role,status,valid_from,activated_at) values
     ((select id from public.communities where name='Prune guard fixture community'),'${fixtureInvitee}','member','active',now(),now());
   insert into public.match_events(id,community_id,created_by,starts_at,timezone,event_type,visibility,team_assignment_mode,venue_name,maps_url,photo_path,registration_cutoff_at) values
-    ('${fixtureEvent}',(select id from public.communities where name='Prune guard fixture community'),'${fixtureOwner}', now()+interval '3 days','UTC','friendly','community_open','POST_MATCH_TEAMS','Prune guard fixture court','https://maps.google.com/maps/place/prune-guard-fixture','prune-guard/staged-fixture.png', now()+interval '2 days'),
-    ('${developerEvent}',(select id from public.communities where name='Prune guard developer community'),'${developer}', now()-interval '26 hours','UTC','friendly','community_open','POST_MATCH_TEAMS','Prune guard developer court','https://maps.google.com/maps/place/prune-guard-developer','prune-guard/staged-developer.png', now()-interval '27 hours');
+    ('${fixtureEvent}',(select id from public.communities where name='Prune guard fixture community'),'${fixtureOwner}', now()+interval '3 days','UTC','friendly','community_open','POST_MATCH_TEAMS','Prune guard fixture court','https://maps.google.com/maps/place/prune-guard-fixture','${fixturePhoto.path}', now()+interval '2 days'),
+    ('${developerEvent}',(select id from public.communities where name='Prune guard developer community'),'${developer}', now()-interval '26 hours','UTC','friendly','community_open','POST_MATCH_TEAMS','Prune guard developer court','https://maps.google.com/maps/place/prune-guard-developer','${developerPhoto.path}', now()-interval '27 hours');
       insert into public.match_event_registrations(match_event_id,user_id,accepted_at,accepted_order,participation_status,registration_source) values
         ('${fixtureEvent}','${fixtureOwner}',now(),1,'reserve','creator'),
         ('${developerEvent}','${developer}',now(),1,'reserve','creator');

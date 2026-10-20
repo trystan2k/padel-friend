@@ -1,6 +1,7 @@
 import { spawn } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
+import { matchPhotoFixture } from './helpers/match-photo-fixtures';
 import {
   assertLocalSupabaseEnvInCi,
   dotEnvPathFromImportMetaUrl,
@@ -114,14 +115,16 @@ describe('match registration domain migration backfill (F20/F30)', () => {
       const communityId = crypto.randomUUID();
       const futureEventId = crypto.randomUUID();
       const pastEventId = crypto.randomUUID();
+      const futurePhoto = matchPhotoFixture(communityId, futureEventId, creator);
+      const pastPhoto = matchPhotoFixture(communityId, pastEventId, creator);
       const members = [m1, m2, m3, m4];
       const q = (value: string) => `'${value.replaceAll("'", "''")}'`;
-      const eventInsert = (eventId: string, cutoff: string) =>
+      const eventInsert = (eventId: string, cutoff: string, photoPath: string) =>
         `insert into public.match_events(
           id,community_id,created_by,starts_at,timezone,event_type,visibility,team_assignment_mode,
           venue_name,maps_url,photo_path,restriction_enabled,min_level,max_level,maximum_registrations,registration_cutoff_at)
           values (${q(eventId)},${q(communityId)},${q(creator)},now()+interval '10 days','UTC','friendly','community_open','POST_MATCH_TEAMS',
-            'Domain migration court','https://maps.google.com/maps/place/domain-migration','${crypto.randomUUID()}/photo.webp',
+            'Domain migration court','https://maps.google.com/maps/place/domain-migration',${q(photoPath)},
             false,null,null,null,${cutoff});`;
       // Pre-backfill shape: every row is accepted with a sentinel participation
       // so a blanket 'reserve' backfill would be observably wrong.
@@ -146,6 +149,9 @@ describe('match registration domain migration backfill (F20/F30)', () => {
         `  v_reserve integer;`,
         `  v_not_playing integer;`,
         ` begin`,
+        `  execute 'alter table public.match_events disable trigger match_event_published_notification';`,
+        // Reconstruct the pre-PAF-5 blanket immutability trigger.
+        `  execute 'create trigger match_registration_immutable before update or delete on public.match_event_registrations for each row execute function public.guard_match_event_mutation()';`,
         `  insert into auth.users(id, instance_id, aud, role, email, encrypted_password, email_confirmed_at, created_at, updated_at) values`,
         `    (${q(creator)},'00000000-0000-0000-0000-000000000000','authenticated','authenticated','paf5-domain-migration-creator@test.local','x',now(),now(),now()),`,
         `    (${q(m1)},'00000000-0000-0000-0000-000000000000','authenticated','authenticated','paf5-domain-migration-m1@test.local','x',now(),now(),now()),`,
@@ -154,10 +160,10 @@ describe('match registration domain migration backfill (F20/F30)', () => {
         `    (${q(m4)},'00000000-0000-0000-0000-000000000000','authenticated','authenticated','paf5-domain-migration-m4@test.local','x',now(),now(),now());`,
         `  insert into public.communities(id,name,visibility,created_by) values (${q(communityId)},'Domain migration fixture','public',${q(creator)});`,
         `  insert into public.community_members(community_id,user_id,role,status,valid_from,activated_at) values (${q(communityId)},${q(creator)},'admin','active',now()-interval '1 minute',now()-interval '1 minute');`,
-        `  execute 'alter table public.match_events disable trigger lock_match_photo_publication';`,
-        `  execute 'alter table public.match_events disable trigger match_event_published_notification';`,
-        `  ${eventInsert(futureEventId, `now() + interval '5 days'`)}`,
-        `  ${eventInsert(pastEventId, `now() - interval '5 days'`)}`,
+        `  ${futurePhoto.sql}`,
+        `  ${pastPhoto.sql}`,
+        `  ${eventInsert(futureEventId, `now() + interval '5 days'`, futurePhoto.path)}`,
+        `  ${eventInsert(pastEventId, `now() - interval '5 days'`, pastPhoto.path)}`,
         // Creator slots are created by the publication trigger (ordinal 1).
         ...members.map(
           (userId, index) => `  ${registrationInsert(futureEventId, userId, index + 2)}`
@@ -166,8 +172,6 @@ describe('match registration domain migration backfill (F20/F30)', () => {
           (userId, index) => `  ${registrationInsert(pastEventId, userId, index + 2)}`
         ),
         `  update public.match_event_registration_state set next_accepted_ordinal = 6 where match_event_id in (${q(futureEventId)},${q(pastEventId)});`,
-        // Reconstruct the pre-PAF-5 blanket immutability trigger.
-        `  execute 'create trigger match_registration_immutable before update or delete on public.match_event_registrations for each row execute function public.guard_match_event_mutation()';`,
         orderedStatements,
         `  foreach v_event in array array[${q(futureEventId)}::uuid, ${q(pastEventId)}::uuid] loop`,
         `    for v_row in`,
