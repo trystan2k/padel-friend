@@ -250,19 +250,15 @@ Severity levels:
 - `MINOR` — code quality issue that will cause problems later (tech debt)
 - `NIT` — style, naming, minor readability
 
-**Severity decides blocking. Nothing else does.**
-
-- `CRITICAL` and `MAJOR` block the delivery and must be fixed.
-- `MINOR` blocks only when the fix is trivial (a few lines, inside already-touched files, no new behavior). Otherwise it is reported as `deferred`.
-- `NIT` **never** blocks and **never** triggers a fix. Report it as `deferred`.
+**Completion-first review:** read and apply the authoritative Completion-First Policy in `.opencode/agents/delivery-orchestrator.md`. Severity measures impact, not permission to leave scope unfinished. Classify findings as `required|related|unrelated|optional`, with acceptance-criterion/plan references or defect evidence and introduced/pre-existing origin. Required/related actionable findings need resolution in this delivery regardless of severity or fix size. Separate subjective preferences and unrelated observations; recommend neither automatic deferral nor issue creation. Only the user can approve an exceptional follow-up or scope reduction.
 
 **Findings output contract** — after the prose findings, always end with one machine-readable line per finding, so the orchestrator can track and deduplicate it:
 
 ```text
-[severity] file:line | short title | suggested fixer
+[severity] file:line | short title | suggested fixer | scope: required|related|unrelated|optional
 ```
 
-**Re-review mode** — when the input is a delta (`git diff <baseline>..HEAD` plus a findings ledger), do not repeat the full review. Answer exactly three questions: is each `open` finding fixed, did the fix introduce a regression, and are there new `CRITICAL`/`MAJOR` findings in the touched files? Report previously `fixed` or `deferred` findings only if they regressed.
+**Re-review mode** — use the supplied delta (including uncommitted fixes), current bundle, and findings ledger rather than repeating the full review. Verify addressed findings, regressions, and newly introduced required/related defects of any severity. Identify still-unmet acceptance criteria even if previously labelled deferred. Do not duplicate resolved findings or unchanged optional/unrelated observations.
 
 ## Tool Usage (OpenCode `permission` model)
 

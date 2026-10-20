@@ -85,10 +85,18 @@ Outputs:
 
 `Decision Support` must include:
 
-- `Recommended Action`: `no-action`, `follow-up-fix`, or `rework-required`
+- `Recommended Action`: `no-action`, `fix-in-current-delivery`, or `rework-required`
 - `Rationale`
 
-Blocking rule: any `critical` or `major` finding forces `rework-required`. `minor` and `nit` findings never force a blocking action on their own — they are recorded as `deferred` in the findings ledger. `follow-up-fix` is reserved for `critical`/`major` findings that are cheap to apply.
+Read and apply the authoritative Completion-First Policy in `.opencode/agents/delivery-orchestrator.md`. Classify each finding as `required|related|unrelated|optional`, with acceptance-criterion/plan references or defect evidence and introduced/pre-existing origin. Required/related actionable findings remain current-delivery work regardless of severity or effort; use `fix-in-current-delivery` for bounded fixes and `rework-required` for critical/major delivery defects, incomplete architecture, or design changes. Use `no-action` only when no actionable delivery finding remains, separating optional/unrelated observations. Only the user can approve exceptional follow-ups or revised scope; reviewers do not auto-defer findings.
+
+End with one machine-readable line per finding:
+
+```text
+[severity] file:line | short title | suggested fixer | scope: required|related|unrelated|optional
+```
+
+For delta reviews, use the current bundle and ledger to verify addressed findings, regressions, and newly introduced required/related defects of any severity. Identify unmet criteria even if previously labelled deferred; avoid repeating unchanged observations or resolved findings.
 
 ## Skill Loading and Stack Detection Protocol
 

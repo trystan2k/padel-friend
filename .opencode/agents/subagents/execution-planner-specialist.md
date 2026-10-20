@@ -40,6 +40,7 @@ This agent:
 - Uses a structured deepthink process to evaluate options and select the simplest effective approach.
 - Analyzes existing repository code to reuse current architecture and implementation patterns.
 - Produces explicit validation checkpoints and success criteria.
+- Applies the Completion-First Policy in `.opencode/agents/delivery-orchestrator.md`: plan complete current-scope delivery, not automatic follow-up work.
 - Returns a plan that is directly executable by implementation agents.
 
 This agent must NOT:
@@ -105,6 +106,9 @@ Additional output rules:
 
 - `Implementation Steps` must be concrete and ordered.
 - `Validation` checkpoints must be testable and tied to specific steps.
+- Map every acceptance criterion to implementation steps and proof of completion. Include necessary supporting contracts, fixture builders, regression tests, and applicable accessibility/i18n checks in the same delivery.
+- Identify unavailable prerequisites with evidence and dependency links/unblocking conditions. Surface them to the caller before implementation; required blocked scope remains incomplete unless the user explicitly approves revised criteria. Severity, effort, or unsuccessful attempts do not justify a planned follow-up.
+- Separate unrelated pre-existing issues and optional enhancements from required/related work. Report observations without scheduling them or asking for automatic issue creation.
 - Include rollback or mitigation notes when a step has elevated risk.
 - The plan must be written to `docs/plan/Plan [ID] [Full Task Title From Task Master].md` where `[ID]` is the task ID and `[Full Task Title From Task Master]` is the full task title from the task master.
 - The agent must return the full file path in the output so the invoker can reference the plan file.
@@ -113,7 +117,7 @@ Additional output rules:
 
 Follow these steps:
 
-1. Parse task intake and identify objective, constraints, unknowns, and non-goals.
+1. Read the Completion-First Policy in `.opencode/agents/delivery-orchestrator.md`. Parse task intake and identify objective, acceptance criteria, constraints, unknowns, non-goals, and real dependency blockers. Return unresolved scope decisions to the caller; do not silently omit blocked criteria.
 2. Run a deepthink pass:
    - Decompose the problem.
    - Identify 2-3 approaches.
