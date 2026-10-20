@@ -97,6 +97,82 @@ describe('match registration schema integration', () => {
   });
 
   it.skipIf(!environment.env)(
+    'enables non-forced RLS on internal registration bookkeeping without API privileges',
+    async () => {
+      const env = environment.env!;
+      expect(
+        await fixtureSql(
+          env,
+          `do $$
+          declare
+            v_table text;
+            v_role text;
+            v_operation text;
+            v_count integer;
+            v_allowed boolean;
+          begin
+            select count(*) into v_count
+              from pg_class c join pg_namespace n on n.oid=c.relnamespace
+             where n.nspname='public'
+               and c.relname in ('match_event_registration_state','match_event_registration_attempts');
+            if v_count <> 2 then raise exception 'expected exactly two internal relations, got %', v_count; end if;
+            if exists (
+              select 1 from pg_class c join pg_namespace n on n.oid=c.relnamespace
+               where n.nspname='public'
+                 and c.relname in ('match_event_registration_state','match_event_registration_attempts')
+                 and (not c.relrowsecurity or c.relforcerowsecurity)
+            ) then raise exception 'internal RLS must be enabled and not forced'; end if;
+            if exists (
+              select 1 from pg_policies
+               where schemaname='public'
+                 and tablename in ('match_event_registration_state','match_event_registration_attempts')
+            ) then raise exception 'internal registration tables must have no policies'; end if;
+            if exists (
+              select 1 from pg_class c join pg_namespace n on n.oid=c.relnamespace
+               where n.nspname='public'
+                 and c.relname in ('match_event_registration_state','match_event_registration_attempts')
+                 and pg_get_userbyid(c.relowner) <> 'postgres'
+            ) then raise exception 'internal registration table owner must remain postgres'; end if;
+
+            foreach v_table in array array['match_event_registration_state','match_event_registration_attempts'] loop
+              foreach v_role in array array['anon','authenticated'] loop
+                foreach v_operation in array array['SELECT','INSERT','UPDATE','DELETE'] loop
+                  select has_table_privilege(v_role, format('public.%I', v_table), v_operation)
+                    into v_allowed;
+                  if v_allowed then raise exception '% unexpectedly has % on %', v_role, v_operation, v_table; end if;
+                end loop;
+              end loop;
+            end loop;
+
+            foreach v_role in array array['anon','authenticated'] loop
+              execute format('set local role %I', v_role);
+              foreach v_table in array array['match_event_registration_state','match_event_registration_attempts'] loop
+                foreach v_operation in array array['SELECT','INSERT','UPDATE','DELETE'] loop
+                  begin
+                    if v_operation='SELECT' then
+                      execute format('select * from public.%I limit 0', v_table);
+                    elsif v_operation='INSERT' then
+                      execute format('insert into public.%I default values', v_table);
+                    elsif v_operation='UPDATE' then
+                      execute format('update public.%I set match_event_id=match_event_id where false', v_table);
+                    else
+                      execute format('delete from public.%I where false', v_table);
+                    end if;
+                    raise exception '42501 expected: % % on % was allowed', v_role, v_operation, v_table;
+                  exception when insufficient_privilege then null;
+                  end;
+                end loop;
+              end loop;
+              reset role;
+            end loop;
+          end $$;`
+        )
+      ).toBe('DO');
+    },
+    60000
+  );
+
+  it.skipIf(!environment.env)(
     'declares exactly the lifecycle/participation/source enums, relaxed anchors and guard objects',
     async () => {
       const env = environment.env!;
