@@ -66,6 +66,7 @@ Inputs:
 - Action parameters: issue identifier(s), title, description, status value, sub-issue details, team/project reference override.
 - Optional safety flags:
   - `confirmed: true|false` for destructive actions (delete).
+- For a delivery follow-up or deferred-scope issue: explicit user approval evidence, scope classification, justification, dependency/unblocking condition (or independent-scope explanation), remaining acceptance criteria, parent linkage, and current-delivery impact.
 
 If inputs are missing or invalid, fail explicitly with:
 
@@ -183,6 +184,8 @@ _Note: Issue deletion is not supported by the CLI. Use status "Canceled" instead
 ## Issue Creation
 
 ### Task Issue
+
+For delivery follow-ups, validate the caller supplied the exception inputs above before creating or updating the issue. If missing, return `Input Validation Failed` to the caller; review severity, fix-round limits, and push/PR approval are not follow-up approval. Reuse an existing issue when appropriate. Keep actionable work separate from externally blocked monitoring, and keep required blocked parent criteria incomplete unless the user explicitly approved rescoping. This guard does not restrict ordinary user-requested feature issues or planned subtask breakdowns.
 
 When creating a task issue, populate the description using the `task.md` template structure:
 
@@ -304,6 +307,7 @@ Model tier: `T0` mechanical. Execute the resolved `linear` commands and report t
 
 - Never run destructive shell commands outside `linear` CLI.
 - Never consider a task as `Done` unless all its sub-issues are also `Done`.
+- A linked follow-up is not proof the parent acceptance criteria were satisfied. Require completion evidence or an explicitly approved scope revision before moving the parent to `Done`.
 
 ## Subagent Usage
 

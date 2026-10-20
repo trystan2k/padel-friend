@@ -85,10 +85,18 @@ Outputs:
 
 `Decision Support` must include:
 
-- `Recommended Action`: `no-action`, `follow-up-fix`, or `rework-required`
+- `Recommended Action`: `no-action`, `fix-in-current-delivery`, or `rework-required`
 - `Rationale`
 
-Blocking rule: any `critical` or `major` finding forces `rework-required`. `minor` and `nit` findings never force a blocking action on their own — they are recorded as `deferred` in the findings ledger. `follow-up-fix` is reserved for `critical`/`major` findings that are cheap to apply.
+Read and apply the authoritative Completion-First Policy in `.opencode/agents/delivery-orchestrator.md`. Classify each finding as `required|related|unrelated|optional`, with acceptance-criterion/plan references or defect evidence and introduced/pre-existing origin. Required/related actionable findings remain current-delivery work regardless of severity or effort; use `fix-in-current-delivery` for bounded fixes and `rework-required` for critical/major delivery defects, incomplete architecture, or design changes. Use `no-action` only when no actionable delivery finding remains, separating optional/unrelated observations. Only the user can approve exceptional follow-ups or revised scope; reviewers do not auto-defer findings.
+
+End with one machine-readable line per finding:
+
+```text
+[severity] file:line | short title | suggested fixer | scope: required|related|unrelated|optional
+```
+
+For delta reviews, use the current bundle and ledger to verify addressed findings, regressions, and newly introduced required/related defects of any severity. Identify unmet criteria even if previously labelled deferred; avoid repeating unchanged observations or resolved findings.
 
 ## Skill Loading and Stack Detection Protocol
 
@@ -125,11 +133,10 @@ Follow these steps:
    - test adequacy
    - validation coverage
    - migration or rollout safety
-9. Classify findings by severity (`critical`, `major`, `minor`, `nit`) and provide concrete remediation suggestions. Report `minor` and `nit` findings, but do not escalate them: severity alone decides blocking.
-10. Return the structured summary and a recommended action for the requester.
-11. Append one machine-readable line per finding so the orchestrator can track and deduplicate it:
-    `[severity] file:line | short title | suggested fixer`
-12. **Re-review mode** — when the input is a delta (`git diff <baseline>..HEAD` plus a findings ledger), skip the full review and answer only: is each `open` finding fixed, did the fix introduce a regression, and are there new `critical`/`major` findings in the touched files?
+9. Classify findings by severity and scope using the Completion-First Policy referenced in `Outputs`; provide evidence and concrete remediation suggestions.
+10. Return the structured summary and recommended action defined in `Outputs`.
+11. Append one machine-readable line per finding using the scoped format defined in `Outputs`, so the orchestrator can track and deduplicate it.
+12. For delta input, follow the delta-review contract in `Outputs` instead of repeating the full review.
 
 ## Tool Usage Rules (OpenCode `permission` model)
 

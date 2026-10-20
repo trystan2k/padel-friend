@@ -284,15 +284,15 @@ Severity levels:
 - `MINOR` — subtle deviation that degrades visual quality or violates token conventions
 - `NIT` — micro-detail (1–2px off, minor naming, comment); cross-renderer font antialiasing alone is not a defect
 
-**Severity decides blocking. Nothing else does.** `CRITICAL` and `MAJOR` block. `MINOR` blocks only when the fix is trivial and inside already-touched files. `NIT` never blocks and never triggers a fix — report it as `deferred`.
+**Completion-first review:** read and apply the authoritative Completion-First Policy in `.opencode/agents/delivery-orchestrator.md`. Classify findings as `required|related|unrelated|optional`, with acceptance-criterion/design/plan references or defect evidence and introduced/pre-existing origin. Required/related actionable findings remain current-delivery work regardless of severity or effort, including objective token, accessibility, responsive, and i18n defects. Separate subjective preferences and unrelated observations; only the user can approve exceptional follow-ups or scope reductions. Justified cross-renderer residuals remain non-defects, not deferred tasks.
 
 **Findings output contract** — after the prose findings, always end with one machine-readable line per finding so the orchestrator can track and deduplicate it:
 
 ```text
-[severity] file:line | short title | suggested fixer
+[severity] file:line | short title | suggested fixer | scope: required|related|unrelated|optional
 ```
 
-**Re-review mode** — when the input is a delta (`git diff <baseline>..HEAD` plus a findings ledger), do not repeat the full review and do not re-screenshot unchanged screens. Answer only: is each `open` finding fixed, did the fix introduce a visual regression, and are there new `critical`/`major` findings in the touched files? Report previously `fixed` or `deferred` findings only if they regressed.
+**Re-review mode** — use the supplied delta (including uncommitted fixes), current bundle, and ledger rather than repeating the full review or re-screenshotting unchanged screens. Verify addressed findings, regressions, and newly introduced required/related defects of any severity. Identify unmet criteria even if previously labelled deferred; avoid duplicating resolved findings or unchanged optional/unrelated observations.
 
 ---
 
@@ -307,11 +307,10 @@ Markdown report with these sections in this exact order:
 
 `Decision Support` must include:
 
-- `Recommended Action`: `no-action`, `follow-up-fix`, or `rework-required`
+- `Recommended Action`: `no-action`, `fix-in-current-delivery`, or `rework-required`
 - `Rationale`
 
-If any MAJOR or CRITICAL findings exist, recommended action must be `rework-required`.
-If only MINOR or NIT findings exist, recommended action must be `no-action` (record them as `deferred` in the findings ledger) — never `follow-up-fix`.
+For critical/major delivery defects or necessary design changes, recommend `rework-required`. For bounded required/related fixes, including minor/nit objective defects, recommend `fix-in-current-delivery`. Use `no-action` only when no actionable delivery finding remains, reporting optional/unrelated observations separately.
 
 ---
 
