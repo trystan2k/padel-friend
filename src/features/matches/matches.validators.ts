@@ -1,3 +1,5 @@
+import type { MatchPublishInput } from './match-contracts';
+
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const record = (value: unknown): Record<string, unknown> => {
   if (typeof value !== 'object' || value === null || Array.isArray(value))
@@ -215,4 +217,3 @@ export function validatePublishMatch(value: unknown): {
     invitee_ids: [...new Set(data.invitee_ids.map(validateMatchUuid))]
   };
 }
-import type { MatchPublishInput } from './match-contracts';
