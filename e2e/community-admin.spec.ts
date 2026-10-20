@@ -406,13 +406,25 @@ async function switchLocaleWithKeyboard(page: Page, target: string) {
 async function assertLocaleControlSizing(page: Page, copy: Copy, viewport: number) {
   const locale = page.locator('#locale');
   await expect(locale).toHaveAccessibleName(copy.language);
+  // Measure only after the bundled webfonts are loaded: fallback font metrics differ between
+  // macOS and Linux and skewed the 320px box measurements (PAF-87 F4).
+  await page.evaluate(() => document.fonts.ready);
   const box = await locale.boundingBox();
   const themeBox = await page.locator('#theme').boundingBox();
   expect(box).not.toBeNull();
   expect(themeBox).not.toBeNull();
   expect(box!.width).toBeGreaterThanOrEqual(44);
   expect(box!.height).toBeGreaterThanOrEqual(44);
-  expect(box!.x + box!.width <= themeBox!.x || themeBox!.x + themeBox!.width <= box!.x).toBe(true);
+  // Anti-overlap oracle in both axes: side-by-side and stacked (wrapped) layouts are both
+  // acceptable; only a true rectangle intersection fails.
+  const separatedHorizontally =
+    box!.x + box!.width <= themeBox!.x || themeBox!.x + themeBox!.width <= box!.x;
+  const separatedVertically =
+    box!.y + box!.height <= themeBox!.y || themeBox!.y + themeBox!.height <= box!.y;
+  expect(
+    separatedHorizontally || separatedVertically,
+    `locale and theme controls must not overlap (locale ${JSON.stringify(box)}, theme ${JSON.stringify(themeBox)})`
+  ).toBe(true);
   await keyboardFocusLocale(page);
   const dimensions = await page.evaluate(() => ({
     document: document.documentElement.scrollWidth,
