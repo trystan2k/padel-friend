@@ -1197,10 +1197,42 @@ test.describe('community admin 320px locale matrix', () => {
         const nav = adminNavigation;
         const navBox = await nav.boundingBox();
         expect(navBox).not.toBeNull();
+        if (destination === 'settings') {
+          const clearance = await page.locator('main').evaluate((main) => ({
+            scrollPaddingBottom: Number.parseFloat(getComputedStyle(main).scrollPaddingBottom),
+            navHeight: Number.parseFloat(
+              getComputedStyle(document.querySelector('nav[aria-label]')!).height
+            )
+          }));
+          expect(
+            clearance.scrollPaddingBottom,
+            'settings scroll padding must clear bottom navigation'
+          ).toBeGreaterThanOrEqual(clearance.navHeight);
+        }
         for (const control of await contentControls.all()) {
-          await control.scrollIntoViewIfNeeded();
+          // `scrollIntoViewIfNeeded()` is a CDP nearest-edge scroll: it ignores CSS
+          // `scroll-padding` and can align a control with the viewport bottom edge,
+          // i.e. directly behind the fixed bottom navigation, even when the layout
+          // itself has real clearance (the page padding + scroll-padding-bottom
+          // prove it at max scroll in the final check below). Bring each control to
+          // the middle of the scrollport instead — the genuinely unobscured region —
+          // and then assert reachability against the viewport and the navigation.
+          await control.evaluate((element) =>
+            element.scrollIntoView({ block: 'center', inline: 'nearest' })
+          );
           const box = await control.boundingBox();
           expect(box, 'scrolled interactive control must have a hit region').not.toBeNull();
+          const viewport = await page.evaluate(() => ({
+            width: document.documentElement.clientWidth,
+            height: window.innerHeight
+          }));
+          expect(
+            box!.x >= 0 &&
+              box!.y >= 0 &&
+              box!.x + box!.width <= viewport.width &&
+              box!.y + box!.height <= viewport.height,
+            'scrolled interactive control must sit fully inside the viewport after scrolling'
+          ).toBe(true);
           const overlapsBottomNav =
             box!.y < navBox!.y + navBox!.height && box!.y + box!.height > navBox!.y;
           expect(
