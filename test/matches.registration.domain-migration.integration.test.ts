@@ -149,6 +149,9 @@ describe('match registration domain migration backfill (F20/F30)', () => {
         `  v_reserve integer;`,
         `  v_not_playing integer;`,
         ` begin`,
+        `  execute 'alter table public.match_events disable trigger match_event_published_notification';`,
+        // Reconstruct the pre-PAF-5 blanket immutability trigger.
+        `  execute 'create trigger match_registration_immutable before update or delete on public.match_event_registrations for each row execute function public.guard_match_event_mutation()';`,
         `  insert into auth.users(id, instance_id, aud, role, email, encrypted_password, email_confirmed_at, created_at, updated_at) values`,
         `    (${q(creator)},'00000000-0000-0000-0000-000000000000','authenticated','authenticated','paf5-domain-migration-creator@test.local','x',now(),now(),now()),`,
         `    (${q(m1)},'00000000-0000-0000-0000-000000000000','authenticated','authenticated','paf5-domain-migration-m1@test.local','x',now(),now(),now()),`,
@@ -157,7 +160,6 @@ describe('match registration domain migration backfill (F20/F30)', () => {
         `    (${q(m4)},'00000000-0000-0000-0000-000000000000','authenticated','authenticated','paf5-domain-migration-m4@test.local','x',now(),now(),now());`,
         `  insert into public.communities(id,name,visibility,created_by) values (${q(communityId)},'Domain migration fixture','public',${q(creator)});`,
         `  insert into public.community_members(community_id,user_id,role,status,valid_from,activated_at) values (${q(communityId)},${q(creator)},'admin','active',now()-interval '1 minute',now()-interval '1 minute');`,
-        `  execute 'alter table public.match_events disable trigger match_event_published_notification';`,
         `  ${futurePhoto.sql}`,
         `  ${pastPhoto.sql}`,
         `  ${eventInsert(futureEventId, `now() + interval '5 days'`, futurePhoto.path)}`,
@@ -170,8 +172,6 @@ describe('match registration domain migration backfill (F20/F30)', () => {
           (userId, index) => `  ${registrationInsert(pastEventId, userId, index + 2)}`
         ),
         `  update public.match_event_registration_state set next_accepted_ordinal = 6 where match_event_id in (${q(futureEventId)},${q(pastEventId)});`,
-        // Reconstruct the pre-PAF-5 blanket immutability trigger.
-        `  execute 'create trigger match_registration_immutable before update or delete on public.match_event_registrations for each row execute function public.guard_match_event_mutation()';`,
         orderedStatements,
         `  foreach v_event in array array[${q(futureEventId)}::uuid, ${q(pastEventId)}::uuid] loop`,
         `    for v_row in`,

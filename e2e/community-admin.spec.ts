@@ -277,17 +277,18 @@ async function bottomNavGeometry(page: Page) {
   const nav = page.getByRole('navigation', { name: en.communityAdmin.navigation });
   await expect(nav).toBeVisible();
   const acquireBox = async (locator: Locator) => {
-    await expect
-      .poll(async () => {
-        const candidate = await locator.boundingBox();
-        return candidate && candidate.width > 0 && candidate.height > 0 ? candidate : null;
-      })
-      .not.toBeNull();
-    const box = await locator.boundingBox();
-    expect(box).not.toBeNull();
-    expect(box!.width).toBeGreaterThan(0);
-    expect(box!.height).toBeGreaterThan(0);
-    return box!;
+    const deadline = Date.now() + 5_000;
+    let candidate: Awaited<ReturnType<Locator['boundingBox']>> = null;
+
+    while (Date.now() < deadline) {
+      candidate = await locator.boundingBox();
+      if (candidate && candidate.width > 0 && candidate.height > 0) {
+        return candidate;
+      }
+      await new Promise((resolve) => setTimeout(resolve, 100));
+    }
+
+    throw new Error(`Timed out waiting for a positive-size bounding box for ${locator.toString()}`);
   };
   const box = await acquireBox(nav);
   expect(Math.abs(box.x - 18)).toBeLessThanOrEqual(1);

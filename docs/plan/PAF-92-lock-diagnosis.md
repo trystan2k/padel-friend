@@ -82,3 +82,39 @@ suppression, or production SQL changes were made.
 - Local advisory, out of scope: RLS is disabled on
   `public.match_event_registration_attempts` and
   `public.match_event_registration_state`; request security-owner review.
+
+## Residual class: DDL issued after writes (fixed)
+
+After the photo-fixture fix, `pnpm complete-check` was intermittently 1/2–1/3
+green. Captured DETAIL:
+
+```text
+Process 58644 waits for RowExclusiveLock on relation 18307 of database 5; blocked by process 58694.
+Process 58694 waits for AccessExclusiveLock on relation 18307 of database 5; blocked by process 58644.
+```
+
+`pg_class` lookup confirmed relation 18307 = `public.match_event_registrations`
+and 18266 = `public.match_events`.
+
+Cause: `test/matches.registration.domain-migration.integration.test.ts` issued
+`CREATE TRIGGER match_registration_immutable ...` and
+`ALTER TABLE ... DISABLE TRIGGER match_event_published_notification` after
+inserting `auth.users`, `communities`, `community_members`, and
+`match_events`. Upgrading to `ACCESS EXCLUSIVE` while holding row locks formed
+the two-way cycle with a concurrent registration RPC.
+
+Fix: both DDL statements are now the first statements of the probe transaction,
+before any write. F20/F30 assertions, fixture rows, ordered drop+backfill, and
+rollback sentinel are unchanged. Later `DROP TRIGGER` reuses the lock already
+held, so it cannot upgrade.
+
+Rule: DDL on a table other suites write must be the FIRST statement of its
+transaction; never upgrade a lock mid-transaction after writes.
+
+Verification: 3/3 consecutive `pnpm complete-check` runs passed (all 8 stages,
+912/912 unit, 142/142 E2E), with zero `40P01`.
+
+Residual: remaining `ALTER TABLE ... DISABLE/ENABLE TRIGGER` statements
+(creator registration, immutable, published notification) still take
+`SHARE ROW EXCLUSIVE`. They are short and did not reproduce a deadlock; new
+fixtures should prefer avoiding them.
