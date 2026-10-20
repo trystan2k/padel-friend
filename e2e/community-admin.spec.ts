@@ -273,6 +273,39 @@ async function mainOffset(page: Page) {
   return main!.y;
 }
 
+async function assertLocaleControlSizing(page: Page, copy: Copy, viewport: number) {
+  const locale = page.locator('#locale');
+  await expect(locale).toHaveAccessibleName(copy.language);
+  const box = await locale.boundingBox();
+  const themeBox = await page.locator('#theme').boundingBox();
+  expect(box).not.toBeNull();
+  expect(themeBox).not.toBeNull();
+  expect(box!.width).toBeGreaterThanOrEqual(44);
+  expect(box!.height).toBeGreaterThanOrEqual(44);
+  expect(box!.x + box!.width <= themeBox!.x || themeBox!.x + themeBox!.width <= box!.x).toBe(true);
+  await locale.focus();
+  await expect(locale).toBeFocused();
+  expect(await locale.evaluate((element) => getComputedStyle(element).outlineStyle)).not.toBe(
+    'none'
+  );
+  const dimensions = await page.evaluate(() => ({
+    document: document.documentElement.scrollWidth,
+    main: document.querySelector('main')?.scrollWidth ?? 0,
+    viewport: document.documentElement.clientWidth
+  }));
+  expect(dimensions.document).toBeLessThanOrEqual(viewport);
+  expect(dimensions.main).toBeLessThanOrEqual(viewport);
+  const styledMainTop = await mainOffset(page);
+  const styleClass = await locale.getAttribute('class');
+  await locale.evaluate((element) => element.removeAttribute('class'));
+  const unstyledMainTop = await mainOffset(page);
+  if (styleClass !== null)
+    await locale.evaluate((element, value) => element.setAttribute('class', value), styleClass);
+  console.info(
+    `locale box ${viewport}px ${copy.language}: ${box!.width}x${box!.height}; main top before/after ${unstyledMainTop}/${styledMainTop}`
+  );
+}
+
 async function bottomNavGeometry(page: Page) {
   const nav = page.getByRole('navigation', { name: en.communityAdmin.navigation });
   await expect(nav).toBeVisible();
@@ -652,12 +685,35 @@ test('real admin requests, membership, settings, venues and audit stay protected
   ] as const) {
     await page.locator('#locale').selectOption(locale);
     await expect(page.locator('html')).toHaveAttribute('lang', locale);
+    await assertLocaleControlSizing(page, copy, 390);
     await expect(
       page.getByRole('heading', { name: copy.communityAdmin.title.settings })
     ).toBeVisible();
   }
+  await page.setViewportSize({ width: 1280, height: 900 });
+  for (const [locale, copy] of [
+    ['en', en],
+    ['pt-BR', pt],
+    ['es', es]
+  ] as const) {
+    await page.locator('#locale').selectOption(locale);
+    await expect(page.locator('html')).toHaveAttribute('lang', locale);
+    await assertLocaleControlSizing(page, copy, 1280);
+  }
+  await page.locator('#locale').selectOption('es');
+  await expect(page.context().cookies()).resolves.toContainEqual(
+    expect.objectContaining({ name: 'locale', value: 'es', path: '/' })
+  );
+  await page.reload();
+  await waitForHydratedPage(page);
+  await expect(page.locator('#locale')).toHaveValue('es');
+  await expect(page.locator('#locale')).toHaveAccessibleName(es.language);
+  await expect(page.locator('html')).toHaveAttribute('lang', 'es');
+  await expect(page.getByRole('heading', { name: es.communityAdmin.title.settings })).toBeVisible();
+  await page.setViewportSize({ width: 390, height: 844 });
   await page.locator('#locale').selectOption('en');
   await expect(page.locator('html')).toHaveAttribute('lang', 'en');
+  await assertLocaleControlSizing(page, en, 390);
   await page.context().addCookies([{ name: 'locale', value: 'en', url: 'http://127.0.0.1:4173' }]);
   await page.waitForLoadState('networkidle');
   await page.setViewportSize({ width: 320, height: 844 });
@@ -937,7 +993,15 @@ test.describe('community admin 320px locale matrix', () => {
         const localeCopy = locale === 'pt-BR' ? pt : locale === 'es' ? es : en;
         const localeControl = page.locator('#locale');
         await expect(localeControl).toBeVisible();
-        await expect(localeControl).toHaveAccessibleName(localeCopy.language);
+        await assertLocaleControlSizing(page, localeCopy, 320);
+        await expect
+          .poll(() =>
+            page
+              .context()
+              .cookies()
+              .then((cookies) => cookies.find((cookie) => cookie.name === 'locale')?.value)
+          )
+          .toBe(locale);
         const titleKey = destination === 'member' ? 'member' : destination;
         const screenHeading = page.getByRole('heading', {
           name: localeCopy.communityAdmin.title[titleKey],
@@ -965,6 +1029,14 @@ test.describe('community admin 320px locale matrix', () => {
         }));
         expect(dimensions.document).toBeLessThanOrEqual(dimensions.viewport);
         expect(dimensions.main).toBeLessThanOrEqual(dimensions.viewport);
+        await expect
+          .poll(() =>
+            page
+              .context()
+              .cookies()
+              .then((cookies) => cookies.find((cookie) => cookie.name === 'locale')?.value)
+          )
+          .toBe(locale);
         const adminNavigation = page.getByRole('navigation', {
           name: localeCopy.communityAdmin.navigation
         });

@@ -4,7 +4,10 @@ import userEvent from '@testing-library/user-event';
 import { createElement } from 'react';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 
-const mocks = vi.hoisted(() => ({ saveLocale: vi.fn<() => Promise<void>>() }));
+const mocks = vi.hoisted(() => ({
+  saveLocale: vi.fn<(input: { data: string }) => Promise<void>>(),
+  cookie: 'en'
+}));
 
 vi.mock('@tanstack/react-router', () => ({
   createRootRoute: (options: unknown) => ({
@@ -44,8 +47,15 @@ function getLocaleSelect() {
 }
 
 beforeEach(() => {
-  mocks.saveLocale.mockReset().mockResolvedValue();
+  document.cookie = 'locale=; path=/; max-age=0';
+  mocks.cookie = 'en';
+  mocks.saveLocale.mockReset().mockImplementation(async ({ data }) => persistedSave(data));
 });
+
+function persistedSave(locale: string) {
+  mocks.cookie = locale;
+  document.cookie = `locale=${locale}; path=/; samesite=lax`;
+}
 
 it('updates root preference labels after changing locale', async () => {
   const user = userEvent.setup();
@@ -108,4 +118,153 @@ it('serializes overlapping locale selections and commits only the latest selecti
   expect(mocks.saveLocale).toHaveBeenNthCalledWith(2, { data: 'es' });
   expect(screen.getByRole('combobox', { name: 'Idioma' })).toBeTruthy();
   expect(selector.value).toBe('es');
+});
+
+it('restores committed locale after obsolete save succeeds and latest save fails', async () => {
+  let finishFirst!: () => void;
+  let rejectSecond!: (error: Error) => void;
+  mocks.saveLocale
+    .mockImplementationOnce(
+      () =>
+        new Promise<void>((resolve) => {
+          finishFirst = () => {
+            persistedSave('pt-BR');
+            resolve();
+          };
+        })
+    )
+    .mockImplementationOnce(
+      () =>
+        new Promise<void>((_resolve, reject) => {
+          rejectSecond = reject;
+        })
+    )
+    .mockImplementationOnce(async () => persistedSave('en'));
+  renderRoot();
+  const selector = getLocaleSelect();
+  fireEvent.change(selector, { target: { value: 'pt-BR' } });
+  await waitFor(() => expect(mocks.saveLocale).toHaveBeenCalledTimes(1));
+  fireEvent.change(selector, { target: { value: 'es' } });
+  expect(mocks.saveLocale).toHaveBeenCalledTimes(1);
+  await act(async () => finishFirst());
+  await waitFor(() => expect(mocks.saveLocale).toHaveBeenCalledTimes(2));
+  await act(async () => rejectSecond(new Error('offline')));
+  await waitFor(() => expect(mocks.saveLocale).toHaveBeenCalledTimes(3));
+  await waitFor(() => expect(mocks.cookie).toBe('en'));
+  expect(selector.value).toBe('en');
+  expect(document.documentElement.lang).toBe('en');
+  expect(screen.getByRole('combobox', { name: 'Language' })).toBeTruthy();
+  expect(mocks.saveLocale).toHaveBeenNthCalledWith(3, { data: 'en' });
+});
+
+it('restores a non-English committed preference before processing the next queued choice', async () => {
+  renderRoot();
+  const selector = getLocaleSelect();
+  fireEvent.change(selector, { target: { value: 'pt-BR' } });
+  await waitFor(() => expect(document.documentElement.lang).toBe('pt-BR'));
+  expect(mocks.cookie).toBe('pt-BR');
+
+  let finishObsolete!: () => void;
+  let rejectLatest!: (error: Error) => void;
+  let finishRecovery!: () => void;
+  let finishNext!: () => void;
+  mocks.saveLocale
+    .mockImplementationOnce(
+      () =>
+        new Promise<void>((resolve) => {
+          finishObsolete = () => {
+            persistedSave('en');
+            resolve();
+          };
+        })
+    )
+    .mockImplementationOnce(
+      () =>
+        new Promise<void>((_resolve, reject) => {
+          rejectLatest = reject;
+        })
+    )
+    .mockImplementationOnce(
+      () =>
+        new Promise<void>((resolve) => {
+          finishRecovery = () => {
+            persistedSave('pt-BR');
+            resolve();
+          };
+        })
+    )
+    .mockImplementationOnce(
+      () =>
+        new Promise<void>((resolve) => {
+          finishNext = () => {
+            persistedSave('en');
+            resolve();
+          };
+        })
+    );
+  fireEvent.change(selector, { target: { value: 'en' } });
+  await waitFor(() => expect(mocks.saveLocale).toHaveBeenCalledTimes(2));
+  fireEvent.change(selector, { target: { value: 'es' } });
+  await act(async () => finishObsolete());
+  await waitFor(() => expect(mocks.saveLocale).toHaveBeenCalledTimes(3));
+  await act(async () => rejectLatest(new Error('offline')));
+  await waitFor(() => expect(mocks.saveLocale).toHaveBeenCalledTimes(4));
+  expect(mocks.saveLocale).toHaveBeenNthCalledWith(3, { data: 'es' });
+  expect(mocks.saveLocale).toHaveBeenNthCalledWith(4, { data: 'pt-BR' });
+  expect(mocks.saveLocale).toHaveBeenCalledTimes(4);
+  fireEvent.change(selector, { target: { value: 'en' } });
+  await act(async () => finishRecovery());
+  await waitFor(() => expect(mocks.cookie).toBe('pt-BR'));
+  await waitFor(() => expect(mocks.saveLocale).toHaveBeenCalledTimes(5));
+  await act(async () => finishNext());
+  await waitFor(() => expect(document.documentElement.lang).toBe('en'));
+  expect(mocks.saveLocale).toHaveBeenNthCalledWith(5, { data: 'en' });
+  expect(mocks.cookie).toBe('en');
+});
+
+it('keeps committed UI on failed recovery and restores consistency on a later selection', async () => {
+  let finishFirst!: () => void;
+  let rejectSecond!: (error: Error) => void;
+  let rejectRecovery!: (error: Error) => void;
+  mocks.saveLocale
+    .mockImplementationOnce(
+      () =>
+        new Promise<void>((resolve) => {
+          finishFirst = () => {
+            persistedSave('pt-BR');
+            resolve();
+          };
+        })
+    )
+    .mockImplementationOnce(
+      () =>
+        new Promise<void>((_resolve, reject) => {
+          rejectSecond = reject;
+        })
+    )
+    .mockImplementationOnce(
+      () =>
+        new Promise<void>((_resolve, reject) => {
+          rejectRecovery = reject;
+        })
+    );
+  renderRoot();
+  const selector = getLocaleSelect();
+  fireEvent.change(selector, { target: { value: 'pt-BR' } });
+  await waitFor(() => expect(mocks.saveLocale).toHaveBeenCalledTimes(1));
+  fireEvent.change(selector, { target: { value: 'es' } });
+  await act(async () => finishFirst());
+  await waitFor(() => expect(mocks.saveLocale).toHaveBeenCalledTimes(2));
+  await act(async () => rejectSecond(new Error('offline')));
+  await waitFor(() => expect(mocks.saveLocale).toHaveBeenCalledTimes(3));
+  await act(async () => rejectRecovery(new Error('still offline')));
+  await waitFor(() => expect(selector.value).toBe('en'));
+  expect(document.documentElement.lang).toBe('en');
+  expect(mocks.cookie).toBe('pt-BR');
+
+  mocks.saveLocale.mockImplementationOnce(async ({ data }) => persistedSave(data));
+  fireEvent.change(selector, { target: { value: 'es' } });
+  await waitFor(() => expect(document.documentElement.lang).toBe('es'));
+  expect(selector.value).toBe('es');
+  expect(mocks.cookie).toBe('es');
 });
