@@ -354,7 +354,7 @@ function RequestsView(props: ViewProps<'requests'>) {
   }
 
   async function memberAction(person: CommunityAdminMember, action: 'approve' | 'deny') {
-    if (busy) return;
+    if (busy || pageLoading) return;
     setBusy(true);
     setErrorKey('');
     setMessage('');
@@ -362,6 +362,8 @@ function RequestsView(props: ViewProps<'requests'>) {
       await (action === 'approve' ? approveCommunityMember : denyCommunityMember)({
         data: { community_id: community.id, membership_id: person.membership_id }
       });
+      pageOwner.current.requestId += 1;
+      setPageLoading(false);
       setPageState({
         generation: datasetGeneration,
         rows: [],
@@ -388,12 +390,15 @@ function RequestsView(props: ViewProps<'requests'>) {
               {ratingLabel(person, t, locale)}
             </p>
             <div {...stylex.props(styles.actions, styles.requestActions)}>
-              <Button busy={busy} onClick={() => void memberAction(person, 'approve')}>
+              <Button
+                busy={busy || pageLoading}
+                onClick={() => void memberAction(person, 'approve')}
+              >
                 {t('communityAdmin.action.approve')}
               </Button>
               <Button
                 variant="secondary"
-                busy={busy}
+                busy={busy || pageLoading}
                 onClick={() => void memberAction(person, 'deny')}
               >
                 {t('communityAdmin.action.deny')}

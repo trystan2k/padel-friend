@@ -1033,6 +1033,102 @@ describe('community admin UI', () => {
     });
   });
 
+  it('blocks approve and deny while a requests page is loading', async () => {
+    let resolvePage!: (rows: Member[]) => void;
+    const page = new Promise<Member[]>((resolve) => {
+      resolvePage = resolve;
+    });
+    const firstPage = Array.from({ length: 50 }, (_, index) => ({
+      ...member,
+      membership_id: `busy-${index}`,
+      display_name: `Busy request ${index}`
+    }));
+    mocks.search.mockReturnValueOnce(page);
+    const user = userEvent.setup();
+    render(
+      <I18nextProvider i18n={createI18n('en')}>
+        <CommunityAdminScreen
+          screen="requests"
+          community={community}
+          members={firstPage}
+          timezone="Europe/Madrid"
+          datasetGeneration={1}
+        />
+      </I18nextProvider>
+    );
+
+    await user.click(screen.getByRole('button', { name: 'LOAD MORE CHANGES' }));
+    const approve = screen.getAllByRole('button', { name: 'Approve request' })[0];
+    const deny = screen.getAllByRole('button', { name: 'Deny request' })[0];
+    if (!approve || !deny) throw new Error('Request actions not rendered');
+    expect(approve.hasAttribute('disabled')).toBe(true);
+    expect(deny.hasAttribute('disabled')).toBe(true);
+    await user.click(approve);
+    await user.click(deny);
+    expect(mocks.approve).not.toHaveBeenCalled();
+    expect(mocks.deny).not.toHaveBeenCalled();
+
+    await act(async () => resolvePage([]));
+  });
+
+  it('invalidates a held requests page when an approve mutation resets pagination', async () => {
+    let resolvePage!: (rows: Member[]) => void;
+    let resolveApproval!: (result: { status: string }) => void;
+    const page = new Promise<Member[]>((resolve) => {
+      resolvePage = resolve;
+    });
+    const approval = new Promise<{ status: string }>((resolve) => {
+      resolveApproval = resolve;
+    });
+    const firstPage = Array.from({ length: 50 }, (_, index) => ({
+      ...member,
+      membership_id: `reset-race-${index}`,
+      display_name: `Reset race ${index}`
+    }));
+    mocks.search.mockReturnValueOnce(page);
+    mocks.approve.mockReturnValueOnce(approval);
+    render(
+      <I18nextProvider i18n={createI18n('en')}>
+        <CommunityAdminScreen
+          screen="requests"
+          community={community}
+          members={firstPage}
+          timezone="Europe/Madrid"
+          datasetGeneration={1}
+        />
+      </I18nextProvider>
+    );
+
+    const more = screen.getByRole('button', { name: 'LOAD MORE CHANGES' });
+    const approve = screen.getAllByRole('button', { name: 'Approve request' })[0];
+    if (!approve) throw new Error('Approve action not rendered');
+    act(() => {
+      // Batch both events to exercise a completion race before React commits busy props.
+      fireEvent.click(more);
+      fireEvent.click(approve);
+    });
+    expect(mocks.search).toHaveBeenCalledOnce();
+    expect(mocks.approve).toHaveBeenCalledOnce();
+
+    await act(async () => resolveApproval({ status: 'active' }));
+    expect(screen.getByText('Request approved.')).toBeTruthy();
+    expect(screen.getAllByRole('heading', { level: 3 })).toHaveLength(50);
+
+    await act(async () =>
+      resolvePage([
+        { ...member, membership_id: 'stale-after-mutation', display_name: 'Stale page row' }
+      ])
+    );
+
+    expect(screen.getAllByRole('heading', { level: 3 })).toHaveLength(50);
+    expect(screen.queryByText('Stale page row')).toBeNull();
+    expect(screen.getByText('Request approved.')).toBeTruthy();
+    expect(screen.queryByRole('alert')).toBeNull();
+    expect(screen.getByRole('button', { name: 'LOAD MORE CHANGES' }).hasAttribute('disabled')).toBe(
+      false
+    );
+  });
+
   it('discards an obsolete request page when loader generation changes', async () => {
     let resolveOld!: (rows: Member[]) => void;
     const oldPage = new Promise<Member[]>((resolve) => {
