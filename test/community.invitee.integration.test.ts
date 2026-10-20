@@ -104,7 +104,7 @@ describe('invitee directory (real local Supabase JWTs)', () => {
     expect((await search(admin.client, 'x'.repeat(80), 20)).error).toBeNull();
 
     const specialMarker = crypto.randomUUID();
-    const special = await createActor(`Literal 100%_.* ${specialMarker} Name`);
+    const special = await createActor(`Z Literal 100%_.* ${specialMarker} Name`);
     expect(
       (
         await special.client
@@ -115,7 +115,7 @@ describe('invitee directory (real local Supabase JWTs)', () => {
     const collisionMarker = crypto.randomUUID();
     const collisionActors = await Promise.all(
       Array.from({ length: 21 }, (_, index) =>
-        createActor(`Literal 100%_.* ${collisionMarker} Candidate ${index}`)
+        createActor(`A Literal 100%_.* ${collisionMarker} Candidate ${index}`)
       )
     );
     const collisionOptIns = await Promise.all(
@@ -127,6 +127,10 @@ describe('invitee directory (real local Supabase JWTs)', () => {
     const literalSearch = await search(admin.client, `100%_.* ${specialMarker}`);
     expect(literalSearch.error).toBeNull();
     expect(rowIds(literalSearch.data)).toEqual([special.id]);
+    const broadLiteralSearch = await search(admin.client, '100%_.*', 20);
+    expect(broadLiteralSearch.error).toBeNull();
+    expect(broadLiteralSearch.data).toHaveLength(20);
+    expect(rowIds(broadLiteralSearch.data)).not.toContain(special.id);
     const literalNegativeSearch = await search(admin.client, `100%_x ${specialMarker}`);
     expect(literalNegativeSearch.error).toBeNull();
     expect(rowIds(literalNegativeSearch.data)).not.toContain(special.id);
