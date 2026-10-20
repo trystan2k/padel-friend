@@ -1,12 +1,11 @@
-import { configDefaults, defineConfig, mergeConfig } from 'vitest/config';
+import { configDefaults, defineConfig } from 'vitest/config';
 import baseConfig from './vitest.config';
 
-const merged = mergeConfig(baseConfig, defineConfig({}));
-
+// The unit phase owns coverage collection; the integration phase runs without --coverage.
 export default defineConfig({
-  ...merged,
+  ...baseConfig,
   test: {
-    ...merged.test,
+    ...baseConfig.test,
     include: ['test/**/*.test.{ts,tsx}'],
     exclude: [...configDefaults.exclude, 'test/**/*.integration.test.ts']
   }
