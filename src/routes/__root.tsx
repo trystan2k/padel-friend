@@ -7,6 +7,7 @@ import {
 } from '@tanstack/react-router';
 import { I18nextProvider } from 'react-i18next';
 import { useEffect, useRef, useState } from 'react';
+import * as stylex from '@stylexjs/stylex';
 import { createI18n, resolveLocale } from '../i18n/config';
 import { getInitialLocale, saveLocale } from '../i18n/locale.functions';
 import { PwaRegistration } from '../components/PwaRegistration';
@@ -20,6 +21,7 @@ import '@fontsource/manrope/600.css';
 import '@fontsource/manrope/700.css';
 import { getInitialTheme, saveTheme } from '../features/theme/theme.functions';
 import '../styles.css';
+import { rootStyles } from '../root.styles';
 
 export const Route = createRootRoute({
   beforeLoad: async () => ({ locale: await getInitialLocale(), theme: await getInitialTheme() }),
@@ -51,6 +53,7 @@ function Root() {
   const [theme, setTheme] = useState(initialTheme);
   const [i18n] = useState(() => createI18n(locale));
   const localeRef = useRef(locale);
+  const persistedLocaleRef = useRef<string | undefined>(locale);
   const localeRequest = useRef(0);
   const localeQueue = useRef(Promise.resolve());
   useEffect(() => {
@@ -69,6 +72,7 @@ function Root() {
               <label htmlFor="locale">{i18n.t('language')}</label>
               <select
                 id="locale"
+                {...stylex.props(rootStyles.locale)}
                 value={locale}
                 onChange={(event) => {
                   const next = resolveLocale(event.target.value);
@@ -77,10 +81,11 @@ function Root() {
                     .catch(() => undefined)
                     .then(async () => {
                       const previous = localeRef.current;
-                      let persisted = false;
+                      let saveSucceeded = false;
                       try {
                         await saveLocale({ data: next });
-                        persisted = true;
+                        saveSucceeded = true;
+                        persistedLocaleRef.current = next;
                         if (request !== localeRequest.current) return;
                         await i18n.changeLanguage(next);
                         if (request !== localeRequest.current) {
@@ -91,10 +96,14 @@ function Root() {
                         setLocale(next);
                         document.documentElement.lang = next;
                       } catch {
-                        if (persisted && localeRef.current === previous) {
+                        if (!saveSucceeded) persistedLocaleRef.current = undefined;
+                        if (localeRef.current === previous) {
                           try {
                             await i18n.changeLanguage(previous);
-                            await saveLocale({ data: previous });
+                            if (persistedLocaleRef.current !== previous) {
+                              await saveLocale({ data: previous });
+                              persistedLocaleRef.current = previous;
+                            }
                           } catch {
                             // Keep the rendered locale unchanged if preference recovery also fails.
                           }

@@ -44,7 +44,11 @@ export type CommunityAdminAudit = Pick<
 type CommunityProps = { community: CommunityAdminCommunity };
 type MemberCollectionProps = CommunityProps & { members: CommunityAdminMember[] };
 export type CommunityAdminScreenProps =
-  | (MemberCollectionProps & { screen: 'requests'; timezone: CommunityTimezone })
+  | (MemberCollectionProps & {
+      screen: 'requests';
+      timezone: CommunityTimezone;
+      datasetGeneration: number;
+    })
   | (MemberCollectionProps & { screen: 'members' })
   | (CommunityProps & {
       screen: 'member';

@@ -273,6 +273,177 @@ async function mainOffset(page: Page) {
   return main!.y;
 }
 
+/** Requires the browser's real keyboard-focus indicator on the currently focused locale select. */
+async function assertVisibleKeyboardFocus(page: Page) {
+  const evidence = await page.evaluate(() => {
+    const element = document.activeElement;
+    if (!(element instanceof HTMLElement)) return null;
+    const style = getComputedStyle(element);
+    return {
+      id: element.id,
+      focusVisible: element.matches(':focus-visible'),
+      outlineStyle: style.outlineStyle,
+      outlineWidth: style.outlineWidth,
+      outlineColor: style.outlineColor,
+      background: style.backgroundColor,
+      pageBackground: getComputedStyle(document.documentElement).backgroundColor
+    };
+  });
+  expect(evidence, 'keyboard focus must rest on a focusable element').not.toBeNull();
+  expect(evidence!.id, 'focused element must be the locale select').toBe('locale');
+  expect(
+    evidence!.focusVisible,
+    'locale select must match :focus-visible after keyboard navigation'
+  ).toBe(true);
+  // Outline-only oracle: a ring is visible only when the outline is a fully opaque,
+  // non-zero-width band whose color differs from every background it is drawn over.
+  const outlineWidth = Number.parseFloat(evidence!.outlineWidth);
+  expect(
+    evidence!.outlineStyle !== 'none' && Number.isFinite(outlineWidth) && outlineWidth > 0,
+    'keyboard focus must paint a non-zero-width outline'
+  ).toBe(true);
+  const color = evidence!.outlineColor.toLowerCase();
+  const rgb = /^rgba?\(([^)]+)\)$/.exec(color);
+  expect(
+    rgb,
+    `focus outline color must be an rgb()/rgba() color, got ${evidence!.outlineColor}`
+  ).not.toBeNull();
+  const parts = rgb![1]!
+    .split(/[\s,/]+/)
+    .filter(Boolean)
+    .map(Number.parseFloat);
+  const alpha = parts.length === 4 ? parts[3]! : 1;
+  expect(alpha, 'focus outline must be fully opaque (alpha 1)').toBe(1);
+  const backgrounds = [evidence!.background, evidence!.pageBackground].map((value) =>
+    value.toLowerCase()
+  );
+  for (const background of backgrounds) {
+    expect(color, `focus outline color must differ from background ${background}`).not.toBe(
+      background
+    );
+  }
+  console.info(`locale keyboard focus evidence: ${JSON.stringify(evidence)}`);
+}
+
+/** Reaches #locale with sequential-focus navigation only (blur, then Tab from document start). */
+async function keyboardFocusLocale(page: Page) {
+  await page.evaluate(() => {
+    const active = document.activeElement;
+    if (active instanceof HTMLElement) active.blur();
+  });
+  for (let tabStops = 1; tabStops <= 25; tabStops++) {
+    await page.keyboard.press('Tab');
+    if ((await page.evaluate(() => document.activeElement?.id)) === 'locale') {
+      await expect(page.locator('#locale')).toBeFocused();
+      await assertVisibleKeyboardFocus(page);
+      return;
+    }
+  }
+  const focused = await page.evaluate(
+    () =>
+      `${document.activeElement?.tagName.toLowerCase() ?? 'none'}#${document.activeElement?.id ?? ''}`
+  );
+  throw new Error(`Sequential Tab navigation never reached #locale (landed on ${focused})`);
+}
+
+/**
+ * Changes the locale with native select type-ahead only (real keyboard events; no selectOption).
+ * macOS headless Chromium swallows ArrowUp/ArrowDown/Home/End on the closed select, so keys are
+ * derived from the rendered option labels: a unique first letter jumps straight to the option,
+ * while a shared first letter cycles to the next matching option on every press. A leading wait
+ * lets any earlier type-ahead buffer expire so letters from previous switches cannot concatenate.
+ * Asserts full agreement: selector value, html[lang] and the persisted locale cookie.
+ */
+async function switchLocaleWithKeyboard(page: Page, target: string) {
+  const locale = page.locator('#locale');
+  await keyboardFocusLocale(page);
+  const options = await locale.evaluate((element) => {
+    if (!(element instanceof HTMLSelectElement)) throw new Error('#locale must be a select');
+    return Array.from(element.options).map((option) => ({
+      value: option.value,
+      letter: option.text.trim().charAt(0).toLowerCase()
+    }));
+  });
+  const targetIndex = options.findIndex((option) => option.value === target);
+  expect(targetIndex, `locale option ${target} must exist`).toBeGreaterThanOrEqual(0);
+  const currentIndex = await locale.evaluate((element) => {
+    if (!(element instanceof HTMLSelectElement)) throw new Error('#locale must be a select');
+    return element.selectedIndex;
+  });
+  expect(currentIndex, 'locale select must report a selected option').toBeGreaterThanOrEqual(0);
+  const targetLetter = options[targetIndex]!.letter;
+  const letterMatches = options.reduce<number[]>(
+    (matches, option, index) => (option.letter === targetLetter ? [...matches, index] : matches),
+    []
+  );
+  const keys: string[] = [];
+  if (letterMatches.length === 1) {
+    if (currentIndex !== targetIndex) keys.push(targetLetter);
+  } else {
+    let scan = currentIndex;
+    while (scan !== targetIndex) {
+      scan = (scan + 1) % options.length;
+      if (letterMatches.includes(scan)) keys.push(targetLetter);
+    }
+  }
+  await page.waitForTimeout(1_200);
+  for (const key of keys) {
+    await page.keyboard.press(key);
+    await page.waitForTimeout(120);
+  }
+  await expect(locale).toHaveValue(target);
+  await expect(page.locator('html')).toHaveAttribute('lang', target);
+  await expect
+    .poll(() =>
+      page
+        .context()
+        .cookies()
+        .then((cookies) => cookies.find((cookie) => cookie.name === 'locale')?.value)
+    )
+    .toBe(target);
+}
+
+async function assertLocaleControlSizing(page: Page, copy: Copy, viewport: number) {
+  const locale = page.locator('#locale');
+  await expect(locale).toHaveAccessibleName(copy.language);
+  // Measure only after the bundled webfonts are loaded: fallback font metrics differ between
+  // macOS and Linux and skewed the 320px box measurements (PAF-87 F4).
+  await page.evaluate(() => document.fonts.ready);
+  const box = await locale.boundingBox();
+  const themeBox = await page.locator('#theme').boundingBox();
+  expect(box).not.toBeNull();
+  expect(themeBox).not.toBeNull();
+  expect(box!.width).toBeGreaterThanOrEqual(44);
+  expect(box!.height).toBeGreaterThanOrEqual(44);
+  // Anti-overlap oracle in both axes: side-by-side and stacked (wrapped) layouts are both
+  // acceptable; only a true rectangle intersection fails.
+  const separatedHorizontally =
+    box!.x + box!.width <= themeBox!.x || themeBox!.x + themeBox!.width <= box!.x;
+  const separatedVertically =
+    box!.y + box!.height <= themeBox!.y || themeBox!.y + themeBox!.height <= box!.y;
+  expect(
+    separatedHorizontally || separatedVertically,
+    `locale and theme controls must not overlap (locale ${JSON.stringify(box)}, theme ${JSON.stringify(themeBox)})`
+  ).toBe(true);
+  await keyboardFocusLocale(page);
+  const dimensions = await page.evaluate(() => ({
+    document: document.documentElement.scrollWidth,
+    main: document.querySelector('main')?.scrollWidth ?? 0,
+    viewport: document.documentElement.clientWidth
+  }));
+  expect(dimensions.document).toBeLessThanOrEqual(viewport);
+  expect(dimensions.main).toBeLessThanOrEqual(viewport);
+  const styledMainTop = await mainOffset(page);
+  const styleClass = await locale.getAttribute('class');
+  await locale.evaluate((element) => element.removeAttribute('class'));
+  const unstyledMainTop = await mainOffset(page);
+  if (styleClass !== null)
+    await locale.evaluate((element, value) => element.setAttribute('class', value), styleClass);
+  console.info(
+    `locale box ${viewport}px ${copy.language}: ${box!.width}x${box!.height}; main top before/after ${unstyledMainTop}/${styledMainTop}`
+  );
+}
+
 async function bottomNavGeometry(page: Page) {
   const nav = page.getByRole('navigation', { name: en.communityAdmin.navigation });
   await expect(nav).toBeVisible();
@@ -650,14 +821,38 @@ test('real admin requests, membership, settings, venues and audit stay protected
     ['es', es],
     ['pt-BR', pt]
   ] as const) {
-    await page.locator('#locale').selectOption(locale);
-    await expect(page.locator('html')).toHaveAttribute('lang', locale);
+    await switchLocaleWithKeyboard(page, locale);
     await expect(
       page.getByRole('heading', { name: copy.communityAdmin.title.settings })
     ).toBeVisible();
+    await assertLocaleControlSizing(page, copy, 390);
   }
+  await page.setViewportSize({ width: 1280, height: 900 });
+  for (const [locale, copy] of [
+    ['en', en],
+    ['pt-BR', pt],
+    ['es', es]
+  ] as const) {
+    await switchLocaleWithKeyboard(page, locale);
+    await expect(
+      page.getByRole('heading', { name: copy.communityAdmin.title.settings })
+    ).toBeVisible();
+    await assertLocaleControlSizing(page, copy, 1280);
+  }
+  await page.locator('#locale').selectOption('es');
+  await expect(page.context().cookies()).resolves.toContainEqual(
+    expect.objectContaining({ name: 'locale', value: 'es', path: '/' })
+  );
+  await page.reload();
+  await waitForHydratedPage(page);
+  await expect(page.locator('#locale')).toHaveValue('es');
+  await expect(page.locator('#locale')).toHaveAccessibleName(es.language);
+  await expect(page.locator('html')).toHaveAttribute('lang', 'es');
+  await expect(page.getByRole('heading', { name: es.communityAdmin.title.settings })).toBeVisible();
+  await page.setViewportSize({ width: 390, height: 844 });
   await page.locator('#locale').selectOption('en');
   await expect(page.locator('html')).toHaveAttribute('lang', 'en');
+  await assertLocaleControlSizing(page, en, 390);
   await page.context().addCookies([{ name: 'locale', value: 'en', url: 'http://127.0.0.1:4173' }]);
   await page.waitForLoadState('networkidle');
   await page.setViewportSize({ width: 320, height: 844 });
@@ -882,7 +1077,7 @@ test.describe('community admin 320px locale matrix', () => {
   test.use({ viewport: { width: 320, height: 844 } });
 
   for (const destination of narrowDestinations) {
-    for (const [locale] of narrowLocales) {
+    for (const [localeIndex, [locale]] of narrowLocales.entries()) {
       test(`${destination} heading and controls fit at 320px (${locale})`, async ({ page }) => {
         test.setTimeout(120_000);
         const owner = await createActor(`Narrow ${destination} ${locale}`);
@@ -937,7 +1132,15 @@ test.describe('community admin 320px locale matrix', () => {
         const localeCopy = locale === 'pt-BR' ? pt : locale === 'es' ? es : en;
         const localeControl = page.locator('#locale');
         await expect(localeControl).toBeVisible();
-        await expect(localeControl).toHaveAccessibleName(localeCopy.language);
+        await assertLocaleControlSizing(page, localeCopy, 320);
+        await expect
+          .poll(() =>
+            page
+              .context()
+              .cookies()
+              .then((cookies) => cookies.find((cookie) => cookie.name === 'locale')?.value)
+          )
+          .toBe(locale);
         const titleKey = destination === 'member' ? 'member' : destination;
         const screenHeading = page.getByRole('heading', {
           name: localeCopy.communityAdmin.title[titleKey],
@@ -965,6 +1168,14 @@ test.describe('community admin 320px locale matrix', () => {
         }));
         expect(dimensions.document).toBeLessThanOrEqual(dimensions.viewport);
         expect(dimensions.main).toBeLessThanOrEqual(dimensions.viewport);
+        await expect
+          .poll(() =>
+            page
+              .context()
+              .cookies()
+              .then((cookies) => cookies.find((cookie) => cookie.name === 'locale')?.value)
+          )
+          .toBe(locale);
         const adminNavigation = page.getByRole('navigation', {
           name: localeCopy.communityAdmin.navigation
         });
@@ -986,10 +1197,42 @@ test.describe('community admin 320px locale matrix', () => {
         const nav = adminNavigation;
         const navBox = await nav.boundingBox();
         expect(navBox).not.toBeNull();
+        if (destination === 'settings') {
+          const clearance = await page.locator('main').evaluate((main) => ({
+            scrollPaddingBottom: Number.parseFloat(getComputedStyle(main).scrollPaddingBottom),
+            navHeight: Number.parseFloat(
+              getComputedStyle(document.querySelector('nav[aria-label]')!).height
+            )
+          }));
+          expect(
+            clearance.scrollPaddingBottom,
+            'settings scroll padding must clear bottom navigation'
+          ).toBeGreaterThanOrEqual(clearance.navHeight);
+        }
         for (const control of await contentControls.all()) {
-          await control.scrollIntoViewIfNeeded();
+          // `scrollIntoViewIfNeeded()` is a CDP nearest-edge scroll: it ignores CSS
+          // `scroll-padding` and can align a control with the viewport bottom edge,
+          // i.e. directly behind the fixed bottom navigation, even when the layout
+          // itself has real clearance (the page padding + scroll-padding-bottom
+          // prove it at max scroll in the final check below). Bring each control to
+          // the middle of the scrollport instead — the genuinely unobscured region —
+          // and then assert reachability against the viewport and the navigation.
+          await control.evaluate((element) =>
+            element.scrollIntoView({ block: 'center', inline: 'nearest' })
+          );
           const box = await control.boundingBox();
           expect(box, 'scrolled interactive control must have a hit region').not.toBeNull();
+          const viewport = await page.evaluate(() => ({
+            width: document.documentElement.clientWidth,
+            height: window.innerHeight
+          }));
+          expect(
+            box!.x >= 0 &&
+              box!.y >= 0 &&
+              box!.x + box!.width <= viewport.width &&
+              box!.y + box!.height <= viewport.height,
+            'scrolled interactive control must sit fully inside the viewport after scrolling'
+          ).toBe(true);
           const overlapsBottomNav =
             box!.y < navBox!.y + navBox!.height && box!.y + box!.height > navBox!.y;
           expect(
@@ -1006,6 +1249,17 @@ test.describe('community admin 320px locale matrix', () => {
         const finalControl = await lastControl.boundingBox();
         expect(finalControl, 'last interactive action must remain visible').not.toBeNull();
         expect(finalControl!.y + finalControl!.height).toBeLessThanOrEqual(navBox!.y);
+
+        // Keyboard operability: one real type-ahead locale switch per matrix run, cycling
+        // en → pt-BR → es → en so every locale is reached by keyboard across the matrix.
+        const [nextLocale, nextCopy] = narrowLocales[(localeIndex + 1) % narrowLocales.length]!;
+        await switchLocaleWithKeyboard(page, nextLocale);
+        await expect(
+          page.getByRole('heading', {
+            name: nextCopy.communityAdmin.title[titleKey],
+            exact: true
+          })
+        ).toBeVisible();
       });
     }
   }

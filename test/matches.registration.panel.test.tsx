@@ -38,12 +38,16 @@ import {
 const EVENT_ID = '00000000-0000-4000-8000-000000000001';
 
 function event(extra: Record<string, unknown> = {}) {
+  // The event window is derived from the wall clock so the fixture can never
+  // age into the cutoff-passed state: a hardcoded cutoff (previously
+  // 2026-10-20T17:30Z) silently flipped every later run to the closed state.
+  const startsAtMs = Date.now() + 9 * 60 * 60 * 1000;
   return {
     event_id: EVENT_ID,
     venue_name: 'Court Central',
     timezone: 'UTC',
-    starts_at: '2026-10-20T18:30:00.000Z',
-    registration_cutoff_at: '2026-10-20T17:30:00.000Z',
+    starts_at: new Date(startsAtMs).toISOString(),
+    registration_cutoff_at: new Date(startsAtMs - 60 * 60 * 1000).toISOString(),
     accepted_count: 6,
     playing_count: 4,
     reserve_count: 2,
