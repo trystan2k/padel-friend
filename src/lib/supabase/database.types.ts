@@ -1082,32 +1082,56 @@ export type Database = {
         Args: { p_date: string; p_time: string; p_zone: string }
         Returns: string
       }
-      match_registration_counts: {
-        Args: { p_match_event_id: string }
-        Returns: {
-          accepted_count: number
-          playing_count: number
-          reserve_count: number
-          reserve_not_playing_count: number
-        }[]
-      }
+      match_registration_counts:
+        | {
+            Args: { p_match_event_id: string }
+            Returns: {
+              accepted_count: number
+              playing_count: number
+              reserve_count: number
+              reserve_not_playing_count: number
+            }[]
+          }
+        | {
+            Args: { p_as_of: string; p_match_event_id: string }
+            Returns: {
+              accepted_count: number
+              playing_count: number
+              reserve_count: number
+              reserve_not_playing_count: number
+            }[]
+          }
       match_registration_is_member: {
         Args: { p_community_id: string; p_user_id: string }
         Returns: boolean
       }
-      match_registration_roster: {
-        Args: { p_match_event_id: string }
-        Returns: {
-          accepted_order: number
-          accepted_total: number
-          participation_status: Database["public"]["Enums"]["match_registration_participation"]
-          playing_total: number
-          registration_id: string
-          reserve_total: number
-          roster_position: number
-          user_id: string
-        }[]
-      }
+      match_registration_roster:
+        | {
+            Args: { p_match_event_id: string }
+            Returns: {
+              accepted_order: number
+              accepted_total: number
+              participation_status: Database["public"]["Enums"]["match_registration_participation"]
+              playing_total: number
+              registration_id: string
+              reserve_total: number
+              roster_position: number
+              user_id: string
+            }[]
+          }
+        | {
+            Args: { p_as_of: string; p_match_event_id: string }
+            Returns: {
+              accepted_order: number
+              accepted_total: number
+              participation_status: Database["public"]["Enums"]["match_registration_participation"]
+              playing_total: number
+              registration_id: string
+              reserve_total: number
+              roster_position: number
+              user_id: string
+            }[]
+          }
       onboard_player: {
         Args: {
           p_bio?: string

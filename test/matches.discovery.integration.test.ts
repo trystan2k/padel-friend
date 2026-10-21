@@ -3,6 +3,7 @@ import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { describe, expect, it } from 'vitest';
 import type { Database } from '../src/lib/supabase/database.types';
 import { matchPhotoFixture } from './helpers/match-photo-fixtures';
+import { sqlRows, makeRawRpc } from './helpers/match-registration-sql';
 import {
   assertLocalSupabaseEnvInCi,
   dotEnvPathFromImportMetaUrl,
@@ -33,6 +34,9 @@ async function fixtureSql(env: Env, sql: string): Promise<void> {
 
 const expectedDetailKeys = [
   'accepted_count',
+  // PAF-85: get_match_event captures and echoes its own one-time snapshot
+  // instant; every temporal field and the caller badge are classified at it.
+  'as_of',
   'caller_badge',
   'caller_eligibility',
   'caller_is_invited',
@@ -1029,5 +1033,458 @@ describe('match event caller context regression (F24 invited members)', () => {
       expect(memberMy[0]!['registration_open']).toBe(true);
     },
     120000
+  );
+});
+
+// PAF-85 snapshot regression: badges follow the snapshot. caller_badge, the
+// four counts, registration_open and is_past are all classified at the single
+// instant the response echoes as as_of. A cutoff marker written AFTER the
+// requested instant must not close that earlier snapshot, and the snapshot is
+// a temporal classification of the CURRENT accepted roster — never a stored
+// participation_status replay or a historical membership reconstruction.
+describe('match event snapshot badge regression (PAF-85)', () => {
+  it.skipIf(!environment.env)(
+    'classifies badges, counts and openness at the echoed snapshot instant across cutoff boundaries without letting a later marker rewrite an earlier snapshot',
+    async () => {
+      const { url, key } = environment.env!;
+      const [creator, p1, p2, p3, fifth, invited, viewer] = await Promise.all([
+        actor('paf85-creator', 'PAF85 Creator'),
+        actor('paf85-p1', 'PAF85 P1'),
+        actor('paf85-p2', 'PAF85 P2'),
+        actor('paf85-p3', 'PAF85 P3'),
+        actor('paf85-fifth', 'PAF85 Fifth'),
+        actor('paf85-invited', 'PAF85 Invited'),
+        actor('paf85-viewer', 'PAF85 Viewer')
+      ]);
+
+      // ONE deterministic DB instant: every fixture timestamp below is derived
+      // from it, so ordering (as_of < cutoff < now < start) holds regardless of
+      // how long the suite runs. No sleeps, no clock mocks, no scheduler races.
+      const instantOf = async (): Promise<number> =>
+        Number(
+          (
+            await sqlRows(
+              // `extract` is SQL special syntax and cannot be schema-qualified.
+              `select (extract(epoch from pg_catalog.clock_timestamp())*1000)::bigint as db_now_ms`
+            )
+          )[0]!['db_now_ms']
+        );
+      const baseMs = await instantOf();
+      const at = (offsetMs: number) => new Date(baseMs + offsetMs).toISOString();
+      // SQL literal form for fixture timestamps (quoted).
+      const sqlAt = (offsetMs: number) => `'${at(offsetMs)}'`;
+
+      const communityId = crypto.randomUUID();
+      const events: Record<string, string> = {
+        // Cutoff already elapsed at fixture time (cases A/B).
+        pastCutoff: crypto.randomUUID(),
+        // Cutoff still ahead; snapshots at/after it and at its start (case C).
+        futureCutoff: crypto.randomUUID(),
+        // Complete quartet straddling an elapsed cutoff (case D).
+        quartet: crypto.randomUUID(),
+        // Invited-only caller straddling a future cutoff (case D).
+        inviteOnly: crypto.randomUUID(),
+        // No registrations at all: empty-roster counts (case D).
+        empty: crypto.randomUUID(),
+        // Future cutoff for the detail/list same-instant agreement (case E).
+        agreement: crypto.randomUUID()
+      };
+      const q = (value: string) => `'${value.replaceAll("'", "''")}'`;
+      const insertEvent = (
+        eventKey: string,
+        startsAt: string,
+        cutoffAt: string,
+        visibility = 'community_open'
+      ) => {
+        const photo = matchPhotoFixture(communityId, events[eventKey]!, creator.id);
+        return `${photo.sql}
+        insert into public.match_events(id,community_id,created_by,starts_at,timezone,event_type,visibility,team_assignment_mode,venue_name,maps_url,photo_path,registration_cutoff_at)
+         values (${q(events[eventKey]!)},${q(communityId)},${q(creator.id)},${startsAt},'UTC','friendly','${visibility}','POST_MATCH_TEAMS','PAF85 court','https://maps.google.com/maps/place/paf85',${q(photo.path)},${cutoffAt});`;
+      };
+      // Accepted member row at an explicit ordinal, mirroring the FIFO
+      // engine's persisted shape (lifecycle defaults to accepted).
+      const acceptedRow = (eventKey: string, who: Actor, ordinal: number) =>
+        `insert into public.match_event_registrations(match_event_id,user_id,accepted_at,accepted_order,participation_status,registration_source)
+         values (${q(events[eventKey]!)},${q(who.id)},${sqlAt(-86_400_000 + ordinal * 60_000)},${ordinal},'reserve','member');`;
+      await fixtureSql(
+        environment.env!,
+        `do $$ begin
+      insert into public.communities(id,name,visibility,created_by,settings) values
+        (${q(communityId)},'PAF85 snapshot','public',${q(creator.id)},'{}'::jsonb);
+      insert into public.community_members(community_id,user_id,role,status,valid_from,activated_at) values
+        (${q(communityId)},${q(creator.id)},'admin','active',now()-interval '1 minute',now()-interval '1 minute'),
+        (${q(communityId)},${q(p1.id)},'member','active',now()-interval '1 minute',now()-interval '1 minute'),
+        (${q(communityId)},${q(p2.id)},'member','active',now()-interval '1 minute',now()-interval '1 minute'),
+        (${q(communityId)},${q(p3.id)},'member','active',now()-interval '1 minute',now()-interval '1 minute'),
+        (${q(communityId)},${q(fifth.id)},'member','active',now()-interval '1 minute',now()-interval '1 minute'),
+        (${q(communityId)},${q(invited.id)},'member','active',now()-interval '1 minute',now()-interval '1 minute'),
+        (${q(communityId)},${q(viewer.id)},'member','active',now()-interval '1 minute',now()-interval '1 minute');
+      -- A live scheduler would race the deliberately-due fixture; drop the job
+      -- exactly like the populated-upgrade fixture does.
+      if exists (select 1 from pg_catalog.pg_extension where extname='pg_cron') then
+        begin
+          delete from cron.job where jobname in ('padel-friend-match-registration-cutoff','match-registration-cutoff');
+        exception when insufficient_privilege or undefined_table then null;
+        end;
+      end if;
+      ${insertEvent('pastCutoff', sqlAt(7 * 86_400_000), sqlAt(-60_000))}
+      ${insertEvent('futureCutoff', sqlAt(7 * 86_400_000), sqlAt(60_000))}
+      ${insertEvent('quartet', sqlAt(7 * 86_400_000), sqlAt(-30_000))}
+      ${insertEvent('inviteOnly', sqlAt(7 * 86_400_000), sqlAt(60_000), 'invite_only')}
+      -- Empty roster: skip the future-start creator registration trigger.
+      alter table public.match_events disable trigger match_event_creator_registration;
+      ${insertEvent('empty', sqlAt(7 * 86_400_000), sqlAt(60_000))}
+      alter table public.match_events enable trigger match_event_creator_registration;
+      ${insertEvent('agreement', sqlAt(7 * 86_400_000), sqlAt(6 * 3_600_000))}
+      insert into public.match_event_invites(match_event_id,invitee_user_id,invited_by,created_at) values
+        (${q(events.inviteOnly!)},${q(invited.id)},${q(creator.id)},${sqlAt(0)});
+      -- Five accepted on each five-player event: the publication trigger gave
+      -- the creator order 1, p1..p3 take orders 2-4, fifth takes order 5.
+      ${acceptedRow('pastCutoff', p1, 2)}
+      ${acceptedRow('pastCutoff', p2, 3)}
+      ${acceptedRow('pastCutoff', p3, 4)}
+      ${acceptedRow('pastCutoff', fifth, 5)}
+      ${acceptedRow('futureCutoff', p1, 2)}
+      ${acceptedRow('futureCutoff', p2, 3)}
+      ${acceptedRow('futureCutoff', p3, 4)}
+      ${acceptedRow('futureCutoff', fifth, 5)}
+      ${acceptedRow('quartet', p1, 2)}
+      ${acceptedRow('quartet', p2, 3)}
+      ${acceptedRow('quartet', p3, 4)}
+      ${acceptedRow('agreement', p1, 2)}
+      ${acceptedRow('agreement', p2, 3)}
+      ${acceptedRow('agreement', p3, 4)}
+      ${acceptedRow('agreement', fifth, 5)}
+      end $$;`
+      );
+
+      const detailOf = async (who: Actor, eventId: string) => {
+        const result = await who.client.rpc('get_match_event', { p_event_id: eventId });
+        if (result.error)
+          throw new Error(`detail ${eventId} for ${who.name}: ${result.error.message}`);
+        return isRecord(result.data) ? result.data : null;
+      };
+      const listAt = async (who: Actor, entry: string, asOf: string) => {
+        const result = await who.client.rpc('list_match_events', {
+          p_entry: entry,
+          p_community_id: communityId,
+          p_cursor: '',
+          p_limit: 50,
+          p_as_of: asOf
+        });
+        if (result.error)
+          throw new Error(`${entry} listing for ${who.name}: ${result.error.message}`);
+        return listPayload(result.data);
+      };
+      const rowFor = (rows: ListRow[], eventId: string) => {
+        const row = rows.find((candidate) => eventIdOf(candidate) === eventId);
+        expect(row, `event ${eventId} in listing`).toBeDefined();
+        return row!;
+      };
+      // Everything the snapshot contract fixes for one listing row.
+      const snapshotProjection = (row: ListRow) => ({
+        caller_badge: row['caller_badge'],
+        accepted_count: row['accepted_count'],
+        playing_count: row['playing_count'],
+        reserve_count: row['reserve_count'],
+        reserve_not_playing_count: row['reserve_not_playing_count'],
+        group_count: row['group_count'],
+        more_needed: row['more_needed'],
+        registration_open: row['registration_open'],
+        is_past: row['is_past'],
+        as_of_ms: Date.parse(textOf(row['as_of']))
+      });
+      // Marker + stored participation + notification side effects, for proving
+      // reads stay side-effect free.
+      const guardState = async (eventId: string, userId: string) => ({
+        marker: await sqlRows(
+          `select cutoff_processed_at::text as marker from public.match_event_registration_state where match_event_id='${eventId}'`
+        ),
+        participation: await sqlRows(
+          `select participation_status::text as status from public.match_event_registrations where match_event_id='${eventId}' and user_id='${userId}'`
+        ),
+        notifications: await sqlRows(
+          `select pg_catalog.count(*)::int as n from public.notifications where target_id='${eventId}'`
+        )
+      });
+
+      // --- Snapshot BEFORE a real, already-elapsed cutoff (case A). ---
+      const beforeAsOf = at(-120_000);
+      const guardBefore = await guardState(events.pastCutoff!, fifth.id);
+      expect(guardBefore.marker[0]!['marker'], 'no marker before processing').toBeNull();
+
+      const snapshotBefore = rowFor(await listAt(fifth, 'my', beforeAsOf), events.pastCutoff!);
+      expect(snapshotProjection(snapshotBefore)).toEqual({
+        caller_badge: 'reserve',
+        accepted_count: 5,
+        playing_count: 4,
+        reserve_count: 1,
+        reserve_not_playing_count: 0,
+        group_count: 1,
+        more_needed: 3,
+        registration_open: true,
+        is_past: false,
+        as_of_ms: Date.parse(beforeAsOf)
+      });
+
+      // The wall-clock detail read of the SAME due-but-unprocessed event is
+      // already closed: the two clocks genuinely disagree.
+      const dueDetail = (await detailOf(fifth, events.pastCutoff!))!;
+      expect(dueDetail['caller_badge']).toBe('reserve_not_playing');
+      expect(dueDetail['reserve_count']).toBe(0);
+      expect(dueDetail['reserve_not_playing_count']).toBe(1);
+      expect(dueDetail['registration_open']).toBe(false);
+      // Neither read mutated the marker, the stored participation or the
+      // notifications.
+      expect(await guardState(events.pastCutoff!, fifth.id)).toEqual(guardBefore);
+
+      // --- Persist the cutoff marker LATER than the snapshot (case B). ---
+      const processed = await sqlRows(
+        `select public.process_match_event_registration_cutoff('${events.pastCutoff!}') as result`
+      );
+      expect(recordPayload(processed[0]!['result'])['processed']).toBe(true);
+      const guardAfterProcess = await guardState(events.pastCutoff!, fifth.id);
+      const markerText = guardAfterProcess.marker[0]!['marker'];
+      expect(markerText, 'cutoff marker persisted').not.toBeNull();
+      expect(Date.parse(textOf(markerText))).toBeGreaterThan(Date.parse(beforeAsOf));
+      // The reconcile really flipped the stored residual reserve — which the
+      // snapshot classification must ignore.
+      expect(guardAfterProcess.participation[0]!['status']).toBe('reserve_not_playing');
+
+      // The earlier snapshot is unchanged: badge still reserve, the residual
+      // still counted as reserve (not reserve_not_playing), still open. A
+      // `marker IS NOT NULL` regression would close it here.
+      const snapshotAfter = rowFor(await listAt(fifth, 'my', beforeAsOf), events.pastCutoff!);
+      expect(snapshotProjection(snapshotAfter)).toEqual(snapshotProjection(snapshotBefore));
+      expect(snapshotAfter['caller_badge']).toBe('reserve');
+      // The detail clock still classifies closed at now(), marker or not.
+      expect((await detailOf(fifth, events.pastCutoff!))!['caller_badge']).toBe(
+        'reserve_not_playing'
+      );
+
+      // --- Cutoff still ahead: at/after/equality snapshots (case C). ---
+      const openRow = rowFor(await listAt(fifth, 'my', at(0)), events.futureCutoff!);
+      expect(snapshotProjection(openRow)).toEqual({
+        caller_badge: 'reserve',
+        accepted_count: 5,
+        playing_count: 4,
+        reserve_count: 1,
+        reserve_not_playing_count: 0,
+        group_count: 1,
+        more_needed: 3,
+        registration_open: true,
+        is_past: false,
+        as_of_ms: baseMs
+      });
+      // Equality is closed: exactly AT the cutoff the residual reserve flips
+      // to reserve_not_playing and registration closes; it stays closed after.
+      for (const offsetMs of [60_000, 90_000]) {
+        const closedRow = rowFor(await listAt(fifth, 'my', at(offsetMs)), events.futureCutoff!);
+        expect(snapshotProjection(closedRow)).toEqual({
+          caller_badge: 'reserve_not_playing',
+          accepted_count: 5,
+          playing_count: 4,
+          reserve_count: 0,
+          reserve_not_playing_count: 1,
+          group_count: 1,
+          more_needed: 3,
+          registration_open: false,
+          is_past: false,
+          as_of_ms: baseMs + offsetMs
+        });
+      }
+
+      // Start equality (starts_at = p_as_of) counts as past and is included
+      // in the past entry; `my` needs starts_at strictly greater, so the same
+      // instant drops every one of the caller's events.
+      const pastRow = rowFor(await listAt(fifth, 'past', at(7 * 86_400_000)), events.futureCutoff!);
+      expect(pastRow['is_past']).toBe(true);
+      expect(pastRow['caller_badge']).toBe('reserve_not_playing');
+      expect(Date.parse(textOf(pastRow['as_of']))).toBe(baseMs + 7 * 86_400_000);
+      expect(await listAt(fifth, 'my', at(7 * 86_400_000))).toEqual([]);
+
+      // --- Full quartet, creator, invited, empty roster (case D). ---
+      // The quartet caller stays playing on BOTH sides of an elapsed cutoff;
+      // only registration_open flips, proving the reads straddle the boundary.
+      const quartetBefore = rowFor(await listAt(p3, 'my', at(-45_000)), events.quartet!);
+      expect(snapshotProjection(quartetBefore)).toEqual({
+        caller_badge: 'playing',
+        accepted_count: 4,
+        playing_count: 4,
+        reserve_count: 0,
+        reserve_not_playing_count: 0,
+        group_count: 1,
+        more_needed: 4,
+        registration_open: true,
+        is_past: false,
+        as_of_ms: baseMs - 45_000
+      });
+      const quartetAfter = rowFor(await listAt(p3, 'my', at(-15_000)), events.quartet!);
+      expect(snapshotProjection(quartetAfter)).toEqual({
+        caller_badge: 'playing',
+        accepted_count: 4,
+        playing_count: 4,
+        reserve_count: 0,
+        reserve_not_playing_count: 0,
+        group_count: 1,
+        more_needed: 4,
+        registration_open: false,
+        is_past: false,
+        as_of_ms: baseMs - 15_000
+      });
+      // The creator keeps badge precedence over the playing roster slot on
+      // both sides too.
+      for (const offsetMs of [-45_000, -15_000]) {
+        const creatorRow = rowFor(await listAt(creator, 'my', at(offsetMs)), events.quartet!);
+        expect(creatorRow['caller_badge']).toBe('creator');
+      }
+
+      // The invited-only caller stays invited on both sides of the cutoff.
+      expect(rowFor(await listAt(invited, 'my', at(0)), events.inviteOnly!)['caller_badge']).toBe(
+        'invited'
+      );
+      expect(
+        rowFor(await listAt(invited, 'my', at(120_000)), events.inviteOnly!)['caller_badge']
+      ).toBe('invited');
+
+      // Empty roster: all four counts are zero at the snapshot, group math
+      // degrades to 0 groups / 4 more needed, and the viewer has no badge.
+      const emptyRow = rowFor(await listAt(viewer, 'available', at(0)), events.empty!);
+      expect(emptyRow['caller_badge']).toBeNull();
+      expect(emptyRow['accepted_count']).toBe(0);
+      expect(emptyRow['playing_count']).toBe(0);
+      expect(emptyRow['reserve_count']).toBe(0);
+      expect(emptyRow['reserve_not_playing_count']).toBe(0);
+      expect(emptyRow['group_count']).toBe(0);
+      expect(emptyRow['more_needed']).toBe(4);
+      expect(emptyRow['registration_open']).toBe(true);
+      expect(emptyRow['is_past']).toBe(false);
+      // A creator badge never required a roster row of their own.
+      const emptyCreatorRow = rowFor(await listAt(creator, 'my', at(0)), events.empty!);
+      expect(emptyCreatorRow['caller_badge']).toBe('creator');
+      expect(emptyCreatorRow['accepted_count']).toBe(0);
+
+      // --- Detail and list agree at the detail's own captured instant
+      // (case E). The raw echoed spelling is fed straight back as p_as_of,
+      // proving an equivalent timezone spelling selects the same instant. ---
+      const agreementGuard = await guardState(events.agreement!, fifth.id);
+      const readStartedMs = await instantOf();
+      const agreementDetail = (await detailOf(fifth, events.agreement!))!;
+      const readEndedMs = await instantOf();
+      const detailAsOf = textOf(agreementDetail['as_of']);
+      const detailAsOfMs = Date.parse(detailAsOf);
+      expect(detailAsOfMs).toBeGreaterThanOrEqual(readStartedMs);
+      expect(detailAsOfMs).toBeLessThanOrEqual(readEndedMs);
+      expect(agreementDetail['caller_badge']).toBe('reserve');
+      expect(agreementDetail['registration_open']).toBe(true);
+
+      const agreementListRow = rowFor(await listAt(fifth, 'my', detailAsOf), events.agreement!);
+      expect(Date.parse(textOf(agreementListRow['as_of']))).toBe(detailAsOfMs);
+      for (const field of [
+        'caller_badge',
+        'accepted_count',
+        'playing_count',
+        'reserve_count',
+        'reserve_not_playing_count',
+        'group_count',
+        'more_needed',
+        'registration_open',
+        'is_past',
+        'caller_is_invited',
+        'caller_eligibility',
+        'caller_requires_approval'
+      ])
+        expect(agreementListRow[field], `list/detail agreement on ${field}`).toBe(
+          agreementDetail[field]
+        );
+      // The reads still wrote nothing.
+      expect(await guardState(events.agreement!, fifth.id)).toEqual(agreementGuard);
+
+      // --- Omitted and null p_as_of coalesce to the read's own now(). ---
+      const omitted = await fifth.client.rpc('list_match_events', {
+        p_entry: 'my',
+        p_community_id: communityId,
+        p_cursor: '',
+        p_limit: 50
+      });
+      expect(omitted.error).toBeNull();
+      expect(
+        Date.parse(textOf(rowFor(listPayload(omitted.data), events.agreement!)['as_of']))
+      ).toBeGreaterThanOrEqual(readEndedMs);
+      // Explicit JSON null reaches the SQL coalesce() as a wire-level NULL
+      // (PostgREST does not apply the SQL default for an explicit null), so
+      // this goes through the raw fetch helper: the typed rpc args reject
+      // null by design.
+      const rawSignup = await createClient(url, key, {
+        auth: { persistSession: false, autoRefreshToken: false }
+      }).auth.signUp({
+        email: `paf85-raw-${crypto.randomUUID()}@test.local`,
+        password: 'Password123!'
+      });
+      expect(rawSignup.error).toBeNull();
+      const nulled = await makeRawRpc(url, key)(
+        { token: rawSignup.data.session!.access_token },
+        'list_match_events',
+        {
+          p_entry: 'available',
+          p_community_id: communityId,
+          p_cursor: '',
+          p_limit: 50,
+          p_as_of: null
+        }
+      );
+      expect(nulled.error).toBeNull();
+      expect(
+        Date.parse(textOf(rowFor(listPayload(nulled.data), events.agreement!)['as_of']))
+      ).toBeGreaterThanOrEqual(readEndedMs);
+
+      // --- ACL: the snapshot helper overloads stay internal; the public
+      // reads stay authenticated-only. ---
+      const anonClient = createClient<Database>(url, key, {
+        auth: { persistSession: false, autoRefreshToken: false }
+      });
+      for (const [label, client] of [
+        ['anon', anonClient],
+        ['authenticated', viewer.client]
+      ] as const) {
+        const roster = await client.rpc('match_registration_roster', {
+          p_match_event_id: events.pastCutoff!,
+          p_as_of: at(0)
+        });
+        expect(roster.error, `snapshot roster overload must reject ${label}`).not.toBeNull();
+        expect(roster.error!.message).toContain('permission denied');
+        const counts = await client.rpc('match_registration_counts', {
+          p_match_event_id: events.pastCutoff!,
+          p_as_of: at(0)
+        });
+        expect(counts.error, `snapshot counts overload must reject ${label}`).not.toBeNull();
+        expect(counts.error!.message).toContain('permission denied');
+      }
+      for (const [label, call] of [
+        [
+          'get_match_event',
+          () => anonClient.rpc('get_match_event', { p_event_id: events.pastCutoff! })
+        ],
+        [
+          'list_match_events',
+          () =>
+            anonClient.rpc('list_match_events', {
+              p_entry: 'available',
+              p_community_id: communityId,
+              p_cursor: '',
+              p_limit: 50,
+              p_as_of: at(0)
+            })
+        ]
+      ] as const) {
+        const denied = await call();
+        expect(denied.error, `${label} must reject anon`).not.toBeNull();
+        expect(denied.error!.message).toContain('permission denied');
+      }
+      // Authenticated callers keep both public reads.
+      expect(await detailOf(viewer, events.pastCutoff!)).not.toBeNull();
+      expect((await listAt(viewer, 'available', at(0))).length).toBeGreaterThan(0);
+    },
+    180000
   );
 });

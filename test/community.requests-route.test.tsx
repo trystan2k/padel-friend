@@ -6,7 +6,7 @@ import { beforeEach, expect, it, vi } from 'vitest';
 const mocks = vi.hoisted(() => ({
   context: vi.fn<(input: { data: { community_id: string } }) => Promise<unknown>>(),
   defaults: vi.fn<() => Promise<unknown>>(),
-  members: vi.fn<() => Promise<unknown>>(),
+  members: vi.fn<(input: { data: { community_id: string } }) => Promise<unknown>>(),
   onboarding: vi.fn<() => Promise<unknown>>(),
   locale: vi.fn<() => Promise<unknown>>(),
   theme: vi.fn<() => Promise<unknown>>()

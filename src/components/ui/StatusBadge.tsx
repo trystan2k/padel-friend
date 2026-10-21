@@ -2,7 +2,7 @@ import * as stylex from '@stylexjs/stylex';
 import type { ReactNode, HTMLAttributes } from 'react';
 import { styles } from './status-badge.styles';
 
-type Tone = 'playing' | 'reserve' | 'muted' | 'danger' | 'guest';
+export type StatusBadgeTone = 'positive' | 'neutral' | 'muted' | 'danger' | 'guest';
 export function StatusBadge({
   children,
   tone,
@@ -10,7 +10,7 @@ export function StatusBadge({
   ...props
 }: HTMLAttributes<HTMLElement> & {
   children: ReactNode;
-  tone?: Tone;
+  tone?: StatusBadgeTone;
   appearance?: 'badge' | 'emphasis' | 'count' | 'summary';
 }) {
   if (appearance === 'emphasis') return <strong {...props}>{children}</strong>;
@@ -22,14 +22,14 @@ export function StatusBadge({
       </span>
     );
   const toneStyle =
-    tone === 'playing'
-      ? styles.playing
+    tone === 'positive'
+      ? styles.positive
       : tone === 'guest'
         ? styles.guest
         : tone === 'danger'
           ? styles.danger
-          : tone === 'reserve'
-            ? styles.reserve
+          : tone === 'neutral'
+            ? styles.neutral
             : styles.muted;
   return (
     <span {...props} {...stylex.props(styles.badge, toneStyle)}>

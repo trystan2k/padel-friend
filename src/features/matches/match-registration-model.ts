@@ -6,6 +6,7 @@ import type { Database } from '../../lib/supabase/database.types';
 export type MatchRegistrationParticipation =
   Database['public']['Enums']['match_registration_participation'];
 export type MatchRegistrationSource = Database['public']['Enums']['match_registration_source'];
+export type MatchRegistrationAction = 'join' | 'request' | 'full' | 'closed' | 'invited' | 'none';
 
 // Every domain/auth failure the four registration RPCs can raise, collapsed to a
 // distinct, user-actionable code. The UI never sees the raw Postgres token.

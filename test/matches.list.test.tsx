@@ -5,6 +5,7 @@ import { I18nextProvider } from 'react-i18next';
 import type { ComponentProps } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createI18n } from '../src/i18n/config';
+import type { Locale } from '../src/i18n/config';
 import en from '../src/locales/en/translation.json';
 
 const mocks = vi.hoisted(() => ({
@@ -31,39 +32,40 @@ vi.mock('@tanstack/react-router', async (original) => ({
 vi.mock('../src/features/matches/matches.functions', () => ({ listMatchEvents: mocks.list }));
 import { MatchesPage } from '../src/features/matches/MatchesPage';
 import type { MatchEventListItem } from '../src/features/matches/match-model';
+import { makeMatchCard, matchCountScenario } from './helpers/match-fixtures';
 
-const event = (id: number, count: number, badge: string | null = null): MatchEventListItem => ({
-  event_id: `00000000-0000-4000-8000-${String(id).padStart(12, '0')}`,
-  community_id: '11111111-1111-4111-8111-111111111111',
-  community_name: 'Club Norte',
-  creator_id: '22222222-2222-4222-8222-222222222222',
-  creator_name: 'Ana Silva',
-  creator_level: 3.5,
-  starts_at: '2026-10-20T18:30:00.000Z',
-  timezone: 'Europe/Madrid',
-  event_type: 'competitive',
-  visibility: 'community_open',
-  team_assignment_mode: 'PREDEFINED_TEAMS',
-  venue_name: 'Court Central',
-  maps_url: 'https://www.google.com/maps/place/Court+Central',
-  photo_path: 'photo.jpg',
-  photo_url: 'https://example.test/photo.jpg',
-  price_minor: 1250,
-  currency: 'EUR',
-  registration_cutoff_at: '2026-10-20T17:30:00Z',
-  accepted_count: count,
-  playing_count: Math.floor(count / 4) * 4,
-  reserve_count: count % 4,
-  group_count: Math.floor(count / 4),
-  more_needed: 4 - (count % 4),
-  caller_badge: badge,
-  is_past: false,
-  registration_open: true,
-  caller_eligibility: 'member',
-  caller_requires_approval: false
-});
+const event = (
+  id: number,
+  count: number,
+  badge: MatchEventListItem['caller_badge'] = null
+): MatchEventListItem =>
+  makeMatchCard({
+    event_id: `00000000-0000-4000-8000-${String(id).padStart(12, '0')}`,
+    community_id: '11111111-1111-4111-8111-111111111111',
+    community_name: 'Club Norte',
+    creator_id: '22222222-2222-4222-8222-222222222222',
+    creator_name: 'Ana Silva',
+    creator_level: 3.5,
+    starts_at: '2026-10-20T18:30:00.000Z',
+    timezone: 'Europe/Madrid',
+    event_type: 'competitive',
+    visibility: 'community_open',
+    team_assignment_mode: 'PREDEFINED_TEAMS',
+    venue_name: 'Court Central',
+    maps_url: 'https://www.google.com/maps/place/Court+Central',
+    photo_url: 'https://example.test/photo.jpg',
+    price_minor: 1250,
+    currency: 'EUR',
+    registration_cutoff_at: '2026-10-20T17:30:00Z',
+    ...matchCountScenario({ accepted: count }),
+    caller_badge: badge,
+    is_past: false,
+    registration_open: true,
+    caller_eligibility: 'member',
+    caller_requires_approval: false
+  });
 const copy = en.matches;
-function mount(props: Partial<ComponentProps<typeof MatchesPage>> = {}, locale = 'en') {
+function mount(props: Partial<ComponentProps<typeof MatchesPage>> = {}, locale: Locale = 'en') {
   return render(
     <I18nextProvider i18n={createI18n(locale)}>
       <MatchesPage entry="available" {...props} />
@@ -97,7 +99,7 @@ describe('match list surfaces', () => {
     ['pt-BR', 4, '4 jogando', '4 faltam'],
     ['es', 3, '3 reservas', '1 falta'],
     ['es', 4, '4 jugando', '4 faltan']
-  ])('formats count plurals in %s', (locale, count, expected, needed) => {
+  ] as const)('formats count plurals in %s', (locale, count, expected, needed) => {
     mount({ initialItems: [event(2, count)] }, locale);
     expect(screen.getByRole('article').textContent).toContain(expected);
     expect(screen.getByRole('article').textContent).toContain(needed);
@@ -196,12 +198,13 @@ describe('match list surfaces', () => {
           ...event(32, 0),
           caller_eligibility: 'out_of_range',
           caller_requires_approval: true,
-          caller_is_invited: true,
-          is_accepted: false
+          caller_is_invited: true
         }
       ]
     });
     const [acceptedCard, nonAcceptedCard] = screen.getAllByRole('article');
+    if (!(acceptedCard instanceof HTMLElement) || !(nonAcceptedCard instanceof HTMLElement))
+      throw new TypeError('Expected two article cards');
     expect(within(acceptedCard).getByText(copy.detail.invitationInfo)).toBeTruthy();
     expect(within(acceptedCard).getByText(copy.badges.playing)).toBeTruthy();
     expect(within(acceptedCard).queryByText(copy.detail.outOfRangeApprovalRequired)).toBeNull();

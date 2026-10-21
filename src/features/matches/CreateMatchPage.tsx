@@ -2,28 +2,51 @@ import * as stylex from '@stylexjs/stylex';
 import { Link, useNavigate } from '@tanstack/react-router';
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { MatchDetailsForm, type Draft } from './MatchDetailsForm';
+import { MatchDetailsForm } from './MatchDetailsForm';
 import { MatchInviteePicker } from './MatchInviteePicker';
 import { MatchPhotoUpload } from './MatchPhotoUpload';
 import { MatchReview } from './MatchReview';
 import { createMatchStyles as s } from './create-match.styles';
 import { localMatchInstant } from './match-time';
+import type {
+  MatchCreationOptions,
+  MatchDraft,
+  MatchInvitee,
+  MatchPublishInput
+} from './match-contracts';
 import { getMatchCreationOptions, publishMatchEvent } from './matches.functions';
 import { copySavedVenueMatchPhotoFn, removeUnpublishedMatchPhotoFn } from './match-photo.functions';
 
-const blank: Draft = {
+const blank: MatchDraft = {
   type: 'friendly',
   visibility: 'community_open',
+  teamMode: 'POST_MATCH_TEAMS',
   levelRestriction: true,
-  currency: 'EUR'
+  currency: 'EUR',
+  community_id: '',
+  timezone: null,
+  date: '',
+  startTime: '',
+  savedVenue: '',
+  venueName: '',
+  mapsUrl: '',
+  courtNotes: '',
+  duration: '',
+  notes: '',
+  minLevel: '',
+  maxLevel: '',
+  courtBooked: false,
+  price: '',
+  paymentNote: '',
+  maximumRegistrations: '',
+  cutoff: ''
 };
-type Options = {
-  communities: any[];
-  saved_venues: any[];
-  level_defaults: { min?: number | null; max?: number | null; level?: number | null } | null;
+const emptyOptions: MatchCreationOptions = {
+  communities: [],
+  saved_venues: [],
+  level_defaults: null
 };
-const emptyOptions: Options = { communities: [], saved_venues: [], level_defaults: null };
-type FrozenRequest = { id: string; input: Record<string, unknown>; inviteeIds: string[] };
+type FrozenRequest = { id: string; input: MatchPublishInput; inviteeIds: string[] };
 
 export function CreateMatchPage() {
   const { t, i18n } = useTranslation();
@@ -38,13 +61,13 @@ export function CreateMatchPage() {
   const copiedPhoto = useRef<{ key: string } | null>(null);
   const photoCopyGeneration = useRef(0);
   const editedRange = useRef({ min: false, max: false });
-  const [options, setOptions] = useState<Options>(emptyOptions);
+  const [options, setOptions] = useState<MatchCreationOptions>(emptyOptions);
   const [optionsLoading, setOptionsLoading] = useState(true);
   const [optionsError, setOptionsError] = useState(false);
   const [communityId, setCommunityId] = useState('');
-  const [value, setValue] = useState<Draft>(blank);
+  const [value, setValue] = useState<MatchDraft>(blank);
   const [step, setStep] = useState(0);
-  const [invitees, setInvitees] = useState<any[]>([]);
+  const [invitees, setInvitees] = useState<MatchInvitee[]>([]);
   const [photo, setPhoto] = useState('');
   const [photoBusy, setPhotoBusy] = useState(false);
   const [photoCopyBusy, setPhotoCopyBusy] = useState(false);
@@ -76,14 +99,9 @@ export function CreateMatchPage() {
   useEffect(() => {
     const generation = ++optionsGeneration.current;
     void getMatchCreationOptions({ data: {} })
-      .then((result: any) => {
+      .then((result) => {
         if (generation !== optionsGeneration.current) return;
-        const next: Options = {
-          ...emptyOptions,
-          ...result,
-          communities: result?.communities ?? [],
-          saved_venues: result?.saved_venues ?? []
-        };
+        const next = result;
         setOptions(next);
         const first = next.communities[0];
         if (first) {
@@ -94,20 +112,19 @@ export function CreateMatchPage() {
             ...current,
             community_id: first.id,
             timezone: first.timezone,
-            minLevel: current.minLevel ?? next.level_defaults?.min,
-            maxLevel: current.maxLevel ?? next.level_defaults?.max
+            minLevel:
+              current.minLevel ||
+              (next.level_defaults?.min == null ? '' : String(next.level_defaults.min)),
+            maxLevel:
+              current.maxLevel ||
+              (next.level_defaults?.max == null ? '' : String(next.level_defaults.max))
           }));
           // The unscoped response supplies memberships/defaults only. Fetch venue
           // snapshots once the initial membership is known, just like later switches.
           void getMatchCreationOptions({ data: { community_id: first.id } })
-            .then((scoped: any) => {
+            .then((scoped) => {
               if (generation !== optionsGeneration.current) return;
-              setOptions((current) => ({
-                ...current,
-                ...scoped,
-                communities: next.communities,
-                saved_venues: scoped?.saved_venues ?? []
-              }));
+              setOptions({ ...scoped, communities: next.communities });
             })
             .catch(() => {
               if (generation === optionsGeneration.current) setOptionsError(true);
@@ -140,14 +157,9 @@ export function CreateMatchPage() {
     setOptionsLoading(true);
     setOptionsError(false);
     void getMatchCreationOptions({ data: { community_id: communityId } })
-      .then((result: any) => {
+      .then((result) => {
         if (generation !== optionsGeneration.current) return;
-        setOptions((current) => ({
-          ...current,
-          ...result,
-          communities: current.communities,
-          saved_venues: result?.saved_venues ?? []
-        }));
+        setOptions((current) => ({ ...result, communities: current.communities }));
       })
       .catch(() => {
         if (generation === optionsGeneration.current) setOptionsError(true);
@@ -158,7 +170,7 @@ export function CreateMatchPage() {
   }, [communityId]);
 
   const change = useCallback(
-    (key: string, next: unknown) => {
+    <K extends keyof MatchDraft>(key: K, next: MatchDraft[K]) => {
       if (key === 'minLevel') editedRange.current.min = true;
       if (key === 'maxLevel') editedRange.current.max = true;
       let photoEventId = eventId;
@@ -175,7 +187,7 @@ export function CreateMatchPage() {
             () => undefined
           );
       }
-      if (key === 'savedVenue') {
+      if (key === 'savedVenue' && typeof next === 'string') {
         const venue = options.saved_venues.find((item) => item.id === next);
         const previousCopy = copiedPhoto.current;
         const replacingCopy = Boolean(previousCopy && photoRef.current === previousCopy.key);
@@ -200,7 +212,7 @@ export function CreateMatchPage() {
             data: {
               community_id: communityId,
               event_id: photoEventId,
-              saved_venue_id: String(next)
+              saved_venue_id: next
             }
           })
             .then((savedPhotoKey) => {
@@ -222,11 +234,16 @@ export function CreateMatchPage() {
         }
         return;
       }
-      setValue((current) =>
-        key === 'levelRestriction' && next === false
-          ? { ...current, levelRestriction: false, minLevel: null, maxLevel: null }
-          : { ...current, [key]: next }
-      );
+      if (key === 'levelRestriction' && next === false) {
+        setValue((current) => ({
+          ...current,
+          levelRestriction: false,
+          minLevel: '',
+          maxLevel: ''
+        }));
+      } else {
+        setValue((current) => ({ ...current, [key]: next }));
+      }
     },
     [changePhoto, communityId, eventId, options.saved_venues]
   );
@@ -255,9 +272,9 @@ export function CreateMatchPage() {
       setValue({
         ...blank,
         community_id: id,
-        timezone: community?.timezone,
-        minLevel: options.level_defaults?.min,
-        maxLevel: options.level_defaults?.max
+        timezone: community?.timezone ?? null,
+        minLevel: options.level_defaults?.min == null ? '' : String(options.level_defaults.min),
+        maxLevel: options.level_defaults?.max == null ? '' : String(options.level_defaults.max)
       });
       if (abandonedPhoto)
         void removeUnpublishedMatchPhotoFn({ data: { object_key: abandonedPhoto } }).catch(
@@ -266,25 +283,24 @@ export function CreateMatchPage() {
       setOptionsLoading(true);
       setOptionsError(false);
       void getMatchCreationOptions({ data: { community_id: id } })
-        .then((result: any) => {
+        .then((result) => {
           if (generation !== optionsGeneration.current) return;
-          const next: Options = {
-            ...emptyOptions,
-            ...result,
-            communities: options.communities,
-            saved_venues: result?.saved_venues ?? []
-          };
+          const next = { ...result, communities: options.communities };
           setOptions(next);
           setValue((current) => ({
             ...current,
             minLevel:
-              current.levelRestriction === false || editedRange.current.min
+              !current.levelRestriction || editedRange.current.min
                 ? current.minLevel
-                : next.level_defaults?.min,
+                : next.level_defaults?.min == null
+                  ? ''
+                  : String(next.level_defaults.min),
             maxLevel:
-              current.levelRestriction === false || editedRange.current.max
+              !current.levelRestriction || editedRange.current.max
                 ? current.maxLevel
-                : next.level_defaults?.max
+                : next.level_defaults?.max == null
+                  ? ''
+                  : String(next.level_defaults.max)
           }));
         })
         .catch(() => {
@@ -328,7 +344,7 @@ export function CreateMatchPage() {
 
   function validate(now: number) {
     const next: Record<string, string> = {};
-    for (const key of ['community_id', 'date', 'startTime', 'venueName', 'mapsUrl'])
+    for (const key of ['community_id', 'date', 'startTime', 'venueName', 'mapsUrl'] as const)
       if (!value[key]) next[key] = 'required';
     if (!photo) next.photo = 'missingPhoto';
     if (
@@ -345,7 +361,7 @@ export function CreateMatchPage() {
         next.startTime = 'invalidDateTime';
       }
     }
-    if (value.levelRestriction !== false) {
+    if (value.levelRestriction) {
       const min = Number(value.minLevel);
       const max = Number(value.maxLevel);
       if (
@@ -361,10 +377,9 @@ export function CreateMatchPage() {
     }
     if (
       value.price !== '' &&
-      value.price != null &&
       (!Number.isFinite(Number(value.price)) ||
         Number(value.price) < 0 ||
-        !/^\d+(\.\d{1,2})?$/.test(String(value.price)))
+        !/^\d+(\.\d{1,2})?$/.test(value.price))
     )
       next.price = Number(value.price) < 0 ? 'negativePrice' : 'invalidPrice';
     if (!['BRL', 'USD', 'EUR'].includes(value.currency)) next.currency = 'unsupportedCurrency';
@@ -390,6 +405,8 @@ export function CreateMatchPage() {
   async function publish(now: number) {
     if (publishLock.current || !validate(now)) return;
     if (!photo || photoBusy) return;
+    if (!communityId || !value.date || !value.startTime || !value.venueName || !value.mapsUrl)
+      return;
     if (!frozen.current) {
       const id = eventId || crypto.randomUUID();
       const input = Object.freeze({
@@ -401,15 +418,15 @@ export function CreateMatchPage() {
         venue_name: value.venueName,
         maps_url: value.mapsUrl,
         photo_path: photo,
-        team_assignment_mode: value.teamMode ?? 'POST_MATCH_TEAMS',
+        team_assignment_mode: value.teamMode,
         saved_venue_id: value.savedVenue || null,
         court_notes: value.courtNotes || null,
         duration_minutes: value.duration ? Number(value.duration) : null,
         notes: value.notes || null,
-        restriction_enabled: value.levelRestriction !== false,
-        min_level: value.levelRestriction === false ? null : Number(value.minLevel),
-        max_level: value.levelRestriction === false ? null : Number(value.maxLevel),
-        court_booked: Boolean(value.courtBooked),
+        restriction_enabled: value.levelRestriction,
+        min_level: !value.levelRestriction ? null : Number(value.minLevel),
+        max_level: !value.levelRestriction ? null : Number(value.maxLevel),
+        court_booked: value.courtBooked,
         price: value.price === '' ? null : value.price,
         currency: value.currency,
         payment_note: value.paymentNote || null,
@@ -417,11 +434,11 @@ export function CreateMatchPage() {
           ? Number(value.maximumRegistrations)
           : null,
         cutoff_at: cutoffInstant?.toISOString() ?? null
-      });
+      } satisfies MatchPublishInput);
       frozen.current = {
         id,
         input,
-        inviteeIds: invitees.map((person) => person.id ?? person.user_id)
+        inviteeIds: invitees.map((person) => person.user_id)
       };
       setEventId(id);
     }
@@ -507,9 +524,10 @@ export function CreateMatchPage() {
               value={{ ...value, community_id: communityId }}
               options={options}
               errors={fieldErrors}
-              change={(key, next) =>
-                key === 'community_id' ? selectCommunity(String(next)) : change(key, next)
-              }
+              change={<K extends keyof MatchDraft>(key: K, next: MatchDraft[K]) => {
+                if (key === 'community_id' && typeof next === 'string') selectCommunity(next);
+                else change(key, next);
+              }}
             />
             <MatchPhotoUpload
               key={`${communityId}:${eventId}`}

@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { I18nextProvider } from 'react-i18next';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createI18n } from '../src/i18n/config';
+import type { Locale } from '../src/i18n/config';
 import type { MatchRegistrationQueue } from '../src/features/matches/match-registration-model';
 import en from '../src/locales/en/translation.json';
 import pt from '../src/locales/pt-BR/translation.json';
@@ -77,7 +78,7 @@ function queue(overrides: Partial<MatchRegistrationQueue> = {}): MatchRegistrati
 
 function mount(
   value: MatchRegistrationQueue | null,
-  locale = 'en',
+  locale: Locale = 'en',
   props: {
     error?: boolean;
     onRetry?: () => void;

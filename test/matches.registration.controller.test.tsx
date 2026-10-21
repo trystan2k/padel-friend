@@ -46,6 +46,7 @@ beforeEach(() => {
 });
 afterEach(() => {
   cleanup();
+  vi.unstubAllGlobals();
   vi.useRealTimers();
   Object.defineProperty(navigator, 'onLine', { configurable: true, value: true });
 });
@@ -152,6 +153,7 @@ describe('useMatchRegistration controller', () => {
   it('adopts refreshed loader registration and revalidates at the cutoff', async () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2026-10-18T10:00:00.000Z'));
+    const initialRegistration: { registration: MyMatchRegistration } = { registration: none };
     const { result, rerender } = renderHook(
       ({ registration }: { registration: MyMatchRegistration }) =>
         useMatchRegistration({
@@ -159,7 +161,7 @@ describe('useMatchRegistration controller', () => {
           initialRegistration: registration,
           cutoffAt: '2026-10-18T10:00:30.000Z'
         }),
-      { initialProps: { registration: none } }
+      { initialProps: initialRegistration }
     );
     expect(result.current.cutoffReached).toBe(false);
     const refreshed: MyMatchRegistration = {
@@ -182,13 +184,16 @@ describe('useMatchRegistration controller', () => {
     vi.setSystemTime(new Date('2026-10-18T10:00:00.000Z'));
     // Browsers clamp a timer delay above 2^31-1 ms to 0, which fires the timer
     // immediately; reproduce that contract so an overflow regression is visible.
-    const fakeSetTimeout = globalThis.setTimeout;
+    const realSetTimeout = globalThis.setTimeout;
     const requestedDelays: number[] = [];
-    globalThis.setTimeout = (handler, timeout, ...rest) => {
-      const requested = timeout ?? 0;
-      requestedDelays.push(requested);
-      return fakeSetTimeout(handler, requested > 2_147_483_647 ? 0 : requested, ...rest);
-    };
+    vi.stubGlobal(
+      'setTimeout',
+      (handler: (...args: unknown[]) => void, timeout?: number, ...rest: unknown[]) => {
+        const requested = timeout ?? 0;
+        requestedDelays.push(requested);
+        return realSetTimeout(handler, requested > 2_147_483_647 ? 0 : requested, ...rest);
+      }
+    );
 
     const cutoffAt = '2026-11-20T10:00:00.000Z'; // ~33 days out, beyond the timer range
     const { result } = renderHook(() =>
@@ -215,7 +220,6 @@ describe('useMatchRegistration controller', () => {
     });
     expect(result.current.cutoffReached).toBe(true);
     expect(mocks.invalidate).toHaveBeenCalled();
-    globalThis.setTimeout = fakeSetTimeout;
   });
 
   it('refreshes on focus return', async () => {

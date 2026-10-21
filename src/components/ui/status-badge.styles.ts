@@ -13,8 +13,8 @@ export const styles = stylex.create({
     letterSpacing: 'var(--font-letter-spacing-1-5)',
     textTransform: 'uppercase'
   },
-  playing: { backgroundColor: 'var(--color-green-soft)', color: 'var(--color-green)' },
-  reserve: { backgroundColor: 'var(--color-surface-2)', color: 'var(--color-text)' },
+  positive: { backgroundColor: 'var(--color-green-soft)', color: 'var(--color-green)' },
+  neutral: { backgroundColor: 'var(--color-surface-2)', color: 'var(--color-text)' },
   muted: { backgroundColor: 'var(--color-surface-2)', color: 'var(--color-muted)' },
   danger: {
     backgroundColor: 'var(--color-surface-2)',
@@ -24,7 +24,6 @@ export const styles = stylex.create({
     borderColor: 'var(--color-red)'
   },
   guest: { backgroundColor: 'var(--color-amber)', color: 'var(--color-bg)' },
-  emphasis: { display: 'inline' },
   summary: {
     display: 'inline-flex',
     padding: 'var(--space-2) var(--space-3)',

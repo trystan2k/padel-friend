@@ -19,6 +19,9 @@ describe('match styles', () => {
     expect(createStyles).toContain("minInlineSize: 'calc(var(--space-40) + var(--space-4))'");
     expect(createStyles).toContain("minBlockSize: 'calc(var(--space-40) + var(--space-4))'");
     expect(createStyles).toContain('fileInput');
+    expect(createStyles).toContain('minInlineSize: 0');
+    expect(createStyles).toContain("maxInlineSize: '100%'");
+    expect(createStyles).toContain("inlineSize: '100%'");
     expect(readFileSync('src/features/matches/MatchInviteePicker.tsx', 'utf8')).toContain(
       'stylex.props(s.button)'
     );

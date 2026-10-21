@@ -5,6 +5,7 @@ import { readFileSync } from 'node:fs';
 import { I18nextProvider } from 'react-i18next';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createI18n } from '../src/i18n/config';
+import type { Locale } from '../src/i18n/config';
 import type { MyMatchRegistration } from '../src/features/matches/match-registration-model';
 import en from '../src/locales/en/translation.json';
 import pt from '../src/locales/pt-BR/translation.json';
@@ -34,15 +35,17 @@ import {
   MatchRegistrationPanel,
   matchRegistrationAction
 } from '../src/features/matches/MatchRegistrationPanel';
+import type { MatchEventCard } from '../src/features/matches/match-contracts';
+import { makeMatchCard } from './helpers/match-fixtures';
 
 const EVENT_ID = '00000000-0000-4000-8000-000000000001';
 
-function event(extra: Record<string, unknown> = {}) {
+function event(extra: Partial<MatchEventCard> = {}) {
   // The event window is derived from the wall clock so the fixture can never
   // age into the cutoff-passed state: a hardcoded cutoff (previously
   // 2026-10-20T17:30Z) silently flipped every later run to the closed state.
   const startsAtMs = Date.now() + 9 * 60 * 60 * 1000;
-  return {
+  return makeMatchCard({
     event_id: EVENT_ID,
     venue_name: 'Court Central',
     timezone: 'UTC',
@@ -59,13 +62,13 @@ function event(extra: Record<string, unknown> = {}) {
     caller_eligibility: 'member',
     caller_requires_approval: false,
     caller_is_invited: false,
-    caller_badge: 'member',
+    caller_badge: 'playing',
     restriction_enabled: true,
     min_level: 2.5,
     max_level: 5,
     is_past: false,
     ...extra
-  };
+  });
 }
 
 const none: MyMatchRegistration = { state: 'none' };
@@ -105,9 +108,9 @@ const expired: MyMatchRegistration = {
 };
 
 function mount(
-  eventValue: Record<string, unknown>,
+  eventValue: MatchEventCard,
   registration: MyMatchRegistration,
-  locale = 'en',
+  locale: Locale = 'en',
   callerLevel: number | null = 3.82
 ) {
   return render(
@@ -182,7 +185,7 @@ describe('match registration panel', () => {
     expect(screen.getByText(en.matches.detail.outOfRangeApprovalRequired)).toBeTruthy();
 
     cleanup();
-    mount(event({ caller_eligibility: 'invited', caller_is_invited: true }), none);
+    mount(event({ caller_is_invited: true, visibility: 'invite_only' }), none);
     expect(
       screen.queryByRole('button', { name: en.matchRegistration.join.requestButton })
     ).toBeNull();
@@ -499,13 +502,18 @@ describe('match registration panel', () => {
     expect(
       matchRegistrationAction(event({ registration_cutoff_at: '2026-10-01T00:00:00.000Z' }), now)
     ).toBe('closed');
-    expect(matchRegistrationAction(event({ caller_eligibility: 'invited' }), now)).toBe('invited');
+    expect(
+      matchRegistrationAction(event({ caller_is_invited: true, visibility: 'invite_only' }), now)
+    ).toBe('invited');
   });
 
   it('renders nothing for an invited caller with no registration row', () => {
     // The invitation sentence is owned by the detail page's participation
     // section (matches.detail.invitationInfo); the panel must not repeat it.
-    const { container } = mount(event({ caller_eligibility: 'invited' }), none);
+    const { container } = mount(
+      event({ caller_is_invited: true, visibility: 'invite_only' }),
+      none
+    );
     expect(container.firstChild).toBeNull();
   });
 });

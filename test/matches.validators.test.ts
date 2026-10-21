@@ -3,7 +3,8 @@ import {
   validateMatchDetail,
   validateMatchInviteSearch,
   validateMatchList,
-  validateMatchOptions
+  validateMatchOptions,
+  validatePublishMatch
 } from '../src/features/matches/matches.validators';
 
 const id = '123e4567-e89b-12d3-a456-426614174000';
@@ -54,5 +55,42 @@ describe('match validators', () => {
     for (const bad of ['yesterday', '2026-13-45T99:99:99Z', 42]) {
       expect(() => validateMatchList({ entry: 'my', as_of: bad })).toThrow('INVALID_MATCH_INPUT');
     }
+  });
+  it('parses publish fields and preserves SQL defaults by leaving optional keys omitted', () => {
+    const input = {
+      community_id: id,
+      date: '2030-06-15',
+      start_time: '20:00',
+      event_type: 'friendly',
+      visibility: 'community_open',
+      team_assignment_mode: 'POST_MATCH_TEAMS',
+      venue_name: 'Court',
+      maps_url: 'https://maps.google.com/?q=court',
+      photo_path: 'photo.png'
+    };
+    expect(validatePublishMatch({ event_id: id, input, invitee_ids: [] }).input).toEqual(input);
+  });
+  it('rejects unknown publish keys and malformed field primitives', () => {
+    const input = {
+      community_id: id,
+      date: '2030-06-15',
+      start_time: '20:00',
+      event_type: 'friendly',
+      visibility: 'community_open',
+      team_assignment_mode: 'POST_MATCH_TEAMS',
+      venue_name: 'Court',
+      maps_url: 'https://maps.google.com/?q=court',
+      photo_path: 'photo.png'
+    };
+    expect(() =>
+      validatePublishMatch({ event_id: id, input: { ...input, extra: true }, invitee_ids: [] })
+    ).toThrow('INVALID_MATCH_INPUT');
+    expect(() =>
+      validatePublishMatch({
+        event_id: id,
+        input: { ...input, court_booked: 'yes' },
+        invitee_ids: []
+      })
+    ).toThrow('INVALID_MATCH_INPUT');
   });
 });

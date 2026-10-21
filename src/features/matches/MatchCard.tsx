@@ -2,36 +2,25 @@ import { StatusBadge } from '../../components/ui/StatusBadge';
 import * as stylex from '@stylexjs/stylex';
 import { Link } from '@tanstack/react-router';
 import { useTranslation } from 'react-i18next';
-import {
-  getMatchBadge,
-  matchCallerBadge,
-  matchEventCounts,
-  type MatchEventListItem
-} from './match-model';
+import type { MatchEventCard } from './match-contracts';
 import { matchesStyles as s } from './matches.styles';
 
-export function MatchCard({ event }: { event: MatchEventListItem }) {
+export function MatchCard({ event }: { event: MatchEventCard }) {
   const { t, i18n } = useTranslation();
-  // Explicit flat counts keep Reserve Not Playing out of the ordinary Reserve
-  // figure; only a payload without them falls back to quartet derivation.
-  const counts = matchEventCounts(event);
-  const badge =
-    matchCallerBadge(event.caller_badge) ??
-    getMatchBadge({
-      creator: event.is_creator === true,
-      accepted: event.is_accepted === true,
-      invited: event.is_invited === true
-    });
+  const counts = {
+    playing: event.playing_count,
+    reserve: event.reserve_count,
+    groups: event.group_count,
+    moreNeeded: event.more_needed
+  };
+  const badge = event.caller_badge;
   const callerAccepted =
-    event.is_accepted === true ||
-    badge === 'playing' ||
-    badge === 'reserve' ||
-    badge === 'reserve_not_playing';
-  const starts = typeof event.starts_at === 'string' ? event.starts_at : '';
-  const zone = typeof event.timezone === 'string' ? event.timezone : 'UTC';
-  const venue = event.venue_name ?? '';
+    badge === 'playing' || badge === 'reserve' || badge === 'reserve_not_playing';
+  const starts = event.starts_at;
+  const zone = event.timezone;
+  const venue = event.venue_name;
   const price =
-    typeof event.price_minor === 'number' && typeof event.currency === 'string'
+    event.price_minor !== null && event.currency !== null
       ? new Intl.NumberFormat(i18n.language, {
           style: 'currency',
           currency: event.currency
@@ -61,7 +50,7 @@ export function MatchCard({ event }: { event: MatchEventListItem }) {
       </p>
       <p>
         <a
-          href={event.maps_url ?? ''}
+          href={event.maps_url}
           target="_blank"
           rel="noopener noreferrer"
           {...stylex.props(s.cardLink)}
@@ -71,15 +60,11 @@ export function MatchCard({ event }: { event: MatchEventListItem }) {
         </a>
       </p>
       <p>
-        {event.restriction_enabled === true &&
-        typeof event.min_level === 'number' &&
-        typeof event.max_level === 'number'
+        {event.restriction_enabled && event.min_level !== null && event.max_level !== null
           ? `${t('matches.card.levelRange')}: ${event.min_level}–${event.max_level}`
           : t('matches.card.noLevelRestriction')}
       </p>
-      {typeof event.team_assignment_mode === 'string' && (
-        <p>{t(`matches.teamMode.${event.team_assignment_mode}`)}</p>
-      )}
+      <p>{t(`matches.teamMode.${event.team_assignment_mode}`)}</p>
       <p>
         {event.maximum_registrations == null
           ? t('matches.card.unlimited')
@@ -87,11 +72,8 @@ export function MatchCard({ event }: { event: MatchEventListItem }) {
       </p>
       {!event.registration_open && <p>{t('matches.detail.registrationClosed')}</p>}
       <p>
-        {t(
-          event.event_type === 'competitive' ? 'matches.type.competitive' : 'matches.type.friendly'
-        )}{' '}
-        · {event.creator_name ?? ''} ({t('matches.card.approximateLevel')}:{' '}
-        {String(event.creator_level ?? '')})
+        {t(`matches.type.${event.event_type}`)} · {event.creator_name ?? ''} (
+        {t('matches.card.approximateLevel')}: {String(event.creator_level ?? '')})
       </p>
       <p>
         {counts.playing} {t('matches.counts.playing', { count: counts.playing })} · {counts.reserve}{' '}

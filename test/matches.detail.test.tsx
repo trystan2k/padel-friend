@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { I18nextProvider } from 'react-i18next';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createI18n } from '../src/i18n/config';
+import type { Locale } from '../src/i18n/config';
 import type { MyMatchRegistration } from '../src/features/matches/match-registration-model';
 import en from '../src/locales/en/translation.json';
 import pt from '../src/locales/pt-BR/translation.json';
@@ -23,42 +24,53 @@ vi.mock('@tanstack/react-router', async (original) => ({
 }));
 import { MatchDetailPage, shareMatchLink } from '../src/features/matches/MatchDetailPage';
 import { loadMatchDetail } from '../src/routes/_protected.matches.$eventId';
+import type { MatchEventDetail } from '../src/features/matches/match-contracts';
+import { makeMatchDetail } from './helpers/match-fixtures';
 
-const event = (id = 1, extra: Record<string, unknown> = {}) => ({
-  event_id: `00000000-0000-4000-8000-${String(id).padStart(12, '0')}`,
-  community_id: '11111111-1111-4111-8111-111111111111',
-  community_name: 'Club Hidden',
-  creator_id: '22222222-2222-4222-8222-222222222222',
-  creator_name: 'Ana Silva',
-  creator_level: 3.5,
-  starts_at: '2026-10-20T18:30:00.000Z',
-  timezone: 'Europe/Madrid',
-  event_type: 'friendly',
-  visibility: 'invite_only',
-  team_assignment_mode: 'POST_MATCH_TEAMS',
-  venue_name: 'Court Central',
-  maps_url: 'https://www.google.com/maps/place/Court+Central',
-  photo_path: 'photo.jpg',
-  photo_url: 'https://example.test/photo.jpg',
-  notes: 'Bring water',
-  price_minor: 1250,
-  currency: 'EUR',
-  accepted_count: 5,
-  playing_count: 4,
-  reserve_count: 1,
-  group_count: 1,
-  more_needed: 3,
-  caller_badge: 'invited',
-  is_past: false,
-  registration_open: true,
-  caller_eligibility: 'invited',
-  caller_is_invited: true,
-  caller_requires_approval: false,
-  ...extra
-});
+const event = (id = 1, extra: Partial<MatchEventDetail> = {}): MatchEventDetail =>
+  makeMatchDetail({
+    event_id: `00000000-0000-4000-8000-${String(id).padStart(12, '0')}`,
+    community_id: '11111111-1111-4111-8111-111111111111',
+    community_name: 'Club Hidden',
+    creator_id: '22222222-2222-4222-8222-222222222222',
+    creator_name: 'Ana Silva',
+    creator_level: 3.5,
+    starts_at: '2026-10-20T18:30:00.000Z',
+    timezone: 'Europe/Madrid',
+    event_type: 'friendly',
+    visibility: 'invite_only',
+    team_assignment_mode: 'POST_MATCH_TEAMS',
+    venue_name: 'Court Central',
+    maps_url: 'https://www.google.com/maps/place/Court+Central',
+    photo_url: 'https://example.test/photo.jpg',
+    notes: 'Bring water',
+    court_notes: null,
+    duration_minutes: 90,
+    payment_note: null,
+    court_booked: true,
+    restriction_enabled: false,
+    min_level: null,
+    max_level: null,
+    registration_cutoff_at: '2026-10-20T17:30:00.000Z',
+    price_minor: 1250,
+    currency: 'EUR',
+    accepted_count: 5,
+    playing_count: 4,
+    reserve_count: 1,
+    reserve_not_playing_count: 0,
+    group_count: 1,
+    more_needed: 3,
+    caller_badge: 'invited',
+    is_past: false,
+    registration_open: true,
+    caller_eligibility: 'nonmember',
+    caller_is_invited: true,
+    caller_requires_approval: false,
+    ...extra
+  });
 function mount(
-  value: Record<string, unknown> | null,
-  locale = 'en',
+  value: MatchEventDetail | null,
+  locale: Locale = 'en',
   props: { loadError?: boolean; onRetry?: () => void } = {}
 ) {
   return render(
@@ -102,7 +114,7 @@ describe('match detail surface', () => {
   it.each([
     ['pt-BR', '1 falta'],
     ['es', '1 falta']
-  ])('renders singular more-needed count in %s', (locale, expected) => {
+  ] as const)('renders singular more-needed count in %s', (locale, expected) => {
     mount(
       event(10, {
         accepted_count: 7,
@@ -113,7 +125,7 @@ describe('match detail surface', () => {
       }),
       locale
     );
-    expect(screen.getAllByRole('region')[1].textContent).toContain(expected);
+    expect(screen.getAllByRole('region')[1]?.textContent).toContain(expected);
   });
   it('renders optional published constraints and court/payment facts truthfully', () => {
     mount(
@@ -152,14 +164,24 @@ describe('match detail surface', () => {
     expect(screen.queryByRole('button', { name: /join|entrar|participar/i })).toBeNull();
   });
   it('keeps invite-only invited approval-required callers out of the request CTA while community-open callers can request', () => {
-    const invitedOutOfRange = {
+    const invitedOutOfRange: Pick<
+      MatchEventDetail,
+      'caller_eligibility' | 'caller_is_invited' | 'caller_requires_approval'
+    > = {
       caller_eligibility: 'out_of_range',
       caller_is_invited: true,
       caller_requires_approval: true
     };
     const registration: MyMatchRegistration = { state: 'none' };
 
-    const inviteOnly = event(21, { ...invitedOutOfRange, visibility: 'invite_only' });
+    const startsAt = new Date(Date.now() + 4 * 60 * 60 * 1000).toISOString();
+    const cutoff = new Date(Date.now() + 3 * 60 * 60 * 1000).toISOString();
+    const inviteOnly = event(21, {
+      ...invitedOutOfRange,
+      visibility: 'invite_only',
+      starts_at: startsAt,
+      registration_cutoff_at: cutoff
+    });
     const inviteOnlyView = render(
       <I18nextProvider i18n={createI18n('en')}>
         <MatchDetailPage event={inviteOnly} registration={registration} />
@@ -174,7 +196,12 @@ describe('match detail surface', () => {
     ).toBeNull();
 
     inviteOnlyView.unmount();
-    const communityOpen = event(22, { ...invitedOutOfRange, visibility: 'community_open' });
+    const communityOpen = event(22, {
+      ...invitedOutOfRange,
+      visibility: 'community_open',
+      starts_at: startsAt,
+      registration_cutoff_at: cutoff
+    });
     render(
       <I18nextProvider i18n={createI18n('en')}>
         <MatchDetailPage event={communityOpen} registration={registration} />
@@ -318,16 +345,18 @@ describe('match detail surface', () => {
   it('falls back to clipboard and resets copied state when event id changes', async () => {
     const writeText = vi.fn<(text: string) => Promise<void>>().mockResolvedValue(undefined);
     const canonical = `${window.location.origin}/matches/${event(6).event_id}`;
-    expect(await shareMatchLink(canonical, { share: undefined, clipboard: { writeText } })).toBe(
-      'copied'
-    );
+    // Model a browser without navigator.share: production reads the platform
+    // from window.navigator when no sharePlatform prop is passed.
+    Object.defineProperty(window.navigator, 'share', { configurable: true, value: undefined });
+    Object.defineProperty(window.navigator, 'clipboard', {
+      configurable: true,
+      value: { writeText }
+    });
+    expect(await shareMatchLink(canonical, window.navigator)).toBe('copied');
     expect(writeText).toHaveBeenCalledWith(canonical);
     const view = render(
       <I18nextProvider i18n={createI18n('en')}>
-        <MatchDetailPage
-          event={event(6)}
-          sharePlatform={{ share: undefined, clipboard: { writeText } }}
-        />
+        <MatchDetailPage event={event(6)} />
       </I18nextProvider>
     );
     const user = userEvent.setup();
@@ -335,10 +364,7 @@ describe('match detail surface', () => {
     expect(screen.getByText(en.matches.detail.copied)).toBeTruthy();
     view.rerender(
       <I18nextProvider i18n={createI18n('en')}>
-        <MatchDetailPage
-          event={event(7)}
-          sharePlatform={{ share: undefined, clipboard: { writeText } }}
-        />
+        <MatchDetailPage event={event(7)} />
       </I18nextProvider>
     );
     expect(screen.queryByText(en.matches.detail.copied)).toBeNull();

@@ -46,7 +46,12 @@ export const createMatchStyles = stylex.create({
     minBlockSize: 'calc(var(--space-40) + var(--space-4))',
     paddingBlock: 'var(--space-2)'
   },
-  fileInput: { minBlockSize: 'calc(var(--space-40) + var(--space-4))' },
+  fileInput: {
+    minInlineSize: 0,
+    maxInlineSize: '100%',
+    inlineSize: '100%',
+    minBlockSize: 'calc(var(--space-40) + var(--space-4))'
+  },
   photo: {
     width: '100%',
     aspectRatio: '16 / 9',
