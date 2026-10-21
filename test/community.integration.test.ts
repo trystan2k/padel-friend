@@ -126,22 +126,21 @@ describe.skipIf(environment.env === null)('community domain (local Supabase inte
     expectNoError(result);
     return result.data;
   }
+  // One CLI round trip for row (includes updated_at), private settings and the
+  // complete audit trail ordered by the same stable (occurred_at, id) key the
+  // per-descriptor rejection loop below snapshots repeatedly; this keeps that
+  // loop's runtime bounded by batching state reads into a single statement.
   async function fullSnapshot(communityId: string) {
-    const row = await executeLocalFixtureSql(
-      `select to_jsonb(c) as row from public.communities c where id='${communityId}'`
+    const snapshot = await executeLocalFixtureSql(
+      `select to_jsonb(c) as row, c.settings as settings, (select coalesce(jsonb_agg(audit_event order by audit_event.occurred_at, audit_event.id), '[]'::jsonb) from public.community_audit_log audit_event where audit_event.community_id = c.id) as audit from public.communities c where id='${communityId}'`
     );
+    const snapshotRow = snapshot.rows[0];
+    if (!isPlainRowObject(snapshotRow))
+      throw new Error(`fullSnapshot found no community row for ${communityId}`);
     return {
-      row: row.rows[0]?.row,
-      settings: await executeLocalFixtureSql(
-        `select settings from public.communities where id='${communityId}'`
-      ).then((result) => result.rows),
-      audit: await rows(admin.client, 'community_audit_log', communityId).then((events) =>
-        events.sort(
-          (a, b) =>
-            String(a.occurred_at).localeCompare(String(b.occurred_at)) ||
-            String(a.id).localeCompare(String(b.id))
-        )
-      )
+      row: snapshotRow.row,
+      settings: [{ settings: snapshotRow.settings }],
+      audit: snapshotRow.audit
     };
   }
   function isExpiredInvitationResult(
@@ -792,6 +791,31 @@ describe.skipIf(environment.env === null)('community domain (local Supabase inte
     serverClient.current = null;
   });
 
+  // Linux MAX_ARG_STRLEN caps one spawn argument at 131072 bytes, so the oracle
+  // statements (each ~8.3 KiB of hex per case) must be batched well below that
+  // or CI fails with E2BIG. 64 KiB keeps a wide safety margin on both platforms.
+  const ORACLE_SQL_BATCH_BUDGET_BYTES = 64 * 1024;
+  function batchSqlStatementsByBudget(statements: readonly string[], budgetBytes: number) {
+    const batches: string[][] = [];
+    let batch: string[] = [];
+    let batchBytes = 0;
+    for (const statement of statements) {
+      const statementBytes = Buffer.byteLength(statement, 'utf8');
+      if (statementBytes > budgetBytes)
+        throw new Error(
+          `Single oracle statement (${statementBytes} bytes) exceeds the ${budgetBytes}-byte batch budget`
+        );
+      if (batch.length > 0 && batchBytes + ' union all '.length + statementBytes > budgetBytes) {
+        batches.push(batch);
+        batch = [];
+        batchBytes = 0;
+      }
+      batch.push(statement);
+      batchBytes += (batch.length > 1 ? ' union all '.length : 0) + statementBytes;
+    }
+    if (batch.length > 0) batches.push(batch);
+    return batches;
+  }
   it('validator decisions match PostgreSQL JSONB byte oracle at 4095, 4096 and 4097 bytes', async () => {
     const cases = communityJsonbFixtures.flatMap((descriptor) =>
       ([4095, 4096, 4097] as const).map((target) => ({
@@ -800,14 +824,31 @@ describe.skipIf(environment.env === null)('community domain (local Supabase inte
         settings: buildFixtureAtBytes(descriptor, target)
       }))
     );
-    const values = cases.map(({ descriptor, target, settings }, index) => {
+    const statements = cases.map(({ descriptor, target, settings }, index) => {
       const hex = Buffer.from(JSON.stringify(settings), 'utf8').toString('hex');
       return `select ${index} as case_index, '${descriptor.name.replaceAll("'", "''")}' as fixture, ${target} as target, octet_length(convert_from(decode('${hex}', 'hex'), 'UTF8')::jsonb::text) as bytes`;
     });
-    const oracle = await executeLocalFixtureSql(values.join(' union all '));
-    expect(oracle.rows).toHaveLength(cases.length);
+    const batches = batchSqlStatementsByBudget(statements, ORACLE_SQL_BATCH_BUDGET_BYTES);
+    const batchSqls = batches.map((batch) => batch.join(' union all '));
+    const maxBatchBytes = Math.max(...batchSqls.map((sql) => Buffer.byteLength(sql, 'utf8')));
+    // Guard the CI constraint itself: no emitted SQL argument may reach the
+    // 131072-byte Linux per-argument limit, and the budget must hold.
+    expect(maxBatchBytes, 'oracle SQL batch must stay below Linux MAX_ARG_STRLEN').toBeLessThan(
+      131072
+    );
+    expect(maxBatchBytes).toBeLessThanOrEqual(ORACLE_SQL_BATCH_BUDGET_BYTES);
+    expect(batches.length, 'oracle must actually split across batches').toBeGreaterThan(1);
+    process.stderr.write(
+      `[community.integration] JSONB oracle: ${cases.length} cases in ${batches.length} batches, max SQL ${maxBatchBytes} bytes\n`
+    );
+    const oracleRows: Array<Record<string, unknown>> = [];
+    for (const batchSql of batchSqls)
+      oracleRows.push(...(await executeLocalFixtureSql(batchSql)).rows);
+    expect(oracleRows).toHaveLength(cases.length);
     for (const [index, item] of cases.entries()) {
-      const measured = oracle.rows.find((row) => row.case_index === index);
+      const measured = oracleRows.find((row) => row.case_index === index);
+      if (measured?.fixture !== item.descriptor.name)
+        throw new Error(`${item.descriptor.name}: oracle batch row misassembled`);
       if (Number(measured?.bytes) !== item.target)
         throw new Error(`${item.descriptor.name} target ${item.target}: oracle byte mismatch`);
       const input = { community_id: privateId, settings: item.settings };
@@ -849,24 +890,40 @@ describe.skipIf(environment.env === null)('community domain (local Supabase inte
     }
   });
 
-  it('rejects 4097-byte settings through the database RPC without changing row or audit', async () => {
-    const settings = buildFixtureAtBytes(communityJsonbFixtures[0]!, 4097);
-    const before = await fullSnapshot(privateId);
-    const direct = await admin.client.rpc('update_community_settings', {
-      p_community_id: privateId,
-      p_changes: { settings, name: `forbidden-${crypto.randomUUID()}` }
-    });
-    expect(direct.error?.code).toBe('22023');
-    expect(direct.error?.message).toBe('Invalid community patch');
-    expect(await fullSnapshot(privateId)).toEqual(before);
+  it('rejects 4097-byte settings for every descriptor through the database RPC without changing row or audit', async () => {
+    for (const descriptor of communityJsonbFixtures) {
+      const settings = buildFixtureAtBytes(descriptor, 4097);
+      const before = await fullSnapshot(privateId);
+      const marker = `forbidden-${crypto.randomUUID()}`;
+      expect(
+        Array.from(marker).length,
+        `${descriptor.name}: name marker must stay within the community name limit`
+      ).toBeLessThanOrEqual(80);
+      const direct = await admin.client.rpc('update_community_settings', {
+        p_community_id: privateId,
+        p_changes: { settings, name: marker }
+      });
+      expect(direct.error?.code, `${descriptor.name}: expected SQLSTATE 22023`).toBe('22023');
+      expect(direct.error?.message, `${descriptor.name}: expected exact rejection message`).toBe(
+        'Invalid community patch'
+      );
+      expect(
+        await fullSnapshot(privateId),
+        `${descriptor.name}: row/settings/audit changed after rejected RPC`
+      ).toEqual(before);
 
-    // The application validator short-circuits before the database RPC.
-    serverClient.current = admin.client;
-    await expect(
-      updateCommunitySettings({ data: { community_id: privateId, settings } })
-    ).rejects.toThrow('INVALID_COMMUNITY_INPUT');
-    expect(await fullSnapshot(privateId)).toEqual(before);
-  });
+      // The application validator short-circuits before the database RPC.
+      serverClient.current = admin.client;
+      await expect(
+        updateCommunitySettings({ data: { community_id: privateId, settings } }),
+        `${descriptor.name}: app validator must reject before the database RPC`
+      ).rejects.toThrow('INVALID_COMMUNITY_INPUT');
+      expect(
+        await fullSnapshot(privateId),
+        `${descriptor.name}: row/settings/audit changed after app rejection`
+      ).toEqual(before);
+    }
+  }, 60000);
 
   it('compact JSON size is not the PostgreSQL settings byte oracle', async () => {
     const settings = { x: 'a'.repeat(4088) };

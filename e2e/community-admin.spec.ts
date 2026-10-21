@@ -409,7 +409,6 @@ type FocusEvidence = {
   tag: string;
   id: string;
   kind: string;
-  name: string;
   focusVisible: boolean;
   outlineStyle: string;
   outlineWidth: string;
@@ -445,7 +444,11 @@ function formatControls(entries: { kind: string; name: string }[]): string {
 }
 
 /** Compares keyboard-reachable controls with the expected set; inventory may neither shrink nor grow. */
-function expectInventory(actual: InventoryEntry[], expected: ExpectedControl[], context: string) {
+function expectInventory(
+  actual: InventoryEntry[],
+  expected: { kind: string; name: string }[],
+  context: string
+) {
   const remaining = multisetOf(expected);
   const unexpected: { kind: string; name: string }[] = [];
   for (const entry of actual) {
@@ -507,8 +510,8 @@ function adminTraversalPlan(
           { kind: 'button', name: admin.status.active! },
           { kind: 'button', name: admin.status.pending! },
           { kind: 'button', name: admin.status.inactive! },
-          { kind: 'link', name: fixture.ownerName },
-          { kind: 'link', name: fixture.applicantName }
+          { kind: 'link', name: fixture.applicantName },
+          { kind: 'link', name: fixture.ownerName }
         ];
       case 'member':
         // Active member with role=member shows promote and remove only.
@@ -519,8 +522,7 @@ function adminTraversalPlan(
         ];
       case 'settings':
         // Collapsed disclosure: the summary is a required Tab stop even without button semantics.
-        // JSX emits no whitespace between the summary's two spans, so the accessible name is the
-        // concatenation of the details label and the admin note.
+        // Accessible-name computation separates the summary's block-level text spans.
         return [
           back,
           { kind: 'combobox', name: admin.settings.visibility },
@@ -528,7 +530,7 @@ function adminTraversalPlan(
           { kind: 'combobox', name: admin.settings.timezone },
           { kind: 'switch', name: admin.settings.memberCreatedLeagues },
           { kind: 'button', name: admin.save },
-          { kind: 'summary', name: `${admin.settings.details}${admin.settingsAdminNote}` }
+          { kind: 'summary', name: `${admin.settings.details} ${admin.settingsAdminNote}` }
         ];
       case 'venues':
         // One seeded venue card with a maps link, edit and archive action.
@@ -621,47 +623,6 @@ async function readFocusEvidence(page: Page): Promise<FocusEvidence | null> {
       if (tag === 'input' || tag === 'textarea') return 'textbox';
       return explicitRole ?? tag;
     };
-    const accessibleName = (el: Element): string => {
-      const ariaLabel = el.getAttribute('aria-label');
-      if (ariaLabel && ariaLabel.trim()) return ariaLabel.trim();
-      const labelledBy = el.getAttribute('aria-labelledby');
-      if (labelledBy) {
-        const text = labelledBy
-          .split(/\s+/)
-          .map((id) => document.getElementById(id)?.textContent ?? '')
-          .join(' ')
-          .replace(/\s+/g, ' ')
-          .trim();
-        if (text) return text;
-      }
-      if (
-        el instanceof HTMLInputElement ||
-        el instanceof HTMLTextAreaElement ||
-        el instanceof HTMLSelectElement
-      ) {
-        const labels = Array.from(el.labels ?? []);
-        const text = labels
-          .map((label) => label.textContent ?? '')
-          .join(' ')
-          .replace(/\s+/g, ' ')
-          .trim();
-        if (text) return text;
-      }
-      return (el.textContent ?? '').replace(/\s+/g, ' ').trim();
-    };
-    const identityPath = (el: Element): string => {
-      const parts: string[] = [];
-      let node: Element | null = el;
-      while (node && parts.length < 16) {
-        const parent: Element | null = node.parentElement;
-        const sameTag = parent
-          ? Array.from(parent.children).filter((child) => child.tagName === node!.tagName)
-          : [];
-        parts.unshift(`${node.tagName.toLowerCase()}:nth-of-type(${sameTag.indexOf(node) + 1})`);
-        node = parent;
-      }
-      return parts.join('>');
-    };
     const style = getComputedStyle(element);
     const rect = element.getBoundingClientRect();
     const nav = document.querySelector('nav[aria-label]');
@@ -682,11 +643,10 @@ async function readFocusEvidence(page: Page): Promise<FocusEvidence | null> {
         backdropBackgrounds.push(surface);
     }
     return {
-      identity: identityPath(element),
+      identity: element.getAttribute('data-e2e-focus-identity') ?? '(uninventoried)',
       tag: element.tagName.toLowerCase(),
       id: element.id,
       kind: controlKind(element),
-      name: accessibleName(element),
       focusVisible: element.matches(':focus-visible'),
       outlineStyle: style.outlineStyle,
       outlineWidth: style.outlineWidth,
@@ -707,8 +667,12 @@ async function readFocusEvidence(page: Page): Promise<FocusEvidence | null> {
 }
 
 /** Enumerates real Tab-reachable controls: enabled, visible, non-negative tabindex, rendered. */
-async function collectFocusableInventory(page: Page): Promise<InventoryEntry[]> {
-  return page.evaluate(() => {
+async function collectFocusableInventory(
+  page: Page,
+  expected: ExpectedControl[],
+  label: string
+): Promise<InventoryEntry[]> {
+  const inventory = await page.evaluate(() => {
     const controlKind = (el: Element): string => {
       const tag = el.tagName.toLowerCase();
       if (tag === 'summary') return 'summary';
@@ -719,47 +683,6 @@ async function collectFocusableInventory(page: Page): Promise<InventoryEntry[]> 
       if (tag === 'select') return 'combobox';
       if (tag === 'input' || tag === 'textarea') return 'textbox';
       return explicitRole ?? tag;
-    };
-    const accessibleName = (el: Element): string => {
-      const ariaLabel = el.getAttribute('aria-label');
-      if (ariaLabel && ariaLabel.trim()) return ariaLabel.trim();
-      const labelledBy = el.getAttribute('aria-labelledby');
-      if (labelledBy) {
-        const text = labelledBy
-          .split(/\s+/)
-          .map((id) => document.getElementById(id)?.textContent ?? '')
-          .join(' ')
-          .replace(/\s+/g, ' ')
-          .trim();
-        if (text) return text;
-      }
-      if (
-        el instanceof HTMLInputElement ||
-        el instanceof HTMLTextAreaElement ||
-        el instanceof HTMLSelectElement
-      ) {
-        const labels = Array.from(el.labels ?? []);
-        const text = labels
-          .map((label) => label.textContent ?? '')
-          .join(' ')
-          .replace(/\s+/g, ' ')
-          .trim();
-        if (text) return text;
-      }
-      return (el.textContent ?? '').replace(/\s+/g, ' ').trim();
-    };
-    const identityPath = (el: Element): string => {
-      const parts: string[] = [];
-      let node: Element | null = el;
-      while (node && parts.length < 16) {
-        const parent: Element | null = node.parentElement;
-        const sameTag = parent
-          ? Array.from(parent.children).filter((child) => child.tagName === node!.tagName)
-          : [];
-        parts.unshift(`${node.tagName.toLowerCase()}:nth-of-type(${sameTag.indexOf(node) + 1})`);
-        node = parent;
-      }
-      return parts.join('>');
     };
     return Array.from(
       document.querySelectorAll<HTMLElement>(
@@ -782,18 +705,37 @@ async function collectFocusableInventory(page: Page): Promise<InventoryEntry[]> 
         if (element.getClientRects().length === 0) return false;
         return true;
       })
-      .map((element) => ({
-        identity: identityPath(element),
-        kind: controlKind(element),
-        name: accessibleName(element)
-      }));
+      .map((element) => {
+        // Assign once per DOM node; opening details must not renumber existing controls.
+        if (!element.hasAttribute('data-e2e-focus-identity'))
+          element.setAttribute('data-e2e-focus-identity', crypto.randomUUID());
+        return {
+          identity: element.getAttribute('data-e2e-focus-identity')!,
+          kind: controlKind(element)
+        };
+      });
   });
+  expect(
+    inventory,
+    `${label}: inventory must match the explicit screen control count`
+  ).toHaveLength(expected.length);
+  const namedInventory: InventoryEntry[] = [];
+  for (const [index, entry] of inventory.entries()) {
+    const control = expected[index]!;
+    expect(entry.kind, `${label}: inventory control ${index}`).toBe(control.kind);
+    await expect(
+      page.locator(`[data-e2e-focus-identity="${entry.identity}"]`),
+      `${label}: inventory control ${index} (${entry.identity})`
+    ).toHaveAccessibleName(control.name);
+    namedInventory.push({ ...entry, name: control.name });
+  }
+  expectInventory(namedInventory, expected, label);
+  return namedInventory;
 }
 
 /** Focus-time assertions for one admin control: indicator, name, size, containment, clearance. */
 function assertFocusedAdminControl(evidence: FocusEvidence, label: string) {
-  const where = `${label}: ${evidence.kind} "${evidence.name}"`;
-  expect(evidence.name.length, `${where} must expose an accessible name`).toBeGreaterThan(0);
+  const where = `${label}: ${evidence.kind} [${evidence.identity}]`;
   assertFocusIndicator(evidence, evidence.backdropBackgrounds, where);
   expect(evidence.rect.width, `${where} must keep a ≥44px hit box (width)`).toBeGreaterThanOrEqual(
     44
@@ -866,11 +808,12 @@ async function traverseEnabledAdminControls(
   const adminControls = [...plan.content, ...navControls(copy)];
 
   // The document inventory may neither shrink (a control lost) nor grow (an extra Tab stop).
-  expectInventory(
-    await collectFocusableInventory(page),
+  const collapsedInventory = await collectFocusableInventory(
+    page,
     [...globalStops, ...adminControls],
     `${plan.label}: document inventory before traversal`
   );
+  let inventory = collapsedInventory;
 
   // Programmatic blur leaves Chromium's sequential-focus resume point unreliable on this page
   // (Tab can resume mid-document, e.g. at the bottom navigation). Blur once, then walk forward
@@ -891,7 +834,7 @@ async function traverseEnabledAdminControls(
       anchored = true;
       break;
     }
-    anchorTrace.push(`${probe.kind} "${probe.name}"`);
+    anchorTrace.push(`${probe.kind} [${probe.identity}]`);
   }
   expect(
     anchored,
@@ -902,64 +845,47 @@ async function traverseEnabledAdminControls(
   // From the anchor, the ring must visit every expected control exactly once, in DOM order:
   // #locale (already focused), #theme, then the admin content controls and the bottom nav.
   // Hitting #locale again or leaving to <body> before completion means skipped controls.
-  const pending: ExpectedControl[] = [...globalStops, ...adminControls];
+  let pending = [...inventory];
   let disclosureOpened = false;
   const trace: string[] = [];
-  const skip = (focused: { kind: string; name: string }) => {
-    const index = pending.findIndex((control) => controlKey(control) === controlKey(focused));
-    if (index >= 0) pending.splice(index, 1);
-    return index;
-  };
+  const visited = new Set<string>();
+  const visitedControls: InventoryEntry[] = [];
   const maxSteps = pending.length + expandedOnly.length + 4;
 
   for (let step = 0; step <= maxSteps && pending.length > 0; step++) {
-    if (step === 0) {
-      // The anchor itself is the first ring entry; assert it without pressing Tab again.
-      const anchor = await readFocusEvidence(page);
-      expect(anchor, `${plan.label}: the #locale anchor must stay focused`).not.toBeNull();
-      expect(anchor!.id, `${plan.label}: ring must start at #locale`).toBe('locale');
-      expect(skip(anchor!), `${plan.label}: #locale must open the expected ring`).toBe(0);
-      expect(
-        anchor!.focusVisible,
-        'locale select must match :focus-visible after keyboard navigation'
-      ).toBe(true);
-      assertFocusIndicator(anchor!, [anchor!.background, anchor!.pageBackground], 'locale select');
-      trace.push(`combobox "${anchor!.name}"`);
-      continue;
-    }
-    await page.keyboard.press('Tab');
+    // The anchor itself is the first ring entry; do not press Tab again at step zero.
+    if (step > 0) await page.keyboard.press('Tab');
     const evidence = await readFocusEvidence(page);
     expect(
       evidence,
       `${plan.label}: Tab ${step} must move focus to a focusable element`
     ).not.toBeNull();
     const focused = evidence!;
-    if (focused.id === 'locale' || focused.tag === 'body') {
-      throw new Error(
-        `${plan.label}: Tab ring ended at ${focused.tag}#${focused.id} at step ${step} before reaching ${formatControls(
-          pending
-        )}; visited ${trace.join(' → ')}`
-      );
-    }
-    trace.push(`${focused.kind} "${focused.name}"`);
+    trace.push(`${focused.kind}#${focused.id} [${focused.identity}]`);
+    const context = `${plan.label}: Tab ${step}; visited ${trace.join(' → ')}`;
+    expect(visited.has(focused.identity), `${context}: repeat visit to the same DOM identity`).toBe(
+      false
+    );
+    const expected = pending.find((control) => control.identity === focused.identity);
+    expect(
+      expected,
+      `${context}: unexpected identity; still missing ${JSON.stringify(pending)}`
+    ).toBeDefined();
+    // Name assertion targets the actual focused node, not a role/name lookup that could select
+    // another identically named control. Playwright computes the real accessibility name.
+    const focusedLocator = page.locator(`[data-e2e-focus-identity="${focused.identity}"]`);
+    await expect(focusedLocator, context).toBeFocused();
+    await expect(focusedLocator, context).toHaveAccessibleName(expected!.name);
+    expect(focused.kind, context).toBe(expected!.kind);
+    visited.add(focused.identity);
+    visitedControls.push(expected!);
+    pending = pending.filter((control) => control.identity !== focused.identity);
 
-    if (focused.id === 'theme') {
-      expect(skip(focused), `${plan.label}: theme select must follow the expected ring order`).toBe(
-        0
-      );
-      expect(focused.focusVisible, 'theme select must match :focus-visible').toBe(true);
-      assertFocusIndicator(focused, [focused.background, focused.pageBackground], 'theme select');
+    if (focused.id === 'locale' || focused.id === 'theme') {
+      assertFocusIndicator(focused, [focused.background, focused.pageBackground], context);
       continue;
     }
-
-    expect(
-      skip(focused),
-      `${plan.label}: Tab ${step} landed on unexpected ${focused.kind} "${focused.name}"; still missing ${formatControls(
-        pending
-      )}; visited ${trace.join(' → ')}`
-    ).toBeGreaterThanOrEqual(0);
-
-    assertFocusedAdminControl(focused, plan.label);
+    assertFocusedAdminControl(focused, context);
 
     if (plan.revealedDescriptionId && focused.kind === 'summary' && !disclosureOpened) {
       // Open the collapsed disclosure with the keyboard; focus stays on the summary so the next
@@ -967,12 +893,12 @@ async function traverseEnabledAdminControls(
       await page.keyboard.press('Enter');
       await expect(page.locator('main details[open]')).toHaveCount(1);
       await expect(page.locator(`#${plan.revealedDescriptionId}`)).toBeVisible();
-      pending.push(...expandedOnly);
-      expectInventory(
-        await collectFocusableInventory(page),
-        [...globalStops, ...adminControls, ...expandedOnly],
+      inventory = await collectFocusableInventory(
+        page,
+        [...globalStops, ...plan.content, ...expandedOnly, ...navControls(copy)],
         `${plan.label}: document inventory after opening the disclosure`
       );
+      pending = inventory.filter((control) => !visited.has(control.identity));
       disclosureOpened = true;
     }
   }
@@ -983,6 +909,22 @@ async function traverseEnabledAdminControls(
       pending
     )}; visited ${trace.join(' → ')}`
   ).toHaveLength(0);
+  // Prove both states by DOM identity; duplicate names cannot substitute for an unvisited node.
+  for (const [state, expectedInventory] of [
+    ['collapsed', collapsedInventory],
+    ['expanded', inventory]
+  ] as const) {
+    const identities = new Set(expectedInventory.map((control) => control.identity));
+    expect(
+      new Set([...visited].filter((identity) => identities.has(identity))),
+      `${plan.label}: ${state} inventory identities never visited; trace ${trace.join(' → ')}`
+    ).toEqual(identities);
+  }
+  expect(
+    visited,
+    `${plan.label}: visited identities must equal final inventory; trace ${trace.join(' → ')}`
+  ).toEqual(new Set(inventory.map((control) => control.identity)));
+  expectInventory(visitedControls, inventory, `${plan.label}: visited kind/name multiset`);
 }
 
 async function assertLocaleControlSizing(page: Page, copy: Copy, viewport: number) {
