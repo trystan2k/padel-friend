@@ -44,9 +44,13 @@ describe.skipIf(!environment.env)('notification store (real local Supabase JWTs)
   }
 
   const sql = (statement: string) =>
-    execFileSync('pnpm', ['exec', 'supabase', 'db', 'query', '--local', statement], {
-      encoding: 'utf8'
-    });
+    execFileSync(
+      'pnpm',
+      ['exec', 'supabase', 'db', 'query', '--local', '--output-format', 'json', statement],
+      {
+        encoding: 'utf8'
+      }
+    );
   // Asynchronous runner that reports its child process identity and exact lifetime. Unlike
   // execFileSync it does not block the event loop, and the returned timestamps/pids let the
   // test PROVE the two callers' sessions were alive at the same instant.
@@ -82,6 +86,152 @@ describe.skipIf(!environment.env)('notification store (real local Supabase JWTs)
     `select public.persist_notification(${literal(recipient)}::uuid, ${literal(event)}, ${literal(kind)}, 'community', 'community_invitation', ${literal(target)}::uuid, null)`;
   const code = (error: unknown) =>
     error && typeof error === 'object' && 'code' in error ? error.code : undefined;
+
+  it('keeps category feeds recipient-scoped and paginates timestamp ties across read states', async () => {
+    const recipient = await actor('Category Recipient');
+    let outsider: Actor | undefined;
+    const asOf = '2026-10-21T12:00:00.000Z';
+    const tiedAt = '2026-10-21T10:00:00.000Z';
+    const tieIds = [crypto.randomUUID(), crypto.randomUUID()].sort().reverse();
+    const newest = crypto.randomUUID();
+    const oldest = crypto.randomUUID();
+    const otherCategory = crypto.randomUUID();
+    const future = crypto.randomUUID();
+    const outsiderId = crypto.randomUUID();
+    const ids = [newest, ...tieIds, oldest, otherCategory, future, outsiderId];
+    try {
+      outsider = await actor('Category Outsider');
+      const fixtures = [
+        {
+          id: newest,
+          owner: recipient.id,
+          category: 'community',
+          at: '2026-10-21T11:00:00Z',
+          read: false
+        },
+        { id: tieIds[0]!, owner: recipient.id, category: 'community', at: tiedAt, read: true },
+        { id: tieIds[1]!, owner: recipient.id, category: 'community', at: tiedAt, read: false },
+        {
+          id: oldest,
+          owner: recipient.id,
+          category: 'community',
+          at: '2026-10-21T09:00:00Z',
+          read: false
+        },
+        {
+          id: otherCategory,
+          owner: recipient.id,
+          category: 'matches',
+          at: '2026-10-21T10:30:00Z',
+          read: false
+        },
+        {
+          id: future,
+          owner: recipient.id,
+          category: 'community',
+          at: '2026-10-22T00:00:00Z',
+          read: false
+        },
+        {
+          id: outsiderId,
+          owner: outsider.id,
+          category: 'community',
+          at: '2026-10-21T11:30:00Z',
+          read: false
+        }
+      ];
+      sql(`insert into public.notifications
+        (id, recipient_user_id, event_key, kind, category, target_type, target_id, created_at, read_at)
+        values ${fixtures
+          .map(
+            (row) => `(${literal(row.id)}::uuid, ${literal(row.owner)}::uuid,
+          ${literal(`category-feed:${row.id}`)}, 'community_invitation', ${literal(row.category)},
+          'community_invitation', ${literal(crypto.randomUUID())}::uuid, ${literal(row.at)}::timestamptz,
+          ${row.read ? `${literal(asOf)}::timestamptz` : 'null'})`
+          )
+          .join(',')};`);
+
+      const feed = (category = 'community') => {
+        let query = recipient.client
+          .from('notifications')
+          .select('id,kind,category,target_type,target_id,community_id,created_at,read_at')
+          .lte('created_at', asOf);
+        if (category !== 'all') query = query.eq('category', category);
+        return query.order('created_at', { ascending: false }).order('id', { ascending: false });
+      };
+      const first = await feed().limit(3);
+      expect(first.error).toBeNull();
+      expect(first.data?.map((row) => row.id)).toEqual([newest, ...tieIds]);
+      expect(first.data?.map((row) => row.category)).toEqual([
+        'community',
+        'community',
+        'community'
+      ]);
+      expect(first.data?.map((row) => row.read_at !== null)).toEqual([false, true, false]);
+      // Page size two plus lookahead; resume at the read row inside the timestamp tie.
+      const boundary = first.data![1]!;
+      const next = await feed()
+        .or(
+          `created_at.lt.${boundary.created_at},and(created_at.eq.${boundary.created_at},id.lt.${boundary.id})`
+        )
+        .limit(3);
+      expect(next.error).toBeNull();
+      expect(next.data?.map((row) => row.id)).toEqual([tieIds[1], oldest]);
+      expect([...first.data!.slice(0, 2), ...next.data!].map((row) => row.id)).toEqual([
+        newest,
+        ...tieIds,
+        oldest
+      ]);
+      const empty = await feed('rankings').limit(3);
+      expect(empty.error).toBeNull();
+      expect(empty.data).toEqual([]);
+      const all = await feed('all').limit(21);
+      expect(all.error).toBeNull();
+      expect(all.data?.map((row) => row.id)).toEqual([newest, otherCategory, ...tieIds, oldest]);
+      const unread = await recipient.client.rpc('count_my_unread_notifications');
+      expect(unread.error).toBeNull();
+      // Includes matches and post-cutoff rows; excludes the read row and outsider.
+      expect(unread.data).toBe(5);
+    } finally {
+      sql(`do $cleanup$ begin
+        delete from public.notifications where id = any(array[${ids.map((id) => `${literal(id)}::uuid`).join(',')}]);
+        delete from auth.users where id in (${[recipient.id, ...(outsider ? [outsider.id] : [])].map((id) => `${literal(id)}::uuid`).join(',')});
+      end $cleanup$;`);
+    }
+  }, 30000);
+
+  it('retains valid complete category ordering and the existing unread index', () => {
+    const catalog: unknown = JSON.parse(
+      sql(`select i.indisvalid as valid, i.indpred is null as nonpartial,
+      am.amname as method, i.indnkeyatts as key_count, i.indnatts as attribute_count,
+      array(select pg_get_indexdef(i.indexrelid, position, true)
+        from generate_series(1, i.indnkeyatts) position order by position) as keys,
+      i.indoption::text as options,
+      exists(select 1 from pg_index old where old.indexrelid =
+        to_regclass('public.notifications_recipient_unread_idx')
+        and old.indrelid = 'public.notifications'::regclass and old.indisvalid) as unread_present
+      from pg_index i join pg_class c on c.oid = i.indexrelid
+      join pg_am am on am.oid = c.relam
+      where i.indexrelid = to_regclass('public.notifications_recipient_category_created_idx')
+        and i.indrelid = 'public.notifications'::regclass;`)
+    );
+    const rows = Array.isArray(catalog)
+      ? catalog
+      : catalog && typeof catalog === 'object' && 'rows' in catalog
+        ? catalog.rows
+        : undefined;
+    expect(rows).toHaveLength(1);
+    expect(Array.isArray(rows) ? rows[0] : undefined).toMatchObject({
+      valid: true,
+      nonpartial: true,
+      method: 'btree',
+      key_count: 4,
+      attribute_count: 4,
+      keys: ['recipient_user_id', 'category', 'created_at', 'id'],
+      options: '0 0 3 3',
+      unread_present: true
+    });
+  });
 
   it('enforces recipient access and read RPC semantics; helper is private and idempotent', async () => {
     const first = await actor('Notification Recipient');

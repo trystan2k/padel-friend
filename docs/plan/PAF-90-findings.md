@@ -1,0 +1,9 @@
+| id | severity | scope | location | title | status | owner | iteration | disposition evidence |
+| -- | -------- | ----- | -------- | ----- | ------ | ----- | --------- | -------------------- |
+| F1 | minor | related | supabase/migrations/20261021180000_notifications_category_feed_index.sql:4 | Production write-lock acceptability unverified | observed | deployment operator (user) | 1 | Architecture review required the plan's step 2 preflight: production table size / write traffic / acceptable `CREATE INDEX` lock window. Environment cannot supply it: `supabase/.temp/project-ref` absent, `SUPABASE_ACCESS_TOKEN` / `SUPABASE_DB_PASSWORD` unset, `pnpm exec supabase projects list` fails with `AccessTokenRequiredError`; `.env`/`.dev.vars.example` hold only loopback URLs; no workflow applies hosted migrations (hosted path is the manual `supabase login` → `supabase link` → `supabase db push` procedure in `INITIAL_SETUP.md`). Available evidence recorded: `public.notifications` introduced 2026-10-15 (`20261015180000_notifications_store.sql`), producers from `20261015180200`; local build of the new index on the largest available dataset measured 161.0 ms (`pg_stat_statements`, single call). No code change can close this; PAF-90 delivery criteria state documented environment limitations are not prerequisites. Disclosed as an explicit deploy-time verification item in the PR body and at the push/PR approval gate; no follow-up issue created (not user-approved, and not a completion obligation). |
+
+No findings from the code review (correctness, SQL/migration conventions, test reliability, CLI output handling, scope all clean).
+
+UX/UI review not applicable: no UI, CSS/StyleX, or i18n file changed.
+
+Reviewed baseline: `9cf02d04e3b3db6edd586693bbc6892cf245fa94`. No code changed after review, so no delta-review round was required.
