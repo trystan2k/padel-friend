@@ -16,8 +16,10 @@ export const styles = stylex.create({
     color: 'var(--color-text)',
     fontFamily: 'var(--font-family-body)',
     overflowY: 'auto',
+    // The 100vh scrollport starts below the wrapping locale/theme controls. Clear
+    // their offset as well as the fixed navigation when native Tab focus scrolls.
     scrollPaddingBottom:
-      'calc(var(--space-14) + var(--space-40) + var(--space-16) + var(--space-40) + var(--space-4))'
+      'calc(var(--space-14) + var(--space-40) + var(--space-16) + var(--space-40) + var(--space-40))'
   },
   header: { display: 'flex', flexDirection: 'column', gap: 0 },
   title: {

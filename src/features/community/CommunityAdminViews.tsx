@@ -32,7 +32,7 @@ import {
   listCommunityAudit,
   updateCommunityAdminDefaults
 } from './community-admin.functions';
-import { communityDateLabel, dateLabel, failed, initials } from './CommunityAdmin';
+import { communityDateLabel, dateLabel, failed, initials } from './community-admin.helpers';
 import { updateCommunitySettings } from './community.functions';
 import { sendCommunityRequestMessage } from './community-request.functions';
 import { formatCommunityCurrencyPreview, type CommunityAdminDefaults } from './community-settings';

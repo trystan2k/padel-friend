@@ -261,11 +261,51 @@ describe('community admin executable routes', () => {
 
   it('navigates to detail without invoking the active-roster loader', async () => {
     const router = makeRouter(`/community/${communityId}/admin/members/${membershipId}`);
-    const matches = router.matchRoutes(`/community/${communityId}/admin/members/${membershipId}`);
+    await router.load();
+    const matches = router.state.matches;
+    expect(matches.map((match) => match.routeId)).toContain('/_protected');
     expect(matches.map((match) => match.routeId)).toContain(
-      '/_protected/community/$communityId/admin/members/$membershipId'
+      '/_protected/community/$communityId/admin'
     );
-    await loader(MemberDetailRoute)({ params: routeParams });
+    const detail = matches.find(
+      (match) => match.routeId === '/_protected/community/$communityId/admin/members/$membershipId'
+    );
+    expect(matches.every((match) => match.status === 'success')).toBe(true);
+    expect(detail?.status).toBe('success');
+    expect(detail?.loaderData).toEqual({
+      community,
+      member: { membership_id: membershipId },
+      membershipId
+    });
+    expect(calls.onboarding).toHaveBeenCalledOnce();
+    expect(calls.context).toHaveBeenCalledWith({ data: { community_id: communityId } });
+    expect(calls.member).toHaveBeenCalledExactlyOnceWith({
+      data: { community_id: communityId, membership_id: membershipId }
+    });
+    expect(calls.members).not.toHaveBeenCalled();
+  });
+
+  it('loads the members index through the production router before navigating to detail', async () => {
+    const router = makeRouter(`/community/${communityId}/admin/members`);
+    await router.load();
+    expect(router.state.matches.every((match) => match.status === 'success')).toBe(true);
+    expect(calls.members).toHaveBeenCalledWith({
+      data: { community_id: communityId, query: '', status: 'active', offset: 0, limit: 50 }
+    });
+    calls.members.mockClear();
+    calls.member.mockClear();
+    router.history.push(`/community/${communityId}/admin/members/${membershipId}`);
+    await router.load();
+    const detail = router.state.matches.find(
+      (match) => match.routeId === '/_protected/community/$communityId/admin/members/$membershipId'
+    );
+    expect(router.state.matches.every((match) => match.status === 'success')).toBe(true);
+    expect(detail?.status).toBe('success');
+    expect(detail?.loaderData).toEqual({
+      community,
+      member: { membership_id: membershipId },
+      membershipId
+    });
     expect(calls.member).toHaveBeenCalledExactlyOnceWith({
       data: { community_id: communityId, membership_id: membershipId }
     });

@@ -90,7 +90,7 @@ describe.skipIf(environment.env === null)('community column isolation (local Sup
   // Single test exercises dozens of column-ACL and settings-RPC round trips;
   // measured >3s under full-suite worker contention, so it carries an explicit
   // timeout.
-  it('enforces direct column ACLs and member/admin settings RPC authorization', async () => {
+  it('enforces anonymous denial, column ACLs and settings-RPC authorization while returning null nullable columns without expanding member settings projection', async () => {
     const { url, key } = env();
     async function queryLocal(sql: string) {
       const child = spawn(
@@ -288,5 +288,14 @@ describe.skipIf(environment.env === null)('community column isolation (local Sup
       (await updateCommunitySettings({ data: { community_id: id, settings: { server: true } } }))
         .settings
     ).toEqual({ server: true });
+    serverClient.current = admin.client;
+    const cleared = await updateCommunitySettings({
+      data: { community_id: id, description: null, city_label: null, logo_path: null }
+    });
+    expect(cleared).toMatchObject({ description: null, city_label: null, logo_path: null });
+    serverClient.current = member.client;
+    const memberSettings = await getCommunitySettings({ data: { community_id: id } });
+    expect(Object.keys(memberSettings ?? {}).sort()).toEqual(['id', 'settings']);
+    expect(memberSettings).toEqual({ id, settings: { server: true } });
   }, 15000);
 });
