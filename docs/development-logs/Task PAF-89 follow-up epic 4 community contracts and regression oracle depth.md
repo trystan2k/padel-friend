@@ -11,8 +11,9 @@ permalink: docs/development-logs/task-PAF-89-follow-up-epic-4-community-contract
 - Task ID: PAF-89 (epic "Follow-up epic 4 — Community contracts and regression-oracle depth"; three scoped units delivered as units within the same PR, plus review fixes)
 - Date (UTC): 2026-10-21
 - Project: padel-friend
-- Branch: feature/PAF-89-follow-up-epic-4-community-contracts-and-regression-oracle-depth (base `5c283b3b` = `origin/main`, 4 commits ahead)
-- Commits (4, oldest first): `af7f561` (Unit 1 "test: verify community JSONB boundaries against PostgreSQL"), `9036e66` (Unit 2 "test: strengthen community admin production-path oracles"), `f36a41d` (Unit 3 "fix: type community settings responses and review dependency risk"), `66b1542` (review fixes "fix: address review findings", HEAD)
+- Branch: feature/PAF-89-follow-up-epic-4-community-contracts-and-regression-oracle-depth (base `5c283b3b` = `origin/main`; commit list now 6 after the post-PR CI fix — see Post-PR section)
+- Commits (oldest first): `af7f561` (Unit 1 "test: verify community JSONB boundaries against PostgreSQL"), `9036e66` (Unit 2 "test: strengthen community admin production-path oracles"), `f36a41d` (Unit 3 "fix: type community settings responses and review dependency risk"), `66b1542` (review fixes "fix: address review findings"), `2cbd88b` (post-PR CI fix "fix: keep focused settings controls above the bottom navigation" — see Post-PR section)
+- Pull Request: https://github.com/trystan2k/padel-friend/pull/29 (mergeable; blocked pending human approval)
 - Artifacts: plan `docs/plan/Plan PAF-89 follow-up-epic-4-community-contracts-and-regression-oracle-depth.md`, findings ledger `docs/plan/PAF-89-findings.md`
 
 ## Objective
@@ -80,4 +81,18 @@ permalink: docs/development-logs/task-PAF-89-follow-up-epic-4-community-contract
 - `af7f561` — test: verify community JSONB boundaries against PostgreSQL (Unit 1)
 - `9036e66` — test: strengthen community admin production-path oracles (Unit 2)
 - `f36a41d` — fix: type community settings responses and review dependency risk (Unit 3)
-- `66b1542` — fix: address review findings (review fixes, HEAD)
+- `66b1542` — fix: address review findings (review fixes)
+- `2cbd88b` — fix: keep focused settings controls above the bottom navigation (post-PR CI fix; see Post-PR section)
+
+## Post-PR: CI Fix and Review Closure (PR #29)
+
+- PR: https://github.com/trystan2k/padel-friend/pull/29 — mergeable, blocked pending human approval. Branch commit list now 6 commits.
+- **CI failure (run `39583547708`):** E2E 2/142 failed — `settings heading and controls fit at 320px` for pt-BR and es. The keyboard-traversal oracle reported `textbox#community-admin-description` obscured by the fixed bottom navigation (rect bottom 777 vs nav top 774).
+- **Root cause:** the 100vh `main` scrollport starts below the wrapping locale/theme row, so the existing `scrollPaddingBottom` cleared the nav but not that additional offset.
+- **Fix:** `src/features/community/community-admin.styles.ts` — `scrollPaddingBottom` increased by one existing `--space-40` token step (no literals, no new tokens). A settings-only guard in `e2e/community-admin.spec.ts` now asserts the computed scroll padding clears the measured obscured scrollport bottom.
+- **Deterministic reproduction:** a temporary offset pushed the description y733→718 against nav top 774; 12px clearance stable over 12 frames.
+- Unobscured assertions, visual budgets, masks, reference hashes, and coverage thresholds unchanged.
+- **Copilot review comments (both addressed):** `it.each` titles in `test/community.functions.test.ts` switched from `%s` to `$name`/`$target` interpolation; the column-isolation test title now reflects its retained ACL/authorization coverage alongside the new nullable-projection coverage.
+- **Post-fix verification:** local `pnpm complete-check` green — unit 837/837, integration 165/165, E2E 142/142. CI run `39589518952` fully green — E2E 142/142, including the previously failing pt-BR/es locales. Copilot post-fix review reported no concrete defects.
+- **New commit:** `2cbd88b` `fix: keep focused settings controls above the bottom navigation`.
+- Findings ledger updated with F6–F8 and the post-PR CI verification: `docs/plan/PAF-89-findings.md`.

@@ -28,11 +28,26 @@ PR #29 CI run `39583547708`: `GitGuardian` pass; `checks` FAILURE at the E2E sta
 
 ## Round 2 (delta review)
 
-Baseline reviewed by round 1: commit `f36a41d` (HEAD at review time). Delta = review-fix commit `e1af604` (only `test/community.integration.test.ts` + `e2e/community-admin.spec.ts`; no `src/` changes, so architecture domain untouched).
+Baseline reviewed by round 1: commit `f36a41d` (HEAD at review time). Delta = review-fix commit `66b1542` (only `test/community.integration.test.ts` + `e2e/community-admin.spec.ts`; no `src/` changes, so architecture domain untouched).
 
 Delta verdicts: F1 verified fixed; F2 verified fixed after the F5 correction; F3 verified fixed; F4 verified fixed. One new required finding (F5) raised and fixed. No regressions in the delta.
 
 Round-3 re-verification of F5 was a 4-line mechanical correction verified directly against the 80-char validator cap (`src/features/community/community.validators.ts:107`) plus a non-skipped integration run, rather than another reviewer round.
+
+## Round 3 (post-PR delta review)
+
+Baseline: commit `66b1542`. Delta: docs commit `0fa8b6f` plus the F6/F7/F8 fixes committed as `2cbd88b`.
+
+- `code-review-specialist` (delta): `none` — F6 fix token-only and minimal, guard true/non-tautological and complementary, no weakened assertions or new tolerances, F7 interpolation correct on Vitest 5.0.4 with identical cases, F8 title accurate, no new defects.
+- `ux-ui-reviewer-specialist` (accessibility delta): `none` — native Tab scroll clears the fixed nav (12px) at 320px in all three locales, `scroll-padding-bottom` is the correct remedy without rendered-layout impact, guard is a legitimate accessibility regression test, no remaining objective defect in scope.
+
+## Post-PR CI verification (final)
+
+- PR #29 CI run `39583547708` (pre-fix): `checks` FAILURE — 2/142 E2E failed (settings @320px, pt-BR/es), which became finding F6.
+- PR #29 CI run `39589518952` (head `2cbd88b`): **`checks` pass (16m03s)** and `GitGuardian` pass. E2E 142/142 including `settings heading and controls fit at 320px` for en, pt-BR and es.
+- Local `pnpm complete-check` on the same code state: db types check, build, knip, typecheck, lint, format check, unit 837/837, integration 165/165, E2E 142/142.
+- Copilot review after the fixes (11:15:51Z) reported "no concrete defects" and requested only human verification; the two earlier inline comments (F7, F8) are addressed in `2cbd88b`.
+- PR state: `mergeable: MERGEABLE`, `mergeStateStatus: BLOCKED` pending an approving human review.
 
 Observations carried forward (not findings):
 
