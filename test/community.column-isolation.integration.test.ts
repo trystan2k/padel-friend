@@ -90,7 +90,7 @@ describe.skipIf(environment.env === null)('community column isolation (local Sup
   // Single test exercises dozens of column-ACL and settings-RPC round trips;
   // measured >3s under full-suite worker contention, so it carries an explicit
   // timeout.
-  it('settings update returns null nullable columns without expanding member settings projection', async () => {
+  it('enforces anonymous denial, column ACLs and settings-RPC authorization while returning null nullable columns without expanding member settings projection', async () => {
     const { url, key } = env();
     async function queryLocal(sql: string) {
       const child = spawn(

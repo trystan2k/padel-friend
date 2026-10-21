@@ -172,9 +172,9 @@ describe('community server functions', () => {
 
   it.each(
     communityJsonbFixtures.flatMap((descriptor) =>
-      ([4095, 4096] as const).map((target) => [descriptor, target] as const)
+      ([4095, 4096] as const).map((target) => ({ name: descriptor.name, descriptor, target }))
     )
-  )('accepts PostgreSQL JSONB %s at %s bytes', async (descriptor, target) => {
+  )('accepts PostgreSQL JSONB $name at $target bytes', async ({ descriptor, target }) => {
     mocks.getServerClient.mockReset();
     const authenticated = client();
     mocks.getServerClient.mockReturnValue(authenticated);
@@ -191,7 +191,7 @@ describe('community server functions', () => {
   });
 
   it.each(communityJsonbFixtures)(
-    'rejects PostgreSQL JSONB %s at 4097 bytes before client access',
+    'rejects PostgreSQL JSONB $name at 4097 bytes before client access',
     async (descriptor) => {
       mocks.getServerClient.mockReset();
       await expect(

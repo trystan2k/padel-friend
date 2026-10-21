@@ -1720,14 +1720,16 @@ test.describe('community admin 320px locale matrix', () => {
         if (destination === 'settings') {
           const clearance = await page.locator('main').evaluate((main) => ({
             scrollPaddingBottom: Number.parseFloat(getComputedStyle(main).scrollPaddingBottom),
-            navHeight: Number.parseFloat(
-              getComputedStyle(document.querySelector('nav[aria-label]')!).height
-            )
+            // Main is 100vh below the wrapping locale/theme row, not at viewport y=0.
+            // Its optimal viewing region must end above the fixed navigation.
+            obscuredScrollportBottom:
+              main.getBoundingClientRect().bottom -
+              document.querySelector('nav[aria-label]')!.getBoundingClientRect().top
           }));
           expect(
             clearance.scrollPaddingBottom,
-            'settings scroll padding must clear bottom navigation'
-          ).toBeGreaterThanOrEqual(clearance.navHeight);
+            'settings scroll padding must clear bottom navigation including the scrollport offset'
+          ).toBeGreaterThanOrEqual(clearance.obscuredScrollportBottom);
         }
         for (const control of await contentControls.all()) {
           // `scrollIntoViewIfNeeded()` is a CDP nearest-edge scroll: it ignores CSS
