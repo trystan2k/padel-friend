@@ -46,6 +46,12 @@ import {
   promoteCommunityMember,
   reactivateCommunityMember
 } from '../src/features/community/community-admin.functions';
+import { validateUpdateCommunitySettings } from '../src/features/community/community.validators';
+import {
+  buildFixtureAtBytes,
+  communityJsonbFixtures,
+  compactJsonBytes
+} from './helpers/community-jsonb-fixtures';
 
 vi.setConfig({ testTimeout: 30000, hookTimeout: 30000 });
 type LocalEnv = NonNullable<ReturnType<typeof localSupabaseEnv>['env']>;
@@ -112,6 +118,31 @@ describe.skipIf(environment.env === null)('community domain (local Supabase inte
   }
   function expectNoError(result: { error: unknown }) {
     expect(result.error).toBeNull();
+  }
+  async function settingsSnapshot(client: SupabaseClient, communityId: string): Promise<unknown> {
+    const result = await client
+      .rpc('get_community_settings', { p_community_id: communityId })
+      .single();
+    expectNoError(result);
+    return result.data;
+  }
+  async function fullSnapshot(communityId: string) {
+    const row = await executeLocalFixtureSql(
+      `select to_jsonb(c) as row from public.communities c where id='${communityId}'`
+    );
+    return {
+      row: row.rows[0]?.row,
+      settings: await executeLocalFixtureSql(
+        `select settings from public.communities where id='${communityId}'`
+      ).then((result) => result.rows),
+      audit: await rows(admin.client, 'community_audit_log', communityId).then((events) =>
+        events.sort(
+          (a, b) =>
+            String(a.occurred_at).localeCompare(String(b.occurred_at)) ||
+            String(a.id).localeCompare(String(b.id))
+        )
+      )
+    };
   }
   function isExpiredInvitationResult(
     value: unknown
@@ -759,6 +790,100 @@ describe.skipIf(environment.env === null)('community domain (local Supabase inte
         .sort((a, b) => a.localeCompare(b))
     ).toEqual(audits.map((event) => event.id).sort((a, b) => a.localeCompare(b)));
     serverClient.current = null;
+  });
+
+  it('validator decisions match PostgreSQL JSONB byte oracle at 4095, 4096 and 4097 bytes', async () => {
+    const cases = communityJsonbFixtures.flatMap((descriptor) =>
+      ([4095, 4096, 4097] as const).map((target) => ({
+        descriptor,
+        target,
+        settings: buildFixtureAtBytes(descriptor, target)
+      }))
+    );
+    const values = cases.map(({ descriptor, target, settings }, index) => {
+      const hex = Buffer.from(JSON.stringify(settings), 'utf8').toString('hex');
+      return `select ${index} as case_index, '${descriptor.name.replaceAll("'", "''")}' as fixture, ${target} as target, octet_length(convert_from(decode('${hex}', 'hex'), 'UTF8')::jsonb::text) as bytes`;
+    });
+    const oracle = await executeLocalFixtureSql(values.join(' union all '));
+    expect(oracle.rows).toHaveLength(cases.length);
+    for (const [index, item] of cases.entries()) {
+      const measured = oracle.rows.find((row) => row.case_index === index);
+      if (Number(measured?.bytes) !== item.target)
+        throw new Error(`${item.descriptor.name} target ${item.target}: oracle byte mismatch`);
+      const input = { community_id: privateId, settings: item.settings };
+      const accepted = item.target <= 4096;
+      let validatorAccepted = true;
+      try {
+        validateUpdateCommunitySettings(input);
+      } catch {
+        validatorAccepted = false;
+      }
+      if (validatorAccepted !== accepted)
+        throw new Error(
+          `${item.descriptor.name} target ${item.target}: validator decision mismatch`
+        );
+      if (!accepted) continue;
+      serverClient.current = admin.client;
+      const result = await updateCommunitySettings({ data: input });
+      try {
+        expect(result.settings).toEqual(JSON.parse(JSON.stringify(item.settings)));
+      } catch (error) {
+        throw new Error(`${item.descriptor.name}: returned settings mismatch`, { cause: error });
+      }
+      const storedResult = await settingsSnapshot(admin.client, privateId);
+      if (!isPlainRowObject(storedResult) || !('settings' in storedResult))
+        throw new Error(`${item.descriptor.name}: settings RPC returned invalid shape`);
+      const storedSettings = storedResult.settings;
+      try {
+        expect(storedSettings).toEqual(JSON.parse(JSON.stringify(item.settings)));
+      } catch (error) {
+        throw new Error(`${item.descriptor.name}: persisted RPC settings mismatch`, {
+          cause: error
+        });
+      }
+      const persisted = await executeLocalFixtureSql(
+        `select octet_length(settings::text) as bytes from public.communities where id='${privateId}'`
+      );
+      if (Number(persisted.rows[0]?.bytes) !== item.target)
+        throw new Error(`${item.descriptor.name} persisted ${item.target}: byte mismatch`);
+    }
+  });
+
+  it('rejects 4097-byte settings through the database RPC without changing row or audit', async () => {
+    const settings = buildFixtureAtBytes(communityJsonbFixtures[0]!, 4097);
+    const before = await fullSnapshot(privateId);
+    const direct = await admin.client.rpc('update_community_settings', {
+      p_community_id: privateId,
+      p_changes: { settings, name: `forbidden-${crypto.randomUUID()}` }
+    });
+    expect(direct.error?.code).toBe('22023');
+    expect(direct.error?.message).toBe('Invalid community patch');
+    expect(await fullSnapshot(privateId)).toEqual(before);
+
+    // The application validator short-circuits before the database RPC.
+    serverClient.current = admin.client;
+    await expect(
+      updateCommunitySettings({ data: { community_id: privateId, settings } })
+    ).rejects.toThrow('INVALID_COMMUNITY_INPUT');
+    expect(await fullSnapshot(privateId)).toEqual(before);
+  });
+
+  it('compact JSON size is not the PostgreSQL settings byte oracle', async () => {
+    const settings = { x: 'a'.repeat(4088) };
+    expect(compactJsonBytes(settings)).toBe(4096);
+    const hex = Buffer.from(JSON.stringify(settings), 'utf8').toString('hex');
+    const oracle = await executeLocalFixtureSql(
+      `select octet_length(convert_from(decode('${hex}', 'hex'), 'UTF8')::jsonb::text) as bytes`
+    );
+    expect(Number(oracle.rows[0]?.bytes)).toBe(4097);
+    const before = await fullSnapshot(privateId);
+    const direct = await admin.client.rpc('update_community_settings', {
+      p_community_id: privateId,
+      p_changes: { settings }
+    });
+    expect(direct.error?.code).toBe('22023');
+    expect(direct.error?.message).toBe('Invalid community patch');
+    expect(await fullSnapshot(privateId)).toEqual(before);
   });
 
   it('AC3: closed intervals survive, cannot reopen/delete, and rejoin creates another row', async () => {

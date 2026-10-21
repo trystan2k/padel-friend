@@ -1,4 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import {
+  buildFixtureAtBytes,
+  compactJsonBytes,
+  communityJsonbFixtures
+} from './helpers/community-jsonb-fixtures';
 
 const mocks = vi.hoisted(() => ({
   getServerClient: vi.fn<() => unknown>(),
@@ -108,32 +113,66 @@ describe('community server functions', () => {
     expect(mocks.getServerClient).not.toHaveBeenCalled();
   });
 
-  it('sizes settings as PostgreSQL JSONB text, including exact byte boundaries', async () => {
+  it('sizes flat settings as PostgreSQL JSONB text, including exact byte boundaries', async () => {
     const payload = (bytes: number) => ({ x: 'a'.repeat(bytes - 9) });
-    const authenticated = client();
-    mocks.getServerClient.mockReturnValue(authenticated);
     for (const bytes of [4095, 4096]) {
+      const authenticated = client();
+      mocks.getServerClient.mockReturnValue(authenticated);
       await expect(
         updateCommunitySettings({ data: { community_id: id, settings: payload(bytes) } })
       ).resolves.toEqual(row);
+      expect(mocks.getServerClient).toHaveBeenCalledTimes(1);
+      expect(authenticated.rpc).toHaveBeenCalledTimes(1);
+      mocks.getServerClient.mockReset();
     }
+    mocks.getServerClient.mockReset();
     await expect(
       updateCommunitySettings({ data: { community_id: id, settings: payload(4097) } })
     ).rejects.toThrow('INVALID_COMMUNITY_INPUT');
-    for (const fixture of [
-      { nested: [{ empty: {} }, []] },
-      { emptyObject: {}, emptyArray: [] },
-      { ключ: '🎾\\"' },
-      { expanded: 1e21 },
-      { expanded: 1e-7 },
-      { expanded: 5e-324 },
-      { negativeZero: -0 }
-    ])
+    expect(mocks.getServerClient).not.toHaveBeenCalled();
+  });
+
+  it.each(
+    communityJsonbFixtures.flatMap((descriptor) =>
+      ([4095, 4096] as const).map((target) => [descriptor, target] as const)
+    )
+  )('accepts PostgreSQL JSONB %s at %s bytes', async (descriptor, target) => {
+    mocks.getServerClient.mockReset();
+    const authenticated = client();
+    mocks.getServerClient.mockReturnValue(authenticated);
+    const settings = buildFixtureAtBytes(descriptor, target);
+    await expect(
+      updateCommunitySettings({ data: { community_id: id, settings } })
+    ).resolves.toEqual(row);
+    expect(mocks.getServerClient).toHaveBeenCalledTimes(1);
+    expect(authenticated.auth.getClaims).toHaveBeenCalledTimes(1);
+    expect(authenticated.rpc).toHaveBeenCalledExactlyOnceWith('update_community_settings', {
+      p_community_id: id,
+      p_changes: { settings }
+    });
+  });
+
+  it.each(communityJsonbFixtures)(
+    'rejects PostgreSQL JSONB %s at 4097 bytes before client access',
+    async (descriptor) => {
+      mocks.getServerClient.mockReset();
       await expect(
-        updateCommunitySettings({ data: { community_id: id, settings: fixture } })
-      ).resolves.toEqual(row);
-    expect(mocks.getServerClient).toHaveBeenCalledTimes(9);
-    expect(authenticated.rpc).toHaveBeenCalledTimes(9);
+        updateCommunitySettings({
+          data: { community_id: id, settings: buildFixtureAtBytes(descriptor, 4097) }
+        })
+      ).rejects.toThrow('INVALID_COMMUNITY_INPUT');
+      expect(mocks.getServerClient).not.toHaveBeenCalled();
+    }
+  );
+
+  it('rejects settings whose compact JSON fits but PostgreSQL JSONB text exceeds the cap', async () => {
+    const settings = { x: 'a'.repeat(4088) };
+    expect(compactJsonBytes(settings)).toBe(4096);
+    mocks.getServerClient.mockReset();
+    await expect(updateCommunitySettings({ data: { community_id: id, settings } })).rejects.toThrow(
+      'INVALID_COMMUNITY_INPUT'
+    );
+    expect(mocks.getServerClient).not.toHaveBeenCalled();
   });
 
   it('rejects PostgreSQL-invalid text before client access', async () => {
