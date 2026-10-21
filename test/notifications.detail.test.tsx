@@ -358,6 +358,20 @@ describe('notification detail page', () => {
     expect(mocks.targetV1).not.toHaveBeenCalled();
   });
 
+  it.each([
+    ['match_invitation_accepted', 'invitationAcceptedBody'],
+    ['match_invitation_declined', 'invitationDeclinedBody'],
+    ['match_invitation_expired', 'invitationExpiredBody']
+  ] as const)('renders %s with lifecycle copy and safe match target', async (kind, body) => {
+    mountPage({ ...availableMatch, kind }, matchContext('Invitation court'));
+    expect(await screen.findByRole('heading', { name: copy.kinds[kind] })).toBeTruthy();
+    expect(screen.getByText(copy.match[body])).toBeTruthy();
+    expect(screen.queryByText(copy.match.invitedBy)).toBeNull();
+    expect(screen.getByRole('link', { name: copy.match.openEvent }).getAttribute('href')).toBe(
+      `/matches/${availableMatch.match_event_id}`
+    );
+  });
+
   it('renders the cutoff expired kind with its own heading and body copy', async () => {
     mountPage(
       { ...availableMatch, kind: 'match_registration_expired' },

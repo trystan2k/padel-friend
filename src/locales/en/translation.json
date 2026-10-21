@@ -462,7 +462,10 @@
       "match_registration_promoted": "PROMOTED TO PLAYING",
       "match_registration_quartet_complete": "Your quartet is complete",
       "match_registration_expired": "Request expired at cutoff",
-      "match_registration_not_playing": "Reserve not playing"
+      "match_registration_not_playing": "Reserve not playing",
+      "match_invitation_accepted": "Match invitation accepted",
+      "match_invitation_declined": "Match invitation declined",
+      "match_invitation_expired": "Match invitation expired"
     },
     "match": {
       "openEvent": "Open event",
@@ -488,6 +491,9 @@
       "registrationReservePastBody": "You joined the reserve queue for {{event}}. Your current placement is shown on the match.",
       "registrationPromotedBody": "Your quartet filled. You’re now Group {{group}}.",
       "registrationQuartetCompleteBody": "Group {{group}} is full — 4 players confirmed for {{event}}.",
+      "invitationAcceptedBody": "An invitation was accepted. Registration follows ordinary eligibility and queue rules.",
+      "invitationDeclinedBody": "An invitation was declined. No place was reserved.",
+      "invitationExpiredBody": "The invitation deadline passed without a response. No place was reserved.",
       "registrationExpiredBody": "Registration closed before a decision. No place was reserved.",
       "registrationNotPlayingBody": "Cutoff passed before a quartet completed. No match result will be recorded.",
       "unavailable": "This match notification is no longer available."
@@ -519,6 +525,35 @@
     "offline": "You are offline. Reconnect to save your preferences."
   },
   "matches": {
+    "invitations": {
+      "title": "Your match invitation",
+      "accept": "Accept invitation",
+      "decline": "Decline invitation",
+      "pending": "You are invited. Your invitation does not reserve a place.",
+      "accepted": "Invitation accepted. Your current registration and queue position appear below.",
+      "declined": "You declined this invitation.",
+      "expired": "This invitation has expired.",
+      "cancelled": "This invitation was cancelled.",
+      "expiresAt": "Respond before {{deadline}}.",
+      "pendingApproval": "Invitation accepted. Your registration awaits organizer approval.",
+      "errors": {
+        "expired": "This invitation has expired.",
+        "alreadyResolved": "This invitation was already answered. Refresh to see its state.",
+        "notFound": "This invitation is unavailable.",
+        "eventNotFound": "This match is unavailable.",
+        "inviteOnly": "A pending or accepted invitation is required.",
+        "closed": "Registration has closed.",
+        "denied": "You are not eligible to register for this match.",
+        "duplicate": "You are already registered. Refresh to see your place.",
+        "pendingDuplicate": "Your registration already awaits approval.",
+        "full": "This match is full. Your invitation remains pending.",
+        "requesterIneligible": "Your membership no longer permits registration.",
+        "forbidden": "You cannot respond to this invitation.",
+        "invalid": "This response is invalid.",
+        "unauthenticated": "Sign in to respond to this invitation.",
+        "unavailable": "Could not save your response. Try again."
+      }
+    },
     "title": "Matches",
     "subtitle": "Find and discover padel matches.",
     "navigationLabel": "Matches",

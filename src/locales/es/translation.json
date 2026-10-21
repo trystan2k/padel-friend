@@ -462,7 +462,10 @@
       "match_registration_promoted": "PROMOVIDO A JUGAR",
       "match_registration_quartet_complete": "Tu cuarteto está completo",
       "match_registration_expired": "Solicitud caducada en el cierre",
-      "match_registration_not_playing": "Reserva sin jugar"
+      "match_registration_not_playing": "Reserva sin jugar",
+      "match_invitation_accepted": "Invitación al partido aceptada",
+      "match_invitation_declined": "Invitación al partido rechazada",
+      "match_invitation_expired": "Invitación al partido caducada"
     },
     "match": {
       "openEvent": "Abrir evento",
@@ -488,6 +491,9 @@
       "registrationReservePastBody": "Te uniste a la lista de reserva de {{event}}. Tu posición actual se muestra en el partido.",
       "registrationPromotedBody": "Tu cuarteto se completó. Ahora eres del Grupo {{group}}.",
       "registrationQuartetCompleteBody": "El Grupo {{group}} está completo — 4 jugadores confirmados para {{event}}.",
+      "invitationAcceptedBody": "Se aceptó una invitación. La inscripción sigue las reglas normales de elegibilidad y cola.",
+      "invitationDeclinedBody": "Se rechazó una invitación. No se reservó ninguna plaza.",
+      "invitationExpiredBody": "El plazo de la invitación pasó sin respuesta. No se reservó ninguna plaza.",
       "registrationExpiredBody": "La inscripción cerró antes de una decisión. No se reservó ninguna plaza.",
       "registrationNotPlayingBody": "El plazo pasó antes de que se completara un cuarteto. No se registrará ningún resultado del partido.",
       "unavailable": "Esta notificación de partido ya no está disponible."
@@ -519,6 +525,35 @@
     "offline": "No tienes conexión. Vuelve a conectarte para guardar tus preferencias."
   },
   "matches": {
+    "invitations": {
+      "title": "Tu invitación al partido",
+      "accept": "Aceptar invitación",
+      "decline": "Rechazar invitación",
+      "pending": "Estás invitado. La invitación no reserva una plaza.",
+      "accepted": "Invitación aceptada. Tu inscripción y posición actual en la cola aparecen abajo.",
+      "declined": "Rechazaste esta invitación.",
+      "expired": "Esta invitación ha caducado.",
+      "cancelled": "Esta invitación fue cancelada.",
+      "expiresAt": "Responde antes de {{deadline}}.",
+      "pendingApproval": "Invitación aceptada. Tu inscripción espera la aprobación del organizador.",
+      "errors": {
+        "expired": "Esta invitación ha caducado.",
+        "alreadyResolved": "Esta invitación ya se respondió. Actualiza para ver su estado.",
+        "notFound": "Esta invitación no está disponible.",
+        "eventNotFound": "Este partido no está disponible.",
+        "inviteOnly": "Se requiere una invitación pendiente o aceptada.",
+        "closed": "La inscripción ha cerrado.",
+        "denied": "No puedes inscribirte en este partido.",
+        "duplicate": "Ya estás inscrito. Actualiza para ver tu posición.",
+        "pendingDuplicate": "Tu inscripción ya espera aprobación.",
+        "full": "Este partido está completo. Tu invitación sigue pendiente.",
+        "requesterIneligible": "Tu membresía ya no permite la inscripción.",
+        "forbidden": "No puedes responder a esta invitación.",
+        "invalid": "Esta respuesta no es válida.",
+        "unauthenticated": "Inicia sesión para responder a la invitación.",
+        "unavailable": "No se pudo guardar tu respuesta. Inténtalo de nuevo."
+      }
+    },
     "title": "Partidos",
     "subtitle": "Encuentra y descubre partidos de pádel.",
     "navigationLabel": "Partidos",

@@ -7,6 +7,7 @@ import {
   listMatchEventRegistrationRequests
 } from '../features/matches/match-registration.functions';
 import { getMyPlayerProfile } from '../features/player/player.functions';
+import { getMyMatchInvitation } from '../features/matches/match-invitation.functions';
 
 export async function loadMatchDetail(eventId: string) {
   try {
@@ -72,14 +73,25 @@ export const Route = createFileRoute('/_protected/matches/$eventId')({
     const detail = await loadMatchDetail(params.eventId);
     const registration = await loadMatchRegistration(params.eventId);
     const isCreator = detail.event?.caller_badge === 'creator';
-    const [callerLevel, requestQueue, roster] = await Promise.all([
+    const [callerLevel, requestQueue, roster, invitation] = await Promise.all([
       loadCallerLevel(),
       isCreator
         ? loadMatchRequestQueue(params.eventId)
         : Promise.resolve({ queue: null, queueFailed: false }),
-      loadMatchRoster(params.eventId)
+      loadMatchRoster(params.eventId),
+      getMyMatchInvitation({ data: { event_id: params.eventId } }).catch(() => ({
+        status: 'unavailable' as const
+      }))
     ]);
-    return { ...detail, ...registration, isCreator, callerLevel, ...requestQueue, ...roster };
+    return {
+      ...detail,
+      ...registration,
+      isCreator,
+      callerLevel,
+      ...requestQueue,
+      ...roster,
+      invitation: invitation.status === 'ok' ? invitation.invitation : null
+    };
   },
   component: () => {
     const data = Route.useLoaderData();
@@ -96,6 +108,7 @@ export const Route = createFileRoute('/_protected/matches/$eventId')({
         queue={data.queue}
         queueError={data.queueFailed}
         roster={data.roster}
+        invitation={data.invitation}
       />
     );
   }

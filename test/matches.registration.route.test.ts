@@ -6,7 +6,8 @@ const mocks = vi.hoisted(() => ({
   getMyMatchRegistration: vi.fn<(...args: unknown[]) => Promise<unknown>>(),
   listMatchEventRegistrationRequests: vi.fn<(...args: unknown[]) => Promise<unknown>>(),
   listMatchEventRegistrations: vi.fn<(...args: unknown[]) => Promise<unknown>>(),
-  getMyPlayerProfile: vi.fn<(...args: unknown[]) => Promise<unknown>>()
+  getMyPlayerProfile: vi.fn<(...args: unknown[]) => Promise<unknown>>(),
+  getMyMatchInvitation: vi.fn<(...args: unknown[]) => Promise<unknown>>()
 }));
 
 vi.mock('../src/features/matches/matches.functions', () => ({
@@ -21,6 +22,10 @@ vi.mock('../src/features/matches/match-registration.functions', () => ({
 }));
 vi.mock('../src/features/player/player.functions', () => ({
   getMyPlayerProfile: mocks.getMyPlayerProfile
+}));
+vi.mock('../src/features/matches/match-invitation.functions', () => ({
+  getMyMatchInvitation: mocks.getMyMatchInvitation,
+  respondMatchEventInvitation: vi.fn<(...args: unknown[]) => Promise<unknown>>()
 }));
 vi.mock('@tanstack/react-router', async (original) => ({
   ...(await original<typeof import('@tanstack/react-router')>()),
@@ -148,10 +153,31 @@ describe('match detail registration route loaders', () => {
     mocks.getMyMatchRegistration.mockResolvedValue({ status: 'unavailable' });
     mocks.listMatchEventRegistrations.mockResolvedValue({ status: 'empty' });
     mocks.getMyPlayerProfile.mockResolvedValue({ display_level: null });
+    mocks.getMyMatchInvitation.mockResolvedValue({ status: 'empty' });
 
     const data = await routeLoader()({ params: { eventId: EVENT_ID } });
     if (typeof data !== 'object' || data === null) throw new Error('route loader returned no data');
     expect(Reflect.get(data, 'registration')).toBeNull();
     expect(Reflect.get(data, 'registrationFailed')).toBe(true);
+  });
+  it('loads own invitation separately and degrades unavailable invitation reads safely', async () => {
+    const invitation = {
+      invitation_id: EVENT_ID,
+      status: 'pending',
+      effective_status: 'pending',
+      expires_at: '2030-01-01T00:00:00Z',
+      responded_at: null
+    };
+    mocks.getMatchEvent.mockResolvedValue({ status: 'ok', event: { event_id: EVENT_ID } });
+    mocks.getMyMatchRegistration.mockResolvedValue({ status: 'unavailable' });
+    mocks.listMatchEventRegistrations.mockResolvedValue({ status: 'empty' });
+    mocks.getMyPlayerProfile.mockResolvedValue({ display_level: null });
+    mocks.getMyMatchInvitation.mockResolvedValueOnce({ status: 'ok', invitation });
+    expect(await routeLoader()({ params: { eventId: EVENT_ID } })).toMatchObject({ invitation });
+    expect(mocks.getMyMatchInvitation).toHaveBeenCalledWith({ data: { event_id: EVENT_ID } });
+    mocks.getMyMatchInvitation.mockRejectedValueOnce(new Error('unavailable'));
+    expect(await routeLoader()({ params: { eventId: EVENT_ID } })).toMatchObject({
+      invitation: null
+    });
   });
 });

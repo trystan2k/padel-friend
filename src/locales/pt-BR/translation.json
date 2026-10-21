@@ -462,7 +462,10 @@
       "match_registration_promoted": "PROMOVIDO PARA JOGAR",
       "match_registration_quartet_complete": "Seu quarteto está completo",
       "match_registration_expired": "Solicitação expirada no encerramento",
-      "match_registration_not_playing": "Reserva que não joga"
+      "match_registration_not_playing": "Reserva que não joga",
+      "match_invitation_accepted": "Convite para partida aceito",
+      "match_invitation_declined": "Convite para partida recusado",
+      "match_invitation_expired": "Convite para partida expirado"
     },
     "match": {
       "openEvent": "Abrir evento",
@@ -488,6 +491,9 @@
       "registrationReservePastBody": "Você entrou na fila de reserva de {{event}}. Sua posição atual aparece na partida.",
       "registrationPromotedBody": "Seu quarteto foi completado. Agora você é do Grupo {{group}}.",
       "registrationQuartetCompleteBody": "O Grupo {{group}} está completo — 4 jogadores confirmados para {{event}}.",
+      "invitationAcceptedBody": "Um convite foi aceito. A inscrição segue as regras normais de elegibilidade e fila.",
+      "invitationDeclinedBody": "Um convite foi recusado. Nenhuma vaga foi reservada.",
+      "invitationExpiredBody": "O prazo do convite passou sem resposta. Nenhuma vaga foi reservada.",
       "registrationExpiredBody": "As inscrições encerraram antes de uma decisão. Nenhuma vaga foi reservada.",
       "registrationNotPlayingBody": "O prazo passou antes de um quarteto ser completado. Nenhum resultado de partida será registrado.",
       "unavailable": "Esta notificação de partida não está mais disponível."
@@ -519,6 +525,35 @@
     "offline": "Você está sem conexão. Reconecte-se para salvar suas preferências."
   },
   "matches": {
+    "invitations": {
+      "title": "Seu convite para a partida",
+      "accept": "Aceitar convite",
+      "decline": "Recusar convite",
+      "pending": "Você foi convidado. O convite não reserva uma vaga.",
+      "accepted": "Convite aceito. Sua inscrição e posição atual na fila aparecem abaixo.",
+      "declined": "Você recusou este convite.",
+      "expired": "Este convite expirou.",
+      "cancelled": "Este convite foi cancelado.",
+      "expiresAt": "Responda antes de {{deadline}}.",
+      "pendingApproval": "Convite aceito. Sua inscrição aguarda aprovação do organizador.",
+      "errors": {
+        "expired": "Este convite expirou.",
+        "alreadyResolved": "Este convite já foi respondido. Atualize para ver o estado.",
+        "notFound": "Este convite está indisponível.",
+        "eventNotFound": "Esta partida está indisponível.",
+        "inviteOnly": "É necessário um convite pendente ou aceito.",
+        "closed": "As inscrições encerraram.",
+        "denied": "Você não pode se inscrever nesta partida.",
+        "duplicate": "Você já está inscrito. Atualize para ver sua posição.",
+        "pendingDuplicate": "Sua inscrição já aguarda aprovação.",
+        "full": "Esta partida está lotada. Seu convite continua pendente.",
+        "requesterIneligible": "Sua associação não permite mais a inscrição.",
+        "forbidden": "Você não pode responder a este convite.",
+        "invalid": "Esta resposta é inválida.",
+        "unauthenticated": "Entre para responder ao convite.",
+        "unavailable": "Não foi possível salvar sua resposta. Tente novamente."
+      }
+    },
     "title": "Partidas",
     "subtitle": "Encontre e descubra partidas de padel.",
     "navigationLabel": "Partidas",

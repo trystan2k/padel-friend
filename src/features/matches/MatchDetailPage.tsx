@@ -3,6 +3,8 @@ import { Link } from '@tanstack/react-router';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { MatchRegistrationPanel } from './MatchRegistrationPanel';
+import { MatchInvitationPanel } from './MatchInvitationPanel';
+import type { MatchInvitation } from './match-invitation-model';
 import { MatchRequestQueue } from './MatchRequestQueue';
 import type { MatchEventDetail } from './match-contracts';
 import type {
@@ -36,7 +38,8 @@ export function MatchDetailPage({
   isCreator = false,
   queue = null,
   queueError = false,
-  roster = null
+  roster = null,
+  invitation = null
 }: {
   event: MatchEventDetail | null;
   loadError?: boolean;
@@ -49,6 +52,7 @@ export function MatchDetailPage({
   queue?: MatchRegistrationQueue | null;
   queueError?: boolean;
   roster?: MatchRosterEntry[] | null;
+  invitation?: MatchInvitation | null;
 }) {
   const { t, i18n } = useTranslation();
   const [feedback, setFeedback] = useState<{ id: string; copied: boolean; failed: boolean } | null>(
@@ -194,6 +198,15 @@ export function MatchDetailPage({
           {event.caller_badge === 'creator' && <p>{t('matches.detail.creatorAccepted')}</p>}
           {event.caller_is_invited && <p>{t('matches.detail.invitationInfo')}</p>}
         </section>
+        {invitation && (
+          <MatchInvitationPanel
+            key={event.event_id}
+            eventId={event.event_id}
+            invitation={invitation}
+            timezone={event.timezone}
+            pendingApproval={registration?.state === 'pending'}
+          />
+        )}
         {registrationError ? (
           <section
             role="alert"

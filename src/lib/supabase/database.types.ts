@@ -412,25 +412,40 @@ export type Database = {
       match_event_invites: {
         Row: {
           created_at: string
+          expired_at: string | null
           id: string
           invited_by: string
           invitee_user_id: string
           match_event_id: string
+          responded_at: string | null
+          responded_by: string | null
+          status: Database["public"]["Enums"]["match_invitation_status"]
+          submission_result: Json | null
         }
         ComputedFields: never
         Insert: {
           created_at?: string
+          expired_at?: string | null
           id?: string
           invited_by: string
           invitee_user_id: string
           match_event_id: string
+          responded_at?: string | null
+          responded_by?: string | null
+          status?: Database["public"]["Enums"]["match_invitation_status"]
+          submission_result?: Json | null
         }
         Update: {
           created_at?: string
+          expired_at?: string | null
           id?: string
           invited_by?: string
           invitee_user_id?: string
           match_event_id?: string
+          responded_at?: string | null
+          responded_by?: string | null
+          status?: Database["public"]["Enums"]["match_invitation_status"]
+          submission_result?: Json | null
         }
         Relationships: [
           {
@@ -861,6 +876,10 @@ export type Database = {
         Args: { p_attempt_id: string; p_decision: string; p_match_event_id: string }
         Returns: Json
       }
+      expire_match_event_invitations_locked: {
+        Args: { p_as_of: string; p_event_id: string }
+        Returns: number
+      }
       finalize_community_venue_photo: {
         Args: { p_community_id: string; p_object_key: string; p_venue_id: string }
         Returns: undefined
@@ -901,6 +920,7 @@ export type Database = {
           time_zone: string
         }[]
       }
+      get_my_match_invitation: { Args: { p_match_event_id: string }; Returns: Json }
       get_my_match_notification_contexts: {
         Args: { p_notification_ids: string[] }
         Returns: {
@@ -972,6 +992,7 @@ export type Database = {
           valid_until: string
         }[]
       }
+      list_match_event_invitations: { Args: { p_match_event_id: string }; Returns: Json[] }
       list_match_event_registration_requests: {
         Args: { p_match_event_id: string }
         Returns: Json[]
@@ -1182,6 +1203,10 @@ export type Database = {
         Args: { p_accepted_registration_id?: string; p_match_event_id: string }
         Returns: Json
       }
+      respond_match_event_invitation: {
+        Args: { p_invitation_id: string; p_match_event_id: string; p_response: string }
+        Returns: Json
+      }
       safe_match_photo_uuid: { Args: { p_value: string }; Returns: string }
       safe_venue_photo_uuid: { Args: { p_value: string }; Returns: string }
       search_community_invitees: {
@@ -1259,6 +1284,10 @@ export type Database = {
         }
       }
       submit_match_registration: { Args: { p_match_event_id: string }; Returns: Json }
+      submit_match_registration_locked: {
+        Args: { p_actor_id: string; p_match_event_id: string }
+        Returns: Json
+      }
       update_community_admin_defaults: {
         Args: { p_community_id: string; p_defaults: Json }
         Returns: Json
@@ -1289,6 +1318,7 @@ export type Database = {
       community_visibility: "public" | "private"
       match_event_type: "competitive" | "friendly"
       match_event_visibility: "community_open" | "invite_only"
+      match_invitation_status: "pending" | "accepted" | "declined" | "expired" | "cancelled"
       match_registration_lifecycle: "pending" | "accepted" | "rejected" | "expired"
       match_registration_participation: "playing" | "reserve" | "reserve_not_playing"
       match_registration_source: "creator" | "member" | "guest"
@@ -2015,6 +2045,7 @@ export const Constants = {
       community_visibility: ["public", "private"],
       match_event_type: ["competitive", "friendly"],
       match_event_visibility: ["community_open", "invite_only"],
+      match_invitation_status: ["pending", "accepted", "declined", "expired", "cancelled"],
       match_registration_lifecycle: ["pending", "accepted", "rejected", "expired"],
       match_registration_participation: ["playing", "reserve", "reserve_not_playing"],
       match_registration_source: ["creator", "member", "guest"],

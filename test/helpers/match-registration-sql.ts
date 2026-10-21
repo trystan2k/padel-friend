@@ -245,6 +245,8 @@ export async function proveEventLockBarrier(params: {
   rpcToken: string;
   fire: () => [PromiseLike<RpcResult>, PromiseLike<RpcResult>];
   blockedExpected?: number;
+  /** Boundary proof: retain this proven lock chain until event cutoff. */
+  releaseAtCutoff?: boolean;
 }): Promise<[RpcResult, RpcResult]> {
   const blockedExpected = params.blockedExpected ?? 2;
   const marker = `${params.markerPrefix ?? 'paf53'}-holder-${crypto.randomUUID().replaceAll('-', '')}`;
@@ -294,6 +296,9 @@ export async function proveEventLockBarrier(params: {
         v_deadline timestamptz := pg_catalog.clock_timestamp() + interval '6.5 seconds';
        begin
         loop
+          -- pg_stat_activity is transaction-snapshot cached. Independent CLI
+          -- contenders can arrive on different iterations; refresh evidence.
+          perform pg_catalog.pg_stat_clear_snapshot();
           select pg_catalog.count(*) into v_blocked
             from pg_catalog.pg_stat_activity a
            where a.wait_event_type = 'Lock'
@@ -335,8 +340,10 @@ export async function proveEventLockBarrier(params: {
           perform pg_catalog.pg_sleep(0.05);
         end loop;
         if v_blocked <> ${blockedExpected} or v_holder_direct < 1 or v_stray <> 0 then
-          raise exception 'barrier not proven: blocked=% holder_direct=% stray=%', v_blocked, v_holder_direct, v_stray;
+          raise exception 'barrier not proven: blocked=% holder_direct=% stray=% waits=%', v_blocked, v_holder_direct, v_stray,
+            (select jsonb_agg(jsonb_build_object('pid', pid, 'query', left(query, 300), 'blockers', pg_catalog.pg_blocking_pids(pid))) from pg_catalog.pg_stat_activity where wait_event_type='Lock');
         end if;
+        ${params.releaseAtCutoff ? `perform pg_catalog.pg_sleep(greatest(0, extract(epoch from (select registration_cutoff_at - clock_timestamp() from public.match_events where id = '${params.eventId}'))));` : ''}
         perform pg_catalog.pg_terminate_backend(${holderPid});
        end $barrier$;`);
     const contenders = params.fire();

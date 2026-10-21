@@ -35,7 +35,10 @@ type RegistrationNotificationKind =
   | 'match_registration_promoted'
   | 'match_registration_quartet_complete'
   | 'match_registration_expired'
-  | 'match_registration_not_playing';
+  | 'match_registration_not_playing'
+  | 'match_invitation_accepted'
+  | 'match_invitation_declined'
+  | 'match_invitation_expired';
 
 // Existing kinds keep their current invitation detail behaviour; the PAF-5.2
 // request/decision kinds and the PAF-5.3 FIFO quartet kinds opt into their own
@@ -49,7 +52,10 @@ const REGISTRATION_NOTIFICATION_KINDS: readonly RegistrationNotificationKind[] =
   'match_registration_promoted',
   'match_registration_quartet_complete',
   'match_registration_expired',
-  'match_registration_not_playing'
+  'match_registration_not_playing',
+  'match_invitation_accepted',
+  'match_invitation_declined',
+  'match_invitation_expired'
 ];
 
 function isRegistrationNotificationKind(kind: string): kind is RegistrationNotificationKind {
@@ -377,6 +383,12 @@ export function NotificationDetailPage({
                       })}
                     </p>
                   )
+                ) : registrationKind === 'match_invitation_accepted' ? (
+                  <p>{t('notifications.match.invitationAcceptedBody')}</p>
+                ) : registrationKind === 'match_invitation_declined' ? (
+                  <p>{t('notifications.match.invitationDeclinedBody')}</p>
+                ) : registrationKind === 'match_invitation_expired' ? (
+                  <p>{t('notifications.match.invitationExpiredBody')}</p>
                 ) : registrationKind === 'match_registration_expired' ? (
                   <p>{t('notifications.match.registrationExpiredBody')}</p>
                 ) : registrationKind === 'match_registration_not_playing' ? (
