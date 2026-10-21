@@ -192,6 +192,139 @@ async function typography(
   expect(styles.color).toBe(expected.color);
 }
 
+type ComparePngInputs = {
+  expected: string;
+  received: string;
+  masks: [number, number, number, number][];
+  endY: number;
+};
+
+type ComparePngResult = {
+  expected: { width: number; height: number; bytes: number };
+  actual: { width: number; height: number; bytes: number };
+  count: number | null;
+  diff: string | null;
+  error: string | null;
+};
+
+// Browser-serializable PNG comparator shared by visualDiff and the synthetic
+// canvas tests: page.evaluate serializes this function, so it must stay
+// self-contained and never close over spec-file imports or helpers.
+async function comparePngImages({
+  expected,
+  received,
+  masks: maskAreas,
+  endY: lastRow
+}: ComparePngInputs): Promise<ComparePngResult> {
+  const decode = async (base64: string) => {
+    const image = new Image();
+    image.src = `data:image/png;base64,${base64}`;
+    await image.decode();
+    const canvas = document.createElement('canvas');
+    canvas.width = image.width;
+    canvas.height = image.height;
+    const context = canvas.getContext('2d')!;
+    context.drawImage(image, 0, 0);
+    return {
+      width: image.width,
+      height: image.height,
+      pixels: context.getImageData(0, 0, image.width, image.height).data
+    };
+  };
+  const [a, b] = await Promise.all([decode(expected), decode(received)]);
+  const dimensionsMatch = a.width === b.width && a.height === b.height;
+  if (
+    !dimensionsMatch ||
+    a.width <= 0 ||
+    a.height <= 0 ||
+    b.width <= 0 ||
+    b.height <= 0 ||
+    a.pixels.length !== a.width * a.height * 4 ||
+    b.pixels.length !== b.width * b.height * 4
+  )
+    return {
+      expected: { width: a.width, height: a.height, bytes: a.pixels.length },
+      actual: { width: b.width, height: b.height, bytes: b.pixels.length },
+      count: null,
+      diff: null,
+      error: 'PNG dimensions or RGBA buffer length mismatch'
+    };
+  if (a.width !== 390 || a.height !== 844 || b.width !== 390 || b.height !== 844)
+    return {
+      expected: { width: a.width, height: a.height, bytes: a.pixels.length },
+      actual: { width: b.width, height: b.height, bytes: b.pixels.length },
+      count: null,
+      diff: null,
+      error: 'PNG must be exactly 390×844'
+    };
+  if (!Number.isInteger(lastRow) || lastRow < 0 || lastRow > a.height)
+    return {
+      expected: { width: a.width, height: a.height, bytes: a.pixels.length },
+      actual: { width: b.width, height: b.height, bytes: b.pixels.length },
+      count: null,
+      diff: null,
+      error: 'endY outside decoded image'
+    };
+  for (const [left, top, width, height] of maskAreas) {
+    if (
+      ![left, top, width, height].every(Number.isInteger) ||
+      left < 0 ||
+      top < 0 ||
+      width <= 0 ||
+      height <= 0 ||
+      left + width > a.width ||
+      top + height > a.height ||
+      top + height > lastRow
+    )
+      return {
+        expected: { width: a.width, height: a.height, bytes: a.pixels.length },
+        actual: { width: b.width, height: b.height, bytes: b.pixels.length },
+        count: null,
+        diff: null,
+        error: 'Mask region outside compared image bounds'
+      };
+  }
+  const canvas = document.createElement('canvas');
+  canvas.width = a.width;
+  canvas.height = a.height;
+  const context = canvas.getContext('2d')!;
+  const output = context.createImageData(a.width, a.height);
+  output.data.set(b.pixels);
+  let count = 0;
+  for (let y = 0; y < lastRow; y++)
+    for (let x = 0; x < a.width; x++) {
+      if (
+        maskAreas.some(
+          ([left, top, width, height]) =>
+            x >= left && x < left + width && y >= top && y < top + height
+        )
+      )
+        continue;
+      const i = (y * a.width + x) * 4;
+      const r = a.pixels[i]! - b.pixels[i]!,
+        g = a.pixels[i + 1]! - b.pixels[i + 1]!,
+        blue = a.pixels[i + 2]! - b.pixels[i + 2]!;
+      const deltaY = 0.29889531 * r + 0.58662247 * g + 0.11448223 * blue;
+      const deltaI = 0.59597799 * r - 0.2741761 * g - 0.32180178 * blue;
+      const deltaQ = 0.21147017 * r - 0.52261711 * g + 0.31114694 * blue;
+      const different =
+        0.5053 * deltaY ** 2 + 0.299 * deltaI ** 2 + 0.1957 * deltaQ ** 2 > 35215 * 0.1 ** 2;
+      if (different) count++;
+      output.data[i] = different ? 255 : b.pixels[i]!;
+      output.data[i + 1] = different ? 0 : b.pixels[i + 1]!;
+      output.data[i + 2] = different ? 0 : b.pixels[i + 2]!;
+      output.data[i + 3] = 255;
+    }
+  context.putImageData(output, 0, 0);
+  return {
+    expected: { width: a.width, height: a.height, bytes: a.pixels.length },
+    actual: { width: b.width, height: b.height, bytes: b.pixels.length },
+    count,
+    diff: canvas.toDataURL('image/png').split(',')[1]!,
+    error: null
+  };
+}
+
 // Only fixture-dependent glyphs are excluded: search text, two names, city/policy
 // metadata and Pencil's unavailable member/level examples. Card edges and both
 // card action labels remain compared. Source PNG and baseline bytes stay untouched.
@@ -210,118 +343,12 @@ async function visualDiff(
   expect(createHash('sha256').update(source).digest('hex')).toBe(references[name]);
   expect(baseline).toEqual(source);
   const actual = await page.screenshot({ animations: 'disabled', caret: 'hide' });
-  const comparison = await page.evaluate(
-    async ({ expected, received, masks: maskAreas, endY: lastRow }) => {
-      const decode = async (base64: string) => {
-        const image = new Image();
-        image.src = `data:image/png;base64,${base64}`;
-        await image.decode();
-        const canvas = document.createElement('canvas');
-        canvas.width = image.width;
-        canvas.height = image.height;
-        const context = canvas.getContext('2d')!;
-        context.drawImage(image, 0, 0);
-        return {
-          width: image.width,
-          height: image.height,
-          pixels: context.getImageData(0, 0, image.width, image.height).data
-        };
-      };
-      const [a, b] = await Promise.all([decode(expected), decode(received)]);
-      const dimensionsMatch = a.width === b.width && a.height === b.height;
-      if (
-        !dimensionsMatch ||
-        a.width <= 0 ||
-        a.height <= 0 ||
-        b.width <= 0 ||
-        b.height <= 0 ||
-        a.pixels.length !== a.width * a.height * 4 ||
-        b.pixels.length !== b.width * b.height * 4
-      )
-        return {
-          expected: { width: a.width, height: a.height, bytes: a.pixels.length },
-          actual: { width: b.width, height: b.height, bytes: b.pixels.length },
-          count: null,
-          diff: null,
-          error: 'PNG dimensions or RGBA buffer length mismatch'
-        };
-      if (a.width !== 390 || a.height !== 844 || b.width !== 390 || b.height !== 844)
-        return {
-          expected: { width: a.width, height: a.height, bytes: a.pixels.length },
-          actual: { width: b.width, height: b.height, bytes: b.pixels.length },
-          count: null,
-          diff: null,
-          error: 'PNG must be exactly 390×844'
-        };
-      if (!Number.isInteger(lastRow) || lastRow < 0 || lastRow > a.height)
-        return {
-          expected: { width: a.width, height: a.height, bytes: a.pixels.length },
-          actual: { width: b.width, height: b.height, bytes: b.pixels.length },
-          count: null,
-          diff: null,
-          error: 'endY outside decoded image'
-        };
-      for (const [left, top, width, height] of maskAreas) {
-        if (
-          ![left, top, width, height].every(Number.isInteger) ||
-          left < 0 ||
-          top < 0 ||
-          width <= 0 ||
-          height <= 0 ||
-          left + width > a.width ||
-          top + height > a.height ||
-          top + height > lastRow
-        )
-          return {
-            expected: { width: a.width, height: a.height, bytes: a.pixels.length },
-            actual: { width: b.width, height: b.height, bytes: b.pixels.length },
-            count: null,
-            diff: null,
-            error: 'Mask region outside compared image bounds'
-          };
-      }
-      const canvas = document.createElement('canvas');
-      canvas.width = a.width;
-      canvas.height = a.height;
-      const context = canvas.getContext('2d')!;
-      const output = context.createImageData(a.width, a.height);
-      output.data.set(b.pixels);
-      let count = 0;
-      for (let y = 0; y < lastRow; y++)
-        for (let x = 0; x < a.width; x++) {
-          if (
-            maskAreas.some(
-              ([left, top, width, height]) =>
-                x >= left && x < left + width && y >= top && y < top + height
-            )
-          )
-            continue;
-          const i = (y * a.width + x) * 4;
-          const r = a.pixels[i]! - b.pixels[i]!,
-            g = a.pixels[i + 1]! - b.pixels[i + 1]!,
-            blue = a.pixels[i + 2]! - b.pixels[i + 2]!;
-          const deltaY = 0.29889531 * r + 0.58662247 * g + 0.11448223 * blue;
-          const deltaI = 0.59597799 * r - 0.2741761 * g - 0.32180178 * blue;
-          const deltaQ = 0.21147017 * r - 0.52261711 * g + 0.31114694 * blue;
-          const different =
-            0.5053 * deltaY ** 2 + 0.299 * deltaI ** 2 + 0.1957 * deltaQ ** 2 > 35215 * 0.1 ** 2;
-          if (different) count++;
-          output.data[i] = different ? 255 : b.pixels[i]!;
-          output.data[i + 1] = different ? 0 : b.pixels[i + 1]!;
-          output.data[i + 2] = different ? 0 : b.pixels[i + 2]!;
-          output.data[i + 3] = 255;
-        }
-      context.putImageData(output, 0, 0);
-      return {
-        expected: { width: a.width, height: a.height, bytes: a.pixels.length },
-        actual: { width: b.width, height: b.height, bytes: b.pixels.length },
-        count,
-        diff: canvas.toDataURL('image/png').split(',')[1]!,
-        error: null
-      };
-    },
-    { expected: source.toString('base64'), received: actual.toString('base64'), masks, endY }
-  );
+  const comparison = await page.evaluate(comparePngImages, {
+    expected: source.toString('base64'),
+    received: actual.toString('base64'),
+    masks,
+    endY
+  });
   await testInfo?.attach(`${name}-${region}-expected`, { body: source, contentType: 'image/png' });
   await testInfo?.attach(`${name}-${region}-actual`, { body: actual, contentType: 'image/png' });
   if (comparison.diff)
@@ -925,74 +952,137 @@ test('Pencil references and baselines retain provenance', () => {
   }
 });
 
-test('visual comparator synthetic canvas PNGs validate dimensions, regions and changed pixels', async ({
+test('real visual comparator counts synthetic PNG changes and rejects invalid regions', async ({
   page
 }) => {
-  const result = await page.evaluate(async () => {
-    const png = (width: number, height: number, changed = false) => {
+  // Fixture generator only: paints known opaque pixels with the browser canvas.
+  // Every expectation below flows through comparePngImages, the same
+  // page.evaluate comparator used by visualDiff — no duplicated colour maths.
+  const images = await page.evaluate(() => {
+    const png = (width: number, height: number, points: [number, number][]) => {
       const canvas = document.createElement('canvas');
       canvas.width = width;
       canvas.height = height;
       const context = canvas.getContext('2d')!;
       context.fillStyle = '#fff';
       context.fillRect(0, 0, width, height);
-      if (changed) {
-        context.fillStyle = '#000';
-        context.fillRect(7, 8, 1, 1);
-      }
-      return canvas.toDataURL('image/png');
-    };
-    const decode = async (source: string) => {
-      const image = new Image();
-      image.src = source;
-      await image.decode();
-      const canvas = document.createElement('canvas');
-      canvas.width = image.width;
-      canvas.height = image.height;
-      const context = canvas.getContext('2d')!;
-      context.drawImage(image, 0, 0);
-      const pixels = context.getImageData(0, 0, image.width, image.height).data;
-      const offset = (8 * image.width + 7) * 4;
-      return {
-        width: image.width,
-        height: image.height,
-        bytes: pixels.length,
-        sample: [...pixels.slice(offset, offset + 4)]
-      };
-    };
-    const baseline = await decode(png(390, 844));
-    const identical = await decode(png(390, 844));
-    const changed = await decode(png(390, 844, true));
-    const widthMismatch = await decode(png(389, 844));
-    const heightMismatch = await decode(png(390, 843));
-    const color = (a: number[], b: number[]) => {
-      const r = a[0]! - b[0]!;
-      const g = a[1]! - b[1]!;
-      const blue = a[2]! - b[2]!;
-      const y = 0.29889531 * r + 0.58662247 * g + 0.11448223 * blue;
-      const i = 0.59597799 * r - 0.2741761 * g - 0.32180178 * blue;
-      const q = 0.21147017 * r - 0.52261711 * g + 0.31114694 * blue;
-      return 0.5053 * y ** 2 + 0.299 * i ** 2 + 0.1957 * q ** 2 > 35215 * 0.1 ** 2;
+      context.fillStyle = '#000';
+      for (const [x, y] of points) context.fillRect(x, y, 1, 1);
+      return canvas.toDataURL('image/png').split(',')[1]!;
     };
     return {
-      baseline,
-      identical,
-      changed,
-      widthMismatch,
-      heightMismatch,
-      changedPixel: color(baseline.sample, changed.sample),
-      identicalPixel: color(baseline.sample, identical.sample)
+      blank: png(390, 844, []),
+      single: png(390, 844, [[7, 8]]),
+      edges: png(390, 844, [
+        [0, 0],
+        [389, 0],
+        [0, 843],
+        [389, 843],
+        [194, 421]
+      ]),
+      insideMask: png(390, 844, [[55, 50]]),
+      outsideMask: png(390, 844, [
+        [55, 50],
+        [60, 50]
+      ]),
+      endRows: png(390, 844, [
+        [10, 100],
+        [10, 600]
+      ]),
+      narrow: png(389, 844, []),
+      short: png(390, 843, []),
+      wrongSize: png(300, 150, [])
     };
   });
-  expect(() => assertDecodedImage(result.baseline, result.identical, 844, [])).not.toThrow();
-  expect(() => assertDecodedImage(result.baseline, result.widthMismatch, 844, [])).toThrow();
-  expect(() => assertDecodedImage(result.baseline, result.heightMismatch, 844, [])).toThrow();
-  expect(() =>
-    assertDecodedImage(result.baseline, result.baseline, 844, [[389, 0, 2, 1]])
-  ).toThrow();
-  expect(result.changedPixel).toBe(true);
-  expect(result.identicalPixel).toBe(false);
-  expect(result.baseline.bytes).toBe(390 * 844 * 4);
+  const compare = (received: string, masks: [number, number, number, number][], endY: number) =>
+    page.evaluate(comparePngImages, { expected: images.blank, received, masks, endY });
+
+  const identical = await compare(images.blank, [], 844);
+  expect(identical.error).toBeNull();
+  expect(identical.count).toBe(0);
+  expect(identical.expected).toEqual({ width: 390, height: 844, bytes: 390 * 844 * 4 });
+  expect(identical.actual).toEqual({ width: 390, height: 844, bytes: 390 * 844 * 4 });
+
+  const single = await compare(images.single, [], 844);
+  expect(single.error).toBeNull();
+  expect(single.count).toBe(1);
+  expect(single.expected.bytes).toBe(390 * 844 * 4);
+  expect(single.actual.bytes).toBe(390 * 844 * 4);
+  expect(single.diff).not.toBeNull();
+  expect([...Buffer.from(single.diff!, 'base64').subarray(0, 8)]).toEqual([
+    0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a
+  ]);
+
+  const edges = await compare(images.edges, [], 844);
+  expect(edges.error).toBeNull();
+  // First pixel, first-row last column, last-row first/last columns and centre.
+  expect(edges.count).toBe(5);
+
+  // Half-open masks skip the painted inside pixel; the pixel at x = left + width
+  // sits immediately outside the mask and must still be counted.
+  const maskedInside = await compare(images.insideMask, [[50, 50, 10, 10]], 844);
+  expect(maskedInside.error).toBeNull();
+  expect(maskedInside.count).toBe(0);
+  const maskedBoundary = await compare(images.outsideMask, [[50, 50, 10, 10]], 844);
+  expect(maskedBoundary.error).toBeNull();
+  expect(maskedBoundary.count).toBe(1);
+
+  // Rows at or below endY are ignored: (10, 600) is outside the compared band
+  // when endY is 500 but counted when the band covers the full image.
+  const belowEndY = await compare(images.endRows, [], 500);
+  expect(belowEndY.error).toBeNull();
+  expect(belowEndY.count).toBe(1);
+  const withinEndY = await compare(images.endRows, [], 844);
+  expect(withinEndY.error).toBeNull();
+  expect(withinEndY.count).toBe(2);
+
+  const widthMismatch = await compare(images.narrow, [], 844);
+  expect(widthMismatch.error).toBe('PNG dimensions or RGBA buffer length mismatch');
+  expect(widthMismatch.count).toBeNull();
+  expect(widthMismatch.diff).toBeNull();
+
+  const heightMismatch = await compare(images.short, [], 844);
+  expect(heightMismatch.error).toBe('PNG dimensions or RGBA buffer length mismatch');
+  expect(heightMismatch.count).toBeNull();
+  expect(heightMismatch.diff).toBeNull();
+
+  const equallyWrong = await page.evaluate(comparePngImages, {
+    expected: images.wrongSize,
+    received: images.wrongSize,
+    masks: [],
+    endY: 844
+  });
+  expect(equallyWrong.error).toBe('PNG must be exactly 390×844');
+  expect(equallyWrong.count).toBeNull();
+  expect(equallyWrong.diff).toBeNull();
+
+  for (const endY of [-1, 845, 500.5]) {
+    const rejected = await compare(images.blank, [], endY);
+    expect(rejected.error, `endY ${endY}`).toBe('endY outside decoded image');
+    expect(rejected.count, `endY ${endY}`).toBeNull();
+    expect(rejected.diff, `endY ${endY}`).toBeNull();
+  }
+
+  const maskRejections: {
+    reason: string;
+    masks: [number, number, number, number][];
+    endY: number;
+  }[] = [
+    { reason: 'beyond right edge', masks: [[389, 0, 2, 1]], endY: 844 },
+    { reason: 'beyond bottom edge', masks: [[0, 843, 1, 2]], endY: 844 },
+    { reason: 'negative left', masks: [[-1, 0, 1, 1]], endY: 844 },
+    { reason: 'negative top', masks: [[0, -1, 1, 1]], endY: 844 },
+    { reason: 'zero width', masks: [[0, 0, 0, 1]], endY: 844 },
+    { reason: 'zero height', masks: [[0, 0, 1, 0]], endY: 844 },
+    { reason: 'fractional coordinates', masks: [[0.5, 0, 1, 1]], endY: 844 },
+    { reason: 'extends beyond endY', masks: [[0, 499, 1, 2]], endY: 500 }
+  ];
+  for (const { reason, masks, endY } of maskRejections) {
+    const rejected = await compare(images.blank, masks, endY);
+    expect(rejected.error, reason).toBe('Mask region outside compared image bounds');
+    expect(rejected.count, reason).toBeNull();
+    expect(rejected.diff, reason).toBeNull();
+  }
 });
 
 test('masked title, metadata and action geometry probes reject displaced fixture nodes', async ({

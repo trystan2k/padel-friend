@@ -8,6 +8,7 @@ import { waitForHydratedPage } from './auth-helpers';
 
 type Copy = {
   language: string;
+  theme: string;
   auth: { loginEmailLabel: string; loginPasswordLabel: string; loginSubmit: string };
   onboarding: {
     name: string;
@@ -20,14 +21,28 @@ type Copy = {
     backToDashboard: string;
     title: Record<string, string>;
     navigation: string;
+    nav: Record<string, string>;
     accessDeniedTitle: string;
     action: Record<string, string>;
+    status: Record<string, string>;
     confirmAction: string;
     search: string;
+    searchLabel: string;
     loadMore: string;
     inviteUnavailable: string;
     levelReadOnly: string;
-    settings: { name: string; city: string; details: string };
+    settingsAdminNote: string;
+    settings: {
+      name: string;
+      city: string;
+      description: string;
+      details: string;
+      timezone: string;
+      memberCreatedLeagues: string;
+      visibility: string;
+      joinPolicy: string;
+    };
+    requestMessage: { action: string };
     save: string;
     venue: {
       add: string;
@@ -35,6 +50,7 @@ type Copy = {
       address: string;
       mapsUrl: string;
       archive: string;
+      edit: string;
       openMap: string;
       historyNote: string;
     };
@@ -291,37 +307,11 @@ async function assertVisibleKeyboardFocus(page: Page) {
   });
   expect(evidence, 'keyboard focus must rest on a focusable element').not.toBeNull();
   expect(evidence!.id, 'focused element must be the locale select').toBe('locale');
-  expect(
-    evidence!.focusVisible,
-    'locale select must match :focus-visible after keyboard navigation'
-  ).toBe(true);
-  // Outline-only oracle: a ring is visible only when the outline is a fully opaque,
-  // non-zero-width band whose color differs from every background it is drawn over.
-  const outlineWidth = Number.parseFloat(evidence!.outlineWidth);
-  expect(
-    evidence!.outlineStyle !== 'none' && Number.isFinite(outlineWidth) && outlineWidth > 0,
-    'keyboard focus must paint a non-zero-width outline'
-  ).toBe(true);
-  const color = evidence!.outlineColor.toLowerCase();
-  const rgb = /^rgba?\(([^)]+)\)$/.exec(color);
-  expect(
-    rgb,
-    `focus outline color must be an rgb()/rgba() color, got ${evidence!.outlineColor}`
-  ).not.toBeNull();
-  const parts = rgb![1]!
-    .split(/[\s,/]+/)
-    .filter(Boolean)
-    .map(Number.parseFloat);
-  const alpha = parts.length === 4 ? parts[3]! : 1;
-  expect(alpha, 'focus outline must be fully opaque (alpha 1)').toBe(1);
-  const backgrounds = [evidence!.background, evidence!.pageBackground].map((value) =>
-    value.toLowerCase()
+  assertFocusIndicator(
+    evidence!,
+    [evidence!.background, evidence!.pageBackground],
+    'locale select'
   );
-  for (const background of backgrounds) {
-    expect(color, `focus outline color must differ from background ${background}`).not.toBe(
-      background
-    );
-  }
   console.info(`locale keyboard focus evidence: ${JSON.stringify(evidence)}`);
 }
 
@@ -401,6 +391,598 @@ async function switchLocaleWithKeyboard(page: Page, target: string) {
         .then((cookies) => cookies.find((cookie) => cookie.name === 'locale')?.value)
     )
     .toBe(target);
+}
+
+// ---------------------------------------------------------------------------
+// 320px sequential keyboard traversal (PAF-93): every enabled admin control
+// must be reachable by Tab alone, keep a visible :focus-visible indicator,
+// expose an accessible name, keep a ≥44px hit box fully inside the viewport
+// and stay unobscured by the fixed bottom navigation while focused.
+// ---------------------------------------------------------------------------
+
+type ControlKind = 'link' | 'button' | 'textbox' | 'combobox' | 'switch' | 'summary';
+type ExpectedControl = { kind: ControlKind; name: string };
+type Rect = { x: number; y: number; width: number; height: number };
+
+type FocusEvidence = {
+  identity: string;
+  tag: string;
+  id: string;
+  kind: string;
+  name: string;
+  focusVisible: boolean;
+  outlineStyle: string;
+  outlineWidth: string;
+  outlineColor: string;
+  background: string;
+  pageBackground: string;
+  /** Non-transparent ancestor surface colors: the backdrop the offset focus ring is painted over. */
+  backdropBackgrounds: string[];
+  rect: Rect;
+  navRect: Rect | null;
+  insideNav: boolean;
+  hitTag: string | null;
+  hitSelfOrDescendant: boolean;
+  viewport: { width: number; height: number };
+};
+
+type InventoryEntry = { identity: string; kind: string; name: string };
+
+const controlKey = (control: { kind: string; name: string }) =>
+  `${control.kind}\u0000${control.name}`;
+
+function multisetOf(entries: { kind: string; name: string }[]): Map<string, number> {
+  const counts = new Map<string, number>();
+  for (const entry of entries) {
+    const key = controlKey(entry);
+    counts.set(key, (counts.get(key) ?? 0) + 1);
+  }
+  return counts;
+}
+
+function formatControls(entries: { kind: string; name: string }[]): string {
+  return entries.map((entry) => `${entry.kind} "${entry.name}"`).join(', ') || '(none)';
+}
+
+/** Compares keyboard-reachable controls with the expected set; inventory may neither shrink nor grow. */
+function expectInventory(actual: InventoryEntry[], expected: ExpectedControl[], context: string) {
+  const remaining = multisetOf(expected);
+  const unexpected: { kind: string; name: string }[] = [];
+  for (const entry of actual) {
+    const key = controlKey(entry);
+    const count = remaining.get(key) ?? 0;
+    if (count > 1) remaining.set(key, count - 1);
+    else if (count === 1) remaining.delete(key);
+    else unexpected.push(entry);
+  }
+  expect(
+    unexpected,
+    `${context}: unexpected keyboard-reachable controls ${formatControls(unexpected)}; expected only ${formatControls(expected)}`
+  ).toHaveLength(0);
+  expect(
+    [...remaining.values()].reduce((total, count) => total + count, 0),
+    `${context}: expected controls missing from the keyboard-reachable inventory: ${formatControls(
+      actual
+    )} does not contain ${[...remaining.entries()]
+      .map(([key, count]) => `${count}× ${key.replace('\u0000', ' ')}`)
+      .join(', ')}`
+  ).toBe(0);
+}
+
+function navControls(copy: Copy): ExpectedControl[] {
+  return (['requests', 'members', 'settings', 'venues', 'audit'] as const).map((key) => ({
+    kind: 'link' as const,
+    name: copy.communityAdmin.nav[key]!
+  }));
+}
+
+/** Explicit per-screen enabled-control inventory; typed entries prevent silent inventory shrink. */
+function adminTraversalPlan(
+  destination: (typeof narrowDestinations)[number],
+  copy: Copy,
+  fixture: { ownerName: string; applicantName: string }
+): {
+  content: ExpectedControl[];
+  expandedOnly?: ExpectedControl[];
+  revealedDescriptionId?: string;
+  label: string;
+} {
+  const admin = copy.communityAdmin;
+  const back: ExpectedControl = { kind: 'link', name: admin.backToDashboard };
+  const content: ExpectedControl[] = (() => {
+    switch (destination) {
+      case 'requests':
+        // One pending request card: approve, deny and the message-dialog trigger.
+        return [
+          back,
+          { kind: 'button', name: admin.action.approve! },
+          { kind: 'button', name: admin.action.deny! },
+          { kind: 'button', name: admin.requestMessage.action }
+        ];
+      case 'members':
+        // Public community: invite button is disabled (excluded); active roster has owner + applicant.
+        return [
+          back,
+          { kind: 'textbox', name: admin.searchLabel },
+          { kind: 'button', name: admin.status.active! },
+          { kind: 'button', name: admin.status.pending! },
+          { kind: 'button', name: admin.status.inactive! },
+          { kind: 'link', name: fixture.ownerName },
+          { kind: 'link', name: fixture.applicantName }
+        ];
+      case 'member':
+        // Active member with role=member shows promote and remove only.
+        return [
+          back,
+          { kind: 'button', name: admin.action.promote! },
+          { kind: 'button', name: admin.action.remove! }
+        ];
+      case 'settings':
+        // Collapsed disclosure: the summary is a required Tab stop even without button semantics.
+        // JSX emits no whitespace between the summary's two spans, so the accessible name is the
+        // concatenation of the details label and the admin note.
+        return [
+          back,
+          { kind: 'combobox', name: admin.settings.visibility },
+          { kind: 'combobox', name: admin.settings.joinPolicy },
+          { kind: 'combobox', name: admin.settings.timezone },
+          { kind: 'switch', name: admin.settings.memberCreatedLeagues },
+          { kind: 'button', name: admin.save },
+          { kind: 'summary', name: `${admin.settings.details}${admin.settingsAdminNote}` }
+        ];
+      case 'venues':
+        // One seeded venue card with a maps link, edit and archive action.
+        return [
+          back,
+          { kind: 'button', name: admin.venue.add },
+          { kind: 'link', name: admin.venue.openMap },
+          { kind: 'button', name: admin.venue.edit },
+          { kind: 'button', name: admin.venue.archive }
+        ];
+      case 'audit':
+        // Four seeded audit events; three shown with two member links and a load-more control.
+        return [
+          back,
+          { kind: 'link', name: admin.audit.openMember },
+          { kind: 'link', name: admin.audit.openMember },
+          { kind: 'button', name: admin.loadMore }
+        ];
+      default:
+        return [];
+    }
+  })();
+  return {
+    content,
+    expandedOnly:
+      destination === 'settings'
+        ? [
+            { kind: 'textbox', name: admin.settings.name },
+            { kind: 'textbox', name: admin.settings.city },
+            { kind: 'textbox', name: admin.settings.description },
+            { kind: 'combobox', name: admin.settings.visibility },
+            { kind: 'combobox', name: admin.settings.joinPolicy }
+          ]
+        : undefined,
+    revealedDescriptionId: destination === 'settings' ? 'community-admin-description' : undefined,
+    label: `${destination} @320px`
+  };
+}
+
+/** Outline-only visible-focus oracle shared by the locale helper and the admin traversal. */
+function assertFocusIndicator(
+  evidence: Pick<FocusEvidence, 'focusVisible' | 'outlineStyle' | 'outlineWidth' | 'outlineColor'>,
+  backgrounds: string[],
+  label: string
+) {
+  expect(
+    evidence.focusVisible,
+    `${label} must match :focus-visible after keyboard navigation`
+  ).toBe(true);
+  const outlineWidth = Number.parseFloat(evidence.outlineWidth);
+  expect(
+    evidence.outlineStyle !== 'none' && Number.isFinite(outlineWidth) && outlineWidth > 0,
+    `${label} keyboard focus must paint a non-zero-width outline`
+  ).toBe(true);
+  const color = evidence.outlineColor.toLowerCase();
+  const rgb = /^rgba?\(([^)]+)\)$/.exec(color);
+  expect(
+    rgb,
+    `${label} focus outline color must be an rgb()/rgba() color, got ${evidence.outlineColor}`
+  ).not.toBeNull();
+  const parts = rgb![1]!
+    .split(/[\s,/]+/)
+    .filter(Boolean)
+    .map(Number.parseFloat);
+  const alpha = parts.length === 4 ? parts[3]! : 1;
+  expect(alpha, `${label} focus outline must be fully opaque (alpha 1)`).toBe(1);
+  // With a positive outline-offset the ring is painted outside the control, over the enclosing
+  // surfaces; its color must differ from every background it is actually drawn over.
+  for (const background of backgrounds) {
+    expect(
+      color,
+      `${label} focus outline color must differ from background ${background}`
+    ).not.toBe(background);
+  }
+}
+
+/** Reads everything needed to judge the currently focused element in one pass. */
+async function readFocusEvidence(page: Page): Promise<FocusEvidence | null> {
+  return page.evaluate(() => {
+    const element = document.activeElement;
+    if (!(element instanceof HTMLElement)) return null;
+    const controlKind = (el: Element): string => {
+      const tag = el.tagName.toLowerCase();
+      if (tag === 'summary') return 'summary';
+      const explicitRole = el.getAttribute('role');
+      if (explicitRole === 'switch' || explicitRole === 'combobox') return explicitRole;
+      if (tag === 'a') return 'link';
+      if (tag === 'button') return 'button';
+      if (tag === 'select') return 'combobox';
+      if (tag === 'input' || tag === 'textarea') return 'textbox';
+      return explicitRole ?? tag;
+    };
+    const accessibleName = (el: Element): string => {
+      const ariaLabel = el.getAttribute('aria-label');
+      if (ariaLabel && ariaLabel.trim()) return ariaLabel.trim();
+      const labelledBy = el.getAttribute('aria-labelledby');
+      if (labelledBy) {
+        const text = labelledBy
+          .split(/\s+/)
+          .map((id) => document.getElementById(id)?.textContent ?? '')
+          .join(' ')
+          .replace(/\s+/g, ' ')
+          .trim();
+        if (text) return text;
+      }
+      if (
+        el instanceof HTMLInputElement ||
+        el instanceof HTMLTextAreaElement ||
+        el instanceof HTMLSelectElement
+      ) {
+        const labels = Array.from(el.labels ?? []);
+        const text = labels
+          .map((label) => label.textContent ?? '')
+          .join(' ')
+          .replace(/\s+/g, ' ')
+          .trim();
+        if (text) return text;
+      }
+      return (el.textContent ?? '').replace(/\s+/g, ' ').trim();
+    };
+    const identityPath = (el: Element): string => {
+      const parts: string[] = [];
+      let node: Element | null = el;
+      while (node && parts.length < 16) {
+        const parent: Element | null = node.parentElement;
+        const sameTag = parent
+          ? Array.from(parent.children).filter((child) => child.tagName === node!.tagName)
+          : [];
+        parts.unshift(`${node.tagName.toLowerCase()}:nth-of-type(${sameTag.indexOf(node) + 1})`);
+        node = parent;
+      }
+      return parts.join('>');
+    };
+    const style = getComputedStyle(element);
+    const rect = element.getBoundingClientRect();
+    const nav = document.querySelector('nav[aria-label]');
+    const navRect = nav ? nav.getBoundingClientRect() : null;
+    const center = {
+      x: Math.min(Math.max(rect.left + rect.width / 2, 0), window.innerWidth - 1),
+      y: Math.min(Math.max(rect.top + rect.height / 2, 0), window.innerHeight - 1)
+    };
+    const hit = document.elementFromPoint(center.x, center.y);
+    const pageBackground = getComputedStyle(document.documentElement).backgroundColor;
+    const transparent =
+      /^rgba?\(\s*0(?:\.0+)?\s*,\s*0(?:\.0+)?\s*,\s*0(?:\.0+)?\s*(?:,\s*0\s*)?\)$/;
+    const backdropBackgrounds = [pageBackground.toLowerCase()];
+    let ancestor: Element | null = element.parentElement;
+    for (let depth = 0; ancestor && depth < 5; depth++, ancestor = ancestor.parentElement) {
+      const surface = getComputedStyle(ancestor).backgroundColor.toLowerCase();
+      if (surface && !transparent.test(surface) && !backdropBackgrounds.includes(surface))
+        backdropBackgrounds.push(surface);
+    }
+    return {
+      identity: identityPath(element),
+      tag: element.tagName.toLowerCase(),
+      id: element.id,
+      kind: controlKind(element),
+      name: accessibleName(element),
+      focusVisible: element.matches(':focus-visible'),
+      outlineStyle: style.outlineStyle,
+      outlineWidth: style.outlineWidth,
+      outlineColor: style.outlineColor,
+      background: style.backgroundColor,
+      pageBackground,
+      backdropBackgrounds,
+      rect: { x: rect.x, y: rect.y, width: rect.width, height: rect.height },
+      navRect: navRect
+        ? { x: navRect.x, y: navRect.y, width: navRect.width, height: navRect.height }
+        : null,
+      insideNav: nav ? nav.contains(element) : false,
+      hitTag: hit ? hit.tagName.toLowerCase() : null,
+      hitSelfOrDescendant: hit !== null && (hit === element || element.contains(hit)),
+      viewport: { width: document.documentElement.clientWidth, height: window.innerHeight }
+    };
+  });
+}
+
+/** Enumerates real Tab-reachable controls: enabled, visible, non-negative tabindex, rendered. */
+async function collectFocusableInventory(page: Page): Promise<InventoryEntry[]> {
+  return page.evaluate(() => {
+    const controlKind = (el: Element): string => {
+      const tag = el.tagName.toLowerCase();
+      if (tag === 'summary') return 'summary';
+      const explicitRole = el.getAttribute('role');
+      if (explicitRole === 'switch' || explicitRole === 'combobox') return explicitRole;
+      if (tag === 'a') return 'link';
+      if (tag === 'button') return 'button';
+      if (tag === 'select') return 'combobox';
+      if (tag === 'input' || tag === 'textarea') return 'textbox';
+      return explicitRole ?? tag;
+    };
+    const accessibleName = (el: Element): string => {
+      const ariaLabel = el.getAttribute('aria-label');
+      if (ariaLabel && ariaLabel.trim()) return ariaLabel.trim();
+      const labelledBy = el.getAttribute('aria-labelledby');
+      if (labelledBy) {
+        const text = labelledBy
+          .split(/\s+/)
+          .map((id) => document.getElementById(id)?.textContent ?? '')
+          .join(' ')
+          .replace(/\s+/g, ' ')
+          .trim();
+        if (text) return text;
+      }
+      if (
+        el instanceof HTMLInputElement ||
+        el instanceof HTMLTextAreaElement ||
+        el instanceof HTMLSelectElement
+      ) {
+        const labels = Array.from(el.labels ?? []);
+        const text = labels
+          .map((label) => label.textContent ?? '')
+          .join(' ')
+          .replace(/\s+/g, ' ')
+          .trim();
+        if (text) return text;
+      }
+      return (el.textContent ?? '').replace(/\s+/g, ' ').trim();
+    };
+    const identityPath = (el: Element): string => {
+      const parts: string[] = [];
+      let node: Element | null = el;
+      while (node && parts.length < 16) {
+        const parent: Element | null = node.parentElement;
+        const sameTag = parent
+          ? Array.from(parent.children).filter((child) => child.tagName === node!.tagName)
+          : [];
+        parts.unshift(`${node.tagName.toLowerCase()}:nth-of-type(${sameTag.indexOf(node) + 1})`);
+        node = parent;
+      }
+      return parts.join('>');
+    };
+    return Array.from(
+      document.querySelectorAll<HTMLElement>(
+        'a[href], button, input, select, textarea, summary, [tabindex]'
+      )
+    )
+      .filter((element) => {
+        if (element.matches(':disabled')) return false;
+        if (element.getAttribute('aria-disabled') === 'true') return false;
+        if (element.closest('[inert]')) return false;
+        // Chromium hides closed-details children via content-visibility (they keep boxes), so
+        // exclude them explicitly: they are unreachable until the disclosure is opened. The
+        // summary itself stays — it is the disclosure's keyboard stop.
+        if (element.tagName.toLowerCase() !== 'summary' && element.closest('details:not([open])'))
+          return false;
+        const tabindex = element.getAttribute('tabindex');
+        if (tabindex !== null && Number.parseInt(tabindex, 10) < 0) return false;
+        const style = getComputedStyle(element);
+        if (style.display === 'none' || style.visibility === 'hidden') return false;
+        if (element.getClientRects().length === 0) return false;
+        return true;
+      })
+      .map((element) => ({
+        identity: identityPath(element),
+        kind: controlKind(element),
+        name: accessibleName(element)
+      }));
+  });
+}
+
+/** Focus-time assertions for one admin control: indicator, name, size, containment, clearance. */
+function assertFocusedAdminControl(evidence: FocusEvidence, label: string) {
+  const where = `${label}: ${evidence.kind} "${evidence.name}"`;
+  expect(evidence.name.length, `${where} must expose an accessible name`).toBeGreaterThan(0);
+  assertFocusIndicator(evidence, evidence.backdropBackgrounds, where);
+  expect(evidence.rect.width, `${where} must keep a ≥44px hit box (width)`).toBeGreaterThanOrEqual(
+    44
+  );
+  expect(
+    evidence.rect.height,
+    `${where} must keep a ≥44px hit box (height)`
+  ).toBeGreaterThanOrEqual(44);
+  const contained =
+    evidence.rect.x >= 0 &&
+    evidence.rect.y >= 0 &&
+    evidence.rect.x + evidence.rect.width <= evidence.viewport.width &&
+    evidence.rect.y + evidence.rect.height <= evidence.viewport.height;
+  expect(
+    contained,
+    `${where} must sit fully inside the viewport after Tab-driven scrolling (rect ${JSON.stringify(
+      evidence.rect
+    )} in viewport ${JSON.stringify(evidence.viewport)})`
+  ).toBe(true);
+  expect(
+    evidence.hitSelfOrDescendant,
+    `${where} center-point hit test must resolve to the focused element or a descendant, got ${
+      evidence.hitTag ?? 'nothing'
+    }`
+  ).toBe(true);
+  if (!evidence.insideNav) {
+    expect(
+      evidence.navRect,
+      `${where} requires the fixed bottom navigation for clearance`
+    ).not.toBeNull();
+    const navRect = evidence.navRect!;
+    const intersects =
+      evidence.rect.y < navRect.y + navRect.height &&
+      evidence.rect.y + evidence.rect.height > navRect.y;
+    expect(
+      intersects,
+      `${where} must not be obscured by the fixed bottom navigation (rect ${JSON.stringify(
+        evidence.rect
+      )} vs nav ${JSON.stringify(navRect)})`
+    ).toBe(false);
+  }
+}
+
+/**
+ * Traverses one admin screen at 320px using real keyboard focus only: blur once, then advance
+ * exclusively with Tab (the settings disclosure opens with Enter at its summary stop). Every
+ * visited control is compared against the explicit expected inventory, and every enabled admin
+ * control must receive focus with a visible indicator, an accessible name, a ≥44px box fully in
+ * the viewport and no overlap with the fixed bottom navigation (center-point hit test). Global
+ * #locale/#theme Tab stops are validated for keyboard focus but never counted as admin controls.
+ * Base UI roving popups (timezone select options) are arrow-key stops by design, not Tab stops,
+ * so the traversal requires their trigger but not the popup items. Destructive actions are only
+ * focused, never activated.
+ */
+async function traverseEnabledAdminControls(
+  page: Page,
+  copy: Copy,
+  plan: {
+    content: ExpectedControl[];
+    expandedOnly?: ExpectedControl[];
+    revealedDescriptionId?: string;
+    label: string;
+  }
+) {
+  const globalStops: ExpectedControl[] = [
+    { kind: 'combobox', name: copy.language },
+    { kind: 'combobox', name: copy.theme }
+  ];
+  const expandedOnly = plan.expandedOnly ?? [];
+  const adminControls = [...plan.content, ...navControls(copy)];
+
+  // The document inventory may neither shrink (a control lost) nor grow (an extra Tab stop).
+  expectInventory(
+    await collectFocusableInventory(page),
+    [...globalStops, ...adminControls],
+    `${plan.label}: document inventory before traversal`
+  );
+
+  // Programmatic blur leaves Chromium's sequential-focus resume point unreliable on this page
+  // (Tab can resume mid-document, e.g. at the bottom navigation). Blur once, then walk forward
+  // with Tab only until the first global stop (#locale) is focused — the same bounded walk the
+  // locale helper already proves always terminates (through the ring end and back to the top).
+  // From that anchor the ring order is canonical, so the whole traversal becomes an order proof.
+  await page.evaluate(() => {
+    const active = document.activeElement;
+    if (active instanceof HTMLElement) active.blur();
+  });
+  const anchorTrace: string[] = [];
+  let anchored = false;
+  for (let step = 1; step <= 25; step++) {
+    await page.keyboard.press('Tab');
+    const probe = await readFocusEvidence(page);
+    if (!probe) continue;
+    if (probe.id === 'locale') {
+      anchored = true;
+      break;
+    }
+    anchorTrace.push(`${probe.kind} "${probe.name}"`);
+  }
+  expect(
+    anchored,
+    `${plan.label}: sequential Tab never reached the #locale anchor (walked ${anchorTrace.join(' → ')})`
+  ).toBe(true);
+  await expect(page.locator('#locale')).toBeFocused();
+
+  // From the anchor, the ring must visit every expected control exactly once, in DOM order:
+  // #locale (already focused), #theme, then the admin content controls and the bottom nav.
+  // Hitting #locale again or leaving to <body> before completion means skipped controls.
+  const pending: ExpectedControl[] = [...globalStops, ...adminControls];
+  let disclosureOpened = false;
+  const trace: string[] = [];
+  const skip = (focused: { kind: string; name: string }) => {
+    const index = pending.findIndex((control) => controlKey(control) === controlKey(focused));
+    if (index >= 0) pending.splice(index, 1);
+    return index;
+  };
+  const maxSteps = pending.length + expandedOnly.length + 4;
+
+  for (let step = 0; step <= maxSteps && pending.length > 0; step++) {
+    if (step === 0) {
+      // The anchor itself is the first ring entry; assert it without pressing Tab again.
+      const anchor = await readFocusEvidence(page);
+      expect(anchor, `${plan.label}: the #locale anchor must stay focused`).not.toBeNull();
+      expect(anchor!.id, `${plan.label}: ring must start at #locale`).toBe('locale');
+      expect(skip(anchor!), `${plan.label}: #locale must open the expected ring`).toBe(0);
+      expect(
+        anchor!.focusVisible,
+        'locale select must match :focus-visible after keyboard navigation'
+      ).toBe(true);
+      assertFocusIndicator(anchor!, [anchor!.background, anchor!.pageBackground], 'locale select');
+      trace.push(`combobox "${anchor!.name}"`);
+      continue;
+    }
+    await page.keyboard.press('Tab');
+    const evidence = await readFocusEvidence(page);
+    expect(
+      evidence,
+      `${plan.label}: Tab ${step} must move focus to a focusable element`
+    ).not.toBeNull();
+    const focused = evidence!;
+    if (focused.id === 'locale' || focused.tag === 'body') {
+      throw new Error(
+        `${plan.label}: Tab ring ended at ${focused.tag}#${focused.id} at step ${step} before reaching ${formatControls(
+          pending
+        )}; visited ${trace.join(' → ')}`
+      );
+    }
+    trace.push(`${focused.kind} "${focused.name}"`);
+
+    if (focused.id === 'theme') {
+      expect(skip(focused), `${plan.label}: theme select must follow the expected ring order`).toBe(
+        0
+      );
+      expect(focused.focusVisible, 'theme select must match :focus-visible').toBe(true);
+      assertFocusIndicator(focused, [focused.background, focused.pageBackground], 'theme select');
+      continue;
+    }
+
+    expect(
+      skip(focused),
+      `${plan.label}: Tab ${step} landed on unexpected ${focused.kind} "${focused.name}"; still missing ${formatControls(
+        pending
+      )}; visited ${trace.join(' → ')}`
+    ).toBeGreaterThanOrEqual(0);
+
+    assertFocusedAdminControl(focused, plan.label);
+
+    if (plan.revealedDescriptionId && focused.kind === 'summary' && !disclosureOpened) {
+      // Open the collapsed disclosure with the keyboard; focus stays on the summary so the next
+      // Tab walks the revealed controls, which become required ring stops from this point on.
+      await page.keyboard.press('Enter');
+      await expect(page.locator('main details[open]')).toHaveCount(1);
+      await expect(page.locator(`#${plan.revealedDescriptionId}`)).toBeVisible();
+      pending.push(...expandedOnly);
+      expectInventory(
+        await collectFocusableInventory(page),
+        [...globalStops, ...adminControls, ...expandedOnly],
+        `${plan.label}: document inventory after opening the disclosure`
+      );
+      disclosureOpened = true;
+    }
+  }
+
+  expect(
+    pending,
+    `${plan.label}: Tab traversal finished without reaching ${formatControls(
+      pending
+    )}; visited ${trace.join(' → ')}`
+  ).toHaveLength(0);
 }
 
 async function assertLocaleControlSizing(page: Page, copy: Copy, viewport: number) {
@@ -1148,10 +1730,6 @@ test.describe('community admin 320px locale matrix', () => {
         });
         await expect(screenHeading).toHaveCount(1);
         await expect(screenHeading).toBeVisible();
-        if (destination === 'settings') {
-          await page.getByText(localeCopy.communityAdmin.settings.details).click();
-          await expect(page.locator('#community-admin-description')).toBeVisible();
-        }
         if (destination === 'requests')
           await expect(
             page.getByText(`Narrow requester ${destination} ${locale}`, { exact: true })
@@ -1240,8 +1818,18 @@ test.describe('community admin 320px locale matrix', () => {
             'scrolled interactive control must not be obscured by bottom navigation'
           ).toBe(false);
         }
-        await page.keyboard.press('Tab');
-        await expect(page.locator(':focus')).toHaveCount(1);
+        // Sequential keyboard proof: every enabled admin control must be reachable by Tab alone,
+        // focused with a visible indicator, ≥44px, fully in the viewport and unobscured by the
+        // fixed bottom navigation. Replaces the former single-Tab sanity check; the settings
+        // disclosure opens with Enter at its summary stop (no pointer click bypasses this).
+        await traverseEnabledAdminControls(
+          page,
+          localeCopy,
+          adminTraversalPlan(destination, localeCopy, {
+            ownerName: `Narrow ${destination} ${locale}`,
+            applicantName: `Narrow applicant ${destination} ${locale}`
+          })
+        );
         await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
         await expect(nav).toBeVisible();
         const lastControl = contentControls.last();
