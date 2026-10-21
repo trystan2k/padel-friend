@@ -34,7 +34,7 @@ import {
 } from '../src/features/notifications/notifications.functions';
 const id = '123e4567-e89b-12d3-a456-426614174000';
 describe('notification server functions', () => {
-  it('uses the database clock for the notification cutoff', async () => {
+  it('keeps category cursor queries ordered and unread counts whole-store', async () => {
     const databaseAsOf = '2026-10-16T12:34:56.000000+00:00';
     const query = {
       select: vi.fn<(...args: unknown[]) => unknown>(),
@@ -61,10 +61,34 @@ describe('notification server functions', () => {
       }));
     mocks.client = { from, rpc };
 
-    await listMyNotifications({ data: { limit: 20 } });
+    const cursor = { createdAt: '2026-10-15T12:00:00.123456+00:00', id };
+    await listMyNotifications({ data: { category: 'community', cursor, limit: 20 } });
 
     expect(rpc).toHaveBeenCalledWith('get_my_notifications_as_of');
+    expect(from).toHaveBeenCalledWith('notifications');
+    expect(query.select).toHaveBeenCalledWith(
+      'id,kind,category,target_type,target_id,community_id,created_at,read_at'
+    );
     expect(query.lte).toHaveBeenCalledWith('created_at', databaseAsOf);
+    expect(query.eq.mock.calls).toEqual([['category', 'community']]);
+    expect(query.order.mock.calls).toEqual([
+      ['created_at', { ascending: false }],
+      ['id', { ascending: false }]
+    ]);
+    expect(query.or).toHaveBeenCalledExactlyOnceWith(
+      `created_at.lt.${cursor.createdAt},and(created_at.eq.${cursor.createdAt},id.lt.${id})`
+    );
+    expect(query.limit).toHaveBeenCalledExactlyOnceWith(21);
+    expect(rpc.mock.calls).toEqual([
+      ['get_my_notifications_as_of'],
+      ['count_my_unread_notifications']
+    ]);
+
+    query.eq.mockClear();
+    query.or.mockClear();
+    await listMyNotifications({ data: { category: 'all', limit: 20 } });
+    expect(query.eq).not.toHaveBeenCalled();
+    expect(query.or).not.toHaveBeenCalled();
   });
 
   it('uses the whole-store count RPC after authenticated access', async () => {
