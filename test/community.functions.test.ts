@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, expectTypeOf, it, vi } from 'vitest';
 import {
   buildFixtureAtBytes,
   compactJsonBytes,
@@ -32,17 +32,55 @@ import {
   updateCommunitySettings,
   getCommunitySettings
 } from '../src/features/community/community.functions';
+import type {
+  CommunitySettingsReadResult,
+  CommunitySettingsUpdateResult
+} from '../src/features/community/community-rpc.types';
 
 const id = '11111111-1111-4111-8111-111111111111';
 const createInput = { name: 'Padel', visibility: 'private', join_policy: 'instant' } as const;
-const row = { id, name: 'Padel', visibility: 'public', join_policy: 'admin_approval' };
+const row: CommunitySettingsUpdateResult = {
+  id,
+  name: 'Padel',
+  visibility: 'public',
+  join_policy: 'admin_approval',
+  description: null,
+  city_label: null,
+  logo_path: null,
+  settings: {},
+  updated_at: '2026-01-01T00:00:00Z'
+};
+const readResult: CommunitySettingsReadResult = { id, settings: {} };
+
+type UpdateReturn = Awaited<ReturnType<typeof updateCommunitySettings>>;
+type ReadReturn = Awaited<ReturnType<typeof getCommunitySettings>>;
+expectTypeOf<UpdateReturn>().toEqualTypeOf<CommunitySettingsUpdateResult>();
+expectTypeOf<UpdateReturn['description']>().toEqualTypeOf<string | null>();
+expectTypeOf<UpdateReturn['city_label']>().toEqualTypeOf<string | null>();
+expectTypeOf<UpdateReturn['logo_path']>().toEqualTypeOf<string | null>();
+expectTypeOf<ReadReturn>().toEqualTypeOf<CommunitySettingsReadResult | null>();
+expectTypeOf<ReadReturn>().not.toHaveProperty('description');
+expectTypeOf<ReadReturn>().not.toHaveProperty('city_label');
+expectTypeOf<ReadReturn>().not.toHaveProperty('logo_path');
 function client(claimed = true, updated: unknown = row, error: unknown = null) {
   const rpc = vi.fn<(name: string) => unknown>((name: string) => {
     const result = { data: name === 'create_community' ? id : updated, error };
     return name === 'update_community_settings'
-      ? { single: async () => result }
+      ? {
+          single: () => ({
+            overrideTypes: () => Promise.resolve(result)
+          })
+        }
       : name === 'get_community_settings'
-        ? { maybeSingle: async () => result }
+        ? {
+            maybeSingle: () => ({
+              overrideTypes: () =>
+                Promise.resolve({
+                  data: updated !== null ? readResult : updated,
+                  error
+                })
+            })
+          }
         : Promise.resolve(result);
   });
   const maybeSingle = vi
@@ -262,6 +300,26 @@ describe('community server functions', () => {
     });
   });
 
+  it('preserves nullable update settings fields at the RPC boundary', async () => {
+    const authenticated = client(true, {
+      ...row,
+      description: null,
+      city_label: null,
+      logo_path: null
+    });
+    mocks.getServerClient.mockReturnValue(authenticated);
+    const cleared = await updateCommunitySettings({
+      data: { community_id: id, description: null, city_label: null, logo_path: null }
+    });
+    expect(cleared).toMatchObject({ description: null, city_label: null, logo_path: null });
+
+    const populated = { ...row, description: 'Club', city_label: 'Porto', logo_path: 'club.png' };
+    mocks.getServerClient.mockReturnValue(client(true, populated));
+    await expect(
+      updateCommunitySettings({ data: { community_id: id, description: 'Club' } })
+    ).resolves.toMatchObject({ description: 'Club', city_label: 'Porto', logo_path: 'club.png' });
+  });
+
   it('maps zero matching rows to NOT_COMMUNITY_ADMIN, including missing IDs', async () => {
     mocks.getServerClient.mockReturnValue(client(true, null));
     await expect(
@@ -316,7 +374,7 @@ describe('community server functions', () => {
   it('reads settings with validated args, claims, no-store and member error mapping', async () => {
     const authenticated = client();
     mocks.getServerClient.mockReturnValue(authenticated);
-    await expect(getCommunitySettings({ data: { community_id: id } })).resolves.toEqual(row);
+    await expect(getCommunitySettings({ data: { community_id: id } })).resolves.toEqual(readResult);
     expect(authenticated.rpc).toHaveBeenCalledWith('get_community_settings', {
       p_community_id: id
     });
@@ -333,5 +391,16 @@ describe('community server functions', () => {
     await expect(getCommunitySettings({ data: { community_id: id } })).rejects.toThrow(
       'UNAUTHENTICATED'
     );
+  });
+
+  it('preserves the settings reader projection and absent-row null', async () => {
+    const authenticated = client(true, readResult);
+    mocks.getServerClient.mockReturnValue(authenticated);
+    const result = await getCommunitySettings({ data: { community_id: id } });
+    expect(result).toEqual({ id, settings: {} });
+    expect(Object.keys(result ?? {}).sort()).toEqual(['id', 'settings']);
+
+    mocks.getServerClient.mockReturnValue(client(true, null));
+    await expect(getCommunitySettings({ data: { community_id: id } })).resolves.toBeNull();
   });
 });

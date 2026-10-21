@@ -1,5 +1,9 @@
 import { createServerFn } from '@tanstack/react-start';
 import { requireAuthenticatedClient } from '../auth/auth.server';
+import type {
+  CommunitySettingsReadResult,
+  CommunitySettingsUpdateResult
+} from './community-rpc.types';
 import {
   type PublicCommunity,
   validateAcceptInvitation,
@@ -183,7 +187,8 @@ export const updateCommunitySettings = createServerFn({ method: 'POST' })
         p_community_id: community_id,
         p_changes: changes
       })
-      .single();
+      .single()
+      .overrideTypes<CommunitySettingsUpdateResult, { merge: false }>();
     if (error) {
       if (error.code === 'PG001') throw new Error('NOT_COMMUNITY_ADMIN');
       if (error.code === '28000') throw new Error('UNAUTHENTICATED');
@@ -206,7 +211,8 @@ export const getCommunitySettings = createServerFn({ method: 'GET' })
     const { client } = await requireAuthenticatedClient();
     const { data: result, error } = await client
       .rpc('get_community_settings', { p_community_id: data.community_id })
-      .maybeSingle();
+      .maybeSingle()
+      .overrideTypes<CommunitySettingsReadResult | null, { merge: false }>();
     if (error) {
       if (error.code === 'PG006') throw new Error('NOT_COMMUNITY_MEMBER');
       if (error.code === '28000') throw new Error('UNAUTHENTICATED');

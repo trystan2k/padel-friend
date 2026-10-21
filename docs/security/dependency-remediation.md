@@ -36,12 +36,22 @@ Applied as `overrides` in `pnpm-workspace.yaml` (pnpm 11 setting location) to fo
 `corepack pnpm audit`: `{ critical: 0, high: 1, moderate: 0, low: 0 }`.
 All critical/high Dependabot advisories are resolved.
 
-## Accepted exception — braces (high, GHSA-vfj7-8cjw-p6xm)
+## Historical accepted exception — braces (high, GHSA-vfj7-8cjw-p6xm)
 
 - Advisory: `braces <= 3.0.3`, claimed fixed `>= 3.0.4`.
 - Fact: the newest published `braces` release is **3.0.3** (verified via `npm view` and `pnpm view`); no `>= 3.0.4` version exists, so no patch can be applied.
 - Exposure: transitive glob-matching library reached only through `stylelint > fast-glob/globby > micromatch > braces` (dev-time tooling). No runtime, Worker, browser, or server-function exposure.
 - Mitigation: monitor the upstream `braces` release; re-run remediation once a `>= 3.0.4` release ships.
+
+## Re-evaluation — 2026-10-21
+
+- Registry check: `npm view braces versions --json` and `npm view braces dist-tags --json`; published version-list tail is `3.0.0`, `3.0.1`, `3.0.2`, `3.0.3`, and dist-tag is `{ "latest": "3.0.3" }`. No published `>= 3.0.4` release exists.
+- Advisory: `GHSA-vfj7-8cjw-p6xm` (npm audit advisory `1240992`), vulnerable `<= 3.0.3`; `patched_versions: null`, `patched_versions_unpublished: true`. Source: fresh `pnpm audit --json` and https://github.com/advisories/GHSA-vfj7-8cjw-p6xm.
+- Installed tree: `pnpm why braces` reports `braces@3.0.3` via `micromatch@4.0.8`; paths include `stylelint > fast-glob > micromatch > braces` and `stylelint > globby > fast-glob > micromatch > braces` (also the corresponding `stylelint-config-standard` paths). `Found 1 version of braces`.
+- Audit counts: 0 info, 0 low, 0 moderate, 1 high, 0 critical; 985 total dependencies (759 dev dependencies). The one finding is this braces advisory; audit exits non-zero because vulnerability is present.
+- Exposure: dev-only stylelint/glob tooling. No Worker, browser, or server-function execution path; no runtime exposure identified.
+- Disposition: **accepted exception remains in force**. No compatible published fix is available; no dependency or lockfile change made.
+- Monitoring: release/security maintainer re-checks upstream and audit every seven calendar days and before releases or relevant tooling lockfile changes. Next re-check: **2026-10-28**. A published `braces >=3.0.4` release triggers remediation at the next security-maintenance window.
 
 ## Environment note
 
