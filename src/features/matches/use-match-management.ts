@@ -1,6 +1,11 @@
 import { useRef, useState } from 'react';
 import { useRouter } from '@tanstack/react-router';
-import { withdrawMatchRegistration, removeMatchRegistration } from './match-management.functions';
+import {
+  withdrawMatchRegistration,
+  removeMatchRegistration,
+  transferMatchEventOwnership,
+  cancelMatchEvent
+} from './match-management.functions';
 import { MANAGEMENT_ERROR_COPY } from './match-management-error-copy';
 
 export function useMatchManagement(eventId: string) {
@@ -51,5 +56,48 @@ export function useMatchManagement(eventId: string) {
       setPending(false);
     }
   }
-  return { pending, feedback, depart };
+  async function manage(version: number, command: { targetUserId: string } | { reason: string }) {
+    if (busy.current) return false;
+    if (typeof navigator !== 'undefined' && !navigator.onLine) {
+      setFeedback('matches.management.offline');
+      return false;
+    }
+    busy.current = true;
+    setPending(true);
+    setFeedback(null);
+    const intent = JSON.stringify([eventId, version, command]);
+    const requestId =
+      retry.current?.intent === intent ? retry.current.requestId : crypto.randomUUID();
+    retry.current = { intent, requestId };
+    try {
+      const data = { event_id: eventId, expected_version: version, request_id: requestId };
+      const result =
+        'targetUserId' in command
+          ? await transferMatchEventOwnership({
+              data: { ...data, target_user_id: command.targetUserId }
+            })
+          : await cancelMatchEvent({ data: { ...data, reason: command.reason } });
+      if (result.status === 'ok') {
+        retry.current = null;
+        setFeedback(
+          'targetUserId' in command
+            ? 'matches.management.ownershipTransferred'
+            : 'matches.management.cancelled'
+        );
+        await router.invalidate();
+        return true;
+      }
+      setFeedback(MANAGEMENT_ERROR_COPY[result.code]);
+      if (result.code !== 'unavailable') retry.current = null;
+      // Keep the dialog/draft visible on conflicts; never silently rebase it.
+      return false;
+    } catch {
+      setFeedback('matches.management.errors.unavailable');
+      return false;
+    } finally {
+      busy.current = false;
+      setPending(false);
+    }
+  }
+  return { pending, feedback, depart, manage };
 }

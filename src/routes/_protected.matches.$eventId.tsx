@@ -8,7 +8,10 @@ import {
 } from '../features/matches/match-registration.functions';
 import { getMyPlayerProfile } from '../features/player/player.functions';
 import { getMyMatchInvitation } from '../features/matches/match-invitation.functions';
-import { listMatchEventManagementParticipants } from '../features/matches/match-management.functions';
+import {
+  getMatchEventManagement,
+  listMatchEventManagementParticipants
+} from '../features/matches/match-management.functions';
 
 export async function loadMatchDetail(eventId: string) {
   try {
@@ -73,7 +76,11 @@ export const Route = createFileRoute('/_protected/matches/$eventId')({
   loader: async ({ params }) => {
     const detail = await loadMatchDetail(params.eventId);
     const registration = await loadMatchRegistration(params.eventId);
-    const isCreator = detail.event?.caller_badge === 'creator';
+    const capabilities = await getMatchEventManagement({
+      data: { event_id: params.eventId }
+    }).catch(() => null);
+    const eventManagement = capabilities?.status === 'ok' ? capabilities.value : null;
+    const isCreator = eventManagement?.is_organizer === true;
     const [callerLevel, requestQueue, roster, invitation, management] = await Promise.all([
       loadCallerLevel(),
       isCreator
@@ -93,6 +100,7 @@ export const Route = createFileRoute('/_protected/matches/$eventId')({
       ...detail,
       ...registration,
       isCreator,
+      eventManagement,
       callerLevel,
       ...requestQueue,
       ...roster,
@@ -113,6 +121,7 @@ export const Route = createFileRoute('/_protected/matches/$eventId')({
         registrationError={data.registrationFailed}
         callerLevel={data.callerLevel}
         isCreator={data.isCreator}
+        management={data.eventManagement}
         queue={data.queue}
         queueError={data.queueFailed}
         roster={data.roster}

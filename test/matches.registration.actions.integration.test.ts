@@ -1369,6 +1369,8 @@ describe('match registration actions integration', () => {
       [
         'event_id',
         'attempt_id',
+        'event_status',
+        'cancelled_at',
         'left_at',
         'removal_reason',
         'lifecycle',

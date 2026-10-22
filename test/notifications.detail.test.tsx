@@ -37,9 +37,10 @@ vi.mock('../src/features/notifications/notifications.functions', () => ({
 
 import { createI18n } from '../src/i18n/config';
 import en from '../src/locales/en/translation.json';
-import type {
-  MatchNotificationContext,
-  NotificationTarget
+import {
+  decodeNotificationTarget,
+  type MatchNotificationContext,
+  type NotificationTarget
 } from '../src/features/notifications/notification-target';
 import { NotificationDetailPage } from '../src/features/notifications/NotificationDetailPage';
 import { Route as NotificationDetailRoute } from '../src/routes/_protected.notifications.$notificationId';
@@ -177,6 +178,38 @@ beforeEach(() => {
 afterEach(cleanup);
 
 describe('notification detail page', () => {
+  it('accepts safe cancellation targets and rejects malformed match links', () => {
+    expect(
+      decodeNotificationTarget({ ...availableMatch, kind: 'match_event_cancelled' })
+    ).toMatchObject({ match_available: true });
+    expect(() =>
+      decodeNotificationTarget({ ...availableMatch, match_event_id: '../private' })
+    ).toThrow('INVALID_NOTIFICATION_TARGET');
+    expect(() => decodeNotificationTarget({ ...availableMatch, match_available: false })).toThrow(
+      'INVALID_NOTIFICATION_TARGET'
+    );
+  });
+  it.each(['match_event_ownership_transferred', 'match_event_cancelled'] as const)(
+    'renders %s with a safe event target and noninvitation heading',
+    async (kind) => {
+      mountPage({ ...availableMatch, kind }, matchContext('Central Court'));
+      expect(await screen.findByRole('heading', { name: copy.kinds[kind] })).toBeTruthy();
+      expect(screen.getByRole('link', { name: copy.match.openEvent }).getAttribute('href')).toBe(
+        `/matches/${availableMatch.match_event_id}`
+      );
+      expect(screen.queryByText(copy.match.invitedBy)).toBeNull();
+    }
+  );
+  it('resolves an older playing notification to a current cancelled tombstone', async () => {
+    mountPage(
+      { ...availableMatch, kind: 'match_registration_playing' },
+      matchContext('Central Court', { event_status: 'cancelled' })
+    );
+    expect(
+      await screen.findByRole('heading', { name: copy.kinds.match_event_cancelled })
+    ).toBeTruthy();
+    expect(screen.getByText(copy.match.cancelledBody)).toBeTruthy();
+  });
   it('renders the localized unavailable state with a back link to the notification center', async () => {
     mountPage(unavailable);
 

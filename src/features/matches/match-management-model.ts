@@ -30,6 +30,22 @@ export type ManagementSuccess = {
   request_id: string;
   changed: boolean;
 };
+export type OwnershipSuccess = ManagementSuccess & { owner_id: string };
+export type CancellationSuccess = ManagementSuccess & { status: 'cancelled' };
+export function parseOwnershipSuccess(value: unknown): ManagementResult<OwnershipSuccess> | null {
+  const parsed = parseManagementSuccess(value);
+  return parsed?.status === 'ok' && record(value) && isUuid(value.owner_id)
+    ? { ...parsed, value: { ...parsed.value, owner_id: value.owner_id } }
+    : null;
+}
+export function parseCancellationSuccess(
+  value: unknown
+): ManagementResult<CancellationSuccess> | null {
+  const parsed = parseManagementSuccess(value);
+  return parsed?.status === 'ok' && record(value) && value.status === 'cancelled'
+    ? { ...parsed, value: { ...parsed.value, status: 'cancelled' } }
+    : null;
+}
 export type ManagementParticipant = {
   registration_id: string;
   user_id: string;
@@ -84,7 +100,13 @@ export function managementActionError(error: {
   if (error.code === 'P0001' && error.message?.startsWith('MATCH_MANAGEMENT_')) {
     const code = error.message.slice('MATCH_MANAGEMENT_'.length).toLowerCase();
     if (code === 'version_conflict') {
-      const version = Number(error.details);
+      let version: unknown;
+      try {
+        const detail: unknown = JSON.parse(error.details ?? 'null');
+        version = record(detail) ? detail.current_version : detail;
+      } catch {
+        version = null;
+      }
       if (integer(version, 1)) return { status: 'conflict', code, current_version: version };
     }
     const known = MANAGEMENT_ERROR_CODES.find((candidate) => candidate === code);
@@ -99,6 +121,86 @@ export function managementActionError(error: {
           ? 'invalid'
           : 'unavailable';
   return { status: 'error', code };
+}
+
+export type ManagementAction = 'withdraw' | 'remove' | 'transfer' | 'cancel';
+export type MatchEventManagement = {
+  version: number;
+  status: 'open' | 'cancelled';
+  phase: 'open' | 'awaiting_results' | 'incomplete' | 'started' | 'cancelled';
+  as_of: string;
+  owner_id: string;
+  is_organizer: boolean;
+  is_participant: boolean;
+  results_protected: boolean;
+  reconfirmation_generation: number;
+  required_count: number;
+  actions: Record<ManagementAction, { allowed: boolean; reason: ManagementErrorCode | null }>;
+  correction: { available: false; reason: 'results_workflow_unavailable' };
+};
+export function parseMatchEventManagement(value: unknown): MatchEventManagement | null {
+  if (
+    !record(value) ||
+    !integer(value.version, 1) ||
+    !isUuid(value.owner_id) ||
+    !(value.status === 'open' || value.status === 'cancelled') ||
+    !(
+      value.phase === 'open' ||
+      value.phase === 'awaiting_results' ||
+      value.phase === 'incomplete' ||
+      value.phase === 'started' ||
+      value.phase === 'cancelled'
+    ) ||
+    typeof value.as_of !== 'string' ||
+    !Number.isFinite(Date.parse(value.as_of)) ||
+    typeof value.is_organizer !== 'boolean' ||
+    typeof value.is_participant !== 'boolean' ||
+    typeof value.results_protected !== 'boolean' ||
+    !integer(value.reconfirmation_generation) ||
+    !integer(value.required_count) ||
+    !record(value.actions) ||
+    !record(value.correction) ||
+    value.correction.available !== false ||
+    value.correction.reason !== 'results_workflow_unavailable'
+  )
+    return null;
+  const actions: MatchEventManagement['actions'] = {
+    withdraw: { allowed: false, reason: 'unavailable' },
+    remove: { allowed: false, reason: 'unavailable' },
+    transfer: { allowed: false, reason: 'unavailable' },
+    cancel: { allowed: false, reason: 'unavailable' }
+  };
+  for (const action of ['withdraw', 'remove', 'transfer', 'cancel'] as const) {
+    const capability = value.actions[action];
+    const reason = record(capability)
+      ? MANAGEMENT_ERROR_CODES.find((code) => code === capability.reason)
+      : undefined;
+    if (
+      !record(capability) ||
+      typeof capability.allowed !== 'boolean' ||
+      !(
+        capability.reason === null ||
+        MANAGEMENT_ERROR_CODES.some((code) => code === capability.reason)
+      ) ||
+      capability.allowed !== (capability.reason === null)
+    )
+      return null;
+    actions[action] = { allowed: capability.allowed, reason: reason ?? null };
+  }
+  return {
+    version: value.version,
+    status: value.status,
+    phase: value.phase,
+    as_of: value.as_of,
+    owner_id: value.owner_id,
+    is_organizer: value.is_organizer,
+    is_participant: value.is_participant,
+    results_protected: value.results_protected,
+    reconfirmation_generation: value.reconfirmation_generation,
+    required_count: value.required_count,
+    actions,
+    correction: { available: false, reason: 'results_workflow_unavailable' }
+  };
 }
 export function parseManagementSuccess(value: unknown): ManagementResult<ManagementSuccess> | null {
   if (

@@ -12,9 +12,23 @@ export type NotificationTarget = {
   created_at?: string | null;
 };
 
+/** Cancelled events intentionally resolve through the same safe target as open
+ * events. Readability is authoritative SQL-side, never inferred from the kind. */
+export function decodeNotificationTarget(value: NotificationTarget): NotificationTarget {
+  if (
+    value.target_status === 'match_available' &&
+    (value.match_available !== true ||
+      typeof value.match_event_id !== 'string' ||
+      !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value.match_event_id))
+  )
+    throw new Error('INVALID_NOTIFICATION_TARGET');
+  return value;
+}
+
 export type MatchNotificationParticipation = 'playing' | 'reserve' | 'reserve_not_playing';
 
 export type MatchNotificationContext = {
+  event_status?: string;
   match_event_id: string;
   creator_display_name: string | null;
   scheduled_at: string;

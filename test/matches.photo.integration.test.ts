@@ -1,4 +1,5 @@
 import { spawn } from 'node:child_process';
+import { matchRegistrationFixtureHistory } from './helpers/match-registration-fixture-history';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { describe, expect, it, vi } from 'vitest';
 import type { Database } from '../src/lib/supabase/database.types';
@@ -230,7 +231,8 @@ describe('match event photo Storage authorization', () => {
           (${q(privateEvent)},${q(privateCommunity)},${q(creator!.id)},now()+interval '2 days','UTC','friendly','community_open','POST_MATCH_TEAMS','Court','https://maps.google.com/maps/place/x',${q(privateKey)},now()+interval '1 day'),
           (${q(inviteOnlyEvent)},${q(publicCommunity)},${q(creator!.id)},now()+interval '2 days','UTC','friendly','invite_only','POST_MATCH_TEAMS','Court','https://maps.google.com/maps/place/x',${q(inviteKey)},now()+interval '1 day');
       insert into public.match_event_invites(match_event_id,invitee_user_id,invited_by) values (${q(inviteOnlyEvent)},${q(invitee!.id)},${q(creator!.id)});
-      insert into public.match_event_registrations(match_event_id,user_id,accepted_at,accepted_order,participation_status,registration_source) values (${q(inviteOnlyEvent)},${q(accepted!.id)},now(),2,'reserve','member');
+       insert into public.match_event_registrations(match_event_id,user_id,accepted_at,accepted_order,participation_status,registration_source) values (${q(inviteOnlyEvent)},${q(accepted!.id)},now(),2,'reserve','member');
+       ${matchRegistrationFixtureHistory([publicEvent, privateEvent, inviteOnlyEvent])}
       end $$;`
       );
       expect(

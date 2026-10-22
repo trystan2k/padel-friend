@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { matchRegistrationActionError } from '../src/features/matches/match-registration-model';
 import en from '../src/locales/en/translation.json';
 import pt from '../src/locales/pt-BR/translation.json';
 import es from '../src/locales/es/translation.json';
@@ -7,7 +8,8 @@ import {
   managementActionError,
   parseManagementSuccess,
   parseManagementParticipants,
-  parseMatchAudit
+  parseMatchAudit,
+  parseMatchEventManagement
 } from '../src/features/matches/match-management-model';
 import { MANAGEMENT_ERROR_COPY } from '../src/features/matches/match-management-error-copy';
 import { parseMyMatchRegistration } from '../src/features/matches/match-registration-model';
@@ -31,6 +33,65 @@ const participant = {
   accepted_order: 4
 };
 describe('management defensive models', () => {
+  it('decodes accepted cancellation history without inventing a live roster position', () => {
+    expect(
+      parseMyMatchRegistration({
+        event_id: id,
+        lifecycle: 'accepted',
+        registration_source: 'creator',
+        event_status: 'cancelled',
+        cancelled_at: '2030-01-01T00:00:00Z',
+        participation: null,
+        position: null
+      })
+    ).toEqual({
+      state: 'cancelled',
+      event_id: id,
+      registration_source: 'creator',
+      cancelled_at: '2030-01-01T00:00:00Z'
+    });
+  });
+  it.each(['started', 'cancelled', 'result_protected'] as const)(
+    'maps shared registration guard %s instead of generic unavailable',
+    (code) => {
+      expect(
+        matchRegistrationActionError({
+          code: 'P0001',
+          message: `MATCH_MANAGEMENT_${code.toUpperCase()}`
+        })
+      ).toEqual({ status: 'error', code });
+    }
+  );
+  it('requires authoritative capability reasons and safe management metadata', () => {
+    const dto = {
+      version: 2,
+      status: 'open',
+      phase: 'open',
+      as_of: '2030-01-01T00:00:00Z',
+      owner_id: id,
+      is_organizer: true,
+      is_participant: false,
+      results_protected: false,
+      reconfirmation_generation: 0,
+      required_count: 0,
+      actions: Object.fromEntries(
+        ['withdraw', 'remove', 'transfer', 'cancel'].map((action) => [
+          action,
+          { allowed: false, reason: 'forbidden' }
+        ])
+      ),
+      correction: { available: false, reason: 'results_workflow_unavailable' }
+    };
+    expect(parseMatchEventManagement(dto)).toEqual(dto);
+    expect(parseMatchEventManagement({ ...dto, version: Number.MAX_SAFE_INTEGER + 1 })).toBeNull();
+    expect(
+      parseMatchEventManagement({
+        ...dto,
+        actions: { ...dto.actions, cancel: { allowed: true, reason: 'cancelled' } }
+      })
+    ).toBeNull();
+    expect(parseMatchEventManagement({ ...dto, owner_id: 'invalid' })).toBeNull();
+  });
   it.each(
     MANAGEMENT_ERROR_CODES.filter(
       (code) => !['unauthenticated', 'forbidden', 'invalid', 'unavailable'].includes(code)

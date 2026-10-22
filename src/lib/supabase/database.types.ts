@@ -692,6 +692,7 @@ export type Database = {
           accepted_at: string | null
           accepted_order: number | null
           approved_at: string | null
+          cancelled_at: string | null
           current_attempt_id: string | null
           id: string
           left_at: string | null
@@ -713,6 +714,7 @@ export type Database = {
           accepted_at?: string | null
           accepted_order?: number | null
           approved_at?: string | null
+          cancelled_at?: string | null
           current_attempt_id?: string | null
           id?: string
           left_at?: string | null
@@ -733,6 +735,7 @@ export type Database = {
           accepted_at?: string | null
           accepted_order?: number | null
           approved_at?: string | null
+          cancelled_at?: string | null
           current_attempt_id?: string | null
           id?: string
           left_at?: string | null
@@ -768,6 +771,9 @@ export type Database = {
       }
       match_events: {
         Row: {
+          cancel_reason: string | null
+          cancelled_at: string | null
+          cancelled_by: string | null
           community_id: string
           court_booked: boolean
           court_notes: string | null
@@ -786,17 +792,24 @@ export type Database = {
           photo_path: string
           price_minor: number | null
           published_at: string
+          published_by: string
           registration_cutoff_at: string
           restriction_enabled: boolean
           saved_venue_id: string | null
           starts_at: string
+          status: string
           team_assignment_mode: Database["public"]["Enums"]["match_team_assignment_mode"]
           timezone: string
+          updated_at: string
           venue_name: string
+          version: number
           visibility: Database["public"]["Enums"]["match_event_visibility"]
         }
         ComputedFields: never
         Insert: {
+          cancel_reason?: string | null
+          cancelled_at?: string | null
+          cancelled_by?: string | null
           community_id: string
           court_booked?: boolean
           court_notes?: string | null
@@ -815,16 +828,23 @@ export type Database = {
           photo_path: string
           price_minor?: number | null
           published_at?: string
+          published_by: string
           registration_cutoff_at: string
           restriction_enabled?: boolean
           saved_venue_id?: string | null
           starts_at: string
+          status?: string
           team_assignment_mode: Database["public"]["Enums"]["match_team_assignment_mode"]
           timezone: string
+          updated_at?: string
           venue_name: string
+          version?: number
           visibility: Database["public"]["Enums"]["match_event_visibility"]
         }
         Update: {
+          cancel_reason?: string | null
+          cancelled_at?: string | null
+          cancelled_by?: string | null
           community_id?: string
           court_booked?: boolean
           court_notes?: string | null
@@ -843,13 +863,17 @@ export type Database = {
           photo_path?: string
           price_minor?: number | null
           published_at?: string
+          published_by?: string
           registration_cutoff_at?: string
           restriction_enabled?: boolean
           saved_venue_id?: string | null
           starts_at?: string
+          status?: string
           team_assignment_mode?: Database["public"]["Enums"]["match_team_assignment_mode"]
           timezone?: string
+          updated_at?: string
           venue_name?: string
+          version?: number
           visibility?: Database["public"]["Enums"]["match_event_visibility"]
         }
         Relationships: [
@@ -1022,8 +1046,18 @@ export type Database = {
         }[]
       }
       advance_match_registration_revision_locked: { Args: { p_event_id: string }; Returns: number }
+      assert_match_event_active_locked: { Args: { p_event_id: string }; Returns: undefined }
       can_read_community: { Args: { p_community_id: string }; Returns: boolean }
       can_read_match_event: { Args: { p_event_id: string }; Returns: boolean }
+      cancel_match_event: {
+        Args: {
+          p_expected_version: number
+          p_match_event_id: string
+          p_reason: string
+          p_request_id: string
+        }
+        Returns: Json
+      }
       count_my_unread_notifications: { Args: Record<PropertyKey, never>; Returns: number }
       create_community: {
         Args: {
@@ -1083,6 +1117,7 @@ export type Database = {
       get_effective_community_admin_defaults: { Args: { p_settings: Json }; Returns: Json }
       get_match_creation_options: { Args: { p_community_id?: string }; Returns: Json }
       get_match_event: { Args: { p_event_id: string }; Returns: Json }
+      get_match_event_management: { Args: { p_match_event_id: string }; Returns: Json }
       get_my_community_notification_timezone: {
         Args: { p_notification_id: string }
         Returns: string
@@ -1103,6 +1138,7 @@ export type Database = {
           caller_roster_position: number
           creator_display_name: string
           currency: string
+          event_status: string
           event_type: Database["public"]["Enums"]["match_event_type"]
           match_event_id: string
           notification_id: string
@@ -1199,6 +1235,9 @@ export type Database = {
       lock_match_event_registration: {
         Args: { p_event_id: string }
         Returns: {
+          cancel_reason: string | null
+          cancelled_at: string | null
+          cancelled_by: string | null
           community_id: string
           court_booked: boolean
           court_notes: string | null
@@ -1217,13 +1256,17 @@ export type Database = {
           photo_path: string
           price_minor: number | null
           published_at: string
+          published_by: string
           registration_cutoff_at: string
           restriction_enabled: boolean
           saved_venue_id: string | null
           starts_at: string
+          status: string
           team_assignment_mode: Database["public"]["Enums"]["match_team_assignment_mode"]
           timezone: string
+          updated_at: string
           venue_name: string
+          version: number
           visibility: Database["public"]["Enums"]["match_event_visibility"]
         }
         SetofOptions: {
@@ -1236,6 +1279,9 @@ export type Database = {
       lock_match_event_registration_skip_locked: {
         Args: { p_event_id: string }
         Returns: {
+          cancel_reason: string | null
+          cancelled_at: string | null
+          cancelled_by: string | null
           community_id: string
           court_booked: boolean
           court_notes: string | null
@@ -1254,13 +1300,17 @@ export type Database = {
           photo_path: string
           price_minor: number | null
           published_at: string
+          published_by: string
           registration_cutoff_at: string
           restriction_enabled: boolean
           saved_venue_id: string | null
           starts_at: string
+          status: string
           team_assignment_mode: Database["public"]["Enums"]["match_team_assignment_mode"]
           timezone: string
+          updated_at: string
           venue_name: string
+          version: number
           visibility: Database["public"]["Enums"]["match_event_visibility"]
         }
         SetofOptions: {
@@ -1492,6 +1542,15 @@ export type Database = {
       submit_match_registration: { Args: { p_match_event_id: string }; Returns: Json }
       submit_match_registration_locked: {
         Args: { p_actor_id: string; p_match_event_id: string }
+        Returns: Json
+      }
+      transfer_match_event_ownership: {
+        Args: {
+          p_expected_version: number
+          p_match_event_id: string
+          p_request_id: string
+          p_target_user_id: string
+        }
         Returns: Json
       }
       update_community_admin_defaults: {

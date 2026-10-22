@@ -468,7 +468,9 @@
       "match_invitation_expired": "Invitación al partido caducada",
       "match_registration_withdrawn": "Un jugador dejó el partido",
       "match_registration_removed": "Jugador eliminado del partido",
-      "match_registration_group_changed": "Grupo del partido actualizado"
+      "match_registration_group_changed": "Grupo del partido actualizado",
+      "match_event_ownership_transferred": "Organizador del partido actualizado",
+      "match_event_cancelled": "Partido cancelado"
     },
     "match": {
       "openEvent": "Abrir evento",
@@ -500,6 +502,8 @@
       "registrationWithdrawnBody": "Un jugador dejó el partido. Abre el partido para ver la lista actual.",
       "registrationRemovedBody": "El organizador eliminó a un jugador. Abre el partido para ver tu estado y la lista actual.",
       "registrationGroupChangedBody": "Tu grupo cambió. Consulta la lista actual antes de jugar.",
+      "ownershipTransferredBody": "La organización del partido se transfirió. Consulta el organizador actual en el evento.",
+      "cancelledBody": "Este partido fue cancelado. Las inscripciones y la participación están cerradas.",
       "registrationExpiredBody": "La inscripción cerró antes de una decisión. No se reservó ninguna plaza.",
       "registrationNotPlayingBody": "El plazo pasó antes de que se completara un cuarteto. No se registrará ningún resultado del partido.",
       "unavailable": "Esta notificación de partido ya no está disponible."
@@ -532,6 +536,17 @@
   },
   "matches": {
     "management": {
+      "organizerOnly": "Organizar y jugar son funciones distintas. Puedes organizar sin estar en la lista de jugadores.",
+      "leaveKeepOrganizing": "Salir de la lista te mantiene como organizador. Transfiere la organización por separado si es necesario.",
+      "transfer": "Transferir organización",
+      "transferTitle": "Transferir organización del partido",
+      "newOrganizer": "Nuevo organizador",
+      "cancelMatch": "Cancelar partido",
+      "cancelTitle": "¿Cancelar este partido?",
+      "cancelDescription": "La cancelación es permanente. Se notificará a todas las personas involucradas.",
+      "cancelReason": "Motivo de cancelación",
+      "cancelled": "Cancelado",
+      "ownershipTransferred": "Organización transferida.",
       "participants": "Gestionar participantes",
       "actions": "Acciones",
       "participantActions": "Acciones para {{name}}",

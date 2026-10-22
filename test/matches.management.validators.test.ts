@@ -3,12 +3,36 @@ import {
   validateWithdrawMatchRegistration,
   validateRemoveMatchRegistration,
   validateListMatchEventManagementParticipants,
-  validateListMatchEventAudit
+  validateListMatchEventAudit,
+  validateTransferMatchEventOwnership,
+  validateCancelMatchEvent
 } from '../src/features/matches/match-management.validators';
 const id = '11111111-1111-4111-8111-111111111111';
 const command = { event_id: id, attempt_id: id, request_id: id };
 const removal = { ...command, target_user_id: id, reason: '  Schedule changed  ' };
 describe('management exact-key validators', () => {
+  it('rejects unsafe versions, forged ownership and invalid cancellation reasons', () => {
+    const transfer = { event_id: id, target_user_id: id, expected_version: 1, request_id: id };
+    const cancel = { event_id: id, reason: ' Weather ', expected_version: 1, request_id: id };
+    expect(validateTransferMatchEventOwnership(transfer)).toEqual(transfer);
+    expect(validateCancelMatchEvent(cancel).reason).toBe('Weather');
+    for (const expected_version of [0, -1, 1.2, Number.MAX_SAFE_INTEGER + 1, '1', undefined]) {
+      expect(() => validateTransferMatchEventOwnership({ ...transfer, expected_version })).toThrow(
+        'INVALID_MATCH_INPUT'
+      );
+      expect(() => validateCancelMatchEvent({ ...cancel, expected_version })).toThrow(
+        'INVALID_MATCH_INPUT'
+      );
+    }
+    for (const reason of ['', ' ', 'x'.repeat(501), 'line\nbreak', '\u0080'])
+      expect(() => validateCancelMatchEvent({ ...cancel, reason })).toThrow('INVALID_MATCH_INPUT');
+    expect(() => validateTransferMatchEventOwnership({ ...transfer, published_by: id })).toThrow(
+      'INVALID_MATCH_INPUT'
+    );
+    expect(() => validateCancelMatchEvent({ ...cancel, status: 'cancelled' })).toThrow(
+      'INVALID_MATCH_INPUT'
+    );
+  });
   it('validates IDs and canonicalizes reasons', () => {
     expect(validateWithdrawMatchRegistration(command)).toEqual(command);
     expect(validateRemoveMatchRegistration(removal).reason).toBe('Schedule changed');

@@ -3,6 +3,7 @@ import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { describe, expect, it } from 'vitest';
 import type { Database } from '../src/lib/supabase/database.types';
 import { matchPhotoFixture } from './helpers/match-photo-fixtures';
+import { matchRegistrationFixtureHistory } from './helpers/match-registration-fixture-history';
 import { sqlRows, makeRawRpc } from './helpers/match-registration-sql';
 import {
   assertLocalSupabaseEnvInCi,
@@ -70,6 +71,7 @@ const expectedDetailKeys = [
   'reserve_not_playing_count',
   'restriction_enabled',
   'starts_at',
+  'status',
   'team_assignment_mode',
   'timezone',
   'venue_name',
@@ -278,6 +280,7 @@ describe('match event discovery integration', () => {
         (${q(events.fiveAccepted!)},${q(member.id)},now()+interval '2 minutes',3,'reserve','member'),
         (${q(events.fiveAccepted!)},${q(admin2.id)},now()+interval '3 minutes',4,'reserve','member'),
         (${q(events.fiveAccepted!)},${q(fifth.id)},now()+interval '4 minutes',5,'reserve','member');
+       ${matchRegistrationFixtureHistory(Object.values(events))}
      end $$;`
       );
 
@@ -683,6 +686,7 @@ describe('match event caller context regression (F24 invited members)', () => {
       insert into public.match_event_registrations(match_event_id,user_id,accepted_at,accepted_order,participation_status,registration_source) values
         (${q(events.inviteOnly!)},${q(acceptedInvitee.id)},now()+interval '1 minute',2,'reserve','member'),
         (${q(events.open!)},${q(acceptedInvitee.id)},now()+interval '1 minute',2,'reserve','member');
+       ${matchRegistrationFixtureHistory(Object.values(events))}
      end $$;`
       );
 
@@ -971,6 +975,7 @@ describe('match event caller context regression (F24 invited members)', () => {
       alter table public.match_events enable trigger match_event_creator_registration;
        insert into public.match_event_registrations(match_event_id,user_id,accepted_at,accepted_order,participation_status,registration_source) values
         (${q(events.boundaryA!)},${q(member.id)},now()+interval '1 minute',2,'reserve','member');
+       ${matchRegistrationFixtureHistory(Object.values(events))}
     end $$;`
       );
 
@@ -1155,6 +1160,7 @@ describe('match event snapshot badge regression (PAF-85)', () => {
       ${acceptedRow('agreement', p2, 3)}
       ${acceptedRow('agreement', p3, 4)}
       ${acceptedRow('agreement', fifth, 5)}
+       ${matchRegistrationFixtureHistory(Object.values(events))}
       end $$;`
       );
 

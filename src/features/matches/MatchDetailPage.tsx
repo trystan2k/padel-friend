@@ -1,11 +1,13 @@
 import * as stylex from '@stylexjs/stylex';
+import { StatusBadge } from '../../components/ui/StatusBadge';
 import { Link } from '@tanstack/react-router';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { MatchRegistrationPanel } from './MatchRegistrationPanel';
 import { MatchInvitationPanel } from './MatchInvitationPanel';
 import { MatchParticipantActions } from './MatchParticipantActions';
-import type { ManagementParticipant } from './match-management-model';
+import { MatchOrganizerActions } from './MatchOrganizerActions';
+import type { ManagementParticipant, MatchEventManagement } from './match-management-model';
 import type { MatchInvitation } from './match-invitation-model';
 import { MatchRequestQueue } from './MatchRequestQueue';
 import type { MatchEventDetail } from './match-contracts';
@@ -43,7 +45,8 @@ export function MatchDetailPage({
   roster = null,
   invitation = null,
   managementParticipants = [],
-  managementError = false
+  managementError = false,
+  management = null
 }: {
   event: MatchEventDetail | null;
   loadError?: boolean;
@@ -59,6 +62,7 @@ export function MatchDetailPage({
   invitation?: MatchInvitation | null;
   managementParticipants?: ManagementParticipant[];
   managementError?: boolean;
+  management?: MatchEventManagement | null;
 }) {
   const { t, i18n } = useTranslation();
   const [asOf] = useState(() => Date.now());
@@ -116,9 +120,19 @@ export function MatchDetailPage({
       <Link to="/matches" {...stylex.props(s.link)}>
         {t('matches.back')}
       </Link>
-      <h1 {...stylex.props(s.title)}>
+      <h1 id="match-detail-heading" tabIndex={-1} {...stylex.props(s.title)}>
         {t('matches.detail.title')}: {venue}
       </h1>
+      {event.status === 'cancelled' && (
+        <StatusBadge>{t('matches.management.cancelled')}</StatusBadge>
+      )}
+      {management && (
+        <MatchOrganizerActions
+          eventId={eventId}
+          management={management}
+          participants={managementParticipants}
+        />
+      )}
       <div {...stylex.props(s.detailGroups)}>
         <section aria-labelledby="match-overview-heading" {...stylex.props(s.detailGroup)}>
           <h2 id="match-overview-heading" {...stylex.props(s.sectionTitle)}>
@@ -171,73 +185,79 @@ export function MatchDetailPage({
             </p>
           )}
         </section>
-        <section aria-labelledby="match-participation-heading" {...stylex.props(s.detailGroup)}>
-          <h2 id="match-participation-heading" {...stylex.props(s.sectionTitle)}>
-            {t('matches.detail.participation')}
-          </h2>
-          <h3 {...stylex.props(s.sectionTitle)}>{t('matches.detail.participants')}</h3>
-          {event.duration_minutes !== null && (
-            <p>
-              {t('matches.detail.duration')}: {event.duration_minutes}
-            </p>
-          )}
-          <p>
-            {event.accepted_count} · {t('matches.detail.accepted')}
-          </p>
-          <p>
-            {event.playing_count}{' '}
-            {t('matches.counts.playing', {
-              count: event.playing_count
-            })}{' '}
-            · {event.reserve_count}{' '}
-            {t('matches.counts.reserve', {
-              count: event.reserve_count
-            })}{' '}
-            · {event.group_count}{' '}
-            {t('matches.counts.groups', {
-              count: event.group_count
-            })}{' '}
-            · {event.more_needed}{' '}
-            {t('matches.counts.moreNeeded', {
-              count: event.more_needed
-            })}
-          </p>
-          {event.caller_badge === 'creator' && callerAccepted && (
-            <p>{t('matches.detail.creatorAccepted')}</p>
-          )}
-          {event.caller_is_invited && <p>{t('matches.detail.invitationInfo')}</p>}
-        </section>
-        {isCreator && (
-          <section {...stylex.props(s.detailGroup)} aria-labelledby="match-management-heading">
-            <h2 id="match-management-heading" tabIndex={-1}>
-              {t('matches.management.participants')}
+        {event.status !== 'cancelled' && (
+          <section aria-labelledby="match-participation-heading" {...stylex.props(s.detailGroup)}>
+            <h2 id="match-participation-heading" {...stylex.props(s.sectionTitle)}>
+              {t('matches.detail.participation')}
             </h2>
-            {managementError && <p role="alert">{t('matches.management.errors.unavailable')}</p>}
-            {managementParticipants
-              .filter(
-                (participant) =>
-                  registration !== null &&
-                  registration.state !== 'none' &&
-                  (registration.state !== 'accepted' || registration.attempt_id !== undefined) &&
-                  participant.attempt_id !==
-                    (registration?.state === 'accepted' ? registration.attempt_id : null)
-              )
-              .map((participant) => (
-                <div key={participant.registration_id}>
-                  <span>
-                    {participant.display_name ?? t('matchRegistration.roster.playerFallback')}
-                  </span>
-                  <MatchParticipantActions
-                    eventId={event.event_id}
-                    attemptId={participant.attempt_id}
-                    targetUserId={participant.user_id}
-                    name={participant.display_name ?? undefined}
-                    disabled={event.is_past || Date.parse(event.registration_cutoff_at) <= asOf}
-                  />
-                </div>
-              ))}
+            <h3 {...stylex.props(s.sectionTitle)}>{t('matches.detail.participants')}</h3>
+            {event.duration_minutes !== null && (
+              <p>
+                {t('matches.detail.duration')}: {event.duration_minutes}
+              </p>
+            )}
+            <p>
+              {event.accepted_count} · {t('matches.detail.accepted')}
+            </p>
+            <p>
+              {event.playing_count}{' '}
+              {t('matches.counts.playing', {
+                count: event.playing_count
+              })}{' '}
+              · {event.reserve_count}{' '}
+              {t('matches.counts.reserve', {
+                count: event.reserve_count
+              })}{' '}
+              · {event.group_count}{' '}
+              {t('matches.counts.groups', {
+                count: event.group_count
+              })}{' '}
+              · {event.more_needed}{' '}
+              {t('matches.counts.moreNeeded', {
+                count: event.more_needed
+              })}
+            </p>
+            {event.caller_badge === 'creator' && callerAccepted && (
+              <p>{t('matches.detail.creatorAccepted')}</p>
+            )}
+            {event.caller_is_invited && <p>{t('matches.detail.invitationInfo')}</p>}
           </section>
         )}
+        {(management ? management.is_organizer && management.actions.remove.allowed : isCreator) &&
+          event.status !== 'cancelled' && (
+            <section
+              {...stylex.props(s.detailGroup)}
+              aria-labelledby="match-participants-management-heading"
+            >
+              <h2 id="match-participants-management-heading" tabIndex={-1}>
+                {t('matches.management.participants')}
+              </h2>
+              {managementError && <p role="alert">{t('matches.management.errors.unavailable')}</p>}
+              {managementParticipants
+                .filter(
+                  (participant) =>
+                    registration !== null &&
+                    registration.state !== 'none' &&
+                    (registration.state !== 'accepted' || registration.attempt_id !== undefined) &&
+                    participant.attempt_id !==
+                      (registration?.state === 'accepted' ? registration.attempt_id : null)
+                )
+                .map((participant) => (
+                  <div key={participant.registration_id}>
+                    <span>
+                      {participant.display_name ?? t('matchRegistration.roster.playerFallback')}
+                    </span>
+                    <MatchParticipantActions
+                      eventId={event.event_id}
+                      attemptId={participant.attempt_id}
+                      targetUserId={participant.user_id}
+                      name={participant.display_name ?? undefined}
+                      disabled={event.is_past || Date.parse(event.registration_cutoff_at) <= asOf}
+                    />
+                  </div>
+                ))}
+            </section>
+          )}
         {invitation && (
           <MatchInvitationPanel
             key={event.event_id}
@@ -261,7 +281,7 @@ export function MatchDetailPage({
               {t('matchRegistration.loadError.retry')}
             </button>
           </section>
-        ) : registration ? (
+        ) : registration && event.status !== 'cancelled' ? (
           <MatchRegistrationPanel
             event={event}
             registration={registration}
@@ -269,7 +289,7 @@ export function MatchDetailPage({
             roster={roster}
           />
         ) : null}
-        {isCreator && (
+        {isCreator && event.status !== 'cancelled' && (
           <MatchRequestQueue
             eventId={eventId}
             eventName={venue}
@@ -297,13 +317,16 @@ export function MatchDetailPage({
           </p>
           {!event.registration_open && <p>{t('matches.detail.registrationClosed')}</p>}
           <p>{t(`matches.visibility.${event.visibility}`)}</p>
-          {!callerAccepted && event.caller_eligibility === 'nonmember' && (
-            <p>{t('matches.detail.guestApprovalRequired')}</p>
-          )}
-          {event.caller_eligibility === 'out_of_range' &&
+          {event.status !== 'cancelled' &&
+            !callerAccepted &&
+            event.caller_eligibility === 'nonmember' && (
+              <p>{t('matches.detail.guestApprovalRequired')}</p>
+            )}
+          {event.status !== 'cancelled' &&
+            event.caller_eligibility === 'out_of_range' &&
             event.caller_requires_approval &&
             !callerAccepted && <p>{t('matches.detail.outOfRangeApprovalRequired')}</p>}
-          {event.is_past && (
+          {event.status !== 'cancelled' && event.is_past && (
             <>
               <p>{t('matches.detail.pastScheduled')}</p>
               <p>{t('matches.detail.outcomeUnavailable')}</p>

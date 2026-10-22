@@ -79,6 +79,23 @@ afterEach(() => {
 });
 
 describe('match list surfaces', () => {
+  it('keeps a cancelled My Matches card without recruitment or invitation copy', () => {
+    mount({
+      entry: 'my',
+      initialItems: [
+        {
+          ...event(1, 0, 'invited'),
+          status: 'cancelled',
+          registration_open: false,
+          caller_is_invited: true
+        }
+      ]
+    });
+    const card = screen.getByRole('article');
+    expect(card.textContent).toContain(copy.management.cancelled);
+    expect(card.textContent).not.toContain(copy.detail.invitationInfo);
+    expect(card.textContent).not.toContain('more needed');
+  });
   it('renders realistic event details, localized Maps label and informational price', () => {
     mount({ initialItems: [event(1, 1)] });
     const card = screen.getByRole('article');

@@ -14,6 +14,9 @@ export type MatchRegistrationErrorCode =
   | 'event_not_found'
   | 'invite_only'
   | 'closed'
+  | 'started'
+  | 'cancelled'
+  | 'result_protected'
   | 'denied'
   | 'duplicate'
   | 'pending_duplicate'
@@ -32,6 +35,9 @@ export type MatchRegistrationActionError = {
 };
 
 const ERROR_TOKENS: Readonly<Record<string, MatchRegistrationErrorCode>> = {
+  MATCH_MANAGEMENT_STARTED: 'started',
+  MATCH_MANAGEMENT_CANCELLED: 'cancelled',
+  MATCH_MANAGEMENT_RESULT_PROTECTED: 'result_protected',
   MATCH_REGISTRATION_EVENT_NOT_FOUND: 'event_not_found',
   MATCH_REGISTRATION_INVITE_ONLY: 'invite_only',
   MATCH_REGISTRATION_CLOSED: 'closed',
@@ -214,6 +220,12 @@ export function parseDecideMatchRegistrationResult(
 export type MyMatchRegistration =
   | { state: 'none' }
   | {
+      state: 'cancelled';
+      event_id: string;
+      registration_source: MatchRegistrationSource;
+      cancelled_at: string;
+    }
+  | {
       state: 'pending';
       event_id: string;
       registration_source: MatchRegistrationSource;
@@ -266,6 +278,12 @@ export function parseMyMatchRegistration(value: unknown): MyMatchRegistration | 
   if (lifecycle === null || lifecycle === undefined) return { state: 'none' };
   const registration_source = asSource(value.registration_source);
   if (!registration_source) return null;
+  if (value.event_status === 'cancelled') {
+    const cancelled_at = asText(value.cancelled_at);
+    return cancelled_at && Number.isFinite(Date.parse(cancelled_at))
+      ? { state: 'cancelled', event_id, registration_source, cancelled_at }
+      : null;
+  }
   if (lifecycle === 'withdrawn' || lifecycle === 'removed_by_creator') {
     const attempt_id = asUuid(value.attempt_id);
     const accepted_order = asPositiveInteger(value.accepted_order);

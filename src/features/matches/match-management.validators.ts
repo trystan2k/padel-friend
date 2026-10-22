@@ -13,6 +13,31 @@ export function validateListMatchEventManagementParticipants(value: unknown) {
   return { event_id: validateMatchUuid(data.event_id) };
 }
 
+export const validateGetMatchEventManagement = validateListMatchEventManagementParticipants;
+function version(value: unknown) {
+  if (typeof value !== 'number' || !Number.isSafeInteger(value) || value < 1)
+    throw new Error('INVALID_MATCH_INPUT');
+  return value;
+}
+export function validateTransferMatchEventOwnership(value: unknown) {
+  const data = exact(value, ['event_id', 'target_user_id', 'expected_version', 'request_id']);
+  return {
+    event_id: validateMatchUuid(data.event_id),
+    target_user_id: validateMatchUuid(data.target_user_id),
+    expected_version: version(data.expected_version),
+    request_id: validateMatchUuid(data.request_id)
+  };
+}
+export function validateCancelMatchEvent(value: unknown) {
+  const data = exact(value, ['event_id', 'reason', 'expected_version', 'request_id']);
+  return {
+    event_id: validateMatchUuid(data.event_id),
+    reason: validateReason(data.reason),
+    request_id: validateMatchUuid(data.request_id),
+    expected_version: version(data.expected_version)
+  };
+}
+
 export function validateWithdrawMatchRegistration(value: unknown) {
   const data = exact(value, ['event_id', 'attempt_id', 'request_id']);
   return {
@@ -22,11 +47,10 @@ export function validateWithdrawMatchRegistration(value: unknown) {
   };
 }
 
-export function validateRemoveMatchRegistration(value: unknown) {
-  const data = exact(value, ['event_id', 'target_user_id', 'attempt_id', 'reason', 'request_id']);
+function validateReason(value: unknown) {
   if (
-    typeof data.reason !== 'string' ||
-    data.reason
+    typeof value !== 'string' ||
+    value
       .split('')
       .some(
         (char) =>
@@ -34,13 +58,17 @@ export function validateRemoveMatchRegistration(value: unknown) {
       )
   )
     throw new Error('INVALID_MATCH_INPUT');
-  const reason = data.reason.trim();
+  const reason = value.trim();
   if (reason.length < 1 || reason.length > 500) throw new Error('INVALID_MATCH_INPUT');
+  return reason;
+}
+export function validateRemoveMatchRegistration(value: unknown) {
+  const data = exact(value, ['event_id', 'target_user_id', 'attempt_id', 'reason', 'request_id']);
   return {
     event_id: validateMatchUuid(data.event_id),
     target_user_id: validateMatchUuid(data.target_user_id),
     attempt_id: validateMatchUuid(data.attempt_id),
-    reason,
+    reason: validateReason(data.reason),
     request_id: validateMatchUuid(data.request_id)
   };
 }

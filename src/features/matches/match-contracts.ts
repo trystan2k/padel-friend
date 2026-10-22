@@ -31,6 +31,7 @@ type StoredProjection = Omit<
 type IdentityProjection = Pick<MatchRow, 'id' | 'created_by'>;
 type CallerEligibility = 'creator' | 'member' | 'out_of_range' | 'nonmember' | null;
 type MatchEventProjection = StoredProjection & {
+  status: 'open' | 'cancelled';
   event_id: IdentityProjection['id'];
   community_name: string;
   creator_id: IdentityProjection['created_by'];

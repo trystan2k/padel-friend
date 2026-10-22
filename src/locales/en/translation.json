@@ -468,7 +468,9 @@
       "match_invitation_expired": "Match invitation expired",
       "match_registration_withdrawn": "Player left the match",
       "match_registration_removed": "Player removed from the match",
-      "match_registration_group_changed": "Match group changed"
+      "match_registration_group_changed": "Match group changed",
+      "match_event_ownership_transferred": "Match organizer changed",
+      "match_event_cancelled": "Match cancelled"
     },
     "match": {
       "openEvent": "Open event",
@@ -500,6 +502,8 @@
       "registrationWithdrawnBody": "A player left the match. Open the match for the current roster.",
       "registrationRemovedBody": "The organizer removed a player. Open the match for your status and the current roster.",
       "registrationGroupChangedBody": "Your group membership changed. Check the current roster before playing.",
+      "ownershipTransferredBody": "Match organization was transferred. Check the event for the current organizer.",
+      "cancelledBody": "This match was cancelled. Registration and participation are closed.",
       "registrationExpiredBody": "Registration closed before a decision. No place was reserved.",
       "registrationNotPlayingBody": "Cutoff passed before a quartet completed. No match result will be recorded.",
       "unavailable": "This match notification is no longer available."
@@ -532,6 +536,17 @@
   },
   "matches": {
     "management": {
+      "organizerOnly": "Organizing and playing are separate. You can organize without a place on the roster.",
+      "leaveKeepOrganizing": "Leaving the roster keeps you as organizer. Transfer organization separately if needed.",
+      "transfer": "Transfer organization",
+      "transferTitle": "Transfer match organization",
+      "newOrganizer": "New organizer",
+      "cancelMatch": "Cancel match",
+      "cancelTitle": "Cancel this match?",
+      "cancelDescription": "Cancellation is permanent. Everyone involved will be notified.",
+      "cancelReason": "Cancellation reason",
+      "cancelled": "Cancelled",
+      "ownershipTransferred": "Organization transferred.",
       "participants": "Manage participants",
       "actions": "Actions",
       "participantActions": "Actions for {{name}}",

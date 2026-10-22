@@ -492,6 +492,25 @@ describe('registration server function contracts', () => {
     mocks.requireAuthenticatedClient.mockReset().mockResolvedValue({ client });
   });
 
+  it.each(['started', 'cancelled', 'result_protected'] as const)(
+    'preserves shared %s guards for submit and both decisions',
+    async (code) => {
+      client.rpc.mockResolvedValue({
+        data: null,
+        error: { code: 'P0001', message: `MATCH_MANAGEMENT_${code.toUpperCase()}` }
+      });
+      expect(await submitMatchRegistration({ data: { event_id: eventId } })).toEqual({
+        status: 'error',
+        code
+      });
+      for (const decision of ['approve', 'reject'] as const)
+        expect(
+          await decideMatchRegistration({
+            data: { event_id: eventId, attempt_id: attemptId, decision }
+          })
+        ).toEqual({ status: 'error', code });
+    }
+  );
   it('rejects anonymous claim sets before any RPC fires', async () => {
     client.auth.getClaims.mockResolvedValueOnce({
       data: { claims: { sub: requesterId, is_anonymous: true } },

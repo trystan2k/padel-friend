@@ -75,6 +75,7 @@ function decodeProjection(value: unknown) {
     required(row, key, (entry) => (entry === null ? null : decoder(entry)));
   return {
     event_id: required(row, 'event_id', nonEmptyText),
+    status: required(row, 'status', (entry) => enumValue(entry, ['open', 'cancelled'] as const)),
     community_id: required(row, 'community_id', nonEmptyText),
     community_name: required(row, 'community_name', text),
     creator_id: required(row, 'creator_id', nonEmptyText),

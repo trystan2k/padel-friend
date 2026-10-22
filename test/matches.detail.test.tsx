@@ -88,6 +88,13 @@ afterEach(() => {
 });
 
 describe('match detail surface', () => {
+  it('renders a cancelled tombstone without player CTAs or recruitment counts', () => {
+    mount(event(1, { status: 'cancelled', registration_open: false }));
+    expect(screen.getByText(en.matches.management.cancelled)).toBeTruthy();
+    expect(screen.queryByText(en.matches.detail.invitationInfo)).toBeNull();
+    expect(screen.queryByRole('heading', { name: en.matches.detail.participation })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Join match' })).toBeNull();
+  });
   it('renders complete authorized DTO context, counts, cost, photo and maps safely', () => {
     mount(event());
     const groups = screen.getAllByRole('region');
@@ -264,7 +271,8 @@ describe('match detail surface', () => {
   });
   it('labels creator acceptance distinctly from playing and supports localized formatting in Spanish', () => {
     mount(event(3, { caller_badge: 'creator', price_minor: 0, currency: 'EUR' }), 'es');
-    expect(screen.getByText(es.matches.detail.creatorAccepted)).toBeTruthy();
+    // Organizer badge alone no longer proves active roster participation.
+    expect(screen.queryByText(es.matches.detail.creatorAccepted)).toBeNull();
     expect(screen.queryByText(es.matches.badges.playing)).toBeNull();
     expect(screen.getByText(/0,00\s?€/)).toBeTruthy();
   });

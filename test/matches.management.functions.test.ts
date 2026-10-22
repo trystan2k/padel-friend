@@ -23,11 +23,67 @@ import {
   withdrawMatchRegistration,
   removeMatchRegistration,
   listMatchEventManagementParticipants,
-  listMatchEventAudit
+  listMatchEventAudit,
+  getMatchEventManagement,
+  transferMatchEventOwnership,
+  cancelMatchEvent
 } from '../src/features/matches/match-management.functions';
 const id = '11111111-1111-4111-8111-111111111111';
 const command = { event_id: id, attempt_id: id, request_id: id };
 describe('management server functions', () => {
+  it('decodes structured version conflicts without accepting private fields or overwriting', async () => {
+    mocks.rpc.mockResolvedValue({
+      data: null,
+      error: {
+        code: 'P0001',
+        message: 'MATCH_MANAGEMENT_VERSION_CONFLICT',
+        details: '{"current_version":2}'
+      }
+    });
+    expect(
+      await transferMatchEventOwnership({
+        data: { event_id: id, target_user_id: id, request_id: id, expected_version: 1 }
+      })
+    ).toEqual({ status: 'conflict', code: 'version_conflict', current_version: 2 });
+    expect(
+      await cancelMatchEvent({
+        data: { event_id: id, reason: 'Weather', request_id: id, expected_version: 1 }
+      })
+    ).toEqual({ status: 'conflict', code: 'version_conflict', current_version: 2 });
+    mocks.rpc.mockResolvedValue({ data: { version: 1 }, error: null });
+    expect(await getMatchEventManagement({ data: { event_id: id } })).toEqual({
+      status: 'error',
+      code: 'unavailable'
+    });
+  });
+  it('validates action-specific ownership and cancellation response fields', async () => {
+    const envelope = {
+      event_id: id,
+      request_id: id,
+      version: 2,
+      transition_revision: 1,
+      changed: true,
+      replayed: false
+    };
+    mocks.rpc.mockResolvedValue({ data: { ...envelope, owner_id: id }, error: null });
+    expect(
+      await transferMatchEventOwnership({
+        data: { event_id: id, target_user_id: id, request_id: id, expected_version: 1 }
+      })
+    ).toMatchObject({ status: 'ok', value: { owner_id: id } });
+    mocks.rpc.mockResolvedValue({ data: { ...envelope, status: 'cancelled' }, error: null });
+    expect(
+      await cancelMatchEvent({
+        data: { event_id: id, reason: ' Weather ', request_id: id, expected_version: 1 }
+      })
+    ).toMatchObject({ status: 'ok', value: { status: 'cancelled' } });
+    expect(mocks.rpc).toHaveBeenLastCalledWith('cancel_match_event', {
+      p_match_event_id: id,
+      p_reason: 'Weather',
+      p_request_id: id,
+      p_expected_version: 1
+    });
+  });
   beforeEach(() => {
     vi.resetAllMocks();
     mocks.auth.mockResolvedValue({ client: { rpc: mocks.rpc, auth: { getClaims: mocks.claims } } });

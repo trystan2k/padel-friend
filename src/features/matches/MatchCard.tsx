@@ -70,33 +70,42 @@ export function MatchCard({ event }: { event: MatchEventCard }) {
           ? t('matches.card.unlimited')
           : `${t('matches.card.maximum')}: ${event.maximum_registrations}`}
       </p>
+      {event.status === 'cancelled' && (
+        <StatusBadge>{t('matches.management.cancelled')}</StatusBadge>
+      )}
       {!event.registration_open && <p>{t('matches.detail.registrationClosed')}</p>}
       <p>
         {t(`matches.type.${event.event_type}`)} · {event.creator_name ?? ''} (
         {t('matches.card.approximateLevel')}: {String(event.creator_level ?? '')})
       </p>
-      <p>
-        {counts.playing} {t('matches.counts.playing', { count: counts.playing })} · {counts.reserve}{' '}
-        {t('matches.counts.reserve', { count: counts.reserve })} · {counts.groups}{' '}
-        {t('matches.counts.groups', { count: counts.groups })} · {counts.moreNeeded}{' '}
-        {t('matches.counts.moreNeeded', { count: counts.moreNeeded })}
-      </p>
+      {event.status !== 'cancelled' && (
+        <p>
+          {counts.playing} {t('matches.counts.playing', { count: counts.playing })} ·{' '}
+          {counts.reserve} {t('matches.counts.reserve', { count: counts.reserve })} ·{' '}
+          {counts.groups} {t('matches.counts.groups', { count: counts.groups })} ·{' '}
+          {counts.moreNeeded} {t('matches.counts.moreNeeded', { count: counts.moreNeeded })}
+        </p>
+      )}
       {price && (
         <p>
           {t('matches.card.pricePerPlayer')}: {price}
         </p>
       )}
-      {badge && badge !== 'creator' && (
+      {event.status !== 'cancelled' && badge && badge !== 'creator' && (
         <StatusBadge appearance="emphasis">{t(`matches.badges.${badge}`)}</StatusBadge>
       )}
-      {event.caller_is_invited && <p>{t('matches.detail.invitationInfo')}</p>}
-      {!callerAccepted &&
+      {event.status !== 'cancelled' && event.caller_is_invited && (
+        <p>{t('matches.detail.invitationInfo')}</p>
+      )}
+      {event.status !== 'cancelled' &&
+        !callerAccepted &&
         event.caller_eligibility === 'nonmember' &&
         event.caller_requires_approval && <p>{t('matches.detail.guestApprovalRequired')}</p>}
-      {!callerAccepted &&
+      {event.status !== 'cancelled' &&
+        !callerAccepted &&
         event.caller_eligibility === 'out_of_range' &&
         event.caller_requires_approval && <p>{t('matches.detail.outOfRangeApprovalRequired')}</p>}
-      {event.is_past && (
+      {event.status !== 'cancelled' && event.is_past && (
         <>
           <p>{t('matches.detail.pastScheduled')}</p>
           <p>{t('matches.detail.outcomeUnavailable')}</p>

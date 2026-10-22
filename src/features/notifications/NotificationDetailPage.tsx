@@ -42,7 +42,9 @@ type RegistrationNotificationKind =
   | 'match_invitation_expired'
   | 'match_registration_withdrawn'
   | 'match_registration_removed'
-  | 'match_registration_group_changed';
+  | 'match_registration_group_changed'
+  | 'match_event_ownership_transferred'
+  | 'match_event_cancelled';
 
 // Existing kinds keep their current invitation detail behaviour; the PAF-5.2
 // request/decision kinds and the PAF-5.3 FIFO quartet kinds opt into their own
@@ -62,7 +64,9 @@ const REGISTRATION_NOTIFICATION_KINDS: readonly RegistrationNotificationKind[] =
   'match_invitation_expired',
   'match_registration_withdrawn',
   'match_registration_removed',
-  'match_registration_group_changed'
+  'match_registration_group_changed',
+  'match_event_ownership_transferred',
+  'match_event_cancelled'
 ];
 
 function isRegistrationNotificationKind(kind: string): kind is RegistrationNotificationKind {
@@ -87,6 +91,7 @@ function registrationHeading(
   notificationKind: string | null | undefined,
   group: number | null
 ): string {
+  if (kind === 'match_event_cancelled') return t('notifications.kinds.match_event_cancelled');
   if (notificationKind === 'match_event_published')
     return t('notifications.kinds.match_event_published');
   if (notificationKind === 'match_event_invitation')
@@ -290,7 +295,10 @@ export function NotificationDetailPage({
     setPending(false);
   }
 
-  const registrationKind = registrationNotificationKind(target.kind);
+  const registrationKind =
+    currentMatchContext?.event_status === 'cancelled'
+      ? 'match_event_cancelled'
+      : registrationNotificationKind(target.kind);
   const approvedVariant =
     registrationKind === 'match_registration_approved' && currentMatchContext
       ? approvedPlacement(currentMatchContext)
@@ -400,6 +408,10 @@ export function NotificationDetailPage({
                   <p>{t('notifications.match.registrationRemovedBody')}</p>
                 ) : registrationKind === 'match_registration_group_changed' ? (
                   <p>{t('notifications.match.registrationGroupChangedBody')}</p>
+                ) : registrationKind === 'match_event_ownership_transferred' ? (
+                  <p>{t('notifications.match.ownershipTransferredBody')}</p>
+                ) : registrationKind === 'match_event_cancelled' ? (
+                  <p>{t('notifications.match.cancelledBody')}</p>
                 ) : registrationKind === 'match_invitation_expired' ? (
                   <p>{t('notifications.match.invitationExpiredBody')}</p>
                 ) : registrationKind === 'match_registration_expired' ? (
