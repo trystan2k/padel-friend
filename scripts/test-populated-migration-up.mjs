@@ -47,35 +47,48 @@ export function runHarness({ env = process.env, run = spawnSync, log = console }
   const ownership = env.POPULATED_UPGRADE_SCENARIO === 'ownership';
   const edits = env.POPULATED_UPGRADE_SCENARIO === 'edits';
   const reconfirmation = env.POPULATED_UPGRADE_SCENARIO === 'reconfirmation';
-  if (env.POPULATED_UPGRADE_SCENARIO && !departures && !ownership && !edits && !reconfirmation)
+  const protection = env.POPULATED_UPGRADE_SCENARIO === 'protection';
+  if (
+    env.POPULATED_UPGRADE_SCENARIO &&
+    !departures &&
+    !ownership &&
+    !edits &&
+    !reconfirmation &&
+    !protection
+  )
     throw new Error('Unknown populated migration scenario');
-  const predecessor = reconfirmation
-    ? '20261021203000'
-    : edits
-      ? '20261021202000'
-      : ownership
-        ? '20261021201100'
-        : departures
-          ? '20261021200000'
-          : PREDECESSOR;
-  const seed = reconfirmation
-    ? 'test/fixtures/matches-reconfirmation-predecessor.sql'
-    : edits
-      ? 'test/fixtures/matches-edits-predecessor.sql'
-      : ownership
-        ? 'test/fixtures/matches-ownership-predecessor.sql'
-        : departures
-          ? 'test/fixtures/matches-departures-predecessor.sql'
-          : SEED;
-  const assertions = reconfirmation
-    ? 'test/fixtures/matches-reconfirmation-upgrade-assertions.sql'
-    : edits
-      ? 'test/fixtures/matches-edits-upgrade-assertions.sql'
-      : ownership
-        ? 'test/fixtures/matches-ownership-upgrade-assertions.sql'
-        : departures
-          ? 'test/fixtures/matches-departures-upgrade-assertions.sql'
-          : ASSERTIONS;
+  const predecessor = protection
+    ? '20261021204000'
+    : reconfirmation
+      ? '20261021203000'
+      : edits
+        ? '20261021202000'
+        : ownership
+          ? '20261021201100'
+          : departures
+            ? '20261021200000'
+            : PREDECESSOR;
+  const seed =
+    protection || reconfirmation
+      ? 'test/fixtures/matches-reconfirmation-predecessor.sql'
+      : edits
+        ? 'test/fixtures/matches-edits-predecessor.sql'
+        : ownership
+          ? 'test/fixtures/matches-ownership-predecessor.sql'
+          : departures
+            ? 'test/fixtures/matches-departures-predecessor.sql'
+            : SEED;
+  const assertions = protection
+    ? 'test/fixtures/matches-protection-upgrade-assertions.sql'
+    : reconfirmation
+      ? 'test/fixtures/matches-reconfirmation-upgrade-assertions.sql'
+      : edits
+        ? 'test/fixtures/matches-edits-upgrade-assertions.sql'
+        : ownership
+          ? 'test/fixtures/matches-ownership-upgrade-assertions.sql'
+          : departures
+            ? 'test/fixtures/matches-departures-upgrade-assertions.sql'
+            : ASSERTIONS;
 
   const execute = (args, options = {}) => {
     const result = run('pnpm', ['exec', 'supabase', ...args], {
@@ -121,8 +134,8 @@ export function runHarness({ env = process.env, run = spawnSync, log = console }
       '--local',
       `do $check$ begin
       if (select version from supabase_migrations.schema_migrations order by version desc limit 1) is distinct from '${predecessor}' then raise exception 'history does not end at predecessor'; end if;
-      if not exists (select 1 from pg_catalog.pg_trigger where tgname='${departures || ownership || edits || reconfirmation ? 'match_registration_identity_guard' : 'match_registration_immutable'}' and not tgisinternal) then raise exception 'legacy trigger missing'; end if;
-      ${reconfirmation ? "if exists(select 1 from information_schema.columns where table_schema='public' and table_name='match_events' and column_name='reconfirmation_generation') then raise exception 'consent schema unexpectedly exists';end if;" : edits ? "if to_regprocedure('public.edit_match_event(uuid,bigint,jsonb,uuid)') is not null then raise exception 'edit RPC unexpectedly exists'; end if;" : `if exists (select 1 from information_schema.columns where table_schema='public' and table_name='match_event_registrations' and column_name in (${ownership ? "'cancelled_at'" : departures ? "'current_attempt_id','left_at','removed_by','removal_reason'" : "'accepted_order','lifecycle','participation_status','registration_source'"})) then raise exception 'new registration columns unexpectedly exist'; end if;`}
+       if not exists (select 1 from pg_catalog.pg_trigger where tgname='${departures || ownership || edits || reconfirmation || protection ? 'match_registration_identity_guard' : 'match_registration_immutable'}' and not tgisinternal) then raise exception 'legacy trigger missing'; end if;
+       ${protection ? "if to_regprocedure('public.assert_match_management_action_locked(uuid,text)') is not null then raise exception 'protection guard unexpectedly exists'; end if;" : reconfirmation ? "if exists(select 1 from information_schema.columns where table_schema='public' and table_name='match_events' and column_name='reconfirmation_generation') then raise exception 'consent schema unexpectedly exists';end if;" : edits ? "if to_regprocedure('public.edit_match_event(uuid,bigint,jsonb,uuid)') is not null then raise exception 'edit RPC unexpectedly exists'; end if;" : `if exists (select 1 from information_schema.columns where table_schema='public' and table_name='match_event_registrations' and column_name in (${ownership ? "'cancelled_at'" : departures ? "'current_attempt_id','left_at','removed_by','removal_reason'" : "'accepted_order','lifecycle','participation_status','registration_source'"})) then raise exception 'new registration columns unexpectedly exist'; end if;`}
     end $check$;`
     ]);
     void preflight;
@@ -159,7 +172,7 @@ export function runHarness({ env = process.env, run = spawnSync, log = console }
       'db',
       'query',
       '--local',
-      ...(departures || ownership || edits || reconfirmation
+      ...(departures || ownership || edits || reconfirmation || protection
         ? ['--file', path.join(ROOT, assertions)]
         : ['select public.paf_upgrade_assert_snapshot()'])
     ]);
@@ -171,7 +184,7 @@ export function runHarness({ env = process.env, run = spawnSync, log = console }
         'db',
         'reset',
         '--local',
-        ...(departures || ownership || edits || reconfirmation ? ['--no-seed'] : [])
+        ...(departures || ownership || edits || reconfirmation || protection ? ['--no-seed'] : [])
       ]);
       log.log('[restore] pnpm exec supabase db reset --local');
       log.log(restore.stdout);

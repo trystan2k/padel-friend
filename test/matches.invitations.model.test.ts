@@ -13,9 +13,7 @@ const now = '2030-01-01T00:00:00Z';
 describe('invitation model', () => {
   it('maps ordinary submission outcomes and terminal invitation errors', () => {
     for (const key of Object.values(MATCH_INVITATION_ERROR_COPY)) {
-      const suffix = key.slice('matches.invitations.errors.'.length);
-      for (const locale of [en, pt, es])
-        expect(locale.matches.invitations.errors).toHaveProperty(suffix);
+      for (const locale of [en, pt, es]) expect(locale).toHaveProperty(key);
     }
     const cases = [
       ['MATCH_INVITATION_EXPIRED', 'expired'],

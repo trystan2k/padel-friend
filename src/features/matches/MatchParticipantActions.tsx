@@ -6,6 +6,7 @@ import { useTranslation } from 'react-i18next';
 import { MatchRemovalDialog } from './MatchRemovalDialog';
 import { useMatchManagement } from './use-match-management';
 import { matchManagementStyles as s } from './match-management.styles';
+import { MatchManagementUnavailable } from './MatchManagementUnavailable';
 
 export function MatchParticipantActions({
   eventId,
@@ -24,6 +25,8 @@ export function MatchParticipantActions({
   const controller = useMatchManagement(eventId);
   const [open, setOpen] = useState(false);
   const trigger = useRef<HTMLButtonElement>(null);
+  if (controller.unavailable)
+    return <MatchManagementUnavailable reason={controller.unavailable} focus />;
   if (!targetUserId)
     return (
       <div {...stylex.props(s.section)}>

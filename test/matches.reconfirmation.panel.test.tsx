@@ -98,13 +98,13 @@ describe('reconfirmation panel', () => {
     await screen.findByText(
       'Match terms changed again. Reload and review the latest terms before confirming.'
     );
-    expect(mocks.invalidate).not.toHaveBeenCalled();
+    expect(mocks.invalidate).toHaveBeenCalledOnce();
     expect(mocks.confirm).toHaveBeenCalledOnce();
     expect(
       screen.queryByRole('button', { name: 'I confirm participation under these terms' })
     ).toBeNull();
     await userEvent.click(screen.getByRole('button', { name: 'Reload latest details' }));
-    await waitFor(() => expect(mocks.invalidate).toHaveBeenCalledOnce());
+    await waitFor(() => expect(mocks.invalidate).toHaveBeenCalledTimes(2));
     view.rerender(element('en', 3));
     await userEvent.click(screen.getByRole('button', { name: 'Review changed terms' }));
     await userEvent.click(

@@ -33,6 +33,10 @@ const management: MatchEventManagement = {
   reconfirmation_generation: 0,
   required_count: 0,
   actions: {
+    reconfirm: { allowed: false, reason: 'forbidden' },
+    invitation: { allowed: false, reason: 'forbidden' },
+    submit: { allowed: false, reason: 'forbidden' },
+    decision: { allowed: true, reason: null },
     edit: { allowed: true, reason: null },
     withdraw: { allowed: true, reason: null },
     remove: { allowed: true, reason: null },
@@ -137,6 +141,6 @@ describe('organizer controls', () => {
     expect(input.getAttribute('disabled')).toBeNull();
     expect(input instanceof HTMLTextAreaElement && input.value).toBe('Court closed');
     expect(screen.getByRole('dialog')).toBeTruthy();
-    expect(mocks.invalidate).not.toHaveBeenCalled();
+    expect(mocks.invalidate).toHaveBeenCalledOnce();
   });
 });

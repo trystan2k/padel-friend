@@ -10,6 +10,7 @@ import {
 } from './match-invitation-model';
 import { matchInvitationStyles as s } from './match-invitation.styles';
 import { matchRegistrationStyles as buttons } from './match-registration.styles';
+import { MatchManagementUnavailable } from './MatchManagementUnavailable';
 
 export function MatchInvitationPanel({
   eventId,
@@ -40,6 +41,15 @@ export function MatchInvitationPanel({
     current === 'pending' && result?.status === 'error'
       ? MATCH_INVITATION_ERROR_COPY[result.code]
       : null;
+  const unavailable =
+    result?.status === 'error' &&
+    (result.code === 'cancelled' ||
+      result.code === 'result_protected' ||
+      result.code === 'started' ||
+      result.code === 'closed' ||
+      result.code === 'forbidden')
+      ? result.code
+      : null;
   async function respond(response: 'accept' | 'decline') {
     if (busy) return;
     setBusy(true);
@@ -55,6 +65,7 @@ export function MatchInvitationPanel({
       setBusy(false);
     }
   }
+  if (unavailable) return <MatchManagementUnavailable reason={unavailable} />;
   return (
     <section aria-labelledby="match-invitation-title" aria-busy={busy} {...stylex.props(s.panel)}>
       <h2 id="match-invitation-title" {...stylex.props(s.title)}>

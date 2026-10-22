@@ -7,6 +7,7 @@ import {
   cancelMatchEvent
 } from './match-management.functions';
 import { MANAGEMENT_ERROR_COPY } from './match-management-error-copy';
+import type { ManagementErrorCode } from './match-management-model';
 
 export function useMatchManagement(eventId: string) {
   const router = useRouter();
@@ -14,8 +15,17 @@ export function useMatchManagement(eventId: string) {
   const retry = useRef<{ intent: string; requestId: string } | null>(null);
   const [pending, setPending] = useState(false);
   const [feedback, setFeedback] = useState<string | null>(null);
+  const [unavailable, setUnavailable] = useState<ManagementErrorCode | null>(null);
+  function reject(code: ManagementErrorCode | 'version_conflict') {
+    if (
+      ['cancelled', 'result_protected', 'started', 'closed', 'forbidden', 'stale_attempt'].includes(
+        code
+      )
+    )
+      setUnavailable(code === 'version_conflict' ? 'unavailable' : code);
+  }
   async function depart(attemptId: string, target?: { userId: string; reason: string }) {
-    if (busy.current) return false;
+    if (busy.current || unavailable) return false;
     if (typeof navigator !== 'undefined' && !navigator.onLine) {
       setFeedback('matches.management.offline');
       return false;
@@ -43,6 +53,7 @@ export function useMatchManagement(eventId: string) {
         return true;
       }
       setFeedback(MANAGEMENT_ERROR_COPY[result.code]);
+      reject(result.code);
       // Definite domain rejection is a resolved intent; network failures retain
       // the original key so retry cannot duplicate an already committed command.
       if (result.code !== 'unavailable') retry.current = null;
@@ -57,7 +68,7 @@ export function useMatchManagement(eventId: string) {
     }
   }
   async function manage(version: number, command: { targetUserId: string } | { reason: string }) {
-    if (busy.current) return false;
+    if (busy.current || unavailable) return false;
     if (typeof navigator !== 'undefined' && !navigator.onLine) {
       setFeedback('matches.management.offline');
       return false;
@@ -88,8 +99,10 @@ export function useMatchManagement(eventId: string) {
         return true;
       }
       setFeedback(MANAGEMENT_ERROR_COPY[result.code]);
+      reject(result.code);
       if (result.code !== 'unavailable') retry.current = null;
-      // Keep the dialog/draft visible on conflicts; never silently rebase it.
+      // Keep version conflicts reviewable; terminal/authorization failures disable controls.
+      await router.invalidate().catch(() => undefined);
       return false;
     } catch {
       setFeedback('matches.management.errors.unavailable');
@@ -99,5 +112,5 @@ export function useMatchManagement(eventId: string) {
       setPending(false);
     }
   }
-  return { pending, feedback, depart, manage };
+  return { pending, feedback, unavailable, depart, manage };
 }

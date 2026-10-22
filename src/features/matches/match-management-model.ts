@@ -162,7 +162,18 @@ export function managementActionError(error: {
   return { status: 'error', code };
 }
 
-export type ManagementAction = 'withdraw' | 'remove' | 'transfer' | 'cancel' | 'edit';
+export const MANAGEMENT_ACTIONS = [
+  'withdraw',
+  'remove',
+  'transfer',
+  'cancel',
+  'edit',
+  'reconfirm',
+  'invitation',
+  'submit',
+  'decision'
+] as const;
+export type ManagementAction = (typeof MANAGEMENT_ACTIONS)[number];
 export type MatchEventManagement = {
   version: number;
   status: 'open' | 'cancelled';
@@ -208,9 +219,21 @@ export function parseMatchEventManagement(value: unknown): MatchEventManagement 
     remove: { allowed: false, reason: 'unavailable' },
     transfer: { allowed: false, reason: 'unavailable' },
     cancel: { allowed: false, reason: 'unavailable' },
-    edit: { allowed: false, reason: 'unavailable' }
+    edit: { allowed: false, reason: 'unavailable' },
+    reconfirm: { allowed: false, reason: 'unavailable' },
+    invitation: { allowed: false, reason: 'unavailable' },
+    submit: { allowed: false, reason: 'unavailable' },
+    decision: { allowed: false, reason: 'unavailable' }
   };
-  for (const action of ['withdraw', 'remove', 'transfer', 'cancel', 'edit'] as const) {
+  const terminalReason =
+    value.status === 'cancelled'
+      ? 'cancelled'
+      : value.results_protected
+        ? 'result_protected'
+        : value.phase === 'started'
+          ? 'started'
+          : null;
+  for (const action of MANAGEMENT_ACTIONS) {
     const capability = value.actions[action];
     const reason = record(capability)
       ? MANAGEMENT_ERROR_CODES.find((code) => code === capability.reason)
@@ -222,7 +245,12 @@ export function parseMatchEventManagement(value: unknown): MatchEventManagement 
         capability.reason === null ||
         MANAGEMENT_ERROR_CODES.some((code) => code === capability.reason)
       ) ||
-      capability.allowed !== (capability.reason === null)
+      capability.allowed !== (capability.reason === null) ||
+      (terminalReason !== null && capability.reason !== terminalReason) ||
+      (action !== 'cancel' &&
+        (value.phase === 'awaiting_results' || value.phase === 'incomplete') &&
+        terminalReason === null &&
+        capability.reason !== 'closed')
     )
       return null;
     actions[action] = { allowed: capability.allowed, reason: reason ?? null };

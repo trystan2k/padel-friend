@@ -58,7 +58,7 @@ describe('minor edit dialog', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Save changes' }));
     await screen.findByText('Match changed elsewhere');
     expect(venue instanceof HTMLInputElement && venue.value).toBe('My draft');
-    expect(mocks.invalidate).not.toHaveBeenCalled();
+    expect(mocks.invalidate).toHaveBeenCalledOnce();
     view.rerender(element('en', 2));
     await userEvent.click(screen.getByRole('button', { name: 'Review my draft' }));
     expect(document.activeElement).toBe(screen.getByLabelText('Start date and time'));
@@ -73,7 +73,7 @@ describe('minor edit dialog', () => {
       })
     });
     await userEvent.click(screen.getByRole('button', { name: 'Reload latest details' }));
-    await waitFor(() => expect(mocks.invalidate).toHaveBeenCalledOnce());
+    await waitFor(() => expect(mocks.invalidate).toHaveBeenCalledTimes(2));
     expect(mocks.close).toHaveBeenCalledOnce();
   });
   it.each(['en', 'pt-BR', 'es'] as const)(

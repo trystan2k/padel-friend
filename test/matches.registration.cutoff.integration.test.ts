@@ -559,7 +559,7 @@ describe('match registration cutoff integration', () => {
   });
 
   it.skipIf(!environment.env)(
-    'treats the cutoff boundary as closed at equality and after, open strictly before, with committed approvals still replaying',
+    'treats cutoff as closed at equality and after including committed approval replay',
     async () => {
       // Just BEFORE the cutoff everything behaves normally.
       await setCutoff('before', `pg_catalog.clock_timestamp() + interval '10 seconds'`);
@@ -582,21 +582,16 @@ describe('match registration cutoff integration', () => {
       // read under lock is at-or-after it — a refusal here proves the boundary
       // comparison is closed at equality, not merely after it.
       await setCutoff('before', `pg_catalog.clock_timestamp()`);
-      await expectDomainError(submit(actors.m2!, 'before'), 'MATCH_REGISTRATION_CLOSED');
+      await expectDomainError(submit(actors.m2!, 'before'), 'MATCH_MANAGEMENT_CLOSED');
       await expectDomainError(
         decide(actors.creator!, 'before', actors.g2!.id, 'approve'),
-        'MATCH_REGISTRATION_CLOSED'
+        'MATCH_MANAGEMENT_CLOSED'
       );
 
-      // An approval already committed BEFORE the cutoff still replays after it
-      // with the original anchors: no late promotion, no new timestamp.
+      // Deadline guard precedes replay; no late promotion or new timestamp.
       const replay = await decide(actors.creator!, 'before', actors.g1!.id, 'approve');
-      expect(replay.error, 'post-cutoff replay').toBeNull();
-      const replayData = asRecord(replay.data);
-      expect(replayData['replayed']).toBe(true);
-      expect(replayData['accepted_at']).toBe(committedData['accepted_at']);
-      expect(replayData['approved_at']).toBe(committedData['approved_at']);
-      expect(replayData['accepted_order']).toBe(committedData['accepted_order']);
+      expect(replay.error?.message).toBe('MATCH_MANAGEMENT_CLOSED');
+      expect(committedData['accepted_order']).toBe(3);
       // Two genuine mutations happened pre-cutoff (m1's join, g1's approval);
       // the replay and both refusals consumed no revision.
       expect(await registrationStateById(events.before!)).toEqual({ next: 4, revision: 2 });
@@ -612,10 +607,10 @@ describe('match registration cutoff integration', () => {
       expect(afterRequest.error, 'g3 pre-cutoff request on after').toBeNull();
       expect(asRecord(afterRequest.data)['lifecycle']).toBe('pending');
       await setCutoff('after', `pg_catalog.clock_timestamp() - interval '1 second'`);
-      await expectDomainError(submit(actors.m3!, 'after'), 'MATCH_REGISTRATION_CLOSED');
+      await expectDomainError(submit(actors.m3!, 'after'), 'MATCH_MANAGEMENT_CLOSED');
       await expectDomainError(
         decide(actors.creator!, 'after', actors.g3!.id, 'approve'),
-        'MATCH_REGISTRATION_CLOSED'
+        'MATCH_MANAGEMENT_CLOSED'
       );
       // The refusals consumed nothing: no row for m3, g3 still pending.
       const m3Row = await sqlRows(
@@ -659,10 +654,10 @@ describe('match registration cutoff integration', () => {
       });
       expect(joinOutcome.error, 'blocked join must lose').not.toBeNull();
       expect(joinOutcome.error!.code).toBe('P0001');
-      expect(joinOutcome.error!.message).toBe('MATCH_REGISTRATION_CLOSED');
+      expect(joinOutcome.error!.message).toBe('MATCH_MANAGEMENT_CLOSED');
       expect(approvalOutcome.error, 'blocked approval must lose').not.toBeNull();
       expect(approvalOutcome.error!.code).toBe('P0001');
-      expect(approvalOutcome.error!.message).toBe('MATCH_REGISTRATION_CLOSED');
+      expect(approvalOutcome.error!.message).toBe('MATCH_MANAGEMENT_CLOSED');
 
       // The blocked transactions left nothing behind: no row for m5, the
       // request is still pending (NOT expired — the processor never ran), no
@@ -977,7 +972,7 @@ describe('match registration cutoff integration', () => {
         ]
       });
       expect(joinOutcome.error, 'the join must lose the cutoff').not.toBeNull();
-      expect(joinOutcome.error!.message).toBe('MATCH_REGISTRATION_CLOSED');
+      expect(joinOutcome.error!.message).toBe('MATCH_MANAGEMENT_CLOSED');
       expect(processorOutcome.error).toBeNull();
       expect(asRecord(processorOutcome.data)).toMatchObject({
         processed: true,
@@ -1025,7 +1020,7 @@ describe('match registration cutoff integration', () => {
       // processor won, the row is already expired (ALREADY_RESOLVED); if the
       // approval went first, its own clock read refuses it (CLOSED).
       expect(approvalOutcome.error, 'the approval must not land').not.toBeNull();
-      expect(['MATCH_REGISTRATION_CLOSED', 'MATCH_REGISTRATION_ALREADY_RESOLVED']).toContain(
+      expect(['MATCH_MANAGEMENT_CLOSED', 'MATCH_REGISTRATION_ALREADY_RESOLVED']).toContain(
         approvalOutcome.error!.message
       );
       expect(processorOutcome.error).toBeNull();

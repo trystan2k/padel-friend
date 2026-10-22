@@ -1,8 +1,12 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { MyMatchRegistration } from '../src/features/matches/match-registration-model';
+import { makeMatchManagement } from './helpers/match-management-capabilities';
 
 const mocks = vi.hoisted(() => ({
   getMatchEvent: vi.fn<(...args: unknown[]) => Promise<unknown>>(),
+  getManagement: vi
+    .fn<(...args: unknown[]) => Promise<unknown>>()
+    .mockResolvedValue({ status: 'empty' }),
   getMyMatchRegistration: vi.fn<(...args: unknown[]) => Promise<unknown>>(),
   listMatchEventRegistrationRequests: vi.fn<(...args: unknown[]) => Promise<unknown>>(),
   listMatchEventRegistrations: vi.fn<(...args: unknown[]) => Promise<unknown>>(),
@@ -29,6 +33,7 @@ vi.mock('../src/features/matches/match-invitation.functions', () => ({
   respondMatchEventInvitation: vi.fn<(...args: unknown[]) => Promise<unknown>>()
 }));
 vi.mock('../src/features/matches/match-management.functions', () => ({
+  getMatchEventManagement: mocks.getManagement,
   listMatchEventManagementParticipants: mocks.listManagementParticipants,
   withdrawMatchRegistration: vi.fn<(...args: unknown[]) => Promise<unknown>>(),
   removeMatchRegistration: vi.fn<(...args: unknown[]) => Promise<unknown>>()
@@ -70,6 +75,7 @@ function routeLoader(): MatchDetailRoute['options']['loader'] {
 
 describe('match detail registration route loaders', () => {
   it('loads identifier-bearing participant projection only for creator', async () => {
+    mocks.getManagement.mockResolvedValue({ status: 'ok', value: makeMatchManagement() });
     mocks.getMatchEvent.mockResolvedValue({
       status: 'ok',
       event: { event_id: EVENT_ID, caller_badge: 'member' }
@@ -86,6 +92,10 @@ describe('match detail registration route loaders', () => {
       managementError: false
     });
     expect(mocks.listManagementParticipants).not.toHaveBeenCalled();
+    mocks.getManagement.mockResolvedValue({
+      status: 'ok',
+      value: makeMatchManagement({ is_organizer: true })
+    });
     mocks.getMatchEvent.mockResolvedValue({
       status: 'ok',
       event: { event_id: EVENT_ID, caller_badge: 'creator' }

@@ -557,6 +557,15 @@
       "staleGeneration": "Las condiciones cambiaron de nuevo. Recarga y revisa las condiciones actuales antes de confirmar."
     },
     "management": {
+      "unavailable": {
+        "cancelled": "Este partido fue cancelado. Las acciones de gestión no están disponibles.",
+        "started": "Este partido ya comenzó. Las acciones de gestión no están disponibles.",
+        "cutoff": "La inscripción ha cerrado. La participación y los detalles del partido ya no pueden cambiar.",
+        "resultProtected": "Los resultados existentes protegen este partido contra cambios de gestión.",
+        "correctionExplanation": "Los cambios que afectan a resultados existentes requieren el proceso de corrección o disputa.",
+        "correctionUnavailable": "La corrección y las disputas de resultados aún no están disponibles.",
+        "backToMatch": "Volver al partido"
+      },
       "edit": {
         "title": "Editar detalles del partido",
         "save": "Guardar cambios",

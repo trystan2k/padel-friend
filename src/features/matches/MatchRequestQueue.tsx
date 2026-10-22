@@ -8,6 +8,7 @@ import { matchRegistrationErrorKey } from './match-registration-error-copy';
 import { matchRegistrationStyles as s } from './match-registration.styles';
 import { useMatchRequestQueue } from './use-match-registration';
 import { registrationActionTone } from './match-status-tone';
+import { MatchManagementUnavailable } from './MatchManagementUnavailable';
 
 // PAF-5.5 creator-only pending request queue with approve/decline. Rendered only
 // for the event creator (the server returns no rows to anyone else), so an
@@ -44,6 +45,15 @@ export function MatchRequestQueue({
   const { t, i18n } = useTranslation();
   const controller = useMatchRequestQueue({ eventId });
   const now = useState(() => Date.now())[0];
+  const rejected = controller.feedback?.kind === 'error' ? controller.feedback.code : null;
+  if (
+    rejected === 'started' ||
+    rejected === 'cancelled' ||
+    rejected === 'result_protected' ||
+    rejected === 'closed' ||
+    rejected === 'forbidden'
+  )
+    return <MatchManagementUnavailable reason={rejected} />;
 
   const feedbackMessage = (() => {
     const feedback = controller.feedback;

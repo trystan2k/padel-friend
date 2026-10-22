@@ -3,6 +3,7 @@ import { useRouter } from '@tanstack/react-router';
 import { editMatchEvent } from './match-management.functions';
 import { MANAGEMENT_ERROR_COPY } from './match-management-error-copy';
 import type { MatchEditPatch } from './match-management-edit';
+import type { ManagementErrorCode } from './match-management-model';
 
 export function useMatchEdit(eventId: string, version: number) {
   const router = useRouter();
@@ -11,8 +12,9 @@ export function useMatchEdit(eventId: string, version: number) {
   const [pending, setPending] = useState(false);
   const [feedback, setFeedback] = useState<string | null>(null);
   const [conflict, setConflict] = useState(false);
+  const [unavailable, setUnavailable] = useState<ManagementErrorCode | null>(null);
   async function save(patch: MatchEditPatch) {
-    if (busy.current || conflict) return false;
+    if (busy.current || conflict || unavailable) return false;
     if (typeof navigator !== 'undefined' && !navigator.onLine) {
       setFeedback('matches.management.offline');
       return false;
@@ -35,8 +37,15 @@ export function useMatchEdit(eventId: string, version: number) {
         return true;
       }
       if (result.status === 'conflict') setConflict(true);
-      else setFeedback(MANAGEMENT_ERROR_COPY[result.code]);
+      else {
+        setFeedback(MANAGEMENT_ERROR_COPY[result.code]);
+        if (
+          ['cancelled', 'result_protected', 'started', 'closed', 'forbidden'].includes(result.code)
+        )
+          setUnavailable(result.code);
+      }
       if (result.code !== 'unavailable') retry.current = null;
+      await router.invalidate().catch(() => undefined);
       return false;
     } catch {
       setFeedback('matches.management.errors.unavailable');
@@ -61,5 +70,5 @@ export function useMatchEdit(eventId: string, version: number) {
       setPending(false);
     }
   }
-  return { pending, feedback, conflict, save, reload };
+  return { pending, feedback, conflict, unavailable, save, reload };
 }

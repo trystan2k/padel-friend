@@ -7,6 +7,10 @@ import { MatchCancelDialog } from './MatchCancelDialog';
 import type { MatchEventManagement, ManagementParticipant } from './match-management-model';
 import { useMatchManagement } from './use-match-management';
 import { matchManagementStyles as s } from './match-management.styles';
+import {
+  MatchManagementUnavailable,
+  managementUnavailableReason
+} from './MatchManagementUnavailable';
 
 export function MatchOrganizerActions({
   eventId,
@@ -24,6 +28,9 @@ export function MatchOrganizerActions({
   const controller = useMatchManagement(eventId);
   const transfer = management.is_organizer && management.actions.transfer.allowed;
   const cancel = management.actions.cancel.allowed;
+  const unavailable = managementUnavailableReason(management, controller.unavailable);
+  if (unavailable && unavailable !== 'closed')
+    return <MatchManagementUnavailable reason={unavailable} focus={!!controller.unavailable} />;
   if (management.status === 'cancelled' || (!management.is_organizer && !cancel)) return null;
   return (
     <section {...stylex.props(s.section)}>

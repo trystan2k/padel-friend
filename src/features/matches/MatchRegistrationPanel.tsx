@@ -24,6 +24,8 @@ import {
 } from './match-status-tone';
 import { useMatchRegistration } from './use-match-registration';
 import { MatchParticipantActions } from './MatchParticipantActions';
+import { MatchManagementUnavailable } from './MatchManagementUnavailable';
+import type { ManagementErrorCode } from './match-management-model';
 
 // PAF-5.5: the player's own registration area on the match detail screen.
 // States: direct join, request, pending / approved / declined / expired, full
@@ -140,12 +142,14 @@ export function MatchRegistrationPanel({
   event,
   registration,
   callerLevel = null,
-  roster = null
+  roster = null,
+  unavailable = null
 }: {
   event: MatchRegistrationEvent;
   registration: MyMatchRegistration;
   callerLevel?: number | null;
   roster?: MatchRosterEntry[] | null;
+  unavailable?: ManagementErrorCode | null;
 }) {
   const { t, i18n } = useTranslation();
   const eventId = event.event_id;
@@ -363,6 +367,23 @@ export function MatchRegistrationPanel({
   })();
 
   let body: ReactNode;
+  const rejected = controller.feedback?.kind === 'error' ? controller.feedback.code : null;
+  const blocked =
+    unavailable ??
+    (rejected === 'cancelled' ||
+    rejected === 'started' ||
+    rejected === 'result_protected' ||
+    rejected === 'closed' ||
+    rejected === 'forbidden'
+      ? rejected
+      : null);
+  if (blocked)
+    return (
+      <>
+        <MatchManagementUnavailable reason={blocked} />
+        {rosterBlock}
+      </>
+    );
   if (registration.state === 'accepted') {
     const participation = registration.participation;
     const group = matchRegistrationGroup(registration.position);

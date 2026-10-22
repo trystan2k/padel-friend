@@ -8,6 +8,7 @@ import { matchEditDraft, type MatchEditDraft } from './match-management-edit';
 import { validateMatchEditDraft } from './match-management.validators';
 import { useMatchEdit } from './use-match-edit';
 import { matchManagementStyles as s } from './match-management.styles';
+import { MatchManagementUnavailable } from './MatchManagementUnavailable';
 
 /** Mount per explicit open, not per loader version: conflicts must retain drafts. */
 export function MatchEditDialog({
@@ -72,6 +73,9 @@ export function MatchEditDialog({
         >
           <Dialog.Title>{t('matches.management.edit.title')}</Dialog.Title>
           <Dialog.Description>{t('matches.reconfirmation.description')}</Dialog.Description>
+          {action.unavailable && (
+            <MatchManagementUnavailable reason={action.unavailable} onBack={onClose} focus />
+          )}
           {action.conflict && (
             <section role="alert" {...stylex.props(s.section)}>
               <h3>{t('matches.management.edit.conflictTitle')}</h3>
@@ -120,7 +124,10 @@ export function MatchEditDialog({
               if (await action.save(patch)) setSaved(true);
             }}
           >
-            <fieldset disabled={action.pending || saved} {...stylex.props(s.section)}>
+            <fieldset
+              disabled={action.pending || saved || !!action.unavailable}
+              {...stylex.props(s.section)}
+            >
               <label>
                 {t('matchCreate.fields.type')}
                 <select
@@ -160,7 +167,7 @@ export function MatchEditDialog({
               <button
                 type="submit"
                 {...stylex.props(s.button)}
-                disabled={action.pending || action.conflict || saved}
+                disabled={action.pending || action.conflict || saved || !!action.unavailable}
                 aria-busy={action.pending}
               >
                 {t('matches.management.edit.save')}

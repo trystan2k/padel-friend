@@ -51,7 +51,7 @@ describe('management defensive models', () => {
       cancelled_at: '2030-01-01T00:00:00Z'
     });
   });
-  it.each(['started', 'cancelled', 'result_protected'] as const)(
+  it.each(['started', 'cancelled', 'result_protected', 'closed'] as const)(
     'maps shared registration guard %s instead of generic unavailable',
     (code) => {
       expect(
@@ -75,10 +75,17 @@ describe('management defensive models', () => {
       reconfirmation_generation: 0,
       required_count: 0,
       actions: Object.fromEntries(
-        ['withdraw', 'remove', 'transfer', 'cancel', 'edit'].map((action) => [
-          action,
-          { allowed: false, reason: 'forbidden' }
-        ])
+        [
+          'withdraw',
+          'remove',
+          'transfer',
+          'cancel',
+          'edit',
+          'reconfirm',
+          'invitation',
+          'submit',
+          'decision'
+        ].map((action) => [action, { allowed: false, reason: 'forbidden' }])
       ),
       correction: { available: false, reason: 'results_workflow_unavailable' }
     };

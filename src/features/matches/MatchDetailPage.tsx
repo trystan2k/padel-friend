@@ -9,6 +9,10 @@ import { MatchRegistrationPanel } from './MatchRegistrationPanel';
 import { MatchInvitationPanel } from './MatchInvitationPanel';
 import { MatchParticipantActions } from './MatchParticipantActions';
 import { MatchOrganizerActions } from './MatchOrganizerActions';
+import {
+  MatchManagementUnavailable,
+  managementUnavailableReason
+} from './MatchManagementUnavailable';
 import type { ManagementParticipant, MatchEventManagement } from './match-management-model';
 import type { MatchInvitation } from './match-invitation-model';
 import { MatchRequestQueue } from './MatchRequestQueue';
@@ -101,6 +105,7 @@ export function MatchDetailPage({
       </main>
     );
   const zone = event.timezone;
+  const unavailable = managementUnavailableReason(management);
   const venue = event.venue_name;
   async function share() {
     setFeedback({ id: eventId, copied: false, failed: false });
@@ -131,7 +136,10 @@ export function MatchDetailPage({
       {event.status === 'cancelled' && (
         <StatusBadge>{t('matches.management.cancelled')}</StatusBadge>
       )}
-      {management && (
+      {unavailable && (!registration || event.status === 'cancelled') && (
+        <MatchManagementUnavailable reason={unavailable} />
+      )}
+      {management && (!unavailable || unavailable === 'closed') && (
         <MatchOrganizerActions
           eventId={eventId}
           management={management}
@@ -148,7 +156,7 @@ export function MatchDetailPage({
           {t('matches.management.edit.title')}
         </button>
       )}
-      {editing && management && (
+      {editing && management && !unavailable && (
         <MatchEditDialog
           event={event}
           version={management.version}
@@ -157,7 +165,7 @@ export function MatchDetailPage({
         />
       )}
       <div {...stylex.props(s.detailGroups)}>
-        {event.status !== 'cancelled' && (
+        {event.status !== 'cancelled' && !unavailable && (
           <MatchReconfirmationPanel
             key={`${eventId}:${event.reconfirmation_generation ?? 0}`}
             event={event}
@@ -255,42 +263,41 @@ export function MatchDetailPage({
             {event.caller_is_invited && <p>{t('matches.detail.invitationInfo')}</p>}
           </section>
         )}
-        {(management ? management.is_organizer && management.actions.remove.allowed : isCreator) &&
-          event.status !== 'cancelled' && (
-            <section
-              {...stylex.props(s.detailGroup)}
-              aria-labelledby="match-participants-management-heading"
-            >
-              <h2 id="match-participants-management-heading" tabIndex={-1}>
-                {t('matches.management.participants')}
-              </h2>
-              {managementError && <p role="alert">{t('matches.management.errors.unavailable')}</p>}
-              {managementParticipants
-                .filter(
-                  (participant) =>
-                    registration !== null &&
-                    registration.state !== 'none' &&
-                    (registration.state !== 'accepted' || registration.attempt_id !== undefined) &&
-                    participant.attempt_id !==
-                      (registration?.state === 'accepted' ? registration.attempt_id : null)
-                )
-                .map((participant) => (
-                  <div key={participant.registration_id}>
-                    <span>
-                      {participant.display_name ?? t('matchRegistration.roster.playerFallback')}
-                    </span>
-                    <MatchParticipantActions
-                      eventId={event.event_id}
-                      attemptId={participant.attempt_id}
-                      targetUserId={participant.user_id}
-                      name={participant.display_name ?? undefined}
-                      disabled={event.is_past || Date.parse(event.registration_cutoff_at) <= asOf}
-                    />
-                  </div>
-                ))}
-            </section>
-          )}
-        {invitation && (
+        {management?.actions.remove.allowed && event.status !== 'cancelled' && (
+          <section
+            {...stylex.props(s.detailGroup)}
+            aria-labelledby="match-participants-management-heading"
+          >
+            <h2 id="match-participants-management-heading" tabIndex={-1}>
+              {t('matches.management.participants')}
+            </h2>
+            {managementError && <p role="alert">{t('matches.management.errors.unavailable')}</p>}
+            {managementParticipants
+              .filter(
+                (participant) =>
+                  registration !== null &&
+                  registration.state !== 'none' &&
+                  (registration.state !== 'accepted' || registration.attempt_id !== undefined) &&
+                  participant.attempt_id !==
+                    (registration?.state === 'accepted' ? registration.attempt_id : null)
+              )
+              .map((participant) => (
+                <div key={participant.registration_id}>
+                  <span>
+                    {participant.display_name ?? t('matchRegistration.roster.playerFallback')}
+                  </span>
+                  <MatchParticipantActions
+                    eventId={event.event_id}
+                    attemptId={participant.attempt_id}
+                    targetUserId={participant.user_id}
+                    name={participant.display_name ?? undefined}
+                    disabled={event.is_past || Date.parse(event.registration_cutoff_at) <= asOf}
+                  />
+                </div>
+              ))}
+          </section>
+        )}
+        {invitation && !unavailable && (
           <MatchInvitationPanel
             key={event.event_id}
             eventId={event.event_id}
@@ -319,9 +326,10 @@ export function MatchDetailPage({
             registration={registration}
             callerLevel={callerLevel}
             roster={roster}
+            unavailable={unavailable}
           />
         ) : null}
-        {isCreator && event.status !== 'cancelled' && (
+        {isCreator && event.status !== 'cancelled' && !unavailable && (
           <MatchRequestQueue
             eventId={eventId}
             eventName={venue}

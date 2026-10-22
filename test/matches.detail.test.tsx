@@ -26,6 +26,7 @@ import { MatchDetailPage, shareMatchLink } from '../src/features/matches/MatchDe
 import { loadMatchDetail } from '../src/routes/_protected.matches.$eventId';
 import type { MatchEventDetail } from '../src/features/matches/match-contracts';
 import { makeMatchDetail } from './helpers/match-fixtures';
+import { makeMatchManagement } from './helpers/match-management-capabilities';
 
 const event = (id = 1, extra: Partial<MatchEventDetail> = {}): MatchEventDetail =>
   makeMatchDetail({
@@ -219,7 +220,11 @@ describe('match detail surface', () => {
     });
     const inviteOnlyView = render(
       <I18nextProvider i18n={createI18n('en')}>
-        <MatchDetailPage event={inviteOnly} registration={registration} />
+        <MatchDetailPage
+          event={inviteOnly}
+          registration={registration}
+          management={makeMatchManagement()}
+        />
       </I18nextProvider>
     );
     expect(screen.getByText(en.matches.detail.invitationInfo)).toBeTruthy();
@@ -239,7 +244,11 @@ describe('match detail surface', () => {
     });
     render(
       <I18nextProvider i18n={createI18n('en')}>
-        <MatchDetailPage event={communityOpen} registration={registration} />
+        <MatchDetailPage
+          event={communityOpen}
+          registration={registration}
+          management={makeMatchManagement()}
+        />
       </I18nextProvider>
     );
     expect(screen.getByText(en.matches.detail.invitationInfo)).toBeTruthy();

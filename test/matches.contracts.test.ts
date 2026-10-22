@@ -51,6 +51,7 @@ describe('match contract fixtures', () => {
     });
     expect(registrationSourceTone).toEqual({ creator: 'muted', member: 'muted', guest: 'guest' });
     expect(callerBadgeTone).toEqual({
+      reconfirmation_required: 'danger',
       creator: 'muted',
       playing: 'positive',
       reserve: 'neutral',

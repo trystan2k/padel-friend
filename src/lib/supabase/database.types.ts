@@ -1068,6 +1068,10 @@ export type Database = {
       }
       advance_match_registration_revision_locked: { Args: { p_event_id: string }; Returns: number }
       assert_match_event_active_locked: { Args: { p_event_id: string }; Returns: undefined }
+      assert_match_management_action_locked: {
+        Args: { p_action: string; p_event_id: string }
+        Returns: undefined
+      }
       can_read_community: { Args: { p_community_id: string }; Returns: boolean }
       can_read_match_event: { Args: { p_event_id: string }; Returns: boolean }
       cancel_match_event: {

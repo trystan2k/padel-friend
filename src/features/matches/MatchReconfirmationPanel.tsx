@@ -10,6 +10,8 @@ import { reconfirmMatchRegistration } from './match-reconfirmation.functions';
 import { requiresMatchReconfirmation } from './match-reconfirmation-model';
 import { MANAGEMENT_ERROR_COPY } from './match-management-error-copy';
 import { matchManagementStyles as s } from './match-management.styles';
+import { MatchManagementUnavailable } from './MatchManagementUnavailable';
+import type { ManagementErrorCode } from './match-management-model';
 
 /** Parent keys this panel by generation: never silently consent to newer terms. */
 export function MatchReconfirmationPanel({
@@ -29,11 +31,13 @@ export function MatchReconfirmationPanel({
   const [pending, setPending] = useState(false);
   const [feedback, setFeedback] = useState<string | null>(null);
   const [stale, setStale] = useState(false);
+  const [unavailable, setUnavailable] = useState<ManagementErrorCode | null>(null);
   const [asOf] = useState(() => Date.now());
   const request = useRef<string | null>(null);
   const trigger = useRef<HTMLButtonElement>(null);
   const required = registration?.state === 'reconfirmation_required' ? registration : null;
   const players = participants.filter(requiresMatchReconfirmation);
+  if (unavailable) return <MatchManagementUnavailable reason={unavailable} focus />;
   if (!required && (!isCreator || !players.length)) return null;
   const date = (instant: string) =>
     new Intl.DateTimeFormat(i18n.language, {
@@ -137,12 +141,26 @@ export function MatchReconfirmationPanel({
                           await router.invalidate();
                           setOpen(false);
                         } else if (result.status === 'error') {
+                          if (
+                            [
+                              'cancelled',
+                              'result_protected',
+                              'started',
+                              'closed',
+                              'forbidden',
+                              'stale_attempt'
+                            ].includes(result.code)
+                          ) {
+                            setUnavailable(result.code);
+                            setOpen(false);
+                          }
                           setStale(result.code === 'stale_generation');
                           setFeedback(
                             result.code === 'stale_generation'
                               ? 'matches.reconfirmation.staleGeneration'
                               : MANAGEMENT_ERROR_COPY[result.code]
                           );
+                          await router.invalidate().catch(() => undefined);
                         }
                       } catch {
                         setFeedback('matches.management.errors.unavailable');

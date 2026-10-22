@@ -77,6 +77,14 @@ export async function createMatchManagementFixtures(env: { url: string; key: str
     );
     return rows[0] ? String(rows[0].id) : null;
   }
+  async function protectResults(eventId: string) {
+    await fixtureSql(`select public.protect_match_event_results('${eventId}');`);
+  }
+  async function setStarted(eventId: string) {
+    await fixtureSql(`do $$ begin alter table public.match_events disable trigger match_event_immutable;
+      update public.match_events set registration_cutoff_at=now()-interval '2 minutes',starts_at=now()-interval '1 minute' where id='${eventId}';
+      alter table public.match_events enable trigger match_event_immutable; end $$;`);
+  }
   async function cleanup() {
     await fixtureSql(`do $$ begin
       alter table public.match_events disable trigger match_event_immutable;
@@ -121,6 +129,8 @@ export async function createMatchManagementFixtures(env: { url: string; key: str
     event,
     setCutoff,
     latestAttemptId,
+    protectResults,
+    setStarted,
     cleanup,
     rpc: makeRawRpc(env.url, env.key)
   };

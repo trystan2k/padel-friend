@@ -31,6 +31,10 @@ export type MatchRequestQueueFeedback =
 // A conflict means the client's view is stale; refreshing authoritative counts
 // is mandatory. A generic failure leaves the view untouched for an explicit retry.
 const CONFLICT_CODES: ReadonlySet<MatchRegistrationErrorCode> = new Set([
+  'started',
+  'cancelled',
+  'result_protected',
+  'forbidden',
   'duplicate',
   'pending_duplicate',
   'full',

@@ -18,6 +18,21 @@ function successfulRunner(calls: string[][]) {
 }
 
 describe('populated migration-up harness safety and ordering', () => {
+  it('rehearses protection against unit 5 and verifies unchanged facts and ACLs twice', () => {
+    const calls: string[][] = [];
+    runHarness({
+      env: { CI: 'true', POPULATED_UPGRADE_OPT_IN: '1', POPULATED_UPGRADE_SCENARIO: 'protection' },
+      run: successfulRunner(calls),
+      log: quiet
+    });
+    expect(calls[1]).toContain('20261021204000');
+    expect(
+      calls.filter((call) =>
+        call.some((arg) => arg.endsWith('matches-protection-upgrade-assertions.sql'))
+      )
+    ).toHaveLength(2);
+    expect(calls.at(-1)).toContain('--no-seed');
+  });
   it('rehearses consent generation against unit 4 with repeat-up evidence', () => {
     const calls: string[][] = [];
     runHarness({

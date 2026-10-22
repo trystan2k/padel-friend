@@ -15,6 +15,9 @@ const CODES: MatchRegistrationErrorCode[] = [
   'event_not_found',
   'invite_only',
   'closed',
+  'started',
+  'cancelled',
+  'result_protected',
   'denied',
   'duplicate',
   'pending_duplicate',
@@ -43,7 +46,7 @@ describe('match registration error copy', () => {
     expect(Object.keys(MATCH_REGISTRATION_ERROR_COPY).sort()).toEqual([...CODES].sort());
     for (const code of CODES) {
       const key = matchRegistrationErrorKey(code);
-      expect(key.startsWith('matchRegistration.feedback.')).toBe(true);
+      expect(/^(matchRegistration.feedback|matches.management.errors)\./.test(key)).toBe(true);
       expect(key).not.toBe(code);
     }
   });

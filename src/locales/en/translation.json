@@ -557,6 +557,15 @@
       "staleGeneration": "Match terms changed again. Reload and review the latest terms before confirming."
     },
     "management": {
+      "unavailable": {
+        "cancelled": "This match was cancelled. Management actions are unavailable.",
+        "started": "This match has started. Management actions are unavailable.",
+        "cutoff": "Registration has closed. Participation and match details can no longer change.",
+        "resultProtected": "Existing results protect this match from management changes.",
+        "correctionExplanation": "Changes involving existing results require the correction or dispute process.",
+        "correctionUnavailable": "Result correction and disputes are not available yet.",
+        "backToMatch": "Back to match"
+      },
       "edit": {
         "title": "Edit match details",
         "save": "Save changes",

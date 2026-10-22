@@ -557,6 +557,15 @@
       "staleGeneration": "As condições mudaram novamente. Recarregue e revise as condições atuais antes de confirmar."
     },
     "management": {
+      "unavailable": {
+        "cancelled": "Esta partida foi cancelada. As ações de gerenciamento estão indisponíveis.",
+        "started": "Esta partida já começou. As ações de gerenciamento estão indisponíveis.",
+        "cutoff": "As inscrições foram encerradas. A participação e os detalhes da partida não podem mais mudar.",
+        "resultProtected": "Os resultados existentes protegem esta partida contra alterações de gerenciamento.",
+        "correctionExplanation": "Alterações envolvendo resultados existentes exigem o processo de correção ou contestação.",
+        "correctionUnavailable": "A correção e a contestação de resultados ainda não estão disponíveis.",
+        "backToMatch": "Voltar à partida"
+      },
       "edit": {
         "title": "Editar detalhes da partida",
         "save": "Salvar alterações",

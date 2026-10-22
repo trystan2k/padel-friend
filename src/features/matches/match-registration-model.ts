@@ -35,6 +35,8 @@ export type MatchRegistrationActionError = {
 };
 
 const ERROR_TOKENS: Readonly<Record<string, MatchRegistrationErrorCode>> = {
+  MATCH_MANAGEMENT_CLOSED: 'closed',
+  MATCH_MANAGEMENT_NOT_FOUND: 'event_not_found',
   MATCH_MANAGEMENT_STARTED: 'started',
   MATCH_MANAGEMENT_CANCELLED: 'cancelled',
   MATCH_MANAGEMENT_RESULT_PROTECTED: 'result_protected',
