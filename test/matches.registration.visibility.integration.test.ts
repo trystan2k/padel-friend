@@ -184,6 +184,13 @@ describe('match registration visibility integration', () => {
       update public.match_event_registrations set resolved_at=now(), resolved_by=${q(creator.id)}
         where lifecycle in ('rejected','expired')
           and match_event_id in (${q(events.pubInvite!)},${q(events.privOpen!)},${q(events.exclFuture!)},${q(events.exclPast!)});
+      insert into public.match_event_registration_attempts(registration_id,match_event_id,user_id,requested_at,decided_at,outcome,actor_id,accepted_at,approved_at,accepted_order,registration_source)
+        select r.id,r.match_event_id,r.user_id,coalesce(r.requested_at,r.accepted_at),
+          case when r.lifecycle='accepted' then r.accepted_at when r.lifecycle<>'pending' then r.resolved_at end,
+          r.lifecycle,case when r.lifecycle='accepted' then r.user_id else r.resolved_by end,r.accepted_at,r.approved_at,r.accepted_order,r.registration_source
+        from public.match_event_registrations r where r.current_attempt_id is null and r.match_event_id in (${Object.values(events).map(q).join(',')});
+      update public.match_event_registrations r set current_attempt_id=a.id from public.match_event_registration_attempts a
+        where a.registration_id=r.id and r.current_attempt_id is null and r.match_event_id in (${Object.values(events).map(q).join(',')});
     end $$;`
       );
 
@@ -432,6 +439,8 @@ describe('match registration visibility integration', () => {
           `${who.name} attempts write`,
           who.client.from('match_event_registration_attempts').insert({
             match_event_id: events.pubInvite!,
+            registration_id: crypto.randomUUID(),
+            registration_source: 'member',
             user_id: requesterPending.id,
             requested_at: new Date().toISOString(),
             outcome: 'accepted'

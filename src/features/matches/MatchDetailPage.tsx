@@ -4,6 +4,8 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { MatchRegistrationPanel } from './MatchRegistrationPanel';
 import { MatchInvitationPanel } from './MatchInvitationPanel';
+import { MatchParticipantActions } from './MatchParticipantActions';
+import type { ManagementParticipant } from './match-management-model';
 import type { MatchInvitation } from './match-invitation-model';
 import { MatchRequestQueue } from './MatchRequestQueue';
 import type { MatchEventDetail } from './match-contracts';
@@ -39,7 +41,9 @@ export function MatchDetailPage({
   queue = null,
   queueError = false,
   roster = null,
-  invitation = null
+  invitation = null,
+  managementParticipants = [],
+  managementError = false
 }: {
   event: MatchEventDetail | null;
   loadError?: boolean;
@@ -53,8 +57,11 @@ export function MatchDetailPage({
   queueError?: boolean;
   roster?: MatchRosterEntry[] | null;
   invitation?: MatchInvitation | null;
+  managementParticipants?: ManagementParticipant[];
+  managementError?: boolean;
 }) {
   const { t, i18n } = useTranslation();
+  const [asOf] = useState(() => Date.now());
   const [feedback, setFeedback] = useState<{ id: string; copied: boolean; failed: boolean } | null>(
     null
   );
@@ -195,9 +202,42 @@ export function MatchDetailPage({
               count: event.more_needed
             })}
           </p>
-          {event.caller_badge === 'creator' && <p>{t('matches.detail.creatorAccepted')}</p>}
+          {event.caller_badge === 'creator' && callerAccepted && (
+            <p>{t('matches.detail.creatorAccepted')}</p>
+          )}
           {event.caller_is_invited && <p>{t('matches.detail.invitationInfo')}</p>}
         </section>
+        {isCreator && (
+          <section {...stylex.props(s.detailGroup)} aria-labelledby="match-management-heading">
+            <h2 id="match-management-heading" tabIndex={-1}>
+              {t('matches.management.participants')}
+            </h2>
+            {managementError && <p role="alert">{t('matches.management.errors.unavailable')}</p>}
+            {managementParticipants
+              .filter(
+                (participant) =>
+                  registration !== null &&
+                  registration.state !== 'none' &&
+                  (registration.state !== 'accepted' || registration.attempt_id !== undefined) &&
+                  participant.attempt_id !==
+                    (registration?.state === 'accepted' ? registration.attempt_id : null)
+              )
+              .map((participant) => (
+                <div key={participant.registration_id}>
+                  <span>
+                    {participant.display_name ?? t('matchRegistration.roster.playerFallback')}
+                  </span>
+                  <MatchParticipantActions
+                    eventId={event.event_id}
+                    attemptId={participant.attempt_id}
+                    targetUserId={participant.user_id}
+                    name={participant.display_name ?? undefined}
+                    disabled={event.is_past || Date.parse(event.registration_cutoff_at) <= asOf}
+                  />
+                </div>
+              ))}
+          </section>
+        )}
         {invitation && (
           <MatchInvitationPanel
             key={event.event_id}

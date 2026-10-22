@@ -364,6 +364,11 @@ describe('match registration cutoff integration', () => {
   it('seeds actors, communities and events through the trusted channel', async () => {
     const env = environment.env!;
     rawRpc = makeRawRpc(env.url, env.key);
+    // --no-seed migration rehearsals intentionally omit seed.sql, which normally
+    // removes live cron. Own this local-only prerequisite so tests control time.
+    await fixtureSql(
+      `do $$ begin perform cron.unschedule(jobid) from cron.job where jobname='padel-friend-match-registration-cutoff'; end $$;`
+    );
     const roster = ['creator', 'm1', 'm2', 'm3', 'm4', 'm5', 'm6', 'g1', 'g2', 'g3', 'g4'];
     const newActor = async (label: string): Promise<Actor> => {
       const signup = await createClient(env.url, env.key, {
@@ -427,12 +432,20 @@ describe('match registration cutoff integration', () => {
         match_event_id,user_id,lifecycle,accepted_at,accepted_order,participation_status,registration_source,requested_at)
         values (${q(events[eventKey]!)},${q(actors[label]!.id)},'accepted',
           now() - interval '1 day' + (${ordinal} * interval '1 minute'),${ordinal},'${status}','member',
-          now() - interval '1 day' + (${ordinal} * interval '1 minute'));`;
+           now() - interval '1 day' + (${ordinal} * interval '1 minute'));
+         insert into public.match_event_registration_attempts(registration_id,match_event_id,user_id,requested_at,decided_at,outcome,accepted_at,accepted_order,registration_source)
+           select id,match_event_id,user_id,requested_at,accepted_at,'accepted',accepted_at,accepted_order,registration_source from public.match_event_registrations
+           where match_event_id=${q(events[eventKey]!)} and user_id=${q(actors[label]!.id)};
+         update public.match_event_registrations r set current_attempt_id=a.id from public.match_event_registration_attempts a
+           where a.registration_id=r.id and r.match_event_id=${q(events[eventKey]!)} and r.user_id=${q(actors[label]!.id)};`;
     const pendingGuest = (eventKey: string, label: string) =>
       `insert into public.match_event_registrations(match_event_id,user_id,lifecycle,requested_at,registration_source)
          values (${q(events[eventKey]!)},${q(actors[label]!.id)},'pending',now() - interval '1 hour','guest');
-       insert into public.match_event_registration_attempts(match_event_id,user_id,requested_at,outcome)
-         values (${q(events[eventKey]!)},${q(actors[label]!.id)},now() - interval '1 hour','pending');`;
+       insert into public.match_event_registration_attempts(registration_id,match_event_id,user_id,requested_at,outcome,registration_source)
+          select id,match_event_id,user_id,requested_at,'pending',registration_source from public.match_event_registrations
+          where match_event_id=${q(events[eventKey]!)} and user_id=${q(actors[label]!.id)};
+       update public.match_event_registrations r set current_attempt_id=a.id from public.match_event_registration_attempts a
+          where a.registration_id=r.id and r.match_event_id=${q(events[eventKey]!)} and r.user_id=${q(actors[label]!.id)};`;
     const creatorPlaying = (eventKey: string) =>
       `update public.match_event_registrations set participation_status = 'playing'
         where match_event_id = ${q(events[eventKey]!)} and accepted_order = 1;`;
@@ -1476,6 +1489,9 @@ describe('match registration cutoff integration', () => {
         [
           `do $$ begin`,
           `alter table public.match_event_registrations disable trigger match_registration_identity_guard;`,
+          `alter table public.match_event_registrations disable trigger match_registration_final_state;`,
+          `alter table public.match_event_registration_attempts disable trigger match_attempt_history_guard;`,
+          `update public.match_event_registrations r set current_attempt_id=null from public.match_events e where r.match_event_id=e.id and e.community_id='${publicCommunity}';`,
           `alter table public.match_events disable trigger match_event_immutable;`,
           `delete from public.notifications where community_id = '${publicCommunity}';`,
           `delete from public.match_event_registration_attempts a
@@ -1490,6 +1506,8 @@ describe('match registration cutoff integration', () => {
           `delete from public.match_events where community_id = '${publicCommunity}';`,
           `alter table public.match_events enable trigger match_event_immutable;`,
           `alter table public.match_event_registrations enable trigger match_registration_identity_guard;`,
+          `alter table public.match_event_registrations enable trigger match_registration_final_state;`,
+          `alter table public.match_event_registration_attempts enable trigger match_attempt_history_guard;`,
           `end $$;`
         ].join('\n')
       );

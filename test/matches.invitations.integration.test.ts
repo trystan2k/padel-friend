@@ -47,7 +47,7 @@ describe('match invitations integration', () => {
 
   it('pending invitation consumes no capacity or accepted ordinal', async () => {
     const e = await f.event({ accepted: members, capacity: 6, invites: [invitee] });
-    expect(await state(e.id)).toMatchObject({ next_accepted_ordinal: 7, attempts: 5 });
+    expect(await state(e.id)).toMatchObject({ next_accepted_ordinal: 7, attempts: 6 });
     const rows = await sqlRows(
       `select count(*)::int accepted from public.match_event_registrations where match_event_id='${e.id}' and lifecycle='accepted'`
     );
@@ -85,7 +85,7 @@ describe('match invitations integration', () => {
       status: 'accepted',
       registration: { lifecycle: 'pending', accepted_order: null }
     });
-    expect(await state(e.id)).toMatchObject({ next_accepted_ordinal: 2, attempts: 1 });
+    expect(await state(e.id)).toMatchObject({ next_accepted_ordinal: 2, attempts: 2 });
   });
   it('replays original pending submission snapshot even after organizer approval', async () => {
     const e = await f.event({ restricted: true, invites: [invitee] });
@@ -106,7 +106,7 @@ describe('match invitations integration', () => {
       ).error
     ).toBeNull();
     expect((await respond(e)).data).toEqual({ ...asRecord(first.data), replayed: true });
-    expect(await state(e.id)).toMatchObject({ next_accepted_ordinal: 3, attempts: 1 });
+    expect(await state(e.id)).toMatchObject({ next_accepted_ordinal: 3, attempts: 2 });
   });
   it('private outsider invite cannot bypass membership', async () => {
     const outsider = await f.actor();
@@ -196,7 +196,7 @@ describe('match invitations integration', () => {
       fire: () => [respond(e), respond(e)]
     });
     expect(results.every((r) => asRecord(r.data).status === 'expired')).toBe(true);
-    expect(await state(e.id)).toMatchObject({ next_accepted_ordinal: 2, attempts: 0 });
+    expect(await state(e.id)).toMatchObject({ next_accepted_ordinal: 2, attempts: 1 });
   });
   it('scheduler downtime still makes invitation effectively expired', async () => {
     const e = await f.event({ invites: [invitee] });

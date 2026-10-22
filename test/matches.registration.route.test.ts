@@ -7,7 +7,8 @@ const mocks = vi.hoisted(() => ({
   listMatchEventRegistrationRequests: vi.fn<(...args: unknown[]) => Promise<unknown>>(),
   listMatchEventRegistrations: vi.fn<(...args: unknown[]) => Promise<unknown>>(),
   getMyPlayerProfile: vi.fn<(...args: unknown[]) => Promise<unknown>>(),
-  getMyMatchInvitation: vi.fn<(...args: unknown[]) => Promise<unknown>>()
+  getMyMatchInvitation: vi.fn<(...args: unknown[]) => Promise<unknown>>(),
+  listManagementParticipants: vi.fn<(...args: unknown[]) => Promise<unknown>>()
 }));
 
 vi.mock('../src/features/matches/matches.functions', () => ({
@@ -26,6 +27,11 @@ vi.mock('../src/features/player/player.functions', () => ({
 vi.mock('../src/features/matches/match-invitation.functions', () => ({
   getMyMatchInvitation: mocks.getMyMatchInvitation,
   respondMatchEventInvitation: vi.fn<(...args: unknown[]) => Promise<unknown>>()
+}));
+vi.mock('../src/features/matches/match-management.functions', () => ({
+  listMatchEventManagementParticipants: mocks.listManagementParticipants,
+  withdrawMatchRegistration: vi.fn<(...args: unknown[]) => Promise<unknown>>(),
+  removeMatchRegistration: vi.fn<(...args: unknown[]) => Promise<unknown>>()
 }));
 vi.mock('@tanstack/react-router', async (original) => ({
   ...(await original<typeof import('@tanstack/react-router')>()),
@@ -63,6 +69,35 @@ function routeLoader(): MatchDetailRoute['options']['loader'] {
 }
 
 describe('match detail registration route loaders', () => {
+  it('loads identifier-bearing participant projection only for creator', async () => {
+    mocks.getMatchEvent.mockResolvedValue({
+      status: 'ok',
+      event: { event_id: EVENT_ID, caller_badge: 'member' }
+    });
+    mocks.getMyMatchRegistration.mockResolvedValue({
+      status: 'ok',
+      registration: { state: 'none' }
+    });
+    mocks.listMatchEventRegistrations.mockResolvedValue({ status: 'empty' });
+    mocks.getMyMatchInvitation.mockResolvedValue({ status: 'empty' });
+    mocks.listManagementParticipants.mockClear();
+    expect(await routeLoader()({ params: { eventId: EVENT_ID } })).toMatchObject({
+      managementParticipants: [],
+      managementError: false
+    });
+    expect(mocks.listManagementParticipants).not.toHaveBeenCalled();
+    mocks.getMatchEvent.mockResolvedValue({
+      status: 'ok',
+      event: { event_id: EVENT_ID, caller_badge: 'creator' }
+    });
+    mocks.listMatchEventRegistrationRequests.mockResolvedValue({ status: 'empty' });
+    mocks.listManagementParticipants.mockResolvedValue({ status: 'ok', value: [] });
+    expect(await routeLoader()({ params: { eventId: EVENT_ID } })).toMatchObject({
+      managementParticipants: [],
+      managementError: false
+    });
+    expect(mocks.listManagementParticipants).toHaveBeenCalledWith({ data: { event_id: EVENT_ID } });
+  });
   it('loads the caller registration DTO without nesting the flat event projection', async () => {
     const registration: MyMatchRegistration = {
       state: 'pending',

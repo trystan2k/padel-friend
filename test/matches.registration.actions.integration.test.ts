@@ -866,13 +866,14 @@ describe('match registration actions integration', () => {
 
     // Expired rows are re-applied the same way: seeded expired identity is reused.
     await fixtureSql(
-      `insert into public.match_event_registrations(match_event_id,user_id,lifecycle,requested_at,registration_source) values
+      `do $$ begin insert into public.match_event_registrations(match_event_id,user_id,lifecycle,requested_at,registration_source) values
         ('${events.ranged!}','${actors.memberB!.id}','expired',now()-interval '2 hours','member'),
-        ('${events.ranged!}','${actors.memberD!.id}','expired',now()-interval '3 hours','member');`
-    );
-    await fixtureSql(
-      `insert into public.match_event_registration_attempts(match_event_id,user_id,requested_at,decided_at,outcome)
-        values ('${events.ranged!}','${actors.memberD!.id}',now()-interval '3 hours',now()-interval '3 hours','expired');`
+         ('${events.ranged!}','${actors.memberD!.id}','expired',now()-interval '3 hours','member');
+       insert into public.match_event_registration_attempts(registration_id,match_event_id,user_id,requested_at,decided_at,outcome,registration_source)
+         select id,match_event_id,user_id,requested_at,requested_at,'expired',registration_source from public.match_event_registrations
+         where match_event_id='${events.ranged!}' and user_id in ('${actors.memberB!.id}','${actors.memberD!.id}');
+       update public.match_event_registrations r set current_attempt_id=a.id from public.match_event_registration_attempts a
+         where a.registration_id=r.id and r.match_event_id='${events.ranged!}' and r.user_id in ('${actors.memberB!.id}','${actors.memberD!.id}'); end $$;`
     );
     const expiredSubmit = await submit(actors.memberB!, 'ranged');
     expect(expiredSubmit.error).toBeNull();
@@ -883,7 +884,7 @@ describe('match registration actions integration', () => {
     expect(expiredRow['accepted_order']).toBeNull();
     expect(
       (await attemptsOf('ranged', actors.memberB!.id)).map((attempt) => attempt['outcome'])
-    ).toEqual(['pending']);
+    ).toEqual(['expired', 'pending']);
     const stateForB = await registrationState('ranged');
     const approvedB = await decide(actors.creator!, 'ranged', actors.memberB!.id, 'approve');
     expect(approvedB.error).toBeNull();
@@ -912,9 +913,7 @@ describe('match registration actions integration', () => {
     // attempt, so seed the creator's own attempt and prove the guard fires on
     // the requester derived from that attempt.
     const creatorAttemptRows = await sqlRows(
-      `insert into public.match_event_registration_attempts(match_event_id,user_id,requested_at,outcome)
-        values ('${events.ranged!}','${actors.creator!.id}',now(),'pending')
-        returning id::text as id`
+      `select current_attempt_id::text as id from public.match_event_registrations where match_event_id='${events.ranged!}' and user_id='${actors.creator!.id}'`
     );
     const creatorAttemptId = String(creatorAttemptRows[0]!['id']);
     try {
@@ -928,9 +927,7 @@ describe('match registration actions integration', () => {
         'Creator cannot decide their own registration'
       );
     } finally {
-      await fixtureSql(
-        `delete from public.match_event_registration_attempts where id = '${creatorAttemptId}';`
-      );
+      /* Creator history remains immutable. */
     }
     // Unknown attempt identity.
     await expectDomainError(
@@ -1371,6 +1368,9 @@ describe('match registration actions integration', () => {
     expect(Object.keys(own).sort()).toEqual(
       [
         'event_id',
+        'attempt_id',
+        'left_at',
+        'removal_reason',
         'lifecycle',
         'participation',
         'accepted_order',

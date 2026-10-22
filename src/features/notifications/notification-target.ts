@@ -32,4 +32,15 @@ export type MatchNotificationContext = {
   requester_display_name?: string | null;
   caller_participation?: MatchNotificationParticipation | null;
   caller_accepted_order?: number | null;
+  caller_roster_position?: number | null;
 };
+
+/** Placement derives from current FIFO position, never the immutable ordinal
+ * after departures. Missing position supports older notification contexts. */
+export function notificationRosterPosition(context: MatchNotificationContext): number | null {
+  const value =
+    context.caller_roster_position === undefined
+      ? context.caller_accepted_order
+      : context.caller_roster_position;
+  return typeof value === 'number' && Number.isSafeInteger(value) && value > 0 ? value : null;
+}

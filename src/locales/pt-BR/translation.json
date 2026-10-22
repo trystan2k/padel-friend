@@ -465,7 +465,10 @@
       "match_registration_not_playing": "Reserva que não joga",
       "match_invitation_accepted": "Convite para partida aceito",
       "match_invitation_declined": "Convite para partida recusado",
-      "match_invitation_expired": "Convite para partida expirado"
+      "match_invitation_expired": "Convite para partida expirado",
+      "match_registration_withdrawn": "Jogador saiu da partida",
+      "match_registration_removed": "Jogador removido da partida",
+      "match_registration_group_changed": "Grupo da partida alterado"
     },
     "match": {
       "openEvent": "Abrir evento",
@@ -494,6 +497,9 @@
       "invitationAcceptedBody": "Um convite foi aceito. A inscrição segue as regras normais de elegibilidade e fila.",
       "invitationDeclinedBody": "Um convite foi recusado. Nenhuma vaga foi reservada.",
       "invitationExpiredBody": "O prazo do convite passou sem resposta. Nenhuma vaga foi reservada.",
+      "registrationWithdrawnBody": "Um jogador saiu da partida. Abra a partida para ver a lista atual.",
+      "registrationRemovedBody": "O organizador removeu um jogador. Abra a partida para ver seu status e a lista atual.",
+      "registrationGroupChangedBody": "Seu grupo mudou. Confira a lista atual antes de jogar.",
       "registrationExpiredBody": "As inscrições encerraram antes de uma decisão. Nenhuma vaga foi reservada.",
       "registrationNotPlayingBody": "O prazo passou antes de um quarteto ser completado. Nenhum resultado de partida será registrado.",
       "unavailable": "Esta notificação de partida não está mais disponível."
@@ -525,6 +531,46 @@
     "offline": "Você está sem conexão. Reconecte-se para salvar suas preferências."
   },
   "matches": {
+    "management": {
+      "participants": "Gerenciar participantes",
+      "actions": "Ações",
+      "participantActions": "Ações para {{name}}",
+      "leave": "Sair da partida",
+      "leaveTitle": "Sair desta partida?",
+      "leaveDescription": "Sua vaga será liberada. Ao se inscrever novamente, você irá para o fim da fila.",
+      "confirm": "Confirmar",
+      "remove": "Remover jogador",
+      "removeTitle": "Remover {{name}}?",
+      "removeDescription": "Informe um motivo. O jogador será notificado e poderá se inscrever novamente antes do prazo, no fim da fila.",
+      "reason": "Motivo da remoção (obrigatório, até 500 caracteres)",
+      "reasonInvalid": "Informe um motivo de 1 a 500 caracteres, sem quebras de linha ou caracteres de controle.",
+      "cancel": "Cancelar",
+      "withdrawn": "Você saiu desta partida. Sua vaga anterior não está mais reservada.",
+      "removed": "O organizador removeu você desta partida.",
+      "removalReason": "Motivo: {{reason}}",
+      "reenter": "Inscrever-se novamente no fim da fila",
+      "withdrawnFeedback": "Você saiu da partida.",
+      "removedFeedback": "Jogador removido.",
+      "offline": "Você está offline. Reconecte-se antes de tentar novamente.",
+      "errors": {
+        "closed": "O prazo de inscrição terminou.",
+        "started": "Esta partida já começou.",
+        "cancelled": "Esta partida foi cancelada.",
+        "resultProtected": "Os resultados estão protegidos. A participação não pode mudar.",
+        "targetNotAccepted": "Este jogador não está mais aceito.",
+        "staleAttempt": "Esta inscrição mudou. Atualize e tente novamente.",
+        "staleGeneration": "As condições da partida mudaram. Atualize antes de confirmar.",
+        "capacityBelowAccepted": "A capacidade não pode ser menor que o número de jogadores aceitos.",
+        "idempotencyConflict": "Esta solicitação já foi usada para outra ação. Atualize e tente novamente.",
+        "alreadyResolved": "Esta ação já foi resolvida.",
+        "notFound": "Esta partida ou inscrição está indisponível.",
+        "unauthenticated": "Entre novamente para continuar.",
+        "forbidden": "Você não pode realizar esta ação.",
+        "invalid": "Confira os dados e tente novamente.",
+        "unavailable": "Não foi possível concluir a ação. Tente novamente.",
+        "versionConflict": "Esta partida mudou. Atualize e tente novamente."
+      }
+    },
     "invitations": {
       "title": "Seu convite para a partida",
       "accept": "Aceitar convite",

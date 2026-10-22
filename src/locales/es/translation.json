@@ -465,7 +465,10 @@
       "match_registration_not_playing": "Reserva sin jugar",
       "match_invitation_accepted": "Invitación al partido aceptada",
       "match_invitation_declined": "Invitación al partido rechazada",
-      "match_invitation_expired": "Invitación al partido caducada"
+      "match_invitation_expired": "Invitación al partido caducada",
+      "match_registration_withdrawn": "Un jugador dejó el partido",
+      "match_registration_removed": "Jugador eliminado del partido",
+      "match_registration_group_changed": "Grupo del partido actualizado"
     },
     "match": {
       "openEvent": "Abrir evento",
@@ -494,6 +497,9 @@
       "invitationAcceptedBody": "Se aceptó una invitación. La inscripción sigue las reglas normales de elegibilidad y cola.",
       "invitationDeclinedBody": "Se rechazó una invitación. No se reservó ninguna plaza.",
       "invitationExpiredBody": "El plazo de la invitación pasó sin respuesta. No se reservó ninguna plaza.",
+      "registrationWithdrawnBody": "Un jugador dejó el partido. Abre el partido para ver la lista actual.",
+      "registrationRemovedBody": "El organizador eliminó a un jugador. Abre el partido para ver tu estado y la lista actual.",
+      "registrationGroupChangedBody": "Tu grupo cambió. Consulta la lista actual antes de jugar.",
       "registrationExpiredBody": "La inscripción cerró antes de una decisión. No se reservó ninguna plaza.",
       "registrationNotPlayingBody": "El plazo pasó antes de que se completara un cuarteto. No se registrará ningún resultado del partido.",
       "unavailable": "Esta notificación de partido ya no está disponible."
@@ -525,6 +531,46 @@
     "offline": "No tienes conexión. Vuelve a conectarte para guardar tus preferencias."
   },
   "matches": {
+    "management": {
+      "participants": "Gestionar participantes",
+      "actions": "Acciones",
+      "participantActions": "Acciones para {{name}}",
+      "leave": "Dejar el partido",
+      "leaveTitle": "¿Dejar este partido?",
+      "leaveDescription": "Tu plaza quedará libre. Si te inscribes de nuevo, irás al final de la cola.",
+      "confirm": "Confirmar",
+      "remove": "Eliminar jugador",
+      "removeTitle": "¿Eliminar a {{name}}?",
+      "removeDescription": "Indica un motivo. Se notificará al jugador y podrá inscribirse de nuevo antes del plazo, al final de la cola.",
+      "reason": "Motivo de eliminación (obligatorio, hasta 500 caracteres)",
+      "reasonInvalid": "Escribe un motivo de 1 a 500 caracteres, sin saltos de línea ni caracteres de control.",
+      "cancel": "Cancelar",
+      "withdrawn": "Dejaste este partido. Tu plaza anterior ya no está reservada.",
+      "removed": "El organizador te eliminó de este partido.",
+      "removalReason": "Motivo: {{reason}}",
+      "reenter": "Inscribirse de nuevo al final de la cola",
+      "withdrawnFeedback": "Dejaste el partido.",
+      "removedFeedback": "Jugador eliminado.",
+      "offline": "No tienes conexión. Vuelve a conectarte antes de intentarlo de nuevo.",
+      "errors": {
+        "closed": "El plazo de inscripción terminó.",
+        "started": "Este partido ya empezó.",
+        "cancelled": "Este partido fue cancelado.",
+        "resultProtected": "Los resultados están protegidos. La participación no puede cambiar.",
+        "targetNotAccepted": "Este jugador ya no está aceptado.",
+        "staleAttempt": "Esta inscripción cambió. Actualiza e inténtalo de nuevo.",
+        "staleGeneration": "Las condiciones del partido cambiaron. Actualiza antes de confirmar.",
+        "capacityBelowAccepted": "La capacidad no puede ser menor que el número de jugadores aceptados.",
+        "idempotencyConflict": "Esta solicitud ya se usó para otra acción. Actualiza e inténtalo de nuevo.",
+        "alreadyResolved": "Esta acción ya se resolvió.",
+        "notFound": "Este partido o inscripción no está disponible.",
+        "unauthenticated": "Inicia sesión de nuevo para continuar.",
+        "forbidden": "No puedes realizar esta acción.",
+        "invalid": "Revisa los datos e inténtalo de nuevo.",
+        "unavailable": "No se pudo completar la acción. Inténtalo de nuevo.",
+        "versionConflict": "Este partido cambió. Actualiza e inténtalo de nuevo."
+      }
+    },
     "invitations": {
       "title": "Tu invitación al partido",
       "accept": "Aceptar invitación",

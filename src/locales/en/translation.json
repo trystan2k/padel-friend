@@ -465,7 +465,10 @@
       "match_registration_not_playing": "Reserve not playing",
       "match_invitation_accepted": "Match invitation accepted",
       "match_invitation_declined": "Match invitation declined",
-      "match_invitation_expired": "Match invitation expired"
+      "match_invitation_expired": "Match invitation expired",
+      "match_registration_withdrawn": "Player left the match",
+      "match_registration_removed": "Player removed from the match",
+      "match_registration_group_changed": "Match group changed"
     },
     "match": {
       "openEvent": "Open event",
@@ -494,6 +497,9 @@
       "invitationAcceptedBody": "An invitation was accepted. Registration follows ordinary eligibility and queue rules.",
       "invitationDeclinedBody": "An invitation was declined. No place was reserved.",
       "invitationExpiredBody": "The invitation deadline passed without a response. No place was reserved.",
+      "registrationWithdrawnBody": "A player left the match. Open the match for the current roster.",
+      "registrationRemovedBody": "The organizer removed a player. Open the match for your status and the current roster.",
+      "registrationGroupChangedBody": "Your group membership changed. Check the current roster before playing.",
       "registrationExpiredBody": "Registration closed before a decision. No place was reserved.",
       "registrationNotPlayingBody": "Cutoff passed before a quartet completed. No match result will be recorded.",
       "unavailable": "This match notification is no longer available."
@@ -525,6 +531,46 @@
     "offline": "You are offline. Reconnect to save your preferences."
   },
   "matches": {
+    "management": {
+      "participants": "Manage participants",
+      "actions": "Actions",
+      "participantActions": "Actions for {{name}}",
+      "leave": "Leave match",
+      "leaveTitle": "Leave this match?",
+      "leaveDescription": "Your place will be released. Registering again puts you at the back of the queue.",
+      "confirm": "Confirm",
+      "remove": "Remove player",
+      "removeTitle": "Remove {{name}}?",
+      "removeDescription": "Give a reason. The player will be notified and may register again before the deadline at the back of the queue.",
+      "reason": "Removal reason (required, up to 500 characters)",
+      "reasonInvalid": "Enter a reason of 1–500 characters without line breaks or control characters.",
+      "cancel": "Cancel",
+      "withdrawn": "You left this match. Your previous place is no longer reserved.",
+      "removed": "The organizer removed you from this match.",
+      "removalReason": "Reason: {{reason}}",
+      "reenter": "Register again at the back of the queue",
+      "withdrawnFeedback": "You left the match.",
+      "removedFeedback": "Player removed.",
+      "offline": "You are offline. Reconnect before trying again.",
+      "errors": {
+        "closed": "The registration deadline has passed.",
+        "started": "This match has already started.",
+        "cancelled": "This match was cancelled.",
+        "resultProtected": "Results are protected. Participation cannot change.",
+        "targetNotAccepted": "This player is no longer accepted.",
+        "staleAttempt": "This registration changed. Refresh and try again.",
+        "staleGeneration": "Match terms changed. Refresh before confirming.",
+        "capacityBelowAccepted": "Capacity cannot be below the accepted player count.",
+        "idempotencyConflict": "This request was already used for another action. Refresh and try again.",
+        "alreadyResolved": "This action was already resolved.",
+        "notFound": "This match or registration is unavailable.",
+        "unauthenticated": "Sign in again to continue.",
+        "forbidden": "You cannot perform this action.",
+        "invalid": "Check your input and try again.",
+        "unavailable": "Could not complete the action. Try again.",
+        "versionConflict": "This match changed. Refresh and try again."
+      }
+    },
     "invitations": {
       "title": "Your match invitation",
       "accept": "Accept invitation",

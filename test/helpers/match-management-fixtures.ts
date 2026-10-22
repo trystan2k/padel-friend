@@ -82,9 +82,16 @@ export async function createMatchManagementFixtures(env: { url: string; key: str
       alter table public.match_events disable trigger match_event_immutable;
       alter table public.match_event_invites disable trigger match_invite_immutable;
       alter table public.match_event_registrations disable trigger match_registration_identity_guard;
+      alter table public.match_event_registrations disable trigger match_registration_final_state;
+      alter table public.match_event_registration_attempts disable trigger match_attempt_history_guard;
+      alter table public.match_event_registration_attempts disable trigger match_attempt_final_state;
+      alter table public.match_event_audit_log disable trigger match_audit_immutable;
       alter table public.community_members disable trigger community_member_guard;
       delete from public.notifications where community_id='${communityId}';
       delete from public.match_event_invites where match_event_id in (select id from public.match_events where community_id='${communityId}');
+      delete from public.match_event_management_commands where match_event_id in (select id from public.match_events where community_id='${communityId}');
+      delete from public.match_event_audit_log where community_id='${communityId}';
+      update public.match_event_registrations set current_attempt_id=null where match_event_id in (select id from public.match_events where community_id='${communityId}');
       delete from public.match_event_registration_attempts where match_event_id in (select id from public.match_events where community_id='${communityId}');
       delete from public.match_event_registrations where match_event_id in (select id from public.match_events where community_id='${communityId}');
       delete from public.match_event_registration_state where match_event_id in (select id from public.match_events where community_id='${communityId}');
@@ -98,6 +105,10 @@ export async function createMatchManagementFixtures(env: { url: string; key: str
       alter table public.match_events enable trigger match_event_immutable;
       alter table public.match_event_invites enable trigger match_invite_immutable;
       alter table public.match_event_registrations enable trigger match_registration_identity_guard;
+      alter table public.match_event_registrations enable trigger match_registration_final_state;
+      alter table public.match_event_registration_attempts enable trigger match_attempt_history_guard;
+      alter table public.match_event_registration_attempts enable trigger match_attempt_final_state;
+      alter table public.match_event_audit_log enable trigger match_audit_immutable;
       alter table public.community_members enable trigger community_member_guard;
     end $$;`);
   }

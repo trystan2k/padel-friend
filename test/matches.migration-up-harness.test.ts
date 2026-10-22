@@ -57,6 +57,17 @@ describe('populated migration-up harness safety and ordering', () => {
     );
   });
 
+  it('never logs credential-bearing status output', () => {
+    const log = { log: vi.fn<(...args: unknown[]) => void>() };
+    runHarness({
+      env: { CI: 'true', POPULATED_UPGRADE_OPT_IN: '1', POPULATED_UPGRADE_SCENARIO: 'departures' },
+      run: successfulRunner([]),
+      log
+    });
+    expect(log.log.mock.calls.flat().join('\n')).not.toContain(status.trim());
+    expect(log.log.mock.calls.flat().join('\n')).toContain('database host is loopback');
+  });
+
   it('uses exact predecessor reset; fixture precedes up and assertions follow it', () => {
     const calls: string[][] = [];
     runHarness({
@@ -100,6 +111,61 @@ describe('populated migration-up harness safety and ordering', () => {
     expect(
       calls.some((call) => call.some((arg) => arg.includes('select public.paf_upgrade_snapshot')))
     ).toBe(false);
+  });
+
+  it('rehearses departures through the shared safety, history, repeat-up and restoration gates', () => {
+    const calls: string[][] = [];
+    runHarness({
+      env: { CI: 'true', POPULATED_UPGRADE_OPT_IN: '1', POPULATED_UPGRADE_SCENARIO: 'departures' },
+      run: successfulRunner(calls),
+      log: quiet
+    });
+    expect(calls[1]).toEqual([
+      'pnpm',
+      'exec',
+      'supabase',
+      'db',
+      'reset',
+      '--local',
+      '--version',
+      '20261021200000',
+      '--no-seed'
+    ]);
+    const seed = calls.findIndex((call) =>
+      call.some((arg) => arg.endsWith('matches-departures-predecessor.sql'))
+    );
+    const upgrades = calls.flatMap((call, index) => (call.includes('migration') ? [index] : []));
+    const assertions = calls.flatMap((call, index) =>
+      call.some((arg) => arg.endsWith('matches-departures-upgrade-assertions.sql')) ? [index] : []
+    );
+    expect(seed).toBeGreaterThan(1);
+    expect(upgrades).toHaveLength(2);
+    expect(assertions).toHaveLength(2);
+    expect(seed).toBeLessThan(upgrades[0]!);
+    expect(assertions[0]!).toBeGreaterThan(upgrades[0]!);
+    expect(assertions[0]!).toBeLessThan(upgrades[1]!);
+    expect(assertions[1]!).toBeGreaterThan(upgrades[1]!);
+    expect(calls.at(-1)).toEqual([
+      'pnpm',
+      'exec',
+      'supabase',
+      'db',
+      'reset',
+      '--local',
+      '--no-seed'
+    ]);
+  });
+
+  it('rejects unknown scenarios before starting a subprocess', () => {
+    const run = vi.fn<(...args: unknown[]) => never>();
+    expect(() =>
+      runHarness({
+        env: { CI: 'true', POPULATED_UPGRADE_OPT_IN: '1', POPULATED_UPGRADE_SCENARIO: 'typo' },
+        run,
+        log: quiet
+      })
+    ).toThrow('Unknown populated migration scenario');
+    expect(run).not.toHaveBeenCalled();
   });
 
   it('preserves migration failure while restoring latest schema', () => {

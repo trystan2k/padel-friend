@@ -8,6 +8,7 @@ import {
 } from '../features/matches/match-registration.functions';
 import { getMyPlayerProfile } from '../features/player/player.functions';
 import { getMyMatchInvitation } from '../features/matches/match-invitation.functions';
+import { listMatchEventManagementParticipants } from '../features/matches/match-management.functions';
 
 export async function loadMatchDetail(eventId: string) {
   try {
@@ -73,7 +74,7 @@ export const Route = createFileRoute('/_protected/matches/$eventId')({
     const detail = await loadMatchDetail(params.eventId);
     const registration = await loadMatchRegistration(params.eventId);
     const isCreator = detail.event?.caller_badge === 'creator';
-    const [callerLevel, requestQueue, roster, invitation] = await Promise.all([
+    const [callerLevel, requestQueue, roster, invitation, management] = await Promise.all([
       loadCallerLevel(),
       isCreator
         ? loadMatchRequestQueue(params.eventId)
@@ -81,7 +82,12 @@ export const Route = createFileRoute('/_protected/matches/$eventId')({
       loadMatchRoster(params.eventId),
       getMyMatchInvitation({ data: { event_id: params.eventId } }).catch(() => ({
         status: 'unavailable' as const
-      }))
+      })),
+      isCreator
+        ? listMatchEventManagementParticipants({ data: { event_id: params.eventId } }).catch(
+            () => ({ status: 'error' as const })
+          )
+        : Promise.resolve(null)
     ]);
     return {
       ...detail,
@@ -90,7 +96,9 @@ export const Route = createFileRoute('/_protected/matches/$eventId')({
       callerLevel,
       ...requestQueue,
       ...roster,
-      invitation: invitation.status === 'ok' ? invitation.invitation : null
+      invitation: invitation.status === 'ok' ? invitation.invitation : null,
+      managementParticipants: management?.status === 'ok' ? management.value : [],
+      managementError: management !== null && management.status !== 'ok'
     };
   },
   component: () => {
@@ -109,6 +117,8 @@ export const Route = createFileRoute('/_protected/matches/$eventId')({
         queueError={data.queueFailed}
         roster={data.roster}
         invitation={data.invitation}
+        managementParticipants={data.managementParticipants}
+        managementError={data.managementError}
       />
     );
   }

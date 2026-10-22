@@ -189,11 +189,11 @@ describe('match registration schema integration', () => {
         v_indexdef text;
         v_triggerdef text;
        begin
-        -- The three enums exist with exactly the PAF-5 values; withdrawn is absent.
+         -- Lifecycle retains PAF-5 values plus additive departure states.
         select coalesce(array_agg(e.enumlabel order by e.enumsortorder), '{}') into v_labels
           from pg_type t join pg_enum e on e.enumtypid = t.oid
          where t.oid = 'public.match_registration_lifecycle'::regtype;
-        if v_labels is distinct from array['pending','accepted','rejected','expired'] then
+         if v_labels is distinct from array['pending','accepted','rejected','expired','withdrawn','removed_by_creator'] then
           raise exception 'lifecycle enum mismatch: %', v_labels;
         end if;
         select coalesce(array_agg(e.enumlabel order by e.enumsortorder), '{}') into v_labels
@@ -210,7 +210,7 @@ describe('match registration schema integration', () => {
         end if;
         select count(*) into v_count from pg_enum e join pg_type t on t.oid = e.enumtypid
          where t.typnamespace = 'public'::regnamespace and e.enumlabel = 'withdrawn';
-        if v_count <> 0 then raise exception 'a public enum still carries the withdrawn label'; end if;
+         if v_count <> 1 then raise exception 'departure lifecycle label missing'; end if;
 
         -- accepted_at nullability was relaxed; lifecycle anchors are NOT NULL/defaulted.
         select is_nullable into v_nullable from information_schema.columns
@@ -355,8 +355,11 @@ describe('match registration schema integration', () => {
         end if;
 
         -- Two pending rows: anchors nullable and multiple NULL accepted orders allowed.
-        insert into public.match_event_registrations(match_event_id,user_id,lifecycle,requested_at,registration_source)
-          values (v_event,v_first,'pending',now(),'member'), (v_event,v_second,'pending',now(),'member');
+         insert into public.match_event_registrations(match_event_id,user_id,lifecycle,requested_at,registration_source)
+           values (v_event,v_first,'pending',now(),'member'), (v_event,v_second,'pending',now(),'member');
+         insert into public.match_event_registration_attempts(registration_id,match_event_id,user_id,requested_at,outcome,registration_source)
+           select id,match_event_id,user_id,requested_at,'pending',registration_source from public.match_event_registrations where match_event_id=v_event and current_attempt_id is null;
+         update public.match_event_registrations r set current_attempt_id=a.id from public.match_event_registration_attempts a where a.registration_id=r.id and r.match_event_id=v_event and r.current_attempt_id is null;
         select count(*) into v_row from public.match_event_registrations
          where match_event_id=v_event and lifecycle='pending' and accepted_order is null and accepted_at is null
            and participation_status is null and approved_at is null;
@@ -374,8 +377,9 @@ describe('match registration schema integration', () => {
           raise exception 'accepted row without accepted_at was accepted';
         exception when check_violation then null; end;
         begin
-          update public.match_event_registrations set lifecycle='accepted', accepted_at=now(), accepted_order=2
-            where match_event_id=v_event and user_id=v_second;
+           update public.match_event_registrations set lifecycle='accepted', accepted_at=now(), accepted_order=2
+             where match_event_id=v_event and user_id=v_second;
+           set constraints all immediate;
           raise exception 'accepted row without participation_status was accepted';
         exception when check_violation then null; end;
 
@@ -390,7 +394,8 @@ describe('match registration schema integration', () => {
               update public.match_event_registrations set participation_status='playing' where match_event_id=v_event and user_id=v_second;
             else
               update public.match_event_registrations set approved_at=now() where match_event_id=v_event and user_id=v_second;
-            end if;
+             end if;
+             set constraints all immediate;
             raise exception 'pending row accepted anchor case %', v_ordinal;
           exception when check_violation then null; end;
         end loop;
@@ -425,7 +430,8 @@ describe('match registration schema integration', () => {
           update public.match_event_registrations set accepted_order=1 where match_event_id=v_event and user_id=v_first;
           raise exception 'duplicate accepted_order per event was accepted';
         exception when unique_violation then null; end;
-        update public.match_event_registrations set accepted_order=2 where match_event_id=v_second_event and user_id=v_creator;
+         insert into public.match_event_registrations(match_event_id,user_id,accepted_at,accepted_order,participation_status,registration_source)
+           values(v_second_event,v_first,now(),2,'reserve','member');
         if (select count(*) from public.match_event_registrations where accepted_order=2) < 2 then
           raise exception 'same accepted_order must be reusable across events';
         end if;
@@ -466,19 +472,23 @@ describe('match registration schema integration', () => {
 
         -- Attempts rules: FK to the registration identity and decided-accepted CHECK.
         begin
-          insert into public.match_event_registration_attempts(match_event_id,user_id,requested_at,outcome)
-            values (v_event, gen_random_uuid(), now(), 'rejected');
+           insert into public.match_event_registration_attempts(registration_id,match_event_id,user_id,requested_at,outcome,registration_source)
+             values (gen_random_uuid(),v_event, gen_random_uuid(), now(), 'rejected','member');
           raise exception 'attempt for unknown registration identity was accepted';
         exception when foreign_key_violation then null; end;
         begin
-          insert into public.match_event_registration_attempts(match_event_id,user_id,requested_at,outcome)
-            values (v_event, v_second, now(), 'accepted');
+           insert into public.match_event_registration_attempts(registration_id,match_event_id,user_id,requested_at,outcome,registration_source,accepted_at,accepted_order)
+             select id,v_event,v_second,now(),'accepted','member',now(),3 from public.match_event_registrations where match_event_id=v_event and user_id=v_second;
           raise exception 'accepted attempt without decided_at was accepted';
         exception when check_violation then null; end;
-        insert into public.match_event_registration_attempts(match_event_id,user_id,requested_at,outcome,decided_at,actor_id)
-          values (v_event, v_second, now(), 'accepted', now(), v_creator),
-                 (v_event, v_second, now(), 'pending', null, null),
-                 (v_event, v_second, now(), 'expired', null, v_creator);
+         -- Finish canonical fixtures before validating deferred commit state.
+         update public.match_event_registration_attempts a set outcome=r.lifecycle,
+           decided_at=now(),actor_id=v_creator,accepted_at=r.accepted_at,approved_at=r.approved_at,accepted_order=r.accepted_order
+           from public.match_event_registrations r where a.id=r.current_attempt_id and a.outcome='pending' and r.match_event_id=v_event;
+         insert into public.match_event_registration_attempts(registration_id,match_event_id,user_id,requested_at,decided_at,outcome,accepted_at,accepted_order,registration_source)
+           select id,match_event_id,user_id,accepted_at,accepted_at,'accepted',accepted_at,accepted_order,registration_source from public.match_event_registrations where match_event_id=v_second_event and current_attempt_id is null;
+         update public.match_event_registrations r set current_attempt_id=a.id from public.match_event_registration_attempts a where a.registration_id=r.id and r.match_event_id=v_second_event and r.current_attempt_id is null;
+         set constraints all immediate;
        end $$;`
         )
       ).toBe('DO');
@@ -527,7 +537,10 @@ describe('match registration schema integration', () => {
         where e.id = v_event
         group by e.id;
         select next_accepted_ordinal into v_ordinal from public.match_event_registration_state where match_event_id=v_event;
-        if v_ordinal is distinct from 4 then raise exception 'backfill ordinal mismatch: %', v_ordinal; end if;
+         if v_ordinal is distinct from 4 then raise exception 'backfill ordinal mismatch: %', v_ordinal; end if;
+         insert into public.match_event_registration_attempts(registration_id,match_event_id,user_id,requested_at,decided_at,outcome,accepted_at,accepted_order,registration_source)
+           select id,match_event_id,user_id,accepted_at,accepted_at,'accepted',accepted_at,accepted_order,registration_source from public.match_event_registrations where match_event_id=v_event and current_attempt_id is null;
+         update public.match_event_registrations r set current_attempt_id=a.id from public.match_event_registration_attempts a where a.registration_id=r.id and r.match_event_id=v_event and r.current_attempt_id is null;
 
         -- The backfill rule is scoped to the event this suite owns. accepted_order
         -- is the authoritative FIFO ordinal (assigned by the migration backfill and

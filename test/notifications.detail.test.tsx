@@ -358,10 +358,35 @@ describe('notification detail page', () => {
     expect(mocks.targetV1).not.toHaveBeenCalled();
   });
 
+  it('uses current FIFO position rather than historical ordinal after departures', async () => {
+    mountPage(
+      { ...availableMatch, kind: 'match_registration_playing' },
+      matchContext('Current court', {
+        caller_participation: 'playing',
+        caller_accepted_order: 5,
+        caller_roster_position: 4,
+        playing_count: 4
+      })
+    );
+    expect(
+      await screen.findByRole('heading', {
+        name: fill(copy.match.registrationPlayingTitle, { group: 1 })
+      })
+    ).toBeTruthy();
+    expect(
+      screen.queryByRole('heading', {
+        name: fill(copy.match.registrationPlayingTitle, { group: 2 })
+      })
+    ).toBeNull();
+  });
+
   it.each([
     ['match_invitation_accepted', 'invitationAcceptedBody'],
     ['match_invitation_declined', 'invitationDeclinedBody'],
-    ['match_invitation_expired', 'invitationExpiredBody']
+    ['match_invitation_expired', 'invitationExpiredBody'],
+    ['match_registration_withdrawn', 'registrationWithdrawnBody'],
+    ['match_registration_removed', 'registrationRemovedBody'],
+    ['match_registration_group_changed', 'registrationGroupChangedBody']
   ] as const)('renders %s with lifecycle copy and safe match target', async (kind, body) => {
     mountPage({ ...availableMatch, kind }, matchContext('Invitation court'));
     expect(await screen.findByRole('heading', { name: copy.kinds[kind] })).toBeTruthy();

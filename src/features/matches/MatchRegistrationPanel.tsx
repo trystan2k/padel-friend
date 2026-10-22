@@ -23,6 +23,7 @@ import {
   registrationStateTone
 } from './match-status-tone';
 import { useMatchRegistration } from './use-match-registration';
+import { MatchParticipantActions } from './MatchParticipantActions';
 
 // PAF-5.5: the player's own registration area on the match detail screen.
 // States: direct join, request, pending / approved / declined / expired, full
@@ -314,11 +315,8 @@ export function MatchRegistrationPanel({
     // Fallback: the caller's own placement row when the roster read is empty or
     // unavailable. This is the pre-roster behaviour, preserved.
     const participation = registration.participation;
-    const group = matchRegistrationGroup(registration.accepted_order);
-    const reservePosition = matchRegistrationReservePosition(
-      registration.accepted_order,
-      counts.playing
-    );
+    const group = matchRegistrationGroup(registration.position);
+    const reservePosition = matchRegistrationReservePosition(registration.position, counts.playing);
     const title =
       participation === 'playing'
         ? t('matchRegistration.roster.groupTitle', { group })
@@ -367,11 +365,8 @@ export function MatchRegistrationPanel({
   let body: ReactNode;
   if (registration.state === 'accepted') {
     const participation = registration.participation;
-    const group = matchRegistrationGroup(registration.accepted_order);
-    const reservePosition = matchRegistrationReservePosition(
-      registration.accepted_order,
-      counts.playing
-    );
+    const group = matchRegistrationGroup(registration.position);
+    const reservePosition = matchRegistrationReservePosition(registration.position, counts.playing);
     // PAF-5 review F27: only an organizer decision carries `approved_at`. A
     // direct join (or the creator's own slot) must not borrow the approval badge
     // or an "Approved at …" sentence with a timestamp that does not exist.
@@ -422,7 +417,37 @@ export function MatchRegistrationPanel({
           </Link>
         </div>
         <FeedbackOutput message={feedbackMessage} />
+        {registration.attempt_id && (
+          <MatchParticipantActions
+            key={`${eventId}:${registration.attempt_id}`}
+            eventId={eventId}
+            attemptId={registration.attempt_id}
+            disabled={controller.cutoffReached || action === 'closed'}
+          />
+        )}
         {rosterBlock}
+      </div>
+    );
+  } else if (registration.state === 'withdrawn' || registration.state === 'removed_by_creator') {
+    body = (
+      <div {...stylex.props(s.body)}>
+        <p {...stylex.props(s.copy)}>
+          {t(
+            registration.state === 'withdrawn'
+              ? 'matches.management.withdrawn'
+              : 'matches.management.removed'
+          )}
+        </p>
+        {registration.removal_reason && (
+          <p {...stylex.props(s.copy)}>
+            {t('matches.management.removalReason', { reason: registration.removal_reason })}
+          </p>
+        )}
+        {(action === 'join' || action === 'request' || action === 'invited') &&
+          submitButton(t('matches.management.reenter'), controller.pending || !controller.online)}
+        {action === 'closed' && <p>{t('matches.management.errors.closed')}</p>}
+        {action === 'full' && <p>{t('matchRegistration.full.copy', { maximum })}</p>}
+        <FeedbackOutput message={feedbackMessage} />
       </div>
     );
   } else if (registration.state === 'pending') {
@@ -590,7 +615,7 @@ export function MatchRegistrationPanel({
   return (
     <section aria-labelledby="match-registration-heading" {...stylex.props(s.panel)}>
       <header {...stylex.props(s.header)}>
-        <h2 id="match-registration-heading" {...stylex.props(s.title)}>
+        <h2 id="match-registration-heading" tabIndex={-1} {...stylex.props(s.title)}>
           {requester
             ? t('matchRegistration.request.back')
             : t('matchRegistration.join.sectionTitle')}

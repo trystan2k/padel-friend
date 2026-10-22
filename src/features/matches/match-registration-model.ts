@@ -221,6 +221,7 @@ export type MyMatchRegistration =
     }
   | {
       state: 'accepted';
+      attempt_id?: string;
       event_id: string;
       participation: MatchRegistrationParticipation;
       accepted_order: number;
@@ -241,6 +242,16 @@ export type MyMatchRegistration =
       event_id: string;
       registration_source: MatchRegistrationSource;
       resolved_at: string | null;
+    }
+  | {
+      state: 'withdrawn' | 'removed_by_creator';
+      event_id: string;
+      attempt_id: string;
+      accepted_order: number;
+      accepted_at: string;
+      left_at: string | null;
+      removal_reason: string | null;
+      registration_source: MatchRegistrationSource;
     };
 
 export type MyMatchRegistrationResult =
@@ -255,6 +266,32 @@ export function parseMyMatchRegistration(value: unknown): MyMatchRegistration | 
   if (lifecycle === null || lifecycle === undefined) return { state: 'none' };
   const registration_source = asSource(value.registration_source);
   if (!registration_source) return null;
+  if (lifecycle === 'withdrawn' || lifecycle === 'removed_by_creator') {
+    const attempt_id = asUuid(value.attempt_id);
+    const accepted_order = asPositiveInteger(value.accepted_order);
+    const accepted_at = asText(value.accepted_at);
+    const left_at = asNullableText(value.left_at);
+    const removal_reason = asNullableText(value.removal_reason);
+    if (
+      !attempt_id ||
+      accepted_order === null ||
+      !accepted_at ||
+      value.participation !== null ||
+      (lifecycle === 'withdrawn' && !left_at) ||
+      (lifecycle === 'removed_by_creator' && !removal_reason)
+    )
+      return null;
+    return {
+      state: lifecycle,
+      event_id,
+      attempt_id,
+      accepted_order,
+      accepted_at,
+      left_at,
+      removal_reason,
+      registration_source
+    };
+  }
   if (lifecycle === 'pending')
     return {
       state: 'pending',
@@ -263,6 +300,7 @@ export function parseMyMatchRegistration(value: unknown): MyMatchRegistration | 
       requested_at: asNullableText(value.requested_at)
     };
   if (lifecycle === 'accepted') {
+    if (value.attempt_id !== undefined && !asUuid(value.attempt_id)) return null;
     const participation = asParticipation(value.participation);
     const accepted_order = asPositiveInteger(value.accepted_order);
     const position = asCount(value.position);
@@ -270,6 +308,7 @@ export function parseMyMatchRegistration(value: unknown): MyMatchRegistration | 
     if (!participation || accepted_order === null || position === null || !accepted_at) return null;
     return {
       state: 'accepted',
+      ...(asUuid(value.attempt_id) ? { attempt_id: asUuid(value.attempt_id)! } : {}),
       event_id,
       participation,
       accepted_order,
