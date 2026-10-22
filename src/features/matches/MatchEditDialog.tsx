@@ -33,7 +33,7 @@ export function MatchEditDialog({
     setErrors({});
   };
   const field = (
-    name: Exclude<keyof MatchEditDraft, 'currency'>,
+    name: Exclude<keyof MatchEditDraft, 'currency' | 'eventType'>,
     type: 'text' | 'url' | 'number' | 'datetime-local' = 'text'
   ) => (
     <MatchDetailTextField
@@ -71,7 +71,7 @@ export function MatchEditDialog({
           }
         >
           <Dialog.Title>{t('matches.management.edit.title')}</Dialog.Title>
-          <Dialog.Description>{t('matches.management.edit.minorNotice')}</Dialog.Description>
+          <Dialog.Description>{t('matches.reconfirmation.description')}</Dialog.Description>
           {action.conflict && (
             <section role="alert" {...stylex.props(s.section)}>
               <h3>{t('matches.management.edit.conflictTitle')}</h3>
@@ -121,6 +121,23 @@ export function MatchEditDialog({
             }}
           >
             <fieldset disabled={action.pending || saved} {...stylex.props(s.section)}>
+              <label>
+                {t('matchCreate.fields.type')}
+                <select
+                  value={draft.eventType}
+                  onChange={(e) =>
+                    change(
+                      'eventType',
+                      e.target.value === 'competitive' ? 'competitive' : 'friendly'
+                    )
+                  }
+                  {...stylex.props(s.input)}
+                >
+                  <option value="friendly">{t('matches.type.friendly')}</option>
+                  <option value="competitive">{t('matches.type.competitive')}</option>
+                </select>
+              </label>
+              {field('startsAt', 'datetime-local')}
               {field('venueName')}
               {field('mapsUrl', 'url')}
               {field('courtNotes')}

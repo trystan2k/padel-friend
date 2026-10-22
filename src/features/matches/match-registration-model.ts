@@ -104,7 +104,9 @@ export type AcceptedMatchRegistration = {
   event_id: string;
   user_id: string;
   lifecycle: 'accepted';
-  participation: MatchRegistrationParticipation;
+  participation: MatchRegistrationParticipation | null;
+  required_generation?: number;
+  confirmed_generation?: number;
   accepted_order: number;
   registration_source: MatchRegistrationSource;
   approved_at: string | null;
@@ -148,7 +150,13 @@ function parseAccepted(value: Record<string, unknown>): AcceptedMatchRegistratio
   if (
     !event_id ||
     !user_id ||
-    !participation ||
+    (!participation &&
+      !(
+        value.participation === null &&
+        asCount(value.required_generation) !== null &&
+        asCount(value.confirmed_generation) !== null &&
+        Number(value.confirmed_generation) < Number(value.required_generation)
+      )) ||
     accepted_order === null ||
     !registration_source ||
     !accepted_at
@@ -159,6 +167,12 @@ function parseAccepted(value: Record<string, unknown>): AcceptedMatchRegistratio
     user_id,
     lifecycle: 'accepted',
     participation,
+    ...(asCount(value.required_generation) !== null && asCount(value.confirmed_generation) !== null
+      ? {
+          required_generation: Number(value.required_generation),
+          confirmed_generation: Number(value.confirmed_generation)
+        }
+      : {}),
     accepted_order,
     registration_source,
     approved_at,
@@ -219,6 +233,17 @@ export function parseDecideMatchRegistrationResult(
 
 export type MyMatchRegistration =
   | { state: 'none' }
+  | {
+      state: 'reconfirmation_required';
+      event_id: string;
+      attempt_id: string;
+      accepted_order: number;
+      accepted_at: string;
+      required_generation: number;
+      confirmed_generation: number;
+      registration_source: MatchRegistrationSource;
+      registration_cutoff_at: string;
+    }
   | {
       state: 'cancelled';
       event_id: string;
@@ -318,6 +343,35 @@ export function parseMyMatchRegistration(value: unknown): MyMatchRegistration | 
       requested_at: asNullableText(value.requested_at)
     };
   if (lifecycle === 'accepted') {
+    const required = asCount(value.required_generation ?? 0);
+    const confirmed = asCount(value.confirmed_generation ?? 0);
+    if (required === null || confirmed === null || confirmed > required) return null;
+    if (confirmed < required) {
+      const attempt_id = asUuid(value.attempt_id);
+      const accepted_order = asPositiveInteger(value.accepted_order);
+      const accepted_at = asText(value.accepted_at);
+      const deadline = asText(value.registration_cutoff_at);
+      if (
+        !attempt_id ||
+        accepted_order === null ||
+        !accepted_at ||
+        !deadline ||
+        !Number.isFinite(Date.parse(deadline)) ||
+        value.participation !== null
+      )
+        return null;
+      return {
+        state: 'reconfirmation_required',
+        event_id,
+        attempt_id,
+        accepted_order,
+        accepted_at,
+        required_generation: required,
+        confirmed_generation: confirmed,
+        registration_source,
+        registration_cutoff_at: deadline
+      };
+    }
     if (value.attempt_id !== undefined && !asUuid(value.attempt_id)) return null;
     const participation = asParticipation(value.participation);
     const accepted_order = asPositiveInteger(value.accepted_order);

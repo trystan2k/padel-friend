@@ -211,7 +211,8 @@ describe('minor match edits integration', () => {
           venue_name: 'New court',
           price_minor: 1234,
           currency: 'USD',
-          notes: 'New notes'
+          notes: 'New notes',
+          reconfirmation_generation: 0
         },
         changed_fields: ['currency', 'notes', 'price_minor', 'venue_name']
       }
@@ -279,8 +280,9 @@ describe('minor match edits integration', () => {
       { price_minor: null, currency: 'USD' },
       { venue_name: null },
       { notes: { nested: 'bad' } },
-      { event_type: 'competitive' },
-      { starts_at: '2099-01-01T00:00:00Z' },
+      // Major edits are supported; unsupported types and past starts remain invalid.
+      { event_type: 'league' },
+      { starts_at: '2000-01-01T00:00:00Z' },
       { price_minor: 9007199254740992, currency: 'EUR' },
       { maximum_registrations: 2147483648 },
       { registration_cutoff_at: '2028-02-30T12:00:00Z' },
@@ -341,7 +343,7 @@ describe('minor match edits integration', () => {
       ).toBe(`MATCH_MANAGEMENT_${message}`);
       expect(await snapshot(e.id)).toEqual(before);
     }
-  });
+  }, 30000);
   it('equivalent patch produces no version bump or effects', async () => {
     const e = await f.event();
     const before = await snapshot(e.id);

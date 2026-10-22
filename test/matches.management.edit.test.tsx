@@ -61,7 +61,7 @@ describe('minor edit dialog', () => {
     expect(mocks.invalidate).not.toHaveBeenCalled();
     view.rerender(element('en', 2));
     await userEvent.click(screen.getByRole('button', { name: 'Review my draft' }));
-    expect(document.activeElement).toBe(venue);
+    expect(document.activeElement).toBe(screen.getByLabelText('Start date and time'));
     expect(mocks.edit).toHaveBeenCalledOnce();
     expect(screen.getByRole<HTMLButtonElement>('button', { name: 'Save changes' }).disabled).toBe(
       true
@@ -94,8 +94,8 @@ describe('minor edit dialog', () => {
         'cutoff'
       ])
         expect(screen.getByLabelText(i18n.t(`matchCreate.fields.${field}`))).toBeTruthy();
-      expect(screen.getByText(i18n.t('matches.management.edit.minorNotice'))).toBeTruthy();
-      expect(screen.queryByLabelText(i18n.t('matchCreate.fields.type'))).toBeNull();
+      expect(screen.getByText(i18n.t('matches.reconfirmation.description'))).toBeTruthy();
+      expect(screen.getByLabelText(i18n.t('matchCreate.fields.type'))).toBeTruthy();
       const capacity = screen.getByLabelText(i18n.t('matchCreate.fields.maximumRegistrations'));
       await userEvent.clear(capacity);
       await userEvent.type(capacity, '1');

@@ -1,6 +1,6 @@
 import { validateMatchUuid } from './matches.validators';
 import {
-  MINOR_EDIT_KEYS,
+  MATCH_EDIT_KEYS,
   validMatchMapsUrl,
   hasMatchControlCharacters,
   validateEditInstant,
@@ -78,9 +78,9 @@ export function validateMatchEditDraft(
 
 export function validateEditMatchEvent(value: unknown) {
   const data = exact(value, ['event_id', 'expected_version', 'patch', 'request_id']);
-  const raw = exact(data.patch, MINOR_EDIT_KEYS);
+  const raw = exact(data.patch, MATCH_EDIT_KEYS);
   const patch: MatchEditPatch = {};
-  for (const key of MINOR_EDIT_KEYS) {
+  for (const key of MATCH_EDIT_KEYS) {
     if (!Object.hasOwn(raw, key)) continue;
     const item = raw[key];
     if (key === 'price_minor' || key === 'maximum_registrations') {
@@ -97,8 +97,12 @@ export function validateEditMatchEvent(value: unknown) {
       if (item !== null && item !== 'BRL' && item !== 'USD' && item !== 'EUR')
         throw new Error('INVALID_MATCH_INPUT');
       patch.currency = item;
-    } else if (key === 'registration_cutoff_at') patch[key] = validateEditInstant(item);
-    else {
+    } else if (key === 'registration_cutoff_at' || key === 'starts_at')
+      patch[key] = validateEditInstant(item);
+    else if (key === 'event_type') {
+      if (item !== 'competitive' && item !== 'friendly') throw new Error('INVALID_MATCH_INPUT');
+      patch[key] = item;
+    } else {
       const nullable = key !== 'venue_name' && key !== 'maps_url';
       const max =
         key === 'venue_name' ? 120 : key === 'maps_url' ? 2048 : key === 'notes' ? 2000 : 300;

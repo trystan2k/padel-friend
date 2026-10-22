@@ -428,6 +428,22 @@ export function MatchRegistrationPanel({
         {rosterBlock}
       </div>
     );
+  } else if (registration.state === 'reconfirmation_required') {
+    body = (
+      <div {...stylex.props(s.body)}>
+        <StatusBadge>{t('matches.reconfirmation.requiredBadge')}</StatusBadge>
+        <p>
+          {t('matches.reconfirmation.deadline', {
+            deadline: cutoffLabel(i18n.language, registration.registration_cutoff_at, timeZone)
+          })}
+        </p>
+        <MatchParticipantActions
+          eventId={eventId}
+          attemptId={registration.attempt_id}
+          disabled={controller.cutoffReached || action === 'closed'}
+        />
+      </div>
+    );
   } else if (registration.state === 'withdrawn' || registration.state === 'removed_by_creator') {
     body = (
       <div {...stylex.props(s.body)}>

@@ -38,6 +38,8 @@ type MatchEventProjection = StoredProjection & {
   creator_name: string | null;
   creator_level: number | null;
   accepted_count: number;
+  reconfirmation_required_count?: number;
+  reconfirmation_generation?: number;
   playing_count: number;
   reserve_count: number;
   reserve_not_playing_count: number;
@@ -53,6 +55,7 @@ type MatchEventProjection = StoredProjection & {
 
 export type MatchCallerBadge =
   | 'creator'
+  | 'reconfirmation_required'
   | 'playing'
   | 'reserve'
   | 'reserve_not_playing'

@@ -3,6 +3,7 @@ import { StatusBadge } from '../../components/ui/StatusBadge';
 import { Link } from '@tanstack/react-router';
 import { useRef, useState } from 'react';
 import { MatchEditDialog } from './MatchEditDialog';
+import { MatchReconfirmationPanel } from './MatchReconfirmationPanel';
 import { useTranslation } from 'react-i18next';
 import { MatchRegistrationPanel } from './MatchRegistrationPanel';
 import { MatchInvitationPanel } from './MatchInvitationPanel';
@@ -73,7 +74,8 @@ export function MatchDetailPage({
     null
   );
   const eventId = event?.event_id ?? '';
-  const callerAccepted = registration?.state === 'accepted';
+  const callerAccepted =
+    registration?.state === 'accepted' || registration?.state === 'reconfirmation_required';
   const canonical =
     typeof window === 'undefined'
       ? `/matches/${eventId}`
@@ -155,6 +157,15 @@ export function MatchDetailPage({
         />
       )}
       <div {...stylex.props(s.detailGroups)}>
+        {event.status !== 'cancelled' && (
+          <MatchReconfirmationPanel
+            key={`${eventId}:${event.reconfirmation_generation ?? 0}`}
+            event={event}
+            registration={registration}
+            participants={managementParticipants}
+            isCreator={isCreator}
+          />
+        )}
         <section aria-labelledby="match-overview-heading" {...stylex.props(s.detailGroup)}>
           <h2 id="match-overview-heading" {...stylex.props(s.sectionTitle)}>
             {t('matches.detail.overview')}

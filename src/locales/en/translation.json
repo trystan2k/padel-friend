@@ -471,7 +471,10 @@
       "match_registration_group_changed": "Match group changed",
       "match_event_ownership_transferred": "Match organizer changed",
       "match_event_cancelled": "Match cancelled",
-      "match_event_updated": "Match details updated"
+      "match_event_updated": "Match details updated",
+      "match_reconfirmation_required": "Review changed match terms",
+      "match_registration_reconfirmed": "Match participation reconfirmed",
+      "match_reconfirmation_expired": "Reconfirmation deadline passed"
     },
     "match": {
       "openEvent": "Open event",
@@ -506,6 +509,9 @@
       "ownershipTransferredBody": "Match organization was transferred. Check the event for the current organizer.",
       "cancelledBody": "This match was cancelled. Registration and participation are closed.",
       "updatedBody": "The organizer updated the match details. Review the latest venue, price, notes, and registration deadline.",
+      "reconfirmationRequiredBody": "The match type or start time changed. Your place counts toward capacity, but you are not in a quartet until you explicitly reconfirm before registration closes.",
+      "reconfirmedBody": "Participation was reconfirmed for the current match terms. Review the event for the latest quartet assignment.",
+      "reconfirmationExpiredBody": "A player did not reconfirm before registration closed and was excluded. Review the current roster.",
       "registrationExpiredBody": "Registration closed before a decision. No place was reserved.",
       "registrationNotPlayingBody": "Cutoff passed before a quartet completed. No match result will be recorded.",
       "unavailable": "This match notification is no longer available."
@@ -537,6 +543,19 @@
     "offline": "You are offline. Reconnect to save your preferences."
   },
   "matches": {
+    "reconfirmation": {
+      "title": "Reconfirm participation",
+      "description": "Changes to match type or start time require every accepted player, including the organizer, to review and explicitly reconfirm. Until then, players keep capacity and queue order but are not assigned to quartets.",
+      "deadline": "Reconfirm by {{deadline}}.",
+      "reviewTerms": "Review changed terms",
+      "confirm": "I confirm participation under these terms",
+      "confirmed": "Participation reconfirmed.",
+      "requiredBadge": "Not playing · awaiting reconfirmation",
+      "creatorSummary_one": "{{count}} player must reconfirm.",
+      "creatorSummary_other": "{{count}} players must reconfirm.",
+      "excluded": "The reconfirmation deadline passed. Players who did not reconfirm are excluded from participation.",
+      "staleGeneration": "Match terms changed again. Reload and review the latest terms before confirming."
+    },
     "management": {
       "edit": {
         "title": "Edit match details",
@@ -738,6 +757,7 @@
       "community": "Community",
       "date": "Date",
       "startTime": "Start time",
+      "startsAt": "Start date and time",
       "timezone": "Timezone",
       "type": "Match type",
       "visibility": "Visibility",

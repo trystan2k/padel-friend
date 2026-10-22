@@ -1,27 +1,29 @@
 import type { MatchRegistrationParticipation } from './match-registration-model';
 import type { Json } from '../../lib/supabase/database.types';
-import { MINOR_EDIT_KEYS } from './match-management-edit';
+import { MATCH_EDIT_KEYS } from './match-management-edit';
 
 export type MatchEditSuccess = ManagementSuccess & {
-  change_kind: 'none' | 'minor';
+  change_kind: 'none' | 'minor' | 'major';
   changed_fields: string[];
-  reconfirmation_generation: 0;
+  reconfirmation_generation: number;
 };
 export function parseMatchEditSuccess(value: unknown): ManagementResult<MatchEditSuccess> | null {
   const parsed = parseManagementSuccess(value);
   if (
     parsed?.status !== 'ok' ||
     !record(value) ||
-    (value.change_kind !== 'none' && value.change_kind !== 'minor') ||
-    value.reconfirmation_generation !== 0 ||
+    (value.change_kind !== 'none' &&
+      value.change_kind !== 'minor' &&
+      value.change_kind !== 'major') ||
+    !integer(value.reconfirmation_generation) ||
     !Array.isArray(value.changed_fields) ||
     !value.changed_fields.every(
       (key): key is string =>
         typeof key === 'string' &&
-        [...MINOR_EDIT_KEYS, 'saved_venue_id'].some((candidate) => candidate === key)
+        [...MATCH_EDIT_KEYS, 'saved_venue_id'].some((candidate) => candidate === key)
     ) ||
     value.changed_fields.length !== new Set(value.changed_fields).size ||
-    parsed.value.changed !== (value.change_kind === 'minor') ||
+    parsed.value.changed !== (value.change_kind !== 'none') ||
     parsed.value.changed !== value.changed_fields.length > 0
   )
     return null;
@@ -31,7 +33,7 @@ export function parseMatchEditSuccess(value: unknown): ManagementResult<MatchEdi
       ...parsed.value,
       change_kind: value.change_kind,
       changed_fields: value.changed_fields,
-      reconfirmation_generation: 0
+      reconfirmation_generation: value.reconfirmation_generation
     }
   };
 }
@@ -88,7 +90,9 @@ export type ManagementParticipant = {
   display_name: string | null;
   display_level: number | null;
   lifecycle: 'accepted';
-  participation: MatchRegistrationParticipation;
+  participation: MatchRegistrationParticipation | null;
+  required_generation?: number;
+  confirmed_generation?: number;
   accepted_order: number;
 };
 export type MatchAuditEntry = {
@@ -278,6 +282,10 @@ export function parseManagementParticipants(value: unknown): ManagementParticipa
         (typeof row.display_level === 'number' && Number.isFinite(row.display_level))
       ) ||
       !(
+        (row.participation === null &&
+          integer(row.required_generation) &&
+          integer(row.confirmed_generation) &&
+          row.confirmed_generation < row.required_generation) ||
         row.participation === 'playing' ||
         row.participation === 'reserve' ||
         row.participation === 'reserve_not_playing'
@@ -292,6 +300,12 @@ export function parseManagementParticipants(value: unknown): ManagementParticipa
       display_name: row.display_name,
       display_level: row.display_level,
       participation: row.participation,
+      ...(integer(row.required_generation) && integer(row.confirmed_generation)
+        ? {
+            required_generation: row.required_generation,
+            confirmed_generation: row.confirmed_generation
+          }
+        : {}),
       accepted_order: row.accepted_order
     });
   }

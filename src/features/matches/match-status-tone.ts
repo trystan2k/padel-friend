@@ -38,5 +38,6 @@ export const callerBadgeTone = {
   playing: 'positive',
   reserve: 'neutral',
   reserve_not_playing: 'muted',
-  invited: 'neutral'
+  invited: 'neutral',
+  reconfirmation_required: 'danger'
 } satisfies Record<MatchCallerBadge, StatusBadgeTone>;

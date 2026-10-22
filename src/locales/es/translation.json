@@ -471,7 +471,10 @@
       "match_registration_group_changed": "Grupo del partido actualizado",
       "match_event_ownership_transferred": "Organizador del partido actualizado",
       "match_event_cancelled": "Partido cancelado",
-      "match_event_updated": "Detalles del partido actualizados"
+      "match_event_updated": "Detalles del partido actualizados",
+      "match_reconfirmation_required": "Revisa las condiciones del partido",
+      "match_registration_reconfirmed": "Participación reconfirmada",
+      "match_reconfirmation_expired": "Plazo de reconfirmación finalizado"
     },
     "match": {
       "openEvent": "Abrir evento",
@@ -506,6 +509,9 @@
       "ownershipTransferredBody": "La organización del partido se transfirió. Consulta el organizador actual en el evento.",
       "cancelledBody": "Este partido fue cancelado. Las inscripciones y la participación están cerradas.",
       "updatedBody": "El organizador actualizó los detalles del partido. Revisa el lugar, precio, notas y plazo de inscripción actuales.",
+      "reconfirmationRequiredBody": "El tipo u horario cambió. Tu plaza cuenta para el aforo, pero quedas fuera de los cuartetos hasta reconfirmar explícitamente antes del cierre de inscripciones.",
+      "reconfirmedBody": "La participación se reconfirmó con las condiciones actuales. Consulta la asignación actual de cuartetos en el partido.",
+      "reconfirmationExpiredBody": "Un jugador no reconfirmó dentro del plazo y quedó excluido de la participación. Revisa la lista actual.",
       "registrationExpiredBody": "La inscripción cerró antes de una decisión. No se reservó ninguna plaza.",
       "registrationNotPlayingBody": "El plazo pasó antes de que se completara un cuarteto. No se registrará ningún resultado del partido.",
       "unavailable": "Esta notificación de partido ya no está disponible."
@@ -537,6 +543,19 @@
     "offline": "No tienes conexión. Vuelve a conectarte para guardar tus preferencias."
   },
   "matches": {
+    "reconfirmation": {
+      "title": "Reconfirma tu participación",
+      "description": "Los cambios de tipo u horario requieren que todos los jugadores aceptados, incluido el organizador, revisen y reconfirmen explícitamente. Mientras tanto, conservan plaza y orden, pero quedan fuera de los cuartetos.",
+      "deadline": "Reconfirma antes de {{deadline}}.",
+      "reviewTerms": "Revisar condiciones modificadas",
+      "confirm": "Confirmo mi participación con estas condiciones",
+      "confirmed": "Participación reconfirmada.",
+      "requiredBadge": "No juega · pendiente de reconfirmación",
+      "creatorSummary_one": "{{count}} jugador debe reconfirmar.",
+      "creatorSummary_other": "{{count}} jugadores deben reconfirmar.",
+      "excluded": "El plazo de reconfirmación terminó. Los jugadores que no reconfirmaron quedaron excluidos de la participación.",
+      "staleGeneration": "Las condiciones cambiaron de nuevo. Recarga y revisa las condiciones actuales antes de confirmar."
+    },
     "management": {
       "edit": {
         "title": "Editar detalles del partido",
@@ -738,6 +757,7 @@
       "community": "Comunidad",
       "date": "Fecha",
       "startTime": "Hora de inicio",
+      "startsAt": "Fecha y hora de inicio",
       "timezone": "Zona horaria",
       "type": "Tipo de partido",
       "visibility": "Visibilidad",

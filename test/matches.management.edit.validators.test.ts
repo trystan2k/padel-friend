@@ -8,6 +8,7 @@ import {
 const id = '11111111-1111-4111-8111-111111111111';
 const command = { event_id: id, expected_version: 1, request_id: id };
 const current = {
+  event_type: 'friendly' as const,
   venue_name: 'Court',
   maps_url: 'https://maps.google.com/maps/court',
   court_notes: null,
@@ -29,8 +30,8 @@ describe('minor edit validators', () => {
       { status: 'open' },
       { lifecycle: 'accepted' },
       { saved_venue_id: id },
-      { event_type: 'friendly' },
-      { starts_at: current.starts_at },
+      { event_type: 'unknown' },
+      { starts_at: null },
       { version: 2 },
       { venue_name: null },
       { maps_url: null },

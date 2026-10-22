@@ -569,6 +569,7 @@ export type Database = {
           accepted_order: number | null
           actor_id: string | null
           approved_at: string | null
+          confirmed_generation: number
           decided_at: string | null
           end_kind: string | null
           end_reason: string | null
@@ -577,9 +578,11 @@ export type Database = {
           id: string
           match_event_id: string
           outcome: Database["public"]["Enums"]["match_registration_lifecycle"]
+          reconfirmed_at: string | null
           registration_id: string
           registration_source: Database["public"]["Enums"]["match_registration_source"]
           requested_at: string
+          required_generation: number
           user_id: string
         }
         ComputedFields: never
@@ -588,6 +591,7 @@ export type Database = {
           accepted_order?: number | null
           actor_id?: string | null
           approved_at?: string | null
+          confirmed_generation?: number
           decided_at?: string | null
           end_kind?: string | null
           end_reason?: string | null
@@ -596,9 +600,11 @@ export type Database = {
           id?: string
           match_event_id: string
           outcome: Database["public"]["Enums"]["match_registration_lifecycle"]
+          reconfirmed_at?: string | null
           registration_id: string
           registration_source: Database["public"]["Enums"]["match_registration_source"]
           requested_at: string
+          required_generation?: number
           user_id: string
         }
         Update: {
@@ -606,6 +612,7 @@ export type Database = {
           accepted_order?: number | null
           actor_id?: string | null
           approved_at?: string | null
+          confirmed_generation?: number
           decided_at?: string | null
           end_kind?: string | null
           end_reason?: string | null
@@ -614,9 +621,11 @@ export type Database = {
           id?: string
           match_event_id?: string
           outcome?: Database["public"]["Enums"]["match_registration_lifecycle"]
+          reconfirmed_at?: string | null
           registration_id?: string
           registration_source?: Database["public"]["Enums"]["match_registration_source"]
           requested_at?: string
+          required_generation?: number
           user_id?: string
         }
         Relationships: [
@@ -693,6 +702,7 @@ export type Database = {
           accepted_order: number | null
           approved_at: string | null
           cancelled_at: string | null
+          confirmed_generation: number
           current_attempt_id: string | null
           id: string
           left_at: string | null
@@ -701,10 +711,12 @@ export type Database = {
           participation_status:
             | Database["public"]["Enums"]["match_registration_participation"]
             | null
+          reconfirmed_at: string | null
           registration_source: Database["public"]["Enums"]["match_registration_source"]
           removal_reason: string | null
           removed_by: string | null
           requested_at: string | null
+          required_generation: number
           resolved_at: string | null
           resolved_by: string | null
           user_id: string
@@ -715,6 +727,7 @@ export type Database = {
           accepted_order?: number | null
           approved_at?: string | null
           cancelled_at?: string | null
+          confirmed_generation?: number
           current_attempt_id?: string | null
           id?: string
           left_at?: string | null
@@ -723,10 +736,12 @@ export type Database = {
           participation_status?:
             | Database["public"]["Enums"]["match_registration_participation"]
             | null
+          reconfirmed_at?: string | null
           registration_source: Database["public"]["Enums"]["match_registration_source"]
           removal_reason?: string | null
           removed_by?: string | null
           requested_at?: string | null
+          required_generation?: number
           resolved_at?: string | null
           resolved_by?: string | null
           user_id: string
@@ -736,6 +751,7 @@ export type Database = {
           accepted_order?: number | null
           approved_at?: string | null
           cancelled_at?: string | null
+          confirmed_generation?: number
           current_attempt_id?: string | null
           id?: string
           left_at?: string | null
@@ -744,10 +760,12 @@ export type Database = {
           participation_status?:
             | Database["public"]["Enums"]["match_registration_participation"]
             | null
+          reconfirmed_at?: string | null
           registration_source?: Database["public"]["Enums"]["match_registration_source"]
           removal_reason?: string | null
           removed_by?: string | null
           requested_at?: string | null
+          required_generation?: number
           resolved_at?: string | null
           resolved_by?: string | null
           user_id?: string
@@ -793,6 +811,7 @@ export type Database = {
           price_minor: number | null
           published_at: string
           published_by: string
+          reconfirmation_generation: number
           registration_cutoff_at: string
           restriction_enabled: boolean
           saved_venue_id: string | null
@@ -829,6 +848,7 @@ export type Database = {
           price_minor?: number | null
           published_at?: string
           published_by: string
+          reconfirmation_generation?: number
           registration_cutoff_at: string
           restriction_enabled?: boolean
           saved_venue_id?: string | null
@@ -864,6 +884,7 @@ export type Database = {
           price_minor?: number | null
           published_at?: string
           published_by?: string
+          reconfirmation_generation?: number
           registration_cutoff_at?: string
           restriction_enabled?: boolean
           saved_venue_id?: string | null
@@ -1142,6 +1163,7 @@ export type Database = {
       get_my_match_notification_contexts: {
         Args: { p_notification_ids: string[] }
         Returns: {
+          accepted_count: number
           caller_accepted_order: number
           caller_participation: Database["public"]["Enums"]["match_registration_participation"]
           caller_roster_position: number
@@ -1153,6 +1175,7 @@ export type Database = {
           notification_id: string
           playing_count: number
           price_minor: number
+          reconfirmation_required_count: number
           requester_display_name: string
           reserve_count: number
           reserve_not_playing_count: number
@@ -1266,6 +1289,7 @@ export type Database = {
           price_minor: number | null
           published_at: string
           published_by: string
+          reconfirmation_generation: number
           registration_cutoff_at: string
           restriction_enabled: boolean
           saved_venue_id: string | null
@@ -1310,6 +1334,7 @@ export type Database = {
           price_minor: number | null
           published_at: string
           published_by: string
+          reconfirmation_generation: number
           registration_cutoff_at: string
           restriction_enabled: boolean
           saved_venue_id: string | null
@@ -1356,6 +1381,7 @@ export type Database = {
             Returns: {
               accepted_count: number
               playing_count: number
+              reconfirmation_required_count: number
               reserve_count: number
               reserve_not_playing_count: number
             }[]
@@ -1365,6 +1391,7 @@ export type Database = {
             Returns: {
               accepted_count: number
               playing_count: number
+              reconfirmation_required_count: number
               reserve_count: number
               reserve_not_playing_count: number
             }[]
@@ -1457,6 +1484,15 @@ export type Database = {
             }
             Returns: Json
           }
+      reconfirm_match_registration: {
+        Args: {
+          p_attempt_id: string
+          p_generation: number
+          p_match_event_id: string
+          p_request_id: string
+        }
+        Returns: Json
+      }
       remove_match_registration: {
         Args: {
           p_attempt_id: string

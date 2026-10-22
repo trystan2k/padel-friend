@@ -18,6 +18,24 @@ function successfulRunner(calls: string[][]) {
 }
 
 describe('populated migration-up harness safety and ordering', () => {
+  it('rehearses consent generation against unit 4 with repeat-up evidence', () => {
+    const calls: string[][] = [];
+    runHarness({
+      env: {
+        CI: 'true',
+        POPULATED_UPGRADE_OPT_IN: '1',
+        POPULATED_UPGRADE_SCENARIO: 'reconfirmation'
+      },
+      run: successfulRunner(calls),
+      log: quiet
+    });
+    expect(calls[1]).toContain('20261021203000');
+    expect(
+      calls.filter((call) =>
+        call.some((arg) => arg.endsWith('matches-reconfirmation-upgrade-assertions.sql'))
+      )
+    ).toHaveLength(2);
+  });
   it('rehearses minor edits against the ownership predecessor and checks immutable snapshots twice', () => {
     const calls: string[][] = [];
     runHarness({

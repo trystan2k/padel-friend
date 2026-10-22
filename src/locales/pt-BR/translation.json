@@ -471,7 +471,10 @@
       "match_registration_group_changed": "Grupo da partida alterado",
       "match_event_ownership_transferred": "Organizador da partida alterado",
       "match_event_cancelled": "Partida cancelada",
-      "match_event_updated": "Detalhes da partida atualizados"
+      "match_event_updated": "Detalhes da partida atualizados",
+      "match_reconfirmation_required": "Revise as condições da partida",
+      "match_registration_reconfirmed": "Participação reconfirmada",
+      "match_reconfirmation_expired": "Prazo de reconfirmação encerrado"
     },
     "match": {
       "openEvent": "Abrir evento",
@@ -506,6 +509,9 @@
       "ownershipTransferredBody": "A organização da partida foi transferida. Confira o organizador atual no evento.",
       "cancelledBody": "Esta partida foi cancelada. Inscrições e participação estão encerradas.",
       "updatedBody": "O organizador atualizou os detalhes da partida. Confira local, preço, observações e prazo de inscrição atuais.",
+      "reconfirmationRequiredBody": "O tipo ou horário mudou. Sua vaga conta para a capacidade, mas você fica fora dos quartetos até reconfirmar explicitamente antes do encerramento das inscrições.",
+      "reconfirmedBody": "A participação foi reconfirmada nas condições atuais. Confira a composição atual dos quartetos na partida.",
+      "reconfirmationExpiredBody": "Um jogador não reconfirmou no prazo e foi excluído da participação. Confira a lista atual.",
       "registrationExpiredBody": "As inscrições encerraram antes de uma decisão. Nenhuma vaga foi reservada.",
       "registrationNotPlayingBody": "O prazo passou antes de um quarteto ser completado. Nenhum resultado de partida será registrado.",
       "unavailable": "Esta notificação de partida não está mais disponível."
@@ -537,6 +543,19 @@
     "offline": "Você está sem conexão. Reconecte-se para salvar suas preferências."
   },
   "matches": {
+    "reconfirmation": {
+      "title": "Reconfirme a participação",
+      "description": "Mudanças no tipo ou horário exigem que todos os jogadores aceitos, incluindo o organizador, revisem e reconfirmem explicitamente. Até lá, mantêm a vaga e a ordem na fila, mas ficam fora dos quartetos.",
+      "deadline": "Reconfirme até {{deadline}}.",
+      "reviewTerms": "Revisar condições alteradas",
+      "confirm": "Confirmo minha participação nestas condições",
+      "confirmed": "Participação reconfirmada.",
+      "requiredBadge": "Não joga · aguardando reconfirmação",
+      "creatorSummary_one": "{{count}} jogador precisa reconfirmar.",
+      "creatorSummary_other": "{{count}} jogadores precisam reconfirmar.",
+      "excluded": "O prazo de reconfirmação terminou. Jogadores que não reconfirmaram foram excluídos da participação.",
+      "staleGeneration": "As condições mudaram novamente. Recarregue e revise as condições atuais antes de confirmar."
+    },
     "management": {
       "edit": {
         "title": "Editar detalhes da partida",
@@ -738,6 +757,7 @@
       "community": "Comunidade",
       "date": "Data",
       "startTime": "Horário de início",
+      "startsAt": "Data e horário de início",
       "timezone": "Fuso horário",
       "type": "Tipo de partida",
       "visibility": "Visibilidade",

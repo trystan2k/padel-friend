@@ -15,7 +15,10 @@ export function MatchCard({ event }: { event: MatchEventCard }) {
   };
   const badge = event.caller_badge;
   const callerAccepted =
-    badge === 'playing' || badge === 'reserve' || badge === 'reserve_not_playing';
+    badge === 'playing' ||
+    badge === 'reserve' ||
+    badge === 'reserve_not_playing' ||
+    badge === 'reconfirmation_required';
   const starts = event.starts_at;
   const zone = event.timezone;
   const venue = event.venue_name;
@@ -92,7 +95,13 @@ export function MatchCard({ event }: { event: MatchEventCard }) {
         </p>
       )}
       {event.status !== 'cancelled' && badge && badge !== 'creator' && (
-        <StatusBadge appearance="emphasis">{t(`matches.badges.${badge}`)}</StatusBadge>
+        <StatusBadge appearance="emphasis">
+          {t(
+            badge === 'reconfirmation_required'
+              ? 'matches.reconfirmation.requiredBadge'
+              : `matches.badges.${badge}`
+          )}
+        </StatusBadge>
       )}
       {event.status !== 'cancelled' && event.caller_is_invited && (
         <p>{t('matches.detail.invitationInfo')}</p>

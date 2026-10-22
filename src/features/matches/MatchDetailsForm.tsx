@@ -35,7 +35,7 @@ export function MatchDetailTextField({
   type = 'text',
   constraints = {}
 }: {
-  name: TextField;
+  name: TextField | 'startsAt';
   value: string;
   onChange: (value: string) => void;
   error?: string;

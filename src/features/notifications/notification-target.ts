@@ -36,6 +36,8 @@ export type MatchNotificationContext = {
   venue: string;
   event_type: string;
   playing_count: number;
+  accepted_count?: number;
+  reconfirmation_required_count?: number;
   reserve_count: number;
   // Additive context count: ordinary Reserve excludes Reserve Not Playing, so a
   // notification surface can distinguish the two. Optional for older contexts.

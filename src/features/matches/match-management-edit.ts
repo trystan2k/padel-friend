@@ -13,8 +13,9 @@ export const MINOR_EDIT_KEYS = [
   'registration_cutoff_at'
 ] as const;
 export type MinorEditKey = (typeof MINOR_EDIT_KEYS)[number];
-export type MatchEditFacts = Pick<MatchEventDetail, MinorEditKey | 'starts_at'>;
-export type MatchEditPatch = Partial<Pick<MatchEditFacts, MinorEditKey>>;
+export const MATCH_EDIT_KEYS = [...MINOR_EDIT_KEYS, 'event_type', 'starts_at'] as const;
+export type MatchEditFacts = Pick<MatchEventDetail, MinorEditKey | 'starts_at' | 'event_type'>;
+export type MatchEditPatch = Partial<MatchEditFacts>;
 export type MatchEditDraft = {
   venueName: string;
   mapsUrl: string;
@@ -25,6 +26,8 @@ export type MatchEditDraft = {
   notes: string;
   maximumRegistrations: string;
   cutoff: string;
+  startsAt: string;
+  eventType: MatchEventDetail['event_type'];
 };
 export function hasMatchControlCharacters(value: string) {
   return value
@@ -105,7 +108,9 @@ export function matchEditDraft(event: MatchEventDetail): MatchEditDraft {
     notes: event.notes ?? '',
     maximumRegistrations:
       event.maximum_registrations === null ? '' : String(event.maximum_registrations),
-    cutoff: localInput(event.registration_cutoff_at, event.timezone)
+    cutoff: localInput(event.registration_cutoff_at, event.timezone),
+    startsAt: localInput(event.starts_at, event.timezone),
+    eventType: event.event_type
   };
 }
 export function matchEditDraftPatch(
@@ -117,6 +122,7 @@ export function matchEditDraftPatch(
   const [whole = '0', fraction = ''] = draft.price.split('.');
   const price = Number(BigInt(whole || '0') * 100n + BigInt(fraction.padEnd(2, '0')));
   const patch: MatchEditPatch = {
+    event_type: draft.eventType,
     venue_name: draft.venueName,
     maps_url: draft.mapsUrl,
     court_notes: draft.courtNotes || null,
@@ -128,6 +134,12 @@ export function matchEditDraftPatch(
       draft.maximumRegistrations === '' ? null : Number(draft.maximumRegistrations)
   };
   // Preserve sub-minute/millisecond precision when the cutoff was not edited.
+  if (draft.startsAt !== localInput(event.starts_at, event.timezone))
+    patch.starts_at = localMatchInstant(
+      draft.startsAt.slice(0, 10),
+      draft.startsAt.slice(11),
+      event.timezone
+    ).instant.toISOString();
   if (draft.cutoff !== localInput(event.registration_cutoff_at, event.timezone))
     patch.registration_cutoff_at = localMatchInstant(
       draft.cutoff.slice(0, 10),
