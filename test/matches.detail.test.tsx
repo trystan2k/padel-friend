@@ -88,6 +88,34 @@ afterEach(() => {
 });
 
 describe('match detail surface', () => {
+  it('renders invalidated minor facts without retaining the old venue currency price or notes', () => {
+    const view = mount(event());
+    view.rerender(
+      <I18nextProvider i18n={createI18n('en')}>
+        <MatchDetailPage
+          event={event(1, {
+            venue_name: 'Updated court',
+            maps_url: 'https://maps.app.goo.gl/updated',
+            price_minor: 2450,
+            currency: 'USD',
+            notes: 'Updated notes',
+            court_notes: 'Court B',
+            payment_note: 'Pay online'
+          })}
+        />
+      </I18nextProvider>
+    );
+    expect(screen.getByRole('heading', { name: /Updated court/ })).toBeTruthy();
+    expect(
+      screen.getByRole('link', { name: 'Open map for Updated court' }).getAttribute('href')
+    ).toBe('https://maps.app.goo.gl/updated');
+    expect(screen.getByText(/\$24.50/)).toBeTruthy();
+    expect(screen.queryByText(/€12.50/)).toBeNull();
+    expect(screen.getByText(/Updated notes/)).toBeTruthy();
+    expect(screen.queryByText(/Bring water/)).toBeNull();
+    expect(screen.getByText(/Court B/)).toBeTruthy();
+    expect(screen.getByText(/Pay online/)).toBeTruthy();
+  });
   it('renders a cancelled tombstone without player CTAs or recruitment counts', () => {
     mount(event(1, { status: 'cancelled', registration_open: false }));
     expect(screen.getByText(en.matches.management.cancelled)).toBeTruthy();

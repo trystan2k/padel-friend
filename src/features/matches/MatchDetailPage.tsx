@@ -1,7 +1,8 @@
 import * as stylex from '@stylexjs/stylex';
 import { StatusBadge } from '../../components/ui/StatusBadge';
 import { Link } from '@tanstack/react-router';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
+import { MatchEditDialog } from './MatchEditDialog';
 import { useTranslation } from 'react-i18next';
 import { MatchRegistrationPanel } from './MatchRegistrationPanel';
 import { MatchInvitationPanel } from './MatchInvitationPanel';
@@ -65,6 +66,8 @@ export function MatchDetailPage({
   management?: MatchEventManagement | null;
 }) {
   const { t, i18n } = useTranslation();
+  const editTrigger = useRef<HTMLButtonElement>(null);
+  const [editing, setEditing] = useState(false);
   const [asOf] = useState(() => Date.now());
   const [feedback, setFeedback] = useState<{ id: string; copied: boolean; failed: boolean } | null>(
     null
@@ -131,6 +134,24 @@ export function MatchDetailPage({
           eventId={eventId}
           management={management}
           participants={managementParticipants}
+        />
+      )}
+      {management?.actions.edit.allowed && (
+        <button
+          ref={editTrigger}
+          type="button"
+          {...stylex.props(s.button)}
+          onClick={() => setEditing(true)}
+        >
+          {t('matches.management.edit.title')}
+        </button>
+      )}
+      {editing && management && (
+        <MatchEditDialog
+          event={event}
+          version={management.version}
+          onClose={() => setEditing(false)}
+          returnFocus={editTrigger}
         />
       )}
       <div {...stylex.props(s.detailGroups)}>

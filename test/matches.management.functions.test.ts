@@ -28,9 +28,73 @@ import {
   transferMatchEventOwnership,
   cancelMatchEvent
 } from '../src/features/matches/match-management.functions';
+import { editMatchEvent } from '../src/features/matches/match-management.functions';
 const id = '11111111-1111-4111-8111-111111111111';
 const command = { event_id: id, attempt_id: id, request_id: id };
 describe('management server functions', () => {
+  it('version conflict decodes structured detail safely', async () => {
+    const input = {
+      data: { event_id: id, expected_version: 1, request_id: id, patch: { notes: 'Draft' } }
+    };
+    for (const details of [
+      '{"current_version":3,"private":"hidden"}',
+      '3',
+      '{"current_version":0}',
+      '{"current_version":9007199254740992}',
+      '{"current_version":"3"}',
+      'invalid'
+    ]) {
+      mocks.rpc.mockResolvedValue({
+        data: null,
+        error: { code: 'P0001', message: 'MATCH_MANAGEMENT_VERSION_CONFLICT', details }
+      });
+      expect(await editMatchEvent(input)).toEqual(
+        details === '{"current_version":3,"private":"hidden"}'
+          ? { status: 'conflict', code: 'version_conflict', current_version: 3 }
+          : { status: 'error', code: 'unavailable' }
+      );
+    }
+    mocks.rpc.mockResolvedValue({
+      data: {
+        event_id: id,
+        request_id: id,
+        version: 2,
+        transition_revision: 2,
+        changed: true,
+        replayed: false,
+        change_kind: 'minor',
+        changed_fields: ['notes'],
+        reconfirmation_generation: 0,
+        private: 'hidden'
+      },
+      error: null
+    });
+    expect(await editMatchEvent(input)).toEqual({
+      status: 'ok',
+      replayed: false,
+      value: {
+        event_id: id,
+        request_id: id,
+        version: 2,
+        transition_revision: 2,
+        changed: true,
+        change_kind: 'minor',
+        changed_fields: ['notes'],
+        reconfirmation_generation: 0
+      }
+    });
+    expect(mocks.rpc).toHaveBeenLastCalledWith('edit_match_event', {
+      p_match_event_id: id,
+      p_expected_version: 1,
+      p_request_id: id,
+      p_patch: { notes: 'Draft' }
+    });
+    mocks.claims.mockResolvedValue({
+      data: { claims: { sub: id, is_anonymous: true } },
+      error: null
+    });
+    await expect(editMatchEvent(input)).rejects.toThrow('UNAUTHENTICATED');
+  });
   it('decodes structured version conflicts without accepting private fields or overwriting', async () => {
     mocks.rpc.mockResolvedValue({
       data: null,

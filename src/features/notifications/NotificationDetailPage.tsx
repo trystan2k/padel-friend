@@ -44,7 +44,8 @@ type RegistrationNotificationKind =
   | 'match_registration_removed'
   | 'match_registration_group_changed'
   | 'match_event_ownership_transferred'
-  | 'match_event_cancelled';
+  | 'match_event_cancelled'
+  | 'match_event_updated';
 
 // Existing kinds keep their current invitation detail behaviour; the PAF-5.2
 // request/decision kinds and the PAF-5.3 FIFO quartet kinds opt into their own
@@ -66,7 +67,8 @@ const REGISTRATION_NOTIFICATION_KINDS: readonly RegistrationNotificationKind[] =
   'match_registration_removed',
   'match_registration_group_changed',
   'match_event_ownership_transferred',
-  'match_event_cancelled'
+  'match_event_cancelled',
+  'match_event_updated'
 ];
 
 function isRegistrationNotificationKind(kind: string): kind is RegistrationNotificationKind {
@@ -410,6 +412,8 @@ export function NotificationDetailPage({
                   <p>{t('notifications.match.registrationGroupChangedBody')}</p>
                 ) : registrationKind === 'match_event_ownership_transferred' ? (
                   <p>{t('notifications.match.ownershipTransferredBody')}</p>
+                ) : registrationKind === 'match_event_updated' ? (
+                  <p>{t('notifications.match.updatedBody')}</p>
                 ) : registrationKind === 'match_event_cancelled' ? (
                   <p>{t('notifications.match.cancelledBody')}</p>
                 ) : registrationKind === 'match_invitation_expired' ? (

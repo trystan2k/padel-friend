@@ -470,7 +470,8 @@
       "match_registration_removed": "Player removed from the match",
       "match_registration_group_changed": "Match group changed",
       "match_event_ownership_transferred": "Match organizer changed",
-      "match_event_cancelled": "Match cancelled"
+      "match_event_cancelled": "Match cancelled",
+      "match_event_updated": "Match details updated"
     },
     "match": {
       "openEvent": "Open event",
@@ -504,6 +505,7 @@
       "registrationGroupChangedBody": "Your group membership changed. Check the current roster before playing.",
       "ownershipTransferredBody": "Match organization was transferred. Check the event for the current organizer.",
       "cancelledBody": "This match was cancelled. Registration and participation are closed.",
+      "updatedBody": "The organizer updated the match details. Review the latest venue, price, notes, and registration deadline.",
       "registrationExpiredBody": "Registration closed before a decision. No place was reserved.",
       "registrationNotPlayingBody": "Cutoff passed before a quartet completed. No match result will be recorded.",
       "unavailable": "This match notification is no longer available."
@@ -536,6 +538,16 @@
   },
   "matches": {
     "management": {
+      "edit": {
+        "title": "Edit match details",
+        "save": "Save changes",
+        "minorNotice": "Update venue, price, notes, capacity, or registration deadline. These changes do not require reconfirmation.",
+        "conflictTitle": "Match changed elsewhere",
+        "conflictDescription": "Your draft is still here. Review it, or reload the match to discard this draft and reopen editing with the latest details.",
+        "reload": "Reload latest details",
+        "reviewDraft": "Review my draft",
+        "saved": "Match details saved."
+      },
       "organizerOnly": "Organizing and playing are separate. You can organize without a place on the roster.",
       "leaveKeepOrganizing": "Leaving the roster keeps you as organizer. Transfer organization separately if needed.",
       "transfer": "Transfer organization",
@@ -787,6 +799,9 @@
       "invalidCutoff": "Cutoff must be before start.",
       "invalidLevelRange": "Enter a valid level range.",
       "invalidCapacity": "Enter a valid maximum.",
+      "invalid": "Check this field's value and length.",
+      "capacityBelowAccepted": "Maximum cannot be below the number of accepted players.",
+      "futureCutoff": "Choose a future registration deadline before the match starts.",
       "invalidDuration": "Enter a valid duration.",
       "missingPhoto": "A venue photo is required.",
       "invalidPhoto": "Choose a supported image.",

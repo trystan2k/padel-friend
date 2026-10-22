@@ -8,6 +8,8 @@ import {
   parseMatchEventManagement,
   parseOwnershipSuccess,
   parseCancellationSuccess,
+  parseMatchEditSuccess,
+  type MatchEditSuccess,
   type OwnershipSuccess,
   type CancellationSuccess,
   type MatchEventManagement,
@@ -25,6 +27,22 @@ import {
   validateTransferMatchEventOwnership,
   validateCancelMatchEvent
 } from './match-management.validators';
+import { validateEditMatchEvent } from './match-management.validators';
+
+export const editMatchEvent = createServerFn({ method: 'POST' })
+  .validator(validateEditMatchEvent)
+  .handler(async ({ data }): Promise<ManagementResult<MatchEditSuccess>> => {
+    const client = await managementClient();
+    const { data: result, error } = await client.rpc('edit_match_event', {
+      p_match_event_id: data.event_id,
+      p_expected_version: data.expected_version,
+      p_patch: data.patch,
+      p_request_id: data.request_id
+    });
+    return error
+      ? managementActionError(error)
+      : (parseMatchEditSuccess(result) ?? { status: 'error', code: 'unavailable' });
+  });
 
 async function managementClient() {
   const result = await requireAuthenticatedClient();

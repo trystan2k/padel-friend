@@ -18,6 +18,29 @@ function successfulRunner(calls: string[][]) {
 }
 
 describe('populated migration-up harness safety and ordering', () => {
+  it('rehearses minor edits against the ownership predecessor and checks immutable snapshots twice', () => {
+    const calls: string[][] = [];
+    runHarness({
+      env: { CI: 'true', POPULATED_UPGRADE_OPT_IN: '1', POPULATED_UPGRADE_SCENARIO: 'edits' },
+      run: successfulRunner(calls),
+      log: quiet
+    });
+    expect(calls[1]).toContain('20261021202000');
+    expect(
+      calls.filter((call) =>
+        call.some((arg) => arg.endsWith('matches-edits-upgrade-assertions.sql'))
+      )
+    ).toHaveLength(2);
+    expect(calls.at(-1)).toEqual([
+      'pnpm',
+      'exec',
+      'supabase',
+      'db',
+      'reset',
+      '--local',
+      '--no-seed'
+    ]);
+  });
   it('finalizes only supplied legacy fixture histories without disabling integrity checks', () => {
     expect(() => matchRegistrationFixtureHistory(['not-an-id'])).toThrow(
       'Invalid fixture event ID'

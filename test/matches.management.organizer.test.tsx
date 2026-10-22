@@ -33,6 +33,7 @@ const management: MatchEventManagement = {
   reconfirmation_generation: 0,
   required_count: 0,
   actions: {
+    edit: { allowed: true, reason: null },
     withdraw: { allowed: true, reason: null },
     remove: { allowed: true, reason: null },
     transfer: { allowed: true, reason: null },

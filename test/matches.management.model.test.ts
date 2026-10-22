@@ -75,7 +75,7 @@ describe('management defensive models', () => {
       reconfirmation_generation: 0,
       required_count: 0,
       actions: Object.fromEntries(
-        ['withdraw', 'remove', 'transfer', 'cancel'].map((action) => [
+        ['withdraw', 'remove', 'transfer', 'cancel', 'edit'].map((action) => [
           action,
           { allowed: false, reason: 'forbidden' }
         ])
@@ -120,7 +120,7 @@ describe('management defensive models', () => {
       managementActionError({
         code: 'P0001',
         message: 'MATCH_MANAGEMENT_VERSION_CONFLICT',
-        details: '3'
+        details: '{"current_version":3}'
       })
     ).toEqual({ status: 'conflict', code: 'version_conflict', current_version: 3 });
     expect(

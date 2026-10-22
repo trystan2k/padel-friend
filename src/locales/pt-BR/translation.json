@@ -470,7 +470,8 @@
       "match_registration_removed": "Jogador removido da partida",
       "match_registration_group_changed": "Grupo da partida alterado",
       "match_event_ownership_transferred": "Organizador da partida alterado",
-      "match_event_cancelled": "Partida cancelada"
+      "match_event_cancelled": "Partida cancelada",
+      "match_event_updated": "Detalhes da partida atualizados"
     },
     "match": {
       "openEvent": "Abrir evento",
@@ -504,6 +505,7 @@
       "registrationGroupChangedBody": "Seu grupo mudou. Confira a lista atual antes de jogar.",
       "ownershipTransferredBody": "A organização da partida foi transferida. Confira o organizador atual no evento.",
       "cancelledBody": "Esta partida foi cancelada. Inscrições e participação estão encerradas.",
+      "updatedBody": "O organizador atualizou os detalhes da partida. Confira local, preço, observações e prazo de inscrição atuais.",
       "registrationExpiredBody": "As inscrições encerraram antes de uma decisão. Nenhuma vaga foi reservada.",
       "registrationNotPlayingBody": "O prazo passou antes de um quarteto ser completado. Nenhum resultado de partida será registrado.",
       "unavailable": "Esta notificação de partida não está mais disponível."
@@ -536,6 +538,16 @@
   },
   "matches": {
     "management": {
+      "edit": {
+        "title": "Editar detalhes da partida",
+        "save": "Salvar alterações",
+        "minorNotice": "Atualize local, preço, observações, capacidade ou prazo de inscrição. Estas alterações não exigem reconfirmação.",
+        "conflictTitle": "Partida alterada em outro lugar",
+        "conflictDescription": "Seu rascunho foi mantido. Revise-o ou recarregue a partida para descartá-lo e reabrir a edição com os detalhes atuais.",
+        "reload": "Recarregar detalhes atuais",
+        "reviewDraft": "Revisar meu rascunho",
+        "saved": "Detalhes da partida salvos."
+      },
       "organizerOnly": "Organizar e jogar são funções distintas. Você pode organizar sem estar na lista de jogadores.",
       "leaveKeepOrganizing": "Sair da lista mantém você como organizador. Transfira a organização separadamente, se necessário.",
       "transfer": "Transferir organização",
@@ -787,6 +799,9 @@
       "invalidCutoff": "O prazo deve ser anterior ao início.",
       "invalidLevelRange": "Informe uma faixa válida.",
       "invalidCapacity": "Informe um máximo válido.",
+      "invalid": "Confira o valor e o tamanho deste campo.",
+      "capacityBelowAccepted": "O máximo não pode ser menor que o número de jogadores aceitos.",
+      "futureCutoff": "Escolha um prazo futuro de inscrição anterior ao início da partida.",
       "invalidDuration": "Informe uma duração válida.",
       "missingPhoto": "A foto da quadra é obrigatória.",
       "invalidPhoto": "Escolha uma imagem compatível.",

@@ -1084,6 +1084,15 @@ export type Database = {
         }
         Returns: Json
       }
+      edit_match_event: {
+        Args: {
+          p_expected_version: number
+          p_match_event_id: string
+          p_patch: Json
+          p_request_id: string
+        }
+        Returns: Json
+      }
       expire_match_event_invitations_locked: {
         Args: { p_as_of: string; p_event_id: string }
         Returns: number

@@ -74,11 +74,14 @@ export async function loadCallerLevel() {
 
 export const Route = createFileRoute('/_protected/matches/$eventId')({
   loader: async ({ params }) => {
-    const detail = await loadMatchDetail(params.eventId);
-    const registration = await loadMatchRegistration(params.eventId);
+    // Read the edit version BEFORE its draft facts. A mutation between reads
+    // can then only make the version stale (explicit conflict), never pair old
+    // facts with a newer version and silently overwrite an intervening edit.
     const capabilities = await getMatchEventManagement({
       data: { event_id: params.eventId }
     }).catch(() => null);
+    const detail = await loadMatchDetail(params.eventId);
+    const registration = await loadMatchRegistration(params.eventId);
     const eventManagement = capabilities?.status === 'ok' ? capabilities.value : null;
     const isCreator = eventManagement?.is_organizer === true;
     const [callerLevel, requestQueue, roster, invitation, management] = await Promise.all([

@@ -1,5 +1,40 @@
 import type { MatchRegistrationParticipation } from './match-registration-model';
 import type { Json } from '../../lib/supabase/database.types';
+import { MINOR_EDIT_KEYS } from './match-management-edit';
+
+export type MatchEditSuccess = ManagementSuccess & {
+  change_kind: 'none' | 'minor';
+  changed_fields: string[];
+  reconfirmation_generation: 0;
+};
+export function parseMatchEditSuccess(value: unknown): ManagementResult<MatchEditSuccess> | null {
+  const parsed = parseManagementSuccess(value);
+  if (
+    parsed?.status !== 'ok' ||
+    !record(value) ||
+    (value.change_kind !== 'none' && value.change_kind !== 'minor') ||
+    value.reconfirmation_generation !== 0 ||
+    !Array.isArray(value.changed_fields) ||
+    !value.changed_fields.every(
+      (key): key is string =>
+        typeof key === 'string' &&
+        [...MINOR_EDIT_KEYS, 'saved_venue_id'].some((candidate) => candidate === key)
+    ) ||
+    value.changed_fields.length !== new Set(value.changed_fields).size ||
+    parsed.value.changed !== (value.change_kind === 'minor') ||
+    parsed.value.changed !== value.changed_fields.length > 0
+  )
+    return null;
+  return {
+    ...parsed,
+    value: {
+      ...parsed.value,
+      change_kind: value.change_kind,
+      changed_fields: value.changed_fields,
+      reconfirmation_generation: 0
+    }
+  };
+}
 
 export const MANAGEMENT_ERROR_CODES = [
   'closed',
@@ -103,7 +138,7 @@ export function managementActionError(error: {
       let version: unknown;
       try {
         const detail: unknown = JSON.parse(error.details ?? 'null');
-        version = record(detail) ? detail.current_version : detail;
+        version = record(detail) ? detail.current_version : null;
       } catch {
         version = null;
       }
@@ -123,7 +158,7 @@ export function managementActionError(error: {
   return { status: 'error', code };
 }
 
-export type ManagementAction = 'withdraw' | 'remove' | 'transfer' | 'cancel';
+export type ManagementAction = 'withdraw' | 'remove' | 'transfer' | 'cancel' | 'edit';
 export type MatchEventManagement = {
   version: number;
   status: 'open' | 'cancelled';
@@ -168,9 +203,10 @@ export function parseMatchEventManagement(value: unknown): MatchEventManagement 
     withdraw: { allowed: false, reason: 'unavailable' },
     remove: { allowed: false, reason: 'unavailable' },
     transfer: { allowed: false, reason: 'unavailable' },
-    cancel: { allowed: false, reason: 'unavailable' }
+    cancel: { allowed: false, reason: 'unavailable' },
+    edit: { allowed: false, reason: 'unavailable' }
   };
-  for (const action of ['withdraw', 'remove', 'transfer', 'cancel'] as const) {
+  for (const action of ['withdraw', 'remove', 'transfer', 'cancel', 'edit'] as const) {
     const capability = value.actions[action];
     const reason = record(capability)
       ? MANAGEMENT_ERROR_CODES.find((code) => code === capability.reason)

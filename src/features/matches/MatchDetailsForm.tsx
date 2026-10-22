@@ -1,5 +1,5 @@
 import * as stylex from '@stylexjs/stylex';
-import type { HTMLInputTypeAttribute, InputHTMLAttributes } from 'react';
+import { useId, type HTMLInputTypeAttribute, type InputHTMLAttributes } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { MatchCreationOptions, MatchDraft } from './match-contracts';
 import { createMatchStyles as s } from './create-match.styles';
@@ -27,6 +27,80 @@ const visibilities = [
 ] as const satisfies readonly MatchDraft['visibility'][];
 const currencies = ['BRL', 'USD', 'EUR'] as const satisfies readonly MatchDraft['currency'][];
 
+export function MatchDetailTextField({
+  name,
+  value,
+  onChange,
+  error,
+  type = 'text',
+  constraints = {}
+}: {
+  name: TextField;
+  value: string;
+  onChange: (value: string) => void;
+  error?: string;
+  type?: HTMLInputTypeAttribute;
+  constraints?: Pick<InputHTMLAttributes<HTMLInputElement>, 'min' | 'max' | 'step'>;
+}) {
+  const { t } = useTranslation();
+  const id = useId();
+  return (
+    <label {...stylex.props(s.field)}>
+      {t(`matchCreate.fields.${name}`)}
+      <input
+        {...stylex.props(s.input)}
+        type={type}
+        value={value}
+        onChange={(event) => onChange(event.currentTarget.value)}
+        aria-invalid={Boolean(error)}
+        aria-describedby={error ? `${id}-error` : undefined}
+        {...constraints}
+      />
+      {error && (
+        <span id={`${id}-error`} role="alert">
+          {t(`matchCreate.errors.${error}`)}
+        </span>
+      )}
+    </label>
+  );
+}
+export function MatchDetailCurrencyField({
+  value,
+  onChange,
+  error
+}: {
+  value: MatchDraft['currency'];
+  onChange: (value: MatchDraft['currency']) => void;
+  error?: string;
+}) {
+  const { t } = useTranslation();
+  const id = useId();
+  return (
+    <label {...stylex.props(s.field)}>
+      {t('matchCreate.fields.currency')}
+      <select
+        {...stylex.props(s.input)}
+        value={value}
+        aria-invalid={Boolean(error)}
+        aria-describedby={error ? `${id}-error` : undefined}
+        onChange={(event) => {
+          const selected = currencies.find((candidate) => candidate === event.currentTarget.value);
+          if (selected) onChange(selected);
+        }}
+      >
+        {currencies.map((currency) => (
+          <option key={currency}>{currency}</option>
+        ))}
+      </select>
+      {error && (
+        <span id={`${id}-error`} role="alert">
+          {t(`matchCreate.errors.${error}`)}
+        </span>
+      )}
+    </label>
+  );
+}
+
 function fieldValue(value: MatchDraft, key: TextField): string {
   return value[key];
 }
@@ -48,23 +122,15 @@ export function MatchDetailsForm({
     type: HTMLInputTypeAttribute = 'text',
     constraints: Pick<InputHTMLAttributes<HTMLInputElement>, 'min' | 'max' | 'step'> = {}
   ) => (
-    <label {...stylex.props(s.field)} key={key}>
-      {t(`matchCreate.fields.${key}`)}
-      <input
-        {...stylex.props(s.input)}
-        type={type}
-        value={fieldValue(value, key)}
-        onChange={(event) => change(key, event.currentTarget.value)}
-        aria-invalid={Boolean(errors[key])}
-        aria-describedby={errors[key] ? `${key}-error` : undefined}
-        {...constraints}
-      />
-      {errors[key] && (
-        <span id={`${key}-error`} role="alert">
-          {t(`matchCreate.errors.${errors[key]}`)}
-        </span>
-      )}
-    </label>
+    <MatchDetailTextField
+      key={key}
+      name={key}
+      type={type}
+      value={fieldValue(value, key)}
+      onChange={(next) => change(key, next)}
+      error={errors[key]}
+      constraints={constraints}
+    />
   );
   const enumSelect = <K extends 'type' | 'visibility'>(
     key: K,
@@ -159,30 +225,11 @@ export function MatchDetailsForm({
         {t('matchCreate.fields.courtBooked')}
       </label>
       {field('price', 'number', { min: 0, step: '0.01' })}
-      <label {...stylex.props(s.field)}>
-        {t('matchCreate.fields.currency')}
-        <select
-          {...stylex.props(s.input)}
-          value={value.currency}
-          aria-invalid={Boolean(errors.currency)}
-          aria-describedby={errors.currency ? 'currency-error' : undefined}
-          onChange={(event) => {
-            const selected = currencies.find(
-              (candidate) => candidate === event.currentTarget.value
-            );
-            if (selected) change('currency', selected);
-          }}
-        >
-          {currencies.map((currency) => (
-            <option key={currency}>{currency}</option>
-          ))}
-        </select>
-        {errors.currency && (
-          <span id="currency-error" role="alert">
-            {t(`matchCreate.errors.${errors.currency}`)}
-          </span>
-        )}
-      </label>
+      <MatchDetailCurrencyField
+        value={value.currency}
+        onChange={(next) => change('currency', next)}
+        error={errors.currency}
+      />
       {field('paymentNote')}
       {field('maximumRegistrations', 'number', { min: 1, step: 1 })}
       {field('cutoff', 'datetime-local')}
