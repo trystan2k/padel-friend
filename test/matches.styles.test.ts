@@ -84,6 +84,7 @@ describe('match styles', () => {
     expect(source).not.toContain("overflowX: 'hidden'");
   });
   it.each([
+    'match-result',
     'match-management',
     'match-invitation',
     'match-registration',

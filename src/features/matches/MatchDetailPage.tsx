@@ -26,6 +26,8 @@ import { matchesStyles as s } from './matches.styles';
 import { matchDetailShellStyles as shell } from './match-detail-shell.styles';
 import { matchManagementStyles as managementStyles } from './match-management.styles';
 import { MatchStatusBanner } from './MatchStatusBanner';
+import { MatchResultPending } from './MatchResultPending';
+import type { ResultProposal } from './match-result-model';
 
 export async function shareMatchLink(
   url: string,
@@ -55,7 +57,9 @@ export function MatchDetailPage({
   invitation = null,
   managementParticipants = [],
   managementError = false,
-  management = null
+  management = null,
+  proposals = [],
+  proposalsError = false
 }: {
   event: MatchEventDetail | null;
   loadError?: boolean;
@@ -72,6 +76,8 @@ export function MatchDetailPage({
   managementParticipants?: ManagementParticipant[];
   managementError?: boolean;
   management?: MatchEventManagement | null;
+  proposals?: ResultProposal[];
+  proposalsError?: boolean;
 }) {
   const { t, i18n } = useTranslation();
   const editTrigger = useRef<HTMLButtonElement>(null);
@@ -154,6 +160,31 @@ export function MatchDetailPage({
         </div>
       </header>
       <div {...stylex.props(shell.groups)}>
+        {management?.correction.available && event.status !== 'cancelled' && (
+          <Link
+            to="/matches/$eventId/record"
+            params={{ eventId: management.correction.event_id }}
+            {...stylex.props(s.button)}
+          >
+            {t('matches.results.title')}
+          </Link>
+        )}
+        {proposalsError && (
+          <section role="alert">
+            <p>{t('matches.results.errors.unavailable')}</p>
+            <button type="button" {...stylex.props(s.button)} onClick={onRetry}>
+              {t('matches.results.reload')}
+            </button>
+          </section>
+        )}
+        {proposals.map((proposal) => (
+          <MatchResultPending
+            key={proposal.proposal_id}
+            proposal={proposal}
+            timezone={event.timezone}
+            asOf={event.as_of}
+          />
+        ))}
         {event.status === 'cancelled' && (
           <div {...stylex.props(shell.cancelledBadge)}>
             <StatusBadge>{t('matches.management.cancelled')}</StatusBadge>

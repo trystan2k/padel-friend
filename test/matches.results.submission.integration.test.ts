@@ -96,6 +96,26 @@ describe('actual result submission transaction', { timeout: 60000 }, () => {
     if (!Array.isArray(result.data)) throw new Error('INVALID_RESULT_PROJECTION');
     return result.data.map(asRecord);
   }
+  it('projects team identities to creator and same-community admin only', async () => {
+    const e = await setup();
+    for (const actor of [f.creator, admin]) {
+      const response = await f.rpc(actor, 'list_match_event_management_participants', {
+        p_match_event_id: e.id
+      });
+      expect(response.error).toBeNull();
+      expect(response.data).toHaveLength(8);
+      expect(response.data).toEqual(
+        expect.arrayContaining([expect.objectContaining({ user_id: players[0]!.id })])
+      );
+    }
+    for (const actor of [players[1]!, outsider, other.creator]) {
+      const response = await f.rpc(actor, 'list_match_event_management_participants', {
+        p_match_event_id: e.id
+      });
+      expect(response.error).toBeNull();
+      expect(response.data).toEqual([]);
+    }
+  });
   it('creator submits pending proposal for group one and roster freezes exactly once', async () => {
     const e = await setup({ protected: false });
     const input = args(e.id);
