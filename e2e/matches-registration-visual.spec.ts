@@ -2094,6 +2094,18 @@ test.describe.serial('PAF-5 registration visual and structural QA', () => {
         1
       )
     });
+    const closedRosterRows = await fixtureRows(
+      `select accepted_order, participation_status from public.match_event_registrations ` +
+        `where match_event_id = '${family.closedEventId}' and lifecycle = 'accepted' ` +
+        `order by accepted_order;`
+    );
+    expect(closedRosterRows).toEqual([
+      ...Array.from({ length: 8 }, (_, index) => ({
+        accepted_order: index + 1,
+        participation_status: 'playing'
+      })),
+      { accepted_order: 9, participation_status: 'reserve_not_playing' }
+    ]);
 
     // xC04T: the caller (order 8, Group 2) reads the full participation board:
     // playing groups → reserve queue → not playing, guest badge on the second
@@ -2112,15 +2124,11 @@ test.describe.serial('PAF-5 registration visual and structural QA', () => {
         exact: true
       })
     ).toBeVisible();
-    // xC04T (open-registration composition): the caller (order 8, Group 2)
-    // reads GROUP 1 / GROUP 2 / RESERVE QUEUE with the guest badge on the
-    // second Group 2 row and the #1/#2/#3 FIFO positions. The board's NOT
-    // PLAYING tail is the post-cutoff composition (the design's own caption:
-    // "Reserve Not Playing is set at cutoff") — the projection normalizes it
-    // into the reserve queue while registration is open, and the tail is
-    // gated on the cutoff-processed event below (tYXlh roster).
+    // Participation determines sections: playing groups, then live reserves
+    // with #1/#2/#3 FIFO positions. The real cutoff-processed CLOSED event
+    // below covers the reserve_not_playing tail under NOT PLAYING.
     await test.info().attach('xC04T composition (recorded adaptation)', {
-      body: 'Frame xC04T stacks the reserve queue and the NOT PLAYING tail in one board. The implementation renders the tail only after the cutoff transition (the projection normalizes reserve_not_playing back into the reserve queue while registration is open); the tail is gated on the cutoff-processed CLOSED event in this test.'
+      body: 'Frame xC04T stacks the reserve queue and the NOT PLAYING tail in one board. This test covers live reserves in the open event and reserve_not_playing rows in the real cutoff-processed CLOSED event. Sections follow participation status, not event start time.'
     });
     await test.info().attach('xC04T gate page url', {
       body: page.url()
@@ -2317,8 +2325,7 @@ test.describe.serial('PAF-5 registration visual and structural QA', () => {
         ]
       },
       {
-        // Cutoff finalizes status; frame-driven grouping stays reserve until start.
-        title: en.matchRegistration.roster.reserveTitle,
+        title: en.matchRegistration.roster.notPlayingTitle,
         count: fill(en.matchRegistration.roster.count_one, { count: 1 }),
         rows: [
           {

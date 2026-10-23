@@ -86,6 +86,7 @@ type Copy = {
       groupTitle: string;
       reserveTitle: string;
       notPlayingTitle: string;
+      orderNote: string;
       you: string;
       count_one: string;
       count_other: string;
@@ -1462,6 +1463,8 @@ test.describe.serial('registration, FIFO and cutoff journeys', () => {
     const lateMemberPage = family.lateMemberPage!;
     const memberPage = family.memberPage!;
     const requesterPage = family.outRejectedPage!;
+    const reserveBeforeCutoff = await registrationRowFor(eventId, lateMember.id);
+    expect(reserveBeforeCutoff!['participation']).toBe('reserve');
 
     // Baseline: the complete quartet's alerts before the cutoff transition.
     const member2Before = await Promise.all([
@@ -1498,6 +1501,8 @@ test.describe.serial('registration, FIFO and cutoff journeys', () => {
     expect(expiredRow!['accepted_at']).toBeNull();
     const reserveRow = await registrationRowFor(eventId, lateMember.id);
     expect(reserveRow!['participation']).toBe('reserve_not_playing');
+    expect(reserveRow!['accepted_order']).toBe(reserveBeforeCutoff!['accepted_order']);
+    expect(reserveRow!['accepted_at']).toBe(reserveBeforeCutoff!['accepted_at']);
     const rosterRows = await orderedAcceptedRows(eventId);
     // The expired row carries no participation anchor at all (CHECK-enforced);
     // it sorts last by accepted_order.
@@ -1536,7 +1541,13 @@ test.describe.serial('registration, FIFO and cutoff journeys', () => {
     ).toBeVisible();
     const lateRoster = rosterSection(lateMemberPage);
     await expect(
+      lateRoster.getByRole('heading', { name: en.matchRegistration.roster.notPlayingTitle })
+    ).toBeVisible();
+    await expect(
       lateRoster.getByRole('heading', { name: en.matchRegistration.roster.reserveTitle })
+    ).toHaveCount(0);
+    await expect(
+      lateRoster.getByText(en.matchRegistration.roster.orderNote, { exact: true })
     ).toBeVisible();
     await lateMemberPage.goto(`/notifications/${notPlayingAlerts[0]!.id}`);
     await waitForHydratedPage(lateMemberPage);
