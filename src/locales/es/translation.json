@@ -1,4 +1,9 @@
 {
+  "languageNames": {
+    "en": "English",
+    "pt-BR": "Português (Brasil)",
+    "es": "Español"
+  },
   "title": "Padel Friend",
   "description": "Padel Friend, creado con TanStack Start, Cloudflare Workers y Supabase.",
   "signIn": "Iniciar sesión",
@@ -572,7 +577,8 @@
         "minorNotice": "Actualiza lugar, precio, notas, capacidad o plazo de inscripción. Estos cambios no requieren reconfirmación.",
         "conflictTitle": "Partido modificado en otro lugar",
         "conflictDescription": "Tu borrador sigue aquí. Revísalo o recarga el partido para descartarlo y volver a editar con los detalles actuales.",
-        "reload": "Recargar detalles actuales",
+        "reload": "Recargar detalles",
+        "conflictHelper": "Resuelve este conflicto antes de guardar. Tu borrador no se ha descartado.",
         "reviewDraft": "Revisar mi borrador",
         "saved": "Detalles del partido guardados."
       },
@@ -588,6 +594,8 @@
       "cancelled": "Cancelado",
       "ownershipTransferred": "Organización transferida.",
       "participants": "Gestionar participantes",
+      "title": "Gestionar partido",
+      "close": "Cerrar",
       "actions": "Acciones",
       "participantActions": "Acciones para {{name}}",
       "leave": "Dejar el partido",
@@ -720,6 +728,22 @@
     },
     "detail": {
       "title": "Detalles del partido",
+      "viewCourtLocation": "Ver ubicación de la cancha",
+      "viewCourtLocationFor": "Ver ubicación de la cancha para {{venue}}",
+      "unlimitedRegistrations": "Inscripciones sin límite",
+      "visibility": {
+        "community_open": "Partido de la comunidad",
+        "invite_only": "Partido por invitación"
+      },
+      "statusTitles": {
+        "accepted": "Invitación aceptada",
+        "declined": "Invitación rechazada",
+        "expired": "Invitación caducada",
+        "closed": "Inscripciones cerradas",
+        "started": "Partido iniciado",
+        "cancelled": "Partido cancelado",
+        "result_protected": "Resultados protegidos"
+      },
       "overview": "Resumen",
       "participation": "Participación",
       "eligibilityVisibility": "Elegibilidad y visibilidad",
@@ -731,7 +755,7 @@
       "guestApprovalRequired": "Se requiere aprobación para invitados",
       "outOfRangeApprovalRequired": "Se requiere aprobación para tu nivel",
       "invitationInfo": "Te invitaron a este partido.",
-      "pastScheduled": "Evento pasado programado; resultado no disponible.",
+      "pastScheduled": "Evento pasado programado",
       "outcomeUnavailable": "Resultado no disponible",
       "share": "Compartir partido",
       "shareUnavailable": "Compartir no disponible",
@@ -845,6 +869,17 @@
     }
   },
   "matchRegistration": {
+    "place": {
+      "title": "Tu plaza en este partido",
+      "creatorCopy": "Creaste este partido — tu plaza está confirmada.",
+      "organizerBadge": "Solo organizador",
+      "organizerCopy": "Saliste de la lista de jugadores. Sigues organizando este partido; tu plaza anterior ya no está reservada.",
+      "reservePosition": "Reserva n.º {{position}}",
+      "reserveCopy": "Reserva n.º {{position}}. Se conserva tu orden de inscripción; entrarás a jugar cuando queden plazas libres.",
+      "openCopy": "Esta comunidad es abierta. Únete directamente si cambias de opinión; tu plaza se confirma al instante.",
+      "closedCopy": "Plazo cerrado · Cuartetos definitivos. {{playing}} jugando · {{reserve}} reservas sin jugar.",
+      "closedNote": "Ya no se aceptan nuevas inscripciones ni solicitudes."
+    },
     "aria": {
       "status": "Estado de la inscripción",
       "roster": "Alineación del partido",
@@ -881,7 +916,7 @@
     "request": {
       "back": "‹   Estado de tu solicitud",
       "context": "Un estado a la vez · las decisiones del organizador se actualizan en vivo",
-      "pendingBadge": "SOLICITUD PENDIENTE",
+      "pendingBadge": "Pendiente de aprobación",
       "pendingCopy": "Enviada al organizador. Tu posición en la cola solo empieza si la aprueba.",
       "pendingMeta": "Solicitada {{when}} · sin plaza reservada todavía",
       "viewMatch": "Ver partido",
@@ -892,11 +927,11 @@
       "approvedReserveCopy": "Aprobado a las {{when}} · plaza FIFO, primer reserva si se libera un hueco.",
       "joinedPlayingBadge": "SE UNIÓ · JUGANDO · Grupo {{group}}",
       "joinedPlayingCopy": "Se unió a las {{when}} · tu plaza se confirmó al instante.",
-      "joinedReserveBadge": "SE UNIÓ · RESERVA · Nº {{position}}",
+      "joinedReserveBadge": "Inscrito · Reserva n.º {{position}}",
       "joinedReserveCopy": "Se unió a las {{when}} · plaza FIFO, primer reserva si se libera un hueco.",
-      "createdPlayingBadge": "CREADOR · JUGANDO · Grupo {{group}}",
+      "createdPlayingBadge": "Creador · Jugando · Grupo {{group}}",
       "createdPlayingCopy": "Creaste este partido · tu plaza está confirmada.",
-      "createdReserveBadge": "CREADOR · RESERVA · Nº {{position}}",
+      "createdReserveBadge": "Creador · Reserva n.º {{position}}",
       "createdReserveCopy": "Creaste este partido · plaza FIFO, primer reserva si se libera un hueco.",
       "declinedBadge": "RECHAZADA",
       "declinedCopy": "El organizador rechazó esta solicitud. Puedes solicitarla de nuevo hasta que cierre la inscripción.",
@@ -907,12 +942,20 @@
       "note": "La hora de aprobación define la posición en la cola. Las solicitudes pendientes y expiradas nunca reservan plaza."
     },
     "roster": {
+      "title": "Jugadores en este partido",
+      "manageTitle": "Participantes · Gestionar jugadores",
+      "awaitingTitle": "Pendiente de reconfirmación",
+      "awaitingStatus": "Sin jugar · Pendiente de reconfirmación",
+      "awaitingNote": "Los jugadores pendientes conservan su plaza y orden en la cola, pero no se asignan a cuartetos hasta que reconfirmen.",
+      "playerDetail": "Nivel {{level}} · {{placement}}",
+      "playerDetailUnrated": "Sin nivel · {{placement}}",
+      "playingLabel": "Jugando",
       "groupTitle": "GRUPO {{group}}",
       "reserveTitle": "COLA DE RESERVA",
       "fifo": "FIFO · primero en entrar",
       "notPlayingTitle": "SIN JUGAR",
       "you": "Tú",
-      "orderNote": "El orden lo define la hora de aprobación y nunca se reordena.",
+      "orderNote": "El servidor determina el orden de inscripción. Las reservas conservan su posición FIFO.",
       "authoritativeNote": "El orden aceptado lo define el servidor. Los invitados nunca se convierten en miembros.",
       "playerFallback": "Jugador",
       "level": "Nivel {{level}}",
@@ -929,6 +972,10 @@
       "member": "MIEMBRO"
     },
     "queue": {
+      "joinTitle": "Solicitudes de participación",
+      "requests_one": "{{count}} solicitud",
+      "requests_other": "{{count}} solicitudes",
+      "emptyCopy": "No hay solicitudes pendientes. Aprobar a un invitado fija su posición en la cola en ese momento.",
       "title": "Solicitudes de entrada",
       "subtitle_one": "{{event}} · {{count}} por revisar",
       "subtitle_other": "{{event}} · {{count}} por revisar",

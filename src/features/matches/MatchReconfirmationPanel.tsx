@@ -12,6 +12,7 @@ import { MANAGEMENT_ERROR_COPY } from './match-management-error-copy';
 import { matchManagementStyles as s } from './match-management.styles';
 import { MatchManagementUnavailable } from './MatchManagementUnavailable';
 import type { ManagementErrorCode } from './match-management-model';
+import { matchRegistrationStyles as card } from './match-registration.styles';
 
 /** Parent keys this panel by generation: never silently consent to newer terms. */
 export function MatchReconfirmationPanel({
@@ -47,16 +48,37 @@ export function MatchReconfirmationPanel({
     }).format(new Date(instant));
   const closed = event.is_past || Date.parse(event.registration_cutoff_at) <= asOf;
   return (
-    <section {...stylex.props(s.section)} aria-labelledby="match-reconfirmation-heading">
-      <h2 id="match-reconfirmation-heading">{t('matches.reconfirmation.title')}</h2>
+    <section
+      {...stylex.props(card.panel, card.positive)}
+      aria-labelledby="match-reconfirmation-heading"
+    >
+      <h2 id="match-reconfirmation-heading" {...stylex.props(card.title, card.reconfirmTitle)}>
+        <svg
+          aria-hidden="true"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          {...stylex.props(card.refreshIcon)}
+        >
+          <path d="M20 7v5h-5M4 17v-5h5M6.1 6.1A8 8 0 0 1 20 12M4 12a8 8 0 0 0 13.9 5.9" />
+        </svg>
+        {t('matches.reconfirmation.title')}
+      </h2>
       {isCreator && (
         <>
-          <p>{t('matches.reconfirmation.creatorSummary', { count: players.length })}</p>
-          <ul>
+          <p {...stylex.props(card.reconfirmSummary)}>
+            {t('matches.reconfirmation.creatorSummary', { count: players.length })}
+          </p>
+          <ul {...stylex.props(card.requestList)}>
             {players.map((player) => (
-              <li key={player.attempt_id}>
-                {player.display_name ?? t('matchRegistration.roster.playerFallback')} ·{' '}
-                {t('matches.reconfirmation.requiredBadge')}
+              <li key={player.attempt_id} {...stylex.props(card.reconfirmPlayer)}>
+                <strong>
+                  {player.display_name ?? t('matchRegistration.roster.playerFallback')}
+                </strong>
+                <span {...stylex.props(card.meta)}>
+                  {t('matchRegistration.roster.awaitingStatus')}
+                </span>
               </li>
             ))}
           </ul>
@@ -64,16 +86,16 @@ export function MatchReconfirmationPanel({
       )}
       {required && (
         <>
-          <p>
+          <p {...stylex.props(card.copy)}>
             {t(closed ? 'matches.reconfirmation.excluded' : 'matches.reconfirmation.description')}
           </p>
-          <p>
+          <p {...stylex.props(card.copy)}>
             {t('matches.reconfirmation.deadline', { deadline: date(event.registration_cutoff_at) })}
           </p>
           <button
             ref={trigger}
             type="button"
-            {...stylex.props(s.button)}
+            {...stylex.props(card.secondaryButton)}
             disabled={closed || pending}
             onClick={() => {
               setOpen(true);

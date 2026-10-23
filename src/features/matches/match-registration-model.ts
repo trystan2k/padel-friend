@@ -277,7 +277,7 @@ export type MyMatchRegistration =
       resolved_at: string | null;
     }
   | {
-      state: 'expired';
+      state: 'expired' | 'reconfirmation_excluded';
       event_id: string;
       registration_source: MatchRegistrationSource;
       resolved_at: string | null;
@@ -391,6 +391,25 @@ export function parseMyMatchRegistration(value: unknown): MyMatchRegistration | 
       requested_at: asNullableText(value.requested_at),
       approved_at: asNullableText(value.approved_at),
       accepted_at
+    };
+  }
+  if (lifecycle === 'expired' && value.accepted_at != null) {
+    const required = asCount(value.required_generation);
+    const confirmed = asCount(value.confirmed_generation);
+    if (
+      !asPositiveInteger(value.accepted_order) ||
+      !asText(value.accepted_at) ||
+      value.participation !== null ||
+      required === null ||
+      confirmed === null ||
+      confirmed >= required
+    )
+      return null;
+    return {
+      state: 'reconfirmation_excluded',
+      event_id,
+      registration_source,
+      resolved_at: asNullableText(value.resolved_at)
     };
   }
   if (lifecycle === 'rejected' || lifecycle === 'expired')

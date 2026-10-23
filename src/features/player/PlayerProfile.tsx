@@ -1,4 +1,5 @@
 import * as stylex from '@stylexjs/stylex';
+import { rootStyles } from '../../root.styles';
 import { useRef, useState, type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { stripEdgeWhitespace } from '../../lib/edge-whitespace';
@@ -69,7 +70,7 @@ export function PlayerProfile({ initialProfile }: { initialProfile: Profile }) {
   return (
     <main {...stylex.props(ui.page, ui.profilePage)}>
       <div {...stylex.props(ui.profileTop)}>
-        <header {...stylex.props(ui.headerRow)}>
+        <header {...stylex.props(ui.headerRow, rootStyles.pageHeader)}>
           <div {...stylex.props(ui.header)}>
             <h1 {...stylex.props(ui.title)}>{t('profile.title')}</h1>
             <p {...stylex.props(ui.subtitle)}>{t('profile.subtitle')}</p>

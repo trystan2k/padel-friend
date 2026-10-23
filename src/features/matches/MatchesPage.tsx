@@ -1,4 +1,5 @@
 import * as stylex from '@stylexjs/stylex';
+import { rootStyles } from '../../root.styles';
 import { Link, useRouter } from '@tanstack/react-router';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -103,7 +104,7 @@ export function MatchesPage({
   };
   return (
     <main {...stylex.props(s.page)}>
-      <header {...stylex.props(s.heading)}>
+      <header {...stylex.props(s.heading, rootStyles.pageHeader)}>
         <h1 {...stylex.props(s.title)}>{t('matches.title')}</h1>
         <p>{t('matches.subtitle')}</p>
         <Link to="/matches/create" {...stylex.props(s.primaryAction)}>

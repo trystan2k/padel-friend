@@ -7,7 +7,7 @@ import { MatchReconfirmationPanel } from './MatchReconfirmationPanel';
 import { useTranslation } from 'react-i18next';
 import { MatchRegistrationPanel } from './MatchRegistrationPanel';
 import { MatchInvitationPanel } from './MatchInvitationPanel';
-import { MatchParticipantActions } from './MatchParticipantActions';
+import { MatchRosterCard } from './MatchRosterCard';
 import { MatchOrganizerActions } from './MatchOrganizerActions';
 import {
   MatchManagementUnavailable,
@@ -23,6 +23,9 @@ import type {
   MyMatchRegistration
 } from './match-registration-model';
 import { matchesStyles as s } from './matches.styles';
+import { matchDetailShellStyles as shell } from './match-detail-shell.styles';
+import { matchManagementStyles as managementStyles } from './match-management.styles';
+import { MatchStatusBanner } from './MatchStatusBanner';
 
 export async function shareMatchLink(
   url: string,
@@ -105,7 +108,8 @@ export function MatchDetailPage({
       </main>
     );
   const zone = event.timezone;
-  const unavailable = managementUnavailableReason(management);
+  const unavailable =
+    event.status === 'cancelled' ? 'cancelled' : managementUnavailableReason(management);
   const venue = event.venue_name;
   async function share() {
     setFeedback({ id: eventId, copied: false, failed: false });
@@ -126,45 +130,82 @@ export function MatchDetailPage({
         }).format(event.price_minor / 100)
       : null;
   return (
-    <main {...stylex.props(s.page)}>
-      <Link to="/matches" {...stylex.props(s.link)}>
-        {t('matches.back')}
-      </Link>
-      <h1 id="match-detail-heading" tabIndex={-1} {...stylex.props(s.title)}>
-        {t('matches.detail.title')}: {venue}
-      </h1>
-      {event.status === 'cancelled' && (
-        <StatusBadge>{t('matches.management.cancelled')}</StatusBadge>
-      )}
-      {unavailable && (!registration || event.status === 'cancelled') && (
-        <MatchManagementUnavailable reason={unavailable} />
-      )}
-      {management && (!unavailable || unavailable === 'closed') && (
-        <MatchOrganizerActions
-          eventId={eventId}
-          management={management}
-          participants={managementParticipants}
-        />
-      )}
-      {management?.actions.edit.allowed && (
-        <button
-          ref={editTrigger}
-          type="button"
-          {...stylex.props(s.button)}
-          onClick={() => setEditing(true)}
-        >
-          {t('matches.management.edit.title')}
-        </button>
-      )}
-      {editing && management && !unavailable && (
-        <MatchEditDialog
-          event={event}
-          version={management.version}
-          onClose={() => setEditing(false)}
-          returnFocus={editTrigger}
-        />
-      )}
-      <div {...stylex.props(s.detailGroups)}>
+    <main {...stylex.props(s.page, shell.page)}>
+      <header {...stylex.props(shell.header)}>
+        <Link to="/matches" aria-label={t('matches.back')} {...stylex.props(shell.back)}>
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            aria-hidden="true"
+            {...stylex.props(shell.icon)}
+          >
+            <path d="m14 6-6 6 6 6" />
+          </svg>
+        </Link>
+        <div {...stylex.props(shell.heading)}>
+          <h1 id="match-detail-heading" tabIndex={-1} {...stylex.props(s.title)}>
+            {t('matches.detail.title')}
+          </h1>
+          <p {...stylex.props(shell.subtitle)}>
+            {venue} · {t(`matches.detail.visibility.${event.visibility}`)}
+          </p>
+        </div>
+      </header>
+      <div {...stylex.props(shell.groups)}>
+        {event.status === 'cancelled' && (
+          <div {...stylex.props(shell.cancelledBadge)}>
+            <StatusBadge>{t('matches.management.cancelled')}</StatusBadge>
+          </div>
+        )}
+        {unavailable &&
+          (!registration ||
+            event.status === 'cancelled' ||
+            unavailable === 'closed' ||
+            (management && (unavailable === 'started' || unavailable === 'result_protected'))) &&
+          (unavailable === 'closed' ||
+          unavailable === 'started' ||
+          unavailable === 'cancelled' ||
+          unavailable === 'result_protected' ? (
+            <MatchStatusBanner variant={unavailable} />
+          ) : (
+            <MatchManagementUnavailable reason={unavailable} />
+          ))}
+        {management && (!unavailable || unavailable === 'closed') && (
+          <MatchOrganizerActions
+            eventId={eventId}
+            management={management}
+            participants={managementParticipants}
+          />
+        )}
+        {management?.actions.edit.allowed && (
+          <button
+            ref={editTrigger}
+            type="button"
+            {...stylex.props(s.button, managementStyles.editTrigger)}
+            onClick={() => setEditing(true)}
+          >
+            {t('matches.management.edit.title')}
+          </button>
+        )}
+        {editing && management && !unavailable && (
+          <MatchEditDialog
+            event={event}
+            version={management.version}
+            onClose={() => setEditing(false)}
+            returnFocus={editTrigger}
+          />
+        )}
+        {invitation && event.status !== 'cancelled' && (
+          <MatchInvitationPanel
+            key={event.event_id}
+            eventId={event.event_id}
+            invitation={invitation}
+            timezone={event.timezone}
+            pendingApproval={registration?.state === 'pending'}
+          />
+        )}
         {event.status !== 'cancelled' && !unavailable && (
           <MatchReconfirmationPanel
             key={`${eventId}:${event.reconfirmation_generation ?? 0}`}
@@ -174,36 +215,35 @@ export function MatchDetailPage({
             isCreator={isCreator}
           />
         )}
-        <section aria-labelledby="match-overview-heading" {...stylex.props(s.detailGroup)}>
-          <h2 id="match-overview-heading" {...stylex.props(s.sectionTitle)}>
-            {t('matches.detail.overview')}
+        <section aria-labelledby="match-overview-heading" {...stylex.props(shell.card)}>
+          <h2 id="match-overview-heading" {...stylex.props(shell.title, shell.venue)}>
+            {venue}
           </h2>
           {event.photo_url !== null && (
             <img
-              {...stylex.props(s.image)}
+              {...stylex.props(s.image, shell.image)}
               src={event.photo_url}
               alt={t('matches.card.photoAlt')}
             />
           )}
-          <p>
+          <p {...stylex.props(shell.copy)}>
             {new Intl.DateTimeFormat(i18n.language, {
               dateStyle: 'full',
               timeStyle: 'short',
               timeZone: zone
             }).format(new Date(typeof event.starts_at === 'string' ? event.starts_at : ''))}{' '}
-            · {t('matches.detail.timezone')}: {zone}
+            ·<br />
+            {t('matches.detail.timezone')}: {zone}
           </p>
-          <p>
-            <a
-              href={event.maps_url}
-              target="_blank"
-              rel="noopener noreferrer"
-              {...stylex.props(s.cardLink)}
-              aria-label={t('matches.card.openMaps', { venue })}
-            >
-              {venue}
-            </a>
-          </p>
+          <a
+            href={event.maps_url}
+            target="_blank"
+            rel="noopener noreferrer"
+            {...stylex.props(s.link, s.cardLink, shell.maps)}
+            aria-label={t('matches.detail.viewCourtLocationFor', { venue })}
+          >
+            {t('matches.detail.viewCourtLocation')}
+          </a>
           {price && (
             <p>
               {t('matches.card.pricePerPlayer')}: {price}
@@ -226,20 +266,20 @@ export function MatchDetailPage({
           )}
         </section>
         {event.status !== 'cancelled' && (
-          <section aria-labelledby="match-participation-heading" {...stylex.props(s.detailGroup)}>
-            <h2 id="match-participation-heading" {...stylex.props(s.sectionTitle)}>
+          <section aria-labelledby="match-participation-heading" {...stylex.props(shell.card)}>
+            <h2 id="match-participation-heading" {...stylex.props(shell.title)}>
               {t('matches.detail.participation')}
             </h2>
-            <h3 {...stylex.props(s.sectionTitle)}>{t('matches.detail.participants')}</h3>
+            <h3 {...stylex.props(shell.participants)}>{t('matches.detail.participants')}</h3>
             {event.duration_minutes !== null && (
-              <p>
+              <p {...stylex.props(shell.copy)}>
                 {t('matches.detail.duration')}: {event.duration_minutes}
               </p>
             )}
-            <p>
+            <p {...stylex.props(shell.accepted)}>
               {event.accepted_count} · {t('matches.detail.accepted')}
             </p>
-            <p>
+            <p {...stylex.props(shell.copy)}>
               {event.playing_count}{' '}
               {t('matches.counts.playing', {
                 count: event.playing_count
@@ -258,53 +298,12 @@ export function MatchDetailPage({
               })}
             </p>
             {event.caller_badge === 'creator' && callerAccepted && (
-              <p>{t('matches.detail.creatorAccepted')}</p>
+              <p {...stylex.props(shell.copy)}>{t('matches.detail.creatorAccepted')}</p>
             )}
-            {event.caller_is_invited && <p>{t('matches.detail.invitationInfo')}</p>}
+            {event.caller_is_invited && (
+              <p {...stylex.props(shell.copy)}>{t('matches.detail.invitationInfo')}</p>
+            )}
           </section>
-        )}
-        {management?.actions.remove.allowed && event.status !== 'cancelled' && (
-          <section
-            {...stylex.props(s.detailGroup)}
-            aria-labelledby="match-participants-management-heading"
-          >
-            <h2 id="match-participants-management-heading" tabIndex={-1}>
-              {t('matches.management.participants')}
-            </h2>
-            {managementError && <p role="alert">{t('matches.management.errors.unavailable')}</p>}
-            {managementParticipants
-              .filter(
-                (participant) =>
-                  registration !== null &&
-                  registration.state !== 'none' &&
-                  (registration.state !== 'accepted' || registration.attempt_id !== undefined) &&
-                  participant.attempt_id !==
-                    (registration?.state === 'accepted' ? registration.attempt_id : null)
-              )
-              .map((participant) => (
-                <div key={participant.registration_id}>
-                  <span>
-                    {participant.display_name ?? t('matchRegistration.roster.playerFallback')}
-                  </span>
-                  <MatchParticipantActions
-                    eventId={event.event_id}
-                    attemptId={participant.attempt_id}
-                    targetUserId={participant.user_id}
-                    name={participant.display_name ?? undefined}
-                    disabled={event.is_past || Date.parse(event.registration_cutoff_at) <= asOf}
-                  />
-                </div>
-              ))}
-          </section>
-        )}
-        {invitation && !unavailable && (
-          <MatchInvitationPanel
-            key={event.event_id}
-            eventId={event.event_id}
-            invitation={invitation}
-            timezone={event.timezone}
-            pendingApproval={registration?.state === 'pending'}
-          />
         )}
         {registrationError ? (
           <section
@@ -327,8 +326,32 @@ export function MatchDetailPage({
             callerLevel={callerLevel}
             roster={roster}
             unavailable={unavailable}
+            isOrganizer={isCreator}
+            showRoster={!management?.actions.remove.allowed}
           />
         ) : null}
+        {management?.actions.remove.allowed && event.status !== 'cancelled' && (
+          <>
+            {managementError && <p role="alert">{t('matches.management.errors.unavailable')}</p>}
+            <MatchRosterCard
+              eventId={eventId}
+              roster={registration?.state === 'accepted' ? (roster ?? []) : []}
+              participants={managementParticipants.filter(
+                () =>
+                  registration !== null &&
+                  registration.state !== 'none' &&
+                  (registration.state !== 'accepted' || registration.attempt_id !== undefined)
+              )}
+              callerOrder={
+                registration && 'accepted_order' in registration
+                  ? registration.accepted_order
+                  : null
+              }
+              disabled={event.is_past || Date.parse(event.registration_cutoff_at) <= asOf}
+              started={event.is_past}
+            />
+          </>
+        )}
         {isCreator && event.status !== 'cancelled' && !unavailable && (
           <MatchRequestQueue
             eventId={eventId}
@@ -340,23 +363,25 @@ export function MatchDetailPage({
             onRetry={onRetry}
           />
         )}
-        <section aria-labelledby="match-eligibility-heading" {...stylex.props(s.detailGroup)}>
-          <h2 id="match-eligibility-heading" {...stylex.props(s.sectionTitle)}>
+        <section aria-labelledby="match-eligibility-heading" {...stylex.props(shell.card)}>
+          <h2 id="match-eligibility-heading" {...stylex.props(shell.title)}>
             {t('matches.detail.eligibilityVisibility')}
           </h2>
-          <p>
+          <p {...stylex.props(shell.copy)}>
             {event.restriction_enabled && event.min_level !== null && event.max_level !== null
               ? `${t('matches.card.levelRange')}: ${event.min_level}–${event.max_level}`
-              : t('matches.card.noLevelRestriction')}
+              : t('matches.card.noLevelRestriction')}{' '}
+            · {t(`matches.visibility.${event.visibility}`)}
           </p>
-          <p>{t(`matches.teamMode.${event.team_assignment_mode}`)}</p>
-          <p>
+          <p {...stylex.props(shell.copy)}>
+            {t(`matches.teamMode.${event.team_assignment_mode}`)} ·{' '}
             {event.maximum_registrations == null
-              ? t('matches.card.unlimited')
+              ? t('matches.detail.unlimitedRegistrations')
               : `${t('matches.card.maximum')}: ${event.maximum_registrations}`}
           </p>
-          {!event.registration_open && <p>{t('matches.detail.registrationClosed')}</p>}
-          <p>{t(`matches.visibility.${event.visibility}`)}</p>
+          {!event.registration_open && (
+            <p {...stylex.props(shell.copy)}>{t('matches.detail.registrationClosed')}</p>
+          )}
           {event.status !== 'cancelled' &&
             !callerAccepted &&
             event.caller_eligibility === 'nonmember' && (
@@ -367,27 +392,31 @@ export function MatchDetailPage({
             event.caller_requires_approval &&
             !callerAccepted && <p>{t('matches.detail.outOfRangeApprovalRequired')}</p>}
           {event.status !== 'cancelled' && event.is_past && (
-            <>
-              <p>{t('matches.detail.pastScheduled')}</p>
-              <p>{t('matches.detail.outcomeUnavailable')}</p>
-            </>
+            <p {...stylex.props(shell.copy)}>
+              {t('matches.detail.pastScheduled')} · {t('matches.detail.outcomeUnavailable')}
+            </p>
           )}
         </section>
+        <button type="button" onClick={() => void share()} {...stylex.props(s.button, shell.share)}>
+          {t('matches.detail.share')}
+        </button>
+        <label {...stylex.props(shell.shareField)}>
+          {t('matches.detail.shareUrl')}
+          <textarea
+            {...stylex.props(s.input, shell.input)}
+            readOnly
+            rows={2}
+            value={`/matches/${eventId}`}
+            onFocus={(e) => e.currentTarget.select()}
+            onCopy={(e) => {
+              e.clipboardData.setData('text/plain', canonical);
+              e.preventDefault();
+            }}
+          />
+        </label>
+        {copied && <output>{t('matches.detail.copied')}</output>}
+        {shareError && <p role="alert">{t('matches.detail.copyFailed')}</p>}
       </div>
-      <button type="button" onClick={() => void share()} {...stylex.props(s.button)}>
-        {t('matches.detail.share')}
-      </button>
-      <label>
-        {t('matches.detail.shareUrl')}
-        <input
-          {...stylex.props(s.input)}
-          readOnly
-          value={canonical}
-          onFocus={(e) => e.currentTarget.select()}
-        />
-      </label>
-      {copied && <output>{t('matches.detail.copied')}</output>}
-      {shareError && <p role="alert">{t('matches.detail.copyFailed')}</p>}
     </main>
   );
 }

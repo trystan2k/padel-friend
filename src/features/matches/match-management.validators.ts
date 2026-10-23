@@ -149,7 +149,9 @@ export function validateListMatchEventManagementParticipants(value: unknown) {
   return { event_id: validateMatchUuid(data.event_id) };
 }
 
-export const validateGetMatchEventManagement = validateListMatchEventManagementParticipants;
+export function validateGetMatchEventManagement(value: unknown) {
+  return validateListMatchEventManagementParticipants(value);
+}
 function version(value: unknown) {
   if (typeof value !== 'number' || !Number.isSafeInteger(value) || value < 1)
     throw new Error('INVALID_MATCH_INPUT');

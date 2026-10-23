@@ -11,6 +11,7 @@ import {
 import { matchInvitationStyles as s } from './match-invitation.styles';
 import { matchRegistrationStyles as buttons } from './match-registration.styles';
 import { MatchManagementUnavailable } from './MatchManagementUnavailable';
+import { MatchStatusBanner } from './MatchStatusBanner';
 
 export function MatchInvitationPanel({
   eventId,
@@ -65,7 +66,12 @@ export function MatchInvitationPanel({
       setBusy(false);
     }
   }
-  if (unavailable) return <MatchManagementUnavailable reason={unavailable} />;
+  if (unavailable) {
+    if (unavailable !== 'forbidden') return <MatchStatusBanner variant={unavailable} />;
+    return <MatchManagementUnavailable reason={unavailable} />;
+  }
+  if (current === 'accepted' || current === 'declined' || current === 'expired')
+    return <MatchStatusBanner variant={current} pendingApproval={approval} />;
   return (
     <section aria-labelledby="match-invitation-title" aria-busy={busy} {...stylex.props(s.panel)}>
       <h2 id="match-invitation-title" {...stylex.props(s.title)}>

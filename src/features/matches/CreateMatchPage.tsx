@@ -1,4 +1,5 @@
 import * as stylex from '@stylexjs/stylex';
+import { rootStyles } from '../../root.styles';
 import { validMatchMapsUrl } from './match-management-edit';
 import { Link, useNavigate } from '@tanstack/react-router';
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
@@ -493,7 +494,7 @@ export function CreateMatchPage() {
   const requiredInvalid = Object.keys(fieldErrors).length > 0;
   return (
     <main {...stylex.props(s.page)}>
-      <header>
+      <header {...stylex.props(rootStyles.pageHeader)}>
         <h1 {...stylex.props(s.title)} ref={heading} tabIndex={-1}>
           {t('matchCreate.title')}
         </h1>

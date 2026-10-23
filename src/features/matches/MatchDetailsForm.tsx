@@ -33,7 +33,10 @@ export function MatchDetailTextField({
   onChange,
   error,
   type = 'text',
-  constraints = {}
+  constraints = {},
+  fieldStyle,
+  inputStyle,
+  placeholder
 }: {
   name: TextField | 'startsAt';
   value: string;
@@ -41,14 +44,18 @@ export function MatchDetailTextField({
   error?: string;
   type?: HTMLInputTypeAttribute;
   constraints?: Pick<InputHTMLAttributes<HTMLInputElement>, 'min' | 'max' | 'step'>;
+  fieldStyle?: stylex.StyleXStyles;
+  inputStyle?: stylex.StyleXStyles;
+  placeholder?: string;
 }) {
   const { t } = useTranslation();
   const id = useId();
   return (
-    <label {...stylex.props(s.field)}>
+    <label {...stylex.props(s.field, fieldStyle)}>
       {t(`matchCreate.fields.${name}`)}
       <input
-        {...stylex.props(s.input)}
+        {...stylex.props(s.input, inputStyle)}
+        placeholder={placeholder}
         type={type}
         value={value}
         onChange={(event) => onChange(event.currentTarget.value)}
@@ -67,19 +74,23 @@ export function MatchDetailTextField({
 export function MatchDetailCurrencyField({
   value,
   onChange,
-  error
+  error,
+  fieldStyle,
+  inputStyle
 }: {
   value: MatchDraft['currency'];
   onChange: (value: MatchDraft['currency']) => void;
   error?: string;
+  fieldStyle?: stylex.StyleXStyles;
+  inputStyle?: stylex.StyleXStyles;
 }) {
   const { t } = useTranslation();
   const id = useId();
   return (
-    <label {...stylex.props(s.field)}>
+    <label {...stylex.props(s.field, fieldStyle)}>
       {t('matchCreate.fields.currency')}
       <select
-        {...stylex.props(s.input)}
+        {...stylex.props(s.input, inputStyle)}
         value={value}
         aria-invalid={Boolean(error)}
         aria-describedby={error ? `${id}-error` : undefined}

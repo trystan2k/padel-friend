@@ -73,6 +73,7 @@ describe('reconfirmation panel', () => {
         screen.getByText(i18n.t('matches.reconfirmation.creatorSummary', { count: 1 }))
       ).toBeTruthy();
       expect(screen.getByText(/Player/)).toBeTruthy();
+      expect(screen.getByText(i18n.t('matchRegistration.roster.awaitingStatus'))).toBeTruthy();
       expect(mocks.confirm).not.toHaveBeenCalled();
       await userEvent.click(
         screen.getByRole('button', { name: i18n.t('matches.reconfirmation.reviewTerms') })
@@ -103,7 +104,7 @@ describe('reconfirmation panel', () => {
     expect(
       screen.queryByRole('button', { name: 'I confirm participation under these terms' })
     ).toBeNull();
-    await userEvent.click(screen.getByRole('button', { name: 'Reload latest details' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Reload details' }));
     await waitFor(() => expect(mocks.invalidate).toHaveBeenCalledTimes(2));
     view.rerender(element('en', 3));
     await userEvent.click(screen.getByRole('button', { name: 'Review changed terms' }));

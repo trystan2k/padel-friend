@@ -18,8 +18,11 @@ vi.mock('../src/features/matches/matches.functions', () => ({
 }));
 vi.mock('@tanstack/react-router', async (original) => ({
   ...(await original<typeof import('@tanstack/react-router')>()),
-  Link: ({ children, to }: { children: import('react').ReactNode; to: string }) => (
-    <a href={to}>{children}</a>
+  useRouter: () => ({ invalidate: vi.fn<() => Promise<void>>() }),
+  Link: ({ children, to, ...props }: import('react').ComponentProps<'a'> & { to: string }) => (
+    <a href={to} {...props}>
+      {children}
+    </a>
   )
 }));
 import { MatchDetailPage, shareMatchLink } from '../src/features/matches/MatchDetailPage';
@@ -89,6 +92,285 @@ afterEach(() => {
 });
 
 describe('match detail surface', () => {
+  it('copies the absolute canonical link while displaying the relative path', () => {
+    const match = event();
+    mount(match);
+    const field = screen.getByRole<HTMLTextAreaElement>('textbox', {
+      name: en.matches.detail.shareUrl
+    });
+    expect(field.value).toBe(`/matches/${match.event_id}`);
+    const setData = vi.fn<(format: string, data: string) => void>();
+    const copy = new Event('copy', { bubbles: true, cancelable: true });
+    Object.defineProperty(copy, 'clipboardData', { value: { setData } });
+    field.dispatchEvent(copy);
+    expect(setData).toHaveBeenCalledWith(
+      'text/plain',
+      `${window.location.origin}/matches/${match.event_id}`
+    );
+    expect(copy.defaultPrevented).toBe(true);
+  });
+  it.each(['en', 'pt-BR', 'es'] as const)(
+    'renders organizer card and menu without a leave action for organizer-only (%s)',
+    async (locale) => {
+      const i18n = createI18n(locale);
+      const base = makeMatchManagement();
+      render(
+        <I18nextProvider i18n={i18n}>
+          <MatchDetailPage
+            event={event()}
+            management={makeMatchManagement({
+              is_organizer: true,
+              actions: {
+                ...base.actions,
+                transfer: { allowed: true, reason: null },
+                cancel: { allowed: true, reason: null },
+                edit: { allowed: true, reason: null }
+              }
+            })}
+          />
+        </I18nextProvider>
+      );
+      expect(screen.getByRole('region', { name: i18n.t('matches.management.title') })).toBeTruthy();
+      expect(screen.getByText(i18n.t('matches.management.organizerOnly'))).toBeTruthy();
+      expect(
+        screen.getByRole('button', { name: i18n.t('matches.management.edit.title') })
+      ).toBeTruthy();
+      expect(screen.queryByRole('button', { name: i18n.t('matches.management.leave') })).toBeNull();
+      screen.getByRole('button', { name: i18n.t('matches.management.actions') }).focus();
+      await userEvent.keyboard('{ArrowDown}');
+      expect((await screen.findAllByRole('menuitem')).map((item) => item.textContent)).toEqual([
+        i18n.t('matches.management.transfer'),
+        i18n.t('matches.management.cancelMatch')
+      ]);
+      await userEvent.click(
+        screen.getByRole('menuitem', { name: i18n.t('matches.management.transfer') })
+      );
+      expect(
+        await screen.findByRole('dialog', { name: i18n.t('matches.management.transferTitle') })
+      ).toBeTruthy();
+    }
+  );
+  it.each(['started', 'result_protected', 'cancelled'] as const)(
+    'omits management card, actions, and edit for %s',
+    (reason) => {
+      const base = makeMatchManagement();
+      render(
+        <I18nextProvider i18n={createI18n('en')}>
+          <MatchDetailPage
+            event={event()}
+            management={makeMatchManagement({
+              is_organizer: true,
+              actions: { ...base.actions, edit: { allowed: false, reason } }
+            })}
+          />
+        </I18nextProvider>
+      );
+      expect(screen.queryByRole('region', { name: 'Match management' })).toBeNull();
+      expect(screen.queryByRole('button', { name: 'Actions' })).toBeNull();
+      expect(screen.queryByRole('button', { name: 'Edit match details' })).toBeNull();
+    }
+  );
+  it.each(['en', 'pt-BR', 'es'] as const)(
+    'renders rebuilt shell headings and navigation in %s',
+    (locale) => {
+      const i18n = createI18n(locale);
+      const match = event(1, {
+        visibility: 'community_open',
+        duration_minutes: null,
+        is_past: true
+      });
+      mount(match, locale);
+      expect(screen.getByRole('heading', { level: 1 }).textContent).toBe(
+        i18n.t('matches.detail.title')
+      );
+      const back = screen.getByRole('link', { name: i18n.t('matches.back') });
+      expect(back.getAttribute('href')).toBe('/matches');
+      expect(back.textContent).toBe('');
+      expect(
+        screen.getByText(
+          `${match.venue_name} · ${i18n.t('matches.detail.visibility.community_open')}`
+        )
+      ).toBeTruthy();
+      expect(screen.getByRole('region', { name: match.venue_name })).toBeTruthy();
+      expect(
+        screen.getByRole('link', {
+          name: i18n.t('matches.detail.viewCourtLocationFor', { venue: match.venue_name })
+        }).textContent
+      ).toBe(i18n.t('matches.detail.viewCourtLocation'));
+      expect(
+        i18n
+          .t('matches.detail.viewCourtLocationFor', { venue: match.venue_name })
+          .startsWith(i18n.t('matches.detail.viewCourtLocation'))
+      ).toBe(true);
+      expect(
+        screen.getByText(
+          `${i18n.t('matches.card.noLevelRestriction')} · ${i18n.t('matches.visibility.community_open')}`
+        )
+      ).toBeTruthy();
+      expect(
+        screen.getByText(
+          `${i18n.t('matches.teamMode.POST_MATCH_TEAMS')} · ${i18n.t('matches.detail.unlimitedRegistrations')}`
+        )
+      ).toBeTruthy();
+      expect(
+        screen.getByText(
+          `${i18n.t('matches.detail.pastScheduled')} · ${i18n.t('matches.detail.outcomeUnavailable')}`
+        )
+      ).toBeTruthy();
+      expect(screen.getByRole('button', { name: i18n.t('matches.detail.share') })).toBeTruthy();
+      expect(
+        screen
+          .getByRole('textbox', { name: i18n.t('matches.detail.shareUrl') })
+          .hasAttribute('readonly')
+      ).toBe(true);
+      const shareUrl = screen.getByRole<HTMLTextAreaElement>('textbox', {
+        name: i18n.t('matches.detail.shareUrl')
+      });
+      expect(shareUrl.tagName).toBe('TEXTAREA');
+      expect(shareUrl.rows).toBe(2);
+      expect(shareUrl.value).toBe(`/matches/${match.event_id}`);
+      shareUrl.focus();
+      expect(shareUrl.selectionStart).toBe(0);
+      expect(shareUrl.selectionEnd).toBe(shareUrl.value.length);
+    }
+  );
+  it.each(['started', 'result_protected'] as const)(
+    'places the %s management notice above overview for registered managers only',
+    (reason) => {
+      const match = event();
+      const registration: MyMatchRegistration = {
+        state: 'accepted',
+        event_id: match.event_id,
+        attempt_id: match.event_id,
+        participation: 'playing',
+        accepted_order: 1,
+        position: 1,
+        registration_source: 'member',
+        requested_at: '2026-10-18T09:00:00.000Z',
+        approved_at: null,
+        accepted_at: '2026-10-18T09:00:00.000Z'
+      };
+      const view = render(
+        <I18nextProvider i18n={createI18n('en')}>
+          <MatchDetailPage
+            event={match}
+            registration={registration}
+            management={makeMatchManagement({
+              is_organizer: true,
+              actions: {
+                ...makeMatchManagement().actions,
+                edit: { allowed: false, reason }
+              }
+            })}
+          />
+        </I18nextProvider>
+      );
+      const copy = en.matches.management.unavailable;
+      const notice = screen.getByRole('region', { name: en.matches.detail.statusTitles[reason] });
+      expect(notice.textContent).toContain(
+        reason === 'started' ? copy.started : copy.resultProtected
+      );
+      expect(
+        screen.getAllByText(reason === 'started' ? copy.started : copy.resultProtected, {
+          exact: false
+        })
+      ).toHaveLength(1);
+      const overview = screen.getByRole('region', { name: match.venue_name });
+      expect(notice.compareDocumentPosition(overview) & Node.DOCUMENT_POSITION_FOLLOWING).not.toBe(
+        0
+      );
+      view.rerender(
+        <I18nextProvider i18n={createI18n('en')}>
+          <MatchDetailPage event={match} registration={registration} management={null} />
+        </I18nextProvider>
+      );
+      expect(screen.queryByText(copy.started)).toBeNull();
+      expect(screen.queryByText(copy.resultProtected)).toBeNull();
+      for (const unavailable of screen.queryAllByText(en.matches.management.errors.unavailable)) {
+        expect(
+          overview.compareDocumentPosition(unavailable) & Node.DOCUMENT_POSITION_FOLLOWING
+        ).not.toBe(0);
+      }
+    }
+  );
+  it('explains cutoff restrictions without erasing accepted participation', () => {
+    const match = event(24, { registration_open: false });
+    render(
+      <I18nextProvider i18n={createI18n('en')}>
+        <MatchDetailPage
+          event={match}
+          registration={{
+            state: 'accepted',
+            event_id: match.event_id,
+            attempt_id: match.event_id,
+            participation: 'playing',
+            accepted_order: 1,
+            position: 1,
+            registration_source: 'member',
+            requested_at: '2026-10-18T09:00:00.000Z',
+            approved_at: null,
+            accepted_at: '2026-10-18T09:00:00.000Z'
+          }}
+          management={makeMatchManagement({
+            actions: {
+              ...makeMatchManagement().actions,
+              edit: { allowed: false, reason: 'closed' }
+            }
+          })}
+        />
+      </I18nextProvider>
+    );
+    expect(screen.getByText(en.matches.management.unavailable.cutoff)).toBeTruthy();
+    expect(
+      screen.getByText(en.matchRegistration.request.joinedPlayingBadge.replace('{{group}}', '1'))
+    ).toBeTruthy();
+    expect(
+      screen.getByRole('button', { name: en.matches.management.leave }).hasAttribute('disabled')
+    ).toBe(true);
+  });
+  it.each(['pending', 'expired'] as const)(
+    'places the %s invitation before overview and preserves terminal explanation at cutoff',
+    (status) => {
+      const i18n = createI18n('en');
+      render(
+        <I18nextProvider i18n={i18n}>
+          <MatchDetailPage
+            event={event()}
+            management={makeMatchManagement({
+              actions: {
+                ...makeMatchManagement().actions,
+                edit: { allowed: false, reason: 'closed' }
+              }
+            })}
+            invitation={{
+              invitation_id: event().event_id,
+              status: 'pending',
+              effective_status: status,
+              expires_at: event().registration_cutoff_at,
+              responded_at: null
+            }}
+          />
+        </I18nextProvider>
+      );
+      const panel = screen.getByRole('region', {
+        name:
+          status === 'expired'
+            ? en.matches.detail.statusTitles.expired
+            : en.matches.invitations.title
+      });
+      const overview = screen.getByRole('region', { name: event().venue_name });
+      expect(panel.compareDocumentPosition(overview) & Node.DOCUMENT_POSITION_FOLLOWING).not.toBe(
+        0
+      );
+      expect(panel.textContent).toContain(i18n.t(`matches.invitations.${status}`));
+      for (const name of [en.matches.invitations.accept, en.matches.invitations.decline]) {
+        expect(screen.queryAllByRole('button', { name })).toHaveLength(
+          status === 'expired' ? 0 : 1
+        );
+      }
+    }
+  );
+
   it('renders invalidated minor facts without retaining the old venue currency price or notes', () => {
     const view = mount(event());
     view.rerender(
@@ -108,7 +390,9 @@ describe('match detail surface', () => {
     );
     expect(screen.getByRole('heading', { name: /Updated court/ })).toBeTruthy();
     expect(
-      screen.getByRole('link', { name: 'Open map for Updated court' }).getAttribute('href')
+      screen
+        .getByRole('link', { name: 'View court location for Updated court' })
+        .getAttribute('href')
     ).toBe('https://maps.app.goo.gl/updated');
     expect(screen.getByText(/\$24.50/)).toBeTruthy();
     expect(screen.queryByText(/€12.50/)).toBeNull();
@@ -120,6 +404,9 @@ describe('match detail surface', () => {
   it('renders a cancelled tombstone without player CTAs or recruitment counts', () => {
     mount(event(1, { status: 'cancelled', registration_open: false }));
     expect(screen.getByText(en.matches.management.cancelled)).toBeTruthy();
+    expect(
+      screen.getByRole('region', { name: en.matches.detail.statusTitles.cancelled }).textContent
+    ).toContain(en.matches.management.unavailable.cancelled);
     expect(screen.queryByText(en.matches.detail.invitationInfo)).toBeNull();
     expect(screen.queryByRole('heading', { name: en.matches.detail.participation })).toBeNull();
     expect(screen.queryByRole('button', { name: 'Join match' })).toBeNull();
@@ -136,13 +423,13 @@ describe('match detail surface', () => {
     expect(screen.getByRole('img', { name: en.matches.card.photoAlt }).getAttribute('src')).toBe(
       'https://example.test/photo.jpg'
     );
-    const maps = screen.getByRole('link', { name: 'Open map for Court Central' });
+    const maps = screen.getByRole('link', { name: 'View court location for Court Central' });
     expect(maps.getAttribute('rel')).toBe('noopener noreferrer');
     expect(screen.getByText(/€12\.50/)).toBeTruthy();
     expect(screen.getByText(/Notes included: Bring water/)).toBeTruthy();
     expect(screen.getByText(/5 · Accepted/)).toBeTruthy();
     expect(screen.getByText(/4 playing · 1 reserve · 1 group · 3 more needed/)).toBeTruthy();
-    expect(screen.getByText('Invite only')).toBeTruthy();
+    expect(screen.getByText(/No level restriction · Invite only/)).toBeTruthy();
     expect(screen.getByText(en.matches.detail.invitationInfo)).toBeTruthy();
     expect(screen.queryByText(/Club Hidden|saved_venue_id/i)).toBeNull();
     expect(screen.queryByRole('button', { name: /accept|decline/i })).toBeNull();
@@ -302,8 +589,11 @@ describe('match detail surface', () => {
   });
   it('renders past scheduled event with no result language or fabricated score', () => {
     mount(event(8, { is_past: true, caller_badge: null }));
-    expect(screen.getByText(en.matches.detail.pastScheduled)).toBeTruthy();
-    expect(screen.getByText(en.matches.detail.outcomeUnavailable)).toBeTruthy();
+    expect(
+      screen.getByText(
+        `${en.matches.detail.pastScheduled} · ${en.matches.detail.outcomeUnavailable}`
+      )
+    ).toBeTruthy();
     expect(screen.queryByText(/\bscore\b|\bconfirmed\b|\bdisputed\b/i)).toBeNull();
   });
   it('labels creator acceptance distinctly from playing and supports localized formatting in Spanish', () => {

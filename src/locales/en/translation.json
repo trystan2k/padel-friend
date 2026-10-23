@@ -1,4 +1,9 @@
 {
+  "languageNames": {
+    "en": "English",
+    "pt-BR": "Português (Brasil)",
+    "es": "Español"
+  },
   "title": "Padel Friend",
   "description": "Padel Friend, built with TanStack Start, Cloudflare Workers and Supabase.",
   "signIn": "Sign in",
@@ -572,7 +577,8 @@
         "minorNotice": "Update venue, price, notes, capacity, or registration deadline. These changes do not require reconfirmation.",
         "conflictTitle": "Match changed elsewhere",
         "conflictDescription": "Your draft is still here. Review it, or reload the match to discard this draft and reopen editing with the latest details.",
-        "reload": "Reload latest details",
+        "reload": "Reload details",
+        "conflictHelper": "Resolve this conflict before saving. Your draft has not been discarded.",
         "reviewDraft": "Review my draft",
         "saved": "Match details saved."
       },
@@ -588,6 +594,8 @@
       "cancelled": "Cancelled",
       "ownershipTransferred": "Organization transferred.",
       "participants": "Manage participants",
+      "title": "Match management",
+      "close": "Close",
       "actions": "Actions",
       "participantActions": "Actions for {{name}}",
       "leave": "Leave match",
@@ -720,6 +728,22 @@
     },
     "detail": {
       "title": "Match details",
+      "viewCourtLocation": "View court location",
+      "viewCourtLocationFor": "View court location for {{venue}}",
+      "unlimitedRegistrations": "Unlimited registrations",
+      "visibility": {
+        "community_open": "Community match",
+        "invite_only": "Invite-only match"
+      },
+      "statusTitles": {
+        "accepted": "Invitation accepted",
+        "declined": "Invitation declined",
+        "expired": "Invitation expired",
+        "closed": "Registration closed",
+        "started": "Match started",
+        "cancelled": "Match cancelled",
+        "result_protected": "Results protected"
+      },
       "overview": "Overview",
       "participation": "Participation",
       "eligibilityVisibility": "Eligibility and visibility",
@@ -731,8 +755,8 @@
       "guestApprovalRequired": "Guest approval required",
       "outOfRangeApprovalRequired": "Approval required for your level",
       "invitationInfo": "You were invited to this match.",
-      "pastScheduled": "Scheduled past event; outcome not available.",
-      "outcomeUnavailable": "Outcome unavailable",
+      "pastScheduled": "Scheduled past event",
+      "outcomeUnavailable": "Outcome not available",
       "share": "Share match",
       "shareUnavailable": "Sharing unavailable",
       "copyLink": "Copy link",
@@ -845,6 +869,17 @@
     }
   },
   "matchRegistration": {
+    "place": {
+      "title": "Your place in this match",
+      "creatorCopy": "You created this match — your place is confirmed.",
+      "organizerBadge": "Organizer only",
+      "organizerCopy": "You left the roster. You still organize this match; your previous playing place is no longer reserved.",
+      "reservePosition": "Reserve #{{position}}",
+      "reserveCopy": "Reserve #{{position}}. Your accepted order is preserved; you enter play as places open.",
+      "openCopy": "This community is open. Join directly if you change your mind; your place is confirmed instantly.",
+      "closedCopy": "Cutoff passed · Playing quartets finalized. {{playing}} playing · {{reserve}} reserve not playing.",
+      "closedNote": "New joins and requests are no longer accepted."
+    },
     "aria": {
       "status": "Registration status",
       "roster": "Match roster",
@@ -881,7 +916,7 @@
     "request": {
       "back": "‹   Your request status",
       "context": "One state at a time · organizer decisions update live",
-      "pendingBadge": "REQUEST PENDING",
+      "pendingBadge": "Pending approval",
       "pendingCopy": "Sent to the organizer. Your queue place starts only if they approve.",
       "pendingMeta": "Requested {{when}} · no place reserved yet",
       "viewMatch": "View match",
@@ -892,11 +927,11 @@
       "approvedReserveCopy": "Approved at {{when}} · FIFO place, first reserve if a slot opens.",
       "joinedPlayingBadge": "JOINED · PLAYING · Group {{group}}",
       "joinedPlayingCopy": "Joined at {{when}} · your place was confirmed instantly.",
-      "joinedReserveBadge": "JOINED · RESERVE · #{{position}}",
+      "joinedReserveBadge": "Joined · Reserve #{{position}}",
       "joinedReserveCopy": "Joined at {{when}} · FIFO place, first reserve if a slot opens.",
-      "createdPlayingBadge": "CREATOR · PLAYING · Group {{group}}",
+      "createdPlayingBadge": "Creator · Playing · Group {{group}}",
       "createdPlayingCopy": "You created this match · your place is confirmed.",
-      "createdReserveBadge": "CREATOR · RESERVE · #{{position}}",
+      "createdReserveBadge": "Creator · Reserve #{{position}}",
       "createdReserveCopy": "You created this match · FIFO place, first reserve if a slot opens.",
       "declinedBadge": "DECLINED",
       "declinedCopy": "The organizer declined this request. You can request again until registration closes.",
@@ -907,12 +942,20 @@
       "note": "Approval time sets the queue position. Pending and expired requests never hold a place."
     },
     "roster": {
+      "title": "Players in this match",
+      "manageTitle": "Participants · Manage roster",
+      "awaitingTitle": "Awaiting reconfirmation",
+      "awaitingStatus": "Not playing · Awaiting reconfirmation",
+      "awaitingNote": "Awaiting players keep capacity and queue order, but are not assigned to quartets until they reconfirm.",
+      "playerDetail": "Level {{level}} · {{placement}}",
+      "playerDetailUnrated": "No level · {{placement}}",
+      "playingLabel": "Playing",
       "groupTitle": "GROUP {{group}}",
       "reserveTitle": "RESERVE QUEUE",
       "fifo": "FIFO · first to join",
       "notPlayingTitle": "NOT PLAYING",
       "you": "You",
-      "orderNote": "Order is set by approval time and is never reordered.",
+      "orderNote": "Accepted order is server-authoritative. Reserves keep FIFO position.",
       "authoritativeNote": "Accepted order is server-authoritative. Guests never become members.",
       "playerFallback": "Player",
       "level": "Level {{level}}",
@@ -929,6 +972,10 @@
       "member": "MEMBER"
     },
     "queue": {
+      "joinTitle": "Join requests",
+      "requests_one": "{{count}} request",
+      "requests_other": "{{count}} requests",
+      "emptyCopy": "No pending requests. Approving a guest sets their queue position at that time.",
       "title": "Join requests",
       "subtitle_one": "{{event}} · {{count}} to review",
       "subtitle_other": "{{event}} · {{count}} to review",

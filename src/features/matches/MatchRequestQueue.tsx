@@ -27,7 +27,6 @@ function relativeWhen(language: string, iso: string, now: number): string | null
 
 export function MatchRequestQueue({
   eventId,
-  eventName,
   queue,
   minLevel = null,
   maxLevel = null,
@@ -68,7 +67,7 @@ export function MatchRequestQueue({
     return (
       <section aria-labelledby="match-requests-heading" role="alert" {...stylex.props(s.panel)}>
         <h2 id="match-requests-heading" {...stylex.props(s.title)}>
-          {t('matchRegistration.queue.title')}
+          {t('matchRegistration.queue.joinTitle')}
         </h2>
         <p {...stylex.props(s.copy)}>{t('matchRegistration.queue.error')}</p>
         <div {...stylex.props(s.actions)}>
@@ -111,28 +110,20 @@ export function MatchRequestQueue({
       <header {...stylex.props(s.queueHeader)}>
         <div {...stylex.props(s.header)}>
           <h2 id="match-requests-heading" {...stylex.props(s.title)}>
-            {t('matchRegistration.queue.title')}
+            {t('matchRegistration.queue.joinTitle')}
           </h2>
-          <p {...stylex.props(s.meta)}>
-            {t('matchRegistration.queue.subtitle', {
-              event: eventName,
-              count: requests.length
-            })}
-          </p>
         </div>
-        <span {...stylex.props(s.queueSort)}>{t('matchRegistration.queue.sort')}</span>
       </header>
       <p {...stylex.props(s.badgeRow)}>
         <StatusBadge tone={registrationActionTone.request}>
-          {t('matchRegistration.queue.count', { count: requests.length })}
+          {t('matchRegistration.queue.requests', { count: requests.length })}
         </StatusBadge>
       </p>
-      <div {...stylex.props(s.body)}>
-        <h3 {...stylex.props(s.rosterTitle)}>{t('matchRegistration.queue.fifoTitle')}</h3>
+      {requests.length > 0 && (
         <p {...stylex.props(s.note)}>{t('matchRegistration.queue.fifoCopy')}</p>
-      </div>
+      )}
       {requests.length === 0 ? (
-        <p {...stylex.props(s.copy)}>{t('matchRegistration.queue.empty')}</p>
+        <p {...stylex.props(s.copy)}>{t('matchRegistration.queue.emptyCopy')}</p>
       ) : (
         <ul {...stylex.props(s.requestList)}>
           {requests.map((request) => {

@@ -47,6 +47,9 @@ describe('minor edit dialog', () => {
   it('conflict retains draft and reload is explicit', async () => {
     const view = render(element());
     await screen.findByRole('dialog');
+    expect(
+      screen.queryByText(createI18n('en').t('matches.management.edit.conflictHelper'))
+    ).toBeNull();
     const venue = screen.getByRole('textbox', { name: 'Venue name' });
     await userEvent.clear(venue);
     await userEvent.type(venue, 'My draft');
@@ -57,6 +60,9 @@ describe('minor edit dialog', () => {
     });
     await userEvent.click(screen.getByRole('button', { name: 'Save changes' }));
     await screen.findByText('Match changed elsewhere');
+    expect(
+      screen.getByText(createI18n('en').t('matches.management.edit.conflictHelper'))
+    ).toBeTruthy();
     expect(venue instanceof HTMLInputElement && venue.value).toBe('My draft');
     expect(mocks.invalidate).toHaveBeenCalledOnce();
     view.rerender(element('en', 2));
@@ -72,7 +78,7 @@ describe('minor edit dialog', () => {
         patch: expect.objectContaining({ venue_name: 'My draft' })
       })
     });
-    await userEvent.click(screen.getByRole('button', { name: 'Reload latest details' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Reload details' }));
     await waitFor(() => expect(mocks.invalidate).toHaveBeenCalledTimes(2));
     expect(mocks.close).toHaveBeenCalledOnce();
   });
@@ -82,6 +88,10 @@ describe('minor edit dialog', () => {
       const i18n = createI18n(locale);
       render(element(locale));
       await screen.findByRole('dialog');
+      expect(screen.getByRole('button', { name: i18n.t('matches.management.close') })).toBeTruthy();
+      expect(
+        screen.getByLabelText(i18n.t('matchCreate.fields.notes')).getAttribute('placeholder')
+      ).toBe(i18n.t('matchCreate.helpers.optional'));
       for (const field of [
         'venueName',
         'mapsUrl',
@@ -125,6 +135,34 @@ describe('minor edit dialog', () => {
       expect(mocks.invalidate).toHaveBeenCalledOnce();
     }
   );
+  it('close icon dismisses without saving and preserves semantic field order', async () => {
+    render(element());
+    const dialog = await screen.findByRole('dialog');
+    const labels = [...dialog.querySelectorAll('fieldset label')].map(
+      (label) => label.firstChild?.textContent
+    );
+    const i18n = createI18n('en');
+    expect(labels).toEqual(
+      [
+        'type',
+        'startsAt',
+        'venueName',
+        'mapsUrl',
+        'courtNotes',
+        'price',
+        'currency',
+        'paymentNote',
+        'notes',
+        'maximumRegistrations',
+        'cutoff'
+      ].map((name) => {
+        return i18n.t(`matchCreate.fields.${name}`);
+      })
+    );
+    await userEvent.click(screen.getByRole('button', { name: 'Close' }));
+    expect(mocks.close).toHaveBeenCalledOnce();
+    expect(mocks.edit).not.toHaveBeenCalled();
+  });
   it('network retry preserves request id while a fresh draft gets a new intent', async () => {
     render(element());
     await screen.findByRole('dialog');

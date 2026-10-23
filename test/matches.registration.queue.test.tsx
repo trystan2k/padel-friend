@@ -113,10 +113,7 @@ describe('match request queue', () => {
   it('renders the creator queue with FIFO copy, request types and context', () => {
     mount(queue());
     expect(screen.getByRole('heading', { name: en.matchRegistration.queue.title })).toBeTruthy();
-    expect(screen.getByText('Court Central · 2 to review')).toBeTruthy();
-    expect(screen.getByText('2 REQUESTS')).toBeTruthy();
-    expect(screen.getByText(en.matchRegistration.queue.sort)).toBeTruthy();
-    expect(screen.getByText(en.matchRegistration.queue.fifoTitle)).toBeTruthy();
+    expect(screen.getByText('2 requests')).toBeTruthy();
     expect(screen.getByText(en.matchRegistration.queue.fifoCopy)).toBeTruthy();
     expect(screen.getByText('Paula Guest')).toBeTruthy();
     expect(screen.getByText(en.matchRegistration.queue.typeGuest)).toBeTruthy();
@@ -213,8 +210,8 @@ describe('match request queue', () => {
 
   it('renders an empty queue message', () => {
     mount(queue({ requests: [] }));
-    expect(screen.getByText(en.matchRegistration.queue.empty)).toBeTruthy();
-    expect(screen.getByText('0 REQUESTS')).toBeTruthy();
+    expect(screen.getByText(en.matchRegistration.queue.emptyCopy)).toBeTruthy();
+    expect(screen.getByText('0 requests')).toBeTruthy();
   });
 
   it('approves a request with a labelled control and refreshes authoritative state', async () => {
@@ -308,10 +305,10 @@ describe('match request queue', () => {
   it('localizes the creator queue in pt-BR and es', () => {
     mount(queue(), 'pt-BR');
     expect(screen.getAllByText(pt.matchRegistration.queue.approve).length).toBeGreaterThan(0);
-    expect(screen.getByText(pt.matchRegistration.queue.fifoTitle)).toBeTruthy();
+    expect(screen.getByText(pt.matchRegistration.queue.fifoCopy)).toBeTruthy();
     cleanup();
     mount(queue(), 'es');
-    expect(screen.getByText(es.matchRegistration.queue.title)).toBeTruthy();
+    expect(screen.getByText(es.matchRegistration.queue.joinTitle)).toBeTruthy();
     expect(screen.getAllByText(es.matchRegistration.queue.decline).length).toBeGreaterThan(0);
   });
 });

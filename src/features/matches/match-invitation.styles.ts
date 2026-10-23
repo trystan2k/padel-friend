@@ -9,7 +9,12 @@ export const matchInvitationStyles = stylex.create({
     backgroundColor: 'var(--color-surface)',
     overflowWrap: 'anywhere'
   },
-  title: { margin: 0, fontFamily: 'var(--font-family-heading)', fontSize: 'var(--font-size-18)' },
+  title: {
+    margin: 0,
+    fontFamily: 'var(--font-family-body)',
+    fontSize: 'var(--font-size-18)',
+    fontWeight: 'var(--font-weight-semibold)'
+  },
   copy: { margin: 0, color: 'var(--color-text)' },
   status: { display: 'grid', gap: 'var(--space-3)' },
   actions: { display: 'flex', flexWrap: 'wrap', gap: 'var(--space-3)' }

@@ -7,6 +7,7 @@ import { MatchRemovalDialog } from './MatchRemovalDialog';
 import { useMatchManagement } from './use-match-management';
 import { matchManagementStyles as s } from './match-management.styles';
 import { MatchManagementUnavailable } from './MatchManagementUnavailable';
+import { matchRegistrationStyles as registrationStyles } from './match-registration.styles';
 
 export function MatchParticipantActions({
   eventId,
@@ -29,7 +30,7 @@ export function MatchParticipantActions({
     return <MatchManagementUnavailable reason={controller.unavailable} focus />;
   if (!targetUserId)
     return (
-      <div {...stylex.props(s.section)}>
+      <div>
         <Dialog.Root
           open={open}
           onOpenChange={(value) => {
@@ -40,7 +41,7 @@ export function MatchParticipantActions({
           <Dialog.Trigger
             ref={trigger}
             disabled={disabled || open || controller.pending}
-            {...stylex.props(s.button)}
+            {...stylex.props(s.button, registrationStyles.leaveButton)}
           >
             {t('matches.management.leave')}
           </Dialog.Trigger>
@@ -88,10 +89,10 @@ export function MatchParticipantActions({
         <Menu.Trigger
           ref={trigger}
           disabled={disabled || controller.pending}
-          {...stylex.props(s.button)}
+          {...stylex.props(s.button, registrationStyles.overflowButton)}
           aria-label={t('matches.management.participantActions', { name: displayName })}
         >
-          {t('matches.management.actions')}
+          <span aria-hidden="true">⋯</span>
         </Menu.Trigger>
         <Menu.Portal>
           <Menu.Positioner>

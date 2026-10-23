@@ -44,12 +44,26 @@ describe('reconfirmation models', () => {
         lifecycle: 'expired',
         resolved_at: '2099-01-02T00:00:00Z'
       })
-    ).toMatchObject({ state: 'expired' });
+    ).toMatchObject({ state: 'reconfirmation_excluded' });
     expect(
       parseManagementParticipants([
         { ...row, registration_id: id, user_id: id, display_name: null, display_level: null }
       ])
     ).toMatchObject([{ participation: null, required_generation: 2 }]);
+  });
+  it('rejects invalid excluded consent evidence without confusing never-accepted expiry', () => {
+    const excluded = { ...row, lifecycle: 'expired', resolved_at: '2099-01-02T00:00:00Z' };
+    for (const invalid of [
+      { accepted_order: null },
+      { participation: 'playing' },
+      { required_generation: undefined },
+      { confirmed_generation: 2 }
+    ]) {
+      expect(parseMyMatchRegistration({ ...excluded, ...invalid })).toBeNull();
+    }
+    expect(
+      parseMyMatchRegistration({ ...excluded, accepted_at: null, accepted_order: null })
+    ).toMatchObject({ state: 'expired' });
   });
   it('decodes major-edit and reconfirmation envelopes without private fields', () => {
     const envelope = {

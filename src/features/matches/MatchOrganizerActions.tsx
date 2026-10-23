@@ -33,12 +33,15 @@ export function MatchOrganizerActions({
     return <MatchManagementUnavailable reason={unavailable} focus={!!controller.unavailable} />;
   if (management.status === 'cancelled' || (!management.is_organizer && !cancel)) return null;
   return (
-    <section {...stylex.props(s.section)}>
-      <h2 id="match-management-heading" tabIndex={-1}>
-        {t('matches.management.actions')}
+    <section
+      aria-labelledby="match-management-heading"
+      {...stylex.props(s.section, s.managementCard)}
+    >
+      <h2 id="match-management-heading" tabIndex={-1} {...stylex.props(s.cardTitle)}>
+        {t('matches.management.title')}
       </h2>
       {management.is_organizer && (
-        <p>
+        <p {...stylex.props(s.copy)}>
           {t(
             management.is_participant
               ? 'matches.management.leaveKeepOrganizing'
@@ -48,31 +51,63 @@ export function MatchOrganizerActions({
       )}
       {(transfer || cancel) && (
         <Menu.Root>
-          <Menu.Trigger ref={trigger} disabled={controller.pending} {...stylex.props(s.button)}>
+          <Menu.Trigger
+            ref={trigger}
+            disabled={controller.pending}
+            {...stylex.props(s.button, s.actionsTrigger)}
+          >
+            <span aria-hidden="true">⋯</span>
             {t('matches.management.actions')}
           </Menu.Trigger>
           <Menu.Portal>
-            <Menu.Positioner>
+            <Menu.Positioner
+              side="bottom"
+              align="end"
+              sideOffset={6}
+              {...stylex.props(s.menuPositioner)}
+            >
               <Menu.Popup {...stylex.props(s.menu)}>
                 {transfer && (
                   <Menu.Item
-                    {...stylex.props(s.button)}
+                    {...stylex.props(s.menuItem, s.transferItem)}
                     onClick={() => {
                       setVersion(management.version);
                       setDialog('transfer');
                     }}
                   >
+                    <svg
+                      aria-hidden="true"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="1.5"
+                      {...stylex.props(s.icon)}
+                    >
+                      <circle cx="10" cy="7" r="4" />
+                      <path d="M2 21v-3a8 8 0 0 1 16 0v3M17 3a4 4 0 0 1 0 8M20 14a7 7 0 0 1 2 5v2" />
+                    </svg>
                     {t('matches.management.transfer')}
                   </Menu.Item>
                 )}
                 {cancel && (
                   <Menu.Item
-                    {...stylex.props(s.button)}
+                    {...stylex.props(s.menuItem, s.cancelItem)}
                     onClick={() => {
                       setVersion(management.version);
                       setDialog('cancel');
                     }}
                   >
+                    <svg
+                      aria-hidden="true"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="1.5"
+                      {...stylex.props(s.icon)}
+                    >
+                      <circle cx="12" cy="12" r="9" />
+                      <path d="m9 9 6 6m0-6-6 6" />
+                    </svg>
                     {t('matches.management.cancelMatch')}
                   </Menu.Item>
                 )}
@@ -91,7 +126,8 @@ export function MatchOrganizerActions({
         returnFocus={trigger}
         targets={participants.filter(
           (player) =>
-            player.user_id !== management.owner_id && player.participation !== 'reserve_not_playing'
+            player.user_id !== management.owner_id &&
+            (player.participation === 'playing' || player.participation === 'reserve')
         )}
         onConfirm={(targetUserId) => controller.manage(version, { targetUserId })}
       />
@@ -105,7 +141,7 @@ export function MatchOrganizerActions({
         returnFocus={trigger}
         onConfirm={(reason) => controller.manage(version, { reason })}
       />
-      {!dialog && (
+      {!dialog && controller.feedback && (
         <output aria-live="polite">{controller.feedback ? t(controller.feedback) : null}</output>
       )}
     </section>
