@@ -133,6 +133,8 @@ export const matchManagementStyles = stylex.create({
     borderRadius: 'var(--radius-8)',
     backgroundColor: 'var(--color-surface-2)',
     color: 'var(--color-text)',
-    border: 'var(--border-width-sm) solid var(--color-line)'
+    borderWidth: 'var(--border-width-sm)',
+    borderStyle: 'solid',
+    borderColor: 'var(--color-line)'
   }
 });

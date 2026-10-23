@@ -92,7 +92,9 @@ export const matchDetailShellStyles = stylex.create({
     width: '100%',
     minWidth: 0,
     resize: 'none',
-    border: 'var(--border-width-sm) solid var(--color-line)',
+    borderWidth: 'var(--border-width-sm)',
+    borderStyle: 'solid',
+    borderColor: 'var(--color-line)',
     paddingInline: 'var(--space-12)',
     fontSize: 'var(--font-size-14)'
   },
