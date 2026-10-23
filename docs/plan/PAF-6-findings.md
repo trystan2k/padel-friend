@@ -15,6 +15,7 @@
 | F11 | minor | required | src/features/matches/MatchStatusBanner.tsx:24 | result_protected banner bg should be surface-2 w/ green title+icon | fixed | bug-fixer-specialist | 2 | Fixed: neutral surface-2 result-protected banner with green title/icon; unit tests and scoped E2E green. |
 | F12 | minor | required | src/features/matches/MatchRegistrationPanel.tsx:357,438 | Organizer-only/closed badges stretch full-width; organizer tone wrong | fixed | bug-fixer-specialist | 2 | Fixed: content-width pill badges and organizer-specific tone/typography; unit tests and scoped E2E green. |
 | F13 | minor | required | src/features/matches/match-edit.styles.ts:77 | Edit inputs/buttons show native inset/bevel; need flat tokenized borders | fixed | implementation-specialist | 2 | Chromium computed checks pass: non-datetime fields appearance:none, boxShadow:none, surface background, 1px solid line borders; buttons appearance:none/border0 including close. No datetime-internal changes. |
+| F14 | medium | related | src/features/matches/MatchCancelDialog.tsx:69 | Cancel reason allows control chars/overlength; generic server error surfaced | fixed | bug-fixer-specialist | 3 | Copilot review finding; mirrored removal-dialog client validation (control chars + length) with inline translated message + ARIA; 6 failing-first regression cases → 11/11 green, cancel journey 8/8; commit a1a441e pushed; Copilot thread resolved |
 
 ## Iteration 2 — typography / native-control / chip follow-up
 
