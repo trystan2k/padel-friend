@@ -75,6 +75,7 @@ function decodeProjection(value: unknown) {
     required(row, key, (entry) => (entry === null ? null : decoder(entry)));
   return {
     event_id: required(row, 'event_id', nonEmptyText),
+    status: required(row, 'status', (entry) => enumValue(entry, ['open', 'cancelled'] as const)),
     community_id: required(row, 'community_id', nonEmptyText),
     community_name: required(row, 'community_name', text),
     creator_id: required(row, 'creator_id', nonEmptyText),
@@ -102,6 +103,12 @@ function decodeProjection(value: unknown) {
     maximum_registrations: nullableField('maximum_registrations', count),
     registration_cutoff_at: required(row, 'registration_cutoff_at', timestamp),
     accepted_count: required(row, 'accepted_count', count),
+    reconfirmation_required_count:
+      row.reconfirmation_required_count === undefined
+        ? 0
+        : count(row.reconfirmation_required_count),
+    reconfirmation_generation:
+      row.reconfirmation_generation === undefined ? 0 : count(row.reconfirmation_generation),
     playing_count: required(row, 'playing_count', count),
     reserve_count: required(row, 'reserve_count', count),
     reserve_not_playing_count: required(row, 'reserve_not_playing_count', count),

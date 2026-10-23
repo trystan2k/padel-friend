@@ -7,6 +7,8 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createI18n } from '../src/i18n/config';
 import type { Locale } from '../src/i18n/config';
 import en from '../src/locales/en/translation.json';
+import * as stylex from '@stylexjs/stylex';
+import { rootStyles } from '../src/root.styles';
 
 const mocks = vi.hoisted(() => ({
   list: vi.fn<(...args: unknown[]) => Promise<unknown>>(),
@@ -65,6 +67,26 @@ const event = (
     caller_requires_approval: false
   });
 const copy = en.matches;
+it('reserves global chip space for the longest MatchesPage locale at 320px', () => {
+  const previousWidth = window.innerWidth;
+  Object.defineProperty(window, 'innerWidth', { configurable: true, value: 320 });
+  try {
+    const i18n = createI18n('es');
+    const { container } = render(
+      <I18nextProvider i18n={i18n}>
+        <MatchesPage entry="available" />
+      </I18nextProvider>
+    );
+    const header = container.querySelector('main > header')!;
+    expect(window.innerWidth).toBe(320);
+    expect(header.querySelector('h1')?.textContent).toBe(i18n.t('matches.title'));
+    expect(header.querySelector('p')?.textContent).toBe(i18n.t('matches.subtitle'));
+    for (const className of stylex.props(rootStyles.pageHeader).className!.split(' '))
+      expect(header.classList.contains(className)).toBe(true);
+  } finally {
+    Object.defineProperty(window, 'innerWidth', { configurable: true, value: previousWidth });
+  }
+});
 function mount(props: Partial<ComponentProps<typeof MatchesPage>> = {}, locale: Locale = 'en') {
   return render(
     <I18nextProvider i18n={createI18n(locale)}>
@@ -79,6 +101,23 @@ afterEach(() => {
 });
 
 describe('match list surfaces', () => {
+  it('keeps a cancelled My Matches card without recruitment or invitation copy', () => {
+    mount({
+      entry: 'my',
+      initialItems: [
+        {
+          ...event(1, 0, 'invited'),
+          status: 'cancelled',
+          registration_open: false,
+          caller_is_invited: true
+        }
+      ]
+    });
+    const card = screen.getByRole('article');
+    expect(card.textContent).toContain(copy.management.cancelled);
+    expect(card.textContent).not.toContain(copy.detail.invitationInfo);
+    expect(card.textContent).not.toContain('more needed');
+  });
   it('renders realistic event details, localized Maps label and informational price', () => {
     mount({ initialItems: [event(1, 1)] });
     const card = screen.getByRole('article');

@@ -1,4 +1,5 @@
 import * as stylex from '@stylexjs/stylex';
+import { rootStyles } from '../root.styles';
 import { createFileRoute, useRouter, Link } from '@tanstack/react-router';
 import { useTranslation } from 'react-i18next';
 import { PlayerProfile } from '../features/player/PlayerProfile';
@@ -37,7 +38,7 @@ function Dashboard() {
   const { profile, adminCommunities, inbox, notificationCount } = Route.useLoaderData();
   return (
     <>
-      <header>
+      <header {...stylex.props(rootStyles.pageHeader)}>
         <NotificationBadge count={notificationCount ?? null} />
         <nav aria-label={t('matches.navigationLabel')}>
           <Link to="/matches">{t('matches.navigationLabel')}</Link>{' '}

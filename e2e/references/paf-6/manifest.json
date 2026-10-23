@@ -1,0 +1,361 @@
+{
+  "status": "implemented-certification-passing",
+  "sourceDesign": {
+    "path": "docs/design/padel-friend.pen",
+    "sha256": "876fb17a5851cd28e0e739229af6df8ac48fafde6d66b333da76bdbf1d11a1cb",
+    "exportCommand": "Pencil MCP execute on /tmp/paf-6-design/source.pen (byte-identical scratch copy): Export([\"Fyhbv\",\"lJHUZ\",\"t0SZec\",\"oVtuS\",\"uiRqp\",\"q2TCnQ\",\"Ht2Oq\",\"m7hh3\",\"dmvWu\"],\"png\",<repo>/e2e/references/paf-6,{scale:1})",
+    "provenanceNote": "Nine original frames retained unchanged. User-directed frame-driven redesign: ten authoritative rebuilt exports copied from test-results/paf6-rebuilt2 without agent design mutation. Rebuilt frames include app chrome and retain their full source heights; opaque source digest updated.",
+    "additionalExportCommand": "Export([\"YvdPB\",\"M7ighq\",\"T7T2U\",\"bobgm\",\"PKM0u\",\"K23bLC\",\"Tm3XM\",\"xgKXg\",\"tVzco\",\"a6xmFd\"],\"png\",<repo>/e2e/references/paf-6,{scale:1})"
+  },
+  "approvedReferences": {
+    "YvdPB.png": {
+      "frameId": "YvdPB",
+      "name": "Match invitation \u2014 Accepted",
+      "sourceSize": "390x1447",
+      "sha256": "05129b542f65d6c51afa4e63f864766558c36a9b6abe04fa6d7bbbbf30613804"
+    },
+    "M7ighq.png": {
+      "frameId": "M7ighq",
+      "name": "Match invitation \u2014 Declined",
+      "sourceSize": "390x1010",
+      "sha256": "b8e4c4cc265373195f5f17bd90886dfec943417cc78e25caeddac57aee822a23"
+    },
+    "T7T2U.png": {
+      "frameId": "T7T2U",
+      "name": "Match invitation \u2014 Expired",
+      "sourceSize": "390x1136",
+      "sha256": "54434638d43bce9dc5ce272f9735ba9215f9398bd22770fc13f8e30698802886"
+    },
+    "bobgm.png": {
+      "frameId": "bobgm",
+      "name": "Match creator \u2014 Action menu",
+      "sourceSize": "390x1866",
+      "sha256": "065042184accd3f22090423e679526bf92de737594f49373e97a6d576d37d421"
+    },
+    "PKM0u.png": {
+      "frameId": "PKM0u",
+      "name": "Match organizer only",
+      "sourceSize": "390x1738",
+      "sha256": "1e3237c08483cf48c38c070791446f8dfcff02864b45975b18bdc833e92155be"
+    },
+    "K23bLC.png": {
+      "frameId": "K23bLC",
+      "name": "Match detail \u2014 Cancelled",
+      "sourceSize": "390x859",
+      "sha256": "685551a88c8693f01caf7b6feaf7a266597fd4253b5b392903f83f82f9e00d0d"
+    },
+    "Tm3XM.png": {
+      "frameId": "Tm3XM",
+      "name": "Match management \u2014 Minor edit conflict",
+      "sourceSize": "390x1361",
+      "sha256": "9c29c8bf6065bdd97ceba33442c3724bf29bb4ff4711a9d82bd063688ccac6b9",
+      "maskRegions": [
+        { "x": 28, "y": 528, "width": 334, "height": 54 },
+        { "x": 28, "y": 1157, "width": 334, "height": 55 }
+      ]
+    },
+    "xgKXg.png": {
+      "frameId": "xgKXg",
+      "name": "Match reconfirmation \u2014 Creator summary",
+      "sourceSize": "390x2054",
+      "sha256": "4d50a48c87c62df9c764583e0808bce5a5aae2143dba6296041a63595c2fe53c"
+    },
+    "tVzco.png": {
+      "frameId": "tVzco",
+      "name": "Match management \u2014 Started unavailable",
+      "sourceSize": "390x1411",
+      "sha256": "8a25ec4194a3ddedb6a95f7b8cf9a8d88a72143a71dff911eb69e83e929adf8e",
+      "maskRegions": [{ "x": 32, "y": 372, "width": 326, "height": 38 }]
+    },
+    "a6xmFd.png": {
+      "frameId": "a6xmFd",
+      "name": "Match management \u2014 Results protected",
+      "sourceSize": "390x1395",
+      "sha256": "f9ec5dcd6c860a9eae209e174bd726418a7b72252a4bfa174b006173c560f65a"
+    },
+    "Fyhbv.png": {
+      "frameId": "Fyhbv",
+      "name": "Match invitation \u2014 invited player",
+      "sourceSize": "390x844",
+      "derivation": "Full frame, uncropped; preserves pending invitation card, Accept/Decline and navigation. No terminal invitation variants present.",
+      "sha256": "2a91105c6f3b34977ac828c5d3a853d8d231535427c453f43e5b54c3ea322f8b"
+    },
+    "lJHUZ.png": {
+      "frameId": "lJHUZ",
+      "name": "Match management \u2014 minor edit",
+      "sourceSize": "390x844",
+      "derivation": "Full frame, uncropped; edit/save and notification preview only, not a stale-version conflict.",
+      "sha256": "9dfd27558d1bda1d1109d7837faf2c137a887fed2e6fd945360710ef1cb40857"
+    },
+    "t0SZec.png": {
+      "frameId": "t0SZec",
+      "name": "Match management \u2014 major change",
+      "sourceSize": "390x844",
+      "derivation": "Full frame, uncropped; pre-submit major-change review. League/ranked content is outside T06; no silent cropping or composition approval implied.",
+      "sha256": "35d97dafc2545db8512f4877aa60087247b485c1350d134513530522a60e6811"
+    },
+    "oVtuS.png": {
+      "frameId": "oVtuS",
+      "name": "Match reconfirmation required",
+      "sourceSize": "390x844",
+      "derivation": "Full frame, uncropped; player-required consent. No creator-required count/summary composition.",
+      "sha256": "12f7a400f875f8271d11ad430d6eb279631d6b0ceea4ebd7aa6932a7c36dfa09"
+    },
+    "uiRqp.png": {
+      "frameId": "uiRqp",
+      "name": "Match cutoff \u2014 unreconfirmed excluded",
+      "sourceSize": "390x844",
+      "derivation": "Full frame, uncropped; excluded-at-cutoff and playable quartet summary.",
+      "sha256": "5f0303f2b8283c7a0245279bc33b0b25267df9c9396b61415a69b3809c1f8892"
+    },
+    "q2TCnQ.png": {
+      "frameId": "q2TCnQ",
+      "name": "Match creator \u2014 remove player",
+      "sourceSize": "390x844",
+      "derivation": "Full frame, uncropped; removal reason and confirmation intent. Dedicated screen, not a modal: Base UI dialog adaptation needs structural/browser review.",
+      "sha256": "9e892483f88e68e662e39a17a38f195d0ffa5477dee2c99059fa73b66d079ae4"
+    },
+    "Ht2Oq.png": {
+      "frameId": "Ht2Oq",
+      "name": "Match creator \u2014 cancel event",
+      "sourceSize": "390x844",
+      "derivation": "Full frame, uncropped; cancellation confirmation. Describes a cancelled outcome but does not draw the terminal detail tombstone.",
+      "sha256": "635b74394c5a72aa6230dbb42d804778d642173ed9bbcf5fa4c86212c572702c"
+    },
+    "m7hh3.png": {
+      "frameId": "m7hh3",
+      "name": "Match creator \u2014 withdraw or transfer",
+      "sourceSize": "390x844",
+      "derivation": "Full frame, uncropped; withdraw/keep organizer and transfer intent. Shows PLAYER + ORGANIZER, not post-withdraw organizer-only. Combined transfer-and-withdraw design differs from the approved separate RPC actions.",
+      "sha256": "ae9413489dbd5e8c415dc3d30377efe1a904bd1fdfe64f34c5987a9d8d5968aa"
+    },
+    "dmvWu.png": {
+      "frameId": "dmvWu",
+      "name": "Match creator \u2014 unavailable actions",
+      "sourceSize": "390x844",
+      "derivation": "Full frame, uncropped; cutoff restrictions and proposal-pending correction intent only. Not an exact started or result-protected/correction-not-yet-available composition.",
+      "sha256": "16711ff8492208423bf79897ac365a86cc6ffcd2dc16acdf2bed6f929e00d06d"
+    }
+  },
+  "stateCoverage": {
+    "invitation-pending": {
+      "frameId": "Fyhbv",
+      "status": "approved-reference"
+    },
+    "invitation-accepted": {
+      "frameId": "YvdPB",
+      "status": "approved-reference"
+    },
+    "invitation-declined": {
+      "frameId": "M7ighq",
+      "status": "approved-reference"
+    },
+    "invitation-expired": {
+      "frameId": "T7T2U",
+      "status": "approved-reference"
+    },
+    "creator-action-menu": {
+      "frameId": "bobgm",
+      "status": "approved-reference"
+    },
+    "removal-reason-dialog": {
+      "frameId": "q2TCnQ",
+      "status": "approved-reference"
+    },
+    "organizer-only": {
+      "frameId": "PKM0u",
+      "status": "approved-reference"
+    },
+    "transfer": {
+      "frameId": "m7hh3",
+      "status": "approved-reference"
+    },
+    "cancel": {
+      "frameId": "Ht2Oq",
+      "status": "approved-reference"
+    },
+    "cancelled-tombstone": {
+      "frameId": "K23bLC",
+      "status": "approved-reference"
+    },
+    "minor-edit": {
+      "frameId": "lJHUZ",
+      "status": "approved-reference"
+    },
+    "major-change": {
+      "frameId": "t0SZec",
+      "status": "approved-reference"
+    },
+    "minor-edit-conflict": {
+      "frameId": "Tm3XM",
+      "status": "approved-reference"
+    },
+    "player-required": {
+      "frameId": "oVtuS",
+      "status": "approved-reference"
+    },
+    "creator-required": {
+      "frameId": "xgKXg",
+      "status": "approved-reference"
+    },
+    "reconfirmation-excluded": {
+      "frameId": "uiRqp",
+      "status": "approved-reference"
+    },
+    "started-unavailable": {
+      "frameId": "tVzco",
+      "status": "approved-reference"
+    },
+    "cutoff-unavailable": {
+      "frameId": "dmvWu",
+      "status": "approved-reference"
+    },
+    "result-protected-unavailable": {
+      "frameId": "a6xmFd",
+      "status": "approved-reference"
+    }
+  },
+  "approvalNote": "User authored and approved ten new frames; no agent generated design content. Reference approval does not certify implementation fidelity.",
+  "referenceMeasurements": {
+    "method": "Pencil Get properties and PNG IHDR dimensions; source facts only, never app-derived.",
+    "originalNineFrames": {
+      "width": 390,
+      "height": 844,
+      "padding": [18, 18, 14, 18],
+      "gap": 10,
+      "bottomNavigationHeight": 56
+    },
+    "frameHeights": {
+      "YvdPB": 1447,
+      "M7ighq": 1010,
+      "T7T2U": 1136,
+      "bobgm": 1866,
+      "PKM0u": 1738,
+      "K23bLC": 859,
+      "Tm3XM": 1361,
+      "xgKXg": 2054,
+      "tVzco": 1411,
+      "a6xmFd": 1395
+    },
+    "cropPolicy": "Full-frame viewport comparison at each frame height; app chrome included. Masks the two native datetime inputs on Tm3XM (input chrome, not labels) and tVzco Overview date/time block (fixture-clock truth vs frame illustration). Small cross-renderer font residuals expected; budgets reviewed after measurement. No crops or recomposition."
+  },
+  "screenshotBaselines": null,
+  "visualBudgets": {
+    "measurementNote": "Full-frame light/en viewport comparison at each sourceSize height (859–2054), app chrome included per user-directed redesign. Masks limited to Tm3XM's two native datetime inputs and tVzco's fixture-clock date block on both images. Reviewed budgets use perceptual YIQ 0.1 differences; exact RGBA remains diagnostic evidence.",
+    "policy": "Reviewed per-screen budgets equal measured perceptualPixelDifference + 0.005 cross-renderer font/antialias residual allowance, rounded up to three decimals. Never absorb structural defects into budgets. PAF-4/5 pixel baselines superseded by the frame-driven redesign (structural-only) pending product re-approval.",
+    "perScreen": {
+      "YvdPB.png": {
+        "measured": 0.10209097513866,
+        "budget": 0.108,
+        "baselineSha256": "05129b542f65d6c51afa4e63f864766558c36a9b6abe04fa6d7bbbbf30613804"
+      },
+      "M7ighq.png": {
+        "measured": 0.07744859101294745,
+        "budget": 0.083,
+        "baselineSha256": "b8e4c4cc265373195f5f17bd90886dfec943417cc78e25caeddac57aee822a23"
+      },
+      "T7T2U.png": {
+        "measured": 0.0667298663777537,
+        "budget": 0.072,
+        "baselineSha256": "54434638d43bce9dc5ce272f9735ba9215f9398bd22770fc13f8e30698802886"
+      },
+      "bobgm.png": {
+        "measured": 0.09886910160222058,
+        "budget": 0.104,
+        "baselineSha256": "065042184accd3f22090423e679526bf92de737594f49373e97a6d576d37d421"
+      },
+      "PKM0u.png": {
+        "measured": 0.08601988728571007,
+        "budget": 0.092,
+        "baselineSha256": "1e3237c08483cf48c38c070791446f8dfcff02864b45975b18bdc833e92155be"
+      },
+      "K23bLC.png": {
+        "measured": 0.04109429569266589,
+        "budget": 0.047,
+        "baselineSha256": "685551a88c8693f01caf7b6feaf7a266597fd4253b5b392903f83f82f9e00d0d"
+      },
+      "Tm3XM.png": {
+        "measured": 0.08364324874244052,
+        "budget": 0.089,
+        "baselineSha256": "9c29c8bf6065bdd97ceba33442c3724bf29bb4ff4711a9d82bd063688ccac6b9"
+      },
+      "xgKXg.png": {
+        "measured": 0.10346291164207425,
+        "budget": 0.109,
+        "baselineSha256": "4d50a48c87c62df9c764583e0808bce5a5aae2143dba6296041a63595c2fe53c"
+      },
+      "tVzco.png": {
+        "measured": 0.09931672390921151,
+        "budget": 0.105,
+        "baselineSha256": "8a25ec4194a3ddedb6a95f7b8cf9a8d88a72143a71dff911eb69e83e929adf8e"
+      },
+      "a6xmFd.png": {
+        "measured": 0.09906258615936035,
+        "budget": 0.105,
+        "baselineSha256": "f9ec5dcd6c860a9eae209e174bd726418a7b72252a4bfa174b006173c560f65a"
+      },
+      "Fyhbv.png": {
+        "measured": 0.30481832543443915,
+        "budget": null,
+        "baselineSha256": "2a91105c6f3b34977ac828c5d3a853d8d231535427c453f43e5b54c3ea322f8b"
+      },
+      "lJHUZ.png": {
+        "measured": 0.14743285939968404,
+        "budget": null,
+        "baselineSha256": "9dfd27558d1bda1d1109d7837faf2c137a887fed2e6fd945360710ef1cb40857"
+      },
+      "t0SZec.png": {
+        "measured": 0.19917365414995747,
+        "budget": null,
+        "baselineSha256": "35d97dafc2545db8512f4877aa60087247b485c1350d134513530522a60e6811"
+      },
+      "oVtuS.png": {
+        "measured": 0.31145947259691337,
+        "budget": null,
+        "baselineSha256": "12f7a400f875f8271d11ad430d6eb279631d6b0ceea4ebd7aa6932a7c36dfa09"
+      },
+      "uiRqp.png": {
+        "measured": 0.2401263823064771,
+        "budget": null,
+        "baselineSha256": "5f0303f2b8283c7a0245279bc33b0b25267df9c9396b61415a69b3809c1f8892"
+      },
+      "q2TCnQ.png": {
+        "measured": 0.12548912383035607,
+        "budget": null,
+        "baselineSha256": "9e892483f88e68e662e39a17a38f195d0ffa5477dee2c99059fa73b66d079ae4"
+      },
+      "Ht2Oq.png": {
+        "measured": 0.12251488637744562,
+        "budget": null,
+        "baselineSha256": "635b74394c5a72aa6230dbb42d804778d642173ed9bbcf5fa4c86212c572702c"
+      },
+      "m7hh3.png": {
+        "measured": 0.12464454976303317,
+        "budget": null,
+        "baselineSha256": "ae9413489dbd5e8c415dc3d30377efe1a904bd1fdfe64f34c5987a9d8d5968aa"
+      },
+      "dmvWu.png": {
+        "measured": 0.2804866934013853,
+        "budget": null,
+        "baselineSha256": "16711ff8492208423bf79897ac365a86cc6ffcd2dc16acdf2bed6f929e00d06d"
+      }
+    }
+  },
+  "runtimeEnforcement": {
+    "verificationResults": {
+      "managementStructure": "57/57 structural probes green across nineteen states at 320/pt-BR/dark, 390/en/light and 1280/es/dark, including permissions, quartet counts, touch bounds and overflow.",
+      "managementScreenshots": "10/10 certified frames within reviewed budgets: measured perceptual difference + 0.005 cross-renderer allowance, rounded up to three decimals. Full-frame viewport comparison at each frame's own height (859–2054), app chrome included per user-directed redesign. Masks unchanged: Tm3XM's two native datetime inputs and tVzco's fixture-clock date block. Residual is text antialiasing/kerning, not composition drift.",
+      "managementJourneys": "see PAF-4/5 structural conversion note",
+      "registrationVisualRegression": "see PAF-4/5 structural conversion note",
+      "matchVisualRegression": "see PAF-4/5 structural conversion note",
+      "structuralConversionNote": "PAF-4/5 pixel baselines superseded by the frame-driven redesign; structural-only pending product re-approval. Journeys, registration and matches suites not freshly rerun during this certification step.",
+      "certificationSuite": "pnpm test:e2e e2e/matches-management-visual.spec.ts: 68 passed / 0 failed (ten certified frames, 57 structural cases and chip-safe header regression).",
+      "reviewFixes": "F1–F4/F6/F7/F9–F13 landed and re-measured: participation-grouped roster sections, consent-current transfer filter, absolute copy URL, visible-label accessible name, contrast-safe CTA on-color, Inter/600 typography, 4px roster gaps, neutral result-protected banner, pill badges, flat dialog borders and chip-safe headers.",
+      "scopedUnitGate": "Tightened-budget confirmation: pnpm typecheck and pnpm lint passed; 34/34 tests across matches.management.visual-references, matches.styles, matches.status-banner and matches.roster.card passed. Vitest exited successfully with a non-failing Vite server-shutdown warning."
+    },
+    "status": "passing",
+    "required": "Source and reference digests asserted before and after captures. All nineteen states exercised with roles, permissions, quartet counts, overflow and touch bounds; 320/390/1280 and en/pt-BR/es receive structural gates. No fabricated dark or translated baselines. Unreviewed budgets fail, never self-baseline. Reviewed budgets equal measured + 0.005 cross-renderer residual, rounded up to three decimals. PAF-4/5 pixel baselines superseded by the frame-driven redesign (structural-only) pending product re-approval.",
+    "comparisonMetric": "YIQ squared color distance > 35215 * 0.1^2, without antialias exclusion; exact RGBA difference retained as separate diagnostic evidence. Reviewed budgets equal measured perceptualPixelDifference + 0.005 cross-renderer residual, rounded up to three decimals. Neither metric authorizes structural deviations. PAF-4/5 pixel baselines superseded by the frame-driven redesign (structural-only) pending product re-approval.",
+    "compositionReview": "Frames ARE the approved production design: user-authored, pixel-driven implementation R1–R3. Full-frame viewport comparison includes app chrome at each source height. Masks limited to Tm3XM's two native datetime inputs and tVzco's fixture-clock date block. Remaining residual is text antialiasing/kerning, not composition drift. Preserve truthful FIFO counts and results-protection seam; never fabricate result data or absorb structural defects into budgets."
+  }
+}

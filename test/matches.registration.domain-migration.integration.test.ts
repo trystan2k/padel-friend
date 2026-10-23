@@ -150,8 +150,6 @@ describe('match registration domain migration backfill (F20/F30)', () => {
         `  v_not_playing integer;`,
         ` begin`,
         `  execute 'alter table public.match_events disable trigger match_event_published_notification';`,
-        // Reconstruct the pre-PAF-5 blanket immutability trigger.
-        `  execute 'create trigger match_registration_immutable before update or delete on public.match_event_registrations for each row execute function public.guard_match_event_mutation()';`,
         `  insert into auth.users(id, instance_id, aud, role, email, encrypted_password, email_confirmed_at, created_at, updated_at) values`,
         `    (${q(creator)},'00000000-0000-0000-0000-000000000000','authenticated','authenticated','paf5-domain-migration-creator@test.local','x',now(),now(),now()),`,
         `    (${q(m1)},'00000000-0000-0000-0000-000000000000','authenticated','authenticated','paf5-domain-migration-m1@test.local','x',now(),now(),now()),`,
@@ -164,6 +162,9 @@ describe('match registration domain migration backfill (F20/F30)', () => {
         `  ${pastPhoto.sql}`,
         `  ${eventInsert(futureEventId, `now() + interval '5 days'`, futurePhoto.path)}`,
         `  ${eventInsert(pastEventId, `now() - interval '5 days'`, pastPhoto.path)}`,
+        // Publication now links its accepted attempt with an UPDATE. Install the
+        // historical guard after publication, still before the backfill probe.
+        `  execute 'create trigger match_registration_immutable before update or delete on public.match_event_registrations for each row execute function public.guard_match_event_mutation()';`,
         // Creator slots are created by the publication trigger (ordinal 1).
         ...members.map(
           (userId, index) => `  ${registrationInsert(futureEventId, userId, index + 2)}`

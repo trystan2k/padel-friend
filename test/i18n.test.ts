@@ -26,6 +26,32 @@ function getKeyDiff(expected: unknown, actual: unknown) {
   };
 }
 
+function getCopyContracts(value: unknown, prefix = ''): Record<string, string[]> {
+  if (typeof value === 'string') {
+    return {
+      [prefix]: [...value.matchAll(/\{\{\s*(-?\s*[^{}]+?)\s*\}\}/g)]
+        .map((match) => match[1]!.trim())
+        .sort()
+    };
+  }
+  if (!value || typeof value !== 'object') return {};
+  return Object.assign(
+    {},
+    ...Object.entries(value).map(([key, child]) =>
+      getCopyContracts(child, prefix ? `${prefix}.${key}` : key)
+    )
+  );
+}
+
+function getPluralContracts(value: unknown) {
+  const families: Record<string, string[]> = {};
+  for (const key of getTranslationKeyPaths(value)) {
+    const match = /^(.*)_(zero|one|two|few|many|other)$/.exec(key);
+    if (match) (families[match[1]!] ??= []).push(match[2]!);
+  }
+  return Object.fromEntries(Object.entries(families).map(([key, forms]) => [key, forms.sort()]));
+}
+
 describe('localized SSR resources', () => {
   it('contains the complete match UI key contract in every locale', () => {
     const required = [
@@ -75,6 +101,23 @@ describe('localized SSR resources', () => {
       'matches.card.openMaps',
       'matches.card.photoAlt',
       'matches.detail.title',
+      'matches.detail.viewCourtLocation',
+      'matches.detail.viewCourtLocationFor',
+      'matches.detail.unlimitedRegistrations',
+      'matches.detail.visibility.community_open',
+      'matches.detail.visibility.invite_only',
+      ...[
+        'accepted',
+        'declined',
+        'expired',
+        'closed',
+        'started',
+        'cancelled',
+        'result_protected'
+      ].map((variant) => `matches.detail.statusTitles.${variant}`),
+      'languageNames.en',
+      'languageNames.pt-BR',
+      'languageNames.es',
       'matches.detail.participants',
       'matches.detail.accepted',
       'matches.detail.creatorAccepted',
@@ -131,5 +174,31 @@ describe('localized SSR resources', () => {
       missing: ['onboarding.title'],
       extra: []
     });
+  });
+
+  it('keeps recursive interpolation and plural contracts identical in all locales', () => {
+    for (const [locale, translations] of [
+      ['pt-BR', pt],
+      ['es', es]
+    ] as const) {
+      expect(getCopyContracts(translations), `${locale} interpolation contract`).toEqual(
+        getCopyContracts(en)
+      );
+      expect(getPluralContracts(translations), `${locale} plural contract`).toEqual(
+        getPluralContracts(en)
+      );
+    }
+  });
+
+  it('detects nested interpolation drift and missing plural variants', () => {
+    const expected = {
+      matches: { required_one: '{{count}} {{name}}', required_other: '{{count}}' }
+    };
+    const changed = { matches: { required_one: '{{count}} {{player}}' } };
+    expect(getCopyContracts(changed)).not.toEqual(getCopyContracts(expected));
+    expect(getPluralContracts(changed)).not.toEqual(getPluralContracts(expected));
+    expect(getCopyContracts({ label: '{{name}} / {{count}}' })).toEqual(
+      getCopyContracts({ label: '{{count}} / {{name}}' })
+    );
   });
 });

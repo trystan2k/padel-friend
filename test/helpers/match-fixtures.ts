@@ -105,6 +105,7 @@ const projection = {
   caller_requires_approval: false,
   is_past: false,
   registration_open: true,
+  status: 'open',
   ...matchCountScenario({ accepted: 5 })
 } satisfies Omit<MatchEventCard, 'photo_url'>;
 

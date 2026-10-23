@@ -1,4 +1,6 @@
 import * as stylex from '@stylexjs/stylex';
+import { rootStyles } from '../../root.styles';
+import { validMatchMapsUrl } from './match-management-edit';
 import { Link, useNavigate } from '@tanstack/react-router';
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -347,12 +349,7 @@ export function CreateMatchPage() {
     for (const key of ['community_id', 'date', 'startTime', 'venueName', 'mapsUrl'] as const)
       if (!value[key]) next[key] = 'required';
     if (!photo) next.photo = 'missingPhoto';
-    if (
-      value.mapsUrl &&
-      !/^https:\/\/(www\.)?google\.com\/maps\//i.test(value.mapsUrl) &&
-      !/^https:\/\/(maps\.google\.com|maps\.app\.goo\.gl|goo\.gl\/maps)\//i.test(value.mapsUrl)
-    )
-      next.mapsUrl = 'invalidMapsUrl';
+    if (value.mapsUrl && !validMatchMapsUrl(value.mapsUrl)) next.mapsUrl = 'invalidMapsUrl';
     if (value.date && value.startTime) {
       try {
         if (!startInstant) next.startTime = 'invalidDateTime';
@@ -497,7 +494,7 @@ export function CreateMatchPage() {
   const requiredInvalid = Object.keys(fieldErrors).length > 0;
   return (
     <main {...stylex.props(s.page)}>
-      <header>
+      <header {...stylex.props(rootStyles.pageHeader)}>
         <h1 {...stylex.props(s.title)} ref={heading} tabIndex={-1}>
           {t('matchCreate.title')}
         </h1>

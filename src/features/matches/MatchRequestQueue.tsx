@@ -8,6 +8,7 @@ import { matchRegistrationErrorKey } from './match-registration-error-copy';
 import { matchRegistrationStyles as s } from './match-registration.styles';
 import { useMatchRequestQueue } from './use-match-registration';
 import { registrationActionTone } from './match-status-tone';
+import { MatchManagementUnavailable } from './MatchManagementUnavailable';
 
 // PAF-5.5 creator-only pending request queue with approve/decline. Rendered only
 // for the event creator (the server returns no rows to anyone else), so an
@@ -26,7 +27,6 @@ function relativeWhen(language: string, iso: string, now: number): string | null
 
 export function MatchRequestQueue({
   eventId,
-  eventName,
   queue,
   minLevel = null,
   maxLevel = null,
@@ -34,7 +34,6 @@ export function MatchRequestQueue({
   onRetry = () => undefined
 }: {
   eventId: string;
-  eventName: string;
   queue: MatchRegistrationQueue | null;
   minLevel?: number | null;
   maxLevel?: number | null;
@@ -44,6 +43,15 @@ export function MatchRequestQueue({
   const { t, i18n } = useTranslation();
   const controller = useMatchRequestQueue({ eventId });
   const now = useState(() => Date.now())[0];
+  const rejected = controller.feedback?.kind === 'error' ? controller.feedback.code : null;
+  if (
+    rejected === 'started' ||
+    rejected === 'cancelled' ||
+    rejected === 'result_protected' ||
+    rejected === 'closed' ||
+    rejected === 'forbidden'
+  )
+    return <MatchManagementUnavailable reason={rejected} />;
 
   const feedbackMessage = (() => {
     const feedback = controller.feedback;
@@ -58,7 +66,7 @@ export function MatchRequestQueue({
     return (
       <section aria-labelledby="match-requests-heading" role="alert" {...stylex.props(s.panel)}>
         <h2 id="match-requests-heading" {...stylex.props(s.title)}>
-          {t('matchRegistration.queue.title')}
+          {t('matchRegistration.queue.joinTitle')}
         </h2>
         <p {...stylex.props(s.copy)}>{t('matchRegistration.queue.error')}</p>
         <div {...stylex.props(s.actions)}>
@@ -101,28 +109,20 @@ export function MatchRequestQueue({
       <header {...stylex.props(s.queueHeader)}>
         <div {...stylex.props(s.header)}>
           <h2 id="match-requests-heading" {...stylex.props(s.title)}>
-            {t('matchRegistration.queue.title')}
+            {t('matchRegistration.queue.joinTitle')}
           </h2>
-          <p {...stylex.props(s.meta)}>
-            {t('matchRegistration.queue.subtitle', {
-              event: eventName,
-              count: requests.length
-            })}
-          </p>
         </div>
-        <span {...stylex.props(s.queueSort)}>{t('matchRegistration.queue.sort')}</span>
       </header>
       <p {...stylex.props(s.badgeRow)}>
         <StatusBadge tone={registrationActionTone.request}>
-          {t('matchRegistration.queue.count', { count: requests.length })}
+          {t('matchRegistration.queue.requests', { count: requests.length })}
         </StatusBadge>
       </p>
-      <div {...stylex.props(s.body)}>
-        <h3 {...stylex.props(s.rosterTitle)}>{t('matchRegistration.queue.fifoTitle')}</h3>
+      {requests.length > 0 && (
         <p {...stylex.props(s.note)}>{t('matchRegistration.queue.fifoCopy')}</p>
-      </div>
+      )}
       {requests.length === 0 ? (
-        <p {...stylex.props(s.copy)}>{t('matchRegistration.queue.empty')}</p>
+        <p {...stylex.props(s.copy)}>{t('matchRegistration.queue.emptyCopy')}</p>
       ) : (
         <ul {...stylex.props(s.requestList)}>
           {requests.map((request) => {

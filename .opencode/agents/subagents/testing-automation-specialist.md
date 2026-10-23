@@ -1,8 +1,8 @@
 ---
 description: Expert test automation agent for unit, integration, and E2E testing using stack-specific best practices and project conventions.
 mode: subagent
-model: openai/gpt-6.1-sol
-reasoningEffort: medium
+model: openai/gpt-6-luna
+reasoningEffort: high
 temperature: 0
 permission:
   task: allow

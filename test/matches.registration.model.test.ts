@@ -359,9 +359,21 @@ function modelFixtureSql(actors: ActorSet, countEvents: Map<number, string>): st
       statements.push(
         `insert into public.match_event_registrations(
            match_event_id,user_id,lifecycle,accepted_at,accepted_order,participation_status,registration_source,requested_at)
-         values (${q(countEvents.get(n)!)},${q(member.id)},'accepted',${instant},${ordinal},'reserve','member',${instant});`
+         values (${q(countEvents.get(n)!)},${q(member.id)},'accepted',${instant},${ordinal},'reserve','member',${instant});
+         insert into public.match_event_registration_attempts(
+           registration_id,match_event_id,user_id,requested_at,outcome,decided_at,accepted_at,accepted_order,registration_source)
+         select id,match_event_id,user_id,requested_at,'accepted',accepted_at,accepted_at,accepted_order,registration_source
+           from public.match_event_registrations
+          where match_event_id=${q(countEvents.get(n)!)} and user_id=${q(member.id)};
+         update public.match_event_registrations r set current_attempt_id=a.id
+           from public.match_event_registration_attempts a
+         where a.registration_id=r.id and r.match_event_id=${q(countEvents.get(n)!)} and r.user_id=${q(member.id)};`
       );
     }
+    // Accepted history and derived participation must agree before deferred constraints commit.
+    statements.push(
+      `perform public.reconcile_match_registration_participation(${q(countEvents.get(n)!)});`
+    );
   }
   statements.push(`end $$;`);
   return statements.join('\n');

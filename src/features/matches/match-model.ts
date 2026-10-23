@@ -8,6 +8,7 @@ export type MatchEventListItem = MatchEventCard;
 // instead of rendering a bogus `matches.badges.<garbage>` key.
 const MATCH_CALLER_BADGES: readonly MatchCallerBadge[] = [
   'creator',
+  'reconfirmation_required',
   'playing',
   'reserve',
   'reserve_not_playing',
@@ -42,6 +43,7 @@ export type MatchEventCounts = {
 /** Narrow pre-contract compatibility input for legacy count fallback parsing. */
 export type MatchEventCountInput = {
   accepted_count?: unknown;
+  reconfirmation_required_count?: unknown;
   playing_count?: unknown;
   reserve_count?: unknown;
   reserve_not_playing_count?: unknown;
@@ -68,7 +70,9 @@ export function matchEventCounts(event: MatchEventCountInput): MatchEventCounts 
     moreNeeded !== null
   )
     return { accepted, playing, reserve, reserveNotPlaying, groups, moreNeeded };
-  const derived = getMatchParticipation(accepted ?? 0);
+  const derived = getMatchParticipation(
+    Math.max(0, (accepted ?? 0) - (explicitCount(event.reconfirmation_required_count) ?? 0))
+  );
   return {
     accepted: accepted ?? 0,
     playing: derived.playing,

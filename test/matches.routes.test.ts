@@ -19,7 +19,10 @@ describe('match route precedence and scope', () => {
       'src/features/matches/MatchDetailPage.tsx'
     ];
     const source = files.map((file) => readFileSync(file, 'utf8')).join('\n');
-    expect(source).not.toMatch(/Ranked|League|filter|booking|payment action/i);
+    // Array.filter is ordinary rendering logic, not a product filtering UI.
+    expect(source.replaceAll(/\.filter\s*\(/g, '.arrayPredicate(')).not.toMatch(
+      /Ranked|League|filter|booking|payment action/i
+    );
   });
   it('threads the loader snapshot into every matches page as initialAsOf', () => {
     for (const name of ['index', 'my', 'past']) {

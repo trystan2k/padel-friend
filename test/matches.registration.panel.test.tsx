@@ -5,6 +5,8 @@ import { readFileSync } from 'node:fs';
 import { I18nextProvider } from 'react-i18next';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createI18n } from '../src/i18n/config';
+import * as stylex from '@stylexjs/stylex';
+import { matchRegistrationStyles as registrationStyles } from '../src/features/matches/match-registration.styles';
 import type { Locale } from '../src/i18n/config';
 import type { MyMatchRegistration } from '../src/features/matches/match-registration-model';
 import en from '../src/locales/en/translation.json';
@@ -111,11 +113,13 @@ function mount(
   eventValue: MatchEventCard,
   registration: MyMatchRegistration,
   locale: Locale = 'en',
-  callerLevel: number | null = 3.82
+  callerLevel: number | null = 3.82,
+  unavailable?: 'closed'
 ) {
   return render(
     <I18nextProvider i18n={createI18n(locale)}>
       <MatchRegistrationPanel
+        unavailable={unavailable}
         event={eventValue}
         registration={registration}
         callerLevel={callerLevel}
@@ -135,16 +139,144 @@ afterEach(() => {
 });
 
 describe('match registration panel', () => {
-  it('renders the direct-join CTA with capacity, level range and note', () => {
+  it.each(['en', 'pt-BR', 'es'] as const)(
+    'keeps organizer-only ownership distinct from a reserved place in %s',
+    (locale) => {
+      const i18n = createI18n(locale);
+      render(
+        <I18nextProvider i18n={i18n}>
+          <MatchRegistrationPanel
+            event={event()}
+            isOrganizer
+            registration={{
+              state: 'withdrawn',
+              event_id: EVENT_ID,
+              attempt_id: EVENT_ID,
+              accepted_order: 1,
+              accepted_at: '2026-10-18T09:00:00Z',
+              left_at: '2026-10-18T10:00:00Z',
+              removal_reason: null,
+              registration_source: 'creator'
+            }}
+          />
+        </I18nextProvider>
+      );
+      const badge = screen.getByText(i18n.t('matchRegistration.place.organizerBadge'));
+      expect(badge.parentElement?.className).toBe(
+        stylex.props(registrationStyles.badgeRow).className
+      );
+      expect(badge.className).toBe(
+        stylex.props(registrationStyles.placeBadge, registrationStyles.organizerBadge).className
+      );
+      expect(screen.getByText(i18n.t('matchRegistration.place.organizerCopy'))).toBeTruthy();
+      expect(
+        screen.queryByRole('region', { name: i18n.t('matchRegistration.aria.roster') })
+      ).toBeNull();
+      expect(
+        screen.getByRole('button', { name: i18n.t('matches.management.reenter') })
+      ).toBeTruthy();
+    }
+  );
+
+  it('keeps the open-community place card to one copy line and join action', () => {
+    mount(event(), none);
+    expect(screen.getByText(en.matchRegistration.place.openCopy)).toBeTruthy();
+    expect(screen.getByRole('button', { name: en.matchRegistration.join.button })).toBeTruthy();
+    expect(screen.queryByText(en.matchRegistration.join.note)).toBeNull();
+  });
+
+  it.each([rejected, expired])(
+    'offers an immediate open-community join after a terminal invitation/request',
+    async (registration) => {
+      mocks.submit.mockResolvedValue({ status: 'accepted', registration: accepted() });
+      mount(event(), registration);
+      expect(screen.getByText(en.matchRegistration.place.openCopy)).toBeTruthy();
+      await userEvent.click(screen.getByRole('button', { name: en.matchRegistration.join.button }));
+      await waitFor(() =>
+        expect(mocks.submit).toHaveBeenCalledWith({ data: { event_id: EVENT_ID } })
+      );
+      expect(mocks.invalidate).toHaveBeenCalled();
+    }
+  );
+
+  it('keeps the closed-registration roster summary for nonparticipants when management closes', () => {
+    mount(
+      event({
+        registration_open: false,
+        registration_cutoff_at: new Date(Date.now() - 1000).toISOString(),
+        reserve_count: 0,
+        reserve_not_playing_count: 1
+      }),
+      none,
+      'en',
+      null,
+      'closed'
+    );
+    expect(screen.getAllByText(en.matchRegistration.closed.badge)).toHaveLength(1);
+    expect(screen.getByText(en.matchRegistration.closed.badge).parentElement?.className).toBe(
+      stylex.props(registrationStyles.badgeRow).className
+    );
+    expect(screen.getByText(/4 playing · 1 reserve not playing/)).toBeTruthy();
+    expect(screen.queryByRole('button')).toBeNull();
+  });
+  it.each(['en', 'pt-BR', 'es'] as const)(
+    'preserves the authoritative Playing badge after cutoff in %s',
+    (locale) => {
+      const i18n = createI18n(locale);
+      mount(
+        event({
+          registration_open: false,
+          registration_cutoff_at: new Date(Date.now() - 1000).toISOString()
+        }),
+        accepted({ position: 2, approved_at: null }),
+        locale,
+        null,
+        'closed'
+      );
+      expect(
+        screen.getByText(i18n.t('matchRegistration.request.joinedPlayingBadge', { group: 1 }))
+      ).toBeTruthy();
+      expect(screen.queryByRole('button', { name: i18n.t('matches.management.leave') })).toBeNull();
+    }
+  );
+
+  it.each(['en', 'pt-BR', 'es'] as const)(
+    'explains reconfirmation exclusion without a stale Playing badge in %s',
+    (locale) => {
+      const i18n = createI18n(locale);
+      mount(
+        event({
+          registration_open: false,
+          registration_cutoff_at: new Date(Date.now() - 1000).toISOString()
+        }),
+        {
+          state: 'reconfirmation_excluded',
+          event_id: EVENT_ID,
+          registration_source: 'member',
+          resolved_at: new Date().toISOString()
+        },
+        locale,
+        null,
+        'closed'
+      );
+      expect(screen.getByRole('status').textContent).toContain(
+        i18n.t('matches.reconfirmation.excluded')
+      );
+      expect(screen.queryByText(i18n.t('matchRegistration.badges.playing'))).toBeNull();
+      expect(screen.queryByRole('button')).toBeNull();
+    }
+  );
+
+  it('renders the direct-join CTA with capacity and level range without redundant helper copy', () => {
     mount(event(), none);
     expect(
       screen.getByRole('heading', { name: en.matchRegistration.join.sectionTitle })
     ).toBeTruthy();
-    expect(screen.getByText(en.matchRegistration.join.openCopy)).toBeTruthy();
+    expect(screen.getByText(en.matchRegistration.place.openCopy)).toBeTruthy();
     expect(screen.getByRole('button', { name: en.matchRegistration.join.button })).toBeTruthy();
     expect(screen.getByText('2 of 8 places left')).toBeTruthy();
     expect(screen.getByText('Level range 2.5–5 · You: 3.82')).toBeTruthy();
-    expect(screen.getByText(en.matchRegistration.join.note)).toBeTruthy();
+    expect(screen.queryByText(en.matchRegistration.join.note)).toBeNull();
   });
 
   it('submits a direct join, announces confirmation and invalidates the router', async () => {
@@ -230,20 +362,14 @@ describe('match registration panel', () => {
       none
     );
     expect(screen.getAllByText(en.matchRegistration.closed.badge).length).toBeGreaterThan(0);
-    expect(screen.getByText('8 playing · 1 reserve not playing')).toBeTruthy();
-    expect(screen.getByText(en.matchRegistration.closed.sectionTitle)).toBeTruthy();
-    expect(
-      screen
-        .getByRole('button', { name: en.matchRegistration.closed.button })
-        .hasAttribute('disabled')
-    ).toBe(true);
-    expect(screen.getByText(en.matchRegistration.closed.note)).toBeTruthy();
+    expect(screen.getByText(/8 playing · 1 reserve not playing/)).toBeTruthy();
+    expect(screen.queryByRole('button')).toBeNull();
+    expect(screen.getByText(en.matchRegistration.place.closedNote)).toBeTruthy();
   });
 
   it('renders the pending requester state with its meta and view link', () => {
     mount(event(), pending);
-    expect(screen.getByRole('heading', { name: /Your request status/ })).toBeTruthy();
-    expect(screen.getByText(en.matchRegistration.request.context)).toBeTruthy();
+    expect(screen.getByRole('heading', { name: en.matchRegistration.place.title })).toBeTruthy();
     expect(screen.getByText(en.matchRegistration.request.pendingBadge)).toBeTruthy();
     expect(screen.getByText(en.matchRegistration.request.pendingCopy)).toBeTruthy();
     expect(screen.getByText(/Requested .+ \u00b7 no place reserved yet/)).toBeTruthy();
@@ -254,12 +380,12 @@ describe('match registration panel', () => {
   it('renders an approved playing state with the group badge and safe roster', () => {
     mount(event(), accepted({ accepted_order: 6, position: 6 }));
     expect(
-      screen.getByText(en.matchRegistration.request.approvedPlayingBadge.replace('{{group}}', '2'))
+      screen.getByText(en.matchRegistration.request.joinedPlayingBadge.replace('{{group}}', '2'))
     ).toBeTruthy();
     expect(
       screen.getByText(/Approved at .+ \u00b7 your queue position started then\./)
     ).toBeTruthy();
-    expect(screen.getByRole('link', { name: en.matchRegistration.request.viewGroup })).toBeTruthy();
+    expect(screen.getByRole('region', { name: en.matchRegistration.aria.roster })).toBeTruthy();
     expect(
       screen.getByText(en.matchRegistration.roster.groupTitle.replace('{{group}}', '2'))
     ).toBeTruthy();
@@ -273,12 +399,10 @@ describe('match registration panel', () => {
       accepted({ participation: 'reserve', accepted_order: 7, position: 7 })
     );
     expect(
-      screen.getByText(
-        en.matchRegistration.request.approvedReserveBadge.replace('{{position}}', '3')
-      )
+      screen.getByText(en.matchRegistration.request.joinedReserveBadge.replace('{{position}}', '3'))
     ).toBeTruthy();
     expect(screen.getByText(en.matchRegistration.roster.reserveTitle)).toBeTruthy();
-    expect(screen.getByText(en.matchRegistration.roster.fifo)).toBeTruthy();
+    expect(screen.getByText(en.matchRegistration.roster.orderNote)).toBeTruthy();
     expect(screen.getByText(en.matchRegistration.badges.reserve)).toBeTruthy();
   });
 
@@ -318,7 +442,7 @@ describe('match registration panel', () => {
     expect(
       screen.getByText(en.matchRegistration.request.createdPlayingBadge.replace('{{group}}', '2'))
     ).toBeTruthy();
-    expect(screen.getByText(en.matchRegistration.request.createdPlayingCopy)).toBeTruthy();
+    expect(screen.getByText(en.matchRegistration.place.creatorCopy)).toBeTruthy();
     expect(screen.queryByText(/Approved at/)).toBeNull();
     expect(
       screen.queryByText(
@@ -329,7 +453,7 @@ describe('match registration panel', () => {
 
   it('renders a reserve-not-playing acceptance as a first-class badge', () => {
     mount(
-      event({ reserve_not_playing_count: 1, reserve_count: 0 }),
+      event({ reserve_not_playing_count: 1, reserve_count: 0, is_past: true }),
       accepted({ participation: 'reserve_not_playing', accepted_order: 9, position: 9 })
     );
     expect(
@@ -356,7 +480,7 @@ describe('match registration panel', () => {
 
   it('offers request-again for a declined request and re-submits through the controller', async () => {
     mocks.submit.mockResolvedValue({ status: 'pending', registration: pending });
-    mount(event(), rejected);
+    mount(event({ caller_requires_approval: true }), rejected);
     expect(screen.getByText(en.matchRegistration.request.declinedBadge)).toBeTruthy();
     await userEvent
       .setup()
@@ -365,12 +489,10 @@ describe('match registration panel', () => {
   });
 
   it('renders the expired-at-cutoff state without a re-request action', () => {
-    mount(event(), expired);
-    expect(screen.getByText(en.matchRegistration.request.expiredBadge)).toBeTruthy();
-    expect(screen.getByText(en.matchRegistration.request.expiredCopy)).toBeTruthy();
-    expect(
-      screen.getByRole('link', { name: en.matchRegistration.request.viewMatchHistory })
-    ).toBeTruthy();
+    mount(event({ registration_cutoff_at: new Date(Date.now() - 1000).toISOString() }), expired);
+    expect(screen.getByText(en.matchRegistration.closed.badge)).toBeTruthy();
+    expect(screen.getByText(en.matchRegistration.place.closedNote)).toBeTruthy();
+    expect(screen.queryByRole('button')).toBeNull();
     expect(
       screen.queryByRole('button', { name: en.matchRegistration.request.requestAgain })
     ).toBeNull();
@@ -378,14 +500,16 @@ describe('match registration panel', () => {
 
   it('localizes the panel copy in pt-BR and es', () => {
     mount(event(), accepted({ accepted_order: 6 }), 'pt-BR');
-    expect(screen.getByText(/APROVADO · JOGANDO · Grupo 2/)).toBeTruthy();
+    expect(
+      screen.getByText(pt.matchRegistration.request.joinedPlayingBadge.replace('{{group}}', '2'))
+    ).toBeTruthy();
     expect(
       screen.getByText(pt.matchRegistration.roster.groupTitle.replace('{{group}}', '2'))
     ).toBeTruthy();
     cleanup();
     mount(event(), none, 'es');
     expect(screen.getByRole('button', { name: es.matchRegistration.join.button })).toBeTruthy();
-    expect(screen.getByText(es.matchRegistration.join.openCopy)).toBeTruthy();
+    expect(screen.getByText(es.matchRegistration.place.openCopy)).toBeTruthy();
   });
 
   it('disables the action and announces offline state', async () => {

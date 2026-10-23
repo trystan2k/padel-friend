@@ -409,28 +409,110 @@ export type Database = {
           },
         ]
       }
+      match_event_audit_log: {
+        Row: {
+          action: string
+          actor_id: string | null
+          after_data: NonNullable<Json>
+          before_data: NonNullable<Json>
+          changed_fields: string[]
+          community_id: string
+          event_version: number | null
+          id: string
+          match_event_id: string
+          occurred_at: string
+          reason: string | null
+          request_id: string | null
+          target_user_id: string | null
+          transition_revision: number
+        }
+        ComputedFields: never
+        Insert: {
+          action: string
+          actor_id?: string | null
+          after_data?: NonNullable<Json>
+          before_data?: NonNullable<Json>
+          changed_fields?: string[]
+          community_id: string
+          event_version?: number | null
+          id?: string
+          match_event_id: string
+          occurred_at?: string
+          reason?: string | null
+          request_id?: string | null
+          target_user_id?: string | null
+          transition_revision: number
+        }
+        Update: {
+          action?: string
+          actor_id?: string | null
+          after_data?: NonNullable<Json>
+          before_data?: NonNullable<Json>
+          changed_fields?: string[]
+          community_id?: string
+          event_version?: number | null
+          id?: string
+          match_event_id?: string
+          occurred_at?: string
+          reason?: string | null
+          request_id?: string | null
+          target_user_id?: string | null
+          transition_revision?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "match_event_audit_log_community_id_fkey"
+            columns: ["community_id"]
+            isOneToOne: false
+            referencedRelation: "communities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "match_event_audit_log_match_event_id_fkey"
+            columns: ["match_event_id"]
+            isOneToOne: false
+            referencedRelation: "match_events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       match_event_invites: {
         Row: {
           created_at: string
+          expired_at: string | null
           id: string
           invited_by: string
           invitee_user_id: string
           match_event_id: string
+          responded_at: string | null
+          responded_by: string | null
+          status: Database["public"]["Enums"]["match_invitation_status"]
+          submission_result: Json | null
         }
         ComputedFields: never
         Insert: {
           created_at?: string
+          expired_at?: string | null
           id?: string
           invited_by: string
           invitee_user_id: string
           match_event_id: string
+          responded_at?: string | null
+          responded_by?: string | null
+          status?: Database["public"]["Enums"]["match_invitation_status"]
+          submission_result?: Json | null
         }
         Update: {
           created_at?: string
+          expired_at?: string | null
           id?: string
           invited_by?: string
           invitee_user_id?: string
           match_event_id?: string
+          responded_at?: string | null
+          responded_by?: string | null
+          status?: Database["public"]["Enums"]["match_invitation_status"]
+          submission_result?: Json | null
         }
         Relationships: [
           {
@@ -442,33 +524,108 @@ export type Database = {
           },
         ]
       }
+      match_event_management_commands: {
+        Row: {
+          action: string
+          actor_id: string
+          created_at: string
+          match_event_id: string
+          payload: NonNullable<Json>
+          request_id: string
+          result: NonNullable<Json>
+        }
+        ComputedFields: never
+        Insert: {
+          action: string
+          actor_id: string
+          created_at?: string
+          match_event_id: string
+          payload: NonNullable<Json>
+          request_id: string
+          result: NonNullable<Json>
+        }
+        Update: {
+          action?: string
+          actor_id?: string
+          created_at?: string
+          match_event_id?: string
+          payload?: NonNullable<Json>
+          request_id?: string
+          result?: NonNullable<Json>
+        }
+        Relationships: [
+          {
+            foreignKeyName: "match_event_management_commands_match_event_id_fkey"
+            columns: ["match_event_id"]
+            isOneToOne: false
+            referencedRelation: "match_events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       match_event_registration_attempts: {
         Row: {
+          accepted_at: string | null
+          accepted_order: number | null
           actor_id: string | null
+          approved_at: string | null
+          confirmed_generation: number
           decided_at: string | null
+          end_kind: string | null
+          end_reason: string | null
+          ended_at: string | null
+          ended_by: string | null
           id: string
           match_event_id: string
           outcome: Database["public"]["Enums"]["match_registration_lifecycle"]
+          reconfirmed_at: string | null
+          registration_id: string
+          registration_source: Database["public"]["Enums"]["match_registration_source"]
           requested_at: string
+          required_generation: number
           user_id: string
         }
         ComputedFields: never
         Insert: {
+          accepted_at?: string | null
+          accepted_order?: number | null
           actor_id?: string | null
+          approved_at?: string | null
+          confirmed_generation?: number
           decided_at?: string | null
+          end_kind?: string | null
+          end_reason?: string | null
+          ended_at?: string | null
+          ended_by?: string | null
           id?: string
           match_event_id: string
           outcome: Database["public"]["Enums"]["match_registration_lifecycle"]
+          reconfirmed_at?: string | null
+          registration_id: string
+          registration_source: Database["public"]["Enums"]["match_registration_source"]
           requested_at: string
+          required_generation?: number
           user_id: string
         }
         Update: {
+          accepted_at?: string | null
+          accepted_order?: number | null
           actor_id?: string | null
+          approved_at?: string | null
+          confirmed_generation?: number
           decided_at?: string | null
+          end_kind?: string | null
+          end_reason?: string | null
+          ended_at?: string | null
+          ended_by?: string | null
           id?: string
           match_event_id?: string
           outcome?: Database["public"]["Enums"]["match_registration_lifecycle"]
+          reconfirmed_at?: string | null
+          registration_id?: string
+          registration_source?: Database["public"]["Enums"]["match_registration_source"]
           requested_at?: string
+          required_generation?: number
           user_id?: string
         }
         Relationships: [
@@ -478,6 +635,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "match_event_registrations"
             referencedColumns: ["match_event_id", "user_id"]
+          },
+          {
+            foreignKeyName: "match_event_registration_attempts_registration_id_fkey"
+            columns: ["registration_id"]
+            isOneToOne: false
+            referencedRelation: "match_event_registrations"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -492,6 +656,7 @@ export type Database = {
           cutoff_processed_at: string | null
           match_event_id: string
           next_accepted_ordinal: number
+          results_protected_at: string | null
           transition_revision: number
         }
         ComputedFields: never
@@ -505,6 +670,7 @@ export type Database = {
           cutoff_processed_at?: string | null
           match_event_id: string
           next_accepted_ordinal: number
+          results_protected_at?: string | null
           transition_revision?: number
         }
         Update: {
@@ -517,6 +683,7 @@ export type Database = {
           cutoff_processed_at?: string | null
           match_event_id?: string
           next_accepted_ordinal?: number
+          results_protected_at?: string | null
           transition_revision?: number
         }
         Relationships: [
@@ -534,14 +701,22 @@ export type Database = {
           accepted_at: string | null
           accepted_order: number | null
           approved_at: string | null
+          cancelled_at: string | null
+          confirmed_generation: number
+          current_attempt_id: string | null
           id: string
+          left_at: string | null
           lifecycle: Database["public"]["Enums"]["match_registration_lifecycle"]
           match_event_id: string
           participation_status:
             | Database["public"]["Enums"]["match_registration_participation"]
             | null
+          reconfirmed_at: string | null
           registration_source: Database["public"]["Enums"]["match_registration_source"]
+          removal_reason: string | null
+          removed_by: string | null
           requested_at: string | null
+          required_generation: number
           resolved_at: string | null
           resolved_by: string | null
           user_id: string
@@ -551,14 +726,22 @@ export type Database = {
           accepted_at?: string | null
           accepted_order?: number | null
           approved_at?: string | null
+          cancelled_at?: string | null
+          confirmed_generation?: number
+          current_attempt_id?: string | null
           id?: string
+          left_at?: string | null
           lifecycle?: Database["public"]["Enums"]["match_registration_lifecycle"]
           match_event_id: string
           participation_status?:
             | Database["public"]["Enums"]["match_registration_participation"]
             | null
+          reconfirmed_at?: string | null
           registration_source: Database["public"]["Enums"]["match_registration_source"]
+          removal_reason?: string | null
+          removed_by?: string | null
           requested_at?: string | null
+          required_generation?: number
           resolved_at?: string | null
           resolved_by?: string | null
           user_id: string
@@ -567,19 +750,34 @@ export type Database = {
           accepted_at?: string | null
           accepted_order?: number | null
           approved_at?: string | null
+          cancelled_at?: string | null
+          confirmed_generation?: number
+          current_attempt_id?: string | null
           id?: string
+          left_at?: string | null
           lifecycle?: Database["public"]["Enums"]["match_registration_lifecycle"]
           match_event_id?: string
           participation_status?:
             | Database["public"]["Enums"]["match_registration_participation"]
             | null
+          reconfirmed_at?: string | null
           registration_source?: Database["public"]["Enums"]["match_registration_source"]
+          removal_reason?: string | null
+          removed_by?: string | null
           requested_at?: string | null
+          required_generation?: number
           resolved_at?: string | null
           resolved_by?: string | null
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "match_event_registrations_current_attempt_id_fkey"
+            columns: ["current_attempt_id"]
+            isOneToOne: false
+            referencedRelation: "match_event_registration_attempts"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "match_event_registrations_match_event_id_fkey"
             columns: ["match_event_id"]
@@ -591,6 +789,9 @@ export type Database = {
       }
       match_events: {
         Row: {
+          cancel_reason: string | null
+          cancelled_at: string | null
+          cancelled_by: string | null
           community_id: string
           court_booked: boolean
           court_notes: string | null
@@ -609,17 +810,25 @@ export type Database = {
           photo_path: string
           price_minor: number | null
           published_at: string
+          published_by: string
+          reconfirmation_generation: number
           registration_cutoff_at: string
           restriction_enabled: boolean
           saved_venue_id: string | null
           starts_at: string
+          status: string
           team_assignment_mode: Database["public"]["Enums"]["match_team_assignment_mode"]
           timezone: string
+          updated_at: string
           venue_name: string
+          version: number
           visibility: Database["public"]["Enums"]["match_event_visibility"]
         }
         ComputedFields: never
         Insert: {
+          cancel_reason?: string | null
+          cancelled_at?: string | null
+          cancelled_by?: string | null
           community_id: string
           court_booked?: boolean
           court_notes?: string | null
@@ -638,16 +847,24 @@ export type Database = {
           photo_path: string
           price_minor?: number | null
           published_at?: string
+          published_by: string
+          reconfirmation_generation?: number
           registration_cutoff_at: string
           restriction_enabled?: boolean
           saved_venue_id?: string | null
           starts_at: string
+          status?: string
           team_assignment_mode: Database["public"]["Enums"]["match_team_assignment_mode"]
           timezone: string
+          updated_at?: string
           venue_name: string
+          version?: number
           visibility: Database["public"]["Enums"]["match_event_visibility"]
         }
         Update: {
+          cancel_reason?: string | null
+          cancelled_at?: string | null
+          cancelled_by?: string | null
           community_id?: string
           court_booked?: boolean
           court_notes?: string | null
@@ -666,13 +883,18 @@ export type Database = {
           photo_path?: string
           price_minor?: number | null
           published_at?: string
+          published_by?: string
+          reconfirmation_generation?: number
           registration_cutoff_at?: string
           restriction_enabled?: boolean
           saved_venue_id?: string | null
           starts_at?: string
+          status?: string
           team_assignment_mode?: Database["public"]["Enums"]["match_team_assignment_mode"]
           timezone?: string
+          updated_at?: string
           venue_name?: string
+          version?: number
           visibility?: Database["public"]["Enums"]["match_event_visibility"]
         }
         Relationships: [
@@ -844,8 +1066,23 @@ export type Database = {
           status: Database["public"]["Enums"]["community_membership_status"]
         }[]
       }
+      advance_match_registration_revision_locked: { Args: { p_event_id: string }; Returns: number }
+      assert_match_event_active_locked: { Args: { p_event_id: string }; Returns: undefined }
+      assert_match_management_action_locked: {
+        Args: { p_action: string; p_event_id: string }
+        Returns: undefined
+      }
       can_read_community: { Args: { p_community_id: string }; Returns: boolean }
       can_read_match_event: { Args: { p_event_id: string }; Returns: boolean }
+      cancel_match_event: {
+        Args: {
+          p_expected_version: number
+          p_match_event_id: string
+          p_reason: string
+          p_request_id: string
+        }
+        Returns: Json
+      }
       count_my_unread_notifications: { Args: Record<PropertyKey, never>; Returns: number }
       create_community: {
         Args: {
@@ -860,6 +1097,30 @@ export type Database = {
       decide_match_registration: {
         Args: { p_attempt_id: string; p_decision: string; p_match_event_id: string }
         Returns: Json
+      }
+      depart_match_registration_locked: {
+        Args: {
+          p_action: string
+          p_attempt_id: string
+          p_match_event_id: string
+          p_reason: string
+          p_request_id: string
+          p_target_user_id: string
+        }
+        Returns: Json
+      }
+      edit_match_event: {
+        Args: {
+          p_expected_version: number
+          p_match_event_id: string
+          p_patch: Json
+          p_request_id: string
+        }
+        Returns: Json
+      }
+      expire_match_event_invitations_locked: {
+        Args: { p_as_of: string; p_event_id: string }
+        Returns: number
       }
       finalize_community_venue_photo: {
         Args: { p_community_id: string; p_object_key: string; p_venue_id: string }
@@ -890,6 +1151,7 @@ export type Database = {
       get_effective_community_admin_defaults: { Args: { p_settings: Json }; Returns: Json }
       get_match_creation_options: { Args: { p_community_id?: string }; Returns: Json }
       get_match_event: { Args: { p_event_id: string }; Returns: Json }
+      get_match_event_management: { Args: { p_match_event_id: string }; Returns: Json }
       get_my_community_notification_timezone: {
         Args: { p_notification_id: string }
         Returns: string
@@ -901,18 +1163,23 @@ export type Database = {
           time_zone: string
         }[]
       }
+      get_my_match_invitation: { Args: { p_match_event_id: string }; Returns: Json }
       get_my_match_notification_contexts: {
         Args: { p_notification_ids: string[] }
         Returns: {
+          accepted_count: number
           caller_accepted_order: number
           caller_participation: Database["public"]["Enums"]["match_registration_participation"]
+          caller_roster_position: number
           creator_display_name: string
           currency: string
+          event_status: string
           event_type: Database["public"]["Enums"]["match_event_type"]
           match_event_id: string
           notification_id: string
           playing_count: number
           price_minor: number
+          reconfirmation_required_count: number
           requester_display_name: string
           reserve_count: number
           reserve_not_playing_count: number
@@ -972,6 +1239,20 @@ export type Database = {
           valid_until: string
         }[]
       }
+      list_match_event_audit: {
+        Args: {
+          p_before_at?: string
+          p_before_id?: string
+          p_limit?: number
+          p_match_event_id: string
+        }
+        Returns: Json[]
+      }
+      list_match_event_invitations: { Args: { p_match_event_id: string }; Returns: Json[] }
+      list_match_event_management_participants: {
+        Args: { p_match_event_id: string }
+        Returns: Json[]
+      }
       list_match_event_registration_requests: {
         Args: { p_match_event_id: string }
         Returns: Json[]
@@ -990,6 +1271,9 @@ export type Database = {
       lock_match_event_registration: {
         Args: { p_event_id: string }
         Returns: {
+          cancel_reason: string | null
+          cancelled_at: string | null
+          cancelled_by: string | null
           community_id: string
           court_booked: boolean
           court_notes: string | null
@@ -1008,13 +1292,18 @@ export type Database = {
           photo_path: string
           price_minor: number | null
           published_at: string
+          published_by: string
+          reconfirmation_generation: number
           registration_cutoff_at: string
           restriction_enabled: boolean
           saved_venue_id: string | null
           starts_at: string
+          status: string
           team_assignment_mode: Database["public"]["Enums"]["match_team_assignment_mode"]
           timezone: string
+          updated_at: string
           venue_name: string
+          version: number
           visibility: Database["public"]["Enums"]["match_event_visibility"]
         }
         SetofOptions: {
@@ -1027,6 +1316,9 @@ export type Database = {
       lock_match_event_registration_skip_locked: {
         Args: { p_event_id: string }
         Returns: {
+          cancel_reason: string | null
+          cancelled_at: string | null
+          cancelled_by: string | null
           community_id: string
           court_booked: boolean
           court_notes: string | null
@@ -1045,13 +1337,18 @@ export type Database = {
           photo_path: string
           price_minor: number | null
           published_at: string
+          published_by: string
+          reconfirmation_generation: number
           registration_cutoff_at: string
           restriction_enabled: boolean
           saved_venue_id: string | null
           starts_at: string
+          status: string
           team_assignment_mode: Database["public"]["Enums"]["match_team_assignment_mode"]
           timezone: string
+          updated_at: string
           venue_name: string
+          version: number
           visibility: Database["public"]["Enums"]["match_event_visibility"]
         }
         SetofOptions: {
@@ -1088,6 +1385,7 @@ export type Database = {
             Returns: {
               accepted_count: number
               playing_count: number
+              reconfirmation_required_count: number
               reserve_count: number
               reserve_not_playing_count: number
             }[]
@@ -1097,6 +1395,7 @@ export type Database = {
             Returns: {
               accepted_count: number
               playing_count: number
+              reconfirmation_required_count: number
               reserve_count: number
               reserve_not_playing_count: number
             }[]
@@ -1159,6 +1458,7 @@ export type Database = {
         Args: { p_match_event_id: string; p_skip_locked?: boolean }
         Returns: Json
       }
+      protect_match_event_results: { Args: { p_event_id: string }; Returns: undefined }
       public_community_discovery: {
         Args: Record<PropertyKey, never>
         Returns: {
@@ -1178,8 +1478,37 @@ export type Database = {
         Args: { p_event_id: string; p_input: Json; p_invitee_ids: string[] }
         Returns: string
       }
-      reconcile_match_registration_participation: {
-        Args: { p_accepted_registration_id?: string; p_match_event_id: string }
+      reconcile_match_registration_participation:
+        | { Args: { p_accepted_registration_id?: string; p_match_event_id: string }; Returns: Json }
+        | {
+            Args: {
+              p_accepted_registration_id: string
+              p_before_roster: Json
+              p_match_event_id: string
+            }
+            Returns: Json
+          }
+      reconfirm_match_registration: {
+        Args: {
+          p_attempt_id: string
+          p_generation: number
+          p_match_event_id: string
+          p_request_id: string
+        }
+        Returns: Json
+      }
+      remove_match_registration: {
+        Args: {
+          p_attempt_id: string
+          p_match_event_id: string
+          p_reason: string
+          p_request_id: string
+          p_target_user_id: string
+        }
+        Returns: Json
+      }
+      respond_match_event_invitation: {
+        Args: { p_invitation_id: string; p_match_event_id: string; p_response: string }
         Returns: Json
       }
       safe_match_photo_uuid: { Args: { p_value: string }; Returns: string }
@@ -1258,7 +1587,21 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      snapshot_match_registration_roster_locked: { Args: { p_event_id: string }; Returns: Json }
       submit_match_registration: { Args: { p_match_event_id: string }; Returns: Json }
+      submit_match_registration_locked: {
+        Args: { p_actor_id: string; p_match_event_id: string }
+        Returns: Json
+      }
+      transfer_match_event_ownership: {
+        Args: {
+          p_expected_version: number
+          p_match_event_id: string
+          p_request_id: string
+          p_target_user_id: string
+        }
+        Returns: Json
+      }
       update_community_admin_defaults: {
         Args: { p_community_id: string; p_defaults: Json }
         Returns: Json
@@ -1281,6 +1624,10 @@ export type Database = {
       valid_community_venue_photo_key: { Args: { p_key: string }; Returns: boolean }
       valid_match_maps_url: { Args: { p_url: string }; Returns: boolean }
       valid_match_photo_key: { Args: { p_key: string }; Returns: boolean }
+      withdraw_match_registration: {
+        Args: { p_attempt_id: string; p_match_event_id: string; p_request_id: string }
+        Returns: Json
+      }
     }
     Enums: {
       community_join_policy: "instant" | "admin_approval"
@@ -1289,7 +1636,14 @@ export type Database = {
       community_visibility: "public" | "private"
       match_event_type: "competitive" | "friendly"
       match_event_visibility: "community_open" | "invite_only"
-      match_registration_lifecycle: "pending" | "accepted" | "rejected" | "expired"
+      match_invitation_status: "pending" | "accepted" | "declined" | "expired" | "cancelled"
+      match_registration_lifecycle:
+        | "pending"
+        | "accepted"
+        | "rejected"
+        | "expired"
+        | "withdrawn"
+        | "removed_by_creator"
       match_registration_participation: "playing" | "reserve" | "reserve_not_playing"
       match_registration_source: "creator" | "member" | "guest"
       match_team_assignment_mode: "PREDEFINED_TEAMS" | "POST_MATCH_TEAMS"
@@ -2015,7 +2369,15 @@ export const Constants = {
       community_visibility: ["public", "private"],
       match_event_type: ["competitive", "friendly"],
       match_event_visibility: ["community_open", "invite_only"],
-      match_registration_lifecycle: ["pending", "accepted", "rejected", "expired"],
+      match_invitation_status: ["pending", "accepted", "declined", "expired", "cancelled"],
+      match_registration_lifecycle: [
+        "pending",
+        "accepted",
+        "rejected",
+        "expired",
+        "withdrawn",
+        "removed_by_creator",
+      ],
       match_registration_participation: ["playing", "reserve", "reserve_not_playing"],
       match_registration_source: ["creator", "member", "guest"],
       match_team_assignment_mode: ["PREDEFINED_TEAMS", "POST_MATCH_TEAMS"],

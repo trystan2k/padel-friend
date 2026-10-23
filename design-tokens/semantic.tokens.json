@@ -1,4 +1,10 @@
 {
+  "shadow": {
+    "popover": {
+      "$type": "shadow",
+      "$value": "0 {space.4} {space.16} color-mix(in srgb, {color.text} 12%, transparent)"
+    }
+  },
   "color": {
     "bg": {
       "$type": "color",

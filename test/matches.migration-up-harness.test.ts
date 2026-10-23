@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it, vi } from 'vitest';
 import { databaseHost, runHarness } from '../scripts/test-populated-migration-up.mjs';
+import { matchRegistrationFixtureHistory } from './helpers/match-registration-fixture-history';
 
 const status = 'DB_URL="postgresql://postgres:postgres@127.0.0.1:54322/postgres"\n';
 const quiet = {
@@ -17,6 +18,85 @@ function successfulRunner(calls: string[][]) {
 }
 
 describe('populated migration-up harness safety and ordering', () => {
+  it('rehearses protection against unit 5 and verifies unchanged facts and ACLs twice', () => {
+    const calls: string[][] = [];
+    runHarness({
+      env: { CI: 'true', POPULATED_UPGRADE_OPT_IN: '1', POPULATED_UPGRADE_SCENARIO: 'protection' },
+      run: successfulRunner(calls),
+      log: quiet
+    });
+    expect(calls[1]).toContain('20261021204000');
+    expect(
+      calls.filter((call) =>
+        call.some((arg) => arg.endsWith('matches-protection-upgrade-assertions.sql'))
+      )
+    ).toHaveLength(2);
+    expect(calls.at(-1)).toContain('--no-seed');
+  });
+  it('rehearses consent generation against unit 4 with repeat-up evidence', () => {
+    const calls: string[][] = [];
+    runHarness({
+      env: {
+        CI: 'true',
+        POPULATED_UPGRADE_OPT_IN: '1',
+        POPULATED_UPGRADE_SCENARIO: 'reconfirmation'
+      },
+      run: successfulRunner(calls),
+      log: quiet
+    });
+    expect(calls[1]).toContain('20261021203000');
+    expect(
+      calls.filter((call) =>
+        call.some((arg) => arg.endsWith('matches-reconfirmation-upgrade-assertions.sql'))
+      )
+    ).toHaveLength(2);
+  });
+  it('rehearses minor edits against the ownership predecessor and checks immutable snapshots twice', () => {
+    const calls: string[][] = [];
+    runHarness({
+      env: { CI: 'true', POPULATED_UPGRADE_OPT_IN: '1', POPULATED_UPGRADE_SCENARIO: 'edits' },
+      run: successfulRunner(calls),
+      log: quiet
+    });
+    expect(calls[1]).toContain('20261021202000');
+    expect(
+      calls.filter((call) =>
+        call.some((arg) => arg.endsWith('matches-edits-upgrade-assertions.sql'))
+      )
+    ).toHaveLength(2);
+    expect(calls.at(-1)).toEqual([
+      'pnpm',
+      'exec',
+      'supabase',
+      'db',
+      'reset',
+      '--local',
+      '--no-seed'
+    ]);
+  });
+  it('finalizes only supplied legacy fixture histories without disabling integrity checks', () => {
+    expect(() => matchRegistrationFixtureHistory(['not-an-id'])).toThrow(
+      'Invalid fixture event ID'
+    );
+    const sql = matchRegistrationFixtureHistory(['11111111-1111-4111-8111-111111111111']);
+    expect(sql).toContain('set constraints all immediate');
+    expect(sql).toContain('public.reconcile_match_registration_participation(fixture_event)');
+    expect(sql).not.toContain('disable trigger');
+  });
+  it('rehearses ownership anchors through the unit-2 predecessor and repeat-up assertions', () => {
+    const calls: string[][] = [];
+    runHarness({
+      env: { CI: 'true', POPULATED_UPGRADE_OPT_IN: '1', POPULATED_UPGRADE_SCENARIO: 'ownership' },
+      run: successfulRunner(calls),
+      log: quiet
+    });
+    expect(calls.some((call) => call.includes('20261021201100'))).toBe(true);
+    expect(
+      calls.filter((call) =>
+        call.some((arg) => arg.endsWith('matches-ownership-upgrade-assertions.sql'))
+      )
+    ).toHaveLength(2);
+  });
   it('refuses without explicit opt-in before starting any subprocess', () => {
     const run = vi.fn<(...args: unknown[]) => never>();
     expect(() => runHarness({ env: { CI: 'true' }, run, log: quiet })).toThrow(
@@ -55,6 +135,17 @@ describe('populated migration-up harness safety and ordering', () => {
     expect(() => databaseHost('DB_URL=postgresql://postgres:pw@db.example/postgres')).toThrow(
       'non-loopback'
     );
+  });
+
+  it('never logs credential-bearing status output', () => {
+    const log = { log: vi.fn<(...args: unknown[]) => void>() };
+    runHarness({
+      env: { CI: 'true', POPULATED_UPGRADE_OPT_IN: '1', POPULATED_UPGRADE_SCENARIO: 'departures' },
+      run: successfulRunner([]),
+      log
+    });
+    expect(log.log.mock.calls.flat().join('\n')).not.toContain(status.trim());
+    expect(log.log.mock.calls.flat().join('\n')).toContain('database host is loopback');
   });
 
   it('uses exact predecessor reset; fixture precedes up and assertions follow it', () => {
@@ -100,6 +191,61 @@ describe('populated migration-up harness safety and ordering', () => {
     expect(
       calls.some((call) => call.some((arg) => arg.includes('select public.paf_upgrade_snapshot')))
     ).toBe(false);
+  });
+
+  it('rehearses departures through the shared safety, history, repeat-up and restoration gates', () => {
+    const calls: string[][] = [];
+    runHarness({
+      env: { CI: 'true', POPULATED_UPGRADE_OPT_IN: '1', POPULATED_UPGRADE_SCENARIO: 'departures' },
+      run: successfulRunner(calls),
+      log: quiet
+    });
+    expect(calls[1]).toEqual([
+      'pnpm',
+      'exec',
+      'supabase',
+      'db',
+      'reset',
+      '--local',
+      '--version',
+      '20261021200000',
+      '--no-seed'
+    ]);
+    const seed = calls.findIndex((call) =>
+      call.some((arg) => arg.endsWith('matches-departures-predecessor.sql'))
+    );
+    const upgrades = calls.flatMap((call, index) => (call.includes('migration') ? [index] : []));
+    const assertions = calls.flatMap((call, index) =>
+      call.some((arg) => arg.endsWith('matches-departures-upgrade-assertions.sql')) ? [index] : []
+    );
+    expect(seed).toBeGreaterThan(1);
+    expect(upgrades).toHaveLength(2);
+    expect(assertions).toHaveLength(2);
+    expect(seed).toBeLessThan(upgrades[0]!);
+    expect(assertions[0]!).toBeGreaterThan(upgrades[0]!);
+    expect(assertions[0]!).toBeLessThan(upgrades[1]!);
+    expect(assertions[1]!).toBeGreaterThan(upgrades[1]!);
+    expect(calls.at(-1)).toEqual([
+      'pnpm',
+      'exec',
+      'supabase',
+      'db',
+      'reset',
+      '--local',
+      '--no-seed'
+    ]);
+  });
+
+  it('rejects unknown scenarios before starting a subprocess', () => {
+    const run = vi.fn<(...args: unknown[]) => never>();
+    expect(() =>
+      runHarness({
+        env: { CI: 'true', POPULATED_UPGRADE_OPT_IN: '1', POPULATED_UPGRADE_SCENARIO: 'typo' },
+        run,
+        log: quiet
+      })
+    ).toThrow('Unknown populated migration scenario');
+    expect(run).not.toHaveBeenCalled();
   });
 
   it('preserves migration failure while restoring latest schema', () => {

@@ -299,12 +299,17 @@ describe('match registration FIFO integration', () => {
   it.skipIf(!environment.env)(
     'breaks equal-timestamp ties deterministically and keeps the stable order across later mutations',
     async () => {
-      // Seed two accepted rows, then force their accepted_at to the exact same
-      // database instant (trusted, identity-guard-respecting update).
-      expect((await submit(actors.m1!, 'ties')).error).toBeNull();
+      // Seed a tie before snapshot creation; accepted history is now immutable.
       await fixtureSql(
-        `update public.match_event_registrations set accepted_at = pg_catalog.now()
-          where match_event_id = '${events.ties!}' and lifecycle = 'accepted';`
+        `do $$ declare v_order bigint; v_registration uuid; v_attempt uuid; v_at timestamptz; begin
+          select accepted_at into v_at from public.match_event_registrations where match_event_id='${events.ties!}' and accepted_order=1;
+          update public.match_event_registration_state set next_accepted_ordinal=next_accepted_ordinal+1 where match_event_id='${events.ties!}' returning next_accepted_ordinal-1 into v_order;
+          insert into public.match_event_registrations(match_event_id,user_id,accepted_at,accepted_order,participation_status,registration_source)
+            values('${events.ties!}','${actors.m1!.id}',v_at,v_order,'reserve','member') returning id into v_registration;
+          insert into public.match_event_registration_attempts(registration_id,match_event_id,user_id,requested_at,decided_at,outcome,actor_id,accepted_at,accepted_order,registration_source)
+            values(v_registration,'${events.ties!}','${actors.m1!.id}',v_at,v_at,'accepted','${actors.m1!.id}',v_at,v_order,'member') returning id into v_attempt;
+          update public.match_event_registrations set current_attempt_id=v_attempt where id=v_registration;
+          end $$;`
       );
       // Repeated reads return the identical ordinal order — the roster never
       // re-sorts equal-timestamp rows (the id tiebreak is defensive: accepted
@@ -327,9 +332,13 @@ describe('match registration FIFO integration', () => {
       // Equal requested_at ties in the creator queue break deterministically
       // by id and stay stable across reads.
       await fixtureSql(
-        `insert into public.match_event_registrations(match_event_id,user_id,lifecycle,requested_at,registration_source)
+        `do $$ begin insert into public.match_event_registrations(match_event_id,user_id,lifecycle,requested_at,registration_source)
          values ('${events.ties!}','${actors.g3!.id}','pending',pg_catalog.now(),'guest'),
-                ('${events.ties!}','${actors.g4!.id}','pending',pg_catalog.now(),'guest');`
+                 ('${events.ties!}','${actors.g4!.id}','pending',pg_catalog.now(),'guest');
+         insert into public.match_event_registration_attempts(registration_id,match_event_id,user_id,requested_at,outcome,registration_source)
+           select id,match_event_id,user_id,requested_at,'pending',registration_source from public.match_event_registrations where match_event_id='${events.ties!}' and current_attempt_id is null;
+         update public.match_event_registrations r set current_attempt_id=a.id from public.match_event_registration_attempts a where a.registration_id=r.id and r.match_event_id='${events.ties!}' and r.current_attempt_id is null;
+         end $$;`
       );
       const readQueue = async (): Promise<SqlRow[]> => {
         const result = await actors.creator!.client.rpc('list_match_event_registration_requests', {

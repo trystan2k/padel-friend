@@ -127,7 +127,12 @@ describe('getMatchEvent result contract', () => {
 
     await expect(getMatchEvent({ data: { event_id: eventId } })).resolves.toEqual({
       status: 'ok',
-      event: { ...signedProjection, photo_url: 'https://example.test/signed-photo' }
+      event: {
+        ...signedProjection,
+        reconfirmation_generation: 0,
+        reconfirmation_required_count: 0,
+        photo_url: 'https://example.test/signed-photo'
+      }
     });
     expect(client.auth.getClaims).toHaveBeenCalledOnce();
     expect(mocks.requireAuthenticatedClient).toHaveBeenCalledOnce();

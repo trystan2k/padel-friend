@@ -1,12 +1,14 @@
 {
+  "statusNote": "Pixel baselines superseded by the PAF-6 frame-driven redesign; re-baselining requires product approval. Screenshot comparisons removed; locator, role, geometry and accessibility assertions retained. Historical provenance, measurements and budget fields below are archival, not current certification.",
   "runtimeEnforcement": {
-    "sourceDesignSha256": "Provenance metadata; asserted by the PAF-5 visual spec before any comparison.",
-    "approvedReferencePngDigests": "Runtime-enforced by the PAF-5 visual gate before screenshot comparisons.",
-    "derivedBaselineDigests": "Runtime-enforced by the PAF-5 visual gate before and after screenshot comparisons, so --update-snapshots cannot silently replace a reviewed baseline."
+    "sourceDesignSha256": "Historical provenance only; current source digest owned by PAF-6.",
+    "approvedReferencePngDigests": "Runtime-enforced historical export digests; structural-only suite.",
+    "derivedBaselineDigests": "Historical only; superseded snapshots removed, no pixel comparisons."
   },
   "sourceDesign": {
     "path": "docs/design/padel-friend.pen",
-    "sha256": "f6ba6ae6fd61c4ee8a73e9417a0dac3aa5d4e0cf8a3ff42d6c8e912396e31a51",
+    "sha256": "f04e9f71ba2b5121b41833cf4355b8406ded4e62d042df1789ac8438f675e1b6",
+    "managementDesignVerification": "User added ten approved T06 frames under OkNwP. Re-exported all eight PAF-5 source frames through read-only Pencil MCP at scale 1; decoded full-frame RGBA comparisons equal every retained approved reference. Reference and baseline digests/budgets unchanged.",
     "exportCommand": "Pencil MCP only: copy docs/design/padel-friend.pen to a scratch file, then execute({ filePath: <scratch>, input: 'Export([\"fo8Zn\",\"SYMLa\",\"tYXlh\",\"Za6r4\",\"xC04T\",\"qNVpA\",\"Cpd7L\",\"Z0gRd\"], \"png\", <scratch>/out1, {scale:1})' }); copy/rename the exported <frameId>.png files into e2e/references/paf-5/ with the named references below. The encrypted source .pen is never read or grepped by other tooling.",
     "provenanceNote": "All 8 PAF-5 frames verified present in the current design (sha256 above) and exported at scale 1 (390-wide phone frames) from a temporary copy, so the source design stayed untouched. Double export of all 8 frames reproduced byte-identical PNGs. The three detail frames (fo8Zn/SYMLa/tYXlh) are 872 tall and are stored UNCROPPED: unlike the PAF-4 crop-to-844 convention, a top-390x844 crop would truncate their bottom navigation (frame-local [18,802,354,56], i.e. y 802..858), which is approved frame content, so the full frame is retained and the visual-spec author decides any deterministic crop or mask. visualBudgets and screenshotBaselines are intentionally null: no PAF-5 implementation has been captured yet, and copying PAF-4 budgets onto new frames would be dishonest; both must be populated from a real implementation comparison by the visual-spec author."
   },

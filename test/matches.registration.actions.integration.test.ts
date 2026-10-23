@@ -866,13 +866,14 @@ describe('match registration actions integration', () => {
 
     // Expired rows are re-applied the same way: seeded expired identity is reused.
     await fixtureSql(
-      `insert into public.match_event_registrations(match_event_id,user_id,lifecycle,requested_at,registration_source) values
+      `do $$ begin insert into public.match_event_registrations(match_event_id,user_id,lifecycle,requested_at,registration_source) values
         ('${events.ranged!}','${actors.memberB!.id}','expired',now()-interval '2 hours','member'),
-        ('${events.ranged!}','${actors.memberD!.id}','expired',now()-interval '3 hours','member');`
-    );
-    await fixtureSql(
-      `insert into public.match_event_registration_attempts(match_event_id,user_id,requested_at,decided_at,outcome)
-        values ('${events.ranged!}','${actors.memberD!.id}',now()-interval '3 hours',now()-interval '3 hours','expired');`
+         ('${events.ranged!}','${actors.memberD!.id}','expired',now()-interval '3 hours','member');
+       insert into public.match_event_registration_attempts(registration_id,match_event_id,user_id,requested_at,decided_at,outcome,registration_source)
+         select id,match_event_id,user_id,requested_at,requested_at,'expired',registration_source from public.match_event_registrations
+         where match_event_id='${events.ranged!}' and user_id in ('${actors.memberB!.id}','${actors.memberD!.id}');
+       update public.match_event_registrations r set current_attempt_id=a.id from public.match_event_registration_attempts a
+         where a.registration_id=r.id and r.match_event_id='${events.ranged!}' and r.user_id in ('${actors.memberB!.id}','${actors.memberD!.id}'); end $$;`
     );
     const expiredSubmit = await submit(actors.memberB!, 'ranged');
     expect(expiredSubmit.error).toBeNull();
@@ -883,7 +884,7 @@ describe('match registration actions integration', () => {
     expect(expiredRow['accepted_order']).toBeNull();
     expect(
       (await attemptsOf('ranged', actors.memberB!.id)).map((attempt) => attempt['outcome'])
-    ).toEqual(['pending']);
+    ).toEqual(['expired', 'pending']);
     const stateForB = await registrationState('ranged');
     const approvedB = await decide(actors.creator!, 'ranged', actors.memberB!.id, 'approve');
     expect(approvedB.error).toBeNull();
@@ -912,9 +913,7 @@ describe('match registration actions integration', () => {
     // attempt, so seed the creator's own attempt and prove the guard fires on
     // the requester derived from that attempt.
     const creatorAttemptRows = await sqlRows(
-      `insert into public.match_event_registration_attempts(match_event_id,user_id,requested_at,outcome)
-        values ('${events.ranged!}','${actors.creator!.id}',now(),'pending')
-        returning id::text as id`
+      `select current_attempt_id::text as id from public.match_event_registrations where match_event_id='${events.ranged!}' and user_id='${actors.creator!.id}'`
     );
     const creatorAttemptId = String(creatorAttemptRows[0]!['id']);
     try {
@@ -928,9 +927,7 @@ describe('match registration actions integration', () => {
         'Creator cannot decide their own registration'
       );
     } finally {
-      await fixtureSql(
-        `delete from public.match_event_registration_attempts where id = '${creatorAttemptId}';`
-      );
+      /* Creator history remains immutable. */
     }
     // Unknown attempt identity.
     await expectDomainError(
@@ -1042,9 +1039,9 @@ describe('match registration actions integration', () => {
     expect(await attemptsOf('ranged', actors.memberNoRating!.id)).toHaveLength(1);
   });
 
-  it('closes entries and approvals at the DB-time cutoff while committed approvals still replay', async () => {
+  it('closes entries approvals and committed approval replays at the DB-time cutoff', async () => {
     // A cutoff already in the past refuses new submissions with the closed token.
-    await expectDomainError(submit(actors.memberLate!, 'closed'), 'MATCH_REGISTRATION_CLOSED');
+    await expectDomainError(submit(actors.memberLate!, 'closed'), 'MATCH_MANAGEMENT_CLOSED');
 
     // An unapproved request submitted BEFORE the cutoff cannot be approved at it.
     const request = await submit(actors.guest1!, 'boundary');
@@ -1064,7 +1061,7 @@ describe('match registration actions integration', () => {
     const stateBefore = await registrationState('boundary');
     await expectDomainError(
       decide(actors.creator!, 'boundary', actors.guest1!.id, 'approve'),
-      'MATCH_REGISTRATION_CLOSED'
+      'MATCH_MANAGEMENT_CLOSED'
     );
     expect((await registrationState('boundary')).next).toBe(stateBefore.next);
     const stillPending = await creatorRow('boundary', actors.guest1!.id);
@@ -1075,9 +1072,9 @@ describe('match registration actions integration', () => {
       await notificationsOf(actors.guest1!, 'match_registration_approved', events.boundary)
     ).toHaveLength(0);
     // At/after the boundary, brand-new submissions are refused too (equality closed).
-    await expectDomainError(submit(actors.memberLate!, 'boundary'), 'MATCH_REGISTRATION_CLOSED');
+    await expectDomainError(submit(actors.memberLate!, 'boundary'), 'MATCH_MANAGEMENT_CLOSED');
 
-    // An approval already committed BEFORE the cutoff still replays after it.
+    // Terminal guard now precedes replay; historical approval anchors survive.
     const pendingReplay = await submit(actors.guestReplay!, 'replay');
     expect(pendingReplay.error).toBeNull();
     const committed = await decide(actors.creator!, 'replay', actors.guestReplay!.id, 'approve');
@@ -1094,18 +1091,18 @@ describe('match registration actions integration', () => {
       ].join('\n')
     );
     const replay = await decide(actors.creator!, 'replay', actors.guestReplay!.id, 'approve');
-    expect(replay.error).toBeNull();
-    const replayData = asRecord(replay.data);
-    expect(replayData['replayed']).toBe(true);
-    expect(replayData['accepted_at']).toBe(committedData['accepted_at']);
-    expect(replayData['approved_at']).toBe(committedData['approved_at']);
-    expect(replayData['accepted_order']).toBe(committedData['accepted_order']);
+    expect(replay.error?.message).toBe('MATCH_MANAGEMENT_CLOSED');
+    expect(await creatorRow('replay', actors.guestReplay!.id)).toMatchObject({
+      accepted_at: committedData['accepted_at'],
+      approved_at: committedData['approved_at'],
+      accepted_order: committedData['accepted_order']
+    });
     // The replay allocated no new ordinal and no new alert.
     expect(
       await notificationsOf(actors.guestReplay!, 'match_registration_approved', events.replay)
     ).toHaveLength(1);
     // And new submissions stay closed after the boundary.
-    await expectDomainError(submit(actors.memberLate!, 'replay'), 'MATCH_REGISTRATION_CLOSED');
+    await expectDomainError(submit(actors.memberLate!, 'replay'), 'MATCH_MANAGEMENT_CLOSED');
   });
 
   it('binds finite capacity to accepted players, never to pending requests, and never closes unlimited events', async () => {
@@ -1371,6 +1368,11 @@ describe('match registration actions integration', () => {
     expect(Object.keys(own).sort()).toEqual(
       [
         'event_id',
+        'attempt_id',
+        'event_status',
+        'cancelled_at',
+        'left_at',
+        'removal_reason',
         'lifecycle',
         'participation',
         'accepted_order',
@@ -1379,7 +1381,11 @@ describe('match registration actions integration', () => {
         'requested_at',
         'approved_at',
         'accepted_at',
-        'resolved_at'
+        'resolved_at',
+        'required_generation',
+        'confirmed_generation',
+        'reconfirmed_at',
+        'registration_cutoff_at'
       ].sort()
     );
     const creatorOwn = asRecord(

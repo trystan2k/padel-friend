@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link } from '@tanstack/react-router';
 import { useTranslation } from 'react-i18next';
+import { notificationRosterPosition } from './notification-target';
 import {
   acceptMyNotificationInvitation,
   getMyMatchNotificationContext,
@@ -35,7 +36,19 @@ type RegistrationNotificationKind =
   | 'match_registration_promoted'
   | 'match_registration_quartet_complete'
   | 'match_registration_expired'
-  | 'match_registration_not_playing';
+  | 'match_registration_not_playing'
+  | 'match_invitation_accepted'
+  | 'match_invitation_declined'
+  | 'match_invitation_expired'
+  | 'match_registration_withdrawn'
+  | 'match_registration_removed'
+  | 'match_registration_group_changed'
+  | 'match_event_ownership_transferred'
+  | 'match_event_cancelled'
+  | 'match_event_updated'
+  | 'match_reconfirmation_required'
+  | 'match_registration_reconfirmed'
+  | 'match_reconfirmation_expired';
 
 // Existing kinds keep their current invitation detail behaviour; the PAF-5.2
 // request/decision kinds and the PAF-5.3 FIFO quartet kinds opt into their own
@@ -49,7 +62,19 @@ const REGISTRATION_NOTIFICATION_KINDS: readonly RegistrationNotificationKind[] =
   'match_registration_promoted',
   'match_registration_quartet_complete',
   'match_registration_expired',
-  'match_registration_not_playing'
+  'match_registration_not_playing',
+  'match_invitation_accepted',
+  'match_invitation_declined',
+  'match_invitation_expired',
+  'match_registration_withdrawn',
+  'match_registration_removed',
+  'match_registration_group_changed',
+  'match_event_ownership_transferred',
+  'match_event_cancelled',
+  'match_event_updated',
+  'match_reconfirmation_required',
+  'match_registration_reconfirmed',
+  'match_reconfirmation_expired'
 ];
 
 function isRegistrationNotificationKind(kind: string): kind is RegistrationNotificationKind {
@@ -74,6 +99,7 @@ function registrationHeading(
   notificationKind: string | null | undefined,
   group: number | null
 ): string {
+  if (kind === 'match_event_cancelled') return t('notifications.kinds.match_event_cancelled');
   if (notificationKind === 'match_event_published')
     return t('notifications.kinds.match_event_published');
   if (notificationKind === 'match_event_invitation')
@@ -95,12 +121,12 @@ type ApprovedPlacement =
 // accepted ordinal so nothing is inferred from counts alone.
 function approvedPlacement(context: MatchNotificationContext): ApprovedPlacement | null {
   if (context.caller_participation === 'playing') {
-    const group = matchRegistrationGroup(context.caller_accepted_order);
+    const group = matchRegistrationGroup(notificationRosterPosition(context));
     return group === null ? null : { participation: 'playing', group };
   }
   if (context.caller_participation === 'reserve') {
     const position = matchRegistrationReservePosition(
-      context.caller_accepted_order,
+      notificationRosterPosition(context),
       context.playing_count
     );
     return position === null ? null : { participation: 'reserve', position };
@@ -120,7 +146,7 @@ function reserveBody(context: MatchNotificationContext): ReserveBody {
   const event = context.venue;
   if (context.caller_participation === 'reserve') {
     const position = matchRegistrationReservePosition(
-      context.caller_accepted_order,
+      notificationRosterPosition(context),
       context.playing_count
     );
     if (position !== null)
@@ -130,7 +156,7 @@ function reserveBody(context: MatchNotificationContext): ReserveBody {
       };
   }
   if (context.caller_participation === 'playing') {
-    const group = matchRegistrationGroup(context.caller_accepted_order);
+    const group = matchRegistrationGroup(notificationRosterPosition(context));
     if (group !== null)
       return {
         key: 'notifications.match.registrationReservePromotedBody',
@@ -277,7 +303,10 @@ export function NotificationDetailPage({
     setPending(false);
   }
 
-  const registrationKind = registrationNotificationKind(target.kind);
+  const registrationKind =
+    currentMatchContext?.event_status === 'cancelled'
+      ? 'match_event_cancelled'
+      : registrationNotificationKind(target.kind);
   const approvedVariant =
     registrationKind === 'match_registration_approved' && currentMatchContext
       ? approvedPlacement(currentMatchContext)
@@ -290,7 +319,7 @@ export function NotificationDetailPage({
   // ordinal (and the derived playing headcount) carried by the context.
   const fifoGroup =
     registrationKind && currentMatchContext
-      ? matchRegistrationGroup(currentMatchContext.caller_accepted_order)
+      ? matchRegistrationGroup(notificationRosterPosition(currentMatchContext))
       : null;
   const reserveBodyCopy =
     registrationKind === 'match_registration_reserve' && currentMatchContext
@@ -377,6 +406,30 @@ export function NotificationDetailPage({
                       })}
                     </p>
                   )
+                ) : registrationKind === 'match_invitation_accepted' ? (
+                  <p>{t('notifications.match.invitationAcceptedBody')}</p>
+                ) : registrationKind === 'match_invitation_declined' ? (
+                  <p>{t('notifications.match.invitationDeclinedBody')}</p>
+                ) : registrationKind === 'match_registration_withdrawn' ? (
+                  <p>{t('notifications.match.registrationWithdrawnBody')}</p>
+                ) : registrationKind === 'match_registration_removed' ? (
+                  <p>{t('notifications.match.registrationRemovedBody')}</p>
+                ) : registrationKind === 'match_registration_group_changed' ? (
+                  <p>{t('notifications.match.registrationGroupChangedBody')}</p>
+                ) : registrationKind === 'match_event_ownership_transferred' ? (
+                  <p>{t('notifications.match.ownershipTransferredBody')}</p>
+                ) : registrationKind === 'match_reconfirmation_required' ? (
+                  <p>{t('notifications.match.reconfirmationRequiredBody')}</p>
+                ) : registrationKind === 'match_registration_reconfirmed' ? (
+                  <p>{t('notifications.match.reconfirmedBody')}</p>
+                ) : registrationKind === 'match_reconfirmation_expired' ? (
+                  <p>{t('notifications.match.reconfirmationExpiredBody')}</p>
+                ) : registrationKind === 'match_event_updated' ? (
+                  <p>{t('notifications.match.updatedBody')}</p>
+                ) : registrationKind === 'match_event_cancelled' ? (
+                  <p>{t('notifications.match.cancelledBody')}</p>
+                ) : registrationKind === 'match_invitation_expired' ? (
+                  <p>{t('notifications.match.invitationExpiredBody')}</p>
                 ) : registrationKind === 'match_registration_expired' ? (
                   <p>{t('notifications.match.registrationExpiredBody')}</p>
                 ) : registrationKind === 'match_registration_not_playing' ? (

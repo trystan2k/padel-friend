@@ -1,4 +1,5 @@
 import * as stylex from '@stylexjs/stylex';
+import { rootStyles } from '../../root.styles';
 import { AlertDialog } from '@base-ui/react/alert-dialog';
 import { Dialog } from '@base-ui/react/dialog';
 import { Select } from '@base-ui/react/select';
@@ -491,7 +492,7 @@ function AdminViewFrame({
       aria-labelledby="admin-screen-title"
       {...stylex.props(styles.content, screen === 'venues' && styles.venueContent)}
     >
-      <header {...stylex.props(styles.header)}>
+      <header {...stylex.props(styles.header, rootStyles.pageHeader)}>
         <div {...stylex.props(styles.screenHeading)}>
           <Link
             to="/dashboard"

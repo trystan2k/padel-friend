@@ -1,4 +1,5 @@
 import { spawn } from 'node:child_process';
+import { matchRegistrationFixtureHistory } from './helpers/match-registration-fixture-history';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { describe, expect, it } from 'vitest';
 import {
@@ -147,7 +148,8 @@ describe('match event visibility integration', () => {
          values (${q(eventIdFor(`${publicCommunity}:invite_only`))},${q(invitee!.id)},${q(creator!.id)}),
            (${q(eventIdFor(`${privateCommunity}:invite_only`))},${q(invitee!.id)},${q(creator!.id)});
         insert into public.match_event_registrations(match_event_id,user_id,accepted_at,accepted_order,participation_status,registration_source)
-           values (${q(eventIdFor(`${publicCommunity}:invite_only`))},${q(accepted!.id)},now(),2,'reserve','member');
+            values (${q(eventIdFor(`${publicCommunity}:invite_only`))},${q(accepted!.id)},now(),2,'reserve','member');
+       ${matchRegistrationFixtureHistory(Object.values(events))}
      end $$;`
       );
 

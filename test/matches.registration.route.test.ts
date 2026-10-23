@@ -1,12 +1,18 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { MyMatchRegistration } from '../src/features/matches/match-registration-model';
+import { makeMatchManagement } from './helpers/match-management-capabilities';
 
 const mocks = vi.hoisted(() => ({
   getMatchEvent: vi.fn<(...args: unknown[]) => Promise<unknown>>(),
+  getManagement: vi
+    .fn<(...args: unknown[]) => Promise<unknown>>()
+    .mockResolvedValue({ status: 'empty' }),
   getMyMatchRegistration: vi.fn<(...args: unknown[]) => Promise<unknown>>(),
   listMatchEventRegistrationRequests: vi.fn<(...args: unknown[]) => Promise<unknown>>(),
   listMatchEventRegistrations: vi.fn<(...args: unknown[]) => Promise<unknown>>(),
-  getMyPlayerProfile: vi.fn<(...args: unknown[]) => Promise<unknown>>()
+  getMyPlayerProfile: vi.fn<(...args: unknown[]) => Promise<unknown>>(),
+  getMyMatchInvitation: vi.fn<(...args: unknown[]) => Promise<unknown>>(),
+  listManagementParticipants: vi.fn<(...args: unknown[]) => Promise<unknown>>()
 }));
 
 vi.mock('../src/features/matches/matches.functions', () => ({
@@ -21,6 +27,16 @@ vi.mock('../src/features/matches/match-registration.functions', () => ({
 }));
 vi.mock('../src/features/player/player.functions', () => ({
   getMyPlayerProfile: mocks.getMyPlayerProfile
+}));
+vi.mock('../src/features/matches/match-invitation.functions', () => ({
+  getMyMatchInvitation: mocks.getMyMatchInvitation,
+  respondMatchEventInvitation: vi.fn<(...args: unknown[]) => Promise<unknown>>()
+}));
+vi.mock('../src/features/matches/match-management.functions', () => ({
+  getMatchEventManagement: mocks.getManagement,
+  listMatchEventManagementParticipants: mocks.listManagementParticipants,
+  withdrawMatchRegistration: vi.fn<(...args: unknown[]) => Promise<unknown>>(),
+  removeMatchRegistration: vi.fn<(...args: unknown[]) => Promise<unknown>>()
 }));
 vi.mock('@tanstack/react-router', async (original) => ({
   ...(await original<typeof import('@tanstack/react-router')>()),
@@ -58,6 +74,40 @@ function routeLoader(): MatchDetailRoute['options']['loader'] {
 }
 
 describe('match detail registration route loaders', () => {
+  it('loads identifier-bearing participant projection only for creator', async () => {
+    mocks.getManagement.mockResolvedValue({ status: 'ok', value: makeMatchManagement() });
+    mocks.getMatchEvent.mockResolvedValue({
+      status: 'ok',
+      event: { event_id: EVENT_ID, caller_badge: 'member' }
+    });
+    mocks.getMyMatchRegistration.mockResolvedValue({
+      status: 'ok',
+      registration: { state: 'none' }
+    });
+    mocks.listMatchEventRegistrations.mockResolvedValue({ status: 'empty' });
+    mocks.getMyMatchInvitation.mockResolvedValue({ status: 'empty' });
+    mocks.listManagementParticipants.mockClear();
+    expect(await routeLoader()({ params: { eventId: EVENT_ID } })).toMatchObject({
+      managementParticipants: [],
+      managementError: false
+    });
+    expect(mocks.listManagementParticipants).not.toHaveBeenCalled();
+    mocks.getManagement.mockResolvedValue({
+      status: 'ok',
+      value: makeMatchManagement({ is_organizer: true })
+    });
+    mocks.getMatchEvent.mockResolvedValue({
+      status: 'ok',
+      event: { event_id: EVENT_ID, caller_badge: 'creator' }
+    });
+    mocks.listMatchEventRegistrationRequests.mockResolvedValue({ status: 'empty' });
+    mocks.listManagementParticipants.mockResolvedValue({ status: 'ok', value: [] });
+    expect(await routeLoader()({ params: { eventId: EVENT_ID } })).toMatchObject({
+      managementParticipants: [],
+      managementError: false
+    });
+    expect(mocks.listManagementParticipants).toHaveBeenCalledWith({ data: { event_id: EVENT_ID } });
+  });
   it('loads the caller registration DTO without nesting the flat event projection', async () => {
     const registration: MyMatchRegistration = {
       state: 'pending',
@@ -148,10 +198,31 @@ describe('match detail registration route loaders', () => {
     mocks.getMyMatchRegistration.mockResolvedValue({ status: 'unavailable' });
     mocks.listMatchEventRegistrations.mockResolvedValue({ status: 'empty' });
     mocks.getMyPlayerProfile.mockResolvedValue({ display_level: null });
+    mocks.getMyMatchInvitation.mockResolvedValue({ status: 'empty' });
 
     const data = await routeLoader()({ params: { eventId: EVENT_ID } });
     if (typeof data !== 'object' || data === null) throw new Error('route loader returned no data');
     expect(Reflect.get(data, 'registration')).toBeNull();
     expect(Reflect.get(data, 'registrationFailed')).toBe(true);
+  });
+  it('loads own invitation separately and degrades unavailable invitation reads safely', async () => {
+    const invitation = {
+      invitation_id: EVENT_ID,
+      status: 'pending',
+      effective_status: 'pending',
+      expires_at: '2030-01-01T00:00:00Z',
+      responded_at: null
+    };
+    mocks.getMatchEvent.mockResolvedValue({ status: 'ok', event: { event_id: EVENT_ID } });
+    mocks.getMyMatchRegistration.mockResolvedValue({ status: 'unavailable' });
+    mocks.listMatchEventRegistrations.mockResolvedValue({ status: 'empty' });
+    mocks.getMyPlayerProfile.mockResolvedValue({ display_level: null });
+    mocks.getMyMatchInvitation.mockResolvedValueOnce({ status: 'ok', invitation });
+    expect(await routeLoader()({ params: { eventId: EVENT_ID } })).toMatchObject({ invitation });
+    expect(mocks.getMyMatchInvitation).toHaveBeenCalledWith({ data: { event_id: EVENT_ID } });
+    mocks.getMyMatchInvitation.mockRejectedValueOnce(new Error('unavailable'));
+    expect(await routeLoader()({ params: { eventId: EVENT_ID } })).toMatchObject({
+      invitation: null
+    });
   });
 });

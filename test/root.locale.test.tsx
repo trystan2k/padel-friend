@@ -57,6 +57,23 @@ function persistedSave(locale: string) {
   document.cookie = `locale=${locale}; path=/; samesite=lax`;
 }
 
+it('keeps compact preference chips native with complete options and accessible names', async () => {
+  const user = userEvent.setup();
+  renderRoot();
+  const locale = getLocaleSelect();
+  expect([...locale.options].map((option) => option.text)).toEqual([
+    'English',
+    'Português (Brasil)',
+    'Español'
+  ]);
+  expect(locale.closest('label')?.querySelector('[aria-hidden="true"]')?.textContent).toBe('en');
+  const theme = screen.getByRole('combobox', { name: 'Theme' });
+  expect(theme).toBeInstanceOf(HTMLSelectElement);
+  await user.selectOptions(theme, 'dark');
+  expect(document.documentElement.dataset.theme).toBe('dark');
+  expect(theme.closest('label')?.querySelector('[aria-hidden="true"]')?.textContent).toBe('Dark');
+});
+
 it('updates root preference labels after changing locale', async () => {
   const user = userEvent.setup();
   renderRoot();

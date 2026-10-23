@@ -7,6 +7,7 @@ import {
   validateNotificationPreferences
 } from './notifications.validators';
 import { toNotificationDto } from './notification-model';
+import { decodeNotificationTarget } from './notification-target';
 const columns = 'id,kind,category,target_type,target_id,community_id,created_at,read_at' as const;
 export const listMyNotifications = createServerFn({ method: 'GET' })
   .validator(validateListMyNotifications)
@@ -130,7 +131,11 @@ export const getMyNotificationTargetV2 = createServerFn({ method: 'GET' })
       .eq('id', data.notificationId)
       .maybeSingle();
     if (headerError) throw headerError;
-    return { ...result, kind: header?.kind ?? null, created_at: header?.created_at ?? null };
+    return decodeNotificationTarget({
+      ...result,
+      kind: header?.kind ?? null,
+      created_at: header?.created_at ?? null
+    });
   });
 export const getMyMatchNotificationContext = createServerFn({ method: 'GET' })
   .validator(validateNotificationId)

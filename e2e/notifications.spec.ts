@@ -1,3 +1,4 @@
+// Baselines re-blessed 2026-10-23 after the user-directed global chrome redesign (circular locale/theme chips); thresholds unchanged. Second pass: Inter/600 typography, flat input/button borders, chip-safe headers.
 import { readFileSync } from 'node:fs';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import {

@@ -37,9 +37,10 @@ vi.mock('../src/features/notifications/notifications.functions', () => ({
 
 import { createI18n } from '../src/i18n/config';
 import en from '../src/locales/en/translation.json';
-import type {
-  MatchNotificationContext,
-  NotificationTarget
+import {
+  decodeNotificationTarget,
+  type MatchNotificationContext,
+  type NotificationTarget
 } from '../src/features/notifications/notification-target';
 import { NotificationDetailPage } from '../src/features/notifications/NotificationDetailPage';
 import { Route as NotificationDetailRoute } from '../src/routes/_protected.notifications.$notificationId';
@@ -177,6 +178,38 @@ beforeEach(() => {
 afterEach(cleanup);
 
 describe('notification detail page', () => {
+  it('accepts safe cancellation targets and rejects malformed match links', () => {
+    expect(
+      decodeNotificationTarget({ ...availableMatch, kind: 'match_event_cancelled' })
+    ).toMatchObject({ match_available: true });
+    expect(() =>
+      decodeNotificationTarget({ ...availableMatch, match_event_id: '../private' })
+    ).toThrow('INVALID_NOTIFICATION_TARGET');
+    expect(() => decodeNotificationTarget({ ...availableMatch, match_available: false })).toThrow(
+      'INVALID_NOTIFICATION_TARGET'
+    );
+  });
+  it.each(['match_event_ownership_transferred', 'match_event_cancelled'] as const)(
+    'renders %s with a safe event target and noninvitation heading',
+    async (kind) => {
+      mountPage({ ...availableMatch, kind }, matchContext('Central Court'));
+      expect(await screen.findByRole('heading', { name: copy.kinds[kind] })).toBeTruthy();
+      expect(screen.getByRole('link', { name: copy.match.openEvent }).getAttribute('href')).toBe(
+        `/matches/${availableMatch.match_event_id}`
+      );
+      expect(screen.queryByText(copy.match.invitedBy)).toBeNull();
+    }
+  );
+  it('resolves an older playing notification to a current cancelled tombstone', async () => {
+    mountPage(
+      { ...availableMatch, kind: 'match_registration_playing' },
+      matchContext('Central Court', { event_status: 'cancelled' })
+    );
+    expect(
+      await screen.findByRole('heading', { name: copy.kinds.match_event_cancelled })
+    ).toBeTruthy();
+    expect(screen.getByText(copy.match.cancelledBody)).toBeTruthy();
+  });
   it('renders the localized unavailable state with a back link to the notification center', async () => {
     mountPage(unavailable);
 
@@ -356,6 +389,45 @@ describe('notification detail page', () => {
     expect(mocks.targetV2).toHaveBeenCalledWith({ data: { notificationId } });
     expect(mocks.matchContext).toHaveBeenCalledWith({ data: { notificationId } });
     expect(mocks.targetV1).not.toHaveBeenCalled();
+  });
+
+  it('uses current FIFO position rather than historical ordinal after departures', async () => {
+    mountPage(
+      { ...availableMatch, kind: 'match_registration_playing' },
+      matchContext('Current court', {
+        caller_participation: 'playing',
+        caller_accepted_order: 5,
+        caller_roster_position: 4,
+        playing_count: 4
+      })
+    );
+    expect(
+      await screen.findByRole('heading', {
+        name: fill(copy.match.registrationPlayingTitle, { group: 1 })
+      })
+    ).toBeTruthy();
+    expect(
+      screen.queryByRole('heading', {
+        name: fill(copy.match.registrationPlayingTitle, { group: 2 })
+      })
+    ).toBeNull();
+  });
+
+  it.each([
+    ['match_invitation_accepted', 'invitationAcceptedBody'],
+    ['match_invitation_declined', 'invitationDeclinedBody'],
+    ['match_invitation_expired', 'invitationExpiredBody'],
+    ['match_registration_withdrawn', 'registrationWithdrawnBody'],
+    ['match_registration_removed', 'registrationRemovedBody'],
+    ['match_registration_group_changed', 'registrationGroupChangedBody']
+  ] as const)('renders %s with lifecycle copy and safe match target', async (kind, body) => {
+    mountPage({ ...availableMatch, kind }, matchContext('Invitation court'));
+    expect(await screen.findByRole('heading', { name: copy.kinds[kind] })).toBeTruthy();
+    expect(screen.getByText(copy.match[body])).toBeTruthy();
+    expect(screen.queryByText(copy.match.invitedBy)).toBeNull();
+    expect(screen.getByRole('link', { name: copy.match.openEvent }).getAttribute('href')).toBe(
+      `/matches/${availableMatch.match_event_id}`
+    );
   });
 
   it('renders the cutoff expired kind with its own heading and body copy', async () => {

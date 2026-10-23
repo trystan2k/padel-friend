@@ -1,4 +1,5 @@
 import * as stylex from '@stylexjs/stylex';
+import { rootStyles } from '../../root.styles';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from '@tanstack/react-router';
@@ -132,7 +133,7 @@ export function NotificationsPage({ initial }: { initial: NotificationPage }) {
   return (
     <main {...stylex.props(styles.page)}>
       <section {...stylex.props(styles.panel)}>
-        <header {...stylex.props(styles.pageHeader)}>
+        <header {...stylex.props(styles.pageHeader, rootStyles.pageHeader)}>
           <div>
             <h1 {...stylex.props(styles.pageTitle)}>{t('notifications.title')}</h1>
             <p {...stylex.props(styles.subtitle)}>{t('notifications.subtitle')}</p>

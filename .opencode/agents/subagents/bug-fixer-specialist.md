@@ -2,7 +2,7 @@
 description: Senior bug-fix and small-change subagent that executes approved review follow-ups and minor improvements using stack-specific best practices and project conventions.
 mode: subagent
 model: openai/gpt-6.1-sol
-reasoningEffort: medium
+reasoningEffort: low
 temperature: 0
 permission:
   task: allow

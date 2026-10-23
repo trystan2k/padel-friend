@@ -34,6 +34,27 @@ describe('match fixture cleanup', () => {
     ).toThrow(/non-UUID/);
   });
 
+  it('clears management history references before attempts and restores every bypassed guard', () => {
+    const sql = buildMatchFixtureCleanupSql({ eventIds: [event], actorIds: [actor] });
+    for (const table of ['match_event_management_commands', 'match_event_audit_log']) {
+      expect(sql).toContain(
+        `delete from public.${table} where match_event_id in (select id from owned_match_fixture_events)`
+      );
+    }
+    expect(sql.indexOf('set current_attempt_id=null')).toBeLessThan(
+      sql.indexOf('delete from public.match_event_registration_attempts')
+    );
+    for (const trigger of [
+      'match_attempt_history_guard',
+      'match_attempt_final_state',
+      'match_registration_final_state',
+      'match_audit_immutable'
+    ]) {
+      expect(sql).toContain(`disable trigger ${trigger}`);
+      expect(sql).toContain(`enable trigger ${trigger}`);
+    }
+  });
+
   it('requires a loopback Supabase URL', () => {
     expect(() => assertLoopbackUrl('https://localhost:54321')).not.toThrow();
     expect(() => assertLoopbackUrl('https://project.supabase.co')).toThrow(/loopback/);

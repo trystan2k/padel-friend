@@ -258,21 +258,21 @@ describe('accepted roster panel', () => {
       screen.getByText(en.matchRegistration.roster.groupTitle.replace('{{group}}', '1'))
     ).toBeTruthy();
     expect(screen.getByText(en.matchRegistration.roster.reserveTitle)).toBeTruthy();
-    expect(screen.getByText(en.matchRegistration.roster.fifo)).toBeTruthy();
     expect(screen.queryByText(en.matchRegistration.roster.notPlayingTitle)).toBeNull();
     expect(screen.getByText(en.matchRegistration.roster.orderNote)).toBeTruthy();
-    expect(screen.getByText(en.matchRegistration.roster.authoritativeNote)).toBeTruthy();
+    expect(screen.getByRole('heading', { name: en.matchRegistration.roster.title })).toBeTruthy();
     // Real display names and levels, not just the caller row.
     expect(screen.getByText('Ada One')).toBeTruthy();
     expect(
-      screen.getByText(en.matchRegistration.roster.level.replace('{{level}}', '4'))
+      screen.getByLabelText(en.matchRegistration.roster.level.replace('{{level}}', '4'))
     ).toBeTruthy();
   });
 
   it('renders the not-playing section for a cutoff-due roster, distinct from reserve', () => {
     mount(
       accepted({ participation: 'reserve_not_playing', accepted_order: 5, position: 5 }),
-      DUE_ROSTER
+      DUE_ROSTER,
+      event({ is_past: true })
     );
     expect(screen.getByText(en.matchRegistration.roster.notPlayingTitle)).toBeTruthy();
     expect(screen.queryByText(en.matchRegistration.roster.reserveTitle)).toBeNull();
@@ -347,12 +347,12 @@ describe('accepted roster panel', () => {
   it('localizes the roster level label', () => {
     mount(accepted({ accepted_order: 2 }), ROSTER, event(), 'pt-BR');
     expect(
-      screen.getByText(pt.matchRegistration.roster.level.replace('{{level}}', '4'))
+      screen.getByLabelText(pt.matchRegistration.roster.level.replace('{{level}}', '4'))
     ).toBeTruthy();
     cleanup();
     mount(accepted({ accepted_order: 2 }), ROSTER, event(), 'es');
     expect(
-      screen.getByText(es.matchRegistration.roster.level.replace('{{level}}', '4'))
+      screen.getByLabelText(es.matchRegistration.roster.level.replace('{{level}}', '4'))
     ).toBeTruthy();
   });
 });

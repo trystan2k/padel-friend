@@ -14,6 +14,9 @@ export type MatchRegistrationErrorCode =
   | 'event_not_found'
   | 'invite_only'
   | 'closed'
+  | 'started'
+  | 'cancelled'
+  | 'result_protected'
   | 'denied'
   | 'duplicate'
   | 'pending_duplicate'
@@ -32,6 +35,11 @@ export type MatchRegistrationActionError = {
 };
 
 const ERROR_TOKENS: Readonly<Record<string, MatchRegistrationErrorCode>> = {
+  MATCH_MANAGEMENT_CLOSED: 'closed',
+  MATCH_MANAGEMENT_NOT_FOUND: 'event_not_found',
+  MATCH_MANAGEMENT_STARTED: 'started',
+  MATCH_MANAGEMENT_CANCELLED: 'cancelled',
+  MATCH_MANAGEMENT_RESULT_PROTECTED: 'result_protected',
   MATCH_REGISTRATION_EVENT_NOT_FOUND: 'event_not_found',
   MATCH_REGISTRATION_INVITE_ONLY: 'invite_only',
   MATCH_REGISTRATION_CLOSED: 'closed',
@@ -98,7 +106,9 @@ export type AcceptedMatchRegistration = {
   event_id: string;
   user_id: string;
   lifecycle: 'accepted';
-  participation: MatchRegistrationParticipation;
+  participation: MatchRegistrationParticipation | null;
+  required_generation?: number;
+  confirmed_generation?: number;
   accepted_order: number;
   registration_source: MatchRegistrationSource;
   approved_at: string | null;
@@ -142,7 +152,13 @@ function parseAccepted(value: Record<string, unknown>): AcceptedMatchRegistratio
   if (
     !event_id ||
     !user_id ||
-    !participation ||
+    (!participation &&
+      !(
+        value.participation === null &&
+        asCount(value.required_generation) !== null &&
+        asCount(value.confirmed_generation) !== null &&
+        Number(value.confirmed_generation) < Number(value.required_generation)
+      )) ||
     accepted_order === null ||
     !registration_source ||
     !accepted_at
@@ -153,6 +169,12 @@ function parseAccepted(value: Record<string, unknown>): AcceptedMatchRegistratio
     user_id,
     lifecycle: 'accepted',
     participation,
+    ...(asCount(value.required_generation) !== null && asCount(value.confirmed_generation) !== null
+      ? {
+          required_generation: Number(value.required_generation),
+          confirmed_generation: Number(value.confirmed_generation)
+        }
+      : {}),
     accepted_order,
     registration_source,
     approved_at,
@@ -214,6 +236,23 @@ export function parseDecideMatchRegistrationResult(
 export type MyMatchRegistration =
   | { state: 'none' }
   | {
+      state: 'reconfirmation_required';
+      event_id: string;
+      attempt_id: string;
+      accepted_order: number;
+      accepted_at: string;
+      required_generation: number;
+      confirmed_generation: number;
+      registration_source: MatchRegistrationSource;
+      registration_cutoff_at: string;
+    }
+  | {
+      state: 'cancelled';
+      event_id: string;
+      registration_source: MatchRegistrationSource;
+      cancelled_at: string;
+    }
+  | {
       state: 'pending';
       event_id: string;
       registration_source: MatchRegistrationSource;
@@ -221,6 +260,7 @@ export type MyMatchRegistration =
     }
   | {
       state: 'accepted';
+      attempt_id?: string;
       event_id: string;
       participation: MatchRegistrationParticipation;
       accepted_order: number;
@@ -237,10 +277,20 @@ export type MyMatchRegistration =
       resolved_at: string | null;
     }
   | {
-      state: 'expired';
+      state: 'expired' | 'reconfirmation_excluded';
       event_id: string;
       registration_source: MatchRegistrationSource;
       resolved_at: string | null;
+    }
+  | {
+      state: 'withdrawn' | 'removed_by_creator';
+      event_id: string;
+      attempt_id: string;
+      accepted_order: number;
+      accepted_at: string;
+      left_at: string | null;
+      removal_reason: string | null;
+      registration_source: MatchRegistrationSource;
     };
 
 export type MyMatchRegistrationResult =
@@ -255,6 +305,38 @@ export function parseMyMatchRegistration(value: unknown): MyMatchRegistration | 
   if (lifecycle === null || lifecycle === undefined) return { state: 'none' };
   const registration_source = asSource(value.registration_source);
   if (!registration_source) return null;
+  if (value.event_status === 'cancelled') {
+    const cancelled_at = asText(value.cancelled_at);
+    return cancelled_at && Number.isFinite(Date.parse(cancelled_at))
+      ? { state: 'cancelled', event_id, registration_source, cancelled_at }
+      : null;
+  }
+  if (lifecycle === 'withdrawn' || lifecycle === 'removed_by_creator') {
+    const attempt_id = asUuid(value.attempt_id);
+    const accepted_order = asPositiveInteger(value.accepted_order);
+    const accepted_at = asText(value.accepted_at);
+    const left_at = asNullableText(value.left_at);
+    const removal_reason = asNullableText(value.removal_reason);
+    if (
+      !attempt_id ||
+      accepted_order === null ||
+      !accepted_at ||
+      value.participation !== null ||
+      (lifecycle === 'withdrawn' && !left_at) ||
+      (lifecycle === 'removed_by_creator' && !removal_reason)
+    )
+      return null;
+    return {
+      state: lifecycle,
+      event_id,
+      attempt_id,
+      accepted_order,
+      accepted_at,
+      left_at,
+      removal_reason,
+      registration_source
+    };
+  }
   if (lifecycle === 'pending')
     return {
       state: 'pending',
@@ -263,6 +345,36 @@ export function parseMyMatchRegistration(value: unknown): MyMatchRegistration | 
       requested_at: asNullableText(value.requested_at)
     };
   if (lifecycle === 'accepted') {
+    const required = asCount(value.required_generation ?? 0);
+    const confirmed = asCount(value.confirmed_generation ?? 0);
+    if (required === null || confirmed === null || confirmed > required) return null;
+    if (confirmed < required) {
+      const attempt_id = asUuid(value.attempt_id);
+      const accepted_order = asPositiveInteger(value.accepted_order);
+      const accepted_at = asText(value.accepted_at);
+      const deadline = asText(value.registration_cutoff_at);
+      if (
+        !attempt_id ||
+        accepted_order === null ||
+        !accepted_at ||
+        !deadline ||
+        !Number.isFinite(Date.parse(deadline)) ||
+        value.participation !== null
+      )
+        return null;
+      return {
+        state: 'reconfirmation_required',
+        event_id,
+        attempt_id,
+        accepted_order,
+        accepted_at,
+        required_generation: required,
+        confirmed_generation: confirmed,
+        registration_source,
+        registration_cutoff_at: deadline
+      };
+    }
+    if (value.attempt_id !== undefined && !asUuid(value.attempt_id)) return null;
     const participation = asParticipation(value.participation);
     const accepted_order = asPositiveInteger(value.accepted_order);
     const position = asCount(value.position);
@@ -270,6 +382,7 @@ export function parseMyMatchRegistration(value: unknown): MyMatchRegistration | 
     if (!participation || accepted_order === null || position === null || !accepted_at) return null;
     return {
       state: 'accepted',
+      ...(asUuid(value.attempt_id) ? { attempt_id: asUuid(value.attempt_id)! } : {}),
       event_id,
       participation,
       accepted_order,
@@ -278,6 +391,25 @@ export function parseMyMatchRegistration(value: unknown): MyMatchRegistration | 
       requested_at: asNullableText(value.requested_at),
       approved_at: asNullableText(value.approved_at),
       accepted_at
+    };
+  }
+  if (lifecycle === 'expired' && value.accepted_at != null) {
+    const required = asCount(value.required_generation);
+    const confirmed = asCount(value.confirmed_generation);
+    if (
+      !asPositiveInteger(value.accepted_order) ||
+      !asText(value.accepted_at) ||
+      value.participation !== null ||
+      required === null ||
+      confirmed === null ||
+      confirmed >= required
+    )
+      return null;
+    return {
+      state: 'reconfirmation_excluded',
+      event_id,
+      registration_source,
+      resolved_at: asNullableText(value.resolved_at)
     };
   }
   if (lifecycle === 'rejected' || lifecycle === 'expired')
