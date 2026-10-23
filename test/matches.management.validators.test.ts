@@ -3,6 +3,7 @@ import {
   validateWithdrawMatchRegistration,
   validateRemoveMatchRegistration,
   validateListMatchEventManagementParticipants,
+  validateGetMatchEventManagement,
   validateListMatchEventAudit,
   validateTransferMatchEventOwnership,
   validateCancelMatchEvent
@@ -11,6 +12,12 @@ const id = '11111111-1111-4111-8111-111111111111';
 const command = { event_id: id, attempt_id: id, request_id: id };
 const removal = { ...command, target_user_id: id, reason: '  Schedule changed  ' };
 describe('management exact-key validators', () => {
+  it('shares the exact event-only contract across management reads', () => {
+    expect(validateGetMatchEventManagement({ event_id: id })).toEqual({ event_id: id });
+    for (const value of [null, [], {}, { event_id: 'invalid' }, { event_id: id, actor_id: id }]) {
+      expect(() => validateGetMatchEventManagement(value)).toThrow('INVALID_MATCH_INPUT');
+    }
+  });
   it('rejects unsafe versions, forged ownership and invalid cancellation reasons', () => {
     const transfer = { event_id: id, target_user_id: id, expected_version: 1, request_id: id };
     const cancel = { event_id: id, reason: ' Weather ', expected_version: 1, request_id: id };

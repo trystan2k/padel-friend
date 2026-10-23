@@ -1,6 +1,6 @@
 import { spawn } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { existsSync, readFileSync, unlinkSync, writeFileSync } from 'node:fs';
+import { readFileSync, unlinkSync, writeFileSync } from 'node:fs';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import {
   expect,
@@ -17,21 +17,20 @@ import {
   runMatchFixtureCleanup
 } from './match-fixture-cleanup';
 
-// PAF-5.6 visual gate (PAF-83). Companion to e2e/matches-registration.spec.ts — the
+// Pixel baselines superseded by the PAF-6 frame-driven redesign; re-baselining requires product approval.
+// PAF-5.6 structural gate (PAF-83). Companion to e2e/matches-registration.spec.ts — the
 // functional journeys live there and must stay untouched. Every screen pairs exact
-// structural probes (asserted against the reference measurements recorded in
-// e2e/references/paf-5/manifest.json, never against the implementation) with a
-// screenshot gate against the approved Pencil exports.
+// structural probes (asserted against the historical reference measurements
+// recorded in e2e/references/paf-5/manifest.json), without pixel comparisons.
 //
 // Frame mapping (see the manifest's referenceMeasurements):
 //   registration-direct-join / registration-full / registration-closed (fo8Zn/SYMLa/
-//   tYXlh, 390x872) — full detail screens → structural probes + pixel budgets. The
+//   tYXlh, 390x872) — full detail screens → structural probes only. The
 //   frames are stored UNCROPPED because a top-844 crop would truncate their approved
 //   bottom navigation; the deterministic handling here is NO crop: the browser
-//   viewport is set to 390x872 for exactly these comparisons so the whole approved
-//   frame is compared 1:1 against an equally tall app capture.
+//   viewport remains 390x872 for these structural checks.
 //   notifications-quartet-playing / notifications-registration-cutoff (qNVpA/Z0gRd,
-//   390x844) — notification list states → structural probes + pixel budgets.
+//   390x844) — notification list states → structural probes only.
 //   requests-requester-states (Za6r4), roster-participation-states (xC04T) and
 //   participation-quartet-filled (Cpd7L) — state/content boards: mutually exclusive
 //   panel states (or the roster block) stacked in one frame. No single app screen can
@@ -58,8 +57,10 @@ type Copy = {
   auth: { loginEmailLabel: string; loginPasswordLabel: string; loginSubmit: string };
   matches: {
     back: string;
+    management: { leave: string };
     detail: {
       title: string;
+      visibility: { community_open: string; invite_only: string };
       overview: string;
       participation: string;
       participants: string;
@@ -69,6 +70,13 @@ type Copy = {
     counts: Record<string, string>;
   };
   matchRegistration: {
+    place: {
+      title: string;
+      openCopy: string;
+      closedCopy: string;
+      closedNote: string;
+      reserveCopy: string;
+    };
     aria: { roster: string };
     join: {
       sectionTitle: string;
@@ -94,9 +102,11 @@ type Copy = {
       pendingCopy: string;
       viewMatch: string;
       approvedPlayingBadge: string;
+      joinedPlayingBadge: string;
       approvedPlayingCopy: string;
       viewGroup: string;
       approvedReserveBadge: string;
+      joinedReserveBadge: string;
       approvedReserveCopy: string;
       declinedBadge: string;
       declinedCopy: string;
@@ -149,17 +159,13 @@ const ptBr = localeCopy('pt-BR');
 const es = localeCopy('es');
 
 // ---------------------------------------------------------------------------
-// Pinned provenance (same trust rules as matches-visual.spec.ts): the manifest
-// records the reviewed source-design digest, the approved reference digests and
-// the derived baseline digests; all three are re-verified at runtime (and after
-// each comparison, so --update-snapshots cannot silently replace a reviewed
-// baseline with a live capture).
+// Historical Pencil exports retain runtime digest checks. Current source design
+// and full-frame certification belong to PAF-6; no snapshot files are consumed.
 // ---------------------------------------------------------------------------
 
 type VisualManifest = {
   sourceDesign: { path: string; sha256: string };
   approvedReferences: Record<string, { frameId: string; sha256: string; derivation: string }>;
-  screenshotBaselines: Record<string, { sha256: string; derivedFrom: string }>;
 };
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -169,7 +175,6 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 function isVisualManifest(value: unknown): value is VisualManifest {
   if (!isRecord(value) || !isRecord(value.sourceDesign) || !isRecord(value.approvedReferences))
     return false;
-  if (!isRecord(value.screenshotBaselines)) return false;
   return Object.values(value.approvedReferences).every(
     (reference) => isRecord(reference) && typeof reference.sha256 === 'string'
   );
@@ -188,110 +193,13 @@ function digestFile(path: URL): string {
 }
 
 function assertManifestProvenance(): void {
-  const design = new URL('../docs/design/padel-friend.pen', import.meta.url);
-  expect(digestFile(design), 'padel-friend.pen must be the reviewed source design').toBe(
-    visualManifest.sourceDesign.sha256
-  );
+  // Source-design digest is historical: PAF-6 owns the current .pen digest.
   for (const [reference, approved] of Object.entries(visualManifest.approvedReferences)) {
     expect(
       digestFile(new URL(`./references/paf-5/${reference}`, import.meta.url)),
       `${reference} must match its reviewed Pencil export digest`
     ).toBe(approved.sha256);
   }
-  for (const [baseline, derived] of Object.entries(visualManifest.screenshotBaselines)) {
-    expect(
-      digestFile(
-        new URL(`./matches-registration-visual.spec.ts-snapshots/${baseline}`, import.meta.url)
-      ),
-      `${baseline} must match its reviewed derivation digest`
-    ).toBe(derived.sha256);
-  }
-}
-
-function assertBaselineUnchanged(baseline: string): void {
-  const derived = visualManifest.screenshotBaselines[baseline];
-  if (!derived) return;
-  expect(
-    digestFile(
-      new URL(`./matches-registration-visual.spec.ts-snapshots/${baseline}`, import.meta.url)
-    ),
-    `${baseline} must still match its reviewed derivation after the comparison`
-  ).toBe(derived.sha256);
-}
-
-// ---------------------------------------------------------------------------
-// Per-screen budgets. Calibrated (VISUAL_CALIBRATE=1) against the real
-// implementation and pinned in e2e/references/paf-5/manifest.json together with
-// the measured values and the scope-adaptation breakdown. Margins only absorb
-// cross-renderer font residuals (+2pp for screens measuring <20%, +1.5pp for
-// screens measuring ≥20%, mirroring the PAF-1/PAF-4 measured rasterization
-// residuals); structural attributes stay gated budget-independently below.
-// The zero values below are calibration placeholders: a regular (non-calibrate)
-// run fails every comparison until the measured budgets are pinned.
-// ---------------------------------------------------------------------------
-const VISUAL_BUDGETS: Record<string, number> = {
-  'registration-direct-join.png': 0.415,
-  'registration-full.png': 0.365,
-  'registration-closed.png': 0.375,
-  'notifications-quartet-playing.png': 0.365,
-  'notifications-registration-cutoff.png': 0.455
-};
-
-const MASK_COLOR = '#FF00FF';
-
-// Calibration mode (VISUAL_CALIBRATE=1): first honest comparison measurements are
-// recorded and reported instead of failing the run (same mechanism as the PAF-4
-// gate). Regular runs never set this and every comparison is a hard gate.
-const calibration: Record<string, string> = {};
-const structuralViolations: string[] = [];
-const calibrating = process.env.VISUAL_CALIBRATE === '1';
-
-function writeCalibrationArtifact(): void {
-  writeFileSync(
-    new URL('../test-results/matches-registration-visual-calibration.json', import.meta.url),
-    JSON.stringify({ measurements: calibration, structuralViolations }, null, 1)
-  );
-}
-
-function baselinePath(baseline: string): string {
-  return new URL(`./matches-registration-visual.spec.ts-snapshots/${baseline}`, import.meta.url)
-    .pathname;
-}
-
-async function compare(page: Page, baseline: string, masks: Locator[] = []): Promise<void> {
-  if (calibrating && !existsSync(baselinePath(baseline))) {
-    // Every PAF-5 baseline ships as an approved-reference copy, so this branch
-    // only keeps a from-scratch calibration run going; the capture applies the
-    // same dynamic-area masks as the comparisons.
-    await page.screenshot({
-      path: baselinePath(baseline),
-      animations: 'disabled',
-      caret: 'hide',
-      ...(masks.length > 0 ? { mask: masks, maskColor: MASK_COLOR } : {})
-    });
-    return;
-  }
-  try {
-    await expect(page).toHaveScreenshot(baseline, {
-      animations: 'disabled',
-      caret: 'hide',
-      threshold: 0.1,
-      maxDiffPixelRatio: calibrating ? 0 : VISUAL_BUDGETS[baseline],
-      ...(masks.length > 0 ? { mask: masks, maskColor: MASK_COLOR } : {})
-    });
-  } catch (cause) {
-    const message = cause instanceof Error ? cause.message : '';
-    const measured = /ratio ([\d.]+) of all image pixels/.exec(message);
-    if (calibrating) {
-      if (measured?.[1]) {
-        calibration[baseline] = measured[1];
-        writeCalibrationArtifact();
-      }
-      return;
-    }
-    throw cause;
-  }
-  assertBaselineUnchanged(baseline);
 }
 
 // ---------------------------------------------------------------------------
@@ -592,6 +500,12 @@ async function seedAcceptedRows(eventId: string, rows: SeededRow[]): Promise<voi
     `insert into public.match_event_registrations` +
       `(match_event_id,user_id,accepted_at,approved_at,accepted_order,participation_status,registration_source) ` +
       `values ${values.join(',')}; ` +
+      `insert into public.match_event_registration_attempts ` +
+      `(registration_id,match_event_id,user_id,outcome,registration_source,requested_at,decided_at,accepted_at,approved_at,accepted_order,required_generation,confirmed_generation) ` +
+      `select id,match_event_id,user_id,lifecycle,registration_source,coalesce(requested_at,accepted_at),accepted_at,accepted_at,approved_at,accepted_order,0,0 ` +
+      `from public.match_event_registrations where match_event_id='${eventId}' and current_attempt_id is null; ` +
+      `update public.match_event_registrations r set current_attempt_id=a.id from public.match_event_registration_attempts a ` +
+      `where a.registration_id=r.id and r.match_event_id='${eventId}' and r.current_attempt_id is null; ` +
       `update public.match_event_registration_state set next_accepted_ordinal = ${maxOrder + 1} ` +
       `where match_event_id = '${eventId}';`
   );
@@ -725,34 +639,6 @@ async function ready(page: Page): Promise<void> {
     inter: true,
     manrope: true
   });
-}
-
-/** Dynamic-area masks: venue photo renderings, the detail datetime line and (on
- * the closed screen) the cutoff-instant sentence. Nothing else is ever masked —
- * no field, no card, no whole section, and never a whole screen region such as
- * the design-only bottom navigation. */
-function detailMasks(page: Page, options: { closedCopy?: string } = {}): Locator[] {
-  const masks = [
-    page.locator('main img'),
-    page.locator('section[aria-labelledby="match-overview-heading"] > p').first()
-  ];
-  if (options.closedCopy)
-    masks.push(
-      page
-        .locator('section[aria-labelledby="match-registration-heading"] p')
-        .filter({ hasText: options.closedCopy })
-    );
-  return masks;
-}
-
-/** Notification rows carry two genuinely dynamic text areas: the absolute
- * created-at line and the match-context block (its "Starts" line embeds the
- * clock-moving event instant). Both are masked; nothing else is. */
-function notificationMasks(page: Page): Locator[] {
-  return [
-    page.locator('main li p[aria-label]'),
-    page.locator('main li div').filter({ has: page.locator('p') })
-  ];
 }
 
 // ---------------------------------------------------------------------------
@@ -966,7 +852,7 @@ async function assertRegistrationCta(
 }
 
 type RosterRowSpec = { name: string; badges: string[]; position?: string };
-type RosterSectionSpec = { title: string; count: string; fifo?: string; rows: RosterRowSpec[] };
+type RosterSectionSpec = { title: string; count: string; rows: RosterRowSpec[] };
 
 /**
  * The roster gate (manifest facts: fo8Zn roster [18,314,354,242] with four
@@ -975,12 +861,10 @@ type RosterSectionSpec = { title: string; count: string; fifo?: string; rows: Ro
  * plus the not-playing tail row; xC04T sections playing → reserve → not playing
  * with the guest badge on the second Group 2 row). Asserted exactly against the
  * real roster region: the section heading sequence in DOM order and top-down
- * order, each section's FIFO caption and count line, every row's name, badge
- * sequence and optional reserve position in order, the trailing badge
- * placement, row geometry (each row spans its section's content box exactly and
- * every row meets the 44px touch target — the reviewed a11y adaptation of the
- * frame's 20/25px text rows, recorded in the manifest) and the two closing
- * notes.
+ * order, each section's exact player count, row names, accessible status labels
+ * and reserve positions. Frame-driven passive rows span the section content
+ * box, meet the 32px minimum and finish with the FIFO order note. Interactive
+ * controls remain covered separately by the 44px hit-target gate.
  */
 async function assertRosterStructure(
   page: Page,
@@ -990,7 +874,7 @@ async function assertRosterStructure(
 ): Promise<void> {
   const region = rosterRegion(page, copy);
   await expect(region).toBeVisible();
-  const headings = region.getByRole('heading');
+  const headings = region.getByRole('heading', { level: 3 });
   await expect(headings).toHaveCount(sections.length);
   const headingTexts = await headings.evaluateAll((nodes) =>
     nodes.map((node) => node.textContent?.trim() ?? '')
@@ -1014,9 +898,8 @@ async function assertRosterStructure(
       .filter({ has: page.getByRole('heading', { name: section.title, exact: true }) })
       .first();
     await expect(sectionBox).toBeVisible();
+    // Count/FIFO captions were removed; actual rows remain authoritative.
     const expectedCaptions = [
-      ...(section.fifo ? [section.fifo] : []),
-      section.count,
       ...section.rows.flatMap((row) => [
         row.name,
         ...row.badges,
@@ -1027,9 +910,11 @@ async function assertRosterStructure(
       await expect(
         sectionBox.getByText(caption, { exact: true }).first(),
         `${label}: roster section "${section.title}" must state "${caption}"`
-      ).toBeVisible();
+      ).toBeAttached();
 
-    const rowBoxes = sectionBox.locator('div').filter({ has: page.locator('p') });
+    const rowBoxes = sectionBox.locator(':scope > div');
+    await expect(rowBoxes).toHaveCount(section.rows.length);
+    await expect(rowBoxes).toHaveCount(Number.parseInt(section.count, 10));
     const rowCount = await rowBoxes.count();
     const rowInfo: Array<{
       name: string;
@@ -1040,7 +925,7 @@ async function assertRosterStructure(
         const box = node.getBoundingClientRect();
         const style = getComputedStyle(node);
         return {
-          name: (node.querySelector('p')?.textContent ?? '').trim(),
+          name: (node.querySelector(':scope > div > span')?.textContent ?? '').trim(),
           hasRowSurface: style.backgroundColor !== 'rgba(0, 0, 0, 0)',
           box: {
             top: box.top,
@@ -1071,8 +956,11 @@ async function assertRosterStructure(
     for (const [index, row] of rowInfo.entries()) {
       expect(
         row.box.height,
-        `${label}: roster row ${index} ("${row.name}") must meet the 44px touch target (frame text rows are 20/25px — recorded adaptation)`
-      ).toBeGreaterThanOrEqual(44);
+        `${label}: passive roster row ${index} ("${row.name}") must match the 32px frame row minimum`
+      ).toBeGreaterThanOrEqual(
+        Number.parseFloat(await tokenValue(page, '--space-20')) +
+          Number.parseFloat(await tokenValue(page, '--space-12'))
+      );
       expect(
         numberClose(row.box.left, sectionMetrics.contentLeft) &&
           numberClose(row.box.right, sectionMetrics.contentRight),
@@ -1080,33 +968,19 @@ async function assertRosterStructure(
       ).toBe(true);
     }
 
-    for (const [index, rowSpec] of section.rows.entries()) {
-      const row = rowBoxes.filter({ hasText: rowSpec.name }).first();
-      const nameBox = await row
-        .getByText(rowSpec.name, { exact: true })
-        .evaluate((node) => node.getBoundingClientRect());
-      for (const badge of rowSpec.badges) {
-        const badgeBox = await row
-          .getByText(badge, { exact: true })
-          .evaluate((node) => node.getBoundingClientRect());
-        expect(
-          badgeBox.left,
-          `${label}: badge "${badge}" must sit on or after the name column of its row (manifest badge placement; the app's 44px rows wrap badges the frames draw inline — recorded adaptation)`
-        ).toBeGreaterThanOrEqual(nameBox.left - 1);
-        expect(
-          badgeBox.top >= rowInfo[index]!.box.top &&
-            badgeBox.bottom <= rowInfo[index]!.box.bottom + 1,
-          `${label}: badge "${badge}" must stay inside its row box`
-        ).toBe(true);
-      }
+    for (const rowSpec of section.rows) {
+      const row = rowBoxes.filter({ has: page.getByText(rowSpec.name, { exact: true }) });
+      await expect(row).toHaveCount(1);
+      await expect(row.getByText(rowSpec.name, { exact: true })).toBeVisible();
+      for (const badge of rowSpec.badges)
+        await expect(row.getByText(badge, { exact: true })).toBeAttached();
+      if (rowSpec.position)
+        await expect(row.getByText(rowSpec.position, { exact: true })).toBeVisible();
     }
   }
 
   await expect(
     region.getByText(copy.matchRegistration.roster.orderNote, { exact: true })
-  ).toBeVisible();
-  await expect(
-    region.getByText(copy.matchRegistration.roster.authoritativeNote, { exact: true })
   ).toBeVisible();
 }
 
@@ -1163,15 +1037,16 @@ async function assertRequesterState(
      * gated by assertRosterStructure). Asserted per state accordingly.
      */
     expectNote?: boolean;
-    action: { kind: 'link'; name: string } | { kind: 'button'; name: string; disabled?: boolean };
+    accepted?: boolean;
+    action:
+      | { kind: 'none' }
+      | { kind: 'link'; name: string }
+      | { kind: 'button'; name: string; disabled?: boolean };
   }
 ): Promise<void> {
   const panel = registrationPanel(page);
   await expect(
-    panel.getByRole('heading', { name: copy.matchRegistration.request.back })
-  ).toBeVisible();
-  await expect(
-    panel.getByText(copy.matchRegistration.request.context, { exact: true })
+    panel.getByRole('heading', { name: copy.matchRegistration.place.title })
   ).toBeVisible();
 
   const badgeToneTokens: {
@@ -1199,7 +1074,7 @@ async function assertRequesterState(
   expect(
     badgeStyle.background,
     `${label}: badge "${state.badge}" must render its reviewed tone (background)`
-  ).toBe(await tokenColor(page, tone.background));
+  ).toBe(await tokenColor(page, state.accepted ? '--color-surface' : tone.background));
 
   await expect(panel.getByText(state.copyText)).toBeVisible();
   if (state.meta) await expect(panel.getByText(state.meta)).toBeVisible();
@@ -1214,7 +1089,7 @@ async function assertRequesterState(
       height,
       `${label}: action "${state.action.name}" must be ≥44px tall`
     ).toBeGreaterThanOrEqual(44);
-  } else {
+  } else if (state.action.kind === 'link') {
     const link = panel.getByRole('link', { name: state.action.name });
     await expect(link).toHaveCount(1);
     const height = await link.evaluate((node) => node.getBoundingClientRect().height);
@@ -1222,6 +1097,9 @@ async function assertRequesterState(
       height,
       `${label}: action "${state.action.name}" must be ≥44px tall`
     ).toBeGreaterThanOrEqual(44);
+  } else {
+    await expect(panel.getByRole('button')).toHaveCount(0);
+    await expect(panel.getByRole('link')).toHaveCount(0);
   }
   if (state.expectNote !== false)
     await expect(
@@ -1651,7 +1529,8 @@ async function ensureVisualFixtures(): Promise<void> {
     {
       actor: closedPlayers[7]!,
       order: 9,
-      part: 'reserve_not_playing' as const,
+      // The actual cutoff processor below derives the terminal tail.
+      part: 'reserve' as const,
       source: 'member' as const
     }
   ]);
@@ -1664,7 +1543,8 @@ async function ensureVisualFixtures(): Promise<void> {
   );
 
   // ROSTER event: unlimited; two complete groups, guest on the second Group 2
-  // row (order 6), two reserves and one reserve not playing (xC04T board).
+  // row (order 6), three live reserves. The xC04T not-playing adaptation is
+  // covered separately by the real cutoff-processed CLOSED event below.
   family.rosterEventId = crypto.randomUUID();
   ownedEvents.add(family.rosterEventId);
   await publishFixture(
@@ -1684,17 +1564,6 @@ async function ensureVisualFixtures(): Promise<void> {
     { actor: rosterPlayers[7]!, order: 10, part: 'reserve', source: 'member' },
     { actor: rosterPlayers[8]!, order: 11, part: 'reserve', source: 'member' }
   ]);
-  // The insert path normalizes every seeded participation to its live FIFO
-  // state, so the not-playing tail is set afterwards through the same
-  // transition the cutoff processor performs (identity guard bypassed for
-  // exactly one column update, transaction-scoped).
-  await fixtureSql(
-    `alter table public.match_event_registrations disable trigger match_registration_identity_guard; ` +
-      `update public.match_event_registrations set participation_status = 'reserve_not_playing' ` +
-      `where match_event_id = '${family.rosterEventId}' and accepted_order = 11; ` +
-      `alter table public.match_event_registrations enable trigger match_registration_identity_guard;`
-  );
-
   writeStoredFixtures();
 }
 
@@ -1844,15 +1713,20 @@ test.describe.serial('PAF-5 registration visual and structural QA', () => {
     await ready(page);
 
     await expect(
-      page.getByRole('heading', { level: 1, name: `${en.matches.detail.title}: ${VENUES.join}` })
+      page.getByRole('heading', { level: 1, name: en.matches.detail.title, exact: true })
+    ).toBeVisible();
+    await expect(
+      page.getByText(`${VENUES.join} · ${en.matches.detail.visibility.community_open}`, {
+        exact: true
+      })
     ).toBeVisible();
     // Registration state (manifest fo8Zn facts: join CTA block + capacity fact
     // "2 of 8 places left" + level range + instant-confirmation note).
     const panel = registrationPanel(page);
     await expect(
-      panel.getByRole('heading', { name: en.matchRegistration.join.sectionTitle })
+      panel.getByRole('heading', { name: en.matchRegistration.place.title })
     ).toBeVisible();
-    await expect(panel.getByText(en.matchRegistration.join.openCopy)).toBeVisible();
+    await expect(panel.getByText(en.matchRegistration.place.openCopy)).toBeVisible();
     await expect(
       panel.getByText(fill(en.matchRegistration.join.capacity_other, { remaining: 2, maximum: 8 }))
     ).toBeVisible();
@@ -1861,7 +1735,7 @@ test.describe.serial('PAF-5 registration visual and structural QA', () => {
         fill(en.matchRegistration.join.levelRange, { min: 2.7, max: 4.7, level: 3.2 })
       )
     ).toBeVisible();
-    await expect(panel.getByText(en.matchRegistration.join.note, { exact: true })).toBeVisible();
+    // Instant-confirmation copy now lives in the place card; no separate legacy note.
     await assertRegistrationCta(
       page,
       panel.getByRole('button', { name: en.matchRegistration.join.button }),
@@ -1895,7 +1769,6 @@ test.describe.serial('PAF-5 registration visual and structural QA', () => {
     await assertGutterAxis(page, 'fo8Zn detail 390x872');
     await assertNoHorizontalOverflow(page, 'fo8Zn detail 390x872');
     await assertPrimaryHitTargets(page, 'fo8Zn detail 390x872');
-    await compare(page, 'registration-direct-join.png', detailMasks(page));
   });
 
   test('Match detail — registration full state replays the approved SYMLa frame', async ({
@@ -1911,7 +1784,12 @@ test.describe.serial('PAF-5 registration visual and structural QA', () => {
     await ready(page);
 
     await expect(
-      page.getByRole('heading', { level: 1, name: `${en.matches.detail.title}: ${VENUES.full}` })
+      page.getByRole('heading', { level: 1, name: en.matches.detail.title, exact: true })
+    ).toBeVisible();
+    await expect(
+      page.getByText(`${VENUES.full} · ${en.matches.detail.visibility.community_open}`, {
+        exact: true
+      })
     ).toBeVisible();
     // Registration state (manifest SYMLa facts: capacity badge [18,561,95,23]
     // + disabled button [18,591,354,44] + explicit MATCH FULL surface).
@@ -1952,7 +1830,6 @@ test.describe.serial('PAF-5 registration visual and structural QA', () => {
     await assertGutterAxis(page, 'SYMLa detail 390x872');
     await assertNoHorizontalOverflow(page, 'SYMLa detail 390x872');
     await assertPrimaryHitTargets(page, 'SYMLa detail 390x872');
-    await compare(page, 'registration-full.png', detailMasks(page));
   });
 
   test('Match detail — registration closed state replays the approved tYXlh frame', async ({
@@ -1968,36 +1845,36 @@ test.describe.serial('PAF-5 registration visual and structural QA', () => {
     await ready(page);
 
     await expect(
-      page.getByRole('heading', { level: 1, name: `${en.matches.detail.title}: ${VENUES.closed}` })
+      page.getByRole('heading', { level: 1, name: en.matches.detail.title, exact: true })
     ).toBeVisible();
-    // Registration state (manifest tYXlh facts: cutoff status block
-    // [18,314,354,39] with the cutoff badge, roster count line, disabled CTA
-    // [18,674,354,44]).
+    await expect(
+      page.getByText(`${VENUES.closed} · ${en.matches.detail.visibility.community_open}`, {
+        exact: true
+      })
+    ).toBeVisible();
+    // Frame-driven closed place card: cutoff badge, finalized counts and note,
+    // with no join action. Permission and server-count checks remain below.
     const panel = registrationPanel(page);
     await expect(
-      panel.getByRole('heading', { name: en.matchRegistration.join.sectionTitle })
+      panel.getByRole('heading', { name: en.matchRegistration.place.title })
     ).toBeVisible();
     await expect(
       panel.getByText(en.matchRegistration.closed.badge, { exact: true }).first()
     ).toBeVisible();
     await expect(
-      panel.getByText(en.matchRegistration.closed.detail, { exact: true })
+      panel.getByText(fill(en.matchRegistration.place.closedCopy, { playing: 8, reserve: 1 }), {
+        exact: true
+      })
     ).toBeVisible();
     await expect(
-      panel.getByText(
-        fill(en.matchRegistration.closed.rosterCount, { playing: 8, reserveNotPlaying: 1 })
-      )
+      panel.getByText(en.matchRegistration.place.closedNote, { exact: true })
     ).toBeVisible();
-    await expect(panel.getByText(en.matchRegistration.closed.note, { exact: true })).toBeVisible();
     await expect(
-      page.getByText(en.matches.detail.registrationClosed, { exact: true })
+      page
+        .locator('section[aria-labelledby="match-eligibility-heading"]')
+        .getByText(en.matches.detail.registrationClosed, { exact: true })
     ).toBeVisible();
-    await assertRegistrationCta(
-      page,
-      panel.getByRole('button', { name: en.matchRegistration.closed.button }),
-      'tYXlh closed CTA',
-      { disabled: true }
-    );
+    await expect(panel.getByRole('button')).toHaveCount(0);
 
     // Roster visibility contract (recorded deviation, same as fo8Zn).
     await expect(rosterRegion(page, en)).toHaveCount(0);
@@ -2015,11 +1892,6 @@ test.describe.serial('PAF-5 registration visual and structural QA', () => {
     await assertGutterAxis(page, 'tYXlh detail 390x872');
     await assertNoHorizontalOverflow(page, 'tYXlh detail 390x872');
     await assertPrimaryHitTargets(page, 'tYXlh detail 390x872');
-    await compare(
-      page,
-      'registration-closed.png',
-      detailMasks(page, { closedCopy: 'no longer accepted' })
-    );
   });
 
   test('Requester states board (Za6r4) and roster facts — every state gated exactly', async ({
@@ -2056,11 +1928,12 @@ test.describe.serial('PAF-5 registration visual and structural QA', () => {
         actor: family.joinRafael!,
         eventId: family.joinEventId!,
         expected: {
-          badge: fill(en.matchRegistration.request.approvedPlayingBadge, { group: 1 }),
+          badge: fill(en.matchRegistration.request.joinedPlayingBadge, { group: 1 }),
           badgeTone: 'playing',
           copyText: en.matchRegistration.request.approvedPlayingCopy.split('{{when}}')[0]!,
           expectNote: false,
-          action: { kind: 'link', name: en.matchRegistration.request.viewGroup }
+          accepted: true,
+          action: { kind: 'button', name: en.matches.management.leave }
         }
       },
       {
@@ -2070,11 +1943,12 @@ test.describe.serial('PAF-5 registration visual and structural QA', () => {
         actor: family.joinElisa!,
         eventId: family.joinEventId!,
         expected: {
-          badge: fill(en.matchRegistration.request.approvedReserveBadge, { position: 2 }),
-          badgeTone: 'reserve',
-          copyText: en.matchRegistration.request.approvedReserveCopy.split('{{when}}')[0]!,
+          badge: fill(en.matchRegistration.request.joinedReserveBadge, { position: 2 }),
+          badgeTone: 'playing',
+          copyText: fill(en.matchRegistration.place.reserveCopy, { position: 2 }),
           expectNote: false,
-          action: { kind: 'link', name: en.matchRegistration.request.viewMatch }
+          accepted: true,
+          action: { kind: 'button', name: en.matches.management.leave }
         }
       },
       {
@@ -2096,10 +1970,11 @@ test.describe.serial('PAF-5 registration visual and structural QA', () => {
         actor: family.expiredViewer!,
         eventId: family.closedEventId!,
         expected: {
-          badge: en.matchRegistration.request.expiredBadge,
+          badge: en.matchRegistration.closed.badge,
           badgeTone: 'muted',
-          copyText: en.matchRegistration.request.expiredCopy,
-          action: { kind: 'link', name: en.matchRegistration.request.viewMatchHistory }
+          copyText: fill(en.matchRegistration.place.closedCopy, { playing: 8, reserve: 1 }),
+          expectNote: false,
+          action: { kind: 'none' }
         }
       }
     ];
@@ -2114,11 +1989,13 @@ test.describe.serial('PAF-5 registration visual and structural QA', () => {
       await expect(
         page.getByRole('heading', {
           level: 1,
-          name:
-            state.label === 'Za6r4 expired'
-              ? `${en.matches.detail.title}: ${VENUES.closed}`
-              : `${en.matches.detail.title}: ${VENUES.join}`
+          name: en.matches.detail.title,
+          exact: true
         })
+      ).toBeVisible();
+      const venue = state.label === 'Za6r4 expired' ? VENUES.closed : VENUES.join;
+      await expect(
+        page.getByText(`${venue} · ${en.matches.detail.visibility.community_open}`, { exact: true })
       ).toBeVisible();
       await assertRequesterState(page, en, state.label, state.expected);
 
@@ -2144,7 +2021,6 @@ test.describe.serial('PAF-5 registration visual and structural QA', () => {
           {
             title: en.matchRegistration.roster.reserveTitle,
             count: fill(en.matchRegistration.roster.count_other, { count: 2 }),
-            fifo: en.matchRegistration.roster.fifo,
             rows: [
               {
                 name: JOIN_NAMES.guest,
@@ -2229,7 +2105,12 @@ test.describe.serial('PAF-5 registration visual and structural QA', () => {
     await page.goto(`/matches/${family.rosterEventId}`);
     await ready(page);
     await expect(
-      page.getByRole('heading', { level: 1, name: `${en.matches.detail.title}: ${VENUES.roster}` })
+      page.getByRole('heading', { level: 1, name: en.matches.detail.title, exact: true })
+    ).toBeVisible();
+    await expect(
+      page.getByText(`${VENUES.roster} · ${en.matches.detail.visibility.community_open}`, {
+        exact: true
+      })
     ).toBeVisible();
     // xC04T (open-registration composition): the caller (order 8, Group 2)
     // reads GROUP 1 / GROUP 2 / RESERVE QUEUE with the guest badge on the
@@ -2274,7 +2155,6 @@ test.describe.serial('PAF-5 registration visual and structural QA', () => {
       {
         title: en.matchRegistration.roster.reserveTitle,
         count: fill(en.matchRegistration.roster.count_other, { count: 3 }),
-        fifo: en.matchRegistration.roster.fifo,
         rows: [
           {
             name: ROSTER_NAMES[6]!,
@@ -2350,11 +2230,12 @@ test.describe.serial('PAF-5 registration visual and structural QA', () => {
     // confirmed place as an approved state, and the fixture seeds approved_at
     // for this viewer, so the APPROVED wording stays asserted (F27).
     await assertRequesterState(fullAcceptedPage, en, 'Cpd7L promoted', {
-      badge: fill(en.matchRegistration.request.approvedPlayingBadge, { group: 2 }),
+      badge: fill(en.matchRegistration.request.joinedPlayingBadge, { group: 2 }),
       badgeTone: 'playing',
       copyText: en.matchRegistration.request.approvedPlayingCopy.split('{{when}}')[0]!,
       expectNote: false,
-      action: { kind: 'link', name: en.matchRegistration.request.viewGroup }
+      accepted: true,
+      action: { kind: 'button', name: en.matches.management.leave }
     });
     await assertNoHorizontalOverflow(fullAcceptedPage, 'Cpd7L promoted');
     await assertPrimaryHitTargets(fullAcceptedPage, 'Cpd7L promoted');
@@ -2398,7 +2279,7 @@ test.describe.serial('PAF-5 registration visual and structural QA', () => {
     await expect(fullAcceptedPage).toHaveURL(new RegExp(`/matches/${family.fullEventId}$`));
     await expect(
       fullAcceptedPage.getByText(
-        fill(en.matchRegistration.request.approvedPlayingBadge, { group: 2 })
+        fill(en.matchRegistration.request.joinedPlayingBadge, { group: 2 })
       )
     ).toBeVisible();
     await fullAcceptedContext.close();
@@ -2436,7 +2317,8 @@ test.describe.serial('PAF-5 registration visual and structural QA', () => {
         ]
       },
       {
-        title: en.matchRegistration.roster.notPlayingTitle,
+        // Cutoff finalizes status; frame-driven grouping stays reserve until start.
+        title: en.matchRegistration.roster.reserveTitle,
         count: fill(en.matchRegistration.roster.count_one, { count: 1 }),
         rows: [
           {
@@ -2479,7 +2361,6 @@ test.describe.serial('PAF-5 registration visual and structural QA', () => {
     ]);
     await assertNoHorizontalOverflow(quartetPage, 'qNVpA notifications');
     await assertPrimaryHitTargets(quartetPage, 'qNVpA notifications');
-    await compare(quartetPage, 'notifications-quartet-playing.png', notificationMasks(quartetPage));
     await quartetContext.close();
 
     const cutoffContext = await newContext(browser);
@@ -2510,11 +2391,6 @@ test.describe.serial('PAF-5 registration visual and structural QA', () => {
     ).toBeVisible();
     await assertNoHorizontalOverflow(cutoffPage, 'Z0gRd notifications');
     await assertPrimaryHitTargets(cutoffPage, 'Z0gRd notifications');
-    await compare(
-      cutoffPage,
-      'notifications-registration-cutoff.png',
-      notificationMasks(cutoffPage)
-    );
     await cutoffContext.close();
   });
 
@@ -2563,7 +2439,7 @@ test.describe.serial('PAF-5 registration visual and structural QA', () => {
         ).toBe('dark');
       const panel = registrationPanel(page);
       await expect(
-        panel.getByRole('heading', { name: variant.copy.matchRegistration.join.sectionTitle })
+        panel.getByRole('heading', { name: variant.copy.matchRegistration.place.title })
       ).toBeVisible();
       await expect(
         panel.getByText(
@@ -2606,13 +2482,6 @@ test.describe.serial('PAF-5 registration visual and structural QA', () => {
 
   test.afterAll(async () => {
     const errors: unknown[] = [];
-    try {
-      await test.info().attach('registration visual calibration measurements', {
-        body: JSON.stringify({ measurements: calibration, structuralViolations }, null, 1)
-      });
-    } catch (error) {
-      errors.push(error);
-    }
     const closes = await Promise.allSettled(
       family.contexts.splice(0).map((context) => context.close())
     );

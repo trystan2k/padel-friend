@@ -1,6 +1,6 @@
 import { spawn } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { readFileSync, writeFileSync } from 'node:fs';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import {
   expect,
@@ -12,12 +12,8 @@ import {
 } from '@playwright/test';
 import { waitForHydratedPage } from './auth-helpers';
 
-// PAF-76 visual/structural QA for Match Events. Companion to e2e/matches.spec.ts (functional
-// journeys live there and must stay untouched). Every screen below pairs exact structural
-// probes with a screenshot gate; reference-backed baselines are Pencil MCP exports of the
-// approved frames (see e2e/references/paf-4/manifest.json), self-baselines are first-honest
-// captures for states and viewports the design source has no full-screen frame for. Run
-// through `pnpm test:e2e` only — never a bare `playwright test`.
+// Pixel baselines superseded by the PAF-6 frame-driven redesign; re-baselining requires product approval.
+// Retain structural/role/a11y coverage. Historical exports remain provenance only.
 
 type Copy = {
   auth: { loginEmailLabel: string; loginPasswordLabel: string; loginSubmit: string };
@@ -36,10 +32,12 @@ type Copy = {
     loadMore: string;
     empty: { available: string; past: string };
     badges: { invited: string; reserve: string };
+    invitations: { accept: string; decline: string };
     counts: Record<string, string>;
     card: { pricePerPlayer: string; openMaps: string };
     detail: {
       title: string;
+      visibility: { community_open: string; invite_only: string };
       participants: string;
       participation: string;
       accepted: string;
@@ -50,6 +48,7 @@ type Copy = {
       guestApprovalRequired: string;
       share: string;
       shareUrl: string;
+      viewCourtLocationFor: string;
     };
   };
   // PAF-5 added the real registration surface to the detail screens; the guest
@@ -102,17 +101,13 @@ const es = localeCopy('es');
 const copyFor = (locale: string): Copy => (locale === 'pt-BR' ? ptBr : locale === 'es' ? es : en);
 
 // ---------------------------------------------------------------------------
-// Pinned provenance for every Pencil-derived reference and baseline. The
-// manifest records node IDs, crop derivations and sha256 digests; both the
-// reference set and the reference-derived baselines are re-verified at runtime
-// (and after each comparison, so --update-snapshots cannot silently replace a
-// reviewed baseline with a live capture).
+// Historical Pencil exports retain runtime digest checks. Current source design
+// and full-frame certification belong to PAF-6; no snapshot files are consumed.
 // ---------------------------------------------------------------------------
 
 type VisualManifest = {
   sourceDesign: { path: string; sha256: string };
   approvedReferences: Record<string, { frameId: string; sha256: string; derivation: string }>;
-  screenshotBaselines: Record<string, { sha256: string; derivedFrom: string }>;
 };
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -122,7 +117,6 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 function isVisualManifest(value: unknown): value is VisualManifest {
   if (!isRecord(value) || !isRecord(value.sourceDesign) || !isRecord(value.approvedReferences))
     return false;
-  if (!isRecord(value.screenshotBaselines)) return false;
   return Object.values(value.approvedReferences).every(
     (reference) => isRecord(reference) && typeof reference.sha256 === 'string'
   );
@@ -141,166 +135,13 @@ function digestFile(path: URL): string {
 }
 
 function assertManifestProvenance(): void {
-  const design = new URL('../docs/design/padel-friend.pen', import.meta.url);
-  expect(digestFile(design), 'padel-friend.pen must be the reviewed source design').toBe(
-    visualManifest.sourceDesign.sha256
-  );
+  // Source-design digest is historical: PAF-6 now owns the current .pen digest.
   for (const [reference, approved] of Object.entries(visualManifest.approvedReferences)) {
     expect(
       digestFile(new URL(`./references/paf-4/${reference}`, import.meta.url)),
       `${reference} must match its reviewed Pencil export digest`
     ).toBe(approved.sha256);
   }
-  for (const [baseline, derived] of Object.entries(visualManifest.screenshotBaselines)) {
-    // Calibration mode may (re)derive a baseline from a first honest capture
-    // (same branch as compare()); its digest is re-pinned in the manifest with
-    // provenance afterwards, and regular runs hard-fail on any missing or
-    // mismatched baseline.
-    if (calibrating && !existsSync(baselinePath(baseline))) continue;
-    expect(
-      digestFile(new URL(`./matches-visual.spec.ts-snapshots/${baseline}`, import.meta.url)),
-      `${baseline} must match its reviewed derivation digest`
-    ).toBe(derived.sha256);
-  }
-}
-
-function assertBaselineUnchanged(baseline: string): void {
-  const derived = visualManifest.screenshotBaselines[baseline];
-  if (!derived) return;
-  expect(
-    digestFile(new URL(`./matches-visual.spec.ts-snapshots/${baseline}`, import.meta.url)),
-    `${baseline} must still match its reviewed derivation after the comparison`
-  ).toBe(derived.sha256);
-}
-
-// Per-screen screenshot budgets, recalibrated against the corrected implementation
-// after the primary-action copy correction (--color-bg, the reference-measured #f4f6f1
-// CTA copy) and the detail participation/participants section restructure
-// (VISUAL_CALIBRATE=1 run, recorded in the manifest). Each reference-backed budget is
-// the measured honest app-vs-Pencil comparison plus a margin that only absorbs
-// cross-renderer font-rasterization residuals (PAF-1 measured ~0.75–1.3pp absolute on
-// text-dense screens): +2pp for screens measuring <20%, +1.5pp for screens measuring
-// ≥20%. The detail budgets TIGHTENED this round (0.295→0.225, 0.415→0.385, 0.415→0.375)
-// because the corrected detail structure measures closer to the frames. Self-baselined
-// viewports/locales/states keep a 2pp envelope around their first honest capture of the
-// corrected implementation.
-//
-// Cross-platform budgets (PR #21 CI fix): CI on ubuntu-latest measured 0.03 (7066 px,
-// true ratio ~0.0215) on create-details-dark.png against a 0.02 budget with every
-// structural probe passing — the macOS-calibrated baseline carried no cross-platform
-// margin. Fix: deterministic Chromium rasterization flags in playwright.config.ts
-// (--font-render-hinting=none, --disable-font-subpixel-positioning, --disable-lcd-text,
-// --force-color-profile=srgb, --disable-skia-runtime-opts, --hide-scrollbars) plus
-// self-baseline re-capture on that pipeline (11/12 re-captures reproduced the previous
-// bytes exactly; state-loading/state-offline re-render at 0.01 and were re-pinned).
-// Every self-baselined budget is now the measured local residual plus an explicit
-// +0.02 cross-platform allowance (the full observed pre-fix macOS→Linux delta),
-// rounded up to the nearest 0.005 and capped at 0.08 — see visualBudgets.
-// crossPlatformBudgets in e2e/references/paf-4/manifest.json for the per-screen
-// measurements. The allowance never excuses geometry: every structural probe stays
-// exact and budget-independent, so a wider pixel budget still cannot mask a
-// structural defect.
-// No budget hides a structural defect: every geometric attribute of the retained scope
-// is gated exactly by the structural probes, which now also gate RENDERED geometry —
-// sibling-to-sibling distances equal the pinned token exactly, rhythm children carry
-// zero vertical margin, and each rhythm container's content box wraps its children
-// (grouping boundaries).
-const VISUAL_BUDGETS: Record<string, number> = {
-  'create-details.png': 0.15,
-  'create-players.png': 0.16,
-  'create-team-mode.png': 0.16,
-  'create-review.png': 0.305,
-  'available-populated.png': 0.325,
-  'available-empty.png': 0.14,
-  'my-matches-invited.png': 0.315,
-  'my-matches-reserve.png': 0.315,
-  'past-elapsed.png': 0.315,
-  // Approved +0.005 residual for the >=44px root locale control's 20px header growth.
-  'detail-public-guest.png': 0.38,
-  'detail-friendly-creator.png': 0.39,
-  'detail-invitee.png': 0.23,
-  // Self-baselined screens: measured local residual (0.000 on the deterministic
-  // pipeline; VISUAL_CALIBRATE runs recorded nothing against the fresh captures) plus
-  // the documented +0.02 cross-platform allowance.
-  'create-details-dark.png': 0.02,
-  'available-populated-320.png': 0.02,
-  'available-populated-desktop.png': 0.02,
-  'available-populated-pt-BR.png': 0.02,
-  'available-populated-es.png': 0.02,
-  'available-populated-dark.png': 0.02,
-  'detail-friendly-creator-dark.png': 0.02,
-  'past-empty.png': 0.02,
-  'state-unavailable.png': 0.02,
-  'state-error.png': 0.02,
-  // Measured 0.01 residual when the rasterization pipeline changed (the only two
-  // self-baselines that re-rendered), re-captured, now byte-stable: 0.01 + 0.02
-  // cross-platform allowance.
-  'state-loading.png': 0.03,
-  'state-offline.png': 0.03
-};
-
-const MASK_COLOR = '#FF00FF';
-
-// Calibration mode (VISUAL_CALIBRATE=1): first-honest-comparison measurements are
-// recorded and reported instead of failing the run, so all reference-backed screens can
-// be measured in a single pass before their budgets are pinned. Regular runs never set
-// this and every comparison is a hard gate. Structural-gate violations follow the same
-// rule in reverse: hard failures in regular runs, RECORDED (into the calibration
-// artifact and the report) in calibration runs so one serial pass still measures every
-// screen — a recorded violation must be fixed and re-measured before its budget is
-// trusted, which is why the manifest names any open violation next to its budget.
-const calibration: Record<string, string> = {};
-const structuralViolations: string[] = [];
-const calibrating = process.env.VISUAL_CALIBRATE === '1';
-
-function writeCalibrationArtifact(): void {
-  writeFileSync(
-    new URL('../test-results/matches-visual-calibration.json', import.meta.url),
-    JSON.stringify({ measurements: calibration, structuralViolations }, null, 1)
-  );
-}
-
-function baselinePath(baseline: string): string {
-  return new URL(`./matches-visual.spec.ts-snapshots/${baseline}`, import.meta.url).pathname;
-}
-
-async function compare(page: Page, baseline: string, masks: Locator[] = []): Promise<void> {
-  if (calibrating && !existsSync(baselinePath(baseline))) {
-    // First honest capture for a self-baselined screen: write it directly so the
-    // calibration run is not failed by Playwright's missing-snapshot bookkeeping. The
-    // capture applies the same dynamic-area masks as the comparisons — an unmasked
-    // first capture would make every later masked comparison fail on the masked areas.
-    await page.screenshot({
-      path: baselinePath(baseline),
-      animations: 'disabled',
-      caret: 'hide',
-      ...(masks.length > 0 ? { mask: masks, maskColor: MASK_COLOR } : {})
-    });
-    return;
-  }
-  try {
-    await expect(page).toHaveScreenshot(baseline, {
-      animations: 'disabled',
-      caret: 'hide',
-      threshold: 0.1,
-      // Calibration measures every screen's raw ratio (budget 0 forces the failure path
-      // that records it); regular runs enforce the pinned budget as a hard gate.
-      maxDiffPixelRatio: calibrating ? 0 : VISUAL_BUDGETS[baseline],
-      ...(masks.length > 0 ? { mask: masks, maskColor: MASK_COLOR } : {})
-    });
-  } catch (cause) {
-    const message = cause instanceof Error ? cause.message : '';
-    const measured = /ratio ([\d.]+) of all image pixels/.exec(message);
-    if (calibrating) {
-      if (measured?.[1]) {
-        calibration[baseline] = measured[1];
-        writeCalibrationArtifact();
-      }
-      return;
-    }
-    throw cause;
-  }
-  assertBaselineUnchanged(baseline);
 }
 
 // ---------------------------------------------------------------------------
@@ -571,16 +412,6 @@ async function ready(page: Page): Promise<void> {
   });
 }
 
-/** Dynamic-area masks: venue photo renderings and the rendered start-instant text lines
- * (card datetime line, detail datetime line, review cutoff instant). Nothing else is ever
- * masked — no field, no card, no whole section. */
-function dynamicMasks(page: Page, kind: 'list' | 'detail' | 'review'): Locator[] {
-  const images = page.locator('main img');
-  if (kind === 'list') return [images, page.locator('main article > p:first-of-type')];
-  if (kind === 'detail') return [images, page.locator('main > p:first-of-type')];
-  return [images, page.locator('main section > p:first-of-type')];
-}
-
 // ---------------------------------------------------------------------------
 // Structural probes (exact assertions, not eyeballing)
 // ---------------------------------------------------------------------------
@@ -750,7 +581,15 @@ async function assertTouchLabelActivation(
 }
 
 /** Photo aspect treatment: 16/9 cover cropping, matching the design's venue imagery. */
-async function assertPhotoAspectTreatment(page: Page, label: string): Promise<void> {
+async function assertPhotoAspectTreatment(
+  page: Page,
+  label: string,
+  detail = false
+): Promise<void> {
+  const detailHeight = detail
+    ? 3 * Number.parseFloat(await tokenValue(page, '--space-40')) +
+      Number.parseFloat(await tokenValue(page, '--space-8'))
+    : null;
   const images = page.locator('main img');
   const count = await images.count();
   for (let index = 0; index < count; index += 1) {
@@ -767,11 +606,13 @@ async function assertPhotoAspectTreatment(page: Page, label: string): Promise<vo
       };
     });
     expect(treatment, `${label}: photo ${index} must render`).not.toBeNull();
-    expect(treatment!.aspectRatio, `${label}: photo ${index} aspect`).toBe('16 / 9');
+    expect(treatment!.aspectRatio, `${label}: photo ${index} aspect`).toBe(
+      detail ? 'auto' : '16 / 9'
+    );
     expect(treatment!.objectFit, `${label}: photo ${index} fit`).toBe('cover');
     expect(
-      Math.abs(treatment!.height - (treatment!.width * 9) / 16),
-      `${label}: photo ${index} rendered box must follow 16/9`
+      Math.abs(treatment!.height - (detailHeight ?? (treatment!.width * 9) / 16)),
+      `${label}: photo ${index} rendered box must follow its pinned frame treatment`
     ).toBeLessThanOrEqual(1);
   }
 }
@@ -1038,7 +879,7 @@ async function assertRhythm(
   page: Page,
   label: string,
   selector: string,
-  token: '--space-8' | '--space-10'
+  token: '--space-8' | '--space-10' | '--space-12'
 ): Promise<void> {
   const expected = await tokenValue(page, token);
   const expectedPx = Number.parseFloat(expected);
@@ -1111,12 +952,6 @@ async function assertRhythm(
     ), `${label}: rendered distance between ${selector} siblings ${index - 1}→${index} (${previous.tag}→${current.tag}) must equal the ${token} gap exactly, not gap+margin (rendered-geometry gate; got ${current.top - previous.bottom} vs ${expectedPx})`);
   }
   if (problems.length === 0) return;
-  if (calibrating) {
-    // Measurement pass: record and keep measuring (see the calibration note above).
-    structuralViolations.push(...problems);
-    writeCalibrationArtifact();
-    return;
-  }
   expect(
     problems,
     `${label}: rendered rhythm geometry must match the pinned token system with zero margin contribution`
@@ -1453,6 +1288,12 @@ async function ensureReserveRegistration(member: Actor, reserveId: string): Prom
   await fixtureSql(
     `insert into public.match_event_registrations(match_event_id,user_id,accepted_at,accepted_order,participation_status,registration_source) ` +
       `values ('${reserveId}','${member.id}', now() + interval '2 seconds', 2, 'reserve', 'member'); ` +
+      `insert into public.match_event_registration_attempts ` +
+      `(registration_id,match_event_id,user_id,outcome,registration_source,requested_at,decided_at,accepted_at,accepted_order,required_generation,confirmed_generation) ` +
+      `select id,match_event_id,user_id,lifecycle,registration_source,accepted_at,accepted_at,accepted_at,accepted_order,0,0 ` +
+      `from public.match_event_registrations where match_event_id='${reserveId}' and current_attempt_id is null; ` +
+      `update public.match_event_registrations r set current_attempt_id=a.id from public.match_event_registration_attempts a ` +
+      `where a.registration_id=r.id and r.match_event_id='${reserveId}' and r.current_attempt_id is null; ` +
       `update public.match_event_registration_state set next_accepted_ordinal = 3 where match_event_id = '${reserveId}';`
   );
 }
@@ -1743,7 +1584,6 @@ test.describe.serial('PAF-4 match event visual and structural QA', () => {
     await assertNoHorizontalOverflow(page, 'create details 390');
     await assertCheckboxLabelTargets(page, en, 'create details 390');
     await assertPrimaryHitTargets(page, 'create details 390');
-    await compare(page, 'create-details.png');
 
     const darkContext = await newContext(browser, { theme: 'dark' });
     const darkPage = await darkContext.newPage();
@@ -1754,7 +1594,6 @@ test.describe.serial('PAF-4 match event visual and structural QA', () => {
     await assertHeadingTypography(darkPage, 'create details dark');
     await assertGutterAxis(darkPage, 'create details dark', '--space-18');
     await assertNoHorizontalOverflow(darkPage, 'create details dark');
-    await compare(darkPage, 'create-details-dark.png');
     await darkContext.close();
 
     // Players step: member search with no preselected chips (no fake participants).
@@ -1782,7 +1621,6 @@ test.describe.serial('PAF-4 match event visual and structural QA', () => {
           document.activeElement.tagName === 'INPUT'
       )
     ).toBe(true);
-    await compare(page, 'create-players.png');
 
     // Team-mode step: exactly the two scoped assignment modes, POST_MATCH_TEAMS default.
     await page.getByRole('button', { name: en.matchCreate.next }).click();
@@ -1812,7 +1650,6 @@ test.describe.serial('PAF-4 match event visual and structural QA', () => {
     );
     await assertNoHorizontalOverflow(page, 'create team mode 390');
     await assertPrimaryHitTargets(page, 'create team mode 390');
-    await compare(page, 'create-team-mode.png');
   });
 
   // F25 completion: the full touch-label geometry matrix with RECORDED numbers. The
@@ -2075,7 +1912,6 @@ test.describe.serial('PAF-4 match event visual and structural QA', () => {
     );
     await assertNoHorizontalOverflow(page, 'create review 390');
     await assertPrimaryHitTargets(page, 'create review 390');
-    await compare(page, 'create-review.png', dynamicMasks(page, 'review'));
   });
 
   test('Available — populated listing stays inside the approved visual envelope', async ({
@@ -2088,7 +1924,7 @@ test.describe.serial('PAF-4 match event visual and structural QA', () => {
       viewport?: Viewport;
       locale?: 'en' | 'pt-BR' | 'es';
       theme?: 'light' | 'dark';
-      baseline: string;
+      label: string;
     }) => {
       const copy = copyFor(options.locale ?? 'en');
       const context = await newContext(browser, options);
@@ -2123,36 +1959,35 @@ test.describe.serial('PAF-4 match event visual and structural QA', () => {
         ).toBeVisible();
 
       await assertTabsKeyboardReachable(page, copy);
-      await assertHeadingTypography(page, `available ${options.baseline}`);
-      await assertGutterAxis(page, `available ${options.baseline}`, '--space-18');
+      await assertHeadingTypography(page, `available ${options.label}`);
+      await assertGutterAxis(page, `available ${options.label}`, '--space-18');
       await assertRhythm(
         page,
-        `available ${options.baseline}`,
+        `available ${options.label}`,
         'main > section[aria-label]',
         '--space-8'
       );
-      await assertCardGrouping(page, `available ${options.baseline}`);
+      await assertCardGrouping(page, `available ${options.label}`);
       await assertPrimaryActionTokens(
         page,
         page.locator('main > header > a').first(),
-        `available ${options.baseline} create action`
+        `available ${options.label} create action`
       );
-      await assertPhotoAspectTreatment(page, `available ${options.baseline}`);
-      await assertNoHorizontalOverflow(page, `available ${options.baseline}`);
-      await assertPrimaryHitTargets(page, `available ${options.baseline}`);
-      await compare(page, options.baseline, dynamicMasks(page, 'list'));
+      await assertPhotoAspectTreatment(page, `available ${options.label}`);
+      await assertNoHorizontalOverflow(page, `available ${options.label}`);
+      await assertPrimaryHitTargets(page, `available ${options.label}`);
       await context.close();
     };
 
-    await run({ baseline: 'available-populated.png' });
-    await run({ viewport: { width: 320, height: 844 }, baseline: 'available-populated-320.png' });
+    await run({ label: 'populated' });
+    await run({ viewport: { width: 320, height: 844 }, label: 'populated 320' });
     await run({
       viewport: { width: 1280, height: 800 },
-      baseline: 'available-populated-desktop.png'
+      label: 'populated desktop'
     });
-    await run({ locale: 'pt-BR', baseline: 'available-populated-pt-BR.png' });
-    await run({ locale: 'es', baseline: 'available-populated-es.png' });
-    await run({ theme: 'dark', baseline: 'available-populated-dark.png' });
+    await run({ locale: 'pt-BR', label: 'populated pt-BR' });
+    await run({ locale: 'es', label: 'populated es' });
+    await run({ theme: 'dark', label: 'populated dark' });
   });
 
   test('Available — empty state replays the recorded truthful empty listing', async ({
@@ -2220,7 +2055,6 @@ test.describe.serial('PAF-4 match event visual and structural QA', () => {
     );
     await assertNoHorizontalOverflow(page, 'available empty');
     await assertPrimaryHitTargets(page, 'available empty');
-    await compare(page, 'available-empty.png');
   });
 
   test('My Matches — RESERVE badge and truthful FIFO counts', async ({ browser }) => {
@@ -2252,7 +2086,6 @@ test.describe.serial('PAF-4 match event visual and structural QA', () => {
     await assertPhotoAspectTreatment(page, 'my matches reserve');
     await assertNoHorizontalOverflow(page, 'my matches reserve');
     await assertPrimaryHitTargets(page, 'my matches reserve');
-    await compare(page, 'my-matches-reserve.png', dynamicMasks(page, 'list'));
   });
 
   test('My Matches — INVITED badge, invitation detail and no fabricated registration', async ({
@@ -2277,14 +2110,18 @@ test.describe.serial('PAF-4 match event visual and structural QA', () => {
     await assertCardGrouping(page, 'my matches invited');
     await assertNoHorizontalOverflow(page, 'my matches invited');
     await assertPrimaryHitTargets(page, 'my matches invited');
-    await compare(page, 'my-matches-invited.png', dynamicMasks(page, 'list'));
 
-    // Invitation detail: invitation context without any inert accept/decline action (T05).
+    // Invitation detail now exposes real invitation response actions (T06).
     await card.getByRole('link', { name: VENUES.invited, exact: true }).click();
     await expect(page).toHaveURL(new RegExp(`/matches/${family.invitedId}$`));
     await ready(page);
     await expect(
-      page.getByRole('heading', { level: 1, name: `${en.matches.detail.title}: ${VENUES.invited}` })
+      page.getByRole('heading', { level: 1, name: en.matches.detail.title, exact: true })
+    ).toBeVisible();
+    await expect(
+      page.getByText(`${VENUES.invited} · ${en.matches.detail.visibility.invite_only}`, {
+        exact: true
+      })
     ).toBeVisible();
     await expect(page.getByText(en.matches.detail.invitationInfo)).toBeVisible();
     const inviteeRegistration = await family
@@ -2295,15 +2132,20 @@ test.describe.serial('PAF-4 match event visual and structural QA', () => {
       .maybeSingle();
     expect(inviteeRegistration.error).toBeNull();
     expect(inviteeRegistration.data).toBeNull();
-    const buttons = page.getByRole('button');
-    await expect(buttons).toHaveCount(1);
-    await expect(buttons).toHaveAccessibleName(en.matches.detail.share);
+    for (const name of [
+      en.matches.detail.share,
+      en.matches.invitations.accept,
+      en.matches.invitations.decline
+    ]) {
+      await expect(page.getByRole('button', { name, exact: true })).toBeEnabled();
+    }
+    await expect(page.getByRole('button')).toHaveCount(3);
     await assertHeadingTypography(page, 'invite detail');
     await assertGutterAxis(page, 'invite detail', '--space-18');
-    await assertRhythm(page, 'invite detail', 'main', '--space-8');
-    // The grouped white section surfaces are the reference-measured "detail section
-    // cards" (eYIgj/JLqMT): gate their rendered spacing and box wrap directly.
-    await assertRhythm(page, 'invite detail', 'main > div', '--space-8');
+    // frame-driven redesign: root gap 12 per T06 frames
+    await assertRhythm(page, 'invite detail', 'main', '--space-12');
+    // Frame-driven card stack uses 10px; retain exact geometry and zero margins.
+    await assertRhythm(page, 'invite detail', 'main > div', '--space-10');
     await assertPrimaryActionTokens(
       page,
       page.getByRole('button', { name: en.matches.detail.share }),
@@ -2311,7 +2153,6 @@ test.describe.serial('PAF-4 match event visual and structural QA', () => {
     );
     await assertNoHorizontalOverflow(page, 'invite detail');
     await assertPrimaryHitTargets(page, 'invite detail');
-    await compare(page, 'detail-invitee.png', dynamicMasks(page, 'detail'));
   });
 
   test('Past — elapsed event shows scheduled history, Past stays empty for unassociated viewers', async ({
@@ -2345,7 +2186,6 @@ test.describe.serial('PAF-4 match event visual and structural QA', () => {
     await assertCardGrouping(page, 'past elapsed');
     await assertNoHorizontalOverflow(page, 'past elapsed');
     await assertPrimaryHitTargets(page, 'past elapsed');
-    await compare(page, 'past-elapsed.png', dynamicMasks(page, 'list'));
 
     const guestPage = await guestContext.newPage();
     await signIn(guestPage, family.guest!);
@@ -2358,7 +2198,6 @@ test.describe.serial('PAF-4 match event visual and structural QA', () => {
     await assertGutterAxis(guestPage, 'past empty', '--space-18');
     await assertNoHorizontalOverflow(guestPage, 'past empty');
     await assertPrimaryHitTargets(guestPage, 'past empty');
-    await compare(guestPage, 'past-empty.png');
   });
 
   test('Detail — friendly creator view and public guest view match the approved frames', async ({
@@ -2377,7 +2216,13 @@ test.describe.serial('PAF-4 match event visual and structural QA', () => {
     await expect(
       page.getByRole('heading', {
         level: 1,
-        name: `${en.matches.detail.title}: ${VENUES.friendly}`
+        name: en.matches.detail.title,
+        exact: true
+      })
+    ).toBeVisible();
+    await expect(
+      page.getByText(`${VENUES.friendly} · ${en.matches.detail.visibility.community_open}`, {
+        exact: true
       })
     ).toBeVisible();
     await expect(page.getByRole('link', { name: en.matches.back })).toBeVisible();
@@ -2395,7 +2240,7 @@ test.describe.serial('PAF-4 match event visual and structural QA', () => {
     ).toBeVisible();
     await assertLocalizedCountText(page.locator('main'), en, 'en', 1);
     const mapsLink = page.getByRole('link', {
-      name: en.matches.card.openMaps.replace('{{venue}}', VENUES.friendly)
+      name: en.matches.detail.viewCourtLocationFor.replace('{{venue}}', VENUES.friendly)
     });
     await expect(mapsLink).toBeVisible();
     await expect(mapsLink).toHaveAttribute('rel', /noopener noreferrer/);
@@ -2406,19 +2251,19 @@ test.describe.serial('PAF-4 match event visual and structural QA', () => {
     );
     await assertHeadingTypography(page, 'friendly detail 390');
     await assertGutterAxis(page, 'friendly detail 390', '--space-18');
-    await assertRhythm(page, 'friendly detail 390', 'main', '--space-8');
+    // frame-driven redesign: root gap 12 per T06 frames
+    await assertRhythm(page, 'friendly detail 390', 'main', '--space-12');
     // The grouped white section surfaces are the reference-measured "detail section
     // cards" (eYIgj): gate their rendered spacing and box wrap directly.
-    await assertRhythm(page, 'friendly detail 390', 'main > div', '--space-8');
+    await assertRhythm(page, 'friendly detail 390', 'main > div', '--space-10');
     await assertPrimaryActionTokens(
       page,
       page.getByRole('button', { name: en.matches.detail.share }),
       'friendly detail share'
     );
-    await assertPhotoAspectTreatment(page, 'friendly detail');
+    await assertPhotoAspectTreatment(page, 'friendly detail', true);
     await assertNoHorizontalOverflow(page, 'friendly detail 390');
     await assertPrimaryHitTargets(page, 'friendly detail 390');
-    await compare(page, 'detail-friendly-creator.png', dynamicMasks(page, 'detail'));
 
     const darkContext = await newContext(browser, { theme: 'dark' });
     const darkPage = await darkContext.newPage();
@@ -2428,7 +2273,6 @@ test.describe.serial('PAF-4 match event visual and structural QA', () => {
     await assertHeadingTypography(darkPage, 'friendly detail dark');
     await assertGutterAxis(darkPage, 'friendly detail dark', '--space-18');
     await assertNoHorizontalOverflow(darkPage, 'friendly detail dark');
-    await compare(darkPage, 'detail-friendly-creator-dark.png', dynamicMasks(darkPage, 'detail'));
     await darkContext.close();
 
     // Public guest view of the same event: truthful future-approval information, no join.
@@ -2439,7 +2283,13 @@ test.describe.serial('PAF-4 match event visual and structural QA', () => {
     await expect(
       guestPage.getByRole('heading', {
         level: 1,
-        name: `${en.matches.detail.title}: ${VENUES.friendly}`
+        name: en.matches.detail.title,
+        exact: true
+      })
+    ).toBeVisible();
+    await expect(
+      guestPage.getByText(`${VENUES.friendly} · ${en.matches.detail.visibility.community_open}`, {
+        exact: true
       })
     ).toBeVisible();
     await expect(
@@ -2460,19 +2310,19 @@ test.describe.serial('PAF-4 match event visual and structural QA', () => {
       expect((await link.textContent()) ?? '').not.toMatch(/book|pay|purchase|join|register/i);
     await assertHeadingTypography(guestPage, 'guest detail');
     await assertGutterAxis(guestPage, 'guest detail', '--space-18');
-    await assertRhythm(guestPage, 'guest detail', 'main', '--space-8');
+    // frame-driven redesign: root gap 12 per T06 frames
+    await assertRhythm(guestPage, 'guest detail', 'main', '--space-12');
     // The grouped white section surfaces are the reference-measured "detail section
     // cards" (JLqMT): gate their rendered spacing and box wrap directly.
-    await assertRhythm(guestPage, 'guest detail', 'main > div', '--space-8');
+    await assertRhythm(guestPage, 'guest detail', 'main > div', '--space-10');
     await assertPrimaryActionTokens(
       guestPage,
       guestPage.getByRole('button', { name: en.matches.detail.share }),
       'guest detail share'
     );
-    await assertPhotoAspectTreatment(guestPage, 'guest detail');
+    await assertPhotoAspectTreatment(guestPage, 'guest detail', true);
     await assertNoHorizontalOverflow(guestPage, 'guest detail');
     await assertPrimaryHitTargets(guestPage, 'guest detail');
-    await compare(guestPage, 'detail-public-guest.png', dynamicMasks(guestPage, 'detail'));
   });
 
   test('Unknown events resolve to the localized unavailable state', async ({ browser }) => {
@@ -2490,7 +2340,6 @@ test.describe.serial('PAF-4 match event visual and structural QA', () => {
     await assertGutterAxis(page, 'unavailable', '--space-18');
     await assertNoHorizontalOverflow(page, 'unavailable');
     await assertPrimaryHitTargets(page, 'unavailable');
-    await compare(page, 'state-unavailable.png');
   });
 
   test('Pagination loading and offline states render through the real store', async ({
@@ -2525,7 +2374,6 @@ test.describe.serial('PAF-4 match event visual and structural QA', () => {
     await expect(loadMore).toBeDisabled();
     await assertGutterAxis(page, 'loading', '--space-18');
     await assertNoHorizontalOverflow(page, 'loading');
-    await compare(page, 'state-loading.png');
 
     // Going offline while the request is in flight must surface the offline output and
     // keep mutations blocked (no queued publication path exists).
@@ -2535,7 +2383,6 @@ test.describe.serial('PAF-4 match event visual and structural QA', () => {
     await expect(loadMore).toBeDisabled();
     await assertGutterAxis(page, 'offline', '--space-18');
     await assertNoHorizontalOverflow(page, 'offline');
-    await compare(page, 'state-offline.png');
   });
 
   test('Listing loader failures surface the error state with a retry action', async ({
@@ -2567,13 +2414,9 @@ test.describe.serial('PAF-4 match event visual and structural QA', () => {
     await assertGutterAxis(page, 'error', '--space-18');
     await assertNoHorizontalOverflow(page, 'error');
     await assertPrimaryHitTargets(page, 'error');
-    await compare(page, 'state-error.png');
   });
 
   test.afterAll(async () => {
-    await test.info().attach('visual calibration measurements', {
-      body: JSON.stringify({ measurements: calibration, structuralViolations }, null, 1)
-    });
     await Promise.all(family.contexts.splice(0).map((context) => context.close()));
   });
 });

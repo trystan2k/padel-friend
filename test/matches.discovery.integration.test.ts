@@ -65,6 +65,9 @@ const expectedDetailKeys = [
   'photo_path',
   'playing_count',
   'price_minor',
+  // T06 reconfirmation seam: detail exposes the current generation and outstanding count.
+  'reconfirmation_generation',
+  'reconfirmation_required_count',
   'registration_cutoff_at',
   'registration_open',
   'reserve_count',

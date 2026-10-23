@@ -68,6 +68,43 @@ beforeEach(() => {
   mocks.invalidate.mockResolvedValue();
 });
 describe('organizer controls', () => {
+  it('offers only consent-current playing or reserve transfer targets', async () => {
+    render(
+      <I18nextProvider i18n={createI18n('en')}>
+        <MatchOrganizerActions
+          eventId={id}
+          management={management}
+          participants={[
+            player,
+            { ...player, user_id: id, display_name: 'Owner', participation: 'playing' },
+            {
+              ...player,
+              user_id: 'awaiting',
+              display_name: 'Awaiting',
+              participation: null,
+              required_generation: 2,
+              confirmed_generation: 1
+            },
+            {
+              ...player,
+              user_id: 'not-playing',
+              display_name: 'Not playing',
+              participation: 'reserve_not_playing'
+            },
+            { ...player, user_id: 'playing', display_name: 'Playing', participation: 'playing' }
+          ]}
+        />
+      </I18nextProvider>
+    );
+    await userEvent.click(screen.getByRole('button', { name: 'Actions' }));
+    await userEvent.click(await screen.findByRole('menuitem', { name: 'Transfer organization' }));
+    await screen.findByRole('dialog');
+    expect(screen.getByRole('option', { name: 'Alex' })).toBeTruthy();
+    expect(screen.getByRole('option', { name: 'Playing' })).toBeTruthy();
+    for (const name of ['Awaiting', 'Not playing', 'Owner']) {
+      expect(screen.queryByRole('option', { name })).toBeNull();
+    }
+  });
   it('organizer withdrawal does not imply transfer', () => {
     render(element());
     expect(

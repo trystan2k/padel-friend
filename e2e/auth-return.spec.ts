@@ -27,7 +27,7 @@ type LocaleCopy = {
     save: string;
   };
   communityOnboarding: { skip: string };
-  matches: { detail: { title: string; shareUrl: string } };
+  matches: { detail: { title: string; shareUrl: string; visibility: { community_open: string } } };
   matchCreate: {
     title: string;
     next: string;
@@ -391,14 +391,16 @@ test.describe.serial('shared match link returns to the exact event', () => {
     const creatorPage = shared.page!;
     const eventId = shared.eventId!;
     const sharedPath = `/matches/${eventId}`;
-    const detailHeading = `${en.matches.detail.title}: ${shared.venue}`;
+    const detailHeading = en.matches.detail.title;
+    const venueLine = `${shared.venue} · ${en.matches.detail.visibility.community_open}`;
 
-    // The canonical share URL is exactly this local path. The creator signs out
+    // The displayed share value is relative; share/copy still use the canonical absolute URL.
+    // The creator signs out
     // immediately afterwards: no part of the journey depends on an idle session.
     await creatorPage.goto(sharedPath);
     await waitForHydratedPage(creatorPage);
     const shareValue = await creatorPage.getByLabel(en.matches.detail.shareUrl).inputValue();
-    expect(shareValue).toBe(`http://127.0.0.1:4173${sharedPath}`);
+    expect(shareValue).toBe(sharedPath);
     await creatorPage.goto('/dashboard');
     await waitForHydratedPage(creatorPage);
     await creatorPage.getByRole('button', { name: en.signOut }).click();
@@ -416,6 +418,7 @@ test.describe.serial('shared match link returns to the exact event', () => {
     );
     expect(new URL(page.url()).pathname).toBe(sharedPath);
     await expect(page.getByRole('heading', { level: 1, name: detailHeading })).toBeVisible();
+    await expect(page.getByText(venueLine, { exact: true })).toBeVisible();
 
     // OAuth-callback test path: the real PKCE handshake against local GoTrue, with the
     // email magic link standing in for the unconfigured Google provider hop. The browser
@@ -456,6 +459,7 @@ test.describe.serial('shared match link returns to the exact event', () => {
     await page.goto(callbackLocation!);
     expect(new URL(page.url()).pathname).toBe(sharedPath);
     await expect(page.getByRole('heading', { level: 1, name: detailHeading })).toBeVisible();
+    await expect(page.getByText(venueLine, { exact: true })).toBeVisible();
   });
 
   test('a fresh signup returns through onboarding to the shared event; no next reaches the dashboard', async ({
@@ -463,7 +467,8 @@ test.describe.serial('shared match link returns to the exact event', () => {
   }) => {
     test.setTimeout(240_000);
     const sharedPath = `/matches/${shared.eventId!}`;
-    const detailHeading = `${en.matches.detail.title}: ${shared.venue}`;
+    const detailHeading = en.matches.detail.title;
+    const venueLine = `${shared.venue} · ${en.matches.detail.visibility.community_open}`;
     const freshContext = await browser.newContext({
       viewport: { width: 390, height: 844 },
       deviceScaleFactor: 1,
@@ -502,6 +507,7 @@ test.describe.serial('shared match link returns to the exact event', () => {
       // Landed on the exact authorized event (public community_open, readable nonmember).
       expect(new URL(fresh.url()).pathname).toBe(sharedPath);
       await expect(fresh.getByRole('heading', { level: 1, name: detailHeading })).toBeVisible();
+      await expect(fresh.getByText(venueLine, { exact: true })).toBeVisible();
 
       // Without a next, the same flow still reaches the dashboard.
       const plain = await plainContext.newPage();

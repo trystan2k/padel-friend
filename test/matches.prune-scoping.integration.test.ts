@@ -92,8 +92,13 @@ begin
         ('${developerEvent}','${developer}',now(),1,'reserve','creator');
       insert into public.match_event_registration_state(match_event_id,next_accepted_ordinal) values
         ('${fixtureEvent}',2),('${developerEvent}',2);
-      insert into public.match_event_registration_attempts(match_event_id,user_id,requested_at,outcome,actor_id) values
-        ('${fixtureEvent}','${fixtureOwner}',now(),'pending','${fixtureOwner}');
+      -- Departures/reconfirmation history must agree with each accepted registration.
+      insert into public.match_event_registration_attempts(registration_id,match_event_id,user_id,registration_source,requested_at,outcome,actor_id,decided_at,accepted_at,accepted_order)
+        select id,match_event_id,user_id,registration_source,accepted_at,'accepted',user_id,accepted_at,accepted_at,accepted_order
+          from public.match_event_registrations where match_event_id in ('${fixtureEvent}','${developerEvent}');
+      update public.match_event_registrations r set current_attempt_id=a.id
+        from public.match_event_registration_attempts a where a.registration_id=r.id
+          and r.match_event_id in ('${fixtureEvent}','${developerEvent}');
       insert into public.match_event_invites(match_event_id,invitee_user_id,invited_by) values
         ('${fixtureEvent}','${fixtureInvitee}','${fixtureOwner}'),
         ('${developerEvent}','${developer}','${developer}');
@@ -104,6 +109,9 @@ begin
   lock table public.match_event_invites in share row exclusive mode;
   lock table public.match_event_registrations in share row exclusive mode;
   lock table public.match_events in share row exclusive mode;
+      -- Validate staged history and drain deferred events before prune ALTER TABLEs.
+      set constraints all immediate;
+      set constraints all deferred;
       ${MATCH_FIXTURE_PRUNE_STATEMENTS};
       ${MATCH_FIXTURE_PRUNE_STATEMENTS};
       begin

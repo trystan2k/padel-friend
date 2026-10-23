@@ -27,6 +27,7 @@ type Copy = {
     unavailable: string;
     detail: {
       title: string;
+      visibility: { community_open: string; invite_only: string };
       accepted: string;
       participation: string;
       guestApprovalRequired: string;
@@ -53,6 +54,7 @@ type Copy = {
     photo: { remove: string };
   };
   matchRegistration: {
+    place: { creatorCopy: string; closedCopy: string; closedNote: string };
     join: {
       sectionTitle: string;
       button: string;
@@ -696,7 +698,12 @@ test.describe.serial('registration, FIFO and cutoff journeys', () => {
     await page.goto(`/matches/${eventId}`);
     await waitForHydratedPage(page);
     await expect(
-      page.getByRole('heading', { level: 1, name: `${en.matches.detail.title}: ${family.venue}` })
+      page.getByRole('heading', { level: 1, name: en.matches.detail.title, exact: true })
+    ).toBeVisible();
+    await expect(
+      page.getByText(`${family.venue} · ${en.matches.detail.visibility.community_open}`, {
+        exact: true
+      })
     ).toBeVisible();
     await expect(
       page.getByRole('heading', { name: en.matchRegistration.join.sectionTitle })
@@ -742,9 +749,17 @@ test.describe.serial('registration, FIFO and cutoff journeys', () => {
         name: fill(en.matchRegistration.roster.groupTitle, { group: 1 })
       })
     ).toBeVisible();
+    // Frame-driven roster renders player rows, not the former count summary.
+    for (const name of [
+      family.creator!.displayName,
+      family.member2!.displayName,
+      family.member3!.displayName
+    ]) {
+      await expect(roster.getByText(name, { exact: true })).toBeVisible();
+    }
     await expect(
-      roster.getByText(en.matchRegistration.roster.count_other.replace('{{count}}', '4'))
-    ).toHaveCount(1);
+      roster.getByText(en.matchRegistration.badges.playing, { exact: true })
+    ).toHaveCount(4);
     await expect(roster.getByText(en.matchRegistration.roster.you, { exact: true })).toBeVisible();
     await expect(
       roster.getByText(en.matchRegistration.badges.playing, { exact: true }).first()
@@ -830,9 +845,7 @@ test.describe.serial('registration, FIFO and cutoff journeys', () => {
     await expect(
       creatorPage.getByText(fill(en.matchRegistration.request.createdPlayingBadge, { group: 1 }))
     ).toBeVisible();
-    await expect(
-      creatorPage.getByText(en.matchRegistration.request.createdPlayingCopy)
-    ).toBeVisible();
+    await expect(creatorPage.getByText(en.matchRegistration.place.creatorCopy)).toBeVisible();
     const card = requestQueueSection(creatorPage)
       .locator('li')
       .filter({ hasText: requester.displayName });
@@ -855,15 +868,18 @@ test.describe.serial('registration, FIFO and cutoff journeys', () => {
     await page.reload();
     await waitForHydratedPage(page);
     await expect(
-      page.getByText(fill(en.matchRegistration.request.approvedReserveBadge, { position: 1 }))
+      page.getByText(fill(en.matchRegistration.request.joinedReserveBadge, { position: 1 }))
     ).toBeVisible();
     const roster = rosterSection(page);
     await expect(
       roster.getByRole('heading', { name: en.matchRegistration.roster.reserveTitle })
     ).toBeVisible();
     await expect(
-      roster.getByText(en.matchRegistration.roster.count_one.replace('{{count}}', '1'))
-    ).toBeVisible();
+      roster
+        .getByRole('heading', { name: en.matchRegistration.roster.reserveTitle })
+        .locator('..')
+        .locator(':scope > div')
+    ).toHaveCount(1);
     await expect(
       roster.getByText(en.matchRegistration.roster.position.replace('{{position}}', '1'))
     ).toBeVisible();
@@ -1019,7 +1035,7 @@ test.describe.serial('registration, FIFO and cutoff journeys', () => {
     await page.reload();
     await waitForHydratedPage(page);
     await expect(
-      page.getByText(fill(en.matchRegistration.request.approvedReserveBadge, { position: 2 }))
+      page.getByText(fill(en.matchRegistration.request.joinedReserveBadge, { position: 2 }))
     ).toBeVisible();
     const roster = rosterSection(page);
     await expect(
@@ -1090,7 +1106,12 @@ test.describe.serial('registration, FIFO and cutoff journeys', () => {
     await adminPage.goto(`/matches/${eventId}`);
     await waitForHydratedPage(adminPage);
     await expect(
-      adminPage.getByRole('heading', { level: 1, name: `${en.matches.detail.title}: ${venue}` })
+      adminPage.getByRole('heading', { level: 1, name: en.matches.detail.title, exact: true })
+    ).toBeVisible();
+    await expect(
+      adminPage.getByText(`${venue} · ${en.matches.detail.visibility.community_open}`, {
+        exact: true
+      })
     ).toBeVisible();
   });
 
@@ -1169,8 +1190,8 @@ test.describe.serial('registration, FIFO and cutoff journeys', () => {
       ).toBeVisible();
     }
     await expect(
-      roster.getByText(en.matchRegistration.roster.count_other.replace('{{count}}', '4'))
-    ).toHaveCount(2);
+      roster.getByText(en.matchRegistration.badges.playing, { exact: true })
+    ).toHaveCount(8);
     await expect(roster.getByText(en.matchRegistration.roster.you, { exact: true })).toBeVisible();
 
     expect(await detailData(host, eventId)).toMatchObject({
@@ -1237,8 +1258,12 @@ test.describe.serial('registration, FIFO and cutoff journeys', () => {
       roster.getByRole('heading', { name: en.matchRegistration.roster.reserveTitle })
     ).toBeVisible();
     await expect(
-      roster.getByText(en.matchRegistration.roster.count_one.replace('{{count}}', '1'))
-    ).toBeVisible();
+      roster
+        .getByRole('heading', { name: en.matchRegistration.roster.reserveTitle })
+        .locator('..')
+        .locator(':scope > div')
+    ).toHaveCount(1);
+    await expect(roster.getByText(q8.displayName, { exact: true })).toBeVisible();
     await expect(
       roster.getByText(en.matchRegistration.roster.position.replace('{{position}}', '1'))
     ).toBeVisible();
@@ -1511,7 +1536,7 @@ test.describe.serial('registration, FIFO and cutoff journeys', () => {
     ).toBeVisible();
     const lateRoster = rosterSection(lateMemberPage);
     await expect(
-      lateRoster.getByRole('heading', { name: en.matchRegistration.roster.notPlayingTitle })
+      lateRoster.getByRole('heading', { name: en.matchRegistration.roster.reserveTitle })
     ).toBeVisible();
     await lateMemberPage.goto(`/notifications/${notPlayingAlerts[0]!.id}`);
     await waitForHydratedPage(lateMemberPage);
@@ -1552,9 +1577,13 @@ test.describe.serial('registration, FIFO and cutoff journeys', () => {
     await requesterPage.goto(`/matches/${eventId}`);
     await waitForHydratedPage(requesterPage);
     await expect(
-      requesterPage.getByText(en.matchRegistration.request.expiredBadge, { exact: true })
+      requesterPage.getByText(en.matchRegistration.closed.badge, { exact: true })
     ).toBeVisible();
-    await expect(requesterPage.getByText(en.matchRegistration.request.expiredCopy)).toBeVisible();
+    await expect(
+      requesterPage.getByText(
+        fill(en.matchRegistration.place.closedCopy, { playing: 4, reserve: 1 })
+      )
+    ).toBeVisible();
     await requesterPage.goto(`/notifications/${expiredAlerts[0]!.id}`);
     await waitForHydratedPage(requesterPage);
     await expect(
@@ -1569,7 +1598,7 @@ test.describe.serial('registration, FIFO and cutoff journeys', () => {
     await requesterPage.getByRole('link', { name: en.notifications.match.openEvent }).click();
     await expect(requesterPage).toHaveURL(new RegExp(`/matches/${eventId}$`));
     await expect(
-      requesterPage.getByText(en.matchRegistration.request.expiredBadge, { exact: true })
+      requesterPage.getByText(en.matchRegistration.closed.badge, { exact: true })
     ).toBeVisible();
 
     // A viewer without a registration row sees the explicit closed state with the
@@ -1582,13 +1611,11 @@ test.describe.serial('registration, FIFO and cutoff journeys', () => {
       guestPage.getByText(en.matchRegistration.closed.badge, { exact: true }).first()
     ).toBeVisible();
     await expect(
-      guestPage.getByText(
-        fill(en.matchRegistration.closed.rosterCount, { playing: 4, reserveNotPlaying: 1 })
-      )
+      guestPage.getByText(fill(en.matchRegistration.place.closedCopy, { playing: 4, reserve: 1 }))
     ).toBeVisible();
     await expect(
       guestPage.getByRole('button', { name: en.matchRegistration.closed.button })
-    ).toBeDisabled();
+    ).toHaveCount(0);
 
     const detail = await detailData(creator, eventId);
     expect(detail).toMatchObject({
