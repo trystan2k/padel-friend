@@ -22,6 +22,15 @@ export function MatchCancelDialog({
   const { t } = useTranslation();
   const id = useId();
   const [reason, setReason] = useState('');
+  const valid =
+    reason.trim().length > 0 &&
+    reason.trim().length <= 500 &&
+    !reason
+      .split('')
+      .some(
+        (char) =>
+          char.charCodeAt(0) < 32 || (char.charCodeAt(0) >= 127 && char.charCodeAt(0) <= 159)
+      );
   return (
     <Dialog.Root
       open={open}
@@ -46,7 +55,10 @@ export function MatchCancelDialog({
             {...stylex.props(s.section)}
             onSubmit={async (event) => {
               event.preventDefault();
-              if (await onConfirm(reason)) onOpenChange(false);
+              if (valid && !pending && (await onConfirm(reason.trim()))) {
+                setReason('');
+                onOpenChange(false);
+              }
             }}
           >
             <label htmlFor={id}>{t('matches.management.cancelReason')}</label>
@@ -55,10 +67,15 @@ export function MatchCancelDialog({
               required
               maxLength={500}
               disabled={pending}
+              aria-invalid={(reason.length > 0 && !valid) || undefined}
+              aria-describedby={reason.length > 0 && !valid ? `${id}-error` : undefined}
               value={reason}
               onChange={(event) => setReason(event.target.value)}
               {...stylex.props(s.input)}
             />
+            {reason.length > 0 && !valid && (
+              <p id={`${id}-error`}>{t('matches.management.reasonInvalid')}</p>
+            )}
             <output aria-live="polite">{feedback ? t(feedback) : null}</output>
             <div {...stylex.props(s.row)}>
               <Dialog.Close disabled={pending} {...stylex.props(s.button)}>
@@ -66,7 +83,7 @@ export function MatchCancelDialog({
               </Dialog.Close>
               <button
                 type="submit"
-                disabled={pending || !reason.trim()}
+                disabled={pending || !valid}
                 aria-busy={pending}
                 {...stylex.props(s.button)}
               >

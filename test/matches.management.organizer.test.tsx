@@ -1,5 +1,5 @@
 /** @vitest-environment jsdom */
-import { cleanup, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { I18nextProvider } from 'react-i18next';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -160,6 +160,37 @@ describe('organizer controls', () => {
       })
     );
     expect(screen.queryByRole('button', { name: 'Actions' })).toBeNull();
+  });
+  it.each([
+    'Court\nclosed',
+    'Court\tclosed',
+    'Court\u007fclosed',
+    'Court\u009fclosed',
+    'x'.repeat(501),
+    '   '
+  ])('rejects invalid cancellation reason %j with inline guidance', async (reason) => {
+    render(element());
+    await userEvent.click(screen.getByRole('button', { name: 'Actions' }));
+    await userEvent.click(await screen.findByRole('menuitem', { name: 'Cancel match' }));
+    await screen.findByRole('dialog');
+    const input = screen.getByRole('textbox', { name: 'Cancellation reason' });
+    fireEvent.change(input, { target: { value: reason } });
+    expect(screen.getByRole('button', { name: 'Cancel match' }).hasAttribute('disabled')).toBe(
+      true
+    );
+    expect(input.getAttribute('aria-invalid')).toBe('true');
+    const error = screen.getByText(createI18n('en').t('matches.management.reasonInvalid'));
+    expect(input.getAttribute('aria-describedby')).toBe(error.id);
+    fireEvent.submit(input.closest('form')!);
+    expect(mocks.cancel).not.toHaveBeenCalled();
+    await userEvent.clear(input);
+    await userEvent.type(input, 'Court closed');
+    expect(input.hasAttribute('aria-invalid')).toBe(false);
+    expect(input.hasAttribute('aria-describedby')).toBe(false);
+    expect(screen.queryByText(createI18n('en').t('matches.management.reasonInvalid'))).toBeNull();
+    expect(screen.getByRole('button', { name: 'Cancel match' }).hasAttribute('disabled')).toBe(
+      false
+    );
   });
   it('cancellation requires reason and preserves draft on version conflict', async () => {
     render(element());
