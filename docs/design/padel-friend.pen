@@ -64766,6 +64766,846 @@
           ]
         }
       ]
+    },
+    {
+      "type": "frame",
+      "id": "Hzcid",
+      "x": 2500,
+      "y": -310,
+      "name": "Record result — WIN outcome preview",
+      "theme": {
+        "mode": "light"
+      },
+      "clip": true,
+      "width": 390,
+      "fill": "$bg",
+      "stroke": "$line",
+      "strokeWidth": 1,
+      "layout": "vertical",
+      "gap": 10,
+      "padding": 18,
+      "children": [
+        {
+          "type": "text",
+          "id": "BkYm7",
+          "name": "Section title",
+          "fill": "$text",
+          "textGrowth": "fixed-width",
+          "width": "fill_container",
+          "content": "Record result · win",
+          "fontFamily": "Manrope",
+          "fontSize": 19,
+          "fontWeight": "bold"
+        },
+        {
+          "type": "text",
+          "id": "x45sp1",
+          "name": "Section subtitle",
+          "fill": "$muted",
+          "textGrowth": "fixed-width",
+          "width": "fill_container",
+          "content": "Review preview · competitive · 6–4 / 4–6 / 7–5",
+          "fontFamily": "Inter",
+          "fontSize": 12,
+          "fontWeight": "regular"
+        },
+        {
+          "id": "o2sit",
+          "type": "ref",
+          "ref": "RMese",
+          "name": "WIN predicted outcome",
+          "width": 354,
+          "fill": "$surface",
+          "stroke": {
+            "type": "color",
+            "color": "$line",
+            "enabled": false
+          },
+          "strokeWidth": 1,
+          "cornerRadius": 16,
+          "padding": 14,
+          "descendants": {
+            "PNgzI": {
+              "type": "frame",
+              "id": "a7alb",
+              "name": "Predicted outcome content",
+              "width": "fill_container",
+              "layout": "vertical",
+              "gap": 9,
+              "children": [
+                {
+                  "type": "text",
+                  "id": "Crad7",
+                  "name": "Outcome label",
+                  "fill": "$muted",
+                  "content": "MATCH OUTCOME",
+                  "fontFamily": "Inter",
+                  "fontSize": 12,
+                  "fontWeight": "semibold"
+                },
+                {
+                  "type": "text",
+                  "id": "Uy3ic",
+                  "name": "Outcome value",
+                  "fill": "$text",
+                  "content": "TEAM A WINS · 2–1",
+                  "fontFamily": "Manrope",
+                  "fontSize": 15,
+                  "fontWeight": "bold"
+                },
+                {
+                  "type": "text",
+                  "id": "C9yde",
+                  "name": "Outcome helper",
+                  "fill": "$muted",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "Team A won two completed sets. Submit for review before rating changes apply.",
+                  "fontFamily": "Inter",
+                  "fontSize": 12,
+                  "fontWeight": "regular"
+                },
+                {
+                  "type": "frame",
+                  "id": "X4LkaY",
+                  "name": "Rating effect",
+                  "fill": "$greenSoft",
+                  "cornerRadius": 20,
+                  "gap": 4,
+                  "padding": [
+                    5,
+                    9
+                  ],
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "zM0eb",
+                      "name": "Rating effect text",
+                      "fill": "$green",
+                      "content": "Competitive · rating will update",
+                      "fontFamily": "Inter",
+                      "fontSize": 12,
+                      "fontWeight": "semibold"
+                    }
+                  ]
+                }
+              ]
+            }
+          }
+        },
+        {
+          "type": "text",
+          "id": "C8UXnQ",
+          "name": "Reuse annotation",
+          "fill": "$green",
+          "textGrowth": "fixed-width",
+          "width": "fill_container",
+          "content": "Reuse the Record match result outcome card on Review. Preview only: rating and League effects wait for confirmation. Keep actual-team chips and set rows unchanged.",
+          "fontFamily": "Inter",
+          "fontSize": 12,
+          "fontWeight": "medium"
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "BnwEB",
+      "x": 2930,
+      "y": -310,
+      "name": "Record result — INCOMPLETE outcome preview",
+      "theme": {
+        "mode": "light"
+      },
+      "clip": true,
+      "width": 390,
+      "fill": "$bg",
+      "stroke": "$line",
+      "strokeWidth": 1,
+      "layout": "vertical",
+      "gap": 10,
+      "padding": 18,
+      "children": [
+        {
+          "type": "text",
+          "id": "I3yYD9",
+          "name": "Section title",
+          "fill": "$text",
+          "textGrowth": "fixed-width",
+          "width": "fill_container",
+          "content": "Record result · incomplete",
+          "fontFamily": "Manrope",
+          "fontSize": 19,
+          "fontWeight": "bold"
+        },
+        {
+          "type": "text",
+          "id": "xjzpU",
+          "name": "Section subtitle",
+          "fill": "$muted",
+          "textGrowth": "fixed-width",
+          "width": "fill_container",
+          "content": "Review preview · competitive · 6–4 / 2–3",
+          "fontFamily": "Inter",
+          "fontSize": 12,
+          "fontWeight": "regular"
+        },
+        {
+          "id": "n4PNo",
+          "type": "ref",
+          "ref": "RMese",
+          "name": "Predicted outcome",
+          "width": 354,
+          "fill": "$surface",
+          "stroke": {
+            "type": "color",
+            "color": "$line",
+            "enabled": false
+          },
+          "strokeWidth": 1,
+          "cornerRadius": 16,
+          "padding": 14,
+          "descendants": {
+            "PNgzI": {
+              "type": "frame",
+              "id": "U7xcC",
+              "name": "Predicted outcome content",
+              "width": "fill_container",
+              "layout": "vertical",
+              "gap": 9,
+              "children": [
+                {
+                  "type": "text",
+                  "id": "cqdQ6",
+                  "name": "Outcome label",
+                  "fill": "$muted",
+                  "content": "MATCH OUTCOME",
+                  "fontFamily": "Inter",
+                  "fontSize": 12,
+                  "fontWeight": "semibold"
+                },
+                {
+                  "type": "text",
+                  "id": "GciU3",
+                  "name": "Outcome value",
+                  "fill": "$text",
+                  "content": "INCOMPLETE",
+                  "fontFamily": "Manrope",
+                  "fontSize": 15,
+                  "fontWeight": "bold"
+                },
+                {
+                  "type": "text",
+                  "id": "pOIyl",
+                  "name": "Outcome helper",
+                  "fill": "$muted",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "Result records as incomplete. No rating, reliability or League effect applies.",
+                  "fontFamily": "Inter",
+                  "fontSize": 12,
+                  "fontWeight": "regular"
+                },
+                {
+                  "type": "frame",
+                  "id": "kwtJo",
+                  "name": "Rating effect",
+                  "fill": "$surface2",
+                  "cornerRadius": 20,
+                  "gap": 4,
+                  "padding": [
+                    5,
+                    9
+                  ],
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "ntg51",
+                      "name": "Rating effect text",
+                      "fill": "$muted",
+                      "content": "Incomplete · no rating effect",
+                      "fontFamily": "Inter",
+                      "fontSize": 12,
+                      "fontWeight": "semibold"
+                    }
+                  ]
+                }
+              ]
+            }
+          }
+        },
+        {
+          "type": "text",
+          "id": "B6zCQZ",
+          "name": "Reuse annotation",
+          "fill": "$green",
+          "textGrowth": "fixed-width",
+          "width": "fill_container",
+          "content": "Reuse the Record match result outcome card when scores do not establish a result. Incomplete is not a draw or a confirmed win; no rating, reliability or League effect applies.",
+          "fontFamily": "Inter",
+          "fontSize": 12,
+          "fontWeight": "medium"
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "u78yF",
+      "x": 3360,
+      "y": -310,
+      "name": "Record result — Friendly no-effect preview",
+      "theme": {
+        "mode": "light"
+      },
+      "clip": true,
+      "width": 390,
+      "fill": "$bg",
+      "stroke": "$line",
+      "strokeWidth": 1,
+      "layout": "vertical",
+      "gap": 10,
+      "padding": 18,
+      "children": [
+        {
+          "type": "text",
+          "id": "xAAkf",
+          "name": "Section title",
+          "fill": "$text",
+          "textGrowth": "fixed-width",
+          "width": "fill_container",
+          "content": "Record result · friendly",
+          "fontFamily": "Manrope",
+          "fontSize": 19,
+          "fontWeight": "bold"
+        },
+        {
+          "type": "text",
+          "id": "U6nwz",
+          "name": "Section subtitle",
+          "fill": "$muted",
+          "textGrowth": "fixed-width",
+          "width": "fill_container",
+          "content": "Review preview · friendly · 6–4 / 4–6 / 7–5",
+          "fontFamily": "Inter",
+          "fontSize": 12,
+          "fontWeight": "regular"
+        },
+        {
+          "id": "Q5wYBv",
+          "type": "ref",
+          "ref": "RMese",
+          "name": "Predicted outcome",
+          "width": 354,
+          "fill": "$surface",
+          "stroke": {
+            "type": "color",
+            "color": "$line",
+            "enabled": false
+          },
+          "strokeWidth": 1,
+          "cornerRadius": 16,
+          "padding": 14,
+          "descendants": {
+            "PNgzI": {
+              "type": "frame",
+              "id": "iageY",
+              "name": "Predicted outcome content",
+              "width": "fill_container",
+              "layout": "vertical",
+              "gap": 9,
+              "children": [
+                {
+                  "type": "text",
+                  "id": "LXhnf",
+                  "name": "Outcome label",
+                  "fill": "$muted",
+                  "content": "MATCH OUTCOME",
+                  "fontFamily": "Inter",
+                  "fontSize": 12,
+                  "fontWeight": "semibold"
+                },
+                {
+                  "type": "text",
+                  "id": "V31P2",
+                  "name": "Outcome value",
+                  "fill": "$text",
+                  "content": "TEAM A WINS · 2–1",
+                  "fontFamily": "Manrope",
+                  "fontSize": 15,
+                  "fontWeight": "bold"
+                },
+                {
+                  "type": "text",
+                  "id": "Vr4kd",
+                  "name": "Outcome helper",
+                  "fill": "$muted",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "This friendly result counts in match history and friendly stats after confirmation. Rating and League standings stay unchanged.",
+                  "fontFamily": "Inter",
+                  "fontSize": 12,
+                  "fontWeight": "regular"
+                },
+                {
+                  "type": "frame",
+                  "id": "rmlMe",
+                  "name": "Rating effect",
+                  "fill": "$surface2",
+                  "cornerRadius": 20,
+                  "gap": 4,
+                  "padding": [
+                    5,
+                    9
+                  ],
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "R7gfGt",
+                      "name": "Rating effect text",
+                      "fill": "$muted",
+                      "content": "Friendly · no rating effect",
+                      "fontFamily": "Inter",
+                      "fontSize": 12,
+                      "fontWeight": "semibold"
+                    }
+                  ]
+                }
+              ]
+            }
+          }
+        },
+        {
+          "type": "text",
+          "id": "CTbni",
+          "name": "Reuse annotation",
+          "fill": "$green",
+          "textGrowth": "fixed-width",
+          "width": "fill_container",
+          "content": "Reuse the Record match result outcome card for friendly events. Keep winner / draw logic; replace only effect copy. Friendly results never affect rating or League standings.",
+          "fontFamily": "Inter",
+          "fontSize": 12,
+          "fontWeight": "medium"
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "LD9Jv",
+      "x": 3790,
+      "y": -310,
+      "name": "Record result — Per-set inline validation error",
+      "theme": {
+        "mode": "light"
+      },
+      "clip": true,
+      "width": 390,
+      "fill": "$bg",
+      "stroke": "$line",
+      "strokeWidth": 1,
+      "layout": "vertical",
+      "gap": 10,
+      "padding": 18,
+      "children": [
+        {
+          "type": "text",
+          "id": "HxoSz",
+          "name": "Section title",
+          "fill": "$text",
+          "textGrowth": "fixed-width",
+          "width": "fill_container",
+          "content": "Record result · invalid set",
+          "fontFamily": "Manrope",
+          "fontSize": 19,
+          "fontWeight": "bold"
+        },
+        {
+          "type": "text",
+          "id": "Wc7xo",
+          "name": "Section subtitle",
+          "fill": "$muted",
+          "textGrowth": "fixed-width",
+          "width": "fill_container",
+          "content": "Score entry · Set 1 · Team B · 6–5",
+          "fontFamily": "Inter",
+          "fontSize": 12,
+          "fontWeight": "regular"
+        },
+        {
+          "id": "vFg1b",
+          "type": "ref",
+          "ref": "RMese",
+          "name": "Set score entry — inline validation",
+          "width": 354,
+          "fill": "$surface",
+          "stroke": {
+            "type": "color",
+            "color": "$line",
+            "enabled": false
+          },
+          "strokeWidth": 1,
+          "cornerRadius": 16,
+          "padding": 14,
+          "descendants": {
+            "PNgzI": {
+              "type": "frame",
+              "id": "sHOnZ",
+              "name": "Set score entry content",
+              "width": "fill_container",
+              "layout": "vertical",
+              "gap": 9,
+              "children": [
+                {
+                  "type": "text",
+                  "id": "C0Q2c",
+                  "name": "Score title",
+                  "fill": "$text",
+                  "content": "Enter each set",
+                  "fontFamily": "Manrope",
+                  "fontSize": 15,
+                  "fontWeight": "bold"
+                },
+                {
+                  "type": "frame",
+                  "id": "qatnY",
+                  "name": "SET 1 score row",
+                  "width": "fill_container",
+                  "gap": 10,
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "IE0jw",
+                      "name": "SET 1 label",
+                      "fill": "$muted",
+                      "content": "SET 1",
+                      "fontFamily": "Inter",
+                      "fontSize": 12,
+                      "fontWeight": "semibold"
+                    },
+                    {
+                      "type": "frame",
+                      "id": "j063Th",
+                      "name": "SET 1 team a score",
+                      "width": 58,
+                      "height": 44,
+                      "fill": "$surface2",
+                      "cornerRadius": 9,
+                      "gap": 8,
+                      "padding": 7,
+                      "justifyContent": "center",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "dv6x0",
+                          "name": "SET 1 a value",
+                          "fill": "$text",
+                          "content": "6",
+                          "fontFamily": "Inter",
+                          "fontSize": 16,
+                          "fontWeight": "bold"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "id": "CMmzU",
+                      "name": "SET 1 separator",
+                      "fill": "$muted",
+                      "content": "—",
+                      "fontFamily": "Inter",
+                      "fontSize": 13,
+                      "fontWeight": "regular"
+                    },
+                    {
+                      "type": "frame",
+                      "id": "YXPSd",
+                      "name": "SET 1 team b score",
+                      "width": 58,
+                      "height": 44,
+                      "fill": "$surface2",
+                      "cornerRadius": 9,
+                      "stroke": "$red",
+                      "strokeWidth": 1,
+                      "gap": 8,
+                      "padding": 7,
+                      "justifyContent": "center",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "oXdSy",
+                          "name": "SET 1 b value",
+                          "fill": "$red",
+                          "content": "5",
+                          "fontFamily": "Inter",
+                          "fontSize": 16,
+                          "fontWeight": "bold"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "pPxeX",
+                      "name": "SET 1 state",
+                      "fill": "$surface2",
+                      "cornerRadius": 20,
+                      "gap": 4,
+                      "padding": [
+                        5,
+                        9
+                      ],
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "ayfQD",
+                          "name": "SET 1 state text",
+                          "fill": "$red",
+                          "content": "INVALID",
+                          "fontFamily": "Inter",
+                          "fontSize": 12,
+                          "fontWeight": "semibold"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "wGQ7I",
+                  "name": "Set 1 Team B inline validation error",
+                  "fill": "$red",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "Set 1 · Team B: 6–5 is not a completed set. Check Team B’s score or mark this set unfinished.",
+                  "fontFamily": "Inter",
+                  "fontSize": 12,
+                  "fontWeight": "medium"
+                },
+                {
+                  "type": "frame",
+                  "id": "spK8V",
+                  "name": "SET 2 score row",
+                  "width": "fill_container",
+                  "gap": 10,
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "rhYSB",
+                      "name": "SET 2 label",
+                      "fill": "$muted",
+                      "content": "SET 2",
+                      "fontFamily": "Inter",
+                      "fontSize": 12,
+                      "fontWeight": "semibold"
+                    },
+                    {
+                      "type": "frame",
+                      "id": "F63ADZ",
+                      "name": "SET 2 team a score",
+                      "width": 58,
+                      "height": 44,
+                      "fill": "$surface2",
+                      "cornerRadius": 9,
+                      "gap": 8,
+                      "padding": 7,
+                      "justifyContent": "center",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "Czk5n",
+                          "name": "SET 2 a value",
+                          "fill": "$text",
+                          "content": "4",
+                          "fontFamily": "Inter",
+                          "fontSize": 16,
+                          "fontWeight": "bold"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "id": "D4mxT",
+                      "name": "SET 2 separator",
+                      "fill": "$muted",
+                      "content": "—",
+                      "fontFamily": "Inter",
+                      "fontSize": 13,
+                      "fontWeight": "regular"
+                    },
+                    {
+                      "type": "frame",
+                      "id": "yWOvm",
+                      "name": "SET 2 team b score",
+                      "width": 58,
+                      "height": 44,
+                      "fill": "$surface2",
+                      "cornerRadius": 9,
+                      "gap": 8,
+                      "padding": 7,
+                      "justifyContent": "center",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "kUFxa",
+                          "name": "SET 2 b value",
+                          "fill": "$text",
+                          "content": "6",
+                          "fontFamily": "Inter",
+                          "fontSize": 16,
+                          "fontWeight": "bold"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "w6DkPg",
+                      "name": "SET 2 state",
+                      "fill": "$greenSoft",
+                      "cornerRadius": 20,
+                      "gap": 4,
+                      "padding": [
+                        5,
+                        9
+                      ],
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "hRfcs",
+                          "name": "SET 2 state text",
+                          "fill": "$green",
+                          "content": "COMPLETE",
+                          "fontFamily": "Inter",
+                          "fontSize": 12,
+                          "fontWeight": "semibold"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "W0GTNC",
+                  "name": "SET 3 score row",
+                  "width": "fill_container",
+                  "gap": 10,
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "IKEwo",
+                      "name": "SET 3 label",
+                      "fill": "$muted",
+                      "content": "SET 3",
+                      "fontFamily": "Inter",
+                      "fontSize": 12,
+                      "fontWeight": "semibold"
+                    },
+                    {
+                      "type": "frame",
+                      "id": "KCvy3",
+                      "name": "SET 3 team a score",
+                      "width": 58,
+                      "height": 44,
+                      "fill": "$surface2",
+                      "cornerRadius": 9,
+                      "gap": 8,
+                      "padding": 7,
+                      "justifyContent": "center",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "DalNW",
+                          "name": "SET 3 a value",
+                          "fill": "$text",
+                          "content": "3",
+                          "fontFamily": "Inter",
+                          "fontSize": 16,
+                          "fontWeight": "bold"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "id": "J8IN5",
+                      "name": "SET 3 separator",
+                      "fill": "$muted",
+                      "content": "—",
+                      "fontFamily": "Inter",
+                      "fontSize": 13,
+                      "fontWeight": "regular"
+                    },
+                    {
+                      "type": "frame",
+                      "id": "AkKeP",
+                      "name": "SET 3 team b score",
+                      "width": 58,
+                      "height": 44,
+                      "fill": "$surface2",
+                      "cornerRadius": 9,
+                      "gap": 8,
+                      "padding": 7,
+                      "justifyContent": "center",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "L6AzP",
+                          "name": "SET 3 b value",
+                          "fill": "$text",
+                          "content": "2",
+                          "fontFamily": "Inter",
+                          "fontSize": 16,
+                          "fontWeight": "bold"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "B40TN8",
+                      "name": "SET 3 state",
+                      "fill": "$surface2",
+                      "cornerRadius": 20,
+                      "gap": 4,
+                      "padding": [
+                        5,
+                        9
+                      ],
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "D6dCB",
+                          "name": "SET 3 state text",
+                          "fill": "$muted",
+                          "content": "IN PROGRESS",
+                          "fontFamily": "Inter",
+                          "fontSize": 12,
+                          "fontWeight": "semibold"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          }
+        },
+        {
+          "type": "text",
+          "id": "z0oii",
+          "name": "Reuse annotation",
+          "fill": "$green",
+          "textGrowth": "fixed-width",
+          "width": "fill_container",
+          "content": "Reuse the score-entry rows. Show error directly below the offending set; name set index and side. Keep entered values. Block review until corrected or marked unfinished. Error color follows League creation validation.",
+          "fontFamily": "Inter",
+          "fontSize": 12,
+          "fontWeight": "medium"
+        }
+      ]
     }
   ],
   "themes": {
