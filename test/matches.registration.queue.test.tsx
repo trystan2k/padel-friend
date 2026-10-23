@@ -88,14 +88,7 @@ function mount(
 ) {
   return render(
     <I18nextProvider i18n={createI18n(locale)}>
-      <MatchRequestQueue
-        eventId={EVENT_ID}
-        eventName="Court Central"
-        queue={value}
-        minLevel={2.5}
-        maxLevel={5}
-        {...props}
-      />
+      <MatchRequestQueue eventId={EVENT_ID} queue={value} minLevel={2.5} maxLevel={5} {...props} />
     </I18nextProvider>
   );
 }

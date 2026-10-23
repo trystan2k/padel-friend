@@ -211,4 +211,23 @@ describe('organizer controls', () => {
     expect(screen.getByRole('dialog')).toBeTruthy();
     expect(mocks.invalidate).toHaveBeenCalledOnce();
   });
+  it('keeps the committed success outcome when post-mutation invalidation rejects', async () => {
+    render(element());
+    await userEvent.click(screen.getByRole('button', { name: 'Actions' }));
+    await userEvent.click(await screen.findByRole('menuitem', { name: 'Cancel match' }));
+    await screen.findByRole('dialog');
+    await userEvent.type(
+      screen.getByRole('textbox', { name: 'Cancellation reason' }),
+      'Court closed'
+    );
+    mocks.cancel.mockResolvedValue({ status: 'ok' });
+    mocks.invalidate.mockRejectedValueOnce(new Error('refresh failed'));
+    await userEvent.click(screen.getByRole('button', { name: 'Cancel match' }));
+    await waitFor(() => expect(mocks.invalidate).toHaveBeenCalledOnce());
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    expect(
+      screen.queryByText(createI18n('en').t('matches.management.errors.unavailable'))
+    ).toBeNull();
+    expect(screen.getByText(createI18n('en').t('matches.management.cancelled'))).toBeTruthy();
+  });
 });

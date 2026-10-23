@@ -34,7 +34,6 @@ export function MatchRequestQueue({
   onRetry = () => undefined
 }: {
   eventId: string;
-  eventName: string;
   queue: MatchRegistrationQueue | null;
   minLevel?: number | null;
   maxLevel?: number | null;

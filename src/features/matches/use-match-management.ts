@@ -95,7 +95,7 @@ export function useMatchManagement(eventId: string) {
             ? 'matches.management.ownershipTransferred'
             : 'matches.management.cancelled'
         );
-        await router.invalidate();
+        await router.invalidate().catch(() => undefined);
         return true;
       }
       setFeedback(MANAGEMENT_ERROR_COPY[result.code]);

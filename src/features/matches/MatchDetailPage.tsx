@@ -355,7 +355,6 @@ export function MatchDetailPage({
         {isCreator && event.status !== 'cancelled' && !unavailable && (
           <MatchRequestQueue
             eventId={eventId}
-            eventName={venue}
             queue={queue}
             minLevel={event.min_level}
             maxLevel={event.max_level}
