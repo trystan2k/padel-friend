@@ -787,6 +787,93 @@ export type Database = {
           },
         ]
       }
+      match_event_result_proposal_versions: {
+        Row: {
+          classification: string
+          court_label: string | null
+          played_at_local: string
+          played_at_offset_seconds: number
+          played_at_utc: string
+          proposal_id: string
+          sets: NonNullable<Json>
+          teams: NonNullable<Json>
+          version: number
+        }
+        ComputedFields: never
+        Insert: {
+          classification: string
+          court_label?: string | null
+          played_at_local: string
+          played_at_offset_seconds: number
+          played_at_utc: string
+          proposal_id: string
+          sets: NonNullable<Json>
+          teams: NonNullable<Json>
+          version: number
+        }
+        Update: {
+          classification?: string
+          court_label?: string | null
+          played_at_local?: string
+          played_at_offset_seconds?: number
+          played_at_utc?: string
+          proposal_id?: string
+          sets?: NonNullable<Json>
+          teams?: NonNullable<Json>
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "match_event_result_proposal_versions_proposal_id_fkey"
+            columns: ["proposal_id"]
+            isOneToOne: false
+            referencedRelation: "match_event_result_proposals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      match_event_result_proposals: {
+        Row: {
+          active_version: number
+          group_number: number
+          id: string
+          match_event_id: string
+          review_deadline_at: string
+          status: string
+          submitted_at: string
+          submitted_by: string
+        }
+        ComputedFields: never
+        Insert: {
+          active_version: number
+          group_number: number
+          id?: string
+          match_event_id: string
+          review_deadline_at: string
+          status: string
+          submitted_at?: string
+          submitted_by: string
+        }
+        Update: {
+          active_version?: number
+          group_number?: number
+          id?: string
+          match_event_id?: string
+          review_deadline_at?: string
+          status?: string
+          submitted_at?: string
+          submitted_by?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "match_event_result_proposals_match_event_id_fkey"
+            columns: ["match_event_id"]
+            isOneToOne: false
+            referencedRelation: "match_events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       match_events: {
         Row: {
           cancel_reason: string | null

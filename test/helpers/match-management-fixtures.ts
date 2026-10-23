@@ -85,6 +85,29 @@ export async function createMatchManagementFixtures(env: { url: string; key: str
       update public.match_events set registration_cutoff_at=now()-interval '2 minutes',starts_at=now()-interval '1 minute' where id='${eventId}';
       alter table public.match_events enable trigger match_event_immutable; end $$;`);
   }
+  /**
+   * PAF-7 fixture: eight accepted players in two full playing quartets with
+   * result protection applied. The creator is players[0]; acceptance order
+   * follows the array, so accepted_order 1..4 derive group one and 5..8 derive
+   * group two (group numbers are derived from the roster, never stored). The
+   * overdue cutoff is finalized by the protection hook itself, freezing the
+   * roster exactly as a real first result submission would.
+   */
+  async function protectedEightPlayerEvent() {
+    const players = [creator, ...(await Promise.all(Array.from({ length: 7 }, () => member())))];
+    const e = await event({ accepted: players.slice(1) });
+    await setCutoff(e.id, "now()-interval '1 minute'");
+    await protectResults(e.id);
+    const roster = await sqlRows(
+      `select participation_status::text as participation from public.match_event_registrations where match_event_id='${e.id}'`
+    );
+    if (
+      roster.length !== players.length ||
+      roster.some((row) => row['participation'] !== 'playing')
+    )
+      throw new Error('protected eight-player event did not yield two full playing quartets');
+    return { id: e.id, players };
+  }
   async function cleanup() {
     await fixtureSql(`do $$ begin
       alter table public.match_events disable trigger match_event_immutable;
@@ -98,7 +121,13 @@ export async function createMatchManagementFixtures(env: { url: string; key: str
       delete from public.notifications where community_id='${communityId}';
       delete from public.match_event_invites where match_event_id in (select id from public.match_events where community_id='${communityId}');
       delete from public.match_event_management_commands where match_event_id in (select id from public.match_events where community_id='${communityId}');
+      alter table public.match_event_result_proposals disable trigger match_result_proposal_immutable;
+      alter table public.match_event_result_proposal_versions disable trigger match_result_proposal_version_immutable;
+      delete from public.match_event_result_proposal_versions where proposal_id in (select p.id from public.match_event_result_proposals p where p.match_event_id in (select id from public.match_events where community_id='${communityId}'));
+      delete from public.match_event_result_proposals where match_event_id in (select id from public.match_events where community_id='${communityId}');
       delete from public.match_event_audit_log where community_id='${communityId}';
+      alter table public.match_event_result_proposals enable trigger match_result_proposal_immutable;
+      alter table public.match_event_result_proposal_versions enable trigger match_result_proposal_version_immutable;
       update public.match_event_registrations set current_attempt_id=null where match_event_id in (select id from public.match_events where community_id='${communityId}');
       delete from public.match_event_registration_attempts where match_event_id in (select id from public.match_events where community_id='${communityId}');
       delete from public.match_event_registrations where match_event_id in (select id from public.match_events where community_id='${communityId}');
@@ -131,6 +160,7 @@ export async function createMatchManagementFixtures(env: { url: string; key: str
     latestAttemptId,
     protectResults,
     setStarted,
+    protectedEightPlayerEvent,
     cleanup,
     rpc: makeRawRpc(env.url, env.key)
   };
