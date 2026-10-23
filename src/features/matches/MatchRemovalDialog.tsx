@@ -2,6 +2,7 @@ import { Dialog } from '@base-ui/react/dialog';
 import * as stylex from '@stylexjs/stylex';
 import { useId, useState, type RefObject } from 'react';
 import { useTranslation } from 'react-i18next';
+import { hasMatchControlCharacters } from './match-management-edit';
 import { matchManagementStyles as s } from './match-management.styles';
 
 export function MatchRemovalDialog({
@@ -25,14 +26,7 @@ export function MatchRemovalDialog({
   const id = useId();
   const [reason, setReason] = useState('');
   const valid =
-    reason.trim().length > 0 &&
-    reason.trim().length <= 500 &&
-    !reason
-      .split('')
-      .some(
-        (char) =>
-          char.charCodeAt(0) < 32 || (char.charCodeAt(0) >= 127 && char.charCodeAt(0) <= 159)
-      );
+    reason.trim().length > 0 && reason.trim().length <= 500 && !hasMatchControlCharacters(reason);
   return (
     <Dialog.Root
       open={open}
