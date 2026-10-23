@@ -1170,6 +1170,7 @@ export type Database = {
         }
         Returns: Json
       }
+      classify_match_result_sets: { Args: { p_sets: Json }; Returns: string }
       count_my_unread_notifications: { Args: Record<PropertyKey, never>; Returns: number }
       create_community: {
         Args: {
@@ -1711,6 +1712,7 @@ export type Database = {
       valid_community_venue_photo_key: { Args: { p_key: string }; Returns: boolean }
       valid_match_maps_url: { Args: { p_url: string }; Returns: boolean }
       valid_match_photo_key: { Args: { p_key: string }; Returns: boolean }
+      validate_match_result_sets: { Args: { p_sets: Json }; Returns: Json }
       withdraw_match_registration: {
         Args: { p_attempt_id: string; p_match_event_id: string; p_request_id: string }
         Returns: Json
