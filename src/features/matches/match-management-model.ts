@@ -186,7 +186,9 @@ export type MatchEventManagement = {
   reconfirmation_generation: number;
   required_count: number;
   actions: Record<ManagementAction, { allowed: boolean; reason: ManagementErrorCode | null }>;
-  correction: { available: false; reason: 'results_workflow_unavailable' };
+  correction:
+    | { available: false; reason: 'results_workflow_unavailable' | 'cancelled' | 'forbidden' }
+    | { available: true; target: 'record_result'; event_id: string };
 };
 export function parseMatchEventManagement(value: unknown): MatchEventManagement | null {
   if (
@@ -209,11 +211,25 @@ export function parseMatchEventManagement(value: unknown): MatchEventManagement 
     !integer(value.reconfirmation_generation) ||
     !integer(value.required_count) ||
     !record(value.actions) ||
-    !record(value.correction) ||
-    value.correction.available !== false ||
-    value.correction.reason !== 'results_workflow_unavailable'
+    !record(value.correction)
   )
     return null;
+  let correction: MatchEventManagement['correction'];
+  if (
+    value.correction.available === true &&
+    value.correction.target === 'record_result' &&
+    isUuid(value.correction.event_id) &&
+    value.status !== 'cancelled'
+  ) {
+    correction = { available: true, target: 'record_result', event_id: value.correction.event_id };
+  } else if (
+    value.correction.available === false &&
+    (value.correction.reason === 'results_workflow_unavailable' ||
+      value.correction.reason === 'cancelled' ||
+      value.correction.reason === 'forbidden')
+  ) {
+    correction = { available: false, reason: value.correction.reason };
+  } else return null;
   const actions: MatchEventManagement['actions'] = {
     withdraw: { allowed: false, reason: 'unavailable' },
     remove: { allowed: false, reason: 'unavailable' },
@@ -267,7 +283,7 @@ export function parseMatchEventManagement(value: unknown): MatchEventManagement 
     reconfirmation_generation: value.reconfirmation_generation,
     required_count: value.required_count,
     actions,
-    correction: { available: false, reason: 'results_workflow_unavailable' }
+    correction
   };
 }
 export function parseManagementSuccess(value: unknown): ManagementResult<ManagementSuccess> | null {

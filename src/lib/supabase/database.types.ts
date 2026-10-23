@@ -1240,6 +1240,7 @@ export type Database = {
       get_match_creation_options: { Args: { p_community_id?: string }; Returns: Json }
       get_match_event: { Args: { p_event_id: string }; Returns: Json }
       get_match_event_management: { Args: { p_match_event_id: string }; Returns: Json }
+      get_match_event_result_proposals: { Args: { p_match_event_id: string }; Returns: Json[] }
       get_my_community_notification_timezone: {
         Args: { p_notification_id: string }
         Returns: string
@@ -1676,6 +1677,18 @@ export type Database = {
         }
       }
       snapshot_match_registration_roster_locked: { Args: { p_event_id: string }; Returns: Json }
+      submit_match_event_result: {
+        Args: {
+          p_court_label?: string
+          p_group_number: number
+          p_match_event_id: string
+          p_played_local: Json
+          p_request_id?: string
+          p_sets: Json
+          p_teams: Json
+        }
+        Returns: Json
+      }
       submit_match_registration: { Args: { p_match_event_id: string }; Returns: Json }
       submit_match_registration_locked: {
         Args: { p_actor_id: string; p_match_event_id: string }

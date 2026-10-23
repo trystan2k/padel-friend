@@ -22,6 +22,19 @@ const dto = {
   correction: { available: false, reason: 'results_workflow_unavailable' }
 };
 describe('fail-closed management capabilities', () => {
+  it.each(['creator', 'admin'])('accepts populated record-result descriptor for %s', (role) => {
+    const correction = { available: true, target: 'record_result', event_id: dto.owner_id };
+    expect(
+      parseMatchEventManagement({ ...dto, is_organizer: role === 'creator', correction })
+        ?.correction
+    ).toEqual(correction);
+    expect(
+      parseMatchEventManagement({ ...dto, correction: { ...correction, event_id: 'invalid' } })
+    ).toBeNull();
+    expect(
+      parseMatchEventManagement({ ...dto, correction: { ...correction, target: 'unknown' } })
+    ).toBeNull();
+  });
   it('accepts complete action contracts and rejects missing or contradictory protection', () => {
     expect(parseMatchEventManagement(dto)).not.toBeNull();
     for (const action of MANAGEMENT_ACTIONS) {

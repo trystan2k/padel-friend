@@ -15,7 +15,11 @@ export type SqlHandle = {
   stop: (gracePeriodMs?: number) => Promise<void>;
 };
 export type SqlRow = Record<string, unknown>;
-export type RpcError = { code?: string | null; message?: string | null } | null;
+export type RpcError = {
+  code?: string | null;
+  message?: string | null;
+  details?: string | null;
+} | null;
 export type RpcResult = { data: unknown; error: RpcError };
 export type RawRpcActor = { token: string };
 export type RawRpc = (
@@ -209,7 +213,8 @@ export function makeRawRpc(restUrl: string, anonKey: string): RawRpc {
         data: null,
         error: {
           code: typeof record['code'] === 'string' ? record['code'] : String(response.status),
-          message: typeof record['message'] === 'string' ? record['message'] : response.statusText
+          message: typeof record['message'] === 'string' ? record['message'] : response.statusText,
+          details: typeof record['details'] === 'string' ? record['details'] : null
         }
       };
     }

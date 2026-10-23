@@ -1,4 +1,5 @@
 import { validateMatchUuid } from './matches.validators';
+import { validateLocalDate, validateLocalTime } from './match-time';
 import type {
   ResultClassification,
   ResultSetRow,
@@ -106,4 +107,64 @@ export function validateMatchResultTeams(value: unknown): ResultTeams {
     }
   }
   return teams;
+}
+
+export function validateGetMatchEventResultProposals(value: unknown) {
+  if (!exact(value, ['event_id'])) throw new MatchResultValidationError('INVALID_REQUEST');
+  return { event_id: validateMatchUuid(value.event_id) };
+}
+
+export function validateResultPlayedLocal(value: unknown) {
+  if (
+    !exact(value, ['local', 'offset_seconds']) ||
+    typeof value.local !== 'string' ||
+    !/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(value.local) ||
+    typeof value.offset_seconds !== 'number' ||
+    !Number.isInteger(value.offset_seconds) ||
+    Math.abs(value.offset_seconds) > 50400 ||
+    value.offset_seconds % 60 !== 0
+  )
+    throw new MatchResultValidationError('INVALID_PLAYED_AT');
+  try {
+    validateLocalDate(value.local.slice(0, 10));
+    validateLocalTime(value.local.slice(11));
+  } catch {
+    throw new MatchResultValidationError('INVALID_PLAYED_AT');
+  }
+  return { local: value.local, offset_seconds: value.offset_seconds };
+}
+
+export function validateSubmitMatchEventResult(value: unknown) {
+  if (
+    !exact(value, [
+      'event_id',
+      'group_number',
+      'teams',
+      'sets',
+      'played_local',
+      'court_label',
+      'request_id'
+    ]) ||
+    typeof value.group_number !== 'number' ||
+    !Number.isSafeInteger(value.group_number) ||
+    value.group_number < 1
+  )
+    throw new MatchResultValidationError('INVALID_REQUEST');
+  if (
+    value.court_label !== null &&
+    (typeof value.court_label !== 'string' ||
+      value.court_label.trim().length < 1 ||
+      value.court_label.trim().length > 100 ||
+      /\p{Cc}/u.test(value.court_label))
+  )
+    throw new MatchResultValidationError('INVALID_COURT');
+  return {
+    event_id: validateMatchUuid(value.event_id),
+    group_number: value.group_number,
+    teams: validateMatchResultTeams(value.teams),
+    sets: validateMatchResultSets(value.sets),
+    played_local: validateResultPlayedLocal(value.played_local),
+    court_label: typeof value.court_label === 'string' ? value.court_label.trim() : null,
+    request_id: validateMatchUuid(value.request_id)
+  };
 }
