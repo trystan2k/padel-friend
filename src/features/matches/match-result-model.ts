@@ -49,6 +49,7 @@ export type ResultProposal = Omit<ResultSubmission, 'request_id'> & {
   played_at_offset_seconds: number;
   court_label: string | null;
   rating_effective: boolean;
+  submitted_by_name?: string | null;
 };
 function record(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -171,7 +172,10 @@ export function parseResultProposals(value: unknown): ResultProposal[] | null {
         played_at_local: played.local,
         played_at_offset_seconds: played.offset_seconds,
         court_label: row.court_label,
-        rating_effective: row.rating_effective
+        rating_effective: row.rating_effective,
+        ...(typeof row.submitted_by_name === 'string'
+          ? { submitted_by_name: row.submitted_by_name }
+          : {})
       });
     }
     return proposals;

@@ -11,6 +11,7 @@ import {
   localSupabaseEnv
 } from './helpers/local-supabase-env';
 import { fixtureSql, sqlRows, startSql, withDeadline } from './helpers/match-registration-sql';
+import { matchPhotoFixture } from './helpers/match-photo-fixtures';
 
 // PAF-7 T07.1 — result proposal domain schema contract.
 //
@@ -651,6 +652,7 @@ describe('match result proposal schema integration', () => {
         .map((entry) => `(${q(entry.label)},${q(entry.kind)},${q(entry.stmt)})`)
         .join(',\n        ');
 
+      const photo = matchPhotoFixture(communityId, eventId, players[0]!);
       const probe = startSql(`do $probe$
       declare
         v_players uuid[] := array['${players[0]}','${players[1]}','${players[2]}','${players[3]}']::uuid[];
@@ -663,17 +665,15 @@ describe('match result proposal schema integration', () => {
           from unnest(v_players) u;
         insert into public.communities(id, name, visibility, created_by)
           values ('${communityId}', 'Result schema fixture', 'public', '${players[0]}');
-        -- Photo publication is orthogonal to this suite: install the event with the
-        -- photo triggers disabled so the probe stays rollback-clean (no storage rows).
+        -- Storage metadata is rolled back together with this constraint probe.
+        ${photo.sql}
         alter table public.match_events disable trigger match_event_creator_registration;
-        alter table public.match_events disable trigger lock_match_photo_publication;
         insert into public.match_events(id, community_id, created_by, starts_at, timezone, event_type, visibility,
             team_assignment_mode, venue_name, maps_url, photo_path, registration_cutoff_at, published_at, status)
           values ('${eventId}', '${communityId}', '${players[0]}', now() + interval '2 days', 'UTC', 'friendly',
             'community_open', 'POST_MATCH_TEAMS', 'Result court', 'https://maps.google.com/maps/x',
-            '${communityId}/${eventId}/${players[0]}/probe.jpg', now() + interval '1 day', now(), 'open');
+            '${photo.path}', now() + interval '1 day', now(), 'open');
         alter table public.match_events enable trigger match_event_creator_registration;
-        alter table public.match_events enable trigger lock_match_photo_publication;
 
         -- Valid pointer row: defaults and anchors stored verbatim.
         insert into public.match_event_result_proposals(id, match_event_id, group_number, status, active_version,

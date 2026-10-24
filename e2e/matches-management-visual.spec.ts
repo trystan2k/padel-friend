@@ -10,6 +10,7 @@ import {
   visualEventId
 } from './matches-management-fixtures';
 import manifestJson from './references/paf-6/manifest.json' with { type: 'json' };
+import resultManifest from './references/paf-7/manifest.json' with { type: 'json' };
 
 // Reference-only certification. No snapshots are generated or updated here.
 // Rebuilt frames include app chrome at their manifest-owned heights; 320px, desktop, dark and translated
@@ -32,7 +33,29 @@ const manifest: {
       }
     >;
   };
-} = manifestJson;
+} = {
+  ...manifestJson,
+  approvedReferences: {
+    ...manifestJson.approvedReferences,
+    'iXRPp.png': {
+      sha256: resultManifest.approvedReferences['iXRPp.png'].sha256,
+      sourceSize: resultManifest.approvedReferences['iXRPp.png'].pixelSize
+        .map((size) => size / 2)
+        .join('x'),
+      maskRegions: resultManifest.approvedReferences['iXRPp.png'].maskRegions
+    }
+  },
+  visualBudgets: {
+    perScreen: {
+      ...manifestJson.visualBudgets.perScreen,
+      'iXRPp.png': {
+        measured: null,
+        budget: resultManifest.visualBudgets.perScreen.iXRPp,
+        baselineSha256: resultManifest.approvedReferences['iXRPp.png'].sha256
+      }
+    }
+  }
+};
 type MaskRegion = { x: number; y: number; width: number; height: number };
 const frames = [
   ['invitation-pending', 'Fyhbv'],
@@ -52,13 +75,14 @@ const frames = [
   ['cancelled-tombstone', 'K23bLC'],
   ['minor-edit-conflict', 'Tm3XM'],
   ['creator-required', 'xgKXg'],
-  ['started-unavailable', 'tVzco'],
+  ['started-unavailable', 'iXRPp'],
   ['result-protected-unavailable', 'a6xmFd']
 ] as const;
 const hash = (bytes: Buffer) => createHash('sha256').update(bytes).digest('hex');
 function reference(frame: string) {
   const filename = `${frame}.png`;
-  const bytes = readFileSync(new URL(`./references/paf-6/${filename}`, import.meta.url));
+  const folder = frame === 'iXRPp' ? 'paf-7' : 'paf-6';
+  const bytes = readFileSync(new URL(`./references/${folder}/${filename}`, import.meta.url));
   expect(hash(bytes), `${frame} approved reference digest`).toBe(
     manifest.approvedReferences[filename]!.sha256
   );
@@ -547,7 +571,7 @@ for (const [state, frame] of frames.filter(([, candidate]) =>
     'K23bLC',
     'Tm3XM',
     'xgKXg',
-    'tVzco',
+    'iXRPp',
     'a6xmFd'
   ].includes(candidate)
 )) {
@@ -562,6 +586,51 @@ for (const [state, frame] of frames.filter(([, candidate]) =>
     const size = manifest.approvedReferences[`${frame}.png`]!.sourceSize.split('x').map(Number);
     expect(size[0]).toBe(390);
     const page = await prepare(state, undefined, size[1]);
+    if (frame === 'iXRPp') {
+      // Approved successor adds the real record entry; never hide it to match
+      // historical tVzco. Independent exact probes guard the entire composition.
+      const sections = await page.locator('main > div > *').evaluateAll((nodes) =>
+        nodes.map((node) => {
+          const { x, y, width, height } = node.getBoundingClientRect();
+          return [x, y, width, height];
+        })
+      );
+      expect(sections).toEqual([
+        [18, 90, 354, 44],
+        [18, 144, 354, 90],
+        [18, 244, 354, 280],
+        [18, 534, 354, 140],
+        [18, 684, 354, 476],
+        [18, 1170, 354, 148],
+        [18, 1328, 354, 44],
+        [18, 1382, 354, 65]
+      ]);
+      await expect(
+        page.getByRole('link', { name: defaultCopy.matches.results.title, exact: true })
+      ).toBeVisible();
+      const typography = await page.locator('main').evaluate((main) => {
+        const read = (selector: string) => {
+          const node = main.querySelector(selector);
+          if (!node) throw new Error(`Missing typography probe: ${selector}`);
+          const style = getComputedStyle(node);
+          return [style.fontSize, style.lineHeight];
+        };
+        return { heading: read('h1'), entry: read('a[href$="/record"]'), share: read('textarea') };
+      });
+      expect(typography).toEqual({
+        heading: ['24px', '26px'],
+        entry: ['12px', '17px'],
+        share: ['14px', '17px']
+      });
+      const clockBlock = page.locator('section[aria-labelledby="match-overview-heading"] > p');
+      expect(
+        await clockBlock.evaluate((node) => {
+          const { x, y, width, height } = node.getBoundingClientRect();
+          return [x, y, width, height];
+        })
+      ).toEqual([32, 424, 326, 34]);
+      await expect(clockBlock).toContainText(`${defaultCopy.matches.detail.timezone}: UTC`);
+    }
     await bounds(page);
     await page.evaluate(() => window.scrollTo(0, 0));
     await page.evaluate(() => document.fonts.ready);
@@ -660,24 +729,24 @@ for (const [state, frame] of frames.filter(([, candidate]) =>
     await info.attach(`${frame}-actual`, { path: actualPath, contentType: 'image/png' });
     await info.attach(`${frame}-approved`, { body: approved, contentType: 'image/png' });
     const measurement = await page.evaluate(
-      async ({ actualUrl, approvedUrl, maskRegions }) => {
-        async function pixels(url: string) {
+      async ({ actualUrl, approvedUrl, maskRegions, referenceScale }) => {
+        async function pixels(url: string, scale = 1) {
           const image = new Image();
           image.src = url;
           await image.decode();
           const canvas = document.createElement('canvas');
-          canvas.width = image.width;
-          canvas.height = image.height;
+          canvas.width = image.width / scale;
+          canvas.height = image.height / scale;
           const context = canvas.getContext('2d');
           if (!context) throw new Error('No screenshot comparison canvas');
-          context.drawImage(image, 0, 0);
+          context.drawImage(image, 0, 0, canvas.width, canvas.height);
           return {
-            width: image.width,
-            height: image.height,
-            rgba: context.getImageData(0, 0, image.width, image.height).data
+            width: canvas.width,
+            height: canvas.height,
+            rgba: context.getImageData(0, 0, canvas.width, canvas.height).data
           };
         }
-        const [a, b] = await Promise.all([pixels(actualUrl), pixels(approvedUrl)]);
+        const [a, b] = await Promise.all([pixels(actualUrl), pixels(approvedUrl, referenceScale)]);
         if (a.width !== b.width || a.height !== b.height)
           return {
             actual: [a.width, a.height],
@@ -743,6 +812,7 @@ for (const [state, frame] of frames.filter(([, candidate]) =>
       {
         actualUrl: `data:image/png;base64,${actual.toString('base64')}`,
         approvedUrl: `data:image/png;base64,${approved.toString('base64')}`,
+        referenceScale: frame === 'iXRPp' ? 2 : 1,
         maskRegions: manifest.approvedReferences[`${frame}.png`]?.maskRegions ?? []
       }
     );

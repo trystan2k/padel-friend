@@ -447,6 +447,7 @@ describe('actual result submission transaction', { timeout: 60000 }, () => {
       status: 'pending',
       classification: 'draw',
       rating_effective: true,
+      submitted_by_name: null,
       review_deadline_at: expect.any(String),
       teams: {
         team_a: [

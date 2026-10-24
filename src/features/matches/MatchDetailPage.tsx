@@ -26,7 +26,7 @@ import { matchesStyles as s } from './matches.styles';
 import { matchDetailShellStyles as shell } from './match-detail-shell.styles';
 import { matchManagementStyles as managementStyles } from './match-management.styles';
 import { MatchStatusBanner } from './MatchStatusBanner';
-import { MatchResultPending } from './MatchResultPending';
+import { MatchResultDetail } from './MatchResultDetail';
 import type { ResultProposal } from './match-result-model';
 
 export async function shareMatchLink(
@@ -135,8 +135,26 @@ export function MatchDetailPage({
           currency: event.currency
         }).format(event.price_minor / 100)
       : null;
+  if (proposals.length > 0 && event.status !== 'cancelled')
+    return (
+      <MatchResultDetail
+        event={event}
+        proposals={proposals}
+        reviewerGroup={
+          registration?.state === 'accepted' && registration.participation === 'playing'
+            ? Math.ceil(registration.position / 4)
+            : null
+        }
+        canRecord={management?.correction.available === true}
+      />
+    );
+  const resultEntry =
+    management?.correction.available && event.is_past && event.status !== 'cancelled';
   return (
-    <main {...stylex.props(s.page, shell.page)}>
+    <main
+      data-result-entry={resultEntry ? 'available' : undefined}
+      {...stylex.props(stylex.defaultMarker(), s.page, shell.page)}
+    >
       <header {...stylex.props(shell.header)}>
         <Link to="/matches" aria-label={t('matches.back')} {...stylex.props(shell.back)}>
           <svg
@@ -151,7 +169,11 @@ export function MatchDetailPage({
           </svg>
         </Link>
         <div {...stylex.props(shell.heading)}>
-          <h1 id="match-detail-heading" tabIndex={-1} {...stylex.props(s.title)}>
+          <h1
+            id="match-detail-heading"
+            tabIndex={-1}
+            {...stylex.props(s.title, resultEntry && shell.resultEntryTitle)}
+          >
             {t('matches.detail.title')}
           </h1>
           <p {...stylex.props(shell.subtitle)}>
@@ -160,11 +182,11 @@ export function MatchDetailPage({
         </div>
       </header>
       <div {...stylex.props(shell.groups)}>
-        {management?.correction.available && event.status !== 'cancelled' && (
+        {resultEntry && management?.correction.available && (
           <Link
             to="/matches/$eventId/record"
             params={{ eventId: management.correction.event_id }}
-            {...stylex.props(s.button)}
+            {...stylex.props(s.primaryAction)}
           >
             {t('matches.results.title')}
           </Link>
@@ -177,14 +199,6 @@ export function MatchDetailPage({
             </button>
           </section>
         )}
-        {proposals.map((proposal) => (
-          <MatchResultPending
-            key={proposal.proposal_id}
-            proposal={proposal}
-            timezone={event.timezone}
-            asOf={event.as_of}
-          />
-        ))}
         {event.status === 'cancelled' && (
           <div {...stylex.props(shell.cancelledBadge)}>
             <StatusBadge>{t('matches.management.cancelled')}</StatusBadge>
@@ -297,17 +311,22 @@ export function MatchDetailPage({
           )}
         </section>
         {event.status !== 'cancelled' && (
-          <section aria-labelledby="match-participation-heading" {...stylex.props(shell.card)}>
+          <section
+            aria-labelledby="match-participation-heading"
+            {...stylex.props(shell.card, resultEntry && shell.resultParticipation)}
+          >
             <h2 id="match-participation-heading" {...stylex.props(shell.title)}>
               {t('matches.detail.participation')}
             </h2>
-            <h3 {...stylex.props(shell.participants)}>{t('matches.detail.participants')}</h3>
+            <h3 {...stylex.props(shell.participants, resultEntry && shell.resultCountLine)}>
+              {t('matches.detail.participants')}
+            </h3>
             {event.duration_minutes !== null && (
               <p {...stylex.props(shell.copy)}>
                 {t('matches.detail.duration')}: {event.duration_minutes}
               </p>
             )}
-            <p {...stylex.props(shell.accepted)}>
+            <p {...stylex.props(shell.accepted, resultEntry && shell.resultCountLine)}>
               {event.accepted_count} · {t('matches.detail.accepted')}
             </p>
             <p {...stylex.props(shell.copy)}>

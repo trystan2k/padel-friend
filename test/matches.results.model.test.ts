@@ -8,6 +8,13 @@ import { MATCH_RESULT_ERROR_COPY } from '../src/features/matches/match-result-er
 import { resultProposal, resultSuccess } from './helpers/match-result-fixtures';
 
 describe('result decoders and error mapping', () => {
+  it('retains authorized submitter display provenance without copying identity extras', () => {
+    expect(
+      parseResultProposals([
+        { ...resultProposal, submitted_by_name: 'Recovery admin', submitted_by: 'private-extra' }
+      ])
+    ).toEqual([{ ...resultProposal, submitted_by_name: 'Recovery admin' }]);
+  });
   it('decodes success and read projections without leaking extra fields', () => {
     const { replayed, ...value } = resultSuccess;
     expect(parseResultSubmission({ ...resultSuccess, secret: true })).toEqual({

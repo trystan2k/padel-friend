@@ -1,0 +1,114 @@
+{
+  "status": "implemented-certification-passing",
+  "sourceDesign": {
+    "path": "docs/design/padel-friend.pen",
+    "sha256": "094b655b35bffd3a346ce96f989ab5e779299a95b83e6cf5638f6d0691637f8f",
+    "exportCommand": "Pencil MCP: Export([\"XySt5\",\"GPo9z\",\"c0wbmu\",\"NZk5H\",\"wsXWA\",\"alZmm\"], \"png\", \"<repo>/e2e/references/paf-7\", {scale:2})",
+    "correctionExportCommand": "Pencil MCP: Export([\"alZmm\"], \"png\", \"<repo>/e2e/references/paf-7\", {scale:2}); Export([\"iXRPp\"], \"png\", \"<repo>/e2e/references/paf-7\", {scale:2})",
+    "provenanceNote": "Corrected alZmm from 9ed58b1 and approved started-entry successor iXRPp from c24ac8a exported read-only through Pencil MCP. Original six route PNGs and budgets unchanged during closure. All 19 PAF-6 frames freshly exported byte-identical before source digest refresh; tVzco retained historically, never compared for started-unavailable."
+  },
+  "approvedReferences": {
+    "iXRPp.png": {
+      "frameId": "iXRPp",
+      "certifies": "started-unavailable match detail with authorized record entry; succeeds historical tVzco",
+      "sha256": "e4b4a98e4c43639b99e9df6fc1dd0171e815b098a0d957fb09a455d8c3a3f627",
+      "pixelSize": [780, 2930],
+      "maskRegions": [{ "x": 32, "y": 426, "width": 326, "height": 38 }]
+    },
+    "XySt5.png": {
+      "frameId": "XySt5",
+      "certifies": "record score route",
+      "sha256": "1073b8f1e3858f52ae8d7baaa80e2c5b78b07fc2035bd807f411012573670b27",
+      "pixelSize": [780, 2074]
+    },
+    "GPo9z.png": {
+      "frameId": "GPo9z",
+      "certifies": "review WIN 2-1 route",
+      "sha256": "b3b06a05bfda63d8206b49e6e20a6636770934603cb074ec72756b7e110d90e6",
+      "pixelSize": [780, 2206]
+    },
+    "c0wbmu.png": {
+      "frameId": "c0wbmu",
+      "certifies": "review INCOMPLETE route",
+      "sha256": "36bdc777a2b0f653ba61ee59feb8304e733e2cc52248a3447321048d437487c8",
+      "pixelSize": [780, 2206]
+    },
+    "NZk5H.png": {
+      "frameId": "NZk5H",
+      "certifies": "review friendly 2-1 route",
+      "sha256": "225b84db6b70a1c023de892aae75e33aecd6fc04b7235e8f10e080067a299e51",
+      "pixelSize": [780, 2236]
+    },
+    "wsXWA.png": {
+      "frameId": "wsXWA",
+      "certifies": "score invalid set route",
+      "sha256": "406a41e4a8685d35a0cd94b211604578c03ba4cb5ca4f73e210e9dddb80cf24e",
+      "pixelSize": [780, 1892]
+    },
+    "alZmm.png": {
+      "frameId": "alZmm",
+      "certifies": "match detail pending route",
+      "sha256": "9fc0599e378a97d95d215ffc6537ddee7cff5a059e4f816dd752c5d047d58bdc",
+      "pixelSize": [780, 2084]
+    }
+  },
+  "componentReferences": {
+    "lKv9B.png": {
+      "frameId": "lKv9B",
+      "certifies": "steps, actual-team chips, sequential set rows, Draw unfinished third, competitive preview",
+      "sha256": "1cccd27423d20c0a732176067ebd434d7d59c91a7d5c38f3aab899c4bd74e18d",
+      "pixelSize": [780, 1688]
+    },
+    "JXjNs.png": {
+      "frameId": "JXjNs",
+      "certifies": "pending not confirmed and auto-confirm countdown cards",
+      "sha256": "83832322c2463c4e099079678aebcdf61a1cc01aa13a8b7cb2dafe56df2f4bf4",
+      "pixelSize": [862, 802]
+    },
+    "Hzcid.png": {
+      "frameId": "Hzcid",
+      "certifies": "WIN outcome preview",
+      "sha256": "849ab8e1c19a9eb388e8f98d354059abb7dee6be73cc79abc506fa2a3f9532f7",
+      "pixelSize": [782, 596]
+    },
+    "BnwEB.png": {
+      "frameId": "BnwEB",
+      "certifies": "INCOMPLETE outcome preview without effects",
+      "sha256": "f14cbc854290783e333aea77b21a0f584ac9527caccb12c432b07849159181de",
+      "pixelSize": [782, 596]
+    },
+    "u78yF.png": {
+      "frameId": "u78yF",
+      "certifies": "Friendly no rating or League effect",
+      "sha256": "1d08023d0f8358db8bc2fc7b30648c79649e718716edfad7d5829b1bd4c4f84e",
+      "pixelSize": [782, 626]
+    },
+    "LD9Jv.png": {
+      "frameId": "LD9Jv",
+      "certifies": "invalid set 6-5 with set index, side, inline error and corrective helper",
+      "sha256": "60870ee961b54fc421482dcc94020e0e91675dd2d316584ef3a032c60e52397a",
+      "pixelSize": [782, 828]
+    }
+  },
+  "successorStates": {
+    "started-unavailable": {
+      "frameId": "iXRPp",
+      "supersedes": "tVzco",
+      "historicalReference": "e2e/references/paf-6/tVzco.png",
+      "clockMaskReason": "Carries forward the existing PAF-6 runtime-clock date/time block mask, shifted by the approved 54px record-entry row. Exact overview/date-block geometry checked independently; no other mask allowed."
+    }
+  },
+  "visualBudgets": {
+    "status": "measured-and-certified",
+    "reason": "Seven approved route budgets cover inspected renderer residuals, independently guarded by exact geometry and copy/type assertions. Pending measured 0.0479748019; budget tightened to 0.052. Started successor iXRPp measured 0.0316758554, budget 0.036, with only inherited PAF-6 clock-block exclusion. Original six are unmasked. See README for full measurement basis; no self-baselines, cropping, stretching or widened historical budgets.",
+    "perScreen": {
+      "XySt5": 0.045,
+      "GPo9z": 0.036,
+      "c0wbmu": 0.036,
+      "NZk5H": 0.036,
+      "wsXWA": 0.047,
+      "alZmm": 0.052,
+      "iXRPp": 0.036
+    }
+  }
+}

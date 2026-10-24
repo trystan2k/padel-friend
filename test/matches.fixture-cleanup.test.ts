@@ -9,6 +9,24 @@ const actor = '11111111-1111-4111-8111-111111111111';
 const event = '22222222-2222-4222-8222-222222222222';
 
 describe('match fixture cleanup', () => {
+  it('deletes only owned result versions before proposals and events and restores guards', () => {
+    const sql = buildMatchFixtureCleanupSql({ eventIds: [event], actorIds: [actor] });
+    const versions =
+      'delete from public.match_event_result_proposal_versions where proposal_id in (select id from public.match_event_result_proposals where match_event_id in (select id from owned_match_fixture_events))';
+    const proposals =
+      'delete from public.match_event_result_proposals where match_event_id in (select id from owned_match_fixture_events)';
+    expect(sql).toContain(versions);
+    expect(sql).toContain(proposals);
+    expect(sql.indexOf(versions)).toBeLessThan(sql.indexOf(proposals));
+    expect(sql.indexOf(proposals)).toBeLessThan(sql.indexOf('delete from public.match_events'));
+    for (const [table, trigger] of [
+      ['match_event_result_proposal_versions', 'match_result_proposal_version_immutable'],
+      ['match_event_result_proposals', 'match_result_proposal_immutable']
+    ]) {
+      expect(sql).toContain(`alter table public.${table} disable trigger ${trigger}`);
+      expect(sql).toContain(`alter table public.${table} enable trigger ${trigger}`);
+    }
+  });
   it('materializes only explicit owned events/actors and deletes notifications before events', () => {
     const sql = buildMatchFixtureCleanupSql({ eventIds: [event], actorIds: [actor] });
     expect(sql).toContain(

@@ -13,6 +13,8 @@ import type {
   ResultSubmission
 } from '../src/features/matches/match-result-model';
 import { resultGroupPlayers, resultPlayedOffsets } from '../src/features/matches/match-result-form';
+import { resultProposal } from './helpers/match-result-fixtures';
+import { parseResultProposals } from '../src/features/matches/match-result-model';
 
 vi.mock('../src/features/matches/match-result.functions', () => ({
   submitMatchEventResult: vi.fn<() => void>()
@@ -22,6 +24,7 @@ vi.mock('@tanstack/react-router', () => ({
 }));
 import { RecordMatchResultPage } from '../src/features/matches/RecordMatchResultPage';
 import { MatchResultPending } from '../src/features/matches/MatchResultPending';
+import { MatchResultDetail } from '../src/features/matches/MatchResultDetail';
 import { MatchDetailPage } from '../src/features/matches/MatchDetailPage';
 const id = '11111111-1111-4111-8111-111111111111';
 const players: ManagementParticipant[] = ['Ana', 'Bea', 'Carlos', 'Davi'].map((name, index) => ({
@@ -88,8 +91,10 @@ async function complete(number: number) {
   await userEvent.click(screen.getByRole('button', { name: `Set ${number} completion` }));
 }
 function played() {
-  fireEvent.change(screen.getByLabelText('Played on (UTC)'), { target: { value: '2026-10-20' } });
-  fireEvent.change(screen.getByLabelText('Local time played'), { target: { value: '18:30' } });
+  fireEvent.change(screen.getByLabelText('Played on (UTC)'), {
+    target: { value: '2026-10-20T18:30' }
+  });
+  fireEvent.blur(screen.getByLabelText('Played on (UTC)'));
 }
 afterEach(() => {
   cleanup();
@@ -97,6 +102,60 @@ afterEach(() => {
 });
 
 describe('record result page', () => {
+  it('uses authoritative venue and address data in the pending hero map link', () => {
+    render(
+      <I18nextProvider i18n={createI18n('en')}>
+        <MatchResultDetail
+          event={makeMatchDetail({
+            venue_name: 'PADEL INDOOR MADRID',
+            notes: 'Friday open play',
+            court_notes: 'Calle de Alcalá',
+            photo_url: 'https://example.com/court.jpg',
+            maps_url: 'https://maps.google.com/madrid',
+            starts_at: '2026-10-23T18:30:00Z',
+            timezone: 'UTC'
+          })}
+          proposals={[]}
+          reviewerGroup={null}
+          canRecord={false}
+        />
+      </I18nextProvider>
+    );
+    expect(screen.getByText('PADEL INDOOR MADRID')).toBeTruthy();
+    const map = screen.getByRole('link', { name: /Calle de Alcalá.*Open map/ });
+    expect(map.getAttribute('href')).toBe('https://maps.google.com/madrid');
+    expect(map.getAttribute('rel')).toBe('noopener noreferrer');
+    expect(screen.getByRole('img', { name: 'Match venue' }).getAttribute('src')).toBe(
+      'https://example.com/court.jpg'
+    );
+    expect(screen.getByText('Fri, 23 Oct · 18:30–20:00')).toBeTruthy();
+  });
+  it('shows two pending cards, provenance, facts and an unavailable eligible-review CTA', () => {
+    const proposal = parseResultProposals([
+      { ...resultProposal, submitted_by_name: 'Recovery admin' }
+    ])?.[0];
+    if (!proposal) throw new Error('Invalid proposal fixture');
+    render(
+      <I18nextProvider i18n={createI18n('en')}>
+        <MatchResultPending
+          proposal={proposal}
+          timezone="UTC"
+          asOf={resultProposal.submitted_at}
+          canReview
+        />
+      </I18nextProvider>
+    );
+    expect(screen.getByText('PENDING · NOT CONFIRMED')).toBeTruthy();
+    expect(
+      screen.getByText('If nobody rejects by deadline, proposal confirms automatically.')
+    ).toBeTruthy();
+    expect(screen.getByText(/Submitted by Recovery admin/)).toBeTruthy();
+    expect(screen.getByRole('table')).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'REVIEW PROPOSAL' }).hasAttribute('disabled')).toBe(
+      true
+    );
+    expect(screen.getByText('Proposal review is not available yet.')).toBeTruthy();
+  });
   it('renders three steps and explicitly confirms suggested teams', async () => {
     mount();
     for (const step of ['PLAYERS', 'SCORE', 'REVIEW'])
@@ -105,7 +164,7 @@ describe('record result page', () => {
     await scoreStep();
     expect(screen.getByRole('group', { name: 'SET 1' })).toBeTruthy();
     expect(screen.getByText('INCOMPLETE')).toBeTruthy();
-    expect(screen.getByText('No rating or League effect')).toBeTruthy();
+    expect(screen.getByText('Incomplete · no rating effect')).toBeTruthy();
   });
   it('swaps actual teams without duplicating a player', async () => {
     mount();
@@ -126,10 +185,16 @@ describe('record result page', () => {
     score(1, 6, 5);
     await complete(1);
     played();
-    await userEvent.click(screen.getByRole('button', { name: 'Review result' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Submit for review' }));
     const row = screen.getByRole('group', { name: 'SET 1' });
-    expect(within(row).getByRole('alert').textContent).toContain('Set 1 · Team A: Invalid score');
-    expect(within(row).getByLabelText('Team A').getAttribute('aria-invalid')).toBe('true');
+    expect(within(row).getByRole('alert').textContent).toContain(
+      'Set 1 · Team B: 6–5 is not a completed set'
+    );
+    expect(within(row).getByLabelText('Team B').getAttribute('aria-invalid')).toBe('true');
+    expect(
+      screen.getByRole<HTMLButtonElement>('button', { name: 'Submit for review' }).disabled
+    ).toBe(true);
+    expect(screen.getByText('Correct Set 1 before reviewing the result.')).toBeTruthy();
     expect(submit).not.toHaveBeenCalled();
   });
   it('previews incomplete and friendly results without rating effect', async () => {
@@ -138,12 +203,12 @@ describe('record result page', () => {
     score(1, 6, 4);
     await complete(1);
     expect(screen.getByText('INCOMPLETE')).toBeTruthy();
-    expect(screen.getByText('Friendly · no rating or League effect')).toBeTruthy();
+    expect(screen.getByText('Friendly · no rating effect')).toBeTruthy();
     await userEvent.click(screen.getByRole('button', { name: 'Add set' }));
     score(2, 6, 4);
     await complete(2);
-    expect(screen.getByText('WIN · Team A')).toBeTruthy();
-    expect(screen.getByText('Friendly · no rating or League effect')).toBeTruthy();
+    expect(screen.getByText('TEAM A WINS · 2–0')).toBeTruthy();
+    expect(screen.getByText('Friendly · no rating effect')).toBeTruthy();
   });
   it('previews a draw with an unfinished third set and recaps facts', async () => {
     mount();
@@ -157,10 +222,11 @@ describe('record result page', () => {
     score(3, 3, 2);
     played();
     expect(screen.getByText('DRAW · third set unfinished')).toBeTruthy();
-    expect(screen.getByText('Competitive · rating will update after confirmation')).toBeTruthy();
-    await userEvent.click(screen.getByRole('button', { name: 'Review result' }));
-    expect(screen.getByText(/SET 3: 3 — 2 · IN PROGRESS/)).toBeTruthy();
-    expect(screen.getByText(/2026-10-20 18:30 \+00:00/)).toBeTruthy();
+    expect(screen.getByText('Competitive · rating will update')).toBeTruthy();
+    await userEvent.click(screen.getByRole('button', { name: 'Submit for review' }));
+    expect(screen.getByRole('region', { name: 'Set scores' }).textContent).toContain('SET 3');
+    expect(screen.getByRole('region', { name: 'Set scores' }).textContent).toContain('IN PROGRESS');
+    expect(screen.getByText('20 Oct 2026 · 18:30')).toBeTruthy();
   });
   it('prompts explicit reload on conflict, never automatically retries', async () => {
     submit.mockResolvedValue({
@@ -172,7 +238,7 @@ describe('record result page', () => {
     mount();
     await scoreStep();
     played();
-    await userEvent.click(screen.getByRole('button', { name: 'Review result' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Submit for review' }));
     await userEvent.click(screen.getByRole('button', { name: 'Submit for review' }));
     await waitFor(() => expect(screen.getByText(/Another result is already pending/)).toBeTruthy());
     expect(submit).toHaveBeenCalledTimes(1);
@@ -189,7 +255,7 @@ describe('record result page', () => {
     mount();
     await scoreStep();
     played();
-    await userEvent.click(screen.getByRole('button', { name: 'Review result' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Submit for review' }));
     await userEvent.click(screen.getByRole('button', { name: 'Submit for review' }));
     await waitFor(() =>
       expect(
@@ -206,7 +272,7 @@ describe('record result page', () => {
     mount();
     await scoreStep();
     played();
-    await userEvent.click(screen.getByRole('button', { name: 'Review result' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Submit for review' }));
     await userEvent.click(screen.getByRole('button', { name: 'Submit for review' }));
     await waitFor(() =>
       expect(screen.getByText(/Team B: A player cannot appear twice/)).toBeTruthy()
@@ -219,13 +285,14 @@ describe('record result page', () => {
     const label = 'This time occurs twice. Choose its UTC offset.';
     expect(screen.queryByLabelText(label)).toBeNull();
     fireEvent.change(screen.getByLabelText('Played on (America/New_York)'), {
-      target: { value: '2026-11-01' }
+      target: { value: '2026-11-01T01:30' }
     });
-    fireEvent.change(screen.getByLabelText('Local time played'), { target: { value: '01:30' } });
     expect(screen.getByLabelText(label)).toBeTruthy();
     expect(screen.getByRole('option', { name: '-04:00' })).toBeTruthy();
     expect(screen.getByRole('option', { name: '-05:00' })).toBeTruthy();
-    fireEvent.change(screen.getByLabelText('Local time played'), { target: { value: '03:30' } });
+    fireEvent.change(screen.getByLabelText('Played on (America/New_York)'), {
+      target: { value: '2026-11-01T03:30' }
+    });
     expect(screen.queryByLabelText(label)).toBeNull();
   });
   it('does not offer recording when descriptor forbids it', () => {
@@ -233,7 +300,7 @@ describe('record result page', () => {
     expect(screen.queryByRole('button', { name: 'Confirm teams' })).toBeNull();
   });
   it('shows creator/admin entry even when roster-management actions are locked', () => {
-    const event = makeMatchDetail({ event_id: id });
+    const event = makeMatchDetail({ event_id: id, is_past: true });
     render(
       <I18nextProvider i18n={createI18n('en')}>
         <MatchDetailPage
@@ -248,6 +315,21 @@ describe('record result page', () => {
     );
     expect(screen.getByRole('link', { name: 'Record result' })).toBeTruthy();
   });
+  it('does not advertise post-match result entry on upcoming event detail', () => {
+    render(
+      <I18nextProvider i18n={createI18n('en')}>
+        <MatchDetailPage
+          event={makeMatchDetail({ event_id: id, is_past: false })}
+          management={makeMatchManagement({
+            is_organizer: false,
+            results_protected: true,
+            correction: { available: true, target: 'record_result', event_id: id }
+          })}
+        />
+      </I18nextProvider>
+    );
+    expect(screen.queryByRole('link', { name: 'Record result' })).toBeNull();
+  });
   it('disables submission during flight and shows a pending receipt', async () => {
     let resolve: ((result: MatchResultResponse<ResultSubmission>) => void) | undefined;
     submit.mockReturnValue(
@@ -258,7 +340,7 @@ describe('record result page', () => {
     mount();
     await scoreStep();
     played();
-    await userEvent.click(screen.getByRole('button', { name: 'Review result' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Submit for review' }));
     await userEvent.click(screen.getByRole('button', { name: 'Submit for review' }));
     expect(
       screen.getByRole<HTMLButtonElement>('button', { name: 'Submitting result…' }).disabled
@@ -294,7 +376,7 @@ describe('record result page', () => {
     mount();
     await scoreStep();
     played();
-    await userEvent.click(screen.getByRole('button', { name: 'Review result' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Submit for review' }));
     await userEvent.click(screen.getByRole('button', { name: 'Submit for review' }));
     await waitFor(() =>
       expect(screen.getByText(/Results could not be loaded or submitted/)).toBeTruthy()
@@ -324,7 +406,7 @@ describe('record result page', () => {
     expect(screen.getByText('PENDING · NOT CONFIRMED')).toBeTruthy();
     expect(screen.getByText('AUTO-CONFIRMS IN 18H')).toBeTruthy();
     expect(screen.getByText(/Version 1/)).toBeTruthy();
-    expect(screen.getByText(/Review deadline:/)).toBeTruthy();
+    expect(screen.getByText(/Auto-confirm deadline:/)).toBeTruthy();
   });
 });
 describe('result form adapters', () => {

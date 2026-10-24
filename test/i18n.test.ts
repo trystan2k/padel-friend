@@ -190,6 +190,40 @@ describe('localized SSR resources', () => {
     }
   });
 
+  it('detects missing result errors and nested outcome/state keys', () => {
+    const results = en.matches.results;
+    for (const namespace of [
+      'errors',
+      'outcome',
+      'outcomeHelper',
+      'steps',
+      'teams',
+      'setState'
+    ] as const) {
+      for (const key of Object.keys(results[namespace])) {
+        const changed = {
+          ...en,
+          matches: {
+            ...en.matches,
+            results: {
+              ...results,
+              [namespace]: Object.fromEntries(
+                Object.entries(results[namespace]).filter(([name]) => name !== key)
+              )
+            }
+          }
+        };
+        expect(getKeyDiff(en, changed)).toEqual({
+          missing: [`matches.results.${namespace}.${key}`],
+          extra: []
+        });
+      }
+    }
+    expect(
+      getCopyContracts({ matches: { results: { setError: '{{number}} {{side}}' } } })
+    ).not.toEqual(getCopyContracts({ matches: { results: { setError: '{{number}} {{team}}' } } }));
+  });
+
   it('detects nested interpolation drift and missing plural variants', () => {
     const expected = {
       matches: { required_one: '{{count}} {{name}}', required_other: '{{count}}' }
