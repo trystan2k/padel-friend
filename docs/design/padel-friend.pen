@@ -70861,7 +70861,7 @@
               "fill": "$muted",
               "textGrowth": "fixed-width",
               "width": "fill_container",
-              "content": "Padel Friends · Public community",
+              "content": "Padel Friends · Community match",
               "fontFamily": "Inter",
               "fontSize": 12,
               "fontWeight": "regular"
@@ -71153,7 +71153,7 @@
                           "id": "Eq3zQ",
                           "name": "48-hour auto-confirm title",
                           "fill": "$text",
-                          "content": "AUTO-CONFIRMS IN 18H",
+                          "content": "AUTO-CONFIRMS IN 48H",
                           "fontFamily": "Inter",
                           "fontSize": 12,
                           "fontWeight": "semibold"
@@ -71181,7 +71181,7 @@
                   "fill": "$muted",
                   "textGrowth": "fixed-width",
                   "width": "fill_container",
-                  "content": "Group 1 · Version 1 · Submitted by Thiago, 23 Oct at 18:30. Auto-confirm deadline: 24 Oct 2026, 12:30.",
+                  "content": "Group 1 · Version 1 · Submitted by Thiago R., 23 Oct at 18:30. Auto-confirm deadline: 25 Oct 2026, 18:30.",
                   "fontFamily": "Inter",
                   "fontSize": 12,
                   "fontWeight": "regular"
