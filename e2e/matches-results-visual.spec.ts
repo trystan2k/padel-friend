@@ -433,12 +433,12 @@ for (const width of [320, 390, 1280]) {
         await expect(page.getByText(r.outcome.incomplete, { exact: true })).toBeVisible();
         await expect(page.getByText(r.ratingEffectIncomplete, { exact: true })).toBeVisible();
         await capture('BnwEB-incomplete-actual');
-        await page.getByRole('button', { name: r.addSet, exact: true }).click();
+        await page.getByRole('button', { name: r.addSet }).click();
         await page.locator('#score-1-team_a').fill('4');
         await page.locator('#score-1-team_b').fill('6');
         await page.locator('#score-1-team_b').blur();
         await page.getByRole('button', { name: fill(r.setStateLabel, { number: 2 }) }).click();
-        await page.getByRole('button', { name: r.addSet, exact: true }).click();
+        await page.getByRole('button', { name: r.addSet }).click();
         await expect(
           page.getByRole('group', { name: fill(r.setNumber, { number: 3 }), exact: true })
         ).toBeVisible();

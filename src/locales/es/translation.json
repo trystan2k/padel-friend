@@ -661,6 +661,8 @@
         "invalidSetPosition": "Introduce los sets en orden.",
         "invalidSetScore": "Marcador inválido. Un set completo termina 6–0 a 6–4, 7–5 o 7–6.",
         "nonSequentialSets": "Completa primero el set anterior.",
+        "terminalScoreUnfinished": "Este marcador termina el set. Márcalo como completo o corrige los juegos.",
+        "thirdSetAfterDecided": "Un tercer set completo requiere que los dos primeros estén empatados 1–1.",
         "activeProposal": "Ya hay otro resultado pendiente. Recarga para revisarlo; tu borrador no se ha enviado.",
         "idempotencyConflict": "Esta solicitud cambió. Recarga antes de volver a enviarla.",
         "cancelled": "Este partido fue cancelado. No se pueden enviar resultados.",

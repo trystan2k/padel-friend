@@ -4,6 +4,13 @@ import { describe, expect, it } from 'vitest';
 import manifest from '../e2e/references/paf-7/manifest.json';
 
 describe('result visual reference provenance', () => {
+  it('uses semantic hero and amber tokens instead of primitive palette tokens', () => {
+    const styles = readFileSync('src/features/matches/match-result.styles.ts', 'utf8');
+    for (const token of ['hero-copy', 'on-hero', 'hero-accent', 'amber']) {
+      expect(styles).toContain(`var(--color-${token})`);
+    }
+    expect(styles).not.toContain('--palette-');
+  });
   it('compares the approved started-entry successor, not the historical frame', () => {
     expect(manifest.successorStates['started-unavailable'].frameId).toBe('iXRPp');
     expect(manifest.successorStates['started-unavailable'].supersedes).toBe('tVzco');

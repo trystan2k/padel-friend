@@ -12,6 +12,8 @@ export const MATCH_RESULT_ERROR_COPY = {
   invalid_set_position: 'matches.results.errors.invalidSetPosition',
   invalid_set_score: 'matches.results.errors.invalidSetScore',
   non_sequential_sets: 'matches.results.errors.nonSequentialSets',
+  terminal_score_unfinished: 'matches.results.errors.terminalScoreUnfinished',
+  third_set_after_decided: 'matches.results.errors.thirdSetAfterDecided',
   active_proposal: 'matches.results.errors.activeProposal',
   idempotency_conflict: 'matches.results.errors.idempotencyConflict',
   cancelled: 'matches.results.errors.cancelled',

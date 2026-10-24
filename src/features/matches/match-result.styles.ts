@@ -1,14 +1,14 @@
 import * as stylex from '@stylexjs/stylex';
 
 export const matchResultStyles = stylex.create({
-  heroLabel: { color: 'var(--palette-hero-copy)' },
+  heroLabel: { color: 'var(--color-hero-copy)' },
   heroTitle: {
     margin: 0,
     fontFamily: 'var(--font-family-heading)',
     fontSize: 'var(--font-size-22)',
     lineHeight: 'calc(var(--space-15) * 2)',
     fontWeight: 'var(--font-weight-bold)',
-    color: 'var(--palette-surface)'
+    color: 'var(--color-on-hero)'
   },
   overviewBadges: { gap: 'var(--space-5)' },
   overviewBadge: {
@@ -37,10 +37,10 @@ export const matchResultStyles = stylex.create({
     display: 'grid',
     gap: 'var(--space-6)',
     padding: 'var(--space-14)',
-    color: 'var(--palette-hero-copy)'
+    color: 'var(--color-hero-copy)'
   },
   heroLink: {
-    color: 'var(--palette-hero-accent)',
+    color: 'var(--color-hero-accent)',
     textDecoration: 'none',
     minHeight: 'calc(var(--space-40) + var(--space-4))',
     display: 'inline-flex',
@@ -58,7 +58,7 @@ export const matchResultStyles = stylex.create({
     whiteSpace: 'nowrap'
   },
   effect: { justifySelf: 'start' },
-  clockIcon: { color: 'var(--palette-amber)' },
+  clockIcon: { color: 'var(--color-amber)' },
   page: {
     display: 'grid',
     gap: 'var(--space-10)',

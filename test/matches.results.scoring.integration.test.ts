@@ -10,6 +10,31 @@ import { fixtureSql, sqlRows } from './helpers/match-registration-sql';
 const environment = localSupabaseEnv({ filePath: dotEnvPathFromImportMetaUrl(import.meta.url) });
 
 describe('SQL match result scoring parity', () => {
+  it
+    .skipIf(!environment.env)
+    .each(scoringCases.filter((entry) => entry.name.startsWith('completed third after')))(
+    'rejects $name in both SQL entry points',
+    async ({ sets, error }) => {
+      const input = JSON.stringify(sets);
+      for (const engine of ['validate_match_result_sets', 'classify_match_result_sets']) {
+        await expect(
+          fixtureSql(`do $$
+        declare v_detail text;
+        begin
+          begin
+            perform public.${engine}('${input}'::jsonb);
+          exception when others then
+            get stacked diagnostics v_detail = pg_exception_detail;
+            if sqlerrm = 'MATCH_RESULT_THIRD_SET_AFTER_DECIDED'
+              and v_detail::jsonb = '${JSON.stringify(error)}'::jsonb then return; end if;
+            raise;
+          end;
+          raise exception 'Completed third set accepted after decided pair';
+        end; $$;`)
+        ).resolves.toBeUndefined();
+      }
+    }
+  );
   it('requires local Supabase in CI', () => {
     expect(() => assertLocalSupabaseEnvInCi(environment.env, process.env.CI)).not.toThrow();
   });

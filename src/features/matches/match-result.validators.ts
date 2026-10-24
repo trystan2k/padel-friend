@@ -61,6 +61,15 @@ export function validateMatchResultSets(value: unknown): ResultSetRow[] {
     const high = Math.max(a, b);
     const low = Math.min(a, b);
     const terminal = (high === 6 && low <= 4) || (high === 7 && (low === 5 || low === 6));
+    if (terminal && !row.completed)
+      throw new MatchResultValidationError('TERMINAL_SCORE_UNFINISHED', position);
+    if (
+      index === 2 &&
+      row.completed &&
+      sets[0]!.team_a_games > sets[0]!.team_b_games ===
+        sets[1]!.team_a_games > sets[1]!.team_b_games
+    )
+      throw new MatchResultValidationError('THIRD_SET_AFTER_DECIDED', position);
     if ((row.completed && !terminal) || (high === 7 && !terminal))
       throw new MatchResultValidationError(
         'INVALID_SET_SCORE',

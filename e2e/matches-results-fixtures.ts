@@ -76,7 +76,7 @@ export async function enterScore(
   const r = copies[locale].matches.results;
   await page.getByRole('button', { name: r.confirmTeams, exact: true }).click();
   for (const [index, [a, b, complete]] of scores.entries()) {
-    if (index) await page.getByRole('button', { name: r.addSet, exact: true }).click();
+    if (index) await page.getByRole('button', { name: r.addSet }).click();
     const row = page.getByRole('group', {
       name: fill(r.setNumber, { number: index + 1 }),
       exact: true

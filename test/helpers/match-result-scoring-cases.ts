@@ -79,6 +79,50 @@ export const scoringCases: ScoringCase[] = [
     classification: 'team_b'
   },
   invalid('null sets', null, 'INVALID_SETS'),
+  ...[1, 2, 3].flatMap((position) =>
+    [
+      [6, 0],
+      [6, 1],
+      [6, 2],
+      [6, 3],
+      [6, 4],
+      [7, 5],
+      [7, 6]
+    ].flatMap(([a, b]) =>
+      [
+        [a!, b!],
+        [b!, a!]
+      ].map(([winner, loser]) =>
+        invalid(
+          `terminal unfinished set ${position}: ${winner}-${loser}`,
+          [resultSet(1, 6, 4), resultSet(2, 4, 6)]
+            .slice(0, position - 1)
+            .concat(resultSet(position, winner!, loser!, false)),
+          'TERMINAL_SCORE_UNFINISHED',
+          position
+        )
+      )
+    )
+  ),
+  ...[false, true].flatMap((teamB) =>
+    [false, true].map((thirdB) =>
+      invalid(
+        `completed third after ${teamB ? 'BB' : 'AA'} ${thirdB ? 'B' : 'A'}`,
+        [
+          resultSet(1, teamB ? 4 : 6, teamB ? 6 : 4),
+          resultSet(2, teamB ? 4 : 6, teamB ? 6 : 4),
+          resultSet(3, thirdB ? 4 : 6, thirdB ? 6 : 4)
+        ],
+        'THIRD_SET_AFTER_DECIDED',
+        3
+      )
+    )
+  ),
+  {
+    name: 'team B two-zero plus unfinished third is win',
+    sets: [resultSet(1, 4, 6), resultSet(2, 6, 7), resultSet(3, 5, 1, false)],
+    classification: 'team_b'
+  },
   invalid('object sets', {}, 'INVALID_SETS'),
   invalid('empty sets', [], 'INVALID_SETS'),
   invalid('too many sets', [1, 2, 3, 4], 'INVALID_SETS'),

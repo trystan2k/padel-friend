@@ -288,6 +288,7 @@ function ResultForm({
         proposal={success}
         timezone={event.timezone}
         asOf={success.submitted_at}
+        focusReceipt
       />
     );
   const visibleFailure = failure ?? scoreFailure;
@@ -520,7 +521,13 @@ function ResultForm({
                       type="button"
                       {...stylex.props(s.stateControl)}
                       aria-pressed={set.completed}
-                      aria-label={t('matches.results.setStateLabel', { number: set.position })}
+                      aria-label={`${t(
+                        detail?.set_index === set.position
+                          ? 'matches.results.setState.invalid'
+                          : set.completed
+                            ? 'matches.results.setState.complete'
+                            : 'matches.results.setState.inProgress'
+                      )} · ${t('matches.results.setStateLabel', { number: set.position })}`}
                       onClick={() => {
                         setSets(
                           sets.map((row, i) =>
@@ -568,11 +575,7 @@ function ResultForm({
                     <span {...stylex.props(s.scoreValue)}>—</span>
                     <Button
                       type="button"
-                      aria-label={
-                        position === sets.length + 1
-                          ? t('matches.results.addSet')
-                          : t('matches.results.setStateLabel', { number: position })
-                      }
+                      aria-label={`${t('matches.results.setState.notPlayed')} · ${t('matches.results.setNumber', { number: position })} · ${t(position === sets.length + 1 ? 'matches.results.addSet' : 'matches.results.setStateLabel', { number: position })}`}
                       disabled={position !== sets.length + 1 || !sets.at(-1)?.completed}
                       {...stylex.props(s.stateControl)}
                       onClick={() =>

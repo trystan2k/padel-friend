@@ -88,7 +88,9 @@ function score(number: number, a: number, b: number) {
   }
 }
 async function complete(number: number) {
-  await userEvent.click(screen.getByRole('button', { name: `Set ${number} completion` }));
+  await userEvent.click(
+    screen.getByRole('button', { name: new RegExp(`Set ${number} completion`) })
+  );
 }
 function played() {
   fireEvent.change(screen.getByLabelText('Played on (UTC)'), {
@@ -102,6 +104,45 @@ afterEach(() => {
 });
 
 describe('record result page', () => {
+  it('includes each visible state verbatim in its accessible name and preserves pressed state', async () => {
+    mount();
+    await scoreStep();
+    const assertNames = () => {
+      for (const button of screen
+        .getAllByRole('button')
+        .filter((control) =>
+          ['COMPLETE', 'IN PROGRESS', 'INVALID', 'NOT PLAYED'].includes(control.textContent ?? '')
+        )) {
+        expect(button.getAttribute('aria-label')).toContain(button.textContent);
+      }
+    };
+    assertNames();
+    score(1, 6, 4);
+    await complete(1);
+    assertNames();
+    expect(
+      screen.getByRole('button', { name: /Set 1 completion/ }).getAttribute('aria-pressed')
+    ).toBe('true');
+    score(1, 6, 5);
+    assertNames();
+    expect(screen.getByRole('button', { name: /Set 1 completion/ }).textContent).toBe('INVALID');
+  });
+  it('never previews 3–0 after a completed straight-set pair', async () => {
+    mount();
+    await scoreStep();
+    score(1, 6, 4);
+    await complete(1);
+    await userEvent.click(screen.getByRole('button', { name: /Add set/ }));
+    score(2, 6, 4);
+    await complete(2);
+    await userEvent.click(screen.getByRole('button', { name: /Add set/ }));
+    score(3, 5, 3);
+    expect(screen.getByText('TEAM A WINS · 2–0')).toBeTruthy();
+    score(3, 6, 3);
+    await complete(3);
+    expect(screen.queryByText('TEAM A WINS · 3–0')).toBeNull();
+    expect(within(screen.getByRole('group', { name: 'SET 3' })).getByRole('alert')).toBeTruthy();
+  });
   it('uses authoritative venue and address data in the pending hero map link', () => {
     render(
       <I18nextProvider i18n={createI18n('en')}>
@@ -204,7 +245,7 @@ describe('record result page', () => {
     await complete(1);
     expect(screen.getByText('INCOMPLETE')).toBeTruthy();
     expect(screen.getByText('Friendly · no rating effect')).toBeTruthy();
-    await userEvent.click(screen.getByRole('button', { name: 'Add set' }));
+    await userEvent.click(screen.getByRole('button', { name: /Add set/ }));
     score(2, 6, 4);
     await complete(2);
     expect(screen.getByText('TEAM A WINS · 2–0')).toBeTruthy();
@@ -215,10 +256,10 @@ describe('record result page', () => {
     await scoreStep();
     score(1, 6, 4);
     await complete(1);
-    await userEvent.click(screen.getByRole('button', { name: 'Add set' }));
+    await userEvent.click(screen.getByRole('button', { name: /Add set/ }));
     score(2, 4, 6);
     await complete(2);
-    await userEvent.click(screen.getByRole('button', { name: 'Add set' }));
+    await userEvent.click(screen.getByRole('button', { name: /Add set/ }));
     score(3, 3, 2);
     played();
     expect(screen.getByText('DRAW · third set unfinished')).toBeTruthy();
@@ -369,6 +410,10 @@ describe('record result page', () => {
       }
     });
     await waitFor(() => expect(screen.getByText('PENDING · NOT CONFIRMED')).toBeTruthy());
+    expect(document.activeElement).toBe(
+      screen.getByRole('heading', { name: 'PENDING · NOT CONFIRMED' })
+    );
+    expect(document.activeElement?.getAttribute('tabindex')).toBe('-1');
     expect(screen.queryByRole('button', { name: 'Submit for review' })).toBeNull();
   });
   it('retains request identity for an explicit network retry of identical facts', async () => {

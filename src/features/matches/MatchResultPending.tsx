@@ -1,6 +1,6 @@
 import { Button } from '@base-ui/react/button';
 import * as stylex from '@stylexjs/stylex';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { ResultProposal, ResultSubmission } from './match-result-model';
 import { MatchResultTeams, resultSetWins } from './MatchResultFacts';
@@ -10,15 +10,21 @@ export function MatchResultPending({
   proposal,
   timezone,
   asOf,
-  canReview = false
+  canReview = false,
+  focusReceipt = false
 }: {
   proposal: ResultProposal | ResultSubmission;
   timezone: string;
   asOf: string;
   canReview?: boolean;
+  focusReceipt?: boolean;
 }) {
   const { t, i18n } = useTranslation();
   const [now, setNow] = useState(() => Date.parse(asOf));
+  const receiptHeading = useRef<HTMLHeadingElement>(null);
+  useEffect(() => {
+    if (focusReceipt) receiptHeading.current?.focus();
+  }, [focusReceipt]);
   useEffect(() => {
     const timer = setInterval(() => setNow(Date.now()), 60000);
     return () => clearInterval(timer);
@@ -57,7 +63,9 @@ export function MatchResultPending({
               <path d="M12 6v6h5" />
             </svg>
             <div {...stylex.props(s.statusCopy)}>
-              <h3 {...stylex.props(s.statusTitle)}>{t('matches.results.pending')}</h3>
+              <h3 {...stylex.props(s.statusTitle)} tabIndex={-1} ref={receiptHeading}>
+                {t('matches.results.pending')}
+              </h3>
               <p {...stylex.props(s.copy)}>{t('matches.results.pendingDescription')}</p>
             </div>
           </div>
