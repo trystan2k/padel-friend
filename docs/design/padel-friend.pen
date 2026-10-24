@@ -72008,6 +72008,1261 @@
           ]
         }
       ]
+    },
+    {
+      "type": "frame",
+      "id": "iXRPp",
+      "x": -430,
+      "y": 16586,
+      "name": "Route · Match detail — started unavailable (with record entry)",
+      "context": "Authorized viewer variant: event creator or community admin with correction.available=true; started past event without proposals. Record result entry precedes started management notice. Historical tVzco unchanged.",
+      "theme": {
+        "mode": "light"
+      },
+      "clip": true,
+      "width": 390,
+      "height": 1465,
+      "fill": "$bg",
+      "layout": "vertical",
+      "gap": 12,
+      "padding": 18,
+      "children": [
+        {
+          "type": "frame",
+          "id": "W7I1NL",
+          "name": "Top content",
+          "width": "fill_container",
+          "layout": "vertical",
+          "gap": 4,
+          "children": [
+            {
+              "type": "frame",
+              "id": "Y3fAJu",
+              "name": "Screen header",
+              "width": "fill_container",
+              "gap": 8,
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "pFvCI",
+                  "name": "Back button",
+                  "width": 44,
+                  "height": 44,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "icon",
+                      "id": "y3wTE",
+                      "name": "Back chevron",
+                      "width": 20,
+                      "height": 20,
+                      "icon": "chevron-left",
+                      "library": "lucide",
+                      "fill": "$text"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "WrlEE",
+                  "name": "Header titles",
+                  "width": "fill_container",
+                  "layout": "vertical",
+                  "gap": 4,
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "vDM3v",
+                      "name": "Screen title",
+                      "fill": "$text",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "Match details",
+                      "lineHeight": 1.1,
+                      "fontFamily": "Manrope",
+                      "fontSize": 24,
+                      "fontWeight": "700"
+                    },
+                    {
+                      "type": "text",
+                      "id": "PRD56",
+                      "name": "Match context",
+                      "fill": "$muted",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "Management court · Community match",
+                      "lineHeight": 1.25,
+                      "fontFamily": "Inter",
+                      "fontSize": 12,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "H7bRF9",
+                  "name": "Language control",
+                  "width": 44,
+                  "height": 44,
+                  "fill": "$surface2",
+                  "cornerRadius": 20,
+                  "gap": 4,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "yDo7o",
+                      "name": "Current language",
+                      "fill": "$text",
+                      "content": "EN",
+                      "fontFamily": "Inter",
+                      "fontSize": 11.5,
+                      "fontWeight": "semibold"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "pXctc",
+                  "name": "Theme control",
+                  "width": 44,
+                  "height": 44,
+                  "fill": "$surface2",
+                  "cornerRadius": 20,
+                  "gap": 4,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "AYPxN",
+                      "name": "Mode label text",
+                      "fill": "$muted",
+                      "content": "LIGHT",
+                      "fontFamily": "Inter",
+                      "fontSize": 11.5,
+                      "fontWeight": "semibold"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "rSgvJ",
+          "name": "Main content",
+          "width": "fill_container",
+          "layout": "vertical",
+          "gap": 10,
+          "children": [
+            {
+              "id": "WFHFV",
+              "type": "ref",
+              "ref": "B3Uqv",
+              "name": "Record result entry — authorized viewer",
+              "width": "fill_container",
+              "height": 44,
+              "fill": "$green",
+              "cornerRadius": 8,
+              "descendants": {
+                "I525L": {
+                  "enabled": false
+                },
+                "xWUkK": {
+                  "content": "Record result",
+                  "fontFamily": "Inter",
+                  "fontSize": 12,
+                  "fontWeight": "600",
+                  "lineHeight": 1.4166667,
+                  "fill": "$bg"
+                }
+              }
+            },
+            {
+              "type": "frame",
+              "id": "FNFlj",
+              "name": "Started notice",
+              "width": "fill_container",
+              "fill": "$surface2",
+              "cornerRadius": 16,
+              "layout": "vertical",
+              "gap": 8,
+              "padding": 14,
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "CSB4v",
+                  "name": "Started heading row",
+                  "width": "fill_container",
+                  "gap": 8,
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "icon",
+                      "id": "oio39",
+                      "name": "Started icon",
+                      "width": 18,
+                      "height": 18,
+                      "icon": "lock-keyhole",
+                      "library": "lucide",
+                      "fill": "$muted"
+                    },
+                    {
+                      "type": "text",
+                      "id": "EEdcY",
+                      "name": "Started heading",
+                      "fill": "$muted",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "Match started",
+                      "lineHeight": 1.4,
+                      "fontFamily": "Inter",
+                      "fontSize": 14,
+                      "fontWeight": "600"
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "fcMsZ",
+                  "name": "Started message",
+                  "fill": "$muted",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "This match has started. Management actions are unavailable.",
+                  "lineHeight": 1.4,
+                  "fontFamily": "Inter",
+                  "fontSize": 12
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "XcsmD",
+              "name": "Overview",
+              "width": "fill_container",
+              "fill": "$surface",
+              "cornerRadius": 16,
+              "layout": "vertical",
+              "gap": 8,
+              "padding": 14,
+              "children": [
+                {
+                  "type": "text",
+                  "id": "Wq5GW",
+                  "name": "Overview heading",
+                  "fill": "$text",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "Management court",
+                  "lineHeight": 1.2,
+                  "fontFamily": "Manrope",
+                  "fontSize": 18,
+                  "fontWeight": "700"
+                },
+                {
+                  "type": "rectangle",
+                  "cornerRadius": 12,
+                  "id": "oUDtR",
+                  "name": "Venue photograph — established court image",
+                  "fill": {
+                    "type": "image",
+                    "enabled": true,
+                    "url": "https://images.unsplash.com/photo-1658491830143-72808ca237e3?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w4NDM0ODN8MHwxfHJhbmRvbXx8fHx8fHx8fDE3OTA1MDU2MDF8&ixlib=rb-4.1.0&q=80&w=1080",
+                    "mode": "cover"
+                  },
+                  "width": "fill_container",
+                  "height": 128
+                },
+                {
+                  "type": "text",
+                  "id": "Eb9Aa",
+                  "name": "Fixed event date and timezone",
+                  "fill": "$muted",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "Friday, November 1, 2030 at 10:00 PM ·\nTimezone: UTC",
+                  "lineHeight": 1.4,
+                  "fontFamily": "Inter",
+                  "fontSize": 12
+                },
+                {
+                  "type": "text",
+                  "id": "BrR3u",
+                  "name": "Management court link",
+                  "fill": "$green",
+                  "textGrowth": "fixed-width-height",
+                  "width": "fill_container",
+                  "height": 44,
+                  "content": "View court location",
+                  "lineHeight": 1.25,
+                  "textAlignVertical": "middle",
+                  "fontFamily": "Inter",
+                  "fontSize": 13
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "nuTYu",
+              "name": "Participation",
+              "width": "fill_container",
+              "fill": "$surface",
+              "cornerRadius": 16,
+              "layout": "vertical",
+              "gap": 6,
+              "padding": 14,
+              "children": [
+                {
+                  "type": "text",
+                  "id": "l4PA45",
+                  "name": "Participation heading",
+                  "fill": "$text",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "Participation",
+                  "lineHeight": 1.4,
+                  "fontFamily": "Inter",
+                  "fontSize": 14,
+                  "fontWeight": "600"
+                },
+                {
+                  "type": "text",
+                  "id": "ceH6e",
+                  "name": "Participants heading",
+                  "fill": "$muted",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "Participants",
+                  "lineHeight": 1.4,
+                  "fontFamily": "Inter",
+                  "fontSize": 12,
+                  "fontWeight": "600"
+                },
+                {
+                  "type": "text",
+                  "id": "fcwnR",
+                  "name": "Accepted count",
+                  "fill": "$text",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "9 · Accepted",
+                  "lineHeight": 1.4,
+                  "fontFamily": "Inter",
+                  "fontSize": 12,
+                  "fontWeight": "600"
+                },
+                {
+                  "type": "text",
+                  "id": "G8TMpf",
+                  "name": "Participation counts",
+                  "fill": "$muted",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "8 playing · 0 reserve · 2 groups · 3 more needed",
+                  "lineHeight": 1.4,
+                  "fontFamily": "Inter",
+                  "fontSize": 12
+                },
+                {
+                  "type": "text",
+                  "id": "zCWAj",
+                  "name": "Participation status",
+                  "fill": "$muted",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "Creator accepted",
+                  "lineHeight": 1.4,
+                  "fontFamily": "Inter",
+                  "fontSize": 12
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "UU660",
+              "name": "Players in this match",
+              "width": "fill_container",
+              "fill": "$surface",
+              "cornerRadius": 16,
+              "layout": "vertical",
+              "gap": 8,
+              "padding": 14,
+              "children": [
+                {
+                  "type": "text",
+                  "id": "popoL",
+                  "name": "Roster heading",
+                  "fill": "$text",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "Players in this match",
+                  "lineHeight": 1.4,
+                  "fontFamily": "Inter",
+                  "fontSize": 14,
+                  "fontWeight": "600"
+                },
+                {
+                  "type": "frame",
+                  "id": "u86e8g",
+                  "name": "GROUP 1",
+                  "width": "fill_container",
+                  "layout": "vertical",
+                  "gap": 4,
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "H9SaPd",
+                      "name": "GROUP 1 heading",
+                      "fill": "$muted",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "GROUP 1",
+                      "lineHeight": 1.4,
+                      "fontFamily": "Inter",
+                      "fontSize": 10,
+                      "fontWeight": "600",
+                      "letterSpacing": 1
+                    },
+                    {
+                      "type": "frame",
+                      "id": "rNTvM",
+                      "name": "You roster row",
+                      "width": "fill_container",
+                      "height": 32,
+                      "fill": "$greenSoft",
+                      "cornerRadius": 8,
+                      "gap": 8,
+                      "padding": [
+                        0,
+                        6
+                      ],
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "iAJ91",
+                          "name": "You avatar",
+                          "width": 24,
+                          "height": 24,
+                          "fill": "$green",
+                          "cornerRadius": 8,
+                          "justifyContent": "center",
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "NmZh1",
+                              "name": "You initials",
+                              "fill": "$bg",
+                              "content": "Y",
+                              "fontFamily": "Inter",
+                              "fontSize": 9,
+                              "fontWeight": "600"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "BzDnU",
+                          "name": "You details",
+                          "width": "fill_container",
+                          "layout": "vertical",
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "XCisr",
+                              "name": "You name",
+                              "fill": "$text",
+                              "textGrowth": "fixed-width",
+                              "width": "fill_container",
+                              "content": "You",
+                              "lineHeight": 1.4,
+                              "fontFamily": "Inter",
+                              "fontSize": 12,
+                              "fontWeight": "600"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "id": "FhYhc",
+                          "name": "You roster position",
+                          "fill": "$muted",
+                          "content": "3.2",
+                          "fontFamily": "Inter",
+                          "fontSize": 11,
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "Gvcvi",
+                      "name": "Management Player 1 roster row",
+                      "width": "fill_container",
+                      "height": 32,
+                      "fill": "$surface2",
+                      "cornerRadius": 8,
+                      "gap": 8,
+                      "padding": [
+                        0,
+                        6
+                      ],
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "NbXB8",
+                          "name": "Management Player 1 avatar",
+                          "width": 24,
+                          "height": 24,
+                          "fill": "$surface",
+                          "cornerRadius": 8,
+                          "justifyContent": "center",
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "rZJOi",
+                              "name": "Management Player 1 initials",
+                              "fill": "$green",
+                              "content": "P1",
+                              "fontFamily": "Inter",
+                              "fontSize": 9,
+                              "fontWeight": "600"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "uQtl9",
+                          "name": "Management Player 1 details",
+                          "width": "fill_container",
+                          "layout": "vertical",
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "mfd3P",
+                              "name": "Management Player 1 name",
+                              "fill": "$text",
+                              "textGrowth": "fixed-width",
+                              "width": "fill_container",
+                              "content": "Management Player 1",
+                              "lineHeight": 1.4,
+                              "fontFamily": "Inter",
+                              "fontSize": 12,
+                              "fontWeight": "600"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "id": "rmHPv",
+                          "name": "Management Player 1 roster position",
+                          "fill": "$muted",
+                          "content": "3.2",
+                          "fontFamily": "Inter",
+                          "fontSize": 11,
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "hzhyE",
+                      "name": "Management Player 2 roster row",
+                      "width": "fill_container",
+                      "height": 32,
+                      "fill": "$surface2",
+                      "cornerRadius": 8,
+                      "gap": 8,
+                      "padding": [
+                        0,
+                        6
+                      ],
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "A6nv1",
+                          "name": "Management Player 2 avatar",
+                          "width": 24,
+                          "height": 24,
+                          "fill": "$surface",
+                          "cornerRadius": 8,
+                          "justifyContent": "center",
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "oSuet",
+                              "name": "Management Player 2 initials",
+                              "fill": "$green",
+                              "content": "P2",
+                              "fontFamily": "Inter",
+                              "fontSize": 9,
+                              "fontWeight": "600"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "pgwMe",
+                          "name": "Management Player 2 details",
+                          "width": "fill_container",
+                          "layout": "vertical",
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "jzNfy",
+                              "name": "Management Player 2 name",
+                              "fill": "$text",
+                              "textGrowth": "fixed-width",
+                              "width": "fill_container",
+                              "content": "Management Player 2",
+                              "lineHeight": 1.4,
+                              "fontFamily": "Inter",
+                              "fontSize": 12,
+                              "fontWeight": "600"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "id": "u8wXX",
+                          "name": "Management Player 2 roster position",
+                          "fill": "$muted",
+                          "content": "3.2",
+                          "fontFamily": "Inter",
+                          "fontSize": 11,
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "HTKl8",
+                      "name": "Management Player 3 roster row",
+                      "width": "fill_container",
+                      "height": 32,
+                      "fill": "$surface2",
+                      "cornerRadius": 8,
+                      "gap": 8,
+                      "padding": [
+                        0,
+                        6
+                      ],
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "WI6KM",
+                          "name": "Management Player 3 avatar",
+                          "width": 24,
+                          "height": 24,
+                          "fill": "$surface",
+                          "cornerRadius": 8,
+                          "justifyContent": "center",
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "ul27W",
+                              "name": "Management Player 3 initials",
+                              "fill": "$green",
+                              "content": "P3",
+                              "fontFamily": "Inter",
+                              "fontSize": 9,
+                              "fontWeight": "600"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "NTbH6",
+                          "name": "Management Player 3 details",
+                          "width": "fill_container",
+                          "layout": "vertical",
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "IbuNz",
+                              "name": "Management Player 3 name",
+                              "fill": "$text",
+                              "textGrowth": "fixed-width",
+                              "width": "fill_container",
+                              "content": "Management Player 3",
+                              "lineHeight": 1.4,
+                              "fontFamily": "Inter",
+                              "fontSize": 12,
+                              "fontWeight": "600"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "id": "LaqVg",
+                          "name": "Management Player 3 roster position",
+                          "fill": "$muted",
+                          "content": "3.2",
+                          "fontFamily": "Inter",
+                          "fontSize": 11,
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "CPMva",
+                  "name": "GROUP 2",
+                  "width": "fill_container",
+                  "layout": "vertical",
+                  "gap": 4,
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "Ql9OV",
+                      "name": "GROUP 2 heading",
+                      "fill": "$muted",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "GROUP 2",
+                      "lineHeight": 1.4,
+                      "fontFamily": "Inter",
+                      "fontSize": 10,
+                      "fontWeight": "600",
+                      "letterSpacing": 1
+                    },
+                    {
+                      "type": "frame",
+                      "id": "J3h3g",
+                      "name": "Management Player 4 roster row",
+                      "width": "fill_container",
+                      "height": 32,
+                      "fill": "$surface2",
+                      "cornerRadius": 8,
+                      "gap": 8,
+                      "padding": [
+                        0,
+                        6
+                      ],
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "nfM4I",
+                          "name": "Management Player 4 avatar",
+                          "width": 24,
+                          "height": 24,
+                          "fill": "$surface",
+                          "cornerRadius": 8,
+                          "justifyContent": "center",
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "xbO03",
+                              "name": "Management Player 4 initials",
+                              "fill": "$green",
+                              "content": "P4",
+                              "fontFamily": "Inter",
+                              "fontSize": 9,
+                              "fontWeight": "600"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "M9aO3",
+                          "name": "Management Player 4 details",
+                          "width": "fill_container",
+                          "layout": "vertical",
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "BRejp",
+                              "name": "Management Player 4 name",
+                              "fill": "$text",
+                              "textGrowth": "fixed-width",
+                              "width": "fill_container",
+                              "content": "Management Player 4",
+                              "lineHeight": 1.4,
+                              "fontFamily": "Inter",
+                              "fontSize": 12,
+                              "fontWeight": "600"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "id": "W8Mak",
+                          "name": "Management Player 4 roster position",
+                          "fill": "$muted",
+                          "content": "3.2",
+                          "fontFamily": "Inter",
+                          "fontSize": 11,
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "IsBBh",
+                      "name": "Management Player 5 roster row",
+                      "width": "fill_container",
+                      "height": 32,
+                      "fill": "$surface2",
+                      "cornerRadius": 8,
+                      "gap": 8,
+                      "padding": [
+                        0,
+                        6
+                      ],
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "vv3eu",
+                          "name": "Management Player 5 avatar",
+                          "width": 24,
+                          "height": 24,
+                          "fill": "$surface",
+                          "cornerRadius": 8,
+                          "justifyContent": "center",
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "mSiXq",
+                              "name": "Management Player 5 initials",
+                              "fill": "$green",
+                              "content": "P5",
+                              "fontFamily": "Inter",
+                              "fontSize": 9,
+                              "fontWeight": "600"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "sUqRk",
+                          "name": "Management Player 5 details",
+                          "width": "fill_container",
+                          "layout": "vertical",
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "S99wBH",
+                              "name": "Management Player 5 name",
+                              "fill": "$text",
+                              "textGrowth": "fixed-width",
+                              "width": "fill_container",
+                              "content": "Management Player 5",
+                              "lineHeight": 1.4,
+                              "fontFamily": "Inter",
+                              "fontSize": 12,
+                              "fontWeight": "600"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "id": "OI4RL",
+                          "name": "Management Player 5 roster position",
+                          "fill": "$muted",
+                          "content": "3.2",
+                          "fontFamily": "Inter",
+                          "fontSize": 11,
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "n1mKal",
+                      "name": "Management Player 6 roster row",
+                      "width": "fill_container",
+                      "height": 32,
+                      "fill": "$surface2",
+                      "cornerRadius": 8,
+                      "gap": 8,
+                      "padding": [
+                        0,
+                        6
+                      ],
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "MU6qf",
+                          "name": "Management Player 6 avatar",
+                          "width": 24,
+                          "height": 24,
+                          "fill": "$surface",
+                          "cornerRadius": 8,
+                          "justifyContent": "center",
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "DuWIb",
+                              "name": "Management Player 6 initials",
+                              "fill": "$green",
+                              "content": "P6",
+                              "fontFamily": "Inter",
+                              "fontSize": 9,
+                              "fontWeight": "600"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "zEuQR",
+                          "name": "Management Player 6 details",
+                          "width": "fill_container",
+                          "layout": "vertical",
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "GC5zP",
+                              "name": "Management Player 6 name",
+                              "fill": "$text",
+                              "textGrowth": "fixed-width",
+                              "width": "fill_container",
+                              "content": "Management Player 6",
+                              "lineHeight": 1.4,
+                              "fontFamily": "Inter",
+                              "fontSize": 12,
+                              "fontWeight": "600"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "id": "t2qjr",
+                          "name": "Management Player 6 roster position",
+                          "fill": "$muted",
+                          "content": "3.2",
+                          "fontFamily": "Inter",
+                          "fontSize": 11,
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "rKieE",
+                      "name": "Management Player 7 roster row",
+                      "width": "fill_container",
+                      "height": 32,
+                      "fill": "$surface2",
+                      "cornerRadius": 8,
+                      "gap": 8,
+                      "padding": [
+                        0,
+                        6
+                      ],
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "L8uOWS",
+                          "name": "Management Player 7 avatar",
+                          "width": 24,
+                          "height": 24,
+                          "fill": "$surface",
+                          "cornerRadius": 8,
+                          "justifyContent": "center",
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "bAzko",
+                              "name": "Management Player 7 initials",
+                              "fill": "$green",
+                              "content": "P7",
+                              "fontFamily": "Inter",
+                              "fontSize": 9,
+                              "fontWeight": "600"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "px2Id",
+                          "name": "Management Player 7 details",
+                          "width": "fill_container",
+                          "layout": "vertical",
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "iQqGi",
+                              "name": "Management Player 7 name",
+                              "fill": "$text",
+                              "textGrowth": "fixed-width",
+                              "width": "fill_container",
+                              "content": "Management Player 7",
+                              "lineHeight": 1.4,
+                              "fontFamily": "Inter",
+                              "fontSize": 12,
+                              "fontWeight": "600"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "id": "NsUzG",
+                          "name": "Management Player 7 roster position",
+                          "fill": "$muted",
+                          "content": "3.2",
+                          "fontFamily": "Inter",
+                          "fontSize": 11,
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "oRzfj",
+                  "name": "NOT PLAYING",
+                  "width": "fill_container",
+                  "layout": "vertical",
+                  "gap": 4,
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "Turqh",
+                      "name": "NOT PLAYING heading",
+                      "fill": "$muted",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "NOT PLAYING",
+                      "lineHeight": 1.4,
+                      "fontFamily": "Inter",
+                      "fontSize": 10,
+                      "fontWeight": "600",
+                      "letterSpacing": 1
+                    },
+                    {
+                      "type": "frame",
+                      "id": "tvt1F",
+                      "name": "Management Player 8 roster row",
+                      "width": "fill_container",
+                      "height": 32,
+                      "fill": "$surface2",
+                      "cornerRadius": 8,
+                      "gap": 8,
+                      "padding": [
+                        0,
+                        6
+                      ],
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "kn4YJ",
+                          "name": "Management Player 8 avatar",
+                          "width": 24,
+                          "height": 24,
+                          "fill": "$surface",
+                          "cornerRadius": 8,
+                          "justifyContent": "center",
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "wWfEd",
+                              "name": "Management Player 8 initials",
+                              "fill": "$green",
+                              "content": "P8",
+                              "fontFamily": "Inter",
+                              "fontSize": 9,
+                              "fontWeight": "600"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "cfYLW",
+                          "name": "Management Player 8 details",
+                          "width": "fill_container",
+                          "layout": "vertical",
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "GFhTA",
+                              "name": "Management Player 8 name",
+                              "fill": "$text",
+                              "textGrowth": "fixed-width",
+                              "width": "fill_container",
+                              "content": "Management Player 8",
+                              "lineHeight": 1.4,
+                              "fontFamily": "Inter",
+                              "fontSize": 12,
+                              "fontWeight": "600"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "id": "EK0a0",
+                          "name": "Management Player 8 roster position",
+                          "fill": "$muted",
+                          "content": "#1",
+                          "fontFamily": "Inter",
+                          "fontSize": 11,
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "s4zdS",
+                  "name": "FIFO explanation",
+                  "fill": "$muted",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "Accepted order is server-authoritative. Reserves keep FIFO position.",
+                  "lineHeight": 1.4,
+                  "fontFamily": "Inter",
+                  "fontSize": 11
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "m8KnGm",
+              "name": "Eligibility and visibility",
+              "width": "fill_container",
+              "fill": "$surface",
+              "cornerRadius": 16,
+              "layout": "vertical",
+              "gap": 8,
+              "padding": 14,
+              "children": [
+                {
+                  "type": "text",
+                  "id": "V2vhn",
+                  "name": "Eligibility heading",
+                  "fill": "$text",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "Eligibility and visibility",
+                  "lineHeight": 1.4,
+                  "fontFamily": "Inter",
+                  "fontSize": 14,
+                  "fontWeight": "600"
+                },
+                {
+                  "type": "text",
+                  "id": "XeTC5",
+                  "name": "Level and visibility",
+                  "fill": "$muted",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "No level restriction · Community open",
+                  "lineHeight": 1.4,
+                  "fontFamily": "Inter",
+                  "fontSize": 12
+                },
+                {
+                  "type": "text",
+                  "id": "uttWW",
+                  "name": "Team assignment and capacity",
+                  "fill": "$muted",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "Teams after match · Unlimited registrations",
+                  "lineHeight": 1.4,
+                  "fontFamily": "Inter",
+                  "fontSize": 12
+                },
+                {
+                  "type": "text",
+                  "id": "Bb0aI",
+                  "name": "Registration cutoff status",
+                  "fill": "$muted",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "Registration closed",
+                  "lineHeight": 1.4,
+                  "fontFamily": "Inter",
+                  "fontSize": 12
+                },
+                {
+                  "type": "text",
+                  "id": "i3Sfr4",
+                  "name": "Outcome availability",
+                  "fill": "$muted",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "Scheduled past event · Outcome not available",
+                  "lineHeight": 1.4,
+                  "fontFamily": "Inter",
+                  "fontSize": 12
+                }
+              ]
+            },
+            {
+              "id": "rXjjH",
+              "type": "ref",
+              "ref": "B3Uqv",
+              "name": "Share match button",
+              "width": "fill_container",
+              "height": 44,
+              "fill": "$green",
+              "cornerRadius": 12,
+              "descendants": {
+                "I525L": {
+                  "enabled": false
+                },
+                "xWUkK": {
+                  "content": "SHARE MATCH",
+                  "fontSize": 13,
+                  "fontWeight": "600",
+                  "fill": "$bg"
+                }
+              }
+            },
+            {
+              "id": "rL0Y0",
+              "type": "ref",
+              "ref": "Ilxwe",
+              "name": "Read-only share link",
+              "width": "fill_container",
+              "descendants": {
+                "oMjkx": {
+                  "content": "Match link"
+                },
+                "KzOtR": {
+                  "fill": "$surface",
+                  "stroke": "$line",
+                  "height": 44
+                },
+                "ZSAFW": {
+                  "content": "/matches/550e8400-e29b-41d4-a716-446655440000",
+                  "fill": "$text",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "lineHeight": 1.2
+                }
+              }
+            }
+          ]
+        }
+      ]
     }
   ],
   "themes": {
