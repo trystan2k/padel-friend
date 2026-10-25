@@ -128,4 +128,6 @@ Those two files rechecked without source changes via `GIT_CONFIG_GLOBAL=/dev/nul
 
 Remaining closure risk: unexplained full-integration timing/expiry flakiness. Approved reference and parallel browser-fixture blockers are resolved, but overall unit remains **partial** until an authorized subsequent full gate is green.
 
+> **SUPERSEDED — resolved 2025-10-25.** This section records an interim mid-delivery state only. Every item above was subsequently closed: the three integration failures reproduced as machine-sleep/timing artifacts and passed repeatedly (275/275 in every later run); the parallel-fixture deadlock was fixed via the `e2e/match-fixture-sql.ts` advisory guard; all seven references certified (XySt5 4.08/4.5, GPo9z 3.24/3.6, c0wbmu 3.20/3.6, NZk5H 3.23/3.6, wsXWA 4.34/4.7, alZmm 4.80/5.2 after the design sample-data fix, iXRPp 3.17/3.6 replacing the historical `tVzco` target); and the full gate ran green on the final reviewed state (`pnpm complete-check`: 1,320 units / 275 integrations / 242 E2E / 100% coverage), again in the mandatory pre-push run, and in CI on this PR. See `docs/plan/PAF-7-findings.md` for the review ledger.
+
 Closure logs: `/tmp/paf108-closure-units.log`, `/tmp/paf108-closure-integrations.log`, `/tmp/paf108-closure-full-e2e.log`, `/tmp/paf108-closure-complete-check.log`, `/tmp/paf108-closure-failed-integration-recheck.log`.
