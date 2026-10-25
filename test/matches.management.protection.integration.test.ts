@@ -198,7 +198,10 @@ describe('management result protection contract (no results API)', { timeout: 30
       const value = await read(actor);
       expect(value).toMatchObject({
         results_protected: true,
-        correction: { available: false, reason: 'results_workflow_unavailable' }
+        correction:
+          actor.id === f.creator.id
+            ? { available: true, target: 'record_result', event_id: e.id }
+            : { available: false, reason: 'forbidden' }
       });
       for (const capability of Object.values(asRecord(value.actions)))
         expect(capability).toEqual({ allowed: false, reason: 'result_protected' });

@@ -25,7 +25,8 @@ export function validateLocalTime(value: unknown): string {
 export function localMatchInstant(
   date: string,
   time: string,
-  timezone: string
+  timezone: string,
+  explicitOffsetSeconds?: number
 ): { instant: Date; offset: string } {
   validateLocalDate(date);
   validateLocalTime(time);
@@ -63,7 +64,10 @@ export function localMatchInstant(
     })
     .sort((a, b) => a - b);
   if (!matches.length) throw new Error('INVALID_MATCH_LOCAL_TIME');
-  const earliest = matches[0];
+  const earliest =
+    explicitOffsetSeconds === undefined
+      ? matches[0]
+      : matches.find((candidate) => guess - candidate === explicitOffsetSeconds * 1000);
   if (earliest === undefined) throw new Error('INVALID_MATCH_LOCAL_TIME');
   const instant = new Date(earliest);
   const offsetMinutes = Math.round((Date.parse(`${target}Z`) - instant.getTime()) / 60000);

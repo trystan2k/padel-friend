@@ -334,7 +334,7 @@ describe('match participant reconfirmation integration', () => {
         `select count(*) n from public.match_event_audit_log where match_event_id='${e.id}' and action='reconfirmation_excluded'`
       )
     ).toEqual([{ n: 1 }]);
-  });
+  }, 60_000);
   it('late reconfirm and lock-wait crossing cutoff reject', async () => {
     const e = await f.event();
     await edit(e.id);

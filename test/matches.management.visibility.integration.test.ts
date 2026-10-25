@@ -110,7 +110,7 @@ describe('match management visibility integration', () => {
       ).error
     ).not.toBeNull();
   });
-  it('authorizes same-community admin audit but not target list and enforces cursor pairs and cap', async () => {
+  it('authorizes same-community admin audit and result-team identities and enforces cursor pairs and cap', async () => {
     const admin = await f.actor();
     const outsider = await f.actor();
     await fixtureSql(
@@ -137,6 +137,13 @@ describe('match management visibility integration', () => {
     expect(
       (
         await f.rpc(admin, 'list_match_event_management_participants', {
+          p_match_event_id: event.id
+        })
+      ).data
+    ).toEqual([expect.objectContaining({ user_id: f.creator.id, lifecycle: 'accepted' })]);
+    expect(
+      (
+        await f.rpc(outsider, 'list_match_event_management_participants', {
           p_match_event_id: event.id
         })
       ).data

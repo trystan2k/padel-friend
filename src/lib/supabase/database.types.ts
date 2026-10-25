@@ -787,6 +787,93 @@ export type Database = {
           },
         ]
       }
+      match_event_result_proposal_versions: {
+        Row: {
+          classification: string
+          court_label: string | null
+          played_at_local: string
+          played_at_offset_seconds: number
+          played_at_utc: string
+          proposal_id: string
+          sets: NonNullable<Json>
+          teams: NonNullable<Json>
+          version: number
+        }
+        ComputedFields: never
+        Insert: {
+          classification: string
+          court_label?: string | null
+          played_at_local: string
+          played_at_offset_seconds: number
+          played_at_utc: string
+          proposal_id: string
+          sets: NonNullable<Json>
+          teams: NonNullable<Json>
+          version: number
+        }
+        Update: {
+          classification?: string
+          court_label?: string | null
+          played_at_local?: string
+          played_at_offset_seconds?: number
+          played_at_utc?: string
+          proposal_id?: string
+          sets?: NonNullable<Json>
+          teams?: NonNullable<Json>
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "match_event_result_proposal_versions_proposal_id_fkey"
+            columns: ["proposal_id"]
+            isOneToOne: false
+            referencedRelation: "match_event_result_proposals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      match_event_result_proposals: {
+        Row: {
+          active_version: number
+          group_number: number
+          id: string
+          match_event_id: string
+          review_deadline_at: string
+          status: string
+          submitted_at: string
+          submitted_by: string
+        }
+        ComputedFields: never
+        Insert: {
+          active_version: number
+          group_number: number
+          id?: string
+          match_event_id: string
+          review_deadline_at: string
+          status: string
+          submitted_at?: string
+          submitted_by: string
+        }
+        Update: {
+          active_version?: number
+          group_number?: number
+          id?: string
+          match_event_id?: string
+          review_deadline_at?: string
+          status?: string
+          submitted_at?: string
+          submitted_by?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "match_event_result_proposals_match_event_id_fkey"
+            columns: ["match_event_id"]
+            isOneToOne: false
+            referencedRelation: "match_events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       match_events: {
         Row: {
           cancel_reason: string | null
@@ -1083,6 +1170,7 @@ export type Database = {
         }
         Returns: Json
       }
+      classify_match_result_sets: { Args: { p_sets: Json }; Returns: string }
       count_my_unread_notifications: { Args: Record<PropertyKey, never>; Returns: number }
       create_community: {
         Args: {
@@ -1152,6 +1240,7 @@ export type Database = {
       get_match_creation_options: { Args: { p_community_id?: string }; Returns: Json }
       get_match_event: { Args: { p_event_id: string }; Returns: Json }
       get_match_event_management: { Args: { p_match_event_id: string }; Returns: Json }
+      get_match_event_result_proposals: { Args: { p_match_event_id: string }; Returns: Json[] }
       get_my_community_notification_timezone: {
         Args: { p_notification_id: string }
         Returns: string
@@ -1588,6 +1677,18 @@ export type Database = {
         }
       }
       snapshot_match_registration_roster_locked: { Args: { p_event_id: string }; Returns: Json }
+      submit_match_event_result: {
+        Args: {
+          p_court_label?: string
+          p_group_number: number
+          p_match_event_id: string
+          p_played_local: Json
+          p_request_id?: string
+          p_sets: Json
+          p_teams: Json
+        }
+        Returns: Json
+      }
       submit_match_registration: { Args: { p_match_event_id: string }; Returns: Json }
       submit_match_registration_locked: {
         Args: { p_actor_id: string; p_match_event_id: string }
@@ -1624,6 +1725,7 @@ export type Database = {
       valid_community_venue_photo_key: { Args: { p_key: string }; Returns: boolean }
       valid_match_maps_url: { Args: { p_url: string }; Returns: boolean }
       valid_match_photo_key: { Args: { p_key: string }; Returns: boolean }
+      validate_match_result_sets: { Args: { p_sets: Json }; Returns: Json }
       withdraw_match_registration: {
         Args: { p_attempt_id: string; p_match_event_id: string; p_request_id: string }
         Returns: Json

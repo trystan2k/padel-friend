@@ -1,6 +1,9 @@
 import * as stylex from '@stylexjs/stylex';
 
 export const matchDetailShellStyles = stylex.create({
+  resultEntryTitle: { lineHeight: 'calc(var(--space-20) + var(--space-6))' },
+  resultParticipation: { gap: 'var(--space-6)' },
+  resultCountLine: { lineHeight: 'calc(var(--space-12) + var(--space-5))' },
   page: {
     gap: 'var(--space-12)',
     fontFamily: 'var(--font-family-body)',

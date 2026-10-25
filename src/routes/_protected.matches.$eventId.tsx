@@ -1,4 +1,5 @@
-import { createFileRoute, useRouter } from '@tanstack/react-router';
+import { createFileRoute, Outlet, useChildMatches, useRouter } from '@tanstack/react-router';
+import { getMatchEventResultProposals } from '../features/matches/match-result.functions';
 import { MatchDetailPage } from '../features/matches/MatchDetailPage';
 import { getMatchEvent } from '../features/matches/matches.functions';
 import {
@@ -84,26 +85,31 @@ export const Route = createFileRoute('/_protected/matches/$eventId')({
     const registration = await loadMatchRegistration(params.eventId);
     const eventManagement = capabilities?.status === 'ok' ? capabilities.value : null;
     const isCreator = eventManagement?.is_organizer === true;
-    const [callerLevel, requestQueue, roster, invitation, management] = await Promise.all([
-      loadCallerLevel(),
-      isCreator
-        ? loadMatchRequestQueue(params.eventId)
-        : Promise.resolve({ queue: null, queueFailed: false }),
-      loadMatchRoster(params.eventId),
-      getMyMatchInvitation({ data: { event_id: params.eventId } }).catch(() => ({
-        status: 'unavailable' as const
-      })),
-      isCreator
-        ? listMatchEventManagementParticipants({ data: { event_id: params.eventId } }).catch(
-            () => ({ status: 'error' as const })
-          )
-        : Promise.resolve(null)
-    ]);
+    const [callerLevel, requestQueue, roster, invitation, management, proposals] =
+      await Promise.all([
+        loadCallerLevel(),
+        isCreator
+          ? loadMatchRequestQueue(params.eventId)
+          : Promise.resolve({ queue: null, queueFailed: false }),
+        loadMatchRoster(params.eventId),
+        getMyMatchInvitation({ data: { event_id: params.eventId } }).catch(() => ({
+          status: 'unavailable' as const
+        })),
+        isCreator
+          ? listMatchEventManagementParticipants({ data: { event_id: params.eventId } }).catch(
+              () => ({ status: 'error' as const })
+            )
+          : Promise.resolve(null),
+        getMatchEventResultProposals({ data: { event_id: params.eventId } }).catch(() => null)
+      ]);
     return {
       ...detail,
       ...registration,
       isCreator,
       eventManagement,
+      proposals: proposals?.status === 'ok' ? proposals.value : [],
+      proposalsError:
+        proposals === null || (proposals.status === 'error' && proposals.code !== 'forbidden'),
       callerLevel,
       ...requestQueue,
       ...roster,
@@ -115,6 +121,8 @@ export const Route = createFileRoute('/_protected/matches/$eventId')({
   component: () => {
     const data = Route.useLoaderData();
     const router = useRouter();
+    const hasChild = useChildMatches({ select: (matches) => matches.length > 0 });
+    if (hasChild) return <Outlet />;
     return (
       <MatchDetailPage
         event={data.event}
@@ -131,6 +139,8 @@ export const Route = createFileRoute('/_protected/matches/$eventId')({
         invitation={data.invitation}
         managementParticipants={data.managementParticipants}
         managementError={data.managementError}
+        proposals={data.proposals}
+        proposalsError={data.proposalsError}
       />
     );
   }

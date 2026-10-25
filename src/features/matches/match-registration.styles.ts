@@ -111,6 +111,10 @@ export const matchRegistrationStyles = stylex.create({
   note: {
     margin: 0,
     fontSize: 'var(--font-size-12)',
+    lineHeight: {
+      default: 'inherit',
+      [stylex.when.ancestor('[data-result-entry="available"]')]: 'var(--space-15)'
+    },
     color: 'var(--color-muted)'
   },
   actions: { display: 'flex', flexWrap: 'wrap', gap: 'var(--space-3)', alignItems: 'center' },
@@ -192,6 +196,10 @@ export const matchRegistrationStyles = stylex.create({
     fontFamily: 'var(--font-family-body)',
     fontWeight: 'var(--font-weight-semibold)',
     fontSize: 'var(--font-size-10)',
+    lineHeight: {
+      default: 'inherit',
+      [stylex.when.ancestor('[data-result-entry="available"]')]: 'var(--space-14)'
+    },
     letterSpacing: 'var(--font-letter-spacing-1-5)',
     textTransform: 'uppercase'
   },

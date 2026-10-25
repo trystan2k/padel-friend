@@ -70,6 +70,12 @@ export function buildMatchFixtureCleanupSql(owner: MatchFixtureOwner = {}): stri
   const events = `create temporary table if not exists owned_match_fixture_events (id uuid primary key) on commit drop; truncate table owned_match_fixture_events; insert into owned_match_fixture_events select e.id from public.match_events e where ${eventPredicate}`;
   return [
     events,
+    'alter table public.match_event_result_proposal_versions disable trigger match_result_proposal_version_immutable',
+    'alter table public.match_event_result_proposals disable trigger match_result_proposal_immutable',
+    'delete from public.match_event_result_proposal_versions where proposal_id in (select id from public.match_event_result_proposals where match_event_id in (select id from owned_match_fixture_events))',
+    'delete from public.match_event_result_proposals where match_event_id in (select id from owned_match_fixture_events)',
+    'alter table public.match_event_result_proposal_versions enable trigger match_result_proposal_version_immutable',
+    'alter table public.match_event_result_proposals enable trigger match_result_proposal_immutable',
     'alter table public.match_event_invites disable trigger match_invite_immutable',
     'alter table public.match_event_registrations disable trigger match_registration_identity_guard',
     'alter table public.match_events disable trigger match_event_immutable',

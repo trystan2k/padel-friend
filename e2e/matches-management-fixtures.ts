@@ -4,6 +4,7 @@ import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { expect, type Browser, type BrowserContext, type Page } from '@playwright/test';
 import { matchPhotoFixture } from '../test/helpers/match-photo-fixtures';
 import { waitForHydratedPage } from './auth-helpers';
+import { serializeMatchFixtureSql } from './match-fixture-sql';
 import enCopy from '../src/locales/en/translation.json' with { type: 'json' };
 import ptCopy from '../src/locales/pt-BR/translation.json' with { type: 'json' };
 import esCopy from '../src/locales/es/translation.json' with { type: 'json' };
@@ -38,7 +39,7 @@ export async function sql(query: string): Promise<Row[]> {
       '--local',
       '--output-format',
       'json',
-      query
+      serializeMatchFixtureSql(query)
     ]);
     let out = '';
     let err = '';
@@ -77,7 +78,10 @@ export async function sql(query: string): Promise<Row[]> {
   });
 }
 
-export async function fixtures(browser: Browser) {
+export async function fixtures(
+  browser: Browser,
+  identities: { creatorName?: string; memberNames?: string[]; communityName?: string } = {}
+) {
   const vars = new Map(
     readFileSync(new URL('../.env', import.meta.url), 'utf8')
       .split('\n')
@@ -116,9 +120,9 @@ export async function fixtures(browser: Browser) {
     if (onboard.error) throw onboard.error;
     return who;
   }
-  const creator = await actor('Management Host');
+  const creator = await actor(identities.creatorName ?? 'Management Host');
   const created = await creator.client.rpc('create_community', {
-    p_name: `Management ${crypto.randomUUID().slice(0, 8)}`,
+    p_name: identities.communityName ?? `Management ${crypto.randomUUID().slice(0, 8)}`,
     p_visibility: 'public',
     p_join_policy: 'instant'
   });
@@ -127,7 +131,7 @@ export async function fixtures(browser: Browser) {
   const community = created.data;
   const members: Actor[] = [];
   for (let i = 1; i <= 10; i++) {
-    const member = await actor(`Management Player ${i}`);
+    const member = await actor(identities.memberNames?.[i - 1] ?? `Management Player ${i}`);
     const joined = await member.client.rpc('join_public_community', { p_community_id: community });
     if (joined.error) throw joined.error;
     members.push(member);
@@ -144,6 +148,8 @@ export async function fixtures(browser: Browser) {
       viewport: { width, height },
       deviceScaleFactor: 1,
       colorScheme: theme,
+      // Chromium requires explicit permission for signed local Storage images.
+      permissions: ['local-network-access'],
       serviceWorkers: 'block'
     });
     contexts.push(context);
@@ -249,9 +255,11 @@ export async function fixtures(browser: Browser) {
   async function clearEvents() {
     // Scoped counterpart of test/helpers/match-management-fixtures.ts cleanup.
     await sql(`do $$ begin
+      -- Parent-first relation locks match the registration/submission writers.
+      lock table public.match_events, public.match_event_registration_state in share row exclusive mode;
+      alter table public.match_events disable trigger match_event_immutable;
       alter table public.match_event_invites disable trigger match_invite_immutable;
       alter table public.match_event_registrations disable trigger match_registration_identity_guard;
-      alter table public.match_events disable trigger match_event_immutable;
       alter table public.match_event_registration_attempts disable trigger match_attempt_history_guard;
       alter table public.match_event_registration_attempts disable trigger match_attempt_final_state;
       alter table public.match_event_registrations disable trigger match_registration_final_state;
@@ -287,6 +295,7 @@ export async function fixtures(browser: Browser) {
     await Promise.all(contexts.map((c) => c.close()));
     await clearEvents();
     await sql(`do $$ begin
+      lock table public.communities in share row exclusive mode;
       alter table public.community_members disable trigger community_member_guard;
       delete from public.community_members where community_id='${community}';
       delete from public.community_audit_log where community_id='${community}';

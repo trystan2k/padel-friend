@@ -65,7 +65,7 @@ function Root() {
         <HeadContent />
         <DevStyleXInject />
       </head>
-      <body>
+      <body {...stylex.props(stylex.defaultMarker())}>
         <I18nextProvider i18n={i18n}>
           {!isAuthJourney && (
             <div {...stylex.props(rootStyles.controls)}>

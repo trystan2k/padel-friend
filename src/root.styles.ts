@@ -10,7 +10,10 @@ export const rootStyles = stylex.create({
     position: 'absolute',
     top: 'calc(var(--space-18) + var(--space-8))',
     right: 'var(--space-18)',
-    display: 'flex',
+    display: {
+      default: 'flex',
+      [stylex.when.ancestor(':has([data-route-chrome="navigation"])')]: 'none'
+    },
     gap: 'var(--space-8)'
   },
   chip: {
