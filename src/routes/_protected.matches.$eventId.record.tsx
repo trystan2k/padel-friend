@@ -25,7 +25,7 @@ export const Route = createFileRoute('/_protected/matches/$eventId/record')({
       participants: participants?.status === 'ok' ? participants.value : [],
       proposals: proposals?.status === 'ok' ? proposals.value : [],
       loadError:
-        !event ||
+        event?.status !== 'ok' ||
         !roster ||
         roster.status === 'unavailable' ||
         participants?.status !== 'ok' ||

@@ -1,3 +1,12 @@
+import { MATCH_RESULT_ERROR_COPY, type MatchResultErrorCode } from './match-result-error-copy';
+import { validateMatchUuid } from './matches.validators';
+import {
+  classifyMatchResultSets,
+  validateMatchResultSets,
+  validateMatchResultTeams,
+  validateResultPlayedLocal
+} from './match-result.validators';
+
 export type ResultClassification = 'team_a' | 'team_b' | 'draw' | 'incomplete';
 
 export type ResultSetRow = {
@@ -230,11 +239,3 @@ export function matchResultActionError(error: {
           : 'unavailable'
   };
 }
-import { MATCH_RESULT_ERROR_COPY, type MatchResultErrorCode } from './match-result-error-copy';
-import { validateMatchUuid } from './matches.validators';
-import {
-  classifyMatchResultSets,
-  validateMatchResultSets,
-  validateMatchResultTeams,
-  validateResultPlayedLocal
-} from './match-result.validators';
