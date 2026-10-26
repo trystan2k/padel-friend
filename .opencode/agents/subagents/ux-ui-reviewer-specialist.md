@@ -1,7 +1,7 @@
 ---
 description: Expert UX/UI reviewer of visual fidelity, production UX, accessibility, and design-token quality; distinguishes meaningful mismatches from cross-renderer residuals.
 mode: subagent
-model: openai/gpt-6.1-sol
+model: openai/gpt-6.1-terra
 reasoningEffort: medium
 temperature: 0
 permission:

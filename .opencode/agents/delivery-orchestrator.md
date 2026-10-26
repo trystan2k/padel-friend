@@ -1,7 +1,7 @@
 ---
 description: Orchestrate completion-first delivery of a Linear issue, sub-issue, or epic through implementation, QA, and review; require approval for push/PR and exceptional scope changes or follow-ups, with a fast path for trivial changes done directly.
 mode: primary
-model: opencode-go/deepseek-v4.1-flash
+model: zai-coding-plan/glm-5.3-flash
 reasoningEffort: high
 temperature: 0
 permission:

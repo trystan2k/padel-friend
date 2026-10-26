@@ -1,7 +1,7 @@
 ---
 description: Expert architecture review agent that evaluates task implementations for correctness, quality, best practices, and improvement opportunities using stack-specific skills.
 mode: subagent
-model: openai/gpt-6.1-sol
+model: openai/gpt-6.1-terra
 reasoningEffort: medium
 temperature: 0
 permission:
