@@ -15,6 +15,14 @@ permissions:
   - { action: skill, resource: "*", effect: allow }
   - { action: shell, resource: "git *", effect: allow }
   - { action: shell, resource: "gh *", effect: allow }
+  - { action: shell, resource: "head *", effect: allow }
+  - { action: shell, resource: "tail *", effect: allow }
+  - { action: shell, resource: "cat *", effect: allow }
+  - { action: shell, resource: "grep *", effect: allow }
+  - { action: shell, resource: "wc *", effect: allow }
+  - { action: shell, resource: "sort *", effect: allow }
+  - { action: shell, resource: "uniq *", effect: allow }
+  - { action: shell, resource: "sed -n *", effect: allow }
   - { action: external_directory, resource: "*", effect: deny }
 ---
 
