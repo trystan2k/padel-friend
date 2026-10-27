@@ -2,40 +2,53 @@
 description: Execute pre-commit quality gates and report pass or fail results without applying fixes.
 mode: subagent
 model: zai-coding-plan/glm-5.3-flash
-steps: 8
-permissions:
-  - { action: "*", resource: "*", effect: deny }
-  - { action: harness_context_bundle, resource: "*", effect: allow }
-  - { action: harness_telemetry_summary, resource: "*", effect: allow }
-  - { action: read, resource: "*", effect: allow }
-  - { action: read, resource: "*.env", effect: ask }
-  - { action: read, resource: "*.env.*", effect: ask }
-  - { action: read, resource: "*.env.example", effect: allow }
-  - { action: glob, resource: "*", effect: allow }
-  - { action: grep, resource: "*", effect: allow }
-  - { action: skill, resource: "*", effect: allow }
-  - { action: shell, resource: "pnpm complete-check *", effect: allow }
-  - { action: shell, resource: "pnpm typecheck *", effect: allow }
-  - { action: shell, resource: "pnpm lint *", effect: allow }
-  - { action: shell, resource: "pnpm test *", effect: allow }
-  - { action: shell, resource: "pnpm test:e2e *", effect: allow }
-  - { action: shell, resource: "pnpm build *", effect: allow }
-  - { action: shell, resource: "pnpm knip *", effect: allow }
-  - { action: shell, resource: "pnpm format:check *", effect: allow }
-  - { action: shell, resource: "git status *", effect: allow }
-  - { action: shell, resource: "git diff *", effect: allow }
-  - { action: shell, resource: "git log *", effect: allow }
-  - { action: shell, resource: "git show *", effect: allow }
-  - { action: external_directory, resource: "*", effect: deny }
-  - { action: shell, resource: "git diff *--output*", effect: deny }
-  - { action: shell, resource: "git log *--output*", effect: deny }
-  - { action: shell, resource: "git show *--output*", effect: deny }
-  - { action: shell, resource: "git diff *--ext-diff*", effect: deny }
-  - { action: shell, resource: "git log *--ext-diff*", effect: deny }
-  - { action: shell, resource: "git show *--ext-diff*", effect: deny }
-  - { action: shell, resource: "git diff *--textconv*", effect: deny }
-  - { action: shell, resource: "git log *--textconv*", effect: deny }
-  - { action: shell, resource: "git show *--textconv*", effect: deny }
+reasoningEffort: high
+temperature: 0
+permission:
+  task: deny
+  question: deny
+  read: allow
+  glob: allow
+  grep: allow
+  list: allow
+  edit: deny
+  skill: allow
+  bash:
+    "*": deny
+    "pnpm complete-check*": allow
+    "pnpm build*": allow
+    "pnpm knip*": allow
+    "pnpm typecheck*": allow
+    "pnpm lint*": allow
+    "pnpm format:check*": allow
+    "pnpm test*": allow
+    "pnpm tokens:build*": allow
+    "pnpm db:start*": allow
+    "pnpm db:stop*": allow
+    "pnpm exec playwright*": allow
+    "pnpm exec vitest*": allow
+    "pnpm exec supabase status*": allow
+    "pnpm exec supabase start*": allow
+    "pnpm exec supabase stop*": allow
+    "git status*": allow
+    "git diff*": allow
+    "git log*": allow
+    "git show*": allow
+    "git rev-parse*": allow
+    "ls*": allow
+    "cat *": allow
+    "head *": allow
+    "tail *": allow
+  webfetch: allow
+  websearch: deny
+  todowrite: deny
+  lsp: deny
+  external_directory:
+    "*": deny
+    "/tmp/**": allow
+    "/Users/trystan2k/.gitconfig": allow
+    "/Users/trystan2k/.gitignore": allow
+    "/Users/trystan2k/Documents/Thiago/Repos/dotfiles/symlinks/**": allow
 ---
 
 # Agent: qa-gate-specialist
@@ -128,16 +141,18 @@ Follow these steps:
 7. Return a structured report with exact failed checks for orchestrator routing.
 8. Never apply fixes; remediation is owned by other agents.
 
-## Tool Usage Rules (OpenCode V2)
+## Tool Usage Rules (OpenCode `permission` model)
 
-Native frontmatter `permissions` are authoritative:
+Effective permissions (frontmatter `permission`; legacy `tools` field not used):
 
 Model tier: `T0` mechanical. Execute the resolved gate commands and report their output. Never re-derive the gate list from scratch when a gate list or the project command is already known, never expand the gate list, and never fix anything.
 
-- `read`, `glob`, `grep`: allow — gate investigation; sensitive environment reads ask.
-- `shell`: only `pnpm complete-check`, `build`, `knip`, `typecheck`, `lint`, `format:check`, `test`, `test:e2e`, and broad `git status`, `diff`, `log`, `show` forms are allowed. Output-redirection options are denied; use read forms. `test:e2e` has its own explicit grant because V2 patterns do not match it through `pnpm test *`. Other commands are denied; report blocked gates instead of bypassing this allowlist.
+- `read`, `glob`, `grep`, `list`: allow — gate investigation.
+- `bash`: fail-closed allowlist — this agent is report-only, so only the gate commands are permitted and everything else is denied by default. Allowed: `pnpm complete-check`, `pnpm build`, `pnpm knip`, `pnpm typecheck`, `pnpm lint`, `pnpm format:check`, `pnpm test`, `pnpm test:e2e`, `pnpm tokens:build`, `pnpm db:start`, `pnpm db:stop`, `pnpm exec playwright|vitest`, `pnpm exec supabase status|start|stop`, read-only git (`status`/`diff`/`log`/`show`/`rev-parse`), `ls`, and `cat`/`head`/`tail` for logs. Denied by default: `pnpm db:reset`, `pnpm db:types`, and every git-state change. Never prefix a command with an env assignment (`CI=1 pnpm ...`) — OpenCode matches the whole command from the start, so it will not match the allowlist; use `pnpm test:e2e` (which starts a fresh preview) instead.
 - `skill`: allow — QA/quality skills when they improve gate interpretation.
-- `edit`, `subagent`, `question`, web tools, `execute`, MCP tools, LSP and `external_directory`: deny.
+- `edit`, `task`, `question`, `websearch`, `todowrite`, `lsp`: deny.
+- `webfetch`: allow — documentation lookup for gate interpretation.
+- `external_directory`: deny by default; only the git config paths (`~/.gitconfig`, `~/.gitignore`, and the resolved dotfiles symlinks directory) and `/tmp/**` (for gate logs and scratch output) are allowed.
 
 Safety rules:
 
