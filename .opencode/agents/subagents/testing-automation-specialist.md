@@ -1,31 +1,30 @@
 ---
-description: Expert test automation agent for unit, integration, and E2E testing using stack-specific best practices and project conventions.
+description: Implement scoped test automation
 mode: subagent
-model: openai/gpt-6-luna
-reasoningEffort: high
-temperature: 0
-permission:
-  task: allow
-  question: deny
-  read: allow
-  glob: allow
-  grep: allow
-  list: allow
-  edit: allow
-  skill: allow
-  bash: allow
-  webfetch: allow
-  websearch: allow
-  todowrite: deny
-  lsp: allow
-  external_directory:
-    "*": deny
-    "/tmp/**": allow
-    "/Users/trystan2k/.gitconfig": allow
-    "/Users/trystan2k/.gitignore": allow
-    "/Users/trystan2k/Documents/Thiago/Repos/dotfiles/symlinks/**": allow
-  "mcp_chrome-devtools*": allow
-  "mcp_playwright*": allow
+model: openai/gpt-6-luna#high
+steps: 40
+permissions:
+  - { action: "*", resource: "*", effect: deny }
+  - { action: harness_context_bundle, resource: "*", effect: allow }
+  - { action: read, resource: "*", effect: allow }
+  - { action: read, resource: "*.env", effect: ask }
+  - { action: read, resource: "*.env.*", effect: ask }
+  - { action: read, resource: "*.env.example", effect: allow }
+  - { action: glob, resource: "*", effect: allow }
+  - { action: grep, resource: "*", effect: allow }
+  - { action: skill, resource: "*", effect: allow }
+  - { action: external_directory, resource: "*", effect: deny }
+  - { action: edit, resource: "*", effect: allow }
+  - { action: edit, resource: ".agents/skills/*", effect: deny }
+  - { action: shell, resource: "*", effect: ask }
+  - { action: webfetch, resource: "*", effect: allow }
+  - { action: websearch, resource: "*", effect: allow }
+  - { action: mcp_serena_find_file, resource: "*", effect: allow }
+  - { action: mcp_serena_search_for_pattern, resource: "*", effect: allow }
+  - { action: mcp_serena_get_symbols_overview, resource: "*", effect: allow }
+  - { action: mcp_serena_find_symbol, resource: "*", effect: allow }
+  - { action: mcp_serena_find_referencing_symbols, resource: "*", effect: allow }
+  - { action: mcp_serena_list_dir, resource: "*", effect: allow }
 ---
 
 # Agent: testing-automation-specialist
@@ -116,23 +115,19 @@ Apply these standards during test implementation:
 - Reuse existing fixtures, factories, and utilities before creating new ones.
 - Minimize runtime while preserving confidence and coverage.
 
-## Tool Usage Rules (OpenCode `permission` model)
+## Tool Usage Rules (OpenCode V2)
 
-Effective permissions (frontmatter `permission`; legacy `tools` field not used):
+Native frontmatter `permissions` are authoritative:
 
 Model tier: `T1`. Write the requested tests against the described behavior, reuse existing fixtures and patterns, and run the scoped test command. No test-architecture redesign and no unrelated test refactors.
 
-- `read`, `glob`, `grep`, `list`: allow — codebase and test investigation.
+- `read`, `glob`, `grep`: allow — codebase and test investigation; sensitive environment reads ask.
 - `edit` (gates `write`/`edit`): allow — test-scope files only.
 - `skill`: allow — matching stack testing skills.
-- `task`: allow — only when the caller explicitly requires specialist delegation.
-- `bash`: allow — full shell. Run test commands, Vitest/Playwright, and read-only git freely; use native `bash` for long E2E runs (no Serena 240s cap) and Serena MCP for code search/intelligence. `git restore`/`git checkout`/`git stash` are permitted to undo your own in-progress test edits only, never unrelated files.
-- Playwright / chrome-devtools MCP tools: allow — browser-driven E2E validation.
-- `question`: deny — no user prompts from this subagent.
+- `shell`: ask; each command requires native approval.
+- `subagent`, `question`, `execute`, MCP tools beyond the scoped Serena read/symbol grants, and LSP: deny.
 - `webfetch`, `websearch`: allow — documentation research.
-- `todowrite`: deny.
-- `lsp`: allow — code intelligence.
-- `external_directory`: deny by default; only the git config paths (`~/.gitconfig`, `~/.gitignore`, and the resolved dotfiles symlinks directory) and `/tmp/**` (for scratch artifacts: e.g. Playwright output, test logs) are allowed.
+- `external_directory`: deny; no outside-project access.
 
 Safety rules:
 
@@ -142,7 +137,7 @@ Safety rules:
 
 ## Subagent Usage (If Applicable)
 
-This subagent should implement testing directly and must not delegate unless caller explicitly requires specialist delegation.
+This subagent implements testing directly. No delegation tool is available at subagent level; return delegation needs to the coordinator.
 
 ## Frameworks information
 

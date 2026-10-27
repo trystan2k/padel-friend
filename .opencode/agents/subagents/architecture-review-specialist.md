@@ -1,36 +1,40 @@
 ---
-description: Expert architecture review agent that evaluates task implementations for correctness, quality, best practices, and improvement opportunities using stack-specific skills.
+description: Review architecture without mutation
 mode: subagent
 model: openai/gpt-6.1-terra
-reasoningEffort: medium
-temperature: 0
-permission:
-  task: deny
-  question: deny
-  read: allow
-  glob: allow
-  grep: allow
-  list: allow
-  edit: deny
-  skill: allow
-  "mcp_pencil*": allow
-  "mcp_serena*shell*": deny
-  bash:
-    "*": deny
-    "git diff*": allow
-    "git log*": allow
-    "git show*": allow
-    "git status*": allow
-    "ls*": allow
-  webfetch: allow
-  websearch: allow
-  todowrite: deny
-  lsp: allow
-  external_directory:
-    "*": deny
-    "/Users/trystan2k/.gitconfig": allow
-    "/Users/trystan2k/.gitignore": allow
-    "/Users/trystan2k/Documents/Thiago/Repos/dotfiles/symlinks/**": allow
+steps: 20
+permissions:
+  - { action: "*", resource: "*", effect: deny }
+  - { action: harness_context_bundle, resource: "*", effect: allow }
+  - { action: read, resource: "*", effect: allow }
+  - { action: read, resource: "*.env", effect: ask }
+  - { action: read, resource: "*.env.*", effect: ask }
+  - { action: read, resource: "*.env.example", effect: allow }
+  - { action: glob, resource: "*", effect: allow }
+  - { action: grep, resource: "*", effect: allow }
+  - { action: skill, resource: "*", effect: allow }
+  - { action: external_directory, resource: "*", effect: deny }
+  - { action: shell, resource: "git status *", effect: allow }
+  - { action: shell, resource: "git diff *", effect: allow }
+  - { action: shell, resource: "git log *", effect: allow }
+  - { action: shell, resource: "git show *", effect: allow }
+  - { action: webfetch, resource: "*", effect: allow }
+  - { action: websearch, resource: "*", effect: allow }
+  - { action: mcp_serena_find_file, resource: "*", effect: allow }
+  - { action: mcp_serena_search_for_pattern, resource: "*", effect: allow }
+  - { action: mcp_serena_get_symbols_overview, resource: "*", effect: allow }
+  - { action: mcp_serena_find_symbol, resource: "*", effect: allow }
+  - { action: mcp_serena_find_referencing_symbols, resource: "*", effect: allow }
+  - { action: mcp_serena_list_dir, resource: "*", effect: allow }
+  - { action: shell, resource: "git diff *--output*", effect: deny }
+  - { action: shell, resource: "git log *--output*", effect: deny }
+  - { action: shell, resource: "git show *--output*", effect: deny }
+  - { action: shell, resource: "git diff *--ext-diff*", effect: deny }
+  - { action: shell, resource: "git log *--ext-diff*", effect: deny }
+  - { action: shell, resource: "git show *--ext-diff*", effect: deny }
+  - { action: shell, resource: "git diff *--textconv*", effect: deny }
+  - { action: shell, resource: "git log *--textconv*", effect: deny }
+  - { action: shell, resource: "git show *--textconv*", effect: deny }
 ---
 
 # Agent: architecture-review-specialist
@@ -128,7 +132,7 @@ Follow these steps:
    - readability
    - naming and structure
    - duplication and complexity
-7. Check stack-specific best practices and anti-patterns using loaded skills. For UI, `docs/design/padel-friend.pen` sets colors, typography, spacing, layout intent, and overall look; match visually as closely as possible. Prefer fluid flex/percent sizing, Base UI accessible widgets, tokens, ≥44px touch targets, and translated-text-safe layouts over literal design markup. Pencil/Chromium font rasterization precludes pixel identity: require exact structural/layout probes with documented, justified nonzero per-screen screenshot tolerances; never widen budgets to hide defects.
+7. Check stack-specific best practices and anti-patterns using loaded skills. Visual truth: follow AGENTS.md "Pencil visual truth" (auto-injected); `docs/design/padel-friend.pen` governs colors/typography/spacing/layout intent.
 8. Check process quality where relevant:
    - test adequacy
    - validation coverage
@@ -138,15 +142,9 @@ Follow these steps:
 11. Append one machine-readable line per finding using the scoped format defined in `Outputs`, so the orchestrator can track and deduplicate it.
 12. For delta input, follow the delta-review contract in `Outputs` instead of repeating the full review.
 
-## Tool Usage Rules (OpenCode `permission` model)
+## Tool Usage Rules (OpenCode V2)
 
-Effective permissions (frontmatter `permission`; legacy `tools` field not used):
-
-- `read`, `glob`, `grep`, `list`: allow — review investigation.
-- `skill`: allow — stack-specific best-practice skills.
-- `bash`: scoped — read-only git (`diff`, `log`, `show`, `status`) and `ls` only.
-- `mcp_serena*shell*`: deny — the Serena shell tool is blocked; review uses the read-only bash allowlist. Other Serena tools (search/intelligence) stay allowed.
-- `edit`, `task`, `question`, `webfetch`, `websearch`, `todowrite`, `lsp`: deny. `external_directory`: deny by default; only the git config paths (`~/.gitconfig`, `~/.gitignore`, and the resolved dotfiles symlinks directory) are allowed.
+Native frontmatter `permissions` are authoritative. `read`, `glob`, `grep`, `skill`, `webfetch` and `websearch` are allowed; sensitive environment reads ask. Shell broadly allows Git status, diff, log and show forms; output-redirection options are denied; use read forms. The scoped Serena read/symbol grants are allowed; other MCP tools, editing, delegation, question, Code Mode, LSP and external-directory access are denied.
 
 Safety rules:
 
