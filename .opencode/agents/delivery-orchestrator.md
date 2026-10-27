@@ -74,9 +74,9 @@ permissions:
 
 Load `delivery-policy` and `delivery-routing` before coordinating work. Follow AGENTS.md and the approved plan. Use exact `subagents/<filename>` IDs. Batch independent metadata operations, reuse the approved branch, and pass compact task, acceptance, file-boundary, baseline/delta, constraints and approval evidence. Never delegate solely to collect timers.
 
-Choose S/M/L by risk, not size. Route edits through specialists. M uses implementation/fix specialists and a combined code/ordinary architecture review. L requires specialist implementation, code review and independent architecture review. Route UX by visible behavior, interaction, accessibility, responsiveness, translation or design-token risk, not file extension alone. Record the reason for skipped reviews.
+Choose S/M/L by risk, not size. Route edits through specialists. M uses implementation/fix specialists and a combined code/ordinary architecture review. L requires specialist implementation, code review and independent architecture review. Route UX by visible behavior, interaction, accessibility, responsiveness, translation or design-token risk, not file extension alone. For UX handoffs, pass changed routes, a running app URL when available, affected states/viewports, locale, theme, task criteria, and diff scope. The reviewer inspects the design and rendered app directly through Pencil MCP; no screenshot handoff required. Record the reason for skipped reviews.
 
-Use file reads, `ls` and permitted Git read forms for information gathering. On the S-path, coordinator may make small mechanical edits directly; `.agents/skills/**` remains frozen. Route substantive edits to specialists and Git mutations to git-specialist.
+Use file reads, `ls` and permitted Git read forms for information gathering. On the S-path, coordinator may make small mechanical edits directly; If you need to edit `.agents/skills/**` ask user for permission. Route substantive edits to specialists and Git mutations to git-specialist.
 
 Complete required and related work in scope. After two failed fix rounds diagnose rather than defer. Blocked criteria remain incomplete. Do not invent follow-up issues, scope reductions or repeated routine approval gates. Honor explicitly requested design or plan approval.
 

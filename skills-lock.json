@@ -19,6 +19,12 @@
       "skillPath": ".claude/skills/api-testing-patterns/SKILL.md",
       "computedHash": "53e9dff756aee2aa5fc86cfd4847b0882dbb4e5b637a8e0629f44e72d9841611"
     },
+    "base-ui": {
+      "source": "barathrajd/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/base-ui/SKILL.md",
+      "computedHash": "19b9abe309db71a3a6b93ec8ec5b2ee028ee7857aeb5c20ebf423b35fdf77fb8"
+    },
     "base-ui-react": {
       "source": "jackspace/claudeskillz",
       "sourceType": "github",
@@ -96,6 +102,12 @@
       "sourceType": "github",
       "skillPath": "skills/engineering/grill-with-docs/SKILL.md",
       "computedHash": "35e62aa423aaeab6a414bcac273f56dfb17802ef2334b41b6a3b00f28196c8cf"
+    },
+    "grilling": {
+      "source": "mattpocock/skills",
+      "sourceType": "github",
+      "skillPath": "skills/productivity/grilling/SKILL.md",
+      "computedHash": "ef1641a2047b71b60f1942cd35efb47d3afc9d584dff5a0b01f8c7db923aaa08"
     },
     "husky": {
       "source": "trystan2k/skills",
@@ -187,11 +199,23 @@
       "skillPath": "skills/skill-creator/SKILL.md",
       "computedHash": "5ea13a6d9f0d4bb694405d79acd00cadec0d21bb138c4dd10fcf3c500cb835c2"
     },
+    "stylex": {
+      "source": "barathrajd/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/stylex/SKILL.md",
+      "computedHash": "53762a297fac8a81c9268143cd5e976110e7bae83a1c3c3d7fb5bc0ad6324357"
+    },
     "supabase": {
       "source": "supabase/agent-skills",
       "sourceType": "github",
       "skillPath": "skills/supabase/SKILL.md",
       "computedHash": "bcbf1c542906f109e9dc3457c389a9cc85854eb90fa6b5cba2e5c131140305e1"
+    },
+    "tanstack": {
+      "source": "barathrajd/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/tanstack/SKILL.md",
+      "computedHash": "7ad28c5a6ad2da43d21f9e5a12698b20216521587bee6fd39517077ee0c1ef74"
     },
     "tanstack-start-architecture": {
       "source": "trystan2k/skills",

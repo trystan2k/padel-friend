@@ -2,10 +2,6 @@
 name: pen-design
 description: >
   Create high-quality visual designs — websites, app screens, dashboards, slides, marketing materials, social media graphics — using the pen.dev CLI tool. Use this skill whenever the user wants to create, generate, or visualize any kind of UI design, mockup, wireframe, layout, webpage, app screen, presentation slide, poster, banner, or marketing asset. Also use it when the user says things like "design me a...", "make a visual for...", "create a mockup of...", "what would X look like?", or wants to turn an idea into a visual. Even if the user doesn't mention "pen.dev" or "design tool" explicitly — if they want something visual created, this is the skill to use.
-metadata:
-version: "0.3.8"
-references:
-  - https://unpkg.com/@pen.dev/cli@0.3.8/SKILL.md
 ---
 
 # pen.dev Design
@@ -177,4 +173,3 @@ For quick successive iterations, keep a consistent naming pattern:
 ## Working Directory
 
 Save design files in the user's current working directory or a subdirectory like `designs/`. Don't use temp directories — the user will want to find and iterate on these files later.
-Ask AI

@@ -16,7 +16,6 @@ https://github.com/JuliusBrussee/caveman:caveman-commit
 https://github.com/JuliusBrussee/caveman:caveman-compress
 https://github.com/JuliusBrussee/caveman:caveman-help
 https://github.com/JuliusBrussee/caveman:caveman-review
-https://github.com/mattpocock/skills:grill-with-docs
 https://github.com/mattpocock/skills:improve-codebase-architecture
 https://github.com/mattpocock/skills:teach
 https://github.com/mattpocock/skills:writing-for-agents
@@ -40,3 +39,7 @@ https://github.com/trystan2k/skills:react-development
 https://github.com/trystan2k/skills:tanstack-start-architecture
 https://github.com/trystan2k/skills:typescript-development
 https://github.com/vercel-labs/agent-skills:vercel-react-view-transitions
+https://github.com/barathrajd/agent-skills:base-ui
+https://github.com/barathrajd/agent-skills:stylex
+https://github.com/barathrajd/agent-skills:tanstack
+https://github.com/mattpocock/skills:grilling

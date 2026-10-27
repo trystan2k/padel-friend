@@ -15,7 +15,7 @@ permissions:
   - { action: skill, resource: "*", effect: allow }
   - { action: external_directory, resource: "*", effect: deny }
   - { action: edit, resource: "*", effect: allow }
-  - { action: edit, resource: ".agents/skills/*", effect: deny }
+  - { action: edit, resource: ".agents/skills/*", effect: allow }
   - { action: shell, resource: "*", effect: ask }
   - { action: webfetch, resource: "*", effect: allow }
   - { action: websearch, resource: "*", effect: allow }

@@ -32,7 +32,7 @@ permalink: docs/development-logs/task-PAF-110-optimize-delivery-harness-with-nat
   - `harness` tools: `context_bundle` (coordinator + specialists), `telemetry_summary` (coordinator + QA; newest-100k-lines bounded window).
   - Reasoning-effort hook skipped as redundant (frontmatter variants + deterministic titles eliminate the aux call).
 - Cancelled-artifact cleanup: deleted `tmp/paf110/serena-unit/**` and `tmp/paf110/access-candidate/handoff.md` (provenance inspected first — synthetic fixtures).
-- Imported-skills freeze respected: `.agents/skills/**` (42 imported skills), `skills.txt`, `skills-lock.json` untouched; project-specific-skill audit performed (10/10 read-only scope audit).
+- Imported-skills: If you need to edit `.agents/skills/**`, `skills.txt`, `skills-lock.json` ask user for permission; project-specific-skill audit performed (10/10 read-only scope audit).
 - Harness documentation: `docs/harness/README.md`; plan captured in `docs/plan/Plan PAF-110 ....md` (plan + user-approved extension appendix).
 - User telemetry state (`.opencode/state/`) is gitignored and was never read.
 
