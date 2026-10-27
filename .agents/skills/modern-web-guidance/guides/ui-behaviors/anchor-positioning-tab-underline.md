@@ -83,8 +83,8 @@ This is only a visual indicator, and must not be a replacement for setting the a
 
 ## Fallback strategies
 
-Anchor positioning has limited availability.
-Supported by: Safari 27.
+Browser support for Anchor positioning: Limited availability.
+Supported by: Safari 27 (Sep 2026).
 Unsupported in: Chrome, Edge, and Firefox.
 
 If anchor positioning is not supported in the browser, use a `border-bottom` to add an underline. It will not be animated.

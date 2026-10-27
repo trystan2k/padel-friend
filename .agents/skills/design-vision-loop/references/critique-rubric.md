@@ -1,20 +1,27 @@
 # Vision Critique Rubric
 
-Score each screenshot against these dimensions. One hard FAIL means `ITERATE`. The conformance target is the matching frame and design variables in `design/origin.pen`.
+Score each captured screenshot against these dimensions. A single hard FAIL = ITERATE. Conformance target
+is `.claude/design/design-system.md` when present; otherwise the Pass-1 design plan from `frontend-aesthetics`.
 
-| Dimension | Pass condition | Common defects |
-|---|---|---|
-| token-conformance | Colors, type, and spacing match the Pen design variables (via StyleX tokens) | Off-palette color, wrong type scale, ad-hoc spacing |
-| hierarchy | Exactly one primary action stands out per screen | Two competing CTAs, no focal point, flat emphasis |
-| spacing-rhythm | Consistent spacing scale; related items grouped, unrelated separated | Cramped clusters, uneven gaps, no vertical rhythm |
-| responsive | No overflow, clipping, or overlap at any captured viewport | Horizontal scroll on mobile, clipped text, off-screen controls |
-| dark-mode | Parity with light: contrast holds, nothing disappears | Unreadable text, un-themed hard-coded surfaces, lost borders |
-| contrast-a11y | Text and controls meet WCAG 2.2 AA contrast | Low-contrast body text, accent-on-accent labels |
-| spec-match | Layout matches the Pen frame at structure level | Regions reordered, component missing, proportion drift |
+```toon
+rubric[8]{dimension,pass_condition,common_defects}:
+  token-conformance,"colors/type/spacing come from the design system","off-palette hex, timid type scale, ad-hoc spacing"
+  hierarchy,"exactly ONE primary action stands out per screen","two competing CTAs, no clear focal point, flat emphasis"
+  spacing-rhythm,"consistent scale; related items grouped, unrelated separated","cramped clusters, uneven gaps, no vertical rhythm"
+  responsive,"no overflow/clipping/overlap at 375 / 768 / 1440","h-scroll on mobile, text clipped, controls off-screen, broken grid"
+  dark-mode,"parity with light — contrast holds, no invisible text","white-on-white, un-themed hardcoded surfaces, lost borders"
+  contrast-a11y,"text/background meets WCAG AA","low-contrast body text, accent-on-accent labels"
+  signature,"the intended distinctive element is present and intact","generic default shipped instead of the planned signature"
+  spec-match,"layout matches the Stitch/Figma reference at structure level","regions reordered, key component missing, proportion drift"
+```
 
 ## Scoring discipline
 
-- **Look before scoring.** Cite what the screenshot shows ("at 375px both buttons use the accent color, so the primary action is ambiguous"), not what the code should produce.
-- **Per viewport.** A defect at one width is a defect; record the viewport.
-- **Expected vs actual.** Every defect names the element, the viewport, the expected state from the Pen design, and the observed state. Resolve vague notes ("feels off") into a dimension above or drop them.
-- **Structure, not pixels.** For `spec-match`, compare layout, hierarchy, and rhythm against the Pen frame; browser and Pen rendering differ, so a pixel-perfect match is not the bar.
+- **Look before scoring.** Cite what you see in the screenshot ("the two buttons at 375px both use the
+  accent, so hierarchy is ambiguous"), not what the code *should* produce.
+- **Per-viewport.** A defect at one width is still a defect — record which viewport.
+- **Expected vs actual.** Every defect names the element, the viewport, the expected state (from the design
+  system), and the actual observed state. Vague notes ("feels off") are not actionable — resolve them into
+  a concrete dimension above or drop them.
+- **Layout-level for spec-match.** Compare structure/hierarchy/rhythm against the reference; do NOT demand
+  pixel-perfection — Stitch itself doesn't guarantee it.

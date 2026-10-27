@@ -1,12 +1,8 @@
 ---
 name: git
-description: "MUST USE for ANY git operations. Atomic commits, rebase/squash, history search (blame, bisect, log -S). STRONGLY RECOMMENDED: Use with task(category='quick', load_skills=['git-master'], ...) to save context. Triggers: 'commit', 'rebase', 'squash', 'who wrote', 'when was X added', 'find the commit that'."
+description: "MUST USE for ANY git operations. Atomic commits, rebase/squash, history search (blame, bisect, log -S). STRONGLY RECOMMENDED: Use with task(category='quick', load_skills=['git'], ...) to save context. Triggers: 'commit', 'rebase', 'squash', 'who wrote', 'when was X added', 'find the commit that'."
 license: MIT
 compatibility: OpenCode
-metadata:
-  version: "1.0.0"
-  references:
-    - https://skills.sh/code-yeongyu/oh-my-opencode/git-master
 ---
 
 # Git Master Agent

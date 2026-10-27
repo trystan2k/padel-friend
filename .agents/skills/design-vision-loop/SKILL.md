@@ -1,70 +1,94 @@
 ---
 name: design-vision-loop
-description: "Vision feedback loop for UI: render the running app with playwright-cli, screenshot it across viewports and dark mode, run deterministic gates, then critique the screenshots against the Pen design (design/origin.pen) and iterate until it passes. Use after building or changing a UI page or component, or when asked to check that the UI looks right or matches the design."
+description: "Vision feedback loop for UI — render the running UI, screenshot it across viewports + dark mode, run deterministic gates then a multimodal critique against the design system, and iterate until it passes. Use after building or changing a UI component/page, when asked to 'check the UI', make it 'look right', or verify a build matches a design spec / Stitch screen."
+when_to_use: "verify UI looks right, screenshot critique, iterate UI against design system, match a design spec / Figma / Stitch screen, responsive + dark-mode check, make it look designed"
 user-invocable: false
 allowed-tools: Read, Grep, Glob, Bash
 ---
 
+> **AI-consumed reference.** This skill *verifies* rendered UI; it does not generate taste (that's
+> `frontend-aesthetics`) or enforce statically (that's the `design-conformance` hook +
+> `theme-consistency` rule). Close the loop: build → **see** → critique → fix.
+
 # Design Vision Loop
 
-Correct code can still render wrong; nobody looked at it. This skill closes the loop: **render → capture → gate → critique → fix**.
+Open-loop text guidance is why "correct" UI still looks off — nobody looked at it. This skill adds the
+eyes: **render → screenshot → critique → iterate**, the pattern Anthropic endorses for UI agents
+(*Building agents with the Claude Agent SDK*: "visual feedback… can be helpful"; computer-use docs:
+"after each step, take a screenshot and carefully evaluate… only when you confirm a step was executed
+correctly should you move on").
 
 ## Precondition
 
-The UI must render: a running dev server (`bun run dev`, or the URL the caller gives) and a route that shows the change. If nothing renders (a component with no route or harness), say so and stop — never critique code you have not seen rendered.
+The UI must be renderable: a running dev server URL/route, or a static HTML artifact. If nothing renders
+(component with no harness), say so and either spin up a preview or fall back to static review — don't
+pretend to have looked.
 
-The design reference is the matching frame in `design/origin.pen`. If the file or frame is missing, report it and critique against the rubric without the `spec-match` dimension.
+## The loop (max 3 iterations by default)
 
-## The loop (max 3 iterations)
-
-### Step 1 — reference (Pen, read-only)
-
-Load the target frame from `design/origin.pen` with the Pen tools: `mcp__pencil__get_app_state`, then `mcp__pencil__execute` using only `Get`, `GetVariables`, `Print`, and `TakeScreenshot([frameId])`. Keep the screenshot and the design variables (colors, type, spacing) as the conformance target. Read only — never use the `pen-design` generator or any mutating `execute` call here.
-
-### Step 2 — capture (playwright-cli)
-
-For each viewport in [`references/viewport-matrix.md`](references/viewport-matrix.md):
-
-```bash
-playwright-cli open http://localhost:<port>/<route>
-playwright-cli resize 375 812
-playwright-cli screenshot --filename=test-results/vision/<route>-mobile.png
-playwright-cli resize 768 1024
-playwright-cli screenshot --filename=test-results/vision/<route>-tablet.png
-playwright-cli resize 1440 900
-playwright-cli screenshot --filename=test-results/vision/<route>-desktop.png
-playwright-cli set-color-scheme dark
-playwright-cli screenshot --filename=test-results/vision/<route>-desktop-dark.png
-playwright-cli clear-color-scheme
+```toon
+loop[4]{step,action,tools}:
+  1,Render + capture,"navigate → resize each viewport → screenshot; emulate dark mode, screenshot again"
+  2,Tier-1 deterministic gates,"run the design-conformance check + read console errors — cheap, run FIRST"
+  3,Tier-2 vision critique,"read the screenshots, score against references/critique-rubric.md"
+  4,Verdict,"PASS → done · defects → fix → re-enter step 1 (until pass or budget hit)"
 ```
 
-`test-results/` is git-ignored; screenshots are evidence, not artifacts to commit. If the design has no dark theme, skip the dark capture and note it.
+**Two-tier verification is deliberate** (Anthropic ranks rules-based feedback above LLM-as-judge): the
+deterministic gate is the strong signal and it's nearly free, so run it before spending a vision call. Only
+screenshot-critique what already passes the lint-level gate.
 
-### Step 3 — deterministic gates (run before any critique)
+### Step 1 — capture (Playwright MCP)
 
-- `playwright-cli console` — runtime errors, failed requests, and React warnings are defects regardless of looks.
-- Token check on the changed style files: every StyleX style uses design tokens (`defineVars` variables or `stylex.types.*`), never literal hex, `px`, or font values.
-- `bun run lint` and `bun run typecheck` on the change.
+- `browser_navigate` to the route → for each viewport in `references/viewport-matrix.md`
+  (`browser_resize` 375 → 768 → 1440) → `browser_take_screenshot`.
+- Dark mode: emulate `prefers-color-scheme: dark` (via `browser_evaluate` / an emulation call) and
+  re-screenshot at the primary viewport. If the design system declares no dark mode, skip and note it.
+- Save PNGs under `.claude/workflow/vision/<route>-<viewport>[-dark].png`.
 
-Fix every gate failure before spending a critique pass.
+### Step 2 — deterministic gates (tier 1)
 
-### Step 4 — vision critique
+- Run the `design-conformance` check over the changed files (hardcoded hex/px vs tokens, mixed component
+  libraries, missing `prefers-reduced-motion`). Any FAIL → fix before wasting a vision call.
+- Read `browser_console_messages` — runtime errors / failed asset loads are defects regardless of looks.
 
-Read each screenshot with the `Read` tool and score it against [`references/critique-rubric.md`](references/critique-rubric.md), comparing to the Pen reference at layout level. Output a verdict:
+### Step 3 — vision critique (tier 2)
 
-- `status`: `PASS` or `ITERATE`
-- `defects[]`: `element`, `viewport`, `expected` (from the Pen design or rubric), `actual` (what the screenshot shows)
+Read the captured screenshots and score against `references/critique-rubric.md`. Conformance target is
+`.claude/design/design-system.md` (palette / type scale / spacing / signature). If a Stitch screen PNG or
+Figma frame exists, compare at the **layout** level (structure, hierarchy, spacing rhythm) — not pixel-diff.
 
-### Step 5 — iterate
+Output a verdict, not vibes:
 
-Fix each defect (load `refactoring-ui` for hierarchy, spacing, color, or depth defects), then re-enter Step 2. Stop at `PASS` or after 3 iterations; at the cap, report the remaining defects instead of looping.
+```toon
+verdict[2]{field,form}:
+  status,"PASS | ITERATE"
+  defects[]{element,viewport,expected,actual}"
+```
 
-### Step 6 — teardown
+### Step 4 — iterate
 
-Run `playwright-cli close` as soon as you reach `PASS` or the cap. An open browser outlives the task.
+Fix each defect, re-render, re-capture. Stop at PASS or after the iteration budget (default 3 — raise only
+if the user asks). If still failing at budget, report the remaining defects honestly rather than looping.
+
+### Step 5 — teardown (mandatory)
+
+Call `browser_close` as soon as you reach PASS or the iteration cap. **Do not leave the browser open.**
+The @playwright/mcp Chrome does not close itself — an unclosed browser survives the task and, if the
+session later exits ungracefully, is orphaned and runs for days (the `playwright-reaper` SessionStart hook
+is only the backstop for that leak; closing here is what prevents it). Use the browser, then dispose it.
 
 ## Output
 
-Write the verdict, screenshot paths, and defect log to `test-results/vision/report-<route>.md` and return its path, so a reviewer or the user can see the evidence. Every "looks good" claim cites a screenshot.
+Write the verdict + screenshot paths + defect log to `.claude/workflow/vision-report-<route>.md` so a
+Phase-4 reviewer (or the user) has the visual evidence. Never claim "looks good" without an attached shot.
 
-If you could not render, could not capture dark mode, could not load the Pen frame, or hit the cap, say which. A skipped check reported as passed is the failure this skill exists to prevent.
+## Budget & honesty
+
+- Screenshots and vision calls cost tokens; the iteration cap and the tier-1-first ordering keep it bounded.
+- If you couldn't render, couldn't reach dark mode, or hit the cap — **say which**. A skipped check reported
+  as passed is the failure mode this skill exists to prevent.
+
+**See also:** `references/critique-rubric.md`, `references/viewport-matrix.md`,
+`rules/agent/design-system-persistence.md` (conformance target), `skills/frontend-aesthetics/SKILL.md`
+(taste), `hooks/design-conformance.cjs` (tier-1 gate), `skills/stitch-design/SKILL.md` (screen PNG targets).
