@@ -6,7 +6,7 @@ OpenCode V2 auto-discovers `.opencode/plugins/delivery-harness/index.ts`. Its `@
 
 ## Tooling inventory
 
-Oxlint covers `.opencode/plugins/**`; `.oxlintrc.json` no longer excludes `.opencode/**`. This positive scope extension keeps plugin files inside lint-staged's lint set.
+Oxlint covers `.opencode/plugins/**`; `.oxlintrc.json` no longer excludes `.opencode/**`. This positive scope extension keeps plugin files inside lint-staged's lint set. Knip ignores `.opencode/plugins/**` and the `@opencode/plugin` dependency (runtime-loaded plugin is invisible to static analysis; same artifact class as the existing `.agents/**` ignore).
 
 ## Privacy and guard coverage
 
