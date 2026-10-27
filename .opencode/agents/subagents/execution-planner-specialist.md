@@ -158,10 +158,10 @@ Follow these steps:
    - Identify 2-3 approaches.
    - Reject overengineered approaches.
    - Select the simplest effective approach and explain why.
-3. Use the brainstorming skill:
-   - Invoke the brainstorming skill to explore alternative approaches and generate innovative ideas.
-   - Leverage the brainstorming skill to identify potential edge cases and consider different perspectives.
-   - Apply brainstorming outcomes to refine the chosen approach and ensure comprehensive solution coverage.
+3. Complete the option analysis directly:
+   - Compare viable approaches and reject unnecessary complexity.
+   - Identify edge cases and affected contracts.
+   - Apply the analysis to refine the selected approach and validation plan.
 4. Inspect repository patterns using `glob`, `grep`, and `read`:
    - Find relevant modules, naming conventions, and architecture patterns.
    - Reuse established project conventions in the proposed plan.
@@ -179,7 +179,7 @@ Effective permissions (frontmatter `permission`; legacy `tools` field not used):
 
 - `read`, `glob`, `grep`, `list`: allow — repository analysis.
 - `edit` (gates `write`/`edit`): scoped to `docs/plan/**` only — the plan file is the sole writable artifact. No product-code edits.
-- `skill`: allow — planning/stack skills when they improve the plan.
+- `skill`: allow — only runtime-available planning or stack skills when they add concrete value; use the plan's built-in analysis otherwise.
 - `mcp_serena*shell*`: deny — the Serena shell tool is blocked; planning stays read-only. Other Serena tools (search/intelligence) stay allowed.
 - `bash`, `task`, `question`, `webfetch`, `websearch`, `todowrite`, `lsp`: deny — analysis and plan-writing only, no execution, delegation, or research. `external_directory`: deny by default; only the git config paths (`~/.gitconfig`, `~/.gitignore`, and the resolved dotfiles symlinks directory) are allowed.
 

@@ -28,7 +28,7 @@ permissions:
   - action: skill
     resource: "*"
     effect: allow
-  - action: mcp_pencil*
+  - action: pencil*
     resource: "*"
     effect: allow
   - action: mcp_serena*shell*
@@ -102,14 +102,11 @@ Before reviewing:
 
 1. Read context files in order: `AGENTS.md` → `ARCHITECTURE.md`
 2. Extract stack, design rules, token conventions, i18n rules, and styling constraints
-3. Load the design via the pen.dev MCP tools (`mcp_pencil_get_app_state` → `mcp_pencil_execute`) — Pencil is the visual reference, not a literal implementation spec. See "Validating the Pencil Design" below
+3. Load the design via the pen.dev MCP tools (`pencil_get_app_state` → `pencil_execute`) — Pencil is the visual reference, not a literal implementation spec. See "Validating the Pencil Design" below
 4. Load design tokens from the design tokens css file — the full catalog (semantic `--color-*`, primitive `--palette-*`, `--space-*`, `--radius-*`, `--font-family-*`, `--font-size-*`, `--font-weight-*`, `--font-line-height-*`, `--border-width-*`). This catalog is the reference for the mandatory Token Compliance pass.
-5. Load skills matching the changed files' stack. Always load these skills:
-   - **Mandatory**: `ui-ux-pro-max` — primary UI/UX best-practice guidance
-   - **Mandatory**: `accessibility` — WCAG 2.2 a11y checks for all web UI
-   - **Mandatory**: `css-architecture` — CSS/StyleX token and structure validation
-   - Load `frontend-design` when reviewing visual polish or aesthetic decisions
-   - Load `modern-web-guidance` when reviewing HTML/CSS patterns, layout, or interactions
+5. Load only skills reported available by the current skill catalog and relevant to the diff; do not infer availability from `.agents/skills/` files alone.
+   - Load `refactoring-ui` for visual hierarchy, spacing, color, or depth findings when available. Pencil and project design tokens remain authoritative.
+   - Apply accessibility, StyleX, token, i18n, responsive, and interaction checks from this agent's built-in review checklist; these do not depend on a separate skill.
 6. Get the full diff: `git diff` or `git diff <commit-range>` for changed lines
 7. Read the deepthink plan file if provided — use it as intent context only
 
@@ -129,16 +126,16 @@ Diffs alone are not enough. After getting the diff:
 
 The design lives in an encrypted `.pen` file — never use Read/Grep on it. Use the pen.dev MCP tools:
 
-1. Call `mcp_pencil_get_app_state` to confirm the design canvas is active and list top-level frames (screen names, component frames).
-2. Read `mcp_pencil_read_skill` (and `execute.md` via its `path` param) to learn the `mcp_pencil_execute` API before using it.
-3. Use `mcp_pencil_execute` with the `filePath` of the `.pen` file for read-only queries:
+1. Call `pencil_get_app_state` to confirm the design canvas is active and list top-level frames (screen names, component frames).
+2. Read `pencil_read_skill` (and `execute.md` via its `path` param) to learn the `pencil_execute` API before using it.
+3. Use `pencil_execute` with the `filePath` of the `.pen` file for read-only queries:
    - `Print(GetVariables())` — semantic variables and their light/dark themed values
    - `Get(frameId, n => Print(...))` visitors — extract fills, fontSize, fontWeight, fontFamily, lineHeight, cornerRadius, padding, gap, stroke values from the frames matching the screens under review
    - `Get(frame, visit, {resolveVariables: true})` — resolve `$variable` references to computed values before comparing with CSS token values
    - `TakeScreenshot([frameId])` — visual reference when judging fidelity of a screen
 4. Compare extracted design values against both the token catalog and the implementation.
 
-READ-ONLY rule: `mcp_pencil_execute` can also mutate documents. You must ONLY use `Get`, `GetVariables`, `Print`, and `TakeScreenshot`. Never call `Insert`, `Copy`, `Update`, `Replace`, `Delete`, `Move`, `SetVariables`, `Generate`, or `Export`. Never modify the design.
+READ-ONLY rule: `pencil_execute` can also mutate documents. You must ONLY use `Get`, `GetVariables`, `Print`, and `TakeScreenshot`. Never call `Insert`, `Copy`, `Update`, `Replace`, `Delete`, `Move`, `SetVariables`, `Generate`, or `Export`. Never modify the design.
 
 If the Pencil canvas is not active or the file cannot be opened, do **not** expand into per-check manual-review flags. Emit exactly one line — `Design source unavailable: Pencil MCP not reachable; design-fidelity sections skipped` — then complete every other section (Token Compliance, i18n, accessibility, responsive, states) from the token catalog and the code. Never guess design values.
 
@@ -364,8 +361,8 @@ For critical/major delivery defects or necessary design changes, recommend `rewo
 Effective permissions (frontmatter `permission`):
 
 - `read`, `glob`, `grep`, `list`: allow — review investigation and design file access.
-- `skill`: allow — UI/UX, accessibility, CSS architecture, frontend design, modern web guidance skills.
-- `mcp_pencil_execute`, `mcp_pencil_get_app_state`, `mcp_pencil_read_skill`, `mcp_pencil_get_style`, `mcp_pencil_browser`: allow — pen.dev MCP access to read and validate the `.pen` design (read-only operations only, see "Validating the Pencil Design").
+- `skill`: allow — `refactoring-ui` for visual hierarchy, spacing, color, or depth when confirmed available in the current OpenCode catalog.
+- `pencil_execute`, `pencil_get_app_state`, `pencil_read_skill`, `pencil_get_style`, `pencil_browser`: allow — pen.dev MCP access to read and validate the `.pen` design (read-only operations only, see "Validating the Pencil Design").
 - `bash`: scoped — read-only git (`diff`, `log`, `show`, `status`) and `ls` only.
 - `edit`, `task`, `question`, `webfetch`, `websearch`, `todowrite`, `lsp`: deny. `external_directory`: deny by default; only the git config paths (`~/.gitconfig`, `~/.gitignore`, and the resolved dotfiles symlinks directory) are allowed.
 

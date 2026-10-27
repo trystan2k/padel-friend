@@ -28,7 +28,7 @@ permissions:
   - action: skill
     resource: "*"
     effect: allow
-  - action: mcp_pencil*
+  - action: pencil*
     resource: "*"
     effect: allow
   - action: mcp_serena*shell*
@@ -102,8 +102,9 @@ Before reviewing:
 
 1. Read context files in order: `AGENTS.md` → `CONTEXT.md` → `ARCHITECTURE.md`
 2. Extract stack, architecture rules, conventions, quality constraints
-3. Load skills from `.agents/skills/*/SKILL.md` — match to the changed files' stack
-   - **Mandatory**: Always load the `accessibility` skill when reviewing web application UIs or frontend components.
+3. Load only skills reported available by the current skill catalog and relevant to the changed files' stack; do not infer availability from `.agents/skills/` files alone.
+   - For UI changes, apply the reviewer's built-in accessibility checks for semantic controls, keyboard and focus behavior, labels, errors, and status announcements.
+   - Route visual and interaction review to `subagents/ux-ui-reviewer-specialist` when UI files changed.
 4. Read the deepthink plan file if provided — use it as intent context only
 5. Get the full diff: `git diff` or `git diff <commit-range>` for changed lines
 
@@ -310,7 +311,7 @@ Severity levels:
 Effective permissions (frontmatter `permission`; legacy `tools` field not used):
 
 - `read`, `glob`, `grep`, `list`: allow — review investigation.
-- `skill`: allow — stack skills, including the mandatory `accessibility` skill for UI reviews.
+- `skill`: allow — only stack skills confirmed available in the current OpenCode catalog.
 - `bash`: scoped — read-only git (`diff`, `log`, `show`, `status`) and `ls` only.
 - `edit`, `task`, `question`, `webfetch`, `websearch`, `todowrite`, `lsp`: deny. `external_directory`: deny by default; only the git config paths (`~/.gitconfig`, `~/.gitignore`, and the resolved dotfiles symlinks directory) are allowed.
 

@@ -30,7 +30,7 @@ permissions:
     effect: deny
   - action: skill
     resource: "*"
-    effect: allow
+    effect: deny
   - action: shell
     resource: "*"
     effect: allow
@@ -71,7 +71,7 @@ permissions:
 
 # Agent: project-manager-specialist
 
-Purpose: Execute any Linear Project or Issues request deterministically using the `linear-cli` CLI and the `linear` skills.
+Purpose: Execute Linear Project and issue requests deterministically using the `linear` CLI and this agent's embedded procedures.
 
 ## Scope
 
@@ -92,7 +92,7 @@ This agent must NOT:
 - Ask clarifying questions to the user.
 - Modify product source code.
 - Perform git commit, push, rebase, reset, or branch management.
-- Execute shell commands unrelated to `linear-cli` or safe prerequisite checks.
+- Execute shell commands unrelated to the resolved `linear` action or safe prerequisite checks.
 - Use MCP integrations.
 - Create draft project items.
 
@@ -132,9 +132,9 @@ Outputs:
 
 Follow these steps:
 
-### 1. Load Skills
+### 1. Use the Embedded CLI Procedures
 
-Load the `linear-cli` skill before selecting any commands.
+Use this agent's command procedures and repository Linear configuration. Do not depend on a separate skill.
 
 ### 2. Resolve Team and Project Reference
 
@@ -159,7 +159,7 @@ Required Fix Before Retry: Add the team reference to AGENTS.md or pass it explic
 
 ### 3. Verify Tool Availability
 
-Check if `linear-cli` is available.
+Check whether the `linear` executable is available.
 
 ```bash
 linear --version
@@ -331,16 +331,12 @@ Effective permissions (frontmatter `permission`; legacy `tools` field not used):
 Model tier: `T0` mechanical. Execute the resolved `linear` commands and report their output. Never re-resolve team/project references that the caller already supplied, never invent issue content, and never expand scope.
 
 - `read`, `glob`, `grep`, `list`: allow — AGENTS.md, templates, and repo investigation.
-- `skill`: allow — `linear-cli` skill.
+- `skill`: deny — Linear command procedures are embedded in this agent.
 - `bash`: allow — full shell access. Primary tool is `linear` for issue operations. Use `jq` to parse `--json` output. Still subject to the Safety Rules below: run only commands needed for the resolved Linear action plus safe prerequisite checks; never run destructive commands outside the `linear` CLI or touch product source code.
 - For multi-line bodies, use `edit` to write a temporary file under `/tmp`, then pass it to one `linear ... --body-file` or `--description-file` command. Never modify repository files.
 - `edit`: scoped to `/tmp/**` only — for temporary body/description files. No repo writes. `external_directory`: deny by default; only the git config paths (`~/.gitconfig`, `~/.gitignore`, and the resolved dotfiles symlinks directory) and `/tmp/**` are allowed.
 - `task`, `question`, `todowrite`: deny — no delegation, no user questions, no web research.
 - `mcp_serena*`, `engram*`: deny — no MCP integrations per scope.
-
-## Skills
-
-- `linear-cli`
 
 ## Safety Rules
 

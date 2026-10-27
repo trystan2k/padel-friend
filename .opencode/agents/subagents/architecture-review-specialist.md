@@ -28,7 +28,7 @@ permissions:
   - action: skill
     resource: "*"
     effect: allow
-  - action: mcp_pencil*
+  - action: pencil*
     resource: "*"
     effect: allow
   - action: mcp_serena*shell*
@@ -92,7 +92,7 @@ This agent:
 - Reviews implementation changes for bugs, incorrect logic, weak patterns, and maintainability issues.
 - Reads and validates the deepthink plan file exists and loads it as context for the review.
 - Evaluates adherence to the approved plan, project architecture, coding conventions, and process quality.
-- Uses stack-related project skills to validate best practices and known anti-patterns.
+- Uses runtime-available stack guidance to validate best practices and known anti-patterns.
 - For UI changes, judges Pencil visual fidelity together with production UX, accessibility, responsive layout, i18n, and token use; does not mistake literal markup/pixel differences or better-engineered choices for defects.
 - Returns a concise review summary so the requester can decide whether to take action.
 
@@ -152,8 +152,8 @@ Follow this protocol before review:
    - `CONTEXT.md`
    - `ARCHITECTURE.md`
 2. Extract stack, architecture rules, and quality constraints.
-3. Discover local skills in `.agents/skills/*/SKILL.md`.
-4. Match review scope and stack to the relevant skills.
+3. Discover skills through the current skill catalog; do not infer availability from `.agents/skills/` files alone.
+4. Match review scope and stack only to skills reported available by that catalog.
 5. Load matched skills and apply their best-practice guidance during review.
 6. If no skill matches, follow repository conventions and language best practices.
 
@@ -173,7 +173,7 @@ Follow these steps:
    - readability
    - naming and structure
    - duplication and complexity
-7. Check stack-specific best practices and anti-patterns using loaded skills. For UI, `docs/design/padel-friend.pen` sets colors, typography, spacing, layout intent, and overall look; match visually as closely as possible. Prefer fluid flex/percent sizing, Base UI accessible widgets, tokens, ≥44px touch targets, and translated-text-safe layouts over literal design markup. Pencil/Chromium font rasterization precludes pixel identity: require exact structural/layout probes with documented, justified nonzero per-screen screenshot tolerances; never widen budgets to hide defects.
+7. Check stack-specific best practices and anti-patterns using available guidance and repository conventions. For UI, pen.dev design file (check AGENTS.md for path) sets colors, typography, spacing, layout intent, and overall look; match visually as closely as possible. Prefer fluid flex/percent sizing, accessible primitives, tokens, ≥44px touch targets, and translated-text-safe layouts over literal design markup. Pencil/Chromium font rasterization precludes pixel identity: require exact structural/layout probes with documented, justified nonzero per-screen screenshot tolerances; never widen budgets to hide defects.
 8. Check process quality where relevant:
    - test adequacy
    - validation coverage
@@ -188,7 +188,7 @@ Follow these steps:
 Effective permissions (frontmatter `permission`; legacy `tools` field not used):
 
 - `read`, `glob`, `grep`, `list`: allow — review investigation.
-- `skill`: allow — stack-specific best-practice skills.
+- `skill`: allow — only stack-specific skills confirmed available in the current catalog.
 - `bash`: scoped — read-only git (`diff`, `log`, `show`, `status`) and `ls` only.
 - `mcp_serena*shell*`: deny — the Serena shell tool is blocked; review uses the read-only bash allowlist. Other Serena tools (search/intelligence) stay allowed.
 - `edit`, `task`, `question`, `webfetch`, `websearch`, `todowrite`, `lsp`: deny. `external_directory`: deny by default; only the git config paths (`~/.gitconfig`, `~/.gitignore`, and the resolved dotfiles symlinks directory) are allowed.

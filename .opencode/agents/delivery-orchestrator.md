@@ -24,7 +24,7 @@ permissions:
   - action: skill
     resource: "*"
     effect: allow
-  - action: mcp_pencil*
+  - action: pencil*
     resource: "*"
     effect: allow
   - action: mcp_serena*shell*
@@ -335,7 +335,7 @@ Follow these steps in order.
    - **Stop timer** and record Preparation phase time.
 
 2. Planning with Deepthink
-   - Using the details from step 1, interview the user (use the `grill-with-docs` skill and the question tool) only for genuine ambiguity: unresolved requirements, conflicting constraints, or decisions the codebase cannot answer. Skip the interview entirely when the scope is already unambiguous, and say so.
+    - Using the details from step 1, use the question tool only for genuine ambiguity: unresolved requirements, conflicting constraints, or decisions the codebase cannot answer. Ask focused questions. Skip the interview entirely when the scope is already unambiguous, and say so.
    - Ask `subagents/execution-planner-specialist` to generate the detailed action plan using deepthink principles, from the full description and details of the scope and ALL its units of work (not just titles), plus the user requirements obtained in the interview.
    - Capture the plan file path returned by `subagents/execution-planner-specialist` and store it for use in implementation.
    - Ensure the plan maps every acceptance criterion to implementation and validation, including supporting contracts, fixtures, accessibility/i18n, and regression tests where applicable. Identify unavailable prerequisites now; resolve genuine blockers or request an explicit scope decision rather than planning automatic follow-ups.
@@ -403,9 +403,9 @@ Follow these steps in order.
 
 8. Development Logging
    - **Start timer** for Development Logging phase.
-   - Ask `subagents/development-log-specialist` to create and store the development log using `memory-notes` skill format.
+    - Ask `subagents/development-log-specialist` to create and store the development log using its embedded project log format.
    - Provide planning, implementation, testing, QA, and review context, including the per-unit commit list.
-   - Use the current project configuration in memory-notes to store the log.
+    - Store the log under `docs/development-logs/` using the development-log specialist's instructions.
    - It should include all development done in the scope (even after compaction, include everything done).
    - **Stop timer** and record Development Logging phase time.
 
@@ -468,7 +468,7 @@ Tool access is configured in this file's frontmatter via `permission` (the legac
 - `task`: allow — delegation to specialist subagents.
 - `read`, `glob`, `grep`, `list`: allow — read-only investigation.
 - `edit` (gates `write`/`edit`): allow — small-change fast path (see Complexity Triage) plus exactly two workflow artifacts: `docs/plan/<ID>-bundle.md` and `docs/plan/<ID>-findings.md`. No other file is ever written directly.
-- `skill`: allow — `grill-with-docs` / `brainstorming` interviews.
+- `skill`: allow — only skills available in the current OpenCode skill catalog and directly relevant to the task. Use the `question` tool directly for interviews.
 - `question`: allow — user interviews and approval prompts.
 - `bash`: scoped — read-only inspection (`ls`, `pwd`, `cat`, `head`, `tail`, `wc`, `echo`, `printf`, `sort`, `uniq`, `find`, `grep`, `rg`, `cd`, `date`), read-only `git` (`status`, `diff`, `log`, `rev-parse`, `show`, `ls-files`), read-only provider reads (`gh pr checks|view|list|diff`, `curl -I`/`--head`), and trivial file ops (`mv`, `mkdir`). The read-only set exists so inspection pipelines (`ls -R … | head`, `echo "---" && git status`) do not get denied. Every mutating command (git write ops, `pnpm`, tests, builds, lint, deploy CLIs, Linear) stays denied and delegated; never add a mutating pattern here.
 - `webfetch`, `websearch`: allow — plan-time research only; not used for git, Linear, QA, or review actions.

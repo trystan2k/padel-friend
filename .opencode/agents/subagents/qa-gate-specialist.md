@@ -202,8 +202,8 @@ Before executing checks:
    - `Makefile`
    - CI configs (for example: `.github/workflows/*`, `.gitlab-ci.yml`)
    - language-specific configs (`pyproject.toml`, `tox.ini`, `go.mod`, and similar)
-3. Discover local skills in `.agents/skills/*/SKILL.md`.
-4. Load relevant stack skills for quality-gate interpretation if available.
+3. Discover skills through the current skill catalog; do not infer availability from `.agents/skills/` files alone.
+4. Load relevant skills only when reported available by that catalog and needed to interpret a gate.
 5. Build the gate list in fastest-safe order (for example: lint -> typecheck -> unit/integration -> coverage -> build).
 
 ## Instructions (Behavior Contract)
@@ -230,7 +230,7 @@ Model tier: `T0` mechanical. Execute the resolved gate commands and report their
 
 - `read`, `glob`, `grep`, `list`: allow — gate investigation.
 - `bash`: fail-closed allowlist — this agent is report-only, so only the gate commands are permitted and everything else is denied by default. Allowed: `pnpm complete-check`, `pnpm build`, `pnpm knip`, `pnpm typecheck`, `pnpm lint`, `pnpm format:check`, `pnpm test`, `pnpm test:e2e`, `pnpm tokens:build`, `pnpm db:start`, `pnpm db:stop`, `pnpm exec playwright|vitest`, `pnpm exec supabase status|start|stop`, read-only git (`status`/`diff`/`log`/`show`/`rev-parse`), `ls`, and `cat`/`head`/`tail` for logs. Denied by default: `pnpm db:reset`, `pnpm db:types`, and every git-state change. Never prefix a command with an env assignment (`CI=1 pnpm ...`) — OpenCode matches the whole command from the start, so it will not match the allowlist; use `pnpm test:e2e` (which starts a fresh preview) instead.
-- `skill`: allow — QA/quality skills when they improve gate interpretation.
+- `skill`: allow — QA/quality skills confirmed available in the current OpenCode catalog, when they improve gate interpretation.
 - `edit`, `task`, `question`, `websearch`, `todowrite`, `lsp`: deny.
 - `webfetch`: allow — documentation lookup for gate interpretation.
 - `external_directory`: deny by default; only the git config paths (`~/.gitconfig`, `~/.gitignore`, and the resolved dotfiles symlinks directory) and `/tmp/**` (for gate logs and scratch output) are allowed.

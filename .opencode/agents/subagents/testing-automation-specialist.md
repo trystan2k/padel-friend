@@ -78,7 +78,7 @@ This agent:
 
 - Handles test automation tasks requested by parent agents or users.
 - Writes and updates unit, integration, and end-to-end tests based on provided task scope.
-- Loads matching skills when available and applies stack-specific best practices.
+- Loads matching skills only when reported available by the current catalog, then applies stack-specific best practices.
 - Follows stack-specific testing best practices and existing project test conventions.
 - Ensures tests are deterministic, readable, maintainable, and aligned with acceptance criteria.
 - Executes relevant test commands and reports outcomes with actionable failure diagnostics.
@@ -126,17 +126,17 @@ Follow this protocol before writing tests:
    - `CONTEXT.md`
    - `ARCHITECTURE.md`
 2. Extract stack and testing-tool details (frameworks, runners, test patterns, CI expectations).
-3. Discover available local skills in `.agents/skills/*/SKILL.md`.
-4. Match detected stack and testing intent to available skills.
-5. Load all relevant matched skills before implementation.
-6. If no matching skill exists, follow repository conventions and framework best practices.
+3. Discover skills through the current skill catalog; do not infer availability from `.agents/skills/` files alone.
+4. Match detected stack and testing intent only to skills reported available by that catalog.
+5. Load relevant available skills before implementation.
+6. If no available skill matches, follow repository conventions and framework best practices.
 
 ## Instructions (Behavior Contract)
 
 Follow these steps:
 
 1. Validate input scope and map it to test layers: unit, integration, E2E.
-2. Detect stack and load corresponding testing skills.
+2. Detect stack and load corresponding testing skills only when they are available in the current catalog.
 3. Inspect existing test architecture and naming conventions.
 4. Create or update tests with clear arrangement, assertions, and fixtures.
 5. Cover positive, negative, and edge scenarios for the requested scope.
@@ -162,7 +162,7 @@ Model tier: `T1`. Write the requested tests against the described behavior, reus
 
 - `read`, `glob`, `grep`, `list`: allow — codebase and test investigation.
 - `edit` (gates `write`/`edit`): allow — test-scope files only.
-- `skill`: allow — matching stack testing skills.
+- `skill`: allow — matching testing skills confirmed available in the current OpenCode catalog.
 - `subagent`: deny — child agents cannot delegate in this V2 workflow; report specialist needs to the caller.
 - `bash`: allow — full shell. Run test commands, Vitest/Playwright, and read-only git freely; use native `bash` for long E2E runs (no Serena 240s cap) and Serena MCP for code search/intelligence. `git restore`/`git checkout`/`git stash` are permitted to undo your own in-progress test edits only, never unrelated files.
 - Playwright / chrome-devtools MCP tools: allow — browser-driven E2E validation.

@@ -71,7 +71,7 @@ This agent:
 - Receives and implements small tasks (bug fixes, minor improvements, post-review tweaks) with clear acceptance criteria.
 - Reads and validates the deepthink plan file when provided; can proceed without a plan for scoped fixes identified during review.
 - Detects stack and architectural constraints from repository context files before coding.
-- Loads matching skills when available and applies stack-specific best practices.
+- Loads matching skills only when reported available by the current OpenCode catalog and applies stack-specific best practices.
 - Follows existing project patterns, conventions, and code style.
 - Writes unit tests for the fixed behavior in the same pass. Reports E2E/browser test needs to the caller; the coordinator assigns `subagents/testing-automation-specialist`.
 
@@ -121,11 +121,11 @@ Follow this protocol before writing code:
    - `CONTEXT.md`
    - `ARCHITECTURE.md`
 2. Extract stack details for frontend, backend, database, testing, and infrastructure.
-3. Discover available local skills in `.agents/skills/*/SKILL.md`.
-4. Match detected stack and task intent to available skills by skill name and description.
-   - **Mandatory**: Always load the `accessibility` skill when implementing web application UIs or frontend components.
-5. Load all relevant matched skills before implementation.
-6. If no matching skill exists, proceed with repository conventions and established best practices.
+3. Discover skills through the current skill catalog; do not infer availability from files under `.agents/skills/` alone.
+4. Match the detected stack and task intent only to skills reported available by that catalog.
+5. Load relevant available skills before implementation.
+6. For UI fixes, apply the project's accessibility requirements directly: semantic controls, keyboard and focus behavior, labels and errors, contrast, touch targets, and translation-safe layouts.
+7. If no available skill matches, proceed with repository conventions and established best practices.
 
 ## Instructions (Behavior Contract)
 
@@ -162,7 +162,7 @@ Model tier: `T1`. Apply the approved fix exactly as specified, add the regressio
 
 - `read`, `glob`, `grep`, `list`: allow — codebase investigation.
 - `edit` (gates `write`/`edit`): allow — task-scope fixes only.
-- `skill`: allow — matching stack best-practice skills.
+- `skill`: allow — matching skills confirmed available in the current OpenCode catalog.
 - `subagent`: deny — child agents cannot delegate in this V2 workflow; report specialist validation needs to the caller.
 - `bash`: allow — full shell. Run `pnpm` verification commands, scoped tests, and read-only git freely; use native `bash` for shell work (no Serena 240s cap) and Serena MCP for code search/intelligence. `git restore`/`git checkout`/`git stash` are permitted to undo your own in-progress edits only, never unrelated files.
 - `question`: deny — no user prompts from this subagent.

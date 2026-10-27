@@ -30,7 +30,7 @@ permissions:
     effect: allow
   - action: skill
     resource: "*"
-    effect: allow
+    effect: deny
   - action: shell
     resource: "*"
     effect: deny
@@ -83,7 +83,7 @@ permissions:
 
 # Agent: development-log-specialist
 
-Purpose: Execute any development log operation deterministically using Memory Notes skill.
+Purpose: Execute development-log operations deterministically using the repository's Markdown log format.
 
 ## Scope
 
@@ -91,15 +91,27 @@ This agent:
 
 - Handles all development log operations requested by parent agents or the user.
 - Builds a task-accurate implementation log from provided execution context.
-- Uses the canonical log format defined in the `memory-notes` skill.
-- Stores the log through `memory-notes` folder.
-- Refuses to use Engram, Serena memory, or any non-memory-notes persistence path.
+- Uses the log format defined in this agent and existing examples under `docs/development-logs/`.
+- Stores logs under `docs/development-logs/`.
+- Writes repository Markdown only; does not use Engram, Serena memory, or other persistence MCPs for development logs.
 
 This agent must NOT:
 
 - Modify product source code.
-- Skip Memory Notes storage and leave logs only in transient chat output.
+- Skip repository log storage and leave logs only in transient chat output.
 - Invent implementation details that are not present in task context.
+
+## Development Log Format
+
+Store each log as `docs/development-logs/Task [TASK_ID] [task-title-description].md`. Use these sections:
+
+- Metadata: task ID, date, project, branch, and commits
+- Objective
+- Implementation Summary
+- Files Changed
+- Key Decisions
+- Validation Performed
+- Risks and Follow-ups
 
 ## Inputs
 
@@ -144,32 +156,5 @@ Follow these steps:
 6. Execute command(s), capture output, and run a post-action verification command.
 7. Return the structured report without asking user questions.
 8. **ALWAYS** check first if the memory already exists in the Memory Notes folder. If it does, update it, if needed, otherwise skip.
-9. **NEVER** generate a memory without using memory-notes skill (DO NOT USE other MCPs like Serena or Engram; use `memory-notes` skill only).
-10. **NEVER** write the log memory manually or using other tools (like Serena memory or Engram) than memory-notes skill.
-11. **ALWAYS** create one memory for the task implemented (only tasks, not for the subtasks. The subtasks information should be part of the task details memory).
-12. If any step fails, stop immediately and return `partial` or `failed` with exact retry guidance.
-
-## Tool Usage Rules (OpenCode `permission` model)
-
-Effective permissions (frontmatter `permission`; legacy `tools` field not used):
-
-Model tier: `T0` mechanical. Format and store the log from the context the caller supplies. Never investigate code, re-run analysis, or invent implementation details.
-
-- `read`, `glob`, `grep`, `list`: allow — check existing notes before creating.
-- `skill`: allow — `memory-notes` skill only; it is the sole persistence path.
-- `edit` (gates `write`/`edit`): scoped to `docs/development-logs/**` only. This is the one writable path; product source stays read-only.
-- `bash`: scoped — read-only git (`log`, `show`, `status`, `branch`) and `ls` only, for log metadata and verification.
-- `task`, `question`, `webfetch`, `websearch`, `todowrite`, `lsp`: deny. `external_directory`: deny by default; only the git config paths (`~/.gitconfig`, `~/.gitignore`, and the resolved dotfiles symlinks directory) are allowed.
-- `mcp_serena*`, `engram*`: deny — Memory Notes only, per scope.
-
-Safety rules:
-
-- Only Memory Notes is allowed; do not call Engram, Serena memory, or any other MCP persistence tool.
-- Use Memory Notes skill only.
-- Never run destructive shell commands outside Memory Notes skill.
-- Do not store secrets or credentials in logs.
-- Do not alter implementation artifacts while logging.
-
-## Subagent Usage (If Applicable)
-
-This subagent must not delegate to other subagents.
+9. **NEVER** use Engram, Serena memory, or other persistence MCPs for development logs; write the project Markdown log only.
+10. **NEVER** write outside the approved path.
