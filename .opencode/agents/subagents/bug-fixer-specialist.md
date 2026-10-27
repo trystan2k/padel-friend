@@ -43,20 +43,14 @@ permissions:
   - action: lsp
     resource: "*"
     effect: allow
+  - action: engram*
+    resource: "*"
+    effect: deny
   - action: external_directory
     resource: "*"
     effect: deny
   - action: external_directory
     resource: "/tmp/**"
-    effect: allow
-  - action: external_directory
-    resource: "/Users/trystan2k/.gitconfig"
-    effect: allow
-  - action: external_directory
-    resource: "/Users/trystan2k/.gitignore"
-    effect: allow
-  - action: external_directory
-    resource: "/Users/trystan2k/Documents/Thiago/Repos/dotfiles/symlinks/**"
     effect: allow
 ---
 
@@ -169,7 +163,7 @@ Model tier: `T1`. Apply the approved fix exactly as specified, add the regressio
 - `webfetch`, `websearch`: allow — documentation research during fixes.
 - `todowrite`: deny.
 - `lsp`: allow — code intelligence.
-- `external_directory`: deny by default; only the git config paths (`~/.gitconfig`, `~/.gitignore`, and the resolved dotfiles symlinks directory) and `/tmp/**` (for scratch artifacts: gate logs, temporary files) are allowed.
+- `external_directory`: deny by default; `/tmp/**` is allowed for scratch artifacts (gate logs, temporary files).
 
 Safety rules:
 

@@ -115,20 +115,14 @@ permissions:
   - action: lsp
     resource: "*"
     effect: deny
+  - action: engram*
+    resource: "*"
+    effect: deny
   - action: external_directory
     resource: "*"
     effect: deny
   - action: external_directory
     resource: "/tmp/**"
-    effect: allow
-  - action: external_directory
-    resource: "/Users/trystan2k/.gitconfig"
-    effect: allow
-  - action: external_directory
-    resource: "/Users/trystan2k/.gitignore"
-    effect: allow
-  - action: external_directory
-    resource: "/Users/trystan2k/Documents/Thiago/Repos/dotfiles/symlinks/**"
     effect: allow
 ---
 
@@ -233,7 +227,7 @@ Model tier: `T0` mechanical. Execute the resolved gate commands and report their
 - `skill`: allow — QA/quality skills confirmed available in the current OpenCode catalog, when they improve gate interpretation.
 - `edit`, `task`, `question`, `websearch`, `todowrite`, `lsp`: deny.
 - `webfetch`: allow — documentation lookup for gate interpretation.
-- `external_directory`: deny by default; only the git config paths (`~/.gitconfig`, `~/.gitignore`, and the resolved dotfiles symlinks directory) and `/tmp/**` (for gate logs and scratch output) are allowed.
+- `external_directory`: deny by default; `/tmp/**` is allowed for gate logs and scratch output.
 
 Safety rules:
 

@@ -64,18 +64,12 @@ permissions:
   - action: lsp
     resource: "*"
     effect: deny
-  - action: external_directory
+  - action: engram*
     resource: "*"
     effect: deny
   - action: external_directory
-    resource: "/Users/trystan2k/.gitconfig"
-    effect: allow
-  - action: external_directory
-    resource: "/Users/trystan2k/.gitignore"
-    effect: allow
-  - action: external_directory
-    resource: "/Users/trystan2k/Documents/Thiago/Repos/dotfiles/symlinks/**"
-    effect: allow
+    resource: "*"
+    effect: deny
 ---
 
 # Agent: ux-ui-reviewer-specialist
@@ -364,7 +358,7 @@ Effective permissions (frontmatter `permission`):
 - `skill`: allow — `refactoring-ui` for visual hierarchy, spacing, color, or depth when confirmed available in the current OpenCode catalog.
 - `pencil_execute`, `pencil_get_app_state`, `pencil_read_skill`, `pencil_get_style`, `pencil_browser`: allow — pen.dev MCP access to read and validate the `.pen` design (read-only operations only, see "Validating the Pencil Design").
 - `bash`: scoped — read-only git (`diff`, `log`, `show`, `status`) and `ls` only.
-- `edit`, `task`, `question`, `webfetch`, `websearch`, `todowrite`, `lsp`: deny. `external_directory`: deny by default; only the git config paths (`~/.gitconfig`, `~/.gitignore`, and the resolved dotfiles symlinks directory) are allowed.
+- `edit`, `task`, `question`, `webfetch`, `websearch`, `todowrite`, `lsp`: deny. `external_directory`: deny by default — no access outside the repository.
 
 Never run destructive commands. Never modify files or the Pencil document.
 This agent must not delegate to other subagents.

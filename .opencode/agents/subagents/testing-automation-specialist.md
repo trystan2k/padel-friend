@@ -43,20 +43,14 @@ permissions:
   - action: lsp
     resource: "*"
     effect: allow
+  - action: engram*
+    resource: "*"
+    effect: deny
   - action: external_directory
     resource: "*"
     effect: deny
   - action: external_directory
     resource: "/tmp/**"
-    effect: allow
-  - action: external_directory
-    resource: "/Users/trystan2k/.gitconfig"
-    effect: allow
-  - action: external_directory
-    resource: "/Users/trystan2k/.gitignore"
-    effect: allow
-  - action: external_directory
-    resource: "/Users/trystan2k/Documents/Thiago/Repos/dotfiles/symlinks/**"
     effect: allow
   - action: mcp_chrome-devtools*
     resource: "*"
@@ -165,12 +159,12 @@ Model tier: `T1`. Write the requested tests against the described behavior, reus
 - `skill`: allow — matching testing skills confirmed available in the current OpenCode catalog.
 - `subagent`: deny — child agents cannot delegate in this V2 workflow; report specialist needs to the caller.
 - `bash`: allow — full shell. Run test commands, Vitest/Playwright, and read-only git freely; use native `bash` for long E2E runs (no Serena 240s cap) and Serena MCP for code search/intelligence. `git restore`/`git checkout`/`git stash` are permitted to undo your own in-progress test edits only, never unrelated files.
-- Playwright / chrome-devtools MCP tools: allow — browser-driven E2E validation.
+- Playwright / chrome-devtools MCP tools: allow but **optional** — the servers may not be enabled in this project. Check the tool catalog first: if `mcp_playwright*` / `mcp_chrome-devtools*` tools are present, use them for browser-driven E2E validation; if absent, ignore them and validate E2E via the project's shell commands (e.g. `pnpm test:e2e`). Never block on their absence.
 - `question`: deny — no user prompts from this subagent.
 - `webfetch`, `websearch`: allow — documentation research.
 - `todowrite`: deny.
 - `lsp`: allow — code intelligence.
-- `external_directory`: deny by default; only the git config paths (`~/.gitconfig`, `~/.gitignore`, and the resolved dotfiles symlinks directory) and `/tmp/**` (for scratch artifacts: e.g. Playwright output, test logs) are allowed.
+- `external_directory`: deny by default; `/tmp/**` is allowed for scratch artifacts (e.g. Playwright output, test logs).
 
 Safety rules:
 

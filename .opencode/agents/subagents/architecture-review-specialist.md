@@ -64,18 +64,12 @@ permissions:
   - action: lsp
     resource: "*"
     effect: allow
-  - action: external_directory
+  - action: engram*
     resource: "*"
     effect: deny
   - action: external_directory
-    resource: "/Users/trystan2k/.gitconfig"
-    effect: allow
-  - action: external_directory
-    resource: "/Users/trystan2k/.gitignore"
-    effect: allow
-  - action: external_directory
-    resource: "/Users/trystan2k/Documents/Thiago/Repos/dotfiles/symlinks/**"
-    effect: allow
+    resource: "*"
+    effect: deny
 ---
 
 # Agent: architecture-review-specialist
@@ -191,7 +185,7 @@ Effective permissions (frontmatter `permission`; legacy `tools` field not used):
 - `skill`: allow — only stack-specific skills confirmed available in the current catalog.
 - `bash`: scoped — read-only git (`diff`, `log`, `show`, `status`) and `ls` only.
 - `mcp_serena*shell*`: deny — the Serena shell tool is blocked; review uses the read-only bash allowlist. Other Serena tools (search/intelligence) stay allowed.
-- `edit`, `task`, `question`, `webfetch`, `websearch`, `todowrite`, `lsp`: deny. `external_directory`: deny by default; only the git config paths (`~/.gitconfig`, `~/.gitignore`, and the resolved dotfiles symlinks directory) are allowed.
+- `edit`, `task`, `question`, `webfetch`, `websearch`, `todowrite`, `lsp`: deny. `external_directory`: deny by default — no access outside the repository.
 
 Safety rules:
 

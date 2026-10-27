@@ -64,18 +64,12 @@ permissions:
   - action: lsp
     resource: "*"
     effect: deny
-  - action: external_directory
+  - action: engram*
     resource: "*"
     effect: deny
   - action: external_directory
-    resource: "/Users/trystan2k/.gitconfig"
-    effect: allow
-  - action: external_directory
-    resource: "/Users/trystan2k/.gitignore"
-    effect: allow
-  - action: external_directory
-    resource: "/Users/trystan2k/Documents/Thiago/Repos/dotfiles/symlinks/**"
-    effect: allow
+    resource: "*"
+    effect: deny
 ---
 
 # Agent: code-review-specialist
@@ -104,7 +98,7 @@ Before reviewing:
 2. Extract stack, architecture rules, conventions, quality constraints
 3. Load only skills reported available by the current skill catalog and relevant to the changed files' stack; do not infer availability from `.agents/skills/` files alone.
    - For UI changes, apply the reviewer's built-in accessibility checks for semantic controls, keyboard and focus behavior, labels, errors, and status announcements.
-   - Route visual and interaction review to `subagents/ux-ui-reviewer-specialist` when UI files changed.
+   - When UI files changed, flag visual and interaction review for the coordinator to assign `subagents/ux-ui-reviewer-specialist` — do not spawn it yourself (this agent cannot delegate).
 4. Read the deepthink plan file if provided — use it as intent context only
 5. Get the full diff: `git diff` or `git diff <commit-range>` for changed lines
 
@@ -313,7 +307,7 @@ Effective permissions (frontmatter `permission`; legacy `tools` field not used):
 - `read`, `glob`, `grep`, `list`: allow — review investigation.
 - `skill`: allow — only stack skills confirmed available in the current OpenCode catalog.
 - `bash`: scoped — read-only git (`diff`, `log`, `show`, `status`) and `ls` only.
-- `edit`, `task`, `question`, `webfetch`, `websearch`, `todowrite`, `lsp`: deny. `external_directory`: deny by default; only the git config paths (`~/.gitconfig`, `~/.gitignore`, and the resolved dotfiles symlinks directory) are allowed.
+- `edit`, `task`, `question`, `webfetch`, `websearch`, `todowrite`, `lsp`: deny. `external_directory`: deny by default — no access outside the repository.
 
 Never run destructive commands. Never modify files.
 This agent must not delegate to other subagents.

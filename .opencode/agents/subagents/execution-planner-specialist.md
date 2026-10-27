@@ -49,18 +49,12 @@ permissions:
   - action: lsp
     resource: "*"
     effect: allow
-  - action: external_directory
+  - action: engram*
     resource: "*"
     effect: deny
   - action: external_directory
-    resource: "/Users/trystan2k/.gitconfig"
-    effect: allow
-  - action: external_directory
-    resource: "/Users/trystan2k/.gitignore"
-    effect: allow
-  - action: external_directory
-    resource: "/Users/trystan2k/Documents/Thiago/Repos/dotfiles/symlinks/**"
-    effect: allow
+    resource: "*"
+    effect: deny
 ---
 
 # Agent: execution-planner-specialist
@@ -181,7 +175,7 @@ Effective permissions (frontmatter `permission`; legacy `tools` field not used):
 - `edit` (gates `write`/`edit`): scoped to `docs/plan/**` only — the plan file is the sole writable artifact. No product-code edits.
 - `skill`: allow — only runtime-available planning or stack skills when they add concrete value; use the plan's built-in analysis otherwise.
 - `mcp_serena*shell*`: deny — the Serena shell tool is blocked; planning stays read-only. Other Serena tools (search/intelligence) stay allowed.
-- `bash`, `task`, `question`, `webfetch`, `websearch`, `todowrite`, `lsp`: deny — analysis and plan-writing only, no execution, delegation, or research. `external_directory`: deny by default; only the git config paths (`~/.gitconfig`, `~/.gitignore`, and the resolved dotfiles symlinks directory) are allowed.
+- `bash`, `task`, `question`, `webfetch`, `websearch`, `todowrite`, `lsp`: deny — analysis and plan-writing only, no execution, delegation, or research. `external_directory`: deny by default — no access outside the repository.
 
 ## Subagent Usage (If Applicable)
 

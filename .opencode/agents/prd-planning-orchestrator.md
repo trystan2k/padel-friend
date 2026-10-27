@@ -48,15 +48,6 @@ permissions:
   - action: external_directory
     resource: "*"
     effect: deny
-  - action: external_directory
-    resource: "/Users/trystan2k/.gitconfig"
-    effect: allow
-  - action: external_directory
-    resource: "/Users/trystan2k/.gitignore"
-    effect: allow
-  - action: external_directory
-    resource: "/Users/trystan2k/Documents/Thiago/Repos/dotfiles/symlinks/**"
-    effect: allow
 ---
 
 # Agent: prd-planning-orchestrator
@@ -167,7 +158,7 @@ Effective permissions (frontmatter `permission`; legacy `tools` field not used):
 - `task`: allow — approved delegation only (e.g. `explore` for stack inference).
 - `edit` (gates `write`/`edit`): allow — explicitly requested artifacts only. Never product code, never unrequested docs.
 - `webfetch`: allow — research supporting the plan.
-- `bash`, `websearch`, `todowrite`, `lsp`: deny — no shell, no unrelated research or tracking. `external_directory`: deny by default; only the git config paths (`~/.gitconfig`, `~/.gitignore`, and the resolved dotfiles symlinks directory) are allowed.
+- `bash`, `websearch`, `todowrite`, `lsp`: deny — no shell, no unrelated research or tracking. `external_directory`: deny by default — no access outside the repository.
 
 ## Analysis Method
 

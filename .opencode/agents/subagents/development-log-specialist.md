@@ -64,15 +64,6 @@ permissions:
   - action: external_directory
     resource: "*"
     effect: deny
-  - action: external_directory
-    resource: "/Users/trystan2k/.gitconfig"
-    effect: allow
-  - action: external_directory
-    resource: "/Users/trystan2k/.gitignore"
-    effect: allow
-  - action: external_directory
-    resource: "/Users/trystan2k/Documents/Thiago/Repos/dotfiles/symlinks/**"
-    effect: allow
   - action: mcp_serena*
     resource: "*"
     effect: deny
