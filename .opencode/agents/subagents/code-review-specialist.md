@@ -1,36 +1,81 @@
 ---
 description: Expert code review agent that evaluates task implementations for correctness, quality, best practices, and improvement opportunities using stack-specific skills.
 mode: subagent
-model: openai/gpt-6.1-sol
-reasoningEffort: medium
-temperature: 0
-permission:
-  task: deny
-  question: deny
-  read: allow
-  glob: allow
-  grep: allow
-  list: allow
-  edit: deny
-  skill: allow
-  "mcp_pencil*": allow
-  "mcp_serena*shell*": deny
-  bash:
-    "*": deny
-    "git diff*": allow
-    "git log*": allow
-    "git show*": allow
-    "git status*": allow
-    "ls*": allow
-  webfetch: allow
-  websearch: allow
-  todowrite: deny
-  lsp: deny
-  external_directory:
-    "*": deny
-    "/Users/trystan2k/.gitconfig": allow
-    "/Users/trystan2k/.gitignore": allow
-    "/Users/trystan2k/Documents/Thiago/Repos/dotfiles/symlinks/**": allow
+model: openai/gpt-6.1-terra
+steps: 20
+permissions:
+  - action: subagent
+    resource: "*"
+    effect: deny
+  - action: question
+    resource: "*"
+    effect: deny
+  - action: read
+    resource: "*"
+    effect: allow
+  - action: glob
+    resource: "*"
+    effect: allow
+  - action: grep
+    resource: "*"
+    effect: allow
+  - action: list
+    resource: "*"
+    effect: allow
+  - action: edit
+    resource: "*"
+    effect: deny
+  - action: skill
+    resource: "*"
+    effect: allow
+  - action: mcp_pencil*
+    resource: "*"
+    effect: allow
+  - action: mcp_serena*shell*
+    resource: "*"
+    effect: deny
+  - action: shell
+    resource: "*"
+    effect: deny
+  - action: shell
+    resource: "git diff*"
+    effect: allow
+  - action: shell
+    resource: "git log*"
+    effect: allow
+  - action: shell
+    resource: "git show*"
+    effect: allow
+  - action: shell
+    resource: "git status*"
+    effect: allow
+  - action: shell
+    resource: "ls*"
+    effect: allow
+  - action: webfetch
+    resource: "*"
+    effect: allow
+  - action: websearch
+    resource: "*"
+    effect: allow
+  - action: todowrite
+    resource: "*"
+    effect: deny
+  - action: lsp
+    resource: "*"
+    effect: deny
+  - action: external_directory
+    resource: "*"
+    effect: deny
+  - action: external_directory
+    resource: "/Users/trystan2k/.gitconfig"
+    effect: allow
+  - action: external_directory
+    resource: "/Users/trystan2k/.gitignore"
+    effect: allow
+  - action: external_directory
+    resource: "/Users/trystan2k/Documents/Thiago/Repos/dotfiles/symlinks/**"
+    effect: allow
 ---
 
 # Agent: code-review-specialist

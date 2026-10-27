@@ -2,32 +2,71 @@
 description: Handle all Linear Project and Issues operations using linear CLI. Manages the full issue lifecycle on a Linear Project board — create, query, move status, breakdown into sub-issues, and link them — without touching product source code.
 mode: subagent
 model: zai-coding-plan/glm-5.3-flash
-reasoningEffort: high
-temperature: 0
-permission:
-  task: deny
-  question: deny
-  read: allow
-  glob: allow
-  grep: allow
-  list: allow
-  edit:
-    "/tmp/**": allow
-    "*": deny
-  skill: allow
-  bash: allow
-  webfetch: allow
-  websearch: allow
-  todowrite: deny
-  lsp: allow
-  external_directory:
-    "/tmp/**": allow
-    "/Users/trystan2k/.gitconfig": allow
-    "/Users/trystan2k/.gitignore": allow
-    "/Users/trystan2k/Documents/Thiago/Repos/dotfiles/symlinks/**": allow
-    "*": deny
-  "mcp_serena*": deny
-  "engram*": deny
+steps: 8
+permissions:
+  - action: subagent
+    resource: "*"
+    effect: deny
+  - action: question
+    resource: "*"
+    effect: deny
+  - action: read
+    resource: "*"
+    effect: allow
+  - action: glob
+    resource: "*"
+    effect: allow
+  - action: grep
+    resource: "*"
+    effect: allow
+  - action: list
+    resource: "*"
+    effect: allow
+  - action: edit
+    resource: "/tmp/**"
+    effect: allow
+  - action: edit
+    resource: "*"
+    effect: deny
+  - action: skill
+    resource: "*"
+    effect: allow
+  - action: shell
+    resource: "*"
+    effect: allow
+  - action: webfetch
+    resource: "*"
+    effect: allow
+  - action: websearch
+    resource: "*"
+    effect: allow
+  - action: todowrite
+    resource: "*"
+    effect: deny
+  - action: lsp
+    resource: "*"
+    effect: allow
+  - action: external_directory
+    resource: "/tmp/**"
+    effect: allow
+  - action: external_directory
+    resource: "/Users/trystan2k/.gitconfig"
+    effect: allow
+  - action: external_directory
+    resource: "/Users/trystan2k/.gitignore"
+    effect: allow
+  - action: external_directory
+    resource: "/Users/trystan2k/Documents/Thiago/Repos/dotfiles/symlinks/**"
+    effect: allow
+  - action: external_directory
+    resource: "*"
+    effect: deny
+  - action: mcp_serena*
+    resource: "*"
+    effect: deny
+  - action: engram*
+    resource: "*"
+    effect: deny
 ---
 
 # Agent: project-manager-specialist

@@ -2,37 +2,83 @@
 description: Handle all development log operations.
 mode: subagent
 model: zai-coding-plan/glm-5.3-flash
-reasoningEffort: high
-temperature: 0
-permission:
-  task: deny
-  question: deny
-  read: allow
-  glob: allow
-  grep: allow
-  list: allow
-  edit:
-    "*": deny
-    "docs/development-logs/**": allow
-  skill: allow
-  bash:
-    "*": deny
-    "git log*": allow
-    "git show*": allow
-    "git status*": allow
-    "git branch*": allow
-    "ls*": allow
-  webfetch: deny
-  websearch: deny
-  todowrite: deny
-  lsp: allow
-  external_directory:
-    "*": deny
-    "/Users/trystan2k/.gitconfig": allow
-    "/Users/trystan2k/.gitignore": allow
-    "/Users/trystan2k/Documents/Thiago/Repos/dotfiles/symlinks/**": allow
-  "mcp_serena*": deny
-  "engram*": deny
+steps: 8
+permissions:
+  - action: subagent
+    resource: "*"
+    effect: deny
+  - action: question
+    resource: "*"
+    effect: deny
+  - action: read
+    resource: "*"
+    effect: allow
+  - action: glob
+    resource: "*"
+    effect: allow
+  - action: grep
+    resource: "*"
+    effect: allow
+  - action: list
+    resource: "*"
+    effect: allow
+  - action: edit
+    resource: "*"
+    effect: deny
+  - action: edit
+    resource: "docs/development-logs/**"
+    effect: allow
+  - action: skill
+    resource: "*"
+    effect: allow
+  - action: shell
+    resource: "*"
+    effect: deny
+  - action: shell
+    resource: "git log*"
+    effect: allow
+  - action: shell
+    resource: "git show*"
+    effect: allow
+  - action: shell
+    resource: "git status*"
+    effect: allow
+  - action: shell
+    resource: "git branch*"
+    effect: allow
+  - action: shell
+    resource: "ls*"
+    effect: allow
+  - action: webfetch
+    resource: "*"
+    effect: deny
+  - action: websearch
+    resource: "*"
+    effect: deny
+  - action: todowrite
+    resource: "*"
+    effect: deny
+  - action: lsp
+    resource: "*"
+    effect: allow
+  - action: external_directory
+    resource: "*"
+    effect: deny
+  - action: external_directory
+    resource: "/Users/trystan2k/.gitconfig"
+    effect: allow
+  - action: external_directory
+    resource: "/Users/trystan2k/.gitignore"
+    effect: allow
+  - action: external_directory
+    resource: "/Users/trystan2k/Documents/Thiago/Repos/dotfiles/symlinks/**"
+    effect: allow
+  - action: mcp_serena*
+    resource: "*"
+    effect: deny
+  - action: engram*
+    resource: "*"
+    effect: deny
 ---
 
 # Agent: development-log-specialist

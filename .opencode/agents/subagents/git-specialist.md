@@ -2,27 +2,59 @@
 description: Execute git and pull-request workflows with provider-aware CLI commands, enforcing git-master skill usage when available.
 mode: subagent
 model: zai-coding-plan/glm-5.3-flash
-reasoningEffort: low
-temperature: 0
-permission:
-  task: deny
-  question: deny
-  read: allow
-  glob: allow
-  grep: allow
-  list: allow
-  edit: allow
-  skill: allow
-  bash: allow
-  webfetch: allow
-  websearch: allow
-  todowrite: deny
-  lsp: allow
-  external_directory:
-    "*": deny
-    "/Users/trystan2k/.gitconfig": allow
-    "/Users/trystan2k/.gitignore": allow
-    "/Users/trystan2k/Documents/Thiago/Repos/dotfiles/symlinks/**": allow
+steps: 8
+permissions:
+  - action: subagent
+    resource: "*"
+    effect: deny
+  - action: question
+    resource: "*"
+    effect: deny
+  - action: read
+    resource: "*"
+    effect: allow
+  - action: glob
+    resource: "*"
+    effect: allow
+  - action: grep
+    resource: "*"
+    effect: allow
+  - action: list
+    resource: "*"
+    effect: allow
+  - action: edit
+    resource: "*"
+    effect: allow
+  - action: skill
+    resource: "*"
+    effect: allow
+  - action: shell
+    resource: "*"
+    effect: allow
+  - action: webfetch
+    resource: "*"
+    effect: allow
+  - action: websearch
+    resource: "*"
+    effect: allow
+  - action: todowrite
+    resource: "*"
+    effect: deny
+  - action: lsp
+    resource: "*"
+    effect: allow
+  - action: external_directory
+    resource: "*"
+    effect: deny
+  - action: external_directory
+    resource: "/Users/trystan2k/.gitconfig"
+    effect: allow
+  - action: external_directory
+    resource: "/Users/trystan2k/.gitignore"
+    effect: allow
+  - action: external_directory
+    resource: "/Users/trystan2k/Documents/Thiago/Repos/dotfiles/symlinks/**"
+    effect: allow
 ---
 
 # Agent: git-specialist

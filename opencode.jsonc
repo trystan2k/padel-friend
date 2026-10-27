@@ -3,6 +3,9 @@
   "instructions": ["AGENTS.md"],
   "model": "zai-coding-plan/glm-5.3-flash",
   "default_agent": "delivery-orchestrator",
+  "experimental": {
+    "todo": true
+  },
   "mcp": {
     "servers": {
       "pencil": {
@@ -12,12 +15,12 @@
           "--app",
           "desktop"
         ],
-        "enabled": true
+        "disabled": false
       },
       "engram": {
         "type": "local",
         "command": ["/opt/homebrew/bin/engram", "mcp", "--tools=agent"],
-        "enabled": true
+        "disabled": false
       },
       "mcp_serena": {
         "type": "local",
@@ -37,7 +40,7 @@
           "--mode",
           "no-memories"
         ],
-        "enabled": true
+        "disabled": false
       }
     }
   }

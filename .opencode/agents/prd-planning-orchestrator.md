@@ -2,28 +2,61 @@
 description: Analyze PRDs deeply, clarify missing requirements, propose an implementation plan, and create approved tasks.
 mode: primary
 model: openai/gpt-6.1-sol
-reasoningEffort: high
-temperature: 0.1
-permission:
-  task: allow
-  question: allow
-  read: allow
-  glob: allow
-  grep: allow
-  list: allow
-  edit: allow
-  skill: allow
-  "mcp_pencil*": allow
-  bash: deny
-  webfetch: allow
-  websearch: allow
-  todowrite: allow
-  lsp: allow
-  external_directory:
-    "*": deny
-    "/Users/trystan2k/.gitconfig": allow
-    "/Users/trystan2k/.gitignore": allow
-    "/Users/trystan2k/Documents/Thiago/Repos/dotfiles/symlinks/**": allow
+permissions:
+  - action: subagent
+    resource: "*"
+    effect: allow
+  - action: question
+    resource: "*"
+    effect: allow
+  - action: read
+    resource: "*"
+    effect: allow
+  - action: glob
+    resource: "*"
+    effect: allow
+  - action: grep
+    resource: "*"
+    effect: allow
+  - action: list
+    resource: "*"
+    effect: allow
+  - action: edit
+    resource: "*"
+    effect: allow
+  - action: skill
+    resource: "*"
+    effect: allow
+  - action: mcp_pencil*
+    resource: "*"
+    effect: allow
+  - action: shell
+    resource: "*"
+    effect: deny
+  - action: webfetch
+    resource: "*"
+    effect: allow
+  - action: websearch
+    resource: "*"
+    effect: allow
+  - action: todowrite
+    resource: "*"
+    effect: allow
+  - action: lsp
+    resource: "*"
+    effect: allow
+  - action: external_directory
+    resource: "*"
+    effect: deny
+  - action: external_directory
+    resource: "/Users/trystan2k/.gitconfig"
+    effect: allow
+  - action: external_directory
+    resource: "/Users/trystan2k/.gitignore"
+    effect: allow
+  - action: external_directory
+    resource: "/Users/trystan2k/Documents/Thiago/Repos/dotfiles/symlinks/**"
+    effect: allow
 ---
 
 # Agent: prd-planning-orchestrator

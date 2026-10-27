@@ -2,53 +2,134 @@
 description: Execute pre-commit quality gates and report pass or fail results without applying fixes.
 mode: subagent
 model: zai-coding-plan/glm-5.3-flash
-reasoningEffort: high
-temperature: 0
-permission:
-  task: deny
-  question: deny
-  read: allow
-  glob: allow
-  grep: allow
-  list: allow
-  edit: deny
-  skill: allow
-  bash:
-    "*": deny
-    "pnpm complete-check*": allow
-    "pnpm build*": allow
-    "pnpm knip*": allow
-    "pnpm typecheck*": allow
-    "pnpm lint*": allow
-    "pnpm format:check*": allow
-    "pnpm test*": allow
-    "pnpm tokens:build*": allow
-    "pnpm db:start*": allow
-    "pnpm db:stop*": allow
-    "pnpm exec playwright*": allow
-    "pnpm exec vitest*": allow
-    "pnpm exec supabase status*": allow
-    "pnpm exec supabase start*": allow
-    "pnpm exec supabase stop*": allow
-    "git status*": allow
-    "git diff*": allow
-    "git log*": allow
-    "git show*": allow
-    "git rev-parse*": allow
-    "ls*": allow
-    "cat *": allow
-    "head *": allow
-    "tail *": allow
-  webfetch: allow
-  websearch: deny
-  todowrite: deny
-  lsp: deny
-  external_directory:
-    "*": deny
-    "/tmp/**": allow
-    "/Users/trystan2k/.gitconfig": allow
-    "/Users/trystan2k/.gitignore": allow
-    "/Users/trystan2k/Documents/Thiago/Repos/dotfiles/symlinks/**": allow
+steps: 8
+permissions:
+  - action: subagent
+    resource: "*"
+    effect: deny
+  - action: question
+    resource: "*"
+    effect: deny
+  - action: read
+    resource: "*"
+    effect: allow
+  - action: glob
+    resource: "*"
+    effect: allow
+  - action: grep
+    resource: "*"
+    effect: allow
+  - action: list
+    resource: "*"
+    effect: allow
+  - action: edit
+    resource: "*"
+    effect: deny
+  - action: skill
+    resource: "*"
+    effect: allow
+  - action: shell
+    resource: "*"
+    effect: deny
+  - action: shell
+    resource: "pnpm complete-check*"
+    effect: allow
+  - action: shell
+    resource: "pnpm build*"
+    effect: allow
+  - action: shell
+    resource: "pnpm knip*"
+    effect: allow
+  - action: shell
+    resource: "pnpm typecheck*"
+    effect: allow
+  - action: shell
+    resource: "pnpm lint*"
+    effect: allow
+  - action: shell
+    resource: "pnpm format:check*"
+    effect: allow
+  - action: shell
+    resource: "pnpm test*"
+    effect: allow
+  - action: shell
+    resource: "pnpm tokens:build*"
+    effect: allow
+  - action: shell
+    resource: "pnpm db:start*"
+    effect: allow
+  - action: shell
+    resource: "pnpm db:stop*"
+    effect: allow
+  - action: shell
+    resource: "pnpm exec playwright*"
+    effect: allow
+  - action: shell
+    resource: "pnpm exec vitest*"
+    effect: allow
+  - action: shell
+    resource: "pnpm exec supabase status*"
+    effect: allow
+  - action: shell
+    resource: "pnpm exec supabase start*"
+    effect: allow
+  - action: shell
+    resource: "pnpm exec supabase stop*"
+    effect: allow
+  - action: shell
+    resource: "git status*"
+    effect: allow
+  - action: shell
+    resource: "git diff*"
+    effect: allow
+  - action: shell
+    resource: "git log*"
+    effect: allow
+  - action: shell
+    resource: "git show*"
+    effect: allow
+  - action: shell
+    resource: "git rev-parse*"
+    effect: allow
+  - action: shell
+    resource: "ls*"
+    effect: allow
+  - action: shell
+    resource: "cat *"
+    effect: allow
+  - action: shell
+    resource: "head *"
+    effect: allow
+  - action: shell
+    resource: "tail *"
+    effect: allow
+  - action: webfetch
+    resource: "*"
+    effect: allow
+  - action: websearch
+    resource: "*"
+    effect: deny
+  - action: todowrite
+    resource: "*"
+    effect: deny
+  - action: lsp
+    resource: "*"
+    effect: deny
+  - action: external_directory
+    resource: "*"
+    effect: deny
+  - action: external_directory
+    resource: "/tmp/**"
+    effect: allow
+  - action: external_directory
+    resource: "/Users/trystan2k/.gitconfig"
+    effect: allow
+  - action: external_directory
+    resource: "/Users/trystan2k/.gitignore"
+    effect: allow
+  - action: external_directory
+    resource: "/Users/trystan2k/Documents/Thiago/Repos/dotfiles/symlinks/**"
+    effect: allow
 ---
 
 # Agent: qa-gate-specialist

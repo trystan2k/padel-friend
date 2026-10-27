@@ -1,31 +1,69 @@
 ---
 description: Expert test automation agent for unit, integration, and E2E testing using stack-specific best practices and project conventions.
 mode: subagent
-model: openai/gpt-6-luna
-reasoningEffort: high
-temperature: 0
-permission:
-  task: allow
-  question: deny
-  read: allow
-  glob: allow
-  grep: allow
-  list: allow
-  edit: allow
-  skill: allow
-  bash: allow
-  webfetch: allow
-  websearch: allow
-  todowrite: deny
-  lsp: allow
-  external_directory:
-    "*": deny
-    "/tmp/**": allow
-    "/Users/trystan2k/.gitconfig": allow
-    "/Users/trystan2k/.gitignore": allow
-    "/Users/trystan2k/Documents/Thiago/Repos/dotfiles/symlinks/**": allow
-  "mcp_chrome-devtools*": allow
-  "mcp_playwright*": allow
+model: openai/gpt-6-luna#high
+steps: 40
+permissions:
+  - action: subagent
+    resource: "*"
+    effect: deny
+  - action: question
+    resource: "*"
+    effect: deny
+  - action: read
+    resource: "*"
+    effect: allow
+  - action: glob
+    resource: "*"
+    effect: allow
+  - action: grep
+    resource: "*"
+    effect: allow
+  - action: list
+    resource: "*"
+    effect: allow
+  - action: edit
+    resource: "*"
+    effect: allow
+  - action: skill
+    resource: "*"
+    effect: allow
+  - action: shell
+    resource: "*"
+    effect: allow
+  - action: webfetch
+    resource: "*"
+    effect: allow
+  - action: websearch
+    resource: "*"
+    effect: allow
+  - action: todowrite
+    resource: "*"
+    effect: deny
+  - action: lsp
+    resource: "*"
+    effect: allow
+  - action: external_directory
+    resource: "*"
+    effect: deny
+  - action: external_directory
+    resource: "/tmp/**"
+    effect: allow
+  - action: external_directory
+    resource: "/Users/trystan2k/.gitconfig"
+    effect: allow
+  - action: external_directory
+    resource: "/Users/trystan2k/.gitignore"
+    effect: allow
+  - action: external_directory
+    resource: "/Users/trystan2k/Documents/Thiago/Repos/dotfiles/symlinks/**"
+    effect: allow
+  - action: mcp_chrome-devtools*
+    resource: "*"
+    effect: allow
+  - action: mcp_playwright*
+    resource: "*"
+    effect: allow
 ---
 
 # Agent: testing-automation-specialist
@@ -125,7 +163,7 @@ Model tier: `T1`. Write the requested tests against the described behavior, reus
 - `read`, `glob`, `grep`, `list`: allow — codebase and test investigation.
 - `edit` (gates `write`/`edit`): allow — test-scope files only.
 - `skill`: allow — matching stack testing skills.
-- `task`: allow — only when the caller explicitly requires specialist delegation.
+- `subagent`: deny — child agents cannot delegate in this V2 workflow; report specialist needs to the caller.
 - `bash`: allow — full shell. Run test commands, Vitest/Playwright, and read-only git freely; use native `bash` for long E2E runs (no Serena 240s cap) and Serena MCP for code search/intelligence. `git restore`/`git checkout`/`git stash` are permitted to undo your own in-progress test edits only, never unrelated files.
 - Playwright / chrome-devtools MCP tools: allow — browser-driven E2E validation.
 - `question`: deny — no user prompts from this subagent.
@@ -142,7 +180,7 @@ Safety rules:
 
 ## Subagent Usage (If Applicable)
 
-This subagent should implement testing directly and must not delegate unless caller explicitly requires specialist delegation.
+This subagent implements testing directly and does not delegate in V2. The caller/coordinator assigns any additional specialist support.
 
 ## Frameworks information
 
