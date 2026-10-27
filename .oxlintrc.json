@@ -9,8 +9,7 @@
     "src/routeTree.gen.ts",
     "src/lib/supabase/database.types.ts",
     ".tanstack/**",
-    ".agents/**",
-    ".opencode/**"
+    ".agents/**"
   ],
   "rules": {
     "react/react-in-jsx-scope": "off",

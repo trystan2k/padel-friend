@@ -15,3 +15,4 @@ artifacts/community-admin-visual/
 supabase/.branches/
 supabase/.temp/
 src/routeTree.gen.ts
+.opencode/state/

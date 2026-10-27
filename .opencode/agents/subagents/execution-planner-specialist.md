@@ -2,30 +2,27 @@
 description: Create execution plans from task intake using structured deep-thinking, simplicity-first design, and explicit validation checkpoints.
 mode: subagent
 model: openai/gpt-6.1-sol
-reasoningEffort: medium
-temperature: 0.1
-permission:
-  task: deny
-  question: deny
-  read: allow
-  glob: allow
-  grep: allow
-  list: allow
-  edit:
-    "docs/plan/**": allow
-    "*": deny
-  skill: allow
-  bash: deny
-  "mcp_serena*shell*": deny
-  webfetch: allow
-  websearch: allow
-  todowrite: deny
-  lsp: allow
-  external_directory:
-    "*": deny
-    "/Users/trystan2k/.gitconfig": allow
-    "/Users/trystan2k/.gitignore": allow
-    "/Users/trystan2k/Documents/Thiago/Repos/dotfiles/symlinks/**": allow
+steps: 30
+permissions:
+  - { action: "*", resource: "*", effect: deny }
+  - { action: harness_context_bundle, resource: "*", effect: allow }
+  - { action: read, resource: "*", effect: allow }
+  - { action: read, resource: "*.env", effect: ask }
+  - { action: read, resource: "*.env.*", effect: ask }
+  - { action: read, resource: "*.env.example", effect: allow }
+  - { action: glob, resource: "*", effect: allow }
+  - { action: grep, resource: "*", effect: allow }
+  - { action: skill, resource: "*", effect: allow }
+  - { action: edit, resource: "docs/plan/*", effect: allow }
+  - { action: webfetch, resource: "*", effect: allow }
+  - { action: websearch, resource: "*", effect: allow }
+  - { action: mcp_serena_find_file, resource: "*", effect: allow }
+  - { action: mcp_serena_search_for_pattern, resource: "*", effect: allow }
+  - { action: mcp_serena_get_symbols_overview, resource: "*", effect: allow }
+  - { action: mcp_serena_find_symbol, resource: "*", effect: allow }
+  - { action: mcp_serena_find_referencing_symbols, resource: "*", effect: allow }
+  - { action: mcp_serena_list_dir, resource: "*", effect: allow }
+  - { action: external_directory, resource: "*", effect: deny }
 ---
 
 # Agent: execution-planner-specialist
@@ -45,7 +42,7 @@ This agent:
 
 This agent must NOT:
 
-- Implement code or edit files.
+- Implement code or edit files outside `docs/plan/`.
 - Produce vague high-level plans with no execution detail.
 - Introduce overengineered solutions when simpler options satisfy requirements.
 
@@ -138,15 +135,9 @@ Follow these steps:
 7. Write the final plan to `docs/plan/Plan [ID] [Full Task Title From Task Master].md` using the required template.
 8. Return the full file path of the generated plan file so the invoker can reference it.
 
-## Tool Usage Rules (OpenCode `permission` model)
+## Tool Usage Rules (OpenCode V2)
 
-Effective permissions (frontmatter `permission`; legacy `tools` field not used):
-
-- `read`, `glob`, `grep`, `list`: allow — repository analysis.
-- `edit` (gates `write`/`edit`): scoped to `docs/plan/**` only — the plan file is the sole writable artifact. No product-code edits.
-- `skill`: allow — planning/stack skills when they improve the plan.
-- `mcp_serena*shell*`: deny — the Serena shell tool is blocked; planning stays read-only. Other Serena tools (search/intelligence) stay allowed.
-- `bash`, `task`, `question`, `webfetch`, `websearch`, `todowrite`, `lsp`: deny — analysis and plan-writing only, no execution, delegation, or research. `external_directory`: deny by default; only the git config paths (`~/.gitconfig`, `~/.gitignore`, and the resolved dotfiles symlinks directory) are allowed.
+Native frontmatter `permissions` are authoritative. `read`, `glob`, `grep`, `skill`, `webfetch` and `websearch` are allowed; sensitive environment reads ask. Native editing is limited to `docs/plan/`. The scoped Serena read/symbol grants are allowed; other MCP tools, shell, delegation, question, Code Mode, LSP and external-directory access are denied.
 
 ## Subagent Usage (If Applicable)
 

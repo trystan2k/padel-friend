@@ -16,7 +16,7 @@ Code/commits/PRs: normal. Off: "stop caveman" / "normal mode".
 ## Rules
 
 - Ask questions when needed to understand the task intent or there is ambiguity.
-- Use the approved deepthink plan as a guide for code implementation.
+- Use the approved deepthink plan as a guide for code implementation. Honor explicitly requested plan or design approval and unresolved scope decisions; approved unambiguous intake authorizes ordinary execution without repeated routine gates.
 - Prefer simple solutions over complex ones.
 - Don't change any code without explaining the reasoning.
 - **Pencil visual truth:** `docs/design/padel-friend.pen` sets colors, typography, spacing, layout intent, overall look. Match visually as close as possible; implement with production UX, a11y, responsive and i18n best practices. Use fluid flex/percent sizing over literal fixed widths, Base UI over hand-rolled widgets, tokens over literal pixels, ≥44px touch targets, and layouts that tolerate translated text. Literal markup/implementation may differ. Pencil and Chromium rasterize fonts differently: pixel-identical output is neither required nor achievable; accept small cross-renderer pixel residuals. Review visual fidelity **and** engineering quality, not literal markup/pixel equality; never reject visually equivalent, better-engineered accessible work. Visual gates: exact structural/layout probes plus documented, justified nonzero per-screen screenshot tolerances; never widen budgets to mask structural defects. Design tokens live in `design-tokens/dist/*.css` after `pnpm tokens:build`.
@@ -62,8 +62,7 @@ Whenever you need to install a new npm dependency, use the rules defined in .npm
 
 ## MCP Priority
 
-- Always prefer **Serena MCP** for supported operations (file search, content search, code intelligence) when available
-- Fall back to native opencode tools only when Serena MCP is unavailable |
+- Prefer **Serena MCP** for supported read/symbol operations when it saves tokens (symbol search/overview over whole-file reads); fall back to permitted native tools otherwise.
 
 ## Development guidelines
 
