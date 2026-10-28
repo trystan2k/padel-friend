@@ -1,8 +1,7 @@
 import { spawnSync } from 'node:child_process';
 
-// Run every quality-gate stage and report all failures in one pass, matching CI
-// where each stage runs separately. A cheap failing stage (e.g. format:check)
-// must never hide test or E2E results.
+// Run the full quality gate by default; scoped runs retain the same reporting and
+// continue-on-failure behavior for every selected stage.
 const stages = [
   { name: 'db:types:check', command: 'pnpm db:types:check' },
   { name: 'build', command: 'pnpm build' },
@@ -14,8 +13,42 @@ const stages = [
   { name: 'test:e2e', command: 'pnpm test:e2e' }
 ];
 
+const stageGroups = {
+  static: ['db:types:check', 'build', 'knip', 'typecheck', 'lint', 'format:check'],
+  test: ['test'],
+  e2e: ['test:e2e']
+};
+
+function selectStages(args) {
+  if (args.length === 0) return stages;
+
+  if (args.length !== 1 || !args[0].startsWith('--only=')) {
+    throw new Error('Usage: node scripts/complete-check.mjs [--only=static[,test][,e2e]]');
+  }
+
+  const groups = args[0].slice('--only='.length).split(',');
+  if (groups.some((group) => group.length === 0 || !Object.hasOwn(stageGroups, group))) {
+    throw new Error(
+      `Invalid --only value. Choose comma-separated groups: ${Object.keys(stageGroups).join(', ')}.`
+    );
+  }
+
+  const selectedNames = new Set(groups.flatMap((group) => stageGroups[group]));
+  return stages.filter((stage) => selectedNames.has(stage.name));
+}
+
+const args = process.argv.slice(2);
+let selectedStages;
+try {
+  selectedStages = selectStages(args);
+} catch (error) {
+  const message = error instanceof Error ? error.message : String(error);
+  process.stderr.write(`\n[complete-check] ${message}\n`);
+  process.exit(2);
+}
+
 const results = [];
-for (const stage of stages) {
+for (const stage of selectedStages) {
   process.stdout.write(`\n=== ${stage.name}: ${stage.command} ===\n`);
   const started = Date.now();
   const result = spawnSync(stage.command, { stdio: 'inherit', shell: true });
@@ -43,4 +76,6 @@ if (failed.length > 0) {
   );
   process.exit(1);
 }
-process.stdout.write('\n[complete-check] all stages passed\n');
+process.stdout.write(
+  `\n[complete-check] ${args.length === 0 ? 'all stages' : 'all selected stages'} passed\n`
+);
