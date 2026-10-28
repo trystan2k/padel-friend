@@ -109,3 +109,38 @@ PAF-5.4 processes the match registration cutoff unattended. The job expires stil
   select cron.unschedule('padel-friend-match-registration-cutoff');
   ```
   Events the batch could not lock immediately are skipped, not blocked, and are retried on the next tick. The internal processors are revoked from `public`, `anon` and `authenticated`; no browser role can run them or control the effective clock.
+
+## 7. Match result auto-confirm scheduler (pg_cron)
+
+T08.3 confirms each still-Pending result proposal at its database deadline (`submitted_at + 48 hours`). The confirmation keeps that exact deadline as `effective_at`; a disputed proposal is excluded. Late runs catch up on the next tick. The browser cannot execute or supply a clock to the processor.
+
+- **Enablement.** `supabase/migrations/20261028194235_match_result_auto_confirm_scheduler.sql` creates or updates the singleton job when pg_cron is available:
+  - Job name: `padel-friend-match-result-auto-confirm`
+  - Schedule: `* * * * *` (every minute)
+  - Command: `select public.process_due_match_event_results(25)`
+- **Local smoke proof.** Local `supabase db reset` runs `supabase/seed.sql`, which removes scheduler jobs to keep integration/E2E fixtures deterministic. After tests, re-create the result job and verify both enabled state and successful execution (wait for a new minute tick):
+  ```sql
+  select cron.schedule('padel-friend-match-result-auto-confirm', '* * * * *',
+    'select public.process_due_match_event_results(25)');
+
+  select jobid, jobname, schedule, active
+    from cron.job
+   where jobname = 'padel-friend-match-result-auto-confirm';
+
+  select start_time, status, return_message
+    from cron.job_run_details
+   where jobid = (select jobid from cron.job
+                   where jobname = 'padel-friend-match-result-auto-confirm')
+   order by start_time desc limit 20;
+  ```
+  Require exactly one `cron.job` row with `active = true` and a `succeeded` row in `cron.job_run_details`; migration notices do not prove provisioning or execution. Remove the local job before running tests with `select cron.unschedule('padel-friend-match-result-auto-confirm');`.
+- **Monitoring.** pg_cron records command-level status, not per-proposal outcomes. Inspect version-scoped attempts, sanitized failure code/detail and retry time:
+  ```sql
+  select proposal_id, proposal_version, attempt_count, failure_count,
+         last_failure_at, last_failure_code, last_failure_message, next_attempt_at
+    from public.match_event_result_processing_state
+   where last_failure_code is not null
+   order by last_failure_at desc;
+  ```
+  The processor returns `attempted`, `skipped`, `failed`, and `confirmed`; each exception subtransaction rolls back that proposal's confirmation/audit effects before recording failure metadata. Exponential retry delay is capped at five minutes; the least-attempted, oldest due versions run first.
+- **Recovery.** Pause with `select cron.unschedule('padel-friend-match-result-auto-confirm');`, repair forward, then re-schedule with the same name. Corrections start a fresh 48-hour deadline and version-scoped retry state; no confirmed identity is deleted or replayed.

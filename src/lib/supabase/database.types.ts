@@ -859,29 +859,38 @@ export type Database = {
         Row: {
           attempt_count: number
           attempted_at: string | null
+          failure_count: number
           last_failure_at: string | null
           last_failure_code: string | null
+          last_failure_message: string | null
           next_attempt_at: string | null
           proposal_id: string
+          proposal_version: number
           updated_at: string
         }
         ComputedFields: never
         Insert: {
           attempt_count?: number
           attempted_at?: string | null
+          failure_count?: number
           last_failure_at?: string | null
           last_failure_code?: string | null
+          last_failure_message?: string | null
           next_attempt_at?: string | null
           proposal_id: string
+          proposal_version?: number
           updated_at?: string
         }
         Update: {
           attempt_count?: number
           attempted_at?: string | null
+          failure_count?: number
           last_failure_at?: string | null
           last_failure_code?: string | null
+          last_failure_message?: string | null
           next_attempt_at?: string | null
           proposal_id?: string
+          proposal_version?: number
           updated_at?: string
         }
         Relationships: [
@@ -891,6 +900,13 @@ export type Database = {
             isOneToOne: true
             referencedRelation: "match_event_result_proposals"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "match_result_processing_version_fk"
+            columns: ["proposal_id", "proposal_version"]
+            isOneToOne: false
+            referencedRelation: "match_event_result_proposal_versions"
+            referencedColumns: ["proposal_id", "version"]
           },
         ]
       }
@@ -1740,6 +1756,7 @@ export type Database = {
         Returns: string
       }
       process_due_match_event_registration_cutoffs: { Args: { p_limit?: number }; Returns: Json }
+      process_due_match_event_results: { Args: { p_limit?: number }; Returns: Json }
       process_match_event_registration_cutoff: {
         Args: { p_match_event_id: string; p_skip_locked?: boolean }
         Returns: Json
@@ -1782,6 +1799,16 @@ export type Database = {
           p_request_id: string
         }
         Returns: Json
+      }
+      record_match_result_processing_attempt: {
+        Args: {
+          p_clear_failure?: boolean
+          p_failed: boolean
+          p_failure_code?: string
+          p_proposal_id: string
+          p_version: number
+        }
+        Returns: boolean
       }
       remove_match_registration: {
         Args: {
@@ -1911,6 +1938,11 @@ export type Database = {
         }
         Returns: Json
       }
+      try_auto_confirm_match_event_result: {
+        Args: { p_expected_version: number; p_proposal_id: string }
+        Returns: Json
+      }
+      try_lock_match_result_processing_state: { Args: { p_proposal_id: string }; Returns: boolean }
       update_community_admin_defaults: {
         Args: { p_community_id: string; p_defaults: Json }
         Returns: Json
