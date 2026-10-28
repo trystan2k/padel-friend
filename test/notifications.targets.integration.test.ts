@@ -1,7 +1,7 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
-import { execFileSync } from 'node:child_process';
 import { describe, expect, it } from 'vitest';
 import { dotEnvPathFromImportMetaUrl, localSupabaseEnv } from './helpers/local-supabase-env';
+import { executeTrustedSql } from './helpers/sql-transport';
 
 const environment = localSupabaseEnv({ filePath: dotEnvPathFromImportMetaUrl(import.meta.url) });
 type Env = NonNullable<typeof environment.env>;
@@ -59,10 +59,7 @@ describe.skipIf(!environment.env)(
       };
     }
 
-    const sql = (statement: string) =>
-      execFileSync('pnpm', ['exec', 'supabase', 'db', 'query', '--local', statement], {
-        encoding: 'utf8'
-      });
+    const sql = (statement: string) => executeTrustedSql(statement);
     const quote = (value: string) => `'${value.replaceAll("'", "''")}'`;
 
     async function community(admin: Actor, joinPolicy: JoinPolicy = 'instant') {
@@ -109,10 +106,10 @@ describe.skipIf(!environment.env)(
     async function expiredInvite(admin: Actor, communityId: string, invitee: Actor) {
       const token = rawToken();
       const invitationId = crypto.randomUUID();
-      sql(
+      await sql(
         `insert into public.community_invitations (id,community_id,invitee_user_id,issued_by,token_hash,expires_at,created_at) values (${quote(invitationId)}::uuid,${quote(communityId)}::uuid,${quote(invitee.id)}::uuid,${quote(admin.id)}::uuid,${quote(await sha256Hex(token))},now() - interval '1 hour', now() - interval '2 days')`
       );
-      sql(
+      await sql(
         `select public.persist_notification(${quote(invitee.id)}::uuid,${quote(`community.invitation:${invitationId}`)},'community_invitation','community','community_invitation',${quote(invitationId)}::uuid,${quote(communityId)}::uuid)`
       );
       const alert = await invitee.client
@@ -220,12 +217,12 @@ describe.skipIf(!environment.env)(
 
       const revoked = await invite(admin, communityId, revokedInvitee);
       const expired = await expiredInvite(admin, communityId, expiredInvitee);
-      revokeInvitation(revoked.invitationId);
+      await revokeInvitation(revoked.invitationId);
 
       // Missing join: invitation id and community id that exist nowhere.
       const danglingTarget = crypto.randomUUID();
       const danglingCommunity = crypto.randomUUID();
-      insertAlert(
+      await insertAlert(
         danglingInvitee.id,
         'community_invitation',
         'community_invitation',
@@ -233,7 +230,13 @@ describe.skipIf(!environment.env)(
         danglingCommunity
       );
       // Producers only emit known kinds; the unknown kind row is a trusted-SQL fixture.
-      insertAlert(danglingInvitee.id, 'mystery_kind', 'future_target', crypto.randomUUID(), null);
+      await insertAlert(
+        danglingInvitee.id,
+        'mystery_kind',
+        'future_target',
+        crypto.randomUUID(),
+        null
+      );
       const danglingAlert = await danglingInvitee.client
         .from('notifications')
         .select('id')
@@ -303,7 +306,7 @@ describe.skipIf(!environment.env)(
       expect((await intervals(expiredRecipient, communityId)).data).toEqual([]);
 
       const revoked = await invite(admin, communityId, revokedRecipient);
-      revokeInvitation(revoked.invitationId);
+      await revokeInvitation(revoked.invitationId);
       expect(errorCode((await tokenAccept(revokedRecipient.client, revoked.token)).error)).toBe(
         'PJ004'
       );
@@ -343,7 +346,7 @@ describe.skipIf(!environment.env)(
           })
         ).error
       ).toBeNull();
-      sql(
+      await sql(
         `insert into public.community_members (community_id,user_id,role,status,valid_from,valid_until) values (${quote(communityId)}::uuid,${quote(inactiveMember.id)}::uuid,'member','inactive',now() - interval '2 hours', now() - interval '1 hour')`
       );
 

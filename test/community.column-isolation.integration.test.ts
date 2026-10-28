@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
-import { spawn } from 'node:child_process';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { describe, expect, it, vi } from 'vitest';
+import { queryTrustedSql } from './helpers/sql-transport';
 
 const serverClient = vi.hoisted(() => ({ current: null as SupabaseClient | null }));
 vi.mock('@tanstack/react-start', () => ({
@@ -92,29 +92,7 @@ describe.skipIf(environment.env === null)('community column isolation (local Sup
   // timeout.
   it('enforces anonymous denial, column ACLs and settings-RPC authorization while returning null nullable columns without expanding member settings projection', async () => {
     const { url, key } = env();
-    async function queryLocal(sql: string) {
-      const child = spawn(
-        'pnpm',
-        ['exec', 'supabase', 'db', 'query', '--local', '--output-format', 'json', sql],
-        { cwd: process.cwd(), stdio: ['ignore', 'pipe', 'pipe'] }
-      );
-      let stdout = '';
-      let stderr = '';
-      child.stdout.setEncoding('utf8');
-      child.stderr.setEncoding('utf8');
-      child.stdout.on('data', (chunk: string) => {
-        stdout += chunk;
-      });
-      child.stderr.on('data', (chunk: string) => {
-        stderr += chunk;
-      });
-      const code = await new Promise<number | null>((resolve, reject) => {
-        child.once('error', reject);
-        child.once('close', resolve);
-      });
-      if (code !== 0) throw new Error(`Local Supabase SQL failed: ${stderr || stdout}`);
-      return stdout;
-    }
+    const queryLocal = async (sql: string) => JSON.stringify((await queryTrustedSql(sql)).rows);
     const base = () =>
       createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
     const anon = base();

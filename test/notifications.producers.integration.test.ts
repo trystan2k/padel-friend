@@ -1,7 +1,7 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
-import { execFileSync } from 'node:child_process';
 import { describe, expect, it } from 'vitest';
 import { dotEnvPathFromImportMetaUrl, localSupabaseEnv } from './helpers/local-supabase-env';
+import { executeTrustedSql } from './helpers/sql-transport';
 
 const environment = localSupabaseEnv({ filePath: dotEnvPathFromImportMetaUrl(import.meta.url) });
 type Env = NonNullable<typeof environment.env>;
@@ -33,10 +33,7 @@ describe.skipIf(!environment.env)('community notification producers (local Supab
     };
   }
 
-  const sql = (statement: string) =>
-    execFileSync('pnpm', ['exec', 'supabase', 'db', 'query', '--local', statement], {
-      encoding: 'utf8'
-    });
+  const sql = (statement: string) => executeTrustedSql(statement);
   const quote = (value: string) => `'${value.replaceAll("'", "''")}'`;
 
   async function community(admin: Actor) {
@@ -78,7 +75,7 @@ describe.skipIf(!environment.env)('community notification producers (local Supab
     const communityId = await community(admin);
     const invitationId = crypto.randomUUID();
     const tokenHash = crypto.randomUUID().replaceAll('-', '').padEnd(64, '0');
-    sql(
+    await sql(
       `insert into public.community_invitations (id,community_id,invitee_user_id,issued_by,token_hash,expires_at) values (${quote(invitationId)}::uuid,${quote(communityId)}::uuid,${quote(invitee.id)}::uuid,${quote(admin.id)}::uuid,${quote(tokenHash)},now()+interval '1 day')`
     );
     const alert = await notification(
@@ -187,7 +184,7 @@ describe.skipIf(!environment.env)('community notification producers (local Supab
     const admin = await actor('Interval Admin');
     const member = await actor('Interval Member');
     const communityId = await community(admin);
-    sql(
+    await sql(
       `insert into public.notification_preferences (user_id,push_enabled,push_community,push_matches,push_results,push_rankings,push_leagues) values (${quote(member.id)}::uuid,false,false,false,false,false,false)`
     );
     const firstId = await membership(admin, communityId, member, 'pending');
@@ -237,7 +234,7 @@ describe.skipIf(!environment.env)('community notification producers (local Supab
     const communityId = await community(admin);
     const memberId = await membership(admin, communityId, member, 'pending');
     const key = `community.membership_approved:${memberId}`;
-    sql(
+    await sql(
       `insert into public.notifications (recipient_user_id,event_key,kind,category,target_type,target_id,community_id) values (${quote(member.id)}::uuid,${quote(key)},'conflicting_kind','community','community_membership',${quote(memberId)}::uuid,${quote(communityId)}::uuid)`
     );
     const transition = await admin.client.rpc('govern_community_member', {

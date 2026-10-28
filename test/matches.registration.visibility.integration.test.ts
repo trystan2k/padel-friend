@@ -1,4 +1,3 @@
-import { spawn } from 'node:child_process';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { describe, expect, it } from 'vitest';
 import type { Database } from '../src/lib/supabase/database.types';
@@ -8,27 +7,14 @@ import {
   dotEnvPathFromImportMetaUrl,
   localSupabaseEnv
 } from './helpers/local-supabase-env';
+import { executeTrustedSql } from './helpers/sql-transport';
 
 const environment = localSupabaseEnv({ filePath: dotEnvPathFromImportMetaUrl(import.meta.url) });
 type Env = NonNullable<typeof environment.env>;
 type Actor = { id: string; client: SupabaseClient<Database>; name: string };
 
-async function fixtureSql(env: Env, sql: string): Promise<void> {
-  const child = spawn(
-    'pnpm',
-    ['exec', 'supabase', 'db', 'query', '--local', '--output-format', 'json', sql],
-    { cwd: process.cwd() }
-  );
-  let stdout = '';
-  let stderr = '';
-  child.stdout.setEncoding('utf8').on('data', (chunk: string) => (stdout += chunk));
-  child.stderr.setEncoding('utf8').on('data', (chunk: string) => (stderr += chunk));
-  const code = await new Promise<number | null>((resolve, reject) => {
-    child.once('error', reject);
-    child.once('close', resolve);
-  });
-  if (code !== 0) throw new Error(`Trusted fixture SQL failed (${code}): ${stdout}\n${stderr}`);
-  void env;
+async function fixtureSql(_env: Env, sql: string): Promise<void> {
+  await executeTrustedSql(sql);
 }
 
 describe('match registration visibility integration', () => {

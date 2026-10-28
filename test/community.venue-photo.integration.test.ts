@@ -1,8 +1,8 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
-import { execFileSync } from 'node:child_process';
 import { deflateSync } from 'node:zlib';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
 import { dotEnvPathFromImportMetaUrl, localSupabaseEnv } from './helpers/local-supabase-env';
+import { executeTrustedSql } from './helpers/sql-transport';
 
 const serverClient = vi.hoisted(() => ({ current: null as SupabaseClient | null }));
 vi.mock('@tanstack/react-start', () => ({
@@ -314,12 +314,9 @@ localOnly('private venue photo authorization and finalization with real local St
       )
       .join(', ');
     const objectKeys = cases.map(({ objectKey }) => `'${objectKey}'`).join(', ');
-    const sql = (statement: string) =>
-      execFileSync('pnpm', ['exec', 'supabase', 'db', 'query', '--local', statement], {
-        encoding: 'utf8'
-      });
+    const sql = (statement: string) => executeTrustedSql(statement);
 
-    sql(`insert into storage.objects (bucket_id, name, owner, metadata) values ${values}`);
+    await sql(`insert into storage.objects (bucket_id, name, owner, metadata) values ${values}`);
     try {
       for (const testCase of cases) {
         const result = await photoAdmin.client.rpc('finalize_community_venue_photo', {
@@ -330,7 +327,7 @@ localOnly('private venue photo authorization and finalization with real local St
         expect(result.error?.message).toContain(testCase.expectedMessage);
       }
     } finally {
-      sql(
+      await sql(
         `do $$ begin perform set_config('storage.allow_delete_query', 'true', true); ` +
           `delete from storage.objects where bucket_id = 'community-venue-photos' ` +
           `and name in (${objectKeys}); end $$;`
@@ -366,20 +363,11 @@ localOnly('private venue photo authorization and finalization with real local St
     const objectKey = keyFor(communityId, venueId, photoAdmin.id, 'png');
     expect((await upload(photoAdmin.client, objectKey, png, 'image/png')).error).toBeNull();
     const futureMembershipId = crypto.randomUUID();
-    execFileSync(
-      'pnpm',
-      [
-        'exec',
-        'supabase',
-        'db',
-        'query',
-        '--local',
-        `insert into public.community_members ` +
-          `(id, community_id, user_id, role, status, valid_from) values ` +
-          `('${futureMembershipId}', '${communityId}', '${outsider.id}', 'member', 'active', ` +
-          `now() + interval '1 day')`
-      ],
-      { encoding: 'utf8' }
+    await executeTrustedSql(
+      `insert into public.community_members ` +
+        `(id, community_id, user_id, role, status, valid_from) values ` +
+        `('${futureMembershipId}', '${communityId}', '${outsider.id}', 'member', 'active', ` +
+        `now() + interval '1 day')`
     );
     try {
       expect(

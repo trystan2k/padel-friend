@@ -1,4 +1,3 @@
-import { spawn } from 'node:child_process';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
@@ -52,6 +51,7 @@ import {
   communityJsonbFixtures,
   compactJsonBytes
 } from './helpers/community-jsonb-fixtures';
+import { queryTrustedSql } from './helpers/sql-transport';
 
 vi.setConfig({ testTimeout: 30000, hookTimeout: 30000 });
 type LocalEnv = NonNullable<ReturnType<typeof localSupabaseEnv>['env']>;
@@ -126,7 +126,7 @@ describe.skipIf(environment.env === null)('community domain (local Supabase inte
     expectNoError(result);
     return result.data;
   }
-  // One CLI round trip for row (includes updated_at), private settings and the
+  // One SQL round trip for row (includes updated_at), private settings and the
   // complete audit trail ordered by the same stable (occurred_at, id) key the
   // per-descriptor rejection loop below snapshots repeatedly; this keeps that
   // loop's runtime bounded by batching state reads into a single statement.
@@ -171,66 +171,13 @@ describe.skipIf(environment.env === null)('community domain (local Supabase inte
   function isPlainRowObject(value: unknown): value is Record<string, unknown> {
     return typeof value === 'object' && value !== null && !Array.isArray(value);
   }
-  // `supabase db query --local --output-format json` (CLI v2.118) prints the
-  // statement's rows as a top-level JSON array of row objects; older CLI
-  // revisions nested them under a `rows` key. Model both, nothing else.
-  function toLocalFixtureResult(value: unknown): { rows: Array<Record<string, unknown>> } | null {
-    const candidate: unknown[] | null = Array.isArray(value)
-      ? value
-      : isPlainRowObject(value) && Array.isArray(value.rows)
-        ? value.rows
-        : null;
-    if (candidate === null) return null;
-    const fixtureRows: Array<Record<string, unknown>> = [];
-    for (const row of candidate) {
-      if (!isPlainRowObject(row)) return null;
-      fixtureRows.push(row);
-    }
-    return { rows: fixtureRows };
-  }
   // Fixture SQL only ever references the SHA-256 token hash, never the raw
-  // invitation token, so raw CLI output is safe to surface in diagnostics.
+  // invitation token.
   async function executeLocalFixtureSql(sql: string): Promise<{
     rows: Array<Record<string, unknown>>;
   }> {
-    const child = spawn(
-      'pnpm',
-      ['exec', 'supabase', 'db', 'query', '--local', '--output-format', 'json', sql],
-      { cwd: process.cwd(), stdio: ['ignore', 'pipe', 'pipe'] }
-    );
-    let stdout = '';
-    let stderr = '';
-    child.stdout.setEncoding('utf8').on('data', (chunk: string) => (stdout += chunk));
-    child.stderr.setEncoding('utf8').on('data', (chunk: string) => (stderr += chunk));
-    const result = await new Promise<{ code: number | null; error?: Error }>((resolve) => {
-      child.once('error', (error) => resolve({ code: null, error }));
-      child.once('close', (code) => resolve({ code }));
-    });
-    const rawOutput = `stdout:\n${stdout}\nstderr:\n${stderr}`;
-    if (result.code !== 0)
-      throw new Error(
-        `Local fixture SQL failed (exit ${result.code}): ${result.error ?? rawOutput}`
-      );
-    const trimmed = stdout.trim();
-    // Row-returning statements print JSON (empty `[]` when zero rows match);
-    // statements without RETURNING print the psql command tag, e.g. `INSERT 0 9`.
-    let parsed: unknown;
-    if (
-      trimmed === '' ||
-      /^(INSERT|UPDATE|DELETE|MERGE|MOVE|FETCH|COPY)\s+\d+(\s+\d+)?$/i.test(trimmed)
-    ) {
-      parsed = [];
-    } else {
-      try {
-        parsed = JSON.parse(trimmed);
-      } catch {
-        throw new Error(`Local fixture SQL returned non-JSON stdout: ${rawOutput}`);
-      }
-    }
-    const fixtureResult = toLocalFixtureResult(parsed);
-    if (!fixtureResult)
-      throw new Error(`Local fixture SQL returned an unexpected JSON shape: ${rawOutput}`);
-    return fixtureResult;
+    const result = await queryTrustedSql(sql);
+    return { rows: result.rows };
   }
   const invitationColumns =
     'id,community_id,invitee_user_id,issued_by,expires_at,redeemed_at,revoked_at,created_at';

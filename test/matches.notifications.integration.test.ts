@@ -1,7 +1,7 @@
-import { spawn } from 'node:child_process';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { describe, expect, it } from 'vitest';
 import { matchPhotoFixture } from './helpers/match-photo-fixtures';
+import { executeTrustedSql, queryTrustedSql, sqlErrorMessage } from './helpers/sql-transport';
 import {
   assertLocalSupabaseEnvInCi,
   dotEnvPathFromImportMetaUrl,
@@ -14,25 +14,8 @@ type Actor = { id: string; client: SupabaseClient };
 const password = 'Password123!';
 
 async function fixtureSql(env: Env, statement: string): Promise<void> {
-  const child = spawn(
-    'pnpm',
-    ['exec', 'supabase', 'db', 'query', '--local', '--output-format', 'json', statement],
-    { cwd: process.cwd() }
-  );
-  let stdout = '';
-  let stderr = '';
-  child.stdout.setEncoding('utf8').on('data', (chunk: string) => {
-    stdout += chunk;
-  });
-  child.stderr.setEncoding('utf8').on('data', (chunk: string) => {
-    stderr += chunk;
-  });
-  const code = await new Promise<number | null>((resolve, reject) => {
-    child.once('error', reject);
-    child.once('close', resolve);
-  });
-  if (code !== 0) throw new Error(`Trusted fixture SQL failed (${code}): ${stdout}\n${stderr}`);
   void env;
+  await executeTrustedSql(statement);
 }
 
 const q = (value: string) => `'${value.replaceAll("'", "''")}'`;
@@ -499,24 +482,11 @@ describe('match notification integration', () => {
   );
 });
 
-async function fixtureSqlError(env: Env, statement: string): Promise<string> {
-  const child = spawn(
-    'pnpm',
-    ['exec', 'supabase', 'db', 'query', '--local', '--output-format', 'json', statement],
-    { cwd: process.cwd() }
-  );
-  let stdout = '';
-  let stderr = '';
-  child.stdout.setEncoding('utf8').on('data', (chunk: string) => {
-    stdout += chunk;
-  });
-  child.stderr.setEncoding('utf8').on('data', (chunk: string) => {
-    stderr += chunk;
-  });
-  const code = await new Promise<number | null>((resolve, reject) => {
-    child.once('error', reject);
-    child.once('close', resolve);
-  });
-  void env;
-  return `${code}:${stdout}${stderr}`;
+async function fixtureSqlError(_env: Env, statement: string): Promise<string> {
+  try {
+    await queryTrustedSql(statement);
+    return '';
+  } catch (error) {
+    return sqlErrorMessage(error);
+  }
 }

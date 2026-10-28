@@ -1,8 +1,18 @@
-import { spawn } from 'node:child_process';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { describe, expect, it, vi } from 'vitest';
 import type { Database } from '../src/lib/supabase/database.types';
 import { matchPhotoFixture } from './helpers/match-photo-fixtures';
+import {
+  asRecord,
+  fixtureSql,
+  sqlRows,
+  startSql,
+  waitForRows,
+  withDeadline,
+  type RpcResult,
+  type SqlHandle,
+  type SqlRow
+} from './helpers/match-registration-sql';
 import {
   assertLocalSupabaseEnvInCi,
   dotEnvPathFromImportMetaUrl,
@@ -13,167 +23,6 @@ vi.setConfig({ testTimeout: 120000, hookTimeout: 120000 });
 
 const environment = localSupabaseEnv({ filePath: dotEnvPathFromImportMetaUrl(import.meta.url) });
 type Actor = { id: string; token: string; client: SupabaseClient<Database>; name: string };
-
-type SqlResult = { code: number | null; stdout: string; stderr: string };
-type SqlHandle = { done: Promise<SqlResult>; stop: (gracePeriodMs?: number) => Promise<void> };
-type SqlRow = Record<string, unknown>;
-type RpcError = { code?: string | null; message?: string | null } | null;
-type RpcResult = { data: unknown; error: RpcError };
-
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-async function withDeadline<T>(task: Promise<T>, deadlineMs: number, label: string): Promise<T> {
-  let timer: ReturnType<typeof setTimeout> | undefined;
-  try {
-    return await Promise.race([
-      task,
-      new Promise<never>((_, reject) => {
-        timer = setTimeout(
-          () => reject(new Error(`Timed out after ${deadlineMs}ms: ${label}`)),
-          deadlineMs
-        );
-      })
-    ]);
-  } finally {
-    clearTimeout(timer);
-  }
-}
-
-/**
- * Spawns one `supabase db query` child as a process-group leader on its own
- * connection. Used both for trusted fixture SQL and for the retained lock
- * holder that proves RPC contenders genuinely overlap. `stop` escalates
- * SIGTERM → SIGKILL across the whole tree so no psql grandchild survives.
- */
-function startSql(sql: string): SqlHandle {
-  const child = spawn(
-    'pnpm',
-    ['exec', 'supabase', 'db', 'query', '--local', '--output-format', 'json', sql],
-    {
-      cwd: process.cwd(),
-      stdio: ['ignore', 'pipe', 'pipe'],
-      detached: process.platform !== 'win32'
-    }
-  );
-  let stdout = '';
-  let stderr = '';
-  child.stdout.setEncoding('utf8');
-  child.stderr.setEncoding('utf8');
-  child.stdout.on('data', (chunk: string) => (stdout += chunk));
-  child.stderr.on('data', (chunk: string) => (stderr += chunk));
-  const done = new Promise<SqlResult>((resolve) => {
-    child.once('error', (error: Error) =>
-      resolve({ code: null, stdout, stderr: `${stderr}${error}` })
-    );
-    child.once('close', (code) => resolve({ code, stdout, stderr }));
-  });
-  const exited = () => child.exitCode !== null || child.signalCode !== null;
-  const signalTree = (signal: NodeJS.Signals) => {
-    try {
-      if (child.pid !== undefined) process.kill(-child.pid, signal);
-    } catch {
-      child.kill(signal);
-    }
-  };
-  const isGroupAlive = (): boolean => {
-    if (child.pid === undefined) return false;
-    try {
-      process.kill(-child.pid, 0);
-      return true;
-    } catch (error) {
-      return (
-        typeof error === 'object' && error !== null && 'code' in error && error.code === 'EPERM'
-      );
-    }
-  };
-  const stop = async (gracePeriodMs = 1000): Promise<void> => {
-    if (!exited()) {
-      signalTree('SIGTERM');
-      await new Promise<boolean>((resolve) => {
-        const timer = setTimeout(() => resolve(false), gracePeriodMs);
-        child.once('close', () => {
-          clearTimeout(timer);
-          resolve(true);
-        });
-      });
-    }
-    // Leader exit alone never implies an empty group: the supabase CLI's psql
-    // grandchild survives pnpm's SIGTERM and would keep its lock for 900s.
-    if (isGroupAlive()) {
-      signalTree('SIGKILL');
-      for (let waitedMs = 0; waitedMs < gracePeriodMs && isGroupAlive(); waitedMs += 25)
-        await sleep(25);
-    }
-  };
-  return { done, stop };
-}
-
-function isRecord(value: unknown): value is SqlRow {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
-
-function parseSqlRows(result: SqlResult): SqlRow[] {
-  if (result.code !== 0)
-    throw new Error(`Local SQL failed (${result.code}): ${result.stdout}\n${result.stderr}`);
-  const start = result.stdout.indexOf('[');
-  const end = result.stdout.lastIndexOf(']');
-  if (start < 0 || end <= start)
-    throw new Error(`Local SQL returned no JSON rows: ${result.stdout.slice(0, 400)}`);
-  const parsed: unknown = JSON.parse(result.stdout.slice(start, end + 1));
-  if (!Array.isArray(parsed)) throw new Error(`Local SQL returned invalid rows: ${result.stdout}`);
-  const rows = parsed.filter(isRecord);
-  if (rows.length !== parsed.length)
-    throw new Error(`Local SQL returned invalid rows: ${result.stdout}`);
-  return rows;
-}
-
-/** Trusted read/fixture query that must succeed and return JSON rows. */
-async function sqlRows(sql: string): Promise<SqlRow[]> {
-  const handle = startSql(sql);
-  try {
-    return parseSqlRows(await withDeadline(handle.done, 30000, 'local SQL query'));
-  } catch (error) {
-    await handle.stop();
-    throw error;
-  }
-}
-
-/** Trusted fixture SQL whose only observable output is success. */
-async function fixtureSql(sql: string): Promise<void> {
-  const handle = startSql(sql);
-  try {
-    const result = await withDeadline(handle.done, 30000, 'local fixture SQL');
-    if (result.code !== 0)
-      throw new Error(
-        `Trusted fixture SQL failed (${result.code}): ${result.stdout}\n${result.stderr}`
-      );
-  } catch (error) {
-    await handle.stop();
-    throw error;
-  }
-}
-
-/** Polls a probe query until `ready` matches, proving backend-level states. */
-async function waitForRows(
-  sql: string,
-  ready: (rows: SqlRow[]) => boolean,
-  description: string,
-  timeoutMs = 20000,
-  pollIntervalMs = 150
-): Promise<SqlRow[]> {
-  const deadline = Date.now() + timeoutMs;
-  let rows: SqlRow[] = [];
-  while (Date.now() < deadline) {
-    rows = await sqlRows(sql);
-    if (ready(rows)) return rows;
-    await sleep(pollIntervalMs);
-  }
-  throw new Error(`Timed out waiting for ${description}: ${JSON.stringify(rows)}`);
-}
-
-const asRecord = (value: unknown): Record<string, unknown> => (isRecord(value) ? value : {});
 
 describe('match registration actions integration', () => {
   it('requires local Supabase in CI', () => {
@@ -369,6 +218,7 @@ describe('match registration actions integration', () => {
       );
       const holderPid = Number(holderRow!['value']);
       expect(Number.isInteger(holderPid), 'holder pid').toBe(true);
+      expect(await holder.backendPid, 'holder owns the active dedicated backend').toBe(holderPid);
       // In-database poll: wait until both contenders are provably blocked on
       // this event's lock chain (rooted at the holder), then release them in
       // the same transaction. Contenders are counted via a one-level chain
@@ -388,12 +238,17 @@ describe('match registration actions integration', () => {
       confirm = startSql(`do $barrier$
       declare
         v_blocked integer;
+        v_distinct_contenders integer;
         v_holder_direct integer;
         v_stray integer;
         v_deadline timestamptz := pg_catalog.clock_timestamp() + interval '6.5 seconds';
        begin
         loop
-          select pg_catalog.count(*) into v_blocked
+          -- This probe keeps one transaction open while contenders arrive;
+          -- refresh pg_stat_activity so each iteration sees current waiters.
+          perform pg_catalog.pg_stat_clear_snapshot();
+          select pg_catalog.count(*), pg_catalog.count(distinct a.pid)
+            into v_blocked, v_distinct_contenders
             from pg_catalog.pg_stat_activity a
            where a.wait_event_type = 'Lock'
              and a.query like '%${rpcToken}%'
@@ -429,15 +284,27 @@ describe('match registration actions integration', () => {
                              where c.pid = b
                                and c.wait_event_type = 'Lock'
                                and c.query like '%${eventId}%'));
-          exit when (v_blocked = 2 and v_holder_direct >= 1 and v_stray = 0)
+          exit when (v_blocked = 2 and v_distinct_contenders = 2
+                     and v_holder_direct >= 1 and v_stray = 0)
                  or pg_catalog.clock_timestamp() > v_deadline;
           perform pg_catalog.pg_sleep(0.05);
         end loop;
-        if v_blocked <> 2 or v_holder_direct < 1 or v_stray <> 0 then
-          raise exception 'barrier not proven: blocked=% holder_direct=% stray=%', v_blocked, v_holder_direct, v_stray;
+        if v_blocked <> 2 or v_distinct_contenders <> 2 or v_holder_direct < 1 or v_stray <> 0 then
+          raise exception 'barrier not proven: blocked=% distinct_contenders=% holder_direct=% stray=%',
+            v_blocked, v_distinct_contenders, v_holder_direct, v_stray;
         end if;
         perform pg_catalog.pg_terminate_backend(${holderPid});
-       end $barrier$;`);
+        end $barrier$;`);
+      const probePid = await confirm.backendPid;
+      expect(probePid, 'probe backend differs from lock holder').not.toBe(holderPid);
+      await waitForRows(
+        `select pid as value from pg_catalog.pg_stat_activity
+          where pid = ${probePid} and state = 'active' and query like '%pg_stat_clear_snapshot%'`,
+        (rows) => rows.length === 1,
+        'the dedicated barrier probe to start',
+        5000,
+        20
+      );
       const [first, second] = fire();
       const confirmResult = await withDeadline(confirm.done, 30000, 'barrier confirm-and-release');
       if (confirmResult.code !== 0)

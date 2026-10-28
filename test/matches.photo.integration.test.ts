@@ -1,4 +1,3 @@
-import { spawn } from 'node:child_process';
 import { matchRegistrationFixtureHistory } from './helpers/match-registration-fixture-history';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { describe, expect, it, vi } from 'vitest';
@@ -12,6 +11,7 @@ import {
   dotEnvPathFromImportMetaUrl,
   localSupabaseEnv
 } from './helpers/local-supabase-env';
+import { executeTrustedSql, startSql } from './helpers/sql-transport';
 
 // signMatchPhotoBatch sets a response header through the Start server runtime,
 // which has no request context under plain vitest; the authorization evidence
@@ -24,26 +24,8 @@ const environment = localSupabaseEnv({ filePath: dotEnvPathFromImportMetaUrl(imp
 type Env = NonNullable<typeof environment.env>;
 type Actor = { id: string; client: SupabaseClient<Database> };
 
-async function fixtureSql(env: Env, sql: string): Promise<void> {
-  const child = spawn(
-    'pnpm',
-    ['exec', 'supabase', 'db', 'query', '--local', '--output-format', 'json', sql],
-    { cwd: process.cwd() }
-  );
-  let stdout = '';
-  let stderr = '';
-  child.stdout.setEncoding('utf8').on('data', (chunk: string) => {
-    stdout += chunk;
-  });
-  child.stderr.setEncoding('utf8').on('data', (chunk: string) => {
-    stderr += chunk;
-  });
-  const code = await new Promise<number | null>((resolve, reject) => {
-    child.once('error', reject);
-    child.once('close', resolve);
-  });
-  if (code !== 0) throw new Error(`Trusted fixture SQL failed (${code}): ${stdout}\n${stderr}`);
-  void env;
+async function fixtureSql(_env: Env, sql: string): Promise<void> {
+  await executeTrustedSql(sql);
 }
 
 // list_match_events answers setof jsonb, so row fields are narrowed with `in`
@@ -318,34 +300,19 @@ describe('match event photo Storage authorization', () => {
       const raceEvent = crypto.randomUUID();
       const raceKey = `${publicCommunity}/${raceEvent}/${creator!.id}/${crypto.randomUUID()}.png`;
       expect((await upload(creator!, raceKey)).error).toBeNull();
-      const publication = spawn(
-        'pnpm',
-        [
-          'exec',
-          'supabase',
-          'db',
-          'query',
-          '--local',
-          '--output-format',
-          'json',
-          `do $$ begin insert into public.match_events(id,community_id,created_by,starts_at,timezone,event_type,visibility,team_assignment_mode,venue_name,maps_url,photo_path,registration_cutoff_at) values (${q(raceEvent)},${q(publicCommunity)},${q(creator!.id)},now()+interval '2 days','UTC','friendly','community_open','POST_MATCH_TEAMS','Race court','https://maps.google.com/maps/place/race',${q(raceKey)},now()+interval '1 day'); perform pg_sleep(1); end $$;`
-        ],
-        { cwd: process.cwd(), stdio: ['ignore', 'pipe', 'pipe'] }
+      const publication = startSql(
+        `do $$ begin insert into public.match_events(id,community_id,created_by,starts_at,timezone,event_type,visibility,team_assignment_mode,venue_name,maps_url,photo_path,registration_cutoff_at) values (${q(raceEvent)},${q(publicCommunity)},${q(creator!.id)},now()+interval '2 days','UTC','friendly','community_open','POST_MATCH_TEAMS','Race court','https://maps.google.com/maps/place/race',${q(raceKey)},now()+interval '1 day'); perform pg_sleep(1); end $$;`
       );
-      let publicationOutput = '';
-      let publicationErrors = '';
-      publication.stdout.setEncoding('utf8').on('data', (chunk: string) => {
-        publicationOutput += chunk;
-      });
-      publication.stderr.setEncoding('utf8').on('data', (chunk: string) => {
-        publicationErrors += chunk;
-      });
-      await new Promise((resolve) => setTimeout(resolve, 200));
-      await creator!.client.storage.from('match-event-photos').remove([raceKey]);
-      const publicationExit = await new Promise<number | null>((resolve, reject) => {
-        publication.once('error', reject);
-        publication.once('close', resolve);
-      });
+      const publicationResult = await (async () => {
+        try {
+          await new Promise((resolve) => setTimeout(resolve, 200));
+          await creator!.client.storage.from('match-event-photos').remove([raceKey]);
+          return await publication.done;
+        } finally {
+          await publication.stop();
+        }
+      })();
+      const publicationExit = publicationResult.code;
       expect([0, 1]).toContain(publicationExit);
       const published = await creator!.client
         .from('match_events')
@@ -357,7 +324,9 @@ describe('match event photo Storage authorization', () => {
       expect(Boolean(published.data?.length)).toBe(Boolean(remainingPhoto.data));
       expect(published.data?.[0]?.photo_path ?? null).toBe(published.data?.length ? raceKey : null);
       expect(
-        (publicationErrors + publicationOutput).includes('Match photo object unavailable')
+        (publicationResult.stderr + publicationResult.stdout).includes(
+          'Match photo object unavailable'
+        )
       ).toBe(publicationExit !== 0);
     },
     60000

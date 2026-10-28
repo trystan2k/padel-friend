@@ -1,20 +1,25 @@
-import { spawn } from 'node:child_process';
 import { expect } from 'vitest';
+import {
+  executeTrustedSql,
+  queryTrustedSql,
+  sqlErrorMessage,
+  startCliSql,
+  startSql,
+  type SqlHandle,
+  type SqlResult,
+  type SqlRow
+} from './sql-transport';
+
+export { startCliSql, startSql };
+export type { SqlHandle, SqlResult, SqlRow };
 
 // Shared trusted-SQL harness for the PAF-5.3 registration suites (model, FIFO,
-// notifications). Same process-isolated `supabase db query` pattern as the
-// PAF-5.2 actions suite: every fixture or probe runs on its own connection as
-// the local database owner, and the retained-lock barrier proves that RPC
-// contenders genuinely block on the event lock chain before being released.
+// notifications). Fixtures use the bounded pool; independent holders and probes
+// preserve the retained-lock barrier that proves RPC contenders genuinely block
+// on the event lock chain before being released.
 // Nothing here touches production code; everything fails closed without a
 // loopback Supabase env (see helpers/local-supabase-env.ts).
 
-export type SqlResult = { code: number | null; stdout: string; stderr: string };
-export type SqlHandle = {
-  done: Promise<SqlResult>;
-  stop: (gracePeriodMs?: number) => Promise<void>;
-};
-export type SqlRow = Record<string, unknown>;
 export type RpcError = {
   code?: string | null;
   message?: string | null;
@@ -53,75 +58,6 @@ export async function withDeadline<T>(
   }
 }
 
-/**
- * Spawns one `supabase db query` child as a process-group leader on its own
- * connection. Used both for trusted fixture SQL and for the retained lock
- * holder that proves RPC contenders genuinely overlap. `stop` escalates
- * SIGTERM → SIGKILL across the whole tree so no psql grandchild survives.
- */
-export function startSql(sql: string): SqlHandle {
-  const child = spawn(
-    'pnpm',
-    ['exec', 'supabase', 'db', 'query', '--local', '--output-format', 'json', sql],
-    {
-      cwd: process.cwd(),
-      stdio: ['ignore', 'pipe', 'pipe'],
-      detached: process.platform !== 'win32'
-    }
-  );
-  let stdout = '';
-  let stderr = '';
-  child.stdout.setEncoding('utf8');
-  child.stderr.setEncoding('utf8');
-  child.stdout.on('data', (chunk: string) => (stdout += chunk));
-  child.stderr.on('data', (chunk: string) => (stderr += chunk));
-  const done = new Promise<SqlResult>((resolve) => {
-    child.once('error', (error: Error) =>
-      resolve({ code: null, stdout, stderr: `${stderr}${error}` })
-    );
-    child.once('close', (code) => resolve({ code, stdout, stderr }));
-  });
-  const exited = () => child.exitCode !== null || child.signalCode !== null;
-  const signalTree = (signal: NodeJS.Signals) => {
-    try {
-      if (child.pid !== undefined) process.kill(-child.pid, signal);
-    } catch {
-      child.kill(signal);
-    }
-  };
-  const isGroupAlive = (): boolean => {
-    if (child.pid === undefined) return false;
-    try {
-      process.kill(-child.pid, 0);
-      return true;
-    } catch (error) {
-      return (
-        typeof error === 'object' && error !== null && 'code' in error && error.code === 'EPERM'
-      );
-    }
-  };
-  const stop = async (gracePeriodMs = 1000): Promise<void> => {
-    if (!exited()) {
-      signalTree('SIGTERM');
-      await new Promise<boolean>((resolve) => {
-        const timer = setTimeout(() => resolve(false), gracePeriodMs);
-        child.once('close', () => {
-          clearTimeout(timer);
-          resolve(true);
-        });
-      });
-    }
-    // Leader exit alone never implies an empty group: the supabase CLI's psql
-    // grandchild survives pnpm's SIGTERM and would keep its lock for 900s.
-    if (isGroupAlive()) {
-      signalTree('SIGKILL');
-      for (let waitedMs = 0; waitedMs < gracePeriodMs && isGroupAlive(); waitedMs += 25)
-        await sleep(25);
-    }
-  };
-  return { done, stop };
-}
-
 export function isRecord(value: unknown): value is SqlRow {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
@@ -130,44 +66,17 @@ export function asRecord(value: unknown): Record<string, unknown> {
   return isRecord(value) ? value : {};
 }
 
-function parseSqlRows(result: SqlResult): SqlRow[] {
-  if (result.code !== 0)
-    throw new Error(`Local SQL failed (${result.code}): ${result.stdout}\n${result.stderr}`);
-  const start = result.stdout.indexOf('[');
-  const end = result.stdout.lastIndexOf(']');
-  if (start < 0 || end <= start)
-    throw new Error(`Local SQL returned no JSON rows: ${result.stdout.slice(0, 400)}`);
-  const parsed: unknown = JSON.parse(result.stdout.slice(start, end + 1));
-  if (!Array.isArray(parsed)) throw new Error(`Local SQL returned invalid rows: ${result.stdout}`);
-  const rows = parsed.filter(isRecord);
-  if (rows.length !== parsed.length)
-    throw new Error(`Local SQL returned invalid rows: ${result.stdout}`);
-  return rows;
-}
-
 /** Trusted read/fixture query that must succeed and return JSON rows. */
 export async function sqlRows(sql: string): Promise<SqlRow[]> {
-  const handle = startSql(sql);
-  try {
-    return parseSqlRows(await withDeadline(handle.done, 30000, 'local SQL query'));
-  } catch (error) {
-    await handle.stop();
-    throw error;
-  }
+  return (await queryTrustedSql(sql)).rows;
 }
 
 /** Trusted fixture SQL whose only observable output is success. */
 export async function fixtureSql(sql: string): Promise<void> {
-  const handle = startSql(sql);
   try {
-    const result = await withDeadline(handle.done, 30000, 'local fixture SQL');
-    if (result.code !== 0)
-      throw new Error(
-        `Trusted fixture SQL failed (${result.code}): ${result.stdout}\n${result.stderr}`
-      );
+    await executeTrustedSql(sql);
   } catch (error) {
-    await handle.stop();
-    throw error;
+    throw new Error(`Trusted fixture SQL failed: ${sqlErrorMessage(error)}`, { cause: error });
   }
 }
 
@@ -270,6 +179,7 @@ export async function proveEventLockBarrier(params: {
     );
     const holderPid = Number(holderRow!['value']);
     expect(Number.isInteger(holderPid), 'holder pid').toBe(true);
+    expect(await holder.backendPid, 'holder uses its dedicated PostgreSQL backend').toBe(holderPid);
     // In-database poll: wait until both contenders are provably blocked on
     // this event's lock chain (rooted at the holder), then release them in
     // the same transaction. Contenders are counted via a one-level chain
@@ -350,7 +260,10 @@ export async function proveEventLockBarrier(params: {
         end if;
         ${params.releaseAtCutoff ? `perform pg_catalog.pg_sleep(greatest(0, extract(epoch from (select registration_cutoff_at - clock_timestamp() from public.match_events where id = '${params.eventId}'))));` : ''}
         perform pg_catalog.pg_terminate_backend(${holderPid});
-       end $barrier$;`);
+        end $barrier$;`);
+    expect(await confirm.backendPid, 'probe uses a separate PostgreSQL backend').not.toBe(
+      holderPid
+    );
     const contenders = params.fire();
     const confirmResult = await withDeadline(confirm.done, 30000, 'barrier confirm-and-release');
     if (confirmResult.code !== 0)
