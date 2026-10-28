@@ -2,7 +2,6 @@
 description: Senior bug-fix and small-change subagent that executes approved review follow-ups and minor improvements using stack-specific best practices and project conventions.
 mode: subagent
 model: openai/gpt-6-luna#high
-steps: 40
 permissions:
   - action: subagent
     resource: "*"
