@@ -1,0 +1,26 @@
+{
+  "revision": "1d6c5d1f4a50747ff5f0447184accc2291a5c67a",
+  "branch": "feature/PAF-109-reduce-test-runtime",
+  "initialStatusPorcelain": "?? docs/plan/Plan PAF-109 Reduce test runtime without weakening regression guards.md",
+  "finalStatusPorcelain": "?? docs/plan/Plan PAF-109 Reduce test runtime without weakening regression guards.md",
+  "node": "v26.11.1",
+  "pnpm": "12.13.0",
+  "os": "macOS 27.0.1 (Darwin arm64)",
+  "capturedAt": "2026-10-28T01:45:57+01:00",
+  "commands": {
+    "unit": "pnpm exec vitest run --config vitest.unit.config.ts --coverage --reporter=default --reporter=json --outputFile=<dir>/unit.json",
+    "integration": "pnpm exec vitest run --config vitest.integration.config.ts --reporter=default --reporter=json --outputFile=<dir>/integration.json"
+  },
+  "unitWallSeconds": 30.06,
+  "integrationWallSeconds": 511.16,
+  "evidenceDirectory": "/private/var/folders/lp/67ytvn9176l2v17pjy8h2zl00000gn/T/opencode/paf-109-evidence",
+  "derivation": {
+    "sourceFiles": [
+      "/private/var/folders/lp/67ytvn9176l2v17pjy8h2zl00000gn/T/opencode/paf-109-evidence/unit.json",
+      "/private/var/folders/lp/67ytvn9176l2v17pjy8h2zl00000gn/T/opencode/paf-109-evidence/integration.json"
+    ],
+    "derivedAt": "2026-10-28",
+    "transform": "Flatten each source testResults[] entry's assertionResults[] in reporter order. Emit one JSONL object per assertion with file relative to repository root, fullName, status normalized to passed|failed|skipped, and durationMs copied from the assertion duration. Pending/todo/non-passed, non-failed statuses normalize to skipped.",
+    "analysisPerFileElapsed": "analysis.json per-file durationMs is derived from each raw testResults[] entry's endTime - startTime in milliseconds (file elapsed), rounded to three decimal places; it is not the sum of case durationMs."
+  }
+}

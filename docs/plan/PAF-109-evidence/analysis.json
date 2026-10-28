@@ -1,0 +1,267 @@
+{
+  "unit": {
+    "jsonSummary": {
+      "numTotalTestSuites": 265,
+      "numPassedTestSuites": 265,
+      "numFailedTestSuites": 0,
+      "numPendingTestSuites": 0,
+      "numTotalTests": 1324,
+      "numPassedTests": 1324,
+      "numFailedTests": 0,
+      "numPendingTests": 0,
+      "numTodoTests": 0,
+      "success": true
+    },
+    "durationSec": 30.06,
+    "files": 111,
+    "tests": 1324,
+    "failed": 0,
+    "skipped": 0,
+    "testFileCount": 111,
+    "filesTop10": [
+      {
+        "file": "test/matches.registration.model.test.ts",
+        "durationMs": 26931.92,
+        "status": "passed",
+        "testCount": 4
+      },
+      {
+        "file": "test/matches.create.test.tsx",
+        "durationMs": 14691.928,
+        "status": "passed",
+        "testCount": 24
+      },
+      {
+        "file": "test/community.admin-ui.test.tsx",
+        "durationMs": 14238.703,
+        "status": "passed",
+        "testCount": 48
+      },
+      {
+        "file": "test/lint-staged.test.ts",
+        "durationMs": 7847.249,
+        "status": "passed",
+        "testCount": 7
+      },
+      {
+        "file": "test/community.onboarding.test.tsx",
+        "durationMs": 5273.682,
+        "status": "passed",
+        "testCount": 25
+      },
+      {
+        "file": "test/matches.management.organizer.test.tsx",
+        "durationMs": 3402.319,
+        "status": "passed",
+        "testCount": 12
+      },
+      {
+        "file": "test/matches.results.page.test.tsx",
+        "durationMs": 3172.071,
+        "status": "passed",
+        "testCount": 21
+      },
+      {
+        "file": "test/matches.management.edit.test.tsx",
+        "durationMs": 3147.529,
+        "status": "passed",
+        "testCount": 6
+      },
+      {
+        "file": "test/auth.account-signup.test.ts",
+        "durationMs": 1816.35,
+        "status": "passed",
+        "testCount": 9
+      },
+      {
+        "file": "test/matches.detail.test.tsx",
+        "durationMs": 1802.847,
+        "status": "passed",
+        "testCount": 33
+      }
+    ]
+  },
+  "integration": {
+    "jsonSummary": {
+      "numTotalTestSuites": 83,
+      "numPassedTestSuites": 83,
+      "numFailedTestSuites": 0,
+      "numPendingTestSuites": 0,
+      "numTotalTests": 275,
+      "numPassedTests": 275,
+      "numFailedTests": 0,
+      "numPendingTests": 0,
+      "numTodoTests": 0,
+      "success": true
+    },
+    "durationSec": 511.16,
+    "files": 38,
+    "tests": 275,
+    "failed": 0,
+    "skipped": 0,
+    "testFileCount": 38,
+    "filesTop10": [
+      {
+        "file": "test/matches.registration.cutoff.integration.test.ts",
+        "durationMs": 59947.356,
+        "status": "passed",
+        "testCount": 17
+      },
+      {
+        "file": "test/matches.results.submission.integration.test.ts",
+        "durationMs": 42957.116,
+        "status": "passed",
+        "testCount": 16
+      },
+      {
+        "file": "test/matches.management.protection.integration.test.ts",
+        "durationMs": 42332.858,
+        "status": "passed",
+        "testCount": 12
+      },
+      {
+        "file": "test/matches.registration.fifo.integration.test.ts",
+        "durationMs": 39378.782,
+        "status": "passed",
+        "testCount": 11
+      },
+      {
+        "file": "test/matches.management.edits.integration.test.ts",
+        "durationMs": 38772.829,
+        "status": "passed",
+        "testCount": 12
+      },
+      {
+        "file": "test/matches.invitations.integration.test.ts",
+        "durationMs": 36915.652,
+        "status": "passed",
+        "testCount": 18
+      },
+      {
+        "file": "test/matches.reconfirmation.integration.test.ts",
+        "durationMs": 33036.978,
+        "status": "passed",
+        "testCount": 10
+      },
+      {
+        "file": "test/community.integration.test.ts",
+        "durationMs": 32332.904,
+        "status": "passed",
+        "testCount": 23
+      },
+      {
+        "file": "test/matches.registration.actions.integration.test.ts",
+        "durationMs": 21200.026,
+        "status": "passed",
+        "testCount": 14
+      },
+      {
+        "file": "test/matches.management.cancellation.integration.test.ts",
+        "durationMs": 20567.038,
+        "status": "passed",
+        "testCount": 8
+      }
+    ]
+  },
+  "combined": {
+    "durationSec": 541.22,
+    "files": 149,
+    "tests": 1599
+  },
+  "unitFilesTop10": [
+    { "file": "matches.registration.model", "durationMs": 26931.920 },
+    { "file": "matches.create", "durationMs": 14691.928 },
+    { "file": "community.admin-ui", "durationMs": 14238.703 },
+    { "file": "lint-staged", "durationMs": 7847.249 },
+    { "file": "community.onboarding", "durationMs": 5273.682 },
+    { "file": "matches.management.organizer", "durationMs": 3402.319 },
+    { "file": "matches.results.page", "durationMs": 3172.071 },
+    { "file": "matches.management.edit", "durationMs": 3147.529 },
+    { "file": "auth.account-signup", "durationMs": 1816.350 },
+    { "file": "matches.detail", "durationMs": 1802.847 }
+  ],
+  "integrationFilesTop10": [
+    { "file": "matches.registration.cutoff", "durationMs": 59947.356 },
+    { "file": "matches.results.submission", "durationMs": 42957.116 },
+    { "file": "matches.management.protection", "durationMs": 42332.858 },
+    { "file": "matches.registration.fifo", "durationMs": 39378.782 },
+    { "file": "matches.management.edits", "durationMs": 38772.829 },
+    { "file": "matches.invitations", "durationMs": 36915.652 },
+    { "file": "matches.reconfirmation", "durationMs": 33036.978 },
+    { "file": "community", "durationMs": 32332.904 },
+    { "file": "matches.registration.actions", "durationMs": 21200.026 },
+    { "file": "matches.management.cancellation", "durationMs": 20567.038 }
+  ],
+  "slowestTestsTop10": [
+    {
+      "phase": "unit",
+      "file": "test/matches.registration.model.test.ts",
+      "name": "match registration FIFO model > splits the roster across N=0..13 exactly like the oracle, with contiguous positions and group boundaries at multiples of four",
+      "durationMs": 22080.265,
+      "status": "passed"
+    },
+    {
+      "phase": "integration",
+      "file": "test/matches.results.submission.integration.test.ts",
+      "name": "actual result submission transaction > played_at community-timezone boundary validation",
+      "durationMs": 11555.768,
+      "status": "passed"
+    },
+    {
+      "phase": "integration",
+      "file": "test/matches.registration.fifo.integration.test.ts",
+      "name": "match registration FIFO integration > allocates unique ordinals in acceptance-time order, never renumbers them, and bumps the revision exactly once per mutation",
+      "durationMs": 11018.719,
+      "status": "passed"
+    },
+    {
+      "phase": "integration",
+      "file": "test/matches.registration.cutoff.integration.test.ts",
+      "name": "match registration cutoff integration > seeds actors, communities and events through the trusted channel",
+      "durationMs": 10073.555,
+      "status": "passed"
+    },
+    {
+      "phase": "integration",
+      "file": "test/matches.registration.cutoff.integration.test.ts",
+      "name": "match registration cutoff integration > picks up overdue events by the bounded batch, isolates a failing event, and leaves the scheduler job unscheduled locally",
+      "durationMs": 8716.423,
+      "status": "passed"
+    },
+    {
+      "phase": "integration",
+      "file": "test/community.integration.test.ts",
+      "name": "community domain (local Supabase integration) > rejects 4097-byte settings for every descriptor through the database RPC without changing row or audit",
+      "durationMs": 8433.678,
+      "status": "passed"
+    },
+    {
+      "phase": "integration",
+      "file": "test/community.integration.test.ts",
+      "name": "community domain (local Supabase integration) > validator decisions match PostgreSQL JSONB byte oracle at 4095, 4096 and 4097 bytes",
+      "durationMs": 7071.467,
+      "status": "passed"
+    },
+    {
+      "phase": "integration",
+      "file": "test/matches.management.edits.integration.test.ts",
+      "name": "minor match edits integration > negative price unsupported currency cutoff at start and capacity below accepted reject atomically",
+      "durationMs": 7035.02,
+      "status": "passed"
+    },
+    {
+      "phase": "integration",
+      "file": "test/matches.management.protection.integration.test.ts",
+      "name": "management result protection contract (no results API) > protection versus cancellation has exactly one winner",
+      "durationMs": 6735.991,
+      "status": "passed"
+    },
+    {
+      "phase": "integration",
+      "file": "test/matches.discovery.integration.test.ts",
+      "name": "match event snapshot badge regression (PAF-85) > classifies badges, counts and openness at the echoed snapshot instant across cutoff boundaries without letting a later marker rewrite an earlier snapshot",
+      "durationMs": 6211.927,
+      "status": "passed"
+    }
+  ]
+}
