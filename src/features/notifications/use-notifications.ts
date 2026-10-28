@@ -38,6 +38,9 @@ function isNotificationPage(value: unknown): value is NotificationPage {
   return (
     value.nextCursor === null ||
     (isRecord(value.nextCursor) &&
+      typeof value.nextCursor.sequence === 'number' &&
+      Number.isSafeInteger(value.nextCursor.sequence) &&
+      value.nextCursor.sequence > 0 &&
       typeof value.nextCursor.createdAt === 'string' &&
       typeof value.nextCursor.id === 'string')
   );

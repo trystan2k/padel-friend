@@ -99,6 +99,7 @@ describe.skipIf(!environment.env)('community notification producers (local Supab
       'kind',
       'read_at',
       'recipient_user_id',
+      'sequence',
       'target_id',
       'target_type'
     ]);

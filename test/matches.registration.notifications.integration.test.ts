@@ -68,8 +68,11 @@ describe('match registration FIFO notifications integration', () => {
   const inboxOf = async (who: Actor, eventKey: string): Promise<SqlRow[]> => {
     const result = await who.client
       .from('notifications')
-      .select('id,recipient_user_id,event_key,kind,category,target_type,target_id,community_id')
-      .eq('target_id', events[eventKey]!);
+      .select(
+        'id,recipient_user_id,event_key,kind,category,target_type,target_id,community_id,sequence'
+      )
+      .eq('target_id', events[eventKey]!)
+      .order('sequence', { ascending: true });
     expect(result.error, `${who.name} inbox`).toBeNull();
     return result.data ?? [];
   };
@@ -180,10 +183,12 @@ describe('match registration FIFO notifications integration', () => {
           inbox.some((row) => String(row['kind']) === 'match_registration_quartet_complete')
         ).toBe(true);
       }
-      expect((await inboxOf(actors.m3!, eventKey)).map((row) => String(row['kind']))).toEqual([
+      const m3Inbox = await inboxOf(actors.m3!, eventKey);
+      expect(m3Inbox.map((row) => String(row['kind']))).toEqual([
         'match_registration_playing',
         'match_registration_quartet_complete'
       ]);
+      expect(Number(m3Inbox[0]!['sequence'])).toBeLessThan(Number(m3Inbox[1]!['sequence']));
       for (const mover of [actors.creator!, actors.m1!, actors.m2!])
         expect(
           (await inboxOf(mover, eventKey)).some(

@@ -61,22 +61,23 @@ describe('notification server functions', () => {
       }));
     mocks.client = { from, rpc };
 
-    const cursor = { createdAt: '2026-10-15T12:00:00.123456+00:00', id };
+    const cursor = { sequence: 12, createdAt: '2026-10-15T12:00:00.123456+00:00', id };
     await listMyNotifications({ data: { category: 'community', cursor, limit: 20 } });
 
     expect(rpc).toHaveBeenCalledWith('get_my_notifications_as_of');
     expect(from).toHaveBeenCalledWith('notifications');
     expect(query.select).toHaveBeenCalledWith(
-      'id,kind,category,target_type,target_id,community_id,created_at,read_at'
+      'id,kind,category,target_type,target_id,community_id,sequence,created_at,read_at'
     );
     expect(query.lte).toHaveBeenCalledWith('created_at', databaseAsOf);
     expect(query.eq.mock.calls).toEqual([['category', 'community']]);
     expect(query.order.mock.calls).toEqual([
+      ['sequence', { ascending: false }],
       ['created_at', { ascending: false }],
       ['id', { ascending: false }]
     ]);
     expect(query.or).toHaveBeenCalledExactlyOnceWith(
-      `created_at.lt.${cursor.createdAt},and(created_at.eq.${cursor.createdAt},id.lt.${id})`
+      `sequence.lt.${cursor.sequence},and(sequence.eq.${cursor.sequence},created_at.lt.${cursor.createdAt}),and(sequence.eq.${cursor.sequence},created_at.eq.${cursor.createdAt},id.lt.${id})`
     );
     expect(query.limit).toHaveBeenCalledExactlyOnceWith(21);
     expect(rpc.mock.calls).toEqual([
@@ -147,6 +148,7 @@ describe('notification server functions', () => {
       id: string;
       kind: string;
       category: string;
+      sequence: number;
       created_at: string;
       read_at: null;
     }[][] = [
@@ -155,6 +157,7 @@ describe('notification server functions', () => {
           id: cursorId,
           kind: 'community_invitation',
           category: 'community',
+          sequence: 3,
           created_at: newerTimestamp,
           read_at: null
         },
@@ -162,6 +165,7 @@ describe('notification server functions', () => {
           id: '323e4567-e89b-12d3-a456-426614174002',
           kind: 'community_invitation',
           category: 'community',
+          sequence: 2,
           created_at: olderTimestamp,
           read_at: null
         }
@@ -171,6 +175,7 @@ describe('notification server functions', () => {
           id: '423e4567-e89b-12d3-a456-426614174003',
           kind: 'community_membership_approved',
           category: 'community',
+          sequence: 1,
           created_at: olderTimestamp,
           read_at: null
         }
@@ -204,13 +209,17 @@ describe('notification server functions', () => {
 
     const firstPage = await listMyNotifications({ data: { limit: 1 } });
     expect(firstPage.items[0]?.created_at).toBe(newerTimestamp);
-    expect(firstPage.nextCursor).toEqual({ createdAt: newerTimestamp, id: cursorId });
+    expect(firstPage.nextCursor).toEqual({
+      sequence: 3,
+      createdAt: newerTimestamp,
+      id: cursorId
+    });
 
     const nextPage = await listMyNotifications({
       data: { limit: 1, cursor: firstPage.nextCursor ?? undefined }
     });
     expect(query.or).toHaveBeenCalledWith(
-      `created_at.lt.${newerTimestamp},and(created_at.eq.${newerTimestamp},id.lt.${cursorId})`
+      `sequence.lt.3,and(sequence.eq.3,created_at.lt.${newerTimestamp}),and(sequence.eq.3,created_at.eq.${newerTimestamp},id.lt.${cursorId})`
     );
     expect(nextPage.items[0]?.created_at).toBe(olderTimestamp);
   });

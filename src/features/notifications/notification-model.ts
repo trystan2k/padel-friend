@@ -20,7 +20,7 @@ export function toNotificationDto(
 export type NotificationCategory = 'all' | 'matches' | 'results' | 'community' | 'rankings';
 export type NotificationPage = {
   items: NotificationDto[];
-  nextCursor: { createdAt: string; id: string } | null;
+  nextCursor: { sequence: number; createdAt: string; id: string } | null;
   unreadCount: number;
   asOf: string;
 };
@@ -38,6 +38,7 @@ export function groupNotifications(items: NotificationDto[], now: Date, locale: 
     dateStyle: 'medium',
     timeStyle: 'short'
   });
+  // sequence = authoritative order; sections are partitions, never re-sorted.
   return {
     today: items.filter((item) => dayFormatter.format(new Date(item.created_at)) === today),
     earlier: items.filter((item) => dayFormatter.format(new Date(item.created_at)) !== today),

@@ -8,7 +8,8 @@ import {
 } from './notifications.validators';
 import { toNotificationDto } from './notification-model';
 import { decodeNotificationTarget } from './notification-target';
-const columns = 'id,kind,category,target_type,target_id,community_id,created_at,read_at' as const;
+const columns =
+  'id,kind,category,target_type,target_id,community_id,sequence,created_at,read_at' as const;
 export const listMyNotifications = createServerFn({ method: 'GET' })
   .validator(validateListMyNotifications)
   .handler(async ({ data }) => {
@@ -19,12 +20,18 @@ export const listMyNotifications = createServerFn({ method: 'GET' })
     if (typeof asOf !== 'string') throw new Error('INVALID_NOTIFICATION_CUTOFF');
     let query = client.from('notifications').select(columns).lte('created_at', asOf);
     if (data.category !== 'all') query = query.eq('category', data.category);
-    if (data.cursor)
-      query = query.or(
-        `created_at.lt.${data.cursor.createdAt},and(created_at.eq.${data.cursor.createdAt},id.lt.${data.cursor.id})`
-      );
+    if (data.cursor) {
+      const { sequence, createdAt, id } = data.cursor;
+      const beforeCursor = [
+        `sequence.lt.${sequence}`,
+        `and(sequence.eq.${sequence},created_at.lt.${createdAt})`,
+        `and(sequence.eq.${sequence},created_at.eq.${createdAt},id.lt.${id})`
+      ].join(',');
+      query = query.or(beforeCursor);
+    }
     const [{ data: rows, error }, { data: count, error: countError }] = await Promise.all([
       query
+        .order('sequence', { ascending: false })
         .order('created_at', { ascending: false })
         .order('id', { ascending: false })
         .limit(data.limit + 1),
@@ -47,7 +54,10 @@ export const listMyNotifications = createServerFn({ method: 'GET' })
         const context = byId.get(row.id);
         return { ...toNotificationDto(row), ...(context ? { matchContext: context } : {}) };
       }),
-      nextCursor: hasMore && last ? { createdAt: last.created_at, id: last.id } : null,
+      nextCursor:
+        hasMore && last
+          ? { sequence: last.sequence, createdAt: last.created_at, id: last.id }
+          : null,
       unreadCount: count ?? 0,
       asOf
     };
