@@ -43,6 +43,24 @@ export const SQL_TRANSPORT_BOUNDS = {
   queryTimeoutMs: 30_000
 } as const;
 
+function sqlTransportPoolMaximum(): number {
+  const configuredMaximum = process.env.SQL_TRANSPORT_POOL_MAX;
+  if (configuredMaximum === undefined) return SQL_TRANSPORT_BOUNDS.maxConnections;
+
+  const maximum = Number(configuredMaximum);
+  if (
+    !/^\d+$/.test(configuredMaximum) ||
+    !Number.isSafeInteger(maximum) ||
+    maximum < 1 ||
+    maximum > SQL_TRANSPORT_BOUNDS.maxConnections
+  ) {
+    throw new Error(
+      `SQL_TRANSPORT_POOL_MAX must be an integer from 1 to ${SQL_TRANSPORT_BOUNDS.maxConnections}`
+    );
+  }
+  return maximum;
+}
+
 const LOOPBACK_HOSTS = new Set(['localhost', '127.0.0.1', '::1']);
 const CONNECTION_TIMEOUT_MS = SQL_TRANSPORT_BOUNDS.acquireTimeoutMs;
 const QUERY_TIMEOUT_MS = SQL_TRANSPORT_BOUNDS.queryTimeoutMs;
@@ -128,7 +146,7 @@ function getPool(): Promise<Pool> {
       application_name: APPLICATION_NAME,
       options: '-c timezone=UTC',
       types: CLI_COMPATIBLE_TYPES,
-      max: SQL_TRANSPORT_BOUNDS.maxConnections,
+      max: sqlTransportPoolMaximum(),
       connectionTimeoutMillis: CONNECTION_TIMEOUT_MS,
       idleTimeoutMillis: 1_000,
       allowExitOnIdle: true
