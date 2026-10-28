@@ -155,7 +155,7 @@
       "source": "trystan2k/skills",
       "sourceType": "github",
       "skillPath": "react-development/SKILL.md",
-      "computedHash": "850bee32db36d88a05499b6d7c391587b92bc4e7b2476e9fcfb12d51f6462c66"
+      "computedHash": "638f56529c0838bf1bac8613448a5b6959b714ca55f19c29331256dc0e5ee103"
     },
     "refactoring-ui": {
       "source": "wondelai/skills",
@@ -185,7 +185,7 @@
       "source": "trystan2k/skills",
       "sourceType": "github",
       "skillPath": "tanstack-start-architecture/SKILL.md",
-      "computedHash": "51515f2558ab087887089a01043bd7ef74cd76e1c4a35622f9c5be1ea02284de"
+      "computedHash": "f071a1b82bd28f5aac4e57bc1aad2a51d24307caf7234c3490968edad59ad465"
     },
     "tanstack-start-best-practices": {
       "source": "deckardger/tanstack-agent-skills",
@@ -209,7 +209,7 @@
       "source": "trystan2k/skills",
       "sourceType": "github",
       "skillPath": "typescript-development/SKILL.md",
-      "computedHash": "b4edfde80b8a45ad2aaa85751aa5fdfcc2656b41007b87efab90baed09e3a213"
+      "computedHash": "e6b98c83c79086f1407f976e1b9d55d89556fd1acb01442655bd1b0606cf7a17"
     },
     "ux-heuristics": {
       "source": "wondelai/skills",

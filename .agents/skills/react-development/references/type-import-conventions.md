@@ -1,4 +1,4 @@
-# React Type Import Conventions (Padel Buddy Web)
+# React Type Import Conventions
 
 Use explicit React type imports in TypeScript files.
 

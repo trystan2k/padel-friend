@@ -1,4 +1,4 @@
-# TypeScript Module File Naming (Padel Buddy Web)
+# TypeScript Module File Naming
 
 Use `kebab-case` for TypeScript modules that are not React components.
 

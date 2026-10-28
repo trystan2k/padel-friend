@@ -468,14 +468,14 @@ Tool access is configured in this file's frontmatter via `permission` (the legac
 
 ## Model Routing Tiers
 
-Cheap models own mechanical work; strong models own judgment. Do not promote a cheap tier to a strong one without a stated reason.
+Cheap models own mechanical work; strong models own judgment. Do not promote a cheap tier to a strong one without a stated reason. The Model column mirrors each agent's pinned frontmatter model/variant — change them together.
 
-| Tier | Work | Agent | `reasoningEffort` |
+| Tier | Work | Agent | Model (frontmatter) |
 | --- | --- | --- | --- |
-| T0 mechanical | run a known command, write a message, move a board card, write a log | `project-manager-specialist`, `git-specialist`, `qa-gate-specialist`, `development-log-specialist` | `low` |
-| T1 mechanical + judgment | write tests, apply an approved small fix | `testing-automation-specialist`, `bug-fixer-specialist` | `medium` |
-| T2 implementation | write production code | `implementation-specialist` | `medium` |
-| T3 judgment | planning, code review, architecture review, UX/UI review | `execution-planner-specialist`, `code-review-specialist`, `architecture-review-specialist`, `ux-ui-reviewer-specialist` | `high` |
+| T0 mechanical | run a known command, write a message, move a board card, write a log | `project-manager-specialist`, `git-specialist`, `qa-gate-specialist`, `development-log-specialist` | `glm-5.3-flash` (default effort; prefer keeping default) |
+| T1 mechanical + judgment | write tests, apply an approved small fix | `testing-automation-specialist`, `bug-fixer-specialist` | `gpt-6-luna#high` |
+| T2 implementation | write production code | `implementation-specialist` | `gpt-6-luna#max` |
+| T3 judgment | planning, code review, architecture review, UX/UI review | `execution-planner-specialist`, `code-review-specialist`, `architecture-review-specialist`, `ux-ui-reviewer-specialist` | `gpt-6.1-terra` (default effort) |
 
 Rules:
 

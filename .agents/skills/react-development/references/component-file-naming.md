@@ -1,4 +1,4 @@
-# React Component File Naming (Padel Buddy Web)
+# React Component File Naming
 
 Use `PascalCase` for React component filenames.
 

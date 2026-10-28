@@ -1,11 +1,11 @@
 ---
 name: tanstack-start-architecture
-description: Defines Favoritable's TanStack Start architecture rules for feature slicing, route adapters, shared ownership, file naming, and test placement. Use when adding, moving, or refactoring routes, features, shared modules, or app structure in this repo.
+description: Defines TanStack Start architecture rules for feature slicing, route adapters, shared ownership, file naming, and test placement. Use when adding, moving, or refactoring routes, features, shared modules, or app structure in this repo.
 ---
 
 # TanStack Start Architecture
 
-Use this skill before structural work in Favoritable.
+Use this skill before structural work in any TanStack Start project.
 
 ## Canonical shape
 
@@ -25,7 +25,7 @@ src/
   router.tsx
 ```
 
-Keep current FAV-1 slices aligned with this shape:
+Keep current TanStack Start project slices aligned with this shape:
 - `src/features/auth/**` owns auth/login behavior.
 - `src/features/app-shell/**` owns protected shell UI.
 - `src/shared/theme/**` owns reusable theme runtime.

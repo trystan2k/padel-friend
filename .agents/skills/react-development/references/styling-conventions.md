@@ -1,4 +1,4 @@
-# React Styling Conventions (Padel Buddy Web)
+# React Styling Conventions
 
 Avoid inline styles in React components.
 
