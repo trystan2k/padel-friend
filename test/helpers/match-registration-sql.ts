@@ -131,10 +131,15 @@ export function createMatchFixtureCleanupRegistry(scopeName: string): FixtureCle
         `select id::text as id from public.match_event_result_proposals where match_event_id = any($1::uuid[])`,
         { values: [eventIds] }
       );
-      for (const row of proposals.rows)
+      for (const row of proposals.rows) {
+        const proposalId = String(row['id']);
         current.register('public.match_event_result_proposal_versions', {
-          proposal_id: String(row['id'])
+          proposal_id: proposalId
         });
+        current.register('public.match_event_result_reviews', { proposal_id: proposalId });
+        current.register('public.match_event_result_confirmations', { proposal_id: proposalId });
+        current.register('public.match_event_result_processing_state', { proposal_id: proposalId });
+      }
     }
 
     const beforeStatements: string[] = [];
@@ -155,7 +160,9 @@ export function createMatchFixtureCleanupRegistry(scopeName: string): FixtureCle
         ['match_event_registration_attempts', 'match_attempt_history_guard'],
         ['match_event_registration_attempts', 'match_attempt_final_state'],
         ['match_event_audit_log', 'match_audit_immutable'],
-        ['match_event_result_proposals', 'match_result_proposal_immutable'],
+        ['match_event_result_reviews', 'match_result_review_immutable'],
+        ['match_event_result_confirmations', 'match_result_confirmation_insert_guard'],
+        ['match_event_result_proposals', 'match_result_proposal_transition_guard'],
         ['match_event_result_proposal_versions', 'match_result_proposal_version_immutable']
       ];
       for (const [table, trigger] of eventTriggerPairs) {
@@ -218,9 +225,12 @@ export function createMatchFixtureCleanupRegistry(scopeName: string): FixtureCle
                execute 'alter table public.${table} disable trigger ${trigger}';
              end if;
            end
-           $fixture_trigger_restore$`
+          $fixture_trigger_restore$`
         );
       }
+      // Resolve the deferred active-version FK after deleting both sides of its
+      // intentional pointer/version cycle and before PostgreSQL sees trigger DDL.
+      afterStatements.unshift('set constraints all immediate');
     }
     if (scope.hasStorageObjects)
       beforeStatements.unshift(`select set_config('storage.allow_delete_query','true',true)`);

@@ -136,6 +136,25 @@ describe('actual result submission transaction', { timeout: 60000 }, () => {
     });
     await f.protectResults(e.id);
     expect(await facts(e.id)).toEqual(after);
+    expect(
+      await sqlRows(`select p.submitted_by::text as pointer_submitter,
+        v.submitted_by::text as version_submitter,
+        p.submitted_at = v.submitted_at as submitted_at_matches,
+        p.review_deadline_at = v.review_deadline_at as deadline_matches,
+        p.review_deadline_at = p.submitted_at + interval '48 hours' as exact_48_hours
+        from public.match_event_result_proposals p
+        join public.match_event_result_proposal_versions v
+          on v.proposal_id = p.id and v.version = p.active_version
+        where p.match_event_id = '${e.id}'`)
+    ).toEqual([
+      {
+        pointer_submitter: f.creator.id,
+        version_submitter: f.creator.id,
+        submitted_at_matches: true,
+        deadline_matches: true,
+        exact_48_hours: true
+      }
+    ]);
     expect(await read(e.id)).toHaveLength(1);
     expect(
       (

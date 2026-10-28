@@ -53671,7 +53671,8 @@
                       "content": "Invitation accepted. Your current registration and queue position appear below.",
                       "lineHeight": 1.4,
                       "fontFamily": "Inter",
-                      "fontSize": 12
+                      "fontSize": 12,
+                      "fontWeight": "normal"
                     }
                   ]
                 },
@@ -53723,7 +53724,8 @@
                       "content": "Friday, November 1, 2030 at 10:00 PM ·\nTimezone: UTC",
                       "lineHeight": 1.4,
                       "fontFamily": "Inter",
-                      "fontSize": 12
+                      "fontSize": 12,
+                      "fontWeight": "normal"
                     },
                     {
                       "type": "text",
@@ -53737,7 +53739,8 @@
                       "lineHeight": 1.25,
                       "textAlignVertical": "middle",
                       "fontFamily": "Inter",
-                      "fontSize": 13
+                      "fontSize": 13,
+                      "fontWeight": "normal"
                     }
                   ]
                 },
@@ -53801,7 +53804,8 @@
                       "content": "4 playing · 3 reserve · 1 group · 1 more needed",
                       "lineHeight": 1.4,
                       "fontFamily": "Inter",
-                      "fontSize": 12
+                      "fontSize": 12,
+                      "fontWeight": "normal"
                     },
                     {
                       "type": "text",
@@ -53813,7 +53817,8 @@
                       "content": "You were invited to this match.",
                       "lineHeight": 1.4,
                       "fontFamily": "Inter",
-                      "fontSize": 12
+                      "fontSize": 12,
+                      "fontWeight": "normal"
                     }
                   ]
                 },
@@ -53875,7 +53880,8 @@
                       "content": "Reserve #3. Your accepted order is preserved; you enter play as places open.",
                       "lineHeight": 1.4,
                       "fontFamily": "Inter",
-                      "fontSize": 12
+                      "fontSize": 12,
+                      "fontWeight": "normal"
                     },
                     {
                       "id": "DFjQY",
@@ -54486,7 +54492,8 @@
                       "content": "Accepted order is server-authoritative. Reserves keep FIFO position.",
                       "lineHeight": 1.4,
                       "fontFamily": "Inter",
-                      "fontSize": 11
+                      "fontSize": 11,
+                      "fontWeight": "normal"
                     }
                   ]
                 },
@@ -54524,7 +54531,8 @@
                       "content": "No level restriction · Community open",
                       "lineHeight": 1.4,
                       "fontFamily": "Inter",
-                      "fontSize": 12
+                      "fontSize": 12,
+                      "fontWeight": "normal"
                     },
                     {
                       "type": "text",
@@ -54536,7 +54544,8 @@
                       "content": "Teams after match · Unlimited registrations",
                       "lineHeight": 1.4,
                       "fontFamily": "Inter",
-                      "fontSize": 12
+                      "fontSize": 12,
+                      "fontWeight": "normal"
                     }
                   ]
                 },
@@ -54826,7 +54835,8 @@
                       "content": "You declined this invitation.",
                       "lineHeight": 1.4,
                       "fontFamily": "Inter",
-                      "fontSize": 12
+                      "fontSize": 12,
+                      "fontWeight": "normal"
                     }
                   ]
                 },
@@ -54878,7 +54888,8 @@
                       "content": "Friday, November 1, 2030 at 10:00 PM ·\nTimezone: UTC",
                       "lineHeight": 1.4,
                       "fontFamily": "Inter",
-                      "fontSize": 12
+                      "fontSize": 12,
+                      "fontWeight": "normal"
                     },
                     {
                       "type": "text",
@@ -54892,7 +54903,8 @@
                       "lineHeight": 1.25,
                       "textAlignVertical": "middle",
                       "fontFamily": "Inter",
-                      "fontSize": 13
+                      "fontSize": 13,
+                      "fontWeight": "normal"
                     }
                   ]
                 },
@@ -54956,7 +54968,8 @@
                       "content": "8 playing · 1 reserve · 2 groups · 3 more needed",
                       "lineHeight": 1.4,
                       "fontFamily": "Inter",
-                      "fontSize": 12
+                      "fontSize": 12,
+                      "fontWeight": "normal"
                     },
                     {
                       "type": "text",
@@ -54968,7 +54981,8 @@
                       "content": "You were invited to this match.",
                       "lineHeight": 1.4,
                       "fontFamily": "Inter",
-                      "fontSize": 12
+                      "fontSize": 12,
+                      "fontWeight": "normal"
                     }
                   ]
                 },
@@ -55006,7 +55020,8 @@
                       "content": "This community is open. Join directly if you change your mind; your place is confirmed instantly.",
                       "lineHeight": 1.4,
                       "fontFamily": "Inter",
-                      "fontSize": 12
+                      "fontSize": 12,
+                      "fontWeight": "normal"
                     },
                     {
                       "id": "CnOvA",
@@ -55065,7 +55080,8 @@
                       "content": "No level restriction · Community open",
                       "lineHeight": 1.4,
                       "fontFamily": "Inter",
-                      "fontSize": 12
+                      "fontSize": 12,
+                      "fontWeight": "normal"
                     },
                     {
                       "type": "text",
@@ -55077,7 +55093,8 @@
                       "content": "Teams after match · Unlimited registrations",
                       "lineHeight": 1.4,
                       "fontFamily": "Inter",
-                      "fontSize": 12
+                      "fontSize": 12,
+                      "fontWeight": "normal"
                     }
                   ]
                 },
@@ -55367,7 +55384,8 @@
                       "content": "Registration has closed. Participation and match details can no longer change.",
                       "lineHeight": 1.4,
                       "fontFamily": "Inter",
-                      "fontSize": 12
+                      "fontSize": 12,
+                      "fontWeight": "normal"
                     }
                   ]
                 },
@@ -55425,7 +55443,8 @@
                       "content": "This invitation has expired.",
                       "lineHeight": 1.4,
                       "fontFamily": "Inter",
-                      "fontSize": 12
+                      "fontSize": 12,
+                      "fontWeight": "normal"
                     }
                   ]
                 },
@@ -55477,7 +55496,8 @@
                       "content": "Friday, November 1, 2030 at 10:00 PM ·\nTimezone: UTC",
                       "lineHeight": 1.4,
                       "fontFamily": "Inter",
-                      "fontSize": 12
+                      "fontSize": 12,
+                      "fontWeight": "normal"
                     },
                     {
                       "type": "text",
@@ -55491,7 +55511,8 @@
                       "lineHeight": 1.25,
                       "textAlignVertical": "middle",
                       "fontFamily": "Inter",
-                      "fontSize": 13
+                      "fontSize": 13,
+                      "fontWeight": "normal"
                     }
                   ]
                 },
@@ -55555,7 +55576,8 @@
                       "content": "8 playing · 0 reserve · 2 groups · 3 more needed",
                       "lineHeight": 1.4,
                       "fontFamily": "Inter",
-                      "fontSize": 12
+                      "fontSize": 12,
+                      "fontWeight": "normal"
                     },
                     {
                       "type": "text",
@@ -55567,7 +55589,8 @@
                       "content": "You were invited to this match.",
                       "lineHeight": 1.4,
                       "fontFamily": "Inter",
-                      "fontSize": 12
+                      "fontSize": 12,
+                      "fontWeight": "normal"
                     }
                   ]
                 },
@@ -55629,7 +55652,8 @@
                       "content": "Cutoff passed · Playing quartets finalized. 8 playing · 1 reserve not playing.",
                       "lineHeight": 1.4,
                       "fontFamily": "Inter",
-                      "fontSize": 12
+                      "fontSize": 12,
+                      "fontWeight": "normal"
                     },
                     {
                       "type": "text",
@@ -55641,7 +55665,8 @@
                       "content": "New joins and requests are no longer accepted.",
                       "lineHeight": 1.4,
                       "fontFamily": "Inter",
-                      "fontSize": 12
+                      "fontSize": 12,
+                      "fontWeight": "normal"
                     }
                   ]
                 },
@@ -55679,7 +55704,8 @@
                       "content": "No level restriction · Community open",
                       "lineHeight": 1.4,
                       "fontFamily": "Inter",
-                      "fontSize": 12
+                      "fontSize": 12,
+                      "fontWeight": "normal"
                     },
                     {
                       "type": "text",
@@ -55691,7 +55717,8 @@
                       "content": "Teams after match · Unlimited registrations",
                       "lineHeight": 1.4,
                       "fontFamily": "Inter",
-                      "fontSize": 12
+                      "fontSize": 12,
+                      "fontWeight": "normal"
                     },
                     {
                       "type": "text",
@@ -55703,7 +55730,8 @@
                       "content": "Registration closed",
                       "lineHeight": 1.4,
                       "fontFamily": "Inter",
-                      "fontSize": 12
+                      "fontSize": 12,
+                      "fontWeight": "normal"
                     }
                   ]
                 },
@@ -55973,7 +56001,8 @@
                       "content": "Leaving the roster keeps you as organizer. Transfer organization separately if needed.",
                       "lineHeight": 1.4,
                       "fontFamily": "Inter",
-                      "fontSize": 12
+                      "fontSize": 12,
+                      "fontWeight": "normal"
                     },
                     {
                       "id": "DhF9q",
@@ -56069,7 +56098,8 @@
                       "content": "Friday, November 1, 2030 at 10:00 PM ·\nTimezone: UTC",
                       "lineHeight": 1.4,
                       "fontFamily": "Inter",
-                      "fontSize": 12
+                      "fontSize": 12,
+                      "fontWeight": "normal"
                     },
                     {
                       "type": "text",
@@ -56083,7 +56113,8 @@
                       "lineHeight": 1.25,
                       "textAlignVertical": "middle",
                       "fontFamily": "Inter",
-                      "fontSize": 13
+                      "fontSize": 13,
+                      "fontWeight": "normal"
                     }
                   ]
                 },
@@ -56147,7 +56178,8 @@
                       "content": "8 playing · 1 reserve · 2 groups · 3 more needed",
                       "lineHeight": 1.4,
                       "fontFamily": "Inter",
-                      "fontSize": 12
+                      "fontSize": 12,
+                      "fontWeight": "normal"
                     },
                     {
                       "type": "text",
@@ -56159,7 +56191,8 @@
                       "content": "Creator accepted",
                       "lineHeight": 1.4,
                       "fontFamily": "Inter",
-                      "fontSize": 12
+                      "fontSize": 12,
+                      "fontWeight": "normal"
                     }
                   ]
                 },
@@ -56221,7 +56254,8 @@
                       "content": "You created this match — your place is confirmed.",
                       "lineHeight": 1.4,
                       "fontFamily": "Inter",
-                      "fontSize": 12
+                      "fontSize": 12,
+                      "fontWeight": "normal"
                     },
                     {
                       "id": "Zcynn",
@@ -56360,7 +56394,8 @@
                                   "content": "Level 3.2 · Playing",
                                   "lineHeight": 1.4,
                                   "fontFamily": "Inter",
-                                  "fontSize": 10
+                                  "fontSize": 10,
+                                  "fontWeight": "normal"
                                 }
                               ]
                             }
@@ -56434,7 +56469,8 @@
                                   "content": "Level 3.2 · Playing",
                                   "lineHeight": 1.4,
                                   "fontFamily": "Inter",
-                                  "fontSize": 10
+                                  "fontSize": 10,
+                                  "fontWeight": "normal"
                                 }
                               ]
                             },
@@ -56530,7 +56566,8 @@
                                   "content": "Level 3.2 · Playing",
                                   "lineHeight": 1.4,
                                   "fontFamily": "Inter",
-                                  "fontSize": 10
+                                  "fontSize": 10,
+                                  "fontWeight": "normal"
                                 }
                               ]
                             },
@@ -56626,7 +56663,8 @@
                                   "content": "Level 3.2 · Playing",
                                   "lineHeight": 1.4,
                                   "fontFamily": "Inter",
-                                  "fontSize": 10
+                                  "fontSize": 10,
+                                  "fontWeight": "normal"
                                 }
                               ]
                             },
@@ -56746,7 +56784,8 @@
                                   "content": "Level 3.2 · Playing",
                                   "lineHeight": 1.4,
                                   "fontFamily": "Inter",
-                                  "fontSize": 10
+                                  "fontSize": 10,
+                                  "fontWeight": "normal"
                                 }
                               ]
                             },
@@ -56842,7 +56881,8 @@
                                   "content": "Level 3.2 · Playing",
                                   "lineHeight": 1.4,
                                   "fontFamily": "Inter",
-                                  "fontSize": 10
+                                  "fontSize": 10,
+                                  "fontWeight": "normal"
                                 }
                               ]
                             },
@@ -56938,7 +56978,8 @@
                                   "content": "Level 3.2 · Playing",
                                   "lineHeight": 1.4,
                                   "fontFamily": "Inter",
-                                  "fontSize": 10
+                                  "fontSize": 10,
+                                  "fontWeight": "normal"
                                 }
                               ]
                             },
@@ -57034,7 +57075,8 @@
                                   "content": "Level 3.2 · Playing",
                                   "lineHeight": 1.4,
                                   "fontFamily": "Inter",
-                                  "fontSize": 10
+                                  "fontSize": 10,
+                                  "fontWeight": "normal"
                                 }
                               ]
                             },
@@ -57154,7 +57196,8 @@
                                   "content": "Level 3.2 · Reserve #1",
                                   "lineHeight": 1.4,
                                   "fontFamily": "Inter",
-                                  "fontSize": 10
+                                  "fontSize": 10,
+                                  "fontWeight": "normal"
                                 }
                               ]
                             },
@@ -57194,7 +57237,8 @@
                       "content": "Accepted order is server-authoritative. Reserves keep FIFO position.",
                       "lineHeight": 1.4,
                       "fontFamily": "Inter",
-                      "fontSize": 11
+                      "fontSize": 11,
+                      "fontWeight": "normal"
                     }
                   ]
                 },
@@ -57256,7 +57300,8 @@
                       "content": "No pending requests. Approving a guest sets their queue position at that time.",
                       "lineHeight": 1.4,
                       "fontFamily": "Inter",
-                      "fontSize": 12
+                      "fontSize": 12,
+                      "fontWeight": "normal"
                     }
                   ]
                 },
@@ -57294,7 +57339,8 @@
                       "content": "No level restriction · Community open",
                       "lineHeight": 1.4,
                       "fontFamily": "Inter",
-                      "fontSize": 12
+                      "fontSize": 12,
+                      "fontWeight": "normal"
                     },
                     {
                       "type": "text",
@@ -57306,7 +57352,8 @@
                       "content": "Teams after match · Unlimited registrations",
                       "lineHeight": 1.4,
                       "fontFamily": "Inter",
-                      "fontSize": 12
+                      "fontSize": 12,
+                      "fontWeight": "normal"
                     }
                   ]
                 },
@@ -57680,7 +57727,8 @@
                       "content": "Organizing and playing are separate. You can organize without a place on the roster.",
                       "lineHeight": 1.4,
                       "fontFamily": "Inter",
-                      "fontSize": 12
+                      "fontSize": 12,
+                      "fontWeight": "normal"
                     },
                     {
                       "id": "R8gpej",
@@ -57776,7 +57824,8 @@
                       "content": "Friday, November 1, 2030 at 10:00 PM ·\nTimezone: UTC",
                       "lineHeight": 1.4,
                       "fontFamily": "Inter",
-                      "fontSize": 12
+                      "fontSize": 12,
+                      "fontWeight": "normal"
                     },
                     {
                       "type": "text",
@@ -57790,7 +57839,8 @@
                       "lineHeight": 1.25,
                       "textAlignVertical": "middle",
                       "fontFamily": "Inter",
-                      "fontSize": 13
+                      "fontSize": 13,
+                      "fontWeight": "normal"
                     }
                   ]
                 },
@@ -57854,7 +57904,8 @@
                       "content": "8 playing · 0 reserve · 2 groups · 4 more needed",
                       "lineHeight": 1.4,
                       "fontFamily": "Inter",
-                      "fontSize": 12
+                      "fontSize": 12,
+                      "fontWeight": "normal"
                     }
                   ]
                 },
@@ -57916,7 +57967,8 @@
                       "content": "You left the roster. You still organize this match; your previous playing place is no longer reserved.",
                       "lineHeight": 1.4,
                       "fontFamily": "Inter",
-                      "fontSize": 12
+                      "fontSize": 12,
+                      "fontWeight": "normal"
                     }
                   ]
                 },
@@ -58034,7 +58086,8 @@
                                   "content": "Level 3.2 · Playing",
                                   "lineHeight": 1.4,
                                   "fontFamily": "Inter",
-                                  "fontSize": 10
+                                  "fontSize": 10,
+                                  "fontWeight": "normal"
                                 }
                               ]
                             },
@@ -58130,7 +58183,8 @@
                                   "content": "Level 3.2 · Playing",
                                   "lineHeight": 1.4,
                                   "fontFamily": "Inter",
-                                  "fontSize": 10
+                                  "fontSize": 10,
+                                  "fontWeight": "normal"
                                 }
                               ]
                             },
@@ -58226,7 +58280,8 @@
                                   "content": "Level 3.2 · Playing",
                                   "lineHeight": 1.4,
                                   "fontFamily": "Inter",
-                                  "fontSize": 10
+                                  "fontSize": 10,
+                                  "fontWeight": "normal"
                                 }
                               ]
                             },
@@ -58322,7 +58377,8 @@
                                   "content": "Level 3.2 · Playing",
                                   "lineHeight": 1.4,
                                   "fontFamily": "Inter",
-                                  "fontSize": 10
+                                  "fontSize": 10,
+                                  "fontWeight": "normal"
                                 }
                               ]
                             },
@@ -58442,7 +58498,8 @@
                                   "content": "Level 3.2 · Playing",
                                   "lineHeight": 1.4,
                                   "fontFamily": "Inter",
-                                  "fontSize": 10
+                                  "fontSize": 10,
+                                  "fontWeight": "normal"
                                 }
                               ]
                             },
@@ -58538,7 +58595,8 @@
                                   "content": "Level 3.2 · Playing",
                                   "lineHeight": 1.4,
                                   "fontFamily": "Inter",
-                                  "fontSize": 10
+                                  "fontSize": 10,
+                                  "fontWeight": "normal"
                                 }
                               ]
                             },
@@ -58634,7 +58692,8 @@
                                   "content": "Level 3.2 · Playing",
                                   "lineHeight": 1.4,
                                   "fontFamily": "Inter",
-                                  "fontSize": 10
+                                  "fontSize": 10,
+                                  "fontWeight": "normal"
                                 }
                               ]
                             },
@@ -58730,7 +58789,8 @@
                                   "content": "Level 3.2 · Playing",
                                   "lineHeight": 1.4,
                                   "fontFamily": "Inter",
-                                  "fontSize": 10
+                                  "fontSize": 10,
+                                  "fontWeight": "normal"
                                 }
                               ]
                             },
@@ -58770,7 +58830,8 @@
                       "content": "Accepted order is server-authoritative. Reserves keep FIFO position.",
                       "lineHeight": 1.4,
                       "fontFamily": "Inter",
-                      "fontSize": 11
+                      "fontSize": 11,
+                      "fontWeight": "normal"
                     }
                   ]
                 },
@@ -58832,7 +58893,8 @@
                       "content": "No pending requests. Approving a guest sets their queue position at that time.",
                       "lineHeight": 1.4,
                       "fontFamily": "Inter",
-                      "fontSize": 12
+                      "fontSize": 12,
+                      "fontWeight": "normal"
                     }
                   ]
                 },
@@ -58870,7 +58932,8 @@
                       "content": "No level restriction · Community open",
                       "lineHeight": 1.4,
                       "fontFamily": "Inter",
-                      "fontSize": 12
+                      "fontSize": 12,
+                      "fontWeight": "normal"
                     },
                     {
                       "type": "text",
@@ -58882,7 +58945,8 @@
                       "content": "Teams after match · Unlimited registrations",
                       "lineHeight": 1.4,
                       "fontFamily": "Inter",
-                      "fontSize": 12
+                      "fontSize": 12,
+                      "fontWeight": "normal"
                     }
                   ]
                 },
@@ -59201,7 +59265,8 @@
                       "content": "This match was cancelled. Management actions are unavailable.",
                       "lineHeight": 1.4,
                       "fontFamily": "Inter",
-                      "fontSize": 12
+                      "fontSize": 12,
+                      "fontWeight": "normal"
                     }
                   ]
                 },
@@ -59253,7 +59318,8 @@
                       "content": "Friday, November 1, 2030 at 10:00 PM ·\nTimezone: UTC",
                       "lineHeight": 1.4,
                       "fontFamily": "Inter",
-                      "fontSize": 12
+                      "fontSize": 12,
+                      "fontWeight": "normal"
                     },
                     {
                       "type": "text",
@@ -59267,7 +59333,8 @@
                       "lineHeight": 1.25,
                       "textAlignVertical": "middle",
                       "fontFamily": "Inter",
-                      "fontSize": 13
+                      "fontSize": 13,
+                      "fontWeight": "normal"
                     }
                   ]
                 },
@@ -59305,7 +59372,8 @@
                       "content": "No level restriction · Community open",
                       "lineHeight": 1.4,
                       "fontFamily": "Inter",
-                      "fontSize": 12
+                      "fontSize": 12,
+                      "fontWeight": "normal"
                     },
                     {
                       "type": "text",
@@ -59317,7 +59385,8 @@
                       "content": "Teams after match · Unlimited registrations",
                       "lineHeight": 1.4,
                       "fontFamily": "Inter",
-                      "fontSize": 12
+                      "fontSize": 12,
+                      "fontWeight": "normal"
                     },
                     {
                       "type": "text",
@@ -59329,7 +59398,8 @@
                       "content": "Registration closed",
                       "lineHeight": 1.4,
                       "fontFamily": "Inter",
-                      "fontSize": 12
+                      "fontSize": 12,
+                      "fontWeight": "normal"
                     }
                   ]
                 },
@@ -59669,7 +59739,8 @@
                   "content": "Changes to match type or start time require every accepted player, including the organizer, to review and explicitly reconfirm. Until then, players keep capacity and queue order but are not assigned to quartets.",
                   "lineHeight": 1.45,
                   "fontFamily": "Inter",
-                  "fontSize": 12
+                  "fontSize": 12,
+                  "fontWeight": "normal"
                 },
                 {
                   "type": "frame",
@@ -59725,7 +59796,8 @@
                       "content": "Your draft is still here. Review it, or reload the match to discard this draft and reopen editing with the latest details.",
                       "lineHeight": 1.4,
                       "fontFamily": "Inter",
-                      "fontSize": 12
+                      "fontSize": 12,
+                      "fontWeight": "normal"
                     },
                     {
                       "type": "frame",
@@ -59838,7 +59910,8 @@
                               "content": "Friendly",
                               "lineHeight": 1.4,
                               "fontFamily": "Inter",
-                              "fontSize": 13
+                              "fontSize": 13,
+                              "fontWeight": "normal"
                             },
                             {
                               "type": "icon",
@@ -59902,7 +59975,8 @@
                               "content": "Nov 1, 2030 · 10:00 PM",
                               "lineHeight": 1.4,
                               "fontFamily": "Inter",
-                              "fontSize": 13
+                              "fontSize": 13,
+                              "fontWeight": "normal"
                             },
                             {
                               "type": "icon",
@@ -59966,7 +60040,8 @@
                               "content": "Court 4",
                               "lineHeight": 1.4,
                               "fontFamily": "Inter",
-                              "fontSize": 13
+                              "fontSize": 13,
+                              "fontWeight": "normal"
                             }
                           ]
                         }
@@ -60020,7 +60095,8 @@
                               "content": "maps.google.com/…/management",
                               "lineHeight": 1.4,
                               "fontFamily": "Inter",
-                              "fontSize": 13
+                              "fontSize": 13,
+                              "fontWeight": "normal"
                             }
                           ]
                         }
@@ -60074,7 +60150,8 @@
                               "content": "Court 4",
                               "lineHeight": 1.4,
                               "fontFamily": "Inter",
-                              "fontSize": 13
+                              "fontSize": 13,
+                              "fontWeight": "normal"
                             }
                           ]
                         }
@@ -60135,7 +60212,8 @@
                                   "content": "8.50",
                                   "lineHeight": 1.4,
                                   "fontFamily": "Inter",
-                                  "fontSize": 13
+                                  "fontSize": 13,
+                                  "fontWeight": "normal"
                                 }
                               ]
                             }
@@ -60189,7 +60267,8 @@
                                   "content": "EUR",
                                   "lineHeight": 1.4,
                                   "fontFamily": "Inter",
-                                  "fontSize": 13
+                                  "fontSize": 13,
+                                  "fontWeight": "normal"
                                 },
                                 {
                                   "type": "icon",
@@ -60255,7 +60334,8 @@
                               "content": "Pay at venue",
                               "lineHeight": 1.4,
                               "fontFamily": "Inter",
-                              "fontSize": 13
+                              "fontSize": 13,
+                              "fontWeight": "normal"
                             }
                           ]
                         }
@@ -60309,7 +60389,8 @@
                               "content": "Optional",
                               "lineHeight": 1.4,
                               "fontFamily": "Inter",
-                              "fontSize": 13
+                              "fontSize": 13,
+                              "fontWeight": "normal"
                             }
                           ]
                         }
@@ -60363,7 +60444,8 @@
                               "content": "10",
                               "lineHeight": 1.4,
                               "fontFamily": "Inter",
-                              "fontSize": 13
+                              "fontSize": 13,
+                              "fontWeight": "normal"
                             }
                           ]
                         }
@@ -60417,7 +60499,8 @@
                               "content": "Oct 31, 2030 · 10:00 PM",
                               "lineHeight": 1.4,
                               "fontFamily": "Inter",
-                              "fontSize": 13
+                              "fontSize": 13,
+                              "fontWeight": "normal"
                             },
                             {
                               "type": "icon",
@@ -60453,7 +60536,8 @@
                       "content": "Resolve this conflict before saving. Your draft has not been discarded.",
                       "lineHeight": 1.4,
                       "fontFamily": "Inter",
-                      "fontSize": 12
+                      "fontSize": 12,
+                      "fontWeight": "normal"
                     }
                   ]
                 },
@@ -60731,7 +60815,8 @@
                       "content": "Leaving the roster keeps you as organizer. Transfer organization separately if needed.",
                       "lineHeight": 1.4,
                       "fontFamily": "Inter",
-                      "fontSize": 12
+                      "fontSize": 12,
+                      "fontWeight": "normal"
                     },
                     {
                       "id": "y7Jm2X",
@@ -60870,7 +60955,8 @@
                           "content": "Not playing · Awaiting reconfirmation",
                           "lineHeight": 1.4,
                           "fontFamily": "Inter",
-                          "fontSize": 12
+                          "fontSize": 12,
+                          "fontWeight": "normal"
                         }
                       ]
                     }
@@ -60924,7 +61010,8 @@
                       "content": "Friday, November 1, 2030 at 10:00 PM ·\nTimezone: UTC",
                       "lineHeight": 1.4,
                       "fontFamily": "Inter",
-                      "fontSize": 12
+                      "fontSize": 12,
+                      "fontWeight": "normal"
                     },
                     {
                       "type": "text",
@@ -60938,7 +61025,8 @@
                       "lineHeight": 1.25,
                       "textAlignVertical": "middle",
                       "fontFamily": "Inter",
-                      "fontSize": 13
+                      "fontSize": 13,
+                      "fontWeight": "normal"
                     }
                   ]
                 },
@@ -61002,7 +61090,8 @@
                       "content": "8 playing · 0 reserve · 2 groups · 4 more needed",
                       "lineHeight": 1.4,
                       "fontFamily": "Inter",
-                      "fontSize": 12
+                      "fontSize": 12,
+                      "fontWeight": "normal"
                     },
                     {
                       "type": "text",
@@ -61014,7 +61103,8 @@
                       "content": "Creator accepted",
                       "lineHeight": 1.4,
                       "fontFamily": "Inter",
-                      "fontSize": 12
+                      "fontSize": 12,
+                      "fontWeight": "normal"
                     }
                   ]
                 },
@@ -61076,7 +61166,8 @@
                       "content": "You created this match — your place is confirmed.",
                       "lineHeight": 1.4,
                       "fontFamily": "Inter",
-                      "fontSize": 12
+                      "fontSize": 12,
+                      "fontWeight": "normal"
                     },
                     {
                       "id": "ly5A1",
@@ -61215,7 +61306,8 @@
                                   "content": "Level 3.2 · Playing",
                                   "lineHeight": 1.4,
                                   "fontFamily": "Inter",
-                                  "fontSize": 10
+                                  "fontSize": 10,
+                                  "fontWeight": "normal"
                                 }
                               ]
                             }
@@ -61289,7 +61381,8 @@
                                   "content": "Level 3.2 · Playing",
                                   "lineHeight": 1.4,
                                   "fontFamily": "Inter",
-                                  "fontSize": 10
+                                  "fontSize": 10,
+                                  "fontWeight": "normal"
                                 }
                               ]
                             },
@@ -61385,7 +61478,8 @@
                                   "content": "Level 3.2 · Playing",
                                   "lineHeight": 1.4,
                                   "fontFamily": "Inter",
-                                  "fontSize": 10
+                                  "fontSize": 10,
+                                  "fontWeight": "normal"
                                 }
                               ]
                             },
@@ -61481,7 +61575,8 @@
                                   "content": "Level 3.2 · Playing",
                                   "lineHeight": 1.4,
                                   "fontFamily": "Inter",
-                                  "fontSize": 10
+                                  "fontSize": 10,
+                                  "fontWeight": "normal"
                                 }
                               ]
                             },
@@ -61601,7 +61696,8 @@
                                   "content": "Level 3.2 · Playing",
                                   "lineHeight": 1.4,
                                   "fontFamily": "Inter",
-                                  "fontSize": 10
+                                  "fontSize": 10,
+                                  "fontWeight": "normal"
                                 }
                               ]
                             },
@@ -61697,7 +61793,8 @@
                                   "content": "Level 3.2 · Playing",
                                   "lineHeight": 1.4,
                                   "fontFamily": "Inter",
-                                  "fontSize": 10
+                                  "fontSize": 10,
+                                  "fontWeight": "normal"
                                 }
                               ]
                             },
@@ -61793,7 +61890,8 @@
                                   "content": "Level 3.2 · Playing",
                                   "lineHeight": 1.4,
                                   "fontFamily": "Inter",
-                                  "fontSize": 10
+                                  "fontSize": 10,
+                                  "fontWeight": "normal"
                                 }
                               ]
                             },
@@ -61889,7 +61987,8 @@
                                   "content": "Level 3.2 · Playing",
                                   "lineHeight": 1.4,
                                   "fontFamily": "Inter",
-                                  "fontSize": 10
+                                  "fontSize": 10,
+                                  "fontWeight": "normal"
                                 }
                               ]
                             },
@@ -62009,7 +62108,8 @@
                                   "content": "Not playing · Reconfirm required",
                                   "lineHeight": 1.4,
                                   "fontFamily": "Inter",
-                                  "fontSize": 10
+                                  "fontSize": 10,
+                                  "fontWeight": "normal"
                                 }
                               ]
                             },
@@ -62049,7 +62149,8 @@
                       "content": "Accepted order is server-authoritative. Reserves keep FIFO position.",
                       "lineHeight": 1.4,
                       "fontFamily": "Inter",
-                      "fontSize": 11
+                      "fontSize": 11,
+                      "fontWeight": "normal"
                     },
                     {
                       "type": "text",
@@ -62061,7 +62162,8 @@
                       "content": "Awaiting players keep capacity and queue order, but are not assigned to quartets until they reconfirm.",
                       "lineHeight": 1.4,
                       "fontFamily": "Inter",
-                      "fontSize": 11
+                      "fontSize": 11,
+                      "fontWeight": "normal"
                     }
                   ]
                 },
@@ -62123,7 +62225,8 @@
                       "content": "No pending requests. Approving a guest sets their queue position at that time.",
                       "lineHeight": 1.4,
                       "fontFamily": "Inter",
-                      "fontSize": 12
+                      "fontSize": 12,
+                      "fontWeight": "normal"
                     }
                   ]
                 },
@@ -62161,7 +62264,8 @@
                       "content": "No level restriction · Community open",
                       "lineHeight": 1.4,
                       "fontFamily": "Inter",
-                      "fontSize": 12
+                      "fontSize": 12,
+                      "fontWeight": "normal"
                     },
                     {
                       "type": "text",
@@ -62173,7 +62277,8 @@
                       "content": "Teams after match · Unlimited registrations",
                       "lineHeight": 1.4,
                       "fontFamily": "Inter",
-                      "fontSize": 12
+                      "fontSize": 12,
+                      "fontWeight": "normal"
                     }
                   ]
                 },
@@ -62463,7 +62568,8 @@
                       "content": "This match has started. Management actions are unavailable.",
                       "lineHeight": 1.4,
                       "fontFamily": "Inter",
-                      "fontSize": 12
+                      "fontSize": 12,
+                      "fontWeight": "normal"
                     }
                   ]
                 },
@@ -62515,7 +62621,8 @@
                       "content": "Friday, November 1, 2030 at 10:00 PM ·\nTimezone: UTC",
                       "lineHeight": 1.4,
                       "fontFamily": "Inter",
-                      "fontSize": 12
+                      "fontSize": 12,
+                      "fontWeight": "normal"
                     },
                     {
                       "type": "text",
@@ -62529,7 +62636,8 @@
                       "lineHeight": 1.25,
                       "textAlignVertical": "middle",
                       "fontFamily": "Inter",
-                      "fontSize": 13
+                      "fontSize": 13,
+                      "fontWeight": "normal"
                     }
                   ]
                 },
@@ -62593,7 +62701,8 @@
                       "content": "8 playing · 0 reserve · 2 groups · 3 more needed",
                       "lineHeight": 1.4,
                       "fontFamily": "Inter",
-                      "fontSize": 12
+                      "fontSize": 12,
+                      "fontWeight": "normal"
                     },
                     {
                       "type": "text",
@@ -62605,7 +62714,8 @@
                       "content": "Creator accepted",
                       "lineHeight": 1.4,
                       "fontFamily": "Inter",
-                      "fontSize": 12
+                      "fontSize": 12,
+                      "fontWeight": "normal"
                     }
                   ]
                 },
@@ -63363,7 +63473,8 @@
                       "content": "Accepted order is server-authoritative. Reserves keep FIFO position.",
                       "lineHeight": 1.4,
                       "fontFamily": "Inter",
-                      "fontSize": 11
+                      "fontSize": 11,
+                      "fontWeight": "normal"
                     }
                   ]
                 },
@@ -63401,7 +63512,8 @@
                       "content": "No level restriction · Community open",
                       "lineHeight": 1.4,
                       "fontFamily": "Inter",
-                      "fontSize": 12
+                      "fontSize": 12,
+                      "fontWeight": "normal"
                     },
                     {
                       "type": "text",
@@ -63413,7 +63525,8 @@
                       "content": "Teams after match · Unlimited registrations",
                       "lineHeight": 1.4,
                       "fontFamily": "Inter",
-                      "fontSize": 12
+                      "fontSize": 12,
+                      "fontWeight": "normal"
                     },
                     {
                       "type": "text",
@@ -63425,7 +63538,8 @@
                       "content": "Registration closed",
                       "lineHeight": 1.4,
                       "fontFamily": "Inter",
-                      "fontSize": 12
+                      "fontSize": 12,
+                      "fontWeight": "normal"
                     },
                     {
                       "type": "text",
@@ -63437,7 +63551,8 @@
                       "content": "Scheduled past event · Outcome not available",
                       "lineHeight": 1.4,
                       "fontFamily": "Inter",
-                      "fontSize": 12
+                      "fontSize": 12,
+                      "fontWeight": "normal"
                     }
                   ]
                 },
@@ -63727,7 +63842,8 @@
                       "content": "Existing results protect this match from management changes. Changes involving existing results require the correction or dispute process. Result correction and disputes are not available yet.",
                       "lineHeight": 1.4,
                       "fontFamily": "Inter",
-                      "fontSize": 12
+                      "fontSize": 12,
+                      "fontWeight": "normal"
                     }
                   ]
                 },
@@ -63779,7 +63895,8 @@
                       "content": "Friday, November 1, 2030 at 10:00 PM ·\nTimezone: UTC",
                       "lineHeight": 1.4,
                       "fontFamily": "Inter",
-                      "fontSize": 12
+                      "fontSize": 12,
+                      "fontWeight": "normal"
                     },
                     {
                       "type": "text",
@@ -63793,7 +63910,8 @@
                       "lineHeight": 1.25,
                       "textAlignVertical": "middle",
                       "fontFamily": "Inter",
-                      "fontSize": 13
+                      "fontSize": 13,
+                      "fontWeight": "normal"
                     }
                   ]
                 },
@@ -63857,7 +63975,8 @@
                       "content": "8 playing · 1 reserve · 2 groups · 3 more needed",
                       "lineHeight": 1.4,
                       "fontFamily": "Inter",
-                      "fontSize": 12
+                      "fontSize": 12,
+                      "fontWeight": "normal"
                     },
                     {
                       "type": "text",
@@ -63869,7 +63988,8 @@
                       "content": "Creator accepted",
                       "lineHeight": 1.4,
                       "fontFamily": "Inter",
-                      "fontSize": 12
+                      "fontSize": 12,
+                      "fontWeight": "normal"
                     }
                   ]
                 },
@@ -64627,7 +64747,8 @@
                       "content": "Accepted order is server-authoritative. Reserves keep FIFO position.",
                       "lineHeight": 1.4,
                       "fontFamily": "Inter",
-                      "fontSize": 11
+                      "fontSize": 11,
+                      "fontWeight": "normal"
                     }
                   ]
                 },
@@ -64665,7 +64786,8 @@
                       "content": "No level restriction · Community open",
                       "lineHeight": 1.4,
                       "fontFamily": "Inter",
-                      "fontSize": 12
+                      "fontSize": 12,
+                      "fontWeight": "normal"
                     },
                     {
                       "type": "text",
@@ -64677,7 +64799,8 @@
                       "content": "Teams after match · Unlimited registrations",
                       "lineHeight": 1.4,
                       "fontFamily": "Inter",
-                      "fontSize": 12
+                      "fontSize": 12,
+                      "fontWeight": "normal"
                     }
                   ]
                 },
@@ -72237,7 +72360,8 @@
                   "content": "This match has started. Management actions are unavailable.",
                   "lineHeight": 1.4,
                   "fontFamily": "Inter",
-                  "fontSize": 12
+                  "fontSize": 12,
+                  "fontWeight": "normal"
                 }
               ]
             },
@@ -72289,7 +72413,8 @@
                   "content": "Friday, November 1, 2030 at 10:00 PM ·\nTimezone: UTC",
                   "lineHeight": 1.4,
                   "fontFamily": "Inter",
-                  "fontSize": 12
+                  "fontSize": 12,
+                  "fontWeight": "normal"
                 },
                 {
                   "type": "text",
@@ -72303,7 +72428,8 @@
                   "lineHeight": 1.25,
                   "textAlignVertical": "middle",
                   "fontFamily": "Inter",
-                  "fontSize": 13
+                  "fontSize": 13,
+                  "fontWeight": "normal"
                 }
               ]
             },
@@ -72367,7 +72493,8 @@
                   "content": "8 playing · 0 reserve · 2 groups · 3 more needed",
                   "lineHeight": 1.4,
                   "fontFamily": "Inter",
-                  "fontSize": 12
+                  "fontSize": 12,
+                  "fontWeight": "normal"
                 },
                 {
                   "type": "text",
@@ -72379,7 +72506,8 @@
                   "content": "Creator accepted",
                   "lineHeight": 1.4,
                   "fontFamily": "Inter",
-                  "fontSize": 12
+                  "fontSize": 12,
+                  "fontWeight": "normal"
                 }
               ]
             },
@@ -73137,7 +73265,8 @@
                   "content": "Accepted order is server-authoritative. Reserves keep FIFO position.",
                   "lineHeight": 1.4,
                   "fontFamily": "Inter",
-                  "fontSize": 11
+                  "fontSize": 11,
+                  "fontWeight": "normal"
                 }
               ]
             },
@@ -73175,7 +73304,8 @@
                   "content": "No level restriction · Community open",
                   "lineHeight": 1.4,
                   "fontFamily": "Inter",
-                  "fontSize": 12
+                  "fontSize": 12,
+                  "fontWeight": "normal"
                 },
                 {
                   "type": "text",
@@ -73187,7 +73317,8 @@
                   "content": "Teams after match · Unlimited registrations",
                   "lineHeight": 1.4,
                   "fontFamily": "Inter",
-                  "fontSize": 12
+                  "fontSize": 12,
+                  "fontWeight": "normal"
                 },
                 {
                   "type": "text",
@@ -73199,7 +73330,8 @@
                   "content": "Registration closed",
                   "lineHeight": 1.4,
                   "fontFamily": "Inter",
-                  "fontSize": 12
+                  "fontSize": 12,
+                  "fontWeight": "normal"
                 },
                 {
                   "type": "text",
@@ -73211,7 +73343,8 @@
                   "content": "Scheduled past event · Outcome not available",
                   "lineHeight": 1.4,
                   "fontFamily": "Inter",
-                  "fontSize": 12
+                  "fontSize": 12,
+                  "fontWeight": "normal"
                 }
               ]
             },
@@ -73259,6 +73392,1324 @@
                   "lineHeight": 1.2
                 }
               }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "H6VcqC",
+      "x": 7182,
+      "y": -1600,
+      "name": "T08 — Result dispute — rejection reason dialog",
+      "theme": {
+        "mode": "dark"
+      },
+      "clip": true,
+      "width": 390,
+      "height": 844,
+      "fill": "$bg",
+      "layout": "vertical",
+      "justifyContent": "center",
+      "alignItems": "center",
+      "children": [
+        {
+          "type": "frame",
+          "id": "e85qF0",
+          "name": "Dispute dialog",
+          "width": 354,
+          "fill": "$surface",
+          "cornerRadius": 18,
+          "stroke": "$line",
+          "strokeWidth": 1,
+          "layout": "vertical",
+          "gap": 11,
+          "padding": 16,
+          "children": [
+            {
+              "type": "frame",
+              "id": "c3SaI",
+              "name": "Dialog header",
+              "width": "fill_container",
+              "layout": "vertical",
+              "gap": 3,
+              "children": [
+                {
+                  "type": "text",
+                  "id": "c2XCTu",
+                  "name": "Dialog title",
+                  "fill": "$text",
+                  "content": "Dispute result",
+                  "fontFamily": "Manrope",
+                  "fontSize": 24,
+                  "fontWeight": "bold"
+                },
+                {
+                  "type": "text",
+                  "id": "k9V1K",
+                  "name": "Group and proposer",
+                  "fill": "$muted",
+                  "content": "Group 2 · proposed by Thiago",
+                  "fontFamily": "Inter",
+                  "fontSize": 12,
+                  "fontWeight": "regular"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "PiV3p",
+              "name": "Rejection reasons",
+              "width": "fill_container",
+              "layout": "vertical",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "ew1qg",
+                  "name": "Score incorrect reason row",
+                  "width": "fill_container",
+                  "height": 44,
+                  "fill": "$surface",
+                  "cornerRadius": 8,
+                  "gap": 11,
+                  "padding": [
+                    0,
+                    9
+                  ],
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "HuGl3",
+                      "name": "Score incorrect radio indicator",
+                      "width": 18,
+                      "height": 18,
+                      "fill": "$surface",
+                      "cornerRadius": 12,
+                      "stroke": "$line",
+                      "strokeWidth": 1,
+                      "layout": "vertical",
+                      "justifyContent": "center",
+                      "alignItems": "center"
+                    },
+                    {
+                      "type": "text",
+                      "id": "LRtKx",
+                      "name": "Score incorrect label",
+                      "fill": "$text",
+                      "content": "Score incorrect",
+                      "fontFamily": "Inter",
+                      "fontSize": 13,
+                      "fontWeight": "regular"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "M9KhP",
+                  "name": "Teams incorrect reason row",
+                  "width": "fill_container",
+                  "height": 44,
+                  "fill": "$surface",
+                  "cornerRadius": 8,
+                  "gap": 11,
+                  "padding": [
+                    0,
+                    9
+                  ],
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "B77AR",
+                      "name": "Teams incorrect radio indicator",
+                      "width": 18,
+                      "height": 18,
+                      "fill": "$surface",
+                      "cornerRadius": 12,
+                      "stroke": "$line",
+                      "strokeWidth": 1,
+                      "layout": "vertical",
+                      "justifyContent": "center",
+                      "alignItems": "center"
+                    },
+                    {
+                      "type": "text",
+                      "id": "AyWhF",
+                      "name": "Teams incorrect label",
+                      "fill": "$text",
+                      "content": "Teams incorrect",
+                      "fontFamily": "Inter",
+                      "fontSize": 13,
+                      "fontWeight": "regular"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "KzecH",
+                  "name": "Players incorrect reason row",
+                  "width": "fill_container",
+                  "height": 44,
+                  "fill": "$surface",
+                  "cornerRadius": 8,
+                  "gap": 11,
+                  "padding": [
+                    0,
+                    9
+                  ],
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "Z5KnV",
+                      "name": "Players incorrect radio indicator",
+                      "width": 18,
+                      "height": 18,
+                      "fill": "$surface",
+                      "cornerRadius": 12,
+                      "stroke": "$line",
+                      "strokeWidth": 1,
+                      "layout": "vertical",
+                      "justifyContent": "center",
+                      "alignItems": "center"
+                    },
+                    {
+                      "type": "text",
+                      "id": "v2ZRXq",
+                      "name": "Players incorrect label",
+                      "fill": "$text",
+                      "content": "Players incorrect",
+                      "fontFamily": "Inter",
+                      "fontSize": 13,
+                      "fontWeight": "regular"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "V0ZRF6",
+                  "name": "Group assignment incorrect reason row",
+                  "width": "fill_container",
+                  "height": 44,
+                  "fill": "$surface",
+                  "cornerRadius": 8,
+                  "gap": 11,
+                  "padding": [
+                    0,
+                    9
+                  ],
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "Pvuq9",
+                      "name": "Group assignment incorrect radio indicator",
+                      "width": 18,
+                      "height": 18,
+                      "fill": "$surface",
+                      "cornerRadius": 12,
+                      "stroke": "$line",
+                      "strokeWidth": 1,
+                      "layout": "vertical",
+                      "justifyContent": "center",
+                      "alignItems": "center"
+                    },
+                    {
+                      "type": "text",
+                      "id": "COZMt",
+                      "name": "Group assignment incorrect label",
+                      "fill": "$text",
+                      "content": "Group assignment incorrect",
+                      "fontFamily": "Inter",
+                      "fontSize": 13,
+                      "fontWeight": "regular"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "jiVHT",
+                  "name": "Match did not happen reason row",
+                  "width": "fill_container",
+                  "height": 44,
+                  "fill": "$surface",
+                  "cornerRadius": 8,
+                  "gap": 11,
+                  "padding": [
+                    0,
+                    9
+                  ],
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "WoFhm",
+                      "name": "Match did not happen radio indicator",
+                      "width": 18,
+                      "height": 18,
+                      "fill": "$surface",
+                      "cornerRadius": 12,
+                      "stroke": "$line",
+                      "strokeWidth": 1,
+                      "layout": "vertical",
+                      "justifyContent": "center",
+                      "alignItems": "center"
+                    },
+                    {
+                      "type": "text",
+                      "id": "KMPmb",
+                      "name": "Match did not happen label",
+                      "fill": "$text",
+                      "content": "Match did not happen",
+                      "fontFamily": "Inter",
+                      "fontSize": 13,
+                      "fontWeight": "regular"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "RkzUx",
+                  "name": "Match type incorrect reason row",
+                  "width": "fill_container",
+                  "height": 44,
+                  "fill": "$surface",
+                  "cornerRadius": 8,
+                  "gap": 11,
+                  "padding": [
+                    0,
+                    9
+                  ],
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "xCv92",
+                      "name": "Match type incorrect radio indicator",
+                      "width": 18,
+                      "height": 18,
+                      "fill": "$surface",
+                      "cornerRadius": 12,
+                      "stroke": "$line",
+                      "strokeWidth": 1,
+                      "layout": "vertical",
+                      "justifyContent": "center",
+                      "alignItems": "center"
+                    },
+                    {
+                      "type": "text",
+                      "id": "y2HbM",
+                      "name": "Match type incorrect label",
+                      "fill": "$text",
+                      "content": "Match type incorrect",
+                      "fontFamily": "Inter",
+                      "fontSize": 13,
+                      "fontWeight": "regular"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "nTi7R",
+                  "name": "Classification incorrect reason row",
+                  "width": "fill_container",
+                  "height": 44,
+                  "fill": "$surface",
+                  "cornerRadius": 8,
+                  "gap": 11,
+                  "padding": [
+                    0,
+                    9
+                  ],
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "H7f8L",
+                      "name": "Classification incorrect radio indicator",
+                      "width": 18,
+                      "height": 18,
+                      "fill": "$surface",
+                      "cornerRadius": 12,
+                      "stroke": "$line",
+                      "strokeWidth": 1,
+                      "layout": "vertical",
+                      "justifyContent": "center",
+                      "alignItems": "center"
+                    },
+                    {
+                      "type": "text",
+                      "id": "eQ2dE",
+                      "name": "Classification incorrect label",
+                      "fill": "$text",
+                      "content": "Classification incorrect",
+                      "fontFamily": "Inter",
+                      "fontSize": 13,
+                      "fontWeight": "regular"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "dKbRU",
+                  "name": "Other reason row",
+                  "width": "fill_container",
+                  "height": 44,
+                  "fill": "$surface2",
+                  "cornerRadius": 8,
+                  "gap": 11,
+                  "padding": [
+                    0,
+                    9
+                  ],
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "nPqN0",
+                      "name": "Other radio indicator",
+                      "width": 18,
+                      "height": 18,
+                      "fill": "$surface",
+                      "cornerRadius": 12,
+                      "stroke": "$green",
+                      "strokeWidth": 1,
+                      "layout": "vertical",
+                      "justifyContent": "center",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "ellipse",
+                          "id": "T4GL5p",
+                          "name": "Other selected radio center",
+                          "fill": "$green",
+                          "width": 8,
+                          "height": 8
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "id": "QypuH",
+                      "name": "Other label",
+                      "fill": "$text",
+                      "content": "Other",
+                      "fontFamily": "Inter",
+                      "fontSize": 13,
+                      "fontWeight": "semibold"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "RwiJ0",
+              "name": "Filled error note field",
+              "width": "fill_container",
+              "layout": "vertical",
+              "gap": 4,
+              "children": [
+                {
+                  "type": "text",
+                  "id": "TusPD",
+                  "name": "Note field label",
+                  "fill": "$muted",
+                  "content": "Add a note (optional)",
+                  "fontFamily": "Inter",
+                  "fontSize": 12,
+                  "fontWeight": "semibold"
+                },
+                {
+                  "type": "frame",
+                  "id": "LDIAR",
+                  "name": "Filled error input",
+                  "width": "fill_container",
+                  "height": 42,
+                  "fill": "$surface2",
+                  "cornerRadius": 9,
+                  "stroke": "$red",
+                  "strokeWidth": 1,
+                  "padding": [
+                    0,
+                    11
+                  ],
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "SfYjp",
+                      "name": "Filled note value",
+                      "fill": "$text",
+                      "content": "The match was cancelled before play.",
+                      "fontFamily": "Inter",
+                      "fontSize": 12,
+                      "fontWeight": "regular"
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "ewfCU",
+                  "name": "Note field error helper",
+                  "fill": "$red",
+                  "content": "Required when selecting Other · max 500 characters",
+                  "fontFamily": "Inter",
+                  "fontSize": 11.5,
+                  "fontWeight": "medium"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "DWyxc",
+              "name": "Auto-confirmation notice",
+              "width": "fill_container",
+              "fill": "$greenSoft",
+              "cornerRadius": 9,
+              "gap": 8,
+              "padding": [
+                8,
+                10
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "KYC7y",
+                  "name": "Auto-confirmation notice icon",
+                  "width": 15,
+                  "height": 15,
+                  "icon": "info",
+                  "library": "lucide",
+                  "fill": "$green"
+                },
+                {
+                  "type": "text",
+                  "id": "yHZna",
+                  "name": "Auto-confirmation notice text",
+                  "fill": "$green",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "Disputing immediately stops auto-confirmation.",
+                  "fontFamily": "Inter",
+                  "fontSize": 11.5,
+                  "fontWeight": "medium"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "PJn55",
+              "name": "Dialog footer actions",
+              "width": "fill_container",
+              "gap": 8,
+              "children": [
+                {
+                  "id": "MlG59",
+                  "type": "ref",
+                  "ref": "B3Uqv",
+                  "name": "Cancel button",
+                  "width": "fill_container",
+                  "height": 44,
+                  "fill": "$surface2",
+                  "cornerRadius": 12,
+                  "descendants": {
+                    "xWUkK": {
+                      "content": "Cancel",
+                      "fill": "$text",
+                      "fontWeight": "bold"
+                    }
+                  }
+                },
+                {
+                  "id": "TBixC",
+                  "type": "ref",
+                  "ref": "B3Uqv",
+                  "name": "Submit dispute button",
+                  "width": "fill_container",
+                  "height": 44,
+                  "fill": "$red",
+                  "cornerRadius": 12,
+                  "descendants": {
+                    "xWUkK": {
+                      "content": "Submit dispute",
+                      "fill": "$text",
+                      "fontWeight": "bold"
+                    }
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "GMcbD",
+      "x": 7644,
+      "y": -1600,
+      "name": "T08 — Event results — partial resolution",
+      "theme": {
+        "mode": "light"
+      },
+      "clip": true,
+      "width": 390,
+      "height": 844,
+      "fill": "$bg",
+      "layout": "vertical",
+      "gap": 10,
+      "padding": [
+        18,
+        18,
+        14,
+        18
+      ],
+      "justifyContent": "space_between",
+      "children": [
+        {
+          "type": "frame",
+          "id": "yE6cJ",
+          "name": "Top content",
+          "width": "fill_container",
+          "layout": "vertical",
+          "gap": 13,
+          "children": [
+            {
+              "type": "frame",
+              "id": "VW6yG",
+              "name": "Screen header",
+              "width": "fill_container",
+              "layout": "vertical",
+              "gap": 3,
+              "children": [
+                {
+                  "type": "text",
+                  "id": "e9SN4",
+                  "name": "Screen title",
+                  "fill": "$text",
+                  "content": "Event results",
+                  "fontFamily": "Manrope",
+                  "fontSize": 24,
+                  "fontWeight": "bold"
+                },
+                {
+                  "type": "text",
+                  "id": "f94dI5",
+                  "name": "Event detail subtitle",
+                  "fill": "$muted",
+                  "content": "Padel Indoor · Group event · 21 Sep",
+                  "fontFamily": "Inter",
+                  "fontSize": 12,
+                  "fontWeight": "regular"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "EmjOy",
+              "name": "Partial resolution banner",
+              "width": "fill_container",
+              "fill": "$amber",
+              "cornerRadius": 13,
+              "gap": 9,
+              "padding": [
+                11,
+                12
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "sf5MW",
+                  "name": "Partial resolution icon",
+                  "width": 18,
+                  "height": 18,
+                  "icon": "circle-alert",
+                  "library": "lucide",
+                  "fill": "$text"
+                },
+                {
+                  "type": "text",
+                  "id": "TsHAn",
+                  "name": "Partial resolution banner text",
+                  "fill": "$text",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "Partially resolved — 1 of 3 groups confirmed",
+                  "fontFamily": "Inter",
+                  "fontSize": 13,
+                  "fontWeight": "bold"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "wUVhP",
+          "name": "Event result groups",
+          "width": "fill_container",
+          "height": "fill_container",
+          "layout": "vertical",
+          "gap": 8,
+          "children": [
+            {
+              "type": "frame",
+              "id": "Q0WNPc",
+              "name": "Confirmed group card",
+              "width": "fill_container",
+              "fill": "$surface",
+              "cornerRadius": 14,
+              "stroke": "$line",
+              "strokeWidth": 1,
+              "layout": "vertical",
+              "gap": 7,
+              "padding": 11,
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "n25BbF",
+                  "name": "Confirmed group header",
+                  "width": "fill_container",
+                  "justifyContent": "space_between",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "JGIdl",
+                      "name": "Confirmed group name",
+                      "fill": "$text",
+                      "content": "Group 1",
+                      "fontFamily": "Manrope",
+                      "fontSize": 14,
+                      "fontWeight": "bold"
+                    },
+                    {
+                      "type": "frame",
+                      "id": "ydOJZ",
+                      "name": "Confirmed manual badge",
+                      "fill": "$greenSoft",
+                      "cornerRadius": 14,
+                      "gap": 4,
+                      "padding": [
+                        4,
+                        7
+                      ],
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "NVylq",
+                          "name": "Confirmed manual badge text",
+                          "fill": "$green",
+                          "content": "Confirmed · Manual",
+                          "fontFamily": "Inter",
+                          "fontSize": 11,
+                          "fontWeight": "semibold"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "fYtPt",
+                  "name": "Confirmed teams and final score",
+                  "width": "fill_container",
+                  "gap": 5,
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "gcEIM",
+                      "name": "Confirmed team A",
+                      "fill": "$text",
+                      "content": "Thiago + Ana",
+                      "fontFamily": "Inter",
+                      "fontSize": 11.5,
+                      "fontWeight": "semibold"
+                    },
+                    {
+                      "type": "text",
+                      "id": "ZuqD8",
+                      "name": "Confirmed final score",
+                      "fill": "$green",
+                      "content": "6–4 · 6–3",
+                      "fontFamily": "Inter",
+                      "fontSize": 12,
+                      "fontWeight": "bold"
+                    },
+                    {
+                      "type": "text",
+                      "id": "u1f8X",
+                      "name": "Confirmed team B",
+                      "fill": "$text",
+                      "content": "Pedro + Carlos",
+                      "fontFamily": "Inter",
+                      "fontSize": 12,
+                      "fontWeight": "semibold"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "mEkbk",
+                  "name": "Confirmed metadata row",
+                  "width": "fill_container",
+                  "gap": 6,
+                  "justifyContent": "space_between",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "t4dSt",
+                      "name": "Confirmation timestamp",
+                      "fill": "$muted",
+                      "content": "Confirmed 23 Sep · 12:40",
+                      "fontFamily": "Inter",
+                      "fontSize": 12,
+                      "fontWeight": "regular"
+                    },
+                    {
+                      "type": "frame",
+                      "id": "tysxY",
+                      "name": "Confirmed auto mini variant badge",
+                      "fill": "$surface2",
+                      "cornerRadius": 12,
+                      "padding": [
+                        3,
+                        6
+                      ],
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "bJMYY",
+                          "name": "Confirmed auto mini variant text",
+                          "fill": "$green",
+                          "content": "Confirmed · Auto 48H",
+                          "fontFamily": "Inter",
+                          "fontSize": 12,
+                          "fontWeight": "semibold"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "MYju2",
+              "name": "Pending group card",
+              "width": "fill_container",
+              "fill": "$surface",
+              "cornerRadius": 14,
+              "stroke": "$line",
+              "strokeWidth": 1,
+              "layout": "vertical",
+              "gap": 6,
+              "padding": 11,
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "fiytt",
+                  "name": "Pending group header",
+                  "width": "fill_container",
+                  "justifyContent": "space_between",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "PhBog",
+                      "name": "Pending group name",
+                      "fill": "$text",
+                      "content": "Group 2",
+                      "fontFamily": "Manrope",
+                      "fontSize": 14,
+                      "fontWeight": "bold"
+                    },
+                    {
+                      "type": "frame",
+                      "id": "S8dWPz",
+                      "name": "Pending badge",
+                      "fill": "$surface2",
+                      "cornerRadius": 14,
+                      "padding": [
+                        4,
+                        7
+                      ],
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "hJ4G3",
+                          "name": "Pending badge text",
+                          "fill": "$amber",
+                          "content": "Pending",
+                          "fontFamily": "Inter",
+                          "fontSize": 10.5,
+                          "fontWeight": "semibold"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "l2HOUQ",
+                  "name": "Pending teams and proposed score",
+                  "width": "fill_container",
+                  "gap": 5,
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "Y4ACv",
+                      "name": "Pending team A",
+                      "fill": "$text",
+                      "content": "Maya + Leo",
+                      "fontFamily": "Inter",
+                      "fontSize": 12,
+                      "fontWeight": "semibold"
+                    },
+                    {
+                      "type": "text",
+                      "id": "RPv9X",
+                      "name": "Proposed score",
+                      "fill": "$text",
+                      "content": "6–2 · 4–6 · 6–4",
+                      "fontFamily": "Inter",
+                      "fontSize": 12,
+                      "fontWeight": "bold"
+                    },
+                    {
+                      "type": "text",
+                      "id": "dkp7v",
+                      "name": "Pending team B",
+                      "fill": "$text",
+                      "content": "Sofía + Max",
+                      "fontFamily": "Inter",
+                      "fontSize": 12,
+                      "fontWeight": "semibold"
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "u1U26",
+                  "name": "Pending submitter",
+                  "fill": "$muted",
+                  "content": "Submitted by Maya",
+                  "fontFamily": "Inter",
+                  "fontSize": 12,
+                  "fontWeight": "regular"
+                },
+                {
+                  "type": "text",
+                  "id": "MbjH1",
+                  "name": "Approval progress",
+                  "fill": "$green",
+                  "content": "1 of 1 team approval received",
+                  "fontFamily": "Inter",
+                  "fontSize": 12,
+                  "fontWeight": "semibold"
+                },
+                {
+                  "type": "frame",
+                  "id": "AgOp8",
+                  "name": "Pending auto-confirm countdown",
+                  "width": "fill_container",
+                  "gap": 5,
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "icon",
+                      "id": "metz9",
+                      "name": "Pending countdown icon",
+                      "width": 14,
+                      "height": 14,
+                      "icon": "timer",
+                      "library": "lucide",
+                      "fill": "$amber"
+                    },
+                    {
+                      "type": "text",
+                      "id": "s1IzZ",
+                      "name": "Pending countdown text",
+                      "fill": "$amber",
+                      "content": "Auto-confirms in 47:59:12",
+                      "fontFamily": "Inter",
+                      "fontSize": 12,
+                      "fontWeight": "semibold"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "z6IAi",
+                  "name": "Pending reviewer actions",
+                  "width": "fill_container",
+                  "gap": 8,
+                  "children": [
+                    {
+                      "id": "CD94g",
+                      "type": "ref",
+                      "ref": "B3Uqv",
+                      "name": "Approve button",
+                      "width": "fill_container",
+                      "height": 44,
+                      "fill": "$green",
+                      "cornerRadius": 11,
+                      "descendants": {
+                        "xWUkK": {
+                          "content": "Approve",
+                          "fill": "$bg",
+                          "fontWeight": "bold"
+                        }
+                      }
+                    },
+                    {
+                      "id": "o2E7d",
+                      "type": "ref",
+                      "ref": "B3Uqv",
+                      "name": "Dispute button",
+                      "width": "fill_container",
+                      "height": 44,
+                      "fill": "$surface2",
+                      "cornerRadius": 11,
+                      "descendants": {
+                        "xWUkK": {
+                          "content": "Dispute",
+                          "fill": "$red",
+                          "fontWeight": "bold"
+                        }
+                      }
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "SQL5M",
+              "name": "Disputed group card",
+              "width": "fill_container",
+              "fill": "$surface",
+              "cornerRadius": 14,
+              "stroke": "$line",
+              "strokeWidth": 1,
+              "layout": "vertical",
+              "gap": 6,
+              "padding": 11,
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "OUFAl",
+                  "name": "Disputed group header",
+                  "width": "fill_container",
+                  "justifyContent": "space_between",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "WRxJZ",
+                      "name": "Disputed group name",
+                      "fill": "$text",
+                      "content": "Group 3",
+                      "fontFamily": "Manrope",
+                      "fontSize": 14,
+                      "fontWeight": "bold"
+                    },
+                    {
+                      "type": "frame",
+                      "id": "Fp50c",
+                      "name": "Disputed status badge",
+                      "fill": "$surface2",
+                      "cornerRadius": 14,
+                      "padding": [
+                        4,
+                        7
+                      ],
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "wU8LY",
+                          "name": "Disputed status badge text",
+                          "fill": "$red",
+                          "content": "Disputed",
+                          "fontFamily": "Inter",
+                          "fontSize": 10.5,
+                          "fontWeight": "semibold"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "hHzxV",
+                  "name": "Disputed teams and score",
+                  "width": "fill_container",
+                  "gap": 5,
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "scw5w",
+                      "name": "Disputed team A",
+                      "fill": "$text",
+                      "content": "Nora + Ivan",
+                      "fontFamily": "Inter",
+                      "fontSize": 12,
+                      "fontWeight": "semibold"
+                    },
+                    {
+                      "type": "text",
+                      "id": "p5hpG",
+                      "name": "Disputed score",
+                      "fill": "$text",
+                      "content": "6–3 · 3–6 · 5–4",
+                      "fontFamily": "Inter",
+                      "fontSize": 12,
+                      "fontWeight": "bold"
+                    },
+                    {
+                      "type": "text",
+                      "id": "jV2Cq",
+                      "name": "Disputed team B",
+                      "fill": "$text",
+                      "content": "Luca + Eva",
+                      "fontFamily": "Inter",
+                      "fontSize": 12,
+                      "fontWeight": "semibold"
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "AEksP",
+                  "name": "Dispute reason",
+                  "fill": "$red",
+                  "content": "Disputed by Ana · Score incorrect",
+                  "fontFamily": "Inter",
+                  "fontSize": 12,
+                  "fontWeight": "regular"
+                },
+                {
+                  "type": "frame",
+                  "id": "Iz6UT",
+                  "name": "Correction pending review state",
+                  "width": "fill_container",
+                  "fill": "$surface2",
+                  "cornerRadius": 8,
+                  "layout": "vertical",
+                  "gap": 2,
+                  "padding": [
+                    6,
+                    8
+                  ],
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "U9gb0y",
+                      "name": "Correction pending review label",
+                      "fill": "$text",
+                      "content": "Correction pending review",
+                      "fontFamily": "Inter",
+                      "fontSize": 12,
+                      "fontWeight": "semibold"
+                    },
+                    {
+                      "type": "text",
+                      "id": "PPJlr",
+                      "name": "Correction pending fresh countdown",
+                      "fill": "$amber",
+                      "content": "Correction auto-confirms in 23:59:58",
+                      "fontFamily": "Inter",
+                      "fontSize": 12,
+                      "fontWeight": "regular"
+                    }
+                  ]
+                },
+                {
+                  "id": "DOQoc",
+                  "type": "ref",
+                  "ref": "B3Uqv",
+                  "name": "Correct result button",
+                  "width": "fill_container",
+                  "height": 44,
+                  "fill": "$surface2",
+                  "cornerRadius": 11,
+                  "descendants": {
+                    "xWUkK": {
+                      "content": "Correct result",
+                      "fill": "$text",
+                      "fontWeight": "bold"
+                    }
+                  }
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "CxBaa",
+              "name": "Awaiting result compact card",
+              "width": "fill_container",
+              "fill": "$surface",
+              "cornerRadius": 12,
+              "stroke": "$line",
+              "strokeWidth": 1,
+              "gap": 8,
+              "padding": [
+                6,
+                10
+              ],
+              "justifyContent": "space_between",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "E5aOUo",
+                  "name": "Awaiting result state",
+                  "fill": "$muted",
+                  "content": "Awaiting result",
+                  "fontFamily": "Inter",
+                  "fontSize": 12,
+                  "fontWeight": "semibold"
+                },
+                {
+                  "id": "dX5Xk",
+                  "type": "ref",
+                  "ref": "B3Uqv",
+                  "name": "Record result button",
+                  "width": 136,
+                  "height": 44,
+                  "fill": "$green",
+                  "cornerRadius": 10,
+                  "descendants": {
+                    "xWUkK": {
+                      "content": "Record result",
+                      "fill": "$bg",
+                      "fontWeight": "bold"
+                    }
+                  }
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "qJFsV",
+              "name": "Parent list badge variants",
+              "width": "fill_container",
+              "fill": "$surface2",
+              "cornerRadius": 10,
+              "layout": "vertical",
+              "gap": 5,
+              "padding": [
+                7,
+                9
+              ],
+              "children": [
+                {
+                  "type": "text",
+                  "id": "qQup1",
+                  "name": "Parent list badges label",
+                  "fill": "$muted",
+                  "content": "PARENT LIST BADGES",
+                  "fontFamily": "Inter",
+                  "fontSize": 12,
+                  "fontWeight": "bold"
+                },
+                {
+                  "type": "frame",
+                  "id": "F9sNW",
+                  "name": "Parent list badge variants row",
+                  "width": "fill_container",
+                  "gap": 4,
+                  "justifyContent": "space_between",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "k3frG",
+                      "name": "Awaiting results badge",
+                      "fill": "$surface",
+                      "cornerRadius": 12,
+                      "padding": [
+                        4,
+                        6
+                      ],
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "Smdru",
+                          "name": "Awaiting results badge text",
+                          "fill": "$muted",
+                          "content": "Awaiting results",
+                          "fontFamily": "Inter",
+                          "fontSize": 12,
+                          "fontWeight": "semibold"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "S7Vt5",
+                      "name": "Partially resolved badge",
+                      "fill": "$surface",
+                      "cornerRadius": 12,
+                      "padding": [
+                        4,
+                        6
+                      ],
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "QkeLL",
+                          "name": "Partially resolved badge text",
+                          "fill": "$amber",
+                          "content": "Partially resolved 1/3",
+                          "fontFamily": "Inter",
+                          "fontSize": 12,
+                          "fontWeight": "semibold"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "QcUnJ",
+                      "name": "Completed badge",
+                      "fill": "$surface",
+                      "cornerRadius": 12,
+                      "padding": [
+                        4,
+                        6
+                      ],
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "C1U9s",
+                          "name": "Completed badge text",
+                          "fill": "$green",
+                          "content": "Completed",
+                          "fontFamily": "Inter",
+                          "fontSize": 12,
+                          "fontWeight": "semibold"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
             }
           ]
         }

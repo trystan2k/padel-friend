@@ -322,9 +322,13 @@ test('Pencil full-frame comparisons require matching composition and reviewed bu
     alter table public.match_events disable trigger match_event_immutable;
     update public.match_events set venue_name='PADEL INDOOR MADRID', court_notes='Calle de Alcalá' where id='${id}';
     alter table public.match_events enable trigger match_event_immutable;
-    alter table public.match_event_result_proposals disable trigger match_result_proposal_immutable;
+    alter table public.match_event_result_proposal_versions disable trigger match_result_proposal_version_immutable;
+    alter table public.match_event_result_proposals disable trigger match_result_proposal_transition_guard;
+    update public.match_event_result_proposal_versions set submitted_at='2026-10-23T18:30:00Z', review_deadline_at='2026-10-25T18:30:00Z'
+      where proposal_id in (select id from public.match_event_result_proposals where match_event_id='${id}');
     update public.match_event_result_proposals set submitted_at='2026-10-23T18:30:00Z', review_deadline_at='2026-10-25T18:30:00Z' where match_event_id='${id}';
-    alter table public.match_event_result_proposals enable trigger match_result_proposal_immutable;
+    alter table public.match_event_result_proposals enable trigger match_result_proposal_transition_guard;
+    alter table public.match_event_result_proposal_versions enable trigger match_result_proposal_version_immutable;
   end $$;`);
   await page.clock.setFixedTime(new Date('2026-10-23T18:30:00Z'));
   await page.route(`**/matches/${id}`, async (route) => {

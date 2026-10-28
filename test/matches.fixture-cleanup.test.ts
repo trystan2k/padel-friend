@@ -9,19 +9,33 @@ const actor = '11111111-1111-4111-8111-111111111111';
 const event = '22222222-2222-4222-8222-222222222222';
 
 describe('match fixture cleanup', () => {
-  it('deletes only owned result versions before proposals and events and restores guards', () => {
+  it('deletes only owned result evidence in FK order and restores guards', () => {
     const sql = buildMatchFixtureCleanupSql({ eventIds: [event], actorIds: [actor] });
     const versions =
       'delete from public.match_event_result_proposal_versions where proposal_id in (select id from public.match_event_result_proposals where match_event_id in (select id from owned_match_fixture_events))';
     const proposals =
       'delete from public.match_event_result_proposals where match_event_id in (select id from owned_match_fixture_events)';
+    const reviews =
+      'delete from public.match_event_result_reviews where proposal_id in (select id from public.match_event_result_proposals where match_event_id in (select id from owned_match_fixture_events))';
+    const confirmations =
+      'delete from public.match_event_result_confirmations where match_event_id in (select id from owned_match_fixture_events)';
     expect(sql).toContain(versions);
     expect(sql).toContain(proposals);
+    expect(sql).toContain(reviews);
+    expect(sql).toContain(confirmations);
+    expect(sql.indexOf(reviews)).toBeLessThan(sql.indexOf(confirmations));
+    expect(sql.indexOf(confirmations)).toBeLessThan(sql.indexOf(versions));
     expect(sql.indexOf(versions)).toBeLessThan(sql.indexOf(proposals));
     expect(sql.indexOf(proposals)).toBeLessThan(sql.indexOf('delete from public.match_events'));
+    expect(sql.indexOf(proposals)).toBeLessThan(sql.indexOf('set constraints all immediate'));
+    expect(sql.indexOf('set constraints all immediate')).toBeLessThan(
+      sql.indexOf('alter table public.match_event_result_proposal_versions enable trigger')
+    );
     for (const [table, trigger] of [
       ['match_event_result_proposal_versions', 'match_result_proposal_version_immutable'],
-      ['match_event_result_proposals', 'match_result_proposal_immutable']
+      ['match_event_result_reviews', 'match_result_review_immutable'],
+      ['match_event_result_confirmations', 'match_result_confirmation_insert_guard'],
+      ['match_event_result_proposals', 'match_result_proposal_transition_guard']
     ]) {
       expect(sql).toContain(`alter table public.${table} disable trigger ${trigger}`);
       expect(sql).toContain(`alter table public.${table} enable trigger ${trigger}`);
@@ -66,7 +80,11 @@ describe('match fixture cleanup', () => {
       'match_attempt_history_guard',
       'match_attempt_final_state',
       'match_registration_final_state',
-      'match_audit_immutable'
+      'match_audit_immutable',
+      'match_result_review_immutable',
+      'match_result_confirmation_insert_guard',
+      'match_result_proposal_transition_guard',
+      'match_result_proposal_version_immutable'
     ]) {
       expect(sql).toContain(`disable trigger ${trigger}`);
       expect(sql).toContain(`enable trigger ${trigger}`);

@@ -417,6 +417,7 @@ export type Database = {
           before_data: NonNullable<Json>
           changed_fields: string[]
           community_id: string
+          confirmation_id: string | null
           event_version: number | null
           id: string
           match_event_id: string
@@ -434,6 +435,7 @@ export type Database = {
           before_data?: NonNullable<Json>
           changed_fields?: string[]
           community_id: string
+          confirmation_id?: string | null
           event_version?: number | null
           id?: string
           match_event_id: string
@@ -450,6 +452,7 @@ export type Database = {
           before_data?: NonNullable<Json>
           changed_fields?: string[]
           community_id?: string
+          confirmation_id?: string | null
           event_version?: number | null
           id?: string
           match_event_id?: string
@@ -465,6 +468,13 @@ export type Database = {
             columns: ["community_id"]
             isOneToOne: false
             referencedRelation: "communities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "match_event_audit_log_confirmation_fk"
+            columns: ["confirmation_id"]
+            isOneToOne: true
+            referencedRelation: "match_event_result_confirmations"
             referencedColumns: ["id"]
           },
           {
@@ -787,6 +797,103 @@ export type Database = {
           },
         ]
       }
+      match_event_result_confirmations: {
+        Row: {
+          actor_id: string | null
+          confirmed_at: string
+          effective_at: string
+          event_type: Database["public"]["Enums"]["match_event_type"]
+          group_number: number
+          id: string
+          match_event_id: string
+          proposal_id: string
+          proposal_version: number
+          ratable_eligible: boolean
+          source: string
+        }
+        ComputedFields: never
+        Insert: {
+          actor_id?: string | null
+          confirmed_at?: string
+          effective_at: string
+          event_type: Database["public"]["Enums"]["match_event_type"]
+          group_number: number
+          id?: string
+          match_event_id: string
+          proposal_id: string
+          proposal_version: number
+          ratable_eligible: boolean
+          source: string
+        }
+        Update: {
+          actor_id?: string | null
+          confirmed_at?: string
+          effective_at?: string
+          event_type?: Database["public"]["Enums"]["match_event_type"]
+          group_number?: number
+          id?: string
+          match_event_id?: string
+          proposal_id?: string
+          proposal_version?: number
+          ratable_eligible?: boolean
+          source?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "match_result_confirmation_pointer_fk"
+            columns: ["proposal_id", "match_event_id", "group_number"]
+            isOneToOne: false
+            referencedRelation: "match_event_result_proposals"
+            referencedColumns: ["id", "match_event_id", "group_number"]
+          },
+          {
+            foreignKeyName: "match_result_confirmation_version_fk"
+            columns: ["proposal_id", "proposal_version"]
+            isOneToOne: false
+            referencedRelation: "match_event_result_proposal_versions"
+            referencedColumns: ["proposal_id", "version"]
+          },
+        ]
+      }
+      match_event_result_processing_state: {
+        Row: {
+          attempt_count: number
+          attempted_at: string | null
+          last_failure_at: string | null
+          last_failure_code: string | null
+          next_attempt_at: string | null
+          proposal_id: string
+          updated_at: string
+        }
+        ComputedFields: never
+        Insert: {
+          attempt_count?: number
+          attempted_at?: string | null
+          last_failure_at?: string | null
+          last_failure_code?: string | null
+          next_attempt_at?: string | null
+          proposal_id: string
+          updated_at?: string
+        }
+        Update: {
+          attempt_count?: number
+          attempted_at?: string | null
+          last_failure_at?: string | null
+          last_failure_code?: string | null
+          next_attempt_at?: string | null
+          proposal_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "match_event_result_processing_state_proposal_id_fkey"
+            columns: ["proposal_id"]
+            isOneToOne: true
+            referencedRelation: "match_event_result_proposals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       match_event_result_proposal_versions: {
         Row: {
           classification: string
@@ -795,7 +902,10 @@ export type Database = {
           played_at_offset_seconds: number
           played_at_utc: string
           proposal_id: string
+          review_deadline_at: string
           sets: NonNullable<Json>
+          submitted_at: string
+          submitted_by: string
           teams: NonNullable<Json>
           version: number
         }
@@ -807,7 +917,10 @@ export type Database = {
           played_at_offset_seconds: number
           played_at_utc: string
           proposal_id: string
+          review_deadline_at: string
           sets: NonNullable<Json>
+          submitted_at: string
+          submitted_by: string
           teams: NonNullable<Json>
           version: number
         }
@@ -818,7 +931,10 @@ export type Database = {
           played_at_offset_seconds?: number
           played_at_utc?: string
           proposal_id?: string
+          review_deadline_at?: string
           sets?: NonNullable<Json>
+          submitted_at?: string
+          submitted_by?: string
           teams?: NonNullable<Json>
           version?: number
         }
@@ -871,6 +987,58 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "match_events"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "match_result_proposal_active_version_fk"
+            columns: ["id", "active_version"]
+            isOneToOne: false
+            referencedRelation: "match_event_result_proposal_versions"
+            referencedColumns: ["proposal_id", "version"]
+          },
+        ]
+      }
+      match_event_result_reviews: {
+        Row: {
+          decided_at: string
+          decision: string
+          id: string
+          proposal_id: string
+          proposal_version: number
+          reason_code: string | null
+          reason_note: string | null
+          request_id: string
+          reviewer_user_id: string
+        }
+        ComputedFields: never
+        Insert: {
+          decided_at?: string
+          decision: string
+          id?: string
+          proposal_id: string
+          proposal_version: number
+          reason_code?: string | null
+          reason_note?: string | null
+          request_id: string
+          reviewer_user_id: string
+        }
+        Update: {
+          decided_at?: string
+          decision?: string
+          id?: string
+          proposal_id?: string
+          proposal_version?: number
+          reason_code?: string | null
+          reason_note?: string | null
+          request_id?: string
+          reviewer_user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "match_result_review_version_fk"
+            columns: ["proposal_id", "proposal_version"]
+            isOneToOne: false
+            referencedRelation: "match_event_result_proposal_versions"
+            referencedColumns: ["proposal_id", "version"]
           },
         ]
       }
@@ -1217,6 +1385,15 @@ export type Database = {
         Args: { p_community_id: string; p_object_key: string; p_venue_id: string }
         Returns: undefined
       }
+      finalize_match_event_result_locked: {
+        Args: {
+          p_actor_id: string
+          p_expected_version: number
+          p_proposal_id: string
+          p_source: string
+        }
+        Returns: string
+      }
       get_community_member_by_id: {
         Args: { p_community_id: string; p_membership_id: string }
         Returns: {
@@ -1243,6 +1420,7 @@ export type Database = {
       get_match_creation_options: { Args: { p_community_id?: string }; Returns: Json }
       get_match_event: { Args: { p_event_id: string }; Returns: Json }
       get_match_event_management: { Args: { p_match_event_id: string }; Returns: Json }
+      get_match_event_official_results: { Args: { p_match_event_id: string }; Returns: Json[] }
       get_match_event_result_proposals: { Args: { p_match_event_id: string }; Returns: Json[] }
       get_my_community_notification_timezone: {
         Args: { p_notification_id: string }
@@ -1311,6 +1489,10 @@ export type Database = {
           role: Database["public"]["Enums"]["community_member_role"]
           status: Database["public"]["Enums"]["community_membership_status"]
         }[]
+      }
+      has_match_event_result_approval_coverage: {
+        Args: { p_actor_id: string; p_proposal_id: string; p_version: number }
+        Returns: boolean
       }
       is_community_admin: { Args: { p_community_id: string }; Returns: boolean }
       is_community_member: { Args: { p_community_id: string }; Returns: boolean }

@@ -13,20 +13,13 @@ import {
 import { fixtureSql, sqlRows, startSql, withDeadline } from './helpers/match-registration-sql';
 import { matchPhotoFixture } from './helpers/match-photo-fixtures';
 
-// PAF-7 T07.1 — result proposal domain schema contract.
+// PAF-7 / PAF-118 — result proposal and confirmation schema contracts.
 //
-// Proves the additive migration end to end on the real local Supabase: the
-// exact table/constraint/index catalog, the RLS + grants matrix (proposals
-// readable by creator / event-community admin / accepted participants only;
-// versions internal-only), the played_at triple-column consistency CHECK, the
-// jsonb shape CHECKs, the append-only immutability guards, the command-ledger
-// action extension, and clean-install + repeat-up stability. The migration is
-// purely additive, so per the plan the populated-upgrade harness is NOT
-// extended; idempotence is asserted as recorded-once history plus a no-op
-// repeat `migration up` that leaves catalog and ACLs untouched.
+// Proves the exact result-table constraints, transition guard, RLS/grants,
+// preserved fact CHECKs and migration-history stability on real local Supabase.
 
 const environment = localSupabaseEnv({ filePath: dotEnvPathFromImportMetaUrl(import.meta.url) });
-const MIGRATION_VERSION = '20261022090000';
+const MIGRATION_VERSION = '20261028180302';
 const PROBE_OK = 'PAF7_RESULTS_SCHEMA_PROBE_OK';
 
 const q = (value: string) => `'${value.replaceAll("'", "''")}'`;
@@ -80,7 +73,12 @@ const VERSION_INSERT = (
     courtRaw?: string;
   } = {}
 ) =>
-  `insert into public.match_event_result_proposal_versions(proposal_id,version,teams,sets,classification,played_at_utc,played_at_local,played_at_offset_seconds,court_label) values ('${proposalId}',${overrides.version === null ? 'null' : (overrides.version ?? 50)},${overrides.teams ?? TEAMS_OK(players)},${overrides.sets ?? SETS_OK},${overrides.classification === null ? 'null' : q(overrides.classification ?? 'team_b')},${overrides.utc === null ? 'null' : q(overrides.utc ?? '2030-06-15 18:30:00+00') + '::timestamptz'},${overrides.local === null ? 'null' : q(overrides.local ?? '2030-06-15 20:30:00') + '::timestamp'},${overrides.offset === null ? 'null' : (overrides.offset ?? 7200)},${overrides.courtRaw ?? (overrides.court === undefined ? q('Court 3') : overrides.court === null ? 'null' : q(overrides.court))});`;
+  `insert into public.match_event_result_proposal_versions(proposal_id,version,submitted_by,submitted_at,review_deadline_at,teams,sets,classification,played_at_utc,played_at_local,played_at_offset_seconds,court_label)
+    select '${proposalId}',${overrides.version === null ? 'null' : (overrides.version ?? 50)},
+      coalesce((select submitted_by from public.match_event_result_proposals where id='${proposalId}'),'${players[0]}'),
+      coalesce((select submitted_at from public.match_event_result_proposals where id='${proposalId}'),'2030-06-13 18:30:00+00'::timestamptz),
+      coalesce((select review_deadline_at from public.match_event_result_proposals where id='${proposalId}'),'2030-06-15 18:30:00+00'::timestamptz),
+      ${overrides.teams ?? TEAMS_OK(players)},${overrides.sets ?? SETS_OK},${overrides.classification === null ? 'null' : q(overrides.classification ?? 'team_b')},${overrides.utc === null ? 'null' : q(overrides.utc ?? '2030-06-15 18:30:00+00') + '::timestamptz'},${overrides.local === null ? 'null' : q(overrides.local ?? '2030-06-15 20:30:00') + '::timestamp'},${overrides.offset === null ? 'null' : (overrides.offset ?? 7200)},${overrides.courtRaw ?? (overrides.court === undefined ? q('Court 3') : overrides.court === null ? 'null' : q(overrides.court))};`;
 
 type RejectionCase = {
   label: string;
@@ -108,18 +106,21 @@ describe('match result proposal schema integration', () => {
         v_allowed boolean;
         v_column record;
        begin
-        -- Exactly the two new relations, RLS enabled but not forced, owner postgres.
-        select count(*) into v_count from pg_class c join pg_namespace n on n.oid = c.relnamespace
-         where n.nspname = 'public'
-           and c.relname in ('match_event_result_proposals', 'match_event_result_proposal_versions')
-           and c.relkind = 'r';
-        if v_count <> 2 then raise exception 'expected exactly two result relations, got %', v_count; end if;
-        if exists (
-          select 1 from pg_class c join pg_namespace n on n.oid = c.relnamespace
-         where n.nspname = 'public'
-           and c.relname in ('match_event_result_proposals', 'match_event_result_proposal_versions')
-           and (not c.relrowsecurity or c.relforcerowsecurity or pg_get_userbyid(c.relowner) <> 'postgres')
-        ) then raise exception 'result tables must be RLS-enabled, unforced, owner postgres'; end if;
+         -- Result facts and evidence relations, RLS enabled but not forced.
+         select count(*) into v_count from pg_class c join pg_namespace n on n.oid = c.relnamespace
+          where n.nspname = 'public'
+            and c.relname in ('match_event_result_proposals', 'match_event_result_proposal_versions',
+              'match_event_result_reviews', 'match_event_result_confirmations',
+              'match_event_result_processing_state')
+            and c.relkind = 'r';
+         if v_count <> 5 then raise exception 'expected five result relations, got %', v_count; end if;
+         if exists (
+           select 1 from pg_class c join pg_namespace n on n.oid = c.relnamespace
+          where n.nspname = 'public' and c.relname in ('match_event_result_proposals',
+            'match_event_result_proposal_versions', 'match_event_result_reviews',
+            'match_event_result_confirmations', 'match_event_result_processing_state')
+            and (not c.relrowsecurity or c.relforcerowsecurity or pg_get_userbyid(c.relowner) <> 'postgres')
+         ) then raise exception 'result tables must be RLS-enabled, unforced, owner postgres'; end if;
 
         -- Proposals: exactly one SELECT policy for authenticated; no other policies.
         select count(*) into v_count from pg_policies
@@ -137,10 +138,20 @@ describe('match result proposal schema integration', () => {
            and qual ilike '%match_event_registrations%'
            and qual ilike '%lifecycle = ''accepted''%';
         if v_def is null then raise exception 'proposal policy misses creator/admin/accepted-participant branches'; end if;
-        if exists (
-          select 1 from pg_policies
-         where schemaname = 'public' and tablename = 'match_event_result_proposal_versions'
-        ) then raise exception 'versions must have no policies'; end if;
+         if exists (
+           select 1 from pg_policies
+          where schemaname = 'public' and tablename = 'match_event_result_proposal_versions'
+         ) then raise exception 'versions must have no policies'; end if;
+         foreach v_def in array array['match_event_result_reviews', 'match_event_result_confirmations'] loop
+           select count(*) into v_count from pg_policies
+            where schemaname = 'public' and tablename = v_def and cmd = 'SELECT'
+              and roles::text = '{authenticated}';
+           if v_count <> 1 then raise exception '% must have one authorized SELECT policy', v_def; end if;
+         end loop;
+         if exists (select 1 from pg_policies where schemaname = 'public'
+           and tablename = 'match_event_result_processing_state') then
+           raise exception 'processing state must be internal-only';
+         end if;
 
         -- Grants matrix: authenticated may only SELECT proposals; nothing else anywhere.
         foreach v_role in array array['anon', 'authenticated', 'public'] loop
@@ -149,10 +160,20 @@ describe('match result proposal schema integration', () => {
             if v_allowed is distinct from (v_role = 'authenticated' and v_operation = 'SELECT') then
               raise exception 'proposal grant matrix violated for % %', v_role, v_operation;
             end if;
-            select has_table_privilege(v_role, 'public.match_event_result_proposal_versions', v_operation) into v_allowed;
-            if v_allowed then raise exception 'versions must grant nothing: % %', v_role, v_operation; end if;
-          end loop;
-        end loop;
+             select has_table_privilege(v_role, 'public.match_event_result_proposal_versions', v_operation) into v_allowed;
+             if v_allowed then raise exception 'versions must grant nothing: % %', v_role, v_operation; end if;
+             select has_table_privilege(v_role, 'public.match_event_result_reviews', v_operation) into v_allowed;
+             if v_allowed is distinct from (v_role = 'authenticated' and v_operation = 'SELECT') then
+               raise exception 'review grant matrix violated for % %', v_role, v_operation;
+             end if;
+             select has_table_privilege(v_role, 'public.match_event_result_confirmations', v_operation) into v_allowed;
+             if v_allowed is distinct from (v_role = 'authenticated' and v_operation = 'SELECT') then
+               raise exception 'confirmation grant matrix violated for % %', v_role, v_operation;
+             end if;
+             select has_table_privilege(v_role, 'public.match_event_result_processing_state', v_operation) into v_allowed;
+             if v_allowed then raise exception 'processing state must grant nothing: % %', v_role, v_operation; end if;
+           end loop;
+         end loop;
 
         -- Proposals catalog: identity, pointer facts, uniqueness and FKs.
         select pg_get_constraintdef(oid) into v_def from pg_constraint
@@ -167,20 +188,28 @@ describe('match result proposal schema integration', () => {
          where conrelid = 'public.match_event_result_proposals'::regclass and contype = 'f'
            and pg_get_constraintdef(oid) ilike '%foreign key (match_event_id) references match_events(id) on delete restrict%';
         if v_count <> 1 then raise exception 'proposals event FK must be RESTRICT'; end if;
-        select count(*) into v_count from pg_constraint
-         where conrelid = 'public.match_event_result_proposals'::regclass and contype = 'f'
-           and pg_get_constraintdef(oid) ilike '%foreign key (submitted_by) references auth.users(id) on delete restrict%';
-        if v_count <> 1 then raise exception 'proposals submitter FK must be RESTRICT'; end if;
+         select count(*) into v_count from pg_constraint
+          where conrelid = 'public.match_event_result_proposals'::regclass and contype = 'f'
+            and pg_get_constraintdef(oid) ilike '%foreign key (submitted_by) references auth.users(id) on delete restrict%';
+         if v_count <> 1 then raise exception 'proposals submitter FK must be RESTRICT'; end if;
+         select count(*) into v_count from pg_constraint
+          where conrelid = 'public.match_event_result_proposals'::regclass
+            and conname = 'match_result_proposal_active_version_fk' and condeferrable and condeferred;
+         if v_count <> 1 then raise exception 'active-version FK must be deferred'; end if;
         select pg_get_constraintdef(oid) into v_def from pg_constraint
          where conrelid = 'public.match_event_result_proposals'::regclass and contype = 'c'
            and pg_get_constraintdef(oid) ilike '%group_number%';
         if v_def is null or v_def not ilike '%group_number >= 1%' or v_def not ilike '%9007199254740991%' then
           raise exception 'group_number bounds missing: %', v_def;
         end if;
-        select count(*) into v_count from pg_constraint
-         where conrelid = 'public.match_event_result_proposals'::regclass and contype = 'c'
-           and pg_get_constraintdef(oid) ilike '%pending%';
-        if v_count <> 1 then raise exception 'status pending CHECK missing'; end if;
+         select pg_get_constraintdef(oid) into v_def from pg_constraint
+          where conrelid = 'public.match_event_result_proposals'::regclass
+            and conname = 'match_event_result_proposals_status_check';
+         foreach v_text in array array['pending', 'disputed', 'confirmed'] loop
+           if v_def is null or position(quote_literal(v_text) in v_def) = 0 then
+             raise exception 'status CHECK misses %: %', v_text, v_def;
+           end if;
+         end loop;
         foreach v_def in array array['status', 'active_version', 'review_deadline_at', 'submitted_by', 'submitted_at', 'group_number', 'match_event_id'] loop
           select is_nullable, column_default into v_text, v_triggerdef from information_schema.columns
            where table_schema = 'public' and table_name = 'match_event_result_proposals' and column_name = v_def;
@@ -243,11 +272,13 @@ describe('match result proposal schema integration', () => {
         if v_def is null or v_def not ilike '%at time zone ''UTC''%' then
           raise exception 'played_at triple consistency CHECK missing: %', v_def;
         end if;
-        for v_column in select * from (values
-          ('teams', 'jsonb', 'NO'), ('sets', 'jsonb', 'NO'),
-          ('played_at_utc', 'timestamptz', 'NO'), ('played_at_local', 'timestamp', 'NO'),
-          ('played_at_offset_seconds', 'int4', 'NO'), ('classification', 'text', 'NO'),
-          ('court_label', 'text', 'YES'), ('version', 'int8', 'NO'), ('proposal_id', 'uuid', 'NO')
+         for v_column in select * from (values
+           ('teams', 'jsonb', 'NO'), ('sets', 'jsonb', 'NO'),
+           ('played_at_utc', 'timestamptz', 'NO'), ('played_at_local', 'timestamp', 'NO'),
+           ('played_at_offset_seconds', 'int4', 'NO'), ('classification', 'text', 'NO'),
+           ('court_label', 'text', 'YES'), ('version', 'int8', 'NO'), ('proposal_id', 'uuid', 'NO'),
+           ('submitted_by', 'uuid', 'NO'), ('submitted_at', 'timestamptz', 'NO'),
+           ('review_deadline_at', 'timestamptz', 'NO')
         ) as c(column_name, udt_name, nullability) loop
           select udt_name, is_nullable into v_text, v_triggerdef from information_schema.columns
            where table_schema = 'public' and table_name = 'match_event_result_proposal_versions'
@@ -258,17 +289,39 @@ describe('match result proposal schema integration', () => {
           end if;
         end loop;
 
-        -- Append-only guards cover UPDATE and DELETE on both tables.
-        foreach v_triggerdef in array array[
-          'match_result_proposal_immutable', 'match_result_proposal_version_immutable'
-        ] loop
+         -- Pointer transitions are narrow; immutable fact versions remain append-only.
+         foreach v_triggerdef in array array[
+           'match_result_proposal_transition_guard', 'match_result_proposal_version_immutable'
+         ] loop
           select pg_get_triggerdef(oid) into v_def from pg_trigger
            where tgrelid in ('public.match_event_result_proposals'::regclass, 'public.match_event_result_proposal_versions'::regclass)
              and tgname = v_triggerdef and not tgisinternal;
-          if v_def is null or v_def not ilike '%BEFORE DELETE OR UPDATE%' then
-            raise exception 'immutability trigger % missing or wrong events: %', v_triggerdef, v_def;
+           if v_def is null or v_def not ilike '%BEFORE DELETE OR UPDATE%' then
+             raise exception 'result guard % missing or wrong events: %', v_triggerdef, v_def;
+           end if;
+         end loop;
+          if has_function_privilege('anon', 'public.finalize_match_event_result_locked(uuid,bigint,text,uuid)', 'EXECUTE')
+            or has_function_privilege('authenticated', 'public.finalize_match_event_result_locked(uuid,bigint,text,uuid)', 'EXECUTE') then
+            raise exception 'internal finalizer EXECUTE must be denied to browser roles';
           end if;
-        end loop;
+          foreach v_def in array array[
+            'public.guard_match_result_review_immutable()',
+            'public.guard_match_event_result_confirmation_insert()',
+            'public.guard_match_result_proposal_transition()',
+            'public.check_match_result_proposal_pointer()',
+            'public.check_match_result_confirmation_pointer()',
+            'public.has_match_event_result_approval_coverage(uuid,bigint,uuid)',
+            'public.guard_match_event_audit()'
+          ] loop
+            if has_function_privilege('anon', v_def, 'EXECUTE')
+              or has_function_privilege('authenticated', v_def, 'EXECUTE') then
+              raise exception 'internal function EXECUTE must be denied to browser roles: %', v_def;
+            end if;
+          end loop;
+          if has_function_privilege('anon', 'public.get_match_event_official_results(uuid)', 'EXECUTE')
+            or not has_function_privilege('authenticated', 'public.get_match_event_official_results(uuid)', 'EXECUTE') then
+            raise exception 'official result reader grants must be authenticated-only';
+          end if;
 
         -- The migration documents the PAF-102 protection contract it fulfills.
         if obj_description('public.match_event_result_proposals'::regclass) not ilike '%protect_match_event_results%'
@@ -276,16 +329,25 @@ describe('match result proposal schema integration', () => {
           raise exception 'table comments must state the PAF-102 protection contract';
         end if;
 
-        -- Command-ledger action CHECK extended additively with submit_result.
-        select pg_get_constraintdef(oid) into v_def from pg_constraint
-         where conrelid = 'public.match_event_management_commands'::regclass
-           and conname = 'match_event_management_commands_action_check';
-        if v_def is null then raise exception 'command action CHECK missing'; end if;
-        foreach v_text in array array['withdraw', 'remove', 'transfer', 'cancel', 'edit', 'reconfirm', 'submit_result'] loop
-          if position(quote_literal(v_text) in v_def) = 0 then
-            raise exception 'command action CHECK lost %: %', v_text, v_def;
-          end if;
-        end loop;
+         -- Command-ledger and audit vocabulary extended additively.
+         select pg_get_constraintdef(oid) into v_def from pg_constraint
+          where conrelid = 'public.match_event_management_commands'::regclass
+            and conname = 'match_event_management_commands_action_check';
+         if v_def is null then raise exception 'command action CHECK missing'; end if;
+         foreach v_text in array array['withdraw', 'remove', 'transfer', 'cancel', 'edit', 'reconfirm',
+           'submit_result', 'review_result', 'correct_result'] loop
+           if position(quote_literal(v_text) in v_def) = 0 then
+             raise exception 'command action CHECK lost %: %', v_text, v_def;
+           end if;
+         end loop;
+         select pg_get_constraintdef(oid) into v_def from pg_constraint
+          where conrelid = 'public.match_event_audit_log'::regclass
+            and conname = 'match_event_audit_log_action_check';
+         foreach v_text in array array['result_approved', 'result_disputed', 'result_corrected', 'result_confirmed'] loop
+           if v_def is null or position(quote_literal(v_text) in v_def) = 0 then
+             raise exception 'audit action CHECK lost %: %', v_text, v_def;
+           end if;
+         end loop;
        end $$;`)
       ).resolves.toBeUndefined();
     },
@@ -310,11 +372,6 @@ describe('match result proposal schema integration', () => {
           label: 'group above js-safe maximum',
           kind: 'check',
           stmt: PROPOSAL_INSERT(eventId, players[0]!, { group: 9007199254740992 })
-        },
-        {
-          label: 'status confirmed',
-          kind: 'check',
-          stmt: PROPOSAL_INSERT(eventId, players[0]!, { status: 'confirmed' })
         },
         {
           label: 'status null',
@@ -355,11 +412,6 @@ describe('match result proposal schema integration', () => {
           label: 'duplicate active proposal per event and group',
           kind: 'unique',
           stmt: PROPOSAL_INSERT(eventId, players[1]!, { group: 2 })
-        },
-        {
-          label: 'proposal update rejected',
-          kind: 'check',
-          stmt: `update public.match_event_result_proposals set status = 'confirmed' where id = '${proposalId}'`
         },
         {
           label: 'proposal delete rejected',
@@ -676,9 +728,10 @@ describe('match result proposal schema integration', () => {
         alter table public.match_events enable trigger match_event_creator_registration;
 
         -- Valid pointer row: defaults and anchors stored verbatim.
-        insert into public.match_event_result_proposals(id, match_event_id, group_number, status, active_version,
-            review_deadline_at, submitted_by)
-          values ('${proposalId}', '${eventId}', 2, 'pending', 7, '2030-06-20 12:00:00+00'::timestamptz, '${players[0]}');
+         insert into public.match_event_result_proposals(id, match_event_id, group_number, status, active_version,
+             review_deadline_at, submitted_by, submitted_at)
+           values ('${proposalId}', '${eventId}', 2, 'pending', 7, '2030-06-20 12:00:00+00'::timestamptz,
+             '${players[0]}', '2030-06-18 12:00:00+00'::timestamptz);
         select * into v_stored from public.match_event_result_proposals where id = '${proposalId}';
         if v_stored.submitted_at is null or v_stored.status <> 'pending' or v_stored.group_number <> 2
           or v_stored.active_version <> 7 then
@@ -706,6 +759,7 @@ describe('match result proposal schema integration', () => {
           offset: -50400,
           court: 'C'.repeat(100)
         })}
+        ${VERSION_INSERT(proposalId, players, { version: 7 })}
         select court_label into v_stored from public.match_event_result_proposal_versions
          where proposal_id = '${proposalId}' and version = 1;
         if v_stored.court_label is distinct from 'Court 3' then
@@ -785,11 +839,12 @@ describe('match result proposal schema integration', () => {
         await fixtureSql(`do $fixture$ begin
         insert into public.match_event_result_proposals(id, match_event_id, group_number, status, active_version, review_deadline_at, submitted_by)
           values ('${proposalId}', '${e.id}', 1, 'pending', 1, now() + interval '48 hours', '${f.creator.id}');
-        insert into public.match_event_result_proposal_versions(proposal_id, version, teams, sets, classification, played_at_utc, played_at_local, played_at_offset_seconds, court_label)
-          values ('${proposalId}', 1,
+        insert into public.match_event_result_proposal_versions(proposal_id, version, submitted_by, submitted_at, review_deadline_at, teams, sets, classification, played_at_utc, played_at_local, played_at_offset_seconds, court_label)
+          select '${proposalId}', 1, p.submitted_by, p.submitted_at, p.review_deadline_at,
             '{"team_a":["${f.creator.id}","${participant.id}"],"team_b":["${admin.id}","${outsider.id}"]}'::jsonb,
             '[{"position":1,"team_a_games":6,"team_b_games":4,"completed":true}]'::jsonb,
-            'incomplete', '2030-06-15 18:30:00+00'::timestamptz, '2030-06-15 20:30:00'::timestamp, 7200, 'Court 3');
+            'incomplete', '2030-06-15 18:30:00+00'::timestamptz, '2030-06-15 20:30:00'::timestamp, 7200, 'Court 3'
+            from public.match_event_result_proposals p where p.id = '${proposalId}';
       end $fixture$;`);
 
         // Authorized readers see the pending pointer with its facts.
@@ -857,6 +912,9 @@ describe('match result proposal schema integration', () => {
             f.creator.client.from('match_event_result_proposal_versions').insert({
               proposal_id: proposalId,
               version: 9,
+              submitted_by: f.creator.id,
+              submitted_at: new Date().toISOString(),
+              review_deadline_at: new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString(),
               teams: { team_a: [f.creator.id, participant.id], team_b: [admin.id, outsider.id] },
               sets: [{ position: 1, team_a_games: 6, team_b_games: 4, completed: true }],
               classification: 'team_a',
@@ -882,6 +940,76 @@ describe('match result proposal schema integration', () => {
               .eq('proposal_id', proposalId)
           )
         );
+
+        for (const actor of [f.creator, participant, admin]) {
+          const reviews = await actor.client
+            .from('match_event_result_reviews')
+            .select('id')
+            .eq('proposal_id', proposalId);
+          const confirmations = await actor.client
+            .from('match_event_result_confirmations')
+            .select('id')
+            .eq('proposal_id', proposalId);
+          expect(reviews.error).toBeNull();
+          expect(reviews.data).toEqual([]);
+          expect(confirmations.error).toBeNull();
+          expect(confirmations.data).toEqual([]);
+        }
+        expect(
+          (
+            await outsider.client
+              .from('match_event_result_reviews')
+              .select('id')
+              .eq('proposal_id', proposalId)
+          ).data
+        ).toEqual([]);
+        expect(
+          (
+            await outsider.client
+              .from('match_event_result_confirmations')
+              .select('id')
+              .eq('proposal_id', proposalId)
+          ).data
+        ).toEqual([]);
+
+        await writeDenied(
+          Promise.resolve(
+            f.creator.client.from('match_event_result_reviews').insert({
+              proposal_id: proposalId,
+              proposal_version: 1,
+              reviewer_user_id: participant.id,
+              decision: 'approve',
+              request_id: crypto.randomUUID()
+            })
+          )
+        );
+        await writeDenied(
+          Promise.resolve(
+            f.creator.client.from('match_event_result_confirmations').insert({
+              proposal_id: proposalId,
+              proposal_version: 1,
+              match_event_id: e.id,
+              group_number: 1,
+              source: 'MANUAL',
+              effective_at: new Date().toISOString(),
+              actor_id: participant.id,
+              event_type: 'friendly',
+              ratable_eligible: false
+            })
+          )
+        );
+        const processingRead = await f.creator.client
+          .from('match_event_result_processing_state')
+          .select('proposal_id')
+          .eq('proposal_id', proposalId);
+        expect(processingRead.error?.code).toBe('42501');
+        await writeDenied(
+          Promise.resolve(
+            f.creator.client.from('match_event_result_processing_state').insert({
+              proposal_id: proposalId
+            })
+          )
+        );
       },
       120000
     );
@@ -905,9 +1033,24 @@ describe('match result proposal schema integration', () => {
         (select count(*) from pg_policies where schemaname = 'public' and tablename = 'match_event_result_proposals') as policies,
         has_table_privilege('authenticated', 'public.match_event_result_proposals', 'SELECT') as read_granted,
         has_table_privilege('authenticated', 'public.match_event_result_proposals', 'INSERT') as write_granted,
-        has_table_privilege('authenticated', 'public.match_event_result_proposal_versions', 'SELECT') as versions_granted`);
+        has_table_privilege('authenticated', 'public.match_event_result_proposal_versions', 'SELECT') as versions_granted,
+        has_table_privilege('authenticated', 'public.match_event_result_reviews', 'SELECT') as reviews_granted,
+        has_table_privilege('authenticated', 'public.match_event_result_reviews', 'INSERT') as reviews_write_granted,
+        has_table_privilege('authenticated', 'public.match_event_result_confirmations', 'SELECT') as confirmations_granted,
+        has_table_privilege('authenticated', 'public.match_event_result_confirmations', 'INSERT') as confirmations_write_granted,
+        has_table_privilege('authenticated', 'public.match_event_result_processing_state', 'SELECT') as processing_granted`);
       expect(catalog).toEqual([
-        { policies: 1, read_granted: true, write_granted: false, versions_granted: false }
+        {
+          policies: 1,
+          read_granted: true,
+          write_granted: false,
+          versions_granted: false,
+          reviews_granted: true,
+          reviews_write_granted: false,
+          confirmations_granted: true,
+          confirmations_write_granted: false,
+          processing_granted: false
+        }
       ]);
     },
     60000

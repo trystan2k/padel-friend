@@ -20,15 +20,6 @@ export async function resultFixtures(browser: Browser, options?: Parameters<type
       return id;
     },
     async cleanup() {
-      await sql(`do $$ begin
-        lock table public.match_events in share row exclusive mode;
-        alter table public.match_event_result_proposals disable trigger match_result_proposal_immutable;
-        alter table public.match_event_result_proposal_versions disable trigger match_result_proposal_version_immutable;
-        delete from public.match_event_result_proposal_versions where proposal_id in (select p.id from public.match_event_result_proposals p join public.match_events e on e.id=p.match_event_id where e.community_id='${f.community}');
-        delete from public.match_event_result_proposals where match_event_id in (select id from public.match_events where community_id='${f.community}');
-        alter table public.match_event_result_proposal_versions enable trigger match_result_proposal_version_immutable;
-        alter table public.match_event_result_proposals enable trigger match_result_proposal_immutable;
-      end $$;`);
       await f.cleanup();
     }
   };
