@@ -301,6 +301,36 @@ export async function registrationStateById(
   return { next: Number(rows[0]!['next']), revision: Number(rows[0]!['revision']) };
 }
 
+export type RegistrationSnapshot = {
+  state: { next: number; revision: number };
+  cutoffMarker: string | null;
+};
+
+/** Reads committed registration state for a suite's fixture set in one snapshot. */
+export async function registrationSnapshotsByEventIds(
+  eventIds: readonly string[]
+): Promise<Map<string, RegistrationSnapshot>> {
+  if (eventIds.length === 0) return new Map();
+  const { rows } = await queryTrustedSql(
+    `select match_event_id::text as event_id,
+            next_accepted_ordinal::int as next,
+            transition_revision::int as revision,
+            cutoff_processed_at::text as cutoff_marker
+       from public.match_event_registration_state
+      where match_event_id = any($1::uuid[])`,
+    { values: [[...eventIds]] }
+  );
+  return new Map(
+    rows.map((row) => [
+      String(row['event_id']),
+      {
+        state: { next: Number(row['next']), revision: Number(row['revision']) },
+        cutoffMarker: typeof row['cutoff_marker'] === 'string' ? row['cutoff_marker'] : null
+      }
+    ])
+  );
+}
+
 export async function expectDomainError(
   promise: PromiseLike<RpcResult>,
   token: string

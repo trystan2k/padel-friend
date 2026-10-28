@@ -32,6 +32,10 @@ export type SqlQueryOptions = {
   timeoutMs?: number;
   values?: unknown[];
 };
+export type SqlBatchStatement = {
+  sql: string;
+  expectedRowCount?: number;
+};
 
 export const SQL_TRANSPORT_BOUNDS = {
   maxConnections: 10,
@@ -283,6 +287,90 @@ export async function queryTrustedSql(
 /** Executes trusted fixture SQL whose result rows are not needed. */
 export async function executeTrustedSql(sql: string, options: SqlQueryOptions = {}): Promise<void> {
   await queryTrustedSql(sql, options);
+}
+
+function batchStatementSql(statement: SqlBatchStatement, index: number): string {
+  const escapedSql = statement.sql.replaceAll("'", "''");
+  const rowCountCheck =
+    statement.expectedRowCount === undefined
+      ? ''
+      : `
+  GET DIAGNOSTICS batch_row_count = ROW_COUNT;
+  IF batch_row_count <> ${statement.expectedRowCount} THEN
+    RAISE EXCEPTION USING
+      ERRCODE = 'P0001',
+      MESSAGE = 'Trusted SQL batch row count mismatch',
+      DETAIL = format('expected %s row(s), got %s', ${statement.expectedRowCount}, batch_row_count);
+  END IF;`;
+
+  return `DO $paf_batch$
+DECLARE
+  batch_row_count integer;
+  failure_state text;
+  failure_message text;
+  failure_detail text;
+BEGIN
+  EXECUTE '${escapedSql}';${rowCountCheck}
+EXCEPTION
+  WHEN query_canceled THEN
+    GET STACKED DIAGNOSTICS
+      failure_state = RETURNED_SQLSTATE,
+      failure_message = MESSAGE_TEXT,
+      failure_detail = PG_EXCEPTION_DETAIL;
+    RAISE EXCEPTION USING
+      ERRCODE = failure_state,
+      MESSAGE = failure_message,
+      DETAIL = concat_ws(E'\\n', 'Trusted SQL batch statement index ${index} failed', nullif(failure_detail, ''));
+  WHEN OTHERS THEN
+    GET STACKED DIAGNOSTICS
+      failure_state = RETURNED_SQLSTATE,
+      failure_message = MESSAGE_TEXT,
+      failure_detail = PG_EXCEPTION_DETAIL;
+    RAISE EXCEPTION USING
+      ERRCODE = failure_state,
+      MESSAGE = failure_message,
+      DETAIL = concat_ws(E'\\n', 'Trusted SQL batch statement index ${index} failed', nullif(failure_detail, ''));
+END
+$paf_batch$;`;
+}
+
+/**
+ * Executes ordered, resultless fixture statements in one PostgreSQL round trip.
+ * Each statement runs separately in order; failures roll back the whole batch
+ * and preserve SQLSTATE/message/detail with a zero-based statement index.
+ */
+export async function executeTrustedSqlBatch(
+  statements: readonly SqlBatchStatement[],
+  options: Pick<SqlQueryOptions, 'timeoutMs'> = {}
+): Promise<void> {
+  if (statements.length === 0) throw new Error('Trusted SQL batch cannot be empty');
+  for (const [index, statement] of statements.entries()) {
+    if (!statement.sql.trim())
+      throw new Error(`Trusted SQL batch statement ${index} cannot be empty`);
+    if (
+      statement.expectedRowCount !== undefined &&
+      (!Number.isSafeInteger(statement.expectedRowCount) || statement.expectedRowCount < 0)
+    )
+      throw new Error(`Trusted SQL batch statement ${index} has an invalid expected row count`);
+  }
+
+  const timeoutMs = options.timeoutMs ?? QUERY_TIMEOUT_MS;
+  if (!Number.isSafeInteger(timeoutMs) || timeoutMs <= 0)
+    throw new Error('Trusted SQL timeout must be a positive integer');
+
+  const currentPool = await getPool();
+  const client = await currentPool.connect();
+  transportConnectionWasOpened = true;
+  try {
+    await client.query(`SET statement_timeout = '${timeoutMs}ms'`);
+    await client.query(statements.map(batchStatementSql).join('\n'));
+    await resetPooledSession(client);
+    client.release();
+  } catch (error) {
+    // A failed batch is rolled back by PostgreSQL and its connection is evicted.
+    client.release(asError(error));
+    throw normalizeSqlError(error);
+  }
 }
 
 export type DedicatedSqlConnection = {

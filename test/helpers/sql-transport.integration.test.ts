@@ -1,4 +1,5 @@
 import { readFileSync } from 'node:fs';
+import { randomUUID } from 'node:crypto';
 import { describe, expect, it, vi } from 'vitest';
 import { Client } from 'pg';
 import {
@@ -9,6 +10,7 @@ import {
 import {
   openDedicatedSqlConnection,
   assertLoopbackDatabaseUrl,
+  executeTrustedSqlBatch,
   queryTrustedSql,
   sqlErrorMessage,
   startSql
@@ -60,6 +62,69 @@ describe('trusted SQL transport integration', () => {
   });
 
   describe.skipIf(environment.env === null)('local PostgreSQL pool behavior', () => {
+    it('executes ordered fixture batches and preserves indexed PostgreSQL errors', async () => {
+      const table = `paf_batch_${randomUUID().replaceAll('-', '')}`;
+      await executeTrustedSqlBatch([
+        { sql: `create temporary table ${table} (value integer primary key) on commit drop` },
+        { sql: `insert into ${table} values (1)`, expectedRowCount: 1 },
+        { sql: `insert into ${table} values (2)`, expectedRowCount: 1 },
+        {
+          sql: `do $verify$ begin
+            if (select array_agg(value order by value) from ${table}) is distinct from array[1, 2] then
+              raise exception 'fixture batch lost statement order';
+            end if;
+          end $verify$`
+        },
+        {
+          sql: `select pg_catalog.set_config('paf_test.batch_hygiene', 'leaked', false)`
+        }
+      ]);
+      const resetSetting = await queryTrustedSql(
+        "select pg_catalog.current_setting('paf_test.batch_hygiene', true) as value"
+      );
+      expect(resetSetting.rows[0]?.['value']).not.toBe('leaked');
+
+      const failureTable = `${table}_failure`;
+      const batchError = await executeTrustedSqlBatch([
+        {
+          sql: `create temporary table ${failureTable} (value integer primary key) on commit drop`
+        },
+        { sql: `insert into ${failureTable} values (1)`, expectedRowCount: 1 },
+        { sql: `insert into ${failureTable} values (1)`, expectedRowCount: 1 }
+      ]).then(
+        () => undefined,
+        (error: unknown) => error
+      );
+      expect(batchError).toMatchObject({
+        code: '23505',
+        message: expect.stringContaining('duplicate key value'),
+        detail: expect.stringContaining('Trusted SQL batch statement index 2 failed')
+      });
+      expect(sqlErrorMessage(batchError)).toContain('23505: duplicate key value');
+
+      const rowCountError = await executeTrustedSqlBatch([
+        { sql: 'select 1 where false', expectedRowCount: 1 }
+      ]).then(
+        () => undefined,
+        (error: unknown) => error
+      );
+      expect(rowCountError).toMatchObject({
+        code: 'P0001',
+        message: 'Trusted SQL batch row count mismatch',
+        detail: expect.stringContaining('Trusted SQL batch statement index 0 failed')
+      });
+
+      await expect(
+        executeTrustedSqlBatch([{ sql: 'select pg_catalog.pg_sleep(5)' }], { timeoutMs: 50 })
+      ).rejects.toMatchObject({
+        code: '57014',
+        detail: expect.stringContaining('Trusted SQL batch statement index 0 failed')
+      });
+      await expect(queryTrustedSql('select 42 as recovered')).resolves.toMatchObject({
+        rows: [{ recovered: 42 }]
+      });
+    });
+
     it('preserves CLI temporal JSON precision and a consistent SQL error contract', async () => {
       const result = await queryTrustedSql(`
         SELECT '2026-11-07 09:48:35.123456+02:00'::timestamptz AS instant,

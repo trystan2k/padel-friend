@@ -5,6 +5,7 @@ import { matchPhotoFixture } from './helpers/match-photo-fixtures';
 import {
   asRecord,
   fixtureSql,
+  registrationSnapshotsByEventIds,
   sqlRows,
   startSql,
   waitForRows,
@@ -473,8 +474,9 @@ describe('match registration actions integration', () => {
     );
     // The publication trigger gave every event an accepted creator slot and the
     // matching ordinal state: each event starts at next_accepted_ordinal = 2.
+    const initialSnapshots = await registrationSnapshotsByEventIds(Object.values(events));
     for (const eventKey of Object.keys(events)) {
-      expect(await registrationState(eventKey), `${eventKey} initial state`).toEqual({
+      expect(initialSnapshots.get(events[eventKey]!)?.state, `${eventKey} initial state`).toEqual({
         next: 2,
         revision: 0
       });

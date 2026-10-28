@@ -51,7 +51,7 @@ import {
   communityJsonbFixtures,
   compactJsonBytes
 } from './helpers/community-jsonb-fixtures';
-import { queryTrustedSql } from './helpers/sql-transport';
+import { executeTrustedSqlBatch, queryTrustedSql } from './helpers/sql-transport';
 
 vi.setConfig({ testTimeout: 30000, hookTimeout: 30000 });
 type LocalEnv = NonNullable<ReturnType<typeof localSupabaseEnv>['env']>;
@@ -499,28 +499,54 @@ describe.skipIf(environment.env === null)('community domain (local Supabase inte
     expect(created.error).toBeNull();
     const communityId = created.data;
     if (typeof communityId !== 'string') throw new Error('Missing count fixture community');
-    async function add(
-      userId: string,
-      status: 'active' | 'pending' | 'inactive',
-      role: 'admin' | 'member',
-      validUntil: string | null = null
-    ) {
-      const untilValue =
-        status === 'inactive' && validUntil === null ? new Date().toISOString() : validUntil;
-      const until = untilValue === null ? 'null' : `'${untilValue}'::timestamptz`;
-      const inserted = await executeLocalFixtureSql(
-        `insert into public.community_members (community_id,user_id,status,role,valid_from,valid_until) values ('${communityId}','${userId}','${status}','${role}',now()-interval '1 day',${until}) returning id`
-      );
-      const insertedRow = inserted.rows[0];
-      if (inserted.rows.length !== 1 || typeof insertedRow?.id !== 'string')
-        throw new Error('Membership fixture insert returned no ID');
-      return insertedRow.id;
-    }
-    const activeMemberId = await add(member.id, 'active', 'member');
-    await add(pending.id, 'pending', 'member');
-    await add(inactive.id, 'inactive', 'member');
-    await add(invited.id, 'inactive', 'member', new Date().toISOString());
-    const adminMemberId = await add(outsider.id, 'active', 'member');
+    const inactiveUntil = new Date().toISOString();
+    const invitedUntil = new Date().toISOString();
+    const activeMemberFixture = {
+      id: crypto.randomUUID(),
+      userId: member.id,
+      status: 'active' as const,
+      validUntil: null
+    };
+    const pendingMemberFixture = {
+      id: crypto.randomUUID(),
+      userId: pending.id,
+      status: 'pending' as const,
+      validUntil: null
+    };
+    const inactiveMemberFixture = {
+      id: crypto.randomUUID(),
+      userId: inactive.id,
+      status: 'inactive' as const,
+      validUntil: inactiveUntil
+    };
+    const invitedMemberFixture = {
+      id: crypto.randomUUID(),
+      userId: invited.id,
+      status: 'inactive' as const,
+      validUntil: invitedUntil
+    };
+    const adminMemberFixture = {
+      id: crypto.randomUUID(),
+      userId: outsider.id,
+      status: 'active' as const,
+      validUntil: null
+    };
+    const membershipFixtures = [
+      activeMemberFixture,
+      pendingMemberFixture,
+      inactiveMemberFixture,
+      invitedMemberFixture,
+      adminMemberFixture
+    ];
+    const quote = (value: string) => `'${value.replaceAll("'", "''")}'`;
+    await executeTrustedSqlBatch(
+      membershipFixtures.map((fixture) => ({
+        sql: `insert into public.community_members (id,community_id,user_id,status,role,valid_from,valid_until) values (${quote(fixture.id)},${quote(communityId)},${quote(fixture.userId)},${quote(fixture.status)},'member',now()-interval '1 day',${fixture.validUntil === null ? 'null' : `${quote(fixture.validUntil)}::timestamptz`}) returning id`,
+        expectedRowCount: 1
+      }))
+    );
+    const activeMemberId = activeMemberFixture.id;
+    const adminMemberId = adminMemberFixture.id;
     serverClient.current = admin.client;
     await promoteCommunityMember({
       data: { community_id: communityId, membership_id: adminMemberId }

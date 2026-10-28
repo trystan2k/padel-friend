@@ -16,6 +16,7 @@ import {
   leakedHolderBackends,
   makeRawRpc,
   registrationStateById,
+  registrationSnapshotsByEventIds,
   sqlRows,
   startSql,
   waitForRows,
@@ -549,12 +550,11 @@ describe('match registration cutoff integration', () => {
       duefail: 3,
       catchup: 2
     };
+    const initialSnapshots = await registrationSnapshotsByEventIds(Object.values(events));
     for (const [eventKey, next] of Object.entries(expectedNext)) {
-      expect(await registrationStateById(events[eventKey]!), `${eventKey} initial state`).toEqual({
-        next,
-        revision: 0
-      });
-      expect(await cutoffMarker(eventKey), `${eventKey} initial marker`).toBeNull();
+      const snapshot = initialSnapshots.get(events[eventKey]!);
+      expect(snapshot?.state, `${eventKey} initial state`).toEqual({ next, revision: 0 });
+      expect(snapshot?.cutoffMarker, `${eventKey} initial marker`).toBeNull();
     }
   });
 
