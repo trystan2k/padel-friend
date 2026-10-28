@@ -1,4 +1,6 @@
+import { readFileSync } from 'node:fs';
 import { describe, expect, it, vi } from 'vitest';
+import { Client } from 'pg';
 import {
   assertLocalSupabaseEnvInCi,
   dotEnvPathFromImportMetaUrl,
@@ -6,6 +8,7 @@ import {
 } from './local-supabase-env';
 import {
   openDedicatedSqlConnection,
+  assertLoopbackDatabaseUrl,
   queryTrustedSql,
   sqlErrorMessage,
   startSql
@@ -14,6 +17,44 @@ import {
 const environment = localSupabaseEnv({ filePath: dotEnvPathFromImportMetaUrl(import.meta.url) });
 
 describe('trusted SQL transport integration', () => {
+  it('keeps PostgreSQL dependency ranges aligned with the tilde save-prefix', () => {
+    const packageManifest: unknown = JSON.parse(
+      readFileSync(new URL('../../package.json', import.meta.url), 'utf8')
+    );
+    if (
+      typeof packageManifest !== 'object' ||
+      packageManifest === null ||
+      !('devDependencies' in packageManifest) ||
+      typeof packageManifest.devDependencies !== 'object' ||
+      packageManifest.devDependencies === null
+    )
+      throw new Error('Package manifest has no development dependencies');
+
+    expect(
+      'pg' in packageManifest.devDependencies ? packageManifest.devDependencies.pg : undefined
+    ).toBe('~8.23.1');
+    expect(
+      '@types/pg' in packageManifest.devDependencies
+        ? packageManifest.devDependencies['@types/pg']
+        : undefined
+    ).toBe('~8.23.1');
+  });
+
+  it.each([
+    'postgresql://localhost/postgres',
+    'postgresql://127.0.0.1/postgres',
+    'postgresql://[::1]/postgres',
+    'postgresql://localhost/postgres?host=localhost'
+  ])('accepts effective loopback connection string %s', (connectionString) => {
+    expect(assertLoopbackDatabaseUrl(connectionString)).toBe(connectionString);
+  });
+
+  it('rejects a non-loopback effective host supplied by query parameter', () => {
+    expect(() =>
+      assertLoopbackDatabaseUrl('postgresql://localhost/postgres?host=remote.example')
+    ).toThrow(/non-loopback PostgreSQL database host: remote\.example/);
+  });
+
   it('requires local Supabase in CI', () => {
     expect(() => assertLocalSupabaseEnvInCi(environment.env, process.env.CI)).not.toThrow();
   });
@@ -73,6 +114,42 @@ describe('trusted SQL transport integration', () => {
 
       const after = await queryTrustedSql('SELECT pg_catalog.pg_backend_pid() AS pid');
       expect(Number(after.rows[0]?.['pid'])).not.toBe(beforePid);
+    });
+
+    it('resets dedicated statement timeout to the default for each query', async () => {
+      const connection = await openDedicatedSqlConnection();
+      try {
+        await expect(
+          connection.query('SELECT pg_catalog.pg_sleep(0.2)', { timeoutMs: 50 })
+        ).rejects.toMatchObject({ code: '57014' });
+        await expect(connection.query('SELECT pg_catalog.pg_sleep(0.2)')).resolves.toMatchObject({
+          rows: [{ pg_sleep: '' }]
+        });
+      } finally {
+        await connection.close();
+      }
+    });
+
+    it('contains an ignored backend PID rejection while done reports connection failure', async () => {
+      await queryTrustedSql('SELECT 1');
+      const unhandledRejections: unknown[] = [];
+      const onUnhandledRejection = (reason: unknown) => unhandledRejections.push(reason);
+      const connect = vi
+        .spyOn(Client.prototype, 'connect')
+        .mockRejectedValueOnce(new Error('forced dedicated connection failure'));
+      process.on('unhandledRejection', onUnhandledRejection);
+      const handle = startSql('SELECT 1');
+      try {
+        const result = await handle.done;
+        await new Promise<void>((resolve) => setImmediate(resolve));
+        expect(result.code).toBeNull();
+        expect(result.stderr).toContain('forced dedicated connection failure');
+        expect(unhandledRejections).toEqual([]);
+      } finally {
+        process.off('unhandledRejection', onUnhandledRejection);
+        connect.mockRestore();
+        await handle.stop();
+      }
     });
 
     it('surfaces explicit cancellation errors from dedicated connections', async () => {

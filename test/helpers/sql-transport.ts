@@ -1,6 +1,7 @@
 import { execFileSync, spawn } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
 import { afterAll } from 'vitest';
+import { parse as parseConnectionString } from 'pg-connection-string';
 import {
   Client,
   Pool,
@@ -65,16 +66,22 @@ function normalizeHostname(hostname: string): string {
 
 /** Rejects every PostgreSQL target outside local Supabase loopback hosts. */
 export function assertLoopbackDatabaseUrl(connectionString: string): string {
-  let parsed: URL;
+  let config: ReturnType<typeof parseConnectionString>;
   try {
-    parsed = new URL(connectionString);
+    config = parseConnectionString(connectionString);
   } catch {
     throw new Error('Supabase DB_URL is invalid');
   }
-  if (!['postgres:', 'postgresql:'].includes(parsed.protocol))
+  let protocol: string;
+  try {
+    protocol = new URL(connectionString).protocol;
+  } catch {
+    throw new Error('Supabase DB_URL is invalid');
+  }
+  if (!['postgres:', 'postgresql:'].includes(protocol))
     throw new Error('Refusing non-PostgreSQL Supabase DB_URL');
 
-  const host = normalizeHostname(parsed.hostname);
+  const host = normalizeHostname(config.host ?? '');
   if (!LOOPBACK_HOSTS.has(host))
     throw new Error(`Refusing non-loopback PostgreSQL database host: ${host || '(missing)'}`);
   return connectionString;
@@ -339,8 +346,7 @@ export async function openDedicatedSqlConnection(): Promise<DedicatedSqlConnecti
     recentQueryFailureWasHandled = false;
     const operation = (async () => {
       try {
-        if (timeoutMs !== QUERY_TIMEOUT_MS)
-          await client.query(`SET statement_timeout = '${timeoutMs}ms'`);
+        await client.query(`SET statement_timeout = '${timeoutMs}ms'`);
         return queryResult(await client.query(sql, options.values));
       } catch (error) {
         recentQueryFailureWasHandled = true;
@@ -437,7 +443,9 @@ export function startSql(sql: string): SqlHandle {
     }
     await connection.close();
   };
-  return { backendPid: connectionPromise.then((connection) => connection.backendPid), done, stop };
+  const backendPid = connectionPromise.then((connection) => connection.backendPid);
+  void backendPid.catch(() => undefined);
+  return { backendPid, done, stop };
 }
 
 /** Retained per-call Supabase CLI path for CLI/migration contract tests only. */
