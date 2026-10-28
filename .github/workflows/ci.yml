@@ -13,8 +13,10 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
-# Branch-protection rollout: repo admin must replace the old `CI / checks` required
-# context with the single `CI / gate` context after this workflow is available.
+# Branch-protection rollout:
+# 1. First PR proves both `CI / checks` and `CI / gate` aggregates green.
+# 2. Then repo admin replaces required `CI / checks` with only `CI / gate`.
+# 3. Optional later change simplifies `checks` to fast-static-only; see job note.
 # This admin change cannot be made from the workflow.
 # Before: 39m33s wall (run 40183330593: build + unit 88.55s, integration 1292.99s,
 # E2E ~11m40s, serialized in one job). After: projected wall ≈ slowest job, with
@@ -22,12 +24,16 @@ concurrency:
 # the first CI run will provide actuals.
 # Compute cost should rise slightly because isolated jobs repeat setup.
 jobs:
-  # Independent jobs use `!cancelled()` so one phase failure does not suppress peers.
+  # Unit, integration, and E2E use `!cancelled()` so one phase failure does not suppress peers.
   # Each job owns its runner; integration and E2E never share a mutable Supabase DB.
+  # Post-cutover simplification: remove `needs` and remove the test-phase aggregation step,
+  # restoring the original static-checks-only body. `gate` still independently requires all
+  # four phase jobs, preserving aggregate semantics after `checks` becomes fast-static-only.
   checks:
     name: checks
     runs-on: ubuntu-latest
-    if: ${{ !cancelled() }}
+    needs: [unit, integration, e2e]
+    if: ${{ always() }}
     steps:
       - name: Start job timing
         run: printf '%s\n' "$(date +%s%3N)" > "$RUNNER_TEMP/ci-job-start-ms"
@@ -84,6 +90,18 @@ jobs:
       - run: pnpm typecheck
       - run: pnpm lint
       - run: pnpm format:check
+      - name: Require every test phase to succeed
+        if: ${{ always() }}
+        env:
+          UNIT_RESULT: ${{ needs.unit.result }}
+          INTEGRATION_RESULT: ${{ needs.integration.result }}
+          E2E_RESULT: ${{ needs.e2e.result }}
+        run: |
+          printf 'CI test phase results: unit=%s integration=%s e2e=%s\n' "$UNIT_RESULT" "$INTEGRATION_RESULT" "$E2E_RESULT"
+          if [[ "$UNIT_RESULT" != success || "$INTEGRATION_RESULT" != success || "$E2E_RESULT" != success ]]; then
+            printf '%s\n' 'Required test phase failed, was cancelled, or was unexpectedly skipped' >&2
+            exit 1
+          fi
       - name: Record checks timing
         if: always()
         env:

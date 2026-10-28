@@ -1,10 +1,39 @@
 import { createClient } from '@supabase/supabase-js';
 import { describe, expect, it } from 'vitest';
 import { createFixtureCleanupRegistry } from './fixture-cleanup';
+import {
+  createMatchFixtureCleanupRegistry,
+  registerMatchCommunityFixtureRows
+} from './match-registration-sql';
 import { dotEnvPathFromImportMetaUrl, localSupabaseEnv } from './local-supabase-env';
 import { executeTrustedSql, queryTrustedSql } from './sql-transport';
 
 const environment = localSupabaseEnv({ filePath: dotEnvPathFromImportMetaUrl(import.meta.url) });
+const communityMemberGuardStateSql = `select tgenabled from pg_catalog.pg_trigger t
+  join pg_catalog.pg_class c on c.oid = t.tgrelid
+  join pg_catalog.pg_namespace n on n.oid = c.relnamespace
+ where n.nspname = 'public' and c.relname = 'community_members'
+   and t.tgname = 'community_member_guard'`;
+
+async function getCommunityMemberGuardState() {
+  const state = (await queryTrustedSql(communityMemberGuardStateSql)).rows[0]?.['tgenabled'];
+  if (typeof state !== 'string' || !state)
+    throw new Error('community_member_guard trigger state not found');
+  return state;
+}
+
+async function restoreCommunityMemberGuardState(originalState: string) {
+  const statement = {
+    A: 'alter table public.community_members enable always trigger community_member_guard',
+    D: 'alter table public.community_members disable trigger community_member_guard',
+    O: 'alter table public.community_members enable trigger community_member_guard',
+    R: 'alter table public.community_members enable replica trigger community_member_guard'
+  }[originalState];
+  if (!statement) throw new Error(`Unknown community_member_guard state: ${originalState}`);
+
+  await executeTrustedSql(statement);
+  expect(await getCommunityMemberGuardState()).toBe(originalState);
+}
 
 async function createCommunityFixture(scope: string) {
   const env = environment.env;
@@ -100,5 +129,52 @@ describe.skipIf(environment.env === null)('fixture cleanup integration', () => {
 
     await second.registry.cleanup();
     await expect(second.registry.assertNoResidue()).resolves.toBeUndefined();
+  });
+
+  it('preserves an initially disabled trigger when cleanup rollback skips restoration DDL', async () => {
+    const registry = createFixtureCleanupRegistry('fixture-cleanup-rollback');
+    const originalState = await getCommunityMemberGuardState();
+    try {
+      await executeTrustedSql(
+        'alter table public.community_members disable trigger community_member_guard'
+      );
+      expect(await getCommunityMemberGuardState()).toBe('D');
+      await expect(
+        registry.deleteRegisteredRowsInOrder({
+          beforeStatements: [
+            'alter table public.community_members disable trigger community_member_guard'
+          ],
+          afterStatements: ['select 1 / 0'],
+          restoreOnFailure: [
+            'alter table public.community_members enable trigger community_member_guard'
+          ]
+        })
+      ).rejects.toThrow(
+        'restoration DDL was skipped because rollback restored the pre-transaction trigger state'
+      );
+      expect(await getCommunityMemberGuardState()).toBe('D');
+    } finally {
+      await restoreCommunityMemberGuardState(originalState);
+    }
+  });
+
+  // A second-session DDL race is not deterministic in a serial integration test.
+  // The match cleanup implementation instead asserts the invariant structurally:
+  // it locks each table, captures pg_trigger state, disables triggers, deletes,
+  // and restores from the captured state inside one SQL batch/transaction.
+  it('restores a trigger to its initially disabled state', async () => {
+    const communityId = crypto.randomUUID();
+    const registry = createMatchFixtureCleanupRegistry('fixture-cleanup-disabled-trigger');
+    registerMatchCommunityFixtureRows(registry, communityId);
+    const originalState = await getCommunityMemberGuardState();
+    try {
+      await executeTrustedSql(
+        'alter table public.community_members disable trigger community_member_guard'
+      );
+      await registry.cleanup();
+      expect(await getCommunityMemberGuardState()).toBe('D');
+    } finally {
+      await restoreCommunityMemberGuardState(originalState);
+    }
   });
 });

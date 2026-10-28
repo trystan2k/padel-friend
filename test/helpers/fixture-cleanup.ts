@@ -197,17 +197,11 @@ export class FixtureCleanupRegistry {
     try {
       await executeTrustedSqlBatch(statements.map((sql) => ({ sql })));
     } catch (error) {
-      if (options.restoreOnFailure?.length) {
-        try {
-          await executeTrustedSqlBatch(options.restoreOnFailure.map((sql) => ({ sql })));
-        } catch (restoreError) {
-          const failure = new AggregateError(
-            [error, restoreError],
-            `Fixture cleanup and trigger restoration failed for namespace ${this.namespace}`
-          );
-          throw failure;
-        }
-      }
+      if (options.restoreOnFailure?.length)
+        throw new Error(
+          `Fixture cleanup transaction rolled back for namespace ${this.namespace}; trigger restoration DDL was skipped because rollback restored the pre-transaction trigger state`,
+          { cause: error }
+        );
       throw error;
     }
   }

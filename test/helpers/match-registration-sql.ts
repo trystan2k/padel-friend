@@ -141,11 +141,9 @@ export function createMatchFixtureCleanupRegistry(scopeName: string): FixtureCle
     const afterStatements: string[] = [];
     const triggerPairs: Array<[table: string, trigger: string]> = [];
     if (scope.communityIds.size > 0) {
+      triggerPairs.push(['community_members', 'community_member_guard']);
       beforeStatements.push(
         'alter table public.community_members disable trigger community_member_guard'
-      );
-      afterStatements.push(
-        'alter table public.community_members enable trigger community_member_guard'
       );
     }
     if (scope.eventIds.size > 0) {
@@ -163,7 +161,6 @@ export function createMatchFixtureCleanupRegistry(scopeName: string): FixtureCle
       for (const [table, trigger] of eventTriggerPairs) {
         triggerPairs.push([table, trigger]);
         beforeStatements.push(`alter table public.${table} disable trigger ${trigger}`);
-        afterStatements.unshift(`alter table public.${table} enable trigger ${trigger}`);
       }
       beforeStatements.push(
         `update public.match_event_registrations set current_attempt_id = null where match_event_id = any(array[${[
@@ -177,20 +174,53 @@ export function createMatchFixtureCleanupRegistry(scopeName: string): FixtureCle
       const triggerPredicates = triggerPairs
         .map(([table, trigger]) => `(c.relname = '${table}' and t.tgname = '${trigger}')`)
         .join(' or ');
-      const triggerStates = await queryTrustedSql(
-        `select c.relname as table_name, t.tgname as trigger_name, t.tgenabled as enabled
+      // Lock every affected table before reading trigger metadata. These statements,
+      // state capture, trigger changes, row deletes, and restoration run in one
+      // executeTrustedSqlBatch transaction on one PostgreSQL connection.
+      const lockedTables = [...new Set(triggerPairs.map(([name]) => name))];
+      beforeStatements.unshift(
+        ...lockedTables.map((table) => `lock table public.${table} in access exclusive mode`)
+      );
+      beforeStatements.splice(
+        lockedTables.length,
+        0,
+        `create temporary table paf_fixture_trigger_states on commit drop as
+         select c.relname as table_name, t.tgname as trigger_name, t.tgenabled as enabled
            from pg_catalog.pg_trigger t
            join pg_catalog.pg_class c on c.oid = t.tgrelid
            join pg_catalog.pg_namespace n on n.oid = c.relnamespace
-          where n.nspname = 'public' and not t.tgisinternal and (${triggerPredicates})`
+          where n.nspname = 'public' and not t.tgisinternal and (${triggerPredicates})`,
+        `do $fixture_trigger_check$
+         declare expected_count integer := ${triggerPairs.length};
+         declare actual_count integer;
+         begin
+           select count(*)::integer into actual_count from pg_temp.paf_fixture_trigger_states;
+           if actual_count <> expected_count then
+             raise exception 'Refusing fixture cleanup because expected triggers are missing: expected %, found %', expected_count, actual_count;
+           end if;
+         end
+         $fixture_trigger_check$`
       );
-      if (
-        triggerStates.rows.length !== triggerPairs.length ||
-        triggerStates.rows.some((row) => row['enabled'] !== 'O')
-      )
-        throw new Error(
-          `Refusing fixture cleanup because expected triggers are missing or not enabled: ${JSON.stringify(triggerStates.rows)}`
+      for (const [table, trigger] of triggerPairs) {
+        afterStatements.unshift(
+          `do $fixture_trigger_restore$
+           declare enabled character;
+           begin
+             select s.enabled into enabled from pg_temp.paf_fixture_trigger_states s
+              where s.table_name = '${table}' and s.trigger_name = '${trigger}';
+             if enabled = 'O' then
+               execute 'alter table public.${table} enable trigger ${trigger}';
+             elsif enabled = 'A' then
+               execute 'alter table public.${table} enable always trigger ${trigger}';
+             elsif enabled = 'R' then
+               execute 'alter table public.${table} enable replica trigger ${trigger}';
+             else
+               execute 'alter table public.${table} disable trigger ${trigger}';
+             end if;
+           end
+           $fixture_trigger_restore$`
         );
+      }
     }
     if (scope.hasStorageObjects)
       beforeStatements.unshift(`select set_config('storage.allow_delete_query','true',true)`);
