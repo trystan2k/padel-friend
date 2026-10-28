@@ -1342,6 +1342,18 @@ export type Database = {
         Returns: Json
       }
       classify_match_result_sets: { Args: { p_sets: Json }; Returns: string }
+      correct_match_event_result: {
+        Args: {
+          p_court_label?: string
+          p_expected_version: number
+          p_played_local: Json
+          p_proposal_id: string
+          p_request_id?: string
+          p_sets: Json
+          p_teams: Json
+        }
+        Returns: Json
+      }
       count_my_unread_notifications: { Args: Record<PropertyKey, never>; Returns: number }
       create_community: {
         Args: {
@@ -1785,6 +1797,17 @@ export type Database = {
         Args: { p_invitation_id: string; p_match_event_id: string; p_response: string }
         Returns: Json
       }
+      review_match_event_result: {
+        Args: {
+          p_decision: string
+          p_expected_version: number
+          p_proposal_id: string
+          p_reason_code?: string
+          p_reason_note?: string
+          p_request_id?: string
+        }
+        Returns: Json
+      }
       safe_match_photo_uuid: { Args: { p_value: string }; Returns: string }
       safe_venue_photo_uuid: { Args: { p_value: string }; Returns: string }
       search_community_invitees: {
@@ -1910,6 +1933,17 @@ export type Database = {
       valid_community_venue_photo_key: { Args: { p_key: string }; Returns: boolean }
       valid_match_maps_url: { Args: { p_url: string }; Returns: boolean }
       valid_match_photo_key: { Args: { p_key: string }; Returns: boolean }
+      validate_match_event_result_facts: {
+        Args: {
+          p_court_label: string
+          p_group_number: number
+          p_match_event_id: string
+          p_played_local: Json
+          p_sets: Json
+          p_teams: Json
+        }
+        Returns: Json
+      }
       validate_match_result_sets: { Args: { p_sets: Json }; Returns: Json }
       withdraw_match_registration: {
         Args: { p_attempt_id: string; p_match_event_id: string; p_request_id: string }

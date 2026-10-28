@@ -513,6 +513,98 @@ export async function proveEventLockBarrier(params: {
   }
 }
 
+/** Proves two RPCs queue on one canonical event lock in caller-specified order. */
+export async function proveOrderedEventLockBarrier(params: {
+  markerPrefix?: string;
+  communityId: string;
+  eventId: string;
+  rpcToken: string;
+  fireFirst: () => PromiseLike<RpcResult>;
+  fireSecond: () => PromiseLike<RpcResult>;
+}): Promise<[RpcResult, RpcResult]> {
+  const marker = `${params.markerPrefix ?? 'paf119'}-holder-${crypto.randomUUID().replaceAll('-', '')}`;
+  const holder = startSql(
+    `/* ${marker} */ select pg_catalog.pg_sleep(900) from (select id from public.communities where id = '${params.communityId}' for update) locked;`
+  );
+  let confirm: SqlHandle | null = null;
+  let first: PromiseLike<RpcResult> | null = null;
+  let second: PromiseLike<RpcResult> | null = null;
+  try {
+    const [holderRow] = await waitForRows(
+      `select pid as value from pg_catalog.pg_stat_activity
+        where query like '%${marker}%' and state='active' and pid <> pg_catalog.pg_backend_pid()`,
+      (rows) => rows.length === 1,
+      'the ordered trusted lock holder backend',
+      20000,
+      100
+    );
+    const holderPid = Number(holderRow!['value']);
+    expect(Number.isInteger(holderPid), 'ordered holder pid').toBe(true);
+    expect(await holder.backendPid).toBe(holderPid);
+
+    first = params.fireFirst();
+    await waitForRows(
+      `select pid as value from pg_catalog.pg_stat_activity a
+        where a.wait_event_type='Lock' and a.query like '%${params.rpcToken}%'
+          and ${holderPid}=any(pg_catalog.pg_blocking_pids(a.pid))
+          and a.pid <> pg_catalog.pg_backend_pid() and a.pid <> ${holderPid}`,
+      (rows) => rows.length === 1,
+      'first RPC directly blocked by ordered event holder',
+      6000,
+      50
+    );
+
+    second = params.fireSecond();
+    confirm = startSql(`do $ordered_barrier$
+      declare v_blocked integer; v_direct integer;
+        v_deadline timestamptz := pg_catalog.clock_timestamp()+interval '6.5 seconds';
+      begin
+        loop
+          perform pg_catalog.pg_stat_clear_snapshot();
+          select count(*) into v_blocked
+            from pg_catalog.pg_stat_activity a
+           where a.wait_event_type='Lock' and a.query like '%${params.rpcToken}%'
+             and a.pid <> pg_catalog.pg_backend_pid() and a.pid <> ${holderPid}
+             and (
+               ${holderPid}=any(pg_catalog.pg_blocking_pids(a.pid))
+               or exists (
+                 select 1 from pg_catalog.pg_stat_activity p
+                  where p.wait_event_type='Lock' and p.query like '%${params.rpcToken}%'
+                    and p.pid <> a.pid and ${holderPid}=any(pg_catalog.pg_blocking_pids(p.pid))
+                    and p.pid=any(pg_catalog.pg_blocking_pids(a.pid))
+               )
+             );
+          select count(*) into v_direct
+            from pg_catalog.pg_stat_activity a
+           where a.wait_event_type='Lock' and a.query like '%${params.rpcToken}%'
+             and ${holderPid}=any(pg_catalog.pg_blocking_pids(a.pid))
+             and a.pid <> pg_catalog.pg_backend_pid() and a.pid <> ${holderPid};
+          exit when (v_blocked=2 and v_direct=1) or pg_catalog.clock_timestamp()>v_deadline;
+          perform pg_catalog.pg_sleep(0.05);
+        end loop;
+        if v_blocked<>2 or v_direct<>1 then
+          raise exception 'ordered barrier not proven: blocked=% direct=% waits=%',v_blocked,v_direct,
+            (select jsonb_agg(jsonb_build_object('pid',pid,'query',left(query,300),'blockers',pg_catalog.pg_blocking_pids(pid)))
+              from pg_catalog.pg_stat_activity where wait_event_type='Lock');
+        end if;
+        perform pg_catalog.pg_terminate_backend(${holderPid});
+      end $ordered_barrier$;`);
+    const release = await withDeadline(confirm.done, 30000, 'ordered barrier release');
+    if (release.code !== 0)
+      throw new Error(
+        `Ordered barrier failed (${release.code}): ${release.stdout}\n${release.stderr}`
+      );
+    return await Promise.all([first, second]);
+  } finally {
+    await sqlRows(
+      `select pg_catalog.pg_terminate_backend(pid) from pg_catalog.pg_stat_activity
+        where query like '%${marker}%' and pid<>pg_catalog.pg_backend_pid()`
+    ).catch(() => []);
+    if (confirm) await confirm.stop();
+    await holder.stop();
+  }
+}
+
 /** Number of leaked retained-holder backends still visible in pg_stat_activity. */
 export async function leakedHolderBackends(markerPrefix = 'paf53-holder-'): Promise<number> {
   const rows = await sqlRows(
