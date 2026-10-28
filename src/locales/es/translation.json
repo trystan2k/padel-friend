@@ -644,18 +644,85 @@
       "pendingDescription": "Aún no afecta al nivel ni a las estadísticas de la Liga. Los jugadores elegibles pueden aprobar o rechazar.",
       "lifecycleStatus": {
         "pending": "Pendiente de revisión",
-        "disputed": "Disputado",
+        "disputed": "En disputa",
         "confirmed": "Confirmado",
-        "superseded": "Sustituido"
+        "superseded": "Sustituido",
+        "correctionPending": "Corrección pendiente de revisión"
       },
       "resolution": {
         "awaitingResults": "A la espera de resultados",
         "partiallyResolved": "Parcialmente resuelto",
-        "completed": "Resultados completos"
+        "completed": "Resultados completos",
+        "title": "Resolución de resultados",
+        "progress": "{{confirmed}} de {{expected}} grupos confirmados"
       },
       "autoConfirmIn": "CONFIRMACIÓN AUTOMÁTICA EN {{hours}}H",
+      "autoConfirmCountdown": "Se confirma automáticamente en {{time}}",
+      "deadlineReached": "Plazo vencido · comprobando el resultado actual",
+      "awaitingResult": "Esperando resultado",
       "reviewDeadline": "Plazo de revisión: {{deadline}}",
       "versionLabel": "Versión {{version}}",
+      "submittedByAt": "Enviado por {{name}} · {{submittedAt}}",
+      "approvalProgress": "{{received}} de {{required}} aprobaciones de equipo recibidas",
+      "disputedBy": "En disputa por {{name}} · {{reason}}",
+      "disputedImpact": "Este resultado en disputa no afecta la clasificación ni las estadísticas de la Liga.",
+      "confirmedAt": "Confirmado {{confirmedAt}}.",
+      "timelineTitle": "Historial de la propuesta",
+      "confirmation": {
+        "manual": "Confirmado · Manual",
+        "auto": "Confirmado · Automático 48H"
+      },
+      "review": {
+        "approve": "Aprobar",
+        "approving": "Registrando aprobación…",
+        "reject": "Disputar",
+        "retry": "Reintentar revisión",
+        "reviewCurrent": "Revisar propuesta actual",
+        "offline": "No tienes conexión. Vuelve a conectarte para revisar. No se envió ninguna aprobación ni disputa.",
+        "offlineDraft": "Resultado no enviado. Vuelve a conectarte para enviarlo; el borrador sigue aquí.",
+        "decisionRecorded": "{{decision}} registrada por {{name}}.",
+        "recorded": {
+          "approve": "La aprobación de esta versión quedó registrada. El resultado sigue pendiente hasta que lo confirme el servidor.",
+          "approveConfirmed": "Aprobación registrada. El servidor confirmó este resultado; actualizando sus detalles oficiales.",
+          "reject": "Resultado en disputa. No se aplicaron cambios de clasificación ni estadísticas de la Liga."
+        },
+        "decisions": {
+          "approve": "Aprobación",
+          "reject": "Rechazo"
+        }
+      },
+      "reject": {
+        "title": "Disputar resultado",
+        "context": "Grupo {{group}} · enviado por {{name}}",
+        "reasonLabel": "¿Por qué disputas este resultado?",
+        "reasonRequired": "Elige un motivo.",
+        "reasons": {
+          "scoreIncorrect": "Marcador incorrecto",
+          "teamsIncorrect": "Equipos incorrectos",
+          "playersIncorrect": "Jugadores incorrectos",
+          "groupAssignmentIncorrect": "Grupo incorrecto",
+          "matchDidNotHappen": "El partido no se jugó",
+          "matchTypeIncorrect": "Tipo de partido incorrecto",
+          "classificationIncorrect": "Clasificación incorrecta",
+          "other": "Otro"
+        },
+        "noteLabel": "Añadir una nota (opcional)",
+        "required": "Obligatoria",
+        "noteHint": "Obligatoria al elegir Otro · máximo 500 caracteres.",
+        "noteRequired": "Añade una nota al elegir Otro.",
+        "noteTooLong": "Usa 500 caracteres o menos.",
+        "noteInvalid": "Quita los saltos de línea y caracteres de control de la nota.",
+        "autoConfirmNotice": "La disputa detiene inmediatamente la confirmación automática.",
+        "cancel": "Cancelar",
+        "submit": "Enviar disputa",
+        "submitting": "Enviando disputa…"
+      },
+      "correctResult": "Corregir resultado",
+      "correctTitle": "Corregir resultado",
+      "correctSubmit": "Enviar corrección",
+      "correcting": "Enviando corrección…",
+      "correctionSubmitted": "Corrección v{{version}} enviada para revisión.",
+      "reviewUpdatedResult": "Revisar resultado actualizado",
       "setError": "Set {{number}} · {{team}}: {{message}}",
       "teamError": "{{team}}: {{message}}",
       "errors": {
@@ -688,7 +755,8 @@
       },
       "conflicts": {
         "staleVersion": "Este resultado cambió. Recarga la versión más reciente antes de revisarlo o corregirlo.",
-        "deadlineElapsed": "Venció el plazo de revisión y se confirmó este resultado. Recarga para ver el resultado oficial."
+        "deadlineElapsed": "Venció el plazo de revisión y se confirmó este resultado. Recarga para ver el resultado oficial.",
+        "currentProposal": "El resultado actual es la versión {{version}} ({{status}}). Revísalo antes de realizar otra acción."
       }
     },
     "reconfirmation": {

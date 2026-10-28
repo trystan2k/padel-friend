@@ -646,16 +646,83 @@
         "pending": "Pending review",
         "disputed": "Disputed",
         "confirmed": "Confirmed",
-        "superseded": "Superseded"
+        "superseded": "Superseded",
+        "correctionPending": "Correction pending review"
       },
       "resolution": {
         "awaitingResults": "Awaiting results",
         "partiallyResolved": "Partially resolved",
-        "completed": "Results complete"
+        "completed": "Results complete",
+        "title": "Event result resolution",
+        "progress": "{{confirmed}} of {{expected}} groups confirmed"
       },
       "autoConfirmIn": "AUTO-CONFIRMS IN {{hours}}H",
+      "autoConfirmCountdown": "Auto-confirms in {{time}}",
+      "deadlineReached": "Deadline reached · checking current result",
+      "awaitingResult": "Awaiting result",
       "reviewDeadline": "Review deadline: {{deadline}}",
       "versionLabel": "Version {{version}}",
+      "submittedByAt": "Submitted by {{name}} · {{submittedAt}}",
+      "approvalProgress": "{{received}} of {{required}} team approvals received",
+      "disputedBy": "Disputed by {{name}} · {{reason}}",
+      "disputedImpact": "No rating or League stats apply while this result is disputed.",
+      "confirmedAt": "Confirmed {{confirmedAt}}.",
+      "timelineTitle": "Proposal timeline",
+      "confirmation": {
+        "manual": "Confirmed · Manual",
+        "auto": "Confirmed · Auto 48H"
+      },
+      "review": {
+        "approve": "Approve",
+        "approving": "Recording approval…",
+        "reject": "Reject",
+        "retry": "Retry review",
+        "reviewCurrent": "Review current proposal",
+        "offline": "You’re offline. Reconnect to review. No approval or rejection was sent.",
+        "offlineDraft": "Result not sent. Reconnect to submit; your draft stays here.",
+        "decisionRecorded": "{{decision}} recorded by {{name}}.",
+        "recorded": {
+          "approve": "Approval recorded for this version. Result remains pending until server confirmation.",
+          "approveConfirmed": "Approval recorded. The server confirmed this result; refreshing its official details.",
+          "reject": "Result disputed. No rating or League stats applied."
+        },
+        "decisions": {
+          "approve": "Approval",
+          "reject": "Rejection"
+        }
+      },
+      "reject": {
+        "title": "Dispute result",
+        "context": "Group {{group}} · proposed by {{name}}",
+        "reasonLabel": "Why are you disputing this result?",
+        "reasonRequired": "Choose a reason.",
+        "reasons": {
+          "scoreIncorrect": "Score incorrect",
+          "teamsIncorrect": "Teams incorrect",
+          "playersIncorrect": "Players incorrect",
+          "groupAssignmentIncorrect": "Group assignment incorrect",
+          "matchDidNotHappen": "Match did not happen",
+          "matchTypeIncorrect": "Match type incorrect",
+          "classificationIncorrect": "Classification incorrect",
+          "other": "Other"
+        },
+        "noteLabel": "Add a note (optional)",
+        "required": "Required",
+        "noteHint": "Required when selecting Other · max 500 characters.",
+        "noteRequired": "Add a note when selecting Other.",
+        "noteTooLong": "Use 500 characters or fewer.",
+        "noteInvalid": "Remove line breaks and control characters from the note.",
+        "autoConfirmNotice": "Disputing immediately stops auto-confirmation.",
+        "cancel": "Cancel",
+        "submit": "Submit dispute",
+        "submitting": "Submitting dispute…"
+      },
+      "correctResult": "Correct result",
+      "correctTitle": "Correct result",
+      "correctSubmit": "Submit correction",
+      "correcting": "Submitting correction…",
+      "correctionSubmitted": "Correction v{{version}} submitted for review.",
+      "reviewUpdatedResult": "Review updated result",
       "setError": "Set {{number}} · {{team}}: {{message}}",
       "teamError": "{{team}}: {{message}}",
       "errors": {
@@ -688,7 +755,8 @@
       },
       "conflicts": {
         "staleVersion": "This result changed. Reload the latest version before reviewing or correcting it.",
-        "deadlineElapsed": "The review deadline passed and this result was confirmed. Reload to see the official result."
+        "deadlineElapsed": "The review deadline passed and this result was confirmed. Reload to see the official result.",
+        "currentProposal": "Current result is version {{version}} ({{status}}). Review it before taking another action."
       }
     },
     "reconfirmation": {

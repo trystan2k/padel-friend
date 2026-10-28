@@ -29,7 +29,8 @@ export const MATCH_RESULT_ERROR_COPY = {
 
 export const MATCH_RESULT_CONFLICT_COPY = {
   stale_version: 'matches.results.conflicts.staleVersion',
-  deadline_elapsed: 'matches.results.conflicts.deadlineElapsed'
+  deadline_elapsed: 'matches.results.conflicts.deadlineElapsed',
+  current_proposal: 'matches.results.conflicts.currentProposal'
 } as const satisfies Record<string, `matches.results.conflicts.${string}`>;
 
 export type MatchResultErrorCode = keyof typeof MATCH_RESULT_ERROR_COPY;

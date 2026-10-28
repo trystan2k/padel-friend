@@ -80,7 +80,12 @@ export async function sql(query: string): Promise<Row[]> {
 
 export async function fixtures(
   browser: Browser,
-  identities: { creatorName?: string; memberNames?: string[]; communityName?: string } = {}
+  identities: {
+    creatorName?: string;
+    memberNames?: string[];
+    memberCount?: number;
+    communityName?: string;
+  } = {}
 ) {
   const vars = new Map(
     readFileSync(new URL('../.env', import.meta.url), 'utf8')
@@ -130,7 +135,7 @@ export async function fixtures(
     throw created.error ?? new Error('No community');
   const community = created.data;
   const members: Actor[] = [];
-  for (let i = 1; i <= 10; i++) {
+  for (let i = 1; i <= (identities.memberCount ?? 10); i++) {
     const member = await actor(identities.memberNames?.[i - 1] ?? `Management Player ${i}`);
     const joined = await member.client.rpc('join_public_community', { p_community_id: community });
     if (joined.error) throw joined.error;
@@ -247,14 +252,43 @@ export async function fixtures(
   async function cutoff(id: string) {
     // One narrow fixture transaction: legitimate DB-clock deadline, unchanged
     // future start, production internal processor; no clock/GUC overrides.
-    await sql(`do $$ begin alter table public.match_events disable trigger match_event_immutable;
-      update public.match_events set registration_cutoff_at=clock_timestamp()-interval '1 minute' where id='${id}';
-      alter table public.match_events enable trigger match_event_immutable;
-      perform public.process_match_event_registration_cutoff('${id}'); end $$;`);
+    await sql(`do $$ begin
+      alter table public.match_events disable trigger match_event_immutable;
+    end $$;`);
+    try {
+      await sql(`do $$ begin
+        update public.match_events
+           set registration_cutoff_at=clock_timestamp()-interval '1 minute'
+         where id='${id}';
+        perform public.process_match_event_registration_cutoff('${id}');
+      end $$;`);
+    } finally {
+      await sql(`do $$ begin
+        alter table public.match_events enable trigger match_event_immutable;
+      end $$;`);
+    }
   }
   async function clearEvents() {
     // Scoped counterpart of test/helpers/match-management-fixtures.ts cleanup.
-    await sql(`do $$ begin
+    const resultGuards = `do $$ begin
+      alter table public.match_event_result_proposal_versions disable trigger match_result_proposal_version_immutable;
+      alter table public.match_event_result_reviews disable trigger match_result_review_immutable;
+      alter table public.match_event_result_proposals disable trigger match_result_proposal_transition_guard;
+      alter table public.match_event_result_proposals disable trigger match_result_proposal_pointer_integrity;
+      alter table public.match_event_result_confirmations disable trigger match_result_confirmation_insert_guard;
+      alter table public.match_event_result_confirmations disable trigger match_result_confirmation_pointer_integrity;
+    end $$;`;
+    const restoreResultGuards = `do $$ begin
+      alter table public.match_event_result_proposal_versions enable trigger match_result_proposal_version_immutable;
+      alter table public.match_event_result_reviews enable trigger match_result_review_immutable;
+      alter table public.match_event_result_proposals enable trigger match_result_proposal_transition_guard;
+      alter table public.match_event_result_proposals enable trigger match_result_proposal_pointer_integrity;
+      alter table public.match_event_result_confirmations enable trigger match_result_confirmation_insert_guard;
+      alter table public.match_event_result_confirmations enable trigger match_result_confirmation_pointer_integrity;
+    end $$;`;
+    await sql(resultGuards);
+    try {
+      await sql(`do $$ begin
       -- Parent-first relation locks match the registration/submission writers.
       lock table public.match_events, public.match_event_registration_state in share row exclusive mode;
       alter table public.match_events disable trigger match_event_immutable;
@@ -264,15 +298,35 @@ export async function fixtures(
       alter table public.match_event_registration_attempts disable trigger match_attempt_final_state;
       alter table public.match_event_registrations disable trigger match_registration_final_state;
       alter table public.match_event_audit_log disable trigger match_audit_immutable;
+      -- Delete only lifecycle rows attached to this fixture's owned events.
       delete from public.notifications where community_id='${community}';
+      delete from public.match_event_result_processing_state where proposal_id in (
+        select id from public.match_event_result_proposals where match_event_id in
+          (select id from public.match_events where community_id='${community}')
+      );
+      delete from public.match_event_result_reviews where proposal_id in (
+        select id from public.match_event_result_proposals where match_event_id in
+          (select id from public.match_events where community_id='${community}')
+      );
+      delete from public.match_event_audit_log where community_id='${community}';
+      delete from public.match_event_result_confirmations where match_event_id in
+        (select id from public.match_events where community_id='${community}');
+      delete from public.match_event_result_proposal_versions where proposal_id in (
+        select id from public.match_event_result_proposals where match_event_id in
+          (select id from public.match_events where community_id='${community}')
+      );
+      delete from public.match_event_result_proposals where match_event_id in
+        (select id from public.match_events where community_id='${community}');
       delete from public.match_event_invites where match_event_id in (select id from public.match_events where community_id='${community}');
       delete from public.match_event_management_commands where match_event_id in (select id from public.match_events where community_id='${community}');
-      delete from public.match_event_audit_log where community_id='${community}';
       update public.match_event_registrations set current_attempt_id=null where match_event_id in (select id from public.match_events where community_id='${community}');
       delete from public.match_event_registration_attempts where match_event_id in (select id from public.match_events where community_id='${community}');
       delete from public.match_event_registrations where match_event_id in (select id from public.match_events where community_id='${community}');
       delete from public.match_event_registration_state where match_event_id in (select id from public.match_events where community_id='${community}');
       delete from public.match_events where community_id='${community}';
+      -- Force deferred FK/pointer checks before restoring the table guards in
+      -- the following transaction; otherwise PostgreSQL rejects ALTER TABLE.
+      set constraints all immediate;
       alter table public.match_events enable trigger match_event_immutable;
       alter table public.match_event_invites enable trigger match_invite_immutable;
       alter table public.match_event_registrations enable trigger match_registration_identity_guard;
@@ -281,6 +335,11 @@ export async function fixtures(
       alter table public.match_event_registration_attempts enable trigger match_attempt_final_state;
       alter table public.match_event_audit_log enable trigger match_audit_immutable;
       end $$;`);
+    } finally {
+      // DDL restoration runs after the deletion transaction commits/rolls back;
+      // PostgreSQL rejects trigger DDL while deferred FK events are pending.
+      await sql(restoreResultGuards);
+    }
     // Delete real bytes through Storage after event detachment commits, while
     // creator membership still permits deletion. SQL-only metadata deletion
     // would orphan physical objects on the local storage backend.

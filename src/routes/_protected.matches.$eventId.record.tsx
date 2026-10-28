@@ -9,6 +9,14 @@ import { listMatchEventRegistrations } from '../features/matches/match-registrat
 import { getMatchEventResultProposals } from '../features/matches/match-result.functions';
 
 export const Route = createFileRoute('/_protected/matches/$eventId/record')({
+  validateSearch: (search: Record<string, unknown>) => {
+    const groupNumber = Number(search.groupNumber);
+    return {
+      correctionProposalId:
+        typeof search.correctionProposalId === 'string' ? search.correctionProposalId : undefined,
+      groupNumber: Number.isSafeInteger(groupNumber) && groupNumber > 0 ? groupNumber : undefined
+    };
+  },
   loader: async ({ params }) => {
     const data = { event_id: params.eventId };
     const [event, management, roster, participants, proposals] = await Promise.all([
@@ -35,12 +43,23 @@ export const Route = createFileRoute('/_protected/matches/$eventId/record')({
   },
   component: () => {
     const data = Route.useLoaderData();
+    const search = Route.useSearch();
     const router = useRouter();
     return (
       <RecordMatchResultPage
         key={`${data.event?.event_id}:${data.event?.as_of}`}
         {...data}
+        correctionProposalId={search.correctionProposalId}
+        initialGroup={search.groupNumber}
         onReload={() => void router.invalidate()}
+        onCorrected={async () => {
+          await router.invalidate();
+          if (data.event)
+            await router.navigate({
+              to: '/matches/$eventId',
+              params: { eventId: data.event.event_id }
+            });
+        }}
       />
     );
   }

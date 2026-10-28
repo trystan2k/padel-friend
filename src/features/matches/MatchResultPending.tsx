@@ -1,4 +1,3 @@
-import { Button } from '@base-ui/react/button';
 import * as stylex from '@stylexjs/stylex';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -10,14 +9,14 @@ export function MatchResultPending({
   proposal,
   timezone,
   asOf,
-  canReview = false,
-  focusReceipt = false
+  focusReceipt = false,
+  approvalProgress
 }: {
   proposal: ResultProposal | ResultSubmission;
   timezone: string;
   asOf: string;
-  canReview?: boolean;
   focusReceipt?: boolean;
+  approvalProgress?: string;
 }) {
   const { t, i18n } = useTranslation();
   const [now, setNow] = useState(() => Date.parse(asOf));
@@ -45,8 +44,14 @@ export function MatchResultPending({
   const facts = 'teams' in proposal ? proposal : null;
   const wins = resultSetWins(facts?.sets ?? []);
   const winner = wins.team_a > wins.team_b ? 'team_a' : 'team_b';
+  const remainingHours = Math.max(0, Math.ceil((deadline.getTime() - now) / 3600000));
+  const countdownLabel = t('matches.results.autoConfirmIn', { hours: remainingHours });
   return (
-    <section {...stylex.props(s.form)} aria-label={t('matches.results.pending')} aria-live="polite">
+    <section
+      {...stylex.props(s.form)}
+      aria-label={t('matches.results.pending')}
+      aria-live={focusReceipt ? 'polite' : undefined}
+    >
       <div {...stylex.props(s.pendingRows)}>
         <h2 {...stylex.props(s.heading)}>{t('matches.results.proposalTitle')}</h2>
         <div {...stylex.props(s.pendingRows)}>
@@ -67,9 +72,10 @@ export function MatchResultPending({
                 {t('matches.results.pending')}
               </h3>
               <p {...stylex.props(s.copy)}>{t('matches.results.pendingDescription')}</p>
+              {approvalProgress && <p {...stylex.props(s.pendingProgress)}>{approvalProgress}</p>}
             </div>
           </div>
-          <div {...stylex.props(s.pendingRow)}>
+          <div role="timer" aria-label={countdownLabel} {...stylex.props(s.pendingRow)}>
             <svg
               viewBox="0 0 24 24"
               fill="none"
@@ -84,7 +90,7 @@ export function MatchResultPending({
             <div {...stylex.props(s.statusCopy)}>
               <h3 {...stylex.props(s.statusTitle)}>
                 {t('matches.results.autoConfirmIn', {
-                  hours: Math.max(0, Math.ceil((deadline.getTime() - now) / 3600000))
+                  hours: remainingHours
                 })}
               </h3>
               <p {...stylex.props(s.copy)}>{t('matches.results.autoConfirmDescription')}</p>
@@ -166,20 +172,6 @@ export function MatchResultPending({
               )}
             </p>
           </section>
-          {canReview && (
-            <Button
-              disabled
-              {...stylex.props(s.button, s.primary, s.reviewPlaceholder)}
-              aria-describedby={`review-unavailable-${facts.proposal_id}`}
-            >
-              {t('matches.results.reviewProposal')}
-            </Button>
-          )}
-          {canReview && (
-            <p id={`review-unavailable-${facts.proposal_id}`} {...stylex.props(s.srOnly)}>
-              {t('matches.results.reviewUnavailable')}
-            </p>
-          )}
         </>
       )}
     </section>

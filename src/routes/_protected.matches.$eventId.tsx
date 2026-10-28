@@ -109,6 +109,7 @@ export const Route = createFileRoute('/_protected/matches/$eventId')({
       eventManagement,
       proposals: resultProposals.proposals,
       proposalsError: resultProposals.proposalsError,
+      proposalsForbidden: resultProposals.proposalsForbidden,
       callerLevel,
       ...requestQueue,
       ...roster,
@@ -140,6 +141,7 @@ export const Route = createFileRoute('/_protected/matches/$eventId')({
         managementError={data.managementError}
         proposals={data.proposals}
         proposalsError={data.proposalsError}
+        proposalsForbidden={data.proposalsForbidden}
       />
     );
   }

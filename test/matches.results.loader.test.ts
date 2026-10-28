@@ -30,25 +30,41 @@ describe('feature-owned result route loader', () => {
       replayed: false
     });
     expect(await loadMatchResultProposals('event')).toEqual({
-      proposals: [resultProposal],
-      proposalsError: false
+      proposals: [
+        resultProposal,
+        {
+          ...resultProposal,
+          proposal_id: '11111111-1111-4111-8111-111111111119',
+          status: 'disputed'
+        },
+        {
+          ...resultProposal,
+          proposal_id: '11111111-1111-4111-8111-111111111118',
+          status: 'confirmed'
+        }
+      ],
+      proposalsError: false,
+      proposalsForbidden: false
     });
     expect(load).toHaveBeenCalledExactlyOnceWith({ data: { event_id: 'event' } });
 
     load.mockResolvedValue({ status: 'error', code: 'forbidden' });
     expect(await loadMatchResultProposals('event')).toEqual({
       proposals: [],
-      proposalsError: false
+      proposalsError: false,
+      proposalsForbidden: true
     });
     load.mockResolvedValue({ status: 'error', code: 'unavailable' });
     expect(await loadMatchResultProposals('event')).toEqual({
       proposals: [],
-      proposalsError: true
+      proposalsError: true,
+      proposalsForbidden: false
     });
     load.mockRejectedValue(new Error('private RPC failure'));
     expect(await loadMatchResultProposals('event')).toEqual({
       proposals: [],
-      proposalsError: true
+      proposalsError: true,
+      proposalsForbidden: false
     });
   });
 });
