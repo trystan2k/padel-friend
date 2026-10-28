@@ -11,9 +11,16 @@ describe('notification validators', () => {
     expect(
       validateListMyNotifications({
         category: 'community',
-        cursor: { createdAt: '2026-01-01T00:00:00.000Z', id }
+        cursor: { sequence: 1, createdAt: '2026-01-01T00:00:00.000Z', id }
       })
     ).toMatchObject({ category: 'community', limit: 20 });
+  });
+  it('restarts pagination for a valid legacy cursor', () => {
+    expect(
+      validateListMyNotifications({
+        cursor: { createdAt: '2026-01-01T00:00:00.000Z', id }
+      })
+    ).toMatchObject({ cursor: undefined });
   });
   it('accepts database ISO timestamps without changing offset or fractional precision', () => {
     for (const createdAt of [
@@ -23,9 +30,9 @@ describe('notification validators', () => {
       '2026-10-15T12:00:00Z',
       '2026-10-15T12:00:00.000Z'
     ]) {
-      expect(validateListMyNotifications({ cursor: { createdAt, id } }).cursor?.createdAt).toBe(
-        createdAt
-      );
+      expect(
+        validateListMyNotifications({ cursor: { sequence: 1, createdAt, id } }).cursor?.createdAt
+      ).toBe(createdAt);
     }
   });
   it('rejects unknown fields, invalid category, oversized limit and bad cursor', () => {
@@ -33,11 +40,17 @@ describe('notification validators', () => {
       { recipientId: id },
       { category: 'other' },
       { limit: 51 },
+      { cursor: { sequence: 0, createdAt: '2026-01-01T00:00:00.000Z', id } },
+      { cursor: { sequence: 1.5, createdAt: '2026-01-01T00:00:00.000Z', id } },
+      {
+        cursor: { sequence: Number.MAX_SAFE_INTEGER + 1, createdAt: '2026-01-01T00:00:00.000Z', id }
+      },
+      { cursor: { sequence: 1, createdAt: 'bad', id } },
+      { cursor: { sequence: 1, createdAt: '2026-02-30T12:00:00.123456+00:00', id } },
+      { cursor: { sequence: 1, createdAt: '2026-10-15T12:00:00.1234567+00:00', id } },
+      { cursor: { sequence: 1, createdAt: '2026-10-15T12:00:00+99:00', id } },
       { cursor: { createdAt: 'bad', id } },
-      { cursor: { createdAt: '2026-02-30T12:00:00.123456+00:00', id } },
-      { cursor: { createdAt: '2026-10-15T12:00:00.1234567+00:00', id } },
-      { cursor: { createdAt: '2026-10-15T12:00:00+99:00', id } },
-      { cursor: { createdAt: `${'2'.repeat(40)}garbage`, id } }
+      { cursor: { sequence: 1, createdAt: `${'2'.repeat(40)}garbage`, id } }
     ])
       expect(() => validateListMyNotifications(input)).toThrow('INVALID_COMMUNITY_INPUT');
   });

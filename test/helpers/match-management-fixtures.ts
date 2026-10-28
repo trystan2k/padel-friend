@@ -1,7 +1,15 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '../../src/lib/supabase/database.types';
 import { matchPhotoFixture } from './match-photo-fixtures';
-import { fixtureSql, makeRawRpc, sqlRows } from './match-registration-sql';
+import {
+  createMatchFixtureCleanupRegistry,
+  fixtureSql,
+  makeRawRpc,
+  registerMatchActorFixtureRows,
+  registerMatchCommunityFixtureRows,
+  registerMatchEventFixtureRows,
+  sqlRows
+} from './match-registration-sql';
 
 export type ManagementActor = { id: string; token: string; client: SupabaseClient<Database> };
 
@@ -12,15 +20,21 @@ export async function createMatchManagementFixtures(env: { url: string; key: str
   const actors: ManagementActor[] = [];
   const events: string[] = [];
   const communityId = crypto.randomUUID();
+  const cleanupRegistry = createMatchFixtureCleanupRegistry('match-management');
+  registerMatchCommunityFixtureRows(cleanupRegistry, communityId);
+
   async function actor() {
+    const email = `invitation-${cleanupRegistry.namespace}-${crypto.randomUUID()}@test.local`;
+    registerMatchActorFixtureRows(cleanupRegistry, { email });
     const { data, error } = await createClient(env.url, env.key, {
       auth: { persistSession: false, autoRefreshToken: false }
     }).auth.signUp({
-      email: `invitation-${crypto.randomUUID()}@test.local`,
+      email,
       password: 'Password123!'
     });
     if (error || !data.session || !data.user)
       throw new Error(`Fixture signup failed: ${error?.message ?? 'no session'}`);
+    registerMatchActorFixtureRows(cleanupRegistry, { id: data.user.id });
     const token = data.session.access_token;
     const result = {
       id: data.user.id,
@@ -56,6 +70,7 @@ export async function createMatchManagementFixtures(env: { url: string; key: str
     const id = crypto.randomUUID();
     events.push(id);
     const photo = matchPhotoFixture(communityId, id, creator.id);
+    registerMatchEventFixtureRows(cleanupRegistry, id, photo.path);
     await fixtureSql(`do $$ begin ${photo.sql}
       insert into public.match_events(id,community_id,created_by,starts_at,timezone,event_type,visibility,team_assignment_mode,venue_name,maps_url,photo_path,restriction_enabled,min_level,max_level,maximum_registrations,registration_cutoff_at)
       values ('${id}','${communityId}','${creator.id}',now()+interval '10 days','UTC','friendly','${options.inviteOnly ? 'invite_only' : 'community_open'}','POST_MATCH_TEAMS','Invitation court','https://maps.google.com/maps/place/invitation','${photo.path}',${options.restricted ?? false},${options.restricted ? '6,7' : 'null,null'},${options.capacity ?? 'null'},${options.cutoff ?? "now()+interval '9 days'"});
@@ -109,45 +124,7 @@ export async function createMatchManagementFixtures(env: { url: string; key: str
     return { id: e.id, players };
   }
   async function cleanup() {
-    await fixtureSql(`do $$ begin
-      alter table public.match_events disable trigger match_event_immutable;
-      alter table public.match_event_invites disable trigger match_invite_immutable;
-      alter table public.match_event_registrations disable trigger match_registration_identity_guard;
-      alter table public.match_event_registrations disable trigger match_registration_final_state;
-      alter table public.match_event_registration_attempts disable trigger match_attempt_history_guard;
-      alter table public.match_event_registration_attempts disable trigger match_attempt_final_state;
-      alter table public.match_event_audit_log disable trigger match_audit_immutable;
-      alter table public.community_members disable trigger community_member_guard;
-      delete from public.notifications where community_id='${communityId}';
-      delete from public.match_event_invites where match_event_id in (select id from public.match_events where community_id='${communityId}');
-      delete from public.match_event_management_commands where match_event_id in (select id from public.match_events where community_id='${communityId}');
-      alter table public.match_event_result_proposals disable trigger match_result_proposal_immutable;
-      alter table public.match_event_result_proposal_versions disable trigger match_result_proposal_version_immutable;
-      delete from public.match_event_result_proposal_versions where proposal_id in (select p.id from public.match_event_result_proposals p where p.match_event_id in (select id from public.match_events where community_id='${communityId}'));
-      delete from public.match_event_result_proposals where match_event_id in (select id from public.match_events where community_id='${communityId}');
-      delete from public.match_event_audit_log where community_id='${communityId}';
-      alter table public.match_event_result_proposals enable trigger match_result_proposal_immutable;
-      alter table public.match_event_result_proposal_versions enable trigger match_result_proposal_version_immutable;
-      update public.match_event_registrations set current_attempt_id=null where match_event_id in (select id from public.match_events where community_id='${communityId}');
-      delete from public.match_event_registration_attempts where match_event_id in (select id from public.match_events where community_id='${communityId}');
-      delete from public.match_event_registrations where match_event_id in (select id from public.match_events where community_id='${communityId}');
-      delete from public.match_event_registration_state where match_event_id in (select id from public.match_events where community_id='${communityId}');
-      delete from public.match_events where community_id='${communityId}';
-      perform set_config('storage.allow_delete_query','true',true);
-      delete from storage.objects where bucket_id='match-event-photos' and name like '${communityId}/%';
-      delete from public.community_members where community_id='${communityId}';
-      delete from public.community_audit_log where community_id='${communityId}';
-      delete from public.communities where id='${communityId}';
-      delete from auth.users where id in (${actors.map((a) => `'${a.id}'`).join(',')});
-      alter table public.match_events enable trigger match_event_immutable;
-      alter table public.match_event_invites enable trigger match_invite_immutable;
-      alter table public.match_event_registrations enable trigger match_registration_identity_guard;
-      alter table public.match_event_registrations enable trigger match_registration_final_state;
-      alter table public.match_event_registration_attempts enable trigger match_attempt_history_guard;
-      alter table public.match_event_registration_attempts enable trigger match_attempt_final_state;
-      alter table public.match_event_audit_log enable trigger match_audit_immutable;
-      alter table public.community_members enable trigger community_member_guard;
-    end $$;`);
+    await cleanupRegistry.cleanup();
   }
   return {
     creator,

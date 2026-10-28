@@ -1,1 +1,1 @@
-pnpm complete-check
+node scripts/complete-check.mjs --only=test

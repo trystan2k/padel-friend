@@ -1070,6 +1070,7 @@ export type Database = {
           kind: string
           read_at: string | null
           recipient_user_id: string
+          sequence: number
           target_id: string
           target_type: string
         }
@@ -1083,6 +1084,7 @@ export type Database = {
           kind: string
           read_at?: string | null
           recipient_user_id: string
+          sequence?: never
           target_id: string
           target_type: string
         }
@@ -1095,6 +1097,7 @@ export type Database = {
           kind?: string
           read_at?: string | null
           recipient_user_id?: string
+          sequence?: never
           target_id?: string
           target_type?: string
         }

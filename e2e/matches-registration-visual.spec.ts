@@ -1110,9 +1110,8 @@ async function assertRequesterState(
 /**
  * Notification list gate (manifest facts: qNVpA two cards [18,70,354,64] and
  * [18,142,354,64]; Z0gRd six cards in a fixed rhythm with the last card
- * taller). Gated exactly on the app contract: row count, kind titles in
- * created-at order, the unread summary, the MARK ALL READ action and ≥44px
- * targets. The measured row rhythm is attached and recorded against the
+ * taller). Gated exactly on the app contract: row count, exact feed order, the unread summary, the MARK ALL READ action and ≥44px targets. The
+ * notification sequence is preserved within each date group. The measured row rhythm is attached and recorded against the
  * manifest's 8px fact (the reviewed margin rhythm is a recorded deviation, not
  * an absorbed one).
  */
@@ -1127,7 +1126,7 @@ async function assertNotificationList(
   for (const [index, title] of expectedTitles.entries()) {
     await expect(
       rows.nth(index).locator('h3'),
-      `${label}: notification row ${index} title must follow created-at order`
+      `${label}: notification row ${index} title must match exact feed order`
     ).toHaveText(title);
   }
   const gaps = await rows.evaluateAll((nodes) => {
@@ -1290,18 +1289,6 @@ function writeStoredFixtures(): void {
 async function eventExists(actor: Actor, eventId: string): Promise<boolean> {
   const row = await actor.client.from('match_events').select('id').eq('id', eventId).maybeSingle();
   return !row.error && row.data !== null;
-}
-
-async function ownNotificationCount(actor: Actor, eventId: string, kind: string): Promise<number> {
-  // RLS scopes notifications reads to the caller's own rows, so this count is
-  // per-viewer by construction.
-  const rows = await actor.client
-    .from('notifications')
-    .select('id')
-    .eq('kind', kind)
-    .eq('target_id', eventId);
-  if (rows.error) throw rows.error;
-  return (rows.data ?? []).length;
 }
 
 /**
@@ -1600,28 +1587,36 @@ async function ensureRequesterStates(): Promise<void> {
  * and Z0gRd (six registration/cutoff rows across the today/earlier boundary). */
 async function ensureNotificationFixtures(): Promise<void> {
   await ensureVisualFixtures();
-  if (
-    (await ownNotificationCount(
-      family.notifA!,
-      family.fullEventId!,
-      'match_registration_playing'
-    )) === 0
-  ) {
-    await seedNotification(
-      family.notifA!,
-      family.fullEventId!,
-      family.communityId!,
-      'match_registration_playing',
-      1
-    );
-    await seedNotification(
-      family.notifA!,
-      family.fullEventId!,
-      family.communityId!,
-      'match_registration_quartet_complete',
-      5
-    );
-  }
+  const notifA = family.notifA!;
+  const notifB = family.notifB!;
+
+  // Rebuild only these synthetic rows on every call. Older fixture rows may
+  // carry a chronology-backfilled sequence from before the feed contract changed.
+  await fixtureSql(
+    `delete from public.notifications where event_key like 'visual:%' and (` +
+      `(recipient_user_id = '${notifA.id}' and target_id = '${family.fullEventId!}' ` +
+      `and kind in ('match_registration_playing','match_registration_quartet_complete')) or ` +
+      `(recipient_user_id = '${notifB.id}' and target_id = '${family.closedEventId!}' ` +
+      `and kind in ('match_registration_requested','match_registration_approved',` +
+      `'match_registration_rejected','match_registration_reserve',` +
+      `'match_registration_expired','match_registration_not_playing')));`
+  );
+
+  // Model the producer transaction: playing is persisted before completion.
+  // Both rows receive the same transaction timestamp; sequence is the tie-break.
+  const playingEventKey = `visual:match_registration_playing:${crypto.randomUUID()}`;
+  const quartetEventKey = `visual:match_registration_quartet_complete:${crypto.randomUUID()}`;
+  await fixtureSql(
+    `insert into public.notifications` +
+      `(recipient_user_id,event_key,kind,category,target_type,target_id,community_id) ` +
+      `values ('${notifA.id}','${playingEventKey}','match_registration_playing','matches',` +
+      `'match_event','${family.fullEventId!}','${family.communityId!}'); ` +
+      `insert into public.notifications` +
+      `(recipient_user_id,event_key,kind,category,target_type,target_id,community_id) ` +
+      `values ('${notifA.id}','${quartetEventKey}','match_registration_quartet_complete','matches',` +
+      `'match_event','${family.fullEventId!}','${family.communityId!}');`
+  );
+
   const kinds: Array<[string, number]> = [
     ['match_registration_requested', 12],
     ['match_registration_approved', 65],
@@ -1630,30 +1625,15 @@ async function ensureNotificationFixtures(): Promise<void> {
     ['match_registration_expired', 26 * 60],
     ['match_registration_not_playing', 27 * 60]
   ];
-  if (
-    (await ownNotificationCount(
-      family.notifB!,
-      family.closedEventId!,
-      'match_registration_requested'
-    )) === 0
-  )
-    for (const [kind, minutesAgo] of kinds)
-      await seedNotification(
-        family.notifB!,
-        family.closedEventId!,
-        family.communityId!,
-        kind,
-        minutesAgo
-      );
-  // The publication producer broadcasts match_event_published to every
-  // community member (four per run here) and notifications are outside the
-  // global-setup prune, so strip the broadcast rows from the two notification
-  // viewers before their gates: the qNVpA/Z0gRd lists must contain exactly the
-  // registration fixtures under gate.
+  for (const [kind, minutesAgo] of kinds)
+    await seedNotification(notifB, family.closedEventId!, family.communityId!, kind, minutesAgo);
+
+  // Publication broadcasts reach every community member and are outside the
+  // global-setup prune, so remove them before the exact notification gates.
   await fixtureSql(
     `delete from public.notifications n using auth.users u ` +
       `where n.recipient_user_id = u.id and n.kind = 'match_event_published' ` +
-      `and u.email in ('${family.notifA!.email}', '${family.notifB!.email}');`
+      `and u.email in ('${notifA.email}', '${notifB.email}');`
   );
 }
 
@@ -2346,7 +2326,7 @@ test.describe.serial('PAF-5 registration visual and structural QA', () => {
     await closedAcceptedContext.close();
   });
 
-  test('Notifications — quartet/playing (qNVpA) and registration/cutoff (Z0gRd) frames', async ({
+  test('Notifications — sequence-ordered quartet/playing (qNVpA) and registration/cutoff (Z0gRd) frames', async ({
     browser
   }) => {
     test.setTimeout(300_000);
@@ -2361,10 +2341,11 @@ test.describe.serial('PAF-5 registration visual and structural QA', () => {
     await expect(
       quartetPage.getByRole('heading', { level: 1, name: en.notifications.title })
     ).toBeVisible();
-    // Manifest qNVpA facts: two cards in order playing → quartet complete.
+    // The producer allocates playing before quartet completion; the newest
+    // sequence appears first in the notification feed.
     await assertNotificationList(quartetPage, en, 'qNVpA notifications', [
-      kindTitle(en, 'match_registration_playing'),
-      kindTitle(en, 'match_registration_quartet_complete')
+      kindTitle(en, 'match_registration_quartet_complete'),
+      kindTitle(en, 'match_registration_playing')
     ]);
     await assertNoHorizontalOverflow(quartetPage, 'qNVpA notifications');
     await assertPrimaryHitTargets(quartetPage, 'qNVpA notifications');
@@ -2376,16 +2357,17 @@ test.describe.serial('PAF-5 registration visual and structural QA', () => {
     await signIn(cutoffPage, family.notifB!);
     await cutoffPage.goto('/notifications');
     await ready(cutoffPage);
-    // Manifest Z0gRd facts: six cards in created-at order; the app groups them
-    // under Today/Earlier headers (recorded adaptation), so the six titles are
-    // gated in overall DOM order.
+    // Inserted sequence is requested, approved, rejected, reserve, expired,
+    // not-playing. The first four timestamps are today; expired/not-playing
+    // are earlier. Sections render Today then Earlier, with sequence DESC in
+    // each section: reserve, rejected, approved, requested, not-playing, expired.
     await assertNotificationList(cutoffPage, en, 'Z0gRd notifications', [
-      kindTitle(en, 'match_registration_requested'),
-      kindTitle(en, 'match_registration_approved'),
-      kindTitle(en, 'match_registration_rejected'),
       kindTitle(en, 'match_registration_reserve'),
-      kindTitle(en, 'match_registration_expired'),
-      kindTitle(en, 'match_registration_not_playing')
+      kindTitle(en, 'match_registration_rejected'),
+      kindTitle(en, 'match_registration_approved'),
+      kindTitle(en, 'match_registration_requested'),
+      kindTitle(en, 'match_registration_not_playing'),
+      kindTitle(en, 'match_registration_expired')
     ]);
     // Recorded adaptation: the app groups rows under Today/Earlier headers.
     // Exactly which groups render depends on the UTC day boundary, so assert

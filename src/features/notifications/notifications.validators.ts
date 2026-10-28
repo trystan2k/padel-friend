@@ -65,11 +65,23 @@ export function validateListMyNotifications(value: unknown) {
     limit > 50
   )
     throw new Error('INVALID_COMMUNITY_INPUT');
-  let cursor: { createdAt: string; id: string } | undefined;
+  let cursor: { sequence: number; createdAt: string; id: string } | undefined;
   if (input.cursor !== undefined) {
-    const raw = object(input.cursor, ['createdAt', 'id']);
-    if (!isTimestamp(raw.createdAt)) throw new Error('INVALID_COMMUNITY_INPUT');
-    cursor = { createdAt: raw.createdAt, id: uuid(raw.id) };
+    const raw = object(input.cursor, ['sequence', 'createdAt', 'id']);
+    if (raw.sequence === undefined) {
+      if (!isTimestamp(raw.createdAt)) throw new Error('INVALID_COMMUNITY_INPUT');
+      uuid(raw.id);
+      // Cursors live only in memory; during this deploy window restart legacy pagination at page one.
+    } else {
+      if (
+        typeof raw.sequence !== 'number' ||
+        !Number.isSafeInteger(raw.sequence) ||
+        raw.sequence < 1 ||
+        !isTimestamp(raw.createdAt)
+      )
+        throw new Error('INVALID_COMMUNITY_INPUT');
+      cursor = { sequence: raw.sequence, createdAt: raw.createdAt, id: uuid(raw.id) };
+    }
   }
   return { category, limit, cursor };
 }

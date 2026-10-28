@@ -28,9 +28,12 @@ Code/commits/PRs: normal. Off: "stop caveman" / "normal mode".
 ## Toolchain notes
 
 - E2E always runs against a fresh preview: `pnpm test:e2e` frees port 4173 before Playwright starts, and `playwright.config.ts` sets `reuseExistingServer: false`. Always run E2E via `pnpm test:e2e` (never a bare `playwright test`) so a leftover preview cannot serve a stale bundle. The port-free step must not live in `playwright.config.ts` — Playwright re-imports the config in every worker, which would kill the server it just started.
+- Agents iterate with affected-file tests only (`pnpm exec vitest related --run <touched files>` or `pnpm test:changed`); `test:changed` diffs against `HEAD` (uncommitted changes), not the branch merge-base; `--passWithNoTests` means a green run may execute zero tests — full `pnpm test` per unit remains mandatory. Reserve `pnpm complete-check` for the local final delivery gate.
+- CI topology: service-free `static` blocks parallel `unit`, `integration`, and `e2e`; final `CI / checks` aggregates all results and retains branch-protection continuity. `db:types:check` runs early in `integration` because `scripts/db-types.mjs` invokes `supabase gen types --local` and requires a live local schema.
+- Hooks split checks by cost: pre-commit runs lint-staged then static checks (`complete-check --only=static`, ~12s); pre-push runs tests only (`complete-check --only=test`, ~3min); E2E runs in the local final gate and as a CI phase, not local hooks.
 - Registry operations (`pnpm audit`/`view`/`install`) can hit transient `ETIMEDOUT`/`ENOTFOUND` (pnpm bundled-node fetch). Retry once, then fall back to `corepack pnpm <command>` or `pnpm install --frozen-lockfile --offline`; verify connectivity with `npm view`/`curl`.
 - `docs/plan/**` are mid-task workflow artifacts and are excluded from `oxfmt`, so an unformatted bundle/findings file never fails the format gate.
-- `pnpm complete-check` runs every stage and reports all failures in one pass (no `&&` short-circuit), matching CI where each stage runs separately. A cheap failing stage never hides test or E2E results.
+- `pnpm complete-check` runs all local stages and reports every failure in one pass (no `&&` short-circuit). CI runs static first, then unit/integration/E2E in parallel only after static passes; final `checks` rejects failed, cancelled, or skipped phases.
 
 ## QA
 
@@ -76,4 +79,4 @@ Whenever you need to install a new npm dependency, use the rules defined in .npm
 - Google OAuth uses Supabase PKCE and `/auth/callback`; preserve the code-verifier/session cookies on redirects. Configure Google Client ID/Secret in Supabase Auth, never in `VITE_` env values. Follow `INITIAL_SETUP.md` for environment URLs and deploy credentials.
 - Do not cache SSR HTML or Supabase authentication requests in the service worker. `VITE_` keys are public; only publishable keys belong there.
 - Do not lower test coverage thresholds without agreement. `pnpm complete-check` is the quality gate; it must not modify source. No `--fix` in CI.
-- Commit using Conventional Commits; Husky runs lint-staged, commitlint and full pre-push gate.
+- Commit using Conventional Commits; Husky runs lint-staged, commitlint and test-only pre-push gate.

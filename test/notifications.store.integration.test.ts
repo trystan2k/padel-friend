@@ -1,7 +1,12 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
-import { execFileSync, spawn } from 'node:child_process';
 import { describe, expect, it } from 'vitest';
 import { dotEnvPathFromImportMetaUrl, localSupabaseEnv } from './helpers/local-supabase-env';
+import { waitForRows } from './helpers/match-registration-sql';
+import {
+  executeTrustedSql,
+  openDedicatedSqlConnection,
+  queryTrustedSql
+} from './helpers/sql-transport';
 
 const environment = localSupabaseEnv({ filePath: dotEnvPathFromImportMetaUrl(import.meta.url) });
 type Env = NonNullable<typeof environment.env>;
@@ -43,39 +48,7 @@ describe.skipIf(!environment.env)('notification store (real local Supabase JWTs)
     return { client, id: signup.data.user!.id };
   }
 
-  const sql = (statement: string) =>
-    execFileSync(
-      'pnpm',
-      ['exec', 'supabase', 'db', 'query', '--local', '--output-format', 'json', statement],
-      {
-        encoding: 'utf8'
-      }
-    );
-  // Asynchronous runner that reports its child process identity and exact lifetime. Unlike
-  // execFileSync it does not block the event loop, and the returned timestamps/pids let the
-  // test PROVE the two callers' sessions were alive at the same instant.
-  const sqlProbe = (statement: string) =>
-    new Promise<{ stdout: string; pid: number; startedAt: bigint; endedAt: bigint }>(
-      (resolve, reject) => {
-        const startedAt = process.hrtime.bigint();
-        const child = spawn('pnpm', ['exec', 'supabase', 'db', 'query', '--local', statement], {
-          stdio: ['ignore', 'pipe', 'pipe']
-        });
-        let output = '';
-        child.stdout.on('data', (chunk: Buffer) => {
-          output += chunk.toString('utf8');
-        });
-        child.stderr.on('data', (chunk: Buffer) => {
-          output += chunk.toString('utf8');
-        });
-        child.on('error', reject);
-        child.on('close', (code) => {
-          const endedAt = process.hrtime.bigint();
-          if (code === 0) resolve({ stdout: output, pid: child.pid ?? -1, startedAt, endedAt });
-          else reject(new Error(`supabase db query exited ${code}: ${output}`));
-        });
-      }
-    );
+  const sql = (statement: string) => executeTrustedSql(statement);
   const literal = (value: string) => `'${value.replaceAll("'", "''")}'`;
   const persistSql = (
     recipient: string,
@@ -84,6 +57,12 @@ describe.skipIf(!environment.env)('notification store (real local Supabase JWTs)
     target = crypto.randomUUID()
   ) =>
     `select public.persist_notification(${literal(recipient)}::uuid, ${literal(event)}, ${literal(kind)}, 'community', 'community_invitation', ${literal(target)}::uuid, null)`;
+  const persistedNotificationId = async (statement: string): Promise<string> => {
+    const result = await queryTrustedSql(statement);
+    const id = Object.values(result.rows[0] ?? {})[0];
+    if (typeof id !== 'string') throw new Error('persist_notification returned no notification id');
+    return id;
+  };
   const code = (error: unknown) =>
     error && typeof error === 'object' && 'code' in error ? error.code : undefined;
 
@@ -140,7 +119,7 @@ describe.skipIf(!environment.env)('notification store (real local Supabase JWTs)
           read: false
         }
       ];
-      sql(`insert into public.notifications
+      await sql(`insert into public.notifications
         (id, recipient_user_id, event_key, kind, category, target_type, target_id, created_at, read_at)
         values ${fixtures
           .map(
@@ -193,16 +172,16 @@ describe.skipIf(!environment.env)('notification store (real local Supabase JWTs)
       // Includes matches and post-cutoff rows; excludes the read row and outsider.
       expect(unread.data).toBe(5);
     } finally {
-      sql(`do $cleanup$ begin
+      await sql(`do $cleanup$ begin
         delete from public.notifications where id = any(array[${ids.map((id) => `${literal(id)}::uuid`).join(',')}]);
         delete from auth.users where id in (${[recipient.id, ...(outsider ? [outsider.id] : [])].map((id) => `${literal(id)}::uuid`).join(',')});
       end $cleanup$;`);
     }
   }, 30000);
 
-  it('retains valid complete category ordering and the existing unread index', () => {
-    const catalog: unknown = JSON.parse(
-      sql(`select i.indisvalid as valid, i.indpred is null as nonpartial,
+  it('retains valid complete category ordering and the existing unread index', async () => {
+    const { rows } = await queryTrustedSql(
+      `select i.indisvalid as valid, i.indpred is null as nonpartial,
       am.amname as method, i.indnkeyatts as key_count, i.indnatts as attribute_count,
       array(select pg_get_indexdef(i.indexrelid, position, true)
         from generate_series(1, i.indnkeyatts) position order by position) as keys,
@@ -213,15 +192,10 @@ describe.skipIf(!environment.env)('notification store (real local Supabase JWTs)
       from pg_index i join pg_class c on c.oid = i.indexrelid
       join pg_am am on am.oid = c.relam
       where i.indexrelid = to_regclass('public.notifications_recipient_category_created_idx')
-        and i.indrelid = 'public.notifications'::regclass;`)
+        and i.indrelid = 'public.notifications'::regclass;`
     );
-    const rows = Array.isArray(catalog)
-      ? catalog
-      : catalog && typeof catalog === 'object' && 'rows' in catalog
-        ? catalog.rows
-        : undefined;
     expect(rows).toHaveLength(1);
-    expect(Array.isArray(rows) ? rows[0] : undefined).toMatchObject({
+    expect(rows[0]).toMatchObject({
       valid: true,
       nonpartial: true,
       method: 'btree',
@@ -243,10 +217,9 @@ describe.skipIf(!environment.env)('notification store (real local Supabase JWTs)
     try {
       const target = crypto.randomUUID();
       const event = `event:${crypto.randomUUID()}`;
-      const inserted = sql(persistSql(first.id, event, 'community_invitation', target));
-      const match = inserted.match(/[0-9a-f]{8}-[0-9a-f-]{27,}/i);
-      expect(match).toBeTruthy();
-      const id = match![0];
+      const id = await persistedNotificationId(
+        persistSql(first.id, event, 'community_invitation', target)
+      );
       notificationIds.push(id);
       expect((await first.client.from('notifications').select('*').eq('id', id)).data).toHaveLength(
         1
@@ -317,12 +290,10 @@ describe.skipIf(!environment.env)('notification store (real local Supabase JWTs)
       const oldTwo = crypto.randomUUID();
       const later = crypto.randomUUID();
       for (const key of [oldOne, oldTwo, later]) {
-        const created = sql(persistSql(first.id, `event:${key}`));
-        const found = created.match(/[0-9a-f]{8}-[0-9a-f-]{27,}/i)!;
-        notificationIds.push(found[0]);
+        notificationIds.push(await persistedNotificationId(persistSql(first.id, `event:${key}`)));
       }
       // Deterministic cutoff exercise: move one fixture before cutoff and one after it.
-      sql(
+      await sql(
         `do $cutoff$ begin update public.notifications set created_at = ${literal(new Date(Date.now() - 5000).toISOString())}::timestamptz where event_key in ('event:${oldOne}', 'event:${oldTwo}'); update public.notifications set created_at = ${literal(new Date(Date.now() + 5000).toISOString())}::timestamptz where event_key = 'event:${later}'; end $cutoff$;`
       );
       const count = await first.client.rpc('count_my_unread_notifications');
@@ -335,9 +306,9 @@ describe.skipIf(!environment.env)('notification store (real local Supabase JWTs)
       ).toBe(2);
       expect((await first.client.rpc('count_my_unread_notifications')).data).toBe(1);
 
-      const helperId = sql(persistSql(first.id, event, 'community_invitation', target)).match(
-        /[0-9a-f]{8}-[0-9a-f-]{27,}/i
-      )![0];
+      const helperId = await persistedNotificationId(
+        persistSql(first.id, event, 'community_invitation', target)
+      );
       expect(helperId).toBe(id);
       const snapshot = (
         await first.client.from('notifications').select('created_at,read_at').eq('id', id).single()
@@ -352,7 +323,7 @@ describe.skipIf(!environment.env)('notification store (real local Supabase JWTs)
             .single()
         ).data
       ).toEqual(snapshot);
-      sql(`do $mismatch$ begin
+      await sql(`do $mismatch$ begin
         begin
           perform public.persist_notification(${literal(first.id)}::uuid, ${literal(event)}, 'different_kind', 'community', 'community_invitation', ${literal(target)}::uuid, null);
           raise exception 'expected notification conflict';
@@ -361,43 +332,57 @@ describe.skipIf(!environment.env)('notification store (real local Supabase JWTs)
         end;
       end $mismatch$;`);
 
-      // F16: the two helper invocations must GENUINELY overlap. sqlProbe spawns a separate
-      // supabase-db-query process per call, and both processes are spawned before either
-      // result is awaited. The interval assertion below FAILS if a future refactor returns to
-      // sequential blocking calls (second start would land after first end), so the test
-      // proves real concurrency instead of assuming it. Under READ COMMITTED the two
-      // persist_notification calls then race in concurrent database sessions and must
-      // resolve the unique (recipient, event_key) conflict to the SAME single row (no
-      // duplicate insert, loser returns the winner's id instead of raising).
+      // F16: retain two dedicated PostgreSQL backends and observe both inside
+      // pg_stat_activity while each is sleeping immediately before the competing
+      // insert. This proves database overlap, not just overlapping CLI processes.
       const concurrentEvent = `event:${crypto.randomUUID()}`;
       const concurrentTarget = crypto.randomUUID();
-      const statement = persistSql(
-        first.id,
-        concurrentEvent,
-        'community_invitation',
-        concurrentTarget
-      );
-      const firstCall = sqlProbe(statement);
-      const secondCall = sqlProbe(statement);
-      const [firstResult, secondResult] = await Promise.all([firstCall, secondCall]);
-      expect(firstResult.pid).toBeGreaterThan(0);
-      expect(secondResult.pid).toBeGreaterThan(0);
-      expect(firstResult.pid).not.toBe(secondResult.pid);
-      expect(firstResult.startedAt < secondResult.endedAt).toBe(true);
-      expect(secondResult.startedAt < firstResult.endedAt).toBe(true);
-      const ids = [firstResult, secondResult].map((result) => {
-        const idMatch = result.stdout.match(/[0-9a-f]{8}-[0-9a-f-]{27,}/i);
-        if (!idMatch) throw new Error(`no notification id in query output: ${result.stdout}`);
-        return idMatch[0];
-      });
-      expect(ids[0]).toBe(ids[1]);
-      notificationIds.push(ids[0]!);
+      const marker = `notification-race-${crypto.randomUUID().replaceAll('-', '')}`;
+      const statement = `with gate as materialized (select pg_catalog.pg_sleep(1))
+        select pg_catalog.pg_backend_pid()::int as backend_pid,
+          public.persist_notification(${literal(first.id)}::uuid, ${literal(concurrentEvent)},
+            'community_invitation', 'community', 'community_invitation',
+            ${literal(concurrentTarget)}::uuid, null) as notification_id
+        from gate /* ${marker} */`;
+      const [firstConnection, secondConnection] = await Promise.all([
+        openDedicatedSqlConnection(),
+        openDedicatedSqlConnection()
+      ]);
+      const backendPids = [firstConnection.backendPid, secondConnection.backendPid];
+      expect(backendPids[0]).not.toBe(backendPids[1]);
+      try {
+        const firstCall = firstConnection.query(statement);
+        const secondCall = secondConnection.query(statement);
+        const observed = await waitForRows(
+          `select pid::int as pid from pg_catalog.pg_stat_activity
+            where query like '%${marker}%' and wait_event = 'PgSleep'
+              and pid in (${backendPids.join(',')})`,
+          (rows) => rows.length === 2,
+          'both notification race backends to overlap in PostgreSQL',
+          5000,
+          25
+        );
+        expect(
+          observed.map((row) => Number(row['pid'])).sort((left, right) => left - right)
+        ).toEqual(backendPids.sort((left, right) => left - right));
+        const [firstResult, secondResult] = await Promise.all([firstCall, secondCall]);
+        const ids = [firstResult, secondResult].map((result) => {
+          const notificationId = result.rows[0]?.['notification_id'];
+          if (typeof notificationId !== 'string')
+            throw new Error('persist_notification returned no id');
+          return notificationId;
+        });
+        expect(ids[0]).toBe(ids[1]);
+        notificationIds.push(ids[0]!);
+      } finally {
+        await Promise.all([firstConnection.close(), secondConnection.close()]);
+      }
       expect(
         (await first.client.from('notifications').select('id').eq('event_key', concurrentEvent))
           .data
       ).toHaveLength(1);
     } finally {
-      sql(
+      await sql(
         `do $cleanup$ begin delete from public.notifications where id = any(array[${notificationIds.map((id) => `${literal(id)}::uuid`).join(',')}]); delete from auth.users where id in (${literal(first.id)}::uuid, ${literal(second.id)}::uuid); end $cleanup$;`
       );
     }

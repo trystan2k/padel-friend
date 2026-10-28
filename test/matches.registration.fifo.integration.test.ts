@@ -17,6 +17,7 @@ import {
   makeRawRpc,
   proveEventLockBarrier,
   registrationStateById,
+  registrationSnapshotsByEventIds,
   sqlRows,
   type RawRpc,
   type RpcResult
@@ -197,8 +198,9 @@ describe('match registration FIFO integration', () => {
     );
     // The publication trigger gave every event an accepted creator slot and
     // the matching ordinal state: each starts at next_accepted_ordinal = 2.
+    const initialSnapshots = await registrationSnapshotsByEventIds(Object.values(events));
     for (const eventKey of Object.keys(events)) {
-      expect(await registrationStateById(events[eventKey]!), `${eventKey} initial state`).toEqual({
+      expect(initialSnapshots.get(events[eventKey]!)?.state, `${eventKey} initial state`).toEqual({
         next: 2,
         revision: 0
       });

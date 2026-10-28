@@ -1,8 +1,8 @@
-import { spawn } from 'node:child_process';
 import { createClient } from '@supabase/supabase-js';
 import { describe, expect, it } from 'vitest';
 import { FIXTURE_EMAIL_LIKE, MATCH_FIXTURE_PRUNE_STATEMENTS } from '../e2e/global-setup';
 import { matchPhotoFixture } from './helpers/match-photo-fixtures';
+import { queryTrustedSql, sqlErrorMessage } from './helpers/sql-transport';
 import {
   assertLocalSupabaseEnvInCi,
   dotEnvPathFromImportMetaUrl,
@@ -11,19 +11,15 @@ import {
 
 const environment = localSupabaseEnv({ filePath: dotEnvPathFromImportMetaUrl(import.meta.url) });
 
-function trustedSqlOutput(sql: string): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const child = spawn(
-      'pnpm',
-      ['exec', 'supabase', 'db', 'query', '--local', '--output-format', 'json', sql],
-      { cwd: process.cwd() }
-    );
-    let output = '';
-    child.stdout.setEncoding('utf8').on('data', (chunk: string) => (output += chunk));
-    child.stderr.setEncoding('utf8').on('data', (chunk: string) => (output += chunk));
-    child.once('error', reject);
-    child.once('close', () => resolve(output));
-  });
+async function trustedSqlOutput(sql: string): Promise<string> {
+  try {
+    await queryTrustedSql(sql);
+    return '';
+  } catch (error) {
+    // Match the CLI's JSON-quoted error envelope; the intentional exception
+    // carries the transaction's rollback-safe report in its message.
+    return JSON.stringify(sqlErrorMessage(error));
+  }
 }
 
 describe('e2e match fixture prune scoping', () => {

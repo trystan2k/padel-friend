@@ -1,14 +1,27 @@
 name: CI
+
 on:
   pull_request:
   push:
     branches: [main]
+
 permissions:
   contents: read
+
+# Superseded runs on the same PR/ref add no required-gate evidence; stop them.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+# CI topology: static checks block the three parallel test phases; checks aggregates all results.
+# Keep `checks` as final job name for branch-protection continuity.
 jobs:
-  checks:
+  static:
+    name: static
     runs-on: ubuntu-latest
     steps:
+      - name: Start job timing
+        run: printf '%s\n' "$(date +%s%3N)" > "$RUNNER_TEMP/ci-job-start-ms"
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
         with:
@@ -18,7 +31,99 @@ jobs:
           node-version: '26'
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      # First backend-backed gate: boot disposable local Supabase, prove populated upgrade, then restore latest schema.
+      - run: pnpm build
+      - run: pnpm knip
+      - run: pnpm typecheck
+      - run: pnpm lint
+      - run: pnpm format:check
+      - name: Record static job timing
+        if: always()
+        env:
+          JOB_STATUS: ${{ job.status }}
+        run: |
+          mkdir -p artifacts
+          start_ms="$(cat "$RUNNER_TEMP/ci-job-start-ms")"
+          elapsed_ms=$(( $(date +%s%3N) - start_ms ))
+          printf '{"job":"static","status":"%s","elapsedMs":%s}\n' "$JOB_STATUS" "$elapsed_ms" > artifacts/static-timing.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: static-evidence
+          path: artifacts/static-timing.json
+          if-no-files-found: ignore
+
+  # Unit tests own coverage collection; thresholds remain in vitest.config.ts.
+  unit:
+    name: unit
+    runs-on: ubuntu-latest
+    needs: static
+    steps:
+      - name: Start job timing
+        run: printf '%s\n' "$(date +%s%3N)" > "$RUNNER_TEMP/ci-job-start-ms"
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 12.13.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '26'
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      # Unit tests import generated route metadata and design tokens. Each CI job
+      # has a fresh checkout, so create those build-time artifacts before testing.
+      - name: Generate application artifacts required by unit tests
+        run: pnpm build
+      - name: Run unit tests with coverage and JSON report
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts
+          start_ms="$(date +%s%3N)"
+          if pnpm exec vitest run --config vitest.unit.config.ts --coverage --reporter=default --reporter=json --outputFile.json=artifacts/unit-report.json; then
+            test_exit_code=0
+          else
+            test_exit_code=$?
+          fi
+          elapsed_ms=$(( $(date +%s%3N) - start_ms ))
+          printf '{"phase":"unit","elapsedMs":%s,"exitCode":%s}\n' "$elapsed_ms" "$test_exit_code" > artifacts/unit-timing.json
+          exit "$test_exit_code"
+      - name: Record unit job timing
+        if: always()
+        env:
+          JOB_STATUS: ${{ job.status }}
+        run: |
+          mkdir -p artifacts
+          start_ms="$(cat "$RUNNER_TEMP/ci-job-start-ms")"
+          elapsed_ms=$(( $(date +%s%3N) - start_ms ))
+          printf '{"job":"unit","status":"%s","elapsedMs":%s}\n' "$JOB_STATUS" "$elapsed_ms" > artifacts/unit-job-timing.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: unit-evidence
+          path: |
+            coverage/
+            artifacts/unit-report.json
+            artifacts/unit-timing.json
+            artifacts/unit-job-timing.json
+          if-no-files-found: ignore
+
+  # One disposable local Supabase stack; no other job can mutate this runner's DB.
+  # Integration tests exercise DB-backed feature modules, not build-generated route/token artifacts.
+  integration:
+    name: integration
+    runs-on: ubuntu-latest
+    needs: static
+    steps:
+      - name: Start job timing
+        run: printf '%s\n' "$(date +%s%3N)" > "$RUNNER_TEMP/ci-job-start-ms"
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 12.13.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '26'
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
       - name: Start local Supabase
         run: pnpm exec supabase start
       - name: Test populated predecessor migration upgrade
@@ -39,6 +144,9 @@ jobs:
             printf '%s\n' 'Populated migration upgrade or latest-schema restore failed' >&2
             exit 1
           fi
+      # `db:types:check` runs `supabase gen types --local`, so it needs this live stack.
+      - name: Check generated database types
+        run: pnpm db:types:check
       - name: Provision local Supabase environment
         run: |
           set -euo pipefail
@@ -55,22 +163,199 @@ jobs:
           fi
           printf 'VITE_SUPABASE_URL=%s\nVITE_SUPABASE_PUBLISHABLE_KEY=%s\n' "$API_URL" "$PUBLISHABLE_KEY" >> "$GITHUB_ENV"
           printf 'VITE_SUPABASE_URL=%s\nVITE_SUPABASE_PUBLISHABLE_KEY=%s\n' "$API_URL" "$PUBLISHABLE_KEY" > .env
-      - name: Check generated database types
-        run: pnpm db:types:check
-      - run: pnpm exec playwright install --with-deps chromium
-      - run: pnpm build
-      - run: pnpm knip
-      - run: pnpm typecheck
-      - run: pnpm lint
-      - run: pnpm format:check
-      - run: pnpm test
-      - run: pnpm test:e2e
+      - name: Run integration tests with JSON report
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts
+          start_ms="$(date +%s%3N)"
+          if pnpm exec vitest run --config vitest.integration.config.ts --reporter=default --reporter=json --outputFile.json=artifacts/integration-report.json; then
+            test_exit_code=0
+          else
+            test_exit_code=$?
+          fi
+          elapsed_ms=$(( $(date +%s%3N) - start_ms ))
+          printf '{"phase":"integration","elapsedMs":%s,"exitCode":%s}\n' "$elapsed_ms" "$test_exit_code" > artifacts/integration-timing.json
+          exit "$test_exit_code"
+      - name: Record integration job timing
+        if: always()
+        env:
+          JOB_STATUS: ${{ job.status }}
+        run: |
+          mkdir -p artifacts
+          start_ms="$(cat "$RUNNER_TEMP/ci-job-start-ms")"
+          elapsed_ms=$(( $(date +%s%3N) - start_ms ))
+          printf '{"job":"integration","status":"%s","elapsedMs":%s}\n' "$JOB_STATUS" "$elapsed_ms" > artifacts/integration-job-timing.json
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: test-reports
+          name: integration-evidence
           path: |
-            coverage/
+            artifacts/integration-report.json
+            artifacts/integration-timing.json
+            artifacts/integration-job-timing.json
+          if-no-files-found: ignore
+
+  # Each E2E shard gets its own Supabase stack and fresh preview. The reporting
+  # job merges their blob reports; checks aggregates the shard results directly.
+  # Never place mutation-heavy unit/integration suites in this job.
+  e2e:
+    name: e2e (shard ${{ matrix.shard }}/3)
+    runs-on: ubuntu-latest
+    needs: static
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3]
+    steps:
+      - name: Start job timing
+        run: printf '%s\n' "$(date +%s%3N)" > "$RUNNER_TEMP/ci-job-start-ms"
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 12.13.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '26'
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Start local Supabase
+        run: pnpm exec supabase start
+      - name: Ensure latest local Supabase schema
+        run: pnpm exec supabase db reset --local
+      - name: Provision local Supabase environment
+        run: |
+          set -euo pipefail
+          status="$(pnpm exec supabase status -o env)"
+          API_URL="$(printf '%s\n' "$status" | sed -n 's/^API_URL=//p' | tail -n 1)"
+          PUBLISHABLE_KEY="$(printf '%s\n' "$status" | sed -n 's/^PUBLISHABLE_KEY=//p' | tail -n 1)"
+          API_URL="${API_URL#\"}"
+          API_URL="${API_URL%\"}"
+          PUBLISHABLE_KEY="${PUBLISHABLE_KEY#\"}"
+          PUBLISHABLE_KEY="${PUBLISHABLE_KEY%\"}"
+          if [[ -z ${API_URL:-} || ! ${API_URL:-} =~ ^http://(127\.0\.0\.1|localhost|\[::1\]):[0-9]+/?$ || -z ${PUBLISHABLE_KEY:-} ]]; then
+            printf '%s\n' 'Local Supabase API_URL or PUBLISHABLE_KEY missing/invalid' >&2
+            exit 1
+          fi
+          printf 'VITE_SUPABASE_URL=%s\nVITE_SUPABASE_PUBLISHABLE_KEY=%s\n' "$API_URL" "$PUBLISHABLE_KEY" >> "$GITHUB_ENV"
+          printf 'VITE_SUPABASE_URL=%s\nVITE_SUPABASE_PUBLISHABLE_KEY=%s\n' "$API_URL" "$PUBLISHABLE_KEY" > .env
+      - run: pnpm exec playwright install --with-deps chromium
+      - name: Run fresh-preview E2E shard
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts
+          start_ms="$(date +%s%3N)"
+          if pnpm test:e2e --shard=${{ matrix.shard }}/3 --reporter=blob; then
+            test_exit_code=0
+          else
+            test_exit_code=$?
+          fi
+          elapsed_ms=$(( $(date +%s%3N) - start_ms ))
+          printf '{"phase":"e2e","shard":%s,"elapsedMs":%s,"exitCode":%s}\n' "${{ matrix.shard }}" "$elapsed_ms" "$test_exit_code" > artifacts/e2e-timing.json
+          exit "$test_exit_code"
+      - name: Record E2E shard timing
+        if: always()
+        env:
+          JOB_STATUS: ${{ job.status }}
+          SHARD: ${{ matrix.shard }}
+        run: |
+          mkdir -p artifacts
+          start_ms="$(cat "$RUNNER_TEMP/ci-job-start-ms")"
+          elapsed_ms=$(( $(date +%s%3N) - start_ms ))
+          printf '{"job":"e2e","shard":%s,"status":"%s","elapsedMs":%s}\n' "$SHARD" "$JOB_STATUS" "$elapsed_ms" > artifacts/e2e-job-timing.json
+      - name: Upload E2E blob report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: e2e-blob-report-${{ matrix.shard }}
+          path: blob-report/
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: e2e-evidence-${{ matrix.shard }}
+          path: |
             test-results/
             artifacts/community-admin-visual/
+            artifacts/e2e-timing.json
+            artifacts/e2e-job-timing.json
+          if-no-files-found: ignore
+
+  # Merge reports after all shards finish, without affecting the required checks gate.
+  e2e-report:
+    name: e2e-report
+    runs-on: ubuntu-latest
+    needs: e2e
+    if: ${{ always() }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 12.13.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '26'
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Download E2E shard blob reports
+        uses: actions/download-artifact@v4
+        with:
+          pattern: e2e-blob-report-*
+          path: all-blob-reports
+          merge-multiple: true
+      - name: Require all three shard reports
+        run: |
+          set -euo pipefail
+          if [[ ! -d all-blob-reports ]]; then
+            printf '%s\n' 'No E2E blob reports were downloaded' >&2
+            exit 1
+          fi
+          report_count="$(find all-blob-reports -type f -name '*.zip' | wc -l | tr -d '[:space:]')"
+          if [[ "$report_count" -ne 3 ]]; then
+            printf 'Expected one blob report from each of 3 E2E shards; found %s\n' "$report_count" >&2
+            exit 1
+          fi
+      - name: Merge E2E HTML report
+        run: pnpm exec playwright merge-reports --reporter=html ./all-blob-reports
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: e2e-html-report
+          path: playwright-report/
+          if-no-files-found: ignore
+
+  # Final aggregate preserves the full CI result for branch protection.
+  checks:
+    name: checks
+    runs-on: ubuntu-latest
+    needs: [static, unit, integration, e2e]
+    if: ${{ always() }}
+    steps:
+      - name: Start job timing
+        run: printf '%s\n' "$(date +%s%3N)" > "$RUNNER_TEMP/ci-job-start-ms"
+      - name: Require every CI phase to succeed
+        env:
+          STATIC_RESULT: ${{ needs.static.result }}
+          UNIT_RESULT: ${{ needs.unit.result }}
+          INTEGRATION_RESULT: ${{ needs.integration.result }}
+          E2E_RESULT: ${{ needs.e2e.result }}
+        run: |
+          printf 'CI results: static=%s unit=%s integration=%s e2e=%s\n' "$STATIC_RESULT" "$UNIT_RESULT" "$INTEGRATION_RESULT" "$E2E_RESULT"
+          if [[ "$STATIC_RESULT" != success || "$UNIT_RESULT" != success || "$INTEGRATION_RESULT" != success || "$E2E_RESULT" != success ]]; then
+            printf '%s\n' 'Required CI phase failed, was cancelled, or was unexpectedly skipped' >&2
+            exit 1
+          fi
+      - name: Record checks timing
+        if: always()
+        env:
+          JOB_STATUS: ${{ job.status }}
+        run: |
+          mkdir -p artifacts
+          start_ms="$(cat "$RUNNER_TEMP/ci-job-start-ms")"
+          elapsed_ms=$(( $(date +%s%3N) - start_ms ))
+          printf '{"job":"checks","status":"%s","elapsedMs":%s}\n' "$JOB_STATUS" "$elapsed_ms" > artifacts/checks-timing.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: checks-evidence
+          path: artifacts/checks-timing.json
           if-no-files-found: ignore

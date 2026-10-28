@@ -1,20 +1,246 @@
-import { spawn } from 'node:child_process';
 import { expect } from 'vitest';
+import {
+  executeTrustedSql,
+  queryTrustedSql,
+  sqlErrorMessage,
+  startCliSql,
+  startSql,
+  type SqlHandle,
+  type SqlRow
+} from './sql-transport';
+import { createFixtureCleanupRegistry, type FixtureCleanupRegistry } from './fixture-cleanup';
+
+export { startCliSql, startSql };
+export type { SqlHandle, SqlRow };
+
+type MatchFixtureCleanupScope = {
+  communityIds: Set<string>;
+  eventIds: Set<string>;
+  hasStorageObjects: boolean;
+};
+
+const matchFixtureCleanupScopes = new WeakMap<FixtureCleanupRegistry, MatchFixtureCleanupScope>();
+
+function matchFixtureScope(registry: FixtureCleanupRegistry): MatchFixtureCleanupScope {
+  let scope = matchFixtureCleanupScopes.get(registry);
+  if (!scope) {
+    scope = { communityIds: new Set(), eventIds: new Set(), hasStorageObjects: false };
+    matchFixtureCleanupScopes.set(registry, scope);
+  }
+  return scope;
+}
+
+/** Register auth- and notification-owned rows for one newly created test actor. */
+export function registerMatchActorFixtureRows(
+  registry: FixtureCleanupRegistry,
+  actor: { id?: string; email?: string }
+): void {
+  if (actor.email) registry.register('auth.users', { email: actor.email });
+  if (!actor.id) return;
+
+  registry.register('auth.users', { id: actor.id });
+  registry.register('public.community_notifications', { recipient_user_id: actor.id });
+  registry.register('public.community_request_messages', { sender_user_id: actor.id });
+  registry.register('public.community_request_messages', { recipient_user_id: actor.id });
+  registry.register('public.community_invitee_directory_preferences', { user_id: actor.id });
+  registry.register('public.notification_preferences', { user_id: actor.id });
+  registry.register('public.notifications', { recipient_user_id: actor.id });
+}
+
+/** Register a test-owned community and all rows that reference it directly. */
+export function registerMatchCommunityFixtureRows(
+  registry: FixtureCleanupRegistry,
+  communityId: string
+): void {
+  matchFixtureScope(registry).communityIds.add(communityId);
+  registry.register('public.communities', { id: communityId });
+  registry.register('public.community_members', { community_id: communityId });
+  registry.register('public.community_audit_log', { community_id: communityId });
+  registry.register('public.community_invitations', { community_id: communityId });
+  registry.register('public.community_request_messages', { community_id: communityId });
+  registry.register('public.community_venues', { community_id: communityId });
+  registry.register('public.notifications', { community_id: communityId });
+}
+
+/** Register an exact uploaded object path; never clean a whole Storage bucket. */
+export function registerMatchStorageFixtureObject(
+  registry: FixtureCleanupRegistry,
+  bucketId: string,
+  objectName: string
+): void {
+  matchFixtureScope(registry).hasStorageObjects = true;
+  registry.register('storage.objects', { bucket_id: bucketId, name: objectName });
+}
+
+/** Register one event and every direct child identity before fixture creation. */
+export function registerMatchEventFixtureRows(
+  registry: FixtureCleanupRegistry,
+  eventId: string,
+  photoPath?: string
+): void {
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(eventId))
+    throw new Error(`Invalid match fixture event ID: ${eventId}`);
+  matchFixtureScope(registry).eventIds.add(eventId);
+  registry.register('public.match_events', { id: eventId });
+  registry.register('public.match_event_invites', { match_event_id: eventId });
+  registry.register('public.match_event_management_commands', { match_event_id: eventId });
+  registry.register('public.match_event_audit_log', { match_event_id: eventId });
+  registry.register('public.match_event_registration_attempts', { match_event_id: eventId });
+  registry.register('public.match_event_registrations', { match_event_id: eventId });
+  registry.register('public.match_event_registration_state', { match_event_id: eventId });
+  registry.register('public.match_event_result_proposals', { match_event_id: eventId });
+  registry.register('public.notifications', { target_id: eventId });
+  if (photoPath) registerMatchStorageFixtureObject(registry, 'match-event-photos', photoPath);
+}
+
+/**
+ * Creates a scoped registry for real match/community fixtures. Cleanup first
+ * discovers owned event/message children, then removes only registered rows in
+ * FK order. DDL guards are disabled only for the cleanup transaction and are
+ * restored by commit or transaction rollback.
+ */
+export function createMatchFixtureCleanupRegistry(scopeName: string): FixtureCleanupRegistry {
+  const registry = createFixtureCleanupRegistry(scopeName);
+  const scope = matchFixtureScope(registry);
+  registry.setCleanupExecutor(async (current) => {
+    const communityIds = [...scope.communityIds];
+    if (communityIds.length > 0) {
+      const events = await queryTrustedSql(
+        `select id::text as id, photo_path from public.match_events where community_id = any($1::uuid[])`,
+        { values: [communityIds] }
+      );
+      for (const row of events.rows) {
+        const eventId = String(row['id']);
+        const photoPath = typeof row['photo_path'] === 'string' ? row['photo_path'] : undefined;
+        registerMatchEventFixtureRows(current, eventId, photoPath);
+      }
+
+      const messages = await queryTrustedSql(
+        `select id::text as id from public.community_request_messages where community_id = any($1::uuid[])`,
+        { values: [communityIds] }
+      );
+      for (const row of messages.rows)
+        current.register('public.community_notifications', {
+          request_message_id: String(row['id'])
+        });
+    }
+
+    const eventIds = [...scope.eventIds];
+    if (eventIds.length > 0) {
+      const proposals = await queryTrustedSql(
+        `select id::text as id from public.match_event_result_proposals where match_event_id = any($1::uuid[])`,
+        { values: [eventIds] }
+      );
+      for (const row of proposals.rows)
+        current.register('public.match_event_result_proposal_versions', {
+          proposal_id: String(row['id'])
+        });
+    }
+
+    const beforeStatements: string[] = [];
+    const afterStatements: string[] = [];
+    const triggerPairs: Array<[table: string, trigger: string]> = [];
+    if (scope.communityIds.size > 0) {
+      triggerPairs.push(['community_members', 'community_member_guard']);
+      beforeStatements.push(
+        'alter table public.community_members disable trigger community_member_guard'
+      );
+    }
+    if (scope.eventIds.size > 0) {
+      const eventTriggerPairs: Array<[table: string, trigger: string]> = [
+        ['match_events', 'match_event_immutable'],
+        ['match_event_invites', 'match_invite_immutable'],
+        ['match_event_registrations', 'match_registration_identity_guard'],
+        ['match_event_registrations', 'match_registration_final_state'],
+        ['match_event_registration_attempts', 'match_attempt_history_guard'],
+        ['match_event_registration_attempts', 'match_attempt_final_state'],
+        ['match_event_audit_log', 'match_audit_immutable'],
+        ['match_event_result_proposals', 'match_result_proposal_immutable'],
+        ['match_event_result_proposal_versions', 'match_result_proposal_version_immutable']
+      ];
+      for (const [table, trigger] of eventTriggerPairs) {
+        triggerPairs.push([table, trigger]);
+        beforeStatements.push(`alter table public.${table} disable trigger ${trigger}`);
+      }
+      beforeStatements.push(
+        `update public.match_event_registrations set current_attempt_id = null where match_event_id = any(array[${[
+          ...scope.eventIds
+        ]
+          .map((id) => `'${id}'::uuid`)
+          .join(',')}])`
+      );
+    }
+    if (triggerPairs.length > 0) {
+      const triggerPredicates = triggerPairs
+        .map(([table, trigger]) => `(c.relname = '${table}' and t.tgname = '${trigger}')`)
+        .join(' or ');
+      // Lock every affected table before reading trigger metadata. These statements,
+      // state capture, trigger changes, row deletes, and restoration run in one
+      // executeTrustedSqlBatch transaction on one PostgreSQL connection.
+      const lockedTables = [...new Set(triggerPairs.map(([name]) => name))];
+      beforeStatements.unshift(
+        ...lockedTables.map((table) => `lock table public.${table} in access exclusive mode`)
+      );
+      beforeStatements.splice(
+        lockedTables.length,
+        0,
+        `create temporary table paf_fixture_trigger_states on commit drop as
+         select c.relname as table_name, t.tgname as trigger_name, t.tgenabled as enabled
+           from pg_catalog.pg_trigger t
+           join pg_catalog.pg_class c on c.oid = t.tgrelid
+           join pg_catalog.pg_namespace n on n.oid = c.relnamespace
+          where n.nspname = 'public' and not t.tgisinternal and (${triggerPredicates})`,
+        `do $fixture_trigger_check$
+         declare expected_count integer := ${triggerPairs.length};
+         declare actual_count integer;
+         begin
+           select count(*)::integer into actual_count from pg_temp.paf_fixture_trigger_states;
+           if actual_count <> expected_count then
+             raise exception 'Refusing fixture cleanup because expected triggers are missing: expected %, found %', expected_count, actual_count;
+           end if;
+         end
+         $fixture_trigger_check$`
+      );
+      for (const [table, trigger] of triggerPairs) {
+        afterStatements.unshift(
+          `do $fixture_trigger_restore$
+           declare enabled character;
+           begin
+             select s.enabled into enabled from pg_temp.paf_fixture_trigger_states s
+              where s.table_name = '${table}' and s.trigger_name = '${trigger}';
+             if enabled = 'O' then
+               execute 'alter table public.${table} enable trigger ${trigger}';
+             elsif enabled = 'A' then
+               execute 'alter table public.${table} enable always trigger ${trigger}';
+             elsif enabled = 'R' then
+               execute 'alter table public.${table} enable replica trigger ${trigger}';
+             else
+               execute 'alter table public.${table} disable trigger ${trigger}';
+             end if;
+           end
+           $fixture_trigger_restore$`
+        );
+      }
+    }
+    if (scope.hasStorageObjects)
+      beforeStatements.unshift(`select set_config('storage.allow_delete_query','true',true)`);
+
+    await current.deleteRegisteredRowsInOrder({
+      beforeStatements,
+      afterStatements,
+      restoreOnFailure: afterStatements
+    });
+  });
+  return registry;
+}
 
 // Shared trusted-SQL harness for the PAF-5.3 registration suites (model, FIFO,
-// notifications). Same process-isolated `supabase db query` pattern as the
-// PAF-5.2 actions suite: every fixture or probe runs on its own connection as
-// the local database owner, and the retained-lock barrier proves that RPC
-// contenders genuinely block on the event lock chain before being released.
+// notifications). Fixtures use the bounded pool; independent holders and probes
+// preserve the retained-lock barrier that proves RPC contenders genuinely block
+// on the event lock chain before being released.
 // Nothing here touches production code; everything fails closed without a
 // loopback Supabase env (see helpers/local-supabase-env.ts).
 
-export type SqlResult = { code: number | null; stdout: string; stderr: string };
-export type SqlHandle = {
-  done: Promise<SqlResult>;
-  stop: (gracePeriodMs?: number) => Promise<void>;
-};
-export type SqlRow = Record<string, unknown>;
 export type RpcError = {
   code?: string | null;
   message?: string | null;
@@ -53,75 +279,6 @@ export async function withDeadline<T>(
   }
 }
 
-/**
- * Spawns one `supabase db query` child as a process-group leader on its own
- * connection. Used both for trusted fixture SQL and for the retained lock
- * holder that proves RPC contenders genuinely overlap. `stop` escalates
- * SIGTERM → SIGKILL across the whole tree so no psql grandchild survives.
- */
-export function startSql(sql: string): SqlHandle {
-  const child = spawn(
-    'pnpm',
-    ['exec', 'supabase', 'db', 'query', '--local', '--output-format', 'json', sql],
-    {
-      cwd: process.cwd(),
-      stdio: ['ignore', 'pipe', 'pipe'],
-      detached: process.platform !== 'win32'
-    }
-  );
-  let stdout = '';
-  let stderr = '';
-  child.stdout.setEncoding('utf8');
-  child.stderr.setEncoding('utf8');
-  child.stdout.on('data', (chunk: string) => (stdout += chunk));
-  child.stderr.on('data', (chunk: string) => (stderr += chunk));
-  const done = new Promise<SqlResult>((resolve) => {
-    child.once('error', (error: Error) =>
-      resolve({ code: null, stdout, stderr: `${stderr}${error}` })
-    );
-    child.once('close', (code) => resolve({ code, stdout, stderr }));
-  });
-  const exited = () => child.exitCode !== null || child.signalCode !== null;
-  const signalTree = (signal: NodeJS.Signals) => {
-    try {
-      if (child.pid !== undefined) process.kill(-child.pid, signal);
-    } catch {
-      child.kill(signal);
-    }
-  };
-  const isGroupAlive = (): boolean => {
-    if (child.pid === undefined) return false;
-    try {
-      process.kill(-child.pid, 0);
-      return true;
-    } catch (error) {
-      return (
-        typeof error === 'object' && error !== null && 'code' in error && error.code === 'EPERM'
-      );
-    }
-  };
-  const stop = async (gracePeriodMs = 1000): Promise<void> => {
-    if (!exited()) {
-      signalTree('SIGTERM');
-      await new Promise<boolean>((resolve) => {
-        const timer = setTimeout(() => resolve(false), gracePeriodMs);
-        child.once('close', () => {
-          clearTimeout(timer);
-          resolve(true);
-        });
-      });
-    }
-    // Leader exit alone never implies an empty group: the supabase CLI's psql
-    // grandchild survives pnpm's SIGTERM and would keep its lock for 900s.
-    if (isGroupAlive()) {
-      signalTree('SIGKILL');
-      for (let waitedMs = 0; waitedMs < gracePeriodMs && isGroupAlive(); waitedMs += 25)
-        await sleep(25);
-    }
-  };
-  return { done, stop };
-}
-
 export function isRecord(value: unknown): value is SqlRow {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
@@ -130,44 +287,17 @@ export function asRecord(value: unknown): Record<string, unknown> {
   return isRecord(value) ? value : {};
 }
 
-function parseSqlRows(result: SqlResult): SqlRow[] {
-  if (result.code !== 0)
-    throw new Error(`Local SQL failed (${result.code}): ${result.stdout}\n${result.stderr}`);
-  const start = result.stdout.indexOf('[');
-  const end = result.stdout.lastIndexOf(']');
-  if (start < 0 || end <= start)
-    throw new Error(`Local SQL returned no JSON rows: ${result.stdout.slice(0, 400)}`);
-  const parsed: unknown = JSON.parse(result.stdout.slice(start, end + 1));
-  if (!Array.isArray(parsed)) throw new Error(`Local SQL returned invalid rows: ${result.stdout}`);
-  const rows = parsed.filter(isRecord);
-  if (rows.length !== parsed.length)
-    throw new Error(`Local SQL returned invalid rows: ${result.stdout}`);
-  return rows;
-}
-
 /** Trusted read/fixture query that must succeed and return JSON rows. */
 export async function sqlRows(sql: string): Promise<SqlRow[]> {
-  const handle = startSql(sql);
-  try {
-    return parseSqlRows(await withDeadline(handle.done, 30000, 'local SQL query'));
-  } catch (error) {
-    await handle.stop();
-    throw error;
-  }
+  return (await queryTrustedSql(sql)).rows;
 }
 
 /** Trusted fixture SQL whose only observable output is success. */
 export async function fixtureSql(sql: string): Promise<void> {
-  const handle = startSql(sql);
   try {
-    const result = await withDeadline(handle.done, 30000, 'local fixture SQL');
-    if (result.code !== 0)
-      throw new Error(
-        `Trusted fixture SQL failed (${result.code}): ${result.stdout}\n${result.stderr}`
-      );
+    await executeTrustedSql(sql);
   } catch (error) {
-    await handle.stop();
-    throw error;
+    throw new Error(`Trusted fixture SQL failed: ${sqlErrorMessage(error)}`, { cause: error });
   }
 }
 
@@ -270,6 +400,7 @@ export async function proveEventLockBarrier(params: {
     );
     const holderPid = Number(holderRow!['value']);
     expect(Number.isInteger(holderPid), 'holder pid').toBe(true);
+    expect(await holder.backendPid, 'holder uses its dedicated PostgreSQL backend').toBe(holderPid);
     // In-database poll: wait until both contenders are provably blocked on
     // this event's lock chain (rooted at the holder), then release them in
     // the same transaction. Contenders are counted via a one-level chain
@@ -350,7 +481,10 @@ export async function proveEventLockBarrier(params: {
         end if;
         ${params.releaseAtCutoff ? `perform pg_catalog.pg_sleep(greatest(0, extract(epoch from (select registration_cutoff_at - clock_timestamp() from public.match_events where id = '${params.eventId}'))));` : ''}
         perform pg_catalog.pg_terminate_backend(${holderPid});
-       end $barrier$;`);
+        end $barrier$;`);
+    expect(await confirm.backendPid, 'probe uses a separate PostgreSQL backend').not.toBe(
+      holderPid
+    );
     const contenders = params.fire();
     const confirmResult = await withDeadline(confirm.done, 30000, 'barrier confirm-and-release');
     if (confirmResult.code !== 0)
@@ -387,6 +521,36 @@ export async function registrationStateById(
   );
   expect(rows, `state row for ${eventId}`).toHaveLength(1);
   return { next: Number(rows[0]!['next']), revision: Number(rows[0]!['revision']) };
+}
+
+export type RegistrationSnapshot = {
+  state: { next: number; revision: number };
+  cutoffMarker: string | null;
+};
+
+/** Reads committed registration state for a suite's fixture set in one snapshot. */
+export async function registrationSnapshotsByEventIds(
+  eventIds: readonly string[]
+): Promise<Map<string, RegistrationSnapshot>> {
+  if (eventIds.length === 0) return new Map();
+  const { rows } = await queryTrustedSql(
+    `select match_event_id::text as event_id,
+            next_accepted_ordinal::int as next,
+            transition_revision::int as revision,
+            cutoff_processed_at::text as cutoff_marker
+       from public.match_event_registration_state
+      where match_event_id = any($1::uuid[])`,
+    { values: [[...eventIds]] }
+  );
+  return new Map(
+    rows.map((row) => [
+      String(row['event_id']),
+      {
+        state: { next: Number(row['next']), revision: Number(row['revision']) },
+        cutoffMarker: typeof row['cutoff_marker'] === 'string' ? row['cutoff_marker'] : null
+      }
+    ])
+  );
 }
 
 export async function expectDomainError(

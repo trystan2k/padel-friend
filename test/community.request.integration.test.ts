@@ -1,7 +1,7 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
-import { execFileSync } from 'node:child_process';
 import { describe, expect, it } from 'vitest';
 import { dotEnvPathFromImportMetaUrl, localSupabaseEnv } from './helpers/local-supabase-env';
+import { executeTrustedSql } from './helpers/sql-transport';
 
 const environment = localSupabaseEnv({ filePath: dotEnvPathFromImportMetaUrl(import.meta.url) });
 type Env = NonNullable<typeof environment.env>;
@@ -373,11 +373,8 @@ describe.skipIf(!environment.env)('community request delivery (real local Supaba
     // in parallel against one shared local database, so an unscoped trigger
     // on community_notifications would poison concurrent community suites).
     const { admin, applicant, communityId, membershipId } = await fixture();
-    const sql = (statement: string) =>
-      execFileSync('pnpm', ['exec', 'supabase', 'db', 'query', '--local', statement], {
-        encoding: 'utf8'
-      });
-    sql(
+    const sql = (statement: string) => executeTrustedSql(statement);
+    await sql(
       "do $outer$ begin execute 'create or replace function public.test_reject_community_notification() returns trigger language plpgsql as $$ begin raise exception ''injected notification failure''; end $$'; " +
         `execute 'create trigger test_reject_community_notification before insert on public.community_notifications for each row when (new.recipient_user_id = ''${applicant.id}'') execute function public.test_reject_community_notification()'; end $outer$;`
     );
@@ -395,7 +392,7 @@ describe.skipIf(!environment.env)('community request delivery (real local Supaba
       expect(rows.error).toBeNull();
       expect(rows.data).toEqual([]);
     } finally {
-      sql(
+      await sql(
         "do $outer$ begin execute 'drop trigger if exists test_reject_community_notification on public.community_notifications'; " +
           "execute 'drop function if exists public.test_reject_community_notification()'; end $outer$;"
       );
@@ -403,7 +400,7 @@ describe.skipIf(!environment.env)('community request delivery (real local Supaba
     // Loud residue check: the blocker is unscoped (any community_notifications
     // insert raises), so a leftover would poison every later community suite
     // in the shared local database. The cleanup must be provably complete.
-    sql(
+    await sql(
       'do $outer$ begin ' +
         "if exists (select 1 from pg_catalog.pg_trigger where tgname = 'test_reject_community_notification' and not tgisinternal) " +
         'or exists (select 1 from pg_catalog.pg_proc p join pg_catalog.pg_namespace n on n.oid = p.pronamespace ' +

@@ -1,7 +1,7 @@
-import { spawn } from 'node:child_process';
 import { createClient } from '@supabase/supabase-js';
 import { describe, expect, it } from 'vitest';
 import { matchPhotoFixture } from './helpers/match-photo-fixtures';
+import { queryTrustedSql } from './helpers/sql-transport';
 import {
   assertLocalSupabaseEnvInCi,
   dotEnvPathFromImportMetaUrl,
@@ -196,21 +196,8 @@ describe('match event schema integration', () => {
          values('${agingPhoto.id}',v_community,v_creator,now()-interval '2 days','UTC','friendly','community_open','POST_MATCH_TEAMS','Past court','https://maps.google.com/maps/x','${agingPhoto.photo.path}',now()-interval '3 days');
       alter table public.match_events enable trigger match_event_creator_registration;
     end $$`;
-      const child = spawn(
-        'pnpm',
-        ['exec', 'supabase', 'db', 'query', '--local', '--output-format', 'json', sql],
-        { cwd: process.cwd() }
-      );
-      let stdout = '';
-      let stderr = '';
-      child.stdout.setEncoding('utf8').on('data', (chunk: string) => (stdout += chunk));
-      child.stderr.setEncoding('utf8').on('data', (chunk: string) => (stderr += chunk));
-      const code = await new Promise<number | null>((resolve, reject) => {
-        child.once('error', reject);
-        child.once('close', resolve);
-      });
-      if (code !== 0) throw new Error(`Constraint fixture failed (${code}): ${stdout}\n${stderr}`);
-      expect(stdout.trim()).toBe('DO');
+      const result = await queryTrustedSql(sql);
+      expect(result.command).toBe('DO');
     },
     60000
   );

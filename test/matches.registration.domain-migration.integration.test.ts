@@ -1,7 +1,7 @@
-import { spawn } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { matchPhotoFixture } from './helpers/match-photo-fixtures';
+import { startCliSql } from './helpers/match-registration-sql';
 import {
   assertLocalSupabaseEnvInCi,
   dotEnvPathFromImportMetaUrl,
@@ -32,19 +32,8 @@ const PROBE_OK = 'PAF5_DOMAIN_PROBE_OK';
 type SqlResult = { code: number | null; stdout: string; stderr: string };
 
 function runSql(sql: string): Promise<SqlResult> {
-  return new Promise((resolve, reject) => {
-    const child = spawn(
-      'pnpm',
-      ['exec', 'supabase', 'db', 'query', '--local', '--output-format', 'json', sql],
-      { cwd: process.cwd() }
-    );
-    let stdout = '';
-    let stderr = '';
-    child.stdout.setEncoding('utf8').on('data', (chunk: string) => (stdout += chunk));
-    child.stderr.setEncoding('utf8').on('data', (chunk: string) => (stderr += chunk));
-    child.once('error', reject);
-    child.once('close', (code) => resolve({ code, stdout, stderr }));
-  });
+  const handle = startCliSql(sql);
+  return handle.done.finally(() => handle.stop());
 }
 
 /** Slices the statement whose body contains `needle` (anchored on the assignment). */

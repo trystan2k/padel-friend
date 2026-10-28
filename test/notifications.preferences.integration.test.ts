@@ -1,7 +1,7 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
-import { execFileSync } from 'node:child_process';
 import { describe, expect, it } from 'vitest';
 import { dotEnvPathFromImportMetaUrl, localSupabaseEnv } from './helpers/local-supabase-env';
+import { executeTrustedSql } from './helpers/sql-transport';
 
 const environment = localSupabaseEnv({ filePath: dotEnvPathFromImportMetaUrl(import.meta.url) });
 type Env = NonNullable<typeof environment.env>;
@@ -34,10 +34,7 @@ describe.skipIf(!environment.env)('notification preferences (real local Supabase
     };
   }
 
-  const sql = (statement: string) =>
-    execFileSync('pnpm', ['exec', 'supabase', 'db', 'query', '--local', statement], {
-      encoding: 'utf8'
-    });
+  const sql = (statement: string) => executeTrustedSql(statement);
   const literal = (value: string) => `'${value.replaceAll("'", "''")}'`;
   const code = (error: unknown) =>
     error && typeof error === 'object' && 'code' in error ? error.code : undefined;
@@ -71,7 +68,7 @@ describe.skipIf(!environment.env)('notification preferences (real local Supabase
     try {
       expect((await owner.client.from('notification_preferences').select('*')).data).toEqual([]);
       expect((await other.client.from('notification_preferences').select('*')).data).toEqual([]);
-      sql(
+      await sql(
         `insert into public.notification_preferences (user_id) values (${literal(other.id)}::uuid)`
       );
       expect(
@@ -151,12 +148,15 @@ describe.skipIf(!environment.env)('notification preferences (real local Supabase
         critical_in_app_enabled: true
       });
 
-      for (const value of ['false', 'null']) {
-        expect(() =>
+      for (const [value, errorCode] of [
+        ['false', '23514'],
+        ['null', '23502']
+      ] as const) {
+        await expect(
           sql(
             `update public.notification_preferences set critical_in_app_enabled = ${value} where user_id = ${literal(owner.id)}::uuid`
           )
-        ).toThrow(/Command failed/);
+        ).rejects.toMatchObject({ code: errorCode });
       }
       const forbiddenUpdate = await owner.client
         .from('notification_preferences')
@@ -242,7 +242,7 @@ describe.skipIf(!environment.env)('notification preferences (real local Supabase
         )
       ).toMatch(/^(28000|42501)$/);
     } finally {
-      sql(
+      await sql(
         `delete from auth.users where id in (${userIds.map((id) => `${literal(id)}::uuid`).join(',')})`
       );
     }

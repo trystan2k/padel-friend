@@ -1,4 +1,3 @@
-import { spawn } from 'node:child_process';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
@@ -52,6 +51,11 @@ import {
   communityJsonbFixtures,
   compactJsonBytes
 } from './helpers/community-jsonb-fixtures';
+import {
+  createFixtureCleanupRegistry,
+  type FixtureCleanupRegistry
+} from './helpers/fixture-cleanup';
+import { executeTrustedSqlBatch, queryTrustedSql } from './helpers/sql-transport';
 
 vi.setConfig({ testTimeout: 30000, hookTimeout: 30000 });
 type LocalEnv = NonNullable<ReturnType<typeof localSupabaseEnv>['env']>;
@@ -74,14 +78,62 @@ describe.skipIf(environment.env === null)('community domain (local Supabase inte
     return createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
   }
   type Actor = { client: SupabaseClient; email: string; id: string };
+  const actorCleanup = createFixtureCleanupRegistry('community-actors');
+  const actors: Actor[] = [];
+  let testCleanup: FixtureCleanupRegistry | undefined;
+
+  function registerCommunityRows(registry: FixtureCleanupRegistry, communityId: string): void {
+    registry.register('public.communities', { id: communityId });
+    registry.register('public.community_members', { community_id: communityId });
+    registry.register('public.community_audit_log', { community_id: communityId });
+    registry.register('public.community_invitations', { community_id: communityId });
+    registry.register('public.community_venues', { community_id: communityId });
+    registry.register('public.notifications', { community_id: communityId });
+  }
+
+  function registerActorScope(registry: FixtureCleanupRegistry, actorId: string): void {
+    registry.register('public.communities', { created_by: actorId });
+    registry.register('public.community_members', { user_id: actorId });
+  }
+
+  function createTestCleanup(): FixtureCleanupRegistry {
+    const registry = createFixtureCleanupRegistry('community-test');
+    for (const testActor of actors) registerActorScope(registry, testActor.id);
+    registry.setCleanupExecutor(async (current) => {
+      const actorIds = actors.map(({ id }) => id);
+      if (actorIds.length === 0) return;
+
+      const communities = await queryTrustedSql(
+        `select id::text as id from public.communities where created_by = any($1::uuid[])`,
+        { values: [actorIds] }
+      );
+      for (const row of communities.rows) registerCommunityRows(current, String(row['id']));
+
+      await current.deleteRegisteredRowsInOrder({
+        beforeStatements: [
+          'alter table public.community_members disable trigger community_member_guard'
+        ],
+        afterStatements: [
+          'alter table public.community_members enable trigger community_member_guard'
+        ],
+        restoreOnFailure: [
+          'alter table public.community_members enable trigger community_member_guard'
+        ]
+      });
+    });
+    return registry;
+  }
+
   async function actor(label: string): Promise<Actor> {
     const { url, key } = env();
-    const email = `${label}-${crypto.randomUUID()}@test.local`;
+    const email = `${label}-${actorCleanup.namespace}-${crypto.randomUUID()}@test.local`;
+    actorCleanup.register('auth.users', { email });
     const signup = await anon().auth.signUp({
       email,
       password: 'Password123!'
     });
     expect(signup.error).toBeNull();
+    actorCleanup.register('auth.users', { id: signup.data.user!.id });
     const token = signup.data.session?.access_token;
     expect(token, 'local email confirmations must be disabled').toBeTruthy();
     const client = createClient(url, key, {
@@ -93,7 +145,10 @@ describe.skipIf(environment.env === null)('community domain (local Supabase inte
       refresh_token: signup.data.session!.refresh_token
     });
     expect(session.error).toBeNull();
-    return { id: signup.data.user!.id, email, client };
+    const createdActor = { id: signup.data.user!.id, email, client };
+    actors.push(createdActor);
+    if (testCleanup) registerActorScope(testCleanup, createdActor.id);
+    return createdActor;
   }
   async function rows(
     client: SupabaseClient,
@@ -126,7 +181,7 @@ describe.skipIf(environment.env === null)('community domain (local Supabase inte
     expectNoError(result);
     return result.data;
   }
-  // One CLI round trip for row (includes updated_at), private settings and the
+  // One SQL round trip for row (includes updated_at), private settings and the
   // complete audit trail ordered by the same stable (occurred_at, id) key the
   // per-descriptor rejection loop below snapshots repeatedly; this keeps that
   // loop's runtime bounded by batching state reads into a single statement.
@@ -171,66 +226,13 @@ describe.skipIf(environment.env === null)('community domain (local Supabase inte
   function isPlainRowObject(value: unknown): value is Record<string, unknown> {
     return typeof value === 'object' && value !== null && !Array.isArray(value);
   }
-  // `supabase db query --local --output-format json` (CLI v2.118) prints the
-  // statement's rows as a top-level JSON array of row objects; older CLI
-  // revisions nested them under a `rows` key. Model both, nothing else.
-  function toLocalFixtureResult(value: unknown): { rows: Array<Record<string, unknown>> } | null {
-    const candidate: unknown[] | null = Array.isArray(value)
-      ? value
-      : isPlainRowObject(value) && Array.isArray(value.rows)
-        ? value.rows
-        : null;
-    if (candidate === null) return null;
-    const fixtureRows: Array<Record<string, unknown>> = [];
-    for (const row of candidate) {
-      if (!isPlainRowObject(row)) return null;
-      fixtureRows.push(row);
-    }
-    return { rows: fixtureRows };
-  }
   // Fixture SQL only ever references the SHA-256 token hash, never the raw
-  // invitation token, so raw CLI output is safe to surface in diagnostics.
+  // invitation token.
   async function executeLocalFixtureSql(sql: string): Promise<{
     rows: Array<Record<string, unknown>>;
   }> {
-    const child = spawn(
-      'pnpm',
-      ['exec', 'supabase', 'db', 'query', '--local', '--output-format', 'json', sql],
-      { cwd: process.cwd(), stdio: ['ignore', 'pipe', 'pipe'] }
-    );
-    let stdout = '';
-    let stderr = '';
-    child.stdout.setEncoding('utf8').on('data', (chunk: string) => (stdout += chunk));
-    child.stderr.setEncoding('utf8').on('data', (chunk: string) => (stderr += chunk));
-    const result = await new Promise<{ code: number | null; error?: Error }>((resolve) => {
-      child.once('error', (error) => resolve({ code: null, error }));
-      child.once('close', (code) => resolve({ code }));
-    });
-    const rawOutput = `stdout:\n${stdout}\nstderr:\n${stderr}`;
-    if (result.code !== 0)
-      throw new Error(
-        `Local fixture SQL failed (exit ${result.code}): ${result.error ?? rawOutput}`
-      );
-    const trimmed = stdout.trim();
-    // Row-returning statements print JSON (empty `[]` when zero rows match);
-    // statements without RETURNING print the psql command tag, e.g. `INSERT 0 9`.
-    let parsed: unknown;
-    if (
-      trimmed === '' ||
-      /^(INSERT|UPDATE|DELETE|MERGE|MOVE|FETCH|COPY)\s+\d+(\s+\d+)?$/i.test(trimmed)
-    ) {
-      parsed = [];
-    } else {
-      try {
-        parsed = JSON.parse(trimmed);
-      } catch {
-        throw new Error(`Local fixture SQL returned non-JSON stdout: ${rawOutput}`);
-      }
-    }
-    const fixtureResult = toLocalFixtureResult(parsed);
-    if (!fixtureResult)
-      throw new Error(`Local fixture SQL returned an unexpected JSON shape: ${rawOutput}`);
-    return fixtureResult;
+    const result = await queryTrustedSql(sql);
+    return { rows: result.rows };
   }
   const invitationColumns =
     'id,community_id,invitee_user_id,issued_by,expires_at,redeemed_at,revoked_at,created_at';
@@ -262,14 +264,18 @@ describe.skipIf(environment.env === null)('community domain (local Supabase inte
   });
 
   beforeEach(async () => {
+    testCleanup = createTestCleanup();
     async function create(name: string, visibility: 'private' | 'public') {
+      const scopedName = `${name} ${testCleanup!.namespace.slice(-8)}`;
+      testCleanup!.register('public.communities', { name: scopedName });
       const result = await admin.client.rpc('create_community', {
-        p_name: name,
+        p_name: scopedName,
         p_visibility: visibility,
         p_join_policy: visibility === 'private' ? 'admin_approval' : 'instant'
       });
       if (result.error) throw result.error;
       if (typeof result.data !== 'string') throw new Error('create_community returned no ID');
+      registerCommunityRows(testCleanup!, result.data);
       return result.data;
     }
     privateId = await create('Private ' + crypto.randomUUID(), 'private');
@@ -315,8 +321,13 @@ describe.skipIf(environment.env === null)('community domain (local Supabase inte
     venueId = venue.data.id;
   });
 
-  afterEach(() => {
-    serverClient.current = null;
+  afterEach(async () => {
+    try {
+      await testCleanup?.cleanup();
+    } finally {
+      testCleanup = undefined;
+      serverClient.current = null;
+    }
   });
 
   it('AC1/2: creator bootstrap and enum values are enforced by real SQL', async () => {
@@ -552,28 +563,54 @@ describe.skipIf(environment.env === null)('community domain (local Supabase inte
     expect(created.error).toBeNull();
     const communityId = created.data;
     if (typeof communityId !== 'string') throw new Error('Missing count fixture community');
-    async function add(
-      userId: string,
-      status: 'active' | 'pending' | 'inactive',
-      role: 'admin' | 'member',
-      validUntil: string | null = null
-    ) {
-      const untilValue =
-        status === 'inactive' && validUntil === null ? new Date().toISOString() : validUntil;
-      const until = untilValue === null ? 'null' : `'${untilValue}'::timestamptz`;
-      const inserted = await executeLocalFixtureSql(
-        `insert into public.community_members (community_id,user_id,status,role,valid_from,valid_until) values ('${communityId}','${userId}','${status}','${role}',now()-interval '1 day',${until}) returning id`
-      );
-      const insertedRow = inserted.rows[0];
-      if (inserted.rows.length !== 1 || typeof insertedRow?.id !== 'string')
-        throw new Error('Membership fixture insert returned no ID');
-      return insertedRow.id;
-    }
-    const activeMemberId = await add(member.id, 'active', 'member');
-    await add(pending.id, 'pending', 'member');
-    await add(inactive.id, 'inactive', 'member');
-    await add(invited.id, 'inactive', 'member', new Date().toISOString());
-    const adminMemberId = await add(outsider.id, 'active', 'member');
+    const inactiveUntil = new Date().toISOString();
+    const invitedUntil = new Date().toISOString();
+    const activeMemberFixture = {
+      id: crypto.randomUUID(),
+      userId: member.id,
+      status: 'active' as const,
+      validUntil: null
+    };
+    const pendingMemberFixture = {
+      id: crypto.randomUUID(),
+      userId: pending.id,
+      status: 'pending' as const,
+      validUntil: null
+    };
+    const inactiveMemberFixture = {
+      id: crypto.randomUUID(),
+      userId: inactive.id,
+      status: 'inactive' as const,
+      validUntil: inactiveUntil
+    };
+    const invitedMemberFixture = {
+      id: crypto.randomUUID(),
+      userId: invited.id,
+      status: 'inactive' as const,
+      validUntil: invitedUntil
+    };
+    const adminMemberFixture = {
+      id: crypto.randomUUID(),
+      userId: outsider.id,
+      status: 'active' as const,
+      validUntil: null
+    };
+    const membershipFixtures = [
+      activeMemberFixture,
+      pendingMemberFixture,
+      inactiveMemberFixture,
+      invitedMemberFixture,
+      adminMemberFixture
+    ];
+    const quote = (value: string) => `'${value.replaceAll("'", "''")}'`;
+    await executeTrustedSqlBatch(
+      membershipFixtures.map((fixture) => ({
+        sql: `insert into public.community_members (id,community_id,user_id,status,role,valid_from,valid_until) values (${quote(fixture.id)},${quote(communityId)},${quote(fixture.userId)},${quote(fixture.status)},'member',now()-interval '1 day',${fixture.validUntil === null ? 'null' : `${quote(fixture.validUntil)}::timestamptz`}) returning id`,
+        expectedRowCount: 1
+      }))
+    );
+    const activeMemberId = activeMemberFixture.id;
+    const adminMemberId = adminMemberFixture.id;
     serverClient.current = admin.client;
     await promoteCommunityMember({
       data: { community_id: communityId, membership_id: adminMemberId }
