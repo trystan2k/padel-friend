@@ -72,7 +72,7 @@ const selectionCases: Array<{
   {
     label: 'static checks',
     args: ['--only=static'],
-    expected: allStages.slice(0, 6),
+    expected: ['build', 'knip', 'typecheck', 'lint', 'format:check'],
     successMessage: '[complete-check] all selected stages passed'
   },
   {
@@ -84,7 +84,7 @@ const selectionCases: Array<{
   {
     label: 'comma-separated groups',
     args: ['--only=static,test'],
-    expected: allStages.slice(0, 7),
+    expected: ['build', 'knip', 'typecheck', 'lint', 'format:check', 'test'],
     successMessage: '[complete-check] all selected stages passed'
   },
   {
@@ -107,7 +107,7 @@ describe('complete-check stage selection', () => {
   });
 
   it('continues remaining selected stages and summarizes failures', () => {
-    const expected = allStages.slice(0, 7);
+    const expected = ['build', 'knip', 'typecheck', 'lint', 'format:check', 'test'];
     const { result, commands } = runCompleteCheck(['--only=static,test'], 'build');
 
     expect(result.status).toBe(1);

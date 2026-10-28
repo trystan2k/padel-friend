@@ -14,7 +14,9 @@ const stages = [
 ];
 
 const stageGroups = {
-  static: ['db:types:check', 'build', 'knip', 'typecheck', 'lint', 'format:check'],
+  // db:types:check requires live local Supabase; exclude it from the service-free pre-commit
+  // group while retaining it in the full gate and CI integration job.
+  static: ['build', 'knip', 'typecheck', 'lint', 'format:check'],
   test: ['test'],
   e2e: ['test:e2e']
 };
