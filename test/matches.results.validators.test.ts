@@ -1,11 +1,33 @@
 import { describe, expect, it } from 'vitest';
 import {
+  validateCorrectMatchEventResult,
   validateGetMatchEventResultProposals,
+  validateGetMatchEventOfficialResults,
+  validateReviewMatchEventResult,
   validateSubmitMatchEventResult,
   validateResultPlayedLocal
 } from '../src/features/matches/match-result.validators';
 import { localMatchInstant } from '../src/features/matches/match-time';
 import { resultCommand } from './helpers/match-result-fixtures';
+
+const reviewCommand = {
+  proposal_id: resultCommand.event_id,
+  expected_version: 1,
+  decision: 'approve',
+  reason_code: null,
+  reason_note: null,
+  request_id: resultCommand.request_id
+};
+const correctionCommand = {
+  event_id: resultCommand.event_id,
+  proposal_id: resultCommand.event_id,
+  expected_version: 1,
+  teams: resultCommand.teams,
+  sets: resultCommand.sets,
+  played_local: resultCommand.played_local,
+  court_label: null,
+  request_id: resultCommand.request_id
+};
 
 describe('result request validation', () => {
   it('normalizes valid teams court and IDs without trusting extra properties', () => {
@@ -15,6 +37,11 @@ describe('result request validation', () => {
     expect(validateGetMatchEventResultProposals({ event_id: resultCommand.event_id })).toEqual({
       event_id: resultCommand.event_id
     });
+    expect(validateGetMatchEventOfficialResults({ event_id: resultCommand.event_id })).toEqual({
+      event_id: resultCommand.event_id
+    });
+    expect(validateReviewMatchEventResult(reviewCommand)).toEqual(reviewCommand);
+    expect(validateCorrectMatchEventResult(correctionCommand)).toEqual(correctionCommand);
     for (const key of Object.keys(resultCommand)) {
       const missing: Record<string, unknown> = { ...resultCommand };
       delete missing[key];
@@ -27,6 +54,15 @@ describe('result request validation', () => {
       validateGetMatchEventResultProposals({ event_id: resultCommand.event_id, extra: true })
     ).toThrow('INVALID_REQUEST');
     expect(() => validateGetMatchEventResultProposals(null)).toThrow('INVALID_REQUEST');
+    expect(() => validateGetMatchEventOfficialResults({ ...reviewCommand })).toThrow(
+      'INVALID_REQUEST'
+    );
+    expect(() => validateReviewMatchEventResult({ ...reviewCommand, injected: true })).toThrow(
+      'INVALID_REQUEST'
+    );
+    expect(() => validateCorrectMatchEventResult({ ...correctionCommand, injected: true })).toThrow(
+      'INVALID_REQUEST'
+    );
   });
   it.each([0, -1, 1.5, Number.MAX_SAFE_INTEGER + 1, '1', null])(
     'rejects unsafe group %s',
@@ -100,6 +136,40 @@ describe('result request validation', () => {
       expect(() => validateResultPlayedLocal({ ...resultCommand.played_local, ...extra })).toThrow(
         'INVALID_PLAYED_AT'
       );
+  });
+  it('requires exact decision shapes and validated correction facts', () => {
+    expect(() =>
+      validateReviewMatchEventResult({
+        ...reviewCommand,
+        decision: 'approve',
+        reason_code: 'OTHER'
+      })
+    ).toThrow('INVALID_REVIEW');
+    expect(() =>
+      validateReviewMatchEventResult({
+        ...reviewCommand,
+        decision: 'reject',
+        reason_code: 'OTHER',
+        reason_note: null
+      })
+    ).toThrow('INVALID_REJECTION_REASON');
+    expect(
+      validateReviewMatchEventResult({
+        ...reviewCommand,
+        decision: 'reject',
+        reason_code: 'SCORE_INCORRECT',
+        reason_note: ' Score differs. '
+      })
+    ).toMatchObject({ reason_note: 'Score differs.' });
+    expect(() =>
+      validateCorrectMatchEventResult({ ...correctionCommand, event_id: 'bad' })
+    ).toThrow('INVALID_MATCH_INPUT');
+    expect(() =>
+      validateCorrectMatchEventResult({
+        ...correctionCommand,
+        expected_version: Number.MAX_SAFE_INTEGER + 1
+      })
+    ).toThrow('INVALID_REQUEST');
   });
   it('reuses localMatchInstant for day rollover gaps and both explicit DST overlap choices', () => {
     expect(

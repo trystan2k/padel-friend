@@ -26,9 +26,40 @@ vi.mock('@tanstack/react-start', () => ({
 vi.mock('@tanstack/react-start/server', () => ({ setResponseHeader: mocks.header }));
 vi.mock('../src/features/auth/auth.server', () => ({ requireAuthenticatedClient: mocks.auth }));
 import {
+  correctMatchEventResult,
+  getMatchEventOfficialResults,
   getMatchEventResultProposals,
+  reviewMatchEventResult,
   submitMatchEventResult
 } from '../src/features/matches/match-result.functions';
+
+const commandReceipt = {
+  proposal_id: resultProposal.proposal_id,
+  version: 1,
+  status: 'pending',
+  confirmation_id: null,
+  review_deadline_at: resultProposal.review_deadline_at,
+  request_id: resultCommand.request_id,
+  replayed: false
+};
+const reviewCommand = {
+  proposal_id: resultProposal.proposal_id,
+  expected_version: 1,
+  decision: 'approve',
+  reason_code: null,
+  reason_note: null,
+  request_id: resultCommand.request_id
+};
+const correctionCommand = {
+  event_id: resultCommand.event_id,
+  proposal_id: resultProposal.proposal_id,
+  expected_version: 1,
+  teams: resultCommand.teams,
+  sets: resultCommand.sets,
+  played_local: resultCommand.played_local,
+  court_label: null,
+  request_id: resultCommand.request_id
+};
 
 describe('result server boundary', () => {
   beforeEach(() => {
@@ -112,6 +143,63 @@ describe('result server boundary', () => {
       code: 'unavailable'
     });
   });
+  it('reads official history through the authenticated no-store contract', async () => {
+    mocks.rpc.mockResolvedValue({ data: [], error: null });
+    expect(
+      await getMatchEventOfficialResults({ data: { event_id: resultCommand.event_id } })
+    ).toEqual({ status: 'ok', value: [], replayed: false });
+    expect(mocks.rpc).toHaveBeenCalledExactlyOnceWith('get_match_event_official_results', {
+      p_match_event_id: resultCommand.event_id
+    });
+    expect(mocks.header).toHaveBeenCalledWith('Cache-Control', 'private, no-store');
+    mocks.rpc.mockResolvedValue({ data: [{ secret: true }], error: null });
+    expect(
+      await getMatchEventOfficialResults({ data: { event_id: resultCommand.event_id } })
+    ).toEqual({ status: 'error', code: 'unavailable' });
+  });
+  it('reviews and corrects through typed RPC receipts with request-scoped auth and no-store', async () => {
+    mocks.rpc.mockResolvedValue({ data: commandReceipt, error: null });
+    expect(await reviewMatchEventResult({ data: reviewCommand })).toMatchObject({
+      status: 'ok',
+      value: { status: 'pending', proposal_id: resultProposal.proposal_id }
+    });
+    expect(mocks.rpc).toHaveBeenCalledExactlyOnceWith('review_match_event_result', {
+      p_proposal_id: reviewCommand.proposal_id,
+      p_expected_version: 1,
+      p_decision: 'approve',
+      p_reason_code: undefined,
+      p_reason_note: undefined,
+      p_request_id: reviewCommand.request_id
+    });
+
+    mocks.rpc.mockReset();
+    mocks.rpc
+      .mockResolvedValueOnce({ data: [resultProposal], error: null })
+      .mockResolvedValueOnce({ data: commandReceipt, error: null });
+    expect(await correctMatchEventResult({ data: correctionCommand })).toMatchObject({
+      status: 'ok',
+      value: { status: 'pending', proposal_id: resultProposal.proposal_id }
+    });
+    expect(mocks.rpc.mock.calls).toEqual([
+      ['get_match_event_result_proposals', { p_match_event_id: correctionCommand.event_id }],
+      [
+        'correct_match_event_result',
+        {
+          p_proposal_id: correctionCommand.proposal_id,
+          p_expected_version: 1,
+          p_teams: correctionCommand.teams,
+          p_sets: correctionCommand.sets,
+          p_played_local: {
+            ...correctionCommand.played_local,
+            instant: '2020-01-01T12:00:00.000Z'
+          },
+          p_court_label: undefined,
+          p_request_id: correctionCommand.request_id
+        }
+      ]
+    ]);
+    expect(mocks.header).toHaveBeenCalledWith('Cache-Control', 'private, no-store');
+  });
   it.each([
     { data: null, error: null },
     { data: { claims: {} }, error: null },
@@ -125,6 +213,15 @@ describe('result server boundary', () => {
     await expect(
       getMatchEventResultProposals({ data: { event_id: resultCommand.event_id } })
     ).rejects.toThrow('UNAUTHENTICATED');
+    await expect(
+      getMatchEventOfficialResults({ data: { event_id: resultCommand.event_id } })
+    ).rejects.toThrow('UNAUTHENTICATED');
+    await expect(reviewMatchEventResult({ data: reviewCommand })).rejects.toThrow(
+      'UNAUTHENTICATED'
+    );
+    await expect(correctMatchEventResult({ data: correctionCommand })).rejects.toThrow(
+      'UNAUTHENTICATED'
+    );
     expect(mocks.rpc).not.toHaveBeenCalled();
     expect(mocks.from).not.toHaveBeenCalled();
   });
@@ -135,6 +232,12 @@ describe('result server boundary', () => {
     );
     const invalid = { ...resultCommand, injected: true };
     expect(() => submitMatchEventResult({ data: invalid })).toThrow('INVALID_REQUEST');
+    expect(() => reviewMatchEventResult({ data: { ...reviewCommand, extra: true } })).toThrow(
+      'INVALID_REQUEST'
+    );
+    expect(() =>
+      getMatchEventOfficialResults({ data: { event_id: resultCommand.event_id, extra: true } })
+    ).toThrow('INVALID_REQUEST');
   });
   it('returns typed stale conflict and original idempotent replay without retry', async () => {
     mocks.rpc.mockResolvedValue({

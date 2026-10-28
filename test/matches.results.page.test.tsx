@@ -173,7 +173,13 @@ describe('record result page', () => {
   });
   it('shows two pending cards, provenance, facts and an unavailable eligible-review CTA', () => {
     const proposal = parseResultProposals([
-      { ...resultProposal, submitted_by_name: 'Recovery admin' }
+      {
+        ...resultProposal,
+        submitted_by_name: 'Recovery admin',
+        version_timeline: [
+          { ...resultProposal.version_timeline[0]!, submitted_by_name: 'Recovery admin' }
+        ]
+      }
     ])?.[0];
     if (!proposal) throw new Error('Invalid proposal fixture');
     render(

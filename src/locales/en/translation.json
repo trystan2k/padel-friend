@@ -642,6 +642,17 @@
       "submitting": "Submitting result…",
       "pending": "PENDING · NOT CONFIRMED",
       "pendingDescription": "No rating or League stats apply yet. Eligible players may approve or reject.",
+      "lifecycleStatus": {
+        "pending": "Pending review",
+        "disputed": "Disputed",
+        "confirmed": "Confirmed",
+        "superseded": "Superseded"
+      },
+      "resolution": {
+        "awaitingResults": "Awaiting results",
+        "partiallyResolved": "Partially resolved",
+        "completed": "Results complete"
+      },
       "autoConfirmIn": "AUTO-CONFIRMS IN {{hours}}H",
       "reviewDeadline": "Review deadline: {{deadline}}",
       "versionLabel": "Version {{version}}",
@@ -665,11 +676,19 @@
         "thirdSetAfterDecided": "A completed third set requires the first two sets to be split 1–1.",
         "activeProposal": "Another result is already pending. Reload to review it; your draft was not submitted.",
         "idempotencyConflict": "This request changed. Reload before submitting again.",
+        "invalidReview": "Check your review decision and try again.",
+        "invalidRejectionReason": "Choose a rejection reason and provide a note when required.",
+        "reviewForbidden": "Only an eligible player in this group may review this result.",
+        "correctionForbidden": "Only the match creator or a community admin may correct this result.",
         "cancelled": "This match was cancelled. Results cannot be submitted.",
         "forbidden": "Only the creator or a community admin may record results.",
         "unauthenticated": "Sign in again to record results.",
         "notFound": "This match is unavailable.",
         "unavailable": "Results could not be loaded or submitted. Check your connection and try again."
+      },
+      "conflicts": {
+        "staleVersion": "This result changed. Reload the latest version before reviewing or correcting it.",
+        "deadlineElapsed": "The review deadline passed and this result was confirmed. Reload to see the official result."
       }
     },
     "reconfirmation": {

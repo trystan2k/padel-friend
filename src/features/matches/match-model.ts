@@ -1,4 +1,4 @@
-import type { MatchCallerBadge, MatchEventCard } from './match-contracts';
+import type { MatchCallerBadge, MatchEventCard, MatchResultResolution } from './match-contracts';
 export type { MatchCallerBadge, MatchEventCard } from './match-contracts';
 export type MatchEventListItem = MatchEventCard;
 
@@ -18,6 +18,17 @@ const MATCH_CALLER_BADGES: readonly MatchCallerBadge[] = [
 export function matchCallerBadge(value: unknown): MatchCallerBadge | null {
   if (typeof value !== 'string') return null;
   return MATCH_CALLER_BADGES.find((badge) => badge === value) ?? null;
+}
+
+const MATCH_RESULT_RESOLUTIONS: readonly MatchResultResolution[] = [
+  'awaiting_results',
+  'partially_resolved',
+  'completed'
+];
+
+export function matchResultResolution(value: unknown): MatchResultResolution | null {
+  if (typeof value !== 'string') return null;
+  return MATCH_RESULT_RESOLUTIONS.find((resolution) => resolution === value) ?? null;
 }
 
 function explicitCount(value: unknown): number | null {

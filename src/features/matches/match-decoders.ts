@@ -3,9 +3,10 @@ import type {
   MatchEventDetail,
   MatchEventRpcDetail,
   MatchEventRpcListRow,
-  MatchInvitee
+  MatchInvitee,
+  MatchEventResultSummary
 } from './match-contracts';
-import { matchCallerBadge } from './match-model';
+import { matchCallerBadge, matchResultResolution } from './match-model';
 
 type ObjectValue = Record<string, unknown>;
 const fail = (): never => {
@@ -14,6 +15,12 @@ const fail = (): never => {
 function object(value: unknown): ObjectValue {
   if (typeof value !== 'object' || value === null || Array.isArray(value)) return fail();
   return Object.fromEntries(Object.entries(value));
+}
+function exactObject(value: unknown, keys: readonly string[]): ObjectValue {
+  const row = object(value);
+  if (Object.keys(row).length !== keys.length || keys.some((key) => !Object.hasOwn(row, key)))
+    return fail();
+  return row;
 }
 function required<T>(data: ObjectValue, key: string, decode: (value: unknown) => T): T {
   if (!Object.hasOwn(data, key)) return fail();
@@ -68,6 +75,53 @@ const teamModes = ['PREDEFINED_TEAMS', 'POST_MATCH_TEAMS'] as const;
 const eligibility = ['creator', 'member', 'out_of_range', 'nonmember'] as const;
 const currencies = ['BRL', 'USD', 'EUR'] as const;
 
+function decodeResultSummary(value: unknown): MatchEventResultSummary {
+  const row = exactObject(value, [
+    'expected_group_count',
+    'confirmed_group_count',
+    'pending_group_count',
+    'disputed_group_count',
+    'unsubmitted_group_count',
+    'incomplete_result_group_count',
+    'results_roster_frozen',
+    'result_resolution'
+  ]);
+  const summary = {
+    expected_group_count: required(row, 'expected_group_count', count),
+    confirmed_group_count: required(row, 'confirmed_group_count', count),
+    pending_group_count: required(row, 'pending_group_count', count),
+    disputed_group_count: required(row, 'disputed_group_count', count),
+    unsubmitted_group_count: required(row, 'unsubmitted_group_count', count),
+    incomplete_result_group_count: required(row, 'incomplete_result_group_count', count),
+    results_roster_frozen: required(row, 'results_roster_frozen', boolean),
+    result_resolution: required(
+      row,
+      'result_resolution',
+      (entry) => matchResultResolution(entry) ?? fail()
+    )
+  };
+  const resolvedGroups =
+    summary.confirmed_group_count +
+    summary.pending_group_count +
+    summary.disputed_group_count +
+    summary.unsubmitted_group_count;
+  const expectedResolution =
+    summary.expected_group_count > 0 &&
+    summary.confirmed_group_count === summary.expected_group_count
+      ? 'completed'
+      : summary.confirmed_group_count > 0
+        ? 'partially_resolved'
+        : 'awaiting_results';
+  if (
+    resolvedGroups !== summary.expected_group_count ||
+    summary.incomplete_result_group_count > summary.confirmed_group_count ||
+    (!summary.results_roster_frozen && summary.expected_group_count !== 0) ||
+    summary.result_resolution !== expectedResolution
+  )
+    return fail();
+  return summary;
+}
+
 function decodeProjection(value: unknown) {
   const row = object(value);
   const badgeValue = required(row, 'caller_badge', (entry) => entry);
@@ -121,7 +175,8 @@ function decodeProjection(value: unknown) {
     ),
     caller_requires_approval: required(row, 'caller_requires_approval', boolean),
     is_past: required(row, 'is_past', boolean),
-    registration_open: required(row, 'registration_open', boolean)
+    registration_open: required(row, 'registration_open', boolean),
+    result_summary: required(row, 'result_summary', decodeResultSummary)
   };
 }
 

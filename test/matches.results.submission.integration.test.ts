@@ -475,7 +475,19 @@ describe('actual result submission transaction', { timeout: 60000 }, () => {
         ]
       }
     });
-    for (const actor of [admin, players[1]!]) expect(await read(e.id, actor)).toEqual(expected);
+    expect(await read(e.id, admin)).toEqual(expected);
+    const sameGroupPlayerRead = await read(e.id, players[1]);
+    expect(sameGroupPlayerRead[0]).toMatchObject({
+      can_approve: false,
+      can_reject: true,
+      can_correct: false
+    });
+    expect({
+      ...sameGroupPlayerRead[0],
+      can_approve: expected[0]!.can_approve,
+      can_reject: expected[0]!.can_reject,
+      can_correct: expected[0]!.can_correct
+    }).toEqual(expected[0]);
     for (const actor of [other.creator, outsider, anon])
       expect(
         (await f.rpc(actor, 'get_match_event_result_proposals', { p_match_event_id: e.id })).error

@@ -59,6 +59,7 @@ const expectedDetailKeys = [
   'registration_open',
   'reserve_count',
   'reserve_not_playing_count',
+  'result_summary',
   'restriction_enabled',
   'starts_at',
   'status',

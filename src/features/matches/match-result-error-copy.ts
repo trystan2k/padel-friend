@@ -16,11 +16,20 @@ export const MATCH_RESULT_ERROR_COPY = {
   third_set_after_decided: 'matches.results.errors.thirdSetAfterDecided',
   active_proposal: 'matches.results.errors.activeProposal',
   idempotency_conflict: 'matches.results.errors.idempotencyConflict',
+  invalid_review: 'matches.results.errors.invalidReview',
+  invalid_rejection_reason: 'matches.results.errors.invalidRejectionReason',
+  review_forbidden: 'matches.results.errors.reviewForbidden',
+  correction_forbidden: 'matches.results.errors.correctionForbidden',
   cancelled: 'matches.results.errors.cancelled',
   forbidden: 'matches.results.errors.forbidden',
   unauthenticated: 'matches.results.errors.unauthenticated',
   not_found: 'matches.results.errors.notFound',
   unavailable: 'matches.results.errors.unavailable'
 } as const satisfies Record<string, `matches.results.errors.${string}`>;
+
+export const MATCH_RESULT_CONFLICT_COPY = {
+  stale_version: 'matches.results.conflicts.staleVersion',
+  deadline_elapsed: 'matches.results.conflicts.deadlineElapsed'
+} as const satisfies Record<string, `matches.results.conflicts.${string}`>;
 
 export type MatchResultErrorCode = keyof typeof MATCH_RESULT_ERROR_COPY;

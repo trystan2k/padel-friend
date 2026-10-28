@@ -2,7 +2,10 @@ import { describe, expect, it } from 'vitest';
 import en from '../src/locales/en/translation.json';
 import pt from '../src/locales/pt-BR/translation.json';
 import es from '../src/locales/es/translation.json';
-import { MATCH_RESULT_ERROR_COPY } from '../src/features/matches/match-result-error-copy';
+import {
+  MATCH_RESULT_CONFLICT_COPY,
+  MATCH_RESULT_ERROR_COPY
+} from '../src/features/matches/match-result-error-copy';
 import { createI18n } from '../src/i18n/config';
 
 function leaves(value: unknown, prefix = ''): [string, string][] {
@@ -43,6 +46,11 @@ describe('result copy', () => {
         .map((key) => key.split('.').at(-1)!)
         .sort()
     ).toEqual(Object.keys(catalog.matches.results.errors).sort());
+    expect(
+      Object.values(MATCH_RESULT_CONFLICT_COPY)
+        .map((key) => key.split('.').at(-1)!)
+        .sort()
+    ).toEqual(Object.keys(catalog.matches.results.conflicts).sort());
   });
   it.each([en, pt, es])('includes every result state and mapped error', (catalog) => {
     for (const key of [

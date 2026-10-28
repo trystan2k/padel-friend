@@ -1681,6 +1681,7 @@ export type Database = {
         Args: { p_date: string; p_time: string; p_zone: string }
         Returns: string
       }
+      match_event_result_summary: { Args: { p_match_event_id: string }; Returns: Json }
       match_registration_counts:
         | {
             Args: { p_match_event_id: string }

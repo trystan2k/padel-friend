@@ -642,6 +642,17 @@
       "submitting": "Enviando resultado…",
       "pending": "PENDIENTE · SIN CONFIRMAR",
       "pendingDescription": "Aún no afecta al nivel ni a las estadísticas de la Liga. Los jugadores elegibles pueden aprobar o rechazar.",
+      "lifecycleStatus": {
+        "pending": "Pendiente de revisión",
+        "disputed": "Disputado",
+        "confirmed": "Confirmado",
+        "superseded": "Sustituido"
+      },
+      "resolution": {
+        "awaitingResults": "A la espera de resultados",
+        "partiallyResolved": "Parcialmente resuelto",
+        "completed": "Resultados completos"
+      },
       "autoConfirmIn": "CONFIRMACIÓN AUTOMÁTICA EN {{hours}}H",
       "reviewDeadline": "Plazo de revisión: {{deadline}}",
       "versionLabel": "Versión {{version}}",
@@ -665,11 +676,19 @@
         "thirdSetAfterDecided": "Un tercer set completo requiere que los dos primeros estén empatados 1–1.",
         "activeProposal": "Ya hay otro resultado pendiente. Recarga para revisarlo; tu borrador no se ha enviado.",
         "idempotencyConflict": "Esta solicitud cambió. Recarga antes de volver a enviarla.",
+        "invalidReview": "Revisa tu decisión y vuelve a intentarlo.",
+        "invalidRejectionReason": "Elige un motivo de rechazo e incluye una nota cuando sea necesario.",
+        "reviewForbidden": "Solo un jugador elegible de este grupo puede revisar este resultado.",
+        "correctionForbidden": "Solo el creador del partido o un administrador de la comunidad puede corregir este resultado.",
         "cancelled": "Este partido fue cancelado. No se pueden enviar resultados.",
         "forbidden": "Solo el creador o un administrador de la comunidad puede registrar resultados.",
         "unauthenticated": "Inicia sesión de nuevo para registrar resultados.",
         "notFound": "Este partido no está disponible.",
         "unavailable": "No se pudieron cargar o enviar los resultados. Comprueba tu conexión e inténtalo de nuevo."
+      },
+      "conflicts": {
+        "staleVersion": "Este resultado cambió. Recarga la versión más reciente antes de revisarlo o corregirlo.",
+        "deadlineElapsed": "Venció el plazo de revisión y se confirmó este resultado. Recarga para ver el resultado oficial."
       }
     },
     "reconfirmation": {

@@ -642,6 +642,17 @@
       "submitting": "Enviando resultado…",
       "pending": "PENDENTE · NÃO CONFIRMADO",
       "pendingDescription": "Nenhum efeito no nível ou nas estatísticas da Liga ainda. Jogadores elegíveis podem aprovar ou rejeitar.",
+      "lifecycleStatus": {
+        "pending": "Aguardando revisão",
+        "disputed": "Contestado",
+        "confirmed": "Confirmado",
+        "superseded": "Substituído"
+      },
+      "resolution": {
+        "awaitingResults": "Aguardando resultados",
+        "partiallyResolved": "Parcialmente resolvido",
+        "completed": "Resultados concluídos"
+      },
       "autoConfirmIn": "CONFIRMAÇÃO AUTOMÁTICA EM {{hours}}H",
       "reviewDeadline": "Prazo de revisão: {{deadline}}",
       "versionLabel": "Versão {{version}}",
@@ -665,11 +676,19 @@
         "thirdSetAfterDecided": "Um terceiro set concluído exige que os dois primeiros estejam empatados em 1–1.",
         "activeProposal": "Outro resultado já está pendente. Recarregue para revisá-lo; seu rascunho não foi enviado.",
         "idempotencyConflict": "Esta solicitação mudou. Recarregue antes de enviar novamente.",
+        "invalidReview": "Confira sua decisão de revisão e tente novamente.",
+        "invalidRejectionReason": "Escolha um motivo para a rejeição e informe uma observação quando necessário.",
+        "reviewForbidden": "Somente um jogador elegível deste grupo pode revisar este resultado.",
+        "correctionForbidden": "Somente o criador da partida ou um administrador da comunidade pode corrigir este resultado.",
         "cancelled": "Esta partida foi cancelada. Não é possível enviar resultados.",
         "forbidden": "Somente o criador ou um administrador da comunidade pode registrar resultados.",
         "unauthenticated": "Entre novamente para registrar resultados.",
         "notFound": "Esta partida está indisponível.",
         "unavailable": "Não foi possível carregar ou enviar os resultados. Confira sua conexão e tente novamente."
+      },
+      "conflicts": {
+        "staleVersion": "Este resultado mudou. Recarregue a versão mais recente antes de revisar ou corrigir.",
+        "deadlineElapsed": "O prazo de revisão terminou e este resultado foi confirmado. Recarregue para ver o resultado oficial."
       }
     },
     "reconfirmation": {

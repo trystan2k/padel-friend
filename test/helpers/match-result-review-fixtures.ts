@@ -57,6 +57,14 @@ export async function createMatchResultReviewFixtures(env: { url: string; key: s
     return event.id;
   }
 
+  async function addPlayers(count: number) {
+    if (!Number.isSafeInteger(count) || count < 1 || count > 12)
+      throw new Error('RESULT_FIXTURE_PLAYER_COUNT_INVALID');
+    const added = await Promise.all(Array.from({ length: count }, () => management.member()));
+    players.push(...added);
+    return added;
+  }
+
   function teamsForGroup(groupNumber = 1): ResultTeams {
     const group = players.slice((groupNumber - 1) * 4, groupNumber * 4);
     if (group.length !== 4) throw new Error('RESULT_FIXTURE_GROUP_MISSING');
@@ -93,6 +101,7 @@ export async function createMatchResultReviewFixtures(env: { url: string; key: s
     anonymousToken: env.key,
     promoteAdmin,
     protectedEvent,
+    addPlayers,
     teamsForGroup,
     submissionArgs,
     submit
