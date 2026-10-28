@@ -6,12 +6,11 @@ import {
   startCliSql,
   startSql,
   type SqlHandle,
-  type SqlResult,
   type SqlRow
 } from './sql-transport';
 
 export { startCliSql, startSql };
-export type { SqlHandle, SqlResult, SqlRow };
+export type { SqlHandle, SqlRow };
 
 // Shared trusted-SQL harness for the PAF-5.3 registration suites (model, FIFO,
 // notifications). Fixtures use the bounded pool; independent holders and probes
