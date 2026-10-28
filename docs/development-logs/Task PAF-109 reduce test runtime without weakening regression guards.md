@@ -73,7 +73,7 @@ permalink: docs/development-logs/task-PAF-109-reduce-test-runtime-without-weaken
   - PAF-114 relocation: 6/6 cases relocated unit→integration; unit phase free of signup/SQL/build work; coverage 100% / thresholds 80% untouched.
   - PAF-115 cleanup: namespaced `fixture-cleanup.ts` deterministic cleanup + residue/leak assertions; DDL reduction declined (rationale in Key Decisions).
   - PAF-116 isolation audit: 41/42 files serial-mandatory; parallel proof failed 3/3 runs; serial retained via one-line rollback switch + `SQL_TRANSPORT_POOL_MAX` env knob.
-  - PAF-117 CI split: gated CI jobs + aggregate `gate` job; single `CI / gate` swap on the required-check side.
+  - Historical PAF-117 CI split (superseded by the static-first redesign): gated CI jobs + aggregate `gate` job; prior `CI / gate` branch-protection swap proposal.
   - Review rounds 5–7: F13–F19 raised and fixed; fix commit `0342d73`. Ledger: F1–F9/F12–F19 fixed; F10/F11/F16 observed.
 - DX delivery (`16c1ed8`): complete-check stage flags; static checks → pre-commit, tests-only pre-push, E2E in final gate/CI; `test:changed` tooling; verification ladder documented in AGENTS.md; orchestrator/gate docs corrected (F20).
 
@@ -140,7 +140,7 @@ Untouched (by the original docs-only scope; test files later changed by the PAF-
 - Batching reported honestly (PAF-113): the batch API removes per-call overhead but is wall-time-neutral end-to-end — shipped and reported as neutral, not claimed as a speedup.
 - DDL reduction declined (PAF-115): reducing schema DDL would weaken the regression surface the suite exists to guard; deterministic cleanup + residue/leak assertions deliver the guarantee without touching the schema.
 - Parallelization declined (PAF-116): the parallel proof failed 3/3 runs and 41/42 files proved serial-mandatory — serial execution retained with a one-line rollback switch and `SQL_TRANSPORT_POOL_MAX` as the tunable lever.
-- Transition-safe CI cutover (PAF-117, F13/F17): the aggregate `gate` job keeps a single required check across the job split, so the branch-protection cutover (`CI / gate` swap) cannot silently drop a coverage dimension mid-transition.
+- CI topology (post-review redesign): static runs first and blocks parallel unit/integration/E2E jobs; the final `checks` aggregate requires all phases. Branch protection keeps the existing `CI / checks` required check; no cutover is needed.
 - Hook rebalance (user-directed): local pre-push no longer runs E2E — compensated by step-9 full gate and CI complete-check; orchestrator contract updated so test-only pre-push never counts as full-gate evidence.
 
 ## Validation Performed
@@ -187,7 +187,7 @@ Untouched (by the original docs-only scope; test files later changed by the PAF-
 - PAF-113…PAF-117 delivered (fixture batching, phase separation, cleanup, parallelization audit, CI split) — all units delivered, statuses → In Review at PR.
 - First PR CI run validates the split workflow and measures the actual CI integration gain from the transport work.
 - F10/F11/F16 feed future shard planning.
-- DX unit follow-up: post-cutover simplification of the checks job (remove test aggregation) is a deliberate follow-up after branch protection swaps to `CI / gate`.
+- First CI run of the static-first topology remains pending: verify all five jobs (`static`, `unit`, `integration`, `e2e`, `checks`) and measure `static` duration on CI runners; branch protection stays on `CI / checks` with no swap.
 - Final `pnpm complete-check` runs at delivery close; this log left uncommitted for the final sweep per workflow policy.
 
 ## Relations

@@ -40,10 +40,10 @@ The pre-relocation measurement ran all 1,324 unit cases; the post-relocation mea
 
 The admin extraction contract retains its standalone `pnpm build` in `beforeAll`; no build artifact is shared between suites. The contract rebuilds immediately before reading `dist/server/assets`, retains its fresh-artifact check, and retains the stale-artifact rejection case. Shared-build revision/input/environment provenance is not applicable because build sharing was not introduced.
 
-Phase routing already follows filename conventions in `vitest.unit.config.ts` and `vitest.integration.config.ts`; no include/exclude changes were needed. Current mandatory-phase ownership is the PAF-117 split workflow: `checks`, `unit`, `integration`, and `e2e` run as separate jobs, and aggregate `gate` requires every phase job to succeed. `gate` is the required check after the branch-protection swap.
+Phase routing already follows filename conventions in `vitest.unit.config.ts` and `vitest.integration.config.ts`; no include/exclude changes were needed. Current CI topology is static-first: `static` blocks parallel `unit`, `integration`, and `e2e` jobs, while final aggregate `checks` requires all four jobs; branch protection keeps the required `CI / checks` name.
 
 - `package.json:20` runs unit with coverage, then integration using `&&`.
-- `.github/workflows/ci.yml` assigns checks, unit, integration, and E2E to separate jobs; aggregate `gate` owns required-phase success.
+- `.github/workflows/ci.yml` assigns static, unit, integration, E2E, and final `checks` aggregate to five jobs; `checks` owns required-phase success.
 - `scripts/complete-check.mjs` remains the local all-stage aggregate gate.
 
 Historical at relocation time (superseded by PAF-117): CI ran `pnpm test` and no CI workflow or test assertion changed. The PAF-117 CI split superseded that workflow statement; test assertions remain unchanged.
