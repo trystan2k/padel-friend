@@ -63,6 +63,13 @@ let databaseUrlPromise: Promise<string> | undefined;
 let poolPromise: Promise<Pool> | undefined;
 let transportConnectionWasOpened = false;
 const dedicatedConnections = new Set<DedicatedSqlConnection>();
+const registeredFixtureCleanups = new Set<() => Promise<void>>();
+
+/** Register suite fixture teardown before the transport closes its pooled sessions. */
+export function registerSqlTransportCleanup(cleanup: () => Promise<void>): () => void {
+  registeredFixtureCleanups.add(cleanup);
+  return () => registeredFixtureCleanups.delete(cleanup);
+}
 
 function normalizeHostname(hostname: string): string {
   return hostname.replace(/^\[|\]$/g, '').toLowerCase();
@@ -627,10 +634,36 @@ export async function closeSqlTransport(): Promise<void> {
   }
 }
 
-afterAll(async () => {
-  if (!transportConnectionWasOpened) return;
+/** Closes owned sessions and verifies pg_stat_activity returned to its baseline. */
+export async function assertSqlTransportBackendsReturnedToBaseline(baseline = 0): Promise<void> {
+  if (!Number.isSafeInteger(baseline) || baseline < 0)
+    throw new Error('SQL transport backend baseline must be a non-negative integer');
   await closeSqlTransport();
-  const leakedBackends = await countSqlTransportBackends();
-  if (leakedBackends !== 0)
-    throw new Error(`Trusted SQL transport leaked ${leakedBackends} PostgreSQL backend(s)`);
+  const liveBackends = await countSqlTransportBackends();
+  if (liveBackends !== baseline)
+    throw new Error(
+      `Trusted SQL transport backend count ${liveBackends} did not return to baseline ${baseline}`
+    );
+}
+
+afterAll(async () => {
+  const failures: unknown[] = [];
+  for (const cleanup of [...registeredFixtureCleanups].reverse()) {
+    try {
+      await cleanup();
+    } catch (error) {
+      failures.push(error);
+    }
+  }
+
+  if (transportConnectionWasOpened) {
+    try {
+      await assertSqlTransportBackendsReturnedToBaseline();
+    } catch (error) {
+      failures.push(error);
+    }
+  }
+
+  if (failures.length > 0)
+    throw new AggregateError(failures, 'Trusted SQL transport teardown failed');
 });

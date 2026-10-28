@@ -8,9 +8,201 @@ import {
   type SqlHandle,
   type SqlRow
 } from './sql-transport';
+import { createFixtureCleanupRegistry, type FixtureCleanupRegistry } from './fixture-cleanup';
 
 export { startCliSql, startSql };
 export type { SqlHandle, SqlRow };
+
+type MatchFixtureCleanupScope = {
+  communityIds: Set<string>;
+  eventIds: Set<string>;
+  hasStorageObjects: boolean;
+};
+
+const matchFixtureCleanupScopes = new WeakMap<FixtureCleanupRegistry, MatchFixtureCleanupScope>();
+
+function matchFixtureScope(registry: FixtureCleanupRegistry): MatchFixtureCleanupScope {
+  let scope = matchFixtureCleanupScopes.get(registry);
+  if (!scope) {
+    scope = { communityIds: new Set(), eventIds: new Set(), hasStorageObjects: false };
+    matchFixtureCleanupScopes.set(registry, scope);
+  }
+  return scope;
+}
+
+/** Register auth- and notification-owned rows for one newly created test actor. */
+export function registerMatchActorFixtureRows(
+  registry: FixtureCleanupRegistry,
+  actor: { id?: string; email?: string }
+): void {
+  if (actor.email) registry.register('auth.users', { email: actor.email });
+  if (!actor.id) return;
+
+  registry.register('auth.users', { id: actor.id });
+  registry.register('public.community_notifications', { recipient_user_id: actor.id });
+  registry.register('public.community_request_messages', { sender_user_id: actor.id });
+  registry.register('public.community_request_messages', { recipient_user_id: actor.id });
+  registry.register('public.community_invitee_directory_preferences', { user_id: actor.id });
+  registry.register('public.notification_preferences', { user_id: actor.id });
+  registry.register('public.notifications', { recipient_user_id: actor.id });
+}
+
+/** Register a test-owned community and all rows that reference it directly. */
+export function registerMatchCommunityFixtureRows(
+  registry: FixtureCleanupRegistry,
+  communityId: string
+): void {
+  matchFixtureScope(registry).communityIds.add(communityId);
+  registry.register('public.communities', { id: communityId });
+  registry.register('public.community_members', { community_id: communityId });
+  registry.register('public.community_audit_log', { community_id: communityId });
+  registry.register('public.community_invitations', { community_id: communityId });
+  registry.register('public.community_request_messages', { community_id: communityId });
+  registry.register('public.community_venues', { community_id: communityId });
+  registry.register('public.notifications', { community_id: communityId });
+}
+
+/** Register an exact uploaded object path; never clean a whole Storage bucket. */
+export function registerMatchStorageFixtureObject(
+  registry: FixtureCleanupRegistry,
+  bucketId: string,
+  objectName: string
+): void {
+  matchFixtureScope(registry).hasStorageObjects = true;
+  registry.register('storage.objects', { bucket_id: bucketId, name: objectName });
+}
+
+/** Register one event and every direct child identity before fixture creation. */
+export function registerMatchEventFixtureRows(
+  registry: FixtureCleanupRegistry,
+  eventId: string,
+  photoPath?: string
+): void {
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(eventId))
+    throw new Error(`Invalid match fixture event ID: ${eventId}`);
+  matchFixtureScope(registry).eventIds.add(eventId);
+  registry.register('public.match_events', { id: eventId });
+  registry.register('public.match_event_invites', { match_event_id: eventId });
+  registry.register('public.match_event_management_commands', { match_event_id: eventId });
+  registry.register('public.match_event_audit_log', { match_event_id: eventId });
+  registry.register('public.match_event_registration_attempts', { match_event_id: eventId });
+  registry.register('public.match_event_registrations', { match_event_id: eventId });
+  registry.register('public.match_event_registration_state', { match_event_id: eventId });
+  registry.register('public.match_event_result_proposals', { match_event_id: eventId });
+  registry.register('public.notifications', { target_id: eventId });
+  if (photoPath) registerMatchStorageFixtureObject(registry, 'match-event-photos', photoPath);
+}
+
+/**
+ * Creates a scoped registry for real match/community fixtures. Cleanup first
+ * discovers owned event/message children, then removes only registered rows in
+ * FK order. DDL guards are disabled only for the cleanup transaction and are
+ * restored by commit or transaction rollback.
+ */
+export function createMatchFixtureCleanupRegistry(scopeName: string): FixtureCleanupRegistry {
+  const registry = createFixtureCleanupRegistry(scopeName);
+  const scope = matchFixtureScope(registry);
+  registry.setCleanupExecutor(async (current) => {
+    const communityIds = [...scope.communityIds];
+    if (communityIds.length > 0) {
+      const events = await queryTrustedSql(
+        `select id::text as id, photo_path from public.match_events where community_id = any($1::uuid[])`,
+        { values: [communityIds] }
+      );
+      for (const row of events.rows) {
+        const eventId = String(row['id']);
+        const photoPath = typeof row['photo_path'] === 'string' ? row['photo_path'] : undefined;
+        registerMatchEventFixtureRows(current, eventId, photoPath);
+      }
+
+      const messages = await queryTrustedSql(
+        `select id::text as id from public.community_request_messages where community_id = any($1::uuid[])`,
+        { values: [communityIds] }
+      );
+      for (const row of messages.rows)
+        current.register('public.community_notifications', {
+          request_message_id: String(row['id'])
+        });
+    }
+
+    const eventIds = [...scope.eventIds];
+    if (eventIds.length > 0) {
+      const proposals = await queryTrustedSql(
+        `select id::text as id from public.match_event_result_proposals where match_event_id = any($1::uuid[])`,
+        { values: [eventIds] }
+      );
+      for (const row of proposals.rows)
+        current.register('public.match_event_result_proposal_versions', {
+          proposal_id: String(row['id'])
+        });
+    }
+
+    const beforeStatements: string[] = [];
+    const afterStatements: string[] = [];
+    const triggerPairs: Array<[table: string, trigger: string]> = [];
+    if (scope.communityIds.size > 0) {
+      beforeStatements.push(
+        'alter table public.community_members disable trigger community_member_guard'
+      );
+      afterStatements.push(
+        'alter table public.community_members enable trigger community_member_guard'
+      );
+    }
+    if (scope.eventIds.size > 0) {
+      const eventTriggerPairs: Array<[table: string, trigger: string]> = [
+        ['match_events', 'match_event_immutable'],
+        ['match_event_invites', 'match_invite_immutable'],
+        ['match_event_registrations', 'match_registration_identity_guard'],
+        ['match_event_registrations', 'match_registration_final_state'],
+        ['match_event_registration_attempts', 'match_attempt_history_guard'],
+        ['match_event_registration_attempts', 'match_attempt_final_state'],
+        ['match_event_audit_log', 'match_audit_immutable'],
+        ['match_event_result_proposals', 'match_result_proposal_immutable'],
+        ['match_event_result_proposal_versions', 'match_result_proposal_version_immutable']
+      ];
+      for (const [table, trigger] of eventTriggerPairs) {
+        triggerPairs.push([table, trigger]);
+        beforeStatements.push(`alter table public.${table} disable trigger ${trigger}`);
+        afterStatements.unshift(`alter table public.${table} enable trigger ${trigger}`);
+      }
+      beforeStatements.push(
+        `update public.match_event_registrations set current_attempt_id = null where match_event_id = any(array[${[
+          ...scope.eventIds
+        ]
+          .map((id) => `'${id}'::uuid`)
+          .join(',')}])`
+      );
+    }
+    if (triggerPairs.length > 0) {
+      const triggerPredicates = triggerPairs
+        .map(([table, trigger]) => `(c.relname = '${table}' and t.tgname = '${trigger}')`)
+        .join(' or ');
+      const triggerStates = await queryTrustedSql(
+        `select c.relname as table_name, t.tgname as trigger_name, t.tgenabled as enabled
+           from pg_catalog.pg_trigger t
+           join pg_catalog.pg_class c on c.oid = t.tgrelid
+           join pg_catalog.pg_namespace n on n.oid = c.relnamespace
+          where n.nspname = 'public' and not t.tgisinternal and (${triggerPredicates})`
+      );
+      if (
+        triggerStates.rows.length !== triggerPairs.length ||
+        triggerStates.rows.some((row) => row['enabled'] !== 'O')
+      )
+        throw new Error(
+          `Refusing fixture cleanup because expected triggers are missing or not enabled: ${JSON.stringify(triggerStates.rows)}`
+        );
+    }
+    if (scope.hasStorageObjects)
+      beforeStatements.unshift(`select set_config('storage.allow_delete_query','true',true)`);
+
+    await current.deleteRegisteredRowsInOrder({
+      beforeStatements,
+      afterStatements,
+      restoreOnFailure: afterStatements
+    });
+  });
+  return registry;
+}
 
 // Shared trusted-SQL harness for the PAF-5.3 registration suites (model, FIFO,
 // notifications). Fixtures use the bounded pool; independent holders and probes

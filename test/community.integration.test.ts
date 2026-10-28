@@ -51,6 +51,10 @@ import {
   communityJsonbFixtures,
   compactJsonBytes
 } from './helpers/community-jsonb-fixtures';
+import {
+  createFixtureCleanupRegistry,
+  type FixtureCleanupRegistry
+} from './helpers/fixture-cleanup';
 import { executeTrustedSqlBatch, queryTrustedSql } from './helpers/sql-transport';
 
 vi.setConfig({ testTimeout: 30000, hookTimeout: 30000 });
@@ -74,14 +78,62 @@ describe.skipIf(environment.env === null)('community domain (local Supabase inte
     return createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
   }
   type Actor = { client: SupabaseClient; email: string; id: string };
+  const actorCleanup = createFixtureCleanupRegistry('community-actors');
+  const actors: Actor[] = [];
+  let testCleanup: FixtureCleanupRegistry | undefined;
+
+  function registerCommunityRows(registry: FixtureCleanupRegistry, communityId: string): void {
+    registry.register('public.communities', { id: communityId });
+    registry.register('public.community_members', { community_id: communityId });
+    registry.register('public.community_audit_log', { community_id: communityId });
+    registry.register('public.community_invitations', { community_id: communityId });
+    registry.register('public.community_venues', { community_id: communityId });
+    registry.register('public.notifications', { community_id: communityId });
+  }
+
+  function registerActorScope(registry: FixtureCleanupRegistry, actorId: string): void {
+    registry.register('public.communities', { created_by: actorId });
+    registry.register('public.community_members', { user_id: actorId });
+  }
+
+  function createTestCleanup(): FixtureCleanupRegistry {
+    const registry = createFixtureCleanupRegistry('community-test');
+    for (const testActor of actors) registerActorScope(registry, testActor.id);
+    registry.setCleanupExecutor(async (current) => {
+      const actorIds = actors.map(({ id }) => id);
+      if (actorIds.length === 0) return;
+
+      const communities = await queryTrustedSql(
+        `select id::text as id from public.communities where created_by = any($1::uuid[])`,
+        { values: [actorIds] }
+      );
+      for (const row of communities.rows) registerCommunityRows(current, String(row['id']));
+
+      await current.deleteRegisteredRowsInOrder({
+        beforeStatements: [
+          'alter table public.community_members disable trigger community_member_guard'
+        ],
+        afterStatements: [
+          'alter table public.community_members enable trigger community_member_guard'
+        ],
+        restoreOnFailure: [
+          'alter table public.community_members enable trigger community_member_guard'
+        ]
+      });
+    });
+    return registry;
+  }
+
   async function actor(label: string): Promise<Actor> {
     const { url, key } = env();
-    const email = `${label}-${crypto.randomUUID()}@test.local`;
+    const email = `${label}-${actorCleanup.namespace}-${crypto.randomUUID()}@test.local`;
+    actorCleanup.register('auth.users', { email });
     const signup = await anon().auth.signUp({
       email,
       password: 'Password123!'
     });
     expect(signup.error).toBeNull();
+    actorCleanup.register('auth.users', { id: signup.data.user!.id });
     const token = signup.data.session?.access_token;
     expect(token, 'local email confirmations must be disabled').toBeTruthy();
     const client = createClient(url, key, {
@@ -93,7 +145,10 @@ describe.skipIf(environment.env === null)('community domain (local Supabase inte
       refresh_token: signup.data.session!.refresh_token
     });
     expect(session.error).toBeNull();
-    return { id: signup.data.user!.id, email, client };
+    const createdActor = { id: signup.data.user!.id, email, client };
+    actors.push(createdActor);
+    if (testCleanup) registerActorScope(testCleanup, createdActor.id);
+    return createdActor;
   }
   async function rows(
     client: SupabaseClient,
@@ -209,14 +264,18 @@ describe.skipIf(environment.env === null)('community domain (local Supabase inte
   });
 
   beforeEach(async () => {
+    testCleanup = createTestCleanup();
     async function create(name: string, visibility: 'private' | 'public') {
+      const scopedName = `${name} ${testCleanup!.namespace.slice(-8)}`;
+      testCleanup!.register('public.communities', { name: scopedName });
       const result = await admin.client.rpc('create_community', {
-        p_name: name,
+        p_name: scopedName,
         p_visibility: visibility,
         p_join_policy: visibility === 'private' ? 'admin_approval' : 'instant'
       });
       if (result.error) throw result.error;
       if (typeof result.data !== 'string') throw new Error('create_community returned no ID');
+      registerCommunityRows(testCleanup!, result.data);
       return result.data;
     }
     privateId = await create('Private ' + crypto.randomUUID(), 'private');
@@ -262,8 +321,13 @@ describe.skipIf(environment.env === null)('community domain (local Supabase inte
     venueId = venue.data.id;
   });
 
-  afterEach(() => {
-    serverClient.current = null;
+  afterEach(async () => {
+    try {
+      await testCleanup?.cleanup();
+    } finally {
+      testCleanup = undefined;
+      serverClient.current = null;
+    }
   });
 
   it('AC1/2: creator bootstrap and enum values are enforced by real SQL', async () => {
