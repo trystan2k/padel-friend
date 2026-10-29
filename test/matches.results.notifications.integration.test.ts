@@ -465,4 +465,146 @@ describe.skipIf(!environment.env)('transactional result notifications', { timeou
       result_context: { entry_ready: true, match_event_id: eventId }
     });
   });
+
+  it('notifies creator for finished frozen playable roster without a proposal, once only', async () => {
+    const finishedEvent = await f.protectedEvent();
+    await fixtureSql(`do $$ begin
+      alter table public.match_events disable trigger match_event_immutable;
+      update public.match_events set starts_at = pg_catalog.clock_timestamp() - interval '2 hours',
+        duration_minutes = 60, registration_cutoff_at = pg_catalog.clock_timestamp() - interval '3 hours'
+       where id = '${finishedEvent}';
+      alter table public.match_events enable trigger match_event_immutable;
+    end $$;`);
+    expect(
+      await sqlRows(`select count(*)::int as count from public.match_event_result_proposals
+      where match_event_id = '${finishedEvent}'`)
+    ).toEqual([{ count: 0 }]);
+    const finishedRun = await processDueMatchEventResults();
+    expect(finishedRun.alerts).toMatchObject({ entry_ready: 1, failed: 0 });
+    const finishedKey = `result.entry_ready:${finishedEvent}`;
+    expect(
+      (await resultAlerts(finishedEvent)).filter((row) => row['event_key'] === finishedKey)
+    ).toMatchObject([
+      {
+        recipient_user_id: f.creator.id,
+        kind: 'result_entry_ready',
+        target_id: finishedEvent
+      }
+    ]);
+    expect((await processDueMatchEventResults()).alerts).toMatchObject({ entry_ready: 0 });
+    expect(
+      (await resultAlerts(finishedEvent)).filter((row) => row['event_key'] === finishedKey)
+    ).toHaveLength(1);
+
+    const upcomingEvent = await f.protectedEvent();
+    expect((await processDueMatchEventResults()).alerts).toMatchObject({ entry_ready: 0 });
+    expect(
+      (await resultAlerts(upcomingEvent)).filter(
+        (row) => row['event_key'] === `result.entry_ready:${upcomingEvent}`
+      )
+    ).toHaveLength(0);
+
+    const incomplete = await f.event({ accepted: f.players.slice(1, 3) });
+    await f.setCutoff(incomplete.id, "now()-interval '1 minute'");
+    await f.protectResults(incomplete.id);
+    await fixtureSql(`do $$ begin
+      alter table public.match_events disable trigger match_event_immutable;
+      update public.match_events set starts_at = pg_catalog.clock_timestamp() - interval '2 hours',
+        duration_minutes = 60, registration_cutoff_at = pg_catalog.clock_timestamp() - interval '3 hours'
+       where id = '${incomplete.id}';
+      alter table public.match_events enable trigger match_event_immutable;
+    end $$;`);
+    await fixtureSql(`do $$ begin
+      alter table public.match_events disable trigger match_event_immutable;
+      update public.match_events set status = 'cancelled', cancelled_at = pg_catalog.clock_timestamp(),
+        cancelled_by = '${f.creator.id}', cancel_reason = 'fixture cancellation'
+       where id = '${upcomingEvent}';
+      alter table public.match_events enable trigger match_event_immutable;
+    end $$;`);
+    expect((await processDueMatchEventResults()).alerts).toMatchObject({ entry_ready: 0 });
+    expect(
+      (await resultAlerts(incomplete.id)).filter(
+        (row) => row['event_key'] === `result.entry_ready:${incomplete.id}`
+      )
+    ).toHaveLength(0);
+    expect(
+      (await resultAlerts(upcomingEvent)).filter(
+        (row) => row['event_key'] === `result.entry_ready:${upcomingEvent}`
+      )
+    ).toHaveLength(0);
+  });
+
+  it('backs off poison reminder rows and lets later bounded-batch candidates progress', async () => {
+    const candidates: Array<{ eventId: string; proposalId: string }> = [];
+    for (let index = 0; index < 3; index += 1) {
+      const eventId = await f.protectedEvent();
+      const submission = await f.submit(eventId, { submitter: f.admin });
+      expect(submission.error).toBeNull();
+      const proposalId = String(asRecord(submission.data).proposal_id);
+      await setResultReviewDeadlineOffset(proposalId, 1, 5 * 60 * 60);
+      candidates.push({ eventId, proposalId });
+    }
+    const poison = candidates[0]!;
+    const removeFailure = await installAlertFailure(poison.eventId, 'result.deadline:');
+    try {
+      const [firstRow] = await sqlRows(
+        'select public.process_match_result_lifecycle_alerts(2, 1) as result'
+      );
+      expect(asRecord(firstRow?.['result'])).toMatchObject({ reminders: 4, failed: 1 });
+      const [firstState] = await sqlRows(`select attempt_count, failure_count,
+        last_failure_message, next_attempt_at > pg_catalog.clock_timestamp() as backed_off
+        from public.match_result_alert_processing_state
+        where alert_kind = 'deadline' and candidate_id = '${poison.proposalId}'
+          and candidate_version = 1`);
+      expect(firstState).toMatchObject({
+        attempt_count: 1,
+        failure_count: 1,
+        last_failure_message: 'Lifecycle alert failed; retry is scheduled.',
+        backed_off: true
+      });
+      expect(
+        (await resultAlerts(candidates[1]!.eventId)).filter((row) =>
+          String(row['event_key']).startsWith('result.deadline:')
+        )
+      ).toHaveLength(4);
+
+      const [backoffRow] = await sqlRows(
+        'select public.process_match_result_lifecycle_alerts(2, 1) as result'
+      );
+      expect(asRecord(backoffRow?.['result'])).toMatchObject({ reminders: 4, failed: 0 });
+      expect(
+        (await resultAlerts(candidates[2]!.eventId)).filter((row) =>
+          String(row['event_key']).startsWith('result.deadline:')
+        )
+      ).toHaveLength(4);
+      const [stillBackedOff] =
+        await sqlRows(`select attempt_count from public.match_result_alert_processing_state
+        where alert_kind = 'deadline' and candidate_id = '${poison.proposalId}'
+          and candidate_version = 1`);
+      expect(stillBackedOff?.['attempt_count']).toBe(1);
+    } finally {
+      await removeFailure();
+    }
+
+    await fixtureSql(`update public.match_result_alert_processing_state
+      set next_attempt_at = pg_catalog.clock_timestamp() - interval '1 second'
+      where alert_kind = 'deadline' and candidate_id = '${poison.proposalId}'
+        and candidate_version = 1`);
+    const [retryRow] = await sqlRows(
+      'select public.process_match_result_lifecycle_alerts(2, 1) as result'
+    );
+    expect(asRecord(retryRow?.['result'])).toMatchObject({ reminders: 4, failed: 0 });
+    const [retriedState] = await sqlRows(`select attempt_count, failure_count,
+      last_failure_message, next_attempt_at from public.match_result_alert_processing_state
+      where alert_kind = 'deadline' and candidate_id = '${poison.proposalId}'
+        and candidate_version = 1`);
+    expect(retriedState).toMatchObject({ attempt_count: 2, failure_count: 0 });
+    expect(retriedState?.['last_failure_message']).toBeNull();
+    expect(retriedState?.['next_attempt_at']).toBeNull();
+    expect(
+      (await resultAlerts(poison.eventId)).filter((row) =>
+        String(row['event_key']).startsWith('result.deadline:')
+      )
+    ).toHaveLength(4);
+  });
 });

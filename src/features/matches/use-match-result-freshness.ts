@@ -32,7 +32,7 @@ export function useMatchResultFreshness({
     .join(',');
 
   useEffect(() => {
-    if (pendingKey === `${eventId}:`) return undefined;
+    const hasPending = pendingKey !== `${eventId}:`;
     let pollTimer: ReturnType<typeof setTimeout> | null = null;
     let deadlineTimer: ReturnType<typeof setTimeout> | null = null;
     let debounceTimer: ReturnType<typeof setTimeout> | null = null;
@@ -54,6 +54,7 @@ export function useMatchResultFreshness({
       if (document.visibilityState === 'visible') refresh();
     };
     const poll = () => {
+      if (!hasPending) return;
       pollTimer = setTimeout(() => {
         if (disposed) return;
         if (document.visibilityState === 'visible') refresh();
@@ -61,10 +62,11 @@ export function useMatchResultFreshness({
       }, RESULT_POLL_INTERVAL);
     };
 
-    const elapsedSinceSeed = () => Math.max(0, Date.now() - seedObservedAt);
+    const elapsedSinceSeed = () => Math.max(0, performance.now() - seedObservedAt);
     const seedTime = Date.parse(asOf);
-    const seedObservedAt = Date.now();
+    const seedObservedAt = performance.now();
     const refreshAtDeadline = () => {
+      if (!hasPending) return;
       const nearestDeadline = Math.min(...pendingDeadlines.split(',').map(Number));
       const remaining = nearestDeadline - (seedTime + elapsedSinceSeed());
       if (remaining <= 0) {
@@ -74,8 +76,10 @@ export function useMatchResultFreshness({
       deadlineTimer = setTimeout(refreshAtDeadline, Math.min(remaining, MAX_TIMEOUT_DELAY));
     };
 
-    refreshAtDeadline();
-    poll();
+    if (hasPending) {
+      refreshAtDeadline();
+      poll();
+    }
     window.addEventListener('focus', refresh);
     window.addEventListener('online', refresh);
     document.addEventListener('visibilitychange', onVisibilityChange);

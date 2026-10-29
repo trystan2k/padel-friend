@@ -4,13 +4,16 @@ import {
   asRecord,
   fixtureSql,
   proveOrderedEventLockBarrier,
-  sqlRows
+  sqlRows,
+  startSql,
+  waitForRows
 } from './helpers/match-registration-sql';
 import {
   createMatchResultReviewFixtures,
   reviewResultPlayedAt,
   reviewResultSets
 } from './helpers/match-result-review-fixtures';
+import { setResultReviewDeadlineOffset } from './helpers/match-result-processing-fixtures';
 
 describe('separate-connection result command races', { timeout: 120000 }, () => {
   let f: Awaited<ReturnType<typeof createMatchResultReviewFixtures>>;
@@ -284,5 +287,155 @@ describe('separate-connection result command races', { timeout: 120000 }, () => 
       join public.match_event_result_proposals p on p.id=c.proposal_id
       where c.proposal_id='${current.proposalId}'`)
     ).toEqual([{ source: 'AUTO_48H', effective_at_is_deadline: true }]);
+  });
+
+  it('revalidates reminders after rejection/confirmation wins canonical event lock', async () => {
+    async function contend(
+      commands: Array<{
+        token: 'review_match_event_result' | 'notify_match_result_deadline';
+        run: () => Promise<unknown>;
+      }>
+    ) {
+      const marker = `paf8-reminder-${crypto.randomUUID().replaceAll('-', '')}`;
+      const holder = startSql(`/* ${marker} */ select pg_catalog.pg_sleep(900)
+        from (select id from public.communities where id = '${f.communityId}' for update) locked;`);
+      try {
+        const [holderRow] = await waitForRows(
+          `select pid as value from pg_catalog.pg_stat_activity
+            where query like '%${marker}%' and state='active' and pid <> pg_catalog.pg_backend_pid()`,
+          (rows) => rows.length === 1,
+          'reminder race community-lock holder'
+        );
+        const holderPid = Number(holderRow?.['value']);
+        const contenders: Array<Promise<unknown>> = [];
+        let reviewCount = 0;
+        for (const command of commands) {
+          contenders.push(command.run());
+          const tokenCount = command.token === 'review_match_event_result' ? ++reviewCount : 1;
+          await waitForRows(
+            `select a.pid from pg_catalog.pg_stat_activity a
+              where a.wait_event_type = 'Lock' and a.query like '%${command.token}%'
+                and a.pid <> pg_catalog.pg_backend_pid() and a.pid <> ${holderPid}
+                and (${holderPid} = any(pg_catalog.pg_blocking_pids(a.pid)) or exists (
+                  select 1 from pg_catalog.pg_stat_activity p
+                   where p.wait_event_type = 'Lock' and p.pid <> a.pid
+                     and ${holderPid} = any(pg_catalog.pg_blocking_pids(p.pid))
+                     and p.pid = any(pg_catalog.pg_blocking_pids(a.pid))))`,
+            (rows) => rows.length >= tokenCount,
+            `${command.token} blocked behind prior event-lock command`,
+            2500,
+            20
+          );
+        }
+        const barrier = startSql(`do $barrier$
+          declare v_blocked integer; v_deadline timestamptz := pg_catalog.clock_timestamp() + interval '6 seconds';
+          begin
+            loop
+              perform pg_catalog.pg_stat_clear_snapshot();
+              select count(*) into v_blocked from pg_catalog.pg_stat_activity a
+               where a.wait_event_type = 'Lock'
+                 and (a.query like '%review_match_event_result%'
+                   or a.query like '%notify_match_result_deadline%')
+                 and a.pid <> pg_catalog.pg_backend_pid() and a.pid <> ${holderPid}
+                 and (${holderPid} = any(pg_catalog.pg_blocking_pids(a.pid)) or exists (
+                   select 1 from pg_catalog.pg_stat_activity p
+                    where p.wait_event_type = 'Lock' and p.pid <> a.pid
+                      and ${holderPid} = any(pg_catalog.pg_blocking_pids(p.pid))
+                      and p.pid = any(pg_catalog.pg_blocking_pids(a.pid))));
+              exit when v_blocked = ${commands.length} or pg_catalog.clock_timestamp() > v_deadline;
+              perform pg_catalog.pg_sleep(0.025);
+            end loop;
+            if v_blocked <> ${commands.length} then
+              raise exception 'reminder lock race barrier failed: expected %, found %', ${commands.length}, v_blocked;
+            end if;
+            perform pg_catalog.pg_terminate_backend(${holderPid});
+          end $barrier$;`);
+        const barrierResult = await barrier.done;
+        if (barrierResult.code !== 0)
+          throw new Error(`Reminder barrier failed: ${barrierResult.stderr}`);
+        return await Promise.all(contenders);
+      } finally {
+        await fixtureSql(`select pg_catalog.pg_terminate_backend(pid) from pg_catalog.pg_stat_activity
+          where query like '%${marker}%' and pid <> pg_catalog.pg_backend_pid()`).catch(
+          () => undefined
+        );
+        await holder.stop();
+      }
+    }
+
+    const rejectFirst = await pending();
+    await setResultReviewDeadlineOffset(rejectFirst.proposalId, 1, 5 * 60 * 60);
+    const rejectionAndReminder = await contend([
+      { token: 'review_match_event_result', run: reviewCall(rejectFirst.proposalId, 1, 'reject') },
+      {
+        token: 'notify_match_result_deadline',
+        run: () =>
+          startSql(`select public.notify_match_result_deadline('${rejectFirst.proposalId}', 1);`)
+            .done
+      }
+    ]);
+    expect(rejectionAndReminder[0]).toMatchObject({ error: null });
+    expect(
+      await sqlRows(`select status from public.match_event_result_proposals
+      where id = '${rejectFirst.proposalId}'`)
+    ).toEqual([{ status: 'disputed' }]);
+    expect(rejectionAndReminder[1]).toMatchObject({ code: 0 });
+    expect(
+      await sqlRows(`select count(*)::int as count from public.notifications
+      where event_key = 'result.deadline:${rejectFirst.proposalId}:v1'`)
+    ).toEqual([{ count: 0 }]);
+
+    const confirmFirst = await pending();
+    await setResultReviewDeadlineOffset(confirmFirst.proposalId, 1, 5 * 60 * 60);
+    const confirmationAndReminder = await contend([
+      {
+        token: 'review_match_event_result',
+        run: reviewCall(confirmFirst.proposalId, 0, 'approve')
+      },
+      {
+        token: 'review_match_event_result',
+        run: reviewCall(confirmFirst.proposalId, 2, 'approve')
+      },
+      {
+        token: 'notify_match_result_deadline',
+        run: () =>
+          startSql(`select public.notify_match_result_deadline('${confirmFirst.proposalId}', 1);`)
+            .done
+      }
+    ]);
+    expect(confirmationAndReminder[0]).toMatchObject({ error: null });
+    expect(confirmationAndReminder[1]).toMatchObject({ error: null });
+    expect(
+      await sqlRows(`select status from public.match_event_result_proposals
+      where id = '${confirmFirst.proposalId}'`)
+    ).toEqual([{ status: 'confirmed' }]);
+    expect(confirmationAndReminder[2]).toMatchObject({ code: 0 });
+    expect(
+      await sqlRows(`select count(*)::int as count from public.notifications
+      where event_key = 'result.deadline:${confirmFirst.proposalId}:v1'`)
+    ).toEqual([{ count: 0 }]);
+
+    const reminderFirst = await pending();
+    await setResultReviewDeadlineOffset(reminderFirst.proposalId, 1, 5 * 60 * 60);
+    const reminderAndRejection = await contend([
+      {
+        token: 'notify_match_result_deadline',
+        run: () =>
+          startSql(`select public.notify_match_result_deadline('${reminderFirst.proposalId}', 1);`)
+            .done
+      },
+      { token: 'review_match_event_result', run: reviewCall(reminderFirst.proposalId, 1, 'reject') }
+    ]);
+    expect(reminderAndRejection[0]).toMatchObject({ code: 0 });
+    expect(reminderAndRejection[1]).toMatchObject({ error: null });
+    expect(
+      await sqlRows(`select status from public.match_event_result_proposals
+      where id = '${reminderFirst.proposalId}'`)
+    ).toEqual([{ status: 'disputed' }]);
+    expect(
+      await sqlRows(`select count(*)::int as count from public.notifications
+      where event_key = 'result.deadline:${reminderFirst.proposalId}:v1'`)
+    ).toEqual([{ count: 4 }]);
+    expect(await counts(reminderFirst.eventId)).toMatchObject({ reviews: 1, confirmations: 0 });
   });
 });

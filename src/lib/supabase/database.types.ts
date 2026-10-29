@@ -1222,6 +1222,46 @@ export type Database = {
           },
         ]
       }
+      match_result_alert_processing_state: {
+        Row: {
+          alert_kind: string
+          attempt_count: number
+          attempted_at: string | null
+          candidate_id: string
+          candidate_version: number
+          failure_count: number
+          last_failure_code: string | null
+          last_failure_message: string | null
+          next_attempt_at: string | null
+          updated_at: string
+        }
+        ComputedFields: never
+        Insert: {
+          alert_kind: string
+          attempt_count?: number
+          attempted_at?: string | null
+          candidate_id: string
+          candidate_version?: number
+          failure_count?: number
+          last_failure_code?: string | null
+          last_failure_message?: string | null
+          next_attempt_at?: string | null
+          updated_at?: string
+        }
+        Update: {
+          alert_kind?: string
+          attempt_count?: number
+          attempted_at?: string | null
+          candidate_id?: string
+          candidate_version?: number
+          failure_count?: number
+          last_failure_code?: string | null
+          last_failure_message?: string | null
+          next_attempt_at?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       notes: {
         Row: {
           body: string
@@ -1966,6 +2006,16 @@ export type Database = {
           p_request_id: string
         }
         Returns: Json
+      }
+      record_match_result_alert_attempt: {
+        Args: {
+          p_candidate_id: string
+          p_failed: boolean
+          p_failure_code?: string
+          p_kind: string
+          p_version: number
+        }
+        Returns: undefined
       }
       record_match_result_processing_attempt: {
         Args: {

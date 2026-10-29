@@ -134,6 +134,119 @@ async function assertTouchTargets(page: Page, root: Locator = page.locator('main
   }
 }
 
+type Box = { x: number; y: number; right: number; bottom: number; width: number; height: number };
+
+async function box(locator: Locator): Promise<Box> {
+  return locator.evaluate((element) => {
+    const { x, y, right, bottom, width, height } = element.getBoundingClientRect();
+    return { x, y, right, bottom, width, height };
+  });
+}
+
+function assertContained(parent: Box, child: Box, label: string, tolerance = 2) {
+  expect(child.x, `${label} left inside card`).toBeGreaterThanOrEqual(parent.x - tolerance);
+  expect(child.y, `${label} top inside card`).toBeGreaterThanOrEqual(parent.y - tolerance);
+  expect(child.right, `${label} right inside card`).toBeLessThanOrEqual(parent.right + tolerance);
+  expect(child.bottom, `${label} bottom inside card`).toBeLessThanOrEqual(
+    parent.bottom + tolerance
+  );
+}
+
+function assertAbove(upper: Box, lower: Box, label: string, gap = 0) {
+  expect(upper.bottom, `${label} vertical order`).toBeLessThanOrEqual(lower.y + gap);
+}
+
+async function assertDialogGeometry(dialog: Locator) {
+  const dialogBox = await box(dialog);
+  const radios = dialog.getByRole('radio');
+  const radioBoxes = await radios.evaluateAll((nodes) =>
+    nodes.map((node) => {
+      const rect = node.closest('label')!.getBoundingClientRect();
+      return {
+        x: rect.x,
+        y: rect.y,
+        right: rect.right,
+        bottom: rect.bottom,
+        width: rect.width,
+        height: rect.height
+      };
+    })
+  );
+  expect(radioBoxes).toHaveLength(8);
+  for (const [index, radio] of radioBoxes.entries()) {
+    expect(radio.height, `reason row ${index + 1} minimum touch height`).toBeGreaterThanOrEqual(44);
+    assertContained(dialogBox, radio, `reason row ${index + 1}`);
+    if (index > 0)
+      assertAbove(radioBoxes[index - 1]!, radio, `reason row ${index + 1} follows previous`, 2);
+  }
+  const note = await box(dialog.getByLabel(copies.en.matches.results.reject.noteLabel));
+  const cancel = await box(
+    dialog.getByRole('button', { name: copies.en.matches.results.reject.cancel, exact: true })
+  );
+  const submit = await box(
+    dialog.getByRole('button', { name: copies.en.matches.results.reject.submit, exact: true })
+  );
+  assertContained(dialogBox, note, 'optional note field');
+  assertContained(dialogBox, cancel, 'cancel footer button');
+  assertContained(dialogBox, submit, 'submit footer button');
+  assertAbove(note, cancel, 'dialog footer follows note', 2);
+  assertAbove(note, submit, 'dialog submit follows note', 2);
+  expect(Math.abs(cancel.y - submit.y), 'footer buttons share row').toBeLessThanOrEqual(2);
+}
+
+async function assertMixedGroupGeometry(page: Page, groupFour: Locator) {
+  const cards = [
+    page.locator('article[data-result-status="confirmed"]'),
+    page.locator('article[data-result-status="pending"]'),
+    page.locator('article[data-result-status="disputed"]'),
+    groupFour
+  ];
+  const boxes = await Promise.all(cards.map(box));
+  for (let index = 0; index < boxes.length; index++) {
+    expect(boxes[index]!.width, `group ${index + 1} card has width`).toBeGreaterThan(0);
+    expect(boxes[index]!.height, `group ${index + 1} card has height`).toBeGreaterThan(0);
+    if (index > 0)
+      assertAbove(
+        boxes[index - 1]!,
+        boxes[index]!,
+        `group ${index + 1} follows group ${index}`,
+        -1
+      );
+  }
+  for (let index = 1; index < boxes.length; index++)
+    expect(
+      boxes[index - 1]!.bottom,
+      `groups ${index} and ${index + 1} do not overlap`
+    ).toBeLessThanOrEqual(boxes[index]!.y);
+  const banner = await box(
+    page.getByRole('region', { name: copies.en.matches.results.resolution.title })
+  );
+  assertAbove(banner, boxes[0]!, 'resolution banner above first group', 2);
+  const overview = page
+    .locator('section')
+    .filter({ has: page.getByRole('heading', { name: 'Group event', exact: true }) });
+  const overviewBox = await box(overview);
+  const parentBadges = overview.locator('div').first();
+  assertContained(overviewBox, await box(parentBadges), 'parent badge strip');
+  for (const [index, card] of cards.entries()) {
+    const cardBox = boxes[index]!;
+    const header = card.locator('header');
+    assertContained(cardBox, await box(header), `group ${index + 1} header`);
+    assertContained(
+      cardBox,
+      await box(header.locator('span').first()),
+      `group ${index + 1} status badge`
+    );
+    for (const [buttonIndex, button] of (await card.getByRole('button').all()).entries())
+      assertContained(cardBox, await box(button), `group ${index + 1} button ${buttonIndex + 1}`);
+  }
+  const timer = await box(cards[1]!.getByRole('timer'));
+  assertContained(boxes[1]!, timer, 'pending countdown');
+  const disputedActions = cards[2]!.getByRole('link');
+  if (await disputedActions.count())
+    assertContained(boxes[2]!, await box(disputedActions.first()), 'disputed correction action');
+}
+
 async function compareFrame(frame: Frame, page: Page, info: TestInfo) {
   const { width, height } = sizes[frame];
   await page.setViewportSize({ width, height });
@@ -247,6 +360,7 @@ test('PAF-8 Pencil screens retain exact lifecycle probes and reviewed raster bud
   await dialog.getByRole('button', { name: r.reject.submit, exact: true }).click();
   await expect(dialog.getByText(r.reject.noteRequired, { exact: true })).toBeVisible();
   await expect(dialog.getByLabel(r.reject.noteLabel)).toHaveAttribute('aria-invalid', 'true');
+  await assertDialogGeometry(dialog);
   await assertTouchTargets(disputePage, dialog);
   await compareFrame('H6VcqC', disputePage, info);
   const rejectButton = firstCard.getByRole('button', { name: r.review.reject, exact: true });
@@ -312,6 +426,7 @@ test('PAF-8 Pencil screens retain exact lifecycle probes and reviewed raster bud
   await expect(mixedPage.locator('article[data-result-status="disputed"]')).toHaveCount(1);
   const groupFour = await resultCard(mixedPage, 4);
   await expect(groupFour).toContainText(r.awaitingResult);
+  await assertMixedGroupGeometry(mixedPage, groupFour);
   await assertTouchTargets(mixedPage);
   await scrollToTopOf(mixedPage.getByRole('region', { name: r.resolution.title }));
   await compareFrame('GMcbD', mixedPage, info);

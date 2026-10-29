@@ -323,6 +323,42 @@ describe('atomic result review commands', { timeout: 120000 }, () => {
     });
   });
 
+  it('scopes review replay keys to proposal while preserving same-proposal replay', async () => {
+    const eventId = await f.protectedEvent({ reserve: true });
+    const firstResult = await f.submit(eventId, { submitter: f.admin, groupNumber: 1 });
+    const secondResult = await f.submit(eventId, { submitter: f.admin, groupNumber: 2 });
+    expect(firstResult.error).toBeNull();
+    expect(secondResult.error).toBeNull();
+    const firstProposalId = String(asRecord(firstResult.data).proposal_id);
+    const secondProposalId = String(asRecord(secondResult.data).proposal_id);
+    const requestId = crypto.randomUUID();
+    const args = {
+      p_proposal_id: firstProposalId,
+      p_expected_version: 1,
+      p_decision: 'approve',
+      p_reason_code: null,
+      p_reason_note: null,
+      p_request_id: requestId
+    };
+    expect((await f.rpc(f.players[0]!, 'review_match_event_result', args)).data).toMatchObject({
+      proposal_id: firstProposalId,
+      replayed: false
+    });
+    expect((await f.rpc(f.players[0]!, 'review_match_event_result', args)).data).toMatchObject({
+      proposal_id: firstProposalId,
+      replayed: true
+    });
+    expect(
+      (
+        await f.rpc(f.players[0]!, 'review_match_event_result', {
+          ...args,
+          p_proposal_id: secondProposalId
+        })
+      ).error?.message
+    ).toBe('MATCH_RESULT_IDEMPOTENCY_CONFLICT');
+    expect(await evidence(eventId)).toMatchObject({ reviews: 1, review_audits: 1 });
+  });
+
   it('returns typed current-version conflicts without appending evidence', async () => {
     const current = await proposal({ submitter: f.admin });
     const stale = await review(f.players[0]!, current.proposalId, { p_expected_version: 2 });

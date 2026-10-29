@@ -50,8 +50,7 @@ export function MatchResultReview({
   const stale = review.feedback?.kind === 'stale' ? review.feedback : null;
   const canReviewCurrent = stale !== null && proposal.version >= stale.version;
   const currentFeedback =
-    review.feedback?.kind === 'recorded' &&
-    (review.feedback.version !== proposal.version || proposal.status !== 'pending')
+    review.feedback?.kind === 'recorded' && review.feedback.version !== proposal.version
       ? null
       : review.feedback;
   const feedbackCopy = (() => {
@@ -426,7 +425,12 @@ function CompactResultSummary({
 
   useEffect(() => {
     if (proposal.status !== 'pending') return undefined;
-    const timer = setInterval(() => setClock({ asOf, now: Date.now() }), 60000);
+    const seed = Date.parse(asOf);
+    const observedAt = performance.now();
+    const timer = setInterval(
+      () => setClock({ asOf, now: seed + (performance.now() - observedAt) }),
+      60000
+    );
     return () => clearInterval(timer);
   }, [asOf, proposal.status]);
 

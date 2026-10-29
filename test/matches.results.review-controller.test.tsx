@@ -253,6 +253,119 @@ describe('result freshness controller', () => {
     expect(onRefresh).not.toHaveBeenCalled();
     unmount();
   });
+
+  it('refreshes disputed proposals on focus and reconnect without polling', async () => {
+    vi.useFakeTimers();
+    const onRefresh = vi.fn<() => void>();
+    const disputed = proposal({
+      status: 'disputed',
+      dispute_evidence: {
+        rejector_id: resultIds[1]!,
+        rejector_name: 'Player',
+        reason_code: 'SCORE_INCORRECT',
+        reason_note: null,
+        decided_at: resultProposal.submitted_at
+      },
+      version_timeline: [
+        {
+          version: 1,
+          submitted_by: resultIds[0]!,
+          submitted_by_name: 'Player',
+          submitted_at: resultProposal.submitted_at,
+          review_deadline_at: resultProposal.review_deadline_at,
+          confirmation_id: null,
+          status: 'disputed',
+          decisions: [
+            {
+              reviewer_id: resultIds[1]!,
+              reviewer_name: 'Player',
+              decision: 'reject',
+              reason_code: 'SCORE_INCORRECT',
+              reason_note: null,
+              decided_at: resultProposal.submitted_at
+            }
+          ]
+        }
+      ]
+    });
+    renderHook(() =>
+      useMatchResultFreshness({
+        eventId: disputed.event_id,
+        asOf: resultProposal.submitted_at,
+        proposals: [disputed],
+        onRefresh
+      })
+    );
+
+    act(() => {
+      window.dispatchEvent(new Event('focus'));
+      window.dispatchEvent(new Event('online'));
+    });
+    await act(async () => await vi.advanceTimersByTimeAsync(30));
+    expect(onRefresh).toHaveBeenCalledTimes(1);
+
+    await act(async () => vi.advanceTimersByTimeAsync(RESULT_POLL_INTERVAL * 2));
+    expect(onRefresh).toHaveBeenCalledTimes(1);
+  });
+
+  it('rebinds lifecycle refreshes when asOf changes and cleans up on unmount', async () => {
+    vi.useFakeTimers();
+    const onRefresh = vi.fn<() => void>();
+    const disputed = proposal({
+      status: 'disputed',
+      dispute_evidence: {
+        rejector_id: resultIds[1]!,
+        rejector_name: 'Player',
+        reason_code: 'SCORE_INCORRECT',
+        reason_note: null,
+        decided_at: resultProposal.submitted_at
+      },
+      version_timeline: [
+        {
+          version: 1,
+          submitted_by: resultIds[0]!,
+          submitted_by_name: 'Player',
+          submitted_at: resultProposal.submitted_at,
+          review_deadline_at: resultProposal.review_deadline_at,
+          confirmation_id: null,
+          status: 'disputed',
+          decisions: [
+            {
+              reviewer_id: resultIds[1]!,
+              reviewer_name: 'Player',
+              decision: 'reject',
+              reason_code: 'SCORE_INCORRECT',
+              reason_note: null,
+              decided_at: resultProposal.submitted_at
+            }
+          ]
+        }
+      ]
+    });
+    const { rerender, unmount } = renderHook(
+      ({ asOf }) =>
+        useMatchResultFreshness({
+          eventId: disputed.event_id,
+          asOf,
+          proposals: [disputed],
+          onRefresh
+        }),
+      { initialProps: { asOf: resultProposal.submitted_at } }
+    );
+    rerender({ asOf: '2026-10-01T12:00:01.000Z' });
+    await act(async () => {
+      window.dispatchEvent(new Event('focus'));
+    });
+    await act(async () => await vi.advanceTimersByTimeAsync(30));
+    expect(onRefresh).toHaveBeenCalledTimes(1);
+
+    unmount();
+    await act(async () => {
+      window.dispatchEvent(new Event('online'));
+    });
+    await act(async () => vi.advanceTimersByTimeAsync(30));
+    expect(onRefresh).toHaveBeenCalledTimes(1);
+  });
 });
 
 const RESULT_POLL_INTERVAL = 30_000;

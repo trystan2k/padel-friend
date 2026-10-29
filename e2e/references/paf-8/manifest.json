@@ -123,12 +123,12 @@
     },
     "perScreenRationale": {
       "H6VcqC": "Production Base UI dialog includes the app shell/backdrop, blank-note Other validation state and translated required-field feedback; structural probes pin all eight choices, error association, focus restoration and touch targets.",
-      "GMcbD": "Capture aligns the partial-resolution banner and all four compact group cards; real match-detail navigation and event summary replace the standalone Event results header/footer composition.",
+      "GMcbD": "Capture aligns the partial-resolution banner and all four compact group cards; exact probes pin card ordering/non-overlap, status badges, countdown, banner and parent badge strip. Observed residual 0.22035; 0.23 budget leaves 0.00965 for raster variance. Real match-detail navigation and event summary replace the standalone Event results header/footer composition.",
       "sLXK7": "Eligible opposing reviewer sees the production match-detail result card rather than a dedicated Check this result route. Numeric rating deltas are omitted until T10; score, eligibility, actions and touch targets are exact probes.",
       "CWJkF": "Current v2 dispute is rendered inside the match-detail route with real correction capability. Admin override/void controls are excluded by scope; history, reason, capability and touch probes are exact.",
       "JXjNs": "Capture isolates the production pending status/countdown region at the reference viewport; event provenance and roster/score facts continue below it as required by the lifecycle detail.",
       "ausNa": "Capture shows the real offline review no-write feedback in the existing match detail. The source is a multi-context pattern sheet; stale submission, preserved draft, offline action suppression and zero review writes are independently probed in the same flow.",
-      "BcpYH": "Production match detail shows the confirmed friendly score, participants, manual source and no-rating effect. Separate Match report/pre-match-level presentation and rating deltas are not part of T08.5/T10.",
+      "BcpYH": "Production match detail shows the confirmed friendly score, participants, manual source and no-rating effect; geometry is constrained by exact card/overview probes. Observed residual 0.27964; 0.28 is the smallest two-decimal budget above the measured capture (0.00036 margin). Separate Match report/pre-match-level presentation and rating deltas are not part of T08.5/T10.",
       "alZmm": "Approved PAF-8 successor uses the existing match-detail route. Exact route order, the layout-neutral result-group anchor wrapper, pending facts/countdown, approval progress, SQL-authorized actions, venue details and touch targets constrain the residual cross-renderer and copy difference."
     }
   }
