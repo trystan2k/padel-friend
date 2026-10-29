@@ -10,6 +10,7 @@ import {
   openRecord,
   resultFixtures,
   review,
+  sqlWithFixtureTriggersDisabled,
   sql,
   type Actor
 } from './matches-results-fixtures';
@@ -371,20 +372,17 @@ test('PAF-8 Pencil screens retain exact lifecycle probes and reviewed raster bud
 
   // GMcbD: four frozen groups keep confirmed, pending, disputed and missing independent.
   const mixedEvent = await f.completedEvent('competitive', 16);
-  await sql(`do $$ begin
-    alter table public.match_events disable trigger match_event_immutable;
-  end $$;`);
-  try {
-    await sql(`update public.match_events
-      set venue_name='Padel Indoor', notes='Group event',
-          photo_path='${f.community}/${mixedEvent}/${f.creator.id}/visual-placeholder.jpg',
-          starts_at='2026-09-21T18:30:00Z', registration_cutoff_at='2026-09-21T16:00:00Z'
-      where id='${mixedEvent}'`);
-  } finally {
-    await sql(`do $$ begin
-      alter table public.match_events enable trigger match_event_immutable;
-    end $$;`);
-  }
+  await sqlWithFixtureTriggersDisabled(
+    ['matchEventImmutable'],
+    [
+      `update public.match_events
+        set venue_name='Padel Indoor', notes='Group event',
+            photo_path='${f.community}/${mixedEvent}/${f.creator.id}/visual-placeholder.jpg',
+            starts_at='2026-09-21T18:30:00Z',
+            registration_cutoff_at='2026-09-21T16:00:00Z'
+      where id='${mixedEvent}'`
+    ]
+  );
   await submitProposal(mixedEvent, f.creator, 1);
   const groupOne = await proposalFor(mixedEvent, 1);
   const groupOneSide = groupOne.teams.team_a.some(
@@ -576,20 +574,17 @@ test('PAF-8 Pencil screens retain exact lifecycle probes and reviewed raster bud
 
   // BcpYH: confirmed friendly facts stay factual history without rating effects.
   const friendlyEvent = await f.completedEvent('friendly', 4);
-  await sql(`do $$ begin
-    alter table public.match_events disable trigger match_event_immutable;
-  end $$;`);
-  try {
-    await sql(`update public.match_events
-      set venue_name='Padel Indoor', notes='Friendly match',
-          photo_path='${f.community}/${friendlyEvent}/${f.creator.id}/visual-placeholder.jpg',
-          starts_at='2026-09-21T18:30:00Z', registration_cutoff_at='2026-09-21T16:00:00Z'
-      where id='${friendlyEvent}'`);
-  } finally {
-    await sql(`do $$ begin
-      alter table public.match_events enable trigger match_event_immutable;
-    end $$;`);
-  }
+  await sqlWithFixtureTriggersDisabled(
+    ['matchEventImmutable'],
+    [
+      `update public.match_events
+        set venue_name='Padel Indoor', notes='Friendly match',
+            photo_path='${f.community}/${friendlyEvent}/${f.creator.id}/visual-placeholder.jpg',
+            starts_at='2026-09-21T18:30:00Z',
+            registration_cutoff_at='2026-09-21T16:00:00Z'
+      where id='${friendlyEvent}'`
+    ]
+  );
   await submitProposal(friendlyEvent);
   const friendlyProposal = await proposalFor(friendlyEvent);
   const friendlySubmitterSide = friendlyProposal.teams.team_a.some(
@@ -659,19 +654,16 @@ test('PAF-8 Pencil screens retain exact lifecycle probes and reviewed raster bud
 
   // alZmm: current lifecycle detail stays in the original match-detail composition.
   const lifecycleEvent = await f.completedEvent('competitive', 4);
-  await sql(`do $$ begin
-    alter table public.match_events disable trigger match_event_immutable;
-  end $$;`);
-  try {
-    await sql(`update public.match_events
-      set venue_name='PADEL INDOOR MADRID', notes='Friday open play', court_notes='Calle de Alcalá',
-          duration_minutes=90, starts_at='2026-10-23T18:30:00Z'
-      where id='${lifecycleEvent}'`);
-  } finally {
-    await sql(`do $$ begin
-      alter table public.match_events enable trigger match_event_immutable;
-    end $$;`);
-  }
+  await sqlWithFixtureTriggersDisabled(
+    ['matchEventImmutable'],
+    [
+      `update public.match_events
+        set venue_name='PADEL INDOOR MADRID', notes='Friday open play',
+            court_notes='Calle de Alcalá', duration_minutes=90,
+            starts_at='2026-10-23T18:30:00Z'
+      where id='${lifecycleEvent}'`
+    ]
+  );
   await submitProposal(lifecycleEvent);
   const lifecycleProposal = await proposalFor(lifecycleEvent);
   const lifecycleSide = lifecycleProposal.teams.team_a.some(

@@ -9,7 +9,7 @@ import {
   openRecord,
   resultFixtures,
   review,
-  sql,
+  sqlWithFixtureTriggersDisabled,
   type Locale
 } from './matches-results-fixtures';
 import manifest from './references/paf-7/manifest.json' with { type: 'json' };
@@ -110,18 +110,16 @@ test('Pencil full-frame comparisons require matching composition and reviewed bu
   let page = await f.page(f.creator);
   async function routeEvent(type: 'competitive' | 'friendly' = 'competitive') {
     const id = await f.completedEvent(type, 4);
-    await sql(`do $$ begin
-      alter table public.match_events disable trigger match_event_immutable;
-    end $$;`);
-    try {
-      await sql(`update public.match_events
-        set venue_name='Padel Indoor', notes='Friday open play', court_notes='Play under the lights.', duration_minutes=90, starts_at='2026-10-23T18:30:00Z'
-        where id='${id}'`);
-    } finally {
-      await sql(`do $$ begin
-        alter table public.match_events enable trigger match_event_immutable;
-      end $$;`);
-    }
+    await sqlWithFixtureTriggersDisabled(
+      ['matchEventImmutable'],
+      [
+        `update public.match_events
+          set venue_name='Padel Indoor', notes='Friday open play',
+              court_notes='Play under the lights.', duration_minutes=90,
+              starts_at='2026-10-23T18:30:00Z'
+        where id='${id}'`
+      ]
+    );
     return id;
   }
   async function compare(frame: keyof typeof manifest.visualBudgets.perScreen) {
@@ -342,18 +340,14 @@ test('Pencil full-frame comparisons require matching composition and reviewed bu
   await compare('GPo9z');
   await page.getByRole('button', { name: r.submit, exact: true }).click();
   await expect(page.getByRole('region', { name: r.pending })).toBeVisible();
-  await sql(`do $$ begin
-    alter table public.match_events disable trigger match_event_immutable;
-  end $$;`);
-  try {
-    await sql(
-      `update public.match_events set venue_name='PADEL INDOOR MADRID', court_notes='Calle de Alcalá' where id='${id}'`
-    );
-  } finally {
-    await sql(`do $$ begin
-      alter table public.match_events enable trigger match_event_immutable;
-    end $$;`);
-  }
+  await sqlWithFixtureTriggersDisabled(
+    ['matchEventImmutable'],
+    [
+      `update public.match_events
+        set venue_name='PADEL INDOOR MADRID', court_notes='Calle de Alcalá'
+      where id='${id}'`
+    ]
+  );
   await page.context().close();
   page = await f.page(f.members[1]!, 'en', 390, 'light', 1042);
   await f.open(page, id);

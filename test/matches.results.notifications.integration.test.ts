@@ -640,27 +640,6 @@ describe.skipIf(!environment.env)('transactional result notifications', { timeou
     const entryAnchor = entryCandidates[0]!;
     const deadlineSuffix = deadlineCandidates.slice(1).map(({ proposalId }) => `'${proposalId}'`);
     const entrySuffix = entryCandidates.slice(1).map((eventId) => `'${eventId}'`);
-    await fixtureSql(`update public.match_result_alert_deadline_queue
-      set active = false where proposal_id = '${deadlineAnchor.proposalId}' and proposal_version = 1;
-      update public.match_result_alert_entry_ready_queue
-      set active = false where match_event_id = '${entryAnchor}';
-      update public.match_result_alert_scan_state state
-         set resume_effective_key = queue.effective_key,
-             resume_candidate_id = queue.proposal_id,
-             resume_candidate_version = queue.proposal_version,
-             updated_at = pg_catalog.clock_timestamp()
-        from public.match_result_alert_deadline_queue queue
-       where state.alert_kind = 'deadline'
-         and queue.proposal_id = '${deadlineAnchor.proposalId}' and queue.proposal_version = 1;
-      update public.match_result_alert_scan_state state
-         set resume_effective_key = queue.effective_key,
-             resume_candidate_id = queue.match_event_id,
-             resume_candidate_version = 0,
-             updated_at = pg_catalog.clock_timestamp()
-        from public.match_result_alert_entry_ready_queue queue
-       where state.alert_kind = 'entry_ready'
-         and queue.match_event_id = '${entryAnchor}'`);
-
     const deadlineMarker = `paf8-m1-deadline-${crypto.randomUUID().replaceAll('-', '')}`;
     const entryMarker = `paf8-m1-entry-${crypto.randomUUID().replaceAll('-', '')}`;
     const holders: Array<ReturnType<typeof startSql>> = [];
@@ -709,20 +688,52 @@ describe.skipIf(!environment.env)('transactional result notifications', { timeou
               and (queue.effective_key, queue.match_event_id) >
                   (anchor.effective_key, anchor.match_event_id)) as entry_suffix`);
       expect(eligibleSuffix).toEqual([{ deadline_suffix: 2, entry_suffix: 2 }]);
-      const before =
-        await sqlRows(`select alert_kind, resume_effective_key::text as resume_effective_key,
-          resume_candidate_id::text as resume_candidate_id, resume_candidate_version::int as version
-        from public.match_result_alert_scan_state order by alert_kind`);
-
-      const [run] = await sqlRows(
-        'select public.process_match_result_lifecycle_alerts(4, 4, 1000) as result'
-      );
-      expect(asRecord(run?.['result']).failed).toBe(0);
-      const after =
-        await sqlRows(`select alert_kind, resume_effective_key::text as resume_effective_key,
-          resume_candidate_id::text as resume_candidate_id, resume_candidate_version::int as version
-        from public.match_result_alert_scan_state order by alert_kind`);
-      expect(after).toEqual(before);
+      await fixtureSql(`do $m1$
+        declare v_result jsonb;
+        begin
+        perform 1 from public.match_result_alert_scan_state order by alert_kind for update;
+        update public.match_result_alert_deadline_queue
+           set active = false
+         where proposal_id = '${deadlineAnchor.proposalId}' and proposal_version = 1;
+        update public.match_result_alert_entry_ready_queue
+           set active = false where match_event_id = '${entryAnchor}';
+        update public.match_result_alert_scan_state state
+           set resume_effective_key = queue.effective_key,
+               resume_candidate_id = queue.proposal_id,
+               resume_candidate_version = queue.proposal_version,
+               updated_at = pg_catalog.clock_timestamp()
+          from public.match_result_alert_deadline_queue queue
+         where state.alert_kind = 'deadline'
+           and queue.proposal_id = '${deadlineAnchor.proposalId}' and queue.proposal_version = 1;
+        update public.match_result_alert_scan_state state
+           set resume_effective_key = queue.effective_key,
+               resume_candidate_id = queue.match_event_id,
+               resume_candidate_version = 0,
+               updated_at = pg_catalog.clock_timestamp()
+          from public.match_result_alert_entry_ready_queue queue
+         where state.alert_kind = 'entry_ready'
+           and queue.match_event_id = '${entryAnchor}';
+        create temporary table paf8_m1_cursor_before on commit drop as
+          select alert_kind, resume_effective_key, resume_candidate_id,
+                 resume_candidate_version
+            from public.match_result_alert_scan_state;
+        v_result := public.process_match_result_lifecycle_alerts(4, 4, 1000);
+        if coalesce((v_result->>'failed')::integer, -1) <> 0 then
+          raise exception 'M1 processor reported failure';
+        end if;
+        if exists (
+          select 1
+            from public.match_result_alert_scan_state current
+            join paf8_m1_cursor_before before using (alert_kind)
+           where (current.resume_effective_key, current.resume_candidate_id,
+                  current.resume_candidate_version)
+             is distinct from
+                 (before.resume_effective_key, before.resume_candidate_id,
+                  before.resume_candidate_version)
+        ) then
+          raise exception 'M1 scan cursor changed while every eligible suffix row was locked';
+        end if;
+      end $m1$;`);
     } finally {
       await Promise.all(holders.map((holder) => holder.stop()));
       await fixtureSql(`update public.match_result_alert_deadline_queue

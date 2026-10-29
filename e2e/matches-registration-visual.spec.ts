@@ -497,7 +497,10 @@ async function seedAcceptedRows(eventId: string, rows: SeededRow[]): Promise<voi
   });
   const maxOrder = Math.max(...rows.map((row) => row.order));
   await fixtureSql(
-    `insert into public.match_event_registrations` +
+    // Match cleanup and product writers acquire parent relations before ledger
+    // rows. Preserve that order so parallel suite teardown cannot deadlock this seed.
+    `lock table public.match_events, public.match_event_registration_state in row exclusive mode; ` +
+      `insert into public.match_event_registrations` +
       `(match_event_id,user_id,accepted_at,approved_at,accepted_order,participation_status,registration_source) ` +
       `values ${values.join(',')}; ` +
       `insert into public.match_event_registration_attempts ` +
