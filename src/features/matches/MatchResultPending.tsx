@@ -19,7 +19,8 @@ export function MatchResultPending({
   approvalProgress?: string;
 }) {
   const { t, i18n } = useTranslation();
-  const [clock, setClock] = useState(() => ({ asOf, now: Date.parse(asOf) }));
+  const clockKey = `${proposal.proposal_id}:${proposal.version}:${asOf}`;
+  const [clock, setClock] = useState(() => ({ key: clockKey, now: Date.parse(asOf) }));
   const receiptHeading = useRef<HTMLHeadingElement>(null);
   useEffect(() => {
     if (focusReceipt) receiptHeading.current?.focus();
@@ -28,11 +29,11 @@ export function MatchResultPending({
     const seed = Date.parse(asOf);
     const observedAt = performance.now();
     const timer = setInterval(
-      () => setClock({ asOf, now: seed + (performance.now() - observedAt) }),
+      () => setClock({ key: clockKey, now: seed + (performance.now() - observedAt) }),
       60000
     );
     return () => clearInterval(timer);
-  }, [asOf]);
+  }, [asOf, clockKey]);
   const deadline = new Date(proposal.review_deadline_at);
   const locale = i18n.language === 'en' ? 'en-GB' : i18n.language;
   const date = new Intl.DateTimeFormat(locale, {
@@ -49,7 +50,7 @@ export function MatchResultPending({
   const facts = 'teams' in proposal ? proposal : null;
   const wins = resultSetWins(facts?.sets ?? []);
   const winner = wins.team_a > wins.team_b ? 'team_a' : 'team_b';
-  const now = clock.asOf === asOf ? clock.now : Date.parse(asOf);
+  const now = clock.key === clockKey ? clock.now : Date.parse(asOf);
   const remainingHours = Math.max(0, Math.ceil((deadline.getTime() - now) / 3600000));
   const countdownLabel = t('matches.results.autoConfirmIn', { hours: remainingHours });
   return (

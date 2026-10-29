@@ -607,6 +607,52 @@ test('PAF-8 Pencil screens retain exact lifecycle probes and reviewed raster bud
   await expect(friendlyCard).toHaveAttribute('data-result-status', 'confirmed');
   await expect(friendlyCard.getByText(r.confirmation.manual, { exact: true })).toBeVisible();
   await expect(friendlyCard.getByText(r.ratingEffectNone, { exact: true })).toBeVisible();
+  const friendlyGroupSection = confirmationPage.locator('#result-group-1');
+  const friendlyOverview = confirmationPage.locator('section').filter({
+    has: confirmationPage.getByText('Friendly match', { exact: true })
+  });
+  const resultsNavigation = confirmationPage.getByRole('navigation', {
+    name: r.navigation,
+    exact: true
+  });
+  const [friendlyCardBox, friendlySectionBox, overviewBox, navigationBox] = await Promise.all([
+    box(friendlyCard),
+    box(friendlyGroupSection),
+    box(friendlyOverview),
+    box(resultsNavigation)
+  ]);
+  assertContained(friendlySectionBox, friendlyCardBox, 'confirmed card within result section', 2);
+  assertAbove(overviewBox, friendlySectionBox, 'overview rows above confirmed result section', 2);
+  assertAbove(
+    friendlySectionBox,
+    navigationBox,
+    'confirmed result section above related navigation',
+    2
+  );
+  expect(
+    overviewBox.bottom,
+    'overview rows and confirmed card section do not overlap'
+  ).toBeLessThanOrEqual(friendlySectionBox.y + 2);
+  expect(
+    friendlySectionBox.bottom,
+    'confirmed card and related navigation do not overlap'
+  ).toBeLessThanOrEqual(navigationBox.y + 2);
+  const timeline = friendlyCard.locator('details');
+  if (await timeline.count()) {
+    const timelineBox = await box(timeline);
+    assertContained(
+      friendlyCardBox,
+      timelineBox,
+      'timeline/audit section within confirmed card',
+      2
+    );
+    assertAbove(
+      await box(friendlyCard.getByText(r.ratingEffectNone, { exact: true })),
+      timelineBox,
+      'timeline/audit follows confirmed result details',
+      2
+    );
+  }
   await assertTouchTargets(confirmationPage);
   await compareFrame('BcpYH', confirmationPage, info);
   await confirmationPage.context().close();

@@ -1222,6 +1222,84 @@ export type Database = {
           },
         ]
       }
+      match_result_alert_deadline_queue: {
+        Row: {
+          active: boolean
+          due_at: string
+          effective_key: string | null
+          enqueued_at: string
+          next_attempt_at: string | null
+          proposal_id: string
+          proposal_version: number
+        }
+        ComputedFields: never
+        Insert: {
+          active?: boolean
+          due_at: string
+          effective_key?: never
+          enqueued_at?: string
+          next_attempt_at?: string | null
+          proposal_id: string
+          proposal_version: number
+        }
+        Update: {
+          active?: boolean
+          due_at?: string
+          effective_key?: never
+          enqueued_at?: string
+          next_attempt_at?: string | null
+          proposal_id?: string
+          proposal_version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "match_result_alert_deadline_queue_proposal_id_fkey"
+            columns: ["proposal_id"]
+            isOneToOne: false
+            referencedRelation: "match_event_result_proposals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      match_result_alert_entry_ready_queue: {
+        Row: {
+          active: boolean
+          due_at: string
+          effective_key: string | null
+          enqueued_at: string
+          match_event_id: string
+          next_attempt_at: string | null
+          roster_revision: number
+        }
+        ComputedFields: never
+        Insert: {
+          active?: boolean
+          due_at: string
+          effective_key?: never
+          enqueued_at?: string
+          match_event_id: string
+          next_attempt_at?: string | null
+          roster_revision?: number
+        }
+        Update: {
+          active?: boolean
+          due_at?: string
+          effective_key?: never
+          enqueued_at?: string
+          match_event_id?: string
+          next_attempt_at?: string | null
+          roster_revision?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "match_result_alert_entry_ready_queue_match_event_id_fkey"
+            columns: ["match_event_id"]
+            isOneToOne: true
+            referencedRelation: "match_events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       match_result_alert_processing_state: {
         Row: {
           alert_kind: string
@@ -1233,6 +1311,8 @@ export type Database = {
           last_failure_code: string | null
           last_failure_message: string | null
           next_attempt_at: string | null
+          roster_fingerprint: string | null
+          terminal_outcome: string | null
           updated_at: string
         }
         ComputedFields: never
@@ -1246,6 +1326,8 @@ export type Database = {
           last_failure_code?: string | null
           last_failure_message?: string | null
           next_attempt_at?: string | null
+          roster_fingerprint?: string | null
+          terminal_outcome?: string | null
           updated_at?: string
         }
         Update: {
@@ -1258,6 +1340,64 @@ export type Database = {
           last_failure_code?: string | null
           last_failure_message?: string | null
           next_attempt_at?: string | null
+          roster_fingerprint?: string | null
+          terminal_outcome?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      match_result_alert_retry_fallback: {
+        Row: {
+          alert_kind: string
+          attempt_count: number
+          candidate_id: string
+          candidate_version: number
+          failure_count: number
+          last_failure_code: string | null
+          updated_at: string
+        }
+        ComputedFields: never
+        Insert: {
+          alert_kind: string
+          attempt_count?: number
+          candidate_id: string
+          candidate_version?: number
+          failure_count?: number
+          last_failure_code?: string | null
+          updated_at?: string
+        }
+        Update: {
+          alert_kind?: string
+          attempt_count?: number
+          candidate_id?: string
+          candidate_version?: number
+          failure_count?: number
+          last_failure_code?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      match_result_alert_scan_state: {
+        Row: {
+          alert_kind: string
+          resume_candidate_id: string | null
+          resume_candidate_version: number
+          resume_effective_key: string | null
+          updated_at: string
+        }
+        ComputedFields: never
+        Insert: {
+          alert_kind: string
+          resume_candidate_id?: string | null
+          resume_candidate_version?: number
+          resume_effective_key?: string | null
+          updated_at?: string
+        }
+        Update: {
+          alert_kind?: string
+          resume_candidate_id?: string | null
+          resume_candidate_version?: number
+          resume_effective_key?: string | null
           updated_at?: string
         }
         Relationships: []
@@ -1838,6 +1978,10 @@ export type Database = {
           read_at: string
         }[]
       }
+      mark_match_result_alert_ineligible: {
+        Args: { p_event_id: string; p_fingerprint: string }
+        Returns: boolean
+      }
       mark_notification_read: { Args: { p_notification_id: string }; Returns: string }
       match_event_caller_context: {
         Args: { p_event_id: string }
@@ -1904,6 +2048,10 @@ export type Database = {
               user_id: string
             }[]
           }
+      match_result_alert_aging_at: { Args: { p_enqueued_at: string }; Returns: string }
+      match_result_alert_aging_horizon: { Args: Record<PropertyKey, never>; Returns: string }
+      match_result_alert_lock_defer_interval: { Args: { p_candidate_id: string }; Returns: string }
+      match_result_entry_roster_fingerprint: { Args: { p_event_id: string }; Returns: string }
       notify_match_result_deadline: {
         Args: { p_proposal_id: string; p_proposal_version: number }
         Returns: number
@@ -1965,7 +2113,7 @@ export type Database = {
         Returns: Json
       }
       process_match_result_lifecycle_alerts: {
-        Args: { p_entry_ready_limit?: number; p_reminder_limit?: number }
+        Args: { p_entry_ready_limit?: number; p_max_examined?: number; p_reminder_limit?: number }
         Returns: Json
       }
       protect_match_event_results: { Args: { p_event_id: string }; Returns: undefined }
@@ -2015,6 +2163,10 @@ export type Database = {
           p_kind: string
           p_version: number
         }
+        Returns: undefined
+      }
+      record_match_result_alert_fallback: {
+        Args: { p_candidate_id: string; p_failure_code: string; p_kind: string; p_version: number }
         Returns: undefined
       }
       record_match_result_processing_attempt: {

@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { ManagementActor } from './helpers/match-management-fixtures';
 import { dotEnvPathFromImportMetaUrl, localSupabaseEnv } from './helpers/local-supabase-env';
-import { asRecord, sqlRows } from './helpers/match-registration-sql';
+import { asRecord, fixtureSql, sqlRows } from './helpers/match-registration-sql';
 import {
   createMatchResultReviewFixtures,
   type ResultTeams
@@ -357,6 +357,38 @@ describe('atomic result review commands', { timeout: 120000 }, () => {
       ).error?.message
     ).toBe('MATCH_RESULT_IDEMPOTENCY_CONFLICT');
     expect(await evidence(eventId)).toMatchObject({ reviews: 1, review_audits: 1 });
+  });
+
+  it('compares changed command payloads for legacy review receipts without proposal_id', async () => {
+    const current = await proposal({ submitter: f.admin });
+    const requestId = crypto.randomUUID();
+    const args = {
+      p_proposal_id: current.proposalId,
+      p_expected_version: 1,
+      p_decision: 'approve',
+      p_reason_code: null,
+      p_reason_note: null,
+      p_request_id: requestId
+    };
+    const first = await f.rpc(f.players[0]!, 'review_match_event_result', args);
+    expect(first.error).toBeNull();
+    await fixtureSql(`update public.match_event_management_commands
+      set payload = payload - 'proposal_id'
+      where match_event_id = '${current.eventId}' and actor_id = '${f.players[0]!.id}'
+        and request_id = '${requestId}'`);
+    expect((await f.rpc(f.players[0]!, 'review_match_event_result', args)).data).toMatchObject({
+      replayed: true,
+      proposal_id: current.proposalId
+    });
+    expect(
+      (
+        await f.rpc(f.players[0]!, 'review_match_event_result', {
+          ...args,
+          p_decision: 'reject',
+          p_reason_code: 'SCORE_INCORRECT'
+        })
+      ).error?.message
+    ).toBe('MATCH_RESULT_IDEMPOTENCY_CONFLICT');
   });
 
   it('returns typed current-version conflicts without appending evidence', async () => {

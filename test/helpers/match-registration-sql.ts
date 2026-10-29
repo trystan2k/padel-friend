@@ -5,6 +5,7 @@ import {
   sqlErrorMessage,
   startCliSql,
   startSql,
+  type SqlQueryOptions,
   type SqlHandle,
   type SqlRow
 } from './sql-transport';
@@ -91,6 +92,9 @@ export function registerMatchEventFixtureRows(
   registry.register('public.match_event_result_proposals', { match_event_id: eventId });
   registry.register('public.notification_result_links', { match_event_id: eventId });
   registry.register('public.match_event_result_entry_ready_dispatch', { match_event_id: eventId });
+  registry.register('public.match_result_alert_entry_ready_queue', { match_event_id: eventId });
+  registry.register('public.match_result_alert_processing_state', { candidate_id: eventId });
+  registry.register('public.match_result_alert_retry_fallback', { candidate_id: eventId });
   registry.register('public.notifications', { target_id: eventId });
   if (photoPath) registerMatchStorageFixtureObject(registry, 'match-event-photos', photoPath);
 }
@@ -141,6 +145,11 @@ export function createMatchFixtureCleanupRegistry(scopeName: string): FixtureCle
         current.register('public.match_event_result_reviews', { proposal_id: proposalId });
         current.register('public.match_event_result_confirmations', { proposal_id: proposalId });
         current.register('public.match_event_result_processing_state', { proposal_id: proposalId });
+        current.register('public.match_result_alert_processing_state', {
+          candidate_id: proposalId
+        });
+        current.register('public.match_result_alert_deadline_queue', { proposal_id: proposalId });
+        current.register('public.match_result_alert_retry_fallback', { candidate_id: proposalId });
       }
     }
 
@@ -159,6 +168,7 @@ export function createMatchFixtureCleanupRegistry(scopeName: string): FixtureCle
         ['match_event_invites', 'match_invite_immutable'],
         ['match_event_registrations', 'match_registration_identity_guard'],
         ['match_event_registrations', 'match_registration_final_state'],
+        ['match_event_registrations', 'match_result_entry_ready_roster_revision'],
         ['match_event_registration_attempts', 'match_attempt_history_guard'],
         ['match_event_registration_attempts', 'match_attempt_final_state'],
         ['match_event_audit_log', 'match_audit_immutable'],
@@ -300,8 +310,8 @@ export function asRecord(value: unknown): Record<string, unknown> {
 }
 
 /** Trusted read/fixture query that must succeed and return JSON rows. */
-export async function sqlRows(sql: string): Promise<SqlRow[]> {
-  return (await queryTrustedSql(sql)).rows;
+export async function sqlRows(sql: string, options: SqlQueryOptions = {}): Promise<SqlRow[]> {
+  return (await queryTrustedSql(sql, options)).rows;
 }
 
 /** Trusted fixture SQL whose only observable output is success. */

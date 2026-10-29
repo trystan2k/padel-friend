@@ -532,11 +532,11 @@ function delay(ms: number): Promise<void> {
 }
 
 /** Starts a one-query dedicated session with explicit backend identity and cancellation. */
-export function startSql(sql: string): SqlHandle {
+export function startSql(sql: string, options: SqlQueryOptions = {}): SqlHandle {
   const connectionPromise = openDedicatedSqlConnection();
   const operation = connectionPromise.then(async (connection): Promise<SqlResult> => {
     try {
-      const result = await connection.query(sql);
+      const result = await connection.query(sql, options);
       return { code: 0, stdout: JSON.stringify(result.rows), stderr: '' };
     } catch (error) {
       const sqlError = normalizeSqlError(error);

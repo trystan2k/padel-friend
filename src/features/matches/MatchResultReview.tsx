@@ -49,10 +49,7 @@ export function MatchResultReview({
   const submitterName = proposal.submitted_by_name ?? t('matches.results.unknownPlayer');
   const stale = review.feedback?.kind === 'stale' ? review.feedback : null;
   const canReviewCurrent = stale !== null && proposal.version >= stale.version;
-  const currentFeedback =
-    review.feedback?.kind === 'recorded' && review.feedback.version !== proposal.version
-      ? null
-      : review.feedback;
+  const currentFeedback = review.feedback;
   const feedbackCopy = (() => {
     const feedback = currentFeedback;
     if (!feedback) return null;
@@ -318,7 +315,11 @@ export function MatchResultReview({
       )}
       {pending &&
         !stale &&
-        !(review.feedback?.kind === 'recorded' && review.feedback.status !== 'pending') &&
+        !(
+          review.feedback?.kind === 'recorded' &&
+          review.feedback.version === proposal.version &&
+          review.feedback.status !== 'pending'
+        ) &&
         (review.online ? (
           <div {...stylex.props(s.actionRow)}>
             {proposal.can_approve &&
@@ -405,8 +406,9 @@ function CompactResultSummary({
   asOf: string;
 }) {
   const { t, i18n } = useTranslation();
-  const [clock, setClock] = useState(() => ({ asOf, now: Date.parse(asOf) }));
-  const now = clock.asOf === asOf ? clock.now : Date.parse(asOf);
+  const clockKey = `${proposal.proposal_id}:${proposal.version}:${asOf}`;
+  const [clock, setClock] = useState(() => ({ key: clockKey, now: Date.parse(asOf) }));
+  const now = clock.key === clockKey ? clock.now : Date.parse(asOf);
   const locale = i18n.language === 'en' ? 'en-GB' : i18n.language;
   const fullDate = new Intl.DateTimeFormat(locale, {
     dateStyle: 'medium',
@@ -428,11 +430,11 @@ function CompactResultSummary({
     const seed = Date.parse(asOf);
     const observedAt = performance.now();
     const timer = setInterval(
-      () => setClock({ asOf, now: seed + (performance.now() - observedAt) }),
+      () => setClock({ key: clockKey, now: seed + (performance.now() - observedAt) }),
       60000
     );
     return () => clearInterval(timer);
-  }, [asOf, proposal.status]);
+  }, [asOf, clockKey, proposal.status]);
 
   return (
     <>

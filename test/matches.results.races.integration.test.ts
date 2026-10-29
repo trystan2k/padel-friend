@@ -17,6 +17,7 @@ import { setResultReviewDeadlineOffset } from './helpers/match-result-processing
 
 describe('separate-connection result command races', { timeout: 120000 }, () => {
   let f: Awaited<ReturnType<typeof createMatchResultReviewFixtures>>;
+  let restoreAlertSchedule: (() => Promise<void>) | null = null;
 
   beforeAll(async () => {
     const { env, reason } = localSupabaseEnv({
@@ -24,9 +25,28 @@ describe('separate-connection result command races', { timeout: 120000 }, () => 
     });
     if (!env) throw new Error(reason);
     f = await createMatchResultReviewFixtures(env);
+
+    const [job] = await sqlRows(`select jobid::integer as jobid, active, schedule, command
+      from cron.job where jobname = 'padel-friend-match-result-auto-confirm'`);
+    if (job?.['active'] === true) {
+      await fixtureSql(`select cron.unschedule(${Number(job['jobid'])})`);
+      const schedule = String(job['schedule']).replaceAll("'", "''");
+      const command = String(job['command']).replaceAll("'", "''");
+      restoreAlertSchedule = async () => {
+        await fixtureSql(`select cron.schedule(
+          'padel-friend-match-result-auto-confirm', '${schedule}', '${command}'
+        )`);
+        restoreAlertSchedule = null;
+      };
+    }
   });
+
   afterAll(async () => {
-    if (f) await f.cleanup();
+    try {
+      if (f) await f.cleanup();
+    } finally {
+      if (restoreAlertSchedule) await restoreAlertSchedule();
+    }
   });
 
   async function pending() {
@@ -292,7 +312,7 @@ describe('separate-connection result command races', { timeout: 120000 }, () => 
   it('revalidates reminders after rejection/confirmation wins canonical event lock', async () => {
     async function contend(
       commands: Array<{
-        token: 'review_match_event_result' | 'notify_match_result_deadline';
+        token: 'review_match_event_result' | 'process_match_result_lifecycle_alerts';
         run: () => Promise<unknown>;
       }>
     ) {
@@ -311,7 +331,8 @@ describe('separate-connection result command races', { timeout: 120000 }, () => 
         let reviewCount = 0;
         for (const command of commands) {
           contenders.push(command.run());
-          const tokenCount = command.token === 'review_match_event_result' ? ++reviewCount : 1;
+          if (command.token === 'process_match_result_lifecycle_alerts') continue;
+          const tokenCount = ++reviewCount;
           await waitForRows(
             `select a.pid from pg_catalog.pg_stat_activity a
               where a.wait_event_type = 'Lock' and a.query like '%${command.token}%'
@@ -333,20 +354,19 @@ describe('separate-connection result command races', { timeout: 120000 }, () => 
             loop
               perform pg_catalog.pg_stat_clear_snapshot();
               select count(*) into v_blocked from pg_catalog.pg_stat_activity a
-               where a.wait_event_type = 'Lock'
-                 and (a.query like '%review_match_event_result%'
-                   or a.query like '%notify_match_result_deadline%')
+                where a.wait_event_type = 'Lock'
+                  and a.query like '%review_match_event_result%'
                  and a.pid <> pg_catalog.pg_backend_pid() and a.pid <> ${holderPid}
                  and (${holderPid} = any(pg_catalog.pg_blocking_pids(a.pid)) or exists (
                    select 1 from pg_catalog.pg_stat_activity p
                     where p.wait_event_type = 'Lock' and p.pid <> a.pid
                       and ${holderPid} = any(pg_catalog.pg_blocking_pids(p.pid))
                       and p.pid = any(pg_catalog.pg_blocking_pids(a.pid))));
-              exit when v_blocked = ${commands.length} or pg_catalog.clock_timestamp() > v_deadline;
+               exit when v_blocked = ${reviewCount} or pg_catalog.clock_timestamp() > v_deadline;
               perform pg_catalog.pg_sleep(0.025);
             end loop;
-            if v_blocked <> ${commands.length} then
-              raise exception 'reminder lock race barrier failed: expected %, found %', ${commands.length}, v_blocked;
+             if v_blocked <> ${reviewCount} then
+               raise exception 'reminder lock race barrier failed: expected %, found %', ${reviewCount}, v_blocked;
             end if;
             perform pg_catalog.pg_terminate_backend(${holderPid});
           end $barrier$;`);
@@ -368,10 +388,8 @@ describe('separate-connection result command races', { timeout: 120000 }, () => 
     const rejectionAndReminder = await contend([
       { token: 'review_match_event_result', run: reviewCall(rejectFirst.proposalId, 1, 'reject') },
       {
-        token: 'notify_match_result_deadline',
-        run: () =>
-          startSql(`select public.notify_match_result_deadline('${rejectFirst.proposalId}', 1);`)
-            .done
+        token: 'process_match_result_lifecycle_alerts',
+        run: () => startSql('select public.process_match_result_lifecycle_alerts(1, 1);').done
       }
     ]);
     expect(rejectionAndReminder[0]).toMatchObject({ error: null });
@@ -397,10 +415,8 @@ describe('separate-connection result command races', { timeout: 120000 }, () => 
         run: reviewCall(confirmFirst.proposalId, 2, 'approve')
       },
       {
-        token: 'notify_match_result_deadline',
-        run: () =>
-          startSql(`select public.notify_match_result_deadline('${confirmFirst.proposalId}', 1);`)
-            .done
+        token: 'process_match_result_lifecycle_alerts',
+        run: () => startSql('select public.process_match_result_lifecycle_alerts(1, 1);').done
       }
     ]);
     expect(confirmationAndReminder[0]).toMatchObject({ error: null });
@@ -419,10 +435,8 @@ describe('separate-connection result command races', { timeout: 120000 }, () => 
     await setResultReviewDeadlineOffset(reminderFirst.proposalId, 1, 5 * 60 * 60);
     const reminderAndRejection = await contend([
       {
-        token: 'notify_match_result_deadline',
-        run: () =>
-          startSql(`select public.notify_match_result_deadline('${reminderFirst.proposalId}', 1);`)
-            .done
+        token: 'process_match_result_lifecycle_alerts',
+        run: () => startSql('select public.process_match_result_lifecycle_alerts(1, 1);').done
       },
       { token: 'review_match_event_result', run: reviewCall(reminderFirst.proposalId, 1, 'reject') }
     ]);
@@ -435,7 +449,7 @@ describe('separate-connection result command races', { timeout: 120000 }, () => 
     expect(
       await sqlRows(`select count(*)::int as count from public.notifications
       where event_key = 'result.deadline:${reminderFirst.proposalId}:v1'`)
-    ).toEqual([{ count: 4 }]);
+    ).toEqual([{ count: 0 }]);
     expect(await counts(reminderFirst.eventId)).toMatchObject({ reviews: 1, confirmations: 0 });
   });
 });

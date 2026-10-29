@@ -87,6 +87,47 @@ export async function makeResultProcessingRetryDue(
   `);
 }
 
+/** Move owned lifecycle-alert retry markers behind trusted DB time for a test turn. */
+export async function makeMatchResultAlertRetriesDue(
+  kind: 'deadline' | 'entry_ready',
+  candidateIds: readonly string[],
+  version = kind === 'deadline' ? 1 : 0
+): Promise<void> {
+  if (candidateIds.length === 0 || candidateIds.some((id) => !uuidPattern.test(id)))
+    throw new Error('Invalid lifecycle alert fixture IDs');
+  if (!Number.isSafeInteger(version) || version < 0)
+    throw new Error('Invalid lifecycle alert fixture version');
+
+  const ids = candidateIds.map((id) => `'${id}'`).join(', ');
+  const queueUpdate =
+    kind === 'deadline'
+      ? `update public.match_result_alert_deadline_queue
+         set next_attempt_at = pg_catalog.clock_timestamp() - interval '1 second'
+       where proposal_id = any(array[${ids}]::uuid[]) and proposal_version = ${version};`
+      : `update public.match_result_alert_entry_ready_queue
+         set next_attempt_at = pg_catalog.clock_timestamp() - interval '1 second'
+       where match_event_id = any(array[${ids}]::uuid[]);`;
+
+  await fixtureSql(`
+    ${queueUpdate}
+    update public.match_result_alert_processing_state
+       set next_attempt_at = pg_catalog.clock_timestamp() - interval '1 second',
+           updated_at = pg_catalog.clock_timestamp()
+     where alert_kind = '${kind}'
+       and candidate_id = any(array[${ids}]::uuid[])
+       and candidate_version = ${version};
+  `);
+}
+
+/** Wait one trusted PostgreSQL scheduler interval for cadence-bound tests. */
+export async function advanceTrustedResultSchedulerClock(intervalSeconds = 60): Promise<void> {
+  if (!Number.isSafeInteger(intervalSeconds) || intervalSeconds < 1 || intervalSeconds > 3600)
+    throw new Error('Scheduler clock fixture interval must be between 1 and 3600 seconds');
+  await sqlRows(`select pg_catalog.pg_sleep(${intervalSeconds})`, {
+    timeoutMs: (intervalSeconds + 10) * 1000
+  });
+}
+
 /** Seed stale v1 retry metadata so correction-reset behavior stays observable. */
 export async function seedResultProcessingBackoff(
   proposalId: string,

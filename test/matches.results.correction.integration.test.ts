@@ -237,6 +237,29 @@ describe('atomic corrected result versions', { timeout: 120000 }, () => {
     ).toEqual([{ audits: 1 }]);
   });
 
+  it('compares changed correction payloads for legacy receipts without proposal_id', async () => {
+    const current = await pending();
+    const args = correctionArgs(current.proposalId);
+    const first = await f.rpc(f.admin, 'correct_match_event_result', args);
+    expect(first.error).toBeNull();
+    await fixtureSql(`update public.match_event_management_commands
+      set payload = payload - 'proposal_id'
+      where match_event_id = '${current.eventId}' and actor_id = '${f.admin.id}'
+        and request_id = '${args.p_request_id}'`);
+    expect((await f.rpc(f.admin, 'correct_match_event_result', args)).data).toMatchObject({
+      replayed: true,
+      proposal_id: current.proposalId
+    });
+    expect(
+      (
+        await f.rpc(f.admin, 'correct_match_event_result', {
+          ...args,
+          p_court_label: 'Different court'
+        })
+      ).error?.message
+    ).toBe('MATCH_RESULT_IDEMPOTENCY_CONFLICT');
+  });
+
   it('allows only event creator/admin correction and auto-confirms instead of correcting a due pending version', async () => {
     const current = await pending();
     expect(

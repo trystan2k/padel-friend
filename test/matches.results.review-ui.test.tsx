@@ -59,19 +59,59 @@ function receipt(
   };
 }
 
-function mount(proposal = makeProposal(), onRefresh = vi.fn<() => void>(), compact = false) {
+function mount(
+  proposal = makeProposal(),
+  onRefresh = vi.fn<() => void>(),
+  compact = false,
+  asOf = resultProposal.submitted_at
+) {
   return render(
     <I18nextProvider i18n={createI18n('en')}>
       <MatchResultReview
         eventId={proposal.event_id}
         proposal={proposal}
         timezone="UTC"
-        asOf={resultProposal.submitted_at}
+        asOf={asOf}
         compact={compact}
         onRefresh={onRefresh}
       />
     </I18nextProvider>
   );
+}
+
+function makeVersionTwoProposal(): ResultProposal {
+  const versionTwo = parseResultProposals([
+    {
+      ...resultProposal,
+      version: 2,
+      submitted_at: '2026-10-01T12:00:00.000Z',
+      review_deadline_at: '2026-10-03T12:00:00.000Z',
+      version_timeline: [
+        {
+          version: 1,
+          status: 'superseded',
+          submitted_by: resultIds[0]!,
+          submitted_by_name: 'Player',
+          submitted_at: '2026-10-01T10:00:00.000Z',
+          review_deadline_at: '2026-10-03T10:00:00.000Z',
+          decisions: [],
+          confirmation_id: null
+        },
+        {
+          version: 2,
+          status: 'pending',
+          submitted_by: resultIds[0]!,
+          submitted_by_name: 'Player',
+          submitted_at: '2026-10-01T12:00:00.000Z',
+          review_deadline_at: '2026-10-03T12:00:00.000Z',
+          decisions: [],
+          confirmation_id: null
+        }
+      ]
+    }
+  ])?.[0];
+  if (!versionTwo) throw new Error('Invalid version-two review fixture');
+  return versionTwo;
 }
 
 afterEach(() => {
@@ -173,6 +213,48 @@ describe('result lifecycle review UI', () => {
 
     expect(screen.getByRole('timer', { name: 'AUTO-CONFIRMS IN 48H' })).toBeTruthy();
   });
+
+  it.each([false, true])(
+    'reseeds %s countdown when proposal version changes without an asOf change',
+    async (compact) => {
+      vi.useFakeTimers();
+      const asOf = '2026-10-01T12:00:00.000Z';
+      vi.setSystemTime(new Date(asOf));
+      const firstVersion = makeProposal({
+        submitted_at: '2026-10-01T10:00:00.000Z',
+        review_deadline_at: '2026-10-03T10:00:00.000Z',
+        version_timeline: [
+          {
+            version: 1,
+            status: 'pending',
+            submitted_by: resultIds[0]!,
+            submitted_by_name: 'Player',
+            submitted_at: '2026-10-01T10:00:00.000Z',
+            review_deadline_at: '2026-10-03T10:00:00.000Z',
+            decisions: [],
+            confirmation_id: null
+          }
+        ]
+      });
+      const view = mount(firstVersion, vi.fn<() => void>(), compact, asOf);
+      await act(async () => vi.advanceTimersByTimeAsync(2 * 60 * 60 * 1000));
+      expect(screen.getByRole('timer', { name: 'AUTO-CONFIRMS IN 44H' })).toBeTruthy();
+
+      view.rerender(
+        <I18nextProvider i18n={createI18n('en')}>
+          <MatchResultReview
+            eventId={firstVersion.event_id}
+            proposal={makeVersionTwoProposal()}
+            timezone="UTC"
+            asOf={asOf}
+            compact={compact}
+            onRefresh={vi.fn<() => void>()}
+          />
+        </I18nextProvider>
+      );
+      expect(screen.getByRole('timer', { name: 'AUTO-CONFIRMS IN 48H' })).toBeTruthy();
+    }
+  );
 
   it('preserves approval announcement after authoritative status becomes confirmed', async () => {
     mocks.review.mockResolvedValue(receipt('confirmed'));
@@ -278,6 +360,71 @@ describe('result lifecycle review UI', () => {
       </I18nextProvider>
     );
     expect(screen.getByRole('status').textContent).toMatch(/Result disputed/);
+  });
+
+  it('preserves recorded feedback across correction, then replaces it after a new action', async () => {
+    mocks.review
+      .mockResolvedValueOnce(receipt('disputed'))
+      .mockResolvedValueOnce(receipt('pending'));
+    const initial = makeProposal({ can_reject: true });
+    const view = mount(initial);
+    await userEvent.click(screen.getByRole('button', { name: 'Reject' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Dispute result' });
+    await userEvent.click(within(dialog).getByRole('radio', { name: 'Score incorrect' }));
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Submit dispute' }));
+    expect(await screen.findByText(/Result disputed/)).toBeTruthy();
+
+    const correction = {
+      ...makeVersionTwoProposal(),
+      can_approve: true,
+      version_timeline: [
+        {
+          version: 1,
+          status: 'superseded' as const,
+          submitted_by: resultIds[0]!,
+          submitted_by_name: 'Player',
+          submitted_at: resultProposal.submitted_at,
+          review_deadline_at: resultProposal.review_deadline_at,
+          decisions: [
+            {
+              reviewer_id: resultIds[1]!,
+              reviewer_name: 'Player',
+              decision: 'reject' as const,
+              reason_code: 'SCORE_INCORRECT' as const,
+              reason_note: null,
+              decided_at: resultProposal.submitted_at
+            }
+          ],
+          confirmation_id: null
+        },
+        {
+          version: 2,
+          status: 'pending' as const,
+          submitted_by: resultIds[0]!,
+          submitted_by_name: 'Player',
+          submitted_at: '2026-10-01T12:00:00.000Z',
+          review_deadline_at: '2026-10-03T12:00:00.000Z',
+          decisions: [],
+          confirmation_id: null
+        }
+      ]
+    };
+    view.rerender(
+      <I18nextProvider i18n={createI18n('en')}>
+        <MatchResultReview
+          eventId={initial.event_id}
+          proposal={correction}
+          timezone="UTC"
+          asOf={resultProposal.submitted_at}
+          onRefresh={vi.fn<() => void>()}
+        />
+      </I18nextProvider>
+    );
+    expect(screen.getByRole('status').textContent).toMatch(/Result disputed/);
+
+    await userEvent.click(screen.getByRole('button', { name: 'Approve' }));
+    expect(await screen.findByText(/Approval recorded for this version/)).toBeTruthy();
+    expect(screen.queryByText(/Result disputed/)).toBeNull();
   });
 
   it('opens a named rejection dialog, validates Other, submits note, and returns focus', async () => {
