@@ -41,16 +41,19 @@ describe('match fixture cleanup', () => {
       expect(sql).toContain(`alter table public.${table} enable trigger ${trigger}`);
     }
   });
-  it('materializes only explicit owned events/actors and deletes notifications before events', () => {
+  it('materializes only explicit owned events/actors and deletes notification links before results', () => {
     const sql = buildMatchFixtureCleanupSql({ eventIds: [event], actorIds: [actor] });
     expect(sql).toContain(
       `e.id = any(array['${event}'::uuid]) and e.created_by = any(array['${actor}'::uuid])`
     );
     expect(sql).toContain(
-      "n.target_type = 'match_event' and n.target_id in (select id from owned_match_fixture_events)"
+      "n.target_type in ('match_event', 'result_available') and n.target_id in (select id from owned_match_fixture_events)"
     );
     expect(sql).toContain(
-      "n.category = 'matches' and n.recipient_user_id = any(array['11111111-1111-4111-8111-111111111111'::uuid])"
+      "n.category in ('matches', 'results') and n.recipient_user_id = any(array['11111111-1111-4111-8111-111111111111'::uuid])"
+    );
+    expect(sql.indexOf('delete from public.notifications')).toBeLessThan(
+      sql.indexOf('delete from public.match_event_result_proposal_versions')
     );
     expect(sql.indexOf('delete from public.notifications')).toBeLessThan(
       sql.indexOf('delete from public.match_events')

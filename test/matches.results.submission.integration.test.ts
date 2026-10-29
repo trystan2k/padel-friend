@@ -421,7 +421,7 @@ describe('actual result submission transaction', { timeout: 60000 }, () => {
     expect((await f.rpc(f.creator, 'submit_match_event_result', args(e.id, 2))).error).toBeNull();
     expect((await read(e.id))[0]?.group_number).toBe(2);
   });
-  it('friendly result writes nothing outside proposal tables', async () => {
+  it('friendly result preserves ratings, community facts, and roster outside result alerts', async () => {
     const e = await setup();
     const snapshot = () =>
       sqlRows(`select
@@ -432,7 +432,6 @@ describe('actual result submission transaction', { timeout: 60000 }, () => {
       (select count(*) from public.communities) communities,
       (select count(*) from public.community_members) members,
       (select count(*) from public.community_audit_log) community_audit,
-      (select count(*) from public.notifications where target_id='${e.id}') notifications,
       (select jsonb_agg(to_jsonb(r) order by id) from public.match_event_registrations r where match_event_id='${e.id}') roster`);
     const before = await snapshot();
     expect((await f.rpc(f.creator, 'submit_match_event_result', args(e.id))).error).toBeNull();

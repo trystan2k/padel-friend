@@ -35,6 +35,11 @@ describe('match fixture cleanup registration', () => {
     expect(rows).toContainEqual(['public.communities', { id: communityId }]);
     expect(rows).toContainEqual(['public.community_members', { community_id: communityId }]);
     expect(rows).toContainEqual(['public.match_events', { id: eventId }]);
+    expect(rows).toContainEqual(['public.notification_result_links', { match_event_id: eventId }]);
+    expect(rows).toContainEqual([
+      'public.match_event_result_entry_ready_dispatch',
+      { match_event_id: eventId }
+    ]);
     expect(rows).toContainEqual([
       'public.match_event_registration_attempts',
       { match_event_id: eventId }

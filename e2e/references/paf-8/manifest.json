@@ -4,7 +4,7 @@
     "path": "docs/design/padel-friend.pen",
     "sha256": "5bc71d38a8da4ed4aba9439173b49711c460b84e37bd2f81b37c2fd92b52ac4d",
     "exportCommand": "Pencil MCP: Export([\"H6VcqC\",\"GMcbD\",\"sLXK7\",\"CWJkF\",\"JXjNs\",\"ausNa\",\"BcpYH\",\"alZmm\"], \"png\", \"<repo>/e2e/references/paf-8\", {scale:2})",
-    "provenanceNote": "All eight approved PAF-8 references exported uncropped from the source Pencil document through Pencil MCP at 2x. Chromium comparisons use fresh-preview captures at the exact half-scale reference dimensions, with production actor flows and exact semantic/layout probes. Route adaptations are recorded per frame; the approval frame's rating deltas are omitted because T10 owns rating projections, and admin override/void actions are out of scope."
+    "provenanceNote": "All eight approved PAF-8 references exported uncropped from the source Pencil document through Pencil MCP at 2x. Chromium comparisons use fresh-preview captures at the exact half-scale reference dimensions, with production actor flows and exact semantic/layout probes. Route adaptations are recorded per frame; the approval frame's rating deltas are omitted because T10 owns rating projections, and admin override/void actions are out of scope. alZmm is the PAF-8 successor for the PAF-7 pending-result detail; a layout-neutral result-group anchor wrapper now preserves deep-link focus, and its exact structure is gated without changing the reference or budget."
   },
   "approvedReferences": {
     "H6VcqC.png": {
@@ -104,7 +104,7 @@
       "lifecycle cards preserve current match-detail composition",
       "all visible copy remains translated",
       "controls meet touch-target minimum",
-      "single-group lifecycle layout retains the PAF-7 route shell"
+      "single-group lifecycle layout retains the PAF-7 route shell and stable result-group anchor wrapper"
     ]
   },
   "visualBudgets": {
@@ -129,7 +129,7 @@
       "JXjNs": "Capture isolates the production pending status/countdown region at the reference viewport; event provenance and roster/score facts continue below it as required by the lifecycle detail.",
       "ausNa": "Capture shows the real offline review no-write feedback in the existing match detail. The source is a multi-context pattern sheet; stale submission, preserved draft, offline action suppression and zero review writes are independently probed in the same flow.",
       "BcpYH": "Production match detail shows the confirmed friendly score, participants, manual source and no-rating effect. Separate Match report/pre-match-level presentation and rating deltas are not part of T08.5/T10.",
-      "alZmm": "Approved PAF-8 successor uses the existing match-detail route. Exact route order, pending facts/countdown, approval progress, SQL-authorized actions, venue details and touch targets constrain the residual cross-renderer and copy difference."
+      "alZmm": "Approved PAF-8 successor uses the existing match-detail route. Exact route order, the layout-neutral result-group anchor wrapper, pending facts/countdown, approval progress, SQL-authorized actions, venue details and touch targets constrain the residual cross-renderer and copy difference."
     }
   }
 }

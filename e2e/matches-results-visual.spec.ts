@@ -185,9 +185,10 @@ test('Pencil full-frame comparisons require matching composition and reviewed bu
         );
       expect.soft(structure, 'alZmm lifecycle detail order').toEqual([
         { tag: 'HEADER', childTags: ['A', 'H1', 'P'] },
-        { tag: 'DIV', childTags: ['SECTION', 'SECTION', 'ARTICLE'] },
+        { tag: 'DIV', childTags: ['SECTION', 'SECTION', 'DIV'] },
         { tag: 'NAV', childTags: ['A', 'A', 'BUTTON', 'BUTTON', 'A'] }
       ]);
+      await expect(route.locator(':scope > div > div#result-group-1 > article')).toHaveCount(1);
       const proposalStructure = await proposal.evaluate((node) =>
         [...node.children].map((child) => child.tagName)
       );

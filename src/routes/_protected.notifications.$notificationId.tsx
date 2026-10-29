@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { NotificationDetailPage } from '../features/notifications/NotificationDetailPage';
 import {
   getMyMatchNotificationContext,
-  getMyNotificationTargetV2
+  getMyNotificationTargetV3
 } from '../features/notifications/notifications.functions';
 import { styles } from '../features/notifications/notifications.styles';
 
@@ -52,10 +52,10 @@ function Failed({ reset }: ErrorComponentProps) {
 
 export const Route = createFileRoute('/_protected/notifications/$notificationId')({
   loader: async ({ params }) => {
-    const target = await getMyNotificationTargetV2({
+    const target = await getMyNotificationTargetV3({
       data: { notificationId: params.notificationId }
     });
-    if (!target.match_event_id) return { ...target, matchContext: null };
+    if (!target.match_event_id || target.result_context) return { ...target, matchContext: null };
     const matchContext = await getMyMatchNotificationContext({
       data: { notificationId: params.notificationId }
     });

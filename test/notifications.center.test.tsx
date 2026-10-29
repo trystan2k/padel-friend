@@ -5,6 +5,7 @@ import type {
   NotificationCategory,
   NotificationPage
 } from '../src/features/notifications/notification-model';
+import type { ResultNotificationContext } from '../src/features/notifications/notification-target';
 import en from '../src/locales/en/translation.json';
 import { NotificationsPage } from '../src/features/notifications/NotificationsPage';
 
@@ -83,6 +84,27 @@ vi.mock('@tanstack/react-router', async () => {
 
 const asOf = '2026-10-15T12:00:00.000Z';
 const invitationId = '00000000-0000-4000-8000-000000000001';
+const resultContext: ResultNotificationContext = {
+  notification_id: '00000000-0000-4000-8000-000000000002',
+  notification_kind: 'result_added',
+  match_event_id: '00000000-0000-4000-8000-000000000003',
+  community_id: '00000000-0000-4000-8000-000000000004',
+  proposal_id: '00000000-0000-4000-8000-000000000005',
+  proposal_version: 1,
+  group_number: 2,
+  proposal_status: 'pending',
+  current_version: 1,
+  current_status: 'pending',
+  is_current: true,
+  classification: 'team_a',
+  score: '6–4',
+  submitted_by_name: 'Ari',
+  review_deadline_at: '2026-10-17T12:00:00.000Z',
+  venue: 'Central Court',
+  starts_at: '2026-10-15T12:00:00.000Z',
+  timezone: 'UTC',
+  entry_ready: false
+};
 const initial: NotificationPage = {
   items: [
     {
@@ -122,6 +144,66 @@ describe('notification center', () => {
     await waitFor(() =>
       expect(mocks.list).toHaveBeenCalledWith({ data: { category: 'all', limit: 20 } })
     );
+  });
+
+  it('links result alerts to their event and preserves the validated group/version locator', () => {
+    const alert: NotificationPage = {
+      ...initial,
+      items: [
+        {
+          id: resultContext.notification_id,
+          kind: resultContext.notification_kind,
+          category: 'results',
+          created_at: asOf,
+          read_at: null,
+          resultContext
+        }
+      ]
+    };
+    render(<NotificationsPage initial={alert} />);
+
+    const link = screen.getByRole('link', { name: 'notifications.result.openResult' });
+    const url = new URL(link.getAttribute('href') ?? '', 'https://example.test');
+    expect(url.pathname).toBe(`/matches/${resultContext.match_event_id}`);
+    expect(url.searchParams.get('result_proposal')).toBe(resultContext.proposal_id);
+    expect(url.searchParams.get('result_version')).toBe('1');
+    expect(url.hash).toBe('#result-group-2');
+    expect(
+      screen.getByText(
+        (_content, element) => element?.textContent === 'notifications.result.group · 6–4'
+      )
+    ).toBeTruthy();
+    expect(screen.getByText('notifications.result.submittedBy')).toBeTruthy();
+  });
+
+  it('keeps a superseded result alert historical and links to review the current group', () => {
+    const historicalContext: ResultNotificationContext = {
+      ...resultContext,
+      proposal_version: 1,
+      proposal_status: 'superseded',
+      current_version: 2,
+      current_status: 'pending',
+      is_current: false
+    };
+    const alert: NotificationPage = {
+      ...initial,
+      items: [
+        {
+          id: historicalContext.notification_id,
+          kind: historicalContext.notification_kind,
+          category: 'results',
+          created_at: asOf,
+          read_at: null,
+          resultContext: historicalContext
+        }
+      ]
+    };
+    render(<NotificationsPage initial={alert} />);
+
+    const link = screen.getByRole('link', { name: 'notifications.result.reviewCurrent' });
+    expect(link.getAttribute('href')).toContain('result_version=1');
+    expect(link.getAttribute('href')).toContain('#result-group-2');
+    expect(screen.getByText('notifications.result.historicalVersion')).toBeTruthy();
   });
 
   it('renders the cutoff kinds with their own translated titles and the split reserve count', () => {

@@ -25,6 +25,8 @@ const IDENTIFIER = /^[a-z_][a-z\d_]{0,62}$/i;
 export const FIXTURE_CLEANUP_TABLE_ORDER = [
   'public.community_notifications',
   'public.community_request_messages',
+  'public.notification_result_links',
+  'public.match_event_result_entry_ready_dispatch',
   'public.notifications',
   'public.match_event_audit_log',
   'public.match_event_result_processing_state',

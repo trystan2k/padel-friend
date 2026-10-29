@@ -479,7 +479,25 @@
       "match_event_updated": "Match details updated",
       "match_reconfirmation_required": "Review changed match terms",
       "match_registration_reconfirmed": "Match participation reconfirmed",
-      "match_reconfirmation_expired": "Reconfirmation deadline passed"
+      "match_reconfirmation_expired": "Reconfirmation deadline passed",
+      "result_review_needed": "A result needs your review",
+      "result_added": "A result was submitted",
+      "result_corrected": "A corrected result was submitted",
+      "result_disputed": "A result was disputed",
+      "result_confirmed": "A match result was confirmed",
+      "result_deadline_reminder": "Result review deadline approaching",
+      "result_entry_ready": "A match result is ready to enter"
+    },
+    "result": {
+      "group": "Group {{number}}",
+      "score": "Score: {{score}}",
+      "submittedBy": "Submitted by {{name}}",
+      "deadline": "Review by {{deadline}}",
+      "historicalVersion": "Historical version {{version}}. Review current proposal.",
+      "reviewCurrent": "Review current proposal",
+      "openResult": "Review result",
+      "openEvent": "Open match",
+      "entryReady": "Result entry is ready for {{venue}}."
     },
     "match": {
       "openEvent": "Open event",

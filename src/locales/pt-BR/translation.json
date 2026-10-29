@@ -479,7 +479,25 @@
       "match_event_updated": "Detalhes da partida atualizados",
       "match_reconfirmation_required": "Revise as condições da partida",
       "match_registration_reconfirmed": "Participação reconfirmada",
-      "match_reconfirmation_expired": "Prazo de reconfirmação encerrado"
+      "match_reconfirmation_expired": "Prazo de reconfirmação encerrado",
+      "result_review_needed": "Um resultado precisa da sua revisão",
+      "result_added": "Um resultado foi enviado",
+      "result_corrected": "Um resultado corrigido foi enviado",
+      "result_disputed": "Um resultado foi contestado",
+      "result_confirmed": "Um resultado de partida foi confirmado",
+      "result_deadline_reminder": "O prazo para revisar o resultado está próximo",
+      "result_entry_ready": "Um resultado de partida está pronto para registrar"
+    },
+    "result": {
+      "group": "Grupo {{number}}",
+      "score": "Placar: {{score}}",
+      "submittedBy": "Enviado por {{name}}",
+      "deadline": "Revise até {{deadline}}",
+      "historicalVersion": "Versão histórica {{version}}. Revise a proposta atual.",
+      "reviewCurrent": "Revisar proposta atual",
+      "openResult": "Revisar resultado",
+      "openEvent": "Abrir partida",
+      "entryReady": "O registro do resultado está pronto para {{venue}}."
     },
     "match": {
       "openEvent": "Abrir evento",

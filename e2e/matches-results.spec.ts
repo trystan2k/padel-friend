@@ -30,9 +30,9 @@ test('assign two groups and submit only one pending result', async ({ browserNam
   const before = await officialSnapshot(f.community);
   expect(before.filter((row) => row.kind === 'profiles')).toHaveLength(11);
   expect(before.filter((row) => row.kind === 'ratings')).toHaveLength(11);
-  const notificationsBefore = await sql(
-    `select id,kind from public.notifications where target_id='${id}' order by id`
-  );
+  const notificationsBefore = await sql(`select id,kind,category,event_key,
+      recipient_user_id::text as recipient_id
+    from public.notifications where target_id='${id}' order by id`);
   const rosterQuery = `select id,user_id,accepted_order,participation_status from public.match_event_registrations where match_event_id='${id}' order by accepted_order,id`;
   const rosterBefore = await sql(rosterQuery);
   expect(rosterBefore).toHaveLength(8);
@@ -119,9 +119,46 @@ test('assign two groups and submit only one pending result', async ({ browserNam
   );
   expect(await officialSnapshot(f.community)).toEqual(before);
   expect(await sql(rosterQuery)).toEqual(rosterBefore);
+  const notificationsAfter = await sql(`select id,kind,category,event_key,
+      recipient_user_id::text as recipient_id
+    from public.notifications where target_id='${id}' order by id`);
+  const priorNotificationIds = new Set(
+    notificationsBefore.map((notification) => notification['id'])
+  );
   expect(
-    await sql(`select id,kind from public.notifications where target_id='${id}' order by id`)
+    notificationsAfter
+      .filter((notification) => priorNotificationIds.has(notification['id']))
+      .map(({ id: notificationId, kind, category, event_key, recipient_id }) => ({
+        id: notificationId,
+        kind,
+        category,
+        event_key,
+        recipient_id
+      }))
   ).toEqual(notificationsBefore);
+  const newNotifications = notificationsAfter.filter(
+    (notification) => !priorNotificationIds.has(notification['id'])
+  );
+  const expectedResultRecipients = [
+    ...new Set([...teams.team_a, ...teams.team_b, f.creator.id])
+  ].sort();
+  expect(
+    newNotifications
+      .map(({ kind, category, event_key, recipient_id }) => ({
+        kind,
+        category,
+        event_key,
+        recipient_id
+      }))
+      .sort((left, right) => String(left.recipient_id).localeCompare(String(right.recipient_id)))
+  ).toEqual(
+    expectedResultRecipients.map((recipient_id) => ({
+      kind: recipient_id === f.creator.id ? 'result_added' : 'result_review_needed',
+      category: 'results',
+      event_key: `result.submitted:${String(facts.proposal_id)}:v1`,
+      recipient_id
+    }))
+  );
   await f.open(page, id);
   await expect(page.getByText(r.pendingDescription, { exact: true })).toBeVisible();
   await info.attach('manual-pending-match-detail', {

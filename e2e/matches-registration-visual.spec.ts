@@ -1590,10 +1590,11 @@ async function ensureNotificationFixtures(): Promise<void> {
   const notifA = family.notifA!;
   const notifB = family.notifB!;
 
-  // Rebuild only these synthetic rows on every call. Older fixture rows may
-  // carry a chronology-backfilled sequence from before the feed contract changed.
+  // Rebuild only these fixture actor/target/kind rows on every call. Persisted
+  // actors may also hold real producer rows from prior runs; exact feed-order
+  // probes must use only the six explicitly seeded timestamps below.
   await fixtureSql(
-    `delete from public.notifications where event_key like 'visual:%' and (` +
+    `delete from public.notifications where (` +
       `(recipient_user_id = '${notifA.id}' and target_id = '${family.fullEventId!}' ` +
       `and kind in ('match_registration_playing','match_registration_quartet_complete')) or ` +
       `(recipient_user_id = '${notifB.id}' and target_id = '${family.closedEventId!}' ` +
@@ -1617,15 +1618,30 @@ async function ensureNotificationFixtures(): Promise<void> {
       `'match_event','${family.fullEventId!}','${family.communityId!}');`
   );
 
-  const kinds: Array<[string, number]> = [
-    ['match_registration_requested', 12],
-    ['match_registration_approved', 65],
-    ['match_registration_rejected', 125],
-    ['match_registration_reserve', 185],
+  const recentKinds = [
+    'match_registration_requested',
+    'match_registration_approved',
+    'match_registration_rejected',
+    'match_registration_reserve'
+  ] as const;
+  const recentRows = recentKinds.map(
+    (kind) =>
+      `('${notifB.id}','visual:${kind}:${crypto.randomUUID()}','${kind}','matches',` +
+      `'match_event','${family.closedEventId!}','${family.communityId!}',now())`
+  );
+  // One transaction gives all four rows one safe current-day timestamp. The
+  // generated identity sequence remains the only within-day ordering signal.
+  await fixtureSql(
+    `insert into public.notifications` +
+      `(recipient_user_id,event_key,kind,category,target_type,target_id,community_id,created_at) ` +
+      `values ${recentRows.join(',')};`
+  );
+
+  const earlierKinds: Array<[string, number]> = [
     ['match_registration_expired', 26 * 60],
     ['match_registration_not_playing', 27 * 60]
   ];
-  for (const [kind, minutesAgo] of kinds)
+  for (const [kind, minutesAgo] of earlierKinds)
     await seedNotification(notifB, family.closedEventId!, family.communityId!, kind, minutesAgo);
 
   // Publication broadcasts reach every community member and are outside the

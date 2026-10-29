@@ -34,10 +34,12 @@ export async function resultFixtures(browser: Browser, options?: Parameters<type
       end $$;`);
       try {
         await sql(`do $$ begin
-          update public.match_event_result_proposal_versions
-             set submitted_at=transaction_timestamp()-interval '49 hours',
-                 review_deadline_at=transaction_timestamp()-interval '1 hour'
-           where proposal_id='${proposalId}';
+           update public.match_event_result_proposal_versions
+              set submitted_at=transaction_timestamp()-interval '49 hours',
+                  review_deadline_at=transaction_timestamp()-interval '1 hour'
+            where proposal_id='${proposalId}'
+              and version=(select active_version from public.match_event_result_proposals
+                where id='${proposalId}');
           update public.match_event_result_proposals
              set submitted_at=transaction_timestamp()-interval '49 hours',
                  review_deadline_at=transaction_timestamp()-interval '1 hour'

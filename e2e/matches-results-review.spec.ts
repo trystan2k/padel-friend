@@ -71,6 +71,29 @@ async function proposalFor(fixtures: Fixtures, eventId: string, groupNumber = 1)
   return proposal;
 }
 
+async function resultNotificationFor(
+  actor: Actor,
+  eventId: string,
+  kind: string,
+  proposalId?: string,
+  version?: number
+) {
+  let query = actor.client
+    .from('notifications')
+    .select('id,kind,event_key,target_type,target_id,read_at')
+    .eq('category', 'results')
+    .eq('target_id', eventId)
+    .eq('kind', kind)
+    .order('created_at', { ascending: false })
+    .order('id', { ascending: false });
+  if (proposalId && version !== undefined)
+    query = query.eq('event_key', `result.submitted:${proposalId}:v${version}`);
+  const result = await query.limit(1).maybeSingle();
+  if (result.error || !result.data)
+    throw result.error ?? new Error(`Missing ${kind} result notification for ${actor.id}`);
+  return result.data;
+}
+
 function actorFor(userId: string): Actor {
   const actor = [f.creator, ...f.members, f.guest].find((candidate) => candidate.id === userId);
   if (!actor) throw new Error(`No fixture actor for ${userId}`);
@@ -367,4 +390,297 @@ test('multi-group detail keeps confirmed, pending, disputed and unsubmitted grou
     { group_number: 2, status: 'pending' },
     { group_number: 3, status: 'disputed' }
   ]);
+
+  const disputeNotice = await resultNotificationFor(rejector, eventId, 'result_disputed');
+  expect(disputeNotice.target_type).toBe('result_available');
+  expect(disputeNotice.event_key).toBe(`result.disputed:${disputedProposal.proposal_id}:v1`);
+  const notificationPage = await f.page(rejector, 'es', 1280, 'dark', 800);
+  await notificationPage.goto('/notifications');
+  await waitForHydratedPage(notificationPage);
+  const disputedHref = `/matches/${eventId}?result_group=3&result_proposal=${disputedProposal.proposal_id}&result_version=1#result-group-3`;
+  const resultNotice = notificationPage
+    .locator('main li')
+    .filter({
+      has: notificationPage.locator(`a[href="${disputedHref}"]`)
+    })
+    .filter({
+      has: notificationPage.getByRole('heading', {
+        name: copies.es.notifications.kinds.result_disputed,
+        exact: true
+      })
+    });
+  await expect(resultNotice).toHaveCount(1);
+  await expect(resultNotice).toContainText(
+    fill(copies.es.notifications.result.group, { number: 3 })
+  );
+  await resultNotice
+    .getByRole('link', { name: copies.es.notifications.result.openResult, exact: true })
+    .click();
+  await expect(notificationPage).toHaveURL(
+    new RegExp(`/matches/${eventId}\\?result_group=3&result_proposal=`)
+  );
+  await expect(notificationPage).toHaveURL(/result_version=1#result-group-3$/);
+  const linkedSummary = notificationPage.getByRole('region', {
+    name: copies.es.matches.results.resolution.title,
+    exact: true
+  });
+  await expect(linkedSummary).toContainText(copies.es.matches.results.resolution.partiallyResolved);
+  await expect(notificationPage.locator('article[data-result-status="confirmed"]')).toHaveCount(1);
+  await expect(notificationPage.locator('article[data-result-status="pending"]')).toHaveCount(1);
+  await expect(notificationPage.locator('article[data-result-status="disputed"]')).toHaveCount(1);
+  await expect(notificationPage.locator('#result-group-4')).toContainText(
+    copies.es.matches.results.awaitingResult
+  );
+  await notificationPage.context().close();
+});
+
+test('result alerts lead through review, correction, fresh deadline and scheduled confirmation', async () => {
+  test.setTimeout(240_000);
+  const eventId = await f.completedEvent('competitive', 4);
+  const nonplayingAdmin = f.members[9]!;
+  await makeAdmin(f, nonplayingAdmin);
+  const submitPage = await submitProposal(f, eventId, nonplayingAdmin);
+  await submitPage.context().close();
+
+  const versionOne = await proposalFor(f, eventId);
+  const reviewerA = teamReviewer(versionOne, nonplayingAdmin, 'team_a');
+  const reviewerB = teamReviewer(versionOne, nonplayingAdmin, 'team_b');
+  const initialNotice = await resultNotificationFor(
+    reviewerA,
+    eventId,
+    'result_review_needed',
+    versionOne.proposal_id,
+    1
+  );
+  expect(initialNotice).toMatchObject({
+    target_type: 'result_available',
+    target_id: eventId,
+    event_key: `result.submitted:${versionOne.proposal_id}:v1`
+  });
+
+  const pt = copies['pt-BR'];
+  const reviewerPage = await f.page(reviewerA, 'pt-BR', 320, 'light');
+  await reviewerPage.goto('/notifications');
+  await waitForHydratedPage(reviewerPage);
+  const activeV1Href = `/matches/${eventId}?result_group=1&result_proposal=${versionOne.proposal_id}&result_version=1#result-group-1`;
+  const reviewerNotice = reviewerPage.locator('main li').filter({
+    has: reviewerPage.locator(`a[href="${activeV1Href}"]`)
+  });
+  await expect(reviewerNotice).toHaveCount(1);
+  await expect(reviewerNotice).toContainText(fill(pt.notifications.result.group, { number: 1 }));
+  await reviewerNotice
+    .getByRole('link', { name: pt.notifications.result.openResult, exact: true })
+    .click();
+  await expect(reviewerPage).toHaveURL(
+    new RegExp(`/matches/${eventId}\\?result_group=1&result_proposal=${versionOne.proposal_id}`)
+  );
+  await expect(reviewerPage).toHaveURL(/result_version=1#result-group-1$/);
+  await waitForHydratedPage(reviewerPage);
+  const firstCard = reviewerPage.locator('article[data-result-status="pending"]');
+  await expect(
+    firstCard.getByRole('button', { name: pt.matches.results.review.approve })
+  ).toBeVisible();
+  await firstCard.getByRole('button', { name: pt.matches.results.review.approve }).click();
+  await expect(firstCard).toHaveAttribute('data-result-status', 'pending');
+  await expect(firstCard).toContainText(
+    fill(pt.matches.results.approvalProgress, { received: 1, required: 2 })
+  );
+  await reviewerPage.context().close();
+  expect((await proposalFor(f, eventId)).received_team_coverage_count).toBe(1);
+
+  const rejectionPage = await f.page(reviewerB, 'en', 390, 'dark');
+  await rejectionPage.goto('/notifications');
+  await waitForHydratedPage(rejectionPage);
+  const secondNotice = rejectionPage.locator('main li').filter({
+    has: rejectionPage.locator(`a[href="${activeV1Href}"]`)
+  });
+  await expect(secondNotice).toHaveCount(1);
+  await secondNotice
+    .getByRole('link', { name: copies.en.notifications.result.openResult, exact: true })
+    .click();
+  await expect(rejectionPage).toHaveURL(/result_version=1#result-group-1$/);
+  await waitForHydratedPage(rejectionPage);
+  const rejectionCard = rejectionPage.locator('article[data-result-status="pending"]');
+  await rejectionCard.getByRole('button', { name: r.review.reject, exact: true }).click();
+  await rejectWithReason(rejectionPage);
+  await expect(rejectionPage.locator('article[data-result-status="disputed"]')).toBeVisible();
+  await rejectionPage.context().close();
+
+  const disputedNotice = await resultNotificationFor(reviewerB, eventId, 'result_disputed');
+  expect(disputedNotice.event_key).toBe(`result.disputed:${versionOne.proposal_id}:v1`);
+  const disputedAlerts = await sql(`select recipient_user_id::text as recipient_id,kind
+    from public.notifications where category='results' and target_id='${eventId}'
+      and event_key='result.disputed:${versionOne.proposal_id}:v1'`);
+  const expectedDisputeRecipients = [
+    ...new Set([
+      ...versionOne.teams.team_a.map((player) => player.user_id),
+      ...versionOne.teams.team_b.map((player) => player.user_id),
+      f.creator.id
+    ])
+  ].sort();
+  expect(disputedAlerts).toHaveLength(expectedDisputeRecipients.length);
+  expect(disputedAlerts.map((row) => String(row['recipient_id'])).sort()).toEqual(
+    expectedDisputeRecipients
+  );
+  expect(disputedAlerts.every((row) => row['kind'] === 'result_disputed')).toBe(true);
+
+  const correctionPage = await f.page(nonplayingAdmin);
+  await f.open(correctionPage, eventId);
+  const disputedCard = correctionPage.locator('article[data-result-status="disputed"]');
+  await disputedCard.getByRole('link', { name: r.correctResult, exact: true }).click();
+  await waitForHydratedPage(correctionPage);
+  await correctionPage.getByRole('button', { name: r.confirmTeams, exact: true }).click();
+  for (const [index, [teamA, teamB]] of [
+    [6, 4],
+    [4, 6],
+    [3, 2]
+  ].entries()) {
+    await correctionPage.locator(`#score-${index}-team_a`).fill(String(teamA));
+    await correctionPage.locator(`#score-${index}-team_b`).fill(String(teamB));
+    await correctionPage.locator(`#score-${index}-team_b`).blur();
+  }
+  await correctionPage.getByRole('button', { name: r.correctSubmit, exact: true }).click();
+  await correctionPage.getByRole('button', { name: r.correctSubmit, exact: true }).click();
+  await expect(correctionPage.locator('article[data-result-status="pending"]')).toBeVisible();
+  await correctionPage.context().close();
+
+  const versionTwo = await proposalFor(f, eventId);
+  expect(versionTwo.proposal_id).toBe(versionOne.proposal_id);
+  expect(versionTwo.version).toBe(2);
+  expect(versionTwo.status).toBe('pending');
+  expect(versionTwo.received_team_coverage_count).toBe(0);
+  expect(Date.parse(versionTwo.review_deadline_at) - Date.parse(versionTwo.submitted_at)).toBe(
+    48 * 60 * 60 * 1000
+  );
+  const correctedNotice = await resultNotificationFor(
+    reviewerA,
+    eventId,
+    'result_review_needed',
+    versionOne.proposal_id,
+    2
+  );
+  expect(correctedNotice.event_key).toBe(`result.submitted:${versionOne.proposal_id}:v2`);
+
+  const usedReviewerIds = new Set([reviewerA.id, reviewerB.id]);
+  const staleWitnessId = [...versionOne.teams.team_a, ...versionOne.teams.team_b].find(
+    (player) => !usedReviewerIds.has(player.user_id)
+  )?.user_id;
+  if (!staleWitnessId) throw new Error('No result notification witness actor');
+  const staleWitness = actorFor(staleWitnessId);
+  const staleNotice = await resultNotificationFor(
+    staleWitness,
+    eventId,
+    'result_review_needed',
+    versionOne.proposal_id,
+    1
+  );
+  const spanish = copies.es;
+  const stalePage = await f.page(staleWitness, 'es', 1280, 'dark', 800);
+  await stalePage.goto('/notifications');
+  await waitForHydratedPage(stalePage);
+  const staleCard = stalePage.locator('main li').filter({
+    has: stalePage.getByRole('heading', {
+      name: spanish.notifications.kinds.result_review_needed,
+      exact: true
+    }),
+    hasText: fill(spanish.notifications.result.historicalVersion, { version: 1 })
+  });
+  await expect(staleCard).toHaveCount(1);
+  const staleLink = staleCard.getByRole('link', {
+    name: spanish.notifications.result.reviewCurrent,
+    exact: true
+  });
+  await expect(staleLink).toHaveAttribute(
+    'href',
+    `/matches/${eventId}?result_group=1&result_proposal=${versionOne.proposal_id}&result_version=1#result-group-1`
+  );
+  const staleRead = await staleWitness.client
+    .from('notifications')
+    .select('read_at')
+    .eq('id', staleNotice.id)
+    .single();
+  expect(staleRead.data?.read_at).toBeNull();
+  await staleCard
+    .getByRole('button', { name: spanish.notifications.markRead, exact: true })
+    .click();
+  await expect
+    .poll(async () => {
+      const row = await staleWitness.client
+        .from('notifications')
+        .select('read_at')
+        .eq('id', staleNotice.id)
+        .single();
+      return row.data?.read_at;
+    })
+    .toBeTruthy();
+  await expect(staleLink).toBeVisible();
+  await staleLink.click();
+  await expect(stalePage).toHaveURL(/result_version=1#result-group-1$/);
+  await waitForHydratedPage(stalePage);
+  const currentCard = stalePage.locator('article[data-result-status="pending"]');
+  await expect(currentCard).toContainText(
+    fill(spanish.matches.results.versionLabel, { version: 2 })
+  );
+  await currentCard.getByText(spanish.matches.results.timelineTitle, { exact: true }).click();
+  await expect(currentCard).toContainText(
+    fill(spanish.matches.results.versionLabel, { version: 1 })
+  );
+  await stalePage.context().close();
+
+  await f.expireProposal(versionOne.proposal_id);
+  await sql('select public.process_due_match_event_results(25) as scheduler_run');
+  const confirmationRows = await sql(`select p.status, p.review_deadline_at::text as deadline,
+      c.id::text as confirmation_id, c.source, c.effective_at::text as effective_at
+    from public.match_event_result_proposals p
+    join public.match_event_result_confirmations c on c.proposal_id=p.id
+    where p.id='${versionOne.proposal_id}' and p.active_version=2`);
+  expect(confirmationRows).toHaveLength(1);
+  expect(confirmationRows[0]).toMatchObject({ status: 'confirmed', source: 'AUTO_48H' });
+  expect(Date.parse(String(confirmationRows[0]?.['effective_at']))).toBe(
+    Date.parse(String(confirmationRows[0]?.['deadline']))
+  );
+  const confirmationId = String(confirmationRows[0]?.['confirmation_id']);
+  const confirmedNotifications = await sql(`select n.recipient_user_id::text as recipient_id,
+      n.kind, n.event_key from public.notifications n
+    where n.category='results' and n.target_id='${eventId}'
+      and n.event_key='result.confirmed:${confirmationId}'`);
+  const expectedRecipients = [
+    ...new Set([
+      ...versionTwo.teams.team_a.map((player) => player.user_id),
+      ...versionTwo.teams.team_b.map((player) => player.user_id),
+      f.creator.id
+    ])
+  ].sort();
+  expect(confirmedNotifications).toHaveLength(expectedRecipients.length);
+  expect(confirmedNotifications.map((row) => String(row['recipient_id'])).sort()).toEqual(
+    expectedRecipients
+  );
+  expect(confirmedNotifications.every((row) => row['kind'] === 'result_confirmed')).toBe(true);
+  expect(
+    confirmedNotifications.every((row) => row['event_key'] === `result.confirmed:${confirmationId}`)
+  ).toBe(true);
+
+  const confirmedPage = await f.page(reviewerA, 'pt-BR', 390, 'light');
+  await confirmedPage.goto('/notifications');
+  await waitForHydratedPage(confirmedPage);
+  const activeV2Href = `/matches/${eventId}?result_group=1&result_proposal=${versionOne.proposal_id}&result_version=2#result-group-1`;
+  const confirmedNotice = confirmedPage
+    .locator('main li')
+    .filter({
+      has: confirmedPage.locator(`a[href="${activeV2Href}"]`)
+    })
+    .filter({
+      has: confirmedPage.getByRole('heading', {
+        name: pt.notifications.kinds.result_confirmed,
+        exact: true
+      })
+    });
+  await expect(confirmedNotice).toHaveCount(1);
+  await confirmedNotice
+    .getByRole('link', { name: pt.notifications.result.openResult, exact: true })
+    .click();
+  const confirmedCard = confirmedPage.locator('article[data-result-status="confirmed"]');
+  await expect(confirmedCard).toContainText(pt.matches.results.confirmation.auto);
+  await expect(confirmedPage).toHaveURL(/result_version=2#result-group-1$/);
+  await confirmedPage.context().close();
 });

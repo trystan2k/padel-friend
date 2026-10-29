@@ -855,6 +855,43 @@ export type Database = {
           },
         ]
       }
+      match_event_result_entry_ready_dispatch: {
+        Row: {
+          creator_user_id: string
+          dispatched_at: string
+          match_event_id: string
+          notification_id: string
+        }
+        ComputedFields: never
+        Insert: {
+          creator_user_id: string
+          dispatched_at?: string
+          match_event_id: string
+          notification_id: string
+        }
+        Update: {
+          creator_user_id?: string
+          dispatched_at?: string
+          match_event_id?: string
+          notification_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "match_event_result_entry_ready_dispatch_match_event_id_fkey"
+            columns: ["match_event_id"]
+            isOneToOne: true
+            referencedRelation: "match_events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "match_event_result_entry_ready_dispatch_notification_id_fkey"
+            columns: ["notification_id"]
+            isOneToOne: true
+            referencedRelation: "notifications"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       match_event_result_processing_state: {
         Row: {
           attempt_count: number
@@ -1244,6 +1281,60 @@ export type Database = {
         }
         Relationships: []
       }
+      notification_result_links: {
+        Row: {
+          confirmation_id: string | null
+          match_event_id: string
+          notification_id: string
+          proposal_id: string
+          proposal_version: number
+        }
+        ComputedFields: never
+        Insert: {
+          confirmation_id?: string | null
+          match_event_id: string
+          notification_id: string
+          proposal_id: string
+          proposal_version: number
+        }
+        Update: {
+          confirmation_id?: string | null
+          match_event_id?: string
+          notification_id?: string
+          proposal_id?: string
+          proposal_version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notification_result_link_confirmation_fk"
+            columns: ["confirmation_id", "proposal_id", "proposal_version"]
+            isOneToOne: false
+            referencedRelation: "match_event_result_confirmations"
+            referencedColumns: ["id", "proposal_id", "proposal_version"]
+          },
+          {
+            foreignKeyName: "notification_result_link_version_fk"
+            columns: ["proposal_id", "proposal_version"]
+            isOneToOne: false
+            referencedRelation: "match_event_result_proposal_versions"
+            referencedColumns: ["proposal_id", "version"]
+          },
+          {
+            foreignKeyName: "notification_result_links_match_event_id_fkey"
+            columns: ["match_event_id"]
+            isOneToOne: false
+            referencedRelation: "match_events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notification_result_links_notification_id_fkey"
+            columns: ["notification_id"]
+            isOneToOne: true
+            referencedRelation: "notifications"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       notifications: {
         Row: {
           category: string
@@ -1509,7 +1600,46 @@ export type Database = {
           target_status: string
         }[]
       }
+      get_my_notification_target_v3: {
+        Args: { p_notification_id: string }
+        Returns: {
+          community_id: string
+          community_name: string
+          created_at: string
+          invitation_id: string
+          kind: string
+          match_available: boolean
+          match_event_id: string
+          membership_status: string
+          result_context: Json
+          target_status: string
+        }[]
+      }
       get_my_notifications_as_of: { Args: Record<PropertyKey, never>; Returns: string }
+      get_my_result_notification_contexts: {
+        Args: { p_notification_ids: string[] }
+        Returns: {
+          classification: string
+          community_id: string
+          current_status: string
+          current_version: number
+          entry_ready: boolean
+          group_number: number
+          is_current: boolean
+          match_event_id: string
+          notification_id: string
+          notification_kind: string
+          proposal_id: string
+          proposal_status: string
+          proposal_version: number
+          review_deadline_at: string
+          score: string
+          starts_at: string
+          submitted_by_name: string
+          timezone: string
+          venue: string
+        }[]
+      }
       govern_community_member: {
         Args: { p_action: string; p_community_id: string; p_membership_id: string }
         Returns: {
@@ -1734,6 +1864,25 @@ export type Database = {
               user_id: string
             }[]
           }
+      notify_match_result_deadline: {
+        Args: { p_proposal_id: string; p_proposal_version: number }
+        Returns: number
+      }
+      notify_match_result_entry_ready: { Args: { p_match_event_id: string }; Returns: boolean }
+      notify_match_result_lifecycle: {
+        Args: {
+          p_confirmation_id?: string
+          p_event_key: string
+          p_kind: string
+          p_proposal_id: string
+          p_proposal_version: number
+        }
+        Returns: number
+      }
+      notify_match_result_version: {
+        Args: { p_proposal_id: string; p_proposal_version: number }
+        Returns: number
+      }
       onboard_player: {
         Args: {
           p_bio?: string
@@ -1743,6 +1892,19 @@ export type Database = {
           p_preferred_side: string
         }
         Returns: undefined
+      }
+      persist_match_result_notification: {
+        Args: {
+          p_community_id: string
+          p_confirmation_id?: string
+          p_event_key: string
+          p_kind: string
+          p_match_event_id: string
+          p_proposal_id: string
+          p_proposal_version: number
+          p_recipient_user_id: string
+        }
+        Returns: string
       }
       persist_notification: {
         Args: {
@@ -1760,6 +1922,10 @@ export type Database = {
       process_due_match_event_results: { Args: { p_limit?: number }; Returns: Json }
       process_match_event_registration_cutoff: {
         Args: { p_match_event_id: string; p_skip_locked?: boolean }
+        Returns: Json
+      }
+      process_match_result_lifecycle_alerts: {
+        Args: { p_entry_ready_limit?: number; p_reminder_limit?: number }
         Returns: Json
       }
       protect_match_event_results: { Args: { p_event_id: string }; Returns: undefined }

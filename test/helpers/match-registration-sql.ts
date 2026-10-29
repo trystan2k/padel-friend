@@ -89,6 +89,8 @@ export function registerMatchEventFixtureRows(
   registry.register('public.match_event_registrations', { match_event_id: eventId });
   registry.register('public.match_event_registration_state', { match_event_id: eventId });
   registry.register('public.match_event_result_proposals', { match_event_id: eventId });
+  registry.register('public.notification_result_links', { match_event_id: eventId });
+  registry.register('public.match_event_result_entry_ready_dispatch', { match_event_id: eventId });
   registry.register('public.notifications', { target_id: eventId });
   if (photoPath) registerMatchStorageFixtureObject(registry, 'match-event-photos', photoPath);
 }

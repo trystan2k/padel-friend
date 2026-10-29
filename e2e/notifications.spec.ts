@@ -1,6 +1,7 @@
 // Baselines re-blessed 2026-10-23 after the user-directed global chrome redesign (circular locale/theme chips); thresholds unchanged. Second pass: Inter/600 typography, flat input/button borders, chip-safe headers.
 import { readFileSync } from 'node:fs';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
+import { parseResultProposals } from '../src/features/matches/match-result-model';
 import {
   expect,
   test,
@@ -10,6 +11,16 @@ import {
   type Response
 } from '@playwright/test';
 import { submitAndWaitForAuthDestination, waitForHydratedPage } from './auth-helpers';
+import {
+  copies,
+  enterScore,
+  fill,
+  openRecord,
+  resultFixtures,
+  review as previewResult,
+  type Actor as ResultActor,
+  type Locale as ResultLocale
+} from './matches-results-fixtures';
 
 type Copy = {
   auth: { loginEmailLabel: string; loginPasswordLabel: string; loginSubmit: string };
@@ -45,6 +56,15 @@ type Copy = {
     kinds: {
       community_invitation: string;
       community_membership_removed: string;
+      result_review_needed: string;
+    };
+    result: {
+      group: string;
+      submittedBy: string;
+      deadline: string;
+      openResult: string;
+      historicalVersion: string;
+      reviewCurrent: string;
     };
   };
   notificationPreferences: {
@@ -94,6 +114,210 @@ test.use({
   deviceScaleFactor: 1,
   colorScheme: 'light',
   serviceWorkers: 'block'
+});
+
+type ResultBrowserFixtures = Awaited<ReturnType<typeof resultFixtures>>;
+let resultBrowserFixtures!: ResultBrowserFixtures;
+let resultNotificationEventId: string;
+let resultNotificationId: string;
+let resultNotificationProposalId: string;
+let resultNotificationSubmittedByName: string | null;
+let resultNotificationScore: string;
+let resultNotificationDeadline: string;
+let resultNotificationReviewer: ResultActor;
+
+test.describe('result notification browser coverage', () => {
+  test.beforeAll(async ({ browser }) => {
+    test.setTimeout(240_000);
+    resultBrowserFixtures = await resultFixtures(browser, { memberCount: 4 });
+    resultNotificationEventId = await resultBrowserFixtures.completedEvent('competitive', 4);
+
+    const submitterPage = await resultBrowserFixtures.page(resultBrowserFixtures.creator);
+    await openRecord(submitterPage, resultNotificationEventId);
+    await enterScore(submitterPage);
+    await previewResult(submitterPage);
+    await submitterPage
+      .getByRole('button', { name: copies.en.matches.results.submit, exact: true })
+      .click();
+    await expect(
+      submitterPage.getByRole('region', {
+        name: copies.en.matches.results.pending,
+        exact: true
+      })
+    ).toBeVisible();
+    await submitterPage.context().close();
+
+    const rawProposals = await resultBrowserFixtures.rpc(
+      resultBrowserFixtures.creator,
+      'get_match_event_result_proposals',
+      { p_match_event_id: resultNotificationEventId }
+    );
+    const [proposal] = parseResultProposals(rawProposals) ?? [];
+    if (!proposal) throw new Error('Result notification fixture proposal missing');
+    resultNotificationProposalId = proposal.proposal_id;
+    resultNotificationSubmittedByName = proposal.submitted_by_name;
+    resultNotificationScore = proposal.sets
+      .map((set) => `${set.team_a_games}–${set.team_b_games}`)
+      .join(', ');
+    resultNotificationDeadline = proposal.review_deadline_at;
+    const reviewerId = [...proposal.teams.team_a, ...proposal.teams.team_b].find(
+      (player) => player.user_id !== resultBrowserFixtures.creator.id
+    )?.user_id;
+    if (!reviewerId) throw new Error('Result notification fixture reviewer missing');
+    const reviewer = [
+      resultBrowserFixtures.creator,
+      ...resultBrowserFixtures.members,
+      resultBrowserFixtures.guest
+    ].find((actor) => actor.id === reviewerId);
+    if (!reviewer) throw new Error('Result notification fixture actor missing');
+    resultNotificationReviewer = reviewer;
+
+    const notification = await reviewer.client
+      .from('notifications')
+      .select('id')
+      .eq('category', 'results')
+      .eq('kind', 'result_review_needed')
+      .eq('target_id', resultNotificationEventId)
+      .single();
+    if (notification.error || !notification.data)
+      throw notification.error ?? new Error('Result review notification missing');
+    resultNotificationId = notification.data.id;
+  });
+
+  test.afterAll(async () => {
+    test.setTimeout(120_000);
+    await resultBrowserFixtures?.cleanup();
+  });
+
+  test('mark-read stays independent from opening a result review target', async () => {
+    const page = await resultBrowserFixtures.page(resultNotificationReviewer, 'en', 390, 'light');
+    await page.goto('/notifications');
+    await waitForHydratedPage(page);
+    const notificationCard = page.locator('main li').filter({
+      has: page.getByRole('heading', { name: en.notifications.kinds.result_review_needed })
+    });
+    await expect(notificationCard).toHaveCount(1);
+
+    const initial = await resultNotificationReviewer.client
+      .from('notifications')
+      .select('read_at')
+      .eq('id', resultNotificationId)
+      .single();
+    expect(initial.data?.read_at).toBeNull();
+    await notificationCard.getByRole('button', { name: en.notifications.markRead }).click();
+    await expect
+      .poll(async () => {
+        const row = await resultNotificationReviewer.client
+          .from('notifications')
+          .select('read_at')
+          .eq('id', resultNotificationId)
+          .single();
+        return row.data?.read_at;
+      })
+      .toBeTruthy();
+
+    const reviewLink = notificationCard.getByRole('link', {
+      name: en.notifications.result.openResult,
+      exact: true
+    });
+    await expect(reviewLink).toBeVisible();
+    await reviewLink.click();
+    await expect(page).toHaveURL(
+      new RegExp(`/matches/${resultNotificationEventId}\\?result_group=1&result_proposal=`)
+    );
+    await expect(page).toHaveURL(/result_version=1#result-group-1$/);
+    await expect(page.locator('article[data-result-status="pending"]')).toBeVisible();
+    await page.context().close();
+  });
+
+  test('a forged result-notification ID is denied without exposing result facts', async ({
+    browser
+  }) => {
+    const context = await newContext(browser);
+    try {
+      const page = await context.newPage();
+      await signIn(page, resultBrowserFixtures.guest, { locale: 'es', theme: 'dark', copy: es });
+      const collect = captureResponses(page);
+      await page.goto(`/notifications/${resultNotificationId}`);
+      await waitForHydratedPage(page);
+      await expect(page.getByRole('alert')).toContainText(es.notifications.error);
+      const observed = `${await page.locator('body').innerText()}\n${await collect()}`;
+      expect(observed).not.toContain('6–4');
+      const foreignRow = await resultBrowserFixtures.guest.client
+        .from('notifications')
+        .select('id')
+        .eq('id', resultNotificationId);
+      expect(foreignRow.data).toEqual([]);
+      const denied = await resultBrowserFixtures.guest.client.rpc('get_my_notification_target_v3', {
+        p_notification_id: resultNotificationId
+      });
+      expect(denied.error?.code).toBe('42501');
+    } finally {
+      await context.close();
+    }
+  });
+
+  for (const width of [320, 390, 1280]) {
+    for (const theme of ['light', 'dark'] as const) {
+      for (const locale of ['en', 'pt-BR', 'es'] as const satisfies readonly ResultLocale[]) {
+        const copy = copies[locale];
+        const viewportHeight = width === 1280 ? 800 : 844;
+        test(`result alert deep link ${width}px ${theme} ${locale}`, async () => {
+          const page = await resultBrowserFixtures.page(
+            resultNotificationReviewer,
+            locale,
+            width,
+            theme,
+            viewportHeight
+          );
+          try {
+            await page.goto('/notifications');
+            await waitForHydratedPage(page);
+            await expect(page.locator('html')).toHaveAttribute('lang', locale);
+            await expect(page.locator('html')).toHaveAttribute('data-theme', theme);
+            expect(
+              await page.evaluate(() => document.documentElement.scrollWidth)
+            ).toBeLessThanOrEqual(width);
+            const card = page.locator('main li').filter({
+              has: page.getByRole('heading', {
+                name: copy.notifications.kinds.result_review_needed,
+                exact: true
+              })
+            });
+            await expect(card).toHaveCount(1);
+            await expect(card).toContainText(fill(copy.notifications.result.group, { number: 1 }));
+            await expect(card).toContainText(resultNotificationScore);
+            if (resultNotificationSubmittedByName)
+              await expect(card).toContainText(
+                fill(copy.notifications.result.submittedBy, {
+                  name: resultNotificationSubmittedByName
+                })
+              );
+            const deadlineText = new Intl.DateTimeFormat(locale, {
+              dateStyle: 'medium',
+              timeStyle: 'short',
+              timeZone: 'UTC'
+            }).format(new Date(resultNotificationDeadline));
+            await expect(card).toContainText(
+              fill(copy.notifications.result.deadline, { deadline: deadlineText })
+            );
+            const href = `/matches/${resultNotificationEventId}?result_group=1&result_proposal=${resultNotificationProposalId}&result_version=1#result-group-1`;
+            const reviewLink = card.getByRole('link', {
+              name: copy.notifications.result.openResult,
+              exact: true
+            });
+            await expect(reviewLink).toHaveAttribute('href', href);
+            await reviewLink.click();
+            await expect(page).toHaveURL(new RegExp(`/matches/${resultNotificationEventId}\\?`));
+            await expect(page).toHaveURL(/result_version=1#result-group-1$/);
+            await expect(page.locator('article[data-result-status="pending"]')).toBeVisible();
+          } finally {
+            await page.context().close();
+          }
+        });
+      }
+    }
+  }
 });
 
 type Actor = { id: string; email: string; displayName: string; client: SupabaseClient };
@@ -161,7 +385,7 @@ async function createActor(label: string): Promise<Actor> {
 
 async function signIn(
   page: Page,
-  actor: Actor,
+  actor: Pick<Actor, 'email'>,
   options: { locale?: string; theme?: 'light' | 'dark'; copy?: Copy } = {}
 ) {
   const { locale = 'en', theme = 'light', copy = en } = options;

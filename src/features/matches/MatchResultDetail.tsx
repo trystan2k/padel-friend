@@ -154,18 +154,24 @@ export function MatchResultDetail({
             const proposal = proposalsByGroup.get(groupNumber);
             if (proposal)
               return (
-                <MatchResultReview
-                  key={proposal.proposal_id}
-                  eventId={event.event_id}
-                  proposal={proposal}
-                  timezone={event.timezone}
-                  asOf={event.as_of}
-                  compact={expectedGroups > 1}
-                  onRefresh={onRefresh}
-                />
+                <div key={proposal.proposal_id} id={`result-group-${groupNumber}`} tabIndex={-1}>
+                  <MatchResultReview
+                    eventId={event.event_id}
+                    proposal={proposal}
+                    timezone={event.timezone}
+                    asOf={event.as_of}
+                    compact={expectedGroups > 1}
+                    onRefresh={onRefresh}
+                  />
+                </div>
               );
             return (
-              <article key={groupNumber} {...stylex.props(reviewStyles.resultCard)}>
+              <article
+                key={groupNumber}
+                id={`result-group-${groupNumber}`}
+                tabIndex={-1}
+                {...stylex.props(reviewStyles.resultCard)}
+              >
                 <header {...stylex.props(reviewStyles.resultHeader)}>
                   <h3 {...stylex.props(reviewStyles.groupHeading)}>
                     {t('matches.results.group', { number: groupNumber })}

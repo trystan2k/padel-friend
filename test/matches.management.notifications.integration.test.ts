@@ -80,8 +80,8 @@ describe('management notification SQL / renderer parity', () => {
         .rpc('get_my_notification_target_v2', { p_notification_id: id })
         .single();
       expect(targetResult.error, `Target: ${kind}`).toBeNull();
-      // Same recipient-scoped header enrichment as getMyNotificationTargetV2:
-      // SQL target intentionally omits kind and community identity for matches.
+      // The SQL target intentionally omits kind and community identity for
+      // matches, so the recipient-scoped header row supplies them for decode.
       const header = await recipient.client
         .from('notifications')
         .select('kind,created_at')

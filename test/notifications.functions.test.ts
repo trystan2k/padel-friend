@@ -26,6 +26,7 @@ import {
   acceptMyNotificationInvitation,
   getMyNotificationPreferences,
   getMyNotificationTarget,
+  getMyNotificationTargetV3,
   getMyUnreadNotificationCount,
   listMyNotifications,
   markAllNotificationsRead,
@@ -92,6 +93,120 @@ describe('notification server functions', () => {
     expect(query.or).not.toHaveBeenCalled();
   });
 
+  it('batches result contexts and excludes event-ready alerts from match contexts', async () => {
+    const eventId = '223e4567-e89b-12d3-a456-426614174001';
+    const proposalId = '323e4567-e89b-12d3-a456-426614174002';
+    const resultNotificationId = '423e4567-e89b-12d3-a456-426614174003';
+    const readyNotificationId = '523e4567-e89b-12d3-a456-426614174004';
+    const createdAt = '2026-10-16T12:00:00.000Z';
+    const rows = [
+      {
+        id: resultNotificationId,
+        kind: 'result_added',
+        category: 'results',
+        target_type: 'result_available',
+        target_id: eventId,
+        community_id: id,
+        sequence: 2,
+        created_at: createdAt,
+        read_at: null
+      },
+      {
+        id: readyNotificationId,
+        kind: 'result_entry_ready',
+        category: 'results',
+        target_type: 'match_event',
+        target_id: eventId,
+        community_id: id,
+        sequence: 1,
+        created_at: createdAt,
+        read_at: null
+      }
+    ];
+    const query = {
+      select: vi.fn<(...args: unknown[]) => unknown>(),
+      lte: vi.fn<(...args: unknown[]) => unknown>(),
+      eq: vi.fn<(...args: unknown[]) => unknown>(),
+      or: vi.fn<(...args: unknown[]) => unknown>(),
+      order: vi.fn<(...args: unknown[]) => unknown>(),
+      limit: vi.fn<() => Promise<{ data: typeof rows; error: null }>>().mockResolvedValue({
+        data: rows,
+        error: null
+      })
+    };
+    query.select.mockReturnValue(query);
+    query.lte.mockReturnValue(query);
+    query.eq.mockReturnValue(query);
+    query.or.mockReturnValue(query);
+    query.order.mockReturnValue(query);
+    const from = vi.fn<(...args: unknown[]) => unknown>(() => query);
+    const resultContexts = [
+      {
+        notification_id: resultNotificationId,
+        notification_kind: 'result_added',
+        match_event_id: eventId,
+        community_id: id,
+        proposal_id: proposalId,
+        proposal_version: 1,
+        group_number: 1,
+        proposal_status: 'pending',
+        current_version: 1,
+        current_status: 'pending',
+        is_current: true,
+        classification: 'team_a',
+        score: '6–4',
+        submitted_by_name: 'Ari',
+        review_deadline_at: '2026-10-18T12:00:00.000Z',
+        venue: 'Central Court',
+        starts_at: createdAt,
+        timezone: 'UTC',
+        entry_ready: false
+      },
+      {
+        notification_id: readyNotificationId,
+        notification_kind: 'result_entry_ready',
+        match_event_id: eventId,
+        community_id: id,
+        proposal_id: null,
+        proposal_version: null,
+        group_number: null,
+        proposal_status: null,
+        current_version: null,
+        current_status: null,
+        is_current: true,
+        classification: null,
+        score: null,
+        submitted_by_name: null,
+        review_deadline_at: null,
+        venue: 'Central Court',
+        starts_at: createdAt,
+        timezone: 'UTC',
+        entry_ready: true
+      }
+    ];
+    const rpc = vi
+      .fn<(...args: unknown[]) => Promise<{ data: unknown; error: null }>>()
+      .mockImplementation(async (functionName) => ({
+        data:
+          functionName === 'get_my_notifications_as_of'
+            ? createdAt
+            : functionName === 'get_my_result_notification_contexts'
+              ? resultContexts
+              : 0,
+        error: null
+      }));
+    mocks.client = { from, rpc };
+
+    const page = await listMyNotifications({ data: { category: 'all', limit: 20 } });
+
+    expect(rpc).toHaveBeenCalledWith('get_my_result_notification_contexts', {
+      p_notification_ids: [resultNotificationId, readyNotificationId]
+    });
+    expect(rpc).not.toHaveBeenCalledWith('get_my_match_notification_contexts', expect.anything());
+    expect(page.items.map((item) => item.resultContext?.entry_ready)).toEqual([false, true]);
+    expect(page.items.every((item) => !item.matchContext)).toBe(true);
+  });
+
   it('uses the whole-store count RPC after authenticated access', async () => {
     const rpc = vi
       .fn<(...args: unknown[]) => Promise<{ data: number; error: null }>>()
@@ -138,6 +253,54 @@ describe('notification server functions', () => {
     );
     expect(rpc).toHaveBeenCalledWith('get_my_notification_target', { p_notification_id: id });
     expect(single).toHaveBeenCalledTimes(1);
+  });
+
+  it('resolves v3 targets with validated result context', async () => {
+    const eventId = '223e4567-e89b-12d3-a456-426614174001';
+    const proposalId = '323e4567-e89b-12d3-a456-426614174002';
+    const target = {
+      target_status: 'result_available',
+      community_id: id,
+      community_name: null,
+      invitation_id: null,
+      membership_status: null,
+      match_event_id: eventId,
+      match_available: true,
+      kind: 'result_added',
+      created_at: '2026-10-16T12:00:00.000Z',
+      result_context: {
+        notification_id: id,
+        notification_kind: 'result_added',
+        match_event_id: eventId,
+        community_id: id,
+        proposal_id: proposalId,
+        proposal_version: 1,
+        group_number: 1,
+        proposal_status: 'pending',
+        current_version: 1,
+        current_status: 'pending',
+        is_current: true,
+        classification: 'team_a',
+        score: '6–4',
+        submitted_by_name: 'Ari',
+        review_deadline_at: '2026-10-18T12:00:00.000Z',
+        venue: 'Central Court',
+        starts_at: '2026-10-16T12:00:00.000Z',
+        timezone: 'UTC',
+        entry_ready: false
+      }
+    };
+    const single = vi.fn<() => Promise<{ data: typeof target; error: null }>>();
+    single.mockResolvedValue({ data: target, error: null });
+    const rpc = vi.fn<(...args: unknown[]) => { single: typeof single }>(() => ({ single }));
+    mocks.client = { rpc };
+
+    await expect(getMyNotificationTargetV3({ data: { notificationId: id } })).resolves.toEqual(
+      target
+    );
+    expect(rpc).toHaveBeenCalledWith('get_my_notification_target_v3', {
+      p_notification_id: id
+    });
   });
 
   it('round-trips a raw Postgres cursor from one list page into the next request', async () => {
