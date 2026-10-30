@@ -236,7 +236,7 @@ For explicit reuse, verify the requested branch exists and continue on it; do no
 1- Push the commits to the remote repository
 2- If there is any error, ask the user for help to resolve the error
 3- Never skip the git hooks
-4- **NEVER push more than once for the same delivery.** Pre-push hook removed by approval; require `pnpm complete-check` before claiming done and verify CI. If the caller asks for more than one push, return a failure and ask for a single push instead.
+4- **NEVER push more than once for the same delivery.** Pre-push runs unit tests only (`pnpm test:unit`); require `pnpm complete-check` before claiming done and verify CI. If the caller asks for more than one push, return a failure and ask for a single push instead.
 
 ## Create a pull request description
 

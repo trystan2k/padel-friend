@@ -219,7 +219,7 @@ Rules:
 - **One commit per unit of work** (per task for an epic, per sub-issue for an issue), created at the end of that unit's implementation — never one giant commit at the end of the whole scope.
 - Message format, types, and the no-issue-identifiers rule follow `AGENTS.md` and the repository's `commitlint` config.
 - Stage exactly the files of the unit of work, using the per-task file list captured in the context bundle. Do not sweep unrelated or later-task files into an early commit.
-- **Push once, at the end.** Pre-push hook removed by approval; run `pnpm complete-check` before claiming done. Never push per commit.
+- **Push once, at the end.** Pre-push runs unit tests only (`pnpm test:unit`); run `pnpm complete-check` before claiming done. Never push per commit.
 - One PR per scope (see Delivery Scopes). Keep the branch diff against the base under roughly **1500 changed lines or 40 files** as a **recommendation** to avoid an unwieldy PR — this is a soft guideline, not a hard limit. If a task legitimately needs more, keep it in the same PR and proceed; never split a coherent unit of work solely to satisfy the guideline.
 
 ## Golden Rule
