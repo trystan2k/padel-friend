@@ -1,7 +1,7 @@
 ---
 description: Expert test automation agent for unit, integration, and E2E testing using stack-specific best practices and project conventions.
 mode: subagent
-model: openai/gpt-6-luna#high
+model: claude-agent/sonnet
 steps: 40
 permissions:
   - action: subagent
