@@ -1,5 +1,21 @@
 begin;
 
+-- Empty in production. Only trusted database fixtures may write this clock;
+-- no client role can read, write, or invoke the internal helper.
+create table public.match_result_alert_test_clock (
+  singleton boolean primary key default true check (singleton),
+  frozen_at timestamptz not null
+);
+alter table public.match_result_alert_test_clock enable row level security;
+revoke all on public.match_result_alert_test_clock from public, anon, authenticated, service_role;
+
+create function public.match_result_alert_clock()
+returns timestamptz language sql volatile set search_path = '' as $$
+  select coalesce((select frozen_at from public.match_result_alert_test_clock),
+                  pg_catalog.clock_timestamp())
+$$;
+revoke all on function public.match_result_alert_clock() from public, anon, authenticated, service_role;
+
 -- Include proposal identity in new command payloads. The receipt identity also
 -- distinguishes legacy ledger rows, whose payload predates proposal_id.
 do $migration$
@@ -63,7 +79,7 @@ begin
   end;
   if not found or v_proposal.active_version <> p_proposal_version
     or v_proposal.status <> 'pending'
-    or v_proposal.review_deadline_at <= pg_catalog.clock_timestamp() then
+    or v_proposal.review_deadline_at <= public.match_result_alert_clock() then
     return 0;
   end if;
   select version.* into v_version
@@ -123,7 +139,7 @@ begin
   end if;
   if (v_event.starts_at + case when v_event.duration_minutes is null then interval '0 minutes'
        else pg_catalog.make_interval(mins => v_event.duration_minutes) end)
-       > pg_catalog.clock_timestamp() then return false; end if;
+       > public.match_result_alert_clock() then return false; end if;
 
   v_notification_id := public.persist_notification(
     v_event.created_by, 'result.entry_ready:' || v_event.id::text,
@@ -284,9 +300,12 @@ begin
     proposal_id, proposal_version, due_at, enqueued_at, active
   ) values (
     new.id, new.active_version, new.review_deadline_at - interval '6 hours',
-    pg_catalog.clock_timestamp(), true
+    public.match_result_alert_clock(), true
   ) on conflict (proposal_id, proposal_version) do update
-    set due_at = excluded.due_at, next_attempt_at = null, active = true;
+    set due_at = excluded.due_at, next_attempt_at = null,
+        enqueued_at = case when public.match_result_alert_deadline_queue.active
+          then public.match_result_alert_deadline_queue.enqueued_at else excluded.enqueued_at end,
+        active = true;
   return new;
 end $$;
 revoke all on function public.sync_match_result_deadline_queue() from public, anon, authenticated;
@@ -336,7 +355,7 @@ begin
   values (
     new.id,
     new.starts_at + pg_catalog.make_interval(mins => coalesce(new.duration_minutes, 0)),
-    pg_catalog.clock_timestamp(),
+    public.match_result_alert_clock(),
     not exists (select 1 from public.match_event_result_entry_ready_dispatch dispatched
                  where dispatched.match_event_id = new.id)
   ) on conflict (match_event_id) do update
@@ -382,7 +401,7 @@ begin
          enqueued_at = case when not queue.active and not exists (
            select 1 from public.match_event_result_entry_ready_dispatch dispatched
             where dispatched.match_event_id = v_event_id
-         ) then pg_catalog.clock_timestamp() else queue.enqueued_at end
+         ) then public.match_result_alert_clock() else queue.enqueued_at end
    where queue.match_event_id = v_event_id;
 
   if tg_op = 'DELETE' then return old; end if;
@@ -445,12 +464,12 @@ begin
   ) values (
     p_kind, p_candidate_id, coalesce(p_version, 0), 1, 1,
     case when p_failure_code ~ '^[A-Z0-9_]{1,80}$' then p_failure_code else 'PROCESSING_ERROR' end,
-    pg_catalog.clock_timestamp()
+    public.match_result_alert_clock()
   ) on conflict (alert_kind, candidate_id, candidate_version) do update
     set attempt_count = public.match_result_alert_retry_fallback.attempt_count + 1,
         failure_count = public.match_result_alert_retry_fallback.failure_count + 1,
         last_failure_code = excluded.last_failure_code,
-        updated_at = pg_catalog.clock_timestamp();
+        updated_at = public.match_result_alert_clock();
 end $$;
 revoke all on function public.record_match_result_alert_fallback(text,uuid,bigint,text)
   from public, anon, authenticated;
@@ -562,12 +581,12 @@ begin
   v_code := case when p_failed and p_failure_code ~ '^[A-Z0-9_]{1,80}$'
     then p_failure_code when p_failed then 'PROCESSING_ERROR' else null end;
   v_next_attempt_at := case when not p_failed then null
-    when v_quarantined then pg_catalog.clock_timestamp() + pg_catalog.make_interval(
+    when v_quarantined then public.match_result_alert_clock() + pg_catalog.make_interval(
       hours => least(24, pg_catalog.power(
         2, greatest(v_failure_count - v_max_consecutive_failures, 0)
       ))::integer
     )
-    else pg_catalog.clock_timestamp() + pg_catalog.make_interval(
+    else public.match_result_alert_clock() + pg_catalog.make_interval(
       secs => least(300, 30 * pg_catalog.power(
         2, least(greatest(v_failure_count - 1, 0), 4)
       ))::integer
@@ -579,17 +598,17 @@ begin
   ) values (
     p_kind, p_candidate_id, coalesce(p_version, 0), 1,
     v_failure_count,
-    pg_catalog.clock_timestamp(),
+    public.match_result_alert_clock(),
     v_next_attempt_at,
     v_code,
     case when p_failed then 'Lifecycle alert failed; recovery policy applied.' end,
     case when v_quarantined then 'quarantined' end,
     case when v_quarantined and p_kind = 'entry_ready' then v_current_fingerprint end,
-    pg_catalog.clock_timestamp()
+    public.match_result_alert_clock()
   ) on conflict (alert_kind, candidate_id, candidate_version) do update
     set attempt_count = public.match_result_alert_processing_state.attempt_count + 1,
         failure_count = v_failure_count,
-        attempted_at = pg_catalog.clock_timestamp(),
+        attempted_at = public.match_result_alert_clock(),
         next_attempt_at = v_next_attempt_at,
         last_failure_code = v_code,
         last_failure_message = case when p_failed
@@ -606,7 +625,7 @@ begin
             or (not p_failed and public.match_result_alert_processing_state.terminal_outcome = 'quarantined')
             then null
           else public.match_result_alert_processing_state.roster_fingerprint end,
-        updated_at = pg_catalog.clock_timestamp();
+        updated_at = public.match_result_alert_clock();
 end $$;
 revoke all on function public.record_match_result_alert_attempt(text,uuid,bigint,boolean,text)
   from public, anon, authenticated;
@@ -687,7 +706,7 @@ begin
    for update;
   if not found then raise exception 'Missing deadline alert scan state'; end if;
 
-  v_now := pg_catalog.clock_timestamp();
+  v_now := public.match_result_alert_clock();
   v_resume_budget := (v_reminder_limit + 1) / 2;
   v_head_budget := v_reminder_limit - v_resume_budget;
   if v_max_examined >= v_reminder_limit then
@@ -758,7 +777,7 @@ begin
     end;
     if not v_claimed then
       update public.match_result_alert_deadline_queue
-         set next_attempt_at = pg_catalog.clock_timestamp()
+         set next_attempt_at = public.match_result_alert_clock()
            + public.match_result_alert_lock_defer_interval(v_candidate.proposal_id)
        where proposal_id = v_candidate.proposal_id
          and proposal_version = v_candidate.proposal_version;
@@ -767,7 +786,7 @@ begin
 
     v_reminder_claims := v_reminder_claims + 1;
     v_phase_claims := v_phase_claims + 1;
-    v_now := pg_catalog.clock_timestamp();
+    v_now := public.match_result_alert_clock();
     if v_proposal.status <> 'pending'
       or v_proposal.active_version <> v_candidate.proposal_version then
       update public.match_result_alert_deadline_queue
@@ -871,14 +890,14 @@ begin
       if not v_has_more then
         update public.match_result_alert_scan_state
            set resume_effective_key = null, resume_candidate_id = null,
-               resume_candidate_version = 0, updated_at = pg_catalog.clock_timestamp()
+               resume_candidate_version = 0, updated_at = public.match_result_alert_clock()
          where alert_kind = 'deadline';
       elsif v_resume_examined > 0 then
         update public.match_result_alert_scan_state
            set resume_effective_key = v_last_effective_key,
                resume_candidate_id = v_last_candidate_id,
                resume_candidate_version = v_last_candidate_version,
-               updated_at = pg_catalog.clock_timestamp()
+               updated_at = public.match_result_alert_clock()
          where alert_kind = 'deadline';
       end if;
     end if;
@@ -891,7 +910,7 @@ begin
    where state.alert_kind = 'entry_ready'
    for update;
   if not found then raise exception 'Missing entry-ready alert scan state'; end if;
-  v_now := pg_catalog.clock_timestamp();
+  v_now := public.match_result_alert_clock();
   v_resume_budget := (v_entry_ready_limit + 1) / 2;
   v_head_budget := v_entry_ready_limit - v_resume_budget;
   if v_max_examined >= v_entry_ready_limit then
@@ -965,7 +984,7 @@ begin
     end;
     if not v_claimed then
       update public.match_result_alert_entry_ready_queue
-         set next_attempt_at = pg_catalog.clock_timestamp()
+         set next_attempt_at = public.match_result_alert_clock()
            + public.match_result_alert_lock_defer_interval(v_candidate.match_event_id)
        where match_event_id = v_candidate.match_event_id;
       continue;
@@ -1086,14 +1105,14 @@ begin
       if not v_has_more then
         update public.match_result_alert_scan_state
            set resume_effective_key = null, resume_candidate_id = null,
-               resume_candidate_version = 0, updated_at = pg_catalog.clock_timestamp()
+               resume_candidate_version = 0, updated_at = public.match_result_alert_clock()
          where alert_kind = 'entry_ready';
       elsif v_resume_examined > 0 then
         update public.match_result_alert_scan_state
            set resume_effective_key = v_last_effective_key,
                resume_candidate_id = v_last_candidate_id,
                resume_candidate_version = 0,
-               updated_at = pg_catalog.clock_timestamp()
+               updated_at = public.match_result_alert_clock()
          where alert_kind = 'entry_ready';
       end if;
     end if;

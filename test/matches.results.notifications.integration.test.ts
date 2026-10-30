@@ -1,9 +1,8 @@
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { dotEnvPathFromImportMetaUrl, localSupabaseEnv } from './helpers/local-supabase-env';
 import {
   asRecord,
   fixtureSql,
-  sleep,
   sqlRows,
   startSql,
   waitForRows
@@ -49,6 +48,10 @@ describe.skipIf(!environment.env)('transactional result notifications', { timeou
   });
 
   beforeEach(async () => {
+    const [clockState] = await sqlRows(
+      'select count(*)::int as count from public.match_result_alert_test_clock'
+    );
+    if (clockState?.['count'] !== 0) throw new Error('Alert test clock leaked from previous case');
     // Producers scan global queues. Deactivate inherited local-fixture candidates
     // before each case so exact claim counts and cursor assertions use only rows
     // established by that case; reset both producer cursors with the queue state.
@@ -66,6 +69,10 @@ describe.skipIf(!environment.env)('transactional result notifications', { timeou
           as entry_ready`);
     if (activeQueues?.['deadline'] !== 0 || activeQueues?.['entry_ready'] !== 0)
       throw new Error('Notification queue isolation left active candidates before test setup');
+  });
+
+  afterEach(async () => {
+    await fixtureSql('delete from public.match_result_alert_test_clock');
   });
 
   afterAll(async () => {
@@ -471,6 +478,132 @@ describe.skipIf(!environment.env)('transactional result notifications', { timeou
 
     return { poisonEvents, poisonProposalIds, healthyEvents };
   }
+
+  it('keeps the fixture clock private and defaults to database wall time', async () => {
+    const [row] = await sqlRows(`select
+      not has_table_privilege('anon', 'public.match_result_alert_test_clock', 'select,insert,update,delete')
+        and not has_table_privilege('authenticated', 'public.match_result_alert_test_clock', 'select,insert,update,delete')
+        and not has_table_privilege('service_role', 'public.match_result_alert_test_clock', 'select,insert,update,delete') as private_table,
+      not has_function_privilege('anon', 'public.match_result_alert_clock()', 'execute')
+        and not has_function_privilege('authenticated', 'public.match_result_alert_clock()', 'execute')
+        and not has_function_privilege('service_role', 'public.match_result_alert_clock()', 'execute') as private_function,
+      (select relrowsecurity from pg_catalog.pg_class
+       where oid = 'public.match_result_alert_test_clock'::regclass) as rls_enabled,
+      abs(extract(epoch from (public.match_result_alert_clock() - pg_catalog.clock_timestamp()))) < 1 as real_clock`);
+    expect(row).toEqual({
+      private_table: true,
+      private_function: true,
+      rls_enabled: true,
+      real_clock: true
+    });
+  });
+
+  it('ages newly enqueued and reactivated candidates using the scheduler clock', async () => {
+    await advanceTrustedResultSchedulerClock(3600);
+    const eventId = await f.protectedEvent();
+    const submitted = await f.submit(eventId, { submitter: f.admin });
+    expect(submitted.error).toBeNull();
+    const proposalId = String(asRecord(submitted.data).proposal_id);
+    await setResultReviewDeadlineOffset(proposalId, 1, 40 * 60 * 60);
+    const [initial] = await sqlRows(`select public.match_result_alert_clock()::text as old_clock,
+      (select enqueued_at = public.match_result_alert_clock()
+        from public.match_result_alert_deadline_queue where proposal_id = '${proposalId}') as deadline_clock,
+      (select enqueued_at = public.match_result_alert_clock()
+        from public.match_result_alert_entry_ready_queue where match_event_id = '${eventId}') as entry_clock`);
+    expect(initial).toMatchObject({ deadline_clock: true, entry_clock: true });
+    await fixtureSql(`update public.match_result_alert_deadline_queue set active = false
+      where proposal_id = '${proposalId}';
+      update public.match_result_alert_entry_ready_queue set active = false
+      where match_event_id = '${eventId}'`);
+    await advanceTrustedResultSchedulerClock(3600);
+    await setResultReviewDeadlineOffset(proposalId, 1, 40 * 60 * 60);
+    await fixtureSql(`update public.match_event_registrations set lifecycle = lifecycle
+      where match_event_id = '${eventId}' and user_id = '${f.players[0]!.id}'`);
+    const [reactivated] = await sqlRows(`select
+      (select active and enqueued_at = public.match_result_alert_clock()
+        and effective_key > public.match_result_alert_aging_at('${String(initial?.['old_clock'])}'::timestamptz)
+        and effective_key = public.match_result_alert_aging_at(public.match_result_alert_clock())
+        from public.match_result_alert_deadline_queue where proposal_id = '${proposalId}') as deadline,
+      (select active and enqueued_at = public.match_result_alert_clock()
+        and effective_key > public.match_result_alert_aging_at('${String(initial?.['old_clock'])}'::timestamptz)
+        and effective_key = public.match_result_alert_aging_at(public.match_result_alert_clock())
+        from public.match_result_alert_entry_ready_queue where match_event_id = '${eventId}') as entry_ready`);
+    expect(reactivated).toEqual({ deadline: true, entry_ready: true });
+  });
+
+  it('schedules quarantined retries at one hour, two hours, and the 24-hour cap', async () => {
+    const candidateId = crypto.randomUUID();
+    try {
+      await advanceTrustedResultSchedulerClock(1);
+      const delays: unknown[] = [];
+      const boundaries: unknown[] = [];
+      for (let failure = 1; failure <= 15; failure += 1) {
+        await fixtureSql(`select public.record_match_result_alert_attempt(
+          'deadline', '${candidateId}', 1, true, 'P0001')`);
+        if ([10, 11, 15].includes(failure)) {
+          const [row] = await sqlRows(`select extract(epoch from
+              (next_attempt_at - public.match_result_alert_clock()))::int as delay
+            from public.match_result_alert_processing_state
+            where alert_kind = 'deadline' and candidate_id = '${candidateId}'
+              and candidate_version = 1`);
+          delays.push(row?.['delay']);
+          await fixtureSql(`update public.match_result_alert_test_clock set frozen_at = (
+            select next_attempt_at - interval '1 second'
+            from public.match_result_alert_processing_state
+            where alert_kind = 'deadline' and candidate_id = '${candidateId}'
+              and candidate_version = 1)`);
+          const [before] =
+            await sqlRows(`select next_attempt_at > public.match_result_alert_clock() as waiting
+            from public.match_result_alert_processing_state
+            where alert_kind = 'deadline' and candidate_id = '${candidateId}'
+              and candidate_version = 1`);
+          await advanceTrustedResultSchedulerClock(1);
+          const [at] =
+            await sqlRows(`select next_attempt_at <= public.match_result_alert_clock() as due
+            from public.match_result_alert_processing_state
+            where alert_kind = 'deadline' and candidate_id = '${candidateId}'
+              and candidate_version = 1`);
+          boundaries.push(before?.['waiting'], at?.['due']);
+        }
+      }
+      expect(delays).toEqual([3600, 7200, 86400]);
+      expect(boundaries).toEqual([true, true, true, true, true, true]);
+    } finally {
+      await fixtureSql(`delete from public.match_result_alert_processing_state
+        where alert_kind = 'deadline' and candidate_id = '${candidateId}'`);
+    }
+  });
+
+  it('records real-clock delivery timestamps for both producers within their due bounds', async () => {
+    const deadlineEvent = await f.protectedEvent();
+    const submitted = await f.submit(deadlineEvent, { submitter: f.admin });
+    expect(submitted.error).toBeNull();
+    const proposalId = String(asRecord(submitted.data).proposal_id);
+    await setResultReviewDeadlineOffset(proposalId, 1, 6 * 60 * 60 - 2);
+    const entryEvent = await finishedEntryEvent(2);
+    await fixtureSql(`update public.match_result_alert_entry_ready_queue
+      set due_at = pg_catalog.clock_timestamp() - interval '2 seconds'
+      where match_event_id = '${entryEvent}'`);
+    const [result] = await sqlRows(
+      'select public.process_match_result_lifecycle_alerts(25,25) as result'
+    );
+    expect(asRecord(result?.['result'])).toMatchObject({ reminders: 4, entry_ready: 1, failed: 0 });
+    const [times] = await sqlRows(`select
+      (select extract(epoch from (min(n.created_at) - q.due_at))
+       from public.notifications n join public.match_result_alert_deadline_queue q
+         on n.event_key = 'result.deadline:' || q.proposal_id::text || ':v' || q.proposal_version::text
+       where q.proposal_id = '${proposalId}' group by q.due_at) as reminder_delay,
+      (select extract(epoch from (d.dispatched_at - q.due_at))
+       from public.match_event_result_entry_ready_dispatch d
+       join public.match_result_alert_entry_ready_queue q on q.match_event_id = d.match_event_id
+       where d.match_event_id = '${entryEvent}') as entry_delay`);
+    for (const delay of [times?.['reminder_delay'], times?.['entry_delay']]) {
+      expect(delay).not.toBeNull();
+      expect(delay).toBeDefined();
+      expect(Number(delay)).toBeGreaterThanOrEqual(0);
+      expect(Number(delay)).toBeLessThan(30);
+    }
+  });
 
   it('installs aged indexed queues with per-producer resume state and no retry deque', async () => {
     const indexes = await sqlRows(`select indexname, indexdef from pg_catalog.pg_indexes
@@ -1056,7 +1189,7 @@ describe.skipIf(!environment.env)('transactional result notifications', { timeou
                from public.match_result_alert_processing_state
               where alert_kind = 'deadline' and candidate_id = '${deadlineRetry.proposalId}'
                 and candidate_version = 1) as deadline_quarantined,
-            (select next_attempt_at <= pg_catalog.clock_timestamp()
+            (select next_attempt_at <= public.match_result_alert_clock()
                from public.match_result_alert_processing_state
               where alert_kind = 'deadline' and candidate_id = '${deadlineRetry.proposalId}'
                 and candidate_version = 1) as deadline_retry_due,
@@ -1064,7 +1197,7 @@ describe.skipIf(!environment.env)('transactional result notifications', { timeou
                from public.match_result_alert_processing_state
               where alert_kind = 'entry_ready' and candidate_id = '${entryRetry}'
                 and candidate_version = 0) as entry_quarantined,
-            (select next_attempt_at <= pg_catalog.clock_timestamp()
+            (select next_attempt_at <= public.match_result_alert_clock()
                from public.match_result_alert_processing_state
               where alert_kind = 'entry_ready' and candidate_id = '${entryRetry}'
                 and candidate_version = 0) as entry_retry_due`);
@@ -1290,11 +1423,11 @@ describe.skipIf(!environment.env)('transactional result notifications', { timeou
             where match_event_id = '${entryHead}'`);
         }
         const retryEligibility = await sqlRows(`select
-            (select next_attempt_at <= pg_catalog.clock_timestamp()
+            (select next_attempt_at <= public.match_result_alert_clock()
                from public.match_result_alert_deadline_queue
               where proposal_id = '${deadlineHead.proposalId}' and proposal_version = 1)
               as deadline_head_due,
-            (select next_attempt_at <= pg_catalog.clock_timestamp()
+            (select next_attempt_at <= public.match_result_alert_clock()
                from public.match_result_alert_entry_ready_queue
               where match_event_id = '${entryHead}') as entry_head_due`);
         expect(retryEligibility).toEqual([
@@ -1934,6 +2067,8 @@ describe.skipIf(!environment.env)('transactional result notifications', { timeou
     expect(entryPredecessorCount?.['count']).toBe(predecessorCount);
 
     const maxTicks = Math.ceil((predecessorCount + 1) / claimsPerRun) + 1;
+    let deadlineDispatchedAt: number | undefined;
+    let entryDispatchedAt: number | undefined;
     for (let tick = 0; tick < maxTicks; tick += 1) {
       await sqlRows(`select public.process_match_result_lifecycle_alerts(
         ${claimsPerRun}, ${claimsPerRun}, 1000) as result`);
@@ -1947,13 +2082,22 @@ describe.skipIf(!environment.env)('transactional result notifications', { timeou
       const entryDispatched = entryTailAlerts.some(
         (row) => row['event_key'] === `result.entry_ready:${entryTail}`
       );
+      if (
+        (deadlineDispatched && deadlineDispatchedAt === undefined) ||
+        (entryDispatched && entryDispatchedAt === undefined)
+      ) {
+        const [clock] = await sqlRows('select public.match_result_alert_clock()::text as now');
+        const now = Date.parse(String(clock?.['now']));
+        if (deadlineDispatched && deadlineDispatchedAt === undefined) deadlineDispatchedAt = now;
+        if (entryDispatched && entryDispatchedAt === undefined) entryDispatchedAt = now;
+      }
       if (deadlineDispatched && entryDispatched) break;
       if (tick + 1 < maxTicks) await advanceTrustedResultSchedulerClock(intervalSeconds);
     }
 
-    const [deadlineDispatch] =
-      await sqlRows(`select min(notification.created_at)::text as dispatched_at,
-        queue.due_at::text as due_at
+    // Simulated cadence measures scheduler decisions in seam time. Persisted
+    // timestamps remain real wall time and are checked in the real-clock test.
+    const [deadlineDispatch] = await sqlRows(`select queue.due_at::text as due_at
       from public.match_result_alert_deadline_queue queue
       join public.notifications notification on notification.event_key =
         'result.deadline:' || queue.proposal_id::text || ':v' || queue.proposal_version::text
@@ -1961,23 +2105,20 @@ describe.skipIf(!environment.env)('transactional result notifications', { timeou
       group by queue.due_at`);
     expect(deadlineDispatch).toBeDefined();
     const deadlineDelayMs =
-      Date.parse(String(deadlineDispatch?.['dispatched_at'])) -
-      Date.parse(String(deadlineDispatch?.['due_at']));
+      (deadlineDispatchedAt ?? Number.NaN) - Date.parse(String(deadlineDispatch?.['due_at']));
     expect(deadlineDelayMs).toBeGreaterThanOrEqual(
       (predecessorCount / claimsPerRun) * intervalSeconds * 1000 - 1000
     );
     expect(deadlineDelayMs).toBeLessThanOrEqual(expectedBoundSeconds * 1000);
 
-    const [entryDispatch] = await sqlRows(`select dispatch.dispatched_at::text as dispatched_at,
-        queue.due_at::text as due_at
+    const [entryDispatch] = await sqlRows(`select queue.due_at::text as due_at
       from public.match_event_result_entry_ready_dispatch dispatch
       join public.match_result_alert_entry_ready_queue queue
         on queue.match_event_id = dispatch.match_event_id
       where dispatch.match_event_id = '${entryTail}'`);
     expect(entryDispatch).toBeDefined();
     const entryDelayMs =
-      Date.parse(String(entryDispatch?.['dispatched_at'])) -
-      Date.parse(String(entryDispatch?.['due_at']));
+      (entryDispatchedAt ?? Number.NaN) - Date.parse(String(entryDispatch?.['due_at']));
     expect(entryDelayMs).toBeGreaterThanOrEqual(
       (predecessorCount / claimsPerRun) * intervalSeconds * 1000 - 1000
     );
@@ -2513,6 +2654,28 @@ describe.skipIf(!environment.env)('transactional result notifications', { timeou
     };
     const headIds = deadlineHeads.map(({ proposalId }) => `'${proposalId}'`).join(',');
     const entryHeadIds = entryHeads.map((eventId) => `'${eventId}'`).join(',');
+    const tickEligibility: unknown[] = [];
+    let previousVisitedCount = 0;
+    const checkVisitedHeadEligibility = async (visitedCount: number, due: boolean) => {
+      const deadlineIds = deadlineHeads
+        .slice(0, visitedCount)
+        .map(({ proposalId }) => `'${proposalId}'`)
+        .join(',');
+      const entryIds = entryHeads
+        .slice(0, visitedCount)
+        .map((eventId) => `'${eventId}'`)
+        .join(',');
+      const [row] = await sqlRows(`select
+        (select count(*)::int from public.match_result_alert_deadline_queue
+          where proposal_id = any(array[${deadlineIds}]::uuid[])
+            and (next_attempt_at <= public.match_result_alert_clock()) = ${due}) as deadlines,
+        (select count(*)::int from public.match_result_alert_entry_ready_queue
+          where match_event_id = any(array[${entryIds}]::uuid[])
+            and (next_attempt_at <= public.match_result_alert_clock()) = ${due}) as entries`);
+      tickEligibility.push(
+        row?.['deadlines'] === visitedCount && row?.['entries'] === visitedCount
+      );
+    };
     const makeVisitedHeadsDueNextTick = async (visitedCount: number) => {
       const visitedDeadlineIds = deadlineHeads
         .slice(0, visitedCount)
@@ -2523,11 +2686,12 @@ describe.skipIf(!environment.env)('transactional result notifications', { timeou
         .map((eventId) => `'${eventId}'`)
         .join(',');
       await fixtureSql(`update public.match_result_alert_deadline_queue
-        set next_attempt_at = pg_catalog.clock_timestamp() + interval '30 seconds'
+        set next_attempt_at = public.match_result_alert_clock() + interval '30 seconds'
         where proposal_id = any(array[${visitedDeadlineIds}]::uuid[]);
         update public.match_result_alert_entry_ready_queue
-        set next_attempt_at = pg_catalog.clock_timestamp() + interval '30 seconds'
+        set next_attempt_at = public.match_result_alert_clock() + interval '30 seconds'
         where match_event_id = any(array[${visitedEntryIds}]::uuid[])`);
+      await checkVisitedHeadEligibility(visitedCount, false);
     };
     const deadlineOwnedIds = [
       ...deadlineHeads.map(({ proposalId }) => proposalId),
@@ -2547,7 +2711,10 @@ describe.skipIf(!environment.env)('transactional result notifications', { timeou
       const capTicks = Math.ceil(headCount / cap) + 1;
       let tailDispatchTick: number | null = null;
       for (let tick = 0; tick < capTicks; tick += 1) {
-        if (tick > 0) await advanceTrustedResultSchedulerClock(60);
+        if (tick > 0) {
+          await advanceTrustedResultSchedulerClock(60);
+          await checkVisitedHeadEligibility(previousVisitedCount, true);
+        }
         const [processed] = await sqlRows(`select public.process_match_result_lifecycle_alerts(
           p_reminder_limit => 100,
           p_entry_ready_limit => 100,
@@ -2613,10 +2780,13 @@ describe.skipIf(!environment.env)('transactional result notifications', { timeou
         }
 
         expect(tick + 1).toBeLessThan(capTicks);
-        await makeVisitedHeadsDueNextTick(Math.min((tick + 1) * cap, headCount));
+        previousVisitedCount = Math.min((tick + 1) * cap, headCount);
+        await makeVisitedHeadsDueNextTick(previousVisitedCount);
       }
       expect(tailDispatchTick).not.toBeNull();
       expect(tailDispatchTick).toBeLessThanOrEqual(capTicks);
+      expect(tickEligibility.length).toBeGreaterThan(0);
+      expect(tickEligibility.every(Boolean)).toBe(true);
     } finally {
       await Promise.all(holders.map((holder) => holder.stop()));
       await fixtureSql(`update public.match_result_alert_deadline_queue
@@ -3193,7 +3363,7 @@ describe.skipIf(!environment.env)('transactional result notifications', { timeou
       await removeFailure();
     }
 
-    await sleep(31_000);
+    await advanceTrustedResultSchedulerClock(31);
     const [retryRow] = await sqlRows(
       'select public.process_match_result_lifecycle_alerts(2, 1) as result'
     );

@@ -1402,6 +1402,22 @@ export type Database = {
         }
         Relationships: []
       }
+      match_result_alert_test_clock: {
+        Row: {
+          frozen_at: string
+          singleton: boolean
+        }
+        ComputedFields: never
+        Insert: {
+          frozen_at: string
+          singleton?: boolean
+        }
+        Update: {
+          frozen_at?: string
+          singleton?: boolean
+        }
+        Relationships: []
+      }
       notes: {
         Row: {
           body: string
@@ -2050,6 +2066,7 @@ export type Database = {
           }
       match_result_alert_aging_at: { Args: { p_enqueued_at: string }; Returns: string }
       match_result_alert_aging_horizon: { Args: Record<PropertyKey, never>; Returns: string }
+      match_result_alert_clock: { Args: Record<PropertyKey, never>; Returns: string }
       match_result_alert_lock_defer_interval: { Args: { p_candidate_id: string }; Returns: string }
       match_result_entry_roster_fingerprint: { Args: { p_event_id: string }; Returns: string }
       notify_match_result_deadline: {

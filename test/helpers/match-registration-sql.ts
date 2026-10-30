@@ -329,7 +329,7 @@ export async function waitForRows(
   ready: (rows: SqlRow[]) => boolean,
   description: string,
   timeoutMs = 20000,
-  pollIntervalMs = 150
+  pollIntervalMs = 25
 ): Promise<SqlRow[]> {
   const deadline = Date.now() + timeoutMs;
   let rows: SqlRow[] = [];
@@ -378,7 +378,7 @@ export function makeRawRpc(restUrl: string, anonKey: string): RawRpc {
  * Builds a proven concurrency barrier: a retained trusted-SQL holder locks the
  * community row every registration RPC must take first. The confirm-and-
  * release probe is spawned BEFORE the contenders fire and polls
- * pg_stat_activity INSIDE the database (50 ms granularity), because the RPC
+ * pg_stat_activity INSIDE the database (25 ms granularity), because the RPC
  * role runs with an 8 s statement_timeout — slow out-of-process probing would
  * miss the blocked window entirely. Postgres queues the waiters in a chain
  * (holder → contender A → contender B), so "proven overlap" means: exactly
@@ -418,7 +418,7 @@ export async function proveEventLockBarrier(params: {
       (rows) => rows.length === 1,
       'the trusted lock holder backend',
       20000,
-      100
+      25
     );
     const holderPid = Number(holderRow!['value']);
     expect(Number.isInteger(holderPid), 'holder pid').toBe(true);
@@ -495,7 +495,7 @@ export async function proveEventLockBarrier(params: {
                                and c.query like '%${params.eventId}%'));
           exit when (v_blocked = ${blockedExpected} and v_holder_direct >= 1 and v_stray = 0)
                  or pg_catalog.clock_timestamp() > v_deadline;
-          perform pg_catalog.pg_sleep(0.05);
+          perform pg_catalog.pg_sleep(0.025);
         end loop;
         if v_blocked <> ${blockedExpected} or v_holder_direct < 1 or v_stray <> 0 then
           raise exception 'barrier not proven: blocked=% holder_direct=% stray=% waits=%', v_blocked, v_holder_direct, v_stray,
@@ -548,7 +548,7 @@ export async function proveOrderedEventLockBarrier(params: {
       (rows) => rows.length === 1,
       'the ordered trusted lock holder backend',
       20000,
-      100
+      25
     );
     const holderPid = Number(holderRow!['value']);
     expect(Number.isInteger(holderPid), 'ordered holder pid').toBe(true);
@@ -563,7 +563,7 @@ export async function proveOrderedEventLockBarrier(params: {
       (rows) => rows.length === 1,
       'first RPC directly blocked by ordered event holder',
       6000,
-      50
+      25
     );
 
     second = params.fireSecond();
@@ -592,7 +592,7 @@ export async function proveOrderedEventLockBarrier(params: {
              and ${holderPid}=any(pg_catalog.pg_blocking_pids(a.pid))
              and a.pid <> pg_catalog.pg_backend_pid() and a.pid <> ${holderPid};
           exit when (v_blocked=2 and v_direct=1) or pg_catalog.clock_timestamp()>v_deadline;
-          perform pg_catalog.pg_sleep(0.05);
+          perform pg_catalog.pg_sleep(0.025);
         end loop;
         if v_blocked<>2 or v_direct<>1 then
           raise exception 'ordered barrier not proven: blocked=% direct=% waits=%',v_blocked,v_direct,

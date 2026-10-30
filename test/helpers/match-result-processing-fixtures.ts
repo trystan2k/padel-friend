@@ -119,13 +119,15 @@ export async function makeMatchResultAlertRetriesDue(
   `);
 }
 
-/** Wait one trusted PostgreSQL scheduler interval for cadence-bound tests. */
+/** Advance the fixture-only scheduler clock without changing the database wall clock. */
 export async function advanceTrustedResultSchedulerClock(intervalSeconds = 60): Promise<void> {
   if (!Number.isSafeInteger(intervalSeconds) || intervalSeconds < 1 || intervalSeconds > 3600)
     throw new Error('Scheduler clock fixture interval must be between 1 and 3600 seconds');
-  await sqlRows(`select pg_catalog.pg_sleep(${intervalSeconds})`, {
-    timeoutMs: (intervalSeconds + 10) * 1000
-  });
+  await fixtureSql(`insert into public.match_result_alert_test_clock(singleton, frozen_at)
+    values (true, pg_catalog.clock_timestamp() + pg_catalog.make_interval(secs => ${intervalSeconds}))
+    on conflict (singleton) do update
+      set frozen_at = public.match_result_alert_test_clock.frozen_at
+        + pg_catalog.make_interval(secs => ${intervalSeconds})`);
 }
 
 /** Seed stale v1 retry metadata so correction-reset behavior stays observable. */
