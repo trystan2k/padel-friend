@@ -3,22 +3,39 @@ import { Link } from '@tanstack/react-router';
 import { useTranslation } from 'react-i18next';
 import type { MatchEventDetail } from './match-contracts';
 import type { ResultProposal } from './match-result-model';
-import { MatchResultPending } from './MatchResultPending';
+import { MatchResultReview } from './MatchResultReview';
 import { MatchResultNavigation } from './MatchResultNavigation';
-import { matchResultStyles as s } from './match-result.styles';
+import {
+  matchResultReviewStyles as reviewStyles,
+  matchResultStyles as s
+} from './match-result.styles';
+import { useMatchResultFreshness } from './use-match-result-freshness';
 
 export function MatchResultDetail({
   event,
   proposals,
-  reviewerGroup,
-  canRecord
+  canRecord,
+  onRefresh,
+  proposalsError = false
 }: {
   event: MatchEventDetail;
   proposals: ResultProposal[];
-  reviewerGroup: number | null;
   canRecord: boolean;
+  onRefresh: () => void | Promise<void>;
+  proposalsError?: boolean;
 }) {
   const { t, i18n } = useTranslation();
+  useMatchResultFreshness({
+    eventId: event.event_id,
+    asOf: event.as_of,
+    proposals,
+    onRefresh
+  });
+  const expectedGroups = event.result_summary.expected_group_count;
+  const groups = Array.from({ length: expectedGroups }, (_, index) => index + 1);
+  const proposalsByGroup = new Map(proposals.map((proposal) => [proposal.group_number, proposal]));
+  const singlePendingGroup =
+    expectedGroups === 1 && proposals.length === 1 && proposals[0]?.status === 'pending';
   const starts = new Date(event.starts_at);
   const locale = i18n.language === 'en' ? 'en-GB' : i18n.language;
   const date = new Intl.DateTimeFormat(locale, {
@@ -35,7 +52,7 @@ export function MatchResultDetail({
     timeZone: event.timezone
   });
   return (
-    <main data-result-route="pending" data-route-chrome="navigation" {...stylex.props(s.page)}>
+    <main data-result-route="lifecycle" data-route-chrome="navigation" {...stylex.props(s.page)}>
       <header {...stylex.props(s.routeHeader)}>
         <Link to="/matches" aria-label={t('matches.back')} {...stylex.props(s.routeBack)}>
           ‹
@@ -102,24 +119,80 @@ export function MatchResultDetail({
             )}
           </p>
         </section>
-        {proposals.map((proposal) => (
-          <MatchResultPending
-            key={proposal.proposal_id}
-            proposal={proposal}
-            timezone={event.timezone}
-            asOf={event.as_of}
-            canReview={reviewerGroup === proposal.group_number}
-          />
-        ))}
-        {canRecord && event.group_count > proposals.length && (
-          <Link
-            to="/matches/$eventId/record"
-            params={{ eventId: event.event_id }}
-            {...stylex.props(s.button)}
+        {!singlePendingGroup && (
+          <section
+            aria-label={t('matches.results.resolution.title')}
+            {...stylex.props(
+              reviewStyles.resolutionBanner,
+              event.result_summary.result_resolution === 'completed' &&
+                reviewStyles.resolutionComplete
+            )}
           >
-            {t('matches.results.title')}
-          </Link>
+            <strong>
+              {t(
+                `matches.results.resolution.${event.result_summary.result_resolution === 'awaiting_results' ? 'awaitingResults' : event.result_summary.result_resolution === 'partially_resolved' ? 'partiallyResolved' : 'completed'}`
+              )}
+            </strong>
+            <span>
+              {t('matches.results.resolution.progress', {
+                confirmed: event.result_summary.confirmed_group_count,
+                expected: expectedGroups
+              })}
+            </span>
+          </section>
         )}
+        {proposalsError && (
+          <section role="alert" {...stylex.props(s.card)}>
+            <p {...stylex.props(s.copy)}>{t('matches.results.errors.unavailable')}</p>
+            <button type="button" {...stylex.props(s.button)} onClick={() => void onRefresh()}>
+              {t('matches.results.reload')}
+            </button>
+          </section>
+        )}
+        {!proposalsError &&
+          groups.map((groupNumber) => {
+            const proposal = proposalsByGroup.get(groupNumber);
+            if (proposal)
+              return (
+                <div key={proposal.proposal_id} id={`result-group-${groupNumber}`} tabIndex={-1}>
+                  <MatchResultReview
+                    eventId={event.event_id}
+                    proposal={proposal}
+                    timezone={event.timezone}
+                    asOf={event.as_of}
+                    compact={expectedGroups > 1}
+                    onRefresh={onRefresh}
+                  />
+                </div>
+              );
+            return (
+              <article
+                key={groupNumber}
+                id={`result-group-${groupNumber}`}
+                tabIndex={-1}
+                {...stylex.props(reviewStyles.resultCard)}
+              >
+                <header {...stylex.props(reviewStyles.resultHeader)}>
+                  <h3 {...stylex.props(reviewStyles.groupHeading)}>
+                    {t('matches.results.group', { number: groupNumber })}
+                  </h3>
+                  <span {...stylex.props(reviewStyles.statusBadge, reviewStyles.statusAwaiting)}>
+                    {t('matches.results.awaitingResult')}
+                  </span>
+                </header>
+                {canRecord && (
+                  <Link
+                    to="/matches/$eventId/record"
+                    params={{ eventId: event.event_id }}
+                    search={{ correctionProposalId: undefined, groupNumber }}
+                    {...stylex.props(s.button)}
+                  >
+                    {t('matches.results.title')}
+                  </Link>
+                )}
+              </article>
+            );
+          })}
       </div>
       <MatchResultNavigation />
     </main>

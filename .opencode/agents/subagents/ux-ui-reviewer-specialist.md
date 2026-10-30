@@ -2,7 +2,7 @@
 description: Expert UX/UI reviewer of visual fidelity, production UX, accessibility, and design-token quality; distinguishes meaningful mismatches from cross-renderer residuals.
 mode: subagent
 model: openai/gpt-6.1-terra
-steps: 20
+steps: 40
 permissions:
   - action: subagent
     resource: "*"
@@ -67,6 +67,30 @@ permissions:
   - action: engram*
     resource: "*"
     effect: deny
+  - action: shell
+    resource: "ps"
+    effect: allow
+  - action: shell
+    resource: "ps *"
+    effect: allow
+  - action: shell
+    resource: "grep *"
+    effect: allow
+  - action: shell
+    resource: "head *"
+    effect: allow
+  - action: shell
+    resource: "tail *"
+    effect: allow
+  - action: shell
+    resource: "awk *"
+    effect: allow
+  - action: shell
+    resource: "sed"
+    effect: allow
+  - action: shell
+    resource: "sed *"
+    effect: allow    
   - action: external_directory
     resource: "*"
     effect: deny

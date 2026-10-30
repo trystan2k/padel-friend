@@ -1,5 +1,4 @@
 import { createFileRoute, Outlet, useChildMatches, useRouter } from '@tanstack/react-router';
-import { getMatchEventResultProposals } from '../features/matches/match-result.functions';
 import { MatchDetailPage } from '../features/matches/MatchDetailPage';
 import { getMatchEvent } from '../features/matches/matches.functions';
 import {
@@ -13,6 +12,7 @@ import {
   getMatchEventManagement,
   listMatchEventManagementParticipants
 } from '../features/matches/match-management.functions';
+import { loadMatchResultProposals } from '../features/matches/match-result.routes';
 
 export async function loadMatchDetail(eventId: string) {
   try {
@@ -85,7 +85,7 @@ export const Route = createFileRoute('/_protected/matches/$eventId')({
     const registration = await loadMatchRegistration(params.eventId);
     const eventManagement = capabilities?.status === 'ok' ? capabilities.value : null;
     const isCreator = eventManagement?.is_organizer === true;
-    const [callerLevel, requestQueue, roster, invitation, management, proposals] =
+    const [callerLevel, requestQueue, roster, invitation, management, resultProposals] =
       await Promise.all([
         loadCallerLevel(),
         isCreator
@@ -100,16 +100,16 @@ export const Route = createFileRoute('/_protected/matches/$eventId')({
               () => ({ status: 'error' as const })
             )
           : Promise.resolve(null),
-        getMatchEventResultProposals({ data: { event_id: params.eventId } }).catch(() => null)
+        loadMatchResultProposals(params.eventId)
       ]);
     return {
       ...detail,
       ...registration,
       isCreator,
       eventManagement,
-      proposals: proposals?.status === 'ok' ? proposals.value : [],
-      proposalsError:
-        proposals === null || (proposals.status === 'error' && proposals.code !== 'forbidden'),
+      proposals: resultProposals.proposals,
+      proposalsError: resultProposals.proposalsError,
+      proposalsForbidden: resultProposals.proposalsForbidden,
       callerLevel,
       ...requestQueue,
       ...roster,
@@ -141,6 +141,7 @@ export const Route = createFileRoute('/_protected/matches/$eventId')({
         managementError={data.managementError}
         proposals={data.proposals}
         proposalsError={data.proposalsError}
+        proposalsForbidden={data.proposalsForbidden}
       />
     );
   }

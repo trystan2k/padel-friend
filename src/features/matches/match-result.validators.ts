@@ -21,6 +21,17 @@ export class MatchResultValidationError extends Error {
   }
 }
 
+export const RESULT_REJECTION_REASONS = [
+  'SCORE_INCORRECT',
+  'TEAMS_INCORRECT',
+  'PLAYERS_INCORRECT',
+  'GROUP_ASSIGNMENT_INCORRECT',
+  'MATCH_DID_NOT_HAPPEN',
+  'MATCH_TYPE_INCORRECT',
+  'CLASSIFICATION_INCORRECT',
+  'OTHER'
+] as const;
+
 function exact(value: unknown, keys: readonly string[]): value is Record<string, unknown> {
   return (
     typeof value === 'object' &&
@@ -121,6 +132,99 @@ export function validateMatchResultTeams(value: unknown): ResultTeams {
 export function validateGetMatchEventResultProposals(value: unknown) {
   if (!exact(value, ['event_id'])) throw new MatchResultValidationError('INVALID_REQUEST');
   return { event_id: validateMatchUuid(value.event_id) };
+}
+
+export function validateGetMatchEventOfficialResults(value: unknown) {
+  if (!exact(value, ['event_id'])) throw new MatchResultValidationError('INVALID_REQUEST');
+  return { event_id: validateMatchUuid(value.event_id) };
+}
+
+export function validateReviewMatchEventResult(value: unknown) {
+  if (
+    !exact(value, [
+      'proposal_id',
+      'expected_version',
+      'decision',
+      'reason_code',
+      'reason_note',
+      'request_id'
+    ]) ||
+    typeof value.expected_version !== 'number' ||
+    !Number.isSafeInteger(value.expected_version) ||
+    value.expected_version < 1 ||
+    (value.decision !== 'approve' && value.decision !== 'reject')
+  )
+    throw new MatchResultValidationError('INVALID_REQUEST');
+  const proposal_id = validateMatchUuid(value.proposal_id);
+  const request_id = validateMatchUuid(value.request_id);
+  if (value.decision === 'approve') {
+    if (value.reason_code !== null || value.reason_note !== null)
+      throw new MatchResultValidationError('INVALID_REVIEW');
+    return {
+      proposal_id,
+      expected_version: value.expected_version,
+      decision: value.decision,
+      reason_code: null,
+      reason_note: null,
+      request_id
+    };
+  }
+  if (
+    typeof value.reason_code !== 'string' ||
+    !RESULT_REJECTION_REASONS.some((reason) => reason === value.reason_code) ||
+    (value.reason_note !== null &&
+      (typeof value.reason_note !== 'string' ||
+        !value.reason_note.trim() ||
+        value.reason_note.length > 500 ||
+        /\p{Cc}/u.test(value.reason_note))) ||
+    (value.reason_code === 'OTHER' && value.reason_note === null)
+  )
+    throw new MatchResultValidationError('INVALID_REJECTION_REASON');
+  return {
+    proposal_id,
+    expected_version: value.expected_version,
+    decision: value.decision,
+    reason_code: value.reason_code,
+    reason_note: typeof value.reason_note === 'string' ? value.reason_note.trim() : null,
+    request_id
+  };
+}
+
+export function validateCorrectMatchEventResult(value: unknown) {
+  if (
+    !exact(value, [
+      'event_id',
+      'proposal_id',
+      'expected_version',
+      'teams',
+      'sets',
+      'played_local',
+      'court_label',
+      'request_id'
+    ]) ||
+    typeof value.expected_version !== 'number' ||
+    !Number.isSafeInteger(value.expected_version) ||
+    value.expected_version < 1
+  )
+    throw new MatchResultValidationError('INVALID_REQUEST');
+  if (
+    value.court_label !== null &&
+    (typeof value.court_label !== 'string' ||
+      value.court_label.trim().length < 1 ||
+      value.court_label.trim().length > 100 ||
+      /\p{Cc}/u.test(value.court_label))
+  )
+    throw new MatchResultValidationError('INVALID_COURT');
+  return {
+    event_id: validateMatchUuid(value.event_id),
+    proposal_id: validateMatchUuid(value.proposal_id),
+    expected_version: value.expected_version,
+    teams: validateMatchResultTeams(value.teams),
+    sets: validateMatchResultSets(value.sets),
+    played_local: validateResultPlayedLocal(value.played_local),
+    court_label: typeof value.court_label === 'string' ? value.court_label.trim() : null,
+    request_id: validateMatchUuid(value.request_id)
+  };
 }
 
 export function validateResultPlayedLocal(value: unknown) {

@@ -2,7 +2,7 @@
 description: Execute pre-commit quality gates and report pass or fail results without applying fixes.
 mode: subagent
 model: zai-coding-plan/glm-5.3-flash
-steps: 8
+steps: 20
 permissions:
   - action: subagent
     resource: "*"
@@ -121,6 +121,30 @@ permissions:
   - action: external_directory
     resource: "*"
     effect: deny
+  - action: shell
+    resource: "ps"
+    effect: allow
+  - action: shell
+    resource: "ps *"
+    effect: allow
+  - action: shell
+    resource: "grep *"
+    effect: allow
+  - action: shell
+    resource: "head *"
+    effect: allow
+  - action: shell
+    resource: "tail *"
+    effect: allow
+  - action: shell
+    resource: "awk *"
+    effect: allow
+  - action: shell
+    resource: "sed"
+    effect: allow
+  - action: shell
+    resource: "sed *"
+    effect: allow    
   - action: external_directory
     resource: "/tmp/**"
     effect: allow

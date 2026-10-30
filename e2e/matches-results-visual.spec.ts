@@ -9,10 +9,11 @@ import {
   openRecord,
   resultFixtures,
   review,
-  sql,
+  sqlWithFixtureTriggersDisabled,
   type Locale
 } from './matches-results-fixtures';
 import manifest from './references/paf-7/manifest.json' with { type: 'json' };
+import paf8Manifest from './references/paf-8/manifest.json' with { type: 'json' };
 
 let f: Awaited<ReturnType<typeof resultFixtures>>;
 test.beforeAll(async ({ browser }) => {
@@ -106,15 +107,23 @@ test('Pencil full-frame comparisons require matching composition and reviewed bu
   test.setTimeout(120_000);
   expect(browserName).toBe('chromium');
   const r = copies.en.matches.results;
-  const page = await f.page(f.creator);
+  let page = await f.page(f.creator);
   async function routeEvent(type: 'competitive' | 'friendly' = 'competitive') {
     const id = await f.completedEvent(type, 4);
-    await sql(`do $$ begin alter table public.match_events disable trigger match_event_immutable;
-      update public.match_events set venue_name='Padel Indoor', notes='Friday open play', court_notes='Play under the lights.', duration_minutes=90, starts_at='2026-10-23T18:30:00Z' where id='${id}';
-      alter table public.match_events enable trigger match_event_immutable; end $$;`);
+    await sqlWithFixtureTriggersDisabled(
+      ['matchEventImmutable'],
+      [
+        `update public.match_events
+          set venue_name='Padel Indoor', notes='Friday open play',
+              court_notes='Play under the lights.', duration_minutes=90,
+              starts_at='2026-10-23T18:30:00Z'
+        where id='${id}'`
+      ]
+    );
     return id;
   }
   async function compare(frame: keyof typeof manifest.visualBudgets.perScreen) {
+    await page.setViewportSize({ width: 390, height: frame === 'alZmm' ? 1042 : 844 });
     await page.getByRole('heading', { level: 1 }).click();
     for (const image of await page.locator('main img').all()) {
       await image.evaluate(async (node) => {
@@ -139,53 +148,65 @@ test('Pencil full-frame comparisons require matching composition and reviewed bu
       if (!invalid) expected.push([18, score ? 756 : 822, 354, frame === 'NZk5H' ? 160 : 145]);
       expect.soft(cards, `${frame} exact card structure`).toEqual(expected);
     } else {
-      const pendingBoxes = await page.locator('main > div > section').evaluateAll((nodes) =>
-        nodes.map((node) => {
-          const { x, y, width, height } = node.getBoundingClientRect();
-          return [x + scrollX, y + scrollY, width, height];
-        })
-      );
-      expect.soft(pendingBoxes, 'alZmm exact hero, overview and proposal structure').toEqual([
-        [18, 72, 354, 144],
-        [18, 228, 354, 86],
-        [18, 326, 354, 636]
-      ]);
-      const pending = page.getByRole('region', { name: r.pending, exact: true });
-      const inner = await pending
-        .locator(':scope > div > div > div, :scope > section, :scope > button')
+      const route = page.locator('main[data-result-route="lifecycle"]');
+      const proposal = route.locator('article[data-result-status="pending"]');
+      await expect(proposal).toBeVisible();
+      await expect(
+        proposal.getByRole('heading', { name: r.proposalTitle, exact: true })
+      ).toBeVisible();
+      await expect(proposal.getByRole('region', { name: r.pending, exact: true })).toBeVisible();
+      await expect(proposal.getByRole('region', { name: r.setScores, exact: true })).toBeVisible();
+      await expect(proposal.getByText(r.pendingDescription, { exact: true })).toBeVisible();
+      await expect(
+        proposal.getByText(fill(r.approvalProgress, { received: 0, required: 1 }), { exact: true })
+      ).toBeVisible();
+      await expect(
+        proposal.getByRole('button', { name: r.review.approve, exact: true })
+      ).toBeVisible();
+      await expect(
+        proposal.getByRole('button', { name: r.review.reject, exact: true })
+      ).toBeVisible();
+      await expect(
+        route.getByRole('region', { name: r.resolution.title, exact: true })
+      ).toHaveCount(0);
+      const rows = await proposal
+        .locator('section[aria-label="' + r.pending + '"] > div > div > div')
+        .count();
+      expect(rows).toBe(2);
+      const structure = await route
+        .locator(':scope > header, :scope > div, :scope > nav')
         .evaluateAll((nodes) =>
-          nodes.map((node) => {
-            const { x, y, width, height } = node.getBoundingClientRect();
-            return [x + scrollX, y + scrollY, width, height];
-          })
+          nodes.map((node) => ({
+            tag: node.tagName,
+            childTags: [...node.children].map((child) => child.tagName)
+          }))
         );
-      expect.soft(inner, 'alZmm exact status cards, actual teams, score recap and CTA').toEqual([
-        [18, 354, 354, 66],
-        [18, 428, 354, 66],
-        [18, 544, 354, 202],
-        [18, 758, 354, 148],
-        [18, 918, 354, 44]
+      expect.soft(structure, 'alZmm lifecycle detail order').toEqual([
+        { tag: 'HEADER', childTags: ['A', 'H1', 'P'] },
+        { tag: 'DIV', childTags: ['SECTION', 'SECTION', 'DIV'] },
+        { tag: 'NAV', childTags: ['A', 'A', 'BUTTON', 'BUTTON', 'A'] }
       ]);
-      await expect(
-        pending.getByText(fill(r.autoConfirmIn, { hours: 48 }), { exact: true })
-      ).toBeVisible();
-      await expect(pending.getByText('Thiago R.', { exact: true })).toBeVisible();
-      await expect(
-        pending.getByText(
-          /Submitted by Thiago R\., 23 Oct at 18:30\. Auto-confirm deadline: 25 Oct 2026, 18:30\./
-        )
-      ).toBeVisible();
+      await expect(route.locator(':scope > div > div#result-group-1 > article')).toHaveCount(1);
+      const proposalStructure = await proposal.evaluate((node) =>
+        [...node.children].map((child) => child.tagName)
+      );
+      expect
+        .soft(proposalStructure, 'alZmm pending facts precede progress and actions')
+        .toEqual(['SECTION', 'DIV']);
       await expect(page.getByText('PADEL INDOOR MADRID', { exact: true })).toBeVisible();
       await expect(page.getByText('Fri, 23 Oct · 18:30–20:00', { exact: true })).toBeVisible();
       await expect(page.getByRole('link', { name: /Calle de Alcalá.*Open map/ })).toBeVisible();
     }
+    if (frame === 'alZmm') await page.setViewportSize({ width: 390, height: 1042 });
     const actual = await page.screenshot({
-      fullPage: true,
+      fullPage: frame !== 'alZmm',
       animations: 'disabled',
       caret: 'hide',
       path: info.outputPath(`${frame}-actual.png`)
     });
-    const approved = readFileSync(new URL(`./references/paf-7/${frame}.png`, import.meta.url));
+    const referencePath =
+      frame === 'alZmm' ? './references/paf-8/alZmm.png' : `./references/paf-7/${frame}.png`;
+    const approved = readFileSync(new URL(referencePath, import.meta.url));
     const measured = await page.evaluate(
       async ({ actualUrl, approvedUrl }) => {
         async function pixels(url: string, scale: number) {
@@ -288,7 +309,8 @@ test('Pencil full-frame comparisons require matching composition and reviewed bu
     });
     await info.attach(`${frame}-actual`, { body: actual, contentType: 'image/png' });
     await info.attach(`${frame}-approved`, { body: approved, contentType: 'image/png' });
-    const budgets: Record<string, number | null> = manifest.visualBudgets.perScreen;
+    const budgets: Record<string, number | null> =
+      frame === 'alZmm' ? paf8Manifest.visualBudgets.perScreen : manifest.visualBudgets.perScreen;
     const budget = budgets[frame];
     expect.soft(measured.dimensionMismatch, `${frame} composition dimensions`).toBe(false);
     expect
@@ -318,36 +340,20 @@ test('Pencil full-frame comparisons require matching composition and reviewed bu
   await compare('GPo9z');
   await page.getByRole('button', { name: r.submit, exact: true }).click();
   await expect(page.getByRole('region', { name: r.pending })).toBeVisible();
-  await sql(`do $$ begin
-    alter table public.match_events disable trigger match_event_immutable;
-    update public.match_events set venue_name='PADEL INDOOR MADRID', court_notes='Calle de Alcalá' where id='${id}';
-    alter table public.match_events enable trigger match_event_immutable;
-    alter table public.match_event_result_proposals disable trigger match_result_proposal_immutable;
-    update public.match_event_result_proposals set submitted_at='2026-10-23T18:30:00Z', review_deadline_at='2026-10-25T18:30:00Z' where match_event_id='${id}';
-    alter table public.match_event_result_proposals enable trigger match_result_proposal_immutable;
-  end $$;`);
-  await page.clock.setFixedTime(new Date('2026-10-23T18:30:00Z'));
-  await page.route(`**/matches/${id}`, async (route) => {
-    const response = await route.fetch();
-    const body = await response.text();
-    // Snapshot only the read clock. Facts still come from real authorized SQL;
-    // deadline remains exactly submission + 48h, never derived from played_at.
-    const clocks = [...body.matchAll(/as_of:"([^"]+)"/g)].map((match) => match[1]!);
-    expect(clocks.length).toBeGreaterThan(0);
-    let snapshot = body;
-    for (const clock of clocks) snapshot = snapshot.replaceAll(clock, '2026-10-23T18:30:00Z');
-    const liveHours = Math.max(
-      0,
-      Math.ceil((Date.parse('2026-10-25T18:30:00Z') - Date.parse(clocks[0]!)) / 3600000)
-    );
-    snapshot = snapshot.replaceAll(
-      fill(r.autoConfirmIn, { hours: liveHours }),
-      fill(r.autoConfirmIn, { hours: 48 })
-    );
-    await route.fulfill({ response, body: snapshot });
-  });
+  await sqlWithFixtureTriggersDisabled(
+    ['matchEventImmutable'],
+    [
+      `update public.match_events
+        set venue_name='PADEL INDOOR MADRID', court_notes='Calle de Alcalá'
+      where id='${id}'`
+    ]
+  );
+  await page.context().close();
+  page = await f.page(f.members[1]!, 'en', 390, 'light', 1042);
   await f.open(page, id);
   await compare('alZmm');
+  await page.context().close();
+  page = await f.page(f.creator);
   const incomplete = await routeEvent();
   await openRecord(page, incomplete);
   await enterScore(page, [

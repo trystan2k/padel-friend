@@ -479,7 +479,25 @@
       "match_event_updated": "Detalhes da partida atualizados",
       "match_reconfirmation_required": "Revise as condições da partida",
       "match_registration_reconfirmed": "Participação reconfirmada",
-      "match_reconfirmation_expired": "Prazo de reconfirmação encerrado"
+      "match_reconfirmation_expired": "Prazo de reconfirmação encerrado",
+      "result_review_needed": "Um resultado precisa da sua revisão",
+      "result_added": "Um resultado foi enviado",
+      "result_corrected": "Um resultado corrigido foi enviado",
+      "result_disputed": "Um resultado foi contestado",
+      "result_confirmed": "Um resultado de partida foi confirmado",
+      "result_deadline_reminder": "O prazo para revisar o resultado está próximo",
+      "result_entry_ready": "Um resultado de partida está pronto para registrar"
+    },
+    "result": {
+      "group": "Grupo {{number}}",
+      "score": "Placar: {{score}}",
+      "submittedBy": "Enviado por {{name}}",
+      "deadline": "Revise até {{deadline}}",
+      "historicalVersion": "Versão histórica {{version}}. Revise a proposta atual.",
+      "reviewCurrent": "Revisar proposta atual",
+      "openResult": "Revisar resultado",
+      "openEvent": "Abrir partida",
+      "entryReady": "O registro do resultado está pronto para {{venue}}."
     },
     "match": {
       "openEvent": "Abrir evento",
@@ -642,9 +660,87 @@
       "submitting": "Enviando resultado…",
       "pending": "PENDENTE · NÃO CONFIRMADO",
       "pendingDescription": "Nenhum efeito no nível ou nas estatísticas da Liga ainda. Jogadores elegíveis podem aprovar ou rejeitar.",
+      "lifecycleStatus": {
+        "pending": "Aguardando revisão",
+        "disputed": "Contestado",
+        "confirmed": "Confirmado",
+        "superseded": "Substituído",
+        "correctionPending": "Correção aguardando revisão"
+      },
+      "resolution": {
+        "awaitingResults": "Aguardando resultados",
+        "partiallyResolved": "Parcialmente resolvido",
+        "completed": "Resultados concluídos",
+        "title": "Resolução dos resultados",
+        "progress": "{{confirmed}} de {{expected}} grupos confirmados"
+      },
       "autoConfirmIn": "CONFIRMAÇÃO AUTOMÁTICA EM {{hours}}H",
+      "autoConfirmCountdown": "Confirmação automática em {{time}}",
+      "deadlineReached": "Prazo encerrado · verificando resultado atual",
+      "awaitingResult": "Aguardando resultado",
       "reviewDeadline": "Prazo de revisão: {{deadline}}",
       "versionLabel": "Versão {{version}}",
+      "submittedByAt": "Enviado por {{name}} · {{submittedAt}}",
+      "approvalProgress": "{{received}} de {{required}} aprovações de equipe recebidas",
+      "disputedBy": "Contestado por {{name}} · {{reason}}",
+      "disputedImpact": "Este resultado contestado não altera a classificação nem as estatísticas da Liga.",
+      "confirmedAt": "Confirmado em {{confirmedAt}}.",
+      "timelineTitle": "Histórico da proposta",
+      "confirmation": {
+        "manual": "Confirmado · Manual",
+        "auto": "Confirmado · Automático 48H"
+      },
+      "review": {
+        "approve": "Aprovar",
+        "approving": "Registrando aprovação…",
+        "reject": "Contestar",
+        "retry": "Tentar revisão novamente",
+        "reviewCurrent": "Revisar proposta atual",
+        "offline": "Você está sem conexão. Reconecte para revisar. Nenhuma aprovação ou contestação foi enviada.",
+        "offlineDraft": "Resultado não enviado. Reconecte para enviar; seu rascunho continua aqui.",
+        "decisionRecorded": "{{decision}} registrada por {{name}}.",
+        "recorded": {
+          "approve": "A aprovação desta versão foi registrada. O resultado continua pendente até a confirmação do servidor.",
+          "approveConfirmed": "A aprovação foi registrada. O servidor confirmou este resultado; atualizando os detalhes oficiais.",
+          "reject": "Resultado contestado. Nenhuma classificação ou estatística da Liga foi aplicada."
+        },
+        "decisions": {
+          "approve": "Aprovação",
+          "reject": "Contestação"
+        }
+      },
+      "reject": {
+        "title": "Contestar resultado",
+        "context": "Grupo {{group}} · enviado por {{name}}",
+        "reasonLabel": "Por que você está contestando este resultado?",
+        "reasonRequired": "Escolha um motivo.",
+        "reasons": {
+          "scoreIncorrect": "Placar incorreto",
+          "teamsIncorrect": "Equipes incorretas",
+          "playersIncorrect": "Jogadores incorretos",
+          "groupAssignmentIncorrect": "Grupo incorreto",
+          "matchDidNotHappen": "A partida não aconteceu",
+          "matchTypeIncorrect": "Tipo de partida incorreto",
+          "classificationIncorrect": "Classificação incorreta",
+          "other": "Outro"
+        },
+        "noteLabel": "Adicionar observação (opcional)",
+        "required": "Obrigatória",
+        "noteHint": "Obrigatória ao selecionar Outro · máximo de 500 caracteres.",
+        "noteRequired": "Adicione uma observação ao selecionar Outro.",
+        "noteTooLong": "Use no máximo 500 caracteres.",
+        "noteInvalid": "Remova quebras de linha e caracteres de controle da observação.",
+        "autoConfirmNotice": "A contestação interrompe imediatamente a confirmação automática.",
+        "cancel": "Cancelar",
+        "submit": "Enviar contestação",
+        "submitting": "Enviando contestação…"
+      },
+      "correctResult": "Corrigir resultado",
+      "correctTitle": "Corrigir resultado",
+      "correctSubmit": "Enviar correção",
+      "correcting": "Enviando correção…",
+      "correctionSubmitted": "Correção v{{version}} enviada para revisão.",
+      "reviewUpdatedResult": "Revisar resultado atualizado",
       "setError": "Set {{number}} · {{team}}: {{message}}",
       "teamError": "{{team}}: {{message}}",
       "errors": {
@@ -665,11 +761,20 @@
         "thirdSetAfterDecided": "Um terceiro set concluído exige que os dois primeiros estejam empatados em 1–1.",
         "activeProposal": "Outro resultado já está pendente. Recarregue para revisá-lo; seu rascunho não foi enviado.",
         "idempotencyConflict": "Esta solicitação mudou. Recarregue antes de enviar novamente.",
+        "invalidReview": "Confira sua decisão de revisão e tente novamente.",
+        "invalidRejectionReason": "Escolha um motivo para a rejeição e informe uma observação quando necessário.",
+        "reviewForbidden": "Somente um jogador elegível deste grupo pode revisar este resultado.",
+        "correctionForbidden": "Somente o criador da partida ou um administrador da comunidade pode corrigir este resultado.",
         "cancelled": "Esta partida foi cancelada. Não é possível enviar resultados.",
         "forbidden": "Somente o criador ou um administrador da comunidade pode registrar resultados.",
         "unauthenticated": "Entre novamente para registrar resultados.",
         "notFound": "Esta partida está indisponível.",
         "unavailable": "Não foi possível carregar ou enviar os resultados. Confira sua conexão e tente novamente."
+      },
+      "conflicts": {
+        "staleVersion": "Este resultado mudou. Recarregue a versão mais recente antes de revisar ou corrigir.",
+        "deadlineElapsed": "O prazo de revisão terminou e este resultado foi confirmado. Recarregue para ver o resultado oficial.",
+        "currentProposal": "O resultado atual é a versão {{version}} ({{status}}). Revise antes de realizar outra ação."
       }
     },
     "reconfirmation": {

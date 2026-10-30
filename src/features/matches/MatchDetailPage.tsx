@@ -59,7 +59,8 @@ export function MatchDetailPage({
   managementError = false,
   management = null,
   proposals = [],
-  proposalsError = false
+  proposalsError = false,
+  proposalsForbidden = false
 }: {
   event: MatchEventDetail | null;
   loadError?: boolean;
@@ -78,6 +79,7 @@ export function MatchDetailPage({
   management?: MatchEventManagement | null;
   proposals?: ResultProposal[];
   proposalsError?: boolean;
+  proposalsForbidden?: boolean;
 }) {
   const { t, i18n } = useTranslation();
   const editTrigger = useRef<HTMLButtonElement>(null);
@@ -135,17 +137,18 @@ export function MatchDetailPage({
           currency: event.currency
         }).format(event.price_minor / 100)
       : null;
-  if (proposals.length > 0 && event.status !== 'cancelled')
+  if (
+    (proposals.length > 0 || (event.result_summary.expected_group_count > 0 && event.is_past)) &&
+    event.status !== 'cancelled' &&
+    !proposalsForbidden
+  )
     return (
       <MatchResultDetail
         event={event}
         proposals={proposals}
-        reviewerGroup={
-          registration?.state === 'accepted' && registration.participation === 'playing'
-            ? Math.ceil(registration.position / 4)
-            : null
-        }
         canRecord={management?.correction.available === true}
+        onRefresh={onRetry}
+        proposalsError={proposalsError}
       />
     );
   const resultEntry =
@@ -186,6 +189,7 @@ export function MatchDetailPage({
           <Link
             to="/matches/$eventId/record"
             params={{ eventId: management.correction.event_id }}
+            search={{ correctionProposalId: undefined, groupNumber: undefined }}
             {...stylex.props(s.primaryAction)}
           >
             {t('matches.results.title')}

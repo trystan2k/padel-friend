@@ -1,0 +1,135 @@
+{
+  "status": "chromium-certified-with-scoped-route-adaptations",
+  "sourceDesign": {
+    "path": "docs/design/padel-friend.pen",
+    "sha256": "5bc71d38a8da4ed4aba9439173b49711c460b84e37bd2f81b37c2fd92b52ac4d",
+    "exportCommand": "Pencil MCP: Export([\"H6VcqC\",\"GMcbD\",\"sLXK7\",\"CWJkF\",\"JXjNs\",\"ausNa\",\"BcpYH\",\"alZmm\"], \"png\", \"<repo>/e2e/references/paf-8\", {scale:2})",
+    "provenanceNote": "All eight approved PAF-8 references exported uncropped from the source Pencil document through Pencil MCP at 2x. Chromium comparisons use fresh-preview captures at the exact half-scale reference dimensions, with production actor flows and exact semantic/layout probes. Route adaptations are recorded per frame; the approval frame's rating deltas are omitted because T10 owns rating projections, and admin override/void actions are out of scope. alZmm is the PAF-8 successor for the PAF-7 pending-result detail; a layout-neutral result-group anchor wrapper now preserves deep-link focus, and its exact structure is gated without changing the reference or budget."
+  },
+  "approvedReferences": {
+    "H6VcqC.png": {
+      "frameId": "H6VcqC",
+      "certifies": "Accessible dispute-reason dialog, optional note, required Other note, and confirmation warning",
+      "sha256": "b9c9e653b40d086a7b251f28e3dfe68f94425fe00178cbe79908825e13be5d2c",
+      "pixelSize": [780, 1688]
+    },
+    "GMcbD.png": {
+      "frameId": "GMcbD",
+      "certifies": "Independent confirmed, pending, disputed, and unsubmitted group cards with partial-resolution status",
+      "sha256": "c0e263e5a978cd717a9ad974609ee17a77dcd4e23037e7b3641608edf6329360",
+      "pixelSize": [780, 1688]
+    },
+    "sLXK7.png": {
+      "frameId": "sLXK7",
+      "certifies": "Pending proposal facts, eligible approval, and rejection actions without fabricated rating effects",
+      "sha256": "5e75c1adce8b29e18ea011cd1fccaa5b277cf98e18e1c165316dbd50022cf7a1",
+      "pixelSize": [780, 1688]
+    },
+    "CWJkF.png": {
+      "frameId": "CWJkF",
+      "certifies": "Disputed proposal evidence, correction path, and version history; administrative override/void excluded",
+      "sha256": "6426b16b4c55d1b36980fc4d6963b295f80ed60bda1e15e7a71a4e7fd995be50",
+      "pixelSize": [780, 1688]
+    },
+    "JXjNs.png": {
+      "frameId": "JXjNs",
+      "certifies": "Pending-not-confirmed state and auto-confirmation countdown",
+      "sha256": "83832322c2463c4e099079678aebcdf61a1cc01aa13a8b7cb2dafe56df2f4bf4",
+      "pixelSize": [862, 802]
+    },
+    "ausNa.png": {
+      "frameId": "ausNa",
+      "certifies": "Authoritative stale-state refresh and explicit offline no-write feedback",
+      "sha256": "98455960c566b5e73d54342c053307dbfc1f8e4b65c663d1091e033eabecac98",
+      "pixelSize": [862, 1122]
+    },
+    "BcpYH.png": {
+      "frameId": "BcpYH",
+      "certifies": "Match detail with lifecycle-aware pending result and review entry",
+      "sha256": "4b75e99ca872b51beee813bbcd74384f0bda8dee3e7423490bba57bea1728a63",
+      "pixelSize": [780, 1688]
+    },
+    "alZmm.png": {
+      "frameId": "alZmm",
+      "certifies": "Existing pending-result match detail composition retained as a lifecycle UI successor",
+      "sha256": "0445556b7e66ac96c84aa5bf2a5fd19b833df7978b7a2d47195ea8a743e5c7fc",
+      "pixelSize": [780, 2084]
+    }
+  },
+  "structuralProbes": {
+    "H6VcqC": [
+      "named modal",
+      "eight translated rejection reasons",
+      "required Other note and associated error",
+      "focus restoration after close",
+      "44px reason labels and dialog actions"
+    ],
+    "GMcbD": [
+      "confirmed-group count is less than frozen group count",
+      "each group has independent lifecycle status",
+      "missing group stays unsubmitted",
+      "compact multi-group layout keeps all four group states in the viewport"
+    ],
+    "sLXK7": [
+      "actions only follow can_approve/can_reject capabilities",
+      "score facts remain visible",
+      "no projected rating delta",
+      "review actions meet 44px minimum"
+    ],
+    "CWJkF": [
+      "dispute evidence and timeline visible",
+      "correction action follows can_correct",
+      "no override or void action",
+      "current disputed version stays distinct from superseded evidence"
+    ],
+    "JXjNs": [
+      "countdown starts from server as_of",
+      "deadline triggers authoritative refresh",
+      "client clock never confirms",
+      "timer semantics expose the authoritative countdown"
+    ],
+    "ausNa": [
+      "stale conflict blocks mutation retry",
+      "offline review does not queue a write",
+      "draft remains local",
+      "offline no-write feedback appears in the captured lifecycle state"
+    ],
+    "BcpYH": [
+      "pending and disputed facts never appear official",
+      "SQL capabilities control review actions",
+      "event resolution summary is visible",
+      "friendly confirmation explicitly has no rating effect"
+    ],
+    "alZmm": [
+      "lifecycle cards preserve current match-detail composition",
+      "all visible copy remains translated",
+      "controls meet touch-target minimum",
+      "single-group lifecycle layout retains the PAF-7 route shell and stable result-group anchor wrapper"
+    ]
+  },
+  "visualBudgets": {
+    "status": "measured-chromium-viewport-pixel-difference",
+    "measurementMethod": "Capture at reference pixelSize / 2 using Chromium deviceScaleFactor 1. Downsample only the uncropped 2x Pencil PNG. Compare same-size RGBA pixels with the pinned perceptual threshold (35215 × 0.1²); reject any dimension mismatch before applying the per-screen budget.",
+    "reason": "Every screen has an exact-dimension production-flow capture and strict semantic/layout probes. Nonzero budgets are based on the captured differences below, not inherited from PAF-7. Per-screen rationale documents intentional route adaptation or out-of-scope design content; budgets remain below 0.29.",
+    "perScreen": {
+      "H6VcqC": 0.15,
+      "GMcbD": 0.23,
+      "sLXK7": 0.18,
+      "CWJkF": 0.17,
+      "JXjNs": 0.16,
+      "ausNa": 0.15,
+      "BcpYH": 0.28,
+      "alZmm": 0.12
+    },
+    "perScreenRationale": {
+      "H6VcqC": "Production Base UI dialog includes the app shell/backdrop, blank-note Other validation state and translated required-field feedback; structural probes pin all eight choices, error association, focus restoration and touch targets.",
+      "GMcbD": "Capture aligns the partial-resolution banner and all four compact group cards; exact probes pin card ordering/non-overlap, status badges, countdown, banner and parent badge strip. Observed residual 0.22035; 0.23 budget leaves 0.00965 for raster variance. Real match-detail navigation and event summary replace the standalone Event results header/footer composition.",
+      "sLXK7": "Eligible opposing reviewer sees the production match-detail result card rather than a dedicated Check this result route. Numeric rating deltas are omitted until T10; score, eligibility, actions and touch targets are exact probes.",
+      "CWJkF": "Current v2 dispute is rendered inside the match-detail route with real correction capability. Admin override/void controls are excluded by scope; history, reason, capability and touch probes are exact.",
+      "JXjNs": "Capture isolates the production pending status/countdown region at the reference viewport; event provenance and roster/score facts continue below it as required by the lifecycle detail.",
+      "ausNa": "Capture shows the real offline review no-write feedback in the existing match detail. The source is a multi-context pattern sheet; stale submission, preserved draft, offline action suppression and zero review writes are independently probed in the same flow.",
+      "BcpYH": "Production match detail shows the confirmed friendly score, participants, manual source and no-rating effect; geometry is constrained by exact card/overview probes. Observed residual 0.27964; 0.28 is the smallest two-decimal budget above the measured capture (0.00036 margin). Separate Match report/pre-match-level presentation and rating deltas are not part of T08.5/T10.",
+      "alZmm": "Approved PAF-8 successor uses the existing match-detail route. Exact route order, the layout-neutral result-group anchor wrapper, pending facts/countdown, approval progress, SQL-authorized actions, venue details and touch targets constrain the residual cross-renderer and copy difference."
+    }
+  }
+}

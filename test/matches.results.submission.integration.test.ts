@@ -136,6 +136,25 @@ describe('actual result submission transaction', { timeout: 60000 }, () => {
     });
     await f.protectResults(e.id);
     expect(await facts(e.id)).toEqual(after);
+    expect(
+      await sqlRows(`select p.submitted_by::text as pointer_submitter,
+        v.submitted_by::text as version_submitter,
+        p.submitted_at = v.submitted_at as submitted_at_matches,
+        p.review_deadline_at = v.review_deadline_at as deadline_matches,
+        p.review_deadline_at = p.submitted_at + interval '48 hours' as exact_48_hours
+        from public.match_event_result_proposals p
+        join public.match_event_result_proposal_versions v
+          on v.proposal_id = p.id and v.version = p.active_version
+        where p.match_event_id = '${e.id}'`)
+    ).toEqual([
+      {
+        pointer_submitter: f.creator.id,
+        version_submitter: f.creator.id,
+        submitted_at_matches: true,
+        deadline_matches: true,
+        exact_48_hours: true
+      }
+    ]);
     expect(await read(e.id)).toHaveLength(1);
     expect(
       (
@@ -402,7 +421,7 @@ describe('actual result submission transaction', { timeout: 60000 }, () => {
     expect((await f.rpc(f.creator, 'submit_match_event_result', args(e.id, 2))).error).toBeNull();
     expect((await read(e.id))[0]?.group_number).toBe(2);
   });
-  it('friendly result writes nothing outside proposal tables', async () => {
+  it('friendly result preserves ratings, community facts, and roster outside result alerts', async () => {
     const e = await setup();
     const snapshot = () =>
       sqlRows(`select
@@ -413,7 +432,6 @@ describe('actual result submission transaction', { timeout: 60000 }, () => {
       (select count(*) from public.communities) communities,
       (select count(*) from public.community_members) members,
       (select count(*) from public.community_audit_log) community_audit,
-      (select count(*) from public.notifications where target_id='${e.id}') notifications,
       (select jsonb_agg(to_jsonb(r) order by id) from public.match_event_registrations r where match_event_id='${e.id}') roster`);
     const before = await snapshot();
     expect((await f.rpc(f.creator, 'submit_match_event_result', args(e.id))).error).toBeNull();
@@ -456,7 +474,19 @@ describe('actual result submission transaction', { timeout: 60000 }, () => {
         ]
       }
     });
-    for (const actor of [admin, players[1]!]) expect(await read(e.id, actor)).toEqual(expected);
+    expect(await read(e.id, admin)).toEqual(expected);
+    const sameGroupPlayerRead = await read(e.id, players[1]);
+    expect(sameGroupPlayerRead[0]).toMatchObject({
+      can_approve: false,
+      can_reject: true,
+      can_correct: false
+    });
+    expect({
+      ...sameGroupPlayerRead[0],
+      can_approve: expected[0]!.can_approve,
+      can_reject: expected[0]!.can_reject,
+      can_correct: expected[0]!.can_correct
+    }).toEqual(expected[0]);
     for (const actor of [other.creator, outsider, anon])
       expect(
         (await f.rpc(actor, 'get_match_event_result_proposals', { p_match_event_id: e.id })).error

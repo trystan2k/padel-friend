@@ -48,28 +48,33 @@ export function runHarness({ env = process.env, run = spawnSync, log = console }
   const edits = env.POPULATED_UPGRADE_SCENARIO === 'edits';
   const reconfirmation = env.POPULATED_UPGRADE_SCENARIO === 'reconfirmation';
   const protection = env.POPULATED_UPGRADE_SCENARIO === 'protection';
+  const resultContract = env.POPULATED_UPGRADE_SCENARIO === 'result-contract';
   if (
     env.POPULATED_UPGRADE_SCENARIO &&
     !departures &&
     !ownership &&
     !edits &&
     !reconfirmation &&
-    !protection
+    !protection &&
+    !resultContract
   )
     throw new Error('Unknown populated migration scenario');
   const predecessor = protection
     ? '20261021204000'
-    : reconfirmation
-      ? '20261021203000'
-      : edits
-        ? '20261021202000'
-        : ownership
-          ? '20261021201100'
-          : departures
-            ? '20261021200000'
-            : PREDECESSOR;
-  const seed =
-    protection || reconfirmation
+    : resultContract
+      ? '20261028140423'
+      : reconfirmation
+        ? '20261021203000'
+        : edits
+          ? '20261021202000'
+          : ownership
+            ? '20261021201100'
+            : departures
+              ? '20261021200000'
+              : PREDECESSOR;
+  const seed = resultContract
+    ? 'test/fixtures/matches-results-predecessor-upgrade.sql'
+    : protection || reconfirmation
       ? 'test/fixtures/matches-reconfirmation-predecessor.sql'
       : edits
         ? 'test/fixtures/matches-edits-predecessor.sql'
@@ -80,15 +85,17 @@ export function runHarness({ env = process.env, run = spawnSync, log = console }
             : SEED;
   const assertions = protection
     ? 'test/fixtures/matches-protection-upgrade-assertions.sql'
-    : reconfirmation
-      ? 'test/fixtures/matches-reconfirmation-upgrade-assertions.sql'
-      : edits
-        ? 'test/fixtures/matches-edits-upgrade-assertions.sql'
-        : ownership
-          ? 'test/fixtures/matches-ownership-upgrade-assertions.sql'
-          : departures
-            ? 'test/fixtures/matches-departures-upgrade-assertions.sql'
-            : ASSERTIONS;
+    : resultContract
+      ? 'test/fixtures/matches-results-upgrade-assertions.sql'
+      : reconfirmation
+        ? 'test/fixtures/matches-reconfirmation-upgrade-assertions.sql'
+        : edits
+          ? 'test/fixtures/matches-edits-upgrade-assertions.sql'
+          : ownership
+            ? 'test/fixtures/matches-ownership-upgrade-assertions.sql'
+            : departures
+              ? 'test/fixtures/matches-departures-upgrade-assertions.sql'
+              : ASSERTIONS;
 
   const execute = (args, options = {}) => {
     const result = run('pnpm', ['exec', 'supabase', ...args], {
@@ -128,15 +135,35 @@ export function runHarness({ env = process.env, run = spawnSync, log = console }
       predecessor,
       '--no-seed'
     ]);
+    const predecessorTrigger = resultContract
+      ? 'match_result_proposal_immutable'
+      : departures || ownership || edits || reconfirmation || protection
+        ? 'match_registration_identity_guard'
+        : 'match_registration_immutable';
+    const predecessorCheck = resultContract
+      ? `if to_regclass('public.match_event_result_proposals') is null
+          or to_regclass('public.match_event_result_proposal_versions') is null then
+          raise exception 'PAF-7 result tables missing at predecessor'; end if;
+         if exists (select 1 from information_schema.columns where table_schema='public'
+          and table_name='match_event_result_proposal_versions'
+          and column_name in ('submitted_by','submitted_at','review_deadline_at')) then
+          raise exception 'result provenance columns unexpectedly exist at predecessor'; end if;`
+      : protection
+        ? "if to_regprocedure('public.assert_match_management_action_locked(uuid,text)') is not null then raise exception 'protection guard unexpectedly exists'; end if;"
+        : reconfirmation
+          ? "if exists(select 1 from information_schema.columns where table_schema='public' and table_name='match_events' and column_name='reconfirmation_generation') then raise exception 'consent schema unexpectedly exists';end if;"
+          : edits
+            ? "if to_regprocedure('public.edit_match_event(uuid,bigint,jsonb,uuid)') is not null then raise exception 'edit RPC unexpectedly exists'; end if;"
+            : `if exists (select 1 from information_schema.columns where table_schema='public' and table_name='match_event_registrations' and column_name in (${ownership ? "'cancelled_at'" : departures ? "'current_attempt_id','left_at','removed_by','removal_reason'" : "'accepted_order','lifecycle','participation_status','registration_source'"})) then raise exception 'new registration columns unexpectedly exist'; end if;`;
     const preflight = must('predecessor schema/history and legacy trigger; new columns absent', [
       'db',
       'query',
       '--local',
       `do $check$ begin
       if (select version from supabase_migrations.schema_migrations order by version desc limit 1) is distinct from '${predecessor}' then raise exception 'history does not end at predecessor'; end if;
-       if not exists (select 1 from pg_catalog.pg_trigger where tgname='${departures || ownership || edits || reconfirmation || protection ? 'match_registration_identity_guard' : 'match_registration_immutable'}' and not tgisinternal) then raise exception 'legacy trigger missing'; end if;
-       ${protection ? "if to_regprocedure('public.assert_match_management_action_locked(uuid,text)') is not null then raise exception 'protection guard unexpectedly exists'; end if;" : reconfirmation ? "if exists(select 1 from information_schema.columns where table_schema='public' and table_name='match_events' and column_name='reconfirmation_generation') then raise exception 'consent schema unexpectedly exists';end if;" : edits ? "if to_regprocedure('public.edit_match_event(uuid,bigint,jsonb,uuid)') is not null then raise exception 'edit RPC unexpectedly exists'; end if;" : `if exists (select 1 from information_schema.columns where table_schema='public' and table_name='match_event_registrations' and column_name in (${ownership ? "'cancelled_at'" : departures ? "'current_attempt_id','left_at','removed_by','removal_reason'" : "'accepted_order','lifecycle','participation_status','registration_source'"})) then raise exception 'new registration columns unexpectedly exist'; end if;`}
-    end $check$;`
+       if not exists (select 1 from pg_catalog.pg_trigger where tgname='${predecessorTrigger}' and not tgisinternal) then raise exception 'legacy trigger missing'; end if;
+       ${predecessorCheck}
+     end $check$;`
     ]);
     void preflight;
     log.log('[assert] predecessor history, legacy trigger, and absent new columns verified');
@@ -172,7 +199,7 @@ export function runHarness({ env = process.env, run = spawnSync, log = console }
       'db',
       'query',
       '--local',
-      ...(departures || ownership || edits || reconfirmation || protection
+      ...(departures || ownership || edits || reconfirmation || protection || resultContract
         ? ['--file', path.join(ROOT, assertions)]
         : ['select public.paf_upgrade_assert_snapshot()'])
     ]);
@@ -184,7 +211,9 @@ export function runHarness({ env = process.env, run = spawnSync, log = console }
         'db',
         'reset',
         '--local',
-        ...(departures || ownership || edits || reconfirmation || protection ? ['--no-seed'] : [])
+        ...(departures || ownership || edits || reconfirmation || protection || resultContract
+          ? ['--no-seed']
+          : [])
       ]);
       log.log('[restore] pnpm exec supabase db reset --local');
       log.log(restore.stdout);

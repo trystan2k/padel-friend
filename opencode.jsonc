@@ -40,7 +40,12 @@
           "--mode",
           "no-memories"
         ],
-        "disabled": false
+        "disabled": false,
+        "timeout": {
+          "startup": 120000,
+          "catalog": 30000,
+          "execution": 30000
+        }
       }
     }
   }

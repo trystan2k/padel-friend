@@ -17,7 +17,9 @@ import { resultProposal } from './helpers/match-result-fixtures';
 import { parseResultProposals } from '../src/features/matches/match-result-model';
 
 vi.mock('../src/features/matches/match-result.functions', () => ({
-  submitMatchEventResult: vi.fn<() => void>()
+  submitMatchEventResult: vi.fn<() => void>(),
+  reviewMatchEventResult: vi.fn<() => void>(),
+  correctMatchEventResult: vi.fn<() => void>()
 }));
 vi.mock('@tanstack/react-router', () => ({
   Link: ({ children }: { children: import('react').ReactNode }) => <a href="/matches">{children}</a>
@@ -157,8 +159,8 @@ describe('record result page', () => {
             timezone: 'UTC'
           })}
           proposals={[]}
-          reviewerGroup={null}
           canRecord={false}
+          onRefresh={vi.fn<() => void>()}
         />
       </I18nextProvider>
     );
@@ -171,19 +173,20 @@ describe('record result page', () => {
     );
     expect(screen.getByText('Fri, 23 Oct · 18:30–20:00')).toBeTruthy();
   });
-  it('shows two pending cards, provenance, facts and an unavailable eligible-review CTA', () => {
+  it('shows pending status, provenance and facts without inventing review eligibility', () => {
     const proposal = parseResultProposals([
-      { ...resultProposal, submitted_by_name: 'Recovery admin' }
+      {
+        ...resultProposal,
+        submitted_by_name: 'Recovery admin',
+        version_timeline: [
+          { ...resultProposal.version_timeline[0]!, submitted_by_name: 'Recovery admin' }
+        ]
+      }
     ])?.[0];
     if (!proposal) throw new Error('Invalid proposal fixture');
     render(
       <I18nextProvider i18n={createI18n('en')}>
-        <MatchResultPending
-          proposal={proposal}
-          timezone="UTC"
-          asOf={resultProposal.submitted_at}
-          canReview
-        />
+        <MatchResultPending proposal={proposal} timezone="UTC" asOf={resultProposal.submitted_at} />
       </I18nextProvider>
     );
     expect(screen.getByText('PENDING · NOT CONFIRMED')).toBeTruthy();
@@ -192,10 +195,7 @@ describe('record result page', () => {
     ).toBeTruthy();
     expect(screen.getByText(/Submitted by Recovery admin/)).toBeTruthy();
     expect(screen.getByRole('table')).toBeTruthy();
-    expect(screen.getByRole('button', { name: 'REVIEW PROPOSAL' }).hasAttribute('disabled')).toBe(
-      true
-    );
-    expect(screen.getByText('Proposal review is not available yet.')).toBeTruthy();
+    expect(screen.queryByRole('button', { name: /review proposal/i })).toBeNull();
   });
   it('renders three steps and explicitly confirms suggested teams', async () => {
     mount();

@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link } from '@tanstack/react-router';
 import { useTranslation } from 'react-i18next';
-import { notificationRosterPosition } from './notification-target';
+import { notificationResultHref, notificationRosterPosition } from './notification-target';
+import { NotificationResultOutcome } from './NotificationResultOutcome';
 import {
   acceptMyNotificationInvitation,
   getMyMatchNotificationContext,
-  getMyNotificationTargetV2,
+  getMyNotificationTargetV3,
   markNotificationRead
 } from './notifications.functions';
 import type { NotificationTarget } from './notification-target';
@@ -18,9 +19,12 @@ import { styles } from './notifications.styles';
 import * as stylex from '@stylexjs/stylex';
 
 async function resolveNotificationTarget(notificationId: string) {
-  const target = await getMyNotificationTargetV2({ data: { notificationId } });
+  const target = await getMyNotificationTargetV3({ data: { notificationId } });
   const matchContext =
-    target.target_status === 'match_available' && target.match_available && target.match_event_id
+    target.target_status === 'match_available' &&
+    target.match_available &&
+    target.match_event_id &&
+    !target.result_context
       ? await getMyMatchNotificationContext({ data: { notificationId } })
       : null;
 
@@ -336,9 +340,78 @@ export function NotificationDetailPage({
             : ''}
       </output>
       <section {...stylex.props(styles.panel)}>
-        {target.target_status === 'match_available' &&
-        target.match_available &&
-        target.match_event_id ? (
+        {target.target_status === 'result_available' && target.result_context ? (
+          <>
+            <h1>{t(`notifications.kinds.${target.result_context.notification_kind}`)}</h1>
+            {target.result_context.entry_ready ? (
+              <p>{t('notifications.result.entryReady', { venue: target.result_context.venue })}</p>
+            ) : (
+              <>
+                <p>
+                  {t('notifications.result.group', {
+                    number: target.result_context.group_number
+                  })}{' '}
+                  ·{' '}
+                  {t('matches.results.versionLabel', {
+                    version: target.result_context.proposal_version
+                  })}
+                </p>
+                {target.result_context.score && (
+                  <p>{t('notifications.result.score', { score: target.result_context.score })}</p>
+                )}
+                <NotificationResultOutcome context={target.result_context} />
+                <p>
+                  {t('notifications.result.submittedBy', {
+                    name:
+                      target.result_context.submitted_by_name ?? t('matches.results.unknownPlayer')
+                  })}
+                </p>
+                {target.result_context.review_deadline_at && (
+                  <p>
+                    {t('notifications.result.deadline', {
+                      deadline: new Intl.DateTimeFormat(i18n.language, {
+                        dateStyle: 'medium',
+                        timeStyle: 'short',
+                        timeZone: target.result_context.timezone
+                      }).format(new Date(target.result_context.review_deadline_at))
+                    })}
+                  </p>
+                )}
+                {!target.result_context.is_current && (
+                  <p>
+                    {t('notifications.result.historicalVersion', {
+                      version: target.result_context.proposal_version
+                    })}
+                  </p>
+                )}
+              </>
+            )}
+            {hasError && <p role="alert">{t('notifications.targetError')}</p>}
+            {hasError && (
+              <button
+                {...stylex.props(styles.button)}
+                disabled={pending || isOnline !== true}
+                onClick={() => void retry()}
+              >
+                {t('notifications.retry')}
+              </button>
+            )}
+            <a href={notificationResultHref(target.result_context)} {...stylex.props(styles.link)}>
+              {t(
+                target.result_context.entry_ready
+                  ? 'notifications.result.openEvent'
+                  : target.result_context.is_current
+                    ? 'notifications.result.openResult'
+                    : 'notifications.result.reviewCurrent'
+              )}
+            </a>
+            <Link {...stylex.props(styles.link)} to="/notifications">
+              {t('notifications.back')}
+            </Link>
+          </>
+        ) : target.target_status === 'match_available' &&
+          target.match_available &&
+          target.match_event_id ? (
           <>
             <h1>{registrationHeading(t, registrationKind, target.kind, fifoGroup)}</h1>
             {currentMatchContext ? (

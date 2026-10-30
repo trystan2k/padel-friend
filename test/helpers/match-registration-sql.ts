@@ -5,6 +5,7 @@ import {
   sqlErrorMessage,
   startCliSql,
   startSql,
+  type SqlQueryOptions,
   type SqlHandle,
   type SqlRow
 } from './sql-transport';
@@ -89,6 +90,11 @@ export function registerMatchEventFixtureRows(
   registry.register('public.match_event_registrations', { match_event_id: eventId });
   registry.register('public.match_event_registration_state', { match_event_id: eventId });
   registry.register('public.match_event_result_proposals', { match_event_id: eventId });
+  registry.register('public.notification_result_links', { match_event_id: eventId });
+  registry.register('public.match_event_result_entry_ready_dispatch', { match_event_id: eventId });
+  registry.register('public.match_result_alert_entry_ready_queue', { match_event_id: eventId });
+  registry.register('public.match_result_alert_processing_state', { candidate_id: eventId });
+  registry.register('public.match_result_alert_retry_fallback', { candidate_id: eventId });
   registry.register('public.notifications', { target_id: eventId });
   if (photoPath) registerMatchStorageFixtureObject(registry, 'match-event-photos', photoPath);
 }
@@ -131,10 +137,20 @@ export function createMatchFixtureCleanupRegistry(scopeName: string): FixtureCle
         `select id::text as id from public.match_event_result_proposals where match_event_id = any($1::uuid[])`,
         { values: [eventIds] }
       );
-      for (const row of proposals.rows)
+      for (const row of proposals.rows) {
+        const proposalId = String(row['id']);
         current.register('public.match_event_result_proposal_versions', {
-          proposal_id: String(row['id'])
+          proposal_id: proposalId
         });
+        current.register('public.match_event_result_reviews', { proposal_id: proposalId });
+        current.register('public.match_event_result_confirmations', { proposal_id: proposalId });
+        current.register('public.match_event_result_processing_state', { proposal_id: proposalId });
+        current.register('public.match_result_alert_processing_state', {
+          candidate_id: proposalId
+        });
+        current.register('public.match_result_alert_deadline_queue', { proposal_id: proposalId });
+        current.register('public.match_result_alert_retry_fallback', { candidate_id: proposalId });
+      }
     }
 
     const beforeStatements: string[] = [];
@@ -152,10 +168,13 @@ export function createMatchFixtureCleanupRegistry(scopeName: string): FixtureCle
         ['match_event_invites', 'match_invite_immutable'],
         ['match_event_registrations', 'match_registration_identity_guard'],
         ['match_event_registrations', 'match_registration_final_state'],
+        ['match_event_registrations', 'match_result_entry_ready_roster_revision'],
         ['match_event_registration_attempts', 'match_attempt_history_guard'],
         ['match_event_registration_attempts', 'match_attempt_final_state'],
         ['match_event_audit_log', 'match_audit_immutable'],
-        ['match_event_result_proposals', 'match_result_proposal_immutable'],
+        ['match_event_result_reviews', 'match_result_review_immutable'],
+        ['match_event_result_confirmations', 'match_result_confirmation_insert_guard'],
+        ['match_event_result_proposals', 'match_result_proposal_transition_guard'],
         ['match_event_result_proposal_versions', 'match_result_proposal_version_immutable']
       ];
       for (const [table, trigger] of eventTriggerPairs) {
@@ -218,9 +237,12 @@ export function createMatchFixtureCleanupRegistry(scopeName: string): FixtureCle
                execute 'alter table public.${table} disable trigger ${trigger}';
              end if;
            end
-           $fixture_trigger_restore$`
+          $fixture_trigger_restore$`
         );
       }
+      // Resolve the deferred active-version FK after deleting both sides of its
+      // intentional pointer/version cycle and before PostgreSQL sees trigger DDL.
+      afterStatements.unshift('set constraints all immediate');
     }
     if (scope.hasStorageObjects)
       beforeStatements.unshift(`select set_config('storage.allow_delete_query','true',true)`);
@@ -288,8 +310,8 @@ export function asRecord(value: unknown): Record<string, unknown> {
 }
 
 /** Trusted read/fixture query that must succeed and return JSON rows. */
-export async function sqlRows(sql: string): Promise<SqlRow[]> {
-  return (await queryTrustedSql(sql)).rows;
+export async function sqlRows(sql: string, options: SqlQueryOptions = {}): Promise<SqlRow[]> {
+  return (await queryTrustedSql(sql, options)).rows;
 }
 
 /** Trusted fixture SQL whose only observable output is success. */
@@ -307,7 +329,7 @@ export async function waitForRows(
   ready: (rows: SqlRow[]) => boolean,
   description: string,
   timeoutMs = 20000,
-  pollIntervalMs = 150
+  pollIntervalMs = 25
 ): Promise<SqlRow[]> {
   const deadline = Date.now() + timeoutMs;
   let rows: SqlRow[] = [];
@@ -356,7 +378,7 @@ export function makeRawRpc(restUrl: string, anonKey: string): RawRpc {
  * Builds a proven concurrency barrier: a retained trusted-SQL holder locks the
  * community row every registration RPC must take first. The confirm-and-
  * release probe is spawned BEFORE the contenders fire and polls
- * pg_stat_activity INSIDE the database (50 ms granularity), because the RPC
+ * pg_stat_activity INSIDE the database (25 ms granularity), because the RPC
  * role runs with an 8 s statement_timeout — slow out-of-process probing would
  * miss the blocked window entirely. Postgres queues the waiters in a chain
  * (holder → contender A → contender B), so "proven overlap" means: exactly
@@ -396,7 +418,7 @@ export async function proveEventLockBarrier(params: {
       (rows) => rows.length === 1,
       'the trusted lock holder backend',
       20000,
-      100
+      25
     );
     const holderPid = Number(holderRow!['value']);
     expect(Number.isInteger(holderPid), 'holder pid').toBe(true);
@@ -473,7 +495,7 @@ export async function proveEventLockBarrier(params: {
                                and c.query like '%${params.eventId}%'));
           exit when (v_blocked = ${blockedExpected} and v_holder_direct >= 1 and v_stray = 0)
                  or pg_catalog.clock_timestamp() > v_deadline;
-          perform pg_catalog.pg_sleep(0.05);
+          perform pg_catalog.pg_sleep(0.025);
         end loop;
         if v_blocked <> ${blockedExpected} or v_holder_direct < 1 or v_stray <> 0 then
           raise exception 'barrier not proven: blocked=% holder_direct=% stray=% waits=%', v_blocked, v_holder_direct, v_stray,
@@ -497,6 +519,98 @@ export async function proveEventLockBarrier(params: {
     await sqlRows(
       `select pg_catalog.pg_terminate_backend(pid) as swept from pg_catalog.pg_stat_activity
         where query like '%${marker}%' and pid <> pg_catalog.pg_backend_pid()`
+    ).catch(() => []);
+    if (confirm) await confirm.stop();
+    await holder.stop();
+  }
+}
+
+/** Proves two RPCs queue on one canonical event lock in caller-specified order. */
+export async function proveOrderedEventLockBarrier(params: {
+  markerPrefix?: string;
+  communityId: string;
+  eventId: string;
+  rpcToken: string;
+  fireFirst: () => PromiseLike<RpcResult>;
+  fireSecond: () => PromiseLike<RpcResult>;
+}): Promise<[RpcResult, RpcResult]> {
+  const marker = `${params.markerPrefix ?? 'paf119'}-holder-${crypto.randomUUID().replaceAll('-', '')}`;
+  const holder = startSql(
+    `/* ${marker} */ select pg_catalog.pg_sleep(900) from (select id from public.communities where id = '${params.communityId}' for update) locked;`
+  );
+  let confirm: SqlHandle | null = null;
+  let first: PromiseLike<RpcResult> | null = null;
+  let second: PromiseLike<RpcResult> | null = null;
+  try {
+    const [holderRow] = await waitForRows(
+      `select pid as value from pg_catalog.pg_stat_activity
+        where query like '%${marker}%' and state='active' and pid <> pg_catalog.pg_backend_pid()`,
+      (rows) => rows.length === 1,
+      'the ordered trusted lock holder backend',
+      20000,
+      25
+    );
+    const holderPid = Number(holderRow!['value']);
+    expect(Number.isInteger(holderPid), 'ordered holder pid').toBe(true);
+    expect(await holder.backendPid).toBe(holderPid);
+
+    first = params.fireFirst();
+    await waitForRows(
+      `select pid as value from pg_catalog.pg_stat_activity a
+        where a.wait_event_type='Lock' and a.query like '%${params.rpcToken}%'
+          and ${holderPid}=any(pg_catalog.pg_blocking_pids(a.pid))
+          and a.pid <> pg_catalog.pg_backend_pid() and a.pid <> ${holderPid}`,
+      (rows) => rows.length === 1,
+      'first RPC directly blocked by ordered event holder',
+      6000,
+      25
+    );
+
+    second = params.fireSecond();
+    confirm = startSql(`do $ordered_barrier$
+      declare v_blocked integer; v_direct integer;
+        v_deadline timestamptz := pg_catalog.clock_timestamp()+interval '6.5 seconds';
+      begin
+        loop
+          perform pg_catalog.pg_stat_clear_snapshot();
+          select count(*) into v_blocked
+            from pg_catalog.pg_stat_activity a
+           where a.wait_event_type='Lock' and a.query like '%${params.rpcToken}%'
+             and a.pid <> pg_catalog.pg_backend_pid() and a.pid <> ${holderPid}
+             and (
+               ${holderPid}=any(pg_catalog.pg_blocking_pids(a.pid))
+               or exists (
+                 select 1 from pg_catalog.pg_stat_activity p
+                  where p.wait_event_type='Lock' and p.query like '%${params.rpcToken}%'
+                    and p.pid <> a.pid and ${holderPid}=any(pg_catalog.pg_blocking_pids(p.pid))
+                    and p.pid=any(pg_catalog.pg_blocking_pids(a.pid))
+               )
+             );
+          select count(*) into v_direct
+            from pg_catalog.pg_stat_activity a
+           where a.wait_event_type='Lock' and a.query like '%${params.rpcToken}%'
+             and ${holderPid}=any(pg_catalog.pg_blocking_pids(a.pid))
+             and a.pid <> pg_catalog.pg_backend_pid() and a.pid <> ${holderPid};
+          exit when (v_blocked=2 and v_direct=1) or pg_catalog.clock_timestamp()>v_deadline;
+          perform pg_catalog.pg_sleep(0.025);
+        end loop;
+        if v_blocked<>2 or v_direct<>1 then
+          raise exception 'ordered barrier not proven: blocked=% direct=% waits=%',v_blocked,v_direct,
+            (select jsonb_agg(jsonb_build_object('pid',pid,'query',left(query,300),'blockers',pg_catalog.pg_blocking_pids(pid)))
+              from pg_catalog.pg_stat_activity where wait_event_type='Lock');
+        end if;
+        perform pg_catalog.pg_terminate_backend(${holderPid});
+      end $ordered_barrier$;`);
+    const release = await withDeadline(confirm.done, 30000, 'ordered barrier release');
+    if (release.code !== 0)
+      throw new Error(
+        `Ordered barrier failed (${release.code}): ${release.stdout}\n${release.stderr}`
+      );
+    return await Promise.all([first, second]);
+  } finally {
+    await sqlRows(
+      `select pg_catalog.pg_terminate_backend(pid) from pg_catalog.pg_stat_activity
+        where query like '%${marker}%' and pid<>pg_catalog.pg_backend_pid()`
     ).catch(() => []);
     if (confirm) await confirm.stop();
     await holder.stop();

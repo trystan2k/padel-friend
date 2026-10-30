@@ -6,6 +6,8 @@ import { Link } from '@tanstack/react-router';
 import { StatusBadge } from '../../components/ui/StatusBadge';
 import type { NotificationCategory, NotificationPage } from './notification-model';
 import { groupNotifications } from './notification-model';
+import { NotificationResultOutcome } from './NotificationResultOutcome';
+import { notificationResultHref } from './notification-target';
 import { styles } from './notifications.styles';
 import { useNotifications } from './use-notifications';
 
@@ -85,6 +87,44 @@ export function NotificationsPage({ initial }: { initial: NotificationPage }) {
                 </p>
               ) : null}
             </div>
+          ) : row.resultContext ? (
+            <div {...stylex.props(styles.cardMeta)}>
+              {row.resultContext.entry_ready ? (
+                <p>{t('notifications.result.entryReady', { venue: row.resultContext.venue })}</p>
+              ) : (
+                <>
+                  <p>
+                    {t('notifications.result.group', { number: row.resultContext.group_number })}
+                    {row.resultContext.score ? ` · ${row.resultContext.score}` : ''}
+                  </p>
+                  <NotificationResultOutcome context={row.resultContext} />
+                  <p>
+                    {t('notifications.result.submittedBy', {
+                      name:
+                        row.resultContext.submitted_by_name ?? t('matches.results.unknownPlayer')
+                    })}
+                  </p>
+                  {row.resultContext.review_deadline_at && (
+                    <p>
+                      {t('notifications.result.deadline', {
+                        deadline: new Intl.DateTimeFormat(i18n.language, {
+                          dateStyle: 'medium',
+                          timeStyle: 'short',
+                          timeZone: row.resultContext.timezone
+                        }).format(new Date(row.resultContext.review_deadline_at))
+                      })}
+                    </p>
+                  )}
+                  {!row.resultContext.is_current && (
+                    <p>
+                      {t('notifications.result.historicalVersion', {
+                        version: row.resultContext.proposal_version
+                      })}
+                    </p>
+                  )}
+                </>
+              )}
+            </div>
           ) : row.category === 'matches' ? (
             <p>{t('notifications.match.unavailable')}</p>
           ) : null}
@@ -95,7 +135,23 @@ export function NotificationsPage({ initial }: { initial: NotificationPage }) {
             {grouped.format(row.created_at)} {t('notifications.utc')}
           </p>
           <div {...stylex.props(styles.actions)}>
-            {row.matchContext ? (
+            {row.resultContext ? (
+              <a
+                href={notificationResultHref(row.resultContext)}
+                onClick={() => {
+                  if (!row.read_at) void feed.markRead(row.id);
+                }}
+                {...stylex.props(styles.link)}
+              >
+                {t(
+                  row.resultContext.entry_ready
+                    ? 'notifications.result.openEvent'
+                    : row.resultContext.is_current
+                      ? 'notifications.result.openResult'
+                      : 'notifications.result.reviewCurrent'
+                )}
+              </a>
+            ) : row.matchContext ? (
               <a
                 href={`/matches/${encodeURIComponent(row.matchContext.match_event_id)}`}
                 onClick={() => {

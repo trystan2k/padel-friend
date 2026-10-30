@@ -82,6 +82,21 @@ permissions:
     resource: "grep *"
     effect: allow
   - action: shell
+    resource: "ps"
+    effect: allow
+  - action: shell
+    resource: "ps *"
+    effect: allow
+  - action: shell
+    resource: "sed"
+    effect: allow
+  - action: shell
+    resource: "sed *"
+    effect: allow
+  - action: shell
+    resource: "awk *"
+    effect: allow
+  - action: shell
     resource: "rg *"
     effect: allow
   - action: shell
@@ -204,7 +219,7 @@ Rules:
 - **One commit per unit of work** (per task for an epic, per sub-issue for an issue), created at the end of that unit's implementation — never one giant commit at the end of the whole scope.
 - Message format, types, and the no-issue-identifiers rule follow `AGENTS.md` and the repository's `commitlint` config.
 - Stage exactly the files of the unit of work, using the per-task file list captured in the context bundle. Do not sweep unrelated or later-task files into an early commit.
-- **Push once, at the end.** The pre-push hook runs unit and integration tests only, so one push avoids repeating that test stage. Never push per commit.
+- **Push once, at the end.** Pre-push runs unit tests only (`pnpm test:unit`); run `pnpm complete-check` before claiming done. Never push per commit.
 - One PR per scope (see Delivery Scopes). Keep the branch diff against the base under roughly **1500 changed lines or 40 files** as a **recommendation** to avoid an unwieldy PR — this is a soft guideline, not a hard limit. If a task legitimately needs more, keep it in the same PR and proceed; never split a coherent unit of work solely to satisfy the guideline.
 
 ## Golden Rule
@@ -402,7 +417,7 @@ Follow these steps in order.
 9. Final Validation and User Approval Before Push and PR
    - Routine planning, implementation, commits, and review run without approval gates. Resolve exceptional deferral/scope decisions under the Completion-First Policy before presenting push/PR approval.
    - Reconcile every acceptance criterion with implementation and test evidence, and every finding with its disposition. Required/related `open` or `blocked` findings prevent a completion claim. If the user explicitly approved partial delivery, show original versus revised scope and outstanding linked criteria instead.
-   - Ask `subagents/qa-gate-specialist` to run `pnpm complete-check` against the final reviewed code state. Fix failures and repeat affected review and final validation after code changes. Reuse a green full-gate result only for the same code state; do not bypass mandatory pre-push hooks or CI. Environment-blocked validation must be reported as blocked, never passed.
+   - Ask `subagents/qa-gate-specialist` to run `pnpm complete-check` against the final reviewed code state. Fix failures and repeat affected review and final validation after code changes. Reuse a green full-gate result only for the same code state; do not bypass CI. Environment-blocked validation must be reported as blocked, never passed.
    - **CRITICAL**: Before presenting, confirm the whole agreed scope (or explicitly revised partial scope) is implemented, every delivered unit is committed, and all gates are green; discover ALL scope-related files:
      - Run `git status --porcelain` to find all modified and untracked files
    - Present the user with:
@@ -419,7 +434,7 @@ Follow these steps in order.
     - Ask `subagents/git-specialist`, in this order:
       - refresh the working tree state to detect manual user edits
       - commit any remaining scope-related files without further approval (per-unit commits are already created; this is the final sweep)
-      - **push once** — never push per commit; the pre-push hook runs the unit and integration test stage only. Full `pnpm complete-check` validation happens in step 9 before push and in CI after push; this is covered by the step 9 approval
+      - **push once** — never push per commit; pre-push runs unit tests only (`pnpm test:unit`). Run full `pnpm complete-check` in step 9 before push; CI runs static then unit/integration/E2E; this is covered by the step 9 approval
       - create the pull request (PR) or merge request (MR) against the development branch, with a comprehensive and accurate implementation description that follows the Commit Policy (no issue identifiers); this is covered by the step 9 approval
     - **Before pushing, include the plan file (`docs/plan/Plan <ID> …md`) in the final commit sweep**: delivery plans are durable planning documentation and are committed like prior deliveries. **Once the PR/MR is opened, discard only the derived artifacts from the working tree**: `docs/plan/<ID>-bundle.md` and `docs/plan/<ID>.diff` (or any exported diff). Keep `docs/plan/<ID>-findings.md`, which is the durable review record. Bundle/diff exist only to orchestrate the delivery and duplicate the PR description, commits, and development log; never commit them or leave them behind.
     - If the project has a Copilot reviewer enabled (per `AGENTS.md`), ask `subagents/git-specialist` to request the Copilot review via the provider CLI.
@@ -434,7 +449,7 @@ Follow these steps in order.
 12. Copilot Review Resolution
     - If a Copilot review was requested, check the PR for Copilot comments after a short wait.
     - Classify every comment by the Completion-First Policy and add valid findings to the same ledger. Fix required/related findings in this PR regardless of severity; unsupported comments may be dismissed with evidence.
-    - If fixes are needed, apply them via `subagents/bug-fixer-specialist` (or `subagents/implementation-specialist` when a design change is required), then re-run affected checks and do a delta review. Full-gate evidence must come from an explicit `pnpm complete-check` run on the final changed state or CI's `complete-check` on the PR, never from the test-only pre-push hook. Push fixes under the step 9 lifecycle approval, and verify CI. No separate approval is needed for in-scope fixes.
+    - If fixes are needed, apply them via `subagents/bug-fixer-specialist` (or `subagents/implementation-specialist` when a design change is required), then re-run affected checks and do a delta review. Full-gate evidence must come from an explicit `pnpm complete-check` run on the final changed state or CI's `complete-check` on the PR. Push fixes under the step 9 lifecycle approval, and verify CI. No separate approval is needed for in-scope fixes.
     - If review is still pending or unavailable, report that state rather than equating absent comments with completed review. If review completed with no comments, move on.
 
 13. Approved Exception Hand-off

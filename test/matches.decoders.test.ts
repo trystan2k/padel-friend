@@ -99,4 +99,45 @@ describe('match RPC decoders', () => {
     const { caller_badge: _badge, ...withoutBadge } = raw;
     expect(() => decodeMatchRpcDetail(withoutBadge)).toThrow('INVALID_MATCH_RESPONSE');
   });
+
+  it('rejects incoherent or vacuously completed result summaries', () => {
+    const detail = makeMatchRpcDetail();
+    expect(() =>
+      decodeMatchRpcDetail({
+        ...detail,
+        result_summary: { ...detail.result_summary, result_resolution: 'completed' }
+      })
+    ).toThrow('INVALID_MATCH_RESPONSE');
+    expect(() =>
+      decodeMatchRpcDetail({
+        ...detail,
+        result_summary: {
+          ...detail.result_summary,
+          expected_group_count: 2,
+          pending_group_count: 1,
+          unsubmitted_group_count: 0,
+          results_roster_frozen: true
+        }
+      })
+    ).toThrow('INVALID_MATCH_RESPONSE');
+    expect(() =>
+      decodeMatchRpcDetail({
+        ...detail,
+        result_summary: { ...detail.result_summary, unexpected: true }
+      })
+    ).toThrow('INVALID_MATCH_RESPONSE');
+    expect(
+      decodeMatchRpcDetail({
+        ...detail,
+        result_summary: {
+          ...detail.result_summary,
+          expected_group_count: 2,
+          confirmed_group_count: 1,
+          unsubmitted_group_count: 1,
+          results_roster_frozen: true,
+          result_resolution: 'partially_resolved'
+        }
+      }).result_summary
+    ).toMatchObject({ result_resolution: 'partially_resolved', unsubmitted_group_count: 1 });
+  });
 });

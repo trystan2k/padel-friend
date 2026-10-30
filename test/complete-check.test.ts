@@ -125,16 +125,17 @@ describe('complete-check stage selection', () => {
     expect(result.stderr).toContain('Invalid --only value');
   });
 
-  it('runs staged lint before pre-commit static checks and limits pre-push to tests', () => {
+  it('runs staged lint before pre-commit static checks and keeps a unit-only pre-push gate', () => {
     const preCommit = readFileSync(path.join(repoRoot, '.husky/pre-commit'), 'utf8')
       .trim()
       .split(/\r?\n/);
-    const prePush = readFileSync(path.join(repoRoot, '.husky/pre-push'), 'utf8').trim();
 
     expect(preCommit).toEqual([
       'pnpm exec lint-staged',
       'node scripts/complete-check.mjs --only=static'
     ]);
-    expect(prePush).toBe('node scripts/complete-check.mjs --only=test');
+    const prePush = readFileSync(path.join(repoRoot, '.husky/pre-push'), 'utf8').trim();
+
+    expect(prePush).toBe('pnpm test:unit');
   });
 });

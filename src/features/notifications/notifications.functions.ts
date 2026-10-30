@@ -7,7 +7,7 @@ import {
   validateNotificationPreferences
 } from './notifications.validators';
 import { toNotificationDto } from './notification-model';
-import { decodeNotificationTarget } from './notification-target';
+import { decodeNotificationTarget, decodeResultNotificationContext } from './notification-target';
 const columns =
   'id,kind,category,target_type,target_id,community_id,sequence,created_at,read_at' as const;
 export const listMyNotifications = createServerFn({ method: 'GET' })
@@ -43,16 +43,40 @@ export const listMyNotifications = createServerFn({ method: 'GET' })
     const hasMore = page.length > data.limit;
     const items = page.slice(0, data.limit);
     const last = items.at(-1);
-    const matchIds = items.filter((row) => row.target_type === 'match_event').map((row) => row.id);
-    const { data: contexts, error: contextError } = matchIds.length
-      ? await client.rpc('get_my_match_notification_contexts', { p_notification_ids: matchIds })
-      : { data: [], error: null };
-    if (contextError) throw contextError;
-    const byId = new Map((contexts ?? []).map((context) => [context.notification_id, context]));
+    const matchIds = items
+      .filter((row) => row.target_type === 'match_event' && row.kind !== 'result_entry_ready')
+      .map((row) => row.id);
+    const resultIds = items
+      .filter((row) => row.target_type === 'result_available' || row.kind === 'result_entry_ready')
+      .map((row) => row.id);
+    const [matchContextResult, resultContextResult] = await Promise.all([
+      matchIds.length
+        ? client.rpc('get_my_match_notification_contexts', { p_notification_ids: matchIds })
+        : Promise.resolve({ data: [], error: null }),
+      resultIds.length
+        ? client.rpc('get_my_result_notification_contexts', { p_notification_ids: resultIds })
+        : Promise.resolve({ data: [], error: null })
+    ]);
+    if (matchContextResult.error) throw matchContextResult.error;
+    if (resultContextResult.error) throw resultContextResult.error;
+    const matchContexts = new Map(
+      (matchContextResult.data ?? []).map((context) => [context.notification_id, context])
+    );
+    const resultContexts = new Map(
+      (resultContextResult.data ?? []).map((context) => [
+        context.notification_id,
+        decodeResultNotificationContext(context)
+      ])
+    );
     return {
       items: items.map((row) => {
-        const context = byId.get(row.id);
-        return { ...toNotificationDto(row), ...(context ? { matchContext: context } : {}) };
+        const matchContext = matchContexts.get(row.id);
+        const resultContext = resultContexts.get(row.id);
+        return {
+          ...toNotificationDto(row),
+          ...(matchContext ? { matchContext } : {}),
+          ...(resultContext ? { resultContext } : {})
+        };
       }),
       nextCursor:
         hasMore && last
@@ -125,27 +149,15 @@ export const getMyNotificationTarget = createServerFn({ method: 'GET' })
     if (error) throw error;
     return result;
   });
-export const getMyNotificationTargetV2 = createServerFn({ method: 'GET' })
+export const getMyNotificationTargetV3 = createServerFn({ method: 'GET' })
   .validator(validateNotificationId)
   .handler(async ({ data }) => {
     const { client } = await requireAuthenticatedClient();
     const { data: result, error } = await client
-      .rpc('get_my_notification_target_v2', { p_notification_id: data.notificationId })
+      .rpc('get_my_notification_target_v3', { p_notification_id: data.notificationId })
       .single();
     if (error) throw error;
-    // The store has no payload column, so the kind and creation instant are read
-    // from the recipient-scoped notification row to render typed copy.
-    const { data: header, error: headerError } = await client
-      .from('notifications')
-      .select('kind,created_at')
-      .eq('id', data.notificationId)
-      .maybeSingle();
-    if (headerError) throw headerError;
-    return decodeNotificationTarget({
-      ...result,
-      kind: header?.kind ?? null,
-      created_at: header?.created_at ?? null
-    });
+    return decodeNotificationTarget(result);
   });
 export const getMyMatchNotificationContext = createServerFn({ method: 'GET' })
   .validator(validateNotificationId)

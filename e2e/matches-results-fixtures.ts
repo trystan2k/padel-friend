@@ -1,8 +1,15 @@
 import { expect, type Browser, type Page } from '@playwright/test';
-import { fixtures, copies, fill, sql } from './matches-management-fixtures';
+import {
+  fixtures,
+  copies,
+  fill,
+  sql,
+  sqlWithFixtureTriggersDisabled
+} from './matches-management-fixtures';
 import { waitForHydratedPage } from './auth-helpers';
 
-export { copies, fill, sql };
+export { copies, fill, sql, sqlWithFixtureTriggersDisabled };
+export type { Actor } from './matches-management-fixtures';
 export type Locale = keyof typeof copies;
 
 export async function resultFixtures(browser: Browser, options?: Parameters<typeof fixtures>[1]) {
@@ -12,23 +19,37 @@ export async function resultFixtures(browser: Browser, options?: Parameters<type
     async completedEvent(type: 'competitive' | 'friendly' = 'competitive', players = 8) {
       const id = await f.event(players);
       await f.cutoff(id);
-      await sql(`do $$ begin
-        alter table public.match_events disable trigger match_event_immutable;
-        update public.match_events set starts_at='2026-10-01T22:00:00Z', registration_cutoff_at='2026-10-01T20:00:00Z', event_type='${type}' where id='${id}';
-        alter table public.match_events enable trigger match_event_immutable;
-      end $$;`);
+      await sqlWithFixtureTriggersDisabled(
+        ['matchEventImmutable'],
+        [
+          `update public.match_events
+            set starts_at='2026-10-01T22:00:00Z',
+                registration_cutoff_at='2026-10-01T20:00:00Z',
+                event_type='${type}'
+          where id='${id}'`
+        ]
+      );
       return id;
     },
+    async expireProposal(proposalId: string) {
+      await sqlWithFixtureTriggersDisabled(
+        ['resultProposalVersionImmutable', 'resultProposalTransitionGuard'],
+        [
+          `update public.match_event_result_proposal_versions
+              set submitted_at=transaction_timestamp()-interval '49 hours',
+                  review_deadline_at=transaction_timestamp()-interval '1 hour'
+            where proposal_id='${proposalId}'
+              and version=(select active_version from public.match_event_result_proposals
+                where id='${proposalId}')`,
+          `update public.match_event_result_proposals
+              set submitted_at=transaction_timestamp()-interval '49 hours',
+                  review_deadline_at=transaction_timestamp()-interval '1 hour'
+            where id='${proposalId}'`,
+          'set constraints all immediate'
+        ]
+      );
+    },
     async cleanup() {
-      await sql(`do $$ begin
-        lock table public.match_events in share row exclusive mode;
-        alter table public.match_event_result_proposals disable trigger match_result_proposal_immutable;
-        alter table public.match_event_result_proposal_versions disable trigger match_result_proposal_version_immutable;
-        delete from public.match_event_result_proposal_versions where proposal_id in (select p.id from public.match_event_result_proposals p join public.match_events e on e.id=p.match_event_id where e.community_id='${f.community}');
-        delete from public.match_event_result_proposals where match_event_id in (select id from public.match_events where community_id='${f.community}');
-        alter table public.match_event_result_proposal_versions enable trigger match_result_proposal_version_immutable;
-        alter table public.match_event_result_proposals enable trigger match_result_proposal_immutable;
-      end $$;`);
       await f.cleanup();
     }
   };

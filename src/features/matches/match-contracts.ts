@@ -30,6 +30,17 @@ type StoredProjection = Omit<
 > & { currency: MatchCurrency | null };
 type IdentityProjection = Pick<MatchRow, 'id' | 'created_by'>;
 type CallerEligibility = 'creator' | 'member' | 'out_of_range' | 'nonmember' | null;
+export type MatchResultResolution = 'awaiting_results' | 'partially_resolved' | 'completed';
+export type MatchEventResultSummary = {
+  expected_group_count: number;
+  confirmed_group_count: number;
+  pending_group_count: number;
+  disputed_group_count: number;
+  unsubmitted_group_count: number;
+  incomplete_result_group_count: number;
+  results_roster_frozen: boolean;
+  result_resolution: MatchResultResolution;
+};
 type MatchEventProjection = StoredProjection & {
   status: 'open' | 'cancelled';
   event_id: IdentityProjection['id'];
@@ -51,6 +62,7 @@ type MatchEventProjection = StoredProjection & {
   caller_requires_approval: boolean;
   is_past: boolean;
   registration_open: boolean;
+  result_summary: MatchEventResultSummary;
 };
 
 export type MatchCallerBadge =

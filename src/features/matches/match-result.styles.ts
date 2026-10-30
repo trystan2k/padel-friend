@@ -235,6 +235,11 @@ export const matchResultStyles = stylex.create({
   detailsCard: { gap: 'var(--space-12)' },
   inputField: { display: 'grid', gap: 'var(--space-6)', fontWeight: 'var(--font-weight-semibold)' },
   pendingRows: { display: 'grid', gap: 'var(--space-8)' },
+  pendingProgress: {
+    margin: 0,
+    color: 'var(--color-green)',
+    fontWeight: 'var(--font-weight-semibold)'
+  },
   pendingRow: {
     display: 'flex',
     alignItems: 'center',
@@ -465,4 +470,282 @@ export const matchResultStyles = stylex.create({
     borderColor: 'var(--color-line)',
     borderRadius: 'var(--radius-12)'
   }
+});
+
+export const matchResultReviewStyles = stylex.create({
+  resultCard: {
+    display: 'grid',
+    gap: 'var(--space-9)',
+    minWidth: 0,
+    padding: 'var(--space-11)',
+    borderWidth: 'var(--border-width-sm)',
+    borderStyle: 'solid',
+    borderColor: 'var(--color-line)',
+    borderRadius: 'var(--radius-14)',
+    backgroundColor: 'var(--color-surface)',
+    overflowWrap: 'anywhere'
+  },
+  pendingDetailCard: {
+    gap: 'var(--space-8)',
+    padding: 0,
+    borderWidth: 0,
+    borderRadius: 0,
+    backgroundColor: 'transparent'
+  },
+  compactResultCard: {
+    gap: 'var(--space-5)',
+    padding: 'var(--space-8)'
+  },
+  compactFacts: {
+    display: 'flex',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: 'var(--space-5)',
+    minWidth: 0,
+    overflowWrap: 'anywhere'
+  },
+  compactLifecycle: {
+    display: 'grid',
+    gap: 'var(--space-3)',
+    minWidth: 0
+  },
+  resultHeader: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    gap: 'var(--space-8)',
+    minWidth: 0
+  },
+  groupHeading: {
+    margin: 0,
+    fontFamily: 'var(--font-family-heading)',
+    fontSize: 'var(--font-size-14)',
+    lineHeight: 'var(--font-line-height-tight)',
+    fontWeight: 'var(--font-weight-bold)'
+  },
+  statusBadge: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    minHeight: 'var(--space-20)',
+    paddingBlock: 'var(--space-3)',
+    paddingInline: 'var(--space-8)',
+    borderRadius: 'var(--radius-20)',
+    backgroundColor: 'var(--color-surface-2)',
+    color: 'var(--color-muted)',
+    fontSize: 'var(--font-size-11)',
+    fontWeight: 'var(--font-weight-semibold)',
+    overflowWrap: 'anywhere'
+  },
+  statusPending: { backgroundColor: 'var(--color-green-soft)', color: 'var(--color-green)' },
+  statusDisputed: { backgroundColor: 'var(--color-surface-2)', color: 'var(--color-red)' },
+  statusConfirmed: { backgroundColor: 'var(--color-green-soft)', color: 'var(--color-green)' },
+  statusAwaiting: { backgroundColor: 'var(--color-surface-2)', color: 'var(--color-muted)' },
+  resultMeta: {
+    display: 'grid',
+    gap: 'var(--space-3)',
+    margin: 0,
+    color: 'var(--color-muted)',
+    overflowWrap: 'anywhere'
+  },
+  countdown: { color: 'var(--color-amber)', fontWeight: 'var(--font-weight-semibold)' },
+  deadlineReached: { color: 'var(--color-amber)', fontWeight: 'var(--font-weight-semibold)' },
+  resolutionBanner: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 'var(--space-8)',
+    padding: 'var(--space-11) var(--space-12)',
+    borderRadius: 'var(--radius-13)',
+    backgroundColor: 'var(--color-surface-2)',
+    borderWidth: 'var(--border-width-sm)',
+    borderStyle: 'solid',
+    borderColor: 'var(--color-amber)',
+    color: 'var(--color-text)',
+    fontWeight: 'var(--font-weight-bold)',
+    overflowWrap: 'anywhere'
+  },
+  resolutionComplete: { backgroundColor: 'var(--color-green-soft)', color: 'var(--color-green)' },
+  facts: { display: 'grid', gap: 'var(--space-8)', minWidth: 0 },
+  srOnly: {
+    position: 'absolute',
+    width: 'var(--space-1)',
+    height: 'var(--space-1)',
+    padding: 0,
+    margin: 0,
+    overflow: 'hidden',
+    clipPath: 'inset(50%)',
+    whiteSpace: 'nowrap'
+  },
+  scoresTable: {
+    width: '100%',
+    borderCollapse: 'collapse',
+    tableLayout: 'fixed',
+    fontVariantNumeric: 'tabular-nums'
+  },
+  scoreHeading: {
+    paddingBlock: 'var(--space-5)',
+    paddingInline: 'var(--space-4)',
+    color: 'var(--color-muted)',
+    fontSize: 'var(--font-size-11)',
+    fontWeight: 'var(--font-weight-semibold)',
+    textAlign: 'center',
+    overflowWrap: 'anywhere'
+  },
+  scoreCell: {
+    paddingBlock: 'var(--space-5)',
+    paddingInline: 'var(--space-4)',
+    borderTopWidth: 'var(--border-width-sm)',
+    borderTopStyle: 'solid',
+    borderTopColor: 'var(--color-line)',
+    textAlign: 'center',
+    overflowWrap: 'anywhere'
+  },
+  setRowHeading: { color: 'var(--color-muted)', fontWeight: 'var(--font-weight-semibold)' },
+  approvalProgress: {
+    margin: 0,
+    color: 'var(--color-green)',
+    fontWeight: 'var(--font-weight-semibold)'
+  },
+  disputeCopy: { margin: 0, color: 'var(--color-red)', overflowWrap: 'anywhere' },
+  impactCopy: { margin: 0, color: 'var(--color-muted)', overflowWrap: 'anywhere' },
+  actionRow: { display: 'flex', flexWrap: 'wrap', gap: 'var(--space-8)', minWidth: 0 },
+  action: { flex: '1 1 calc(var(--space-40) * 4)', minWidth: 0 },
+  reviewApprove: { backgroundColor: 'var(--color-green)', color: 'var(--color-bg)' },
+  rejectAction: { color: 'var(--color-red)' },
+  correctionAction: {
+    display: 'inline-flex',
+    justifyContent: 'center',
+    alignItems: 'center',
+    flex: '1 1 calc(var(--space-40) * 4)',
+    minWidth: 0,
+    minHeight: 'calc(var(--space-40) + var(--space-4))',
+    paddingInline: 'var(--space-9)',
+    borderRadius: 'var(--radius-12)',
+    backgroundColor: 'var(--color-surface-2)',
+    color: 'var(--color-text)',
+    fontWeight: 'var(--font-weight-semibold)',
+    textAlign: 'center',
+    textDecoration: 'none',
+    overflowWrap: 'anywhere',
+    ':focus-visible': {
+      outline: 'var(--border-width-lg) solid var(--color-green)',
+      outlineOffset: 'var(--space-1)'
+    }
+  },
+  inlineFeedback: {
+    margin: 0,
+    padding: 'var(--space-8)',
+    borderRadius: 'var(--radius-9)',
+    backgroundColor: 'var(--color-surface-2)',
+    color: 'var(--color-text)',
+    overflowWrap: 'anywhere'
+  },
+  feedbackError: { color: 'var(--color-red)' },
+  feedbackSuccess: { color: 'var(--color-green)' },
+  reviewBackdrop: {
+    position: 'fixed',
+    inset: 0,
+    backgroundColor: 'var(--color-bg)',
+    opacity: 0.97,
+    zIndex: 20
+  },
+  reviewViewport: {
+    position: 'fixed',
+    inset: 0,
+    zIndex: 21,
+    display: 'grid',
+    placeItems: 'center',
+    overflowY: 'auto',
+    overscrollBehavior: 'contain',
+    padding: 'var(--space-12)'
+  },
+  reviewPopup: {
+    position: 'relative',
+    display: 'grid',
+    gap: 'var(--space-11)',
+    width: 'min(100%, calc(var(--space-40) * 9))',
+    maxHeight: 'calc(100dvh - var(--space-20) - var(--space-4))',
+    overflowY: 'auto',
+    padding: 'var(--space-14)',
+    borderWidth: 'var(--border-width-sm)',
+    borderStyle: 'solid',
+    borderColor: 'var(--color-line)',
+    borderRadius: 'var(--radius-16)',
+    backgroundColor: 'var(--color-surface)',
+    color: 'var(--color-text)',
+    fontFamily: 'var(--font-family-body)',
+    fontSize: 'var(--font-size-13)',
+    overscrollBehavior: 'contain'
+  },
+  dialogHeader: { display: 'grid', gap: 'var(--space-3)' },
+  dialogTitle: {
+    margin: 0,
+    fontFamily: 'var(--font-family-heading)',
+    fontSize: 'var(--font-size-20)',
+    fontWeight: 'var(--font-weight-bold)',
+    overflowWrap: 'anywhere'
+  },
+  dialogDescription: { margin: 0, color: 'var(--color-muted)', overflowWrap: 'anywhere' },
+  dialogForm: { display: 'grid', gap: 'var(--space-10)', minWidth: 0 },
+  reasonFieldset: {
+    display: 'grid',
+    gap: 'var(--space-3)',
+    padding: 0,
+    margin: 0,
+    borderWidth: 0,
+    minWidth: 0
+  },
+  reasonLegend: { padding: 0, fontWeight: 'var(--font-weight-semibold)' },
+  reasonOption: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 'var(--space-9)',
+    minHeight: 'calc(var(--space-40) + var(--space-4))',
+    paddingInline: 'var(--space-9)',
+    borderRadius: 'var(--radius-8)',
+    backgroundColor: 'var(--color-surface-2)',
+    overflowWrap: 'anywhere',
+    cursor: 'pointer'
+  },
+  reasonRadio: {
+    width: 'var(--space-18)',
+    height: 'var(--space-18)',
+    flexShrink: 0,
+    accentColor: 'var(--color-green)'
+  },
+  reasonRequired: { color: 'var(--color-red)' },
+  noteField: { display: 'grid', gap: 'var(--space-4)', minWidth: 0 },
+  noteInput: {
+    width: '100%',
+    minWidth: 0,
+    minHeight: 'calc(var(--space-40) * 2)',
+    padding: 'var(--space-9)',
+    borderWidth: 'var(--border-width-sm)',
+    borderStyle: 'solid',
+    borderColor: 'var(--color-line)',
+    borderRadius: 'var(--radius-9)',
+    backgroundColor: 'var(--color-surface)',
+    color: 'var(--color-text)',
+    fontFamily: 'var(--font-family-body)',
+    fontSize: 'var(--font-size-14)',
+    resize: 'vertical',
+    ':focus-visible': {
+      outline: 'var(--border-width-lg) solid var(--color-green)',
+      outlineOffset: 'var(--space-1)'
+    },
+    ':is([aria-invalid="true"])': { borderColor: 'var(--color-red)' }
+  },
+  dialogHint: { margin: 0, color: 'var(--color-muted)', overflowWrap: 'anywhere' },
+  dialogNotice: {
+    margin: 0,
+    padding: 'var(--space-8) var(--space-9)',
+    borderRadius: 'var(--radius-9)',
+    backgroundColor: 'var(--color-green-soft)',
+    color: 'var(--color-green)',
+    overflowWrap: 'anywhere'
+  },
+  dialogActions: { display: 'flex', flexWrap: 'wrap', gap: 'var(--space-8)' },
+  dialogAction: { flex: '1 1 calc(var(--space-40) * 3)', minWidth: 0 },
+  dialogSubmit: { backgroundColor: 'var(--color-red)', color: 'var(--color-bg)' },
+  dialogError: { margin: 0, color: 'var(--color-red)', overflowWrap: 'anywhere' }
 });

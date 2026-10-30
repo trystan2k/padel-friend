@@ -181,7 +181,7 @@ describe('match registration actions integration', () => {
    * Builds a proven concurrency barrier: a retained trusted-SQL holder locks the
    * community row every registration RPC must take first. The confirm-and-
    * release probe is spawned BEFORE the contenders fire and polls
-   * pg_stat_activity INSIDE the database (50 ms granularity), because the RPC
+   * pg_stat_activity INSIDE the database (25 ms granularity), because the RPC
    * role runs with an 8 s statement_timeout — slow out-of-process probing would
    * miss the blocked window entirely. Postgres queues the waiters in a chain
    * (holder → contender A → contender B), so "proven overlap" means: exactly
@@ -288,7 +288,7 @@ describe('match registration actions integration', () => {
           exit when (v_blocked = 2 and v_distinct_contenders = 2
                      and v_holder_direct >= 1 and v_stray = 0)
                  or pg_catalog.clock_timestamp() > v_deadline;
-          perform pg_catalog.pg_sleep(0.05);
+          perform pg_catalog.pg_sleep(0.025);
         end loop;
         if v_blocked <> 2 or v_distinct_contenders <> 2 or v_holder_direct < 1 or v_stray <> 0 then
           raise exception 'barrier not proven: blocked=% distinct_contenders=% holder_direct=% stray=%',

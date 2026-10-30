@@ -105,6 +105,16 @@ const projection = {
   caller_requires_approval: false,
   is_past: false,
   registration_open: true,
+  result_summary: {
+    expected_group_count: 0,
+    confirmed_group_count: 0,
+    pending_group_count: 0,
+    disputed_group_count: 0,
+    unsubmitted_group_count: 0,
+    incomplete_result_group_count: 0,
+    results_roster_frozen: false,
+    result_resolution: 'awaiting_results'
+  },
   status: 'open',
   ...matchCountScenario({ accepted: 5 })
 } satisfies Omit<MatchEventCard, 'photo_url'>;

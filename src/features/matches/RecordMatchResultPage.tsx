@@ -2,28 +2,31 @@ import { Button } from '@base-ui/react/button';
 import { NumberField } from '@base-ui/react/number-field';
 import * as stylex from '@stylexjs/stylex';
 import { Link } from '@tanstack/react-router';
-import { Fragment, useRef, useState, type RefObject } from 'react';
+import { Fragment, useEffect, useRef, useState, type RefObject } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { MatchEventDetail } from './match-contracts';
 import type { ManagementParticipant, MatchEventManagement } from './match-management-model';
 import type { MatchRosterEntry } from './match-registration-model';
 import type {
   MatchResultResponse,
+  ResultCommandReceipt,
+  ResultCommandResponse,
   ResultProposal,
   ResultSetRow,
   ResultSubmission
 } from './match-result-model';
 import { matchResultActionError } from './match-result-model';
-import { MATCH_RESULT_ERROR_COPY } from './match-result-error-copy';
+import { MATCH_RESULT_CONFLICT_COPY, MATCH_RESULT_ERROR_COPY } from './match-result-error-copy';
 import {
   MatchResultValidationError,
   classifyMatchResultSets,
   validateMatchResultSets
 } from './match-result.validators';
 import { resultGroupPlayers, resultOffsetLabel, resultPlayedOffsets } from './match-result-form';
-import { submitMatchEventResult } from './match-result.functions';
+import { correctMatchEventResult, submitMatchEventResult } from './match-result.functions';
 import { MatchManagementUnavailable } from './MatchManagementUnavailable';
 import { MatchResultPending } from './MatchResultPending';
+import { MatchResultReview } from './MatchResultReview';
 import { MatchResultScores, resultSetWins } from './MatchResultFacts';
 import { MatchResultNavigation } from './MatchResultNavigation';
 import { matchResultStyles as s } from './match-result.styles';
@@ -34,24 +37,48 @@ type Props = {
   roster: MatchRosterEntry[];
   participants: ManagementParticipant[];
   proposals: ResultProposal[];
+  correctionProposalId?: string;
+  initialGroup?: number;
   loadError?: boolean;
   onReload: () => void;
+  onCorrected?: () => void | Promise<void>;
   onSubmit?: (
     options: Parameters<typeof submitMatchEventResult>[0]
   ) => Promise<MatchResultResponse<ResultSubmission>>;
+  onCorrect?: (
+    options: Parameters<typeof correctMatchEventResult>[0]
+  ) => Promise<ResultCommandResponse<ResultCommandReceipt>>;
 };
-type Failure = Exclude<MatchResultResponse<ResultSubmission>, { status: 'ok' }>;
+type Failure =
+  | Exclude<MatchResultResponse<ResultSubmission>, { status: 'ok' }>
+  | Exclude<ResultCommandResponse<ResultCommandReceipt>, { status: 'ok' }>;
 const sides = ['team_a', 'team_b'] as const;
+type ResultFormPlayer = Pick<ManagementParticipant, 'user_id' | 'display_name'>;
 
 export function RecordMatchResultPage(props: Props) {
   const { t } = useTranslation();
-  const { event, management, roster, participants, proposals, onReload } = props;
+  const {
+    event,
+    management,
+    roster,
+    participants,
+    proposals,
+    correctionProposalId,
+    initialGroup,
+    onReload
+  } = props;
   const groups = [
     ...new Set(roster.filter((p) => p.participation === 'playing').map((p) => p.group_number))
   ]
     .filter((n): n is number => n !== null)
     .sort((a, b) => a - b);
-  const [group, setGroup] = useState(groups[0] ?? 1);
+  const correctionRequested = correctionProposalId !== undefined;
+  const correctionProposal = proposals.find(
+    (proposal) => proposal.proposal_id === correctionProposalId && proposal.can_correct
+  );
+  const [group, setGroup] = useState(
+    correctionProposal?.group_number ?? initialGroup ?? groups[0] ?? 1
+  );
   const [step, setStep] = useState(0);
   const heading = useRef<HTMLHeadingElement>(null);
   if (!event || props.loadError)
@@ -63,7 +90,10 @@ export function RecordMatchResultPage(props: Props) {
         </Button>
       </main>
     );
-  if (!management?.correction.available || event.status === 'cancelled')
+  if (
+    (correctionRequested ? !correctionProposal : !management?.correction.available) ||
+    event.status === 'cancelled'
+  )
     return (
       <main {...stylex.props(s.page)}>
         <MatchManagementUnavailable
@@ -109,13 +139,19 @@ export function RecordMatchResultPage(props: Props) {
           </Link>
         )}
         <h1 ref={heading} tabIndex={-1} {...stylex.props(s.routeTitle)}>
-          {t(step === 2 ? 'matches.results.preview' : 'matches.results.title')}
+          {t(
+            correctionRequested
+              ? 'matches.results.correctTitle'
+              : step === 2
+                ? 'matches.results.preview'
+                : 'matches.results.title'
+          )}
         </h1>
         <p {...stylex.props(s.copy)}>
           {event.venue_name} · {t('matches.results.group', { number: group })}
         </p>
       </header>
-      {groups.length > 1 && (
+      {!correctionRequested && groups.length > 1 && (
         <label {...stylex.props(s.field)}>
           {t('matches.results.groupLabel')}
           <select
@@ -134,19 +170,26 @@ export function RecordMatchResultPage(props: Props) {
           </select>
         </label>
       )}
-      {proposals.some((p) => p.group_number === group) ? (
-        <MatchResultPending
+      {!correctionRequested && proposals.some((p) => p.group_number === group) ? (
+        <MatchResultReview
+          eventId={event.event_id}
           proposal={proposals.find((p) => p.group_number === group)!}
           timezone={event.timezone}
           asOf={event.as_of}
+          onRefresh={onReload}
         />
-      ) : players.length === 4 ? (
+      ) : correctionProposal || players.length === 4 ? (
         <ResultForm
           key={group}
           {...props}
           event={event}
           group={group}
-          players={players}
+          players={
+            correctionProposal
+              ? [...correctionProposal.teams.team_a, ...correctionProposal.teams.team_b]
+              : players
+          }
+          correctionProposal={correctionProposal}
           step={step}
           setStep={setStep}
           heading={heading}
@@ -167,29 +210,46 @@ function ResultForm({
   setStep,
   heading,
   onReload,
-  onSubmit = submitMatchEventResult
+  onSubmit = submitMatchEventResult,
+  onCorrect = correctMatchEventResult,
+  onCorrected,
+  correctionProposal
 }: Props & {
   event: MatchEventDetail;
   group: number;
-  players: ManagementParticipant[];
+  players: ResultFormPlayer[];
+  correctionProposal?: ResultProposal;
   step: number;
   setStep: (step: number) => void;
   heading: RefObject<HTMLHeadingElement | null>;
 }) {
   const { t, i18n } = useTranslation();
-  const [order, setOrder] = useState(() => players.map((p) => p.user_id));
+  const [order, setOrder] = useState(() =>
+    correctionProposal
+      ? [
+          ...correctionProposal.teams.team_a.map((player) => player.user_id),
+          ...correctionProposal.teams.team_b.map((player) => player.user_id)
+        ]
+      : players.map((p) => p.user_id)
+  );
   const [editing, setEditing] = useState(false);
-  const [sets, setSets] = useState<ResultSetRow[]>([
-    { position: 1, team_a_games: 0, team_b_games: 0, completed: false }
-  ]);
-  const [date, setDate] = useState('');
-  const [time, setTime] = useState('');
-  const [offset, setOffset] = useState('');
-  const [court, setCourt] = useState('');
+  const [sets, setSets] = useState<ResultSetRow[]>(() =>
+    correctionProposal
+      ? correctionProposal.sets.map((set) => ({ ...set }))
+      : [{ position: 1, team_a_games: 0, team_b_games: 0, completed: false }]
+  );
+  const [date, setDate] = useState(() => correctionProposal?.played_at_local.slice(0, 10) ?? '');
+  const [time, setTime] = useState(() => correctionProposal?.played_at_local.slice(11, 16) ?? '');
+  const [offset, setOffset] = useState(() =>
+    correctionProposal ? String(correctionProposal.played_at_offset_seconds) : ''
+  );
+  const [court, setCourt] = useState(() => correctionProposal?.court_label ?? '');
   const [editingPlayed, setEditingPlayed] = useState(true);
   const [failure, setFailure] = useState<Failure | null>(null);
   const [pending, setPending] = useState(false);
   const [success, setSuccess] = useState<ResultSubmission | null>(null);
+  const [correctionSuccess, setCorrectionSuccess] = useState<ResultCommandReceipt | null>(null);
+  const [online, setOnline] = useState(true);
   const inFlight = useRef(false);
   const attempt = useRef<{ payload: string; id: string } | null>(null);
   const offsets = resultPlayedOffsets(date, time, event.timezone);
@@ -199,6 +259,16 @@ function ResultForm({
       : offset !== '' && offsets.includes(Number(offset))
         ? Number(offset)
         : undefined;
+  useEffect(() => {
+    const update = () => setOnline(typeof navigator === 'undefined' || navigator.onLine);
+    update();
+    window.addEventListener('online', update);
+    window.addEventListener('offline', update);
+    return () => {
+      window.removeEventListener('online', update);
+      window.removeEventListener('offline', update);
+    };
+  }, []);
   let outcome: ReturnType<typeof classifyMatchResultSets> | null = null;
   let scoreFailure: Failure | null = null;
   try {
@@ -253,10 +323,14 @@ function ResultForm({
     }
   }
   async function submit() {
-    if (inFlight.current || blocked || success) return;
+    if (inFlight.current || blocked || success || correctionSuccess) return;
+    if (typeof navigator !== 'undefined' && !navigator.onLine) {
+      setOnline(false);
+      setFailure(null);
+      return;
+    }
     const facts = {
       event_id: event.event_id,
-      group_number: group,
       teams: { team_a: [order[0] ?? '', order[1] ?? ''], team_b: [order[2] ?? '', order[3] ?? ''] },
       sets,
       played_local: {
@@ -265,16 +339,40 @@ function ResultForm({
       },
       court_label: court.trim() || null
     };
-    const payload = JSON.stringify(facts);
+    const submissionFacts = { ...facts, group_number: group };
+    const correctionFacts = correctionProposal
+      ? {
+          ...facts,
+          proposal_id: correctionProposal.proposal_id,
+          expected_version: correctionProposal.version
+        }
+      : null;
+    const payload = JSON.stringify(correctionFacts ?? submissionFacts);
     if (attempt.current?.payload !== payload)
       attempt.current = { payload, id: crypto.randomUUID() };
     inFlight.current = true;
     setPending(true);
     setFailure(null);
     try {
-      const result = await onSubmit({ data: { ...facts, request_id: attempt.current.id } });
-      if (result.status === 'ok') setSuccess(result.value);
-      else showFailure(result);
+      if (correctionFacts) {
+        const result = await onCorrect({
+          data: { ...correctionFacts, request_id: attempt.current.id }
+        });
+        if (result.status === 'ok') {
+          setCorrectionSuccess(result.value);
+          try {
+            await onCorrected?.();
+          } catch {
+            // The mutation is committed; keep the receipt visible if navigation fails.
+          }
+        } else showFailure(result);
+      } else {
+        const result = await onSubmit({
+          data: { ...submissionFacts, request_id: attempt.current.id }
+        });
+        if (result.status === 'ok') setSuccess(result.value);
+        else showFailure(result);
+      }
     } catch {
       showFailure({ status: 'error', code: 'unavailable' });
     } finally {
@@ -291,10 +389,30 @@ function ResultForm({
         focusReceipt
       />
     );
+  if (correctionSuccess)
+    return (
+      <section aria-live="polite" {...stylex.props(s.card)}>
+        <h2 {...stylex.props(s.heading)}>
+          {t('matches.results.correctionSubmitted', { version: correctionSuccess.version })}
+        </h2>
+        <p {...stylex.props(s.copy)}>{t('matches.results.pendingDescription')}</p>
+        <Link
+          to="/matches/$eventId"
+          params={{ eventId: event.event_id }}
+          {...stylex.props(s.button)}
+        >
+          {t('matches.results.reviewUpdatedResult')}
+        </Link>
+      </section>
+    );
   const visibleFailure = failure ?? scoreFailure;
   const scoreBlocked =
     scoreFailure !== null || (failure?.status === 'error' && failure.detail?.set_index != null);
-  const errorText = visibleFailure ? t(MATCH_RESULT_ERROR_COPY[visibleFailure.code]) : '';
+  const errorText = visibleFailure
+    ? visibleFailure.status === 'conflict' && visibleFailure.code !== 'active_proposal'
+      ? t(MATCH_RESULT_CONFLICT_COPY[visibleFailure.code])
+      : t(MATCH_RESULT_ERROR_COPY[visibleFailure.code])
+    : '';
   const rawDetail = visibleFailure?.status === 'error' ? visibleFailure.detail : undefined;
   const badSet = sets.find((set) => set.position === rawDetail?.set_index);
   // Both 6–5 inputs can be corrected; the approved UI identifies the losing
@@ -746,7 +864,12 @@ function ResultForm({
       <output hidden={!pending && !failure} aria-live="polite" aria-atomic="true">
         {pending ? t('matches.results.submitting') : errorText}
       </output>
-      {failure?.status === 'conflict' && (
+      {!online && (
+        <output aria-live="polite" {...stylex.props(s.error)}>
+          {t('matches.results.review.offlineDraft')}
+        </output>
+      )}
+      {failure?.status === 'conflict' && failure.code === 'active_proposal' && (
         <p>
           {t('matches.results.versionLabel', { version: failure.active_version })} ·{' '}
           {t('matches.results.reviewDeadline', {
@@ -758,6 +881,14 @@ function ResultForm({
           })}
         </p>
       )}
+      {failure?.status === 'conflict' && failure.code !== 'active_proposal' && (
+        <output aria-live="polite" {...stylex.props(s.error)}>
+          {t('matches.results.conflicts.currentProposal', {
+            version: failure.current_version,
+            status: t(`matches.results.lifecycleStatus.${failure.current_status}`)
+          })}
+        </output>
+      )}
       {blocked ? (
         <Button type="button" {...stylex.props(s.button)} onClick={onReload}>
           {t('matches.results.reload')}
@@ -766,17 +897,23 @@ function ResultForm({
         <>
           <Button
             type="submit"
-            disabled={pending || (step > 0 && scoreBlocked)}
+            disabled={pending || !online || (step > 0 && scoreBlocked)}
             {...stylex.props(s.button, s.primary)}
           >
             {t(
               pending
-                ? 'matches.results.submitting'
+                ? correctionProposal
+                  ? 'matches.results.correcting'
+                  : 'matches.results.submitting'
                 : step === 0
                   ? 'matches.results.confirmTeams'
                   : step === 1
-                    ? 'matches.results.submit'
-                    : 'matches.results.submit'
+                    ? correctionProposal
+                      ? 'matches.results.correctSubmit'
+                      : 'matches.results.submit'
+                    : correctionProposal
+                      ? 'matches.results.correctSubmit'
+                      : 'matches.results.submit'
             )}
           </Button>
         </>

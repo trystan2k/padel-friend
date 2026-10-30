@@ -22,6 +22,12 @@ export function MatchCard({ event }: { event: MatchEventCard }) {
   const starts = event.starts_at;
   const zone = event.timezone;
   const venue = event.venue_name;
+  const resultResolutionKey =
+    event.result_summary.result_resolution === 'awaiting_results'
+      ? 'awaitingResults'
+      : event.result_summary.result_resolution === 'partially_resolved'
+        ? 'partiallyResolved'
+        : 'completed';
   const price =
     event.price_minor !== null && event.currency !== null
       ? new Intl.NumberFormat(i18n.language, {
@@ -75,6 +81,11 @@ export function MatchCard({ event }: { event: MatchEventCard }) {
       </p>
       {event.status === 'cancelled' && (
         <StatusBadge>{t('matches.management.cancelled')}</StatusBadge>
+      )}
+      {event.status !== 'cancelled' && event.result_summary.expected_group_count > 0 && (
+        <StatusBadge appearance="emphasis">
+          {t(`matches.results.resolution.${resultResolutionKey}`)}
+        </StatusBadge>
       )}
       {!event.registration_open && <p>{t('matches.detail.registrationClosed')}</p>}
       <p>
