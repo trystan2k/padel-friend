@@ -49,9 +49,23 @@ describe.skipIf(!environment.env)('transactional result notifications', { timeou
   });
 
   beforeEach(async () => {
-    await fixtureSql(`update public.match_result_alert_scan_state
-      set resume_effective_key = null, resume_candidate_id = null,
-          resume_candidate_version = 0, updated_at = pg_catalog.clock_timestamp()`);
+    // Producers scan global queues. Deactivate inherited local-fixture candidates
+    // before each case so exact claim counts and cursor assertions use only rows
+    // established by that case; reset both producer cursors with the queue state.
+    await fixtureSql(`update public.match_result_alert_deadline_queue
+        set active = false, next_attempt_at = null where active;
+      update public.match_result_alert_entry_ready_queue
+        set active = false, next_attempt_at = null where active;
+      update public.match_result_alert_scan_state
+        set resume_effective_key = null, resume_candidate_id = null,
+            resume_candidate_version = 0, updated_at = pg_catalog.clock_timestamp()`);
+    const [activeQueues] = await sqlRows(`select
+        (select count(*)::int from public.match_result_alert_deadline_queue where active)
+          as deadline,
+        (select count(*)::int from public.match_result_alert_entry_ready_queue where active)
+          as entry_ready`);
+    if (activeQueues?.['deadline'] !== 0 || activeQueues?.['entry_ready'] !== 0)
+      throw new Error('Notification queue isolation left active candidates before test setup');
   });
 
   afterAll(async () => {
@@ -166,6 +180,13 @@ describe.skipIf(!environment.env)('transactional result notifications', { timeou
       where queue.active and queue.due_at <= pg_catalog.clock_timestamp()
         and queue.match_event_id <> all(array[${excluded}]::uuid[])`);
     return String(row?.['due_at']);
+  }
+
+  async function resetAlertScanCursor(kind: 'deadline' | 'entry_ready') {
+    await fixtureSql(`update public.match_result_alert_scan_state
+      set resume_effective_key = null, resume_candidate_id = null,
+          resume_candidate_version = 0, updated_at = pg_catalog.clock_timestamp()
+      where alert_kind = '${kind}'`);
   }
 
   async function setEntryReadyQueueTime(
@@ -310,12 +331,7 @@ describe.skipIf(!environment.env)('transactional result notifications', { timeou
     const poisonIds = kind === 'deadline' ? poisonProposalIds : poisonEvents;
     const poisonIdSql = poisonIds.map((id) => `'${id}'`).join(',');
     const version = kind === 'deadline' ? 1 : 0;
-    const resetScanCursor = async () => {
-      await fixtureSql(`update public.match_result_alert_scan_state
-        set resume_effective_key = null, resume_candidate_id = null,
-            resume_candidate_version = 0, updated_at = pg_catalog.clock_timestamp()
-        where alert_kind = '${kind}'`);
-    };
+    const resetScanCursor = async () => resetAlertScanCursor(kind);
     const removeFailures = await Promise.all(
       poisonEvents.map((eventId) =>
         installAlertFailure(
@@ -2921,6 +2937,26 @@ describe.skipIf(!environment.env)('transactional result notifications', { timeou
         count(*) filter (where proposal_version = 2 and active)::int as new_active
       from public.match_result_alert_deadline_queue where proposal_id = '${proposalId}'`);
     expect(versionQueue).toEqual({ old_inactive: 1, new_active: 1 });
+    await resetAlertScanCursor('deadline');
+    const eligibleDeadlineRows = await sqlRows(`select queue.proposal_id::text as proposal_id,
+        queue.proposal_version::int as proposal_version
+      from public.match_result_alert_deadline_queue queue
+      join public.match_event_result_proposals proposal
+        on proposal.id = queue.proposal_id and proposal.active_version = queue.proposal_version
+      left join public.match_result_alert_processing_state state
+        on state.alert_kind = 'deadline' and state.candidate_id = queue.proposal_id
+       and state.candidate_version = queue.proposal_version
+      left join public.match_result_alert_retry_fallback fallback
+        on fallback.alert_kind = 'deadline' and fallback.candidate_id = queue.proposal_id
+       and fallback.candidate_version = queue.proposal_version
+      where queue.active and queue.due_at <= pg_catalog.clock_timestamp()
+        and (queue.next_attempt_at is null or queue.next_attempt_at <= pg_catalog.clock_timestamp())
+        and proposal.status = 'pending'
+        and (state.next_attempt_at is null or state.next_attempt_at <= pg_catalog.clock_timestamp())
+        and (fallback.updated_at is null
+          or fallback.updated_at <= pg_catalog.clock_timestamp() - interval '1 second')
+      order by queue.effective_key, queue.proposal_id, queue.proposal_version`);
+    expect(eligibleDeadlineRows).toEqual([{ proposal_id: proposalId, proposal_version: 2 }]);
     const [reactivated] = await sqlRows(
       'select public.process_match_result_lifecycle_alerts(1, 1) as result'
     );
