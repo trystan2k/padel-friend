@@ -644,13 +644,41 @@ describe.skipIf(!environment.env)('transactional result notifications', { timeou
     const entryMarker = `paf8-m1-entry-${crypto.randomUUID().replaceAll('-', '')}`;
     const holders: Array<ReturnType<typeof startSql>> = [];
     try {
+      // Fixture cursor sorts before eligible work left by earlier suite tests.
+      // Lock the whole producer suffix, not only queue rows owned by this test.
       holders.push(
         await acquireVerifiedRowLock(
           deadlineMarker,
           `with locked_rows as materialized (
-             select proposal_id from public.match_result_alert_deadline_queue
-              where proposal_id = any(array[${deadlineSuffix.join(',')}]::uuid[])
-                and proposal_version = 1 for update
+             select queue.proposal_id
+               from public.match_result_alert_deadline_queue queue
+               join public.match_event_result_proposals proposal
+                 on proposal.id = queue.proposal_id
+                and proposal.active_version = queue.proposal_version
+               left join public.match_result_alert_processing_state state
+                 on state.alert_kind = 'deadline'
+                and state.candidate_id = queue.proposal_id
+                and state.candidate_version = queue.proposal_version
+               left join public.match_result_alert_retry_fallback fallback
+                 on fallback.alert_kind = 'deadline'
+                and fallback.candidate_id = queue.proposal_id
+                and fallback.candidate_version = queue.proposal_version
+               join public.match_result_alert_deadline_queue anchor
+                 on anchor.proposal_id = '${deadlineAnchor.proposalId}'
+                and anchor.proposal_version = 1
+              where queue.active
+                and queue.due_at <= pg_catalog.clock_timestamp()
+                and (queue.next_attempt_at is null
+                  or queue.next_attempt_at <= pg_catalog.clock_timestamp())
+                and proposal.status = 'pending'
+                and (state.next_attempt_at is null
+                  or state.next_attempt_at <= pg_catalog.clock_timestamp())
+                and (fallback.updated_at is null
+                  or fallback.updated_at <= pg_catalog.clock_timestamp() - interval '1 second')
+                and (queue.effective_key, queue.proposal_id, queue.proposal_version) >
+                    (anchor.effective_key, anchor.proposal_id, anchor.proposal_version)
+              order by queue.effective_key, queue.proposal_id, queue.proposal_version
+              for update of queue
            ) select pg_catalog.pg_sleep(900) from (select count(*) from locked_rows) acquired;`,
           `select proposal_id from public.match_result_alert_deadline_queue
             where proposal_id = '${deadlineCandidates[1]!.proposalId}' and proposal_version = 1
@@ -661,8 +689,43 @@ describe.skipIf(!environment.env)('transactional result notifications', { timeou
         await acquireVerifiedRowLock(
           entryMarker,
           `with locked_rows as materialized (
-             select match_event_id from public.match_result_alert_entry_ready_queue
-              where match_event_id = any(array[${entrySuffix.join(',')}]::uuid[]) for update
+             select queue.match_event_id
+               from public.match_result_alert_entry_ready_queue queue
+               left join public.match_result_alert_processing_state state
+                 on state.alert_kind = 'entry_ready'
+                and state.candidate_id = queue.match_event_id
+                and state.candidate_version = 0
+               left join public.match_result_alert_retry_fallback fallback
+                 on fallback.alert_kind = 'entry_ready'
+                and fallback.candidate_id = queue.match_event_id
+                and fallback.candidate_version = 0
+               join public.match_result_alert_entry_ready_queue anchor
+                 on anchor.match_event_id = '${entryAnchor}'
+              where queue.active
+                and queue.due_at <= pg_catalog.clock_timestamp()
+                and (queue.next_attempt_at is null
+                  or queue.next_attempt_at <= pg_catalog.clock_timestamp())
+                and (state.next_attempt_at is null
+                  or state.next_attempt_at <= pg_catalog.clock_timestamp())
+                and (fallback.updated_at is null
+                  or fallback.updated_at <= pg_catalog.clock_timestamp() - interval '1 second')
+                and not exists (
+                  select 1 from public.match_event_result_entry_ready_dispatch dispatched
+                   where dispatched.match_event_id = queue.match_event_id
+                )
+                and not exists (
+                  select 1 from public.match_result_alert_processing_state terminal
+                   where terminal.alert_kind = 'entry_ready'
+                     and terminal.candidate_id = queue.match_event_id
+                     and terminal.candidate_version = 0
+                     and terminal.terminal_outcome = 'ineligible'
+                     and terminal.roster_fingerprint =
+                         public.match_result_entry_roster_fingerprint(queue.match_event_id)
+                )
+                and (queue.effective_key, queue.match_event_id) >
+                    (anchor.effective_key, anchor.match_event_id)
+              order by queue.effective_key, queue.match_event_id
+              for update of queue
            ) select pg_catalog.pg_sleep(900) from (select count(*) from locked_rows) acquired;`,
           `select match_event_id from public.match_result_alert_entry_ready_queue
             where match_event_id = '${entryCandidates[1]}' for update;`
