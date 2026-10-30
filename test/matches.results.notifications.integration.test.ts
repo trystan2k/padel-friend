@@ -1492,7 +1492,14 @@ describe.skipIf(!environment.env)('transactional result notifications', { timeou
     const pushDisabled = quartet[0]!;
     await setPushDisabled(pushDisabled.id);
 
-    const submitted = await f.submit(eventId, { submitter, groupNumber });
+    const submitted = await f.submit(eventId, {
+      submitter,
+      groupNumber,
+      sets: [
+        { position: 1, team_a_games: 6, team_b_games: 4, completed: true },
+        { position: 2, team_a_games: 6, team_b_games: 3, completed: true }
+      ]
+    });
     expect(submitted.error).toBeNull();
     const proposalId = String(asRecord(submitted.data).proposal_id);
     const v1Key = `result.submitted:${proposalId}:v1`;
@@ -1544,7 +1551,10 @@ describe.skipIf(!environment.env)('transactional result notifications', { timeou
       current_version: 1,
       current_status: 'pending',
       is_current: true,
-      score: '6–4'
+      classification: 'team_a',
+      winner_sets: 2,
+      loser_sets: 0,
+      score: '6–4, 6–3'
     });
     expect(
       (
@@ -1565,6 +1575,16 @@ describe.skipIf(!environment.env)('transactional result notifications', { timeou
     );
     expect(v2Set.filter((row) => row['kind'] === 'result_review_needed')).toHaveLength(4);
     expect(v2Set.filter((row) => row['kind'] === 'result_corrected')).toHaveLength(1);
+    const recipientV2 = v2Set.find((row) => row['recipient_user_id'] === quartet[0]!.id)!;
+    const v2Context = await quartet[0]!.client.rpc('get_my_result_notification_contexts', {
+      p_notification_ids: [String(recipientV2['id'])]
+    });
+    expect(v2Context.error).toBeNull();
+    expect(v2Context.data?.[0]).toMatchObject({
+      classification: 'incomplete',
+      winner_sets: null,
+      loser_sets: null
+    });
 
     const historical = await quartet[0]!.client.rpc('get_my_result_notification_contexts', {
       p_notification_ids: [String(recipientV1['id'])]
@@ -1583,7 +1603,13 @@ describe.skipIf(!environment.env)('transactional result notifications', { timeou
     expect(target.data).toMatchObject({
       target_status: 'result_available',
       match_event_id: eventId,
-      result_context: { proposal_version: 1, current_version: 2, is_current: false }
+      result_context: {
+        proposal_version: 1,
+        current_version: 2,
+        is_current: false,
+        winner_sets: 2,
+        loser_sets: 0
+      }
     });
     expect(await links(eventId)).toEqual(
       expect.arrayContaining([
@@ -1654,6 +1680,74 @@ describe.skipIf(!environment.env)('transactional result notifications', { timeou
       await sqlRows(`select count(*)::int as count from public.match_event_audit_log
         where match_event_id = '${eventId}' and action = 'result_confirmed'`)
     ).toEqual([{ count: 1 }]);
+  });
+
+  it.each([
+    {
+      name: 'team B wins 2–1',
+      sets: [
+        { position: 1, team_a_games: 4, team_b_games: 6, completed: true },
+        { position: 2, team_a_games: 6, team_b_games: 4, completed: true },
+        { position: 3, team_a_games: 3, team_b_games: 6, completed: true }
+      ],
+      expected: {
+        classification: 'team_b',
+        winner_sets: 2,
+        loser_sets: 1,
+        score: '4–6, 6–4, 3–6'
+      }
+    },
+    {
+      name: 'split sets with an unfinished third set draw',
+      sets: [
+        { position: 1, team_a_games: 6, team_b_games: 4, completed: true },
+        { position: 2, team_a_games: 4, team_b_games: 6, completed: true },
+        { position: 3, team_a_games: 3, team_b_games: 2, completed: false }
+      ],
+      expected: {
+        classification: 'draw',
+        winner_sets: null,
+        loser_sets: null,
+        score: '6–4, 4–6, 3–2'
+      }
+    },
+    {
+      name: 'two team A sets with an unfinished third set stay decided',
+      sets: [
+        { position: 1, team_a_games: 6, team_b_games: 4, completed: true },
+        { position: 2, team_a_games: 6, team_b_games: 3, completed: true },
+        { position: 3, team_a_games: 2, team_b_games: 1, completed: false }
+      ],
+      expected: {
+        classification: 'team_a',
+        winner_sets: 2,
+        loser_sets: 0,
+        score: '6–4, 6–3, 2–1'
+      }
+    }
+  ])('mirrors the stored classifier in result set counts: $name', async ({ sets, expected }) => {
+    const eventId = await f.protectedEvent();
+    const recipient = f.players[1]!;
+    const submitted = await f.submit(eventId, { submitter: f.admin, sets });
+    expect(submitted.error).toBeNull();
+    const proposalId = String(asRecord(submitted.data).proposal_id);
+    const alert = (await resultAlerts(eventId)).find(
+      (row) =>
+        row['event_key'] === `result.submitted:${proposalId}:v1` &&
+        row['recipient_user_id'] === recipient.id
+    )!;
+    expect(alert).toMatchObject({ kind: 'result_review_needed' });
+
+    const context = await recipient.client.rpc('get_my_result_notification_contexts', {
+      p_notification_ids: [String(alert['id'])]
+    });
+    expect(context.error).toBeNull();
+    expect(context.data).toHaveLength(1);
+    expect(context.data?.[0]).toMatchObject({ proposal_id: proposalId, ...expected });
+    const [stored] = await sqlRows(`select classification
+      from public.match_event_result_proposal_versions
+     where proposal_id = '${proposalId}' and version = 1`);
+    expect(stored).toEqual({ classification: expected.classification });
   });
 
   it('rolls submission and confirmation back with failed fanout, then retries to one notification set', async () => {
@@ -1828,7 +1922,12 @@ describe.skipIf(!environment.env)('transactional result notifications', { timeou
     expect(readyTarget.data).toMatchObject({
       target_status: 'result_available',
       match_event_id: eventId,
-      result_context: { entry_ready: true, match_event_id: eventId }
+      result_context: {
+        entry_ready: true,
+        match_event_id: eventId,
+        winner_sets: null,
+        loser_sets: null
+      }
     });
   });
 

@@ -1822,6 +1822,7 @@ export type Database = {
           entry_ready: boolean
           group_number: number
           is_current: boolean
+          loser_sets: number
           match_event_id: string
           notification_id: string
           notification_kind: string
@@ -1834,6 +1835,7 @@ export type Database = {
           submitted_by_name: string
           timezone: string
           venue: string
+          winner_sets: number
         }[]
       }
       govern_community_member: {

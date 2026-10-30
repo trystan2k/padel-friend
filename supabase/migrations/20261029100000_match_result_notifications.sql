@@ -443,6 +443,8 @@ returns table(
   current_status text,
   is_current boolean,
   classification text,
+  winner_sets integer,
+  loser_sets integer,
   score text,
   submitted_by_name text,
   review_deadline_at timestamptz,
@@ -467,6 +469,16 @@ begin
          case when p.active_version = link.proposal_version then p.status else 'superseded' end,
          p.active_version, p.status, p.active_version = link.proposal_version,
          version.classification,
+         case
+           when version.classification = 'team_a' then set_totals.team_a_sets
+           when version.classification = 'team_b' then set_totals.team_b_sets
+           else null::integer
+         end,
+         case
+           when version.classification = 'team_a' then set_totals.team_b_sets
+           when version.classification = 'team_b' then set_totals.team_a_sets
+           else null::integer
+         end,
          (select pg_catalog.string_agg(
             (set_row.value ->> 'team_a_games') || '–' || (set_row.value ->> 'team_b_games'),
             ', ' order by set_row.ordinality
@@ -485,6 +497,21 @@ begin
       on version.proposal_id = link.proposal_id
      and version.version = link.proposal_version
     left join public.player_profiles submitter on submitter.user_id = version.submitted_by
+    -- Stored classification and these counts share the immutable sets facts;
+    -- count completed set wins using classify_match_result_sets' predicate.
+    left join lateral (
+      select
+        (count(*) filter (where (set_row.value ->> 'completed')::boolean
+          and (set_row.value ->> 'team_a_games')::integer
+            > (set_row.value ->> 'team_b_games')::integer))::integer as team_a_sets,
+        (count(*) filter (where (set_row.value ->> 'completed')::boolean
+          and (set_row.value ->> 'team_b_games')::integer
+            > (set_row.value ->> 'team_a_games')::integer))::integer as team_b_sets
+      from pg_catalog.jsonb_array_elements(
+        case when pg_catalog.jsonb_typeof(version.sets) = 'array'
+          then version.sets else '[]'::jsonb end
+      ) as set_row(value)
+    ) set_totals on true
    where n.id = any(coalesce(p_notification_ids, '{}'::uuid[]))
      and n.recipient_user_id = v_actor_id
      and n.category = 'results'
@@ -505,8 +532,8 @@ begin
   union all
   select n.id, n.kind, e.id, e.community_id, null::uuid, null::bigint,
          null::bigint, null::text, null::bigint, null::text, true,
-         null::text, null::text, null::text, null::timestamptz,
-         e.venue_name, e.starts_at, e.timezone, true
+         null::text, null::integer, null::integer, null::text, null::text,
+         null::timestamptz, e.venue_name, e.starts_at, e.timezone, true
     from public.notifications n
     join public.match_event_result_entry_ready_dispatch dispatch
       on dispatch.notification_id = n.id

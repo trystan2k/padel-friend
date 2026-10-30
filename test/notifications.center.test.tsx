@@ -35,7 +35,7 @@ vi.mock('react-i18next', async () => {
   const { default: resource } = await import('../src/locales/en/translation.json');
   return {
     useTranslation: () => ({
-      t: (key: string, options?: { count?: number }) => {
+      t: (key: string, options?: Record<string, string | number>) => {
         if (mocks.useEnglishResource) {
           if (key === 'notifications.today') return resource.notifications.today;
           if (key === 'notifications.earlier') return resource.notifications.earlier;
@@ -44,6 +44,18 @@ vi.mock('react-i18next', async () => {
             return resource.notifications.kinds.match_registration_expired;
           if (key === 'notifications.kinds.match_registration_not_playing')
             return resource.notifications.kinds.match_registration_not_playing;
+          if (
+            key === 'matches.results.outcome.team_a' ||
+            key === 'matches.results.outcome.team_b'
+          ) {
+            const template =
+              key === 'matches.results.outcome.team_a'
+                ? resource.matches.results.outcome.team_a
+                : resource.matches.results.outcome.team_b;
+            return template
+              .replace('{{winnerSets}}', String(options?.['winnerSets'] ?? ''))
+              .replace('{{loserSets}}', String(options?.['loserSets'] ?? ''));
+          }
           if (key === 'notifications.unread_one' || key === 'notifications.unread_other') {
             const template =
               key === 'notifications.unread_one'
@@ -97,7 +109,9 @@ const resultContext: ResultNotificationContext = {
   current_status: 'pending',
   is_current: true,
   classification: 'team_a',
-  score: '6–4',
+  winner_sets: 2,
+  loser_sets: 0,
+  score: '6–4, 6–2',
   submitted_by_name: 'Ari',
   review_deadline_at: '2026-10-17T12:00:00.000Z',
   venue: 'Central Court',
@@ -147,6 +161,7 @@ describe('notification center', () => {
   });
 
   it('links result alerts to their event and preserves the validated group/version locator', () => {
+    mocks.useEnglishResource = true;
     const alert: NotificationPage = {
       ...initial,
       items: [
@@ -170,10 +185,11 @@ describe('notification center', () => {
     expect(url.hash).toBe('#result-group-2');
     expect(
       screen.getByText(
-        (_content, element) => element?.textContent === 'notifications.result.group · 6–4'
+        (_content, element) => element?.textContent === 'notifications.result.group · 6–4, 6–2'
       )
     ).toBeTruthy();
     expect(screen.getByText('notifications.result.submittedBy')).toBeTruthy();
+    expect(screen.getByText('TEAM A WINS · 2–0')).toBeTruthy();
   });
 
   it('keeps a superseded result alert historical and links to review the current group', () => {

@@ -6,6 +6,7 @@ import { Link } from '@tanstack/react-router';
 import { StatusBadge } from '../../components/ui/StatusBadge';
 import type { NotificationCategory, NotificationPage } from './notification-model';
 import { groupNotifications } from './notification-model';
+import { NotificationResultOutcome } from './NotificationResultOutcome';
 import { notificationResultHref } from './notification-target';
 import { styles } from './notifications.styles';
 import { useNotifications } from './use-notifications';
@@ -96,9 +97,7 @@ export function NotificationsPage({ initial }: { initial: NotificationPage }) {
                     {t('notifications.result.group', { number: row.resultContext.group_number })}
                     {row.resultContext.score ? ` · ${row.resultContext.score}` : ''}
                   </p>
-                  {row.resultContext.classification && (
-                    <p>{t(`matches.results.outcome.${row.resultContext.classification}`)}</p>
-                  )}
+                  <NotificationResultOutcome context={row.resultContext} />
                   <p>
                     {t('notifications.result.submittedBy', {
                       name:

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Link } from '@tanstack/react-router';
 import { useTranslation } from 'react-i18next';
 import { notificationResultHref, notificationRosterPosition } from './notification-target';
+import { NotificationResultOutcome } from './NotificationResultOutcome';
 import {
   acceptMyNotificationInvitation,
   getMyMatchNotificationContext,
@@ -358,9 +359,7 @@ export function NotificationDetailPage({
                 {target.result_context.score && (
                   <p>{t('notifications.result.score', { score: target.result_context.score })}</p>
                 )}
-                {target.result_context.classification && (
-                  <p>{t(`matches.results.outcome.${target.result_context.classification}`)}</p>
-                )}
+                <NotificationResultOutcome context={target.result_context} />
                 <p>
                   {t('notifications.result.submittedBy', {
                     name:

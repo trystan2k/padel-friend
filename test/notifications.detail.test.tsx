@@ -47,6 +47,7 @@ import { Route as NotificationListRoute } from '../src/routes/_protected.notific
 // Rendered strings are asserted against the REAL en locale resource below, so
 // any hardcoded copy in the component breaks these expectations.
 const copy = en.notifications;
+const outcomeCopy = en.matches.results.outcome;
 
 function fill(template: string, values: Record<string, string | number>): string {
   return Object.entries(values).reduce(
@@ -112,7 +113,9 @@ const resultTarget: NotificationTarget = {
     current_status: 'pending',
     is_current: true,
     classification: 'team_a',
-    score: '6–4',
+    winner_sets: 2,
+    loser_sets: 0,
+    score: '6–4, 6–3',
     submitted_by_name: 'Alex',
     review_deadline_at: '2026-10-22T10:00:00.000Z',
     venue: 'Central Court',
@@ -249,11 +252,43 @@ describe('notification detail page', () => {
           (element.textContent?.includes(fill(copy.result.group, { number: 2 })) ?? false)
       )
     ).toBeTruthy();
-    expect(screen.getByText(fill(copy.result.score, { score: '6–4' }))).toBeTruthy();
+    expect(screen.getByText(fill(copy.result.score, { score: '6–4, 6–3' }))).toBeTruthy();
+    expect(
+      screen.getByText(fill(outcomeCopy.team_a, { winnerSets: 2, loserSets: 0 }))
+    ).toBeTruthy();
     expect(screen.getByText(fill(copy.result.submittedBy, { name: 'Alex' }))).toBeTruthy();
     expect(screen.getByRole('link', { name: copy.result.openResult }).getAttribute('href')).toBe(
       `/matches/${availableMatch.match_event_id}?result_group=2&result_proposal=44444444-4444-4444-8444-444444444444&result_version=1#result-group-2`
     );
+  });
+  it('keeps incomplete outcomes parameter-free and omits team outcomes without counts', async () => {
+    const incompleteTarget: NotificationTarget = {
+      ...resultTarget,
+      result_context: {
+        ...resultTarget.result_context!,
+        classification: 'incomplete',
+        winner_sets: null,
+        loser_sets: null
+      }
+    };
+    mountPage(incompleteTarget);
+
+    expect(await screen.findByText(outcomeCopy.incomplete)).toBeTruthy();
+    expect(screen.queryByText(/\{\{(?:winnerSets|loserSets)\}\}/)).toBeNull();
+
+    cleanup();
+    const missingTeamCountsTarget: NotificationTarget = {
+      ...resultTarget,
+      result_context: {
+        ...resultTarget.result_context!,
+        winner_sets: null,
+        loser_sets: null
+      }
+    };
+    mountPage(missingTeamCountsTarget);
+
+    expect(await screen.findByRole('heading', { name: copy.kinds.result_added })).toBeTruthy();
+    expect(screen.queryByText(/TEAM A WINS/)).toBeNull();
   });
   it('renders the localized unavailable state with a back link to the notification center', async () => {
     mountPage(unavailable);

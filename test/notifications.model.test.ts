@@ -13,6 +13,29 @@ const eventId = '123e4567-e89b-12d3-a456-426614174000';
 const communityId = '223e4567-e89b-12d3-a456-426614174001';
 const proposalId = '323e4567-e89b-12d3-a456-426614174002';
 const notificationId = '423e4567-e89b-12d3-a456-426614174003';
+const validResultContext = {
+  notification_id: notificationId,
+  notification_kind: 'result_review_needed',
+  match_event_id: eventId,
+  community_id: communityId,
+  proposal_id: proposalId,
+  proposal_version: 2,
+  group_number: 3,
+  proposal_status: 'pending',
+  current_version: 2,
+  current_status: 'pending',
+  is_current: true,
+  classification: 'team_a',
+  winner_sets: 2,
+  loser_sets: 0,
+  score: '6–4, 6–3',
+  submitted_by_name: 'Ari',
+  review_deadline_at: '2026-10-31T12:00:00.000Z',
+  venue: 'Central Court',
+  starts_at: '2026-10-29T12:00:00.000Z',
+  timezone: 'America/Sao_Paulo',
+  entry_ready: false
+};
 
 describe('notification display model', () => {
   it('groups dates in UTC and formats with the requested locale', () => {
@@ -139,27 +162,7 @@ describe('notification display model', () => {
   });
 
   it('builds a validated result deep link with event identity separate from proposal identity', () => {
-    const context = decodeResultNotificationContext({
-      notification_id: notificationId,
-      notification_kind: 'result_review_needed',
-      match_event_id: eventId,
-      community_id: communityId,
-      proposal_id: proposalId,
-      proposal_version: 2,
-      group_number: 3,
-      proposal_status: 'pending',
-      current_version: 2,
-      current_status: 'pending',
-      is_current: true,
-      classification: 'team_a',
-      score: '6–4, 6–3',
-      submitted_by_name: 'Ari',
-      review_deadline_at: '2026-10-31T12:00:00.000Z',
-      venue: 'Central Court',
-      starts_at: '2026-10-29T12:00:00.000Z',
-      timezone: 'America/Sao_Paulo',
-      entry_ready: false
-    });
+    const context = decodeResultNotificationContext(validResultContext);
 
     const href = notificationResultHref(context);
     const url = new URL(href, 'https://example.test');
@@ -168,6 +171,8 @@ describe('notification display model', () => {
     expect(url.searchParams.get('result_proposal')).toBe(proposalId);
     expect(url.searchParams.get('result_version')).toBe('2');
     expect(url.hash).toBe('#result-group-3');
+    expect(context.winner_sets).toBe(2);
+    expect(context.loser_sets).toBe(0);
   });
 
   it('keeps superseded notifications historical and points only to the selected group', () => {
@@ -184,7 +189,9 @@ describe('notification display model', () => {
       current_status: 'pending',
       is_current: false,
       classification: 'team_b',
-      score: '4–6',
+      winner_sets: 2,
+      loser_sets: 1,
+      score: '4–6, 6–4, 4–6',
       submitted_by_name: 'Ari',
       review_deadline_at: '2026-10-30T12:00:00.000Z',
       venue: 'Central Court',
@@ -202,6 +209,38 @@ describe('notification display model', () => {
     );
   });
 
+  it.each([
+    { winner_sets: undefined },
+    { winner_sets: null },
+    { winner_sets: 0 },
+    { winner_sets: 1.5 },
+    { loser_sets: null },
+    { loser_sets: -1 },
+    { loser_sets: 0.5 },
+    { classification: 'draw', winner_sets: 2, loser_sets: 0 },
+    { classification: 'incomplete', winner_sets: null, loser_sets: 0 }
+  ])('rejects malformed or inconsistent set counts: %o', (overrides) => {
+    expect(() => decodeResultNotificationContext({ ...validResultContext, ...overrides })).toThrow(
+      'INVALID_NOTIFICATION_RESULT_CONTEXT'
+    );
+  });
+
+  it.each(['draw', 'incomplete'] as const)(
+    'accepts null set counts for %s outcomes',
+    (classification) => {
+      const context = decodeResultNotificationContext({
+        ...validResultContext,
+        classification,
+        winner_sets: null,
+        loser_sets: null
+      });
+
+      expect(context.classification).toBe(classification);
+      expect(context.winner_sets).toBeNull();
+      expect(context.loser_sets).toBeNull();
+    }
+  );
+
   it('accepts event-ready contexts but rejects a proposal UUID used as an event target', () => {
     const context = decodeResultNotificationContext({
       notification_id: notificationId,
@@ -216,6 +255,8 @@ describe('notification display model', () => {
       current_status: null,
       is_current: true,
       classification: null,
+      winner_sets: null,
+      loser_sets: null,
       score: null,
       submitted_by_name: null,
       review_deadline_at: null,

@@ -22,6 +22,8 @@ export type ResultNotificationContext = {
   current_status: 'pending' | 'disputed' | 'confirmed' | null;
   is_current: boolean;
   classification: 'team_a' | 'team_b' | 'draw' | 'incomplete' | null;
+  winner_sets: number | null;
+  loser_sets: number | null;
   score: string | null;
   submitted_by_name: string | null;
   review_deadline_at: string | null;
@@ -75,6 +77,10 @@ function positiveInteger(value: unknown): value is number {
   return typeof value === 'number' && Number.isSafeInteger(value) && value > 0;
 }
 
+function nonNegativeInteger(value: unknown): value is number {
+  return typeof value === 'number' && Number.isSafeInteger(value) && value >= 0;
+}
+
 function validTimestamp(value: unknown): value is string {
   return typeof value === 'string' && Number.isFinite(Date.parse(value));
 }
@@ -91,6 +97,8 @@ export function decodeResultNotificationContext(value: unknown): ResultNotificat
   const proposalStatus = row.proposal_status;
   const currentStatus = row.current_status;
   const classification = row.classification;
+  const winnerSets = row.winner_sets;
+  const loserSets = row.loser_sets;
   const submittedByName = row.submitted_by_name;
   const reviewDeadline = row.review_deadline_at;
   const score = row.score;
@@ -106,6 +114,8 @@ export function decodeResultNotificationContext(value: unknown): ResultNotificat
     typeof venue !== 'string' ||
     !validTimestamp(startsAt) ||
     typeof timezone !== 'string' ||
+    (winnerSets !== null && !positiveInteger(winnerSets)) ||
+    (loserSets !== null && !nonNegativeInteger(loserSets)) ||
     (classification !== null &&
       classification !== 'team_a' &&
       classification !== 'team_b' &&
@@ -129,6 +139,8 @@ export function decodeResultNotificationContext(value: unknown): ResultNotificat
       currentVersion !== null ||
       currentStatus !== null ||
       classification !== null ||
+      winnerSets !== null ||
+      loserSets !== null ||
       score !== null ||
       submittedByName !== null ||
       reviewDeadline !== null
@@ -147,6 +159,8 @@ export function decodeResultNotificationContext(value: unknown): ResultNotificat
       current_status: null,
       is_current: true,
       classification: null,
+      winner_sets: null,
+      loser_sets: null,
       score: null,
       submitted_by_name: null,
       review_deadline_at: null,
@@ -177,6 +191,14 @@ export function decodeResultNotificationContext(value: unknown): ResultNotificat
     (isCurrent ? proposalStatus !== currentStatus : proposalStatus !== 'superseded')
   )
     throw new Error('INVALID_NOTIFICATION_RESULT_CONTEXT');
+
+  const teamOutcome = classification === 'team_a' || classification === 'team_b';
+  if (
+    (teamOutcome && (!positiveInteger(winnerSets) || !nonNegativeInteger(loserSets))) ||
+    (!teamOutcome && (winnerSets !== null || loserSets !== null))
+  )
+    throw new Error('INVALID_NOTIFICATION_RESULT_CONTEXT');
+
   return {
     notification_id: notificationId,
     notification_kind: notificationKind,
@@ -190,6 +212,8 @@ export function decodeResultNotificationContext(value: unknown): ResultNotificat
     current_status: currentStatus,
     is_current: isCurrent,
     classification,
+    winner_sets: winnerSets,
+    loser_sets: loserSets,
     score,
     submitted_by_name: submittedByName,
     review_deadline_at: reviewDeadline,
