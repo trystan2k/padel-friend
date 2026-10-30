@@ -236,7 +236,7 @@ For explicit reuse, verify the requested branch exists and continue on it; do no
 1- Push the commits to the remote repository
 2- If there is any error, ask the user for help to resolve the error
 3- Never skip the git hooks
-4- **NEVER push more than once for the same delivery.** The pre-push hook runs unit and integration tests only, not the full quality gate, so each additional push repeats that test stage. If the caller asks for more than one push, return a failure explaining the cost and ask for a single push instead.
+4- **NEVER push more than once for the same delivery.** Pre-push hook removed by approval; require `pnpm complete-check` before claiming done and verify CI. If the caller asks for more than one push, return a failure and ask for a single push instead.
 
 ## Create a pull request description
 
@@ -347,7 +347,7 @@ Sets up a complete automated code quality gate stack for the project.
 - `biome.json` — Biome v2 config
 - `.husky/pre-commit` — runs lint-staged
 - `.husky/commit-msg` — validates commit messages
-- `.husky/pre-push` — runs tests
+- Pre-push runs unit tests only (`pnpm test:unit`); full local gate and CI run tests
 
 ## Test results
 - ✅ All tests pass
@@ -417,7 +417,7 @@ This repository rejects merge commits and merges PRs with squash. When working w
 - After a base PR is squash-merged, do not merge the child as-is. Rebase the child onto the updated base with `git rebase --onto origin/<base> <old-base-sha> <child-branch>`, then push with `--force-with-lease`.
 - Before rebasing, verify with `git log --oneline <old-base-sha>..<child-branch>` that only the child's own commits are replayed.
 - Merge the stack bottom-up, one PR at a time, and confirm `gh pr view <number> --json mergeStateStatus` is `CLEAN` before requesting the next merge.
-- Never use `--no-verify` to get past the pre-push gate; fix the failure instead.
+- Never use `--no-verify` to bypass configured hooks; fix failures instead.
 
 ## Any other git command
 

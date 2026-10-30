@@ -67,6 +67,30 @@ permissions:
   - action: engram*
     resource: "*"
     effect: deny
+  - action: shell
+    resource: "ps"
+    effect: allow
+  - action: shell
+    resource: "ps *"
+    effect: allow
+  - action: shell
+    resource: "grep *"
+    effect: allow
+  - action: shell
+    resource: "head *"
+    effect: allow
+  - action: shell
+    resource: "tail *"
+    effect: allow
+  - action: shell
+    resource: "awk *"
+    effect: allow
+  - action: shell
+    resource: "sed"
+    effect: allow
+  - action: shell
+    resource: "sed *"
+    effect: allow    
   - action: external_directory
     resource: "*"
     effect: deny
