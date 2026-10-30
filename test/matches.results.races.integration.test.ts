@@ -309,7 +309,7 @@ describe('separate-connection result command races', { timeout: 120000 }, () => 
     ).toEqual([{ source: 'AUTO_48H', effective_at_is_deadline: true }]);
   });
 
-  it('revalidates reminders after rejection/confirmation wins canonical event lock', async () => {
+  it('revalidates reminders after review transitions without counting earlier deliveries', async () => {
     async function contend(
       commands: Array<{
         token: 'review_match_event_result' | 'process_match_result_lifecycle_alerts';
@@ -383,6 +383,33 @@ describe('separate-connection result command races', { timeout: 120000 }, () => 
       }
     }
 
+    async function reminderCount(proposalId: string) {
+      const [row] = await sqlRows(`select count(*)::int as count from public.notifications
+        where event_key = 'result.deadline:${proposalId}:v1'`);
+      return Number(row?.['count'] ?? 0);
+    }
+
+    async function expectNoRemindersAfterTransition(proposalId: string) {
+      const priorReminderCount = await reminderCount(proposalId);
+      const [dispatch] = await sqlRows(`select
+        public.notify_match_result_deadline('${proposalId}', 1) as reminders`);
+      expect(dispatch).toEqual({ reminders: 0 });
+      expect(await reminderCount(proposalId)).toBe(priorReminderCount);
+
+      const [postTransitionCount] = await sqlRows(`select count(*)::int as count
+        from public.notifications notification
+        where notification.event_key = 'result.deadline:${proposalId}:v1'
+          and notification.created_at >= coalesce(
+            (select confirmation.confirmed_at
+               from public.match_event_result_confirmations confirmation
+              where confirmation.proposal_id = '${proposalId}'),
+            (select min(review.decided_at)
+               from public.match_event_result_reviews review
+              where review.proposal_id = '${proposalId}' and review.decision = 'reject')
+          )`);
+      expect(postTransitionCount).toEqual({ count: 0 });
+    }
+
     const rejectFirst = await pending();
     await setResultReviewDeadlineOffset(rejectFirst.proposalId, 1, 5 * 60 * 60);
     const rejectionAndReminder = await contend([
@@ -398,10 +425,7 @@ describe('separate-connection result command races', { timeout: 120000 }, () => 
       where id = '${rejectFirst.proposalId}'`)
     ).toEqual([{ status: 'disputed' }]);
     expect(rejectionAndReminder[1]).toMatchObject({ code: 0 });
-    expect(
-      await sqlRows(`select count(*)::int as count from public.notifications
-      where event_key = 'result.deadline:${rejectFirst.proposalId}:v1'`)
-    ).toEqual([{ count: 0 }]);
+    await expectNoRemindersAfterTransition(rejectFirst.proposalId);
 
     const confirmFirst = await pending();
     await setResultReviewDeadlineOffset(confirmFirst.proposalId, 1, 5 * 60 * 60);
@@ -426,30 +450,25 @@ describe('separate-connection result command races', { timeout: 120000 }, () => 
       where id = '${confirmFirst.proposalId}'`)
     ).toEqual([{ status: 'confirmed' }]);
     expect(confirmationAndReminder[2]).toMatchObject({ code: 0 });
-    expect(
-      await sqlRows(`select count(*)::int as count from public.notifications
-      where event_key = 'result.deadline:${confirmFirst.proposalId}:v1'`)
-    ).toEqual([{ count: 0 }]);
+    await expectNoRemindersAfterTransition(confirmFirst.proposalId);
 
     const reminderFirst = await pending();
     await setResultReviewDeadlineOffset(reminderFirst.proposalId, 1, 5 * 60 * 60);
-    const reminderAndRejection = await contend([
-      {
-        token: 'process_match_result_lifecycle_alerts',
-        run: () => startSql('select public.process_match_result_lifecycle_alerts(1, 1);').done
-      },
-      { token: 'review_match_event_result', run: reviewCall(reminderFirst.proposalId, 1, 'reject') }
-    ]);
-    expect(reminderAndRejection[0]).toMatchObject({ code: 0 });
-    expect(reminderAndRejection[1]).toMatchObject({ error: null });
+    const reminderFirstResult = await startSql(
+      'select public.process_match_result_lifecycle_alerts(1, 1);'
+    ).done;
+    expect(reminderFirstResult).toMatchObject({ code: 0 });
+    const remindersBeforeRejection = await reminderCount(reminderFirst.proposalId);
+    expect(remindersBeforeRejection).toBe(4);
+
+    const rejectionAfterReminder = await reviewCall(reminderFirst.proposalId, 1, 'reject')();
+    expect(rejectionAfterReminder).toMatchObject({ error: null });
     expect(
       await sqlRows(`select status from public.match_event_result_proposals
       where id = '${reminderFirst.proposalId}'`)
     ).toEqual([{ status: 'disputed' }]);
-    expect(
-      await sqlRows(`select count(*)::int as count from public.notifications
-      where event_key = 'result.deadline:${reminderFirst.proposalId}:v1'`)
-    ).toEqual([{ count: 0 }]);
+    expect(await reminderCount(reminderFirst.proposalId)).toBe(remindersBeforeRejection);
+    await expectNoRemindersAfterTransition(reminderFirst.proposalId);
     expect(await counts(reminderFirst.eventId)).toMatchObject({ reviews: 1, confirmations: 0 });
   });
 });
