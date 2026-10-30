@@ -54,7 +54,7 @@
       "league": "league_id/community_id are provenance only; League standings never an input",
       "replay_order": "ascending (played_at instant, game_group_id lowercase canonical UUID string)",
       "initialization": "self-declared and creator-estimated levels initialise identically: mu = display = highest = level, sigma 1.00, reliability 10, groups 0",
-      "account_claim": "no rating event, user_id unchanged; level change only if groups = 0"
+      "account_claim": "no rating event, user_id unchanged, rating history unchanged; clears is_provisional (account metadata, no rating effect); level change only if groups = 0"
     }
   },
   "numeric_policy": {
@@ -13499,7 +13499,8 @@
       "id": "INV-claim",
       "assertion": "identical_rating_outputs",
       "cases": ["GF-16a-claim-invariance-with-claim", "GF-16b-claim-invariance-no-claim"],
-      "compare": "game_group steps only, in order; account_claim step emits no rating event; user_id identical"
+      "compare": "game_group steps only, in order; compare per player the rating state (mu, display_level, highest_display_level, sigma, reliability_percent, confirmed_competitive_game_groups, last_rating_at) and the rating event history; account_claim step emits no rating event; user_id identical; ignoring account-status metadata is_provisional",
+      "also_assert": "account_claim changes only is_provisional (true to false) on the claimed player; no other state field and no rating event changes"
     },
     {
       "id": "INV-exclusions",

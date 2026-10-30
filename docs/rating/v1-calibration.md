@@ -16,6 +16,10 @@ Normative specification of the V1 app-wide rating calculation. Companion oracle:
 | Supersedes              | Nothing (first approval)                                                                   |
 | Fixture review          | Pending product-owner review of `golden-fixtures.json` and this document before T10 starts |
 
+Clarification (no new decision): per the pre-approved PAF-125 addendum, claim preserves all rating
+history, clears `is_provisional` (account-status metadata only), and a player with 0 rated groups may
+set a new level at claim; after the first rated group, only PAF-17 review can change the level.
+
 The approved decisions are: (1) the model package in [Calculation](#calculation), (2) the version
 tuple above, (3) the provisional-player rules in [Initialization](#initialization). Any change to a
 parameter, rounding rule or eligibility rule requires a new `rating_config_version`; events already
@@ -151,10 +155,13 @@ effect: no rating event, and `mu`, `display_level`, `sigma`, reliability, group 
 - Provisional status is not a rating input. Reliability follows the confirmed-group count only;
   there is no provisional penalty (`GF-15` equals `GF-06`).
 - The first creator-entered level wins; later adders cannot overwrite it (`GF-26`).
-- Account claim keeps the same `user_id`, state and history; it creates no rating event
-  (`GF-16a` equals `GF-16b`).
-- At claim, a player with no rated history (0 groups) may replace the level; this re-initialises
-  as above and is not a rating event (`GF-24`). With rated history the claim succeeds but the level
+- Account claim keeps the same `user_id` and preserves all rating state and history (`mu`,
+  display levels, reliability, groups, events); it creates no rating event (`GF-16a` equals
+  `GF-16b`). The only exception is the level rule below.
+- A successful claim clears `is_provisional`. This is account-status metadata only, not a
+  rating-history change and zero rating effect (`GF-16a`, `GF-24`, `GF-25`).
+- At claim, a player with no rated history (0 groups) may set a new level (pre-approved PAF-125
+  addendum); this re-initialises as above and is not a rating event (`GF-24`). With rated history the claim succeeds but the level
   change is rejected (`GF-25`); afterwards only a PAF-17 Platform Admin Level Review (forward-only)
   can change it.
 
@@ -168,7 +175,7 @@ All concerns below are resolved by the approved parameters; none is left open fo
 | b   | Very mismatched teams                      | Logistic saturation caps movement. Expected result at gap 6.20 rounds to 0.00; the upset moves ±0.26 at 16%. Worst case for any player in any group: `abs(raw_delta) < K(10%) = 0.2775`, so never more than 0.28. | `GF-17`                         |
 | c   | 100% reliability looks "frozen"            | Not frozen: K = 0.075 (×0.25 of base), equal-strength win = +0.04. "100%" means fully established under the V1 rule, not certainty (PRD §25.5); stability = smallest configured movement.                         | `GF-20`, `GF-18`                |
 | d   | Blowouts vs narrow wins                    | Score margin deliberately ignored in V1 (PRD §25.8). Identical deltas.                                                                                                                                            | `GF-13a`, `GF-13b`              |
-| e   | Provisional players                        | Treated identically to self-declared players; claim changes nothing.                                                                                                                                              | `GF-15`, `GF-16a/b`, `GF-24–26` |
+| e   | Provisional players                        | Treated identically to self-declared players. Claim clears `is_provisional` (metadata) and changes no rating history; only a player with 0 groups may set a new level at claim, never after rated history.        | `GF-15`, `GF-16a/b`, `GF-24–26` |
 | f   | PRD example numbers                        | §26 `+0.08` / `+0.04` are illustrative wording only, not normative values. No parameter was derived from them; explanations below use real fixture numbers.                                                       | `GF-05`                         |
 | g   | Deterministic replay                       | Replay order `(played_at, game_group_id)`; `last_rating_at = played_at`; exact arithmetic with one rounding. Same inputs always give same history.                                                                | `GF-14`, `GF-21`                |
 | h   | Partners gain different amounts            | Intended (PRD §25.1.14): same `E` and `O`, different `K`. Group totals may be non-zero-sum (`GF-18`: +0.18 / −0.08).                                                                                              | `GF-05`, `GF-18`                |
@@ -299,14 +306,14 @@ Invariants (`invariants` in JSON): `INV-margin`, `INV-league`, `INV-provisional`
 
 ### Acceptance-criteria map
 
-| AC                                                                       | Proof                                                                                                |
-| ------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------- |
-| AC1 formula, parameters, rounding, clamping, reliability, ties, versions | [Calculation](#calculation), [Approval record](#approval-record), `GF-14`, `GF-19`, `GF-20`, `GF-21` |
-| AC2 golden before/after cases                                            | `GF-01`–`GF-08`, `GF-17`–`GF-20`                                                                     |
-| AC3 exclusions, margin                                                   | `GF-09`–`GF-13b`, `INV-exclusions`, `INV-margin`                                                     |
-| AC4 explanations, no League metric                                       | [Explanations](#player-facing-explanation-examples), `GF-23a/b`                                      |
-| AC5 fairness resolved, no inferred PRD numbers                           | [Fairness](#fairness-concerns-and-resolutions)                                                       |
-| PAF-125 addendum                                                         | `GF-15`, `GF-16a/b`, `GF-24`–`GF-26`                                                                 |
+| AC                                                                       | Proof                                                                                                                  |
+| ------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------- |
+| AC1 formula, parameters, rounding, clamping, reliability, ties, versions | [Calculation](#calculation), [Approval record](#approval-record), `GF-07`, `GF-08`, `GF-14`, `GF-19`, `GF-20`, `GF-21` |
+| AC2 golden before/after cases                                            | `GF-01`–`GF-08`, `GF-17`–`GF-20`                                                                                       |
+| AC3 exclusions, margin                                                   | `GF-09`–`GF-13b`, `INV-exclusions`, `INV-margin`                                                                       |
+| AC4 explanations, no League metric                                       | [Explanations](#player-facing-explanation-examples), `GF-23a/b`                                                        |
+| AC5 fairness resolved, no inferred PRD numbers                           | [Fairness](#fairness-concerns-and-resolutions)                                                                         |
+| PAF-125 addendum                                                         | `GF-15`, `GF-16a/b`, `GF-24`–`GF-26`                                                                                   |
 
 ## Verification evidence
 
