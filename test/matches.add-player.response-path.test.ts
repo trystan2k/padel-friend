@@ -75,7 +75,7 @@ describe('afterResponse', () => {
     await vi.waitFor(() => expect(ran).toHaveBeenCalledTimes(1));
   });
 
-  it('settles on registration alone: the task starts only after the response turn (F15)', async () => {
+  it('settles on registration alone: the task starts after registration, off the handler stack (F21)', async () => {
     vi.useFakeTimers();
     let finish: () => void = () => undefined;
     const task = vi.fn<() => Promise<void>>(
@@ -87,7 +87,8 @@ describe('afterResponse', () => {
     // A task that never finishes must not hold registration, and has not started when it is over.
     await afterResponse(task);
     expect(task).not.toHaveBeenCalled();
-    // The response turn is over (next macrotask): only now does the task body run.
+    // One macrotask later (off the handler stack): only now does the task body run. This
+    // does not prove the response was fully sent; Workers exposes no such signal.
     await vi.advanceTimersByTimeAsync(1);
     expect(task).toHaveBeenCalledTimes(1);
     finish();
@@ -111,7 +112,7 @@ describe('addMatchPlayer response path', () => {
       bodies.push(await addMatchPlayer({ data: input(email) }));
       // Only the user-scoped command ran inside the response path.
       expect(client.rpc.mock.calls.map(([name]) => name)).toEqual(['add_match_player']);
-      // Nothing ran on the response path itself: the task is gated behind the response turn.
+      // Nothing ran on the response path itself: the task is gated off the handler stack.
       expect(admin.rpc).not.toHaveBeenCalled();
       // The same post-response work starts for every branch: dispatch first, nothing else yet.
       await vi.waitFor(() => expect(admin.rpc).toHaveBeenCalled());

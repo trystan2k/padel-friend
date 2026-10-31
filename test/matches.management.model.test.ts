@@ -188,8 +188,7 @@ describe('management defensive models', () => {
     'result_corrected',
     'result_confirmed',
     'player_added',
-    'player_claimed',
-    'player_add_delivery_exhausted'
+    'player_claimed'
   ])('parses audit rows with live-CHECK action %s mixed with legacy rows', (action) => {
     const row = {
       id,

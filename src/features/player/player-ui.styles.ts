@@ -352,14 +352,22 @@ export const ui = stylex.create({
   },
   muted: { color: 'var(--color-muted)', fontSize: 'var(--font-size-12)', margin: 0 },
   error: { color: 'var(--color-red)', fontSize: 'var(--font-size-12)', margin: 0 },
+  // Pencil claim notice: icon + 12px regular text, padding 10, radius 9, gap 8. The design's
+  // 1.25 line-height has no token, so the text keeps the inherited line height.
   claimNotice: {
-    margin: 0,
-    padding: 'var(--space-12)',
-    borderRadius: 'var(--radius-12)',
+    display: 'flex',
+    alignItems: 'center',
+    gap: 'var(--space-8)',
+    padding: 'var(--space-10)',
+    borderRadius: 'var(--radius-9)',
     backgroundColor: 'var(--color-green-soft)',
-    color: 'var(--color-green)',
-    fontSize: 'var(--font-size-13)',
-    fontWeight: 'var(--font-weight-bold)'
+    color: 'var(--color-green)'
+  },
+  claimNoticeIcon: { flexShrink: 0, width: 'var(--space-16)', height: 'var(--space-16)' },
+  claimNoticeText: {
+    margin: 0,
+    fontSize: 'var(--font-size-12)',
+    fontWeight: 'var(--font-weight-regular)'
   },
   identity: { display: 'flex', alignItems: 'center', gap: 'var(--space-12)' },
   avatar: {

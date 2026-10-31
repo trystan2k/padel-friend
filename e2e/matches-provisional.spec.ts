@@ -133,12 +133,17 @@ async function mailpitJson(response: APIResponse): Promise<Record<string, unknow
 
 /** The invitation link of the single mail delivered to `email`, as a mail client opens it. */
 async function invitationLink(request: APIRequestContext, email: string) {
-  const search = await request.get(
-    `${MAILPIT_URL}/api/v1/search?query=${encodeURIComponent(`to:"${email}"`)}`
-  );
-  const messages = (await mailpitJson(search)).messages;
-  if (!Array.isArray(messages)) throw new Error('Unexpected Mailpit search response');
-  expect(messages).toHaveLength(1);
+  const query = encodeURIComponent(`to:"${email}"`);
+  const found = async () => {
+    const messages = (
+      await mailpitJson(await request.get(`${MAILPIT_URL}/api/v1/search?query=${query}`))
+    ).messages;
+    if (!Array.isArray(messages)) throw new Error('Unexpected Mailpit search response');
+    return messages;
+  };
+  // Delivery runs after the add response, so the mail may land a moment later.
+  await expect.poll(async () => (await found()).length).toBe(1);
+  const messages = await found();
   const message = await request.get(
     `${MAILPIT_URL}/api/v1/message/${String(Reflect.get(messages[0], 'ID'))}`
   );
@@ -149,6 +154,14 @@ async function invitationLink(request: APIRequestContext, email: string) {
   );
   expect(links).toHaveLength(1);
   return links[0]!;
+}
+
+/** The password step every invite-link claimant owes after claiming. */
+async function setClaimPassword(page: Page) {
+  const password = 'Claim-pass-9!';
+  await page.getByLabel(en.auth.resetNewPasswordLabel, { exact: true }).fill(password);
+  await page.getByLabel(en.auth.resetConfirmPasswordLabel, { exact: true }).fill(password);
+  await page.getByRole('button', { name: en.auth.resetSubmit }).click();
 }
 
 test('added player opens the invitation, claims the prefilled profile and gains history access', async ({
@@ -216,6 +229,10 @@ test('added player opens the invitation, claims the prefilled profile and gains 
     await player.getByLabel(en.onboarding.name).fill('Carla Reclamada');
     await player.getByLabel(en.onboarding.sideLeftShort).first().check();
     await player.getByRole('button', { name: claim.submit }).click();
+    await expect(
+      player.getByRole('heading', { level: 1, name: claim.passwordTitle })
+    ).toBeVisible();
+    await setClaimPassword(player);
     await expect(player).toHaveURL(new RegExp(`/matches/${id}$`));
     await waitForHydratedPage(player);
     await expect(player.getByText('Management court').first()).toBeVisible();
@@ -243,6 +260,58 @@ test('added player opens the invitation, claims the prefilled profile and gains 
   await f.open(organizer, id);
   await expect(organizer.getByText(en.player.provisional.badge, { exact: true })).toHaveCount(0);
   await expect(organizer.getByText('Carla Reclamada').first()).toBeVisible();
+});
+
+test('a reload before password setup cannot bypass the password step on any protected route (F23)', async ({
+  browser,
+  request
+}) => {
+  test.setTimeout(150_000);
+  const id = await f.event(3);
+  const organizer = await f.page(f.creator);
+  await f.open(organizer, id);
+  const email = `claim-reload-${crypto.randomUUID()}@test.local`;
+  added.push(email);
+  await add(organizer, 'Rita Recarga', email, '3');
+
+  const link = await invitationLink(request, email);
+  const context = await browser.newContext({
+    viewport: { width: 390, height: 844 },
+    serviceWorkers: 'block'
+  });
+  try {
+    const player = await context.newPage();
+    await player.goto(link);
+    await expect(player).toHaveURL(/\/onboarding\?next=/);
+    await waitForHydratedPage(player);
+    await player.getByLabel(en.onboarding.sideLeftShort).first().check();
+    await player.getByRole('button', { name: en.auth.claim.submit }).click();
+
+    // Claimed, but the password is still owed: the step replaces the form.
+    const passwordTitle = player.getByRole('heading', {
+      level: 1,
+      name: en.auth.claim.passwordTitle
+    });
+    await expect(passwordTitle).toBeVisible();
+
+    // Reload before finishing: the server remembers the debt, the step comes back.
+    await player.reload();
+    await waitForHydratedPage(player);
+    await expect(passwordTitle).toBeVisible();
+
+    // A protected destination does not let the claimant past it either.
+    await player.goto(`/matches/${id}`);
+    await waitForHydratedPage(player);
+    await expect(passwordTitle).toBeVisible();
+    await expect(player).not.toHaveURL(new RegExp(`/matches/${id}$`));
+
+    await setClaimPassword(player);
+    await expect(player).toHaveURL(new RegExp(`/matches/${id}$`));
+    await waitForHydratedPage(player);
+    await expect(player.getByText('Management court').first()).toBeVisible();
+  } finally {
+    await context.close();
+  }
 });
 
 test('a spent or forged invitation link never opens a session', async ({ page }) => {

@@ -192,10 +192,12 @@ const RECONCILE_MAX_ROUNDS = 3;
  * Durable reconciliation. The ledger remembers every add whose invitation is not
  * settled (never dispatched, failed, abandoned by a crashed holder, waiting for an
  * identity); claim_match_player_add_redrives hands out the due ones with exponential
- * backoff and a bounded attempt count (a spent budget retires the operation as exhausted: slot released,
- * audited), and each is driven through the normal
- * dispatch -> Auth -> settle path. Runs after any add and on event reads (detail and management), so no scheduler is needed. Rounds repeat until nothing is due, which
- * also picks up operations that became due while an earlier one was being driven.
+ * backoff and a bounded attempt count (a spent budget retires the operation as
+ * exhausted in the service-only ledger: slot released, never shown in any audit), and
+ * each is driven through the normal dispatch -> Auth -> settle path. Runs after any add
+ * and on event reads (fast path) and from the Worker cron
+ * (runScheduledMatchPlayerAddSweep, the durable one). Rounds repeat until nothing is
+ * due, which also picks up operations that became due while an earlier one was being driven.
  */
 export async function reconcileMatchPlayerAdds(admin: AdminClient, origin: string): Promise<void> {
   for (let round = 0; round < RECONCILE_MAX_ROUNDS; round++) {
@@ -212,6 +214,27 @@ export async function reconcileMatchPlayerAdds(admin: AdminClient, origin: strin
       }
     }
   }
+}
+
+/**
+ * Deadline-driven trigger (Worker cron). The ledger's retry deadlines pass whether or
+ * not anyone adds a player or opens an event, so an idle installation would strand its
+ * undelivered invitations; the Worker's `scheduled` handler runs this sweep on a fixed
+ * cadence. Same claim/dispatch/settle machinery as the traffic-driven sweeps. The links
+ * need an app origin but a cron has no request, so it comes from configuration
+ * (`APP_ORIGIN`); without a valid one the run fails loudly instead of mailing bad links.
+ */
+export async function runScheduledMatchPlayerAddSweep(
+  admin: AdminClient,
+  origin: string | undefined
+): Promise<void> {
+  if (!origin || !URL.canParse(origin)) throw new Error('APP_ORIGIN_UNAVAILABLE');
+  await reconcileMatchPlayerAdds(admin, new URL(origin).origin);
+}
+
+/** The Worker `scheduled` handler's body: service-role client and origin from the Worker's own config. */
+export function sweepMatchPlayerAddsOnSchedule(): Promise<void> {
+  return runScheduledMatchPlayerAddSweep(getAdminClient(), process.env.APP_ORIGIN);
 }
 
 /**

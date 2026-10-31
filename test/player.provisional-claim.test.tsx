@@ -1,4 +1,5 @@
 /** @vitest-environment jsdom */
+import { readFileSync } from 'node:fs';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -138,6 +139,27 @@ describe('claim onboarding', () => {
       </I18nextProvider>
     );
     expect(screen.getByText('Te invitaron a 3 partidos.')).toBeTruthy();
+  });
+
+  it('renders the notice with a decorative information icon and Pencil token styles (F22)', () => {
+    mount({ canEditLevel: true });
+    const icon = screen.getByTestId('claim-notice-icon');
+    expect(icon.getAttribute('aria-hidden')).toBe('true');
+    const text = screen.getByText('You were invited to 2 matches.');
+    expect(icon.parentElement).toBe(text.parentElement);
+    expect(icon.nextElementSibling).toBe(text);
+
+    const source = readFileSync('src/features/player/player-ui.styles.ts', 'utf8');
+    const block = (name: string) =>
+      source.match(new RegExp(`\\n  ${name}: \\{[\\s\\S]*?\\n  \\},?\\n`))?.[0] ?? '';
+    expect(block('claimNotice')).toContain("gap: 'var(--space-8)'");
+    expect(block('claimNotice')).toContain("padding: 'var(--space-10)'");
+    expect(block('claimNotice')).toContain("borderRadius: 'var(--radius-9)'");
+    expect(block('claimNoticeText')).toContain("fontSize: 'var(--font-size-12)'");
+    expect(block('claimNoticeText')).toContain("fontWeight: 'var(--font-weight-regular)'");
+    expect(block('claimNoticeIcon')).toContain("width: 'var(--space-16)'");
+    for (const name of ['claimNotice', 'claimNoticeIcon', 'claimNoticeText'])
+      expect(block(name)).not.toMatch(/:\s*'?\d+px/);
   });
 
   it('claims through the claim function only, then sets a password before continuing', async () => {

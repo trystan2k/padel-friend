@@ -150,9 +150,23 @@ export function PlayerOnboarding({
     <main {...stylex.props(ui.page, ui.onboardingPage)}>
       <div {...stylex.props(ui.topContent)}>
         {claim && claim.matchCount > 0 && (
-          <p {...stylex.props(ui.claimNotice)}>
-            {t('auth.claim.invitedNotice', { count: claim.matchCount })}
-          </p>
+          <div {...stylex.props(ui.claimNotice)}>
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.7"
+              aria-hidden="true"
+              data-testid="claim-notice-icon"
+              {...stylex.props(ui.claimNoticeIcon)}
+            >
+              <circle cx="12" cy="12" r="9" />
+              <path d="M12 11v5M12 8h.01" />
+            </svg>
+            <p {...stylex.props(ui.claimNoticeText)}>
+              {t('auth.claim.invitedNotice', { count: claim.matchCount })}
+            </p>
+          </div>
         )}
         <StepBadge>{t(claim ? 'auth.claim.step' : 'onboarding.step')}</StepBadge>
         <header {...stylex.props(ui.header)}>

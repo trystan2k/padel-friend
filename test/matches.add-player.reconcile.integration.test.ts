@@ -1,5 +1,5 @@
 import { AuthApiError } from '@supabase/supabase-js';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import {
   addPlayer,
   addPlayerArgs,
@@ -25,7 +25,8 @@ import {
 import { executeTrustedSql, queryTrustedSql } from './helpers/sql-transport';
 import {
   deliverMatchPlayerAdd,
-  reconcileMatchPlayerAdds
+  reconcileMatchPlayerAdds,
+  runScheduledMatchPlayerAddSweep
 } from '../src/features/matches/match-add-player.server';
 
 // F9/F10/F12: invitation delivery runs after the response, so the ledger must bring every
@@ -449,7 +450,7 @@ describe('match player add reconciliation', () => {
   );
 
   it.skipIf(!environment.env)(
-    'retires an operation whose attempts are spent: slot released, audited once, re-add works (F14)',
+    'retires an operation whose attempts are spent: slot released, never audited, re-add works (F14, F19)',
     async () => {
       const { env, owner, eventId } = await scenario();
       const email = uniqueEmail('exhausted');
@@ -481,16 +482,16 @@ describe('match player add reconciliation', () => {
                       join public.match_player_add_operations o on o.id = s.operation_id
                      where o.request_id = $1)::int as slots,
                     (select count(*) from public.match_event_audit_log a
-                      where a.request_id = $1 and a.action = 'player_add_delivery_exhausted')::int as audits`,
+                      where a.request_id = $1 and a.action not in ('player_added'))::int as audits`,
             { values: [requestId] }
           )
         ).rows[0];
-      expect(await evidence()).toEqual({ slots: 0, audits: 1 });
+      expect(await evidence()).toEqual({ slots: 0, audits: 0 });
 
-      // Retired once: later sweeps neither re-audit nor hand it out.
+      // Retired once: later sweeps neither hand it out nor write anything else.
       await makeDue(email);
       await reconcileMatchPlayerAdds(localAdminClient(env), INVITE_ORIGIN);
-      expect(await evidence()).toEqual({ slots: 0, audits: 1 });
+      expect(await evidence()).toEqual({ slots: 0, audits: 0 });
 
       // A fresh add of the same address is not blocked by the retired one.
       const fresh = await addPlayer(env, owner, { eventId, displayName: 'Again', email, level: 3 });
@@ -525,4 +526,200 @@ describe('match player add reconciliation', () => {
       expect(await mailCount(email)).toBe(1);
     }
   );
+
+  it.skipIf(!environment.env)(
+    'exhaustion leaves the manager-visible audit exactly as it was (F19)',
+    async () => {
+      const { env, owner, eventId } = await scenario();
+      const eventAudit = async () =>
+        (
+          await queryTrustedSql(
+            `select action, request_id from public.match_event_audit_log
+              where match_event_id = $1 order by occurred_at, id`,
+            { values: [eventId] }
+          )
+        ).rows;
+      const managerView = async () => {
+        const listed = await owner.client.rpc('list_match_event_audit', {
+          p_match_event_id: eventId
+        });
+        expect(listed.error).toBeNull();
+        return JSON.stringify(listed.data);
+      };
+      const email = uniqueEmail('audit-stuck');
+      const requestId = await accept(owner, eventId, email, 'Stuck');
+      // Every attempt of the budget fails; the operation is still "failed", not yet retired.
+      for (let attempt = 1; attempt <= 6; attempt++) {
+        await makeDue(email);
+        await reconcileMatchPlayerAdds(failingInviteAdmin(env), INVITE_ORIGIN);
+      }
+      const before = { audit: await eventAudit(), listed: await managerView() };
+
+      // The retiring sweep: ledger state changes, the audit does not.
+      await makeDue(email);
+      await reconcileMatchPlayerAdds(failingInviteAdmin(env), INVITE_ORIGIN);
+      expect(await operation(owner.id, eventId, requestId)).toMatchObject({
+        dispatch_state: 'exhausted'
+      });
+      expect({ audit: await eventAudit(), listed: await managerView() }).toEqual(before);
+      expect(before.listed).not.toContain('exhausted');
+      expect(before.listed).not.toContain(requestId);
+    }
+  );
+
+  it.skipIf(!environment.env)(
+    'a replay of the same request during an in-flight Auth call neither replaces the capability nor re-sends (F18)',
+    async () => {
+      const { env, owner, eventId } = await scenario();
+      const email = uniqueEmail('replay');
+      const requestId = await accept(owner, eventId, email, 'Replay');
+      const key = { actor_id: owner.id, event_id: eventId, request_id: requestId };
+
+      // Auth answers only when released, so the first attempt stays in flight.
+      const slow = localAdminClient(env);
+      const realInvite = slow.auth.admin.inviteUserByEmail.bind(slow.auth.admin);
+      const release = deferred();
+      let inviteCalls = 0;
+      slow.auth.admin.inviteUserByEmail = async (...args) => {
+        inviteCalls++;
+        await release.promise;
+        return realInvite(...args);
+      };
+      const attemptOf = async () =>
+        (
+          await queryTrustedSql(
+            `select dispatch_attempt, capability_hash from public.match_player_add_operations where request_id = $1`,
+            { values: [requestId] }
+          )
+        ).rows[0];
+
+      const first = deliverMatchPlayerAdd(slow, { ...key, origin: INVITE_ORIGIN });
+      await vi.waitFor(async () => expect((await attemptOf())?.dispatch_attempt).toBeTruthy());
+      const live = await attemptOf();
+
+      // Replays (uniform answer) while the first attempt holds the lease.
+      const replays = await Promise.all([
+        deliverMatchPlayerAdd(localAdminClient(env), { ...key, origin: INVITE_ORIGIN }),
+        deliverMatchPlayerAdd(localAdminClient(env), { ...key, origin: INVITE_ORIGIN })
+      ]);
+      expect(replays).toEqual([{ status: 'ok' }, { status: 'ok' }]);
+      expect(
+        (
+          await localAdminClient(env).rpc('dispatch_match_player_add', {
+            p_actor_id: owner.id,
+            p_match_event_id: eventId,
+            p_request_id: requestId
+          })
+        ).data
+      ).toEqual({ action: 'none' });
+      expect(await attemptOf()).toEqual(live);
+      expect(inviteCalls).toBe(1);
+
+      release.resolve();
+      expect(await first).toEqual({ status: 'ok' });
+      expect(inviteCalls).toBe(1);
+      expect(await operation(owner.id, eventId, requestId)).toMatchObject({
+        state: 'completed',
+        branch: 'new',
+        dispatch_state: 'sent'
+      });
+      expect(await userCount(email)).toBe(1);
+      expect(await mailCount(email)).toBe(1);
+    }
+  );
+
+  it.skipIf(!environment.env)(
+    'a replay after the lease expired starts a new attempt (F18 replacement only after expiry)',
+    async () => {
+      const { env, owner, eventId } = await scenario();
+      const email = uniqueEmail('replay-expired');
+      const requestId = await accept(owner, eventId, email, 'Expired');
+      const service = localAdminClient(env);
+      const args = {
+        p_actor_id: owner.id,
+        p_match_event_id: eventId,
+        p_request_id: requestId
+      };
+      expect((await service.rpc('dispatch_match_player_add', args)).data).toMatchObject({
+        action: 'create'
+      });
+      expect((await service.rpc('dispatch_match_player_add', args)).data).toEqual({
+        action: 'none'
+      });
+      await executeTrustedSql(
+        `update public.match_player_add_operations set capability_expires_at = clock_timestamp() - interval '1 minute'
+          where request_id = '${requestId}'`
+      );
+      await executeTrustedSql(
+        `delete from public.match_player_add_recipient_sends s using public.match_player_add_operations o
+          where o.id = s.operation_id and o.request_id = '${requestId}'`
+      );
+      expect((await service.rpc('dispatch_match_player_add', args)).data).toMatchObject({
+        action: 'create'
+      });
+    }
+  );
+
+  it.skipIf(!environment.env)(
+    'the scheduled sweep completes a failed add with no further add or read traffic (F20)',
+    async () => {
+      const { env, owner, eventId } = await scenario();
+      const email = uniqueEmail('cron');
+      const requestId = await accept(owner, eventId, email, 'Cron');
+      await deliverMatchPlayerAdd(failingInviteAdmin(env), {
+        actor_id: owner.id,
+        event_id: eventId,
+        request_id: requestId,
+        origin: INVITE_ORIGIN
+      });
+      expect(await operation(owner.id, eventId, requestId)).toMatchObject({
+        dispatch_state: 'failed'
+      });
+      expect(await userCount(email)).toBe(0);
+
+      // Before the deadline the scheduled run leaves it alone ...
+      await runScheduledMatchPlayerAddSweep(localAdminClient(env), INVITE_ORIGIN);
+      expect(await mailCount(email)).toBe(0);
+      // ... once due, the cron alone brings it home.
+      await makeDue(email);
+      await runScheduledMatchPlayerAddSweep(localAdminClient(env), `${INVITE_ORIGIN}/ignored/path`);
+      expect(await operation(owner.id, eventId, requestId)).toMatchObject({
+        state: 'completed',
+        branch: 'new',
+        dispatch_state: 'sent'
+      });
+      expect(await userCount(email)).toBe(1);
+      expect(await mailCount(email)).toBe(1);
+    }
+  );
+
+  it.skipIf(!environment.env)(
+    'the scheduled sweep exhausts a persistently failing add within the budget (F20)',
+    async () => {
+      const { env, owner, eventId } = await scenario();
+      const email = uniqueEmail('cron-exhaust');
+      const requestId = await accept(owner, eventId, email, 'Exhaust');
+      for (let run = 1; run <= 7; run++) {
+        await makeDue(email);
+        await runScheduledMatchPlayerAddSweep(failingInviteAdmin(env), INVITE_ORIGIN);
+      }
+      expect(await operation(owner.id, eventId, requestId)).toMatchObject({
+        state: 'awaiting_identity',
+        dispatch_state: 'exhausted'
+      });
+      expect(await mailCount(email)).toBe(0);
+    }
+  );
+
+  it('refuses to run the scheduled sweep without a usable app origin (F20)', async () => {
+    const rpc = vi.fn<() => Promise<never>>();
+    const admin = Object.assign(Object.create(null), { rpc });
+    await expect(runScheduledMatchPlayerAddSweep(admin, undefined)).rejects.toThrow(
+      'APP_ORIGIN_UNAVAILABLE'
+    );
+    await expect(runScheduledMatchPlayerAddSweep(admin, 'not a url')).rejects.toThrow(
+      'APP_ORIGIN_UNAVAILABLE'
+    );
+    expect(rpc).not.toHaveBeenCalled();
+  });
 });

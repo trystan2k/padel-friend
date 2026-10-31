@@ -111,8 +111,7 @@ const MATCH_AUDIT_ACTIONS: readonly string[] = [
   'result_corrected',
   'result_confirmed',
   'player_added',
-  'player_claimed',
-  'player_add_delivery_exhausted'
+  'player_claimed'
 ];
 export type MatchAuditEntry = {
   id: string;
