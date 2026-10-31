@@ -722,4 +722,39 @@ describe('match player add reconciliation', () => {
     );
     expect(rpc).not.toHaveBeenCalled();
   });
+
+  it.each(['data:text/plain,x', 'mailto:a@b.co', 'ftp://example.com', 'file:///tmp/x'])(
+    'rejects the non-http app origin %s before any sweep work (F25)',
+    async (origin) => {
+      const rpc = vi.fn<() => Promise<never>>();
+      const admin = Object.assign(Object.create(null), { rpc });
+      await expect(runScheduledMatchPlayerAddSweep(admin, origin)).rejects.toThrow(
+        'APP_ORIGIN_UNAVAILABLE'
+      );
+      expect(rpc).not.toHaveBeenCalled();
+    }
+  );
+
+  it.each(['http://localhost:3000', 'https://example.com'])(
+    'accepts the http(s) app origin %s (F25)',
+    async (origin) => {
+      const rpc = vi.fn<() => Promise<{ data: unknown[]; error: null }>>(() =>
+        Promise.resolve({ data: [], error: null })
+      );
+      const admin = Object.assign(Object.create(null), { rpc });
+      await expect(runScheduledMatchPlayerAddSweep(admin, origin)).resolves.toBeUndefined();
+      expect(rpc).toHaveBeenCalledTimes(1);
+    }
+  );
+
+  it('fails the scheduled sweep when the claim RPC errors, while the traffic sweep swallows it (F24)', async () => {
+    const rpc = vi.fn<() => Promise<{ data: null; error: { message: string } }>>(() =>
+      Promise.resolve({ data: null, error: { message: 'permission denied' } })
+    );
+    const admin = Object.assign(Object.create(null), { rpc });
+    await expect(runScheduledMatchPlayerAddSweep(admin, INVITE_ORIGIN)).rejects.toThrow(
+      'MATCH_PLAYER_ADD_CLAIM_FAILED'
+    );
+    await expect(reconcileMatchPlayerAdds(admin, INVITE_ORIGIN)).resolves.toBeUndefined();
+  });
 });
