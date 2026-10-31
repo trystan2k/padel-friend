@@ -2103,6 +2103,7 @@ export type Database = {
           status: Database["public"]["Enums"]["community_membership_status"]
         }[]
       }
+      activate_global_rating_projection: { Args: Record<PropertyKey, never>; Returns: Json }
       actor_session_revoked: { Args: Record<PropertyKey, never>; Returns: boolean }
       add_match_player: {
         Args: {
@@ -2686,6 +2687,7 @@ export type Database = {
         Args: { p_entry_ready_limit?: number; p_max_examined?: number; p_reminder_limit?: number }
         Returns: Json
       }
+      project_confirmed_rating_group: { Args: { p_proposal_id: string }; Returns: undefined }
       protect_match_event_results: { Args: { p_event_id: string }; Returns: undefined }
       provision_provisional_player_locked: {
         Args: {
@@ -2716,6 +2718,41 @@ export type Database = {
       publish_match_event: {
         Args: { p_event_id: string; p_input: Json; p_invitee_ids: string[] }
         Returns: string
+      }
+      rating_projection_apply_group: {
+        Args: {
+          p_classification: string
+          p_confirmation_id: string
+          p_game_group_id: string
+          p_group_number: number
+          p_match_event_id: string
+          p_played_at: string
+          p_proposal_version: number
+          p_revision: number
+          p_states: Json
+          p_teams: Json
+        }
+        Returns: Record<string, unknown>
+      }
+      rating_projection_assert_consistent: { Args: { p_user_ids: string[] }; Returns: undefined }
+      rating_projection_eligible_groups: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          classification: string
+          confirmation_id: string
+          game_group_id: string
+          game_group_number: number
+          match_event_id: string
+          played_at: string
+          proposal_version: number
+          teams: Json
+        }[]
+      }
+      rating_projection_initial_state: { Args: { p_level: number }; Returns: Json }
+      rating_projection_replay: { Args: { p_revision: number }; Returns: Record<string, unknown> }
+      rating_projection_write_states: {
+        Args: { p_meta: Json; p_revision: number; p_states: Json }
+        Returns: number
       }
       rating_v1_calculate_group: {
         Args: {

@@ -14,6 +14,7 @@ import {
   signUpFixtureActor
 } from './helpers/provisional-player-fixtures';
 import { insertConfirmedGroup } from './helpers/rating-ledger-fixtures';
+import { withDormantProjection } from './helpers/rating-fixtures';
 import { queryTrustedSql, sqlErrorMessage } from './helpers/sql-transport';
 
 const environment = localSupabaseEnv({ filePath: dotEnvPathFromImportMetaUrl(import.meta.url) });
@@ -253,7 +254,7 @@ describe('rating initialization audit', { timeout: 120_000 }, () => {
   );
 
   it.skipIf(!environment.env)(
-    'a confirmed predecessor result locks the claim edit before any projection exists',
+    'a confirmed predecessor result locks the claim edit before it is projected',
     async () => {
       const scenario = await claimScenario(environment.env!, 'init-claim-locked');
       const player = await addInvitedPlayer(scenario, {
@@ -278,13 +279,16 @@ describe('rating initialization audit', { timeout: 120_000 }, () => {
           })
         )
       );
-      await insertConfirmedGroup({
-        eventId,
-        submittedBy: scenario.owner.id,
-        playerIds: [player.id, scenario.owner.id, others[0]!.id, others[1]!.id],
-        groupNumber: 1
-      });
-      // Nothing was projected: the predecessor confirmation alone is the history evidence.
+      // A confirmation recorded while projection is dormant (predecessor data): the
+      // confirmation alone is the history evidence.
+      await withDormantProjection(() =>
+        insertConfirmedGroup({
+          eventId,
+          submittedBy: scenario.owner.id,
+          playerIds: [player.id, scenario.owner.id, others[0]!.id, others[1]!.id],
+          groupNumber: 1
+        })
+      );
       expect(await eventCount(player.id)).toBe(0);
       expect((await ratingState(player.id))?.groups).toBe(0);
 

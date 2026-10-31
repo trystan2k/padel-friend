@@ -11,6 +11,7 @@ import {
   provisionProvisionalPlayer,
   signUpFixtureActor
 } from './helpers/provisional-player-fixtures';
+import { setRatingProjectionActive } from './helpers/rating-fixtures';
 import { queryTrustedSql, sqlErrorMessage } from './helpers/sql-transport';
 
 const environment = localSupabaseEnv({ filePath: dotEnvPathFromImportMetaUrl(import.meta.url) });
@@ -66,6 +67,8 @@ describe('global rating ledger schema', { timeout: 120_000 }, () => {
 
   beforeAll(async () => {
     if (!environment.env) return;
+    // These tests write ledger rows by hand: the production projector must stay dormant.
+    await setRatingProjectionActive(false);
     f = await createMatchResultReviewFixtures(environment.env);
     for (const player of f.players.slice(0, 4)) {
       const onboarded = await player.client.rpc('onboard_player', {
@@ -87,11 +90,15 @@ describe('global rating ledger schema', { timeout: 120_000 }, () => {
   });
 
   afterAll(async () => {
-    if (f) await f.cleanup();
+    try {
+      if (f) await f.cleanup();
+    } finally {
+      if (environment.env) await setRatingProjectionActive(true);
+    }
   });
 
   it.skipIf(!environment.env)(
-    'keeps one global state per permanent UUID and a single inactive control row',
+    'keeps one global state per permanent UUID and a single protected control row',
     async () => {
       const duplicate = await rejection(`insert into public.global_player_ratings
         (user_id, initial_display_level, mu, sigma, display_level, reliability_percent,
@@ -99,11 +106,13 @@ describe('global rating ledger schema', { timeout: 120_000 }, () => {
         values ('${playerIds[0]}', 4, 4, 1, 4, 10, 0, 4, 'app-wide-level', '1.0.0')`);
       expect(duplicate).toContain('global_player_ratings_pkey');
       const control = await sqlRows(
-        `select activation_enabled, committed_revision::int as revision, last_processed_played_at
+        `select activation_enabled, committed_revision >= 0 as revision_valid,
+                (last_processed_played_at is null) = (last_processed_game_group_id is null) as watermark_shape
            from public.player_rating_projection_control`
       );
+      // Dormant only because this suite switched the projector off for hand-written rows.
       expect(control).toEqual([
-        { activation_enabled: false, revision: 0, last_processed_played_at: null }
+        { activation_enabled: false, revision_valid: true, watermark_shape: true }
       ]);
       expect(
         await rejection(
