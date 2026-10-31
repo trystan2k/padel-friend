@@ -1,6 +1,7 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { describe, expect, it } from 'vitest';
 import { dotEnvPathFromImportMetaUrl, localSupabaseEnv } from './helpers/local-supabase-env';
+import { ratingEvidenceCleanupSql } from './helpers/fixture-cleanup';
 import { executeTrustedSql } from './helpers/sql-transport';
 
 const environment = localSupabaseEnv({ filePath: dotEnvPathFromImportMetaUrl(import.meta.url) });
@@ -243,7 +244,8 @@ describe.skipIf(!environment.env)('notification preferences (real local Supabase
       ).toMatch(/^(28000|42501)$/);
     } finally {
       await sql(
-        `delete from auth.users where id in (${userIds.map((id) => `${literal(id)}::uuid`).join(',')})`
+        `${ratingEvidenceCleanupSql(userIds.map((id) => `${literal(id)}::uuid`).join(','))}
+        delete from auth.users where id in (${userIds.map((id) => `${literal(id)}::uuid`).join(',')})`
       );
     }
   }, 30000);

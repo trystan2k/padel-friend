@@ -254,7 +254,7 @@ describe('provisional claim', () => {
       });
       await executeTrustedSql(
         `update public.global_player_ratings set confirmed_competitive_game_groups = 2,
-           last_rating_at = now(), mu = 5.4, display_level = 5.4, highest_display_level = 5.4
+           reliability_percent = 22, last_rating_at = now(), mu = 5.4, display_level = 5.4, highest_display_level = 5.4
           where user_id = ${sqlText(player.id)}`
       );
       const client = sessionClient(

@@ -36,6 +36,9 @@ test.afterAll(async () => {
       delete from public.match_player_add_throttle_hits where actor_id='${f.creator.id}';
       delete from public.match_player_add_actor_windows where actor_id='${f.creator.id}';
       delete from public.match_player_add_operations where actor_id='${f.creator.id}';
+      alter table public.player_rating_initializations disable trigger player_rating_initializations_immutable;
+      delete from public.player_rating_initializations where user_id in ${ids(email)};
+      alter table public.player_rating_initializations enable trigger player_rating_initializations_immutable;
       alter table public.player_profiles disable trigger player_profile_provenance_guard;
       delete from public.player_profiles where user_id in ${ids(email)};
       alter table public.player_profiles enable trigger player_profile_provenance_guard;

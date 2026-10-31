@@ -376,6 +376,8 @@ export type Database = {
           initial_display_level: number
           last_rating_at: string | null
           mu: number
+          projection_revision: number
+          rating_config_version: number
           rating_engine: string
           rating_engine_version: string
           reliability_percent: number
@@ -391,6 +393,8 @@ export type Database = {
           initial_display_level: number
           last_rating_at?: string | null
           mu: number
+          projection_revision?: number
+          rating_config_version?: number
           rating_engine: string
           rating_engine_version: string
           reliability_percent: number
@@ -405,6 +409,8 @@ export type Database = {
           initial_display_level?: number
           last_rating_at?: string | null
           mu?: number
+          projection_revision?: number
+          rating_config_version?: number
           rating_engine?: string
           rating_engine_version?: string
           reliability_percent?: number
@@ -1819,6 +1825,249 @@ export type Database = {
           },
         ]
       }
+      player_rating_event_calculations: {
+        Row: {
+          after_confirmed_groups: number
+          after_display_level: number
+          after_highest_display_level: number
+          after_mu: number
+          after_reliability_percent: number
+          after_sigma: number
+          before_confirmed_groups: number
+          before_display_level: number
+          before_highest_display_level: number
+          before_mu: number
+          before_reliability_percent: number
+          before_sigma: number
+          calculated_at: string
+          explanation: NonNullable<Json>
+          inputs: NonNullable<Json>
+          last_rating_at: string
+          projection_revision: number
+          rating_config_version: number
+          rating_engine: string
+          rating_engine_version: string
+          rating_event_id: string
+        }
+        ComputedFields: never
+        Insert: {
+          after_confirmed_groups: number
+          after_display_level: number
+          after_highest_display_level: number
+          after_mu: number
+          after_reliability_percent: number
+          after_sigma: number
+          before_confirmed_groups: number
+          before_display_level: number
+          before_highest_display_level: number
+          before_mu: number
+          before_reliability_percent: number
+          before_sigma: number
+          calculated_at?: string
+          explanation: NonNullable<Json>
+          inputs: NonNullable<Json>
+          last_rating_at: string
+          projection_revision: number
+          rating_config_version: number
+          rating_engine: string
+          rating_engine_version: string
+          rating_event_id: string
+        }
+        Update: {
+          after_confirmed_groups?: number
+          after_display_level?: number
+          after_highest_display_level?: number
+          after_mu?: number
+          after_reliability_percent?: number
+          after_sigma?: number
+          before_confirmed_groups?: number
+          before_display_level?: number
+          before_highest_display_level?: number
+          before_mu?: number
+          before_reliability_percent?: number
+          before_sigma?: number
+          calculated_at?: string
+          explanation?: NonNullable<Json>
+          inputs?: NonNullable<Json>
+          last_rating_at?: string
+          projection_revision?: number
+          rating_config_version?: number
+          rating_engine?: string
+          rating_engine_version?: string
+          rating_event_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "player_rating_event_calculations_rating_event_id_fkey"
+            columns: ["rating_event_id"]
+            isOneToOne: false
+            referencedRelation: "player_rating_events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      player_rating_events: {
+        Row: {
+          confirmation_id: string
+          created_at: string
+          game_group_id: string
+          game_group_number: number
+          id: string
+          match_event_id: string
+          played_at: string
+          proposal_version: number
+          user_id: string
+        }
+        ComputedFields: never
+        Insert: {
+          confirmation_id: string
+          created_at?: string
+          game_group_id: string
+          game_group_number: number
+          id?: string
+          match_event_id: string
+          played_at: string
+          proposal_version: number
+          user_id: string
+        }
+        Update: {
+          confirmation_id?: string
+          created_at?: string
+          game_group_id?: string
+          game_group_number?: number
+          id?: string
+          match_event_id?: string
+          played_at?: string
+          proposal_version?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "player_rating_event_confirmation_fk"
+            columns: ["confirmation_id", "game_group_id", "proposal_version"]
+            isOneToOne: false
+            referencedRelation: "match_event_result_confirmations"
+            referencedColumns: ["id", "proposal_id", "proposal_version"]
+          },
+          {
+            foreignKeyName: "player_rating_event_pointer_fk"
+            columns: ["game_group_id", "match_event_id", "game_group_number"]
+            isOneToOne: false
+            referencedRelation: "match_event_result_proposals"
+            referencedColumns: ["id", "match_event_id", "group_number"]
+          },
+          {
+            foreignKeyName: "player_rating_event_version_fk"
+            columns: ["game_group_id", "proposal_version"]
+            isOneToOne: false
+            referencedRelation: "match_event_result_proposal_versions"
+            referencedColumns: ["proposal_id", "version"]
+          },
+          {
+            foreignKeyName: "player_rating_events_game_group_id_fkey"
+            columns: ["game_group_id"]
+            isOneToOne: false
+            referencedRelation: "match_event_result_proposals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "player_rating_events_match_event_id_fkey"
+            columns: ["match_event_id"]
+            isOneToOne: false
+            referencedRelation: "match_events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "player_rating_events_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "player_profiles"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
+      player_rating_initializations: {
+        Row: {
+          before_initial_level: number | null
+          id: string
+          initial_level: number
+          original_estimate_level: number | null
+          provenance: string
+          rating_config_version: number
+          rating_engine: string
+          rating_engine_version: string
+          reason: string
+          recorded_at: string
+          sequence: number
+          user_id: string
+        }
+        ComputedFields: never
+        Insert: {
+          before_initial_level?: number | null
+          id?: string
+          initial_level: number
+          original_estimate_level?: number | null
+          provenance: string
+          rating_config_version: number
+          rating_engine: string
+          rating_engine_version: string
+          reason: string
+          recorded_at?: string
+          sequence: number
+          user_id: string
+        }
+        Update: {
+          before_initial_level?: number | null
+          id?: string
+          initial_level?: number
+          original_estimate_level?: number | null
+          provenance?: string
+          rating_config_version?: number
+          rating_engine?: string
+          rating_engine_version?: string
+          reason?: string
+          recorded_at?: string
+          sequence?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "player_rating_initializations_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "player_profiles"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
+      player_rating_projection_control: {
+        Row: {
+          activation_enabled: boolean
+          committed_revision: number
+          last_processed_game_group_id: string | null
+          last_processed_played_at: string | null
+          singleton: boolean
+          updated_at: string
+        }
+        ComputedFields: never
+        Insert: {
+          activation_enabled?: boolean
+          committed_revision?: number
+          last_processed_game_group_id?: string | null
+          last_processed_played_at?: string | null
+          singleton?: boolean
+          updated_at?: string
+        }
+        Update: {
+          activation_enabled?: boolean
+          committed_revision?: number
+          last_processed_game_group_id?: string | null
+          last_processed_played_at?: string | null
+          singleton?: boolean
+          updated_at?: string
+        }
+        Relationships: []
+      }
       provisional_claim_password_pending: {
         Row: {
           created_at: string
@@ -2126,7 +2375,7 @@ export type Database = {
         Returns: boolean
       }
       initialize_global_player_rating_locked: {
-        Args: { p_level: number; p_user_id: string }
+        Args: { p_level: number; p_reason?: string; p_user_id: string }
         Returns: undefined
       }
       is_community_admin: { Args: { p_community_id: string }; Returns: boolean }
@@ -2183,6 +2432,7 @@ export type Database = {
         }
         Returns: Json[]
       }
+      lock_global_rating_projection: { Args: Record<PropertyKey, never>; Returns: undefined }
       lock_match_event_registration: {
         Args: { p_event_id: string }
         Returns: {
@@ -2425,6 +2675,7 @@ export type Database = {
         Returns: string
       }
       player_has_rated_history: { Args: { p_user_id: string }; Returns: boolean }
+      player_rating_calculation_inputs_valid: { Args: { p_inputs: Json }; Returns: boolean }
       process_due_match_event_registration_cutoffs: { Args: { p_limit?: number }; Returns: Json }
       process_due_match_event_results: { Args: { p_limit?: number }; Returns: Json }
       process_match_event_registration_cutoff: {

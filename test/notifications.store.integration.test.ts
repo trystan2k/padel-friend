@@ -1,6 +1,7 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { describe, expect, it } from 'vitest';
 import { dotEnvPathFromImportMetaUrl, localSupabaseEnv } from './helpers/local-supabase-env';
+import { ratingEvidenceCleanupSql } from './helpers/fixture-cleanup';
 import { waitForRows } from './helpers/match-registration-sql';
 import {
   executeTrustedSql,
@@ -174,6 +175,7 @@ describe.skipIf(!environment.env)('notification store (real local Supabase JWTs)
     } finally {
       await sql(`do $cleanup$ begin
         delete from public.notifications where id = any(array[${ids.map((id) => `${literal(id)}::uuid`).join(',')}]);
+        ${ratingEvidenceCleanupSql([recipient.id, ...(outsider ? [outsider.id] : [])].map((id) => `${literal(id)}::uuid`).join(','))}
         delete from auth.users where id in (${[recipient.id, ...(outsider ? [outsider.id] : [])].map((id) => `${literal(id)}::uuid`).join(',')});
       end $cleanup$;`);
     }
@@ -383,7 +385,7 @@ describe.skipIf(!environment.env)('notification store (real local Supabase JWTs)
       ).toHaveLength(1);
     } finally {
       await sql(
-        `do $cleanup$ begin delete from public.notifications where id = any(array[${notificationIds.map((id) => `${literal(id)}::uuid`).join(',')}]); delete from auth.users where id in (${literal(first.id)}::uuid, ${literal(second.id)}::uuid); end $cleanup$;`
+        `do $cleanup$ begin delete from public.notifications where id = any(array[${notificationIds.map((id) => `${literal(id)}::uuid`).join(',')}]); ${ratingEvidenceCleanupSql(`${literal(first.id)}::uuid, ${literal(second.id)}::uuid`)} delete from auth.users where id in (${literal(first.id)}::uuid, ${literal(second.id)}::uuid); end $cleanup$;`
       );
     }
   }, 30000);

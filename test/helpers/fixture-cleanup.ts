@@ -188,8 +188,10 @@ export class FixtureCleanupRegistry {
   }
 
   async deleteRegisteredRowsInOrder(options: FixtureCleanupOptions = {}): Promise<void> {
+    const ratingEvidence = this.ratingEvidenceStatements();
     const statements = [
       ...(options.beforeStatements ?? []),
+      ...ratingEvidence.before,
       ...this.sortedEntries().map((entry) => {
         const predicate = Object.entries(entry.identity)
           .sort(([left], [right]) => left.localeCompare(right))
@@ -201,6 +203,7 @@ export class FixtureCleanupRegistry {
           .join(' AND ');
         return `DELETE FROM ${quoteTable(entry.table)} WHERE ${predicate}`;
       }),
+      ...ratingEvidence.after,
       ...(options.afterStatements ?? [])
     ];
     if (statements.length === 0) return;
@@ -217,6 +220,66 @@ export class FixtureCleanupRegistry {
     }
   }
 
+  /**
+   * Immutable rating evidence restrictively references profiles, proposals and events, so
+   * removing a registered fixture identity first needs the evidence of exactly those
+   * identities gone. The immutability triggers are disabled only inside the cleanup
+   * transaction (rollback restores them) and re-enabled before it commits.
+   */
+  private ratingEvidenceStatements(): { before: string[]; after: string[] } {
+    const scopeSelects = {
+      users: [] as string[],
+      groups: [] as string[],
+      events: [] as string[]
+    };
+    for (const entry of this.sortedEntries()) {
+      const predicate = Object.entries(entry.identity)
+        .sort(([left], [right]) => left.localeCompare(right))
+        .map(([column, value]) =>
+          value === null
+            ? `${quoteColumn(column)} IS NULL`
+            : `${quoteColumn(column)} = ${sqlLiteral(value)}`
+        )
+        .join(' AND ');
+      const select = (column: string) =>
+        `SELECT ${column} FROM ${quoteTable(entry.table)} WHERE ${predicate}`;
+      if (entry.table === 'auth.users') scopeSelects.users.push(select('id'));
+      else if (entry.table === 'public.player_profiles') scopeSelects.users.push(select('user_id'));
+      else if (entry.table === 'public.match_event_result_proposals') {
+        scopeSelects.groups.push(select('id'));
+      } else if (entry.table === 'public.match_events') scopeSelects.events.push(select('id'));
+    }
+    if (scopeSelects.users.length + scopeSelects.groups.length + scopeSelects.events.length === 0)
+      return { before: [], after: [] };
+
+    const users = scopeSelects.users.map((sql) => `user_id IN (${sql})`);
+    const eventPredicate = [
+      ...users,
+      ...scopeSelects.groups.map((sql) => `game_group_id IN (${sql})`),
+      ...scopeSelects.events.map((sql) => `match_event_id IN (${sql})`)
+    ].join(' OR ');
+    const triggers = [
+      ['player_rating_event_calculations', 'player_rating_calculations_immutable'],
+      ['player_rating_events', 'player_rating_events_immutable'],
+      ['player_rating_initializations', 'player_rating_initializations_immutable']
+    ] as const;
+    return {
+      before: [
+        ...triggers.map(
+          ([table, trigger]) => `ALTER TABLE public.${table} DISABLE TRIGGER ${trigger}`
+        ),
+        `DELETE FROM public.player_rating_event_calculations WHERE rating_event_id IN (SELECT id FROM public.player_rating_events WHERE ${eventPredicate})`,
+        `DELETE FROM public.player_rating_events WHERE ${eventPredicate}`,
+        ...(users.length > 0
+          ? [`DELETE FROM public.player_rating_initializations WHERE ${users.join(' OR ')}`]
+          : [])
+      ],
+      after: triggers.map(
+        ([table, trigger]) => `ALTER TABLE public.${table} ENABLE TRIGGER ${trigger}`
+      )
+    };
+  }
+
   private sortedEntries(): FixtureCleanupEntry[] {
     return [...this.entries.values()].sort((left, right) => {
       const orderDelta =
@@ -227,6 +290,23 @@ export class FixtureCleanupRegistry {
       );
     });
   }
+}
+
+/**
+ * Multi-statement SQL removing the immutable rating evidence of fixture users, to run in
+ * the same transaction right before their profiles/auth rows are deleted by raw SQL.
+ * `userIdsSql` is a trusted SQL fragment producing user ids (e.g. a literal id list).
+ */
+export function ratingEvidenceCleanupSql(userIdsSql: string): string {
+  return `ALTER TABLE public.player_rating_event_calculations DISABLE TRIGGER player_rating_calculations_immutable;
+    ALTER TABLE public.player_rating_events DISABLE TRIGGER player_rating_events_immutable;
+    ALTER TABLE public.player_rating_initializations DISABLE TRIGGER player_rating_initializations_immutable;
+    DELETE FROM public.player_rating_event_calculations WHERE rating_event_id IN (SELECT id FROM public.player_rating_events WHERE user_id IN (${userIdsSql}));
+    DELETE FROM public.player_rating_events WHERE user_id IN (${userIdsSql});
+    DELETE FROM public.player_rating_initializations WHERE user_id IN (${userIdsSql});
+    ALTER TABLE public.player_rating_initializations ENABLE TRIGGER player_rating_initializations_immutable;
+    ALTER TABLE public.player_rating_events ENABLE TRIGGER player_rating_events_immutable;
+    ALTER TABLE public.player_rating_event_calculations ENABLE TRIGGER player_rating_calculations_immutable;`;
 }
 
 export function createFixtureCleanupRegistry(scope: string): FixtureCleanupRegistry {

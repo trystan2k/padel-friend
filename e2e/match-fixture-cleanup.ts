@@ -105,6 +105,16 @@ export function buildMatchFixtureCleanupSql(owner: MatchFixtureOwner = {}): stri
     `delete from public.match_player_add_operations o where o.match_event_id in (select id from owned_match_fixture_events) or ${actorPredicate('o.actor_id')} or ${actorPredicate('o.target_user_id')}`,
     `delete from public.match_player_add_throttle_hits h where h.match_event_id in (select id from owned_match_fixture_events) or ${actorPredicate('h.actor_id')}`,
     `delete from public.match_player_add_actor_windows w where ${actorPredicate('w.actor_id')}`,
+    // Immutable rating evidence references profiles, proposals and events (ON DELETE RESTRICT).
+    'alter table public.player_rating_event_calculations disable trigger player_rating_calculations_immutable',
+    'alter table public.player_rating_events disable trigger player_rating_events_immutable',
+    'alter table public.player_rating_initializations disable trigger player_rating_initializations_immutable',
+    'delete from public.player_rating_event_calculations where rating_event_id in (select id from public.player_rating_events where match_event_id in (select id from owned_match_fixture_events))',
+    'delete from public.player_rating_events where match_event_id in (select id from owned_match_fixture_events)',
+    'delete from public.player_rating_initializations where user_id in (select p.user_id from public.player_profiles p where p.source_match_event_id in (select id from owned_match_fixture_events))',
+    'alter table public.player_rating_initializations enable trigger player_rating_initializations_immutable',
+    'alter table public.player_rating_events enable trigger player_rating_events_immutable',
+    'alter table public.player_rating_event_calculations enable trigger player_rating_calculations_immutable',
     // Provisional provenance references its source event (ON DELETE RESTRICT).
     'delete from public.player_profiles p where p.source_match_event_id in (select id from owned_match_fixture_events)',
     'alter table public.community_members disable trigger community_member_guard',

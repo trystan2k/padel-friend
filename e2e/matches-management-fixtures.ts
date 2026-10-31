@@ -379,6 +379,9 @@ export async function fixtures(
       delete from public.community_members where community_id='${community}';
       delete from public.community_audit_log where community_id='${community}';
       delete from public.communities where id='${community}';
+      alter table public.player_rating_initializations disable trigger player_rating_initializations_immutable;
+      delete from public.player_rating_initializations where user_id in (${actors.map((a) => `'${a.id}'`).join(',')});
+      alter table public.player_rating_initializations enable trigger player_rating_initializations_immutable;
       delete from auth.users where id in (${actors.map((a) => `'${a.id}'`).join(',')});
       alter table public.community_members enable trigger community_member_guard;
       end $$;`);
