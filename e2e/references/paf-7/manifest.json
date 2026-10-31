@@ -2,10 +2,10 @@
   "status": "implemented-certification-passing",
   "sourceDesign": {
     "path": "docs/design/padel-friend.pen",
-    "sha256": "5bc71d38a8da4ed4aba9439173b49711c460b84e37bd2f81b37c2fd92b52ac4d",
+    "sha256": "fd0ced302f51a028c781986be5d5cefbad4b26c604f542448487809481353067",
     "exportCommand": "Pencil MCP: Export([\"XySt5\",\"GPo9z\",\"c0wbmu\",\"NZk5H\",\"wsXWA\",\"alZmm\"], \"png\", \"<repo>/e2e/references/paf-7\", {scale:2})",
     "correctionExportCommand": "Pencil MCP: Export([\"alZmm\"], \"png\", \"<repo>/e2e/references/paf-7\", {scale:2}); Export([\"iXRPp\"], \"png\", \"<repo>/e2e/references/paf-7\", {scale:2})",
-    "provenanceNote": "Corrected alZmm from 9ed58b1 and approved started-entry successor iXRPp from c24ac8a exported read-only through Pencil MCP. Original six route PNGs and budgets unchanged during closure. All 19 PAF-6 frames freshly exported byte-identical before source digest refresh; tVzco retained historically, never compared for started-unavailable."
+    "provenanceNote": "Corrected alZmm from 9ed58b1 and approved started-entry successor iXRPp from c24ac8a exported read-only through Pencil MCP. Original six route PNGs and budgets unchanged during closure. All 19 PAF-6 frames freshly exported byte-identical before source digest refresh; tVzco retained historically, never compared for started-unavailable. T09 re-certifies the opaque source digest after a3a20f8 design-source update (product-owner decision 2026-10-31): all 13 frames re-exported through Pencil at scale 2 from a byte-identical scratch copy. XySt5, iXRPp and all six component references matched byte-for-byte. GPo9z, c0wbmu, NZk5H, wsXWA and alZmm differ by one pixel each (x=103, nav footer) identically when exported from the prior certified source 5bc71d38, so the residual predates a3a20f8; committed PNGs, digests and budgets retained."
   },
   "approvedReferences": {
     "iXRPp.png": {

@@ -10,9 +10,9 @@
   },
   "sourceDesign": {
     "path": "docs/design/padel-friend.pen",
-    "sha256": "5bc71d38a8da4ed4aba9439173b49711c460b84e37bd2f81b37c2fd92b52ac4d",
+    "sha256": "fd0ced302f51a028c781986be5d5cefbad4b26c604f542448487809481353067",
     "exportCommand": "Pencil MCP execute on /tmp/paf-6-design/source.pen (byte-identical scratch copy): Export([\"Fyhbv\",\"lJHUZ\",\"t0SZec\",\"oVtuS\",\"uiRqp\",\"q2TCnQ\",\"Ht2Oq\",\"m7hh3\",\"dmvWu\"],\"png\",<repo>/e2e/references/paf-6,{scale:1})",
-    "provenanceNote": "Nine original frames retained unchanged. User-directed frame-driven redesign: ten authoritative rebuilt exports copied from test-results/paf6-rebuilt2 without agent design mutation. Rebuilt frames include app chrome and retain their full source heights. T07.5 updates opaque source digest after approved T07 additions: all 19 existing frames re-exported through Pencil at scale 1 and SHA-256 matched byte-for-byte; no PNG or budget changed.",
+    "provenanceNote": "Nine original frames retained unchanged. User-directed frame-driven redesign: ten authoritative rebuilt exports copied from test-results/paf6-rebuilt2 without agent design mutation. Rebuilt frames include app chrome and retain their full source heights. T07.5 updates opaque source digest after approved T07 additions: all 19 existing frames re-exported through Pencil at scale 1 and SHA-256 matched byte-for-byte; no PNG or budget changed. T09 re-certifies the opaque source digest after a3a20f8 design-source update (product-owner decision 2026-10-31): all 19 frames re-exported through Pencil at scale 1 from a byte-identical scratch copy and SHA-256 matched byte-for-byte; no PNG or budget changed.",
     "additionalExportCommand": "Export([\"YvdPB\",\"M7ighq\",\"T7T2U\",\"bobgm\",\"PKM0u\",\"K23bLC\",\"Tm3XM\",\"xgKXg\",\"tVzco\",\"a6xmFd\"],\"png\",<repo>/e2e/references/paf-6,{scale:1})"
   },
   "approvedReferences": {

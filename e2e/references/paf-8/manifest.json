@@ -2,9 +2,9 @@
   "status": "chromium-certified-with-scoped-route-adaptations",
   "sourceDesign": {
     "path": "docs/design/padel-friend.pen",
-    "sha256": "5bc71d38a8da4ed4aba9439173b49711c460b84e37bd2f81b37c2fd92b52ac4d",
+    "sha256": "fd0ced302f51a028c781986be5d5cefbad4b26c604f542448487809481353067",
     "exportCommand": "Pencil MCP: Export([\"H6VcqC\",\"GMcbD\",\"sLXK7\",\"CWJkF\",\"JXjNs\",\"ausNa\",\"BcpYH\",\"alZmm\"], \"png\", \"<repo>/e2e/references/paf-8\", {scale:2})",
-    "provenanceNote": "All eight approved PAF-8 references exported uncropped from the source Pencil document through Pencil MCP at 2x. Chromium comparisons use fresh-preview captures at the exact half-scale reference dimensions, with production actor flows and exact semantic/layout probes. Route adaptations are recorded per frame; the approval frame's rating deltas are omitted because T10 owns rating projections, and admin override/void actions are out of scope. alZmm is the PAF-8 successor for the PAF-7 pending-result detail; a layout-neutral result-group anchor wrapper now preserves deep-link focus, and its exact structure is gated without changing the reference or budget."
+    "provenanceNote": "All eight approved PAF-8 references exported uncropped from the source Pencil document through Pencil MCP at 2x. Chromium comparisons use fresh-preview captures at the exact half-scale reference dimensions, with production actor flows and exact semantic/layout probes. Route adaptations are recorded per frame; the approval frame's rating deltas are omitted because T10 owns rating projections, and admin override/void actions are out of scope. alZmm is the PAF-8 successor for the PAF-7 pending-result detail; a layout-neutral result-group anchor wrapper now preserves deep-link focus, and its exact structure is gated without changing the reference or budget. T09 re-certifies the opaque source digest after a3a20f8 design-source update (product-owner decision 2026-10-31): all eight frames re-exported through Pencil at scale 2 from a byte-identical scratch copy and SHA-256 matched byte-for-byte; no PNG or budget changed."
   },
   "approvedReferences": {
     "H6VcqC.png": {
