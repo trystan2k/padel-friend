@@ -8,19 +8,24 @@ type SessionCookie = { name: string; value: string; options?: object };
 const supabaseSsr = vi.hoisted(() => {
   let capturedCookies: { setAll: (cookies: SessionCookie[]) => void } | null = null;
   const exchangeCodeForSession = vi.fn<(code: string) => Promise<{ error: unknown }>>();
+  const verifyOtp =
+    vi.fn<(params: { token_hash: string; type: string }) => Promise<{ error: unknown }>>();
   const createServerClient = vi.fn<
     (
       url: string,
       key: string,
       options: { cookies: { setAll: (cookies: SessionCookie[]) => void } }
-    ) => { auth: { exchangeCodeForSession: typeof exchangeCodeForSession } }
+    ) => {
+      auth: { exchangeCodeForSession: typeof exchangeCodeForSession; verifyOtp: typeof verifyOtp };
+    }
   >((_url: string, _key: string, options) => {
     capturedCookies = options.cookies;
-    return { auth: { exchangeCodeForSession } };
+    return { auth: { exchangeCodeForSession, verifyOtp } };
   });
   return {
     createServerClient,
     exchangeCodeForSession,
+    verifyOtp,
     setSessionCookies(cookies: SessionCookie[]) {
       capturedCookies?.setAll(cookies);
     }
@@ -57,6 +62,7 @@ describe('/auth/callback handler', () => {
     vi.stubEnv('VITE_SUPABASE_PUBLISHABLE_KEY', 'test-publishable-key');
     supabaseSsr.createServerClient.mockClear();
     supabaseSsr.exchangeCodeForSession.mockReset();
+    supabaseSsr.verifyOtp.mockReset();
   });
 
   it('forwards every Set-Cookie from the exchange and responds 303 to the safe next', async () => {
@@ -120,6 +126,46 @@ describe('/auth/callback handler', () => {
     expect(location).not.toContain('raw-provider-secret-detail');
     expect(location).not.toContain('server_error');
     expect(supabaseSsr.exchangeCodeForSession).not.toHaveBeenCalled();
+  });
+
+  it('verifies an invitation token hash, sets the session cookies and honours next', async () => {
+    supabaseSsr.verifyOtp.mockImplementation(async () => {
+      supabaseSsr.setSessionCookies([
+        { name: 'sb-project-auth-token', value: 'invite', options: { path: '/' } }
+      ]);
+      return { error: null };
+    });
+    const response = await callbackRequest('?next=%2Fmatches%2Fe1&token_hash=abc123&type=invite');
+    expect(response.status).toBe(303);
+    expect(response.headers.get('location')).toBe(`${BASE}/matches/e1`);
+    expect(response.headers.getSetCookie()[0]).toContain('sb-project-auth-token=invite');
+    expect(supabaseSsr.verifyOtp).toHaveBeenCalledWith({ token_hash: 'abc123', type: 'invite' });
+    expect(supabaseSsr.exchangeCodeForSession).not.toHaveBeenCalled();
+  });
+
+  it('rejects a failed, replayed or non-invite token hash without a session', async () => {
+    supabaseSsr.verifyOtp.mockResolvedValue({
+      error: new Error('Token has expired or is invalid')
+    });
+    const replayed = await callbackRequest('?next=%2Fmatches%2Fe1&token_hash=used&type=invite');
+    expect(replayed.status).toBe(303);
+    expect(replayed.headers.get('location')).toBe(`${BASE}/login?authError=1&next=%2Fmatches%2Fe1`);
+    expect(replayed.headers.getSetCookie()).toEqual([]);
+
+    supabaseSsr.verifyOtp.mockClear();
+    for (const type of ['recovery', 'signup', 'magiclink', 'email_change', '']) {
+      const response = await callbackRequest(`?token_hash=abc&type=${type}`);
+      expect(response.headers.get('location')).toBe(`${BASE}/login?authError=1`);
+    }
+    const noType = await callbackRequest('?token_hash=abc');
+    expect(noType.headers.get('location')).toBe(`${BASE}/login?authError=1`);
+    expect(supabaseSsr.verifyOtp).not.toHaveBeenCalled();
+  });
+
+  it('never verifies a token hash when the provider reported an error', async () => {
+    const response = await callbackRequest('?token_hash=abc&type=invite&error=access_denied');
+    expect(response.headers.get('location')).toBe(`${BASE}/login?authError=1`);
+    expect(supabaseSsr.verifyOtp).not.toHaveBeenCalled();
   });
 
   it('falls back to /login?authError=1 when no code is present', async () => {

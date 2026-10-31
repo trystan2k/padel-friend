@@ -3,6 +3,7 @@ import { setResponseHeader } from '@tanstack/react-start/server';
 import { getServerClient } from '../../lib/supabase/server';
 import { requireAuthenticatedClient } from '../auth/auth.server';
 import { playerRows, sportingProfile, verifiedAvatarKey } from './player.server';
+import { claimErrorCode, parseProvisionalClaim } from './provisional-claim';
 import {
   validateAvatarUpload,
   validateOnboardPlayer,
@@ -13,9 +14,15 @@ export const getOnboardingStatus = createServerFn().handler(async () => {
   setResponseHeader('Cache-Control', 'private, no-store');
   const client = getServerClient();
   const { data, error } = await client.auth.getClaims();
-  if (error || !data?.claims?.sub) return { authenticated: false, complete: false };
+  if (error || !data?.claims?.sub) return { authenticated: false, complete: false, claim: null };
   const { profile } = await playerRows(client, data.claims.sub);
-  return { authenticated: true, complete: Boolean(profile) };
+  if (profile) return { authenticated: true, complete: true, claim: null };
+  // A provisional session cannot read its own profile (RLS), so a missing profile is
+  // either a brand-new account or a provisional player; the restricted claim RPC
+  // tells them apart and only discloses prefill after verified mailbox ownership.
+  const claim = await client.rpc('get_provisional_claim_context');
+  if (claim.error) throw claim.error;
+  return { authenticated: true, complete: false, claim: parseProvisionalClaim(claim.data) };
 });
 
 export const onboardPlayer = createServerFn({ method: 'POST' })
@@ -37,6 +44,20 @@ export const onboardPlayer = createServerFn({ method: 'POST' })
       throw error;
     }
     return sportingProfile(client, userId);
+  });
+
+export const claimProvisionalPlayer = createServerFn({ method: 'POST' })
+  .validator(validateOnboardPlayer)
+  .handler(async ({ data }) => {
+    const { client } = await requireAuthenticatedClient();
+    const { error } = await client.rpc('claim_provisional_player', {
+      p_display_name: data.display_name,
+      p_preferred_side: data.preferred_side,
+      p_initial_level: data.initial_level,
+      ...(data.dominant_hand ? { p_dominant_hand: data.dominant_hand } : {}),
+      ...(data.bio != null ? { p_bio: data.bio } : {})
+    });
+    if (error) throw new Error(claimErrorCode(error) ?? 'PLAYER_CLAIM_FAILED', { cause: error });
   });
 
 export const getMyPlayerProfile = createServerFn().handler(async () => {

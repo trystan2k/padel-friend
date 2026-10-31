@@ -85,6 +85,21 @@
       "cta": "Aceptar invitación",
       "footer": "¿No esperabas este correo? Puedes ignorarlo sin problema."
     },
+    "claim": {
+      "step": "TERMINA TU REGISTRO",
+      "title": "Termina de configurar tu cuenta",
+      "subtitle": "Tu correo está confirmado. Revisa tus datos para reclamar tu perfil de jugador.",
+      "levelNote": "El organizador estimó este nivel inicial. Ajústalo si no te parece correcto.",
+      "levelLocked": "Tu nivel inicial está bloqueado porque ya tienes partidos puntuados.",
+      "submit": "RECLAMAR MI PERFIL",
+      "failed": "No se pudo reclamar tu perfil. Inténtalo de nuevo.",
+      "verifyTitle": "Confirma primero tu correo",
+      "verifySubtitle": "Te añadieron a un partido. Confirma esta dirección de correo para reclamar tu perfil.",
+      "verifyOptionsTitle": "Abre el correo de invitación",
+      "verifyOptions": "Usa el enlace del correo de invitación, inicia sesión con Google con la misma dirección o recibe un nuevo enlace por correo.",
+      "verifyAction": "ENVIARME UN ENLACE",
+      "verifyFailed": "No se pudo iniciar la verificación. Inténtalo de nuevo."
+    },
     "welcomeBrand": "PADEL FRIENDS",
     "welcomeTitle": "Bienvenido/a",
     "welcomeSubtitle": "Inicia sesión para encontrar tu próximo partido.",

@@ -85,6 +85,21 @@
       "cta": "Accept invitation",
       "footer": "Didn't expect this email? You can safely ignore it."
     },
+    "claim": {
+      "step": "FINISH SETTING UP",
+      "title": "Finish setting up your account",
+      "subtitle": "Your email is confirmed. Check your details to claim your player profile.",
+      "levelNote": "The organizer estimated this starting level. Adjust it if it does not feel right.",
+      "levelLocked": "Your starting level is locked because you already have rated games.",
+      "submit": "CLAIM MY PROFILE",
+      "failed": "Couldn't claim your profile. Try again.",
+      "verifyTitle": "Confirm your email first",
+      "verifySubtitle": "You were added to a match. Confirm this email address to claim your profile.",
+      "verifyOptionsTitle": "Open your invitation email",
+      "verifyOptions": "Use the link in the invitation email, sign in with Google using the same address, or get a new link by email.",
+      "verifyAction": "EMAIL ME A LINK",
+      "verifyFailed": "Couldn't start verification. Try again."
+    },
     "welcomeBrand": "PADEL FRIENDS",
     "welcomeTitle": "Welcome",
     "welcomeSubtitle": "Log in to find your next match.",

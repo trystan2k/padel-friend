@@ -30,6 +30,14 @@ const PREDICATE_GATED_READERS = [
   'search_match_invitees'
 ];
 
+// The restricted claim surface: the only authenticated RPCs a provisional session may
+// call. Both are self-scoped (no target parameter) and derive everything from auth.uid():
+// the context read discloses the caller's own prefill only after verified mailbox proof,
+// and the claim re-verifies that proof in SQL before clearing the marker. They are covered
+// by test/auth.provisional-claim.integration.test.ts. Adding anything else here needs the
+// same justification; every other entry point must call assert_actor_not_provisional.
+const CLAIM_SURFACE = ['claim_provisional_player', 'get_provisional_claim_context'];
+
 async function scenario() {
   const env = environment.env!;
   const [organizer, provisional, regular] = await Promise.all([
@@ -263,7 +271,7 @@ describe('provisional actor authorization', () => {
       const unguarded = inventory.rows
         .filter((row) => !row.guarded)
         .map((row) => String(row.proname));
-      expect(unguarded).toEqual(PREDICATE_GATED_READERS);
+      expect(unguarded).toEqual([...PREDICATE_GATED_READERS, ...CLAIM_SURFACE].sort());
       expect(inventory.rows.length).toBeGreaterThan(PREDICATE_GATED_READERS.length);
 
       const tables = await queryTrustedSql(

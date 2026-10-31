@@ -85,6 +85,21 @@
       "cta": "Aceitar convite",
       "footer": "Não esperava este e-mail? Você pode ignorá-lo com segurança."
     },
+    "claim": {
+      "step": "CONCLUA SEU CADASTRO",
+      "title": "Conclua a configuração da sua conta",
+      "subtitle": "Seu e-mail está confirmado. Confira seus dados para reivindicar seu perfil de jogador.",
+      "levelNote": "O organizador estimou este nível inicial. Ajuste se não parecer certo.",
+      "levelLocked": "Seu nível inicial está bloqueado porque você já tem jogos avaliados.",
+      "submit": "REIVINDICAR MEU PERFIL",
+      "failed": "Não foi possível reivindicar seu perfil. Tente novamente.",
+      "verifyTitle": "Confirme seu e-mail primeiro",
+      "verifySubtitle": "Você foi adicionado a uma partida. Confirme este endereço de e-mail para reivindicar seu perfil.",
+      "verifyOptionsTitle": "Abra o e-mail de convite",
+      "verifyOptions": "Use o link do e-mail de convite, entre com o Google usando o mesmo endereço ou receba um novo link por e-mail.",
+      "verifyAction": "ENVIAR LINK POR E-MAIL",
+      "verifyFailed": "Não foi possível iniciar a verificação. Tente novamente."
+    },
     "welcomeBrand": "PADEL FRIENDS",
     "welcomeTitle": "Boas-vindas",
     "welcomeSubtitle": "Entre para encontrar sua próxima partida.",

@@ -37,6 +37,18 @@ enable_confirmations = false
 subject = "{{ .Data.padel_invite_subject }}"
 content_path = "./supabase/templates/invite.html"
 
+# Controlled OAuth provider for the provisional-claim integration tests only
+# (test/helpers/controlled-oauth-provider.ts). Auth runs the real OAuth + identity
+# linking code against a stub that the test process serves on this fixed port, so no
+# external Google client is needed. Unreachable provider => those tests skip.
+[auth.external.keycloak]
+enabled = true
+client_id = "padel-controlled-provider"
+secret = "padel-controlled-provider-secret"
+url = "http://host.docker.internal:55399/realms/controlled"
+redirect_uri = "http://127.0.0.1:55321/auth/v1/callback"
+skip_nonce_check = true
+
 # Optional local Google OAuth: uncomment after supplying both environment variables
 # in the shell running `pnpm db:start`. Keep the client secret out of this file.
 # [auth.external.google]

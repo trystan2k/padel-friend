@@ -12,7 +12,13 @@ export const Route = createFileRoute('/auth/callback')({
         const code = url.searchParams.get('code');
         const next = normalizeReturnPath(url.searchParams.get('next'));
 
-        if (code && !url.searchParams.has('error')) {
+        const tokenHash = url.searchParams.get('token_hash');
+        // Only the invitation link of an added player verifies by token hash; every
+        // other flow arrives as a PKCE code. The hash is single-use and verified by
+        // Auth, so a forged or replayed value just fails.
+        const invite = tokenHash && url.searchParams.get('type') === 'invite' ? tokenHash : null;
+
+        if ((code || invite) && !url.searchParams.has('error')) {
           const client = createServerClient<Database>(
             import.meta.env.VITE_SUPABASE_URL,
             import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
@@ -32,7 +38,9 @@ export const Route = createFileRoute('/auth/callback')({
               }
             }
           );
-          const { error } = await client.auth.exchangeCodeForSession(code);
+          const { error } = invite
+            ? await client.auth.verifyOtp({ token_hash: invite, type: 'invite' })
+            : await client.auth.exchangeCodeForSession(code ?? '');
           if (!error) {
             headers.set('Location', new URL(next, url).toString());
             return new Response(null, { status: 303, headers });

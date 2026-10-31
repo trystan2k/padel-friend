@@ -52,7 +52,11 @@ vi.mock('../src/features/player/player.server', async (importOriginal) => {
 });
 
 import { verifiedAvatarKey } from '../src/features/player/player.server';
-import { onboardPlayer, updateMyPlayerProfile } from '../src/features/player/player.functions';
+import {
+  claimProvisionalPlayer,
+  onboardPlayer,
+  updateMyPlayerProfile
+} from '../src/features/player/player.functions';
 
 type Row = Record<string, unknown>;
 
@@ -65,13 +69,21 @@ function rowResult(value: unknown) {
   return builder;
 }
 
-function clientWith(claims: { sub: string } | null, profile: Row | null, rating: Row | null) {
+function clientWith(
+  claims: { sub: string } | null,
+  profile: Row | null,
+  rating: Row | null,
+  claimContext: { data: unknown; error: unknown } = { data: { state: 'none' }, error: null }
+) {
   return {
     auth: {
       getClaims: async () =>
         claims ? { data: { claims }, error: null } : { data: null, error: new Error('JWT expired') }
     },
-    from: (table: string) => rowResult(table === 'player_profiles' ? profile : rating)
+    from: (table: string) => rowResult(table === 'player_profiles' ? profile : rating),
+    rpc: vi.fn<(name: string) => Promise<{ data: unknown; error: unknown }>>(
+      async () => claimContext
+    )
   };
 }
 
@@ -112,21 +124,69 @@ describe('getOnboardingStatus', () => {
 
   it('reports unauthenticated and incomplete for a signed-in user without rows', async () => {
     supabaseServer.getServerClient.mockReturnValue(clientWith(null, null, null));
-    await expect(getOnboardingStatus()).resolves.toEqual({ authenticated: false, complete: false });
+    await expect(getOnboardingStatus()).resolves.toEqual({
+      authenticated: false,
+      complete: false,
+      claim: null
+    });
 
     supabaseServer.getServerClient.mockReturnValue(clientWith({ sub: 'sub-1' }, null, null));
-    await expect(getOnboardingStatus()).resolves.toEqual({ authenticated: true, complete: false });
+    await expect(getOnboardingStatus()).resolves.toEqual({
+      authenticated: true,
+      complete: false,
+      claim: null
+    });
     expect(tanstackServer.setResponseHeader).toHaveBeenCalledWith(
       'Cache-Control',
       'private, no-store'
     );
   });
 
-  it('reports complete when both rows exist', async () => {
+  it('reports complete when both rows exist without asking for a claim', async () => {
+    const client = clientWith({ sub: 'sub-1' }, PROFILE_ROW, RATING_ROW);
+    supabaseServer.getServerClient.mockReturnValue(client);
+    await expect(getOnboardingStatus()).resolves.toEqual({
+      authenticated: true,
+      complete: true,
+      claim: null
+    });
+    expect(client.rpc).not.toHaveBeenCalled();
+  });
+
+  it('exposes the verified claim prefill and the unverified state of a provisional session', async () => {
+    const ready = clientWith({ sub: 'sub-1' }, null, null, {
+      data: { state: 'ready', display_name: 'Marta', initial_level: 3.5, can_edit_level: true },
+      error: null
+    });
+    supabaseServer.getServerClient.mockReturnValue(ready);
+    await expect(getOnboardingStatus()).resolves.toEqual({
+      authenticated: true,
+      complete: false,
+      claim: { state: 'ready', displayName: 'Marta', initialLevel: 3.5, canEditLevel: true }
+    });
+    expect(ready.rpc).toHaveBeenCalledWith('get_provisional_claim_context');
+
     supabaseServer.getServerClient.mockReturnValue(
-      clientWith({ sub: 'sub-1' }, PROFILE_ROW, RATING_ROW)
+      clientWith({ sub: 'sub-1' }, null, null, { data: { state: 'unverified' }, error: null })
     );
-    await expect(getOnboardingStatus()).resolves.toEqual({ authenticated: true, complete: true });
+    await expect(getOnboardingStatus()).resolves.toMatchObject({
+      complete: false,
+      claim: { state: 'unverified' }
+    });
+  });
+
+  it('never opens the claim form for a malformed claim payload and surfaces RPC errors', async () => {
+    for (const data of [{ state: 'ready', display_name: 'Marta' }, 'ready', [], null]) {
+      supabaseServer.getServerClient.mockReturnValue(
+        clientWith({ sub: 'sub-1' }, null, null, { data, error: null })
+      );
+      await expect(getOnboardingStatus()).resolves.toMatchObject({ claim: null });
+    }
+    const failure = new Error('rpc down');
+    supabaseServer.getServerClient.mockReturnValue(
+      clientWith({ sub: 'sub-1' }, null, null, { data: null, error: failure })
+    );
+    await expect(getOnboardingStatus()).rejects.toThrow('rpc down');
   });
 
   it('fails with the stable INCOMPLETE_PLAYER_STATE error for a one-row state', async () => {
@@ -175,6 +235,57 @@ describe('private player server functions', () => {
     await expect(
       onboardPlayer({ data: { display_name: 'Ana', preferred_side: 'LEFT', initial_level: 3 } })
     ).rejects.toThrow('INCOMPLETE_PLAYER_STATE');
+  });
+
+  it('claims through the restricted RPC with only the profile fields and no target', async () => {
+    const client = clientWith({ sub: 'sub-1' }, null, null, { data: null, error: null });
+    supabaseServer.getServerClient.mockReturnValue(client);
+    await claimProvisionalPlayer({
+      data: { display_name: 'Marta', preferred_side: 'LEFT', initial_level: 3.5, bio: 'hi' }
+    });
+    expect(client.rpc).toHaveBeenCalledWith('claim_provisional_player', {
+      p_display_name: 'Marta',
+      p_preferred_side: 'LEFT',
+      p_initial_level: 3.5,
+      p_bio: 'hi'
+    });
+  });
+
+  it('maps claim RPC failures to stable application errors', async () => {
+    const input = {
+      data: { display_name: 'Marta', preferred_side: 'LEFT' as const, initial_level: 3 }
+    };
+    for (const [message, expected] of [
+      ['PROVISIONAL_CLAIM_NOT_PENDING', 'PLAYER_CLAIM_NOT_PENDING'],
+      ['PROVISIONAL_CLAIM_EMAIL_NOT_VERIFIED', 'PLAYER_CLAIM_NOT_VERIFIED'],
+      ['PROVISIONAL_CLAIM_LEVEL_LOCKED', 'PLAYER_CLAIM_LEVEL_LOCKED'],
+      ['something unexpected', 'PLAYER_CLAIM_FAILED']
+    ] as const) {
+      supabaseServer.getServerClient.mockReturnValue({
+        ...clientWith({ sub: 'sub-1' }, null, null),
+        rpc: async () => ({ error: { message }, data: null })
+      });
+      await expect(claimProvisionalPlayer(input)).rejects.toThrow(expected);
+    }
+  });
+
+  it('rejects an unauthenticated claim and a claim naming a target before any RPC', async () => {
+    const unauthenticated = clientWith(null, null, null);
+    supabaseServer.getServerClient.mockReturnValue(unauthenticated);
+    await expect(
+      claimProvisionalPlayer({
+        data: { display_name: 'Marta', preferred_side: 'LEFT', initial_level: 3 }
+      })
+    ).rejects.toThrow('UNAUTHENTICATED');
+    expect(unauthenticated.rpc).not.toHaveBeenCalled();
+    const naming = {
+      display_name: 'Marta',
+      preferred_side: 'LEFT' as const,
+      initial_level: 3,
+      user_id: 'other'
+    };
+    await expect(claimProvisionalPlayer({ data: naming })).rejects.toThrow('INVALID_PLAYER_INPUT');
+    expect(unauthenticated.rpc).not.toHaveBeenCalled();
   });
 
   it('rejects invalid onboarding payloads through the validator before any client call', async () => {

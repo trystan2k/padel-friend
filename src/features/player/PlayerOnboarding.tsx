@@ -7,20 +7,35 @@ import { StepBadge } from '../../components/ui/StepBadge';
 import { SurfaceCard } from '../../components/ui/SurfaceCard';
 import { TextField } from '../../components/ui/TextField';
 import { stripEdgeWhitespace } from '../../lib/edge-whitespace';
-import { onboardPlayer } from './player.functions';
+import { claimProvisionalPlayer, onboardPlayer } from './player.functions';
 import { INITIAL_RELIABILITY_PERCENT, LEVEL_STEP, MAX_LEVEL, MIN_LEVEL } from './rating-config';
 import { validateInitialLevel, type PreferredSide } from './player.validators';
+import type { ProvisionalClaim } from './provisional-claim';
 import { ui } from './player-ui.styles';
-import { optionalReturnPath } from '../auth/return-path';
+import { normalizeReturnPath, optionalReturnPath } from '../auth/return-path';
 
-export function PlayerOnboarding({ next: returnPath }: { next?: string }) {
+type ReadyClaim = Extract<ProvisionalClaim, { state: 'ready' }>;
+
+/**
+ * Profile setup for a new account, or the verified claim of a provisional
+ * identity (`claim`): same form, prefilled from the creator's data, with the
+ * starting level locked once rated history exists.
+ */
+export function PlayerOnboarding({
+  next: returnPath,
+  claim
+}: {
+  next?: string;
+  claim?: ReadyClaim;
+}) {
   const { t, i18n } = useTranslation();
   const nameRef = useRef<HTMLInputElement>(null);
   const sideRef = useRef<HTMLInputElement>(null);
   const levelRef = useRef<HTMLInputElement>(null);
-  const [name, setName] = useState('');
+  const [name, setName] = useState(claim?.displayName ?? '');
   const [side, setSide] = useState<PreferredSide | null>(null);
-  const [level, setLevel] = useState('3.0');
+  const [level, setLevel] = useState(claim ? claim.initialLevel.toFixed(1) : '3.0');
+  const levelLocked = claim ? !claim.canEditLevel : false;
   const [hand, setHand] = useState<'LEFT' | 'RIGHT' | null>(null);
   const [bio, setBio] = useState('');
   const [errors, setErrors] = useState<Partial<Record<'name' | 'side' | 'level', string>>>({});
@@ -58,16 +73,22 @@ export function PlayerOnboarding({ next: returnPath }: { next?: string }) {
     setFailed(false);
     let navigating = false;
     try {
-      await onboardPlayer({
-        data: {
-          display_name: normalizedName,
-          preferred_side: side,
-          initial_level: initialLevel,
-          dominant_hand: hand,
-          bio: bio.trim() || null
-        }
-      });
+      const profile = {
+        display_name: normalizedName,
+        preferred_side: side,
+        initial_level: initialLevel,
+        dominant_hand: hand,
+        bio: bio.trim() || null
+      };
+      if (claim) await claimProvisionalPlayer({ data: profile });
+      else await onboardPlayer({ data: profile });
       navigating = true;
+      if (claim) {
+        // The claimant already belongs to the community that added them: go straight
+        // to the destination the invitation carried.
+        window.location.assign(normalizeReturnPath(returnPath));
+        return;
+      }
       const search = new URLSearchParams(optionalReturnPath(returnPath)).toString();
       const target = `/onboarding/community${search ? `?${search}` : ''}`;
       window.location.assign(target);
@@ -75,6 +96,18 @@ export function PlayerOnboarding({ next: returnPath }: { next?: string }) {
       if (error instanceof Error && error.message === 'UNAUTHENTICATED') {
         navigating = true;
         window.location.assign('/login?next=/onboarding');
+        return;
+      }
+      if (claim && error instanceof Error && error.message === 'PLAYER_CLAIM_NOT_PENDING') {
+        // Already claimed (double submit or another tab): continue to the destination.
+        navigating = true;
+        window.location.assign(normalizeReturnPath(returnPath));
+        return;
+      }
+      if (claim && error instanceof Error && error.message === 'PLAYER_CLAIM_NOT_VERIFIED') {
+        // Mailbox proof is gone or never existed: the loader shows the verification step.
+        navigating = true;
+        window.location.reload();
         return;
       }
       setFailed(true);
@@ -86,15 +119,19 @@ export function PlayerOnboarding({ next: returnPath }: { next?: string }) {
   return (
     <main {...stylex.props(ui.page, ui.onboardingPage)}>
       <div {...stylex.props(ui.topContent)}>
-        <StepBadge>{t('onboarding.step')}</StepBadge>
+        <StepBadge>{t(claim ? 'auth.claim.step' : 'onboarding.step')}</StepBadge>
         <header {...stylex.props(ui.header)}>
-          <h1 {...stylex.props(ui.title)}>{t('onboarding.title')}</h1>
-          <p {...stylex.props(ui.subtitle)}>{t('onboarding.subtitle')}</p>
+          <h1 {...stylex.props(ui.title)}>{t(claim ? 'auth.claim.title' : 'onboarding.title')}</h1>
+          <p {...stylex.props(ui.subtitle)}>
+            {t(claim ? 'auth.claim.subtitle' : 'onboarding.subtitle')}
+          </p>
         </header>
       </div>
       <HeroCard>
         <h2 {...stylex.props(ui.heroTitle)}>{t('onboarding.levelHelp')}</h2>
-        <p {...stylex.props(ui.heroCopy)}>{t('onboarding.scaleDescription')}</p>
+        <p {...stylex.props(ui.heroCopy)}>
+          {t(claim && !levelLocked ? 'auth.claim.levelNote' : 'onboarding.scaleDescription')}
+        </p>
       </HeroCard>
       <form
         onSubmit={(event) => void submit(event)}
@@ -134,8 +171,13 @@ export function PlayerOnboarding({ next: returnPath }: { next?: string }) {
                 step={LEVEL_STEP}
                 value={sliderLevel}
                 onChange={(event) => setLevel(Number(event.target.value).toFixed(1))}
+                disabled={levelLocked}
                 aria-label={t('onboarding.levelScale')}
-                aria-describedby="level-range-description"
+                aria-describedby={
+                  levelLocked
+                    ? 'level-range-description claim-level-locked'
+                    : 'level-range-description'
+                }
                 {...stylex.props(ui.sliderInput)}
               />
             </div>
@@ -156,6 +198,11 @@ export function PlayerOnboarding({ next: returnPath }: { next?: string }) {
             <span>{t('onboarding.beginner')}</span>
             <span>{t('onboarding.advanced')}</span>
           </div>
+          {levelLocked && (
+            <p id="claim-level-locked" {...stylex.props(ui.muted)}>
+              {t('auth.claim.levelLocked')}
+            </p>
+          )}
         </SurfaceCard>
         <SurfaceCard xstyle={ui.onboardingCard}>
           <div {...stylex.props(ui.onboardingChoiceStack)}>
@@ -242,7 +289,7 @@ export function PlayerOnboarding({ next: returnPath }: { next?: string }) {
         </SurfaceCard>
         {failed && (
           <p role="alert" {...stylex.props(ui.error)}>
-            {t('onboarding.failed')}
+            {t(claim ? 'auth.claim.failed' : 'onboarding.failed')}
           </p>
         )}
         <Button type="submit" busy={saving}>
@@ -250,7 +297,7 @@ export function PlayerOnboarding({ next: returnPath }: { next?: string }) {
             t('onboarding.saving')
           ) : (
             <>
-              {t('onboarding.save')} <span aria-hidden="true">→</span>
+              {t(claim ? 'auth.claim.submit' : 'onboarding.save')} <span aria-hidden="true">→</span>
             </>
           )}
         </Button>
@@ -269,6 +316,7 @@ export function PlayerOnboarding({ next: returnPath }: { next?: string }) {
             value={level}
             onChange={(event) => setLevel(event.target.value)}
             required
+            disabled={levelLocked}
             aria-invalid={Boolean(errors.level)}
             aria-describedby={errors.level ? 'player-level-error' : undefined}
             {...stylex.props(ui.input)}

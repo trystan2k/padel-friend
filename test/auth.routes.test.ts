@@ -38,11 +38,21 @@ vi.mock('../src/i18n/locale.functions', () => ({
 
 import { routeTree } from '../src/routeTree.gen';
 
-const ANON = { authenticated: false, complete: false };
-const INCOMPLETE = { authenticated: true, complete: false };
-const COMPLETE = { authenticated: true, complete: true };
+const ANON = { authenticated: false, complete: false, claim: null };
+const INCOMPLETE = { authenticated: true, complete: false, claim: null };
+const COMPLETE = { authenticated: true, complete: true, claim: null };
+const CLAIM_READY = {
+  authenticated: true,
+  complete: false,
+  claim: { state: 'ready' as const, displayName: 'Marta', initialLevel: 3.5, canEditLevel: true }
+};
+const CLAIM_UNVERIFIED = {
+  authenticated: true,
+  complete: false,
+  claim: { state: 'unverified' as const }
+};
 
-function onboardedAs(status: typeof ANON): void {
+function onboardedAs(status: typeof ANON | typeof CLAIM_READY | typeof CLAIM_UNVERIFIED): void {
   playerFunctions.getOnboardingStatus.mockResolvedValue(status);
 }
 
@@ -301,7 +311,23 @@ describe('/onboarding guard (beforeLoad)', () => {
 
   it('keeps an authenticated incomplete player on the setup form', async () => {
     onboardedAs(INCOMPLETE);
-    await expect(onboardingGuard({})).resolves.toBeUndefined();
+    await expect(onboardingGuard({})).resolves.toEqual({ claim: null });
+  });
+
+  it('hands the verified or unverified claim state of a provisional player to the page', async () => {
+    onboardedAs(CLAIM_READY);
+    await expect(onboardingGuard({})).resolves.toEqual({ claim: CLAIM_READY.claim });
+    onboardedAs(CLAIM_UNVERIFIED);
+    await expect(onboardingGuard({})).resolves.toEqual({ claim: CLAIM_UNVERIFIED.claim });
+  });
+
+  it('routes a provisional player from any protected page to the claim onboarding', async () => {
+    for (const status of [CLAIM_READY, CLAIM_UNVERIFIED]) {
+      onboardedAs(status);
+      const redirect = await redirectOf(protectedGuard({ location: { href: '/matches/e1' } }));
+      expect(redirect.options.to).toBe('/onboarding');
+      expect(redirect.options.search).toEqual({ next: '/matches/e1' });
+    }
   });
 
   it('sends a complete player to the dashboard', async () => {

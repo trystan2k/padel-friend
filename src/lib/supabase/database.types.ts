@@ -1859,6 +1859,16 @@ export type Database = {
         }
         Returns: Json
       }
+      claim_provisional_player: {
+        Args: {
+          p_bio?: string
+          p_display_name: string
+          p_dominant_hand?: string
+          p_initial_level: number
+          p_preferred_side: string
+        }
+        Returns: undefined
+      }
       classify_match_result_sets: { Args: { p_sets: Json }; Returns: string }
       complete_match_player_add_locked: {
         Args: { p_new_identity: boolean; p_operation_id: string; p_user_id: string }
@@ -2074,6 +2084,7 @@ export type Database = {
           winner_sets: number
         }[]
       }
+      get_provisional_claim_context: { Args: Record<PropertyKey, never>; Returns: Json }
       govern_community_member: {
         Args: { p_action: string; p_community_id: string; p_membership_id: string }
         Returns: {
@@ -2381,6 +2392,7 @@ export type Database = {
         }
         Returns: string
       }
+      player_has_rated_history: { Args: { p_user_id: string }; Returns: boolean }
       process_due_match_event_registration_cutoffs: { Args: { p_limit?: number }; Returns: Json }
       process_due_match_event_results: { Args: { p_limit?: number }; Returns: Json }
       process_match_event_registration_cutoff: {
@@ -2402,6 +2414,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      provisional_claim_state: { Args: Record<PropertyKey, never>; Returns: string }
       public_community_discovery: {
         Args: Record<PropertyKey, never>
         Returns: {
