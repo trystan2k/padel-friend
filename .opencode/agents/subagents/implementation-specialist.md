@@ -1,7 +1,7 @@
 ---
 description: Senior implementation agent that executes approved tasks and deepthink plans using stack-specific best practices and project conventions.
 mode: subagent
-model: claude-agent/opus
+model: claude-agent/sonnet
 permissions:
   - action: subagent
     resource: "*"
