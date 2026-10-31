@@ -421,7 +421,11 @@ function CompactResultSummary({
   });
   const teamNames = (side: 'team_a' | 'team_b') =>
     proposal.teams[side]
-      .map((player) => player.display_name ?? t('matches.results.unknownPlayer'))
+      .map(
+        (player) =>
+          (player.display_name ?? t('matches.results.unknownPlayer')) +
+          (player.is_provisional ? ` (${t('player.provisional.badge')})` : '')
+      )
       .join(' + ');
   const scores = proposal.sets.map((set) => `${set.team_a_games}–${set.team_b_games}`).join(' · ');
 

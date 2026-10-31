@@ -57505,6 +57505,43 @@
                 },
                 {
                   "type": "frame",
+                  "id": "M87Bew",
+                  "name": "Add player option",
+                  "width": "fill_container",
+                  "height": 44,
+                  "fill": "$surface",
+                  "cornerRadius": 8,
+                  "gap": 10,
+                  "padding": [
+                    0,
+                    10
+                  ],
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "icon",
+                      "id": "V6xlc",
+                      "name": "Add player icon",
+                      "width": 18,
+                      "height": 18,
+                      "icon": "user-plus",
+                      "library": "lucide",
+                      "fill": "$green"
+                    },
+                    {
+                      "type": "text",
+                      "id": "icG7g",
+                      "name": "Add player label",
+                      "fill": "$text",
+                      "content": "Add player",
+                      "fontFamily": "Inter",
+                      "fontSize": 13,
+                      "fontWeight": "semibold"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
                   "id": "DiI1i",
                   "name": "Cancel match option",
                   "width": "fill_container",

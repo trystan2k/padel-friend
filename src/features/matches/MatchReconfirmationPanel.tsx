@@ -3,6 +3,7 @@ import * as stylex from '@stylexjs/stylex';
 import { useRef, useState } from 'react';
 import { useRouter } from '@tanstack/react-router';
 import { useTranslation } from 'react-i18next';
+import { ProvisionalBadge } from '../../components/ui/ProvisionalBadge';
 import type { MatchEventDetail } from './match-contracts';
 import type { ManagementParticipant } from './match-management-model';
 import type { MyMatchRegistration } from './match-registration-model';
@@ -76,6 +77,7 @@ export function MatchReconfirmationPanel({
                 <strong>
                   {player.display_name ?? t('matchRegistration.roster.playerFallback')}
                 </strong>
+                {player.is_provisional && <ProvisionalBadge />}
                 <span {...stylex.props(card.meta)}>
                   {t('matchRegistration.roster.awaitingStatus')}
                 </span>

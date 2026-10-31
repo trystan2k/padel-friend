@@ -1,5 +1,6 @@
 import * as stylex from '@stylexjs/stylex';
 import { useTranslation } from 'react-i18next';
+import { ProvisionalBadge } from '../../components/ui/ProvisionalBadge';
 import type { ManagementParticipant } from './match-management-model';
 import type { MatchRosterEntry } from './match-registration-model';
 import { requiresMatchReconfirmation } from './match-reconfirmation-model';
@@ -38,6 +39,7 @@ export function MatchRosterCard({
       accepted_order: player.accepted_order,
       display_name: player.display_name,
       display_level: player.display_level,
+      is_provisional: player.is_provisional,
       participation: player.participation,
       registration_source: 'member',
       group_number: player.participation === 'playing' ? Math.ceil(playingIndex / 4) : null,
@@ -91,6 +93,11 @@ export function MatchRosterCard({
         </span>
         <div {...stylex.props(s.playerIdentity)}>
           <span {...stylex.props(s.playerName)}>{name}</span>
+          {entry.is_provisional && (
+            <span {...stylex.props(s.provisionalSlot)}>
+              <ProvisionalBadge />
+            </span>
+          )}
           {!participants && (
             <span {...stylex.props(s.visuallyHidden)}>
               {t(
@@ -186,6 +193,7 @@ export function MatchRosterCard({
                 accepted_order: player.accepted_order,
                 display_name: player.display_name,
                 display_level: player.display_level,
+                is_provisional: player.is_provisional,
                 participation: 'reserve_not_playing',
                 registration_source: 'member',
                 group_number: null,

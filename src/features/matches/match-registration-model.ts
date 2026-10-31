@@ -80,6 +80,12 @@ function asPositiveInteger(value: unknown): number | null {
 function asCount(value: unknown): number | null {
   return typeof value === 'number' && Number.isSafeInteger(value) && value >= 0 ? value : null;
 }
+// Additive provisional badge flag: absent means a pre-provisional payload (false);
+// any present non-boolean value is malformed.
+function asProvisionalFlag(value: unknown): boolean | null {
+  if (value === undefined) return false;
+  return typeof value === 'boolean' ? value : null;
+}
 
 // Maps a Supabase/Postgres error to a typed result. Returns null for an unknown
 // failure so callers can surface a generic retry state instead of leaking it.
@@ -432,6 +438,7 @@ export type MatchRegistrationRequest = {
   attempt_id: string;
   display_name: string | null;
   display_level: number | null;
+  is_provisional: boolean;
   registration_source: MatchRegistrationSource;
   requested_at: string;
 };
@@ -469,7 +476,17 @@ function parseRequest(value: unknown): MatchRegistrationRequest | null {
   if (rawLevel === null || rawLevel === undefined) display_level = null;
   else if (typeof rawLevel === 'number' && Number.isFinite(rawLevel)) display_level = rawLevel;
   else return null;
-  return { user_id, attempt_id, display_name, display_level, registration_source, requested_at };
+  const is_provisional = asProvisionalFlag(value.is_provisional);
+  if (is_provisional === null) return null;
+  return {
+    user_id,
+    attempt_id,
+    display_name,
+    display_level,
+    is_provisional,
+    registration_source,
+    requested_at
+  };
 }
 
 export function parseMatchRegistrationQueue(value: unknown): MatchRegistrationQueue | null {
@@ -569,6 +586,7 @@ export function matchRegistrationReservePosition(
 export type MatchRosterEntry = {
   display_name: string | null;
   display_level: number | null;
+  is_provisional: boolean;
   participation: MatchRegistrationParticipation;
   group_number: number | null;
   reserve_position: number | null;
@@ -594,6 +612,8 @@ function parseMatchRosterEntry(value: unknown): MatchRosterEntry | null {
   if (rawLevel === null || rawLevel === undefined) display_level = null;
   else if (typeof rawLevel === 'number' && Number.isFinite(rawLevel)) display_level = rawLevel;
   else return null;
+  const is_provisional = asProvisionalFlag(value.is_provisional);
+  if (is_provisional === null) return null;
 
   const rawGroup = value.group_number;
   let group_number: number | null;
@@ -621,6 +641,7 @@ function parseMatchRosterEntry(value: unknown): MatchRosterEntry | null {
   return {
     display_name,
     display_level,
+    is_provisional,
     participation,
     group_number,
     reserve_position,

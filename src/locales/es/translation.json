@@ -78,6 +78,34 @@
     "invalidName": "Introduce un nombre de comunidad de hasta 80 caracteres."
   },
   "auth": {
+    "invitationEmail": {
+      "subject": "Te han añadido a un partido de pádel",
+      "heading": "Estás en el partido",
+      "body": "{{inviter}} te añadió a {{event}} en Padel Friends. Acepta la invitación para configurar tu perfil de jugador y ver el partido.",
+      "cta": "Aceptar invitación",
+      "footer": "¿No esperabas este correo? Puedes ignorarlo sin problema."
+    },
+    "claim": {
+      "step": "TERMINA TU REGISTRO",
+      "title": "Termina de configurar tu cuenta",
+      "subtitle": "Tu correo está confirmado. Revisa tus datos para reclamar tu perfil de jugador.",
+      "levelNote": "El organizador estimó este nivel inicial. Ajústalo si no te parece correcto.",
+      "levelLocked": "Tu nivel inicial está bloqueado porque ya tienes partidos puntuados.",
+      "submit": "RECLAMAR MI PERFIL",
+      "failed": "No se pudo reclamar tu perfil. Inténtalo de nuevo.",
+      "verifyTitle": "Confirma primero tu correo",
+      "verifySubtitle": "Te añadieron a un partido. Confirma esta dirección de correo para reclamar tu perfil.",
+      "verifyOptionsTitle": "Abre el correo de invitación",
+      "verifyOptions": "Usa el enlace del correo de invitación, inicia sesión con Google con la misma dirección o recibe un nuevo enlace por correo.",
+      "verifyAction": "ENVIARME UN ENLACE",
+      "verifyFailed": "No se pudo iniciar la verificación. Inténtalo de nuevo.",
+      "invitedNotice_one": "Te invitaron a {{count}} partido.",
+      "invitedNotice_other": "Te invitaron a {{count}} partidos.",
+      "passwordTitle": "Elige una contraseña",
+      "passwordSubtitle": "Tu perfil está reclamado. Define una contraseña para entrar con tu correo la próxima vez.",
+      "passwordSkipHelp": "Ya puedes entrar con tu cuenta vinculada. La contraseña es opcional.",
+      "passwordSkip": "OMITIR POR AHORA"
+    },
     "welcomeBrand": "PADEL FRIENDS",
     "welcomeTitle": "Bienvenido/a",
     "welcomeSubtitle": "Inicia sesión para encontrar tu próximo partido.",
@@ -162,6 +190,12 @@
     "validationLevel": "Elige un nivel de 0,0 a 7,0 en pasos de 0,1.",
     "saving": "Guardando…",
     "failed": "No se pudo guardar tu perfil. Inténtalo de nuevo."
+  },
+  "player": {
+    "provisional": {
+      "badge": "Provisional",
+      "reviewNote": "Aún sin registrar — no puede revisar resultados"
+    }
   },
   "profile": {
     "title": "Perfil del jugador",
@@ -566,6 +600,44 @@
     "offline": "No tienes conexión. Vuelve a conectarte para guardar tus preferencias."
   },
   "matches": {
+    "addPlayer": {
+      "action": "Añadir jugador",
+      "title": "Añadir un jugador",
+      "subtitle": "Todavía no necesita una cuenta.",
+      "nameLabel": "Nombre",
+      "namePlaceholder": "Introduce el nombre",
+      "emailLabel": "Correo electrónico",
+      "emailPlaceholder": "Introduce el correo electrónico",
+      "emailHelper": "Le enviaremos una invitación por correo.",
+      "levelLabel": "Nivel estimado",
+      "levelUnset": "Selecciona un nivel",
+      "levelHelper": "Tu mejor estimación. Podrá ajustarlo al unirse.",
+      "note": "Verá este partido cuando se registre.",
+      "cancel": "Cancelar",
+      "submit": "Añadir jugador",
+      "submitting": "Añadiendo…",
+      "success": "{{name}} se añadió y recibió una invitación.",
+      "offline": "Estás sin conexión. Vuelve a conectarte para añadir un jugador.",
+      "validation": {
+        "name": "Introduce un nombre de hasta 80 caracteres.",
+        "email": "Introduce un correo electrónico válido",
+        "level": "Elige un nivel estimado."
+      },
+      "errors": {
+        "closed": "No se pueden añadir jugadores después del cierre.",
+        "started": "Este partido ya ha empezado.",
+        "cancelled": "Este partido se canceló.",
+        "resultProtected": "Los resultados ya están registrados, así que no se pueden añadir jugadores.",
+        "full": "Este partido está completo.",
+        "rateLimited": "Demasiadas invitaciones ahora mismo. Inténtalo de nuevo en unos minutos.",
+        "idempotencyConflict": "Esta solicitud ya se usó con otros datos. Revísalos e inténtalo de nuevo.",
+        "notFound": "Este partido no está disponible.",
+        "unauthenticated": "Vuelve a iniciar sesión para añadir un jugador.",
+        "forbidden": "Solo el organizador o un administrador de la comunidad puede añadir jugadores.",
+        "invalid": "Revisa los datos e inténtalo de nuevo.",
+        "unavailable": "No pudimos enviar la invitación. No se cambió nada."
+      }
+    },
     "results": {
       "navigation": "Navegación principal",
       "globalRating": "Solo nivel global",

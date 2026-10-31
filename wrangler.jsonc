@@ -1,11 +1,12 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "padel-friend",
-  "main": "@tanstack/react-start/server-entry",
+  "main": "src/server.ts",
   "compatibility_date": "2026-09-25",
   "compatibility_flags": ["nodejs_compat"],
   "observability": { "enabled": true },
+  "triggers": { "crons": ["*/5 * * * *"] },
   "env": {
-    "preview": { "name": "padel-friend-preview" }
+    "preview": { "name": "padel-friend-preview", "triggers": { "crons": ["*/5 * * * *"] } }
   }
 }

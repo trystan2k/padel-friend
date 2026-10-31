@@ -24,6 +24,14 @@ export const styles = stylex.create({
     borderColor: 'var(--color-red)'
   },
   guest: { backgroundColor: 'var(--color-amber)', color: 'var(--color-bg)' },
+  provisional: {
+    backgroundColor: 'var(--color-surface-2)',
+    color: 'var(--color-amber)',
+    borderWidth: 'var(--border-width-sm)',
+    borderStyle: 'solid',
+    borderColor: 'var(--color-amber)',
+    gap: 'var(--space-2)'
+  },
   summary: {
     display: 'inline-flex',
     padding: 'var(--space-2) var(--space-3)',

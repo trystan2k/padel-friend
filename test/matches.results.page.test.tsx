@@ -35,6 +35,7 @@ const players: ManagementParticipant[] = ['Ana', 'Bea', 'Carlos', 'Davi'].map((n
   attempt_id: id,
   display_name: name,
   display_level: null,
+  is_provisional: false,
   lifecycle: 'accepted',
   participation: 'playing',
   accepted_order: index + 1
@@ -42,6 +43,7 @@ const players: ManagementParticipant[] = ['Ana', 'Bea', 'Carlos', 'Davi'].map((n
 const roster: MatchRosterEntry[] = players.map((p) => ({
   display_name: p.display_name,
   display_level: null,
+  is_provisional: false,
   participation: 'playing',
   accepted_order: p.accepted_order,
   group_number: 1,

@@ -10,9 +10,9 @@
   },
   "sourceDesign": {
     "path": "docs/design/padel-friend.pen",
-    "sha256": "fd0ced302f51a028c781986be5d5cefbad4b26c604f542448487809481353067",
+    "sha256": "927ac4e83f24edacbc2b2fe2fcfa111d8e0822b96f73ce268cf50b5ef2737af2",
     "exportCommand": "Pencil MCP execute on /tmp/paf-6-design/source.pen (byte-identical scratch copy): Export([\"Fyhbv\",\"lJHUZ\",\"t0SZec\",\"oVtuS\",\"uiRqp\",\"q2TCnQ\",\"Ht2Oq\",\"m7hh3\",\"dmvWu\"],\"png\",<repo>/e2e/references/paf-6,{scale:1})",
-    "provenanceNote": "Nine original frames retained unchanged. User-directed frame-driven redesign: ten authoritative rebuilt exports copied from test-results/paf6-rebuilt2 without agent design mutation. Rebuilt frames include app chrome and retain their full source heights. T07.5 updates opaque source digest after approved T07 additions: all 19 existing frames re-exported through Pencil at scale 1 and SHA-256 matched byte-for-byte; no PNG or budget changed. T09 re-certifies the opaque source digest after a3a20f8 design-source update (product-owner decision 2026-10-31): all 19 frames re-exported through Pencil at scale 1 from a byte-identical scratch copy and SHA-256 matched byte-for-byte; no PNG or budget changed.",
+    "provenanceNote": "Nine original frames retained unchanged. User-directed frame-driven redesign: ten authoritative rebuilt exports copied from test-results/paf6-rebuilt2 without agent design mutation. Rebuilt frames include app chrome and retain their full source heights. T07.5 updates opaque source digest after approved T07 additions: all 19 existing frames re-exported through Pencil at scale 1 and SHA-256 matched byte-for-byte; no PNG or budget changed. T09 re-certifies the opaque source digest after a3a20f8 design-source update (product-owner decision 2026-10-31): all 19 frames re-exported through Pencil at scale 1 from a byte-identical scratch copy and SHA-256 matched byte-for-byte; no PNG or budget changed. T18 (PAF-125) re-certifies the opaque source digest after the user added the Add player item (M87Bew) to the bobgm Actions popover (n2PDH): bobgm re-exported through Pencil at scale 1 from a byte-identical scratch copy (disabled archived node QRuAd excluded); bobgm.png and its baselineSha256 replaced to match frame content; budget re-measured.",
     "additionalExportCommand": "Export([\"YvdPB\",\"M7ighq\",\"T7T2U\",\"bobgm\",\"PKM0u\",\"K23bLC\",\"Tm3XM\",\"xgKXg\",\"tVzco\",\"a6xmFd\"],\"png\",<repo>/e2e/references/paf-6,{scale:1})"
   },
   "approvedReferences": {
@@ -38,7 +38,7 @@
       "frameId": "bobgm",
       "name": "Match creator \u2014 Action menu",
       "sourceSize": "390x1866",
-      "sha256": "065042184accd3f22090423e679526bf92de737594f49373e97a6d576d37d421"
+      "sha256": "f28e1f80173c34a99f35b2b82c3269295bfc6a88baed9391d3165d98b345f150"
     },
     "PKM0u.png": {
       "frameId": "PKM0u",
@@ -268,9 +268,9 @@
         "baselineSha256": "54434638d43bce9dc5ce272f9735ba9215f9398bd22770fc13f8e30698802886"
       },
       "bobgm.png": {
-        "measured": 0.09886910160222058,
-        "budget": 0.104,
-        "baselineSha256": "065042184accd3f22090423e679526bf92de737594f49373e97a6d576d37d421"
+        "measured": 0.10071179267320747,
+        "budget": 0.106,
+        "baselineSha256": "f28e1f80173c34a99f35b2b82c3269295bfc6a88baed9391d3165d98b345f150"
       },
       "PKM0u.png": {
         "measured": 0.08601988728571007,

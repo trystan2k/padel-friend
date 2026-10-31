@@ -65,7 +65,11 @@ export type ResultSubmission = {
   review_deadline_at: string;
   request_id: string;
 };
-export type ResultPlayer = { user_id: string; display_name: string | null };
+export type ResultPlayer = {
+  user_id: string;
+  display_name: string | null;
+  is_provisional: boolean;
+};
 export type ResultProposalStatus = 'pending' | 'disputed' | 'confirmed';
 export type ResultDecision = 'approve' | 'reject';
 export type ResultConfirmationSource = 'MANUAL' | 'AUTO_48H';
@@ -215,10 +219,16 @@ export function parseResultProposals(value: unknown): ResultProposal[] | null {
         const player = (item: unknown): ResultPlayer => {
           if (
             !record(item) ||
-            !(item.display_name === null || typeof item.display_name === 'string')
+            !(item.display_name === null || typeof item.display_name === 'string') ||
+            !(item.is_provisional === undefined || typeof item.is_provisional === 'boolean')
           )
             throw new Error('INVALID_TEAMS');
-          return { user_id: validateMatchUuid(item.user_id), display_name: item.display_name };
+          // Additive flag: absent in pre-provisional payloads.
+          return {
+            user_id: validateMatchUuid(item.user_id),
+            display_name: item.display_name,
+            is_provisional: item.is_provisional ?? false
+          };
         };
         return [player(players[0]), player(players[1])];
       };

@@ -362,6 +362,7 @@ describe('match registration jsonb parsers', () => {
           attempt_id: attemptId,
           display_name: 'Requester',
           display_level: 3.5,
+          is_provisional: true,
           registration_source: 'guest',
           requested_at: now
         },
@@ -370,6 +371,7 @@ describe('match registration jsonb parsers', () => {
           attempt_id: '00000000-0000-4000-8000-0000000000a2',
           display_name: null,
           display_level: null,
+          is_provisional: false,
           registration_source: 'member',
           requested_at: now
         }
@@ -750,6 +752,7 @@ describe('registration server function contracts', () => {
     const row = {
       display_name: 'Ada',
       display_level: 3.5,
+      is_provisional: false,
       participation: 'playing',
       group_number: 1,
       reserve_position: null,

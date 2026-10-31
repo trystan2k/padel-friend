@@ -248,6 +248,8 @@ export function MatchRegistrationPanel({
             registration_source: registration.registration_source,
             display_name: null,
             display_level: callerLevel,
+            // The signed-in caller is never provisional; claim clears it first.
+            is_provisional: false,
             group_number: participation === 'playing' ? group : null,
             reserve_position: reservePosition
           }

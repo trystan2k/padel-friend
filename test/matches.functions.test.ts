@@ -3,7 +3,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const mocks = vi.hoisted(() => ({
   requireAuthenticatedClient: vi.fn<() => Promise<{ client: unknown }>>(),
   signMatchPhoto: vi.fn<(client: unknown, eventId: string) => Promise<string>>(),
-  setResponseHeader: vi.fn<(name: string, value: string) => void>()
+  setResponseHeader: vi.fn<(name: string, value: string) => void>(),
+  reconcile: vi.fn<(origin: string) => Promise<void>>()
 }));
 
 vi.mock('@tanstack/react-start', () => ({
@@ -22,7 +23,11 @@ vi.mock('@tanstack/react-start', () => ({
   }
 }));
 vi.mock('@tanstack/react-start/server', () => ({
-  setResponseHeader: mocks.setResponseHeader
+  setResponseHeader: mocks.setResponseHeader,
+  getRequestUrl: () => new URL('https://padel.example/matches/e1')
+}));
+vi.mock('../src/features/matches/match-add-player.server', () => ({
+  scheduleMatchPlayerAddReconcile: mocks.reconcile
 }));
 vi.mock('../src/features/auth/auth.server', () => ({
   requireAuthenticatedClient: mocks.requireAuthenticatedClient
@@ -74,6 +79,20 @@ describe('getMatchEvent result contract', () => {
     };
     mocks.requireAuthenticatedClient.mockReset().mockResolvedValue({ client });
     mocks.signMatchPhoto.mockReset().mockResolvedValue('https://example.test/signed-photo');
+    mocks.reconcile.mockReset().mockResolvedValue(undefined);
+  });
+
+  it('reconciles stranded player invitations for any reader of a visible event, never for an unavailable one', async () => {
+    client.rpc.mockResolvedValueOnce({ data: null, error: null });
+    await getMatchEvent({ data: { event_id: eventId } });
+    expect(mocks.reconcile).not.toHaveBeenCalled();
+
+    client.rpc.mockResolvedValueOnce({ data: makeMatchRpcDetail(), error: null });
+    mocks.reconcile.mockRejectedValueOnce(new Error('sweep down'));
+    await expect(getMatchEvent({ data: { event_id: eventId } })).resolves.toMatchObject({
+      status: 'ok'
+    });
+    expect(mocks.reconcile).toHaveBeenCalledWith('https://padel.example');
   });
 
   it('treats missing and forbidden projections as the same unavailable result', async () => {

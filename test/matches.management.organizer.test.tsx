@@ -51,6 +51,7 @@ const player: ManagementParticipant = {
   attempt_id: targetId,
   display_name: 'Alex',
   display_level: null,
+  is_provisional: false,
   lifecycle: 'accepted',
   participation: 'reserve',
   accepted_order: 2

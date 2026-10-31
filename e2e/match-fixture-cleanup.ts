@@ -100,6 +100,16 @@ export function buildMatchFixtureCleanupSql(owner: MatchFixtureOwner = {}): stri
     'delete from public.match_event_registration_state s where s.match_event_id in (select id from owned_match_fixture_events)',
     `delete from public.match_event_invites i where i.match_event_id in (select id from owned_match_fixture_events) or ${actorPredicate('i.invitee_user_id')} or ${actorPredicate('i.invited_by')}`,
     `delete from public.match_event_registrations r where r.match_event_id in (select id from owned_match_fixture_events) or ${actorPredicate('r.user_id')}`,
+    // Add-player ledger rows reference events and auth users (ON DELETE RESTRICT).
+    `delete from public.match_player_add_recipient_sends s where s.operation_id in (select o.id from public.match_player_add_operations o where o.match_event_id in (select id from owned_match_fixture_events) or ${actorPredicate('o.actor_id')} or ${actorPredicate('o.target_user_id')})`,
+    `delete from public.match_player_add_operations o where o.match_event_id in (select id from owned_match_fixture_events) or ${actorPredicate('o.actor_id')} or ${actorPredicate('o.target_user_id')}`,
+    `delete from public.match_player_add_throttle_hits h where h.match_event_id in (select id from owned_match_fixture_events) or ${actorPredicate('h.actor_id')}`,
+    `delete from public.match_player_add_actor_windows w where ${actorPredicate('w.actor_id')}`,
+    // Provisional provenance references its source event (ON DELETE RESTRICT).
+    'delete from public.player_profiles p where p.source_match_event_id in (select id from owned_match_fixture_events)',
+    'alter table public.community_members disable trigger community_member_guard',
+    'delete from public.community_members m where m.source_match_event_id in (select id from owned_match_fixture_events)',
+    'alter table public.community_members enable trigger community_member_guard',
     'delete from public.match_events e where e.id in (select id from owned_match_fixture_events)',
     'alter table public.match_event_invites enable trigger match_invite_immutable',
     'alter table public.match_event_registrations enable trigger match_registration_identity_guard',
