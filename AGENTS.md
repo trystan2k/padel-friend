@@ -41,7 +41,7 @@ Code/commits/PRs: normal. Off: "stop caveman" / "normal mode".
 
 ## Project Management
 
-This project uses Linear for issue tracking and project management. GitHub is used for source control and Actions. It also has Copilot review enabled, so whenever a pull request is created, it have Copilot review requested.
+This project uses Linear for issue tracking and project management. GitHub is used for source control and Actions. Copilot review is enabled: on the FIRST push of a PR it is requested automatically; on every SUBSEQUENT push it must be re-requested explicitly. Verify the request landed via the PR history/timeline (a `copilot-pull-request-reviewer` review or `review_requested` timeline event) — NEVER via the `requested_reviewers` API field alone (it can stay empty even when the review is queued). If not yet logged, wait a bit and check again (up to 2 verification checks per attempt); after 3 failed REQUEST attempts, stop and report at the end that Copilot review could not be requested. The git-specialist agent owns this protocol.
 
 ## Conventions
 

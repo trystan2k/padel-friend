@@ -151,12 +151,24 @@ GitHub (`gh`) typical commands:
 - Review comments: `gh pr view <number|url|branch> --comments`
 - Add review/comment: `gh pr review <number> --comment -b <body>`
 - Edit PR: `gh pr edit <number> --title <title> --body <body>`
-- Request Copilot review: prefer `gh copilot-review <org>/<repo> <number>` when available; if that fails or is unavailable, use `gh api /repos/{owner}/{repo}/pulls/<number>/requested_reviewers -f "reviewers[]=copilot-pull-request-reviewer[bot]" --method POST`
+- Request Copilot review: see the "Copilot Review Request Protocol" section below — automatic on first push, RE-REQUEST on every subsequent push, verified via PR history (never via `requested_reviewers` alone)
 - Change PR status: `gh pr ready <number>` or `gh pr ready <number> --undo`
 - Close or reopen: `gh pr close <number>` / `gh pr reopen <number>`
 - Merge PR: `gh pr merge <number>`
 
 **IMPORTANT**: When creating PRs, always use the heredoc variable assignment pattern documented in the "PR Creation with gh CLI — REQUIRED Pattern" section. Never use inline body strings or --body-file.
+
+## Copilot Review Request Protocol (GitHub — REQUIRED)
+
+This repo has Copilot code review enabled. It is requested AUTOMATICALLY when the first push opens a PR — do NOT conclude failure from the `requested_reviewers` API field alone: it can stay empty (`[]`) even while the Copilot review is queued, and the review can appear later in the PR history (this exact mistake produced a false "Copilot not enabled" report once; do not repeat it).
+
+- **First push / PR creation**: no manual request needed. VERIFY via PR history that the request landed:
+  - `gh pr view <number> --json reviews --jq '[.reviews[] | {author: .author.login, state: .state}]'` (look for `copilot-pull-request-reviewer`), or
+  - `gh pr view <number> --json timelineItems --jq '[.timelineItems[] | select(.typeName == "ReviewRequested")]'` (look for a `review_requested` event naming the Copilot bot).
+  - If not yet logged: wait a bit (e.g. 60–120s `sleep` between checks) and re-check. Up to 2 verification checks per attempt.
+- **Second and subsequent pushes** (new commits on an open PR): RE-REQUEST explicitly — prefer `gh copilot-review <org>/<repo> <number>` when the extension exists; otherwise `gh api /repos/{owner}/{repo}/pulls/<number>/requested_reviewers -f "reviewers[]=copilot-pull-request-reviewer[bot]" --method POST` (or `copilot-pull-request-reviewer` without the `[bot]` suffix if the suffixed form 422s). Then verify via PR history exactly as above.
+- **Retry budget**: up to 3 REQUEST attempts total per PR lifecycle (verification waits do not count as attempts). After 3 failed attempts, STOP — do not try again; report in your final output that Copilot review could not be requested.
+- **Ground truth is the PR history**, not any API response field: a Copilot review (`COMMENTED`/`APPROVED`/`CHANGES_REQUESTED`) appearing under `reviews`, or `review_requested` timeline events naming `copilot-pull-request-reviewer`.
 
 ## User Confirmation Rules
 
