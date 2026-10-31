@@ -2717,6 +2717,52 @@ export type Database = {
         Args: { p_event_id: string; p_input: Json; p_invitee_ids: string[] }
         Returns: string
       }
+      rating_v1_calculate_group: {
+        Args: {
+          p_config_version: number
+          p_engine: string
+          p_engine_version: string
+          p_inputs: Json
+        }
+        Returns: {
+          after_confirmed_groups: number
+          after_display_level: number
+          after_highest_display_level: number
+          after_mu: number
+          after_reliability_percent: number
+          after_sigma: number
+          applied_delta: number
+          before_confirmed_groups: number
+          before_display_level: number
+          before_highest_display_level: number
+          before_mu: number
+          before_reliability_percent: number
+          before_sigma: number
+          clamped: boolean
+          expected_score: number
+          last_rating_at: string
+          opponent_team_strength: number
+          ordinal: number
+          outcome_value: number
+          own_team_strength: number
+          rating_config_version: number
+          rating_engine: string
+          rating_engine_version: string
+          raw_delta: number
+          reliability_factor: number
+          rounded_delta: number
+          team: string
+          user_id: string
+        }[]
+      }
+      rating_v1_is_ratable: {
+        Args: { p_classification: string; p_match_type: string; p_result_status: string }
+        Returns: boolean
+      }
+      rating_v1_supports: {
+        Args: { p_config_version: number; p_engine: string; p_engine_version: string }
+        Returns: boolean
+      }
       reconcile_match_registration_participation:
         | { Args: { p_accepted_registration_id?: string; p_match_event_id: string }; Returns: Json }
         | {
