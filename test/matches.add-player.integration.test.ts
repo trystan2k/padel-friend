@@ -605,7 +605,8 @@ describe('add match player by name and email', () => {
               has_table_privilege(r.rolname, ('public.' || t.relname)::regclass, 'select,insert,update,delete') as allowed
          from (values ('anon'), ('authenticated'), ('service_role')) r(rolname)
         cross join (values ('match_player_add_operations'), ('match_player_add_actor_windows'),
-          ('match_player_add_recipient_sends'), ('match_player_add_throttle_hits')) t(relname)
+          ('match_player_add_recipient_sends'), ('match_player_add_throttle_hits'),
+          ('provisional_claim_password_pending')) t(relname)
         where has_table_privilege(r.rolname, ('public.' || t.relname)::regclass, 'select,insert,update,delete')`
     );
     expect(result.rows).toEqual([]);
@@ -618,6 +619,7 @@ describe('add match player by name and email', () => {
     );
     expect(grants.rows).toEqual([
       { proname: 'add_match_player', rolname: 'authenticated' },
+      { proname: 'claim_match_player_add_redrives', rolname: 'service_role' },
       { proname: 'dispatch_match_player_add', rolname: 'service_role' },
       { proname: 'get_match_player_add_invite_context', rolname: 'service_role' },
       { proname: 'settle_match_player_add', rolname: 'service_role' }

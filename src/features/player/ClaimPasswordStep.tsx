@@ -1,31 +1,35 @@
 import * as stylex from '@stylexjs/stylex';
-import { useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '../../components/ui/Button';
 import { PasswordField } from '../../components/ui/PasswordField';
 import { getBrowserClient } from '../../lib/supabase/client';
+import { normalizeReturnPath } from '../auth/return-path';
+import { getPasswordSetupState } from './player.functions';
 import { ui } from './player-ui.styles';
 
 type ValidationError = 'short' | 'mismatch' | null;
 
 /**
  * The claim drops any password the identity carried, so a claimant who proved the
- * mailbox through a recovery or invite link finishes without one. A verified
- * provider identity is a working sign-in method, so only then may the step be skipped.
+ * mailbox through a recovery or invite link finishes without one. The server keeps
+ * that debt (getOnboardingStatus) until it sees a password, so this step comes back
+ * after a reload until it is done. `canSkip` must come from the server (a verified
+ * provider identity exists), never from inspecting identities in the browser.
  */
-export function ClaimPasswordStep({
-  canSkip,
-  onDone,
-  onSessionLost
-}: {
-  canSkip: boolean;
-  onDone: () => void;
-  onSessionLost: () => void;
-}) {
+export function ClaimPasswordStep({ canSkip = false, next }: { canSkip?: boolean; next?: string }) {
   const { t } = useTranslation();
+  const headingRef = useRef<HTMLHeadingElement>(null);
   const [busy, setBusy] = useState(false);
   const [validationError, setValidationError] = useState<ValidationError>(null);
   const [requestFailed, setRequestFailed] = useState(false);
+
+  // The step replaces the claim form (or a whole page): move focus to its heading.
+  useEffect(() => {
+    headingRef.current?.focus();
+  }, []);
+
+  const done = () => window.location.assign(normalizeReturnPath(next));
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -50,14 +54,20 @@ export function ClaimPasswordStep({
       const { error } = await getBrowserClient().auth.updateUser({ password });
       if (error) {
         if (error.name === 'AuthSessionMissingError' || error.status === 401) {
-          onSessionLost();
+          window.location.assign('/login?expired=1');
           return;
         }
         setRequestFailed(true);
         setBusy(false);
         return;
       }
-      onDone();
+      // The server confirms the password took effect; it clears the debt itself.
+      if ((await getPasswordSetupState()).pending) {
+        setRequestFailed(true);
+        setBusy(false);
+        return;
+      }
+      done();
     } catch {
       setRequestFailed(true);
       setBusy(false);
@@ -67,7 +77,9 @@ export function ClaimPasswordStep({
   return (
     <main {...stylex.props(ui.page, ui.onboardingPage)}>
       <header {...stylex.props(ui.header)}>
-        <h1 {...stylex.props(ui.title)}>{t('auth.claim.passwordTitle')}</h1>
+        <h1 ref={headingRef} tabIndex={-1} {...stylex.props(ui.title)}>
+          {t('auth.claim.passwordTitle')}
+        </h1>
         <p {...stylex.props(ui.subtitle)}>{t('auth.claim.passwordSubtitle')}</p>
       </header>
       <form onSubmit={(event) => void submit(event)} noValidate {...stylex.props(ui.stack)}>
@@ -105,7 +117,7 @@ export function ClaimPasswordStep({
         {canSkip && (
           <>
             <p {...stylex.props(ui.muted)}>{t('auth.claim.passwordSkipHelp')}</p>
-            <Button type="button" variant="secondary" disabled={busy} onClick={onDone}>
+            <Button type="button" variant="secondary" disabled={busy} onClick={done}>
               {t('auth.claim.passwordSkip')}
             </Button>
           </>

@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { I18nextProvider } from 'react-i18next';
 import { createI18n } from '../src/i18n/config';
+import { ClaimPasswordStep } from '../src/features/player/ClaimPasswordStep';
 import { PlayerOnboarding } from '../src/features/player/PlayerOnboarding';
 import { ProvisionalClaimVerify } from '../src/features/player/ProvisionalClaimVerify';
 import en from '../src/locales/en/translation.json';
@@ -15,20 +16,20 @@ const mocks = vi.hoisted(() => ({
   onboard: vi.fn<(input: { data: Record<string, unknown> }) => Promise<void>>(),
   signOut: vi.fn<() => Promise<{ error: unknown }>>(),
   updateUser: vi.fn<(attrs: { password: string }) => Promise<{ error: unknown }>>(),
-  identities: vi.fn<() => Promise<{ data: { identities: { provider: string }[] } | null }>>(),
+  passwordState: vi.fn<() => Promise<{ pending: boolean; canSkip: boolean }>>(),
   assign: vi.fn<(url: string) => void>(),
   reload: vi.fn<() => void>()
 }));
 vi.mock('../src/features/player/player.functions', () => ({
   claimProvisionalPlayer: mocks.claim,
-  onboardPlayer: mocks.onboard
+  onboardPlayer: mocks.onboard,
+  getPasswordSetupState: mocks.passwordState
 }));
 vi.mock('../src/lib/supabase/client', () => ({
   getBrowserClient: () => ({
     auth: {
       signOut: mocks.signOut,
-      updateUser: mocks.updateUser,
-      getUserIdentities: mocks.identities
+      updateUser: mocks.updateUser
     }
   })
 }));
@@ -58,8 +59,12 @@ beforeEach(() => {
   for (const mock of Object.values(mocks)) mock.mockReset();
   mocks.claim.mockResolvedValue();
   mocks.signOut.mockResolvedValue({ error: null });
-  mocks.updateUser.mockResolvedValue({ error: null });
-  mocks.identities.mockResolvedValue({ data: { identities: [{ provider: 'email' }] } });
+  // Right after the claim the server owes a password; once one is set it no longer does.
+  mocks.passwordState.mockResolvedValue({ pending: true, canSkip: false });
+  mocks.updateUser.mockImplementation(async () => {
+    mocks.passwordState.mockResolvedValue({ pending: false, canSkip: false });
+    return { error: null };
+  });
   Object.defineProperty(window, 'location', {
     configurable: true,
     value: { assign: mocks.assign, reload: mocks.reload }
@@ -163,9 +168,7 @@ describe('claim onboarding', () => {
   });
 
   it('lets a claimant with a verified provider identity skip the password', async () => {
-    mocks.identities.mockResolvedValue({
-      data: { identities: [{ provider: 'email' }, { provider: 'google' }] }
-    });
+    mocks.passwordState.mockResolvedValue({ pending: false, canSkip: true });
     mount({ canEditLevel: true }, '/matches/e1');
     await pickSide();
     await userEvent.click(screen.getByRole('button', { name: new RegExp(t.submit) }));
@@ -219,6 +222,82 @@ describe('claim onboarding', () => {
     );
     await userEvent.click(screen.getByRole('button', { name: en.auth.resetSubmit }));
     await waitFor(() => expect(mocks.assign).toHaveBeenCalledWith('/login?expired=1'));
+  });
+
+  it('moves focus to the password step heading when it replaces the claim form', async () => {
+    mount({ canEditLevel: true });
+    await pickSide();
+    await userEvent.click(screen.getByRole('button', { name: new RegExp(t.submit) }));
+    const heading = await screen.findByRole('heading', { level: 1, name: t.passwordTitle });
+    expect(document.activeElement).toBe(heading);
+  });
+
+  it('shows the skip only when the server says a verified provider identity exists', async () => {
+    // Pending with no skip: a provider identity in the browser must not matter.
+    mount({ canEditLevel: true });
+    await pickSide();
+    await userEvent.click(screen.getByRole('button', { name: new RegExp(t.submit) }));
+    await screen.findByRole('heading', { level: 1, name: t.passwordTitle });
+    expect(screen.queryByRole('button', { name: t.passwordSkip })).toBeNull();
+    cleanup();
+
+    // Nothing owed and nothing to offer: straight to the destination.
+    mocks.passwordState.mockResolvedValue({ pending: false, canSkip: false });
+    mount({ canEditLevel: true }, '/matches/e1');
+    await pickSide();
+    await userEvent.click(screen.getByRole('button', { name: new RegExp(t.submit) }));
+    await waitFor(() => expect(mocks.assign).toHaveBeenCalledWith('/matches/e1'));
+  });
+
+  it('fails closed when the password-setup lookup fails: step without a skip', async () => {
+    mocks.passwordState.mockRejectedValue(new Error('down'));
+    mount({ canEditLevel: true });
+    await pickSide();
+    await userEvent.click(screen.getByRole('button', { name: new RegExp(t.submit) }));
+    await screen.findByRole('heading', { level: 1, name: t.passwordTitle });
+    expect(screen.queryByRole('button', { name: t.passwordSkip })).toBeNull();
+    expect(mocks.assign).not.toHaveBeenCalled();
+  });
+
+  it('locks submission until the claim and the password-setup lookup are done', async () => {
+    let release!: (state: { pending: boolean; canSkip: boolean }) => void;
+    mocks.passwordState.mockReturnValue(new Promise((resolve) => (release = resolve)));
+    mount({ canEditLevel: true });
+    await pickSide();
+    const form = screen.getByRole('button', { name: new RegExp(t.submit) }).closest('form')!;
+    fireEvent.submit(form);
+    await waitFor(() => expect(mocks.passwordState).toHaveBeenCalledTimes(1));
+    // The claim has returned; the lookup is still in flight: a second submit must be ignored.
+    fireEvent.submit(form);
+    fireEvent.submit(form);
+    expect(mocks.claim).toHaveBeenCalledTimes(1);
+    release({ pending: true, canSkip: false });
+    await screen.findByRole('heading', { level: 1, name: t.passwordTitle });
+    expect(mocks.claim).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps asking for the password after a reload until the server sees it', async () => {
+    // Interrupted claim: the route renders the step from the server flag, with no claim form.
+    mocks.passwordState.mockResolvedValue({ pending: true, canSkip: false });
+    render(
+      <I18nextProvider i18n={createI18n('en')}>
+        <ClaimPasswordStep next="/matches/e1" />
+      </I18nextProvider>
+    );
+    const heading = screen.getByRole('heading', { level: 1, name: t.passwordTitle });
+    expect(document.activeElement).toBe(heading);
+    expect(screen.queryByRole('button', { name: t.passwordSkip })).toBeNull();
+    mocks.updateUser.mockImplementationOnce(async () => ({ error: null })); // password write did not stick
+    await userEvent.type(screen.getByLabelText(en.auth.resetNewPasswordLabel), 'new-password-1');
+    await userEvent.type(
+      screen.getByLabelText(en.auth.resetConfirmPasswordLabel),
+      'new-password-1'
+    );
+    await userEvent.click(screen.getByRole('button', { name: en.auth.resetSubmit }));
+    expect((await screen.findByRole('alert')).textContent).toBe(en.auth.resetFailed);
+    expect(mocks.assign).not.toHaveBeenCalled();
+    await userEvent.click(screen.getByRole('button', { name: en.auth.resetSubmit }));
+    await waitFor(() => expect(mocks.assign).toHaveBeenCalledWith('/matches/e1'));
   });
 
   it('continues when the identity was already claimed and reloads when verification was lost', async () => {

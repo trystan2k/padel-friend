@@ -34,6 +34,20 @@ export function parseProvisionalClaim(value: unknown): ProvisionalClaim | null {
   return null;
 }
 
+export type PasswordSetupState = { pending: boolean; canSkip: boolean };
+
+/**
+ * Parses get_password_setup_state. Null (malformed) is never read as "nothing owed":
+ * callers fail closed and surface the error instead.
+ */
+export function parsePasswordSetupState(value: unknown): PasswordSetupState | null {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) return null;
+  const row = Object.fromEntries(Object.entries(value));
+  return typeof row.pending === 'boolean' && typeof row.can_skip === 'boolean'
+    ? { pending: row.pending, canSkip: row.can_skip }
+    : null;
+}
+
 const CLAIM_ERRORS: Record<string, string> = {
   PROVISIONAL_CLAIM_NOT_PENDING: 'PLAYER_CLAIM_NOT_PENDING',
   PROVISIONAL_CLAIM_EMAIL_NOT_VERIFIED: 'PLAYER_CLAIM_NOT_VERIFIED',

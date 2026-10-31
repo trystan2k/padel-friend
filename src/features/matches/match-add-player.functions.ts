@@ -3,11 +3,12 @@ import { getRequestUrl } from '@tanstack/react-start/server';
 import { getAdminClient } from '../../lib/supabase/admin.server';
 import { requireAuthenticatedClient } from '../auth/auth.server';
 import {
+  ADD_MATCH_PLAYER_OK,
   addMatchPlayerError,
   parseAddMatchPlayerStatus,
   type AddMatchPlayerResult
 } from './match-add-player-model';
-import { deliverMatchPlayerAdd } from './match-add-player.server';
+import { scheduleMatchPlayerAdd } from './match-add-player.server';
 import { validateAddMatchPlayer } from './match-add-player.validators';
 
 export const addMatchPlayer = createServerFn({ method: 'POST' })
@@ -31,10 +32,14 @@ export const addMatchPlayer = createServerFn({ method: 'POST' })
     if (error) return addMatchPlayerError(error);
     const status = parseAddMatchPlayerStatus(result);
     if (status !== 'ok') return { status: 'error', code: status ?? 'unavailable' };
-    return deliverMatchPlayerAdd(admin, {
+    // Delivery never sits on the response path: every accepted add answers right here and
+    // the same post-response work runs whatever the email resolved to, so neither the body
+    // nor the latency reveals whether the address is registered, provisional or unknown.
+    await scheduleMatchPlayerAdd(admin, {
       actor_id: actorId,
       event_id: data.event_id,
       request_id: data.request_id,
       origin: getRequestUrl().origin
     });
+    return ADD_MATCH_PLAYER_OK;
   });

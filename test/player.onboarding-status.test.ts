@@ -1,6 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { requireAuthenticatedClient } from '../src/features/auth/auth.server';
-import { getOnboardingStatus } from '../src/features/player/player.functions';
+import {
+  getOnboardingStatus,
+  getPasswordSetupState
+} from '../src/features/player/player.functions';
 
 // getOnboardingStatus and the other private server functions need a TanStack Start request
 // context at runtime. Per the plan, error/expiry and incomplete-state assertions are unit tested
@@ -73,7 +76,11 @@ function clientWith(
   claims: { sub: string } | null,
   profile: Row | null,
   rating: Row | null,
-  claimContext: { data: unknown; error: unknown } = { data: { state: 'none' }, error: null }
+  claimContext: { data: unknown; error: unknown } = { data: { state: 'none' }, error: null },
+  passwordSetup: { data: unknown; error: unknown } = {
+    data: { pending: false, can_skip: false },
+    error: null
+  }
 ) {
   return {
     auth: {
@@ -81,8 +88,8 @@ function clientWith(
         claims ? { data: { claims }, error: null } : { data: null, error: new Error('JWT expired') }
     },
     from: (table: string) => rowResult(table === 'player_profiles' ? profile : rating),
-    rpc: vi.fn<(name: string) => Promise<{ data: unknown; error: unknown }>>(
-      async () => claimContext
+    rpc: vi.fn<(name: string) => Promise<{ data: unknown; error: unknown }>>(async (name) =>
+      name === 'get_password_setup_state' ? passwordSetup : claimContext
     )
   };
 }
@@ -127,6 +134,7 @@ describe('getOnboardingStatus', () => {
     await expect(getOnboardingStatus()).resolves.toEqual({
       authenticated: false,
       complete: false,
+      needsPasswordSetup: false,
       claim: null
     });
 
@@ -134,6 +142,7 @@ describe('getOnboardingStatus', () => {
     await expect(getOnboardingStatus()).resolves.toEqual({
       authenticated: true,
       complete: false,
+      needsPasswordSetup: false,
       claim: null
     });
     expect(tanstackServer.setResponseHeader).toHaveBeenCalledWith(
@@ -148,9 +157,56 @@ describe('getOnboardingStatus', () => {
     await expect(getOnboardingStatus()).resolves.toEqual({
       authenticated: true,
       complete: true,
+      needsPasswordSetup: false,
       claim: null
     });
-    expect(client.rpc).not.toHaveBeenCalled();
+    expect(client.rpc).not.toHaveBeenCalledWith('get_provisional_claim_context');
+  });
+
+  it('keeps an onboarded claimant in onboarding while the server still owes a password', async () => {
+    const client = clientWith({ sub: 'sub-1' }, PROFILE_ROW, RATING_ROW, undefined, {
+      data: { pending: true, can_skip: false },
+      error: null
+    });
+    supabaseServer.getServerClient.mockReturnValue(client);
+    await expect(getOnboardingStatus()).resolves.toEqual({
+      authenticated: true,
+      complete: false,
+      needsPasswordSetup: true,
+      claim: null
+    });
+  });
+
+  it('fails closed when the password-setup state is unavailable or malformed', async () => {
+    for (const passwordSetup of [
+      { data: { pending: 'no' }, error: null },
+      { data: null, error: null }
+    ]) {
+      supabaseServer.getServerClient.mockReturnValue(
+        clientWith({ sub: 'sub-1' }, PROFILE_ROW, RATING_ROW, undefined, passwordSetup)
+      );
+      await expect(getOnboardingStatus()).rejects.toThrow('PASSWORD_SETUP_UNAVAILABLE');
+    }
+    const failure = new Error('rpc down');
+    supabaseServer.getServerClient.mockReturnValue(
+      clientWith({ sub: 'sub-1' }, PROFILE_ROW, RATING_ROW, undefined, {
+        data: null,
+        error: failure
+      })
+    );
+    await expect(getOnboardingStatus()).rejects.toThrow('rpc down');
+  });
+
+  it('exposes the server-validated password-setup state to the claim step', async () => {
+    supabaseServer.getServerClient.mockReturnValue(
+      clientWith({ sub: 'sub-1' }, null, null, undefined, {
+        data: { pending: false, can_skip: true },
+        error: null
+      })
+    );
+    await expect(getPasswordSetupState()).resolves.toEqual({ pending: false, canSkip: true });
+    supabaseServer.getServerClient.mockReturnValue(clientWith(null, null, null));
+    await expect(getPasswordSetupState()).rejects.toThrow('UNAUTHENTICATED');
   });
 
   it('exposes the verified claim prefill and the unverified state of a provisional session', async () => {
@@ -168,6 +224,7 @@ describe('getOnboardingStatus', () => {
     await expect(getOnboardingStatus()).resolves.toEqual({
       authenticated: true,
       complete: false,
+      needsPasswordSetup: false,
       claim: {
         state: 'ready',
         displayName: 'Marta',

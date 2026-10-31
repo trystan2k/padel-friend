@@ -1262,6 +1262,7 @@ export type Database = {
           capability_hash: string | null
           completed_at: string | null
           created_at: string
+          dispatch_attempts: number
           dispatch_state: string
           dispatched_at: string | null
           display_name: string
@@ -1274,6 +1275,7 @@ export type Database = {
           match_event_id: string
           outcome: string | null
           request_id: string
+          retry_after: string
           state: string
           target_user_id: string | null
         }
@@ -1285,6 +1287,7 @@ export type Database = {
           capability_hash?: string | null
           completed_at?: string | null
           created_at?: string
+          dispatch_attempts?: number
           dispatch_state?: string
           dispatched_at?: string | null
           display_name: string
@@ -1297,6 +1300,7 @@ export type Database = {
           match_event_id: string
           outcome?: string | null
           request_id: string
+          retry_after?: string
           state?: string
           target_user_id?: string | null
         }
@@ -1307,6 +1311,7 @@ export type Database = {
           capability_hash?: string | null
           completed_at?: string | null
           created_at?: string
+          dispatch_attempts?: number
           dispatch_state?: string
           dispatched_at?: string | null
           display_name?: string
@@ -1319,6 +1324,7 @@ export type Database = {
           match_event_id?: string
           outcome?: string | null
           request_id?: string
+          retry_after?: string
           state?: string
           target_user_id?: string | null
         }
@@ -1810,6 +1816,22 @@ export type Database = {
           },
         ]
       }
+      provisional_claim_password_pending: {
+        Row: {
+          created_at: string
+          user_id: string
+        }
+        ComputedFields: never
+        Insert: {
+          created_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -1860,6 +1882,7 @@ export type Database = {
         }
         Returns: Json
       }
+      claim_match_player_add_redrives: { Args: { p_limit?: number }; Returns: Json }
       claim_provisional_player: {
         Args: {
           p_bio?: string
@@ -2085,6 +2108,7 @@ export type Database = {
           winner_sets: number
         }[]
       }
+      get_password_setup_state: { Args: Record<PropertyKey, never>; Returns: Json }
       get_provisional_claim_context: { Args: Record<PropertyKey, never>; Returns: Json }
       govern_community_member: {
         Args: { p_action: string; p_community_id: string; p_membership_id: string }
@@ -2279,6 +2303,10 @@ export type Database = {
       }
       match_player_add_digest: { Args: { p_value: string }; Returns: string }
       match_player_add_limits: {
+        Args: Record<PropertyKey, never>
+        Returns: Record<string, unknown>
+      }
+      match_player_add_redrive_limits: {
         Args: Record<PropertyKey, never>
         Returns: Record<string, unknown>
       }

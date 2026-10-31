@@ -147,7 +147,19 @@ describe('provisional claim', () => {
           })
         ).error
       ).toBeNull();
+      // Interrupted claim: a reload (fresh client on the same session) still finds the debt,
+      // and the server, not the client, says it cannot be skipped (no provider identity).
+      const reloaded = sessionClient(env, verified.data.session!);
+      expect((await reloaded.rpc('get_password_setup_state')).data).toEqual({
+        pending: true,
+        can_skip: false
+      });
       expect((await browser.auth.updateUser({ password: 'Claimed-Pass-1!' })).error).toBeNull();
+      // Setting the password resolves the debt on the server.
+      expect((await reloaded.rpc('get_password_setup_state')).data).toEqual({
+        pending: false,
+        can_skip: false
+      });
       const passwordLogin = await createClient(env.url, env.key, {
         auth: { persistSession: false, autoRefreshToken: false }
       }).auth.signInWithPassword({ email: player.email, password: 'Claimed-Pass-1!' });

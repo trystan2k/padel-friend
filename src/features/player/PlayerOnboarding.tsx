@@ -7,9 +7,8 @@ import { StepBadge } from '../../components/ui/StepBadge';
 import { SurfaceCard } from '../../components/ui/SurfaceCard';
 import { TextField } from '../../components/ui/TextField';
 import { stripEdgeWhitespace } from '../../lib/edge-whitespace';
-import { getBrowserClient } from '../../lib/supabase/client';
 import { ClaimPasswordStep } from './ClaimPasswordStep';
-import { claimProvisionalPlayer, onboardPlayer } from './player.functions';
+import { claimProvisionalPlayer, getPasswordSetupState, onboardPlayer } from './player.functions';
 import { INITIAL_RELIABILITY_PERCENT, LEVEL_STEP, MAX_LEVEL, MIN_LEVEL } from './rating-config';
 import { validateInitialLevel, type PreferredSide } from './player.validators';
 import type { ProvisionalClaim } from './provisional-claim';
@@ -19,16 +18,6 @@ import { normalizeReturnPath, optionalReturnPath } from '../auth/return-path';
 const NAME_MAX_CODE_POINTS = 80;
 
 type ReadyClaim = Extract<ProvisionalClaim, { state: 'ready' }>;
-
-/** True when a non-email (provider) identity survived the claim, i.e. another way to sign in exists. */
-async function hasProviderIdentity() {
-  try {
-    const { data } = await getBrowserClient().auth.getUserIdentities();
-    return Boolean(data?.identities.some((identity) => identity.provider !== 'email'));
-  } catch {
-    return false;
-  }
-}
 
 /**
  * Profile setup for a new account, or the verified claim of a provisional
@@ -80,6 +69,7 @@ export function PlayerOnboarding({
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (saving) return;
     const nextErrors: typeof errors = {};
     const normalizedName = stripEdgeWhitespace(name);
     if (!normalizedName || Array.from(normalizedName).length > NAME_MAX_CODE_POINTS)
@@ -110,10 +100,20 @@ export function PlayerOnboarding({
       if (claim) await claimProvisionalPlayer({ data: profile });
       else await onboardPlayer({ data: profile });
       if (claim) {
-        // The claim reset the password, so ask for a new one before leaving. A verified
-        // provider identity survives the claim and lets the claimant skip that step.
-        setSaving(false);
-        setPasswordStep({ canSkip: await hasProviderIdentity() });
+        // The claim reset the password, so ask for a new one before leaving. The server says
+        // whether one is owed and whether a verified provider identity lets the claimant skip
+        // it. `saving` stays set until the lookup is done, so the form cannot be resubmitted
+        // in between. If the lookup fails the step is shown without a skip (fail closed).
+        const state = await getPasswordSetupState().catch(() => ({
+          pending: true,
+          canSkip: false
+        }));
+        if (state.pending || state.canSkip) {
+          setPasswordStep({ canSkip: state.canSkip });
+          return;
+        }
+        navigating = true;
+        window.location.assign(normalizeReturnPath(returnPath));
         return;
       }
       navigating = true;
@@ -144,14 +144,7 @@ export function PlayerOnboarding({
     }
   }
 
-  if (passwordStep)
-    return (
-      <ClaimPasswordStep
-        canSkip={passwordStep.canSkip}
-        onDone={() => window.location.assign(normalizeReturnPath(returnPath))}
-        onSessionLost={() => window.location.assign('/login?expired=1')}
-      />
-    );
+  if (passwordStep) return <ClaimPasswordStep canSkip={passwordStep.canSkip} next={returnPath} />;
 
   return (
     <main {...stylex.props(ui.page, ui.onboardingPage)}>

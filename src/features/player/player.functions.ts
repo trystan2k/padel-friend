@@ -3,26 +3,58 @@ import { setResponseHeader } from '@tanstack/react-start/server';
 import { getServerClient } from '../../lib/supabase/server';
 import { requireAuthenticatedClient } from '../auth/auth.server';
 import { playerRows, sportingProfile, verifiedAvatarKey } from './player.server';
-import { claimErrorCode, parseProvisionalClaim } from './provisional-claim';
+import {
+  claimErrorCode,
+  parsePasswordSetupState,
+  parseProvisionalClaim
+} from './provisional-claim';
 import {
   validateAvatarUpload,
   validateOnboardPlayer,
   validateUpdatePlayerProfile
 } from './player.validators';
 
+async function readPasswordSetupState(client: ReturnType<typeof getServerClient>) {
+  const { data, error } = await client.rpc('get_password_setup_state');
+  if (error) throw error;
+  const state = parsePasswordSetupState(data);
+  if (!state) throw new Error('PASSWORD_SETUP_UNAVAILABLE');
+  return state;
+}
+
+/**
+ * `complete` also requires that no password is owed: a claimant whose password the
+ * claim reset stays in onboarding (on any device, after any reload) until the server
+ * sees a password or a verified provider identity.
+ */
 export const getOnboardingStatus = createServerFn().handler(async () => {
   setResponseHeader('Cache-Control', 'private, no-store');
   const client = getServerClient();
   const { data, error } = await client.auth.getClaims();
-  if (error || !data?.claims?.sub) return { authenticated: false, complete: false, claim: null };
+  if (error || !data?.claims?.sub)
+    return { authenticated: false, complete: false, needsPasswordSetup: false, claim: null };
   const { profile } = await playerRows(client, data.claims.sub);
-  if (profile) return { authenticated: true, complete: true, claim: null };
+  if (profile) {
+    const { pending } = await readPasswordSetupState(client);
+    return { authenticated: true, complete: !pending, needsPasswordSetup: pending, claim: null };
+  }
   // A provisional session cannot read its own profile (RLS), so a missing profile is
   // either a brand-new account or a provisional player; the restricted claim RPC
   // tells them apart and only discloses prefill after verified mailbox ownership.
   const claim = await client.rpc('get_provisional_claim_context');
   if (claim.error) throw claim.error;
-  return { authenticated: true, complete: false, claim: parseProvisionalClaim(claim.data) };
+  return {
+    authenticated: true,
+    complete: false,
+    needsPasswordSetup: false,
+    claim: parseProvisionalClaim(claim.data)
+  };
+});
+
+/** Server-validated password-setup state (pending flag + whether a verified provider identity allows skipping). */
+export const getPasswordSetupState = createServerFn().handler(async () => {
+  const { client } = await requireAuthenticatedClient();
+  return readPasswordSetupState(client);
 });
 
 export const onboardPlayer = createServerFn({ method: 'POST' })

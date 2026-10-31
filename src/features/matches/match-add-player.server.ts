@@ -1,4 +1,5 @@
-import type { AdminClient } from '../../lib/supabase/admin.server';
+import { afterResponse } from '../../lib/post-response.server';
+import { getAdminClient, type AdminClient } from '../../lib/supabase/admin.server';
 import {
   buildInvitationEmailMetadata,
   invitationRedirectTo,
@@ -94,13 +95,10 @@ export async function deliverPlayerAddInvite(
 
 type PlayerAddKey = { actor_id: string; event_id: string; request_id: string };
 
-/** Other adds of the same email that were left waiting on this one (see settle_match_player_add). */
-function parseWaitingAdds(value: unknown): PlayerAddKey[] {
-  const waiting =
-    typeof value === 'object' && value !== null ? Reflect.get(value, 'waiting') : undefined;
-  if (!Array.isArray(waiting)) return [];
+function parseAddKeys(list: unknown): PlayerAddKey[] {
+  if (!Array.isArray(list)) return [];
   const keys: PlayerAddKey[] = [];
-  for (const entry of waiting) {
+  for (const entry of list) {
     const row = typeof entry === 'object' && entry !== null ? entry : {};
     const actorId = Reflect.get(row, 'actor_id');
     const eventId = Reflect.get(row, 'match_event_id');
@@ -111,16 +109,24 @@ function parseWaitingAdds(value: unknown): PlayerAddKey[] {
   return keys;
 }
 
+/** Other adds of the same email that were left waiting on this one (see settle_match_player_add). */
+function parseWaitingAdds(value: unknown): PlayerAddKey[] {
+  return parseAddKeys(
+    typeof value === 'object' && value !== null ? Reflect.get(value, 'waiting') : undefined
+  );
+}
+
 /**
- * Runs after add_match_player accepted the request for this actor. The actor
+ * Delivers one add after add_match_player accepted it for this actor. The actor
  * comes from verified claims; SQL re-checks authorization when it completes.
  *
  * The answer never depends on what the email resolved to, including when the
  * invitation could not be delivered: registered, provisional and unknown
  * addresses all answer ok. An undelivered invitation stays in the ledger
- * (dispatch_state 'failed', recipient slot released) and the same request id
- * re-delivers it. Only infrastructure failures of the dispatch/settle calls
- * themselves surface as errors.
+ * (dispatch_state 'failed', recipient slot released, retry scheduled) and
+ * reconcileMatchPlayerAdds re-delivers it. Only infrastructure failures of the
+ * dispatch/settle calls themselves surface as errors, to the caller of this
+ * function, which never is the user's response (see scheduleMatchPlayerAdd).
  */
 export async function deliverMatchPlayerAdd(
   admin: AdminClient,
@@ -144,9 +150,10 @@ export async function deliverMatchPlayerAdd(
   });
   const settled = await admin.rpc('settle_match_player_add', { ...key, p_delivered: delivered });
   if (settled.error) return addMatchPlayerError(settled.error);
-  // Adds that waited on this one never get a later chance on their own: a failed create
-  // releases the capability and a bridge that skipped a locked event completes nobody.
-  // Re-drive each once (best effort; they answered their own callers already).
+  // Adds that waited on this one: a failed create releases the capability and a bridge that
+  // skipped a locked event completes nobody. Re-drive each once right away (fast path; the
+  // durable guarantee is reconcileMatchPlayerAdds, which also covers a waiter that arrives
+  // while this re-drive runs, a failed re-drive and a holder that crashed).
   if (options.redriveWaiting !== false) {
     for (const waiting of parseWaitingAdds(settled.data))
       await deliverMatchPlayerAdd(
@@ -156,4 +163,59 @@ export async function deliverMatchPlayerAdd(
       );
   }
   return ADD_MATCH_PLAYER_OK;
+}
+
+/** Operations handed out per claim and claims per sweep: a sweep does bounded work. */
+const RECONCILE_BATCH = 5;
+const RECONCILE_MAX_ROUNDS = 3;
+
+/**
+ * Durable reconciliation. The ledger remembers every add whose invitation is not
+ * settled (never dispatched, failed, abandoned by a crashed holder, waiting for an
+ * identity); claim_match_player_add_redrives hands out the due ones with exponential
+ * backoff and a bounded attempt count, and each is driven through the normal
+ * dispatch -> Auth -> settle path. Runs after any add and when an owner reads event
+ * management, so no scheduler is needed. Rounds repeat until nothing is due, which
+ * also picks up operations that became due while an earlier one was being driven.
+ */
+export async function reconcileMatchPlayerAdds(admin: AdminClient, origin: string): Promise<void> {
+  for (let round = 0; round < RECONCILE_MAX_ROUNDS; round++) {
+    const claimed = await admin.rpc('claim_match_player_add_redrives', {
+      p_limit: RECONCILE_BATCH
+    });
+    const due = claimed.error ? [] : parseAddKeys(claimed.data);
+    if (due.length === 0) return;
+    for (const key of due) {
+      try {
+        await deliverMatchPlayerAdd(admin, { ...key, origin });
+      } catch {
+        // One operation's failure must not starve the rest; it was rescheduled on claim.
+      }
+    }
+  }
+}
+
+/**
+ * Everything an accepted add does after its response: deliver it, then reconcile
+ * stragglers. Identical for every branch (a registered address simply dispatches
+ * 'none'), run after the response so its cost never reaches the caller.
+ */
+export function scheduleMatchPlayerAdd(
+  admin: AdminClient,
+  input: PlayerAddKey & { origin: string }
+): Promise<void> {
+  return afterResponse(async () => {
+    try {
+      await deliverMatchPlayerAdd(admin, input);
+    } finally {
+      await reconcileMatchPlayerAdds(admin, input.origin);
+    }
+  });
+}
+
+/** Owner opens event management: reconcile stragglers after the page data was returned. */
+export function scheduleMatchPlayerAddReconcile(origin: string): Promise<void> {
+  return afterResponse(async () => {
+    await reconcileMatchPlayerAdds(getAdminClient(), origin);
+  });
 }

@@ -102,6 +102,12 @@ describe('provisional claim via an OAuth provider', () => {
     expect(await claimAudits(player.id)).toEqual([
       expect.objectContaining({ actor_id: player.id, target_user_id: player.id })
     ]);
+    // A verified provider identity survives: the server (not the client) allows the skip and
+    // owes no password, so the onboarding gate does not hold this claimant back.
+    expect((await client.rpc('get_password_setup_state')).data).toEqual({
+      pending: false,
+      can_skip: true
+    });
   });
 
   it('does not let an unverified provider session ride on another verified identity', async (context) => {
