@@ -5,16 +5,16 @@ Normative specification of the V1 app-wide rating calculation. Companion oracle:
 
 ## Approval record
 
-| Field                   | Value                                                                                      |
-| ----------------------- | ------------------------------------------------------------------------------------------ |
-| Status                  | Parameters approved                                                                        |
-| Approved by             | Product owner, explicit HITL sign-off during the PAF-9 delivery session                    |
-| Date                    | 2026-10-30                                                                                 |
-| `rating_engine`         | `app-wide-level`                                                                           |
-| `rating_engine_version` | `1.0.0`                                                                                    |
-| `rating_config_version` | `1`                                                                                        |
-| Supersedes              | Nothing (first approval)                                                                   |
-| Fixture review          | Pending product-owner review of `golden-fixtures.json` and this document before T10 starts |
+| Field                   | Value                                                                                                                   |
+| ----------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| Status                  | Parameters approved                                                                                                     |
+| Approved by             | Product owner, explicit HITL sign-off during the PAF-9 delivery session                                                 |
+| Date                    | 2026-10-30                                                                                                              |
+| `rating_engine`         | `app-wide-level`                                                                                                        |
+| `rating_engine_version` | `1.0.0`                                                                                                                 |
+| `rating_config_version` | `1`                                                                                                                     |
+| Supersedes              | Nothing (first approval)                                                                                                |
+| Fixture review          | Approved — product owner signed off `golden-fixtures.json` and this document on 2026-10-31 (artifact-level HITL review) |
 
 Clarification (no new decision): per the pre-approved PAF-125 addendum, claim preserves all rating
 history, clears `is_provisional` (account-status metadata only), and a player with 0 rated groups may
