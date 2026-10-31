@@ -1,2 +1,4 @@
 VITE_SUPABASE_URL=http://127.0.0.1:55321
 VITE_SUPABASE_PUBLISHABLE_KEY=replace-with-local-anon-key-from-supabase-status
+# Server-only Workers secret for match player provisioning. Never prefix with VITE_.
+SUPABASE_SERVICE_ROLE_KEY=replace-with-local-service-role-key-from-supabase-status

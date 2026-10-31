@@ -1235,6 +1235,169 @@ export type Database = {
           },
         ]
       }
+      match_player_add_actor_windows: {
+        Row: {
+          actor_id: string
+          add_count: number
+          window_start: string
+        }
+        ComputedFields: never
+        Insert: {
+          actor_id: string
+          add_count: number
+          window_start: string
+        }
+        Update: {
+          actor_id?: string
+          add_count?: number
+          window_start?: string
+        }
+        Relationships: []
+      }
+      match_player_add_operations: {
+        Row: {
+          actor_id: string
+          branch: string | null
+          capability_expires_at: string | null
+          capability_hash: string | null
+          completed_at: string | null
+          created_at: string
+          dispatch_state: string
+          dispatched_at: string | null
+          display_name: string
+          email: string
+          email_eligible: boolean
+          estimated_level: number
+          fingerprint: string
+          id: string
+          locale: string
+          match_event_id: string
+          outcome: string | null
+          request_id: string
+          state: string
+          target_user_id: string | null
+        }
+        ComputedFields: never
+        Insert: {
+          actor_id: string
+          branch?: string | null
+          capability_expires_at?: string | null
+          capability_hash?: string | null
+          completed_at?: string | null
+          created_at?: string
+          dispatch_state?: string
+          dispatched_at?: string | null
+          display_name: string
+          email: string
+          email_eligible?: boolean
+          estimated_level: number
+          fingerprint: string
+          id?: string
+          locale: string
+          match_event_id: string
+          outcome?: string | null
+          request_id: string
+          state?: string
+          target_user_id?: string | null
+        }
+        Update: {
+          actor_id?: string
+          branch?: string | null
+          capability_expires_at?: string | null
+          capability_hash?: string | null
+          completed_at?: string | null
+          created_at?: string
+          dispatch_state?: string
+          dispatched_at?: string | null
+          display_name?: string
+          email?: string
+          email_eligible?: boolean
+          estimated_level?: number
+          fingerprint?: string
+          id?: string
+          locale?: string
+          match_event_id?: string
+          outcome?: string | null
+          request_id?: string
+          state?: string
+          target_user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "match_player_add_operations_match_event_id_fkey"
+            columns: ["match_event_id"]
+            isOneToOne: false
+            referencedRelation: "match_events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      match_player_add_recipient_sends: {
+        Row: {
+          email_digest: string
+          operation_id: string
+          sent_at: string
+        }
+        ComputedFields: never
+        Insert: {
+          email_digest: string
+          operation_id: string
+          sent_at: string
+        }
+        Update: {
+          email_digest?: string
+          operation_id?: string
+          sent_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "match_player_add_recipient_sends_operation_id_fkey"
+            columns: ["operation_id"]
+            isOneToOne: false
+            referencedRelation: "match_player_add_operations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      match_player_add_throttle_hits: {
+        Row: {
+          actor_id: string
+          email_digest: string | null
+          id: string
+          match_event_id: string
+          occurred_at: string
+          request_id: string
+          scope: string
+        }
+        ComputedFields: never
+        Insert: {
+          actor_id: string
+          email_digest?: string | null
+          id?: string
+          match_event_id: string
+          occurred_at?: string
+          request_id: string
+          scope: string
+        }
+        Update: {
+          actor_id?: string
+          email_digest?: string | null
+          id?: string
+          match_event_id?: string
+          occurred_at?: string
+          request_id?: string
+          scope?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "match_player_add_throttle_hits_match_event_id_fkey"
+            columns: ["match_event_id"]
+            isOneToOne: false
+            referencedRelation: "match_events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       match_result_alert_deadline_queue: {
         Row: {
           active: boolean
@@ -1666,6 +1829,17 @@ export type Database = {
           status: Database["public"]["Enums"]["community_membership_status"]
         }[]
       }
+      add_match_player: {
+        Args: {
+          p_display_name: string
+          p_email: string
+          p_estimated_level: number
+          p_locale: string
+          p_match_event_id: string
+          p_request_id: string
+        }
+        Returns: Json
+      }
       advance_match_registration_revision_locked: { Args: { p_event_id: string }; Returns: number }
       assert_actor_not_provisional: { Args: Record<PropertyKey, never>; Returns: undefined }
       assert_match_event_active_locked: { Args: { p_event_id: string }; Returns: undefined }
@@ -1673,6 +1847,7 @@ export type Database = {
         Args: { p_action: string; p_event_id: string }
         Returns: undefined
       }
+      assert_match_player_add_window_locked: { Args: { p_event_id: string }; Returns: undefined }
       can_read_community: { Args: { p_community_id: string }; Returns: boolean }
       can_read_match_event: { Args: { p_event_id: string }; Returns: boolean }
       cancel_match_event: {
@@ -1685,6 +1860,10 @@ export type Database = {
         Returns: Json
       }
       classify_match_result_sets: { Args: { p_sets: Json }; Returns: string }
+      complete_match_player_add_locked: {
+        Args: { p_new_identity: boolean; p_operation_id: string; p_user_id: string }
+        Returns: undefined
+      }
       correct_match_event_result: {
         Args: {
           p_court_label?: string
@@ -1721,6 +1900,10 @@ export type Database = {
           p_request_id: string
           p_target_user_id: string
         }
+        Returns: Json
+      }
+      dispatch_match_player_add: {
+        Args: { p_actor_id: string; p_match_event_id: string; p_request_id: string }
         Returns: Json
       }
       edit_match_event: {
@@ -2047,6 +2230,7 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      lock_match_player_add_email: { Args: { p_email: string }; Returns: undefined }
       mark_all_notifications_read: { Args: { p_before: string }; Returns: number }
       mark_community_notification_read: {
         Args: { p_notification_id: string }
@@ -2073,6 +2257,15 @@ export type Database = {
         Returns: string
       }
       match_event_result_summary: { Args: { p_match_event_id: string }; Returns: Json }
+      match_player_add_actor_authorized: {
+        Args: { p_actor_id: string; p_event_id: string }
+        Returns: boolean
+      }
+      match_player_add_digest: { Args: { p_value: string }; Returns: string }
+      match_player_add_limits: {
+        Args: Record<PropertyKey, never>
+        Returns: Record<string, unknown>
+      }
       match_registration_counts:
         | {
             Args: { p_match_event_id: string }
@@ -2367,6 +2560,15 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      settle_match_player_add: {
+        Args: {
+          p_actor_id: string
+          p_delivered: boolean
+          p_match_event_id: string
+          p_request_id: string
+        }
+        Returns: Json
       }
       snapshot_match_registration_roster_locked: { Args: { p_event_id: string }; Returns: Json }
       submit_match_event_result: {

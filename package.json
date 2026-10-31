@@ -7,7 +7,7 @@
     "predev": "pnpm tokens:build",
     "dev": "vite dev",
     "prebuild": "pnpm tokens:build",
-    "build": "vite build && node scripts/generate-sw.mjs",
+    "build": "vite build && node scripts/generate-sw.mjs && node scripts/check-client-secrets.mjs",
     "preview": "vite preview --host 127.0.0.1",
     "deploy": "pnpm build && wrangler deploy",
     "cf:typegen": "wrangler types",
