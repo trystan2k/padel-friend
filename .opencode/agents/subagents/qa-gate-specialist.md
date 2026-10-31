@@ -145,6 +145,9 @@ permissions:
   - action: shell
     resource: "sed *"
     effect: allow    
+  - action: shell
+    resource: "sleep *"
+    effect: allow        
   - action: external_directory
     resource: "/tmp/**"
     effect: allow

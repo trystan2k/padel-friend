@@ -45,7 +45,7 @@ permissions:
     effect: allow
   - action: engram*
     resource: "*"
-    effect: deny
+    effect: allow        
   - action: external_directory
     resource: "*"
     effect: deny
@@ -58,6 +58,9 @@ permissions:
   - action: mcp_playwright*
     resource: "*"
     effect: allow
+  - action: shell
+    resource: "sleep *"
+    effect: allow          
 ---
 
 # Agent: testing-automation-specialist

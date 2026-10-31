@@ -93,7 +93,7 @@ permissions:
     effect: deny
   - action: engram*
     resource: "*"
-    effect: deny
+    effect: allow        
 ---
 
 # Agent: development-log-specialist

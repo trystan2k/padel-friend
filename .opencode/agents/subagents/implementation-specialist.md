@@ -47,7 +47,7 @@ permissions:
     effect: allow
   - action: engram*
     resource: "*"
-    effect: deny
+    effect: allow        
   - action: external_directory
     resource: "*"
     effect: deny

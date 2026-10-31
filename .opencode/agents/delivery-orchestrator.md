@@ -162,6 +162,9 @@ permissions:
   - action: external_directory
     resource: "*"
     effect: deny
+  - action: shell
+    resource: "sleep *"
+    effect: allow          
 ---
 
 # Agent: delivery-orchestrator

@@ -57,7 +57,7 @@ permissions:
     effect: deny
   - action: engram*
     resource: "*"
-    effect: deny
+    effect: allow        
 ---
 
 # Agent: project-manager-specialist
@@ -327,7 +327,6 @@ Model tier: `T0` mechanical. Execute the resolved `linear` commands and report t
 - For multi-line bodies, use `edit` to write a temporary file under `/tmp`, then pass it to one `linear ... --body-file` or `--description-file` command. Never modify repository files.
 - `edit`: scoped to `/tmp/**` only — for temporary body/description files. No repo writes. `external_directory`: deny by default; `/tmp/**` is allowed.
 - `task`, `question`, `todowrite`: deny — no delegation, no user questions, no web research.
-- `mcp_serena*`, `engram*`: deny — no MCP integrations per scope.
 
 ## Safety Rules
 

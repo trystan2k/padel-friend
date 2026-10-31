@@ -66,7 +66,7 @@ permissions:
     effect: allow
   - action: engram*
     resource: "*"
-    effect: deny
+    effect: allow        
   - action: shell
     resource: "ps"
     effect: allow
