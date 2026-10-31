@@ -2255,6 +2255,7 @@ export type Database = {
       get_match_event: { Args: { p_event_id: string }; Returns: Json }
       get_match_event_management: { Args: { p_match_event_id: string }; Returns: Json }
       get_match_event_official_results: { Args: { p_match_event_id: string }; Returns: Json[] }
+      get_match_event_rating_changes: { Args: { p_match_event_id: string }; Returns: Json }
       get_match_event_result_proposals: { Args: { p_match_event_id: string }; Returns: Json[] }
       get_match_player_add_invite_context: {
         Args: { p_actor_id: string; p_match_event_id: string; p_request_id: string }
@@ -2335,6 +2336,17 @@ export type Database = {
         }[]
       }
       get_my_notifications_as_of: { Args: Record<PropertyKey, never>; Returns: string }
+      get_my_rating_history: {
+        Args: {
+          p_before_game_group_id?: string
+          p_before_played_at?: string
+          p_limit?: number
+          p_revision?: number
+        }
+        Returns: Json
+      }
+      get_my_rating_progress: { Args: { p_max_points?: number }; Returns: Json }
+      get_my_rating_summary: { Args: Record<PropertyKey, never>; Returns: Json }
       get_my_result_notification_contexts: {
         Args: { p_notification_ids: string[] }
         Returns: {
@@ -2363,6 +2375,10 @@ export type Database = {
       }
       get_password_setup_state: { Args: Record<PropertyKey, never>; Returns: Json }
       get_provisional_claim_context: { Args: Record<PropertyKey, never>; Returns: Json }
+      get_rating_group_explanation: {
+        Args: { p_game_group_id: string; p_revision?: number }
+        Returns: Json
+      }
       govern_community_member: {
         Args: { p_action: string; p_community_id: string; p_membership_id: string }
         Returns: {
@@ -2719,6 +2735,37 @@ export type Database = {
         Args: { p_event_id: string; p_input: Json; p_invitee_ids: string[] }
         Returns: string
       }
+      rating_can_view_match_event: {
+        Args: { p_match_event_id: string; p_viewer: string }
+        Returns: boolean
+      }
+      rating_committed_revision: { Args: Record<PropertyKey, never>; Returns: number }
+      rating_current_calculations: {
+        Args: { p_revision: number; p_user_id: string }
+        Returns: {
+          after_confirmed_groups: number
+          after_display_level: number
+          after_highest_display_level: number
+          after_reliability_percent: number
+          before_confirmed_groups: number
+          before_display_level: number
+          before_highest_display_level: number
+          before_reliability_percent: number
+          calculation_revision: number
+          explanation: Json
+          game_group_id: string
+          game_group_number: number
+          inputs: Json
+          last_rating_at: string
+          match_event_id: string
+          played_at: string
+          rating_config_version: number
+          rating_engine: string
+          rating_engine_version: string
+          rating_event_id: string
+          revision_count: number
+        }[]
+      }
       rating_projection_apply_group: {
         Args: {
           p_classification: string
@@ -2754,6 +2801,13 @@ export type Database = {
         Args: { p_meta: Json; p_revision: number; p_states: Json }
         Returns: number
       }
+      rating_read_actor: { Args: Record<PropertyKey, never>; Returns: string }
+      rating_read_assert_revision: {
+        Args: { p_committed: number; p_revision: number }
+        Returns: undefined
+      }
+      rating_summary_at: { Args: { p_revision: number; p_user_id: string }; Returns: Json }
+      rating_utc_text: { Args: { p_instant: string }; Returns: string }
       rating_v1_calculate_group: {
         Args: {
           p_config_version: number
