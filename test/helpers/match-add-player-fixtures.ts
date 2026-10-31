@@ -7,6 +7,9 @@ import type { LocalSupabaseEnv } from './local-supabase-env';
 import type { ProvisionalFixtureActor } from './provisional-player-fixtures';
 import { executeTrustedSql, queryTrustedSql } from './sql-transport';
 
+/** Allowlisted in supabase/config.toml, like the app origin the server function sends. */
+export const INVITE_ORIGIN = 'http://127.0.0.1:3000';
+
 type LocalStatus = { serviceRoleKey: string; mailpitUrl: string };
 let status: LocalStatus | undefined;
 
@@ -72,7 +75,8 @@ export async function addPlayer(
   const result = await deliverMatchPlayerAdd(localAdminClient(env), {
     actor_id: actor.id,
     event_id: input.eventId,
-    request_id: args.p_request_id
+    request_id: args.p_request_id,
+    origin: INVITE_ORIGIN
   });
   return { command: data, result };
 }
@@ -87,6 +91,30 @@ export async function mailCount(email: string): Promise<number> {
     typeof body === 'object' && body !== null ? Reflect.get(body, 'messages_count') : undefined;
   if (typeof count !== 'number') throw new Error('Unexpected Mailpit search response');
   return count;
+}
+
+export type DeliveredMail = { subject: string; html: string };
+
+/** Mail delivered to one recipient (bounded by recipient, never the whole mailbox), oldest first. */
+export async function mailFor(email: string): Promise<DeliveredMail[]> {
+  const base = localStatus().mailpitUrl;
+  const query = encodeURIComponent(`to:"${email.trim().toLowerCase()}"`);
+  const search: unknown = await (await fetch(`${base}/api/v1/search?query=${query}`)).json();
+  const summaries =
+    typeof search === 'object' && search !== null ? Reflect.get(search, 'messages') : undefined;
+  if (!Array.isArray(summaries)) throw new Error('Unexpected Mailpit search response');
+  const mails: DeliveredMail[] = [];
+  for (const summary of [...summaries].reverse()) {
+    const message: unknown = await (
+      await fetch(`${base}/api/v1/message/${String(Reflect.get(summary, 'ID'))}`)
+    ).json();
+    const subject = Reflect.get(Object(message), 'Subject');
+    const html = Reflect.get(Object(message), 'HTML');
+    if (typeof subject !== 'string' || typeof html !== 'string')
+      throw new Error('Unexpected Mailpit message response');
+    mails.push({ subject, html });
+  }
+  return mails;
 }
 
 export async function authUsersByEmail(email: string) {

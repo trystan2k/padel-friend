@@ -78,6 +78,13 @@
     "invalidName": "Digite um nome de comunidade com até 80 caracteres."
   },
   "auth": {
+    "invitationEmail": {
+      "subject": "Você foi adicionado a uma partida de padel",
+      "heading": "Você está no jogo",
+      "body": "{{inviter}} adicionou você a {{event}} no Padel Friends. Aceite o convite para configurar seu perfil de jogador e ver a partida.",
+      "cta": "Aceitar convite",
+      "footer": "Não esperava este e-mail? Você pode ignorá-lo com segurança."
+    },
     "welcomeBrand": "PADEL FRIENDS",
     "welcomeTitle": "Boas-vindas",
     "welcomeSubtitle": "Entre para encontrar sua próxima partida.",

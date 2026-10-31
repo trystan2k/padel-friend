@@ -30,6 +30,13 @@ additional_redirect_urls = [
 # Local only: makes the starter auth/notes example immediately testable.
 enable_confirmations = false
 
+# Invitation email for players added by name and email. One template serves every
+# locale: the server renders localized copy per send into the invite `data`
+# (see src/features/matches/invitation-email.ts).
+[auth.email.template.invite]
+subject = "{{ .Data.padel_invite_subject }}"
+content_path = "./supabase/templates/invite.html"
+
 # Optional local Google OAuth: uncomment after supplying both environment variables
 # in the shell running `pnpm db:start`. Keep the client secret out of this file.
 # [auth.external.google]

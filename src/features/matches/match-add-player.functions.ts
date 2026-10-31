@@ -1,4 +1,5 @@
 import { createServerFn } from '@tanstack/react-start';
+import { getRequestUrl } from '@tanstack/react-start/server';
 import { getAdminClient } from '../../lib/supabase/admin.server';
 import { requireAuthenticatedClient } from '../auth/auth.server';
 import {
@@ -33,6 +34,7 @@ export const addMatchPlayer = createServerFn({ method: 'POST' })
     return deliverMatchPlayerAdd(admin, {
       actor_id: actorId,
       event_id: data.event_id,
-      request_id: data.request_id
+      request_id: data.request_id,
+      origin: getRequestUrl().origin
     });
   });

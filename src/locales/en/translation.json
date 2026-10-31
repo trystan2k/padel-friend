@@ -78,6 +78,13 @@
     "invalidName": "Enter a community name of up to 80 characters."
   },
   "auth": {
+    "invitationEmail": {
+      "subject": "You were added to a padel match",
+      "heading": "You're in the game",
+      "body": "{{inviter}} added you to {{event}} on Padel Friends. Accept the invitation to set up your player profile and see the match.",
+      "cta": "Accept invitation",
+      "footer": "Didn't expect this email? You can safely ignore it."
+    },
     "welcomeBrand": "PADEL FRIENDS",
     "welcomeTitle": "Welcome",
     "welcomeSubtitle": "Log in to find your next match.",

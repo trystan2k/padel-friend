@@ -9,7 +9,8 @@ import {
   mailCount,
   operation,
   patchFixtureEvent,
-  uniqueEmail
+  uniqueEmail,
+  INVITE_ORIGIN
 } from './helpers/match-add-player-fixtures';
 import {
   assertLocalSupabaseEnvInCi,
@@ -437,7 +438,8 @@ describe('add match player by name and email', () => {
       const delivered = await deliverMatchPlayerAdd(localAdminClient(env), {
         actor_id: owner.id,
         event_id: eventId,
-        request_id: requestId
+        request_id: requestId,
+        origin: INVITE_ORIGIN
       });
       expect(delivered).toEqual({ status: 'error', code: 'unavailable' });
       expect(await authUsersByEmail(late)).toEqual([]);
@@ -560,6 +562,7 @@ describe('add match player by name and email', () => {
     expect(grants.rows).toEqual([
       { proname: 'add_match_player', rolname: 'authenticated' },
       { proname: 'dispatch_match_player_add', rolname: 'service_role' },
+      { proname: 'get_match_player_add_invite_context', rolname: 'service_role' },
       { proname: 'settle_match_player_add', rolname: 'service_role' }
     ]);
   });

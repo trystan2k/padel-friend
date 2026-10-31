@@ -1969,6 +1969,10 @@ export type Database = {
       get_match_event_management: { Args: { p_match_event_id: string }; Returns: Json }
       get_match_event_official_results: { Args: { p_match_event_id: string }; Returns: Json[] }
       get_match_event_result_proposals: { Args: { p_match_event_id: string }; Returns: Json[] }
+      get_match_player_add_invite_context: {
+        Args: { p_actor_id: string; p_match_event_id: string; p_request_id: string }
+        Returns: Json
+      }
       get_my_community_notification_timezone: {
         Args: { p_notification_id: string }
         Returns: string

@@ -144,3 +144,24 @@ T08.3 confirms each still-Pending result proposal at its database deadline (`sub
   ```
   The processor returns `attempted`, `skipped`, `failed`, and `confirmed`; each exception subtransaction rolls back that proposal's confirmation/audit effects before recording failure metadata. Exponential retry delay is capped at five minutes; the least-attempted, oldest due versions run first.
 - **Recovery.** Pause with `select cron.unschedule('padel-friend-match-result-auto-confirm');`, repair forward, then re-schedule with the same name. Corrections start a fresh 48-hour deadline and version-scoped retry state; no confirmed identity is deleted or replayed.
+
+## 8. Added-player invitations (service-role secret, SMTP, templates)
+
+Organizers and admins can add a not-yet-registered player by name and email. The server creates the Auth identity with Supabase Admin Invite, so this needs a server-only secret, working Auth email delivery and the localized invite template. Apply the migrations first (`pnpm exec supabase db push`).
+
+1. **Service-role secret (server only).** The server reads `SUPABASE_SERVICE_ROLE_KEY` (`src/lib/supabase/admin.server.ts`). Copy the **secret/service-role key** from **Supabase → Project Settings → API Keys** and store it as a Workers **secret**, never as a `VITE_` variable, GitHub variable, `wrangler.jsonc` value or committed file:
+
+   ```sh
+   pnpm exec wrangler secret put SUPABASE_SERVICE_ROLE_KEY                  # production
+   pnpm exec wrangler secret put SUPABASE_SERVICE_ROLE_KEY --env preview    # preview (use the preview project's key)
+   ```
+
+   For local `wrangler dev`/preview put it in the git-ignored `.dev.vars`. `scripts/check-client-secrets.mjs` (run by `pnpm build`) fails the build if the key reaches a client asset. Adding a player fails before any write while the secret is missing.
+
+2. **Custom SMTP (production).** Supabase's built-in mailer is rate limited and only for testing. In **Authentication → Emails → SMTP Settings** enable custom SMTP and set host, port, username, password, and a sender name/address on a domain you control (SPF, DKIM and DMARC records configured with your provider). The SMTP credentials live only in Supabase. Raise **Authentication → Rate Limits → emails sent** above the expected invite volume. This is applied in the hosted dashboard (or `supabase config push`), so it is **not** deployed by this repository: record that it was applied for each environment before enabling the add-player entry point. Locally, Auth sends to Mailpit at `http://127.0.0.1:55324` (`[local_smtp]` in `supabase/config.toml`); no credentials are needed.
+
+3. **Invite template and localization.** One template serves every language. For each send the server renders the subject, heading, body, button and footer in the **adder's locale** (en, pt-BR, es; unknown locales fall back to en) from `auth.invitationEmail.*` in `src/locales/*/translation.json`, naming the inviter and the event, and passes them as invite metadata (`padel_invite_*`, built by `src/features/matches/invitation-email.ts`). The template prints them; Auth HTML-escapes every value. Local Auth loads `supabase/templates/invite.html` and the subject `{{ .Data.padel_invite_subject }}` from `[auth.email.template.invite]` in `supabase/config.toml` (restart with `pnpm db:stop && pnpm db:start` after editing). For hosted Supabase, paste the **same** values in **Authentication → Emails → Templates → Invite user**: subject `{{ .Data.padel_invite_subject }}` and the body of `supabase/templates/invite.html` (or `supabase config push` with the same `[auth.email.template.invite]` block). Keep subject copy free of `'`, `&`, `<`, `>`, `"` because Auth escapes subjects. Auth renders a resent invite from stored metadata, so the server refreshes it right before every send.
+
+4. **Link and redirect allowlist.** The button opens `<app origin>/auth/callback?next=/matches/<event id>&token_hash=…&type=invite`. The app origin is the request origin of the add call and must be in **Authentication → URL Configuration → Redirect URLs** (section 2.3), otherwise Auth rejects the invite. The callback consumes `token_hash` and sends the player to onboarding, then the event. Invitations expire with the Auth OTP lifetime (**Authentication → Providers → Email → Email OTP expiration**); after that, adding the same email again (outside the 15 minute per-recipient throttle) sends a fresh invite to the same identity without creating a second account.
+
+5. **Verified claims.** Email confirmation must be **required** in hosted Supabase (Providers → Email → Confirm email). Local `enable_confirmations = false` only simplifies normal signup tests; an invited player proves the email by opening the invite link.

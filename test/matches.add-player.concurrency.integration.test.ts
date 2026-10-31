@@ -6,7 +6,8 @@ import {
   localAdminClient,
   mailCount,
   patchFixtureEvent,
-  uniqueEmail
+  uniqueEmail,
+  INVITE_ORIGIN
 } from './helpers/match-add-player-fixtures';
 import {
   assertLocalSupabaseEnvInCi,
@@ -159,7 +160,8 @@ describe('concurrent match player adds', () => {
       const result = await deliverMatchPlayerAdd(localAdminClient(env), {
         actor_id: owner.id,
         event_id: eventId,
-        request_id: args.p_request_id
+        request_id: args.p_request_id,
+        origin: INVITE_ORIGIN
       });
       expect(result).toEqual({ status: 'ok' });
       const userId = signup.data.user!.id;
