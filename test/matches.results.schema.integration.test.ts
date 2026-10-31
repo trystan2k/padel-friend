@@ -122,12 +122,18 @@ describe('match result proposal schema integration', () => {
             and (not c.relrowsecurity or c.relforcerowsecurity or pg_get_userbyid(c.relowner) <> 'postgres')
          ) then raise exception 'result tables must be RLS-enabled, unforced, owner postgres'; end if;
 
-        -- Proposals: exactly one SELECT policy for authenticated; no other policies.
+        -- Proposals: exactly one permissive SELECT policy for authenticated; the
+        -- only other policy is the generic restrictive provisional-actor guard.
         select count(*) into v_count from pg_policies
-         where schemaname = 'public' and tablename = 'match_event_result_proposals';
+         where schemaname = 'public' and tablename = 'match_event_result_proposals' and permissive = 'PERMISSIVE';
         if v_count <> 1 then raise exception 'proposals must carry exactly one policy, got %', v_count; end if;
+        if (select array_agg(policyname) from pg_policies where schemaname = 'public'
+          and tablename = 'match_event_result_proposals' and permissive = 'RESTRICTIVE')
+          is distinct from array['provisional actor restricted']::name[] then
+          raise exception 'proposals must carry only the provisional actor restriction';
+        end if;
         select cmd, roles::text into v_def, v_text from pg_policies
-         where schemaname = 'public' and tablename = 'match_event_result_proposals';
+         where schemaname = 'public' and tablename = 'match_event_result_proposals' and permissive = 'PERMISSIVE';
         if v_def <> 'SELECT' or v_text is distinct from '{authenticated}' then
           raise exception 'proposal policy must be SELECT for authenticated only, got %/%', v_def, v_text;
         end if;
@@ -1030,7 +1036,7 @@ describe('match result proposal schema integration', () => {
       const after = await sqlRows(historySql);
       expect(after).toEqual(before);
       const catalog = await sqlRows(`select
-        (select count(*) from pg_policies where schemaname = 'public' and tablename = 'match_event_result_proposals') as policies,
+        (select count(*) from pg_policies where schemaname = 'public' and tablename = 'match_event_result_proposals' and permissive = 'PERMISSIVE') as policies,
         has_table_privilege('authenticated', 'public.match_event_result_proposals', 'SELECT') as read_granted,
         has_table_privilege('authenticated', 'public.match_event_result_proposals', 'INSERT') as write_granted,
         has_table_privilege('authenticated', 'public.match_event_result_proposal_versions', 'SELECT') as versions_granted,

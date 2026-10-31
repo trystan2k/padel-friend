@@ -30,8 +30,12 @@ export const resultProposal = {
   submitted_at: resultSuccess.submitted_at,
   review_deadline_at: resultSuccess.review_deadline_at,
   teams: {
-    team_a: resultIds.slice(0, 2).map((user_id) => ({ user_id, display_name: 'Player' })),
-    team_b: resultIds.slice(2).map((user_id) => ({ user_id, display_name: null }))
+    team_a: resultIds
+      .slice(0, 2)
+      .map((user_id) => ({ user_id, display_name: 'Player', is_provisional: false })),
+    team_b: resultIds
+      .slice(2)
+      .map((user_id) => ({ user_id, display_name: null, is_provisional: true }))
   },
   sets: resultCommand.sets,
   classification: 'incomplete',

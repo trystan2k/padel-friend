@@ -100,6 +100,11 @@ export function buildMatchFixtureCleanupSql(owner: MatchFixtureOwner = {}): stri
     'delete from public.match_event_registration_state s where s.match_event_id in (select id from owned_match_fixture_events)',
     `delete from public.match_event_invites i where i.match_event_id in (select id from owned_match_fixture_events) or ${actorPredicate('i.invitee_user_id')} or ${actorPredicate('i.invited_by')}`,
     `delete from public.match_event_registrations r where r.match_event_id in (select id from owned_match_fixture_events) or ${actorPredicate('r.user_id')}`,
+    // Provisional provenance references its source event (ON DELETE RESTRICT).
+    'delete from public.player_profiles p where p.source_match_event_id in (select id from owned_match_fixture_events)',
+    'alter table public.community_members disable trigger community_member_guard',
+    'delete from public.community_members m where m.source_match_event_id in (select id from owned_match_fixture_events)',
+    'alter table public.community_members enable trigger community_member_guard',
     'delete from public.match_events e where e.id in (select id from owned_match_fixture_events)',
     'alter table public.match_event_invites enable trigger match_invite_immutable',
     'alter table public.match_event_registrations enable trigger match_registration_identity_guard',

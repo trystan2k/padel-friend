@@ -89,6 +89,7 @@ export type ManagementParticipant = {
   attempt_id: string;
   display_name: string | null;
   display_level: number | null;
+  is_provisional: boolean;
   lifecycle: 'accepted';
   participation: MatchRegistrationParticipation | null;
   required_generation?: number;
@@ -321,6 +322,7 @@ export function parseManagementParticipants(value: unknown): ManagementParticipa
       row.lifecycle !== 'accepted' ||
       !integer(row.accepted_order, 1) ||
       !(row.display_name === null || typeof row.display_name === 'string') ||
+      !(row.is_provisional === undefined || typeof row.is_provisional === 'boolean') ||
       !(
         row.display_level === null ||
         (typeof row.display_level === 'number' && Number.isFinite(row.display_level))
@@ -343,6 +345,8 @@ export function parseManagementParticipants(value: unknown): ManagementParticipa
       lifecycle: row.lifecycle,
       display_name: row.display_name,
       display_level: row.display_level,
+      // Additive flag: absent in pre-provisional payloads.
+      is_provisional: row.is_provisional ?? false,
       participation: row.participation,
       ...(integer(row.required_generation) && integer(row.confirmed_generation)
         ? {

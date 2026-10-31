@@ -47,6 +47,7 @@ function element(locale: Locale = 'en', generation = 2) {
             attempt_id: id,
             display_name: 'Player',
             display_level: null,
+            is_provisional: false,
             lifecycle: 'accepted',
             participation: null,
             accepted_order: 1,

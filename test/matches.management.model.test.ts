@@ -28,6 +28,7 @@ const participant = {
   attempt_id: id,
   display_name: null,
   display_level: 4,
+  is_provisional: true,
   lifecycle: 'accepted',
   participation: 'reserve',
   accepted_order: 4
@@ -163,9 +164,13 @@ describe('management defensive models', () => {
       { accepted_order: 0 },
       { display_level: NaN },
       { lifecycle: 'withdrawn' },
-      { participation: null }
+      { participation: null },
+      { is_provisional: 'true' },
+      { is_provisional: null }
     ])
       expect(parseManagementParticipants([{ ...participant, ...patch }])).toBeNull();
+    const { is_provisional: _omitted, ...legacy } = participant;
+    expect(parseManagementParticipants([legacy])).toEqual([{ ...legacy, is_provisional: false }]);
     expect(parseManagementParticipants({})).toBeNull();
     expect(parseMatchAudit([{}])).toBeNull();
   });

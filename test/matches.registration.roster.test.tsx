@@ -88,6 +88,7 @@ function entry(extra: Partial<MatchRosterEntry> = {}): MatchRosterEntry {
   return {
     display_name: 'Ada Player',
     display_level: 3.5,
+    is_provisional: false,
     participation: 'playing',
     group_number: 1,
     reserve_position: null,
@@ -179,6 +180,7 @@ describe('accepted roster projection parser', () => {
       {
         display_name: 'Ada',
         display_level: 3.5,
+        is_provisional: true,
         participation: 'playing',
         group_number: 1,
         reserve_position: null,
@@ -199,6 +201,7 @@ describe('accepted roster projection parser', () => {
       {
         display_name: 'Ada',
         display_level: 3.5,
+        is_provisional: true,
         participation: 'playing',
         group_number: 1,
         reserve_position: null,
@@ -208,6 +211,7 @@ describe('accepted roster projection parser', () => {
       {
         display_name: null,
         display_level: null,
+        is_provisional: false,
         participation: 'reserve',
         group_number: null,
         reserve_position: 1,
@@ -221,6 +225,7 @@ describe('accepted roster projection parser', () => {
     const valid = {
       display_name: 'Ada',
       display_level: 3.5,
+      is_provisional: false,
       participation: 'playing',
       group_number: 1,
       reserve_position: null,
@@ -240,6 +245,8 @@ describe('accepted roster projection parser', () => {
       [valid, { ...valid, group_number: null }],
       [valid, { ...valid, group_number: 0 }],
       [valid, { ...valid, display_level: '3.5' }],
+      [valid, { ...valid, is_provisional: 'true' }],
+      [valid, { ...valid, is_provisional: null }],
       [{ ...valid, participation: 'reserve', group_number: null, reserve_position: null }],
       [{ ...valid, participation: 'reserve', group_number: 1, reserve_position: null }]
     ];

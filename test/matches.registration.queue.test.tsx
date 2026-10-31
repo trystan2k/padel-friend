@@ -60,6 +60,7 @@ function queue(overrides: Partial<MatchRegistrationQueue> = {}): MatchRegistrati
         attempt_id: ATTEMPT_GUEST,
         display_name: 'Paula Guest',
         display_level: null,
+        is_provisional: false,
         registration_source: 'guest',
         requested_at: '2026-10-18T10:00:00.000Z'
       },
@@ -68,6 +69,7 @@ function queue(overrides: Partial<MatchRegistrationQueue> = {}): MatchRegistrati
         attempt_id: ATTEMPT_MEMBER,
         display_name: 'Rui Member',
         display_level: 6.5,
+        is_provisional: false,
         registration_source: 'member',
         requested_at: '2026-10-18T10:05:00.000Z'
       }
@@ -124,6 +126,7 @@ describe('match request queue', () => {
             attempt_id: ATTEMPT_ABOVE,
             display_name: 'Above Range',
             display_level: 6.5,
+            is_provisional: false,
             registration_source: 'member',
             requested_at: REQUESTED_AT
           },
@@ -132,6 +135,7 @@ describe('match request queue', () => {
             attempt_id: ATTEMPT_BELOW,
             display_name: 'Below Range',
             display_level: 1.5,
+            is_provisional: false,
             registration_source: 'member',
             requested_at: REQUESTED_AT
           },
@@ -140,6 +144,7 @@ describe('match request queue', () => {
             attempt_id: ATTEMPT_UNRATED,
             display_name: 'Unrated Member',
             display_level: null,
+            is_provisional: false,
             registration_source: 'member',
             requested_at: REQUESTED_AT
           },
@@ -148,6 +153,7 @@ describe('match request queue', () => {
             attempt_id: ATTEMPT_GUEST,
             display_name: 'Paula Guest',
             display_level: null,
+            is_provisional: false,
             registration_source: 'guest',
             requested_at: REQUESTED_AT
           }
@@ -173,6 +179,7 @@ describe('match request queue', () => {
             attempt_id: ATTEMPT_MEMBER,
             display_name: 'Rui Member',
             display_level: 6.5,
+            is_provisional: false,
             registration_source: 'member',
             requested_at: REQUESTED_AT
           }
@@ -285,6 +292,7 @@ describe('match request queue', () => {
             attempt_id: ATTEMPT_GUEST,
             display_name: null,
             display_level: null,
+            is_provisional: false,
             registration_source: 'guest',
             requested_at: '2026-10-18T10:00:00.000Z'
           }

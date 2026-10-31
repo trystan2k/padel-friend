@@ -716,10 +716,25 @@ describe.skipIf(environment.env === null)(
         'created_at',
         'display_name',
         'dominant_hand',
+        'estimated_level',
+        'invited_at',
+        'invited_by',
+        'is_provisional',
         'preferred_side',
+        'rating_input_source',
+        'source_match_event_id',
         'updated_at',
         'user_id'
       ]);
+      // Self-declared players carry no provisional provenance.
+      expect(profile).toMatchObject({
+        is_provisional: false,
+        rating_input_source: 'self_declared',
+        estimated_level: null,
+        invited_by: null,
+        invited_at: null,
+        source_match_event_id: null
+      });
       expect(Object.keys(rating).sort()).toEqual([
         'confirmed_competitive_game_groups',
         'display_level',

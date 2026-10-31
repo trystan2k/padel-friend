@@ -180,10 +180,12 @@ export type Database = {
       community_members: {
         Row: {
           activated_at: string | null
+          added_by: string | null
           community_id: string
           created_at: string
           id: string
           role: Database["public"]["Enums"]["community_member_role"]
+          source_match_event_id: string | null
           status: Database["public"]["Enums"]["community_membership_status"]
           user_id: string
           valid_from: string
@@ -192,10 +194,12 @@ export type Database = {
         ComputedFields: never
         Insert: {
           activated_at?: string | null
+          added_by?: string | null
           community_id: string
           created_at?: string
           id?: string
           role?: Database["public"]["Enums"]["community_member_role"]
+          source_match_event_id?: string | null
           status: Database["public"]["Enums"]["community_membership_status"]
           user_id: string
           valid_from?: string
@@ -203,10 +207,12 @@ export type Database = {
         }
         Update: {
           activated_at?: string | null
+          added_by?: string | null
           community_id?: string
           created_at?: string
           id?: string
           role?: Database["public"]["Enums"]["community_member_role"]
+          source_match_event_id?: string | null
           status?: Database["public"]["Enums"]["community_membership_status"]
           user_id?: string
           valid_from?: string
@@ -218,6 +224,13 @@ export type Database = {
             columns: ["community_id"]
             isOneToOne: false
             referencedRelation: "communities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "community_members_source_match_event_id_fkey"
+            columns: ["source_match_event_id"]
+            isOneToOne: false
+            referencedRelation: "match_events"
             referencedColumns: ["id"]
           },
         ]
@@ -1581,7 +1594,13 @@ export type Database = {
           created_at: string
           display_name: string
           dominant_hand: string | null
+          estimated_level: number | null
+          invited_at: string | null
+          invited_by: string | null
+          is_provisional: boolean
           preferred_side: string
+          rating_input_source: string
+          source_match_event_id: string | null
           updated_at: string
           user_id: string
         }
@@ -1592,7 +1611,13 @@ export type Database = {
           created_at?: string
           display_name: string
           dominant_hand?: string | null
+          estimated_level?: number | null
+          invited_at?: string | null
+          invited_by?: string | null
+          is_provisional?: boolean
           preferred_side: string
+          rating_input_source?: string
+          source_match_event_id?: string | null
           updated_at?: string
           user_id: string
         }
@@ -1602,11 +1627,25 @@ export type Database = {
           created_at?: string
           display_name?: string
           dominant_hand?: string | null
+          estimated_level?: number | null
+          invited_at?: string | null
+          invited_by?: string | null
+          is_provisional?: boolean
           preferred_side?: string
+          rating_input_source?: string
+          source_match_event_id?: string | null
           updated_at?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "player_profiles_source_match_event_id_fkey"
+            columns: ["source_match_event_id"]
+            isOneToOne: false
+            referencedRelation: "match_events"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
@@ -1628,6 +1667,7 @@ export type Database = {
         }[]
       }
       advance_match_registration_revision_locked: { Args: { p_event_id: string }; Returns: number }
+      assert_actor_not_provisional: { Args: Record<PropertyKey, never>; Returns: undefined }
       assert_match_event_active_locked: { Args: { p_event_id: string }; Returns: undefined }
       assert_match_management_action_locked: {
         Args: { p_action: string; p_event_id: string }
@@ -1691,6 +1731,15 @@ export type Database = {
           p_request_id: string
         }
         Returns: Json
+      }
+      ensure_provisional_community_membership_locked: {
+        Args: {
+          p_added_by: string
+          p_community_id: string
+          p_source_match_event_id: string
+          p_user_id: string
+        }
+        Returns: string
       }
       expire_match_event_invitations_locked: {
         Args: { p_as_of: string; p_event_id: string }
@@ -1850,9 +1899,19 @@ export type Database = {
         Args: { p_actor_id: string; p_proposal_id: string; p_version: number }
         Returns: boolean
       }
+      initialize_global_player_rating_locked: {
+        Args: { p_level: number; p_user_id: string }
+        Returns: undefined
+      }
       is_community_admin: { Args: { p_community_id: string }; Returns: boolean }
       is_community_member: { Args: { p_community_id: string }; Returns: boolean }
+      is_match_event_participant: {
+        Args: { p_event_id: string; p_user_id: string }
+        Returns: boolean
+      }
       is_private_match_event: { Args: { p_event_id: string }; Returns: boolean }
+      is_provisional_actor: { Args: Record<PropertyKey, never>; Returns: boolean }
+      is_provisional_player: { Args: { p_user_id: string }; Returns: boolean }
       join_public_community: {
         Args: { p_community_id: string }
         Returns: {
@@ -2136,6 +2195,16 @@ export type Database = {
         Returns: Json
       }
       protect_match_event_results: { Args: { p_event_id: string }; Returns: undefined }
+      provision_provisional_player_locked: {
+        Args: {
+          p_display_name: string
+          p_estimated_level: number
+          p_invited_by: string
+          p_source_match_event_id: string
+          p_user_id: string
+        }
+        Returns: boolean
+      }
       public_community_discovery: {
         Args: Record<PropertyKey, never>
         Returns: {
