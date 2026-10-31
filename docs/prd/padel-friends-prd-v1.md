@@ -613,6 +613,8 @@ Recommended input step:
 
 The selected starting level becomes the initial app-wide displayed level.
 
+For a player added by a creator or admin before registering (see 18.3), the creator-entered level is the initial rating input instead, flagged `creator_estimated`. The player may adjust it at claim time only while they have no rated history.
+
 ## 12.2 Initial Reliability
 
 At registration:
@@ -1182,6 +1184,71 @@ Example:
 - another invited/open player becomes registration #8 => registrations #5–#8 are promoted to Playing.
 
 Invitations themselves do not hold a registration position before acceptance unless a future explicit "reserved invitation" feature is introduced.
+
+## 18.3 Provisional Players (Not-Yet-Registered Players)
+
+A Match Creator (including the new owner after a creator transfer) or a Community Admin can add a person who has not registered in the app yet. The adder provides:
+
+- display name;
+- email;
+- estimated level on the onboarding scale (0.0–7.0, see 12.1).
+
+### Identity and lifecycle
+
+- The added person becomes a **provisional player**: a real account identity pre-created by the system and marked provisional, with a normal profile, a provisional community membership, and a normal accepted registration.
+- The account identity is **permanent**. Claiming never re-keys registrations, teams, results, ratings, standings, or statistics; the same identity simply becomes a normal player.
+- A provisional player cannot sign in, review results, approve results, or perform any other action until the account is claimed. This is enforced at the database level, not only in the UI.
+
+### Add outcomes
+
+Adding a player resolves the email into exactly one of three branches:
+
+| Email state                  | Outcome                                                                                                                                                                                           |
+| ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Already a registered user    | An idempotent `PENDING` match invitation is created (see 18.2). No email is sent by this flow; the player accepts through the normal invitation notification. Entered name and level are ignored. |
+| Already a provisional player | The existing identity is reused. Existing name and level are never overwritten. A duplicate invite email is suppressed while the per-email throttle (below) is active.                            |
+| Unknown email                | One atomic operation creates the identity, provisional profile, provisional community membership, and registration, then sends one invite email in the adder's locale (en, pt-BR, es).            |
+
+All branches return the same success response to the adder, so the flow cannot be used to discover which emails are registered (anti-enumeration).
+
+Normal registration rules still apply: the add is rejected for cancelled, started, result-protected, or cutoff-closed events and when explicit capacity is full. The added player takes a normal FIFO position and Playing/Reserve is calculated as in 18.2.
+
+### Abuse protection and audit
+
+- Per-adder rate limit: 20 adds per hour.
+- Per-email throttle: at most one invite email per normalized email every 15 minutes, across all events and communities.
+- Hitting a limit never reveals email state to the adder.
+- Every add is recorded in an add-operation ledger and in the Match Event audit log (`player_added`).
+
+### While provisional
+
+- The player appears in rosters, teams, results, history, and statistics, marked with a **Provisional** badge.
+- Results involving a provisional player confirm through the existing approval coverage rules (section 23) and the 48-hour auto-confirmation; the provisional player does not need to act.
+- The provisional player's active provisional community membership **satisfies the members-only requirement** for ranked contexts (see 28.6 and 30.4); leagues and ranked events may include provisional members.
+
+### Initial rating input
+
+The estimated level entered by the adder is the player's initial rating input (see 12.1) and is flagged `creator_estimated`. Downstream calibration and app-wide rating logic must treat it as an input flagged creator-estimated, not as a self-declared level.
+
+### Claiming the account
+
+The person claims the account by proving ownership of the invited mailbox. Accepted proofs, taken from the verified authentication method of the session:
+
+- the invite link (emailed one-time token);
+- a recovery or magic-link / emailed confirmation link for the invited address;
+- an OAuth sign-in with a provider that itself reports the invited address as verified.
+
+A password session, including a plain signup against the invited address, is **not** proof, and the account's confirmed-email timestamp alone is not trusted. The invited address must still be the account's address when claiming.
+
+Claiming goes through onboarding, prefilled with the stored display name and level:
+
+- the name can be edited;
+- the level can be edited only while the player has no rated history; otherwise it is locked and the claim is rejected if a different level is submitted;
+- on success the provisional marker is cleared, memberships become normal, the full past and future history is immediately visible as the player's own, and the claim is audited (`player_claimed`).
+
+### Secret handling
+
+The flow requires a service-role key on the server. It is a server-only Workers secret and must never reach client bundles; a post-build scan fails the build if it is found in client output. Invite email delivery requires custom SMTP (see `INITIAL_SETUP.md`).
 
 ---
 
@@ -2073,6 +2140,8 @@ A non-member guest:
 - may affect their app-wide skill through a Competitive result;
 - appears in Match Event history;
 - is not added to League standings automatically.
+
+A provisional player (see 18.3) holds a provisional community membership, which satisfies this membership requirement.
 
 ## 30.5 League Close
 
