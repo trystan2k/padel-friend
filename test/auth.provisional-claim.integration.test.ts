@@ -110,7 +110,8 @@ describe('provisional claim', () => {
         state: 'ready',
         display_name: 'Claim Carla',
         initial_level: 3.5,
-        can_edit_level: true
+        can_edit_level: true,
+        match_count: 3
       });
       expect((await client.rpc('count_my_unread_notifications')).error?.message).toBe(
         'PROVISIONAL_PLAYER_RESTRICTED'
@@ -125,6 +126,33 @@ describe('provisional claim', () => {
         p_bio: 'Ready to play'
       });
       expect(claimed.error).toBeNull();
+
+      // The claim leaves the invite-link claimant passwordless; the post-claim step sets one
+      // from the surviving verified session and password sign-in then works.
+      expect(
+        (
+          await createClient(env.url, env.key, {
+            auth: { persistSession: false, autoRefreshToken: false }
+          }).auth.signInWithPassword({ email: player.email, password: 'Claimed-Pass-1!' })
+        ).error
+      ).not.toBeNull();
+      const browser = createClient(env.url, env.key, {
+        auth: { persistSession: false, autoRefreshToken: false }
+      });
+      expect(
+        (
+          await browser.auth.setSession({
+            access_token: verified.data.session!.access_token,
+            refresh_token: verified.data.session!.refresh_token
+          })
+        ).error
+      ).toBeNull();
+      expect((await browser.auth.updateUser({ password: 'Claimed-Pass-1!' })).error).toBeNull();
+      const passwordLogin = await createClient(env.url, env.key, {
+        auth: { persistSession: false, autoRefreshToken: false }
+      }).auth.signInWithPassword({ email: player.email, password: 'Claimed-Pass-1!' });
+      expect(passwordLogin.error).toBeNull();
+      expect(passwordLogin.data.user?.id).toBe(player.id);
 
       // Same identity: marker cleared, level edited (unrated), provenance preserved.
       expect(await profileState(player.id)).toMatchObject({
@@ -346,6 +374,57 @@ describe('provisional claim', () => {
   );
 
   it.skipIf(!environment.env)(
+    'claim drops pending email changes and revokes tokens captured before it',
+    async () => {
+      const scenario = await claimScenario(environment.env!, 'claim-revoke');
+      const { env } = scenario;
+      const player = await addInvitedPlayer(scenario, {
+        displayName: 'Revoke Rex',
+        level: 3,
+        label: 'revoke'
+      });
+      // Attacker session on the provisional identity (local autoconfirm signup) plus a
+      // pending email change toward an address the claimant never proved.
+      const signup = await createClient(env.url, env.key, {
+        auth: { persistSession: false, autoRefreshToken: false }
+      }).auth.signUp({ email: player.email, password: 'Squatter123!' });
+      expect(signup.data.session).not.toBeNull();
+      const stale = sessionClient(env, signup.data.session!);
+      await executeTrustedSql(
+        `update auth.users set email_change = 'attacker@test.local', email_change_token_new = ${sqlText(crypto.randomUUID())},
+           email_change_sent_at = now() where id = ${sqlText(player.id)}`
+      );
+      expect((await stale.rpc('count_my_unread_notifications')).error?.message).toBe(
+        'PROVISIONAL_PLAYER_RESTRICTED'
+      );
+
+      // The squatter's signup consumed the invite link; the owner proves the mailbox by recovery.
+      const client = sessionClient(env, (await recoverySession(env, player.email)).session);
+      expect((await client.rpc('claim_provisional_player', CLAIM_PROFILE)).error).toBeNull();
+
+      const user = await queryTrustedSql(
+        `select email_change, email_change_token_new from auth.users where id = $1`,
+        { values: [player.id] }
+      );
+      expect(user.rows).toEqual([{ email_change: '', email_change_token_new: '' }]);
+
+      // The stateless pre-claim token must not gain the claimed player's normal access.
+      expect((await stale.rpc('count_my_unread_notifications')).error?.message).toBe(
+        'PROVISIONAL_PLAYER_RESTRICTED'
+      );
+      expect((await stale.rpc('can_read_match_event', { p_event_id: scenario.eventId })).data).toBe(
+        false
+      );
+      expect((await stale.from('player_profiles').select('user_id')).data).toEqual([]);
+      // The claimant's own session keeps working.
+      expect((await client.rpc('count_my_unread_notifications')).error).toBeNull();
+      expect(
+        (await client.rpc('can_read_match_event', { p_event_id: scenario.eventId })).data
+      ).toBe(true);
+    }
+  );
+
+  it.skipIf(!environment.env)(
     'rejects forged and replayed add capabilities when identities are created',
     async () => {
       const scenario = await claimScenario(environment.env!, 'claim-capability');
@@ -409,11 +488,14 @@ describe('provisional claim', () => {
         label: 'password'
       });
 
-      const signup = await createClient(env.url, env.key, {
+      const attacker = createClient(env.url, env.key, {
         auth: { persistSession: false, autoRefreshToken: false }
-      }).auth.signUp({ email: player.email, password: 'Password123!' });
+      });
+      const signup = await attacker.auth.signUp({ email: player.email, password: 'Password123!' });
       expect(signup.error).toBeNull();
       expect(signup.data.user?.id).toBe(player.id);
+      // The unverified session may set a password on the provisional identity.
+      expect((await attacker.auth.updateUser({ password: 'Password123!' })).error).toBeNull();
       expect((await authUsersByEmail(player.email)).map((user) => user.id)).toEqual([player.id]);
       const unverified = sessionClient(env, signup.data.session!);
       expect((await unverified.rpc('claim_provisional_player', CLAIM_PROFILE)).error?.message).toBe(
@@ -436,6 +518,13 @@ describe('provisional claim', () => {
       });
       expect(claimed.error).toBeNull();
       expect(await claimAudits(player.id)).toHaveLength(1);
+
+      // The password the unverified signup set is not proof of anything: it dies with the claim.
+      const squatterLogin = await createClient(env.url, env.key, {
+        auth: { persistSession: false, autoRefreshToken: false }
+      }).auth.signInWithPassword({ email: player.email, password: 'Password123!' });
+      expect(squatterLogin.error).not.toBeNull();
+      expect(squatterLogin.data.session).toBeNull();
 
       const password = 'Recovered123!';
       const updated = await recovered.auth.updateUser({ password });

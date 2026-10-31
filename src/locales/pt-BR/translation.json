@@ -98,7 +98,13 @@
       "verifyOptionsTitle": "Abra o e-mail de convite",
       "verifyOptions": "Use o link do e-mail de convite, entre com o Google usando o mesmo endereço ou receba um novo link por e-mail.",
       "verifyAction": "ENVIAR LINK POR E-MAIL",
-      "verifyFailed": "Não foi possível iniciar a verificação. Tente novamente."
+      "verifyFailed": "Não foi possível iniciar a verificação. Tente novamente.",
+      "invitedNotice_one": "Você foi convidado para {{count}} jogo.",
+      "invitedNotice_other": "Você foi convidado para {{count}} jogos.",
+      "passwordTitle": "Escolha uma senha",
+      "passwordSubtitle": "Seu perfil foi reivindicado. Defina uma senha para entrar com seu e-mail da próxima vez.",
+      "passwordSkipHelp": "Você já pode entrar com a conta vinculada. A senha é opcional.",
+      "passwordSkip": "PULAR POR ENQUANTO"
     },
     "welcomeBrand": "PADEL FRIENDS",
     "welcomeTitle": "Boas-vindas",
@@ -613,7 +619,7 @@
       "success": "{{name}} foi adicionado(a) e convidado(a).",
       "offline": "Você está offline. Reconecte para adicionar um jogador.",
       "validation": {
-        "name": "Informe um nome.",
+        "name": "Informe um nome de até 80 caracteres.",
         "email": "Informe um e-mail válido",
         "level": "Escolha um nível estimado."
       },

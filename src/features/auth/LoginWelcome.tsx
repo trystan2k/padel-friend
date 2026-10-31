@@ -13,9 +13,19 @@ import { styles } from './login-welcome.styles';
 import { navigateAfterAuth } from './navigate';
 import { normalizeReturnPath } from './return-path';
 
-type LoginWelcomeProps = { next?: string; authError?: boolean; resetSent?: boolean };
+type LoginWelcomeProps = {
+  next?: string;
+  authError?: boolean;
+  expired?: boolean;
+  resetSent?: boolean;
+};
 
-export function LoginWelcome({ next: returnPath, authError, resetSent }: LoginWelcomeProps) {
+export function LoginWelcome({
+  next: returnPath,
+  authError,
+  expired,
+  resetSent
+}: LoginWelcomeProps) {
   const { t } = useTranslation();
   const next = normalizeReturnPath(returnPath);
   const ready = useHydrated();
@@ -128,9 +138,9 @@ export function LoginWelcome({ next: returnPath, authError, resetSent }: LoginWe
             {t('auth.loginSubmit')}
           </Button>
         </form>
-        {(message || authError) && (
+        {(message || authError || expired) && (
           <p role="alert" {...stylex.props(styles.error)}>
-            {t(message || 'googleSignInError')}
+            {t(message || (expired ? 'auth.sessionExpired' : 'googleSignInError'))}
           </p>
         )}
       </div>

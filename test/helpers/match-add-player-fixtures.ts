@@ -1,5 +1,5 @@
 import { execFileSync } from 'node:child_process';
-import { createClient, type SupabaseClient } from '@supabase/supabase-js';
+import { AuthApiError, createClient, type SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '../../src/lib/supabase/database.types';
 import { deliverMatchPlayerAdd } from '../../src/features/matches/match-add-player.server';
 import type { AddMatchPlayerResult } from '../../src/features/matches/match-add-player-model';
@@ -35,6 +35,24 @@ export function localAdminClient(env: LocalSupabaseEnv): SupabaseClient<Database
   return createClient<Database>(env.url, localStatus().serviceRoleKey, {
     auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false }
   });
+}
+
+/**
+ * Service-role client whose Auth invite fails (SMTP down) for the first `failures`
+ * calls, then delegates to the real Auth admin API.
+ */
+export function failingInviteAdmin(env: LocalSupabaseEnv, failures = Infinity) {
+  const admin = localAdminClient(env);
+  const realInvite = admin.auth.admin.inviteUserByEmail.bind(admin.auth.admin);
+  let remaining = failures;
+  admin.auth.admin.inviteUserByEmail = async (...args) => {
+    if (remaining-- <= 0) return realInvite(...args);
+    return {
+      data: { user: null },
+      error: new AuthApiError('smtp down', 500, 'unexpected_failure')
+    };
+  };
+  return admin;
 }
 
 export type AddPlayerInput = {

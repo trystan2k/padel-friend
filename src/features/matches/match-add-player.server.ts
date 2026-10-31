@@ -92,13 +92,40 @@ export async function deliverPlayerAddInvite(
   return !error;
 }
 
+type PlayerAddKey = { actor_id: string; event_id: string; request_id: string };
+
+/** Other adds of the same email that were left waiting on this one (see settle_match_player_add). */
+function parseWaitingAdds(value: unknown): PlayerAddKey[] {
+  const waiting =
+    typeof value === 'object' && value !== null ? Reflect.get(value, 'waiting') : undefined;
+  if (!Array.isArray(waiting)) return [];
+  const keys: PlayerAddKey[] = [];
+  for (const entry of waiting) {
+    const row = typeof entry === 'object' && entry !== null ? entry : {};
+    const actorId = Reflect.get(row, 'actor_id');
+    const eventId = Reflect.get(row, 'match_event_id');
+    const requestId = Reflect.get(row, 'request_id');
+    if (text(actorId) && text(eventId) && text(requestId))
+      keys.push({ actor_id: actorId, event_id: eventId, request_id: requestId });
+  }
+  return keys;
+}
+
 /**
  * Runs after add_match_player accepted the request for this actor. The actor
  * comes from verified claims; SQL re-checks authorization when it completes.
+ *
+ * The answer never depends on what the email resolved to, including when the
+ * invitation could not be delivered: registered, provisional and unknown
+ * addresses all answer ok. An undelivered invitation stays in the ledger
+ * (dispatch_state 'failed', recipient slot released) and the same request id
+ * re-delivers it. Only infrastructure failures of the dispatch/settle calls
+ * themselves surface as errors.
  */
 export async function deliverMatchPlayerAdd(
   admin: AdminClient,
-  input: { actor_id: string; event_id: string; request_id: string; origin: string }
+  input: PlayerAddKey & { origin: string },
+  options: { redriveWaiting?: boolean } = {}
 ): Promise<AddMatchPlayerResult> {
   const key = {
     p_actor_id: input.actor_id,
@@ -117,10 +144,16 @@ export async function deliverMatchPlayerAdd(
   });
   const settled = await admin.rpc('settle_match_player_add', { ...key, p_delivered: delivered });
   if (settled.error) return addMatchPlayerError(settled.error);
-  // A failed create leaves no identity; the same request id retries safely.
-  const completed =
-    typeof settled.data === 'object' &&
-    settled.data !== null &&
-    Reflect.get(settled.data, 'completed') === true;
-  return completed ? ADD_MATCH_PLAYER_OK : { status: 'error', code: 'unavailable' };
+  // Adds that waited on this one never get a later chance on their own: a failed create
+  // releases the capability and a bridge that skipped a locked event completes nobody.
+  // Re-drive each once (best effort; they answered their own callers already).
+  if (options.redriveWaiting !== false) {
+    for (const waiting of parseWaitingAdds(settled.data))
+      await deliverMatchPlayerAdd(
+        admin,
+        { ...waiting, origin: input.origin },
+        { redriveWaiting: false }
+      );
+  }
+  return ADD_MATCH_PLAYER_OK;
 }

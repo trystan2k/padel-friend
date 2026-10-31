@@ -7,6 +7,8 @@ import { StepBadge } from '../../components/ui/StepBadge';
 import { SurfaceCard } from '../../components/ui/SurfaceCard';
 import { TextField } from '../../components/ui/TextField';
 import { stripEdgeWhitespace } from '../../lib/edge-whitespace';
+import { getBrowserClient } from '../../lib/supabase/client';
+import { ClaimPasswordStep } from './ClaimPasswordStep';
 import { claimProvisionalPlayer, onboardPlayer } from './player.functions';
 import { INITIAL_RELIABILITY_PERCENT, LEVEL_STEP, MAX_LEVEL, MIN_LEVEL } from './rating-config';
 import { validateInitialLevel, type PreferredSide } from './player.validators';
@@ -14,7 +16,19 @@ import type { ProvisionalClaim } from './provisional-claim';
 import { ui } from './player-ui.styles';
 import { normalizeReturnPath, optionalReturnPath } from '../auth/return-path';
 
+const NAME_MAX_CODE_POINTS = 80;
+
 type ReadyClaim = Extract<ProvisionalClaim, { state: 'ready' }>;
+
+/** True when a non-email (provider) identity survived the claim, i.e. another way to sign in exists. */
+async function hasProviderIdentity() {
+  try {
+    const { data } = await getBrowserClient().auth.getUserIdentities();
+    return Boolean(data?.identities.some((identity) => identity.provider !== 'email'));
+  } catch {
+    return false;
+  }
+}
 
 /**
  * Profile setup for a new account, or the verified claim of a provisional
@@ -41,6 +55,7 @@ export function PlayerOnboarding({
   const [errors, setErrors] = useState<Partial<Record<'name' | 'side' | 'level', string>>>({});
   const [failed, setFailed] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [passwordStep, setPasswordStep] = useState<{ canSkip: boolean } | null>(null);
   const selectedLevel = Number(level);
   const sliderLevel = Number.isFinite(selectedLevel)
     ? Math.min(MAX_LEVEL, Math.max(MIN_LEVEL, selectedLevel))
@@ -51,11 +66,23 @@ export function PlayerOnboarding({
       maximumFractionDigits: 1
     }).format(value);
 
+  // Validation counts code points; an HTML maxLength counts UTF-16 units, so the limit is checked here.
+  function changeName(value: string) {
+    setName(value);
+    setErrors((current) => ({
+      ...current,
+      name:
+        Array.from(stripEdgeWhitespace(value)).length > NAME_MAX_CODE_POINTS
+          ? 'onboarding.validationName'
+          : undefined
+    }));
+  }
+
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const nextErrors: typeof errors = {};
     const normalizedName = stripEdgeWhitespace(name);
-    if (!normalizedName || Array.from(normalizedName).length > 80)
+    if (!normalizedName || Array.from(normalizedName).length > NAME_MAX_CODE_POINTS)
       nextErrors.name = 'onboarding.validationName';
     if (!side) nextErrors.side = 'onboarding.validationSide';
     let initialLevel: number | undefined;
@@ -82,13 +109,14 @@ export function PlayerOnboarding({
       };
       if (claim) await claimProvisionalPlayer({ data: profile });
       else await onboardPlayer({ data: profile });
-      navigating = true;
       if (claim) {
-        // The claimant already belongs to the community that added them: go straight
-        // to the destination the invitation carried.
-        window.location.assign(normalizeReturnPath(returnPath));
+        // The claim reset the password, so ask for a new one before leaving. A verified
+        // provider identity survives the claim and lets the claimant skip that step.
+        setSaving(false);
+        setPasswordStep({ canSkip: await hasProviderIdentity() });
         return;
       }
+      navigating = true;
       const search = new URLSearchParams(optionalReturnPath(returnPath)).toString();
       const target = `/onboarding/community${search ? `?${search}` : ''}`;
       window.location.assign(target);
@@ -116,9 +144,23 @@ export function PlayerOnboarding({
     }
   }
 
+  if (passwordStep)
+    return (
+      <ClaimPasswordStep
+        canSkip={passwordStep.canSkip}
+        onDone={() => window.location.assign(normalizeReturnPath(returnPath))}
+        onSessionLost={() => window.location.assign('/login?expired=1')}
+      />
+    );
+
   return (
     <main {...stylex.props(ui.page, ui.onboardingPage)}>
       <div {...stylex.props(ui.topContent)}>
+        {claim && claim.matchCount > 0 && (
+          <p {...stylex.props(ui.claimNotice)}>
+            {t('auth.claim.invitedNotice', { count: claim.matchCount })}
+          </p>
+        )}
         <StepBadge>{t(claim ? 'auth.claim.step' : 'onboarding.step')}</StepBadge>
         <header {...stylex.props(ui.header)}>
           <h1 {...stylex.props(ui.title)}>{t(claim ? 'auth.claim.title' : 'onboarding.title')}</h1>
@@ -144,9 +186,8 @@ export function PlayerOnboarding({
           label={t('onboarding.name')}
           ref={nameRef}
           value={name}
-          onChange={(event) => setName(event.target.value)}
+          onChange={(event) => changeName(event.target.value)}
           required
-          maxLength={80}
           error={errors.name ? t(errors.name) : undefined}
         />
         <SurfaceCard xstyle={ui.onboardingCard}>

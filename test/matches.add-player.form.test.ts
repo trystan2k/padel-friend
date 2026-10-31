@@ -73,6 +73,8 @@ describe('add-player client validation', () => {
   it('bounds name length at 80 code points and rejects malformed emails', () => {
     expect(validateAddPlayerForm({ ...valid, name: 'x'.repeat(80) }).ok).toBe(true);
     expect(validateAddPlayerForm({ ...valid, name: 'x'.repeat(81) }).ok).toBe(false);
+    expect(validateAddPlayerForm({ ...valid, name: '😀'.repeat(80) }).ok).toBe(true);
+    expect(validateAddPlayerForm({ ...valid, name: '😀'.repeat(81) }).ok).toBe(false);
     for (const email of ['', 'a@b', '@b.co', 'a b@c.co', `${'a'.repeat(250)}@b.co`])
       expect(validateAddPlayerForm({ ...valid, email }).ok).toBe(false);
   });

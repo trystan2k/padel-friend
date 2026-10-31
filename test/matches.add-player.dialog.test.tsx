@@ -173,6 +173,25 @@ describe('add player dialog', () => {
     expect(mocks.add).not.toHaveBeenCalled();
   });
 
+  it('counts the name limit in code points, not UTF-16 units', async () => {
+    mocks.add.mockResolvedValue({ status: 'ok' });
+    mount();
+    await openDialog();
+    await fillValid();
+    const name = screen.getByLabelText<HTMLInputElement>(en.matches.addPlayer.nameLabel);
+    fireEvent.change(name, { target: { value: '😀'.repeat(81) } });
+    expect(screen.getByText(en.matches.addPlayer.validation.name)).toBeTruthy();
+    await submit();
+    expect(mocks.add).not.toHaveBeenCalled();
+    // 80 emoji are 160 UTF-16 units: accepted, never truncated.
+    fireEvent.change(name, { target: { value: '😀'.repeat(80) } });
+    expect(screen.queryByText(en.matches.addPlayer.validation.name)).toBeNull();
+    expect(name.value).toBe('😀'.repeat(80));
+    await submit();
+    await waitFor(() => expect(mocks.add).toHaveBeenCalledTimes(1));
+    expect(sentData(0).display_name).toBe('😀'.repeat(80));
+  });
+
   it('sends normalized input, closes on the uniform success and refreshes projections', async () => {
     mocks.add.mockResolvedValue({ status: 'ok' });
     mount();

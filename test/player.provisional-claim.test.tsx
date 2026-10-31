@@ -1,5 +1,5 @@
 /** @vitest-environment jsdom */
-import { cleanup, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { I18nextProvider } from 'react-i18next';
@@ -14,6 +14,8 @@ const mocks = vi.hoisted(() => ({
   claim: vi.fn<(input: { data: Record<string, unknown> }) => Promise<void>>(),
   onboard: vi.fn<(input: { data: Record<string, unknown> }) => Promise<void>>(),
   signOut: vi.fn<() => Promise<{ error: unknown }>>(),
+  updateUser: vi.fn<(attrs: { password: string }) => Promise<{ error: unknown }>>(),
+  identities: vi.fn<() => Promise<{ data: { identities: { provider: string }[] } | null }>>(),
   assign: vi.fn<(url: string) => void>(),
   reload: vi.fn<() => void>()
 }));
@@ -22,10 +24,21 @@ vi.mock('../src/features/player/player.functions', () => ({
   onboardPlayer: mocks.onboard
 }));
 vi.mock('../src/lib/supabase/client', () => ({
-  getBrowserClient: () => ({ auth: { signOut: mocks.signOut } })
+  getBrowserClient: () => ({
+    auth: {
+      signOut: mocks.signOut,
+      updateUser: mocks.updateUser,
+      getUserIdentities: mocks.identities
+    }
+  })
 }));
 
-const READY = { state: 'ready', displayName: 'Marta Provisional', initialLevel: 3.5 } as const;
+const READY = {
+  state: 'ready',
+  displayName: 'Marta Provisional',
+  initialLevel: 3.5,
+  matchCount: 2
+} as const;
 const t = en.auth.claim;
 
 function mount(claim: { canEditLevel: boolean }, next?: string) {
@@ -45,6 +58,8 @@ beforeEach(() => {
   for (const mock of Object.values(mocks)) mock.mockReset();
   mocks.claim.mockResolvedValue();
   mocks.signOut.mockResolvedValue({ error: null });
+  mocks.updateUser.mockResolvedValue({ error: null });
+  mocks.identities.mockResolvedValue({ data: { identities: [{ provider: 'email' }] } });
   Object.defineProperty(window, 'location', {
     configurable: true,
     value: { assign: mocks.assign, reload: mocks.reload }
@@ -80,11 +95,61 @@ describe('claim onboarding', () => {
     expect(mocks.claim).not.toHaveBeenCalled();
   });
 
-  it('claims through the claim function only and continues to the carried destination', async () => {
+  it('counts the name limit in code points: 80 emoji accepted, 81 rejected without submitting', async () => {
+    mount({ canEditLevel: true });
+    const input = screen.getByLabelText<HTMLInputElement>(en.onboarding.name);
+    fireEvent.change(input, { target: { value: '🎾'.repeat(80) } });
+    expect(screen.queryByText(en.onboarding.validationName)).toBeNull();
+    expect(input.getAttribute('aria-invalid')).not.toBe('true');
+    await pickSide();
+    fireEvent.change(input, { target: { value: '🎾'.repeat(81) } });
+    expect(screen.getByText(en.onboarding.validationName)).toBeTruthy();
+    expect(input.getAttribute('aria-invalid')).toBe('true');
+    await userEvent.click(screen.getByRole('button', { name: new RegExp(t.submit) }));
+    expect(screen.getByText(en.onboarding.validationName)).toBeTruthy();
+    expect(mocks.claim).not.toHaveBeenCalled();
+    fireEvent.change(input, { target: { value: '🎾'.repeat(80) } });
+    await userEvent.click(screen.getByRole('button', { name: new RegExp(t.submit) }));
+    expect(mocks.claim).toHaveBeenCalledTimes(1);
+  });
+
+  it('shows the localized invited-match notice above the step badge, singular and plural', () => {
+    const view = mount({ canEditLevel: true });
+    const notice = screen.getByText('You were invited to 2 matches.');
+    expect(notice.compareDocumentPosition(screen.getByText(t.step))).toBe(
+      Node.DOCUMENT_POSITION_FOLLOWING
+    );
+    view.unmount();
+    render(
+      <I18nextProvider i18n={createI18n('en')}>
+        <PlayerOnboarding claim={{ ...READY, canEditLevel: true, matchCount: 1 }} />
+      </I18nextProvider>
+    );
+    expect(screen.getByText('You were invited to 1 match.')).toBeTruthy();
+    cleanup();
+    render(
+      <I18nextProvider i18n={createI18n('es')}>
+        <PlayerOnboarding claim={{ ...READY, canEditLevel: true, matchCount: 3 }} />
+      </I18nextProvider>
+    );
+    expect(screen.getByText('Te invitaron a 3 partidos.')).toBeTruthy();
+  });
+
+  it('claims through the claim function only, then sets a password before continuing', async () => {
     mount({ canEditLevel: true }, '/matches/e1');
     await pickSide();
     await userEvent.click(screen.getByRole('button', { name: new RegExp(t.submit) }));
+    expect(await screen.findByRole('heading', { level: 1, name: t.passwordTitle })).toBeTruthy();
+    expect(mocks.assign).not.toHaveBeenCalled();
+    expect(screen.queryByRole('button', { name: t.passwordSkip })).toBeNull();
+    await userEvent.type(screen.getByLabelText(en.auth.resetNewPasswordLabel), 'new-password-1');
+    await userEvent.type(
+      screen.getByLabelText(en.auth.resetConfirmPasswordLabel),
+      'new-password-1'
+    );
+    await userEvent.click(screen.getByRole('button', { name: en.auth.resetSubmit }));
     await waitFor(() => expect(mocks.assign).toHaveBeenCalledWith('/matches/e1'));
+    expect(mocks.updateUser).toHaveBeenCalledWith({ password: 'new-password-1' });
     expect(mocks.claim).toHaveBeenCalledWith({
       data: {
         display_name: 'Marta Provisional',
@@ -95,6 +160,65 @@ describe('claim onboarding', () => {
       }
     });
     expect(mocks.onboard).not.toHaveBeenCalled();
+  });
+
+  it('lets a claimant with a verified provider identity skip the password', async () => {
+    mocks.identities.mockResolvedValue({
+      data: { identities: [{ provider: 'email' }, { provider: 'google' }] }
+    });
+    mount({ canEditLevel: true }, '/matches/e1');
+    await pickSide();
+    await userEvent.click(screen.getByRole('button', { name: new RegExp(t.submit) }));
+    await userEvent.click(await screen.findByRole('button', { name: t.passwordSkip }));
+    expect(screen.queryByText(t.passwordSkipHelp)).toBeTruthy();
+    expect(mocks.assign).toHaveBeenCalledWith('/matches/e1');
+    expect(mocks.updateUser).not.toHaveBeenCalled();
+  });
+
+  it('validates the password, reports a failed update and allows a retry', async () => {
+    mocks.updateUser.mockResolvedValueOnce({ error: new Error('boom') });
+    mount({ canEditLevel: true });
+    await pickSide();
+    await userEvent.click(screen.getByRole('button', { name: new RegExp(t.submit) }));
+    const password = await screen.findByLabelText(en.auth.resetNewPasswordLabel);
+    const confirmation = screen.getByLabelText(en.auth.resetConfirmPasswordLabel);
+    const submit = screen.getByRole('button', { name: en.auth.resetSubmit });
+    await userEvent.type(password, 'short');
+    await userEvent.click(submit);
+    expect(screen.getByText(en.auth.resetInvalid)).toBeTruthy();
+    await userEvent.clear(password);
+    await userEvent.type(password, 'new-password-1');
+    await userEvent.type(confirmation, 'different-1');
+    await userEvent.click(submit);
+    expect(screen.getByText(en.auth.resetMismatch)).toBeTruthy();
+    expect(mocks.updateUser).not.toHaveBeenCalled();
+    await userEvent.clear(confirmation);
+    await userEvent.type(confirmation, 'new-password-1');
+    await userEvent.click(submit);
+    expect((await screen.findByRole('alert')).textContent).toBe(en.auth.resetFailed);
+    expect(mocks.assign).not.toHaveBeenCalled();
+    await userEvent.click(submit);
+    await waitFor(() => expect(mocks.assign).toHaveBeenCalledWith('/dashboard'));
+    expect(mocks.updateUser).toHaveBeenCalledTimes(2);
+  });
+
+  it('routes to login with the expired-session message when the session is gone', async () => {
+    mocks.updateUser.mockResolvedValueOnce({
+      error: Object.assign(new Error('missing'), { name: 'AuthSessionMissingError' })
+    });
+    mount({ canEditLevel: true });
+    await pickSide();
+    await userEvent.click(screen.getByRole('button', { name: new RegExp(t.submit) }));
+    await userEvent.type(
+      await screen.findByLabelText(en.auth.resetNewPasswordLabel),
+      'new-password-1'
+    );
+    await userEvent.type(
+      screen.getByLabelText(en.auth.resetConfirmPasswordLabel),
+      'new-password-1'
+    );
+    await userEvent.click(screen.getByRole('button', { name: en.auth.resetSubmit }));
+    await waitFor(() => expect(mocks.assign).toHaveBeenCalledWith('/login?expired=1'));
   });
 
   it('continues when the identity was already claimed and reloads when verification was lost', async () => {

@@ -1,10 +1,12 @@
 import { createClient } from '@supabase/supabase-js';
 import { describe, expect, it } from 'vitest';
 import type { Database } from '../src/lib/supabase/database.types';
+import { deliverMatchPlayerAdd } from '../src/features/matches/match-add-player.server';
 import {
   addPlayer,
   addPlayerArgs,
   authUsersByEmail,
+  failingInviteAdmin,
   localAdminClient,
   mailCount,
   operation,
@@ -21,7 +23,8 @@ import {
   insertFixtureCommunity,
   insertFixtureEvent,
   provisionProvisionalPlayer,
-  signUpFixtureActor
+  signUpFixtureActor,
+  sqlText
 } from './helpers/provisional-player-fixtures';
 import { executeTrustedSql, queryTrustedSql } from './helpers/sql-transport';
 
@@ -433,15 +436,14 @@ describe('add match player by name and email', () => {
       );
       expect(accepted.error).toBeNull();
       await patchFixtureEvent(eventId, `registration_cutoff_at = now() - interval '1 minute'`);
-      const { deliverMatchPlayerAdd } =
-        await import('../src/features/matches/match-add-player.server');
       const delivered = await deliverMatchPlayerAdd(localAdminClient(env), {
         actor_id: owner.id,
         event_id: eventId,
         request_id: requestId,
         origin: INVITE_ORIGIN
       });
-      expect(delivered).toEqual({ status: 'error', code: 'unavailable' });
+      // A failed delivery answers like every other add; the ledger keeps the retry state.
+      expect(delivered).toEqual({ status: 'ok' });
       expect(await authUsersByEmail(late)).toEqual([]);
       expect(await authUsersByEmail(full)).toEqual([]);
       expect(await mailCount(late)).toBe(0);
@@ -474,6 +476,61 @@ describe('add match player by name and email', () => {
         })
       );
       expect(cancelled.error?.message).toBe('MATCH_MANAGEMENT_CANCELLED');
+    }
+  );
+
+  it.skipIf(!environment.env)(
+    'answers a failed invitation delivery identically for registered, provisional and unknown emails',
+    async () => {
+      const { env, owner, member, eventId } = await scenario();
+      const provisionalEmail = uniqueEmail('fail-provisional');
+      const created = await addPlayer(env, owner, {
+        eventId,
+        displayName: 'Fail Provisional',
+        email: provisionalEmail,
+        level: 3
+      });
+      expect(created.result).toEqual({ status: 'ok' });
+      // Free the per-recipient slot so the resend actually reaches the failing mail seam.
+      await executeTrustedSql(
+        `delete from public.match_player_add_recipient_sends where operation_id in
+           (select id from public.match_player_add_operations where email = ${sqlText(provisionalEmail)})`
+      );
+
+      const failing = failingInviteAdmin(env);
+      const requests = [member.email, provisionalEmail, uniqueEmail('fail-unknown')].map((email) =>
+        addPlayerArgs({ eventId, displayName: 'Fail Add', email, level: 3 })
+      );
+      const responses: string[] = [];
+      for (const args of requests) {
+        expect((await owner.client.rpc('add_match_player', args)).error).toBeNull();
+        responses.push(
+          JSON.stringify(
+            await deliverMatchPlayerAdd(failing, {
+              actor_id: owner.id,
+              event_id: eventId,
+              request_id: args.p_request_id,
+              origin: INVITE_ORIGIN
+            })
+          )
+        );
+      }
+      expect(responses).toEqual(Array.from({ length: 3 }, () => '{"status":"ok"}'));
+      // The delivery really failed for the two branches that send, and stays retryable.
+      expect(await operation(owner.id, eventId, requests[0]!.p_request_id)).toMatchObject({
+        branch: 'registered',
+        dispatch_state: 'none'
+      });
+      expect(await operation(owner.id, eventId, requests[1]!.p_request_id)).toMatchObject({
+        state: 'completed',
+        branch: 'provisional',
+        dispatch_state: 'failed'
+      });
+      expect(await operation(owner.id, eventId, requests[2]!.p_request_id)).toMatchObject({
+        state: 'awaiting_identity',
+        dispatch_state: 'failed'
+      });
+      expect(await mailCount(requests[2]!.p_email)).toBe(0);
     }
   );
 

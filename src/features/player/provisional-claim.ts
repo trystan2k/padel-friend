@@ -1,6 +1,12 @@
 export type ProvisionalClaim =
   | { state: 'unverified' }
-  | { state: 'ready'; displayName: string; initialLevel: number; canEditLevel: boolean };
+  | {
+      state: 'ready';
+      displayName: string;
+      initialLevel: number;
+      canEditLevel: boolean;
+      matchCount: number;
+    };
 
 /**
  * Parses get_provisional_claim_context. 'none' (not a provisional player) maps to
@@ -15,13 +21,15 @@ export function parseProvisionalClaim(value: unknown): ProvisionalClaim | null {
     row.state === 'ready' &&
     typeof row.display_name === 'string' &&
     typeof row.initial_level === 'number' &&
-    typeof row.can_edit_level === 'boolean'
+    typeof row.can_edit_level === 'boolean' &&
+    typeof row.match_count === 'number'
   )
     return {
       state: 'ready',
       displayName: row.display_name,
       initialLevel: row.initial_level,
-      canEditLevel: row.can_edit_level
+      canEditLevel: row.can_edit_level,
+      matchCount: row.match_count
     };
   return null;
 }

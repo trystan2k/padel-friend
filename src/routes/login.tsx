@@ -6,9 +6,10 @@ import { getOnboardingStatus } from '../features/player/player.functions';
 export const Route = createFileRoute('/login')({
   validateSearch: (
     search: Record<string, unknown>
-  ): { next?: string; authError?: boolean; reset?: 'sent' } => ({
+  ): { next?: string; authError?: boolean; expired?: boolean; reset?: 'sent' } => ({
     ...(search.next !== undefined ? { next: normalizeReturnPath(search.next) } : {}),
     ...(search.authError === '1' ? { authError: true } : {}),
+    ...(search.expired === '1' ? { expired: true } : {}),
     ...(search.reset === 'sent' ? { reset: 'sent' } : {})
   }),
   beforeLoad: async ({ search }) => {
@@ -22,6 +23,13 @@ export const Route = createFileRoute('/login')({
 });
 
 function Login() {
-  const { next, authError, reset } = Route.useSearch();
-  return <LoginWelcome next={next} authError={authError} resetSent={reset === 'sent'} />;
+  const { next, authError, expired, reset } = Route.useSearch();
+  return (
+    <LoginWelcome
+      next={next}
+      authError={authError}
+      expired={expired}
+      resetSent={reset === 'sent'}
+    />
+  );
 }

@@ -98,7 +98,13 @@
       "verifyOptionsTitle": "Open your invitation email",
       "verifyOptions": "Use the link in the invitation email, sign in with Google using the same address, or get a new link by email.",
       "verifyAction": "EMAIL ME A LINK",
-      "verifyFailed": "Couldn't start verification. Try again."
+      "verifyFailed": "Couldn't start verification. Try again.",
+      "invitedNotice_one": "You were invited to {{count}} match.",
+      "invitedNotice_other": "You were invited to {{count}} matches.",
+      "passwordTitle": "Choose a password",
+      "passwordSubtitle": "Your profile is claimed. Set a password so you can sign in with your email next time.",
+      "passwordSkipHelp": "You can already sign in with your linked account. A password is optional.",
+      "passwordSkip": "SKIP FOR NOW"
     },
     "welcomeBrand": "PADEL FRIENDS",
     "welcomeTitle": "Welcome",
@@ -613,7 +619,7 @@
       "success": "{{name}} was added and invited.",
       "offline": "You're offline. Reconnect to add a player.",
       "validation": {
-        "name": "Enter a name.",
+        "name": "Enter a name of up to 80 characters.",
         "email": "Enter a valid email address",
         "level": "Choose an estimated level."
       },

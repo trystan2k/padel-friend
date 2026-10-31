@@ -1829,6 +1829,7 @@ export type Database = {
           status: Database["public"]["Enums"]["community_membership_status"]
         }[]
       }
+      actor_session_revoked: { Args: Record<PropertyKey, never>; Returns: boolean }
       add_match_player: {
         Args: {
           p_display_name: string

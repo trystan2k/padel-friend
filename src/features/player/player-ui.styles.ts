@@ -352,6 +352,15 @@ export const ui = stylex.create({
   },
   muted: { color: 'var(--color-muted)', fontSize: 'var(--font-size-12)', margin: 0 },
   error: { color: 'var(--color-red)', fontSize: 'var(--font-size-12)', margin: 0 },
+  claimNotice: {
+    margin: 0,
+    padding: 'var(--space-12)',
+    borderRadius: 'var(--radius-12)',
+    backgroundColor: 'var(--color-green-soft)',
+    color: 'var(--color-green)',
+    fontSize: 'var(--font-size-13)',
+    fontWeight: 'var(--font-weight-bold)'
+  },
   identity: { display: 'flex', alignItems: 'center', gap: 'var(--space-12)' },
   avatar: {
     width: 'calc(var(--space-40) + var(--space-16))',

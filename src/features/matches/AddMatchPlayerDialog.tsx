@@ -3,6 +3,7 @@ import * as stylex from '@stylexjs/stylex';
 import { useId, useRef, useState, type FormEvent, type RefObject } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '../../components/ui/Button';
+import { stripEdgeWhitespace } from '../../lib/edge-whitespace';
 import { TextField } from '../../components/ui/TextField';
 import { LEVEL_STEP, MAX_LEVEL, MIN_LEVEL } from '../player/rating-config';
 import { ui } from '../player/player-ui.styles';
@@ -14,6 +15,8 @@ import {
 } from './match-add-player-form';
 import { addPlayerStyles as s } from './match-add-player.styles';
 import { matchManagementStyles as management } from './match-management.styles';
+
+const NAME_MAX_CODE_POINTS = 80;
 
 function AddMatchPlayerForm({
   pending,
@@ -50,6 +53,18 @@ function AddMatchPlayerForm({
     setErrors((current) => ({ ...current, level: undefined }));
   }
 
+  // Validator counts code points; an HTML maxLength counts UTF-16 units, so the limit is checked here.
+  function changeName(value: string) {
+    setName(value);
+    setErrors((current) => ({
+      ...current,
+      name:
+        Array.from(stripEdgeWhitespace(value)).length > NAME_MAX_CODE_POINTS
+          ? 'matches.addPlayer.validation.name'
+          : undefined
+    }));
+  }
+
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (pending) return;
@@ -73,10 +88,9 @@ function AddMatchPlayerForm({
         placeholder={t('matches.addPlayer.namePlaceholder')}
         autoComplete="off"
         required
-        maxLength={80}
         disabled={pending}
         value={name}
-        onChange={(event) => setName(event.target.value)}
+        onChange={(event) => changeName(event.target.value)}
         error={errors.name ? t(errors.name) : undefined}
       />
       <TextField

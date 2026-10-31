@@ -155,14 +155,26 @@ describe('getOnboardingStatus', () => {
 
   it('exposes the verified claim prefill and the unverified state of a provisional session', async () => {
     const ready = clientWith({ sub: 'sub-1' }, null, null, {
-      data: { state: 'ready', display_name: 'Marta', initial_level: 3.5, can_edit_level: true },
+      data: {
+        state: 'ready',
+        display_name: 'Marta',
+        initial_level: 3.5,
+        can_edit_level: true,
+        match_count: 2
+      },
       error: null
     });
     supabaseServer.getServerClient.mockReturnValue(ready);
     await expect(getOnboardingStatus()).resolves.toEqual({
       authenticated: true,
       complete: false,
-      claim: { state: 'ready', displayName: 'Marta', initialLevel: 3.5, canEditLevel: true }
+      claim: {
+        state: 'ready',
+        displayName: 'Marta',
+        initialLevel: 3.5,
+        canEditLevel: true,
+        matchCount: 2
+      }
     });
     expect(ready.rpc).toHaveBeenCalledWith('get_provisional_claim_context');
 

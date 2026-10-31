@@ -5,6 +5,7 @@ import {
   authUsersByEmail,
   localAdminClient,
   mailCount,
+  operation,
   patchFixtureEvent,
   uniqueEmail,
   INVITE_ORIGIN
@@ -22,7 +23,7 @@ import {
 } from './helpers/provisional-player-fixtures';
 import { queryTrustedSql } from './helpers/sql-transport';
 import { deliverMatchPlayerAdd } from '../src/features/matches/match-add-player.server';
-import { createClient } from '@supabase/supabase-js';
+import { AuthApiError, createClient } from '@supabase/supabase-js';
 
 const environment = localSupabaseEnv({ filePath: dotEnvPathFromImportMetaUrl(import.meta.url) });
 
@@ -140,6 +141,73 @@ describe('concurrent match player adds', () => {
       const users = (await Promise.all(emails.map(authUsersByEmail))).flat();
       expect(users).toHaveLength(1);
       expect((await Promise.all(emails.map(mailCount))).reduce((a, b) => a + b, 0)).toBe(1);
+    }
+  );
+
+  it.skipIf(!environment.env)(
+    'completes an add that waited on a creator whose delivery failed',
+    async () => {
+      const { env, admin, owner } = await actors();
+      const eventId = await event(admin, owner);
+      const email = uniqueEmail('race-fail');
+
+      // The first add holds the creation capability while its Auth invite is in flight.
+      let reached!: () => void;
+      const inFlight = new Promise<void>((resolve) => (reached = resolve));
+      let release!: () => void;
+      const released = new Promise<void>((resolve) => (release = resolve));
+      const holder = localAdminClient(env);
+      const realInvite = holder.auth.admin.inviteUserByEmail.bind(holder.auth.admin);
+      let calls = 0;
+      holder.auth.admin.inviteUserByEmail = async (...args) => {
+        if (calls++ > 0) return realInvite(...args);
+        reached();
+        await released;
+        return {
+          data: { user: null },
+          error: new AuthApiError('smtp down', 500, 'unexpected_failure')
+        };
+      };
+      const first = addPlayerArgs({ eventId, displayName: 'Holder', email, level: 3 });
+      expect((await owner.client.rpc('add_match_player', first)).error).toBeNull();
+      const holding = deliverMatchPlayerAdd(holder, {
+        actor_id: owner.id,
+        event_id: eventId,
+        request_id: first.p_request_id,
+        origin: INVITE_ORIGIN
+      });
+      await inFlight;
+
+      // The concurrent add is accepted but cannot create the identity while the holder runs.
+      const waiter = await addPlayer(env, admin, {
+        eventId,
+        displayName: 'Waiter',
+        email,
+        level: 3
+      });
+      expect(waiter.result).toEqual({ status: 'ok' });
+      const waiterRequest = String(Reflect.get(Object(waiter.command), 'request_id'));
+      expect(await operation(admin.id, eventId, waiterRequest)).toMatchObject({
+        state: 'awaiting_identity'
+      });
+      expect(await authUsersByEmail(email)).toEqual([]);
+
+      // The holder fails; settling re-drives the waiter, so it is not stranded.
+      release();
+      expect(await holding).toEqual({ status: 'ok' });
+      expect(await counts(email, [eventId])).toEqual({
+        users: 1,
+        profiles: 1,
+        accepted: 1,
+        mails: 1
+      });
+      expect(await operation(admin.id, eventId, waiterRequest)).toMatchObject({
+        state: 'completed',
+        branch: 'new'
+      });
+      expect(await operation(owner.id, eventId, first.p_request_id)).toMatchObject({
+        state: 'completed'
+      });
     }
   );
 

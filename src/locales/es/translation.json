@@ -98,7 +98,13 @@
       "verifyOptionsTitle": "Abre el correo de invitación",
       "verifyOptions": "Usa el enlace del correo de invitación, inicia sesión con Google con la misma dirección o recibe un nuevo enlace por correo.",
       "verifyAction": "ENVIARME UN ENLACE",
-      "verifyFailed": "No se pudo iniciar la verificación. Inténtalo de nuevo."
+      "verifyFailed": "No se pudo iniciar la verificación. Inténtalo de nuevo.",
+      "invitedNotice_one": "Te invitaron a {{count}} partido.",
+      "invitedNotice_other": "Te invitaron a {{count}} partidos.",
+      "passwordTitle": "Elige una contraseña",
+      "passwordSubtitle": "Tu perfil está reclamado. Define una contraseña para entrar con tu correo la próxima vez.",
+      "passwordSkipHelp": "Ya puedes entrar con tu cuenta vinculada. La contraseña es opcional.",
+      "passwordSkip": "OMITIR POR AHORA"
     },
     "welcomeBrand": "PADEL FRIENDS",
     "welcomeTitle": "Bienvenido/a",
@@ -613,7 +619,7 @@
       "success": "{{name}} se añadió y recibió una invitación.",
       "offline": "Estás sin conexión. Vuelve a conectarte para añadir un jugador.",
       "validation": {
-        "name": "Introduce un nombre.",
+        "name": "Introduce un nombre de hasta 80 caracteres.",
         "email": "Introduce un correo electrónico válido",
         "level": "Elige un nivel estimado."
       },

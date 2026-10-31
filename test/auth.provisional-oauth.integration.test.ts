@@ -104,6 +104,41 @@ describe('provisional claim via an OAuth provider', () => {
     ]);
   });
 
+  it('does not let an unverified provider session ride on another verified identity', async (context) => {
+    if (!environment.env || !reachable) {
+      context.skip();
+      return;
+    }
+    const scenario = await claimScenario(environment.env, 'oauth-bound');
+    const player = await addInvitedPlayer(scenario, {
+      displayName: 'Oauth Bianca',
+      level: 3,
+      label: 'oauth-bound'
+    });
+    // A verified provider identity already sits on the account ...
+    const verified = await provider!.signIn(environment.env, {
+      sub: crypto.randomUUID(),
+      email: player.email,
+      emailVerified: true
+    });
+    expect(verified.session?.user.id).toBe(player.id);
+    // ... and an unverified identity of the same provider signs in afterwards.
+    const squatter = await provider!.signIn(environment.env, {
+      sub: crypto.randomUUID(),
+      email: player.email,
+      emailVerified: false
+    });
+    expect(squatter.session?.user.id).toBe(player.id);
+    const client = sessionClient(environment.env, squatter.session!);
+    expect((await client.rpc('get_provisional_claim_context')).data).toEqual({
+      state: 'unverified'
+    });
+    expect((await client.rpc('claim_provisional_player', CLAIM_PROFILE)).error?.message).toBe(
+      'PROVISIONAL_CLAIM_EMAIL_NOT_VERIFIED'
+    );
+    expect((await profileState(player.id))?.is_provisional).toBe(true);
+  });
+
   it('never claims on an unverified provider email or a different address', async (context) => {
     if (!environment.env || !reachable) {
       context.skip();
