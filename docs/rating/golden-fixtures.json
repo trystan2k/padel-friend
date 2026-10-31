@@ -2,9 +2,9 @@
   "$comment": "Golden oracle for the V1 global rating (PAF-9). Normative companion: docs/rating/v1-calibration.md. Consumed unchanged by T10 (PAF-10) regression tests.",
   "fixture_format_version": "1",
   "approval": {
-    "status": "parameters approved by product owner (HITL, PAF-9 session)",
+    "status": "approved by product owner (HITL; parameters on 2026-10-30, artifact-level fixture review on 2026-10-31)",
     "approved_on": "2026-10-30",
-    "fixture_review": "pending product-owner review of this file"
+    "fixture_review": "approved — product owner signed off this file and docs/rating/v1-calibration.md on 2026-10-31"
   },
   "model": {
     "name": "team-mean-logistic-reliability-scaled",
