@@ -1,4 +1,24 @@
+import { execFileSync } from 'node:child_process';
 import { defineConfig, devices } from '@playwright/test';
+
+// The add-player server function needs the server-only service-role key. Resolve it
+// once in the main process (workers inherit process.env) from CI's environment or the
+// local stack, never from a committed file.
+function localServiceRoleKey(): string | undefined {
+  if (process.env.SUPABASE_SERVICE_ROLE_KEY) return process.env.SUPABASE_SERVICE_ROLE_KEY;
+  try {
+    const output = execFileSync('pnpm', ['exec', 'supabase', 'status', '-o', 'env'], {
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'ignore']
+    });
+    const key = /^SERVICE_ROLE_KEY="?([^"\n]+)"?$/m.exec(output)?.[1];
+    if (key) process.env.SUPABASE_SERVICE_ROLE_KEY = key;
+    return key;
+  } catch {
+    return undefined;
+  }
+}
+const serviceRoleKey = localServiceRoleKey();
 
 export default defineConfig({
   testDir: './e2e',
@@ -42,6 +62,10 @@ export default defineConfig({
     // Never reuse a running preview: a stale bundle silently fakes failures.
     // `pnpm test:e2e` frees port 4173 before Playwright starts.
     reuseExistingServer: false,
-    timeout: 120000
+    timeout: 120000,
+    // Forward the process env so the Cloudflare preview exposes the binding to server code.
+    env: serviceRoleKey
+      ? { CLOUDFLARE_INCLUDE_PROCESS_ENV: 'true', SUPABASE_SERVICE_ROLE_KEY: serviceRoleKey }
+      : {}
   }
 });

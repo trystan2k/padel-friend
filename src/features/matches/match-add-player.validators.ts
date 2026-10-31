@@ -16,7 +16,7 @@ export type AddMatchPlayerInput = {
 // email (dots/plus tags kept, matching Auth uniqueness), 0-7 level in tenths.
 const EMAIL = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 
-function normalizeEmail(value: unknown): string {
+export function normalizeEmail(value: unknown): string {
   if (typeof value !== 'string') throw new Error('INVALID_MATCH_INPUT');
   const email = stripEdgeWhitespace(value).toLowerCase();
   if (email.length < 3 || email.length > 254 || !EMAIL.test(email))
@@ -24,7 +24,7 @@ function normalizeEmail(value: unknown): string {
   return email;
 }
 
-function displayName(value: unknown): string {
+export function displayName(value: unknown): string {
   if (typeof value !== 'string') throw new Error('INVALID_MATCH_INPUT');
   const name = stripEdgeWhitespace(value);
   const length = Array.from(name).length;
@@ -32,7 +32,7 @@ function displayName(value: unknown): string {
   return name;
 }
 
-function estimatedLevel(value: unknown): number {
+export function estimatedLevel(value: unknown): number {
   try {
     return validateInitialLevel(value);
   } catch {

@@ -147,7 +147,8 @@ export function MatchResultPending({
                             (player) =>
                               (player.display_name ?? t('matches.results.unknownPlayer')).split(
                                 ' '
-                              )[0]
+                              )[0] +
+                              (player.is_provisional ? ` (${t('player.provisional.badge')})` : '')
                           )
                           .join(' + ')}
                       </span>

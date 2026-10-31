@@ -4,7 +4,9 @@ import { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { MatchTransferDialog } from './MatchTransferDialog';
 import { MatchCancelDialog } from './MatchCancelDialog';
+import { AddMatchPlayerDialog } from './AddMatchPlayerDialog';
 import type { MatchEventManagement, ManagementParticipant } from './match-management-model';
+import { useMatchAddPlayer } from './use-match-add-player';
 import { useMatchManagement } from './use-match-management';
 import { matchManagementStyles as s } from './match-management.styles';
 import {
@@ -22,12 +24,17 @@ export function MatchOrganizerActions({
   participants: ManagementParticipant[];
 }) {
   const { t } = useTranslation();
-  const [dialog, setDialog] = useState<'transfer' | 'cancel' | null>(null);
+  const [dialog, setDialog] = useState<'transfer' | 'cancel' | 'add' | null>(null);
   const [version, setVersion] = useState(management.version);
   const trigger = useRef<HTMLButtonElement>(null);
   const controller = useMatchManagement(eventId);
+  const adder = useMatchAddPlayer(eventId);
   const transfer = management.is_organizer && management.actions.transfer.allowed;
   const cancel = management.actions.cancel.allowed;
+  // cancel is allowed only for the current owner or a community admin on a live
+  // event; phase 'open' is the roster-change window (before cutoff). The server
+  // re-checks both, so this only keeps the entry point truthful.
+  const add = cancel && management.phase === 'open';
   const unavailable = managementUnavailableReason(management, controller.unavailable);
   if (unavailable && unavailable !== 'closed')
     return <MatchManagementUnavailable reason={unavailable} focus={!!controller.unavailable} />;
@@ -49,7 +56,7 @@ export function MatchOrganizerActions({
           )}
         </p>
       )}
-      {(transfer || cancel) && (
+      {(transfer || cancel || add) && (
         <Menu.Root>
           <Menu.Trigger
             ref={trigger}
@@ -87,6 +94,28 @@ export function MatchOrganizerActions({
                       <path d="M2 21v-3a8 8 0 0 1 16 0v3M17 3a4 4 0 0 1 0 8M20 14a7 7 0 0 1 2 5v2" />
                     </svg>
                     {t('matches.management.transfer')}
+                  </Menu.Item>
+                )}
+                {add && (
+                  <Menu.Item
+                    {...stylex.props(s.menuItem)}
+                    onClick={() => {
+                      adder.clearFeedback();
+                      setDialog('add');
+                    }}
+                  >
+                    <svg
+                      aria-hidden="true"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="1.5"
+                      {...stylex.props(s.icon)}
+                    >
+                      <circle cx="10" cy="7" r="4" />
+                      <path d="M2 21v-3a8 8 0 0 1 16 0v3M19 8v6M16 11h6" />
+                    </svg>
+                    {t('matches.addPlayer.action')}
                   </Menu.Item>
                 )}
                 {cancel && (
@@ -127,6 +156,7 @@ export function MatchOrganizerActions({
         targets={participants.filter(
           (player) =>
             player.user_id !== management.owner_id &&
+            !player.is_provisional &&
             (player.participation === 'playing' || player.participation === 'reserve')
         )}
         onConfirm={(targetUserId) => controller.manage(version, { targetUserId })}
@@ -141,6 +171,23 @@ export function MatchOrganizerActions({
         returnFocus={trigger}
         onConfirm={(reason) => controller.manage(version, { reason })}
       />
+      {add && (
+        <AddMatchPlayerDialog
+          open={dialog === 'add'}
+          onOpenChange={(value) => {
+            if (!value) setDialog(null);
+          }}
+          pending={adder.pending}
+          feedbackKey={adder.feedback?.kind === 'error' ? adder.feedback.key : null}
+          returnFocus={trigger}
+          onSubmit={adder.add}
+        />
+      )}
+      {dialog !== 'add' && adder.feedback?.kind === 'success' && (
+        <output aria-live="polite" {...stylex.props(s.copy)}>
+          {t('matches.addPlayer.success', { name: adder.feedback.name })}
+        </output>
+      )}
       {!dialog && controller.feedback && (
         <output aria-live="polite">{controller.feedback ? t(controller.feedback) : null}</output>
       )}

@@ -67,6 +67,7 @@ export const matchRegistrationStyles = stylex.create({
   playerHighlight: { backgroundColor: 'var(--color-green-soft)' },
   playerIdentity: { display: 'grid', gap: 'var(--space-2)', flexGrow: 1, minWidth: 0 },
   playerName: { fontWeight: 'var(--font-weight-semibold)' },
+  provisionalSlot: { justifySelf: 'start' },
   initials: {
     display: 'inline-flex',
     alignItems: 'center',

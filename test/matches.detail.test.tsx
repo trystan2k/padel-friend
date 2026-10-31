@@ -140,6 +140,7 @@ describe('match detail surface', () => {
       await userEvent.keyboard('{ArrowDown}');
       expect((await screen.findAllByRole('menuitem')).map((item) => item.textContent)).toEqual([
         i18n.t('matches.management.transfer'),
+        i18n.t('matches.addPlayer.action'),
         i18n.t('matches.management.cancelMatch')
       ]);
       await userEvent.click(

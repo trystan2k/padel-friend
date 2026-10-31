@@ -170,6 +170,12 @@
     "saving": "Guardando…",
     "failed": "No se pudo guardar tu perfil. Inténtalo de nuevo."
   },
+  "player": {
+    "provisional": {
+      "badge": "Provisional",
+      "reviewNote": "Aún sin registrar — no puede revisar resultados"
+    }
+  },
   "profile": {
     "title": "Perfil del jugador",
     "subtitle": "Tu identidad de pádel en toda la aplicación",
@@ -573,6 +579,44 @@
     "offline": "No tienes conexión. Vuelve a conectarte para guardar tus preferencias."
   },
   "matches": {
+    "addPlayer": {
+      "action": "Añadir jugador",
+      "title": "Añadir un jugador",
+      "subtitle": "Todavía no necesita una cuenta.",
+      "nameLabel": "Nombre",
+      "namePlaceholder": "Introduce el nombre",
+      "emailLabel": "Correo electrónico",
+      "emailPlaceholder": "Introduce el correo electrónico",
+      "emailHelper": "Le enviaremos una invitación por correo.",
+      "levelLabel": "Nivel estimado",
+      "levelUnset": "Selecciona un nivel",
+      "levelHelper": "Tu mejor estimación. Podrá ajustarlo al unirse.",
+      "note": "Verá este partido cuando se registre.",
+      "cancel": "Cancelar",
+      "submit": "Añadir jugador",
+      "submitting": "Añadiendo…",
+      "success": "{{name}} se añadió y recibió una invitación.",
+      "offline": "Estás sin conexión. Vuelve a conectarte para añadir un jugador.",
+      "validation": {
+        "name": "Introduce un nombre.",
+        "email": "Introduce un correo electrónico válido",
+        "level": "Elige un nivel estimado."
+      },
+      "errors": {
+        "closed": "No se pueden añadir jugadores después del cierre.",
+        "started": "Este partido ya ha empezado.",
+        "cancelled": "Este partido se canceló.",
+        "resultProtected": "Los resultados ya están registrados, así que no se pueden añadir jugadores.",
+        "full": "Este partido está completo.",
+        "rateLimited": "Demasiadas invitaciones ahora mismo. Inténtalo de nuevo en unos minutos.",
+        "idempotencyConflict": "Esta solicitud ya se usó con otros datos. Revísalos e inténtalo de nuevo.",
+        "notFound": "Este partido no está disponible.",
+        "unauthenticated": "Vuelve a iniciar sesión para añadir un jugador.",
+        "forbidden": "Solo el organizador o un administrador de la comunidad puede añadir jugadores.",
+        "invalid": "Revisa los datos e inténtalo de nuevo.",
+        "unavailable": "No pudimos enviar la invitación. No se cambió nada."
+      }
+    },
     "results": {
       "navigation": "Navegación principal",
       "globalRating": "Solo nivel global",

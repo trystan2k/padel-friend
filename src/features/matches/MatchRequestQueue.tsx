@@ -1,5 +1,6 @@
 import * as stylex from '@stylexjs/stylex';
 import { useState } from 'react';
+import { ProvisionalBadge } from '../../components/ui/ProvisionalBadge';
 import { StatusBadge } from '../../components/ui/StatusBadge';
 import { RosterRow } from '../../components/ui/RosterRow';
 import { useTranslation } from 'react-i18next';
@@ -133,6 +134,7 @@ export function MatchRequestQueue({
             return (
               <li key={request.user_id} {...stylex.props(s.requestCard)}>
                 <RosterRow name={name} appearance="request-header">
+                  {request.is_provisional && <ProvisionalBadge />}
                   {context === 'guest' && (
                     <StatusBadge tone="guest">{t('matchRegistration.queue.typeGuest')}</StatusBadge>
                   )}

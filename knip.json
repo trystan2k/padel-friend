@@ -6,8 +6,7 @@
     ".agents/**",
     ".opencode/plugins/**",
     "scripts/test-populated-migration-up.d.mts",
-    "scripts/check-client-secrets.d.mts",
-    "src/features/matches/match-add-player.functions.ts"
+    "scripts/check-client-secrets.d.mts"
   ],
   "ignoreDependencies": ["@opencode/plugin"],
   "ignoreIssues": {

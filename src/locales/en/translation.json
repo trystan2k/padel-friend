@@ -170,6 +170,12 @@
     "saving": "Saving…",
     "failed": "Couldn't save your player profile. Try again."
   },
+  "player": {
+    "provisional": {
+      "badge": "Provisional",
+      "reviewNote": "Not registered yet — can't review results"
+    }
+  },
   "profile": {
     "title": "Player profile",
     "subtitle": "Your app-wide padel identity",
@@ -573,6 +579,44 @@
     "offline": "You are offline. Reconnect to save your preferences."
   },
   "matches": {
+    "addPlayer": {
+      "action": "Add player",
+      "title": "Add a player",
+      "subtitle": "They don't need an account yet.",
+      "nameLabel": "Name",
+      "namePlaceholder": "Enter name",
+      "emailLabel": "Email",
+      "emailPlaceholder": "Enter email",
+      "emailHelper": "We'll send them an invitation.",
+      "levelLabel": "Estimated level",
+      "levelUnset": "Select a level",
+      "levelHelper": "Your best guess. They can adjust it when they join.",
+      "note": "They'll see this match once they register.",
+      "cancel": "Cancel",
+      "submit": "Add player",
+      "submitting": "Adding…",
+      "success": "{{name}} was added and invited.",
+      "offline": "You're offline. Reconnect to add a player.",
+      "validation": {
+        "name": "Enter a name.",
+        "email": "Enter a valid email address",
+        "level": "Choose an estimated level."
+      },
+      "errors": {
+        "closed": "Players can't be added after the cutoff.",
+        "started": "This match has already started.",
+        "cancelled": "This match was cancelled.",
+        "resultProtected": "Results are already recorded, so players can't be added.",
+        "full": "This match is full.",
+        "rateLimited": "Too many invitations right now. Try again in a few minutes.",
+        "idempotencyConflict": "This request was already used with different details. Review them and try again.",
+        "notFound": "This match isn't available.",
+        "unauthenticated": "Sign in again to add a player.",
+        "forbidden": "Only the organizer or a community admin can add players.",
+        "invalid": "Check the details and try again.",
+        "unavailable": "We couldn't send the invitation. Nothing was changed."
+      }
+    },
     "results": {
       "navigation": "Main navigation",
       "globalRating": "Global rating only",

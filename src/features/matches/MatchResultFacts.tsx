@@ -1,5 +1,6 @@
 import * as stylex from '@stylexjs/stylex';
 import { useTranslation } from 'react-i18next';
+import { ProvisionalBadge } from '../../components/ui/ProvisionalBadge';
 import type { ResultPlayer, ResultSetRow } from './match-result-model';
 import { matchResultStyles as s } from './match-result.styles';
 
@@ -24,13 +25,17 @@ export function MatchResultTeams({
           <h3 {...stylex.props(s.label)}>{t(`matches.results.teams.${side}`)}</h3>
           <div {...stylex.props(s.row, s.chipRow)}>
             {teams[side].map((player) => (
-              <span key={player.user_id} {...stylex.props(s.chip)}>
+              <span key={player.user_id} {...stylex.props(s.chip, s.chipGap)}>
                 {player.display_name ?? t('matches.results.unknownPlayer')}
+                {player.is_provisional && <ProvisionalBadge />}
               </span>
             ))}
           </div>
         </section>
       ))}
+      {[...teams.team_a, ...teams.team_b].some((player) => player.is_provisional) && (
+        <p {...stylex.props(s.copy)}>{t('player.provisional.reviewNote')}</p>
+      )}
     </section>
   );
 }

@@ -415,7 +415,11 @@ async function prepare(
   } else if (state === 'creator-action-menu') {
     await page.getByRole('button', { name: m.actions, exact: true }).click();
     await expect(page.getByRole('menu')).toBeVisible();
-    expect(await page.getByRole('menuitem').allTextContents()).toEqual([m.transfer, m.cancelMatch]);
+    expect(await page.getByRole('menuitem').allTextContents()).toEqual([
+      m.transfer,
+      copy.matches.addPlayer.action,
+      m.cancelMatch
+    ]);
   } else if (state === 'organizer-only') {
     await expect(page.getByText(m.organizerOnly, { exact: true })).toBeVisible();
     await expect(page.getByRole('button', { name: m.leave, exact: true })).toHaveCount(0);

@@ -238,6 +238,12 @@ jobs:
           fi
           printf 'VITE_SUPABASE_URL=%s\nVITE_SUPABASE_PUBLISHABLE_KEY=%s\n' "$API_URL" "$PUBLISHABLE_KEY" >> "$GITHUB_ENV"
           printf 'VITE_SUPABASE_URL=%s\nVITE_SUPABASE_PUBLISHABLE_KEY=%s\n' "$API_URL" "$PUBLISHABLE_KEY" > .env
+          # Server-only key of the ephemeral local stack, for the add-player server function.
+          SERVICE_ROLE_KEY="$(printf '%s\n' "$status" | sed -n 's/^SERVICE_ROLE_KEY=//p' | tail -n 1)"
+          SERVICE_ROLE_KEY="${SERVICE_ROLE_KEY#\"}"
+          SERVICE_ROLE_KEY="${SERVICE_ROLE_KEY%\"}"
+          echo "::add-mask::$SERVICE_ROLE_KEY"
+          printf 'SUPABASE_SERVICE_ROLE_KEY=%s\n' "$SERVICE_ROLE_KEY" >> "$GITHUB_ENV"
       - run: pnpm exec playwright install --with-deps chromium
       - name: Run fresh-preview E2E shard
         run: |

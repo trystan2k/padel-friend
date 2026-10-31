@@ -109,6 +109,7 @@ export const matchResultStyles = stylex.create({
   form: { display: 'grid', gap: 'var(--space-12)', minWidth: 0 },
   teamCard: { gap: 'var(--space-9)' },
   teamGroup: { display: 'grid', gap: 'var(--space-9)' },
+  chipGap: { gap: 'var(--space-6)' },
   chipRow: { minHeight: 'calc(var(--space-40) + var(--space-4))' },
   label: {
     margin: 0,

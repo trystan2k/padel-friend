@@ -1,5 +1,6 @@
 import * as stylex from '@stylexjs/stylex';
 import { useTranslation } from 'react-i18next';
+import { ProvisionalBadge } from '../../components/ui/ProvisionalBadge';
 import type { ManagementParticipant } from './match-management-model';
 import type { MatchRosterEntry } from './match-registration-model';
 import { requiresMatchReconfirmation } from './match-reconfirmation-model';
@@ -92,6 +93,11 @@ export function MatchRosterCard({
         </span>
         <div {...stylex.props(s.playerIdentity)}>
           <span {...stylex.props(s.playerName)}>{name}</span>
+          {entry.is_provisional && (
+            <span {...stylex.props(s.provisionalSlot)}>
+              <ProvisionalBadge />
+            </span>
+          )}
           {!participants && (
             <span {...stylex.props(s.visuallyHidden)}>
               {t(
