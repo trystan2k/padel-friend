@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { afterResponse } from '../src/lib/post-response.server';
 import { addMatchPlayer } from '../src/features/matches/match-add-player.functions';
 
@@ -60,6 +60,10 @@ function hangingAdmin() {
 }
 
 describe('afterResponse', () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   it('runs the task detached and never lets its failure reach the caller', async () => {
     const ran = vi.fn<() => void>();
     await expect(
@@ -69,6 +73,24 @@ describe('afterResponse', () => {
       })
     ).resolves.toBeUndefined();
     await vi.waitFor(() => expect(ran).toHaveBeenCalledTimes(1));
+  });
+
+  it('settles on registration alone: the task starts only after the response turn (F15)', async () => {
+    vi.useFakeTimers();
+    let finish: () => void = () => undefined;
+    const task = vi.fn<() => Promise<void>>(
+      () =>
+        new Promise<void>((resolve) => {
+          finish = resolve;
+        })
+    );
+    // A task that never finishes must not hold registration, and has not started when it is over.
+    await afterResponse(task);
+    expect(task).not.toHaveBeenCalled();
+    // The response turn is over (next macrotask): only now does the task body run.
+    await vi.advanceTimersByTimeAsync(1);
+    expect(task).toHaveBeenCalledTimes(1);
+    finish();
   });
 });
 
@@ -89,6 +111,8 @@ describe('addMatchPlayer response path', () => {
       bodies.push(await addMatchPlayer({ data: input(email) }));
       // Only the user-scoped command ran inside the response path.
       expect(client.rpc.mock.calls.map(([name]) => name)).toEqual(['add_match_player']);
+      // Nothing ran on the response path itself: the task is gated behind the response turn.
+      expect(admin.rpc).not.toHaveBeenCalled();
       // The same post-response work starts for every branch: dispatch first, nothing else yet.
       await vi.waitFor(() => expect(admin.rpc).toHaveBeenCalled());
       calls.push(admin.rpc.mock.calls.map(([name]) => name));

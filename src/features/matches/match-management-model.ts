@@ -96,6 +96,24 @@ export type ManagementParticipant = {
   confirmed_generation?: number;
   accepted_order: number;
 };
+// Mirrors the match_event_audit_log action CHECK; list_match_event_audit returns every row.
+const MATCH_AUDIT_ACTIONS: readonly string[] = [
+  'withdraw',
+  'remove',
+  'transfer',
+  'cancel',
+  'minor_edit',
+  'major_edit',
+  'reconfirm',
+  'reconfirmation_excluded',
+  'result_approved',
+  'result_disputed',
+  'result_corrected',
+  'result_confirmed',
+  'player_added',
+  'player_claimed',
+  'player_add_delivery_exhausted'
+];
 export type MatchAuditEntry = {
   id: string;
   match_event_id: string;
@@ -372,16 +390,7 @@ export function parseMatchAudit(value: unknown): MatchAuditEntry[] | null {
       !(row.target_user_id === null || isUuid(row.target_user_id)) ||
       !(row.request_id === null || isUuid(row.request_id)) ||
       typeof row.action !== 'string' ||
-      ![
-        'withdraw',
-        'remove',
-        'transfer',
-        'cancel',
-        'minor_edit',
-        'major_edit',
-        'reconfirm',
-        'reconfirmation_excluded'
-      ].includes(row.action) ||
+      !MATCH_AUDIT_ACTIONS.includes(row.action) ||
       !(row.reason === null || typeof row.reason === 'string') ||
       typeof row.occurred_at !== 'string' ||
       !Number.isFinite(Date.parse(row.occurred_at)) ||

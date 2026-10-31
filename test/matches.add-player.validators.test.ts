@@ -85,7 +85,7 @@ describe('add player result mapping', () => {
 });
 
 describe('parsePlayerAddDispatch', () => {
-  const base = { email: 'a@b.co', locale: 'en', match_event_id: id };
+  const base = { email: 'a@b.co', locale: 'en', match_event_id: id, attempt: 'attempt-1' };
 
   it('parses create, resend and none', () => {
     expect(parsePlayerAddDispatch({ action: 'create', capability: 'abc', ...base })).toEqual({
@@ -102,6 +102,7 @@ describe('parsePlayerAddDispatch', () => {
 
   it('rejects malformed dispatches', () => {
     expect(parsePlayerAddDispatch({ action: 'create', ...base })).toBeNull();
+    expect(parsePlayerAddDispatch({ action: 'resend', ...base, attempt: undefined })).toBeNull();
     expect(parsePlayerAddDispatch({ action: 'resend', email: 'a@b.co' })).toBeNull();
     expect(parsePlayerAddDispatch({ action: 'x', ...base })).toBeNull();
     expect(parsePlayerAddDispatch(null)).toBeNull();

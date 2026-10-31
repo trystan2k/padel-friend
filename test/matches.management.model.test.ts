@@ -174,6 +174,47 @@ describe('management defensive models', () => {
     expect(parseManagementParticipants({})).toBeNull();
     expect(parseMatchAudit([{}])).toBeNull();
   });
+  it.each([
+    'withdraw',
+    'remove',
+    'transfer',
+    'cancel',
+    'minor_edit',
+    'major_edit',
+    'reconfirm',
+    'reconfirmation_excluded',
+    'result_approved',
+    'result_disputed',
+    'result_corrected',
+    'result_confirmed',
+    'player_added',
+    'player_claimed',
+    'player_add_delivery_exhausted'
+  ])('parses audit rows with live-CHECK action %s mixed with legacy rows', (action) => {
+    const row = {
+      id,
+      match_event_id: id,
+      community_id: id,
+      actor_id: null,
+      target_user_id: id,
+      request_id: null,
+      reason: null,
+      occurred_at: '2030-01-01T00:00:00Z',
+      event_version: 1,
+      transition_revision: 0,
+      before_data: {},
+      after_data: {},
+      changed_fields: []
+    };
+    expect(
+      parseMatchAudit([
+        { ...row, action: 'cancel' },
+        { ...row, action }
+      ])
+    ).toHaveLength(2);
+    expect(parseMatchAudit([{ ...row, action: 'not_an_action' }])).toBeNull();
+    expect(parseMatchAudit([{ ...row, action, occurred_at: 'nope' }])).toBeNull();
+  });
   it('decodes own terminal history and never accepts terminal participation', () => {
     const own = {
       event_id: id,

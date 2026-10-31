@@ -1262,6 +1262,7 @@ export type Database = {
           capability_hash: string | null
           completed_at: string | null
           created_at: string
+          dispatch_attempt: string | null
           dispatch_attempts: number
           dispatch_state: string
           dispatched_at: string | null
@@ -1287,6 +1288,7 @@ export type Database = {
           capability_hash?: string | null
           completed_at?: string | null
           created_at?: string
+          dispatch_attempt?: string | null
           dispatch_attempts?: number
           dispatch_state?: string
           dispatched_at?: string | null
@@ -1311,6 +1313,7 @@ export type Database = {
           capability_hash?: string | null
           completed_at?: string | null
           created_at?: string
+          dispatch_attempt?: string | null
           dispatch_attempts?: number
           dispatch_state?: string
           dispatched_at?: string | null
@@ -2610,6 +2613,7 @@ export type Database = {
       settle_match_player_add: {
         Args: {
           p_actor_id: string
+          p_attempt: string
           p_delivered: boolean
           p_match_event_id: string
           p_request_id: string

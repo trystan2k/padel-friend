@@ -13,19 +13,25 @@ function isWorkersModule(value: unknown): value is WorkersModule {
 }
 
 /**
- * Runs `task` after the response was sent, so its duration (and which branch it took)
- * never shapes response latency. On Workers it is registered with the request's
- * `waitUntil`, which keeps the isolate alive until the task settles; elsewhere it runs
+ * Runs `task` after the response, so its duration (and which branch it took) never
+ * shapes response latency. The returned promise settles once the task is REGISTERED
+ * (on Workers: handed to the request's `waitUntil`, which keeps the isolate alive until
+ * the task settles) and never waits for the task itself. The task body is gated: it
+ * starts only after registration and one further macrotask, i.e. after the handler that
+ * called this has returned its response. Outside Workers the gated promise simply runs
  * detached. The task's failures are its own business: they never reach the caller.
  */
-export async function afterResponse(task: () => Promise<unknown>): Promise<void> {
-  const running = Promise.resolve()
-    .then(task)
+export function afterResponse(task: () => Promise<unknown>): Promise<void> {
+  let open: () => void = () => undefined;
+  const gate = new Promise<void>((resolve) => {
+    open = resolve;
+  });
+  const running = gate.then(task).catch(() => undefined);
+  const registered = import(/* @vite-ignore */ WORKERS_MODULE)
+    .then((workers: unknown) => {
+      if (isWorkersModule(workers)) workers.waitUntil(running);
+    })
     .catch(() => undefined);
-  try {
-    const workers: unknown = await import(/* @vite-ignore */ WORKERS_MODULE);
-    if (isWorkersModule(workers)) workers.waitUntil(running);
-  } catch {
-    // Not on Workers: the detached promise above is all there is.
-  }
+  void registered.then(() => setTimeout(open, 0));
+  return registered;
 }

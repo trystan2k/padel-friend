@@ -12,8 +12,15 @@ import {
 } from './match-add-player-model';
 
 export type PlayerAddDispatch =
-  | { action: 'create'; email: string; capability: string; locale: string; match_event_id: string }
-  | { action: 'resend'; email: string; locale: string; match_event_id: string }
+  | {
+      action: 'create';
+      email: string;
+      capability: string;
+      locale: string;
+      match_event_id: string;
+      attempt: string;
+    }
+  | { action: 'resend'; email: string; locale: string; match_event_id: string; attempt: string }
   | { action: 'none' };
 
 /** Metadata key the auth.users bridge trigger consumes (and scrubs) on insert. */
@@ -27,8 +34,14 @@ export function parsePlayerAddDispatch(value: unknown): PlayerAddDispatch | null
   if (typeof value !== 'object' || value === null || Array.isArray(value)) return null;
   const row = Object.fromEntries(Object.entries(value));
   if (row.action === 'none') return { action: 'none' };
-  if (!text(row.email) || !text(row.locale) || !text(row.match_event_id)) return null;
-  const base = { email: row.email, locale: row.locale, match_event_id: row.match_event_id };
+  if (!text(row.email) || !text(row.locale) || !text(row.match_event_id) || !text(row.attempt))
+    return null;
+  const base = {
+    email: row.email,
+    locale: row.locale,
+    match_event_id: row.match_event_id,
+    attempt: row.attempt
+  };
   if (row.action === 'resend') return { action: 'resend', ...base };
   if (row.action === 'create' && text(row.capability))
     return { action: 'create', capability: row.capability, ...base };
@@ -148,7 +161,13 @@ export async function deliverMatchPlayerAdd(
     request_id: input.request_id,
     origin: input.origin
   });
-  const settled = await admin.rpc('settle_match_player_add', { ...key, p_delivered: delivered });
+  // Fenced on the attempt token: if the sweep abandoned this attempt while the call was
+  // slow, settle is a no-op for it and the newer attempt keeps its own state.
+  const settled = await admin.rpc('settle_match_player_add', {
+    ...key,
+    p_delivered: delivered,
+    p_attempt: dispatch.attempt
+  });
   if (settled.error) return addMatchPlayerError(settled.error);
   // Adds that waited on this one: a failed create releases the capability and a bridge that
   // skipped a locked event completes nobody. Re-drive each once right away (fast path; the
@@ -173,9 +192,9 @@ const RECONCILE_MAX_ROUNDS = 3;
  * Durable reconciliation. The ledger remembers every add whose invitation is not
  * settled (never dispatched, failed, abandoned by a crashed holder, waiting for an
  * identity); claim_match_player_add_redrives hands out the due ones with exponential
- * backoff and a bounded attempt count, and each is driven through the normal
- * dispatch -> Auth -> settle path. Runs after any add and when an owner reads event
- * management, so no scheduler is needed. Rounds repeat until nothing is due, which
+ * backoff and a bounded attempt count (a spent budget retires the operation as exhausted: slot released,
+ * audited), and each is driven through the normal
+ * dispatch -> Auth -> settle path. Runs after any add and on event reads (detail and management), so no scheduler is needed. Rounds repeat until nothing is due, which
  * also picks up operations that became due while an earlier one was being driven.
  */
 export async function reconcileMatchPlayerAdds(admin: AdminClient, origin: string): Promise<void> {
@@ -213,7 +232,7 @@ export function scheduleMatchPlayerAdd(
   });
 }
 
-/** Owner opens event management: reconcile stragglers after the page data was returned. */
+/** Any reader opens an event: reconcile stragglers after the page data was returned. */
 export function scheduleMatchPlayerAddReconcile(origin: string): Promise<void> {
   return afterResponse(async () => {
     await reconcileMatchPlayerAdds(getAdminClient(), origin);

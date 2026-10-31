@@ -346,7 +346,11 @@ describe('add match player by name and email', () => {
       };
       for (const call of [
         await owner.client.rpc('dispatch_match_player_add', key),
-        await owner.client.rpc('settle_match_player_add', { ...key, p_delivered: true })
+        await owner.client.rpc('settle_match_player_add', {
+          ...key,
+          p_delivered: true,
+          p_attempt: crypto.randomUUID()
+        })
       ])
         expect(call.error?.code).toBe('42501');
       expect((await admin.client.rpc('add_match_player', args())).data).toMatchObject({

@@ -370,4 +370,159 @@ describe('match player add reconciliation', () => {
       expect(await mailCount(email)).toBe(2);
     }
   );
+
+  it.skipIf(!environment.env)(
+    'a late original attempt cannot settle the attempt that replaced it (F13)',
+    async () => {
+      const { env, owner, eventId } = await scenario();
+      const email = uniqueEmail('fenced');
+      const requestId = await accept(owner, eventId, email, 'Fenced');
+      const reachedOriginal = deferred();
+      const releaseOriginal = deferred();
+      const reachedNewer = deferred();
+      const releaseNewer = deferred();
+
+      // Original attempt: its HTTP call hangs past the capability TTL, then fails.
+      const original = localAdminClient(env);
+      original.auth.admin.inviteUserByEmail = async () => {
+        reachedOriginal.resolve();
+        await releaseOriginal.promise;
+        return { data: { user: null }, error: new AuthApiError('late', 500, 'unexpected') };
+      };
+      const holding = deliverMatchPlayerAdd(original, {
+        actor_id: owner.id,
+        event_id: eventId,
+        request_id: requestId,
+        origin: INVITE_ORIGIN
+      });
+      await reachedOriginal.promise;
+
+      // TTL lapses: the sweep abandons the original and a newer attempt takes over (and hangs too).
+      await executeTrustedSql(
+        `update public.match_player_add_operations set capability_expires_at = clock_timestamp() - interval '1 minute'
+          where email = lower('${email}');
+         update public.match_player_add_recipient_sends set sent_at = clock_timestamp() - interval '1 hour'
+          where operation_id in (select id from public.match_player_add_operations where email = lower('${email}'))`
+      );
+      await makeDue(email);
+      const newer = localAdminClient(env);
+      const realInvite = newer.auth.admin.inviteUserByEmail.bind(newer.auth.admin);
+      newer.auth.admin.inviteUserByEmail = async (...args) => {
+        reachedNewer.resolve();
+        await releaseNewer.promise;
+        return realInvite(...args);
+      };
+      const sweeping = reconcileMatchPlayerAdds(newer, INVITE_ORIGIN);
+      await reachedNewer.promise;
+      const inFlight = async () =>
+        (
+          await queryTrustedSql(
+            `select o.dispatch_state, o.dispatch_attempt, o.capability_hash is not null as has_capability,
+                    exists (select 1 from public.match_player_add_recipient_sends s where s.operation_id = o.id) as holds_slot
+               from public.match_player_add_operations o where o.request_id = $1`,
+            { values: [requestId] }
+          )
+        ).rows[0];
+      const before = await inFlight();
+      expect(before).toMatchObject({
+        dispatch_state: 'pending',
+        has_capability: true,
+        holds_slot: true
+      });
+
+      // The stale original now settles (as a failure, the destructive case): clean no-op.
+      releaseOriginal.resolve();
+      await expect(holding).resolves.toEqual({ status: 'ok' });
+      expect(await inFlight()).toEqual(before);
+
+      // The newer attempt is untouched and completes normally.
+      releaseNewer.resolve();
+      await sweeping;
+      expect(await operation(owner.id, eventId, requestId)).toMatchObject({
+        state: 'completed',
+        branch: 'new',
+        dispatch_state: 'sent'
+      });
+      expect(await userCount(email)).toBe(1);
+      expect(await mailCount(email)).toBe(1);
+    }
+  );
+
+  it.skipIf(!environment.env)(
+    'retires an operation whose attempts are spent: slot released, audited once, re-add works (F14)',
+    async () => {
+      const { env, owner, eventId } = await scenario();
+      const email = uniqueEmail('exhausted');
+      const requestId = await accept(owner, eventId, email, 'Exhausted');
+      const failing = failingInviteAdmin(env);
+      for (let attempt = 1; attempt <= 6; attempt++) {
+        await makeDue(email);
+        await reconcileMatchPlayerAdds(failing, INVITE_ORIGIN);
+      }
+      // A slot still held for this operation must be released when it is retired.
+      await executeTrustedSql(
+        `insert into public.match_player_add_recipient_sends(email_digest, operation_id, sent_at)
+           select public.match_player_add_digest(email), id, clock_timestamp()
+             from public.match_player_add_operations where request_id = '${requestId}'`
+      );
+      await makeDue(email);
+      const claimed = await localAdminClient(env).rpc('claim_match_player_add_redrives', {
+        p_limit: 5
+      });
+      expect(claimed.data).toEqual([]);
+      expect(await operation(owner.id, eventId, requestId)).toMatchObject({
+        state: 'awaiting_identity',
+        dispatch_state: 'exhausted'
+      });
+      const evidence = async () =>
+        (
+          await queryTrustedSql(
+            `select (select count(*) from public.match_player_add_recipient_sends s
+                      join public.match_player_add_operations o on o.id = s.operation_id
+                     where o.request_id = $1)::int as slots,
+                    (select count(*) from public.match_event_audit_log a
+                      where a.request_id = $1 and a.action = 'player_add_delivery_exhausted')::int as audits`,
+            { values: [requestId] }
+          )
+        ).rows[0];
+      expect(await evidence()).toEqual({ slots: 0, audits: 1 });
+
+      // Retired once: later sweeps neither re-audit nor hand it out.
+      await makeDue(email);
+      await reconcileMatchPlayerAdds(localAdminClient(env), INVITE_ORIGIN);
+      expect(await evidence()).toEqual({ slots: 0, audits: 1 });
+
+      // A fresh add of the same address is not blocked by the retired one.
+      const fresh = await addPlayer(env, owner, { eventId, displayName: 'Again', email, level: 3 });
+      expect(fresh.result).toEqual({ status: 'ok' });
+      expect(await userCount(email)).toBe(1);
+      expect(await mailCount(email)).toBe(1);
+    }
+  );
+
+  it.skipIf(!environment.env)(
+    'completes a stranded add from a sweep on an otherwise idle event (F14)',
+    async () => {
+      const { env, owner, eventId } = await scenario();
+      const email = uniqueEmail('idle');
+      const requestId = await accept(owner, eventId, email, 'Idle');
+      await deliverMatchPlayerAdd(failingInviteAdmin(env), {
+        actor_id: owner.id,
+        event_id: eventId,
+        request_id: requestId,
+        origin: INVITE_ORIGIN
+      });
+      expect(await operation(owner.id, eventId, requestId)).toMatchObject({
+        dispatch_state: 'failed'
+      });
+      // No add anywhere: the sweep a roster reader triggers is all that runs.
+      await makeDue(email);
+      await reconcileMatchPlayerAdds(localAdminClient(env), INVITE_ORIGIN);
+      expect(await operation(owner.id, eventId, requestId)).toMatchObject({
+        state: 'completed',
+        dispatch_state: 'sent'
+      });
+      expect(await mailCount(email)).toBe(1);
+    }
+  );
 });

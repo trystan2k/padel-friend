@@ -1,5 +1,7 @@
 import { createServerFn } from '@tanstack/react-start';
+import { getRequestUrl } from '@tanstack/react-start/server';
 import { requireAuthenticatedClient } from '../auth/auth.server';
+import { scheduleMatchPlayerAddReconcile } from './match-add-player.server';
 import { signMatchPhotoBatch, signMatchPhoto } from './match-photo.server';
 import type {
   MatchCreationOptions,
@@ -163,6 +165,9 @@ export const getMatchEvent = createServerFn({ method: 'GET' })
     if (!result) return { status: 'unavailable' };
     const event = Array.isArray(result) ? result[0] : result;
     if (event == null) return { status: 'unavailable' };
+    // Any reader (not just the organizer) reconciles undelivered player invitations, so an
+    // otherwise idle event cannot strand them (best effort, after the response).
+    await scheduleMatchPlayerAddReconcile(getRequestUrl().origin).catch(() => undefined);
     let decoded;
     try {
       decoded = decodeMatchRpcDetail(event);
