@@ -1,4 +1,5 @@
 import type { Database } from '../../lib/supabase/database.types';
+import { parseMatchConsentChange, type MatchConsentChange } from './match-consent-change';
 
 // PAF-5.2 roster/request projection DTOs. These are deliberately separate from
 // the flat T04 event DTO in match-model.ts; the RPC jsonb contracts are parsed
@@ -260,6 +261,8 @@ export type MyMatchRegistration =
       confirmed_generation: number;
       registration_source: MatchRegistrationSource;
       registration_cutoff_at: string;
+      /** Before/after competition of the edit that asked for consent (absent for older edits). */
+      change?: MatchConsentChange;
     }
   | {
       state: 'cancelled';
@@ -368,6 +371,7 @@ export function parseMyMatchRegistration(value: unknown): MyMatchRegistration | 
       const accepted_order = asPositiveInteger(value.accepted_order);
       const accepted_at = asText(value.accepted_at);
       const deadline = asText(value.registration_cutoff_at);
+      const change = parseMatchConsentChange(value.consent_change);
       if (
         !attempt_id ||
         accepted_order === null ||
@@ -386,7 +390,8 @@ export function parseMyMatchRegistration(value: unknown): MyMatchRegistration | 
         required_generation: required,
         confirmed_generation: confirmed,
         registration_source,
-        registration_cutoff_at: deadline
+        registration_cutoff_at: deadline,
+        ...(change ? { change } : {})
       };
     }
     if (value.attempt_id !== undefined && !asUuid(value.attempt_id)) return null;

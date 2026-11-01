@@ -1,4 +1,4 @@
-import type { MatchEventDetail } from './match-contracts';
+import type { MatchCompetitionChoice, MatchEventDetail } from './match-contracts';
 import { localMatchInstant, validateLocalDate, validateLocalTime } from './match-time';
 
 export const MINOR_EDIT_KEYS = [
@@ -13,8 +13,16 @@ export const MINOR_EDIT_KEYS = [
   'registration_cutoff_at'
 ] as const;
 export type MinorEditKey = (typeof MINOR_EDIT_KEYS)[number];
-export const MATCH_EDIT_KEYS = [...MINOR_EDIT_KEYS, 'event_type', 'starts_at'] as const;
-export type MatchEditFacts = Pick<MatchEventDetail, MinorEditKey | 'starts_at' | 'event_type'>;
+export const MATCH_EDIT_KEYS = [
+  ...MINOR_EDIT_KEYS,
+  'event_type',
+  'starts_at',
+  'league_id'
+] as const;
+export type MatchEditFacts = Pick<
+  MatchEventDetail,
+  MinorEditKey | 'starts_at' | 'event_type' | 'league_id'
+>;
 export type MatchEditPatch = Partial<MatchEditFacts>;
 export type MatchEditDraft = {
   venueName: string;
@@ -28,6 +36,9 @@ export type MatchEditDraft = {
   cutoff: string;
   startsAt: string;
   eventType: MatchEventDetail['event_type'];
+  /** Competitive only; `league_id` is sent as null (Unranked) for Friendly or an explicit opt-out. */
+  competitionChoice: Exclude<MatchCompetitionChoice, 'auto'>;
+  leagueId: string;
 };
 export function hasMatchControlCharacters(value: string) {
   return value
@@ -110,7 +121,9 @@ export function matchEditDraft(event: MatchEventDetail): MatchEditDraft {
       event.maximum_registrations === null ? '' : String(event.maximum_registrations),
     cutoff: localInput(event.registration_cutoff_at, event.timezone),
     startsAt: localInput(event.starts_at, event.timezone),
-    eventType: event.event_type
+    eventType: event.event_type,
+    competitionChoice: event.league_id ? 'ranked' : 'unranked',
+    leagueId: event.league_id ?? ''
   };
 }
 export function matchEditDraftPatch(
@@ -123,6 +136,11 @@ export function matchEditDraftPatch(
   const price = Number(BigInt(whole || '0') * 100n + BigInt(fraction.padEnd(2, '0')));
   const patch: MatchEditPatch = {
     event_type: draft.eventType,
+    // Never a silent downgrade: null is sent only for Friendly or an explicit Unranked choice.
+    league_id:
+      draft.eventType === 'competitive' && draft.competitionChoice === 'ranked' && draft.leagueId
+        ? draft.leagueId
+        : null,
     venue_name: draft.venueName,
     maps_url: draft.mapsUrl,
     court_notes: draft.courtNotes || null,

@@ -44,6 +44,8 @@ const expectedDetailKeys = [
   'group_count',
   'league_id',
   'league_name',
+  'league_start_date',
+  'league_end_date',
   'maps_url',
   'max_level',
   'maximum_registrations',

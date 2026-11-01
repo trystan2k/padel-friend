@@ -54,6 +54,8 @@ export function validateMatchEditDraft(
   }
   if (draft.price !== '' && !/^\d+(\.\d{1,2})?$/.test(draft.price))
     errors.price = Number(draft.price) < 0 ? 'negativePrice' : 'invalidPrice';
+  if (draft.eventType === 'competitive' && draft.competitionChoice === 'ranked' && !draft.leagueId)
+    errors.leagueId = 'leagueRequired';
   if (Object.keys(errors).length) return { patch: {}, errors };
   let patch: MatchEditPatch;
   try {
@@ -102,6 +104,8 @@ export function validateEditMatchEvent(value: unknown) {
     else if (key === 'event_type') {
       if (item !== 'competitive' && item !== 'friendly') throw new Error('INVALID_MATCH_INPUT');
       patch[key] = item;
+    } else if (key === 'league_id') {
+      patch[key] = item === null ? null : validateMatchUuid(item).toLowerCase();
     } else {
       const nullable = key !== 'venue_name' && key !== 'maps_url';
       const max =

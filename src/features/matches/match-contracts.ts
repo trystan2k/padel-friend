@@ -60,6 +60,9 @@ type MatchEventProjection = StoredProjection & {
   /** League identity is only returned to active members of the event's community. */
   league_id: string | null;
   league_name: string | null;
+  /** League-local calendar days of the bound League's effective window (end null = open Manual). */
+  league_start_date?: string | null;
+  league_end_date?: string | null;
   accepted_count: number;
   reconfirmation_required_count?: number;
   reconfirmation_generation?: number;

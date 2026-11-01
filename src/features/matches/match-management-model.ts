@@ -1,11 +1,19 @@
 import type { MatchRegistrationParticipation } from './match-registration-model';
 import type { Json } from '../../lib/supabase/database.types';
 import { MATCH_EDIT_KEYS } from './match-management-edit';
+import {
+  parseCompetitionImpact,
+  parseMatchConsentChange,
+  type MatchCompetitionImpact,
+  type MatchConsentChange
+} from './match-consent-change';
 
 export type MatchEditSuccess = ManagementSuccess & {
   change_kind: 'none' | 'minor' | 'major';
   changed_fields: string[];
   reconfirmation_generation: number;
+  /** Provisional accepted players carried over automatically (they cannot reconfirm). */
+  carried_count: number;
 };
 export function parseMatchEditSuccess(value: unknown): ManagementResult<MatchEditSuccess> | null {
   const parsed = parseManagementSuccess(value);
@@ -16,6 +24,7 @@ export function parseMatchEditSuccess(value: unknown): ManagementResult<MatchEdi
       value.change_kind !== 'minor' &&
       value.change_kind !== 'major') ||
     !integer(value.reconfirmation_generation) ||
+    !(value.carried_count === undefined || integer(value.carried_count)) ||
     !Array.isArray(value.changed_fields) ||
     !value.changed_fields.every(
       (key): key is string =>
@@ -33,7 +42,8 @@ export function parseMatchEditSuccess(value: unknown): ManagementResult<MatchEdi
       ...parsed.value,
       change_kind: value.change_kind,
       changed_fields: value.changed_fields,
-      reconfirmation_generation: value.reconfirmation_generation
+      reconfirmation_generation: value.reconfirmation_generation,
+      carried_count: value.carried_count ?? 0
     }
   };
 }
@@ -53,13 +63,23 @@ export const MANAGEMENT_ERROR_CODES = [
   'unauthenticated',
   'forbidden',
   'invalid',
-  'unavailable'
+  'unavailable',
+  'league_out_of_period',
+  'league_unavailable',
+  'league_closed',
+  'league_friendly',
+  'ranked_nonmembers_accepted'
 ] as const;
 export type ManagementErrorCode = (typeof MANAGEMENT_ERROR_CODES)[number];
 export type ManagementResult<T> =
   | { status: 'ok'; value: T; replayed: boolean }
   | { status: 'conflict'; code: 'version_conflict'; current_version: number }
-  | { status: 'error'; code: ManagementErrorCode };
+  | { status: 'error'; code: ManagementErrorCode; detail?: ManagementErrorDetail };
+/** Repair context of a rejected Ranked/League edit; never reveals more than the actor may read. */
+export type ManagementErrorDetail = {
+  league?: MatchCompetitionImpact;
+  accepted_nonmember_count?: number;
+};
 export type ManagementSuccess = {
   event_id: string;
   version: number;
@@ -106,6 +126,7 @@ const MATCH_AUDIT_ACTIONS: readonly string[] = [
   'major_edit',
   'reconfirm',
   'reconfirmation_excluded',
+  'reconfirmation_carried',
   'result_approved',
   'result_disputed',
   'result_corrected',
@@ -149,6 +170,21 @@ function jsonObject(value: unknown): value is { [key: string]: Json | undefined 
     (record(item) && Object.values(item).every(valid));
   return record(value) && Object.values(value).every(valid);
 }
+function managementErrorDetail(details: string | null | undefined): ManagementErrorDetail | null {
+  try {
+    const parsed: unknown = JSON.parse(details ?? 'null');
+    if (!record(parsed)) return null;
+    const league = parseCompetitionImpact(parsed.league);
+    const count = parsed.accepted_nonmember_count;
+    const detail: ManagementErrorDetail = {
+      ...(league ? { league } : {}),
+      ...(integer(count) ? { accepted_nonmember_count: count } : {})
+    };
+    return Object.keys(detail).length ? detail : null;
+  } catch {
+    return null;
+  }
+}
 export function managementActionError(error: {
   code?: string | null;
   message?: string | null;
@@ -167,7 +203,10 @@ export function managementActionError(error: {
       if (integer(version, 1)) return { status: 'conflict', code, current_version: version };
     }
     const known = MANAGEMENT_ERROR_CODES.find((candidate) => candidate === code);
-    if (known) return { status: 'error', code: known };
+    if (known) {
+      const detail = managementErrorDetail(error.details);
+      return detail ? { status: 'error', code: known, detail } : { status: 'error', code: known };
+    }
   }
   const code =
     error.code === '28000'
@@ -203,6 +242,8 @@ export type MatchEventManagement = {
   results_protected: boolean;
   reconfirmation_generation: number;
   required_count: number;
+  /** Organizer-only: what the current reconfirmation generation asked players to accept. */
+  consent_change?: MatchConsentChange | null;
   actions: Record<ManagementAction, { allowed: boolean; reason: ManagementErrorCode | null }>;
   correction:
     | { available: false; reason: 'results_workflow_unavailable' | 'cancelled' | 'forbidden' }
@@ -248,6 +289,7 @@ export function parseMatchEventManagement(value: unknown): MatchEventManagement 
   ) {
     correction = { available: false, reason: value.correction.reason };
   } else return null;
+  const consentChange = parseMatchConsentChange(value.consent_change);
   const actions: MatchEventManagement['actions'] = {
     withdraw: { allowed: false, reason: 'unavailable' },
     remove: { allowed: false, reason: 'unavailable' },
@@ -300,6 +342,7 @@ export function parseMatchEventManagement(value: unknown): MatchEventManagement 
     results_protected: value.results_protected,
     reconfirmation_generation: value.reconfirmation_generation,
     required_count: value.required_count,
+    ...(consentChange ? { consent_change: consentChange } : {}),
     actions,
     correction
   };

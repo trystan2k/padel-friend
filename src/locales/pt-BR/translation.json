@@ -850,9 +850,23 @@
         "currentProposal": "O resultado atual é a versão {{version}} ({{status}}). Revise antes de realizar outra ação."
       }
     },
+    "leagueImpact": {
+      "title": "Impacto no ranking",
+      "before": "Antes",
+      "after": "Depois",
+      "skillIndependent": "O nível global de habilidade é independente das Ligas: partidas Competitivas Sem ranking continuam atualizando o nível.",
+      "effect": {
+        "unchanged": "Ranking e Liga continuam iguais.",
+        "rankedToUnranked": "Esta partida deixará de contar para a Liga.",
+        "unrankedToRanked": "Esta partida passará a contar para a Liga depois que os jogadores reconfirmarem.",
+        "leagueSwitch": "Esta partida passará a contar para outra Liga.",
+        "noLongerCompetitive": "Esta partida deixará de ser Competitiva e não terá Liga.",
+        "nowCompetitive": "Esta partida se tornará Competitiva."
+      }
+    },
     "reconfirmation": {
       "title": "Reconfirme a participação",
-      "description": "Mudanças no tipo ou horário exigem que todos os jogadores aceitos, incluindo o organizador, revisem e reconfirmem explicitamente. Até lá, mantêm a vaga e a ordem na fila, mas ficam fora dos quartetos.",
+      "description": "Alterações no tipo da partida, no horário, no status Ranqueada ou na Liga exigem que todos os jogadores aceitos, inclusive o organizador, revisem e reconfirmem explicitamente. Até lá, os jogadores mantêm vaga e ordem na fila, mas não são alocados em quartetos. Jogadores provisórios são mantidos automaticamente.",
       "deadline": "Reconfirme até {{deadline}}.",
       "reviewTerms": "Revisar condições alteradas",
       "confirm": "Confirmo minha participação nestas condições",
@@ -882,7 +896,41 @@
         "reload": "Recarregar detalhes",
         "conflictHelper": "Resolva este conflito antes de salvar. Seu rascunho não foi descartado.",
         "reviewDraft": "Revisar meu rascunho",
-        "saved": "Detalhes da partida salvos."
+        "saved": "Detalhes da partida salvos.",
+        "savedCarried": "Detalhes da partida salvos. Jogadores provisórios foram mantidos automaticamente porque não podem reconfirmar.",
+        "competitionConsent": "Os jogadores aceitos precisam reconfirmar esta alteração. Jogadores provisórios são mantidos automaticamente.",
+        "competition": {
+          "loading": "Procurando Ligas elegíveis…",
+          "unavailable": "Não foi possível carregar as Ligas elegíveis. A configuração atual foi mantida.",
+          "noEligible": "Nenhuma Liga Ativa ou Futura cobre esta data. A partida pode continuar Sem ranking.",
+          "members": "Partidas Ranqueadas são apenas para membros ativos da comunidade."
+        },
+        "rejection": {
+          "adjustDate": "Escolher outra data",
+          "saveUnranked": "Salvar Sem ranking com a nova data",
+          "keepUnranked": "Manter Sem ranking",
+          "league_out_of_period": {
+            "title": "A nova data está fora do período da Liga",
+            "description": "{{league}} vai de {{period}}. Mova a partida para dentro desse período ou salve-a Sem ranking com a nova data. Nada foi salvo e a Liga não foi alterada."
+          },
+          "league_unavailable": {
+            "title": "Liga indisponível",
+            "description": "A Liga selecionada não pode ser usada nesta partida. Escolha outra Liga ou Sem ranking."
+          },
+          "league_closed": {
+            "title": "Liga já encerrada",
+            "description": "Uma Liga encerrada não pode ser selecionada novamente. Escolha outra Liga ou Sem ranking."
+          },
+          "league_friendly": {
+            "title": "Partidas amistosas não têm Liga",
+            "description": "Escolha Competitiva para manter uma Liga ou salve a partida como Amistosa sem Liga."
+          },
+          "ranked_nonmembers_accepted": {
+            "title": "Resolva primeiro os jogadores não membros",
+            "description_one": "{{count}} jogador aceito não é membro ativo da comunidade. Remova-o, peça que desista ou ative a associação e depois mude para Ranqueada. Nada foi alterado.",
+            "description_other": "{{count}} jogadores aceitos não são membros ativos da comunidade. Remova-os, peça que desistam ou ative a associação e depois mude para Ranqueada. Nada foi alterado."
+          }
+        }
       },
       "organizerOnly": "Organizar e jogar são funções distintas. Você pode organizar sem estar na lista de jogadores.",
       "leaveKeepOrganizing": "Sair da lista mantém você como organizador. Transfira a organização separadamente, se necessário.",
@@ -933,7 +981,12 @@
         "forbidden": "Você não pode realizar esta ação.",
         "invalid": "Confira os dados e tente novamente.",
         "unavailable": "Não foi possível concluir a ação. Tente novamente.",
-        "versionConflict": "Esta partida mudou. Atualize e tente novamente."
+        "versionConflict": "Esta partida mudou. Atualize e tente novamente.",
+        "leagueOutOfPeriod": "A nova data está fora do período da Liga. Nada foi salvo.",
+        "leagueUnavailable": "A Liga selecionada não está disponível.",
+        "leagueClosed": "A Liga selecionada já está encerrada.",
+        "leagueFriendly": "Partidas amistosas não podem pertencer a uma Liga.",
+        "rankedNonmembersAccepted": "Jogadores aceitos que não são membros ativos precisam ser resolvidos antes de mudar para Ranqueada."
       }
     },
     "invitations": {

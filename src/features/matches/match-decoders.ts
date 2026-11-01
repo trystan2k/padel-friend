@@ -149,6 +149,13 @@ function decodeProjection(value: unknown) {
     ),
     league_id: nullableField('league_id', nonEmptyText),
     league_name: nullableField('league_name', text),
+    // Additive League window (League-local calendar days); absent in pre-U3 payloads.
+    ...(row.league_start_date === undefined
+      ? {}
+      : {
+          league_start_date: nullableField('league_start_date', text),
+          league_end_date: nullableField('league_end_date', text)
+        }),
     starts_at: required(row, 'starts_at', timestamp),
     timezone: required(row, 'timezone', timeZone),
     event_type: required(row, 'event_type', (entry) => enumValue(entry, eventTypes)),

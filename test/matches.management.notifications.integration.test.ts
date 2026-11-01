@@ -5,6 +5,7 @@ import { I18nextProvider } from 'react-i18next';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { createI18n } from '../src/i18n/config';
 import { decodeNotificationTarget } from '../src/features/notifications/notification-target';
+import { insertLeague } from './helpers/league-fixtures';
 import { createMatchManagementFixtures } from './helpers/match-management-fixtures';
 import { MANAGEMENT_NOTIFICATION_COPY } from './helpers/match-management-contract';
 import { localSupabaseEnv, dotEnvPathFromImportMetaUrl } from './helpers/local-supabase-env';
@@ -174,6 +175,56 @@ describe('management notification SQL / renderer parity', () => {
     expect(context.error).toBeNull();
     expect(context.data?.[0]).toMatchObject({
       event_status: 'cancelled',
+      match_event_id: event.id
+    });
+  });
+
+  it('Ranked/League change creates exactly one consent request per accepted player per effective edit', async () => {
+    const league = await insertLeague({
+      communityId: fixtures.communityId,
+      ownerId: fixtures.creator.id,
+      status: 'upcoming',
+      startAt: new Date(Date.now() - 5 * 86_400_000).toISOString(),
+      endAt: new Date(Date.now() + 60 * 86_400_000).toISOString()
+    });
+    const player = await fixtures.member();
+    const event = await fixtures.event({ accepted: [player] });
+    const patch = { event_type: 'competitive', league_id: league };
+    const request = crypto.randomUUID();
+    const send = (id: string, version: number, body: Record<string, unknown> = patch) =>
+      fixtures.rpc(fixtures.creator, 'edit_match_event', {
+        p_match_event_id: event.id,
+        p_expected_version: version,
+        p_patch: body,
+        p_request_id: id
+      });
+    expect((await send(request, 1)).error).toBeNull();
+    // Replay and an unchanged re-send neither bump the generation nor notify again.
+    expect((await send(request, 1)).data).toMatchObject({ replayed: true });
+    expect((await send(crypto.randomUUID(), 2)).data).toMatchObject({ changed: false });
+    const notices = await sqlRows(
+      `select recipient_user_id::text as recipient, count(*)::int as total from public.notifications
+        where target_id='${event.id}' and kind='match_reconfirmation_required' group by 1 order by 1`
+    );
+    expect(notices).toEqual(
+      [fixtures.creator.id, player.id]
+        .sort((a, b) => a.localeCompare(b))
+        .map((recipient) => ({ recipient, total: 1 }))
+    );
+    // The consent request resolves for its recipient with the existing renderer contract.
+    const inbox = await player.client
+      .from('notifications')
+      .select('id,event_key')
+      .eq('target_id', event.id)
+      .eq('kind', 'match_reconfirmation_required')
+      .single();
+    expect(inbox.data?.event_key).toBe(`match.reconfirmation_required:${event.id}:1`);
+    const target = await player.client
+      .rpc('get_my_notification_target_v2', { p_notification_id: inbox.data!.id })
+      .single();
+    expect(target.error).toBeNull();
+    expect(target.data).toMatchObject({
+      target_status: 'match_available',
       match_event_id: event.id
     });
   });

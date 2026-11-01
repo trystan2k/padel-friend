@@ -18,5 +18,10 @@ export const MANAGEMENT_ERROR_COPY: Readonly<
   forbidden: 'matches.management.errors.forbidden',
   invalid: 'matches.management.errors.invalid',
   unavailable: 'matches.management.errors.unavailable',
+  league_out_of_period: 'matches.management.errors.leagueOutOfPeriod',
+  league_unavailable: 'matches.management.errors.leagueUnavailable',
+  league_closed: 'matches.management.errors.leagueClosed',
+  league_friendly: 'matches.management.errors.leagueFriendly',
+  ranked_nonmembers_accepted: 'matches.management.errors.rankedNonmembersAccepted',
   version_conflict: 'matches.management.errors.versionConflict'
 };

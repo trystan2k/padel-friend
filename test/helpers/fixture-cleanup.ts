@@ -47,8 +47,8 @@ export const FIXTURE_CLEANUP_TABLE_ORDER = [
   'public.player_profiles',
   'public.community_members',
   'public.match_events',
-  // Leagues are referenced by (future) match events; their audit rows are immutable and are
-  // removed by leagueEvidenceStatements() in the same cleanup transaction.
+  // Leagues are referenced by match events; their audit rows are immutable. leagueEvidenceStatements()
+  // removes both right after the events (and before communities/users) in the same transaction.
   'public.league_events',
   'public.leagues',
   'storage.objects',
@@ -194,23 +194,32 @@ export class FixtureCleanupRegistry {
   async deleteRegisteredRowsInOrder(options: FixtureCleanupOptions = {}): Promise<void> {
     const ratingEvidence = this.ratingEvidenceStatements();
     const leagueEvidence = this.leagueEvidenceStatements();
+    const deleteEntry = (entry: FixtureCleanupEntry) => {
+      const predicate = Object.entries(entry.identity)
+        .sort(([left], [right]) => left.localeCompare(right))
+        .map(([column, value]) =>
+          value === null
+            ? `${quoteColumn(column)} IS NULL`
+            : `${quoteColumn(column)} = ${sqlLiteral(value)}`
+        )
+        .join(' AND ');
+      return `DELETE FROM ${quoteTable(entry.table)} WHERE ${predicate}`;
+    };
+    // Leagues go after every row that may reference them (events) and before their owners.
+    const entries = this.sortedEntries();
+    const leagueRank = cleanupOrder.get('public.league_events') ?? Number.MAX_SAFE_INTEGER;
+    const split = entries.findIndex(
+      (entry) => (cleanupOrder.get(entry.table) ?? Number.MAX_SAFE_INTEGER) >= leagueRank
+    );
+    const head = split < 0 ? entries : entries.slice(0, split);
+    const tail = split < 0 ? [] : entries.slice(split);
     const statements = [
       ...(options.beforeStatements ?? []),
-      ...leagueEvidence.before,
       ...ratingEvidence.before,
-      ...this.sortedEntries().map((entry) => {
-        const predicate = Object.entries(entry.identity)
-          .sort(([left], [right]) => left.localeCompare(right))
-          .map(([column, value]) =>
-            value === null
-              ? `${quoteColumn(column)} IS NULL`
-              : `${quoteColumn(column)} = ${sqlLiteral(value)}`
-          )
-          .join(' AND ');
-        return `DELETE FROM ${quoteTable(entry.table)} WHERE ${predicate}`;
-      }),
+      ...head.map(deleteEntry),
+      ...leagueEvidence,
+      ...tail.map(deleteEntry),
       ...ratingEvidence.after,
-      ...leagueEvidence.after,
       ...(options.afterStatements ?? [])
     ];
     if (statements.length === 0) return;
@@ -293,7 +302,7 @@ export class FixtureCleanupRegistry {
    * The immutability trigger is disabled only inside the cleanup transaction (rollback restores
    * it) and re-enabled before it commits.
    */
-  private leagueEvidenceStatements(): { before: string[]; after: string[] } {
+  private leagueEvidenceStatements(): string[] {
     const scopes: string[] = [];
     for (const entry of this.sortedEntries()) {
       const predicate = Object.entries(entry.identity)
@@ -310,16 +319,14 @@ export class FixtureCleanupRegistry {
       else if (entry.table === 'auth.users') scopes.push(`owner_id IN (${select('id')})`);
       else if (entry.table === 'public.leagues') scopes.push(`id IN (${select('id')})`);
     }
-    if (scopes.length === 0) return { before: [], after: [] };
+    if (scopes.length === 0) return [];
     const leagues = `SELECT id FROM public.leagues WHERE ${scopes.join(' OR ')}`;
-    return {
-      before: [
-        'ALTER TABLE public.league_events DISABLE TRIGGER league_events_immutable',
-        `DELETE FROM public.league_events WHERE league_id IN (${leagues})`,
-        `DELETE FROM public.leagues WHERE id IN (${leagues})`
-      ],
-      after: ['ALTER TABLE public.league_events ENABLE TRIGGER league_events_immutable']
-    };
+    return [
+      'ALTER TABLE public.league_events DISABLE TRIGGER league_events_immutable',
+      `DELETE FROM public.league_events WHERE league_id IN (${leagues})`,
+      `DELETE FROM public.leagues WHERE id IN (${leagues})`,
+      'ALTER TABLE public.league_events ENABLE TRIGGER league_events_immutable'
+    ];
   }
 
   private sortedEntries(): FixtureCleanupEntry[] {

@@ -850,9 +850,23 @@
         "currentProposal": "Current result is version {{version}} ({{status}}). Review it before taking another action."
       }
     },
+    "leagueImpact": {
+      "title": "Ranking impact",
+      "before": "Before",
+      "after": "After",
+      "skillIndependent": "Global skill rating is independent of Leagues: Unranked Competitive matches still update it.",
+      "effect": {
+        "unchanged": "Ranking and League stay the same.",
+        "rankedToUnranked": "This match will stop counting for the League.",
+        "unrankedToRanked": "This match will count for the League once players reconfirm.",
+        "leagueSwitch": "This match will count for a different League.",
+        "noLongerCompetitive": "This match will no longer be Competitive, so it has no League.",
+        "nowCompetitive": "This match will become Competitive."
+      }
+    },
     "reconfirmation": {
       "title": "Reconfirm participation",
-      "description": "Changes to match type or start time require every accepted player, including the organizer, to review and explicitly reconfirm. Until then, players keep capacity and queue order but are not assigned to quartets.",
+      "description": "Changes to match type, start time, Ranked status, or League require every accepted player, including the organizer, to review and explicitly reconfirm. Until then, players keep capacity and queue order but are not assigned to quartets. Provisional players carry over automatically.",
       "deadline": "Reconfirm by {{deadline}}.",
       "reviewTerms": "Review changed terms",
       "confirm": "I confirm participation under these terms",
@@ -882,7 +896,41 @@
         "reload": "Reload details",
         "conflictHelper": "Resolve this conflict before saving. Your draft has not been discarded.",
         "reviewDraft": "Review my draft",
-        "saved": "Match details saved."
+        "saved": "Match details saved.",
+        "savedCarried": "Match details saved. Provisional players were carried over automatically because they cannot reconfirm.",
+        "competitionConsent": "Accepted players must reconfirm this change. Provisional players carry over automatically.",
+        "competition": {
+          "loading": "Looking for eligible Leagues…",
+          "unavailable": "Eligible Leagues could not be loaded. The current setting is kept.",
+          "noEligible": "No Active or Upcoming League covers this date. The match can stay Unranked.",
+          "members": "Ranked matches are for active community members only."
+        },
+        "rejection": {
+          "adjustDate": "Choose another date",
+          "saveUnranked": "Save as Unranked with the new date",
+          "keepUnranked": "Keep it Unranked",
+          "league_out_of_period": {
+            "title": "The new date is outside the League period",
+            "description": "{{league}} runs {{period}}. Move the match inside that period, or save it as Unranked with the new date. Nothing was saved and the League was not changed."
+          },
+          "league_unavailable": {
+            "title": "League not available",
+            "description": "The selected League cannot be used for this match. Choose another League or Unranked."
+          },
+          "league_closed": {
+            "title": "League already closed",
+            "description": "A closed League cannot be newly selected. Choose another League or Unranked."
+          },
+          "league_friendly": {
+            "title": "Friendly matches have no League",
+            "description": "Choose Competitive to keep a League, or save this match as Friendly without one."
+          },
+          "ranked_nonmembers_accepted": {
+            "title": "Resolve non-member players first",
+            "description_one": "{{count}} accepted player is not an active community member. Remove or withdraw them, or activate their membership, then switch to Ranked. Nothing was changed.",
+            "description_other": "{{count}} accepted players are not active community members. Remove or withdraw them, or activate their membership, then switch to Ranked. Nothing was changed."
+          }
+        }
       },
       "organizerOnly": "Organizing and playing are separate. You can organize without a place on the roster.",
       "leaveKeepOrganizing": "Leaving the roster keeps you as organizer. Transfer organization separately if needed.",
@@ -933,7 +981,12 @@
         "forbidden": "You cannot perform this action.",
         "invalid": "Check your input and try again.",
         "unavailable": "Could not complete the action. Try again.",
-        "versionConflict": "This match changed. Refresh and try again."
+        "versionConflict": "This match changed. Refresh and try again.",
+        "leagueOutOfPeriod": "The new date is outside the League period. Nothing was saved.",
+        "leagueUnavailable": "The selected League is not available.",
+        "leagueClosed": "The selected League is already closed.",
+        "leagueFriendly": "Friendly matches cannot belong to a League.",
+        "rankedNonmembersAccepted": "Accepted players who are not active members must be resolved before switching to Ranked."
       }
     },
     "invitations": {

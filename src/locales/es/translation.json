@@ -850,9 +850,23 @@
         "currentProposal": "El resultado actual es la versión {{version}} ({{status}}). Revísalo antes de realizar otra acción."
       }
     },
+    "leagueImpact": {
+      "title": "Impacto en el ranking",
+      "before": "Antes",
+      "after": "Después",
+      "skillIndependent": "El nivel global de habilidad es independiente de las Ligas: los partidos Competitivos Sin ranking siguen actualizándolo.",
+      "effect": {
+        "unchanged": "El ranking y la Liga siguen igual.",
+        "rankedToUnranked": "Este partido dejará de contar para la Liga.",
+        "unrankedToRanked": "Este partido contará para la Liga cuando los jugadores reconfirmen.",
+        "leagueSwitch": "Este partido contará para otra Liga.",
+        "noLongerCompetitive": "Este partido dejará de ser Competitivo y no tendrá Liga.",
+        "nowCompetitive": "Este partido pasará a ser Competitivo."
+      }
+    },
     "reconfirmation": {
       "title": "Reconfirma tu participación",
-      "description": "Los cambios de tipo u horario requieren que todos los jugadores aceptados, incluido el organizador, revisen y reconfirmen explícitamente. Mientras tanto, conservan plaza y orden, pero quedan fuera de los cuartetos.",
+      "description": "Los cambios de tipo de partido, hora de inicio, estado Clasificatorio o Liga exigen que todos los jugadores aceptados, incluido el organizador, revisen y reconfirmen explícitamente. Hasta entonces, los jugadores conservan cupo y orden en la cola pero no se asignan a cuartetos. Los jugadores provisionales se mantienen automáticamente.",
       "deadline": "Reconfirma antes de {{deadline}}.",
       "reviewTerms": "Revisar condiciones modificadas",
       "confirm": "Confirmo mi participación con estas condiciones",
@@ -882,7 +896,41 @@
         "reload": "Recargar detalles",
         "conflictHelper": "Resuelve este conflicto antes de guardar. Tu borrador no se ha descartado.",
         "reviewDraft": "Revisar mi borrador",
-        "saved": "Detalles del partido guardados."
+        "saved": "Detalles del partido guardados.",
+        "savedCarried": "Detalles del partido guardados. Los jugadores provisionales se mantuvieron automáticamente porque no pueden reconfirmar.",
+        "competitionConsent": "Los jugadores aceptados deben reconfirmar este cambio. Los jugadores provisionales se mantienen automáticamente.",
+        "competition": {
+          "loading": "Buscando Ligas elegibles…",
+          "unavailable": "No se pudieron cargar las Ligas elegibles. Se mantiene la configuración actual.",
+          "noEligible": "Ninguna Liga Activa o Próxima cubre esta fecha. El partido puede seguir Sin ranking.",
+          "members": "Los partidos Clasificatorios son solo para miembros activos de la comunidad."
+        },
+        "rejection": {
+          "adjustDate": "Elegir otra fecha",
+          "saveUnranked": "Guardar Sin ranking con la nueva fecha",
+          "keepUnranked": "Mantener Sin ranking",
+          "league_out_of_period": {
+            "title": "La nueva fecha está fuera del período de la Liga",
+            "description": "{{league}} va de {{period}}. Mueve el partido dentro de ese período o guárdalo Sin ranking con la nueva fecha. No se guardó nada y la Liga no cambió."
+          },
+          "league_unavailable": {
+            "title": "Liga no disponible",
+            "description": "La Liga seleccionada no se puede usar en este partido. Elige otra Liga o Sin ranking."
+          },
+          "league_closed": {
+            "title": "Liga ya cerrada",
+            "description": "Una Liga cerrada no se puede seleccionar de nuevo. Elige otra Liga o Sin ranking."
+          },
+          "league_friendly": {
+            "title": "Los partidos amistosos no tienen Liga",
+            "description": "Elige Competitivo para mantener una Liga o guarda el partido como Amistoso sin Liga."
+          },
+          "ranked_nonmembers_accepted": {
+            "title": "Resuelve primero a los jugadores no miembros",
+            "description_one": "{{count}} jugador aceptado no es miembro activo de la comunidad. Quítalo, haz que se retire o activa su membresía y luego cambia a Clasificatorio. No se cambió nada.",
+            "description_other": "{{count}} jugadores aceptados no son miembros activos de la comunidad. Quítalos, haz que se retiren o activa su membresía y luego cambia a Clasificatorio. No se cambió nada."
+          }
+        }
       },
       "organizerOnly": "Organizar y jugar son funciones distintas. Puedes organizar sin estar en la lista de jugadores.",
       "leaveKeepOrganizing": "Salir de la lista te mantiene como organizador. Transfiere la organización por separado si es necesario.",
@@ -933,7 +981,12 @@
         "forbidden": "No puedes realizar esta acción.",
         "invalid": "Revisa los datos e inténtalo de nuevo.",
         "unavailable": "No se pudo completar la acción. Inténtalo de nuevo.",
-        "versionConflict": "Este partido cambió. Actualiza e inténtalo de nuevo."
+        "versionConflict": "Este partido cambió. Actualiza e inténtalo de nuevo.",
+        "leagueOutOfPeriod": "La nueva fecha está fuera del período de la Liga. No se guardó nada.",
+        "leagueUnavailable": "La Liga seleccionada no está disponible.",
+        "leagueClosed": "La Liga seleccionada ya está cerrada.",
+        "leagueFriendly": "Los partidos amistosos no pueden pertenecer a una Liga.",
+        "rankedNonmembersAccepted": "Los jugadores aceptados que no son miembros activos deben resolverse antes de cambiar a Clasificatorio."
       }
     },
     "invitations": {

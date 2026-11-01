@@ -7,6 +7,8 @@ import { ProvisionalBadge } from '../../components/ui/ProvisionalBadge';
 import type { MatchEventDetail } from './match-contracts';
 import type { ManagementParticipant } from './match-management-model';
 import type { MyMatchRegistration } from './match-registration-model';
+import { MatchLeagueImpact } from './MatchLeagueImpact';
+import { competitionImpactSide, type MatchConsentChange } from './match-consent-change';
 import { reconfirmMatchRegistration } from './match-reconfirmation.functions';
 import { requiresMatchReconfirmation } from './match-reconfirmation-model';
 import { MANAGEMENT_ERROR_COPY } from './match-management-error-copy';
@@ -20,12 +22,15 @@ export function MatchReconfirmationPanel({
   event,
   registration,
   participants = [],
-  isCreator = false
+  isCreator = false,
+  change = null
 }: {
   event: MatchEventDetail;
   registration: MyMatchRegistration | null;
   participants?: ManagementParticipant[];
   isCreator?: boolean;
+  /** Organizer view of what the current generation asked players to accept. */
+  change?: MatchConsentChange | null;
 }) {
   const { t, i18n } = useTranslation();
   const router = useRouter();
@@ -47,6 +52,13 @@ export function MatchReconfirmationPanel({
       timeStyle: 'medium',
       timeZone: event.timezone
     }).format(new Date(instant));
+  const impact = (value: MatchConsentChange | null | undefined) =>
+    value?.from && value.to ? (
+      <MatchLeagueImpact
+        from={competitionImpactSide(value.from)}
+        to={competitionImpactSide(value.to)}
+      />
+    ) : null;
   const closed = event.is_past || Date.parse(event.registration_cutoff_at) <= asOf;
   return (
     <section
@@ -71,6 +83,7 @@ export function MatchReconfirmationPanel({
           <p {...stylex.props(card.reconfirmSummary)}>
             {t('matches.reconfirmation.creatorSummary', { count: players.length })}
           </p>
+          {impact(change)}
           <ul {...stylex.props(card.requestList)}>
             {players.map((player) => (
               <li key={player.attempt_id} {...stylex.props(card.reconfirmPlayer)}>
@@ -123,6 +136,7 @@ export function MatchReconfirmationPanel({
                   {event.timezone}
                 </p>
                 <p>{event.venue_name}</p>
+                {impact(required.change)}
                 <p>
                   {t('matches.reconfirmation.deadline', {
                     deadline: date(event.registration_cutoff_at)

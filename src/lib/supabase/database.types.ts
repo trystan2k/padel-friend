@@ -2264,6 +2264,18 @@ export type Database = {
         }
         Returns: undefined
       }
+      assert_match_league_edit_locked: {
+        Args: {
+          p_community_id: string
+          p_current_league_id: string
+          p_event_id: string
+          p_event_type: Database["public"]["Enums"]["match_event_type"]
+          p_league_id: string
+          p_published_at: string
+          p_starts_at: string
+        }
+        Returns: undefined
+      }
       assert_match_league_window: {
         Args: { p_community_id: string; p_league_id: string; p_starts_at: string }
         Returns: undefined
@@ -2782,6 +2794,11 @@ export type Database = {
         Returns: boolean
       }
       mark_notification_read: { Args: { p_notification_id: string }; Returns: string }
+      match_competition_impact: {
+        Args: { p_event_type: Database["public"]["Enums"]["match_event_type"]; p_league_id: string }
+        Returns: Json
+      }
+      match_consent_change: { Args: { p_event_id: string; p_generation: number }; Returns: Json }
       match_event_caller_context: {
         Args: { p_event_id: string }
         Returns: {
@@ -2796,6 +2813,10 @@ export type Database = {
         Returns: string
       }
       match_event_result_summary: { Args: { p_match_event_id: string }; Returns: Json }
+      match_league_effective_end: {
+        Args: { p_closed_at: string; p_end_at: string }
+        Returns: string
+      }
       match_player_add_actor_authorized: {
         Args: { p_actor_id: string; p_event_id: string }
         Returns: boolean

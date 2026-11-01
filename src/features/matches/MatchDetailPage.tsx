@@ -263,6 +263,7 @@ export function MatchDetailPage({
             registration={registration}
             participants={managementParticipants}
             isCreator={isCreator}
+            change={management?.consent_change ?? null}
           />
         )}
         <section aria-labelledby="match-overview-heading" {...stylex.props(shell.card)}>
