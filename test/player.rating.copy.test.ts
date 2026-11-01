@@ -81,6 +81,43 @@ describe('rating copy', () => {
     expect(unused).toEqual([]);
   });
 
+  it('keeps plural forms paired and free of stray whitespace in every locale', () => {
+    for (const locale of ['en', 'pt-BR', 'es'] as const) {
+      const keys = Object.keys(copy[locale]);
+      for (const key of keys.filter((candidate) => candidate.endsWith('_one')))
+        expect(keys, `${locale} ${key}`).toContain(key.replace(/_one$/, '_other'));
+      for (const key of keys.filter((candidate) => candidate.endsWith('_other')))
+        expect(keys, `${locale} ${key}`).toContain(key.replace(/_other$/, '_one'));
+      const untidy = Object.entries(copy[locale])
+        .filter(([, value]) => value !== value.trim() || /\s{2,}/.test(value))
+        .map(([key]) => key);
+      expect(untidy, `${locale} whitespace`).toEqual([]);
+    }
+  });
+
+  it('formats levels, deltas and percentages with each locale decimal convention', () => {
+    const level = (locale: string) =>
+      new Intl.NumberFormat(locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    expect(level('en').format(3.34)).toBe('3.34');
+    expect(level('pt-BR').format(3.34)).toBe('3,34');
+    expect(level('es').format(3.34)).toBe('3,34');
+    const delta = (locale: string) =>
+      new Intl.NumberFormat(locale, {
+        signDisplay: 'exceptZero',
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+      });
+    expect(delta('en').format(0)).toBe('0.00');
+    expect(delta('pt-BR').format(0.14)).toBe('+0,14');
+    expect(delta('es').format(-0.22)).toMatch(/^[-−]0,22$/);
+    const percent = (locale: string) =>
+      new Intl.NumberFormat(locale, { style: 'percent', maximumFractionDigits: 0 });
+    expect(percent('en').format(0.16)).toBe('16%');
+    expect(percent('pt-BR').format(0.16)).toBe('16%');
+    // Spanish separates the sign with a no-break space; the static copy uses the same convention.
+    expect(percent('es').format(0.16)).toBe('16 %');
+  });
+
   it('covers every dynamic error code, explanation note and outcome', () => {
     const expected = [
       ...['unauthenticated', 'forbidden', 'stale_revision', 'invalid_request', 'unavailable'].map(

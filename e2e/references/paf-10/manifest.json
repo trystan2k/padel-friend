@@ -1,0 +1,27 @@
+{
+  "status": "chromium-certified-with-scoped-route-adaptations",
+  "sourceDesign": {
+    "path": "docs/design/padel-friend.pen",
+    "sha256": "927ac4e83f24edacbc2b2fe2fcfa111d8e0822b96f73ce268cf50b5ef2737af2",
+    "exportCommand": "Pencil MCP execute on a byte-identical scratch copy (/tmp): Export([\"vARtQ\"], \"png\", \"<repo>/e2e/references/paf-10\", {scale:2})",
+    "provenanceNote": "T10 (PAF-10) reference for the Player profile frame vARtQ, exported uncropped at 2x through Pencil MCP from a scratch copy whose SHA-256 equals the tracked source (and the paf-6/7/8 manifests). The tracked .pen was not modified. The frame is a mockup with stats tiles, a month-based dot chart and a bottom navigation that the production dashboard does not render; the T10 rating journey instead uses a game-ordered chart, a data table and a drill-down explanation dialog, which have no dedicated frame."
+  },
+  "approvedReferences": {
+    "vARtQ": {
+      "frameId": "vARtQ",
+      "certifies": "Profile top region (title, identity hero, global level card) and the Rating journey section order",
+      "sha256": "aca94511f0665ed3c2d17a9c8f3de9e5f2e2ef1242b1bdd75b4b0d15ef7646cc",
+      "pixelSize": [780, 1688]
+    }
+  },
+  "visualBudgets": {
+    "status": "measured-chromium-viewport-pixel-difference",
+    "measurementMethod": "Clip the production capture to the 390x308 CSS-px top region (deviceScaleFactor 1) and compare with the same region of the 2x Pencil PNG downsampled by 2, using the pinned perceptual threshold (35215 x 0.1^2). Structural probes (order, gutters, containment, 44px targets, no overflow) assert geometry separately and exactly.",
+    "perScreen": {
+      "vARtQ": 0.1
+    },
+    "perScreenRationale": {
+      "vARtQ": "Observed residual 0.0862 on the title-aligned 390x308 top region; 0.10 leaves 0.0138 for cross-renderer variance. The residual is intentional route/data adaptation, not a layout defect: the frame's blank avatar circle, 'Right side \u00b7 Madrid' and 'Member since 2024' versus production initials, real side and localized join date; the '76% reliable' pill versus 'Reliability: N%'; and live level values. Order, gutters, chart containment, row stacking, 44px targets and overflow are exact structural probes. The stats tiles, month-dot chart and bottom navigation of the frame are out of scope (no standings/stats product); the game-ordered chart, data table and explanation dialog have no frame and are covered by structural/contrast probes plus attached screenshots."
+    }
+  }
+}

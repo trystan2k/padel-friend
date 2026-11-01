@@ -1392,7 +1392,7 @@
       "version": "Cálculo",
       "versionValue": "{{engine}} {{version}} · configuración {{config}} · revisión {{revision}}",
       "transition": "{{before}} a {{after}}",
-      "expectedHint": "La puntuación esperada es la estimación del modelo de 0 % a 100 %, donde un empate vale 50 %. No es una probabilidad garantizada de ganar.",
+      "expectedHint": "La puntuación esperada es la estimación del modelo de 0 % a 100 %, donde un empate vale 50 %. No es una probabilidad garantizada de ganar.",
       "recalculated": "Este cálculo se actualizó después de confirmarse un partido anterior. Se muestra la última versión guardada.",
       "established": "La fiabilidad está totalmente establecida, así que cada partido tiene ahora el peso más pequeño.",
       "note": {
