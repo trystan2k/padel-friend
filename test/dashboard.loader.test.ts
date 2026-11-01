@@ -4,7 +4,8 @@ const mocks = vi.hoisted(() => ({
   getMyPlayerProfile: vi.fn<() => Promise<unknown>>(),
   listMyAdminCommunities: vi.fn<() => Promise<unknown>>(),
   getCommunityAdminDefaults: vi.fn<() => Promise<unknown>>(),
-  listMyCommunityNotifications: vi.fn<() => Promise<unknown>>()
+  listMyCommunityNotifications: vi.fn<() => Promise<unknown>>(),
+  loadRatingView: vi.fn<() => Promise<unknown>>()
 }));
 
 vi.mock('../src/features/player/player.functions', () => ({
@@ -20,6 +21,9 @@ vi.mock('../src/features/community/community-request.functions', () => ({
 vi.mock('../src/features/community/CommunityAdmin', () => ({
   CommunityAdminEntries: () => null
 }));
+vi.mock('../src/features/player/rating-view', () => ({
+  loadRatingView: mocks.loadRatingView
+}));
 vi.mock('../src/features/player/PlayerProfile', () => ({ PlayerProfile: () => null }));
 
 import { loadDashboardData } from '../src/routes/_protected.dashboard';
@@ -29,6 +33,8 @@ beforeEach(() => {
   mocks.listMyAdminCommunities.mockReset();
   mocks.getCommunityAdminDefaults.mockReset();
   mocks.listMyCommunityNotifications.mockReset();
+  mocks.loadRatingView.mockReset();
+  mocks.loadRatingView.mockResolvedValue({ status: 'error', code: 'unavailable' });
 });
 
 describe('dashboard loader', () => {
@@ -40,11 +46,24 @@ describe('dashboard loader', () => {
 
     await expect(loadDashboardData()).resolves.toEqual({
       profile,
+      rating: { status: 'error', code: 'unavailable' },
       adminCommunities: [],
       inbox: { items: null, error: true }
     });
     expect(mocks.getMyPlayerProfile).toHaveBeenCalledOnce();
     expect(mocks.listMyAdminCommunities).toHaveBeenCalledOnce();
+  });
+
+  it('hands the committed rating view to the profile alongside the profile row', async () => {
+    const profile = Object.freeze({});
+    const rating = Object.freeze({ status: 'ok', revision: 4 });
+    mocks.getMyPlayerProfile.mockResolvedValue(profile);
+    mocks.loadRatingView.mockResolvedValue(rating);
+    mocks.listMyAdminCommunities.mockResolvedValue([]);
+    mocks.listMyCommunityNotifications.mockResolvedValue([]);
+
+    await expect(loadDashboardData()).resolves.toMatchObject({ profile, rating });
+    expect(mocks.loadRatingView).toHaveBeenCalledOnce();
   });
 
   it('still surfaces profile failures', async () => {

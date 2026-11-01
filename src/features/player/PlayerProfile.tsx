@@ -8,11 +8,21 @@ import { AvatarUpload } from './AvatarUpload';
 import { updateMyPlayerProfile } from './player.functions';
 import { playerInitials } from './player-initials';
 import { formatDisplayLevel, MAX_LEVEL, MIN_LEVEL } from './rating-config';
+import type { RatingLoad } from './rating-view';
+import { RatingJourney } from './RatingJourney';
 import { ui } from './player-ui.styles';
 
 type Profile = Awaited<ReturnType<typeof updateMyPlayerProfile>>;
 
-export function PlayerProfile({ initialProfile }: { initialProfile: Profile }) {
+export function PlayerProfile({
+  initialProfile,
+  initialRating,
+  onRatingReload
+}: {
+  initialProfile: Profile;
+  initialRating: RatingLoad;
+  onRatingReload: () => void;
+}) {
   const { t, i18n } = useTranslation();
   const [profile, setProfile] = useState(initialProfile);
   const [editing, setEditing] = useState(false);
@@ -24,6 +34,9 @@ export function PlayerProfile({ initialProfile }: { initialProfile: Profile }) {
   const [error, setError] = useState('');
   const [signOutError, setSignOutError] = useState(false);
   const nameRef = useRef<HTMLInputElement>(null);
+  // Level figures come from the same committed projection as the chart and history; the
+  // profile row is only the fallback when that read failed.
+  const level = (initialRating.status === 'ok' ? initialRating.summary.summary : null) ?? profile;
   const joined = new Intl.DateTimeFormat(i18n.language, {
     year: 'numeric',
     month: 'long',
@@ -133,25 +146,24 @@ export function PlayerProfile({ initialProfile }: { initialProfile: Profile }) {
           <div {...stylex.props(ui.levelHeader)}>
             <span {...stylex.props(ui.levelLabel)}>{t('profile.globalLevel')}</span>
             <strong {...stylex.props(ui.levelMetric)}>
-              {formatDisplayLevel(profile.display_level, i18n.language)}
+              {formatDisplayLevel(level.display_level, i18n.language)}
             </strong>
           </div>
           <strong {...stylex.props(ui.step)}>
-            {t('profile.reliability')}:{' '}
-            {t('profile.percent', { value: profile.reliability_percent })}
+            {t('profile.reliability')}: {t('profile.percent', { value: level.reliability_percent })}
           </strong>
         </div>
         <progress
           aria-label={t('profile.levelScale')}
           max={MAX_LEVEL}
-          value={profile.display_level}
+          value={level.display_level}
           {...stylex.props(ui.srOnly)}
         />
         <div aria-hidden="true" {...stylex.props(ui.progressTrack)}>
           <div
             {...stylex.props(ui.progressFill)}
             style={{
-              width: `${((profile.display_level - MIN_LEVEL) / (MAX_LEVEL - MIN_LEVEL)) * 100}%`
+              width: `${((level.display_level - MIN_LEVEL) / (MAX_LEVEL - MIN_LEVEL)) * 100}%`
             }}
           />
         </div>
@@ -166,15 +178,15 @@ export function PlayerProfile({ initialProfile }: { initialProfile: Profile }) {
         </div>
         <div {...stylex.props(ui.row)}>
           <span>{t('profile.initialLevel')}</span>
-          <strong>{formatDisplayLevel(profile.initial_display_level, i18n.language)}</strong>
+          <strong>{formatDisplayLevel(level.initial_display_level, i18n.language)}</strong>
         </div>
         <div {...stylex.props(ui.row)}>
           <span>{t('profile.highestLevel')}</span>
-          <strong>{formatDisplayLevel(profile.highest_display_level, i18n.language)}</strong>
+          <strong>{formatDisplayLevel(level.highest_display_level, i18n.language)}</strong>
         </div>
         <div {...stylex.props(ui.row)}>
           <span>{t('profile.confirmedGroups')}</span>
-          <strong>{profile.confirmed_competitive_game_groups}</strong>
+          <strong>{level.confirmed_competitive_game_groups}</strong>
         </div>
       </section>
       {editing ? (
@@ -274,9 +286,11 @@ export function PlayerProfile({ initialProfile }: { initialProfile: Profile }) {
           onUploaded={setProfile}
         />
       </section>
-      <section {...stylex.props(ui.card, ui.profileCard)}>
-        <p {...stylex.props(ui.muted)}>{t('profile.historyEmpty')}</p>
-      </section>
+      <RatingJourney
+        key={initialRating.status === 'ok' ? initialRating.revision : 'error'}
+        load={initialRating}
+        onReload={onRatingReload}
+      />
       {signOutError && (
         <p role="alert" {...stylex.props(ui.error)}>
           {t('profile.signOutFailed')}

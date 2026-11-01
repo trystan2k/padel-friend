@@ -1,9 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import {
-  compareReplayKey,
-  isRatableResult,
-  ratingChangeKind
-} from '../src/features/player/rating-model';
+import { compareReplayKey, isRatableResult } from '../src/features/player/rating-model';
 
 describe('rating replay order', () => {
   const early = { playedAt: '2026-11-03T19:30:00.000Z', gameGroupId: 'b' };
@@ -32,15 +28,5 @@ describe('rating eligibility', () => {
     expect(isRatableResult('competitive', null, 'confirmed')).toBe(false);
     expect(isRatableResult('competitive', 'team_a', 'pending')).toBe(false);
     expect(isRatableResult('competitive', 'team_a', 'disputed')).toBe(false);
-  });
-});
-
-describe('rating change wording class', () => {
-  it('distinguishes movement, rounded-to-zero and boundary clamps', () => {
-    expect(ratingChangeKind({ appliedDelta: '0.07', clamped: false })).toBe('gain');
-    expect(ratingChangeKind({ appliedDelta: '-0.11', clamped: false })).toBe('loss');
-    expect(ratingChangeKind({ appliedDelta: '0.00', clamped: false })).toBe('unchanged_rounded');
-    expect(ratingChangeKind({ appliedDelta: '0.00', clamped: true })).toBe('unchanged_boundary');
-    expect(ratingChangeKind({ appliedDelta: '-0.05', clamped: true })).toBe('loss');
   });
 });

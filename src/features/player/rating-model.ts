@@ -26,15 +26,51 @@ export function isRatableResult(
   );
 }
 
-export type RatingChangeKind = 'gain' | 'loss' | 'unchanged_rounded' | 'unchanged_boundary';
+const EXPECTED_SCORE_EPSILON = 1e-9;
 
-/** Honest wording class for a stored calculation: zero movement never implies a promise. */
-export function ratingChangeKind(change: {
-  appliedDelta: string;
+export type RatingOutcome = 'win' | 'draw' | 'loss';
+
+/** Stored own-team result: 1 win, 0.5 draw, 0 loss. */
+export function ratingOutcome(outcomeValue: number): RatingOutcome {
+  return outcomeValue === 1 ? 'win' : outcomeValue === 0.5 ? 'draw' : 'loss';
+}
+
+export type RatingExplanationNote =
+  | 'gain'
+  | 'loss'
+  | 'zero_rounded'
+  | 'draw_equal'
+  | 'boundary'
+  | 'clamped_gain'
+  | 'clamped_loss';
+
+/**
+ * Wording class for one stored calculation. Only stored fields are read, so a historical
+ * explanation never depends on today's teammate ratings. Zero movement is never described
+ * as a promise: it is a rounded-away change, an equal draw, or the edge of the scale.
+ */
+export function ratingExplanationNote(stored: {
+  expected_score: number;
+  outcome_value: number;
+  rounded_delta: number;
+  applied_delta: number;
   clamped: boolean;
-}): RatingChangeKind {
-  const applied = Number(change.appliedDelta);
-  if (applied > 0) return 'gain';
-  if (applied < 0) return 'loss';
-  return change.clamped ? 'unchanged_boundary' : 'unchanged_rounded';
+}): RatingExplanationNote {
+  const { applied_delta: applied, rounded_delta: rounded } = stored;
+  if (applied === 0) {
+    if (stored.clamped) return 'boundary';
+    if (
+      stored.outcome_value === 0.5 &&
+      Math.abs(stored.expected_score - 0.5) < EXPECTED_SCORE_EPSILON
+    )
+      return 'draw_equal';
+    return 'zero_rounded';
+  }
+  if (stored.clamped && applied !== rounded) return applied > 0 ? 'clamped_gain' : 'clamped_loss';
+  return applied > 0 ? 'gain' : 'loss';
+}
+
+/** Reliability is capped at 100%; from then on every game uses the smallest weight. */
+export function isReliabilityEstablished(reliabilityPercent: number): boolean {
+  return reliabilityPercent >= 100;
 }
