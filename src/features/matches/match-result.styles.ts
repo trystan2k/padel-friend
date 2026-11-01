@@ -607,6 +607,22 @@ export const matchResultReviewStyles = stylex.create({
     color: 'var(--color-green)',
     fontWeight: 'var(--font-weight-semibold)'
   },
+  rankedBlocked: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 'var(--space-6)',
+    minWidth: 0,
+    padding: 'var(--space-10)',
+    borderRadius: 'var(--radius-12)',
+    backgroundColor: 'var(--color-surface-2)'
+  },
+  rankedBlockedTitle: {
+    margin: 0,
+    color: 'var(--color-amber)',
+    fontFamily: 'var(--font-family-heading)',
+    fontSize: 'var(--font-size-14)',
+    fontWeight: 'var(--font-weight-bold)'
+  },
   disputeCopy: { margin: 0, color: 'var(--color-red)', overflowWrap: 'anywhere' },
   impactCopy: { margin: 0, color: 'var(--color-muted)', overflowWrap: 'anywhere' },
   actionRow: { display: 'flex', flexWrap: 'wrap', gap: 'var(--space-8)', minWidth: 0 },

@@ -44,6 +44,7 @@ export const resultProposal = {
   played_at_offset_seconds: 0,
   court_label: null,
   rating_effective: false,
+  ranked_blocked: null,
   submitted_by: resultIds[0],
   submitted_by_name: 'Player',
   can_approve: false,

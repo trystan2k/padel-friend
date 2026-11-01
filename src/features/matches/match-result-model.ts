@@ -106,6 +106,10 @@ export type ResultVersionTimelineEntry = {
   decisions: ResultDecisionEvidence[];
   confirmation_id: string | null;
 };
+export const RANKED_BLOCKED_REASONS = ['membership', 'out_of_period', 'league_invalid'] as const;
+export type RankedBlockedReason = (typeof RANKED_BLOCKED_REASONS)[number];
+/** Typed reason a Ranked group cannot be confirmed; resolution is an authorized correction. */
+export type ResultRankedBlock = { reason: RankedBlockedReason; user_ids: string[] };
 export type ResultProposal = Omit<ResultSubmission, 'request_id'> & {
   status: ResultProposalStatus;
   teams: { team_a: [ResultPlayer, ResultPlayer]; team_b: [ResultPlayer, ResultPlayer] };
@@ -116,6 +120,7 @@ export type ResultProposal = Omit<ResultSubmission, 'request_id'> & {
   played_at_offset_seconds: number;
   court_label: string | null;
   rating_effective: boolean;
+  ranked_blocked: ResultRankedBlock | null;
   submitted_by: string;
   submitted_by_name: string | null;
   can_approve: boolean;
@@ -193,6 +198,13 @@ export function parseResultSubmission(
   const parsed = submission(value);
   return parsed ? { status: 'ok', value: parsed, replayed: value.replayed } : null;
 }
+function parseRankedBlock(value: unknown): ResultRankedBlock | null {
+  if (value === undefined || value === null) return null;
+  if (!record(value) || !Array.isArray(value.user_ids)) throw new Error('INVALID_RANKED_BLOCK');
+  const reason = RANKED_BLOCKED_REASONS.find((item) => item === value.reason);
+  if (!reason) throw new Error('INVALID_RANKED_BLOCK');
+  return { reason, user_ids: value.user_ids.map((id) => validateMatchUuid(id)) };
+}
 export function parseResultProposals(value: unknown): ResultProposal[] | null {
   if (!Array.isArray(value)) return null;
   const proposals: ResultProposal[] = [];
@@ -265,6 +277,9 @@ export function parseResultProposals(value: unknown): ResultProposal[] | null {
         )
       )
         return null;
+      const rankedBlocked = parseRankedBlock(row.ranked_blocked);
+      // A confirmed group was eligible by construction, and a blocked one cannot be approved.
+      if (rankedBlocked && (status === 'confirmed' || row.can_approve)) return null;
       const submittedBy = uuid(row.submitted_by);
       const submittedByName = nullableName(row.submitted_by_name);
       const callerDecision = parseCallerDecision(row.caller_decision);
@@ -351,6 +366,7 @@ export function parseResultProposals(value: unknown): ResultProposal[] | null {
         played_at_offset_seconds: played.offset_seconds,
         court_label: row.court_label,
         rating_effective: row.rating_effective,
+        ranked_blocked: rankedBlocked,
         submitted_by: submittedBy,
         submitted_by_name: submittedByName,
         can_approve: row.can_approve,

@@ -59,6 +59,30 @@ export type LeagueCommunityDto = {
   can_create: boolean;
 };
 
+/**
+ * One participant's confirmed Ranked counters, keyed by permanent user UUID (a claim changes only
+ * the provisional badge). Not a standing: no position, points or skill input is carried.
+ */
+export type LeagueCounterEntry = {
+  user_id: string;
+  display_name: string | null;
+  is_provisional: boolean;
+  matches: number;
+  wins: number;
+  losses: number;
+  draws: number;
+  sets_won: number;
+  sets_lost: number;
+  set_differential: number;
+};
+
+export type LeagueCountersResult = {
+  league_id: string;
+  participants: LeagueCounterEntry[];
+  /** Confirmed groups left out because the whole group failed Ranked eligibility. */
+  excluded_group_count: number;
+};
+
 export type LeagueListResult = { community: LeagueCommunityDto; leagues: LeagueDto[] };
 export type LeagueDetailResult = { community: LeagueCommunityDto; league: LeagueDto };
 

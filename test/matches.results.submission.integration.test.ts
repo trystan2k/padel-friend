@@ -1,4 +1,11 @@
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import {
+  createRankedResultFixtures,
+  playedAt,
+  rankedKitEnv,
+  setMembershipHistory,
+  type RankedResultKit
+} from './helpers/ranked-result-fixtures';
 import {
   createMatchManagementFixtures,
   type ManagementActor
@@ -510,3 +517,65 @@ describe('actual result submission transaction', { timeout: 60000 }, () => {
     });
   });
 });
+
+describe.skipIf(!rankedKitEnv(import.meta.url))(
+  'Ranked eligibility on submission (U4)',
+  { timeout: 60000 },
+  () => {
+    let kit: RankedResultKit;
+    beforeAll(async () => {
+      kit = await createRankedResultFixtures(rankedKitEnv(import.meta.url)!);
+    });
+    afterAll(async () => {
+      if (kit) await kit.cleanup();
+    });
+    beforeEach(async () => {
+      await kit.resetMemberships();
+    });
+
+    it('rolls back result protection with a rejected Ranked submission and accepts it once eligible', async () => {
+      const leagueId = await kit.league();
+      const eventId = await kit.event(leagueId, 'competitive', false);
+      const target = kit.players[1]!;
+      await setMembershipHistory(kit.communityId, target.id, [{ activatedAt: null }]);
+      const at = playedAt(120);
+      const protectedAt = () =>
+        sqlRows(
+          `select results_protected_at from public.match_event_registration_state where match_event_id='${eventId}'`
+        );
+
+      const rejected = await kit.submit(eventId, at.played);
+      expect(rejected.error?.message).toBe('MATCH_RESULT_RANKED_MEMBERSHIP');
+      expect(await protectedAt()).toEqual([{ results_protected_at: null }]);
+      expect((await kit.sideEffects(eventId))['proposals']).toBe(0);
+
+      await setMembershipHistory(kit.communityId, target.id, [
+        { activatedAt: new Date(Date.now() - 86_400_000).toISOString() }
+      ]);
+      expect((await kit.submit(eventId, at.played)).error).toBeNull();
+      expect((await protectedAt())[0]!['results_protected_at']).not.toBeNull();
+    });
+
+    it('judges membership at the played instant, not at submission time', async () => {
+      const eventId = await kit.event(await kit.league());
+      const target = kit.players[2]!;
+      // Active for the last hour only: play two hours ago predates it, play 30 minutes ago does not.
+      await setMembershipHistory(kit.communityId, target.id, [
+        { activatedAt: new Date(Date.now() - 3_600_000).toISOString() }
+      ]);
+      const early = await kit.submit(eventId, playedAt(7_200).played);
+      expect(early.error?.message).toBe('MATCH_RESULT_RANKED_MEMBERSHIP');
+      const late = await kit.submit(eventId, playedAt(1_800).played);
+      expect(late.error).toBeNull();
+      const [stored] = await sqlRows(
+        `select v.played_at_utc from public.match_event_result_proposal_versions v
+           join public.match_event_result_proposals p on p.id = v.proposal_id
+          where p.match_event_id='${eventId}'`
+      );
+      // The stored instant is the claimed play time, not the submission time.
+      expect(
+        Math.abs(Date.parse(String(stored!['played_at_utc'])) - (Date.now() - 1_800_000))
+      ).toBeLessThan(30_000);
+    });
+  }
+);

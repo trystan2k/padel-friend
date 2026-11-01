@@ -242,6 +242,14 @@ export const styles = stylex.create({
     margin: 0,
     fontSize: 'var(--font-size-12)'
   },
+  counterStats: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    gap: 'var(--space-8) var(--space-14)',
+    margin: 0,
+    fontSize: 'var(--font-size-12)'
+  },
+  counterStat: { display: 'flex', flexDirection: 'column', gap: 'var(--space-2)', minWidth: 0 },
   detailLabel: { color: 'var(--color-muted)', margin: 0 },
   detailValue: { margin: 0, overflowWrap: 'anywhere' },
   dialogBackdrop: {

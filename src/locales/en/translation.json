@@ -808,6 +808,16 @@
         "submit": "Submit dispute",
         "submitting": "Submitting dispute…"
       },
+      "rankedBlocked": {
+        "title": "Can't count as Ranked yet",
+        "reason": {
+          "membership": "These players were not active community members at the played time: {{names}}.",
+          "out_of_period": "The played time is outside the League period.",
+          "league_invalid": "The League for this match is no longer valid for Ranked results."
+        },
+        "resolution": "If the played time was entered wrongly, correct it. Play that really happened outside these rules can't be counted as Ranked.",
+        "organizerOnly": "The organizer or a community Admin must correct this result."
+      },
       "correctResult": "Correct result",
       "correctTitle": "Correct result",
       "correctSubmit": "Submit correction",
@@ -834,6 +844,9 @@
         "thirdSetAfterDecided": "A completed third set requires the first two sets to be split 1–1.",
         "activeProposal": "Another result is already pending. Reload to review it; your draft was not submitted.",
         "idempotencyConflict": "This request changed. Reload before submitting again.",
+        "rankedMembership": "Not all of these players were active community members at the played time. Check the played time.",
+        "rankedOutOfPeriod": "The played time is outside the League period. Check the played time.",
+        "rankedLeagueInvalid": "The League for this match is no longer valid for Ranked results.",
         "invalidReview": "Check your review decision and try again.",
         "invalidRejectionReason": "Choose a rejection reason and provide a note when required.",
         "reviewForbidden": "Only an eligible player in this group may review this result.",
@@ -1572,6 +1585,20 @@
         "endNotAfterStart": "End date must be later than start date.",
         "minimumInvalid": "Enter a whole number from 1 to 100."
       }
+    },
+    "counters": {
+      "title": "Participants",
+      "matches": "Matches",
+      "wins": "Wins",
+      "draws": "Draws",
+      "losses": "Losses",
+      "setsWon": "Sets won",
+      "setsLost": "Sets lost",
+      "setDifferential": "Set difference",
+      "empty": "No participants yet.",
+      "unknownPlayer": "Player",
+      "excluded_one": "1 confirmed Ranked group was left out because it no longer meets the Ranked rules.",
+      "excluded_other": "{{count}} confirmed Ranked groups were left out because they no longer meet the Ranked rules."
     },
     "detail": {
       "owner": "Owner",

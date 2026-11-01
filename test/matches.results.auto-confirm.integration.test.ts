@@ -1,4 +1,15 @@
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import {
+  createRankedResultFixtures,
+  playedAt,
+  rankedKitEnv,
+  setMembershipHistory,
+  type RankedResultKit
+} from './helpers/ranked-result-fixtures';
+import {
+  processDueMatchEventResults as processDue,
+  setResultReviewDeadlineOffset as ageDeadline
+} from './helpers/match-result-processing-fixtures';
 import { dotEnvPathFromImportMetaUrl, localSupabaseEnv } from './helpers/local-supabase-env';
 import {
   asRecord,
@@ -433,3 +444,65 @@ describe('trusted result auto-confirm scheduler', { timeout: 120000 }, () => {
     expect(browserCall.error).not.toBeNull();
   });
 });
+
+describe.skipIf(!rankedKitEnv(import.meta.url))(
+  'Ranked eligibility in the scheduler (U4)',
+  { timeout: 60000 },
+  () => {
+    let kit: RankedResultKit;
+    beforeAll(async () => {
+      kit = await createRankedResultFixtures(rankedKitEnv(import.meta.url)!);
+    });
+    afterAll(async () => {
+      if (kit) await kit.cleanup();
+    });
+    beforeEach(async () => {
+      await kit.resetMemberships();
+    });
+
+    it('keeps a blocked group queued with backoff evidence and clears it when a correction supersedes it', async () => {
+      const eventId = await kit.event(await kit.league());
+      expect((await kit.submit(eventId, playedAt(300).played)).error).toBeNull();
+      const proposalId = await kit.proposalId(eventId);
+      await setMembershipHistory(kit.communityId, kit.players[2]!.id, [
+        {
+          activatedAt: new Date(Date.now() - 86_400_000).toISOString(),
+          validUntil: playedAt(300).iso
+        }
+      ]);
+      await ageDeadline(proposalId, 1, -60);
+
+      const first = await processDue();
+      expect(first).toMatchObject({ failed: 0, confirmed: 0 });
+      expect(first['blocked_items']).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            proposal_id: proposalId,
+            code: 'MATCH_RESULT_RANKED_MEMBERSHIP'
+          })
+        ])
+      );
+      const state = () =>
+        sqlRows(
+          `select failure_count::int as failures, last_failure_code, next_attempt_at > clock_timestamp() as backing_off
+             from public.match_event_result_processing_state where proposal_id='${proposalId}'`
+        );
+      expect(await state()).toEqual([
+        { failures: 1, last_failure_code: 'MATCH_RESULT_RANKED_MEMBERSHIP', backing_off: true }
+      ]);
+      // Within the backoff window the proposal is not retried, and nothing is confirmed.
+      expect((await processDue())['blocked_items']).not.toEqual(
+        expect.arrayContaining([expect.objectContaining({ proposal_id: proposalId })])
+      );
+      expect((await kit.sideEffects(eventId))['confirmations']).toBe(0);
+
+      // Correction creates a fresh version (new 48h window, processing state reset); once that
+      // version is overdue and eligible the scheduler confirms it through the normal path.
+      const corrected = await kit.correct(proposalId, 1, playedAt(7_200).played);
+      expect(corrected.data).toMatchObject({ version: 2 });
+      await ageDeadline(proposalId, 2, -60);
+      expect(await processDue()).toMatchObject({ failed: 0 });
+      expect(await kit.sideEffects(eventId)).toMatchObject({ confirmations: 1, rating_events: 4 });
+    });
+  }
+);

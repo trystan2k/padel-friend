@@ -2427,6 +2427,7 @@ export type Database = {
       }
       get_effective_community_admin_defaults: { Args: { p_settings: Json }; Returns: Json }
       get_league: { Args: { p_league_id: string }; Returns: Json }
+      get_league_counters: { Args: { p_league_id: string }; Returns: Json }
       get_match_creation_options: { Args: { p_community_id?: string }; Returns: Json }
       get_match_event: { Args: { p_event_id: string }; Returns: Json }
       get_match_event_management: { Args: { p_match_event_id: string }; Returns: Json }
@@ -2887,6 +2888,11 @@ export type Database = {
       match_result_alert_clock: { Args: Record<PropertyKey, never>; Returns: string }
       match_result_alert_lock_defer_interval: { Args: { p_candidate_id: string }; Returns: string }
       match_result_entry_roster_fingerprint: { Args: { p_event_id: string }; Returns: string }
+      match_result_fact_quartet: { Args: { p_teams: Json }; Returns: string[] }
+      match_result_ranked_ineligibility: {
+        Args: { p_event_id: string; p_played_at: string; p_quartet: string[] }
+        Returns: Json
+      }
       notify_match_result_deadline: {
         Args: { p_proposal_id: string; p_proposal_version: number }
         Returns: number

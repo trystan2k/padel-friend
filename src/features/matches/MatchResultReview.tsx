@@ -3,6 +3,7 @@ import { Link } from '@tanstack/react-router';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { MatchResultPending } from './MatchResultPending';
+import { MatchResultRankedBlocked } from './MatchResultRankedBlocked';
 import { MatchResultRejectDialog } from './MatchResultRejectDialog';
 import { MatchResultTeams, resultSetWins } from './MatchResultFacts';
 import type { ResultProposal, ResultRejectionReason } from './match-result-model';
@@ -290,6 +291,9 @@ export function MatchResultReview({
             </button>
           )}
         </section>
+      )}
+      {!compact && proposal.status !== 'confirmed' && (
+        <MatchResultRankedBlocked eventId={eventId} proposal={proposal} />
       )}
       {feedbackCopy && !rejectOpen && review.feedback?.kind !== 'stale' && (
         <output

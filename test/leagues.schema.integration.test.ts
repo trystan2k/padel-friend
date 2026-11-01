@@ -24,6 +24,8 @@ const PUBLIC_COMMANDS = [
   'close_league',
   'create_league',
   'get_league',
+  // PAF-11 U4: read-only per-player counters over confirmed eligible Ranked results.
+  'get_league_counters',
   'list_leagues',
   // PAF-11 U2: eligible League options for the create-match schedule.
   'list_match_league_options',
@@ -43,7 +45,10 @@ const INTERNAL_FUNCTIONS = [
   'valid_league_timezone(text)',
   'touch_league()',
   'guard_league_identity()',
-  'guard_league_events_immutable()'
+  'guard_league_events_immutable()',
+  // PAF-11 U4: result-time Ranked eligibility helpers.
+  'match_result_fact_quartet(jsonb)',
+  'match_result_ranked_ineligibility(uuid,uuid[],timestamp with time zone)'
 ];
 
 describe('League schema', { timeout: 120_000 }, () => {
@@ -272,7 +277,7 @@ describe('League schema', { timeout: 120_000 }, () => {
   );
 
   it.skipIf(!environment.env)(
-    'exposes only the six commands to signed-in users and no internal helper to any runtime role',
+    'exposes only the League commands and readers to signed-in users and no internal helper to any runtime role',
     async () => {
       const granted = await sqlRows(
         `select p.proname from pg_proc p join pg_namespace n on n.oid = p.pronamespace

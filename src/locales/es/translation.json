@@ -808,6 +808,16 @@
         "submit": "Enviar disputa",
         "submitting": "Enviando disputa…"
       },
+      "rankedBlocked": {
+        "title": "Aún no puede contar como Clasificatorio",
+        "reason": {
+          "membership": "Estos jugadores no eran miembros activos de la comunidad a la hora jugada: {{names}}.",
+          "out_of_period": "La hora jugada está fuera del periodo de la Liga.",
+          "league_invalid": "La Liga de este partido ya no es válida para resultados Clasificatorios."
+        },
+        "resolution": "Si la hora jugada se introdujo mal, corrígela. Un partido que realmente se jugó fuera de estas reglas no puede contar como Clasificatorio.",
+        "organizerOnly": "El organizador o un Admin de la comunidad debe corregir este resultado."
+      },
       "correctResult": "Corregir resultado",
       "correctTitle": "Corregir resultado",
       "correctSubmit": "Enviar corrección",
@@ -834,6 +844,9 @@
         "thirdSetAfterDecided": "Un tercer set completo requiere que los dos primeros estén empatados 1–1.",
         "activeProposal": "Ya hay otro resultado pendiente. Recarga para revisarlo; tu borrador no se ha enviado.",
         "idempotencyConflict": "Esta solicitud cambió. Recarga antes de volver a enviarla.",
+        "rankedMembership": "No todos los jugadores eran miembros activos de la comunidad a la hora jugada. Revisa la hora.",
+        "rankedOutOfPeriod": "La hora jugada está fuera del periodo de la Liga. Revisa la hora.",
+        "rankedLeagueInvalid": "La Liga de este partido ya no es válida para resultados Clasificatorios.",
         "invalidReview": "Revisa tu decisión y vuelve a intentarlo.",
         "invalidRejectionReason": "Elige un motivo de rechazo e incluye una nota cuando sea necesario.",
         "reviewForbidden": "Solo un jugador elegible de este grupo puede revisar este resultado.",
@@ -1572,6 +1585,20 @@
         "endNotAfterStart": "La fecha de fin debe ser posterior a la de inicio.",
         "minimumInvalid": "Introduce un número entero del 1 al 100."
       }
+    },
+    "counters": {
+      "title": "Participantes",
+      "matches": "Partidos",
+      "wins": "Victorias",
+      "draws": "Empates",
+      "losses": "Derrotas",
+      "setsWon": "Sets ganados",
+      "setsLost": "Sets perdidos",
+      "setDifferential": "Diferencia de sets",
+      "empty": "Aún no hay participantes.",
+      "unknownPlayer": "Jugador",
+      "excluded_one": "1 grupo Clasificatorio confirmado quedó fuera porque ya no cumple las reglas Clasificatorias.",
+      "excluded_other": "{{count}} grupos Clasificatorios confirmados quedaron fuera porque ya no cumplen las reglas Clasificatorias."
     },
     "detail": {
       "owner": "Responsable",

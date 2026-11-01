@@ -2,11 +2,17 @@ import { createServerFn } from '@tanstack/react-start';
 import { requireAuthenticatedClient } from '../auth/auth.server';
 import type {
   LeagueCommunityEntry,
+  LeagueCountersResult,
   LeagueDetailResult,
   LeagueDto,
   LeagueListResult
 } from './league-contracts';
-import { decodeLeagueDetail, decodeLeagueDto, decodeLeagueList } from './league-decoders';
+import {
+  decodeLeagueCounters,
+  decodeLeagueDetail,
+  decodeLeagueDto,
+  decodeLeagueList
+} from './league-decoders';
 import { leagueErrorFromDatabase } from './league-errors';
 import {
   validateCreateLeague,
@@ -51,6 +57,18 @@ export const getLeague = createServerFn({ method: 'GET' })
     const { data: result, error } = await client.rpc('get_league', { p_league_id: data.league_id });
     if (error) throw new Error(leagueErrorFromDatabase(error));
     return decoded(decodeLeagueDetail, result);
+  });
+
+/** Read-only per-player counters over confirmed eligible Ranked results (no standings order). */
+export const getLeagueCounters = createServerFn({ method: 'GET' })
+  .validator(validateLeagueId)
+  .handler(async ({ data }): Promise<LeagueCountersResult> => {
+    const { client } = await authenticatedClient();
+    const { data: result, error } = await client.rpc('get_league_counters', {
+      p_league_id: data.league_id
+    });
+    if (error) throw new Error(leagueErrorFromDatabase(error));
+    return decoded(decodeLeagueCounters, result);
   });
 
 export const createLeague = createServerFn({ method: 'POST' })

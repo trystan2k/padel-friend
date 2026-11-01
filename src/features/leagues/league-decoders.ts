@@ -5,6 +5,8 @@ import {
   LEAGUE_END_MODES,
   LEAGUE_STATUSES,
   type LeagueCommunityDto,
+  type LeagueCounterEntry,
+  type LeagueCountersResult,
   type LeagueDetailResult,
   type LeagueDto,
   type LeagueListResult
@@ -131,6 +133,62 @@ function decodeCommunity(value: unknown): LeagueCommunityDto {
     timezone: oneOf<CommunityTimezone>(row.timezone, COMMUNITY_TIMEZONES),
     creation_enabled: boolean(row.creation_enabled),
     can_create: boolean(row.can_create)
+  };
+}
+
+function count(value: unknown): number {
+  return typeof value === 'number' && Number.isSafeInteger(value) && value >= 0 ? value : fail();
+}
+function signedCount(value: unknown): number {
+  return typeof value === 'number' && Number.isSafeInteger(value) ? value : fail();
+}
+
+const COUNTER_KEYS = [
+  'user_id',
+  'display_name',
+  'is_provisional',
+  'matches',
+  'wins',
+  'losses',
+  'draws',
+  'sets_won',
+  'sets_lost',
+  'set_differential'
+] as const;
+
+function decodeCounterEntry(value: unknown): LeagueCounterEntry {
+  const row = exactObject(value, COUNTER_KEYS);
+  const entry: LeagueCounterEntry = {
+    user_id: uuid(row.user_id),
+    display_name: nullable(row.display_name, text),
+    is_provisional: boolean(row.is_provisional),
+    matches: count(row.matches),
+    wins: count(row.wins),
+    losses: count(row.losses),
+    draws: count(row.draws),
+    sets_won: count(row.sets_won),
+    sets_lost: count(row.sets_lost),
+    set_differential: signedCount(row.set_differential)
+  };
+  // The counters are a closed arithmetic: any drift means a corrupted or foreign payload.
+  if (
+    entry.wins + entry.losses + entry.draws !== entry.matches ||
+    entry.sets_won - entry.sets_lost !== entry.set_differential
+  )
+    return fail();
+  return entry;
+}
+
+export function decodeLeagueCounters(value: unknown): LeagueCountersResult {
+  const row = exactObject(value, ['league_id', 'participants', 'excluded_group_count']);
+  if (!Array.isArray(row.participants)) return fail();
+  const participants = row.participants.map(decodeCounterEntry);
+  if (new Set(participants.map((entry) => entry.user_id)).size !== participants.length)
+    return fail();
+  return {
+    league_id: uuid(row.league_id),
+    participants,
+    excluded_group_count: count(row.excluded_group_count)
   };
 }
 

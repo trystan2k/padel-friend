@@ -139,6 +139,35 @@ describe('League detail management', () => {
   });
   afterEach(cleanup);
 
+  it("shows participants' counters when provided and stays usable without them", () => {
+    const counters = {
+      league_id: '22222222-2222-4222-8222-222222222222',
+      excluded_group_count: 0,
+      participants: [
+        {
+          user_id: '33333333-3333-4333-8333-333333333331',
+          display_name: 'Provisional Pat',
+          is_provisional: true,
+          matches: 0,
+          wins: 0,
+          losses: 0,
+          draws: 0,
+          sets_won: 0,
+          sets_lost: 0,
+          set_differential: 0
+        }
+      ]
+    };
+    render(wrap(<LeagueDetailPage data={makeLeagueDetail()} counters={counters} />));
+    const section = screen.getByRole('region', { name: 'Participants' });
+    expect(within(section).getByText('Provisional Pat')).toBeTruthy();
+    expect(within(section).getByText('Provisional')).toBeTruthy();
+    cleanup();
+    render(wrap(<LeagueDetailPage data={makeLeagueDetail()} counters={null} />));
+    expect(screen.queryByRole('region', { name: 'Participants' })).toBeNull();
+    expect(screen.getByRole('heading', { level: 1 })).toBeTruthy();
+  });
+
   it('hides every control from someone who cannot manage the League', () => {
     render(
       wrap(

@@ -7,6 +7,7 @@ import { Button } from '../../components/ui/Button';
 import { SurfaceCard } from '../../components/ui/SurfaceCard';
 import { rootStyles } from '../../root.styles';
 import type {
+  LeagueCountersResult,
   LeagueDetailResult,
   LeagueDto,
   LeagueErrorCode,
@@ -20,6 +21,7 @@ import {
   type LeagueFormInput
 } from './league-form';
 import { activateLeague, closeLeague, updateLeague } from './league.functions';
+import { LeagueCounters } from './LeagueCounters';
 import { LeagueForm } from './LeagueForm';
 import { LeagueStatusBadge, useLeaguePeriodText } from './LeagueSummary';
 import { styles } from './league.styles';
@@ -45,7 +47,14 @@ function changesFrom(league: LeagueDto, input: LeagueFormInput): UpdateLeagueCha
   return changes;
 }
 
-export function LeagueDetailPage({ data }: { data: LeagueDetailResult }) {
+export function LeagueDetailPage({
+  data,
+  counters = null
+}: {
+  data: LeagueDetailResult;
+  /** Null when the counter reader was unavailable: the page stays usable without it. */
+  counters?: LeagueCountersResult | null;
+}) {
   const { t, i18n } = useTranslation();
   const router = useRouter();
   const { community } = data;
@@ -171,6 +180,8 @@ export function LeagueDetailPage({ data }: { data: LeagueDetailResult }) {
             )}
           </dl>
         </SurfaceCard>
+
+        {counters && <LeagueCounters counters={counters} />}
 
         {(canActivate || canClose || canEdit) && !editing && (
           <div {...stylex.props(styles.actions)}>

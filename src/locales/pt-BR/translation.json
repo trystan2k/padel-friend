@@ -808,6 +808,16 @@
         "submit": "Enviar contestação",
         "submitting": "Enviando contestação…"
       },
+      "rankedBlocked": {
+        "title": "Ainda não pode valer como Ranqueado",
+        "reason": {
+          "membership": "Estes jogadores não eram membros ativos da comunidade no horário jogado: {{names}}.",
+          "out_of_period": "O horário jogado está fora do período da Liga.",
+          "league_invalid": "A Liga desta partida não é mais válida para resultados Ranqueados."
+        },
+        "resolution": "Se o horário jogado foi informado errado, corrija-o. Um jogo que realmente aconteceu fora destas regras não pode valer como Ranqueado.",
+        "organizerOnly": "O organizador ou um Admin da comunidade deve corrigir este resultado."
+      },
       "correctResult": "Corrigir resultado",
       "correctTitle": "Corrigir resultado",
       "correctSubmit": "Enviar correção",
@@ -834,6 +844,9 @@
         "thirdSetAfterDecided": "Um terceiro set concluído exige que os dois primeiros estejam empatados em 1–1.",
         "activeProposal": "Outro resultado já está pendente. Recarregue para revisá-lo; seu rascunho não foi enviado.",
         "idempotencyConflict": "Esta solicitação mudou. Recarregue antes de enviar novamente.",
+        "rankedMembership": "Nem todos os jogadores eram membros ativos da comunidade no horário jogado. Confira o horário.",
+        "rankedOutOfPeriod": "O horário jogado está fora do período da Liga. Confira o horário.",
+        "rankedLeagueInvalid": "A Liga desta partida não é mais válida para resultados Ranqueados.",
         "invalidReview": "Confira sua decisão de revisão e tente novamente.",
         "invalidRejectionReason": "Escolha um motivo para a rejeição e informe uma observação quando necessário.",
         "reviewForbidden": "Somente um jogador elegível deste grupo pode revisar este resultado.",
@@ -1572,6 +1585,20 @@
         "endNotAfterStart": "A data final deve ser posterior à data de início.",
         "minimumInvalid": "Informe um número inteiro de 1 a 100."
       }
+    },
+    "counters": {
+      "title": "Participantes",
+      "matches": "Partidas",
+      "wins": "Vitórias",
+      "draws": "Empates",
+      "losses": "Derrotas",
+      "setsWon": "Sets ganhos",
+      "setsLost": "Sets perdidos",
+      "setDifferential": "Saldo de sets",
+      "empty": "Ainda não há participantes.",
+      "unknownPlayer": "Jogador",
+      "excluded_one": "1 grupo Ranqueado confirmado ficou de fora porque não cumpre mais as regras Ranqueadas.",
+      "excluded_other": "{{count}} grupos Ranqueados confirmados ficaram de fora porque não cumprem mais as regras Ranqueadas."
     },
     "detail": {
       "owner": "Responsável",
