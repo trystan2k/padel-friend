@@ -47,6 +47,10 @@ export const FIXTURE_CLEANUP_TABLE_ORDER = [
   'public.player_profiles',
   'public.community_members',
   'public.match_events',
+  // Leagues are referenced by (future) match events; their audit rows are immutable and are
+  // removed by leagueEvidenceStatements() in the same cleanup transaction.
+  'public.league_events',
+  'public.leagues',
   'storage.objects',
   'public.community_venues',
   'public.community_invitations',
@@ -189,8 +193,10 @@ export class FixtureCleanupRegistry {
 
   async deleteRegisteredRowsInOrder(options: FixtureCleanupOptions = {}): Promise<void> {
     const ratingEvidence = this.ratingEvidenceStatements();
+    const leagueEvidence = this.leagueEvidenceStatements();
     const statements = [
       ...(options.beforeStatements ?? []),
+      ...leagueEvidence.before,
       ...ratingEvidence.before,
       ...this.sortedEntries().map((entry) => {
         const predicate = Object.entries(entry.identity)
@@ -204,6 +210,7 @@ export class FixtureCleanupRegistry {
         return `DELETE FROM ${quoteTable(entry.table)} WHERE ${predicate}`;
       }),
       ...ratingEvidence.after,
+      ...leagueEvidence.after,
       ...(options.afterStatements ?? [])
     ];
     if (statements.length === 0) return;
@@ -277,6 +284,41 @@ export class FixtureCleanupRegistry {
       after: triggers.map(
         ([table, trigger]) => `ALTER TABLE public.${table} ENABLE TRIGGER ${trigger}`
       )
+    };
+  }
+
+  /**
+   * League audit rows are immutable and Leagues restrictively reference communities and owner
+   * users, so registered communities, users and Leagues need their League evidence gone first.
+   * The immutability trigger is disabled only inside the cleanup transaction (rollback restores
+   * it) and re-enabled before it commits.
+   */
+  private leagueEvidenceStatements(): { before: string[]; after: string[] } {
+    const scopes: string[] = [];
+    for (const entry of this.sortedEntries()) {
+      const predicate = Object.entries(entry.identity)
+        .sort(([left], [right]) => left.localeCompare(right))
+        .map(([column, value]) =>
+          value === null
+            ? `${quoteColumn(column)} IS NULL`
+            : `${quoteColumn(column)} = ${sqlLiteral(value)}`
+        )
+        .join(' AND ');
+      const select = (column: string) =>
+        `SELECT ${column} FROM ${quoteTable(entry.table)} WHERE ${predicate}`;
+      if (entry.table === 'public.communities') scopes.push(`community_id IN (${select('id')})`);
+      else if (entry.table === 'auth.users') scopes.push(`owner_id IN (${select('id')})`);
+      else if (entry.table === 'public.leagues') scopes.push(`id IN (${select('id')})`);
+    }
+    if (scopes.length === 0) return { before: [], after: [] };
+    const leagues = `SELECT id FROM public.leagues WHERE ${scopes.join(' OR ')}`;
+    return {
+      before: [
+        'ALTER TABLE public.league_events DISABLE TRIGGER league_events_immutable',
+        `DELETE FROM public.league_events WHERE league_id IN (${leagues})`,
+        `DELETE FROM public.leagues WHERE id IN (${leagues})`
+      ],
+      after: ['ALTER TABLE public.league_events ENABLE TRIGGER league_events_immutable']
     };
   }
 

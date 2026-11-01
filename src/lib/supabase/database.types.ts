@@ -428,6 +428,130 @@ export type Database = {
           },
         ]
       }
+      league_events: {
+        Row: {
+          action: string
+          actor_id: string | null
+          community_id: string
+          details: NonNullable<Json>
+          id: string
+          league_id: string
+          occurred_at: string
+          system_reason: string | null
+        }
+        ComputedFields: never
+        Insert: {
+          action: string
+          actor_id?: string | null
+          community_id: string
+          details?: NonNullable<Json>
+          id?: string
+          league_id: string
+          occurred_at?: string
+          system_reason?: string | null
+        }
+        Update: {
+          action?: string
+          actor_id?: string | null
+          community_id?: string
+          details?: NonNullable<Json>
+          id?: string
+          league_id?: string
+          occurred_at?: string
+          system_reason?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "league_events_league_fk"
+            columns: ["league_id", "community_id"]
+            isOneToOne: false
+            referencedRelation: "leagues"
+            referencedColumns: ["id", "community_id"]
+          },
+        ]
+      }
+      leagues: {
+        Row: {
+          activated_at: string | null
+          activation_blocked_at: string | null
+          closed_at: string | null
+          closed_by: string | null
+          closed_reason: string | null
+          community_id: string
+          create_input: NonNullable<Json>
+          create_request_id: string
+          created_at: string
+          description: string | null
+          end_at: string | null
+          end_mode: Database["public"]["Enums"]["league_end_mode"]
+          id: string
+          minimum_matches_for_final_award: number
+          name: string
+          owner_id: string
+          start_at: string
+          status: Database["public"]["Enums"]["league_status"]
+          timezone: string
+          updated_at: string
+          version: number
+          league_dto: Json | null
+        }
+        ComputedFields: "league_dto"
+        Insert: {
+          activated_at?: string | null
+          activation_blocked_at?: string | null
+          closed_at?: string | null
+          closed_by?: string | null
+          closed_reason?: string | null
+          community_id: string
+          create_input: NonNullable<Json>
+          create_request_id: string
+          created_at?: string
+          description?: string | null
+          end_at?: string | null
+          end_mode: Database["public"]["Enums"]["league_end_mode"]
+          id?: string
+          minimum_matches_for_final_award?: number
+          name: string
+          owner_id: string
+          start_at: string
+          status: Database["public"]["Enums"]["league_status"]
+          timezone: string
+          updated_at?: string
+          version?: number
+        }
+        Update: {
+          activated_at?: string | null
+          activation_blocked_at?: string | null
+          closed_at?: string | null
+          closed_by?: string | null
+          closed_reason?: string | null
+          community_id?: string
+          create_input?: NonNullable<Json>
+          create_request_id?: string
+          created_at?: string
+          description?: string | null
+          end_at?: string | null
+          end_mode?: Database["public"]["Enums"]["league_end_mode"]
+          id?: string
+          minimum_matches_for_final_award?: number
+          name?: string
+          owner_id?: string
+          start_at?: string
+          status?: Database["public"]["Enums"]["league_status"]
+          timezone?: string
+          updated_at?: string
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "leagues_community_id_fkey"
+            columns: ["community_id"]
+            isOneToOne: false
+            referencedRelation: "communities"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       match_event_audit_log: {
         Row: {
           action: string
@@ -2104,6 +2228,7 @@ export type Database = {
         }[]
       }
       activate_global_rating_projection: { Args: Record<PropertyKey, never>; Returns: Json }
+      activate_league: { Args: { p_expected_version: number; p_league_id: string }; Returns: Json }
       actor_session_revoked: { Args: Record<PropertyKey, never>; Returns: boolean }
       add_match_player: {
         Args: {
@@ -2147,6 +2272,7 @@ export type Database = {
         Returns: undefined
       }
       classify_match_result_sets: { Args: { p_sets: Json }; Returns: string }
+      close_league: { Args: { p_expected_version: number; p_league_id: string }; Returns: Json }
       complete_match_player_add_locked: {
         Args: { p_new_identity: boolean; p_operation_id: string; p_user_id: string }
         Returns: undefined
@@ -2173,6 +2299,19 @@ export type Database = {
           p_visibility: Database["public"]["Enums"]["community_visibility"]
         }
         Returns: string
+      }
+      create_league: {
+        Args: {
+          p_community_id: string
+          p_description?: string
+          p_end_date?: string
+          p_end_mode: string
+          p_minimum_matches?: number
+          p_name: string
+          p_request_id: string
+          p_start_date: string
+        }
+        Returns: Json
       }
       decide_match_registration: {
         Args: { p_attempt_id: string; p_decision: string; p_match_event_id: string }
@@ -2251,6 +2390,7 @@ export type Database = {
         }[]
       }
       get_effective_community_admin_defaults: { Args: { p_settings: Json }; Returns: Json }
+      get_league: { Args: { p_league_id: string }; Returns: Json }
       get_match_creation_options: { Args: { p_community_id?: string }; Returns: Json }
       get_match_event: { Args: { p_event_id: string }; Returns: Json }
       get_match_event_management: { Args: { p_match_event_id: string }; Returns: Json }
@@ -2411,6 +2551,63 @@ export type Database = {
           status: Database["public"]["Enums"]["community_membership_status"]
         }[]
       }
+      league_actor_can_manage: {
+        Args: { p_community_id: string; p_owner_id: string }
+        Returns: boolean
+      }
+      league_community_dto: { Args: { p_community_id: string }; Returns: Json }
+      league_dto: {
+        Args: {
+          p_league: Omit<
+            Database["public"]["Tables"]["leagues"]["Row"],
+            Database["public"]["Tables"]["leagues"]["ComputedFields"]
+          >
+        }
+        Returns: Json
+      }
+      league_has_published_events: { Args: { p_league_id: string }; Returns: boolean }
+      league_lock_for_command: {
+        Args: { p_expected_version: number; p_league_id: string }
+        Returns: {
+          activated_at: string | null
+          activation_blocked_at: string | null
+          closed_at: string | null
+          closed_by: string | null
+          closed_reason: string | null
+          community_id: string
+          create_input: NonNullable<Json>
+          create_request_id: string
+          created_at: string
+          description: string | null
+          end_at: string | null
+          end_mode: Database["public"]["Enums"]["league_end_mode"]
+          id: string
+          minimum_matches_for_final_award: number
+          name: string
+          owner_id: string
+          start_at: string
+          status: Database["public"]["Enums"]["league_status"]
+          timezone: string
+          updated_at: string
+          version: number
+        }
+        SetofOptions: {
+          from: "*"
+          to: "leagues"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      league_period_instants: {
+        Args: { p_end_date: string; p_end_mode: string; p_start_date: string; p_timezone: string }
+        Returns: string[]
+      }
+      league_process_community_locked: {
+        Args: { p_as_of?: string; p_community_id: string }
+        Returns: Json
+      }
+      league_utc_text: { Args: { p_instant: string }; Returns: string }
+      league_valid_text: { Args: { p_max: number; p_value: string }; Returns: boolean }
       leave_community: {
         Args: { p_community_id: string }
         Returns: {
@@ -2420,6 +2617,7 @@ export type Database = {
           valid_until: string
         }[]
       }
+      list_leagues: { Args: { p_community_id: string }; Returns: Json }
       list_match_event_audit: {
         Args: {
           p_before_at?: string
@@ -2693,6 +2891,7 @@ export type Database = {
       }
       player_has_rated_history: { Args: { p_user_id: string }; Returns: boolean }
       player_rating_calculation_inputs_valid: { Args: { p_inputs: Json }; Returns: boolean }
+      process_due_leagues: { Args: { p_as_of?: string; p_limit?: number }; Returns: Json }
       process_due_match_event_registration_cutoffs: { Args: { p_limit?: number }; Returns: Json }
       process_due_match_event_results: { Args: { p_limit?: number }; Returns: Json }
       process_match_event_registration_cutoff: {
@@ -3060,8 +3259,13 @@ export type Database = {
           visibility: Database["public"]["Enums"]["community_visibility"]
         }[]
       }
+      update_league: {
+        Args: { p_changes: Json; p_expected_version: number; p_league_id: string }
+        Returns: Json
+      }
       valid_community_admin_defaults: { Args: { p_defaults: Json }; Returns: boolean }
       valid_community_venue_photo_key: { Args: { p_key: string }; Returns: boolean }
+      valid_league_timezone: { Args: { p_timezone: string }; Returns: boolean }
       valid_match_maps_url: { Args: { p_url: string }; Returns: boolean }
       valid_match_photo_key: { Args: { p_key: string }; Returns: boolean }
       validate_match_event_result_facts: {
@@ -3086,6 +3290,8 @@ export type Database = {
       community_member_role: "admin" | "member"
       community_membership_status: "active" | "pending" | "inactive"
       community_visibility: "public" | "private"
+      league_end_mode: "fixed_date" | "manual"
+      league_status: "upcoming" | "active" | "closed"
       match_event_type: "competitive" | "friendly"
       match_event_visibility: "community_open" | "invite_only"
       match_invitation_status: "pending" | "accepted" | "declined" | "expired" | "cancelled"
@@ -3819,6 +4025,8 @@ export const Constants = {
       community_member_role: ["admin", "member"],
       community_membership_status: ["active", "pending", "inactive"],
       community_visibility: ["public", "private"],
+      league_end_mode: ["fixed_date", "manual"],
+      league_status: ["upcoming", "active", "closed"],
       match_event_type: ["competitive", "friendly"],
       match_event_visibility: ["community_open", "invite_only"],
       match_invitation_status: ["pending", "accepted", "declined", "expired", "cancelled"],

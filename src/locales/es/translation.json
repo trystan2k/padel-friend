@@ -1422,5 +1422,141 @@
       "unavailable": "No se pudo cargar la información de rating. Inténtalo de nuevo.",
       "reload": "Recargar"
     }
+  },
+  "leagues": {
+    "title": "Ligas",
+    "back": "Volver a Ligas",
+    "backToDashboard": "Volver al panel",
+    "loading": "Cargando Ligas…",
+    "errorTitle": "No se pudieron cargar las Ligas",
+    "deniedTitle": "Liga no disponible",
+    "retry": "Reintentar",
+    "communityContext": "{{community}} · una Liga activa a la vez",
+    "entries": {
+      "title": "Ligas",
+      "link": "Ligas de {{community}}"
+    },
+    "status": {
+      "upcoming": "Próxima",
+      "active": "Activa",
+      "closed": "Cerrada"
+    },
+    "blocked": {
+      "active_league_exists": "En espera: esta comunidad ya tiene una Liga activa.",
+      "explicit_activation_required": "Lista para empezar: el responsable o un Admin debe activarla."
+    },
+    "period": {
+      "fixed": "{{start}} → {{end}}",
+      "manual": "Desde {{start}} · sin fecha de fin"
+    },
+    "list": {
+      "create": "Crear Liga",
+      "creationDisabled": "La creación de Ligas está desactivada para los miembros de esta comunidad. Pide a un Admin que cree una.",
+      "empty": "Aún no hay Ligas.",
+      "emptyHint": "Crea una Liga para agrupar un periodo de partidos clasificatorios.",
+      "sections": {
+        "active": "Activa",
+        "upcoming": "Próximas",
+        "closed": "Cerradas"
+      }
+    },
+    "form": {
+      "title": "Crear una Liga",
+      "nameLabel": "Nombre de la Liga",
+      "namePlaceholder": "Liga de Otoño",
+      "descriptionLabel": "Descripción (opcional)",
+      "endModeLegend": "¿Cómo termina la Liga?",
+      "mode": {
+        "fixed_date": "Fecha de fin fija",
+        "fixed_dateHelp": "Termina automáticamente después del último día.",
+        "manual": "Sin fecha de fin · manual",
+        "manualHelp": "Sigue activa hasta que el responsable o un Admin la cierre."
+      },
+      "startDateLabel": "Fecha de inicio",
+      "endDateLabel": "Fecha de fin",
+      "endDateHelp": "El último día está incluido.",
+      "summaryFixed": "Empieza el {{start}} · Termina el {{end}}",
+      "summaryManual": "Empieza el {{start}} · Sin fecha de fin",
+      "periodLocked": "Las fechas ya no pueden cambiar porque esta Liga está cerrada o ya la usan partidos.",
+      "minimumLabel": "Mínimo de partidos para el premio final",
+      "minimumHelp": "Los jugadores necesitan al menos esta cantidad de partidos para optar al premio final.",
+      "submit": "Crear Liga",
+      "submitting": "Creando…",
+      "guidance": "La fecha de fin fija debe ser posterior a la de inicio. Solo una Liga activa por comunidad.",
+      "conflict": {
+        "title": "{{name}} · ACTIVA",
+        "body": "Esta comunidad ya tiene una Liga activa. Una Liga que empieza ahora no puede activarse mientras siga activa.",
+        "review": "Ver Liga activa"
+      },
+      "errors": {
+        "nameRequired": "Introduce un nombre para la Liga.",
+        "nameTooLong": "El nombre de la Liga debe tener 80 caracteres o menos.",
+        "descriptionTooLong": "La descripción debe tener 500 caracteres o menos.",
+        "startRequired": "Elige una fecha de inicio.",
+        "startInPast": "La fecha de inicio no puede estar en el pasado.",
+        "endRequired": "La fecha de fin fija requiere una fecha de fin.",
+        "endInPast": "La fecha de fin no puede estar en el pasado.",
+        "endNotAfterStart": "La fecha de fin debe ser posterior a la de inicio.",
+        "minimumInvalid": "Introduce un número entero del 1 al 100."
+      }
+    },
+    "detail": {
+      "owner": "Responsable",
+      "ownerUnknown": "Desconocido",
+      "timezone": "Zona horaria",
+      "minimum": "Mínimo de partidos para el premio final",
+      "closed": "Cerrada",
+      "closedReason": {
+        "manual": "cerrada manualmente",
+        "fixed_end_reached": "fecha de fin alcanzada",
+        "expired_before_activation": "terminó antes de empezar"
+      },
+      "activate": "Activar Liga",
+      "activateHint": "Hay otra Liga activa. Ciérrala o espera a que termine y luego activa esta.",
+      "close": "Cerrar Liga",
+      "edit": "Editar Liga",
+      "save": "Guardar cambios",
+      "saving": "Guardando…",
+      "cancelEdit": "Cancelar",
+      "saved": "Cambios guardados.",
+      "activated": "Liga activada.",
+      "closedDone": "Liga cerrada.",
+      "closeConfirm": {
+        "title": "¿Cerrar {{name}}?",
+        "body": "La Liga termina ahora y no puede reabrirse. Queda registrado en su historial.",
+        "cancel": "Mantener abierta",
+        "confirm": "Cerrar Liga"
+      }
+    },
+    "errors": {
+      "UNAUTHENTICATED": "Inicia sesión para continuar.",
+      "LEAGUE_FORBIDDEN": "No puedes hacer eso en esta comunidad.",
+      "LEAGUE_CREATION_DISABLED": "La creación de Ligas está desactivada para los miembros. Pide a un Admin.",
+      "PROVISIONAL_PLAYER_RESTRICTED": "Reclama tu cuenta para gestionar Ligas.",
+      "LEAGUE_NOT_FOUND": "Esta Liga no existe o no puedes verla.",
+      "LEAGUE_NAME_INVALID": "Introduce un nombre de Liga de hasta 80 caracteres.",
+      "LEAGUE_DESCRIPTION_INVALID": "La descripción debe tener 500 caracteres o menos.",
+      "LEAGUE_MINIMUM_INVALID": "Introduce un número entero del 1 al 100.",
+      "LEAGUE_END_MODE_INVALID": "Elige cómo termina la Liga.",
+      "LEAGUE_START_DATE_INVALID": "Elige una fecha de inicio válida.",
+      "LEAGUE_START_IN_PAST": "La fecha de inicio no puede estar en el pasado.",
+      "LEAGUE_END_DATE_REQUIRED": "La fecha de fin fija requiere una fecha de fin.",
+      "LEAGUE_END_DATE_NOT_ALLOWED": "Una Liga sin fecha de fin no tiene fecha de fin.",
+      "LEAGUE_END_NOT_AFTER_START": "La fecha de fin debe ser posterior a la de inicio.",
+      "LEAGUE_END_IN_PAST": "La fecha de fin no puede estar en el pasado.",
+      "LEAGUE_CHANGES_INVALID": "Esos cambios no son válidos.",
+      "LEAGUE_INVALID_INPUT": "Esos datos no son válidos.",
+      "LEAGUE_INVALID_STATE": "Esta Liga no puede cambiar así ahora mismo.",
+      "LEAGUE_NOT_DUE": "Esta Liga aún no ha llegado a su fecha de inicio.",
+      "LEAGUE_ACTIVE_EXISTS": "Esta comunidad ya tiene una Liga activa. Ciérrala o espera a que termine.",
+      "LEAGUE_CLOSE_NOT_MANUAL": "Una Liga con fecha de fin fija se cierra sola el último día.",
+      "LEAGUE_PERIOD_LOCKED": "Las fechas no pueden cambiar porque ya hay partidos que usan esta Liga.",
+      "LEAGUE_START_LOCKED": "La fecha de inicio no puede cambiar una vez que la Liga ha empezado.",
+      "LEAGUE_VERSION_CONFLICT": "Esta Liga cambió mientras tanto. La hemos recargado; revísala e inténtalo de nuevo.",
+      "LEAGUE_REQUEST_CONFLICT": "Esta solicitud ya se usó con otros datos. Revisa y envía de nuevo.",
+      "LEAGUE_UNAVAILABLE": "Algo salió mal. Inténtalo de nuevo.",
+      "INVALID_LEAGUE_INPUT": "Esos datos no son válidos.",
+      "INVALID_LEAGUE_RESPONSE": "Algo salió mal. Inténtalo de nuevo."
+    }
   }
 }

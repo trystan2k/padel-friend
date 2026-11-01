@@ -1422,5 +1422,141 @@
       "unavailable": "Couldn't load rating information. Try again.",
       "reload": "Reload"
     }
+  },
+  "leagues": {
+    "title": "Leagues",
+    "back": "Back to Leagues",
+    "backToDashboard": "Back to dashboard",
+    "loading": "Loading Leagues…",
+    "errorTitle": "Couldn't load Leagues",
+    "deniedTitle": "League not available",
+    "retry": "Try again",
+    "communityContext": "{{community}} · one active League at a time",
+    "entries": {
+      "title": "Leagues",
+      "link": "Leagues in {{community}}"
+    },
+    "status": {
+      "upcoming": "Upcoming",
+      "active": "Active",
+      "closed": "Closed"
+    },
+    "blocked": {
+      "active_league_exists": "Waiting: this community already has an Active League.",
+      "explicit_activation_required": "Ready to start: an owner or Admin must activate it."
+    },
+    "period": {
+      "fixed": "{{start}} → {{end}}",
+      "manual": "From {{start}} · no end date"
+    },
+    "list": {
+      "create": "Create League",
+      "creationDisabled": "League creation is turned off for members in this community. Ask an Admin to create one.",
+      "empty": "No Leagues yet.",
+      "emptyHint": "Create a League to group a period of ranked matches.",
+      "sections": {
+        "active": "Active",
+        "upcoming": "Upcoming",
+        "closed": "Closed"
+      }
+    },
+    "form": {
+      "title": "Create a League",
+      "nameLabel": "League name",
+      "namePlaceholder": "Autumn League",
+      "descriptionLabel": "Description (optional)",
+      "endModeLegend": "How does the League end?",
+      "mode": {
+        "fixed_date": "Fixed end date",
+        "fixed_dateHelp": "Ends automatically after the last day.",
+        "manual": "Open-ended · manual",
+        "manualHelp": "Stays active until an owner or Admin closes it."
+      },
+      "startDateLabel": "Start date",
+      "endDateLabel": "End date",
+      "endDateHelp": "The last day is included.",
+      "summaryFixed": "Starts {{start}} · Ends {{end}}",
+      "summaryManual": "Starts {{start}} · No end date",
+      "periodLocked": "Dates can no longer change because this League is closed or already used by matches.",
+      "minimumLabel": "Minimum matches for final award",
+      "minimumHelp": "Players need at least this many matches to qualify for the final award.",
+      "submit": "Create League",
+      "submitting": "Creating…",
+      "guidance": "Fixed End Date must follow start date. Only one Active League per community.",
+      "conflict": {
+        "title": "{{name}} · ACTIVE",
+        "body": "This community already has one Active League. A League starting now cannot activate while it remains Active.",
+        "review": "Review Active League"
+      },
+      "errors": {
+        "nameRequired": "Enter a League name.",
+        "nameTooLong": "The League name must be 80 characters or fewer.",
+        "descriptionTooLong": "The description must be 500 characters or fewer.",
+        "startRequired": "Choose a start date.",
+        "startInPast": "The start date cannot be in the past.",
+        "endRequired": "Fixed End Date requires an end date.",
+        "endInPast": "The end date cannot be in the past.",
+        "endNotAfterStart": "End date must be later than start date.",
+        "minimumInvalid": "Enter a whole number from 1 to 100."
+      }
+    },
+    "detail": {
+      "owner": "Owner",
+      "ownerUnknown": "Unknown",
+      "timezone": "Time zone",
+      "minimum": "Minimum matches for final award",
+      "closed": "Closed",
+      "closedReason": {
+        "manual": "closed manually",
+        "fixed_end_reached": "end date reached",
+        "expired_before_activation": "ended before it started"
+      },
+      "activate": "Activate League",
+      "activateHint": "Another League is Active. Close it or wait until it ends, then activate this one.",
+      "close": "Close League",
+      "edit": "Edit League",
+      "save": "Save changes",
+      "saving": "Saving…",
+      "cancelEdit": "Cancel",
+      "saved": "Changes saved.",
+      "activated": "League activated.",
+      "closedDone": "League closed.",
+      "closeConfirm": {
+        "title": "Close {{name}}?",
+        "body": "The League ends now and cannot be reopened. This is recorded in its history.",
+        "cancel": "Keep open",
+        "confirm": "Close League"
+      }
+    },
+    "errors": {
+      "UNAUTHENTICATED": "Sign in to continue.",
+      "LEAGUE_FORBIDDEN": "You can't do that in this community.",
+      "LEAGUE_CREATION_DISABLED": "League creation is turned off for members. Ask an Admin.",
+      "PROVISIONAL_PLAYER_RESTRICTED": "Claim your account to manage Leagues.",
+      "LEAGUE_NOT_FOUND": "This League doesn't exist or you can't see it.",
+      "LEAGUE_NAME_INVALID": "Enter a League name of up to 80 characters.",
+      "LEAGUE_DESCRIPTION_INVALID": "The description must be 500 characters or fewer.",
+      "LEAGUE_MINIMUM_INVALID": "Enter a whole number from 1 to 100.",
+      "LEAGUE_END_MODE_INVALID": "Choose how the League ends.",
+      "LEAGUE_START_DATE_INVALID": "Choose a valid start date.",
+      "LEAGUE_START_IN_PAST": "The start date cannot be in the past.",
+      "LEAGUE_END_DATE_REQUIRED": "Fixed End Date requires an end date.",
+      "LEAGUE_END_DATE_NOT_ALLOWED": "An open-ended League has no end date.",
+      "LEAGUE_END_NOT_AFTER_START": "End date must be later than start date.",
+      "LEAGUE_END_IN_PAST": "The end date cannot be in the past.",
+      "LEAGUE_CHANGES_INVALID": "Those changes aren't valid.",
+      "LEAGUE_INVALID_INPUT": "Those details aren't valid.",
+      "LEAGUE_INVALID_STATE": "This League can't change that way right now.",
+      "LEAGUE_NOT_DUE": "This League hasn't reached its start date yet.",
+      "LEAGUE_ACTIVE_EXISTS": "This community already has one Active League. Close it or wait until it ends.",
+      "LEAGUE_CLOSE_NOT_MANUAL": "A League with a fixed end date closes by itself on its last day.",
+      "LEAGUE_PERIOD_LOCKED": "Dates can't change because matches already use this League.",
+      "LEAGUE_START_LOCKED": "The start date can't change after the League has started.",
+      "LEAGUE_VERSION_CONFLICT": "This League changed in the meantime. We reloaded it; review it and try again.",
+      "LEAGUE_REQUEST_CONFLICT": "This request was already used with different details. Review and submit again.",
+      "LEAGUE_UNAVAILABLE": "Something went wrong. Try again.",
+      "INVALID_LEAGUE_INPUT": "Those details aren't valid.",
+      "INVALID_LEAGUE_RESPONSE": "Something went wrong. Try again."
+    }
   }
 }
