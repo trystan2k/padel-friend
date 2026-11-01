@@ -21,6 +21,7 @@ export const MATCH_REGISTRATION_ERROR_COPY: Readonly<Record<MatchRegistrationErr
   not_found: 'matchRegistration.feedback.notFound',
   already_resolved: 'matchRegistration.feedback.alreadyResolved',
   requester_ineligible: 'matchRegistration.feedback.requesterIneligible',
+  ranked_members_only: 'matchRegistration.feedback.rankedMembersOnly',
   forbidden: 'matchRegistration.feedback.forbidden',
   invalid: 'matchRegistration.feedback.invalid',
   unauthenticated: 'matchRegistration.feedback.unauthenticated',

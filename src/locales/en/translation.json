@@ -600,6 +600,7 @@
     "offline": "You are offline. Reconnect to save your preferences."
   },
   "matches": {
+    "competition": { "ranked": "Ranked", "unranked": "Unranked" },
     "addPlayer": {
       "action": "Add player",
       "title": "Add a player",
@@ -947,6 +948,7 @@
       "expiresAt": "Respond before {{deadline}}.",
       "pendingApproval": "Invitation accepted. Your registration awaits organizer approval.",
       "errors": {
+        "rankedMembersOnly": "Ranked matches are only open to active community members.",
         "expired": "This invitation has expired.",
         "alreadyResolved": "This invitation was already answered. Refresh to see its state.",
         "notFound": "This invitation is unavailable.",
@@ -1028,6 +1030,7 @@
       "unlimited": "Unlimited"
     },
     "detail": {
+      "rankedMembersOnly": "This match is Ranked and only open to active community members.",
       "title": "Match details",
       "viewCourtLocation": "View court location",
       "viewCourtLocationFor": "View court location for {{venue}}",
@@ -1070,6 +1073,19 @@
     }
   },
   "matchCreate": {
+    "competition": {
+      "legend": "Competition",
+      "league": "League",
+      "choose": "Choose a League",
+      "members": "Ranked matches are for active community members only.",
+      "guidance": {
+        "scheduleFirst": "Pick a date and start time to see the Leagues this match can count for.",
+        "loading": "Looking for eligible Leagues…",
+        "noEligible": "No Active or Upcoming League covers this date, so the match is Unranked.",
+        "defaultOne": "One League covers this date, so the match defaults to Ranked in it. Choose Unranked to keep it out of the League.",
+        "chooseOne": "Several Leagues cover this date. Choose the League for this match or choose Unranked."
+      }
+    },
     "title": "Create match",
     "subtitle": "Publish a padel match and invite players.",
     "noCommunities": "Join a community before creating a match.",
@@ -1142,6 +1158,9 @@
       "unavailable": "Photo unavailable."
     },
     "errors": {
+      "leagueOptionsUnavailable": "Eligible Leagues could not be loaded. Try again.",
+      "leagueRequired": "Choose a League or select Unranked before publishing.",
+      "leagueUnavailable": "The selected League is no longer available for this date. Review the Leagues and publish again.",
       "required": "This field is required.",
       "invalidInput": "Enter a valid value.",
       "invalidMapsUrl": "Enter a valid Google Maps URL.",
@@ -1304,6 +1323,7 @@
       "declineLabel": "Decline request from {{name}}"
     },
     "feedback": {
+      "rankedMembersOnly": "Ranked matches are only open to active community members.",
       "accepted": "Your place is confirmed.",
       "pending": "Request sent to the organizer.",
       "approved": "Request approved.",

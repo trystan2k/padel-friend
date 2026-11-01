@@ -23,6 +23,7 @@ import {
   insertFixtureEvent,
   sqlText
 } from './helpers/provisional-player-fixtures';
+import { matchPhotoFixture } from './helpers/match-photo-fixtures';
 import { openDedicatedSqlConnection } from './helpers/sql-transport';
 
 const environment = localSupabaseEnv({ filePath: dotEnvPathFromImportMetaUrl(import.meta.url) });
@@ -603,10 +604,15 @@ describe('League permissions', { timeout: 300_000 }, () => {
         const connection = await openDedicatedSqlConnection();
         try {
           await connection.query('begin');
-          // match_events.league_id arrives with the ranked-publication unit. Emulate it inside this
-          // rolled-back transaction: a defaulted column references the League from every existing event.
+          // Bind a real published event to the League inside this rolled-back transaction.
+          const bound = crypto.randomUUID();
+          const photo = matchPhotoFixture(communityId, bound, world.admin.id);
+          await connection.query(photo.sql);
           await connection.query(
-            `alter table public.match_events add column league_id uuid default ${sqlText(league.id)}`
+            `insert into public.match_events(id,community_id,created_by,starts_at,timezone,event_type,league_id,visibility,team_assignment_mode,venue_name,maps_url,photo_path,registration_cutoff_at)
+               select ${sqlText(bound)}, ${sqlText(communityId)}, ${sqlText(world.admin.id)}, l.start_at + interval '1 day', 'UTC', 'competitive', l.id,
+                      'community_open', 'POST_MATCH_TEAMS', 'Bound court', 'https://maps.google.com/maps/place/bound', ${sqlText(photo.path)}, l.start_at + interval '12 hours'
+                 from public.leagues l where l.id = ${sqlText(league.id)}`
           );
           await connection.query(asActor(world.owner.id));
           const [after] = (

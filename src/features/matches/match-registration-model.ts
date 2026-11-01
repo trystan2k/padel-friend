@@ -6,7 +6,14 @@ import type { Database } from '../../lib/supabase/database.types';
 export type MatchRegistrationParticipation =
   Database['public']['Enums']['match_registration_participation'];
 export type MatchRegistrationSource = Database['public']['Enums']['match_registration_source'];
-export type MatchRegistrationAction = 'join' | 'request' | 'full' | 'closed' | 'invited' | 'none';
+export type MatchRegistrationAction =
+  | 'join'
+  | 'request'
+  | 'full'
+  | 'closed'
+  | 'invited'
+  | 'ranked_members_only'
+  | 'none';
 
 // Every domain/auth failure the four registration RPCs can raise, collapsed to a
 // distinct, user-actionable code. The UI never sees the raw Postgres token.
@@ -24,6 +31,7 @@ export type MatchRegistrationErrorCode =
   | 'not_found'
   | 'already_resolved'
   | 'requester_ineligible'
+  | 'ranked_members_only'
   | 'forbidden'
   | 'invalid'
   | 'unauthenticated'
@@ -49,7 +57,8 @@ const ERROR_TOKENS: Readonly<Record<string, MatchRegistrationErrorCode>> = {
   MATCH_REGISTRATION_FULL: 'full',
   MATCH_REGISTRATION_NOT_FOUND: 'not_found',
   MATCH_REGISTRATION_ALREADY_RESOLVED: 'already_resolved',
-  MATCH_REGISTRATION_REQUESTER_INELIGIBLE: 'requester_ineligible'
+  MATCH_REGISTRATION_REQUESTER_INELIGIBLE: 'requester_ineligible',
+  MATCH_REGISTRATION_RANKED_MEMBERS_ONLY: 'ranked_members_only'
 };
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;

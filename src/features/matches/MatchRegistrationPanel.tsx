@@ -77,6 +77,7 @@ export function matchRegistrationAction(
   now: number
 ): MatchRegistrationAction {
   if (event.is_past || matchRegistrationCutoffPassed(event, now)) return 'closed';
+  if (event.caller_eligibility === 'ranked_members_only') return 'ranked_members_only';
   if (matchRegistrationIsFull(event)) return 'full';
   if (event.caller_is_invited && event.visibility === 'invite_only') return 'invited';
   const eligibility = event.caller_eligibility;
@@ -506,6 +507,12 @@ export function MatchRegistrationPanel({
         </div>
         <FeedbackOutput message={feedbackMessage} />
         <p {...stylex.props(s.note)}>{t('matchRegistration.full.note')}</p>
+      </div>
+    );
+  } else if (action === 'ranked_members_only') {
+    body = (
+      <div {...stylex.props(s.body)}>
+        <p {...stylex.props(s.copy)}>{t('matches.detail.rankedMembersOnly')}</p>
       </div>
     );
   } else if (action === 'request') {

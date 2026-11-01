@@ -24,6 +24,7 @@ export const registrationActionTone = {
   full: 'danger',
   closed: 'muted',
   invited: 'neutral',
+  ranked_members_only: 'muted',
   none: 'muted'
 } satisfies Record<MatchRegistrationAction, StatusBadgeTone>;
 

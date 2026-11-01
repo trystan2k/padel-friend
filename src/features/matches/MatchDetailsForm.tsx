@@ -3,6 +3,8 @@ import { useId, type HTMLInputTypeAttribute, type InputHTMLAttributes } from 're
 import { useTranslation } from 'react-i18next';
 import type { MatchCreationOptions, MatchDraft } from './match-contracts';
 import { createMatchStyles as s } from './create-match.styles';
+import { MatchCompetitionField } from './MatchCompetitionField';
+import type { MatchCompetitionState } from './match-league-selection';
 
 type TextField =
   | 'date'
@@ -120,12 +122,14 @@ export function MatchDetailsForm({
   value,
   change,
   options,
-  errors
+  errors,
+  competition
 }: {
   value: MatchDraft;
   change: DraftChange;
   options: MatchCreationOptions;
   errors: Record<string, string>;
+  competition: MatchCompetitionState;
 }) {
   const { t } = useTranslation();
   const field = (
@@ -189,6 +193,13 @@ export function MatchDetailsForm({
         {t('matchCreate.fields.timezone')}: {community?.timezone ?? ''}
       </p>
       {enumSelect('type', eventTypes)}
+      {value.type === 'competitive' && (
+        <MatchCompetitionField
+          competition={competition}
+          change={change}
+          error={errors.competition}
+        />
+      )}
       {enumSelect('visibility', visibilities)}
       <label {...stylex.props(s.field)}>
         {t('matchCreate.fields.savedVenue')}

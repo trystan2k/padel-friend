@@ -600,6 +600,7 @@
     "offline": "Você está sem conexão. Reconecte-se para salvar suas preferências."
   },
   "matches": {
+    "competition": { "ranked": "Ranqueada", "unranked": "Sem ranking" },
     "addPlayer": {
       "action": "Adicionar jogador",
       "title": "Adicionar um jogador",
@@ -947,6 +948,7 @@
       "expiresAt": "Responda antes de {{deadline}}.",
       "pendingApproval": "Convite aceito. Sua inscrição aguarda aprovação do organizador.",
       "errors": {
+        "rankedMembersOnly": "Partidas ranqueadas só estão abertas a membros ativos da comunidade.",
         "expired": "Este convite expirou.",
         "alreadyResolved": "Este convite já foi respondido. Atualize para ver o estado.",
         "notFound": "Este convite está indisponível.",
@@ -1028,6 +1030,7 @@
       "unlimited": "Ilimitado"
     },
     "detail": {
+      "rankedMembersOnly": "Esta partida é Ranqueada e só está aberta a membros ativos da comunidade.",
       "title": "Detalhes da partida",
       "viewCourtLocation": "Ver localização da quadra",
       "viewCourtLocationFor": "Ver localização da quadra para {{venue}}",
@@ -1070,6 +1073,19 @@
     }
   },
   "matchCreate": {
+    "competition": {
+      "legend": "Competição",
+      "league": "Liga",
+      "choose": "Escolha uma Liga",
+      "members": "Partidas ranqueadas são só para membros ativos da comunidade.",
+      "guidance": {
+        "scheduleFirst": "Escolha data e horário de início para ver as Ligas em que esta partida pode contar.",
+        "loading": "Procurando Ligas elegíveis…",
+        "noEligible": "Nenhuma Liga Ativa ou Futura cobre esta data, então a partida fica sem ranking.",
+        "defaultOne": "Uma Liga cobre esta data, então a partida é Ranqueada nela por padrão. Escolha Sem ranking para deixá-la fora da Liga.",
+        "chooseOne": "Várias Ligas cobrem esta data. Escolha a Liga desta partida ou escolha Sem ranking."
+      }
+    },
     "title": "Criar partida",
     "subtitle": "Publique uma partida de padel e convide jogadores.",
     "noCommunities": "Participe de uma comunidade para criar uma partida.",
@@ -1142,6 +1158,9 @@
       "unavailable": "Foto indisponível."
     },
     "errors": {
+      "leagueOptionsUnavailable": "Não foi possível carregar as Ligas elegíveis. Tente novamente.",
+      "leagueRequired": "Escolha uma Liga ou selecione Sem ranking antes de publicar.",
+      "leagueUnavailable": "A Liga selecionada não está mais disponível para esta data. Revise as Ligas e publique novamente.",
       "required": "Este campo é obrigatório.",
       "invalidInput": "Informe um valor válido.",
       "invalidMapsUrl": "Informe uma URL válida do Google Maps.",
@@ -1304,6 +1323,7 @@
       "declineLabel": "Recusar solicitação de {{name}}"
     },
     "feedback": {
+      "rankedMembersOnly": "Partidas ranqueadas só estão abertas a membros ativos da comunidade.",
       "accepted": "Seu lugar está confirmado.",
       "pending": "Solicitação enviada ao organizador.",
       "approved": "Solicitação aprovada.",

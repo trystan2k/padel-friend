@@ -1252,6 +1252,7 @@ export type Database = {
           duration_minutes: number | null
           event_type: Database["public"]["Enums"]["match_event_type"]
           id: string
+          league_id: string | null
           maps_url: string
           max_level: number | null
           maximum_registrations: number | null
@@ -1289,6 +1290,7 @@ export type Database = {
           duration_minutes?: number | null
           event_type: Database["public"]["Enums"]["match_event_type"]
           id: string
+          league_id?: string | null
           maps_url: string
           max_level?: number | null
           maximum_registrations?: number | null
@@ -1325,6 +1327,7 @@ export type Database = {
           duration_minutes?: number | null
           event_type?: Database["public"]["Enums"]["match_event_type"]
           id?: string
+          league_id?: string | null
           maps_url?: string
           max_level?: number | null
           maximum_registrations?: number | null
@@ -1355,6 +1358,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "communities"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "match_events_league_fk"
+            columns: ["league_id", "community_id"]
+            isOneToOne: false
+            referencedRelation: "leagues"
+            referencedColumns: ["id", "community_id"]
           },
           {
             foreignKeyName: "match_events_saved_venue_id_fkey"
@@ -2244,6 +2254,20 @@ export type Database = {
       advance_match_registration_revision_locked: { Args: { p_event_id: string }; Returns: number }
       assert_actor_not_provisional: { Args: Record<PropertyKey, never>; Returns: undefined }
       assert_match_event_active_locked: { Args: { p_event_id: string }; Returns: undefined }
+      assert_match_league_binding: {
+        Args: {
+          p_community_id: string
+          p_event_type: Database["public"]["Enums"]["match_event_type"]
+          p_league_id: string
+          p_published_at?: string
+          p_starts_at: string
+        }
+        Returns: undefined
+      }
+      assert_match_league_window: {
+        Args: { p_community_id: string; p_league_id: string; p_starts_at: string }
+        Returns: undefined
+      }
       assert_match_management_action_locked: {
         Args: { p_action: string; p_event_id: string }
         Returns: undefined
@@ -2647,6 +2671,10 @@ export type Database = {
         }
         Returns: Json[]
       }
+      list_match_league_options: {
+        Args: { p_community_id: string; p_date: string; p_start_time: string }
+        Returns: Json
+      }
       lock_global_rating_projection: { Args: Record<PropertyKey, never>; Returns: undefined }
       lock_match_event_registration: {
         Args: { p_event_id: string }
@@ -2663,6 +2691,7 @@ export type Database = {
           duration_minutes: number | null
           event_type: Database["public"]["Enums"]["match_event_type"]
           id: string
+          league_id: string | null
           maps_url: string
           max_level: number | null
           maximum_registrations: number | null
@@ -2708,6 +2737,7 @@ export type Database = {
           duration_minutes: number | null
           event_type: Database["public"]["Enums"]["match_event_type"]
           id: string
+          league_id: string | null
           maps_url: string
           max_level: number | null
           maximum_registrations: number | null
@@ -2760,6 +2790,7 @@ export type Database = {
           caller_requires_approval: boolean
         }[]
       }
+      match_event_competition: { Args: { p_event_id: string }; Returns: Json }
       match_event_local_start: {
         Args: { p_date: string; p_time: string; p_zone: string }
         Returns: string

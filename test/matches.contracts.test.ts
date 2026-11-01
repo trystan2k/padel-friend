@@ -47,6 +47,7 @@ describe('match contract fixtures', () => {
       full: 'danger',
       closed: 'muted',
       invited: 'neutral',
+      ranked_members_only: 'muted',
       none: 'muted'
     });
     expect(registrationSourceTone).toEqual({ creator: 'muted', member: 'muted', guest: 'guest' });

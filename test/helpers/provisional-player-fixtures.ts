@@ -110,13 +110,15 @@ export async function insertFixtureEvent(input: {
   creatorId: string;
   visibility: 'community_open' | 'invite_only';
   past?: boolean;
+  /** Trusted-SQL League binding; ordinary events stay Unranked (NULL). */
+  leagueId?: string;
 }): Promise<void> {
   const photo = matchPhotoFixture(input.communityId, input.id, input.creatorId);
   const startsAt = input.past ? "now()-interval '2 hours'" : "now()+interval '3 days'";
   const cutoffAt = input.past ? "now()-interval '3 hours'" : "now()+interval '2 days'";
   const insert = `${photo.sql}
-    insert into public.match_events(id,community_id,created_by,starts_at,timezone,event_type,visibility,team_assignment_mode,venue_name,maps_url,photo_path,registration_cutoff_at)
-      values (${sqlText(input.id)},${sqlText(input.communityId)},${sqlText(input.creatorId)},${startsAt},'UTC','competitive',${sqlText(input.visibility)},'POST_MATCH_TEAMS','Provisional court','https://maps.google.com/maps/place/provisional','${photo.path}',${cutoffAt});`;
+    insert into public.match_events(id,community_id,created_by,starts_at,timezone,event_type,league_id,visibility,team_assignment_mode,venue_name,maps_url,photo_path,registration_cutoff_at)
+      values (${sqlText(input.id)},${sqlText(input.communityId)},${sqlText(input.creatorId)},${startsAt},'UTC','competitive',${input.leagueId ? sqlText(input.leagueId) : 'null'},${sqlText(input.visibility)},'POST_MATCH_TEAMS','Provisional court','https://maps.google.com/maps/place/provisional','${photo.path}',${cutoffAt});`;
   await executeTrustedSql(
     input.past
       ? `alter table public.match_events disable trigger match_event_creator_registration;

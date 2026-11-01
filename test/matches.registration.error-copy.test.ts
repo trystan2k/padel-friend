@@ -25,6 +25,7 @@ const CODES: MatchRegistrationErrorCode[] = [
   'not_found',
   'already_resolved',
   'requester_ineligible',
+  'ranked_members_only',
   'forbidden',
   'invalid',
   'unauthenticated',

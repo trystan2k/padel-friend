@@ -25,6 +25,8 @@ const PUBLIC_COMMANDS = [
   'create_league',
   'get_league',
   'list_leagues',
+  // PAF-11 U2: eligible League options for the create-match schedule.
+  'list_match_league_options',
   'update_league'
 ];
 const INTERNAL_FUNCTIONS = [

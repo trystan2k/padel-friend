@@ -600,6 +600,7 @@
     "offline": "No tienes conexión. Vuelve a conectarte para guardar tus preferencias."
   },
   "matches": {
+    "competition": { "ranked": "Clasificatoria", "unranked": "Sin clasificación" },
     "addPlayer": {
       "action": "Añadir jugador",
       "title": "Añadir un jugador",
@@ -947,6 +948,7 @@
       "expiresAt": "Responde antes de {{deadline}}.",
       "pendingApproval": "Invitación aceptada. Tu inscripción espera la aprobación del organizador.",
       "errors": {
+        "rankedMembersOnly": "Los partidos clasificatorios solo están abiertos a miembros activos de la comunidad.",
         "expired": "Esta invitación ha caducado.",
         "alreadyResolved": "Esta invitación ya se respondió. Actualiza para ver su estado.",
         "notFound": "Esta invitación no está disponible.",
@@ -1028,6 +1030,7 @@
       "unlimited": "Sin límite"
     },
     "detail": {
+      "rankedMembersOnly": "Este partido es Clasificatorio y solo está abierto a miembros activos de la comunidad.",
       "title": "Detalles del partido",
       "viewCourtLocation": "Ver ubicación de la cancha",
       "viewCourtLocationFor": "Ver ubicación de la cancha para {{venue}}",
@@ -1070,6 +1073,19 @@
     }
   },
   "matchCreate": {
+    "competition": {
+      "legend": "Competición",
+      "league": "Liga",
+      "choose": "Elige una Liga",
+      "members": "Los partidos clasificatorios son solo para miembros activos de la comunidad.",
+      "guidance": {
+        "scheduleFirst": "Elige fecha y hora de inicio para ver las Ligas en las que puede contar este partido.",
+        "loading": "Buscando Ligas elegibles…",
+        "noEligible": "Ninguna Liga Activa o Próxima cubre esta fecha, así que el partido queda sin clasificación.",
+        "defaultOne": "Una Liga cubre esta fecha, así que el partido es Clasificatorio en ella por defecto. Elige Sin clasificación para dejarlo fuera de la Liga.",
+        "chooseOne": "Varias Ligas cubren esta fecha. Elige la Liga de este partido o elige Sin clasificación."
+      }
+    },
     "title": "Crear partido",
     "subtitle": "Publica un partido de pádel e invita jugadores.",
     "noCommunities": "Únete a una comunidad para crear un partido.",
@@ -1142,6 +1158,9 @@
       "unavailable": "Foto no disponible."
     },
     "errors": {
+      "leagueOptionsUnavailable": "No se pudieron cargar las Ligas elegibles. Inténtalo de nuevo.",
+      "leagueRequired": "Elige una Liga o selecciona Sin clasificación antes de publicar.",
+      "leagueUnavailable": "La Liga seleccionada ya no está disponible para esta fecha. Revisa las Ligas y publica de nuevo.",
       "required": "Este campo es obligatorio.",
       "invalidInput": "Introduce un valor válido.",
       "invalidMapsUrl": "Introduce una URL válida de Google Maps.",
@@ -1304,6 +1323,7 @@
       "declineLabel": "Rechazar la solicitud de {{name}}"
     },
     "feedback": {
+      "rankedMembersOnly": "Los partidos clasificatorios solo están abiertos a miembros activos de la comunidad.",
       "accepted": "Tu lugar está confirmado.",
       "pending": "Solicitud enviada al organizador.",
       "approved": "Solicitud aprobada.",
