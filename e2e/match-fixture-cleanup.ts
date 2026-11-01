@@ -75,6 +75,17 @@ export function buildMatchFixtureCleanupSql(owner: MatchFixtureOwner = {}): stri
     'alter table public.match_event_result_confirmations disable trigger match_result_confirmation_insert_guard',
     'alter table public.match_event_result_proposals disable trigger match_result_proposal_transition_guard',
     'alter table public.match_event_result_proposal_versions disable trigger match_result_proposal_version_immutable',
+    // Immutable rating evidence references confirmations, proposals, profiles and events (ON DELETE
+    // RESTRICT): it goes first, before the confirmations it points at.
+    'alter table public.player_rating_event_calculations disable trigger player_rating_calculations_immutable',
+    'alter table public.player_rating_events disable trigger player_rating_events_immutable',
+    'alter table public.player_rating_initializations disable trigger player_rating_initializations_immutable',
+    'delete from public.player_rating_event_calculations where rating_event_id in (select id from public.player_rating_events where match_event_id in (select id from owned_match_fixture_events))',
+    'delete from public.player_rating_events where match_event_id in (select id from owned_match_fixture_events)',
+    'delete from public.player_rating_initializations where user_id in (select p.user_id from public.player_profiles p where p.source_match_event_id in (select id from owned_match_fixture_events))',
+    'alter table public.player_rating_initializations enable trigger player_rating_initializations_immutable',
+    'alter table public.player_rating_events enable trigger player_rating_events_immutable',
+    'alter table public.player_rating_event_calculations enable trigger player_rating_calculations_immutable',
     `delete from public.notifications n where (n.target_type in ('match_event', 'result_available') and n.target_id in (select id from owned_match_fixture_events)) or (n.category in ('matches', 'results') and ${actorPredicate('n.recipient_user_id')})`,
     'delete from public.match_event_audit_log where match_event_id in (select id from owned_match_fixture_events)',
     'delete from public.match_event_result_reviews where proposal_id in (select id from public.match_event_result_proposals where match_event_id in (select id from owned_match_fixture_events))',

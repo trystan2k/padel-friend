@@ -1,0 +1,38 @@
+{
+  "status": "chromium-certified-with-scoped-route-adaptations",
+  "sourceDesign": {
+    "path": "docs/design/padel-friend.pen",
+    "sha256": "927ac4e83f24edacbc2b2fe2fcfa111d8e0822b96f73ce268cf50b5ef2737af2",
+    "exportCommand": "Pencil MCP execute on a byte-identical scratch copy (/tmp): Export([\"vARtQ\"], \"png\", \"<repo>/e2e/references/paf-10\", {scale:2})",
+    "provenanceNote": "T10 (PAF-10) reference for the Player profile frame vARtQ, exported uncropped at 2x through Pencil MCP from a scratch copy whose SHA-256 equals the tracked source (and the paf-6/7/8 manifests). The tracked .pen was not modified. The frame also carries the \"Rating journey\" section (heading, month-dot chart card, recent-matches card), which is compared as two further separately aligned regions of the same export. The frame is a mockup with stats tiles, a month-based dot chart and a bottom navigation that the production dashboard does not render; the production journey uses a game-ordered chart with text equivalent, a data table and a drill-down explanation dialog, which have no dedicated frame."
+  },
+  "approvedReferences": {
+    "vARtQ": {
+      "frameId": "vARtQ",
+      "certifies": "Profile top region (title, identity hero, global level card), the Rating journey heading + progression card, and the recent-matches card",
+      "sha256": "aca94511f0665ed3c2d17a9c8f3de9e5f2e2ef1242b1bdd75b4b0d15ef7646cc",
+      "pixelSize": [780, 1688]
+    }
+  },
+  "visualBudgets": {
+    "status": "measured-chromium-viewport-pixel-difference",
+    "measurementMethod": "Full-page capture clipped per region at 390 CSS px width (deviceScaleFactor 1), compared with the same CSS-px region of the 2x Pencil PNG downsampled by 2, using the pinned perceptual threshold (35215 x 0.1^2). Regions: top (frame y 0-308, aligned on the page title minus 20px), vARtQ:journey (frame y 396-580, aligned on the journey heading vertical centre = 22px below the crop top), vARtQ:history (frame y 588-748, aligned on the history card top edge). Structural probes (title/identity/level/journey order, chart card before history card in DOM and on screen, shared gutters, card radius equal to the level card and a design-token value, containment, row stacking, 44px targets, no overflow) assert geometry separately and exactly.",
+    "perScreen": {
+      "vARtQ": 0.1,
+      "vARtQ:journey": 0.2,
+      "vARtQ:history": 0.13
+    },
+    "perScreenRationale": {
+      "vARtQ": "Observed residual 0.0862 on the title-aligned 390x308 top region; 0.10 leaves 0.0138 for cross-renderer variance. The residual is intentional route/data adaptation, not a layout defect: the frame's blank avatar circle, 'Right side · Madrid' and 'Member since 2024' versus production initials, real side and localized join date; the '76% reliable' pill versus 'Reliability: N%'; and live level values. Order, gutters, chart containment, row stacking, 44px targets and overflow are exact structural probes. The stats tiles, month-dot chart and bottom navigation of the frame are out of scope (no standings/stats product); the game-ordered chart, data table and explanation dialog have no frame and are covered by structural/contrast probes plus attached screenshots.",
+      "vARtQ:journey": "Observed residual 0.1790 on the heading-aligned 390x184 region; 0.20 leaves 0.021 for cross-renderer variance. The residual is intentional adaptation, not a layout defect: the frame's five month-labelled dots with value labels versus the production game-ordered line plot with a fixed 0.00-7.00 axis, a hollow starting marker and 'From/To' labels; the production card is taller (text equivalent, legend and ordering note) so the card bottom edge is outside this crop. The heading row, ALL TIME scope tag, card radius, gutters and chart-before-history order are exact structural probes.",
+      "vARtQ:history": "Observed residual 0.1116 on the history-card-aligned 390x160 region; 0.13 leaves 0.018 for cross-renderer variance. The residual is intentional adaptation: the frame's W/L/D chip rows with scores and opponents versus production 'Recent games' rows (outcome chip, group title, localized date, level and reliability transitions, signed change and a 44px Explain control); no 'View all stats' link (no standings/stats product). Row stacking, 44px targets, gutters, radius token and containment are exact structural probes."
+    },
+    "verticalGeometryProbes": {
+      "method": "DOM measurement (getBoundingClientRect, computed row-gap, --space-* tokens) in the journey visual test; independent of every raster region and budget, which are unchanged. No new reference export is required.",
+      "gaps": "level card → journey heading, journey heading → chart card and chart card → history card must equal the declared token row-gap of their shared grid parent (±1px), and that declared gap must lie in [--space-4, --space-20].",
+      "cardsAndPlot": "Each card is at least the sum of its children's heights, its last child ends inside it, it has no vertical scroll overflow and sits inside main and the document; history rows have height and stay inside the history card; the chart svg keeps its viewBox aspect ratio (nonzero, not shrunk) and every marker, the trend line and the area stay inside the svg box.",
+      "sensitivity": "The test injects a 40px blank band before the history card and before the heading, a clipped chart card, a shrunken svg and an out-of-range viewBox, and asserts each is reported.",
+      "productionHeightDifferences": "Production cards are intentionally taller or shorter than the Pencil frame: the chart card adds a text equivalent, legend, ordering note and data-table disclosure, and the history card height follows live rows (three confirmed games, each with transition text and a 44px Explain control) instead of the frame's mock rows. Heights therefore follow content and are asserted against content, not the frame; raster budgets were not widened."
+    }
+  }
+}

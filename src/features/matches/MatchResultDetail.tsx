@@ -5,6 +5,7 @@ import type { MatchEventDetail } from './match-contracts';
 import type { ResultProposal } from './match-result-model';
 import { MatchResultReview } from './MatchResultReview';
 import { MatchResultNavigation } from './MatchResultNavigation';
+import { MatchResultRatingChanges } from './MatchResultRatingChanges';
 import {
   matchResultReviewStyles as reviewStyles,
   matchResultStyles as s
@@ -193,6 +194,14 @@ export function MatchResultDetail({
               </article>
             );
           })}
+        {!proposalsError &&
+          event.event_type === 'competitive' &&
+          event.result_summary.confirmed_group_count > 0 && (
+            <MatchResultRatingChanges
+              key={event.result_summary.confirmed_group_count}
+              eventId={event.event_id}
+            />
+          )}
       </div>
       <MatchResultNavigation />
     </main>

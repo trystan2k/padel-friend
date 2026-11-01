@@ -6,6 +6,7 @@ import { PlayerProfile } from '../features/player/PlayerProfile';
 import { CommunityAdminEntries } from '../features/community/CommunityAdmin';
 import { listMyAdminCommunities } from '../features/community/community-admin.functions';
 import { getMyPlayerProfile } from '../features/player/player.functions';
+import { loadRatingView } from '../features/player/rating-view';
 import { listMyCommunityNotifications } from '../features/community/community-request.functions';
 import { CommunityInbox } from '../features/community/CommunityInbox';
 import { ui } from '../features/player/player-ui.styles';
@@ -14,15 +15,16 @@ import { getMyUnreadNotificationCount } from '../features/notifications/notifica
 import { NotificationBadge } from '../features/notifications/NotificationBadge';
 
 export async function loadDashboardData() {
-  const [profile, adminCommunities, inbox, notificationCount] = await Promise.all([
+  const [profile, rating, adminCommunities, inbox, notificationCount] = await Promise.all([
     getMyPlayerProfile(),
+    loadRatingView(),
     listMyAdminCommunities().catch(() => []),
     listMyCommunityNotifications({ data: { offset: 0, limit: 20 } })
       .then((items) => ({ items, error: false }))
       .catch(() => ({ items: null, error: true })),
     getMyUnreadNotificationCount().catch(() => null)
   ]);
-  const dashboardData = { profile, adminCommunities, inbox };
+  const dashboardData = { profile, rating, adminCommunities, inbox };
   return { ...dashboardData, notificationCount: notificationCount ?? undefined };
 }
 
@@ -35,7 +37,8 @@ export const Route = createFileRoute('/_protected/dashboard')({
 
 function Dashboard() {
   const { t } = useTranslation();
-  const { profile, adminCommunities, inbox, notificationCount } = Route.useLoaderData();
+  const router = useRouter();
+  const { profile, rating, adminCommunities, inbox, notificationCount } = Route.useLoaderData();
   return (
     <>
       <header {...stylex.props(rootStyles.pageHeader)}>
@@ -45,7 +48,11 @@ function Dashboard() {
           <Link to="/matches/create">{t('matches.create')}</Link>
         </nav>
       </header>
-      <PlayerProfile initialProfile={profile} />
+      <PlayerProfile
+        initialProfile={profile}
+        initialRating={rating}
+        onRatingReload={() => void router.invalidate()}
+      />
       <CommunityAdminEntries communities={adminCommunities} />
       <CommunityInbox initialItems={inbox.items} loadError={inbox.error} />
       <InvitationDiscoverability />

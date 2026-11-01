@@ -376,6 +376,8 @@ export type Database = {
           initial_display_level: number
           last_rating_at: string | null
           mu: number
+          projection_revision: number
+          rating_config_version: number
           rating_engine: string
           rating_engine_version: string
           reliability_percent: number
@@ -391,6 +393,8 @@ export type Database = {
           initial_display_level: number
           last_rating_at?: string | null
           mu: number
+          projection_revision?: number
+          rating_config_version?: number
           rating_engine: string
           rating_engine_version: string
           reliability_percent: number
@@ -405,6 +409,8 @@ export type Database = {
           initial_display_level?: number
           last_rating_at?: string | null
           mu?: number
+          projection_revision?: number
+          rating_config_version?: number
           rating_engine?: string
           rating_engine_version?: string
           reliability_percent?: number
@@ -1819,6 +1825,249 @@ export type Database = {
           },
         ]
       }
+      player_rating_event_calculations: {
+        Row: {
+          after_confirmed_groups: number
+          after_display_level: number
+          after_highest_display_level: number
+          after_mu: number
+          after_reliability_percent: number
+          after_sigma: number
+          before_confirmed_groups: number
+          before_display_level: number
+          before_highest_display_level: number
+          before_mu: number
+          before_reliability_percent: number
+          before_sigma: number
+          calculated_at: string
+          explanation: NonNullable<Json>
+          inputs: NonNullable<Json>
+          last_rating_at: string
+          projection_revision: number
+          rating_config_version: number
+          rating_engine: string
+          rating_engine_version: string
+          rating_event_id: string
+        }
+        ComputedFields: never
+        Insert: {
+          after_confirmed_groups: number
+          after_display_level: number
+          after_highest_display_level: number
+          after_mu: number
+          after_reliability_percent: number
+          after_sigma: number
+          before_confirmed_groups: number
+          before_display_level: number
+          before_highest_display_level: number
+          before_mu: number
+          before_reliability_percent: number
+          before_sigma: number
+          calculated_at?: string
+          explanation: NonNullable<Json>
+          inputs: NonNullable<Json>
+          last_rating_at: string
+          projection_revision: number
+          rating_config_version: number
+          rating_engine: string
+          rating_engine_version: string
+          rating_event_id: string
+        }
+        Update: {
+          after_confirmed_groups?: number
+          after_display_level?: number
+          after_highest_display_level?: number
+          after_mu?: number
+          after_reliability_percent?: number
+          after_sigma?: number
+          before_confirmed_groups?: number
+          before_display_level?: number
+          before_highest_display_level?: number
+          before_mu?: number
+          before_reliability_percent?: number
+          before_sigma?: number
+          calculated_at?: string
+          explanation?: NonNullable<Json>
+          inputs?: NonNullable<Json>
+          last_rating_at?: string
+          projection_revision?: number
+          rating_config_version?: number
+          rating_engine?: string
+          rating_engine_version?: string
+          rating_event_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "player_rating_event_calculations_rating_event_id_fkey"
+            columns: ["rating_event_id"]
+            isOneToOne: false
+            referencedRelation: "player_rating_events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      player_rating_events: {
+        Row: {
+          confirmation_id: string
+          created_at: string
+          game_group_id: string
+          game_group_number: number
+          id: string
+          match_event_id: string
+          played_at: string
+          proposal_version: number
+          user_id: string
+        }
+        ComputedFields: never
+        Insert: {
+          confirmation_id: string
+          created_at?: string
+          game_group_id: string
+          game_group_number: number
+          id?: string
+          match_event_id: string
+          played_at: string
+          proposal_version: number
+          user_id: string
+        }
+        Update: {
+          confirmation_id?: string
+          created_at?: string
+          game_group_id?: string
+          game_group_number?: number
+          id?: string
+          match_event_id?: string
+          played_at?: string
+          proposal_version?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "player_rating_event_confirmation_fk"
+            columns: ["confirmation_id", "game_group_id", "proposal_version"]
+            isOneToOne: false
+            referencedRelation: "match_event_result_confirmations"
+            referencedColumns: ["id", "proposal_id", "proposal_version"]
+          },
+          {
+            foreignKeyName: "player_rating_event_pointer_fk"
+            columns: ["game_group_id", "match_event_id", "game_group_number"]
+            isOneToOne: false
+            referencedRelation: "match_event_result_proposals"
+            referencedColumns: ["id", "match_event_id", "group_number"]
+          },
+          {
+            foreignKeyName: "player_rating_event_version_fk"
+            columns: ["game_group_id", "proposal_version"]
+            isOneToOne: false
+            referencedRelation: "match_event_result_proposal_versions"
+            referencedColumns: ["proposal_id", "version"]
+          },
+          {
+            foreignKeyName: "player_rating_events_game_group_id_fkey"
+            columns: ["game_group_id"]
+            isOneToOne: false
+            referencedRelation: "match_event_result_proposals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "player_rating_events_match_event_id_fkey"
+            columns: ["match_event_id"]
+            isOneToOne: false
+            referencedRelation: "match_events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "player_rating_events_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "player_profiles"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
+      player_rating_initializations: {
+        Row: {
+          before_initial_level: number | null
+          id: string
+          initial_level: number
+          original_estimate_level: number | null
+          provenance: string
+          rating_config_version: number
+          rating_engine: string
+          rating_engine_version: string
+          reason: string
+          recorded_at: string
+          sequence: number
+          user_id: string
+        }
+        ComputedFields: never
+        Insert: {
+          before_initial_level?: number | null
+          id?: string
+          initial_level: number
+          original_estimate_level?: number | null
+          provenance: string
+          rating_config_version: number
+          rating_engine: string
+          rating_engine_version: string
+          reason: string
+          recorded_at?: string
+          sequence: number
+          user_id: string
+        }
+        Update: {
+          before_initial_level?: number | null
+          id?: string
+          initial_level?: number
+          original_estimate_level?: number | null
+          provenance?: string
+          rating_config_version?: number
+          rating_engine?: string
+          rating_engine_version?: string
+          reason?: string
+          recorded_at?: string
+          sequence?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "player_rating_initializations_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "player_profiles"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
+      player_rating_projection_control: {
+        Row: {
+          activation_enabled: boolean
+          committed_revision: number
+          last_processed_game_group_id: string | null
+          last_processed_played_at: string | null
+          singleton: boolean
+          updated_at: string
+        }
+        ComputedFields: never
+        Insert: {
+          activation_enabled?: boolean
+          committed_revision?: number
+          last_processed_game_group_id?: string | null
+          last_processed_played_at?: string | null
+          singleton?: boolean
+          updated_at?: string
+        }
+        Update: {
+          activation_enabled?: boolean
+          committed_revision?: number
+          last_processed_game_group_id?: string | null
+          last_processed_played_at?: string | null
+          singleton?: boolean
+          updated_at?: string
+        }
+        Relationships: []
+      }
       provisional_claim_password_pending: {
         Row: {
           created_at: string
@@ -1854,6 +2103,7 @@ export type Database = {
           status: Database["public"]["Enums"]["community_membership_status"]
         }[]
       }
+      activate_global_rating_projection: { Args: Record<PropertyKey, never>; Returns: Json }
       actor_session_revoked: { Args: Record<PropertyKey, never>; Returns: boolean }
       add_match_player: {
         Args: {
@@ -2005,6 +2255,7 @@ export type Database = {
       get_match_event: { Args: { p_event_id: string }; Returns: Json }
       get_match_event_management: { Args: { p_match_event_id: string }; Returns: Json }
       get_match_event_official_results: { Args: { p_match_event_id: string }; Returns: Json[] }
+      get_match_event_rating_changes: { Args: { p_match_event_id: string }; Returns: Json }
       get_match_event_result_proposals: { Args: { p_match_event_id: string }; Returns: Json[] }
       get_match_player_add_invite_context: {
         Args: { p_actor_id: string; p_match_event_id: string; p_request_id: string }
@@ -2085,6 +2336,17 @@ export type Database = {
         }[]
       }
       get_my_notifications_as_of: { Args: Record<PropertyKey, never>; Returns: string }
+      get_my_rating_history: {
+        Args: {
+          p_before_game_group_id?: string
+          p_before_played_at?: string
+          p_limit?: number
+          p_revision?: number
+        }
+        Returns: Json
+      }
+      get_my_rating_progress: { Args: { p_max_points?: number }; Returns: Json }
+      get_my_rating_summary: { Args: Record<PropertyKey, never>; Returns: Json }
       get_my_result_notification_contexts: {
         Args: { p_notification_ids: string[] }
         Returns: {
@@ -2113,6 +2375,10 @@ export type Database = {
       }
       get_password_setup_state: { Args: Record<PropertyKey, never>; Returns: Json }
       get_provisional_claim_context: { Args: Record<PropertyKey, never>; Returns: Json }
+      get_rating_group_explanation: {
+        Args: { p_game_group_id: string; p_revision?: number }
+        Returns: Json
+      }
       govern_community_member: {
         Args: { p_action: string; p_community_id: string; p_membership_id: string }
         Returns: {
@@ -2126,7 +2392,7 @@ export type Database = {
         Returns: boolean
       }
       initialize_global_player_rating_locked: {
-        Args: { p_level: number; p_user_id: string }
+        Args: { p_level: number; p_reason?: string; p_user_id: string }
         Returns: undefined
       }
       is_community_admin: { Args: { p_community_id: string }; Returns: boolean }
@@ -2183,6 +2449,7 @@ export type Database = {
         }
         Returns: Json[]
       }
+      lock_global_rating_projection: { Args: Record<PropertyKey, never>; Returns: undefined }
       lock_match_event_registration: {
         Args: { p_event_id: string }
         Returns: {
@@ -2425,6 +2692,7 @@ export type Database = {
         Returns: string
       }
       player_has_rated_history: { Args: { p_user_id: string }; Returns: boolean }
+      player_rating_calculation_inputs_valid: { Args: { p_inputs: Json }; Returns: boolean }
       process_due_match_event_registration_cutoffs: { Args: { p_limit?: number }; Returns: Json }
       process_due_match_event_results: { Args: { p_limit?: number }; Returns: Json }
       process_match_event_registration_cutoff: {
@@ -2435,6 +2703,7 @@ export type Database = {
         Args: { p_entry_ready_limit?: number; p_max_examined?: number; p_reminder_limit?: number }
         Returns: Json
       }
+      project_confirmed_rating_group: { Args: { p_proposal_id: string }; Returns: undefined }
       protect_match_event_results: { Args: { p_event_id: string }; Returns: undefined }
       provision_provisional_player_locked: {
         Args: {
@@ -2465,6 +2734,127 @@ export type Database = {
       publish_match_event: {
         Args: { p_event_id: string; p_input: Json; p_invitee_ids: string[] }
         Returns: string
+      }
+      rating_can_view_match_event: {
+        Args: { p_match_event_id: string; p_viewer: string }
+        Returns: boolean
+      }
+      rating_committed_revision: { Args: Record<PropertyKey, never>; Returns: number }
+      rating_current_calculations: {
+        Args: { p_revision: number; p_user_id: string }
+        Returns: {
+          after_confirmed_groups: number
+          after_display_level: number
+          after_highest_display_level: number
+          after_reliability_percent: number
+          before_confirmed_groups: number
+          before_display_level: number
+          before_highest_display_level: number
+          before_reliability_percent: number
+          calculation_revision: number
+          explanation: Json
+          game_group_id: string
+          game_group_number: number
+          inputs: Json
+          last_rating_at: string
+          match_event_id: string
+          played_at: string
+          rating_config_version: number
+          rating_engine: string
+          rating_engine_version: string
+          rating_event_id: string
+          revision_count: number
+        }[]
+      }
+      rating_projection_apply_group: {
+        Args: {
+          p_classification: string
+          p_confirmation_id: string
+          p_game_group_id: string
+          p_group_number: number
+          p_match_event_id: string
+          p_played_at: string
+          p_proposal_version: number
+          p_revision: number
+          p_states: Json
+          p_teams: Json
+        }
+        Returns: Record<string, unknown>
+      }
+      rating_projection_assert_consistent: { Args: { p_user_ids: string[] }; Returns: undefined }
+      rating_projection_eligible_groups: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          classification: string
+          confirmation_id: string
+          game_group_id: string
+          game_group_number: number
+          match_event_id: string
+          played_at: string
+          proposal_version: number
+          teams: Json
+        }[]
+      }
+      rating_projection_initial_state: { Args: { p_level: number }; Returns: Json }
+      rating_projection_lock_covered: { Args: Record<PropertyKey, never>; Returns: undefined }
+      rating_projection_prelock_sources: { Args: Record<PropertyKey, never>; Returns: undefined }
+      rating_projection_replay: { Args: { p_revision: number }; Returns: Record<string, unknown> }
+      rating_projection_write_states: {
+        Args: { p_meta: Json; p_revision: number; p_states: Json }
+        Returns: number
+      }
+      rating_read_actor: { Args: Record<PropertyKey, never>; Returns: string }
+      rating_read_assert_revision: {
+        Args: { p_committed: number; p_revision: number }
+        Returns: undefined
+      }
+      rating_summary_at: { Args: { p_revision: number; p_user_id: string }; Returns: Json }
+      rating_utc_text: { Args: { p_instant: string }; Returns: string }
+      rating_v1_calculate_group: {
+        Args: {
+          p_config_version: number
+          p_engine: string
+          p_engine_version: string
+          p_inputs: Json
+        }
+        Returns: {
+          after_confirmed_groups: number
+          after_display_level: number
+          after_highest_display_level: number
+          after_mu: number
+          after_reliability_percent: number
+          after_sigma: number
+          applied_delta: number
+          before_confirmed_groups: number
+          before_display_level: number
+          before_highest_display_level: number
+          before_mu: number
+          before_reliability_percent: number
+          before_sigma: number
+          clamped: boolean
+          expected_score: number
+          last_rating_at: string
+          opponent_team_strength: number
+          ordinal: number
+          outcome_value: number
+          own_team_strength: number
+          rating_config_version: number
+          rating_engine: string
+          rating_engine_version: string
+          raw_delta: number
+          reliability_factor: number
+          rounded_delta: number
+          team: string
+          user_id: string
+        }[]
+      }
+      rating_v1_is_ratable: {
+        Args: { p_classification: string; p_match_type: string; p_result_status: string }
+        Returns: boolean
+      }
+      rating_v1_supports: {
+        Args: { p_config_version: number; p_engine: string; p_engine_version: string }
+        Returns: boolean
       }
       reconcile_match_registration_participation:
         | { Args: { p_accepted_registration_id?: string; p_match_event_id: string }; Returns: Json }

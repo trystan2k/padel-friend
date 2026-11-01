@@ -1331,5 +1331,96 @@
       "body": "No pudimos cargar tu plaza en este partido. Reintenta para ver el estado actual.",
       "retry": "Reintentar"
     }
+  },
+  "rating": {
+    "journey": {
+      "title": "Evolución del rating",
+      "scope": "TODO EL TIEMPO",
+      "refreshed": "Evolución del rating actualizada.",
+      "refreshFailed": "No se pudo actualizar la evolución del rating. Usa la opción de reintento de abajo."
+    },
+    "progress": {
+      "title": "Progresión del rating",
+      "summary_one": "{{count}} partido confirmado entre {{from}} y {{to}}. El nivel pasó de {{start}} a {{end}}.",
+      "summary_other": "{{count}} partidos confirmados entre {{from}} y {{to}}. El nivel pasó de {{start}} a {{end}}.",
+      "abbreviated": "Mostrando {{shown}} de {{total}} partidos confirmados. El primero y el más reciente siempre se incluyen.",
+      "empty": "Nivel inicial {{level}}. Tus partidos competitivos confirmados aparecerán aquí.",
+      "unavailable": "La progresión del rating aparece cuando tu nivel de jugador esté configurado.",
+      "rangeStart": "Desde {{date}}",
+      "rangeEnd": "Hasta {{date}}",
+      "order": "Los partidos se espacian por orden de juego, no por tiempo. Las líneas solo unen partidos; no estiman niveles intermedios.",
+      "legendBaseline": "Nivel inicial (marcador hueco)",
+      "legendPoint": "Nivel tras un partido confirmado (marcador relleno)",
+      "showTable": "Mostrar tabla de datos",
+      "hideTable": "Ocultar tabla de datos",
+      "tableCaption": "Nivel tras cada partido confirmado",
+      "columnGame": "Partido",
+      "columnDate": "Fecha",
+      "columnLevel": "Nivel",
+      "baselineRow": "Nivel inicial"
+    },
+    "history": {
+      "title": "Partidos recientes",
+      "groupTitle": "Grupo {{number}}",
+      "levelChange": "Nivel {{before}} a {{after}}",
+      "reliabilityChange": "Fiabilidad {{before}} a {{after}}",
+      "explain": "Explicar",
+      "explainLabel": "Explicar el cambio de rating del grupo {{number}} jugado el {{date}}",
+      "loadMore": "Cargar más partidos",
+      "loadingMore": "Cargando partidos…",
+      "showing_one": "Mostrando {{shown}} de {{count}} partido",
+      "showing_other": "Mostrando {{shown}} de {{count}} partidos",
+      "recalculated": "Recalculado"
+    },
+    "outcome": {
+      "win": "Victoria",
+      "draw": "Empate",
+      "loss": "Derrota"
+    },
+    "explanation": {
+      "title": "Cómo cambió este rating",
+      "description": "Estos números se guardaron cuando se confirmó el partido. Nunca se recalculan con los ratings actuales.",
+      "loading": "Cargando explicación…",
+      "close": "Cerrar",
+      "playedOn": "Grupo {{number}} · jugado el {{date}}",
+      "yourTeam": "{{team}} · tu equipo",
+      "level": "Nivel",
+      "change": "Cambio",
+      "reliability": "Fiabilidad",
+      "ownStrength": "Fuerza del propio equipo",
+      "opponentStrength": "Fuerza del equipo rival",
+      "expected": "Puntuación esperada",
+      "result": "Resultado",
+      "version": "Cálculo",
+      "versionValue": "{{engine}} {{version}} · configuración {{config}} · revisión {{revision}}",
+      "transition": "{{before}} a {{after}}",
+      "expectedHint": "La puntuación esperada es la estimación del modelo de 0 % a 100 %, donde un empate vale 50 %. No es una probabilidad garantizada de ganar.",
+      "recalculated": "Este cálculo se actualizó después de confirmarse un partido anterior. Se muestra la última versión guardada.",
+      "established": "La fiabilidad está totalmente establecida, así que cada partido tiene ahora el peso más pequeño.",
+      "note": {
+        "gain": "El resultado superó las expectativas, así que el nivel subió {{delta}}.",
+        "loss": "El resultado quedó por debajo de las expectativas, así que el nivel bajó {{delta}}.",
+        "zero_rounded": "El cambio era demasiado pequeño para mostrarse con dos decimales, así que el nivel no cambió. El partido sigue contando.",
+        "draw_equal": "Un empate entre equipos igualados deja los niveles sin cambios. El partido sigue contando.",
+        "boundary": "El nivel ya está en el límite de la escala de {{min}} a {{max}} y no pudo moverse más. El partido sigue contando.",
+        "clamped_gain": "La subida calculada pasaría el máximo de la escala de {{min}} a {{max}}, así que solo se aplicó {{delta}}.",
+        "clamped_loss": "La bajada calculada pasaría el mínimo de la escala de {{min}} a {{max}}, así que solo se aplicó {{delta}}."
+      }
+    },
+    "changes": {
+      "title": "Cambios de rating",
+      "groupTitle": "Grupo {{number}}",
+      "description": "Cada jugador que jugó recibe un cambio de rating por grupo. Los reservas que no jugaron no se puntúan.",
+      "loading": "Cargando cambios de rating…",
+      "explainLabel": "Explicar el cambio de rating de {{name}}, grupo {{number}}"
+    },
+    "errors": {
+      "unauthenticated": "Tu sesión caducó. Inicia sesión de nuevo.",
+      "forbidden": "Ya no tienes acceso a esta información de rating.",
+      "stale_revision": "Los ratings cambiaron mientras se cargaban. Recarga para ver lo más reciente.",
+      "invalid_request": "No se pudo solicitar esta información de rating.",
+      "unavailable": "No se pudo cargar la información de rating. Inténtalo de nuevo.",
+      "reload": "Recargar"
+    }
   }
 }

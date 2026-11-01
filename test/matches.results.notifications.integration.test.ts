@@ -1,4 +1,5 @@
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { ratingEvidenceCleanupSql } from './helpers/fixture-cleanup';
 import { dotEnvPathFromImportMetaUrl, localSupabaseEnv } from './helpers/local-supabase-env';
 import {
   asRecord,
@@ -79,7 +80,8 @@ describe.skipIf(!environment.env)('transactional result notifications', { timeou
     try {
       if (f) await f.cleanup();
       for (const prefix of syntheticAuthPrefixes)
-        await fixtureSql(`delete from auth.users where email like '${prefix}-%@test.local'`);
+        await fixtureSql(`${ratingEvidenceCleanupSql(`select id from auth.users where email like '${prefix}-%@test.local'`)}
+          delete from auth.users where email like '${prefix}-%@test.local'`);
     } finally {
       try {
         await fixtureSql(`update public.match_result_alert_scan_state

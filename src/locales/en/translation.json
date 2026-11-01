@@ -1331,5 +1331,96 @@
       "body": "We could not load your place in this match. Retry to see the current status.",
       "retry": "Retry"
     }
+  },
+  "rating": {
+    "journey": {
+      "title": "Rating journey",
+      "scope": "ALL TIME",
+      "refreshed": "Rating journey updated.",
+      "refreshFailed": "Could not refresh the rating journey. Use the retry option below."
+    },
+    "progress": {
+      "title": "Rating progression",
+      "summary_one": "{{count}} confirmed game between {{from}} and {{to}}. Level moved from {{start}} to {{end}}.",
+      "summary_other": "{{count}} confirmed games between {{from}} and {{to}}. Level moved from {{start}} to {{end}}.",
+      "abbreviated": "Showing {{shown}} of {{total}} confirmed games. The first and latest games are always included.",
+      "empty": "Starting level {{level}}. Your confirmed competitive games will appear here.",
+      "unavailable": "Rating progression appears once your player level is set up.",
+      "rangeStart": "From {{date}}",
+      "rangeEnd": "To {{date}}",
+      "order": "Games are spaced by order played, not by time. Lines only connect games; they do not estimate levels in between.",
+      "legendBaseline": "Starting level (hollow marker)",
+      "legendPoint": "Level after a confirmed game (filled marker)",
+      "showTable": "Show data table",
+      "hideTable": "Hide data table",
+      "tableCaption": "Level after each confirmed game",
+      "columnGame": "Game",
+      "columnDate": "Date",
+      "columnLevel": "Level",
+      "baselineRow": "Starting level"
+    },
+    "history": {
+      "title": "Recent games",
+      "groupTitle": "Group {{number}}",
+      "levelChange": "Level {{before}} to {{after}}",
+      "reliabilityChange": "Reliability {{before}} to {{after}}",
+      "explain": "Explain",
+      "explainLabel": "Explain rating change for group {{number}} played on {{date}}",
+      "loadMore": "Load more games",
+      "loadingMore": "Loading games…",
+      "showing_one": "Showing {{shown}} of {{count}} game",
+      "showing_other": "Showing {{shown}} of {{count}} games",
+      "recalculated": "Recalculated"
+    },
+    "outcome": {
+      "win": "Win",
+      "draw": "Draw",
+      "loss": "Loss"
+    },
+    "explanation": {
+      "title": "How this rating changed",
+      "description": "These numbers were stored when the game was confirmed. They are never recalculated from current ratings.",
+      "loading": "Loading explanation…",
+      "close": "Close",
+      "playedOn": "Group {{number}} · played {{date}}",
+      "yourTeam": "{{team}} · your team",
+      "level": "Level",
+      "change": "Change",
+      "reliability": "Reliability",
+      "ownStrength": "Own team strength",
+      "opponentStrength": "Opponent team strength",
+      "expected": "Expected score",
+      "result": "Result",
+      "version": "Calculation",
+      "versionValue": "{{engine}} {{version}} · configuration {{config}} · revision {{revision}}",
+      "transition": "{{before}} to {{after}}",
+      "expectedHint": "Expected score is the model's estimate from 0% to 100%, where a draw counts as 50%. It is not a guaranteed chance to win.",
+      "recalculated": "This calculation was updated after an earlier game was confirmed. The latest stored version is shown.",
+      "established": "Reliability is fully established, so every game now carries the smallest weight.",
+      "note": {
+        "gain": "The result beat expectations, so the level rose by {{delta}}.",
+        "loss": "The result fell short of expectations, so the level dropped by {{delta}}.",
+        "zero_rounded": "The change was too small to show at two decimals, so the level stayed the same. The game still counts.",
+        "draw_equal": "A draw between evenly matched teams leaves levels unchanged. The game still counts.",
+        "boundary": "The level is already at the edge of the {{min}} to {{max}} scale, so it could not move further. The game still counts.",
+        "clamped_gain": "The calculated rise would pass the top of the {{min}} to {{max}} scale, so only {{delta}} was applied.",
+        "clamped_loss": "The calculated drop would pass the bottom of the {{min}} to {{max}} scale, so only {{delta}} was applied."
+      }
+    },
+    "changes": {
+      "title": "Rating changes",
+      "groupTitle": "Group {{number}}",
+      "description": "Each player who played receives one rating change per group. Reserves who did not play are not rated.",
+      "loading": "Loading rating changes…",
+      "explainLabel": "Explain rating change for {{name}}, group {{number}}"
+    },
+    "errors": {
+      "unauthenticated": "Your session expired. Sign in again.",
+      "forbidden": "You no longer have access to this rating information.",
+      "stale_revision": "Ratings changed while loading. Reload to see the latest.",
+      "invalid_request": "This rating information could not be requested.",
+      "unavailable": "Couldn't load rating information. Try again.",
+      "reload": "Reload"
+    }
   }
 }

@@ -742,6 +742,8 @@ describe.skipIf(environment.env === null)(
         'initial_display_level',
         'last_rating_at',
         'mu',
+        'projection_revision',
+        'rating_config_version',
         'rating_engine',
         'rating_engine_version',
         'reliability_percent',

@@ -80,6 +80,52 @@ describe('populated migration-up harness safety and ordering', () => {
       '--no-seed'
     ]);
   });
+  it('rehearses the rating projection backfill against the pre-ledger predecessor, asserted after each up', () => {
+    const calls: string[][] = [];
+    runHarness({
+      env: {
+        CI: 'true',
+        POPULATED_UPGRADE_OPT_IN: '1',
+        POPULATED_UPGRADE_SCENARIO: 'rating-projection'
+      },
+      run: successfulRunner(calls),
+      log: quiet
+    });
+    expect(calls[1]).toEqual([
+      'pnpm',
+      'exec',
+      'supabase',
+      'db',
+      'reset',
+      '--local',
+      '--version',
+      '20261031160000',
+      '--no-seed'
+    ]);
+    const seed = calls.findIndex((call) =>
+      call.some((arg) => arg.endsWith('rating-projection-predecessor-upgrade.sql'))
+    );
+    const upgrades = calls.flatMap((call, index) => (call.includes('migration') ? [index] : []));
+    const assertions = calls.flatMap((call, index) =>
+      call.some((arg) => arg.endsWith('rating-projection-upgrade-assertions.sql')) ? [index] : []
+    );
+    expect(seed).toBeGreaterThan(1);
+    expect(upgrades).toHaveLength(2);
+    expect(assertions).toHaveLength(2);
+    expect(seed).toBeLessThan(upgrades[0]!);
+    expect(assertions[0]!).toBeGreaterThan(upgrades[0]!);
+    expect(assertions[0]!).toBeLessThan(upgrades[1]!);
+    expect(assertions[1]!).toBeGreaterThan(upgrades[1]!);
+    expect(calls.at(-1)).toEqual([
+      'pnpm',
+      'exec',
+      'supabase',
+      'db',
+      'reset',
+      '--local',
+      '--no-seed'
+    ]);
+  });
   it('rehearses consent generation against unit 4 with repeat-up evidence', () => {
     const calls: string[][] = [];
     runHarness({

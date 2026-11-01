@@ -90,6 +90,15 @@ const ptBr: LocaleCopy = JSON.parse(
 const PASSWORD = 'Password123!';
 const BASE_URL = 'http://127.0.0.1:4173';
 
+// The profile identity card holds the display-name h2; the dashboard has other h2s (e.g. the
+// rating journey), so a bare level-2 heading query inside <main> is ambiguous.
+function profileNameHeading(page: Page) {
+  return page
+    .locator('main section')
+    .filter({ hasText: 'Member since' })
+    .getByRole('heading', { level: 2 });
+}
+
 function uniqueEmail(): string {
   return `e2e-onboard-${Date.now()}-${Math.random().toString(36).slice(2, 10)}@test.local`;
 }
@@ -576,7 +585,7 @@ test('an NBSP-edged display name is saved verbatim and persists with its NBSPs',
   // toHaveText normalizes every whitespace kind (an NBSP collapses like a space), so on its
   // own it could NOT catch a Unicode-trim regression — the raw textContent equality below is
   // the exact drift guard.
-  const nameHeading = page.locator('main').getByRole('heading', { level: 2 });
+  const nameHeading = profileNameHeading(page);
   await expect(nameHeading).toBeVisible();
   await expect(nameHeading).toHaveText(nbspName);
   expect(await nameHeading.textContent()).toBe(nbspName);
@@ -591,7 +600,7 @@ test('an NBSP-edged display name is saved verbatim and persists with its NBSPs',
   // just the in-memory profile state.
   const response = await page.reload({ waitUntil: 'domcontentloaded' });
   expect(response?.status()).toBeLessThan(400);
-  const persistedHeading = page.locator('main').getByRole('heading', { level: 2 });
+  const persistedHeading = profileNameHeading(page);
   await expect(persistedHeading).toBeVisible();
   expect(await persistedHeading.textContent()).toBe(nbspName);
 });
@@ -628,7 +637,7 @@ test('the emptiness rule is the ASCII class end-to-end: whitespace-only is rejec
   await skipCommunity(page);
   await expect(page.getByText(en.onboarding.validationName)).toHaveCount(0);
 
-  const nameHeading = page.locator('main').getByRole('heading', { level: 2 });
+  const nameHeading = profileNameHeading(page);
   await expect(nameHeading).toBeVisible();
   expect(await nameHeading.textContent()).toBe(nbspOnly);
 
@@ -654,7 +663,7 @@ test('the profile edit form preserves NBSP edges and trims only ASCII edges on s
   await page.getByRole('button', { name: en.profile.save }).click();
 
   await expect(page.getByText(en.profile.saveFailed)).toHaveCount(0);
-  const nameHeading = page.locator('main').getByRole('heading', { level: 2 });
+  const nameHeading = profileNameHeading(page);
   await expect(nameHeading).toBeVisible();
   await expect(nameHeading).toHaveText(nbspName);
   expect(await nameHeading.textContent()).toBe(nbspName);
@@ -668,9 +677,7 @@ test('the profile edit form preserves NBSP edges and trims only ASCII edges on s
   await page.locator('main').getByLabel(en.onboarding.name).fill('  Mila Twice  ');
   await page.getByRole('button', { name: en.profile.save }).click();
   await expect(page.getByRole('heading', { name: 'Mila Twice' })).toBeVisible();
-  expect(await page.locator('main').getByRole('heading', { level: 2 }).textContent()).toBe(
-    'Mila Twice'
-  );
+  expect(await profileNameHeading(page).textContent()).toBe('Mila Twice');
 });
 
 test('the onboarding slider stays operable in light and dark themes', async ({ page }) => {
