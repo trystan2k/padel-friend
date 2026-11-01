@@ -879,7 +879,7 @@
     },
     "reconfirmation": {
       "title": "Reconfirma tu participación",
-      "description": "Los cambios de tipo de partido, hora de inicio, estado Clasificatorio o Liga exigen que todos los jugadores aceptados, incluido el organizador, revisen y reconfirmen explícitamente. Hasta entonces, los jugadores conservan cupo y orden en la cola pero no se asignan a cuartetos. Los jugadores provisionales se mantienen automáticamente.",
+      "description": "Los cambios de tipo de partido, hora de inicio, estado Clasificatorio o Liga exigen que todos los jugadores aceptados, incluido el organizador, reconfirmen. Hasta entonces conservan cupo y orden en la cola pero no se asignan a cuartetos.",
       "deadline": "Reconfirma antes de {{deadline}}.",
       "reviewTerms": "Revisar condiciones modificadas",
       "confirm": "Confirmo mi participación con estas condiciones",

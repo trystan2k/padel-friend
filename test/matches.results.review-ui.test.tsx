@@ -517,6 +517,12 @@ describe('result lifecycle review UI', () => {
       expect(within(notice).queryByRole('link')).toBeNull();
     });
 
+    it('stays visible in the compact multi-group card', () => {
+      mount(makeProposal({ ranked_blocked: blocked, can_correct: true }), vi.fn(), true);
+      const notice = screen.getByRole('region', { name: "Can't count as Ranked yet" });
+      expect(within(notice).getByRole('link', { name: 'Correct result' })).toBeTruthy();
+    });
+
     it('renders nothing for an eligible proposal', () => {
       mount();
       expect(screen.queryByRole('region', { name: "Can't count as Ranked yet" })).toBeNull();

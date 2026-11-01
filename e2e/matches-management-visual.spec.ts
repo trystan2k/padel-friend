@@ -138,10 +138,15 @@ async function bounds(page: Page, copy = defaultCopy) {
     )
     .evaluateAll((elements) =>
       elements.map((element) => {
-        const rect = element.getBoundingClientRect();
+        // A native radio is operated through its label, which carries the 44px target.
+        const target =
+          element instanceof HTMLInputElement && element.type === 'radio'
+            ? (element.closest('label') ?? element)
+            : element;
+        const rect = target.getBoundingClientRect();
         return {
           label:
-            element.getAttribute('aria-label') ?? element.textContent?.trim() ?? element.tagName,
+            element.getAttribute('aria-label') ?? target.textContent?.trim() ?? element.tagName,
           width: rect.width,
           height: rect.height
         };
@@ -320,6 +325,10 @@ async function prepare(
       .toEqual([
         copy.matchCreate.fields.type,
         copy.matchCreate.fields.startsAt,
+        // Competitive drafts add the Ranked/Unranked status radios (PAF-11).
+        ...(state === 'major-change'
+          ? [copy.matches.competition.ranked, copy.matches.competition.unranked]
+          : []),
         copy.matchCreate.fields.venueName,
         copy.matchCreate.fields.mapsUrl,
         copy.matchCreate.fields.courtNotes,

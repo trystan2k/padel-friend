@@ -292,7 +292,7 @@ export function MatchResultReview({
           )}
         </section>
       )}
-      {!compact && proposal.status !== 'confirmed' && (
+      {proposal.status !== 'confirmed' && (
         <MatchResultRankedBlocked eventId={eventId} proposal={proposal} />
       )}
       {feedbackCopy && !rejectOpen && review.feedback?.kind !== 'stale' && (

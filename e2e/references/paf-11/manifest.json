@@ -1,0 +1,71 @@
+{
+  "status": "chromium-certified-with-scoped-route-adaptations",
+  "sourceDesign": {
+    "path": "docs/design/padel-friend.pen",
+    "sha256": "927ac4e83f24edacbc2b2fe2fcfa111d8e0822b96f73ce268cf50b5ef2737af2",
+    "exportCommand": "Pencil MCP: Export([\"ik5JC\",\"MYsDp\",\"wHaAb\"], \"png\", \"<repo>/e2e/references/paf-11\", {scale:2})",
+    "provenanceNote": "The three approved PAF-11 core references (League creation ik5JC, League creation validation variants MYsDp, Create match Ranked selector wHaAb) were exported uncropped from the source Pencil document through Pencil MCP at 2x. The source digest above is the digest of the CURRENT docs/design/padel-friend.pen bytes at export time and is re-checked against the file by test/leagues.visual-references.test.ts, so a later design-source change fails here loudly instead of inheriting a stale digest from an older manifest. Chromium comparisons use fresh-preview captures at the exact half-scale reference dimensions with production actor flows; route adaptations are recorded per frame. Supplemental states without an approved frame (multiple eligible Leagues without selection, no eligible League, outside-period edit warning, provisional auto-carry explanation, invalid Ranked-result resolution) reuse the existing consent/error compositions and are gated by structural probes only; their Pencil frames are requested separately and no budget exists for them."
+  },
+  "approvedReferences": {
+    "ik5JC.png": {
+      "frameId": "ik5JC",
+      "certifies": "League creation: name, Fixed End Date and Open-ended mode choice with date summary, minimum matches, create action and one-Active guidance",
+      "sha256": "59324af81906ecd720e964d1d6dc08440e3a7c6572e0d0cbf6eac358a81635ae",
+      "pixelSize": [780, 1688]
+    },
+    "MYsDp.png": {
+      "frameId": "MYsDp",
+      "certifies": "League creation validation variants: end-before-start, missing end date and the explicit Active League conflict with review action",
+      "sha256": "a64f7790e90e47510d00fb47dc158f492153856733720d3bdef1849f83b49247",
+      "pixelSize": [862, 862]
+    },
+    "wHaAb.png": {
+      "frameId": "wHaAb",
+      "certifies": "Create match with Competitive Ranked/Unranked status control, eligible League selector and members-only guidance",
+      "sha256": "e98acccf0d629cca3e5b82154d31db859b2f4627c90c4ad6c34960380ec2ddd5",
+      "pixelSize": [780, 1832]
+    }
+  },
+  "structuralProbes": {
+    "ik5JC": [
+      "section order: title, name, end-mode choice, dates, minimum matches, submit, one-Active guidance",
+      "keyboard arrow selection of the end mode toggles the end-date field",
+      "no horizontal overflow or controls outside the viewport",
+      "every interactive target is at least 44px tall",
+      "pt-BR and es light 390px and dark 320px with an 80-character League name stay unclipped"
+    ],
+    "MYsDp": [
+      "Active conflict card names the Active League, states the condition and links to it",
+      "end-before-start and missing end date use the exact approved copy",
+      "errors are associated through aria-describedby, announced as alerts and focus the first invalid field",
+      "error colour differs from body text colour"
+    ],
+    "wHaAb": [
+      "competition status is a named group with 44px Ranked/Unranked radios, arrow-key operable",
+      "one eligible League defaults to Ranked with the League explicitly shown in the selector",
+      "selector order: match type, competition status, eligible League, members-only guidance",
+      "guidance is associated with the group through aria-describedby",
+      "several overlapping Leagues leave the selector empty and publication shows an associated required-selection alert"
+    ]
+  },
+  "visualBudgets": {
+    "status": "measured-chromium-viewport-pixel-difference",
+    "measurementMethod": "Capture at reference pixelSize / 2 using Chromium deviceScaleFactor 1. Downsample only the uncropped 2x Pencil PNG. Compare same-size RGBA pixels with the pinned perceptual threshold (35215 × 0.1²); reject any dimension mismatch before applying the per-screen budget.",
+    "reason": "Every screen has an exact-dimension production-flow capture plus the structural probes above. Budgets are the smallest two-decimal value above the measured Chromium residual; they never replace or relax a probe.",
+    "perScreen": {
+      "ik5JC": 0.18,
+      "MYsDp": 0.13,
+      "wHaAb": 0.18
+    },
+    "measured": {
+      "ik5JC": 0.17503,
+      "MYsDp": 0.12105,
+      "wHaAb": 0.17052
+    },
+    "perScreenRationale": {
+      "ik5JC": "Production form renders translated, tokenized controls instead of the mock: a description field, native date inputs with labels and helper text, the real app shell header and bottom navigation, and a dynamic start/end summary instead of the fixed 01 Oct–20 Dec sample. Observed residual 0.17503; 0.18 leaves 0.00497 for raster variance. Order, association, keyboard and target-size probes are exact.",
+      "MYsDp": "The frame is a multi-context pattern sheet; the capture shows the production Active-conflict card and live field errors at the exact 431px reference viewport inside the real route shell. Observed residual 0.12105; 0.13 leaves 0.00895. Exact copy, association, alert, focus and link probes gate the content.",
+      "wHaAb": "Production wizard step 1 shows real form controls (native date/time inputs, venue and map fields) in place of the mock's chip-style presentation, and the real selector option text with the dynamic League window. Observed residual 0.17052; 0.18 leaves 0.00948. Selector order, radio group semantics, 44px targets, guidance association and the required-selection alert are exact probes."
+    }
+  }
+}

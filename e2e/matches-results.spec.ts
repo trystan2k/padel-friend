@@ -168,12 +168,12 @@ test('assign two groups and submit only one pending result', async ({ browserNam
     }),
     contentType: 'image/png'
   });
-  // No League/standings feature exists: assert schema boundary rather than invent a surface.
+  // Leagues (PAF-11) own only the League tables; no standings or statistics storage exists.
   expect(
     await sql(
-      `select table_name from information_schema.tables where table_schema='public' and table_name ~ '(standing|league|statistic)'`
+      `select table_name from information_schema.tables where table_schema='public' and table_name ~ '(standing|league|statistic)' order by table_name`
     )
-  ).toEqual([]);
+  ).toEqual([{ table_name: 'league_events' }, { table_name: 'leagues' }]);
   await info.attach('observed-proposal-facts', {
     body: JSON.stringify(
       {

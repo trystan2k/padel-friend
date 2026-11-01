@@ -879,7 +879,7 @@
     },
     "reconfirmation": {
       "title": "Reconfirme a participação",
-      "description": "Alterações no tipo da partida, no horário, no status Ranqueada ou na Liga exigem que todos os jogadores aceitos, inclusive o organizador, revisem e reconfirmem explicitamente. Até lá, os jogadores mantêm vaga e ordem na fila, mas não são alocados em quartetos. Jogadores provisórios são mantidos automaticamente.",
+      "description": "Alterações no tipo da partida, no horário, no status Ranqueada ou na Liga exigem que todos os jogadores aceitos, inclusive o organizador, reconfirmem. Até lá, mantêm vaga e ordem na fila, mas não são alocados em quartetos.",
       "deadline": "Reconfirme até {{deadline}}.",
       "reviewTerms": "Revisar condições alteradas",
       "confirm": "Confirmo minha participação nestas condições",

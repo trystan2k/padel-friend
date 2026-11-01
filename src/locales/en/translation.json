@@ -879,7 +879,7 @@
     },
     "reconfirmation": {
       "title": "Reconfirm participation",
-      "description": "Changes to match type, start time, Ranked status, or League require every accepted player, including the organizer, to review and explicitly reconfirm. Until then, players keep capacity and queue order but are not assigned to quartets. Provisional players carry over automatically.",
+      "description": "Changes to match type, start time, Ranked status, or League require every accepted player, including the organizer, to reconfirm. Until then, they keep capacity and queue order but are not assigned to quartets.",
       "deadline": "Reconfirm by {{deadline}}.",
       "reviewTerms": "Review changed terms",
       "confirm": "I confirm participation under these terms",
