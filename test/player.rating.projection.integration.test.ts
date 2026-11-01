@@ -27,7 +27,10 @@ import {
   type Quartet,
   type RatingWorld
 } from './helpers/rating-fixtures';
-import { insertAcceptedRegistration } from './helpers/provisional-player-fixtures';
+import {
+  insertAcceptedRegistration,
+  insertFixtureEvent
+} from './helpers/provisional-player-fixtures';
 import {
   createMatchResultReviewFixtures,
   reviewResultPlayedAt
@@ -217,6 +220,95 @@ describe('rating projection of confirmed results', { timeout: 180_000 }, () => {
         `select count(*)::int as count from public.player_rating_events where user_id = '${reserve}'`
       );
       expect(reserveEvents[0]!['count']).toBe(0);
+    }
+  );
+
+  // Production seam evidence: cancellation is only legal before the event starts and before any
+  // result exists (assert_match_management_action_locked: MATCH_MANAGEMENT_STARTED /
+  // MATCH_MANAGEMENT_RESULT_PROTECTED), and submit_match_event_result refuses cancelled events
+  // (MATCH_RESULT_CANCELLED) while taking protection on the first proposal. A cancelled event can
+  // therefore never hold a ratable proposal in either order; both directions are exercised through
+  // the real RPCs and the rating state must stay bit-for-bit unchanged.
+  it.skipIf(!environment.env)(
+    'cancelled events and cancellation attempts on rated events never change any rating state',
+    async () => {
+      const players = quartet(0, 1, 2, 3);
+      const asAdmin = (statement: string) =>
+        queryTrustedSql(`do $$ begin
+          perform set_config('request.jwt.claim.sub','${world.admin.id}',true);
+          ${statement}
+          set constraints all immediate;
+        end $$;`);
+      const snapshot = async () => ({
+        states: await ratingStates(players),
+        control: await ratingProjectionControl(),
+        ledger: await ledgerFingerprint(players),
+        events: Number(
+          (await sqlRows('select count(*)::int as count from public.player_rating_events'))[0]![
+            'count'
+          ]
+        )
+      });
+
+      // Direction 1: cancel first (real RPC), then results are refused.
+      const futureEvent = crypto.randomUUID();
+      await insertFixtureEvent({
+        id: futureEvent,
+        communityId: world.communityId,
+        creatorId: world.admin.id,
+        visibility: 'community_open'
+      });
+      const before = await snapshot();
+      await asAdmin(
+        `perform public.cancel_match_event('${futureEvent}','Weather',1,'${crypto.randomUUID()}');`
+      );
+      const [cancelled] = await sqlRows(
+        `select status from public.match_events where id = '${futureEvent}'`
+      );
+      expect(cancelled!['status']).toBe('cancelled');
+      await expect(
+        asAdmin(`perform public.submit_match_event_result('${futureEvent}', 1,
+          jsonb_build_object('team_a', jsonb_build_array('${players[0]}','${players[1]}'),
+            'team_b', jsonb_build_array('${players[2]}','${players[3]}')),
+          '[{"position":1,"team_a_games":6,"team_b_games":4,"completed":true}]'::jsonb,
+          jsonb_build_object('date','2026-10-01','time','18:00'), 'Court 1', '${crypto.randomUUID()}');`)
+      ).rejects.toSatisfy((error) => sqlErrorMessage(error).includes('MATCH_RESULT_CANCELLED'));
+      const [proposals] = await sqlRows(
+        `select count(*)::int as count from public.match_event_result_proposals where match_event_id = '${futureEvent}'`
+      );
+      expect(proposals!['count']).toBe(0);
+      expect(await snapshot()).toEqual(before);
+      // Re-activation (backfill) skips the cancelled event too; the shared watermark may move
+      // with unrelated groups, so only the rating facts are compared.
+      await activateRatingProjection();
+      const { control: _control, ...afterFacts } = await snapshot();
+      const { control: _before, ...beforeFacts } = before;
+      expect(afterFacts).toEqual(beforeFacts);
+
+      // Direction 2: results first, then cancellation is refused and nothing moves.
+      const ratedEvent = await world.newEvent();
+      const group = await confirmedGroup({
+        eventId: ratedEvent,
+        players,
+        playedAt: await nextTailPlayedAt(),
+        submittedBy: world.admin.id
+      });
+      expect(await eventCountFor([group.proposalId])).toBe(4);
+      const rated = await snapshot();
+      await expect(
+        asAdmin(
+          `perform public.cancel_match_event('${ratedEvent}','Weather',1,'${crypto.randomUUID()}');`
+        )
+      ).rejects.toSatisfy((error) =>
+        /MATCH_MANAGEMENT_(STARTED|RESULT_PROTECTED)/.test(sqlErrorMessage(error))
+      );
+      const [open] = await sqlRows(
+        `select status from public.match_events where id = '${ratedEvent}'`
+      );
+      expect(open!['status']).toBe('open');
+      const [retry] = await sqlRows(finalizeSql(group.proposalId, 'AUTO_48H'));
+      expect(retry!['id']).toBe(group.confirmationId);
+      expect(await snapshot()).toEqual(rated);
     }
   );
 

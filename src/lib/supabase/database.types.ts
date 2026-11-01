@@ -2796,6 +2796,8 @@ export type Database = {
         }[]
       }
       rating_projection_initial_state: { Args: { p_level: number }; Returns: Json }
+      rating_projection_lock_covered: { Args: Record<PropertyKey, never>; Returns: undefined }
+      rating_projection_prelock_sources: { Args: Record<PropertyKey, never>; Returns: undefined }
       rating_projection_replay: { Args: { p_revision: number }; Returns: Record<string, unknown> }
       rating_projection_write_states: {
         Args: { p_meta: Json; p_revision: number; p_states: Json }

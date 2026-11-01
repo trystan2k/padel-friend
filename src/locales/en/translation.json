@@ -1335,7 +1335,9 @@
   "rating": {
     "journey": {
       "title": "Rating journey",
-      "scope": "ALL TIME"
+      "scope": "ALL TIME",
+      "refreshed": "Rating journey updated.",
+      "refreshFailed": "Could not refresh the rating journey. Use the retry option below."
     },
     "progress": {
       "title": "Rating progression",

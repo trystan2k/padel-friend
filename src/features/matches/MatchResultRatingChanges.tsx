@@ -29,6 +29,7 @@ type Load =
  * group count so a newly confirmed group re-reads the changes.
  */
 export function MatchResultRatingChanges({ eventId }: { eventId: string }) {
+  const returnPath = `/matches/${encodeURIComponent(eventId)}`;
   const { t, i18n } = useTranslation();
   const [load, setLoad] = useState<Load>({ status: 'loading' });
   const latest = useRef(0);
@@ -72,7 +73,9 @@ export function MatchResultRatingChanges({ eventId }: { eventId: string }) {
           {t('rating.changes.loading')}
         </output>
       )}
-      {load.status === 'error' && <RatingError code={load.code} onRetry={retry} />}
+      {load.status === 'error' && (
+        <RatingError code={load.code} onRetry={retry} returnPath={returnPath} />
+      )}
       {changes && (
         <>
           <p {...stylex.props(s.copy)}>{t('rating.changes.description')}</p>
@@ -144,6 +147,7 @@ export function MatchResultRatingChanges({ eventId }: { eventId: string }) {
             returnFocus={trigger}
             onClose={() => setTarget(null)}
             onStale={retry}
+            returnPath={returnPath}
           />
         </>
       )}

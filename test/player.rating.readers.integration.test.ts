@@ -400,6 +400,60 @@ describe('rating readers: authorized sporting DTOs', { timeout: 300_000 }, () =>
     }
   );
 
+  it.skipIf(!environment.env)(
+    'a participant of one group of a multi-group event reads that group only',
+    async () => {
+      // One event, two rated groups, no result-reader right for either set of players.
+      const eventId = await world.newEvent();
+      const base = Date.parse(await nextTailPlayedAt());
+      const ownGroup = await confirmedGroup({
+        eventId,
+        groupNumber: 1,
+        players: quartet(me.id, mate.id, rivalA.id, rivalB.id),
+        playedAt: new Date(base).toISOString(),
+        submittedBy: world.admin.id,
+        classification: 'team_a'
+      });
+      const otherGroup = await confirmedGroup({
+        eventId,
+        groupNumber: 2,
+        players: quartet(spare[0]!.id, spare[1]!.id, spare[2]!.id, spare[3]!.id),
+        playedAt: new Date(base + 3_600_000).toISOString(),
+        submittedBy: world.admin.id,
+        classification: 'team_b'
+      });
+      const explain = (actor: Actor, groupId: string) =>
+        actor.client.rpc('get_rating_group_explanation', { p_game_group_id: groupId });
+
+      expect((await explain(me, ownGroup.proposalId)).error).toBeNull();
+      expect((await explain(spare[0]!, otherGroup.proposalId)).error).toBeNull();
+      for (const [actor, groupId] of [
+        [me, otherGroup.proposalId],
+        [spare[0]!, ownGroup.proposalId]
+      ] as const) {
+        const denied = await explain(actor, groupId);
+        expect(denied.data).toBeNull();
+        expect(denied.error?.message).toBe('RATING_EXPLANATION_FORBIDDEN');
+      }
+      // Event-wide changes need the existing result-reader rights, not play in one group.
+      for (const actor of [me, spare[0]!]) {
+        const changes = await actor.client.rpc('get_match_event_rating_changes', {
+          p_match_event_id: eventId
+        });
+        expect(changes.data).toBeNull();
+        expect(changes.error?.message).toBe('RATING_EXPLANATION_FORBIDDEN');
+      }
+      const reader = parseMatchEventRatingChanges(
+        (
+          await world.admin.client.rpc('get_match_event_rating_changes', {
+            p_match_event_id: eventId
+          })
+        ).data
+      );
+      expect(reader!.groups).toHaveLength(2);
+    }
+  );
+
   it.skipIf(!environment.env)('anonymous callers hold no execute privilege', async () => {
     const env = environment.env!;
     const anonymous = createClient<Database>(env.url, env.key, {

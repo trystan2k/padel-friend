@@ -34,6 +34,7 @@ vi.mock('../src/features/player/rating.functions', () => ({
   getMyRatingProgress: vi.fn<() => Promise<unknown>>()
 }));
 
+import { RatingError } from '../src/features/player/RatingError';
 import { MatchResultRatingChanges } from '../src/features/matches/MatchResultRatingChanges';
 import { RatingExplanation } from '../src/features/player/RatingExplanation';
 import { RatingHistory } from '../src/features/player/RatingHistory';
@@ -543,6 +544,186 @@ describe('RatingJourney', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Try again' }));
     expect(onReload).toHaveBeenCalledOnce();
   });
+});
+
+describe('RatingJourney stale reload focus', () => {
+  const loadAt = (revision: number, overrides: Record<string, unknown> = {}): RatingLoad => ({
+    status: 'ok',
+    revision,
+    summary: { revision, state: 'ready', summary: null },
+    progress: progress(),
+    history: historyView({ revision, ...overrides })
+  });
+
+  function Harness({ first }: { first: RatingLoad }) {
+    const [load, setLoad] = useState(first);
+    return <RatingJourney load={load} onReload={() => setLoad(loadAt(4))} />;
+  }
+
+  it('moves focus to the journey heading and announces when a stale dialog reloads', async () => {
+    mocks.explanation.mockResolvedValueOnce({ status: 'error', code: 'stale_revision' });
+    render(wrap(<Harness first={loadAt(3)} />));
+    screen.getByRole('button', { name: /^Explain rating change for group 1/ }).focus();
+    await userEvent.keyboard('{Enter}');
+    const dialog = await screen.findByRole('dialog');
+    within(dialog).getByRole('button', { name: 'Reload' }).focus();
+    await userEvent.keyboard('{Enter}');
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    const heading = screen.getByRole('heading', { name: 'Rating journey' });
+    expect(document.activeElement).toBe(heading);
+    expect(screen.getByRole('status').textContent).toBe('Rating journey updated.');
+  });
+
+  it('moves focus to the journey heading when load-more meets a stale revision', async () => {
+    mocks.history.mockResolvedValueOnce({ status: 'error', code: 'stale_revision' });
+    render(
+      wrap(
+        <Harness
+          first={loadAt(3, {
+            total_events: 2,
+            next_cursor: { played_at: historyItemPayload.played_at, game_group_id: GROUP_ID }
+          })}
+        />
+      )
+    );
+    screen.getByRole('button', { name: 'Load more games' }).focus();
+    await userEvent.keyboard('{Enter}');
+    await waitFor(() =>
+      expect(document.activeElement).toBe(screen.getByRole('heading', { name: 'Rating journey' }))
+    );
+    expect(screen.getByRole('status').textContent).toBe('Rating journey updated.');
+    expect(screen.queryByRole('button', { name: 'Load more games' })).toBeNull();
+  });
+
+  // First reload fails (unavailable), the retry succeeds.
+  function FailingHarness({ first }: { first: RatingLoad }) {
+    const [load, setLoad] = useState(first);
+    const [attempt, setAttempt] = useState(0);
+    return (
+      <RatingJourney
+        load={load}
+        onReload={() => {
+          setAttempt(attempt + 1);
+          setLoad(attempt === 0 ? { status: 'error', code: 'unavailable' } : loadAt(4));
+        }}
+      />
+    );
+  }
+
+  async function expectFailureThenRetry() {
+    const heading = screen.getByRole('heading', { name: 'Rating journey' });
+    await waitFor(() => expect(document.activeElement).toBe(heading));
+    expect(screen.getByRole('status').textContent).toBe(
+      'Could not refresh the rating journey. Use the retry option below.'
+    );
+    // The status is the only announcement; the error copy stays visible without a second alert.
+    expect(screen.queryByRole('alert')).toBeNull();
+    await userEvent.click(screen.getByRole('button', { name: 'Try again' }));
+    await waitFor(() =>
+      expect(screen.getByRole('status').textContent).toBe('Rating journey updated.')
+    );
+    expect(document.activeElement).toBe(screen.getByRole('heading', { name: 'Rating journey' }));
+  }
+
+  it('keeps focus on the heading and announces when a stale-dialog reload fails, then recovers', async () => {
+    mocks.explanation.mockResolvedValueOnce({ status: 'error', code: 'stale_revision' });
+    render(wrap(<FailingHarness first={loadAt(3)} />));
+    screen.getByRole('button', { name: /^Explain rating change for group 1/ }).focus();
+    await userEvent.keyboard('{Enter}');
+    const dialog = await screen.findByRole('dialog');
+    within(dialog).getByRole('button', { name: 'Reload' }).focus();
+    await userEvent.keyboard('{Enter}');
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    await expectFailureThenRetry();
+    expect(screen.queryByRole('dialog')).toBeNull();
+  });
+
+  it('keeps focus on the heading and announces when a stale-pagination reload fails, then recovers', async () => {
+    mocks.history.mockResolvedValueOnce({ status: 'error', code: 'stale_revision' });
+    render(
+      wrap(
+        <FailingHarness
+          first={loadAt(3, {
+            total_events: 2,
+            next_cursor: { played_at: historyItemPayload.played_at, game_group_id: GROUP_ID }
+          })}
+        />
+      )
+    );
+    screen.getByRole('button', { name: 'Load more games' }).focus();
+    await userEvent.keyboard('{Enter}');
+    await expectFailureThenRetry();
+    expect(screen.queryByRole('button', { name: 'Load more games' })).toBeNull();
+  });
+
+  it('announces sign-in copy once, with no retry wording, when the reload is unauthenticated', async () => {
+    mocks.history.mockResolvedValueOnce({ status: 'error', code: 'stale_revision' });
+    function ExpiredHarness() {
+      const [load, setLoad] = useState(
+        loadAt(3, {
+          total_events: 2,
+          next_cursor: { played_at: historyItemPayload.played_at, game_group_id: GROUP_ID }
+        })
+      );
+      return (
+        <RatingJourney
+          load={load}
+          onReload={() => setLoad({ status: 'error', code: 'unauthenticated' })}
+        />
+      );
+    }
+    render(wrap(<ExpiredHarness />));
+    screen.getByRole('button', { name: 'Load more games' }).focus();
+    await userEvent.keyboard('{Enter}');
+    const heading = screen.getByRole('heading', { name: 'Rating journey' });
+    await waitFor(() => expect(document.activeElement).toBe(heading));
+    const status = screen.getByRole('status');
+    expect(status.textContent).toBe('Your session expired. Sign in again.');
+    expect(status.textContent).not.toMatch(/retry|try again/i);
+    expect(screen.queryByRole('alert')).toBeNull();
+    expect(screen.getByRole('button', { name: 'Sign in' })).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Try again' })).toBeNull();
+  });
+});
+
+describe('RatingError sign-in return destination', () => {
+  const assign = vi.fn<(url: string) => void>();
+  beforeEach(() => {
+    assign.mockReset();
+    vi.stubGlobal('location', { assign });
+  });
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  const signIn = async (node: ReactNode) => {
+    render(wrap(node));
+    await userEvent.click(await screen.findByRole('button', { name: 'Sign in' }));
+    return assign.mock.calls[0]![0];
+  };
+
+  it('keeps the dashboard default for the profile journey', async () => {
+    const load: RatingLoad = { status: 'error', code: 'unauthenticated' };
+    expect(await signIn(<RatingJourney load={load} onReload={vi.fn<() => void>()} />)).toBe(
+      '/login?next=%2Fdashboard'
+    );
+  });
+
+  it('returns to the result detail URL from the rating changes', async () => {
+    mocks.changes.mockResolvedValue({ status: 'error', code: 'unauthenticated' });
+    expect(
+      await signIn(<MatchResultRatingChanges eventId="22222222-2222-4222-8222-222222222222" />)
+    ).toBe('/login?next=%2Fmatches%2F22222222-2222-4222-8222-222222222222');
+  });
+
+  it.each(['//evil.com', 'https://evil.com/x', '/\\evil.com', '/a/../b', 'javascript:alert(1)'])(
+    'falls back to the dashboard for the unsafe destination %s',
+    async (returnPath) => {
+      expect(await signIn(<RatingError code="unauthenticated" returnPath={returnPath} />)).toBe(
+        '/login?next=%2Fdashboard'
+      );
+    }
+  );
 });
 
 describe('MatchResultRatingChanges', () => {

@@ -1335,7 +1335,9 @@
   "rating": {
     "journey": {
       "title": "Evolución del rating",
-      "scope": "TODO EL TIEMPO"
+      "scope": "TODO EL TIEMPO",
+      "refreshed": "Evolución del rating actualizada.",
+      "refreshFailed": "No se pudo actualizar la evolución del rating. Usa la opción de reintento de abajo."
     },
     "progress": {
       "title": "Progresión del rating",

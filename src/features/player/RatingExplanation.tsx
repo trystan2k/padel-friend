@@ -119,7 +119,15 @@ function PlayerExplanation({
   );
 }
 
-function ExplanationBody({ target, onStale }: { target: ExplanationTarget; onStale: () => void }) {
+function ExplanationBody({
+  target,
+  onStale,
+  returnPath
+}: {
+  target: ExplanationTarget;
+  onStale: () => void;
+  returnPath?: string;
+}) {
   const { t, i18n } = useTranslation();
   const [load, setLoad] = useState<Load>({ status: 'loading' });
   const latest = useRef(0);
@@ -156,6 +164,7 @@ function ExplanationBody({ target, onStale }: { target: ExplanationTarget; onSta
     return (
       <RatingError
         code={load.code}
+        returnPath={returnPath}
         onRetry={
           load.code === 'stale_revision'
             ? onStale
@@ -219,12 +228,15 @@ export function RatingExplanation({
   target,
   returnFocus,
   onClose,
-  onStale
+  onStale,
+  returnPath
 }: {
   target: ExplanationTarget | null;
   returnFocus: RefObject<HTMLElement | null>;
   onClose: () => void;
   onStale: () => void;
+  /** Sign-in return destination for an expired session; defaults to the dashboard. */
+  returnPath?: string;
 }) {
   const { t } = useTranslation();
   return (
@@ -247,6 +259,7 @@ export function RatingExplanation({
                 key={`${target.groupId}:${target.revision}`}
                 target={target}
                 onStale={onStale}
+                returnPath={returnPath}
               />
             )}
             <Dialog.Close {...stylex.props(s.textButton)}>

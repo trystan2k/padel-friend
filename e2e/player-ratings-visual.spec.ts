@@ -1,6 +1,13 @@
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
-import { expect, test, type Locator, type Page, type TestInfo } from '@playwright/test';
+import {
+  expect,
+  test,
+  type ElementHandle,
+  type Locator,
+  type Page,
+  type TestInfo
+} from '@playwright/test';
 import { waitForHydratedPage } from './auth-helpers';
 import manifest from './references/paf-10/manifest.json' with { type: 'json' };
 import { confirmGroup, pastEvent, removeProvisionalEvidence } from './player-ratings-fixtures';
@@ -47,7 +54,18 @@ test.afterAll(async () => {
 test.beforeEach(() => test.setTimeout(120_000));
 
 const FRAME = 'vARtQ';
-const REGION = { width: 390, height: 308 }; // header, identity hero and level card of the frame
+const WIDTH = 390;
+// Two separately aligned regions of the one frame export (CSS px, frame coordinates):
+// the header/identity/level card; the "Rating journey" heading + progression card; and the
+// recent-matches card. Each is aligned on its own anchor so one shifted block never skews another.
+const REGIONS = {
+  top: { name: 'top', y: 0, height: 308, budgetKey: FRAME },
+  journey: { name: 'journey', y: 396, height: 184, budgetKey: `${FRAME}:journey` },
+  history: { name: 'history', y: 588, height: 160, budgetKey: `${FRAME}:history` }
+} as const;
+type Region = (typeof REGIONS)[keyof typeof REGIONS];
+// The frame's journey heading text is centred 22px below the journey crop top.
+const JOURNEY_HEADING_CENTRE = 22;
 
 // --- helpers -----------------------------------------------------------------------------
 
@@ -97,6 +115,127 @@ async function contrast(locator: Locator): Promise<number> {
   });
 }
 
+/**
+ * Exact vertical geometry of the profile → rating journey stack, from DOM measurement only
+ * (independent of every raster comparison). Returns human-readable violations; empty = sound.
+ *
+ * Bounds are derived, not measured-once:
+ *  - Inter-block gaps: the layout declares them with a token gap on the shared grid/flex
+ *    parent (`main` row-gap between level card and journey, `--space-8` inside the journey
+ *    grid). The expected gap is that parent's computed row-gap, ±1px for sub-pixel rounding,
+ *    and the declared gap itself must be a sane token step: ≥ --space-4 (blocks never touch)
+ *    and ≤ --space-20 (no blank band; the largest card-scale step). A pushed or collapsed
+ *    block therefore fails regardless of how it is rasterised.
+ *  - Card content: a card is at least as tall as the sum of its children (natural minimum),
+ *    its last child ends inside it (not clipped, not overflowing), and it has no vertical
+ *    scroll overflow.
+ *  - Page: both cards sit fully inside `main` and the document height.
+ *  - Plot: the SVG keeps the viewBox aspect ratio (not shrunk), and every marker, the trend
+ *    line and the area stay inside the SVG box (no clipped/out-of-range points).
+ */
+async function journeyVerticalViolations(region: Locator): Promise<string[]> {
+  return region.evaluate((section) => {
+    const out: string[] = [];
+    const px = (value: string) => Number.parseFloat(value) || 0;
+    const rect = (element: Element) => element.getBoundingClientRect();
+    const root = getComputedStyle(document.documentElement);
+    const token = (name: string) => px(root.getPropertyValue(name));
+    const minGap = token('--space-4');
+    const maxGap = token('--space-20');
+    const main = section.closest('main')!;
+    const levelCard = [...main.querySelectorAll('section')].find(
+      (candidate) => candidate !== section && candidate.querySelector('progress')
+    )!;
+    const header = section.firstElementChild!;
+    const cards = [...section.children].filter(
+      (child) => child.tagName === 'DIV' && child !== header
+    );
+    const [chartCard, historyCard] = cards;
+    if (!chartCard || !historyCard) return ['journey chart and history cards missing'];
+
+    const gap = (what: string, upper: Element, lower: Element, parent: Element) => {
+      const declared = px(getComputedStyle(parent).rowGap);
+      const actual = rect(lower).top - rect(upper).bottom;
+      if (declared < minGap || declared > maxGap)
+        out.push(`${what}: declared gap ${declared}px outside token range ${minGap}-${maxGap}px`);
+      if (Math.abs(actual - declared) > 1)
+        out.push(`${what}: gap ${actual.toFixed(1)}px differs from declared ${declared}px`);
+    };
+    // The level card may be followed by other profile blocks only when editing; anchor on the
+    // element that actually precedes the journey.
+    const before = section.previousElementSibling ?? levelCard;
+    gap('level card → journey heading', before, header, main);
+    gap('journey heading → chart card', header, chartCard, section);
+    gap('chart card → history card', chartCard, historyCard, section);
+
+    const mainBox = rect(main);
+    const pageBottom = document.documentElement.scrollHeight;
+    for (const [what, card] of [
+      ['chart', chartCard],
+      ['history', historyCard]
+    ] as const) {
+      const bounds = rect(card);
+      const children = [...card.children].filter((child) => rect(child).height > 0);
+      const natural = children.reduce((sum, child) => sum + rect(child).height, 0);
+      if (bounds.height + 1 < natural)
+        out.push(`${what} card ${bounds.height}px shorter than content ${natural}px`);
+      const lastBottom = Math.max(...children.map((child) => rect(child).bottom));
+      if (lastBottom > bounds.bottom + 1)
+        out.push(`${what} card clips content (${lastBottom} > ${bounds.bottom})`);
+      if (card.scrollHeight - card.clientHeight > 1) out.push(`${what} card scrolls vertically`);
+      if (bounds.top < mainBox.top - 1 || bounds.bottom > mainBox.bottom + 1)
+        out.push(`${what} card outside page container`);
+      if (bounds.bottom > pageBottom + 1) out.push(`${what} card outside document`);
+    }
+
+    const rows = [...historyCard.querySelectorAll('li')].filter((li) => li.querySelector('time'));
+    if (rows.length === 0) out.push('history rows missing');
+    for (const row of rows) {
+      const bounds = rect(row);
+      if (bounds.height <= 0) out.push('history row has no height');
+      if (bounds.bottom > rect(historyCard).bottom + 1)
+        out.push('history row outside history card');
+    }
+
+    const svg = chartCard.querySelector('svg')!;
+    const svgBox = rect(svg);
+    // Design plot: viewBox 320×120. The viewBox itself is pinned (an altered viewBox is a defect),
+    // and the SVG must fill the plot grid's fluid column: grid content width minus the axis
+    // column and column gap, all measured from the live container, never hardcoded px.
+    const DESIGN_WIDTH = 320;
+    const DESIGN_HEIGHT = 120;
+    const viewBox = svg.viewBox.baseVal;
+    if (viewBox.width !== DESIGN_WIDTH || viewBox.height !== DESIGN_HEIGHT)
+      out.push(`chart svg viewBox ${viewBox.width}x${viewBox.height} != design viewBox`);
+    const plotGrid = svg.parentElement!;
+    const plotStyle = getComputedStyle(plotGrid);
+    const axisBox = rect(plotGrid.firstElementChild!);
+    const expectedWidth =
+      rect(plotGrid).width -
+      px(plotStyle.paddingLeft) -
+      px(plotStyle.paddingRight) -
+      axisBox.width -
+      px(plotStyle.columnGap);
+    const expectedHeight = (expectedWidth * DESIGN_HEIGHT) / DESIGN_WIDTH;
+    if (svgBox.height <= 0) out.push('chart svg has no height');
+    if (Math.abs(svgBox.width - expectedWidth) > 1)
+      out.push(`chart svg width ${svgBox.width} != container column ${expectedWidth}`);
+    if (Math.abs(svgBox.height - expectedHeight) > 1)
+      out.push(`chart svg height ${svgBox.height} != container ratio ${expectedHeight}`);
+    for (const shape of svg.querySelectorAll('circle, polyline, polygon')) {
+      const bounds = rect(shape);
+      if (
+        bounds.left < svgBox.left - 0.5 ||
+        bounds.right > svgBox.right + 0.5 ||
+        bounds.top < svgBox.top - 0.5 ||
+        bounds.bottom > svgBox.bottom + 0.5
+      )
+        out.push(`plot ${shape.tagName} leaves the svg bounds`);
+    }
+    return out;
+  });
+}
+
 async function openProfile(
   theme: 'light' | 'dark',
   width: number,
@@ -110,43 +249,48 @@ async function openProfile(
   return { page, region };
 }
 
-async function compareRegion(page: Page, info: TestInfo, top: number): Promise<number> {
-  await page.setViewportSize({ width: REGION.width, height: 844 });
+async function compareRegion(
+  page: Page,
+  info: TestInfo,
+  region: Region,
+  top: number
+): Promise<number> {
+  await page.setViewportSize({ width: WIDTH, height: 844 });
   await page.evaluate(() => window.scrollTo(0, 0));
   const actual = await page.screenshot({
     animations: 'disabled',
     caret: 'hide',
-    clip: { x: 0, y: top, ...REGION },
-    path: info.outputPath(`${FRAME}-actual.png`)
+    fullPage: true,
+    clip: { x: 0, y: top, width: WIDTH, height: region.height },
+    path: info.outputPath(`${FRAME}-${region.name}-actual.png`)
   });
   const approved = readFileSync(new URL(`./references/paf-10/${FRAME}.png`, import.meta.url));
   const measured = await page.evaluate(
-    async ({ actualUrl, approvedUrl, region }) => {
-      const load = async (url: string, crop: number, scale: number) => {
+    async ({ actualUrl, approvedUrl, area }) => {
+      const load = async (url: string, crop: number, offset: number) => {
         const image = new Image();
         image.src = url;
         await image.decode();
         const canvas = document.createElement('canvas');
-        canvas.width = region.width;
-        canvas.height = region.height;
+        canvas.width = area.width;
+        canvas.height = area.height;
         const context = canvas.getContext('2d')!;
         context.drawImage(
           image,
           0,
+          offset * crop,
+          area.width * crop,
+          area.height * crop,
           0,
-          region.width * crop,
-          region.height * crop,
           0,
-          0,
-          region.width,
-          region.height
+          area.width,
+          area.height
         );
-        void scale;
-        return context.getImageData(0, 0, region.width, region.height).data;
+        return context.getImageData(0, 0, area.width, area.height).data;
       };
       const [rendered, reference] = await Promise.all([
-        load(actualUrl, 1, 1),
-        load(approvedUrl, 2, 2)
+        load(actualUrl, 1, 0),
+        load(approvedUrl, 2, area.y)
       ]);
       let changed = 0;
       for (let index = 0; index < rendered.length; index += 4) {
@@ -162,16 +306,16 @@ async function compareRegion(page: Page, info: TestInfo, top: number): Promise<n
         )
           changed++;
       }
-      return changed / (region.width * region.height);
+      return changed / (area.width * area.height);
     },
     {
       actualUrl: `data:image/png;base64,${actual.toString('base64')}`,
       approvedUrl: `data:image/png;base64,${approved.toString('base64')}`,
-      region: REGION
+      area: { width: WIDTH, height: region.height, y: region.y }
     }
   );
-  console.info(`${FRAME} PAF-10 region measurement: ${measured}`);
-  await info.attach(`${FRAME}-actual`, { body: actual, contentType: 'image/png' });
+  console.info(`${FRAME} PAF-10 ${region.name} region measurement: ${measured}`);
+  await info.attach(`${FRAME}-${region.name}-actual`, { body: actual, contentType: 'image/png' });
   return measured;
 }
 
@@ -257,11 +401,176 @@ test('profile keeps the Pencil order, geometry and a reviewed raster budget (mob
   ).toBeLessThanOrEqual(0);
 
   // The app shell above the profile is out of this frame: align on the title (frame offset 20px).
-  const measured = await compareRegion(page, info, Math.max(0, Math.round(t!.y) - 20));
+  const measured = await compareRegion(page, info, REGIONS.top, Math.max(0, Math.round(t!.y) - 20));
   expect(measured, `${FRAME} raster budget`).toBeLessThanOrEqual(
     manifest.visualBudgets.perScreen[FRAME]
   );
   expect(manifest.visualBudgets.perScreen[FRAME]).toBeGreaterThan(0);
+});
+
+test('rating journey keeps the Pencil order, card geometry and a reviewed raster budget (mobile light)', async ({
+  browserName
+}, info) => {
+  expect(browserName).toBe('chromium');
+  const { page, region } = await openProfile('light', 390, 844);
+  const journeyHeading = region.getByRole('heading', { level: 2, name: rating.journey.title });
+  const chartHeading = region.getByRole('heading', { name: rating.progress.title });
+  const chartCard = chartHeading.locator('xpath=..');
+  const firstRow = region
+    .getByRole('listitem')
+    .filter({ has: page.locator('time') })
+    .first();
+  const historyCard = firstRow.locator('xpath=ancestor::*[self::div or self::section][1]');
+  const levelCard = page
+    .getByText(copies.en.profile.globalLevel, { exact: true })
+    .locator('xpath=ancestor::section[1]');
+
+  // Order: heading → chart card → history card, in the DOM and on screen.
+  const order = await page.evaluate(
+    ([chart, history]) =>
+      (chart.compareDocumentPosition(history) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0,
+    [await chartCard.elementHandle(), await historyCard.elementHandle()] as [
+      ElementHandle<Element>,
+      ElementHandle<Element>
+    ]
+  );
+  expect(order, 'chart card precedes history card in the DOM').toBe(true);
+  const [j, c, h] = await Promise.all([journeyHeading, chartCard, historyCard].map(box));
+  expect(j!.bottom).toBeLessThanOrEqual(c!.y);
+  expect(c!.bottom, 'chart card ends before history card starts').toBeLessThanOrEqual(h!.y);
+  expect(c!.y).toBeGreaterThan(j!.y);
+
+  // Card geometry: both cards share the level card's gutters, radius token and surface, and
+  // contain their content (no overflow, no clipped plot).
+  const [lc] = await Promise.all([levelCard].map(box));
+  for (const [what, card] of [
+    ['chart', chartCard],
+    ['history', historyCard]
+  ] as const) {
+    const b = await box(card);
+    expect(
+      Math.abs(b.x - lc!.x),
+      `${what} card left gutter matches level card`
+    ).toBeLessThanOrEqual(1);
+    expect(Math.abs(b.right - lc!.right), `${what} card right gutter`).toBeLessThanOrEqual(1);
+    const style = await card.evaluate((element) => {
+      const computed = getComputedStyle(element);
+      const root = getComputedStyle(document.documentElement);
+      return {
+        radius: computed.borderTopLeftRadius,
+        tokens: ['--radius-16', '--radius-18', '--radius-20'].map((name) =>
+          root.getPropertyValue(name).trim()
+        ),
+        overflowX: element.scrollWidth - element.clientWidth,
+        position: computed.position
+      };
+    });
+    expect(style.tokens, `${what} card radius is a design-token value`).toContain(style.radius);
+    expect(style.overflowX, `${what} card content containment`).toBeLessThanOrEqual(0);
+  }
+  const levelRadius = await levelCard.evaluate((e) => getComputedStyle(e).borderTopLeftRadius);
+  expect(await chartCard.evaluate((e) => getComputedStyle(e).borderTopLeftRadius)).toBe(
+    levelRadius
+  );
+  expect(await historyCard.evaluate((e) => getComputedStyle(e).borderTopLeftRadius)).toBe(
+    levelRadius
+  );
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth - document.documentElement.clientWidth
+    )
+  ).toBeLessThanOrEqual(0);
+
+  // Vertical geometry, exact and raster-independent (see journeyVerticalViolations).
+  expect(await journeyVerticalViolations(region), 'journey vertical geometry').toEqual([]);
+
+  // Probe sensitivity: each injected defect must be reported, so the probes cannot pass
+  // vacuously. Injections are page-local and the raster comparison below re-reads a reload.
+  const inject = async (
+    what: string,
+    mutate: (section: Element) => void,
+    expected: RegExp,
+    { forbidden }: { forbidden?: RegExp } = {}
+  ) => {
+    await region.evaluate(mutate);
+    const violations = (await journeyVerticalViolations(region)).join('\n');
+    expect(violations, `${what} is detected`).toMatch(expected);
+    // Detection must come from the intended probe alone, not a neighbouring one.
+    if (forbidden)
+      expect(violations, `${what} detected only by its own probe`).not.toMatch(forbidden);
+    console.info(`PAF-10 probe sensitivity: ${what} -> ${violations.split('\n').join(' | ')}`);
+  };
+  await inject(
+    'blank band before history',
+    (section) => section.children[3]?.setAttribute('style', 'margin-top: 40px'),
+    /chart card → history card: gap/
+  );
+  await page.reload();
+  await waitForHydratedPage(page);
+  await inject(
+    'blank band before journey heading',
+    (section) => section.firstElementChild?.setAttribute('style', 'margin-top: 40px'),
+    /level card → journey heading: gap|declared gap/
+  );
+  await page.reload();
+  await waitForHydratedPage(page);
+  await inject(
+    'clipped chart card',
+    (section) => section.children[2]?.setAttribute('style', 'max-height: 40px; overflow: hidden'),
+    /chart card (clips|scrolls)|shorter than content/
+  );
+  await page.reload();
+  await waitForHydratedPage(page);
+  await inject(
+    'shrunken chart svg',
+    (section) => section.querySelector('svg')?.setAttribute('style', 'height: 20px'),
+    /chart svg height/
+  );
+  await page.reload();
+  await waitForHydratedPage(page);
+  // Proportional shrink keeps the aspect ratio valid; only the container-relative size check
+  // can catch it, so it must report the width/height-vs-container violations specifically.
+  await inject(
+    'proportionally shrunken chart svg',
+    (section) => section.querySelector('svg')?.setAttribute('style', 'width: 50%'),
+    /chart svg width .* != container column/,
+    { forbidden: /viewBox|leaves the svg bounds/ }
+  );
+  await page.reload();
+  await waitForHydratedPage(page);
+  // Viewbox and svg box stay valid; only the plot shapes move out of bounds, so the plot
+  // containment probe is the sole detection path (no size/ratio/viewBox violation allowed).
+  await inject(
+    'plot points outside the svg',
+    (section) =>
+      section
+        .querySelectorAll('svg:not([viewBox="0 0 12 12"]) circle, polyline, polygon')
+        .forEach((shape) => shape.setAttribute('style', 'transform: translateY(200px)')),
+    /plot (circle|polyline|polygon) leaves the svg bounds/,
+    // Exclusivity: every violation must be a plot-containment violation — any other
+    // probe kind (size, ratio, viewBox, gap, card overflow, …) must not fire here.
+    { forbidden: /^(?!plot (circle|polyline|polygon) leaves the svg bounds)/ }
+  );
+  await page.reload();
+  await waitForHydratedPage(page);
+  expect(await journeyVerticalViolations(region), 'geometry restored after reload').toEqual([]);
+
+  // The frame centres the "Rating journey" heading 22px below the region top: align on it.
+  const top = Math.max(0, Math.round(j!.y + j!.height / 2 - JOURNEY_HEADING_CENTRE));
+  const journeyMeasured = await compareRegion(page, info, REGIONS.journey, top);
+  const journeyBudget = manifest.visualBudgets.perScreen[REGIONS.journey.budgetKey];
+  expect(journeyMeasured, `${REGIONS.journey.budgetKey} raster budget`).toBeLessThanOrEqual(
+    journeyBudget
+  );
+  expect(journeyBudget).toBeGreaterThan(0);
+
+  // The history card is aligned on its own top edge (frame card top = 588px).
+  const historyMeasured = await compareRegion(page, info, REGIONS.history, Math.round(h!.y));
+  const historyBudget = manifest.visualBudgets.perScreen[REGIONS.history.budgetKey];
+  expect(historyMeasured, `${REGIONS.history.budgetKey} raster budget`).toBeLessThanOrEqual(
+    historyBudget
+  );
+  expect(historyBudget).toBeGreaterThan(0);
 });
 
 test('explanation dialog fits the viewport, scrolls inside itself and keeps readable contrast (light, dark, narrow, desktop)', async ({

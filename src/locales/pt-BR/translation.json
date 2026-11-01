@@ -1335,7 +1335,9 @@
   "rating": {
     "journey": {
       "title": "Jornada de rating",
-      "scope": "TODO O PERÍODO"
+      "scope": "TODO O PERÍODO",
+      "refreshed": "Jornada de rating atualizada.",
+      "refreshFailed": "Não foi possível atualizar a jornada de rating. Use a opção de tentar novamente abaixo."
     },
     "progress": {
       "title": "Evolução do rating",

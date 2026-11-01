@@ -286,11 +286,7 @@ export function PlayerProfile({
           onUploaded={setProfile}
         />
       </section>
-      <RatingJourney
-        key={initialRating.status === 'ok' ? initialRating.revision : 'error'}
-        load={initialRating}
-        onReload={onRatingReload}
-      />
+      <RatingJourney load={initialRating} onReload={onRatingReload} />
       {signOutError && (
         <p role="alert" {...stylex.props(ui.error)}>
           {t('profile.signOutFailed')}

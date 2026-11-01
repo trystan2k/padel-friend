@@ -318,6 +318,155 @@ describe('rating projection races (real separate connections)', { timeout: 240_0
     }
   );
 
+  it.skipIf(!environment.env)(
+    'backfill versus live confirmation of a group in the SAME event completes both, in either order',
+    async () => {
+      for (const activationFirst of [true, false]) {
+        const players = await pool(8, `se${activationFirst}`);
+        const stamp = (days: number) => new Date(Date.now() - days * 86_400_000).toISOString();
+        await setRatingProjectionActive(false);
+        const eventId = await world.newEvent();
+        // A predecessor already confirmed (to be backfilled) and a live group share one event.
+        const predecessor = await confirmedGroup({
+          eventId,
+          groupNumber: 1,
+          players: [players[0]!, players[1]!, players[2]!, players[3]!],
+          playedAt: stamp(60),
+          submittedBy: world.admin.id,
+          classification: 'team_a'
+        });
+        const live = await submitPendingGroup({
+          eventId,
+          groupNumber: 2,
+          players: [players[4]!, players[5]!, players[6]!, players[7]!],
+          playedAt: stamp(59),
+          submittedBy: world.admin.id,
+          classification: 'draw'
+        });
+        const holder = await ratingLockHolder();
+        const [activator, confirmer] = await Promise.all([connection(), connection()]);
+        const startActivation = () =>
+          activator.query('select public.activate_global_rating_projection()::text as result');
+        const startConfirmation = () => confirmer.query(finalizeSql(live.proposalId, 'AUTO_48H'));
+        // Observed, not assumed: the first contender is blocked before the second starts.
+        const first = activationFirst ? startActivation() : startConfirmation();
+        await waitForBlockedBackend({
+          statement: activationFirst
+            ? 'activate_global_rating_projection'
+            : 'finalize_match_event_result_locked'
+        });
+        const second = activationFirst ? startConfirmation() : startActivation();
+        await waitForBlockedBackend({
+          statement: activationFirst
+            ? 'finalize_match_event_result_locked'
+            : 'activate_global_rating_projection'
+        });
+        await holder.release();
+        // A reverse event-row lock edge would make the database abort one side here.
+        await withDeadline(Promise.all([first, second]), BOUND_MS, 'same-event backfill race');
+        await expectOracle([predecessor, live], players);
+        expect((await activateRatingProjection()).changed).toBe(false);
+      }
+    }
+  );
+
+  it.skipIf(!environment.env)(
+    'activation completes without deadlock when a confirmation commits between its prelock snapshot and the rating lock',
+    async () => {
+      for (const retryFirst of [true, false]) {
+        const players = await pool(8, `gap${retryFirst}`);
+        const stamp = (days: number) => new Date(Date.now() - days * 86_400_000).toISOString();
+        await setRatingProjectionActive(false);
+        const predecessor = await confirmedGroup({
+          eventId: await world.newEvent(),
+          players: [players[0]!, players[1]!, players[2]!, players[3]!],
+          playedAt: stamp(60),
+          submittedBy: world.admin.id,
+          classification: 'team_a'
+        });
+        // The live group sits in an event the activation snapshot does not know about yet.
+        const liveEventId = await world.newEvent();
+        const live = await submitPendingGroup({
+          eventId: liveEventId,
+          players: [players[4]!, players[5]!, players[6]!, players[7]!],
+          playedAt: stamp(59),
+          submittedBy: world.admin.id,
+          classification: 'draw'
+        });
+        const holder = await ratingLockHolder();
+        const [confirmer, activator, retrier] = await Promise.all([
+          connection(),
+          connection(),
+          connection()
+        ]);
+        // (1) The confirmation holds the live event FOR UPDATE and queues for the rating lock.
+        const confirmation = confirmer.query(finalizeSql(live.proposalId, 'AUTO_48H'));
+        await waitForRatingLockWaiters(1);
+        const startRetry = async () => {
+          // (2) The retry of the same confirmation queues on the event row, behind (1).
+          const running = retrier.query(finalizeSql(live.proposalId, 'AUTO_48H'));
+          await waitForBlockedBackend({ pid: retrier.backendPid });
+          return { running };
+        };
+        // Ordering gate. Rating-lock waiters are served FIFO, so a gate session queues for the
+        // lock between the confirmation (1) and the activation (3): once the confirmation
+        // commits, the gate (not the activation) receives the lock and keeps it until the
+        // test lets go. That window is where the retry is observed holding the event row.
+        const gate = await connection();
+        await gate.query('begin');
+        const gateAcquired = gate.query('select public.lock_global_rating_projection()');
+        await waitForRatingLockWaiters(2);
+        let retry: Awaited<ReturnType<typeof startRetry>>;
+        let activation: { running: Promise<unknown> };
+        const startActivationBehindGate = async () => {
+          // (3) The activation snapshot cannot see the uncommitted confirmation; it queues
+          // for the rating lock behind (1) and the gate.
+          const running = activator.query(
+            'select public.activate_global_rating_projection()::text as result'
+          );
+          await waitForRatingLockWaiters(3);
+          return { running };
+        };
+        if (retryFirst) {
+          retry = await startRetry();
+          activation = await startActivationBehindGate();
+        } else {
+          activation = await startActivationBehindGate();
+          retry = await startRetry();
+        }
+        await holder.release();
+        await withDeadline(confirmation, BOUND_MS, 'gap race confirmation');
+        await withDeadline(gateAcquired, BOUND_MS, 'gap race gate');
+        // Observed, not assumed: the confirmation has committed, the retry has been woken on
+        // the event row, now HOLDS it and is queued on the rating lock behind the activation.
+        // Only then may the activation run; the lock is granted in queue order after the gate.
+        await waitForRows(
+          `select 1 from pg_catalog.pg_locks l where l.pid = ${retrier.backendPid}
+             and l.locktype = 'advisory' and not l.granted`,
+          (rows) => rows.length >= 1,
+          'the retry holding the event row while queued for the rating lock',
+          BOUND_MS
+        );
+        await gate.query('commit');
+        // Verified against the round-1 protocol (rating_projection_lock_covered replaced by
+        // prelock + lock only): this test then fails every run with 40P01 "deadlock detected",
+        // the retry's lock_global_rating_projection (under finalize_match_event_result_locked)
+        // being the victim. Without a covered prelock set the activation, now first in
+        // the queue, re-reads the newly committed group and inserts its evidence under the
+        // rating lock: the key-share on the event row waits for the retry's FOR UPDATE, while
+        // the retry waits for the rating lock the activation holds: 40P01.
+        await withDeadline(
+          Promise.all([retry.running, activation.running]),
+          BOUND_MS,
+          'prelock gap race'
+        );
+        await expectOracle([predecessor, live], players);
+        expect(await eventCountFor([predecessor.proposalId, live.proposalId])).toBe(8);
+        expect((await activateRatingProjection()).changed).toBe(false);
+      }
+    }
+  );
+
   describe('claim versus the first rated group', () => {
     let scenario: ClaimScenario;
 

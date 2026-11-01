@@ -113,6 +113,18 @@ function assertNoPrivateFields(texts: readonly string[], forbidden: readonly str
   }
 }
 
+/**
+ * Raw server-rendered HTML (including the dehydrated loader payload) fetched with the page's
+ * session, so privacy is asserted on what the server sent before any hydration runs.
+ */
+async function ssrHtml(page: Page, path = '/dashboard') {
+  const response = await page.context().request.get(path);
+  expect(response.status(), `${path} SSR status`).toBe(200);
+  const html = await response.text();
+  expect(html, 'SSR returned the app document').toContain('<html');
+  return html;
+}
+
 async function journey(page: Page, locale: Locale = 'en') {
   const region = page.getByRole('region', { name: copies[locale].rating.journey.title });
   await expect(region).toBeVisible();
@@ -176,7 +188,8 @@ function actorFor(userId: string): Actor {
 // --- AC1/AC4/AC6: real manual confirmation through the UI --------------------------------
 
 test('manual confirmation changes the level; dashboard, history and explanation show the stored numbers', async ({
-  browserName
+  browserName,
+  request
 }) => {
   expect(browserName).toBe('chromium');
   const players = [f.creator, f.members[0]!, f.members[1]!, f.members[2]!];
@@ -238,6 +251,27 @@ test('manual confirmation changes the level; dashboard, history and explanation 
   await page.goto('/dashboard');
   await waitForHydratedPage(page);
   await expect(page.getByText(level(event.after), { exact: true }).first()).toBeVisible();
+
+  // SSR: the owner's HTML already carries the stored rating (so this inspects real server
+  // output, not the hydrated DOM) and none of the other players' or adder/claim private data.
+  const html = await ssrHtml(page);
+  expect(html).toContain(rating.journey.title);
+  expect(html).toContain(level(event.after));
+  assertNoPrivateFields(
+    [html],
+    [opposing.email, f.members[0]!.email, f.members[1]!.email, f.members[2]!.email]
+  );
+  // The assertion is live: a leaked marker or address in the same HTML would fail it.
+  expect(() => assertNoPrivateFields([`${html}"invited_by":"x"`], [])).toThrow();
+  expect(() => assertNoPrivateFields([html], [f.creator.name])).toThrow();
+  // Anonymous access to the protected route never serves rating data (redirected, not rendered).
+  const anonymousResponse = await request.get('/dashboard');
+  const anonymousHtml = await anonymousResponse.text();
+  expect(anonymousHtml).not.toMatch(/display_level|calculation_revision|game_group_id/);
+  expect(anonymousHtml).not.toContain(rating.journey.title);
+  expect(anonymousHtml).not.toContain(level(event.after));
+  expect(anonymousHtml).not.toContain(f.creator.email);
+
   const region = await journey(page);
   await expect(
     region.getByText(
@@ -430,7 +464,9 @@ test('friendly, incomplete, pending, disputed, cancelled and reserve inputs have
 
   const cancelledEvent = await pastEvent(f);
   // Cancelled events never reach confirmation: cancellation is refused once results exist, and
-  // submission is refused afterwards, so a cancelled event can only ever hold unrated rows.
+  // submission is refused afterwards, so a cancelled event can only ever hold unrated rows. The
+  // production RPC path of both directions is proven in player.rating.projection.integration.test.ts;
+  // this fixture bypass only shows that even forced cancelled rows stay unrated.
   await sqlWithFixtureTriggersDisabled(
     ['matchEventImmutable'],
     [
@@ -629,6 +665,13 @@ test('provisional players on either side are rated normally; claims keep ratings
   await expect(dialog.getByText(en.player.provisional.badge, { exact: true })).toHaveCount(2);
   await expect(dialog.getByText(f.creator.name)).toHaveCount(0);
   assertNoPrivateFields(wire, [f.creator.id, f.creator.email, p1.email, p3.email]);
+  // SSR of a viewer who shares a group with provisionals: no adder identity, no addresses.
+  const viewerHtml = await ssrHtml(viewer);
+  expect(viewerHtml).toContain(rating.journey.title);
+  assertNoPrivateFields(
+    [viewerHtml],
+    [f.creator.id, f.creator.email, p1.email, p2.email, p3.email, p1.id, p3.id]
+  );
 
   // Claim of P1 sits between two rated groups: same id, evidence and sequence untouched.
   const claimed = await claim(browser, request, p1.email, `/matches/${futureEvent}`, {
@@ -686,4 +729,83 @@ test('provisional players on either side are rated normally; claims keep ratings
   expect(locked.lockedShown).toBe(true);
   expect(await ledger(p3.id)).toEqual(p3Before);
   await locked.context.close();
+});
+
+// --- recovery paths: stale revision focus and sign-in return context ---------------------------
+
+test('a stale explanation reloads the journey, moves focus to its heading and announces the refresh', async () => {
+  const viewer = f.members[7]!;
+  const [seen] = await ledger(viewer.id);
+  expect(seen).toBeTruthy();
+  const page = await f.page(viewer, 'en', 390, 'light', 844);
+  await page.goto('/dashboard');
+  await waitForHydratedPage(page);
+  const region = await journey(page);
+  const rows = region.getByRole('listitem').filter({ has: page.locator('time') });
+  const before = await rows.count();
+
+  // A newer confirmation moves the projection revision while this page is still open.
+  await confirmGroup({
+    eventId: await pastEvent(f),
+    players: quartet(viewer, f.members[8]!, f.members[9]!, f.members[3]!),
+    playedAt: '2026-10-28T18:00:00Z',
+    submittedBy: f.creator.id
+  });
+
+  const trigger = rows.first().getByRole('button');
+  await trigger.focus();
+  await trigger.press('Enter');
+  const dialog = page.getByRole('dialog', { name: rating.explanation.title });
+  await expect(dialog.getByRole('alert')).toContainText(copies.en.rating.errors.stale_revision);
+  await dialog.getByRole('button', { name: copies.en.rating.errors.reload }).click();
+
+  await expect(dialog).toBeHidden();
+  await expect(region.getByRole('heading', { name: rating.journey.title })).toBeFocused();
+  await expect(region.getByRole('status')).toHaveText(rating.journey.refreshed);
+  await expect(rows).toHaveCount(before + 1);
+});
+
+test('sign-in recovery returns to the result detail or the dashboard and ignores unsafe destinations', async () => {
+  // The creator played the UI-confirmed group of the first test, so owns a result-detail entry.
+  const viewer = f.creator;
+  const eventId = (await ledger(viewer.id))[0]!.match_event_id;
+
+  // Result detail: session gone, then an explanation read reports the expired session.
+  const detail = await f.page(viewer, 'en', 390, 'light', 844);
+  await f.open(detail, eventId);
+  const changes = detail.getByRole('heading', { name: rating.changes.title });
+  await expect(changes).toBeVisible();
+  const entry = changes
+    .locator('xpath=..')
+    .getByRole('button', { name: /^Explain rating change for/ })
+    .first();
+  await detail.context().clearCookies();
+  await entry.focus();
+  await entry.press('Enter');
+  const expired = detail.getByRole('dialog').getByRole('alert');
+  await expect(expired).toContainText(copies.en.rating.errors.unauthenticated);
+  await detail.getByRole('dialog').getByRole('button', { name: copies.en.signIn }).click();
+  await expect
+    .poll(() => new URL(detail.url()).search)
+    .toBe(`?next=${encodeURIComponent(`/matches/${eventId}`)}`);
+
+  // Dashboard entry point keeps its own destination.
+  const dash = await f.page(viewer, 'en', 390, 'light', 844);
+  await dash.goto('/dashboard');
+  await waitForHydratedPage(dash);
+  const region = await journey(dash);
+  const trigger = region
+    .getByRole('listitem')
+    .filter({ has: dash.locator('time') })
+    .first()
+    .getByRole('button');
+  await dash.context().clearCookies();
+  await trigger.focus();
+  await trigger.press('Enter');
+  await dash.getByRole('dialog').getByRole('button', { name: copies.en.signIn }).click();
+  await expect(dash).toHaveURL(/\/login\?next=%2Fdashboard$/);
+
+  // An unsafe destination never survives sign-in.
+  await dash.goto('/login?next=//evil.com');
+  await expect(dash).not.toHaveURL(/evil\.com/);
 });
