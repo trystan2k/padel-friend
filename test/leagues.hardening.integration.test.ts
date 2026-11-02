@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+import { resolve as resolvePath } from 'node:path';
 import { beforeAll, describe, expect, it } from 'vitest';
 import { decodeLeagueDto, decodeLeagueList } from '../src/features/leagues/league-decoders';
 import { dotEnvPathFromImportMetaUrl, localSupabaseEnv } from './helpers/local-supabase-env';
@@ -140,13 +142,15 @@ describe.skipIf(!environment.env)('League review hardening', { timeout: 300_000 
     }
   });
 
-  it('F4: locked and failing communities do not starve later ones', async () => {
+  it('F4: the attempt budget bounds one run and rotation reaches later communities across runs', async () => {
     const owner = world.admin.id;
-    const [locked, failing, ...healthy] = await Promise.all(
-      Array.from({ length: 5 }, () => world.newCommunity(owner))
+    const [locked, failingOne, failingTwo, ...healthy] = await Promise.all(
+      Array.from({ length: 6 }, () => world.newCommunity(owner))
     );
+    const failing = [failingOne!, failingTwo!];
+    const all = [locked!, ...failing, ...healthy];
     const leagues: string[] = [];
-    for (const [index, communityId] of [locked!, failing!, ...healthy].entries()) {
+    for (const [index, communityId] of all.entries()) {
       leagues.push(
         await insertLeague({
           communityId,
@@ -156,6 +160,12 @@ describe.skipIf(!environment.env)('League review hardening', { timeout: 300_000 
         })
       );
     }
+    const statusOf = async (communityId: string) =>
+      (
+        await sqlRows(
+          `select status::text as status from public.leagues where community_id = ${sqlText(communityId)}`
+        )
+      )[0]?.['status'];
     const holder = await openDedicatedSqlConnection();
     try {
       await holder.query('begin');
@@ -166,18 +176,26 @@ describe.skipIf(!environment.env)('League review hardening', { timeout: 300_000 
         create function public.paf11_fail_f4() returns trigger language plpgsql as $$
         begin raise exception 'paf11 forced failure'; end $$;
         create trigger paf11_fail_f4 before update on public.leagues
-          for each row when (old.community_id = ${sqlText(failing!)}) execute function public.paf11_fail_f4();`);
-      const result = await processLeaguesAt(new Date().toISOString(), 2);
-      expect(result).toMatchObject({ processed: 2, skipped: 1, failed: 1 });
-      const states = await sqlRows(
-        `select community_id::text as community, status::text as status from public.leagues
-          where id = any (${sqlText(`{${leagues.join(',')}}`)}::uuid[])`
-      );
-      const statusOf = (communityId: string) =>
-        states.find((row) => row['community'] === communityId)?.['status'];
-      expect(statusOf(healthy[0]!)).toBe('active');
-      expect(statusOf(healthy[1]!)).toBe('active');
-      expect(statusOf(healthy[2]!)).toBe('upcoming');
+          for each row when (old.community_id in (${failing.map(sqlText).join(',')}))
+          execute function public.paf11_fail_f4();`);
+      const attempts = (result: Record<string, unknown>) =>
+        Number(result['processed']) + Number(result['skipped']) + Number(result['failed']);
+
+      // Run 1 spends its whole budget on the locked and the failing community: bounded, nothing else touched.
+      const first = await processLeaguesAt(new Date().toISOString(), 2);
+      expect(attempts(first)).toBe(2);
+      expect(first).toMatchObject({ processed: 0, skipped: 1, failed: 1 });
+      expect(await statusOf(healthy[0]!)).toBe('upcoming');
+
+      // Run 2 moves on to the second failing community, then reaches the first healthy one.
+      const second = await processLeaguesAt(new Date().toISOString(), 2);
+      expect(attempts(second)).toBe(2);
+      expect(second).toMatchObject({ processed: 1, failed: 1 });
+      // Run 3: never-attempted communities go before the ones that were skipped or failed.
+      const third = await processLeaguesAt(new Date().toISOString(), 2);
+      expect(attempts(third)).toBeLessThanOrEqual(2);
+      expect(third).toMatchObject({ processed: 2, failed: 0, skipped: 0 });
+      for (const communityId of healthy) expect(await statusOf(communityId)).toBe('active');
     } finally {
       await holder.query('rollback').catch(() => undefined);
       await holder.close();
@@ -189,7 +207,7 @@ describe.skipIf(!environment.env)('League review hardening', { timeout: 300_000 
     }
   });
 
-  it('F5: the list reports total and truncation beyond 200 Leagues', async () => {
+  it('F5: the list reports total and truncation, and a continuation reaches every row beyond 200', async () => {
     const communityId = await world.newCommunity(world.admin.id);
     await executeTrustedSql(`
       insert into public.leagues(community_id, owner_id, name, timezone, start_at, end_mode, status,
@@ -202,13 +220,104 @@ describe.skipIf(!environment.env)('League review hardening', { timeout: 300_000 
     expect(over.error).toBeNull();
     const decodedOver = decodeLeagueList(over.data);
     expect(decodedOver.leagues).toHaveLength(200);
-    expect(decodedOver).toMatchObject({ total: 201, truncated: true });
+    expect(decodedOver).toMatchObject({ total: 201, truncated: true, next_offset: 200 });
+
+    const next = await world.admin.client.rpc('list_leagues', {
+      p_community_id: communityId,
+      p_offset: decodedOver.next_offset
+    });
+    expect(next.error).toBeNull();
+    const decodedNext = decodeLeagueList(next.data);
+    expect(decodedNext.leagues).toHaveLength(1);
+    expect(decodedNext).toMatchObject({ total: 201, truncated: false, next_offset: 201 });
+    const ids = new Set(
+      [...decodedOver.leagues, ...decodedNext.leagues].map((league) => league.id)
+    );
+    expect(ids.size).toBe(201);
+    expect(
+      (await world.admin.client.rpc('list_leagues', { p_community_id: communityId, p_offset: -1 }))
+        .error?.message
+    ).toBe('LEAGUE_INVALID_INPUT');
 
     const small = await world.newCommunity(world.admin.id);
     await insertLeague({ communityId: small, ownerId: world.admin.id, startAt: day(30) });
     const under = decodeLeagueList(
       (await world.admin.client.rpc('list_leagues', { p_community_id: small })).data
     );
-    expect(under).toMatchObject({ total: 1, truncated: false });
+    expect(under).toMatchObject({ total: 1, truncated: false, next_offset: 1 });
+  });
+
+  it('F1 (upgrade): a League referenced only in edit-audit history is recovered and stays period-locked', async () => {
+    const [first, second] = await Promise.all(
+      [0, 1].map(() =>
+        insertLeague({
+          communityId: world.communityId,
+          ownerId: world.owner.id,
+          startAt: day(-5),
+          endAt: day(60)
+        })
+      )
+    );
+    const publish = async (leagueId: string) => {
+      const { eventId, result } = await publishCompetitive(world.owner, world.communityId, {
+        competition: 'ranked',
+        league_id: leagueId
+      });
+      expect(result.error).toBeNull();
+      return eventId;
+    };
+    const switchTo = async (eventId: string, leagueId: string | null) => {
+      const [event] = await sqlRows(
+        `select version::int as version from public.match_events where id = ${sqlText(eventId)}`
+      );
+      const edited = await world.owner.client.rpc('edit_match_event', {
+        p_match_event_id: eventId,
+        p_expected_version: Number(event?.['version']),
+        p_patch: { league_id: leagueId },
+        p_request_id: crypto.randomUUID()
+      });
+      expect(edited.error).toBeNull();
+    };
+    // Event 1: first -> second. Event 2: first -> Unranked. Both end with no event on `first`.
+    const toLeague = await publish(first!);
+    await switchTo(toLeague, second!);
+    const toUnranked = await publish(first!);
+    await switchTo(toUnranked, null);
+    // Simulate the pre-migration state: no reference history exists yet.
+    const wipe = `
+      alter table public.league_event_references disable trigger league_event_references_immutable;
+      delete from public.league_event_references where league_id = any (${sqlText(`{${first},${second}}`)}::uuid[]);
+      alter table public.league_event_references enable trigger league_event_references_immutable;
+      insert into public.league_event_references (league_id, match_event_id)
+        select e.league_id, e.id from public.match_events e where e.league_id = ${sqlText(second!)};`;
+    await executeTrustedSql(wipe);
+    const locked = async (leagueId: string) =>
+      (
+        await sqlRows(`select public.league_has_published_events(${sqlText(leagueId)}) as locked`)
+      )[0]?.['locked'];
+    // The round-1 backfill (current bindings only) cannot recover it.
+    await executeTrustedSql(`
+      insert into public.league_event_references (league_id, match_event_id, first_referenced_at)
+        select e.league_id, e.id, e.published_at from public.match_events e where e.league_id is not null
+        on conflict do nothing;`);
+    expect(await locked(first!)).toBe(false);
+    // The round-2 audit backfill does, idempotently.
+    const migration = readFileSync(
+      resolvePath(process.cwd(), 'supabase/migrations/20261101193000_league_review_round2.sql'),
+      'utf8'
+    );
+    const backfill = migration.slice(
+      migration.indexOf('insert into public.league_event_references'),
+      migration.indexOf('-- 2. F4')
+    );
+    await executeTrustedSql(backfill);
+    await executeTrustedSql(backfill);
+    expect(await locked(first!)).toBe(true);
+    const extend = await world.admin.client.rpc('update_league', {
+      p_league_id: first!,
+      p_expected_version: Number((await leagueRow(first!)).version),
+      p_changes: { end_date: isoDay(90) }
+    });
+    expect(extend.error?.message).toBe('LEAGUE_PERIOD_LOCKED');
   });
 });

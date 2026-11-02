@@ -59,13 +59,14 @@ export function makeLeagueCommunity(
 export function makeLeagueList(
   leagues: LeagueDto[] = [],
   community: Partial<LeagueCommunityDto> = {},
-  page: Partial<Pick<LeagueListResult, 'total' | 'truncated'>> = {}
+  page: Partial<Pick<LeagueListResult, 'total' | 'truncated' | 'next_offset'>> = {}
 ): LeagueListResult {
   return {
     community: makeLeagueCommunity(community),
     leagues,
     total: leagues.length,
     truncated: false,
+    next_offset: leagues.length,
     ...page
   };
 }

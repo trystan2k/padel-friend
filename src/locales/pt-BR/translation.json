@@ -914,7 +914,9 @@
         "competitionConsent": "Os jogadores aceitos precisam reconfirmar esta alteração. Jogadores provisórios são mantidos automaticamente.",
         "competition": {
           "loading": "Procurando Ligas elegíveis…",
-          "unavailable": "Não foi possível carregar as Ligas elegíveis. A configuração atual foi mantida.",
+          "unavailable": "Não foi possível carregar as Ligas elegíveis. Tente novamente ou escolha Sem ranking.",
+          "rankedNoEligible": "Nenhuma Liga Ativa ou Futura cobre esta data. Altere a data ou escolha Sem ranking.",
+          "saveBlocked": "O salvamento está em pausa até as Ligas elegíveis carregarem. Você também pode escolher Sem ranking.",
           "noEligible": "Nenhuma Liga Ativa ou Futura cobre esta data. A partida pode continuar Sem ranking.",
           "members": "Partidas Ranqueadas são apenas para membros ativos da comunidade."
         },
@@ -1540,7 +1542,9 @@
       "creationDisabled": "A criação de Ligas está desativada para membros nesta comunidade. Peça a um Admin para criar uma.",
       "empty": "Ainda não há Ligas.",
       "emptyHint": "Crie uma Liga para reunir um período de partidas ranqueadas.",
-      "truncated": "Mostrando as primeiras {{shown}} de {{total}} Ligas. As Ligas mais antigas não são listadas.",
+      "truncated": "Mostrando {{shown}} de {{total}} Ligas.",
+      "more": "Mostrar mais Ligas",
+      "moreError": "Não foi possível carregar mais Ligas. Tente novamente.",
       "sections": {
         "active": "Ativa",
         "upcoming": "Em breve",

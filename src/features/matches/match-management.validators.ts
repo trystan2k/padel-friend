@@ -54,6 +54,9 @@ export function validateMatchEditDraft(
   }
   if (draft.price !== '' && !/^\d+(\.\d{1,2})?$/.test(draft.price))
     errors.price = Number(draft.price) < 0 ? 'negativePrice' : 'invalidPrice';
+  // A cleared or partial start is reported on its own field, never as a cutoff error.
+  if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2})?$/.test(draft.startsAt))
+    errors.startsAt = 'invalidDateTime';
   if (draft.eventType === 'competitive' && draft.competitionChoice === 'ranked' && !draft.leagueId)
     errors.leagueId = 'leagueRequired';
   if (Object.keys(errors).length) return { patch: {}, errors };

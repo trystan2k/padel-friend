@@ -72,6 +72,13 @@ export function validateLeagueCommunity(value: unknown): { community_id: string 
   return { community_id: uuid(data.community_id) };
 }
 
+export function validateLeagueListPage(value: unknown): { community_id: string; offset: number } {
+  const data = record(value, ['community_id', 'offset']);
+  const offset = data.offset;
+  if (typeof offset !== 'number' || !Number.isSafeInteger(offset) || offset < 0) return invalid();
+  return { community_id: uuid(data.community_id), offset };
+}
+
 export function validateLeagueId(value: unknown): { league_id: string } {
   const data = record(value, ['league_id']);
   return { league_id: uuid(data.league_id) };

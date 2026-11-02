@@ -32,6 +32,7 @@ import {
   createLeague,
   getLeague,
   listLeagues,
+  listMoreLeagues,
   listMyLeagueCommunities,
   updateLeague
 } from '../src/features/leagues/league.functions';
@@ -115,6 +116,20 @@ describe('League server functions', () => {
       list
     );
     expect(rpc).toHaveBeenLastCalledWith('list_leagues', { p_community_id: LEAGUE_COMMUNITY_ID });
+
+    const more = makeLeagueList(
+      [makeLeagueDto()],
+      {},
+      { total: 201, truncated: false, next_offset: 201 }
+    );
+    rpc.mockResolvedValueOnce({ data: more, error: null });
+    await expect(
+      listMoreLeagues({ data: { community_id: LEAGUE_COMMUNITY_ID, offset: 200 } })
+    ).resolves.toEqual(more);
+    expect(rpc).toHaveBeenLastCalledWith('list_leagues', {
+      p_community_id: LEAGUE_COMMUNITY_ID,
+      p_offset: 200
+    });
 
     const detail = makeLeagueDetail();
     rpc.mockResolvedValueOnce({ data: detail, error: null });

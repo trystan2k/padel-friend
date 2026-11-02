@@ -367,6 +367,79 @@ describe('Ranked/League edit dialog', () => {
     ).toBeTruthy();
   });
 
+  it('keeps Ranked intent after an empty options answer and requires an explicit repair or opt-out', async () => {
+    offer(spring);
+    render(element());
+    await waitFor(() =>
+      expect(screen.getByRole<HTMLInputElement>('radio', { name: 'Ranked' }).disabled).toBe(false)
+    );
+    await userEvent.click(screen.getByRole('radio', { name: 'Ranked' }));
+    offer();
+    const start = screen.getByLabelText('Start date and time');
+    await userEvent.clear(start);
+    await userEvent.type(start, '2099-06-16T12:00');
+    await screen.findByText(
+      'No Active or Upcoming League covers this date. Change the date, or choose Unranked.'
+    );
+    // Intent survives the completed-but-empty answer; nothing is silently downgraded.
+    expect(screen.getByRole<HTMLInputElement>('radio', { name: 'Ranked' }).checked).toBe(true);
+    expect(screen.getByRole<HTMLInputElement>('radio', { name: 'Unranked' }).checked).toBe(false);
+    mocks.edit.mockResolvedValue(ok());
+    await save();
+    expect(mocks.edit).not.toHaveBeenCalled();
+    expect(
+      await screen.findByText('Choose a League or select Unranked before publishing.')
+    ).toBeTruthy();
+    // The explicit opt-out is registered and saves Unranked.
+    await userEvent.click(screen.getByRole('radio', { name: 'Unranked' }));
+    expect(screen.getByRole<HTMLInputElement>('radio', { name: 'Unranked' }).checked).toBe(true);
+    await save();
+    await waitFor(() => expect(lastPatch()?.league_id).toBeNull());
+  });
+
+  it('renders the radios from Ranked intent while options are unavailable and registers an opt-out', async () => {
+    offer(spring);
+    render(element());
+    await waitFor(() =>
+      expect(screen.getByRole<HTMLInputElement>('radio', { name: 'Ranked' }).disabled).toBe(false)
+    );
+    await userEvent.click(screen.getByRole('radio', { name: 'Ranked' }));
+    mocks.leagues.mockRejectedValueOnce(new Error('offline'));
+    const start = screen.getByLabelText('Start date and time');
+    await userEvent.clear(start);
+    await userEvent.type(start, '2099-06-16T12:00');
+    await screen.findByRole('button', { name: 'Retry' });
+    expect(screen.getByRole<HTMLInputElement>('radio', { name: 'Ranked' }).checked).toBe(true);
+    expect(screen.getByRole<HTMLInputElement>('radio', { name: 'Unranked' }).checked).toBe(false);
+    // Why saving is blocked is stated next to the button and linked to it.
+    const reason =
+      'Saving is paused until the eligible Leagues load. You can also choose Unranked.';
+    expect(screen.getByText(reason)).toBeTruthy();
+    expect(
+      screen.getByRole('button', { name: 'Save changes' }).getAttribute('aria-describedby')
+    ).toBe(screen.getByText(reason).id);
+    await userEvent.click(screen.getByRole('radio', { name: 'Unranked' }));
+    expect(screen.getByRole<HTMLInputElement>('radio', { name: 'Unranked' }).checked).toBe(true);
+    expect(screen.queryByText(reason)).toBeNull();
+    mocks.edit.mockResolvedValue(ok());
+    await save();
+    await waitFor(() => expect(lastPatch()?.league_id).toBeNull());
+  });
+
+  it('reports an invalid or cleared date instead of leaving Save silently blocked', async () => {
+    offer(spring);
+    render(element(rankedEvent));
+    await screen.findByRole('combobox', { name: 'League' });
+    const start = screen.getByLabelText('Start date and time');
+    await userEvent.clear(start);
+    const saveButton = screen.getByRole<HTMLButtonElement>('button', { name: 'Save changes' });
+    expect(saveButton.disabled).toBe(false);
+    await userEvent.click(saveButton);
+    expect(mocks.edit).not.toHaveBeenCalled();
+    expect(start.getAttribute('aria-invalid')).toBe('true');
+    expect(screen.getByText('Enter a valid date and time.')).toBeTruthy();
+  });
+
   it('tells the organizer provisional players were carried over after the save', async () => {
     offer(spring);
     render(element());

@@ -1,10 +1,13 @@
 import * as stylex from '@stylexjs/stylex';
 import { Link } from '@tanstack/react-router';
 import { useTranslation } from 'react-i18next';
+import { useState } from 'react';
+import { Button } from '../../components/ui/Button';
 import { rootStyles } from '../../root.styles';
 import { SurfaceCard } from '../../components/ui/SurfaceCard';
 import type { LeagueDto, LeagueListResult, LeagueStatus } from './league-contracts';
 import { LeagueStatusBadge, useLeaguePeriodText } from './LeagueSummary';
+import { listMoreLeagues } from './league.functions';
 import { styles } from './league.styles';
 
 const SECTIONS: readonly LeagueStatus[] = ['active', 'upcoming', 'closed'];
@@ -36,7 +39,41 @@ function LeagueListItem({ league }: { league: LeagueDto }) {
 
 export function LeagueListPage({ data }: { data: LeagueListResult }) {
   const { t } = useTranslation();
-  const { community, leagues, total, truncated } = data;
+  const { community } = data;
+  // Continuation pages belong to the loader result they continue; a refreshed loader starts over.
+  const [more, setMore] = useState<{
+    base: LeagueListResult;
+    leagues: LeagueDto[];
+    last: LeagueListResult;
+  } | null>(null);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [moreFailed, setMoreFailed] = useState(false);
+  const continued = more && more.base === data ? more : null;
+  const known = new Set(data.leagues.map((league) => league.id));
+  const leagues = [
+    ...data.leagues,
+    ...(continued?.leagues ?? []).filter((league) => !known.has(league.id))
+  ];
+  const { total, truncated, next_offset: nextOffset } = continued?.last ?? data;
+  const showMore = async () => {
+    if (loadingMore) return;
+    setLoadingMore(true);
+    setMoreFailed(false);
+    try {
+      const page = await listMoreLeagues({
+        data: { community_id: community.id, offset: nextOffset }
+      });
+      setMore({
+        base: data,
+        leagues: [...(continued?.leagues ?? []), ...page.leagues],
+        last: page
+      });
+    } catch {
+      setMoreFailed(true);
+    } finally {
+      setLoadingMore(false);
+    }
+  };
   return (
     <main {...stylex.props(styles.page)}>
       <header {...stylex.props(styles.header, rootStyles.pageHeader)}>
@@ -66,11 +103,6 @@ export function LeagueListPage({ data }: { data: LeagueListResult }) {
         ) : (
           <p {...stylex.props(styles.guidance)}>{t('leagues.list.creationDisabled')}</p>
         )}
-        {truncated && (
-          <output {...stylex.props(styles.guidance)}>
-            {t('leagues.list.truncated', { shown: leagues.length, total })}
-          </output>
-        )}
         {leagues.length === 0 ? (
           <SurfaceCard xstyle={styles.card}>
             <p {...stylex.props(styles.strongText)}>{t('leagues.list.empty')}</p>
@@ -97,6 +129,21 @@ export function LeagueListPage({ data }: { data: LeagueListResult }) {
               </section>
             );
           })
+        )}
+        {truncated && (
+          <>
+            <output {...stylex.props(styles.guidance)}>
+              {t('leagues.list.truncated', { shown: leagues.length, total })}
+            </output>
+            {moreFailed && (
+              <p role="alert" {...stylex.props(styles.errorText)}>
+                {t('leagues.list.moreError')}
+              </p>
+            )}
+            <Button variant="secondary" busy={loadingMore} onClick={() => void showMore()}>
+              {t('leagues.list.more')}
+            </Button>
+          </>
         )}
       </div>
     </main>

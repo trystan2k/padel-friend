@@ -144,6 +144,49 @@ async function assertTouchTargets(root: Locator, label: string) {
   }
 }
 
+/**
+ * Vertical geometry (document coordinates, so scroll position never matters), independent of the
+ * raster budgets: a displaced section fails here even when the pixel diff stays under budget.
+ *
+ * The Pencil frames are mock compositions (no app shell, no description/date rows), so absolute
+ * reference offsets do not transfer. Two reference-derived rules are used instead:
+ *  - RHYTHM: the frames stack sibling cards/controls with a 10px gap (ik5JC submit -> guidance
+ *    10px; wHaAb selector -> guidance copy ~8px plus one line of leading; MYsDp card padding
+ *    ~14px). Rhythm gaps are asserted with RHYTHM_TOLERANCE (4px), well under one 10px gap.
+ *  - ANCHOR: the vertical position of each certified control in the approved production
+ *    composition (the frame's route adaptation), within ANCHOR_TOLERANCE (12px, just over one
+ *    10px reference gap: any section-sized displacement fails, sub-pixel font metrics do not).
+ */
+const RHYTHM_TOLERANCE = 4;
+const ANCHOR_TOLERANCE = 12;
+
+async function docBox(locator: Locator): Promise<Box> {
+  return locator.evaluate((element) => {
+    const { x, y, right, bottom, width, height } = element.getBoundingClientRect();
+    const top = y + window.scrollY;
+    return { x, y: top, right, bottom: bottom + window.scrollY, width, height };
+  });
+}
+
+function expectNear(actual: number, expected: number, tolerance: number, label: string) {
+  expect
+    .soft(Math.abs(actual - expected), `${label}: ${actual} expected ${expected}±${tolerance}`)
+    .toBeLessThanOrEqual(tolerance);
+}
+
+/** Named anchors (top edge in document px) and gaps (next.top - previous.bottom). */
+function assertVertical(
+  boxes: Record<string, Box>,
+  anchors: Record<string, number>,
+  gaps: Array<[from: string, to: string, expected: number, tolerance: number]>,
+  label: string
+) {
+  for (const [name, expected] of Object.entries(anchors))
+    expectNear(boxes[name]!.y, expected, ANCHOR_TOLERANCE, `${label} ${name} top`);
+  for (const [from, to, expected, tolerance] of gaps)
+    expectNear(boxes[to]!.y - boxes[from]!.bottom, expected, tolerance, `${label} ${from}->${to}`);
+}
+
 type Variant = keyof typeof manifest.visualBudgets.variantBudgets.MYsDp;
 
 /** `variant` selects a per-variant budget for frames that certify several states (MYsDp). */
@@ -264,6 +307,21 @@ test('ik5JC League creation: Pencil frame budget and structure', async ({
   expect.soft(submit.height, 'ik5JC submit height').toBeGreaterThanOrEqual(44);
   expect.soft(submit.height, 'ik5JC submit height').toBeLessThanOrEqual(52);
   await assertColumn(order[7]!, 'ik5JC guidance', { fullWidth: false });
+  // Vertical: title, name, mode group, minimum, submit and guidance keep their approved positions;
+  // submit -> guidance is the reference 10px rhythm; the 44-52px submit sits on its own row.
+  assertVertical(
+    {
+      title: await docBox(order[0]!),
+      name: await docBox(order[1]!),
+      mode: await docBox(order[2]!),
+      minimum: await docBox(order[5]!),
+      submit: await docBox(order[6]!),
+      guidance: await docBox(order[7]!)
+    },
+    { title: 29, name: 138, mode: 323, minimum: 677, submit: 777, guidance: 837 },
+    [['submit', 'guidance', 10, RHYTHM_TOLERANCE]],
+    'ik5JC'
+  );
   await assertNoOverflow(page, 'ik5JC');
   await assertTouchTargets(page.locator('main'), 'ik5JC');
 });
@@ -345,6 +403,24 @@ test('wHaAb Create match Ranked selector: Pencil frame budget and structure', as
       .soft(part.bottom, 'wHaAb part inside group bottom')
       .toBeLessThanOrEqual(groupBox.bottom + 1);
   }
+  // Vertical: type select, status group, radios, League selector and guidance keep their approved
+  // positions; selector -> guidance copy is the reference ~8px gap plus one 15px text line of leading.
+  assertVertical(
+    {
+      type: await docBox(order[0]!),
+      group: await docBox(group),
+      ranked: await docBox(order[1]!),
+      unranked: await docBox(order[2]!),
+      select: await docBox(select),
+      guidance: await docBox(order[4]!)
+    },
+    { type: 469, group: 516, ranked: 559, unranked: 604, select: 653, guidance: 714 },
+    [
+      ['type', 'group', 3, RHYTHM_TOLERANCE],
+      ['select', 'guidance', 17, RHYTHM_TOLERANCE]
+    ],
+    'wHaAb'
+  );
   await assertNoOverflow(page, 'wHaAb');
   await assertTouchTargets(group, 'wHaAb competition');
   const radioLabels = await group
@@ -423,6 +499,16 @@ test('MYsDp validation and conflict variants: association, live errors, focus', 
     expect
       .soft(alertBox.right, `${variant} error within field column`)
       .toBeLessThanOrEqual(fieldBox.right + 2);
+    // Vertical (document px): the end field keeps its position and its error sits 27px under it
+    // (reference error line directly under its field; one 15px line + 12px spacing token).
+    const endDoc = await docBox(end);
+    const alertDoc = await docBox(alert);
+    assertVertical(
+      { end: endDoc, alert: alertDoc },
+      { end: 654, alert: 725 },
+      [['end', 'alert', 27, RHYTHM_TOLERANCE]],
+      `MYsDp ${variant}`
+    );
     await assertColumn(end, `MYsDp ${variant} end field`, { viewport: 431 });
     await assertNoOverflow(page, `MYsDp ${variant}`);
 
@@ -444,6 +530,18 @@ test('MYsDp validation and conflict variants: association, live errors, focus', 
   expect
     .soft(reviewBox.x, 'review link inside the conflict card')
     .toBeGreaterThanOrEqual(noteBox.x - 1);
+
+  // Vertical: conflict card and review link keep their positions; the link sits inside the card
+  // with the reference ~14px bottom padding (frame: link bottom -> card bottom ~14px).
+  const noteDoc = await docBox(note);
+  const reviewDoc = await docBox(review);
+  assertVertical({ note: noteDoc, review: reviewDoc }, { note: 92, review: 159 }, [], 'MYsDp card');
+  expectNear(
+    noteDoc.bottom - reviewDoc.bottom,
+    14,
+    RHYTHM_TOLERANCE,
+    'MYsDp review -> card bottom'
+  );
 
   await certifyVariant('endNotAfterStart', t.form.errors.endNotAfterStart, true);
   await end.fill('');

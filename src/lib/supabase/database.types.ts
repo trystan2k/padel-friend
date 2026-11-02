@@ -497,6 +497,22 @@ export type Database = {
           },
         ]
       }
+      league_process_attempts: {
+        Row: {
+          attempted_at: string
+          community_id: string
+        }
+        ComputedFields: never
+        Insert: {
+          attempted_at: string
+          community_id: string
+        }
+        Update: {
+          attempted_at?: string
+          community_id?: string
+        }
+        Relationships: []
+      }
       leagues: {
         Row: {
           activated_at: string | null
@@ -2681,7 +2697,7 @@ export type Database = {
           valid_until: string
         }[]
       }
-      list_leagues: { Args: { p_community_id: string }; Returns: Json }
+      list_leagues: { Args: { p_community_id: string; p_offset?: number }; Returns: Json }
       list_match_event_audit: {
         Args: {
           p_before_at?: string

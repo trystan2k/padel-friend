@@ -17,6 +17,7 @@ import {
   validateCreateLeague,
   validateLeagueCommand,
   validateLeagueCommunity,
+  validateLeagueListPage,
   validateLeagueId,
   validateUpdateLeague
 } from '../src/features/leagues/league.validators';
@@ -131,6 +132,22 @@ describe('League server-function validators', () => {
   });
 });
 
+describe('League list page validator', () => {
+  it('accepts a community id with a non-negative integer offset only', () => {
+    expect(validateLeagueListPage({ community_id: LEAGUE_COMMUNITY_ID, offset: 200 })).toEqual({
+      community_id: LEAGUE_COMMUNITY_ID,
+      offset: 200
+    });
+    for (const offset of [-1, 1.5, '3', undefined])
+      expect(() => validateLeagueListPage({ community_id: LEAGUE_COMMUNITY_ID, offset })).toThrow(
+        'INVALID_LEAGUE_INPUT'
+      );
+    expect(() => validateLeagueListPage({ community_id: 'x', offset: 0 })).toThrow(
+      'INVALID_LEAGUE_INPUT'
+    );
+  });
+});
+
 describe('League response decoders', () => {
   it('decodes valid Fixed and Manual Leagues and list/detail envelopes', () => {
     expect(decodeLeagueDto(makeLeagueDto())).toEqual(makeLeagueDto());
@@ -144,9 +161,15 @@ describe('League response decoders', () => {
     expect(decodeLeagueDetail(detail)).toEqual(detail);
   });
 
-  it('requires the list total and truncation indicator', () => {
-    const cut = makeLeagueList([makeLeagueDto()], {}, { total: 201, truncated: true });
-    expect(decodeLeagueList(cut)).toMatchObject({ total: 201, truncated: true });
+  it('requires the list total, truncation indicator and continuation offset', () => {
+    const cut = makeLeagueList(
+      [makeLeagueDto()],
+      {},
+      { total: 201, truncated: true, next_offset: 200 }
+    );
+    expect(decodeLeagueList(cut)).toMatchObject({ total: 201, truncated: true, next_offset: 200 });
+    const { next_offset: _offset, ...withoutOffset } = cut;
+    expect(() => decodeLeagueList(withoutOffset)).toThrow('INVALID_LEAGUE_RESPONSE');
     const { truncated: _truncated, ...withoutTruncated } = cut;
     expect(() => decodeLeagueList(withoutTruncated)).toThrow('INVALID_LEAGUE_RESPONSE');
     expect(() => decodeLeagueList({ ...cut, total: -1 })).toThrow('INVALID_LEAGUE_RESPONSE');

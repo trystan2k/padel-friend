@@ -914,7 +914,9 @@
         "competitionConsent": "Accepted players must reconfirm this change. Provisional players carry over automatically.",
         "competition": {
           "loading": "Looking for eligible Leagues…",
-          "unavailable": "Eligible Leagues could not be loaded. The current setting is kept.",
+          "unavailable": "Eligible Leagues could not be loaded. Retry, or choose Unranked.",
+          "rankedNoEligible": "No Active or Upcoming League covers this date. Change the date, or choose Unranked.",
+          "saveBlocked": "Saving is paused until the eligible Leagues load. You can also choose Unranked.",
           "noEligible": "No Active or Upcoming League covers this date. The match can stay Unranked.",
           "members": "Ranked matches are for active community members only."
         },
@@ -1540,7 +1542,9 @@
       "creationDisabled": "League creation is turned off for members in this community. Ask an Admin to create one.",
       "empty": "No Leagues yet.",
       "emptyHint": "Create a League to group a period of ranked matches.",
-      "truncated": "Showing the first {{shown}} of {{total}} Leagues. Older Leagues are not listed.",
+      "truncated": "Showing {{shown}} of {{total}} Leagues.",
+      "more": "Show more Leagues",
+      "moreError": "More Leagues could not be loaded. Try again.",
       "sections": {
         "active": "Active",
         "upcoming": "Upcoming",

@@ -32,7 +32,9 @@ export function MatchEditCompetitionField({
       : status === 'error'
         ? 'unavailable'
         : candidates.length === 0
-          ? 'noEligible'
+          ? ranked
+            ? 'rankedNoEligible'
+            : 'noEligible'
           : 'members';
   return (
     <fieldset

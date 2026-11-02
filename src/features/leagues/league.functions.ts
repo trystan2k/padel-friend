@@ -19,6 +19,7 @@ import {
   validateLeagueCommand,
   validateLeagueCommunity,
   validateLeagueId,
+  validateLeagueListPage,
   validateUpdateLeague
 } from './league.validators';
 
@@ -45,6 +46,19 @@ export const listLeagues = createServerFn({ method: 'GET' })
     const { client } = await authenticatedClient();
     const { data: result, error } = await client.rpc('list_leagues', {
       p_community_id: data.community_id
+    });
+    if (error) throw new Error(leagueErrorFromDatabase(error));
+    return decoded(decodeLeagueList, result);
+  });
+
+/** One continuation page of the community's Leagues (the loader already returns the first). */
+export const listMoreLeagues = createServerFn({ method: 'GET' })
+  .validator(validateLeagueListPage)
+  .handler(async ({ data }): Promise<LeagueListResult> => {
+    const { client } = await authenticatedClient();
+    const { data: result, error } = await client.rpc('list_leagues', {
+      p_community_id: data.community_id,
+      p_offset: data.offset
     });
     if (error) throw new Error(leagueErrorFromDatabase(error));
     return decoded(decodeLeagueList, result);

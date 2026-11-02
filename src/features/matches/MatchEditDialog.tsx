@@ -8,7 +8,7 @@ import { matchEditDraft, type MatchEditDraft } from './match-management-edit';
 import { validateMatchEditDraft } from './match-management.validators';
 import { useMatchEdit } from './use-match-edit';
 import { useMatchLeagueOptions } from './use-match-league-options';
-import { resolveMatchCompetition, formatMatchLeaguePeriod } from './match-league-selection';
+import { resolveMatchEditCompetition, formatMatchLeaguePeriod } from './match-league-selection';
 import type { MatchCompetitionSide } from './match-consent-change';
 import { competitionEffect, competitionImpactWindow } from './match-consent-change';
 import { MatchEditCompetitionField } from './MatchEditCompetitionField';
@@ -60,7 +60,11 @@ export function MatchEditDialog({
   const competitive = draft.eventType === 'competitive';
   const options = useMatchLeagueOptions(snapshot.event, draft.startsAt, competitive);
   const candidates = withCurrentLeague(snapshot.event, options.leagues);
-  const resolution = resolveMatchCompetition(draft.competitionChoice, draft.leagueId, candidates);
+  const resolution = resolveMatchEditCompetition(
+    draft.competitionChoice,
+    draft.leagueId,
+    candidates
+  );
   const side = (league: MatchLeagueOption | null, status: MatchCompetitionSide['status']) => ({
     status,
     leagueId: league?.id ?? null,
@@ -82,14 +86,13 @@ export function MatchEditDialog({
     competitive ? resolution.league : null,
     competitive ? resolution.competition : null
   );
-  const impact = competitionEffect(before, after) !== 'unchanged';
-  // While the options are unresolved an empty candidate list resolves to Unranked, which the
-  // organizer never chose: hold the save until they load (or fail and are retried).
+  const rankedWithoutLeague =
+    competitive && resolution.competition === 'ranked' && resolution.league === null;
+  const impact = !rankedWithoutLeague && competitionEffect(before, after) !== 'unchanged';
+  // Ranked intent with no usable League while the options are loading or failed: hold the save
+  // (the reason is shown next to it). An invalid date is not held; submitting reports it.
   const competitionUnresolved =
-    competitive &&
-    draft.competitionChoice === 'ranked' &&
-    options.status !== 'ready' &&
-    resolution.competition === 'unranked';
+    rankedWithoutLeague && (options.status === 'loading' || options.status === 'error');
   const rejectionWindow = competitionImpactWindow(action.rejection?.detail?.league ?? null);
   const change = <K extends keyof MatchEditDraft>(key: K, value: MatchEditDraft[K]) => {
     setDraft((current) => ({ ...current, [key]: value }));
@@ -98,7 +101,11 @@ export function MatchEditDialog({
   };
   async function submit(next: MatchEditDraft) {
     if (action.pending || action.conflict || saved || competitionUnresolved) return;
-    const effective = resolveMatchCompetition(next.competitionChoice, next.leagueId, candidates);
+    const effective = resolveMatchEditCompetition(
+      next.competitionChoice,
+      next.leagueId,
+      candidates
+    );
     const { patch, errors: found } = validateMatchEditDraft(
       {
         ...next,
@@ -353,6 +360,11 @@ export function MatchEditDialog({
               <p {...stylex.props(edit.helper)}>{t('matches.management.edit.conflictHelper')}</p>
             )}
             {action.feedback && <output aria-live="polite">{t(action.feedback)}</output>}
+            {competitionUnresolved && (
+              <p id="match-edit-save-blocked" {...stylex.props(edit.helper)}>
+                {t('matches.management.edit.competition.saveBlocked')}
+              </p>
+            )}
             <div {...stylex.props(edit.columns)}>
               <Dialog.Close disabled={action.pending} {...stylex.props(s.button, edit.button)}>
                 {t('matches.management.cancel')}
@@ -368,6 +380,7 @@ export function MatchEditDialog({
                   competitionUnresolved
                 }
                 aria-busy={action.pending}
+                aria-describedby={competitionUnresolved ? 'match-edit-save-blocked' : undefined}
               >
                 {t('matches.management.edit.save')}
               </button>

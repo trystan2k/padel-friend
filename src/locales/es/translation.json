@@ -914,7 +914,9 @@
         "competitionConsent": "Los jugadores aceptados deben reconfirmar este cambio. Los jugadores provisionales se mantienen automáticamente.",
         "competition": {
           "loading": "Buscando Ligas elegibles…",
-          "unavailable": "No se pudieron cargar las Ligas elegibles. Se mantiene la configuración actual.",
+          "unavailable": "No se pudieron cargar las Ligas elegibles. Reintenta o elige Sin clasificación.",
+          "rankedNoEligible": "Ninguna Liga Activa o Próxima cubre esta fecha. Cambia la fecha o elige Sin clasificación.",
+          "saveBlocked": "El guardado está en pausa hasta que carguen las Ligas elegibles. También puedes elegir Sin clasificación.",
           "noEligible": "Ninguna Liga Activa o Próxima cubre esta fecha. El partido puede seguir Sin ranking.",
           "members": "Los partidos Clasificatorios son solo para miembros activos de la comunidad."
         },
@@ -1540,7 +1542,9 @@
       "creationDisabled": "La creación de Ligas está desactivada para los miembros de esta comunidad. Pide a un Admin que cree una.",
       "empty": "Aún no hay Ligas.",
       "emptyHint": "Crea una Liga para agrupar un periodo de partidos clasificatorios.",
-      "truncated": "Mostrando las primeras {{shown}} de {{total}} Ligas. Las Ligas más antiguas no aparecen en la lista.",
+      "truncated": "Mostrando {{shown}} de {{total}} Ligas.",
+      "more": "Mostrar más Ligas",
+      "moreError": "No se pudieron cargar más Ligas. Inténtalo de nuevo.",
       "sections": {
         "active": "Activa",
         "upcoming": "Próximas",

@@ -4,13 +4,14 @@ import userEvent from '@testing-library/user-event';
 import type { ComponentProps } from 'react';
 import { I18nextProvider } from 'react-i18next';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { LeagueDto } from '../src/features/leagues/league-contracts';
+import type { LeagueDto, LeagueListResult } from '../src/features/leagues/league-contracts';
 import { createI18n } from '../src/i18n/config';
 
 const mocks = vi.hoisted(() => ({
   updateLeague: vi.fn<(request: { data: Record<string, unknown> }) => Promise<LeagueDto>>(),
   activateLeague: vi.fn<(request: { data: Record<string, unknown> }) => Promise<LeagueDto>>(),
   closeLeague: vi.fn<(request: { data: Record<string, unknown> }) => Promise<LeagueDto>>(),
+  listMore: vi.fn<(request: { data: Record<string, unknown> }) => Promise<LeagueListResult>>(),
   invalidate: vi.fn<() => Promise<void>>()
 }));
 vi.mock('@tanstack/react-router', async (original) => ({
@@ -30,7 +31,8 @@ vi.mock('@tanstack/react-router', async (original) => ({
 vi.mock('../src/features/leagues/league.functions', () => ({
   updateLeague: mocks.updateLeague,
   activateLeague: mocks.activateLeague,
-  closeLeague: mocks.closeLeague
+  closeLeague: mocks.closeLeague,
+  listMoreLeagues: mocks.listMore
 }));
 
 import { LeagueDetailPage } from '../src/features/leagues/LeagueDetailPage';
@@ -123,26 +125,54 @@ describe('League list and entries', () => {
     expect(screen.getByText('No Leagues yet.')).toBeTruthy();
   });
 
-  it('tells the reader when the list is cut off, translated', () => {
+  it('tells the reader the list is partial, translated, and shows nothing when complete', () => {
     const leagues = [makeLeagueDto()];
-    render(
-      wrap(<LeagueListPage data={makeLeagueList(leagues, {}, { total: 201, truncated: true })} />)
-    );
-    expect(screen.getByRole('status').textContent).toBe(
-      'Showing the first 1 of 201 Leagues. Older Leagues are not listed.'
-    );
+    const cut = makeLeagueList(leagues, {}, { total: 201, truncated: true, next_offset: 200 });
+    render(wrap(<LeagueListPage data={cut} />));
+    expect(screen.getByRole('status').textContent).toBe('Showing 1 of 201 Leagues.');
+    expect(screen.getByRole('button', { name: 'Show more Leagues' })).toBeTruthy();
     cleanup();
     render(wrap(<LeagueListPage data={makeLeagueList(leagues)} />));
     expect(screen.queryByRole('status')).toBeNull();
+    expect(screen.queryByRole('button', { name: /Show more/ })).toBeNull();
     cleanup();
+    render(wrap(<LeagueListPage data={cut} />, 'pt-BR'));
+    expect(screen.getByRole('status').textContent).toBe('Mostrando 1 de 201 Ligas.');
+    expect(screen.getByRole('button', { name: 'Mostrar mais Ligas' })).toBeTruthy();
+    cleanup();
+    render(wrap(<LeagueListPage data={cut} />, 'es'));
+    expect(screen.getByRole('button', { name: 'Mostrar más Ligas' })).toBeTruthy();
+  });
+
+  it('Show more fetches the next page, appends it, and offers retry on failure', async () => {
+    const first = makeLeagueDto({ id: 'a1111111-1111-4111-8111-111111111111', name: 'First Cup' });
+    const second = makeLeagueDto({
+      id: 'b1111111-1111-4111-8111-111111111111',
+      name: 'Second Cup'
+    });
     render(
       wrap(
-        <LeagueListPage data={makeLeagueList(leagues, {}, { total: 201, truncated: true })} />,
-        'pt-BR'
+        <LeagueListPage
+          data={makeLeagueList([first], {}, { total: 2, truncated: true, next_offset: 1 })}
+        />
       )
     );
-    expect(screen.getByRole('status').textContent).toContain('201');
-    expect(screen.getByRole('status').textContent).not.toContain('Showing');
+    mocks.listMore.mockRejectedValueOnce(new Error('offline'));
+    await userEvent.click(screen.getByRole('button', { name: 'Show more Leagues' }));
+    expect((await screen.findByRole('alert')).textContent).toBe(
+      'More Leagues could not be loaded. Try again.'
+    );
+    mocks.listMore.mockResolvedValueOnce(
+      makeLeagueList([second], {}, { total: 2, truncated: false, next_offset: 2 })
+    );
+    await userEvent.click(screen.getByRole('button', { name: 'Show more Leagues' }));
+    expect(await screen.findByRole('link', { name: /Second Cup/ })).toBeTruthy();
+    expect(screen.getByRole('link', { name: /First Cup/ })).toBeTruthy();
+    expect(mocks.listMore).toHaveBeenLastCalledWith({
+      data: { community_id: LEAGUE_COMMUNITY_ID, offset: 1 }
+    });
+    expect(screen.queryByRole('button', { name: 'Show more Leagues' })).toBeNull();
+    expect(screen.queryByRole('status')).toBeNull();
   });
 
   it('links every active community from the dashboard entry, for members as well as Admins', () => {

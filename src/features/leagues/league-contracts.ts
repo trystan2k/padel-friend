@@ -86,9 +86,11 @@ export type LeagueCountersResult = {
 export type LeagueListResult = {
   community: LeagueCommunityDto;
   leagues: LeagueDto[];
-  /** Every League of the community; `leagues` is capped, so `truncated` flags a cut-off list. */
+  /** Every League of the community; `leagues` is one page, so `truncated` flags more rows after it. */
   total: number;
   truncated: boolean;
+  /** Offset that continues this list (`list_leagues` p_offset). */
+  next_offset: number;
 };
 export type LeagueDetailResult = { community: LeagueCommunityDto; league: LeagueDto };
 

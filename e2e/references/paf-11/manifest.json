@@ -33,7 +33,8 @@
       "no horizontal overflow or controls outside the viewport",
       "every interactive target is at least 44×44px (both axes)",
       "pt-BR and es light 390px and dark 320px with an 80-character League name stay unclipped",
-      "section boxes span the 18px-margin reference column; name, mode group and minimum fields are inset ≤16px inside them; submit is 44–52px tall and spans the column"
+      "section boxes span the 18px-margin reference column; name, mode group and minimum fields are inset ≤16px inside them; submit is 44–52px tall and spans the column",
+      "vertical geometry (document px, budget-independent): title/name/mode/minimum/submit/guidance tops within \u00b112px of the approved composition; submit\u2192guidance gap 10\u00b14px (reference rhythm)"
     ],
     "MYsDp": [
       "Active conflict card names the Active League, states the condition and links to it",
@@ -41,7 +42,8 @@
       "errors are associated through aria-describedby, announced as alerts and focus the first invalid field",
       "error colour differs from body text colour",
       "each validation variant (end-before-start, missing end date) is captured and budgeted separately with its own error visible",
-      "error line sits below and within the column of its own end-date field; conflict card spans the 18px-margin column and contains its review link"
+      "error line sits below and within the column of its own end-date field; conflict card spans the 18px-margin column and contains its review link",
+      "vertical geometry (document px, budget-independent): conflict card and review link tops within \u00b112px, review link bottom 14\u00b14px above card bottom; end field top \u00b112px and its error 27\u00b14px below it, for both variants"
     ],
     "wHaAb": [
       "competition status is a named group with 44px Ranked/Unranked radios, arrow-key operable",
@@ -49,7 +51,8 @@
       "selector order: match type, competition status, eligible League, members-only guidance",
       "guidance is associated with the group through aria-describedby",
       "several overlapping Leagues leave the selector empty and publication shows an associated required-selection alert",
-      "competition group and League selector stay inside the reference column; radios, selector and guidance boxes are contained in the group box"
+      "competition group and League selector stay inside the reference column; radios, selector and guidance boxes are contained in the group box",
+      "vertical geometry (document px, budget-independent): type, group, radios, League selector and guidance tops within \u00b112px; type\u2192group 3\u00b14px and selector\u2192guidance 17\u00b14px"
     ]
   },
   "visualBudgets": {

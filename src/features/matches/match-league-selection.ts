@@ -40,6 +40,22 @@ export function resolveMatchCompetition(
   return { competition: 'ranked', league, needsSelection: league === null };
 }
 
+/**
+ * Edit-dialog variant: the organizer's Ranked intent is never converted to Unranked by the
+ * candidate list. With no candidate (empty answer, reload, failure) it stays Ranked with no
+ * League selected, so the dialog asks for an explicit repair (new date) or an explicit Unranked.
+ */
+export function resolveMatchEditCompetition(
+  choice: MatchCompetitionChoice,
+  leagueId: string,
+  candidates: readonly MatchLeagueOption[]
+): MatchCompetitionResolution {
+  if (choice === 'unranked')
+    return { competition: 'unranked', league: null, needsSelection: false };
+  if (candidates.length === 0) return { competition: 'ranked', league: null, needsSelection: true };
+  return resolveMatchCompetition(choice, leagueId, candidates);
+}
+
 /** Publish keys for the resolved competition; Friendly events send neither key. */
 export function matchCompetitionInput(
   type: MatchDraft['type'],
