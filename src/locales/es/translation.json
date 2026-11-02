@@ -1545,7 +1545,7 @@
       "truncated": "Mostrando {{shown}} de {{total}} Ligas.",
       "more": "Mostrar más Ligas",
       "loading": "Cargando más Ligas…",
-      "complete": "Se muestran las {{total}} Ligas.",
+      "complete": "Se muestran las {{total}} Ligas. Recarga para ver las más recientes.",
       "moreError": "No se pudieron cargar más Ligas. Inténtalo de nuevo.",
       "sections": {
         "active": "Activa",

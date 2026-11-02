@@ -225,7 +225,9 @@ describe('League list and entries', () => {
     });
     expect(screen.queryByRole('button', { name: 'Show more Leagues' })).toBeNull();
     // The live status survives the final page and announces completion.
-    expect(screen.getByRole('status').textContent).toBe('All 2 Leagues are shown.');
+    expect(screen.getByRole('status').textContent).toBe(
+      'All 2 Leagues are shown. Reload to check for newer ones.'
+    );
   });
 
   it('keeps keyboard focus through Show more and moves it to the first new League', async () => {
@@ -257,7 +259,97 @@ describe('League list and entries', () => {
     finish(makeLeagueList([second], {}, { total: 2, truncated: false, next_cursor: null }));
     const link = await screen.findByRole('link', { name: /Second Cup/ });
     await waitFor(() => expect(document.activeElement).toBe(link));
-    expect(screen.getByRole('status').textContent).toBe('All 2 Leagues are shown.');
+    expect(screen.getByRole('status').textContent).toBe(
+      'All 2 Leagues are shown. Reload to check for newer ones.'
+    );
+  });
+
+  it('lands focus on the completion status when the final page only repeats shown Leagues', async () => {
+    const active = makeLeagueDto({
+      id: 'a1111111-1111-4111-8111-111111111111',
+      name: 'Old Active',
+      status: 'active'
+    });
+    render(
+      wrap(
+        <LeagueListPage
+          data={makeLeagueList(
+            [active],
+            {},
+            { total: 1, truncated: true, next_cursor: pageCursor }
+          )}
+        />
+      )
+    );
+    mocks.listMore.mockResolvedValueOnce(
+      makeLeagueList([active], {}, { total: 1, truncated: false, next_cursor: null })
+    );
+    const button = screen.getByRole('button', { name: 'Show more Leagues' });
+    button.focus();
+    await userEvent.keyboard('{Enter}');
+    await waitFor(() =>
+      expect(screen.queryByRole('button', { name: 'Show more Leagues' })).toBeNull()
+    );
+    const status = screen.getByRole('status');
+    await waitFor(() => expect(document.activeElement).toBe(status));
+    expect(status.getAttribute('tabindex')).toBe('-1');
+  });
+
+  it('focuses the first new League in rendered order, not server order', async () => {
+    const dto = (id: string, name: string, extra: Partial<LeagueDto>) =>
+      makeLeagueDto({ id, name, ...extra });
+    const shown = dto('a1111111-1111-4111-8111-111111111111', 'Shown Active', { status: 'active' });
+    const closed = dto('c1111111-1111-4111-8111-111111111111', 'Fresh Closed', {
+      status: 'closed',
+      closed_at: '2030-05-01T00:00:00.000000Z',
+      closed_reason: 'fixed_end_reached'
+    });
+    const late = dto('b2222222-1111-4111-8111-111111111111', 'Fresh Late', {
+      start_at: '2031-06-01T00:00:00.000000Z'
+    });
+    const soon = dto('b1111111-1111-4111-8111-111111111111', 'Fresh Soon', {
+      start_at: '2031-01-01T00:00:00.000000Z'
+    });
+    render(
+      wrap(
+        <LeagueListPage
+          data={makeLeagueList([shown], {}, { total: 4, truncated: true, next_cursor: pageCursor })}
+        />
+      )
+    );
+    // Server order is newest-created first (closed, late, soon); rendering shows soon first.
+    mocks.listMore.mockResolvedValueOnce(
+      makeLeagueList([closed, late, soon], {}, { total: 4, truncated: false, next_cursor: null })
+    );
+    await userEvent.click(screen.getByRole('button', { name: 'Show more Leagues' }));
+    const link = await screen.findByRole('link', { name: /Fresh Soon/ });
+    await waitFor(() => expect(document.activeElement).toBe(link));
+  });
+
+  it('does not claim completeness for Leagues created after the list started', async () => {
+    const first = makeLeagueDto({ id: 'a1111111-1111-4111-8111-111111111111', name: 'First Cup' });
+    const second = makeLeagueDto({
+      id: 'b1111111-1111-4111-8111-111111111111',
+      name: 'Second Cup'
+    });
+    render(
+      wrap(
+        <LeagueListPage
+          data={makeLeagueList([first], {}, { total: 2, truncated: true, next_cursor: pageCursor })}
+        />
+      )
+    );
+    // A third League was created meanwhile: the server's current total is 3 but it sorts ahead
+    // of the cursor and can never load here, so the claim must stay at the list's own 2.
+    mocks.listMore.mockResolvedValueOnce(
+      makeLeagueList([second], {}, { total: 3, truncated: false, next_cursor: null })
+    );
+    await userEvent.click(screen.getByRole('button', { name: 'Show more Leagues' }));
+    await screen.findByRole('link', { name: /Second Cup/ });
+    const text = screen.getByRole('status').textContent ?? '';
+    expect(text).toContain('All 2 Leagues are shown');
+    expect(text).not.toContain('3');
+    expect(text).toContain('Reload');
   });
 
   it('keeps focus on the button when loading more fails', async () => {

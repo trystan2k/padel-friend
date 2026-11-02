@@ -382,6 +382,55 @@ describe.skipIf(!environment.env)('League review hardening', { timeout: 300_000 
     expect(await rotation(ghost)).toBe(0);
   });
 
+  it('G4: rotation cleanup per invocation is bounded; later runs finish pruning', async () => {
+    // Clear whatever earlier tests left so the backlog below is the only stale data.
+    await executeTrustedSql(`delete from public.league_process_attempts`);
+    await executeTrustedSql(`
+      insert into public.league_process_attempts (community_id, attempted_at)
+        select gen_random_uuid(), now() from generate_series(1, 20)`);
+    const remaining = async () =>
+      Number(
+        (await sqlRows(`select count(*)::int as n from public.league_process_attempts`))[0]?.['n']
+      );
+    // Limit 1 bounds the cleanup to 4 rows: it must not delete the whole backlog in one go.
+    await processLeaguesAt(new Date().toISOString(), 1);
+    const afterFirst = await remaining();
+    expect(afterFirst).toBeGreaterThanOrEqual(16);
+    expect(afterFirst).toBeLessThan(20);
+    for (let run = 0; run < 6 && (await remaining()) > 0; run += 1)
+      await processLeaguesAt(new Date().toISOString(), 1);
+    expect(await remaining()).toBe(0);
+  });
+
+  it('G5: the keyset order is covered by a (community_id, created_at desc, id desc) index', async () => {
+    const [index] = await sqlRows(
+      `select indexdef from pg_indexes where schemaname = 'public' and tablename = 'leagues'
+          and indexdef ilike '%(community_id, created_at desc, id desc)%'`
+    );
+    expect(index).toBeDefined();
+    // With sequential scans discouraged, the planner serves the cursor query from that index
+    // in index order, without a separate sort.
+    const connection = await openDedicatedSqlConnection();
+    try {
+      await connection.query('begin');
+      await connection.query('set local enable_seqscan = off');
+      const plan = (
+        await connection.query(
+          `explain (format json) select l.id from public.leagues l
+            where l.community_id = ${sqlText(world.communityId)}
+              and (l.created_at, l.id) < (now(), gen_random_uuid())
+            order by l.created_at desc, l.id desc limit 201`
+        )
+      ).rows;
+      const text = JSON.stringify(plan);
+      expect(text).toContain('leagues_community_created_keyset');
+      expect(text).not.toContain('"Node Type":"Sort"');
+    } finally {
+      await connection.query('rollback').catch(() => undefined);
+      await connection.close();
+    }
+  });
+
   it('E4: an overlapping invocation exits cleanly instead of blocking on a rotation row', async () => {
     const communityId = await world.newCommunity(world.admin.id);
     await insertLeague({

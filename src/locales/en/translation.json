@@ -1545,7 +1545,7 @@
       "truncated": "Showing {{shown}} of {{total}} Leagues.",
       "more": "Show more Leagues",
       "loading": "Loading more Leagues…",
-      "complete": "All {{total}} Leagues are shown.",
+      "complete": "All {{total}} Leagues are shown. Reload to check for newer ones.",
       "moreError": "More Leagues could not be loaded. Try again.",
       "sections": {
         "active": "Active",

@@ -38,6 +38,10 @@ revoke all on function public.league_backfill_references_from_audit()
   from public, anon, authenticated, service_role;
 select public.league_backfill_references_from_audit();
 
+-- G5: serves the keyset predicate and ordering of list_leagues (and its per-community count)
+-- directly from the index; the Active-first lookup is served by leagues_one_active_per_community.
+create index leagues_community_created_keyset on public.leagues (community_id, created_at desc, id desc);
+
 -- 2. E2. The old offset signature is replaced (an overload would make the call ambiguous).
 drop function public.list_leagues(uuid, integer);
 create function public.list_leagues(
@@ -118,13 +122,19 @@ begin
     return pg_catalog.jsonb_build_object('processed', 0, 'skipped', 0, 'failed', 0,
       'errors', '[]'::jsonb, 'busy', true);
   end if;
-  -- E3: rotation rows only matter while a community still has due work.
-  delete from public.league_process_attempts p
-    where not exists (select 1 from public.communities c where c.id = p.community_id)
-      or not exists (select 1 from public.leagues l where l.community_id = p.community_id
-        and ((l.status = 'active' and l.end_mode = 'fixed_date' and l.end_at < v_as_of)
-          or (l.status = 'upcoming' and ((l.end_mode = 'fixed_date' and l.end_at < v_as_of)
-            or (l.start_at <= v_as_of and l.activation_blocked_at is null)))));
+  -- E3/G4: rotation rows only matter while a community still has due work. At most v_limit * 4
+  -- stale rows are pruned per invocation (same order of work as the attempt budget), so a large
+  -- backlog never turns one run into a long lock-holding transaction; later runs finish it.
+  delete from public.league_process_attempts
+    where community_id in (
+      select p.community_id from public.league_process_attempts p
+      where not exists (select 1 from public.communities c where c.id = p.community_id)
+        or not exists (select 1 from public.leagues l where l.community_id = p.community_id
+          and ((l.status = 'active' and l.end_mode = 'fixed_date' and l.end_at < v_as_of)
+            or (l.status = 'upcoming' and ((l.end_mode = 'fixed_date' and l.end_at < v_as_of)
+              or (l.start_at <= v_as_of and l.activation_blocked_at is null)))))
+      order by p.attempted_at
+      limit v_limit * 4);
   for v_community in
     select l.community_id from public.leagues l
     left join public.league_process_attempts p on p.community_id = l.community_id

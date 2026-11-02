@@ -24,6 +24,14 @@ function sectionOrder(status: LeagueStatus) {
   return () => 0;
 }
 
+function sectionItems(leagues: readonly LeagueDto[], status: LeagueStatus): LeagueDto[] {
+  return leagues.filter((league) => league.status === status).sort(sectionOrder(status));
+}
+
+/** Every League in the order the sections render them (what keyboard users tab through). */
+const displayOrder = (leagues: readonly LeagueDto[]) =>
+  SECTIONS.flatMap((status) => sectionItems(leagues, status));
+
 function LeagueListItem({ league }: { league: LeagueDto }) {
   const { t } = useTranslation();
   const period = useLeaguePeriodText(league);
@@ -61,7 +69,8 @@ export function LeagueListPage({ data }: { data: LeagueListResult }) {
   } | null>(null);
   const [loadingMore, setLoadingMore] = useState(false);
   const [moreFailed, setMoreFailed] = useState(false);
-  const focusAfterLoad = useRef<string | null>(null);
+  const focusAfterLoad = useRef<{ league: string } | { status: true } | null>(null);
+  const statusRef = useRef<HTMLOutputElement>(null);
   const continued = more && more.base === data ? more : null;
   // One entry per League across the first page and every continuation page (a League can appear
   // on two pages when it moves between them); the latest copy of a row wins.
@@ -69,13 +78,18 @@ export function LeagueListPage({ data }: { data: LeagueListResult }) {
   for (const league of [...data.leagues, ...(continued?.leagues ?? [])])
     byId.set(league.id, league);
   const leagues = [...byId.values()];
-  const { total, truncated, next_cursor: nextCursor } = continued?.last ?? data;
+  const { truncated, next_cursor: nextCursor } = continued?.last ?? data;
+  // The list is a snapshot of the instant it was loaded: its total is the first page's. A League
+  // created since sorts ahead of every cursor, so a later page's own total would overstate it.
+  const total = data.total;
   // The partial-list status stays through the final page so completion is announced.
   const partialListing = data.truncated;
   useEffect(() => {
-    if (!focusAfterLoad.current) return;
-    document.getElementById(leagueLinkId(focusAfterLoad.current))?.focus();
+    const target = focusAfterLoad.current;
+    if (!target) return;
     focusAfterLoad.current = null;
+    if ('league' in target) document.getElementById(leagueLinkId(target.league))?.focus();
+    else statusRef.current?.focus();
   });
   const showMore = async () => {
     if (loadingMore || !nextCursor) return;
@@ -85,14 +99,18 @@ export function LeagueListPage({ data }: { data: LeagueListResult }) {
       const page = await listMoreLeagues({
         data: { community_id: community.id, cursor: nextCursor }
       });
-      const fresh = page.leagues.find((league) => !byId.has(league.id));
-      // Keyboard users continue from the first newly loaded League; the button may be gone.
-      focusAfterLoad.current = fresh?.id ?? null;
-      setMore({
-        base: data,
-        leagues: [...(continued?.leagues ?? []), ...page.leagues],
-        last: page
-      });
+      const accumulated = [...(continued?.leagues ?? []), ...page.leagues];
+      const merged = new Map(byId);
+      for (const league of page.leagues) merged.set(league.id, league);
+      // Keyboard users continue from the first newly loaded League in RENDERED order. With
+      // nothing new and no button left, they land on the completion status instead.
+      const fresh = displayOrder([...merged.values()]).find((league) => !byId.has(league.id));
+      focusAfterLoad.current = fresh
+        ? { league: fresh.id }
+        : page.truncated
+          ? null
+          : { status: true };
+      setMore({ base: data, leagues: accumulated, last: page });
     } catch {
       setMoreFailed(true);
     } finally {
@@ -135,9 +153,7 @@ export function LeagueListPage({ data }: { data: LeagueListResult }) {
           </SurfaceCard>
         ) : (
           SECTIONS.map((status) => {
-            const items = leagues
-              .filter((league) => league.status === status)
-              .sort(sectionOrder(status));
+            const items = sectionItems(leagues, status);
             if (items.length === 0) return null;
             return (
               <section
@@ -159,7 +175,7 @@ export function LeagueListPage({ data }: { data: LeagueListResult }) {
         )}
         {partialListing && (
           <>
-            <output {...stylex.props(styles.guidance)}>
+            <output ref={statusRef} tabIndex={-1} {...stylex.props(styles.guidance)}>
               {loadingMore
                 ? t('leagues.list.loading')
                 : truncated

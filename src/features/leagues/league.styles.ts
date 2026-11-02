@@ -145,7 +145,8 @@ export const styles = stylex.create({
     backgroundColor: 'var(--color-green-soft)',
     color: 'var(--color-green)',
     fontSize: 'var(--font-size-12)',
-    fontWeight: 'var(--font-weight-medium)'
+    fontWeight: 'var(--font-weight-medium)',
+    ':focus-visible': focusRing
   },
   conflict: {
     padding: 'var(--space-14)',
