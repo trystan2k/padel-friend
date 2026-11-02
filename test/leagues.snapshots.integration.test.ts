@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+import { resolve as resolvePath } from 'node:path';
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
 import {
   decodeLeagueStandings,
@@ -967,6 +969,53 @@ describe.skipIf(!environment.env)(
       expect(await leagueRow(leagueId)).toMatchObject({ status: 'active' });
       // An Admin can still close it.
       expect((await close(world.admin, leagueId)).error).toBeNull();
+    });
+  }
+);
+
+describe.skipIf(!environment.env)(
+  'League closed rebuild repair migration',
+  { timeout: 120_000 },
+  () => {
+    it('re-applies idempotently: no error and an identical final state', async () => {
+      const body = readFileSync(
+        resolvePath(
+          process.cwd(),
+          'supabase/migrations/20261101199000_league_closed_rebuild_repair.sql'
+        ),
+        'utf8'
+      )
+        .replace(/^begin;\s*/m, '')
+        .replace(/commit;\s*$/m, '');
+      const state = async (run: (sql: string) => Promise<{ rows: Record<string, unknown>[] }>) =>
+        (
+          await run(
+            `select (select md5(string_agg(p.proname || ':' || pg_get_functiondef(p.oid), '|' order by p.proname))
+                     from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+                    where n.nspname = 'public' and p.proname in ('rebuild_league_counters',
+                      'league_rebuild_counters_core', 'league_publish_repair_if_needed',
+                      'league_repair_closed_standings', 'project_league_confirmation')) as functions,
+                  (select count(*)::int from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+                    where n.nspname = 'public' and p.proname like '%rebuild_league_counters%'
+                       or p.proname = 'league_rebuild_counters_core') as rebuild_functions,
+                  (select md5(coalesce(string_agg(x::text, '|' order by x::text), '')) from public.league_standings_snapshots x) as snapshots,
+                  (select md5(coalesce(string_agg(x::text, '|' order by x::text), '')) from public.league_projection_confirmations x) as receipts`
+          )
+        ).rows[0];
+      const before = await state((sql) => queryTrustedSql(sql));
+      const connection = await openDedicatedSqlConnection();
+      try {
+        await connection.query('begin');
+        await connection.query(body);
+        const once = await state((sql) => connection.query(sql));
+        await connection.query(body);
+        const twice = await state((sql) => connection.query(sql));
+        expect(twice).toEqual(once);
+        expect(once).toEqual(before);
+      } finally {
+        await connection.query('rollback').catch(() => undefined);
+        await connection.close();
+      }
     });
   }
 );

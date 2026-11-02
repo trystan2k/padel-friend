@@ -34,6 +34,62 @@ export async function docBox(locator: Locator): Promise<Box> {
   });
 }
 
+/**
+ * Viewport-relative geometry, measured as the page is first shown: every target must lie fully
+ * inside the visible viewport (top >= 0, bottom <= height, left >= 0, right <= width) with the
+ * page still at scroll 0, so "reachable by scrolling" can never pass for "visible initially".
+ */
+export async function assertInInitialViewport(
+  page: Page,
+  targets: Record<string, Locator>,
+  label: string
+) {
+  expect(
+    await page.evaluate(() => window.scrollY),
+    `${label} is measured before any scrolling`
+  ).toBe(0);
+  const viewport = await page.evaluate(() => ({
+    width: window.innerWidth,
+    height: window.innerHeight
+  }));
+  for (const [name, locator] of Object.entries(targets)) {
+    const rect = await locator.evaluate((element) => {
+      const { top, bottom, left, right } = element.getBoundingClientRect();
+      return { top, bottom, left, right };
+    });
+    expect.soft(rect.top, `${label} ${name} top inside viewport`).toBeGreaterThanOrEqual(0);
+    expect
+      .soft(rect.bottom, `${label} ${name} bottom (${rect.bottom}) inside ${viewport.height}px`)
+      .toBeLessThanOrEqual(viewport.height);
+    expect.soft(rect.left, `${label} ${name} left inside viewport`).toBeGreaterThanOrEqual(0);
+    expect
+      .soft(rect.right, `${label} ${name} right inside viewport`)
+      .toBeLessThanOrEqual(viewport.width);
+  }
+}
+
+/** The primary ranking's header row and first ranking row: every cell, in table order. */
+export function primaryRankingTargets(table: Locator) {
+  const rows = table.getByRole('row');
+  const targets: Record<string, Locator> = {};
+  const header = rows.first();
+  const first = rows.nth(1);
+  for (const [name, row] of [
+    ['header', header],
+    ['first ranking row', first]
+  ] as const) {
+    targets[name] = row;
+  }
+  targets['place header'] = header.getByRole('columnheader').nth(0);
+  targets['award header'] = header.getByRole('columnheader').nth(4);
+  targets['first row place'] = first.getByRole('cell').nth(0);
+  targets['first row player'] = first.getByRole('rowheader');
+  targets['first row record'] = first.getByRole('cell').nth(1);
+  targets['first row set difference'] = first.getByRole('cell').nth(2);
+  targets['first row award'] = first.getByRole('cell').nth(3);
+  return targets;
+}
+
 /** No horizontal scroll and every visible control stays inside the viewport. */
 export async function assertNoOverflow(page: Page, label: string) {
   const metrics = await page.evaluate(() => ({
@@ -73,9 +129,44 @@ export async function assertTouchHeights(root: Locator, label: string) {
     expect.soft(target.height, `${label}: ${target.name} touch height`).toBeGreaterThanOrEqual(44);
 }
 
+type MaskRect = { x: number; y: number; width: number; height: number };
+
+/**
+ * Production blocks that carry a documented composition/content delta against the Pencil frame
+ * (real details card, heading row, own summary, tables, disclosure, callout, rules, version
+ * history, page header). Viewport-relative rects at scroll 0; each block is gated by exact
+ * structural probes in the journeys, so the screenshot budget never has to absorb them.
+ */
+async function productionMasks(page: Page): Promise<MaskRect[]> {
+  return page.evaluate(() => {
+    const rect = (element: Element) => {
+      const { x, y, width, height } = element.getBoundingClientRect();
+      return { x, y, width, height };
+    };
+    const standings = document.querySelector('section[aria-labelledby="league-standings-heading"]');
+    const nodes: Element[] = [...document.querySelectorAll('main header')];
+    if (standings) {
+      nodes.push(...standings.children);
+      if (standings.previousElementSibling) nodes.push(standings.previousElementSibling);
+      for (let next = standings.nextElementSibling; next; next = next.nextElementSibling)
+        nodes.push(next);
+    }
+    return nodes.map(rect).filter(({ width, height }) => width > 0 && height > 0);
+  });
+}
+
 /** Viewport capture compared with the uncropped 2x Pencil export of `frame`. */
 export async function measureStandingsFrame(page: Page, frame: StandingsFrame, info: TestInfo) {
   await page.setViewportSize(standingsViewport);
+  const masks = [
+    ...manifest.visualBudgets.referenceMasks[frame].map(({ x, y, width, height }) => ({
+      x,
+      y,
+      width,
+      height
+    })),
+    ...(await productionMasks(page))
+  ];
   const actual = await page.screenshot({
     animations: 'disabled',
     caret: 'hide',
@@ -83,7 +174,7 @@ export async function measureStandingsFrame(page: Page, frame: StandingsFrame, i
   });
   const approved = readFileSync(new URL(`./references/paf-12/${frame}.png`, import.meta.url));
   const measured = await page.evaluate(
-    async ({ actualUrl, approvedUrl }) => {
+    async ({ actualUrl, approvedUrl, maskRects }) => {
       async function readPixels(url: string, scale: number) {
         const image = new Image();
         image.src = url;
@@ -105,9 +196,27 @@ export async function measureStandingsFrame(page: Page, frame: StandingsFrame, i
         readPixels(approvedUrl, 2)
       ]);
       if (rendered.width !== reference.width || rendered.height !== reference.height)
-        return { dimensionMismatch: true, perceptualPixelDifference: null as number | null };
+        return {
+          dimensionMismatch: true,
+          perceptualPixelDifference: null as number | null,
+          fullFramePixelDifference: null as number | null,
+          maskedFraction: null as number | null
+        };
       let changed = 0;
+      let changedAll = 0;
+      let masked = 0;
       for (let index = 0; index < rendered.data.length; index += 4) {
+        const pixel = index / 4;
+        const x = (pixel % rendered.width) + 0.5;
+        const y = Math.floor(pixel / rendered.width) + 0.5;
+        const inMask = maskRects.some(
+          (rect) =>
+            x >= rect.x - 1 &&
+            x < rect.x + rect.width + 1 &&
+            y >= rect.y - 1 &&
+            y < rect.y + rect.height + 1
+        );
+        if (inMask) masked++;
         const red = rendered.data[index]! - reference.data[index]!;
         const green = rendered.data[index + 1]! - reference.data[index + 1]!;
         const blue = rendered.data[index + 2]! - reference.data[index + 2]!;
@@ -117,20 +226,26 @@ export async function measureStandingsFrame(page: Page, frame: StandingsFrame, i
         if (
           0.5053 * luminance * luminance + 0.299 * chromaI * chromaI + 0.1957 * chromaQ * chromaQ >
           35215 * 0.1 ** 2
-        )
-          changed++;
+        ) {
+          changedAll++;
+          if (!inMask) changed++;
+        }
       }
+      const total = rendered.width * rendered.height;
       return {
         dimensionMismatch: false,
-        perceptualPixelDifference: changed / (rendered.width * rendered.height)
+        perceptualPixelDifference: changed / (total - masked),
+        fullFramePixelDifference: changedAll / total,
+        maskedFraction: masked / total
       };
     },
     {
       actualUrl: `data:image/png;base64,${actual.toString('base64')}`,
-      approvedUrl: `data:image/png;base64,${approved.toString('base64')}`
+      approvedUrl: `data:image/png;base64,${approved.toString('base64')}`,
+      maskRects: masks
     }
   );
-  console.info(`${frame} PAF-12 full-frame measurement: ${JSON.stringify(measured)}`);
+  console.info(`${frame} PAF-12 scoped measurement: ${JSON.stringify(measured)}`);
   const budget = manifest.visualBudgets.perScreen[frame];
   expect
     .soft(measured.dimensionMismatch, `${frame} dimensions must match the 2x Pencil export`)
@@ -138,8 +253,12 @@ export async function measureStandingsFrame(page: Page, frame: StandingsFrame, i
   expect.soft(budget, `${frame} needs a reviewed nonzero screenshot budget`).toBeGreaterThan(0);
   if (measured.perceptualPixelDifference !== null)
     expect
-      .soft(measured.perceptualPixelDifference, `${frame} reviewed raster budget`)
+      .soft(measured.perceptualPixelDifference, `${frame} reviewed raster budget (unmasked area)`)
       .toBeLessThanOrEqual(budget);
+  if (measured.maskedFraction !== null)
+    expect
+      .soft(measured.maskedFraction, `${frame} masks stay a bounded share of the frame`)
+      .toBeLessThanOrEqual(manifest.visualBudgets.maxMaskedFraction[frame]);
   await info.attach(`${frame}-actual`, { body: actual, contentType: 'image/png' });
   await info.attach(`${frame}-approved`, { body: approved, contentType: 'image/png' });
   return measured;

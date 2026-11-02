@@ -149,7 +149,7 @@ describe('live standings', () => {
       within(primaryRows[0]!)
         .getAllByRole('cell')
         .map((cell) => cell.textContent)
-    ).toEqual(['1', '2–1–02 wins, 1 losses, 0 draws', '+2', 'Eligible']);
+    ).toEqual(['1', '2–1–02 wins, 1 loss, 0 draws', '+2', 'Eligible']);
     expect(within(primaryRows[0]!).getByRole('rowheader').textContent).toBe('Ana');
     expect(primaryRows[1]!.getAttribute('aria-current')).toBe('true');
     const region = screen.getByRole('region', { name: /Standings table/ });
@@ -320,6 +320,26 @@ describe('league page refresh scheduling', () => {
   });
 });
 
+describe('spoken record', () => {
+  const spoken = (locale: Locale, count: number) => {
+    const { t } = createI18n(locale);
+    const args = { count, formattedCount: String(count) };
+    return [
+      t('leagues.standings.winsSpoken', args),
+      t('leagues.standings.lossesSpoken', args),
+      t('leagues.standings.drawsSpoken', args)
+    ];
+  };
+  it.each([
+    ['en', ['1 win', '1 loss', '1 draw'], ['2 wins', '2 losses', '2 draws']],
+    ['es', ['1 victoria', '1 derrota', '1 empate'], ['2 victorias', '2 derrotas', '2 empates']],
+    ['pt-BR', ['1 vitória', '1 derrota', '1 empate'], ['2 vitórias', '2 derrotas', '2 empates']]
+  ] as const)('pluralizes by count in %s', (locale, one, other) => {
+    expect(spoken(locale, 1)).toEqual(one);
+    expect(spoken(locale, 2)).toEqual(other);
+  });
+});
+
 describe('refresh hook', () => {
   function Probe({
     enabled,
@@ -361,6 +381,23 @@ describe('refresh hook', () => {
       release();
       await vi.advanceTimersByTimeAsync(LEAGUE_STANDINGS_REFRESH_INTERVAL_MS * 5);
       expect(refresh).toHaveBeenCalledTimes(2);
+    });
+
+    it('survives a rejected reload without an unhandled rejection and ticks again', async () => {
+      const unhandled = vi.fn<(reason: unknown) => void>();
+      process.on('unhandledRejection', unhandled);
+      const refresh = vi
+        .fn<() => Promise<void>>()
+        .mockRejectedValueOnce(new Error('offline'))
+        .mockResolvedValue();
+      render(<Probe enabled refresh={refresh} />);
+      await vi.advanceTimersByTimeAsync(LEAGUE_STANDINGS_REFRESH_INTERVAL_MS);
+      await vi.advanceTimersByTimeAsync(LEAGUE_STANDINGS_REFRESH_INTERVAL_MS);
+      expect(refresh).toHaveBeenCalledTimes(2);
+      vi.useRealTimers();
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      process.off('unhandledRejection', unhandled);
+      expect(unhandled).not.toHaveBeenCalled();
     });
 
     it('skips ticks while the page is hidden', async () => {
@@ -764,5 +801,102 @@ describe('final version history', () => {
   it('shows no audit section to a viewer who may not see it', () => {
     view(makeFinalStandings([ana]), { audit: null, auditFailed: false });
     expect(screen.queryByText('Audit trail')).toBeNull();
+  });
+
+  describe('recovered state and focus', () => {
+    const auditResult = {
+      league_id: league.id,
+      events: [
+        {
+          action: 'closed' as const,
+          actor_id: STANDING_USER_A,
+          system_reason: null,
+          occurred_at: '2030-12-21T10:00:00.000000Z',
+          details: { standings_version: 1 }
+        }
+      ]
+    };
+    const element = (
+      standings: ReturnType<typeof makeFinalStandings>,
+      props: Partial<ComponentProps<typeof LeagueStandingsHistory>> = {}
+    ) =>
+      wrap(
+        <LeagueStandingsHistory
+          league={league}
+          standings={standings}
+          versions={versions}
+          audit={null}
+          auditFailed={false}
+          onSelect={vi.fn<(version: number | null) => void>()}
+          {...props}
+        />
+      );
+
+    it('does not carry a recovered audit into another League or hide its later failure', async () => {
+      mocks.getAudit.mockResolvedValueOnce(auditResult);
+      const standings = makeFinalStandings([ana]);
+      const rendered = render(element(standings, { auditFailed: true }));
+      await userEvent.click(screen.getByRole('button', { name: 'Try again' }));
+      await screen.findAllByRole('listitem');
+
+      const other = { ...league, id: 'other-league' };
+      rendered.rerender(element(makeFinalStandings([ana]), { league: other, auditFailed: true }));
+      expect(screen.queryAllByRole('listitem')).toHaveLength(0);
+      expect(screen.getByRole('alert').textContent).toContain('audit trail could not be loaded');
+    });
+
+    it('re-raises the audit alert when a newer loader result fails after a recovery', async () => {
+      mocks.getAudit.mockResolvedValueOnce(auditResult);
+      const rendered = render(element(makeFinalStandings([ana]), { auditFailed: true }));
+      await userEvent.click(screen.getByRole('button', { name: 'Try again' }));
+      await screen.findAllByRole('listitem');
+      rendered.rerender(element(makeFinalStandings([ana]), { auditFailed: true }));
+      expect(screen.queryAllByRole('listitem')).toHaveLength(0);
+      expect(screen.getByRole('alert').textContent).toContain('audit trail could not be loaded');
+    });
+
+    it('resets the completion state when the first page is replaced', async () => {
+      const first = { ...versions, versions: [versions.versions[0]!], next_before_version: 2 };
+      mocks.listVersions.mockResolvedValueOnce({
+        ...versions,
+        versions: [versions.versions[1]!],
+        next_before_version: null
+      });
+      const standings = makeFinalStandings([ana], {
+        standings_version: 2,
+        latest_standings_version: 2
+      });
+      const rendered = render(element(standings, { versions: first }));
+      await userEvent.click(screen.getByRole('button', { name: 'Show earlier versions' }));
+      expect((await screen.findByRole('status')).textContent).toBe(
+        'All earlier versions are loaded.'
+      );
+      rendered.rerender(element(standings, { versions: { ...first } }));
+      expect(screen.queryByRole('status')).toBeNull();
+      expect(screen.getByRole('button', { name: 'Show earlier versions' })).toBeTruthy();
+    });
+
+    it('moves focus to the version selector after a successful history retry', async () => {
+      mocks.listVersions.mockResolvedValueOnce(versions);
+      view(makeFinalStandings([ana], { standings_version: 2, latest_standings_version: 2 }), {
+        versions: null
+      });
+      const button = screen.getByRole('button', { name: 'Try again' });
+      button.focus();
+      await userEvent.click(button);
+      await waitFor(() =>
+        expect(document.activeElement).toBe(screen.getByRole('combobox', { name: 'Final version' }))
+      );
+    });
+
+    it('moves focus to the audit heading after a successful audit retry', async () => {
+      mocks.getAudit.mockResolvedValueOnce(auditResult);
+      view(makeFinalStandings([ana]), { auditFailed: true });
+      const button = screen.getByRole('button', { name: 'Try again' });
+      button.focus();
+      await userEvent.click(button);
+      const heading = await screen.findByRole('heading', { name: 'Audit trail' });
+      await waitFor(() => expect(document.activeElement).toBe(heading));
+    });
   });
 });

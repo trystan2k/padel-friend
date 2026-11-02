@@ -196,9 +196,18 @@ export function LeagueStandings({
                       </span>
                       <span {...stylex.props(styles.hidden)}>
                         {t('leagues.standings.recordSpoken', {
-                          wins: number.format(entry.wins),
-                          losses: number.format(entry.losses),
-                          draws: number.format(entry.draws)
+                          wins: t('leagues.standings.winsSpoken', {
+                            count: entry.wins,
+                            formattedCount: number.format(entry.wins)
+                          }),
+                          losses: t('leagues.standings.lossesSpoken', {
+                            count: entry.losses,
+                            formattedCount: number.format(entry.losses)
+                          }),
+                          draws: t('leagues.standings.drawsSpoken', {
+                            count: entry.draws,
+                            formattedCount: number.format(entry.draws)
+                          })
                         })}
                       </span>
                     </td>

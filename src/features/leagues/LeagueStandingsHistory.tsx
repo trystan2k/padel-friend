@@ -15,6 +15,25 @@ import { getLeagueStandingsAudit, listLeagueStandingsVersions } from './league.f
 import { styles as leagueStyles } from './league.styles';
 import { styles } from './league-standings.styles';
 
+/** What the loader handed down; recovered data is only valid while all of it is unchanged. */
+type Generation = {
+  leagueId: string;
+  standings: LeagueFinalStandings;
+  loadedVersions: LeagueStandingsVersionsResult | null;
+  loadedAudit: LeagueStandingsAuditResult | null;
+  auditFailed: boolean;
+};
+type Recovered = Generation & {
+  versions: LeagueStandingsVersionsResult | null;
+  audit: LeagueStandingsAuditResult | null;
+};
+const sameGeneration = (a: Generation, b: Generation) =>
+  a.leagueId === b.leagueId &&
+  a.standings === b.standings &&
+  a.loadedVersions === b.loadedVersions &&
+  a.loadedAudit === b.loadedAudit &&
+  a.auditFailed === b.auditFailed;
+
 /**
  * Inspect every published final of a closed League: pick a version, see why it exists (including
  * a first result confirmed after the close) and, for owner/Admin, the lifecycle audit trail.
@@ -47,20 +66,41 @@ export function LeagueStandingsHistory({
   const [loading, setLoading] = useState(false);
   const [failed, setFailed] = useState(false);
   // Retries read only the failed part, so the snapshot on screen is never discarded or reloaded.
-  const [recoveredVersions, setRecoveredVersions] = useState<LeagueStandingsVersionsResult | null>(
-    null
-  );
-  const [recoveredAudit, setRecoveredAudit] = useState<LeagueStandingsAuditResult | null>(null);
+  // Recovered data is valid only for the League and loader generation it was fetched for.
+  const generation: Generation = {
+    leagueId: league.id,
+    standings,
+    loadedVersions,
+    loadedAudit,
+    auditFailed
+  };
+  const [recovered, setRecovered] = useState<Recovered | null>(null);
   const [retrying, setRetrying] = useState<'versions' | 'audit' | null>(null);
-  const [loadedAll, setLoadedAll] = useState(false);
+  const focusAfterRetry = useRef<'versions' | 'audit' | null>(null);
   const completion = useRef<HTMLOutputElement>(null);
-  const versions = loadedVersions ?? recoveredVersions;
-  const audit = loadedAudit ?? recoveredAudit;
+  const historyHeading = useRef<HTMLHeadingElement>(null);
+  const versionSelect = useRef<HTMLSelectElement>(null);
+  const auditHeading = useRef<HTMLHeadingElement>(null);
+  const current = recovered && sameGeneration(recovered, generation) ? recovered : null;
+  const versions = loadedVersions ?? current?.versions ?? null;
+  const audit = loadedAudit ?? current?.audit ?? null;
+  const continued = versions && more?.base === versions ? more : null;
+  // The completion belongs to the first page it continues; a replaced base page starts over.
+  const loadedAll = continued !== null && continued.next === null;
   // The "load earlier" button unmounts with the last page: hand focus to the completion status.
   useEffect(() => {
     if (loadedAll) completion.current?.focus();
   }, [loadedAll]);
-  const continued = versions && more?.base === versions ? more : null;
+  // The focused retry button unmounts on success: hand focus to the recovered content.
+  useEffect(() => {
+    const part = focusAfterRetry.current;
+    if (!part) return;
+    focusAfterRetry.current = null;
+    (part === 'versions'
+      ? versionSelect.current
+      : (auditHeading.current ?? historyHeading.current)
+    )?.focus();
+  });
   const items = [...(versions?.versions ?? []), ...(continued?.items ?? [])];
   const next = continued ? continued.next : (versions?.next_before_version ?? null);
   const selected = items.find((item) => item.standings_version === standings.standings_version);
@@ -83,7 +123,6 @@ export function LeagueStandingsHistory({
         items: [...(continued?.items ?? []), ...page.versions],
         next: page.next_before_version
       });
-      if (page.next_before_version === null) setLoadedAll(true);
     } catch {
       setFailed(true);
     } finally {
@@ -94,14 +133,24 @@ export function LeagueStandingsHistory({
   const retry = async (part: 'versions' | 'audit') => {
     if (retrying) return;
     setRetrying(part);
+    const requested = generation;
     try {
-      if (part === 'versions')
-        setRecoveredVersions(
-          await listLeagueStandingsVersions({
-            data: { league_id: league.id, before_version: null }
-          })
-        );
-      else setRecoveredAudit(await getLeagueStandingsAudit({ data: { league_id: league.id } }));
+      const result =
+        part === 'versions'
+          ? {
+              versions: await listLeagueStandingsVersions({
+                data: { league_id: league.id, before_version: null }
+              })
+            }
+          : { audit: await getLeagueStandingsAudit({ data: { league_id: league.id } }) };
+      setRecovered((previous) => ({
+        versions: null,
+        audit: null,
+        ...(previous && sameGeneration(previous, requested) ? previous : null),
+        ...requested,
+        ...result
+      }));
+      focusAfterRetry.current = part;
     } catch {
       // The unavailable state stays on screen with its retry.
     } finally {
@@ -115,7 +164,12 @@ export function LeagueStandingsHistory({
 
   return (
     <section aria-labelledby="league-history-heading" {...stylex.props(leagueStyles.content)}>
-      <h2 id="league-history-heading" {...stylex.props(leagueStyles.sectionTitle)}>
+      <h2
+        id="league-history-heading"
+        ref={historyHeading}
+        tabIndex={-1}
+        {...stylex.props(leagueStyles.sectionTitle)}
+      >
         {t('leagues.history.title')}
       </h2>
       {versions === null && (
@@ -138,6 +192,7 @@ export function LeagueStandingsHistory({
         </label>
         <select
           id="league-version-select"
+          ref={versionSelect}
           value={standings.standings_version}
           onChange={(event) => {
             const version = Number(event.target.value);
@@ -235,7 +290,12 @@ export function LeagueStandingsHistory({
       )}
       {audit && audit.events.length > 0 && (
         <section aria-labelledby="league-audit-heading" {...stylex.props(leagueStyles.content)}>
-          <h3 id="league-audit-heading" {...stylex.props(leagueStyles.sectionTitle)}>
+          <h3
+            id="league-audit-heading"
+            ref={auditHeading}
+            tabIndex={-1}
+            {...stylex.props(leagueStyles.sectionTitle)}
+          >
             {t('leagues.history.auditTitle')}
           </h3>
           <ul {...stylex.props(styles.auditList)}>

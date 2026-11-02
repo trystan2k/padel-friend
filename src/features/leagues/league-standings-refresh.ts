@@ -26,9 +26,13 @@ export function useRefreshWhenVisible(
     const run = () => {
       if (document.visibilityState !== 'visible' || running.current) return;
       running.current = true;
-      void latest.current().finally(() => {
-        running.current = false;
-      });
+      // A failed reload is retried by the next tick; it must not surface as an unhandled rejection.
+      void latest
+        .current()
+        .catch(() => undefined)
+        .finally(() => {
+          running.current = false;
+        });
     };
     const interval = setInterval(run, LEAGUE_STANDINGS_REFRESH_INTERVAL_MS);
     const cutoff = cutoffAt ? Date.parse(cutoffAt) : Number.NaN;

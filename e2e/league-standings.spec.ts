@@ -1,8 +1,10 @@
-import { expect, test, type Page, type TestInfo } from '@playwright/test';
+import { expect, test, type Locator, type Page, type TestInfo } from '@playwright/test';
 import { waitForHydratedPage } from './auth-helpers';
 import { copies, day, leagueFixtures } from './leagues-fixtures';
 import {
+  assertInInitialViewport,
   assertNoOverflow,
+  primaryRankingTargets,
   assertTouchHeights,
   docBox,
   measureStandingsFrame
@@ -111,6 +113,66 @@ const row = (page: Page, name: string) =>
 async function openAllStats(page: Page) {
   if (!(await region(page).isVisible())) await page.getByText(s.allStats, { exact: true }).click();
   await expect(region(page)).toBeVisible();
+}
+
+/**
+ * Exact compact-table column probe: the five primary columns in order (place, player, W–L–D, set
+ * difference, award), left to right without overlap, every header and the first row aligned on
+ * the same columns (the frame's avatar / GP sub-lines are an intentional, documented adaptation).
+ */
+async function assertCompactColumns(table: Locator, labels: string[], label: string) {
+  const headers = table.getByRole('columnheader');
+  await expect(headers).toHaveText(labels);
+  const boxes = await Promise.all((await headers.all()).map((header) => docBox(header)));
+  for (let index = 1; index < boxes.length; index++)
+    expect
+      .soft(boxes[index]!.x, `${label} column ${index} starts at/after column ${index - 1} ends`)
+      .toBeGreaterThanOrEqual(boxes[index - 1]!.right - 1);
+  const first = table.getByRole('row').nth(1);
+  const cellBoxes = await Promise.all(
+    [
+      first.getByRole('cell').nth(0),
+      first.getByRole('rowheader'),
+      first.getByRole('cell').nth(1),
+      first.getByRole('cell').nth(2),
+      first.getByRole('cell').nth(3)
+    ].map((cell) => docBox(cell))
+  );
+  cellBoxes.forEach((cell, index) => {
+    expect
+      .soft(cell.x, `${label} row cell ${index} aligns with its header`)
+      .toBeCloseTo(boxes[index]!.x, 0);
+    expect.soft(cell.width, `${label} row cell ${index} width`).toBeCloseTo(boxes[index]!.width, 0);
+  });
+}
+
+/** Own-summary card probe: place, set difference, matches in one row, left to right, inside the page. */
+async function assertSummaryCard(page: Page, label: string) {
+  const summary = page.locator('dl').filter({ has: page.getByText(s.yourPlace, { exact: true }) });
+  await expect(summary).toHaveCount(1);
+  const labels = [s.yourPlace, c.setDifferential, c.matches];
+  const stats = await Promise.all(
+    labels.map((text) => docBox(summary.locator('dt', { hasText: text }).locator('..')))
+  );
+  const card = await docBox(summary);
+  for (const [index, stat] of stats.entries()) {
+    expect
+      .soft(stat.x, `${label} summary stat ${index} inside card`)
+      .toBeGreaterThanOrEqual(card.x - 1);
+    expect
+      .soft(stat.right, `${label} summary stat ${index} inside card`)
+      .toBeLessThanOrEqual(card.right + 1);
+    expect
+      .soft(Math.abs(stat.y - stats[0]!.y), `${label} summary stats share one row`)
+      .toBeLessThanOrEqual(1);
+    if (index > 0)
+      expect
+        .soft(stat.x, `${label} summary stat order`)
+        .toBeGreaterThanOrEqual(stats[index - 1]!.right - 1);
+  }
+  expect.soft(card.x, `${label} summary card left`).toBeGreaterThanOrEqual(0);
+  expect.soft(card.right, `${label} summary card right`).toBeLessThanOrEqual(390);
+  return card;
 }
 
 /** Primary ranking row of the compact table: place, record, set difference, award. */
@@ -292,6 +354,18 @@ async function closeDialogVisual(page: Page) {
   expect
     .soft(upper!.bottom, 'd6ANDN actions are stacked, not overlapping')
     .toBeLessThanOrEqual(lower!.y);
+  // Accepted composition: Cancel first (holds initial focus), End second; identical column and width.
+  expect.soft(cancelBox.y, 'd6ANDN Cancel precedes End').toBeLessThan(confirmBox.y);
+  expect
+    .soft(Math.abs(cancelBox.x - confirmBox.x), 'd6ANDN actions share a left edge')
+    .toBeLessThanOrEqual(1);
+  expect
+    .soft(Math.abs(cancelBox.width - confirmBox.width), 'd6ANDN actions share a width')
+    .toBeLessThanOrEqual(1);
+  expect.soft(confirmBox.y, 'd6ANDN actions keep a gap').toBeGreaterThanOrEqual(cancelBox.bottom);
+  expect
+    .soft(Math.abs(box.x + box.width / 2 - 195), 'd6ANDN dialog is centered')
+    .toBeLessThanOrEqual(1);
   await assertNoOverflow(page, 'd6ANDN');
 }
 
@@ -301,6 +375,12 @@ test('ywfn7 active standings: Pencil frame budget and structure', async ({ brows
   await openLeague(page);
   await expect(page.getByText(s.live, { exact: true })).toBeVisible();
   await expect(page.getByText(s.yourPlace, { exact: true })).toBeVisible();
+  // F5: the primary ranking is visible in the initial viewport (no scrolling happened yet).
+  await assertInInitialViewport(
+    page,
+    primaryRankingTargets(page.getByRole('table', { name: s.title, exact: true })),
+    'ywfn7 initial viewport'
+  );
   await measureStandingsFrame(page, 'ywfn7', info);
 
   // Section order of the approved composition: standings heading + status, own summary, table, award callout.
@@ -338,6 +418,15 @@ test('ywfn7 active standings: Pencil frame budget and structure', async ({ brows
   expect
     .soft(currentBox.right, 'ywfn7 viewer row inside table')
     .toBeLessThanOrEqual(tableBox.right + 1);
+  const summaryCard = await assertSummaryCard(page, 'ywfn7');
+  expect
+    .soft(summaryCard.bottom, 'ywfn7 summary card precedes the table')
+    .toBeLessThanOrEqual(tableBox.y + 1);
+  await assertCompactColumns(
+    table,
+    [s.position, s.player, s.record, c.setDifferential, s.award],
+    'ywfn7'
+  );
   await assertNoOverflow(page, 'ywfn7');
   await assertTouchHeights(page.locator('main'), 'ywfn7');
 });
@@ -425,6 +514,19 @@ async function historyVisual(page: Page, info: TestInfo) {
     .soft(selectBox.y, 'xbIxj version select follows the final table')
     .toBeGreaterThan(tableBox.bottom);
   expect.soft(selectBox.height, 'xbIxj version select height').toBeGreaterThanOrEqual(44);
+  // Exact block order: own summary, final table, version select, then the late-first-confirmation notice.
+  const summaryCard = await assertSummaryCard(page, 'xbIxj');
+  expect
+    .soft(summaryCard.bottom, 'xbIxj summary card precedes the final table')
+    .toBeLessThanOrEqual(tableBox.y + 1);
+  expect
+    .soft(noticeBox.y, 'xbIxj notice follows the version select')
+    .toBeGreaterThan(selectBox.bottom);
+  await assertCompactColumns(
+    table,
+    [s.position, s.player, s.record, c.setDifferential, s.award],
+    'xbIxj'
+  );
   for (const box of [noticeBox, tableBox, selectBox]) {
     expect.soft(box.x, 'xbIxj block left edge').toBeGreaterThanOrEqual(0);
     expect.soft(box.right, 'xbIxj block right edge').toBeLessThanOrEqual(390);
@@ -531,6 +633,12 @@ test('final standings reflow at 320px in pt-BR dark mode with 44px targets and a
   await expect(primary.getByRole('columnheader')).toHaveCount(5);
   const own = primaryRow(page, f.creator.name, pt.standings.title);
   await expect(own).toContainText('1–0–1');
+  // Vertically too: header and first ranking row lie inside the first 320px-wide screen (before any scroll).
+  await assertInInitialViewport(
+    page,
+    primaryRankingTargets(primary),
+    'pt-BR 320px initial viewport'
+  );
   for (const cell of await own.getByRole('cell').all()) {
     const box = await cell.boundingBox();
     expect(box).not.toBeNull();

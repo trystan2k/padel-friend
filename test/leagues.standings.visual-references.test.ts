@@ -5,7 +5,7 @@ import manifest from '../e2e/references/paf-12/manifest.json';
 
 const digest = (bytes: Buffer) => createHash('sha256').update(bytes).digest('hex');
 const frames = ['ywfn7', 'd6ANDN', 'xbIxj'];
-const budgeted = ['ywfn7', 'xbIxj'];
+const budgeted: ('ywfn7' | 'xbIxj')[] = ['ywfn7', 'xbIxj'];
 
 describe('PAF-12 League standings visual references', () => {
   it('pins the source design digest to the current design bytes', () => {
@@ -30,7 +30,7 @@ describe('PAF-12 League standings visual references', () => {
   });
 
   it('pins measured nonzero budgets just above each residual with documented rationale', () => {
-    expect(manifest.visualBudgets.status).toBe('measured-chromium-viewport-pixel-difference');
+    expect(manifest.visualBudgets.status).toBe('measured-chromium-scoped-pixel-difference');
     expect(manifest.visualBudgets.measurementMethod).toContain('reject any dimension mismatch');
     expect(Object.keys(manifest.visualBudgets.perScreen).sort()).toEqual([...budgeted].sort());
     const measuredByFrame = new Map(Object.entries(manifest.visualBudgets.measured));
@@ -39,14 +39,42 @@ describe('PAF-12 League standings visual references', () => {
       expect(budget).toBeGreaterThan(0);
       // Budgets only absorb raster variance: a budget far above the residual would hide defects.
       expect(budget).toBeGreaterThanOrEqual(measured);
-      expect(budget - measured).toBeLessThan(0.02);
-      expect(budget).toBeLessThan(0.25);
+      expect(budget - measured).toBeLessThanOrEqual(0.02);
+      expect(budget).toBeLessThan(0.05);
     }
     expect(Object.keys(manifest.visualBudgets.perScreenRationale).sort()).toEqual(
       [...budgeted].sort()
     );
     for (const rationale of Object.values(manifest.visualBudgets.perScreenRationale))
       expect(rationale.trim().length).toBeGreaterThan(20);
+  });
+
+  it('scopes budgets to unmasked raster with bounded masks and documented composition deltas', () => {
+    const { referenceMasks, maxMaskedFraction, informationalFullFrame } = manifest.visualBudgets;
+    expect(Object.keys(referenceMasks).sort()).toEqual([...budgeted].sort());
+    for (const frame of budgeted) {
+      const rects = referenceMasks[frame];
+      expect(rects.length).toBeGreaterThan(0);
+      for (const rect of rects) {
+        expect(rect.name.length).toBeGreaterThan(3);
+        expect(rect.x).toBeGreaterThanOrEqual(0);
+        expect(rect.y).toBeGreaterThanOrEqual(0);
+        expect(rect.x + rect.width).toBeLessThanOrEqual(390);
+        expect(rect.y + rect.height).toBeLessThanOrEqual(844);
+      }
+      // Masks can never swallow the frame: the compared share stays at least 9%.
+      expect(maxMaskedFraction[frame]).toBeLessThanOrEqual(0.91);
+      // The full-frame residual stays visible as information, never as a budget.
+      expect(informationalFullFrame[frame]).toBeGreaterThan(
+        manifest.visualBudgets.perScreen[frame]
+      );
+    }
+    expect(Object.keys(manifest.compositionDeltas).sort()).toEqual([...frames].sort());
+    for (const deltas of Object.values(manifest.compositionDeltas))
+      for (const entry of deltas) {
+        expect(entry.delta.length).toBeGreaterThan(20);
+        expect(entry.probes.length).toBeGreaterThan(0);
+      }
   });
 
   it('keeps the modal close dialog structural-only instead of inventing a masking budget', () => {

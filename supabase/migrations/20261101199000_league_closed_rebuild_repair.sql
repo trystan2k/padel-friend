@@ -18,10 +18,17 @@ begin;
 --     for a closed League, the repair check. An open League is unchanged and never gets a version.
 --   * league_repair_closed_standings() keeps its signature and result.
 
-alter function public.rebuild_league_counters(uuid) rename to league_rebuild_counters_core;
+-- Rerunnable: rename only while the core does not exist yet. On a re-apply rebuild_league_counters
+-- is already the wrapper below, which must never be renamed over the core.
+do $$
+begin
+  if pg_catalog.to_regprocedure('public.league_rebuild_counters_core(uuid)') is null then
+    alter function public.rebuild_league_counters(uuid) rename to league_rebuild_counters_core;
+  end if;
+end $$;
 
 -- Caller holds the community lock and the League row lock.
-create function public.league_publish_repair_if_needed(p_league_id uuid) returns integer
+create or replace function public.league_publish_repair_if_needed(p_league_id uuid) returns integer
 language plpgsql
 security definer
 set search_path = ''
@@ -58,7 +65,7 @@ begin
   return v_version;
 end $$;
 
-create function public.rebuild_league_counters(p_league_id uuid) returns jsonb
+create or replace function public.rebuild_league_counters(p_league_id uuid) returns jsonb
 language plpgsql
 security definer
 set search_path = ''
