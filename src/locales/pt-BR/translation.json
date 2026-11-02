@@ -1540,6 +1540,7 @@
       "creationDisabled": "A criação de Ligas está desativada para membros nesta comunidade. Peça a um Admin para criar uma.",
       "empty": "Ainda não há Ligas.",
       "emptyHint": "Crie uma Liga para reunir um período de partidas ranqueadas.",
+      "truncated": "Mostrando as primeiras {{shown}} de {{total}} Ligas. As Ligas mais antigas não são listadas.",
       "sections": {
         "active": "Ativa",
         "upcoming": "Em breve",
@@ -1597,6 +1598,8 @@
       "setDifferential": "Saldo de sets",
       "empty": "Ainda não há participantes.",
       "unknownPlayer": "Jogador",
+      "unavailable": "Não foi possível carregar os contadores dos participantes. A Liga em si não foi afetada.",
+      "retry": "Tentar novamente",
       "excluded_one": "1 grupo Ranqueado confirmado ficou de fora porque não cumpre mais as regras Ranqueadas.",
       "excluded_other": "{{count}} grupos Ranqueados confirmados ficaram de fora porque não cumprem mais as regras Ranqueadas."
     },

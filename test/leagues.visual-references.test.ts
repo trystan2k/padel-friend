@@ -43,6 +43,24 @@ describe('PAF-11 League and Ranked visual references', () => {
       expect(budget).toBeGreaterThanOrEqual(measured);
       expect(budget - measured).toBeLessThan(0.02);
     }
+    // MYsDp certifies two validation variants; each is captured with its own budget and the
+    // frame envelope equals the worst variant.
+    const variants = manifest.visualBudgets.variantBudgets.MYsDp;
+    const variantMeasured = manifest.visualBudgets.variantMeasured.MYsDp;
+    expect(Object.keys(variants).sort()).toEqual(['endNotAfterStart', 'endRequired']);
+    expect(Object.keys(variantMeasured).sort()).toEqual(Object.keys(variants).sort());
+    expect(Object.keys(manifest.visualBudgets.variantRationale.MYsDp).sort()).toEqual(
+      Object.keys(variants).sort()
+    );
+    for (const variant of ['endNotAfterStart', 'endRequired'] as const) {
+      const budget = variants[variant];
+      const measured = variantMeasured[variant];
+      expect(budget).toBeGreaterThanOrEqual(measured);
+      expect(budget - measured).toBeLessThan(0.02);
+      expect(budget).toBeLessThan(0.29);
+    }
+    expect(manifest.visualBudgets.perScreen.MYsDp).toBe(Math.max(...Object.values(variants)));
+    expect(manifest.visualBudgets.measured.MYsDp).toBe(Math.max(...Object.values(variantMeasured)));
     expect(Object.keys(manifest.visualBudgets.perScreenRationale).sort()).toEqual(
       [...frames].sort()
     );

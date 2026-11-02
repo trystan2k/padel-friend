@@ -193,9 +193,14 @@ export function decodeLeagueCounters(value: unknown): LeagueCountersResult {
 }
 
 export function decodeLeagueList(value: unknown): LeagueListResult {
-  const row = exactObject(value, ['community', 'leagues']);
+  const row = exactObject(value, ['community', 'leagues', 'total', 'truncated']);
   if (!Array.isArray(row.leagues)) return fail();
-  return { community: decodeCommunity(row.community), leagues: row.leagues.map(decodeLeagueDto) };
+  return {
+    community: decodeCommunity(row.community),
+    leagues: row.leagues.map(decodeLeagueDto),
+    total: count(row.total),
+    truncated: boolean(row.truncated)
+  };
 }
 
 export function decodeLeagueDetail(value: unknown): LeagueDetailResult {

@@ -83,7 +83,13 @@ export type LeagueCountersResult = {
   excluded_group_count: number;
 };
 
-export type LeagueListResult = { community: LeagueCommunityDto; leagues: LeagueDto[] };
+export type LeagueListResult = {
+  community: LeagueCommunityDto;
+  leagues: LeagueDto[];
+  /** Every League of the community; `leagues` is capped, so `truncated` flags a cut-off list. */
+  total: number;
+  truncated: boolean;
+};
 export type LeagueDetailResult = { community: LeagueCommunityDto; league: LeagueDto };
 
 export type CreateLeagueInput = {

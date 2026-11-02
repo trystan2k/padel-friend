@@ -83,6 +83,13 @@ export function MatchEditDialog({
     competitive ? resolution.competition : null
   );
   const impact = competitionEffect(before, after) !== 'unchanged';
+  // While the options are unresolved an empty candidate list resolves to Unranked, which the
+  // organizer never chose: hold the save until they load (or fail and are retried).
+  const competitionUnresolved =
+    competitive &&
+    draft.competitionChoice === 'ranked' &&
+    options.status !== 'ready' &&
+    resolution.competition === 'unranked';
   const rejectionWindow = competitionImpactWindow(action.rejection?.detail?.league ?? null);
   const change = <K extends keyof MatchEditDraft>(key: K, value: MatchEditDraft[K]) => {
     setDraft((current) => ({ ...current, [key]: value }));
@@ -90,7 +97,7 @@ export function MatchEditDialog({
     action.clearRejection();
   };
   async function submit(next: MatchEditDraft) {
-    if (action.pending || action.conflict || saved) return;
+    if (action.pending || action.conflict || saved || competitionUnresolved) return;
     const effective = resolveMatchCompetition(next.competitionChoice, next.leagueId, candidates);
     const { patch, errors: found } = validateMatchEditDraft(
       {
@@ -353,7 +360,13 @@ export function MatchEditDialog({
               <button
                 type="submit"
                 {...stylex.props(s.button, edit.button, edit.primary)}
-                disabled={action.pending || action.conflict || saved || !!action.unavailable}
+                disabled={
+                  action.pending ||
+                  action.conflict ||
+                  saved ||
+                  !!action.unavailable ||
+                  competitionUnresolved
+                }
                 aria-busy={action.pending}
               >
                 {t('matches.management.edit.save')}

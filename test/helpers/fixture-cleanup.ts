@@ -323,8 +323,11 @@ export class FixtureCleanupRegistry {
     const leagues = `SELECT id FROM public.leagues WHERE ${scopes.join(' OR ')}`;
     return [
       'ALTER TABLE public.league_events DISABLE TRIGGER league_events_immutable',
+      'ALTER TABLE public.league_event_references DISABLE TRIGGER league_event_references_immutable',
       `DELETE FROM public.league_events WHERE league_id IN (${leagues})`,
+      `DELETE FROM public.league_event_references WHERE league_id IN (${leagues})`,
       `DELETE FROM public.leagues WHERE id IN (${leagues})`,
+      'ALTER TABLE public.league_event_references ENABLE TRIGGER league_event_references_immutable',
       'ALTER TABLE public.league_events ENABLE TRIGGER league_events_immutable'
     ];
   }

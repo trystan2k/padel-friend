@@ -1,6 +1,7 @@
 /** @vitest-environment jsdom */
 import { cleanup, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import type { ComponentProps } from 'react';
 import { I18nextProvider } from 'react-i18next';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { LeagueDto } from '../src/features/leagues/league-contracts';
@@ -43,6 +44,19 @@ import {
   makeManualLeagueDto
 } from './helpers/league-dto-fixtures';
 
+const emptyCounters = {
+  league_id: '22222222-2222-4222-8222-222222222222',
+  excluded_group_count: 0,
+  participants: []
+};
+/** The detail page with loaded (empty) counters unless a test passes its own, or null for a failed read. */
+function Detail({
+  counters = emptyCounters,
+  ...props
+}: Partial<ComponentProps<typeof LeagueDetailPage>> &
+  Pick<ComponentProps<typeof LeagueDetailPage>, 'data'>) {
+  return <LeagueDetailPage {...props} counters={counters} />;
+}
 const wrap = (node: React.ReactNode, locale: 'en' | 'pt-BR' | 'es' = 'en') => (
   <I18nextProvider i18n={createI18n(locale)}>{node}</I18nextProvider>
 );
@@ -109,6 +123,28 @@ describe('League list and entries', () => {
     expect(screen.getByText('No Leagues yet.')).toBeTruthy();
   });
 
+  it('tells the reader when the list is cut off, translated', () => {
+    const leagues = [makeLeagueDto()];
+    render(
+      wrap(<LeagueListPage data={makeLeagueList(leagues, {}, { total: 201, truncated: true })} />)
+    );
+    expect(screen.getByRole('status').textContent).toBe(
+      'Showing the first 1 of 201 Leagues. Older Leagues are not listed.'
+    );
+    cleanup();
+    render(wrap(<LeagueListPage data={makeLeagueList(leagues)} />));
+    expect(screen.queryByRole('status')).toBeNull();
+    cleanup();
+    render(
+      wrap(
+        <LeagueListPage data={makeLeagueList(leagues, {}, { total: 201, truncated: true })} />,
+        'pt-BR'
+      )
+    );
+    expect(screen.getByRole('status').textContent).toContain('201');
+    expect(screen.getByRole('status').textContent).not.toContain('Showing');
+  });
+
   it('links every active community from the dashboard entry, for members as well as Admins', () => {
     render(
       wrap(
@@ -158,20 +194,45 @@ describe('League detail management', () => {
         }
       ]
     };
-    render(wrap(<LeagueDetailPage data={makeLeagueDetail()} counters={counters} />));
+    render(wrap(<Detail data={makeLeagueDetail()} counters={counters} />));
     const section = screen.getByRole('region', { name: 'Participants' });
     expect(within(section).getByText('Provisional Pat')).toBeTruthy();
     expect(within(section).getByText('Provisional')).toBeTruthy();
     cleanup();
-    render(wrap(<LeagueDetailPage data={makeLeagueDetail()} counters={null} />));
-    expect(screen.queryByRole('region', { name: 'Participants' })).toBeNull();
+    render(wrap(<Detail data={makeLeagueDetail()} counters={null} />));
     expect(screen.getByRole('heading', { level: 1 })).toBeTruthy();
+  });
+
+  it('shows a translated unavailable state with retry when the counters could not load', async () => {
+    render(wrap(<Detail data={makeLeagueDetail()} counters={null} />));
+    const section = screen.getByRole('region', { name: 'Participants' });
+    expect(
+      within(section).getByText(
+        'Participant counters could not be loaded. The League itself is unaffected.'
+      )
+    ).toBeTruthy();
+    await userEvent.click(within(section).getByRole('button', { name: 'Retry' }));
+    expect(mocks.invalidate).toHaveBeenCalledTimes(1);
+    expect(screen.getByRole('heading', { level: 1 })).toBeTruthy();
+  });
+
+  it.each([
+    ['pt-BR', 'Tentar novamente'],
+    ['es', 'Reintentar']
+  ] as const)('translates the unavailable counters state: %s', (locale, retry) => {
+    render(
+      <I18nextProvider i18n={createI18n(locale)}>
+        <Detail data={makeLeagueDetail()} counters={null} />
+      </I18nextProvider>
+    );
+    expect(screen.getByRole('button', { name: retry })).toBeTruthy();
+    expect(screen.queryByText(/could not be loaded/)).toBeNull();
   });
 
   it('hides every control from someone who cannot manage the League', () => {
     render(
       wrap(
-        <LeagueDetailPage
+        <Detail
           data={makeLeagueDetail({
             can_manage: false,
             blocked_reason: 'explicit_activation_required',
@@ -190,7 +251,7 @@ describe('League detail management', () => {
     mocks.activateLeague.mockResolvedValue(makeLeagueDto({ status: 'active', version: 4 }));
     render(
       wrap(
-        <LeagueDetailPage
+        <Detail
           data={makeLeagueDetail({ version: 3, blocked_reason: 'explicit_activation_required' })}
         />
       )
@@ -206,19 +267,17 @@ describe('League detail management', () => {
   });
 
   it('offers activation for a due League and none for one that is not due', () => {
-    render(wrap(<LeagueDetailPage data={makeLeagueDetail({ activation_due: true })} />));
+    render(wrap(<Detail data={makeLeagueDetail({ activation_due: true })} />));
     expect(screen.getByRole('button', { name: 'Activate League' })).toBeTruthy();
     cleanup();
-    render(wrap(<LeagueDetailPage data={makeLeagueDetail({ activation_due: false })} />));
+    render(wrap(<Detail data={makeLeagueDetail({ activation_due: false })} />));
     expect(screen.queryByRole('button', { name: 'Activate League' })).toBeNull();
   });
 
   it('explains an activation refused because another League is Active', async () => {
     const user = userEvent.setup();
     mocks.activateLeague.mockRejectedValue(new Error('LEAGUE_ACTIVE_EXISTS'));
-    render(
-      wrap(<LeagueDetailPage data={makeLeagueDetail({ blocked_reason: 'active_league_exists' })} />)
-    );
+    render(wrap(<Detail data={makeLeagueDetail({ blocked_reason: 'active_league_exists' })} />));
     expect(screen.getByText(/Another League is Active/)).toBeTruthy();
     await user.click(screen.getByRole('button', { name: 'Activate League' }));
     expect((await screen.findByRole('alert')).textContent).toBe(
@@ -238,7 +297,7 @@ describe('League detail management', () => {
     );
     render(
       wrap(
-        <LeagueDetailPage
+        <Detail
           data={makeLeagueDetail({ ...makeManualLeagueDto({ status: 'active', version: 2 }) })}
         />
       )
@@ -265,14 +324,14 @@ describe('League detail management', () => {
   });
 
   it('never offers a manual close for a Fixed League', () => {
-    render(wrap(<LeagueDetailPage data={makeLeagueDetail({ status: 'active' })} />));
+    render(wrap(<Detail data={makeLeagueDetail({ status: 'active' })} />));
     expect(screen.queryByRole('button', { name: 'Close League' })).toBeNull();
   });
 
   it('reloads and explains a version conflict', async () => {
     const user = userEvent.setup();
     mocks.updateLeague.mockRejectedValue(new Error('LEAGUE_VERSION_CONFLICT'));
-    render(wrap(<LeagueDetailPage data={makeLeagueDetail()} />));
+    render(wrap(<Detail data={makeLeagueDetail()} />));
     await user.click(screen.getByRole('button', { name: 'Edit League' }));
     const name = screen.getByLabelText('League name');
     await user.clear(name);
@@ -287,7 +346,7 @@ describe('League detail management', () => {
   it('edits only what changed and keeps the period untouched on a rename', async () => {
     const user = userEvent.setup();
     mocks.updateLeague.mockResolvedValue(makeLeagueDto({ name: 'Renamed', version: 2 }));
-    render(wrap(<LeagueDetailPage data={makeLeagueDetail()} />));
+    render(wrap(<Detail data={makeLeagueDetail()} />));
     await user.click(screen.getByRole('button', { name: 'Edit League' }));
     const name = screen.getByLabelText('League name');
     await user.clear(name);
@@ -304,7 +363,7 @@ describe('League detail management', () => {
   it('sends the whole period change when switching to an open-ended League', async () => {
     const user = userEvent.setup();
     mocks.updateLeague.mockResolvedValue(makeManualLeagueDto({ version: 2 }));
-    render(wrap(<LeagueDetailPage data={makeLeagueDetail()} />));
+    render(wrap(<Detail data={makeLeagueDetail()} />));
     await user.click(screen.getByRole('button', { name: 'Edit League' }));
     await user.click(screen.getByRole('radio', { name: /Open-ended · manual/ }));
     await user.click(screen.getByRole('button', { name: 'Save changes' }));
@@ -319,7 +378,7 @@ describe('League detail management', () => {
 
   it('locks the period fields once events use the League but keeps naming editable', async () => {
     const user = userEvent.setup();
-    render(wrap(<LeagueDetailPage data={makeLeagueDetail({ period_locked: true })} />));
+    render(wrap(<Detail data={makeLeagueDetail({ period_locked: true })} />));
     await user.click(screen.getByRole('button', { name: 'Edit League' }));
     expect(screen.getByLabelText('Start date').hasAttribute('disabled')).toBe(true);
     expect(screen.getByLabelText(/End date/).hasAttribute('disabled')).toBe(true);
@@ -335,7 +394,7 @@ describe('League detail management', () => {
   it('shows who closed it and why for a closed League, translated', () => {
     render(
       wrap(
-        <LeagueDetailPage
+        <Detail
           data={makeLeagueDetail({
             status: 'closed',
             closed_at: '2030-12-20T22:59:59.999999Z',

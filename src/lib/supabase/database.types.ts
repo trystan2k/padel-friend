@@ -428,6 +428,33 @@ export type Database = {
           },
         ]
       }
+      league_event_references: {
+        Row: {
+          first_referenced_at: string
+          league_id: string
+          match_event_id: string
+        }
+        ComputedFields: never
+        Insert: {
+          first_referenced_at?: string
+          league_id: string
+          match_event_id: string
+        }
+        Update: {
+          first_referenced_at?: string
+          league_id?: string
+          match_event_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "league_event_references_league_id_fkey"
+            columns: ["league_id"]
+            isOneToOne: false
+            referencedRelation: "leagues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       league_events: {
         Row: {
           action: string

@@ -144,6 +144,15 @@ describe('League response decoders', () => {
     expect(decodeLeagueDetail(detail)).toEqual(detail);
   });
 
+  it('requires the list total and truncation indicator', () => {
+    const cut = makeLeagueList([makeLeagueDto()], {}, { total: 201, truncated: true });
+    expect(decodeLeagueList(cut)).toMatchObject({ total: 201, truncated: true });
+    const { truncated: _truncated, ...withoutTruncated } = cut;
+    expect(() => decodeLeagueList(withoutTruncated)).toThrow('INVALID_LEAGUE_RESPONSE');
+    expect(() => decodeLeagueList({ ...cut, total: -1 })).toThrow('INVALID_LEAGUE_RESPONSE');
+    expect(() => decodeLeagueList({ ...cut, truncated: 'yes' })).toThrow('INVALID_LEAGUE_RESPONSE');
+  });
+
   it.each([
     ['extra key', { ...makeLeagueDto(), leaked: 1 }],
     ['missing key', (({ version: _v, ...rest }) => rest)(makeLeagueDto())],

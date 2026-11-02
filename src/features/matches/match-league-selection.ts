@@ -22,6 +22,8 @@ export type MatchCompetitionResolution =
  * - No eligible League means Unranked; exactly one defaults to Ranked with that League shown.
  * - Several Leagues keep Ranked intent with no selected League until the player picks one
  *   (or opts out), so publication is blocked rather than guessing.
+ * - A selected League that stops being eligible keeps Ranked intent with no League selected,
+ *   whatever else remains: the player re-selects or explicitly opts out.
  */
 export function resolveMatchCompetition(
   choice: MatchCompetitionChoice,
@@ -31,7 +33,10 @@ export function resolveMatchCompetition(
   if (choice === 'unranked' || candidates.length === 0)
     return { competition: 'unranked', league: null, needsSelection: false };
   const picked = candidates.find((candidate) => candidate.id === leagueId) ?? null;
-  const league = picked ?? (candidates.length === 1 ? (candidates[0] ?? null) : null);
+  // Only an absent selection defaults to the single candidate: an explicit pick that became
+  // ineligible is never silently replaced by a League the player did not choose.
+  const league =
+    picked ?? (leagueId === '' && candidates.length === 1 ? (candidates[0] ?? null) : null);
   return { competition: 'ranked', league, needsSelection: league === null };
 }
 

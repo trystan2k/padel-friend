@@ -65,6 +65,21 @@ describe('resolveMatchCompetition', () => {
     expect(resolveMatchCompetition('auto', leagueB.id, [leagueA, leagueB]).league).toBe(leagueB);
   });
 
+  it('never replaces an explicit selection that became ineligible with a different single candidate', () => {
+    // The player picked League B; after a schedule change only League A remains eligible.
+    expect(resolveMatchCompetition('ranked', leagueB.id, [leagueA])).toEqual({
+      competition: 'ranked',
+      league: null,
+      needsSelection: true
+    });
+    // No stale selection: the single candidate is still the default.
+    expect(resolveMatchCompetition('ranked', '', [leagueA]).league).toBe(leagueA);
+    // The explicit selection survives while it stays eligible.
+    expect(resolveMatchCompetition('ranked', leagueB.id, [leagueB]).league).toBe(leagueB);
+    // An explicit Unranked is still the way out.
+    expect(resolveMatchCompetition('unranked', leagueB.id, [leagueA]).needsSelection).toBe(false);
+  });
+
   it('honors a deliberate opt-out for any candidate set', () => {
     expect(resolveMatchCompetition('unranked', leagueA.id, [leagueA]).competition).toBe('unranked');
     expect(resolveMatchCompetition('unranked', '', [leagueA, leagueB]).needsSelection).toBe(false);

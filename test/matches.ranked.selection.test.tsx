@@ -202,6 +202,28 @@ describe('Ranked League selection in the create-match wizard', () => {
     expect(publishInput()).toMatchObject({ competition: 'ranked', league_id: summerId });
   });
 
+  it('keeps an explicit League pick from being replaced when only another League stays eligible', async () => {
+    const user = userEvent.setup();
+    mocks.leagues.mockResolvedValue(leagueResult([spring, summer]));
+    await mount();
+    await makeCompetitive(user);
+    await waitFor(() => expect(leagueSelect().value).toBe(''));
+    await user.selectOptions(leagueSelect(), summerId);
+    expect(leagueSelect().value).toBe(summerId);
+
+    // The new schedule leaves only Spring eligible: it must not be bound silently.
+    mocks.leagues.mockResolvedValue(leagueResult([spring]));
+    await user.clear(screen.getByLabelText(en.matchCreate.fields.startTime));
+    await user.type(screen.getByLabelText(en.matchCreate.fields.startTime), '19:00');
+    await waitFor(() => expect(leagueSelect().value).toBe(''));
+    expect(radio(en.matches.competition.ranked).checked).toBe(true);
+    await readyToPublish(user);
+    await toReview(user);
+    await user.click(screen.getByRole('button', { name: en.matchCreate.publish }));
+    await screen.findByText(en.matchCreate.errors.leagueRequired);
+    expect(mocks.publish).not.toHaveBeenCalled();
+  });
+
   it('never resets a deliberate Unranked choice across schedule, type and option reloads', async () => {
     const user = userEvent.setup();
     mocks.leagues.mockResolvedValue(leagueResult([spring]));

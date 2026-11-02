@@ -86,6 +86,11 @@ export function MatchEditCompetitionField({
       <p id={`${id}-guidance`} {...stylex.props(edit.copy)}>
         {t(`matches.management.edit.competition.${guidanceKey}`)}
       </p>
+      {status === 'error' && (
+        <button type="button" {...stylex.props(s.button, edit.button)} onClick={competition.retry}>
+          {t('matches.retry')}
+        </button>
+      )}
       {error && (
         <span id={`${id}-error`} role="alert">
           {t(`matchCreate.errors.${error}`)}

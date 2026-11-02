@@ -1540,6 +1540,7 @@
       "creationDisabled": "La creación de Ligas está desactivada para los miembros de esta comunidad. Pide a un Admin que cree una.",
       "empty": "Aún no hay Ligas.",
       "emptyHint": "Crea una Liga para agrupar un periodo de partidos clasificatorios.",
+      "truncated": "Mostrando las primeras {{shown}} de {{total}} Ligas. Las Ligas más antiguas no aparecen en la lista.",
       "sections": {
         "active": "Activa",
         "upcoming": "Próximas",
@@ -1597,6 +1598,8 @@
       "setDifferential": "Diferencia de sets",
       "empty": "Aún no hay participantes.",
       "unknownPlayer": "Jugador",
+      "unavailable": "No se pudieron cargar los contadores de los participantes. La Liga en sí no se ha visto afectada.",
+      "retry": "Reintentar",
       "excluded_one": "1 grupo Clasificatorio confirmado quedó fuera porque ya no cumple las reglas Clasificatorias.",
       "excluded_other": "{{count}} grupos Clasificatorios confirmados quedaron fuera porque ya no cumplen las reglas Clasificatorias."
     },

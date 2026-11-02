@@ -68,7 +68,60 @@ async function assertNoOverflow(page: Page, label: string) {
   expect(metrics.clipped, `${label} controls outside viewport`).toEqual([]);
 }
 
-/** Interactive controls (or the label that hosts a custom radio) are at least 44px tall. */
+// Reference geometry at half scale (Pencil 2x export / 2): the content column keeps an 18px
+// margin on each side (x 18..372 on 390px).
+const MARGIN = 18;
+const GEOMETRY_TOLERANCE = 2;
+
+/**
+ * Exact column geometry: the control's edges sit on the reference content column (or, for
+ * `inset` children, inside it). Independent of the raster budget, so structural drift fails here.
+ */
+async function assertColumn(
+  locator: Locator,
+  label: string,
+  { fullWidth = true, tolerance = GEOMETRY_TOLERANCE, maxInset = 16, viewport = 390 } = {}
+) {
+  const column = { left: MARGIN, right: viewport - MARGIN };
+  const rect = await box(locator);
+  // The widest ancestor that still fits the column is the control's section box (the Pencil
+  // frame draws the field as that card). Production nests the control inside it with padding.
+  const section = await locator.evaluate(
+    (element, columnWidth) => {
+      let widest = element.getBoundingClientRect();
+      for (
+        let parent = element.parentElement;
+        parent && parent.tagName !== 'MAIN';
+        parent = parent.parentElement
+      ) {
+        const parentRect = parent.getBoundingClientRect();
+        if (parentRect.width > columnWidth) break;
+        widest = parentRect;
+      }
+      return { x: widest.x, right: widest.right };
+    },
+    column.right - column.left + 2
+  );
+  console.info(`${label} geometry: ${JSON.stringify({ rect, section })}`);
+  expect.soft(rect.x, `${label} left edge`).toBeGreaterThanOrEqual(column.left - tolerance);
+  expect.soft(rect.right, `${label} right edge`).toBeLessThanOrEqual(column.right + tolerance);
+  if (fullWidth) {
+    expect
+      .soft(Math.abs(section.x - column.left), `${label} section aligned to column`)
+      .toBeLessThanOrEqual(tolerance);
+    expect
+      .soft(Math.abs(section.right - column.right), `${label} section spans column`)
+      .toBeLessThanOrEqual(tolerance);
+    expect.soft(rect.x - section.x, `${label} left inset`).toBeLessThanOrEqual(maxInset);
+    expect.soft(section.right - rect.right, `${label} right inset`).toBeLessThanOrEqual(maxInset);
+  }
+  return rect;
+}
+
+/**
+ * Interactive controls (or the label that hosts a custom radio) are at least 44×44px: the
+ * documented WCAG 2.5.5 / project rule applied to both axes of the rendered hit area.
+ */
 async function assertTouchTargets(root: Locator, label: string) {
   const targets = await root
     .locator(
@@ -84,17 +137,24 @@ async function assertTouchTargets(root: Locator, label: string) {
         };
       })
     );
-  for (const target of targets)
+  expect.soft(targets.length, `${label}: touch-target probe found controls`).toBeGreaterThan(0);
+  for (const target of targets) {
     expect.soft(target.height, `${label}: ${target.name} touch height`).toBeGreaterThanOrEqual(44);
+    expect.soft(target.width, `${label}: ${target.name} touch width`).toBeGreaterThanOrEqual(44);
+  }
 }
 
-async function measure(page: Page, frame: Frame, info: TestInfo) {
+type Variant = keyof typeof manifest.visualBudgets.variantBudgets.MYsDp;
+
+/** `variant` selects a per-variant budget for frames that certify several states (MYsDp). */
+async function measure(page: Page, frame: Frame, info: TestInfo, variant?: Variant) {
   const { width, height } = sizes[frame];
+  const name = variant ? `${frame}-${variant}` : frame;
   await page.setViewportSize({ width, height });
   const actual = await page.screenshot({
     animations: 'disabled',
     caret: 'hide',
-    path: info.outputPath(`${frame}-actual.png`)
+    path: info.outputPath(`${name}-actual.png`)
   });
   const approved = readFileSync(new URL(`./references/paf-11/${frame}.png`, import.meta.url));
   const measured = await page.evaluate(
@@ -145,8 +205,10 @@ async function measure(page: Page, frame: Frame, info: TestInfo) {
       approvedUrl: `data:image/png;base64,${approved.toString('base64')}`
     }
   );
-  console.info(`${frame} PAF-11 full-frame measurement: ${JSON.stringify(measured)}`);
-  const budget = manifest.visualBudgets.perScreen[frame];
+  console.info(`${name} PAF-11 full-frame measurement: ${JSON.stringify(measured)}`);
+  const budget = variant
+    ? manifest.visualBudgets.variantBudgets.MYsDp[variant]
+    : manifest.visualBudgets.perScreen[frame];
   expect
     .soft(measured.dimensionMismatch, `${frame} dimensions must match the 2x Pencil export`)
     .toBe(false);
@@ -155,8 +217,8 @@ async function measure(page: Page, frame: Frame, info: TestInfo) {
     expect
       .soft(measured.perceptualPixelDifference, `${frame} reviewed raster budget`)
       .toBeLessThanOrEqual(budget);
-  await info.attach(`${frame}-actual`, { body: actual, contentType: 'image/png' });
-  await info.attach(`${frame}-approved`, { body: approved, contentType: 'image/png' });
+  await info.attach(`${name}-actual`, { body: actual, contentType: 'image/png' });
+  await info.attach(`${name}-approved`, { body: approved, contentType: 'image/png' });
   return measured;
 }
 
@@ -194,6 +256,14 @@ test('ik5JC League creation: Pencil frame budget and structure', async ({
     expect(boxes[index]!.y, `section ${index} follows ${index - 1}`).toBeGreaterThanOrEqual(
       boxes[index - 1]!.y - 1
     );
+  // Exact geometry (reference column 18..372): full-width fields, mode group, submit and guidance.
+  await assertColumn(order[1]!, 'ik5JC name field');
+  await assertColumn(order[2]!, 'ik5JC end-mode group');
+  await assertColumn(order[5]!, 'ik5JC minimum field');
+  const submit = await assertColumn(order[6]!, 'ik5JC submit');
+  expect.soft(submit.height, 'ik5JC submit height').toBeGreaterThanOrEqual(44);
+  expect.soft(submit.height, 'ik5JC submit height').toBeLessThanOrEqual(52);
+  await assertColumn(order[7]!, 'ik5JC guidance', { fullWidth: false });
   await assertNoOverflow(page, 'ik5JC');
   await assertTouchTargets(page.locator('main'), 'ik5JC');
 });
@@ -260,6 +330,21 @@ test('wHaAb Create match Ranked selector: Pencil frame budget and structure', as
   await page.keyboard.press('ArrowUp');
   await expect(select).toBeVisible();
 
+  // Exact geometry: competition group and League selector stay inside the reference column, the
+  // radios sit inside the group, and the guidance is a child of the group (association by box).
+  const groupBox = await assertColumn(group, 'wHaAb competition group', { fullWidth: false });
+  const selectBox = await assertColumn(select, 'wHaAb League selector', { fullWidth: false });
+  expect.soft(selectBox.width, 'wHaAb League selector is a full-row control').toBeGreaterThan(200);
+  for (const part of [boxes[1]!, boxes[2]!, selectBox, boxes[4]!]) {
+    expect.soft(part.x, 'wHaAb part inside group left').toBeGreaterThanOrEqual(groupBox.x - 1);
+    expect
+      .soft(part.right, 'wHaAb part inside group right')
+      .toBeLessThanOrEqual(groupBox.right + 1);
+    expect.soft(part.y, 'wHaAb part inside group top').toBeGreaterThanOrEqual(groupBox.y - 1);
+    expect
+      .soft(part.bottom, 'wHaAb part inside group bottom')
+      .toBeLessThanOrEqual(groupBox.bottom + 1);
+  }
   await assertNoOverflow(page, 'wHaAb');
   await assertTouchTargets(group, 'wHaAb competition');
   const radioLabels = await group
@@ -292,32 +377,77 @@ test('MYsDp validation and conflict variants: association, live errors, focus', 
   await page.getByLabel(t.form.nameLabel, { exact: true }).fill('Autumn League');
   await page.getByLabel(t.form.startDateLabel, { exact: true }).fill(day(20));
   await page.getByLabel(t.form.endDateLabel, { exact: true }).fill(day(10));
-  await page.getByRole('button', { name: t.form.submit, exact: true }).click();
   const end = page.getByLabel(t.form.endDateLabel, { exact: true });
-  await expect(end).toBeFocused();
-  await expect(end).toHaveAttribute('aria-invalid', 'true');
-  const describedBy = (await end.getAttribute('aria-describedby'))?.split(' ') ?? [];
-  const messages = await Promise.all(
-    describedBy.map((id) => page.locator(`[id="${id}"]`).textContent())
-  );
-  expect(messages.join(' ')).toContain(t.form.errors.endNotAfterStart);
-  await expect(
-    page.getByRole('alert').filter({ hasText: t.form.errors.endNotAfterStart })
-  ).toBeVisible();
-  await end.fill('');
-  await page.getByRole('button', { name: t.form.submit, exact: true }).click();
-  await expect(
-    page.getByRole('alert').filter({ hasText: t.form.errors.endRequired })
-  ).toBeVisible();
-
-  const errorColor = await page
-    .getByRole('alert')
-    .filter({ hasText: t.form.errors.endRequired })
+  const submit = page.getByRole('button', { name: t.form.submit, exact: true });
+  const bodyColor = await page
+    .locator('main')
     .evaluate((element) => getComputedStyle(element).color);
-  expect(errorColor).not.toBe(
-    await page.locator('main').evaluate((element) => getComputedStyle(element).color)
-  );
-  await assertNoOverflow(page, 'MYsDp');
+
+  /** One validation variant: exact copy, association, alert, colour and geometry, then capture. */
+  async function certifyVariant(
+    variant: 'endNotAfterStart' | 'endRequired',
+    message: string,
+    expectedFocus: boolean
+  ) {
+    await submit.click();
+    const alert = page.getByRole('alert').filter({ hasText: message });
+    await expect(alert).toBeVisible();
+    // Exactly the variant's message is announced; the other variant's copy is not shown.
+    const other =
+      variant === 'endRequired' ? t.form.errors.endNotAfterStart : t.form.errors.endRequired;
+    await expect(page.getByRole('alert').filter({ hasText: other })).toHaveCount(0);
+    if (expectedFocus) await expect(end).toBeFocused();
+    await expect(end).toHaveAttribute('aria-invalid', 'true');
+    const describedBy = (await end.getAttribute('aria-describedby'))?.split(' ') ?? [];
+    const messages = await Promise.all(
+      describedBy.map((id) => page.locator(`[id="${id}"]`).textContent())
+    );
+    expect(messages.join(' '), `${variant} message associated with the end field`).toContain(
+      message
+    );
+    expect(await alert.evaluate((element) => getComputedStyle(element).color)).not.toBe(bodyColor);
+
+    // Exact geometry: the error line sits directly under its own field, inside the same column.
+    const fieldBox = await box(end);
+    const alertBox = await box(alert);
+    console.info(`MYsDp ${variant} geometry: ${JSON.stringify({ fieldBox, alertBox })}`);
+    expect
+      .soft(alertBox.y, `${variant} error below its field`)
+      .toBeGreaterThanOrEqual(fieldBox.bottom - 1);
+    expect
+      .soft(alertBox.y - fieldBox.bottom, `${variant} error adjacent to its field`)
+      .toBeLessThanOrEqual(32);
+    expect
+      .soft(alertBox.x, `${variant} error aligned with field`)
+      .toBeGreaterThanOrEqual(fieldBox.x - 2);
+    expect
+      .soft(alertBox.right, `${variant} error within field column`)
+      .toBeLessThanOrEqual(fieldBox.right + 2);
+    await assertColumn(end, `MYsDp ${variant} end field`, { viewport: 431 });
+    await assertNoOverflow(page, `MYsDp ${variant}`);
+
+    // Frame capture of this variant at the reference viewport.
+    // Bring the variant's own error into the captured viewport (the conflict card is above it).
+    await alert.scrollIntoViewIfNeeded();
+    await measure(page, 'MYsDp', info, variant);
+  }
+
+  const noteBox = await assertColumn(note, 'MYsDp conflict card', {
+    fullWidth: false,
+    viewport: 431
+  });
+  const reviewBox = await box(review);
+  expect.soft(reviewBox.y, 'review link follows the conflict body').toBeGreaterThan(noteBox.y);
+  expect
+    .soft(reviewBox.bottom, 'review link inside the conflict card')
+    .toBeLessThanOrEqual(noteBox.bottom + 1);
+  expect
+    .soft(reviewBox.x, 'review link inside the conflict card')
+    .toBeGreaterThanOrEqual(noteBox.x - 1);
+
+  await certifyVariant('endNotAfterStart', t.form.errors.endNotAfterStart, true);
+  await end.fill('');
+  await certifyVariant('endRequired', t.form.errors.endRequired, false);
 
   // Keyboard: the mode radios switch with arrow keys and the date field follows.
   await page.getByRole('radio', { name: new RegExp(t.form.mode.fixed_date) }).focus();
@@ -325,10 +455,6 @@ test('MYsDp validation and conflict variants: association, live errors, focus', 
   await expect(page.getByLabel(t.form.endDateLabel, { exact: true })).toHaveCount(0);
   await page.keyboard.press('ArrowUp');
   await expect(page.getByLabel(t.form.endDateLabel, { exact: true })).toBeVisible();
-
-  // Frame capture: the conflict + edge-state region at the reference viewport.
-  await page.getByRole('note').scrollIntoViewIfNeeded();
-  await measure(page, 'MYsDp', info);
 });
 
 test('required League choice is announced and associated when several Leagues overlap', async () => {

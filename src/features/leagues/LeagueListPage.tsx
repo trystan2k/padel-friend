@@ -36,7 +36,7 @@ function LeagueListItem({ league }: { league: LeagueDto }) {
 
 export function LeagueListPage({ data }: { data: LeagueListResult }) {
   const { t } = useTranslation();
-  const { community, leagues } = data;
+  const { community, leagues, total, truncated } = data;
   return (
     <main {...stylex.props(styles.page)}>
       <header {...stylex.props(styles.header, rootStyles.pageHeader)}>
@@ -65,6 +65,11 @@ export function LeagueListPage({ data }: { data: LeagueListResult }) {
           </Link>
         ) : (
           <p {...stylex.props(styles.guidance)}>{t('leagues.list.creationDisabled')}</p>
+        )}
+        {truncated && (
+          <output {...stylex.props(styles.guidance)}>
+            {t('leagues.list.truncated', { shown: leagues.length, total })}
+          </output>
         )}
         {leagues.length === 0 ? (
           <SurfaceCard xstyle={styles.card}>

@@ -297,6 +297,76 @@ describe('Ranked/League edit dialog', () => {
     expect(options.some((text) => text?.includes('Spring League'))).toBe(false);
   });
 
+  it('blocks saving while League options reload so Ranked intent is never resolved to Unranked', async () => {
+    let resolveReload: (value: unknown) => void = () => undefined;
+    offer(spring);
+    render(element());
+    await waitFor(() =>
+      expect(screen.getByRole<HTMLInputElement>('radio', { name: 'Ranked' }).disabled).toBe(false)
+    );
+    await userEvent.click(screen.getByRole('radio', { name: 'Ranked' }));
+    mocks.leagues.mockImplementationOnce(() => new Promise((resolve) => (resolveReload = resolve)));
+    const start = screen.getByLabelText('Start date and time');
+    await userEvent.clear(start);
+    await userEvent.type(start, '2099-01-16T12:00');
+    await waitFor(() => expect(mocks.leagues).toHaveBeenCalledTimes(2));
+    const saveButton = screen.getByRole<HTMLButtonElement>('button', { name: 'Save changes' });
+    expect(saveButton.disabled).toBe(true);
+    mocks.edit.mockResolvedValue(ok());
+    await userEvent.click(saveButton);
+    expect(mocks.edit).not.toHaveBeenCalled();
+    resolveReload({ starts_at: '2099-01-16T12:00:00.000Z', leagues: [spring] });
+    await waitFor(() => expect(saveButton.disabled).toBe(false));
+    await save();
+    await waitFor(() => expect(lastPatch()?.league_id).toBe(springId));
+  });
+
+  it('keeps Ranked intent when the options load fails and offers a translated retry', async () => {
+    offer(spring);
+    render(element());
+    await waitFor(() =>
+      expect(screen.getByRole<HTMLInputElement>('radio', { name: 'Ranked' }).disabled).toBe(false)
+    );
+    await userEvent.click(screen.getByRole('radio', { name: 'Ranked' }));
+    mocks.leagues.mockRejectedValueOnce(new Error('offline'));
+    const start = screen.getByLabelText('Start date and time');
+    await userEvent.clear(start);
+    await userEvent.type(start, '2099-01-16T12:00');
+    const retry = await screen.findByRole('button', { name: 'Retry' });
+    expect(screen.getByRole<HTMLButtonElement>('button', { name: 'Save changes' }).disabled).toBe(
+      true
+    );
+    mocks.edit.mockResolvedValue(ok());
+    offer(spring);
+    await userEvent.click(retry);
+    await waitFor(() =>
+      expect(screen.getByRole<HTMLButtonElement>('button', { name: 'Save changes' }).disabled).toBe(
+        false
+      )
+    );
+    expect(screen.getByRole<HTMLInputElement>('radio', { name: 'Ranked' }).checked).toBe(true);
+    await save();
+    await waitFor(() => expect(lastPatch()?.league_id).toBe(springId));
+  });
+
+  it('never replaces a picked League that became ineligible with the only remaining one', async () => {
+    offer(spring, summer);
+    render(element(rankedEvent));
+    const select = await screen.findByRole<HTMLSelectElement>('combobox', { name: 'League' });
+    await userEvent.selectOptions(select, summerId);
+    // After the schedule change only the bound (Spring) League is still offered.
+    offer(spring);
+    const start = screen.getByLabelText('Start date and time');
+    await userEvent.clear(start);
+    await userEvent.type(start, '2099-01-16T12:00');
+    await waitFor(() => expect(select.value).toBe(''));
+    await save();
+    expect(mocks.edit).not.toHaveBeenCalled();
+    expect(
+      await screen.findByText('Choose a League or select Unranked before publishing.')
+    ).toBeTruthy();
+  });
+
   it('tells the organizer provisional players were carried over after the save', async () => {
     offer(spring);
     render(element());

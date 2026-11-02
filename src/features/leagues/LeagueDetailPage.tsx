@@ -21,7 +21,7 @@ import {
   type LeagueFormInput
 } from './league-form';
 import { activateLeague, closeLeague, updateLeague } from './league.functions';
-import { LeagueCounters } from './LeagueCounters';
+import { LeagueCounters, LeagueCountersUnavailable } from './LeagueCounters';
 import { LeagueForm } from './LeagueForm';
 import { LeagueStatusBadge, useLeaguePeriodText } from './LeagueSummary';
 import { styles } from './league.styles';
@@ -49,11 +49,11 @@ function changesFrom(league: LeagueDto, input: LeagueFormInput): UpdateLeagueCha
 
 export function LeagueDetailPage({
   data,
-  counters = null
+  counters
 }: {
   data: LeagueDetailResult;
-  /** Null when the counter reader was unavailable: the page stays usable without it. */
-  counters?: LeagueCountersResult | null;
+  /** Null when the counter reader was unavailable: the page stays usable and offers a retry. */
+  counters: LeagueCountersResult | null;
 }) {
   const { t, i18n } = useTranslation();
   const router = useRouter();
@@ -65,6 +65,7 @@ export function LeagueDetailPage({
   const [busy, setBusy] = useState(false);
   const [feedback, setFeedback] = useState<Feedback>(null);
   const [closeOpen, setCloseOpen] = useState(false);
+  const [retryingCounters, setRetryingCounters] = useState(false);
   const closeTrigger = useRef<HTMLButtonElement>(null);
   const period = useLeaguePeriodText(league);
 
@@ -181,7 +182,17 @@ export function LeagueDetailPage({
           </dl>
         </SurfaceCard>
 
-        {counters && <LeagueCounters counters={counters} />}
+        {counters ? (
+          <LeagueCounters counters={counters} />
+        ) : (
+          <LeagueCountersUnavailable
+            busy={retryingCounters}
+            onRetry={() => {
+              setRetryingCounters(true);
+              void router.invalidate().finally(() => setRetryingCounters(false));
+            }}
+          />
+        )}
 
         {(canActivate || canClose || canEdit) && !editing && (
           <div {...stylex.props(styles.actions)}>

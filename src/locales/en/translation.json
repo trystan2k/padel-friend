@@ -1540,6 +1540,7 @@
       "creationDisabled": "League creation is turned off for members in this community. Ask an Admin to create one.",
       "empty": "No Leagues yet.",
       "emptyHint": "Create a League to group a period of ranked matches.",
+      "truncated": "Showing the first {{shown}} of {{total}} Leagues. Older Leagues are not listed.",
       "sections": {
         "active": "Active",
         "upcoming": "Upcoming",
@@ -1597,6 +1598,8 @@
       "setDifferential": "Set difference",
       "empty": "No participants yet.",
       "unknownPlayer": "Player",
+      "unavailable": "Participant counters could not be loaded. The League itself is unaffected.",
+      "retry": "Retry",
       "excluded_one": "1 confirmed Ranked group was left out because it no longer meets the Ranked rules.",
       "excluded_other": "{{count}} confirmed Ranked groups were left out because they no longer meet the Ranked rules."
     },

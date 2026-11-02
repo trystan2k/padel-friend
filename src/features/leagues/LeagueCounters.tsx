@@ -1,5 +1,6 @@
 import * as stylex from '@stylexjs/stylex';
 import { useTranslation } from 'react-i18next';
+import { Button } from '../../components/ui/Button';
 import { SurfaceCard } from '../../components/ui/SurfaceCard';
 import type { LeagueCountersResult } from './league-contracts';
 import { styles } from './league.styles';
@@ -61,6 +62,30 @@ export function LeagueCounters({ counters }: { counters: LeagueCountersResult })
           ))}
         </ul>
       )}
+    </section>
+  );
+}
+
+/** The counter reader failed: say so and offer a retry instead of silently dropping the section. */
+export function LeagueCountersUnavailable({
+  busy,
+  onRetry
+}: {
+  busy: boolean;
+  onRetry: () => void;
+}) {
+  const { t } = useTranslation();
+  return (
+    <section aria-labelledby="league-counters-heading" {...stylex.props(styles.content)}>
+      <h2 id="league-counters-heading" {...stylex.props(styles.sectionTitle)}>
+        {t('leagues.counters.title')}
+      </h2>
+      <p role="alert" {...stylex.props(styles.errorText)}>
+        {t('leagues.counters.unavailable')}
+      </p>
+      <Button variant="secondary" busy={busy} onClick={onRetry}>
+        {t('leagues.counters.retry')}
+      </Button>
     </section>
   );
 }

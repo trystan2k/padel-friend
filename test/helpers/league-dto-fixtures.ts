@@ -58,9 +58,16 @@ export function makeLeagueCommunity(
 
 export function makeLeagueList(
   leagues: LeagueDto[] = [],
-  community: Partial<LeagueCommunityDto> = {}
+  community: Partial<LeagueCommunityDto> = {},
+  page: Partial<Pick<LeagueListResult, 'total' | 'truncated'>> = {}
 ): LeagueListResult {
-  return { community: makeLeagueCommunity(community), leagues };
+  return {
+    community: makeLeagueCommunity(community),
+    leagues,
+    total: leagues.length,
+    truncated: false,
+    ...page
+  };
 }
 
 export function makeLeagueDetail(

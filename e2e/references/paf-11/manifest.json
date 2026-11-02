@@ -31,21 +31,25 @@
       "section order: title, name, end-mode choice, dates, minimum matches, submit, one-Active guidance",
       "keyboard arrow selection of the end mode toggles the end-date field",
       "no horizontal overflow or controls outside the viewport",
-      "every interactive target is at least 44px tall",
-      "pt-BR and es light 390px and dark 320px with an 80-character League name stay unclipped"
+      "every interactive target is at least 44×44px (both axes)",
+      "pt-BR and es light 390px and dark 320px with an 80-character League name stay unclipped",
+      "section boxes span the 18px-margin reference column; name, mode group and minimum fields are inset ≤16px inside them; submit is 44–52px tall and spans the column"
     ],
     "MYsDp": [
       "Active conflict card names the Active League, states the condition and links to it",
       "end-before-start and missing end date use the exact approved copy",
       "errors are associated through aria-describedby, announced as alerts and focus the first invalid field",
-      "error colour differs from body text colour"
+      "error colour differs from body text colour",
+      "each validation variant (end-before-start, missing end date) is captured and budgeted separately with its own error visible",
+      "error line sits below and within the column of its own end-date field; conflict card spans the 18px-margin column and contains its review link"
     ],
     "wHaAb": [
       "competition status is a named group with 44px Ranked/Unranked radios, arrow-key operable",
       "one eligible League defaults to Ranked with the League explicitly shown in the selector",
       "selector order: match type, competition status, eligible League, members-only guidance",
       "guidance is associated with the group through aria-describedby",
-      "several overlapping Leagues leave the selector empty and publication shows an associated required-selection alert"
+      "several overlapping Leagues leave the selector empty and publication shows an associated required-selection alert",
+      "competition group and League selector stay inside the reference column; radios, selector and guidance boxes are contained in the group box"
     ]
   },
   "visualBudgets": {
@@ -54,18 +58,36 @@
     "reason": "Every screen has an exact-dimension production-flow capture plus the structural probes above. Budgets are the smallest two-decimal value above the measured Chromium residual; they never replace or relax a probe.",
     "perScreen": {
       "ik5JC": 0.18,
-      "MYsDp": 0.13,
+      "MYsDp": 0.24,
       "wHaAb": 0.18
+    },
+    "variantBudgets": {
+      "MYsDp": {
+        "endNotAfterStart": 0.24,
+        "endRequired": 0.24
+      }
     },
     "measured": {
       "ik5JC": 0.17503,
-      "MYsDp": 0.12105,
+      "MYsDp": 0.23219,
       "wHaAb": 0.17052
     },
     "perScreenRationale": {
       "ik5JC": "Production form renders translated, tokenized controls instead of the mock: a description field, native date inputs with labels and helper text, the real app shell header and bottom navigation, and a dynamic start/end summary instead of the fixed 01 Oct–20 Dec sample. Observed residual 0.17503; 0.18 leaves 0.00497 for raster variance. Order, association, keyboard and target-size probes are exact.",
-      "MYsDp": "The frame is a multi-context pattern sheet; the capture shows the production Active-conflict card and live field errors at the exact 431px reference viewport inside the real route shell. Observed residual 0.12105; 0.13 leaves 0.00895. Exact copy, association, alert, focus and link probes gate the content.",
+      "MYsDp": "Envelope of the two validation-variant captures (see variantBudgets): the frame certifies end-before-start AND missing end date, each captured separately with its own error visible at the exact 431px reference viewport inside the real route shell. Envelope residual 0.23219 (worst variant); 0.24 leaves 0.00781. The earlier single capture (0.12105) did not contain either error line and is superseded. Exact copy, association, alert, focus and link probes plus column/error geometry gate the content.",
       "wHaAb": "Production wizard step 1 shows real form controls (native date/time inputs, venue and map fields) in place of the mock's chip-style presentation, and the real selector option text with the dynamic League window. Observed residual 0.17052; 0.18 leaves 0.00948. Selector order, radio group semantics, 44px targets, guidance association and the required-selection alert are exact probes."
+    },
+    "variantMeasured": {
+      "MYsDp": {
+        "endNotAfterStart": 0.23219,
+        "endRequired": 0.2313
+      }
+    },
+    "variantRationale": {
+      "MYsDp": {
+        "endNotAfterStart": "Capture scrolls the end-before-start error ('End date must be later than start date.') into the 431px viewport: production shows the real create-form fields and bottom guidance around the error line instead of the pattern sheet's two stacked cards, so the residual is higher than a capture of the conflict card alone. Observed residual 0.23219; 0.24 leaves 0.00781. Exact copy, aria-describedby association, alert, focus, colour, error-below-own-field geometry and conflict-card/link geometry gate the structure.",
+        "endRequired": "Capture scrolls the missing-end-date error ('Fixed End Date requires an end date.') into the 431px viewport with the same production form context. Observed residual 0.2313; 0.24 leaves 0.0087. Exact copy, association, alert, colour and error-below-own-field geometry gate the structure."
+      }
     }
   }
 }
