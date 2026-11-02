@@ -131,8 +131,11 @@ export async function leagueFixtures(browser: Browser, options?: Parameters<type
       await owner.client.storage.from('match-event-photos').remove([path]);
     await sql(`do $$ begin
         alter table public.league_events disable trigger league_events_immutable;
+        alter table public.league_event_references disable trigger league_event_references_immutable;
         delete from public.league_events where league_id in (select id from public.leagues where community_id=${sqlText(f.community)});
+        delete from public.league_event_references where league_id in (select id from public.leagues where community_id=${sqlText(f.community)});
         delete from public.leagues where community_id=${sqlText(f.community)};
+        alter table public.league_event_references enable trigger league_event_references_immutable;
         alter table public.league_events enable trigger league_events_immutable;
       end $$;`);
     await f.cleanup();

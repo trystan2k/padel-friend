@@ -173,7 +173,12 @@ test('assign two groups and submit only one pending result', async ({ browserNam
     await sql(
       `select table_name from information_schema.tables where table_schema='public' and table_name ~ '(standing|league|statistic)' order by table_name`
     )
-  ).toEqual([{ table_name: 'league_events' }, { table_name: 'leagues' }]);
+  ).toEqual([
+    { table_name: 'league_event_references' },
+    { table_name: 'league_events' },
+    { table_name: 'league_process_attempts' },
+    { table_name: 'leagues' }
+  ]);
   await info.attach('observed-proposal-facts', {
     body: JSON.stringify(
       {
