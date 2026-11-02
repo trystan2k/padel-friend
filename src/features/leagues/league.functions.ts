@@ -14,12 +14,24 @@ import {
   decodeLeagueList
 } from './league-decoders';
 import { leagueErrorFromDatabase } from './league-errors';
+import type {
+  LeagueStandingsAuditResult,
+  LeagueStandingsResult,
+  LeagueStandingsVersionsResult
+} from './league-standings-contracts';
+import {
+  decodeLeagueStandings,
+  decodeLeagueStandingsAudit,
+  decodeLeagueStandingsVersions
+} from './league-standings-decoders';
 import {
   validateCreateLeague,
   validateLeagueCommand,
   validateLeagueCommunity,
   validateLeagueId,
   validateLeagueListPage,
+  validateLeagueStandingsRequest,
+  validateLeagueStandingsVersionsRequest,
   validateUpdateLeague
 } from './league.validators';
 
@@ -85,6 +97,55 @@ export const getLeagueCounters = createServerFn({ method: 'GET' })
     if (error) throw new Error(leagueErrorFromDatabase(error));
     return decoded(decodeLeagueCounters, result);
   });
+
+/**
+ * Standings: live for an open League; for a closed one the latest immutable final, or the exact
+ * version asked for.
+ */
+export const getLeagueStandings = createServerFn({ method: 'GET' })
+  .validator(validateLeagueStandingsRequest)
+  .handler(async ({ data }): Promise<LeagueStandingsResult> => {
+    const { client } = await authenticatedClient();
+    const { data: result, error } = await client.rpc('get_league_standings', {
+      p_league_id: data.league_id,
+      p_standings_version: data.standings_version ?? undefined
+    });
+    if (error) throw new Error(leagueErrorFromDatabase(error));
+    return decoded(decodeLeagueStandings, result);
+  });
+
+/** Member-safe publication history of a closed League's finals, newest first. */
+export const listLeagueStandingsVersions = createServerFn({ method: 'GET' })
+  .validator(validateLeagueStandingsVersionsRequest)
+  .handler(async ({ data }): Promise<LeagueStandingsVersionsResult> => {
+    const { client } = await authenticatedClient();
+    const { data: result, error } = await client.rpc('list_league_standings_versions', {
+      p_league_id: data.league_id,
+      p_before_version: data.before_version ?? undefined
+    });
+    if (error) throw new Error(leagueErrorFromDatabase(error));
+    return decoded(decodeLeagueStandingsVersions, result);
+  });
+
+/** Owner/Admin lifecycle audit of the close and every standings revision. */
+export const getLeagueStandingsAudit = createServerFn({ method: 'GET' })
+  .validator(validateLeagueId)
+  .handler(async ({ data }): Promise<LeagueStandingsAuditResult> => {
+    const { client } = await authenticatedClient();
+    const { data: result, error } = await client.rpc('get_league_standings_audit', {
+      p_league_id: data.league_id
+    });
+    if (error) throw new Error(leagueErrorFromDatabase(error));
+    return decoded(decodeLeagueStandingsAudit, result);
+  });
+
+/** The caller's permanent user id, so the table can mark their own row. */
+export const getLeagueViewer = createServerFn({ method: 'GET' }).handler(
+  async (): Promise<{ user_id: string }> => {
+    const { userId } = await authenticatedClient();
+    return { user_id: userId };
+  }
+);
 
 export const createLeague = createServerFn({ method: 'POST' })
   .validator(validateCreateLeague)

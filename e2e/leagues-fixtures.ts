@@ -126,6 +126,16 @@ export async function leagueFixtures(browser: Browser, options?: Parameters<type
   }
 
   async function cleanup() {
+    // Published finals and projection receipts restrictively reference the confirmations and
+    // Leagues about to go; they are immutable evidence, removed only inside this transaction.
+    await sql(`do $$ begin
+        alter table public.league_standings_snapshots disable trigger league_standings_snapshots_immutable;
+        delete from public.league_standings_snapshots where league_id in (select id from public.leagues where community_id=${sqlText(f.community)});
+        alter table public.league_standings_snapshots enable trigger league_standings_snapshots_immutable;
+        alter table public.league_projection_confirmations disable trigger league_projection_confirmations_immutable;
+        delete from public.league_projection_confirmations where league_id in (select id from public.leagues where community_id=${sqlText(f.community)});
+        alter table public.league_projection_confirmations enable trigger league_projection_confirmations_immutable;
+      end $$;`);
     await f.clearEvents();
     for (const { owner, path } of photos)
       await owner.client.storage.from('match-event-photos').remove([path]);

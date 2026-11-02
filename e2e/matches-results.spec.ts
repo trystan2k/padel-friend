@@ -168,7 +168,7 @@ test('assign two groups and submit only one pending result', async ({ browserNam
     }),
     contentType: 'image/png'
   });
-  // Leagues (PAF-11) own only the League tables; no standings or statistics storage exists.
+  // Leagues (PAF-11) and standings (PAF-12) own only these tables; no other standings or statistics storage exists.
   expect(
     await sql(
       `select table_name from information_schema.tables where table_schema='public' and table_name ~ '(standing|league|statistic)' order by table_name`
@@ -176,7 +176,10 @@ test('assign two groups and submit only one pending result', async ({ browserNam
   ).toEqual([
     { table_name: 'league_event_references' },
     { table_name: 'league_events' },
+    { table_name: 'league_player_counters' },
     { table_name: 'league_process_attempts' },
+    { table_name: 'league_projection_confirmations' },
+    { table_name: 'league_standings_snapshots' },
     { table_name: 'leagues' }
   ]);
   await info.attach('observed-proposal-facts', {

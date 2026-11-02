@@ -12,7 +12,9 @@ const mocks = vi.hoisted(() => ({
   activateLeague: vi.fn<(request: { data: Record<string, unknown> }) => Promise<LeagueDto>>(),
   closeLeague: vi.fn<(request: { data: Record<string, unknown> }) => Promise<LeagueDto>>(),
   listMore: vi.fn<(request: { data: Record<string, unknown> }) => Promise<LeagueListResult>>(),
-  invalidate: vi.fn<() => Promise<void>>()
+  invalidate: vi.fn<() => Promise<void>>(),
+  navigate: vi.fn<(options: Record<string, unknown>) => Promise<void>>(),
+  listVersions: vi.fn<(request: { data: Record<string, unknown> }) => Promise<unknown>>()
 }));
 vi.mock('@tanstack/react-router', async (original) => ({
   ...(await original<typeof import('@tanstack/react-router')>()),
@@ -26,13 +28,14 @@ vi.mock('@tanstack/react-router', async (original) => ({
       {children}
     </a>
   ),
-  useRouter: () => ({ invalidate: mocks.invalidate })
+  useRouter: () => ({ invalidate: mocks.invalidate, navigate: mocks.navigate })
 }));
 vi.mock('../src/features/leagues/league.functions', () => ({
   updateLeague: mocks.updateLeague,
   activateLeague: mocks.activateLeague,
   closeLeague: mocks.closeLeague,
-  listMoreLeagues: mocks.listMore
+  listMoreLeagues: mocks.listMore,
+  listLeagueStandingsVersions: mocks.listVersions
 }));
 
 import { LeagueDetailPage } from '../src/features/leagues/LeagueDetailPage';
@@ -42,22 +45,41 @@ import {
   LEAGUE_COMMUNITY_ID,
   makeLeagueDetail,
   makeLeagueDto,
+  makeFinalStandings,
   makeLeagueList,
+  makeLiveStandings,
   makeManualLeagueDto
 } from './helpers/league-dto-fixtures';
 
-const emptyCounters = {
-  league_id: '22222222-2222-4222-8222-222222222222',
-  excluded_group_count: 0,
-  participants: []
-};
-/** The detail page with loaded (empty) counters unless a test passes its own, or null for a failed read. */
+/** The detail page with an empty, matching standings read unless a test passes its own. */
 function Detail({
-  counters = emptyCounters,
+  standings,
+  standingsError = null,
+  versions = null,
+  audit = null,
+  auditFailed = false,
+  viewerId = null,
   ...props
 }: Partial<ComponentProps<typeof LeagueDetailPage>> &
   Pick<ComponentProps<typeof LeagueDetailPage>, 'data'>) {
-  return <LeagueDetailPage {...props} counters={counters} />;
+  const { status } = props.data.league;
+  return (
+    <LeagueDetailPage
+      {...props}
+      standings={
+        standings === undefined
+          ? status === 'closed'
+            ? makeFinalStandings([])
+            : makeLiveStandings([], { status })
+          : standings
+      }
+      standingsError={standingsError}
+      versions={versions}
+      audit={audit}
+      auditFailed={auditFailed}
+      viewerId={viewerId}
+    />
+  );
 }
 const pageCursor = { created_at: '2030-01-02T03:04:05.123456Z', id: LEAGUE_COMMUNITY_ID };
 const wrap = (node: React.ReactNode, locale: 'en' | 'pt-BR' | 'es' = 'en') => (
@@ -66,6 +88,22 @@ const wrap = (node: React.ReactNode, locale: 'en' | 'pt-BR' | 'es' = 'en') => (
 
 describe('League list and entries', () => {
   afterEach(cleanup);
+
+  it('guides toward an Active League when only other Leagues exist', () => {
+    render(
+      wrap(
+        <LeagueListPage
+          data={makeLeagueList([makeLeagueDto({ status: 'closed', name: 'Old Cup' })])}
+        />
+      )
+    );
+    expect(screen.getByText('No Active League')).toBeTruthy();
+    cleanup();
+    render(
+      wrap(<LeagueListPage data={makeLeagueList([makeManualLeagueDto({ status: 'active' })])} />)
+    );
+    expect(screen.queryByText('No Active League')).toBeNull();
+  });
 
   it('groups Leagues by status and shows why a due Upcoming League is waiting', () => {
     render(
@@ -484,60 +522,6 @@ describe('League detail management', () => {
   });
   afterEach(cleanup);
 
-  it("shows participants' counters when provided and stays usable without them", () => {
-    const counters = {
-      league_id: '22222222-2222-4222-8222-222222222222',
-      excluded_group_count: 0,
-      participants: [
-        {
-          user_id: '33333333-3333-4333-8333-333333333331',
-          display_name: 'Provisional Pat',
-          is_provisional: true,
-          matches: 0,
-          wins: 0,
-          losses: 0,
-          draws: 0,
-          sets_won: 0,
-          sets_lost: 0,
-          set_differential: 0
-        }
-      ]
-    };
-    render(wrap(<Detail data={makeLeagueDetail()} counters={counters} />));
-    const section = screen.getByRole('region', { name: 'Participants' });
-    expect(within(section).getByText('Provisional Pat')).toBeTruthy();
-    expect(within(section).getByText('Provisional')).toBeTruthy();
-    cleanup();
-    render(wrap(<Detail data={makeLeagueDetail()} counters={null} />));
-    expect(screen.getByRole('heading', { level: 1 })).toBeTruthy();
-  });
-
-  it('shows a translated unavailable state with retry when the counters could not load', async () => {
-    render(wrap(<Detail data={makeLeagueDetail()} counters={null} />));
-    const section = screen.getByRole('region', { name: 'Participants' });
-    expect(
-      within(section).getByText(
-        'Participant counters could not be loaded. The League itself is unaffected.'
-      )
-    ).toBeTruthy();
-    await userEvent.click(within(section).getByRole('button', { name: 'Retry' }));
-    expect(mocks.invalidate).toHaveBeenCalledTimes(1);
-    expect(screen.getByRole('heading', { level: 1 })).toBeTruthy();
-  });
-
-  it.each([
-    ['pt-BR', 'Tentar novamente'],
-    ['es', 'Reintentar']
-  ] as const)('translates the unavailable counters state: %s', (locale, retry) => {
-    render(
-      <I18nextProvider i18n={createI18n(locale)}>
-        <Detail data={makeLeagueDetail()} counters={null} />
-      </I18nextProvider>
-    );
-    expect(screen.getByRole('button', { name: retry })).toBeTruthy();
-    expect(screen.queryByText(/could not be loaded/)).toBeNull();
-  });
-
   it('hides every control from someone who cannot manage the League', () => {
     render(
       wrap(
@@ -716,6 +700,9 @@ describe('League detail management', () => {
     );
     expect(screen.getByText('Cerrada', { selector: 'dt' })).toBeTruthy();
     expect(screen.getByText(/fecha de fin alcanzada/)).toBeTruthy();
-    expect(screen.queryByRole('button')).toBeNull();
+    // No management action on a closed League: only the history reader's retry remains.
+    expect(screen.getAllByRole('button').map((button) => button.textContent)).toEqual([
+      'Reintentar'
+    ]);
   });
 });

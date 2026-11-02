@@ -7,7 +7,6 @@ import { Button } from '../../components/ui/Button';
 import { SurfaceCard } from '../../components/ui/SurfaceCard';
 import { rootStyles } from '../../root.styles';
 import type {
-  LeagueCountersResult,
   LeagueDetailResult,
   LeagueDto,
   LeagueErrorCode,
@@ -20,9 +19,20 @@ import {
   todayInZone,
   type LeagueFormInput
 } from './league-form';
+import type {
+  LeagueStandingsAuditResult,
+  LeagueStandingsResult,
+  LeagueStandingsVersionsResult
+} from './league-standings-contracts';
+import { useRefreshWhenVisible } from './league-standings-refresh';
 import { activateLeague, closeLeague, updateLeague } from './league.functions';
-import { LeagueCounters, LeagueCountersUnavailable } from './LeagueCounters';
 import { LeagueForm } from './LeagueForm';
+import {
+  LeagueStandings,
+  LeagueStandingsRefreshing,
+  LeagueStandingsUnavailable
+} from './LeagueStandings';
+import { LeagueStandingsHistory } from './LeagueStandingsHistory';
 import { LeagueStatusBadge, useLeaguePeriodText } from './LeagueSummary';
 import { styles } from './league.styles';
 
@@ -49,11 +59,24 @@ function changesFrom(league: LeagueDto, input: LeagueFormInput): UpdateLeagueCha
 
 export function LeagueDetailPage({
   data,
-  counters
+  standings,
+  standingsError,
+  versions,
+  audit,
+  auditFailed,
+  viewerId
 }: {
   data: LeagueDetailResult;
-  /** Null when the counter reader was unavailable: the page stays usable and offers a retry. */
-  counters: LeagueCountersResult | null;
+  /** Null when the standings reader failed (see `standingsError`): the page stays usable. */
+  standings: LeagueStandingsResult | null;
+  standingsError: LeagueErrorCode | null;
+  /** Null when the version history reader was unavailable. */
+  versions: LeagueStandingsVersionsResult | null;
+  /** Owner/Admin only; null for everyone else or when unavailable. */
+  audit: LeagueStandingsAuditResult | null;
+  /** True when an owner/Admin's audit read failed, so it is retryable rather than "not allowed". */
+  auditFailed: boolean;
+  viewerId: string | null;
 }) {
   const { t, i18n } = useTranslation();
   const router = useRouter();
@@ -65,9 +88,39 @@ export function LeagueDetailPage({
   const [busy, setBusy] = useState(false);
   const [feedback, setFeedback] = useState<Feedback>(null);
   const [closeOpen, setCloseOpen] = useState(false);
-  const [retryingCounters, setRetryingCounters] = useState(false);
+  const [retryingStandings, setRetryingStandings] = useState(false);
+  // True only while the reload that follows a command is in flight; once it settles with the
+  // standings still disagreeing, the page offers a retry instead of waiting forever.
+  const [reloading, setReloading] = useState(false);
   const closeTrigger = useRef<HTMLButtonElement>(null);
   const period = useLeaguePeriodText(league);
+  useRefreshWhenVisible(
+    () => router.invalidate(),
+    league.status === 'active',
+    league.end_mode === 'fixed_date' ? league.end_at : null
+  );
+  const reload = () => {
+    setReloading(true);
+    void router
+      .invalidate()
+      .catch(() => undefined)
+      .finally(() => setReloading(false));
+  };
+  const retryStandings = () => {
+    setRetryingStandings(true);
+    void router
+      .invalidate()
+      .catch(() => undefined)
+      .finally(() => setRetryingStandings(false));
+  };
+  const selectVersion = (version: number | null) =>
+    void router.navigate({
+      to: '.',
+      search: (previous: Record<string, unknown>) => ({
+        ...previous,
+        version: version ?? undefined
+      })
+    });
 
   const canActivate =
     league.can_manage &&
@@ -83,12 +136,12 @@ export function LeagueDetailPage({
     try {
       setResult(await command());
       setFeedback({ kind: 'success', key: success });
-      void router.invalidate();
+      reload();
       return true;
     } catch (error) {
       const code = leagueErrorCode(error);
       setFeedback({ kind: 'error', code });
-      if (code === 'LEAGUE_VERSION_CONFLICT') void router.invalidate();
+      if (code === 'LEAGUE_VERSION_CONFLICT') reload();
       return false;
     } finally {
       setBusy(false);
@@ -109,11 +162,11 @@ export function LeagueDetailPage({
       );
       setEditing(false);
       setFeedback({ kind: 'success', key: 'leagues.detail.saved' });
-      void router.invalidate();
+      reload();
       return null;
     } catch (error) {
       const code = leagueErrorCode(error);
-      if (code === 'LEAGUE_VERSION_CONFLICT') void router.invalidate();
+      if (code === 'LEAGUE_VERSION_CONFLICT') reload();
       return code;
     }
   };
@@ -182,16 +235,55 @@ export function LeagueDetailPage({
           </dl>
         </SurfaceCard>
 
-        {counters ? (
-          <LeagueCounters counters={counters} />
+        {standings === null ? (
+          <>
+            <LeagueStandingsUnavailable
+              message={t(`leagues.errors.${standingsError ?? 'LEAGUE_UNAVAILABLE'}`)}
+              busy={retryingStandings}
+              onRetry={retryStandings}
+            />
+            {(standingsError === 'LEAGUE_STANDINGS_VERSION_NOT_FOUND' ||
+              standingsError === 'LEAGUE_STANDINGS_VERSION_INVALID') && (
+              <Button variant="secondary" onClick={() => selectVersion(null)}>
+                {t('leagues.history.viewLatest')}
+              </Button>
+            )}
+          </>
+        ) : standings.status !== league.status ? (
+          // A command moved the League but the standings still describe its previous state:
+          // never show that table (nor label it final); reload until both agree.
+          reloading ? (
+            <LeagueStandingsRefreshing />
+          ) : (
+            <LeagueStandingsUnavailable
+              message={t('leagues.errors.LEAGUE_UNAVAILABLE')}
+              busy={retryingStandings}
+              onRetry={retryStandings}
+            />
+          )
         ) : (
-          <LeagueCountersUnavailable
-            busy={retryingCounters}
-            onRetry={() => {
-              setRetryingCounters(true);
-              void router.invalidate().finally(() => setRetryingCounters(false));
-            }}
-          />
+          <>
+            <LeagueStandings standings={standings} viewerId={viewerId} />
+            {standings.source === 'final' && (
+              <LeagueStandingsHistory
+                league={league}
+                standings={standings}
+                versions={versions}
+                audit={audit}
+                auditFailed={auditFailed}
+                onSelect={selectVersion}
+              />
+            )}
+          </>
+        )}
+        {league.status === 'closed' && (
+          <Link
+            to="/community/$communityId/leagues"
+            params={{ communityId: community.id }}
+            {...stylex.props(styles.actionLink)}
+          >
+            {t('leagues.history.previousLeagues')}
+          </Link>
         )}
 
         {(canActivate || canClose || canEdit) && !editing && (

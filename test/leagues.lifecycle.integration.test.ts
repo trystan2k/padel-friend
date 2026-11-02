@@ -473,8 +473,12 @@ describe('League lifecycle', { timeout: 300_000 }, () => {
           `select actor_id::text as actor from public.league_events where league_id = ${sqlText(id)} and action = 'closed'`
         );
         expect(audit).toEqual({ actor: world.admin.id });
-        // Closed is terminal: it cannot be closed or activated again.
-        expect((await rpc.close(id)).error?.message).toBe('LEAGUE_INVALID_STATE');
+        // Closed is terminal: it cannot be activated again, and a repeated close is a no-op replay
+        // (same outcome, no second audit entry).
+        const replay = await rpc.close(id);
+        expect(replay.error).toBeNull();
+        expect(replay.data).toEqual(closed.data);
+        expect(await leagueEventActions(id)).toEqual(['closed']);
         expect((await rpc.activate(id)).error?.message).toBe('LEAGUE_INVALID_STATE');
       }
     );

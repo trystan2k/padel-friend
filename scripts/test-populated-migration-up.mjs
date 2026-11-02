@@ -50,6 +50,7 @@ export function runHarness({ env = process.env, run = spawnSync, log = console }
   const protection = env.POPULATED_UPGRADE_SCENARIO === 'protection';
   const resultContract = env.POPULATED_UPGRADE_SCENARIO === 'result-contract';
   const ratingProjection = env.POPULATED_UPGRADE_SCENARIO === 'rating-projection';
+  const leagueProjection = env.POPULATED_UPGRADE_SCENARIO === 'league-projection';
   if (
     env.POPULATED_UPGRADE_SCENARIO &&
     !departures &&
@@ -58,52 +59,59 @@ export function runHarness({ env = process.env, run = spawnSync, log = console }
     !reconfirmation &&
     !protection &&
     !resultContract &&
-    !ratingProjection
+    !ratingProjection &&
+    !leagueProjection
   )
     throw new Error('Unknown populated migration scenario');
-  const predecessor = ratingProjection
-    ? '20261031160000'
-    : protection
-      ? '20261021204000'
+  const predecessor = leagueProjection
+    ? '20261101194000'
+    : ratingProjection
+      ? '20261031160000'
+      : protection
+        ? '20261021204000'
+        : resultContract
+          ? '20261028140423'
+          : reconfirmation
+            ? '20261021203000'
+            : edits
+              ? '20261021202000'
+              : ownership
+                ? '20261021201100'
+                : departures
+                  ? '20261021200000'
+                  : PREDECESSOR;
+  const seed = leagueProjection
+    ? 'test/fixtures/league-projection-predecessor-upgrade.sql'
+    : ratingProjection
+      ? 'test/fixtures/rating-projection-predecessor-upgrade.sql'
       : resultContract
-        ? '20261028140423'
-        : reconfirmation
-          ? '20261021203000'
+        ? 'test/fixtures/matches-results-predecessor-upgrade.sql'
+        : protection || reconfirmation
+          ? 'test/fixtures/matches-reconfirmation-predecessor.sql'
           : edits
-            ? '20261021202000'
+            ? 'test/fixtures/matches-edits-predecessor.sql'
             : ownership
-              ? '20261021201100'
+              ? 'test/fixtures/matches-ownership-predecessor.sql'
               : departures
-                ? '20261021200000'
-                : PREDECESSOR;
-  const seed = ratingProjection
-    ? 'test/fixtures/rating-projection-predecessor-upgrade.sql'
-    : resultContract
-      ? 'test/fixtures/matches-results-predecessor-upgrade.sql'
-      : protection || reconfirmation
-        ? 'test/fixtures/matches-reconfirmation-predecessor.sql'
-        : edits
-          ? 'test/fixtures/matches-edits-predecessor.sql'
-          : ownership
-            ? 'test/fixtures/matches-ownership-predecessor.sql'
-            : departures
-              ? 'test/fixtures/matches-departures-predecessor.sql'
-              : SEED;
-  const assertions = ratingProjection
-    ? 'test/fixtures/rating-projection-upgrade-assertions.sql'
-    : protection
-      ? 'test/fixtures/matches-protection-upgrade-assertions.sql'
-      : resultContract
-        ? 'test/fixtures/matches-results-upgrade-assertions.sql'
-        : reconfirmation
-          ? 'test/fixtures/matches-reconfirmation-upgrade-assertions.sql'
-          : edits
-            ? 'test/fixtures/matches-edits-upgrade-assertions.sql'
-            : ownership
-              ? 'test/fixtures/matches-ownership-upgrade-assertions.sql'
-              : departures
-                ? 'test/fixtures/matches-departures-upgrade-assertions.sql'
-                : ASSERTIONS;
+                ? 'test/fixtures/matches-departures-predecessor.sql'
+                : SEED;
+  const assertions = leagueProjection
+    ? 'test/fixtures/league-projection-upgrade-assertions.sql'
+    : ratingProjection
+      ? 'test/fixtures/rating-projection-upgrade-assertions.sql'
+      : protection
+        ? 'test/fixtures/matches-protection-upgrade-assertions.sql'
+        : resultContract
+          ? 'test/fixtures/matches-results-upgrade-assertions.sql'
+          : reconfirmation
+            ? 'test/fixtures/matches-reconfirmation-upgrade-assertions.sql'
+            : edits
+              ? 'test/fixtures/matches-edits-upgrade-assertions.sql'
+              : ownership
+                ? 'test/fixtures/matches-ownership-upgrade-assertions.sql'
+                : departures
+                  ? 'test/fixtures/matches-departures-upgrade-assertions.sql'
+                  : ASSERTIONS;
 
   const execute = (args, options = {}) => {
     const result = run('pnpm', ['exec', 'supabase', ...args], {
@@ -143,36 +151,45 @@ export function runHarness({ env = process.env, run = spawnSync, log = console }
       predecessor,
       '--no-seed'
     ]);
-    const predecessorTrigger = ratingProjection
+    const predecessorTrigger = leagueProjection
       ? 'match_result_proposal_transition_guard'
-      : resultContract
-        ? 'match_result_proposal_immutable'
-        : departures || ownership || edits || reconfirmation || protection
-          ? 'match_registration_identity_guard'
-          : 'match_registration_immutable';
-    const predecessorCheck = ratingProjection
-      ? `if to_regclass('public.player_rating_events') is not null
+      : ratingProjection
+        ? 'match_result_proposal_transition_guard'
+        : resultContract
+          ? 'match_result_proposal_immutable'
+          : departures || ownership || edits || reconfirmation || protection
+            ? 'match_registration_identity_guard'
+            : 'match_registration_immutable';
+    const predecessorCheck = leagueProjection
+      ? `if to_regclass('public.league_player_counters') is not null
+          or to_regprocedure('public.rebuild_league_counters(uuid)') is not null then
+          raise exception 'League projection unexpectedly exists at predecessor'; end if;
+         if to_regclass('public.leagues') is null
+          or to_regprocedure('public.finalize_match_event_result_locked(uuid,bigint,text,uuid)') is null then
+          raise exception 'leagues or confirmation finalizer missing at predecessor'; end if;`
+      : ratingProjection
+        ? `if to_regclass('public.player_rating_events') is not null
           or to_regprocedure('public.rating_v1_calculate_group(text,text,integer,jsonb)') is not null
           or to_regprocedure('public.project_confirmed_rating_group(uuid)') is not null then
           raise exception 'rating ledger or projector unexpectedly exists at predecessor'; end if;
          if to_regprocedure('public.finalize_match_event_result_locked(uuid,bigint,text,uuid)') is null
           or to_regprocedure('public.provision_provisional_player_locked(uuid,text,numeric,uuid,uuid)') is null then
           raise exception 'confirmation finalizer or provisional provisioning missing at predecessor'; end if;`
-      : resultContract
-        ? `if to_regclass('public.match_event_result_proposals') is null
+        : resultContract
+          ? `if to_regclass('public.match_event_result_proposals') is null
           or to_regclass('public.match_event_result_proposal_versions') is null then
           raise exception 'PAF-7 result tables missing at predecessor'; end if;
          if exists (select 1 from information_schema.columns where table_schema='public'
           and table_name='match_event_result_proposal_versions'
           and column_name in ('submitted_by','submitted_at','review_deadline_at')) then
           raise exception 'result provenance columns unexpectedly exist at predecessor'; end if;`
-        : protection
-          ? "if to_regprocedure('public.assert_match_management_action_locked(uuid,text)') is not null then raise exception 'protection guard unexpectedly exists'; end if;"
-          : reconfirmation
-            ? "if exists(select 1 from information_schema.columns where table_schema='public' and table_name='match_events' and column_name='reconfirmation_generation') then raise exception 'consent schema unexpectedly exists';end if;"
-            : edits
-              ? "if to_regprocedure('public.edit_match_event(uuid,bigint,jsonb,uuid)') is not null then raise exception 'edit RPC unexpectedly exists'; end if;"
-              : `if exists (select 1 from information_schema.columns where table_schema='public' and table_name='match_event_registrations' and column_name in (${ownership ? "'cancelled_at'" : departures ? "'current_attempt_id','left_at','removed_by','removal_reason'" : "'accepted_order','lifecycle','participation_status','registration_source'"})) then raise exception 'new registration columns unexpectedly exist'; end if;`;
+          : protection
+            ? "if to_regprocedure('public.assert_match_management_action_locked(uuid,text)') is not null then raise exception 'protection guard unexpectedly exists'; end if;"
+            : reconfirmation
+              ? "if exists(select 1 from information_schema.columns where table_schema='public' and table_name='match_events' and column_name='reconfirmation_generation') then raise exception 'consent schema unexpectedly exists';end if;"
+              : edits
+                ? "if to_regprocedure('public.edit_match_event(uuid,bigint,jsonb,uuid)') is not null then raise exception 'edit RPC unexpectedly exists'; end if;"
+                : `if exists (select 1 from information_schema.columns where table_schema='public' and table_name='match_event_registrations' and column_name in (${ownership ? "'cancelled_at'" : departures ? "'current_attempt_id','left_at','removed_by','removal_reason'" : "'accepted_order','lifecycle','participation_status','registration_source'"})) then raise exception 'new registration columns unexpectedly exist'; end if;`;
     const preflight = must('predecessor schema/history and legacy trigger; new columns absent', [
       'db',
       'query',
@@ -223,7 +240,8 @@ export function runHarness({ env = process.env, run = spawnSync, log = console }
       reconfirmation ||
       protection ||
       resultContract ||
-      ratingProjection
+      ratingProjection ||
+      leagueProjection
         ? ['--file', path.join(ROOT, assertions)]
         : ['select public.paf_upgrade_assert_snapshot()'])
     ]);
@@ -241,7 +259,8 @@ export function runHarness({ env = process.env, run = spawnSync, log = console }
         reconfirmation ||
         protection ||
         resultContract ||
-        ratingProjection
+        ratingProjection ||
+        leagueProjection
           ? ['--no-seed']
           : [])
       ]);

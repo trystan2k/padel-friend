@@ -153,6 +153,12 @@ export function LeagueListPage({ data }: { data: LeagueListResult }) {
         ) : (
           <p {...stylex.props(styles.guidance)}>{t('leagues.list.creationDisabled')}</p>
         )}
+        {leagues.length > 0 && !leagues.some((league) => league.status === 'active') && (
+          <SurfaceCard xstyle={styles.card}>
+            <p {...stylex.props(styles.strongText)}>{t('leagues.standings.empty.noActive')}</p>
+            <p {...stylex.props(styles.muted)}>{t('leagues.standings.empty.noActiveBody')}</p>
+          </SurfaceCard>
+        )}
         {leagues.length === 0 ? (
           <SurfaceCard xstyle={styles.card}>
             <p {...stylex.props(styles.strongText)}>{t('leagues.list.empty')}</p>
