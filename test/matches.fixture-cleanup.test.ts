@@ -41,6 +41,21 @@ describe('match fixture cleanup', () => {
       expect(sql).toContain(`alter table public.${table} enable trigger ${trigger}`);
     }
   });
+  it('removes immutable League projection receipts before the confirmations they reference', () => {
+    const sql = buildMatchFixtureCleanupSql({ eventIds: [event], actorIds: [actor] });
+    const receipts =
+      'delete from public.league_projection_confirmations where match_event_id in (select id from owned_match_fixture_events)';
+    expect(sql).toContain(receipts);
+    expect(sql.indexOf('disable trigger league_projection_confirmations_immutable')).toBeLessThan(
+      sql.indexOf(receipts)
+    );
+    expect(sql.indexOf(receipts)).toBeLessThan(
+      sql.indexOf('enable trigger league_projection_confirmations_immutable')
+    );
+    expect(sql.indexOf(receipts)).toBeLessThan(
+      sql.indexOf('delete from public.match_event_result_confirmations')
+    );
+  });
   it('materializes only explicit owned events/actors and deletes notification links before results', () => {
     const sql = buildMatchFixtureCleanupSql({ eventIds: [event], actorIds: [actor] });
     expect(sql).toContain(

@@ -497,6 +497,57 @@ export type Database = {
           },
         ]
       }
+      league_player_counters: {
+        Row: {
+          community_id: string
+          draws: number
+          league_id: string
+          losses: number
+          matches: number
+          set_differential: number | null
+          sets_lost: number
+          sets_won: number
+          updated_at: string
+          user_id: string
+          wins: number
+        }
+        ComputedFields: never
+        Insert: {
+          community_id: string
+          draws?: number
+          league_id: string
+          losses?: number
+          matches?: number
+          set_differential?: never
+          sets_lost?: number
+          sets_won?: number
+          updated_at?: string
+          user_id: string
+          wins?: number
+        }
+        Update: {
+          community_id?: string
+          draws?: number
+          league_id?: string
+          losses?: number
+          matches?: number
+          set_differential?: never
+          sets_lost?: number
+          sets_won?: number
+          updated_at?: string
+          user_id?: string
+          wins?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "league_player_counters_league_fk"
+            columns: ["league_id", "community_id"]
+            isOneToOne: false
+            referencedRelation: "leagues"
+            referencedColumns: ["id", "community_id"]
+          },
+        ]
+      }
       league_process_attempts: {
         Row: {
           attempted_at: string
@@ -512,6 +563,61 @@ export type Database = {
           community_id?: string
         }
         Relationships: []
+      }
+      league_projection_confirmations: {
+        Row: {
+          community_id: string
+          confirmation_id: string
+          group_number: number
+          id: string
+          league_id: string
+          match_event_id: string
+          projected_at: string
+          proposal_id: string
+          proposal_version: number
+          source_confirmed_at: string
+        }
+        ComputedFields: never
+        Insert: {
+          community_id: string
+          confirmation_id: string
+          group_number: number
+          id?: string
+          league_id: string
+          match_event_id: string
+          projected_at?: string
+          proposal_id: string
+          proposal_version: number
+          source_confirmed_at: string
+        }
+        Update: {
+          community_id?: string
+          confirmation_id?: string
+          group_number?: number
+          id?: string
+          league_id?: string
+          match_event_id?: string
+          projected_at?: string
+          proposal_id?: string
+          proposal_version?: number
+          source_confirmed_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "league_projection_confirmations_confirmation_id_fkey"
+            columns: ["confirmation_id"]
+            isOneToOne: false
+            referencedRelation: "match_event_result_confirmations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "league_projection_confirmations_league_fk"
+            columns: ["league_id", "community_id"]
+            isOneToOne: false
+            referencedRelation: "leagues"
+            referencedColumns: ["id", "community_id"]
+          },
+        ]
       }
       leagues: {
         Row: {
@@ -2637,6 +2743,34 @@ export type Database = {
       }
       league_backfill_references_from_audit: { Args: Record<PropertyKey, never>; Returns: number }
       league_community_dto: { Args: { p_community_id: string }; Returns: Json }
+      league_confirmed_groups: {
+        Args: { p_league_id: string }
+        Returns: {
+          classification: string
+          confirmation_id: string
+          confirmed_at: string
+          eligible: boolean
+          group_number: number
+          match_event_id: string
+          played_at_utc: string
+          proposal_id: string
+          proposal_version: number
+          sets: Json
+          teams: Json
+        }[]
+      }
+      league_counter_rows: {
+        Args: { p_league_id: string }
+        Returns: {
+          draws: number
+          losses: number
+          matches: number
+          sets_lost: number
+          sets_won: number
+          user_id: string
+          wins: number
+        }[]
+      }
       league_dto: {
         Args: {
           p_league: Omit<
@@ -3008,6 +3142,7 @@ export type Database = {
         Returns: Json
       }
       project_confirmed_rating_group: { Args: { p_proposal_id: string }; Returns: undefined }
+      project_league_confirmation: { Args: { p_confirmation_id: string }; Returns: boolean }
       protect_match_event_results: { Args: { p_event_id: string }; Returns: undefined }
       provision_provisional_player_locked: {
         Args: {
@@ -3160,6 +3295,7 @@ export type Database = {
         Args: { p_config_version: number; p_engine: string; p_engine_version: string }
         Returns: boolean
       }
+      rebuild_league_counters: { Args: { p_league_id: string }; Returns: Json }
       reconcile_match_registration_participation:
         | { Args: { p_accepted_registration_id?: string; p_match_event_id: string }; Returns: Json }
         | {

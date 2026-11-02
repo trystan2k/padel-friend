@@ -86,6 +86,10 @@ export function buildMatchFixtureCleanupSql(owner: MatchFixtureOwner = {}): stri
     'alter table public.player_rating_initializations enable trigger player_rating_initializations_immutable',
     'alter table public.player_rating_events enable trigger player_rating_events_immutable',
     'alter table public.player_rating_event_calculations enable trigger player_rating_calculations_immutable',
+    // League projection receipts are immutable and restrictively reference the confirmations.
+    'alter table public.league_projection_confirmations disable trigger league_projection_confirmations_immutable',
+    'delete from public.league_projection_confirmations where match_event_id in (select id from owned_match_fixture_events)',
+    'alter table public.league_projection_confirmations enable trigger league_projection_confirmations_immutable',
     `delete from public.notifications n where (n.target_type in ('match_event', 'result_available') and n.target_id in (select id from owned_match_fixture_events)) or (n.category in ('matches', 'results') and ${actorPredicate('n.recipient_user_id')})`,
     'delete from public.match_event_audit_log where match_event_id in (select id from owned_match_fixture_events)',
     'delete from public.match_event_result_reviews where proposal_id in (select id from public.match_event_result_proposals where match_event_id in (select id from owned_match_fixture_events))',

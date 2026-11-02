@@ -215,6 +215,7 @@ export class FixtureCleanupRegistry {
     const tail = split < 0 ? [] : entries.slice(split);
     const statements = [
       ...(options.beforeStatements ?? []),
+      ...this.leagueProjectionEvidenceStatements(),
       ...ratingEvidence.before,
       ...head.map(deleteEntry),
       ...leagueEvidence,
@@ -294,6 +295,43 @@ export class FixtureCleanupRegistry {
         ([table, trigger]) => `ALTER TABLE public.${table} ENABLE TRIGGER ${trigger}`
       )
     };
+  }
+
+  /**
+   * League projection receipts are immutable and restrictively reference official confirmations
+   * and Leagues, so they go before the confirmations. The trigger is disabled only inside the
+   * cleanup transaction (rollback restores it) and re-enabled before it commits. Earned counter
+   * rows cascade with their League and user.
+   */
+  private leagueProjectionEvidenceStatements(): string[] {
+    const scopes: string[] = [];
+    for (const entry of this.sortedEntries()) {
+      const predicate = Object.entries(entry.identity)
+        .sort(([left], [right]) => left.localeCompare(right))
+        .map(([column, value]) =>
+          value === null
+            ? `${quoteColumn(column)} IS NULL`
+            : `${quoteColumn(column)} = ${sqlLiteral(value)}`
+        )
+        .join(' AND ');
+      const select = (column: string) =>
+        `SELECT ${column} FROM ${quoteTable(entry.table)} WHERE ${predicate}`;
+      if (entry.table === 'public.communities') scopes.push(`community_id IN (${select('id')})`);
+      else if (entry.table === 'auth.users') {
+        scopes.push(
+          `league_id IN (SELECT id FROM public.leagues WHERE owner_id IN (${select('id')}))`
+        );
+      } else if (entry.table === 'public.leagues') scopes.push(`league_id IN (${select('id')})`);
+      else if (entry.table === 'public.match_events') {
+        scopes.push(`match_event_id IN (${select('id')})`);
+      }
+    }
+    if (scopes.length === 0) return [];
+    return [
+      'ALTER TABLE public.league_projection_confirmations DISABLE TRIGGER league_projection_confirmations_immutable',
+      `DELETE FROM public.league_projection_confirmations WHERE ${scopes.join(' OR ')}`,
+      'ALTER TABLE public.league_projection_confirmations ENABLE TRIGGER league_projection_confirmations_immutable'
+    ];
   }
 
   /**
