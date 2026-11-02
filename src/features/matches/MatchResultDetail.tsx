@@ -156,6 +156,15 @@ export function MatchResultDetail({
             if (proposal)
               return (
                 <div key={proposal.proposal_id} id={`result-group-${groupNumber}`} tabIndex={-1}>
+                  {proposal.status === 'confirmed' && (
+                    <Link
+                      to="/matches/$eventId/groups/$groupId"
+                      params={{ eventId: event.event_id, groupId: proposal.proposal_id }}
+                      {...stylex.props(s.button)}
+                    >
+                      {t('statistics.history.viewDetails')}
+                    </Link>
+                  )}
                   <MatchResultReview
                     eventId={event.event_id}
                     proposal={proposal}

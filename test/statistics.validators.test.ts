@@ -71,7 +71,10 @@ describe('statistics page size', () => {
   it('defaults to 20 and caps at 100', () => {
     expect(validateStatisticsPageSize(undefined)).toBe(20);
     expect(validateStatisticsPageSize(100)).toBe(100);
-    for (const bad of [0, 101, 1.5, '20'])
+    expect(validateStatisticsPageSize(101)).toBe(100);
+    expect(validateStatisticsPageSize(0)).toBe(20);
+    expect(validateStatisticsPageSize(-5)).toBe(20);
+    for (const bad of [1.5, '20'])
       expect(() => validateStatisticsPageSize(bad)).toThrow('INVALID_STATISTICS_INPUT');
   });
 });

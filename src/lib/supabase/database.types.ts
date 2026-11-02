@@ -3495,6 +3495,10 @@ export type Database = {
         Returns: Json
       }
       get_statistics_config: { Args: Record<PropertyKey, never>; Returns: Json }
+      get_statistics_group_detail: {
+        Args: { p_event_id: string; p_game_group_id: string }
+        Returns: Json
+      }
       govern_community_member: {
         Args: { p_action: string; p_community_id: string; p_membership_id: string }
         Returns: {
@@ -3728,6 +3732,20 @@ export type Database = {
       }
       list_match_league_options: {
         Args: { p_community_id: string; p_date: string; p_start_time: string }
+        Returns: Json
+      }
+      list_statistics_history: {
+        Args: {
+          p_community_id?: string
+          p_cursor_at?: string
+          p_cursor_key?: string
+          p_from?: string
+          p_league_id?: string
+          p_limit?: number
+          p_revision?: number
+          p_through?: string
+          p_type?: string
+        }
         Returns: Json
       }
       lock_global_rating_projection: { Args: Record<PropertyKey, never>; Returns: undefined }
@@ -4318,6 +4336,11 @@ export type Database = {
         Returns: number
       }
       statistics_assert_consistent: { Args: { p_community_id: string }; Returns: undefined }
+      statistics_assert_rating_aligned: { Args: Record<PropertyKey, never>; Returns: undefined }
+      statistics_can_view_event: {
+        Args: { p_event_id: string; p_viewer: string }
+        Returns: boolean
+      }
       statistics_cand: {
         Args: { p_at: string; p_group: string; p_key: number; p_value: number }
         Returns: Json
@@ -4403,6 +4426,7 @@ export type Database = {
           user_id: string
         }[]
       }
+      statistics_read_actor: { Args: Record<PropertyKey, never>; Returns: string }
       statistics_recent: { Args: { p_items: Json }; Returns: Json }
       statistics_seq_from: { Args: { p_outcomes: string }; Returns: Json }
       statistics_thresholds_valid: { Args: { p_thresholds: Json }; Returns: boolean }

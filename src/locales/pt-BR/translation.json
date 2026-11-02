@@ -1757,5 +1757,138 @@
       "INVALID_LEAGUE_INPUT": "Esses dados não são válidos.",
       "INVALID_LEAGUE_RESPONSE": "Algo deu errado. Tente novamente."
     }
+  },
+  "statistics": {
+    "history": {
+      "title": "Histórico de partidas",
+      "subtitle": "Resultados confirmados e todas as partidas que não viraram resultado.",
+      "listLabel": "Entradas do histórico de partidas",
+      "empty": "Ainda não há histórico. Resultados confirmados e partidas não disputadas aparecerão aqui.",
+      "loadMore": "Carregar mais",
+      "loadingMore": "Carregando…",
+      "retry": "Tentar novamente",
+      "status": {
+        "played": "Disputada",
+        "incomplete": "Incompleta",
+        "disputed": "Contestada",
+        "pending": "Aguardando aprovação",
+        "awaiting_result": "Aguardando resultado",
+        "canceled": "Cancelada",
+        "reserve_not_playing": "Reserva, não jogou"
+      },
+      "statusHelp": {
+        "played": "O resultado foi confirmado.",
+        "incomplete": "Confirmada como incompleta: sem vitória, derrota ou mudança de nível.",
+        "disputed": "Um jogador contestou o resultado. Ele não conta.",
+        "pending": "O resultado aguarda revisão e ainda não conta.",
+        "awaiting_result": "A partida começou e nenhum resultado foi registrado.",
+        "canceled": "A partida foi cancelada.",
+        "reserve_not_playing": "Você era reserva e não jogou."
+      },
+      "outcome": {
+        "win": "Vitória",
+        "loss": "Derrota",
+        "draw": "Empate"
+      },
+      "group": "Grupo {{number}}",
+      "sets": "Sets {{won}}–{{lost}}",
+      "games": "Games {{won}}–{{lost}}",
+      "ratingChange": "Nível {{delta}}",
+      "noRating": "Sem mudança de nível",
+      "league": "Liga: {{name}}",
+      "viewDetails": "Detalhes do resultado",
+      "viewMatch": "Abrir partida",
+      "detailsLabel": "Detalhes do resultado, partida {{type}} em {{date}}",
+      "matchLabel": "Abrir partida {{type}} em {{date}}"
+    },
+    "detail": {
+      "title": "Detalhes do resultado",
+      "back": "Voltar à partida",
+      "summary": {
+        "played": "Disputada em {{date}} às {{time}}",
+        "court": "Quadra {{label}}",
+        "leagueCounts": "Conta para a classificação da Liga",
+        "leagueNotCounted": "Não conta para a classificação da Liga",
+        "community": "Comunidade",
+        "venue": "Local",
+        "type": "Tipo de partida",
+        "league": "Liga",
+        "ratingKind": "Nível"
+      },
+      "sections": {
+        "result": "Resultado",
+        "sets": "Placar dos sets",
+        "teams": "Jogadores",
+        "rating": "Efeitos no nível",
+        "confirmation": "Confirmação",
+        "timeline": "Linha do tempo de auditoria"
+      },
+      "winner": {
+        "team_a": "Equipe A venceu",
+        "team_b": "Equipe B venceu",
+        "draw": "Empate",
+        "incomplete": "Incompleta: sem vencedor"
+      },
+      "setsTotal": "Sets {{a}}–{{b}}",
+      "gamesTotal": "Games {{a}}–{{b}}",
+      "incompleteNote": "Resultados incompletos mantêm os games registrados, mas não têm vitória, derrota ou empate nem efeito no nível.",
+      "matchup": {
+        "title": "Expectativa antes da partida",
+        "strength": "Força de {{team}}: {{value}}",
+        "expected": "Chance esperada de vitória de {{team}}: {{value}}",
+        "upset": "Zebra",
+        "upsetAria": "Zebra: a equipe vencedora tinha baixa chance esperada de vitória"
+      },
+      "rating": {
+        "state": {
+          "applied": "As mudanças de nível foram aplicadas aos quatro jogadores.",
+          "friendly": "Partidas amistosas não mudam o nível.",
+          "incomplete": "Resultados incompletos não mudam o nível.",
+          "unavailable": "A evidência de nível ainda não está disponível."
+        },
+        "before": "Antes",
+        "after": "Depois",
+        "change": "Mudança",
+        "reliability": "Confiabilidade de {{before}}% para {{after}}%",
+        "expected": "Pontuação esperada {{value}}",
+        "absent": {
+          "friendly": "Sem mudança de nível: partida amistosa",
+          "incomplete": "Sem mudança de nível: resultado incompleto",
+          "not_rated": "Sem mudança de nível: não pontuada",
+          "missing_evidence": "Evidência de nível ausente"
+        }
+      },
+      "confirmation": {
+        "manual": "Aprovado por {{name}}",
+        "automatic": "Confirmado automaticamente após a janela de revisão de 48 horas",
+        "confirmedAt": "Confirmado em {{date}}",
+        "effectiveAt": "Em vigor desde {{date}}",
+        "submittedBy": "Enviado por {{name}} em {{date}}"
+      },
+      "correction": {
+        "badge": "Resultado corrigido",
+        "help": "Este resultado foi corrigido antes de ser confirmado (versão {{version}})."
+      },
+      "timeline": {
+        "submitted": "Resultado enviado",
+        "corrected": "Resultado corrigido (versão {{version}})",
+        "approved": "Aprovado",
+        "confirmedManual": "Confirmado",
+        "confirmedAuto": "Confirmado automaticamente",
+        "by": "por {{name}}"
+      },
+      "notFound": {
+        "title": "Resultado indisponível",
+        "body": "Este resultado não existe ou você não pode vê-lo."
+      }
+    },
+    "errors": {
+      "STATISTICS_UNAUTHENTICATED": "Entre para ver o histórico de partidas.",
+      "STATISTICS_NOT_FOUND": "Este resultado não existe ou você não pode vê-lo.",
+      "STATISTICS_STALE_REVISION": "As estatísticas estão sendo atualizadas. Tente novamente em instantes.",
+      "INVALID_STATISTICS_INPUT": "Esses filtros não são válidos.",
+      "INVALID_STATISTICS_RESPONSE": "Algo deu errado. Tente novamente.",
+      "STATISTICS_UNAVAILABLE": "Algo deu errado. Tente novamente."
+    }
   }
 }

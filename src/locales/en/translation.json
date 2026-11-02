@@ -1757,5 +1757,138 @@
       "INVALID_LEAGUE_INPUT": "Those details aren't valid.",
       "INVALID_LEAGUE_RESPONSE": "Something went wrong. Try again."
     }
+  },
+  "statistics": {
+    "history": {
+      "title": "Match history",
+      "subtitle": "Confirmed results and every match that did not become a result.",
+      "listLabel": "Match history entries",
+      "empty": "No match history yet. Confirmed results and matches that were not played will show up here.",
+      "loadMore": "Load more",
+      "loadingMore": "Loading…",
+      "retry": "Try again",
+      "status": {
+        "played": "Played",
+        "incomplete": "Incomplete",
+        "disputed": "Disputed",
+        "pending": "Pending approval",
+        "awaiting_result": "Awaiting result",
+        "canceled": "Canceled",
+        "reserve_not_playing": "Reserve, not playing"
+      },
+      "statusHelp": {
+        "played": "The result was confirmed.",
+        "incomplete": "Confirmed as incomplete: no win, loss or rating change.",
+        "disputed": "A player disputed the result. It does not count.",
+        "pending": "The result is waiting for review and does not count yet.",
+        "awaiting_result": "The match started and no result has been recorded.",
+        "canceled": "The match was canceled.",
+        "reserve_not_playing": "You were a reserve and did not play."
+      },
+      "outcome": {
+        "win": "Win",
+        "loss": "Loss",
+        "draw": "Draw"
+      },
+      "group": "Group {{number}}",
+      "sets": "Sets {{won}}–{{lost}}",
+      "games": "Games {{won}}–{{lost}}",
+      "ratingChange": "Rating {{delta}}",
+      "noRating": "No rating change",
+      "league": "League: {{name}}",
+      "viewDetails": "Result details",
+      "viewMatch": "Open match",
+      "detailsLabel": "Result details, {{type}} match on {{date}}",
+      "matchLabel": "Open {{type}} match on {{date}}"
+    },
+    "detail": {
+      "title": "Result details",
+      "back": "Back to match",
+      "summary": {
+        "played": "Played {{date}} at {{time}}",
+        "court": "Court {{label}}",
+        "leagueCounts": "Counts for the League standings",
+        "leagueNotCounted": "Does not count for the League standings",
+        "community": "Community",
+        "venue": "Venue",
+        "type": "Match type",
+        "league": "League",
+        "ratingKind": "Rating"
+      },
+      "sections": {
+        "result": "Result",
+        "sets": "Set scores",
+        "teams": "Players",
+        "rating": "Rating effects",
+        "confirmation": "Confirmation",
+        "timeline": "Audit timeline"
+      },
+      "winner": {
+        "team_a": "Team A won",
+        "team_b": "Team B won",
+        "draw": "Draw",
+        "incomplete": "Incomplete: no winner"
+      },
+      "setsTotal": "Sets {{a}}–{{b}}",
+      "gamesTotal": "Games {{a}}–{{b}}",
+      "incompleteNote": "Incomplete results keep their recorded games but have no win, loss or draw and no rating effect.",
+      "matchup": {
+        "title": "Pre-match outlook",
+        "strength": "{{team}} strength: {{value}}",
+        "expected": "{{team}} expected win chance: {{value}}",
+        "upset": "Upset",
+        "upsetAria": "Upset: winning team had a low expected win chance"
+      },
+      "rating": {
+        "state": {
+          "applied": "Rating changes were applied for all four players.",
+          "friendly": "Friendly matches do not change ratings.",
+          "incomplete": "Incomplete results do not change ratings.",
+          "unavailable": "Rating evidence is not available yet."
+        },
+        "before": "Before",
+        "after": "After",
+        "change": "Change",
+        "reliability": "Reliability {{before}}% to {{after}}%",
+        "expected": "Expected score {{value}}",
+        "absent": {
+          "friendly": "No rating change: Friendly match",
+          "incomplete": "No rating change: Incomplete result",
+          "not_rated": "No rating change: not rated",
+          "missing_evidence": "Rating evidence missing"
+        }
+      },
+      "confirmation": {
+        "manual": "Approved by {{name}}",
+        "automatic": "Confirmed automatically after the 48-hour review window",
+        "confirmedAt": "Confirmed {{date}}",
+        "effectiveAt": "Effective {{date}}",
+        "submittedBy": "Submitted by {{name}} on {{date}}"
+      },
+      "correction": {
+        "badge": "Corrected result",
+        "help": "This result was corrected before it was confirmed (version {{version}})."
+      },
+      "timeline": {
+        "submitted": "Result submitted",
+        "corrected": "Result corrected (version {{version}})",
+        "approved": "Approved",
+        "confirmedManual": "Confirmed",
+        "confirmedAuto": "Confirmed automatically",
+        "by": "by {{name}}"
+      },
+      "notFound": {
+        "title": "Result not available",
+        "body": "This result does not exist or you cannot see it."
+      }
+    },
+    "errors": {
+      "STATISTICS_UNAUTHENTICATED": "Sign in to see match history.",
+      "STATISTICS_NOT_FOUND": "This result does not exist or you cannot see it.",
+      "STATISTICS_STALE_REVISION": "Statistics are being updated. Try again in a moment.",
+      "INVALID_STATISTICS_INPUT": "Those filters are not valid.",
+      "INVALID_STATISTICS_RESPONSE": "Something went wrong. Try again.",
+      "STATISTICS_UNAVAILABLE": "Something went wrong. Try again."
+    }
   }
 }

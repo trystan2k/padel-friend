@@ -41,7 +41,10 @@ const INTERNAL_FUNCTIONS = [
   'statistics_apply_summaries(uuid[],uuid[])',
   'statistics_publish(uuid[],uuid[],uuid[],boolean)',
   'statistics_assert_consistent(uuid)',
-  'rebuild_statistics(uuid)'
+  'rebuild_statistics(uuid)',
+  'statistics_read_actor()',
+  'statistics_assert_rating_aligned()',
+  'statistics_can_view_event(uuid,uuid)'
 ];
 const INDEXES = [
   'statistics_group_facts_community_chronology',
@@ -138,21 +141,28 @@ describe.skipIf(!environment.env)('Statistics schema', { timeout: 120_000 }, () 
     expect(rebuild.error).not.toBeNull();
   });
 
-  it('exposes only get_statistics_config to signed-in users, as SECURITY DEFINER with an empty search_path', async () => {
+  it('exposes only the whitelisted statistics readers to signed-in users, as SECURITY DEFINER with an empty search_path', async () => {
     const granted = await sqlRows(
       `select p.proname from pg_proc p join pg_namespace n on n.oid = p.pronamespace
         where n.nspname = 'public' and p.proname ~ 'statistics'
           and has_function_privilege('authenticated', p.oid, 'EXECUTE') order by 1`
     );
-    expect(granted.map((row) => row['proname'])).toEqual(['get_statistics_config']);
-    const [reader] = await sqlRows(
-      `select p.prosecdef, p.proconfig::text as config,
+    expect(granted.map((row) => row['proname'])).toEqual([
+      'get_statistics_config',
+      'get_statistics_group_detail',
+      'list_statistics_history'
+    ]);
+    const readers = await sqlRows(
+      `select p.proname, p.prosecdef, p.proconfig::text as config,
          position('assert_actor_not_provisional' in pg_get_functiondef(p.oid)) > 0 as guarded
-        from pg_proc p where p.proname = 'get_statistics_config'`
+        from pg_proc p where p.proname in ('get_statistics_config', 'get_statistics_group_detail', 'list_statistics_history')`
     );
-    expect(reader?.['prosecdef']).toBe(true);
-    expect(String(reader?.['config'])).toMatch(/search_path=\\?"\\?"/);
-    expect(reader?.['guarded']).toBe(true);
+    expect(readers).toHaveLength(3);
+    for (const reader of readers) {
+      expect(reader['prosecdef']).toBe(true);
+      expect(String(reader['config'])).toMatch(/search_path=\\?"\\?"/);
+      expect(reader['guarded']).toBe(true);
+    }
     const definers = await sqlRows(
       `select p.proname, p.proconfig::text as config from pg_proc p join pg_namespace n on n.oid = p.pronamespace
         where n.nspname = 'public' and p.proname ~ 'statistics' and p.prosecdef`

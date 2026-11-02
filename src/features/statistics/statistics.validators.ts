@@ -68,10 +68,83 @@ export function utcRangeBounds(filters: Pick<StatisticsFilters, 'from' | 'throug
 
 export function validateStatisticsPageSize(value: unknown): number {
   if (value === undefined || value === null) return STATISTICS_HISTORY_PAGE_DEFAULT;
-  return typeof value === 'number' &&
-    Number.isSafeInteger(value) &&
-    value >= 1 &&
-    value <= STATISTICS_HISTORY_PAGE_MAX
-    ? value
-    : invalid();
+  if (typeof value !== 'number' || !Number.isSafeInteger(value)) return invalid();
+  return value < 1 ? STATISTICS_HISTORY_PAGE_DEFAULT : Math.min(value, STATISTICS_HISTORY_PAGE_MAX);
+}
+
+export type StatisticsHistoryInput = {
+  filters: StatisticsFilters;
+  limit: number;
+  cursor: string | null;
+};
+export type StatisticsGroupDetailInput = { eventId: string; groupId: string };
+export type DecodedHistoryCursor = { revision: number; at: string; key: string };
+
+const FILTER_KEYS = ['communityId', 'leagueId', 'type', 'from', 'through'] as const;
+const CURSOR_KEY = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+const CURSOR_INSTANT = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{6}Z$/;
+
+/** Opaque cursor: the pinned statistics revision plus the keyset position of the last row served. */
+export function encodeHistoryCursor(revision: number, position: { at: string; key: string }) {
+  return btoa(JSON.stringify({ r: revision, t: position.at, k: position.key }))
+    .replaceAll('+', '-')
+    .replaceAll('/', '_')
+    .replaceAll('=', '');
+}
+
+export function decodeHistoryCursor(cursor: string): DecodedHistoryCursor {
+  if (cursor.length > 240 || !/^[A-Za-z0-9_-]+$/.test(cursor)) return invalid();
+  let parsed: unknown;
+  try {
+    const padded = cursor.replaceAll('-', '+').replaceAll('_', '/');
+    parsed = JSON.parse(atob(padded.padEnd(Math.ceil(padded.length / 4) * 4, '=')));
+  } catch {
+    return invalid();
+  }
+  const data = record(parsed, ['r', 't', 'k']);
+  const { r: revision, t: at, k: key } = data;
+  if (
+    typeof revision !== 'number' ||
+    !Number.isSafeInteger(revision) ||
+    revision < 0 ||
+    typeof at !== 'string' ||
+    !CURSOR_INSTANT.test(at) ||
+    Number.isNaN(Date.parse(at)) ||
+    new Date(at).toISOString().slice(0, 19) !== at.slice(0, 19) ||
+    typeof key !== 'string' ||
+    !CURSOR_KEY.test(key)
+  )
+    return invalid();
+  return { revision, at, key };
+}
+
+/** History query: the shared filter set plus a page size and an opaque keyset cursor. */
+export function validateStatisticsHistoryInput(input: unknown): StatisticsHistoryInput {
+  const data = record(input ?? {}, [...FILTER_KEYS, 'limit', 'cursor']);
+  const filters = validateStatisticsFilters(
+    Object.fromEntries(FILTER_KEYS.filter((key) => key in data).map((key) => [key, data[key]]))
+  );
+  const cursor = data.cursor;
+  if (cursor !== undefined && cursor !== null) {
+    if (typeof cursor !== 'string') return invalid();
+    decodeHistoryCursor(cursor);
+  }
+  return {
+    filters,
+    limit: validateStatisticsPageSize(data.limit),
+    cursor: typeof cursor === 'string' ? cursor : null
+  };
+}
+
+export function validateStatisticsGroupDetailInput(input: unknown): StatisticsGroupDetailInput {
+  const data = record(input, ['eventId', 'groupId']);
+  const { eventId, groupId } = data;
+  if (
+    typeof eventId !== 'string' ||
+    !UUID.test(eventId) ||
+    typeof groupId !== 'string' ||
+    !UUID.test(groupId)
+  )
+    return invalid();
+  return { eventId: eventId.toLowerCase(), groupId: groupId.toLowerCase() };
 }
