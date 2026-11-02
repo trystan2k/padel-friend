@@ -74,6 +74,10 @@ export function LeagueStandingsHistory({
     loadedAudit,
     auditFailed
   };
+  const latestGeneration = useRef(generation);
+  useEffect(() => {
+    latestGeneration.current = generation;
+  });
   const [recovered, setRecovered] = useState<Recovered | null>(null);
   const [retrying, setRetrying] = useState<'versions' | 'audit' | null>(null);
   const focusAfterRetry = useRef<'versions' | 'audit' | null>(null);
@@ -143,6 +147,9 @@ export function LeagueStandingsHistory({
               })
             }
           : { audit: await getLeagueStandingsAudit({ data: { league_id: league.id } }) };
+      // A completion that outlived its League or loader generation neither recovers nor moves focus.
+      if (!sameGeneration(latestGeneration.current, requested)) return;
+      focusAfterRetry.current = part;
       setRecovered((previous) => ({
         versions: null,
         audit: null,
@@ -150,7 +157,6 @@ export function LeagueStandingsHistory({
         ...requested,
         ...result
       }));
-      focusAfterRetry.current = part;
     } catch {
       // The unavailable state stays on screen with its retry.
     } finally {

@@ -338,6 +338,23 @@ describe('spoken record', () => {
     expect(spoken(locale, 1)).toEqual(one);
     expect(spoken(locale, 2)).toEqual(other);
   });
+  // CLDR pt classifies 0 as "one"; an explicit _zero form keeps it plural.
+  it.each([
+    ['en', ['0 wins', '0 losses', '0 draws']],
+    ['es', ['0 victorias', '0 derrotas', '0 empates']],
+    ['pt-BR', ['0 vitórias', '0 derrotas', '0 empates']]
+  ] as const)('uses plural nouns for zero in %s', (locale, zero) => {
+    expect(spoken(locale, 0)).toEqual(zero);
+  });
+  it.each([
+    ['en', '0 wins, 0 losses, 0 draws'],
+    ['es', '0 victorias, 0 derrotas, 0 empates'],
+    ['pt-BR', '0 vitórias, 0 derrotas, 0 empates']
+  ] as const)('speaks a winless record through the rendered table in %s', (locale, text) => {
+    const empty = makeStandingEntry({ wins: 0, losses: 0, draws: 0 });
+    render(wrap(<Detail data={active()} standings={makeLiveStandings([empty])} />, locale));
+    expect(screen.getByText(text)).toBeTruthy();
+  });
 });
 
 describe('refresh hook', () => {
@@ -887,6 +904,46 @@ describe('final version history', () => {
       await waitFor(() =>
         expect(document.activeElement).toBe(screen.getByRole('combobox', { name: 'Final version' }))
       );
+    });
+
+    it('ignores a delayed retry that completes after the League changed', async () => {
+      let finish: (value: typeof auditResult) => void = () => {};
+      mocks.getAudit.mockReturnValueOnce(
+        new Promise<typeof auditResult>((resolve) => {
+          finish = resolve;
+        })
+      );
+      const standings = makeFinalStandings([ana]);
+      const rendered = render(element(standings, { auditFailed: true }));
+      const button = screen.getByRole('button', { name: 'Try again' });
+      button.focus();
+      await userEvent.click(button);
+
+      const other = { ...league, id: 'other-league' };
+      rendered.rerender(element(makeFinalStandings([ana]), { league: other, auditFailed: true }));
+      const selector = screen.getByRole('combobox', { name: 'Final version' });
+      selector.focus();
+      finish(auditResult);
+      await waitFor(() => expect(screen.getByRole('button', { name: 'Try again' })).toBeTruthy());
+
+      expect(screen.queryAllByRole('listitem')).toHaveLength(0);
+      expect(document.activeElement).toBe(selector);
+    });
+
+    it('still transfers focus when a delayed retry completes in the same generation', async () => {
+      let finish: (value: typeof auditResult) => void = () => {};
+      mocks.getAudit.mockReturnValueOnce(
+        new Promise<typeof auditResult>((resolve) => {
+          finish = resolve;
+        })
+      );
+      const standings = makeFinalStandings([ana]);
+      render(element(standings, { auditFailed: true }));
+      await userEvent.click(screen.getByRole('button', { name: 'Try again' }));
+      finish(auditResult);
+      await screen.findAllByRole('listitem');
+      const heading = screen.getByRole('heading', { name: 'Audit trail' });
+      await waitFor(() => expect(document.activeElement).toBe(heading));
     });
 
     it('moves focus to the audit heading after a successful audit retry', async () => {

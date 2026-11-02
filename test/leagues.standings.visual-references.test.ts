@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 import manifest from '../e2e/references/paf-12/manifest.json';
 
 const digest = (bytes: Buffer) => createHash('sha256').update(bytes).digest('hex');
-const frames = ['ywfn7', 'd6ANDN', 'xbIxj'];
+const frames = ['ywfn7', 'd6ANDN', 'xbIxj'] as const;
 const budgeted: ('ywfn7' | 'xbIxj')[] = ['ywfn7', 'xbIxj'];
 
 describe('PAF-12 League standings visual references', () => {
@@ -75,6 +75,32 @@ describe('PAF-12 League standings visual references', () => {
         expect(entry.delta.length).toBeGreaterThan(20);
         expect(entry.probes.length).toBeGreaterThan(0);
       }
+  });
+
+  it('certifies masked content with geometry probes plus token/style assertions', () => {
+    const { maskedContentCoverage } = manifest;
+    expect(maskedContentCoverage.policy).toContain('geometry probes');
+    expect(maskedContentCoverage.policy).toContain('design-tokens/dist/tokens.css');
+    expect(Object.keys(maskedContentCoverage).sort()).toEqual(['policy', ...frames].sort());
+    const spec = readFileSync(new URL('../e2e/league-standings.spec.ts', import.meta.url), 'utf8');
+    const helpers = readFileSync(
+      new URL('../e2e/league-standings-visual.ts', import.meta.url),
+      'utf8'
+    );
+    for (const frame of frames) {
+      const { theme, elements } = maskedContentCoverage[frame];
+      expect(['light', 'dark']).toContain(theme);
+      expect(elements.length).toBeGreaterThan(0);
+      // Every listed element is really asserted by name, and each frame has structural probes too.
+      for (const name of elements) expect(spec + helpers).toContain(`name: '${name}'`);
+      expect(manifest.structuralProbes[frame].length).toBeGreaterThan(0);
+      expect(spec).toContain(`'${frame} masked content'`);
+    }
+    // Every masked (budgeted) frame has style coverage for the card, table and type it masks.
+    for (const frame of budgeted)
+      expect(maskedContentCoverage[frame].elements).toEqual(
+        expect.arrayContaining(['own summary card', 'primary table', 'viewer row (highlighted)'])
+      );
   });
 
   it('keeps the modal close dialog structural-only instead of inventing a masking budget', () => {

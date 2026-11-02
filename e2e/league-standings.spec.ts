@@ -2,12 +2,14 @@ import { expect, test, type Locator, type Page, type TestInfo } from '@playwrigh
 import { waitForHydratedPage } from './auth-helpers';
 import { copies, day, leagueFixtures } from './leagues-fixtures';
 import {
+  assertDesignSystemStyles,
   assertInInitialViewport,
   assertNoOverflow,
   primaryRankingTargets,
   assertTouchHeights,
   docBox,
-  measureStandingsFrame
+  measureStandingsFrame,
+  standingsStyleChecks
 } from './league-standings-visual';
 import { en, fill, sql } from './matches-management-fixtures';
 
@@ -367,6 +369,37 @@ async function closeDialogVisual(page: Page) {
     .soft(Math.abs(box.x + box.width / 2 - 195), 'd6ANDN dialog is centered')
     .toBeLessThanOrEqual(1);
   await assertNoOverflow(page, 'd6ANDN');
+  // d6ANDN is structural-only (modal adaptation); its card and type still resolve to the tokens.
+  await assertDesignSystemStyles(
+    page,
+    'light',
+    [
+      {
+        name: 'close dialog card',
+        locator: dialog,
+        tokens: {
+          'background-color': 'var(--color-surface)',
+          color: 'var(--color-text)',
+          'border-top-left-radius': 'var(--radius-14)',
+          'padding-top': 'var(--space-14)',
+          'row-gap': 'var(--space-8)'
+        },
+        palette: { 'background-color': 'surface', color: 'text' },
+        literals: { 'border-top-left-radius': '14px', 'padding-top': '14px' }
+      },
+      {
+        name: 'close dialog title',
+        locator: dialog.getByRole('heading'),
+        tokens: {
+          'font-family': 'var(--font-family-heading)',
+          'font-size': 'var(--font-size-16)',
+          'font-weight': 'var(--font-weight-bold)'
+        },
+        literals: { 'font-size': '16px', 'font-weight': '700' }
+      }
+    ],
+    'd6ANDN masked content'
+  );
 }
 
 test('ywfn7 active standings: Pencil frame budget and structure', async ({ browserName }, info) => {
@@ -429,6 +462,42 @@ test('ywfn7 active standings: Pencil frame budget and structure', async ({ brows
   );
   await assertNoOverflow(page, 'ywfn7');
   await assertTouchHeights(page.locator('main'), 'ywfn7');
+  // Masked content (the screenshot compare masks it: Pencil mock copy differs) is certified by the
+  // geometry probes above plus these design-token/style assertions, in the dark theme of ywfn7.
+  await assertDesignSystemStyles(
+    page,
+    'dark',
+    [
+      ...standingsStyleChecks(page, { yourPlace: s.yourPlace, matches: c.matches, title: s.title }),
+      {
+        name: 'standings heading',
+        locator: title,
+        tokens: {
+          'font-family': 'var(--font-family-heading)',
+          'font-size': 'var(--font-size-14)',
+          'font-weight': 'var(--font-weight-bold)'
+        },
+        palette: { color: 'text' },
+        literals: { 'font-weight': '700' }
+      },
+      {
+        name: 'award callout',
+        locator: callout,
+        tokens: {
+          'background-color': 'var(--color-green-soft)',
+          color: 'var(--color-green)',
+          'border-top-left-radius': 'var(--radius-14)',
+          'padding-top': 'var(--space-12)',
+          'padding-left': 'var(--space-12)',
+          'font-size': 'var(--font-size-12)',
+          'font-weight': 'var(--font-weight-medium)'
+        },
+        palette: { 'background-color': 'green-soft', color: 'green' },
+        literals: { 'border-top-left-radius': '14px', 'font-size': '12px', 'font-weight': '500' }
+      }
+    ],
+    'ywfn7 masked content'
+  );
 });
 
 test('only the owner or an Admin closes; closing shows the archived final table', async () => {
@@ -532,6 +601,53 @@ async function historyVisual(page: Page, info: TestInfo) {
     expect.soft(box.right, 'xbIxj block right edge').toBeLessThanOrEqual(390);
   }
   await assertNoOverflow(page, 'xbIxj');
+  // Masked content: geometry probes above plus design-token/style assertions in the light theme.
+  await assertDesignSystemStyles(
+    page,
+    'light',
+    [
+      ...standingsStyleChecks(page, { yourPlace: s.yourPlace, matches: c.matches, title: s.title }),
+      {
+        name: 'version select',
+        locator: select,
+        tokens: {
+          'background-color': 'var(--color-surface)',
+          color: 'var(--color-text)',
+          'border-top-color': 'var(--color-line)',
+          'border-top-left-radius': 'var(--radius-12)',
+          'font-family': 'var(--font-family-body)',
+          'font-size': 'var(--font-size-14)',
+          'padding-left': 'var(--space-12)'
+        },
+        palette: { 'background-color': 'surface', color: 'text', 'border-top-color': 'line' },
+        literals: { 'border-top-left-radius': '12px', 'font-size': '14px' }
+      },
+      {
+        name: 'late-first-confirmation notice',
+        locator: notice,
+        tokens: {
+          'font-size': 'var(--font-size-12)',
+          'font-weight': 'var(--font-weight-semibold)'
+        },
+        palette: { color: 'text' },
+        literals: { 'font-size': '12px', 'font-weight': '600' }
+      },
+      {
+        name: 'history notice card',
+        locator: notice.locator('xpath=ancestor::div[1]'),
+        tokens: {
+          'background-color': 'var(--color-surface)',
+          color: 'var(--color-text)',
+          'border-top-left-radius': 'var(--radius-14)',
+          'padding-top': 'var(--space-10)',
+          'row-gap': 'var(--space-6)'
+        },
+        palette: { 'background-color': 'surface' },
+        literals: { 'border-top-left-radius': '14px', 'padding-top': '10px', 'row-gap': '6px' }
+      }
+    ],
+    'xbIxj masked content'
+  );
 }
 
 test('a first result confirmed after the close adds a new final; the old one stays inspectable', async ({

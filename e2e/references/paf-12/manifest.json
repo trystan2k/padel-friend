@@ -150,6 +150,44 @@
       "xbIxj": 0.10728
     }
   },
+  "maskedContentCoverage": {
+    "policy": "Masks exist only for documented unavoidable content differences (Pencil mock copy and composition differ from production data). Every masked region is still certified by (a) exact geometry probes (structuralProbes) and (b) computed-style assertions that resolve each element's color, background-color, border-radius, padding/gap, font-family, font-size and font-weight to the design tokens in design-tokens/dist/tokens.css (via a computed-style probe, so hardcoded values or a wrong token fail), plus the active theme's palette value and a few literal values that mirror the Pencil frame. Implemented by assertDesignSystemStyles in e2e/league-standings-visual.ts and run from league-standings.spec.ts.",
+    "ywfn7": {
+      "theme": "dark",
+      "elements": [
+        "own summary card",
+        "summary label",
+        "summary place value (accent)",
+        "summary matches value",
+        "primary table",
+        "primary table column header",
+        "viewer row (highlighted)",
+        "primary table body cell",
+        "standings heading",
+        "award callout"
+      ]
+    },
+    "xbIxj": {
+      "theme": "light",
+      "elements": [
+        "own summary card",
+        "summary label",
+        "summary place value (accent)",
+        "summary matches value",
+        "primary table",
+        "primary table column header",
+        "viewer row (highlighted)",
+        "primary table body cell",
+        "version select",
+        "late-first-confirmation notice",
+        "history notice card"
+      ]
+    },
+    "d6ANDN": {
+      "theme": "light",
+      "elements": ["close dialog card", "close dialog title"]
+    }
+  },
   "structuralOnlyScreens": {
     "d6ANDN": {
       "informationalResidual": 0.8512,
