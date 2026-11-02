@@ -18,6 +18,7 @@ Code/commits/PRs: normal. Off: "stop caveman" / "normal mode".
 - Ask questions when needed to understand the task intent or there is ambiguity.
 - Use the approved deepthink plan as a guide for code implementation. Honor explicitly requested plan or design approval and unresolved scope decisions; approved unambiguous intake authorizes ordinary execution without repeated routine gates.
 - Prefer simple solutions over complex ones.
+- Never write throwaway Python (or other ad-hoc) scripts for simple tasks — JSON parsing, text extraction, counting, formatting. Use the available tools, `jq`, `node -e`, or an existing `pnpm` script instead. Ad-hoc scripts only for logic a one-liner cannot express; delete them when done.
 - Don't change any code without explaining the reasoning.
 - **Pencil visual truth:** `docs/design/padel-friend.pen` sets colors, typography, spacing, layout intent, overall look. Match visually as close as possible; implement with production UX, a11y, responsive and i18n best practices. Use fluid flex/percent sizing over literal fixed widths, Base UI over hand-rolled widgets, tokens over literal pixels, ≥44px touch targets, and layouts that tolerate translated text. Literal markup/implementation may differ. Pencil and Chromium rasterize fonts differently: pixel-identical output is neither required nor achievable; accept small cross-renderer pixel residuals. Review visual fidelity **and** engineering quality, not literal markup/pixel equality; never reject visually equivalent, better-engineered accessible work. Visual gates: exact structural/layout probes plus documented, justified nonzero per-screen screenshot tolerances; never widen budgets to mask structural defects. Design tokens live in `design-tokens/dist/*.css` after `pnpm tokens:build`.
 - **NEVER** hardcode user-facing copy in components. All visible strings, labels, helper text, aria labels, and status text must go through the i18n system.
@@ -65,7 +66,10 @@ Whenever you need to install a new npm dependency, use the rules defined in .npm
 
 ## MCP Priority
 
-- Prefer **Serena MCP** for supported read/symbol operations when it saves tokens (symbol search/overview over whole-file reads); fall back to permitted native tools otherwise.
+- Prefer **Serena MCP** over native read/edit tools whenever it saves tokens:
+  - **Reads**: `get_symbols_overview` / `find_symbol` / `find_referencing_symbols` instead of whole-file reads; `read_file` with line ranges for large files.
+  - **Edits**: `replace_symbol_body` / `insert_after_symbol` for symbol-scoped changes; `replace_content` in regex mode (wildcard needles instead of quoting the full block) for targeted edits; `replace_in_files` for the same edit across many files.
+  - Fall back to permitted native tools when Serena is unavailable, for non-code files, or when a native call is cheaper (short known-range reads, unique exact-text edits).
 
 ## Development guidelines
 

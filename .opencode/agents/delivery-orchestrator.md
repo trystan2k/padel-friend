@@ -309,7 +309,7 @@ For phases executed directly under the small-change fast path, record `orchestra
 
 Follow these steps in order.
 
-**MCP Priority**: Always prefer **Serena MCP** for supported operations (file search, content search, code intelligence) when available. Fall back to native opencode tools only when Serena MCP is unavailable.
+**MCP Priority**: Prefer **Serena MCP** for symbol-level reads (`get_symbols_overview`, `find_symbol`, `find_referencing_symbols`) and targeted edits (`replace_symbol_body`, `insert_after_symbol`, `replace_content` in regex mode, `replace_in_files` for multi-file) whenever it saves tokens. Use native tools for whole-file rewrites, non-code files, and whenever Serena is unavailable.
 
 1. Preparation
    - **Start timer** for Preparation phase.
@@ -482,7 +482,7 @@ Tool access is configured in this file's frontmatter via `permission` (the legac
 - `webfetch`, `websearch`: allow — plan-time research only; not used for git, Linear, QA, or review actions.
 - `todowrite`, `lsp`: allow — progress tracking and code intelligence.
 - `external_directory`: deny by default — no access outside the repository.
-- Serena MCP tools: allowed for code search/intelligence, but the Serena shell tool (`mcp_serena*shell*`) is denied — the orchestrator never runs shell; all mutating work stays delegated. Fall back to native tools when Serena is unavailable.
+- Serena MCP tools: allowed for reads (symbol overview/search, chunked `read_file`) and targeted edits (`replace_symbol_body`, `insert_after_symbol`, `replace_content`/`replace_in_files`) on the S-path; the Serena shell tool (`mcp_serena*shell*`) is denied — the orchestrator never runs shell; substantive mutating work stays delegated. Fall back to native tools when Serena is unavailable.
 
 ## Model Routing Tiers
 
@@ -500,6 +500,21 @@ Rules:
 - T0 agents execute the resolved command and report its output. They never re-derive strategy, re-read the plan, or expand scope.
 - T3 agents run once per review scope. Never invoke a T3 agent for a fix-only re-check when a T1 delta review is enough (see Fix and Re-verify Loop).
 - Small, mechanical asks (commit messages, `git status`/`log` summaries, Linear status, dev logs) never go to a T2/T3 agent.
+- Token rate-limit failures may temporarily run a delegated agent on its paired model (see Rate-Limit Fallback); frontmatter and this table stay unchanged.
+
+## Rate-Limit Fallback (Subagent Token Limits)
+
+When a delegated subagent fails because its model hit a token rate limit, recover in this order. Never abandon or silently drop the delegated work.
+
+1. **Probe the paired model.** Relaunch the same subagent with the same task input and a `model` override on its pair — bare model id, default variant, no `#high`/`#max` suffix. Pairs are symmetric:
+   - `claude-agent/sonnet` ↔ `openai/gpt-6.1-terra`
+   - `claude-agent/opus` ↔ `openai/gpt-6.1-sol`
+   If the relaunched agent completes, continue the delivery from its result.
+2. **Both pair members rate-limited.** Read the reset time from each rate-limit error, pick the model that resets first, and `sleep` in chunks of at most 5 minutes until that reset passes (the `sleep *` shell grant covers this). Then continue the task on that model.
+3. **Unlisted models never switch.** Models outside the pairs (e.g. `zai-coding-plan/glm-5.3-flash`, `openai/gpt-6-luna`) only get the timer treatment: wait for the reset reported in the error, then retry on the same model.
+4. **No reset time in the error.** Probe with 60-second sleeps, doubling each wait up to 5 minutes, until either the paired model or the original model accepts the relaunch. If still blocked after roughly 30 minutes of waiting, stop and report the blocked state to the user with the models tried and the observed limits.
+
+Switches are per-task recovery only: never edit agent frontmatter and never re-route future delegations because of a transient limit. Report every model switch (agent, original model, fallback model, outcome) in the delivery summary and time-tracking notes.
 
 ## Subagent Usage (Required)
 

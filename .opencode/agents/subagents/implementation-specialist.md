@@ -126,7 +126,7 @@ Follow this protocol before writing code:
 
 Follow these steps:
 
-**MCP Priority**: Always prefer **Serena MCP** for supported operations (file search, content search, code intelligence) when available. Fall back to native opencode tools only when Serena MCP is unavailable.
+**MCP Priority**: Prefer **Serena MCP** for symbol-level reads (`get_symbols_overview`, `find_symbol`, `find_referencing_symbols`) and targeted edits (`replace_symbol_body`, `insert_after_symbol`, `replace_content` in regex mode, `replace_in_files` for multi-file) whenever it saves tokens. Use native tools for whole-file rewrites, non-code files, and whenever Serena is unavailable.
 
 1. Validate inputs and verify the deepthink plan file path exists.
 2. Read the approved deepthink plan file and parse it into executable steps.

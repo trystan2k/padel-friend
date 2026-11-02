@@ -2,7 +2,7 @@
 
 Native agent frontmatter is migrated to V2. Runtime behavior remains uncertified pending source review; do not treat the plugin as a security boundary or this document as certification of the delivery workflow.
 
-OpenCode V2 auto-discovers `.opencode/plugins/delivery-harness/index.ts`. Its `@opencode/plugin` dependency is `~2.1.4`. Disable the plugin by removing or renaming its entry after approval; preserve native permissions. Existing MCP executable paths in root configuration remain machine-specific.
+The delivery-harness plugin was removed in `f960368` (switch to legacy-format frontmatter permissions); agent behavior is now governed solely by native frontmatter permissions, `AGENTS.md`, and per-agent instructions. The plugin-related sections below are historical. Existing MCP executable paths in root configuration remain machine-specific.
 
 ## Tooling inventory
 
@@ -22,9 +22,7 @@ Coordinator information gathering for delegation permits `ls`, Git status/log/di
 
 Git-specialist has full `git` and `gh` shell access; publication, destructive actions, staging scope and hooks remain policy-gated.
 
-Conservative choices: V2 agent rules deny by default; most roles do not grant blanket shell access. MCP is denied for migrated roles except the scoped Serena read/symbol grants below; Code Mode remains denied. These restrictions can block workflows; report unavailable evidence rather than bypassing them. V2 uses last matching permission rule. Plugin checks are supplemental, not a substitute for native authorization.
-
-Serena read/symbol grants apply only to delivery-orchestrator, execution-planner-specialist, code-review-specialist, architecture-review-specialist, implementation-specialist, bug-fixer-specialist and testing-automation-specialist. The six read-only tools are `mcp_serena_find_file`, `mcp_serena_search_for_pattern`, `mcp_serena_get_symbols_overview`, `mcp_serena_find_symbol`, `mcp_serena_find_referencing_symbols` and `mcp_serena_list_dir`; schema injection costs tokens, so use them when symbol-focused discovery saves more than the injected schemas cost.
+Since the legacy-format migration (`f960368`), agent permissions are allow-by-default: each role lists explicit denies only. MCP tools are available to every role that does not deny them — project-manager-specialist and development-log-specialist deny `mcp_serena*` outright; delivery-orchestrator, execution-planner-specialist, code-review-specialist, architecture-review-specialist and ux-ui-reviewer-specialist deny only the Serena shell tool (`mcp_serena_execute_shell_command`). Implementation-specialist, bug-fixer-specialist and testing-automation-specialist therefore hold the full Serena toolset, including editing tools (`replace_symbol_body`, `insert_after_symbol`, `replace_content`, `replace_in_files`) and chunked `read_file`. Permission rules still match last-rule-wins; deny-by-default claims elsewhere in this document predate the migration. `AGENTS.md` § MCP Priority directs all roles to prefer Serena symbol-level reads and targeted edits whenever they save tokens; the earlier read-only six-tool grant list is obsolete.
 
 ## Session and tool optimizations
 
