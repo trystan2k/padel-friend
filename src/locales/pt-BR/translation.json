@@ -1148,6 +1148,7 @@
       "members": "Partidas ranqueadas são só para membros ativos da comunidade.",
       "guidance": {
         "scheduleFirst": "Escolha data e horário de início para ver as Ligas em que esta partida pode contar.",
+        "unavailable": "Ranqueada fica indisponível até as Ligas elegíveis carregarem. Tente novamente ou mantenha a partida Sem ranking.",
         "loading": "Procurando Ligas elegíveis…",
         "noEligible": "Nenhuma Liga Ativa ou Futura cobre esta data, então a partida fica sem ranking.",
         "defaultOne": "Uma Liga cobre esta data, então a partida é Ranqueada nela por padrão. Escolha Sem ranking para deixá-la fora da Liga.",

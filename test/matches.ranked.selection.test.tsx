@@ -284,6 +284,13 @@ describe('Ranked League selection in the create-match wizard', () => {
     await mount();
     await makeCompetitive(user);
     await screen.findByText(en.matchCreate.errors.leagueOptionsUnavailable);
+    // Guidance agrees with the alert: options are unavailable, not "no eligible League".
+    expect(
+      screen.getByText(new RegExp(en.matchCreate.competition.guidance.unavailable))
+    ).toBeTruthy();
+    expect(
+      screen.queryByText(new RegExp(en.matchCreate.competition.guidance.noEligible))
+    ).toBeNull();
     mocks.leagues.mockResolvedValue(leagueResult([spring]));
     await user.click(screen.getByRole('button', { name: en.matches.retry }));
     await waitFor(() => expect(leagueSelect().value).toBe(springId));

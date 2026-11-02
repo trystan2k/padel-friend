@@ -29,11 +29,13 @@ export function MatchCompetitionField({
       ? 'scheduleFirst'
       : status === 'loading'
         ? 'loading'
-        : candidates.length === 0
-          ? 'noEligible'
-          : candidates.length === 1
-            ? 'defaultOne'
-            : 'chooseOne';
+        : status === 'error'
+          ? 'unavailable'
+          : candidates.length === 0
+            ? 'noEligible'
+            : candidates.length === 1
+              ? 'defaultOne'
+              : 'chooseOne';
   const rankedAvailable = status === 'ready' && candidates.length > 0;
   return (
     <fieldset

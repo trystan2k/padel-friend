@@ -1148,6 +1148,7 @@
       "members": "Ranked matches are for active community members only.",
       "guidance": {
         "scheduleFirst": "Pick a date and start time to see the Leagues this match can count for.",
+        "unavailable": "Ranked is unavailable until the eligible Leagues load. Retry, or keep the match Unranked.",
         "loading": "Looking for eligible Leagues…",
         "noEligible": "No Active or Upcoming League covers this date, so the match is Unranked.",
         "defaultOne": "One League covers this date, so the match defaults to Ranked in it. Choose Unranked to keep it out of the League.",

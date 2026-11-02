@@ -1148,6 +1148,7 @@
       "members": "Los partidos clasificatorios son solo para miembros activos de la comunidad.",
       "guidance": {
         "scheduleFirst": "Elige fecha y hora de inicio para ver las Ligas en las que puede contar este partido.",
+        "unavailable": "Clasificatoria no está disponible hasta que carguen las Ligas elegibles. Reintenta o mantén el partido Sin clasificación.",
         "loading": "Buscando Ligas elegibles…",
         "noEligible": "Ninguna Liga Activa o Próxima cubre esta fecha, así que el partido queda sin clasificación.",
         "defaultOne": "Una Liga cubre esta fecha, así que el partido es Clasificatorio en ella por defecto. Elige Sin clasificación para dejarlo fuera de la Liga.",
