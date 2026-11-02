@@ -31,8 +31,9 @@
 
 ## Dispositions
 
-- F1–F10, F12, F13: fixed within delivery; verified by consolidated gate (typecheck/lint/db:types:check/full unit+integration green; E2E green after F13) and delta review below.
-- F11: `blocked` — environment-unavailable production verification; surfaced to user at the push/PR approval gate. Does not block code correctness (local close path fully tested); blocks the production-ops claim for AC5 automatic close.
-- F14: observed, unrelated pre-existing flake risk.
+- F1–F10, F12, F13: fixed within delivery; verified by consolidated gate (typecheck/lint/db:types:check/full unit+integration green; E2E green after F13) and delta reviews.
+- F11: `blocked` — environment-unavailable production verification; reported to user at push/PR approval; verification SQL above. CI and local gates green.
+- F14: observed, unrelated pre-existing flake risk (2 occurrences, non-reproducing).
+- **Copilot review disposition (PR #40, review id 5739585128):** summary-only COMMENTED review, zero inline comments/threads, submitted tier-restricted. Its "requires changes / closer look" note cites the broad migration footprint + pg_cron production provisioning unverifiable from diff — this is exactly tracked finding F11 (blocked, ops verification). No new actionable findings; nothing to fix. The contradictory "No open issues 🎉" vs "requires changes" boilerplate carries no anchored defect evidence → dismissed as ambiguous bot boilerplate.
 - Reviewer-limitation note from initial UX pass (full diff not independently verified) — superseded by delta reviews after fixes.
 - Accepted intentional behaviors (not findings): truthful late-first-confirmation copy replaces T15-correction depiction (`xbIxj`); native `<select>` matches `MatchCompetitionField` precedent; unused plan keys omitted (knip); F10 composition deltas per disposition evidence.
