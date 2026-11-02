@@ -52,10 +52,10 @@
   "visualBudgets": {
     "status": "measured-chromium-scoped-pixel-difference",
     "measurementMethod": "Capture the 390x844 viewport at Chromium deviceScaleFactor 1 (ywfn7 dark, xbIxj light, en). Downsample only the uncropped 2x Pencil PNG. Mask every block with a documented composition delta: the referenceMasks rects below (Pencil frame coordinates) plus the matching production blocks (page header, details card, each child of the standings section, every block after it), each with a 1px margin. Compare the remaining pixels with the same-size RGBA pinned perceptual threshold (35215 x 0.1^2); reject any dimension mismatch before applying the per-screen budget, and reject masks above maxMaskedFraction.",
-    "reason": "The budget covers only the unmasked raster (page background, gutters, shell). Content and composition deltas are never absorbed by it: they are masked, listed in compositionDeltas, and gated by exact structural probes. Budgets are the smallest two-decimal-or-better value above the measured scoped residual with at most 0.02 headroom.",
+    "reason": "The budget covers only the unmasked raster (page background, gutters, shell). Content and composition deltas are never absorbed by it: they are masked, listed in compositionDeltas, and gated by exact structural probes. Budgets are the smallest two-decimal-or-better value above the measured scoped residual with at most 0.02 headroom. The xbIxj mask cap is 0.89: fixed reference geometry and dynamic production block heights measured 0.869990, leaving about 0.02 headroom while guarding against silently growing masks; it does not change the raster budget.",
     "maxMaskedFraction": {
       "ywfn7": 0.91,
-      "xbIxj": 0.87
+      "xbIxj": 0.89
     },
     "referenceMasks": {
       "ywfn7": [
@@ -130,6 +130,13 @@
           "y": 277,
           "width": 354,
           "height": 65
+        },
+        {
+          "name": "bottom tab bar (app shell navigation, not rendered on the League route)",
+          "x": 18,
+          "y": 774,
+          "width": 354,
+          "height": 56
         }
       ]
     },
@@ -139,11 +146,11 @@
     },
     "measured": {
       "ywfn7": 0,
-      "xbIxj": 0.00463
+      "xbIxj": 0
     },
     "perScreenRationale": {
       "ywfn7": "Scoped to the unmasked 9.6% of the frame (background, gutters, bottom shell). Measured scoped residual 0 (full frame 0.19135 is informational only: it is dominated by the documented content/composition deltas listed in compositionDeltas.ywfn7). 0.005 is the minimum nonzero budget for renderer variance and stays within the 0.02 headroom rule.",
-      "xbIxj": "Scoped to the unmasked 14.3% of the frame (background, gutters, bottom shell). Measured scoped residual 0.00463 (full frame 0.10728 is informational only: dominated by the documented deltas in compositionDeltas.xbIxj, notably the T15 correction card PAF-12 does not implement). 0.01 leaves 0.0054 for renderer variance."
+      "xbIxj": "Scoped to approximately the unmasked 13% of the frame (background, gutters, bottom shell). Three consecutive runs after masking the mock-only bottom tab bar measured scoped residual 0; full-frame residual approximately 0.10814 is informational only and dominated by documented composition deltas. The unchanged 0.01 budget leaves 0.01 for raster variance."
     },
     "informationalFullFrame": {
       "ywfn7": 0.19135,
@@ -243,6 +250,12 @@
         "probes": [
           "five column headers in exact order, first-row cells aligned",
           "summary stats share one row"
+        ]
+      },
+      {
+        "delta": "The mock's floating bottom tab bar (Home, Matches, Community, Ranking, Profile) is app-shell chrome absent from the League route, so its reference raster is masked as a composition difference. Separately, dynamic closed-at timestamp wrapping can shift production content height and change the previously unmasked residual across runs.",
+        "probes": [
+          "every block stays inside 0..390px; no horizontal page overflow; version select >=44px"
         ]
       }
     ]

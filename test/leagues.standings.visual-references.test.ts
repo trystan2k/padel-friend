@@ -69,6 +69,8 @@ describe('PAF-12 League standings visual references', () => {
         manifest.visualBudgets.perScreen[frame]
       );
     }
+    // Fixed reference masks plus dynamic production heights need bounded layout headroom.
+    expect(maxMaskedFraction.xbIxj).toBe(0.89);
     expect(Object.keys(manifest.compositionDeltas).sort()).toEqual([...frames].sort());
     for (const deltas of Object.values(manifest.compositionDeltas))
       for (const entry of deltas) {
