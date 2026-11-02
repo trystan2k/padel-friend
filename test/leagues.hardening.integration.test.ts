@@ -558,7 +558,10 @@ describe.skipIf(!environment.env)('League review hardening', { timeout: 300_000 
           [cursor, 'Index Only Scan']
         ]);
         expect(
-          scans.map((scan) => [cursor, scan['Index Cond']?.match(indexCond[cursor]) !== null])
+          scans.map((scan) => {
+            const cond = scan['Index Cond'];
+            return [cursor, typeof cond === 'string' && cond.match(indexCond[cursor]) !== null];
+          })
         ).toEqual([[cursor, true]]);
         expect(types.filter((type) => type === 'Sort' || type === 'Seq Scan')).toEqual([]);
       }
