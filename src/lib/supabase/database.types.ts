@@ -2577,6 +2577,7 @@ export type Database = {
       get_effective_community_admin_defaults: { Args: { p_settings: Json }; Returns: Json }
       get_league: { Args: { p_league_id: string }; Returns: Json }
       get_league_counters: { Args: { p_league_id: string }; Returns: Json }
+      get_league_standings: { Args: { p_league_id: string }; Returns: Json }
       get_match_creation_options: { Args: { p_community_id?: string }; Returns: Json }
       get_match_event: { Args: { p_event_id: string }; Returns: Json }
       get_match_event_management: { Args: { p_match_event_id: string }; Returns: Json }
@@ -2820,6 +2821,22 @@ export type Database = {
       league_process_community_locked: {
         Args: { p_as_of?: string; p_community_id: string }
         Returns: Json
+      }
+      league_standings_entries: {
+        Args: { p_league_id: string }
+        Returns: {
+          award_eligible: boolean
+          draws: number
+          losses: number
+          matches: number
+          matches_remaining: number
+          place: number
+          set_differential: number
+          sets_lost: number
+          sets_won: number
+          user_id: string
+          wins: number
+        }[]
       }
       league_utc_text: { Args: { p_instant: string }; Returns: string }
       league_valid_text: { Args: { p_max: number; p_value: string }; Returns: boolean }

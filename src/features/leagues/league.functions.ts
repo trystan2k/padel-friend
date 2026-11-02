@@ -14,6 +14,8 @@ import {
   decodeLeagueList
 } from './league-decoders';
 import { leagueErrorFromDatabase } from './league-errors';
+import type { LeagueStandingsResult } from './league-standings-contracts';
+import { decodeLeagueStandings } from './league-standings-decoders';
 import {
   validateCreateLeague,
   validateLeagueCommand,
@@ -84,6 +86,18 @@ export const getLeagueCounters = createServerFn({ method: 'GET' })
     });
     if (error) throw new Error(leagueErrorFromDatabase(error));
     return decoded(decodeLeagueCounters, result);
+  });
+
+/** Live standings: sporting order, shared positions and threshold-only award state. */
+export const getLeagueStandings = createServerFn({ method: 'GET' })
+  .validator(validateLeagueId)
+  .handler(async ({ data }): Promise<LeagueStandingsResult> => {
+    const { client } = await authenticatedClient();
+    const { data: result, error } = await client.rpc('get_league_standings', {
+      p_league_id: data.league_id
+    });
+    if (error) throw new Error(leagueErrorFromDatabase(error));
+    return decoded(decodeLeagueStandings, result);
   });
 
 export const createLeague = createServerFn({ method: 'POST' })

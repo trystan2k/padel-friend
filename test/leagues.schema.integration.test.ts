@@ -26,6 +26,8 @@ const PUBLIC_COMMANDS = [
   'get_league',
   // PAF-11 U4: read-only per-player counters over confirmed eligible Ranked results.
   'get_league_counters',
+  // PAF-12 U2: live standings with shared positions and award eligibility.
+  'get_league_standings',
   'list_leagues',
   // PAF-11 U2: eligible League options for the create-match schedule.
   'list_match_league_options',
@@ -48,7 +50,9 @@ const INTERNAL_FUNCTIONS = [
   'guard_league_events_immutable()',
   // PAF-11 U4: result-time Ranked eligibility helpers.
   'match_result_fact_quartet(jsonb)',
-  'match_result_ranked_ineligibility(uuid,uuid[],timestamp with time zone)'
+  'match_result_ranked_ineligibility(uuid,uuid[],timestamp with time zone)',
+  // PAF-12 U2: shared sporting rank (live reader now, snapshot builder later).
+  'league_standings_entries(uuid)'
 ];
 
 describe('League schema', { timeout: 120_000 }, () => {
