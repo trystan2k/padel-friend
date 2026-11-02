@@ -1,5 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { decodeLeagueStandings } from '../src/features/leagues/league-standings-decoders';
+import {
+  decodeLeagueStandings,
+  decodeLeagueStandingsAudit,
+  decodeLeagueStandingsVersions
+} from '../src/features/leagues/league-standings-decoders';
 
 type RpcResult = { data: unknown; error: { message: string } | null };
 type Claims = { data: { claims: { sub?: string; is_anonymous?: boolean } } | null; error: unknown };
@@ -27,7 +31,11 @@ vi.mock('../src/features/auth/auth.server', () => ({
   requireAuthenticatedClient: mocks.requireAuthenticatedClient
 }));
 
-import { getLeagueStandings } from '../src/features/leagues/league.functions';
+import {
+  getLeagueStandings,
+  getLeagueStandingsAudit,
+  listLeagueStandingsVersions
+} from '../src/features/leagues/league.functions';
 import { LEAGUE_ID } from './helpers/league-dto-fixtures';
 
 const id = (n: number) => `33333333-3333-4333-8333-33333333333${n}`;
@@ -52,7 +60,46 @@ const standings = (entries: unknown[] = [entry(1)], threshold = 3) => ({
   league_id: LEAGUE_ID,
   status: 'active',
   minimum_matches_for_final_award: threshold,
+  source: 'live',
+  standings_version: null,
+  latest_standings_version: null,
+  generated_at: null,
+  cause: null,
   entries
+});
+const final = (overrides: Record<string, unknown> = {}) => ({
+  ...standings(),
+  status: 'closed',
+  source: 'final',
+  standings_version: 2,
+  latest_standings_version: 3,
+  generated_at: '2026-11-01T10:00:00.000000Z',
+  cause: 'late_first_confirmation',
+  ...overrides
+});
+const versionSummary = (version: number, overrides: Record<string, unknown> = {}) => ({
+  standings_version: version,
+  cause: 'closed',
+  basis: 'published',
+  generated_at: '2026-11-01T10:00:00.000000Z',
+  effective_end_at: '2026-10-31T23:59:59.999999Z',
+  minimum_matches_for_final_award: 3,
+  entry_count: 4,
+  confirmation: null,
+  ...overrides
+});
+const lateConfirmation = {
+  source: 'AUTO_48H',
+  confirmed_at: '2026-11-02T10:00:00.000000Z',
+  played_at: '2026-10-31T12:00:00.000000Z'
+};
+const auditEvent = (overrides: Record<string, unknown> = {}) => ({
+  action: 'closed',
+  actor_id: id(1),
+  system_reason: null,
+  occurred_at: '2026-11-01T10:00:00.000000Z',
+  details: { closed_at: '2026-11-01T10:00:00.000000Z', standings_version: 1 },
+  ...overrides
 });
 
 describe('League standings decoder', () => {
@@ -137,9 +184,97 @@ describe('League standings decoder', () => {
     ['an unknown status', () => ({ ...standings(), status: 'archived' })],
     ['a zero threshold', () => standings([], 0)],
     ['a non-array entry list', () => ({ ...standings(), entries: {} })],
-    ['a non-object', () => null]
+    ['a non-object', () => null],
+    ['a live table carrying a version', () => ({ ...standings(), standings_version: 1 })],
+    ['a live table of a closed League', () => ({ ...standings(), status: 'closed' })],
+    ['a final of an open League', () => final({ status: 'active' })],
+    ['a final without a version', () => final({ standings_version: null })],
+    ['a version beyond the latest', () => final({ standings_version: 4 })],
+    ['an unknown cause', () => final({ cause: 'edited' })],
+    ['an unknown source', () => final({ source: 'cached' })],
+    ['a final without a generation time', () => final({ generated_at: null })]
   ])('rejects %s', (_label, build) => {
     expect(() => decodeLeagueStandings(build())).toThrow('INVALID_LEAGUE_RESPONSE');
+  });
+
+  it('accepts a published final with its own version and cause', () => {
+    expect(decodeLeagueStandings(final())).toEqual(final());
+  });
+});
+
+describe('League standings versions decoder', () => {
+  const page = (versions: unknown[], next: unknown = null) => ({
+    league_id: LEAGUE_ID,
+    status: 'closed',
+    versions,
+    next_before_version: next
+  });
+
+  it('accepts a newest-first history with a late confirmation and a continuation', () => {
+    const payload = page(
+      [
+        versionSummary(3, { cause: 'late_first_confirmation', confirmation: lateConfirmation }),
+        versionSummary(2, { cause: 'repair', basis: 'published' }),
+        versionSummary(1, { cause: 'reconstruction', basis: 'reconstructed' })
+      ],
+      1
+    );
+    expect(decodeLeagueStandingsVersions(payload)).toEqual(payload);
+  });
+
+  it.each([
+    ['ascending versions', () => page([versionSummary(1), versionSummary(2)])],
+    ['a repeated version', () => page([versionSummary(2), versionSummary(2)])],
+    [
+      'a late version without its confirmation',
+      () => page([versionSummary(2, { cause: 'late_first_confirmation' })])
+    ],
+    [
+      'a confirmation on a close',
+      () => page([versionSummary(1, { confirmation: lateConfirmation })])
+    ],
+    ['an unknown basis', () => page([versionSummary(1, { basis: 'guess' })])],
+    ['an actor leaking in', () => page([versionSummary(1, { actor_id: id(1) })])],
+    ['a bad continuation', () => page([versionSummary(2)], 0)],
+    ['an unknown status', () => ({ ...page([]), status: 'archived' })],
+    ['a non-array history', () => ({ ...page([]), versions: {} })]
+  ])('rejects %s', (_label, build) => {
+    expect(() => decodeLeagueStandingsVersions(build())).toThrow('INVALID_LEAGUE_RESPONSE');
+  });
+});
+
+describe('League standings audit decoder', () => {
+  const audit = (events: unknown[]) => ({ league_id: LEAGUE_ID, events });
+
+  it('accepts a human close and a system revision with structured details', () => {
+    const payload = audit([
+      auditEvent({
+        action: 'standings_revised',
+        actor_id: null,
+        system_reason: 'standings_repair',
+        details: {
+          old_standings_version: 1,
+          added_confirmations: [id(2)],
+          removed_confirmations: []
+        }
+      }),
+      auditEvent()
+    ]);
+    expect(decodeLeagueStandingsAudit(payload)).toEqual(payload);
+  });
+
+  it.each([
+    [
+      'both an actor and a system reason',
+      () => audit([auditEvent({ system_reason: 'due_start' })])
+    ],
+    ['neither an actor nor a system reason', () => audit([auditEvent({ actor_id: null })])],
+    ['an unknown action', () => audit([auditEvent({ action: 'updated' })])],
+    ['non-structured details', () => audit([auditEvent({ details: { nested: { a: 1 } } })])],
+    ['array details', () => audit([auditEvent({ details: [] })])],
+    ['a malformed actor', () => audit([auditEvent({ actor_id: 'x' })])]
+  ])('rejects %s', (_label, build) => {
+    expect(() => decodeLeagueStandingsAudit(build())).toThrow('INVALID_LEAGUE_RESPONSE');
   });
 });
 
@@ -186,7 +321,43 @@ describe('getLeagueStandings server function', () => {
     await expect(getLeagueStandings({ data: { league_id: LEAGUE_ID } })).resolves.toEqual(
       standings()
     );
-    expect(rpc).toHaveBeenCalledExactlyOnceWith('get_league_standings', { p_league_id: LEAGUE_ID });
+    expect(rpc).toHaveBeenCalledExactlyOnceWith('get_league_standings', {
+      p_league_id: LEAGUE_ID,
+      p_standings_version: undefined
+    });
+  });
+
+  it('reads one exact historical version when asked and rejects bad versions first', async () => {
+    rpc.mockResolvedValueOnce({ data: final({ standings_version: 1 }), error: null });
+    await expect(
+      getLeagueStandings({ data: { league_id: LEAGUE_ID, standings_version: 1 } })
+    ).resolves.toMatchObject({ source: 'final', standings_version: 1 });
+    expect(rpc).toHaveBeenCalledExactlyOnceWith('get_league_standings', {
+      p_league_id: LEAGUE_ID,
+      p_standings_version: 1
+    });
+    for (const bad of [0, -1, 1.5, '1', Number.NaN])
+      await expect(
+        getLeagueStandings({ data: { league_id: LEAGUE_ID, standings_version: bad } })
+      ).rejects.toThrow('INVALID_LEAGUE_INPUT');
+    expect(rpc).toHaveBeenCalledTimes(1);
+  });
+
+  it('maps the typed version errors', async () => {
+    rpc.mockResolvedValueOnce({
+      data: null,
+      error: { message: 'LEAGUE_STANDINGS_VERSION_NOT_FOUND' }
+    });
+    await expect(
+      getLeagueStandings({ data: { league_id: LEAGUE_ID, standings_version: 9 } })
+    ).rejects.toThrow('LEAGUE_STANDINGS_VERSION_NOT_FOUND');
+    rpc.mockResolvedValueOnce({
+      data: null,
+      error: { message: 'LEAGUE_STANDINGS_VERSION_INVALID' }
+    });
+    await expect(
+      getLeagueStandings({ data: { league_id: LEAGUE_ID, standings_version: 1 } })
+    ).rejects.toThrow('LEAGUE_STANDINGS_VERSION_INVALID');
   });
 
   it('maps database failures to stable codes and malformed payloads to a response error', async () => {
@@ -205,6 +376,87 @@ describe('getLeagueStandings server function', () => {
     rpc.mockResolvedValueOnce({ data: { league_id: LEAGUE_ID }, error: null });
     await expect(getLeagueStandings({ data: { league_id: LEAGUE_ID } })).rejects.toThrow(
       'INVALID_LEAGUE_RESPONSE'
+    );
+  });
+});
+
+describe('League standings history server functions', () => {
+  let rpc: ReturnType<
+    typeof vi.fn<(name: string, args?: Record<string, unknown>) => Promise<RpcResult>>
+  >;
+  let getClaims: ReturnType<typeof vi.fn<() => Promise<Claims>>>;
+
+  beforeEach(() => {
+    rpc = vi.fn<(name: string, args?: Record<string, unknown>) => Promise<RpcResult>>();
+    getClaims = vi
+      .fn<() => Promise<Claims>>()
+      .mockResolvedValue({ data: { claims: { sub: 'user-1' } }, error: null });
+    mocks.requireAuthenticatedClient
+      .mockReset()
+      .mockResolvedValue({ client: { auth: { getClaims }, rpc }, userId: 'user-1' });
+  });
+
+  const versionsPayload = {
+    league_id: LEAGUE_ID,
+    status: 'closed',
+    versions: [
+      versionSummary(2, { cause: 'late_first_confirmation', confirmation: lateConfirmation })
+    ],
+    next_before_version: 2
+  };
+
+  it('lists versions through the narrow RPC with a validated continuation', async () => {
+    rpc.mockResolvedValueOnce({ data: versionsPayload, error: null });
+    await expect(
+      listLeagueStandingsVersions({ data: { league_id: LEAGUE_ID, before_version: 5 } })
+    ).resolves.toEqual(versionsPayload);
+    expect(rpc).toHaveBeenCalledExactlyOnceWith('list_league_standings_versions', {
+      p_league_id: LEAGUE_ID,
+      p_before_version: 5
+    });
+    await expect(
+      listLeagueStandingsVersions({ data: { league_id: LEAGUE_ID, before_version: 0 } })
+    ).rejects.toThrow('INVALID_LEAGUE_INPUT');
+    await expect(
+      listLeagueStandingsVersions({ data: { league_id: LEAGUE_ID, extra: true } })
+    ).rejects.toThrow('INVALID_LEAGUE_INPUT');
+  });
+
+  it('verifies claims, maps database errors and rejects malformed version payloads', async () => {
+    getClaims.mockResolvedValueOnce({ data: null, error: new Error('no session') });
+    await expect(listLeagueStandingsVersions({ data: { league_id: LEAGUE_ID } })).rejects.toThrow(
+      'UNAUTHENTICATED'
+    );
+    expect(rpc).not.toHaveBeenCalled();
+    rpc.mockResolvedValueOnce({ data: null, error: { message: 'LEAGUE_NOT_FOUND' } });
+    await expect(listLeagueStandingsVersions({ data: { league_id: LEAGUE_ID } })).rejects.toThrow(
+      'LEAGUE_NOT_FOUND'
+    );
+    rpc.mockResolvedValueOnce({ data: { league_id: LEAGUE_ID }, error: null });
+    await expect(listLeagueStandingsVersions({ data: { league_id: LEAGUE_ID } })).rejects.toThrow(
+      'INVALID_LEAGUE_RESPONSE'
+    );
+  });
+
+  it('reads the owner/Admin audit through its RPC and surfaces denial and bad payloads', async () => {
+    const payload = { league_id: LEAGUE_ID, events: [auditEvent()] };
+    rpc.mockResolvedValueOnce({ data: payload, error: null });
+    await expect(getLeagueStandingsAudit({ data: { league_id: LEAGUE_ID } })).resolves.toEqual(
+      payload
+    );
+    expect(rpc).toHaveBeenCalledExactlyOnceWith('get_league_standings_audit', {
+      p_league_id: LEAGUE_ID
+    });
+    rpc.mockResolvedValueOnce({ data: null, error: { message: 'LEAGUE_FORBIDDEN' } });
+    await expect(getLeagueStandingsAudit({ data: { league_id: LEAGUE_ID } })).rejects.toThrow(
+      'LEAGUE_FORBIDDEN'
+    );
+    rpc.mockResolvedValueOnce({ data: { league_id: LEAGUE_ID, events: [{}] }, error: null });
+    await expect(getLeagueStandingsAudit({ data: { league_id: LEAGUE_ID } })).rejects.toThrow(
+      'INVALID_LEAGUE_RESPONSE'
+    );
+    await expect(getLeagueStandingsAudit({ data: { league_id: 'x' } })).rejects.toThrow(
+      'INVALID_LEAGUE_INPUT'
     );
   });
 });

@@ -8,6 +8,7 @@ import { sqlText } from './helpers/provisional-player-fixtures';
 import {
   createRankedResultFixtures,
   playedAt,
+  setMembershipHistory,
   type RankedResultKit
 } from './helpers/ranked-result-fixtures';
 
@@ -250,17 +251,27 @@ describe.skipIf(!environment.env)('League standings reader', { timeout: 300_000 
   });
 
   it('keeps earned rows of former members and drops the zero overlay once the League closes', async () => {
-    const closed = await kit.league({
-      endMode: 'manual',
-      endAt: null,
-      status: 'closed',
-      closedAt: new Date(Date.now() - 3_600_000).toISOString(),
-      closedBy: kit.creator.id
+    // A real Win by players 0-3, then player 3 leaves; closing publishes the earned rows only.
+    const leagueId = await kit.league({ status: 'active', endMode: 'manual', endAt: null });
+    const submitted = await kit.submit(await kit.event(leagueId), playedAt(120).played);
+    expect(submitted.error).toBeNull();
+    expect((await kit.approve(String(asRecord(submitted.data)['proposal_id']))).error).toBeNull();
+    await setMembershipHistory(kit.communityId, id(3), [
+      {
+        activatedAt: new Date(Date.now() - 86_400_000).toISOString(),
+        validUntil: new Date().toISOString()
+      }
+    ]);
+    const closed = await kit.rpc(kit.creator, 'close_league', {
+      p_league_id: leagueId,
+      p_expected_version: 1
     });
-    await seedCounters(closed, { 3: { w: 1, l: 0, sw: 2, sl: 0 } });
-    const { entries, status } = await standingsOf(closed);
+    expect(closed.error).toBeNull();
+    const { entries, status, source, standings_version } = await standingsOf(leagueId);
     expect(status).toBe('closed');
-    expect(summary(entries)).toEqual([[3, 1]]);
+    expect({ source, standings_version }).toEqual({ source: 'final', standings_version: 1 });
+    expect(new Set(summary(entries).map(([index]) => index))).toEqual(new Set([0, 1, 2, 3]));
+    expect(entries.every((entry) => entry.matches === 1)).toBe(true);
   });
 
   it('carries no skill fields and exposes the reader only to authenticated callers', async () => {
@@ -269,7 +280,17 @@ describe.skipIf(!environment.env)('League standings reader', { timeout: 300_000 
     const response = await kit.rpc(kit.creator, 'get_league_standings', { p_league_id: leagueId });
     const payload = asRecord(response.data);
     expect(Object.keys(payload).sort()).toEqual(
-      ['entries', 'league_id', 'minimum_matches_for_final_award', 'status'].sort()
+      [
+        'cause',
+        'entries',
+        'generated_at',
+        'latest_standings_version',
+        'league_id',
+        'minimum_matches_for_final_award',
+        'source',
+        'standings_version',
+        'status'
+      ].sort()
     );
     const rows = payload['entries'];
     for (const row of Array.isArray(rows) ? rows.map(asRecord) : [])
@@ -291,8 +312,8 @@ describe.skipIf(!environment.env)('League standings reader', { timeout: 300_000 
         ].sort()
       );
     const [privileges] = await sqlRows(
-      `select has_function_privilege('anon','public.get_league_standings(uuid)','EXECUTE') as anon,
-              has_function_privilege('authenticated','public.get_league_standings(uuid)','EXECUTE') as authenticated,
+      `select has_function_privilege('anon','public.get_league_standings(uuid,integer)','EXECUTE') as anon,
+              has_function_privilege('authenticated','public.get_league_standings(uuid,integer)','EXECUTE') as authenticated,
               has_function_privilege('authenticated','public.league_standings_entries(uuid)','EXECUTE') as internal,
               (select provolatile from pg_proc where proname = 'get_league_standings') as volatility`
     );

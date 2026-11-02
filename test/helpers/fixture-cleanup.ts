@@ -305,6 +305,8 @@ export class FixtureCleanupRegistry {
    */
   private leagueProjectionEvidenceStatements(): string[] {
     const scopes: string[] = [];
+    // Snapshots have no match_event_id; their late revisions point at a confirmation instead.
+    const snapshotScopes: string[] = [];
     for (const entry of this.sortedEntries()) {
       const predicate = Object.entries(entry.identity)
         .sort(([left], [right]) => left.localeCompare(right))
@@ -316,18 +318,28 @@ export class FixtureCleanupRegistry {
         .join(' AND ');
       const select = (column: string) =>
         `SELECT ${column} FROM ${quoteTable(entry.table)} WHERE ${predicate}`;
-      if (entry.table === 'public.communities') scopes.push(`community_id IN (${select('id')})`);
-      else if (entry.table === 'auth.users') {
-        scopes.push(
-          `league_id IN (SELECT id FROM public.leagues WHERE owner_id IN (${select('id')}))`
-        );
-      } else if (entry.table === 'public.leagues') scopes.push(`league_id IN (${select('id')})`);
-      else if (entry.table === 'public.match_events') {
+      if (entry.table === 'public.communities') {
+        scopes.push(`community_id IN (${select('id')})`);
+        snapshotScopes.push(`community_id IN (${select('id')})`);
+      } else if (entry.table === 'auth.users') {
+        const owned = `league_id IN (SELECT id FROM public.leagues WHERE owner_id IN (${select('id')}))`;
+        scopes.push(owned);
+        snapshotScopes.push(owned);
+      } else if (entry.table === 'public.leagues') {
+        scopes.push(`league_id IN (${select('id')})`);
+        snapshotScopes.push(`league_id IN (${select('id')})`);
+      } else if (entry.table === 'public.match_events') {
         scopes.push(`match_event_id IN (${select('id')})`);
+        snapshotScopes.push(
+          `triggering_confirmation_id IN (SELECT id FROM public.match_event_result_confirmations WHERE match_event_id IN (${select('id')}))`
+        );
       }
     }
     if (scopes.length === 0) return [];
     return [
+      'ALTER TABLE public.league_standings_snapshots DISABLE TRIGGER league_standings_snapshots_immutable',
+      `DELETE FROM public.league_standings_snapshots WHERE ${snapshotScopes.join(' OR ')}`,
+      'ALTER TABLE public.league_standings_snapshots ENABLE TRIGGER league_standings_snapshots_immutable',
       'ALTER TABLE public.league_projection_confirmations DISABLE TRIGGER league_projection_confirmations_immutable',
       `DELETE FROM public.league_projection_confirmations WHERE ${scopes.join(' OR ')}`,
       'ALTER TABLE public.league_projection_confirmations ENABLE TRIGGER league_projection_confirmations_immutable'

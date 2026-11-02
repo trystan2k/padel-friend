@@ -1664,6 +1664,8 @@
       "LEAGUE_START_LOCKED": "La fecha de inicio no puede cambiar una vez que la Liga ha empezado.",
       "LEAGUE_VERSION_CONFLICT": "Esta Liga cambió mientras tanto. La hemos recargado; revísala e inténtalo de nuevo.",
       "LEAGUE_REQUEST_CONFLICT": "Esta solicitud ya se usó con otros datos. Revisa y envía de nuevo.",
+      "LEAGUE_STANDINGS_VERSION_INVALID": "Esa versión de la clasificación no es válida.",
+      "LEAGUE_STANDINGS_VERSION_NOT_FOUND": "Esa versión de la clasificación no existe.",
       "LEAGUE_UNAVAILABLE": "Algo salió mal. Inténtalo de nuevo.",
       "INVALID_LEAGUE_INPUT": "Esos datos no son válidos.",
       "INVALID_LEAGUE_RESPONSE": "Algo salió mal. Inténtalo de nuevo."

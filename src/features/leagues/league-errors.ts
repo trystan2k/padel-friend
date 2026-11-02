@@ -25,7 +25,9 @@ const DATABASE_ERRORS: readonly LeagueErrorCode[] = [
   'LEAGUE_PERIOD_LOCKED',
   'LEAGUE_START_LOCKED',
   'LEAGUE_VERSION_CONFLICT',
-  'LEAGUE_REQUEST_CONFLICT'
+  'LEAGUE_REQUEST_CONFLICT',
+  'LEAGUE_STANDINGS_VERSION_INVALID',
+  'LEAGUE_STANDINGS_VERSION_NOT_FOUND'
 ];
 
 /** Server-side: maps a PostgREST error to a stable League error code (never raw database text). */

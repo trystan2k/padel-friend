@@ -97,6 +97,32 @@ export function validateLeagueId(value: unknown): { league_id: string } {
   return { league_id: uuid(data.league_id) };
 }
 
+function standingsVersion(value: unknown): number | null {
+  if (value === undefined || value === null) return null;
+  return typeof value === 'number' && Number.isSafeInteger(value) && value >= 1 ? value : invalid();
+}
+
+/** `standings_version` addresses one published final of a closed League; absent means latest/live. */
+export function validateLeagueStandingsRequest(value: unknown): {
+  league_id: string;
+  standings_version: number | null;
+} {
+  const data = record(value, ['league_id', 'standings_version']);
+  return {
+    league_id: uuid(data.league_id),
+    standings_version: standingsVersion(data.standings_version)
+  };
+}
+
+/** `before_version` continues the newest-first version history after that version. */
+export function validateLeagueStandingsVersionsRequest(value: unknown): {
+  league_id: string;
+  before_version: number | null;
+} {
+  const data = record(value, ['league_id', 'before_version']);
+  return { league_id: uuid(data.league_id), before_version: standingsVersion(data.before_version) };
+}
+
 export function validateLeagueCommand(value: unknown): {
   league_id: string;
   expected_version: number;

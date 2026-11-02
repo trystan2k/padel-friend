@@ -28,6 +28,9 @@ const PUBLIC_COMMANDS = [
   'get_league_counters',
   // PAF-12 U2: live standings with shared positions and award eligibility.
   'get_league_standings',
+  // PAF-12 U3: member-safe version history and owner/Admin audit of final standings.
+  'get_league_standings_audit',
+  'list_league_standings_versions',
   'list_leagues',
   // PAF-11 U2: eligible League options for the create-match schedule.
   'list_match_league_options',
@@ -52,7 +55,15 @@ const INTERNAL_FUNCTIONS = [
   'match_result_fact_quartet(jsonb)',
   'match_result_ranked_ineligibility(uuid,uuid[],timestamp with time zone)',
   // PAF-12 U2: shared sporting rank (live reader now, snapshot builder later).
-  'league_standings_entries(uuid)'
+  'league_standings_entries(uuid)',
+  // PAF-12 U3: snapshot publication, canonical aggregation and the shared rank function.
+  'league_counter_rows_through(uuid,timestamp with time zone)',
+  'league_rank_counters(jsonb,integer)',
+  'league_publish_standings(uuid,text,uuid,timestamp with time zone,text)',
+  'league_publish_late_confirmation(uuid,uuid,timestamp with time zone,text)',
+  'league_repair_closed_standings(uuid)',
+  'league_reconstruct_standings(uuid)',
+  'guard_league_standings_snapshots_immutable()'
 ];
 
 describe('League schema', { timeout: 120_000 }, () => {

@@ -1664,6 +1664,8 @@
       "LEAGUE_START_LOCKED": "The start date can't change after the League has started.",
       "LEAGUE_VERSION_CONFLICT": "This League changed in the meantime. We reloaded it; review it and try again.",
       "LEAGUE_REQUEST_CONFLICT": "This request was already used with different details. Review and submit again.",
+      "LEAGUE_STANDINGS_VERSION_INVALID": "That standings version isn't valid.",
+      "LEAGUE_STANDINGS_VERSION_NOT_FOUND": "That standings version doesn't exist.",
       "LEAGUE_UNAVAILABLE": "Something went wrong. Try again.",
       "INVALID_LEAGUE_INPUT": "Those details aren't valid.",
       "INVALID_LEAGUE_RESPONSE": "Something went wrong. Try again."
