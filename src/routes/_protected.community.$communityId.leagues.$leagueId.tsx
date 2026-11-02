@@ -35,9 +35,14 @@ export const Route = createFileRoute('/_protected/community/$communityId/leagues
             data: { league_id: params.leagueId, before_version: null }
           }).catch(() => null)
         : null,
+      // Only owner/Admin viewers request the audit, so a failure here is an error to retry, never
+      // "not allowed": non-managers never reach this branch and show no audit section at all.
       closed && league.can_manage
-        ? getLeagueStandingsAudit({ data: { league_id: params.leagueId } }).catch(() => null)
-        : null,
+        ? getLeagueStandingsAudit({ data: { league_id: params.leagueId } }).then(
+            (value) => ({ value, failed: false }),
+            () => ({ value: null, failed: true })
+          )
+        : { value: null, failed: false },
       getLeagueViewer().catch(() => null)
     ]);
     return {
@@ -45,14 +50,16 @@ export const Route = createFileRoute('/_protected/community/$communityId/leagues
       standings: standings.value,
       standingsError: standings.error,
       versions,
-      audit,
+      audit: audit.value,
+      auditFailed: audit.failed,
       viewerId: viewer?.user_id ?? null
     };
   },
   pendingComponent: LeagueLoading,
   errorComponent: LeagueRouteError,
   component: () => {
-    const { detail, standings, standingsError, versions, audit, viewerId } = Route.useLoaderData();
+    const { detail, standings, standingsError, versions, audit, auditFailed, viewerId } =
+      Route.useLoaderData();
     return (
       <LeagueDetailPage
         data={detail}
@@ -60,6 +67,7 @@ export const Route = createFileRoute('/_protected/community/$communityId/leagues
         standingsError={standingsError}
         versions={versions}
         audit={audit}
+        auditFailed={auditFailed}
         viewerId={viewerId}
       />
     );

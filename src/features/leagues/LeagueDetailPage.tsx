@@ -63,6 +63,7 @@ export function LeagueDetailPage({
   standingsError,
   versions,
   audit,
+  auditFailed,
   viewerId
 }: {
   data: LeagueDetailResult;
@@ -73,6 +74,8 @@ export function LeagueDetailPage({
   versions: LeagueStandingsVersionsResult | null;
   /** Owner/Admin only; null for everyone else or when unavailable. */
   audit: LeagueStandingsAuditResult | null;
+  /** True when an owner/Admin's audit read failed, so it is retryable rather than "not allowed". */
+  auditFailed: boolean;
   viewerId: string | null;
 }) {
   const { t, i18n } = useTranslation();
@@ -86,12 +89,29 @@ export function LeagueDetailPage({
   const [feedback, setFeedback] = useState<Feedback>(null);
   const [closeOpen, setCloseOpen] = useState(false);
   const [retryingStandings, setRetryingStandings] = useState(false);
+  // True only while the reload that follows a command is in flight; once it settles with the
+  // standings still disagreeing, the page offers a retry instead of waiting forever.
+  const [reloading, setReloading] = useState(false);
   const closeTrigger = useRef<HTMLButtonElement>(null);
   const period = useLeaguePeriodText(league);
-  useRefreshWhenVisible(() => router.invalidate(), league.status === 'active');
+  useRefreshWhenVisible(
+    () => router.invalidate(),
+    league.status === 'active',
+    league.end_mode === 'fixed_date' ? league.end_at : null
+  );
+  const reload = () => {
+    setReloading(true);
+    void router
+      .invalidate()
+      .catch(() => undefined)
+      .finally(() => setReloading(false));
+  };
   const retryStandings = () => {
     setRetryingStandings(true);
-    void router.invalidate().finally(() => setRetryingStandings(false));
+    void router
+      .invalidate()
+      .catch(() => undefined)
+      .finally(() => setRetryingStandings(false));
   };
   const selectVersion = (version: number | null) =>
     void router.navigate({
@@ -116,12 +136,12 @@ export function LeagueDetailPage({
     try {
       setResult(await command());
       setFeedback({ kind: 'success', key: success });
-      void router.invalidate();
+      reload();
       return true;
     } catch (error) {
       const code = leagueErrorCode(error);
       setFeedback({ kind: 'error', code });
-      if (code === 'LEAGUE_VERSION_CONFLICT') void router.invalidate();
+      if (code === 'LEAGUE_VERSION_CONFLICT') reload();
       return false;
     } finally {
       setBusy(false);
@@ -142,11 +162,11 @@ export function LeagueDetailPage({
       );
       setEditing(false);
       setFeedback({ kind: 'success', key: 'leagues.detail.saved' });
-      void router.invalidate();
+      reload();
       return null;
     } catch (error) {
       const code = leagueErrorCode(error);
-      if (code === 'LEAGUE_VERSION_CONFLICT') void router.invalidate();
+      if (code === 'LEAGUE_VERSION_CONFLICT') reload();
       return code;
     }
   };
@@ -232,7 +252,7 @@ export function LeagueDetailPage({
         ) : standings.status !== league.status ? (
           // A command moved the League but the standings still describe its previous state:
           // never show that table (nor label it final); reload until both agree.
-          result && result !== data.league ? (
+          reloading ? (
             <LeagueStandingsRefreshing />
           ) : (
             <LeagueStandingsUnavailable
@@ -250,6 +270,7 @@ export function LeagueDetailPage({
                 standings={standings}
                 versions={versions}
                 audit={audit}
+                auditFailed={auditFailed}
                 onSelect={selectVersion}
               />
             )}

@@ -1,5 +1,5 @@
 import * as stylex from '@stylexjs/stylex';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '../../components/ui/Button';
 import { SurfaceCard } from '../../components/ui/SurfaceCard';
@@ -11,7 +11,7 @@ import type {
   LeagueStandingsVersionSummary,
   LeagueStandingsVersionsResult
 } from './league-standings-contracts';
-import { listLeagueStandingsVersions } from './league.functions';
+import { getLeagueStandingsAudit, listLeagueStandingsVersions } from './league.functions';
 import { styles as leagueStyles } from './league.styles';
 import { styles } from './league-standings.styles';
 
@@ -22,8 +22,9 @@ import { styles } from './league-standings.styles';
 export function LeagueStandingsHistory({
   league,
   standings,
-  versions,
-  audit,
+  versions: loadedVersions,
+  audit: loadedAudit,
+  auditFailed,
   onSelect
 }: {
   league: LeagueDto;
@@ -31,6 +32,8 @@ export function LeagueStandingsHistory({
   /** Null when the history reader was unavailable; the shown version stays usable. */
   versions: LeagueStandingsVersionsResult | null;
   audit: LeagueStandingsAuditResult | null;
+  /** The owner/Admin audit read failed: retryable, as opposed to a viewer who may not see it. */
+  auditFailed: boolean;
   /** `null` selects the latest version. */
   onSelect: (version: number | null) => void;
 }) {
@@ -43,6 +46,20 @@ export function LeagueStandingsHistory({
   } | null>(null);
   const [loading, setLoading] = useState(false);
   const [failed, setFailed] = useState(false);
+  // Retries read only the failed part, so the snapshot on screen is never discarded or reloaded.
+  const [recoveredVersions, setRecoveredVersions] = useState<LeagueStandingsVersionsResult | null>(
+    null
+  );
+  const [recoveredAudit, setRecoveredAudit] = useState<LeagueStandingsAuditResult | null>(null);
+  const [retrying, setRetrying] = useState<'versions' | 'audit' | null>(null);
+  const [loadedAll, setLoadedAll] = useState(false);
+  const completion = useRef<HTMLOutputElement>(null);
+  const versions = loadedVersions ?? recoveredVersions;
+  const audit = loadedAudit ?? recoveredAudit;
+  // The "load earlier" button unmounts with the last page: hand focus to the completion status.
+  useEffect(() => {
+    if (loadedAll) completion.current?.focus();
+  }, [loadedAll]);
   const continued = versions && more?.base === versions ? more : null;
   const items = [...(versions?.versions ?? []), ...(continued?.items ?? [])];
   const next = continued ? continued.next : (versions?.next_before_version ?? null);
@@ -66,10 +83,29 @@ export function LeagueStandingsHistory({
         items: [...(continued?.items ?? []), ...page.versions],
         next: page.next_before_version
       });
+      if (page.next_before_version === null) setLoadedAll(true);
     } catch {
       setFailed(true);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const retry = async (part: 'versions' | 'audit') => {
+    if (retrying) return;
+    setRetrying(part);
+    try {
+      if (part === 'versions')
+        setRecoveredVersions(
+          await listLeagueStandingsVersions({
+            data: { league_id: league.id, before_version: null }
+          })
+        );
+      else setRecoveredAudit(await getLeagueStandingsAudit({ data: { league_id: league.id } }));
+    } catch {
+      // The unavailable state stays on screen with its retry.
+    } finally {
+      setRetrying(null);
     }
   };
 
@@ -83,9 +119,18 @@ export function LeagueStandingsHistory({
         {t('leagues.history.title')}
       </h2>
       {versions === null && (
-        <p role="alert" {...stylex.props(leagueStyles.errorText)}>
-          {t('leagues.history.unavailable')}
-        </p>
+        <>
+          <p role="alert" {...stylex.props(leagueStyles.errorText)}>
+            {t('leagues.history.unavailable')}
+          </p>
+          <Button
+            variant="secondary"
+            busy={retrying === 'versions'}
+            onClick={() => void retry('versions')}
+          >
+            {t('leagues.history.retry')}
+          </Button>
+        </>
       )}
       <div {...stylex.props(styles.field)}>
         <label htmlFor="league-version-select" {...stylex.props(styles.fieldLabel)}>
@@ -115,6 +160,11 @@ export function LeagueStandingsHistory({
         <Button variant="secondary" busy={loading} onClick={() => void loadMore()}>
           {t('leagues.history.loadMore')}
         </Button>
+      )}
+      {loadedAll && next === null && (
+        <output ref={completion} tabIndex={-1} {...stylex.props(leagueStyles.muted)}>
+          {t('leagues.history.allLoaded')}
+        </output>
       )}
       {failed && (
         <p role="alert" {...stylex.props(leagueStyles.errorText)}>
@@ -166,6 +216,23 @@ export function LeagueStandingsHistory({
         )}
       </SurfaceCard>
 
+      {auditFailed && !audit && (
+        <section aria-labelledby="league-audit-heading" {...stylex.props(leagueStyles.content)}>
+          <h3 id="league-audit-heading" {...stylex.props(leagueStyles.sectionTitle)}>
+            {t('leagues.history.auditTitle')}
+          </h3>
+          <p role="alert" {...stylex.props(leagueStyles.errorText)}>
+            {t('leagues.history.auditUnavailable')}
+          </p>
+          <Button
+            variant="secondary"
+            busy={retrying === 'audit'}
+            onClick={() => void retry('audit')}
+          >
+            {t('leagues.history.retry')}
+          </Button>
+        </section>
+      )}
       {audit && audit.events.length > 0 && (
         <section aria-labelledby="league-audit-heading" {...stylex.props(leagueStyles.content)}>
           <h3 id="league-audit-heading" {...stylex.props(leagueStyles.sectionTitle)}>
@@ -174,9 +241,14 @@ export function LeagueStandingsHistory({
           <ul {...stylex.props(styles.auditList)}>
             {audit.events.map((event, index) => {
               const version = event.details.standings_version;
+              // Only owner/Admin can close; a human-caused revision is a member's confirmation.
               const reason = event.system_reason
                 ? t(`leagues.history.audit.reason.${event.system_reason}`, { defaultValue: '' })
-                : t('leagues.history.audit.byManager');
+                : t(
+                    event.action === 'closed'
+                      ? 'leagues.history.audit.byManager'
+                      : 'leagues.history.audit.byMember'
+                  );
               return (
                 <li key={`${event.occurred_at}-${index}`}>
                   {[

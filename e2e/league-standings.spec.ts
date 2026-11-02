@@ -1,6 +1,12 @@
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Page, type TestInfo } from '@playwright/test';
 import { waitForHydratedPage } from './auth-helpers';
 import { copies, day, leagueFixtures } from './leagues-fixtures';
+import {
+  assertNoOverflow,
+  assertTouchHeights,
+  docBox,
+  measureStandingsFrame
+} from './league-standings-visual';
 import { en, fill, sql } from './matches-management-fixtures';
 
 // PAF-12 U4: a Ranked League from creation to archive. Real routes and RPCs; trusted SQL is used
@@ -101,8 +107,22 @@ const row = (page: Page, name: string) =>
     .getByRole('row')
     .filter({ has: page.getByRole('rowheader', { name }) });
 
+/** The secondary full-statistics view lives in a native disclosure; open it once per page. */
+async function openAllStats(page: Page) {
+  if (!(await region(page).isVisible())) await page.getByText(s.allStats, { exact: true }).click();
+  await expect(region(page)).toBeVisible();
+}
+
+/** Primary ranking row of the compact table: place, record, set difference, award. */
+const primaryRow = (page: Page, name: string, title = s.title) =>
+  page
+    .getByRole('table', { name: title, exact: true })
+    .getByRole('row')
+    .filter({ has: page.getByRole('rowheader', { name }) });
+
 /** Every statistic cell of a row, in table order (place, then the counters, then the award). */
 async function cells(page: Page, name: string) {
+  await openAllStats(page);
   const texts = await row(page, name).getByRole('cell').allTextContents();
   // The place cell also carries a visually hidden shared-place announcement.
   return texts.map((text, index) =>
@@ -177,6 +197,12 @@ test('Win group confirmed in a Manual League shows exact live counters and share
   await expect(page.getByText(s.live, { exact: true })).toBeVisible();
 
   const [a, b] = [players()[0]!.name, players()[2]!.name];
+  // Primary view, visible without opening anything: place, W–L–D, set difference, award.
+  await expect(primaryRow(page, a).getByRole('cell').first()).toHaveText(/^1/);
+  await expect(primaryRow(page, a)).toContainText('1–0–0');
+  await expect(primaryRow(page, a)).toContainText('+2');
+  await expect(primaryRow(page, b)).toContainText('0–1–0');
+  await expect(primaryRow(page, b)).toContainText('-2');
   // Place, Matches, Wins, Draws, Losses, Sets won, Sets lost, Set difference, award.
   expect(await cells(page, a)).toEqual([
     '1',
@@ -228,7 +254,92 @@ test('Win group confirmed in a Manual League shows exact live counters and share
       ])
     );
   }
-  await expect(page.getByRole('columnheader', { name: c.setDifferential })).toBeVisible();
+  await expect(region(page).getByRole('columnheader', { name: c.setDifferential })).toBeVisible();
+});
+
+/**
+ * d6ANDN close confirmation. The Pencil frame is a full-screen route; production adapts it to a
+ * Base UI modal over the League page (Cancel first so the safe action holds initial focus), so no
+ * full-frame screenshot budget exists: exact structural probes gate the dialog instead.
+ */
+async function closeDialogVisual(page: Page) {
+  const dialog = page.getByRole('alertdialog');
+  await expect(dialog).toBeVisible();
+  await page.setViewportSize({ width: 390, height: 844 });
+  const box = await docBox(dialog);
+  expect.soft(box.x, 'd6ANDN dialog left edge').toBeGreaterThanOrEqual(0);
+  expect.soft(box.right, 'd6ANDN dialog right edge').toBeLessThanOrEqual(390);
+  expect.soft(box.y, 'd6ANDN dialog top').toBeGreaterThanOrEqual(0);
+  expect.soft(box.bottom, 'd6ANDN dialog bottom').toBeLessThanOrEqual(844);
+  const confirm = dialog.getByRole('button', { name: en.leagues.detail.closeConfirm.confirm });
+  const cancel = dialog.getByRole('button', { name: en.leagues.detail.closeConfirm.cancel });
+  // Reference: warning copy, then two stacked full-row 44px actions (End, Cancel).
+  const [body, confirmBox, cancelBox] = await Promise.all([
+    docBox(dialog.getByText(en.leagues.detail.closeConfirm.body)),
+    docBox(confirm),
+    docBox(cancel)
+  ]);
+  for (const control of [confirmBox, cancelBox]) {
+    expect.soft(control.y, 'd6ANDN action follows the warning').toBeGreaterThan(body.y);
+    expect.soft(control.height, 'd6ANDN action height').toBeGreaterThanOrEqual(44);
+    expect.soft(control.x, 'd6ANDN action inside dialog').toBeGreaterThanOrEqual(box.x - 1);
+    expect.soft(control.right, 'd6ANDN action inside dialog').toBeLessThanOrEqual(box.right + 1);
+    expect
+      .soft(control.width, 'd6ANDN action is a full-row control')
+      .toBeGreaterThan(box.width / 2);
+  }
+  const [upper, lower] = [confirmBox, cancelBox].sort((x, y) => x.y - y.y);
+  expect
+    .soft(upper!.bottom, 'd6ANDN actions are stacked, not overlapping')
+    .toBeLessThanOrEqual(lower!.y);
+  await assertNoOverflow(page, 'd6ANDN');
+}
+
+test('ywfn7 active standings: Pencil frame budget and structure', async ({ browserName }, info) => {
+  expect(browserName).toBe('chromium');
+  const page = await f.page(f.creator, 'en', 390, 'dark', 844);
+  await openLeague(page);
+  await expect(page.getByText(s.live, { exact: true })).toBeVisible();
+  await expect(page.getByText(s.yourPlace, { exact: true })).toBeVisible();
+  await measureStandingsFrame(page, 'ywfn7', info);
+
+  // Section order of the approved composition: standings heading + status, own summary, table, award callout.
+  const title = page.getByRole('heading', { name: s.title, exact: true });
+  const table = page.getByRole('table', { name: s.title, exact: true });
+  const own = page.getByText(s.yourPlace, { exact: true });
+  const callout = page.getByText(en.leagues.award.callout.remaining_one);
+  const order = [
+    await docBox(title),
+    await docBox(page.getByText(s.live, { exact: true })),
+    await docBox(own),
+    await docBox(table),
+    await docBox(callout)
+  ];
+  for (let index = 1; index < order.length; index++)
+    expect(order[index]!.y, `ywfn7 section ${index} follows ${index - 1}`).toBeGreaterThanOrEqual(
+      order[index - 1]!.y - 1
+    );
+
+  // Primary table: five columns inside the 390px viewport, no sideways page scroll, 44px controls.
+  await expect(table.getByRole('columnheader')).toHaveCount(5);
+  const tableBox = await docBox(table);
+  expect.soft(tableBox.x, 'ywfn7 table left edge').toBeGreaterThanOrEqual(0);
+  expect.soft(tableBox.right, 'ywfn7 table right edge').toBeLessThanOrEqual(390);
+  for (const cell of await table.getByRole('row').first().getByRole('columnheader').all()) {
+    const box = await cell.boundingBox();
+    expect
+      .soft(box!.x + box!.width, 'ywfn7 primary column inside viewport')
+      .toBeLessThanOrEqual(390);
+  }
+  // The viewer's own row is the highlighted one (aria-current) and sits inside the table box.
+  const current = table.locator('[aria-current]');
+  await expect(current).toHaveCount(1);
+  const currentBox = await docBox(current);
+  expect
+    .soft(currentBox.right, 'ywfn7 viewer row inside table')
+    .toBeLessThanOrEqual(tableBox.right + 1);
+  await assertNoOverflow(page, 'ywfn7');
+  await assertTouchHeights(page.locator('main'), 'ywfn7');
 });
 
 test('only the owner or an Admin closes; closing shows the archived final table', async () => {
@@ -257,6 +368,7 @@ test('only the owner or an Admin closes; closing shows the archived final table'
   ]);
 
   await trigger.click();
+  await closeDialogVisual(page);
   await page
     .getByRole('alertdialog')
     .getByRole('button', { name: en.leagues.detail.closeConfirm.confirm })
@@ -292,7 +404,38 @@ test('only the owner or an Admin closes; closing shows the archived final table'
   ).toBeVisible();
 });
 
-test('a first result confirmed after the close adds a new final; the old one stays inspectable', async () => {
+/** xbIxj historical final: composition budget and structure (truthful late-first-confirmation copy). */
+async function historyVisual(page: Page, info: TestInfo) {
+  await page.evaluate(() => window.scrollTo(0, 0));
+  await measureStandingsFrame(page, 'xbIxj', info);
+  const notice = page.getByText(h.lateFirstConfirmation);
+  const table = page.getByRole('table', { name: s.title, exact: true });
+  const select = page.getByRole('combobox', { name: h.selectVersion });
+  const [noticeBox, tableBox, selectBox] = await Promise.all([
+    docBox(notice),
+    docBox(table),
+    docBox(select)
+  ]);
+  // Production order (reported deviation from the frame, where the notice sits above the list):
+  // final table first, then the version history that carries the notice and the version select.
+  expect
+    .soft(noticeBox.y, 'xbIxj history notice follows the final table')
+    .toBeGreaterThan(tableBox.bottom);
+  expect
+    .soft(selectBox.y, 'xbIxj version select follows the final table')
+    .toBeGreaterThan(tableBox.bottom);
+  expect.soft(selectBox.height, 'xbIxj version select height').toBeGreaterThanOrEqual(44);
+  for (const box of [noticeBox, tableBox, selectBox]) {
+    expect.soft(box.x, 'xbIxj block left edge').toBeGreaterThanOrEqual(0);
+    expect.soft(box.right, 'xbIxj block right edge').toBeLessThanOrEqual(390);
+  }
+  await assertNoOverflow(page, 'xbIxj');
+}
+
+test('a first result confirmed after the close adds a new final; the old one stays inspectable', async ({
+  browserName
+}, info) => {
+  expect(browserName).toBe('chromium');
   await approve(proposalB);
   const [counted] = await sql(
     `select count(*)::int as versions from public.league_standings_snapshots where league_id='${leagueId}'`
@@ -305,6 +448,7 @@ test('a first result confirmed after the close adds a new final; the old one sta
   await expect(select).toHaveValue('2');
   await expect(page.getByText(h.lateFirstConfirmation)).toBeVisible();
   await expect(page.getByText(/was confirmed for the first time/)).toBeVisible();
+  await historyVisual(page, info);
   // Version 2 includes the Draw: two matches each, award minimum reached.
   expect(await cells(page, players()[0]!.name)).toEqual([
     '1',
@@ -381,7 +525,26 @@ test('final standings reflow at 320px in pt-BR dark mode with 44px targets and a
   await openLeague(page);
   await expect(page.getByRole('heading', { name: pt.standings.title, exact: true })).toBeVisible();
 
-  // The page itself never scrolls sideways; only the named table region does.
+  // Primary ranking info (place, player, W–L–D, set difference, award) sits inside the 320px
+  // viewport: the page never scrolls sideways and no primary column is cut off.
+  const primary = page.getByRole('table', { name: pt.standings.title, exact: true });
+  await expect(primary.getByRole('columnheader')).toHaveCount(5);
+  const own = primaryRow(page, f.creator.name, pt.standings.title);
+  await expect(own).toContainText('1–0–1');
+  for (const cell of await own.getByRole('cell').all()) {
+    const box = await cell.boundingBox();
+    expect(box).not.toBeNull();
+    expect(box!.x).toBeGreaterThanOrEqual(0);
+    expect(box!.x + box!.width).toBeLessThanOrEqual(320);
+  }
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth - document.documentElement.clientWidth
+    )
+  ).toBeLessThanOrEqual(0);
+
+  // Every statistic stays reachable in the secondary view: a named, focusable scroll region.
+  await page.getByText(pt.standings.allStats, { exact: true }).click();
   const overflow = await page.evaluate(() => ({
     page: document.documentElement.scrollWidth - document.documentElement.clientWidth,
     region: (() => {
@@ -397,6 +560,7 @@ test('final standings reflow at 320px in pt-BR dark mode with 44px targets and a
 
   // Interactive targets stay at least 44px tall, translated text included.
   for (const target of [
+    page.getByText(pt.standings.allStats, { exact: true }),
     page.getByRole('combobox', { name: pt.history.selectVersion }),
     page.getByRole('link', { name: pt.history.previousLeagues })
   ]) {

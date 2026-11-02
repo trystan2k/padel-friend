@@ -386,14 +386,17 @@ test('provisional player joins a Ranked event, is carried on League change and k
 
   // Provisional member shows in the League participants with the badge and zero counters.
   const leagueUrl = `/community/${f.community}/leagues/${spring}`;
-  const participant = (page: Page, name: string) =>
-    page
-      .getByRole('region', { name: en.leagues.standings.tableLabel })
-      .getByRole('row')
-      .filter({ hasText: name });
+  // The full statistics table lives in a collapsed "All statistics" disclosure.
+  const participant = async (page: Page, name: string) => {
+    const table = page.getByRole('region', { name: en.leagues.standings.tableLabel });
+    if (!(await table.isVisible()))
+      await page.getByText(en.leagues.standings.allStats, { exact: true }).click();
+    await expect(table).toBeVisible();
+    return table.getByRole('row').filter({ hasText: name });
+  };
   await organizer.goto(leagueUrl);
   await waitForHydratedPage(organizer);
-  const entry = participant(organizer, 'Carla Convidada');
+  const entry = await participant(organizer, 'Carla Convidada');
   await expect(entry).toContainText(en.player.provisional.badge);
   await expect(entry.getByRole('cell').nth(1)).toHaveText('0');
 
@@ -443,7 +446,7 @@ test('provisional player joins a Ranked event, is carried on League change and k
   expect(afterClaim).toEqual(carried);
   await organizer.goto(`/community/${f.community}/leagues/${summer}`);
   await waitForHydratedPage(organizer);
-  const claimed = participant(organizer, 'Carla Reclamada');
+  const claimed = await participant(organizer, 'Carla Reclamada');
   await expect(claimed).toBeVisible();
   await expect(claimed).not.toContainText(en.player.provisional.badge);
   await expect(claimed.getByRole('cell').nth(1)).toHaveText('0');

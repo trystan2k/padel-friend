@@ -57,6 +57,7 @@ function Detail({
   standingsError = null,
   versions = null,
   audit = null,
+  auditFailed = false,
   viewerId = null,
   ...props
 }: Partial<ComponentProps<typeof LeagueDetailPage>> &
@@ -75,6 +76,7 @@ function Detail({
       standingsError={standingsError}
       versions={versions}
       audit={audit}
+      auditFailed={auditFailed}
       viewerId={viewerId}
     />
   );
@@ -698,6 +700,9 @@ describe('League detail management', () => {
     );
     expect(screen.getByText('Cerrada', { selector: 'dt' })).toBeTruthy();
     expect(screen.getByText(/fecha de fin alcanzada/)).toBeTruthy();
-    expect(screen.queryByRole('button')).toBeNull();
+    // No management action on a closed League: only the history reader's retry remains.
+    expect(screen.getAllByRole('button').map((button) => button.textContent)).toEqual([
+      'Reintentar'
+    ]);
   });
 });

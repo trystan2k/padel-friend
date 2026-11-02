@@ -234,6 +234,21 @@ export function decodeLeagueStandingsVersions(value: unknown): LeagueStandingsVe
   };
 }
 
+/** The only detail keys the audit reader publishes: versions, instants, provenance and counts. */
+const AUDIT_DETAIL_KEYS = new Set([
+  'standings_version',
+  'old_standings_version',
+  'closed_at',
+  'source',
+  'played_at',
+  'confirmed_at',
+  'effective_cutoff',
+  'publication_cutoff',
+  'provenance',
+  'added_count',
+  'removed_count'
+]);
+
 function decodeAuditEvent(value: unknown): LeagueStandingsAuditEvent {
   const row = exactObject(value, ['action', 'actor_id', 'system_reason', 'occurred_at', 'details']);
   const action =
@@ -246,13 +261,8 @@ function decodeAuditEvent(value: unknown): LeagueStandingsAuditEvent {
     return fail();
   const details: LeagueStandingsAuditEvent['details'] = {};
   for (const [key, detail] of Object.entries(row.details)) {
-    if (
-      detail !== null &&
-      typeof detail !== 'string' &&
-      typeof detail !== 'number' &&
-      !(Array.isArray(detail) && detail.every((item) => typeof item === 'string'))
-    )
-      return fail();
+    if (!AUDIT_DETAIL_KEYS.has(key)) return fail();
+    if (detail !== null && typeof detail !== 'string' && typeof detail !== 'number') return fail();
     details[key] = detail;
   }
   return {

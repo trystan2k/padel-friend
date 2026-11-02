@@ -65,6 +65,28 @@ export const styles = stylex.create({
     fontSize: 'var(--font-size-12)',
     fontVariantNumeric: 'tabular-nums'
   },
+  compactTable: {
+    width: '100%',
+    borderCollapse: 'collapse',
+    borderRadius: 'var(--radius-14)',
+    backgroundColor: 'var(--color-surface)',
+    fontSize: 'var(--font-size-12)',
+    fontVariantNumeric: 'tabular-nums'
+  },
+  compactPlayer: {
+    textAlign: 'start',
+    overflowWrap: 'anywhere'
+  },
+  detailsSummary: {
+    display: 'flex',
+    alignItems: 'center',
+    minHeight: touchTarget,
+    color: 'var(--color-green)',
+    fontSize: 'var(--font-size-12)',
+    fontWeight: 'var(--font-weight-semibold)',
+    cursor: 'pointer',
+    ':focus-visible': focusRing
+  },
   headCell: {
     ...rowBorder,
     padding: 'var(--space-8) var(--space-6)',

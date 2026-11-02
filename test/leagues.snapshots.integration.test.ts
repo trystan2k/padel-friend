@@ -277,6 +277,25 @@ describe.skipIf(!environment.env)('League final standings versions', { timeout: 
       }
     });
 
+    // The owner/Admin reader publishes allowlisted facts only: no confirmation, proposal,
+    // match-event or group identifiers, even though the stored event keeps them.
+    const auditResponse = await kit.rpc(kit.creator, 'get_league_standings_audit', {
+      p_league_id: leagueId
+    });
+    expect(auditResponse.error).toBeNull();
+    const audit = decodeLeagueStandingsAudit(auditResponse.data);
+    const lateEvent = audit.events.find((event) => event.action === 'standings_revised');
+    expect(lateEvent?.actor_id).toBe(id(6));
+    expect(Object.keys(lateEvent!.details).sort()).toEqual([
+      'confirmed_at',
+      'effective_cutoff',
+      'old_standings_version',
+      'played_at',
+      'source',
+      'standings_version'
+    ]);
+    expect(JSON.stringify(auditResponse.data)).not.toContain(pending);
+
     // The finalizer replay, even after losing its receipt, creates neither a version nor an audit.
     const settled = { versions: await snapshots(leagueId), state: await stateOf(leagueId) };
     for (const wipe of [false, true]) {
@@ -391,6 +410,76 @@ describe.skipIf(!environment.env)('League final standings versions', { timeout: 
     } finally {
       await setMembershipHistory(kit.communityId, id(3), [{ activatedAt: dayAgo() }]);
     }
+  });
+
+  it('repairs the final when a closed League is rebuilt, and the finalizer replay stays idempotent', async () => {
+    const leagueId = await activeLeague();
+    const eventId = await kit.event(leagueId);
+    const proposalId = await confirmGroup(eventId, 1);
+    expect((await close(leagueId)).error).toBeNull();
+    const rebuild = async () =>
+      asRecord(
+        (await sqlRows(`select public.rebuild_league_counters(${L(leagueId)}) as result`))[0]![
+          'result'
+        ]
+      );
+    const counters = () =>
+      sqlRows(
+        `select user_id::text, matches from public.league_player_counters
+          where league_id = ${L(leagueId)} order by user_id`
+      );
+    const replay = () =>
+      fixtureSql(
+        `select public.finalize_match_event_result_locked(${L(proposalId)}::uuid, 1, 'MANUAL', ${L(id(2))}::uuid);`
+      );
+
+    // Identical input: a rebuild of a closed League publishes nothing.
+    expect(await rebuild()).toMatchObject({ repaired_standings_version: null });
+    expect(await snapshots(leagueId)).toHaveLength(1);
+
+    // Trusted retroactive change: the rebuild itself repairs the final, once.
+    await setMembershipHistory(kit.communityId, id(3), [{ activatedAt: new Date().toISOString() }]);
+    try {
+      expect(await rebuild()).toMatchObject({ repaired_standings_version: 2 });
+      expect(await counters()).toEqual([]);
+      expect(await rebuild()).toMatchObject({ repaired_standings_version: null });
+      expect(await standings(leagueId)).toMatchObject({
+        standings_version: 2,
+        cause: 'repair',
+        entries: []
+      });
+    } finally {
+      await setMembershipHistory(kit.communityId, id(3), [{ activatedAt: dayAgo() }]);
+    }
+
+    // Evidence is eligible again: rebuild revises the final back; the receipt-guarded replay adds nothing.
+    expect(await rebuild()).toMatchObject({ repaired_standings_version: 3 });
+    expect(await counters()).toHaveLength(4);
+    const settled = { versions: await snapshots(leagueId), state: await stateOf(leagueId) };
+    expect(
+      settled.versions.map((row) => [row['standings_version'], row['cause'], row['included']])
+    ).toEqual([
+      [1, 'closed', 1],
+      [2, 'repair', 0],
+      [3, 'repair', 1]
+    ]);
+    await replay();
+    expect(await snapshots(leagueId)).toEqual(settled.versions);
+    expect(await stateOf(leagueId)).toEqual(settled.state);
+    expect(playerRecord((await standings(leagueId)).entries)).toEqual([
+      [0, 1, 1, 0],
+      [1, 1, 1, 0],
+      [2, 1, 0, 1],
+      [3, 1, 0, 1]
+    ]);
+  });
+
+  it('leaves an open League rebuild without any version', async () => {
+    const leagueId = await activeLeague();
+    await confirmGroup(await kit.event(leagueId), 1);
+    const [row] = await sqlRows(`select public.rebuild_league_counters(${L(leagueId)}) as result`);
+    expect(asRecord(row?.['result'])).toMatchObject({ repaired_standings_version: null });
+    expect(await snapshots(leagueId)).toHaveLength(0);
   });
 
   it('reconstructs pre-existing closed Leagues from retained facts with honest provenance', async () => {

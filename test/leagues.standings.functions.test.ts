@@ -255,8 +255,8 @@ describe('League standings audit decoder', () => {
         system_reason: 'standings_repair',
         details: {
           old_standings_version: 1,
-          added_confirmations: [id(2)],
-          removed_confirmations: []
+          added_count: 1,
+          removed_count: 0
         }
       }),
       auditEvent()
@@ -273,6 +273,15 @@ describe('League standings audit decoder', () => {
     ['an unknown action', () => audit([auditEvent({ action: 'updated' })])],
     ['non-structured details', () => audit([auditEvent({ details: { nested: { a: 1 } } })])],
     ['array details', () => audit([auditEvent({ details: [] })])],
+    [
+      'a raw confirmation identifier',
+      () => audit([auditEvent({ details: { standings_version: 1, confirmation_id: id(2) } })])
+    ],
+    [
+      'raw identifier arrays',
+      () => audit([auditEvent({ details: { added_confirmations: [id(2)] } })])
+    ],
+    ['an unknown detail key', () => audit([auditEvent({ details: { group_number: 2 } })])],
     ['a malformed actor', () => audit([auditEvent({ actor_id: 'x' })])]
   ])('rejects %s', (_label, build) => {
     expect(() => decodeLeagueStandingsAudit(build())).toThrow('INVALID_LEAGUE_RESPONSE');

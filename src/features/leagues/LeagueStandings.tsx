@@ -41,6 +41,36 @@ function calloutKey(standings: LeagueStandingsResult, entry: LeagueStandingEntry
     : 'leagues.award.callout.remaining';
 }
 
+/** Place number plus a visually hidden announcement when the place is shared. */
+function PositionCell({ entry, shared }: { entry: LeagueStandingEntry; shared: boolean }) {
+  const { t, i18n } = useTranslation();
+  return (
+    <td {...stylex.props(styles.cell, styles.position)}>
+      {new Intl.NumberFormat(i18n.language).format(entry.position)}
+      {shared && (
+        <span {...stylex.props(styles.hidden)}>
+          {t('leagues.standings.sharedPosition', { position: entry.position })}
+        </span>
+      )}
+    </td>
+  );
+}
+
+function PlayerLabel({ entry, isOwn }: { entry: LeagueStandingEntry; isOwn: boolean }) {
+  const { t } = useTranslation();
+  return (
+    <>
+      <span {...stylex.props(styles.playerName)}>
+        {entry.display_name ?? t('leagues.counters.unknownPlayer')}
+      </span>
+      {entry.is_provisional && (
+        <span {...stylex.props(styles.tag)}>{t('player.provisional.badge')}</span>
+      )}
+      {isOwn && <span {...stylex.props(styles.tag)}>{t('leagues.standings.you')}</span>}
+    </>
+  );
+}
+
 /**
  * Authoritative standings of one League: the live table of an open League or one immutable final
  * version of a closed one. Order and positions are the database's; this only presents them.
@@ -123,74 +153,120 @@ export function LeagueStandings({
               {t('leagues.standings.empty.noEligibleResults')}
             </p>
           )}
-          {/* A focusable, named scroll region: every statistic stays reachable on narrow screens. */}
-          <section
-            aria-label={t('leagues.standings.tableLabel')}
-            // oxlint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- a scrollable region must be keyboard reachable
-            tabIndex={0}
-            {...stylex.props(styles.scroll)}
-          >
-            <table {...stylex.props(styles.table)}>
-              <thead>
-                <tr>
-                  <th scope="col" {...stylex.props(styles.headCell)}>
-                    {t('leagues.standings.position')}
-                  </th>
-                  <th scope="col" {...stylex.props(styles.headCell, styles.playerCell)}>
-                    {t('leagues.standings.player')}
-                  </th>
-                  {STATS.map(([key, label]) => (
-                    <th key={key} scope="col" {...stylex.props(styles.headCell)}>
-                      {t(label)}
+          {/* Primary ranking view: fits the narrowest viewport without sideways scrolling. */}
+          <table aria-labelledby="league-standings-heading" {...stylex.props(styles.compactTable)}>
+            <thead>
+              <tr>
+                <th scope="col" {...stylex.props(styles.headCell)}>
+                  {t('leagues.standings.position')}
+                </th>
+                <th scope="col" {...stylex.props(styles.headCell, styles.compactPlayer)}>
+                  {t('leagues.standings.player')}
+                </th>
+                <th scope="col" {...stylex.props(styles.headCell)}>
+                  <abbr title={t('leagues.standings.recordLabel')}>
+                    {t('leagues.standings.record')}
+                  </abbr>
+                </th>
+                <th scope="col" {...stylex.props(styles.headCell)}>
+                  {t('leagues.counters.setDifferential')}
+                </th>
+                <th scope="col" {...stylex.props(styles.headCell)}>
+                  {t('leagues.standings.award')}
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {entries.map((entry) => {
+                const isOwn = entry.user_id === viewerId;
+                return (
+                  <tr
+                    key={entry.user_id}
+                    aria-current={isOwn ? 'true' : undefined}
+                    {...stylex.props(isOwn && styles.ownRow)}
+                  >
+                    <PositionCell entry={entry} shared={shared(entry)} />
+                    <th scope="row" {...stylex.props(styles.cell, styles.compactPlayer)}>
+                      <PlayerLabel entry={entry} isOwn={isOwn} />
                     </th>
-                  ))}
-                  <th scope="col" {...stylex.props(styles.headCell)}>
-                    {t('leagues.standings.award')}
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {entries.map((entry) => {
-                  const isOwn = entry.user_id === viewerId;
-                  return (
-                    <tr
-                      key={entry.user_id}
-                      aria-current={isOwn ? 'true' : undefined}
-                      {...stylex.props(isOwn && styles.ownRow)}
-                    >
-                      <td {...stylex.props(styles.cell, styles.position)}>
-                        {number.format(entry.position)}
-                        {shared(entry) && (
-                          <span {...stylex.props(styles.hidden)}>
-                            {t('leagues.standings.sharedPosition', { position: entry.position })}
-                          </span>
-                        )}
-                      </td>
-                      <th scope="row" {...stylex.props(styles.cell, styles.playerCell)}>
-                        <span {...stylex.props(styles.playerName)}>
-                          {entry.display_name ?? t('leagues.counters.unknownPlayer')}
-                        </span>
-                        {entry.is_provisional && (
-                          <span {...stylex.props(styles.tag)}>{t('player.provisional.badge')}</span>
-                        )}
-                        {isOwn && (
-                          <span {...stylex.props(styles.tag)}>{t('leagues.standings.you')}</span>
-                        )}
+                    <td {...stylex.props(styles.cell)}>
+                      <span aria-hidden="true">
+                        {number.format(entry.wins)}–{number.format(entry.losses)}–
+                        {number.format(entry.draws)}
+                      </span>
+                      <span {...stylex.props(styles.hidden)}>
+                        {t('leagues.standings.recordSpoken', {
+                          wins: number.format(entry.wins),
+                          losses: number.format(entry.losses),
+                          draws: number.format(entry.draws)
+                        })}
+                      </span>
+                    </td>
+                    <td {...stylex.props(styles.cell)}>{signed.format(entry.set_differential)}</td>
+                    <td {...stylex.props(styles.cell)}>{awardText(entry)}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+          {/* Secondary view: every statistic, in a focusable, named scroll region. */}
+          <details>
+            <summary {...stylex.props(styles.detailsSummary)}>
+              {t('leagues.standings.allStats')}
+            </summary>
+            <section
+              aria-label={t('leagues.standings.tableLabel')}
+              // oxlint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- a scrollable region must be keyboard reachable
+              tabIndex={0}
+              {...stylex.props(styles.scroll)}
+            >
+              <table {...stylex.props(styles.table)}>
+                <thead>
+                  <tr>
+                    <th scope="col" {...stylex.props(styles.headCell)}>
+                      {t('leagues.standings.position')}
+                    </th>
+                    <th scope="col" {...stylex.props(styles.headCell, styles.playerCell)}>
+                      {t('leagues.standings.player')}
+                    </th>
+                    {STATS.map(([key, label]) => (
+                      <th key={key} scope="col" {...stylex.props(styles.headCell)}>
+                        {t(label)}
                       </th>
-                      {STATS.map(([key]) => (
-                        <td key={key} {...stylex.props(styles.cell)}>
-                          {key === 'set_differential'
-                            ? signed.format(entry[key])
-                            : number.format(entry[key])}
-                        </td>
-                      ))}
-                      <td {...stylex.props(styles.cell)}>{awardText(entry)}</td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </section>
+                    ))}
+                    <th scope="col" {...stylex.props(styles.headCell)}>
+                      {t('leagues.standings.award')}
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {entries.map((entry) => {
+                    const isOwn = entry.user_id === viewerId;
+                    return (
+                      <tr
+                        key={entry.user_id}
+                        aria-current={isOwn ? 'true' : undefined}
+                        {...stylex.props(isOwn && styles.ownRow)}
+                      >
+                        <PositionCell entry={entry} shared={shared(entry)} />
+                        <th scope="row" {...stylex.props(styles.cell, styles.playerCell)}>
+                          <PlayerLabel entry={entry} isOwn={isOwn} />
+                        </th>
+                        {STATS.map(([key]) => (
+                          <td key={key} {...stylex.props(styles.cell)}>
+                            {key === 'set_differential'
+                              ? signed.format(entry[key])
+                              : number.format(entry[key])}
+                          </td>
+                        ))}
+                        <td {...stylex.props(styles.cell)}>{awardText(entry)}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </section>
+          </details>
           {own && (
             <p {...stylex.props(styles.callout)}>
               {t(calloutKey(standings, own), { count: own.matches_remaining })}

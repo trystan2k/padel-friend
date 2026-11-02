@@ -86,8 +86,8 @@ export type LeagueStandingsVersionsResult = {
   next_before_version: number | null;
 };
 
-/** Structured audit facts only (ids, versions, instants); never display copy. */
-export type LeagueStandingsAuditDetailValue = string | number | string[] | null;
+/** Allowlisted audit facts only (versions, instants, counts); never raw ids or display copy. */
+export type LeagueStandingsAuditDetailValue = string | number | null;
 
 export type LeagueStandingsAuditEvent = {
   action: 'closed' | 'standings_revised';

@@ -15,7 +15,8 @@ const mocks = vi.hoisted(() => ({
       }) => Promise<void>
     >(),
   closeLeague: vi.fn<(request: { data: Record<string, unknown> }) => Promise<unknown>>(),
-  listVersions: vi.fn<(request: { data: Record<string, unknown> }) => Promise<unknown>>()
+  listVersions: vi.fn<(request: { data: Record<string, unknown> }) => Promise<unknown>>(),
+  getAudit: vi.fn<(request: { data: Record<string, unknown> }) => Promise<unknown>>()
 }));
 vi.mock('@tanstack/react-router', async (original) => ({
   ...(await original<typeof import('@tanstack/react-router')>()),
@@ -35,12 +36,16 @@ vi.mock('../src/features/leagues/league.functions', () => ({
   updateLeague: vi.fn<() => void>(),
   activateLeague: vi.fn<() => void>(),
   closeLeague: mocks.closeLeague,
-  listLeagueStandingsVersions: mocks.listVersions
+  listLeagueStandingsVersions: mocks.listVersions,
+  getLeagueStandingsAudit: mocks.getAudit
 }));
 
 import { LeagueDetailPage } from '../src/features/leagues/LeagueDetailPage';
 import { LeagueStandingsHistory } from '../src/features/leagues/LeagueStandingsHistory';
-import { useRefreshWhenVisible } from '../src/features/leagues/league-standings-refresh';
+import {
+  LEAGUE_STANDINGS_REFRESH_INTERVAL_MS,
+  useRefreshWhenVisible
+} from '../src/features/leagues/league-standings-refresh';
 import {
   makeFinalStandings,
   makeLeagueDetail,
@@ -63,6 +68,7 @@ function Detail({
   standingsError = null,
   versions = null,
   audit = null,
+  auditFailed = false,
   viewerId = null,
   ...props
 }: Partial<ComponentProps<typeof LeagueDetailPage>> &
@@ -74,6 +80,7 @@ function Detail({
       standingsError={standingsError}
       versions={versions}
       audit={audit}
+      auditFailed={auditFailed}
       viewerId={viewerId}
     />
   );
@@ -121,6 +128,7 @@ beforeEach(() => {
   mocks.navigate.mockReset().mockResolvedValue();
   mocks.closeLeague.mockReset();
   mocks.listVersions.mockReset();
+  mocks.getAudit.mockReset();
 });
 afterEach(cleanup);
 
@@ -129,6 +137,21 @@ describe('live standings', () => {
     const standings = makeLiveStandings([ana, bia, tiedLow(STANDING_USER_C, 'Caro')]);
     render(wrap(<Detail data={active()} standings={standings} viewerId={STANDING_USER_B} />));
 
+    // Primary view: place, player, W–L–D, set difference and award — no scroll region needed.
+    const primary = screen.getByRole('table', { name: 'Standings' });
+    expect(
+      within(primary)
+        .getAllByRole('columnheader')
+        .map((cell) => cell.textContent)
+    ).toEqual(['Place', 'Player', 'W–L–D', 'Set difference', 'Final award']);
+    const primaryRows = within(primary).getAllByRole('row').slice(1);
+    expect(
+      within(primaryRows[0]!)
+        .getAllByRole('cell')
+        .map((cell) => cell.textContent)
+    ).toEqual(['1', '2–1–02 wins, 1 losses, 0 draws', '+2', 'Eligible']);
+    expect(within(primaryRows[0]!).getByRole('rowheader').textContent).toBe('Ana');
+    expect(primaryRows[1]!.getAttribute('aria-current')).toBe('true');
     const region = screen.getByRole('region', { name: /Standings table/ });
     expect(region.getAttribute('tabindex')).toBe('0');
     const table = within(region).getByRole('table');
@@ -176,7 +199,10 @@ describe('live standings', () => {
     const a = tiedLow(STANDING_USER_A, 'Ana');
     const b = tiedLow(STANDING_USER_B, 'Bia');
     render(wrap(<Detail data={active()} standings={makeLiveStandings([a, b])} />));
-    expect(screen.getAllByText('Shared place 3')).toHaveLength(2);
+    // Announced once per row in the primary table and again in the full-statistics table.
+    const primary = screen.getByRole('table', { name: 'Standings' });
+    expect(within(primary).getAllByText('Shared place 3')).toHaveLength(2);
+    expect(screen.getAllByText('Shared place 3')).toHaveLength(4);
   });
 
   it('shows the remaining-matches callout for a player below the threshold', () => {
@@ -200,8 +226,8 @@ describe('live standings', () => {
       wrap(<Detail data={active()} standings={makeLiveStandings([zero])} viewerId={zero.user_id} />)
     );
     expect(screen.getByText(/No eligible Ranked results yet/)).toBeTruthy();
-    expect(screen.getByRole('rowheader', { name: /Ana/ })).toBeTruthy();
-    expect(screen.getByText('2 more matches')).toBeTruthy();
+    expect(screen.getAllByRole('rowheader', { name: /Ana/ })).toHaveLength(2);
+    expect(screen.getAllByText('2 more matches')).toHaveLength(2);
   });
 
   it('distinguishes an empty live roster, a non-participant viewer and an unavailable reader', async () => {
@@ -271,11 +297,105 @@ describe('live standings', () => {
   });
 });
 
+describe('league page refresh scheduling', () => {
+  beforeEach(() => vi.useFakeTimers({ toFake: ['setTimeout', 'setInterval', 'Date'] }));
+  afterEach(() => vi.useRealTimers());
+
+  it('reloads an open Fixed League at its cutoff without touching the selected version', async () => {
+    // The fixture cutoff is 22:59:59.999999: 30 s away, well before the first interval tick.
+    vi.setSystemTime(new Date('2030-12-20T22:59:30.000Z'));
+    render(wrap(<Detail data={active()} standings={makeLiveStandings([ana])} />));
+    await vi.advanceTimersByTimeAsync(29_998);
+    expect(mocks.invalidate).not.toHaveBeenCalled();
+    await vi.advanceTimersByTimeAsync(2);
+    expect(mocks.invalidate).toHaveBeenCalledTimes(1);
+    // A reload only revalidates the loader: the `version` search param is never rewritten.
+    expect(mocks.navigate).not.toHaveBeenCalled();
+  });
+
+  it('never polls a closed League', async () => {
+    render(wrap(<Detail data={closed()} standings={makeFinalStandings([ana])} />));
+    await vi.advanceTimersByTimeAsync(LEAGUE_STANDINGS_REFRESH_INTERVAL_MS * 3);
+    expect(mocks.invalidate).not.toHaveBeenCalled();
+  });
+});
+
 describe('refresh hook', () => {
-  function Probe({ enabled, refresh }: { enabled: boolean; refresh: () => Promise<unknown> }) {
-    useRefreshWhenVisible(refresh, enabled);
+  function Probe({
+    enabled,
+    refresh,
+    cutoffAt = null
+  }: {
+    enabled: boolean;
+    refresh: () => Promise<unknown>;
+    cutoffAt?: string | null;
+  }) {
+    useRefreshWhenVisible(refresh, enabled, cutoffAt);
     return null;
   }
+  describe('while the page stays visible', () => {
+    beforeEach(() => vi.useFakeTimers());
+    afterEach(() => vi.useRealTimers());
+
+    it('reloads on a bounded interval without overlapping, and stops when unmounted', async () => {
+      let release: () => void = () => undefined;
+      const refresh = vi.fn<() => Promise<void>>().mockImplementation(
+        () =>
+          new Promise<void>((resolve) => {
+            release = resolve;
+          })
+      );
+      const view = render(<Probe enabled refresh={refresh} />);
+      await vi.advanceTimersByTimeAsync(LEAGUE_STANDINGS_REFRESH_INTERVAL_MS - 1);
+      expect(refresh).not.toHaveBeenCalled();
+      await vi.advanceTimersByTimeAsync(1);
+      expect(refresh).toHaveBeenCalledTimes(1);
+      // Slow reload: further ticks and refocus events are dropped, not queued.
+      await vi.advanceTimersByTimeAsync(LEAGUE_STANDINGS_REFRESH_INTERVAL_MS * 3);
+      document.dispatchEvent(new Event('visibilitychange'));
+      expect(refresh).toHaveBeenCalledTimes(1);
+      release();
+      await vi.advanceTimersByTimeAsync(LEAGUE_STANDINGS_REFRESH_INTERVAL_MS);
+      expect(refresh).toHaveBeenCalledTimes(2);
+      view.unmount();
+      release();
+      await vi.advanceTimersByTimeAsync(LEAGUE_STANDINGS_REFRESH_INTERVAL_MS * 5);
+      expect(refresh).toHaveBeenCalledTimes(2);
+    });
+
+    it('skips ticks while the page is hidden', async () => {
+      const refresh = vi.fn<() => Promise<void>>().mockResolvedValue();
+      const state = vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('hidden');
+      render(<Probe enabled refresh={refresh} />);
+      await vi.advanceTimersByTimeAsync(LEAGUE_STANDINGS_REFRESH_INTERVAL_MS * 2);
+      expect(refresh).not.toHaveBeenCalled();
+      state.mockRestore();
+    });
+
+    it('reloads once at the Fixed cutoff, ahead of the next interval tick', async () => {
+      vi.setSystemTime(new Date('2030-12-20T22:59:00.000Z'));
+      const refresh = vi.fn<() => Promise<void>>().mockResolvedValue();
+      render(<Probe enabled refresh={refresh} cutoffAt="2030-12-20T22:59:20.000Z" />);
+      await vi.advanceTimersByTimeAsync(19_999);
+      expect(refresh).not.toHaveBeenCalled();
+      await vi.advanceTimersByTimeAsync(1);
+      expect(refresh).toHaveBeenCalledTimes(1);
+    });
+
+    it('does not schedule a cutoff reload that already passed, nor when disabled', async () => {
+      vi.setSystemTime(new Date('2030-12-21T00:00:00.000Z'));
+      const refresh = vi.fn<() => Promise<void>>().mockResolvedValue();
+      const view = render(<Probe enabled refresh={refresh} cutoffAt="2030-12-20T22:59:20.000Z" />);
+      await vi.advanceTimersByTimeAsync(1_000);
+      expect(refresh).not.toHaveBeenCalled();
+      view.rerender(
+        <Probe enabled={false} refresh={refresh} cutoffAt="2030-12-21T00:00:10.000Z" />
+      );
+      await vi.advanceTimersByTimeAsync(LEAGUE_STANDINGS_REFRESH_INTERVAL_MS * 2);
+      expect(refresh).not.toHaveBeenCalled();
+    });
+  });
+
   it('stops listening once disabled or unmounted', () => {
     const refresh = vi.fn<() => Promise<void>>().mockResolvedValue();
     const view = render(<Probe enabled refresh={refresh} />);
@@ -307,6 +427,8 @@ describe('closing and final standings', () => {
         closed_reason: 'manual'
       })
     );
+    // The reload is still running: the stale table must not show, nor claim to be final.
+    mocks.invalidate.mockReset().mockImplementation(() => new Promise<void>(() => undefined));
     render(wrap(<Detail data={detail} standings={makeLiveStandings([ana])} />));
     await confirmClose();
     await waitFor(() => expect(screen.getByText('League closed.')).toBeTruthy());
@@ -314,6 +436,45 @@ describe('closing and final standings', () => {
     expect(screen.queryByRole('table')).toBeNull();
     expect(screen.queryByText('Final')).toBeNull();
     expect(mocks.invalidate).toHaveBeenCalled();
+  });
+
+  it('offers a retry when the post-close reload settles without final standings, then recovers', async () => {
+    const detail = active({ end_mode: 'manual', end_at: null, end_date: null });
+    const closedDto = makeManualLeagueDto({
+      status: 'closed',
+      version: 4,
+      closed_at: '2030-11-01T10:00:00.000000Z',
+      closed_reason: 'manual'
+    });
+    mocks.closeLeague.mockResolvedValue(closedDto);
+    const stale = makeLiveStandings([ana]);
+    const view = render(wrap(<Detail data={detail} standings={stale} />));
+    await confirmClose();
+    // The reload finished (or failed) but the standings still describe the old state.
+    expect((await screen.findByRole('alert')).textContent).toContain('Something went wrong');
+    expect(screen.queryByText('Updating standings…')).toBeNull();
+    expect(screen.queryByRole('table')).toBeNull();
+
+    mocks.invalidate.mockClear();
+    await userEvent.click(screen.getByRole('button', { name: 'Retry' }));
+    expect(mocks.invalidate).toHaveBeenCalledTimes(1);
+    view.rerender(
+      wrap(<Detail data={{ ...detail, league: closedDto }} standings={makeFinalStandings([ana])} />)
+    );
+    expect((await screen.findAllByRole('table')).length).toBeGreaterThan(0);
+    expect(screen.queryByText(/Something went wrong/)).toBeNull();
+  });
+
+  it('offers a retry when the post-close reload itself fails', async () => {
+    const detail = active({ end_mode: 'manual', end_at: null, end_date: null });
+    mocks.closeLeague.mockResolvedValue(
+      makeManualLeagueDto({ status: 'closed', version: 4, closed_reason: 'manual' })
+    );
+    mocks.invalidate.mockReset().mockRejectedValue(new Error('offline'));
+    render(wrap(<Detail data={detail} standings={makeLiveStandings([ana])} />));
+    await confirmClose();
+    expect(await screen.findByRole('button', { name: 'Retry' })).toBeTruthy();
+    expect(screen.queryByRole('table')).toBeNull();
   });
 
   it('offers no close action for a Fixed League and denies it to non-managers', () => {
@@ -392,6 +553,7 @@ describe('final version history', () => {
           standings={standings}
           versions={versions}
           audit={null}
+          auditFailed={false}
           onSelect={vi.fn<(version: number | null) => void>()}
           {...props}
         />
@@ -510,5 +672,97 @@ describe('final version history', () => {
     expect(items[0]!.textContent).toContain('first result confirmed after close (automatic)');
     expect(items[0]!.textContent).toContain('version 2');
     expect(items[1]!.textContent).toContain('by an owner or Admin');
+  });
+  it('does not attribute a participant confirmation to an owner or Admin', () => {
+    view(makeFinalStandings([ana]), {
+      audit: {
+        league_id: league.id,
+        events: [
+          {
+            action: 'standings_revised',
+            actor_id: STANDING_USER_B,
+            system_reason: null,
+            occurred_at: '2030-12-25T10:00:00.000000Z',
+            details: { standings_version: 2 }
+          }
+        ]
+      }
+    });
+    const [item] = within(screen.getByRole('list')).getAllByRole('listitem');
+    expect(item!.textContent).toContain('after a result confirmed by a member');
+    expect(item!.textContent).not.toContain('owner or Admin');
+  });
+
+  it('moves focus to the completion status when the last page removes the load button', async () => {
+    const first = { ...versions, versions: [versions.versions[0]!], next_before_version: 2 };
+    mocks.listVersions.mockResolvedValueOnce({
+      ...versions,
+      versions: [versions.versions[1]!],
+      next_before_version: null
+    });
+    view(makeFinalStandings([ana], { standings_version: 2, latest_standings_version: 2 }), {
+      versions: first
+    });
+    const button = screen.getByRole('button', { name: 'Show earlier versions' });
+    button.focus();
+    await userEvent.click(button);
+    const status = await screen.findByRole('status');
+    expect(status.textContent).toBe('All earlier versions are loaded.');
+    expect(document.activeElement).toBe(status);
+    expect(screen.queryByRole('button', { name: 'Show earlier versions' })).toBeNull();
+  });
+
+  it('retries an unavailable history without discarding the displayed snapshot', async () => {
+    mocks.listVersions.mockResolvedValueOnce(versions);
+    view(makeFinalStandings([ana], { standings_version: 2, latest_standings_version: 2 }), {
+      versions: null
+    });
+    expect(screen.getByRole('alert').textContent).toContain('Version history could not be loaded');
+    expect(screen.getByText(/Published Dec/)).toBeTruthy();
+    await userEvent.click(screen.getByRole('button', { name: 'Try again' }));
+    await waitFor(() =>
+      expect(screen.getByRole('combobox').querySelectorAll('option')).toHaveLength(2)
+    );
+    expect(mocks.listVersions).toHaveBeenCalledWith({
+      data: { league_id: league.id, before_version: null }
+    });
+    expect(screen.queryByRole('alert')).toBeNull();
+    expect(screen.getByText(/Published Dec/)).toBeTruthy();
+  });
+
+  it('keeps the unavailable history retryable when the retry fails too', async () => {
+    mocks.listVersions.mockRejectedValueOnce(new Error('LEAGUE_UNAVAILABLE'));
+    view(makeFinalStandings([ana]), { versions: null });
+    await userEvent.click(screen.getByRole('button', { name: 'Try again' }));
+    await waitFor(() => expect(mocks.listVersions).toHaveBeenCalledTimes(1));
+    expect(screen.getByRole('alert').textContent).toContain('Version history could not be loaded');
+    expect(screen.getByRole('button', { name: 'Try again' })).toBeTruthy();
+  });
+
+  it('shows a retryable audit error to a manager and recovers on retry', async () => {
+    mocks.getAudit.mockResolvedValueOnce({
+      league_id: league.id,
+      events: [
+        {
+          action: 'closed',
+          actor_id: STANDING_USER_A,
+          system_reason: null,
+          occurred_at: '2030-12-21T10:00:00.000000Z',
+          details: { standings_version: 1 }
+        }
+      ]
+    });
+    view(makeFinalStandings([ana]), { auditFailed: true });
+    expect(screen.getByRole('alert').textContent).toContain('audit trail could not be loaded');
+    await userEvent.click(screen.getByRole('button', { name: 'Try again' }));
+    const items = await screen.findAllByRole('listitem');
+    expect(items[0]!.textContent).toContain('by an owner or Admin');
+    expect(screen.queryByText(/audit trail could not be loaded/)).toBeNull();
+    expect(mocks.getAudit).toHaveBeenCalledWith({ data: { league_id: league.id } });
+  });
+
+  it('shows no audit section to a viewer who may not see it', () => {
+    view(makeFinalStandings([ana]), { audit: null, auditFailed: false });
+    expect(screen.queryByText('Audit trail')).toBeNull();
   });
 });

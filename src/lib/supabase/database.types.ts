@@ -2908,6 +2908,7 @@ export type Database = {
         }
         Returns: number
       }
+      league_publish_repair_if_needed: { Args: { p_league_id: string }; Returns: number }
       league_publish_standings: {
         Args: {
           p_basis: string
@@ -2934,6 +2935,7 @@ export type Database = {
           wins: number
         }[]
       }
+      league_rebuild_counters_core: { Args: { p_league_id: string }; Returns: Json }
       league_reconstruct_standings: { Args: { p_league_id: string }; Returns: number }
       league_repair_closed_standings: { Args: { p_league_id: string }; Returns: number }
       league_standings_entries: {

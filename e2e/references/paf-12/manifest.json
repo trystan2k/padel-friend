@@ -1,0 +1,71 @@
+{
+  "status": "chromium-certified-with-scoped-route-adaptations",
+  "sourceDesign": {
+    "path": "docs/design/padel-friend.pen",
+    "sha256": "927ac4e83f24edacbc2b2fe2fcfa111d8e0822b96f73ce268cf50b5ef2737af2",
+    "exportCommand": "Pencil MCP: Export([\"ywfn7\",\"d6ANDN\",\"xbIxj\"], \"png\", \"<repo>/e2e/references/paf-12\", {scale:2})",
+    "provenanceNote": "The three approved PAF-12 League standings references (Active League ywfn7, dark; End this League confirmation d6ANDN, light; Final standings updated xbIxj, light) were exported uncropped from the source Pencil document through Pencil MCP at 2x. The source digest above is the digest of the CURRENT docs/design/padel-friend.pen bytes at export time and is re-checked against the file by test/leagues.standings.visual-references.test.ts. Frame xbIxj depicts a T15 score correction (Community Admin amendment); PAF-12 intentionally adapts that composition to the truthful late-first-confirmation publication copy and never depicts an amendment, so only composition and tokens are compared. Supplemental states without an approved frame (all-zero, threshold-met, closed-empty, unavailable/retry, multiple history versions, no-active-League guidance x2GG9U, pt-BR dark 320px reflow) are gated by structural probes only; no budget exists for them."
+  },
+  "approvedReferences": {
+    "ywfn7.png": {
+      "frameId": "ywfn7",
+      "certifies": "Active League standings (dark): status/period card, personal summary (place, set difference, matches), ranked standings with highlighted current player, award-eligibility callout",
+      "sha256": "4b02e0e2e220b8e436314ff3b544a496dca3a5c1b5a27ec49541569ac75a8a48",
+      "pixelSize": [780, 1688]
+    },
+    "d6ANDN.png": {
+      "frameId": "d6ANDN",
+      "certifies": "End this League confirmation (light): freeze warning, audited late-result notice, End and Cancel actions, who-may-close guidance",
+      "sha256": "1212061e0f13489ae487d89cd569f5a3882e9e65ddc61f7e1c0842c18a0ef2de",
+      "pixelSize": [780, 1688]
+    },
+    "xbIxj.png": {
+      "frameId": "xbIxj",
+      "certifies": "Historical final standings with an audited update notice (light); PAF-12 adapts the T15 correction wording to late-first-confirmation copy",
+      "sha256": "f26f34fc48b0280cc415d909e42c5dd0cb92f3d062d2a79753c1a4967ac8bf95",
+      "pixelSize": [780, 1688]
+    }
+  },
+  "structuralProbes": {
+    "ywfn7": [
+      "section order: standings heading, Live badge, own summary (place, set difference, matches), primary table, award callout",
+      "primary table has exactly 5 columns; the table and every primary column sit inside the 390px viewport (no hidden primary information)",
+      "the viewer's row is the single aria-current row and stays inside the table box",
+      "no horizontal page overflow and no control outside the viewport; every link, button, select and disclosure summary is at least 44px tall",
+      "320px pt-BR dark keeps all five primary cells inside the viewport; the full-statistics region is a named, focusable, horizontally scrollable section (league-standings.spec.ts)"
+    ],
+    "d6ANDN": [
+      "alertdialog contains the freeze/late-confirmation warning and two stacked, non-overlapping, full-row actions that are at least 44px tall",
+      "dialog and its actions stay inside the 390x844 viewport; no horizontal overflow",
+      "Cancel returns focus to the trigger and changes nothing; confirm closes and shows the final table (league-standings.spec.ts)"
+    ],
+    "xbIxj": [
+      "final table precedes the version history; the late-first-confirmation notice and the version select follow it",
+      "version select is at least 44px tall; every block stays inside 0..390px",
+      "no horizontal page overflow; v1/v2 selection, URL version, older-version and revision notices (league-standings.spec.ts)"
+    ]
+  },
+  "visualBudgets": {
+    "status": "measured-chromium-viewport-pixel-difference",
+    "measurementMethod": "Capture the 390x844 viewport at Chromium deviceScaleFactor 1 (ywfn7 dark, xbIxj light, en). Downsample only the uncropped 2x Pencil PNG. Compare same-size RGBA pixels with the pinned perceptual threshold (35215 x 0.1^2); reject any dimension mismatch before applying the per-screen budget.",
+    "reason": "Budgets are the smallest two-decimal value above the measured Chromium residual (measured values vary by at most 0.002 between runs). They never replace or relax a structural probe, and no geometry defect is absorbed into them.",
+    "perScreen": {
+      "ywfn7": 0.2,
+      "xbIxj": 0.12
+    },
+    "measured": {
+      "ywfn7": 0.19148,
+      "xbIxj": 0.10821
+    },
+    "perScreenRationale": {
+      "ywfn7": "Production renders real translated, tokenized content in the actual app shell instead of the mock: a Standings Club details card (owner, time zone, minimum matches) in place of the mock's 'Autumn 2026' hero, the real 'Final award' column and 'All statistics' disclosure in place of the mock's avatar/GP rows, six real members with wrapped 'Management ...' display names, the rules/eligibility explanation under the callout, and Inter/Manrope glyph and icon rasterization (Pencil vs Chromium). Observed residual 0.19148 (0.19135 in an earlier run); 0.20 leaves 0.0085 for raster variance. Composition order, the 5-column primary table inside the viewport, the aria-current row, no overflow and 44px targets are exact probes.",
+      "xbIxj": "Production shows the real closed-League details card, the Final badge and own summary above the table, a 5-column table with the Final award column, the 'All statistics' disclosure and the Final versions section carrying the truthful late-first-confirmation notice, instead of the mock's three text rows and score-correction card (a T15 depiction PAF-12 does not implement). The notice and version select sit below the table in production, not above it as in the frame (reported deviation). Observed residual 0.10821 (0.10729 in another run; the closed-at time differs); 0.12 leaves 0.0118. Probes gate order, 44px select, viewport containment and no overflow."
+    }
+  },
+  "structuralOnlyScreens": {
+    "d6ANDN": {
+      "informationalResidual": 0.8512,
+      "reason": "The frame is a full-screen route; production adapts it to a Base UI alertdialog modal over the League page (scrim, dialog card, Cancel first so the safe action holds initial focus). A full-frame comparison therefore measures the page behind the scrim (0.8512 changed pixels), not the dialog; a budget that large would mask any defect, so no screenshot budget exists. The dialog is certified by the exact structural probes above instead."
+    }
+  }
+}

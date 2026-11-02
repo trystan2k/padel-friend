@@ -63,7 +63,10 @@ const INTERNAL_FUNCTIONS = [
   'league_publish_late_confirmation(uuid,uuid,timestamp with time zone,text)',
   'league_repair_closed_standings(uuid)',
   'league_reconstruct_standings(uuid)',
-  'guard_league_standings_snapshots_immutable()'
+  'guard_league_standings_snapshots_immutable()',
+  // PAF-12 review fix: closed-League rebuilds repair the final.
+  'league_rebuild_counters_core(uuid)',
+  'league_publish_repair_if_needed(uuid)'
 ];
 
 describe('League schema', { timeout: 120_000 }, () => {
