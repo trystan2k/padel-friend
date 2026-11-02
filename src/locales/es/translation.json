@@ -1759,6 +1759,98 @@
     }
   },
   "statistics": {
+    "relationships": {
+      "unknownPlayer": "Jugador desconocido",
+      "unknownLeague": "Liga sin nombre",
+      "viewMatch": "Ver partido",
+      "matchLabel": "Ver el partido jugado el {{date}}",
+      "backToPlayer": "Volver a las estadísticas del jugador",
+      "pair": {
+        "title": "Pareja",
+        "heading": "{{first}} y {{second}}",
+        "subtitle": "Resultados cuando estos dos jugadores estaban en el mismo equipo.",
+        "played": "Partidos juntos"
+      },
+      "opponent": {
+        "title": "Cara a cara",
+        "heading": "{{first}} contra {{second}}",
+        "subtitle": "Resultados cuando estos dos jugadores estaban en equipos contrarios, desde el punto de vista del primer jugador.",
+        "played": "Enfrentamientos"
+      },
+      "playedHelp": "Incluye partidos incompletos, que no tienen ganador.",
+      "sections": {
+        "record": "Balance",
+        "streaks": "Rachas",
+        "rating": "Evidencia de nivel",
+        "leagues": "Ligas jugadas juntos",
+        "recent": "Partidos recientes"
+      },
+      "averageOpponentLevel": "Nivel medio de los rivales",
+      "averageOpponentLevelHelp": "Fuerza media del equipo rival antes de cada partido. Los partidos sin evidencia de nivel se excluyen.",
+      "upsetWins": "Victorias sorpresa",
+      "upsetWinsHelp": "Victorias cuando la probabilidad esperada era de {{chance}} o menos.",
+      "eligibility": {
+        "pair": {
+          "ready": "Cuenta para el ranking de mejor compañero: {{matches}} partidos decididos juntos.",
+          "notYet": "Todavía fuera del ranking de mejor compañero: {{observed}} de {{required}} partidos decididos juntos."
+        },
+        "opponent": {
+          "ready": "Cuenta para los rankings de rivales: {{matches}} enfrentamientos decididos.",
+          "notYet": "Todavía fuera de los rankings de rivales: {{observed}} de {{required}} enfrentamientos decididos."
+        }
+      },
+      "noLeagues": "Ningún partido de liga juntos en esta selección.",
+      "leagueMatches": "{{name}}: {{matches}} partidos",
+      "noRecent": "Ningún partido en esta selección.",
+      "recentCaption": "Partidos más recientes, del más nuevo al más antiguo",
+      "noRating": "Sin nivel",
+      "columns": {
+        "date": "Fecha",
+        "result": "Resultado",
+        "sets": "Sets",
+        "games": "Juegos",
+        "rating": "Cambio de nivel",
+        "match": "Partido",
+        "player": "Jugador",
+        "played": "Partidos",
+        "record": "Balance",
+        "winRate": "Porcentaje de victorias",
+        "details": "Detalles"
+      },
+      "outcome": {
+        "W": "Victoria",
+        "L": "Derrota",
+        "D": "Empate",
+        "I": "Incompleto"
+      },
+      "records": {
+        "view": "Ver",
+        "showing": "Mostrando {{shown}} de {{total}}",
+        "rateIn": "{{rate}} de victorias en {{matches}} partidos decididos",
+        "gapIn": "Diferencia de {{gap}} en {{matches}} enfrentamientos decididos",
+        "tied": "Empatado con {{players}} jugadores",
+        "partners": {
+          "title": "Compañeros",
+          "best": "Mejor compañero",
+          "bestHelp": "Mayor porcentaje de victorias con al menos {{required}} partidos decididos juntos.",
+          "empty": "Ningún compañero en esta selección.",
+          "caption": "Compañeros, con más partidos juntos primero",
+          "viewLabel": "Ver la pareja con {{name}}"
+        },
+        "opponents": {
+          "title": "Rivales",
+          "best": "Mejor balance contra",
+          "bestHelp": "Mayor porcentaje de victorias contra un rival con al menos {{required}} enfrentamientos decididos.",
+          "toughest": "Rival más difícil",
+          "toughestHelp": "Menor porcentaje de victorias contra un rival con al menos {{required}} enfrentamientos decididos.",
+          "closestRivalry": "Rivalidad más igualada",
+          "closestRivalryHelp": "Menor diferencia entre victorias y derrotas entre rivales con al menos {{required}} enfrentamientos decididos; más enfrentamientos desempatan.",
+          "empty": "Ningún rival en esta selección.",
+          "caption": "Rivales, con más enfrentamientos primero",
+          "viewLabel": "Ver cara a cara contra {{name}}"
+        }
+      }
+    },
     "history": {
       "title": "Historial de partidos",
       "subtitle": "Resultados confirmados y todos los partidos que no llegaron a ser un resultado.",

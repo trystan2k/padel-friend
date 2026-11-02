@@ -26,7 +26,7 @@ const CHART_HEIGHT = 80;
 const OUTCOME_TONE = { W: 'positive', L: 'danger', D: 'neutral' } as const;
 
 /** The active filter set, read back so the figures below are never ambiguous about their scope. */
-function FilterContext({ filters }: { filters: StatisticsFilters }) {
+export function FilterContext({ filters }: { filters: StatisticsFilters }) {
   const { t } = useTranslation();
   const { date } = usePlayerFormat();
   const scope = filters.leagueId ? 'league' : filters.communityId ? 'community' : 'all';
@@ -188,7 +188,13 @@ function ActivitySeries({ months }: { months: Statistics['activity']['months'] }
  * A player's sporting statistics for one filter set. Every figure is an evidence state from the
  * server: insufficient data reads as a localized reason, never as 0, NaN or a blank.
  */
-export function PlayerStatistics({ stats }: { stats: Statistics }) {
+export function PlayerStatistics({
+  stats,
+  children
+}: {
+  stats: Statistics;
+  children?: React.ReactNode;
+}) {
   const { t } = useTranslation();
   const f = usePlayerFormat();
   const { matches, sets, games, rating, form, activity } = stats;
@@ -357,6 +363,7 @@ export function PlayerStatistics({ stats }: { stats: Statistics }) {
       </Section>
 
       <PlayerStatisticsRecords stats={stats} />
+      {children}
     </main>
   );
 }

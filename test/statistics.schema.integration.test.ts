@@ -163,7 +163,11 @@ describe.skipIf(!environment.env)('Statistics schema', { timeout: 120_000 }, () 
         where n.nspname = 'public' and p.proname ~ 'statistics'
           and has_function_privilege('authenticated', p.oid, 'EXECUTE') order by 1`
     );
+    // get_player_partner_records / get_player_opponent_records do not match this name filter;
+    // their grants are asserted in statistics.relationships.integration.test.ts.
     expect(granted.map((row) => row['proname'])).toEqual([
+      'get_opponent_statistics',
+      'get_pair_statistics',
       'get_player_statistics',
       'get_player_statistics_rank_history',
       'get_statistics_config',

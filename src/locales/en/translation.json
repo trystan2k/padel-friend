@@ -1759,6 +1759,98 @@
     }
   },
   "statistics": {
+    "relationships": {
+      "unknownPlayer": "Unknown player",
+      "unknownLeague": "Unnamed league",
+      "viewMatch": "View match",
+      "matchLabel": "View match played on {{date}}",
+      "backToPlayer": "Back to player statistics",
+      "pair": {
+        "title": "Partnership",
+        "heading": "{{first}} & {{second}}",
+        "subtitle": "Results when these two players were on the same team.",
+        "played": "Matches together"
+      },
+      "opponent": {
+        "title": "Head to head",
+        "heading": "{{first}} vs {{second}}",
+        "subtitle": "Results when these two players were on opposite teams, from the first player’s point of view.",
+        "played": "Meetings"
+      },
+      "playedHelp": "Includes incomplete matches, which have no winner.",
+      "sections": {
+        "record": "Record",
+        "streaks": "Streaks",
+        "rating": "Rating evidence",
+        "leagues": "Leagues played together",
+        "recent": "Recent matches"
+      },
+      "averageOpponentLevel": "Average opponent level",
+      "averageOpponentLevelHelp": "Average strength of the opposing team before each match. Matches without rating evidence are left out.",
+      "upsetWins": "Upset wins",
+      "upsetWinsHelp": "Wins when the expected chance was {{chance}} or lower.",
+      "eligibility": {
+        "pair": {
+          "ready": "Counts toward the best-partner ranking: {{matches}} decided matches together.",
+          "notYet": "Not yet in the best-partner ranking: {{observed}} of {{required}} decided matches together."
+        },
+        "opponent": {
+          "ready": "Counts toward the opponent rankings: {{matches}} decided meetings.",
+          "notYet": "Not yet in the opponent rankings: {{observed}} of {{required}} decided meetings."
+        }
+      },
+      "noLeagues": "No league matches together in this selection.",
+      "leagueMatches": "{{name}}: {{matches}} matches",
+      "noRecent": "No matches in this selection.",
+      "recentCaption": "Most recent matches, newest first",
+      "noRating": "No rating",
+      "columns": {
+        "date": "Date",
+        "result": "Result",
+        "sets": "Sets",
+        "games": "Games",
+        "rating": "Rating change",
+        "match": "Match",
+        "player": "Player",
+        "played": "Matches",
+        "record": "Record",
+        "winRate": "Win rate",
+        "details": "Details"
+      },
+      "outcome": {
+        "W": "Win",
+        "L": "Loss",
+        "D": "Draw",
+        "I": "Incomplete"
+      },
+      "records": {
+        "view": "View",
+        "showing": "Showing {{shown}} of {{total}}",
+        "rateIn": "{{rate}} win rate in {{matches}} decided matches",
+        "gapIn": "Gap of {{gap}} in {{matches}} decided meetings",
+        "tied": "Tied with {{players}} players",
+        "partners": {
+          "title": "Partners",
+          "best": "Best partner",
+          "bestHelp": "Highest win rate with at least {{required}} decided matches together.",
+          "empty": "No partners in this selection.",
+          "caption": "Partners, most matches together first",
+          "viewLabel": "View partnership with {{name}}"
+        },
+        "opponents": {
+          "title": "Opponents",
+          "best": "Best record against",
+          "bestHelp": "Highest win rate against an opponent with at least {{required}} decided meetings.",
+          "toughest": "Toughest opponent",
+          "toughestHelp": "Lowest win rate against an opponent with at least {{required}} decided meetings.",
+          "closestRivalry": "Closest rivalry",
+          "closestRivalryHelp": "Smallest gap between wins and losses among opponents with at least {{required}} decided meetings; more meetings break ties.",
+          "empty": "No opponents in this selection.",
+          "caption": "Opponents, most meetings first",
+          "viewLabel": "View head to head against {{name}}"
+        }
+      }
+    },
     "history": {
       "title": "Match history",
       "subtitle": "Confirmed results and every match that did not become a result.",

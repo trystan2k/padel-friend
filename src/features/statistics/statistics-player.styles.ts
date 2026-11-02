@@ -106,6 +106,7 @@ export const playerStyles = stylex.create({
     fontSize: 'var(--font-size-12)',
     fontVariantNumeric: 'tabular-nums'
   },
+  tableScroll: { overflowX: 'auto', maxWidth: '100%' },
   caption: {
     textAlign: 'start',
     paddingBlockEnd: 'var(--space-3)',

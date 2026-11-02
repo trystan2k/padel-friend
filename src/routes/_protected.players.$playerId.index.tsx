@@ -1,13 +1,17 @@
 import { createFileRoute, notFound, useRouter } from '@tanstack/react-router';
 import { useTranslation } from 'react-i18next';
+import { OpponentRecords } from '../features/statistics/OpponentRecords';
+import { PartnerRecords } from '../features/statistics/PartnerRecords';
 import { PlayerStatistics } from '../features/statistics/PlayerStatistics';
 import type { StatisticsErrorCode } from '../features/statistics/statistics-history-contracts';
+import { parseFilterSearch } from '../features/statistics/statistics-links';
 import { getPlayerStatistics } from '../features/statistics/statistics-player.functions';
+import {
+  getOpponentRecords,
+  getPartnerRecords
+} from '../features/statistics/statistics-relationships.functions';
 import { validateStatisticsPlayerInput } from '../features/statistics/statistics.validators';
 import { createI18n, resolveLocale } from '../i18n/config';
-
-const FILTER_KEYS = ['communityId', 'leagueId', 'type', 'from', 'through'] as const;
-type PlayerStatisticsSearch = Partial<Record<(typeof FILTER_KEYS)[number], string>>;
 
 const RETRYABLE: readonly StatisticsErrorCode[] = [
   'STATISTICS_UNAVAILABLE',
@@ -15,15 +19,9 @@ const RETRYABLE: readonly StatisticsErrorCode[] = [
   'STATISTICS_STALE_REVISION'
 ];
 
-export const Route = createFileRoute('/_protected/players/$playerId')({
+export const Route = createFileRoute('/_protected/players/$playerId/')({
   // Filters live in the URL so a view is shareable; the server-side validator is the authority.
-  validateSearch: (search: Record<string, unknown>): PlayerStatisticsSearch =>
-    Object.fromEntries(
-      FILTER_KEYS.flatMap((key) => {
-        const value = search[key];
-        return typeof value === 'string' && value !== '' ? [[key, value]] : [];
-      })
-    ),
+  validateSearch: parseFilterSearch,
   loaderDeps: ({ search }) => search,
   loader: async ({ params, deps, context }) => {
     try {
@@ -35,19 +33,22 @@ export const Route = createFileRoute('/_protected/players/$playerId')({
     try {
       data = validateStatisticsPlayerInput({ playerId: params.playerId, ...deps });
     } catch {
-      return {
-        result: { status: 'error' as const, code: 'INVALID_STATISTICS_INPUT' as const },
-        locale: context.locale
-      };
+      const invalid = { status: 'error' as const, code: 'INVALID_STATISTICS_INPUT' as const };
+      return { result: invalid, partners: invalid, opponents: invalid, locale: context.locale };
     }
-    const result = await getPlayerStatistics({
-      data: { playerId: data.playerId, ...deps }
-    }).catch(() => ({
+    const unavailable = () => ({
       status: 'error' as const,
       code: 'STATISTICS_UNAVAILABLE' as const
-    }));
+    });
+    const input = { data: { playerId: data.playerId, ...deps } };
+    // Records fail on their own: a broken partner list never hides the player's statistics.
+    const [result, partners, opponents] = await Promise.all([
+      getPlayerStatistics(input).catch(unavailable),
+      getPartnerRecords(input).catch(unavailable),
+      getOpponentRecords(input).catch(unavailable)
+    ]);
     if (result.status === 'error' && result.code === 'STATISTICS_NOT_FOUND') throw notFound();
-    return { result, locale: context.locale };
+    return { result, partners, opponents, locale: context.locale };
   },
   head: ({ loaderData }) => ({
     meta: [{ title: createI18n(resolveLocale(loaderData?.locale)).t('statistics.player.title') }]
@@ -56,10 +57,17 @@ export const Route = createFileRoute('/_protected/players/$playerId')({
 });
 
 function PlayerStatisticsPage() {
-  const { result } = Route.useLoaderData();
+  const { result, partners, opponents } = Route.useLoaderData();
   const { t } = useTranslation();
   const router = useRouter();
-  if (result.status === 'ok') return <PlayerStatistics stats={result.value} />;
+  if (result.status === 'ok') {
+    return (
+      <PlayerStatistics stats={result.value}>
+        <PartnerRecords response={partners} />
+        <OpponentRecords response={opponents} />
+      </PlayerStatistics>
+    );
+  }
   return (
     <main>
       <h1>{t('statistics.player.title')}</h1>

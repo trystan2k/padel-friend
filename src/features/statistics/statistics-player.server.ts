@@ -34,41 +34,41 @@ import {
 } from './statistics.validators';
 
 type ObjectValue = Record<string, unknown>;
-function invalid(): never {
+export function invalid(): never {
   throw new Error('INVALID_STATISTICS_RESPONSE');
 }
-function object(value: unknown): ObjectValue {
+export function object(value: unknown): ObjectValue {
   if (typeof value !== 'object' || value === null || Array.isArray(value)) return invalid();
   return Object.fromEntries(Object.entries(value));
 }
-function array(value: unknown): unknown[] {
+export function array(value: unknown): unknown[] {
   if (!Array.isArray(value)) return invalid();
   return Array.from(value);
 }
-function numberOrNull(value: unknown): number | null {
+export function numberOrNull(value: unknown): number | null {
   if (value === null) return null;
   if (typeof value !== 'number' || !Number.isFinite(value)) return invalid();
   return value;
 }
-function finite(value: unknown): number {
+export function finite(value: unknown): number {
   const result = numberOrNull(value);
   return result === null ? invalid() : result;
 }
-function count(value: unknown): number {
+export function count(value: unknown): number {
   const result = finite(value);
   return Number.isInteger(result) && result >= 0 ? result : invalid();
 }
-function text(value: unknown): string {
+export function text(value: unknown): string {
   return typeof value === 'string' && value.length > 0 ? value : invalid();
 }
-function textOrNull(value: unknown): string | null {
+export function textOrNull(value: unknown): string | null {
   return value === null ? null : text(value);
 }
 function reason(value: unknown): StatisticsReason {
   const item = STATISTICS_REASONS.find((entry) => entry === value);
   return item ?? invalid();
 }
-function metricOf<T>(value: unknown, decodeValue: (item: unknown) => T): MetricState<T> {
+export function metricOf<T>(value: unknown, decodeValue: (item: unknown) => T): MetricState<T> {
   const data = object(value);
   if (data.state === 'ready') {
     return {
@@ -93,7 +93,7 @@ function metricOf<T>(value: unknown, decodeValue: (item: unknown) => T): MetricS
     };
   return invalid();
 }
-function metric(value: unknown): MetricState {
+export function metric(value: unknown): MetricState {
   return metricOf(value, finite);
 }
 function provenance(value: unknown): PlayerRank['provenance'] {
@@ -179,7 +179,7 @@ function decodeTypeRates(value: unknown): PlayerTypeRates {
   };
   return { competitive: kind(data.competitive), friendly: kind(data.friendly) };
 }
-function decodeScore(value: unknown): PlayerScoreTotals {
+export function decodeScore(value: unknown): PlayerScoreTotals {
   const data = object(value);
   const won = count(data.won);
   const lost = count(data.lost);
@@ -194,7 +194,7 @@ function decodeGames(value: unknown): PlayerStatistics['games'] {
     averageConcededPerGroup: metric(data.averageConcededPerGroup)
   };
 }
-function outcome(value: unknown): RecentOutcome['o'] {
+export function outcome(value: unknown): RecentOutcome['o'] {
   return value === 'W' || value === 'L' || value === 'D' ? value : invalid();
 }
 function decodeFormSample(value: unknown): PlayerFormSample {
@@ -237,7 +237,7 @@ function decodeForm(value: unknown): PlayerStatistics['form'] {
     longestLosses: count(data.longestLosses)
   };
 }
-function decodeCandidate(value: unknown): ExtremumCandidate {
+export function decodeCandidate(value: unknown): ExtremumCandidate {
   const data = object(value);
   return { k: finite(data.k), v: finite(data.v), at: text(data.at), g: text(data.g) };
 }

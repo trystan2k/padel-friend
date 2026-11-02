@@ -183,3 +183,48 @@ export function validateStatisticsGroupDetailInput(input: unknown): StatisticsGr
     return invalid();
   return { eventId: eventId.toLowerCase(), groupId: groupId.toLowerCase() };
 }
+
+function pickFilters(data: Record<string, unknown>): Record<string, unknown> {
+  return Object.fromEntries(
+    FILTER_KEYS.filter((key) => key in data).map((key) => [key, data[key]])
+  );
+}
+
+export type StatisticsRelationshipInput = {
+  playerId: string;
+  otherId: string;
+  filters: StatisticsFilters;
+};
+
+/** Pair and head-to-head input: two distinct players plus the shared filters. */
+export function validateStatisticsRelationshipInput(input: unknown): StatisticsRelationshipInput {
+  const data = record(input, ['playerId', 'otherId', ...FILTER_KEYS]);
+  const playerId = optionalUuid(data.playerId);
+  const otherId = optionalUuid(data.otherId);
+  if (playerId === null || otherId === null || playerId === otherId) return invalid();
+  return { playerId, otherId, filters: validateStatisticsFilters(pickFilters(data)) };
+}
+
+export type StatisticsRelationshipListInput = {
+  playerId: string;
+  filters: StatisticsFilters;
+  limit: number;
+  offset: number;
+};
+
+/** Partner/opponent records of one player: shared filters, page size (20/100) and offset. */
+export function validateStatisticsRelationshipListInput(
+  input: unknown
+): StatisticsRelationshipListInput {
+  const data = record(input, ['playerId', ...FILTER_KEYS, 'limit', 'offset']);
+  const playerId = optionalUuid(data.playerId);
+  if (playerId === null) return invalid();
+  const offset = data.offset ?? 0;
+  if (typeof offset !== 'number' || !Number.isSafeInteger(offset) || offset < 0) return invalid();
+  return {
+    playerId,
+    filters: validateStatisticsFilters(pickFilters(data)),
+    limit: validateStatisticsPageSize(data.limit),
+    offset
+  };
+}

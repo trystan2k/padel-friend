@@ -3637,7 +3637,57 @@ export type Database = {
           winner_sets: number
         }[]
       }
+      get_opponent_statistics: {
+        Args: {
+          p_community_id?: string
+          p_from?: string
+          p_league_id?: string
+          p_opponent_id: string
+          p_player_id: string
+          p_through?: string
+          p_type?: string
+        }
+        Returns: Json
+      }
+      get_pair_statistics: {
+        Args: {
+          p_community_id?: string
+          p_from?: string
+          p_league_id?: string
+          p_partner_id: string
+          p_player_id: string
+          p_through?: string
+          p_type?: string
+        }
+        Returns: Json
+      }
       get_password_setup_state: { Args: Record<PropertyKey, never>; Returns: Json }
+      get_player_opponent_records: {
+        Args: {
+          p_community_id?: string
+          p_from?: string
+          p_league_id?: string
+          p_limit?: number
+          p_offset?: number
+          p_player_id: string
+          p_through?: string
+          p_type?: string
+        }
+        Returns: Json
+      }
+      get_player_partner_records: {
+        Args: {
+          p_community_id?: string
+          p_from?: string
+          p_league_id?: string
+          p_limit?: number
+          p_offset?: number
+          p_player_id: string
+          p_through?: string
+          p_type?: string
+        }
+        Returns: Json
+      }
       get_player_statistics: {
         Args: {
           p_community_id?: string
@@ -4525,6 +4575,10 @@ export type Database = {
         }[]
       }
       statistics_json_add: { Args: { a: Json; b: Json }; Returns: Json }
+      statistics_leader_metric: {
+        Args: { p_observed: number; p_required: number; p_value: Json }
+        Returns: Json
+      }
       statistics_lock: { Args: Record<PropertyKey, never>; Returns: undefined }
       statistics_matchup_id: {
         Args: { p_first_pair: string; p_second_pair: string }
@@ -4654,6 +4708,55 @@ export type Database = {
       }
       statistics_read_actor: { Args: Record<PropertyKey, never>; Returns: string }
       statistics_recent: { Args: { p_items: Json }; Returns: Json }
+      statistics_relationship_extremum: { Args: { p_candidate: Json }; Returns: Json }
+      statistics_relationship_leaders: {
+        Args: {
+          p_config: Json
+          p_key: string
+          p_limit: number
+          p_offset: number
+          p_relations: Json
+        }
+        Returns: Json
+      }
+      statistics_relationship_name: { Args: { p_user_id: string }; Returns: Json }
+      statistics_relationship_prepare: {
+        Args: {
+          p_community_id: string
+          p_focal: string
+          p_from: string
+          p_league_id: string
+          p_other: string
+          p_through: string
+          p_type: string
+        }
+        Returns: Json
+      }
+      statistics_relationship_record: {
+        Args: {
+          p_a: string
+          p_b: string
+          p_config: Json
+          p_from: string
+          p_kind: string
+          p_scope: string
+          p_scope_id: string
+          p_through: string
+          p_type: string
+        }
+        Returns: Json
+      }
+      statistics_relationship_relations: {
+        Args: {
+          p_from: string
+          p_player_id: string
+          p_scope: string
+          p_scope_id: string
+          p_through: string
+          p_type: string
+        }
+        Returns: Json
+      }
       statistics_seq_from: { Args: { p_outcomes: string }; Returns: Json }
       statistics_thresholds_valid: { Args: { p_thresholds: Json }; Returns: boolean }
       statistics_utc_text: { Args: { p_instant: string }; Returns: string }
