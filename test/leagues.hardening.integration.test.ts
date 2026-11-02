@@ -488,22 +488,46 @@ describe.skipIf(!environment.env)('League review hardening', { timeout: 300_000 
             where c.name = 'Plan community 1'`
         )
       ).rows;
-      const planFor = async (mode: 'force_custom_plan' | 'force_generic_plan') => {
-        await connection.query(`set local plan_cache_mode = ${mode}`);
+      // The production page query, verbatim from list_leagues: the nullable-cursor OR (first page
+      // vs continuation), the inner top-201 subquery and the outer array_agg. plpgsql executes it
+      // with plan_cache_mode = force_custom_plan, so the parameters are bound as literals when planning.
+      const planFor = async (cursor: 'first' | 'continuation') => {
+        await connection.query('set local plan_cache_mode = force_custom_plan');
         await connection.query('deallocate all');
         await connection.query(
           `prepare keyset(uuid, timestamptz, uuid) as
-             select l.id from public.leagues l
-              where l.community_id = $1 and (l.created_at, l.id) < ($2, $3)
-              order by l.created_at desc, l.id desc limit 201`
+             select pg_catalog.array_agg(x.id order by x.created_at desc, x.id desc)
+               from (select l.id, l.created_at from public.leagues l
+                   where l.community_id = $1
+                     and ($3 is null or (l.created_at, l.id) < ($2, $3))
+                   order by l.created_at desc, l.id desc limit 201) x`
         );
+        const afterAt = cursor === 'first' ? 'null' : sqlText(String(target?.['created_at']));
+        const afterId = cursor === 'first' ? 'null' : sqlText(String(target?.['id']));
         const rows = (
           await connection.query(
             `explain (format json) execute keyset(${sqlText(String(target?.['community']))},
-               ${sqlText(String(target?.['created_at']))}, ${sqlText(String(target?.['id']))})`
+               ${afterAt}, ${afterId})`
           )
         ).rows;
-        return JSON.stringify(rows);
+        const plans: { Plan: PlanNode }[] = JSON.parse(
+          JSON.stringify(Object.values(rows[0] ?? {})[0])
+        );
+        const root = plans[0]?.Plan;
+        const nodes: PlanNode[] = [];
+        const walk = (node: PlanNode | undefined): void => {
+          if (!node) return;
+          nodes.push(node);
+          for (const child of node.Plans ?? []) walk(child);
+        };
+        walk(root);
+        return nodes;
+      };
+      type PlanNode = {
+        'Node Type': string;
+        'Index Name'?: string;
+        'Index Cond'?: string;
+        Plans?: PlanNode[];
       };
       // list_leagues pins plan_cache_mode = force_custom_plan (a generic plan misestimates the
       // row-wise cursor predicate and sorts), so the custom plan is the production plan.
@@ -513,23 +537,36 @@ describe.skipIf(!environment.env)('League review hardening', { timeout: 300_000 
         )
       ).rows;
       expect(String(config?.['config'])).toContain('plan_cache_mode=force_custom_plan');
-      for (const mode of ['force_custom_plan'] as const) {
-        const plan = await planFor(mode);
-        // The community and cursor predicates are both index conditions on the keyset index
-        // (literal values bound in the custom plan), the index delivers
-        // the ORDER BY, and nothing sorts or scans the table.
-        expect(plan).toMatch(
-          /"Index Name":"leagues_community_created_keyset"[^}]*"Index Cond":"\(\(community_id = [^)]+\) AND \(ROW\(created_at, id\) </
+      // Proven for the production query shape (OR + aggregate included): the keyset index serves
+      // the page as an Index Only Scan (all three columns are in the index; the aggregate does not
+      // force a heap-fetching Index Scan), the community predicate is an Index Cond, the
+      // continuation also carries the row-wise cursor predicate as an Index Cond (the first page,
+      // whose OR folds to true, carries none), the index delivers the ORDER BY so no Sort exists
+      // and no Seq Scan touches the table. NOT proven: absolute cost or latency, nor the plan of
+      // the separate Active-first / league_dto lookups.
+      const indexCond = {
+        first: /^\(community_id = '[^']+'::uuid\)$/,
+        continuation: /^\(\(community_id = '[^']+'::uuid\) AND \(ROW\(created_at, id\) < ROW\(/
+      };
+      for (const cursor of ['first', 'continuation'] as const) {
+        const nodes = await planFor(cursor);
+        const scans = nodes.filter(
+          (node) => node['Index Name'] === 'leagues_community_created_keyset'
         );
-        expect(plan).not.toContain('"Node Type":"Sort"');
-        expect(plan).not.toContain('"Node Type":"Seq Scan"');
+        const types = nodes.map((node) => node['Node Type']);
+        expect(scans.map((scan) => [cursor, scan['Node Type']])).toEqual([
+          [cursor, 'Index Only Scan']
+        ]);
+        expect(
+          scans.map((scan) => [cursor, scan['Index Cond']?.match(indexCond[cursor]) !== null])
+        ).toEqual([[cursor, true]]);
+        expect(types.filter((type) => type === 'Sort' || type === 'Seq Scan')).toEqual([]);
       }
       // The check has teeth: without the index the same query no longer plans this way.
       await connection.query('drop index public.leagues_community_created_keyset');
-      for (const mode of ['force_custom_plan'] as const) {
-        const without = await planFor(mode);
-        expect(without).not.toContain('leagues_community_created_keyset');
-        expect(without).toMatch(/"Node Type":"Sort"|"Node Type":"Seq Scan"/);
+      for (const cursor of ['first', 'continuation'] as const) {
+        const without = (await planFor(cursor)).map((node) => node['Node Type']);
+        expect(without.some((type) => type === 'Sort' || type === 'Seq Scan')).toBe(true);
       }
     } finally {
       await connection.query('rollback').catch(() => undefined);
