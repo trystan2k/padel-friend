@@ -1,4 +1,4 @@
-import { afterEach, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
 import { dotEnvPathFromImportMetaUrl, localSupabaseEnv } from './helpers/local-supabase-env';
 import { fixtureSql, sqlRows, waitForRows, withDeadline } from './helpers/match-registration-sql';
 import {
@@ -31,6 +31,12 @@ import {
   toQuartet,
   type RatingWorld
 } from './helpers/rating-fixtures';
+import {
+  createRankedResultFixtures,
+  playedAt,
+  rankedKitEnv,
+  type RankedResultKit
+} from './helpers/ranked-result-fixtures';
 import {
   openDedicatedSqlConnection,
   sqlErrorMessage,
@@ -694,3 +700,78 @@ describe('rating projection races (real separate connections)', { timeout: 240_0
     );
   });
 });
+
+describe.skipIf(!rankedKitEnv(import.meta.url))(
+  'League validation against the rating lock graph (U4)',
+  { timeout: 120_000 },
+  () => {
+    let kit: RankedResultKit;
+    const open: DedicatedSqlConnection[] = [];
+    const connection = async () => {
+      const created = await openDedicatedSqlConnection();
+      open.push(created);
+      return created;
+    };
+
+    beforeAll(async () => {
+      kit = await createRankedResultFixtures(rankedKitEnv(import.meta.url)!);
+    });
+    afterAll(async () => {
+      await Promise.all(open.splice(0).map((c) => c.close()));
+      if (kit) await kit.cleanup();
+    });
+
+    it('lets Ranked and Unranked confirmations wait on the rating lock beside a membership removal without deadlock or partial credit', async () => {
+      const leagueId = await kit.league();
+      const rankedEvent = await kit.event(leagueId);
+      const unrankedEvent = await kit.event(null);
+      const proposals: string[] = [];
+      for (const eventId of [rankedEvent, unrankedEvent]) {
+        expect((await kit.submit(eventId, playedAt(120).played)).error).toBeNull();
+        const proposalId = await kit.proposalId(eventId);
+        // One approval from the team opposite the submitter covers a MANUAL confirmation.
+        await fixtureSql(`insert into public.match_event_result_reviews(
+          proposal_id, proposal_version, reviewer_user_id, decision, request_id
+        ) values ('${proposalId}', 1, '${kit.players[2]!.id}', 'approve', '${crypto.randomUUID()}')`);
+        proposals.push(proposalId);
+      }
+
+      const holder = await connection();
+      await holder.query('begin');
+      await holder.query('select public.lock_global_rating_projection()');
+
+      const first = await connection();
+      const firstRun = first.query(finalizeSql(proposals[0]!, 'MANUAL', kit.players[2]!.id));
+      await waitForRatingLockWaiters(1);
+      // Same community: the second confirmation and the removal queue behind the first one's
+      // community lock, which is acquired before (never after) the rating lock.
+      const second = await connection();
+      const secondRun = second.query(finalizeSql(proposals[1]!, 'MANUAL', kit.players[2]!.id));
+      await waitForBlockedBackend({ pid: second.backendPid });
+      const [membership] = await sqlRows(
+        `select id::text from public.community_members where community_id='${kit.communityId}'
+           and user_id='${kit.players[3]!.id}' and valid_until is null`
+      );
+      const removal = kit.rpc(kit.creator, 'govern_community_member', {
+        p_community_id: kit.communityId,
+        p_membership_id: String(membership!['id']),
+        p_action: 'remove'
+      });
+
+      await holder.query('commit');
+      const settled = await withDeadline(
+        Promise.all([firstRun, secondRun, removal]),
+        BOUND_MS,
+        'ranked confirmation, unranked confirmation and removal'
+      );
+      expect(settled[2].error).toBeNull();
+      for (const result of [settled[0], settled[1]])
+        expect(result.rows[0]?.['id']).toEqual(expect.any(String));
+      for (const eventId of [rankedEvent, unrankedEvent])
+        expect(await kit.sideEffects(eventId)).toMatchObject({
+          confirmations: 1,
+          rating_events: 4
+        });
+    });
+  }
+);

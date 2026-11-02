@@ -3,6 +3,7 @@ import {
   createMatchManagementFixtures,
   type ManagementActor
 } from './helpers/match-management-fixtures';
+import { insertLeague } from './helpers/league-fixtures';
 import { localSupabaseEnv, dotEnvPathFromImportMetaUrl } from './helpers/local-supabase-env';
 import {
   fixtureSql,
@@ -410,5 +411,84 @@ describe('match participant reconfirmation integration', () => {
         (await f.rpc(f.creator, 'get_match_event_management', { p_match_event_id: e.id })).data
       ).version
     ).toBe(1);
+  });
+  describe('Ranked/League changes use the same consent protocol', () => {
+    const newLeague = (name: string) =>
+      insertLeague({
+        communityId: f.communityId,
+        ownerId: f.creator.id,
+        status: 'upcoming',
+        name,
+        startAt: new Date(Date.now() - 5 * 86_400_000).toISOString(),
+        endAt: new Date(Date.now() + 60 * 86_400_000).toISOString()
+      });
+    it('rank flip and League-ID switch each require every accepted player, creator included, to reconfirm', async () => {
+      const first = await newLeague('Reconfirm A');
+      const second = await newLeague('Reconfirm B');
+      const player = await f.member();
+      const e = await f.event({ accepted: [player] });
+      expect(
+        (await edit(e.id, { event_type: 'competitive', league_id: first })).data
+      ).toMatchObject({ change_kind: 'major', reconfirmation_generation: 1 });
+      for (const actor of [f.creator, player])
+        expect((await confirm(e.id, actor, 1)).error).toBeNull();
+      expect((await counts(e.id))[0]).toMatchObject({ reconfirmation_required_count: 0 });
+      // ID-to-ID switch keeps Ranked but is major again.
+      expect((await edit(e.id, { league_id: second }, 2)).data).toMatchObject({
+        change_kind: 'major',
+        reconfirmation_generation: 2
+      });
+      expect((await counts(e.id))[0]).toMatchObject({ reconfirmation_required_count: 2 });
+      // The previous generation cannot be reconfirmed any more.
+      expect((await confirm(e.id, player, 1)).error?.message).toBe(
+        'MATCH_MANAGEMENT_STALE_GENERATION'
+      );
+      expect((await confirm(e.id, player, 2)).error).toBeNull();
+      // Reconfirmation retains ordinal and attempt identity.
+      expect((await rows(e.id)).find((r) => r.user_id === player.id)).toMatchObject({
+        required_generation: 2,
+        confirmed_generation: 2
+      });
+    });
+    it('exposes the before/after League impact to the reconfirming player and the organizer only', async () => {
+      const league = await newLeague('Impact league');
+      const player = await f.member();
+      const outsider = await f.actor();
+      const e = await f.event({ accepted: [player] });
+      expect((await edit(e.id, { event_type: 'competitive', league_id: league })).error).toBeNull();
+      const own = asRecord(
+        (await f.rpc(player, 'get_my_match_registration', { p_match_event_id: e.id })).data
+      );
+      expect(asRecord(own.consent_change)).toMatchObject({
+        generation: 1,
+        to: { competition_status: 'ranked', league_name: 'Impact league' }
+      });
+      const management = asRecord(
+        (await f.rpc(f.creator, 'get_match_event_management', { p_match_event_id: e.id })).data
+      );
+      expect(asRecord(management.consent_change)).toMatchObject({
+        generation: 1,
+        changed_fields: ['event_type', 'league_id']
+      });
+      // Not shared with other callers: outsiders get no registration, participants no organizer data.
+      expect(
+        asRecord(
+          (await f.rpc(outsider, 'get_my_match_registration', { p_match_event_id: e.id })).data ??
+            {}
+        ).consent_change
+      ).toBeFalsy();
+      expect(
+        asRecord(
+          (await f.rpc(player, 'get_match_event_management', { p_match_event_id: e.id })).data ?? {}
+        ).consent_change
+      ).toBeFalsy();
+      // Once reconfirmed, the participant no longer carries a pending change summary.
+      expect((await confirm(e.id, player, 1)).error).toBeNull();
+      expect(
+        asRecord(
+          (await f.rpc(player, 'get_my_match_registration', { p_match_event_id: e.id })).data
+        ).consent_change
+      ).toBeFalsy();
+    });
   });
 });

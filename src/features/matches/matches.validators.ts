@@ -19,6 +19,21 @@ export function validateMatchOptions(value: unknown) {
   const data = exact(value, ['community_id']);
   return { community_id: data.community_id == null ? null : validateMatchUuid(data.community_id) };
 }
+export function validateMatchLeagueOptions(value: unknown) {
+  const data = exact(value, ['community_id', 'date', 'start_time']);
+  if (
+    typeof data.date !== 'string' ||
+    !/^\d{4}-\d{2}-\d{2}$/.test(data.date) ||
+    typeof data.start_time !== 'string' ||
+    !/^([01]\d|2[0-3]):[0-5]\d(:[0-5]\d)?$/.test(data.start_time)
+  )
+    throw new Error('INVALID_MATCH_INPUT');
+  return {
+    community_id: validateMatchUuid(data.community_id),
+    date: data.date,
+    start_time: data.start_time
+  };
+}
 export function validateMatchInviteSearch(value: unknown) {
   const data = exact(value, ['community_id', 'query', 'limit']);
   if (typeof data.query !== 'string' || data.query.length > 100)
@@ -104,7 +119,9 @@ export function validatePublishMatch(value: unknown): {
     'currency',
     'payment_note',
     'maximum_registrations',
-    'cutoff_at'
+    'cutoff_at',
+    'competition',
+    'league_id'
   ] as const;
   const allowedInputKeys = new Set<string>(inputKeys);
   if (
@@ -185,6 +202,19 @@ export function validatePublishMatch(value: unknown): {
     maximum_registrations < 1
   )
     throw new Error('INVALID_MATCH_INPUT');
+  const competition = input.competition;
+  if (competition !== undefined && competition !== 'ranked' && competition !== 'unranked')
+    throw new Error('INVALID_MATCH_INPUT');
+  const league_id = optionalString(input, 'league_id', true);
+  if (typeof league_id === 'string') validateMatchUuid(league_id);
+  // Mirror the SQL contract so an impossible intent never leaves the client.
+  const hasLeague = typeof league_id === 'string';
+  if (
+    (event_type === 'friendly' && (competition === 'ranked' || hasLeague)) ||
+    (competition === 'ranked' && !hasLeague) ||
+    (competition === 'unranked' && hasLeague)
+  )
+    throw new Error('INVALID_MATCH_INPUT');
   const inputResult: MatchPublishInput = {
     community_id,
     date: input.date,
@@ -209,7 +239,9 @@ export function validatePublishMatch(value: unknown): {
     ...(currency !== undefined ? { currency } : {}),
     ...(payment_note !== undefined ? { payment_note } : {}),
     ...(maximum_registrations !== undefined ? { maximum_registrations } : {}),
-    ...(cutoff_at !== undefined ? { cutoff_at } : {})
+    ...(cutoff_at !== undefined ? { cutoff_at } : {}),
+    ...(competition !== undefined ? { competition } : {}),
+    ...(league_id !== undefined ? { league_id } : {})
   };
   return {
     event_id: validateMatchUuid(data.event_id),

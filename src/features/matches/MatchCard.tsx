@@ -1,4 +1,5 @@
 import { StatusBadge } from '../../components/ui/StatusBadge';
+import { MatchCompetitionBadge } from './MatchCompetitionBadge';
 import * as stylex from '@stylexjs/stylex';
 import { Link } from '@tanstack/react-router';
 import { useTranslation } from 'react-i18next';
@@ -88,6 +89,7 @@ export function MatchCard({ event }: { event: MatchEventCard }) {
         </StatusBadge>
       )}
       {!event.registration_open && <p>{t('matches.detail.registrationClosed')}</p>}
+      <MatchCompetitionBadge event={event} />
       <p>
         {t(`matches.type.${event.event_type}`)} · {event.creator_name ?? ''} (
         {t('matches.card.approximateLevel')}: {String(event.creator_level ?? '')})
@@ -121,6 +123,11 @@ export function MatchCard({ event }: { event: MatchEventCard }) {
         !callerAccepted &&
         event.caller_eligibility === 'nonmember' &&
         event.caller_requires_approval && <p>{t('matches.detail.guestApprovalRequired')}</p>}
+      {event.status !== 'cancelled' &&
+        !callerAccepted &&
+        event.caller_eligibility === 'ranked_members_only' && (
+          <p>{t('matches.detail.rankedMembersOnly')}</p>
+        )}
       {event.status !== 'cancelled' &&
         !callerAccepted &&
         event.caller_eligibility === 'out_of_range' &&

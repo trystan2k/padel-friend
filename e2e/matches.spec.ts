@@ -312,6 +312,19 @@ async function detailData(actor: Actor, eventId: string): Promise<Record<string,
 // protected URL /matches/create — recorded here, not worked around.
 // ---------------------------------------------------------------------------
 
+// Asserts no interactive Ranked/League/booking/payment control. Informational
+// status text (the "Ranked"/"Unranked" competition badge) is deliberately allowed.
+async function expectNoCompetitionControls(page: Page): Promise<void> {
+  const semantics = /ranked|league|book|pay|purchase/i;
+  for (const role of ['button', 'link', 'checkbox', 'radio', 'switch', 'tab', 'combobox'] as const)
+    await expect(page.getByRole(role, { name: semantics })).toHaveCount(0);
+  await expect(
+    page.locator('main').locator('select, input, [role="button"], [role="link"]').filter({
+      hasText: semantics
+    })
+  ).toHaveCount(0);
+}
+
 async function openCreateWizard(page: Page): Promise<void> {
   await page.goto('/matches/create');
   await waitForHydratedPage(page);
@@ -677,7 +690,7 @@ test.describe.serial('public community_open lifecycle', () => {
 
     await creatorPage.goto('/matches');
     await waitForHydratedPage(creatorPage);
-    await expect(creatorPage.getByText(/ranked|league/i)).toHaveCount(0);
+    await expectNoCompetitionControls(creatorPage);
     const tabs = creatorPage.getByRole('navigation', { name: en.matches.navigationLabel });
     await expect(tabs.getByRole('link')).toHaveCount(3);
     // The only button this surface may expose is the pre-existing PAF-4 pagination
@@ -697,7 +710,7 @@ test.describe.serial('public community_open lifecycle', () => {
 
     await creatorPage.goto(`/matches/${eventId}`);
     await waitForHydratedPage(creatorPage);
-    await expect(creatorPage.getByText(/ranked|league/i)).toHaveCount(0);
+    await expectNoCompetitionControls(creatorPage);
     // Creator retains sharing plus organizer management, edit and self-withdrawal.
     for (const name of [
       en.matches.detail.share,

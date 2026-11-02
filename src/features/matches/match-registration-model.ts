@@ -1,4 +1,5 @@
 import type { Database } from '../../lib/supabase/database.types';
+import { parseMatchConsentChange, type MatchConsentChange } from './match-consent-change';
 
 // PAF-5.2 roster/request projection DTOs. These are deliberately separate from
 // the flat T04 event DTO in match-model.ts; the RPC jsonb contracts are parsed
@@ -6,7 +7,14 @@ import type { Database } from '../../lib/supabase/database.types';
 export type MatchRegistrationParticipation =
   Database['public']['Enums']['match_registration_participation'];
 export type MatchRegistrationSource = Database['public']['Enums']['match_registration_source'];
-export type MatchRegistrationAction = 'join' | 'request' | 'full' | 'closed' | 'invited' | 'none';
+export type MatchRegistrationAction =
+  | 'join'
+  | 'request'
+  | 'full'
+  | 'closed'
+  | 'invited'
+  | 'ranked_members_only'
+  | 'none';
 
 // Every domain/auth failure the four registration RPCs can raise, collapsed to a
 // distinct, user-actionable code. The UI never sees the raw Postgres token.
@@ -24,6 +32,7 @@ export type MatchRegistrationErrorCode =
   | 'not_found'
   | 'already_resolved'
   | 'requester_ineligible'
+  | 'ranked_members_only'
   | 'forbidden'
   | 'invalid'
   | 'unauthenticated'
@@ -49,7 +58,8 @@ const ERROR_TOKENS: Readonly<Record<string, MatchRegistrationErrorCode>> = {
   MATCH_REGISTRATION_FULL: 'full',
   MATCH_REGISTRATION_NOT_FOUND: 'not_found',
   MATCH_REGISTRATION_ALREADY_RESOLVED: 'already_resolved',
-  MATCH_REGISTRATION_REQUESTER_INELIGIBLE: 'requester_ineligible'
+  MATCH_REGISTRATION_REQUESTER_INELIGIBLE: 'requester_ineligible',
+  MATCH_REGISTRATION_RANKED_MEMBERS_ONLY: 'ranked_members_only'
 };
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -251,6 +261,8 @@ export type MyMatchRegistration =
       confirmed_generation: number;
       registration_source: MatchRegistrationSource;
       registration_cutoff_at: string;
+      /** Before/after competition of the edit that asked for consent (absent for older edits). */
+      change?: MatchConsentChange;
     }
   | {
       state: 'cancelled';
@@ -359,6 +371,7 @@ export function parseMyMatchRegistration(value: unknown): MyMatchRegistration | 
       const accepted_order = asPositiveInteger(value.accepted_order);
       const accepted_at = asText(value.accepted_at);
       const deadline = asText(value.registration_cutoff_at);
+      const change = parseMatchConsentChange(value.consent_change);
       if (
         !attempt_id ||
         accepted_order === null ||
@@ -377,7 +390,8 @@ export function parseMyMatchRegistration(value: unknown): MyMatchRegistration | 
         required_generation: required,
         confirmed_generation: confirmed,
         registration_source,
-        registration_cutoff_at: deadline
+        registration_cutoff_at: deadline,
+        ...(change ? { change } : {})
       };
     }
     if (value.attempt_id !== undefined && !asUuid(value.attempt_id)) return null;

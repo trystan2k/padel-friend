@@ -29,7 +29,15 @@ type StoredProjection = Omit<
   'currency'
 > & { currency: MatchCurrency | null };
 type IdentityProjection = Pick<MatchRow, 'id' | 'created_by'>;
-type CallerEligibility = 'creator' | 'member' | 'out_of_range' | 'nonmember' | null;
+type CallerEligibility =
+  | 'creator'
+  | 'member'
+  | 'out_of_range'
+  | 'nonmember'
+  | 'ranked_members_only'
+  | null;
+/** Derived from the stored League association; Friendly events have no competition status. */
+export type MatchCompetitionStatus = 'ranked' | 'unranked';
 export type MatchResultResolution = 'awaiting_results' | 'partially_resolved' | 'completed';
 export type MatchEventResultSummary = {
   expected_group_count: number;
@@ -48,6 +56,13 @@ type MatchEventProjection = StoredProjection & {
   creator_id: IdentityProjection['created_by'];
   creator_name: string | null;
   creator_level: number | null;
+  competition_status: MatchCompetitionStatus | null;
+  /** League identity is only returned to active members of the event's community. */
+  league_id: string | null;
+  league_name: string | null;
+  /** League-local calendar days of the bound League's effective window (end null = open Manual). */
+  league_start_date?: string | null;
+  league_end_date?: string | null;
   accepted_count: number;
   reconfirmation_required_count?: number;
   reconfirmation_generation?: number;
@@ -100,11 +115,29 @@ export type MatchCreationOptions = {
   level_defaults: { min: number | null; max: number | null; level: number | null } | null;
 };
 
+/** An Active/Upcoming League whose period covers the intended start of a new event. */
+export type MatchLeagueOption = {
+  id: string;
+  name: string;
+  status: 'upcoming' | 'active';
+  end_mode: 'fixed_date' | 'manual';
+  timezone: string;
+  start_at: string;
+  end_at: string | null;
+  start_date: string;
+  end_date: string | null;
+};
+export type MatchLeagueOptions = { starts_at: string; leagues: MatchLeagueOption[] };
+
 type EventType = Database['public']['Enums']['match_event_type'];
 type Visibility = Database['public']['Enums']['match_event_visibility'];
 type TeamMode = Database['public']['Enums']['match_team_assignment_mode'];
+/** `auto` follows the eligible Leagues; `unranked` is a deliberate opt-out that is never reset. */
+export type MatchCompetitionChoice = 'auto' | 'ranked' | 'unranked';
 export type MatchDraft = {
   type: EventType;
+  competitionChoice: MatchCompetitionChoice;
+  leagueId: string;
   visibility: Visibility;
   teamMode: TeamMode;
   currency: MatchCurrency;
@@ -134,6 +167,9 @@ export type MatchPublishInput = {
   date: string;
   start_time: string;
   event_type: EventType;
+  /** Competitive only; absent for Friendly. Ranked requires `league_id`, Unranked forbids it. */
+  competition?: MatchCompetitionStatus;
+  league_id?: string | null;
   visibility: Visibility;
   team_assignment_mode: TeamMode;
   venue_name: MatchRow['venue_name'];

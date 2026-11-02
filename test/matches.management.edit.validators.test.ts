@@ -9,6 +9,7 @@ const id = '11111111-1111-4111-8111-111111111111';
 const command = { event_id: id, expected_version: 1, request_id: id };
 const current = {
   event_type: 'friendly' as const,
+  league_id: null,
   venue_name: 'Court',
   maps_url: 'https://maps.google.com/maps/court',
   court_notes: null,
@@ -20,6 +21,33 @@ const current = {
   registration_cutoff_at: '2099-01-01T10:00:00Z',
   starts_at: '2099-01-01T12:00:00Z'
 };
+const league = 'AAAAAAAA-1111-4111-8111-111111111111';
+describe('Ranked/League edit validators', () => {
+  it('accepts a League id (canonical lowercase) or null for Unranked', () => {
+    expect(validateEditMatchEvent({ ...command, patch: { league_id: league } }).patch).toEqual({
+      league_id: league.toLowerCase()
+    });
+    expect(validateEditMatchEvent({ ...command, patch: { league_id: null } }).patch).toEqual({
+      league_id: null
+    });
+  });
+  it('rejects malformed League ids and non-string values', () => {
+    for (const league_id of ['nope', 7, '', {}, true, undefined])
+      expect(() => validateEditMatchEvent({ ...command, patch: { league_id } })).toThrow(
+        'INVALID_MATCH_INPUT'
+      );
+  });
+  it('treats league_id as part of the merged facts without changing schedule rules', () => {
+    expect(validateMergedMatchEdit(current, { league_id: league }, 2).league_id).toBe(league);
+    expect(() =>
+      validateMergedMatchEdit(
+        current,
+        { league_id: league, registration_cutoff_at: current.starts_at },
+        2
+      )
+    ).toThrow('FUTURE_CUTOFF');
+  });
+});
 describe('minor edit validators', () => {
   it('rejects unknown nested patch keys and forged lifecycle', () => {
     for (const patch of [

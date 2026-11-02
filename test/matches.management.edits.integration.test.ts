@@ -1,4 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { insertLeague } from './helpers/league-fixtures';
 import { createMatchManagementFixtures } from './helpers/match-management-fixtures';
 import { localSupabaseEnv, dotEnvPathFromImportMetaUrl } from './helpers/local-supabase-env';
 import {
@@ -446,5 +447,81 @@ describe('minor match edits integration', () => {
       (await f.rpc(next, 'edit_match_event', command(e.id, { notes: 'Current organizer' }, 2)))
         .error
     ).toBeNull();
+  });
+  describe('Ranked/League facts', () => {
+    const window = () => ({
+      startAt: new Date(Date.now() - 5 * 86_400_000).toISOString(),
+      endAt: new Date(Date.now() + 60 * 86_400_000).toISOString()
+    });
+    const newLeague = (name: string, overrides: Record<string, unknown> = {}) =>
+      insertLeague({
+        communityId: f.communityId,
+        ownerId: f.creator.id,
+        status: 'upcoming',
+        name,
+        ...window(),
+        ...overrides
+      });
+    it('keeps league_id typed and atomic: invalid ids and Friendly merges change nothing', async () => {
+      const league = await newLeague('Edits league');
+      const player = await f.member();
+      const e = await f.event({ accepted: [player] });
+      const before = await snapshot(e.id);
+      for (const patch of [{ league_id: 'not-a-uuid' }, { league_id: 7 }, { league_id: '' }])
+        expect((await f.rpc(f.creator, 'edit_match_event', command(e.id, patch))).error?.code).toBe(
+          '22023'
+        );
+      // The fixture event is Friendly: a League cannot ride along without becoming Competitive.
+      expect(
+        (await f.rpc(f.creator, 'edit_match_event', command(e.id, { league_id: league }))).error
+          ?.message
+      ).toBe('MATCH_MANAGEMENT_LEAGUE_FRIENDLY');
+      expect(await snapshot(e.id)).toEqual(before);
+      expect(
+        (await f.rpc(f.creator, 'edit_match_event', command(e.id, { league_id_x: league }))).error
+          ?.code
+      ).toBe('22023');
+    });
+    it('applies Competitive + League together as one audited major edit with before/after impact', async () => {
+      const league = await newLeague('Audit league');
+      const player = await f.member();
+      const e = await f.event({ accepted: [player] });
+      const result = await f.rpc(
+        f.creator,
+        'edit_match_event',
+        command(e.id, { event_type: 'competitive', league_id: league })
+      );
+      expect(result.error).toBeNull();
+      expect(result.data).toMatchObject({
+        change_kind: 'major',
+        changed_fields: ['event_type', 'league_id'],
+        reconfirmation_generation: 1
+      });
+      const [audit] = await sqlRows(
+        `select before_data,after_data,changed_fields from public.match_event_audit_log where match_event_id='${e.id}' and action='major_edit'`
+      );
+      expect(asRecord(audit?.before_data).competition).toMatchObject({ competition_status: null });
+      expect(asRecord(audit?.after_data).competition).toMatchObject({
+        competition_status: 'ranked',
+        league_id: league,
+        league_name: 'Audit league'
+      });
+    });
+    it('rejects a League that did not exist at publication and never rebinds by edit', async () => {
+      const player = await f.member();
+      const e = await f.event({ accepted: [player] });
+      const later = await newLeague('Created after publication');
+      const before = await snapshot(e.id);
+      expect(
+        (
+          await f.rpc(
+            f.creator,
+            'edit_match_event',
+            command(e.id, { event_type: 'competitive', league_id: later })
+          )
+        ).error?.message
+      ).toBe('MATCH_MANAGEMENT_LEAGUE_UNAVAILABLE');
+      expect(await snapshot(e.id)).toEqual(before);
+    });
   });
 });

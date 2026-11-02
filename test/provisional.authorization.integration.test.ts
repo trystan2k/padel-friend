@@ -12,6 +12,7 @@ import {
   provisionProvisionalPlayer,
   signUpFixtureActor
 } from './helpers/provisional-player-fixtures';
+import { insertLeague } from './helpers/league-fixtures';
 import { queryTrustedSql } from './helpers/sql-transport';
 
 const environment = localSupabaseEnv({ filePath: dotEnvPathFromImportMetaUrl(import.meta.url) });
@@ -145,6 +146,24 @@ describe('provisional actor authorization', () => {
           p_match_event_id: eventId
         })
       );
+
+      // The League counter reader is a restricted entry point too, yet lists the provisional
+      // member to regular members as an ordinary zero-based participant.
+      const leagueId = await insertLeague({
+        communityId,
+        ownerId: organizer.id,
+        startAt: new Date(Date.now() - 86_400_000).toISOString()
+      });
+      expectRestricted(
+        await provisional.client.rpc('get_league_counters', { p_league_id: leagueId })
+      );
+      const counters = await regular.client.rpc('get_league_counters', { p_league_id: leagueId });
+      expect(counters.error).toBeNull();
+      expect(counters.data).toMatchObject({
+        participants: expect.arrayContaining([
+          expect.objectContaining({ user_id: provisional.id, is_provisional: true, matches: 0 })
+        ])
+      });
 
       // Predicate-gated readers and direct table access see nothing.
       const predicates = await Promise.all([

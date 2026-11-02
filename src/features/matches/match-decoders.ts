@@ -4,6 +4,8 @@ import type {
   MatchEventRpcDetail,
   MatchEventRpcListRow,
   MatchInvitee,
+  MatchLeagueOption,
+  MatchLeagueOptions,
   MatchEventResultSummary
 } from './match-contracts';
 import { matchCallerBadge, matchResultResolution } from './match-model';
@@ -72,7 +74,14 @@ function enumValue<T extends string>(value: unknown, values: readonly T[]): T {
 const eventTypes = ['friendly', 'competitive'] as const;
 const visibilities = ['community_open', 'invite_only'] as const;
 const teamModes = ['PREDEFINED_TEAMS', 'POST_MATCH_TEAMS'] as const;
-const eligibility = ['creator', 'member', 'out_of_range', 'nonmember'] as const;
+const eligibility = [
+  'creator',
+  'member',
+  'out_of_range',
+  'nonmember',
+  'ranked_members_only'
+] as const;
+const competitionStatuses = ['ranked', 'unranked'] as const;
 const currencies = ['BRL', 'USD', 'EUR'] as const;
 
 function decodeResultSummary(value: unknown): MatchEventResultSummary {
@@ -135,6 +144,18 @@ function decodeProjection(value: unknown) {
     creator_id: required(row, 'creator_id', nonEmptyText),
     creator_name: nullableField('creator_name', text),
     creator_level: nullableField('creator_level', safeNumber),
+    competition_status: nullableField('competition_status', (entry) =>
+      enumValue(entry, competitionStatuses)
+    ),
+    league_id: nullableField('league_id', nonEmptyText),
+    league_name: nullableField('league_name', text),
+    // Additive League window (League-local calendar days); absent in pre-U3 payloads.
+    ...(row.league_start_date === undefined
+      ? {}
+      : {
+          league_start_date: nullableField('league_start_date', text),
+          league_end_date: nullableField('league_end_date', text)
+        }),
     starts_at: required(row, 'starts_at', timestamp),
     timezone: required(row, 'timezone', timeZone),
     event_type: required(row, 'event_type', (entry) => enumValue(entry, eventTypes)),
@@ -216,6 +237,46 @@ export function decodeMatchCreationOptions(value: unknown): MatchCreationOptions
           };
         })();
   return { communities, saved_venues, level_defaults };
+}
+
+function decodeLeagueOption(value: unknown): MatchLeagueOption {
+  const row = exactObject(value, [
+    'id',
+    'name',
+    'status',
+    'end_mode',
+    'timezone',
+    'start_at',
+    'end_at',
+    'start_date',
+    'end_date'
+  ]);
+  const option = {
+    id: required(row, 'id', nonEmptyText),
+    name: required(row, 'name', nonEmptyText),
+    status: required(row, 'status', (entry) => enumValue(entry, ['upcoming', 'active'] as const)),
+    end_mode: required(row, 'end_mode', (entry) =>
+      enumValue(entry, ['fixed_date', 'manual'] as const)
+    ),
+    timezone: required(row, 'timezone', timeZone),
+    start_at: required(row, 'start_at', timestamp),
+    end_at: required(row, 'end_at', (entry) => (entry === null ? null : timestamp(entry))),
+    start_date: required(row, 'start_date', nonEmptyText),
+    end_date: required(row, 'end_date', nullableText)
+  };
+  // A Manual League has no scheduled end; a Fixed League always has one.
+  if ((option.end_mode === 'manual') !== (option.end_at === null && option.end_date === null))
+    return fail();
+  return option;
+}
+
+export function decodeMatchLeagueOptions(value: unknown): MatchLeagueOptions {
+  const data = exactObject(value, ['starts_at', 'leagues']);
+  const leagues = required(data, 'leagues', (entry) => (Array.isArray(entry) ? entry : fail()));
+  return {
+    starts_at: required(data, 'starts_at', timestamp),
+    leagues: leagues.map(decodeLeagueOption)
+  };
 }
 
 export function decodeMatchInvitees(value: unknown): MatchInvitee[] {

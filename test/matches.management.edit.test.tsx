@@ -7,11 +7,15 @@ import { createI18n, type Locale } from '../src/i18n/config';
 import { makeMatchDetail } from './helpers/match-fixtures';
 const mocks = vi.hoisted(() => ({
   edit: vi.fn<(...args: unknown[]) => Promise<unknown>>(),
+  leagues: vi.fn<(...args: unknown[]) => Promise<unknown>>(),
   invalidate: vi.fn<() => Promise<void>>(),
   close: vi.fn<() => void>()
 }));
 vi.mock('../src/features/matches/match-management.functions', () => ({
   editMatchEvent: mocks.edit
+}));
+vi.mock('../src/features/matches/matches.functions', () => ({
+  getMatchLeagueOptions: mocks.leagues
 }));
 vi.mock('@tanstack/react-router', () => ({ useRouter: () => ({ invalidate: mocks.invalidate }) }));
 import { MatchEditDialog } from '../src/features/matches/MatchEditDialog';
@@ -41,6 +45,7 @@ function element(locale: Locale = 'en', version = 1) {
 beforeEach(() => {
   vi.resetAllMocks();
   mocks.invalidate.mockResolvedValue();
+  mocks.leagues.mockResolvedValue({ starts_at: event.starts_at, leagues: [] });
 });
 afterEach(cleanup);
 describe('minor edit dialog', () => {
@@ -178,5 +183,47 @@ describe('minor edit dialog', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Save changes' }));
     await waitFor(() => expect(mocks.edit).toHaveBeenCalledTimes(3));
     expect(mocks.edit.mock.calls[2]).not.toEqual(mocks.edit.mock.calls[1]);
+  });
+});
+describe('competition facts in the edit patch', () => {
+  it('always carries an explicit league_id (null = Unranked) and offers no League for Friendly', async () => {
+    render(element());
+    await screen.findByRole('dialog');
+    // Friendly: no competition control, no League impact, no options request.
+    expect(screen.queryByRole('radio', { name: 'Ranked' })).toBeNull();
+    expect(mocks.leagues).not.toHaveBeenCalled();
+    mocks.edit.mockResolvedValue({ status: 'ok', value: { changed: true }, replayed: false });
+    await userEvent.click(screen.getByRole('button', { name: 'Save changes' }));
+    await screen.findByText('Match details saved.');
+    expect(mocks.edit).toHaveBeenCalledWith({
+      data: expect.objectContaining({ patch: expect.objectContaining({ league_id: null }) })
+    });
+  });
+  it('translates every new Ranked/League rejection title in all locales', () => {
+    for (const locale of ['en', 'pt-BR', 'es'] as const) {
+      const i18n = createI18n(locale);
+      for (const code of [
+        'league_out_of_period',
+        'league_unavailable',
+        'league_closed',
+        'league_friendly',
+        'ranked_nonmembers_accepted'
+      ]) {
+        expect(i18n.t(`matches.management.edit.rejection.${code}.title`)).not.toContain(
+          'rejection.'
+        );
+        expect(
+          i18n.t(`matches.management.edit.rejection.${code}.description`, { count: 1 })
+        ).not.toContain('rejection.');
+      }
+      for (const key of [
+        'leagueOutOfPeriod',
+        'leagueUnavailable',
+        'leagueClosed',
+        'leagueFriendly',
+        'rankedNonmembersAccepted'
+      ])
+        expect(i18n.t(`matches.management.errors.${key}`)).not.toContain('errors.');
+    }
   });
 });

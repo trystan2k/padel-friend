@@ -600,6 +600,7 @@
     "offline": "No tienes conexión. Vuelve a conectarte para guardar tus preferencias."
   },
   "matches": {
+    "competition": { "ranked": "Clasificatoria", "unranked": "Sin clasificación" },
     "addPlayer": {
       "action": "Añadir jugador",
       "title": "Añadir un jugador",
@@ -807,6 +808,16 @@
         "submit": "Enviar disputa",
         "submitting": "Enviando disputa…"
       },
+      "rankedBlocked": {
+        "title": "Aún no puede contar como Clasificatorio",
+        "reason": {
+          "membership": "Estos jugadores no eran miembros activos de la comunidad a la hora jugada: {{names}}.",
+          "out_of_period": "La hora jugada está fuera del periodo de la Liga.",
+          "league_invalid": "La Liga de este partido ya no es válida para resultados Clasificatorios."
+        },
+        "resolution": "Si la hora jugada se introdujo mal, corrígela. Un partido que realmente se jugó fuera de estas reglas no puede contar como Clasificatorio.",
+        "organizerOnly": "El organizador o un Admin de la comunidad debe corregir este resultado."
+      },
       "correctResult": "Corregir resultado",
       "correctTitle": "Corregir resultado",
       "correctSubmit": "Enviar corrección",
@@ -833,6 +844,9 @@
         "thirdSetAfterDecided": "Un tercer set completo requiere que los dos primeros estén empatados 1–1.",
         "activeProposal": "Ya hay otro resultado pendiente. Recarga para revisarlo; tu borrador no se ha enviado.",
         "idempotencyConflict": "Esta solicitud cambió. Recarga antes de volver a enviarla.",
+        "rankedMembership": "No todos los jugadores eran miembros activos de la comunidad a la hora jugada. Revisa la hora.",
+        "rankedOutOfPeriod": "La hora jugada está fuera del periodo de la Liga. Revisa la hora.",
+        "rankedLeagueInvalid": "La Liga de este partido ya no es válida para resultados Clasificatorios.",
         "invalidReview": "Revisa tu decisión y vuelve a intentarlo.",
         "invalidRejectionReason": "Elige un motivo de rechazo e incluye una nota cuando sea necesario.",
         "reviewForbidden": "Solo un jugador elegible de este grupo puede revisar este resultado.",
@@ -849,9 +863,23 @@
         "currentProposal": "El resultado actual es la versión {{version}} ({{status}}). Revísalo antes de realizar otra acción."
       }
     },
+    "leagueImpact": {
+      "title": "Impacto en el ranking",
+      "before": "Antes",
+      "after": "Después",
+      "skillIndependent": "El nivel global de habilidad es independiente de las Ligas: los partidos Competitivos Sin ranking siguen actualizándolo.",
+      "effect": {
+        "unchanged": "El ranking y la Liga siguen igual.",
+        "rankedToUnranked": "Este partido dejará de contar para la Liga.",
+        "unrankedToRanked": "Este partido contará para la Liga cuando los jugadores reconfirmen.",
+        "leagueSwitch": "Este partido contará para otra Liga.",
+        "noLongerCompetitive": "Este partido dejará de ser Competitivo y no tendrá Liga.",
+        "nowCompetitive": "Este partido pasará a ser Competitivo."
+      }
+    },
     "reconfirmation": {
       "title": "Reconfirma tu participación",
-      "description": "Los cambios de tipo u horario requieren que todos los jugadores aceptados, incluido el organizador, revisen y reconfirmen explícitamente. Mientras tanto, conservan plaza y orden, pero quedan fuera de los cuartetos.",
+      "description": "Los cambios de tipo de partido, hora de inicio, estado Clasificatorio o Liga exigen que todos los jugadores aceptados, incluido el organizador, reconfirmen. Hasta entonces conservan cupo y orden en la cola pero no se asignan a cuartetos.",
       "deadline": "Reconfirma antes de {{deadline}}.",
       "reviewTerms": "Revisar condiciones modificadas",
       "confirm": "Confirmo mi participación con estas condiciones",
@@ -881,7 +909,43 @@
         "reload": "Recargar detalles",
         "conflictHelper": "Resuelve este conflicto antes de guardar. Tu borrador no se ha descartado.",
         "reviewDraft": "Revisar mi borrador",
-        "saved": "Detalles del partido guardados."
+        "saved": "Detalles del partido guardados.",
+        "savedCarried": "Detalles del partido guardados. Los jugadores provisionales se mantuvieron automáticamente porque no pueden reconfirmar.",
+        "competitionConsent": "Los jugadores aceptados deben reconfirmar este cambio. Los jugadores provisionales se mantienen automáticamente.",
+        "competition": {
+          "loading": "Buscando Ligas elegibles…",
+          "unavailable": "No se pudieron cargar las Ligas elegibles. Reintenta o elige Sin clasificación.",
+          "rankedNoEligible": "Ninguna Liga Activa o Próxima cubre esta fecha. Cambia la fecha o elige Sin clasificación.",
+          "saveBlocked": "El guardado está en pausa hasta que carguen las Ligas elegibles. También puedes elegir Sin clasificación.",
+          "noEligible": "Ninguna Liga Activa o Próxima cubre esta fecha. El partido puede seguir Sin ranking.",
+          "members": "Los partidos Clasificatorios son solo para miembros activos de la comunidad."
+        },
+        "rejection": {
+          "adjustDate": "Elegir otra fecha",
+          "saveUnranked": "Guardar Sin ranking con la nueva fecha",
+          "keepUnranked": "Mantener Sin ranking",
+          "league_out_of_period": {
+            "title": "La nueva fecha está fuera del período de la Liga",
+            "description": "{{league}} va de {{period}}. Mueve el partido dentro de ese período o guárdalo Sin ranking con la nueva fecha. No se guardó nada y la Liga no cambió."
+          },
+          "league_unavailable": {
+            "title": "Liga no disponible",
+            "description": "La Liga seleccionada no se puede usar en este partido. Elige otra Liga o Sin ranking."
+          },
+          "league_closed": {
+            "title": "Liga ya cerrada",
+            "description": "Una Liga cerrada no se puede seleccionar de nuevo. Elige otra Liga o Sin ranking."
+          },
+          "league_friendly": {
+            "title": "Los partidos amistosos no tienen Liga",
+            "description": "Elige Competitivo para mantener una Liga o guarda el partido como Amistoso sin Liga."
+          },
+          "ranked_nonmembers_accepted": {
+            "title": "Resuelve primero a los jugadores no miembros",
+            "description_one": "{{count}} jugador aceptado no es miembro activo de la comunidad. Quítalo, haz que se retire o activa su membresía y luego cambia a Clasificatorio. No se cambió nada.",
+            "description_other": "{{count}} jugadores aceptados no son miembros activos de la comunidad. Quítalos, haz que se retiren o activa su membresía y luego cambia a Clasificatorio. No se cambió nada."
+          }
+        }
       },
       "organizerOnly": "Organizar y jugar son funciones distintas. Puedes organizar sin estar en la lista de jugadores.",
       "leaveKeepOrganizing": "Salir de la lista te mantiene como organizador. Transfiere la organización por separado si es necesario.",
@@ -932,7 +996,12 @@
         "forbidden": "No puedes realizar esta acción.",
         "invalid": "Revisa los datos e inténtalo de nuevo.",
         "unavailable": "No se pudo completar la acción. Inténtalo de nuevo.",
-        "versionConflict": "Este partido cambió. Actualiza e inténtalo de nuevo."
+        "versionConflict": "Este partido cambió. Actualiza e inténtalo de nuevo.",
+        "leagueOutOfPeriod": "La nueva fecha está fuera del período de la Liga. No se guardó nada.",
+        "leagueUnavailable": "La Liga seleccionada no está disponible.",
+        "leagueClosed": "La Liga seleccionada ya está cerrada.",
+        "leagueFriendly": "Los partidos amistosos no pueden pertenecer a una Liga.",
+        "rankedNonmembersAccepted": "Los jugadores aceptados que no son miembros activos deben resolverse antes de cambiar a Clasificatorio."
       }
     },
     "invitations": {
@@ -947,6 +1016,7 @@
       "expiresAt": "Responde antes de {{deadline}}.",
       "pendingApproval": "Invitación aceptada. Tu inscripción espera la aprobación del organizador.",
       "errors": {
+        "rankedMembersOnly": "Los partidos clasificatorios solo están abiertos a miembros activos de la comunidad.",
         "expired": "Esta invitación ha caducado.",
         "alreadyResolved": "Esta invitación ya se respondió. Actualiza para ver su estado.",
         "notFound": "Esta invitación no está disponible.",
@@ -1028,6 +1098,7 @@
       "unlimited": "Sin límite"
     },
     "detail": {
+      "rankedMembersOnly": "Este partido es Clasificatorio y solo está abierto a miembros activos de la comunidad.",
       "title": "Detalles del partido",
       "viewCourtLocation": "Ver ubicación de la cancha",
       "viewCourtLocationFor": "Ver ubicación de la cancha para {{venue}}",
@@ -1070,6 +1141,20 @@
     }
   },
   "matchCreate": {
+    "competition": {
+      "legend": "Competición",
+      "league": "Liga",
+      "choose": "Elige una Liga",
+      "members": "Los partidos clasificatorios son solo para miembros activos de la comunidad.",
+      "guidance": {
+        "scheduleFirst": "Elige fecha y hora de inicio para ver las Ligas en las que puede contar este partido.",
+        "unavailable": "Clasificatoria no está disponible hasta que carguen las Ligas elegibles. Reintenta o mantén el partido Sin clasificación.",
+        "loading": "Buscando Ligas elegibles…",
+        "noEligible": "Ninguna Liga Activa o Próxima cubre esta fecha, así que el partido queda sin clasificación.",
+        "defaultOne": "Una Liga cubre esta fecha, así que el partido es Clasificatorio en ella por defecto. Elige Sin clasificación para dejarlo fuera de la Liga.",
+        "chooseOne": "Varias Ligas cubren esta fecha. Elige la Liga de este partido o elige Sin clasificación."
+      }
+    },
     "title": "Crear partido",
     "subtitle": "Publica un partido de pádel e invita jugadores.",
     "noCommunities": "Únete a una comunidad para crear un partido.",
@@ -1142,6 +1227,9 @@
       "unavailable": "Foto no disponible."
     },
     "errors": {
+      "leagueOptionsUnavailable": "No se pudieron cargar las Ligas elegibles. Inténtalo de nuevo.",
+      "leagueRequired": "Elige una Liga o selecciona Sin clasificación antes de publicar.",
+      "leagueUnavailable": "La Liga seleccionada ya no está disponible para esta fecha. Revisa las Ligas y publica de nuevo.",
       "required": "Este campo es obligatorio.",
       "invalidInput": "Introduce un valor válido.",
       "invalidMapsUrl": "Introduce una URL válida de Google Maps.",
@@ -1304,6 +1392,7 @@
       "declineLabel": "Rechazar la solicitud de {{name}}"
     },
     "feedback": {
+      "rankedMembersOnly": "Los partidos clasificatorios solo están abiertos a miembros activos de la comunidad.",
       "accepted": "Tu lugar está confirmado.",
       "pending": "Solicitud enviada al organizador.",
       "approved": "Solicitud aprobada.",
@@ -1421,6 +1510,163 @@
       "invalid_request": "No se pudo solicitar esta información de rating.",
       "unavailable": "No se pudo cargar la información de rating. Inténtalo de nuevo.",
       "reload": "Recargar"
+    }
+  },
+  "leagues": {
+    "title": "Ligas",
+    "back": "Volver a Ligas",
+    "backToDashboard": "Volver al panel",
+    "loading": "Cargando Ligas…",
+    "errorTitle": "No se pudieron cargar las Ligas",
+    "deniedTitle": "Liga no disponible",
+    "retry": "Reintentar",
+    "communityContext": "{{community}} · una Liga activa a la vez",
+    "entries": {
+      "title": "Ligas",
+      "link": "Ligas de {{community}}"
+    },
+    "status": {
+      "upcoming": "Próxima",
+      "active": "Activa",
+      "closed": "Cerrada"
+    },
+    "blocked": {
+      "active_league_exists": "En espera: esta comunidad ya tiene una Liga activa.",
+      "explicit_activation_required": "Lista para empezar: el responsable o un Admin debe activarla."
+    },
+    "period": {
+      "fixed": "{{start}} → {{end}}",
+      "manual": "Desde {{start}} · sin fecha de fin"
+    },
+    "list": {
+      "create": "Crear Liga",
+      "creationDisabled": "La creación de Ligas está desactivada para los miembros de esta comunidad. Pide a un Admin que cree una.",
+      "empty": "Aún no hay Ligas.",
+      "emptyHint": "Crea una Liga para agrupar un periodo de partidos clasificatorios.",
+      "truncated": "Mostrando {{shown}} de {{total}} Ligas.",
+      "more": "Mostrar más Ligas",
+      "loading": "Cargando más Ligas…",
+      "complete": "Se muestran las {{total}} Ligas. Recarga para ver las más recientes.",
+      "moreError": "No se pudieron cargar más Ligas. Inténtalo de nuevo.",
+      "sections": {
+        "active": "Activa",
+        "upcoming": "Próximas",
+        "closed": "Cerradas"
+      }
+    },
+    "form": {
+      "title": "Crear una Liga",
+      "nameLabel": "Nombre de la Liga",
+      "namePlaceholder": "Liga de Otoño",
+      "descriptionLabel": "Descripción (opcional)",
+      "endModeLegend": "¿Cómo termina la Liga?",
+      "mode": {
+        "fixed_date": "Fecha de fin fija",
+        "fixed_dateHelp": "Termina automáticamente después del último día.",
+        "manual": "Sin fecha de fin · manual",
+        "manualHelp": "Sigue activa hasta que el responsable o un Admin la cierre."
+      },
+      "startDateLabel": "Fecha de inicio",
+      "endDateLabel": "Fecha de fin",
+      "endDateHelp": "El último día está incluido.",
+      "summaryFixed": "Empieza el {{start}} · Termina el {{end}}",
+      "summaryManual": "Empieza el {{start}} · Sin fecha de fin",
+      "periodLocked": "Las fechas ya no pueden cambiar porque esta Liga está cerrada o ya la usan partidos.",
+      "minimumLabel": "Mínimo de partidos para el premio final",
+      "minimumHelp": "Los jugadores necesitan al menos esta cantidad de partidos para optar al premio final.",
+      "submit": "Crear Liga",
+      "submitting": "Creando…",
+      "guidance": "La fecha de fin fija debe ser posterior a la de inicio. Solo una Liga activa por comunidad.",
+      "conflict": {
+        "title": "{{name}} · ACTIVA",
+        "body": "Esta comunidad ya tiene una Liga activa. Una Liga que empieza ahora no puede activarse mientras siga activa.",
+        "review": "Ver Liga activa"
+      },
+      "errors": {
+        "nameRequired": "Introduce un nombre para la Liga.",
+        "nameTooLong": "El nombre de la Liga debe tener 80 caracteres o menos.",
+        "descriptionTooLong": "La descripción debe tener 500 caracteres o menos.",
+        "startRequired": "Elige una fecha de inicio.",
+        "startInPast": "La fecha de inicio no puede estar en el pasado.",
+        "endRequired": "La fecha de fin fija requiere una fecha de fin.",
+        "endInPast": "La fecha de fin no puede estar en el pasado.",
+        "endNotAfterStart": "La fecha de fin debe ser posterior a la de inicio.",
+        "minimumInvalid": "Introduce un número entero del 1 al 100."
+      }
+    },
+    "counters": {
+      "title": "Participantes",
+      "matches": "Partidos",
+      "wins": "Victorias",
+      "draws": "Empates",
+      "losses": "Derrotas",
+      "setsWon": "Sets ganados",
+      "setsLost": "Sets perdidos",
+      "setDifferential": "Diferencia de sets",
+      "empty": "Aún no hay participantes.",
+      "unknownPlayer": "Jugador",
+      "unavailable": "No se pudieron cargar los contadores de los participantes. La Liga en sí no se ha visto afectada.",
+      "retry": "Reintentar",
+      "excluded_one": "1 grupo Clasificatorio confirmado quedó fuera porque ya no cumple las reglas Clasificatorias.",
+      "excluded_other": "{{count}} grupos Clasificatorios confirmados quedaron fuera porque ya no cumplen las reglas Clasificatorias."
+    },
+    "detail": {
+      "owner": "Responsable",
+      "ownerUnknown": "Desconocido",
+      "timezone": "Zona horaria",
+      "minimum": "Mínimo de partidos para el premio final",
+      "closed": "Cerrada",
+      "closedReason": {
+        "manual": "cerrada manualmente",
+        "fixed_end_reached": "fecha de fin alcanzada",
+        "expired_before_activation": "terminó antes de empezar"
+      },
+      "activate": "Activar Liga",
+      "activateHint": "Hay otra Liga activa. Ciérrala o espera a que termine y luego activa esta.",
+      "close": "Cerrar Liga",
+      "edit": "Editar Liga",
+      "save": "Guardar cambios",
+      "saving": "Guardando…",
+      "cancelEdit": "Cancelar",
+      "saved": "Cambios guardados.",
+      "activated": "Liga activada.",
+      "closedDone": "Liga cerrada.",
+      "closeConfirm": {
+        "title": "¿Cerrar {{name}}?",
+        "body": "La Liga termina ahora y no puede reabrirse. Queda registrado en su historial.",
+        "cancel": "Mantener abierta",
+        "confirm": "Cerrar Liga"
+      }
+    },
+    "errors": {
+      "UNAUTHENTICATED": "Inicia sesión para continuar.",
+      "LEAGUE_FORBIDDEN": "No puedes hacer eso en esta comunidad.",
+      "LEAGUE_CREATION_DISABLED": "La creación de Ligas está desactivada para los miembros. Pide a un Admin.",
+      "PROVISIONAL_PLAYER_RESTRICTED": "Reclama tu cuenta para gestionar Ligas.",
+      "LEAGUE_NOT_FOUND": "Esta Liga no existe o no puedes verla.",
+      "LEAGUE_NAME_INVALID": "Introduce un nombre de Liga de hasta 80 caracteres.",
+      "LEAGUE_DESCRIPTION_INVALID": "La descripción debe tener 500 caracteres o menos.",
+      "LEAGUE_MINIMUM_INVALID": "Introduce un número entero del 1 al 100.",
+      "LEAGUE_END_MODE_INVALID": "Elige cómo termina la Liga.",
+      "LEAGUE_START_DATE_INVALID": "Elige una fecha de inicio válida.",
+      "LEAGUE_START_IN_PAST": "La fecha de inicio no puede estar en el pasado.",
+      "LEAGUE_END_DATE_REQUIRED": "La fecha de fin fija requiere una fecha de fin.",
+      "LEAGUE_END_DATE_NOT_ALLOWED": "Una Liga sin fecha de fin no tiene fecha de fin.",
+      "LEAGUE_END_NOT_AFTER_START": "La fecha de fin debe ser posterior a la de inicio.",
+      "LEAGUE_END_IN_PAST": "La fecha de fin no puede estar en el pasado.",
+      "LEAGUE_CHANGES_INVALID": "Esos cambios no son válidos.",
+      "LEAGUE_INVALID_INPUT": "Esos datos no son válidos.",
+      "LEAGUE_INVALID_STATE": "Esta Liga no puede cambiar así ahora mismo.",
+      "LEAGUE_NOT_DUE": "Esta Liga aún no ha llegado a su fecha de inicio.",
+      "LEAGUE_ACTIVE_EXISTS": "Esta comunidad ya tiene una Liga activa. Ciérrala o espera a que termine.",
+      "LEAGUE_CLOSE_NOT_MANUAL": "Una Liga con fecha de fin fija se cierra sola el último día.",
+      "LEAGUE_PERIOD_LOCKED": "Las fechas no pueden cambiar porque ya hay partidos que usan esta Liga.",
+      "LEAGUE_START_LOCKED": "La fecha de inicio no puede cambiar una vez que la Liga ha empezado.",
+      "LEAGUE_VERSION_CONFLICT": "Esta Liga cambió mientras tanto. La hemos recargado; revísala e inténtalo de nuevo.",
+      "LEAGUE_REQUEST_CONFLICT": "Esta solicitud ya se usó con otros datos. Revisa y envía de nuevo.",
+      "LEAGUE_UNAVAILABLE": "Algo salió mal. Inténtalo de nuevo.",
+      "INVALID_LEAGUE_INPUT": "Esos datos no son válidos.",
+      "INVALID_LEAGUE_RESPONSE": "Algo salió mal. Inténtalo de nuevo."
     }
   }
 }

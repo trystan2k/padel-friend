@@ -1,4 +1,11 @@
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import {
+  createRankedResultFixtures,
+  playedAt,
+  rankedKitEnv,
+  setMembershipHistory,
+  type RankedResultKit
+} from './helpers/ranked-result-fixtures';
 import { dotEnvPathFromImportMetaUrl, localSupabaseEnv } from './helpers/local-supabase-env';
 import { asRecord, fixtureSql, sqlRows } from './helpers/match-registration-sql';
 import { scoringCases } from './helpers/match-result-scoring-cases';
@@ -365,3 +372,53 @@ describe('atomic corrected result versions', { timeout: 120000 }, () => {
     }
   });
 });
+
+describe.skipIf(!rankedKitEnv(import.meta.url))(
+  'Ranked eligibility on correction (U4)',
+  { timeout: 60000 },
+  () => {
+    let kit: RankedResultKit;
+    beforeAll(async () => {
+      kit = await createRankedResultFixtures(rankedKitEnv(import.meta.url)!);
+    });
+    afterAll(async () => {
+      if (kit) await kit.cleanup();
+    });
+    beforeEach(async () => {
+      await kit.resetMemberships();
+    });
+
+    it('rejects a correction that moves play before a participant joined and keeps the active version', async () => {
+      const eventId = await kit.event(await kit.league());
+      const target = kit.players[3]!;
+      await setMembershipHistory(kit.communityId, target.id, [
+        { activatedAt: new Date(Date.now() - 3_600_000).toISOString() }
+      ]);
+      const submitted = await kit.submit(eventId, playedAt(1_800).played);
+      expect(submitted.error).toBeNull();
+      const proposalId = await kit.proposalId(eventId);
+      const before = await kit.sideEffects(eventId);
+
+      const earlier = await kit.correct(proposalId, 1, playedAt(7_200).played);
+      expect(earlier.error?.message).toBe('MATCH_RESULT_RANKED_MEMBERSHIP');
+      expect(await kit.sideEffects(eventId)).toEqual(before);
+      const [pointer] = await sqlRows(
+        `select active_version::int as version, status from public.match_event_result_proposals where id='${proposalId}'`
+      );
+      expect(pointer).toEqual({ version: 1, status: 'pending' });
+
+      // A truthful correction inside the membership interval is the resolution.
+      const later = await kit.correct(proposalId, 1, playedAt(900).played);
+      expect(later.data).toMatchObject({ version: 2, status: 'pending' });
+    });
+
+    it('leaves Unranked corrections free of League and membership checks', async () => {
+      const eventId = await kit.event(null);
+      const target = kit.players[3]!;
+      expect((await kit.submit(eventId, playedAt(1_800).played)).error).toBeNull();
+      await setMembershipHistory(kit.communityId, target.id, [{ activatedAt: null }]);
+      const corrected = await kit.correct(await kit.proposalId(eventId), 1, playedAt(7_200).played);
+      expect(corrected.data).toMatchObject({ version: 2 });
+    });
+  }
+);

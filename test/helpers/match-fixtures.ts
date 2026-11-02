@@ -6,6 +6,7 @@ import type {
   MatchEventRpcDetail,
   MatchEventRpcListRow,
   MatchInvitee,
+  MatchLeagueOption,
   MatchPublishInput
 } from '../../src/features/matches/match-contracts';
 
@@ -83,6 +84,9 @@ const projection = {
   starts_at: '2030-06-15T18:00:00.000Z',
   timezone: 'Europe/Madrid',
   event_type: 'friendly',
+  competition_status: null,
+  league_id: null,
+  league_name: null,
   visibility: 'community_open',
   team_assignment_mode: 'POST_MATCH_TEAMS',
   venue_name: 'Central Courts',
@@ -163,6 +167,8 @@ export function makeMatchCreationOptions(
 export function makeMatchDraft(overrides: Partial<MatchDraft> = {}): MatchDraft {
   const defaults = {
     type: 'friendly',
+    competitionChoice: 'auto',
+    leagueId: '',
     visibility: 'community_open',
     teamMode: 'POST_MATCH_TEAMS',
     currency: 'EUR',
@@ -186,6 +192,22 @@ export function makeMatchDraft(overrides: Partial<MatchDraft> = {}): MatchDraft 
     cutoff: ''
   } satisfies MatchDraft;
   return { ...defaults, ...overrides };
+}
+export function makeMatchLeagueOption(
+  overrides: Partial<MatchLeagueOption> = {}
+): MatchLeagueOption {
+  return {
+    id: '44444444-4444-4444-8444-444444444444',
+    name: 'Spring League',
+    status: 'active',
+    end_mode: 'fixed_date',
+    timezone: 'Europe/Madrid',
+    start_at: '2030-05-31T22:00:00.000000Z',
+    end_at: '2030-07-31T21:59:59.999999Z',
+    start_date: '2030-06-01',
+    end_date: '2030-07-31',
+    ...overrides
+  };
 }
 export function makeMatchInvitee(overrides: Partial<MatchInvitee> = {}): MatchInvitee {
   return {

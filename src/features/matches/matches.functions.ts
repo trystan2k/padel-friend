@@ -9,11 +9,13 @@ import type {
   MatchEventDetail,
   MatchEventListResult,
   MatchEventRpcListRow,
-  MatchInvitee
+  MatchInvitee,
+  MatchLeagueOptions
 } from './match-contracts';
 import {
   decodeMatchCreationOptions,
   decodeMatchInvitees,
+  decodeMatchLeagueOptions,
   decodeMatchRpcDetail,
   decodeMatchRpcListRows,
   signedMatchDetail
@@ -22,6 +24,7 @@ import { matchesMatchPhotoMagicBytes, validateMatchPhotoKey } from './match-phot
 import {
   validateMatchDetail,
   validateMatchInviteSearch,
+  validateMatchLeagueOptions,
   validateMatchList,
   validateMatchOptions,
   validatePublishMatch
@@ -73,6 +76,22 @@ export const getMatchCreationOptions = createServerFn({ method: 'GET' })
       return decodeMatchCreationOptions(result);
     } catch {
       throw new Error('MATCH_OPTIONS_UNAVAILABLE');
+    }
+  });
+export const getMatchLeagueOptions = createServerFn({ method: 'GET' })
+  .validator(validateMatchLeagueOptions)
+  .handler(async ({ data }): Promise<MatchLeagueOptions> => {
+    const { client } = await authenticatedClient();
+    const { data: result, error } = await client.rpc('list_match_league_options', {
+      p_community_id: data.community_id,
+      p_date: data.date,
+      p_start_time: data.start_time
+    });
+    if (error) throw new Error('MATCH_LEAGUE_OPTIONS_UNAVAILABLE');
+    try {
+      return decodeMatchLeagueOptions(result);
+    } catch {
+      throw new Error('MATCH_LEAGUE_OPTIONS_UNAVAILABLE');
     }
   });
 export const searchMatchInvitees = createServerFn({ method: 'GET' })
@@ -207,7 +226,14 @@ export const publishMatchEvent = createServerFn({ method: 'POST' })
       p_input: data.input,
       p_invitee_ids: data.invitee_ids
     });
+    // Stable League tokens (stale candidate, closed, out of period, ...) reach the form unchanged.
+    const leagueToken = error?.message.match(/^MATCH_LEAGUE_[A-Z_]+$/)?.[0];
+    if (leagueToken) throw new Error(leagueToken);
     if (error || !id)
-      throw new Error(error?.code === '23505' ? 'MATCH_CONFLICT' : 'MATCH_PUBLISH_FAILED');
+      throw new Error(
+        error?.code === '23505' || error?.message === 'MATCH_CONFLICT'
+          ? 'MATCH_CONFLICT'
+          : 'MATCH_PUBLISH_FAILED'
+      );
     return { event_id: id };
   });

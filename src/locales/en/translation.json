@@ -600,6 +600,7 @@
     "offline": "You are offline. Reconnect to save your preferences."
   },
   "matches": {
+    "competition": { "ranked": "Ranked", "unranked": "Unranked" },
     "addPlayer": {
       "action": "Add player",
       "title": "Add a player",
@@ -807,6 +808,16 @@
         "submit": "Submit dispute",
         "submitting": "Submitting dispute…"
       },
+      "rankedBlocked": {
+        "title": "Can't count as Ranked yet",
+        "reason": {
+          "membership": "These players were not active community members at the played time: {{names}}.",
+          "out_of_period": "The played time is outside the League period.",
+          "league_invalid": "The League for this match is no longer valid for Ranked results."
+        },
+        "resolution": "If the played time was entered wrongly, correct it. Play that really happened outside these rules can't be counted as Ranked.",
+        "organizerOnly": "The organizer or a community Admin must correct this result."
+      },
       "correctResult": "Correct result",
       "correctTitle": "Correct result",
       "correctSubmit": "Submit correction",
@@ -833,6 +844,9 @@
         "thirdSetAfterDecided": "A completed third set requires the first two sets to be split 1–1.",
         "activeProposal": "Another result is already pending. Reload to review it; your draft was not submitted.",
         "idempotencyConflict": "This request changed. Reload before submitting again.",
+        "rankedMembership": "Not all of these players were active community members at the played time. Check the played time.",
+        "rankedOutOfPeriod": "The played time is outside the League period. Check the played time.",
+        "rankedLeagueInvalid": "The League for this match is no longer valid for Ranked results.",
         "invalidReview": "Check your review decision and try again.",
         "invalidRejectionReason": "Choose a rejection reason and provide a note when required.",
         "reviewForbidden": "Only an eligible player in this group may review this result.",
@@ -849,9 +863,23 @@
         "currentProposal": "Current result is version {{version}} ({{status}}). Review it before taking another action."
       }
     },
+    "leagueImpact": {
+      "title": "Ranking impact",
+      "before": "Before",
+      "after": "After",
+      "skillIndependent": "Global skill rating is independent of Leagues: Unranked Competitive matches still update it.",
+      "effect": {
+        "unchanged": "Ranking and League stay the same.",
+        "rankedToUnranked": "This match will stop counting for the League.",
+        "unrankedToRanked": "This match will count for the League once players reconfirm.",
+        "leagueSwitch": "This match will count for a different League.",
+        "noLongerCompetitive": "This match will no longer be Competitive, so it has no League.",
+        "nowCompetitive": "This match will become Competitive."
+      }
+    },
     "reconfirmation": {
       "title": "Reconfirm participation",
-      "description": "Changes to match type or start time require every accepted player, including the organizer, to review and explicitly reconfirm. Until then, players keep capacity and queue order but are not assigned to quartets.",
+      "description": "Changes to match type, start time, Ranked status, or League require every accepted player, including the organizer, to reconfirm. Until then, they keep capacity and queue order but are not assigned to quartets.",
       "deadline": "Reconfirm by {{deadline}}.",
       "reviewTerms": "Review changed terms",
       "confirm": "I confirm participation under these terms",
@@ -881,7 +909,43 @@
         "reload": "Reload details",
         "conflictHelper": "Resolve this conflict before saving. Your draft has not been discarded.",
         "reviewDraft": "Review my draft",
-        "saved": "Match details saved."
+        "saved": "Match details saved.",
+        "savedCarried": "Match details saved. Provisional players were carried over automatically because they cannot reconfirm.",
+        "competitionConsent": "Accepted players must reconfirm this change. Provisional players carry over automatically.",
+        "competition": {
+          "loading": "Looking for eligible Leagues…",
+          "unavailable": "Eligible Leagues could not be loaded. Retry, or choose Unranked.",
+          "rankedNoEligible": "No Active or Upcoming League covers this date. Change the date, or choose Unranked.",
+          "saveBlocked": "Saving is paused until the eligible Leagues load. You can also choose Unranked.",
+          "noEligible": "No Active or Upcoming League covers this date. The match can stay Unranked.",
+          "members": "Ranked matches are for active community members only."
+        },
+        "rejection": {
+          "adjustDate": "Choose another date",
+          "saveUnranked": "Save as Unranked with the new date",
+          "keepUnranked": "Keep it Unranked",
+          "league_out_of_period": {
+            "title": "The new date is outside the League period",
+            "description": "{{league}} runs {{period}}. Move the match inside that period, or save it as Unranked with the new date. Nothing was saved and the League was not changed."
+          },
+          "league_unavailable": {
+            "title": "League not available",
+            "description": "The selected League cannot be used for this match. Choose another League or Unranked."
+          },
+          "league_closed": {
+            "title": "League already closed",
+            "description": "A closed League cannot be newly selected. Choose another League or Unranked."
+          },
+          "league_friendly": {
+            "title": "Friendly matches have no League",
+            "description": "Choose Competitive to keep a League, or save this match as Friendly without one."
+          },
+          "ranked_nonmembers_accepted": {
+            "title": "Resolve non-member players first",
+            "description_one": "{{count}} accepted player is not an active community member. Remove or withdraw them, or activate their membership, then switch to Ranked. Nothing was changed.",
+            "description_other": "{{count}} accepted players are not active community members. Remove or withdraw them, or activate their membership, then switch to Ranked. Nothing was changed."
+          }
+        }
       },
       "organizerOnly": "Organizing and playing are separate. You can organize without a place on the roster.",
       "leaveKeepOrganizing": "Leaving the roster keeps you as organizer. Transfer organization separately if needed.",
@@ -932,7 +996,12 @@
         "forbidden": "You cannot perform this action.",
         "invalid": "Check your input and try again.",
         "unavailable": "Could not complete the action. Try again.",
-        "versionConflict": "This match changed. Refresh and try again."
+        "versionConflict": "This match changed. Refresh and try again.",
+        "leagueOutOfPeriod": "The new date is outside the League period. Nothing was saved.",
+        "leagueUnavailable": "The selected League is not available.",
+        "leagueClosed": "The selected League is already closed.",
+        "leagueFriendly": "Friendly matches cannot belong to a League.",
+        "rankedNonmembersAccepted": "Accepted players who are not active members must be resolved before switching to Ranked."
       }
     },
     "invitations": {
@@ -947,6 +1016,7 @@
       "expiresAt": "Respond before {{deadline}}.",
       "pendingApproval": "Invitation accepted. Your registration awaits organizer approval.",
       "errors": {
+        "rankedMembersOnly": "Ranked matches are only open to active community members.",
         "expired": "This invitation has expired.",
         "alreadyResolved": "This invitation was already answered. Refresh to see its state.",
         "notFound": "This invitation is unavailable.",
@@ -1028,6 +1098,7 @@
       "unlimited": "Unlimited"
     },
     "detail": {
+      "rankedMembersOnly": "This match is Ranked and only open to active community members.",
       "title": "Match details",
       "viewCourtLocation": "View court location",
       "viewCourtLocationFor": "View court location for {{venue}}",
@@ -1070,6 +1141,20 @@
     }
   },
   "matchCreate": {
+    "competition": {
+      "legend": "Competition",
+      "league": "League",
+      "choose": "Choose a League",
+      "members": "Ranked matches are for active community members only.",
+      "guidance": {
+        "scheduleFirst": "Pick a date and start time to see the Leagues this match can count for.",
+        "unavailable": "Ranked is unavailable until the eligible Leagues load. Retry, or keep the match Unranked.",
+        "loading": "Looking for eligible Leagues…",
+        "noEligible": "No Active or Upcoming League covers this date, so the match is Unranked.",
+        "defaultOne": "One League covers this date, so the match defaults to Ranked in it. Choose Unranked to keep it out of the League.",
+        "chooseOne": "Several Leagues cover this date. Choose the League for this match or choose Unranked."
+      }
+    },
     "title": "Create match",
     "subtitle": "Publish a padel match and invite players.",
     "noCommunities": "Join a community before creating a match.",
@@ -1142,6 +1227,9 @@
       "unavailable": "Photo unavailable."
     },
     "errors": {
+      "leagueOptionsUnavailable": "Eligible Leagues could not be loaded. Try again.",
+      "leagueRequired": "Choose a League or select Unranked before publishing.",
+      "leagueUnavailable": "The selected League is no longer available for this date. Review the Leagues and publish again.",
       "required": "This field is required.",
       "invalidInput": "Enter a valid value.",
       "invalidMapsUrl": "Enter a valid Google Maps URL.",
@@ -1304,6 +1392,7 @@
       "declineLabel": "Decline request from {{name}}"
     },
     "feedback": {
+      "rankedMembersOnly": "Ranked matches are only open to active community members.",
       "accepted": "Your place is confirmed.",
       "pending": "Request sent to the organizer.",
       "approved": "Request approved.",
@@ -1421,6 +1510,163 @@
       "invalid_request": "This rating information could not be requested.",
       "unavailable": "Couldn't load rating information. Try again.",
       "reload": "Reload"
+    }
+  },
+  "leagues": {
+    "title": "Leagues",
+    "back": "Back to Leagues",
+    "backToDashboard": "Back to dashboard",
+    "loading": "Loading Leagues…",
+    "errorTitle": "Couldn't load Leagues",
+    "deniedTitle": "League not available",
+    "retry": "Try again",
+    "communityContext": "{{community}} · one active League at a time",
+    "entries": {
+      "title": "Leagues",
+      "link": "Leagues in {{community}}"
+    },
+    "status": {
+      "upcoming": "Upcoming",
+      "active": "Active",
+      "closed": "Closed"
+    },
+    "blocked": {
+      "active_league_exists": "Waiting: this community already has an Active League.",
+      "explicit_activation_required": "Ready to start: an owner or Admin must activate it."
+    },
+    "period": {
+      "fixed": "{{start}} → {{end}}",
+      "manual": "From {{start}} · no end date"
+    },
+    "list": {
+      "create": "Create League",
+      "creationDisabled": "League creation is turned off for members in this community. Ask an Admin to create one.",
+      "empty": "No Leagues yet.",
+      "emptyHint": "Create a League to group a period of ranked matches.",
+      "truncated": "Showing {{shown}} of {{total}} Leagues.",
+      "more": "Show more Leagues",
+      "loading": "Loading more Leagues…",
+      "complete": "All {{total}} Leagues are shown. Reload to check for newer ones.",
+      "moreError": "More Leagues could not be loaded. Try again.",
+      "sections": {
+        "active": "Active",
+        "upcoming": "Upcoming",
+        "closed": "Closed"
+      }
+    },
+    "form": {
+      "title": "Create a League",
+      "nameLabel": "League name",
+      "namePlaceholder": "Autumn League",
+      "descriptionLabel": "Description (optional)",
+      "endModeLegend": "How does the League end?",
+      "mode": {
+        "fixed_date": "Fixed end date",
+        "fixed_dateHelp": "Ends automatically after the last day.",
+        "manual": "Open-ended · manual",
+        "manualHelp": "Stays active until an owner or Admin closes it."
+      },
+      "startDateLabel": "Start date",
+      "endDateLabel": "End date",
+      "endDateHelp": "The last day is included.",
+      "summaryFixed": "Starts {{start}} · Ends {{end}}",
+      "summaryManual": "Starts {{start}} · No end date",
+      "periodLocked": "Dates can no longer change because this League is closed or already used by matches.",
+      "minimumLabel": "Minimum matches for final award",
+      "minimumHelp": "Players need at least this many matches to qualify for the final award.",
+      "submit": "Create League",
+      "submitting": "Creating…",
+      "guidance": "Fixed End Date must follow start date. Only one Active League per community.",
+      "conflict": {
+        "title": "{{name}} · ACTIVE",
+        "body": "This community already has one Active League. A League starting now cannot activate while it remains Active.",
+        "review": "Review Active League"
+      },
+      "errors": {
+        "nameRequired": "Enter a League name.",
+        "nameTooLong": "The League name must be 80 characters or fewer.",
+        "descriptionTooLong": "The description must be 500 characters or fewer.",
+        "startRequired": "Choose a start date.",
+        "startInPast": "The start date cannot be in the past.",
+        "endRequired": "Fixed End Date requires an end date.",
+        "endInPast": "The end date cannot be in the past.",
+        "endNotAfterStart": "End date must be later than start date.",
+        "minimumInvalid": "Enter a whole number from 1 to 100."
+      }
+    },
+    "counters": {
+      "title": "Participants",
+      "matches": "Matches",
+      "wins": "Wins",
+      "draws": "Draws",
+      "losses": "Losses",
+      "setsWon": "Sets won",
+      "setsLost": "Sets lost",
+      "setDifferential": "Set difference",
+      "empty": "No participants yet.",
+      "unknownPlayer": "Player",
+      "unavailable": "Participant counters could not be loaded. The League itself is unaffected.",
+      "retry": "Retry",
+      "excluded_one": "1 confirmed Ranked group was left out because it no longer meets the Ranked rules.",
+      "excluded_other": "{{count}} confirmed Ranked groups were left out because they no longer meet the Ranked rules."
+    },
+    "detail": {
+      "owner": "Owner",
+      "ownerUnknown": "Unknown",
+      "timezone": "Time zone",
+      "minimum": "Minimum matches for final award",
+      "closed": "Closed",
+      "closedReason": {
+        "manual": "closed manually",
+        "fixed_end_reached": "end date reached",
+        "expired_before_activation": "ended before it started"
+      },
+      "activate": "Activate League",
+      "activateHint": "Another League is Active. Close it or wait until it ends, then activate this one.",
+      "close": "Close League",
+      "edit": "Edit League",
+      "save": "Save changes",
+      "saving": "Saving…",
+      "cancelEdit": "Cancel",
+      "saved": "Changes saved.",
+      "activated": "League activated.",
+      "closedDone": "League closed.",
+      "closeConfirm": {
+        "title": "Close {{name}}?",
+        "body": "The League ends now and cannot be reopened. This is recorded in its history.",
+        "cancel": "Keep open",
+        "confirm": "Close League"
+      }
+    },
+    "errors": {
+      "UNAUTHENTICATED": "Sign in to continue.",
+      "LEAGUE_FORBIDDEN": "You can't do that in this community.",
+      "LEAGUE_CREATION_DISABLED": "League creation is turned off for members. Ask an Admin.",
+      "PROVISIONAL_PLAYER_RESTRICTED": "Claim your account to manage Leagues.",
+      "LEAGUE_NOT_FOUND": "This League doesn't exist or you can't see it.",
+      "LEAGUE_NAME_INVALID": "Enter a League name of up to 80 characters.",
+      "LEAGUE_DESCRIPTION_INVALID": "The description must be 500 characters or fewer.",
+      "LEAGUE_MINIMUM_INVALID": "Enter a whole number from 1 to 100.",
+      "LEAGUE_END_MODE_INVALID": "Choose how the League ends.",
+      "LEAGUE_START_DATE_INVALID": "Choose a valid start date.",
+      "LEAGUE_START_IN_PAST": "The start date cannot be in the past.",
+      "LEAGUE_END_DATE_REQUIRED": "Fixed End Date requires an end date.",
+      "LEAGUE_END_DATE_NOT_ALLOWED": "An open-ended League has no end date.",
+      "LEAGUE_END_NOT_AFTER_START": "End date must be later than start date.",
+      "LEAGUE_END_IN_PAST": "The end date cannot be in the past.",
+      "LEAGUE_CHANGES_INVALID": "Those changes aren't valid.",
+      "LEAGUE_INVALID_INPUT": "Those details aren't valid.",
+      "LEAGUE_INVALID_STATE": "This League can't change that way right now.",
+      "LEAGUE_NOT_DUE": "This League hasn't reached its start date yet.",
+      "LEAGUE_ACTIVE_EXISTS": "This community already has one Active League. Close it or wait until it ends.",
+      "LEAGUE_CLOSE_NOT_MANUAL": "A League with a fixed end date closes by itself on its last day.",
+      "LEAGUE_PERIOD_LOCKED": "Dates can't change because matches already use this League.",
+      "LEAGUE_START_LOCKED": "The start date can't change after the League has started.",
+      "LEAGUE_VERSION_CONFLICT": "This League changed in the meantime. We reloaded it; review it and try again.",
+      "LEAGUE_REQUEST_CONFLICT": "This request was already used with different details. Review and submit again.",
+      "LEAGUE_UNAVAILABLE": "Something went wrong. Try again.",
+      "INVALID_LEAGUE_INPUT": "Those details aren't valid.",
+      "INVALID_LEAGUE_RESPONSE": "Something went wrong. Try again."
     }
   }
 }

@@ -4,16 +4,19 @@ import { useEffect, useState } from 'react';
 import { signUnattachedMatchPhotoFn } from './match-photo.functions';
 import { createMatchStyles as s } from './create-match.styles';
 import type { MatchDraft } from './match-contracts';
+import { formatMatchLeaguePeriod, type MatchCompetitionResolution } from './match-league-selection';
 
 type ReviewValue = MatchDraft & { timezone: string; cutoffInstant: string };
 export function MatchReview({
   value,
   photo,
-  count
+  count,
+  competition
 }: {
   value: ReviewValue;
   photo: string;
   count: number;
+  competition: MatchCompetitionResolution;
 }) {
   const { t, i18n } = useTranslation();
   const [preview, setPreview] = useState<{ key: string; url: string } | null>(null);
@@ -49,6 +52,13 @@ export function MatchReview({
         </p>
         <p>{value.venueName}</p>
         <p>{t(`matches.type.${value.type}`)}</p>
+        {value.type === 'competitive' && (
+          <p>
+            {competition.competition === 'ranked' && competition.league
+              ? `${t('matches.competition.ranked')} · ${competition.league.name} · ${formatMatchLeaguePeriod(competition.league, i18n.language)}`
+              : t('matches.competition.unranked')}
+          </p>
+        )}
         <p>{t(`matches.visibility.${value.visibility}`)}</p>
         <p>
           {!value.levelRestriction

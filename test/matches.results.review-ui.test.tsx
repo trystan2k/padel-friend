@@ -490,4 +490,64 @@ describe('result lifecycle review UI', () => {
     expect(mocks.review).toHaveBeenCalledTimes(1);
     await act(async () => resolve(receipt()));
   });
+
+  describe('Ranked blocked state', () => {
+    const blocked = { reason: 'membership', user_ids: [resultIds[2]] };
+
+    it('explains who is ineligible, hides approval and offers the correction to the organizer', () => {
+      mount(
+        makeProposal({
+          ranked_blocked: blocked,
+          can_correct: true,
+          can_approve: false,
+          can_reject: true
+        })
+      );
+      const notice = screen.getByRole('region', { name: "Can't count as Ranked yet" });
+      expect(notice.textContent).toContain('were not active community members');
+      expect(within(notice).getByRole('link', { name: 'Correct result' })).toBeTruthy();
+      expect(screen.queryByRole('button', { name: 'Approve' })).toBeNull();
+    });
+
+    it('tells other participants who must resolve it, without a correction link', () => {
+      mount(makeProposal({ ranked_blocked: { reason: 'out_of_period', user_ids: [] } }));
+      const notice = screen.getByRole('region', { name: "Can't count as Ranked yet" });
+      expect(notice.textContent).toContain('outside the League period');
+      expect(notice.textContent).toContain('organizer or a community Admin');
+      expect(within(notice).queryByRole('link')).toBeNull();
+    });
+
+    it('stays visible in the compact multi-group card', () => {
+      mount(makeProposal({ ranked_blocked: blocked, can_correct: true }), vi.fn(), true);
+      const notice = screen.getByRole('region', { name: "Can't count as Ranked yet" });
+      expect(within(notice).getByRole('link', { name: 'Correct result' })).toBeTruthy();
+    });
+
+    it('renders nothing for an eligible proposal', () => {
+      mount();
+      expect(screen.queryByRole('region', { name: "Can't count as Ranked yet" })).toBeNull();
+    });
+
+    it('is translated in pt-BR and es', () => {
+      const proposal = makeProposal({ ranked_blocked: blocked, can_correct: true });
+      for (const [locale, title] of [
+        ['pt-BR', 'Ainda não pode valer como Ranqueado'],
+        ['es', 'Aún no puede contar como Clasificatorio']
+      ] as const) {
+        const view = render(
+          <I18nextProvider i18n={createI18n(locale)}>
+            <MatchResultReview
+              eventId={proposal.event_id}
+              proposal={proposal}
+              timezone="UTC"
+              asOf={resultProposal.submitted_at}
+              onRefresh={vi.fn<() => void>()}
+            />
+          </I18nextProvider>
+        );
+        expect(screen.getByRole('region', { name: title })).toBeTruthy();
+        view.unmount();
+      }
+    });
+  });
 });

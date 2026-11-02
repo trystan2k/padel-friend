@@ -80,7 +80,8 @@ describe('management server functions', () => {
         changed: true,
         change_kind: 'minor',
         changed_fields: ['notes'],
-        reconfirmation_generation: 0
+        reconfirmation_generation: 0,
+        carried_count: 0
       }
     });
     expect(mocks.rpc).toHaveBeenLastCalledWith('edit_match_event', {
@@ -94,6 +95,91 @@ describe('management server functions', () => {
       error: null
     });
     await expect(editMatchEvent(input)).rejects.toThrow('UNAUTHENTICATED');
+  });
+  it('decodes Ranked/League edit results and typed repair rejections', async () => {
+    const league = '22222222-2222-4222-8222-222222222222';
+    mocks.rpc.mockResolvedValue({
+      data: {
+        event_id: id,
+        request_id: id,
+        version: 3,
+        transition_revision: 3,
+        changed: true,
+        replayed: false,
+        change_kind: 'major',
+        changed_fields: ['league_id'],
+        reconfirmation_generation: 1,
+        carried_count: 2
+      },
+      error: null
+    });
+    expect(
+      await editMatchEvent({
+        data: { event_id: id, expected_version: 2, request_id: id, patch: { league_id: league } }
+      })
+    ).toMatchObject({
+      status: 'ok',
+      value: { change_kind: 'major', changed_fields: ['league_id'], carried_count: 2 }
+    });
+    expect(mocks.rpc).toHaveBeenLastCalledWith(
+      'edit_match_event',
+      expect.objectContaining({ p_patch: { league_id: league } })
+    );
+    mocks.rpc.mockResolvedValue({
+      data: null,
+      error: {
+        code: 'P0001',
+        message: 'MATCH_MANAGEMENT_LEAGUE_OUT_OF_PERIOD',
+        details: JSON.stringify({
+          league: {
+            competition_status: 'ranked',
+            league_id: league,
+            league_name: 'Winter',
+            league_start_at: '2030-01-01T00:00:00.000Z',
+            league_end_at: '2030-02-01T00:00:00.000Z',
+            league_timezone: 'UTC'
+          }
+        })
+      }
+    });
+    expect(
+      await editMatchEvent({
+        data: { event_id: id, expected_version: 2, request_id: id, patch: { league_id: league } }
+      })
+    ).toMatchObject({
+      status: 'error',
+      code: 'league_out_of_period',
+      detail: { league: { league_name: 'Winter', league_timezone: 'UTC' } }
+    });
+    mocks.rpc.mockResolvedValue({
+      data: null,
+      error: {
+        code: 'P0001',
+        message: 'MATCH_MANAGEMENT_RANKED_NONMEMBERS_ACCEPTED',
+        details: '{"accepted_nonmember_count":2}'
+      }
+    });
+    expect(
+      await editMatchEvent({
+        data: { event_id: id, expected_version: 2, request_id: id, patch: { league_id: league } }
+      })
+    ).toEqual({
+      status: 'error',
+      code: 'ranked_nonmembers_accepted',
+      detail: { accepted_nonmember_count: 2 }
+    });
+    mocks.rpc.mockResolvedValue({
+      data: null,
+      error: { code: 'P0001', message: 'MATCH_MANAGEMENT_LEAGUE_CLOSED', details: 'garbage' }
+    });
+    expect(
+      await editMatchEvent({
+        data: { event_id: id, expected_version: 2, request_id: id, patch: { league_id: league } }
+      })
+    ).toEqual({
+      status: 'error',
+      code: 'league_closed'
+    });
   });
   it('decodes structured version conflicts without accepting private fields or overwriting', async () => {
     mocks.rpc.mockResolvedValue({

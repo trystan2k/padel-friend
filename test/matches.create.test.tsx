@@ -11,6 +11,7 @@ import es from '../src/locales/es/translation.json';
 
 const mocks = vi.hoisted(() => ({
   options: vi.fn<(...args: any[]) => Promise<any>>(),
+  leagues: vi.fn<(...args: any[]) => Promise<any>>(),
   search: vi.fn<(...args: any[]) => Promise<any>>(),
   publish:
     vi.fn<
@@ -32,6 +33,7 @@ vi.mock('@tanstack/react-router', async (original) => ({
 }));
 vi.mock('../src/features/matches/matches.functions', () => ({
   getMatchCreationOptions: mocks.options,
+  getMatchLeagueOptions: mocks.leagues,
   searchMatchInvitees: mocks.search,
   publishMatchEvent: mocks.publish
 }));
@@ -154,6 +156,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   uploadedKeys.length = 0;
   mocks.options.mockResolvedValue(options());
+  mocks.leagues.mockResolvedValue({ starts_at: '2030-05-20T16:30:00.000000Z', leagues: [] });
   mocks.search.mockResolvedValue([]);
   mocks.publish.mockResolvedValue({ event_id: 'match-id' });
   mocks.upload.mockResolvedValue('staged/photo.png');

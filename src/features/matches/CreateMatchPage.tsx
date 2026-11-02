@@ -14,13 +14,25 @@ import type {
   MatchCreationOptions,
   MatchDraft,
   MatchInvitee,
+  MatchLeagueOption,
   MatchPublishInput
 } from './match-contracts';
-import { getMatchCreationOptions, publishMatchEvent } from './matches.functions';
+import {
+  matchCompetitionInput,
+  resolveMatchCompetition,
+  type MatchLeagueOptionsStatus
+} from './match-league-selection';
+import {
+  getMatchCreationOptions,
+  getMatchLeagueOptions,
+  publishMatchEvent
+} from './matches.functions';
 import { copySavedVenueMatchPhotoFn, removeUnpublishedMatchPhotoFn } from './match-photo.functions';
 
 const blank: MatchDraft = {
   type: 'friendly',
+  competitionChoice: 'auto',
+  leagueId: '',
   visibility: 'community_open',
   teamMode: 'POST_MATCH_TEAMS',
   levelRestriction: true,
@@ -48,6 +60,7 @@ const emptyOptions: MatchCreationOptions = {
   saved_venues: [],
   level_defaults: null
 };
+type LeagueOptionsState = { key: string; status: 'ready' | 'error'; leagues: MatchLeagueOption[] };
 type FrozenRequest = { id: string; input: MatchPublishInput; inviteeIds: string[] };
 
 export function CreateMatchPage() {
@@ -56,6 +69,7 @@ export function CreateMatchPage() {
   const heading = useRef<HTMLHeadingElement>(null);
   const formRef = useRef<HTMLDivElement>(null);
   const optionsGeneration = useRef(0);
+  const leagueGeneration = useRef(0);
   const publishLock = useRef(false);
   const frozen = useRef<FrozenRequest | null>(null);
   const publicationFailed = useRef(false);
@@ -66,6 +80,8 @@ export function CreateMatchPage() {
   const [options, setOptions] = useState<MatchCreationOptions>(emptyOptions);
   const [optionsLoading, setOptionsLoading] = useState(true);
   const [optionsError, setOptionsError] = useState(false);
+  const [leagueState, setLeagueState] = useState<LeagueOptionsState | null>(null);
+  const [leagueReload, setLeagueReload] = useState(0);
   const [communityId, setCommunityId] = useState('');
   const [value, setValue] = useState<MatchDraft>(blank);
   const [step, setStep] = useState(0);
@@ -144,6 +160,32 @@ export function CreateMatchPage() {
       optionsGeneration.current += 1;
     };
   }, []);
+
+  // Eligible Leagues depend on the community and the intended UTC start. Each request carries a
+  // generation so a slow response for an older community/schedule can never overwrite newer state.
+  const leagueKey =
+    value.type === 'competitive' && communityId && value.date && value.startTime
+      ? `${communityId}|${value.date}|${value.startTime}|${leagueReload}`
+      : '';
+  useEffect(() => {
+    const generation = ++leagueGeneration.current;
+    if (leagueKey)
+      void getMatchLeagueOptions({
+        data: { community_id: communityId, date: value.date, start_time: value.startTime }
+      })
+        .then((result) => {
+          if (generation === leagueGeneration.current)
+            setLeagueState({ key: leagueKey, status: 'ready', leagues: result.leagues });
+        })
+        .catch(() => {
+          if (generation === leagueGeneration.current)
+            setLeagueState({ key: leagueKey, status: 'error', leagues: [] });
+        });
+    return () => {
+      leagueGeneration.current += 1;
+    };
+  }, [leagueKey, communityId, value.date, value.startTime]);
+  const retryLeagueOptions = useCallback(() => setLeagueReload((current) => current + 1), []);
 
   useLayoutEffect(() => {
     if (step >= 0) formRef.current?.querySelector<HTMLElement>('input, select, button')?.focus();
@@ -328,6 +370,19 @@ export function CreateMatchPage() {
       return null;
     }
   })();
+  const leagueOptionsStatus: MatchLeagueOptionsStatus = !leagueKey
+    ? 'idle'
+    : leagueState?.key === leagueKey
+      ? leagueState.status
+      : 'loading';
+  const candidates = leagueOptionsStatus === 'ready' ? (leagueState?.leagues ?? []) : [];
+  const resolution = resolveMatchCompetition(value.competitionChoice, value.leagueId, candidates);
+  const competition = {
+    status: leagueOptionsStatus,
+    candidates,
+    resolution,
+    retry: retryLeagueOptions
+  };
   const defaultCutoff = startInstant ? new Date(startInstant.getTime() - 60 * 60 * 1000) : null;
   const cutoffInstant = (() => {
     if (!value.cutoff) return defaultCutoff;
@@ -349,6 +404,10 @@ export function CreateMatchPage() {
     for (const key of ['community_id', 'date', 'startTime', 'venueName', 'mapsUrl'] as const)
       if (!value[key]) next[key] = 'required';
     if (!photo) next.photo = 'missingPhoto';
+    if (value.type === 'competitive') {
+      if (leagueOptionsStatus !== 'ready') next.competition = 'leagueOptionsUnavailable';
+      else if (resolution.needsSelection) next.competition = 'leagueRequired';
+    }
     if (value.mapsUrl && !validMatchMapsUrl(value.mapsUrl)) next.mapsUrl = 'invalidMapsUrl';
     if (value.date && value.startTime) {
       try {
@@ -411,6 +470,7 @@ export function CreateMatchPage() {
         date: value.date,
         start_time: value.startTime,
         event_type: value.type,
+        ...matchCompetitionInput(value.type, resolution),
         visibility: value.visibility,
         venue_name: value.venueName,
         maps_url: value.mapsUrl,
@@ -455,9 +515,19 @@ export function CreateMatchPage() {
         await navigate({ to: '/matches', reloadDocument: true });
       } else setError('publishFailed');
     } catch (cause) {
-      publicationFailed.current = true;
       const code = cause instanceof Error ? cause.message : '';
+      if (code.startsWith('MATCH_LEAGUE_')) {
+        // League validation runs before anything is stored, so the same event id stays reusable.
+        // Reload the candidates and unfreeze the payload instead of replaying a stale selection.
+        frozen.current = null;
+        publicationFailed.current = false;
+        retryLeagueOptions();
+      } else publicationFailed.current = true;
       const mapped: Record<string, string> = {
+        MATCH_LEAGUE_NOT_FOUND: 'leagueUnavailable',
+        MATCH_LEAGUE_CLOSED: 'leagueUnavailable',
+        MATCH_LEAGUE_OUT_OF_PERIOD: 'leagueUnavailable',
+        MATCH_LEAGUE_SELECTION_REQUIRED: 'leagueRequired',
         MATCH_CONFLICT: 'conflict',
         MATCH_NOT_MEMBER: 'notMember',
         MATCH_SAVED_VENUE_UNAVAILABLE: 'savedVenueUnavailable',
@@ -521,6 +591,7 @@ export function CreateMatchPage() {
               value={{ ...value, community_id: communityId }}
               options={options}
               errors={fieldErrors}
+              competition={competition}
               change={<K extends keyof MatchDraft>(key: K, next: MatchDraft[K]) => {
                 if (key === 'community_id' && typeof next === 'string') selectCommunity(next);
                 else change(key, next);
@@ -577,6 +648,7 @@ export function CreateMatchPage() {
               }}
               photo={photo}
               count={invitees.length}
+              competition={resolution}
             />
             {fieldErrors.cutoff && (
               <p {...stylex.props(s.formMessage)} role="alert">

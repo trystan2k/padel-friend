@@ -321,3 +321,51 @@ describe('result decoders and error mapping', () => {
     });
   });
 });
+
+describe('Ranked blocked state', () => {
+  const blocked = { reason: 'membership', user_ids: [resultIds[3]] };
+
+  it('decodes a typed block with resolution capability and defaults to none', () => {
+    const [parsed] =
+      parseResultProposals([{ ...resultProposal, ranked_blocked: blocked, can_correct: true }]) ??
+      [];
+    expect(parsed?.ranked_blocked).toEqual(blocked);
+    expect(parsed?.can_correct).toBe(true);
+    const { ranked_blocked: _omitted, ...legacy } = resultProposal;
+    expect(parseResultProposals([legacy])?.[0]?.ranked_blocked).toBeNull();
+  });
+
+  it.each([
+    ['an unknown reason', { reason: 'other', user_ids: [] }],
+    ['a non-UUID user', { reason: 'membership', user_ids: ['someone'] }],
+    ['a missing user list', { reason: 'out_of_period' }],
+    ['a scalar', 'blocked']
+  ])('rejects %s', (_label, value) => {
+    expect(parseResultProposals([{ ...resultProposal, ranked_blocked: value }])).toBeNull();
+  });
+
+  it('never accepts approvable or confirmed proposals that claim to be blocked', () => {
+    expect(
+      parseResultProposals([{ ...resultProposal, ranked_blocked: blocked, can_approve: true }])
+    ).toBeNull();
+  });
+
+  it.each([
+    ['MATCH_RESULT_RANKED_MEMBERSHIP', 'ranked_membership'],
+    ['MATCH_RESULT_RANKED_OUT_OF_PERIOD', 'ranked_out_of_period'],
+    ['MATCH_RESULT_RANKED_LEAGUE_INVALID', 'ranked_league_invalid']
+  ])('maps %s to a translated actionable error', (message, code) => {
+    const detail = JSON.stringify({
+      set_index: null,
+      side: null,
+      reason_token: message.slice(13)
+    });
+    expect(matchResultActionError({ message, details: detail })).toEqual({
+      status: 'error',
+      code,
+      detail: { set_index: null, side: null, reason_token: message.slice(13) }
+    });
+    expect(matchResultCommandError({ message })).toEqual({ status: 'error', code });
+    expect(Object.keys(MATCH_RESULT_ERROR_COPY)).toContain(code);
+  });
+});

@@ -12,16 +12,17 @@ describe('match route precedence and scope', () => {
       "'/_protected/matches/$eventId'"
     );
   });
-  it('does not introduce unsupported ranking, filtering, booking or payment UI', () => {
+  it('does not introduce unsupported filtering, booking or payment UI', () => {
     const files = [
       'src/features/matches/MatchesPage.tsx',
       'src/features/matches/MatchCard.tsx',
       'src/features/matches/MatchDetailPage.tsx'
     ];
     const source = files.map((file) => readFileSync(file, 'utf8')).join('\n');
-    // Array.filter is ordinary rendering logic, not a product filtering UI.
+    // Array.filter is ordinary rendering logic, not a product filtering UI. Ranked/League status
+    // badges are in scope since PAF-11; the matches feature still ships no filter/booking/payment UI.
     expect(source.replaceAll(/\.filter\s*\(/g, '.arrayPredicate(')).not.toMatch(
-      /Ranked|League|filter|booking|payment action/i
+      /filter|booking|payment action/i
     );
   });
   it('threads the loader snapshot into every matches page as initialAsOf', () => {

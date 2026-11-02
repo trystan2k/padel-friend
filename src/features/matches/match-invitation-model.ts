@@ -33,6 +33,7 @@ export const MATCH_INVITATION_ERROR_COPY: Readonly<Record<InvitationErrorCode, s
   pending_duplicate: 'matches.invitations.errors.pendingDuplicate',
   full: 'matches.invitations.errors.full',
   requester_ineligible: 'matches.invitations.errors.requesterIneligible',
+  ranked_members_only: 'matches.invitations.errors.rankedMembersOnly',
   forbidden: 'matches.invitations.errors.forbidden',
   invalid: 'matches.invitations.errors.invalid',
   unauthenticated: 'matches.invitations.errors.unauthenticated',

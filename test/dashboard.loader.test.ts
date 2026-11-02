@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const mocks = vi.hoisted(() => ({
   getMyPlayerProfile: vi.fn<() => Promise<unknown>>(),
   listMyAdminCommunities: vi.fn<() => Promise<unknown>>(),
+  listMyLeagueCommunities: vi.fn<() => Promise<unknown>>(),
   getCommunityAdminDefaults: vi.fn<() => Promise<unknown>>(),
   listMyCommunityNotifications: vi.fn<() => Promise<unknown>>(),
   loadRatingView: vi.fn<() => Promise<unknown>>()
@@ -15,6 +16,10 @@ vi.mock('../src/features/community/community-admin.functions', () => ({
   listMyAdminCommunities: mocks.listMyAdminCommunities,
   getCommunityAdminDefaults: mocks.getCommunityAdminDefaults
 }));
+vi.mock('../src/features/leagues/league.functions', () => ({
+  listMyLeagueCommunities: mocks.listMyLeagueCommunities
+}));
+vi.mock('../src/features/leagues/LeagueEntries', () => ({ LeagueEntries: () => null }));
 vi.mock('../src/features/community/community-request.functions', () => ({
   listMyCommunityNotifications: mocks.listMyCommunityNotifications
 }));
@@ -31,6 +36,8 @@ import { loadDashboardData } from '../src/routes/_protected.dashboard';
 beforeEach(() => {
   mocks.getMyPlayerProfile.mockReset();
   mocks.listMyAdminCommunities.mockReset();
+  mocks.listMyLeagueCommunities.mockReset();
+  mocks.listMyLeagueCommunities.mockResolvedValue([]);
   mocks.getCommunityAdminDefaults.mockReset();
   mocks.listMyCommunityNotifications.mockReset();
   mocks.loadRatingView.mockReset();
@@ -48,10 +55,20 @@ describe('dashboard loader', () => {
       profile,
       rating: { status: 'error', code: 'unavailable' },
       adminCommunities: [],
+      leagueCommunities: [],
       inbox: { items: null, error: true }
     });
     expect(mocks.getMyPlayerProfile).toHaveBeenCalledOnce();
     expect(mocks.listMyAdminCommunities).toHaveBeenCalledOnce();
+  });
+
+  it('keeps the dashboard available when the optional League entry lookup fails', async () => {
+    mocks.getMyPlayerProfile.mockResolvedValue(Object.freeze({}));
+    mocks.listMyAdminCommunities.mockResolvedValue([]);
+    mocks.listMyLeagueCommunities.mockRejectedValue(new Error('LEAGUE_UNAVAILABLE'));
+    mocks.listMyCommunityNotifications.mockResolvedValue([]);
+
+    await expect(loadDashboardData()).resolves.toMatchObject({ leagueCommunities: [] });
   });
 
   it('hands the committed rating view to the profile alongside the profile row', async () => {

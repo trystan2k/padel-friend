@@ -1,4 +1,12 @@
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { setResultReviewDeadlineOffset } from './helpers/match-result-processing-fixtures';
+import {
+  createRankedResultFixtures,
+  playedAt,
+  rankedKitEnv,
+  setMembershipHistory,
+  type RankedResultKit
+} from './helpers/ranked-result-fixtures';
 import {
   createMatchManagementFixtures,
   type ManagementActor
@@ -422,3 +430,64 @@ describe('authoritative result confirmation contract', { timeout: 120_000 }, () 
     120_000
   );
 });
+
+describe.skipIf(!rankedKitEnv(import.meta.url))(
+  'Ranked eligibility on confirmation (U4)',
+  { timeout: 60000 },
+  () => {
+    let kit: RankedResultKit;
+    beforeAll(async () => {
+      kit = await createRankedResultFixtures(rankedKitEnv(import.meta.url)!);
+    });
+    afterAll(async () => {
+      if (kit) await kit.cleanup();
+    });
+    beforeEach(async () => {
+      await kit.resetMemberships();
+    });
+
+    it('keeps a confirmed Ranked result immutable and replayable after later membership changes', async () => {
+      const eventId = await kit.event(await kit.league());
+      expect((await kit.submit(eventId, playedAt(120).played)).error).toBeNull();
+      const proposalId = await kit.proposalId(eventId);
+      expect((await kit.approve(proposalId)).data).toMatchObject({ status: 'confirmed' });
+      const [confirmation] = await sqlRows(
+        `select id::text, confirmed_at::text from public.match_event_result_confirmations where proposal_id='${proposalId}'`
+      );
+
+      // Removing a player (now) and even rewriting history cannot unwind the official fact.
+      await setMembershipHistory(kit.communityId, kit.players[3]!.id, [
+        {
+          activatedAt: new Date(Date.now() - 86_400_000).toISOString(),
+          validUntil: playedAt(300).iso
+        }
+      ]);
+      const [replay] = await sqlRows(
+        `select public.finalize_match_event_result_locked('${proposalId}', 1, 'AUTO_48H', null)::text as id`
+      );
+      expect(replay!['id']).toBe(confirmation!['id']);
+      expect((await kit.sideEffects(eventId))['confirmations']).toBe(1);
+      const [unchanged] = await sqlRows(
+        `select id::text, confirmed_at::text from public.match_event_result_confirmations where proposal_id='${proposalId}'`
+      );
+      expect(unchanged).toEqual(confirmation);
+    });
+
+    it('refuses the late (deadline-elapsed) review path for an ineligible group without confirming', async () => {
+      const eventId = await kit.event(await kit.league());
+      expect((await kit.submit(eventId, playedAt(120).played)).error).toBeNull();
+      const proposalId = await kit.proposalId(eventId);
+      await setMembershipHistory(kit.communityId, kit.players[3]!.id, [
+        {
+          activatedAt: new Date(Date.now() - 86_400_000).toISOString(),
+          validUntil: playedAt(600).iso
+        }
+      ]);
+      const before = await kit.sideEffects(eventId);
+      await setResultReviewDeadlineOffset(proposalId, 1, -3_600);
+      const late = await kit.approve(proposalId);
+      expect(late.error?.message).toBe('MATCH_RESULT_RANKED_MEMBERSHIP');
+      expect(await kit.sideEffects(eventId)).toEqual(before);
+    });
+  }
+);

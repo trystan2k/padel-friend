@@ -15,6 +15,7 @@ import {
   signUpFixtureActor
 } from './helpers/provisional-player-fixtures';
 import {
+  confirmAuto,
   confirmedGroup,
   currentCalculations,
   eventCountFor,
@@ -26,11 +27,14 @@ import {
   ratingStates,
   ratingWorld,
   stripRevision,
+  submitPendingGroup,
   toOracleGroup,
   type PendingGroup,
   type Quartet,
   type RatingWorld
 } from './helpers/rating-fixtures';
+import { insertLeague } from './helpers/league-fixtures';
+import { setMembershipHistory } from './helpers/ranked-result-fixtures';
 import { queryTrustedSql } from './helpers/sql-transport';
 
 const environment = localSupabaseEnv({ filePath: dotEnvPathFromImportMetaUrl(import.meta.url) });
@@ -123,6 +127,73 @@ describe('rating projection with provisional players', { timeout: 240_000 }, () 
       const [provisional, regular] = [await run(true), await run(false)];
       expect(provisional.afterMu).toBe(regular.afterMu);
       expect(provisional.beforeMu).toBe(regular.beforeMu);
+    }
+  );
+
+  it.skipIf(!environment.env)(
+    'rates a Ranked and an Unranked Competitive group once each, and never rates an ineligible Ranked group',
+    async () => {
+      const since = new Date(Date.now() - 86_400_000).toISOString();
+      const players = await Promise.all(
+        [4, 4.5, 5, 3.5].map((level, index) => world.player(`ranked-u4-${index}`, level))
+      );
+      const ids = players.map((player) => player.id);
+      for (const id of ids)
+        await setMembershipHistory(world.communityId, id, [{ activatedAt: since }]);
+      const leagueId = await insertLeague({
+        communityId: world.communityId,
+        ownerId: world.admin.id,
+        startAt: since,
+        endAt: new Date(Date.now() + 2 * 86_400_000).toISOString()
+      });
+      const rankedEventId = crypto.randomUUID();
+      await insertFixtureEvent({
+        id: rankedEventId,
+        communityId: world.communityId,
+        creatorId: world.admin.id,
+        visibility: 'community_open',
+        past: true,
+        leagueId
+      });
+      const ranked = await confirmedGroup({
+        eventId: rankedEventId,
+        players: [ids[0]!, ids[1]!, ids[2]!, ids[3]!],
+        playedAt: await nextTailPlayedAt(),
+        submittedBy: world.admin.id
+      });
+      const unranked = await confirmedGroup({
+        eventId: await world.newEvent(),
+        players: [ids[0]!, ids[1]!, ids[2]!, ids[3]!],
+        playedAt: await nextTailPlayedAt(),
+        submittedBy: world.admin.id
+      });
+      // Ranked and Unranked ratable confirmations each reach the app-wide rating exactly once.
+      expect(await eventCountFor([ranked.proposalId])).toBe(4);
+      expect(await eventCountFor([unranked.proposalId])).toBe(4);
+      expect((await ratingStates(ids))[ids[0]!]!.groups).toBe(2);
+
+      // A Ranked group whose member lost eligibility never reaches the rating (and stays unconfirmed).
+      const blockedEventId = crypto.randomUUID();
+      await insertFixtureEvent({
+        id: blockedEventId,
+        communityId: world.communityId,
+        creatorId: world.admin.id,
+        visibility: 'community_open',
+        past: true,
+        leagueId
+      });
+      const blocked = await submitPendingGroup({
+        eventId: blockedEventId,
+        players: [ids[0]!, ids[1]!, ids[2]!, ids[3]!],
+        playedAt: await nextTailPlayedAt(),
+        submittedBy: world.admin.id
+      });
+      await setMembershipHistory(world.communityId, ids[3]!, [
+        { activatedAt: since, validUntil: new Date(Date.now() + 1_000).toISOString() }
+      ]);
+      await expect(confirmAuto(blocked)).rejects.toThrow(/MATCH_RESULT_RANKED_MEMBERSHIP/);
+      expect(await eventCountFor([blocked.proposalId])).toBe(0);
+      expect((await ratingStates(ids))[ids[0]!]!.groups).toBe(2);
     }
   );
 

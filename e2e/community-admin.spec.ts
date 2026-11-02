@@ -1240,7 +1240,7 @@ test('real admin requests, membership, settings, venues and audit stay protected
   await guestContext.close();
 
   await signIn(page, owner);
-  await expect(page.getByRole('link', { name: communityName })).toBeVisible();
+  await expect(page.getByRole('link', { name: communityName, exact: true })).toBeVisible();
   const route = `/community/${communityId}/admin`;
   await page.goto(`${route}/requests`);
   await waitForHydratedPage(page);
@@ -1320,7 +1320,7 @@ test('real admin requests, membership, settings, venues and audit stay protected
   const memberContext = await browser.newContext({ viewport: { width: 390, height: 844 } });
   const memberPage = await memberContext.newPage();
   await signIn(memberPage, request);
-  await expect(memberPage.getByRole('link', { name: communityName })).toHaveCount(0);
+  await expect(memberPage.getByRole('link', { name: communityName, exact: true })).toHaveCount(0);
   await memberPage.goto(`${route}/members`);
   await expect(
     memberPage.getByRole('heading', { name: en.communityAdmin.accessDeniedTitle })

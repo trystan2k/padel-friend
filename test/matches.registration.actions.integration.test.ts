@@ -1254,7 +1254,8 @@ describe('match registration actions integration', () => {
         'required_generation',
         'confirmed_generation',
         'reconfirmed_at',
-        'registration_cutoff_at'
+        'registration_cutoff_at',
+        'consent_change'
       ].sort()
     );
     const creatorOwn = asRecord(

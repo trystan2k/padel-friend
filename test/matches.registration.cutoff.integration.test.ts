@@ -1,6 +1,7 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { describe, expect, it, vi } from 'vitest';
 import type { Database } from '../src/lib/supabase/database.types';
+import { insertLeague } from './helpers/league-fixtures';
 import { matchPhotoFixture } from './helpers/match-photo-fixtures';
 import {
   assertLocalSupabaseEnvInCi,
@@ -1458,6 +1459,62 @@ describe('match registration cutoff integration', () => {
   );
 
   it.skipIf(!environment.env)(
+    'cutoff expires players who never reconfirmed a Ranked/League change and keeps carried ones',
+    async () => {
+      const q = (value: string) => `'${value.replaceAll("'", "''")}'`;
+      const creator = actors.creator!;
+      const reconfirmer = actors.m1!;
+      const silent = actors.m2!;
+      events.rankedconsent = crypto.randomUUID();
+      const leagueId = await insertLeague({
+        communityId: publicCommunity,
+        ownerId: creator.id,
+        status: 'upcoming',
+        startAt: new Date(Date.now() - 5 * 86_400_000).toISOString(),
+        endAt: new Date(Date.now() + 60 * 86_400_000).toISOString()
+      });
+      const photo = matchPhotoFixture(publicCommunity, events.rankedconsent, creator.id);
+      await fixtureSql(
+        `do $$ begin ${photo.sql}
+          insert into public.match_events(id,community_id,created_by,starts_at,timezone,event_type,visibility,team_assignment_mode,venue_name,maps_url,photo_path,registration_cutoff_at)
+            values (${q(events.rankedconsent)},${q(publicCommunity)},${q(creator.id)},now() + interval '10 days','UTC','competitive','community_open','POST_MATCH_TEAMS','Cutoff court','https://maps.google.com/maps/place/cutoff','${photo.path}',now() + interval '7 days'); end $$;`
+      );
+      expect((await submit(reconfirmer, 'rankedconsent')).error).toBeNull();
+      expect((await submit(silent, 'rankedconsent')).error).toBeNull();
+      const edited = await creator.client.rpc('edit_match_event', {
+        p_match_event_id: events.rankedconsent,
+        p_expected_version: 1,
+        p_patch: { league_id: leagueId },
+        p_request_id: crypto.randomUUID()
+      });
+      expect(edited.error).toBeNull();
+      expect(edited.data).toMatchObject({ change_kind: 'major', reconfirmation_generation: 1 });
+      const confirmed = await reconfirmer.client.rpc('reconfirm_match_registration', {
+        p_match_event_id: events.rankedconsent,
+        p_attempt_id: await latestAttemptId('rankedconsent', reconfirmer.id),
+        p_generation: 1,
+        p_request_id: crypto.randomUUID()
+      });
+      expect(confirmed.error).toBeNull();
+      await fixtureSql(`do $$ begin alter table public.match_events disable trigger match_event_immutable;
+        update public.match_events set registration_cutoff_at = now() - interval '1 minute' where id = ${q(events.rankedconsent)};
+        alter table public.match_events enable trigger match_event_immutable; end $$;`);
+      const result = await processCutoff('rankedconsent');
+      expect(result).toMatchObject({ reconfirmation_expired_count: 2 });
+      const lifecycles = await sqlRows(
+        `select user_id::text as user_id, lifecycle::text as lifecycle from public.match_event_registrations
+          where match_event_id = ${q(events.rankedconsent)}`
+      );
+      const lifecycleOf = (id: string) =>
+        lifecycles.find((row) => row['user_id'] === id)?.['lifecycle'];
+      // The creator never reconfirmed either, exactly like any registered player.
+      expect(lifecycleOf(silent.id)).toBe('expired');
+      expect(lifecycleOf(creator.id)).toBe('expired');
+      expect(lifecycleOf(reconfirmer.id)).toBe('accepted');
+    }
+  );
+
+  it.skipIf(!environment.env)(
     'leaves no retained holder backends and cleans every fixture row from the local database',
     async () => {
       expect(await leakedHolderBackends('paf54-holder-')).toBe(0);
@@ -1489,6 +1546,13 @@ describe('match registration cutoff integration', () => {
           `update public.match_event_registrations r set current_attempt_id=null from public.match_events e where r.match_event_id=e.id and e.community_id='${publicCommunity}';`,
           `alter table public.match_events disable trigger match_event_immutable;`,
           `delete from public.notifications where community_id = '${publicCommunity}';`,
+          // Consent evidence (audit is insert-only; commands key the edit request replay).
+          `alter table public.match_event_audit_log disable trigger match_audit_immutable;`,
+          `delete from public.match_event_audit_log l using public.match_events e
+            where l.match_event_id = e.id and e.community_id = '${publicCommunity}';`,
+          `alter table public.match_event_audit_log enable trigger match_audit_immutable;`,
+          `delete from public.match_event_management_commands c using public.match_events e
+            where c.match_event_id = e.id and e.community_id = '${publicCommunity}';`,
           `delete from public.match_event_registration_attempts a
              using public.match_events e
             where a.match_event_id = e.id and e.community_id = '${publicCommunity}';`,

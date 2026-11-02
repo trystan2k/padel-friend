@@ -1,5 +1,6 @@
 import * as stylex from '@stylexjs/stylex';
 import { StatusBadge } from '../../components/ui/StatusBadge';
+import { MatchCompetitionBadge } from './MatchCompetitionBadge';
 import { Link } from '@tanstack/react-router';
 import { useRef, useState } from 'react';
 import { MatchEditDialog } from './MatchEditDialog';
@@ -262,6 +263,7 @@ export function MatchDetailPage({
             registration={registration}
             participants={managementParticipants}
             isCreator={isCreator}
+            change={management?.consent_change ?? null}
           />
         )}
         <section aria-labelledby="match-overview-heading" {...stylex.props(shell.card)}>
@@ -420,6 +422,7 @@ export function MatchDetailPage({
           <h2 id="match-eligibility-heading" {...stylex.props(shell.title)}>
             {t('matches.detail.eligibilityVisibility')}
           </h2>
+          <MatchCompetitionBadge event={event} />
           <p {...stylex.props(shell.copy)}>
             {event.restriction_enabled && event.min_level !== null && event.max_level !== null
               ? `${t('matches.card.levelRange')}: ${event.min_level}–${event.max_level}`
@@ -439,6 +442,11 @@ export function MatchDetailPage({
             !callerAccepted &&
             event.caller_eligibility === 'nonmember' && (
               <p>{t('matches.detail.guestApprovalRequired')}</p>
+            )}
+          {event.status !== 'cancelled' &&
+            !callerAccepted &&
+            event.caller_eligibility === 'ranked_members_only' && (
+              <p>{t('matches.detail.rankedMembersOnly')}</p>
             )}
           {event.status !== 'cancelled' &&
             event.caller_eligibility === 'out_of_range' &&
