@@ -133,16 +133,23 @@ describe('League server-function validators', () => {
 });
 
 describe('League list page validator', () => {
-  it('accepts a community id with a non-negative integer offset only', () => {
-    expect(validateLeagueListPage({ community_id: LEAGUE_COMMUNITY_ID, offset: 200 })).toEqual({
+  it('accepts a community id with a microsecond keyset cursor only', () => {
+    const cursor = { created_at: '2030-01-02T03:04:05.123456Z', id: LEAGUE_COMMUNITY_ID };
+    expect(validateLeagueListPage({ community_id: LEAGUE_COMMUNITY_ID, cursor })).toEqual({
       community_id: LEAGUE_COMMUNITY_ID,
-      offset: 200
+      cursor
     });
-    for (const offset of [-1, 1.5, '3', undefined])
-      expect(() => validateLeagueListPage({ community_id: LEAGUE_COMMUNITY_ID, offset })).toThrow(
-        'INVALID_LEAGUE_INPUT'
-      );
-    expect(() => validateLeagueListPage({ community_id: 'x', offset: 0 })).toThrow(
+    for (const bad of [
+      undefined,
+      { ...cursor, created_at: '2030-01-02T03:04:05Z' },
+      { ...cursor, created_at: '2030-13-45T03:04:05.123456Z' },
+      { ...cursor, id: 'x' },
+      { ...cursor, extra: 1 }
+    ])
+      expect(() =>
+        validateLeagueListPage({ community_id: LEAGUE_COMMUNITY_ID, cursor: bad })
+      ).toThrow('INVALID_LEAGUE_INPUT');
+    expect(() => validateLeagueListPage({ community_id: 'x', cursor })).toThrow(
       'INVALID_LEAGUE_INPUT'
     );
   });
@@ -161,15 +168,18 @@ describe('League response decoders', () => {
     expect(decodeLeagueDetail(detail)).toEqual(detail);
   });
 
-  it('requires the list total, truncation indicator and continuation offset', () => {
-    const cut = makeLeagueList(
-      [makeLeagueDto()],
-      {},
-      { total: 201, truncated: true, next_offset: 200 }
+  it('requires the list total, truncation indicator and keyset cursor', () => {
+    const next_cursor = { created_at: '2030-01-02T03:04:05.123456Z', id: LEAGUE_COMMUNITY_ID };
+    const cut = makeLeagueList([makeLeagueDto()], {}, { total: 201, truncated: true, next_cursor });
+    expect(decodeLeagueList(cut)).toMatchObject({ total: 201, truncated: true, next_cursor });
+    const { next_cursor: _cursor, ...withoutCursor } = cut;
+    expect(() => decodeLeagueList(withoutCursor)).toThrow('INVALID_LEAGUE_RESPONSE');
+    expect(() => decodeLeagueList({ ...cut, next_cursor: { id: next_cursor.id } })).toThrow(
+      'INVALID_LEAGUE_RESPONSE'
     );
-    expect(decodeLeagueList(cut)).toMatchObject({ total: 201, truncated: true, next_offset: 200 });
-    const { next_offset: _offset, ...withoutOffset } = cut;
-    expect(() => decodeLeagueList(withoutOffset)).toThrow('INVALID_LEAGUE_RESPONSE');
+    expect(() =>
+      decodeLeagueList({ ...cut, next_cursor: { ...next_cursor, created_at: '2030-01-02' } })
+    ).toThrow('INVALID_LEAGUE_RESPONSE');
     const { truncated: _truncated, ...withoutTruncated } = cut;
     expect(() => decodeLeagueList(withoutTruncated)).toThrow('INVALID_LEAGUE_RESPONSE');
     expect(() => decodeLeagueList({ ...cut, total: -1 })).toThrow('INVALID_LEAGUE_RESPONSE');

@@ -12,11 +12,16 @@ insert into public.league_event_references (league_id, match_event_id, first_ref
   select l.id, a.match_event_id, pg_catalog.min(a.occurred_at)
   from public.match_event_audit_log a
   cross join lateral (values
-    (a.before_data ->> 'league_id'), (a.after_data ->> 'league_id'),
-    (a.before_data -> 'competition' ->> 'league_id'), (a.after_data -> 'competition' ->> 'league_id')
+    (case when pg_catalog.pg_input_is_valid(a.before_data ->> 'league_id', 'uuid')
+      then (a.before_data ->> 'league_id')::uuid end),
+    (case when pg_catalog.pg_input_is_valid(a.after_data ->> 'league_id', 'uuid')
+      then (a.after_data ->> 'league_id')::uuid end),
+    (case when pg_catalog.pg_input_is_valid(a.before_data -> 'competition' ->> 'league_id', 'uuid')
+      then (a.before_data -> 'competition' ->> 'league_id')::uuid end),
+    (case when pg_catalog.pg_input_is_valid(a.after_data -> 'competition' ->> 'league_id', 'uuid')
+      then (a.after_data -> 'competition' ->> 'league_id')::uuid end)
   ) as ids(value)
-  join public.leagues l on ids.value is not null
-    and pg_catalog.pg_input_is_valid(ids.value, 'uuid') and l.id = ids.value::uuid
+  join public.leagues l on l.id = ids.value
   where a.action in ('minor_edit', 'major_edit')
   group by l.id, a.match_event_id
   on conflict do nothing;

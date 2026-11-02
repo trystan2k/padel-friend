@@ -83,14 +83,15 @@ export type LeagueCountersResult = {
   excluded_group_count: number;
 };
 
+export type LeagueListCursor = { created_at: string; id: string };
 export type LeagueListResult = {
   community: LeagueCommunityDto;
   leagues: LeagueDto[];
   /** Every League of the community; `leagues` is one page, so `truncated` flags more rows after it. */
   total: number;
   truncated: boolean;
-  /** Offset that continues this list (`list_leagues` p_offset). */
-  next_offset: number;
+  /** Immutable `(created_at, id)` keyset that continues this list; null on the last page. */
+  next_cursor: LeagueListCursor | null;
 };
 export type LeagueDetailResult = { community: LeagueCommunityDto; league: LeagueDto };
 

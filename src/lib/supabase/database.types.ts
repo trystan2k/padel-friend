@@ -2635,6 +2635,7 @@ export type Database = {
         Args: { p_community_id: string; p_owner_id: string }
         Returns: boolean
       }
+      league_backfill_references_from_audit: { Args: Record<PropertyKey, never>; Returns: number }
       league_community_dto: { Args: { p_community_id: string }; Returns: Json }
       league_dto: {
         Args: {
@@ -2697,7 +2698,10 @@ export type Database = {
           valid_until: string
         }[]
       }
-      list_leagues: { Args: { p_community_id: string; p_offset?: number }; Returns: Json }
+      list_leagues: {
+        Args: { p_after_created_at?: string; p_after_id?: string; p_community_id: string }
+        Returns: Json
+      }
       list_match_event_audit: {
         Args: {
           p_before_at?: string

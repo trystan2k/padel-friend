@@ -1544,6 +1544,8 @@
       "emptyHint": "Crea una Liga para agrupar un periodo de partidos clasificatorios.",
       "truncated": "Mostrando {{shown}} de {{total}} Ligas.",
       "more": "Mostrar más Ligas",
+      "loading": "Cargando más Ligas…",
+      "complete": "Se muestran las {{total}} Ligas.",
       "moreError": "No se pudieron cargar más Ligas. Inténtalo de nuevo.",
       "sections": {
         "active": "Activa",

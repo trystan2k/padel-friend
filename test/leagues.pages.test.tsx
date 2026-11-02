@@ -59,6 +59,7 @@ function Detail({
   Pick<ComponentProps<typeof LeagueDetailPage>, 'data'>) {
   return <LeagueDetailPage {...props} counters={counters} />;
 }
+const pageCursor = { created_at: '2030-01-02T03:04:05.123456Z', id: LEAGUE_COMMUNITY_ID };
 const wrap = (node: React.ReactNode, locale: 'en' | 'pt-BR' | 'es' = 'en') => (
   <I18nextProvider i18n={createI18n(locale)}>{node}</I18nextProvider>
 );
@@ -125,9 +126,60 @@ describe('League list and entries', () => {
     expect(screen.getByText('No Leagues yet.')).toBeTruthy();
   });
 
+  it('orders Upcoming by start and Closed by most recent close, whatever order the server sends', () => {
+    const upcoming = (id: string, name: string, start: string) =>
+      makeLeagueDto({ id, name, start_at: start });
+    const closed = (id: string, name: string, at: string) =>
+      makeLeagueDto({
+        id,
+        name,
+        status: 'closed',
+        closed_at: at,
+        closed_reason: 'fixed_end_reached'
+      });
+    render(
+      wrap(
+        <LeagueListPage
+          data={makeLeagueList([
+            closed(
+              'c1111111-1111-4111-8111-111111111111',
+              'Old Cup',
+              '2030-02-01T00:00:00.000000Z'
+            ),
+            upcoming(
+              'a2222222-1111-4111-8111-111111111111',
+              'Late Cup',
+              '2031-06-01T00:00:00.000000Z'
+            ),
+            closed(
+              'c2222222-1111-4111-8111-111111111111',
+              'New Cup',
+              '2030-05-01T00:00:00.000000Z'
+            ),
+            upcoming(
+              'a1111111-1111-4111-8111-111111111111',
+              'Soon Cup',
+              '2031-01-01T00:00:00.000000Z'
+            )
+          ])}
+        />
+      )
+    );
+    const names = screen
+      .getAllByRole('link')
+      .map((link) => link.textContent ?? '')
+      .filter((text) => text.includes('Cup'))
+      .map((text) => text.slice(0, text.indexOf('Cup') + 3));
+    expect(names).toEqual(['Soon Cup', 'Late Cup', 'New Cup', 'Old Cup']);
+  });
+
   it('tells the reader the list is partial, translated, and shows nothing when complete', () => {
     const leagues = [makeLeagueDto()];
-    const cut = makeLeagueList(leagues, {}, { total: 201, truncated: true, next_offset: 200 });
+    const cut = makeLeagueList(
+      leagues,
+      {},
+      { total: 201, truncated: true, next_cursor: pageCursor }
+    );
     render(wrap(<LeagueListPage data={cut} />));
     expect(screen.getByRole('status').textContent).toBe('Showing 1 of 201 Leagues.');
     expect(screen.getByRole('button', { name: 'Show more Leagues' })).toBeTruthy();
@@ -153,7 +205,7 @@ describe('League list and entries', () => {
     render(
       wrap(
         <LeagueListPage
-          data={makeLeagueList([first], {}, { total: 2, truncated: true, next_offset: 1 })}
+          data={makeLeagueList([first], {}, { total: 2, truncated: true, next_cursor: pageCursor })}
         />
       )
     );
@@ -163,16 +215,101 @@ describe('League list and entries', () => {
       'More Leagues could not be loaded. Try again.'
     );
     mocks.listMore.mockResolvedValueOnce(
-      makeLeagueList([second], {}, { total: 2, truncated: false, next_offset: 2 })
+      makeLeagueList([second], {}, { total: 2, truncated: false, next_cursor: null })
     );
     await userEvent.click(screen.getByRole('button', { name: 'Show more Leagues' }));
     expect(await screen.findByRole('link', { name: /Second Cup/ })).toBeTruthy();
     expect(screen.getByRole('link', { name: /First Cup/ })).toBeTruthy();
     expect(mocks.listMore).toHaveBeenLastCalledWith({
-      data: { community_id: LEAGUE_COMMUNITY_ID, offset: 1 }
+      data: { community_id: LEAGUE_COMMUNITY_ID, cursor: pageCursor }
     });
     expect(screen.queryByRole('button', { name: 'Show more Leagues' })).toBeNull();
-    expect(screen.queryByRole('status')).toBeNull();
+    // The live status survives the final page and announces completion.
+    expect(screen.getByRole('status').textContent).toBe('All 2 Leagues are shown.');
+  });
+
+  it('keeps keyboard focus through Show more and moves it to the first new League', async () => {
+    const first = makeLeagueDto({ id: 'a1111111-1111-4111-8111-111111111111', name: 'First Cup' });
+    const second = makeLeagueDto({
+      id: 'b1111111-1111-4111-8111-111111111111',
+      name: 'Second Cup'
+    });
+    render(
+      wrap(
+        <LeagueListPage
+          data={makeLeagueList([first], {}, { total: 2, truncated: true, next_cursor: pageCursor })}
+        />
+      )
+    );
+    let finish: (page: LeagueListResult) => void = () => undefined;
+    mocks.listMore.mockImplementationOnce(() => new Promise((resolve) => (finish = resolve)));
+    await userEvent.tab();
+    await userEvent.tab();
+    const button = screen.getByRole('button', { name: 'Show more Leagues' });
+    button.focus();
+    await userEvent.keyboard('{Enter}');
+    // Loading: still focused (not removed from the tab order), announced, and not re-fireable.
+    expect(document.activeElement).toBe(button);
+    expect(button.getAttribute('aria-disabled')).toBe('true');
+    expect(screen.getByRole('status').textContent).toBe('Loading more Leagues…');
+    await userEvent.keyboard('{Enter}');
+    expect(mocks.listMore).toHaveBeenCalledTimes(1);
+    finish(makeLeagueList([second], {}, { total: 2, truncated: false, next_cursor: null }));
+    const link = await screen.findByRole('link', { name: /Second Cup/ });
+    await waitFor(() => expect(document.activeElement).toBe(link));
+    expect(screen.getByRole('status').textContent).toBe('All 2 Leagues are shown.');
+  });
+
+  it('keeps focus on the button when loading more fails', async () => {
+    render(
+      wrap(
+        <LeagueListPage
+          data={makeLeagueList(
+            [makeLeagueDto()],
+            {},
+            { total: 2, truncated: true, next_cursor: pageCursor }
+          )}
+        />
+      )
+    );
+    mocks.listMore.mockRejectedValueOnce(new Error('offline'));
+    const button = screen.getByRole('button', { name: 'Show more Leagues' });
+    button.focus();
+    await userEvent.keyboard('{Enter}');
+    await screen.findByRole('alert');
+    expect(document.activeElement).toBe(button);
+    expect(button.getAttribute('aria-disabled')).not.toBe('true');
+  });
+
+  it('shows a League that moved between pages once, in presentation order', async () => {
+    const early = makeLeagueDto({
+      id: 'a1111111-1111-4111-8111-111111111111',
+      name: 'Early Cup',
+      start_at: '2030-01-01T00:00:00.000000Z'
+    });
+    const late = makeLeagueDto({
+      id: 'b1111111-1111-4111-8111-111111111111',
+      name: 'Late Cup',
+      start_at: '2031-01-01T00:00:00.000000Z'
+    });
+    render(
+      wrap(
+        <LeagueListPage
+          data={makeLeagueList([late], {}, { total: 2, truncated: true, next_cursor: pageCursor })}
+        />
+      )
+    );
+    // The next page repeats `late` (it moved across the boundary) and adds `early`.
+    mocks.listMore.mockResolvedValueOnce(
+      makeLeagueList([late, early], {}, { total: 2, truncated: false, next_cursor: null })
+    );
+    await userEvent.click(screen.getByRole('button', { name: 'Show more Leagues' }));
+    await screen.findByRole('link', { name: /Early Cup/ });
+    const names = screen.getAllByRole('link').map((link) => link.textContent ?? '');
+    expect(names.filter((text) => text.includes('Late Cup'))).toHaveLength(1);
+    expect(names.findIndex((text) => text.includes('Early Cup'))).toBeLessThan(
+      names.findIndex((text) => text.includes('Late Cup'))
+    );
   });
 
   it('links every active community from the dashboard entry, for members as well as Admins', () => {

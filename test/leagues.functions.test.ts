@@ -44,6 +44,7 @@ import {
   makeLeagueList
 } from './helpers/league-dto-fixtures';
 
+const pageCursor = { created_at: '2030-01-02T03:04:05.123456Z', id: LEAGUE_ID };
 const request_id = '44444444-4444-4444-8444-444444444444';
 const creation = {
   request_id,
@@ -120,15 +121,16 @@ describe('League server functions', () => {
     const more = makeLeagueList(
       [makeLeagueDto()],
       {},
-      { total: 201, truncated: false, next_offset: 201 }
+      { total: 201, truncated: false, next_cursor: null }
     );
     rpc.mockResolvedValueOnce({ data: more, error: null });
     await expect(
-      listMoreLeagues({ data: { community_id: LEAGUE_COMMUNITY_ID, offset: 200 } })
+      listMoreLeagues({ data: { community_id: LEAGUE_COMMUNITY_ID, cursor: pageCursor } })
     ).resolves.toEqual(more);
     expect(rpc).toHaveBeenLastCalledWith('list_leagues', {
       p_community_id: LEAGUE_COMMUNITY_ID,
-      p_offset: 200
+      p_after_created_at: pageCursor.created_at,
+      p_after_id: pageCursor.id
     });
 
     const detail = makeLeagueDetail();

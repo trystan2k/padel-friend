@@ -7,6 +7,7 @@ import {
   LEAGUE_NAME_MAX,
   type CreateLeagueInput,
   type LeagueEndMode,
+  type LeagueListCursor,
   type UpdateLeagueChanges
 } from './league-contracts';
 
@@ -72,11 +73,23 @@ export function validateLeagueCommunity(value: unknown): { community_id: string 
   return { community_id: uuid(data.community_id) };
 }
 
-export function validateLeagueListPage(value: unknown): { community_id: string; offset: number } {
-  const data = record(value, ['community_id', 'offset']);
-  const offset = data.offset;
-  if (typeof offset !== 'number' || !Number.isSafeInteger(offset) || offset < 0) return invalid();
-  return { community_id: uuid(data.community_id), offset };
+export function validateLeagueListPage(value: unknown): {
+  community_id: string;
+  cursor: LeagueListCursor;
+} {
+  const data = record(value, ['community_id', 'cursor']);
+  const cursor = record(data.cursor, ['created_at', 'id']);
+  const createdAt = cursor.created_at;
+  if (
+    typeof createdAt !== 'string' ||
+    !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{6}Z$/.test(createdAt) ||
+    !Number.isFinite(Date.parse(createdAt))
+  )
+    return invalid();
+  return {
+    community_id: uuid(data.community_id),
+    cursor: { created_at: createdAt, id: uuid(cursor.id) }
+  };
 }
 
 export function validateLeagueId(value: unknown): { league_id: string } {

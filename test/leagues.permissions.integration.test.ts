@@ -319,7 +319,7 @@ describe('League permissions', { timeout: 300_000 }, () => {
     );
 
     it.skipIf(!environment.env)(
-      'orders Active first, then Upcoming by start, then Closed by most recent close',
+      'returns Leagues newest-created first (a stable keyset order); sections are ordered by the page',
       async () => {
         const communityId = await communityWith();
         const fixture = (overrides: Partial<Parameters<typeof insertLeague>[0]>) =>
@@ -347,10 +347,10 @@ describe('League permissions', { timeout: 300_000 }, () => {
           (await world.admin.client.rpc('list_leagues', { p_community_id: communityId })).data
         );
         expect(list.leagues.map((league) => league.id)).toEqual([
-          active,
           upcomingSoon,
-          upcomingLate,
+          active,
           closedNew,
+          upcomingLate,
           closedOld
         ]);
       }

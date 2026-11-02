@@ -1544,6 +1544,8 @@
       "emptyHint": "Create a League to group a period of ranked matches.",
       "truncated": "Showing {{shown}} of {{total}} Leagues.",
       "more": "Show more Leagues",
+      "loading": "Loading more Leagues…",
+      "complete": "All {{total}} Leagues are shown.",
       "moreError": "More Leagues could not be loaded. Try again.",
       "sections": {
         "active": "Active",

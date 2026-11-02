@@ -1,7 +1,7 @@
 import * as stylex from '@stylexjs/stylex';
 import { Link } from '@tanstack/react-router';
 import { useTranslation } from 'react-i18next';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Button } from '../../components/ui/Button';
 import { rootStyles } from '../../root.styles';
 import { SurfaceCard } from '../../components/ui/SurfaceCard';
@@ -12,6 +12,18 @@ import { styles } from './league.styles';
 
 const SECTIONS: readonly LeagueStatus[] = ['active', 'upcoming', 'closed'];
 
+const leagueLinkId = (id: string) => `league-link-${id}`;
+
+/** Presentation order inside a section; the database order is only a stable pagination key. */
+function sectionOrder(status: LeagueStatus) {
+  if (status === 'upcoming')
+    return (left: LeagueDto, right: LeagueDto) => left.start_at.localeCompare(right.start_at);
+  if (status === 'closed')
+    return (left: LeagueDto, right: LeagueDto) =>
+      (right.closed_at ?? '').localeCompare(left.closed_at ?? '');
+  return () => 0;
+}
+
 function LeagueListItem({ league }: { league: LeagueDto }) {
   const { t } = useTranslation();
   const period = useLeaguePeriodText(league);
@@ -20,6 +32,7 @@ function LeagueListItem({ league }: { league: LeagueDto }) {
       <Link
         to="/community/$communityId/leagues/$leagueId"
         params={{ communityId: league.community_id, leagueId: league.id }}
+        id={leagueLinkId(league.id)}
         {...stylex.props(styles.itemLink)}
       >
         <span {...stylex.props(styles.itemHeader)}>
@@ -48,21 +61,33 @@ export function LeagueListPage({ data }: { data: LeagueListResult }) {
   } | null>(null);
   const [loadingMore, setLoadingMore] = useState(false);
   const [moreFailed, setMoreFailed] = useState(false);
+  const focusAfterLoad = useRef<string | null>(null);
   const continued = more && more.base === data ? more : null;
-  const known = new Set(data.leagues.map((league) => league.id));
-  const leagues = [
-    ...data.leagues,
-    ...(continued?.leagues ?? []).filter((league) => !known.has(league.id))
-  ];
-  const { total, truncated, next_offset: nextOffset } = continued?.last ?? data;
+  // One entry per League across the first page and every continuation page (a League can appear
+  // on two pages when it moves between them); the latest copy of a row wins.
+  const byId = new Map<string, LeagueDto>();
+  for (const league of [...data.leagues, ...(continued?.leagues ?? [])])
+    byId.set(league.id, league);
+  const leagues = [...byId.values()];
+  const { total, truncated, next_cursor: nextCursor } = continued?.last ?? data;
+  // The partial-list status stays through the final page so completion is announced.
+  const partialListing = data.truncated;
+  useEffect(() => {
+    if (!focusAfterLoad.current) return;
+    document.getElementById(leagueLinkId(focusAfterLoad.current))?.focus();
+    focusAfterLoad.current = null;
+  });
   const showMore = async () => {
-    if (loadingMore) return;
+    if (loadingMore || !nextCursor) return;
     setLoadingMore(true);
     setMoreFailed(false);
     try {
       const page = await listMoreLeagues({
-        data: { community_id: community.id, offset: nextOffset }
+        data: { community_id: community.id, cursor: nextCursor }
       });
+      const fresh = page.leagues.find((league) => !byId.has(league.id));
+      // Keyboard users continue from the first newly loaded League; the button may be gone.
+      focusAfterLoad.current = fresh?.id ?? null;
       setMore({
         base: data,
         leagues: [...(continued?.leagues ?? []), ...page.leagues],
@@ -110,7 +135,9 @@ export function LeagueListPage({ data }: { data: LeagueListResult }) {
           </SurfaceCard>
         ) : (
           SECTIONS.map((status) => {
-            const items = leagues.filter((league) => league.status === status);
+            const items = leagues
+              .filter((league) => league.status === status)
+              .sort(sectionOrder(status));
             if (items.length === 0) return null;
             return (
               <section
@@ -130,19 +157,30 @@ export function LeagueListPage({ data }: { data: LeagueListResult }) {
             );
           })
         )}
-        {truncated && (
+        {partialListing && (
           <>
             <output {...stylex.props(styles.guidance)}>
-              {t('leagues.list.truncated', { shown: leagues.length, total })}
+              {loadingMore
+                ? t('leagues.list.loading')
+                : truncated
+                  ? t('leagues.list.truncated', { shown: leagues.length, total })
+                  : t('leagues.list.complete', { total })}
             </output>
             {moreFailed && (
               <p role="alert" {...stylex.props(styles.errorText)}>
                 {t('leagues.list.moreError')}
               </p>
             )}
-            <Button variant="secondary" busy={loadingMore} onClick={() => void showMore()}>
-              {t('leagues.list.more')}
-            </Button>
+            {truncated && (
+              <Button
+                variant="secondary"
+                disabled={loadingMore}
+                focusableWhenDisabled
+                onClick={() => void showMore()}
+              >
+                {t('leagues.list.more')}
+              </Button>
+            )}
           </>
         )}
       </div>

@@ -1544,6 +1544,8 @@
       "emptyHint": "Crie uma Liga para reunir um período de partidas ranqueadas.",
       "truncated": "Mostrando {{shown}} de {{total}} Ligas.",
       "more": "Mostrar mais Ligas",
+      "loading": "Carregando mais Ligas…",
+      "complete": "Todas as {{total}} Ligas estão sendo exibidas.",
       "moreError": "Não foi possível carregar mais Ligas. Tente novamente.",
       "sections": {
         "active": "Ativa",

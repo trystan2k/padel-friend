@@ -23,6 +23,16 @@ const day = (offset: number) => `${isoDay(offset)}T00:00:00Z`;
 describe.skipIf(!environment.env)('League review hardening', { timeout: 300_000 }, () => {
   let world: LeagueWorld;
 
+  /** Bulk Upcoming Leagues with distinct, immutable creation instants (n = 1 is the newest). */
+  const bulkLeagues = (communityId: string, count: number) =>
+    executeTrustedSql(`
+      insert into public.leagues(community_id, owner_id, name, timezone, start_at, end_mode, status,
+          create_request_id, create_input, created_at)
+        select ${sqlText(communityId)}, ${sqlText(world.admin.id)}, 'Bulk ' || n, 'UTC',
+            '2999-01-01T00:00:00Z'::timestamptz + n * interval '1 day', 'manual', 'upcoming',
+            gen_random_uuid(), '{}'::jsonb, now() - n * interval '1 minute'
+        from generate_series(1, ${count}) n;`);
+
   beforeAll(async () => {
     world = await leagueWorld(environment.env!, 'hardening');
     await world.setTimezone('UTC');
@@ -207,36 +217,37 @@ describe.skipIf(!environment.env)('League review hardening', { timeout: 300_000 
     }
   });
 
-  it('F5: the list reports total and truncation, and a continuation reaches every row beyond 200', async () => {
+  it('F5: the list reports total and truncation, and the keyset continuation reaches every row beyond 200', async () => {
     const communityId = await world.newCommunity(world.admin.id);
-    await executeTrustedSql(`
-      insert into public.leagues(community_id, owner_id, name, timezone, start_at, end_mode, status,
-          create_request_id, create_input)
-        select ${sqlText(communityId)}, ${sqlText(world.admin.id)}, 'Bulk ' || n, 'UTC',
-            '2999-01-01T00:00:00Z'::timestamptz + n * interval '1 day', 'manual', 'upcoming',
-            gen_random_uuid(), '{}'::jsonb
-        from generate_series(1, 201) n;`);
+    await bulkLeagues(communityId, 201);
     const over = await world.admin.client.rpc('list_leagues', { p_community_id: communityId });
     expect(over.error).toBeNull();
     const decodedOver = decodeLeagueList(over.data);
     expect(decodedOver.leagues).toHaveLength(200);
-    expect(decodedOver).toMatchObject({ total: 201, truncated: true, next_offset: 200 });
+    expect(decodedOver).toMatchObject({ total: 201, truncated: true });
+    expect(decodedOver.next_cursor).not.toBeNull();
 
     const next = await world.admin.client.rpc('list_leagues', {
       p_community_id: communityId,
-      p_offset: decodedOver.next_offset
+      p_after_created_at: decodedOver.next_cursor!.created_at,
+      p_after_id: decodedOver.next_cursor!.id
     });
     expect(next.error).toBeNull();
     const decodedNext = decodeLeagueList(next.data);
     expect(decodedNext.leagues).toHaveLength(1);
-    expect(decodedNext).toMatchObject({ total: 201, truncated: false, next_offset: 201 });
+    expect(decodedNext).toMatchObject({ total: 201, truncated: false, next_cursor: null });
     const ids = new Set(
       [...decodedOver.leagues, ...decodedNext.leagues].map((league) => league.id)
     );
     expect(ids.size).toBe(201);
+    // A half-specified cursor is refused.
     expect(
-      (await world.admin.client.rpc('list_leagues', { p_community_id: communityId, p_offset: -1 }))
-        .error?.message
+      (
+        await world.admin.client.rpc('list_leagues', {
+          p_community_id: communityId,
+          p_after_id: decodedOver.next_cursor!.id
+        })
+      ).error?.message
     ).toBe('LEAGUE_INVALID_INPUT');
 
     const small = await world.newCommunity(world.admin.id);
@@ -244,7 +255,171 @@ describe.skipIf(!environment.env)('League review hardening', { timeout: 300_000 
     const under = decodeLeagueList(
       (await world.admin.client.rpc('list_leagues', { p_community_id: small })).data
     );
-    expect(under).toMatchObject({ total: 1, truncated: false, next_offset: 1 });
+    expect(under).toMatchObject({ total: 1, truncated: false, next_cursor: null });
+  });
+
+  it('E2: a lifecycle change between page requests neither omits nor duplicates a League', async () => {
+    const communityId = await world.newCommunity(world.admin.id);
+    await bulkLeagues(communityId, 201);
+    const first = decodeLeagueList(
+      (await world.admin.client.rpc('list_leagues', { p_community_id: communityId })).data
+    );
+    const [oldest] = await sqlRows(
+      `select id::text as id from public.leagues where community_id = ${sqlText(communityId)}
+        order by created_at, id limit 1`
+    );
+    const oldestId = String(oldest?.['id']);
+    expect(first.leagues.some((league) => league.id === oldestId)).toBe(false);
+    // The oldest League (page 2) becomes the Active one: it now sorts first by status.
+    await executeTrustedSql(`
+      update public.leagues set status = 'active', start_at = now() - interval '1 day',
+          activated_at = now() where id = ${sqlText(oldestId)}`);
+    const second = decodeLeagueList(
+      (
+        await world.admin.client.rpc('list_leagues', {
+          p_community_id: communityId,
+          p_after_created_at: first.next_cursor!.created_at,
+          p_after_id: first.next_cursor!.id
+        })
+      ).data
+    );
+    expect(second.leagues.map((league) => league.id)).toEqual([oldestId]);
+    const all = [...first.leagues, ...second.leagues].map((league) => league.id);
+    expect(new Set(all).size).toBe(201);
+    expect(all).toHaveLength(201);
+    // A fresh first page always carries the Active League, however old it is.
+    const refreshed = decodeLeagueList(
+      (await world.admin.client.rpc('list_leagues', { p_community_id: communityId })).data
+    );
+    expect(refreshed.leagues.some((league) => league.id === oldestId)).toBe(true);
+  });
+
+  it('E1: a malformed snapshot value cannot abort the audit backfill; valid references are recovered', async () => {
+    const [first, second] = await Promise.all(
+      [0, 1].map(() =>
+        insertLeague({
+          communityId: world.communityId,
+          ownerId: world.owner.id,
+          startAt: day(-5),
+          endAt: day(60)
+        })
+      )
+    );
+    const { eventId, result } = await publishCompetitive(world.owner, world.communityId, {
+      competition: 'ranked',
+      league_id: first
+    });
+    expect(result.error).toBeNull();
+    const [event] = await sqlRows(
+      `select version::int as version from public.match_events where id = ${sqlText(eventId)}`
+    );
+    const edited = await world.owner.client.rpc('edit_match_event', {
+      p_match_event_id: eventId,
+      p_expected_version: Number(event?.['version']),
+      p_patch: { league_id: second },
+      p_request_id: crypto.randomUUID()
+    });
+    expect(edited.error).toBeNull();
+    await executeTrustedSql(`
+      insert into public.match_event_audit_log (match_event_id, community_id, actor_id, action,
+          transition_revision, before_data, after_data)
+        values (${sqlText(eventId)}, ${sqlText(world.communityId)}, ${sqlText(world.owner.id)}, 'minor_edit',
+          900001, '{"league_id": ""}'::jsonb,
+          '{"league_id": "not-a-uuid", "competition": {"league_id": "also not a uuid"}}'::jsonb);
+      alter table public.league_event_references disable trigger league_event_references_immutable;
+      delete from public.league_event_references where league_id = any (${sqlText(`{${first},${second}}`)}::uuid[]);
+      alter table public.league_event_references enable trigger league_event_references_immutable;`);
+    const [done] = await sqlRows(`select public.league_backfill_references_from_audit() as added`);
+    expect(Number(done?.['added'])).toBeGreaterThanOrEqual(1);
+    const [locked] = await sqlRows(
+      `select public.league_has_published_events(${sqlText(first!)}) as locked`
+    );
+    expect(locked?.['locked']).toBe(true);
+    // Idempotent.
+    expect(
+      Number(
+        (await sqlRows(`select public.league_backfill_references_from_audit() as added`))[0]?.[
+          'added'
+        ]
+      )
+    ).toBe(0);
+  });
+
+  it('E3: stale rotation rows (resolved work, removed community) are pruned by the next run', async () => {
+    const communityId = await world.newCommunity(world.admin.id);
+    const leagueId = await insertLeague({
+      communityId,
+      ownerId: world.admin.id,
+      status: 'upcoming',
+      startAt: '1990-02-01T00:00:00Z'
+    });
+    const ghost = crypto.randomUUID();
+    const holder = await openDedicatedSqlConnection();
+    try {
+      await holder.query('begin');
+      await holder.query(
+        `select 1 from public.communities where id = ${sqlText(communityId)} for update`
+      );
+      await processLeaguesAt(new Date().toISOString(), 100);
+    } finally {
+      await holder.query('rollback').catch(() => undefined);
+      await holder.close();
+    }
+    const rotation = async (id: string) =>
+      Number(
+        (
+          await sqlRows(
+            `select count(*)::int as n from public.league_process_attempts where community_id = ${sqlText(id)}`
+          )
+        )[0]?.['n']
+      );
+    expect(await rotation(communityId)).toBe(1);
+    await executeTrustedSql(`
+      insert into public.league_process_attempts (community_id, attempted_at) values (${sqlText(ghost)}, now());
+      update public.leagues set status = 'active', activated_at = now() where id = ${sqlText(leagueId)};`);
+    await processLeaguesAt(new Date().toISOString(), 100);
+    expect(await rotation(communityId)).toBe(0);
+    expect(await rotation(ghost)).toBe(0);
+  });
+
+  it('E4: an overlapping invocation exits cleanly instead of blocking on a rotation row', async () => {
+    const communityId = await world.newCommunity(world.admin.id);
+    await insertLeague({
+      communityId,
+      ownerId: world.admin.id,
+      status: 'upcoming',
+      startAt: '1990-03-01T00:00:00Z'
+    });
+    const holder = await openDedicatedSqlConnection();
+    let overlapping: Promise<unknown> | undefined;
+    try {
+      // The first invocation, mid-run: scheduler lock, a locked community, its rotation row.
+      await holder.query('begin');
+      await holder.query(
+        `select pg_advisory_xact_lock(hashtextextended('padel-friend:process_due_leagues', 0))`
+      );
+      await holder.query(
+        `select 1 from public.communities where id = ${sqlText(communityId)} for update`
+      );
+      await holder.query(
+        `insert into public.league_process_attempts (community_id, attempted_at)
+           values (${sqlText(communityId)}, clock_timestamp())
+           on conflict (community_id) do update set attempted_at = excluded.attempted_at`
+      );
+      overlapping = processLeaguesAt(new Date().toISOString(), 100);
+      const outcome = await Promise.race([
+        overlapping.then((result) => result),
+        new Promise<string>((resolveTimeout) => setTimeout(() => resolveTimeout('blocked'), 8000))
+      ]);
+      expect(outcome).toMatchObject({ busy: true, processed: 0 });
+    } finally {
+      await holder.query('rollback').catch(() => undefined);
+      await holder.close();
+      await overlapping?.catch(() => undefined);
+      await executeTrustedSql(`
+        update public.leagues set start_at = '2999-01-01T00:00:00Z'
+          where community_id = ${sqlText(communityId)} and status = 'upcoming'`);
+    }
   });
 
   it('F1 (upgrade): a League referenced only in edit-audit history is recovered and stays period-locked', async () => {
@@ -310,6 +485,16 @@ describe.skipIf(!environment.env)('League review hardening', { timeout: 300_000 
       migration.indexOf('insert into public.league_event_references'),
       migration.indexOf('-- 2. F4')
     );
+    // The amended round-2 INSERT itself must tolerate malformed snapshots (fresh-DB replay path):
+    // every uuid cast is guarded, and malformed rows sit next to the valid ones.
+    expect(backfill.match(/pg_input_is_valid/g)).toHaveLength(4);
+    expect(backfill.match(/::uuid/g)).toHaveLength(4);
+    await executeTrustedSql(`
+      insert into public.match_event_audit_log (match_event_id, community_id, actor_id, action,
+          transition_revision, before_data, after_data)
+        values (${sqlText(toLeague)}, ${sqlText(world.communityId)}, ${sqlText(world.owner.id)}, 'minor_edit',
+          900002, '{"league_id": "", "competition": {"league_id": "nope"}}'::jsonb,
+          '{"league_id": "not-a-uuid", "competition": {"league_id": 42}}'::jsonb)`);
     await executeTrustedSql(backfill);
     await executeTrustedSql(backfill);
     expect(await locked(first!)).toBe(true);

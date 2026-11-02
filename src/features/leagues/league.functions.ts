@@ -58,7 +58,8 @@ export const listMoreLeagues = createServerFn({ method: 'GET' })
     const { client } = await authenticatedClient();
     const { data: result, error } = await client.rpc('list_leagues', {
       p_community_id: data.community_id,
-      p_offset: data.offset
+      p_after_created_at: data.cursor.created_at,
+      p_after_id: data.cursor.id
     });
     if (error) throw new Error(leagueErrorFromDatabase(error));
     return decoded(decodeLeagueList, result);

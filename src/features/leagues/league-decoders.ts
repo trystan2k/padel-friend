@@ -193,14 +193,17 @@ export function decodeLeagueCounters(value: unknown): LeagueCountersResult {
 }
 
 export function decodeLeagueList(value: unknown): LeagueListResult {
-  const row = exactObject(value, ['community', 'leagues', 'total', 'truncated', 'next_offset']);
+  const row = exactObject(value, ['community', 'leagues', 'total', 'truncated', 'next_cursor']);
   if (!Array.isArray(row.leagues)) return fail();
   return {
     community: decodeCommunity(row.community),
     leagues: row.leagues.map(decodeLeagueDto),
     total: count(row.total),
     truncated: boolean(row.truncated),
-    next_offset: count(row.next_offset)
+    next_cursor: nullable(row.next_cursor, (cursor) => {
+      const keys = exactObject(cursor, ['created_at', 'id']);
+      return { created_at: instant(keys.created_at), id: uuid(keys.id) };
+    })
   };
 }
 
