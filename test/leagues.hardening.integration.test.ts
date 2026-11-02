@@ -402,29 +402,135 @@ describe.skipIf(!environment.env)('League review hardening', { timeout: 300_000 
     expect(await remaining()).toBe(0);
   });
 
+  it('H2: cleanup examines a bounded window, so stale rows behind live ones wait for later runs', async () => {
+    await executeTrustedSql(`delete from public.league_process_attempts`);
+    // 20 live rotation rows (real communities with due work), older than 24 stale ghost rows.
+    const live = await Promise.all(
+      Array.from({ length: 20 }, () => world.newCommunity(world.admin.id))
+    );
+    for (const communityId of live)
+      await insertLeague({
+        communityId,
+        ownerId: world.admin.id,
+        status: 'upcoming',
+        startAt: '1990-04-01T00:00:00Z'
+      });
+    await executeTrustedSql(`
+      insert into public.league_process_attempts (community_id, attempted_at)
+        select c, timestamptz '2000-01-01' + (row_number() over ())::int * interval '1 second'
+          from unnest(${sqlText(`{${live.join(',')}}`)}::uuid[]) c;
+      insert into public.league_process_attempts (community_id, attempted_at)
+        select gen_random_uuid(), timestamptz '2001-01-01' + n * interval '1 second'
+          from generate_series(1, 24) n;`);
+    const ghosts = async () =>
+      Number(
+        (
+          await sqlRows(
+            `select count(*)::int as n from public.league_process_attempts
+              where attempted_at >= timestamptz '2001-01-01'`
+          )
+        )[0]?.['n']
+      );
+    // Limit 1 examines only the 16 oldest rotation rows: all live, so no ghost is touched yet.
+    await processLeaguesAt(new Date().toISOString(), 1);
+    expect(await ghosts()).toBe(24);
+    for (let run = 0; run < 80 && (await ghosts()) > 0; run += 1)
+      await processLeaguesAt(new Date().toISOString(), 1);
+    expect(await ghosts()).toBe(0);
+  });
+
+  it('H2: the stale-candidate window is served by an attempted_at index', async () => {
+    const [index] = await sqlRows(
+      `select indexdef from pg_indexes where schemaname = 'public'
+          and tablename = 'league_process_attempts' and indexdef ilike '%(attempted_at, community_id)%'`
+    );
+    expect(index).toBeDefined();
+  });
+
   it('G5: the keyset order is covered by a (community_id, created_at desc, id desc) index', async () => {
     const [index] = await sqlRows(
       `select indexdef from pg_indexes where schemaname = 'public' and tablename = 'leagues'
           and indexdef ilike '%(community_id, created_at desc, id desc)%'`
     );
     expect(index).toBeDefined();
-    // With sequential scans discouraged, the planner serves the cursor query from that index
-    // in index order, without a separate sort.
+    // Production shape: the RPC's static SQL binds (community, cursor) as parameters, under
+    // normal planner settings, over a representative volume (20 communities x 1000 Leagues, cursor after the 10th row). All of
+    // it lives in one rolled-back transaction (the timezone CHECK is dropped there only to keep
+    // the bulk load fast), so no volume is left behind for other tests.
     const connection = await openDedicatedSqlConnection();
     try {
       await connection.query('begin');
-      await connection.query('set local enable_seqscan = off');
-      const plan = (
+      await connection.query(`
+        do $$ declare c text; begin
+          select conname into c from pg_constraint
+            where conrelid = 'public.leagues'::regclass and contype = 'c'
+              and pg_get_constraintdef(oid) ilike '%valid_league_timezone%';
+          execute format('alter table public.leagues drop constraint %I', c);
+        end $$`);
+      await connection.query(`
+        insert into public.communities(id, name, visibility, created_by)
+          select gen_random_uuid(), 'Plan community ' || g, 'private', ${sqlText(world.admin.id)}
+            from generate_series(1, 20) g;
+        insert into public.leagues(community_id, owner_id, name, timezone, start_at, end_mode, status,
+            create_request_id, create_input, created_at)
+          select c.id, ${sqlText(world.admin.id)}, 'Plan ' || n, 'UTC',
+              '2999-01-01T00:00:00Z'::timestamptz + n * interval '1 day', 'manual', 'upcoming',
+              gen_random_uuid(), '{}'::jsonb, now() - n * interval '1 minute'
+            from public.communities c cross join generate_series(1, 1000) n
+            where c.name like 'Plan community %';
+        analyze public.leagues;`);
+      const [target] = (
         await connection.query(
-          `explain (format json) select l.id from public.leagues l
-            where l.community_id = ${sqlText(world.communityId)}
-              and (l.created_at, l.id) < (now(), gen_random_uuid())
-            order by l.created_at desc, l.id desc limit 201`
+          `select c.id::text as community, public.league_utc_text(l.created_at) as created_at, l.id::text as id
+             from public.communities c cross join lateral (
+               select created_at, id from public.leagues where community_id = c.id
+                order by created_at desc, id desc offset 9 limit 1) l
+            where c.name = 'Plan community 1'`
         )
       ).rows;
-      const text = JSON.stringify(plan);
-      expect(text).toContain('leagues_community_created_keyset');
-      expect(text).not.toContain('"Node Type":"Sort"');
+      const planFor = async (mode: 'force_custom_plan' | 'force_generic_plan') => {
+        await connection.query(`set local plan_cache_mode = ${mode}`);
+        await connection.query('deallocate all');
+        await connection.query(
+          `prepare keyset(uuid, timestamptz, uuid) as
+             select l.id from public.leagues l
+              where l.community_id = $1 and (l.created_at, l.id) < ($2, $3)
+              order by l.created_at desc, l.id desc limit 201`
+        );
+        const rows = (
+          await connection.query(
+            `explain (format json) execute keyset(${sqlText(String(target?.['community']))},
+               ${sqlText(String(target?.['created_at']))}, ${sqlText(String(target?.['id']))})`
+          )
+        ).rows;
+        return JSON.stringify(rows);
+      };
+      // list_leagues pins plan_cache_mode = force_custom_plan (a generic plan misestimates the
+      // row-wise cursor predicate and sorts), so the custom plan is the production plan.
+      const [config] = (
+        await connection.query(
+          `select proconfig::text as config from pg_proc where oid = 'public.list_leagues(uuid,timestamptz,uuid)'::regprocedure`
+        )
+      ).rows;
+      expect(String(config?.['config'])).toContain('plan_cache_mode=force_custom_plan');
+      for (const mode of ['force_custom_plan'] as const) {
+        const plan = await planFor(mode);
+        // The community and cursor predicates are both index conditions on the keyset index
+        // (literal values bound in the custom plan), the index delivers
+        // the ORDER BY, and nothing sorts or scans the table.
+        expect(plan).toMatch(
+          /"Index Name":"leagues_community_created_keyset"[^}]*"Index Cond":"\(\(community_id = [^)]+\) AND \(ROW\(created_at, id\) </
+        );
+        expect(plan).not.toContain('"Node Type":"Sort"');
+        expect(plan).not.toContain('"Node Type":"Seq Scan"');
+      }
+      // The check has teeth: without the index the same query no longer plans this way.
+      await connection.query('drop index public.leagues_community_created_keyset');
+      for (const mode of ['force_custom_plan'] as const) {
+        const without = await planFor(mode);
+        expect(without).not.toContain('leagues_community_created_keyset');
+        expect(without).toMatch(/"Node Type":"Sort"|"Node Type":"Seq Scan"/);
+      }
     } finally {
       await connection.query('rollback').catch(() => undefined);
       await connection.close();

@@ -42,11 +42,17 @@ select public.league_backfill_references_from_audit();
 -- directly from the index; the Active-first lookup is served by leagues_one_active_per_community.
 create index leagues_community_created_keyset on public.leagues (community_id, created_at desc, id desc);
 
+-- H2: serves the bounded oldest-first window of the rotation table in index order.
+create index league_process_attempts_oldest on public.league_process_attempts (attempted_at, community_id);
+
 -- 2. E2. The old offset signature is replaced (an overload would make the call ambiguous).
 drop function public.list_leagues(uuid, integer);
 create function public.list_leagues(
   p_community_id uuid, p_after_created_at timestamptz default null, p_after_id uuid default null)
-returns jsonb language plpgsql stable security definer set search_path = '' as $$
+returns jsonb language plpgsql stable security definer set search_path = ''
+  -- H3: the row-wise cursor predicate is badly estimated by a generic (parameterized) plan, which
+  -- then sorts a bitmap scan instead of walking the keyset index in order. Plan per call.
+  set plan_cache_mode = force_custom_plan as $$
 declare
   v_page uuid[];
   v_ids uuid[];
@@ -122,18 +128,22 @@ begin
     return pg_catalog.jsonb_build_object('processed', 0, 'skipped', 0, 'failed', 0,
       'errors', '[]'::jsonb, 'busy', true);
   end if;
-  -- E3/G4: rotation rows only matter while a community still has due work. At most v_limit * 4
-  -- stale rows are pruned per invocation (same order of work as the attempt budget), so a large
-  -- backlog never turns one run into a long lock-holding transaction; later runs finish it.
+  -- E3/G4/H2: rotation rows only matter while a community still has due work. Cleanup looks at
+  -- the v_limit * 16 OLDEST rotation rows only (index order, bounded examination) and prunes at
+  -- most v_limit * 4 stale ones among them, so a large table never turns one run into a long
+  -- lock-holding transaction. Rows the window has not reached are pruned by later runs: every
+  -- run restamps or removes the oldest rows it attempts, which moves the window along.
   delete from public.league_process_attempts
     where community_id in (
-      select p.community_id from public.league_process_attempts p
-      where not exists (select 1 from public.communities c where c.id = p.community_id)
-        or not exists (select 1 from public.leagues l where l.community_id = p.community_id
+      select w.community_id from (
+        select p.community_id, p.attempted_at from public.league_process_attempts p
+        order by p.attempted_at, p.community_id limit v_limit * 16) w
+      where not exists (select 1 from public.communities c where c.id = w.community_id)
+        or not exists (select 1 from public.leagues l where l.community_id = w.community_id
           and ((l.status = 'active' and l.end_mode = 'fixed_date' and l.end_at < v_as_of)
             or (l.status = 'upcoming' and ((l.end_mode = 'fixed_date' and l.end_at < v_as_of)
               or (l.start_at <= v_as_of and l.activation_blocked_at is null)))))
-      order by p.attempted_at
+      order by w.attempted_at, w.community_id
       limit v_limit * 4);
   for v_community in
     select l.community_id from public.leagues l

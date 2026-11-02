@@ -71,6 +71,7 @@ export function LeagueListPage({ data }: { data: LeagueListResult }) {
   const [moreFailed, setMoreFailed] = useState(false);
   const focusAfterLoad = useRef<{ league: string } | { status: true } | null>(null);
   const statusRef = useRef<HTMLOutputElement>(null);
+  const moreButtonRef = useRef<HTMLButtonElement>(null);
   const continued = more && more.base === data ? more : null;
   // One entry per League across the first page and every continuation page (a League can appear
   // on two pages when it moves between them); the latest copy of a row wins.
@@ -99,17 +100,23 @@ export function LeagueListPage({ data }: { data: LeagueListResult }) {
       const page = await listMoreLeagues({
         data: { community_id: community.id, cursor: nextCursor }
       });
+      // Focus only follows the response if the player is still on the button that asked for it;
+      // anyone who moved on while it was pending stays exactly where they are.
+      const ownsFocus =
+        moreButtonRef.current !== null && document.activeElement === moreButtonRef.current;
       const accumulated = [...(continued?.leagues ?? []), ...page.leagues];
       const merged = new Map(byId);
       for (const league of page.leagues) merged.set(league.id, league);
       // Keyboard users continue from the first newly loaded League in RENDERED order. With
       // nothing new and no button left, they land on the completion status instead.
       const fresh = displayOrder([...merged.values()]).find((league) => !byId.has(league.id));
-      focusAfterLoad.current = fresh
-        ? { league: fresh.id }
-        : page.truncated
-          ? null
-          : { status: true };
+      focusAfterLoad.current = !ownsFocus
+        ? null
+        : fresh
+          ? { league: fresh.id }
+          : page.truncated
+            ? null
+            : { status: true };
       setMore({ base: data, leagues: accumulated, last: page });
     } catch {
       setMoreFailed(true);
@@ -189,6 +196,7 @@ export function LeagueListPage({ data }: { data: LeagueListResult }) {
             )}
             {truncated && (
               <Button
+                ref={moreButtonRef}
                 variant="secondary"
                 disabled={loadingMore}
                 focusableWhenDisabled

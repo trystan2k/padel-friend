@@ -352,6 +352,56 @@ describe('League list and entries', () => {
     expect(text).toContain('Reload');
   });
 
+  it.each([
+    ['a new League', true],
+    ['only already-shown Leagues', false]
+  ] as const)(
+    'does not steal focus when the user moved away while the response was pending (%s)',
+    async (_label, hasNew) => {
+      const shown = makeLeagueDto({
+        id: 'a1111111-1111-4111-8111-111111111111',
+        name: 'Shown Cup'
+      });
+      const fresh = makeLeagueDto({
+        id: 'b1111111-1111-4111-8111-111111111111',
+        name: 'Fresh Cup'
+      });
+      render(
+        wrap(
+          <LeagueListPage
+            data={makeLeagueList(
+              [shown],
+              {},
+              { total: 2, truncated: true, next_cursor: pageCursor }
+            )}
+          />
+        )
+      );
+      let finish: (page: LeagueListResult) => void = () => undefined;
+      mocks.listMore.mockImplementationOnce(() => new Promise((resolve) => (finish = resolve)));
+      const button = screen.getByRole('button', { name: 'Show more Leagues' });
+      button.focus();
+      await userEvent.keyboard('{Enter}');
+      const elsewhere = screen.getByRole('link', { name: 'Create League' });
+      elsewhere.focus();
+      expect(document.activeElement).toBe(elsewhere);
+      finish(
+        makeLeagueList(
+          hasNew ? [fresh] : [shown],
+          {},
+          { total: 2, truncated: false, next_cursor: null }
+        )
+      );
+      await waitFor(() =>
+        expect(screen.getByRole('status').textContent).toContain(
+          hasNew ? 'All 2 Leagues are shown' : 'All 2 Leagues are shown'
+        )
+      );
+      if (hasNew) await screen.findByRole('link', { name: /Fresh Cup/ });
+      expect(document.activeElement).toBe(elsewhere);
+    }
+  );
+
   it('keeps focus on the button when loading more fails', async () => {
     render(
       wrap(
