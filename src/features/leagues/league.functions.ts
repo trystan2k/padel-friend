@@ -139,6 +139,14 @@ export const getLeagueStandingsAudit = createServerFn({ method: 'GET' })
     return decoded(decodeLeagueStandingsAudit, result);
   });
 
+/** The caller's permanent user id, so the table can mark their own row. */
+export const getLeagueViewer = createServerFn({ method: 'GET' }).handler(
+  async (): Promise<{ user_id: string }> => {
+    const { userId } = await authenticatedClient();
+    return { user_id: userId };
+  }
+);
+
 export const createLeague = createServerFn({ method: 'POST' })
   .validator(validateCreateLeague)
   .handler(async ({ data }): Promise<LeagueDto> => {

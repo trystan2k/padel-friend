@@ -34,6 +34,7 @@ vi.mock('../src/features/auth/auth.server', () => ({
 import {
   getLeagueStandings,
   getLeagueStandingsAudit,
+  getLeagueViewer,
   listLeagueStandingsVersions
 } from '../src/features/leagues/league.functions';
 import { LEAGUE_ID } from './helpers/league-dto-fixtures';
@@ -436,6 +437,17 @@ describe('League standings history server functions', () => {
     await expect(listLeagueStandingsVersions({ data: { league_id: LEAGUE_ID } })).rejects.toThrow(
       'INVALID_LEAGUE_RESPONSE'
     );
+  });
+
+  it('reports the verified caller id and refuses an anonymous or unverified session', async () => {
+    await expect(getLeagueViewer()).resolves.toEqual({ user_id: 'user-1' });
+    getClaims.mockResolvedValueOnce({
+      data: { claims: { sub: 'u', is_anonymous: true } },
+      error: null
+    });
+    await expect(getLeagueViewer()).rejects.toThrow('UNAUTHENTICATED');
+    getClaims.mockResolvedValueOnce({ data: null, error: new Error('bad') });
+    await expect(getLeagueViewer()).rejects.toThrow('UNAUTHENTICATED');
   });
 
   it('reads the owner/Admin audit through its RPC and surfaces denial and bad payloads', async () => {

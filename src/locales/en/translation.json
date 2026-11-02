@@ -1595,7 +1595,6 @@
       }
     },
     "counters": {
-      "title": "Participants",
       "matches": "Matches",
       "wins": "Wins",
       "draws": "Draws",
@@ -1603,12 +1602,83 @@
       "setsWon": "Sets won",
       "setsLost": "Sets lost",
       "setDifferential": "Set difference",
-      "empty": "No participants yet.",
-      "unknownPlayer": "Player",
-      "unavailable": "Participant counters could not be loaded. The League itself is unaffected.",
+      "unknownPlayer": "Player"
+    },
+    "standings": {
+      "title": "Standings",
+      "player": "Player",
+      "position": "Place",
+      "yourPlace": "Your place",
+      "you": "You",
+      "sharedPosition": "Shared place {{position}}",
+      "tableLabel": "Standings table. Scroll sideways to see every statistic.",
+      "award": "Final award",
+      "live": "Live",
+      "final": "Final",
+      "rankingRule": "Order: most wins, then fewest losses, then set difference, then sets won. Equal rows share a place. Skill level is never used.",
+      "eligibilityRule_one": "The final award needs at least 1 match. Players below it stay in the table.",
+      "eligibilityRule_other": "The final award needs at least {{count}} matches. Players below it stay in the table.",
+      "empty": {
+        "noActive": "No Active League",
+        "noActiveBody": "Standings appear here once a League is Active.",
+        "noEligibleResults": "No eligible Ranked results yet. Everyone starts at zero.",
+        "closedTitle": "No results in this League",
+        "closedBody": "No Ranked result was earned before this League closed.",
+        "notParticipant": "You have no row in this table."
+      },
+      "unavailable": "Standings could not be loaded. The League itself is unaffected.",
       "retry": "Retry",
-      "excluded_one": "1 confirmed Ranked group was left out because it no longer meets the Ranked rules.",
-      "excluded_other": "{{count}} confirmed Ranked groups were left out because they no longer meet the Ranked rules."
+      "refreshing": "Updating standings…"
+    },
+    "award": {
+      "eligible": "Eligible",
+      "remaining_one": "1 more match",
+      "remaining_other": "{{count}} more matches",
+      "finalEligible": "Eligible",
+      "finalIneligible": "Not eligible",
+      "callout": {
+        "eligible": "You have reached the minimum for the final award.",
+        "remaining_one": "One more match for award eligibility.",
+        "remaining_other": "{{count}} more matches for award eligibility.",
+        "finalEligible": "You reached the minimum for the final award.",
+        "finalIneligible": "You did not reach the minimum for the final award."
+      }
+    },
+    "history": {
+      "title": "Final versions",
+      "previousLeagues": "Previous Leagues",
+      "selectVersion": "Final version",
+      "versionLabel": "Version {{version}}",
+      "latest": "latest",
+      "olderVersion": "You are viewing an older final version.",
+      "generatedAt": "Published {{date}}",
+      "periodCutoff": "Only matches played up to {{date}} count.",
+      "lateFirstConfirmation": "First result confirmed after close",
+      "lateConfirmationDetail": "A match played {{played}} was confirmed for the first time on {{confirmed}}. It was played inside the League dates, so it counts and a new final version was published. Earlier versions stay available.",
+      "cause": {
+        "closed": "Published when the League closed",
+        "repair": "Repaired from stored records",
+        "reconstruction": "Rebuilt from stored records"
+      },
+      "backfilled": "Rebuilt afterwards from stored records, not published at the time.",
+      "revisionAvailable": "A newer final version is available.",
+      "viewLatest": "View latest version",
+      "unavailable": "Version history could not be loaded.",
+      "loadMore": "Show earlier versions",
+      "auditTitle": "Audit trail",
+      "audit": {
+        "closed": "League closed",
+        "standings_revised": "Standings revised",
+        "byManager": "by an owner or Admin",
+        "version": "version {{version}}",
+        "reason": {
+          "fixed_end_reached": "end date reached",
+          "expired_before_activation": "ended before it started",
+          "late_first_confirmation": "first result confirmed after close (automatic)",
+          "standings_repair": "repaired from stored records",
+          "standings_reconstruction": "rebuilt from stored records"
+        }
+      }
     },
     "detail": {
       "owner": "Owner",
@@ -1633,7 +1703,7 @@
       "closedDone": "League closed.",
       "closeConfirm": {
         "title": "Close {{name}}?",
-        "body": "The League ends now and cannot be reopened. This is recorded in its history.",
+        "body": "The League ends now and cannot be reopened. Matches played after this moment never count. A match played before it that is confirmed for the first time later still counts and adds a new final version; earlier finals stay available. This is recorded in its history.",
         "cancel": "Keep open",
         "confirm": "Close League"
       }

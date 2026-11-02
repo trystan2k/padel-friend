@@ -388,14 +388,14 @@ test('provisional player joins a Ranked event, is carried on League change and k
   const leagueUrl = `/community/${f.community}/leagues/${spring}`;
   const participant = (page: Page, name: string) =>
     page
-      .getByRole('region', { name: en.leagues.counters.title })
-      .getByRole('listitem')
+      .getByRole('region', { name: en.leagues.standings.tableLabel })
+      .getByRole('row')
       .filter({ hasText: name });
   await organizer.goto(leagueUrl);
   await waitForHydratedPage(organizer);
   const entry = participant(organizer, 'Carla Convidada');
   await expect(entry).toContainText(en.player.provisional.badge);
-  await expect(entry).toContainText(`${en.leagues.counters.matches}0`);
+  await expect(entry.getByRole('cell').nth(1)).toHaveText('0');
 
   // League change is a major edit: registered players must reconfirm, the provisional one is
   // carried over automatically (both generations advance together, nobody blocked).
@@ -446,7 +446,7 @@ test('provisional player joins a Ranked event, is carried on League change and k
   const claimed = participant(organizer, 'Carla Reclamada');
   await expect(claimed).toBeVisible();
   await expect(claimed).not.toContainText(en.player.provisional.badge);
-  await expect(claimed).toContainText(`${en.leagues.counters.matches}0`);
+  await expect(claimed.getByRole('cell').nth(1)).toHaveText('0');
 });
 
 test('invalid Ranked result is rejected, then blocked visibly with a correction path (AC6)', async () => {

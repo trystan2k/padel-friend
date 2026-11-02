@@ -4,6 +4,12 @@ import type {
   LeagueDto,
   LeagueListResult
 } from '../../src/features/leagues/league-contracts';
+import type {
+  LeagueFinalStandings,
+  LeagueLiveStandings,
+  LeagueStandingEntry,
+  LeagueStandingsVersionSummary
+} from '../../src/features/leagues/league-standings-contracts';
 
 export const LEAGUE_COMMUNITY_ID = '11111111-1111-4111-8111-111111111111';
 export const LEAGUE_ID = '22222222-2222-4222-8222-222222222222';
@@ -76,4 +82,82 @@ export function makeLeagueDetail(
   community: Partial<LeagueCommunityDto> = {}
 ): LeagueDetailResult {
   return { community: makeLeagueCommunity(community), league: makeLeagueDto(league) };
+}
+
+export const STANDING_USER_A = '33333333-3333-4333-8333-333333333331';
+export const STANDING_USER_B = '33333333-3333-4333-8333-333333333332';
+export const STANDING_USER_C = '33333333-3333-4333-8333-333333333334';
+
+/** Wire-shaped standing row (3 matches, 2W 1L, sets 5-3) with consistent derived fields. */
+export function makeStandingEntry(
+  overrides: Partial<LeagueStandingEntry> = {}
+): LeagueStandingEntry {
+  return {
+    user_id: STANDING_USER_A,
+    display_name: 'Ana',
+    is_provisional: false,
+    position: 1,
+    matches: 3,
+    wins: 2,
+    losses: 1,
+    draws: 0,
+    sets_won: 5,
+    sets_lost: 3,
+    set_differential: 2,
+    award_eligible: true,
+    matches_remaining: 0,
+    ...overrides
+  };
+}
+
+export function makeLiveStandings(
+  entries: LeagueStandingEntry[],
+  overrides: Partial<LeagueLiveStandings> = {}
+): LeagueLiveStandings {
+  return {
+    league_id: LEAGUE_ID,
+    status: 'active',
+    minimum_matches_for_final_award: 2,
+    source: 'live',
+    standings_version: null,
+    latest_standings_version: null,
+    generated_at: null,
+    cause: null,
+    entries,
+    ...overrides
+  };
+}
+
+export function makeFinalStandings(
+  entries: LeagueStandingEntry[],
+  overrides: Partial<LeagueFinalStandings> = {}
+): LeagueFinalStandings {
+  return {
+    league_id: LEAGUE_ID,
+    status: 'closed',
+    minimum_matches_for_final_award: 2,
+    source: 'final',
+    standings_version: 1,
+    latest_standings_version: 1,
+    generated_at: '2030-12-21T10:00:00.000000Z',
+    cause: 'closed',
+    entries,
+    ...overrides
+  };
+}
+
+export function makeVersionSummary(
+  overrides: Partial<LeagueStandingsVersionSummary> = {}
+): LeagueStandingsVersionSummary {
+  return {
+    standings_version: 1,
+    cause: 'closed',
+    basis: 'published',
+    generated_at: '2030-12-21T10:00:00.000000Z',
+    effective_end_at: '2030-12-20T22:59:59.999999Z',
+    minimum_matches_for_final_award: 2,
+    entry_count: 1,
+    confirmation: null,
+    ...overrides
+  };
 }

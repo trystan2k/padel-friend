@@ -1595,7 +1595,6 @@
       }
     },
     "counters": {
-      "title": "Participantes",
       "matches": "Partidos",
       "wins": "Victorias",
       "draws": "Empates",
@@ -1603,12 +1602,83 @@
       "setsWon": "Sets ganados",
       "setsLost": "Sets perdidos",
       "setDifferential": "Diferencia de sets",
-      "empty": "Aún no hay participantes.",
-      "unknownPlayer": "Jugador",
-      "unavailable": "No se pudieron cargar los contadores de los participantes. La Liga en sí no se ha visto afectada.",
+      "unknownPlayer": "Jugador"
+    },
+    "standings": {
+      "title": "Clasificación",
+      "player": "Jugador",
+      "position": "Puesto",
+      "yourPlace": "Tu puesto",
+      "you": "Tú",
+      "sharedPosition": "Puesto compartido {{position}}",
+      "tableLabel": "Tabla de clasificación. Desplázate hacia un lado para ver todas las estadísticas.",
+      "award": "Premio final",
+      "live": "En vivo",
+      "final": "Final",
+      "rankingRule": "Orden: más victorias, luego menos derrotas, luego diferencia de sets, luego sets ganados. Las filas iguales comparten puesto. El nivel de habilidad nunca se usa.",
+      "eligibilityRule_one": "El premio final exige al menos 1 partido. Quien queda por debajo sigue en la tabla.",
+      "eligibilityRule_other": "El premio final exige al menos {{count}} partidos. Quien queda por debajo sigue en la tabla.",
+      "empty": {
+        "noActive": "Ninguna Liga Activa",
+        "noActiveBody": "La clasificación aparece aquí cuando una Liga esté Activa.",
+        "noEligibleResults": "Aún no hay resultados Clasificatorios elegibles. Todos empiezan en cero.",
+        "closedTitle": "Sin resultados en esta Liga",
+        "closedBody": "No se obtuvo ningún resultado Clasificatorio antes de que esta Liga cerrara.",
+        "notParticipant": "No tienes fila en esta tabla."
+      },
+      "unavailable": "No se pudo cargar la clasificación. La Liga en sí no se ha visto afectada.",
       "retry": "Reintentar",
-      "excluded_one": "1 grupo Clasificatorio confirmado quedó fuera porque ya no cumple las reglas Clasificatorias.",
-      "excluded_other": "{{count}} grupos Clasificatorios confirmados quedaron fuera porque ya no cumplen las reglas Clasificatorias."
+      "refreshing": "Actualizando la clasificación…"
+    },
+    "award": {
+      "eligible": "Elegible",
+      "remaining_one": "1 partido más",
+      "remaining_other": "{{count}} partidos más",
+      "finalEligible": "Elegible",
+      "finalIneligible": "No elegible",
+      "callout": {
+        "eligible": "Has alcanzado el mínimo para el premio final.",
+        "remaining_one": "Un partido más para ser elegible al premio.",
+        "remaining_other": "{{count}} partidos más para ser elegible al premio.",
+        "finalEligible": "Alcanzaste el mínimo para el premio final.",
+        "finalIneligible": "No alcanzaste el mínimo para el premio final."
+      }
+    },
+    "history": {
+      "title": "Versiones finales",
+      "previousLeagues": "Ligas anteriores",
+      "selectVersion": "Versión final",
+      "versionLabel": "Versión {{version}}",
+      "latest": "más reciente",
+      "olderVersion": "Estás viendo una versión final anterior.",
+      "generatedAt": "Publicada el {{date}}",
+      "periodCutoff": "Solo cuentan los partidos jugados hasta {{date}}.",
+      "lateFirstConfirmation": "Primer resultado confirmado tras el cierre",
+      "lateConfirmationDetail": "Un partido jugado el {{played}} se confirmó por primera vez el {{confirmed}}. Se jugó dentro de las fechas de la Liga, así que cuenta y se publicó una nueva versión final. Las versiones anteriores siguen disponibles.",
+      "cause": {
+        "closed": "Publicada al cerrar la Liga",
+        "repair": "Corregida a partir de los registros guardados",
+        "reconstruction": "Reconstruida a partir de los registros guardados"
+      },
+      "backfilled": "Reconstruida después a partir de los registros guardados, no publicada en su momento.",
+      "revisionAvailable": "Hay una versión final más reciente.",
+      "viewLatest": "Ver la versión más reciente",
+      "unavailable": "No se pudo cargar el historial de versiones.",
+      "loadMore": "Mostrar versiones anteriores",
+      "auditTitle": "Registro de auditoría",
+      "audit": {
+        "closed": "Liga cerrada",
+        "standings_revised": "Clasificación revisada",
+        "byManager": "por un responsable o Admin",
+        "version": "versión {{version}}",
+        "reason": {
+          "fixed_end_reached": "fecha final alcanzada",
+          "expired_before_activation": "terminó antes de empezar",
+          "late_first_confirmation": "primer resultado confirmado tras el cierre (automático)",
+          "standings_repair": "corregida a partir de los registros guardados",
+          "standings_reconstruction": "reconstruida a partir de los registros guardados"
+        }
+      }
     },
     "detail": {
       "owner": "Responsable",
@@ -1633,7 +1703,7 @@
       "closedDone": "Liga cerrada.",
       "closeConfirm": {
         "title": "¿Cerrar {{name}}?",
-        "body": "La Liga termina ahora y no puede reabrirse. Queda registrado en su historial.",
+        "body": "La Liga termina ahora y no se puede reabrir. Los partidos jugados después de este momento nunca cuentan. Un partido jugado antes y confirmado por primera vez más tarde sigue contando y crea una nueva versión final; las finales anteriores siguen disponibles. Queda registrado en su historial.",
         "cancel": "Mantener abierta",
         "confirm": "Cerrar Liga"
       }

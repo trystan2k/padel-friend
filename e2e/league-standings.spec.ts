@@ -1,0 +1,407 @@
+import { expect, test, type Page } from '@playwright/test';
+import { waitForHydratedPage } from './auth-helpers';
+import { copies, day, leagueFixtures } from './leagues-fixtures';
+import { en, fill, sql } from './matches-management-fixtures';
+
+// PAF-12 U4: a Ranked League from creation to archive. Real routes and RPCs; trusted SQL is used
+// for setup and time anchors only (League/event/membership history in the past) and, afterwards,
+// to prove the UI shows exactly what the stored records say.
+const s = en.leagues.standings;
+const h = en.leagues.history;
+const c = en.leagues.counters;
+
+test.use({ viewport: { width: 390, height: 844 }, serviceWorkers: 'block' });
+test.describe.configure({ mode: 'serial' });
+
+let f: Awaited<ReturnType<typeof leagueFixtures>>;
+let leagueId: string;
+let proposalB: string;
+const venue = (name: string) => `Standings E2E ${name}`;
+
+test.beforeAll(async ({ browser }) => {
+  test.setTimeout(300_000);
+  f = await leagueFixtures(browser, { memberCount: 5, communityName: 'Standings Club' });
+});
+test.afterAll(async () => {
+  test.setTimeout(120_000);
+  await f?.cleanup();
+});
+test.beforeEach(() => {
+  test.setTimeout(180_000);
+});
+
+const players = () => [f.creator, f.members[0]!, f.members[1]!, f.members[2]!];
+const teams = () => ({
+  team_a: [players()[0]!.id, players()[1]!.id],
+  team_b: [players()[2]!.id, players()[3]!.id]
+});
+
+/** A Ranked event of the League with a full quartet, moved into the League's past. */
+async function playedRankedEvent(name: string) {
+  const eventId = await f.publish(f.creator, {
+    competition: 'ranked',
+    leagueId,
+    date: day(1),
+    venue: venue(name)
+  });
+  for (const player of players().slice(1))
+    await f.rpc(player, 'submit_match_registration', { p_match_event_id: eventId });
+  await f.cutoff(eventId);
+  await sql(`do $$ begin
+    alter table public.match_events disable trigger match_event_immutable;
+    alter table public.match_events disable trigger match_event_league_binding;
+    update public.match_events set starts_at=now()-interval '3 hours',
+      registration_cutoff_at=now()-interval '4 hours' where id='${eventId}';
+    alter table public.match_events enable trigger match_event_league_binding;
+    alter table public.match_events enable trigger match_event_immutable;
+  end $$;`);
+  return eventId;
+}
+
+async function submitGroup(eventId: string, sets: [number, number][], minutesAgo: number) {
+  const played = new Date(Math.floor((Date.now() - minutesAgo * 60_000) / 1000) * 1000);
+  const iso = played.toISOString().replace('.000Z', 'Z');
+  await f.rpc(f.creator, 'submit_match_event_result', {
+    p_match_event_id: eventId,
+    p_group_number: 1,
+    p_teams: teams(),
+    p_sets: sets.map(([a, b], index) => ({
+      position: index + 1,
+      team_a_games: a,
+      team_b_games: b,
+      completed: true
+    })),
+    p_played_local: {
+      local: iso.slice(0, 19).replace('T', ' '),
+      offset_seconds: 0,
+      instant: iso
+    },
+    p_court_label: 'Court 1',
+    p_request_id: crypto.randomUUID()
+  });
+  const [row] = await sql(
+    `select id::text from public.match_event_result_proposals where match_event_id='${eventId}' and group_number=1`
+  );
+  return String(row?.id);
+}
+
+/** Approval by a member of the team opposite the submitter: the group confirms. */
+async function approve(proposal: string) {
+  await f.rpc(players()[2]!, 'review_match_event_result', {
+    p_proposal_id: proposal,
+    p_expected_version: 1,
+    p_decision: 'approve',
+    p_request_id: crypto.randomUUID()
+  });
+}
+
+const region = (page: Page) => page.getByRole('region', { name: s.tableLabel });
+const row = (page: Page, name: string) =>
+  region(page)
+    .getByRole('row')
+    .filter({ has: page.getByRole('rowheader', { name }) });
+
+/** Every statistic cell of a row, in table order (place, then the counters, then the award). */
+async function cells(page: Page, name: string) {
+  const texts = await row(page, name).getByRole('cell').allTextContents();
+  // The place cell also carries a visually hidden shared-place announcement.
+  return texts.map((text, index) =>
+    index === 0 ? (text.match(/^\d+/)?.[0] ?? text) : text.trim()
+  );
+}
+
+async function storedCounters() {
+  return sql(
+    `select user_id::text, matches, wins, draws, losses, sets_won, sets_lost
+       from public.league_player_counters where league_id='${leagueId}' order by user_id`
+  );
+}
+
+/** Activates through the real command at the League's stored version (the anchors bump it). */
+async function activate(id: string) {
+  const [league] = await sql(`select version, status::text from public.leagues where id='${id}'`);
+  if (league?.status === 'active') return;
+  await f.rpc(f.creator, 'activate_league', {
+    p_league_id: id,
+    p_expected_version: league?.version
+  });
+}
+
+async function openLeague(page: Page, search = '') {
+  await page.goto(`/community/${f.community}/leagues/${leagueId}${search}`);
+  await waitForHydratedPage(page);
+}
+
+test('Win group confirmed in a Manual League shows exact live counters and shared places', async () => {
+  leagueId = await f.createLeague(f.creator, {
+    name: 'Standings League',
+    endMode: 'manual',
+    start: day(0),
+    minimum: 2
+  });
+  // Time anchors: the League began ten days ago and every member was already active then.
+  await sql(`do $$ begin
+    update public.leagues set start_at=now()-interval '10 days' where id='${leagueId}';
+    alter table public.community_members disable trigger community_member_guard;
+    update public.community_members set valid_from=now()-interval '10 days', activated_at=now()-interval '10 days'
+      where community_id='${f.community}';
+    alter table public.community_members enable trigger community_member_guard;
+  end $$;`);
+  await activate(leagueId);
+
+  const win = await playedRankedEvent('win');
+  await approve(
+    await submitGroup(
+      win,
+      [
+        [6, 4],
+        [6, 3]
+      ],
+      90
+    )
+  );
+  // The unconfirmed Draw group waits for its approval until after the League closes.
+  const draw = await playedRankedEvent('draw');
+  proposalB = await submitGroup(
+    draw,
+    [
+      [6, 4],
+      [4, 6]
+    ],
+    45
+  );
+
+  const page = await f.page(f.creator);
+  await openLeague(page);
+  await expect(page.getByRole('heading', { name: s.title, exact: true })).toBeVisible();
+  await expect(page.getByText(s.live, { exact: true })).toBeVisible();
+
+  const [a, b] = [players()[0]!.name, players()[2]!.name];
+  // Place, Matches, Wins, Draws, Losses, Sets won, Sets lost, Set difference, award.
+  expect(await cells(page, a)).toEqual([
+    '1',
+    '1',
+    '1',
+    '0',
+    '0',
+    '2',
+    '0',
+    '+2',
+    en.leagues.award.remaining_one
+  ]);
+  expect(await cells(page, b)).toEqual([
+    '5',
+    '1',
+    '0',
+    '0',
+    '1',
+    '0',
+    '2',
+    '-2',
+    en.leagues.award.remaining_one
+  ]);
+  // Winners share place 1; the two zero-record members share 3; losers share 5 (competition
+  // ranking skips places after a tie). Shared places are announced for assistive tech.
+  await expect(
+    row(page, players()[1]!.name).getByText(fill(s.sharedPosition, { position: 1 }))
+  ).toBeAttached();
+  await expect(
+    row(page, players()[3]!.name).getByText(fill(s.sharedPosition, { position: 5 }))
+  ).toBeAttached();
+
+  // Own summary and callout (creator won).
+  await expect(page.getByText(s.yourPlace, { exact: true })).toBeVisible();
+  await expect(page.getByText(en.leagues.award.callout.remaining_one)).toBeVisible();
+
+  // The screen is exactly what the stored, materialized counters say.
+  const stored = await storedCounters();
+  expect(stored).toHaveLength(4);
+  for (const record of stored) {
+    const actor = players().find((player) => player.id === record.user_id)!;
+    expect(await cells(page, actor.name)).toEqual(
+      expect.arrayContaining([
+        String(record.matches),
+        String(record.wins),
+        String(record.losses),
+        String(record.sets_won),
+        String(record.sets_lost)
+      ])
+    );
+  }
+  await expect(page.getByRole('columnheader', { name: c.setDifferential })).toBeVisible();
+});
+
+test('only the owner or an Admin closes; closing shows the archived final table', async () => {
+  const denied = await f.members[3]!.client.rpc('close_league', {
+    p_league_id: leagueId,
+    p_expected_version: 2
+  });
+  expect(denied.error).not.toBeNull();
+
+  const member = await f.page(f.members[3]!);
+  await openLeague(member);
+  await expect(member.getByRole('button', { name: en.leagues.detail.close })).toHaveCount(0);
+
+  const page = await f.page(f.creator);
+  await openLeague(page);
+  const trigger = page.getByRole('main').getByRole('button', { name: en.leagues.detail.close });
+  await trigger.focus();
+  await page.keyboard.press('Enter');
+  const dialog = page.getByRole('alertdialog');
+  await expect(dialog).toContainText(en.leagues.detail.closeConfirm.body);
+  // Cancel by keyboard returns focus to the trigger and changes nothing.
+  await dialog.getByRole('button', { name: en.leagues.detail.closeConfirm.cancel }).click();
+  await expect(trigger).toBeFocused();
+  expect(await sql(`select status::text from public.leagues where id='${leagueId}'`)).toEqual([
+    { status: 'active' }
+  ]);
+
+  await trigger.click();
+  await page
+    .getByRole('alertdialog')
+    .getByRole('button', { name: en.leagues.detail.closeConfirm.confirm })
+    .click();
+  await expect(page.getByText(s.final, { exact: true })).toBeVisible();
+  await expect(page.getByText(en.leagues.detail.closedDone)).toBeVisible();
+  await expect(page.getByRole('button', { name: en.leagues.detail.close })).toHaveCount(0);
+
+  // The archived table is the stored version 1, not today's counters under a final label.
+  const [snapshot] = await sql(
+    `select standings_version, cause::text, jsonb_array_length(entries) as entries
+       from public.league_standings_snapshots where league_id='${leagueId}'`
+  );
+  expect(snapshot).toMatchObject({ standings_version: 1, cause: 'closed', entries: 4 });
+  const select = page.getByRole('combobox', { name: h.selectVersion });
+  await expect(select).toHaveValue('1');
+  expect(await cells(page, players()[0]!.name)).toEqual([
+    '1',
+    '1',
+    '1',
+    '0',
+    '0',
+    '2',
+    '0',
+    '+2',
+    en.leagues.award.finalIneligible
+  ]);
+  await expect(page.getByText(h.cause.closed)).toBeVisible();
+  // Owner audit trail lists the close.
+  await expect(page.getByRole('heading', { name: h.auditTitle })).toBeVisible();
+  await expect(
+    page.getByRole('listitem').filter({ hasText: en.leagues.history.audit.closed })
+  ).toBeVisible();
+});
+
+test('a first result confirmed after the close adds a new final; the old one stays inspectable', async () => {
+  await approve(proposalB);
+  const [counted] = await sql(
+    `select count(*)::int as versions from public.league_standings_snapshots where league_id='${leagueId}'`
+  );
+  expect(counted?.versions).toBe(2);
+
+  const page = await f.page(f.creator);
+  await openLeague(page);
+  const select = page.getByRole('combobox', { name: h.selectVersion });
+  await expect(select).toHaveValue('2');
+  await expect(page.getByText(h.lateFirstConfirmation)).toBeVisible();
+  await expect(page.getByText(/was confirmed for the first time/)).toBeVisible();
+  // Version 2 includes the Draw: two matches each, award minimum reached.
+  expect(await cells(page, players()[0]!.name)).toEqual([
+    '1',
+    '2',
+    '1',
+    '1',
+    '0',
+    '3',
+    '1',
+    '+2',
+    en.leagues.award.finalEligible
+  ]);
+  await expect(
+    page.getByRole('listitem').filter({ hasText: en.leagues.history.audit.standings_revised })
+  ).toBeVisible();
+
+  // Keyboard-only version selection keeps v1 selected and points at the newer one.
+  await select.focus();
+  await select.selectOption('1');
+  await expect(page).toHaveURL(/version=1/);
+  await waitForHydratedPage(page);
+  await expect(page.getByRole('combobox', { name: h.selectVersion })).toHaveValue('1');
+  expect(await cells(page, players()[0]!.name)).toEqual([
+    '1',
+    '1',
+    '1',
+    '0',
+    '0',
+    '2',
+    '0',
+    '+2',
+    en.leagues.award.finalIneligible
+  ]);
+  await expect(page.getByText(h.olderVersion)).toBeVisible();
+  await expect(page.getByText(h.revisionAvailable)).toBeVisible();
+
+  await page.getByRole('button', { name: h.viewLatest }).click();
+  await expect(page).not.toHaveURL(/version=/);
+  await expect(page.getByRole('combobox', { name: h.selectVersion })).toHaveValue('2');
+
+  // An unknown version is a safe, translated error with a way back.
+  await openLeague(page, '?version=99');
+  await expect(page.getByRole('alert')).toContainText(
+    en.leagues.errors.LEAGUE_STANDINGS_VERSION_NOT_FOUND
+  );
+  await expect(page.getByRole('button', { name: h.viewLatest })).toBeVisible();
+
+  // Members without management rights see the archive but no audit trail or close action.
+  const member = await f.page(f.members[3]!);
+  await openLeague(member);
+  await expect(member.getByText(s.final, { exact: true })).toBeVisible();
+  await expect(member.getByRole('heading', { name: h.auditTitle })).toHaveCount(0);
+  await expect(member.getByRole('link', { name: h.previousLeagues })).toBeVisible();
+});
+
+test('the archived League stays reachable from the list once a successor is active', async () => {
+  const successor = await f.createLeague(f.creator, {
+    name: 'Successor League',
+    endMode: 'manual',
+    start: day(0)
+  });
+  await activate(successor);
+  const page = await f.page(f.creator);
+  await page.goto(`/community/${f.community}/leagues`);
+  await waitForHydratedPage(page);
+  await page.getByRole('link', { name: /Standings League/ }).click();
+  await expect(page.getByText(s.final, { exact: true })).toBeVisible();
+  await expect(page.getByRole('combobox', { name: h.selectVersion })).toHaveValue('2');
+});
+
+test('final standings reflow at 320px in pt-BR dark mode with 44px targets and a reachable table', async () => {
+  const pt = copies['pt-BR'].leagues;
+  const page = await f.page(f.creator, 'pt-BR', 320, 'dark');
+  await openLeague(page);
+  await expect(page.getByRole('heading', { name: pt.standings.title, exact: true })).toBeVisible();
+
+  // The page itself never scrolls sideways; only the named table region does.
+  const overflow = await page.evaluate(() => ({
+    page: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+    region: (() => {
+      const node = document.querySelector('section[aria-label][tabindex="0"]');
+      return node ? node.scrollWidth - node.clientWidth : -1;
+    })()
+  }));
+  expect(overflow.page).toBeLessThanOrEqual(0);
+  expect(overflow.region).toBeGreaterThan(0);
+  const tableRegion = page.getByRole('region', { name: pt.standings.tableLabel });
+  await tableRegion.focus();
+  await expect(tableRegion).toBeFocused();
+
+  // Interactive targets stay at least 44px tall, translated text included.
+  for (const target of [
+    page.getByRole('combobox', { name: pt.history.selectVersion }),
+    page.getByRole('link', { name: pt.history.previousLeagues })
+  ]) {
+    const box = await target.boundingBox();
+    expect(box?.height).toBeGreaterThanOrEqual(44);
+  }
+  await expect(page.getByText(pt.history.lateFirstConfirmation)).toBeVisible();
+});

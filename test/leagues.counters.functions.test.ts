@@ -1,11 +1,5 @@
-/** @vitest-environment jsdom */
-import { cleanup, render, screen, within } from '@testing-library/react';
-import { createElement } from 'react';
-import { I18nextProvider } from 'react-i18next';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { LeagueCountersResult } from '../src/features/leagues/league-contracts';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { decodeLeagueCounters } from '../src/features/leagues/league-decoders';
-import { createI18n } from '../src/i18n/config';
 
 type RpcResult = { data: unknown; error: { message: string } | null };
 type Claims = { data: { claims: { sub?: string; is_anonymous?: boolean } } | null; error: unknown };
@@ -33,7 +27,6 @@ vi.mock('../src/features/auth/auth.server', () => ({
   requireAuthenticatedClient: mocks.requireAuthenticatedClient
 }));
 
-import { LeagueCounters } from '../src/features/leagues/LeagueCounters';
 import { getLeagueCounters } from '../src/features/leagues/league.functions';
 import enTranslation from '../src/locales/en/translation.json';
 import esTranslation from '../src/locales/es/translation.json';
@@ -161,54 +154,7 @@ describe('getLeagueCounters server function', () => {
   });
 });
 
-describe('LeagueCounters view', () => {
-  afterEach(cleanup);
-  const view = (value: LeagueCountersResult, locale: 'en' | 'pt-BR' | 'es' = 'en') =>
-    render(
-      createElement(
-        I18nextProvider,
-        { i18n: createI18n(locale) },
-        createElement(LeagueCounters, { counters: value })
-      )
-    );
-
-  it('shows every participant with the provisional badge and no ordering claim', () => {
-    view(
-      decodeLeagueCounters(
-        counters([
-          entry(),
-          entry({
-            user_id: USER_B,
-            display_name: 'Bia',
-            is_provisional: true,
-            matches: 0,
-            wins: 0,
-            losses: 0,
-            sets_won: 0,
-            sets_lost: 0,
-            set_differential: 0
-          })
-        ])
-      )
-    );
-    const items = screen.getAllByRole('listitem');
-    expect(items).toHaveLength(2);
-    expect(within(items[0]!).getByText('Ana')).toBeTruthy();
-    expect(within(items[0]!).queryByText('Provisional')).toBeNull();
-    expect(within(items[0]!).getByText('+2')).toBeTruthy();
-    expect(within(items[1]!).getByText('Provisional')).toBeTruthy();
-    expect(screen.queryByText(/position|rank|points/i)).toBeNull();
-  });
-
-  it('explains empty and excluded states in every locale', () => {
-    const { unmount } = view(decodeLeagueCounters(counters([], 2)));
-    expect(screen.getByRole('status').textContent).toContain('2 confirmed Ranked groups');
-    expect(screen.getByText('No participants yet.')).toBeTruthy();
-    unmount();
-    view(decodeLeagueCounters(counters([], 1)), 'pt-BR');
-    expect(screen.getByRole('status').textContent).toContain('1 grupo Ranqueado');
-  });
-
+describe('League counters locale keys', () => {
   it('has the same counters keys in en, pt-BR and es', () => {
     const keys = (value: { leagues: { counters: Record<string, string> } }) =>
       Object.keys(value.leagues.counters).sort();
