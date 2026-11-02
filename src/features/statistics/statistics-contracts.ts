@@ -26,6 +26,7 @@ export const STATISTICS_REASONS = [
   'no_applicable_result',
   'not_established',
   'not_ranked',
+  'rank_coverage_boundary',
   'not_in_league',
   'forbidden',
   'unavailable'

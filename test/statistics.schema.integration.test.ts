@@ -17,7 +17,11 @@ const TABLES = [
   'statistics_pair_facts',
   'statistics_opponent_facts',
   'statistics_scope_summaries',
-  'statistics_daily_buckets'
+  'statistics_daily_buckets',
+  'statistics_rank_transitions',
+  'statistics_league_positions',
+  'statistics_rank_control',
+  'statistics_rank_dirty'
 ] as const;
 const INTERNAL_FUNCTIONS = [
   'statistics_nil_uuid()',
@@ -44,7 +48,19 @@ const INTERNAL_FUNCTIONS = [
   'rebuild_statistics(uuid)',
   'statistics_read_actor()',
   'statistics_assert_rating_aligned()',
-  'statistics_can_view_event(uuid,uuid)'
+  'statistics_can_view_event(uuid,uuid)',
+  'statistics_rank_compute(uuid)',
+  'statistics_rank_rebuild_community(uuid)',
+  'statistics_rank_refresh_league(uuid)',
+  'statistics_rank_mark_player(uuid,text)',
+  'statistics_rank_mark_league(uuid)',
+  'statistics_rank_membership_mark()',
+  'statistics_rank_refresh()',
+  'statistics_rank_dirty_drain()',
+  'statistics_rank_rebuild(uuid)',
+  'statistics_rank_value(integer,text,timestamp with time zone,uuid,uuid,integer,bigint)',
+  'statistics_rank_metric(text,jsonb,text,numeric,numeric,integer)',
+  'statistics_player_rank_block(uuid,uuid,uuid)'
 ];
 const INDEXES = [
   'statistics_group_facts_community_chronology',
@@ -148,6 +164,8 @@ describe.skipIf(!environment.env)('Statistics schema', { timeout: 120_000 }, () 
           and has_function_privilege('authenticated', p.oid, 'EXECUTE') order by 1`
     );
     expect(granted.map((row) => row['proname'])).toEqual([
+      'get_player_statistics',
+      'get_player_statistics_rank_history',
       'get_statistics_config',
       'get_statistics_group_detail',
       'list_statistics_history'
@@ -155,9 +173,9 @@ describe.skipIf(!environment.env)('Statistics schema', { timeout: 120_000 }, () 
     const readers = await sqlRows(
       `select p.proname, p.prosecdef, p.proconfig::text as config,
          position('assert_actor_not_provisional' in pg_get_functiondef(p.oid)) > 0 as guarded
-        from pg_proc p where p.proname in ('get_statistics_config', 'get_statistics_group_detail', 'list_statistics_history')`
+        from pg_proc p where p.proname in ('get_player_statistics', 'get_player_statistics_rank_history', 'get_statistics_config', 'get_statistics_group_detail', 'list_statistics_history')`
     );
-    expect(readers).toHaveLength(3);
+    expect(readers).toHaveLength(5);
     for (const reader of readers) {
       expect(reader['prosecdef']).toBe(true);
       expect(String(reader['config'])).toMatch(/search_path=\\?"\\?"/);
@@ -203,13 +221,18 @@ describe.skipIf(!environment.env)('Statistics schema', { timeout: 120_000 }, () 
     expect(rows.map((row) => row['indexname']).sort(byName)).toEqual([...INDEXES].sort(byName));
   });
 
-  it('attaches no trigger that runs a statistics function (no AFTER INSERT race with rating)', async () => {
+  it('attaches no statistics trigger to a rating, result or League source (no AFTER INSERT race with rating)', async () => {
+    // Rating/League/result hooks are explicit finalizer calls. Membership has no single write seam, so
+    // its marker trigger only appends a mark; the deferred drain lives on the statistics' own mark table.
     expect(
       await sqlRows(
-        `select t.tgname from pg_trigger t join pg_proc p on p.oid = t.tgfoid
-          where not t.tgisinternal and p.proname ~ 'statistics'`
+        `select c.relname, t.tgname from pg_trigger t join pg_proc p on p.oid = t.tgfoid join pg_class c on c.oid = t.tgrelid
+          where not t.tgisinternal and p.proname ~ 'statistics' order by 1, 2`
       )
-    ).toEqual([]);
+    ).toEqual([
+      { relname: 'community_members', tgname: 'statistics_rank_membership_mark' },
+      { relname: 'statistics_rank_dirty', tgname: 'statistics_rank_dirty_drain' }
+    ]);
   });
 
   it('derives canonical pair, matchup and quartet identities independent of order', async () => {

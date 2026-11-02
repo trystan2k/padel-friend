@@ -2751,6 +2751,51 @@ export type Database = {
           },
         ]
       }
+      statistics_league_positions: {
+        Row: {
+          basis: string
+          community_id: string
+          effective_end_at: string
+          league_id: string
+          league_position: number
+          period_start_at: string
+          player_id: string
+          published_at: string
+          standings_version: number
+        }
+        ComputedFields: never
+        Insert: {
+          basis: string
+          community_id: string
+          effective_end_at: string
+          league_id: string
+          league_position: number
+          period_start_at: string
+          player_id: string
+          published_at: string
+          standings_version: number
+        }
+        Update: {
+          basis?: string
+          community_id?: string
+          effective_end_at?: string
+          league_id?: string
+          league_position?: number
+          period_start_at?: string
+          player_id?: string
+          published_at?: string
+          standings_version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "statistics_league_positions_league_fk"
+            columns: ["league_id", "community_id"]
+            isOneToOne: false
+            referencedRelation: "leagues"
+            referencedColumns: ["id", "community_id"]
+          },
+        ]
+      }
       statistics_opponent_facts: {
         Row: {
           community_id: string
@@ -3009,6 +3054,110 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "statistics_config"
             referencedColumns: ["version"]
+          },
+        ]
+      }
+      statistics_rank_control: {
+        Row: {
+          rating_revision: number
+          singleton: boolean
+          updated_at: string
+        }
+        ComputedFields: never
+        Insert: {
+          rating_revision?: number
+          singleton?: boolean
+          updated_at?: string
+        }
+        Update: {
+          rating_revision?: number
+          singleton?: boolean
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      statistics_rank_dirty: {
+        Row: {
+          cause: string
+          community_id: string
+          id: number
+          league_id: string | null
+          marked_at: string
+          player_id: string | null
+        }
+        ComputedFields: never
+        Insert: {
+          cause: string
+          community_id: string
+          id?: never
+          league_id?: string | null
+          marked_at?: string
+          player_id?: string | null
+        }
+        Update: {
+          cause?: string
+          community_id?: string
+          id?: never
+          league_id?: string | null
+          marked_at?: string
+          player_id?: string | null
+        }
+        Relationships: []
+      }
+      statistics_rank_transitions: {
+        Row: {
+          community_id: string
+          complete: boolean
+          display_level: number | null
+          effective_from: string
+          established: boolean | null
+          player_id: string
+          provenance: NonNullable<Json>
+          ranked_members: number | null
+          rating_revision: number | null
+          recorded_at: string
+          reliability_percent: number | null
+          skill_rank: number | null
+          status: string
+        }
+        ComputedFields: never
+        Insert: {
+          community_id: string
+          complete: boolean
+          display_level?: number | null
+          effective_from: string
+          established?: boolean | null
+          player_id: string
+          provenance: NonNullable<Json>
+          ranked_members?: number | null
+          rating_revision?: number | null
+          recorded_at?: string
+          reliability_percent?: number | null
+          skill_rank?: number | null
+          status: string
+        }
+        Update: {
+          community_id?: string
+          complete?: boolean
+          display_level?: number | null
+          effective_from?: string
+          established?: boolean | null
+          player_id?: string
+          provenance?: NonNullable<Json>
+          ranked_members?: number | null
+          rating_revision?: number | null
+          recorded_at?: string
+          reliability_percent?: number | null
+          skill_rank?: number | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "statistics_rank_transitions_community_id_fkey"
+            columns: ["community_id"]
+            isOneToOne: false
+            referencedRelation: "communities"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -3489,6 +3638,21 @@ export type Database = {
         }[]
       }
       get_password_setup_state: { Args: Record<PropertyKey, never>; Returns: Json }
+      get_player_statistics: {
+        Args: {
+          p_community_id?: string
+          p_from?: string
+          p_league_id?: string
+          p_player_id: string
+          p_through?: string
+          p_type?: string
+        }
+        Returns: Json
+      }
+      get_player_statistics_rank_history: {
+        Args: { p_community_id?: string; p_limit?: number; p_player_id: string }
+        Returns: Json
+      }
       get_provisional_claim_context: { Args: Record<PropertyKey, never>; Returns: Json }
       get_rating_group_explanation: {
         Args: { p_game_group_id: string; p_revision?: number }
@@ -4399,6 +4563,20 @@ export type Database = {
       }
       statistics_pair_id: { Args: { p_first: string; p_second: string }; Returns: string }
       statistics_pending_init: { Args: Record<PropertyKey, never>; Returns: undefined }
+      statistics_player_form: {
+        Args: { p_capacity: number; p_minimum: number; p_recent: Json }
+        Returns: Json
+      }
+      statistics_player_rank_block: {
+        Args: { p_community_id: string; p_league_id: string; p_player_id: string }
+        Returns: Json
+      }
+      statistics_player_ratio: {
+        Args: { p_denominator: number; p_minimum: number; p_numerator: number }
+        Returns: Json
+      }
+      statistics_player_sequence_merge: { Args: { a: Json; b: Json }; Returns: Json }
+      statistics_player_value: { Args: { p_reason: string; p_value: number }; Returns: Json }
       statistics_project_source: { Args: { p_game_group_ids: string[] }; Returns: number }
       statistics_publish: {
         Args: {
@@ -4410,6 +4588,54 @@ export type Database = {
         Returns: Json
       }
       statistics_quartet_id: { Args: { p_players: string[] }; Returns: string }
+      statistics_rank_compute: {
+        Args: { p_community_id: string }
+        Returns: {
+          complete: boolean
+          display_level: number
+          effective_from: string
+          established: boolean
+          player_id: string
+          provenance: Json
+          ranked_members: number
+          rating_revision: number
+          reliability_percent: number
+          skill_rank: number
+          status: string
+        }[]
+      }
+      statistics_rank_mark_league: { Args: { p_league_id: string }; Returns: undefined }
+      statistics_rank_mark_player: {
+        Args: { p_cause: string; p_player_id: string }
+        Returns: undefined
+      }
+      statistics_rank_metric: {
+        Args: {
+          p_denominator: number
+          p_numerator: number
+          p_reason: string
+          p_required: number
+          p_state: string
+          p_value: Json
+        }
+        Returns: Json
+      }
+      statistics_rank_rebuild: { Args: { p_community_id?: string }; Returns: Json }
+      statistics_rank_rebuild_community: { Args: { p_community_id: string }; Returns: number }
+      statistics_rank_refresh: { Args: Record<PropertyKey, never>; Returns: number }
+      statistics_rank_refresh_league: { Args: { p_league_id: string }; Returns: number }
+      statistics_rank_value: {
+        Args: {
+          p_at: string
+          p_community: string
+          p_league: string
+          p_position: number
+          p_provenance: string
+          p_revision: number
+          p_version: number
+        }
+        Returns: Json
+      }
       statistics_rating_rows: {
         Args: { p_game_group_ids: string[]; p_revision: number }
         Returns: {

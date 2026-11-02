@@ -2,7 +2,8 @@ import { describe, expect, it } from 'vitest';
 import {
   utcRangeBounds,
   validateStatisticsFilters,
-  validateStatisticsPageSize
+  validateStatisticsPageSize,
+  validateStatisticsRankHistoryInput
 } from '../src/features/statistics/statistics.validators';
 
 const COMMUNITY = '11111111-1111-4111-8111-111111111111';
@@ -76,5 +77,27 @@ describe('statistics page size', () => {
     expect(validateStatisticsPageSize(-5)).toBe(20);
     for (const bad of [1.5, '20'])
       expect(() => validateStatisticsPageSize(bad)).toThrow('INVALID_STATISTICS_INPUT');
+  });
+});
+
+describe('rank history input validation', () => {
+  it('defaults the page size and lowercases identities', () => {
+    expect(
+      validateStatisticsRankHistoryInput({ playerId: COMMUNITY.toUpperCase(), communityId: LEAGUE })
+    ).toEqual({ playerId: COMMUNITY, communityId: LEAGUE, limit: 20 });
+    expect(validateStatisticsRankHistoryInput({ playerId: COMMUNITY })).toMatchObject({
+      communityId: null
+    });
+  });
+  it('rejects a missing player, unknown keys and malformed identities', () => {
+    for (const input of [
+      {},
+      null,
+      { playerId: 'nope' },
+      { playerId: COMMUNITY, leagueId: LEAGUE },
+      { playerId: COMMUNITY, communityId: 'x' },
+      { playerId: COMMUNITY, limit: '5' }
+    ])
+      expect(() => validateStatisticsRankHistoryInput(input)).toThrow('INVALID_STATISTICS_INPUT');
   });
 });

@@ -72,6 +72,41 @@ export function validateStatisticsPageSize(value: unknown): number {
   return value < 1 ? STATISTICS_HISTORY_PAGE_DEFAULT : Math.min(value, STATISTICS_HISTORY_PAGE_MAX);
 }
 
+export type StatisticsPlayerInput = { playerId: string; filters: StatisticsFilters };
+
+/** Player scope shares the same strict filters as history. */
+export function validateStatisticsPlayerInput(input: unknown): StatisticsPlayerInput {
+  const data = record(input, ['playerId', 'communityId', 'leagueId', 'type', 'from', 'through']);
+  const playerId = optionalUuid(data.playerId);
+  if (playerId === null) return invalid();
+  const filters = validateStatisticsFilters(
+    Object.fromEntries(
+      ['communityId', 'leagueId', 'type', 'from', 'through']
+        .filter((key) => key in data)
+        .map((key) => [key, data[key]])
+    )
+  );
+  return { playerId, filters };
+}
+
+export type StatisticsRankHistoryInput = {
+  playerId: string;
+  communityId: string | null;
+  limit: number;
+};
+
+/** Rank history is one player, optionally one community; the page size is clamped like history. */
+export function validateStatisticsRankHistoryInput(input: unknown): StatisticsRankHistoryInput {
+  const data = record(input, ['playerId', 'communityId', 'limit']);
+  const playerId = optionalUuid(data.playerId);
+  if (playerId === null) return invalid();
+  return {
+    playerId,
+    communityId: optionalUuid(data.communityId),
+    limit: validateStatisticsPageSize(data.limit)
+  };
+}
+
 export type StatisticsHistoryInput = {
   filters: StatisticsFilters;
   limit: number;
