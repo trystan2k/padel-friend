@@ -31,6 +31,14 @@ const PREDICATE_GATED_READERS = [
   'search_match_invitees'
 ];
 
+// These readers must delegate authorization to the guarded relationship preparer.
+const DELEGATED_RELATIONSHIP_READERS = [
+  'get_opponent_statistics',
+  'get_pair_statistics',
+  'get_player_opponent_records',
+  'get_player_partner_records'
+];
+
 // The restricted claim surface: the only authenticated RPCs a provisional session may
 // call. Both are self-scoped (no target parameter) and derive everything from auth.uid():
 // the context read discloses the caller's own prefill only after verified mailbox proof,
@@ -95,6 +103,24 @@ describe('provisional actor authorization', () => {
     async () => {
       const { organizer, provisional, regular, communityId, eventId } = await scenario();
       const requestId = crypto.randomUUID();
+      expectRestricted(
+        await provisional.client.rpc('get_pair_statistics', {
+          p_player_id: provisional.id,
+          p_partner_id: regular.id
+        })
+      );
+      expectRestricted(
+        await provisional.client.rpc('get_opponent_statistics', {
+          p_player_id: provisional.id,
+          p_opponent_id: regular.id
+        })
+      );
+      expectRestricted(
+        await provisional.client.rpc('get_player_partner_records', { p_player_id: provisional.id })
+      );
+      expectRestricted(
+        await provisional.client.rpc('get_player_opponent_records', { p_player_id: provisional.id })
+      );
       const attempt = await queryTrustedSql(
         `select id from public.match_event_registration_attempts where match_event_id = $1 and user_id = $2`,
         { values: [eventId, provisional.id] }
@@ -290,7 +316,21 @@ describe('provisional actor authorization', () => {
       const unguarded = inventory.rows
         .filter((row) => !row.guarded)
         .map((row) => String(row.proname));
-      expect(unguarded).toEqual([...PREDICATE_GATED_READERS, ...CLAIM_SURFACE].sort());
+      expect(unguarded).toEqual(
+        [...PREDICATE_GATED_READERS, ...CLAIM_SURFACE, ...DELEGATED_RELATIONSHIP_READERS].sort()
+      );
+      const delegated = await queryTrustedSql(
+        "select p.proname, pg_get_functiondef(p.oid) as definition from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname = 'public' and p.proname = any($1::text[])",
+        { values: [DELEGATED_RELATIONSHIP_READERS] }
+      );
+      expect(delegated.rows).toHaveLength(DELEGATED_RELATIONSHIP_READERS.length);
+      for (const row of delegated.rows)
+        expect(String(row['definition'])).toContain('statistics_relationship_prepare');
+      const preparer = await queryTrustedSql(
+        "select pg_get_functiondef(p.oid) as definition from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname = 'public' and p.proname = 'statistics_relationship_prepare'"
+      );
+      expect(preparer.rows).toHaveLength(1);
+      expect(String(preparer.rows[0]?.['definition'])).toContain('assert_actor_not_provisional');
       expect(inventory.rows.length).toBeGreaterThan(PREDICATE_GATED_READERS.length);
 
       const tables = await queryTrustedSql(

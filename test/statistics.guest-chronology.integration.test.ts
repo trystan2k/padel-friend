@@ -4,6 +4,7 @@ import { createRankedResultFixtures, playedAt, rankedSets } from './helpers/rank
 import { createMatchManagementFixtures } from './helpers/match-management-fixtures';
 import { asRecord, sqlRows } from './helpers/match-registration-sql';
 import { sqlText } from './helpers/provisional-player-fixtures';
+import { GOLDEN_GUEST_LEAGUE } from './helpers/statistics-golden-fixtures';
 
 const environment = localSupabaseEnv({ filePath: dotEnvPathFromImportMetaUrl(import.meta.url) });
 
@@ -99,6 +100,35 @@ describe.skipIf(!environment.env)('subject history across communities', () => {
       });
       if (community.error) throw community.error;
       expect(asRecord(asRecord(community.data)['matches'])['played']).toBe(2);
+      const league = await home.league({ status: 'active', endMode: 'manual', endAt: null });
+      for (const leagueId of [league, null]) {
+        const competitiveEvent = await home.event(leagueId, 'competitive');
+        const submitted = await home.submit(competitiveEvent, playedAt(30).played);
+        if (submitted.error) throw submitted.error;
+        const confirmation = await home.approve(String(asRecord(submitted.data)['proposal_id']));
+        if (confirmation.error) throw confirmation.error;
+      }
+      const all = await home.rpc(subject, 'get_player_statistics', { p_player_id: subject.id });
+      if (all.error) throw all.error;
+      expect(asRecord(asRecord(all.data)['matches'])).toMatchObject(GOLDEN_GUEST_LEAGUE.allSubject);
+      const scopedCommunity = await home.rpc(subject, 'get_community_statistics', {
+        p_community_id: home.communityId
+      });
+      if (scopedCommunity.error) throw scopedCommunity.error;
+      const page = asRecord(scopedCommunity.data);
+      expect(asRecord(page['matches'])).toMatchObject(GOLDEN_GUEST_LEAGUE.homeCommunity);
+      expect(asRecord(asRecord(page['rankingMatches'])['value'])['groups']).toBe(
+        GOLDEN_GUEST_LEAGUE.activeRankingGroups
+      );
+      const scopedLeague = await home.rpc(subject, 'get_player_statistics', {
+        p_player_id: subject.id,
+        p_community_id: home.communityId,
+        p_league_id: league
+      });
+      if (scopedLeague.error) throw scopedLeague.error;
+      expect(asRecord(asRecord(scopedLeague.data)['matches'])).toMatchObject(
+        GOLDEN_GUEST_LEAGUE.league
+      );
     } finally {
       await away.cleanup();
       await home.cleanup();
