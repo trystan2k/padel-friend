@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { decodePairStatistics } from '../src/features/statistics/statistics-relationships.server';
-import { filterSearch, parseFilterSearch } from '../src/features/statistics/statistics-links';
+import { filterSearch, parseFilterSearch } from '../src/features/statistics/statistics-search';
 import {
   validateStatisticsRelationshipInput,
   validateStatisticsRelationshipListInput

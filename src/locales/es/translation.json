@@ -1759,6 +1759,106 @@
     }
   },
   "statistics": {
+    "filters": {
+      "title": "Filtros de estadísticas",
+      "community": "Comunidad",
+      "allCommunities": "Todas mis comunidades",
+      "league": "Liga",
+      "noLeague": "Sin Liga",
+      "activeLeague": "Liga activa: {{name}}",
+      "historicalLeague": "Liga pasada: {{name}}",
+      "type": "Tipo de partido",
+      "types": {
+        "all": "Todos",
+        "competitive": "Competitivo",
+        "friendly": "Amistoso"
+      },
+      "from": "Desde (fecha UTC)",
+      "through": "Hasta (fecha UTC)",
+      "utc": "Fechas UTC completas, ambas incluidas.",
+      "rangeError": "La fecha final no puede ser anterior a la fecha inicial.",
+      "apply": "Aplicar filtros",
+      "reset": "Restablecer filtros"
+    },
+    "community": {
+      "title": "Estadísticas de la comunidad",
+      "titleCommunity": "Estadísticas de {{name}}",
+      "subtitle": "Cada cifra cuenta cada partido una sola vez, sin importar quién lo jugó.",
+      "open": "Estadísticas de la comunidad",
+      "empty": "Todavía no hay partidos confirmados en esta selección.",
+      "ties": "Empate: {{total}} jugadores",
+      "tiesPartial": "Empate: {{total}} en total, {{listed}} mostrados",
+      "versus": "contra",
+      "groupsTogether": "{{groups}} partidos",
+      "rivalryPair": "{{first}} y {{second}}: {{wins}}-{{losses}}-{{draws}}",
+      "rivalryDetail": "Diferencia de {{gap}} en {{matches}} enfrentamientos decididos",
+      "leagueScope": {
+        "upcoming": "Mostrando la Liga {{name}}: solo partidos elegibles para el ranking.",
+        "active": "Mostrando la Liga activa {{name}}: solo partidos elegibles para el ranking.",
+        "closed": "Mostrando la Liga pasada {{name}}: solo partidos elegibles de su periodo."
+      },
+      "notice": {
+        "friendly_league": "Los partidos amistosos nunca cuentan para una Liga, así que esta selección está vacía. Elige Todos o Competitivo, o quita la Liga."
+      },
+      "matches": {
+        "title": "Partidos",
+        "help": "Cuenta cada partido confirmado una sola vez. Los partidos incompletos cuentan como jugados, pero no tienen ganador.",
+        "played": "Partidos jugados",
+        "competitive": "Competitivos",
+        "friendly": "Amistosos",
+        "decided": "Con ganador",
+        "draws": "Empates",
+        "incomplete": "Incompletos"
+      },
+      "ranking": {
+        "label": "Partidos en el ranking activo",
+        "help": "Partidos elegibles de la Liga activa."
+      },
+      "activePlayers": {
+        "label": "Jugadores activos",
+        "help": "Jugadores distintos que jugaron un partido confirmado en esta selección; no es el número de miembros."
+      },
+      "totals": {
+        "sets": "Sets jugados",
+        "games": "Juegos jugados"
+      },
+      "leaders": {
+        "title": "Líderes",
+        "mostActive": "Jugador más activo",
+        "mostWins": "Más victorias",
+        "highestWinRate": "Mayor porcentaje de victorias",
+        "highestWinRateHelp": "Jugadores con al menos {{required}} partidos decididos.",
+        "bestSets": "Mejor diferencia de sets",
+        "bestGames": "Mejor diferencia de juegos",
+        "mostImproved": "Mayor mejora de rating",
+        "mostImprovedHelp": "Variación de rating de los partidos de esta selección, no el cambio del nivel general.",
+        "matches": "{{matches}} partidos",
+        "wins": "{{wins}} victorias",
+        "sets": "{{sets}} sets",
+        "games": "{{games}} juegos",
+        "rating": "{{delta}} de rating"
+      },
+      "pairings": {
+        "title": "Parejas y rivalidades",
+        "pair": "Pareja más frecuente",
+        "matchup": "Enfrentamiento más común",
+        "matchupHelp": "Las mismas dos parejas enfrentándose, en cualquier lado de la pista.",
+        "rivalry": "Rivalidad más igualada",
+        "rivalryHelp": "Menor diferencia entre victorias y derrotas con al menos {{required}} enfrentamientos decididos; la mayor muestra desempata."
+      },
+      "frequency": {
+        "title": "Frecuencia de partidos",
+        "window": "Periodo: {{from}} a {{through}} ({{days}} días, UTC).",
+        "noWindow": "No hay partidos en esta selección.",
+        "average": "Media de partidos por semana",
+        "averageHelp": "Partidos divididos entre las semanas del periodo (mínimo una).",
+        "weekCaption": "Partidos por semana (UTC, las semanas empiezan el lunes)",
+        "week": "Semana que empieza el",
+        "monthCaption": "Partidos por mes (UTC)",
+        "month": "Mes",
+        "groups": "Partidos"
+      }
+    },
     "relationships": {
       "unknownPlayer": "Jugador desconocido",
       "unknownLeague": "Liga sin nombre",

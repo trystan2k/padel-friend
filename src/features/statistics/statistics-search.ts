@@ -1,4 +1,5 @@
 import type { StatisticsFilters } from './statistics-contracts';
+import { validateStatisticsFilters } from './statistics.validators';
 
 export const FILTER_SEARCH_KEYS = ['communityId', 'leagueId', 'type', 'from', 'through'] as const;
 export type FilterSearch = Partial<Record<(typeof FILTER_SEARCH_KEYS)[number], string>>;
@@ -16,4 +17,28 @@ export function parseFilterSearch(search: Record<string, unknown>): FilterSearch
 /** Normalized filters as route search, so player → pair → head-to-head links keep their scope. */
 export function filterSearch(filters: StatisticsFilters): FilterSearch {
   return parseFilterSearch({ ...filters, type: filters.type === 'all' ? null : filters.type });
+}
+
+/** Community statistics keep the community in the path, so its search never carries communityId. */
+export function parseCommunitySearch(search: Record<string, unknown>): FilterSearch {
+  const { communityId: _path, ...rest } = parseFilterSearch(search);
+  return rest;
+}
+
+/**
+ * Path community plus search → server input; community statistics require a concrete UUID.
+ * Null when the combination is invalid, so the page shows a typed error instead of guessing.
+ */
+export function communityScopeFilters(
+  communityId: string,
+  search: FilterSearch
+): StatisticsFilters | null {
+  try {
+    return validateStatisticsFilters({
+      ...search,
+      communityId
+    });
+  } catch {
+    return null;
+  }
 }

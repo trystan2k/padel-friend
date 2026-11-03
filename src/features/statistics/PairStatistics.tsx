@@ -9,7 +9,7 @@ import {
 } from './RelationshipRecordView';
 import type { PairStatistics as Pair } from './statistics-relationship-contracts';
 import { playerStyles as s } from './statistics-player.styles';
-import { filterSearch } from './statistics-links';
+import { filterSearch } from './statistics-search';
 
 /** The canonical pair, shown from the focal player's route so the way back keeps its context. */
 export function PairStatistics({ pair }: { pair: Pair }) {

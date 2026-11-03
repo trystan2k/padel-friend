@@ -225,6 +225,16 @@ describe.skipIf(!environment.env)('player statistics SQL reader', { timeout: 300
       expect(movement['denominator']).toBe(Number(ledger?.['n']));
     }
   });
+  async function fixturePlayedWindow() {
+    const [bounds] =
+      await sqlRows(`select to_char(min(played_at) at time zone 'UTC', 'YYYY-MM-DD') as first,
+      to_char(max(played_at) at time zone 'UTC', 'YYYY-MM-DD') as last
+      from public.statistics_participant_facts where user_id = ${sqlText(kit.players[0]!.id)}
+        and community_id = ${sqlText(kit.communityId)}`);
+    if (typeof bounds?.['first'] !== 'string' || typeof bounds['last'] !== 'string')
+      throw new Error('Missing fixture played window');
+    return { from: bounds['first'], through: bounds['last'] };
+  }
   it('breaks the streak at a draw and omits an incomplete result from form', async () => {
     const entries = [
       {
@@ -253,11 +263,11 @@ describe.skipIf(!environment.env)('player statistics SQL reader', { timeout: 300
       longestWins: 3,
       last5: { state: 'ready', value: { sampleSize: 4, wins: 3, draws: 1 } }
     });
-    const day = new Date().toISOString().slice(0, 10);
+    const window = await fixturePlayedWindow();
     const ranged = await kit.rpc(kit.players[0]!, 'get_player_statistics', {
       ...args,
-      p_from: day,
-      p_through: day
+      p_from: window.from,
+      p_through: window.through
     });
     expect(ranged.error).toBeNull();
     expect(asRecord(ranged.data)['form']).toEqual(asRecord(all.data)['form']);
@@ -276,11 +286,11 @@ describe.skipIf(!environment.env)('player statistics SQL reader', { timeout: 300
     }
     const args = { p_player_id: kit.players[0]!.id, p_community_id: kit.communityId };
     const all = await kit.rpc(kit.players[0]!, 'get_player_statistics', args);
-    const day = instant.iso.slice(0, 10);
+    const window = await fixturePlayedWindow();
     const scoped = await kit.rpc(kit.players[0]!, 'get_player_statistics', {
       ...args,
-      p_from: day,
-      p_through: day
+      p_from: window.from,
+      p_through: window.through
     });
     expect(all.error).toBeNull();
     expect(scoped.error).toBeNull();

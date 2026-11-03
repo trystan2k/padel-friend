@@ -4,7 +4,7 @@ import { OpponentRecords } from '../features/statistics/OpponentRecords';
 import { PartnerRecords } from '../features/statistics/PartnerRecords';
 import { PlayerStatistics } from '../features/statistics/PlayerStatistics';
 import type { StatisticsErrorCode } from '../features/statistics/statistics-history-contracts';
-import { parseFilterSearch } from '../features/statistics/statistics-links';
+import { parseFilterSearch } from '../features/statistics/statistics-search';
 import { getPlayerStatistics } from '../features/statistics/statistics-player.functions';
 import {
   getOpponentRecords,

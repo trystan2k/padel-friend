@@ -1759,6 +1759,106 @@
     }
   },
   "statistics": {
+    "filters": {
+      "title": "Statistics filters",
+      "community": "Community",
+      "allCommunities": "All my communities",
+      "league": "League",
+      "noLeague": "No League",
+      "activeLeague": "Active League: {{name}}",
+      "historicalLeague": "Past League: {{name}}",
+      "type": "Match type",
+      "types": {
+        "all": "All",
+        "competitive": "Competitive",
+        "friendly": "Friendly"
+      },
+      "from": "From (UTC date)",
+      "through": "Through (UTC date)",
+      "utc": "Whole UTC dates, both included.",
+      "rangeError": "The end date must not be before the start date.",
+      "apply": "Apply filters",
+      "reset": "Reset filters"
+    },
+    "community": {
+      "title": "Community statistics",
+      "titleCommunity": "{{name}} statistics",
+      "subtitle": "Every figure counts each match once, whoever played it.",
+      "open": "Community statistics",
+      "empty": "No confirmed matches in this selection yet.",
+      "ties": "Tied: {{total}} players",
+      "tiesPartial": "Tied: {{total}} in total, {{listed}} shown",
+      "versus": "versus",
+      "groupsTogether": "{{groups}} matches",
+      "rivalryPair": "{{first}} and {{second}}: {{wins}}-{{losses}}-{{draws}}",
+      "rivalryDetail": "Gap of {{gap}} across {{matches}} decided meetings",
+      "leagueScope": {
+        "upcoming": "Showing League {{name}}: eligible ranked matches only.",
+        "active": "Showing the active League {{name}}: eligible ranked matches only.",
+        "closed": "Showing the past League {{name}}: eligible ranked matches in its period only."
+      },
+      "notice": {
+        "friendly_league": "Friendly matches never count towards a League, so this selection is empty. Choose All or Competitive, or remove the League."
+      },
+      "matches": {
+        "title": "Matches",
+        "help": "Counts every confirmed match once. Incomplete matches are counted as played but have no winner.",
+        "played": "Matches played",
+        "competitive": "Competitive",
+        "friendly": "Friendly",
+        "decided": "With a winner",
+        "draws": "Draws",
+        "incomplete": "Incomplete"
+      },
+      "ranking": {
+        "label": "Matches in the active ranking",
+        "help": "Eligible matches of the active League."
+      },
+      "activePlayers": {
+        "label": "Active players",
+        "help": "Distinct players who played a confirmed match in this selection; not the member count."
+      },
+      "totals": {
+        "sets": "Sets played",
+        "games": "Games played"
+      },
+      "leaders": {
+        "title": "Leaders",
+        "mostActive": "Most active player",
+        "mostWins": "Most wins",
+        "highestWinRate": "Highest win rate",
+        "highestWinRateHelp": "Players with at least {{required}} decided matches.",
+        "bestSets": "Best set difference",
+        "bestGames": "Best game difference",
+        "mostImproved": "Most improved rating",
+        "mostImprovedHelp": "Rating movement from matches in this selection, not a change of overall level.",
+        "matches": "{{matches}} matches",
+        "wins": "{{wins}} wins",
+        "sets": "{{sets}} sets",
+        "games": "{{games}} games",
+        "rating": "{{delta}} rating"
+      },
+      "pairings": {
+        "title": "Pairs and rivalries",
+        "pair": "Most frequent pair",
+        "matchup": "Most common matchup",
+        "matchupHelp": "The same two pairs facing each other, whichever side they played on.",
+        "rivalry": "Closest rivalry",
+        "rivalryHelp": "Smallest gap between wins and losses with at least {{required}} decided meetings; the largest sample breaks ties."
+      },
+      "frequency": {
+        "title": "Match frequency",
+        "window": "Window: {{from}} to {{through}} ({{days}} days, UTC).",
+        "noWindow": "No matches in this selection.",
+        "average": "Average matches per week",
+        "averageHelp": "Matches divided by the weeks in the window (at least one).",
+        "weekCaption": "Matches per week (UTC, weeks start on Monday)",
+        "week": "Week starting",
+        "monthCaption": "Matches per month (UTC)",
+        "month": "Month",
+        "groups": "Matches"
+      }
+    },
     "relationships": {
       "unknownPlayer": "Unknown player",
       "unknownLeague": "Unnamed league",

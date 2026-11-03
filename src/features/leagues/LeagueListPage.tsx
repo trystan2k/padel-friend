@@ -153,6 +153,13 @@ export function LeagueListPage({ data }: { data: LeagueListResult }) {
         ) : (
           <p {...stylex.props(styles.guidance)}>{t('leagues.list.creationDisabled')}</p>
         )}
+        <Link
+          to="/community/$communityId/statistics"
+          params={{ communityId: community.id }}
+          {...stylex.props(styles.actionLink)}
+        >
+          {t('statistics.community.open')}
+        </Link>
         {leagues.length > 0 && !leagues.some((league) => league.status === 'active') && (
           <SurfaceCard xstyle={styles.card}>
             <p {...stylex.props(styles.strongText)}>{t('leagues.standings.empty.noActive')}</p>

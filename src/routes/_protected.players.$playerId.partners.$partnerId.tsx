@@ -2,7 +2,7 @@ import { createFileRoute, notFound, useRouter } from '@tanstack/react-router';
 import { useTranslation } from 'react-i18next';
 import { PairStatistics } from '../features/statistics/PairStatistics';
 import type { StatisticsErrorCode } from '../features/statistics/statistics-history-contracts';
-import { parseFilterSearch } from '../features/statistics/statistics-links';
+import { parseFilterSearch } from '../features/statistics/statistics-search';
 import { getPairStatistics } from '../features/statistics/statistics-relationships.functions';
 import { validateStatisticsRelationshipInput } from '../features/statistics/statistics.validators';
 import { createI18n, resolveLocale } from '../i18n/config';

@@ -3507,6 +3507,16 @@ export type Database = {
           settings: Json
         }[]
       }
+      get_community_statistics: {
+        Args: {
+          p_community_id?: string
+          p_from?: string
+          p_league_id?: string
+          p_through?: string
+          p_type?: string
+        }
+        Returns: Json
+      }
       get_effective_community_admin_defaults: { Args: { p_settings: Json }; Returns: Json }
       get_league: { Args: { p_league_id: string }; Returns: Json }
       get_league_counters: { Args: { p_league_id: string }; Returns: Json }
@@ -4557,6 +4567,24 @@ export type Database = {
       }
       statistics_cand: {
         Args: { p_at: string; p_group: string; p_key: number; p_value: number }
+        Returns: Json
+      }
+      statistics_community_league_groups: {
+        Args: {
+          p_communities: string[]
+          p_from: string
+          p_league_ids: string[]
+          p_through: string
+          p_type: string
+        }
+        Returns: number
+      }
+      statistics_community_relation_top: {
+        Args: { p_key: string; p_relations: Json }
+        Returns: Json
+      }
+      statistics_community_top: {
+        Args: { p_observed: number; p_reason: string; p_required: number; p_rows: Json }
         Returns: Json
       }
       statistics_derive_sets: {

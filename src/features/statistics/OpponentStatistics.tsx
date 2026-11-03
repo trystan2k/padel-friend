@@ -9,7 +9,7 @@ import {
 } from './RelationshipRecordView';
 import type { OpponentStatistics as Opponent } from './statistics-relationship-contracts';
 import { playerStyles as s } from './statistics-player.styles';
-import { filterSearch } from './statistics-links';
+import { filterSearch } from './statistics-search';
 
 /** Head-to-head, always from the focal player's point of view. */
 export function OpponentStatistics({ opponent }: { opponent: Opponent }) {

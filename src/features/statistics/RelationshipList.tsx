@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { ReasonText, Stat } from './PlayerMetric';
 import { useRelationshipFormat } from './RelationshipRecordView';
 import type { MetricState, StatisticsFilters } from './statistics-contracts';
-import { filterSearch } from './statistics-links';
+import { filterSearch } from './statistics-search';
 import { playerStyles as s } from './statistics-player.styles';
 import type {
   RelationshipLeader,
