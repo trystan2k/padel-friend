@@ -3,7 +3,7 @@ import { cleanup, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { readFileSync } from 'node:fs';
 import { I18nextProvider } from 'react-i18next';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { ReactNode } from 'react';
 import { createI18n } from '../src/i18n/config';
 import en from '../src/locales/en/translation.json';
@@ -244,5 +244,144 @@ describe('player statistics localization', () => {
       .filter((key) => !key.endsWith('.'));
     expect(keys.length).toBeGreaterThan(60);
     expect(keys.filter((key) => typeof resolve(en, key) !== 'string')).toEqual([]);
+  });
+});
+
+describe('player statistics composition (Pencil RN0yw / RRuhH)', () => {
+  const COMMUNITY = '33333333-3333-4333-8333-333333333333';
+  const LEAGUE = '44444444-4444-4444-8444-444444444444';
+  const scoped = makePlayerStatistics({
+    filters: { communityId: COMMUNITY, leagueId: null, type: 'all', from: null, through: null }
+  });
+  const controls = (onApply: (next: unknown) => void) => ({
+    options: {
+      leagues: [{ id: LEAGUE, name: 'Spring', status: 'active' as const }],
+      activeLeagueId: LEAGUE
+    },
+    onApply
+  });
+  const follows = (first: HTMLElement, second: HTMLElement) =>
+    (first.compareDocumentPosition(second) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0;
+
+  it('orders filters, highlights, form, then the detailed sections like the frames', () => {
+    render(
+      wrap(<PlayerStatistics stats={scoped} filterControls={controls(vi.fn<() => void>())} />)
+    );
+    const region = (name: string) => screen.getByRole('region', { name });
+    const order = [
+      'Statistics filters',
+      'Highlights',
+      'Form',
+      'Matches',
+      'Sets and games',
+      'Rating and rank',
+      'Matches per month'
+    ].map(region);
+    for (let index = 1; index < order.length; index += 1)
+      expect(follows(order[index - 1]!, order[index]!)).toBe(true);
+  });
+
+  it('leads with the three highlight tiles and the W-L-D record', () => {
+    render(wrap(<PlayerStatistics stats={makePlayerStatistics()} />));
+    const highlights = screen.getByRole('region', { name: 'Highlights' });
+    expect(
+      within(highlights)
+        .getAllByRole('term')
+        .map((term) => term.textContent)
+    ).toEqual(['Win rate', 'Set differential', 'Game differential']);
+    expect(highlights.textContent).toContain('60%');
+    expect(highlights.textContent).toContain('W–L–D record');
+    expect(highlights.textContent).toContain('6 – 3 – 1');
+    // Moved, never duplicated: each figure still has exactly one term on the page.
+    expect(screen.getAllByText('Win rate', { selector: 'dt' })).toHaveLength(1);
+  });
+
+  it('shows the filter bar only when the page can apply filters', () => {
+    const { rerender } = render(wrap(<PlayerStatistics stats={scoped} />));
+    expect(screen.queryByRole('form', { name: 'Statistics filters' })).toBeNull();
+    rerender(
+      wrap(<PlayerStatistics stats={scoped} filterControls={controls(vi.fn<() => void>())} />)
+    );
+    expect(screen.getByRole('form', { name: 'Statistics filters' })).toBeTruthy();
+    expect(screen.getByLabelText('League')).toBeTruthy();
+    expect(screen.getByLabelText('From (UTC date)')).toBeTruthy();
+  });
+
+  it('applies the chosen League, type and dates through the page callback', async () => {
+    const onApply = vi.fn<(next: unknown) => void>();
+    render(wrap(<PlayerStatistics stats={scoped} filterControls={controls(onApply)} />));
+    const user = userEvent.setup();
+    await user.selectOptions(screen.getByLabelText('League'), LEAGUE);
+    await user.click(screen.getByRole('radio', { name: 'Competitive' }));
+    await user.type(screen.getByLabelText('From (UTC date)'), '2030-01-01');
+    await user.click(screen.getByRole('button', { name: 'Apply filters' }));
+    expect(onApply).toHaveBeenCalledWith({
+      communityId: COMMUNITY,
+      leagueId: LEAGUE,
+      type: 'competitive',
+      from: '2030-01-01',
+      through: null
+    });
+  });
+
+  it('hides the League field without a selected community and keeps the community on reset', async () => {
+    const onApply = vi.fn<(next: unknown) => void>();
+    const { rerender } = render(
+      wrap(<PlayerStatistics stats={makePlayerStatistics()} filterControls={controls(onApply)} />)
+    );
+    expect(screen.queryByLabelText('League')).toBeNull();
+    rerender(wrap(<PlayerStatistics stats={scoped} filterControls={controls(onApply)} />));
+    await userEvent.setup().click(screen.getByRole('button', { name: 'Reset filters' }));
+    expect(onApply).toHaveBeenCalledWith({
+      communityId: COMMUNITY,
+      leagueId: null,
+      type: 'all',
+      from: null,
+      through: null
+    });
+  });
+
+  it('keeps title and subtitle together in their own block ahead of the filter badges', () => {
+    render(wrap(<PlayerStatistics stats={makePlayerStatistics()} />));
+    const title = screen.getByRole('heading', { level: 1 });
+    const lead = title.parentElement!;
+    expect(lead.tagName).toBe('DIV');
+    expect(within(lead).getByText(en.statistics.player.subtitle)).toBeTruthy();
+    expect(lead.contains(screen.getByRole('list', { name: 'Active filters' }))).toBe(false);
+  });
+});
+
+describe('player statistics header and highlights geometry (390px / 320px)', () => {
+  // The global language/theme chips float over the top-right corner: two 44px targets, the gap
+  // between them and the page inset. The header lead must reserve that width at every viewport.
+  const source = readFileSync('src/features/statistics/statistics-player.styles.ts', 'utf8');
+  const TOUCH = 44;
+  const GAP = 8;
+  const INSET = 18;
+  const reserved = TOUCH * 2 + GAP + GAP;
+
+  it('reserves the floating controls width on the title and subtitle block', () => {
+    expect(source).toMatch(
+      /lead: \{[^}]*paddingInlineEnd: `calc\(\$\{TOUCH\} \* 2 \+ var\(--space-8\) \+ var\(--space-8\)\)`/s
+    );
+    expect(source).toContain("const TOUCH = 'calc(var(--space-40) + var(--space-4))'");
+    expect(source).toContain("gap: 'var(--space-4)',\n    minWidth: 0,");
+  });
+
+  it.each([390, 320])('leaves a readable title column at %ipx', (viewport) => {
+    const available = viewport - INSET * 2 - reserved;
+    expect(available).toBeGreaterThanOrEqual(150);
+  });
+
+  it.each([
+    [390, 3],
+    [320, 2]
+  ])('fits %ipx highlight tiles in %i columns without overflow', (viewport, columns) => {
+    const minimum = Number(
+      source.match(/hero: \{[^}]*minmax\(min\(100%, (\d+)px\), 1fr\)/s)?.[1] ?? Number.NaN
+    );
+    const content = viewport - INSET * 2;
+    const fitted = Math.min(3, Math.floor((content + GAP) / (minimum + GAP)));
+    expect(fitted).toBe(columns);
   });
 });

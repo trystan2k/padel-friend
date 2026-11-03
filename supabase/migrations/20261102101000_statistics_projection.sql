@@ -369,8 +369,8 @@ begin
         pg_catalog.jsonb_strip_nulls(pg_catalog.jsonb_build_object(
           'cleanest_win', (pg_catalog.array_agg(public.statistics_cand(-(x.games_w - x.games_l)::numeric, (x.games_w - x.games_l)::numeric, x.played_at, x.gid)
             order by -(x.games_w - x.games_l), x.played_at, x.gid) filter (where x.outcome = 'W' and x.k <> 'community'))[1],
-          'closest_win', (pg_catalog.array_agg(public.statistics_cand((x.games_w - x.games_l)::numeric, (x.games_w - x.games_l)::numeric, x.played_at, x.gid)
-            order by (x.games_w - x.games_l), x.played_at, x.gid) filter (where x.outcome = 'W' and x.k <> 'community'))[1],
+          'closest_win', (pg_catalog.array_agg(public.statistics_cand(abs(x.games_w - x.games_l)::numeric, (x.games_w - x.games_l)::numeric, x.played_at, x.gid)
+            order by abs(x.games_w - x.games_l), x.played_at, x.gid) filter (where x.outcome = 'W' and x.k <> 'community'))[1],
           'biggest_gain', (pg_catalog.array_agg(public.statistics_cand(-x.delta, x.delta, x.played_at, x.gid)
             order by -x.delta, x.played_at, x.gid) filter (where x.rated and x.delta > 0))[1],
           'biggest_loss', (pg_catalog.array_agg(public.statistics_cand(x.delta, x.delta, x.played_at, x.gid)

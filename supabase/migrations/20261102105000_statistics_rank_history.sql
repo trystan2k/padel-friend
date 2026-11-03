@@ -14,8 +14,10 @@ begin;
 --     the boundary's source references (membership rows, initializations, rating revisions).
 --   * A boundary is "complete" when every active member had rating evidence. Rank rows before that
 --     are kept but never counted as best-rank proof, and the reader exposes the coverage boundary.
---   * League position: the latest immutable standings snapshot version of each League, so a position
---     is only ever a published (or explicitly reconstructed) value. Leagues without a snapshot are
+--   * League position: every published immutable standings snapshot version of each League is kept
+--     (one row per league, player and version), so best position = MIN over all versions with the
+--     earliest version achieving it as provenance, and the closed-League position reads the latest
+--     version. A position is only ever a published (or explicitly reconstructed) value. Leagues without a snapshot are
 --     reported as a coverage boundary, never as a fabricated position.
 --
 -- Refresh hooks (lock graph preserved: community -> event -> League -> rating -> statistics):
@@ -64,7 +66,7 @@ create table public.statistics_league_positions (
   period_start_at timestamptz not null,
   effective_end_at timestamptz not null,
   published_at timestamptz not null,
-  primary key (league_id, player_id),
+  primary key (league_id, player_id, standings_version),
   constraint statistics_league_positions_league_fk foreign key (league_id, community_id)
     references public.leagues (id, community_id) on delete cascade
 );
@@ -243,23 +245,22 @@ begin
   return v_changed;
 end $$;
 
--- Best-position source: the latest immutable standings version of the League.
+-- Best-position source: every published immutable standings version of the League.
 create function public.statistics_rank_refresh_league(p_league_id uuid) returns integer
 language plpgsql security definer set search_path = '' as $$
-declare v_version integer; v_changed integer;
+declare v_changed integer;
 begin
-  select pg_catalog.max(s.standings_version) into v_version
-    from public.league_standings_snapshots s where s.league_id = p_league_id;
   with latest as (
     select s.league_id, s.community_id, s.standings_version, s.basis, s.period_start_at, s.effective_end_at,
         s.generated_at, (x.entry ->> 'user_id')::uuid as player_id, (x.entry ->> 'position')::integer as league_position
       from public.league_standings_snapshots s
       cross join lateral pg_catalog.jsonb_array_elements(s.entries) x(entry)
-     where s.league_id = p_league_id and s.standings_version = v_version
+     where s.league_id = p_league_id
   ), removed as (
     delete from public.statistics_league_positions p
      where p.league_id = p_league_id
-       and not exists (select 1 from latest l where l.player_id = p.player_id)
+       and not exists (select 1 from latest l
+                        where l.player_id = p.player_id and l.standings_version = p.standings_version)
     returning 1
   ), written as (
     insert into public.statistics_league_positions as p
@@ -267,12 +268,12 @@ begin
        effective_end_at, published_at)
     select l.league_id, l.community_id, l.player_id, l.standings_version, l.league_position, l.basis,
         l.period_start_at, l.effective_end_at, l.generated_at from latest l
-    on conflict (league_id, player_id) do update set
-      standings_version = excluded.standings_version, league_position = excluded.league_position,
+    on conflict (league_id, player_id, standings_version) do update set
+      league_position = excluded.league_position,
       basis = excluded.basis, period_start_at = excluded.period_start_at,
       effective_end_at = excluded.effective_end_at, published_at = excluded.published_at
-     where (p.standings_version, p.league_position, p.basis, p.period_start_at, p.effective_end_at, p.published_at)
-       is distinct from (excluded.standings_version, excluded.league_position, excluded.basis,
+     where (p.league_position, p.basis, p.period_start_at, p.effective_end_at, p.published_at)
+       is distinct from (excluded.league_position, excluded.basis,
             excluded.period_start_at, excluded.effective_end_at, excluded.published_at)
     returning 1
   )
@@ -495,7 +496,8 @@ begin
       v_league_active := public.statistics_rank_metric('insufficient', null, 'not_in_league', null, null, v_min);
     elsif v_league.status = 'closed' then
       select * into v_pos from public.statistics_league_positions lp
-       where lp.league_id = v_league.id and lp.player_id = p_player_id;
+       where lp.league_id = v_league.id and lp.player_id = p_player_id
+       order by lp.standings_version desc limit 1;
       v_league_active := case
         when found then public.statistics_rank_metric('ready', public.statistics_rank_value(
             v_pos.league_position, v_pos.basis, v_pos.published_at, v_pos.community_id, v_pos.league_id,
@@ -517,7 +519,7 @@ begin
   select * into v_pos from public.statistics_league_positions lp
    where lp.player_id = p_player_id and (p_league_id is null or lp.league_id = p_league_id)
      and (p_community_id is null or lp.community_id = p_community_id)
-   order by lp.league_position, lp.published_at desc, lp.league_id limit 1;
+   order by lp.league_position, lp.published_at, lp.standings_version, lp.league_id limit 1;
   v_has := found;
   select pg_catalog.min(lp.period_start_at), pg_catalog.max(lp.effective_end_at) into v_from, v_until
     from public.statistics_league_positions lp

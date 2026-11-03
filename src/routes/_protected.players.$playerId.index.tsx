@@ -1,9 +1,13 @@
-import { createFileRoute, notFound, useRouter } from '@tanstack/react-router';
+import { createFileRoute, notFound, useNavigate, useRouter } from '@tanstack/react-router';
 import { useTranslation } from 'react-i18next';
 import { OpponentRecords } from '../features/statistics/OpponentRecords';
 import { PartnerRecords } from '../features/statistics/PartnerRecords';
 import { PlayerStatistics } from '../features/statistics/PlayerStatistics';
-import { parseFilterSearch } from '../features/statistics/statistics-search';
+import {
+  NO_FILTER_OPTIONS,
+  readFilterOptions
+} from '../features/statistics/statistics-filter-options';
+import { filterSearch, parseFilterSearch } from '../features/statistics/statistics-search';
 import { getPlayerStatistics } from '../features/statistics/statistics-player.functions';
 import {
   getOpponentRecords,
@@ -28,7 +32,13 @@ export const Route = createFileRoute('/_protected/players/$playerId/')({
       data = validateStatisticsPlayerInput({ playerId: params.playerId, ...deps });
     } catch {
       const invalid = { status: 'error' as const, code: 'INVALID_STATISTICS_INPUT' as const };
-      return { result: invalid, partners: invalid, opponents: invalid, locale: context.locale };
+      return {
+        result: invalid,
+        partners: invalid,
+        opponents: invalid,
+        options: NO_FILTER_OPTIONS,
+        locale: context.locale
+      };
     }
     const unavailable = () => ({
       status: 'error' as const,
@@ -36,13 +46,14 @@ export const Route = createFileRoute('/_protected/players/$playerId/')({
     });
     const input = { data: { playerId: data.playerId, ...deps } };
     // Records fail on their own: a broken partner list never hides the player's statistics.
-    const [result, partners, opponents] = await Promise.all([
+    const [result, partners, opponents, options] = await Promise.all([
       getPlayerStatistics(input).catch(unavailable),
       getPartnerRecords(input).catch(unavailable),
-      getOpponentRecords(input).catch(unavailable)
+      getOpponentRecords(input).catch(unavailable),
+      readFilterOptions(data.filters)
     ]);
     if (result.status === 'error' && result.code === 'STATISTICS_NOT_FOUND') throw notFound();
-    return { result, partners, opponents, locale: context.locale };
+    return { result, partners, opponents, options, locale: context.locale };
   },
   head: ({ loaderData }) => ({
     meta: [
@@ -54,12 +65,25 @@ export const Route = createFileRoute('/_protected/players/$playerId/')({
 });
 
 function PlayerStatisticsPage() {
-  const { result, partners, opponents } = Route.useLoaderData();
+  const { result, partners, opponents, options } = Route.useLoaderData();
+  const { playerId } = Route.useParams();
   const { t } = useTranslation();
   const router = useRouter();
+  const navigate = useNavigate();
   if (result.status === 'ok') {
     return (
-      <PlayerStatistics stats={result.value}>
+      <PlayerStatistics
+        stats={result.value}
+        filterControls={{
+          options,
+          onApply: (next) =>
+            void navigate({
+              to: '/players/$playerId',
+              params: { playerId },
+              search: filterSearch(next)
+            })
+        }}
+      >
         <PartnerRecords response={partners} onRetry={() => void router.invalidate()} />
         <OpponentRecords response={opponents} onRetry={() => void router.invalidate()} />
       </PlayerStatistics>

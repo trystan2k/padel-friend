@@ -1871,7 +1871,12 @@
         "title": "Dupla",
         "heading": "{{first}} e {{second}}",
         "subtitle": "Resultados quando estes dois jogadores estavam no mesmo time.",
-        "played": "Partidas juntos"
+        "played": "Partidas juntos",
+        "headline": "{{played}} juntos · V {{wins}} · D {{losses}} · E {{draws}}",
+        "lastMeeting": "Última partida juntos em {{date}}",
+        "streak": "Sequência atual: {{length}} · {{kind}}",
+        "noStreak": "Sequência atual: nenhuma",
+        "noMeeting": "Ainda sem partidas juntos"
       },
       "opponent": {
         "title": "Confronto direto",
@@ -2073,6 +2078,10 @@
       "title": "Estatísticas do jogador",
       "subtitle": "Resultados esportivos de partidas confirmadas. Números que ainda não podem ser calculados explicam o motivo em vez de mostrar zero.",
       "myStatistics": "Minhas estatísticas",
+      "hero": {
+        "record": "Retrospecto V–D–E",
+        "recordValue": "{{wins}} – {{losses}} – {{draws}}"
+      },
       "noValue": "Indisponível",
       "ratioOf": "{{numerator}} de {{denominator}} {{unit}}",
       "basedOn": "Com base em {{denominator}} {{unit}}",
@@ -2102,6 +2111,7 @@
         "anyDate": "Qualquer data"
       },
       "sections": {
+        "highlights": "Destaques",
         "matches": "Partidas",
         "scores": "Sets e games",
         "rating": "Nível e ranking",

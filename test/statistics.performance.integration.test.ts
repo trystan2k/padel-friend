@@ -59,37 +59,22 @@ describe.skipIf(!environment.env)('statistics reader performance contract', () =
         'explain (format json) select g.team_a_players, g.team_b_players from public.statistics_group_facts g where g.matchup_id = ' +
         sqlText(matchup['id']) +
         '::uuid limit 1';
+      // A small table plans Seq Scan whatever indexes exist, so timings or plan shape at 150 groups
+      // prove nothing about scale. Instead assert the matchup predicate is servable by the dedicated
+      // index: with sequential scans disabled (rolled-back transaction) the planner must pick it.
       const connection = await openDedicatedSqlConnection();
       try {
         await connection.query('begin');
-        // 150 confirmed groups: both variants plan Limit -> Seq Scan for the common matchup.
-        // Recreate the removed U5 index only inside this rolled-back comparison.
-        await connection.query(
-          'create index statistics_group_facts_matchup_id on public.statistics_group_facts (matchup_id)'
-        );
-        const withIndex = await connection.query(matchupSql);
-        await connection.query('drop index public.statistics_group_facts_matchup_id');
-        const withoutIndex = await connection.query(matchupSql);
-        const extract = (row: Record<string, unknown> | undefined) => {
-          const plan = row?.['QUERY PLAN'];
-          if (!Array.isArray(plan) || plan.length !== 1) throw new Error('Invalid explain output');
-          return planNodes(asRecord(asRecord(plan[0])['Plan']));
-        };
-        const withNodes = extract(withIndex.rows[0]);
-        const withoutNodes = extract(withoutIndex.rows[0]);
-        const scans = (nodes: Record<string, unknown>[]) =>
+        await connection.query('set local enable_seqscan = off');
+        const planned = await connection.query(matchupSql);
+        const plan = planned.rows[0]?.['QUERY PLAN'];
+        if (!Array.isArray(plan) || plan.length !== 1) throw new Error('Invalid explain output');
+        const nodes = planNodes(asRecord(asRecord(plan[0])['Plan']));
+        expect(
           nodes
             .filter((node) => node['Relation Name'] === 'statistics_group_facts')
-            .map((node) => node['Node Type']);
-        expect(withNodes[0]?.['Node Type']).toBe('Limit');
-        expect(withoutNodes[0]?.['Node Type']).toBe('Limit');
-        expect(scans(withNodes)).toEqual(['Seq Scan']);
-        expect(scans(withoutNodes)).toEqual(scans(withNodes));
-        if (process.env['DEBUG'])
-          console.info(
-            'matchup comparison',
-            JSON.stringify({ withIndex: withNodes, withoutIndex: withoutNodes })
-          );
+            .map((node) => [node['Node Type'], node['Index Name']])
+        ).toEqual([['Index Scan', 'statistics_group_facts_matchup_id']]);
       } finally {
         await connection.query('rollback');
         await connection.close();

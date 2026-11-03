@@ -91,11 +91,14 @@ function Eligibility({ metric, kind }: { metric: MetricState; kind: 'pair' | 'op
 export function RelationshipSections({
   record,
   kind,
-  upsetThreshold
+  upsetThreshold,
+  compact = false
 }: {
   record: RelationshipRecord;
   kind: 'pair' | 'opponent';
   upsetThreshold: number;
+  /** Inline figure rows instead of the fluid grid, for the compact partnership summary. */
+  compact?: boolean;
 }) {
   const { t } = useTranslation();
   const f = useRelationshipFormat();
@@ -107,7 +110,7 @@ export function RelationshipSections({
   return (
     <>
       <Section id={`${kind}-stats-record`} title={t('statistics.relationships.sections.record')}>
-        <dl {...stylex.props(s.stats)}>
+        <dl {...stylex.props(compact ? s.compact : s.stats)}>
           <CountStat
             id={`relationships.${kind}.played`}
             label={t(`statistics.relationships.${kind}.played`)}
@@ -155,7 +158,7 @@ export function RelationshipSections({
       </Section>
 
       <Section id={`${kind}-stats-scores`} title={t('statistics.player.sections.scores')}>
-        <dl {...stylex.props(s.stats)}>
+        <dl {...stylex.props(compact ? s.compact : s.stats)}>
           <CountStat
             id="player.sets.won"
             label={t('statistics.player.sets.won')}
@@ -190,7 +193,7 @@ export function RelationshipSections({
       </Section>
 
       <Section id={`${kind}-stats-streaks`} title={t('statistics.relationships.sections.streaks')}>
-        <dl {...stylex.props(s.stats)}>
+        <dl {...stylex.props(compact ? s.compact : s.stats)}>
           <Stat id="player.form.current" label={t('statistics.player.form.current')}>
             <strong {...stylex.props(s.value, streaks.current.kind === null && s.valueMuted)}>
               {streaks.current.kind === null
@@ -217,7 +220,7 @@ export function RelationshipSections({
       </Section>
 
       <Section id={`${kind}-stats-rating`} title={t('statistics.relationships.sections.rating')}>
-        <dl {...stylex.props(s.stats)}>
+        <dl {...stylex.props(compact ? s.compact : s.stats)}>
           {kind === 'pair' && (
             <MetricStat
               id="relationships.averageOpponentLevel"

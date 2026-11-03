@@ -1,6 +1,7 @@
 /** @vitest-environment jsdom */
 import { cleanup, render, screen, within } from '@testing-library/react';
 import { I18nextProvider } from 'react-i18next';
+import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { ReactNode } from 'react';
 import { createI18n } from '../src/i18n/config';
@@ -286,6 +287,88 @@ describe('OpponentRecords', () => {
   it('renders a typed error', () => {
     render(wrap(<OpponentRecords response={{ status: 'error', code: 'STATISTICS_NOT_FOUND' }} />));
     expect(screen.getByRole('alert').textContent).toBe(en.statistics.errors.STATISTICS_NOT_FOUND);
+  });
+});
+
+describe('PairStatistics composition (Pencil GrkSH)', () => {
+  const controls = (onApply: (next: unknown) => void) => ({
+    options: { leagues: [], activeLeagueId: null },
+    onApply
+  });
+
+  it('leads with the compact headline record, streak and last meeting', () => {
+    render(wrap(<PairStatistics pair={makePair()} />));
+    const summary = screen.getAllByRole('region', { name: 'Record' })[0]!;
+    expect(summary.textContent).toContain('7 together · W 3 · L 2 · D 1');
+    expect(summary.textContent).toContain('Current streak: 2 · Wins in a row');
+    expect(summary.textContent).toContain('Last played together 10 Feb 2030');
+  });
+
+  it('states a pair without meetings or streak instead of an empty headline', () => {
+    render(
+      wrap(
+        <PairStatistics
+          pair={makePair({
+            recent: [],
+            record: makeRelationshipRecord({
+              streaks: { current: { kind: null, length: 0 }, longestWins: 0, longestLosses: 0 }
+            })
+          })}
+        />
+      )
+    );
+    const summary = screen.getAllByRole('region', { name: 'Record' })[0]!;
+    expect(summary.textContent).toContain('Current streak: none');
+    expect(summary.textContent).toContain('No matches together yet');
+  });
+
+  it('orders summary, record, scores, streaks, rating, Leagues, then recent meetings', () => {
+    render(
+      wrap(<PairStatistics pair={makePair()} filterControls={controls(vi.fn<() => void>())} />)
+    );
+    const names = [
+      'Statistics filters',
+      'Record',
+      'Sets and games',
+      'Streaks',
+      'Rating evidence',
+      'Leagues played together',
+      'Recent matches'
+    ];
+    const regions = names.map((name) => screen.getAllByRole('region', { name })[0]!);
+    for (let index = 1; index < regions.length; index += 1)
+      expect(
+        regions[index - 1]!.compareDocumentPosition(regions[index]!) &
+          Node.DOCUMENT_POSITION_FOLLOWING
+      ).toBeTruthy();
+    expect(screen.getByText('Spring League: 2 matches')).toBeTruthy();
+  });
+
+  it.each(['pair', 'opponent'] as const)(
+    'applies the %s filters through the page callback',
+    async (kind) => {
+      const onApply = vi.fn<(next: unknown) => void>();
+      const filterControls = controls(onApply);
+      const node =
+        kind === 'pair' ? (
+          <PairStatistics pair={makePair()} filterControls={filterControls} />
+        ) : (
+          <OpponentStatistics opponent={makeOpponent()} filterControls={filterControls} />
+        );
+      render(wrap(node));
+      const user = userEvent.setup();
+      await user.click(screen.getByRole('radio', { name: 'Friendly' }));
+      await user.click(screen.getByRole('button', { name: 'Apply filters' }));
+      expect(onApply).toHaveBeenCalledWith(expect.objectContaining({ type: 'friendly' }));
+    }
+  );
+
+  it('renders the headline in Portuguese and Spanish', () => {
+    const { unmount } = render(wrap(<PairStatistics pair={makePair()} />, 'pt-BR'));
+    expect(screen.getByText('7 juntos · V 3 · D 2 · E 1')).toBeTruthy();
+    unmount();
+    render(wrap(<PairStatistics pair={makePair()} />, 'es'));
+    expect(screen.getByText('7 juntos · G 3 · P 2 · E 1')).toBeTruthy();
   });
 });
 

@@ -1,7 +1,11 @@
-import { createFileRoute, notFound, useRouter } from '@tanstack/react-router';
+import { createFileRoute, notFound, useNavigate, useRouter } from '@tanstack/react-router';
 import { useTranslation } from 'react-i18next';
 import { PairStatistics } from '../features/statistics/PairStatistics';
-import { parseFilterSearch } from '../features/statistics/statistics-search';
+import {
+  NO_FILTER_OPTIONS,
+  readFilterOptions
+} from '../features/statistics/statistics-filter-options';
+import { filterSearch, parseFilterSearch } from '../features/statistics/statistics-search';
 import { getPairStatistics } from '../features/statistics/statistics-relationships.functions';
 import { validateStatisticsRelationshipInput } from '../features/statistics/statistics.validators';
 import { StatisticsError, StatisticsLoading } from '../features/statistics/StatisticsStates';
@@ -22,17 +26,21 @@ export const Route = createFileRoute('/_protected/players/$playerId/partners/$pa
     } catch {
       return {
         result: { status: 'error' as const, code: 'INVALID_STATISTICS_INPUT' as const },
+        options: NO_FILTER_OPTIONS,
         locale: context.locale
       };
     }
-    const result = await getPairStatistics({
-      data: { playerId: input.playerId, otherId: input.otherId, ...deps }
-    }).catch(() => ({
-      status: 'error' as const,
-      code: 'STATISTICS_UNAVAILABLE' as const
-    }));
+    const [result, options] = await Promise.all([
+      getPairStatistics({
+        data: { playerId: input.playerId, otherId: input.otherId, ...deps }
+      }).catch(() => ({
+        status: 'error' as const,
+        code: 'STATISTICS_UNAVAILABLE' as const
+      })),
+      readFilterOptions(input.filters)
+    ]);
     if (result.status === 'error' && result.code === 'STATISTICS_NOT_FOUND') throw notFound();
-    return { result, locale: context.locale };
+    return { result, options, locale: context.locale };
   },
   head: ({ loaderData }) => ({
     meta: [
@@ -46,10 +54,27 @@ export const Route = createFileRoute('/_protected/players/$playerId/partners/$pa
 });
 
 function PairStatisticsPage() {
-  const { result } = Route.useLoaderData();
+  const { result, options } = Route.useLoaderData();
+  const params = Route.useParams();
   const { t } = useTranslation();
   const router = useRouter();
-  if (result.status === 'ok') return <PairStatistics pair={result.value} />;
+  const navigate = useNavigate();
+  if (result.status === 'ok') {
+    return (
+      <PairStatistics
+        pair={result.value}
+        filterControls={{
+          options,
+          onApply: (next) =>
+            void navigate({
+              to: '/players/$playerId/partners/$partnerId',
+              params,
+              search: filterSearch(next)
+            })
+        }}
+      />
+    );
+  }
   return (
     <main>
       <h1>{t('statistics.navigation.pair')}</h1>

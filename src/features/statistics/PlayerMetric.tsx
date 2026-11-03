@@ -55,14 +55,16 @@ type StatProps = {
   id: string;
   label: string;
   helpValues?: Record<string, string>;
+  /** Highlight tile: the figure sits on its own surface with a larger value. */
+  tile?: boolean | undefined;
   children: React.ReactNode;
 };
 
 /** One labelled figure; the label is the term and the value block its description. */
-export function Stat({ id, label, helpValues, children }: StatProps) {
+export function Stat({ id, label, helpValues, tile, children }: StatProps) {
   const { t } = useTranslation();
   return (
-    <div {...stylex.props(s.stat)}>
+    <div {...stylex.props(s.stat, tile && s.tile)}>
       <dt {...stylex.props(s.statLabel)}>{label}</dt>
       <dd {...stylex.props(s.statValue)}>
         {children}
@@ -76,17 +78,21 @@ export function CountStat({
   id,
   label,
   value,
-  helpValues
+  helpValues,
+  tile
 }: {
   id: string;
   label: string;
   value: string | number;
   helpValues?: Record<string, string>;
+  tile?: boolean | undefined;
 }) {
   const { count } = usePlayerFormat();
   return (
-    <Stat id={id} label={label} {...(helpValues ? { helpValues } : {})}>
-      <strong {...stylex.props(s.value)}>{typeof value === 'number' ? count(value) : value}</strong>
+    <Stat id={id} label={label} tile={tile} {...(helpValues ? { helpValues } : {})}>
+      <strong {...stylex.props(s.value, tile && s.tileValue)}>
+        {typeof value === 'number' ? count(value) : value}
+      </strong>
     </Stat>
   );
 }
@@ -101,7 +107,8 @@ export function MetricStat<T = number>({
   metric,
   format,
   unit,
-  helpValues
+  helpValues,
+  tile
 }: {
   id: string;
   label: string;
@@ -110,10 +117,11 @@ export function MetricStat<T = number>({
   /** Denominator noun key under statistics.player.units, shown as "n of d <unit>". */
   unit?: 'matches' | 'sets' | 'games' | 'opportunities' | 'rated';
   helpValues?: Record<string, string>;
+  tile?: boolean | undefined;
 }) {
   const { t } = useTranslation();
   const { count } = usePlayerFormat();
-  const extra = { id, label, ...(helpValues ? { helpValues } : {}) };
+  const extra = { id, label, tile, ...(helpValues ? { helpValues } : {}) };
   if (metric.state !== 'ready') {
     return (
       <Stat {...extra}>
@@ -124,7 +132,7 @@ export function MetricStat<T = number>({
   }
   return (
     <Stat {...extra}>
-      <strong {...stylex.props(s.value)}>{format(metric.value)}</strong>
+      <strong {...stylex.props(s.value, tile && s.tileValue)}>{format(metric.value)}</strong>
       {unit && metric.denominator !== null && (
         <span {...stylex.props(s.detail)}>
           {metric.numerator === null

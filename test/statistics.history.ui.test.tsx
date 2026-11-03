@@ -214,3 +214,136 @@ describe('match history UI', () => {
     expect(screen.getByRole('link', { name: 'Back to match' })).toBeTruthy();
   });
 });
+
+describe('confirmed group detail composition (Pencil BcpYH)', () => {
+  const at = '2030-01-01T12:00:00.000000Z';
+  const ids = [
+    id,
+    ...['2', '3', '4'].map(
+      (n) =>
+        n.repeat(8) +
+        '-' +
+        n.repeat(4) +
+        '-4' +
+        n.repeat(3) +
+        '-8' +
+        n.repeat(3) +
+        '-' +
+        n.repeat(12)
+    )
+  ];
+  const player = (index: number, name: string) => ({
+    user_id: ids[index]!,
+    display_name: name,
+    is_provisional: false,
+    rating: {
+      state: 'applied',
+      reason: null,
+      before_level: 3.8,
+      after_level: 3.9,
+      delta: 0.1,
+      before_reliability: 60,
+      after_reliability: 62,
+      expected_score: 0.5
+    }
+  });
+  const detail = () =>
+    decodeGroupDetail({
+      event_id: id,
+      game_group_id: id,
+      group_number: 1,
+      statistics_revision: 1,
+      community: { id, name: 'Club' },
+      venue_name: 'Padel Indoor',
+      court_label: null,
+      timezone: 'UTC',
+      starts_at: at,
+      played_at: at,
+      played_at_local: '2030-01-01T12:00:00',
+      played_at_offset_seconds: 0,
+      match_type: 'competitive',
+      league: null,
+      result: {
+        classification: 'team_a',
+        winner: 'team_a',
+        sets: [
+          { position: 1, team_a_games: 6, team_b_games: 4, completed: true },
+          { position: 2, team_a_games: 3, team_b_games: 6, completed: true },
+          { position: 3, team_a_games: 6, team_b_games: 3, completed: true }
+        ],
+        sets_a: 2,
+        sets_b: 1,
+        games_a: 15,
+        games_b: 13
+      },
+      teams: {
+        team_a: [player(0, 'Thiago'), player(1, 'Ana')],
+        team_b: [player(2, 'Pedro'), player(3, 'Carlos')]
+      },
+      rating_state: 'applied',
+      matchup: {
+        team_a_strength: 3.9,
+        team_b_strength: 4,
+        team_a_expected: 0.45,
+        team_b_expected: 0.55,
+        upset: false,
+        reason: null
+      },
+      confirmation: {
+        source: 'MANUAL',
+        automatic: false,
+        confirmed_at: at,
+        effective_at: at,
+        approver: { user_id: ids[2]!, display_name: 'Pedro' }
+      },
+      submitter: { user_id: ids[0]!, display_name: 'Thiago', submitted_at: at },
+      correction: { corrected: false, version: 1 },
+      timeline: []
+    });
+
+  it('opens with the result hero: both teams, the set scores and the verdict line', () => {
+    render(wrap(<ConfirmedGroupDetail detail={detail()} />));
+    const hero = screen.getByRole('region', { name: 'Result' });
+    expect(hero.textContent).toContain('Thiago and Ana');
+    expect(hero.textContent).toContain('Pedro and Carlos');
+    for (const score of ['6–4', '3–6', '6–3']) expect(hero.textContent).toContain(score);
+    expect(within(hero).getByText('Team A won')).toBeTruthy();
+    expect(within(hero).getByText('Sets 2–1 · Games 15–13')).toBeTruthy();
+  });
+
+  it('follows the hero with the team blocks, then sets, matchup, meta, confirmation and audit', () => {
+    render(wrap(<ConfirmedGroupDetail detail={detail()} />));
+    const names = [
+      'Result',
+      'Players',
+      'Set scores',
+      'Pre-match outlook',
+      'Confirmation',
+      'Audit timeline'
+    ];
+    const regions = names.map((name) => screen.getByRole('region', { name }));
+    for (let index = 1; index < regions.length; index += 1)
+      expect(
+        regions[index - 1]!.compareDocumentPosition(regions[index]!) &
+          Node.DOCUMENT_POSITION_FOLLOWING
+      ).toBeTruthy();
+    const meta = screen.getByText('Padel Indoor').closest('dl')!;
+    expect(
+      regions[2]!.compareDocumentPosition(meta) & Node.DOCUMENT_POSITION_FOLLOWING
+    ).toBeTruthy();
+    expect(
+      meta.compareDocumentPosition(regions[4]!) & Node.DOCUMENT_POSITION_FOLLOWING
+    ).toBeTruthy();
+  });
+
+  it('shows each team block with its set score and every player rating effect', () => {
+    render(wrap(<ConfirmedGroupDetail detail={detail()} />));
+    const players = screen.getByRole('region', { name: 'Players' });
+    const [teamA, teamB] = within(players).getAllByRole('heading', { level: 3 });
+    expect(teamA!.textContent).toBe('Team A 2');
+    expect(teamB!.textContent).toBe('Team B 1');
+    expect(within(players).getAllByText('3.80')).toHaveLength(4);
+    expect(within(players).getAllByText('3.90')).toHaveLength(4);
+    expect(within(players).getAllByText('+0.10')).toHaveLength(4);
+  });
+});

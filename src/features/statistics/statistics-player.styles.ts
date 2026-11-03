@@ -19,6 +19,63 @@ export const playerStyles = stylex.create({
     minWidth: 0
   },
   header: { display: 'grid', gap: 'var(--space-4)' },
+  // The app's global language/theme chips float over the top-right corner (two 44px targets plus
+  // their gap and the page inset), so title and subtitle reserve that width instead of running under it.
+  lead: {
+    display: 'grid',
+    gap: 'var(--space-4)',
+    minWidth: 0,
+    paddingInlineEnd: `calc(${TOUCH} * 2 + var(--space-8) + var(--space-8))`
+  },
+  // Highlight tiles: three fluid columns where they fit, wrapping at 320px instead of shrinking text.
+  hero: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 96px), 1fr))',
+    gap: 'var(--space-8)',
+    margin: 0
+  },
+  tile: {
+    padding: 'var(--space-12)',
+    borderRadius: 'var(--radius-16)',
+    backgroundColor: 'var(--color-surface)'
+  },
+  tileValue: {
+    fontSize: 'var(--font-size-24)',
+    fontWeight: 'var(--font-weight-bold)',
+    color: 'var(--color-green)',
+    overflowWrap: 'anywhere'
+  },
+  strip: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    alignItems: 'baseline',
+    justifyContent: 'space-between',
+    gap: 'var(--space-4)',
+    margin: 0,
+    padding: 'var(--space-12)',
+    borderRadius: 'var(--radius-16)',
+    backgroundColor: 'var(--color-surface)',
+    fontSize: 'var(--font-size-14)',
+    fontVariantNumeric: 'tabular-nums'
+  },
+  stripLabel: { color: 'var(--color-muted)' },
+  stripValue: { fontWeight: 'var(--font-weight-bold)', color: 'var(--color-text)' },
+  // Compact figure rows (partnership summary): label and value stay on one line while they fit.
+  compact: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    columnGap: 'var(--space-12)',
+    rowGap: 'var(--space-6)',
+    margin: 0
+  },
+  headline: {
+    margin: 0,
+    fontSize: 'var(--font-size-16)',
+    fontWeight: 'var(--font-weight-bold)',
+    color: 'var(--color-text)',
+    fontVariantNumeric: 'tabular-nums',
+    overflowWrap: 'anywhere'
+  },
   title: {
     margin: 0,
     fontFamily: 'var(--font-family-heading)',

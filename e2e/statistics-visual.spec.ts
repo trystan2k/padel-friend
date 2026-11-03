@@ -213,6 +213,157 @@ for (const locale of LOCALES) {
   }
 }
 
+// --- Pencil-aligned composition probes -----------------------------------------------------
+// DOM assertions only (no pixels): each surface must deliver its frame's required regions, in the
+// frame's order, with the frame's element counts. Region ids are the stable section heading ids, so
+// the probe is locale independent. Raster budgets below cover renderer residuals, never structure.
+
+type Region = { name: string; selector: string; count?: number };
+
+async function compositionFailures(page: Page, regions: Region[]): Promise<string[]> {
+  return page.evaluate((spec) => {
+    const failures: string[] = [];
+    const main = document.querySelector('main');
+    if (!main) return ['no main landmark'];
+    let previous: Element | null = null;
+    let previousName = '';
+    for (const region of spec) {
+      const found = [...main.querySelectorAll(region.selector)];
+      if (found.length === 0) {
+        failures.push(`missing region ${region.name} (${region.selector})`);
+        continue;
+      }
+      if (region.count !== undefined && found.length !== region.count)
+        failures.push(`${region.name}: expected ${region.count} elements, found ${found.length}`);
+      const first = found[0]!;
+      if (previous && !(previous.compareDocumentPosition(first) & Node.DOCUMENT_POSITION_FOLLOWING))
+        failures.push(`${region.name} must come after ${previousName}`);
+      previous = first;
+      previousName = region.name;
+    }
+    return failures;
+  }, regions);
+}
+
+const FILTER_BADGES: Region = { name: 'filter context', selector: 'main > header ul[aria-label]' };
+const SCOPE_NAME = (id: string): Region => ({
+  name: id,
+  selector: `section[aria-labelledby="${id}"]`
+});
+
+/** RN0yw: filters, three highlight tiles, W-L-D strip, form, then the full record sections. */
+const PLAYER_REGIONS: Region[] = [
+  { name: 'title', selector: 'main > header h1', count: 1 },
+  FILTER_BADGES,
+  SCOPE_NAME('player-stats-filters'),
+  { name: 'highlight tiles', selector: 'main > section[aria-label] > dl > div', count: 3 },
+  { name: 'W-L-D strip', selector: 'main > section[aria-label] > p strong', count: 1 },
+  SCOPE_NAME('player-stats-form'),
+  SCOPE_NAME('player-stats-matches'),
+  SCOPE_NAME('player-stats-scores'),
+  SCOPE_NAME('player-stats-rating'),
+  SCOPE_NAME('player-stats-activity'),
+  SCOPE_NAME('player-stats-sets'),
+  SCOPE_NAME('player-stats-records')
+];
+
+/** GrkSH: breadcrumb, pair title, compact headline card, then record regions and recent matches. */
+const PAIR_REGIONS: Region[] = [
+  { name: 'breadcrumb', selector: 'main > header nav' },
+  { name: 'title', selector: 'main > header h1', count: 1 },
+  FILTER_BADGES,
+  SCOPE_NAME('pair-stats-filters'),
+  {
+    name: 'compact headline',
+    selector: 'main > section[aria-label] > * > p:first-child',
+    count: 1
+  },
+  SCOPE_NAME('pair-stats-record'),
+  SCOPE_NAME('pair-stats-scores'),
+  SCOPE_NAME('pair-stats-streaks'),
+  SCOPE_NAME('pair-stats-rating'),
+  SCOPE_NAME('pair-stats-leagues'),
+  SCOPE_NAME('relationship-recent')
+];
+
+/** khmeK: opponent record, head-to-head sections, recent meetings (no pair-only regions). */
+const OPPONENT_REGIONS: Region[] = [
+  { name: 'breadcrumb', selector: 'main > header nav' },
+  { name: 'title', selector: 'main > header h1', count: 1 },
+  FILTER_BADGES,
+  SCOPE_NAME('opponent-stats-filters'),
+  SCOPE_NAME('opponent-stats-record'),
+  SCOPE_NAME('opponent-stats-scores'),
+  SCOPE_NAME('opponent-stats-streaks'),
+  SCOPE_NAME('opponent-stats-rating'),
+  SCOPE_NAME('relationship-recent')
+];
+
+/** o9iaC1: scope, volume, player leaders, team and matchup records, activity by month and week. */
+const COMMUNITY_REGIONS: Region[] = [
+  { name: 'title', selector: 'main > header h1', count: 1 },
+  FILTER_BADGES,
+  SCOPE_NAME('community-filters'),
+  SCOPE_NAME('community-matches'),
+  SCOPE_NAME('community-leaders'),
+  SCOPE_NAME('community-pairings'),
+  SCOPE_NAME('community-frequency'),
+  { name: 'frequency charts', selector: '#community-frequency ~ * figure', count: 2 }
+];
+
+/**
+ * BcpYH: result hero (team sides + one score per set), players with per-player levels in two team
+ * blocks, set scores, then meta facts, confirmation and the audit timeline.
+ */
+const detailRegions = (sets: number): Region[] => [
+  { name: 'title', selector: 'main > header h1', count: 1 },
+  SCOPE_NAME('statistics-detail-result'),
+  { name: 'hero score lines', selector: '#statistics-detail-result ~ div p > span', count: sets },
+  SCOPE_NAME('statistics-detail-players'),
+  { name: 'team blocks', selector: '#statistics-detail-players ~ section h3', count: 2 },
+  { name: 'player level blocks', selector: '#statistics-detail-players ~ section h4', count: 4 },
+  SCOPE_NAME('statistics-detail-sets'),
+  { name: 'set score lines', selector: '#statistics-detail-sets ~ ol > li', count: sets },
+  { name: 'meta facts', selector: 'main > :not(header):not(section) dl' },
+  SCOPE_NAME('statistics-detail-confirmation'),
+  SCOPE_NAME('statistics-detail-timeline')
+];
+
+for (const locale of LOCALES) {
+  test(`composition follows the Pencil frames: ${locale}`, async () => {
+    const page = await w.f.page(w.actors[A], locale, 390, 'light', 844);
+    const expected: Record<string, Region[]> = {
+      player: PLAYER_REGIONS,
+      pair: PAIR_REGIONS,
+      opponent: OPPONENT_REGIONS,
+      community: COMMUNITY_REGIONS,
+      'detail-friendly-draw': detailRegions(3),
+      'detail-competitive': detailRegions(2)
+    };
+    const failures: string[] = [];
+    for (const surface of surfaces()) {
+      const regions = expected[surface.name];
+      if (!regions) continue;
+      await page.goto(surface.path);
+      await waitForHydratedPage(page);
+      await expect(page.getByRole('heading', { level: 1 }).first()).toBeVisible();
+      for (const failure of await compositionFailures(page, regions))
+        failures.push(`${surface.name}: ${failure}`);
+    }
+    // Pair is the compact summary: it never draws the player highlight tiles; opponent has no
+    // pair-only league region.
+    await page.goto(surfaces().find((candidate) => candidate.name === 'pair')!.path);
+    await waitForHydratedPage(page);
+    if ((await page.locator('main > section[aria-label] > dl').count()) !== 0)
+      failures.push('pair: unexpected highlight tiles');
+    await page.goto(surfaces().find((candidate) => candidate.name === 'opponent')!.path);
+    await waitForHydratedPage(page);
+    if ((await page.locator('#pair-stats-leagues').count()) !== 0)
+      failures.push('opponent: unexpected pair league region');
+    expect(failures, failures.join('\n')).toEqual([]);
+  });
+}
+
 // --- Pencil-aligned raster residuals ------------------------------------------------------
 
 const PENCIL = [
@@ -220,7 +371,7 @@ const PENCIL = [
   { key: 'pairStatistics', frame: 'GrkSH', surface: 'pair' },
   { key: 'opponentStatistics', frame: 'khmeK', surface: 'opponent' },
   { key: 'communityStatistics', frame: 'o9iaC1', surface: 'community' },
-  { key: 'groupDetail', frame: 'BcpYH', surface: 'detail-competitive' }
+  { key: 'groupDetail', frame: 'BcpYH', surface: 'detail-friendly-draw' }
 ] as const;
 
 async function residual(

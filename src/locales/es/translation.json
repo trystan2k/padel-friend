@@ -1871,7 +1871,12 @@
         "title": "Pareja",
         "heading": "{{first}} y {{second}}",
         "subtitle": "Resultados cuando estos dos jugadores estaban en el mismo equipo.",
-        "played": "Partidos juntos"
+        "played": "Partidos juntos",
+        "headline": "{{played}} juntos · G {{wins}} · P {{losses}} · E {{draws}}",
+        "lastMeeting": "Último partido juntos el {{date}}",
+        "streak": "Racha actual: {{length}} · {{kind}}",
+        "noStreak": "Racha actual: ninguna",
+        "noMeeting": "Aún sin partidos juntos"
       },
       "opponent": {
         "title": "Cara a cara",
@@ -2073,6 +2078,10 @@
       "title": "Estadísticas del jugador",
       "subtitle": "Resultados deportivos de partidos confirmados. Las cifras que aún no se pueden calcular explican el motivo en lugar de mostrar cero.",
       "myStatistics": "Mis estadísticas",
+      "hero": {
+        "record": "Balance G–P–E",
+        "recordValue": "{{wins}} – {{losses}} – {{draws}}"
+      },
       "noValue": "No disponible",
       "ratioOf": "{{numerator}} de {{denominator}} {{unit}}",
       "basedOn": "Basado en {{denominator}} {{unit}}",
@@ -2102,6 +2111,7 @@
         "anyDate": "Cualquier fecha"
       },
       "sections": {
+        "highlights": "Destacados",
         "matches": "Partidos",
         "scores": "Sets y juegos",
         "rating": "Nivel y ranking",

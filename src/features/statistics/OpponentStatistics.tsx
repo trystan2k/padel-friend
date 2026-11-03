@@ -11,9 +11,16 @@ import type { OpponentStatistics as Opponent } from './statistics-relationship-c
 import { playerStyles as s } from './statistics-player.styles';
 import { filterSearch } from './statistics-search';
 import { StatisticsBreadcrumb } from './StatisticsBreadcrumb';
+import { StatisticsFilterSection, type FilterControls } from './StatisticsFilterSection';
 
 /** Head-to-head, always from the focal player's point of view. */
-export function OpponentStatistics({ opponent }: { opponent: Opponent }) {
+export function OpponentStatistics({
+  opponent,
+  filterControls
+}: {
+  opponent: Opponent;
+  filterControls?: FilterControls;
+}) {
   const { t } = useTranslation();
   const f = useRelationshipFormat();
   return (
@@ -24,13 +31,15 @@ export function OpponentStatistics({ opponent }: { opponent: Opponent }) {
           filters={opponent.filters}
           current="opponent"
         />
-        <h1 {...stylex.props(s.title)}>
-          {t('statistics.relationships.opponent.heading', {
-            first: f.name(opponent.focal.displayName),
-            second: f.name(opponent.other.displayName)
-          })}
-        </h1>
-        <p {...stylex.props(s.copy)}>{t('statistics.relationships.opponent.subtitle')}</p>
+        <div {...stylex.props(s.lead)}>
+          <h1 {...stylex.props(s.title)}>
+            {t('statistics.relationships.opponent.heading', {
+              first: f.name(opponent.focal.displayName),
+              second: f.name(opponent.other.displayName)
+            })}
+          </h1>
+          <p {...stylex.props(s.copy)}>{t('statistics.relationships.opponent.subtitle')}</p>
+        </div>
         <FilterContext filters={opponent.filters} />
         <Link
           to="/players/$playerId"
@@ -41,6 +50,13 @@ export function OpponentStatistics({ opponent }: { opponent: Opponent }) {
           {t('statistics.relationships.backToPlayer')}
         </Link>
       </header>
+      {filterControls && (
+        <StatisticsFilterSection
+          id="opponent-stats-filters"
+          filters={opponent.filters}
+          controls={filterControls}
+        />
+      )}
       <RelationshipSections
         record={opponent.record}
         kind="opponent"

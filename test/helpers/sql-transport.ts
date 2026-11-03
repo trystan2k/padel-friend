@@ -116,7 +116,7 @@ export function assertLoopbackDatabaseUrl(connectionString: string): string {
   return connectionString;
 }
 
-function localDatabaseUrl(): Promise<string> {
+export function localDatabaseUrl(): Promise<string> {
   databaseUrlPromise ??= Promise.resolve().then(() => {
     let status: string;
     try {

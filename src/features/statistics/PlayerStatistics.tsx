@@ -17,6 +17,7 @@ import {
 } from './PlayerMetric';
 import { PlayerStatisticsRecords } from './PlayerStatisticsRecords';
 import { StatisticsChart } from './StatisticsChart';
+import { StatisticsFilterSection, type FilterControls } from './StatisticsFilterSection';
 import { ReasonText, StatisticsEmpty } from './StatisticsStates';
 import { playerStyles as s } from './statistics-player.styles';
 
@@ -157,9 +158,11 @@ function ActivitySeries({ months }: { months: Statistics['activity']['months'] }
  */
 export function PlayerStatistics({
   stats,
+  filterControls,
   children
 }: {
   stats: Statistics;
+  filterControls?: FilterControls;
   children?: React.ReactNode;
 }) {
   const { t } = useTranslation();
@@ -168,13 +171,86 @@ export function PlayerStatistics({
   return (
     <main {...stylex.props(s.page)}>
       <header {...stylex.props(s.header)}>
-        <h1 {...stylex.props(s.title)}>{t('statistics.player.title')}</h1>
-        <p {...stylex.props(s.copy)}>{t('statistics.player.subtitle')}</p>
+        <div {...stylex.props(s.lead)}>
+          <h1 {...stylex.props(s.title)}>{t('statistics.player.title')}</h1>
+          <p {...stylex.props(s.copy)}>{t('statistics.player.subtitle')}</p>
+        </div>
         <FilterContext filters={stats.filters} />
         {!stats.config.rating_aligned && (
           <output {...stylex.props(s.copy)}>{t('statistics.player.ratingLagging')}</output>
         )}
       </header>
+
+      {filterControls && (
+        <StatisticsFilterSection
+          id="player-stats-filters"
+          filters={stats.filters}
+          controls={filterControls}
+        />
+      )}
+
+      <section aria-label={t('statistics.player.sections.highlights')} {...stylex.props(s.section)}>
+        <dl {...stylex.props(s.hero)}>
+          <MetricStat
+            tile
+            id="player.matches.winRate"
+            label={t('statistics.player.matches.winRate')}
+            metric={matches.winRate}
+            format={f.ratio}
+            unit="matches"
+          />
+          <CountStat
+            tile
+            id="player.sets.differential"
+            label={t('statistics.player.sets.differential')}
+            value={f.signed(sets.differential)}
+          />
+          <CountStat
+            tile
+            id="player.games.differential"
+            label={t('statistics.player.games.differential')}
+            value={f.signed(games.differential)}
+          />
+        </dl>
+        <p {...stylex.props(s.strip)}>
+          <span {...stylex.props(s.stripLabel)}>{t('statistics.player.hero.record')}</span>
+          <strong {...stylex.props(s.stripValue)}>
+            {t('statistics.player.hero.recordValue', {
+              wins: f.count(matches.wins),
+              losses: f.count(matches.losses),
+              draws: f.count(matches.draws)
+            })}
+          </strong>
+        </p>
+      </section>
+
+      <Section id="player-stats-form" title={t('statistics.player.sections.form')}>
+        <dl {...stylex.props(s.stats)}>
+          <FormStat
+            id="player.form.last5"
+            label={t('statistics.player.form.last5')}
+            metric={form.last5}
+          />
+          <FormStat
+            id="player.form.last10"
+            label={t('statistics.player.form.last10')}
+            metric={form.last10}
+          />
+          <CurrentStreak current={form.current} />
+          <CountStat
+            id="player.form.longestWins"
+            label={t('statistics.player.form.longestWins')}
+            value={form.longestWins}
+          />
+          <CountStat
+            id="player.form.longestLosses"
+            label={t('statistics.player.form.longestLosses')}
+            value={form.longestLosses}
+          />
+        </dl>
+      </Section>
+
+      {children}
 
       <Section id="player-stats-matches" title={t('statistics.player.sections.matches')}>
         <dl {...stylex.props(s.stats)}>
@@ -214,13 +290,6 @@ export function PlayerStatistics({
             value={matches.incomplete}
           />
           <MetricStat
-            id="player.matches.winRate"
-            label={t('statistics.player.matches.winRate')}
-            metric={matches.winRate}
-            format={f.ratio}
-            unit="matches"
-          />
-          <MetricStat
             id="player.matches.competitiveWinRate"
             label={t('statistics.player.matches.competitiveWinRate')}
             metric={matches.competitiveWinRate}
@@ -249,11 +318,6 @@ export function PlayerStatistics({
             label={t('statistics.player.sets.lost')}
             value={sets.lost}
           />
-          <CountStat
-            id="player.sets.differential"
-            label={t('statistics.player.sets.differential')}
-            value={f.signed(sets.differential)}
-          />
           <MetricStat
             id="player.sets.winRate"
             label={t('statistics.player.sets.winRate')}
@@ -270,11 +334,6 @@ export function PlayerStatistics({
             id="player.games.lost"
             label={t('statistics.player.games.lost')}
             value={games.lost}
-          />
-          <CountStat
-            id="player.games.differential"
-            label={t('statistics.player.games.differential')}
-            value={f.signed(games.differential)}
           />
           <MetricStat
             id="player.games.winRate"
@@ -362,38 +421,11 @@ export function PlayerStatistics({
         </dl>
       </Section>
 
-      <Section id="player-stats-form" title={t('statistics.player.sections.form')}>
-        <dl {...stylex.props(s.stats)}>
-          <FormStat
-            id="player.form.last5"
-            label={t('statistics.player.form.last5')}
-            metric={form.last5}
-          />
-          <FormStat
-            id="player.form.last10"
-            label={t('statistics.player.form.last10')}
-            metric={form.last10}
-          />
-          <CurrentStreak current={form.current} />
-          <CountStat
-            id="player.form.longestWins"
-            label={t('statistics.player.form.longestWins')}
-            value={form.longestWins}
-          />
-          <CountStat
-            id="player.form.longestLosses"
-            label={t('statistics.player.form.longestLosses')}
-            value={form.longestLosses}
-          />
-        </dl>
-      </Section>
-
       <Section id="player-stats-activity" title={t('statistics.player.sections.activity')}>
         <ActivitySeries months={activity.months} />
       </Section>
 
       <PlayerStatisticsRecords stats={stats} />
-      {children}
     </main>
   );
 }

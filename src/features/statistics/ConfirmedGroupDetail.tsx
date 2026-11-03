@@ -1,6 +1,7 @@
 import * as stylex from '@stylexjs/stylex';
 import { Link } from '@tanstack/react-router';
 import { useTranslation } from 'react-i18next';
+import { HeroCard } from '../../components/ui/HeroCard';
 import { ProvisionalBadge } from '../../components/ui/ProvisionalBadge';
 import { StatusBadge } from '../../components/ui/StatusBadge';
 import { SurfaceCard } from '../../components/ui/SurfaceCard';
@@ -44,6 +45,16 @@ export function ConfirmedGroupDetail({ detail }: { detail: GroupDetail }) {
   const incomplete = result.classification === 'incomplete';
   const name = (player: { display_name: string | null }) =>
     player.display_name ?? t('matches.results.unknownPlayer');
+  const heroTeam = (side: 'team_a' | 'team_b') => (
+    <div {...stylex.props(s.heroTeam)}>
+      <span {...stylex.props(s.heroLabel)}>{t(`matches.results.teams.${side}`)}</span>
+      <span {...stylex.props(s.heroNames)}>
+        {new Intl.ListFormat(locale, { style: 'long', type: 'conjunction' }).format(
+          detail.teams[side].map((player) => name(player))
+        )}
+      </span>
+    </div>
+  );
 
   return (
     <main {...stylex.props(s.page)}>
@@ -74,6 +85,140 @@ export function ConfirmedGroupDetail({ detail }: { detail: GroupDetail }) {
           </p>
         )}
       </header>
+
+      <section aria-labelledby="statistics-detail-result">
+        <HeroCard xstyle={s.hero}>
+          <h2 id="statistics-detail-result" {...stylex.props(s.heroLabel)}>
+            {t('statistics.detail.sections.result')}
+          </h2>
+          <div {...stylex.props(s.heroGrid)}>
+            {heroTeam('team_a')}
+            <p {...stylex.props(s.heroScores)}>
+              {result.sets.map((set) => (
+                <span key={set.position} {...stylex.props(s.heroScore)}>
+                  {set.team_a_games}–{set.team_b_games}
+                </span>
+              ))}
+            </p>
+            {heroTeam('team_b')}
+          </div>
+          <div {...stylex.props(s.heroLine)}>
+            <span>{t(`statistics.detail.winner.${result.winner ?? 'incomplete'}`)}</span>
+            <span>
+              {t('statistics.detail.setsTotal', { a: result.sets_a, b: result.sets_b })} ·{' '}
+              {t('statistics.detail.gamesTotal', { a: result.games_a, b: result.games_b })}
+            </span>
+          </div>
+        </HeroCard>
+      </section>
+
+      <section aria-labelledby="statistics-detail-players">
+        <SurfaceCard>
+          <h2 id="statistics-detail-players" {...stylex.props(s.subheading)}>
+            {t('statistics.detail.sections.teams')}
+          </h2>
+          <p {...stylex.props(s.copy)}>
+            {t(`statistics.detail.rating.state.${detail.rating_state}`)}
+          </p>
+          {(['team_a', 'team_b'] as const).map((side) => (
+            <section key={side} {...stylex.props(s.team)}>
+              <h3 {...stylex.props(s.teamLabel)}>
+                {t(`matches.results.teams.${side}`)}{' '}
+                <span {...stylex.props(s.teamScore)}>
+                  {side === 'team_a' ? result.sets_a : result.sets_b}
+                </span>
+              </h3>
+              {detail.teams[side].map((player) => (
+                <PlayerRatingCard
+                  key={player.user_id}
+                  player={player}
+                  locale={locale}
+                  name={name(player)}
+                />
+              ))}
+            </section>
+          ))}
+        </SurfaceCard>
+      </section>
+
+      <section aria-labelledby="statistics-detail-sets">
+        <SurfaceCard>
+          <h2 id="statistics-detail-sets" {...stylex.props(s.subheading)}>
+            {t('statistics.detail.sections.sets')}
+          </h2>
+          <ol {...stylex.props(s.list)}>
+            {result.sets.map((set) => (
+              <li key={set.position} {...stylex.props(s.setRow)}>
+                <span {...stylex.props(s.copy)}>
+                  {t('matches.results.setNumber', { number: set.position })}
+                </span>
+                <span {...stylex.props(s.setScore)}>
+                  {set.team_a_games}–{set.team_b_games}
+                </span>
+                <StatusBadge tone={set.completed ? 'positive' : 'muted'}>
+                  {t(
+                    set.completed
+                      ? 'matches.results.setState.complete'
+                      : 'matches.results.setState.inProgress'
+                  )}
+                </StatusBadge>
+              </li>
+            ))}
+          </ol>
+          {incomplete && <p {...stylex.props(s.copy)}>{t('statistics.detail.incompleteNote')}</p>}
+        </SurfaceCard>
+      </section>
+
+      <section aria-labelledby="statistics-detail-matchup">
+        <SurfaceCard>
+          <h2 id="statistics-detail-matchup" {...stylex.props(s.subheading)}>
+            {t('statistics.detail.matchup.title')}
+          </h2>
+          {detail.matchup.reason === null &&
+          detail.matchup.team_a_strength !== null &&
+          detail.matchup.team_b_strength !== null &&
+          detail.matchup.team_a_expected !== null &&
+          detail.matchup.team_b_expected !== null ? (
+            <>
+              {(['team_a', 'team_b'] as const).map((side) => (
+                <div key={side}>
+                  <p>
+                    {t('statistics.detail.matchup.strength', {
+                      team: t(`matches.results.teams.${side}`),
+                      value: formatLevel(
+                        side === 'team_a'
+                          ? detail.matchup.team_a_strength!
+                          : detail.matchup.team_b_strength!,
+                        locale
+                      )
+                    })}
+                  </p>
+                  <p>
+                    {t('statistics.detail.matchup.expected', {
+                      team: t(`matches.results.teams.${side}`),
+                      value: formatPercentPoints(
+                        (side === 'team_a'
+                          ? detail.matchup.team_a_expected!
+                          : detail.matchup.team_b_expected!) * 100,
+                        locale
+                      )
+                    })}
+                  </p>
+                </div>
+              ))}
+              {detail.matchup.upset && (
+                <output aria-label={t('statistics.detail.matchup.upsetAria')}>
+                  <StatusBadge tone="positive">{t('statistics.detail.matchup.upset')}</StatusBadge>
+                </output>
+              )}
+            </>
+          ) : (
+            <p>
+              {t(`statistics.detail.rating.absent.${detail.matchup.reason ?? 'missing_evidence'}`)}
+            </p>
+          )}
+        </SurfaceCard>
+      </section>
 
       <SurfaceCard>
         <dl {...stylex.props(s.facts)}>
@@ -110,150 +255,49 @@ export function ConfirmedGroupDetail({ detail }: { detail: GroupDetail }) {
         </dl>
       </SurfaceCard>
 
-      <SurfaceCard aria-labelledby="statistics-detail-result">
-        <h2 id="statistics-detail-result" {...stylex.props(s.subheading)}>
-          {t('statistics.detail.sections.result')}
-        </h2>
-        <p {...stylex.props(s.strong)}>
-          {t(`statistics.detail.winner.${result.winner ?? 'incomplete'}`)}
-        </p>
-        <h3 {...stylex.props(s.subheading)}>{t('statistics.detail.sections.sets')}</h3>
-        <ol {...stylex.props(s.list)}>
-          {result.sets.map((set) => (
-            <li key={set.position} {...stylex.props(s.setRow)}>
-              <span {...stylex.props(s.copy)}>
-                {t('matches.results.setNumber', { number: set.position })}
-              </span>
-              <span {...stylex.props(s.setScore)}>
-                {set.team_a_games}–{set.team_b_games}
-              </span>
-              <StatusBadge tone={set.completed ? 'positive' : 'muted'}>
-                {t(
-                  set.completed
-                    ? 'matches.results.setState.complete'
-                    : 'matches.results.setState.inProgress'
-                )}
-              </StatusBadge>
-            </li>
-          ))}
-        </ol>
-        <p {...stylex.props(s.copy)}>
-          {t('statistics.detail.setsTotal', { a: result.sets_a, b: result.sets_b })} ·{' '}
-          {t('statistics.detail.gamesTotal', { a: result.games_a, b: result.games_b })}
-        </p>
-        {incomplete && <p {...stylex.props(s.copy)}>{t('statistics.detail.incompleteNote')}</p>}
-      </SurfaceCard>
-
-      <SurfaceCard aria-labelledby="statistics-detail-matchup">
-        <h2 id="statistics-detail-matchup" {...stylex.props(s.subheading)}>
-          {t('statistics.detail.matchup.title')}
-        </h2>
-        {detail.matchup.reason === null &&
-        detail.matchup.team_a_strength !== null &&
-        detail.matchup.team_b_strength !== null &&
-        detail.matchup.team_a_expected !== null &&
-        detail.matchup.team_b_expected !== null ? (
-          <>
-            {(['team_a', 'team_b'] as const).map((side) => (
-              <div key={side}>
-                <p>
-                  {t('statistics.detail.matchup.strength', {
-                    team: t(`matches.results.teams.${side}`),
-                    value: formatLevel(
-                      side === 'team_a'
-                        ? detail.matchup.team_a_strength!
-                        : detail.matchup.team_b_strength!,
-                      locale
-                    )
-                  })}
-                </p>
-                <p>
-                  {t('statistics.detail.matchup.expected', {
-                    team: t(`matches.results.teams.${side}`),
-                    value: formatPercentPoints(
-                      (side === 'team_a'
-                        ? detail.matchup.team_a_expected!
-                        : detail.matchup.team_b_expected!) * 100,
-                      locale
-                    )
-                  })}
-                </p>
-              </div>
-            ))}
-            {detail.matchup.upset && (
-              <output aria-label={t('statistics.detail.matchup.upsetAria')}>
-                <StatusBadge tone="positive">{t('statistics.detail.matchup.upset')}</StatusBadge>
-              </output>
-            )}
-          </>
-        ) : (
-          <p>
-            {t(`statistics.detail.rating.absent.${detail.matchup.reason ?? 'missing_evidence'}`)}
+      <section aria-labelledby="statistics-detail-confirmation">
+        <SurfaceCard>
+          <h2 id="statistics-detail-confirmation" {...stylex.props(s.subheading)}>
+            {t('statistics.detail.sections.confirmation')}
+          </h2>
+          <p {...stylex.props(s.strong)}>
+            {confirmation.automatic || !confirmation.approver
+              ? t('statistics.detail.confirmation.automatic')
+              : t('statistics.detail.confirmation.manual', { name: name(confirmation.approver) })}
           </p>
-        )}
-      </SurfaceCard>
+          <p {...stylex.props(s.copy)}>
+            {t('statistics.detail.confirmation.confirmedAt', {
+              date: stamp(confirmation.confirmed_at)
+            })}
+          </p>
+          <p {...stylex.props(s.copy)}>
+            {t('statistics.detail.confirmation.effectiveAt', {
+              date: stamp(confirmation.effective_at)
+            })}
+          </p>
+          <p {...stylex.props(s.copy)}>
+            {t('statistics.detail.confirmation.submittedBy', {
+              name: name(detail.submitter),
+              date: stamp(detail.submitter.submitted_at)
+            })}
+          </p>
+        </SurfaceCard>
+      </section>
 
-      <SurfaceCard aria-labelledby="statistics-detail-players">
-        <h2 id="statistics-detail-players" {...stylex.props(s.subheading)}>
-          {t('statistics.detail.sections.teams')}
-        </h2>
-        <p {...stylex.props(s.copy)}>
-          {t(`statistics.detail.rating.state.${detail.rating_state}`)}
-        </p>
-        {(['team_a', 'team_b'] as const).map((side) => (
-          <section key={side} {...stylex.props(s.team)}>
-            <h3 {...stylex.props(s.teamLabel)}>{t(`matches.results.teams.${side}`)}</h3>
-            {detail.teams[side].map((player) => (
-              <PlayerRatingCard
-                key={player.user_id}
-                player={player}
-                locale={locale}
-                name={name(player)}
-              />
+      <section aria-labelledby="statistics-detail-timeline">
+        <SurfaceCard>
+          <h2 id="statistics-detail-timeline" {...stylex.props(s.subheading)}>
+            {t('statistics.detail.sections.timeline')}
+          </h2>
+          <ol {...stylex.props(s.timeline)}>
+            {detail.timeline.map((entry) => (
+              <li key={`${entry.kind}-${entry.occurred_at}`}>
+                <TimelineText entry={entry} stamp={stamp} />
+              </li>
             ))}
-          </section>
-        ))}
-      </SurfaceCard>
-
-      <SurfaceCard aria-labelledby="statistics-detail-confirmation">
-        <h2 id="statistics-detail-confirmation" {...stylex.props(s.subheading)}>
-          {t('statistics.detail.sections.confirmation')}
-        </h2>
-        <p {...stylex.props(s.strong)}>
-          {confirmation.automatic || !confirmation.approver
-            ? t('statistics.detail.confirmation.automatic')
-            : t('statistics.detail.confirmation.manual', { name: name(confirmation.approver) })}
-        </p>
-        <p {...stylex.props(s.copy)}>
-          {t('statistics.detail.confirmation.confirmedAt', {
-            date: stamp(confirmation.confirmed_at)
-          })}
-        </p>
-        <p {...stylex.props(s.copy)}>
-          {t('statistics.detail.confirmation.effectiveAt', {
-            date: stamp(confirmation.effective_at)
-          })}
-        </p>
-        <p {...stylex.props(s.copy)}>
-          {t('statistics.detail.confirmation.submittedBy', {
-            name: name(detail.submitter),
-            date: stamp(detail.submitter.submitted_at)
-          })}
-        </p>
-      </SurfaceCard>
-
-      <SurfaceCard aria-labelledby="statistics-detail-timeline">
-        <h2 id="statistics-detail-timeline" {...stylex.props(s.subheading)}>
-          {t('statistics.detail.sections.timeline')}
-        </h2>
-        <ol {...stylex.props(s.timeline)}>
-          {detail.timeline.map((entry) => (
-            <li key={`${entry.kind}-${entry.occurred_at}`}>
-              <TimelineText entry={entry} stamp={stamp} />
-            </li>
-          ))}
-        </ol>
-      </SurfaceCard>
+          </ol>
+        </SurfaceCard>
+      </section>
     </main>
   );
 }

@@ -1871,7 +1871,12 @@
         "title": "Partnership",
         "heading": "{{first}} & {{second}}",
         "subtitle": "Results when these two players were on the same team.",
-        "played": "Matches together"
+        "played": "Matches together",
+        "headline": "{{played}} together · W {{wins}} · L {{losses}} · D {{draws}}",
+        "lastMeeting": "Last played together {{date}}",
+        "streak": "Current streak: {{length}} · {{kind}}",
+        "noStreak": "Current streak: none",
+        "noMeeting": "No matches together yet"
       },
       "opponent": {
         "title": "Head to head",
@@ -2073,6 +2078,10 @@
       "title": "Player statistics",
       "subtitle": "Sporting results from confirmed matches. Figures that cannot be calculated yet explain why instead of showing zero.",
       "myStatistics": "My statistics",
+      "hero": {
+        "record": "W–L–D record",
+        "recordValue": "{{wins}} – {{losses}} – {{draws}}"
+      },
       "noValue": "Not available",
       "ratioOf": "{{numerator}} of {{denominator}} {{unit}}",
       "basedOn": "Based on {{denominator}} {{unit}}",
@@ -2102,6 +2111,7 @@
         "anyDate": "Any date"
       },
       "sections": {
+        "highlights": "Highlights",
         "matches": "Matches",
         "scores": "Sets and games",
         "rating": "Rating and rank",

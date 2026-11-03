@@ -79,6 +79,33 @@ describe('player statistics route', () => {
       expect(mock).toHaveBeenCalledWith({ data: { playerId: player, ...deps } });
   });
 
+  it('adds the League choices of the selected community for the filter bar', async () => {
+    mocks.player.mockResolvedValue(ok);
+    mocks.partners.mockResolvedValue(ok);
+    mocks.opponents.mockResolvedValue(ok);
+    const leagues = [{ id: league, name: 'Spring', status: 'active' }];
+    mocks.community.mockResolvedValue({
+      status: 'ok',
+      value: { leagues, activeLeagueId: league }
+    });
+    const result = await load({ playerId: player }, { communityId: community });
+    expect(result).toMatchObject({ options: { leagues, activeLeagueId: league } });
+    expect(mocks.community).toHaveBeenCalledWith({ data: { communityId: community } });
+  });
+
+  it('keeps the filter bar usable without Leagues when no community is selected or its read fails', async () => {
+    mocks.player.mockResolvedValue(ok);
+    mocks.partners.mockResolvedValue(ok);
+    mocks.opponents.mockResolvedValue(ok);
+    const none = { options: { leagues: [], activeLeagueId: null } };
+    expect(await load({ playerId: player })).toMatchObject(none);
+    expect(mocks.community).not.toHaveBeenCalled();
+    mocks.community.mockRejectedValue(new Error('offline'));
+    expect(await load({ playerId: player }, { communityId: community })).toMatchObject(none);
+    mocks.community.mockResolvedValue({ status: 'error', code: 'STATISTICS_UNAVAILABLE' });
+    expect(await load({ playerId: player }, { communityId: community })).toMatchObject(none);
+  });
+
   it('a failing record list never hides the player statistics', async () => {
     mocks.player.mockResolvedValue(ok);
     mocks.partners.mockRejectedValue(new Error('offline'));

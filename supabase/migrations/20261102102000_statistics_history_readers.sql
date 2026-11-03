@@ -120,15 +120,21 @@ begin
        and (p_cursor_at is null or (g.played_at, g.game_group_id) < (p_cursor_at, p_cursor_key::uuid))
      order by g.played_at desc, g.game_group_id desc
      limit v_limit
+  ), viewer_events as materialized (
+    -- Bounded by the viewer's own registrations (user_id, match_event_id index), so the lifecycle
+    -- source never walks unrelated community event history.
+    select distinct r.match_event_id as id
+      from public.match_event_registrations r
+     where r.user_id = v_viewer and r.lifecycle = 'accepted' and p_league_id is null
   ), lifecycle as materialized (
-    -- The ordered event scan is fenced from the viewer-specific lateral lookup. It may
-    -- advance past unrelated events, but never builds the viewer's registration history.
+    -- The ordered scan runs over the viewer-bounded event set only; the keyset predicate and the
+    -- page limit then advance within that set.
     select x.*
       from (
         select me.id, me.starts_at, me.status, me.event_type, me.community_id, me.league_id
-          from public.match_events me
-         where p_league_id is null
-           and (p_community_id is null or me.community_id = p_community_id)
+          from viewer_events ve
+          join public.match_events me on me.id = ve.id
+         where (p_community_id is null or me.community_id = p_community_id)
            and (p_type = 'all' or me.event_type::text = p_type)
            and (v_from is null or me.starts_at >= v_from)
            and (v_until is null or me.starts_at < v_until)

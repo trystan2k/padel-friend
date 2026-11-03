@@ -139,6 +139,62 @@ export const historyStyles = stylex.create({
   },
   setScore: { fontSize: 'var(--font-size-16)', fontWeight: 'var(--font-weight-bold)' },
   team: { display: 'grid', gap: 'var(--space-6)', minWidth: 0 },
+  // Result hero: team A, the set scores and team B side by side, the verdict line underneath.
+  hero: { gap: 'var(--space-10)', minWidth: 0 },
+  heroLabel: {
+    margin: 0,
+    fontSize: 'var(--font-size-12)',
+    fontWeight: 'var(--font-weight-semibold)',
+    color: 'var(--color-hero-label)',
+    textTransform: 'uppercase'
+  },
+  heroGrid: {
+    display: 'grid',
+    gridTemplateColumns: 'minmax(0, 1fr) auto minmax(0, 1fr)',
+    alignItems: 'start',
+    gap: 'var(--space-8)',
+    minWidth: 0
+  },
+  heroTeam: { display: 'grid', gap: 'var(--space-2)', minWidth: 0 },
+  heroNames: {
+    fontSize: 'var(--font-size-14)',
+    color: 'var(--color-on-hero)',
+    overflowWrap: 'anywhere'
+  },
+  heroScores: {
+    margin: 0,
+    padding: 'var(--space-8)',
+    borderRadius: 'var(--radius-12)',
+    backgroundColor: 'var(--color-hero-avatar)',
+    textAlign: 'center'
+  },
+  heroScore: {
+    display: 'block',
+    fontFamily: 'var(--font-family-heading)',
+    fontSize: 'var(--font-size-18)',
+    fontWeight: 'var(--font-weight-bold)',
+    color: 'var(--color-on-hero)',
+    fontVariantNumeric: 'tabular-nums',
+    overflowWrap: 'anywhere'
+  },
+  heroLine: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    columnGap: 'var(--space-8)',
+    rowGap: 'var(--space-2)',
+    margin: 0,
+    fontSize: 'var(--font-size-12)',
+    fontWeight: 'var(--font-weight-bold)',
+    color: 'var(--color-hero-accent)',
+    textTransform: 'uppercase',
+    overflowWrap: 'anywhere'
+  },
+  teamScore: {
+    marginInlineStart: 'var(--space-6)',
+    color: 'var(--color-muted)',
+    fontWeight: 'var(--font-weight-semibold)',
+    textTransform: 'none'
+  },
   teamLabel: {
     margin: 0,
     fontSize: 'var(--font-size-12)',

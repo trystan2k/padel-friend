@@ -454,6 +454,51 @@ describe.skipIf(!environment.env)('player statistics rank history', { timeout: 6
     await fixtureSql('select public.statistics_publish();');
   });
 
+  it('reports the best League position over every published version with the earliest achieving version', async () => {
+    const leagueId = await kit.league({ status: 'active', endMode: 'manual', endAt: null });
+    await confirmedGroup(await kit.event(leagueId), 250);
+    const closed = await kit.rpc(kit.creator, 'close_league', {
+      p_league_id: leagueId,
+      p_expected_version: 1
+    });
+    expect(closed.error).toBeNull();
+    // Version 2 (a published repair): the version 1 leader finishes fourth.
+    await fixtureSql(
+      'insert into public.league_standings_snapshots(league_id, community_id, standings_version, cause, basis, minimum_matches_for_final_award, period_start_at, effective_end_at, included_confirmation_ids, entries) ' +
+        "select league_id, community_id, 2, 'repair', 'published', minimum_matches_for_final_award, period_start_at, effective_end_at, included_confirmation_ids, " +
+        "(select pg_catalog.jsonb_agg(case when x.entry ->> 'user_id' = " +
+        T(id(0)) +
+        " then pg_catalog.jsonb_set(x.entry, '{position}', '4') else x.entry end) from pg_catalog.jsonb_array_elements(entries) x(entry)) " +
+        'from public.league_standings_snapshots where league_id = ' +
+        T(leagueId) +
+        ' and standings_version = 1; ' +
+        'select public.statistics_rank_refresh_league(' +
+        T(leagueId) +
+        '::uuid);'
+    );
+    expect(
+      await sqlRows(
+        'select standings_version, league_position from public.statistics_league_positions where player_id = ' +
+          T(id(0)) +
+          ' and league_id = ' +
+          T(leagueId) +
+          ' order by standings_version'
+      )
+    ).toEqual([
+      { standings_version: 1, league_position: 1 },
+      { standings_version: 2, league_position: 4 }
+    ]);
+    expect(await rank(0, { p_league_id: leagueId })).toMatchObject({
+      bestLeaguePosition: {
+        best: {
+          state: 'ready',
+          value: { position: 1, provenance: 'published', standingsVersion: 1, leagueId }
+        }
+      },
+      activeLeaguePosition: { state: 'ready', value: { position: 4, standingsVersion: 2 } }
+    });
+  });
+
   it('denies the new reader to anon and service_role and keeps every internal away from them', async () => {
     const anon = createClient(environment.env!.url, environment.env!.key, {
       auth: { persistSession: false, autoRefreshToken: false }
