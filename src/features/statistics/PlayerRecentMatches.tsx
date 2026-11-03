@@ -3,7 +3,7 @@ import { Link } from '@tanstack/react-router';
 import { useTranslation } from 'react-i18next';
 import { StatusBadge, type StatusBadgeTone } from '../../components/ui/StatusBadge';
 import { Section, usePlayerFormat } from './PlayerMetric';
-import { StatisticsEmpty, StatisticsError, StatisticsLoading } from './StatisticsStates';
+import { StatisticsEmpty, StatisticsError } from './StatisticsStates';
 import type {
   HistoryStatus,
   HistoryView,
@@ -21,11 +21,18 @@ const tones: Record<HistoryStatus, StatusBadgeTone> = {
   reserve_not_playing: 'muted'
 };
 
+/**
+ * `response` is null when the subject's matches are not readable for this scope (another player
+ * without a shared community selected); the card then explains what to select instead of failing.
+ * See-all opens the viewer's own history, so it only shows on the viewer's own profile.
+ */
 export function PlayerRecentMatches({
   response,
+  isOwn,
   onRetry
 }: {
-  response?: StatisticsResponse<HistoryView>;
+  response: StatisticsResponse<HistoryView> | null;
+  isOwn: boolean;
   onRetry?: () => void;
 }) {
   const { t } = useTranslation();
@@ -33,13 +40,13 @@ export function PlayerRecentMatches({
   return (
     <Section id="player-recent-matches" title={t('statistics.player.recent.title')}>
       {!response ? (
-        <StatisticsLoading />
+        <StatisticsEmpty>{t('statistics.player.recent.needsCommunity')}</StatisticsEmpty>
       ) : response.status === 'error' ? (
         <StatisticsError code={response.code} onRetry={onRetry} />
       ) : response.value.items.length === 0 ? (
         <StatisticsEmpty>{t('statistics.history.empty')}</StatisticsEmpty>
       ) : (
-        <ul {...stylex.props(s.filters)}>
+        <ul {...stylex.props(s.recentList)}>
           {response.value.items.map((item) => {
             const confirmed =
               (item.status === 'played' || item.status === 'incomplete') &&
@@ -48,10 +55,13 @@ export function PlayerRecentMatches({
               (name) => name ?? t('statistics.relationships.unknownPlayer')
             );
             return (
-              <li key={item.key}>
-                <StatusBadge tone={tones[item.status]}>
-                  {t(`statistics.history.status.${item.status}`)}
-                </StatusBadge>
+              <li key={item.key} {...stylex.props(s.recentRow)}>
+                <div {...stylex.props(s.recentMeta)}>
+                  <time dateTime={item.sort_at}>{f.date(item.sort_at)}</time>
+                  <StatusBadge tone={tones[item.status]}>
+                    {t(`statistics.history.status.${item.status}`)}
+                  </StatusBadge>
+                </div>
                 <p {...stylex.props(s.copy)}>
                   {opponents.length
                     ? t('statistics.player.recent.opponents', {
@@ -62,7 +72,6 @@ export function PlayerRecentMatches({
                       })
                     : t('statistics.player.recent.noOpponents')}
                 </p>
-                <time dateTime={item.sort_at}>{f.date(item.sort_at)}</time>
                 {confirmed && item.game_group_id && (
                   <Link
                     to="/matches/$eventId/groups/$groupId"
@@ -77,9 +86,11 @@ export function PlayerRecentMatches({
           })}
         </ul>
       )}
-      <Link to="/matches/past" {...stylex.props(s.link)}>
-        {t('statistics.player.recent.seeAll')}
-      </Link>
+      {isOwn && (
+        <Link to="/matches/past" {...stylex.props(s.link)}>
+          {t('statistics.player.recent.seeAll')}
+        </Link>
+      )}
     </Section>
   );
 }

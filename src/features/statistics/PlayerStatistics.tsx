@@ -162,12 +162,15 @@ export function PlayerStatistics({
   stats,
   filterControls,
   recentHistory,
+  recentIsOwn = true,
   onRecentRetry,
   children
 }: {
   stats: Statistics;
   filterControls?: FilterControls;
-  recentHistory?: StatisticsResponse<HistoryView>;
+  /** Undefined hides the card; null means not readable for this scope (neutral state). */
+  recentHistory?: StatisticsResponse<HistoryView> | null;
+  recentIsOwn?: boolean;
   onRecentRetry?: () => void;
   children?: React.ReactNode;
 }) {
@@ -257,7 +260,9 @@ export function PlayerStatistics({
       </Section>
 
       {children}
-      {recentHistory && <PlayerRecentMatches response={recentHistory} onRetry={onRecentRetry} />}
+      {recentHistory !== undefined && (
+        <PlayerRecentMatches response={recentHistory} isOwn={recentIsOwn} onRetry={onRecentRetry} />
+      )}
 
       <Section id="player-stats-matches" title={t('statistics.player.sections.matches')}>
         <dl {...stylex.props(s.stats)}>

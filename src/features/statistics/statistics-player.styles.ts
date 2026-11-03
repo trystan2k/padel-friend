@@ -68,6 +68,31 @@ export const playerStyles = stylex.create({
     rowGap: 'var(--space-6)',
     margin: 0
   },
+  // Recent-match rows (RN0yw): one stacked card per match; meta row first, link last.
+  recentList: {
+    display: 'grid',
+    gap: 'var(--space-8)',
+    margin: 0,
+    padding: 0,
+    listStyle: 'none'
+  },
+  recentRow: {
+    display: 'grid',
+    gap: 'var(--space-6)',
+    padding: 'var(--space-12)',
+    borderRadius: 'var(--radius-16)',
+    backgroundColor: 'var(--color-surface)',
+    minWidth: 0
+  },
+  recentMeta: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    columnGap: 'var(--space-8)',
+    rowGap: 'var(--space-4)',
+    fontSize: 'var(--font-size-14)',
+    color: 'var(--color-muted)'
+  },
   headline: {
     margin: 0,
     fontSize: 'var(--font-size-16)',

@@ -2092,7 +2092,8 @@
         "title": "Recent matches",
         "seeAll": "See all",
         "opponents": "vs {{names}}",
-        "noOpponents": "Opponents unavailable"
+        "noOpponents": "Opponents unavailable",
+        "needsCommunity": "Select a community to see this player's recent matches."
       },
       "units": {
         "matches": "matches",

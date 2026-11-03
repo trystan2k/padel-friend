@@ -2092,7 +2092,8 @@
         "title": "Partidas recentes",
         "seeAll": "Ver todas",
         "opponents": "vs {{names}}",
-        "noOpponents": "Adversários indisponíveis"
+        "noOpponents": "Adversários indisponíveis",
+        "needsCommunity": "Selecione uma comunidade para ver as partidas recentes deste jogador."
       },
       "units": {
         "matches": "partidas",

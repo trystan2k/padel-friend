@@ -420,6 +420,79 @@ for (const [locale, width] of LOCALES.flatMap((language) =>
   });
 }
 
+// --- Hit-target and intra-card geometry probes ---------------------------------------------
+
+test('community selectors and recent-match cards keep 44px targets without overlap', async () => {
+  for (const locale of LOCALES) {
+    for (const width of [320, 390]) {
+      const page = await w.f.page(w.actors[A], locale, width, 'light', 844);
+      const failures: string[] = [];
+      const targets: Record<string, string> = {
+        player: 'section[aria-labelledby="player-stats-filters"] select:not(form select)',
+        pair: 'section[aria-labelledby="pair-stats-filters"] select:not(form select)',
+        opponent: 'section[aria-labelledby="opponent-stats-filters"] select:not(form select)'
+      };
+      for (const [name, selector] of Object.entries(targets)) {
+        const surface = surfaces().find((candidate) => candidate.name === name)!;
+        await page.goto(surface.path);
+        await waitForHydratedPage(page);
+        const box = await page.locator(selector).boundingBox();
+        if (!box) failures.push(`${name}: community selector not rendered`);
+        else if (box.width < 44 || box.height < 44)
+          failures.push(`${name}: community selector ${box.width}x${box.height}`);
+      }
+      const player = surfaces().find((candidate) => candidate.name === 'player')!;
+      await page.goto(player.path);
+      await waitForHydratedPage(page);
+      const geometry = await page.evaluate(() => {
+        const list = document.querySelectorAll(
+          'section[aria-labelledby="player-recent-matches"] ul > li'
+        );
+        const overlaps = (a: DOMRect, b: DOMRect) =>
+          a.left < b.right - 0.5 &&
+          b.left < a.right - 0.5 &&
+          a.top < b.bottom - 0.5 &&
+          b.top < a.bottom - 0.5;
+        const out: { rows: { top: number; bottom: number }[]; issues: string[] } = {
+          rows: [],
+          issues: []
+        };
+        list.forEach((row, index) => {
+          const rect = row.getBoundingClientRect();
+          out.rows.push({ top: rect.top, bottom: rect.bottom });
+          const kids = [...row.children].map((child) => ({
+            name: child.tagName.toLowerCase(),
+            rect: child.getBoundingClientRect()
+          }));
+          for (const kid of kids)
+            if (kid.name === 'a' && (kid.rect.width < 44 || kid.rect.height < 44))
+              out.issues.push(`row ${index}: link ${kid.rect.width}x${kid.rect.height}`);
+          for (let i = 0; i < kids.length; i++)
+            for (let j = i + 1; j < kids.length; j++)
+              if (overlaps(kids[i]!.rect, kids[j]!.rect))
+                out.issues.push(`row ${index}: ${kids[i]!.name} overlaps ${kids[j]!.name}`);
+          const meta = row.firstElementChild;
+          if (meta) {
+            const parts = [...meta.children].map((child) => child.getBoundingClientRect());
+            for (let i = 0; i < parts.length; i++)
+              for (let j = i + 1; j < parts.length; j++)
+                if (overlaps(parts[i]!, parts[j]!))
+                  out.issues.push(`row ${index}: meta items overlap`);
+          }
+        });
+        return out;
+      });
+      if (geometry.rows.length === 0) failures.push('player: no recent-match rows');
+      failures.push(...geometry.issues);
+      for (let index = 1; index < geometry.rows.length; index++)
+        if (geometry.rows[index]!.top <= geometry.rows[index - 1]!.bottom - 0.5)
+          failures.push(`recent rows ${index - 1}/${index} are not vertically stacked`);
+      expect(failures, `${locale} ${width}: ${failures.join('\n')}`).toEqual([]);
+      await page.context().close();
+    }
+  }
+});
+
 // --- Pencil-aligned raster residuals ------------------------------------------------------
 
 const PENCIL = [

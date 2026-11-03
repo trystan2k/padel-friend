@@ -8,6 +8,7 @@ import {
   readFilterOptions
 } from '../features/statistics/statistics-filter-options';
 import { filterSearch, parseFilterSearch } from '../features/statistics/statistics-search';
+import { getMyPlayerProfile } from '../features/player/player.functions';
 import { getStatisticsHistory } from '../features/statistics/statistics-history.functions';
 import { getPlayerStatistics } from '../features/statistics/statistics-player.functions';
 import {
@@ -38,6 +39,7 @@ export const Route = createFileRoute('/_protected/players/$playerId/')({
         partners: invalid,
         opponents: invalid,
         history: invalid,
+        isOwn: false,
         options: NO_FILTER_OPTIONS,
         locale: context.locale
       };
@@ -48,17 +50,37 @@ export const Route = createFileRoute('/_protected/players/$playerId/')({
     });
     const input = { data: { playerId: data.playerId, ...deps } };
     // Records fail on their own: a broken partner list never hides the player's statistics.
-    const [result, partners, opponents, options, history] = await Promise.all([
+    const viewerId = getMyPlayerProfile().then(
+      (profile) => profile.user_id,
+      () => null
+    );
+    // Another player's matches are only readable inside a shared community; without one the
+    // reader would deny, so the request is skipped and the card shows a neutral state.
+    const readHistory = async () => {
+      const isOwn = (await viewerId) === data.playerId;
+      if (!isOwn && !deps.communityId) return null;
+      return getStatisticsHistory({
+        data: { ...deps, subjectPlayerId: data.playerId, limit: 3 }
+      }).catch(unavailable);
+    };
+    const [result, partners, opponents, options, history, viewer] = await Promise.all([
       getPlayerStatistics(input).catch(unavailable),
       getPartnerRecords(input).catch(unavailable),
       getOpponentRecords(input).catch(unavailable),
       readFilterOptions(data.filters),
-      getStatisticsHistory({ data: { ...deps, subjectPlayerId: data.playerId, limit: 3 } }).catch(
-        unavailable
-      )
+      readHistory(),
+      viewerId
     ]);
     if (result.status === 'error' && result.code === 'STATISTICS_NOT_FOUND') throw notFound();
-    return { result, partners, opponents, options, history, locale: context.locale };
+    return {
+      result,
+      partners,
+      opponents,
+      options,
+      history,
+      isOwn: viewer === data.playerId,
+      locale: context.locale
+    };
   },
   head: ({ loaderData }) => ({
     meta: [
@@ -70,7 +92,7 @@ export const Route = createFileRoute('/_protected/players/$playerId/')({
 });
 
 function PlayerStatisticsPage() {
-  const { result, partners, opponents, options, history } = Route.useLoaderData();
+  const { result, partners, opponents, options, history, isOwn } = Route.useLoaderData();
   const { playerId } = Route.useParams();
   const { t } = useTranslation();
   const router = useRouter();
@@ -80,6 +102,7 @@ function PlayerStatisticsPage() {
       <PlayerStatistics
         stats={result.value}
         recentHistory={history}
+        recentIsOwn={isOwn}
         onRecentRetry={() => void router.invalidate()}
         filterControls={{
           options,

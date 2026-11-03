@@ -6,7 +6,15 @@ const mocks = vi.hoisted(() => ({
   opponents: vi.fn<(...args: unknown[]) => Promise<unknown>>(),
   pair: vi.fn<(...args: unknown[]) => Promise<unknown>>(),
   head: vi.fn<(...args: unknown[]) => Promise<unknown>>(),
-  community: vi.fn<(...args: unknown[]) => Promise<unknown>>()
+  community: vi.fn<(...args: unknown[]) => Promise<unknown>>(),
+  history: vi.fn<(...args: unknown[]) => Promise<unknown>>(),
+  profile: vi.fn<(...args: unknown[]) => Promise<unknown>>()
+}));
+vi.mock('../src/features/statistics/statistics-history.functions', () => ({
+  getStatisticsHistory: mocks.history
+}));
+vi.mock('../src/features/player/player.functions', () => ({
+  getMyPlayerProfile: mocks.profile
 }));
 vi.mock('../src/features/statistics/statistics-player.functions', () => ({
   getPlayerStatistics: mocks.player
@@ -48,6 +56,8 @@ const ok = { status: 'ok', value: {} };
 
 beforeEach(() => {
   for (const mock of Object.values(mocks)) mock.mockReset();
+  mocks.profile.mockResolvedValue({ user_id: player });
+  mocks.history.mockResolvedValue({ status: 'ok', value: {} });
 });
 
 describe('player statistics route', () => {
@@ -114,6 +124,35 @@ describe('player statistics route', () => {
       result: ok,
       partners: { status: 'error', code: 'STATISTICS_UNAVAILABLE' },
       opponents: ok
+    });
+  });
+
+  describe('recent matches request', () => {
+    beforeEach(() => {
+      mocks.player.mockResolvedValue(ok);
+      mocks.partners.mockResolvedValue(ok);
+      mocks.opponents.mockResolvedValue(ok);
+      mocks.history.mockResolvedValue(ok);
+    });
+
+    it("skips another player's history without a community instead of erroring", async () => {
+      mocks.profile.mockResolvedValue({ user_id: other });
+      expect(await load({ playerId: player })).toMatchObject({ history: null, isOwn: false });
+      expect(mocks.history).not.toHaveBeenCalled();
+    });
+
+    it("reads another player's history inside a community", async () => {
+      mocks.profile.mockResolvedValue({ user_id: other });
+      expect(await load({ playerId: player }, { communityId: community })).toMatchObject({
+        history: ok,
+        isOwn: false
+      });
+      expect(mocks.history).toHaveBeenCalledOnce();
+    });
+
+    it("reads the viewer's own history without a community", async () => {
+      mocks.profile.mockResolvedValue({ user_id: player });
+      expect(await load({ playerId: player })).toMatchObject({ history: ok, isOwn: true });
     });
   });
 
