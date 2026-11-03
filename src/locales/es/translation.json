@@ -2396,6 +2396,12 @@
           }
         },
         "form": {
+          "last5": {
+            "help": "Últimos partidos decididos, hasta cinco."
+          },
+          "last10": {
+            "help": "Últimos partidos decididos, hasta diez."
+          },
           "longestWins": {
             "help": "Un empate termina los dos tipos de racha."
           },

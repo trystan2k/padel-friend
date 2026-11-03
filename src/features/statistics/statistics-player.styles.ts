@@ -25,7 +25,13 @@ export const playerStyles = stylex.create({
     fontSize: 'var(--font-size-24)',
     lineHeight: 'var(--font-line-height-tight)'
   },
-  section: { display: 'grid', gap: 'var(--space-8)', minWidth: 0 },
+  // minmax(0, 1fr): a wide table inside the card scrolls instead of widening the grid track.
+  section: {
+    display: 'grid',
+    gridTemplateColumns: 'minmax(0, 1fr)',
+    gap: 'var(--space-8)',
+    minWidth: 0
+  },
   heading: {
     margin: 0,
     fontFamily: 'var(--font-family-heading)',

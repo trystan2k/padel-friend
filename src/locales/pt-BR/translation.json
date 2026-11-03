@@ -2396,6 +2396,12 @@
           }
         },
         "form": {
+          "last5": {
+            "help": "Últimas partidas decididas, até cinco."
+          },
+          "last10": {
+            "help": "Últimas partidas decididas, até dez."
+          },
           "longestWins": {
             "help": "Um empate encerra os dois tipos de sequência."
           },

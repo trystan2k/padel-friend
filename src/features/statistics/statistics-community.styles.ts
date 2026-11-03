@@ -93,5 +93,15 @@ export const communityStyles = stylex.create({
     overflowX: 'auto',
     maxWidth: '100%'
   },
-  names: { margin: 0, padding: 0, listStyle: 'none', display: 'grid', gap: 'var(--space-2)' }
+  names: { margin: 0, padding: 0, listStyle: 'none', display: 'grid', gap: 'var(--space-2)' },
+  nameLink: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    minHeight: TOUCH,
+    minWidth: TOUCH,
+    overflowWrap: 'anywhere',
+    color: 'var(--color-text)',
+    textDecoration: 'underline',
+    ':focus-visible': focusRing
+  }
 });

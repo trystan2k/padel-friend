@@ -33,6 +33,7 @@ function PlayerName({ player, filters }: { player: RelationshipName; filters: Fi
       to="/players/$playerId"
       params={{ playerId: player.userId }}
       search={filterSearch(filters)}
+      {...stylex.props(c.nameLink)}
     >
       {f.name(player.displayName)}
     </Link>

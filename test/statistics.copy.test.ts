@@ -49,7 +49,7 @@ describe('statistics copy', () => {
   const ids = new Set<string>();
   for (const file of components) {
     const source = readFileSync(join(dir, file), 'utf8');
-    for (const match of source.matchAll(/\bid="([a-z]+\.[A-Za-z.]+)"/g)) ids.add(match[1] ?? '');
+    for (const match of source.matchAll(/\bid="([a-z]+\.[A-Za-z0-9.]+)"/g)) ids.add(match[1] ?? '');
   }
   for (const kind of ['pair', 'opponent']) ids.add('relationships.' + kind + '.played');
 

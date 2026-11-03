@@ -41,6 +41,7 @@ type Manifest = {
   visualBudgets: {
     perScreen: Record<string, number>;
     perScreenRationale: Record<string, string>;
+    measuredResiduals: Record<string, number>;
     honesty: string;
   };
 };
@@ -142,6 +143,22 @@ describe('statistics visual references', () => {
       expect((perScreenRationale[name] ?? '').trim().length).toBeGreaterThan(40);
       expect(surfaceOf(name).budget).toBe(name);
     }
-    expect(honesty).toContain('No residual has been measured');
+    // Measured in U8: budget = measured residual plus a small margin, never below it.
+    const measured = manifest.visualBudgets.measuredResiduals;
+    expect(Object.keys(measured).sort()).toEqual(
+      [
+        'communityStatistics',
+        'groupDetail',
+        'opponentStatistics',
+        'pairStatistics',
+        'playerStatistics'
+      ].sort()
+    );
+    for (const [name, residual] of Object.entries(measured)) {
+      const budget = perScreen[name] ?? 0;
+      expect(budget).toBeGreaterThanOrEqual(residual);
+      expect(budget - residual).toBeLessThanOrEqual(0.05);
+    }
+    expect(honesty).toContain('unmeasured ceilings');
   });
 });

@@ -2396,6 +2396,12 @@
           }
         },
         "form": {
+          "last5": {
+            "help": "Most recent resolved matches, up to five."
+          },
+          "last10": {
+            "help": "Most recent resolved matches, up to ten."
+          },
           "longestWins": {
             "help": "A draw ends both kinds of streak."
           },

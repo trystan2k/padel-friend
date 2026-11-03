@@ -1,5 +1,5 @@
 {
-  "status": "references-exported-visual-budgets-pending-u8-measurement",
+  "status": "references-exported-visual-budgets-measured-u8",
   "sourceDesign": {
     "path": "docs/design/padel-friend.pen",
     "sha256": "927ac4e83f24edacbc2b2fe2fcfa111d8e0822b96f73ce268cf50b5ef2737af2",
@@ -318,26 +318,34 @@
     }
   },
   "visualBudgets": {
-    "status": "ceilings-declared-residuals-measured-in-u8",
+    "status": "measured-u8",
     "measurementMethod": "U8 captures each production route at 390 CSS px width (deviceScaleFactor 1) and compares the clipped content region with the same region of the matching 2x Pencil PNG downsampled by 2 (pinned perceptual threshold), plus Playwright screenshot regression against the first-implementation captures. Structural probes (order, gutters, card radius token, containment, row stacking, 44px targets, no overflow, chart-table value equality) assert geometry exactly and independently of these budgets.",
     "perScreen": {
-      "playerStatistics": 0.35,
+      "playerStatistics": 0.14,
       "filters": 0.3,
-      "pairStatistics": 0.3,
-      "opponentStatistics": 0.3,
+      "pairStatistics": 0.17,
+      "opponentStatistics": 0.16,
       "matchHistory": 0.4,
-      "groupDetail": 0.35,
-      "communityStatistics": 0.35
+      "groupDetail": 0.3,
+      "communityStatistics": 0.19
     },
     "perScreenRationale": {
-      "playerStatistics": "Ceiling, not a measurement. Production lists every metric as label, value and help text where RN0yw shows three tiles and cards, so page height and row content differ by design; the compared region is the aligned top block only. Raster is cross-renderer and live-data sensitive; layout defects are caught by structural probes.",
-      "filters": "Ceiling, not a measurement. Production uses native selects and date inputs with 44px targets, helper text and a reset action; m8Loju draws scope cards and a text row of type options.",
-      "pairStatistics": "Ceiling, not a measurement. Live player names, a record table and a recent-matches table replace the frame's mock cards and chevron title; breadcrumb and back link are added.",
-      "opponentStatistics": "Ceiling, not a measurement. Same live-data and table differences as the pair surface, plus the rating column and opponent level evidence.",
+      "playerStatistics": "Measured residual 0.1065 plus margin (see measurementNote). Production lists every metric as label, value and help text where RN0yw shows three tiles and cards, so page height and row content differ by design; the compared region is the aligned top block only. Raster is cross-renderer and live-data sensitive; layout defects are caught by structural probes.",
+      "filters": "Unmeasured ceiling (no raster comparison; structural probes only). Production uses native selects and date inputs with 44px targets, helper text and a reset action; m8Loju draws scope cards and a text row of type options.",
+      "pairStatistics": "Measured residual 0.1353 plus margin (see measurementNote). Live player names, a record table and a recent-matches table replace the frame's mock cards and chevron title; breadcrumb and back link are added.",
+      "opponentStatistics": "Measured residual 0.1296 plus margin (see measurementNote). Same live-data and table differences as the pair surface, plus the rating column and opponent level evidence.",
       "matchHistory": "Highest ceiling: no dedicated frame, the reference is component and pattern truth only. Rows follow live status, outcome and rating data; screenshot regression against first-implementation captures is the primary raster check.",
-      "groupDetail": "Ceiling, not a measurement. Production renders more sections than BcpYH (outlook, rating effects, confirmation, audit timeline) and live player names and scores.",
-      "communityStatistics": "Ceiling, not a measurement. Production renders filters, volume, leaders, pairings and weekly and monthly charts with data tables where o9iaC1 shows three cards and a text row."
+      "groupDetail": "Measured residual 0.2656 plus margin (see measurementNote). Production renders more sections than BcpYH (outlook, rating effects, confirmation, audit timeline) and live player names and scores.",
+      "communityStatistics": "Measured residual 0.1546 plus margin (see measurementNote). Production renders filters, volume, leaders, pairings and weekly and monthly charts with data tables where o9iaC1 shows three cards and a text row."
     },
-    "honesty": "No residual has been measured yet. The numbers above are upper bounds for U8 to replace with measured residual plus a small cross-renderer margin; they must never be raised to hide a structural defect."
+    "measuredResiduals": {
+      "playerStatistics": 0.1065,
+      "pairStatistics": 0.1353,
+      "opponentStatistics": 0.1296,
+      "communityStatistics": 0.1546,
+      "groupDetail": 0.2656
+    },
+    "measurementNote": "Measured in U8 by e2e/statistics-visual.spec.ts at 390x844 CSS px, light, en, deviceScaleFactor 1, top block of each route against the same region of the 2x Pencil PNG downsampled by 2 (YIQ perceptual threshold 0.1, changed-pixel ratio). Budget = measured residual + 0.03 cross-renderer margin, rounded up to 0.01. Residuals are repeatable to 3 decimals across runs. They are dominated by live names, numbers and the extra production sections the mock frames do not draw, not by layout: layout is certified separately by structural probes over 3 viewports x 2 themes x 3 locales. filters and matchHistory keep their declared ceilings because no raster comparison exists for them: filters render inside the community route (probed structurally) and the history list has no dedicated Pencil frame. The error state is covered by the player-error-state.png screenshot regression (maxDiffPixelRatio 0.002).",
+    "honesty": "Budgets for playerStatistics, pairStatistics, opponentStatistics, communityStatistics and groupDetail are measured values plus a small margin. filters and matchHistory are unmeasured ceilings. No budget may be raised to hide a structural defect."
   }
 }
