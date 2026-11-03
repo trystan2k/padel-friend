@@ -1,9 +1,10 @@
 import { createHash } from 'node:crypto';
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
-const root = join(__dirname, '..');
+const root = fileURLToPath(new URL('../', import.meta.url));
 const manifestDir = join(root, 'e2e/references/paf-13');
 const featureDir = join(root, 'src/features/statistics');
 

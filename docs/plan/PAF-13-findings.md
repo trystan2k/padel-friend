@@ -30,6 +30,11 @@
 | O1 | nit | optional | src/features/statistics/RelationshipMeetings.tsx:69 | "Showing X of Y" not pluralized (_one/_other pattern used elsewhere) | observed | — | 3 | UX delta r3; acceptable per reviewer; optional enhancement, recorded not scheduled |
 | O2 | minor | optional | supabase/migrations/20261102110000_statistics_relationship_readers.sql:222 | OFFSET paging not keyset-stable across concurrent inserts; no upper bound | observed | — | 3 | Arch delta r3; bounded by row count; optional hardening observation |
 | O3 | minor | optional | supabase/migrations/20261102117000_statistics_lifecycle_projection.sql:113 | rebuild_statistics patched via string-replace; fails loudly on upstream drift | observed | — | 3 | Arch delta r3; intentional fail-loud; optional hardening observation |
+| N1 | nit | optional | src/features/statistics/statistics-search.ts:19 | readOffset accepts non-canonical digit strings ('020') vs "canonical" doc comment | observed | — | 4 | Code delta r4 nit; behavior valid (multiple of 20); optional regex tightening, not scheduled |
+| N2 | minor | optional | supabase/migrations/20261102114000_statistics_index_adjustments.sql (deleted) | Deleting a migration file breaks supabase db push if any environment recorded it | dismissed | orchestrator | 4 | Statistics migrations never applied outside this machine: chain exists only on unmerged branch + local dev DB (db:reset rebuilds fresh chain without 114000); main @ e436591 predates statistics. No recorded environment exists — deletion safe |
+| C6 | minor | required | test/statistics.copy.test.ts:10 | __dirname used in ESM package (type: module) — latent ReferenceError outside vitest shims | fixed | bug-fixer-specialist | 5 | import.meta.url pattern; same resolved dir; tests green |
+| C7 | minor | required | test/statistics.styles.test.ts:5 | __dirname in ESM test | fixed | bug-fixer-specialist | 5 | Same pattern; green |
+| C8 | minor | required | test/statistics.visual-references.test.ts:7 | __dirname in ESM test | fixed | bug-fixer-specialist | 5 | fileURLToPath(new URL(..., import.meta.url)) pattern from fixtures.publication-trigger.test.ts; same resolved paths; 129 guard tests green |
 
 ## Review provenance
 - Round 1 (full): code-review, architecture-review, ux-ui-reviewer in parallel on e436591..HEAD (excl. user commit 3d8c6ce). 11 findings after dedupe (F1–F11).

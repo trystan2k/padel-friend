@@ -1,8 +1,9 @@
 import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
-const dir = join(__dirname, '../src/features/statistics');
+const dir = fileURLToPath(new URL('../src/features/statistics', import.meta.url));
 const styleFiles = readdirSync(dir).filter((file) => /\.styles\.ts$/.test(file));
 
 // Documented geometry that has no token: fluid grid minimum column width and the chart height cap.
