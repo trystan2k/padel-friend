@@ -493,35 +493,47 @@ Tool access is configured in this file's frontmatter via `permission` (the legac
 
 ## Model Routing Tiers
 
-Cheap models own mechanical work; strong models own judgment. Do not promote a cheap tier to a strong one without a stated reason. The Model column mirrors each agent's pinned frontmatter model/variant — change them together.
+Cheap models own mechanical work; strong models own judgment. Do not promote a cheap tier to a strong one without a stated reason.
 
-| Tier | Work | Agent | Model (frontmatter) |
-| --- | --- | --- | --- |
-| T0 mechanical | run a known command, write a message, move a board card, write a log | `project-manager-specialist`, `git-specialist`, `qa-gate-specialist`, `development-log-specialist` | `glm-5.3-flash` (default effort; prefer keeping default) |
-| T1 mechanical + judgment | write tests, apply an approved small fix | `testing-automation-specialist`, `bug-fixer-specialist` | `gpt-6-luna#high` |
-| T2 implementation | write production code | `implementation-specialist` | `gpt-6-luna#max` |
-| T3 judgment | planning, code review, architecture review, UX/UI review | `execution-planner-specialist`, `code-review-specialist`, `architecture-review-specialist`, `ux-ui-reviewer-specialist` | `gpt-6.1-terra` (default effort) |
+| Tier | Work | Agents |
+| --- | --- | --- |
+| T0 mechanical | run a known command, write a message, move a board card, write a log | `project-manager-specialist`, `git-specialist`, `qa-gate-specialist`, `development-log-specialist` |
+| T1 mechanical + judgment | write tests, apply an approved small fix | `testing-automation-specialist`, `bug-fixer-specialist` |
+| T2 implementation | write production code | `implementation-specialist` |
+| T3 judgment | planning, code review, architecture review, UX/UI review | `execution-planner-specialist`, `code-review-specialist`, `architecture-review-specialist`, `ux-ui-reviewer-specialist` |
 
 Rules:
 
 - T0 agents execute the resolved command and report its output. They never re-derive strategy, re-read the plan, or expand scope.
 - T3 agents run once per review scope. Never invoke a T3 agent for a fix-only re-check when a T1 delta review is enough (see Fix and Re-verify Loop).
 - Small, mechanical asks (commit messages, `git status`/`log` summaries, Linear status, dev logs) never go to a T2/T3 agent.
-- Token rate-limit failures may temporarily run a delegated agent on its paired model (see Rate-Limit Fallback); frontmatter and this table stay unchanged.
+
+### Model Resolution Protocol (source of truth)
+
+Each agent's model lives in one place only: the `model:` field in its definition frontmatter (`.opencode/agents/<agent>.md` or `.opencode/agents/subagents/<agent>.md`). This document deliberately carries no model ids — they drift; frontmatter cannot.
+
+- **Never guess, infer, or recall a model id** from memory, from any table in this document, or from past conversations. Resolve the model before every delegation where the model identity matters (rate-limit recovery, cost questions, capability checks).
+- **Default: pass no `model` override on subagent calls.** The subagent then runs on its pinned frontmatter model automatically — this is the normal path for every delegation. Pass a `model` override only when the user explicitly names a model for that task, and record the user instruction in the delivery summary.
+- **When any model error hits (rate limit, usage limit, unknown model), verify which model actually ran the failed subagent** before any retry or fallback decision, in this order:
+  1. **The failed session's own record** — the failure carries a `sessionID`; inspect that specialist session's record to see which model it executed (this also catches temporary overrides used in that run).
+  2. **The agent definition frontmatter** — read the `model:` line from the agent's `.md` file if the session record is unavailable.
+  3. **Ask the user** — if neither is available, stop and ask which model is in play. Never act on an assumed model id.
+- Rate-limit fallback pairs (see Rate-Limit Fallback) bind concrete provider model ids, not agents. Map a verified model to its pair only after verifying the model id per this protocol.
 
 ## Rate-Limit Fallback (Subagent Token Limits)
 
 When a delegated subagent fails because its model hit a token rate limit, recover in this order. Never abandon or silently drop the delegated work.
 
-1. **Probe the paired model.** Relaunch the same subagent with the same task input and a `model` override on its pair — bare model id, default variant, no `#high`/`#max` suffix. Pairs are symmetric:
+0. **Verify the model first.** Per the Model Resolution Protocol, establish the model that actually ran the failed subagent (failed session record → agent frontmatter → ask the user). Every step below acts on that verified model id, never an assumed one.
+1. **Probe the paired model — only if the verified model is a member of a verified pair.** Relaunch the same subagent with the same task input and a `model` override on its pair — bare model id, default variant, no `#high`/`#max` suffix. Pairs are symmetric:
    - `claude-agent/sonnet` ↔ `openai/gpt-6.1-terra`
    - `claude-agent/opus` ↔ `openai/gpt-6.1-sol`
-   If the relaunched agent completes, continue the delivery from its result.
+   If the verified model belongs to no listed pair, skip to step 3. If the relaunched agent completes, continue the delivery from its result.
 2. **Both pair members rate-limited.** Read the reset time from each rate-limit error, pick the model that resets first, and `sleep` in chunks of at most 5 minutes until that reset passes (the `sleep *` shell grant covers this). Then continue the task on that model.
-3. **Unlisted models never switch.** Models outside the pairs (e.g. `zai-coding-plan/glm-5.3-flash`, `openai/gpt-6-luna`) only get the timer treatment: wait for the reset reported in the error, then retry on the same model.
-4. **No reset time in the error.** Probe with 60-second sleeps, doubling each wait up to 5 minutes, until either the paired model or the original model accepts the relaunch. If still blocked after roughly 30 minutes of waiting, stop and report the blocked state to the user with the models tried and the observed limits.
+3. **Unpaired models only get the timer treatment.** For a verified model outside the pairs (e.g. `zai-coding-plan/glm-5.3-flash`): wait for the reset reported in the error, then retry on the same model — same model id, no substitution.
+4. **No reset time in the error.** Probe with 60-second sleeps, doubling each wait up to 5 minutes, until either the paired model or the original model accepts the relaunch. If still blocked after roughly 30 minutes of waiting, stop and report the blocked state to the user with the verified model id, the models tried, and the observed limits.
 
-Switches are per-task recovery only: never edit agent frontmatter and never re-route future delegations because of a transient limit. Report every model switch (agent, original model, fallback model, outcome) in the delivery summary and time-tracking notes.
+Switches are per-task recovery only: never edit agent frontmatter and never re-route future delegations because of a transient limit. Report every model switch (agent, verified original model, fallback model, outcome, and the evidence source used to verify the model) in the delivery summary and time-tracking notes.
 
 ## Subagent Usage (Required)
 

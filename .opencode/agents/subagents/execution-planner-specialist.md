@@ -2,7 +2,6 @@
 description: Create execution plans from task intake using structured deep-thinking, simplicity-first design, and explicit validation checkpoints.
 mode: subagent
 model: openai/gpt-6.1-sol
-steps: 30
 permissions:
   - action: subagent
     resource: "*"
