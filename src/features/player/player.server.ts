@@ -36,6 +36,7 @@ export async function sportingProfile(client: PlayerClient, userId: string) {
   const { profile, rating } = await playerRows(client, userId);
   if (!profile || !rating) throw new Error('PLAYER_NOT_ONBOARDED');
   return {
+    user_id: userId,
     display_name: profile.display_name,
     avatar_signed_url: await signedAvatarUrl(client, profile.avatar_url),
     preferred_side: profile.preferred_side,

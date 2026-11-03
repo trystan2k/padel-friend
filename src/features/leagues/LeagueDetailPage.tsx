@@ -276,6 +276,16 @@ export function LeagueDetailPage({
             )}
           </>
         )}
+        {league.status !== 'upcoming' && (
+          <Link
+            to="/community/$communityId/statistics"
+            params={{ communityId: community.id }}
+            search={{ leagueId: league.id }}
+            {...stylex.props(styles.actionLink)}
+          >
+            {t('statistics.community.open')}
+          </Link>
+        )}
         {league.status === 'closed' && (
           <Link
             to="/community/$communityId/leagues"

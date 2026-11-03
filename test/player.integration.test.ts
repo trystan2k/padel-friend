@@ -767,7 +767,8 @@ describe.skipIf(environment.env === null)(
           'highest_display_level',
           'reliability_percent',
           'confirmed_competitive_game_groups',
-          'joined_at'
+          'joined_at',
+          'user_id'
         ].sort()
       );
       const sportingPayload = JSON.stringify(sporting);

@@ -1757,5 +1757,826 @@
       "INVALID_LEAGUE_INPUT": "Esses dados não são válidos.",
       "INVALID_LEAGUE_RESPONSE": "Algo deu errado. Tente novamente."
     }
+  },
+  "statistics": {
+    "navigation": {
+      "label": "Navegação das estatísticas",
+      "player": "Estatísticas do jogador",
+      "records": "Recordes",
+      "pair": "Parceria",
+      "opponent": "Confronto direto",
+      "community": "Estatísticas da comunidade",
+      "history": "Histórico de partidas"
+    },
+    "filters": {
+      "title": "Filtros de estatísticas",
+      "community": "Comunidade",
+      "allCommunities": "Todas as comunidades",
+      "league": "Liga",
+      "noLeague": "Sem Liga",
+      "activeLeague": "Liga ativa: {{name}}",
+      "historicalLeague": "Liga passada: {{name}}",
+      "type": "Tipo de partida",
+      "types": {
+        "all": "Todas",
+        "competitive": "Competitiva",
+        "friendly": "Amistosa"
+      },
+      "from": "De (data UTC)",
+      "through": "Até (data UTC)",
+      "utc": "Datas UTC inteiras, ambas incluídas.",
+      "rangeError": "A data final não pode ser anterior à data inicial.",
+      "apply": "Aplicar filtros",
+      "reset": "Limpar filtros"
+    },
+    "community": {
+      "title": "Estatísticas da comunidade",
+      "titleCommunity": "Estatísticas de {{name}}",
+      "subtitle": "Cada número conta cada partida uma única vez, independentemente de quem jogou.",
+      "open": "Estatísticas da comunidade",
+      "empty": "Ainda não há partidas confirmadas nesta seleção.",
+      "ties": "Empate: {{total}} jogadores",
+      "tiesPartial": "Empate: {{total}} no total, {{listed}} exibidos",
+      "versus": "contra",
+      "groupsTogether": "{{groups}} partidas",
+      "rivalryPair": "{{first}} e {{second}}: {{wins}}-{{losses}}-{{draws}}",
+      "rivalryDetail": "Diferença de {{gap}} em {{matches}} confrontos decididos",
+      "leagueScope": {
+        "upcoming": "Exibindo a Liga {{name}}: apenas partidas elegíveis para o ranking.",
+        "active": "Exibindo a Liga ativa {{name}}: apenas partidas elegíveis para o ranking.",
+        "closed": "Exibindo a Liga passada {{name}}: apenas partidas elegíveis do seu período."
+      },
+      "notice": {
+        "friendly_league": "Partidas amistosas nunca contam para uma Liga, então esta seleção está vazia. Escolha Todas ou Competitiva, ou remova a Liga."
+      },
+      "matches": {
+        "title": "Partidas",
+        "help": "Conta cada partida confirmada uma única vez. Partidas incompletas contam como jogadas, mas não têm vencedor.",
+        "played": "Partidas jogadas",
+        "competitive": "Competitivas",
+        "friendly": "Amistosas",
+        "decided": "Com vencedor",
+        "draws": "Empates",
+        "incomplete": "Incompletas"
+      },
+      "ranking": {
+        "label": "Partidas no ranking ativo"
+      },
+      "activePlayers": {
+        "label": "Jogadores ativos"
+      },
+      "totals": {
+        "sets": "Sets jogados",
+        "games": "Games jogados"
+      },
+      "leaders": {
+        "title": "Líderes",
+        "mostActive": "Jogador mais ativo",
+        "mostWins": "Mais vitórias",
+        "highestWinRate": "Maior taxa de vitórias",
+        "bestSets": "Melhor saldo de sets",
+        "bestGames": "Melhor saldo de games",
+        "mostImproved": "Maior evolução de rating",
+        "matches": "{{matches}} partidas",
+        "wins": "{{wins}} vitórias",
+        "sets": "{{sets}} sets",
+        "games": "{{games}} games",
+        "rating": "{{delta}} de rating"
+      },
+      "pairings": {
+        "title": "Duplas e rivalidades",
+        "pair": "Dupla mais frequente",
+        "matchup": "Confronto mais comum",
+        "rivalry": "Rivalidade mais equilibrada"
+      },
+      "frequency": {
+        "title": "Frequência de partidas",
+        "window": "Período: {{from}} a {{through}} ({{days}} dias, UTC).",
+        "noWindow": "Não há partidas nesta seleção.",
+        "average": "Média de partidas por semana",
+        "weekCaption": "Partidas por semana (UTC, semanas começam na segunda-feira)",
+        "week": "Semana iniciada em",
+        "monthCaption": "Partidas por mês (UTC)",
+        "month": "Mês",
+        "groups": "Partidas"
+      }
+    },
+    "relationships": {
+      "unknownPlayer": "Jogador desconhecido",
+      "unknownLeague": "Liga sem nome",
+      "viewMatch": "Ver partida",
+      "matchLabel": "Ver a partida jogada em {{date}}",
+      "backToPlayer": "Voltar às estatísticas do jogador",
+      "pair": {
+        "title": "Dupla",
+        "heading": "{{first}} e {{second}}",
+        "subtitle": "Resultados quando estes dois jogadores estavam no mesmo time.",
+        "played": "Partidas juntos",
+        "headline": "{{played}} juntos · V {{wins}} · D {{losses}} · E {{draws}}",
+        "lastMeeting": "Última partida juntos em {{date}}",
+        "streak": "Sequência atual: {{length}} · {{kind}}",
+        "noStreak": "Sequência atual: nenhuma",
+        "noMeeting": "Ainda sem partidas juntos"
+      },
+      "opponent": {
+        "title": "Confronto direto",
+        "heading": "{{first}} x {{second}}",
+        "subtitle": "Resultados quando estes dois jogadores estavam em times opostos, do ponto de vista do primeiro jogador.",
+        "played": "Confrontos"
+      },
+      "sections": {
+        "record": "Retrospecto",
+        "streaks": "Sequências",
+        "rating": "Evidência de nível",
+        "leagues": "Ligas jogadas juntos",
+        "recent": "Partidas recentes"
+      },
+      "averageOpponentLevel": "Nível médio dos adversários",
+      "upsetWins": "Vitórias surpreendentes",
+      "eligibility": {
+        "pair": {
+          "ready": "Conta para o ranking de melhor parceiro: {{matches}} partidas decididas juntos.",
+          "notYet": "Ainda fora do ranking de melhor parceiro: {{observed}} de {{required}} partidas decididas juntos."
+        },
+        "opponent": {
+          "ready": "Conta para os rankings de adversários: {{matches}} confrontos decididos.",
+          "notYet": "Ainda fora dos rankings de adversários: {{observed}} de {{required}} confrontos decididos."
+        }
+      },
+      "noLeagues": "Nenhuma partida de liga juntos nesta seleção.",
+      "leagueMatches": "{{name}}: {{matches}} partidas",
+      "noRecent": "Nenhuma partida nesta seleção.",
+      "recentCaption": "Partidas mais recentes, da mais nova para a mais antiga",
+      "showing": "Mostrando {{shown}} de {{total}}",
+      "showMore": "Mostrar mais",
+      "noRating": "Sem nível",
+      "columns": {
+        "date": "Data",
+        "result": "Resultado",
+        "sets": "Sets",
+        "games": "Games",
+        "rating": "Variação de nível",
+        "match": "Partida",
+        "player": "Jogador",
+        "played": "Partidas",
+        "record": "Retrospecto",
+        "winRate": "Taxa de vitórias",
+        "details": "Detalhes"
+      },
+      "outcome": {
+        "W": "Vitória",
+        "L": "Derrota",
+        "D": "Empate",
+        "I": "Incompleta"
+      },
+      "records": {
+        "view": "Ver",
+        "showing": "Mostrando {{shown}} de {{total}}",
+        "rateIn": "{{rate}} de vitórias em {{matches}} partidas decididas",
+        "gapIn": "Diferença de {{gap}} em {{matches}} confrontos decididos",
+        "tied": "Empatado com {{players}} jogadores",
+        "partners": {
+          "title": "Parceiros",
+          "best": "Melhor parceiro",
+          "empty": "Nenhum parceiro nesta seleção.",
+          "caption": "Parceiros, com mais partidas juntos primeiro",
+          "viewLabel": "Ver dupla com {{name}}"
+        },
+        "opponents": {
+          "title": "Adversários",
+          "best": "Melhor retrospecto contra",
+          "toughest": "Adversário mais difícil",
+          "closestRivalry": "Rivalidade mais equilibrada",
+          "empty": "Nenhum adversário nesta seleção.",
+          "caption": "Adversários, com mais confrontos primeiro",
+          "viewLabel": "Ver confronto direto contra {{name}}"
+        }
+      }
+    },
+    "history": {
+      "title": "Histórico de partidas",
+      "subtitle": "Resultados confirmados e todas as partidas que não viraram resultado.",
+      "listLabel": "Entradas do histórico de partidas",
+      "empty": "Ainda não há histórico. Resultados confirmados e partidas não disputadas aparecerão aqui.",
+      "loadMore": "Carregar mais",
+      "loadingMore": "Carregando…",
+      "retry": "Tentar novamente",
+      "status": {
+        "played": "Disputada",
+        "incomplete": "Incompleta",
+        "disputed": "Contestada",
+        "pending": "Aguardando aprovação",
+        "awaiting_result": "Aguardando resultado",
+        "canceled": "Cancelada",
+        "reserve_not_playing": "Reserva, não jogou"
+      },
+      "statusHelp": {
+        "played": "O resultado foi confirmado.",
+        "incomplete": "Confirmada como incompleta: sem vitória, derrota ou mudança de nível.",
+        "disputed": "Um jogador contestou o resultado. Ele não conta.",
+        "pending": "O resultado aguarda revisão e ainda não conta.",
+        "awaiting_result": "A partida começou e nenhum resultado foi registrado.",
+        "canceled": "A partida foi cancelada.",
+        "reserve_not_playing": "Você era reserva e não jogou."
+      },
+      "outcome": {
+        "win": "Vitória",
+        "loss": "Derrota",
+        "draw": "Empate"
+      },
+      "group": "Grupo {{number}}",
+      "sets": "Sets {{won}}–{{lost}}",
+      "games": "Games {{won}}–{{lost}}",
+      "ratingChange": "Nível {{delta}}",
+      "noRating": "Sem mudança de nível",
+      "league": "Liga: {{name}}",
+      "viewDetails": "Detalhes do resultado",
+      "viewMatch": "Abrir partida",
+      "detailsLabel": "Detalhes do resultado, partida {{type}} em {{date}}",
+      "matchLabel": "Abrir partida {{type}} em {{date}}"
+    },
+    "detail": {
+      "title": "Detalhes do resultado",
+      "back": "Voltar à partida",
+      "summary": {
+        "played": "Disputada em {{date}} às {{time}}",
+        "court": "Quadra {{label}}",
+        "leagueCounts": "Conta para a classificação da Liga",
+        "leagueNotCounted": "Não conta para a classificação da Liga",
+        "community": "Comunidade",
+        "venue": "Local",
+        "type": "Tipo de partida",
+        "league": "Liga",
+        "ratingKind": "Nível"
+      },
+      "sections": {
+        "result": "Resultado",
+        "sets": "Placar dos sets",
+        "teams": "Jogadores",
+        "rating": "Efeitos no nível",
+        "confirmation": "Confirmação",
+        "timeline": "Linha do tempo de auditoria"
+      },
+      "winner": {
+        "team_a": "Equipe A venceu",
+        "team_b": "Equipe B venceu",
+        "draw": "Empate",
+        "incomplete": "Incompleta: sem vencedor"
+      },
+      "setsTotal": "Sets {{a}}–{{b}}",
+      "gamesTotal": "Games {{a}}–{{b}}",
+      "incompleteNote": "Resultados incompletos mantêm os games registrados, mas não têm vitória, derrota ou empate nem efeito no nível.",
+      "matchup": {
+        "title": "Expectativa antes da partida",
+        "strength": "Força de {{team}}: {{value}}",
+        "expected": "Chance esperada de vitória de {{team}}: {{value}}",
+        "upset": "Zebra",
+        "upsetAria": "Zebra: a equipe vencedora tinha baixa chance esperada de vitória"
+      },
+      "rating": {
+        "state": {
+          "applied": "As mudanças de nível foram aplicadas aos quatro jogadores.",
+          "friendly": "Partidas amistosas não mudam o nível.",
+          "incomplete": "Resultados incompletos não mudam o nível.",
+          "unavailable": "A evidência de nível ainda não está disponível."
+        },
+        "before": "Antes",
+        "after": "Depois",
+        "change": "Mudança",
+        "reliability": "Confiabilidade de {{before}}% para {{after}}%",
+        "expected": "Pontuação esperada {{value}}",
+        "absent": {
+          "friendly": "Sem mudança de nível: partida amistosa",
+          "incomplete": "Sem mudança de nível: resultado incompleto",
+          "not_rated": "Sem mudança de nível: não pontuada",
+          "missing_evidence": "Evidência de nível ausente"
+        }
+      },
+      "confirmation": {
+        "manual": "Aprovado por {{name}}",
+        "automatic": "Confirmado automaticamente após a janela de revisão de 48 horas",
+        "confirmedAt": "Confirmado em {{date}}",
+        "effectiveAt": "Em vigor desde {{date}}",
+        "submittedBy": "Enviado por {{name}} em {{date}}"
+      },
+      "correction": {
+        "badge": "Resultado corrigido",
+        "help": "Este resultado foi corrigido antes de ser confirmado (versão {{version}})."
+      },
+      "timeline": {
+        "submitted": "Resultado enviado",
+        "corrected": "Resultado corrigido (versão {{version}})",
+        "approved": "Aprovado",
+        "confirmedManual": "Confirmado",
+        "confirmedAuto": "Confirmado automaticamente",
+        "by": "por {{name}}"
+      },
+      "notFound": {
+        "title": "Resultado indisponível",
+        "body": "Este resultado não existe ou você não pode vê-lo."
+      }
+    },
+    "player": {
+      "title": "Estatísticas do jogador",
+      "subtitle": "Resultados esportivos de partidas confirmadas. Números que ainda não podem ser calculados explicam o motivo em vez de mostrar zero.",
+      "myStatistics": "Minhas estatísticas",
+      "hero": {
+        "record": "Retrospecto V–D–E",
+        "recordValue": "{{wins}} – {{losses}} – {{draws}}"
+      },
+      "noValue": "Indisponível",
+      "ratioOf": "{{numerator}} de {{denominator}} {{unit}}",
+      "basedOn": "Com base em {{denominator}} {{unit}}",
+      "ratingLagging": "Os números de nível ainda estão acompanhando as últimas partidas. Recarregue em instantes para ver o quadro completo.",
+      "recent": {
+        "title": "Partidas recentes",
+        "seeAll": "Ver todas",
+        "opponents": "vs {{names}}",
+        "noOpponents": "Adversários indisponíveis",
+        "needsCommunity": "Selecione uma comunidade para ver as partidas recentes deste jogador."
+      },
+      "units": {
+        "matches": "partidas",
+        "sets": "sets",
+        "games": "games",
+        "opportunities": "oportunidades",
+        "rated": "partidas avaliadas"
+      },
+      "filters": {
+        "label": "Filtros ativos",
+        "scope": {
+          "all": "Todas as comunidades",
+          "community": "Uma comunidade",
+          "league": "Uma liga"
+        },
+        "type": {
+          "all": "Todos os tipos de partida",
+          "competitive": "Competitiva",
+          "friendly": "Amistosa"
+        },
+        "between": "{{from}} a {{through}}",
+        "since": "A partir de {{date}}",
+        "until": "Até {{date}}",
+        "anyDate": "Qualquer data"
+      },
+      "sections": {
+        "highlights": "Destaques",
+        "matches": "Partidas",
+        "scores": "Sets e games",
+        "rating": "Nível e ranking",
+        "form": "Forma",
+        "activity": "Partidas por mês",
+        "setPatterns": "Padrões de sets",
+        "peaks": "Picos de atividade",
+        "relationships": "Parceiros e adversários"
+      },
+      "matches": {
+        "played": "Partidas jogadas",
+        "competitive": "Partidas competitivas",
+        "friendly": "Partidas amistosas",
+        "wins": "Vitórias",
+        "losses": "Derrotas",
+        "draws": "Empates",
+        "incomplete": "Resultados incompletos",
+        "winRate": "Taxa de vitórias",
+        "competitiveWinRate": "Taxa de vitórias competitivas",
+        "friendlyWinRate": "Taxa de vitórias amistosas"
+      },
+      "sets": {
+        "won": "Sets ganhos",
+        "lost": "Sets perdidos",
+        "differential": "Saldo de sets",
+        "winRate": "Taxa de sets ganhos"
+      },
+      "games": {
+        "won": "Games ganhos",
+        "lost": "Games perdidos",
+        "differential": "Saldo de games",
+        "winRate": "Taxa de games ganhos",
+        "averageWon": "Games ganhos por partida",
+        "averageConceded": "Games cedidos por partida"
+      },
+      "rating": {
+        "current": "Nível atual",
+        "reliability": "Confiabilidade",
+        "starting": "Nível inicial",
+        "highest": "Nível mais alto",
+        "lowestEstablished": "Nível mais baixo estabelecido",
+        "filteredDelta": "Variação de nível no período",
+        "communityRank": "Ranking de habilidade na comunidade",
+        "leaguePosition": "Posição na liga ativa",
+        "bestCommunityRank": "Melhor ranking de habilidade na comunidade",
+        "bestLeaguePosition": "Melhor posição em liga"
+      },
+      "rank": {
+        "position": "{{position}}º",
+        "provenance": {
+          "published": "Classificação publicada, {{date}}",
+          "reconstructed": "Reconstruída a partir do histórico de nível, {{date}}"
+        },
+        "coverageFrom": "O histórico só está completo a partir de {{date}}.",
+        "coverageUnknown": "Ainda não há histórico completo disponível.",
+        "coverageReason": {
+          "missing_rating_evidence": "Falta parte da evidência de nível.",
+          "unpublished_league": "Algumas classificações de liga nunca foram publicadas.",
+          "no_history": "Não existe histórico anterior."
+        }
+      },
+      "form": {
+        "outcomes": "Resultados, do mais antigo ao mais recente",
+        "outcome": {
+          "W": "Vitória",
+          "L": "Derrota",
+          "D": "Empate"
+        },
+        "record": "{{wins}}V {{losses}}D {{draws}}E",
+        "sample": "Com base em {{size}} das últimas {{capacity}} partidas",
+        "current": "Sequência atual",
+        "noStreak": "Nenhuma",
+        "streak": {
+          "W": "Vitórias seguidas",
+          "L": "Derrotas seguidas"
+        },
+        "last5": "Últimas 5 partidas",
+        "last10": "Últimas 10 partidas",
+        "longestWins": "Maior sequência de vitórias",
+        "longestLosses": "Maior sequência de derrotas"
+      },
+      "activity": {
+        "empty": "Ainda não há partidas nesta seleção.",
+        "caption": "Partidas jogadas por mês",
+        "month": "Mês",
+        "matches": "Partidas"
+      },
+      "reasons": {
+        "no_denominator": "Ainda não há partidas suficientes para calcular isto.",
+        "no_resolved_matches": "Ainda não há partidas decididas nesta seleção.",
+        "minimum_opportunities": "Exibido após {{required}} oportunidades; {{observed}} até agora.",
+        "minimum_matches": "Exibido após {{required}} partidas; {{observed}} até agora.",
+        "missing_evidence": "A evidência de nível necessária não está disponível.",
+        "no_applicable_result": "Nenhum resultado correspondente nesta seleção.",
+        "not_established": "Ainda não estabelecido: o nível precisa de mais evidências.",
+        "not_ranked": "Ainda sem posição no ranking desta comunidade.",
+        "rank_coverage_boundary": "O histórico de ranking cobre só parte deste período.",
+        "not_in_league": "Fora de uma liga ativa nesta seleção.",
+        "forbidden": "Você não pode ver este número.",
+        "unavailable": "Este número está indisponível no momento."
+      },
+      "records": {
+        "straightSetWins": "Vitórias em sets diretos",
+        "straightSetLosses": "Derrotas em sets diretos",
+        "threeSetGroups": "Partidas de três sets",
+        "decidingSetWins": "Vitórias no set decisivo",
+        "decidingSetLosses": "Derrotas no set decisivo",
+        "decidingSetWinRate": "Taxa de vitórias no set decisivo",
+        "firstSetConversion": "Ganhou o 1º set e a partida",
+        "comeback": "Perdeu o 1º set e ganhou a partida",
+        "incompleteDeciders": "Sets decisivos incompletos",
+        "cleanestWin": "Vitória mais limpa",
+        "closestWin": "Vitória mais apertada",
+        "biggestGain": "Maior ganho de nível",
+        "biggestLoss": "Maior perda de nível",
+        "strongestUpset": "Maior zebra",
+        "toughestLoss": "Derrota mais difícil",
+        "weeklyAverage": "Média de partidas por semana",
+        "mostActiveWeek": "Semana mais ativa",
+        "mostActiveMonth": "Mês mais ativo",
+        "uniquePartners": "Parceiros diferentes",
+        "uniqueOpponents": "Adversários diferentes",
+        "uniqueQuartets": "Combinações de jogadores diferentes",
+        "topPartner": "Parceiro mais frequente",
+        "topOpponent": "Adversário mais frequente",
+        "partnerShare": "Partidas com o parceiro mais frequente",
+        "leaderMatches": "{{matches}} partidas juntos",
+        "tied": "Empatado com {{leaders}} jogadores",
+        "gamesOn": "{{games}} games, {{date}}",
+        "ratingOn": "{{delta}}, {{date}}",
+        "expectedOn": "{{chance}} esperado, {{date}}",
+        "weekMatches": "{{matches}} partidas, semana de {{period}}",
+        "monthMatches": "{{matches}} partidas, {{period}}"
+      }
+    },
+    "metrics": {
+      "community": {
+        "activePlayers": {
+          "help": "Jogadores distintos que jogaram uma partida confirmada nesta seleção; não é o número de membros."
+        },
+        "ranking": {
+          "help": "Partidas elegíveis da Liga ativa."
+        },
+        "frequency": {
+          "average": {
+            "help": "Partidas divididas pelas semanas do período (no mínimo uma)."
+          }
+        },
+        "leaders": {
+          "highestWinRate": {
+            "help": "Jogadores com pelo menos {{required}} partidas decididas."
+          },
+          "mostImproved": {
+            "help": "Variação de rating das partidas desta seleção, não a mudança do nível geral."
+          },
+          "mostActive": {
+            "help": "Jogadores com mais partidas confirmadas nesta seleção."
+          },
+          "mostWins": {
+            "help": "Jogadores com mais vitórias nesta seleção."
+          },
+          "bestSets": {
+            "help": "Maior diferença entre sets ganhos e perdidos."
+          },
+          "bestGames": {
+            "help": "Maior diferença entre games ganhos e perdidos."
+          }
+        },
+        "pairings": {
+          "matchup": {
+            "help": "As mesmas duas duplas se enfrentando, em qualquer lado da quadra."
+          },
+          "rivalry": {
+            "help": "Menor diferença entre vitórias e derrotas com pelo menos {{required}} confrontos decididos; a maior amostra desempata."
+          },
+          "pair": {
+            "help": "A dupla que mais jogou junta."
+          }
+        },
+        "matches": {
+          "played": {
+            "help": "Conta cada partida confirmada uma única vez. Partidas incompletas contam como jogadas, mas não têm vencedor."
+          },
+          "competitive": {
+            "help": "Partidas confirmadas do tipo competitivo."
+          },
+          "friendly": {
+            "help": "Partidas confirmadas do tipo amistoso."
+          },
+          "decided": {
+            "help": "Partidas com vencedor; empates e partidas incompletas ficam de fora."
+          },
+          "draws": {
+            "help": "Partidas que terminaram empatadas."
+          },
+          "incomplete": {
+            "help": "Jogadas, mas sem vencedor, por exemplo quando um set decisivo não foi concluído."
+          }
+        },
+        "totals": {
+          "sets": {
+            "help": "Todos os sets jogados nas partidas desta seleção."
+          },
+          "games": {
+            "help": "Todos os games jogados nas partidas desta seleção."
+          }
+        }
+      },
+      "player": {
+        "matches": {
+          "incomplete": {
+            "help": "Contam como jogadas, mas não como vitória, derrota ou empate."
+          },
+          "winRate": {
+            "help": "Vitórias entre as partidas com resultado definido."
+          },
+          "played": {
+            "help": "Partidas confirmadas nesta seleção, incluindo as incompletas."
+          },
+          "competitive": {
+            "help": "Partidas do tipo competitivo."
+          },
+          "friendly": {
+            "help": "Partidas do tipo amistoso."
+          },
+          "wins": {
+            "help": "Partidas vencidas."
+          },
+          "losses": {
+            "help": "Partidas perdidas."
+          },
+          "draws": {
+            "help": "Partidas que terminaram empatadas."
+          },
+          "competitiveWinRate": {
+            "help": "Vitórias entre as partidas competitivas decididas."
+          },
+          "friendlyWinRate": {
+            "help": "Vitórias entre as partidas amistosas decididas."
+          }
+        },
+        "games": {
+          "averageWon": {
+            "help": "Média das partidas com placar registrado."
+          },
+          "averageConceded": {
+            "help": "Média das partidas com placar registrado."
+          },
+          "won": {
+            "help": "Games ganhos nas partidas selecionadas."
+          },
+          "lost": {
+            "help": "Games perdidos nas partidas selecionadas."
+          },
+          "differential": {
+            "help": "Games ganhos menos games perdidos."
+          },
+          "winRate": {
+            "help": "Games ganhos entre todos os games jogados."
+          }
+        },
+        "rating": {
+          "current": {
+            "help": "Seu nível em todo o app, sem influência dos filtros."
+          },
+          "lowestEstablished": {
+            "help": "Menor nível atingido depois que o nível foi estabelecido."
+          },
+          "filteredDelta": {
+            "help": "Soma das variações de nível das partidas da seleção."
+          },
+          "reliability": {
+            "help": "Quanta evidência sustenta o seu nível atual."
+          },
+          "starting": {
+            "help": "O nível com que você começou."
+          },
+          "highest": {
+            "help": "Nível mais alto alcançado na seleção."
+          },
+          "communityRank": {
+            "help": "Posição entre os jogadores da comunidade por nível."
+          },
+          "leaguePosition": {
+            "help": "Posição na classificação da Liga ativa."
+          },
+          "bestCommunityRank": {
+            "help": "Melhor posição na comunidade; a nota indica quando o histórico guardado começa."
+          },
+          "bestLeaguePosition": {
+            "help": "Melhor posição na Liga; a nota indica quando o histórico guardado começa."
+          }
+        },
+        "form": {
+          "last5": {
+            "help": "Últimas partidas decididas, até cinco."
+          },
+          "last10": {
+            "help": "Últimas partidas decididas, até dez."
+          },
+          "longestWins": {
+            "help": "Um empate encerra os dois tipos de sequência."
+          },
+          "longestLosses": {
+            "help": "Um empate encerra os dois tipos de sequência."
+          },
+          "current": {
+            "help": "Um empate encerra os dois tipos de sequência."
+          }
+        },
+        "records": {
+          "firstSetConversion": {
+            "help": "Proporção de partidas vencidas após ganhar o primeiro set."
+          },
+          "comeback": {
+            "help": "Proporção de partidas vencidas após perder o primeiro set."
+          },
+          "incompleteDeciders": {
+            "help": "Sets decisivos limitados por tempo ou não concluídos, contados à parte de vitórias e derrotas."
+          },
+          "cleanestWin": {
+            "help": "Maior diferença de games em uma vitória."
+          },
+          "strongestUpset": {
+            "help": "Vitória com a menor chance esperada de antemão."
+          },
+          "toughestLoss": {
+            "help": "Derrota com a maior chance esperada de vitória de antemão."
+          },
+          "weeklyAverage": {
+            "help": "Partidas divididas pelas semanas entre a primeira e a última partida aqui."
+          },
+          "uniqueQuartets": {
+            "help": "Conjuntos distintos de quatro jogadores nas suas partidas."
+          },
+          "straightSetWins": {
+            "help": "Vitórias sem perder nenhum set."
+          },
+          "straightSetLosses": {
+            "help": "Derrotas sem ganhar nenhum set."
+          },
+          "threeSetGroups": {
+            "help": "Partidas que foram a um terceiro set."
+          },
+          "decidingSetWins": {
+            "help": "Terceiros sets ganhos."
+          },
+          "decidingSetLosses": {
+            "help": "Terceiros sets perdidos."
+          },
+          "decidingSetWinRate": {
+            "help": "Sets decisivos ganhos entre os concluídos."
+          },
+          "closestWin": {
+            "help": "Vitória com a menor margem de games."
+          },
+          "biggestGain": {
+            "help": "Maior aumento de nível em uma partida."
+          },
+          "biggestLoss": {
+            "help": "Maior queda de nível em uma partida."
+          },
+          "mostActiveWeek": {
+            "help": "Semana UTC (começando na segunda) com mais partidas."
+          },
+          "mostActiveMonth": {
+            "help": "Mês UTC com mais partidas."
+          },
+          "uniquePartners": {
+            "help": "Jogadores diferentes com quem você jogou ao lado."
+          },
+          "uniqueOpponents": {
+            "help": "Jogadores diferentes contra quem você jogou."
+          },
+          "topPartner": {
+            "help": "O parceiro com quem você mais jogou."
+          },
+          "topOpponent": {
+            "help": "O adversário que você mais enfrentou."
+          },
+          "partnerShare": {
+            "help": "Parte das suas partidas jogadas com o parceiro mais frequente."
+          }
+        },
+        "sets": {
+          "won": {
+            "help": "Sets ganhos nas partidas selecionadas."
+          },
+          "lost": {
+            "help": "Sets perdidos nas partidas selecionadas."
+          },
+          "differential": {
+            "help": "Sets ganhos menos sets perdidos."
+          },
+          "winRate": {
+            "help": "Sets ganhos entre todos os sets jogados."
+          }
+        }
+      },
+      "relationships": {
+        "pair": {
+          "played": {
+            "help": "Inclui partidas incompletas, que não têm vencedor."
+          }
+        },
+        "opponent": {
+          "played": {
+            "help": "Inclui partidas incompletas, que não têm vencedor."
+          }
+        },
+        "averageOpponentLevel": {
+          "help": "Força média da dupla adversária antes de cada partida. Partidas sem evidência de nível ficam de fora."
+        },
+        "upsetWins": {
+          "help": "Vitórias quando a chance esperada era de {{chance}} ou menos."
+        },
+        "records": {
+          "partners": {
+            "best": {
+              "help": "Maior taxa de vitórias com pelo menos {{required}} partidas decididas juntos."
+            }
+          },
+          "opponents": {
+            "best": {
+              "help": "Maior taxa de vitórias contra um adversário com pelo menos {{required}} confrontos decididos."
+            },
+            "toughest": {
+              "help": "Menor taxa de vitórias contra um adversário com pelo menos {{required}} confrontos decididos."
+            },
+            "closestRivalry": {
+              "help": "Menor diferença entre vitórias e derrotas entre adversários com pelo menos {{required}} confrontos decididos; mais confrontos desempatam."
+            }
+          }
+        }
+      }
+    },
+    "states": {
+      "loading": "Carregando estatísticas…",
+      "empty": "Ainda não há nada para mostrar nesta seleção.",
+      "retry": "Tentar novamente"
+    },
+    "charts": {
+      "summary_one": "{{count}} período, {{from}}. {{total}} partidas no total; o maior foi {{peak}} em {{peakLabel}}.",
+      "summary_other": "{{count}} períodos de {{from}} a {{to}}. {{total}} partidas no total; o maior foi {{peak}} em {{peakLabel}}.",
+      "showData": "Mostrar tabela de dados",
+      "hideData": "Ocultar tabela de dados",
+      "sampled": "O gráfico mostra os últimos {{shown}} de {{total}} períodos; a tabela de dados contém todos.",
+      "tableLabel": "Tabela de dados: {{title}}"
+    },
+    "errors": {
+      "STATISTICS_UNAUTHENTICATED": "Entre para ver o histórico de partidas.",
+      "STATISTICS_NOT_FOUND": "Este resultado não existe ou você não pode vê-lo.",
+      "STATISTICS_STALE_REVISION": "As estatísticas estão sendo atualizadas. Tente novamente em instantes.",
+      "INVALID_STATISTICS_INPUT": "Esses filtros não são válidos.",
+      "INVALID_STATISTICS_RESPONSE": "Algo deu errado. Tente novamente.",
+      "STATISTICS_UNAVAILABLE": "Algo deu errado. Tente novamente."
+    }
   }
 }

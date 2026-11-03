@@ -2428,6 +2428,955 @@ export type Database = {
         }
         Relationships: []
       }
+      statistics_config: {
+        Row: {
+          active: boolean
+          created_at: string
+          thresholds: NonNullable<Json>
+          version: number
+        }
+        ComputedFields: never
+        Insert: {
+          active?: boolean
+          created_at?: string
+          thresholds: NonNullable<Json>
+          version: number
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          thresholds?: NonNullable<Json>
+          version?: number
+        }
+        Relationships: []
+      }
+      statistics_daily_buckets: {
+        Row: {
+          activity: NonNullable<Json>
+          competitive_groups: number
+          confirmed_groups: number
+          deciding_set_losses: number
+          deciding_set_wins: number
+          draws: number
+          extrema: NonNullable<Json>
+          first_game_group_id: string | null
+          first_played_at: string | null
+          first_set_lost_converted: number
+          first_set_lost_groups: number
+          first_set_won_converted: number
+          first_set_won_groups: number
+          friendly_groups: number
+          games_lost: number
+          games_won: number
+          incomplete_decider_groups: number
+          incomplete_groups: number
+          last_game_group_id: string | null
+          last_played_at: string | null
+          losses: number
+          match_type: string
+          opponent_strength_groups: number
+          opponent_strength_sum: number
+          played_day: string
+          rated_groups: number
+          rating_delta_sum: number
+          recent: NonNullable<Json>
+          relations: NonNullable<Json>
+          scope_id: string
+          scope_kind: string
+          sequence: NonNullable<Json>
+          sets_lost: number
+          sets_won: number
+          straight_set_losses: number
+          straight_set_wins: number
+          subject_a: string
+          subject_b: string
+          subject_kind: string
+          subject_players: string[]
+          three_set_groups: number
+          updated_at: string
+          upset_wins: number
+          wins: number
+        }
+        ComputedFields: never
+        Insert: {
+          activity?: NonNullable<Json>
+          competitive_groups?: number
+          confirmed_groups?: number
+          deciding_set_losses?: number
+          deciding_set_wins?: number
+          draws?: number
+          extrema?: NonNullable<Json>
+          first_game_group_id?: string | null
+          first_played_at?: string | null
+          first_set_lost_converted?: number
+          first_set_lost_groups?: number
+          first_set_won_converted?: number
+          first_set_won_groups?: number
+          friendly_groups?: number
+          games_lost?: number
+          games_won?: number
+          incomplete_decider_groups?: number
+          incomplete_groups?: number
+          last_game_group_id?: string | null
+          last_played_at?: string | null
+          losses?: number
+          match_type: string
+          opponent_strength_groups?: number
+          opponent_strength_sum?: number
+          played_day: string
+          rated_groups?: number
+          rating_delta_sum?: number
+          recent?: NonNullable<Json>
+          relations?: NonNullable<Json>
+          scope_id?: string
+          scope_kind: string
+          sequence?: NonNullable<Json>
+          sets_lost?: number
+          sets_won?: number
+          straight_set_losses?: number
+          straight_set_wins?: number
+          subject_a: string
+          subject_b?: string
+          subject_kind: string
+          subject_players?: string[]
+          three_set_groups?: number
+          updated_at?: string
+          upset_wins?: number
+          wins?: number
+        }
+        Update: {
+          activity?: NonNullable<Json>
+          competitive_groups?: number
+          confirmed_groups?: number
+          deciding_set_losses?: number
+          deciding_set_wins?: number
+          draws?: number
+          extrema?: NonNullable<Json>
+          first_game_group_id?: string | null
+          first_played_at?: string | null
+          first_set_lost_converted?: number
+          first_set_lost_groups?: number
+          first_set_won_converted?: number
+          first_set_won_groups?: number
+          friendly_groups?: number
+          games_lost?: number
+          games_won?: number
+          incomplete_decider_groups?: number
+          incomplete_groups?: number
+          last_game_group_id?: string | null
+          last_played_at?: string | null
+          losses?: number
+          match_type?: string
+          opponent_strength_groups?: number
+          opponent_strength_sum?: number
+          played_day?: string
+          rated_groups?: number
+          rating_delta_sum?: number
+          recent?: NonNullable<Json>
+          relations?: NonNullable<Json>
+          scope_id?: string
+          scope_kind?: string
+          sequence?: NonNullable<Json>
+          sets_lost?: number
+          sets_won?: number
+          straight_set_losses?: number
+          straight_set_wins?: number
+          subject_a?: string
+          subject_b?: string
+          subject_kind?: string
+          subject_players?: string[]
+          three_set_groups?: number
+          updated_at?: string
+          upset_wins?: number
+          wins?: number
+        }
+        Relationships: []
+      }
+      statistics_group_facts: {
+        Row: {
+          audit_event_id: string | null
+          classification: string
+          community_id: string
+          confirmation_id: string
+          confirmation_source: string
+          confirmed_at: string
+          deciding_winner: string | null
+          first_set_winner: string | null
+          game_group_id: string
+          games_a: number
+          games_b: number
+          group_number: number
+          incomplete_decider: boolean
+          league_eligible: boolean
+          league_id: string | null
+          match_event_id: string
+          match_type: string
+          matchup_high_pair_id: string
+          matchup_id: string
+          matchup_low_pair_id: string
+          matchup_low_side: string
+          played_at: string
+          played_day: string
+          projected_at: string
+          proposal_version: number
+          quartet_id: string
+          rating_expected: boolean
+          rating_revision: number | null
+          set_count: number
+          sets: NonNullable<Json>
+          sets_a: number
+          sets_b: number
+          source_hash: string
+          straight_winner: string | null
+          team_a_pair_id: string
+          team_a_players: string[]
+          team_b_pair_id: string
+          team_b_players: string[]
+          three_set: boolean
+          updated_at: string
+        }
+        ComputedFields: never
+        Insert: {
+          audit_event_id?: string | null
+          classification: string
+          community_id: string
+          confirmation_id: string
+          confirmation_source: string
+          confirmed_at: string
+          deciding_winner?: string | null
+          first_set_winner?: string | null
+          game_group_id: string
+          games_a: number
+          games_b: number
+          group_number: number
+          incomplete_decider: boolean
+          league_eligible: boolean
+          league_id?: string | null
+          match_event_id: string
+          match_type: string
+          matchup_high_pair_id: string
+          matchup_id: string
+          matchup_low_pair_id: string
+          matchup_low_side: string
+          played_at: string
+          played_day: string
+          projected_at?: string
+          proposal_version: number
+          quartet_id: string
+          rating_expected: boolean
+          rating_revision?: number | null
+          set_count: number
+          sets: NonNullable<Json>
+          sets_a: number
+          sets_b: number
+          source_hash: string
+          straight_winner?: string | null
+          team_a_pair_id: string
+          team_a_players: string[]
+          team_b_pair_id: string
+          team_b_players: string[]
+          three_set: boolean
+          updated_at?: string
+        }
+        Update: {
+          audit_event_id?: string | null
+          classification?: string
+          community_id?: string
+          confirmation_id?: string
+          confirmation_source?: string
+          confirmed_at?: string
+          deciding_winner?: string | null
+          first_set_winner?: string | null
+          game_group_id?: string
+          games_a?: number
+          games_b?: number
+          group_number?: number
+          incomplete_decider?: boolean
+          league_eligible?: boolean
+          league_id?: string | null
+          match_event_id?: string
+          match_type?: string
+          matchup_high_pair_id?: string
+          matchup_id?: string
+          matchup_low_pair_id?: string
+          matchup_low_side?: string
+          played_at?: string
+          played_day?: string
+          projected_at?: string
+          proposal_version?: number
+          quartet_id?: string
+          rating_expected?: boolean
+          rating_revision?: number | null
+          set_count?: number
+          sets?: NonNullable<Json>
+          sets_a?: number
+          sets_b?: number
+          source_hash?: string
+          straight_winner?: string | null
+          team_a_pair_id?: string
+          team_a_players?: string[]
+          team_b_pair_id?: string
+          team_b_players?: string[]
+          three_set?: boolean
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "statistics_group_facts_community_id_fkey"
+            columns: ["community_id"]
+            isOneToOne: false
+            referencedRelation: "communities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "statistics_group_facts_confirmation_id_fkey"
+            columns: ["confirmation_id"]
+            isOneToOne: true
+            referencedRelation: "match_event_result_confirmations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "statistics_group_facts_game_group_id_fkey"
+            columns: ["game_group_id"]
+            isOneToOne: true
+            referencedRelation: "match_event_result_proposals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "statistics_group_facts_match_event_id_fkey"
+            columns: ["match_event_id"]
+            isOneToOne: false
+            referencedRelation: "match_events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      statistics_league_positions: {
+        Row: {
+          basis: string
+          community_id: string
+          effective_end_at: string
+          league_id: string
+          league_position: number
+          period_start_at: string
+          player_id: string
+          published_at: string
+          standings_version: number
+        }
+        ComputedFields: never
+        Insert: {
+          basis: string
+          community_id: string
+          effective_end_at: string
+          league_id: string
+          league_position: number
+          period_start_at: string
+          player_id: string
+          published_at: string
+          standings_version: number
+        }
+        Update: {
+          basis?: string
+          community_id?: string
+          effective_end_at?: string
+          league_id?: string
+          league_position?: number
+          period_start_at?: string
+          player_id?: string
+          published_at?: string
+          standings_version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "statistics_league_positions_league_fk"
+            columns: ["league_id", "community_id"]
+            isOneToOne: false
+            referencedRelation: "leagues"
+            referencedColumns: ["id", "community_id"]
+          },
+        ]
+      }
+      statistics_lifecycle_dirty: {
+        Row: {
+          event_id: string
+          id: number
+        }
+        ComputedFields: never
+        Insert: {
+          event_id: string
+          id?: never
+        }
+        Update: {
+          event_id?: string
+          id?: never
+        }
+        Relationships: []
+      }
+      statistics_opponent_facts: {
+        Row: {
+          community_id: string
+          game_group_id: string
+          high_expected_score: number | null
+          high_opponent_strength: number | null
+          high_rating_delta: number | null
+          league_eligible: boolean
+          league_id: string | null
+          low_expected_score: number | null
+          low_opponent_strength: number | null
+          low_rating_delta: number | null
+          low_side: string
+          match_type: string
+          played_at: string
+          played_day: string
+          player_high: string
+          player_low: string
+          rating_expected: boolean
+          updated_at: string
+        }
+        ComputedFields: never
+        Insert: {
+          community_id: string
+          game_group_id: string
+          high_expected_score?: number | null
+          high_opponent_strength?: number | null
+          high_rating_delta?: number | null
+          league_eligible: boolean
+          league_id?: string | null
+          low_expected_score?: number | null
+          low_opponent_strength?: number | null
+          low_rating_delta?: number | null
+          low_side: string
+          match_type: string
+          played_at: string
+          played_day: string
+          player_high: string
+          player_low: string
+          rating_expected: boolean
+          updated_at?: string
+        }
+        Update: {
+          community_id?: string
+          game_group_id?: string
+          high_expected_score?: number | null
+          high_opponent_strength?: number | null
+          high_rating_delta?: number | null
+          league_eligible?: boolean
+          league_id?: string | null
+          low_expected_score?: number | null
+          low_opponent_strength?: number | null
+          low_rating_delta?: number | null
+          low_side?: string
+          match_type?: string
+          played_at?: string
+          played_day?: string
+          player_high?: string
+          player_low?: string
+          rating_expected?: boolean
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "statistics_opponent_facts_game_group_id_fkey"
+            columns: ["game_group_id"]
+            isOneToOne: false
+            referencedRelation: "statistics_group_facts"
+            referencedColumns: ["game_group_id"]
+          },
+        ]
+      }
+      statistics_pair_facts: {
+        Row: {
+          community_id: string
+          expected_score: number | null
+          game_group_id: string
+          league_eligible: boolean
+          league_id: string | null
+          match_type: string
+          matchup_id: string
+          opponent_pair_id: string
+          opponent_team_strength: number | null
+          own_team_strength: number | null
+          pair_id: string
+          played_at: string
+          played_day: string
+          player_high: string
+          player_low: string
+          rating_calc_revision: number | null
+          rating_expected: boolean
+          side: string
+          updated_at: string
+        }
+        ComputedFields: never
+        Insert: {
+          community_id: string
+          expected_score?: number | null
+          game_group_id: string
+          league_eligible: boolean
+          league_id?: string | null
+          match_type: string
+          matchup_id: string
+          opponent_pair_id: string
+          opponent_team_strength?: number | null
+          own_team_strength?: number | null
+          pair_id: string
+          played_at: string
+          played_day: string
+          player_high: string
+          player_low: string
+          rating_calc_revision?: number | null
+          rating_expected: boolean
+          side: string
+          updated_at?: string
+        }
+        Update: {
+          community_id?: string
+          expected_score?: number | null
+          game_group_id?: string
+          league_eligible?: boolean
+          league_id?: string | null
+          match_type?: string
+          matchup_id?: string
+          opponent_pair_id?: string
+          opponent_team_strength?: number | null
+          own_team_strength?: number | null
+          pair_id?: string
+          played_at?: string
+          played_day?: string
+          player_high?: string
+          player_low?: string
+          rating_calc_revision?: number | null
+          rating_expected?: boolean
+          side?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "statistics_pair_facts_game_group_id_fkey"
+            columns: ["game_group_id"]
+            isOneToOne: false
+            referencedRelation: "statistics_group_facts"
+            referencedColumns: ["game_group_id"]
+          },
+        ]
+      }
+      statistics_participant_facts: {
+        Row: {
+          after_level: number | null
+          after_reliability: number | null
+          before_level: number | null
+          before_reliability: number | null
+          community_id: string
+          expected_score: number | null
+          game_group_id: string
+          league_eligible: boolean
+          league_id: string | null
+          match_type: string
+          opponent_team_strength: number | null
+          own_team_strength: number | null
+          partner_id: string
+          played_at: string
+          played_day: string
+          rating_calc_revision: number | null
+          rating_delta: number | null
+          rating_expected: boolean
+          side: string
+          updated_at: string
+          user_id: string
+        }
+        ComputedFields: never
+        Insert: {
+          after_level?: number | null
+          after_reliability?: number | null
+          before_level?: number | null
+          before_reliability?: number | null
+          community_id: string
+          expected_score?: number | null
+          game_group_id: string
+          league_eligible: boolean
+          league_id?: string | null
+          match_type: string
+          opponent_team_strength?: number | null
+          own_team_strength?: number | null
+          partner_id: string
+          played_at: string
+          played_day: string
+          rating_calc_revision?: number | null
+          rating_delta?: number | null
+          rating_expected: boolean
+          side: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          after_level?: number | null
+          after_reliability?: number | null
+          before_level?: number | null
+          before_reliability?: number | null
+          community_id?: string
+          expected_score?: number | null
+          game_group_id?: string
+          league_eligible?: boolean
+          league_id?: string | null
+          match_type?: string
+          opponent_team_strength?: number | null
+          own_team_strength?: number | null
+          partner_id?: string
+          played_at?: string
+          played_day?: string
+          rating_calc_revision?: number | null
+          rating_delta?: number | null
+          rating_expected?: boolean
+          side?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "statistics_participant_facts_game_group_id_fkey"
+            columns: ["game_group_id"]
+            isOneToOne: false
+            referencedRelation: "statistics_group_facts"
+            referencedColumns: ["game_group_id"]
+          },
+        ]
+      }
+      statistics_participant_lifecycle: {
+        Row: {
+          community_id: string
+          entry_kind: string
+          event_id: string
+          group_number: number | null
+          league_id: string | null
+          lifecycle_status: string
+          match_type: string
+          played_at: string | null
+          sort_at: string
+          stable_id: string
+          user_id: string
+          viewer_side: string | null
+        }
+        ComputedFields: never
+        Insert: {
+          community_id: string
+          entry_kind: string
+          event_id: string
+          group_number?: number | null
+          league_id?: string | null
+          lifecycle_status: string
+          match_type: string
+          played_at?: string | null
+          sort_at: string
+          stable_id: string
+          user_id: string
+          viewer_side?: string | null
+        }
+        Update: {
+          community_id?: string
+          entry_kind?: string
+          event_id?: string
+          group_number?: number | null
+          league_id?: string | null
+          lifecycle_status?: string
+          match_type?: string
+          played_at?: string | null
+          sort_at?: string
+          stable_id?: string
+          user_id?: string
+          viewer_side?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "statistics_participant_lifecycle_community_id_fkey"
+            columns: ["community_id"]
+            isOneToOne: false
+            referencedRelation: "communities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "statistics_participant_lifecycle_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "match_events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      statistics_projection_control: {
+        Row: {
+          config_version: number
+          rating_revision: number
+          revision: number
+          singleton: boolean
+          updated_at: string
+        }
+        ComputedFields: never
+        Insert: {
+          config_version: number
+          rating_revision?: number
+          revision?: number
+          singleton?: boolean
+          updated_at?: string
+        }
+        Update: {
+          config_version?: number
+          rating_revision?: number
+          revision?: number
+          singleton?: boolean
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "statistics_projection_control_config_version_fkey"
+            columns: ["config_version"]
+            isOneToOne: false
+            referencedRelation: "statistics_config"
+            referencedColumns: ["version"]
+          },
+        ]
+      }
+      statistics_rank_control: {
+        Row: {
+          rating_revision: number
+          singleton: boolean
+          updated_at: string
+        }
+        ComputedFields: never
+        Insert: {
+          rating_revision?: number
+          singleton?: boolean
+          updated_at?: string
+        }
+        Update: {
+          rating_revision?: number
+          singleton?: boolean
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      statistics_rank_dirty: {
+        Row: {
+          cause: string
+          community_id: string
+          id: number
+          league_id: string | null
+          marked_at: string
+          player_id: string | null
+        }
+        ComputedFields: never
+        Insert: {
+          cause: string
+          community_id: string
+          id?: never
+          league_id?: string | null
+          marked_at?: string
+          player_id?: string | null
+        }
+        Update: {
+          cause?: string
+          community_id?: string
+          id?: never
+          league_id?: string | null
+          marked_at?: string
+          player_id?: string | null
+        }
+        Relationships: []
+      }
+      statistics_rank_transitions: {
+        Row: {
+          community_id: string
+          complete: boolean
+          display_level: number | null
+          effective_from: string
+          established: boolean | null
+          player_id: string
+          provenance: NonNullable<Json>
+          ranked_members: number | null
+          rating_revision: number | null
+          recorded_at: string
+          reliability_percent: number | null
+          skill_rank: number | null
+          status: string
+        }
+        ComputedFields: never
+        Insert: {
+          community_id: string
+          complete: boolean
+          display_level?: number | null
+          effective_from: string
+          established?: boolean | null
+          player_id: string
+          provenance: NonNullable<Json>
+          ranked_members?: number | null
+          rating_revision?: number | null
+          recorded_at?: string
+          reliability_percent?: number | null
+          skill_rank?: number | null
+          status: string
+        }
+        Update: {
+          community_id?: string
+          complete?: boolean
+          display_level?: number | null
+          effective_from?: string
+          established?: boolean | null
+          player_id?: string
+          provenance?: NonNullable<Json>
+          ranked_members?: number | null
+          rating_revision?: number | null
+          recorded_at?: string
+          reliability_percent?: number | null
+          skill_rank?: number | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "statistics_rank_transitions_community_id_fkey"
+            columns: ["community_id"]
+            isOneToOne: false
+            referencedRelation: "communities"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      statistics_scope_summaries: {
+        Row: {
+          activity: NonNullable<Json>
+          competitive_groups: number
+          confirmed_groups: number
+          deciding_set_losses: number
+          deciding_set_wins: number
+          draws: number
+          extrema: NonNullable<Json>
+          first_game_group_id: string | null
+          first_played_at: string | null
+          first_set_lost_converted: number
+          first_set_lost_groups: number
+          first_set_won_converted: number
+          first_set_won_groups: number
+          friendly_groups: number
+          games_lost: number
+          games_won: number
+          incomplete_decider_groups: number
+          incomplete_groups: number
+          last_game_group_id: string | null
+          last_played_at: string | null
+          losses: number
+          match_type: string
+          opponent_strength_groups: number
+          opponent_strength_sum: number
+          rated_groups: number
+          rating_delta_sum: number
+          recent: NonNullable<Json>
+          relations: NonNullable<Json>
+          scope_id: string
+          scope_kind: string
+          sequence: NonNullable<Json>
+          sets_lost: number
+          sets_won: number
+          straight_set_losses: number
+          straight_set_wins: number
+          subject_a: string
+          subject_b: string
+          subject_kind: string
+          subject_players: string[]
+          three_set_groups: number
+          updated_at: string
+          upset_wins: number
+          wins: number
+        }
+        ComputedFields: never
+        Insert: {
+          activity?: NonNullable<Json>
+          competitive_groups?: number
+          confirmed_groups?: number
+          deciding_set_losses?: number
+          deciding_set_wins?: number
+          draws?: number
+          extrema?: NonNullable<Json>
+          first_game_group_id?: string | null
+          first_played_at?: string | null
+          first_set_lost_converted?: number
+          first_set_lost_groups?: number
+          first_set_won_converted?: number
+          first_set_won_groups?: number
+          friendly_groups?: number
+          games_lost?: number
+          games_won?: number
+          incomplete_decider_groups?: number
+          incomplete_groups?: number
+          last_game_group_id?: string | null
+          last_played_at?: string | null
+          losses?: number
+          match_type: string
+          opponent_strength_groups?: number
+          opponent_strength_sum?: number
+          rated_groups?: number
+          rating_delta_sum?: number
+          recent?: NonNullable<Json>
+          relations?: NonNullable<Json>
+          scope_id?: string
+          scope_kind: string
+          sequence?: NonNullable<Json>
+          sets_lost?: number
+          sets_won?: number
+          straight_set_losses?: number
+          straight_set_wins?: number
+          subject_a: string
+          subject_b?: string
+          subject_kind: string
+          subject_players?: string[]
+          three_set_groups?: number
+          updated_at?: string
+          upset_wins?: number
+          wins?: number
+        }
+        Update: {
+          activity?: NonNullable<Json>
+          competitive_groups?: number
+          confirmed_groups?: number
+          deciding_set_losses?: number
+          deciding_set_wins?: number
+          draws?: number
+          extrema?: NonNullable<Json>
+          first_game_group_id?: string | null
+          first_played_at?: string | null
+          first_set_lost_converted?: number
+          first_set_lost_groups?: number
+          first_set_won_converted?: number
+          first_set_won_groups?: number
+          friendly_groups?: number
+          games_lost?: number
+          games_won?: number
+          incomplete_decider_groups?: number
+          incomplete_groups?: number
+          last_game_group_id?: string | null
+          last_played_at?: string | null
+          losses?: number
+          match_type?: string
+          opponent_strength_groups?: number
+          opponent_strength_sum?: number
+          rated_groups?: number
+          rating_delta_sum?: number
+          recent?: NonNullable<Json>
+          relations?: NonNullable<Json>
+          scope_id?: string
+          scope_kind?: string
+          sequence?: NonNullable<Json>
+          sets_lost?: number
+          sets_won?: number
+          straight_set_losses?: number
+          straight_set_wins?: number
+          subject_a?: string
+          subject_b?: string
+          subject_kind?: string
+          subject_players?: string[]
+          three_set_groups?: number
+          updated_at?: string
+          upset_wins?: number
+          wins?: number
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -2635,6 +3584,16 @@ export type Database = {
           settings: Json
         }[]
       }
+      get_community_statistics: {
+        Args: {
+          p_community_id?: string
+          p_from?: string
+          p_league_id?: string
+          p_through?: string
+          p_type?: string
+        }
+        Returns: Json
+      }
       get_effective_community_admin_defaults: { Args: { p_settings: Json }; Returns: Json }
       get_league: { Args: { p_league_id: string }; Returns: Json }
       get_league_counters: { Args: { p_league_id: string }; Returns: Json }
@@ -2765,10 +3724,82 @@ export type Database = {
           winner_sets: number
         }[]
       }
+      get_opponent_statistics: {
+        Args: {
+          p_community_id?: string
+          p_from?: string
+          p_league_id?: string
+          p_opponent_id: string
+          p_player_id: string
+          p_recent_offset?: number
+          p_through?: string
+          p_type?: string
+        }
+        Returns: Json
+      }
+      get_pair_statistics: {
+        Args: {
+          p_community_id?: string
+          p_from?: string
+          p_league_id?: string
+          p_partner_id: string
+          p_player_id: string
+          p_recent_offset?: number
+          p_through?: string
+          p_type?: string
+        }
+        Returns: Json
+      }
       get_password_setup_state: { Args: Record<PropertyKey, never>; Returns: Json }
+      get_player_opponent_records: {
+        Args: {
+          p_community_id?: string
+          p_from?: string
+          p_league_id?: string
+          p_limit?: number
+          p_offset?: number
+          p_player_id: string
+          p_through?: string
+          p_type?: string
+        }
+        Returns: Json
+      }
+      get_player_partner_records: {
+        Args: {
+          p_community_id?: string
+          p_from?: string
+          p_league_id?: string
+          p_limit?: number
+          p_offset?: number
+          p_player_id: string
+          p_through?: string
+          p_type?: string
+        }
+        Returns: Json
+      }
+      get_player_statistics: {
+        Args: {
+          p_community_id?: string
+          p_from?: string
+          p_league_id?: string
+          p_player_id: string
+          p_through?: string
+          p_type?: string
+        }
+        Returns: Json
+      }
+      get_player_statistics_rank_history: {
+        Args: { p_community_id?: string; p_limit?: number; p_player_id: string }
+        Returns: Json
+      }
       get_provisional_claim_context: { Args: Record<PropertyKey, never>; Returns: Json }
       get_rating_group_explanation: {
         Args: { p_game_group_id: string; p_revision?: number }
+        Returns: Json
+      }
+      get_statistics_config: { Args: Record<PropertyKey, never>; Returns: Json }
+      get_statistics_group_detail: {
+        Args: { p_event_id: string; p_game_group_id: string }
         Returns: Json
       }
       govern_community_member: {
@@ -3004,6 +4035,21 @@ export type Database = {
       }
       list_match_league_options: {
         Args: { p_community_id: string; p_date: string; p_start_time: string }
+        Returns: Json
+      }
+      list_statistics_history: {
+        Args: {
+          p_community_id?: string
+          p_cursor_at?: string
+          p_cursor_key?: string
+          p_from?: string
+          p_league_id?: string
+          p_limit?: number
+          p_revision?: number
+          p_subject_player_id?: string
+          p_through?: string
+          p_type?: string
+        }
         Returns: Json
       }
       lock_global_rating_projection: { Args: Record<PropertyKey, never>; Returns: undefined }
@@ -3433,6 +4479,7 @@ export type Database = {
         Returns: boolean
       }
       rebuild_league_counters: { Args: { p_league_id: string }; Returns: Json }
+      rebuild_statistics: { Args: { p_community_id?: string }; Returns: Json }
       reconcile_match_registration_participation:
         | { Args: { p_accepted_registration_id?: string; p_match_event_id: string }; Returns: Json }
         | {
@@ -3588,6 +4635,241 @@ export type Database = {
         Returns: Json
       }
       snapshot_match_registration_roster_locked: { Args: { p_event_id: string }; Returns: Json }
+      statistics_apply_summaries: {
+        Args: { p_communities: string[]; p_players: string[] }
+        Returns: number
+      }
+      statistics_assert_consistent: { Args: { p_community_id: string }; Returns: undefined }
+      statistics_assert_rating_aligned: { Args: Record<PropertyKey, never>; Returns: undefined }
+      statistics_can_view_event: {
+        Args: { p_event_id: string; p_viewer: string }
+        Returns: boolean
+      }
+      statistics_cand: {
+        Args: { p_at: string; p_group: string; p_key: number; p_value: number }
+        Returns: Json
+      }
+      statistics_community_league_groups: {
+        Args: {
+          p_communities: string[]
+          p_from: string
+          p_league_ids: string[]
+          p_through: string
+          p_type: string
+        }
+        Returns: number
+      }
+      statistics_community_relation_top: {
+        Args: { p_key: string; p_relations: Json }
+        Returns: Json
+      }
+      statistics_community_top: {
+        Args: { p_observed: number; p_reason: string; p_required: number; p_rows: Json }
+        Returns: Json
+      }
+      statistics_derive_sets: {
+        Args: { p_classification: string; p_sets: Json }
+        Returns: {
+          deciding_winner: string
+          first_set_winner: string
+          games_a: number
+          games_b: number
+          incomplete_decider: boolean
+          set_count: number
+          sets_a: number
+          sets_b: number
+          straight_winner: string
+          three_set: boolean
+        }[]
+      }
+      statistics_json_add: { Args: { a: Json; b: Json }; Returns: Json }
+      statistics_leader_metric: {
+        Args: { p_observed: number; p_required: number; p_value: Json }
+        Returns: Json
+      }
+      statistics_lifecycle_rebuild: { Args: { p_community_id?: string }; Returns: undefined }
+      statistics_lifecycle_refresh_event: { Args: { p_event_id: string }; Returns: undefined }
+      statistics_lock: { Args: Record<PropertyKey, never>; Returns: undefined }
+      statistics_matchup_id: {
+        Args: { p_first_pair: string; p_second_pair: string }
+        Returns: string
+      }
+      statistics_nil_uuid: { Args: Record<PropertyKey, never>; Returns: string }
+      statistics_official_confirmations: {
+        Args: { p_game_group_ids?: string[] }
+        Returns: {
+          confirmation_id: string
+          game_group_id: string
+          proposal_version: number
+        }[]
+      }
+      statistics_official_groups: {
+        Args: { p_game_group_ids?: string[] }
+        Returns: {
+          audit_event_id: string
+          classification: string
+          community_id: string
+          confirmation_id: string
+          confirmation_source: string
+          confirmed_at: string
+          game_group_id: string
+          group_number: number
+          league_eligible: boolean
+          league_id: string
+          match_event_id: string
+          match_type: string
+          played_at: string
+          proposal_version: number
+          rating_expected: boolean
+          sets: Json
+          teams: Json
+        }[]
+      }
+      statistics_pair_id: { Args: { p_first: string; p_second: string }; Returns: string }
+      statistics_pending_init: { Args: Record<PropertyKey, never>; Returns: undefined }
+      statistics_player_form: {
+        Args: { p_capacity: number; p_minimum: number; p_recent: Json }
+        Returns: Json
+      }
+      statistics_player_rank_block: {
+        Args: { p_community_id: string; p_league_id: string; p_player_id: string }
+        Returns: Json
+      }
+      statistics_player_ratio: {
+        Args: { p_denominator: number; p_minimum: number; p_numerator: number }
+        Returns: Json
+      }
+      statistics_player_sequence_merge: { Args: { a: Json; b: Json }; Returns: Json }
+      statistics_player_value: { Args: { p_reason: string; p_value: number }; Returns: Json }
+      statistics_project_source: { Args: { p_game_group_ids: string[] }; Returns: number }
+      statistics_publish: {
+        Args: {
+          p_all?: boolean
+          p_force_communities?: string[]
+          p_force_groups?: string[]
+          p_force_players?: string[]
+        }
+        Returns: Json
+      }
+      statistics_quartet_id: { Args: { p_players: string[] }; Returns: string }
+      statistics_rank_compute: {
+        Args: { p_community_id: string }
+        Returns: {
+          complete: boolean
+          display_level: number
+          effective_from: string
+          established: boolean
+          player_id: string
+          provenance: Json
+          ranked_members: number
+          rating_revision: number
+          reliability_percent: number
+          skill_rank: number
+          status: string
+        }[]
+      }
+      statistics_rank_mark_league: { Args: { p_league_id: string }; Returns: undefined }
+      statistics_rank_mark_player: {
+        Args: { p_cause: string; p_player_id: string }
+        Returns: undefined
+      }
+      statistics_rank_metric: {
+        Args: {
+          p_denominator: number
+          p_numerator: number
+          p_reason: string
+          p_required: number
+          p_state: string
+          p_value: Json
+        }
+        Returns: Json
+      }
+      statistics_rank_rebuild: { Args: { p_community_id?: string }; Returns: Json }
+      statistics_rank_rebuild_community: { Args: { p_community_id: string }; Returns: number }
+      statistics_rank_refresh: { Args: Record<PropertyKey, never>; Returns: number }
+      statistics_rank_refresh_league: { Args: { p_league_id: string }; Returns: number }
+      statistics_rank_value: {
+        Args: {
+          p_at: string
+          p_community: string
+          p_league: string
+          p_position: number
+          p_provenance: string
+          p_revision: number
+          p_version: number
+        }
+        Returns: Json
+      }
+      statistics_rating_rows: {
+        Args: { p_game_group_ids: string[]; p_revision: number }
+        Returns: {
+          after_level: number
+          after_rel: number
+          before_level: number
+          before_rel: number
+          calc_revision: number
+          delta: number
+          expected: number
+          game_group_id: string
+          opp_strength: number
+          own_strength: number
+          user_id: string
+        }[]
+      }
+      statistics_read_actor: { Args: Record<PropertyKey, never>; Returns: string }
+      statistics_recent: { Args: { p_items: Json }; Returns: Json }
+      statistics_relationship_extremum: { Args: { p_candidate: Json }; Returns: Json }
+      statistics_relationship_leaders: {
+        Args: {
+          p_config: Json
+          p_key: string
+          p_limit: number
+          p_offset: number
+          p_relations: Json
+        }
+        Returns: Json
+      }
+      statistics_relationship_name: { Args: { p_user_id: string }; Returns: Json }
+      statistics_relationship_prepare: {
+        Args: {
+          p_community_id: string
+          p_focal: string
+          p_from: string
+          p_league_id: string
+          p_other: string
+          p_through: string
+          p_type: string
+        }
+        Returns: Json
+      }
+      statistics_relationship_record: {
+        Args: {
+          p_a: string
+          p_b: string
+          p_config: Json
+          p_from: string
+          p_kind: string
+          p_scope: string
+          p_scope_id: string
+          p_through: string
+          p_type: string
+        }
+        Returns: Json
+      }
+      statistics_relationship_relations: {
+        Args: {
+          p_from: string
+          p_player_id: string
+          p_scope: string
+          p_scope_id: string
+          p_through: string
+          p_type: string
+        }
+        Returns: Json
+      }
+      statistics_seq_from: { Args: { p_outcomes: string }; Returns: Json }
+      statistics_thresholds_valid: { Args: { p_thresholds: Json }; Returns: boolean }
+      statistics_utc_text: { Args: { p_instant: string }; Returns: string }
       submit_match_event_result: {
         Args: {
           p_court_label?: string

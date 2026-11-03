@@ -33,6 +33,7 @@ afterEach(cleanup);
 // The profile row deliberately disagrees with the committed projection to prove which
 // source the level card uses.
 const profile: Parameters<typeof PlayerProfile>[0]['initialProfile'] = {
+  user_id: '11111111-1111-4111-8111-111111111111',
   display_name: 'Ana Souza',
   preferred_side: 'LEFT',
   dominant_hand: null,

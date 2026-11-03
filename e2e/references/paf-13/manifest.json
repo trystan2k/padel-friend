@@ -1,0 +1,445 @@
+{
+  "status": "references-exported-visual-budgets-measured-u8",
+  "sourceDesign": {
+    "path": "docs/design/padel-friend.pen",
+    "sha256": "927ac4e83f24edacbc2b2fe2fcfa111d8e0822b96f73ce268cf50b5ef2737af2",
+    "exportCommand": "Pencil MCP execute on a byte-identical scratch copy (/tmp, removed after export): Export([\"RN0yw\",\"RRuhH\",\"z6vIR\",\"QVLTH\",\"GrkSH\",\"khmeK\",\"o9iaC1\",\"m8Loju\",\"BcpYH\"], \"png\", \"<repo>/e2e/references/paf-13\", {scale:2})",
+    "provenanceNote": "T13 (PAF-13) provenance. The tracked .pen was opened only through Pencil MCP (read-only Get visitors, then Export from a scratch copy whose SHA-256 equals the tracked source and the paf-6/7/8/10/12 manifests); it was not modified. Dedicated statistics frames exist and were not used by T10: RN0yw, RRuhH, z6vIR, QVLTH, GrkSH, khmeK, o9iaC1, m8Loju. Match history detail BcpYH is the group-detail source. No dedicated frame exists for the paginated match history LIST or for a chart/data-table pairing; those adapt component truth (Card RMese, Button B3Uqv, Text link QFH5u) and the Past Matches frame w25dY, and the state-variant frame x2GG9U. Frame existence is verified Pencil-side; test/statistics.visual-references.test.ts only validates manifest structure, component names, coverage, tolerances, PNG digests and ID format."
+  },
+  "components": {
+    "RMese": {
+      "name": "Card",
+      "usedBy": "every statistics section container; maps to the SurfaceCard intent"
+    },
+    "B3Uqv": {
+      "name": "Button",
+      "usedBy": "Apply filters (m8Loju:Avx44), Community insights action (RN0yw:nB2H0 ref), pair match history (GrkSH:aaQlF), open match history (khmeK:rsfQx)"
+    },
+    "QFH5u": {
+      "name": "Text link",
+      "usedBy": "inline navigation links such as the Back to player statistics link and history row links"
+    }
+  },
+  "approvedReferences": {
+    "RN0yw": {
+      "frameId": "RN0yw",
+      "frameName": "Player statistics",
+      "file": "RN0yw.png",
+      "certifies": "Player statistics home: filters row, three highlight tiles, W–L–D record, recent form, partner insight and recent history cards",
+      "sha256": "825345ae398c77cb57224ef15295cadc8fdb7102dfa2cfa54ad1f957ac60b176",
+      "pixelSize": [780, 1784]
+    },
+    "RRuhH": {
+      "frameId": "RRuhH",
+      "frameName": "Player statistics — form and breakdown",
+      "file": "RRuhH.png",
+      "certifies": "Match form, match totals, sets and games, form and streaks, rating and positions cards",
+      "sha256": "1caf89f9d09a669c689c2ffef34a01c2a957c4c73d52b86db73a0c48a0957f48",
+      "pixelSize": [780, 1688]
+    },
+    "z6vIR": {
+      "frameId": "z6vIR",
+      "frameName": "Player statistics — advanced outcomes",
+      "file": "z6vIR.png",
+      "certifies": "Set outcomes, match records and activity cards",
+      "sha256": "1237b13c75c2d16cbd2389463d1d8999844459a9cb1cd34f3930d4c1fbee40d9",
+      "pixelSize": [780, 1688]
+    },
+    "QVLTH": {
+      "frameId": "QVLTH",
+      "frameName": "Player statistics — partnership records",
+      "file": "QVLTH.png",
+      "certifies": "Ranked pair cards and the early-sample note",
+      "sha256": "3722dad239333846368426e38360f46e550a7999eed12721b187546b0c5fd4b1",
+      "pixelSize": [780, 1688]
+    },
+    "GrkSH": {
+      "frameId": "GrkSH",
+      "frameName": "Player statistics — pair record",
+      "file": "GrkSH.png",
+      "certifies": "Unordered pair header, pair results, set and game record, streak and strength, league history, pair match history action",
+      "sha256": "aaa08828eb44484376a6ab026144226d960ef669d10f4b0afb5f283a338f5130",
+      "pixelSize": [780, 1688]
+    },
+    "khmeK": {
+      "frameId": "khmeK",
+      "frameName": "Player statistics — opponent head-to-head",
+      "file": "khmeK.png",
+      "certifies": "Opponent record header, head-to-head totals, recent meetings, open match history action",
+      "sha256": "11d6a3734943b8b5990f29e8bbbb043d8481eab1c401c64d6e493a85fa1df037",
+      "pixelSize": [780, 1688]
+    },
+    "o9iaC1": {
+      "frameId": "o9iaC1",
+      "frameName": "Community statistics — overview",
+      "file": "o9iaC1.png",
+      "certifies": "Community activity scope, match volume, player leaders, team and matchup records, activity by month",
+      "sha256": "855ac95b8da386bba8944de7441543e34f2caa952d1172fc39a9709485ff9385",
+      "pixelSize": [780, 1688]
+    },
+    "m8Loju": {
+      "frameId": "m8Loju",
+      "frameName": "Player statistics — filters",
+      "file": "m8Loju.png",
+      "certifies": "Community scope, League scope, match type, date range, apply action",
+      "sha256": "c641f6066de3ce889c6607fa1a3b94650a02c02439fdba900f230e24a76e0727",
+      "pixelSize": [780, 1688]
+    },
+    "BcpYH": {
+      "frameId": "BcpYH",
+      "frameName": "Match history detail",
+      "file": "BcpYH.png",
+      "certifies": "Result hero, match impact note, player performance, result verification",
+      "sha256": "4b75e99ca872b51beee813bbcd74384f0bda8dee3e7423490bba57bea1728a63",
+      "pixelSize": [780, 1688]
+    }
+  },
+  "surfaces": {
+    "playerStatistics": {
+      "route": "/players/$playerId",
+      "components": [
+        "PlayerStatistics",
+        "PlayerStatisticsRecords",
+        "PartnerRecords",
+        "OpponentRecords",
+        "StatisticsChart",
+        "StatisticsDataTable"
+      ],
+      "frames": [
+        {
+          "frameId": "RN0yw",
+          "role": "layout",
+          "regions": {
+            "XvcZf": "Stats filters",
+            "Lrmqq": "Stats highlights (Y8uj7b WIN RATE, JPWt7 SET DIFF, Q4cdL0 GAME DIFF)",
+            "uHOdK": "Match record summary",
+            "l0S9Wr": "Recent form (Card RMese)",
+            "y8W6G0": "Partner insight (Card RMese)",
+            "Xgp8J": "Recent match history (Card RMese)"
+          }
+        },
+        {
+          "frameId": "RRuhH",
+          "role": "sections",
+          "regions": {
+            "wzMV6": "MATCH FORM",
+            "ddh2x": "Match totals",
+            "jWMLA": "Sets and games",
+            "Tir8N": "Form and streaks",
+            "K7Iz8": "Rating and positions"
+          }
+        },
+        {
+          "frameId": "z6vIR",
+          "role": "sections",
+          "regions": {
+            "MQ5AU": "Set outcomes",
+            "IeTjm": "Match records",
+            "tHdEn": "Activity"
+          }
+        },
+        {
+          "frameId": "QVLTH",
+          "role": "records",
+          "regions": {
+            "T4zxOf": "Pair card",
+            "qr1fi": "Pair card",
+            "VH1Hb": "Early sample note"
+          }
+        },
+        {
+          "frameId": "vARtQ",
+          "role": "tile-component-truth",
+          "regions": {
+            "hKQiw": "Profile record cards (RCjx4 MATCHES, IDWCk W–L–D, NiNQL WIN RATE)",
+            "T5Zak": "Rating progression chart (Card RMese)"
+          },
+          "provenance": "approved PNG and budgets live in e2e/references/paf-10/manifest.json"
+        }
+      ],
+      "adaptation": "Production renders the full metric inventory (matches, sets, games, rating, form, activity chart with data table, set patterns, records, peaks, partner and opponent records) where the frames show three highlight tiles and a handful of cards. Every figure is an evidence state (reason text, never 0 or blank). The frames' Home/Matches/Community/Ranking/Profile bottom navigation, the mode label and the flow annotations are app-shell or design notes, not statistics UI. The activity chart is a numeric SVG with a text equivalent and a data table; no frame draws it (chart intent from vARtQ:T5Zak).",
+      "budget": "playerStatistics"
+    },
+    "filters": {
+      "route": "/players/$playerId and /community/$communityId/statistics (search params)",
+      "components": ["StatisticsFilters"],
+      "frames": [
+        {
+          "frameId": "m8Loju",
+          "role": "layout",
+          "regions": {
+            "Sq5cj": "Community scope",
+            "cJH6u": "League scope",
+            "txzhM": "Match type options",
+            "rOM2n": "Date range",
+            "Avx44": "Apply filters (Button B3Uqv)"
+          }
+        },
+        {
+          "frameId": "RN0yw",
+          "role": "inline-row",
+          "regions": {
+            "XvcZf": "Stats filters (community and match type)"
+          }
+        }
+      ],
+      "adaptation": "Production shows the filters inline as a Base UI form with native selects and UTC date inputs plus Apply and Reset (the frame stacks scope cards and shows type options as a text row). Labels, helper text and the range error are i18n keys; controls are at least 44px.",
+      "budget": "filters"
+    },
+    "pairStatistics": {
+      "route": "/players/$playerId/partners/$partnerId",
+      "components": [
+        "PairStatistics",
+        "RelationshipSections",
+        "RecentMatches",
+        "StatisticsBreadcrumb"
+      ],
+      "frames": [
+        {
+          "frameId": "GrkSH",
+          "role": "layout",
+          "regions": {
+            "a7CW13": "UNORDERED PAIR label",
+            "h5qQfl": "Pair results (Card RMese)",
+            "KaAkU": "Set and game record (Card RMese)",
+            "O0nCr": "Streak and strength (Card RMese)",
+            "ckjBY": "League history",
+            "aaQlF": "Pair match history (Button B3Uqv)"
+          }
+        },
+        {
+          "frameId": "QVLTH",
+          "role": "records-list",
+          "regions": {
+            "T4zxOf": "Pair card",
+            "qr1fi": "Pair card"
+          }
+        }
+      ],
+      "adaptation": "The unordered-pair label becomes the localized heading and subtitle; the frame's league-history text row is a list of leagues played together; recent matches are a data table with row links and a Show more control when more pages exist. The back affordance is a breadcrumb plus a Back to player statistics link carrying the active filters; the frame shows a chevron title.",
+      "budget": "pairStatistics"
+    },
+    "opponentStatistics": {
+      "route": "/players/$playerId/opponents/$opponentId",
+      "components": [
+        "OpponentStatistics",
+        "RelationshipSections",
+        "RecentMatches",
+        "StatisticsBreadcrumb"
+      ],
+      "frames": [
+        {
+          "frameId": "khmeK",
+          "role": "layout",
+          "regions": {
+            "Gdmi5": "OPPONENT RECORD label",
+            "FUFCx": "Head-to-head totals (Card RMese)",
+            "P4XZX": "Recent meetings (Card RMese)",
+            "rsfQx": "Open match history (Button B3Uqv)"
+          }
+        }
+      ],
+      "adaptation": "Head-to-head is always from the focal player's view; no toughest-opponent label (frame note). Production adds average opponent level, upset wins and rating evidence from the same record and shows recent meetings as a table with a rating column. Breadcrumb and back link replace the chevron title.",
+      "budget": "opponentStatistics"
+    },
+    "matchHistory": {
+      "route": "/matches/past",
+      "components": ["MatchHistory"],
+      "frames": [
+        {
+          "frameId": "w25dY",
+          "role": "list-intent",
+          "regions": {},
+          "provenance": "Past Matches top-level frame; component truth only, not exported or certified for T13"
+        },
+        {
+          "frameId": "x2GG9U",
+          "role": "empty-state",
+          "provenance": "Reusable-state frame inspected through Pencil MCP; component and pattern truth only, not exported for T13",
+          "regions": {
+            "ZpOPk": "No active league",
+            "J74NN": "No rating history",
+            "CQqrJ": "No partner history"
+          }
+        }
+      ],
+      "adaptation": "No dedicated history list frame exists. The paginated list (status chip with help text, outcome, group, sets and games, rating change, League, Result details and Open match links, load more, retry) adapts the Card RMese rows of the Past Matches frame and the empty-state pattern of x2GG9U. Certified by structural probes and screenshot regression against first-implementation captures, not by a Pencil raster.",
+      "budget": "matchHistory"
+    },
+    "groupDetail": {
+      "route": "/matches/$eventId/groups/$groupId",
+      "components": ["ConfirmedGroupDetail"],
+      "frames": [
+        {
+          "frameId": "BcpYH",
+          "role": "layout",
+          "regions": {
+            "bWV6u": "Match score hero (rMnYw winner label)",
+            "Z9mReR": "Match impact note (Card RMese)",
+            "CfiKi": "Player performance (Card RMese)",
+            "cyM6X": "Result verification (Card RMese)"
+          }
+        }
+      ],
+      "adaptation": "Production adds summary facts, set scores, a pre-match outlook, per-player rating effects, confirmation and an audit timeline, all from the safe sporting projection; the frame's hero, impact note, performance and verification cards map to result, rating effects and confirmation sections.",
+      "budget": "groupDetail"
+    },
+    "communityStatistics": {
+      "route": "/community/$communityId/statistics",
+      "components": [
+        "CommunityStatistics",
+        "StatisticsFilters",
+        "StatisticsChart",
+        "StatisticsDataTable"
+      ],
+      "frames": [
+        {
+          "frameId": "o9iaC1",
+          "role": "layout",
+          "regions": {
+            "A1wKy": "COMMUNITY ACTIVITY scope label",
+            "AyjwJ": "Match volume (Card RMese)",
+            "P6W1k": "Player leaders (Card RMese)",
+            "Q5ee1": "Team and matchup records (Card RMese)",
+            "neCa2": "Activity by month"
+          }
+        },
+        {
+          "frameId": "y4Zeg",
+          "role": "leaderboard-component-truth",
+          "provenance": "Community skill ranking frame inspected through Pencil MCP; Card RMese leaderboard intent only, not exported for T13",
+          "regions": {
+            "X1WeIZ": "Community leaderboard (Card RMese)"
+          }
+        }
+      ],
+      "adaptation": "The frame's text frequency row becomes a weekly and monthly bar chart with a text equivalent and a data table; leaders and rivalry carry tie and sample rules; League scope and friendly-match notices come from the filters frame m8Loju.",
+      "budget": "communityStatistics"
+    }
+  },
+  "visualBudgets": {
+    "status": "measured-u8",
+    "measurementMethod": "U8 captures each production route at 390 CSS px width (deviceScaleFactor 1) and compares the clipped content region with the same region of the matching 2x Pencil PNG downsampled by 2 (pinned perceptual threshold), plus Playwright screenshot regression against the first-implementation captures. Structural probes (order, gutters, card radius token, containment, row stacking, 44px targets, no overflow, chart-table value equality) assert geometry exactly and independently of these budgets.",
+    "perScreen": {
+      "playerStatistics": 0.19,
+      "filters": 0.3,
+      "pairStatistics": 0.21,
+      "opponentStatistics": 0.21,
+      "matchHistory": 0.4,
+      "groupDetail": 0.19,
+      "communityStatistics": 0.19
+    },
+    "perScreenRationale": {
+      "playerStatistics": "Measured residual 0.155019 plus margin (see measurementNote). Production lists every metric as label, value and help text where RN0yw shows three tiles and cards, so page height and row content differ by design; the compared region is the aligned top block only. Raster is cross-renderer and live-data sensitive; layout defects are caught by structural probes.",
+      "filters": "Unmeasured ceiling (no raster comparison; structural probes only). Production uses native selects and date inputs with 44px targets, helper text and a reset action; m8Loju draws scope cards and a text row of type options.",
+      "pairStatistics": "Measured residual 0.178239 plus margin (see measurementNote). Live player names, a record table and a recent-matches table replace the frame's mock cards and chevron title; breadcrumb and back link are added.",
+      "opponentStatistics": "Measured residual 0.174678 plus margin (see measurementNote). Same live-data and table differences as the pair surface, plus the rating column and opponent level evidence.",
+      "matchHistory": "Highest ceiling: no dedicated frame, the reference is component and pattern truth only. Rows follow live status, outcome and rating data; screenshot regression against first-implementation captures is the primary raster check.",
+      "groupDetail": "Measured residual 0.153934 plus margin (see measurementNote). Captured against the friendly 3-set fixture (g3) because BcpYH is a friendly match with three set lines; production still renders more sections than BcpYH (outlook, meta facts, audit timeline) and live player names and scores.",
+      "communityStatistics": "Measured residual 0.154454 plus margin (see measurementNote). Production renders filters, volume, leaders, pairings and weekly and monthly charts with data tables where o9iaC1 shows three cards and a text row."
+    },
+    "measuredResiduals": {
+      "playerStatistics": 0.155019,
+      "pairStatistics": 0.178239,
+      "opponentStatistics": 0.174678,
+      "communityStatistics": 0.154454,
+      "groupDetail": 0.153934
+    },
+    "previousMeasuredResiduals": {
+      "note": "U8 captures taken before the F1/F7-F9/F11 restructuring to the Pencil frames; kept for audit. Residuals rose for player/pair/opponent because the restructured top blocks now draw filter sections and cards that the frames show in a different vertical rhythm and with live data; groupDetail fell because the capture now uses a friendly 3-set fixture like BcpYH instead of a competitive 2-set one.",
+      "playerStatistics": 0.1065,
+      "pairStatistics": 0.1353,
+      "opponentStatistics": 0.1296,
+      "communityStatistics": 0.1546,
+      "groupDetail": 0.2656
+    },
+    "measurementNote": "Re-measured for F10 iteration 2 by e2e/statistics-visual.spec.ts at 390x844 CSS px, light, en, deviceScaleFactor 1, top block of each route against the same region of the 2x Pencil PNG downsampled by 2 (YIQ perceptual threshold 0.1, changed-pixel ratio). Budget = measured residual + 0.03 cross-renderer margin, rounded up to 0.01. Residuals are repeatable to 3 decimals across runs. Re-measured after the Pencil-frame restructuring (see previousMeasuredResiduals); the groupDetail capture uses the friendly fixture g3 (friendly, 3 set lines, draw with an unfinished third set) to match BcpYH's match type; BcpYH shows a finished 2-1 win, so the g3 outcome label, rating-effect copy (no rating impact) and set-state badges differ by data, not by structure. They are dominated by live names, numbers and the extra production sections the mock frames do not draw, not by layout: layout is certified separately by structural probes over 3 viewports x 2 themes x 3 locales. filters and matchHistory keep their declared ceilings because no raster comparison exists for them: filters render inside the community route (probed structurally) and the history list has no dedicated Pencil frame. The error state is covered by the player-error-state.png screenshot regression (maxDiffPixelRatio 0.002).",
+    "honesty": "Budgets for playerStatistics, pairStatistics, opponentStatistics, communityStatistics and groupDetail are measured values plus a small margin. filters and matchHistory are unmeasured ceilings. No budget may be raised to hide a structural defect: required regions, their order and element counts are asserted separately from the raster by the composition probes (see compositionProbes), so a missing or reordered frame region fails regardless of budget. Three player/pair/opponent budgets rose after the restructuring; the rise is raster rhythm and live-data difference, not a structural gap, and every region the frames require is probed. Documented adaptations (regions the frames draw but production does not) are listed in compositionProbes.adaptations."
+  },
+  "compositionProbes": {
+    "status": "asserted-f10",
+    "method": "e2e/statistics-visual.spec.ts 'composition follows the Pencil frames' runs per locale (en, pt-BR, es) at 320 and 390 CSS px, light. DOM assertions check region presence, counts, visibility and horizontal containment; document order and live top coordinates check region ordering, while top-level section rectangles check overlap. Player highlight tiles assert two columns at 320 and three at 390. An additional finalized-meetings fixture exposes conditional pair and opponent Show more controls for visibility, 44px minimum and containment checks. These geometry checks do not depend on raster budgets.",
+    "surfaces": {
+      "playerStatistics": {
+        "frame": "RN0yw",
+        "order": [
+          "title (h1 x1)",
+          "filter context badges",
+          "filters section with community selector",
+          "highlights: 3 tiles (win rate, set diff, game diff)",
+          "W-L-D strip",
+          "form",
+          "recent matches",
+          "matches",
+          "sets and games",
+          "rating and rank",
+          "activity",
+          "set patterns",
+          "records"
+        ]
+      },
+      "pairStatistics": {
+        "frame": "GrkSH",
+        "order": [
+          "breadcrumb",
+          "title (h1 x1)",
+          "filter context badges",
+          "filters section with community selector",
+          "compact headline card (no highlight tiles)",
+          "record",
+          "sets and games",
+          "streaks",
+          "rating evidence",
+          "leagues played together",
+          "recent matches with conditional Show more control"
+        ]
+      },
+      "opponentStatistics": {
+        "frame": "khmeK",
+        "order": [
+          "breadcrumb",
+          "title (h1 x1)",
+          "filter context badges",
+          "filters section with community selector",
+          "head-to-head record",
+          "sets and games",
+          "streaks",
+          "rating evidence",
+          "recent meetings with conditional Show more control (no pair-only league region)"
+        ]
+      },
+      "communityStatistics": {
+        "frame": "o9iaC1",
+        "order": [
+          "title (h1 x1)",
+          "scope badges",
+          "filters section",
+          "match volume",
+          "player leaders",
+          "team and matchup records",
+          "activity by week and month (2 figures)"
+        ]
+      },
+      "groupDetail": {
+        "frame": "BcpYH",
+        "order": [
+          "title (h1 x1)",
+          "result hero with one score line per set",
+          "players section with 2 team blocks and 4 per-player level blocks",
+          "set score lines (one per set)",
+          "meta facts",
+          "confirmation",
+          "audit timeline"
+        ],
+        "variants": "asserted on the friendly 3-set group (g3, the BcpYH match type) and the competitive 2-set group (g1)"
+      }
+    },
+    "adaptations": {
+      "playerStatistics": "RN0yw draws a Partner-insight card on the home screen; production places partner records in the records section. Production keeps the complete metric inventory below the frame's top block.",
+      "pairStatistics": "GrkSH draws a pair-match-history button (aaQlF). Production shows per-row Result details links. The frame's chevron title becomes breadcrumb plus back link.",
+      "opponentStatistics": "khmeK draws an 'Open match history' button (rsfQx). Production shows per-row links. No toughest-opponent label (frame note).",
+      "communityStatistics": "o9iaC1 draws activity by month as a text row; production draws weekly and monthly SVG charts with text equivalents and data tables.",
+      "groupDetail": "BcpYH draws a match-impact note card and a result-verification chip. Production folds the impact note into the players section's rating-state line and renders confirmation as its own section; it also adds a pre-match outlook, meta facts and an audit timeline that the frame does not draw. BcpYH's 'Open details' arrow and mode label are app-shell/design notes."
+    }
+  }
+}

@@ -1,7 +1,7 @@
 import * as stylex from '@stylexjs/stylex';
 import { rootStyles } from '../../root.styles';
 import { Link, useRouter } from '@tanstack/react-router';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { listMatchEvents } from './matches.functions';
 import type { MatchEventListItem } from './match-model';
@@ -15,13 +15,15 @@ export function MatchesPage({
   initialItems = EMPTY_ITEMS,
   initialCursor = null,
   initialAsOf = null,
-  initialError = false
+  initialError = false,
+  history
 }: {
   entry: MatchEntry;
   initialItems?: MatchEventListItem[];
   initialCursor?: string | null;
   initialAsOf?: string | null;
   initialError?: boolean;
+  history?: ReactNode;
 }) {
   const { t } = useTranslation();
   const router = useRouter();
@@ -132,6 +134,7 @@ export function MatchesPage({
           </button>
         </section>
       )}
+      {history}
       {offline && <output>{t('matches.offline')}</output>}
       {error && !initialError && !offline && (
         <section role="alert">

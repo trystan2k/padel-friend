@@ -118,7 +118,7 @@
       "CWJkF": 0.17,
       "JXjNs": 0.16,
       "ausNa": 0.15,
-      "BcpYH": 0.28,
+      "BcpYH": 0.285,
       "alZmm": 0.12
     },
     "perScreenRationale": {
@@ -128,7 +128,7 @@
       "CWJkF": "Current v2 dispute is rendered inside the match-detail route with real correction capability. Admin override/void controls are excluded by scope; history, reason, capability and touch probes are exact.",
       "JXjNs": "Capture isolates the production pending status/countdown region at the reference viewport; event provenance and roster/score facts continue below it as required by the lifecycle detail.",
       "ausNa": "Capture shows the real offline review no-write feedback in the existing match detail. The source is a multi-context pattern sheet; stale submission, preserved draft, offline action suppression and zero review writes are independently probed in the same flow.",
-      "BcpYH": "Production match detail shows the confirmed friendly score, participants, manual source and no-rating effect; geometry is constrained by exact card/overview probes. Observed residual 0.27964; 0.28 is the smallest two-decimal budget above the measured capture (0.00036 margin). Separate Match report/pre-match-level presentation and rating deltas are not part of T08.5/T10.",
+      "BcpYH": "Production match detail shows the confirmed friendly score, participants, manual source and no-rating effect; geometry is constrained by exact card/overview probes. Observed residual 0.28381 after PAF-13 added the confirmed-result Result details link above each confirmed group (intentional, structural probes unchanged; was 0.27964); 0.285 is the smallest three-decimal budget above the measured capture (0.0012 margin). Separate Match report/pre-match-level presentation and rating deltas are not part of T08.5/T10.",
       "alZmm": "Approved PAF-8 successor uses the existing match-detail route. Exact route order, the layout-neutral result-group anchor wrapper, pending facts/countdown, approval progress, SQL-authorized actions, venue details and touch targets constrain the residual cross-renderer and copy difference."
     }
   }

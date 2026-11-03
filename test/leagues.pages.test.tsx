@@ -507,6 +507,9 @@ describe('League list and entries', () => {
     expect(screen.getByRole('link', { name: 'Leagues in Club B' }).getAttribute('href')).toBe(
       '/community/22222222-2222-4222-8222-222222222222/leagues'
     );
+    expect(screen.getByRole('link', { name: 'Club B statistics' }).getAttribute('href')).toBe(
+      '/community/22222222-2222-4222-8222-222222222222/statistics'
+    );
     cleanup();
     const { container } = render(wrap(<LeagueEntries communities={[]} />));
     expect(container.textContent).toBe('');

@@ -23,7 +23,13 @@ permissions:
     effect: allow
   - action: edit
     resource: "*"
-    effect: allow
+    effect: deny
+  - action: write
+    resource: "*"
+    effect: deny
+  - action: patch
+    resource: "*"
+    effect: deny
   - action: skill
     resource: "*"
     effect: allow
@@ -101,6 +107,7 @@ Outputs:
   - `Implementation Context` (include deepthink plan file path used, if any)
   - `Changes Made`
   - `Validation Performed`
+  - `File Access Summary` (counts of Serena MCP file ops vs native/shell file ops, e.g. `serena: 3 reads / 2 edits, native: 0`)
   - `Result`
 
 `Result` must be one of: `success`, `partial`, or `failed`.
@@ -122,7 +129,7 @@ Follow this protocol before writing code:
 
 ## Instructions (Behavior Contract)
 
-**MCP Priority**: Prefer **Serena MCP** for symbol-level reads (`get_symbols_overview`, `find_symbol`, `find_referencing_symbols`) and targeted edits (`replace_symbol_body`, `insert_after_symbol`, `replace_content` in regex mode, `replace_in_files` for multi-file) whenever it saves tokens. Use native tools for whole-file rewrites, non-code files, and whenever Serena is unavailable.
+**MCP Priority (MANDATORY)**: All code file reads and edits MUST go through **Serena MCP** tools via Code Mode `execute` (`tools.mcp_serena.*`). Reads: `get_symbols_overview`, `find_symbol`, `find_referencing_symbols`, or `read_file` with line ranges. Edits: `replace_symbol_body`, `insert_after_symbol`, `replace_content` (regex mode), `replace_in_files` (multi-file). New files: `create_text_file`. Native `edit`/`write`/`patch` tools are permission-DENIED and cannot succeed. Shell file mutation (`sed -i`, `cat >`, heredoc writes, `tee`) is forbidden — it bypasses review and wastes tokens. Native `read`/`grep`/`glob` remain allowed for quick peeks, non-code files, and when no Serena tool fits.
 
 1. Validate inputs and verify the deepthink plan file path exists when provided.
 2. Read the deepthink plan file if available and parse it into executable steps; otherwise, derive steps from the small task details.
@@ -153,11 +160,11 @@ Effective permissions (frontmatter `permission`; legacy `tools` field not used):
 
 Model tier: `T1`. Apply the approved fix exactly as specified, add the regression test, and run the scoped gate. No redesign, no refactoring of untouched code, no scope expansion.
 
-- `read`, `glob`, `grep`, `list`: allow — codebase investigation.
-- `edit` (gates `write`/`edit`): allow — task-scope fixes only.
+- `read`, `glob`, `grep`, `list`: allow — codebase investigation for quick peeks and non-code files; symbol-level code reads MUST go through Serena MCP.
+- `edit`, `write`, `patch`: deny — ALL file mutation MUST go through Serena MCP via Code Mode `execute` (`tools.mcp_serena.replace_symbol_body`, `replace_content`, `insert_after_symbol`, `replace_in_files`, `create_text_file`).
 - `skill`: allow — matching skills confirmed available in the current OpenCode catalog.
 - `subagent`: deny — child agents cannot delegate in this V2 workflow; report specialist validation needs to the caller.
-- `bash`: allow — full shell. Run `pnpm` verification commands, scoped tests, and read-only git freely; use native `bash` for shell work (no Serena 240s cap) and Serena MCP for code search/intelligence. `git restore`/`git checkout`/`git stash` are permitted to undo your own in-progress edits only, never unrelated files.
+- `bash`: allow — full shell. Run `pnpm` verification commands, scoped tests, and read-only git freely; use native `bash` for shell work (no Serena 240s cap). Shell file mutation (`sed -i`, `cat >`, heredoc writes, `tee`) is forbidden — use Serena MCP edit tools. `git restore`/`git checkout`/`git stash` are permitted to undo your own in-progress edits only, never unrelated files.
 - `question`: deny — no user prompts from this subagent.
 - `webfetch`, `websearch`: allow — documentation research during fixes.
 - `todowrite`: deny.

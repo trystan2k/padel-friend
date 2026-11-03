@@ -23,6 +23,13 @@ export function LeagueEntries({ communities }: { communities: LeagueCommunityEnt
             >
               {t('leagues.entries.link', { community: community.name })}
             </Link>
+            <Link
+              to="/community/$communityId/statistics"
+              params={{ communityId: community.id }}
+              {...stylex.props(styles.itemLink)}
+            >
+              {t('statistics.community.titleCommunity', { name: community.name })}
+            </Link>
           </li>
         ))}
       </ul>

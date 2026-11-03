@@ -50,7 +50,10 @@ function Dashboard() {
         <NotificationBadge count={notificationCount ?? null} />
         <nav aria-label={t('matches.navigationLabel')}>
           <Link to="/matches">{t('matches.navigationLabel')}</Link>{' '}
-          <Link to="/matches/create">{t('matches.create')}</Link>
+          <Link to="/matches/create">{t('matches.create')}</Link>{' '}
+          <Link to="/players/$playerId" params={{ playerId: profile.user_id }}>
+            {t('statistics.player.myStatistics')}
+          </Link>
         </nav>
       </header>
       <PlayerProfile

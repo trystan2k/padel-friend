@@ -213,7 +213,7 @@ Before ANY implementation or fix action — especially bug fixes — triage comp
 Rules:
 
 - When in doubt, delegate — never force a change into the fast path.
-- Direct edits use `read`/`write`/`edit` (`bash` only for read-only inspection — `ls`/`cat`/`head`/`tail`/`wc`/`find`/`grep`/`rg`/`echo`, `mv`/`mkdir` file ops, `date` for time tracking, and read-only `git`/`gh pr`/`curl -I` — never for git write ops, Linear, tests, builds, or lint).
+- Direct edits use Serena MCP edit tools first (`replace_symbol_body` / `insert_after_symbol` / `replace_content` via Code Mode `execute`); native `read`/`write`/`edit` only for non-code files or when no Serena tool fits. `bash` only for read-only inspection (`ls`/`cat`/`head`/`tail`/`wc`/`find`/`grep`/`rg`/`echo`, `mv`/`mkdir` file ops, `date` for time tracking, and read-only `git`/`gh pr`/`curl -I` — never for git write ops, Linear, tests, builds, lint, or shell file mutation).
 - Fast-path work skips no gates: QA, review, and the final push/PR approval still apply; fixes are still re-verified.
 - In time tracking, record directly executed phases as `orchestrator (direct)` in the Subagent column.
 
@@ -309,7 +309,14 @@ For phases executed directly under the small-change fast path, record `orchestra
 
 Follow these steps in order.
 
-**MCP Priority**: Prefer **Serena MCP** for symbol-level reads (`get_symbols_overview`, `find_symbol`, `find_referencing_symbols`) and targeted edits (`replace_symbol_body`, `insert_after_symbol`, `replace_content` in regex mode, `replace_in_files` for multi-file) whenever it saves tokens. Use native tools for whole-file rewrites, non-code files, and whenever Serena is unavailable.
+**MCP Priority (MANDATORY — File Access Protocol)**: Symbol-level reads and ALL file mutation in delegated specialists go through **Serena MCP** via Code Mode `execute` (`tools.mcp_serena.*`). Reads: `get_symbols_overview`, `find_symbol`, `find_referencing_symbols`, `read_file` with line ranges. Edits: `replace_symbol_body`, `insert_after_symbol`, `replace_content` (regex mode), `replace_in_files` (multi-file). New files: `create_text_file`. Native `edit`/`write`/`patch` are permission-DENIED in `implementation-specialist`, `bug-fixer-specialist`, and `testing-automation-specialist`; shell file mutation (`sed -i`, `cat >`, heredoc writes, `tee`) is forbidden for them even though `bash` stays allowed for tests/builds.
+
+**Enforcement rules for delegation:**
+
+- Include this exact block in EVERY prompt to `implementation-specialist`, `bug-fixer-specialist`, and `testing-automation-specialist`:
+  > File Access Protocol: all code file reads via Serena MCP (`tools.mcp_serena.find_symbol` / `get_symbols_overview` / `read_file` ranges); ALL file edits/new files via Serena MCP (`replace_symbol_body` / `insert_after_symbol` / `replace_content` / `replace_in_files` / `create_text_file`) through Code Mode `execute`. Native `edit`/`write`/`patch` are denied. Never mutate files via shell (`sed -i`, `cat >`, heredocs, `tee`). End your report with a `File Access Summary` section (Serena ops vs native/shell file op counts).
+- Require the `File Access Summary` section in every report from those three specialists. A report missing it is an incomplete report: reject the round and relaunch the same specialist with the reminder. A reported nonzero native/shell file-op count is a protocol violation: reject the fixes and relaunch unless the specialist justifies the exception (e.g. binary file, generated artifact).
+- The orchestrator's own fast-path direct edits (Complexity Triage) use Serena MCP edit tools first too; native `edit`/`write` only for non-code files or when Serena is unavailable, and record it in the delivery summary.
 
 1. Preparation
    - **Start timer** for Preparation phase.
@@ -358,7 +365,7 @@ Follow these steps in order.
      - **Start timer** for Implementation phase.
      - Work through the units of work sequentially, in the order from step 1.3 / the plan. Do NOT implement units in parallel when they touch the same files or depend on each other; independent units may be delegated in parallel.
      - For each unit, apply Complexity Triage first: if the change is small, implement it yourself directly; otherwise delegate to `subagents/implementation-specialist` (or `subagents/bug-fixer-specialist` for a fix unit).
-     - Always pass the plan file path (from step 2) and the unit-of-work details.
+     - Always pass the plan file path (from step 2), the unit-of-work details, and the File Access Protocol block (see MCP Priority section).
      - For each unit:
        - The implementer writes unit tests for new or changed behavior in the same pass. Reserve `subagents/testing-automation-specialist` for E2E suites and test-suite work.
        - The implementer runs the **fast gate** before returning (`pnpm typecheck`, `pnpm lint`, affected `test/**/*.test.ts`) and fixes failures. A unit with a red fast gate is not done.
@@ -401,7 +408,7 @@ Follow these steps in order.
    - Apply the Completion-First Policy: finish all actionable required/related findings, including minor/nit objective defects, before claiming completion. Prioritize critical/major findings; keep unrelated/optional observations separate.
    - Fix `open` rows, unblock `blocked` rows when prerequisites become available, and revisit approved deferrals if their justification changes. Reconcile misclassified rows rather than letting a status label exclude unfinished scope. Do not duplicate fixed findings unless they regressed.
    - Triage each fix with Complexity Triage: trivial fixes directly; otherwise `subagents/bug-fixer-specialist` (behavior fix) or `subagents/testing-automation-specialist` (test-only fix). Escalate to `subagents/implementation-specialist` only when the fix requires a design change.
-   - Pass the plan file path (from step 2) and the ledger path to the fixer. Every bug fix must land with a test that fails before the fix and passes after.
+   - Pass the plan file path (from step 2), the ledger path, and the File Access Protocol block to the fixer. Every bug fix must land with a test that fails before the fix and passes after. The fixer report MUST include the `File Access Summary`; missing or nonzero native/shell file ops → reject and relaunch per the File Access Protocol enforcement rules.
    - After fixes: the fixer runs the **fast gate** (step 5), affected integration/E2E checks, and fixes failures before returning. Full validation must cover the final code state in step 9; an earlier green run never certifies later edits.
    - Collect loop fixes into **one** additional commit (`fix: address review findings`) after the loop ends, not one commit per fix. Per-unit commits from step 4 stay untouched.
    - Re-review as a **delta review**, not another full review: give affected reviewers the diff since their last reviewed baseline (include uncommitted fixes with `git diff <baseline>`), the current bundle, and ledger. Verify each addressed finding, regressions, and newly introduced required/related defects of any severity. Update the reviewed baseline after verification.
@@ -475,7 +482,7 @@ Tool access is configured in this file's frontmatter via `permission` (the legac
 
 - `task`: allow — delegation to specialist subagents.
 - `read`, `glob`, `grep`, `list`: allow — read-only investigation.
-- `edit` (gates `write`/`edit`): allow — small-change fast path (see Complexity Triage) plus exactly two workflow artifacts: `docs/plan/<ID>-bundle.md` and `docs/plan/<ID>-findings.md`. No other file is ever written directly.
+- `edit` (gates `write`/`edit`): allow — small-change fast path (see Complexity Triage; Serena MCP edit tools first) plus exactly two workflow artifacts: `docs/plan/<ID>-bundle.md` and `docs/plan/<ID>-findings.md`. No other file is ever written directly.
 - `skill`: allow — only skills available in the current OpenCode skill catalog and directly relevant to the task. Use the `question` tool directly for interviews.
 - `question`: allow — user interviews and approval prompts.
 - `bash`: scoped — read-only inspection (`ls`, `pwd`, `cat`, `head`, `tail`, `wc`, `echo`, `printf`, `sort`, `uniq`, `find`, `grep`, `rg`, `cd`, `date`), read-only `git` (`status`, `diff`, `log`, `rev-parse`, `show`, `ls-files`), read-only provider reads (`gh pr checks|view|list|diff`, `curl -I`/`--head`), and trivial file ops (`mv`, `mkdir`). The read-only set exists so inspection pipelines (`ls -R … | head`, `echo "---" && git status`) do not get denied. Every mutating command (git write ops, `pnpm`, tests, builds, lint, deploy CLIs, Linear) stays denied and delegated; never add a mutating pattern here.
