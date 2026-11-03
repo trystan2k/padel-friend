@@ -297,7 +297,17 @@ const ITEM_KEYS = [
 ] as const;
 
 function historyItem(value: unknown): HistoryItem {
-  const row = exactObject(value, ITEM_KEYS);
+  const raw = object(value);
+  const row = exactObject(
+    value,
+    Object.hasOwn(raw, 'opponents') ? [...ITEM_KEYS, 'opponents'] : ITEM_KEYS
+  );
+  const opponents =
+    row.opponents === undefined
+      ? []
+      : Array.isArray(row.opponents)
+        ? row.opponents.map(nullableText)
+        : fail();
   const status = oneOf(row.status, HISTORY_STATUSES);
   const item: HistoryItem = {
     key: text(row.key),
@@ -316,6 +326,7 @@ function historyItem(value: unknown): HistoryItem {
     sort_at: instant(row.sort_at),
     played_at: nullableInstant(row.played_at),
     viewer_side: row.viewer_side === null ? null : oneOf(row.viewer_side, SIDES),
+    opponents,
     outcome: row.outcome === null ? null : oneOf(row.outcome, ['win', 'loss', 'draw'] as const),
     classification:
       row.classification === null

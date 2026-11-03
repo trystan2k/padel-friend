@@ -153,7 +153,8 @@ export function decodePairStatistics(value: unknown): PairStatistics {
     config: decodeConfig(row.config),
     players,
     record: decodeRecord(row.record),
-    recent: array(row.recent).map(decodeMatch)
+    recent: array(row.recent).map(decodeMatch),
+    recentOffset: count(row.recentOffset)
   };
 }
 
@@ -172,7 +173,8 @@ export function decodeOpponentStatistics(value: unknown): OpponentStatistics {
     focal: decodeName(row.focal),
     other: decodeName(row.other),
     record: decodeRecord(row.record),
-    recent: array(row.recent).map(decodeMatch)
+    recent: array(row.recent).map(decodeMatch),
+    recentOffset: count(row.recentOffset)
   };
 }
 
@@ -264,6 +266,7 @@ export function readPairStatistics(client: PlayerClient, input: StatisticsRelati
     client.rpc('get_pair_statistics', {
       p_player_id: input.playerId,
       p_partner_id: input.otherId,
+      p_recent_offset: input.recentOffset ?? 0,
       ...filterArgs(input.filters)
     }),
     decodePairStatistics
@@ -274,6 +277,7 @@ export function readOpponentStatistics(client: PlayerClient, input: StatisticsRe
     client.rpc('get_opponent_statistics', {
       p_player_id: input.playerId,
       p_opponent_id: input.otherId,
+      p_recent_offset: input.recentOffset ?? 0,
       ...filterArgs(input.filters)
     }),
     decodeOpponentStatistics

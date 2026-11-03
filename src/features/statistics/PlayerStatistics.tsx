@@ -16,6 +16,8 @@ import {
   usePlayerFormat
 } from './PlayerMetric';
 import { PlayerStatisticsRecords } from './PlayerStatisticsRecords';
+import { PlayerRecentMatches } from './PlayerRecentMatches';
+import type { HistoryView, StatisticsResponse } from './statistics-history-contracts';
 import { StatisticsChart } from './StatisticsChart';
 import { StatisticsFilterSection, type FilterControls } from './StatisticsFilterSection';
 import { ReasonText, StatisticsEmpty } from './StatisticsStates';
@@ -159,10 +161,14 @@ function ActivitySeries({ months }: { months: Statistics['activity']['months'] }
 export function PlayerStatistics({
   stats,
   filterControls,
+  recentHistory,
+  onRecentRetry,
   children
 }: {
   stats: Statistics;
   filterControls?: FilterControls;
+  recentHistory?: StatisticsResponse<HistoryView>;
+  onRecentRetry?: () => void;
   children?: React.ReactNode;
 }) {
   const { t } = useTranslation();
@@ -251,6 +257,7 @@ export function PlayerStatistics({
       </Section>
 
       {children}
+      {recentHistory && <PlayerRecentMatches response={recentHistory} onRetry={onRecentRetry} />}
 
       <Section id="player-stats-matches" title={t('statistics.player.sections.matches')}>
         <dl {...stylex.props(s.stats)}>

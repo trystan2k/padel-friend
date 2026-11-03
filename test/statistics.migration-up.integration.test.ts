@@ -160,7 +160,7 @@ describe.skipIf(!environment.env)('statistics migrations applied over existing h
     // Phase 2: the statistics migrations run over that history.
     const applied = await database.applyMigrations('statistics');
     expect(applied[0]).toBe('20261102100000_statistics_domain.sql');
-    expect(applied.at(-1)).toBe('20261102116000_statistics_matchup_index.sql');
+    expect(applied.at(-1)).toBe('20261102117000_statistics_lifecycle_projection.sql');
 
     // Backfill coverage: every pre-existing confirmed group is projected with its exact facts.
     const community = "'" + seed.communityId + "'";

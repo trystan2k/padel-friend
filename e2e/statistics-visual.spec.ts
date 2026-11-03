@@ -214,9 +214,9 @@ for (const locale of LOCALES) {
 }
 
 // --- Pencil-aligned composition probes -----------------------------------------------------
-// DOM assertions only (no pixels): each surface must deliver its frame's required regions, in the
-// frame's order, with the frame's element counts. Region ids are the stable section heading ids, so
-// the probe is locale independent. Raster budgets below cover renderer residuals, never structure.
+// Live DOM rectangles and counts, independent of pixels: required regions must be visible and
+// horizontally contained, and distinct top-level sections must remain ordered without overlap.
+// Stable section heading ids keep these probes locale independent.
 
 type Region = { name: string; selector: string; count?: number };
 
@@ -235,11 +235,49 @@ async function compositionFailures(page: Page, regions: Region[]): Promise<strin
       }
       if (region.count !== undefined && found.length !== region.count)
         failures.push(`${region.name}: expected ${region.count} elements, found ${found.length}`);
+      for (const element of found) {
+        const rect = element.getBoundingClientRect();
+        const style = getComputedStyle(element);
+        if (
+          !rect.width ||
+          !rect.height ||
+          style.visibility !== 'visible' ||
+          style.display === 'none'
+        )
+          failures.push(`${region.name}: hidden or zero area`);
+        if (rect.left < -0.5 || rect.right > document.documentElement.clientWidth + 0.5)
+          failures.push(`${region.name}: outside viewport horizontally`);
+      }
       const first = found[0]!;
       if (previous && !(previous.compareDocumentPosition(first) & Node.DOCUMENT_POSITION_FOLLOWING))
         failures.push(`${region.name} must come after ${previousName}`);
+      if (previous && first.getBoundingClientRect().top <= previous.getBoundingClientRect().top)
+        failures.push(`${region.name} must be below ${previousName}`);
       previous = first;
       previousName = region.name;
+    }
+    // Only compare distinct main-level sections: nested rows intentionally sit inside cards.
+    const sections = [...main.querySelectorAll(':scope > section')];
+    for (let index = 1; index < sections.length; index++) {
+      const before = sections[index - 1]!.getBoundingClientRect();
+      const after = sections[index]!.getBoundingClientRect();
+      if (after.top <= before.top || after.top < before.bottom - 0.5)
+        failures.push('main sections overlap or are out of order');
+    }
+    const tiles = [...main.querySelectorAll('main > section[aria-label] > dl > div')];
+    if (tiles.length === 3 && document.documentElement.clientWidth <= 390) {
+      const boxes = tiles.map((tile) => tile.getBoundingClientRect());
+      if (Math.abs(boxes[0]!.top - boxes[1]!.top) > 0.5)
+        failures.push('first two highlight tiles must share a row');
+      if (boxes[1]!.left < boxes[0]!.right - 0.5)
+        failures.push('highlight tiles overlap on the first row');
+      const sameRow = Math.abs(boxes[0]!.top - boxes[2]!.top) <= 0.5;
+      if (sameRow && boxes[2]!.left < boxes[1]!.right - 0.5)
+        failures.push('third highlight tile overlaps the second');
+      if (sameRow !== document.documentElement.clientWidth >= 390)
+        failures.push('highlight tiles must use three columns at 390 and two at 320');
+      if (!sameRow && boxes[2]!.top < boxes[0]!.bottom - 0.5)
+        failures.push('wrapped highlight tile overlaps first row');
     }
     return failures;
   }, regions);
@@ -256,9 +294,15 @@ const PLAYER_REGIONS: Region[] = [
   { name: 'title', selector: 'main > header h1', count: 1 },
   FILTER_BADGES,
   SCOPE_NAME('player-stats-filters'),
+  {
+    name: 'community selector',
+    selector: 'section[aria-labelledby="player-stats-filters"] select:not(form select)',
+    count: 1
+  },
   { name: 'highlight tiles', selector: 'main > section[aria-label] > dl > div', count: 3 },
   { name: 'W-L-D strip', selector: 'main > section[aria-label] > p strong', count: 1 },
   SCOPE_NAME('player-stats-form'),
+  SCOPE_NAME('player-recent-matches'),
   SCOPE_NAME('player-stats-matches'),
   SCOPE_NAME('player-stats-scores'),
   SCOPE_NAME('player-stats-rating'),
@@ -273,6 +317,11 @@ const PAIR_REGIONS: Region[] = [
   { name: 'title', selector: 'main > header h1', count: 1 },
   FILTER_BADGES,
   SCOPE_NAME('pair-stats-filters'),
+  {
+    name: 'community selector',
+    selector: 'section[aria-labelledby="pair-stats-filters"] select:not(form select)',
+    count: 1
+  },
   {
     name: 'compact headline',
     selector: 'main > section[aria-label] > * > p:first-child',
@@ -292,6 +341,11 @@ const OPPONENT_REGIONS: Region[] = [
   { name: 'title', selector: 'main > header h1', count: 1 },
   FILTER_BADGES,
   SCOPE_NAME('opponent-stats-filters'),
+  {
+    name: 'community selector',
+    selector: 'section[aria-labelledby="opponent-stats-filters"] select:not(form select)',
+    count: 1
+  },
   SCOPE_NAME('opponent-stats-record'),
   SCOPE_NAME('opponent-stats-scores'),
   SCOPE_NAME('opponent-stats-streaks'),
@@ -329,9 +383,11 @@ const detailRegions = (sets: number): Region[] => [
   SCOPE_NAME('statistics-detail-timeline')
 ];
 
-for (const locale of LOCALES) {
-  test(`composition follows the Pencil frames: ${locale}`, async () => {
-    const page = await w.f.page(w.actors[A], locale, 390, 'light', 844);
+for (const [locale, width] of LOCALES.flatMap((language) =>
+  [320, 390].map((viewportWidth) => [language, viewportWidth] as const)
+)) {
+  test(`composition follows the Pencil frames: ${locale} ${width}`, async () => {
+    const page = await w.f.page(w.actors[A], locale, width, 'light', 844);
     const expected: Record<string, Region[]> = {
       player: PLAYER_REGIONS,
       pair: PAIR_REGIONS,
@@ -458,6 +514,35 @@ for (const entry of PENCIL) {
     ).toBeLessThanOrEqual(budgets[entry.key]!);
   });
 }
+
+// Pagination needs more than one page of real finalized meetings. Seed after raster captures.
+test('relationship Show more controls have visible, contained 44px geometry', async () => {
+  await w.seedMoreMeetings();
+  for (const width of [320, 390]) {
+    const page = await w.f.page(w.actors[A], 'en', width, 'light', 844);
+    for (const name of ['pair', 'opponent']) {
+      const surface = surfaces().find((candidate) => candidate.name === name)!;
+      await page.goto(surface.path);
+      await waitForHydratedPage(page);
+      const section = page.locator('section[aria-labelledby="relationship-recent"]');
+      const button = section.getByRole('button', {
+        name: copies.en.statistics.relationships.showMore
+      });
+      await expect(button).toBeVisible();
+      const box = await button.boundingBox();
+      const sectionBox = await section.boundingBox();
+      expect(box).not.toBeNull();
+      expect(sectionBox).not.toBeNull();
+      expect(box!.width).toBeGreaterThanOrEqual(44);
+      expect(box!.height).toBeGreaterThanOrEqual(44);
+      expect(box!.x).toBeGreaterThanOrEqual(0);
+      expect(box!.x + box!.width).toBeLessThanOrEqual(width + 0.5);
+      expect(box!.y).toBeGreaterThan(sectionBox!.y);
+      expect(box!.y + box!.height).toBeLessThanOrEqual(sectionBox!.y + sectionBox!.height + 0.5);
+    }
+    await page.context().close();
+  }
+});
 
 // --- states ----------------------------------------------------------------------------------
 

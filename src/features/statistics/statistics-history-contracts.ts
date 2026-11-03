@@ -44,6 +44,7 @@ export type HistoryItem = {
   sort_at: string;
   played_at: string | null;
   viewer_side: HistorySide | null;
+  opponents?: (string | null)[];
   outcome: HistoryOutcome | null;
   classification: 'team_a' | 'team_b' | 'draw' | 'incomplete' | null;
   sets: HistorySetRow[] | null;

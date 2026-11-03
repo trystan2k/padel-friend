@@ -1771,7 +1771,7 @@
     "filters": {
       "title": "Statistics filters",
       "community": "Community",
-      "allCommunities": "All my communities",
+      "allCommunities": "All communities",
       "league": "League",
       "noLeague": "No League",
       "activeLeague": "Active League: {{name}}",
@@ -1907,6 +1907,8 @@
       "leagueMatches": "{{name}}: {{matches}} matches",
       "noRecent": "No matches in this selection.",
       "recentCaption": "Most recent matches, newest first",
+      "showing": "Showing {{shown}} of {{total}}",
+      "showMore": "Show more",
       "noRating": "No rating",
       "columns": {
         "date": "Date",
@@ -2086,6 +2088,12 @@
       "ratioOf": "{{numerator}} of {{denominator}} {{unit}}",
       "basedOn": "Based on {{denominator}} {{unit}}",
       "ratingLagging": "Rating figures are catching up with the latest matches. Reload in a moment for the full picture.",
+      "recent": {
+        "title": "Recent matches",
+        "seeAll": "See all",
+        "opponents": "vs {{names}}",
+        "noOpponents": "Opponents unavailable"
+      },
       "units": {
         "matches": "matches",
         "sets": "sets",

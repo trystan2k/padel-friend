@@ -450,6 +450,31 @@ export async function statisticsWorld(browser: Browser) {
     groupIds[group.key] = { proposalId, eventId, confirmationId };
   }
 
+  // Extra finalized meetings are opt-in so visual pagination does not alter baseline captures.
+  async function seedMoreMeetings() {
+    const players: Quartet = [idOf('A'), idOf('B'), idOf('C'), idOf('D')];
+    for (let index = 0; index < 20; index++) {
+      const at = new Date(Date.UTC(2026, 6, index + 1, 18)).toISOString();
+      const eventId = await seedEvent(at, 'friendly', null);
+      const proposalId = await submitScored(
+        eventId,
+        players,
+        {
+          at,
+          sets: [
+            [6, 4, true],
+            [6, 3, true]
+          ],
+          classification: 'team_a'
+        },
+        f.creator.id,
+        49
+      );
+      if (!(await finalize(proposalId, 'AUTO_48H', players[0])))
+        throw new Error('Extra meeting did not confirm');
+    }
+  }
+
   // Lifecycle-only entries of the focal player.
   const quartet: Quartet = [idOf('A'), idOf('B'), idOf('C'), idOf('D')];
   const pendingEvent = await seedEvent(
@@ -554,6 +579,7 @@ export async function statisticsWorld(browser: Browser) {
     leagues,
     cross: { ...cross, name: String(crossName) },
     groupIds,
+    seedMoreMeetings,
     lifecycle: {
       pendingEvent,
       pendingProposal,

@@ -294,10 +294,12 @@ export function RelationshipSections({
 /** Newest matches of the relationship with their result, score and (head-to-head) rating effect. */
 export function RecentMatches({
   matches,
-  showRating
+  showRating,
+  children
 }: {
   matches: RelationshipMatch[];
   showRating: boolean;
+  children?: React.ReactNode;
 }) {
   const { t } = useTranslation();
   const f = useRelationshipFormat();
@@ -377,6 +379,7 @@ export function RecentMatches({
           </table>
         </div>
       )}
+      {children}
     </Section>
   );
 }

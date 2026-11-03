@@ -94,6 +94,7 @@ export function makePair(overrides: Partial<PairStatistics> = {}): PairStatistic
       { userId: OTHER, displayName: 'Bea' }
     ],
     record: makeRelationshipRecord(),
+    recentOffset: 0,
     recent: [recent('W', null), recent('I', null)],
     ...overrides
   };
@@ -108,6 +109,7 @@ export function makeOpponent(overrides: Partial<OpponentStatistics> = {}): Oppon
     focal: { userId: FOCAL, displayName: 'Ana' },
     other: { userId: OTHER, displayName: 'Cleo' },
     record: makeRelationshipRecord(),
+    recentOffset: 0,
     recent: [recent('L', -0.2), recent('W', 0.3), recent('W', null)],
     ...overrides
   };

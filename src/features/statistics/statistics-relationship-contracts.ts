@@ -71,6 +71,7 @@ export type PairStatistics = {
   players: RelationshipName[];
   record: RelationshipRecord;
   recent: RelationshipMatch[];
+  recentOffset: number;
 };
 
 export type OpponentStatistics = {
@@ -82,6 +83,7 @@ export type OpponentStatistics = {
   other: RelationshipName;
   record: RelationshipRecord;
   recent: RelationshipMatch[];
+  recentOffset: number;
 };
 
 export type RelationshipListItem = {

@@ -5,7 +5,11 @@ import {
   NO_FILTER_OPTIONS,
   readFilterOptions
 } from '../features/statistics/statistics-filter-options';
-import { filterSearch, parseFilterSearch } from '../features/statistics/statistics-search';
+import {
+  filterSearch,
+  parseFilterSearch,
+  parseRelationshipSearch
+} from '../features/statistics/statistics-search';
 import { getOpponentStatistics } from '../features/statistics/statistics-relationships.functions';
 import { validateStatisticsRelationshipInput } from '../features/statistics/statistics.validators';
 import { StatisticsError, StatisticsLoading } from '../features/statistics/StatisticsStates';
@@ -13,8 +17,8 @@ import { createI18n, resolveLocale } from '../i18n/config';
 
 export const Route = createFileRoute('/_protected/players/$playerId/opponents/$opponentId')({
   // The focal player stays in the path; filters stay in the URL so every link keeps its scope.
-  validateSearch: parseFilterSearch,
-  loaderDeps: ({ search }) => search,
+  validateSearch: parseRelationshipSearch,
+  loaderDeps: ({ search }) => parseFilterSearch(search),
   loader: async ({ params, deps, context }) => {
     let input;
     try {
@@ -56,15 +60,25 @@ export const Route = createFileRoute('/_protected/players/$playerId/opponents/$o
 function OpponentStatisticsPage() {
   const { result, options } = Route.useLoaderData();
   const params = Route.useParams();
+  const { recentOffset = 0 } = Route.useSearch();
   const { t } = useTranslation();
   const router = useRouter();
   const navigate = useNavigate();
   if (result.status === 'ok') {
     return (
       <OpponentStatistics
+        recentOffset={recentOffset}
+        onRecentOffsetChange={(offset) =>
+          void navigate({
+            to: '/players/$playerId/opponents/$opponentId',
+            params,
+            search: { ...filterSearch(result.value.filters), recentOffset: offset }
+          })
+        }
         opponent={result.value}
         filterControls={{
           options,
+          onRetry: () => void router.invalidate(),
           onApply: (next) =>
             void navigate({
               to: '/players/$playerId/opponents/$opponentId',

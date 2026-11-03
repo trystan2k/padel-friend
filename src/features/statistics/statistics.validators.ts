@@ -108,6 +108,7 @@ export function validateStatisticsRankHistoryInput(input: unknown): StatisticsRa
 }
 
 export type StatisticsHistoryInput = {
+  subjectPlayerId?: string | null;
   filters: StatisticsFilters;
   limit: number;
   cursor: string | null;
@@ -155,7 +156,7 @@ export function decodeHistoryCursor(cursor: string): DecodedHistoryCursor {
 
 /** History query: the shared filter set plus a page size and an opaque keyset cursor. */
 export function validateStatisticsHistoryInput(input: unknown): StatisticsHistoryInput {
-  const data = record(input ?? {}, [...FILTER_KEYS, 'limit', 'cursor']);
+  const data = record(input ?? {}, [...FILTER_KEYS, 'limit', 'cursor', 'subjectPlayerId']);
   const filters = validateStatisticsFilters(
     Object.fromEntries(FILTER_KEYS.filter((key) => key in data).map((key) => [key, data[key]]))
   );
@@ -167,6 +168,7 @@ export function validateStatisticsHistoryInput(input: unknown): StatisticsHistor
   return {
     filters,
     limit: validateStatisticsPageSize(data.limit),
+    subjectPlayerId: optionalUuid(data.subjectPlayerId),
     cursor: typeof cursor === 'string' ? cursor : null
   };
 }
@@ -194,15 +196,24 @@ export type StatisticsRelationshipInput = {
   playerId: string;
   otherId: string;
   filters: StatisticsFilters;
+  recentOffset?: number;
 };
 
 /** Pair and head-to-head input: two distinct players plus the shared filters. */
 export function validateStatisticsRelationshipInput(input: unknown): StatisticsRelationshipInput {
-  const data = record(input, ['playerId', 'otherId', ...FILTER_KEYS]);
+  const data = record(input, ['playerId', 'otherId', ...FILTER_KEYS, 'recentOffset']);
   const playerId = optionalUuid(data.playerId);
   const otherId = optionalUuid(data.otherId);
   if (playerId === null || otherId === null || playerId === otherId) return invalid();
-  return { playerId, otherId, filters: validateStatisticsFilters(pickFilters(data)) };
+  const recentOffset = data.recentOffset ?? 0;
+  if (
+    typeof recentOffset !== 'number' ||
+    !Number.isSafeInteger(recentOffset) ||
+    recentOffset < 0 ||
+    recentOffset > 2147483647
+  )
+    return invalid();
+  return { playerId, otherId, filters: validateStatisticsFilters(pickFilters(data)), recentOffset };
 }
 
 export type StatisticsRelationshipListInput = {

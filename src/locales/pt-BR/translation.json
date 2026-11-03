@@ -1771,7 +1771,7 @@
     "filters": {
       "title": "Filtros de estatísticas",
       "community": "Comunidade",
-      "allCommunities": "Todas as minhas comunidades",
+      "allCommunities": "Todas as comunidades",
       "league": "Liga",
       "noLeague": "Sem Liga",
       "activeLeague": "Liga ativa: {{name}}",
@@ -1907,6 +1907,8 @@
       "leagueMatches": "{{name}}: {{matches}} partidas",
       "noRecent": "Nenhuma partida nesta seleção.",
       "recentCaption": "Partidas mais recentes, da mais nova para a mais antiga",
+      "showing": "Mostrando {{shown}} de {{total}}",
+      "showMore": "Mostrar mais",
       "noRating": "Sem nível",
       "columns": {
         "date": "Data",
@@ -2086,6 +2088,12 @@
       "ratioOf": "{{numerator}} de {{denominator}} {{unit}}",
       "basedOn": "Com base em {{denominator}} {{unit}}",
       "ratingLagging": "Os números de nível ainda estão acompanhando as últimas partidas. Recarregue em instantes para ver o quadro completo.",
+      "recent": {
+        "title": "Partidas recentes",
+        "seeAll": "Ver todas",
+        "opponents": "vs {{names}}",
+        "noOpponents": "Adversários indisponíveis"
+      },
       "units": {
         "matches": "partidas",
         "sets": "sets",

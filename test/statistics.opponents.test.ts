@@ -171,6 +171,7 @@ describe('relationship readers', () => {
         args: {
           p_player_id: FOCAL,
           p_partner_id: OTHER,
+          p_recent_offset: 0,
           p_type: 'competitive',
           p_community_id: THIRD,
           p_from: '2030-01-01'
@@ -178,10 +179,15 @@ describe('relationship readers', () => {
       }
     ]);
     const opponent = fakeClient({ body: makeOpponent() });
-    await readOpponentStatistics(opponent.client, { playerId: FOCAL, otherId: OTHER, filters });
+    await readOpponentStatistics(opponent.client, {
+      playerId: FOCAL,
+      otherId: OTHER,
+      filters,
+      recentOffset: 10
+    });
     expect(opponent.calls[0]).toMatchObject({
       fn: 'get_opponent_statistics',
-      args: { p_player_id: FOCAL, p_opponent_id: OTHER, p_type: 'all' }
+      args: { p_player_id: FOCAL, p_opponent_id: OTHER, p_type: 'all', p_recent_offset: 10 }
     });
     const partners = fakeClient({ body: makePartnerRecords() });
     await readPartnerRecords(partners.client, { playerId: FOCAL, filters, limit: 20, offset: 0 });

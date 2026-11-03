@@ -21,7 +21,9 @@ const TABLES = [
   'statistics_rank_transitions',
   'statistics_league_positions',
   'statistics_rank_control',
-  'statistics_rank_dirty'
+  'statistics_rank_dirty',
+  'statistics_participant_lifecycle',
+  'statistics_lifecycle_dirty'
 ] as const;
 const INTERNAL_FUNCTIONS = [
   'statistics_nil_uuid()',
@@ -60,12 +62,17 @@ const INTERNAL_FUNCTIONS = [
   'statistics_rank_rebuild(uuid)',
   'statistics_rank_value(integer,text,timestamp with time zone,uuid,uuid,integer,bigint)',
   'statistics_rank_metric(text,jsonb,text,numeric,numeric,integer)',
-  'statistics_player_rank_block(uuid,uuid,uuid)'
+  'statistics_player_rank_block(uuid,uuid,uuid)',
+  'statistics_lifecycle_refresh_event(uuid)',
+  'statistics_lifecycle_mark()',
+  'statistics_lifecycle_drain()',
+  'statistics_lifecycle_rebuild(uuid)'
 ];
 const INDEXES = [
   'statistics_group_facts_community_chronology',
   'statistics_group_facts_league_chronology',
   'statistics_group_facts_matchup',
+  'statistics_participant_lifecycle_user_sort',
   'statistics_participant_facts_player_chronology',
   'statistics_participant_facts_community_player',
   'statistics_pair_facts_low',
@@ -226,9 +233,15 @@ describe.skipIf(!environment.env)('Statistics schema', { timeout: 120_000 }, () 
     expect(rows.map((row) => row['indexname']).sort(byName)).toEqual([...INDEXES].sort(byName));
   });
 
-  it('attaches no statistics trigger to a rating, result or League source (no AFTER INSERT race with rating)', async () => {
-    // Rating/League/result hooks are explicit finalizer calls. Membership has no single write seam, so
-    // its marker trigger only appends a mark; the deferred drain lives on the statistics' own mark table.
+  it('only attaches deferred marker triggers to sources without rating projection work', async () => {
+    // Membership and lifecycle source triggers append dirty markers only. Deferred drains hold the
+    // statistics lock, never acquire a rating lock or project rating facts.
+    const [marker] = await sqlRows(
+      "select pg_get_functiondef('public.statistics_lifecycle_mark()'::regprocedure) as definition"
+    );
+    expect(String(marker?.['definition'])).not.toMatch(
+      /lock_global_rating|statistics_project_source|player_rating/
+    );
     expect(
       await sqlRows(
         `select c.relname, t.tgname from pg_trigger t join pg_proc p on p.oid = t.tgfoid join pg_class c on c.oid = t.tgrelid
@@ -236,6 +249,10 @@ describe.skipIf(!environment.env)('Statistics schema', { timeout: 120_000 }, () 
       )
     ).toEqual([
       { relname: 'community_members', tgname: 'statistics_rank_membership_mark' },
+      { relname: 'match_event_registrations', tgname: 'statistics_lifecycle_registration_mark' },
+      { relname: 'match_event_result_proposals', tgname: 'statistics_lifecycle_proposal_mark' },
+      { relname: 'match_events', tgname: 'statistics_lifecycle_event_mark' },
+      { relname: 'statistics_lifecycle_dirty', tgname: 'statistics_lifecycle_dirty_drain' },
       { relname: 'statistics_rank_dirty', tgname: 'statistics_rank_dirty_drain' }
     ]);
   });

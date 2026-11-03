@@ -2,11 +2,8 @@ import * as stylex from '@stylexjs/stylex';
 import { Link } from '@tanstack/react-router';
 import { useTranslation } from 'react-i18next';
 import { FilterContext } from './PlayerStatistics';
-import {
-  RecentMatches,
-  RelationshipSections,
-  useRelationshipFormat
-} from './RelationshipRecordView';
+import { RelationshipMeetings } from './RelationshipMeetings';
+import { RelationshipSections, useRelationshipFormat } from './RelationshipRecordView';
 import type { OpponentStatistics as Opponent } from './statistics-relationship-contracts';
 import { playerStyles as s } from './statistics-player.styles';
 import { filterSearch } from './statistics-search';
@@ -16,10 +13,14 @@ import { StatisticsFilterSection, type FilterControls } from './StatisticsFilter
 /** Head-to-head, always from the focal player's point of view. */
 export function OpponentStatistics({
   opponent,
-  filterControls
+  filterControls,
+  recentOffset = 0,
+  onRecentOffsetChange
 }: {
   opponent: Opponent;
   filterControls?: FilterControls;
+  recentOffset?: number;
+  onRecentOffsetChange?: (offset: number) => void;
 }) {
   const { t } = useTranslation();
   const f = useRelationshipFormat();
@@ -62,7 +63,13 @@ export function OpponentStatistics({
         kind="opponent"
         upsetThreshold={opponent.config.thresholds.upset_expected_score_max}
       />
-      <RecentMatches matches={opponent.recent} showRating />
+      <RelationshipMeetings
+        key={JSON.stringify([opponent.focalId, opponent.otherId, opponent.filters])}
+        subject={opponent}
+        kind="opponent"
+        offset={recentOffset}
+        onOffsetChange={onRecentOffsetChange}
+      />
     </main>
   );
 }

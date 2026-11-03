@@ -69,11 +69,13 @@ create function public.list_statistics_history(
   p_limit integer default 20,
   p_cursor_at timestamptz default null,
   p_cursor_key text default null,
-  p_revision bigint default null
+  p_revision bigint default null,
+  p_subject_player_id uuid default null
 ) returns jsonb
 language plpgsql stable security definer set search_path = '' as $$
 declare
   v_viewer uuid;
+  v_subject uuid;
   v_revision bigint;
   v_from timestamptz;
   v_until timestamptz;
@@ -84,6 +86,15 @@ declare
 begin
   perform public.assert_actor_not_provisional();
   v_viewer := public.statistics_read_actor();
+  v_subject := coalesce(p_subject_player_id, v_viewer);
+  if v_subject <> v_viewer and (p_community_id is null or not exists (
+    select 1 from public.community_members a join public.community_members b on a.community_id = b.community_id
+     where a.community_id = p_community_id and a.user_id = v_viewer and b.user_id = v_subject
+       and a.status = 'active' and b.status = 'active'
+       and a.valid_from <= now() and (a.valid_until is null or a.valid_until > now())
+       and b.valid_from <= now() and (b.valid_until is null or b.valid_until > now()))) then
+    raise exception using errcode = 'P0002', message = 'STATISTICS_NOT_FOUND';
+  end if;
   if p_type not in ('all', 'competitive', 'friendly')
     or p_limit is null or p_limit < 1
     or (p_cursor_at is null) <> (p_cursor_key is null)
@@ -112,7 +123,7 @@ begin
         g.classification, g.sets, g.sets_a, g.sets_b, g.games_a, g.games_b, pf.rating_delta
       from public.statistics_participant_facts pf
       join public.statistics_group_facts g on g.game_group_id = pf.game_group_id
-     where pf.user_id = v_viewer
+     where pf.user_id = v_subject
        and (p_community_id is null or g.community_id = p_community_id)
        and (p_type = 'all' or g.match_type = p_type)
        and (p_league_id is null or (g.league_id = p_league_id and g.league_eligible))
@@ -120,78 +131,24 @@ begin
        and (p_cursor_at is null or (g.played_at, g.game_group_id) < (p_cursor_at, p_cursor_key::uuid))
      order by g.played_at desc, g.game_group_id desc
      limit v_limit
-  ), viewer_events as materialized (
-    -- Bounded by the viewer's own registrations (user_id, match_event_id index), so the lifecycle
-    -- source never walks unrelated community event history.
-    select distinct r.match_event_id as id
-      from public.match_event_registrations r
-     where r.user_id = v_viewer and r.lifecycle = 'accepted' and p_league_id is null
   ), lifecycle as materialized (
-    -- The ordered scan runs over the viewer-bounded event set only; the keyset predicate and the
-    -- page limit then advance within that set.
-    select x.*
-      from (
-        select me.id, me.starts_at, me.status, me.event_type, me.community_id, me.league_id
-          from viewer_events ve
-          join public.match_events me on me.id = ve.id
-         where (p_community_id is null or me.community_id = p_community_id)
-           and (p_type = 'all' or me.event_type::text = p_type)
-           and (v_from is null or me.starts_at >= v_from)
-           and (v_until is null or me.starts_at < v_until)
-           -- Proposal ids, not event ids, break ties for pending groups.
-           and (p_cursor_at is null or me.starts_at <= p_cursor_at)
-         order by me.starts_at desc, me.id desc
-         offset 0
-      ) e
-      cross join lateral (
-        select y.* from (
-          select 'g:' || p.id::text as key, p.id as stable_id, 'group'::text as kind,
-              e.id as event_id, p.group_number::bigint as group_number, p.id as gid, p.status,
-              e.event_type::text as match_type, e.community_id, e.league_id, e.starts_at as sort_at,
-              v.played_at_utc as played_at,
-              case when v.teams -> 'team_a' ? v_viewer::text then 'team_a' else 'team_b' end as viewer_side,
-              null::text as classification, null::jsonb as sets, null::integer as sets_a,
-              null::integer as sets_b, null::integer as games_a, null::integer as games_b, null::numeric as rating_delta
-            from public.match_event_registrations r
-            join public.match_event_result_proposals p on p.match_event_id = r.match_event_id and p.status in ('pending', 'disputed')
-            join public.match_event_result_proposal_versions v on v.proposal_id = p.id and v.version = p.active_version
-           where r.match_event_id = e.id and r.user_id = v_viewer and r.lifecycle = 'accepted'
-             and ((v.teams -> 'team_a') ? v_viewer::text or (v.teams -> 'team_b') ? v_viewer::text)
-             and (p_cursor_at is null or (e.starts_at, p.id) < (p_cursor_at, p_cursor_key::uuid))
-          union all
-          select 'e:' || e.id::text || ':' || ro.grp::text, e.id, 'event'::text, e.id, ro.grp,
-              null::uuid, 'awaiting_result'::text, e.event_type::text, e.community_id, e.league_id,
-              e.starts_at, null::timestamptz, null::text, null::text, null::jsonb,
-              null::integer, null::integer, null::integer, null::integer, null::numeric
-            from public.match_event_registrations r
-            cross join lateral (
-              select (count(*) - 1) / 4 + 1 as grp
-                from public.match_event_registrations rr
-               where rr.match_event_id = e.id and rr.lifecycle = 'accepted' and rr.cancelled_at is null
-                 and rr.participation_status = 'playing'
-                 and (rr.accepted_order, rr.id) <= (r.accepted_order, r.id)
-            ) ro
-           where r.match_event_id = e.id and r.user_id = v_viewer and r.lifecycle = 'accepted'
-             and r.cancelled_at is null and r.participation_status = 'playing'
-             and e.status = 'open' and e.starts_at <= now()
-             and not exists (select 1 from public.match_event_result_proposals p
-                              where p.match_event_id = e.id and p.group_number = ro.grp)
-             and (p_cursor_at is null or (e.starts_at, e.id) < (p_cursor_at, p_cursor_key::uuid))
-          union all
-          select 'e:' || e.id::text || ':0', e.id, 'event'::text, e.id, null::bigint, null::uuid,
-              case when e.status = 'cancelled' then 'canceled' else 'reserve_not_playing' end,
-              e.event_type::text, e.community_id, e.league_id, e.starts_at, null::timestamptz, null::text,
-              null::text, null::jsonb, null::integer, null::integer, null::integer, null::integer, null::numeric
-            from public.match_event_registrations r
-           where r.match_event_id = e.id and r.user_id = v_viewer and r.lifecycle = 'accepted'
-             and (e.status = 'cancelled' or (e.status = 'open' and r.participation_status = 'reserve_not_playing'
-                  and r.cancelled_at is null and e.starts_at <= now()))
-             and (p_cursor_at is null or (e.starts_at, e.id) < (p_cursor_at, p_cursor_key::uuid))
-        ) y
-        offset 0
-      ) x
-     order by e.starts_at desc, x.stable_id desc
-     limit v_limit
+    select case when l.entry_kind = 'group' then 'g:' || l.stable_id::text
+                else 'e:' || l.event_id::text || ':' || coalesce(l.group_number, 0)::text end as key,
+      l.stable_id, l.entry_kind as kind, l.event_id, l.group_number,
+      case when l.entry_kind = 'group' then l.stable_id end as gid,
+      l.lifecycle_status as status, l.match_type, l.community_id, l.league_id,
+      l.sort_at, l.played_at, l.viewer_side, null::text as classification, null::jsonb as sets,
+      null::integer as sets_a, null::integer as sets_b, null::integer as games_a,
+      null::integer as games_b, null::numeric as rating_delta
+    from public.statistics_participant_lifecycle l
+    where l.user_id = v_subject and p_league_id is null
+      and (p_community_id is null or l.community_id = p_community_id)
+      and (p_type = 'all' or l.match_type = p_type)
+      and (v_from is null or l.sort_at >= v_from) and (v_until is null or l.sort_at < v_until)
+      and (l.lifecycle_status not in ('awaiting_result', 'reserve_not_playing') or l.sort_at <= now())
+      and (p_cursor_at is null or (l.sort_at, l.stable_id) < (p_cursor_at, p_cursor_key::uuid))
+    order by l.sort_at desc, l.stable_id desc
+    limit v_limit
   ), paged as (
     select x.*, pg_catalog.row_number() over (order by x.sort_at desc, x.stable_id desc) as rn
       from (select * from a union all select * from lifecycle) x
@@ -207,6 +164,11 @@ begin
         'sort_at', public.statistics_utc_text(q.sort_at),
         'played_at', case when q.played_at is null then null else public.statistics_utc_text(q.played_at) end,
         'viewer_side', q.viewer_side,
+        'opponents', coalesce((select pg_catalog.jsonb_agg(pr.display_name order by u.ordinality)
+          from public.statistics_group_facts gf
+          cross join lateral pg_catalog.unnest(case when q.viewer_side = 'team_a' then gf.team_b_players else gf.team_a_players end) with ordinality as u(id, ordinality)
+          left join public.player_profiles pr on pr.user_id = u.id
+          where gf.game_group_id = q.gid and q.status in ('played', 'incomplete')), '[]'::jsonb),
         'outcome', case when q.classification in ('team_a', 'team_b')
                         then case when q.classification = q.viewer_side then 'win' else 'loss' end
                         when q.classification = 'draw' then 'draw' end,
@@ -377,9 +339,9 @@ end $$;
 
 revoke all on function public.statistics_read_actor(), public.statistics_assert_rating_aligned(),
   public.statistics_can_view_event(uuid, uuid) from public, anon, authenticated, service_role;
-revoke all on function public.list_statistics_history(uuid, uuid, text, date, date, integer, timestamptz, text, bigint),
+revoke all on function public.list_statistics_history(uuid, uuid, text, date, date, integer, timestamptz, text, bigint, uuid),
   public.get_statistics_group_detail(uuid, uuid) from public, anon, service_role;
-grant execute on function public.list_statistics_history(uuid, uuid, text, date, date, integer, timestamptz, text, bigint),
+grant execute on function public.list_statistics_history(uuid, uuid, text, date, date, integer, timestamptz, text, bigint, uuid),
   public.get_statistics_group_detail(uuid, uuid) to authenticated;
 
 commit;

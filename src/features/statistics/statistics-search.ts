@@ -14,6 +14,23 @@ export function parseFilterSearch(search: Record<string, unknown>): FilterSearch
   );
 }
 
+/** Relationship pages retain a page boundary in the URL; invalid offsets reset safely. */
+export function parseRelationshipSearch(
+  search: Record<string, unknown>
+): FilterSearch & { recentOffset?: number } {
+  const offset = search.recentOffset;
+  return {
+    ...parseFilterSearch(search),
+    ...(typeof offset === 'number' &&
+    Number.isSafeInteger(offset) &&
+    offset > 0 &&
+    offset <= 2147483640 &&
+    offset % 20 === 0
+      ? { recentOffset: offset }
+      : {})
+  };
+}
+
 /** Normalized filters as route search, so player → pair → head-to-head links keep their scope. */
 export function filterSearch(filters: StatisticsFilters): FilterSearch {
   return parseFilterSearch({ ...filters, type: filters.type === 'all' ? null : filters.type });

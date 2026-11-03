@@ -46,6 +46,7 @@ export async function readStatisticsHistory(
       ...(input.filters.from ? { p_from: input.filters.from } : {}),
       ...(input.filters.through ? { p_through: input.filters.through } : {}),
       p_limit: input.limit,
+      ...(input.subjectPlayerId ? { p_subject_player_id: input.subjectPlayerId } : {}),
       ...(cursor
         ? { p_cursor_at: cursor.at, p_cursor_key: cursor.key, p_revision: cursor.revision }
         : {})

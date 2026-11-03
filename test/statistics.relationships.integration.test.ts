@@ -20,8 +20,8 @@ import { validateStatisticsFilters } from '../src/features/statistics/statistics
 
 const environment = localSupabaseEnv({ filePath: dotEnvPathFromImportMetaUrl(import.meta.url) });
 const FUNCTIONS = [
-  'get_pair_statistics(uuid,uuid,uuid,uuid,text,date,date)',
-  'get_opponent_statistics(uuid,uuid,uuid,uuid,text,date,date)',
+  'get_pair_statistics(uuid,uuid,uuid,uuid,text,date,date,integer)',
+  'get_opponent_statistics(uuid,uuid,uuid,uuid,text,date,date,integer)',
   'get_player_partner_records(uuid,uuid,uuid,text,date,date,integer,integer)',
   'get_player_opponent_records(uuid,uuid,uuid,text,date,date,integer,integer)'
 ];
@@ -663,6 +663,22 @@ describe.skipIf(!environment.env)(
         filters
       });
       expect(denied).toEqual({ status: 'error', code: 'STATISTICS_NOT_FOUND' });
+    });
+    it('applies meeting offsets and rejects negative values', async () => {
+      for (const [fn, second, field] of [
+        ['get_pair_statistics', b, 'p_partner_id'],
+        ['get_opponent_statistics', c, 'p_opponent_id']
+      ] as const) {
+        const args = { p_player_id: a.id, [field]: second.id, p_community_id: kit.communityId };
+        const first = await kit.rpc(a, fn, { ...args, p_recent_offset: 0 });
+        const next = await kit.rpc(a, fn, { ...args, p_recent_offset: 1 });
+        expect(first.error).toBeNull();
+        expect(next.error).toBeNull();
+        expect(asRecord(next.data)['recentOffset']).toBe(1);
+        expect(recentOf(asRecord(next.data))).toEqual(recentOf(asRecord(first.data)).slice(1));
+        const invalid = await kit.rpc(a, fn, { ...args, p_recent_offset: -1 });
+        expect(invalid.error?.message).toContain('STATISTICS_INVALID_INPUT');
+      }
     });
   }
 );

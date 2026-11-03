@@ -2796,6 +2796,22 @@ export type Database = {
           },
         ]
       }
+      statistics_lifecycle_dirty: {
+        Row: {
+          event_id: string
+          id: number
+        }
+        ComputedFields: never
+        Insert: {
+          event_id: string
+          id?: never
+        }
+        Update: {
+          event_id?: string
+          id?: never
+        }
+        Relationships: []
+      }
       statistics_opponent_facts: {
         Row: {
           community_id: string
@@ -3021,6 +3037,67 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "statistics_group_facts"
             referencedColumns: ["game_group_id"]
+          },
+        ]
+      }
+      statistics_participant_lifecycle: {
+        Row: {
+          community_id: string
+          entry_kind: string
+          event_id: string
+          group_number: number | null
+          league_id: string | null
+          lifecycle_status: string
+          match_type: string
+          played_at: string | null
+          sort_at: string
+          stable_id: string
+          user_id: string
+          viewer_side: string | null
+        }
+        ComputedFields: never
+        Insert: {
+          community_id: string
+          entry_kind: string
+          event_id: string
+          group_number?: number | null
+          league_id?: string | null
+          lifecycle_status: string
+          match_type: string
+          played_at?: string | null
+          sort_at: string
+          stable_id: string
+          user_id: string
+          viewer_side?: string | null
+        }
+        Update: {
+          community_id?: string
+          entry_kind?: string
+          event_id?: string
+          group_number?: number | null
+          league_id?: string | null
+          lifecycle_status?: string
+          match_type?: string
+          played_at?: string | null
+          sort_at?: string
+          stable_id?: string
+          user_id?: string
+          viewer_side?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "statistics_participant_lifecycle_community_id_fkey"
+            columns: ["community_id"]
+            isOneToOne: false
+            referencedRelation: "communities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "statistics_participant_lifecycle_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "match_events"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -3654,6 +3731,7 @@ export type Database = {
           p_league_id?: string
           p_opponent_id: string
           p_player_id: string
+          p_recent_offset?: number
           p_through?: string
           p_type?: string
         }
@@ -3666,6 +3744,7 @@ export type Database = {
           p_league_id?: string
           p_partner_id: string
           p_player_id: string
+          p_recent_offset?: number
           p_through?: string
           p_type?: string
         }
@@ -3967,6 +4046,7 @@ export type Database = {
           p_league_id?: string
           p_limit?: number
           p_revision?: number
+          p_subject_player_id?: string
           p_through?: string
           p_type?: string
         }
@@ -4607,6 +4687,8 @@ export type Database = {
         Args: { p_observed: number; p_required: number; p_value: Json }
         Returns: Json
       }
+      statistics_lifecycle_rebuild: { Args: { p_community_id?: string }; Returns: undefined }
+      statistics_lifecycle_refresh_event: { Args: { p_event_id: string }; Returns: undefined }
       statistics_lock: { Args: Record<PropertyKey, never>; Returns: undefined }
       statistics_matchup_id: {
         Args: { p_first_pair: string; p_second_pair: string }

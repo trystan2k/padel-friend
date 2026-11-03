@@ -216,7 +216,7 @@
           }
         }
       ],
-      "adaptation": "The unordered-pair label becomes the localized heading and subtitle; the frame's league-history text row is a list of leagues played together; recent matches are a data table with row links. The back affordance is a breadcrumb plus a Back to player statistics link carrying the active filters; the frame shows a chevron title.",
+      "adaptation": "The unordered-pair label becomes the localized heading and subtitle; the frame's league-history text row is a list of leagues played together; recent matches are a data table with row links and a Show more control when more pages exist. The back affordance is a breadcrumb plus a Back to player statistics link carrying the active filters; the frame shows a chevron title.",
       "budget": "pairStatistics"
     },
     "opponentStatistics": {
@@ -330,20 +330,20 @@
       "communityStatistics": 0.19
     },
     "perScreenRationale": {
-      "playerStatistics": "Measured residual 0.1559 plus margin (see measurementNote). Production lists every metric as label, value and help text where RN0yw shows three tiles and cards, so page height and row content differ by design; the compared region is the aligned top block only. Raster is cross-renderer and live-data sensitive; layout defects are caught by structural probes.",
+      "playerStatistics": "Measured residual 0.155019 plus margin (see measurementNote). Production lists every metric as label, value and help text where RN0yw shows three tiles and cards, so page height and row content differ by design; the compared region is the aligned top block only. Raster is cross-renderer and live-data sensitive; layout defects are caught by structural probes.",
       "filters": "Unmeasured ceiling (no raster comparison; structural probes only). Production uses native selects and date inputs with 44px targets, helper text and a reset action; m8Loju draws scope cards and a text row of type options.",
-      "pairStatistics": "Measured residual 0.1758 plus margin (see measurementNote). Live player names, a record table and a recent-matches table replace the frame's mock cards and chevron title; breadcrumb and back link are added.",
-      "opponentStatistics": "Measured residual 0.1724 plus margin (see measurementNote). Same live-data and table differences as the pair surface, plus the rating column and opponent level evidence.",
+      "pairStatistics": "Measured residual 0.178239 plus margin (see measurementNote). Live player names, a record table and a recent-matches table replace the frame's mock cards and chevron title; breadcrumb and back link are added.",
+      "opponentStatistics": "Measured residual 0.174678 plus margin (see measurementNote). Same live-data and table differences as the pair surface, plus the rating column and opponent level evidence.",
       "matchHistory": "Highest ceiling: no dedicated frame, the reference is component and pattern truth only. Rows follow live status, outcome and rating data; screenshot regression against first-implementation captures is the primary raster check.",
-      "groupDetail": "Measured residual 0.1539 plus margin (see measurementNote). Captured against the friendly 3-set fixture (g3) because BcpYH is a friendly match with three set lines; production still renders more sections than BcpYH (outlook, meta facts, audit timeline) and live player names and scores.",
-      "communityStatistics": "Measured residual 0.1546 plus margin (see measurementNote). Production renders filters, volume, leaders, pairings and weekly and monthly charts with data tables where o9iaC1 shows three cards and a text row."
+      "groupDetail": "Measured residual 0.153934 plus margin (see measurementNote). Captured against the friendly 3-set fixture (g3) because BcpYH is a friendly match with three set lines; production still renders more sections than BcpYH (outlook, meta facts, audit timeline) and live player names and scores.",
+      "communityStatistics": "Measured residual 0.154603 plus margin (see measurementNote). Production renders filters, volume, leaders, pairings and weekly and monthly charts with data tables where o9iaC1 shows three cards and a text row."
     },
     "measuredResiduals": {
-      "playerStatistics": 0.1559,
-      "pairStatistics": 0.1758,
-      "opponentStatistics": 0.1724,
-      "communityStatistics": 0.1546,
-      "groupDetail": 0.1539
+      "playerStatistics": 0.155019,
+      "pairStatistics": 0.178239,
+      "opponentStatistics": 0.174678,
+      "communityStatistics": 0.154603,
+      "groupDetail": 0.153934
     },
     "previousMeasuredResiduals": {
       "note": "U8 captures taken before the F1/F7-F9/F11 restructuring to the Pencil frames; kept for audit. Residuals rose for player/pair/opponent because the restructured top blocks now draw filter sections and cards that the frames show in a different vertical rhythm and with live data; groupDetail fell because the capture now uses a friendly 3-set fixture like BcpYH instead of a competitive 2-set one.",
@@ -353,22 +353,23 @@
       "communityStatistics": 0.1546,
       "groupDetail": 0.2656
     },
-    "measurementNote": "Measured in U8 by e2e/statistics-visual.spec.ts at 390x844 CSS px, light, en, deviceScaleFactor 1, top block of each route against the same region of the 2x Pencil PNG downsampled by 2 (YIQ perceptual threshold 0.1, changed-pixel ratio). Budget = measured residual + 0.03 cross-renderer margin, rounded up to 0.01. Residuals are repeatable to 3 decimals across runs. Re-measured after the Pencil-frame restructuring (see previousMeasuredResiduals); the groupDetail capture uses the friendly fixture g3 (friendly, 3 set lines, draw with an unfinished third set) to match BcpYH's match type; BcpYH shows a finished 2-1 win, so the g3 outcome label, rating-effect copy (no rating impact) and set-state badges differ by data, not by structure. They are dominated by live names, numbers and the extra production sections the mock frames do not draw, not by layout: layout is certified separately by structural probes over 3 viewports x 2 themes x 3 locales. filters and matchHistory keep their declared ceilings because no raster comparison exists for them: filters render inside the community route (probed structurally) and the history list has no dedicated Pencil frame. The error state is covered by the player-error-state.png screenshot regression (maxDiffPixelRatio 0.002).",
+    "measurementNote": "Re-measured for F10 iteration 2 by e2e/statistics-visual.spec.ts at 390x844 CSS px, light, en, deviceScaleFactor 1, top block of each route against the same region of the 2x Pencil PNG downsampled by 2 (YIQ perceptual threshold 0.1, changed-pixel ratio). Budget = measured residual + 0.03 cross-renderer margin, rounded up to 0.01. Residuals are repeatable to 3 decimals across runs. Re-measured after the Pencil-frame restructuring (see previousMeasuredResiduals); the groupDetail capture uses the friendly fixture g3 (friendly, 3 set lines, draw with an unfinished third set) to match BcpYH's match type; BcpYH shows a finished 2-1 win, so the g3 outcome label, rating-effect copy (no rating impact) and set-state badges differ by data, not by structure. They are dominated by live names, numbers and the extra production sections the mock frames do not draw, not by layout: layout is certified separately by structural probes over 3 viewports x 2 themes x 3 locales. filters and matchHistory keep their declared ceilings because no raster comparison exists for them: filters render inside the community route (probed structurally) and the history list has no dedicated Pencil frame. The error state is covered by the player-error-state.png screenshot regression (maxDiffPixelRatio 0.002).",
     "honesty": "Budgets for playerStatistics, pairStatistics, opponentStatistics, communityStatistics and groupDetail are measured values plus a small margin. filters and matchHistory are unmeasured ceilings. No budget may be raised to hide a structural defect: required regions, their order and element counts are asserted separately from the raster by the composition probes (see compositionProbes), so a missing or reordered frame region fails regardless of budget. Three player/pair/opponent budgets rose after the restructuring; the rise is raster rhythm and live-data difference, not a structural gap, and every region the frames require is probed. Documented adaptations (regions the frames draw but production does not) are listed in compositionProbes.adaptations."
   },
   "compositionProbes": {
     "status": "asserted-f10",
-    "method": "e2e/statistics-visual.spec.ts 'composition follows the Pencil frames' runs per locale (en, pt-BR, es) at 390x844 light. DOM assertions over main: each region (stable section heading id or landmark) must exist, must follow the previous region in document order, and counted elements must match exactly. No pixels.",
+    "method": "e2e/statistics-visual.spec.ts 'composition follows the Pencil frames' runs per locale (en, pt-BR, es) at 320 and 390 CSS px, light. DOM assertions check region presence, counts, visibility and horizontal containment; document order and live top coordinates check region ordering, while top-level section rectangles check overlap. Player highlight tiles assert two columns at 320 and three at 390. An additional finalized-meetings fixture exposes conditional pair and opponent Show more controls for visibility, 44px minimum and containment checks. These geometry checks do not depend on raster budgets.",
     "surfaces": {
       "playerStatistics": {
         "frame": "RN0yw",
         "order": [
           "title (h1 x1)",
           "filter context badges",
-          "filters section",
+          "filters section with community selector",
           "highlights: 3 tiles (win rate, set diff, game diff)",
           "W-L-D strip",
           "form",
+          "recent matches",
           "matches",
           "sets and games",
           "rating and rank",
@@ -383,14 +384,14 @@
           "breadcrumb",
           "title (h1 x1)",
           "filter context badges",
-          "filters section",
+          "filters section with community selector",
           "compact headline card (no highlight tiles)",
           "record",
           "sets and games",
           "streaks",
           "rating evidence",
           "leagues played together",
-          "recent matches"
+          "recent matches with conditional Show more control"
         ]
       },
       "opponentStatistics": {
@@ -399,12 +400,12 @@
           "breadcrumb",
           "title (h1 x1)",
           "filter context badges",
-          "filters section",
+          "filters section with community selector",
           "head-to-head record",
           "sets and games",
           "streaks",
           "rating evidence",
-          "recent meetings (no pair-only league region)"
+          "recent meetings with conditional Show more control (no pair-only league region)"
         ]
       },
       "communityStatistics": {
@@ -434,9 +435,9 @@
       }
     },
     "adaptations": {
-      "playerStatistics": "RN0yw draws a Recent-matches summary card and a Partner-insight card on the home screen. Production has no Recent-matches summary here: the payload carries no recent-matches reader for the player surface (the paginated list is the separate Match history screen), and partner records live in the records section. The frame's 'Open N matches' button is not drawn for the same reason. Production keeps the complete metric inventory below the frame's top block.",
-      "pairStatistics": "GrkSH draws a pair-match-history button (aaQlF). Production shows the Recent matches table with per-row Result details links instead of a single button, because the payload carries the recent rows. The frame's chevron title becomes breadcrumb plus back link.",
-      "opponentStatistics": "khmeK draws an 'Open match history' button (rsfQx). Production shows the Recent meetings table with per-row links instead. No toughest-opponent label (frame note).",
+      "playerStatistics": "RN0yw draws a Partner-insight card on the home screen; production places partner records in the records section. Production keeps the complete metric inventory below the frame's top block.",
+      "pairStatistics": "GrkSH draws a pair-match-history button (aaQlF). Production shows per-row Result details links. The frame's chevron title becomes breadcrumb plus back link.",
+      "opponentStatistics": "khmeK draws an 'Open match history' button (rsfQx). Production shows per-row links. No toughest-opponent label (frame note).",
       "communityStatistics": "o9iaC1 draws activity by month as a text row; production draws weekly and monthly SVG charts with text equivalents and data tables.",
       "groupDetail": "BcpYH draws a match-impact note card and a result-verification chip. Production folds the impact note into the players section's rating-state line and renders confirmation as its own section; it also adds a pre-match outlook, meta facts and an audit timeline that the frame does not draw. BcpYH's 'Open details' arrow and mode label are app-shell/design notes."
     }

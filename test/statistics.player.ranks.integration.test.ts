@@ -468,7 +468,9 @@ describe.skipIf(!environment.env)('player statistics rank history', { timeout: 6
         "select league_id, community_id, 2, 'repair', 'published', minimum_matches_for_final_award, period_start_at, effective_end_at, included_confirmation_ids, " +
         "(select pg_catalog.jsonb_agg(case when x.entry ->> 'user_id' = " +
         T(id(0)) +
-        " then pg_catalog.jsonb_set(x.entry, '{position}', '4') else x.entry end) from pg_catalog.jsonb_array_elements(entries) x(entry)) " +
+        " then pg_catalog.jsonb_set(x.entry, '{position}', '4') else x.entry end) from pg_catalog.jsonb_array_elements(entries) x(entry) where x.entry ->> 'user_id' <> " +
+        T(id(1)) +
+        ') ' +
         'from public.league_standings_snapshots where league_id = ' +
         T(leagueId) +
         ' and standings_version = 1; ' +
@@ -496,6 +498,10 @@ describe.skipIf(!environment.env)('player statistics rank history', { timeout: 6
         }
       },
       activeLeaguePosition: { state: 'ready', value: { position: 4, standingsVersion: 2 } }
+    });
+    expect(await rank(1, { p_league_id: leagueId })).toMatchObject({
+      bestLeaguePosition: { best: { state: 'ready', value: { position: 1, standingsVersion: 1 } } },
+      activeLeaguePosition: { state: 'insufficient', value: null, reason: 'not_in_league' }
     });
   });
 

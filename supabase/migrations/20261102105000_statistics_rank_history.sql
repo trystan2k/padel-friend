@@ -497,7 +497,9 @@ begin
     elsif v_league.status = 'closed' then
       select * into v_pos from public.statistics_league_positions lp
        where lp.league_id = v_league.id and lp.player_id = p_player_id
-       order by lp.standings_version desc limit 1;
+         and lp.standings_version = (select pg_catalog.max(s.standings_version)
+           from public.league_standings_snapshots s where s.league_id = v_league.id)
+       limit 1;
       v_league_active := case
         when found then public.statistics_rank_metric('ready', public.statistics_rank_value(
             v_pos.league_position, v_pos.basis, v_pos.published_at, v_pos.community_id, v_pos.league_id,

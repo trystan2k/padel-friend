@@ -70,6 +70,7 @@ describe.each(relationship)('%s server boundary', (_name, serverFn, reader) => {
     expect(reader).toHaveBeenCalledWith(client, {
       playerId: FOCAL,
       otherId: OTHER,
+      recentOffset: 0,
       filters: { communityId: OTHER, leagueId: null, type: 'friendly', from: null, through: null }
     });
   });

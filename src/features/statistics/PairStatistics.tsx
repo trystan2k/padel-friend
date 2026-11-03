@@ -3,11 +3,8 @@ import { Link } from '@tanstack/react-router';
 import { useTranslation } from 'react-i18next';
 import { SurfaceCard } from '../../components/ui/SurfaceCard';
 import { FilterContext } from './PlayerStatistics';
-import {
-  RecentMatches,
-  RelationshipSections,
-  useRelationshipFormat
-} from './RelationshipRecordView';
+import { RelationshipMeetings } from './RelationshipMeetings';
+import { RelationshipSections, useRelationshipFormat } from './RelationshipRecordView';
 import type { PairStatistics as Pair } from './statistics-relationship-contracts';
 import { playerStyles as s } from './statistics-player.styles';
 import { filterSearch } from './statistics-search';
@@ -55,10 +52,14 @@ function PairSummary({ pair }: { pair: Pair }) {
 /** The canonical pair, shown from the focal player's route so the way back keeps its context. */
 export function PairStatistics({
   pair,
-  filterControls
+  filterControls,
+  recentOffset = 0,
+  onRecentOffsetChange
 }: {
   pair: Pair;
   filterControls?: FilterControls;
+  recentOffset?: number;
+  onRecentOffsetChange?: (offset: number) => void;
 }) {
   const { t } = useTranslation();
   const f = useRelationshipFormat();
@@ -101,7 +102,13 @@ export function PairStatistics({
         kind="pair"
         upsetThreshold={pair.config.thresholds.upset_expected_score_max}
       />
-      <RecentMatches matches={pair.recent} showRating={false} />
+      <RelationshipMeetings
+        key={JSON.stringify([pair.focalId, pair.otherId, pair.filters])}
+        subject={pair}
+        kind="pair"
+        offset={recentOffset}
+        onOffsetChange={onRecentOffsetChange}
+      />
     </main>
   );
 }

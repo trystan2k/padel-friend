@@ -26,6 +26,7 @@ describe('relationship input validation', () => {
     ).toEqual({
       playerId: FOCAL,
       otherId: OTHER,
+      recentOffset: 0,
       filters: {
         communityId: FOCAL,
         leagueId: null,

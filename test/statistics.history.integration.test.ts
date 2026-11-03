@@ -135,6 +135,32 @@ describe.skipIf(!environment.env)('Statistics history readers', { timeout: 300_0
     await kit.cleanup();
   });
 
+  it('reads the authorized subject rather than the caller and denies outsiders', async () => {
+    const other = await history(P(0), {
+      p_community_id: kit.communityId,
+      p_subject_player_id: P(2).id
+    });
+    expect(byKey(other.items).get(gKey('win'))).toMatchObject({
+      viewer_side: 'team_b',
+      outcome: 'loss',
+      opponents: ['Ranked Player 1', 'Ranked Player 2']
+    });
+    const reserve = await history(P(0), {
+      p_community_id: kit.communityId,
+      p_subject_player_id: P(7).id
+    });
+    expect(byKey(reserve.items).get(`e:${events.reserve}:0`)?.status).toBe('reserve_not_playing');
+    expect(byKey(reserve.items).has(gKey('win'))).toBe(false);
+    const outsider = await kit.actor();
+    const denied = await outsider.client.rpc('list_statistics_history', {
+      p_community_id: kit.communityId,
+      p_subject_player_id: P(2).id
+    });
+    expect(denied.error?.message).toContain('STATISTICS_NOT_FOUND');
+    const all = await P(0).client.rpc('list_statistics_history', { p_subject_player_id: P(2).id });
+    expect(all.error?.message).toContain('STATISTICS_NOT_FOUND');
+  });
+
   it('shows every lifecycle state once, separate from the match type', async () => {
     const page = await history();
     const items = byKey(page.items);

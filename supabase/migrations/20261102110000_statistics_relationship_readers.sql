@@ -176,12 +176,13 @@ create function public.get_pair_statistics(
   p_league_id uuid default null,
   p_type text default 'all',
   p_from date default null,
-  p_through date default null
+  p_through date default null,
+  p_recent_offset integer default 0
 ) returns jsonb language plpgsql stable security definer set search_path = '' as $$
 declare
   v_ctx jsonb; v_pair uuid; v_scope text; v_scope_id uuid; v_config jsonb;
 begin
-  if p_partner_id is null then
+  if p_partner_id is null or p_recent_offset is null or p_recent_offset < 0 then
     raise exception using errcode = '22023', message = 'STATISTICS_INVALID_INPUT';
   end if;
   v_ctx := public.statistics_relationship_prepare(p_player_id, p_partner_id, p_community_id, p_league_id,
@@ -196,6 +197,7 @@ begin
       from (values (p_player_id), (p_partner_id)) x(id)),
     'record', public.statistics_relationship_record('pair', v_pair, public.statistics_nil_uuid(), v_scope,
       v_scope_id, p_type, p_from, p_through, v_config),
+    'recentOffset', p_recent_offset,
     'recent', coalesce((select pg_catalog.jsonb_agg(pg_catalog.jsonb_build_object(
         'groupId', r.game_group_id, 'eventId', r.match_event_id,
         'playedAt', public.statistics_utc_text(r.played_at), 'matchType', r.match_type,
@@ -217,7 +219,7 @@ begin
                 or (v_scope = 'league' and pf.league_id = v_scope_id and pf.league_eligible))
            and (p_type = 'all' or pf.match_type = p_type)
            and (p_from is null or pf.played_day >= p_from) and (p_through is null or pf.played_day <= p_through)
-         order by pf.played_at desc, pf.game_group_id desc limit 20
+         order by pf.played_at desc, pf.game_group_id desc limit 20 offset p_recent_offset
       ) r), '[]'::jsonb));
 end $$;
 
@@ -229,12 +231,13 @@ create function public.get_opponent_statistics(
   p_league_id uuid default null,
   p_type text default 'all',
   p_from date default null,
-  p_through date default null
+  p_through date default null,
+  p_recent_offset integer default 0
 ) returns jsonb language plpgsql stable security definer set search_path = '' as $$
 declare
   v_ctx jsonb; v_scope text; v_scope_id uuid; v_config jsonb;
 begin
-  if p_opponent_id is null then
+  if p_opponent_id is null or p_recent_offset is null or p_recent_offset < 0 then
     raise exception using errcode = '22023', message = 'STATISTICS_INVALID_INPUT';
   end if;
   v_ctx := public.statistics_relationship_prepare(p_player_id, p_opponent_id, p_community_id, p_league_id,
@@ -248,6 +251,7 @@ begin
     'other', public.statistics_relationship_name(p_opponent_id),
     'record', public.statistics_relationship_record('opponent', p_player_id, p_opponent_id, v_scope,
       v_scope_id, p_type, p_from, p_through, v_config),
+    'recentOffset', p_recent_offset,
     'recent', coalesce((select pg_catalog.jsonb_agg(pg_catalog.jsonb_build_object(
         'groupId', r.game_group_id, 'eventId', r.match_event_id,
         'playedAt', public.statistics_utc_text(r.played_at), 'matchType', r.match_type,
@@ -274,7 +278,7 @@ begin
                 or (v_scope = 'league' and o.league_id = v_scope_id and o.league_eligible))
            and (p_type = 'all' or o.match_type = p_type)
            and (p_from is null or o.played_day >= p_from) and (p_through is null or o.played_day <= p_through)
-         order by o.played_at desc, o.game_group_id desc limit 20
+         order by o.played_at desc, o.game_group_id desc limit 20 offset p_recent_offset
       ) r), '[]'::jsonb));
 end $$;
 
@@ -431,13 +435,13 @@ revoke all on function public.statistics_relationship_prepare(uuid, uuid, uuid, 
   public.statistics_leader_metric(jsonb, integer, integer),
   public.statistics_relationship_leaders(jsonb, text, jsonb, integer, integer)
   from public, anon, authenticated, service_role;
-revoke all on function public.get_pair_statistics(uuid, uuid, uuid, uuid, text, date, date),
-  public.get_opponent_statistics(uuid, uuid, uuid, uuid, text, date, date),
+revoke all on function public.get_pair_statistics(uuid, uuid, uuid, uuid, text, date, date, integer),
+  public.get_opponent_statistics(uuid, uuid, uuid, uuid, text, date, date, integer),
   public.get_player_partner_records(uuid, uuid, uuid, text, date, date, integer, integer),
   public.get_player_opponent_records(uuid, uuid, uuid, text, date, date, integer, integer)
   from public, anon, authenticated, service_role;
-grant execute on function public.get_pair_statistics(uuid, uuid, uuid, uuid, text, date, date),
-  public.get_opponent_statistics(uuid, uuid, uuid, uuid, text, date, date),
+grant execute on function public.get_pair_statistics(uuid, uuid, uuid, uuid, text, date, date, integer),
+  public.get_opponent_statistics(uuid, uuid, uuid, uuid, text, date, date, integer),
   public.get_player_partner_records(uuid, uuid, uuid, text, date, date, integer, integer),
   public.get_player_opponent_records(uuid, uuid, uuid, text, date, date, integer, integer) to authenticated;
 

@@ -8,6 +8,7 @@ import {
   readFilterOptions
 } from '../features/statistics/statistics-filter-options';
 import { filterSearch, parseFilterSearch } from '../features/statistics/statistics-search';
+import { getStatisticsHistory } from '../features/statistics/statistics-history.functions';
 import { getPlayerStatistics } from '../features/statistics/statistics-player.functions';
 import {
   getOpponentRecords,
@@ -36,6 +37,7 @@ export const Route = createFileRoute('/_protected/players/$playerId/')({
         result: invalid,
         partners: invalid,
         opponents: invalid,
+        history: invalid,
         options: NO_FILTER_OPTIONS,
         locale: context.locale
       };
@@ -46,14 +48,17 @@ export const Route = createFileRoute('/_protected/players/$playerId/')({
     });
     const input = { data: { playerId: data.playerId, ...deps } };
     // Records fail on their own: a broken partner list never hides the player's statistics.
-    const [result, partners, opponents, options] = await Promise.all([
+    const [result, partners, opponents, options, history] = await Promise.all([
       getPlayerStatistics(input).catch(unavailable),
       getPartnerRecords(input).catch(unavailable),
       getOpponentRecords(input).catch(unavailable),
-      readFilterOptions(data.filters)
+      readFilterOptions(data.filters),
+      getStatisticsHistory({ data: { ...deps, subjectPlayerId: data.playerId, limit: 3 } }).catch(
+        unavailable
+      )
     ]);
     if (result.status === 'error' && result.code === 'STATISTICS_NOT_FOUND') throw notFound();
-    return { result, partners, opponents, options, locale: context.locale };
+    return { result, partners, opponents, options, history, locale: context.locale };
   },
   head: ({ loaderData }) => ({
     meta: [
@@ -65,7 +70,7 @@ export const Route = createFileRoute('/_protected/players/$playerId/')({
 });
 
 function PlayerStatisticsPage() {
-  const { result, partners, opponents, options } = Route.useLoaderData();
+  const { result, partners, opponents, options, history } = Route.useLoaderData();
   const { playerId } = Route.useParams();
   const { t } = useTranslation();
   const router = useRouter();
@@ -74,8 +79,11 @@ function PlayerStatisticsPage() {
     return (
       <PlayerStatistics
         stats={result.value}
+        recentHistory={history}
+        onRecentRetry={() => void router.invalidate()}
         filterControls={{
           options,
+          onRetry: () => void router.invalidate(),
           onApply: (next) =>
             void navigate({
               to: '/players/$playerId',
