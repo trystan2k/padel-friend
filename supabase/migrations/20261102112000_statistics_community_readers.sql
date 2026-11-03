@@ -16,9 +16,6 @@ begin;
 --   * Date ranges are whole UTC dates (both inclusive) over indexed daily buckets; lifetime reads
 --     use summary lookups. Weeks are UTC ISO weeks (Monday), months are UTC calendar months.
 
--- Resolving a most-common matchup id to its pairs needs an indexed lookup, not a facts scan.
-create index statistics_group_facts_matchup_id on public.statistics_group_facts (matchup_id);
-
 create function public.statistics_community_top(
   p_rows jsonb, p_observed integer, p_required integer, p_reason text
 ) returns jsonb language sql stable security definer set search_path = '' as $$

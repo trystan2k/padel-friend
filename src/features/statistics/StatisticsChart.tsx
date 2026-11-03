@@ -85,8 +85,8 @@ export function StatisticsChart({
       {points.length > plotted.length && (
         <p {...stylex.props(c.summary)}>
           {t('statistics.charts.sampled', {
-            shown: formatValue(plotted.length),
-            total: formatValue(points.length)
+            shown: plotted.length,
+            total: points.length
           })}
         </p>
       )}

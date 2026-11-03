@@ -178,16 +178,22 @@ describe.each([
     expect(reader).toHaveBeenCalledWith({ data: { playerId: player, otherId: other, ...deps } });
   });
 
-  it('rejects malformed ids and filters with a typed error, no read', async () => {
+  it('treats malformed path ids as not found, no read', async () => {
     const [first, second] = Object.keys(params);
-    const bad = { ...params, [second!]: 'nope' };
-    expect(await load(bad)).toMatchObject({
-      result: { status: 'error', code: 'INVALID_STATISTICS_INPUT' }
+    await expect(load({ ...params, [second!]: 'nope' })).rejects.toMatchObject({
+      isNotFound: true
     });
+    await expect(load({ ...params, [first!]: 'nope' })).rejects.toMatchObject({
+      isNotFound: true
+    });
+    expect(first).toBe('playerId');
+    expect(reader).not.toHaveBeenCalled();
+  });
+
+  it('rejects invalid filters with a typed error, no read', async () => {
     expect(await load(params, { from: '2026-10-05', through: '2026-09-01' })).toMatchObject({
       result: { status: 'error', code: 'INVALID_STATISTICS_INPUT' }
     });
-    expect(first).toBe('playerId');
     expect(reader).not.toHaveBeenCalled();
   });
 

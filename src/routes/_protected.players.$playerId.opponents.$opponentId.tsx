@@ -20,6 +20,15 @@ export const Route = createFileRoute('/_protected/players/$playerId/opponents/$o
   validateSearch: parseRelationshipSearch,
   loaderDeps: ({ search }) => parseFilterSearch(search),
   loader: async ({ params, deps, context }) => {
+    // Malformed path ids are a missing page; only invalid filter combinations get a typed in-page error.
+    try {
+      validateStatisticsRelationshipInput({
+        playerId: params.playerId,
+        otherId: params.opponentId
+      });
+    } catch {
+      throw notFound();
+    }
     let input;
     try {
       input = validateStatisticsRelationshipInput({

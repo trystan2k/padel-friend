@@ -14,18 +14,20 @@ export function parseFilterSearch(search: Record<string, unknown>): FilterSearch
   );
 }
 
+/** URL search values arrive as strings; only canonical decimal integers are read back as numbers. */
+function readOffset(value: unknown): number {
+  if (typeof value === 'string') return /^\d{1,10}$/.test(value) ? Number(value) : 0;
+  return typeof value === 'number' ? value : 0;
+}
+
 /** Relationship pages retain a page boundary in the URL; invalid offsets reset safely. */
 export function parseRelationshipSearch(
   search: Record<string, unknown>
 ): FilterSearch & { recentOffset?: number } {
-  const offset = search.recentOffset;
+  const offset = readOffset(search.recentOffset);
   return {
     ...parseFilterSearch(search),
-    ...(typeof offset === 'number' &&
-    Number.isSafeInteger(offset) &&
-    offset > 0 &&
-    offset <= 2147483640 &&
-    offset % 20 === 0
+    ...(Number.isSafeInteger(offset) && offset > 0 && offset <= 2147483640 && offset % 20 === 0
       ? { recentOffset: offset }
       : {})
   };
