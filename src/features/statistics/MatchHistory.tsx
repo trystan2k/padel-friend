@@ -11,6 +11,7 @@ import {
   type HistoryView,
   type StatisticsErrorCode
 } from './statistics-history-contracts';
+import { StatisticsEmpty, StatisticsError } from './StatisticsStates';
 import { getStatisticsHistory } from './statistics-history.functions';
 import { historyStyles as s } from './statistics-history.styles';
 import type { StatisticsFilters } from './statistics-contracts';
@@ -24,12 +25,6 @@ const STATUS_TONE: Record<HistoryStatus, StatusBadgeTone> = {
   canceled: 'danger',
   reserve_not_playing: 'muted'
 };
-
-const RETRYABLE: readonly StatisticsErrorCode[] = [
-  'STATISTICS_UNAVAILABLE',
-  'INVALID_STATISTICS_RESPONSE',
-  'STATISTICS_STALE_REVISION'
-];
 
 function failureCode(cause: unknown): StatisticsErrorCode {
   return cause instanceof Error && cause.message.includes('UNAUTHENTICATED')
@@ -88,27 +83,14 @@ export function MatchHistory({
     <section aria-labelledby="statistics-history-title" {...stylex.props(s.section)}>
       <div>
         <h2 id="statistics-history-title" {...stylex.props(s.heading)}>
-          {t('statistics.history.title')}
+          {t('statistics.navigation.history')}
         </h2>
         <p {...stylex.props(s.copy)}>{t('statistics.history.subtitle')}</p>
       </div>
-      {error && (
-        <div role="alert">
-          <p {...stylex.props(s.error)}>{t(`statistics.errors.${error}`)}</p>
-          {RETRYABLE.includes(error) && (
-            <button
-              type="button"
-              onClick={() => void load(restart ? null : cursor)}
-              {...stylex.props(s.button)}
-            >
-              {t('statistics.history.retry')}
-            </button>
-          )}
-        </div>
-      )}
+      {error && <StatisticsError code={error} onRetry={() => void load(restart ? null : cursor)} />}
       {!error && items.length === 0 && (
         <SurfaceCard>
-          <p {...stylex.props(s.copy)}>{t('statistics.history.empty')}</p>
+          <StatisticsEmpty>{t('statistics.history.empty')}</StatisticsEmpty>
         </SurfaceCard>
       )}
       {items.length > 0 && (

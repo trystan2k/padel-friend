@@ -1,7 +1,9 @@
 import * as stylex from '@stylexjs/stylex';
 import { Link } from '@tanstack/react-router';
 import { useTranslation } from 'react-i18next';
-import { CountStat, MetricStat, ReasonText, Section, Stat } from './PlayerMetric';
+import { CountStat, MetricStat, Section, Stat } from './PlayerMetric';
+import { StatisticsChart } from './StatisticsChart';
+import { StatisticsEmpty, ReasonText } from './StatisticsStates';
 import { FilterContext } from './PlayerStatistics';
 import { useRelationshipFormat } from './RelationshipRecordView';
 import { StatisticsFilters } from './StatisticsFilters';
@@ -18,6 +20,9 @@ import { filterSearch } from './statistics-search';
 import type { RelationshipName } from './statistics-relationship-contracts';
 
 type Format = ReturnType<typeof useRelationshipFormat>;
+
+const WEEK_PLOT_LIMIT = 26;
+const MONTH_PLOT_LIMIT = 12;
 
 /** A player name; it opens that player's statistics in the same scope when one community is selected. */
 function PlayerName({ player, filters }: { player: RelationshipName; filters: Filters }) {
@@ -47,18 +52,20 @@ function NameList({ players, filters }: { players: RelationshipName[]; filters: 
 }
 
 function Unavailable({
+  id,
   label,
   metric,
-  help
+  helpValues
 }: {
+  id: string;
   label: string;
   metric: MetricState<unknown>;
-  help?: string;
+  helpValues?: Record<string, string>;
 }) {
   const { t } = useTranslation();
   if (metric.state === 'ready') return null;
   return (
-    <Stat label={label} {...(help ? { help } : {})}>
+    <Stat id={id} label={label} {...(helpValues ? { helpValues } : {})}>
       <strong {...stylex.props(s.value, s.valueMuted)}>{t('statistics.player.noValue')}</strong>
       <ReasonText metric={metric} />
     </Stat>
@@ -79,23 +86,27 @@ function Ties({ total, listed }: { total: number; listed: number }) {
 }
 
 function LeaderStat({
+  id,
   label,
   metric,
   filters,
   detail,
-  help
+  helpValues
 }: {
+  id: string;
   label: string;
   metric: MetricState<CommunityLeader>;
   filters: Filters;
   detail: (value: number, f: Format) => string;
-  help?: string;
+  helpValues?: Record<string, string>;
 }) {
   const f = useRelationshipFormat();
   if (metric.state !== 'ready')
-    return <Unavailable label={label} metric={metric} {...(help ? { help } : {})} />;
+    return (
+      <Unavailable id={id} label={label} metric={metric} {...(helpValues ? { helpValues } : {})} />
+    );
   return (
-    <Stat label={label} {...(help ? { help } : {})}>
+    <Stat id={id} label={label} {...(helpValues ? { helpValues } : {})}>
       <strong {...stylex.props(s.value)}>
         <NameList players={metric.value.players} filters={filters} />
       </strong>
@@ -111,21 +122,20 @@ function TeamText({ team }: { team: RelationshipName[] }) {
 }
 
 function FrequentStat({
+  id,
   label,
-  metric,
-  help
+  metric
 }: {
+  id: string;
   label: string;
   metric: MetricState<CommunityFrequent>;
-  help?: string;
 }) {
   const { t } = useTranslation();
   const f = useRelationshipFormat();
-  if (metric.state !== 'ready')
-    return <Unavailable label={label} metric={metric} {...(help ? { help } : {})} />;
+  if (metric.state !== 'ready') return <Unavailable id={id} label={label} metric={metric} />;
   const { items, groups, total } = metric.value;
   return (
-    <Stat label={label} {...(help ? { help } : {})}>
+    <Stat id={id} label={label}>
       <strong {...stylex.props(s.value)}>
         <ul {...stylex.props(c.names)}>
           {items.map((item) => (
@@ -149,20 +159,23 @@ function FrequentStat({
 }
 
 function RivalryStat({
+  id,
   label,
   metric,
-  help
+  helpValues
 }: {
+  id: string;
   label: string;
   metric: MetricState<CommunityRivalry>;
-  help: string;
+  helpValues: Record<string, string>;
 }) {
   const { t } = useTranslation();
   const f = useRelationshipFormat();
-  if (metric.state !== 'ready') return <Unavailable label={label} metric={metric} help={help} />;
+  if (metric.state !== 'ready')
+    return <Unavailable id={id} label={label} metric={metric} helpValues={helpValues} />;
   const { relationships, imbalance, resolved, total } = metric.value;
   return (
-    <Stat label={label} help={help}>
+    <Stat id={id} label={label} helpValues={helpValues}>
       <strong {...stylex.props(s.value)}>
         <ul {...stylex.props(c.names)}>
           {relationships.map((item) => (
@@ -186,46 +199,6 @@ function RivalryStat({
       </span>
       <Ties total={total} listed={relationships.length} />
     </Stat>
-  );
-}
-
-function SeriesTable({
-  caption,
-  heading,
-  rows
-}: {
-  caption: string;
-  heading: string;
-  rows: { key: string; label: string; groups: number }[];
-}) {
-  const { t } = useTranslation();
-  const f = useRelationshipFormat();
-  return (
-    <section aria-label={caption} {...stylex.props(c.scroll)}>
-      <table {...stylex.props(s.table)}>
-        <caption {...stylex.props(s.caption)}>{caption}</caption>
-        <thead>
-          <tr>
-            <th scope="col" {...stylex.props(s.cell)}>
-              {heading}
-            </th>
-            <th scope="col" {...stylex.props(s.cell)}>
-              {t('statistics.community.frequency.groups')}
-            </th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((row) => (
-            <tr key={row.key}>
-              <th scope="row" {...stylex.props(s.cell)}>
-                {row.label}
-              </th>
-              <td {...stylex.props(s.cell)}>{f.count(row.groups)}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </section>
   );
 }
 
@@ -285,49 +258,67 @@ export function CommunityStatistics({
       <Section id="community-matches" title={t('statistics.community.matches.title')}>
         <p {...stylex.props(s.copy)}>{t('statistics.community.matches.help')}</p>
         {empty && !stats.notice && (
-          <p {...stylex.props(c.notice)}>{t('statistics.community.empty')}</p>
+          <StatisticsEmpty>{t('statistics.community.empty')}</StatisticsEmpty>
         )}
         <dl {...stylex.props(s.stats)}>
           <CountStat
+            id="community.matches.played"
             label={t('statistics.community.matches.played')}
             value={stats.matches.played}
           />
           <CountStat
+            id="community.matches.competitive"
             label={t('statistics.community.matches.competitive')}
             value={stats.matches.competitive}
           />
           <CountStat
+            id="community.matches.friendly"
             label={t('statistics.community.matches.friendly')}
             value={stats.matches.friendly}
           />
           <CountStat
+            id="community.matches.decided"
             label={t('statistics.community.matches.decided')}
             value={stats.matches.decided}
           />
-          <CountStat label={t('statistics.community.matches.draws')} value={stats.matches.draws} />
           <CountStat
+            id="community.matches.draws"
+            label={t('statistics.community.matches.draws')}
+            value={stats.matches.draws}
+          />
+          <CountStat
+            id="community.matches.incomplete"
             label={t('statistics.community.matches.incomplete')}
             value={stats.matches.incomplete}
           />
           <MetricStat
+            id="community.ranking"
             label={t('statistics.community.ranking.label')}
             metric={stats.rankingMatches}
             format={(value) => f.count(value.groups)}
-            help={t('statistics.community.ranking.help')}
           />
           <CountStat
+            id="community.activePlayers"
             label={t('statistics.community.activePlayers.label')}
             value={stats.activePlayers}
-            help={t('statistics.community.activePlayers.help')}
           />
-          <CountStat label={t('statistics.community.totals.sets')} value={stats.totals.sets} />
-          <CountStat label={t('statistics.community.totals.games')} value={stats.totals.games} />
+          <CountStat
+            id="community.totals.sets"
+            label={t('statistics.community.totals.sets')}
+            value={stats.totals.sets}
+          />
+          <CountStat
+            id="community.totals.games"
+            label={t('statistics.community.totals.games')}
+            value={stats.totals.games}
+          />
         </dl>
       </Section>
 
       <Section id="community-leaders" title={t('statistics.community.leaders.title')}>
         <dl {...stylex.props(s.stats)}>
           <LeaderStat
+            id="community.leaders.mostActive"
             label={t('statistics.community.leaders.mostActive')}
             metric={stats.mostActivePlayer}
             filters={filters}
@@ -336,6 +327,7 @@ export function CommunityStatistics({
             }
           />
           <LeaderStat
+            id="community.leaders.mostWins"
             label={t('statistics.community.leaders.mostWins')}
             metric={stats.mostWins}
             filters={filters}
@@ -344,15 +336,15 @@ export function CommunityStatistics({
             }
           />
           <LeaderStat
+            id="community.leaders.highestWinRate"
             label={t('statistics.community.leaders.highestWinRate')}
             metric={stats.highestWinRate}
             filters={filters}
-            help={t('statistics.community.leaders.highestWinRateHelp', {
-              required: f.count(thresholds.community_leader_min_matches)
-            })}
+            helpValues={{ required: f.count(thresholds.community_leader_min_matches) }}
             detail={(value, fmt) => fmt.ratio(value)}
           />
           <LeaderStat
+            id="community.leaders.bestSets"
             label={t('statistics.community.leaders.bestSets')}
             metric={stats.bestSetDifferential}
             filters={filters}
@@ -361,6 +353,7 @@ export function CommunityStatistics({
             }
           />
           <LeaderStat
+            id="community.leaders.bestGames"
             label={t('statistics.community.leaders.bestGames')}
             metric={stats.bestGameDifferential}
             filters={filters}
@@ -369,10 +362,10 @@ export function CommunityStatistics({
             }
           />
           <LeaderStat
+            id="community.leaders.mostImproved"
             label={t('statistics.community.leaders.mostImproved')}
             metric={stats.mostImproved}
             filters={filters}
-            help={t('statistics.community.leaders.mostImprovedHelp')}
             detail={(value, fmt) =>
               t('statistics.community.leaders.rating', { delta: fmt.signed(value) })
             }
@@ -383,20 +376,20 @@ export function CommunityStatistics({
       <Section id="community-pairings" title={t('statistics.community.pairings.title')}>
         <dl {...stylex.props(s.stats)}>
           <FrequentStat
+            id="community.pairings.pair"
             label={t('statistics.community.pairings.pair')}
             metric={stats.mostFrequentPair}
           />
           <FrequentStat
+            id="community.pairings.matchup"
             label={t('statistics.community.pairings.matchup')}
             metric={stats.mostCommonMatchup}
-            help={t('statistics.community.pairings.matchupHelp')}
           />
           <RivalryStat
+            id="community.pairings.rivalry"
             label={t('statistics.community.pairings.rivalry')}
             metric={stats.closestRivalry}
-            help={t('statistics.community.pairings.rivalryHelp', {
-              required: f.count(thresholds.closest_rivalry_min_meetings)
-            })}
+            helpValues={{ required: f.count(thresholds.closest_rivalry_min_meetings) }}
           />
         </dl>
       </Section>
@@ -413,34 +406,36 @@ export function CommunityStatistics({
         </p>
         <dl {...stylex.props(s.stats)}>
           <MetricStat
+            id="community.frequency.average"
             label={t('statistics.community.frequency.average')}
             metric={stats.averageMatchesPerWeek}
             format={(value) => f.count(value)}
-            help={t('statistics.community.frequency.averageHelp')}
           />
         </dl>
-        {stats.weeks.length > 0 && (
-          <SeriesTable
-            caption={t('statistics.community.frequency.weekCaption')}
-            heading={t('statistics.community.frequency.week')}
-            rows={stats.weeks.map((week) => ({
-              key: week.start,
-              label: f.date(week.start),
-              groups: week.groups
-            }))}
-          />
-        )}
-        {stats.months.length > 0 && (
-          <SeriesTable
-            caption={t('statistics.community.frequency.monthCaption')}
-            heading={t('statistics.community.frequency.month')}
-            rows={stats.months.map((month) => ({
-              key: month.month,
-              label: f.month(month.month),
-              groups: month.groups
-            }))}
-          />
-        )}
+        <StatisticsChart
+          title={t('statistics.community.frequency.weekCaption')}
+          headerLabel={t('statistics.community.frequency.week')}
+          valueLabel={t('statistics.community.frequency.groups')}
+          points={stats.weeks.map((week) => ({
+            key: week.start,
+            label: f.date(week.start),
+            value: week.groups
+          }))}
+          plotLimit={WEEK_PLOT_LIMIT}
+          formatValue={f.count}
+        />
+        <StatisticsChart
+          title={t('statistics.community.frequency.monthCaption')}
+          headerLabel={t('statistics.community.frequency.month')}
+          valueLabel={t('statistics.community.frequency.groups')}
+          points={stats.months.map((month) => ({
+            key: month.month,
+            label: f.month(month.month),
+            value: month.groups
+          }))}
+          plotLimit={MONTH_PLOT_LIMIT}
+          formatValue={f.count}
+        />
       </Section>
     </main>
   );

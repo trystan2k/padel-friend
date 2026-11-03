@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { Section } from './PlayerMetric';
 import { LeaderStat, RelationshipTable } from './RelationshipList';
 import { useRelationshipFormat } from './RelationshipRecordView';
+import { StatisticsError } from './StatisticsStates';
 import type { StatisticsResponse } from './statistics-history-contracts';
 import { playerStyles as s } from './statistics-player.styles';
 import type {
@@ -14,15 +15,19 @@ import type {
  * All opponents of a player. Best, toughest and closest-rivalry claims need the configured number
  * of decided meetings; below it the head-to-head is still listed without a leader claim.
  */
-export function OpponentRecords({ response }: { response: StatisticsResponse<Records> }) {
+export function OpponentRecords({
+  response,
+  onRetry
+}: {
+  response: StatisticsResponse<Records>;
+  onRetry?: () => void;
+}) {
   const { t } = useTranslation();
   const f = useRelationshipFormat();
   if (response.status === 'error') {
     return (
       <Section id="player-opponents" title={t('statistics.relationships.records.opponents.title')}>
-        <p role="alert" {...stylex.props(s.error)}>
-          {t(`statistics.errors.${response.code}`)}
-        </p>
+        <StatisticsError code={response.code} {...(onRetry ? { onRetry } : {})} />
       </Section>
     );
   }
@@ -40,6 +45,7 @@ export function OpponentRecords({ response }: { response: StatisticsResponse<Rec
     <Section id="player-opponents" title={t('statistics.relationships.records.opponents.title')}>
       <dl {...stylex.props(s.stats)}>
         <LeaderStat
+          id="player.records.topOpponent"
           label={t('statistics.player.records.topOpponent')}
           metric={records.mostFrequent}
           detail={(value) =>
@@ -47,23 +53,24 @@ export function OpponentRecords({ response }: { response: StatisticsResponse<Rec
           }
         />
         <LeaderStat
+          id="relationships.records.opponents.best"
           label={t('statistics.relationships.records.opponents.best')}
           metric={records.best}
-          help={t('statistics.relationships.records.opponents.bestHelp', { required })}
+          helpValues={{ required }}
           detail={rate}
         />
         <LeaderStat
+          id="relationships.records.opponents.toughest"
           label={t('statistics.relationships.records.opponents.toughest')}
           metric={records.toughest}
-          help={t('statistics.relationships.records.opponents.toughestHelp', { required })}
+          helpValues={{ required }}
           detail={rate}
         />
         <LeaderStat
+          id="relationships.records.opponents.closestRivalry"
           label={t('statistics.relationships.records.opponents.closestRivalry')}
           metric={records.closestRivalry}
-          help={t('statistics.relationships.records.opponents.closestRivalryHelp', {
-            required: rivalryRequired
-          })}
+          helpValues={{ required: rivalryRequired }}
           detail={(value) =>
             value.imbalance === null
               ? ''

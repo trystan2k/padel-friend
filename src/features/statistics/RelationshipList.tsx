@@ -1,7 +1,8 @@
 import * as stylex from '@stylexjs/stylex';
 import { Link } from '@tanstack/react-router';
 import { useTranslation } from 'react-i18next';
-import { ReasonText, Stat } from './PlayerMetric';
+import { Stat } from './PlayerMetric';
+import { ReasonText, StatisticsEmpty } from './StatisticsStates';
 import { useRelationshipFormat } from './RelationshipRecordView';
 import type { MetricState, StatisticsFilters } from './statistics-contracts';
 import { filterSearch } from './statistics-search';
@@ -14,21 +15,23 @@ import type {
 
 /** A leader claim, or the typed reason why none is made yet (record stays visible below). */
 export function LeaderStat<T extends RelationshipLeader | RelationshipMostFrequent>({
+  id,
   label,
   metric,
-  help,
+  helpValues,
   detail
 }: {
+  id: string;
   label: string;
   metric: MetricState<T>;
-  help?: string;
+  helpValues?: Record<string, string>;
   detail: (value: T) => string;
 }) {
   const { t } = useTranslation();
   const f = useRelationshipFormat();
   if (metric.state !== 'ready') {
     return (
-      <Stat label={label} {...(help ? { help } : {})}>
+      <Stat id={id} label={label} {...(helpValues ? { helpValues } : {})}>
         <strong {...stylex.props(s.value, s.valueMuted)}>{t('statistics.player.noValue')}</strong>
         <ReasonText metric={metric} />
       </Stat>
@@ -36,7 +39,7 @@ export function LeaderStat<T extends RelationshipLeader | RelationshipMostFreque
   }
   const names = metric.value.players.map((player) => f.name(player.displayName));
   return (
-    <Stat label={label} {...(help ? { help } : {})}>
+    <Stat id={id} label={label} {...(helpValues ? { helpValues } : {})}>
       <strong {...stylex.props(s.value)}>{f.list(names)}</strong>
       <span {...stylex.props(s.detail)}>{detail(metric.value)}</span>
       {names.length > 1 && (
@@ -66,7 +69,7 @@ export function RelationshipTable({
   const f = useRelationshipFormat();
   const search = filterSearch(filters);
   if (items.length === 0) {
-    return <p {...stylex.props(s.copy)}>{t(`statistics.relationships.records.${kind}.empty`)}</p>;
+    return <StatisticsEmpty>{t(`statistics.relationships.records.${kind}.empty`)}</StatisticsEmpty>;
   }
   return (
     <div {...stylex.props(s.section)}>

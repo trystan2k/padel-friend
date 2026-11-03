@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { ConfirmedGroupDetail } from '../features/statistics/ConfirmedGroupDetail';
 import { getStatisticsGroupDetail } from '../features/statistics/statistics-history.functions';
 import { validateStatisticsGroupDetailInput } from '../features/statistics/statistics.validators';
+import { StatisticsError, StatisticsLoading } from '../features/statistics/StatisticsStates';
 import { createI18n, resolveLocale } from '../i18n/config';
 
 export const Route = createFileRoute('/_protected/matches/$eventId/groups/$groupId')({
@@ -23,6 +24,7 @@ export const Route = createFileRoute('/_protected/matches/$eventId/groups/$group
   head: ({ loaderData }) => ({
     meta: [{ title: createI18n(resolveLocale(loaderData?.locale)).t('statistics.detail.title') }]
   }),
+  pendingComponent: StatisticsLoading,
   component: GroupDetailPage
 });
 
@@ -34,12 +36,7 @@ function GroupDetailPage() {
   return (
     <main>
       <h1>{t('statistics.detail.title')}</h1>
-      <div role="alert">
-        <p>{t(`statistics.errors.${result.code}`)}</p>
-        <button type="button" onClick={() => void router.invalidate()}>
-          {t('statistics.history.retry')}
-        </button>
-      </div>
+      <StatisticsError code={result.code} onRetry={() => void router.invalidate()} />
     </main>
   );
 }

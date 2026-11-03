@@ -3,7 +3,6 @@ import { useTranslation } from 'react-i18next';
 import { OpponentRecords } from '../features/statistics/OpponentRecords';
 import { PartnerRecords } from '../features/statistics/PartnerRecords';
 import { PlayerStatistics } from '../features/statistics/PlayerStatistics';
-import type { StatisticsErrorCode } from '../features/statistics/statistics-history-contracts';
 import { parseFilterSearch } from '../features/statistics/statistics-search';
 import { getPlayerStatistics } from '../features/statistics/statistics-player.functions';
 import {
@@ -11,13 +10,8 @@ import {
   getPartnerRecords
 } from '../features/statistics/statistics-relationships.functions';
 import { validateStatisticsPlayerInput } from '../features/statistics/statistics.validators';
+import { StatisticsError, StatisticsLoading } from '../features/statistics/StatisticsStates';
 import { createI18n, resolveLocale } from '../i18n/config';
-
-const RETRYABLE: readonly StatisticsErrorCode[] = [
-  'STATISTICS_UNAVAILABLE',
-  'INVALID_STATISTICS_RESPONSE',
-  'STATISTICS_STALE_REVISION'
-];
 
 export const Route = createFileRoute('/_protected/players/$playerId/')({
   // Filters live in the URL so a view is shareable; the server-side validator is the authority.
@@ -51,8 +45,11 @@ export const Route = createFileRoute('/_protected/players/$playerId/')({
     return { result, partners, opponents, locale: context.locale };
   },
   head: ({ loaderData }) => ({
-    meta: [{ title: createI18n(resolveLocale(loaderData?.locale)).t('statistics.player.title') }]
+    meta: [
+      { title: createI18n(resolveLocale(loaderData?.locale)).t('statistics.navigation.player') }
+    ]
   }),
+  pendingComponent: StatisticsLoading,
   component: PlayerStatisticsPage
 });
 
@@ -63,22 +60,15 @@ function PlayerStatisticsPage() {
   if (result.status === 'ok') {
     return (
       <PlayerStatistics stats={result.value}>
-        <PartnerRecords response={partners} />
-        <OpponentRecords response={opponents} />
+        <PartnerRecords response={partners} onRetry={() => void router.invalidate()} />
+        <OpponentRecords response={opponents} onRetry={() => void router.invalidate()} />
       </PlayerStatistics>
     );
   }
   return (
     <main>
-      <h1>{t('statistics.player.title')}</h1>
-      <div role="alert">
-        <p>{t(`statistics.errors.${result.code}`)}</p>
-        {RETRYABLE.includes(result.code) && (
-          <button type="button" onClick={() => void router.invalidate()}>
-            {t('statistics.history.retry')}
-          </button>
-        )}
-      </div>
+      <h1>{t('statistics.navigation.player')}</h1>
+      <StatisticsError code={result.code} onRetry={() => void router.invalidate()} />
     </main>
   );
 }

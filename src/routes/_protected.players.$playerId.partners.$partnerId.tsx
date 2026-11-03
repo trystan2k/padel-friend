@@ -1,17 +1,11 @@
 import { createFileRoute, notFound, useRouter } from '@tanstack/react-router';
 import { useTranslation } from 'react-i18next';
 import { PairStatistics } from '../features/statistics/PairStatistics';
-import type { StatisticsErrorCode } from '../features/statistics/statistics-history-contracts';
 import { parseFilterSearch } from '../features/statistics/statistics-search';
 import { getPairStatistics } from '../features/statistics/statistics-relationships.functions';
 import { validateStatisticsRelationshipInput } from '../features/statistics/statistics.validators';
+import { StatisticsError, StatisticsLoading } from '../features/statistics/StatisticsStates';
 import { createI18n, resolveLocale } from '../i18n/config';
-
-const RETRYABLE: readonly StatisticsErrorCode[] = [
-  'STATISTICS_UNAVAILABLE',
-  'INVALID_STATISTICS_RESPONSE',
-  'STATISTICS_STALE_REVISION'
-];
 
 export const Route = createFileRoute('/_protected/players/$playerId/partners/$partnerId')({
   // The focal player stays in the path; filters stay in the URL so every link keeps its scope.
@@ -43,12 +37,11 @@ export const Route = createFileRoute('/_protected/players/$playerId/partners/$pa
   head: ({ loaderData }) => ({
     meta: [
       {
-        title: createI18n(resolveLocale(loaderData?.locale)).t(
-          'statistics.relationships.pair.title'
-        )
+        title: createI18n(resolveLocale(loaderData?.locale)).t('statistics.navigation.pair')
       }
     ]
   }),
+  pendingComponent: StatisticsLoading,
   component: PairStatisticsPage
 });
 
@@ -59,15 +52,8 @@ function PairStatisticsPage() {
   if (result.status === 'ok') return <PairStatistics pair={result.value} />;
   return (
     <main>
-      <h1>{t('statistics.relationships.pair.title')}</h1>
-      <div role="alert">
-        <p>{t(`statistics.errors.${result.code}`)}</p>
-        {RETRYABLE.includes(result.code) && (
-          <button type="button" onClick={() => void router.invalidate()}>
-            {t('statistics.history.retry')}
-          </button>
-        )}
-      </div>
+      <h1>{t('statistics.navigation.pair')}</h1>
+      <StatisticsError code={result.code} onRetry={() => void router.invalidate()} />
     </main>
   );
 }

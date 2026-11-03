@@ -10,6 +10,7 @@ import {
 import type { PairStatistics as Pair } from './statistics-relationship-contracts';
 import { playerStyles as s } from './statistics-player.styles';
 import { filterSearch } from './statistics-search';
+import { StatisticsBreadcrumb } from './StatisticsBreadcrumb';
 
 /** The canonical pair, shown from the focal player's route so the way back keeps its context. */
 export function PairStatistics({ pair }: { pair: Pair }) {
@@ -20,6 +21,7 @@ export function PairStatistics({ pair }: { pair: Pair }) {
   return (
     <main {...stylex.props(s.page)}>
       <header {...stylex.props(s.header)}>
+        <StatisticsBreadcrumb playerId={pair.focalId} filters={pair.filters} current="pair" />
         <h1 {...stylex.props(s.title)}>
           {t('statistics.relationships.pair.heading', {
             first: f.name(focal?.displayName ?? null),

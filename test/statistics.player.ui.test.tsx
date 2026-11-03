@@ -1,5 +1,6 @@
 /** @vitest-environment jsdom */
 import { cleanup, render, screen, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { readFileSync } from 'node:fs';
 import { I18nextProvider } from 'react-i18next';
 import { afterEach, describe, expect, it } from 'vitest';
@@ -131,8 +132,9 @@ describe('player statistics core surface', () => {
     expect(league.textContent).toContain('Some league standings were never published.');
   });
 
-  it('gives the activity series a numeric textual equivalent', () => {
+  it('gives the activity series a numeric textual equivalent', async () => {
     const { container } = render(wrap(<PlayerStatistics stats={makePlayerStatistics()} />));
+    await userEvent.click(screen.getByRole('button', { name: 'Show data table' }));
     const table = screen.getByRole('table', { name: 'Matches played per month' });
     const rows = within(table).getAllByRole('row');
     expect(rows).toHaveLength(4);
@@ -141,6 +143,32 @@ describe('player statistics core surface', () => {
     const chart = container.querySelector('svg');
     expect(chart?.getAttribute('aria-hidden')).toBe('true');
     expect(chart?.querySelectorAll('rect')).toHaveLength(3);
+    expect(screen.getByRole('button', { name: 'Hide data table' })).toBeTruthy();
+  });
+
+  it('labels sampled charts and retains every month including zero', async () => {
+    const base = makePlayerStatistics();
+    const months = Array.from({ length: 14 }, (_, index) => ({
+      period: index < 12 ? '2030-' + String(index + 1).padStart(2, '0') : '2031-0' + (index - 11),
+      groups: index
+    }));
+    const { container } = render(
+      wrap(<PlayerStatistics stats={{ ...base, activity: { ...base.activity, months } }} />)
+    );
+    expect(
+      screen.getByText(
+        'The chart shows the latest 12 of 14 periods; the data table contains all of them.'
+      )
+    ).toBeTruthy();
+    await userEvent.click(screen.getByRole('button', { name: 'Show data table' }));
+    const rows = within(
+      screen.getByRole('table', { name: 'Matches played per month' })
+    ).getAllByRole('row');
+    expect(rows).toHaveLength(15);
+    expect(container.querySelectorAll('svg rect')).toHaveLength(12);
+    expect(rows.slice(1).map((row) => Number(within(row).getByRole('cell').textContent))).toEqual(
+      months.map((month) => month.groups)
+    );
   });
 
   it('explains an empty activity series', () => {

@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { Section } from './PlayerMetric';
 import { LeaderStat, RelationshipTable } from './RelationshipList';
 import { useRelationshipFormat } from './RelationshipRecordView';
+import { StatisticsError } from './StatisticsStates';
 import type { StatisticsResponse } from './statistics-history-contracts';
 import { playerStyles as s } from './statistics-player.styles';
 import type { PartnerRecords as Records } from './statistics-relationship-contracts';
@@ -11,15 +12,19 @@ import type { PartnerRecords as Records } from './statistics-relationship-contra
  * All partners of a player. The best-partner claim needs the configured number of decided matches
  * together; below it the partnership is still listed, just never called best.
  */
-export function PartnerRecords({ response }: { response: StatisticsResponse<Records> }) {
+export function PartnerRecords({
+  response,
+  onRetry
+}: {
+  response: StatisticsResponse<Records>;
+  onRetry?: () => void;
+}) {
   const { t } = useTranslation();
   const f = useRelationshipFormat();
   if (response.status === 'error') {
     return (
       <Section id="player-partners" title={t('statistics.relationships.records.partners.title')}>
-        <p role="alert" {...stylex.props(s.error)}>
-          {t(`statistics.errors.${response.code}`)}
-        </p>
+        <StatisticsError code={response.code} {...(onRetry ? { onRetry } : {})} />
       </Section>
     );
   }
@@ -29,6 +34,7 @@ export function PartnerRecords({ response }: { response: StatisticsResponse<Reco
     <Section id="player-partners" title={t('statistics.relationships.records.partners.title')}>
       <dl {...stylex.props(s.stats)}>
         <LeaderStat
+          id="player.records.topPartner"
           label={t('statistics.player.records.topPartner')}
           metric={records.mostFrequent}
           detail={(value) =>
@@ -36,11 +42,10 @@ export function PartnerRecords({ response }: { response: StatisticsResponse<Reco
           }
         />
         <LeaderStat
+          id="relationships.records.partners.best"
           label={t('statistics.relationships.records.partners.best')}
           metric={records.best}
-          help={t('statistics.relationships.records.partners.bestHelp', {
-            required: f.count(required)
-          })}
+          helpValues={{ required: f.count(required) }}
           detail={(value) =>
             value.winRate === null
               ? ''

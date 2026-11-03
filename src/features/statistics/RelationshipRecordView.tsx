@@ -2,7 +2,8 @@ import * as stylex from '@stylexjs/stylex';
 import { Link } from '@tanstack/react-router';
 import { useTranslation } from 'react-i18next';
 import { StatusBadge } from '../../components/ui/StatusBadge';
-import { CountStat, MetricStat, ReasonText, Section, Stat, usePlayerFormat } from './PlayerMetric';
+import { CountStat, MetricStat, Section, Stat, usePlayerFormat } from './PlayerMetric';
+import { ReasonText, StatisticsEmpty } from './StatisticsStates';
 import type { MetricState } from './statistics-contracts';
 import type {
   RelationshipExtremum,
@@ -42,27 +43,27 @@ function MatchLink({ evidence }: { evidence: RelationshipExtremum }) {
 
 /** An extremum with its visible evidence (value, date) and a link to the confirmed match. */
 function ExtremumStat({
+  id,
   label,
   metric,
-  value,
-  help
+  value
 }: {
+  id: string;
   label: string;
   metric: MetricState<RelationshipExtremum>;
   value: (evidence: RelationshipExtremum) => string;
-  help?: string;
 }) {
   const { t } = useTranslation();
   if (metric.state !== 'ready') {
     return (
-      <Stat label={label} {...(help ? { help } : {})}>
+      <Stat id={id} label={label}>
         <strong {...stylex.props(s.value, s.valueMuted)}>{t('statistics.player.noValue')}</strong>
         <ReasonText metric={metric} />
       </Stat>
     );
   }
   return (
-    <Stat label={label} {...(help ? { help } : {})}>
+    <Stat id={id} label={label}>
       <strong {...stylex.props(s.value)}>{value(metric.value)}</strong>
       <MatchLink evidence={metric.value} />
     </Stat>
@@ -108,45 +109,80 @@ export function RelationshipSections({
       <Section id={`${kind}-stats-record`} title={t('statistics.relationships.sections.record')}>
         <dl {...stylex.props(s.stats)}>
           <CountStat
+            id={`relationships.${kind}.played`}
             label={t(`statistics.relationships.${kind}.played`)}
             value={matches.played}
-            help={t('statistics.relationships.playedHelp')}
           />
-          <CountStat label={t('statistics.player.matches.wins')} value={matches.wins} />
-          <CountStat label={t('statistics.player.matches.losses')} value={matches.losses} />
-          <CountStat label={t('statistics.player.matches.draws')} value={matches.draws} />
           <CountStat
+            id="player.matches.wins"
+            label={t('statistics.player.matches.wins')}
+            value={matches.wins}
+          />
+          <CountStat
+            id="player.matches.losses"
+            label={t('statistics.player.matches.losses')}
+            value={matches.losses}
+          />
+          <CountStat
+            id="player.matches.draws"
+            label={t('statistics.player.matches.draws')}
+            value={matches.draws}
+          />
+          <CountStat
+            id="player.matches.incomplete"
             label={t('statistics.player.matches.incomplete')}
             value={matches.incomplete}
-            help={t('statistics.player.matches.incompleteHelp')}
           />
           <MetricStat
+            id="player.matches.winRate"
             label={t('statistics.player.matches.winRate')}
             metric={matches.winRate}
             format={f.ratio}
             unit="matches"
-            help={t('statistics.player.matches.winRateHelp')}
           />
           <CountStat
+            id="player.matches.competitive"
             label={t('statistics.player.matches.competitive')}
             value={matches.competitive}
           />
-          <CountStat label={t('statistics.player.matches.friendly')} value={matches.friendly} />
+          <CountStat
+            id="player.matches.friendly"
+            label={t('statistics.player.matches.friendly')}
+            value={matches.friendly}
+          />
         </dl>
         <Eligibility metric={record.leaderEligibility} kind={kind} />
       </Section>
 
       <Section id={`${kind}-stats-scores`} title={t('statistics.player.sections.scores')}>
         <dl {...stylex.props(s.stats)}>
-          <CountStat label={t('statistics.player.sets.won')} value={sets.won} />
-          <CountStat label={t('statistics.player.sets.lost')} value={sets.lost} />
           <CountStat
+            id="player.sets.won"
+            label={t('statistics.player.sets.won')}
+            value={sets.won}
+          />
+          <CountStat
+            id="player.sets.lost"
+            label={t('statistics.player.sets.lost')}
+            value={sets.lost}
+          />
+          <CountStat
+            id="player.sets.differential"
             label={t('statistics.player.sets.differential')}
             value={f.signed(sets.differential)}
           />
-          <CountStat label={t('statistics.player.games.won')} value={games.won} />
-          <CountStat label={t('statistics.player.games.lost')} value={games.lost} />
           <CountStat
+            id="player.games.won"
+            label={t('statistics.player.games.won')}
+            value={games.won}
+          />
+          <CountStat
+            id="player.games.lost"
+            label={t('statistics.player.games.lost')}
+            value={games.lost}
+          />
+          <CountStat
+            id="player.games.differential"
             label={t('statistics.player.games.differential')}
             value={f.signed(games.differential)}
           />
@@ -155,7 +191,7 @@ export function RelationshipSections({
 
       <Section id={`${kind}-stats-streaks`} title={t('statistics.relationships.sections.streaks')}>
         <dl {...stylex.props(s.stats)}>
-          <Stat label={t('statistics.player.form.current')}>
+          <Stat id="player.form.current" label={t('statistics.player.form.current')}>
             <strong {...stylex.props(s.value, streaks.current.kind === null && s.valueMuted)}>
               {streaks.current.kind === null
                 ? t('statistics.player.form.noStreak')
@@ -168,11 +204,12 @@ export function RelationshipSections({
             )}
           </Stat>
           <CountStat
+            id="player.form.longestWins"
             label={t('statistics.player.form.longestWins')}
             value={streaks.longestWins}
-            help={t('statistics.player.form.streakHelp')}
           />
           <CountStat
+            id="player.form.longestLosses"
             label={t('statistics.player.form.longestLosses')}
             value={streaks.longestLosses}
           />
@@ -183,38 +220,41 @@ export function RelationshipSections({
         <dl {...stylex.props(s.stats)}>
           {kind === 'pair' && (
             <MetricStat
+              id="relationships.averageOpponentLevel"
               label={t('statistics.relationships.averageOpponentLevel')}
               metric={record.averageOpponentLevel}
               format={f.level}
               unit="rated"
-              help={t('statistics.relationships.averageOpponentLevelHelp')}
             />
           )}
           <CountStat
+            id="relationships.upsetWins"
             label={t('statistics.relationships.upsetWins')}
             value={record.upsetWins}
-            help={t('statistics.relationships.upsetWinsHelp', { chance: f.ratio(upsetThreshold) })}
+            helpValues={{ chance: f.ratio(upsetThreshold) }}
           />
           <ExtremumStat
+            id="player.records.strongestUpset"
             label={t('statistics.player.records.strongestUpset')}
             metric={record.biggestUpset}
             value={upset}
-            help={t('statistics.player.records.upsetHelp')}
           />
           {kind === 'opponent' && (
             <>
               <ExtremumStat
+                id="player.records.toughestLoss"
                 label={t('statistics.player.records.toughestLoss')}
                 metric={record.toughestLoss}
                 value={upset}
-                help={t('statistics.player.records.toughestLossHelp')}
               />
               <ExtremumStat
+                id="player.records.biggestGain"
                 label={t('statistics.player.records.biggestGain')}
                 metric={record.biggestGain}
                 value={delta}
               />
               <ExtremumStat
+                id="player.records.biggestLoss"
                 label={t('statistics.player.records.biggestLoss')}
                 metric={record.biggestLoss}
                 value={delta}
@@ -227,7 +267,7 @@ export function RelationshipSections({
       {kind === 'pair' && (
         <Section id="pair-stats-leagues" title={t('statistics.relationships.sections.leagues')}>
           {record.leagues.length === 0 ? (
-            <p {...stylex.props(s.copy)}>{t('statistics.relationships.noLeagues')}</p>
+            <StatisticsEmpty>{t('statistics.relationships.noLeagues')}</StatisticsEmpty>
           ) : (
             <ul {...stylex.props(s.filters)}>
               {record.leagues.map((league) => (
@@ -261,7 +301,7 @@ export function RecentMatches({
   return (
     <Section id="relationship-recent" title={t('statistics.relationships.sections.recent')}>
       {matches.length === 0 ? (
-        <p {...stylex.props(s.copy)}>{t('statistics.relationships.noRecent')}</p>
+        <StatisticsEmpty>{t('statistics.relationships.noRecent')}</StatisticsEmpty>
       ) : (
         <div {...stylex.props(s.tableScroll)}>
           <table {...stylex.props(s.table)}>

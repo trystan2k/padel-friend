@@ -1759,6 +1759,15 @@
     }
   },
   "statistics": {
+    "navigation": {
+      "label": "Statistics navigation",
+      "player": "Player statistics",
+      "records": "Records",
+      "pair": "Partnership",
+      "opponent": "Head to head",
+      "community": "Community statistics",
+      "history": "Match history"
+    },
     "filters": {
       "title": "Statistics filters",
       "community": "Community",
@@ -1811,12 +1820,10 @@
         "incomplete": "Incomplete"
       },
       "ranking": {
-        "label": "Matches in the active ranking",
-        "help": "Eligible matches of the active League."
+        "label": "Matches in the active ranking"
       },
       "activePlayers": {
-        "label": "Active players",
-        "help": "Distinct players who played a confirmed match in this selection; not the member count."
+        "label": "Active players"
       },
       "totals": {
         "sets": "Sets played",
@@ -1827,11 +1834,9 @@
         "mostActive": "Most active player",
         "mostWins": "Most wins",
         "highestWinRate": "Highest win rate",
-        "highestWinRateHelp": "Players with at least {{required}} decided matches.",
         "bestSets": "Best set difference",
         "bestGames": "Best game difference",
         "mostImproved": "Most improved rating",
-        "mostImprovedHelp": "Rating movement from matches in this selection, not a change of overall level.",
         "matches": "{{matches}} matches",
         "wins": "{{wins}} wins",
         "sets": "{{sets}} sets",
@@ -1842,16 +1847,13 @@
         "title": "Pairs and rivalries",
         "pair": "Most frequent pair",
         "matchup": "Most common matchup",
-        "matchupHelp": "The same two pairs facing each other, whichever side they played on.",
-        "rivalry": "Closest rivalry",
-        "rivalryHelp": "Smallest gap between wins and losses with at least {{required}} decided meetings; the largest sample breaks ties."
+        "rivalry": "Closest rivalry"
       },
       "frequency": {
         "title": "Match frequency",
         "window": "Window: {{from}} to {{through}} ({{days}} days, UTC).",
         "noWindow": "No matches in this selection.",
         "average": "Average matches per week",
-        "averageHelp": "Matches divided by the weeks in the window (at least one).",
         "weekCaption": "Matches per week (UTC, weeks start on Monday)",
         "week": "Week starting",
         "monthCaption": "Matches per month (UTC)",
@@ -1877,7 +1879,6 @@
         "subtitle": "Results when these two players were on opposite teams, from the first player’s point of view.",
         "played": "Meetings"
       },
-      "playedHelp": "Includes incomplete matches, which have no winner.",
       "sections": {
         "record": "Record",
         "streaks": "Streaks",
@@ -1886,9 +1887,7 @@
         "recent": "Recent matches"
       },
       "averageOpponentLevel": "Average opponent level",
-      "averageOpponentLevelHelp": "Average strength of the opposing team before each match. Matches without rating evidence are left out.",
       "upsetWins": "Upset wins",
-      "upsetWinsHelp": "Wins when the expected chance was {{chance}} or lower.",
       "eligibility": {
         "pair": {
           "ready": "Counts toward the best-partner ranking: {{matches}} decided matches together.",
@@ -1932,7 +1931,6 @@
         "partners": {
           "title": "Partners",
           "best": "Best partner",
-          "bestHelp": "Highest win rate with at least {{required}} decided matches together.",
           "empty": "No partners in this selection.",
           "caption": "Partners, most matches together first",
           "viewLabel": "View partnership with {{name}}"
@@ -1940,11 +1938,8 @@
         "opponents": {
           "title": "Opponents",
           "best": "Best record against",
-          "bestHelp": "Highest win rate against an opponent with at least {{required}} decided meetings.",
           "toughest": "Toughest opponent",
-          "toughestHelp": "Lowest win rate against an opponent with at least {{required}} decided meetings.",
           "closestRivalry": "Closest rivalry",
-          "closestRivalryHelp": "Smallest gap between wins and losses among opponents with at least {{required}} decided meetings; more meetings break ties.",
           "empty": "No opponents in this selection.",
           "caption": "Opponents, most meetings first",
           "viewLabel": "View head to head against {{name}}"
@@ -2113,7 +2108,6 @@
         "form": "Form",
         "activity": "Matches per month",
         "setPatterns": "Set patterns",
-        "records": "Records",
         "peaks": "Activity peaks",
         "relationships": "Partners and opponents"
       },
@@ -2125,9 +2119,7 @@
         "losses": "Losses",
         "draws": "Draws",
         "incomplete": "Incomplete results",
-        "incompleteHelp": "Counted as played, but not as a win, loss or draw.",
         "winRate": "Win rate",
-        "winRateHelp": "Wins out of matches with a decided result.",
         "competitiveWinRate": "Competitive win rate",
         "friendlyWinRate": "Friendly win rate"
       },
@@ -2143,19 +2135,15 @@
         "differential": "Game differential",
         "winRate": "Game win rate",
         "averageWon": "Games won per match",
-        "averageConceded": "Games conceded per match",
-        "averageHelp": "Averaged over matches with a recorded score."
+        "averageConceded": "Games conceded per match"
       },
       "rating": {
         "current": "Current level",
-        "currentHelp": "Your app-wide level, not limited by the filters.",
         "reliability": "Reliability",
         "starting": "Starting level",
         "highest": "Highest level",
         "lowestEstablished": "Lowest established level",
-        "lowestEstablishedHelp": "Lowest level reached once the rating was established.",
         "filteredDelta": "Rating change in this period",
-        "filteredDeltaHelp": "Sum of the rating changes from matches in the selection.",
         "communityRank": "Community skill rank",
         "leaguePosition": "Active league position",
         "bestCommunityRank": "Best community skill rank",
@@ -2193,8 +2181,7 @@
         "last5": "Last 5 matches",
         "last10": "Last 10 matches",
         "longestWins": "Longest win streak",
-        "longestLosses": "Longest loss streak",
-        "streakHelp": "A draw ends both kinds of streak."
+        "longestLosses": "Longest loss streak"
       },
       "activity": {
         "empty": "No matches in this selection yet.",
@@ -2224,28 +2211,20 @@
         "decidingSetLosses": "Deciding-set losses",
         "decidingSetWinRate": "Deciding-set win rate",
         "firstSetConversion": "Won first set, won match",
-        "firstSetConversionHelp": "Share of matches won after winning the first set.",
         "comeback": "Lost first set, won match",
-        "comebackHelp": "Share of matches won after losing the first set.",
         "incompleteDeciders": "Incomplete deciding sets",
-        "incompleteDecidersHelp": "Time-limited or unfinished deciding sets, counted apart from wins and losses.",
         "cleanestWin": "Cleanest win",
-        "cleanestWinHelp": "Largest game margin in a win.",
         "closestWin": "Closest win",
         "biggestGain": "Biggest rating gain",
         "biggestLoss": "Biggest rating loss",
         "strongestUpset": "Biggest upset win",
-        "upsetHelp": "Win with the lowest expected chance beforehand.",
         "toughestLoss": "Toughest loss",
-        "toughestLossHelp": "Loss with the highest expected chance of winning beforehand.",
         "weeklyAverage": "Average matches per week",
-        "weeklyAverageHelp": "Matches divided by the weeks from your first to your last match here.",
         "mostActiveWeek": "Most active week",
         "mostActiveMonth": "Most active month",
         "uniquePartners": "Different partners",
         "uniqueOpponents": "Different opponents",
         "uniqueQuartets": "Different player combinations",
-        "uniqueQuartetsHelp": "Distinct sets of four players in your matches.",
         "topPartner": "Most frequent partner",
         "topOpponent": "Most frequent opponent",
         "partnerShare": "Matches with most frequent partner",
@@ -2257,6 +2236,314 @@
         "weekMatches": "{{matches}} matches, week of {{period}}",
         "monthMatches": "{{matches}} matches, {{period}}"
       }
+    },
+    "metrics": {
+      "community": {
+        "activePlayers": {
+          "help": "Distinct players who played a confirmed match in this selection; not the member count."
+        },
+        "ranking": {
+          "help": "Eligible matches of the active League."
+        },
+        "frequency": {
+          "average": {
+            "help": "Matches divided by the weeks in the window (at least one)."
+          }
+        },
+        "leaders": {
+          "highestWinRate": {
+            "help": "Players with at least {{required}} decided matches."
+          },
+          "mostImproved": {
+            "help": "Rating movement from matches in this selection, not a change of overall level."
+          },
+          "mostActive": {
+            "help": "Players with the most confirmed matches in this selection."
+          },
+          "mostWins": {
+            "help": "Players with the most wins in this selection."
+          },
+          "bestSets": {
+            "help": "Largest difference between sets won and lost."
+          },
+          "bestGames": {
+            "help": "Largest difference between games won and lost."
+          }
+        },
+        "pairings": {
+          "matchup": {
+            "help": "The same two pairs facing each other, whichever side they played on."
+          },
+          "rivalry": {
+            "help": "Smallest gap between wins and losses with at least {{required}} decided meetings; the largest sample breaks ties."
+          },
+          "pair": {
+            "help": "The two players who played together in the most matches."
+          }
+        },
+        "matches": {
+          "played": {
+            "help": "Counts every confirmed match once. Incomplete matches are counted as played but have no winner."
+          },
+          "competitive": {
+            "help": "Confirmed matches of the competitive type."
+          },
+          "friendly": {
+            "help": "Confirmed matches of the friendly type."
+          },
+          "decided": {
+            "help": "Matches with a winner; draws and incomplete matches are left out."
+          },
+          "draws": {
+            "help": "Matches that ended level."
+          },
+          "incomplete": {
+            "help": "Played but without a winner, for example when a deciding set was not finished."
+          }
+        },
+        "totals": {
+          "sets": {
+            "help": "All sets played in the matches of this selection."
+          },
+          "games": {
+            "help": "All games played in the matches of this selection."
+          }
+        }
+      },
+      "player": {
+        "matches": {
+          "incomplete": {
+            "help": "Counted as played, but not as a win, loss or draw."
+          },
+          "winRate": {
+            "help": "Wins out of matches with a decided result."
+          },
+          "played": {
+            "help": "Confirmed matches in this selection, including incomplete ones."
+          },
+          "competitive": {
+            "help": "Matches of the competitive type."
+          },
+          "friendly": {
+            "help": "Matches of the friendly type."
+          },
+          "wins": {
+            "help": "Matches won."
+          },
+          "losses": {
+            "help": "Matches lost."
+          },
+          "draws": {
+            "help": "Matches that ended level."
+          },
+          "competitiveWinRate": {
+            "help": "Wins out of decided competitive matches."
+          },
+          "friendlyWinRate": {
+            "help": "Wins out of decided friendly matches."
+          }
+        },
+        "games": {
+          "averageWon": {
+            "help": "Averaged over matches with a recorded score."
+          },
+          "averageConceded": {
+            "help": "Averaged over matches with a recorded score."
+          },
+          "won": {
+            "help": "Games won across the selected matches."
+          },
+          "lost": {
+            "help": "Games lost across the selected matches."
+          },
+          "differential": {
+            "help": "Games won minus games lost."
+          },
+          "winRate": {
+            "help": "Games won out of all games played."
+          }
+        },
+        "rating": {
+          "current": {
+            "help": "Your app-wide level, not limited by the filters."
+          },
+          "lowestEstablished": {
+            "help": "Lowest level reached once the rating was established."
+          },
+          "filteredDelta": {
+            "help": "Sum of the rating changes from matches in the selection."
+          },
+          "reliability": {
+            "help": "How much evidence supports your current level."
+          },
+          "starting": {
+            "help": "The level you started with."
+          },
+          "highest": {
+            "help": "Highest level reached in the selection."
+          },
+          "communityRank": {
+            "help": "Position among the community players by level."
+          },
+          "leaguePosition": {
+            "help": "Position in the active League standings."
+          },
+          "bestCommunityRank": {
+            "help": "Best community position held; the note says when the stored history starts."
+          },
+          "bestLeaguePosition": {
+            "help": "Best League position held; the note says when the stored history starts."
+          }
+        },
+        "form": {
+          "longestWins": {
+            "help": "A draw ends both kinds of streak."
+          },
+          "longestLosses": {
+            "help": "A draw ends both kinds of streak."
+          },
+          "current": {
+            "help": "A draw ends both kinds of streak."
+          }
+        },
+        "records": {
+          "firstSetConversion": {
+            "help": "Share of matches won after winning the first set."
+          },
+          "comeback": {
+            "help": "Share of matches won after losing the first set."
+          },
+          "incompleteDeciders": {
+            "help": "Time-limited or unfinished deciding sets, counted apart from wins and losses."
+          },
+          "cleanestWin": {
+            "help": "Largest game margin in a win."
+          },
+          "strongestUpset": {
+            "help": "Win with the lowest expected chance beforehand."
+          },
+          "toughestLoss": {
+            "help": "Loss with the highest expected chance of winning beforehand."
+          },
+          "weeklyAverage": {
+            "help": "Matches divided by the weeks from your first to your last match here."
+          },
+          "uniqueQuartets": {
+            "help": "Distinct sets of four players in your matches."
+          },
+          "straightSetWins": {
+            "help": "Wins without losing a set."
+          },
+          "straightSetLosses": {
+            "help": "Losses without winning a set."
+          },
+          "threeSetGroups": {
+            "help": "Matches that went to a third set."
+          },
+          "decidingSetWins": {
+            "help": "Third sets won."
+          },
+          "decidingSetLosses": {
+            "help": "Third sets lost."
+          },
+          "decidingSetWinRate": {
+            "help": "Deciding sets won out of those finished."
+          },
+          "closestWin": {
+            "help": "Win with the smallest game margin."
+          },
+          "biggestGain": {
+            "help": "Largest rating increase from one match."
+          },
+          "biggestLoss": {
+            "help": "Largest rating decrease from one match."
+          },
+          "mostActiveWeek": {
+            "help": "UTC week (starting Monday) with the most matches."
+          },
+          "mostActiveMonth": {
+            "help": "UTC month with the most matches."
+          },
+          "uniquePartners": {
+            "help": "Different players you played alongside."
+          },
+          "uniqueOpponents": {
+            "help": "Different players you played against."
+          },
+          "topPartner": {
+            "help": "The partner you played the most matches with."
+          },
+          "topOpponent": {
+            "help": "The opponent you met in the most matches."
+          },
+          "partnerShare": {
+            "help": "Share of your matches played with your most frequent partner."
+          }
+        },
+        "sets": {
+          "won": {
+            "help": "Sets won across the selected matches."
+          },
+          "lost": {
+            "help": "Sets lost across the selected matches."
+          },
+          "differential": {
+            "help": "Sets won minus sets lost."
+          },
+          "winRate": {
+            "help": "Sets won out of all sets played."
+          }
+        }
+      },
+      "relationships": {
+        "pair": {
+          "played": {
+            "help": "Includes incomplete matches, which have no winner."
+          }
+        },
+        "opponent": {
+          "played": {
+            "help": "Includes incomplete matches, which have no winner."
+          }
+        },
+        "averageOpponentLevel": {
+          "help": "Average strength of the opposing team before each match. Matches without rating evidence are left out."
+        },
+        "upsetWins": {
+          "help": "Wins when the expected chance was {{chance}} or lower."
+        },
+        "records": {
+          "partners": {
+            "best": {
+              "help": "Highest win rate with at least {{required}} decided matches together."
+            }
+          },
+          "opponents": {
+            "best": {
+              "help": "Highest win rate against an opponent with at least {{required}} decided meetings."
+            },
+            "toughest": {
+              "help": "Lowest win rate against an opponent with at least {{required}} decided meetings."
+            },
+            "closestRivalry": {
+              "help": "Smallest gap between wins and losses among opponents with at least {{required}} decided meetings; more meetings break ties."
+            }
+          }
+        }
+      }
+    },
+    "states": {
+      "loading": "Loading statistics…",
+      "empty": "Nothing to show for this selection yet.",
+      "retry": "Try again"
+    },
+    "charts": {
+      "summary_one": "{{count}} period, {{from}}. {{total}} matches in total; the highest was {{peak}} in {{peakLabel}}.",
+      "summary_other": "{{count}} periods from {{from}} to {{to}}. {{total}} matches in total; the highest was {{peak}} in {{peakLabel}}.",
+      "showData": "Show data table",
+      "hideData": "Hide data table",
+      "sampled": "The chart shows the latest {{shown}} of {{total}} periods; the data table contains all of them.",
+      "tableLabel": "Data table: {{title}}"
     },
     "errors": {
       "STATISTICS_UNAUTHENTICATED": "Sign in to see match history.",

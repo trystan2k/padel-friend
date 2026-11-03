@@ -10,6 +10,7 @@ import {
 import type { OpponentStatistics as Opponent } from './statistics-relationship-contracts';
 import { playerStyles as s } from './statistics-player.styles';
 import { filterSearch } from './statistics-search';
+import { StatisticsBreadcrumb } from './StatisticsBreadcrumb';
 
 /** Head-to-head, always from the focal player's point of view. */
 export function OpponentStatistics({ opponent }: { opponent: Opponent }) {
@@ -18,6 +19,11 @@ export function OpponentStatistics({ opponent }: { opponent: Opponent }) {
   return (
     <main {...stylex.props(s.page)}>
       <header {...stylex.props(s.header)}>
+        <StatisticsBreadcrumb
+          playerId={opponent.focalId}
+          filters={opponent.filters}
+          current="opponent"
+        />
         <h1 {...stylex.props(s.title)}>
           {t('statistics.relationships.opponent.heading', {
             first: f.name(opponent.focal.displayName),

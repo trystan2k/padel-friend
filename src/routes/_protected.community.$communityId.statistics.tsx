@@ -2,19 +2,13 @@ import { createFileRoute, notFound, useNavigate, useRouter } from '@tanstack/rea
 import { useTranslation } from 'react-i18next';
 import { CommunityStatistics } from '../features/statistics/CommunityStatistics';
 import { getCommunityStatistics } from '../features/statistics/statistics-community.functions';
-import type { StatisticsErrorCode } from '../features/statistics/statistics-history-contracts';
 import {
   communityScopeFilters,
   filterSearch,
   parseCommunitySearch
 } from '../features/statistics/statistics-search';
+import { StatisticsError, StatisticsLoading } from '../features/statistics/StatisticsStates';
 import { createI18n, resolveLocale } from '../i18n/config';
-
-const RETRYABLE: readonly StatisticsErrorCode[] = [
-  'STATISTICS_UNAVAILABLE',
-  'INVALID_STATISTICS_RESPONSE',
-  'STATISTICS_STALE_REVISION'
-];
 
 export const Route = createFileRoute('/_protected/community/$communityId/statistics')({
   // The community lives in the path; League, type
@@ -35,8 +29,11 @@ export const Route = createFileRoute('/_protected/community/$communityId/statist
     return { result, locale: context.locale };
   },
   head: ({ loaderData }) => ({
-    meta: [{ title: createI18n(resolveLocale(loaderData?.locale)).t('statistics.community.title') }]
+    meta: [
+      { title: createI18n(resolveLocale(loaderData?.locale)).t('statistics.navigation.community') }
+    ]
   }),
+  pendingComponent: StatisticsLoading,
   component: CommunityStatisticsPage
 });
 
@@ -62,15 +59,8 @@ function CommunityStatisticsPage() {
   }
   return (
     <main>
-      <h1>{t('statistics.community.title')}</h1>
-      <div role="alert">
-        <p>{t(`statistics.errors.${result.code}`)}</p>
-        {RETRYABLE.includes(result.code) && (
-          <button type="button" onClick={() => void router.invalidate()}>
-            {t('statistics.history.retry')}
-          </button>
-        )}
-      </div>
+      <h1>{t('statistics.navigation.community')}</h1>
+      <StatisticsError code={result.code} onRetry={() => void router.invalidate()} />
     </main>
   );
 }

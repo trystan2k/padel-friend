@@ -2,6 +2,7 @@ import * as stylex from '@stylexjs/stylex';
 import { useTranslation } from 'react-i18next';
 import { SurfaceCard } from '../../components/ui/SurfaceCard';
 import { formatLevel, formatPercentPoints, formatRatingDate } from '../player/rating-format';
+import { ReasonText, statisticsLocale } from './StatisticsStates';
 import type { MetricState } from './statistics-contracts';
 import type { PlayerRank, PlayerRankHistory } from './statistics-player-contracts';
 import { playerStyles as s } from './statistics-player.styles';
@@ -9,7 +10,7 @@ import { playerStyles as s } from './statistics-player.styles';
 /** Locale-aware number formatting shared by every player statistics surface. */
 export function usePlayerFormat() {
   const { i18n } = useTranslation();
-  const locale = i18n.language === 'en' ? 'en-GB' : i18n.language;
+  const locale = statisticsLocale(i18n.language);
   return {
     locale,
     count: (value: number) =>
@@ -49,55 +50,44 @@ export function Section({
   );
 }
 
-type StatProps = { label: string; help?: string; children: React.ReactNode };
+/** `id` is the metric id: its help text is `statistics.metrics.<id>.help` for every metric. */
+type StatProps = {
+  id: string;
+  label: string;
+  helpValues?: Record<string, string>;
+  children: React.ReactNode;
+};
 
 /** One labelled figure; the label is the term and the value block its description. */
-export function Stat({ label, help, children }: StatProps) {
+export function Stat({ id, label, helpValues, children }: StatProps) {
+  const { t } = useTranslation();
   return (
     <div {...stylex.props(s.stat)}>
       <dt {...stylex.props(s.statLabel)}>{label}</dt>
       <dd {...stylex.props(s.statValue)}>
         {children}
-        {help && <span {...stylex.props(s.detail)}>{help}</span>}
+        <span {...stylex.props(s.detail)}>{t(`statistics.metrics.${id}.help`, helpValues)}</span>
       </dd>
     </div>
   );
 }
 
 export function CountStat({
+  id,
   label,
   value,
-  help
+  helpValues
 }: {
+  id: string;
   label: string;
   value: string | number;
-  help?: string;
+  helpValues?: Record<string, string>;
 }) {
   const { count } = usePlayerFormat();
   return (
-    <Stat label={label} {...(help ? { help } : {})}>
+    <Stat id={id} label={label} {...(helpValues ? { helpValues } : {})}>
       <strong {...stylex.props(s.value)}>{typeof value === 'number' ? count(value) : value}</strong>
     </Stat>
-  );
-}
-
-/** Localized explanation of an insufficient or unavailable metric: never a fake zero. */
-export function ReasonText({
-  metric
-}: {
-  metric: Exclude<MetricState<unknown>, { state: 'ready' }>;
-}) {
-  const { t } = useTranslation();
-  const { count } = usePlayerFormat();
-  const observed = metric.state === 'insufficient' ? (metric.observed ?? 0) : 0;
-  const required = metric.state === 'insufficient' ? (metric.required ?? 0) : 0;
-  return (
-    <span {...stylex.props(s.detail)}>
-      {t(`statistics.player.reasons.${metric.reason}`, {
-        observed: count(observed),
-        required: count(required)
-      })}
-    </span>
   );
 }
 
@@ -106,32 +96,34 @@ export function ReasonText({
  * insufficient and unavailable states show a typed explanation instead of 0, NaN or a blank.
  */
 export function MetricStat<T = number>({
+  id,
   label,
   metric,
   format,
   unit,
-  help
+  helpValues
 }: {
+  id: string;
   label: string;
   metric: MetricState<T>;
   format: (value: T) => string;
   /** Denominator noun key under statistics.player.units, shown as "n of d <unit>". */
   unit?: 'matches' | 'sets' | 'games' | 'opportunities' | 'rated';
-  help?: string;
+  helpValues?: Record<string, string>;
 }) {
   const { t } = useTranslation();
   const { count } = usePlayerFormat();
-  const extra = help ? { help } : {};
+  const extra = { id, label, ...(helpValues ? { helpValues } : {}) };
   if (metric.state !== 'ready') {
     return (
-      <Stat label={label} {...extra}>
+      <Stat {...extra}>
         <strong {...stylex.props(s.value, s.valueMuted)}>{t('statistics.player.noValue')}</strong>
         <ReasonText metric={metric} />
       </Stat>
     );
   }
   return (
-    <Stat label={label} {...extra}>
+    <Stat {...extra}>
       <strong {...stylex.props(s.value)}>{format(metric.value)}</strong>
       {unit && metric.denominator !== null && (
         <span {...stylex.props(s.detail)}>
@@ -162,19 +154,27 @@ function RankDetail({ rank }: { rank: PlayerRank }) {
 }
 
 /** Current rank metrics: the position plus whether it was published or reconstructed. */
-export function RankStat({ label, metric }: { label: string; metric: MetricState<PlayerRank> }) {
+export function RankStat({
+  id,
+  label,
+  metric
+}: {
+  id: string;
+  label: string;
+  metric: MetricState<PlayerRank>;
+}) {
   const { t } = useTranslation();
   const { count } = usePlayerFormat();
   if (metric.state !== 'ready') {
     return (
-      <Stat label={label}>
+      <Stat id={id} label={label}>
         <strong {...stylex.props(s.value, s.valueMuted)}>{t('statistics.player.noValue')}</strong>
         <ReasonText metric={metric} />
       </Stat>
     );
   }
   return (
-    <Stat label={label}>
+    <Stat id={id} label={label}>
       <strong {...stylex.props(s.value)}>
         {t('statistics.player.rank.position', { position: count(metric.value.position) })}
       </strong>
@@ -187,12 +187,20 @@ export function RankStat({ label, metric }: { label: string; metric: MetricState
  * Best-ever rank. When the stored evidence does not cover the whole selected period the boundary
  * is shown, so a partial history is never read as the all-time best.
  */
-export function BestRankStat({ label, history }: { label: string; history: PlayerRankHistory }) {
+export function BestRankStat({
+  id,
+  label,
+  history
+}: {
+  id: string;
+  label: string;
+  history: PlayerRankHistory;
+}) {
   const { t } = useTranslation();
   const { count, date } = usePlayerFormat();
   const best = history.best;
   return (
-    <Stat label={label}>
+    <Stat id={id} label={label}>
       {best.state === 'ready' ? (
         <>
           <strong {...stylex.props(s.value)}>

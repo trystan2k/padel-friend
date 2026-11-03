@@ -87,7 +87,7 @@ describe('CommunityStatistics', () => {
     expect(figure('Average matches per week').textContent).toContain('1.67');
   });
 
-  it('shows frequency as real tables with zero buckets and scoped headers', () => {
+  it('shows frequency as real tables with zero buckets and scoped headers', async () => {
     render(
       wrap(
         <CommunityStatistics
@@ -100,6 +100,9 @@ describe('CommunityStatistics', () => {
         />
       )
     );
+    const [showWeeks, showMonths] = screen.getAllByRole('button', { name: 'Show data table' });
+    await userEvent.click(showWeeks!);
+    await userEvent.click(showMonths!);
     const weeks = screen.getByRole('table', { name: /Matches per week/ });
     const rows = within(weeks).getAllByRole('row');
     expect(rows).toHaveLength(4);

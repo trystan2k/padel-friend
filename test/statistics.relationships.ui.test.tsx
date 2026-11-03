@@ -98,6 +98,11 @@ describe('PairStatistics', () => {
     expect(back.getAttribute('href')).toBe(
       '/players/' + FOCAL + '?communityId=' + OTHER + '&type=competitive'
     );
+    const crumbs = within(screen.getByRole('navigation', { name: 'Statistics navigation' }));
+    expect(crumbs.getByRole('link', { name: 'Player statistics' }).getAttribute('href')).toBe(
+      back.getAttribute('href')
+    );
+    expect(crumbs.getByText('Partnership').getAttribute('aria-current')).toBe('page');
   });
 
   it('explains a one-match pair as visible but not yet eligible for a best claim', () => {

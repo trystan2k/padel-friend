@@ -11,17 +11,16 @@ import {
   BestRankStat,
   MetricStat,
   RankStat,
-  ReasonText,
   Section,
   Stat,
   usePlayerFormat
 } from './PlayerMetric';
 import { PlayerStatisticsRecords } from './PlayerStatisticsRecords';
+import { StatisticsChart } from './StatisticsChart';
+import { ReasonText, StatisticsEmpty } from './StatisticsStates';
 import { playerStyles as s } from './statistics-player.styles';
 
 const CHART_MONTHS = 12;
-const CHART_WIDTH = 240;
-const CHART_HEIGHT = 80;
 
 const OUTCOME_TONE = { W: 'positive', L: 'danger', D: 'neutral' } as const;
 
@@ -73,12 +72,20 @@ function OutcomeBadges({ outcomes }: { outcomes: PlayerFormSample['outcomes'] })
   );
 }
 
-function FormStat({ label, metric }: { label: string; metric: Statistics['form']['last5'] }) {
+function FormStat({
+  id,
+  label,
+  metric
+}: {
+  id: string;
+  label: string;
+  metric: Statistics['form']['last5'];
+}) {
   const { t } = useTranslation();
   const { count } = usePlayerFormat();
   if (metric.state !== 'ready') {
     return (
-      <Stat label={label}>
+      <Stat id={id} label={label}>
         <strong {...stylex.props(s.value, s.valueMuted)}>{t('statistics.player.noValue')}</strong>
         <ReasonText metric={metric} />
       </Stat>
@@ -86,7 +93,7 @@ function FormStat({ label, metric }: { label: string; metric: Statistics['form']
   }
   const sample = metric.value;
   return (
-    <Stat label={label}>
+    <Stat id={id} label={label}>
       <strong {...stylex.props(s.value)}>
         {t('statistics.player.form.record', {
           wins: count(sample.wins),
@@ -110,7 +117,7 @@ function CurrentStreak({ current }: { current: Statistics['form']['current'] }) 
   const { count } = usePlayerFormat();
   const kind = current.kind;
   return (
-    <Stat label={t('statistics.player.form.current')}>
+    <Stat id="player.form.current" label={t('statistics.player.form.current')}>
       <strong {...stylex.props(s.value, kind === null && s.valueMuted)}>
         {kind === null ? t('statistics.player.form.noStreak') : count(current.length)}
       </strong>
@@ -121,66 +128,26 @@ function CurrentStreak({ current }: { current: Statistics['form']['current'] }) 
   );
 }
 
-/**
- * Bars for matches per month plus the same numbers as a table: the table is the textual
- * equivalent of the chart, so no figure is conveyed by shape alone.
- */
+/** Matches per month; the chart's table holds every month, so no figure is conveyed by shape alone. */
 function ActivitySeries({ months }: { months: Statistics['activity']['months'] }) {
   const { t } = useTranslation();
   const { count, month } = usePlayerFormat();
-  const recent = months.slice(-CHART_MONTHS);
-  const peak = Math.max(1, ...recent.map((entry) => entry.groups));
-  const slot = CHART_WIDTH / Math.max(1, recent.length);
-  if (recent.length === 0) {
-    return <p {...stylex.props(s.copy)}>{t('statistics.player.activity.empty')}</p>;
+  if (months.length === 0) {
+    return <StatisticsEmpty>{t('statistics.player.activity.empty')}</StatisticsEmpty>;
   }
   return (
-    <div {...stylex.props(s.section)}>
-      <svg
-        aria-hidden="true"
-        focusable="false"
-        viewBox={`0 0 ${CHART_WIDTH} ${CHART_HEIGHT}`}
-        preserveAspectRatio="none"
-        {...stylex.props(s.chart)}
-      >
-        {recent.map((entry, index) => {
-          const height = (entry.groups / peak) * CHART_HEIGHT;
-          return (
-            <rect
-              key={entry.period}
-              x={index * slot + slot * 0.15}
-              y={CHART_HEIGHT - height}
-              width={slot * 0.7}
-              height={height}
-              {...stylex.props(s.bar)}
-            />
-          );
-        })}
-      </svg>
-      <table {...stylex.props(s.table)}>
-        <caption {...stylex.props(s.caption)}>{t('statistics.player.activity.caption')}</caption>
-        <thead>
-          <tr>
-            <th scope="col" {...stylex.props(s.cell)}>
-              {t('statistics.player.activity.month')}
-            </th>
-            <th scope="col" {...stylex.props(s.cell)}>
-              {t('statistics.player.activity.matches')}
-            </th>
-          </tr>
-        </thead>
-        <tbody>
-          {recent.map((entry) => (
-            <tr key={entry.period}>
-              <th scope="row" {...stylex.props(s.cell)}>
-                {month(entry.period)}
-              </th>
-              <td {...stylex.props(s.cell)}>{count(entry.groups)}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+    <StatisticsChart
+      title={t('statistics.player.activity.caption')}
+      headerLabel={t('statistics.player.activity.month')}
+      valueLabel={t('statistics.player.activity.matches')}
+      points={months.map((entry) => ({
+        key: entry.period,
+        label: month(entry.period),
+        value: entry.groups
+      }))}
+      plotLimit={CHART_MONTHS}
+      formatValue={count}
+    />
   );
 }
 
@@ -211,34 +178,57 @@ export function PlayerStatistics({
 
       <Section id="player-stats-matches" title={t('statistics.player.sections.matches')}>
         <dl {...stylex.props(s.stats)}>
-          <CountStat label={t('statistics.player.matches.played')} value={matches.played} />
           <CountStat
+            id="player.matches.played"
+            label={t('statistics.player.matches.played')}
+            value={matches.played}
+          />
+          <CountStat
+            id="player.matches.competitive"
             label={t('statistics.player.matches.competitive')}
             value={matches.competitive}
           />
-          <CountStat label={t('statistics.player.matches.friendly')} value={matches.friendly} />
-          <CountStat label={t('statistics.player.matches.wins')} value={matches.wins} />
-          <CountStat label={t('statistics.player.matches.losses')} value={matches.losses} />
-          <CountStat label={t('statistics.player.matches.draws')} value={matches.draws} />
           <CountStat
+            id="player.matches.friendly"
+            label={t('statistics.player.matches.friendly')}
+            value={matches.friendly}
+          />
+          <CountStat
+            id="player.matches.wins"
+            label={t('statistics.player.matches.wins')}
+            value={matches.wins}
+          />
+          <CountStat
+            id="player.matches.losses"
+            label={t('statistics.player.matches.losses')}
+            value={matches.losses}
+          />
+          <CountStat
+            id="player.matches.draws"
+            label={t('statistics.player.matches.draws')}
+            value={matches.draws}
+          />
+          <CountStat
+            id="player.matches.incomplete"
             label={t('statistics.player.matches.incomplete')}
             value={matches.incomplete}
-            help={t('statistics.player.matches.incompleteHelp')}
           />
           <MetricStat
+            id="player.matches.winRate"
             label={t('statistics.player.matches.winRate')}
             metric={matches.winRate}
             format={f.ratio}
             unit="matches"
-            help={t('statistics.player.matches.winRateHelp')}
           />
           <MetricStat
+            id="player.matches.competitiveWinRate"
             label={t('statistics.player.matches.competitiveWinRate')}
             metric={matches.competitiveWinRate}
             format={f.ratio}
             unit="matches"
           />
           <MetricStat
+            id="player.matches.friendlyWinRate"
             label={t('statistics.player.matches.friendlyWinRate')}
             metric={matches.friendlyWinRate}
             format={f.ratio}
@@ -249,38 +239,59 @@ export function PlayerStatistics({
 
       <Section id="player-stats-scores" title={t('statistics.player.sections.scores')}>
         <dl {...stylex.props(s.stats)}>
-          <CountStat label={t('statistics.player.sets.won')} value={sets.won} />
-          <CountStat label={t('statistics.player.sets.lost')} value={sets.lost} />
           <CountStat
+            id="player.sets.won"
+            label={t('statistics.player.sets.won')}
+            value={sets.won}
+          />
+          <CountStat
+            id="player.sets.lost"
+            label={t('statistics.player.sets.lost')}
+            value={sets.lost}
+          />
+          <CountStat
+            id="player.sets.differential"
             label={t('statistics.player.sets.differential')}
             value={f.signed(sets.differential)}
           />
           <MetricStat
+            id="player.sets.winRate"
             label={t('statistics.player.sets.winRate')}
             metric={sets.winRate}
             format={f.ratio}
             unit="sets"
           />
-          <CountStat label={t('statistics.player.games.won')} value={games.won} />
-          <CountStat label={t('statistics.player.games.lost')} value={games.lost} />
           <CountStat
+            id="player.games.won"
+            label={t('statistics.player.games.won')}
+            value={games.won}
+          />
+          <CountStat
+            id="player.games.lost"
+            label={t('statistics.player.games.lost')}
+            value={games.lost}
+          />
+          <CountStat
+            id="player.games.differential"
             label={t('statistics.player.games.differential')}
             value={f.signed(games.differential)}
           />
           <MetricStat
+            id="player.games.winRate"
             label={t('statistics.player.games.winRate')}
             metric={games.winRate}
             format={f.ratio}
             unit="games"
           />
           <MetricStat
+            id="player.games.averageWon"
             label={t('statistics.player.games.averageWon')}
             metric={games.averageWonPerGroup}
             format={f.count}
             unit="matches"
-            help={t('statistics.player.games.averageHelp')}
           />
           <MetricStat
+            id="player.games.averageConceded"
             label={t('statistics.player.games.averageConceded')}
             metric={games.averageConcededPerGroup}
             format={f.count}
@@ -292,52 +303,59 @@ export function PlayerStatistics({
       <Section id="player-stats-rating" title={t('statistics.player.sections.rating')}>
         <dl {...stylex.props(s.stats)}>
           <MetricStat
+            id="player.rating.current"
             label={t('statistics.player.rating.current')}
             metric={rating.currentLevel}
             format={f.level}
-            help={t('statistics.player.rating.currentHelp')}
           />
           <MetricStat
+            id="player.rating.reliability"
             label={t('statistics.player.rating.reliability')}
             metric={rating.reliability}
             format={f.reliability}
           />
           <MetricStat
+            id="player.rating.starting"
             label={t('statistics.player.rating.starting')}
             metric={rating.startingLevel}
             format={f.level}
           />
           <MetricStat
+            id="player.rating.highest"
             label={t('statistics.player.rating.highest')}
             metric={rating.highestLevel}
             format={f.level}
           />
           <MetricStat
+            id="player.rating.lowestEstablished"
             label={t('statistics.player.rating.lowestEstablished')}
             metric={rating.lowestEstablishedLevel}
             format={f.level}
-            help={t('statistics.player.rating.lowestEstablishedHelp')}
           />
           <MetricStat
+            id="player.rating.filteredDelta"
             label={t('statistics.player.rating.filteredDelta')}
             metric={rating.filteredDelta}
             format={f.signed}
             unit="rated"
-            help={t('statistics.player.rating.filteredDeltaHelp')}
           />
           <RankStat
+            id="player.rating.communityRank"
             label={t('statistics.player.rating.communityRank')}
             metric={rating.communitySkillRank}
           />
           <RankStat
+            id="player.rating.leaguePosition"
             label={t('statistics.player.rating.leaguePosition')}
             metric={rating.activeLeaguePosition}
           />
           <BestRankStat
+            id="player.rating.bestCommunityRank"
             label={t('statistics.player.rating.bestCommunityRank')}
             history={rating.bestCommunitySkillRank}
           />
           <BestRankStat
+            id="player.rating.bestLeaguePosition"
             label={t('statistics.player.rating.bestLeaguePosition')}
             history={rating.bestLeaguePosition}
           />
@@ -346,15 +364,27 @@ export function PlayerStatistics({
 
       <Section id="player-stats-form" title={t('statistics.player.sections.form')}>
         <dl {...stylex.props(s.stats)}>
-          <FormStat label={t('statistics.player.form.last5')} metric={form.last5} />
-          <FormStat label={t('statistics.player.form.last10')} metric={form.last10} />
+          <FormStat
+            id="player.form.last5"
+            label={t('statistics.player.form.last5')}
+            metric={form.last5}
+          />
+          <FormStat
+            id="player.form.last10"
+            label={t('statistics.player.form.last10')}
+            metric={form.last10}
+          />
           <CurrentStreak current={form.current} />
           <CountStat
+            id="player.form.longestWins"
             label={t('statistics.player.form.longestWins')}
             value={form.longestWins}
-            help={t('statistics.player.form.streakHelp')}
           />
-          <CountStat label={t('statistics.player.form.longestLosses')} value={form.longestLosses} />
+          <CountStat
+            id="player.form.longestLosses"
+            label={t('statistics.player.form.longestLosses')}
+            value={form.longestLosses}
+          />
         </dl>
       </Section>
 
