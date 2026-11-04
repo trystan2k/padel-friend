@@ -315,7 +315,7 @@ test('a result confirmed while the admin decides forces a refreshed preview, wit
     submittedBy: f.creator.id
   });
   await fillApproval(adminPage, '4.1', 'Confirmed after the match.');
-  await confirmDecision(adminPage);
+  await expect(adminPage.getByRole('alertdialog')).toHaveCount(0);
 
   // Stale retry: no false success, nothing decided, nothing notified.
   await expect(adminPage.getByText(lr.adminDecision.stale)).toBeVisible();

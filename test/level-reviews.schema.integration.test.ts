@@ -14,6 +14,7 @@ const environment = localSupabaseEnv({ filePath: dotEnvPathFromImportMetaUrl(imp
 const PUBLIC_RPCS = [
   'cancel_level_review_request',
   'get_level_review_access',
+  'get_level_review_adjustment_preview',
   'get_level_review_admin_detail',
   'get_my_level_review_request',
   'list_level_review_queue',
@@ -101,7 +102,7 @@ describe('level review schema', { timeout: 120_000 }, () => {
   );
 
   it.skipIf(!environment.env)(
-    'exposes only the nine commands and readers, each a pinned SECURITY DEFINER guarded against provisional actors',
+    'exposes only the ten commands and readers, each a pinned SECURITY DEFINER guarded against provisional actors',
     async () => {
       const rows = await queryTrustedSql(
         `select p.proname, p.prosecdef, p.proconfig = array['search_path=""'] as pinned,

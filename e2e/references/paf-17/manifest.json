@@ -31,8 +31,26 @@
   },
   "visualBudgets": {
     "status": "measured-calibrated",
-    "measurement": "Share of perceptibly different pixels (YIQ threshold 0.1) between the live 390x844 light screen and the frame crop, aligned on the screen title (request/admin) or on the status card (status). Seeded deterministic content; structural probes in e2e/level-reviews-visual.spec.ts are independent of these budgets and never widened by them.",
+    "coverage": "full-viewport",
+    "measurement": "Share of perceptibly different pixels (YIQ threshold 0.1) over the WHOLE 390x844 light viewport (no crop) between the live screen and an expected image composed from the approved frame: the frame header band aligned on the live title, the frame body aligned on the live first card (request/admin), or per actual state the frame header, that state card, the annotation and the bottom navigation band placed where the live screen renders the same region (status). Seeded deterministic content. The structural geometry probes in e2e/level-reviews-visual.spec.ts are independent of these budgets: budgets justify renderer residuals only, never structural defects.",
     "perScreen": {
+      "qWosG": 0.2,
+      "OKYtp:pending": 0.06,
+      "OKYtp:reviewing": 0.063,
+      "OKYtp:approved": 0.075,
+      "OKYtp:rejected": 0.066,
+      "gGNxk": 0.18
+    },
+    "measuredBaseline": {
+      "qWosG": 0.1725,
+      "OKYtp:pending": 0.0516,
+      "OKYtp:reviewing": 0.0542,
+      "OKYtp:approved": 0.0646,
+      "OKYtp:rejected": 0.057,
+      "gGNxk": 0.1569
+    },
+    "previousCropBudgets": {
+      "note": "Superseded partial-region budgets (first ~400px / 640px crops and 54-69px state-card crops); kept only to document the re-calibration to full-screen coverage.",
       "qWosG": 0.23,
       "OKYtp:pending": 0.03,
       "OKYtp:reviewing": 0.035,
@@ -40,21 +58,45 @@
       "OKYtp:rejected": 0.065,
       "gGNxk": 0.23
     },
-    "measuredBaseline": {
-      "qWosG": 0.2017,
-      "OKYtp:pending": 0.0251,
-      "OKYtp:reviewing": 0.03,
-      "OKYtp:approved": 0.0585,
-      "OKYtp:rejected": 0.054,
-      "gGNxk": 0.1999
-    },
     "perScreenRationale": {
-      "qWosG": "Request form. Calibrated from the measured 0.2017 baseline (deterministic across repeated runs, +14% headroom for cross-renderer font rasterization). The residual is the documented, deliberate difference from the frame: labelled exact/range controls with a mode radio group instead of the inline '4.0 – 4.2 · Edit' summary, a collapsible evidence field, and the forward-only note placed before the submit action so it is read before committing.",
-      "OKYtp:pending": "Pending state card vs its frame card. Calibrated from the measured 0.0251 baseline (+20% headroom, font rasterization only).",
-      "OKYtp:reviewing": "Under review state card vs its frame card. Calibrated from the measured 0.0300 baseline (+17% headroom, font rasterization only).",
-      "OKYtp:approved": "Approved state card vs its frame card. Calibrated from the measured 0.0585 baseline (+20% headroom, font rasterization only).",
-      "OKYtp:rejected": "Rejected state card vs its frame card. Calibrated from the measured 0.0540 baseline (+20% headroom, font rasterization only).",
-      "gGNxk": "Platform Admin decision. Calibrated from the measured 0.1999 baseline (+15% headroom). The residual is the documented, deliberate difference from the frame: the live screen adds the decision form (target level, note, reliability controls) and a fresh internal rating preview, and omits the frame's mock-only queue/theme toggles and recent-form statistics."
+      "qWosG": "Request form, full viewport. Calibrated from the measured 0.1725 full-screen baseline (+16% margin for cross-renderer font rasterization). The residual is the documented, deliberate difference from the frame: labelled exact/range controls with a mode radio group instead of the inline \"4.0 - 4.2 - Edit\" summary, a collapsible evidence field, the forward-only note placed before the submit action so it is read before committing, a taller submit action, and the bottom navigation band which this route does not render.",
+      "OKYtp:pending": "Pending state, full viewport. Calibrated from the measured 0.0516 baseline (+16% margin, font rasterization only). Residual regions: the live \"Your request\" details card and timeline that the frame does not draw, plus the bottom navigation band this route does not render.",
+      "OKYtp:reviewing": "Under review state, full viewport. Calibrated from the measured 0.0542 baseline (+16% margin, font rasterization only). Same documented residual regions as pending.",
+      "OKYtp:approved": "Approved state, full viewport. Calibrated from the measured 0.0646 baseline (+16% margin, font rasterization only). Residual regions additionally include the live decision card and correction link.",
+      "OKYtp:rejected": "Rejected state, full viewport. Calibrated from the measured 0.0570 baseline (+16% margin, font rasterization only). Residual regions additionally include the live decision card and review note.",
+      "gGNxk": "Platform Admin decision, full viewport. Calibrated from the measured 0.1569 baseline (+15% margin). The residual is the documented, deliberate difference from the frame: the live screen adds the decision form (target level, note, reliability controls), a fresh internal rating preview and recent rating history, stacks Approve/Reject as full-width 44px actions, and omits the frame mock-only queue/theme toggles and recent-form statistics."
+    },
+    "geometryProbes": {
+      "note": "Exact (+/-0.5px) deterministic bounding-box assertions in e2e/level-reviews-visual.spec.ts, independent of the raster budgets above. Frame constants: page gutter 18px and card stack gap 10px (Pencil frame px / 2).",
+      "qWosG": [
+        "page gutter == frame gutter",
+        "44x44 back link at the gutter, title 6px after it, context 5px below the title row",
+        "form blocks (current card, fieldset, reason, evidence, note, submit) share left=18/right=372 and sit exactly 10px apart",
+        "full-width submit >= 44px tall",
+        "card inset 10px",
+        "Live Chromium 390x844 en light baseline heights: current 77px, exact fieldset 168px, reason 182px, collapsed disclosure 44px, forward-only note 65px, submit 50px; +/-0.5px. Live baseline replaces frame values where accessible controls and disclosure differ from the mock.",
+        "Internal offsets: current heading/value/helper 10/31/52px; exact input 86px into fieldset, 44px high; reason textarea 31px into card, 120px high. Range fieldset 277px high with inputs at 86/195px; expanded disclosure 227px high with evidence textarea at 71px, 120px high.",
+        "The request forward-only text is a paragraph, not the titled admin card; its baseline is measured separately."
+      ],
+      "OKYtp": [
+        "same header and gutter probes",
+        "status card shares the column, sits 10px under the header and has the exact Pencil card height per state (54/54/69/54)",
+        "annotation spans the gutter column",
+        "stack rhythm 10px between all blocks"
+      ],
+      "gGNxk": [
+        "44px back link row at the gutter, title exactly 10px below it, first card 10px below the title",
+        "cards share the gutter column on the 10px rhythm",
+        "Approve/Reject full-width inside the 10px card inset, >= 44px tall, 8px apart",
+        "Live Chromium 390x844 en light pending baseline heights: snapshot 180px, preview 75px, recent history 60px, titled forward-only 96px, decision form 501px; +/-0.5px. Live baselines cover production-only content absent from the frame.",
+        "Approved detail live baseline heights: snapshot 180px, preview 75px, recent history 60px, decision 131px, audit 210px. Admin decision form internal offsets: target 81px, reliability 131px, note 269px, actions 395/447px; action heights 44px.",
+        "A +20px injected card-height defect must be reported by the same height probe."
+      ],
+      "shared": [
+        "no horizontal overflow or clipped content over the whole document",
+        "every interactive control (links, buttons, inputs, selects, textareas, radio/checkbox labels, dialog controls) >= 44x44px",
+        "every control has an accessible name"
+      ]
     }
   }
 }

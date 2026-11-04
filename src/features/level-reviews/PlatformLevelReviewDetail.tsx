@@ -8,6 +8,7 @@ import { TextField } from '../../components/ui/TextField';
 import { formatLevel } from '../player/rating-format';
 import {
   LEVEL_REVIEW_TEXT_MAX,
+  type LevelReviewAdjustmentPreview,
   type LevelReviewAdminDetail,
   type LevelReviewReliabilityMode,
   type ResolveLevelReviewInput
@@ -18,6 +19,7 @@ import { codePointLength, isActiveLevelReview, parseLevelInput } from './level-r
 import {
   getLevelReviewAdminDetail,
   markLevelReviewRequestUnderReview,
+  previewLevelReviewApproval,
   resolveLevelReviewRequest
 } from './level-review.functions';
 import { levelReview as s } from './level-review.styles';
@@ -34,7 +36,25 @@ export function PlatformLevelReviewDetail({
 }) {
   const { t, i18n } = useTranslation();
   const id = useId();
-  const [detail, setDetail] = useState(initial);
+  // Loader data is the source of truth. A local result (mutation response, manual refresh)
+  // only overrides it until the next revalidation hands this component a new loader snapshot.
+  const [local, setLocal] = useState<{
+    base: LevelReviewAdminDetail;
+    value: LevelReviewAdminDetail;
+  } | null>(null);
+  const detail = local?.base === initial ? local.value : initial;
+  const latest = useRef({ initial, detail });
+  latest.current = { initial, detail };
+  const override = (value: LevelReviewAdminDetail) =>
+    setLocal({ base: latest.current.initial, value });
+  const [preview, setPreview] = useState<{
+    value: LevelReviewAdjustmentPreview;
+    payload: Omit<
+      Extract<ResolveLevelReviewInput, { decision: 'approve' }>,
+      'command_id' | 'expected_revision'
+    >;
+  } | null>(null);
+  const previewGeneration = useRef(0);
   const [target, setTarget] = useState('');
   const [note, setNote] = useState('');
   const [mode, setMode] = useState<LevelReviewReliabilityMode>('preserve');
@@ -53,6 +73,95 @@ export function PlatformLevelReviewDetail({
   const current = detail.current;
   const active = isActiveLevelReview(request.status) && !closed;
   const fieldId = (field: Field) => authorizeField(id, field);
+  const auditId = detail.adjustment ? 'adjustment-' + detail.adjustment.id : undefined;
+
+  // A revalidation that moved the rating revision invalidates the server preview: the
+  // confirmation closes and the admin must see the refreshed state and confirm again.
+  const livePreview =
+    preview && preview.value.revision === current?.revision ? preview.value : null;
+  const approvalLocked = pending || (decision === 'approve' && !!livePreview);
+  function discardPreview() {
+    previewGeneration.current += 1;
+    setPreview(null);
+    setDecision(null);
+  }
+  const notice = message || (preview && !livePreview ? t('levelReview.adminDecision.stale') : '');
+
+  function openAudit(event: { preventDefault: () => void }) {
+    event.preventDefault();
+    const section = auditId ? document.getElementById(auditId) : null;
+    section?.focus();
+    section?.scrollIntoView?.({ block: 'start' });
+  }
+
+  async function showPreview(level: number) {
+    if (inFlight.current) return;
+    inFlight.current = true;
+    setPending(true);
+    const generation = previewGeneration.current;
+    const reliability =
+      mode === 'preserve'
+        ? ({ mode } as const)
+        : mode === 'reset'
+          ? ({ mode, justification: justification.trim() } as const)
+          : ({ mode, target: Number(reduction), justification: justification.trim() } as const);
+    const payload = {
+      request_id: request.id,
+      decision: 'approve' as const,
+      note: note.trim(),
+      target_level: level,
+      reliability
+    };
+    try {
+      const value = await previewLevelReviewApproval({
+        data: {
+          request_id: request.id,
+          target_level: level,
+          reliability: mode === 'reduce' ? { mode, target: Number(reduction) } : { mode }
+        }
+      });
+      if (generation !== previewGeneration.current) return;
+      if (value.revision !== latest.current.detail.current?.revision) {
+        // The rating moved since this page was loaded: show the refreshed state first.
+        await refresh();
+        setMessage(t('levelReview.adminDecision.stale'));
+        return;
+      }
+      setPreview({ value, payload });
+      setDecision('approve');
+    } catch (cause) {
+      const code = levelReviewErrorCode(cause);
+      if (code === 'LEVEL_REVIEW_TARGET_OUT_OF_RANGE') {
+        setErrors({ target: t('levelReview.adminDecision.targetError') });
+        document.getElementById(fieldId('target'))?.focus();
+      } else if (code === 'LEVEL_REVIEW_RELIABILITY_INVALID') {
+        const field = mode === 'reduce' ? 'reduction' : 'justification';
+        setErrors({
+          [field]: t(
+            mode === 'reduce'
+              ? 'levelReview.adminDecision.reductionError'
+              : 'levelReview.adminDecision.resetError'
+          )
+        });
+        document.getElementById(fieldId(field))?.focus();
+      } else if (
+        code === 'LEVEL_REVIEW_INVALID_TRANSITION' ||
+        code === 'LEVEL_REVIEW_RESOLUTION_CONFLICT'
+      ) {
+        setClosed(true);
+        setMessage(t('levelReview.adminDecision.conflict'));
+      } else if (code === 'LEVEL_REVIEW_FORBIDDEN' || code === 'PROVISIONAL_PLAYER_RESTRICTED') {
+        setClosed(true);
+        setMessage(t('levelReview.errors.forbidden'));
+      } else if (code === 'UNAUTHENTICATED' || code === 'LEVEL_REVIEW_UNAUTHENTICATED') {
+        setClosed(true);
+        setMessage(t('levelReview.errors.unauthenticated'));
+      } else setMessage(t('levelReview.adminDecision.previewFailed'));
+    } finally {
+      inFlight.current = false;
+      setPending(false);
+    }
+  }
 
   function prepare(next: Decision, button: HTMLButtonElement) {
     const found: Partial<Record<Field, string>> = {};
@@ -90,12 +199,13 @@ export function PlatformLevelReviewDetail({
     }
     setMessage('');
     trigger.current = button;
-    setDecision(next);
+    if (next === 'reject') setDecision(next);
+    else if (parsed.ok) void showPreview(parsed.value);
   }
 
   async function refresh() {
     const value = await getLevelReviewAdminDetail({ data: { request_id: request.id } });
-    setDetail(value);
+    override(value);
     await onRevalidate();
   }
   async function mark() {
@@ -105,7 +215,7 @@ export function PlatformLevelReviewDetail({
     setMessage('');
     try {
       const result = await markLevelReviewRequestUnderReview({ data: { request_id: request.id } });
-      setDetail((previous) => ({ ...previous, request: result.request }));
+      override({ ...latest.current.detail, request: result.request });
       setMessage(t('levelReview.adminDecision.marked'));
       void Promise.resolve(onRevalidate()).catch(() => {});
     } catch (cause) {
@@ -130,27 +240,13 @@ export function PlatformLevelReviewDetail({
   }
   async function confirm() {
     if (inFlight.current || !decision) return;
-    const parsed = parseLevelInput(target, i18n.language);
     let payload:
       | Omit<Extract<ResolveLevelReviewInput, { decision: 'reject' }>, 'command_id'>
       | Omit<Extract<ResolveLevelReviewInput, { decision: 'approve' }>, 'command_id'>;
     if (decision === 'reject') payload = { request_id: request.id, decision, note: note.trim() };
     else {
-      if (!current || !parsed.ok) return;
-      const reliability =
-        mode === 'preserve'
-          ? ({ mode } as const)
-          : mode === 'reset'
-            ? ({ mode, justification: justification.trim() } as const)
-            : ({ mode, target: Number(reduction), justification: justification.trim() } as const);
-      payload = {
-        request_id: request.id,
-        decision,
-        note: note.trim(),
-        target_level: parsed.value,
-        expected_revision: current.revision,
-        reliability
-      };
+      if (!livePreview || !preview) return;
+      payload = { ...preview.payload, expected_revision: livePreview.revision };
     }
     const fingerprint = JSON.stringify(payload);
     if (command.current?.fingerprint !== fingerprint)
@@ -162,11 +258,12 @@ export function PlatformLevelReviewDetail({
       const result = await resolveLevelReviewRequest({
         data: { ...payload, command_id: command.current.id }
       });
-      setDetail((previous) => ({
-        ...previous,
+      override({
+        ...latest.current.detail,
         request: result.request,
         adjustment: result.adjustment
-      }));
+      });
+      setPreview(null);
       setDecision(null);
       setMessage(t('levelReview.adminDecision.resolved'));
       void Promise.resolve(onRevalidate()).catch(() => {});
@@ -174,6 +271,7 @@ export function PlatformLevelReviewDetail({
       const code = levelReviewErrorCode(cause);
       if (code === 'LEVEL_REVIEW_STALE_RATING') {
         setDecision(null);
+        setPreview(null);
         command.current = null;
         try {
           await refresh();
@@ -271,6 +369,27 @@ export function PlatformLevelReviewDetail({
           </p>
         </section>
       )}
+      <section aria-labelledby={id + '-recent'} {...stylex.props(s.card)}>
+        <h2 id={id + '-recent'} {...stylex.props(s.cardTitle)}>
+          {t('levelReview.adminDecision.recentHistory')}
+        </h2>
+        {detail.recent_history.length === 0 ? (
+          <p {...stylex.props(s.muted)}>{t('levelReview.adminDecision.recentEmpty')}</p>
+        ) : (
+          <ul {...stylex.props(s.list)}>
+            {detail.recent_history.map((entry, index) => (
+              <li key={entry.played_at + index} {...stylex.props(s.text)}>
+                {t('levelReview.adminDecision.recentItem', {
+                  date: formatReviewDate(entry.played_at, i18n.language),
+                  before: formatLevel(entry.before_display_level, i18n.language),
+                  after: formatLevel(entry.after_display_level, i18n.language),
+                  reliability: entry.after_reliability_percent
+                })}
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
       {(request.status === 'approved' || request.status === 'rejected') && (
         <section {...stylex.props(s.card)}>
           <h2 {...stylex.props(s.cardTitle)}>{t('levelReview.detail.decisionHeading')}</h2>
@@ -284,14 +403,80 @@ export function PlatformLevelReviewDetail({
           )}
           {request.adjustment_id && (
             <p {...stylex.props(s.text)}>
-              {t('levelReview.adminDecision.event', { id: request.adjustment_id })}
+              {auditId ? (
+                <a href={'#' + auditId} onClick={openAudit} {...stylex.props(s.actionLink)}>
+                  {t('levelReview.adminDecision.event', { id: request.adjustment_id })}
+                </a>
+              ) : (
+                t('levelReview.adminDecision.event', { id: request.adjustment_id })
+              )}
             </p>
           )}
         </section>
       )}
-      {active && <p {...stylex.props(s.guidance)}>{t('levelReview.adminDecision.forward')}</p>}
-      <output aria-live="polite" {...stylex.props(message ? s.notice : s.srOnly)}>
-        {message}
+      {detail.adjustment && auditId && (
+        <section
+          id={auditId}
+          tabIndex={-1}
+          aria-labelledby={auditId + '-title'}
+          {...stylex.props(s.card)}
+        >
+          <h2 id={auditId + '-title'} {...stylex.props(s.cardTitle)}>
+            {t('levelReview.adminDecision.auditHeading')}
+          </h2>
+          <p {...stylex.props(s.muted)}>{t('levelReview.adminDecision.auditNote')}</p>
+          <p {...stylex.props(s.text)}>
+            {t('levelReview.adminDecision.auditLevel', {
+              before: formatLevel(detail.adjustment.before_display_level, i18n.language),
+              beforeMu: formatInternal(detail.adjustment.before_mu, i18n.language),
+              after: formatLevel(detail.adjustment.after_display_level, i18n.language),
+              afterMu: formatInternal(detail.adjustment.after_mu, i18n.language)
+            })}
+          </p>
+          <p {...stylex.props(s.text)}>
+            {t('levelReview.adminDecision.auditReliability', {
+              before: detail.adjustment.before_reliability_percent,
+              after: detail.adjustment.after_reliability_percent,
+              mode: t(`levelReview.adminDecision.${detail.adjustment.reliability_mode}`)
+            })}
+          </p>
+          {detail.adjustment.exception_justification && (
+            <p {...stylex.props(s.userText)}>
+              {t('levelReview.adminDecision.auditJustification', {
+                text: detail.adjustment.exception_justification
+              })}
+            </p>
+          )}
+          <p {...stylex.props(s.text)}>
+            {t('levelReview.adminDecision.auditDecided', {
+              date: formatReviewDate(detail.adjustment.decided_at, i18n.language),
+              actor: detail.adjustment.actor_id
+            })}
+          </p>
+          <p {...stylex.props(s.text)}>
+            {t('levelReview.adminDecision.auditRevision', {
+              revision: detail.adjustment.projection_revision,
+              before: detail.adjustment.before_engine_version,
+              after: detail.adjustment.after_engine_version
+            })}
+          </p>
+          <p {...stylex.props(s.text)}>
+            {t('levelReview.adminDecision.auditBoundary', {
+              date: formatReviewDate(detail.adjustment.boundary_played_at, i18n.language),
+              basis: t(`levelReview.adminDecision.basis.${detail.adjustment.boundary_basis}`)
+            })}
+          </p>
+        </section>
+      )}
+      {active && (
+        <section {...stylex.props(s.card)}>
+          <h2 {...stylex.props(s.cardTitle)}>{t('levelReview.adminDecision.forwardHeading')}</h2>
+          <p {...stylex.props(s.text)}>{t('levelReview.adminDecision.forward')}</p>
+          <p {...stylex.props(s.text)}>{t('levelReview.adminDecision.forwardAudit')}</p>
+        </section>
+      )}
+      <output aria-live="polite" {...stylex.props(notice ? s.notice : s.srOnly)}>
+        {notice}
       </output>
       {active && (
         <section {...stylex.props(s.card)}>
@@ -306,9 +491,13 @@ export function PlatformLevelReviewDetail({
                 id={fieldId('target')}
                 label={t('levelReview.adminDecision.target')}
                 value={target}
+                disabled={approvalLocked}
                 inputMode="decimal"
                 error={errors.target}
-                onChange={(event) => setTarget(event.target.value)}
+                onChange={(event) => {
+                  discardPreview();
+                  setTarget(event.target.value);
+                }}
               />
               <fieldset {...stylex.props(s.fieldset)}>
                 <legend {...stylex.props(s.legend)}>
@@ -324,7 +513,11 @@ export function PlatformLevelReviewDetail({
                         type="radio"
                         name={id}
                         checked={mode === choice}
-                        onChange={() => setMode(choice)}
+                        disabled={approvalLocked}
+                        onChange={() => {
+                          discardPreview();
+                          setMode(choice);
+                        }}
                         {...stylex.props(s.radio)}
                       />
                       {t(`levelReview.adminDecision.${choice}`)}
@@ -337,9 +530,13 @@ export function PlatformLevelReviewDetail({
                   id={fieldId('reduction')}
                   label={t('levelReview.adminDecision.reduction')}
                   value={reduction}
+                  disabled={approvalLocked}
                   inputMode="numeric"
                   error={errors.reduction}
-                  onChange={(event) => setReduction(event.target.value)}
+                  onChange={(event) => {
+                    discardPreview();
+                    setReduction(event.target.value);
+                  }}
                 />
               )}
               {mode !== 'preserve' && (
@@ -347,8 +544,12 @@ export function PlatformLevelReviewDetail({
                   id={fieldId('justification')}
                   label={t('levelReview.adminDecision.justification')}
                   value={justification}
+                  disabled={approvalLocked}
                   error={errors.justification}
-                  onChange={(event) => setJustification(event.target.value)}
+                  onChange={(event) => {
+                    discardPreview();
+                    setJustification(event.target.value);
+                  }}
                   render={<textarea rows={3} />}
                   xstyle={s.textarea}
                 />
@@ -359,8 +560,12 @@ export function PlatformLevelReviewDetail({
             id={fieldId('note')}
             label={t('levelReview.adminDecision.note')}
             value={note}
+            disabled={approvalLocked}
             error={errors.note}
-            onChange={(event) => setNote(event.target.value)}
+            onChange={(event) => {
+              discardPreview();
+              setNote(event.target.value);
+            }}
             render={<textarea rows={4} />}
             xstyle={s.textarea}
           />
@@ -384,9 +589,9 @@ export function PlatformLevelReviewDetail({
         </section>
       )}
       <AlertDialog.Root
-        open={decision !== null}
+        open={decision === 'reject' || (decision === 'approve' && livePreview !== null)}
         onOpenChange={(open) => {
-          if (!open && !pending) setDecision(null);
+          if (!open && !pending) discardPreview();
         }}
       >
         <AlertDialog.Portal>
@@ -401,18 +606,14 @@ export function PlatformLevelReviewDetail({
                 : t('levelReview.adminDecision.confirmReject')}
             </AlertDialog.Title>
             <AlertDialog.Description {...stylex.props(s.text)}>
-              {decision === 'approve' && current
+              {decision === 'approve' && livePreview
                 ? t('levelReview.adminDecision.after', {
-                    before: current.display_level,
-                    beforeMu: current.mu,
-                    after: target,
-                    reliabilityBefore: current.reliability_percent,
-                    reliabilityAfter:
-                      mode === 'preserve'
-                        ? current.reliability_percent
-                        : mode === 'reset'
-                          ? 10
-                          : reduction
+                    beforeLevel: formatLevel(livePreview.before.display_level, i18n.language),
+                    beforeMu: formatInternal(livePreview.before.mu, i18n.language),
+                    afterLevel: formatLevel(livePreview.after.display_level, i18n.language),
+                    afterMu: formatInternal(livePreview.after.mu, i18n.language),
+                    reliabilityBefore: livePreview.before.reliability_percent,
+                    reliabilityAfter: livePreview.after.reliability_percent
                   })
                 : t('levelReview.adminDecision.rejectDescription')}
             </AlertDialog.Description>
@@ -440,6 +641,13 @@ export function PlatformLevelReviewDetail({
       </AlertDialog.Root>
     </main>
   );
+}
+function formatInternal(value: number, locale: string) {
+  return new Intl.NumberFormat(locale, {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 20,
+    useGrouping: false
+  }).format(value);
 }
 function authorizeField(id: string, field: Field) {
   return id + '-' + field;

@@ -95,6 +95,8 @@ export type LevelReviewAdjustmentDto = {
   rating_config_version: number;
   before_engine_version: string;
   after_engine_version: string;
+  before_mu: number;
+  after_mu: number;
   before_display_level: number;
   after_display_level: number;
   before_reliability_percent: number;
@@ -109,6 +111,21 @@ export type LevelReviewAdjustmentDto = {
   reliability_mode: LevelReviewReliabilityMode;
   reliability_target: number | null;
   exception_justification: string | null;
+};
+/** One side of the server-computed approval preview (internal mu is admin-only). */
+export type LevelReviewProjectedState = {
+  mu: number;
+  display_level: number;
+  reliability_percent: number;
+  confirmed_groups: number;
+  highest_display_level: number;
+  engine_version: string;
+};
+/** Computed by the database with the resolve transaction's arithmetic, bound to one rating revision. */
+export type LevelReviewAdjustmentPreview = {
+  revision: number;
+  before: LevelReviewProjectedState;
+  after: LevelReviewProjectedState;
 };
 export type LevelReviewResolutionResult = LevelReviewAdminCommandResult & {
   adjustment: LevelReviewAdjustmentDto | null;
@@ -154,6 +171,12 @@ export type ResolveLevelReviewInput =
       /** Omitted = preserve reliability. Reset/reduce are recorded exceptions with a justification. */
       reliability?: LevelReviewReliabilityDecision;
     };
+
+export type LevelReviewPreviewInput = {
+  request_id: string;
+  target_level: number;
+  reliability?: { mode: 'preserve' } | { mode: 'reset' } | { mode: 'reduce'; target: number };
+};
 
 export type LevelReviewReliabilityDecision =
   | { mode: 'preserve' }

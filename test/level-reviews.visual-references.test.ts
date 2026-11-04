@@ -15,7 +15,11 @@ type Manifest = {
   >;
   visualBudgets: {
     status: string;
+    coverage: string;
+    measurement: string;
     perScreen: Record<string, number>;
+    previousCropBudgets: Record<string, number | string>;
+    geometryProbes: Record<string, string[] | string>;
     measuredBaseline: Record<string, number>;
     perScreenRationale: Record<string, string>;
   };
@@ -33,6 +37,18 @@ const screens = [
 ];
 
 describe('level review visual references', () => {
+  it('uses semantic visible borders for radio tiles and evidence disclosure', () => {
+    const styles = readFileSync(
+      join(root, 'src/features/level-reviews/level-review.styles.ts'),
+      'utf8'
+    );
+    for (const name of ['mode', 'disclosureTrigger']) {
+      const block = styles.match(new RegExp(`\\n  ${name}: \\{([\\s\\S]*?)\\n  \\},`))?.[1];
+      expect(block).toContain("borderWidth: 'var(--border-width-sm)'");
+      expect(block).toContain("borderStyle: 'solid'");
+      expect(block).toContain("borderColor: 'var(--color-line)'");
+    }
+  });
   it('records the design digest and verified export provenance', () => {
     expect(manifest.status).toBe('measured-calibrated');
     expect(manifest.sourceDesign.path).toBe('docs/design/padel-friend.pen');
@@ -66,6 +82,45 @@ describe('level review visual references', () => {
     expect(budget).toBeLessThanOrEqual(measured * 1.25);
     expect(budget).toBeLessThan(0.5);
     expect(manifest.visualBudgets.perScreenRationale[key]).toContain('alibrated');
+  });
+
+  it('compares the whole viewport, not a crop, and says so in the measurement', () => {
+    expect(manifest.visualBudgets.coverage).toBe('full-viewport');
+    expect(manifest.visualBudgets.measurement).toContain('WHOLE 390x844');
+    expect(manifest.visualBudgets.measurement).toContain('independent of these budgets');
+  });
+
+  it.each(screens)(
+    'documents why the full-screen budget of %s is not a structural allowance',
+    (key) => {
+      // Every budget carries a rationale naming the residual (rasterization or a deliberate difference).
+      const rationale = manifest.visualBudgets.perScreenRationale[key];
+      expect(rationale).toMatch(/full viewport|state, full viewport/);
+      expect(rationale).toMatch(/margin/);
+      expect(rationale).toMatch(/rasterization|deliberate/);
+    }
+  );
+
+  it('keeps exact geometry probes for every frame, independent from the raster budgets', () => {
+    const probes = manifest.visualBudgets.geometryProbes;
+    const list = (frame: string): string[] => {
+      const value = probes[frame];
+      if (!Array.isArray(value)) throw new Error('Missing geometry probes for ' + frame);
+      return value;
+    };
+    for (const frame of ['qWosG', 'OKYtp', 'gGNxk', 'shared'])
+      expect(list(frame).length).toBeGreaterThanOrEqual(3);
+    expect(String(probes['note'])).toContain('independent of the raster budgets');
+    expect(list('shared').join(' ')).toContain('44x44');
+  });
+
+  it('re-calibrated away from the superseded crop budgets without hiding a regression', () => {
+    for (const key of screens) {
+      const previous = manifest.visualBudgets.previousCropBudgets[key];
+      expect(typeof previous).toBe('number');
+      // Full-screen budgets are measured fresh: never inherited from the old crop numbers.
+      expect(manifest.visualBudgets.measuredBaseline[key]).not.toBe(previous);
+    }
   });
 
   it('has a budget for exactly the measured screens', () => {

@@ -1,4 +1,10 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { decodeLevelReviewAdminDetail } from '../src/features/level-reviews/level-review-decoders';
+import {
+  parseRatingHistoryPage,
+  parseRatingProgress,
+  type RatingHistoryItem
+} from '../src/features/player/rating-contracts';
 import { dotEnvPathFromImportMetaUrl, localSupabaseEnv } from './helpers/local-supabase-env';
 import {
   drainDueRegistrationCutoffs,
@@ -21,6 +27,7 @@ import {
   ledgerFingerprint,
   ledgerOf,
   nextTailPlayedAt,
+  ratingProjectionControl,
   ratingStates,
   ratingWorld,
   submitPendingGroup,
@@ -83,6 +90,39 @@ describe('forward-only adjustment in the chronological stream', { timeout: 180_0
   async function approveTo(owner: LevelReviewActor, level: number) {
     return (await approveOk(admin, await submitExact(owner, level), { target: level })).adjustment!;
   }
+
+  /** The committed match watermark shifted by whole microseconds, as a fixed-width UTC instant. */
+  async function watermarkPlus(microseconds: number): Promise<string> {
+    const result = await queryTrustedSql(
+      `select to_char((last_processed_played_at at time zone 'UTC') + ($1 || ' microseconds')::interval,
+                      'YYYY-MM-DD"T"HH24:MI:SS.US"Z"') as at
+         from public.player_rating_projection_control`,
+      { values: [String(microseconds)] }
+    );
+    return String(result.rows[0]?.['at']);
+  }
+
+  /** Newest-first history, one item per page, following the opaque keyset cursor. */
+  async function historyOneByOne(owner: LevelReviewActor): Promise<RatingHistoryItem[]> {
+    const items: RatingHistoryItem[] = [];
+    let args: Record<string, unknown> = { p_limit: 1 };
+    for (let guard = 0; guard < 20; guard += 1) {
+      const page = parseRatingHistoryPage(
+        (await owner.client.rpc('get_my_rating_history', args)).data
+      )!;
+      items.push(...page.items);
+      if (!page.next_cursor) return items;
+      args = {
+        p_limit: 1,
+        p_revision: page.revision,
+        p_before_played_at: page.next_cursor.played_at,
+        p_before_game_group_id: page.next_cursor.game_group_id
+      };
+    }
+    throw new Error('history did not terminate');
+  }
+  const idOf = (item: RatingHistoryItem) =>
+    item.kind === 'adjustment' ? item.adjustment_id : item.game_group_id;
 
   it.skipIf(!environment.env)(
     'the next confirmed group starts from the corrected state, via the tail path, leaving history untouched',
@@ -185,21 +225,169 @@ describe('forward-only adjustment in the chronological stream', { timeout: 180_0
   );
 
   it.skipIf(!environment.env)(
-    'a group sorting between the watermark and the checkpoint is routed through the replay',
+    'the boundary is the match watermark key itself, not an inflated instant',
     async () => {
-      const { players, quartet } = await table('route');
+      const { players } = await table('key');
       const owner = players[0]!;
-      await play(quartet, await nextTailPlayedAt());
-      const preMu = Number((await ratingRow(owner.id))['mu']);
+      const control = await ratingProjectionControl();
       const event = await approveTo(owner, 5.5);
+      const key = await queryTrustedSql(
+        'select a.boundary_played_at = c.last_processed_played_at as same_time, ' +
+          'a.boundary_group_id = c.last_processed_game_group_id as same_group, a.boundary_basis ' +
+          'from public.player_rating_admin_adjustments a, public.player_rating_projection_control c ' +
+          'where a.id = $1',
+        { values: [event.id] }
+      );
+      expect(control['watermark_group']).not.toBeNull();
+      expect(key.rows[0]).toEqual({
+        same_time: true,
+        same_group: true,
+        boundary_basis: 'match_watermark'
+      });
+    }
+  );
 
-      // Same instant as the checkpoint boundary: after the watermark, before the checkpoint.
-      const edge = await play(quartet, event.boundary_played_at, 'team_b');
+  it.skipIf(!environment.env)(
+    'a match exactly one microsecond after the watermark key, confirmed after the decision, starts from the corrected state',
+    async () => {
+      const { players, quartet } = await table('edgea');
+      const owner = players[0]!;
+      const first = await play(quartet, await nextTailPlayedAt());
+      await approveTo(owner, 5.5);
+
+      const edge = await play(quartet, await watermarkPlus(1), 'team_b');
       const ownerCalc = (await ledgerOf([edge.proposalId])).find(
         (entry) => entry.userId === owner.id
       )!;
-      expect(ownerCalc.calculations.at(-1)).toMatchObject({ beforeMu: preMu, beforeGroups: 1 });
+      // Appended through the tail path from the corrected state; the earlier group is untouched.
+      expect(ownerCalc.calculations).toHaveLength(1);
+      expect(ownerCalc.calculations[0]).toMatchObject({ beforeMu: 5.5, beforeGroups: 1 });
+      expect((await ledgerOf([first.proposalId])).every((e) => e.calculations.length === 1)).toBe(
+        true
+      );
+      expect(await ratingRow(owner.id)).toMatchObject({ groups: 2 });
+    }
+  );
+
+  it.skipIf(!environment.env)(
+    'a match one microsecond before the watermark key, confirmed after the decision, uses the pre-adjustment state',
+    async () => {
+      const { players, quartet } = await table('edgec');
+      const owner = players[0]!;
+      await play(quartet, await nextTailPlayedAt());
+      await approveTo(owner, 5.5);
+
+      const early = await play(quartet, await watermarkPlus(-1), 'team_b');
+      const ownerCalc = (await ledgerOf([early.proposalId])).find(
+        (entry) => entry.userId === owner.id
+      )!;
+      // It sorts before the earlier group, so it starts from the initial level...
+      expect(ownerCalc.calculations.at(-1)).toMatchObject({ beforeMu: 4, beforeGroups: 0 });
+      // ...and the absolute correction still decides the current level.
       expect(await ratingRow(owner.id)).toMatchObject({ mu: 5.5, groups: 2 });
+    }
+  );
+
+  it.skipIf(!environment.env)(
+    'a checkpoint sharing its key with a match orders after it, and history pages never repeat or skip',
+    async () => {
+      const { players, quartet } = await table('tie');
+      const owner = players[0]!;
+      const first = await play(quartet, await nextTailPlayedAt());
+      const event = await approveTo(owner, 5.5);
+      const second = await approveTo(owner, 5);
+      expect(second.boundary_played_at >= event.boundary_played_at).toBe(true);
+
+      const full = parseRatingHistoryPage((await owner.client.rpc('get_my_rating_history')).data)!;
+      expect(full.items.map(idOf)).toEqual([second.id, event.id, first.proposalId]);
+      expect((await historyOneByOne(owner)).map(idOf)).toEqual([
+        second.id,
+        event.id,
+        first.proposalId
+      ]);
+      const progress = parseRatingProgress(
+        (await owner.client.rpc('get_my_rating_progress')).data
+      )!;
+      expect(progress.points.map((point) => point.event_id)).toEqual([
+        first.proposalId,
+        event.id,
+        second.id
+      ]);
+      expect(await ratingRow(owner.id)).toMatchObject({ mu: 5, groups: 1 });
+    }
+  );
+
+  it.skipIf(!environment.env)(
+    'after a late pre-checkpoint replay the history item, chart point and summary present one effective state',
+    async () => {
+      const { players, quartet } = await table('eff');
+      const owner = players[0]!;
+      const anchor = Date.parse(await nextTailPlayedAt());
+      await play(quartet, new Date(anchor).toISOString());
+      const event = await approveTo(owner, 5.5);
+      const detailBefore = decodeLevelReviewAdminDetail(
+        (
+          await admin.client.rpc('get_level_review_admin_detail', {
+            p_request_id: event.level_review_request_id
+          })
+        ).data
+      );
+      const late = await submitPendingGroup({
+        eventId: await world.newEvent(),
+        players: quartet,
+        playedAt: new Date(anchor - 7_200_000).toISOString(),
+        submittedBy: world.admin.id,
+        classification: 'team_b'
+      });
+      await confirmAuto(late);
+
+      const page = parseRatingHistoryPage((await owner.client.rpc('get_my_rating_history')).data)!;
+      const [adjustmentItem, previousMatch] = page.items;
+      expect(page.items.map((item) => item.kind)).toEqual(['adjustment', 'match', 'match']);
+      if (adjustmentItem?.kind !== 'adjustment' || previousMatch?.kind !== 'match')
+        throw new Error('unexpected timeline shape');
+      // Effective values: what flows into / out of the checkpoint in the reconstructed stream.
+      expect(adjustmentItem.before_display_level).toBe(previousMatch.after_display_level);
+      expect(adjustmentItem.before_reliability_percent).toBe(
+        previousMatch.after_reliability_percent
+      );
+      expect(adjustmentItem).toMatchObject({
+        after_display_level: 5.5,
+        after_reliability_percent: 22,
+        after_confirmed_groups: 2,
+        reliability_changed: false
+      });
+      const progress = parseRatingProgress(
+        (await owner.client.rpc('get_my_rating_progress')).data
+      )!;
+      expect(progress.points.at(-1)).toMatchObject({
+        event_id: event.id,
+        display_level: adjustmentItem.after_display_level
+      });
+      expect(progress.points.at(-2)?.display_level).toBe(previousMatch.after_display_level);
+      expect((await ownRatingSummary(owner)).summary).toMatchObject({
+        display_level: adjustmentItem.after_display_level,
+        reliability_percent: adjustmentItem.after_reliability_percent,
+        confirmed_competitive_game_groups: adjustmentItem.after_confirmed_groups
+      });
+
+      // The decision-time evidence stays immutable and is labeled as such for admins only.
+      const detailAfter = decodeLevelReviewAdminDetail(
+        (
+          await admin.client.rpc('get_level_review_admin_detail', {
+            p_request_id: event.level_review_request_id
+          })
+        ).data
+      );
+      expect(detailAfter.adjustment).toEqual(detailBefore.adjustment);
+      expect(detailAfter.adjustment).toMatchObject({
+        before_reliability_percent: 16,
+        after_reliability_percent: 16,
+        before_confirmed_groups: 1
+      });
+      expect(detailAfter.adjustment!.before_display_level).not.toBe(
+        adjustmentItem.before_display_level
+      );
     }
   );
 

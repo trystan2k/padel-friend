@@ -2619,9 +2619,11 @@
       "reject": "Reject",
       "confirmApprove": "Confirm approval?",
       "confirmReject": "Confirm rejection?",
-      "after": "Level {{before}} (internal μ {{beforeMu}}) → {{after}} (internal μ {{after}}); reliability {{reliabilityBefore}}% → {{reliabilityAfter}}%.",
+      "after": "Level {{beforeLevel}} (internal μ {{beforeMu}}) → {{afterLevel}} (internal μ {{afterMu}}); reliability {{reliabilityBefore}}% → {{reliabilityAfter}}%.",
       "rejectDescription": "Reject this request without changing the rating.",
       "forward": "Changes apply going forward only. Historical matches and League standings remain unchanged.",
+      "forwardHeading": "Forward-only correction",
+      "forwardAudit": "Approval creates an audited adjustment event.",
       "cancel": "Go back",
       "confirm": "Confirm decision",
       "resolved": "Decision saved.",
@@ -2629,7 +2631,24 @@
       "stale": "Rating changed. Preview refreshed; review and confirm again.",
       "conflict": "This request was already closed or changed elsewhere.",
       "unconfirmed": "The result could not be confirmed. Retry the same decision safely.",
-      "refreshFailed": "Could not refresh the preview. Reload before deciding."
+      "refreshFailed": "Could not refresh the preview. Reload before deciding.",
+      "previewFailed": "Could not compute the preview. Try again.",
+      "recentHistory": "Recent rating history",
+      "recentEmpty": "No confirmed matches yet.",
+      "recentItem": "{{date}} · Level {{before}} → {{after}} · Reliability {{reliability}}%",
+      "auditHeading": "Adjustment event (decision-time evidence)",
+      "auditNote": "Values committed when the decision was executed. They never change; the player sees the current effective history.",
+      "auditLevel": "Level {{before}} (internal μ {{beforeMu}}) → {{after}} (internal μ {{afterMu}})",
+      "auditReliability": "Reliability {{before}}% → {{after}}% ({{mode}})",
+      "auditJustification": "Reliability justification: {{text}}",
+      "auditDecided": "Decided {{date}} · Actor {{actor}}",
+      "auditRevision": "Rating revision {{revision}} · Engine {{before}} → {{after}}",
+      "auditBoundary": "Forward-only boundary: {{date}} ({{basis}})",
+      "basis": {
+        "decision_clock": "decision clock",
+        "match_watermark": "match watermark",
+        "prior_checkpoint": "earlier checkpoint"
+      }
     },
     "admin": {
       "title": "Level review queue",
@@ -2647,7 +2666,10 @@
       "evidence": "Evidence",
       "reviewedAt": "Under review: {{date}}",
       "decidedAt": "Decided: {{date}}",
-      "canceledAt": "Canceled: {{date}}"
+      "canceledAt": "Canceled: {{date}}",
+      "entryTitle": "Platform administration",
+      "entryDescription": "Review and decide player level requests.",
+      "entryLink": "Open level review queue"
     },
     "entry": {
       "title": "Level review",

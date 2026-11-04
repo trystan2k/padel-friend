@@ -8,6 +8,7 @@ import {
   LEVEL_REVIEW_TEXT_MAX,
   type LevelReviewCursor,
   type LevelReviewListInput,
+  type LevelReviewPreviewInput,
   type LevelReviewReliabilityDecision,
   type LevelReviewQueueInput,
   type LevelReviewRequestInput,
@@ -142,6 +143,24 @@ function reliabilityDecision(value: unknown): LevelReviewReliabilityDecision {
   if (data.mode === 'reduce') {
     return { mode: 'reduce', target: integerValue(data.target, 0, 99), justification };
   }
+  return invalid();
+}
+
+/** Preview inputs carry no justification: it only matters to the committed decision. */
+export function validateLevelReviewPreview(value: unknown): LevelReviewPreviewInput {
+  const data = record(value, ['request_id', 'target_level', 'reliability']);
+  const base = { request_id: uuid(data.request_id), target_level: levelValue(data.target_level) };
+  if (data.reliability === undefined) return base;
+  const reliability = record(data.reliability, ['mode', 'target']);
+  if (reliability.mode === 'preserve' || reliability.mode === 'reset') {
+    if (reliability.target !== undefined) return invalid();
+    return { ...base, reliability: { mode: reliability.mode } };
+  }
+  if (reliability.mode === 'reduce')
+    return {
+      ...base,
+      reliability: { mode: 'reduce', target: integerValue(reliability.target, 0, 99) }
+    };
   return invalid();
 }
 

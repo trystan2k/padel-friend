@@ -148,9 +148,10 @@ test('stale preview refreshes after a real match confirmation before approval', 
     playedAt: '2026-10-01T22:00:00Z',
     submittedBy: f.creator.id
   });
+  // The server preview is computed on Approve: it reports the moved revision, so no dialog opens.
   await decision(page, '4.1', 'Confirmed after match.');
-  await confirm(page);
   await expect(page.getByText(lr.adminDecision.stale)).toBeVisible();
+  await expect(page.getByRole('alertdialog')).toHaveCount(0);
   expect((await requestRows(player.id))[0]?.status).toBe('pending');
   await page.getByRole('button', { name: lr.adminDecision.approve, exact: true }).click();
   await confirmApproval(page);

@@ -461,17 +461,20 @@ describe.skipIf(!rankedKitEnv(import.meta.url))(
     });
 
     it('keeps a blocked group queued with backoff evidence and clears it when a correction supersedes it', async () => {
+      // One fixed played instant: the membership must end exactly at it, so computing playedAt()
+      // per call would race the wall-clock second and make the blocked player eligible again.
+      const blockedAt = playedAt(300);
       const eventId = await kit.event(await kit.league());
-      expect((await kit.submit(eventId, playedAt(300).played)).error).toBeNull();
+      expect((await kit.submit(eventId, blockedAt.played)).error).toBeNull();
       const proposalId = await kit.proposalId(eventId);
       // The processor handles the global queue, including unrelated eligible proposals.
       const eligibleEventId = await kit.event(null, 'friendly');
-      expect((await kit.submit(eligibleEventId, playedAt(300).played)).error).toBeNull();
+      expect((await kit.submit(eligibleEventId, blockedAt.played)).error).toBeNull();
       await ageDeadline(await kit.proposalId(eligibleEventId), 1, -60);
       await setMembershipHistory(kit.communityId, kit.players[2]!.id, [
         {
           activatedAt: new Date(Date.now() - 86_400_000).toISOString(),
-          validUntil: playedAt(300).iso
+          validUntil: blockedAt.iso
         }
       ]);
       await ageDeadline(proposalId, 1, -60);

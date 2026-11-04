@@ -362,7 +362,11 @@ describe('level review approval races (real separate connections)', { timeout: 2
         const [row] = (
           await conn.query(
             `select boundary_basis, boundary_group_id::text as gid, boundary_played_at >= decided_at as after_decision,
-                    boundary_played_at <= decided_at + interval '1 second' as close_to_decision
+                    boundary_played_at <= decided_at + interval '1 second' as close_to_decision,
+                    (decided_at + interval '1 microsecond', gen_random_uuid())
+                      > (boundary_played_at, boundary_group_id) as later_match_after,
+                    (decided_at, '00000000-0000-0000-0000-000000000000'::uuid)
+                      < (boundary_played_at, boundary_group_id) as same_instant_before
                from public.player_rating_admin_adjustments`
           )
         ).rows;
@@ -370,7 +374,11 @@ describe('level review approval races (real separate connections)', { timeout: 2
           boundary_basis: 'decision_clock',
           gid: 'ffffffff-ffff-ffff-ffff-ffffffffffff',
           after_decision: true,
-          close_to_decision: true
+          close_to_decision: true,
+          // Ordering key (decision clock, max UUID): a match one microsecond later is corrected,
+          // a match at the decision instant sorts before the checkpoint.
+          later_match_after: true,
+          same_instant_before: true
         });
       } finally {
         await conn.query('rollback');

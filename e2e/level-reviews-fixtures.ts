@@ -160,14 +160,20 @@ export async function confirmDecision(page: Page) {
 export async function confirmApproval(page: Page) {
   const resolved = page.getByRole('status').filter({ hasText: lr.adminDecision.resolved });
   const stale = page.getByText(lr.adminDecision.stale);
+  const dialog = page.getByRole('alertdialog');
+  const settled = async () =>
+    (await resolved.isVisible()) ? 'resolved' : (await stale.isVisible()) ? 'stale' : 'pending';
   for (let attempt = 0; attempt < 5; attempt++) {
-    await confirmDecision(page);
-    await expect(page.getByRole('alertdialog')).toBeHidden();
+    // The server preview is requested when Approve is pressed: a moved revision shows the stale
+    // notice instead of the dialog; otherwise the dialog opens and the decision can be confirmed.
     await expect
-      .poll(async () =>
-        (await resolved.isVisible()) ? 'resolved' : (await stale.isVisible()) ? 'stale' : 'pending'
-      )
+      .poll(async () => ((await dialog.isVisible()) ? 'dialog' : await settled()))
       .not.toBe('pending');
+    if (await dialog.isVisible()) {
+      await confirmDecision(page);
+      await expect(dialog).toBeHidden();
+      await expect.poll(settled).not.toBe('pending');
+    }
     if (await resolved.isVisible()) return;
     await page.getByRole('button', { name: lr.adminDecision.approve, exact: true }).click();
   }

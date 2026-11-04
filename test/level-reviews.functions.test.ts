@@ -66,6 +66,15 @@ const approval = {
   expected_revision: 9
 } as const;
 
+const projected = {
+  mu: 4,
+  display_level: 4,
+  reliability_percent: 16,
+  confirmed_groups: 1,
+  highest_display_level: 4,
+  engine_version: '1.0.0'
+};
+
 type Call = { name: string; rpc: string; payload: unknown; run: () => Promise<unknown> };
 const calls: Call[] = [
   {
@@ -131,6 +140,17 @@ const calls: Call[] = [
     run: () => functions.markLevelReviewRequestUnderReview({ data: { request_id: ID } })
   },
   {
+    name: 'previewLevelReviewApproval',
+    rpc: 'get_level_review_adjustment_preview',
+    payload: {
+      revision: 9,
+      before: { ...projected, mu: 4, display_level: 4 },
+      after: { ...projected, mu: 4.75, display_level: 4.75 }
+    },
+    run: () =>
+      functions.previewLevelReviewApproval({ data: { request_id: ID, target_level: 4.75 } })
+  },
+  {
     name: 'resolveLevelReviewRequest',
     rpc: 'resolve_level_review_request',
     payload: { request: adminDto, replayed: false, adjustment: null },
@@ -148,6 +168,35 @@ describe('level review server functions', () => {
     mocks.requireAuthenticatedClient.mockResolvedValue({
       client: { rpc: mocks.rpc },
       userId: OWNER
+    });
+  });
+
+  it('previews with preserve by default and sends only a reduction target otherwise', async () => {
+    mocks.rpc.mockResolvedValue({
+      data: { revision: 9, before: projected, after: projected },
+      error: null
+    });
+    await functions.previewLevelReviewApproval({ data: { request_id: ID, target_level: 4.75 } });
+    expect(mocks.rpc).toHaveBeenLastCalledWith('get_level_review_adjustment_preview', {
+      p_request_id: ID,
+      p_target_level: 4.75
+    });
+    await functions.previewLevelReviewApproval({
+      data: { request_id: ID, target_level: 4.75, reliability: { mode: 'reduce', target: 5 } }
+    });
+    expect(mocks.rpc).toHaveBeenLastCalledWith('get_level_review_adjustment_preview', {
+      p_request_id: ID,
+      p_target_level: 4.75,
+      p_reliability_mode: 'reduce',
+      p_reliability_target: 5
+    });
+    await functions.previewLevelReviewApproval({
+      data: { request_id: ID, target_level: 4.75, reliability: { mode: 'reset' } }
+    });
+    expect(mocks.rpc).toHaveBeenLastCalledWith('get_level_review_adjustment_preview', {
+      p_request_id: ID,
+      p_target_level: 4.75,
+      p_reliability_mode: 'reset'
     });
   });
 

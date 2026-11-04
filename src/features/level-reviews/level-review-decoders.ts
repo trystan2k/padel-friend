@@ -6,6 +6,8 @@ import {
   type LevelReviewAdminDetail,
   type LevelReviewAdjustmentDto,
   type LevelReviewAdminDto,
+  type LevelReviewAdjustmentPreview,
+  type LevelReviewProjectedState,
   type LevelReviewResolutionResult,
   type LevelReviewCommandResult,
   type LevelReviewCursor,
@@ -211,6 +213,8 @@ const ADJUSTMENT_KEYS = [
   'rating_config_version',
   'before_engine_version',
   'after_engine_version',
+  'before_mu',
+  'after_mu',
   'before_display_level',
   'after_display_level',
   'before_reliability_percent',
@@ -250,6 +254,8 @@ function decodeAdjustment(value: unknown): LevelReviewAdjustmentDto {
     rating_config_version: count(row.rating_config_version),
     before_engine_version: text(row.before_engine_version),
     after_engine_version: text(row.after_engine_version),
+    before_mu: finite(row.before_mu),
+    after_mu: finite(row.after_mu),
     before_display_level: finite(row.before_display_level),
     after_display_level: finite(row.after_display_level),
     before_reliability_percent: count(row.before_reliability_percent),
@@ -274,6 +280,35 @@ export function decodeLevelReviewResolution(value: unknown): LevelReviewResoluti
     request: decodeAdminDto(row.request),
     replayed: boolean(row.replayed),
     adjustment: nullable(row.adjustment, decodeAdjustment)
+  };
+}
+
+const PROJECTED_KEYS = [
+  'mu',
+  'display_level',
+  'reliability_percent',
+  'confirmed_groups',
+  'highest_display_level',
+  'engine_version'
+] as const;
+function decodeProjectedState(value: unknown): LevelReviewProjectedState {
+  const row = exactObject(value, PROJECTED_KEYS);
+  return {
+    mu: finite(row.mu),
+    display_level: finite(row.display_level),
+    reliability_percent: count(row.reliability_percent),
+    confirmed_groups: count(row.confirmed_groups),
+    highest_display_level: finite(row.highest_display_level),
+    engine_version: text(row.engine_version)
+  };
+}
+
+export function decodeLevelReviewPreview(value: unknown): LevelReviewAdjustmentPreview {
+  const row = exactObject(value, ['revision', 'before', 'after']);
+  return {
+    revision: count(row.revision),
+    before: decodeProjectedState(row.before),
+    after: decodeProjectedState(row.after)
   };
 }
 

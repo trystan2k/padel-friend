@@ -5,6 +5,7 @@ import {
   listLevelReviewQueue,
   listMyLevelReviews,
   markLevelReviewUnderReview,
+  previewLevelReviewAdjustment,
   readLevelReviewAccess,
   readLevelReviewAdminDetail,
   readMyLevelReview,
@@ -13,6 +14,7 @@ import {
 } from './level-review.server';
 import {
   validateLevelReviewList,
+  validateLevelReviewPreview,
   validateLevelReviewQueue,
   validateLevelReviewRequest,
   validateResolveLevelReview,
@@ -68,6 +70,13 @@ export const getLevelReviewAdminDetail = createServerFn({ method: 'GET' })
   .handler(async ({ data }) => {
     const { client } = await requireAuthenticatedClient();
     return readLevelReviewAdminDetail(client, data);
+  });
+
+export const previewLevelReviewApproval = createServerFn({ method: 'GET' })
+  .validator(validateLevelReviewPreview)
+  .handler(async ({ data }) => {
+    const { client } = await requireAuthenticatedClient();
+    return previewLevelReviewAdjustment(client, data);
   });
 
 export const markLevelReviewRequestUnderReview = createServerFn({ method: 'POST' })

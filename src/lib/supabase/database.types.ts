@@ -3898,6 +3898,15 @@ export type Database = {
       }
       get_league_standings_audit: { Args: { p_league_id: string }; Returns: Json }
       get_level_review_access: { Args: Record<PropertyKey, never>; Returns: Json }
+      get_level_review_adjustment_preview: {
+        Args: {
+          p_reliability_mode?: string
+          p_reliability_target?: number
+          p_request_id: string
+          p_target_level: number
+        }
+        Returns: Json
+      }
       get_level_review_admin_detail: { Args: { p_request_id: string }; Returns: Json }
       get_match_creation_options: { Args: { p_community_id?: string }; Returns: Json }
       get_match_event: { Args: { p_event_id: string }; Returns: Json }
@@ -4325,6 +4334,18 @@ export type Database = {
         }
         Returns: Json
       }
+      level_review_project_adjustment: {
+        Args: {
+          p_mode: string
+          p_rating: Omit<
+            Database["public"]["Tables"]["global_player_ratings"]["Row"],
+            Database["public"]["Tables"]["global_player_ratings"]["ComputedFields"]
+          >
+          p_reliability_target: number
+          p_target: number
+        }
+        Returns: Json
+      }
       level_review_queue_item_dto: {
         Args: {
           r: Omit<
@@ -4721,6 +4742,19 @@ export type Database = {
         Args: { p_match_event_id: string; p_viewer: string }
         Returns: boolean
       }
+      rating_checkpoint_incoming: {
+        Args: {
+          p_adjustment_revision: number
+          p_at: string
+          p_group_id: string
+          p_revision: number
+          p_user_id: string
+        }
+        Returns: {
+          display_level: number
+          reliability_percent: number
+        }[]
+      }
       rating_committed_revision: { Args: Record<PropertyKey, never>; Returns: number }
       rating_current_calculations: {
         Args: { p_revision: number; p_user_id: string }
@@ -4801,6 +4835,8 @@ export type Database = {
           kind: string
           sort_at: string
           sort_id: string
+          sort_rank: number
+          sort_rev: number
         }[]
       }
       rating_utc_text: { Args: { p_instant: string }; Returns: string }

@@ -1,13 +1,17 @@
 import { describe, expect, it } from 'vitest';
 import {
   decodeLevelReviewAdminDetail,
+  decodeLevelReviewPreview,
   decodeLevelReviewResolution
 } from '../src/features/level-reviews/level-review-decoders';
 import {
   levelReviewErrorCode,
   levelReviewErrorFromDatabase
 } from '../src/features/level-reviews/level-review-errors';
-import { validateResolveLevelReview } from '../src/features/level-reviews/level-review-validators';
+import {
+  validateLevelReviewPreview,
+  validateResolveLevelReview
+} from '../src/features/level-reviews/level-review-validators';
 import {
   parseRatingHistoryPage,
   parseRatingProgress
@@ -61,6 +65,8 @@ const adjustment = {
   rating_config_version: 1,
   before_engine_version: '1.0.0',
   after_engine_version: '1.1.0',
+  before_mu: 4,
+  after_mu: 4.75,
   before_display_level: 4,
   after_display_level: 4.75,
   before_reliability_percent: 16,
@@ -106,6 +112,8 @@ describe('resolution decoder', () => {
     expect(() => decode({ reliability_mode: 'boost' })).toThrow('INVALID_LEVEL_REVIEW_RESPONSE');
     expect(() => decode({ actor_id: 'not-a-uuid' })).toThrow('INVALID_LEVEL_REVIEW_RESPONSE');
     expect(() => decode({ leaked: 1 })).toThrow('INVALID_LEVEL_REVIEW_RESPONSE');
+    expect(() => decode({ before_mu: undefined })).toThrow('INVALID_LEVEL_REVIEW_RESPONSE');
+    expect(() => decode({ after_mu: '4.75' })).toThrow('INVALID_LEVEL_REVIEW_RESPONSE');
     expect(() => decodeLevelReviewResolution({ request: adminDto, replayed: false })).toThrow(
       'INVALID_LEVEL_REVIEW_RESPONSE'
     );
@@ -123,6 +131,70 @@ describe('resolution decoder', () => {
       recent_history: []
     });
     expect(detail.adjustment).toEqual(adjustment);
+  });
+});
+
+describe('approval preview contract', () => {
+  const state = {
+    mu: 4,
+    display_level: 4,
+    reliability_percent: 16,
+    confirmed_groups: 1,
+    highest_display_level: 4.1,
+    engine_version: '1.0.0'
+  };
+  const preview = {
+    revision: 9,
+    before: state,
+    after: { ...state, mu: 4.75, display_level: 4.75, highest_display_level: 4.75 }
+  };
+
+  it('decodes the server-computed before/after state with its revision', () => {
+    expect(decodeLevelReviewPreview(preview)).toEqual(preview);
+  });
+
+  it('fails closed on a missing, extra or malformed field', () => {
+    expect(() => decodeLevelReviewPreview({ ...preview, extra: 1 })).toThrow(
+      'INVALID_LEVEL_REVIEW_RESPONSE'
+    );
+    expect(() => decodeLevelReviewPreview({ revision: 9, before: state })).toThrow(
+      'INVALID_LEVEL_REVIEW_RESPONSE'
+    );
+    expect(() =>
+      decodeLevelReviewPreview({ ...preview, after: { ...state, mu: undefined } })
+    ).toThrow('INVALID_LEVEL_REVIEW_RESPONSE');
+    expect(() => decodeLevelReviewPreview({ ...preview, revision: -1 })).toThrow(
+      'INVALID_LEVEL_REVIEW_RESPONSE'
+    );
+  });
+
+  it('validates preview input: no justification, bounded reduction', () => {
+    expect(validateLevelReviewPreview({ request_id: ID, target_level: 4.5 })).toEqual({
+      request_id: ID,
+      target_level: 4.5
+    });
+    expect(
+      validateLevelReviewPreview({
+        request_id: ID,
+        target_level: 4.5,
+        reliability: { mode: 'reduce', target: 5 }
+      })
+    ).toMatchObject({ reliability: { mode: 'reduce', target: 5 } });
+    const attempt = (value: unknown) => () => validateLevelReviewPreview(value);
+    expect(attempt({ request_id: ID, target_level: 7.001 })).toThrow('INVALID_LEVEL_REVIEW_INPUT');
+    expect(attempt({ request_id: ID, target_level: 4, reliability: { mode: 'reduce' } })).toThrow(
+      'INVALID_LEVEL_REVIEW_INPUT'
+    );
+    expect(
+      attempt({ request_id: ID, target_level: 4, reliability: { mode: 'reset', target: 10 } })
+    ).toThrow('INVALID_LEVEL_REVIEW_INPUT');
+    expect(
+      attempt({
+        request_id: ID,
+        target_level: 4,
+        reliability: { mode: 'reset', justification: 'x' }
+      })
+    ).toThrow('INVALID_LEVEL_REVIEW_INPUT');
   });
 });
 

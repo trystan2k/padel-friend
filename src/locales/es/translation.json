@@ -2619,9 +2619,11 @@
       "reject": "Rechazar",
       "confirmApprove": "¿Confirmar aprobación?",
       "confirmReject": "¿Confirmar rechazo?",
-      "after": "Nivel {{before}} (μ interno {{beforeMu}}) → {{after}} (μ interno {{after}}); fiabilidad {{reliabilityBefore}}% → {{reliabilityAfter}}%.",
+      "after": "Nivel {{beforeLevel}} (μ interno {{beforeMu}}) → {{afterLevel}} (μ interno {{afterMu}}); fiabilidad {{reliabilityBefore}}% → {{reliabilityAfter}}%.",
       "rejectDescription": "Rechazar esta solicitud sin cambiar la clasificación.",
       "forward": "Los cambios solo se aplican en adelante. Los partidos históricos y las posiciones de Liga no cambian.",
+      "forwardHeading": "Corrección solo hacia adelante",
+      "forwardAudit": "La aprobación crea un evento de ajuste auditado.",
       "cancel": "Volver",
       "confirm": "Confirmar decisión",
       "resolved": "Decisión guardada.",
@@ -2629,7 +2631,24 @@
       "stale": "La clasificación cambió. Revisa la vista actualizada y confirma de nuevo.",
       "conflict": "Esta solicitud ya se cerró o cambió en otro lugar.",
       "unconfirmed": "No se pudo confirmar el resultado. Reintenta la misma decisión de forma segura.",
-      "refreshFailed": "No se pudo actualizar la vista previa. Recarga antes de decidir."
+      "refreshFailed": "No se pudo actualizar la vista previa. Recarga antes de decidir.",
+      "previewFailed": "No se pudo calcular la vista previa. Inténtalo de nuevo.",
+      "recentHistory": "Historial de nivel reciente",
+      "recentEmpty": "Aún no hay partidos confirmados.",
+      "recentItem": "{{date}} · Nivel {{before}} → {{after}} · Fiabilidad {{reliability}}%",
+      "auditHeading": "Evento de ajuste (evidencia en el momento de la decisión)",
+      "auditNote": "Valores confirmados al ejecutar la decisión. Nunca cambian; el jugador ve el historial efectivo actual.",
+      "auditLevel": "Nivel {{before}} (μ interno {{beforeMu}}) → {{after}} (μ interno {{afterMu}})",
+      "auditReliability": "Fiabilidad {{before}}% → {{after}}% ({{mode}})",
+      "auditJustification": "Justificación de fiabilidad: {{text}}",
+      "auditDecided": "Decidido {{date}} · Autor {{actor}}",
+      "auditRevision": "Revisión de nivel {{revision}} · Motor {{before}} → {{after}}",
+      "auditBoundary": "Límite hacia adelante: {{date}} ({{basis}})",
+      "basis": {
+        "decision_clock": "reloj de la decisión",
+        "match_watermark": "marca de partidos",
+        "prior_checkpoint": "punto de control anterior"
+      }
     },
     "admin": {
       "title": "Cola de revisión de nivel",
@@ -2647,7 +2666,10 @@
       "evidence": "Pruebas",
       "reviewedAt": "En revisión: {{date}}",
       "decidedAt": "Decidido: {{date}}",
-      "canceledAt": "Cancelado: {{date}}"
+      "canceledAt": "Cancelado: {{date}}",
+      "entryTitle": "Administración de la plataforma",
+      "entryDescription": "Revisa y decide las solicitudes de nivel de los jugadores.",
+      "entryLink": "Abrir cola de revisión de nivel"
     },
     "entry": {
       "title": "Revisión de nivel",

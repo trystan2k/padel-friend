@@ -7,6 +7,8 @@ import { CommunityAdminEntries } from '../features/community/CommunityAdmin';
 import { listMyAdminCommunities } from '../features/community/community-admin.functions';
 import { getMyPlayerProfile } from '../features/player/player.functions';
 import { LeagueEntries } from '../features/leagues/LeagueEntries';
+import { PlatformAdminEntry } from '../features/level-reviews/PlatformAdminEntry';
+import { getLevelReviewAccess } from '../features/level-reviews/level-review.functions';
 import { listMyLeagueCommunities } from '../features/leagues/league.functions';
 import { loadRatingView } from '../features/player/rating-view';
 import { listMyCommunityNotifications } from '../features/community/community-request.functions';
@@ -17,18 +19,35 @@ import { getMyUnreadNotificationCount } from '../features/notifications/notifica
 import { NotificationBadge } from '../features/notifications/NotificationBadge';
 
 export async function loadDashboardData() {
-  const [profile, rating, adminCommunities, leagueCommunities, inbox, notificationCount] =
-    await Promise.all([
-      getMyPlayerProfile(),
-      loadRatingView(),
-      listMyAdminCommunities().catch(() => []),
-      listMyLeagueCommunities().catch(() => []),
-      listMyCommunityNotifications({ data: { offset: 0, limit: 20 } })
-        .then((items) => ({ items, error: false }))
-        .catch(() => ({ items: null, error: true })),
-      getMyUnreadNotificationCount().catch(() => null)
-    ]);
-  const dashboardData = { profile, rating, adminCommunities, leagueCommunities, inbox };
+  const [
+    profile,
+    rating,
+    adminCommunities,
+    leagueCommunities,
+    inbox,
+    notificationCount,
+    platformAdmin
+  ] = await Promise.all([
+    getMyPlayerProfile(),
+    loadRatingView(),
+    listMyAdminCommunities().catch(() => []),
+    listMyLeagueCommunities().catch(() => []),
+    listMyCommunityNotifications({ data: { offset: 0, limit: 20 } })
+      .then((items) => ({ items, error: false }))
+      .catch(() => ({ items: null, error: true })),
+    getMyUnreadNotificationCount().catch(() => null),
+    getLevelReviewAccess()
+      .then((access) => access.is_platform_admin)
+      .catch(() => false)
+  ]);
+  const dashboardData = {
+    profile,
+    rating,
+    adminCommunities,
+    leagueCommunities,
+    inbox,
+    platformAdmin
+  };
   return { ...dashboardData, notificationCount: notificationCount ?? undefined };
 }
 
@@ -42,8 +61,15 @@ export const Route = createFileRoute('/_protected/dashboard')({
 function Dashboard() {
   const { t } = useTranslation();
   const router = useRouter();
-  const { profile, rating, adminCommunities, leagueCommunities, inbox, notificationCount } =
-    Route.useLoaderData();
+  const {
+    profile,
+    rating,
+    adminCommunities,
+    leagueCommunities,
+    inbox,
+    notificationCount,
+    platformAdmin
+  } = Route.useLoaderData();
   return (
     <>
       <header {...stylex.props(rootStyles.pageHeader)}>
@@ -61,6 +87,7 @@ function Dashboard() {
         initialRating={rating}
         onRatingReload={() => void router.invalidate()}
       />
+      <PlatformAdminEntry allowed={platformAdmin} />
       <CommunityAdminEntries communities={adminCommunities} />
       <LeagueEntries communities={leagueCommunities} />
       <CommunityInbox initialItems={inbox.items} loadError={inbox.error} />

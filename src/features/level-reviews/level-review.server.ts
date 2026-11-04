@@ -3,11 +3,13 @@ import {
   LEVEL_REVIEW_PAGE_DEFAULT,
   type LevelReviewAccess,
   type LevelReviewAdminCommandResult,
+  type LevelReviewAdjustmentPreview,
   type LevelReviewAdminDetail,
   type LevelReviewCommandResult,
   type LevelReviewDetailResult,
   type LevelReviewListInput,
   type LevelReviewListResult,
+  type LevelReviewPreviewInput,
   type LevelReviewQueueInput,
   type LevelReviewQueueResult,
   type LevelReviewReliabilityDecision,
@@ -23,6 +25,7 @@ import {
   decodeLevelReviewCommand,
   decodeLevelReviewDetail,
   decodeLevelReviewList,
+  decodeLevelReviewPreview,
   decodeLevelReviewQueue,
   decodeLevelReviewResolution
 } from './level-review-decoders';
@@ -120,6 +123,26 @@ export function readLevelReviewAdminDetail(
   return run(
     client.rpc('get_level_review_admin_detail', { p_request_id: input.request_id }),
     decodeLevelReviewAdminDetail
+  );
+}
+
+export function previewLevelReviewAdjustment(
+  client: Client,
+  input: LevelReviewPreviewInput
+): Promise<LevelReviewAdjustmentPreview> {
+  const reliability = input.reliability;
+  return run(
+    client.rpc('get_level_review_adjustment_preview', {
+      p_request_id: input.request_id,
+      p_target_level: input.target_level,
+      ...(reliability && reliability.mode !== 'preserve'
+        ? {
+            p_reliability_mode: reliability.mode,
+            ...(reliability.mode === 'reduce' ? { p_reliability_target: reliability.target } : {})
+          }
+        : {})
+    }),
+    decodeLevelReviewPreview
   );
 }
 

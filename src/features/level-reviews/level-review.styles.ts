@@ -119,6 +119,9 @@ export const levelReview = stylex.create({
     minHeight: touchTarget,
     minWidth: 'calc(var(--space-40) * 3)',
     padding: 'var(--space-7) var(--space-10)',
+    borderWidth: 'var(--border-width-sm)',
+    borderStyle: 'solid',
+    borderColor: 'var(--color-line)',
     borderRadius: 'var(--radius-14)',
     backgroundColor: 'var(--color-surface-2)',
     color: 'var(--color-text)',
@@ -133,7 +136,8 @@ export const levelReview = stylex.create({
     width: 'var(--space-16)',
     height: 'var(--space-16)',
     margin: 0,
-    accentColor: 'var(--color-green)'
+    accentColor: 'var(--color-green)',
+    ':focus-visible': focusRing
   },
   levelFields: { display: 'grid', gap: 'var(--space-8)', gridTemplateColumns: 'minmax(0, 1fr)' },
   textarea: {
@@ -151,7 +155,9 @@ export const levelReview = stylex.create({
     width: '100%',
     minHeight: touchTarget,
     padding: 'var(--space-7) var(--space-10)',
-    borderWidth: 0,
+    borderWidth: 'var(--border-width-sm)',
+    borderStyle: 'solid',
+    borderColor: 'var(--color-line)',
     borderRadius: 'var(--radius-14)',
     backgroundColor: 'var(--color-surface-2)',
     color: 'var(--color-text)',

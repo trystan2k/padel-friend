@@ -1,5 +1,9 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import {
+  decodeLevelReviewAdminDetail,
+  decodeLevelReviewPreview
+} from '../src/features/level-reviews/level-review-decoders';
+import {
   parseRatingHistoryPage,
   parseRatingProgress
 } from '../src/features/player/rating-contracts';
@@ -114,15 +118,22 @@ describe('immutable ADMIN_REVIEW_ADJUSTMENT approval', { timeout: 180_000 }, () 
         before_engine_version: '1.0.0',
         after_engine_version: '1.0.0'
       });
-      // The boundary is after every committed match and the decision instant stays separate.
-      // (compared in the database: the boundary is one microsecond past the watermark)
+      // The boundary key is the greater of the watermark key and (decision clock, max UUID); the
+      // fixture's tail match is future-dated, so it is the watermark key itself (no inflation).
+      // The decision instant stays separate. (compared in the database: microsecond precision)
       const ordering = await queryTrustedSql(
-        `select a.boundary_played_at > $2::timestamptz as after_watermark,
-                a.boundary_played_at >= a.effective_at as after_decision
+        `select (a.boundary_played_at, a.boundary_group_id) >= ($2::timestamptz, $3::uuid) as not_before_watermark,
+                (a.boundary_played_at, a.boundary_group_id) = ($2::timestamptz, $3::uuid) as is_watermark,
+                a.boundary_played_at >= a.effective_at as after_decision, a.boundary_basis
            from public.player_rating_admin_adjustments a where a.id = $1`,
-        { values: [event.id, String(control['watermark_at'])] }
+        { values: [event.id, String(control['watermark_at']), String(control['watermark_group'])] }
       );
-      expect(ordering.rows[0]).toEqual({ after_watermark: true, after_decision: true });
+      expect(ordering.rows[0]).toEqual({
+        not_before_watermark: true,
+        is_watermark: true,
+        after_decision: true,
+        boundary_basis: 'match_watermark'
+      });
 
       // Materialization: level and peak moved; reliability, sigma, count, initial level and
       // last-match timestamp are preserved exactly.
@@ -185,6 +196,118 @@ describe('immutable ADMIN_REVIEW_ADJUSTMENT approval', { timeout: 180_000 }, () 
         values: [owner.id]
       });
       expect(locked.rows[0]?.['locked']).toBe(true);
+    }
+  );
+
+  it.skipIf(!environment.env)(
+    'previews the approval on the server, bound to one revision, with the resolve arithmetic',
+    async () => {
+      const { owner } = await ratedOwner('prev');
+      const requestId = await submitExact(owner, 5);
+      const preview = async (args: Record<string, unknown>) =>
+        admin.client.rpc('get_level_review_adjustment_preview', {
+          p_request_id: requestId,
+          p_target_level: 5,
+          ...args
+        });
+
+      // Preserve: the after-state carries the new level and the untouched reliability.
+      const row = await ratingRow(owner.id);
+      const preserved = decodeLevelReviewPreview((await preview({})).data);
+      expect(preserved.revision).toBe(await committedRevision());
+      expect(preserved.before).toMatchObject({
+        mu: Number(row['mu']),
+        display_level: Number(row['display_level']),
+        reliability_percent: Number(row['reliability']),
+        confirmed_groups: 1
+      });
+      expect(preserved.after).toMatchObject({
+        mu: 5,
+        display_level: 5,
+        reliability_percent: Number(row['reliability']),
+        engine_version: '1.0.0'
+      });
+
+      // Reduce: the exception stamps the engine and carries the explicit target.
+      const reduced = decodeLevelReviewPreview(
+        (await preview({ p_reliability_mode: 'reduce', p_reliability_target: 5 })).data
+      );
+      expect(reduced.after).toMatchObject({ reliability_percent: 5, engine_version: '1.1.0' });
+      expect(reduced.revision).toBe(preserved.revision);
+
+      // Invalid inputs are the resolve transaction's own errors.
+      expect((await preview({ p_target_level: 6 })).error?.message).toBe(
+        'LEVEL_REVIEW_TARGET_OUT_OF_RANGE'
+      );
+      expect(
+        (await preview({ p_reliability_mode: 'reduce', p_reliability_target: 99 })).error?.message
+      ).toBe('LEVEL_REVIEW_RELIABILITY_INVALID');
+      expect(
+        (
+          await preview({
+            p_reliability_mode: 'reduce',
+            p_reliability_target: 5,
+            p_target_level: 7.5
+          })
+        ).error?.message
+      ).toBe('LEVEL_REVIEW_INVALID_ARGUMENT');
+      expect(
+        (
+          await owner.client.rpc('get_level_review_adjustment_preview', {
+            p_request_id: requestId,
+            p_target_level: 5
+          })
+        ).error?.message
+      ).toBe('LEVEL_REVIEW_FORBIDDEN');
+
+      // A revision moved by another confirmation: the preview follows it and the old one is stale.
+      await ratedOwner('prevmove');
+      const moved = decodeLevelReviewPreview((await preview({})).data);
+      expect(moved.revision).toBeGreaterThan(preserved.revision);
+      expect(
+        (await approveRequest(admin, requestId, { expectedRevision: preserved.revision })).error
+          ?.message
+      ).toBe('LEVEL_REVIEW_STALE_RATING');
+      expect(await adjustmentRowFor(requestId)).toBeUndefined();
+
+      // The committed event equals what the fresh preview promised, internal mu included.
+      const approved = await approveOk(admin, requestId, {
+        target: 5,
+        expectedRevision: moved.revision
+      });
+      const event = approved.adjustment!;
+      const stored = (
+        await queryTrustedSql(
+          'select before_mu::float8 as before_mu, after_mu::float8 as after_mu, after_display_level::float8 as after_level, ' +
+            'after_reliability_percent::int as after_rel, after_highest_display_level::float8 as after_highest, ' +
+            'after_engine_version from public.player_rating_admin_adjustments where id = $1',
+          { values: [event.id] }
+        )
+      ).rows[0];
+      expect(stored).toEqual({
+        before_mu: moved.before.mu,
+        after_mu: moved.after.mu,
+        after_level: moved.after.display_level,
+        after_rel: moved.after.reliability_percent,
+        after_highest: moved.after.highest_display_level,
+        after_engine_version: moved.after.engine_version
+      });
+      // The DTO exposes the stored internal state on both admin surfaces.
+      expect(event).toMatchObject({
+        before_mu: stored!['before_mu'],
+        after_mu: stored!['after_mu']
+      });
+      const detail = decodeLevelReviewAdminDetail(
+        (await admin.client.rpc('get_level_review_admin_detail', { p_request_id: requestId })).data
+      );
+      expect(detail.adjustment).toEqual(event);
+      expect(detail.adjustment).toMatchObject({ before_mu: moved.before.mu, after_mu: 5 });
+      // A resolved request has nothing left to preview.
+      expect((await preview({})).error?.message).toBe('LEVEL_REVIEW_INVALID_TRANSITION');
+      // Owner-facing readers never carry the internal state.
+      const page = (await owner.client.rpc('get_my_rating_history')).data;
+      expect(JSON.stringify(page)).not.toContain('before_mu');
+      expect(JSON.stringify(page)).not.toContain('after_mu');
     }
   );
 
@@ -303,7 +426,8 @@ describe('immutable ADMIN_REVIEW_ADJUSTMENT approval', { timeout: 180_000 }, () 
       const second = await approveOk(admin, await submitExact(owner, 4.5), { target: 4.5 });
       expect(await adjustmentCount(owner.id)).toBe(2);
       // Fixed-width UTC instants: lexicographic order is chronological order (microseconds kept).
-      expect(second.adjustment!.boundary_played_at > zero.adjustment!.boundary_played_at).toBe(
+      // Checkpoints may share a key; their order is the committed revision.
+      expect(second.adjustment!.boundary_played_at >= zero.adjustment!.boundary_played_at).toBe(
         true
       );
       expect(second.adjustment!.projection_revision).toBeGreaterThan(
