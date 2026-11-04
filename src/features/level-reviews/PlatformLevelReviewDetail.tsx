@@ -289,6 +289,7 @@ export function PlatformLevelReviewDetail({
           )}
         </section>
       )}
+      {active && <p {...stylex.props(s.guidance)}>{t('levelReview.adminDecision.forward')}</p>}
       <output aria-live="polite" {...stylex.props(message ? s.notice : s.srOnly)}>
         {message}
       </output>

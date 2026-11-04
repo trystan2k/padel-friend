@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Link } from '@tanstack/react-router';
 import { useTranslation } from 'react-i18next';
 import { notificationResultHref, notificationRosterPosition } from './notification-target';
+import { NotificationLevelReviewOutcome } from './NotificationLevelReviewOutcome';
 import { NotificationResultOutcome } from './NotificationResultOutcome';
 import {
   acceptMyNotificationInvitation,
@@ -340,7 +341,24 @@ export function NotificationDetailPage({
             : ''}
       </output>
       <section {...stylex.props(styles.panel)}>
-        {target.target_status === 'result_available' && target.result_context ? (
+        {target.target_status === 'level_review_available' && target.level_review_context ? (
+          <>
+            <NotificationLevelReviewOutcome context={target.level_review_context} />
+            {hasError && <p role="alert">{t('notifications.targetError')}</p>}
+            {hasError && (
+              <button
+                {...stylex.props(styles.button)}
+                disabled={pending || isOnline !== true}
+                onClick={() => void retry()}
+              >
+                {t('notifications.retry')}
+              </button>
+            )}
+            <Link {...stylex.props(styles.link)} to="/notifications">
+              {t('notifications.back')}
+            </Link>
+          </>
+        ) : target.target_status === 'result_available' && target.result_context ? (
           <>
             <h1>{t(`notifications.kinds.${target.result_context.notification_kind}`)}</h1>
             {target.result_context.entry_ready ? (

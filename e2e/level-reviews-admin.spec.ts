@@ -2,6 +2,9 @@ import { expect, test, type Page } from '@playwright/test';
 import { waitForHydratedPage } from './auth-helpers';
 import {
   cleanupLevelReviews,
+  confirmApproval,
+  confirmDecision as confirm,
+  fillApproval as decision,
   grantPlatformAdmin,
   lr,
   ratingCopy,
@@ -36,17 +39,6 @@ async function open(page: Page, path: string) {
   await page.goto(path);
   await waitForHydratedPage(page);
 }
-async function decision(page: Page, target: string, note: string) {
-  await page.getByRole('textbox', { name: lr.adminDecision.target }).fill(target);
-  await page.getByRole('textbox', { name: lr.adminDecision.note }).fill(note);
-  await page.getByRole('button', { name: lr.adminDecision.approve, exact: true }).click();
-}
-async function confirm(page: Page) {
-  await page
-    .getByRole('alertdialog')
-    .getByRole('button', { name: lr.adminDecision.confirm })
-    .click();
-}
 
 test('admin approves from queue and player sees the adjustment', async () => {
   test.setTimeout(180_000);
@@ -65,7 +57,7 @@ test('admin approves from queue and player sees the adjustment', async () => {
   const dialog = page.getByRole('alertdialog', { name: lr.adminDecision.confirmApprove });
   await expect(dialog).toContainText('internal μ');
   await expect(dialog).toContainText('4.1');
-  await confirm(page);
+  await confirmApproval(page);
   await expect(
     page.getByRole('status').filter({ hasText: lr.adminDecision.resolved })
   ).toBeVisible();
@@ -161,7 +153,7 @@ test('stale preview refreshes after a real match confirmation before approval', 
   await expect(page.getByText(lr.adminDecision.stale)).toBeVisible();
   expect((await requestRows(player.id))[0]?.status).toBe('pending');
   await page.getByRole('button', { name: lr.adminDecision.approve, exact: true }).click();
-  await confirm(page);
+  await confirmApproval(page);
   await expect(
     page.getByRole('status').filter({ hasText: lr.adminDecision.resolved })
   ).toBeVisible();

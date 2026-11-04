@@ -1,4 +1,4 @@
-import { expect } from '@playwright/test';
+import { expect, type Page } from '@playwright/test';
 import {
   decodeLevelReviewAdminDetail,
   decodeLevelReviewCommand
@@ -11,6 +11,7 @@ import { copies, sql, type Actor } from './matches-management-fixtures';
 
 export const lr = copies.en.levelReview;
 export const ratingCopy = copies.en.rating;
+export const notificationCopy = copies.en.notifications;
 
 export async function grantPlatformAdmin(userId: string): Promise<void> {
   await sql(
@@ -100,6 +101,79 @@ export async function approveRequest(
   expect(result.error, 'resolve approve').toBeNull();
 }
 
+export type ResolutionNotice = { id: string; kind: string; read: boolean };
+
+/** In-app resolution notices (the stable `level-review:<id>:resolved` event key) of a request. */
+export async function resolutionNotices(
+  ownerId: string,
+  requestId: string
+): Promise<ResolutionNotice[]> {
+  const rows = await sql(`select id::text, kind, read_at is not null as read
+    from public.notifications
+    where recipient_user_id='${ownerId}' and target_type='level_review_request'
+      and event_key='level-review:${requestId}:resolved'`);
+  return rows.map((row) => ({
+    id: String(row['id']),
+    kind: String(row['kind']),
+    read: row['read'] === true
+  }));
+}
+
+export async function adjustmentCount(ownerId: string): Promise<number> {
+  const [row] = await sql(
+    `select count(*)::int as n from public.player_rating_admin_adjustments where user_id='${ownerId}'`
+  );
+  return Number(row?.['n']);
+}
+
+/**
+ * A played-at instant strictly after every committed match key and every adjustment boundary,
+ * so a game confirmed with it starts from the corrected (post-checkpoint) state.
+ */
+export async function playedAfterCheckpoint(): Promise<string> {
+  const [row] = await sql(`select (greatest(clock_timestamp(),
+      (select max(boundary_played_at) from public.player_rating_admin_adjustments),
+      (select last_processed_played_at from public.player_rating_projection_control))
+      + interval '1 microsecond')::text as played_at`);
+  return String(row?.['played_at']);
+}
+
+/** Fills the Platform Admin decision form and presses Approve (the confirm dialog opens). */
+export async function fillApproval(page: Page, target: string, note: string) {
+  await page.getByRole('textbox', { name: lr.adminDecision.target }).fill(target);
+  await page.getByRole('textbox', { name: lr.adminDecision.note }).fill(note);
+  await page.getByRole('button', { name: lr.adminDecision.approve, exact: true }).click();
+}
+
+export async function confirmDecision(page: Page) {
+  await page
+    .getByRole('alertdialog')
+    .getByRole('button', { name: lr.adminDecision.confirm })
+    .click();
+}
+
+/**
+ * Confirms an approval and, when another spec running in a parallel worker advanced the shared
+ * global rating revision in the meantime, re-confirms on the refreshed preview — exactly what an
+ * admin does on a stale notice. Bounded; a decision that never resolves still fails.
+ */
+export async function confirmApproval(page: Page) {
+  const resolved = page.getByRole('status').filter({ hasText: lr.adminDecision.resolved });
+  const stale = page.getByText(lr.adminDecision.stale);
+  for (let attempt = 0; attempt < 5; attempt++) {
+    await confirmDecision(page);
+    await expect(page.getByRole('alertdialog')).toBeHidden();
+    await expect
+      .poll(async () =>
+        (await resolved.isVisible()) ? 'resolved' : (await stale.isVisible()) ? 'stale' : 'pending'
+      )
+      .not.toBe('pending');
+    if (await resolved.isVisible()) return;
+    await page.getByRole('button', { name: lr.adminDecision.approve, exact: true }).click();
+  }
+  await expect(resolved).toBeVisible();
+}
+
 /**
  * Teardown for fixture owners. Review evidence is immutable and restricts user deletion, so the
  * guards are lifted for one transaction that removes only these actors' rows and restores them.
@@ -117,6 +191,8 @@ export async function cleanupLevelReviews(actorIds: readonly string[]): Promise<
       select id from public.player_rating_admin_adjustments where user_id in (${ids}));
     delete from public.player_rating_admin_adjustments where user_id in (${ids});
     delete from public.player_level_review_requests where owner_id in (${ids});
+    delete from public.notifications where target_type = 'level_review_request'
+      and recipient_user_id in (${ids});
     delete from public.platform_admins where user_id in (${ids});
     set constraints all immediate;
     alter table public.player_level_review_requests enable trigger level_review_requests_no_delete;

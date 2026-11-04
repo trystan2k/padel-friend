@@ -3977,6 +3977,7 @@ export type Database = {
           created_at: string
           invitation_id: string
           kind: string
+          level_review_context: Json
           match_available: boolean
           match_event_id: string
           membership_status: string

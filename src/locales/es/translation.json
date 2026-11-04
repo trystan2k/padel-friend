@@ -520,7 +520,17 @@
       "result_disputed": "Se impugnó un resultado",
       "result_confirmed": "Se confirmó un resultado del partido",
       "result_deadline_reminder": "Se acerca el plazo para revisar el resultado",
-      "result_entry_ready": "Un resultado del partido está listo para registrar"
+      "result_entry_ready": "Un resultado del partido está listo para registrar",
+      "level_review_approved": "Tu revisión de nivel fue aprobada",
+      "level_review_rejected": "Tu revisión de nivel fue rechazada"
+    },
+    "levelReview": {
+      "open": "Ver solicitud",
+      "approvedBody": "Tu nivel ahora es {{level}}. El cambio se aplica solo a partidos futuros; los resultados pasados y las clasificaciones de ligas no cambian.",
+      "rejectedBody": "Tu nivel se mantiene igual. No se hizo ningún cambio de rating.",
+      "requested": "Solicitado: {{range}}",
+      "note": "Nota de la revisión",
+      "decided": "Decidido el {{date}}"
     },
     "result": {
       "group": "Grupo {{number}}",

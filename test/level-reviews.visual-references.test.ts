@@ -16,21 +16,33 @@ type Manifest = {
   visualBudgets: {
     status: string;
     perScreen: Record<string, number>;
+    measuredBaseline: Record<string, number>;
     perScreenRationale: Record<string, string>;
   };
 };
 const manifest: Manifest = JSON.parse(readFileSync(join(directory, 'manifest.json'), 'utf8'));
 const digest = (bytes: Buffer) => createHash('sha256').update(bytes).digest('hex');
 
-describe('level review visual reference candidates', () => {
+const screens = [
+  'qWosG',
+  'OKYtp:pending',
+  'OKYtp:reviewing',
+  'OKYtp:approved',
+  'OKYtp:rejected',
+  'gGNxk'
+];
+
+describe('level review visual references', () => {
   it('records the design digest and verified export provenance', () => {
-    expect(manifest.status).toBe('verified-references-unmeasured-budgets');
+    expect(manifest.status).toBe('measured-calibrated');
     expect(manifest.sourceDesign.path).toBe('docs/design/padel-friend.pen');
-    expect(manifest.sourceDesign.sha256).toMatch(/^[a-f0-9]{64}$/);
+    expect(manifest.sourceDesign.sha256).toBe(
+      digest(readFileSync(join(root, manifest.sourceDesign.path)))
+    );
     expect(manifest.sourceDesign.provenanceNote).toContain('byte-for-byte');
   });
 
-  it.each(['qWosG', 'OKYtp'])('records frame %s, image digest and viewport', (id) => {
+  it.each(['qWosG', 'OKYtp', 'gGNxk'])('records frame %s, image digest and viewport', (id) => {
     const reference = manifest.approvedReferences[id];
     expect(reference).toBeDefined();
     if (!reference) throw new Error('Missing reference ' + id);
@@ -40,9 +52,26 @@ describe('level review visual reference candidates', () => {
     expect([bytes.readUInt32BE(16), bytes.readUInt32BE(20)]).toEqual(reference.pixelSize);
     expect(reference.pixelSize).toEqual([780, 1688]);
     expect(reference.viewport).toEqual([390, 844]);
-    expect(manifest.visualBudgets.perScreen[id]).toBeGreaterThan(0);
-    expect(manifest.visualBudgets.perScreen[id]).toBeLessThan(0.5);
-    expect(manifest.visualBudgets.perScreenRationale[id]).toContain('calibrated');
-    expect(manifest.visualBudgets.status).toBe('unmeasured-not-certified');
+  });
+
+  it.each(screens)('keeps a nonzero budget calibrated from the measured baseline of %s', (key) => {
+    const budget = manifest.visualBudgets.perScreen[key];
+    const measured = manifest.visualBudgets.measuredBaseline[key];
+    expect(manifest.visualBudgets.status).toBe('measured-calibrated');
+    expect(budget).toBeGreaterThan(0);
+    expect(measured).toBeGreaterThan(0);
+    if (budget === undefined || measured === undefined) throw new Error('Missing budget ' + key);
+    // Calibrated, never blanket: a bounded headroom over the measured baseline, always below 0.5.
+    expect(budget).toBeGreaterThanOrEqual(measured);
+    expect(budget).toBeLessThanOrEqual(measured * 1.25);
+    expect(budget).toBeLessThan(0.5);
+    expect(manifest.visualBudgets.perScreenRationale[key]).toContain('alibrated');
+  });
+
+  it('has a budget for exactly the measured screens', () => {
+    expect(Object.keys(manifest.visualBudgets.perScreen).sort()).toEqual([...screens].sort());
+    expect(Object.keys(manifest.visualBudgets.measuredBaseline).sort()).toEqual(
+      [...screens].sort()
+    );
   });
 });

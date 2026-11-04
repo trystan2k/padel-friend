@@ -520,7 +520,17 @@
       "result_disputed": "A result was disputed",
       "result_confirmed": "A match result was confirmed",
       "result_deadline_reminder": "Result review deadline approaching",
-      "result_entry_ready": "A match result is ready to enter"
+      "result_entry_ready": "A match result is ready to enter",
+      "level_review_approved": "Your level review was approved",
+      "level_review_rejected": "Your level review was declined"
+    },
+    "levelReview": {
+      "open": "View request",
+      "approvedBody": "Your level is now {{level}}. The change applies to future matches only; past results and League standings are unchanged.",
+      "rejectedBody": "Your level stays as it was. No rating change was made.",
+      "requested": "Requested: {{range}}",
+      "note": "Review note",
+      "decided": "Decided {{date}}"
     },
     "result": {
       "group": "Group {{number}}",

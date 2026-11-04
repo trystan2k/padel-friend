@@ -1,10 +1,10 @@
 {
-  "status": "verified-references-unmeasured-budgets",
+  "status": "measured-calibrated",
   "sourceDesign": {
     "path": "docs/design/padel-friend.pen",
     "sha256": "927ac4e83f24edacbc2b2fe2fcfa111d8e0822b96f73ce268cf50b5ef2737af2",
-    "provenanceNote": "Pencil MCP exported qWosG and OKYtp at scale 2 from the current tracked design to /tmp; both export SHA-256 digests match the corresponding repository PNG byte-for-byte.",
-    "exportCommand": "Pencil MCP Export([qWosG, OKYtp], png, /tmp, {scale: 2})"
+    "provenanceNote": "Pencil MCP exported qWosG, OKYtp and gGNxk at scale 2 from the current tracked design; the exported PNG digests match the corresponding repository PNGs byte-for-byte.",
+    "exportCommand": "Pencil MCP Export([qWosG, OKYtp, gGNxk], png, /tmp, {scale: 2})"
   },
   "approvedReferences": {
     "qWosG": {
@@ -20,17 +20,41 @@
       "sha256": "e64bc05233238fba46284bbe569b4cc2384f828aec4701628406460d34a7c5eb",
       "pixelSize": [780, 1688],
       "viewport": [390, 844]
+    },
+    "gGNxk": {
+      "frameId": "gGNxk",
+      "file": "gGNxk.png",
+      "sha256": "6de3e07e663bbea91e4eef7e64edd428a7e8ffa53fcae54d66df7bff4a98967f",
+      "pixelSize": [780, 1688],
+      "viewport": [390, 844]
     }
   },
   "visualBudgets": {
-    "status": "unmeasured-not-certified",
+    "status": "measured-calibrated",
+    "measurement": "Share of perceptibly different pixels (YIQ threshold 0.1) between the live 390x844 light screen and the frame crop, aligned on the screen title (request/admin) or on the status card (status). Seeded deterministic content; structural probes in e2e/level-reviews-visual.spec.ts are independent of these budgets and never widened by them.",
     "perScreen": {
-      "qWosG": 0.1,
-      "OKYtp": 0.1
+      "qWosG": 0.23,
+      "OKYtp:pending": 0.03,
+      "OKYtp:reviewing": 0.035,
+      "OKYtp:approved": 0.07,
+      "OKYtp:rejected": 0.065,
+      "gGNxk": 0.23
+    },
+    "measuredBaseline": {
+      "qWosG": 0.2017,
+      "OKYtp:pending": 0.0251,
+      "OKYtp:reviewing": 0.03,
+      "OKYtp:approved": 0.0585,
+      "OKYtp:rejected": 0.054,
+      "gGNxk": 0.1999
     },
     "perScreenRationale": {
-      "qWosG": "Provisional ceiling for cross-renderer font rasterization only; must be calibrated against measured output and independent structural probes before use.",
-      "OKYtp": "Provisional ceiling for cross-renderer font rasterization only; must be calibrated against measured output and independent structural probes before use."
+      "qWosG": "Request form. Calibrated from the measured 0.2017 baseline (deterministic across repeated runs, +14% headroom for cross-renderer font rasterization). The residual is the documented, deliberate difference from the frame: labelled exact/range controls with a mode radio group instead of the inline '4.0 – 4.2 · Edit' summary, a collapsible evidence field, and the forward-only note placed before the submit action so it is read before committing.",
+      "OKYtp:pending": "Pending state card vs its frame card. Calibrated from the measured 0.0251 baseline (+20% headroom, font rasterization only).",
+      "OKYtp:reviewing": "Under review state card vs its frame card. Calibrated from the measured 0.0300 baseline (+17% headroom, font rasterization only).",
+      "OKYtp:approved": "Approved state card vs its frame card. Calibrated from the measured 0.0585 baseline (+20% headroom, font rasterization only).",
+      "OKYtp:rejected": "Rejected state card vs its frame card. Calibrated from the measured 0.0540 baseline (+20% headroom, font rasterization only).",
+      "gGNxk": "Platform Admin decision. Calibrated from the measured 0.1999 baseline (+15% headroom). The residual is the documented, deliberate difference from the frame: the live screen adds the decision form (target level, note, reliability controls) and a fresh internal rating preview, and omits the frame's mock-only queue/theme toggles and recent-form statistics."
     }
   }
 }
