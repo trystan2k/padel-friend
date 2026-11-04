@@ -153,6 +153,7 @@ Apply these standards during implementation:
 - Prefer explicit, readable code over clever shortcuts.
 - Follow existing naming, error-handling, and testing patterns.
 - Ensure backward compatibility unless task scope explicitly allows breaking change.
+- Run long gates with explicit calibrated shell timeouts: timeout = 2× the gate's measured duration, floors 3600000 ms (full `pnpm test`) and 1800000 ms (E2E). A gate killed by its timeout is re-run with a larger timeout, never reported as a test failure or a partial result — the only honest partial is one a larger timeout cannot fix. DB-touching gates run serially; verify spec-path filtering before starting E2E.
 
 ## Tool Usage Rules (OpenCode `permission` model)
 

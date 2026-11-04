@@ -241,6 +241,7 @@ Follow these steps:
    - `blocked` when gates cannot run due to environment or configuration issues
 7. Return a structured report with exact failed checks for orchestrator routing.
 8. Never apply fixes; remediation is owned by other agents.
+9. Run each long gate with an explicit calibrated shell timeout (2× its measured duration; floors 3600000 ms for full `pnpm test`, 1800000 ms for E2E) and report the measured wall-clock duration per gate. Re-run a timeout-killed gate with a larger timeout before reporting; a timeout alone is never a `fail` or a partial result. DB-touching gates run serially, never concurrently.
 
 ## Tool Usage Rules (OpenCode `permission` model)
 

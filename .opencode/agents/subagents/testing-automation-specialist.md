@@ -158,6 +158,7 @@ Apply these standards during test implementation:
 - Use stable selectors and role-based queries for UI or E2E tests when applicable.
 - Reuse existing fixtures, factories, and utilities before creating new ones.
 - Minimize runtime while preserving confidence and coverage.
+- Set explicit calibrated shell timeouts on long test runs: 2× the run's measured duration, floors 3600000 ms (full `pnpm test`) and 1800000 ms (E2E). Re-run a timeout-killed run with a larger timeout; the timeout itself is never a test failure or a partial result. DB-touching gates run serially; verify spec-path filtering before starting E2E.
 
 ## Tool Usage Rules (OpenCode `permission` model)
 
