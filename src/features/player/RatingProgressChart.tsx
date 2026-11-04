@@ -26,8 +26,9 @@ function plotY(level: number): number {
 }
 
 /**
- * Lifetime progression: starting level, then one marker per confirmed game in played order.
- * Spacing follows game order (never time), so lines connect games without implying
+ * Lifetime progression: starting level, then one marker per point in played order: confirmed
+ * games (circles) and level-review correction checkpoints (diamonds).
+ * Spacing follows point order (never time), so lines connect points without implying
  * interpolated levels. Every value is also available in the data table.
  */
 export function RatingProgressChart({ progress }: { progress: RatingProgress }) {
