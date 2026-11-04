@@ -21,6 +21,7 @@ export const summaryPayload = {
 };
 
 export const historyItemPayload = {
+  kind: 'match',
   game_group_id: GROUP_ID,
   match_event_id: EVENT_ID,
   game_group_number: 1,
@@ -55,9 +56,19 @@ export const progressPayload = {
   resolution: 'event',
   abbreviated: false,
   total_events: 1,
+  total_points: 1,
   baseline: { display_level: 4 },
   range: { from: PLAYED_AT, to: PLAYED_AT },
-  points: [{ ordinal: 1, game_group_id: GROUP_ID, played_at: PLAYED_AT, display_level: 4.12 }]
+  points: [
+    {
+      ordinal: 1,
+      kind: 'match',
+      event_id: GROUP_ID,
+      game_group_id: GROUP_ID,
+      played_at: PLAYED_AT,
+      display_level: 4.12
+    }
+  ]
 };
 
 const player = (index: number, team: 'team_a' | 'team_b', provisional: boolean) => ({

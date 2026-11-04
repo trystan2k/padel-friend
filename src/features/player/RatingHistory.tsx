@@ -2,7 +2,13 @@ import * as stylex from '@stylexjs/stylex';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { SurfaceCard } from '../../components/ui/SurfaceCard';
-import type { RatingErrorCode, RatingHistoryItem, RatingHistoryView } from './rating-contracts';
+import type {
+  RatingAdjustmentHistoryItem,
+  RatingErrorCode,
+  RatingHistoryItem,
+  RatingHistoryView,
+  RatingMatchHistoryItem
+} from './rating-contracts';
 import {
   formatLevel,
   formatPercentPoints,
@@ -76,8 +82,8 @@ export function RatingHistory({
       ) : (
         <ul {...stylex.props(s.list)}>
           {items.map((item) => (
-            <HistoryRow
-              key={item.game_group_id}
+            <HistoryEntry
+              key={item.kind === 'match' ? item.game_group_id : item.adjustment_id}
               item={item}
               locale={locale}
               onExplain={onExplain}
@@ -108,12 +114,56 @@ export function RatingHistory({
   );
 }
 
-function HistoryRow({
+function HistoryEntry({
   item,
   locale,
   onExplain
 }: {
   item: RatingHistoryItem;
+  locale: string;
+  onExplain: (groupId: string, focus: ExplanationFocus, trigger: HTMLButtonElement) => void;
+}) {
+  return item.kind === 'match' ? (
+    <HistoryRow item={item} locale={locale} onExplain={onExplain} />
+  ) : (
+    <AdjustmentRow item={item} locale={locale} />
+  );
+}
+
+/** An approved level review: a correction point, never a win/loss and never a counted game. */
+function AdjustmentRow({ item, locale }: { item: RatingAdjustmentHistoryItem; locale: string }) {
+  const { t } = useTranslation();
+  return (
+    <li {...stylex.props(s.row)}>
+      <div {...stylex.props(s.rowMain)}>
+        <h4 {...stylex.props(s.rowTitle)}>{t('rating.history.adjustmentTitle')}</h4>
+        <p {...stylex.props(s.copy)}>
+          <time dateTime={item.effective_at}>{formatRatingDate(item.effective_at, locale)}</time>
+        </p>
+        <p {...stylex.props(s.copy)}>
+          {t('rating.history.levelChange', {
+            before: formatLevel(item.before_display_level, locale),
+            after: formatLevel(item.after_display_level, locale)
+          })}
+        </p>
+        <p {...stylex.props(s.copy)}>
+          {t('rating.history.reliabilityChange', {
+            before: formatPercentPoints(item.before_reliability_percent, locale),
+            after: formatPercentPoints(item.after_reliability_percent, locale)
+          })}
+        </p>
+        <p {...stylex.props(s.copy)}>{t('rating.history.adjustmentNote', { note: item.reason })}</p>
+      </div>
+    </li>
+  );
+}
+
+function HistoryRow({
+  item,
+  locale,
+  onExplain
+}: {
+  item: RatingMatchHistoryItem;
   locale: string;
   onExplain: (groupId: string, focus: ExplanationFocus, trigger: HTMLButtonElement) => void;
 }) {

@@ -131,6 +131,7 @@ describe('level review decoders', () => {
         confirmed_competitive_game_groups: 0
       },
       rating_changed: false,
+      adjustment: null,
       recent_history: [
         {
           played_at: AT,
@@ -156,8 +157,8 @@ describe('level review error mapping', () => {
     expect(levelReviewErrorFromDatabase({ message: 'PROVISIONAL_PLAYER_RESTRICTED' })).toBe(
       'PROVISIONAL_PLAYER_RESTRICTED'
     );
-    expect(levelReviewErrorFromDatabase({ message: 'LEVEL_REVIEW_APPROVAL_UNAVAILABLE' })).toBe(
-      'LEVEL_REVIEW_APPROVAL_UNAVAILABLE'
+    expect(levelReviewErrorFromDatabase({ message: 'LEVEL_REVIEW_RELIABILITY_INVALID' })).toBe(
+      'LEVEL_REVIEW_RELIABILITY_INVALID'
     );
     expect(levelReviewErrorFromDatabase({ message: 'relation "x" does not exist' })).toBe(
       'LEVEL_REVIEW_UNAVAILABLE'

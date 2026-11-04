@@ -197,7 +197,8 @@ describe('level review schema', { timeout: 120_000 }, () => {
         )
       ).rejects.toThrow(/LEVEL_REVIEW_EVIDENCE_IMMUTABLE/);
       await expect(
-        executeTrustedSql('truncate public.player_level_review_requests')
+        // CASCADE: adjustments now reference requests, so a plain TRUNCATE fails earlier on the FK.
+        executeTrustedSql('truncate public.player_level_review_requests cascade')
       ).rejects.toThrow(/LEVEL_REVIEW_EVIDENCE_IMMUTABLE/);
 
       const canceled = await world.other.client.rpc('cancel_level_review_request', {

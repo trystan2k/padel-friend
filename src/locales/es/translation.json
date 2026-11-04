@@ -1459,7 +1459,9 @@
       "loadingMore": "Cargando partidos…",
       "showing_one": "Mostrando {{shown}} de {{count}} partido",
       "showing_other": "Mostrando {{shown}} de {{count}} partidos",
-      "recalculated": "Recalculado"
+      "recalculated": "Recalculado",
+      "adjustmentTitle": "Ajuste por revisión de nivel",
+      "adjustmentNote": "Nota de la revisión: {{note}}"
     },
     "outcome": {
       "win": "Victoria",

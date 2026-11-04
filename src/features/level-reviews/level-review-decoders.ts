@@ -1,9 +1,12 @@
 import {
+  LEVEL_REVIEW_RELIABILITY_MODES,
   LEVEL_REVIEW_STATUSES,
   type LevelReviewAccess,
   type LevelReviewAdminCommandResult,
   type LevelReviewAdminDetail,
+  type LevelReviewAdjustmentDto,
   type LevelReviewAdminDto,
+  type LevelReviewResolutionResult,
   type LevelReviewCommandResult,
   type LevelReviewCursor,
   type LevelReviewDetailResult,
@@ -191,13 +194,102 @@ export function decodeLevelReviewQueue(value: unknown): LevelReviewQueueResult {
   };
 }
 
+const ADJUSTMENT_KEYS = [
+  'id',
+  'level_review_request_id',
+  'user_id',
+  'event_type',
+  'reason',
+  'actor_id',
+  'decided_at',
+  'effective_at',
+  'projection_revision',
+  'boundary_played_at',
+  'boundary_group_id',
+  'boundary_basis',
+  'rating_engine',
+  'rating_config_version',
+  'before_engine_version',
+  'after_engine_version',
+  'before_display_level',
+  'after_display_level',
+  'before_reliability_percent',
+  'after_reliability_percent',
+  'before_confirmed_groups',
+  'after_confirmed_groups',
+  'before_highest_display_level',
+  'after_highest_display_level',
+  'before_sigma',
+  'after_sigma',
+  'last_rating_at',
+  'reliability_mode',
+  'reliability_target',
+  'exception_justification'
+] as const;
+
+const BOUNDARY_BASES = ['decision_clock', 'match_watermark', 'prior_checkpoint'] as const;
+function decodeAdjustment(value: unknown): LevelReviewAdjustmentDto {
+  const row = exactObject(value, ADJUSTMENT_KEYS);
+  const basis = BOUNDARY_BASES.find((item) => item === row.boundary_basis);
+  const mode = LEVEL_REVIEW_RELIABILITY_MODES.find((item) => item === row.reliability_mode);
+  if (row.event_type !== 'ADMIN_REVIEW_ADJUSTMENT' || !basis || !mode) return fail();
+  return {
+    id: uuid(row.id),
+    level_review_request_id: uuid(row.level_review_request_id),
+    user_id: uuid(row.user_id),
+    event_type: 'ADMIN_REVIEW_ADJUSTMENT',
+    reason: text(row.reason),
+    actor_id: uuid(row.actor_id),
+    decided_at: instant(row.decided_at),
+    effective_at: instant(row.effective_at),
+    projection_revision: count(row.projection_revision),
+    boundary_played_at: instant(row.boundary_played_at),
+    boundary_group_id: uuid(row.boundary_group_id),
+    boundary_basis: basis,
+    rating_engine: text(row.rating_engine),
+    rating_config_version: count(row.rating_config_version),
+    before_engine_version: text(row.before_engine_version),
+    after_engine_version: text(row.after_engine_version),
+    before_display_level: finite(row.before_display_level),
+    after_display_level: finite(row.after_display_level),
+    before_reliability_percent: count(row.before_reliability_percent),
+    after_reliability_percent: count(row.after_reliability_percent),
+    before_confirmed_groups: count(row.before_confirmed_groups),
+    after_confirmed_groups: count(row.after_confirmed_groups),
+    before_highest_display_level: finite(row.before_highest_display_level),
+    after_highest_display_level: finite(row.after_highest_display_level),
+    before_sigma: finite(row.before_sigma),
+    after_sigma: finite(row.after_sigma),
+    last_rating_at: nullable(row.last_rating_at, instant),
+    reliability_mode: mode,
+    reliability_target: nullable(row.reliability_target, count),
+    exception_justification: nullable(row.exception_justification, text)
+  };
+}
+
+/** Resolution response: the request plus the committed audit event (null for a rejection). */
+export function decodeLevelReviewResolution(value: unknown): LevelReviewResolutionResult {
+  const row = exactObject(value, ['request', 'replayed', 'adjustment']);
+  return {
+    request: decodeAdminDto(row.request),
+    replayed: boolean(row.replayed),
+    adjustment: nullable(row.adjustment, decodeAdjustment)
+  };
+}
+
 export function decodeLevelReviewAdminCommand(value: unknown): LevelReviewAdminCommandResult {
   const row = exactObject(value, ['request', 'replayed']);
   return { request: decodeAdminDto(row.request), replayed: boolean(row.replayed) };
 }
 
 export function decodeLevelReviewAdminDetail(value: unknown): LevelReviewAdminDetail {
-  const row = exactObject(value, ['request', 'current', 'rating_changed', 'recent_history']);
+  const row = exactObject(value, [
+    'request',
+    'current',
+    'rating_changed',
+    'adjustment',
+    'recent_history'
+  ]);
   return {
     request: decodeAdminDto(row.request),
     current: nullable(row.current, (current) => {
@@ -215,6 +307,7 @@ export function decodeLevelReviewAdminDetail(value: unknown): LevelReviewAdminDe
       };
     }),
     rating_changed: boolean(row.rating_changed),
+    adjustment: nullable(row.adjustment, decodeAdjustment),
     recent_history: array(row.recent_history, (entry) => {
       const item = exactObject(entry, [
         'played_at',

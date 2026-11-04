@@ -2211,7 +2211,15 @@ export type Database = {
           under_review_at?: string | null
           under_review_by?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "level_review_adjustment_fk"
+            columns: ["adjustment_id"]
+            isOneToOne: false
+            referencedRelation: "player_rating_admin_adjustments"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       player_profiles: {
         Row: {
@@ -2270,6 +2278,188 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "match_events"
             referencedColumns: ["id"]
+          },
+        ]
+      }
+      player_rating_adjustment_states: {
+        Row: {
+          adjustment_id: string
+          confirmed_groups: number
+          created_at: string
+          display_level: number
+          highest_display_level: number
+          last_rating_at: string | null
+          mu: number
+          projection_revision: number
+          rating_config_version: number
+          rating_engine: string
+          rating_engine_version: string
+          reliability_percent: number
+          sigma: number
+        }
+        ComputedFields: never
+        Insert: {
+          adjustment_id: string
+          confirmed_groups: number
+          created_at?: string
+          display_level: number
+          highest_display_level: number
+          last_rating_at?: string | null
+          mu: number
+          projection_revision: number
+          rating_config_version: number
+          rating_engine: string
+          rating_engine_version: string
+          reliability_percent: number
+          sigma: number
+        }
+        Update: {
+          adjustment_id?: string
+          confirmed_groups?: number
+          created_at?: string
+          display_level?: number
+          highest_display_level?: number
+          last_rating_at?: string | null
+          mu?: number
+          projection_revision?: number
+          rating_config_version?: number
+          rating_engine?: string
+          rating_engine_version?: string
+          reliability_percent?: number
+          sigma?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "player_rating_adjustment_states_adjustment_id_fkey"
+            columns: ["adjustment_id"]
+            isOneToOne: false
+            referencedRelation: "player_rating_admin_adjustments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      player_rating_admin_adjustments: {
+        Row: {
+          actor_id: string
+          after_confirmed_groups: number
+          after_display_level: number
+          after_engine_version: string
+          after_highest_display_level: number
+          after_mu: number
+          after_reliability_percent: number
+          after_sigma: number
+          before_confirmed_groups: number
+          before_display_level: number
+          before_engine_version: string
+          before_highest_display_level: number
+          before_mu: number
+          before_reliability_percent: number
+          before_sigma: number
+          boundary_basis: string
+          boundary_group_id: string
+          boundary_played_at: string
+          created_at: string
+          decided_at: string
+          effective_at: string
+          event_type: string
+          exception_justification: string | null
+          id: string
+          last_rating_at: string | null
+          level_review_request_id: string
+          projection_revision: number
+          rating_config_version: number
+          rating_engine: string
+          reason: string
+          reliability_mode: string
+          reliability_target: number | null
+          user_id: string
+          level_review_adjustment_dto: Json | null
+        }
+        ComputedFields: "level_review_adjustment_dto"
+        Insert: {
+          actor_id: string
+          after_confirmed_groups: number
+          after_display_level: number
+          after_engine_version: string
+          after_highest_display_level: number
+          after_mu: number
+          after_reliability_percent: number
+          after_sigma: number
+          before_confirmed_groups: number
+          before_display_level: number
+          before_engine_version: string
+          before_highest_display_level: number
+          before_mu: number
+          before_reliability_percent: number
+          before_sigma: number
+          boundary_basis: string
+          boundary_group_id: string
+          boundary_played_at: string
+          created_at?: string
+          decided_at: string
+          effective_at: string
+          event_type?: string
+          exception_justification?: string | null
+          id?: string
+          last_rating_at?: string | null
+          level_review_request_id: string
+          projection_revision: number
+          rating_config_version: number
+          rating_engine: string
+          reason: string
+          reliability_mode: string
+          reliability_target?: number | null
+          user_id: string
+        }
+        Update: {
+          actor_id?: string
+          after_confirmed_groups?: number
+          after_display_level?: number
+          after_engine_version?: string
+          after_highest_display_level?: number
+          after_mu?: number
+          after_reliability_percent?: number
+          after_sigma?: number
+          before_confirmed_groups?: number
+          before_display_level?: number
+          before_engine_version?: string
+          before_highest_display_level?: number
+          before_mu?: number
+          before_reliability_percent?: number
+          before_sigma?: number
+          boundary_basis?: string
+          boundary_group_id?: string
+          boundary_played_at?: string
+          created_at?: string
+          decided_at?: string
+          effective_at?: string
+          event_type?: string
+          exception_justification?: string | null
+          id?: string
+          last_rating_at?: string | null
+          level_review_request_id?: string
+          projection_revision?: number
+          rating_config_version?: number
+          rating_engine?: string
+          reason?: string
+          reliability_mode?: string
+          reliability_target?: number | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "player_rating_adjustment_request_fk"
+            columns: ["level_review_request_id"]
+            isOneToOne: true
+            referencedRelation: "player_level_review_requests"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "player_rating_admin_adjustments_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "player_profiles"
+            referencedColumns: ["user_id"]
           },
         ]
       }
@@ -4106,6 +4296,15 @@ export type Database = {
         }[]
       }
       level_review_actor: { Args: Record<PropertyKey, never>; Returns: string }
+      level_review_adjustment_dto: {
+        Args: {
+          a: Omit<
+            Database["public"]["Tables"]["player_rating_admin_adjustments"]["Row"],
+            Database["public"]["Tables"]["player_rating_admin_adjustments"]["ComputedFields"]
+          >
+        }
+        Returns: Json
+      }
       level_review_admin_actor: { Args: Record<PropertyKey, never>; Returns: string }
       level_review_admin_dto: {
         Args: {
@@ -4591,6 +4790,18 @@ export type Database = {
         Returns: undefined
       }
       rating_summary_at: { Args: { p_revision: number; p_user_id: string }; Returns: Json }
+      rating_timeline_items: {
+        Args: { p_revision: number; p_user_id: string }
+        Returns: {
+          display_level: number
+          dto: Json
+          effective_at: string
+          item_id: string
+          kind: string
+          sort_at: string
+          sort_id: string
+        }[]
+      }
       rating_utc_text: { Args: { p_instant: string }; Returns: string }
       rating_v1_calculate_group: {
         Args: {
@@ -4629,6 +4840,86 @@ export type Database = {
           team: string
           user_id: string
         }[]
+      }
+      rating_v1_calculate_group_curve: {
+        Args: {
+          p_config_version: number
+          p_engine: string
+          p_engine_version: string
+          p_inputs: Json
+        }
+        Returns: {
+          after_confirmed_groups: number
+          after_display_level: number
+          after_highest_display_level: number
+          after_mu: number
+          after_reliability_percent: number
+          after_sigma: number
+          applied_delta: number
+          before_confirmed_groups: number
+          before_display_level: number
+          before_highest_display_level: number
+          before_mu: number
+          before_reliability_percent: number
+          before_sigma: number
+          clamped: boolean
+          expected_score: number
+          last_rating_at: string
+          opponent_team_strength: number
+          ordinal: number
+          outcome_value: number
+          own_team_strength: number
+          rating_config_version: number
+          rating_engine: string
+          rating_engine_version: string
+          raw_delta: number
+          reliability_factor: number
+          rounded_delta: number
+          team: string
+          user_id: string
+        }[]
+      }
+      rating_v1_calculate_group_exception: {
+        Args: {
+          p_config_version: number
+          p_engine: string
+          p_engine_version: string
+          p_inputs: Json
+        }
+        Returns: {
+          after_confirmed_groups: number
+          after_display_level: number
+          after_highest_display_level: number
+          after_mu: number
+          after_reliability_percent: number
+          after_sigma: number
+          applied_delta: number
+          before_confirmed_groups: number
+          before_display_level: number
+          before_highest_display_level: number
+          before_mu: number
+          before_reliability_percent: number
+          before_sigma: number
+          clamped: boolean
+          expected_score: number
+          last_rating_at: string
+          opponent_team_strength: number
+          ordinal: number
+          outcome_value: number
+          own_team_strength: number
+          rating_config_version: number
+          rating_engine: string
+          rating_engine_version: string
+          raw_delta: number
+          reliability_factor: number
+          rounded_delta: number
+          team: string
+          user_id: string
+        }[]
+      }
+      rating_v1_exception_supports: {
+        Args: { p_config_version: number; p_engine: string; p_engine_version: string }
+        Returns: boolean
       }
       rating_v1_is_ratable: {
         Args: { p_classification: string; p_match_type: string; p_result_status: string }
@@ -4697,8 +4988,11 @@ export type Database = {
         Args: {
           p_command_id: string
           p_decision: string
+          p_exception_justification?: string
           p_expected_revision?: number
           p_note: string
+          p_reliability_mode?: string
+          p_reliability_target?: number
           p_request_id: string
           p_target_level?: number
         }

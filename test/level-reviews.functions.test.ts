@@ -115,7 +115,13 @@ const calls: Call[] = [
   {
     name: 'getLevelReviewAdminDetail',
     rpc: 'get_level_review_admin_detail',
-    payload: { request: adminDto, current: null, rating_changed: false, recent_history: [] },
+    payload: {
+      request: adminDto,
+      current: null,
+      rating_changed: false,
+      adjustment: null,
+      recent_history: []
+    },
     run: () => functions.getLevelReviewAdminDetail({ data: { request_id: ID } })
   },
   {
@@ -127,7 +133,7 @@ const calls: Call[] = [
   {
     name: 'resolveLevelReviewRequest',
     rpc: 'resolve_level_review_request',
-    payload: { request: adminDto, replayed: false },
+    payload: { request: adminDto, replayed: false, adjustment: null },
     run: () =>
       functions.resolveLevelReviewRequest({
         data: { request_id: ID, command_id: CMD, decision: 'reject', note: 'No' }
@@ -207,7 +213,10 @@ describe('level review server functions', () => {
       p_reason: 'Reason',
       p_evidence: 'https://example.test'
     });
-    mocks.rpc.mockResolvedValue({ data: { request: adminDto, replayed: false }, error: null });
+    mocks.rpc.mockResolvedValue({
+      data: { request: adminDto, replayed: false, adjustment: null },
+      error: null
+    });
     await functions.resolveLevelReviewRequest({ data: approval });
     expect(mocks.rpc).toHaveBeenLastCalledWith('resolve_level_review_request', {
       p_request_id: ID,
@@ -236,13 +245,58 @@ describe('level review server functions', () => {
     expect(mocks.rpc).toHaveBeenLastCalledWith('list_level_review_queue', { p_limit: 20 });
   });
 
-  it('keeps a failed approval fail-closed for the caller', async () => {
+  it('surfaces a failed approval as a stable code and never as success', async () => {
     mocks.rpc.mockResolvedValue({
       data: null,
-      error: { message: 'LEVEL_REVIEW_APPROVAL_UNAVAILABLE' }
+      error: { message: 'LEVEL_REVIEW_STALE_RATING' }
     });
     await expect(functions.resolveLevelReviewRequest({ data: approval })).rejects.toThrow(
-      'LEVEL_REVIEW_APPROVAL_UNAVAILABLE'
+      'LEVEL_REVIEW_STALE_RATING'
     );
+  });
+
+  it('forwards a recorded reliability exception and omits it for the default preserve', async () => {
+    mocks.rpc.mockResolvedValue({
+      data: { request: adminDto, replayed: false, adjustment: null },
+      error: null
+    });
+    await functions.resolveLevelReviewRequest({
+      data: { ...approval, reliability: { mode: 'reduce', target: 40, justification: 'Injury' } }
+    });
+    expect(mocks.rpc).toHaveBeenLastCalledWith('resolve_level_review_request', {
+      p_request_id: ID,
+      p_command_id: CMD,
+      p_decision: 'approve',
+      p_note: 'ok',
+      p_target_level: 4.75,
+      p_expected_revision: 9,
+      p_reliability_mode: 'reduce',
+      p_exception_justification: 'Injury',
+      p_reliability_target: 40
+    });
+    await functions.resolveLevelReviewRequest({
+      data: { ...approval, reliability: { mode: 'reset', justification: 'Long break' } }
+    });
+    expect(mocks.rpc).toHaveBeenLastCalledWith('resolve_level_review_request', {
+      p_request_id: ID,
+      p_command_id: CMD,
+      p_decision: 'approve',
+      p_note: 'ok',
+      p_target_level: 4.75,
+      p_expected_revision: 9,
+      p_reliability_mode: 'reset',
+      p_exception_justification: 'Long break'
+    });
+    await functions.resolveLevelReviewRequest({
+      data: { ...approval, reliability: { mode: 'preserve' } }
+    });
+    expect(mocks.rpc).toHaveBeenLastCalledWith('resolve_level_review_request', {
+      p_request_id: ID,
+      p_command_id: CMD,
+      p_decision: 'approve',
+      p_note: 'ok',
+      p_target_level: 4.75,
+      p_expected_revision: 9
+    });
   });
 });

@@ -1459,7 +1459,9 @@
       "loadingMore": "Carregando jogos…",
       "showing_one": "Mostrando {{shown}} de {{count}} jogo",
       "showing_other": "Mostrando {{shown}} de {{count}} jogos",
-      "recalculated": "Recalculado"
+      "recalculated": "Recalculado",
+      "adjustmentTitle": "Ajuste por revisão de nível",
+      "adjustmentNote": "Nota da revisão: {{note}}"
     },
     "outcome": {
       "win": "Vitória",

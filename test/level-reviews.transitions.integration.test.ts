@@ -10,6 +10,7 @@ import {
 } from './helpers/level-review-fixtures';
 import {
   decodeLevelReviewAdminCommand,
+  decodeLevelReviewResolution,
   decodeLevelReviewCommand,
   decodeLevelReviewDetail,
   decodeLevelReviewList,
@@ -253,7 +254,7 @@ describe('level review transitions', { timeout: 300_000 }, () => {
         }
       });
       const retry = await resolve(id, { p_command_id: command, p_note: 'Needs match proof' });
-      expect(decodeLevelReviewAdminCommand(retry.data).replayed).toBe(true);
+      expect(decodeLevelReviewResolution(retry.data).replayed).toBe(true);
 
       expect((await resolve(id, { p_note: 'Needs match proof' })).error?.message).toBe(
         'LEVEL_REVIEW_RESOLUTION_CONFLICT'
@@ -339,7 +340,7 @@ describe('level review transitions', { timeout: 300_000 }, () => {
   );
 
   it.skipIf(!environment.env)(
-    'fails approval closed after validating target and revision, with no side effects',
+    'validates target and revision with no side effects, then approves atomically',
     async () => {
       const actor = await fresh('approve');
       const id = await submitRequest(actor, {
@@ -366,11 +367,6 @@ describe('level review transitions', { timeout: 300_000 }, () => {
       expect((await approve({ p_expected_revision: current + 1 })).error?.message).toBe(
         'LEVEL_REVIEW_STALE_RATING'
       );
-      for (const target of [4.5, 4.75, 5]) {
-        const result = await approve({ p_target_level: target });
-        expect(result.error?.message).toBe('LEVEL_REVIEW_APPROVAL_UNAVAILABLE');
-        expect(result.data).toBeNull();
-      }
       expect(await levelReviewRow(id)).toMatchObject({
         status: 'pending',
         approved_level: null,
@@ -379,6 +375,15 @@ describe('level review transitions', { timeout: 300_000 }, () => {
         decided_at: null
       });
       expect(await ratingFingerprint(actor.id)).toBe(before);
+
+      // The validated approval is applied together with its immutable adjustment.
+      const approved = await approve({ p_target_level: 4.75 });
+      expect(approved.error).toBeNull();
+      expect(await levelReviewRow(id)).toMatchObject({
+        status: 'approved',
+        approved_level: '4.75'
+      });
+      expect(await ratingFingerprint(actor.id)).not.toBe(before);
 
       // A non-admin cannot reach the branch at all.
       const denied = await actor.client.rpc('resolve_level_review_request', {

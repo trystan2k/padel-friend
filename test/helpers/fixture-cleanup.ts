@@ -278,17 +278,36 @@ export class FixtureCleanupRegistry {
     const triggers = [
       ['player_rating_event_calculations', 'player_rating_calculations_immutable'],
       ['player_rating_events', 'player_rating_events_immutable'],
-      ['player_rating_initializations', 'player_rating_initializations_immutable']
+      ['player_rating_initializations', 'player_rating_initializations_immutable'],
+      ['player_rating_adjustment_states', 'player_rating_adjustment_states_immutable'],
+      ['player_rating_admin_adjustments', 'player_rating_adjustments_immutable'],
+      ['player_level_review_requests', 'level_review_requests_guard'],
+      ['player_level_review_requests', 'level_review_requests_no_delete']
     ] as const;
     return {
       before: [
         ...triggers.map(
           ([table, trigger]) => `ALTER TABLE public.${table} DISABLE TRIGGER ${trigger}`
         ),
+        ...(users.length > 0
+          ? [
+              // Requests and adjustments reference each other: defer both FKs inside the cleanup transaction.
+              'SET CONSTRAINTS public.player_rating_adjustment_request_fk, public.level_review_adjustment_fk DEFERRED',
+              `DELETE FROM public.player_rating_adjustment_states WHERE adjustment_id IN (SELECT id FROM public.player_rating_admin_adjustments WHERE ${users.join(' OR ')})`,
+              `DELETE FROM public.player_level_review_requests WHERE ${users.map((sql) => sql.replace('user_id', 'owner_id')).join(' OR ')}`,
+              `DELETE FROM public.player_rating_admin_adjustments WHERE ${users.join(' OR ')}`
+            ]
+          : []),
         `DELETE FROM public.player_rating_event_calculations WHERE rating_event_id IN (SELECT id FROM public.player_rating_events WHERE ${eventPredicate})`,
         `DELETE FROM public.player_rating_events WHERE ${eventPredicate}`,
         ...(users.length > 0
           ? [`DELETE FROM public.player_rating_initializations WHERE ${users.join(' OR ')}`]
+          : []),
+        // Re-validate the deferred request <-> adjustment FKs before the triggers are re-enabled.
+        ...(users.length > 0
+          ? [
+              'SET CONSTRAINTS public.player_rating_adjustment_request_fk, public.level_review_adjustment_fk IMMEDIATE'
+            ]
           : [])
       ],
       after: triggers.map(
@@ -400,7 +419,15 @@ export class FixtureCleanupRegistry {
  * `userIdsSql` is a trusted SQL fragment producing user ids (e.g. a literal id list).
  */
 export function ratingEvidenceCleanupSql(userIdsSql: string): string {
-  return `ALTER TABLE public.player_rating_event_calculations DISABLE TRIGGER player_rating_calculations_immutable;
+  return `ALTER TABLE public.player_rating_adjustment_states DISABLE TRIGGER player_rating_adjustment_states_immutable;
+    ALTER TABLE public.player_rating_admin_adjustments DISABLE TRIGGER player_rating_adjustments_immutable;
+    ALTER TABLE public.player_level_review_requests DISABLE TRIGGER level_review_requests_guard;
+    ALTER TABLE public.player_level_review_requests DISABLE TRIGGER level_review_requests_no_delete;
+    SET CONSTRAINTS public.player_rating_adjustment_request_fk, public.level_review_adjustment_fk DEFERRED;
+    DELETE FROM public.player_rating_adjustment_states WHERE adjustment_id IN (SELECT id FROM public.player_rating_admin_adjustments WHERE user_id IN (${userIdsSql}));
+    DELETE FROM public.player_level_review_requests WHERE owner_id IN (${userIdsSql});
+    DELETE FROM public.player_rating_admin_adjustments WHERE user_id IN (${userIdsSql});
+    ALTER TABLE public.player_rating_event_calculations DISABLE TRIGGER player_rating_calculations_immutable;
     ALTER TABLE public.player_rating_events DISABLE TRIGGER player_rating_events_immutable;
     ALTER TABLE public.player_rating_initializations DISABLE TRIGGER player_rating_initializations_immutable;
     DELETE FROM public.player_rating_event_calculations WHERE rating_event_id IN (SELECT id FROM public.player_rating_events WHERE user_id IN (${userIdsSql}));
@@ -408,7 +435,12 @@ export function ratingEvidenceCleanupSql(userIdsSql: string): string {
     DELETE FROM public.player_rating_initializations WHERE user_id IN (${userIdsSql});
     ALTER TABLE public.player_rating_initializations ENABLE TRIGGER player_rating_initializations_immutable;
     ALTER TABLE public.player_rating_events ENABLE TRIGGER player_rating_events_immutable;
-    ALTER TABLE public.player_rating_event_calculations ENABLE TRIGGER player_rating_calculations_immutable;`;
+    ALTER TABLE public.player_rating_event_calculations ENABLE TRIGGER player_rating_calculations_immutable;
+    SET CONSTRAINTS public.player_rating_adjustment_request_fk, public.level_review_adjustment_fk IMMEDIATE;
+    ALTER TABLE public.player_level_review_requests ENABLE TRIGGER level_review_requests_no_delete;
+    ALTER TABLE public.player_level_review_requests ENABLE TRIGGER level_review_requests_guard;
+    ALTER TABLE public.player_rating_admin_adjustments ENABLE TRIGGER player_rating_adjustments_immutable;
+    ALTER TABLE public.player_rating_adjustment_states ENABLE TRIGGER player_rating_adjustment_states_immutable;`;
 }
 
 export function createFixtureCleanupRegistry(scope: string): FixtureCleanupRegistry {

@@ -10,7 +10,9 @@ import {
   type LevelReviewListResult,
   type LevelReviewQueueInput,
   type LevelReviewQueueResult,
+  type LevelReviewReliabilityDecision,
   type LevelReviewRequestInput,
+  type LevelReviewResolutionResult,
   type ResolveLevelReviewInput,
   type SubmitLevelReviewInput
 } from './level-review-contracts';
@@ -21,7 +23,8 @@ import {
   decodeLevelReviewCommand,
   decodeLevelReviewDetail,
   decodeLevelReviewList,
-  decodeLevelReviewQueue
+  decodeLevelReviewQueue,
+  decodeLevelReviewResolution
 } from './level-review-decoders';
 import { levelReviewErrorFromDatabase } from './level-review-errors';
 
@@ -130,10 +133,20 @@ export function markLevelReviewUnderReview(
   );
 }
 
+/** Preserve is the database default: only a recorded exception adds arguments. */
+function reliabilityArgs(decision: LevelReviewReliabilityDecision | undefined) {
+  if (!decision || decision.mode === 'preserve') return {};
+  return {
+    p_reliability_mode: decision.mode,
+    p_exception_justification: decision.justification,
+    ...(decision.mode === 'reduce' ? { p_reliability_target: decision.target } : {})
+  };
+}
+
 export function resolveLevelReview(
   client: Client,
   input: ResolveLevelReviewInput
-): Promise<LevelReviewAdminCommandResult> {
+): Promise<LevelReviewResolutionResult> {
   return run(
     client.rpc('resolve_level_review_request', {
       p_request_id: input.request_id,
@@ -141,9 +154,13 @@ export function resolveLevelReview(
       p_decision: input.decision,
       p_note: input.note,
       ...(input.decision === 'approve'
-        ? { p_target_level: input.target_level, p_expected_revision: input.expected_revision }
+        ? {
+            p_target_level: input.target_level,
+            p_expected_revision: input.expected_revision,
+            ...reliabilityArgs(input.reliability)
+          }
         : {})
     }),
-    decodeLevelReviewAdminCommand
+    decodeLevelReviewResolution
   );
 }

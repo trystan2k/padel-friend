@@ -1459,7 +1459,9 @@
       "loadingMore": "Loading games…",
       "showing_one": "Showing {{shown}} of {{count}} game",
       "showing_other": "Showing {{shown}} of {{count}} games",
-      "recalculated": "Recalculated"
+      "recalculated": "Recalculated",
+      "adjustmentTitle": "Level review adjustment",
+      "adjustmentNote": "Review note: {{note}}"
     },
     "outcome": {
       "win": "Win",

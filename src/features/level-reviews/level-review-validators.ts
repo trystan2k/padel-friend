@@ -8,6 +8,7 @@ import {
   LEVEL_REVIEW_TEXT_MAX,
   type LevelReviewCursor,
   type LevelReviewListInput,
+  type LevelReviewReliabilityDecision,
   type LevelReviewQueueInput,
   type LevelReviewRequestInput,
   type ResolveLevelReviewInput,
@@ -126,6 +127,24 @@ export function validateLevelReviewRequest(value: unknown): LevelReviewRequestIn
   return { request_id: uuid(record(value, ['request_id']).request_id) };
 }
 
+/** Preserve is the default; reset/reduce are recorded exceptions that need a justification. */
+function reliabilityDecision(value: unknown): LevelReviewReliabilityDecision {
+  const data = record(value, ['mode', 'target', 'justification']);
+  if (data.mode === 'preserve') {
+    if (data.target !== undefined || data.justification !== undefined) return invalid();
+    return { mode: 'preserve' };
+  }
+  const justification = requiredText(data.justification, LEVEL_REVIEW_TEXT_MAX);
+  if (data.mode === 'reset') {
+    if (data.target !== undefined) return invalid();
+    return { mode: 'reset', justification };
+  }
+  if (data.mode === 'reduce') {
+    return { mode: 'reduce', target: integerValue(data.target, 0, 99), justification };
+  }
+  return invalid();
+}
+
 export function validateResolveLevelReview(value: unknown): ResolveLevelReviewInput {
   const data = record(value, [
     'request_id',
@@ -133,7 +152,8 @@ export function validateResolveLevelReview(value: unknown): ResolveLevelReviewIn
     'decision',
     'note',
     'target_level',
-    'expected_revision'
+    'expected_revision',
+    'reliability'
   ]);
   const decision = LEVEL_REVIEW_DECISIONS.find((item) => item === data.decision);
   if (!decision) return invalid();
@@ -143,13 +163,21 @@ export function validateResolveLevelReview(value: unknown): ResolveLevelReviewIn
     note: requiredText(data.note, LEVEL_REVIEW_TEXT_MAX)
   };
   if (decision === 'reject') {
-    if (data.target_level !== undefined || data.expected_revision !== undefined) return invalid();
+    if (
+      data.target_level !== undefined ||
+      data.expected_revision !== undefined ||
+      data.reliability !== undefined
+    )
+      return invalid();
     return { ...base, decision };
   }
   return {
     ...base,
     decision,
     target_level: levelValue(data.target_level),
-    expected_revision: integerValue(data.expected_revision, 0, Number.MAX_SAFE_INTEGER)
+    expected_revision: integerValue(data.expected_revision, 0, Number.MAX_SAFE_INTEGER),
+    ...(data.reliability === undefined
+      ? {}
+      : { reliability: reliabilityDecision(data.reliability) })
   };
 }

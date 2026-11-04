@@ -73,6 +73,46 @@ export type LevelReviewQueueResult = {
   next_cursor: LevelReviewCursor | null;
 };
 export type LevelReviewAdminCommandResult = { request: LevelReviewAdminDto; replayed: boolean };
+
+export const LEVEL_REVIEW_RELIABILITY_MODES = ['preserve', 'reset', 'reduce'] as const;
+export type LevelReviewReliabilityMode = (typeof LEVEL_REVIEW_RELIABILITY_MODES)[number];
+
+/** The immutable ADMIN_REVIEW_ADJUSTMENT audit event (Platform Admin view only). */
+export type LevelReviewAdjustmentDto = {
+  id: string;
+  level_review_request_id: string;
+  user_id: string;
+  event_type: 'ADMIN_REVIEW_ADJUSTMENT';
+  reason: string;
+  actor_id: string;
+  decided_at: string;
+  effective_at: string;
+  projection_revision: number;
+  boundary_played_at: string;
+  boundary_group_id: string;
+  boundary_basis: 'decision_clock' | 'match_watermark' | 'prior_checkpoint';
+  rating_engine: string;
+  rating_config_version: number;
+  before_engine_version: string;
+  after_engine_version: string;
+  before_display_level: number;
+  after_display_level: number;
+  before_reliability_percent: number;
+  after_reliability_percent: number;
+  before_confirmed_groups: number;
+  after_confirmed_groups: number;
+  before_highest_display_level: number;
+  after_highest_display_level: number;
+  before_sigma: number;
+  after_sigma: number;
+  last_rating_at: string | null;
+  reliability_mode: LevelReviewReliabilityMode;
+  reliability_target: number | null;
+  exception_justification: string | null;
+};
+export type LevelReviewResolutionResult = LevelReviewAdminCommandResult & {
+  adjustment: LevelReviewAdjustmentDto | null;
+};
 export type LevelReviewAdminDetail = {
   request: LevelReviewAdminDto;
   current: {
@@ -82,6 +122,7 @@ export type LevelReviewAdminDetail = {
     confirmed_competitive_game_groups: number;
   } | null;
   rating_changed: boolean;
+  adjustment: LevelReviewAdjustmentDto | null;
   recent_history: {
     played_at: string;
     before_display_level: number;
@@ -109,7 +150,14 @@ export type ResolveLevelReviewInput =
       note: string;
       target_level: number;
       expected_revision: number;
+      /** Omitted = preserve reliability. Reset/reduce are recorded exceptions with a justification. */
+      reliability?: LevelReviewReliabilityDecision;
     };
+
+export type LevelReviewReliabilityDecision =
+  | { mode: 'preserve' }
+  | { mode: 'reset'; justification: string }
+  | { mode: 'reduce'; target: number; justification: string };
 
 /** Database messages travel as stable codes; raw database text never reaches the browser. */
 export type LevelReviewErrorCode =
@@ -127,7 +175,7 @@ export type LevelReviewErrorCode =
   | 'LEVEL_REVIEW_RESOLUTION_CONFLICT'
   | 'LEVEL_REVIEW_TARGET_OUT_OF_RANGE'
   | 'LEVEL_REVIEW_STALE_RATING'
-  | 'LEVEL_REVIEW_APPROVAL_UNAVAILABLE'
+  | 'LEVEL_REVIEW_RELIABILITY_INVALID'
   | 'INVALID_LEVEL_REVIEW_INPUT'
   | 'INVALID_LEVEL_REVIEW_RESPONSE'
   | 'LEVEL_REVIEW_UNAVAILABLE';

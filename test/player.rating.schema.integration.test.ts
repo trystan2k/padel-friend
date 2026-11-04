@@ -23,6 +23,12 @@ const LEDGER_TABLES = [
   'player_rating_initializations'
 ] as const;
 
+/** Administrative level-review evidence (PAF-148): insert-only, DTO-only, restrictive. */
+const ADJUSTMENT_TABLES = [
+  'player_rating_admin_adjustments',
+  'player_rating_adjustment_states'
+] as const;
+
 async function rejection(sql: string): Promise<string> {
   try {
     await queryTrustedSql(sql);
@@ -234,6 +240,42 @@ describe('global rating ledger schema', { timeout: 120_000 }, () => {
       ];
       for (const statement of statements)
         expect(await rejection(statement)).toContain('RATING_EVIDENCE_IMMUTABLE');
+    }
+  );
+
+  it.skipIf(!environment.env)(
+    'adjustment evidence is RLS-protected, grant-free, restrictive for provisional actors and insert-only',
+    async () => {
+      for (const table of ADJUSTMENT_TABLES) {
+        const [row] = await sqlRows(
+          `select c.relrowsecurity as rls,
+                  (select count(*)::int from information_schema.role_table_grants g
+                    where g.table_schema = 'public' and g.table_name = '${table}'
+                      and g.grantee in ('anon', 'authenticated', 'service_role')) as grants,
+                  (select count(*)::int from pg_catalog.pg_policies p
+                    where p.schemaname = 'public' and p.tablename = '${table}'
+                      and p.permissive = 'RESTRICTIVE') as restrictive,
+                  (select count(*)::int from pg_catalog.pg_trigger t
+                    where t.tgrelid = c.oid and not t.tgisinternal and t.tgname like '%immutable'
+                       or t.tgrelid = c.oid and t.tgname like '%no_truncate') as guards
+             from pg_catalog.pg_class c where c.oid = 'public.${table}'::regclass`
+        );
+        expect(row).toMatchObject({ rls: true, grants: 0, restrictive: 1 });
+        expect(Number(row!['guards'])).toBeGreaterThanOrEqual(2);
+      }
+      // The adjustment event never carries match identity and the request link is unique.
+      const columns = await sqlRows(
+        `select column_name from information_schema.columns
+          where table_schema = 'public' and table_name = 'player_rating_admin_adjustments'
+            and column_name in ('game_group_id', 'match_event_id', 'confirmation_id', 'proposal_version')`
+      );
+      expect(columns).toEqual([]);
+      const [unique] = await sqlRows(
+        `select count(*)::int as count from pg_catalog.pg_constraint
+          where conrelid = 'public.player_rating_admin_adjustments'::regclass and contype = 'u'
+            and pg_get_constraintdef(oid) like '%(level_review_request_id)%'`
+      );
+      expect(unique!['count']).toBe(1);
     }
   );
 

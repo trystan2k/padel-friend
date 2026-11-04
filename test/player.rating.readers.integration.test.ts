@@ -36,6 +36,11 @@ import { queryTrustedSql } from './helpers/sql-transport';
 
 const environment = localSupabaseEnv({ filePath: dotEnvPathFromImportMetaUrl(import.meta.url) });
 
+/** Match items carry the game group; level-review adjustments (none in these fixtures) do not. */
+function groupIdOf(item: { kind: string; game_group_id?: string }): string | undefined {
+  return item.kind === 'match' ? item.game_group_id : undefined;
+}
+
 type Actor = ProvisionalFixtureActor;
 
 describe('rating readers: authorized sporting DTOs', { timeout: 300_000 }, () => {
@@ -123,7 +128,7 @@ describe('rating readers: authorized sporting DTOs', { timeout: 300_000 }, () =>
       const history = parseRatingHistoryPage((await me.client.rpc('get_my_rating_history')).data);
       expect(history).toMatchObject({ state: 'ready', total_events: 3, next_cursor: null });
       expect(history!.revision).toBe(summary!.revision);
-      expect(history!.items.map((item) => item.game_group_id)).toEqual([
+      expect(history!.items.map((item) => groupIdOf(item))).toEqual([
         privateGroup.proposalId,
         second.proposalId,
         first.proposalId
@@ -133,12 +138,16 @@ describe('rating readers: authorized sporting DTOs', { timeout: 300_000 }, () =>
         await ledgerOf([first.proposalId, second.proposalId, privateGroup.proposalId])
       ).filter((entry) => entry.userId === me.id);
       for (const item of history!.items) {
-        const stored = ledger.find((entry) => entry.groupId === item.game_group_id)!;
+        const stored = ledger.find((entry) => entry.groupId === groupIdOf(item))!;
         expect(item.after_display_level).toBeCloseTo(stored.afterMu, 2);
         expect(item.before_display_level).toBeCloseTo(stored.beforeMu, 2);
         expect(item.after_confirmed_groups).toBe(stored.afterGroups);
       }
-      expect(history!.items.at(-1)).toMatchObject({ before_display_level: 4, recalculated: false });
+      expect(history!.items.at(-1)).toMatchObject({
+        kind: 'match',
+        before_display_level: 4,
+        recalculated: false
+      });
     }
   );
 
@@ -219,9 +228,9 @@ describe('rating readers: authorized sporting DTOs', { timeout: 300_000 }, () =>
           })
         ).data
       )!;
-      expect(page2.items.map((item) => item.game_group_id)).toEqual([first.proposalId]);
+      expect(page2.items.map((item) => groupIdOf(item))).toEqual([first.proposalId]);
       expect(page2.next_cursor).toBeNull();
-      expect([...one.items, ...page2.items].map((item) => item.game_group_id)).toEqual([
+      expect([...one.items, ...page2.items].map((item) => groupIdOf(item))).toEqual([
         privateGroup.proposalId,
         second.proposalId,
         first.proposalId
@@ -528,8 +537,8 @@ describe('rating readers: authorized sporting DTOs', { timeout: 300_000 }, () =>
       });
       const after = parseRatingHistoryPage((await me.client.rpc('get_my_rating_history')).data)!;
       expect(after.revision).toBeGreaterThan(before.revision);
-      expect(after.items.at(-1)!.game_group_id).toBe(late.proposalId);
-      const oldest = after.items.find((item) => item.game_group_id === first.proposalId)!;
+      expect(groupIdOf(after.items.at(-1)!)).toBe(late.proposalId);
+      const oldest = after.items.find((item) => groupIdOf(item) === first.proposalId)!;
       expect(oldest).toMatchObject({
         before_display_level: expect.any(Number),
         recalculated: true

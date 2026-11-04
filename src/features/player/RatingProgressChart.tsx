@@ -57,7 +57,7 @@ export function RatingProgressChart({ progress }: { progress: RatingProgress }) 
   const points: PlotPoint[] = [
     { key: 'baseline', level: baselineLevel, baseline: true },
     ...progress.points.map((point) => ({
-      key: point.game_group_id,
+      key: point.event_id,
       level: point.display_level,
       baseline: false
     }))
@@ -121,7 +121,7 @@ export function RatingProgressChart({ progress }: { progress: RatingProgress }) 
         <p {...stylex.props(s.copy)}>
           {t('rating.progress.abbreviated', {
             shown: progress.points.length,
-            total: progress.total_events
+            total: progress.total_points
           })}
         </p>
       )}
@@ -170,7 +170,7 @@ export function RatingProgressChart({ progress }: { progress: RatingProgress }) 
                   <td {...stylex.props(s.td)}>{formatLevel(baselineLevel, locale)}</td>
                 </tr>
                 {progress.points.map((point) => (
-                  <tr key={point.game_group_id}>
+                  <tr key={point.event_id}>
                     <th scope="row" {...stylex.props(s.td)}>
                       {point.ordinal}
                     </th>

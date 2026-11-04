@@ -57,6 +57,8 @@ const progress = (overrides: Record<string, unknown> = {}) =>
   parseRatingProgress({ ...progressPayload, ...overrides })!;
 const manyPoints = Array.from({ length: 4 }, (_, index) => ({
   ordinal: index + 1,
+  kind: 'match',
+  event_id: `00000000-0000-4000-8000-00000000000${index + 1}`,
   game_group_id: `00000000-0000-4000-8000-00000000000${index + 1}`,
   played_at: `2026-0${index + 1}-01T10:00:00.000000Z`,
   display_level: 4 + index * 0.1
@@ -66,6 +68,7 @@ const manyProgress = () =>
     resolution: 'sampled',
     abbreviated: true,
     total_events: 12,
+    total_points: 12,
     range: { from: manyPoints[0]!.played_at, to: manyPoints[3]!.played_at },
     points: manyPoints
   });

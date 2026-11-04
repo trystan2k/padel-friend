@@ -14,7 +14,7 @@ const DATABASE_ERRORS: readonly LevelReviewErrorCode[] = [
   'LEVEL_REVIEW_RESOLUTION_CONFLICT',
   'LEVEL_REVIEW_TARGET_OUT_OF_RANGE',
   'LEVEL_REVIEW_STALE_RATING',
-  'LEVEL_REVIEW_APPROVAL_UNAVAILABLE'
+  'LEVEL_REVIEW_RELIABILITY_INVALID'
 ];
 
 /** Server-side: maps a PostgREST error to a stable code (never raw database text). */
