@@ -464,6 +464,10 @@ describe.skipIf(!rankedKitEnv(import.meta.url))(
       const eventId = await kit.event(await kit.league());
       expect((await kit.submit(eventId, playedAt(300).played)).error).toBeNull();
       const proposalId = await kit.proposalId(eventId);
+      // The processor handles the global queue, including unrelated eligible proposals.
+      const eligibleEventId = await kit.event(null, 'friendly');
+      expect((await kit.submit(eligibleEventId, playedAt(300).played)).error).toBeNull();
+      await ageDeadline(await kit.proposalId(eligibleEventId), 1, -60);
       await setMembershipHistory(kit.communityId, kit.players[2]!.id, [
         {
           activatedAt: new Date(Date.now() - 86_400_000).toISOString(),
@@ -473,7 +477,9 @@ describe.skipIf(!rankedKitEnv(import.meta.url))(
       await ageDeadline(proposalId, 1, -60);
 
       const first = await processDue();
-      expect(first).toMatchObject({ failed: 0, confirmed: 0 });
+      expect(first).toMatchObject({ failed: 0 });
+      expect((await kit.sideEffects(eligibleEventId))['confirmations']).toBe(1);
+      expect((await kit.sideEffects(eventId))['confirmations']).toBe(0);
       expect(first['blocked_items']).toEqual(
         expect.arrayContaining([
           expect.objectContaining({
