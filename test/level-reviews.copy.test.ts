@@ -62,6 +62,7 @@ const ERROR_CODES: LevelReviewErrorCode[] = [
 ];
 
 const DYNAMIC = [
+  'levelReview.adminDecision.',
   'levelReview.status.detail.',
   'levelReview.status.',
   'levelReview.errors.',

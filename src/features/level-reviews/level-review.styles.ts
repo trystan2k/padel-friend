@@ -339,6 +339,27 @@ export const levelReview = stylex.create({
     paddingInlineStart: 'var(--space-14)',
     fontSize: 'var(--font-size-12)'
   },
+  pendingBadge: {
+    alignSelf: 'flex-start',
+    padding: 'var(--space-4) var(--space-8)',
+    borderRadius: 'var(--radius-12)',
+    backgroundColor: 'var(--color-surface-2)'
+  },
+  filterSelect: {
+    boxSizing: 'border-box',
+    minHeight: touchTarget,
+    width: '100%',
+    paddingInline: 'var(--space-10)',
+    borderWidth: 'var(--border-width-sm)',
+    borderStyle: 'solid',
+    borderColor: 'var(--color-line)',
+    borderRadius: 'var(--radius-12)',
+    backgroundColor: 'var(--color-surface)',
+    color: 'var(--color-text)',
+    fontFamily: 'var(--font-family-body)',
+    fontSize: 'var(--font-size-12)',
+    ':focus-visible': focusRing
+  },
   footer: {
     display: 'flex',
     flexDirection: 'column',

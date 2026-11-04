@@ -295,12 +295,14 @@ export function decodeLevelReviewAdminDetail(value: unknown): LevelReviewAdminDe
     current: nullable(row.current, (current) => {
       const item = exactObject(current, [
         'revision',
+        'mu',
         'display_level',
         'reliability_percent',
         'confirmed_competitive_game_groups'
       ]);
       return {
         revision: count(item.revision),
+        mu: finite(item.mu),
         display_level: finite(item.display_level),
         reliability_percent: count(item.reliability_percent),
         confirmed_competitive_game_groups: count(item.confirmed_competitive_game_groups)

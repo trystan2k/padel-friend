@@ -86,7 +86,7 @@ describe('level review RLS and role denial', { timeout: 240_000 }, () => {
     expect(detail.error).toBeNull();
     expect(detail.data).toMatchObject({
       request: { id: requestId, owner_id: world.owner.id, status: 'pending' },
-      current: { display_level: 4, reliability_percent: 10 },
+      current: { mu: 4, display_level: 4, reliability_percent: 10 },
       rating_changed: false,
       recent_history: []
     });

@@ -117,6 +117,7 @@ export type LevelReviewAdminDetail = {
   request: LevelReviewAdminDto;
   current: {
     revision: number;
+    mu: number;
     display_level: number;
     reliability_percent: number;
     confirmed_competitive_game_groups: number;

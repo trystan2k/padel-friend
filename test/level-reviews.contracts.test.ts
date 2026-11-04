@@ -126,6 +126,7 @@ describe('level review decoders', () => {
       request: adminDto(),
       current: {
         revision: 7,
+        mu: 4,
         display_level: 4,
         reliability_percent: 10,
         confirmed_competitive_game_groups: 0
@@ -143,6 +144,12 @@ describe('level review decoders', () => {
     };
     expect(decodeLevelReviewAdminDetail(detail)).toEqual(detail);
     expect(decodeLevelReviewAdminDetail({ ...detail, current: null }).current).toBeNull();
+    expect(() =>
+      decodeLevelReviewAdminDetail({ ...detail, current: { ...detail.current, mu: NaN } })
+    ).toThrow('INVALID_LEVEL_REVIEW_RESPONSE');
+    expect(() =>
+      decodeLevelReviewAdminDetail({ ...detail, current: { ...detail.current, extra: 1 } })
+    ).toThrow('INVALID_LEVEL_REVIEW_RESPONSE');
     expect(() => decodeLevelReviewAdminDetail({ ...detail, extra: 1 })).toThrow(
       'INVALID_LEVEL_REVIEW_RESPONSE'
     );
