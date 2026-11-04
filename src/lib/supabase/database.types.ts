@@ -2109,6 +2109,110 @@ export type Database = {
         }
         Relationships: []
       }
+      platform_admins: {
+        Row: {
+          granted_at: string
+          granted_by: string | null
+          user_id: string
+        }
+        ComputedFields: never
+        Insert: {
+          granted_at?: string
+          granted_by?: string | null
+          user_id: string
+        }
+        Update: {
+          granted_at?: string
+          granted_by?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      player_level_review_requests: {
+        Row: {
+          adjustment_id: string | null
+          approved_level: number | null
+          canceled_at: string | null
+          command_id: string
+          created_at: string
+          decided_at: string | null
+          decision_actor_id: string | null
+          decision_command_id: string | null
+          decision_fingerprint: string | null
+          decision_note: string | null
+          evidence: string | null
+          fingerprint: string
+          id: string
+          owner_id: string
+          reason: string
+          requested_max_level: number
+          requested_min_level: number
+          snapshot_display_level: number
+          snapshot_rating_revision: number
+          snapshot_reliability_percent: number
+          status: Database["public"]["Enums"]["level_review_status"]
+          under_review_at: string | null
+          under_review_by: string | null
+          level_review_admin_dto: Json | null
+          level_review_owner_dto: Json | null
+          level_review_queue_item_dto: Json | null
+        }
+        ComputedFields:
+          | "level_review_admin_dto"
+          | "level_review_owner_dto"
+          | "level_review_queue_item_dto"
+        Insert: {
+          adjustment_id?: string | null
+          approved_level?: number | null
+          canceled_at?: string | null
+          command_id: string
+          created_at?: string
+          decided_at?: string | null
+          decision_actor_id?: string | null
+          decision_command_id?: string | null
+          decision_fingerprint?: string | null
+          decision_note?: string | null
+          evidence?: string | null
+          fingerprint: string
+          id?: string
+          owner_id: string
+          reason: string
+          requested_max_level: number
+          requested_min_level: number
+          snapshot_display_level: number
+          snapshot_rating_revision: number
+          snapshot_reliability_percent: number
+          status?: Database["public"]["Enums"]["level_review_status"]
+          under_review_at?: string | null
+          under_review_by?: string | null
+        }
+        Update: {
+          adjustment_id?: string | null
+          approved_level?: number | null
+          canceled_at?: string | null
+          command_id?: string
+          created_at?: string
+          decided_at?: string | null
+          decision_actor_id?: string | null
+          decision_command_id?: string | null
+          decision_fingerprint?: string | null
+          decision_note?: string | null
+          evidence?: string | null
+          fingerprint?: string
+          id?: string
+          owner_id?: string
+          reason?: string
+          requested_max_level?: number
+          requested_min_level?: number
+          snapshot_display_level?: number
+          snapshot_rating_revision?: number
+          snapshot_reliability_percent?: number
+          status?: Database["public"]["Enums"]["level_review_status"]
+          under_review_at?: string | null
+          under_review_by?: string | null
+        }
+        Relationships: []
+      }
       player_profiles: {
         Row: {
           avatar_url: string | null
@@ -3446,6 +3550,7 @@ export type Database = {
       assert_match_player_add_window_locked: { Args: { p_event_id: string }; Returns: undefined }
       can_read_community: { Args: { p_community_id: string }; Returns: boolean }
       can_read_match_event: { Args: { p_event_id: string }; Returns: boolean }
+      cancel_level_review_request: { Args: { p_request_id: string }; Returns: Json }
       cancel_match_event: {
         Args: {
           p_expected_version: number
@@ -3602,6 +3707,8 @@ export type Database = {
         Returns: Json
       }
       get_league_standings_audit: { Args: { p_league_id: string }; Returns: Json }
+      get_level_review_access: { Args: Record<PropertyKey, never>; Returns: Json }
+      get_level_review_admin_detail: { Args: { p_request_id: string }; Returns: Json }
       get_match_creation_options: { Args: { p_community_id?: string }; Returns: Json }
       get_match_event: { Args: { p_event_id: string }; Returns: Json }
       get_match_event_management: { Args: { p_match_event_id: string }; Returns: Json }
@@ -3623,6 +3730,7 @@ export type Database = {
           time_zone: string
         }[]
       }
+      get_my_level_review_request: { Args: { p_request_id: string }; Returns: Json }
       get_my_match_invitation: { Args: { p_match_event_id: string }; Returns: Json }
       get_my_match_notification_contexts: {
         Args: { p_notification_ids: string[] }
@@ -3824,6 +3932,7 @@ export type Database = {
         Args: { p_event_id: string; p_user_id: string }
         Returns: boolean
       }
+      is_platform_admin: { Args: Record<PropertyKey, never>; Returns: boolean }
       is_private_match_event: { Args: { p_event_id: string }; Returns: boolean }
       is_provisional_actor: { Args: Record<PropertyKey, never>; Returns: boolean }
       is_provisional_player: { Args: { p_user_id: string }; Returns: boolean }
@@ -3996,12 +4105,58 @@ export type Database = {
           valid_until: string
         }[]
       }
+      level_review_actor: { Args: Record<PropertyKey, never>; Returns: string }
+      level_review_admin_actor: { Args: Record<PropertyKey, never>; Returns: string }
+      level_review_admin_dto: {
+        Args: {
+          r: Omit<
+            Database["public"]["Tables"]["player_level_review_requests"]["Row"],
+            Database["public"]["Tables"]["player_level_review_requests"]["ComputedFields"]
+          >
+        }
+        Returns: Json
+      }
+      level_review_owner_dto: {
+        Args: {
+          r: Omit<
+            Database["public"]["Tables"]["player_level_review_requests"]["Row"],
+            Database["public"]["Tables"]["player_level_review_requests"]["ComputedFields"]
+          >
+        }
+        Returns: Json
+      }
+      level_review_queue_item_dto: {
+        Args: {
+          r: Omit<
+            Database["public"]["Tables"]["player_level_review_requests"]["Row"],
+            Database["public"]["Tables"]["player_level_review_requests"]["ComputedFields"]
+          >
+        }
+        Returns: Json
+      }
+      level_review_submission_limits: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          max_requests: number
+          window_length: string
+        }[]
+      }
+      level_review_valid_level: { Args: { p_level: number }; Returns: boolean }
       list_league_standings_versions: {
         Args: { p_before_version?: number; p_league_id: string }
         Returns: Json
       }
       list_leagues: {
         Args: { p_after_created_at?: string; p_after_id?: string; p_community_id: string }
+        Returns: Json
+      }
+      list_level_review_queue: {
+        Args: {
+          p_after_created_at?: string
+          p_after_id?: string
+          p_limit?: number
+          p_status?: string
+        }
         Returns: Json
       }
       list_match_event_audit: {
@@ -4035,6 +4190,10 @@ export type Database = {
       }
       list_match_league_options: {
         Args: { p_community_id: string; p_date: string; p_start_time: string }
+        Returns: Json
+      }
+      list_my_level_review_requests: {
+        Args: { p_after_created_at?: string; p_after_id?: string; p_limit?: number }
         Returns: Json
       }
       list_statistics_history: {
@@ -4154,6 +4313,7 @@ export type Database = {
           read_at: string
         }[]
       }
+      mark_level_review_under_review: { Args: { p_request_id: string }; Returns: Json }
       mark_match_result_alert_ineligible: {
         Args: { p_event_id: string; p_fingerprint: string }
         Returns: boolean
@@ -4533,6 +4693,17 @@ export type Database = {
         }
         Returns: Json
       }
+      resolve_level_review_request: {
+        Args: {
+          p_command_id: string
+          p_decision: string
+          p_expected_revision?: number
+          p_note: string
+          p_request_id: string
+          p_target_level?: number
+        }
+        Returns: Json
+      }
       respond_match_event_invitation: {
         Args: { p_invitation_id: string; p_match_event_id: string; p_response: string }
         Returns: Json
@@ -4870,6 +5041,16 @@ export type Database = {
       statistics_seq_from: { Args: { p_outcomes: string }; Returns: Json }
       statistics_thresholds_valid: { Args: { p_thresholds: Json }; Returns: boolean }
       statistics_utc_text: { Args: { p_instant: string }; Returns: string }
+      submit_level_review_request: {
+        Args: {
+          p_command_id: string
+          p_evidence?: string
+          p_reason: string
+          p_requested_max_level: number
+          p_requested_min_level: number
+        }
+        Returns: Json
+      }
       submit_match_event_result: {
         Args: {
           p_court_label?: string
@@ -4952,6 +5133,7 @@ export type Database = {
       community_visibility: "public" | "private"
       league_end_mode: "fixed_date" | "manual"
       league_status: "upcoming" | "active" | "closed"
+      level_review_status: "pending" | "under_review" | "approved" | "rejected" | "canceled"
       match_event_type: "competitive" | "friendly"
       match_event_visibility: "community_open" | "invite_only"
       match_invitation_status: "pending" | "accepted" | "declined" | "expired" | "cancelled"
@@ -5687,6 +5869,7 @@ export const Constants = {
       community_visibility: ["public", "private"],
       league_end_mode: ["fixed_date", "manual"],
       league_status: ["upcoming", "active", "closed"],
+      level_review_status: ["pending", "under_review", "approved", "rejected", "canceled"],
       match_event_type: ["competitive", "friendly"],
       match_event_visibility: ["community_open", "invite_only"],
       match_invitation_status: ["pending", "accepted", "declined", "expired", "cancelled"],
