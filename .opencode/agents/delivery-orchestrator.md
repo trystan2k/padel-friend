@@ -518,7 +518,6 @@ Each agent's model lives in one place only: the `model:` field in its definition
   1. **The failed session's own record** — the failure carries a `sessionID`; inspect that specialist session's record to see which model it executed (this also catches temporary overrides used in that run).
   2. **The agent definition frontmatter** — read the `model:` line from the agent's `.md` file if the session record is unavailable.
   3. **Ask the user** — if neither is available, stop and ask which model is in play. Never act on an assumed model id.
-- Rate-limit fallback pairs (see Rate-Limit Fallback) bind concrete provider model ids, not agents. Map a verified model to its pair only after verifying the model id per this protocol.
 
 ## Rate-Limit Fallback (Subagent Token Limits)
 
@@ -526,17 +525,12 @@ When a delegated subagent fails because its model hit a token rate limit, recove
 
 0. **Verify the model first.** Per the Model Resolution Protocol, establish the model that actually ran the failed subagent (failed session record → agent frontmatter → ask the user). Every step below acts on that verified model id, never an assumed one.
 1. **Preserve work-state continuity.** A limit failure kills the session, not its work: files written before the failure stay in the tree and the failed `sessionID` transcript survives. Every relaunch inherits that state — never restart from a blind re-audit.
-   - **Preferred:** resume the SAME `sessionID` with a `model` override on the fallback model — the transcript carries the full context, so the new model continues exactly where the old one stopped.
+   - **Preferred:** resume the SAME `sessionID` — the transcript carries the full context, so the session continues exactly where it stopped.
    - **Fallback (resume unavailable):** open the fresh session with a handoff brief: the dead session's last visible report, `git status --porcelain` plus `git diff --stat <last unit commit>` as the on-disk work delta, the current plan step, and the gates already green. State explicitly which work is on disk but unverified, so the new session verifies instead of re-deriving.
-2. **Probe the paired model — only if the verified model is a member of a verified pair.** Resume the failed session per step 1 on its pair with a `model` override — bare model id, default variant, no `#high`/`#max` suffix. Pairs are symmetric:
-   - `claude-agent/sonnet` ↔ `openai/gpt-6.1-terra`
-   - `claude-agent/opus` ↔ `openai/gpt-6.1-sol`
-   If the verified model belongs to no listed pair, skip to step 4. If the relaunched agent completes, continue the delivery from its result.
-3. **Both pair members rate-limited.** Read the reset time from each rate-limit error, pick the model that resets first, and `sleep` in chunks of at most 5 minutes until that reset passes (the `sleep *` shell grant covers this). Then continue the task on that model.
-4. **Unpaired models only get the timer treatment.** For a verified model outside the pairs (e.g. `zai-coding-plan/glm-5.3-flash`): wait for the reset reported in the error, then retry on the same model — same model id, no substitution.
-5. **No reset time in the error.** Probe with 60-second sleeps, doubling each wait up to 5 minutes, until either the paired model or the original model accepts the relaunch. If still blocked after roughly 30 minutes of waiting, stop and report the blocked state to the user with the verified model id, the models tried, and the observed limits.
+2. **Wait for the reset, then retry the SAME model.** Read the reset time from the rate-limit error and sleep ONCE for that duration — a single sleep covering the whole wait, run as a background command when it exceeds a few minutes. Then resume per step 1 on the SAME model id — no substitution and no paired-model probes.
+3. **No reset time in the error.** Probe with single 60-second sleeps, doubling each wait up to 5 minutes, until the relaunch is accepted. If still blocked after roughly 30 minutes of waiting, stop and report the blocked state to the user with the verified model id and the observed limits.
 
-Switches are per-task recovery only: never edit agent frontmatter and never re-route future delegations because of a transient limit. Report every model switch (agent, verified original model, fallback model, outcome, and the evidence source used to verify the model) plus the recovery mode used (session resume vs handoff brief) in the delivery summary and time-tracking notes.
+Recovery is wait-and-retry on the same model, per task only: never edit agent frontmatter and never re-route future delegations because of a transient limit. Report the recovery in the delivery summary and time-tracking notes (agent, verified model, reset time and sleep used, and whether the interrupted session was resumed or relaunched from a handoff brief).
 
 ## Subagent Usage (Required)
 
