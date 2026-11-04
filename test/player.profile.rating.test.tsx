@@ -12,6 +12,14 @@ import {
 import type { RatingLoad } from '../src/features/player/rating-view';
 import { historyPayload, progressPayload, summaryPayload } from './helpers/rating-read-fixtures';
 
+vi.mock('@tanstack/react-router', async (original) => ({
+  ...(await original<typeof import('@tanstack/react-router')>()),
+  Link: ({ children, to, ...rest }: any) => (
+    <a href={String(to)} {...rest}>
+      {children}
+    </a>
+  )
+}));
 vi.mock('../src/features/player/player.functions', () => ({
   updateMyPlayerProfile: vi.fn<() => Promise<unknown>>(),
   getMyPlayerProfile: vi.fn<() => Promise<unknown>>()
@@ -89,6 +97,20 @@ describe('PlayerProfile rating journey', () => {
     expect(within(region).getByRole('alert')).toBeTruthy();
     await userEvent.click(within(region).getByRole('button', { name: 'Try again' }));
     expect(onReload).toHaveBeenCalledOnce();
+  });
+
+  it('offers the level review entry points and no writable level input', () => {
+    renderProfile(rating);
+    const entry = screen.getByRole('region', { name: 'Level review' });
+    expect(
+      within(entry).getByRole('link', { name: 'Request level review' }).getAttribute('href')
+    ).toBe('/level-reviews/new');
+    expect(
+      within(entry).getByRole('link', { name: 'My review requests' }).getAttribute('href')
+    ).toBe('/level-reviews');
+    // The level is shown, never editable: no spin button and no field holding it.
+    expect(screen.queryByRole('spinbutton')).toBeNull();
+    expect(screen.queryByDisplayValue('4.12')).toBeNull();
   });
 
   it('replaces the empty-history placeholder card', () => {

@@ -95,6 +95,11 @@ export const rating = stylex.create({
     stroke: 'var(--color-green)',
     strokeWidth: 'var(--border-width-lg)'
   },
+  adjustmentMarker: {
+    fill: 'var(--color-green)',
+    stroke: 'var(--color-surface)',
+    strokeWidth: 'var(--border-width-lg)'
+  },
   rangeLabels: {
     display: 'flex',
     justifyContent: 'space-between',
@@ -198,6 +203,13 @@ export const rating = stylex.create({
   outcomeWin: { backgroundColor: 'var(--color-green-soft)', color: 'var(--color-green)' },
   outcomeDraw: { backgroundColor: 'var(--color-green-soft)', color: 'var(--color-amber)' },
   outcomeLoss: { backgroundColor: 'var(--color-surface-2)', color: 'var(--color-muted)' },
+  adjustmentChip: {
+    paddingInline: 'var(--space-6)',
+    backgroundColor: 'var(--color-surface-2)',
+    color: 'var(--color-green)',
+    textAlign: 'center',
+    overflowWrap: 'anywhere'
+  },
   delta: {
     flexShrink: 0,
     fontSize: 'var(--font-size-12)',
@@ -209,6 +221,7 @@ export const rating = stylex.create({
   deltaLoss: { color: 'var(--color-red)' },
   textButton: {
     justifySelf: 'start',
+    textDecoration: 'none',
     display: 'inline-flex',
     alignItems: 'center',
     justifyContent: 'center',

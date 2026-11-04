@@ -1,0 +1,36 @@
+{
+  "status": "verified-references-unmeasured-budgets",
+  "sourceDesign": {
+    "path": "docs/design/padel-friend.pen",
+    "sha256": "927ac4e83f24edacbc2b2fe2fcfa111d8e0822b96f73ce268cf50b5ef2737af2",
+    "provenanceNote": "Pencil MCP exported qWosG and OKYtp at scale 2 from the current tracked design to /tmp; both export SHA-256 digests match the corresponding repository PNG byte-for-byte.",
+    "exportCommand": "Pencil MCP Export([qWosG, OKYtp], png, /tmp, {scale: 2})"
+  },
+  "approvedReferences": {
+    "qWosG": {
+      "frameId": "qWosG",
+      "file": "qWosG.png",
+      "sha256": "e592a02c96f00b469ce4128b5426be88601bdc33a81ac0a18f76179e61d811ba",
+      "pixelSize": [780, 1688],
+      "viewport": [390, 844]
+    },
+    "OKYtp": {
+      "frameId": "OKYtp",
+      "file": "OKYtp.png",
+      "sha256": "e64bc05233238fba46284bbe569b4cc2384f828aec4701628406460d34a7c5eb",
+      "pixelSize": [780, 1688],
+      "viewport": [390, 844]
+    }
+  },
+  "visualBudgets": {
+    "status": "unmeasured-not-certified",
+    "perScreen": {
+      "qWosG": 0.1,
+      "OKYtp": 0.1
+    },
+    "perScreenRationale": {
+      "qWosG": "Provisional ceiling for cross-renderer font rasterization only; must be calibrated against measured output and independent structural probes before use.",
+      "OKYtp": "Provisional ceiling for cross-renderer font rasterization only; must be calibrated against measured output and independent structural probes before use."
+    }
+  }
+}

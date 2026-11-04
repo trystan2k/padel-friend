@@ -1446,7 +1446,9 @@
       "columnGame": "Game",
       "columnDate": "Date",
       "columnLevel": "Level",
-      "baselineRow": "Starting level"
+      "baselineRow": "Starting level",
+      "legendAdjustment": "Level review correction (diamond marker)",
+      "adjustmentRow": "Level review"
     },
     "history": {
       "title": "Recent games",
@@ -1461,7 +1463,10 @@
       "showing_other": "Showing {{shown}} of {{count}} games",
       "recalculated": "Recalculated",
       "adjustmentTitle": "Level review adjustment",
-      "adjustmentNote": "Review note: {{note}}"
+      "adjustmentNote": "Review note: {{note}}",
+      "adjustmentChip": "Level review",
+      "adjustmentView": "View review request",
+      "reliabilityKept": "Reliability stays at {{value}}"
     },
     "outcome": {
       "win": "Win",
@@ -2579,6 +2584,140 @@
       "INVALID_STATISTICS_INPUT": "Those filters are not valid.",
       "INVALID_STATISTICS_RESPONSE": "Something went wrong. Try again.",
       "STATISTICS_UNAVAILABLE": "Something went wrong. Try again."
+    }
+  },
+  "levelReview": {
+    "entry": {
+      "title": "Level review",
+      "description": "Think your level is off? Ask a Platform Admin to review it.",
+      "request": "Request level review",
+      "history": "My review requests"
+    },
+    "request": {
+      "title": "Request level review",
+      "context": "Your current level is {{level}}",
+      "backLabel": "Back to profile",
+      "currentLabel": "Current level",
+      "currentValue": "{{level}} · {{reliability}} reliability",
+      "currentHelper": "Set by your confirmed games. You can't change it here.",
+      "unavailable": "Your current level isn't available yet, so a review can't be requested.",
+      "modeLegend": "Expected level",
+      "modeExact": "Exact level",
+      "modeRange": "Range",
+      "levelExact": "Expected level",
+      "levelMin": "Lowest expected level",
+      "levelMax": "Highest expected level",
+      "levelHelper": "A number from {{min}} to {{max}} with up to two decimals, for example {{example}}.",
+      "reasonLabel": "Why does your level feel materially incorrect?",
+      "reasonPlaceholder": "Tell us why your level feels materially incorrect…",
+      "reasonHelper": "Required. {{count}} of {{max}} characters.",
+      "evidenceShow": "Add optional evidence",
+      "evidenceHide": "Hide optional evidence",
+      "evidenceLabel": "Evidence",
+      "evidenceHelper": "Optional plain text. Links stay as text and are never opened automatically. {{count}} of {{max}} characters.",
+      "forwardOnly": "Only a Platform Admin reviews requests. Approval changes your current level going forward only; past matches are not replayed.",
+      "submit": "Submit request",
+      "submitting": "Submitting…",
+      "submitted": "Request received. Opening its status…",
+      "loading": "Loading your current level…"
+    },
+    "validation": {
+      "levelRequired": "Enter a level.",
+      "levelFormat": "Use digits and one decimal separator, for example {{example}}.",
+      "levelPrecision": "Use at most two decimals.",
+      "levelRange": "Enter a level from {{min}} to {{max}}.",
+      "rangeOrder": "The lowest level can't be above the highest level.",
+      "reasonRequired": "Enter why your level is incorrect.",
+      "reasonTooLong": "Keep the reason within {{max}} characters.",
+      "evidenceTooLong": "Keep the evidence within {{max}} characters."
+    },
+    "errors": {
+      "unauthenticated": "Your session expired. Sign in again.",
+      "forbidden": "You can't request or see this review.",
+      "notFound": "This request doesn't exist or you can't see it.",
+      "invalid": "Those details aren't valid. Check the form and try again.",
+      "duplicate": "You already have an active level review request.",
+      "rateLimited": "You've sent too many requests recently. Try again later.",
+      "ratingUnavailable": "Your current level isn't available yet.",
+      "conflict": "This request changed. Check the form and submit again.",
+      "invalidTransition": "This request is already closed.",
+      "unavailable": "Something went wrong. Try again.",
+      "unconfirmed": "We couldn't confirm your request was saved. Retrying is safe: it won't create a duplicate.",
+      "offline": "You're offline, so nothing was sent. Reconnect and try again; retrying won't create a duplicate.",
+      "retry": "Try again",
+      "viewActive": "View your active request",
+      "checkRequests": "Check your requests"
+    },
+    "status": {
+      "pending": "Pending",
+      "under_review": "Under review",
+      "approved": "Approved",
+      "rejected": "Rejected",
+      "canceled": "Canceled",
+      "detail": {
+        "pending": "Waiting for Platform Admin review.",
+        "under_review": "A Platform Admin is reviewing your request.",
+        "approved": "Current level corrected going forward. Past matches are unchanged.",
+        "rejected": "Request closed. A review note is available.",
+        "canceled": "You canceled this request."
+      }
+    },
+    "range": {
+      "exact": "{{level}}",
+      "between": "{{min}} to {{max}}"
+    },
+    "loadErrorTitle": "Couldn't load level review",
+    "history": {
+      "title": "Level review requests",
+      "subtitle": "Your requests and what happened to them.",
+      "newRequest": "Request level review",
+      "viewActive": "View active request",
+      "emptyTitle": "No requests yet",
+      "emptyDescription": "Think your level is materially off? Submit a request and a Platform Admin will review it.",
+      "loadingTitle": "Loading requests",
+      "loading": "Loading your level review requests…",
+      "loadMore": "Load more requests",
+      "loadingMore": "Loading requests…",
+      "showing_one": "Showing {{count}} request",
+      "showing_other": "Showing {{count}} requests",
+      "itemRequested": "Requested {{range}}",
+      "itemSubmitted": "Submitted {{date}}"
+    },
+    "detail": {
+      "title": "Level review status",
+      "context": "Request #{{id}} · Submitted {{date}}",
+      "back": "Back to requests",
+      "requestHeading": "Your request",
+      "snapshotLevel": "Level when submitted",
+      "snapshotReliability": "Reliability when submitted",
+      "requested": "Requested level",
+      "currentNow": "Your level now",
+      "reasonLabel": "Your reason",
+      "evidenceLabel": "Your evidence",
+      "noEvidence": "No evidence added.",
+      "timelineHeading": "Timeline",
+      "timelineSubmitted": "Submitted {{date}}",
+      "timelineReview": "Under review since {{date}}",
+      "timelineCanceled": "Canceled {{date}}",
+      "timelineDecided": "Decided {{date}}",
+      "decisionHeading": "Decision",
+      "decisionNote": "Review note",
+      "approvedLevel": "Approved level",
+      "appliedLink": "See the correction in your rating history",
+      "annotation": "Your request and any decision stay here. Levels can't be edited directly.",
+      "cancel": "Cancel request",
+      "canceled": "Request canceled.",
+      "refreshFailed": "Couldn't refresh this request. Showing the last loaded information.",
+      "refresh": "Refresh",
+      "loadingTitle": "Loading request",
+      "loading": "Loading your request…"
+    },
+    "cancelDialog": {
+      "title": "Cancel this request?",
+      "description": "A Platform Admin will stop reviewing it. You can submit a new request afterwards.",
+      "confirm": "Cancel request",
+      "keep": "Keep request",
+      "canceling": "Canceling…"
     }
   }
 }

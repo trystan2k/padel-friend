@@ -1446,7 +1446,9 @@
       "columnGame": "Jogo",
       "columnDate": "Data",
       "columnLevel": "Nível",
-      "baselineRow": "Nível inicial"
+      "baselineRow": "Nível inicial",
+      "legendAdjustment": "Correção por revisão de nível (marcador em losango)",
+      "adjustmentRow": "Revisão de nível"
     },
     "history": {
       "title": "Jogos recentes",
@@ -1461,7 +1463,10 @@
       "showing_other": "Mostrando {{shown}} de {{count}} jogos",
       "recalculated": "Recalculado",
       "adjustmentTitle": "Ajuste por revisão de nível",
-      "adjustmentNote": "Nota da revisão: {{note}}"
+      "adjustmentNote": "Nota da revisão: {{note}}",
+      "adjustmentChip": "Revisão de nível",
+      "adjustmentView": "Ver solicitação de revisão",
+      "reliabilityKept": "Confiabilidade permanece em {{value}}"
     },
     "outcome": {
       "win": "Vitória",
@@ -2579,6 +2584,140 @@
       "INVALID_STATISTICS_INPUT": "Esses filtros não são válidos.",
       "INVALID_STATISTICS_RESPONSE": "Algo deu errado. Tente novamente.",
       "STATISTICS_UNAVAILABLE": "Algo deu errado. Tente novamente."
+    }
+  },
+  "levelReview": {
+    "entry": {
+      "title": "Revisão de nível",
+      "description": "Acha que seu nível está errado? Peça a um administrador da plataforma para revisá-lo.",
+      "request": "Solicitar revisão de nível",
+      "history": "Minhas solicitações de revisão"
+    },
+    "request": {
+      "title": "Solicitar revisão de nível",
+      "context": "Seu nível atual é {{level}}",
+      "backLabel": "Voltar ao perfil",
+      "currentLabel": "Nível atual",
+      "currentValue": "{{level}} · {{reliability}} de confiabilidade",
+      "currentHelper": "Definido pelos seus jogos confirmados. Você não pode alterá-lo aqui.",
+      "unavailable": "Seu nível atual ainda não está disponível, então não é possível solicitar revisão.",
+      "modeLegend": "Nível esperado",
+      "modeExact": "Nível exato",
+      "modeRange": "Faixa",
+      "levelExact": "Nível esperado",
+      "levelMin": "Menor nível esperado",
+      "levelMax": "Maior nível esperado",
+      "levelHelper": "Um número de {{min}} a {{max}} com até duas casas decimais, por exemplo {{example}}.",
+      "reasonLabel": "Por que seu nível parece muito errado?",
+      "reasonPlaceholder": "Conte por que seu nível parece muito errado…",
+      "reasonHelper": "Obrigatório. {{count}} de {{max}} caracteres.",
+      "evidenceShow": "Adicionar evidência opcional",
+      "evidenceHide": "Ocultar evidência opcional",
+      "evidenceLabel": "Evidência",
+      "evidenceHelper": "Texto simples opcional. Links permanecem como texto e nunca são abertos automaticamente. {{count}} de {{max}} caracteres.",
+      "forwardOnly": "Somente um administrador da plataforma analisa as solicitações. A aprovação altera seu nível atual apenas daqui em diante; partidas passadas não são recalculadas.",
+      "submit": "Enviar solicitação",
+      "submitting": "Enviando…",
+      "submitted": "Solicitação recebida. Abrindo o status…",
+      "loading": "Carregando seu nível atual…"
+    },
+    "validation": {
+      "levelRequired": "Informe um nível.",
+      "levelFormat": "Use dígitos e um separador decimal, por exemplo {{example}}.",
+      "levelPrecision": "Use no máximo duas casas decimais.",
+      "levelRange": "Informe um nível de {{min}} a {{max}}.",
+      "rangeOrder": "O menor nível não pode ser maior que o maior nível.",
+      "reasonRequired": "Informe por que seu nível está incorreto.",
+      "reasonTooLong": "Mantenha o motivo em até {{max}} caracteres.",
+      "evidenceTooLong": "Mantenha a evidência em até {{max}} caracteres."
+    },
+    "errors": {
+      "unauthenticated": "Sua sessão expirou. Entre novamente.",
+      "forbidden": "Você não pode solicitar nem ver esta revisão.",
+      "notFound": "Esta solicitação não existe ou você não pode vê-la.",
+      "invalid": "Esses dados não são válidos. Confira o formulário e tente novamente.",
+      "duplicate": "Você já tem uma solicitação de revisão de nível ativa.",
+      "rateLimited": "Você enviou solicitações demais recentemente. Tente novamente mais tarde.",
+      "ratingUnavailable": "Seu nível atual ainda não está disponível.",
+      "conflict": "Esta solicitação mudou. Confira o formulário e envie novamente.",
+      "invalidTransition": "Esta solicitação já foi encerrada.",
+      "unavailable": "Algo deu errado. Tente novamente.",
+      "unconfirmed": "Não conseguimos confirmar que sua solicitação foi salva. Tentar de novo é seguro: não cria duplicata.",
+      "offline": "Você está sem conexão, então nada foi enviado. Reconecte e tente novamente; repetir não cria duplicata.",
+      "retry": "Tentar novamente",
+      "viewActive": "Ver sua solicitação ativa",
+      "checkRequests": "Ver suas solicitações"
+    },
+    "status": {
+      "pending": "Pendente",
+      "under_review": "Em análise",
+      "approved": "Aprovada",
+      "rejected": "Rejeitada",
+      "canceled": "Cancelada",
+      "detail": {
+        "pending": "Aguardando análise de um administrador da plataforma.",
+        "under_review": "Um administrador da plataforma está analisando sua solicitação.",
+        "approved": "Nível atual corrigido daqui em diante. Partidas passadas não mudam.",
+        "rejected": "Solicitação encerrada. Há uma nota da revisão.",
+        "canceled": "Você cancelou esta solicitação."
+      }
+    },
+    "range": {
+      "exact": "{{level}}",
+      "between": "{{min}} a {{max}}"
+    },
+    "loadErrorTitle": "Não foi possível carregar a revisão de nível",
+    "history": {
+      "title": "Solicitações de revisão de nível",
+      "subtitle": "Suas solicitações e o que aconteceu com elas.",
+      "newRequest": "Solicitar revisão de nível",
+      "viewActive": "Ver solicitação ativa",
+      "emptyTitle": "Nenhuma solicitação ainda",
+      "emptyDescription": "Acha que seu nível está muito errado? Envie uma solicitação e um administrador da plataforma fará a análise.",
+      "loadingTitle": "Carregando solicitações",
+      "loading": "Carregando suas solicitações de revisão de nível…",
+      "loadMore": "Carregar mais solicitações",
+      "loadingMore": "Carregando solicitações…",
+      "showing_one": "Mostrando {{count}} solicitação",
+      "showing_other": "Mostrando {{count}} solicitações",
+      "itemRequested": "Solicitado {{range}}",
+      "itemSubmitted": "Enviada em {{date}}"
+    },
+    "detail": {
+      "title": "Status da revisão de nível",
+      "context": "Solicitação #{{id}} · Enviada em {{date}}",
+      "back": "Voltar às solicitações",
+      "requestHeading": "Sua solicitação",
+      "snapshotLevel": "Nível ao enviar",
+      "snapshotReliability": "Confiabilidade ao enviar",
+      "requested": "Nível solicitado",
+      "currentNow": "Seu nível agora",
+      "reasonLabel": "Seu motivo",
+      "evidenceLabel": "Sua evidência",
+      "noEvidence": "Nenhuma evidência adicionada.",
+      "timelineHeading": "Linha do tempo",
+      "timelineSubmitted": "Enviada em {{date}}",
+      "timelineReview": "Em análise desde {{date}}",
+      "timelineCanceled": "Cancelada em {{date}}",
+      "timelineDecided": "Decidida em {{date}}",
+      "decisionHeading": "Decisão",
+      "decisionNote": "Nota da revisão",
+      "approvedLevel": "Nível aprovado",
+      "appliedLink": "Ver a correção no seu histórico de rating",
+      "annotation": "Sua solicitação e qualquer decisão ficam aqui. Níveis não podem ser editados diretamente.",
+      "cancel": "Cancelar solicitação",
+      "canceled": "Solicitação cancelada.",
+      "refreshFailed": "Não foi possível atualizar esta solicitação. Mostrando as últimas informações carregadas.",
+      "refresh": "Atualizar",
+      "loadingTitle": "Carregando solicitação",
+      "loading": "Carregando sua solicitação…"
+    },
+    "cancelDialog": {
+      "title": "Cancelar esta solicitação?",
+      "description": "Um administrador da plataforma deixará de analisá-la. Você poderá enviar uma nova solicitação depois.",
+      "confirm": "Cancelar solicitação",
+      "keep": "Manter solicitação",
+      "canceling": "Cancelando…"
     }
   }
 }
