@@ -151,13 +151,31 @@ async function touchTargets(root: Locator) {
   }
 }
 
+/**
+ * Opens the stored-values explanation. The dialog is bound to the GLOBAL committed rating
+ * projection revision (control row), so any confirmation or level-review decision committed by
+ * a concurrent worker between page load and open legitimately yields the product's stale alert
+ * instead of numbers (the deterministic stale path is covered by the dedicated "stale
+ * explanation" test below). Recover through the product's own Reload action, then reopen
+ * against the refreshed revision; bounded, no sleeps.
+ */
 async function openExplanation(page: Page, trigger: Locator, locale: Locale) {
-  await trigger.focus();
-  await trigger.press('Enter');
-  const dialog = page.getByRole('dialog', { name: copies[locale].rating.explanation.title });
-  await expect(dialog).toBeVisible();
-  await expect(dialog.getByText(copies[locale].rating.explanation.loading)).toHaveCount(0);
-  return dialog;
+  const copy = copies[locale].rating;
+  const dialog = page.getByRole('dialog', { name: copy.explanation.title });
+  for (let attempt = 0; attempt < 5; attempt++) {
+    await trigger.focus();
+    await trigger.press('Enter');
+    await expect(dialog).toBeVisible();
+    const stale = dialog.getByRole('alert').filter({ hasText: copy.errors.stale_revision });
+    await expect(stale.or(dialog.getByRole('listitem').first())).toBeVisible();
+    if (!(await stale.isVisible())) {
+      await expect(dialog.getByText(copy.explanation.loading)).toHaveCount(0);
+      return dialog;
+    }
+    await dialog.getByRole('button', { name: copy.errors.reload }).click();
+    await expect(dialog).toBeHidden();
+  }
+  throw new Error('Rating explanation stayed stale after 5 reloads');
 }
 
 async function closeWithKeyboard(page: Page, dialog: Locator, trigger: Locator) {
@@ -656,12 +674,14 @@ test('provisional players on either side are rated normally; claims keep ratings
   await viewer.goto('/dashboard');
   await waitForHydratedPage(viewer);
   const viewerRegion = await journey(viewer);
-  await viewerRegion
-    .getByRole('listitem')
-    .filter({ hasText: day(at(1)) })
-    .getByRole('button')
-    .click();
-  const dialog = viewer.getByRole('dialog', { name: rating.explanation.title });
+  const dialog = await openExplanation(
+    viewer,
+    viewerRegion
+      .getByRole('listitem')
+      .filter({ hasText: day(at(1)) })
+      .getByRole('button'),
+    'en'
+  );
   await expect(dialog.getByText(en.player.provisional.badge, { exact: true })).toHaveCount(2);
   await expect(dialog.getByText(f.creator.name)).toHaveCount(0);
   assertNoPrivateFields(wire, [f.creator.id, f.creator.email, p1.email, p3.email]);

@@ -1,4 +1,5 @@
 import { spawn } from 'node:child_process';
+import { serializeMatchFixtureSql, withDeadlockRetry } from './match-fixture-sql';
 import { readFileSync } from 'node:fs';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import {
@@ -362,12 +363,14 @@ function runSupabaseQuery(
   });
 }
 
-async function fixtureSql(sql: string): Promise<void> {
-  const result = await runSupabaseQuery(`do $$ begin ${sql} end $$;`);
-  if (result.code !== 0)
-    throw new Error(
-      `Trusted fixture SQL failed (${result.code}): ${result.stdout}\n${result.stderr}`
-    );
+function fixtureSql(sql: string): Promise<void> {
+  return withDeadlockRetry(async () => {
+    const result = await runSupabaseQuery(serializeMatchFixtureSql(`do $$ begin ${sql} end $$;`));
+    if (result.code !== 0)
+      throw new Error(
+        `Trusted fixture SQL failed (${result.code}): ${result.stdout}\n${result.stderr}`
+      );
+  });
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

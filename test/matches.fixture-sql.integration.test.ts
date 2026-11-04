@@ -28,10 +28,10 @@ it(
       );
       const pid = Number(holderRows[0]!.pid);
       contender = startSql(
-        serializeMatchFixtureSql(`do $$ begin
+        serializeMatchFixtureSql(`do $fixture$ begin
       -- ${marker}-contender
       lock table public.match_events in share row exclusive mode;
-    end $$;`)
+    end $fixture$;`)
       );
       const blocked = await waitForRows(
         `select a.pid from pg_stat_activity a where a.pid<>pg_backend_pid()

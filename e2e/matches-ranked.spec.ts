@@ -374,7 +374,13 @@ test('provisional player joins a Ranked event, is carried on League change and k
   await add.getByRole('slider').fill('3.5');
   await add.getByRole('button', { name: m.addPlayer.submit, exact: true }).click();
   await expect(add).toHaveCount(0);
-  await expect(organizer.getByText(en.player.provisional.badge, { exact: true })).toHaveCount(1);
+  // Under 5-worker load the add RPC + roster refetch can outlast the default 5s expect timeout.
+  await expect(
+    organizer.getByText(fill(m.addPlayer.success, { name: 'Carla Convidada' }), { exact: true })
+  ).toBeVisible({ timeout: 20_000 });
+  await expect(organizer.getByText(en.player.provisional.badge, { exact: true })).toHaveCount(1, {
+    timeout: 20_000
+  });
   const [provisional] = await sql(
     `select r.user_id::text as id, r.lifecycle::text, p.is_provisional::text as provisional,
             (select league_id::text from public.match_events where id='${eventId}') as league
