@@ -256,8 +256,8 @@ describe('global rating ledger schema', { timeout: 120_000 }, () => {
                     where p.schemaname = 'public' and p.tablename = '${table}'
                       and p.permissive = 'RESTRICTIVE') as restrictive,
                   (select count(*)::int from pg_catalog.pg_trigger t
-                    where t.tgrelid = c.oid and not t.tgisinternal and t.tgname like '%immutable'
-                       or t.tgrelid = c.oid and t.tgname like '%no_truncate') as guards
+                    where t.tgrelid = c.oid and not t.tgisinternal
+                      and (t.tgname like '%immutable' or t.tgname like '%no_truncate')) as guards
              from pg_catalog.pg_class c where c.oid = 'public.${table}'::regclass`
         );
         expect(row).toMatchObject({ rls: true, grants: 0, restrictive: 1 });

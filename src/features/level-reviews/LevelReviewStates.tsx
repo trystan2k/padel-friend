@@ -11,8 +11,8 @@ export function LevelReviewLoading({ title, description }: { title: string; desc
   return (
     <main {...stylex.props(s.page)}>
       <output {...stylex.props(s.card)}>
-        <p {...stylex.props(s.cardTitle)}>{title}</p>
-        <p {...stylex.props(s.muted)}>{description}</p>
+        <span {...stylex.props(s.cardTitle)}>{title}</span>
+        <span {...stylex.props(s.muted)}>{description}</span>
       </output>
     </main>
   );

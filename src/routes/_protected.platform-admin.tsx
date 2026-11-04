@@ -17,6 +17,7 @@ function PlatformAdminError({ error }: { error: unknown }) {
   return (
     <LevelReviewLoadError
       code={levelReviewErrorCode(error)}
+      returnPath="/platform-admin/level-reviews"
       onRetry={() => void router.invalidate()}
     />
   );

@@ -134,8 +134,8 @@ export function RatingProgressChart({ progress }: { progress: RatingProgress }) 
       {progress.abbreviated && (
         <p {...stylex.props(s.copy)}>
           {t('rating.progress.abbreviated', {
-            shown: progress.points.length,
-            total: progress.total_points
+            shown: progress.points.filter((point) => point.kind === 'match').length,
+            total: progress.total_events
           })}
         </p>
       )}

@@ -5,7 +5,6 @@ import { useRef, useState, type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { stripEdgeWhitespace } from '../../lib/edge-whitespace';
 import { getBrowserClient } from '../../lib/supabase/client';
-import { levelReview } from '../level-reviews/level-review.styles';
 import { AvatarUpload } from './AvatarUpload';
 import { updateMyPlayerProfile } from './player.functions';
 import { playerInitials } from './player-initials';
@@ -192,15 +191,15 @@ export function PlayerProfile({
         </div>
       </section>
       <section aria-labelledby="level-review-entry" {...stylex.props(ui.card, ui.profileCard)}>
-        <h2 id="level-review-entry" {...stylex.props(levelReview.cardTitle)}>
+        <h2 id="level-review-entry" {...stylex.props(ui.levelReviewTitle)}>
           {t('levelReview.entry.title')}
         </h2>
-        <p {...stylex.props(levelReview.muted)}>{t('levelReview.entry.description')}</p>
-        <div {...stylex.props(levelReview.actions)}>
-          <Link to="/level-reviews/new" {...stylex.props(levelReview.primaryLink)}>
+        <p {...stylex.props(ui.muted)}>{t('levelReview.entry.description')}</p>
+        <div {...stylex.props(ui.levelReviewActions)}>
+          <Link to="/level-reviews/new" {...stylex.props(ui.levelReviewPrimaryLink)}>
             {t('levelReview.entry.request')}
           </Link>
-          <Link to="/level-reviews" {...stylex.props(levelReview.actionLink)}>
+          <Link to="/level-reviews" {...stylex.props(ui.levelReviewActionLink)}>
             {t('levelReview.entry.history')}
           </Link>
         </div>

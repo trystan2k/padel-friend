@@ -76,7 +76,8 @@ const manyProgress = () =>
     resolution: 'sampled',
     abbreviated: true,
     total_events: 12,
-    total_points: 12,
+    // Adjustment checkpoints are points, never games: the games copy must use total_events.
+    total_points: 14,
     range: { from: manyPoints[0]!.played_at, to: manyPoints[3]!.played_at },
     points: manyPoints
   });
@@ -133,6 +134,36 @@ describe('RatingProgressChart', () => {
       .slice(1)
       .map((row) => within(row).getAllByRole('cell').at(-1)?.textContent);
     expect(levels).toEqual(['4,00', '4,00', '4,10', '4,20', '4,30']);
+  });
+
+  it('counts only games, not displayed correction checkpoints, in the abbreviation notice', () => {
+    const adjustmentPoints = [2, 3].map((ordinal, index) => ({
+      ordinal: ordinal + 2,
+      kind: 'adjustment',
+      event_id: `00000000-0000-4000-8000-0000000000a${index + 1}`,
+      game_group_id: null,
+      played_at: `2026-0${ordinal + 2}-02T10:00:00.000000Z`,
+      display_level: 4.5 + index * 0.1
+    }));
+    render(
+      wrap(
+        <RatingProgressChart
+          progress={progress({
+            resolution: 'sampled',
+            abbreviated: true,
+            total_events: 2,
+            total_points: 4,
+            range: { from: manyPoints[0]!.played_at, to: adjustmentPoints[1]!.played_at },
+            points: [manyPoints[0], manyPoints[1], ...adjustmentPoints]
+          })}
+        />
+      )
+    );
+    expect(
+      screen.getByText(
+        'Showing 2 of 2 confirmed games. The first and latest games are always included.'
+      )
+    ).toBeTruthy();
   });
 
   it('states the starting level and draws nothing when there are no points', () => {

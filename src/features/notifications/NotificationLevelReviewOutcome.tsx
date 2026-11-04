@@ -35,9 +35,7 @@ export function NotificationLevelReviewOutcome({
           range: formatRequestedRange(context, i18n.language, t)
         })}
       </p>
-      <p>
-        {t('notifications.levelReview.note')}: {context.decision_note}
-      </p>
+      <p>{t('notifications.levelReview.note', { note: context.decision_note })}</p>
       <p>
         {t('notifications.levelReview.decided', {
           date: formatRatingDate(context.decided_at, i18n.language)

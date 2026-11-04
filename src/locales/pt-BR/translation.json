@@ -529,7 +529,7 @@
       "approvedBody": "Seu nível agora é {{level}}. A mudança vale apenas para partidas futuras; resultados passados e classificações de ligas não mudam.",
       "rejectedBody": "Seu nível permanece o mesmo. Nenhuma alteração de rating foi feita.",
       "requested": "Solicitado: {{range}}",
-      "note": "Observação da revisão",
+      "note": "Observação da revisão: {{note}}",
       "decided": "Decidido em {{date}}"
     },
     "result": {

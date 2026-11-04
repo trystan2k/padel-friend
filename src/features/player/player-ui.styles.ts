@@ -389,6 +389,47 @@ export const ui = stylex.create({
     fontWeight: 'var(--font-weight-bold)'
   },
   stack: { display: 'flex', flexDirection: 'column', gap: 'var(--space-9)' },
+  levelReviewTitle: {
+    margin: 0,
+    fontFamily: 'var(--font-family-heading)',
+    fontSize: 'var(--font-size-14)',
+    fontWeight: 'var(--font-weight-bold)'
+  },
+  levelReviewActions: { display: 'flex', flexWrap: 'wrap', gap: 'var(--space-8)' },
+  levelReviewActionLink: {
+    boxSizing: 'border-box',
+    display: 'inline-flex',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    minHeight: 'calc(var(--space-40) + var(--space-4))',
+    color: 'var(--color-green)',
+    fontSize: 'var(--font-size-12)',
+    fontWeight: 'var(--font-weight-bold)',
+    textDecoration: 'underline',
+    ':focus-visible': {
+      outline: 'var(--border-width-lg) solid var(--color-green)',
+      outlineOffset: 'var(--space-2)'
+    }
+  },
+  levelReviewPrimaryLink: {
+    boxSizing: 'border-box',
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 'calc(var(--space-40) + var(--space-4))',
+    paddingInline: 'var(--space-14)',
+    borderRadius: 'var(--radius-12)',
+    backgroundColor: 'var(--color-green)',
+    color: 'var(--color-bg)',
+    fontSize: 'var(--font-size-13)',
+    fontWeight: 'var(--font-weight-bold)',
+    textAlign: 'center',
+    textDecoration: 'none',
+    ':focus-visible': {
+      outline: 'var(--border-width-lg) solid var(--color-green)',
+      outlineOffset: 'var(--space-2)'
+    }
+  },
   srOnly: {
     position: 'absolute',
     width: 'var(--space-1)',
