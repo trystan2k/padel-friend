@@ -283,6 +283,7 @@ export class FixtureCleanupRegistry {
     ].join(' OR ');
     const triggers = [
       ['player_rating_event_calculations', 'player_rating_calculations_immutable'],
+      ['player_rating_event_sources', 'player_rating_event_sources_immutable'],
       ['player_rating_events', 'player_rating_events_immutable'],
       ['player_rating_initializations', 'player_rating_initializations_immutable'],
       ['player_rating_adjustment_states', 'player_rating_adjustment_states_immutable'],
@@ -305,6 +306,7 @@ export class FixtureCleanupRegistry {
             ]
           : []),
         `DELETE FROM public.player_rating_event_calculations WHERE rating_event_id IN (SELECT id FROM public.player_rating_events WHERE ${eventPredicate})`,
+        `DELETE FROM public.player_rating_event_sources WHERE rating_event_id IN (SELECT id FROM public.player_rating_events WHERE ${eventPredicate})`,
         `DELETE FROM public.player_rating_events WHERE ${eventPredicate}`,
         ...(users.length > 0
           ? [`DELETE FROM public.player_rating_initializations WHERE ${users.join(' OR ')}`]
@@ -434,13 +436,16 @@ export function ratingEvidenceCleanupSql(userIdsSql: string): string {
     DELETE FROM public.player_level_review_requests WHERE owner_id IN (${userIdsSql});
     DELETE FROM public.player_rating_admin_adjustments WHERE user_id IN (${userIdsSql});
     ALTER TABLE public.player_rating_event_calculations DISABLE TRIGGER player_rating_calculations_immutable;
+    ALTER TABLE public.player_rating_event_sources DISABLE TRIGGER player_rating_event_sources_immutable;
     ALTER TABLE public.player_rating_events DISABLE TRIGGER player_rating_events_immutable;
     ALTER TABLE public.player_rating_initializations DISABLE TRIGGER player_rating_initializations_immutable;
     DELETE FROM public.player_rating_event_calculations WHERE rating_event_id IN (SELECT id FROM public.player_rating_events WHERE user_id IN (${userIdsSql}));
+    DELETE FROM public.player_rating_event_sources WHERE rating_event_id IN (SELECT id FROM public.player_rating_events WHERE user_id IN (${userIdsSql}));
     DELETE FROM public.player_rating_events WHERE user_id IN (${userIdsSql});
     DELETE FROM public.player_rating_initializations WHERE user_id IN (${userIdsSql});
     ALTER TABLE public.player_rating_initializations ENABLE TRIGGER player_rating_initializations_immutable;
     ALTER TABLE public.player_rating_events ENABLE TRIGGER player_rating_events_immutable;
+    ALTER TABLE public.player_rating_event_sources ENABLE TRIGGER player_rating_event_sources_immutable;
     ALTER TABLE public.player_rating_event_calculations ENABLE TRIGGER player_rating_calculations_immutable;
     SET CONSTRAINTS public.player_rating_adjustment_request_fk, public.level_review_adjustment_fk IMMEDIATE;
     ALTER TABLE public.player_level_review_requests ENABLE TRIGGER level_review_requests_no_delete;

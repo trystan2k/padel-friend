@@ -421,10 +421,10 @@ describe.skipIf(!environment.env)('player statistics rank history', { timeout: 6
     const revision = (await committedRevision()) + 1;
     // Trusted seam: a replay appends a calculation revision; p0 becomes established at a lower level.
     await fixtureSql(
-      'insert into public.player_rating_event_calculations (rating_event_id, projection_revision, rating_engine, rating_engine_version, rating_config_version, before_mu, before_sigma, before_display_level, before_reliability_percent, before_confirmed_groups, before_highest_display_level, after_mu, after_sigma, after_display_level, after_reliability_percent, after_confirmed_groups, after_highest_display_level, last_rating_at, inputs, explanation) ' +
+      'insert into public.player_rating_event_calculations (rating_event_id, projection_revision, rating_engine, rating_engine_version, rating_config_version, before_mu, before_sigma, before_display_level, before_reliability_percent, before_confirmed_groups, before_highest_display_level, after_mu, after_sigma, after_display_level, after_reliability_percent, after_confirmed_groups, after_highest_display_level, last_rating_at, inputs, explanation, source_revision) ' +
         'select c.rating_event_id, ' +
         revision +
-        ', c.rating_engine, c.rating_engine_version, c.rating_config_version, c.before_mu, c.before_sigma, c.before_display_level, 94, 14, c.before_highest_display_level, c.after_mu, c.after_sigma, 3.50, 100, 15, greatest(c.after_highest_display_level, 3.50), c.last_rating_at, c.inputs, c.explanation ' +
+        ', c.rating_engine, c.rating_engine_version, c.rating_config_version, c.before_mu, c.before_sigma, c.before_display_level, 94, 14, c.before_highest_display_level, c.after_mu, c.after_sigma, 3.50, 100, 15, greatest(c.after_highest_display_level, 3.50), c.last_rating_at, c.inputs, c.explanation, c.source_revision ' +
         'from public.player_rating_events e cross join lateral (select k.* from public.player_rating_event_calculations k where k.rating_event_id = e.id order by k.projection_revision desc limit 1) c ' +
         'where e.user_id = ' +
         T(id(0)) +

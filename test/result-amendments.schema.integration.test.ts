@@ -62,7 +62,7 @@ describe('result amendment schema contract', { timeout: 120000 }, () => {
       void_decision_id: null
     });
     const orphan = await sqlRows(
-      'select count(*)::int as n from public.match_event_result_confirmations c where not exists (select 1 from public.match_event_result_official_state s where s.current_confirmation_id = c.id)'
+      'select count(*)::int as n from public.match_event_result_confirmations c where not exists (select 1 from public.match_event_result_official_state s where s.proposal_id = c.proposal_id)'
     );
     expect(orphan).toEqual([{ n: 0 }]);
     const canonical = await sqlRows(

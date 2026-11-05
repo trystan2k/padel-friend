@@ -1163,8 +1163,21 @@ export type Database = {
           proposal_version: number
           ratable_eligible: boolean
           source: string
+          result_repair_guard_confirmation: {
+            actor_id: string | null
+            confirmed_at: string
+            effective_at: string
+            event_type: Database["public"]["Enums"]["match_event_type"]
+            group_number: number
+            id: string
+            match_event_id: string
+            proposal_id: string
+            proposal_version: number
+            ratable_eligible: boolean
+            source: string
+          } | null
         }
-        ComputedFields: never
+        ComputedFields: "result_repair_guard_confirmation"
         Insert: {
           actor_id?: string | null
           confirmed_at?: string
@@ -2545,6 +2558,7 @@ export type Database = {
           rating_engine: string
           rating_engine_version: string
           rating_event_id: string
+          source_revision: number
         }
         ComputedFields: never
         Insert: {
@@ -2569,6 +2583,7 @@ export type Database = {
           rating_engine: string
           rating_engine_version: string
           rating_event_id: string
+          source_revision: number
         }
         Update: {
           after_confirmed_groups?: number
@@ -2592,13 +2607,93 @@ export type Database = {
           rating_engine?: string
           rating_engine_version?: string
           rating_event_id?: string
+          source_revision?: number
         }
         Relationships: [
+          {
+            foreignKeyName: "player_rating_calculation_source_fk"
+            columns: ["rating_event_id", "source_revision"]
+            isOneToOne: false
+            referencedRelation: "player_rating_event_sources"
+            referencedColumns: ["rating_event_id", "projection_revision"]
+          },
           {
             foreignKeyName: "player_rating_event_calculations_rating_event_id_fkey"
             columns: ["rating_event_id"]
             isOneToOne: false
             referencedRelation: "player_rating_events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      player_rating_event_sources: {
+        Row: {
+          amendment_id: string | null
+          confirmation_id: string
+          game_group_id: string
+          is_active: boolean
+          played_at: string
+          projection_revision: number
+          proposal_version: number
+          rating_event_id: string
+          reason: string
+          recorded_at: string
+          repair_job_id: string | null
+        }
+        ComputedFields: never
+        Insert: {
+          amendment_id?: string | null
+          confirmation_id: string
+          game_group_id: string
+          is_active: boolean
+          played_at: string
+          projection_revision: number
+          proposal_version: number
+          rating_event_id: string
+          reason: string
+          recorded_at?: string
+          repair_job_id?: string | null
+        }
+        Update: {
+          amendment_id?: string | null
+          confirmation_id?: string
+          game_group_id?: string
+          is_active?: boolean
+          played_at?: string
+          projection_revision?: number
+          proposal_version?: number
+          rating_event_id?: string
+          reason?: string
+          recorded_at?: string
+          repair_job_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "player_rating_event_source_confirmation_fk"
+            columns: ["confirmation_id", "game_group_id", "proposal_version"]
+            isOneToOne: false
+            referencedRelation: "match_event_result_confirmations"
+            referencedColumns: ["id", "proposal_id", "proposal_version"]
+          },
+          {
+            foreignKeyName: "player_rating_event_source_event_fk"
+            columns: ["rating_event_id", "game_group_id"]
+            isOneToOne: false
+            referencedRelation: "player_rating_events"
+            referencedColumns: ["id", "game_group_id"]
+          },
+          {
+            foreignKeyName: "player_rating_event_sources_amendment_id_fkey"
+            columns: ["amendment_id"]
+            isOneToOne: false
+            referencedRelation: "result_amendment_requests"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "player_rating_event_sources_repair_job_id_fkey"
+            columns: ["repair_job_id"]
+            isOneToOne: false
+            referencedRelation: "result_repair_jobs"
             referencedColumns: ["id"]
           },
         ]
@@ -3087,12 +3182,17 @@ export type Database = {
         Row: {
           attempt_number: number
           base_revision: number | null
+          duration_ms: number | null
+          events_total: number | null
           failure_code: string | null
           fence_token: string
           finished_at: string | null
+          groups_replayed: number | null
           id: string
           job_id: string
           result_revision: number | null
+          sources_total: number | null
+          stage: string | null
           started_at: string
           status: string
         }
@@ -3100,24 +3200,34 @@ export type Database = {
         Insert: {
           attempt_number: number
           base_revision?: number | null
+          duration_ms?: number | null
+          events_total?: number | null
           failure_code?: string | null
           fence_token: string
           finished_at?: string | null
+          groups_replayed?: number | null
           id?: string
           job_id: string
           result_revision?: number | null
+          sources_total?: number | null
+          stage?: string | null
           started_at?: string
           status?: string
         }
         Update: {
           attempt_number?: number
           base_revision?: number | null
+          duration_ms?: number | null
+          events_total?: number | null
           failure_code?: string | null
           fence_token?: string
           finished_at?: string | null
+          groups_replayed?: number | null
           id?: string
           job_id?: string
           result_revision?: number | null
+          sources_total?: number | null
+          stage?: string | null
           started_at?: string
           status?: string
         }
@@ -3141,7 +3251,11 @@ export type Database = {
           community_id: string
           expected_base_confirmation_id: string
           failure_code: string | null
+          failure_stage: string | null
           finished_at: string | null
+          frozen_rating_config_version: number
+          frozen_rating_engine: string
+          frozen_rating_engine_version: string
           group_number: number
           id: string
           kind: string
@@ -3169,7 +3283,11 @@ export type Database = {
           community_id: string
           expected_base_confirmation_id: string
           failure_code?: string | null
+          failure_stage?: string | null
           finished_at?: string | null
+          frozen_rating_config_version?: number
+          frozen_rating_engine?: string
+          frozen_rating_engine_version?: string
           group_number: number
           id?: string
           kind: string
@@ -3195,7 +3313,11 @@ export type Database = {
           community_id?: string
           expected_base_confirmation_id?: string
           failure_code?: string | null
+          failure_stage?: string | null
           finished_at?: string | null
+          frozen_rating_config_version?: number
+          frozen_rating_engine?: string
+          frozen_rating_engine_version?: string
           group_number?: number
           id?: string
           kind?: string
@@ -4299,6 +4421,7 @@ export type Database = {
         Args: { p_amendment_id: string; p_command_id: string }
         Returns: Json
       }
+      claim_due_result_repairs: { Args: { p_limit?: number }; Returns: Json }
       claim_match_player_add_redrives: { Args: { p_limit?: number }; Returns: Json }
       claim_provisional_player: {
         Args: {
@@ -4309,6 +4432,10 @@ export type Database = {
           p_preferred_side: string
         }
         Returns: undefined
+      }
+      claim_result_repair_job: {
+        Args: { p_job_id?: string; p_lease_seconds?: number }
+        Returns: Json
       }
       classify_match_result_sets: { Args: { p_sets: Json }; Returns: string }
       close_league: { Args: { p_expected_version: number; p_league_id: string }; Returns: Json }
@@ -4389,6 +4516,11 @@ export type Database = {
         }
         Returns: string
       }
+      execute_claimed_result_repair: {
+        Args: { p_attempt_number: number; p_job_id: string }
+        Returns: Json
+      }
+      execute_result_repair: { Args: { p_fence_token: string; p_job_id: string }; Returns: Json }
       expire_match_event_invitations_locked: {
         Args: { p_as_of: string; p_event_id: string }
         Returns: number
@@ -4665,9 +4797,14 @@ export type Database = {
         Args: { p_game_group_id: string; p_revision?: number }
         Returns: Json
       }
+      get_rating_history_audit: {
+        Args: { p_limit?: number; p_revision: number; p_user_id: string }
+        Returns: Json
+      }
       get_result_amendments: { Args: { p_match_event_id: string }; Returns: Json[] }
       get_result_dispute_resolutions: { Args: { p_match_event_id: string }; Returns: Json[] }
       get_result_repair_attempts: { Args: { p_job_id: string }; Returns: Json[] }
+      get_result_repair_diagnostics: { Args: { p_community_id?: string }; Returns: Json }
       get_result_repair_jobs: { Args: { p_match_event_id: string }; Returns: Json[] }
       get_statistics_config: { Args: Record<PropertyKey, never>; Returns: Json }
       get_statistics_group_detail: {
@@ -5379,12 +5516,50 @@ export type Database = {
           rating_engine_version: string
           rating_event_id: string
           revision_count: number
+          source_confirmation_id: string
+          source_proposal_version: number
+          source_revision: number
         }[]
+      }
+      rating_event_sources_at: {
+        Args: { p_revision: number }
+        Returns: {
+          confirmation_id: string
+          game_group_id: string
+          game_group_number: number
+          is_active: boolean
+          match_event_id: string
+          played_at: string
+          proposal_version: number
+          rating_event_id: string
+          source_revision: number
+          user_id: string
+        }[]
+      }
+      rating_event_sources_latest: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          confirmation_id: string
+          game_group_id: string
+          game_group_number: number
+          is_active: boolean
+          match_event_id: string
+          played_at: string
+          proposal_version: number
+          rating_event_id: string
+          source_revision: number
+          user_id: string
+        }[]
+      }
+      rating_group_ledgered_at: {
+        Args: { p_confirmation_id: string; p_game_group_id: string }
+        Returns: boolean
       }
       rating_projection_apply_group: {
         Args: {
           p_classification: string
           p_confirmation_id: string
+          p_context?: Json
           p_game_group_id: string
           p_group_number: number
           p_match_event_id: string
@@ -5413,7 +5588,10 @@ export type Database = {
       rating_projection_initial_state: { Args: { p_level: number }; Returns: Json }
       rating_projection_lock_covered: { Args: Record<PropertyKey, never>; Returns: undefined }
       rating_projection_prelock_sources: { Args: Record<PropertyKey, never>; Returns: undefined }
-      rating_projection_replay: { Args: { p_revision: number }; Returns: Record<string, unknown> }
+      rating_projection_replay: {
+        Args: { p_context?: Json; p_revision: number }
+        Returns: Record<string, unknown>
+      }
       rating_projection_write_states: {
         Args: { p_meta: Json; p_revision: number; p_states: Json }
         Returns: number
@@ -5638,6 +5816,18 @@ export type Database = {
         }
         Returns: undefined
       }
+      record_result_repair_audit: {
+        Args: {
+          j: Omit<
+            Database["public"]["Tables"]["result_repair_jobs"]["Row"],
+            Database["public"]["Tables"]["result_repair_jobs"]["ComputedFields"]
+          >
+          p_action: string
+          p_actor: string
+          p_data: Json
+        }
+        Returns: undefined
+      }
       remove_match_registration: {
         Args: {
           p_attempt_id: string
@@ -5733,7 +5923,41 @@ export type Database = {
         }
         Returns: Json
       }
+      result_repair_apply_fact_locked: {
+        Args: { p_job_id: string; p_revision: number }
+        Returns: Json
+      }
+      result_repair_authorized: { Args: { p_community_id: string }; Returns: boolean }
+      result_repair_backoff: { Args: { p_attempt_count: number }; Returns: string }
       result_repair_diagnostics_reader: { Args: { p_community_id: string }; Returns: boolean }
+      result_repair_failure_code: { Args: { p_message: string; p_stage: string }; Returns: string }
+      result_repair_guard_confirmation: {
+        Args: {
+          p_new: Omit<
+            Database["public"]["Tables"]["match_event_result_confirmations"]["Row"],
+            Database["public"]["Tables"]["match_event_result_confirmations"]["ComputedFields"]
+          >
+        }
+        Returns: {
+          actor_id: string | null
+          confirmed_at: string
+          effective_at: string
+          event_type: Database["public"]["Enums"]["match_event_type"]
+          group_number: number
+          id: string
+          match_event_id: string
+          proposal_id: string
+          proposal_version: number
+          ratable_eligible: boolean
+          source: string
+        }
+        SetofOptions: {
+          from: "match_event_result_confirmations"
+          to: "match_event_result_confirmations"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       result_repair_job_dto: {
         Args: {
           j: Omit<
@@ -5743,6 +5967,14 @@ export type Database = {
         }
         Returns: Json
       }
+      result_repair_prepare_locked: { Args: { p_job_id: string }; Returns: Json }
+      result_repair_publish_derived: {
+        Args: { p_job_id: string; p_revision: number }
+        Returns: undefined
+      }
+      result_repair_retryable: { Args: { p_code: string }; Returns: boolean }
+      result_repair_scheduler_health: { Args: Record<PropertyKey, never>; Returns: Json }
+      retry_result_repair: { Args: { p_job_id: string }; Returns: Json }
       review_match_event_result: {
         Args: {
           p_decision: string
@@ -5766,6 +5998,7 @@ export type Database = {
         }
         Returns: Json
       }
+      run_claimed_result_repairs: { Args: { p_limit?: number }; Returns: Json }
       safe_match_photo_uuid: { Args: { p_value: string }; Returns: string }
       safe_venue_photo_uuid: { Args: { p_value: string }; Returns: string }
       search_community_invitees: {

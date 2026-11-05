@@ -10,6 +10,7 @@ export default defineConfig({
   test: {
     ...baseConfig.test,
     include: [integrationInclude],
+    globalSetup: ['./test/helpers/result-repair-scheduler-setup.ts'],
     // DB-bound integration RPCs average ~3s locally and slower on CI runners; 5s caused multi-file contention flakes.
     testTimeout: 15_000,
     hookTimeout: 15_000,

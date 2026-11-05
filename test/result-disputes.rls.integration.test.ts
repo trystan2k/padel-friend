@@ -93,7 +93,16 @@ describe('result dispute and repair access control', { timeout: 240000 }, () => 
       "select p.proname, p.prosecdef, p.proconfig @> array['search_path=\"\"'] as pinned from pg_proc p where p.pronamespace = 'public'::regnamespace and (p.proname like '%result_dispute%' or p.proname like '%result_repair%' or p.proname = 'finalize_match_event_result_override_locked')"
     );
     expect(secdef.length).toBeGreaterThanOrEqual(12);
-    expect(secdef.filter((row) => row['prosecdef'] !== true || row['pinned'] !== true)).toEqual([]);
+    const invokerHelpers = new Set([
+      'result_repair_failure_code',
+      'result_repair_retryable',
+      'result_repair_backoff'
+    ]);
+    for (const row of secdef) {
+      expect(row['pinned']).toBe(true);
+      expect(row['prosecdef']).toBe(!invokerHelpers.has(String(row['proname'])));
+    }
+    expect(secdef.filter((row) => invokerHelpers.has(String(row['proname'])))).toHaveLength(3);
   });
 
   it('enables RLS with the provisional restriction and no browser DML on every new table', async () => {
