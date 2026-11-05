@@ -1295,6 +1295,13 @@ export type Database = {
             referencedRelation: "match_event_result_proposals"
             referencedColumns: ["id", "match_event_id", "group_number"]
           },
+          {
+            foreignKeyName: "official_state_void_decision_fk"
+            columns: ["void_decision_id"]
+            isOneToOne: false
+            referencedRelation: "result_dispute_resolutions"
+            referencedColumns: ["id"]
+          },
         ]
       }
       match_event_result_processing_state: {
@@ -2965,6 +2972,289 @@ export type Database = {
             referencedRelation: "match_event_result_proposals"
             referencedColumns: ["id", "match_event_id", "group_number"]
           },
+          {
+            foreignKeyName: "result_amendment_repair_job_fk"
+            columns: ["repair_job_id", "id"]
+            isOneToOne: false
+            referencedRelation: "result_repair_jobs"
+            referencedColumns: ["id", "amendment_id"]
+          },
+        ]
+      }
+      result_dispute_resolutions: {
+        Row: {
+          actor_id: string
+          amendment_id: string | null
+          base_confirmation_id: string | null
+          candidate_version: number
+          command_id: string
+          confirmation_id: string | null
+          decided_at: string
+          decision: string
+          evidence_review_id: string | null
+          fingerprint: string
+          group_number: number
+          id: string
+          justification: string
+          match_event_id: string
+          proposal_id: string
+          resolution_kind: string
+          result_dispute_resolution_dto: Json | null
+        }
+        ComputedFields: "result_dispute_resolution_dto"
+        Insert: {
+          actor_id: string
+          amendment_id?: string | null
+          base_confirmation_id?: string | null
+          candidate_version: number
+          command_id: string
+          confirmation_id?: string | null
+          decided_at?: string
+          decision: string
+          evidence_review_id?: string | null
+          fingerprint: string
+          group_number: number
+          id?: string
+          justification: string
+          match_event_id: string
+          proposal_id: string
+          resolution_kind: string
+        }
+        Update: {
+          actor_id?: string
+          amendment_id?: string | null
+          base_confirmation_id?: string | null
+          candidate_version?: number
+          command_id?: string
+          confirmation_id?: string | null
+          decided_at?: string
+          decision?: string
+          evidence_review_id?: string | null
+          fingerprint?: string
+          group_number?: number
+          id?: string
+          justification?: string
+          match_event_id?: string
+          proposal_id?: string
+          resolution_kind?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "result_dispute_resolution_amendment_fk"
+            columns: ["amendment_id", "proposal_id"]
+            isOneToOne: false
+            referencedRelation: "result_amendment_requests"
+            referencedColumns: ["id", "proposal_id"]
+          },
+          {
+            foreignKeyName: "result_dispute_resolution_group_fk"
+            columns: ["proposal_id", "match_event_id", "group_number"]
+            isOneToOne: false
+            referencedRelation: "match_event_result_proposals"
+            referencedColumns: ["id", "match_event_id", "group_number"]
+          },
+          {
+            foreignKeyName: "result_dispute_resolution_version_fk"
+            columns: ["proposal_id", "candidate_version"]
+            isOneToOne: true
+            referencedRelation: "match_event_result_proposal_versions"
+            referencedColumns: ["proposal_id", "version"]
+          },
+          {
+            foreignKeyName: "result_dispute_resolutions_base_confirmation_id_fkey"
+            columns: ["base_confirmation_id"]
+            isOneToOne: false
+            referencedRelation: "match_event_result_confirmations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "result_dispute_resolutions_confirmation_id_fkey"
+            columns: ["confirmation_id"]
+            isOneToOne: false
+            referencedRelation: "match_event_result_confirmations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "result_dispute_resolutions_evidence_review_id_fkey"
+            columns: ["evidence_review_id"]
+            isOneToOne: false
+            referencedRelation: "match_event_result_reviews"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      result_repair_attempts: {
+        Row: {
+          attempt_number: number
+          base_revision: number | null
+          failure_code: string | null
+          fence_token: string
+          finished_at: string | null
+          id: string
+          job_id: string
+          result_revision: number | null
+          started_at: string
+          status: string
+        }
+        ComputedFields: never
+        Insert: {
+          attempt_number: number
+          base_revision?: number | null
+          failure_code?: string | null
+          fence_token: string
+          finished_at?: string | null
+          id?: string
+          job_id: string
+          result_revision?: number | null
+          started_at?: string
+          status?: string
+        }
+        Update: {
+          attempt_number?: number
+          base_revision?: number | null
+          failure_code?: string | null
+          fence_token?: string
+          finished_at?: string | null
+          id?: string
+          job_id?: string
+          result_revision?: number | null
+          started_at?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "result_repair_attempts_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "result_repair_jobs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      result_repair_jobs: {
+        Row: {
+          amendment_id: string
+          attempt_count: number
+          candidate_version: number
+          command_fingerprint: string
+          committed_revision: number | null
+          community_id: string
+          expected_base_confirmation_id: string
+          failure_code: string | null
+          finished_at: string | null
+          group_number: number
+          id: string
+          kind: string
+          lease_expires_at: string | null
+          lease_token: string | null
+          match_event_id: string
+          next_attempt_at: string | null
+          proposal_id: string
+          reason: string
+          requested_at: string
+          requested_by: string | null
+          resolution_id: string | null
+          started_at: string | null
+          status: string
+          updated_at: string
+          result_repair_job_dto: Json | null
+        }
+        ComputedFields: "result_repair_job_dto"
+        Insert: {
+          amendment_id: string
+          attempt_count?: number
+          candidate_version: number
+          command_fingerprint: string
+          committed_revision?: number | null
+          community_id: string
+          expected_base_confirmation_id: string
+          failure_code?: string | null
+          finished_at?: string | null
+          group_number: number
+          id?: string
+          kind: string
+          lease_expires_at?: string | null
+          lease_token?: string | null
+          match_event_id: string
+          next_attempt_at?: string | null
+          proposal_id: string
+          reason: string
+          requested_at?: string
+          requested_by?: string | null
+          resolution_id?: string | null
+          started_at?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          amendment_id?: string
+          attempt_count?: number
+          candidate_version?: number
+          command_fingerprint?: string
+          committed_revision?: number | null
+          community_id?: string
+          expected_base_confirmation_id?: string
+          failure_code?: string | null
+          finished_at?: string | null
+          group_number?: number
+          id?: string
+          kind?: string
+          lease_expires_at?: string | null
+          lease_token?: string | null
+          match_event_id?: string
+          next_attempt_at?: string | null
+          proposal_id?: string
+          reason?: string
+          requested_at?: string
+          requested_by?: string | null
+          resolution_id?: string | null
+          started_at?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "result_repair_job_amendment_fk"
+            columns: ["amendment_id", "proposal_id"]
+            isOneToOne: false
+            referencedRelation: "result_amendment_requests"
+            referencedColumns: ["id", "proposal_id"]
+          },
+          {
+            foreignKeyName: "result_repair_job_candidate_fk"
+            columns: ["proposal_id", "candidate_version"]
+            isOneToOne: false
+            referencedRelation: "result_amendment_candidates"
+            referencedColumns: ["proposal_id", "version"]
+          },
+          {
+            foreignKeyName: "result_repair_job_group_fk"
+            columns: ["proposal_id", "match_event_id", "group_number"]
+            isOneToOne: false
+            referencedRelation: "match_event_result_proposals"
+            referencedColumns: ["id", "match_event_id", "group_number"]
+          },
+          {
+            foreignKeyName: "result_repair_jobs_community_id_fkey"
+            columns: ["community_id"]
+            isOneToOne: false
+            referencedRelation: "communities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "result_repair_jobs_expected_base_confirmation_id_fkey"
+            columns: ["expected_base_confirmation_id"]
+            isOneToOne: false
+            referencedRelation: "match_event_result_confirmations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "result_repair_jobs_resolution_id_fkey"
+            columns: ["resolution_id"]
+            isOneToOne: false
+            referencedRelation: "result_dispute_resolutions"
+            referencedColumns: ["id"]
+          },
         ]
       }
       statistics_config: {
@@ -4116,6 +4406,17 @@ export type Database = {
         }
         Returns: string
       }
+      finalize_match_event_result_override_locked: {
+        Args: {
+          p_actor_id: string
+          p_command_id: string
+          p_confirmation_id: string
+          p_expected_version: number
+          p_justification: string
+          p_proposal_id: string
+        }
+        Returns: string
+      }
       get_community_member_by_id: {
         Args: { p_community_id: string; p_membership_id: string }
         Returns: {
@@ -4365,6 +4666,9 @@ export type Database = {
         Returns: Json
       }
       get_result_amendments: { Args: { p_match_event_id: string }; Returns: Json[] }
+      get_result_dispute_resolutions: { Args: { p_match_event_id: string }; Returns: Json[] }
+      get_result_repair_attempts: { Args: { p_job_id: string }; Returns: Json[] }
+      get_result_repair_jobs: { Args: { p_match_event_id: string }; Returns: Json[] }
       get_statistics_config: { Args: Record<PropertyKey, never>; Returns: Json }
       get_statistics_group_detail: {
         Args: { p_event_id: string; p_game_group_id: string }
@@ -5021,6 +5325,18 @@ export type Database = {
         Args: { p_event_id: string; p_input: Json; p_invitee_ids: string[] }
         Returns: string
       }
+      queue_result_repair_job_locked: {
+        Args: {
+          p_amendment_id: string
+          p_command_id: string
+          p_kind: string
+          p_now: string
+          p_reason: string
+          p_requested_by: string
+          p_resolution_id: string
+        }
+        Returns: string
+      }
       rating_can_view_match_event: {
         Args: { p_match_event_id: string; p_viewer: string }
         Returns: boolean
@@ -5312,6 +5628,16 @@ export type Database = {
         }
         Returns: undefined
       }
+      record_result_dispute_audit: {
+        Args: {
+          p_now: string
+          x: Omit<
+            Database["public"]["Tables"]["result_dispute_resolutions"]["Row"],
+            Database["public"]["Tables"]["result_dispute_resolutions"]["ComputedFields"]
+          >
+        }
+        Returns: undefined
+      }
       remove_match_registration: {
         Args: {
           p_attempt_id: string
@@ -5345,6 +5671,17 @@ export type Database = {
         }
         Returns: Json
       }
+      resolve_result_dispute: {
+        Args: {
+          p_command_id: string
+          p_decision: string
+          p_expected_base_confirmation_id?: string
+          p_expected_candidate_version: number
+          p_justification: string
+          p_proposal_id: string
+        }
+        Returns: Json
+      }
       respond_match_event_invitation: {
         Args: { p_invitation_id: string; p_match_event_id: string; p_response: string }
         Returns: Json
@@ -5371,6 +5708,37 @@ export type Database = {
           r: Omit<
             Database["public"]["Tables"]["result_amendment_requests"]["Row"],
             Database["public"]["Tables"]["result_amendment_requests"]["ComputedFields"]
+          >
+        }
+        Returns: Json
+      }
+      result_dispute_event_reader: { Args: { p_match_event_id: string }; Returns: boolean }
+      result_dispute_receipt: {
+        Args: {
+          p_command_id: string
+          p_replayed: boolean
+          x: Omit<
+            Database["public"]["Tables"]["result_dispute_resolutions"]["Row"],
+            Database["public"]["Tables"]["result_dispute_resolutions"]["ComputedFields"]
+          >
+        }
+        Returns: Json
+      }
+      result_dispute_resolution_dto: {
+        Args: {
+          x: Omit<
+            Database["public"]["Tables"]["result_dispute_resolutions"]["Row"],
+            Database["public"]["Tables"]["result_dispute_resolutions"]["ComputedFields"]
+          >
+        }
+        Returns: Json
+      }
+      result_repair_diagnostics_reader: { Args: { p_community_id: string }; Returns: boolean }
+      result_repair_job_dto: {
+        Args: {
+          j: Omit<
+            Database["public"]["Tables"]["result_repair_jobs"]["Row"],
+            Database["public"]["Tables"]["result_repair_jobs"]["ComputedFields"]
           >
         }
         Returns: Json

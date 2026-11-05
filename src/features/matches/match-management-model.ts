@@ -132,7 +132,18 @@ const MATCH_AUDIT_ACTIONS: readonly string[] = [
   'result_corrected',
   'result_confirmed',
   'player_added',
-  'player_claimed'
+  'player_claimed',
+  'result_amendment_requested',
+  'result_amendment_candidate_submitted',
+  'result_amendment_candidate_superseded',
+  'result_amendment_approved',
+  'result_amendment_disputed',
+  'result_amendment_accepted',
+  'result_amendment_canceled',
+  'result_dispute_upheld',
+  'result_dispute_replaced',
+  'result_dispute_voided',
+  'result_repair_queued'
 ];
 export type MatchAuditEntry = {
   id: string;

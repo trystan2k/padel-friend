@@ -29,6 +29,8 @@ const PREDICATE_GATED_READERS = [
   'is_provisional_actor',
   'list_match_events',
   'result_amendment_reader',
+  'result_dispute_event_reader',
+  'result_repair_diagnostics_reader',
   'search_match_invitees'
 ];
 

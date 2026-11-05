@@ -2,6 +2,14 @@ import { createServerFn } from '@tanstack/react-start';
 import { setResponseHeader } from '@tanstack/react-start/server';
 import { requireAuthenticatedClient } from '../auth/auth.server';
 import {
+  parseResultDisputeReceipt,
+  parseResultDisputeResolutions,
+  parseResultRepairJobs,
+  type ResultDisputeReceipt,
+  type ResultDisputeResolution,
+  type ResultRepairJob
+} from './result-dispute-model';
+import {
   parseResultAmendmentReceipt,
   parseResultAmendments,
   resultAmendmentError,
@@ -13,6 +21,7 @@ import {
   validateCancelResultAmendment,
   validateGetResultAmendments,
   validateRequestResultAmendment,
+  validateResolveResultDispute,
   validateReviewResultAmendment,
   validateSubmitResultAmendmentCandidate
 } from './result-amendment.validators';
@@ -130,6 +139,57 @@ export const reviewResultAmendment = createServerFn({ method: 'POST' })
     });
     if (error) return resultAmendmentError(error);
     return receiptFor(parseResultAmendmentReceipt(result), data.command_id, data.amendment_id);
+  });
+
+export const resolveResultDispute = createServerFn({ method: 'POST' })
+  .validator(validateResolveResultDispute)
+  .handler(async ({ data }): Promise<ResultAmendmentResponse<ResultDisputeReceipt>> => {
+    const client = await amendmentClient();
+    const { data: result, error } = await client.rpc('resolve_result_dispute', {
+      p_proposal_id: data.proposal_id,
+      p_expected_candidate_version: data.expected_candidate_version,
+      p_decision: data.decision,
+      p_justification: data.justification,
+      p_command_id: data.command_id,
+      p_expected_base_confirmation_id: data.expected_base_confirmation_id ?? undefined
+    });
+    if (error) return resultAmendmentError(error);
+    const receipt = parseResultDisputeReceipt(result);
+    // A receipt must answer the exact command and decision; otherwise the transport is untrusted.
+    return receipt &&
+      receipt.command_id === data.command_id &&
+      receipt.resolution.proposal_id === data.proposal_id &&
+      receipt.resolution.decision === data.decision
+      ? { status: 'ok', value: receipt, replayed: receipt.replayed }
+      : { status: 'error', code: 'unavailable' };
+  });
+
+export const getResultDisputeResolutions = createServerFn({ method: 'GET' })
+  .validator(validateGetResultAmendments)
+  .handler(async ({ data }): Promise<ResultAmendmentResponse<ResultDisputeResolution[]>> => {
+    const client = await amendmentClient();
+    const { data: result, error } = await client.rpc('get_result_dispute_resolutions', {
+      p_match_event_id: data.event_id
+    });
+    if (error) return resultAmendmentError(error);
+    const value = parseResultDisputeResolutions(result, data.event_id);
+    return value
+      ? { status: 'ok', value, replayed: false }
+      : { status: 'error', code: 'unavailable' };
+  });
+
+export const getResultRepairJobs = createServerFn({ method: 'GET' })
+  .validator(validateGetResultAmendments)
+  .handler(async ({ data }): Promise<ResultAmendmentResponse<ResultRepairJob[]>> => {
+    const client = await amendmentClient();
+    const { data: result, error } = await client.rpc('get_result_repair_jobs', {
+      p_match_event_id: data.event_id
+    });
+    if (error) return resultAmendmentError(error);
+    const value = parseResultRepairJobs(result);
+    return value
+      ? { status: 'ok', value, replayed: false }
+      : { status: 'error', code: 'unavailable' };
   });
 
 export const cancelResultAmendment = createServerFn({ method: 'POST' })

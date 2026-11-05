@@ -222,7 +222,9 @@ describe(
         'requested',
         'candidate_submitted',
         'approved',
-        'accepted'
+        'accepted',
+        // Acceptance queues exactly one correction job; the official fact stays untouched.
+        'repair_queued'
       ]);
     });
 

@@ -8,6 +8,16 @@ import {
 import type { MatchResultErrorCode } from './match-result-error-copy';
 import { validateMatchResultSets, validateMatchResultTeams } from './match-result.validators';
 import { validateMatchUuid } from './matches.validators';
+import {
+  parseResultDisputeResolution,
+  parseResultRepairJob,
+  RESULT_DISPUTE_DECISIONS,
+  type ResultDisputeDecision,
+  type ResultDisputeResolution,
+  type ResultRepairJob,
+  type ResultRepairPublication,
+  type ResultRepairStatus
+} from './result-dispute-model';
 
 export const RESULT_AMENDMENT_LIFECYCLES = [
   'requested',
@@ -36,6 +46,8 @@ export const RESULT_AMENDMENT_ERROR_CODES = [
   'ranked_out_of_period',
   'ranked_league_invalid',
   'ranked_ineligible',
+  'invalid_justification',
+  'invalid_decision',
   'unavailable'
 ] as const;
 export type ResultAmendmentErrorCode =
@@ -47,10 +59,12 @@ export type ResultAmendmentConflict =
   | {
       code: 'candidate_version_conflict';
       current_version: number | null;
-      lifecycle: ResultAmendmentLifecycle;
+      // Null when the disputed result has no amendment (first-confirmation branch).
+      lifecycle: ResultAmendmentLifecycle | null;
     }
   | { code: 'state_conflict'; lifecycle: ResultAmendmentLifecycle }
-  | { code: 'already_open'; amendment_id: string };
+  | { code: 'already_open'; amendment_id: string }
+  | { code: 'already_resolved'; resolution_id: string; decision: ResultDisputeDecision };
 
 export type ResultAmendmentReceipt = {
   amendment_id: string;
@@ -64,6 +78,10 @@ export type ResultAmendmentReceipt = {
   decision_source: ResultAmendmentDecisionSource | null;
   // Approved but not yet published: the prior official result stays active.
   pending_application: boolean;
+  // Queued correction job: the prior official result stays active until it publishes.
+  repair_job_id: string | null;
+  repair_status: ResultRepairStatus | null;
+  publication: ResultRepairPublication | null;
   command_id: string;
 };
 
@@ -113,6 +131,9 @@ export type ResultAmendment = {
   } | null;
   pending_application: boolean;
   repair_job_id: string | null;
+  repair: ResultRepairJob | null;
+  resolution: ResultDisputeResolution | null;
+  can_resolve: boolean;
   can_submit_candidate: boolean;
   can_approve: boolean;
   can_reject: boolean;
@@ -172,7 +193,24 @@ export function parseResultAmendmentReceipt(
   const official = uuidOrNull(value.official_confirmation_id);
   const candidateVersion = nullablePositive(value.candidate_version);
   const reviewDeadline = nullableTimestamp(value.review_deadline_at);
+  // Repair fields are absent on receipts that predate the correction queue.
+  const repairJob = value.repair_job_id === undefined ? null : uuidOrNull(value.repair_job_id);
+  const repairStatus =
+    value.repair_status === undefined || value.repair_status === null
+      ? null
+      : (['queued', 'running', 'failed', 'succeeded'] as const).find(
+          (item) => item === value.repair_status
+        );
+  const publication =
+    value.publication === undefined || value.publication === null
+      ? null
+      : (['pending', 'failed', 'published'] as const).find((item) => item === value.publication);
   if (
+    repairJob === undefined ||
+    repairStatus === undefined ||
+    publication === undefined ||
+    (repairJob === null) !== (repairStatus === null) ||
+    (repairStatus === null) !== (publication === null) ||
     !lifecycle ||
     official === undefined ||
     (value.decision_source !== null && !decisionSource) ||
@@ -195,6 +233,9 @@ export function parseResultAmendmentReceipt(
       review_deadline_at: reviewDeadline,
       decision_source: decisionSource,
       pending_application: value.pending_application,
+      repair_job_id: repairJob,
+      repair_status: repairStatus,
+      publication,
       command_id: validateMatchUuid(value.command_id)
     };
   } catch {
@@ -265,6 +306,13 @@ export function parseResultAmendments(value: unknown, eventId: string): ResultAm
     const candidate = candidateOf(item.candidate);
     const official = uuidOrNull(item.official_confirmation_id);
     const repair = uuidOrNull(item.repair_job_id);
+    // Additive repair/resolution fields are absent on older payloads.
+    const repairJob =
+      item.repair === undefined || item.repair === null ? null : parseResultRepairJob(item.repair);
+    const resolution =
+      item.resolution === undefined || item.resolution === null
+        ? null
+        : parseResultDisputeResolution(item.resolution);
     let decision: ResultAmendment['decision'] = null;
     if (item.decision !== null) {
       const raw = item.decision;
@@ -291,6 +339,10 @@ export function parseResultAmendments(value: unknown, eventId: string): ResultAm
       candidate === undefined ||
       official === undefined ||
       repair === undefined ||
+      (item.repair !== undefined && item.repair !== null && !repairJob) ||
+      (item.resolution !== undefined && item.resolution !== null && !resolution) ||
+      (repairJob !== null && repairJob.job_id !== repair) ||
+      (item.can_resolve !== undefined && typeof item.can_resolve !== 'boolean') ||
       !positive(item.group_number) ||
       !positive(item.base_version) ||
       !timestamp(item.requested_at) ||
@@ -322,6 +374,9 @@ export function parseResultAmendments(value: unknown, eventId: string): ResultAm
         decision,
         pending_application: item.pending_application,
         repair_job_id: repair,
+        repair: repairJob,
+        resolution,
+        can_resolve: item.can_resolve === true,
         can_submit_candidate: item.can_submit_candidate,
         can_approve: item.can_approve,
         can_reject: item.can_reject,
@@ -367,12 +422,25 @@ export function resultAmendmentError(error: {
       ? { status: 'conflict', code, amendment_id: id }
       : { status: 'error', code: 'unavailable' };
   }
+  if (code === 'already_resolved') {
+    const id = record(detail) ? uuidOrNull(detail.resolution_id) : undefined;
+    const decision = record(detail)
+      ? RESULT_DISPUTE_DECISIONS.find((item) => item === detail.decision)
+      : undefined;
+    return id && decision
+      ? { status: 'conflict', code, resolution_id: id, decision }
+      : { status: 'error', code: 'unavailable' };
+  }
   if (code === 'state_conflict' || code === 'candidate_version_conflict') {
-    const lifecycle = record(detail) ? lifecycleOf(detail.lifecycle) : null;
-    if (!lifecycle || !record(detail)) return { status: 'error', code: 'unavailable' };
-    if (code === 'state_conflict') return { status: 'conflict', code, lifecycle };
+    if (!record(detail)) return { status: 'error', code: 'unavailable' };
+    const lifecycle = lifecycleOf(detail.lifecycle);
+    if (code === 'state_conflict')
+      return lifecycle
+        ? { status: 'conflict', code, lifecycle }
+        : { status: 'error', code: 'unavailable' };
     const current = detail.current_version;
-    return current === null || positive(current)
+    // A disputed first confirmation has no amendment lifecycle.
+    return (current === null || positive(current)) && (lifecycle || detail.lifecycle === null)
       ? { status: 'conflict', code, current_version: current, lifecycle }
       : { status: 'error', code: 'unavailable' };
   }

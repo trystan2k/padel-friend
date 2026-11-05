@@ -130,6 +130,33 @@ export function validateReviewResultAmendment(value: unknown) {
   };
 }
 
+export function validateResolveResultDispute(value: unknown) {
+  if (
+    !exact(value, [
+      'proposal_id',
+      'expected_base_confirmation_id',
+      'expected_candidate_version',
+      'decision',
+      'justification',
+      'command_id'
+    ]) ||
+    (value.decision !== 'uphold' && value.decision !== 'replace' && value.decision !== 'void')
+  )
+    throw new MatchResultValidationError('INVALID_REQUEST');
+  return {
+    proposal_id: validateMatchUuid(value.proposal_id),
+    // Null selects the first-confirmation branch of a result that was never official.
+    expected_base_confirmation_id:
+      value.expected_base_confirmation_id === null
+        ? null
+        : validateMatchUuid(value.expected_base_confirmation_id),
+    expected_candidate_version: expectedVersion(value.expected_candidate_version),
+    decision: value.decision,
+    justification: boundedText(value.justification, 'INVALID_JUSTIFICATION', 500),
+    command_id: validateMatchUuid(value.command_id)
+  };
+}
+
 export function validateCancelResultAmendment(value: unknown) {
   if (!exact(value, ['amendment_id', 'command_id']))
     throw new MatchResultValidationError('INVALID_REQUEST');

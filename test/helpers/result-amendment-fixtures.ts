@@ -198,6 +198,67 @@ export async function createResultAmendmentFixtures(
     return String(rows[0]!['fingerprint']);
   }
 
+  function resolve(
+    actor: ManagementActor,
+    proposalId: string,
+    version: number,
+    decision: string,
+    patch: Record<string, unknown> = {}
+  ) {
+    return base.rpc(actor, 'resolve_result_dispute', {
+      p_proposal_id: proposalId,
+      p_expected_candidate_version: version,
+      p_decision: decision,
+      p_justification: 'Court booking record confirms the score',
+      p_command_id: crypto.randomUUID(),
+      ...patch
+    });
+  }
+
+  /** Confirmed group + corrected candidate that a corrected-team player rejected. */
+  async function disputedCandidate(group: ConfirmedGroup) {
+    const opened = await openCandidate(group, p0);
+    const rejected = await review(p1, group, opened.amendmentId, opened.version, {
+      p_decision: 'reject',
+      p_reason_code: 'SCORE_INCORRECT'
+    });
+    if (rejected.error) throw new Error(String(rejected.error.message));
+    return opened;
+  }
+
+  /** Never-confirmed result whose only version was rejected (status disputed). */
+  async function disputedOriginal(original: { competitive?: boolean } = {}) {
+    const eventId = await base.protectedEvent({ competitive: original.competitive });
+    const submitted = await base.submit(eventId, { sets: originalResultSets });
+    if (submitted.error) throw new Error(String(submitted.error.message));
+    const proposalId = String(asRecord(submitted.data).proposal_id);
+    const rejected = await base.rpc(p2, 'review_match_event_result', {
+      p_proposal_id: proposalId,
+      p_expected_version: 1,
+      p_decision: 'reject',
+      p_reason_code: 'SCORE_INCORRECT',
+      p_reason_note: null,
+      p_request_id: crypto.randomUUID()
+    });
+    if (rejected.error) throw new Error(String(rejected.error.message));
+    return { eventId, proposalId };
+  }
+
+  async function revokeAdmin(actor: ManagementActor) {
+    await fixtureSql(`do $$ begin
+      alter table public.community_members disable trigger community_member_guard;
+      update public.community_members set role='member'
+       where community_id='${base.communityId}' and user_id='${actor.id}';
+      alter table public.community_members enable trigger community_member_guard;
+    end $$;`);
+  }
+
+  async function repairJobs(proposalId: string) {
+    return sqlRows(
+      `select * from public.result_repair_jobs where proposal_id = '${proposalId}' order by requested_at`
+    );
+  }
+
   async function amendmentRow(amendmentId: string) {
     const rows = await sqlRows(
       `select * from public.result_amendment_requests where id = '${amendmentId}'`
@@ -224,6 +285,11 @@ export async function createResultAmendmentFixtures(
     candidate,
     review,
     cancel,
+    resolve,
+    disputedCandidate,
+    disputedOriginal,
+    revokeAdmin,
+    repairJobs,
     openCandidate,
     expireCandidate,
     originalEvidence,

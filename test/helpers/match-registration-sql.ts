@@ -143,10 +143,18 @@ export function createMatchFixtureCleanupRegistry(scopeName: string): FixtureCle
         `select a.id::text as id from public.result_amendment_requests a where a.match_event_id = any($1::uuid[])`,
         { values: [eventIds] }
       );
+      const repairJobs = await queryTrustedSql(
+        `select j.id::text as id from public.result_repair_jobs j where j.match_event_id = any($1::uuid[])`,
+        { values: [eventIds] }
+      );
+      for (const row of repairJobs.rows)
+        current.register('public.result_repair_attempts', { job_id: String(row['id']) });
       for (const row of amendments.rows)
         current.register('public.result_amendment_events', { amendment_id: String(row['id']) });
       for (const row of proposals.rows) {
         const proposalId = String(row['id']);
+        current.register('public.result_repair_jobs', { proposal_id: proposalId });
+        current.register('public.result_dispute_resolutions', { proposal_id: proposalId });
         current.register('public.result_amendment_candidates', { proposal_id: proposalId });
         current.register('public.result_amendment_requests', { proposal_id: proposalId });
         current.register('public.match_event_result_proposal_versions', {
@@ -182,6 +190,9 @@ export function createMatchFixtureCleanupRegistry(scopeName: string): FixtureCle
         ['match_event_registration_attempts', 'match_attempt_history_guard'],
         ['match_event_registration_attempts', 'match_attempt_final_state'],
         ['match_event_audit_log', 'match_audit_immutable'],
+        ['result_repair_attempts', 'result_repair_attempt_guard'],
+        ['result_repair_jobs', 'result_repair_job_guard'],
+        ['result_dispute_resolutions', 'result_dispute_resolutions_immutable'],
         ['result_amendment_events', 'result_amendment_events_immutable'],
         ['result_amendment_candidates', 'result_amendment_candidates_immutable'],
         ['result_amendment_requests', 'result_amendment_request_guard'],
@@ -194,6 +205,14 @@ export function createMatchFixtureCleanupRegistry(scopeName: string): FixtureCle
         triggerPairs.push([table, trigger]);
         beforeStatements.push(`alter table public.${table} disable trigger ${trigger}`);
       }
+      // Requests and repair jobs reference each other; break the cycle before deleting either side.
+      beforeStatements.push(
+        `update public.result_amendment_requests set repair_job_id = null where match_event_id = any(array[${[
+          ...scope.eventIds
+        ]
+          .map((id) => `'${id}'::uuid`)
+          .join(',')}])`
+      );
       beforeStatements.push(
         `update public.match_event_registrations set current_attempt_id = null where match_event_id = any(array[${[
           ...scope.eventIds
