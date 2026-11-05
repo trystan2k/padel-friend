@@ -29,6 +29,7 @@ import { matchManagementStyles as managementStyles } from './match-management.st
 import { MatchStatusBanner } from './MatchStatusBanner';
 import { MatchResultDetail } from './MatchResultDetail';
 import type { ResultProposal } from './match-result-model';
+import type { ResultCorrectionsData } from './MatchResultCorrections';
 
 export async function shareMatchLink(
   url: string,
@@ -61,7 +62,8 @@ export function MatchDetailPage({
   management = null,
   proposals = [],
   proposalsError = false,
-  proposalsForbidden = false
+  proposalsForbidden = false,
+  corrections
 }: {
   event: MatchEventDetail | null;
   loadError?: boolean;
@@ -81,6 +83,7 @@ export function MatchDetailPage({
   proposals?: ResultProposal[];
   proposalsError?: boolean;
   proposalsForbidden?: boolean;
+  corrections?: ResultCorrectionsData;
 }) {
   const { t, i18n } = useTranslation();
   const editTrigger = useRef<HTMLButtonElement>(null);
@@ -150,6 +153,7 @@ export function MatchDetailPage({
         canRecord={management?.correction.available === true}
         onRefresh={onRetry}
         proposalsError={proposalsError}
+        corrections={corrections}
       />
     );
   const resultEntry =

@@ -223,6 +223,16 @@ describe('League standings versions decoder', () => {
     expect(decodeLeagueStandingsVersions(payload)).toEqual(payload);
   });
 
+  it('accepts an explicitly overridden late first confirmation', () => {
+    const payload = page([
+      versionSummary(2, {
+        cause: 'late_first_confirmation',
+        confirmation: { ...lateConfirmation, source: 'ADMIN_OVERRIDE' }
+      })
+    ]);
+    expect(decodeLeagueStandingsVersions(payload)).toEqual(payload);
+  });
+
   it('accepts correction causes without a confirmation and still rejects them with one', () => {
     const payload = page(
       [

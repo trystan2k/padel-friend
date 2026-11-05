@@ -200,7 +200,10 @@ function decodeVersionSummary(value: unknown): LeagueStandingsVersionSummary {
   let confirmation: LeagueStandingsVersionSummary['confirmation'] = null;
   if (row.confirmation !== null) {
     const raw = exactObject(row.confirmation, VERSION_CONFIRMATION_KEYS);
-    const source = raw.source === 'MANUAL' || raw.source === 'AUTO_48H' ? raw.source : fail();
+    const source =
+      raw.source === 'MANUAL' || raw.source === 'AUTO_48H' || raw.source === 'ADMIN_OVERRIDE'
+        ? raw.source
+        : fail();
     confirmation = { source, confirmed_at: text(raw.confirmed_at), played_at: text(raw.played_at) };
   }
   // A late revision always names its confirmation; every other cause never does.

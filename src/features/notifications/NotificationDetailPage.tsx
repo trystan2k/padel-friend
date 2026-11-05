@@ -19,6 +19,13 @@ import {
 import { styles } from './notifications.styles';
 import * as stylex from '@stylexjs/stylex';
 
+// Correction notices carry no extra payload: the kind selects the explanatory body copy.
+const correctionKinds: ReadonlySet<string> = new Set([
+  'result_amendment_resolved',
+  'result_repair_queued',
+  'result_repair_applied'
+]);
+
 async function resolveNotificationTarget(notificationId: string) {
   const target = await getMyNotificationTargetV3({ data: { notificationId } });
   const matchContext =
@@ -361,6 +368,9 @@ export function NotificationDetailPage({
         ) : target.target_status === 'result_available' && target.result_context ? (
           <>
             <h1>{t(`notifications.kinds.${target.result_context.notification_kind}`)}</h1>
+            {correctionKinds.has(target.result_context.notification_kind) && (
+              <p>{t(`notifications.result.kindBody.${target.result_context.notification_kind}`)}</p>
+            )}
             {target.result_context.entry_ready ? (
               <p>{t('notifications.result.entryReady', { venue: target.result_context.venue })}</p>
             ) : (

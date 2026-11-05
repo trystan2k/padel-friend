@@ -26,9 +26,15 @@ type Load =
  * participants have stored changes, so reserves and non-ratable results simply produce no
  * groups and nothing is rendered for them. The accessible explanation action opens the
  * stored calculation; nothing here recomputes a rating. The caller keys it by the confirmed
- * group count so a newly confirmed group re-reads the changes.
+ * group count; a committed correction revision also re-reads the changes.
  */
-export function MatchResultRatingChanges({ eventId }: { eventId: string }) {
+export function MatchResultRatingChanges({
+  eventId,
+  revision = 0
+}: {
+  eventId: string;
+  revision?: number;
+}) {
   const returnPath = `/matches/${encodeURIComponent(eventId)}`;
   const { t, i18n } = useTranslation();
   const [load, setLoad] = useState<Load>({ status: 'loading' });
@@ -44,13 +50,15 @@ export function MatchResultRatingChanges({ eventId }: { eventId: string }) {
       const response = await getMatchEventRatingChanges({ data: { event_id: eventId } });
       next =
         response.status === 'ok'
-          ? { status: 'ready', value: response.value }
+          ? response.value.revision >= revision
+            ? { status: 'ready', value: response.value }
+            : { status: 'error', code: 'stale_revision' }
           : { status: 'error', code: response.code };
     } catch (cause) {
       next = { status: 'error', code: ratingFailureCode(cause) };
     }
     if (request === latest.current) setLoad(next);
-  }, [eventId]);
+  }, [eventId, revision]);
 
   useEffect(() => {
     void run();

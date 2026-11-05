@@ -124,7 +124,8 @@ export function parseResultRepairJob(value: unknown): ResultRepairJob | null {
     value.attempt_count < 0 ||
     !timestamp(value.requested_at) ||
     (revision !== null && !positive(revision)) ||
-    // Completion is claimed only by a succeeded job with a committed revision.
+    // A succeeded job always represents a committed publication.
+    (status === 'succeeded' && revision === null) ||
     value.projections_complete !== (status === 'succeeded' && revision !== null) ||
     publication !==
       (status === 'succeeded' ? 'published' : status === 'failed' ? 'failed' : 'pending')

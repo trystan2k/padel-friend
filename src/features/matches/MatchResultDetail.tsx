@@ -3,6 +3,7 @@ import { Link } from '@tanstack/react-router';
 import { useTranslation } from 'react-i18next';
 import type { MatchEventDetail } from './match-contracts';
 import type { ResultProposal } from './match-result-model';
+import { MatchResultCorrections, type ResultCorrectionsData } from './MatchResultCorrections';
 import { MatchResultReview } from './MatchResultReview';
 import { MatchResultNavigation } from './MatchResultNavigation';
 import { MatchResultRatingChanges } from './MatchResultRatingChanges';
@@ -17,13 +18,15 @@ export function MatchResultDetail({
   proposals,
   canRecord,
   onRefresh,
-  proposalsError = false
+  proposalsError = false,
+  corrections
 }: {
   event: MatchEventDetail;
   proposals: ResultProposal[];
   canRecord: boolean;
   onRefresh: () => void | Promise<void>;
   proposalsError?: boolean;
+  corrections?: ResultCorrectionsData;
 }) {
   const { t, i18n } = useTranslation();
   useMatchResultFreshness({
@@ -203,12 +206,25 @@ export function MatchResultDetail({
               </article>
             );
           })}
+        {!proposalsError && corrections && (
+          <MatchResultCorrections
+            event={event}
+            proposals={proposals}
+            corrections={corrections}
+            onRefresh={onRefresh}
+          />
+        )}
         {!proposalsError &&
           event.event_type === 'competitive' &&
           event.result_summary.confirmed_group_count > 0 && (
             <MatchResultRatingChanges
               key={event.result_summary.confirmed_group_count}
               eventId={event.event_id}
+              revision={Math.max(
+                0,
+                ...(corrections?.amendments.map((item) => item.repair?.committed_revision ?? 0) ??
+                  [])
+              )}
             />
           )}
       </div>

@@ -10,7 +10,7 @@ const mocks = vi.hoisted(() => ({
   getMyMatchRegistration: vi.fn<(...args: unknown[]) => Promise<unknown>>(),
   listMatchEventRegistrationRequests: vi.fn<(...args: unknown[]) => Promise<unknown>>(),
   listMatchEventRegistrations: vi.fn<(...args: unknown[]) => Promise<unknown>>(),
-  getMyPlayerProfile: vi.fn<(...args: unknown[]) => Promise<unknown>>(),
+  getMyPlayerProfile: vi.fn<(...args: unknown[]) => Promise<unknown>>().mockResolvedValue(null),
   getMyMatchInvitation: vi.fn<(...args: unknown[]) => Promise<unknown>>(),
   listManagementParticipants: vi.fn<(...args: unknown[]) => Promise<unknown>>()
 }));

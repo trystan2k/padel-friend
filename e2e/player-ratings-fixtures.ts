@@ -206,8 +206,11 @@ export async function secondCommunity(admin: Actor) {
       await sql(`do $$ begin
         alter table public.player_rating_event_calculations disable trigger player_rating_calculations_immutable;
         alter table public.player_rating_events disable trigger player_rating_events_immutable;
+        alter table public.player_rating_event_sources disable trigger player_rating_event_sources_immutable;
         delete from public.player_rating_event_calculations where rating_event_id in (select id from public.player_rating_events where match_event_id='${eventId}');
+        delete from public.player_rating_event_sources where rating_event_id in (select id from public.player_rating_events where match_event_id='${eventId}');
         delete from public.player_rating_events where match_event_id='${eventId}';
+        alter table public.player_rating_event_sources enable trigger player_rating_event_sources_immutable;
         alter table public.player_rating_events enable trigger player_rating_events_immutable;
         alter table public.player_rating_event_calculations enable trigger player_rating_calculations_immutable;
       end $$;`);
@@ -233,9 +236,12 @@ export async function removeProvisionalEvidence(emails: readonly string[]): Prom
       alter table public.player_rating_event_calculations disable trigger player_rating_calculations_immutable;
       alter table public.player_rating_events disable trigger player_rating_events_immutable;
       alter table public.player_rating_initializations disable trigger player_rating_initializations_immutable;
+      alter table public.player_rating_event_sources disable trigger player_rating_event_sources_immutable;
       delete from public.player_rating_event_calculations where rating_event_id in (select id from public.player_rating_events where user_id=v_id);
+      delete from public.player_rating_event_sources where rating_event_id in (select id from public.player_rating_events where user_id=v_id);
       delete from public.player_rating_events where user_id=v_id;
       delete from public.player_rating_initializations where user_id=v_id;
+      alter table public.player_rating_event_sources enable trigger player_rating_event_sources_immutable;
       alter table public.player_rating_initializations enable trigger player_rating_initializations_immutable;
       alter table public.player_rating_events enable trigger player_rating_events_immutable;
       alter table public.player_rating_event_calculations enable trigger player_rating_calculations_immutable;

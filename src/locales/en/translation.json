@@ -521,6 +521,9 @@
       "result_confirmed": "A match result was confirmed",
       "result_deadline_reminder": "Result review deadline approaching",
       "result_entry_ready": "A match result is ready to enter",
+      "result_amendment_resolved": "A result correction was decided",
+      "result_repair_queued": "A result correction is being applied",
+      "result_repair_applied": "A result correction was applied",
       "level_review_approved": "Your level review was approved",
       "level_review_rejected": "Your level review was declined"
     },
@@ -541,7 +544,12 @@
       "reviewCurrent": "Review current proposal",
       "openResult": "Review result",
       "openEvent": "Open match",
-      "entryReady": "Result entry is ready for {{venue}}."
+      "entryReady": "Result entry is ready for {{venue}}.",
+      "kindBody": {
+        "result_amendment_resolved": "A Community Admin decided on a result correction.",
+        "result_repair_queued": "The correction was approved. Ratings, statistics and League standings update when it is applied; the confirmed result stays official until then.",
+        "result_repair_applied": "The correction was applied. Ratings, statistics and League standings now reflect the corrected result."
+      }
     },
     "match": {
       "openEvent": "Open event",
@@ -647,6 +655,226 @@
         "forbidden": "Only the organizer or a community admin can add players.",
         "invalid": "Check the details and try again.",
         "unavailable": "We couldn't send the invitation. Nothing was changed."
+      }
+    },
+    "corrections": {
+      "title": "Result corrections",
+      "unavailable": "Result corrections could not be loaded. Reload to try again.",
+      "cardLabel": "Correction for group {{number}}",
+      "cardTitle": "Correction · Group {{number}}",
+      "requestedAt": "Requested {{date}}",
+      "reason": "Reason",
+      "proposed": "Proposed correction",
+      "proposedVersion": "Proposed result · version {{version}}",
+      "proposedBy": "Proposed by {{name}} · {{date}}",
+      "autoConfirm": "Auto-confirms {{deadline}} if nobody rejects",
+      "rejectBlocks": "A rejection stops the automatic confirmation; a Community Admin then decides.",
+      "pendingApplication": "Approved, not applied yet. The confirmed result stays official until the update is applied.",
+      "resolvedBy": "Community Admin decision: {{decision}}. {{justification}}",
+      "adminOverride": "Confirmed by an audited Community Admin override.",
+      "submitCandidate": "Enter corrected result",
+      "resubmit": "Replace proposed result",
+      "cancel": "Cancel correction",
+      "history": "Correction history",
+      "historyRequested": "Correction requested {{date}}",
+      "historyCandidate": "Corrected result version {{version}} proposed {{date}}",
+      "historyDecision": "Approved ({{source}}) {{date}}",
+      "historyResolution": "Community Admin decided: {{decision}} · {{date}}",
+      "historyRepair": "Update {{status}} after {{attempts}} attempt(s)",
+      "historyReference": "Reference: correction {{amendment}} · update {{job}}",
+      "historyReviews": "Team approvals received: Team A {{teamA}} · Team B {{teamB}} (covering {{received}} of {{required}} needed)",
+      "historyRevisionPending": "Official result {{base}} (version {{version}}) stays current until the update publishes",
+      "historyRevisionApplied": "Official result {{base}} (version {{version}}) replaced by {{current}}; the previous result stays inspectable",
+      "requestCardLabel": "Confirmed result for group {{number}}",
+      "officialLabel": "Authoritative result",
+      "requestNote": "The confirmed result stays official until a corrected result is approved or a Community Admin resolves it with an audited decision.",
+      "disputeCardLabel": "Disputed result for group {{number}}",
+      "disputed": "Disputed",
+      "disputeImpact": "No rating applied yet. Ratings and League standings stay unchanged until a result is confirmed.",
+      "lifecycle": {
+        "requested": "Correction requested",
+        "proposal_pending": "Corrected result in review",
+        "disputed": "Corrected result disputed",
+        "approved_pending_repair": "Approved · confirmed result still authoritative",
+        "applied": "Correction applied",
+        "rejected": "Correction rejected",
+        "canceled": "Correction canceled"
+      },
+      "decisions": {
+        "uphold": "Keep the result",
+        "replace": "Accept the corrected result",
+        "void": "Void the result"
+      },
+      "sources": {
+        "MANUAL": "by player approval",
+        "AUTO_48H": "automatically after 48 hours",
+        "ADMIN_OVERRIDE": "by Community Admin override"
+      },
+      "feedback": {
+        "requested": "Correction requested. Enter the corrected result to continue.",
+        "approved": "Your approval was recorded.",
+        "rejected": "Your rejection was recorded.",
+        "canceled": "Correction canceled.",
+        "resolved": "Decision recorded."
+      },
+      "conflicts": {
+        "baseConflict": "The official result changed while you were working. The page was refreshed.",
+        "candidateVersionConflict": "A newer corrected result exists. The page was refreshed.",
+        "stateConflict": "This correction changed state. The page was refreshed.",
+        "alreadyOpen": "A correction is already open for this result.",
+        "alreadyResolved": "A decision was already recorded for this result.",
+        "deadlineElapsed": "The review window has closed. The page was refreshed."
+      },
+      "errors": {
+        "notConfirmed": "Only a confirmed result can be corrected.",
+        "noChange": "The corrected result is the same as the official result.",
+        "invalidJustification": "Enter a justification of up to 500 characters.",
+        "invalidDecision": "Choose a decision.",
+        "rankedIneligible": "This corrected result is not eligible for the League."
+      },
+      "dialog": {
+        "cancel": "Cancel",
+        "submitting": "Saving…",
+        "required": "(required)",
+        "hint": "Up to 500 characters. This is stored in the audit trail.",
+        "decisionRequired": "Choose a decision.",
+        "text": {
+          "required": "Enter a reason.",
+          "tooLong": "Use at most 500 characters.",
+          "invalid": "Remove control characters from the text."
+        }
+      },
+      "request": {
+        "open": "Request correction",
+        "title": "Request result correction",
+        "description": "Explain what is wrong with the confirmed result of group {{group}}.",
+        "reason": "What needs correcting?",
+        "submit": "Request correction",
+        "notice": "The confirmed result stays official until a corrected result is approved."
+      },
+      "resolve": {
+        "open": "Resolve result",
+        "title": "Resolve result",
+        "description": "Choose how to settle the disputed result of group {{group}}.",
+        "legend": "Resolution",
+        "options": {
+          "uphold": "Keep the confirmed result",
+          "replace": "Accept the corrected result",
+          "void": "Void result"
+        },
+        "hints": {
+          "uphold": "no rating change",
+          "replace": "ratings and standings are recalculated",
+          "void": "the result no longer counts"
+        },
+        "firstOptions": {
+          "uphold": "Confirm the submitted result",
+          "void": "Void result"
+        },
+        "firstHints": {
+          "uphold": "audited Admin override",
+          "void": "the result never counts"
+        },
+        "justification": "Justification",
+        "submit": "Record decision",
+        "notice": "Your decision is audited and cannot be edited. Replacing or voiding a confirmed result queues an update that recalculates ratings, statistics and League standings."
+      },
+      "repair": {
+        "title": "Update status",
+        "status": {
+          "queued": "Queued",
+          "running": "Applying",
+          "failed": "Failed",
+          "succeeded": "Applied"
+        },
+        "publication": {
+          "pending": "Not applied yet. The previous official result stays active.",
+          "failed": "The update failed. The previous official result stays active.",
+          "published": "Applied. The corrected result is official."
+        },
+        "attempts": "Attempts",
+        "requestedAt": "Queued",
+        "failure": "Failure",
+        "failureCodes": {
+          "BASE_STALE": "The official result changed",
+          "CANDIDATE_INVALID": "The corrected result is no longer valid",
+          "PERMISSION_REVOKED": "Permission was revoked",
+          "CONFIG_UNSUPPORTED": "Unsupported rating configuration",
+          "REPLAY_FAILED": "Rating recalculation failed",
+          "PUBLICATION_FAILED": "Publishing the update failed",
+          "LEASE_EXPIRED": "The worker stopped before finishing",
+          "INTERNAL": "Internal error"
+        },
+        "stages": {
+          "base": "checking the base result",
+          "lock": "locking",
+          "fact": "switching the result",
+          "replay": "recalculating ratings",
+          "publish": "publishing standings and statistics",
+          "complete": "completing"
+        },
+        "nextAttempt": "Next automatic attempt",
+        "revision": "Rating revision",
+        "staleLease": "The worker stopped responding. The update can be retried.",
+        "retry": "Retry update",
+        "confirmTitle": "Retry this update?",
+        "confirmBody": "The update restarts from the last committed state. Nothing is applied twice.",
+        "confirmAction": "Retry update",
+        "retryOutcome": {
+          "succeeded": "The update was applied.",
+          "failed": "The update failed again. Details are shown above.",
+          "stale": "Another worker took over this update.",
+          "busy": "Another update is running. Try again shortly."
+        },
+        "retryErrors": {
+          "unauthenticated": "Sign in again to retry.",
+          "not_found": "This update is not available to you.",
+          "forbidden": "You are not allowed to retry this update.",
+          "invalid_request": "The retry request was invalid.",
+          "busy": "Another update is running. Try again shortly.",
+          "already_applied": "This update was already applied.",
+          "not_retryable": "This failure cannot be retried automatically.",
+          "unavailable": "The update could not be retried. Try again."
+        }
+      },
+      "diagnostics": {
+        "title": "Result repairs",
+        "back": "Back",
+        "entryLink": "Open result repairs",
+        "platformSubtitle": "Platform queue · sanitized progress and attempts",
+        "communitySubtitle": "Your community · updates after result corrections",
+        "summary": "Queue summary",
+        "summaryCaption": "Repairs by status",
+        "jobs": "Repairs",
+        "empty": "No repairs yet.",
+        "never": "never",
+        "scheduler": "Scheduler health",
+        "schedulerMissing": "The repair scheduler is not provisioned. Approved corrections stay queued until it runs.",
+        "schedulerUnavailable": "The scheduler extension is not installed. Approved corrections stay queued until an operator runs them.",
+        "overdue_one": "{{count}} overdue repair",
+        "overdue_other": "{{count}} overdue repairs",
+        "schedulerCaption": "Scheduled repair jobs",
+        "schedulerJob": "Job",
+        "schedulerActive": "Active",
+        "schedulerLastRun": "Last run",
+        "schedulerStatusUnknown": "Status unavailable",
+        "yes": "Yes",
+        "no": "No",
+        "jobLabel": "Repair {{id}}",
+        "jobHeading": "Repair {{id}} · {{kind}} · group {{group}}",
+        "attempts": "Attempts",
+        "attemptsUnavailable": "Attempts could not be loaded.",
+        "attemptsCaption": "Repair attempts",
+        "columns": {
+          "attempt": "Attempt",
+          "status": "Status",
+          "base": "Base revision",
+          "result": "Result revision",
+          "failure": "Failure code"
+        },
+        "denied": "You do not have access to result repairs.",
+        "unavailable": "Result repairs could not be loaded.",
+        "retry": "Try again"
       }
     },
     "results": {
@@ -1688,8 +1916,13 @@
       "cause": {
         "closed": "Published when the League closed",
         "repair": "Repaired from stored records",
-        "reconstruction": "Rebuilt from stored records"
+        "reconstruction": "Rebuilt from stored records",
+        "result_amendment": "Corrected result applied after an audited amendment",
+        "result_void": "Result voided after an audited decision"
       },
+      "correctionBanner": "Historical result updated",
+      "supersedes": "Replaces version {{version}}. Earlier versions stay available.",
+      "viewPrior": "View version {{version}}",
       "backfilled": "Rebuilt afterwards from stored records, not published at the time.",
       "revisionAvailable": "A newer final version is available.",
       "viewLatest": "View latest version",

@@ -1,0 +1,52 @@
+{
+  "status": "chromium-certified-with-scoped-route-adaptations",
+  "sourceDesign": {
+    "path": "docs/design/padel-friend.pen",
+    "sha256": "927ac4e83f24edacbc2b2fe2fcfa111d8e0822b96f73ce268cf50b5ef2737af2",
+    "exportCommand": "Pencil MCP: Export([\"adujr\",\"s5TRC\",\"CWJkF\",\"xbIxj\"], \"png\", \"<repo>/e2e/references/paf-14\", {scale:2})",
+    "provenanceNote": "Four approved references exported uncropped from the source Pencil document at 2x. adujr, s5TRC and xbIxj are the amendment request, corrected-result review and League correction history frames; CWJkF is the existing dispute frame re-used for dispute resolution (byte-identical to the PAF-8 export). The design file has no operator diagnostics frame: the diagnostics screens follow the product requirements and the existing app patterns, so they carry structural, accessibility and locale gates only."
+  },
+  "approvedReferences": {
+    "adujr.png": {
+      "frameId": "adujr",
+      "certifies": "Amendment request: authoritative confirmed result, reason, request action and authority note",
+      "sha256": "aa822717082a01e09dee3ffe937f77f5e2700ee3c9afd9ba90420636be6d7d93",
+      "pixelSize": [780, 1688]
+    },
+    "s5TRC.png": {
+      "frameId": "s5TRC",
+      "certifies": "Corrected result review: confirmed result still authoritative, proposed result, approve and reject",
+      "sha256": "ad25b9355628d9613c6085e7e11ac59c5ac7798428891774deac994c52369753",
+      "pixelSize": [780, 1688]
+    },
+    "CWJkF.png": {
+      "frameId": "CWJkF",
+      "certifies": "Community dispute resolution: disputed evidence, timeline and resolution choices (dark)",
+      "sha256": "6426b16b4c55d1b36980fc4d6963b295f80ed60bda1e15e7a71a4e7fd995be50",
+      "pixelSize": [780, 1688]
+    },
+    "xbIxj.png": {
+      "frameId": "xbIxj",
+      "certifies": "League history: audited correction of a closed final with the superseded final inspectable",
+      "sha256": "f26f34fc48b0280cc415d909e42c5dd0cb92f3d062d2a79753c1a4967ac8bf95",
+      "pixelSize": [780, 1688]
+    }
+  },
+  "visualBudgets": {
+    "status": "measured-chromium-viewport-pixel-difference",
+    "measurementMethod": "Capture at reference pixelSize / 2 using Chromium deviceScaleFactor 1. Downsample only the uncropped 2x Pencil PNG. Compare same-size RGBA pixels with the pinned perceptual threshold (35215 x 0.1^2); reject any dimension mismatch before applying the per-screen budget.",
+    "perScreen": {
+      "adujr": 0.2,
+      "s5TRC": 0.19,
+      "CWJkF": 0.21,
+      "xbIxj": 0.13
+    },
+    "perScreenRationale": {
+      "adujr": "Measured 0.1775. The match-detail route replaces the standalone request page: the correction card sits under the match header and the reason is entered in a Base UI dialog, so the reason box and the screen title differ by design. Probes pin the official-result banner, note and request action order, the 44px target, labelled dialog and error association.",
+      "s5TRC": "Measured 0.1663. The corrected review lives in the match detail correction card (lifecycle banner, proposed result, approval progress, approve/reject) instead of a dedicated route; probes pin banner, proposed section and action order, 44px targets and the authoritative-result wording.",
+      "CWJkF": "Measured 0.1888. Resolution choices open in a modal dialog over the match detail (three radio options, bounded justification, footer actions) rather than an inline list; probes pin option stacking, labelled field, associated error and dark-theme AA contrast.",
+      "xbIxj": "Measured 0.1153. The League history screen keeps the existing standings table and version selector; the correction banner, supersedes line and view-prior action are added in the existing layout. Probes pin banner above the prior-version action, 44px target and no overflow."
+    },
+    "reason": "Every screen has an exact-dimension production-flow capture and strict structural, accessibility and locale probes. Nonzero budgets are the measured residual plus a small raster margin (about 0.02); all stay below 0.25 and are never widened to mask a structural defect."
+  }
+}

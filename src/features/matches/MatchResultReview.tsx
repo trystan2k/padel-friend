@@ -81,7 +81,9 @@ export function MatchResultReview({
         : t(
             proposal.confirmation?.source === 'AUTO_48H'
               ? 'matches.results.confirmation.auto'
-              : 'matches.results.confirmation.manual'
+              : proposal.confirmation?.source === 'ADMIN_OVERRIDE'
+                ? 'matches.corrections.adminOverride'
+                : 'matches.results.confirmation.manual'
           );
 
   async function submitReject(reasonCode: ResultRejectionReason, reasonNote: string | null) {

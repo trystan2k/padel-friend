@@ -183,6 +183,26 @@ describe('match history UI', () => {
     const { rerender } = render(wrap(<ConfirmedGroupDetail detail={detail} />));
     expect(screen.getAllByText('No rating change: Friendly match')).toHaveLength(5);
     expect(screen.queryByLabelText(/Upset:/)).toBeNull();
+    const override = decodeGroupDetail({
+      ...detail,
+      confirmation: {
+        ...detail.confirmation,
+        source: 'ADMIN_OVERRIDE',
+        automatic: false,
+        approver: { user_id: id, display_name: 'Admin' }
+      },
+      timeline: [
+        {
+          kind: 'confirmed',
+          version: 1,
+          occurred_at: at,
+          actor: { user_id: id, display_name: 'Admin' },
+          source: 'ADMIN_OVERRIDE'
+        }
+      ]
+    });
+    rerender(wrap(<ConfirmedGroupDetail detail={override} />));
+    expect(screen.getByText(createI18n('en').t('matches.corrections.adminOverride'))).toBeTruthy();
     rerender(
       wrap(
         <ConfirmedGroupDetail
