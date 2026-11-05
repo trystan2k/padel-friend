@@ -1,5 +1,6 @@
 import * as stylex from '@stylexjs/stylex';
 import { rootStyles } from '../../root.styles';
+import { Link } from '@tanstack/react-router';
 import { useRef, useState, type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { stripEdgeWhitespace } from '../../lib/edge-whitespace';
@@ -187,6 +188,20 @@ export function PlayerProfile({
         <div {...stylex.props(ui.row)}>
           <span>{t('profile.confirmedGroups')}</span>
           <strong>{level.confirmed_competitive_game_groups}</strong>
+        </div>
+      </section>
+      <section aria-labelledby="level-review-entry" {...stylex.props(ui.card, ui.profileCard)}>
+        <h2 id="level-review-entry" {...stylex.props(ui.levelReviewTitle)}>
+          {t('levelReview.entry.title')}
+        </h2>
+        <p {...stylex.props(ui.muted)}>{t('levelReview.entry.description')}</p>
+        <div {...stylex.props(ui.levelReviewActions)}>
+          <Link to="/level-reviews/new" {...stylex.props(ui.levelReviewPrimaryLink)}>
+            {t('levelReview.entry.request')}
+          </Link>
+          <Link to="/level-reviews" {...stylex.props(ui.levelReviewActionLink)}>
+            {t('levelReview.entry.history')}
+          </Link>
         </div>
       </section>
       {editing ? (

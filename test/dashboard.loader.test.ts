@@ -6,7 +6,8 @@ const mocks = vi.hoisted(() => ({
   listMyLeagueCommunities: vi.fn<() => Promise<unknown>>(),
   getCommunityAdminDefaults: vi.fn<() => Promise<unknown>>(),
   listMyCommunityNotifications: vi.fn<() => Promise<unknown>>(),
-  loadRatingView: vi.fn<() => Promise<unknown>>()
+  loadRatingView: vi.fn<() => Promise<unknown>>(),
+  getLevelReviewAccess: vi.fn<() => Promise<unknown>>()
 }));
 
 vi.mock('../src/features/player/player.functions', () => ({
@@ -20,6 +21,12 @@ vi.mock('../src/features/leagues/league.functions', () => ({
   listMyLeagueCommunities: mocks.listMyLeagueCommunities
 }));
 vi.mock('../src/features/leagues/LeagueEntries', () => ({ LeagueEntries: () => null }));
+vi.mock('../src/features/level-reviews/level-review.functions', () => ({
+  getLevelReviewAccess: mocks.getLevelReviewAccess
+}));
+vi.mock('../src/features/level-reviews/PlatformAdminEntry', () => ({
+  PlatformAdminEntry: () => null
+}));
 vi.mock('../src/features/community/community-request.functions', () => ({
   listMyCommunityNotifications: mocks.listMyCommunityNotifications
 }));
@@ -42,6 +49,8 @@ beforeEach(() => {
   mocks.listMyCommunityNotifications.mockReset();
   mocks.loadRatingView.mockReset();
   mocks.loadRatingView.mockResolvedValue({ status: 'error', code: 'unavailable' });
+  mocks.getLevelReviewAccess.mockReset();
+  mocks.getLevelReviewAccess.mockResolvedValue({ is_platform_admin: false });
 });
 
 describe('dashboard loader', () => {
@@ -56,7 +65,8 @@ describe('dashboard loader', () => {
       rating: { status: 'error', code: 'unavailable' },
       adminCommunities: [],
       leagueCommunities: [],
-      inbox: { items: null, error: true }
+      inbox: { items: null, error: true },
+      platformAdmin: false
     });
     expect(mocks.getMyPlayerProfile).toHaveBeenCalledOnce();
     expect(mocks.listMyAdminCommunities).toHaveBeenCalledOnce();
@@ -69,6 +79,17 @@ describe('dashboard loader', () => {
     mocks.listMyCommunityNotifications.mockResolvedValue([]);
 
     await expect(loadDashboardData()).resolves.toMatchObject({ leagueCommunities: [] });
+  });
+
+  it('reports platform-admin access only from the server access context', async () => {
+    mocks.getMyPlayerProfile.mockResolvedValue(Object.freeze({}));
+    mocks.listMyAdminCommunities.mockResolvedValue([]);
+    mocks.listMyCommunityNotifications.mockResolvedValue([]);
+    mocks.getLevelReviewAccess.mockResolvedValue({ is_platform_admin: true });
+    await expect(loadDashboardData()).resolves.toMatchObject({ platformAdmin: true });
+
+    mocks.getLevelReviewAccess.mockRejectedValue(new Error('LEVEL_REVIEW_UNAVAILABLE'));
+    await expect(loadDashboardData()).resolves.toMatchObject({ platformAdmin: false });
   });
 
   it('hands the committed rating view to the profile alongside the profile row', async () => {

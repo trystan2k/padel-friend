@@ -26,6 +26,14 @@ const mocks = vi.hoisted(() => ({
   explanation: vi.fn<(...args: unknown[]) => Promise<unknown>>(),
   changes: vi.fn<(...args: unknown[]) => Promise<unknown>>()
 }));
+vi.mock('@tanstack/react-router', async (original) => ({
+  ...(await original<typeof import('@tanstack/react-router')>()),
+  Link: ({ children, to, params, ...rest }: any) => (
+    <a href={String(to).replace('$requestId', params?.requestId ?? '')} {...rest}>
+      {children}
+    </a>
+  )
+}));
 vi.mock('../src/features/player/rating.functions', () => ({
   getMyRatingHistory: mocks.history,
   getRatingGroupExplanation: mocks.explanation,
@@ -57,6 +65,8 @@ const progress = (overrides: Record<string, unknown> = {}) =>
   parseRatingProgress({ ...progressPayload, ...overrides })!;
 const manyPoints = Array.from({ length: 4 }, (_, index) => ({
   ordinal: index + 1,
+  kind: 'match',
+  event_id: `00000000-0000-4000-8000-00000000000${index + 1}`,
   game_group_id: `00000000-0000-4000-8000-00000000000${index + 1}`,
   played_at: `2026-0${index + 1}-01T10:00:00.000000Z`,
   display_level: 4 + index * 0.1
@@ -66,6 +76,8 @@ const manyProgress = () =>
     resolution: 'sampled',
     abbreviated: true,
     total_events: 12,
+    // Adjustment checkpoints are points, never games: the games copy must use total_events.
+    total_points: 14,
     range: { from: manyPoints[0]!.played_at, to: manyPoints[3]!.played_at },
     points: manyPoints
   });
@@ -122,6 +134,36 @@ describe('RatingProgressChart', () => {
       .slice(1)
       .map((row) => within(row).getAllByRole('cell').at(-1)?.textContent);
     expect(levels).toEqual(['4,00', '4,00', '4,10', '4,20', '4,30']);
+  });
+
+  it('counts only games, not displayed correction checkpoints, in the abbreviation notice', () => {
+    const adjustmentPoints = [2, 3].map((ordinal, index) => ({
+      ordinal: ordinal + 2,
+      kind: 'adjustment',
+      event_id: `00000000-0000-4000-8000-0000000000a${index + 1}`,
+      game_group_id: null,
+      played_at: `2026-0${ordinal + 2}-02T10:00:00.000000Z`,
+      display_level: 4.5 + index * 0.1
+    }));
+    render(
+      wrap(
+        <RatingProgressChart
+          progress={progress({
+            resolution: 'sampled',
+            abbreviated: true,
+            total_events: 2,
+            total_points: 4,
+            range: { from: manyPoints[0]!.played_at, to: adjustmentPoints[1]!.played_at },
+            points: [manyPoints[0], manyPoints[1], ...adjustmentPoints]
+          })}
+        />
+      )
+    );
+    expect(
+      screen.getByText(
+        'Showing 2 of 2 confirmed games. The first and latest games are always included.'
+      )
+    ).toBeTruthy();
   });
 
   it('states the starting level and draws nothing when there are no points', () => {
@@ -765,6 +807,138 @@ describe('MatchResultRatingChanges', () => {
     mocks.changes.mockResolvedValue({ status: 'error', code });
     render(wrap(<MatchResultRatingChanges eventId="e" />));
     expect((await screen.findByRole('alert')).textContent).toContain(text);
+  });
+});
+
+const ADJUSTMENT_ID = '33333333-3333-4333-8333-333333333333';
+const REQUEST_ID = '44444444-4444-4444-8444-444444444444';
+const adjustmentItemPayload = {
+  kind: 'adjustment',
+  adjustment_id: ADJUSTMENT_ID,
+  level_review_request_id: REQUEST_ID,
+  event_type: 'ADMIN_REVIEW_ADJUSTMENT',
+  effective_at: '2026-11-03T09:00:00.000000Z',
+  reason: 'Verified against club results\n<b>bold</b> https://example.com/proof',
+  outcome: 'approved',
+  before_display_level: 4.12,
+  after_display_level: 4.6,
+  before_reliability_percent: 16,
+  after_reliability_percent: 16,
+  reliability_changed: false,
+  after_confirmed_groups: 1,
+  calculation_revision: 4
+};
+
+describe('level review correction timeline', () => {
+  const mixedHistory = () =>
+    historyView({ total_events: 2, items: [adjustmentItemPayload, historyItemPayload] });
+
+  it('renders an approved adjustment as a correction, never as a win or loss', () => {
+    render(
+      wrap(
+        <RatingHistory
+          initial={mixedHistory()}
+          onExplain={vi.fn<() => void>()}
+          onStale={vi.fn<() => void>()}
+        />
+      )
+    );
+    const rows = screen.getAllByRole('listitem');
+    expect(rows).toHaveLength(2);
+    expect(screen.getByText('Showing 1 of 2 games')).toBeTruthy();
+    const correction = rows[0]!;
+    expect(within(correction).getByText('Level review')).toBeTruthy();
+    expect(within(correction).getByText('Level review adjustment')).toBeTruthy();
+    expect(within(correction).getByText('Level 4.12 to 4.60')).toBeTruthy();
+    expect(within(correction).getByText('Reliability stays at 16%')).toBeTruthy();
+    expect(within(correction).queryByText(/Win|Draw|Loss/)).toBeNull();
+    expect(within(correction).queryByRole('button', { name: /Explain/ })).toBeNull();
+    expect(within(correction).queryByText(/^[+−-]\d/)).toBeNull();
+    expect(
+      within(correction).getByRole('link', { name: 'View review request' }).getAttribute('href')
+    ).toBe('/level-reviews/' + REQUEST_ID);
+    // The match row next to it is untouched.
+    expect(within(rows[1]!).getByText('Win')).toBeTruthy();
+    expect(within(rows[1]!).getByRole('button', { name: /Explain rating change/ })).toBeTruthy();
+  });
+
+  it('shows the reliability transition when the review recorded an exception', () => {
+    render(
+      wrap(
+        <RatingHistory
+          initial={historyView({
+            total_events: 1,
+            items: [
+              { ...adjustmentItemPayload, reliability_changed: true, after_reliability_percent: 10 }
+            ]
+          })}
+          onExplain={vi.fn<() => void>()}
+          onStale={vi.fn<() => void>()}
+        />
+      )
+    );
+    expect(screen.getByText('Reliability 16% to 10%')).toBeTruthy();
+  });
+
+  it('keeps the stored note as inert text', () => {
+    render(
+      wrap(
+        <RatingHistory
+          initial={mixedHistory()}
+          onExplain={vi.fn<() => void>()}
+          onStale={vi.fn<() => void>()}
+        />
+      )
+    );
+    expect(document.querySelector('b')).toBeNull();
+    expect(document.body.textContent).toContain('<b>bold</b> https://example.com/proof');
+    expect(screen.queryByRole('link', { name: /example\.com/ })).toBeNull();
+  });
+
+  it('draws the correction as a diamond checkpoint, counts only games and labels the table row', async () => {
+    const correctionProgress = progress({
+      total_events: 1,
+      total_points: 2,
+      range: { from: '2026-11-01T10:00:00.000000Z', to: '2026-11-03T09:00:00.000000Z' },
+      points: [
+        progressPayload.points[0],
+        {
+          ordinal: 2,
+          kind: 'adjustment',
+          event_id: ADJUSTMENT_ID,
+          game_group_id: null,
+          played_at: '2026-11-03T09:00:00.000000Z',
+          display_level: 4.6
+        }
+      ]
+    });
+    render(wrap(<RatingProgressChart progress={correctionProgress} />));
+    // baseline + one game circle (and the two legend circles); the correction is a rotated rect.
+    expect(
+      document.querySelectorAll('svg[aria-hidden="true"] rect[transform^="rotate"]')
+    ).toHaveLength(2);
+    expect(screen.getByText('Level review correction (diamond marker)')).toBeTruthy();
+    expect(
+      screen.getByText(
+        '1 confirmed game between Nov 1, 2026 and Nov 3, 2026. Level moved from 4.00 to 4.60.'
+      )
+    ).toBeTruthy();
+    await userEvent.click(screen.getByRole('button', { name: 'Show data table' }));
+    const rows = within(screen.getByRole('table')).getAllByRole('row');
+    expect(rows.map((row) => row.textContent)).toEqual([
+      'GameDateLevel',
+      'Starting level—4.00',
+      '1Nov 1, 20264.12',
+      'Level reviewNov 3, 20264.60'
+    ]);
+  });
+
+  it('does not show the correction legend without a correction', () => {
+    render(wrap(<RatingProgressChart progress={progress()} />));
+    expect(screen.queryByText(/Level review correction/)).toBeNull();
+    expect(
+      document.querySelectorAll('svg[aria-hidden="true"] rect[transform^="rotate"]')
+    ).toHaveLength(0);
   });
 });
 

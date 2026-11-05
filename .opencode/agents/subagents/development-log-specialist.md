@@ -2,7 +2,6 @@
 description: Handle all development log operations.
 mode: subagent
 model: zai-coding-plan/glm-5.3-flash
-steps: 20
 permissions:
   - action: subagent
     resource: "*"

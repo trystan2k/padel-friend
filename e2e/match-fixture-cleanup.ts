@@ -1,5 +1,6 @@
 import { spawn } from 'node:child_process';
 import { readFileSync } from 'node:fs';
+import { serializeMatchFixtureSql, withDeadlockRetry } from './match-fixture-sql';
 
 export const FIXTURE_EMAIL_LIKE = '%@test.local';
 const FIXTURE_USERS = `(select u.id from auth.users u where u.email ilike '${FIXTURE_EMAIL_LIKE}')`;
@@ -160,9 +161,16 @@ export function assertLocalSupabase(): void {
   );
 }
 
+/** One DO block = one transaction; a deadlock victim rolls back fully, so retry is idempotent. */
 export function runMatchFixtureCleanup(owner: MatchFixtureOwner = {}): Promise<void> {
+  return withDeadlockRetry(() => runMatchFixtureCleanupOnce(owner));
+}
+
+function runMatchFixtureCleanupOnce(owner: MatchFixtureOwner): Promise<void> {
   assertLocalSupabase();
-  const sql = `do $$ begin ${buildMatchFixtureCleanupSql(owner)}; end $$;`;
+  const sql = serializeMatchFixtureSql(
+    `do $$ begin ${buildMatchFixtureCleanupSql(owner)}; end $$;`
+  );
   return new Promise((resolve, reject) => {
     const child = spawn(
       'pnpm',

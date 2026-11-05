@@ -4,7 +4,7 @@ import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { expect, type Browser, type BrowserContext, type Page } from '@playwright/test';
 import { matchPhotoFixture } from '../test/helpers/match-photo-fixtures';
 import { waitForHydratedPage } from './auth-helpers';
-import { serializeMatchFixtureSql } from './match-fixture-sql';
+import { serializeMatchFixtureSql, withDeadlockRetry } from './match-fixture-sql';
 import enCopy from '../src/locales/en/translation.json' with { type: 'json' };
 import ptCopy from '../src/locales/pt-BR/translation.json' with { type: 'json' };
 import esCopy from '../src/locales/es/translation.json' with { type: 'json' };
@@ -29,7 +29,11 @@ type Row = Record<string, unknown>;
 
 // Same local CLI/SQL boundary as matches-registration.spec.ts. No Vitest imports
 // (the integration SQL helper imports Vitest and cannot run in Playwright).
-export async function sql(query: string): Promise<Row[]> {
+export function sql(query: string): Promise<Row[]> {
+  return withDeadlockRetry(() => runSql(query));
+}
+
+function runSql(query: string): Promise<Row[]> {
   return new Promise((resolve, reject) => {
     const child = spawn('pnpm', [
       'exec',

@@ -4,6 +4,12 @@ import { createMatchManagementFixtures } from './helpers/match-management-fixtur
 import { sqlRows } from './helpers/match-registration-sql';
 import { queryTrustedSql } from './helpers/sql-transport';
 import {
+  approveOk,
+  grantPlatformAdmin,
+  revokePlatformAdmin,
+  submitExact
+} from './helpers/level-review-fixtures';
+import {
   confirmAuto,
   ledgerOf,
   nextTailPlayedAt,
@@ -51,6 +57,16 @@ describe('rating evidence fixture teardown', { timeout: 120_000 }, () => {
         // Newest first, then the older one: the late insertion appends calculation revisions.
         await confirmAuto(newer);
         await confirmAuto(older);
+        // An approved level review leaves an adjustment, its checkpoint state and the request:
+        // teardown must remove the cycle too (the creator is the trusted Platform Admin here).
+        await grantPlatformAdmin(f.creator.id);
+        const reviewed = await approveOk(
+          { id: f.creator.id, client: f.creator.client, email: '' },
+          await submitExact({ id: players[0]!.id, client: players[0]!.client, email: '' }, 5),
+          { target: 5 }
+        );
+        expect(reviewed.adjustment).not.toBeNull();
+        await revokePlatformAdmin(f.creator.id);
         const ledger = await ledgerOf([newer.proposalId, older.proposalId]);
         expect(ledger).toHaveLength(8);
         expect(ledger.some((entry) => entry.calculations.length > 1)).toBe(true);
@@ -67,18 +83,36 @@ describe('rating evidence fixture teardown', { timeout: 120_000 }, () => {
                     (select count(*)::int from public.player_rating_event_calculations c
                       where c.rating_event_id not in (select id from public.player_rating_events)) as orphans,
                     (select count(*)::int from public.player_rating_initializations where user_id = any($1::uuid[])) as inits,
-                    (select count(*)::int from public.global_player_ratings where user_id = any($1::uuid[])) as ratings`,
+                    (select count(*)::int from public.global_player_ratings where user_id = any($1::uuid[])) as ratings,
+                    (select count(*)::int from public.player_rating_admin_adjustments where user_id = any($1::uuid[])) as adjustments,
+                    (select count(*)::int from public.player_rating_adjustment_states s
+                      where s.adjustment_id not in (select id from public.player_rating_admin_adjustments)) as state_orphans,
+                    (select count(*)::int from public.player_level_review_requests where owner_id = any($1::uuid[])) as requests`,
             { values: [ids] }
           )
         ).rows[0];
-        expect(residue).toEqual({ events: 0, orphans: 0, inits: 0, ratings: 0 });
+        expect(residue).toEqual({
+          events: 0,
+          orphans: 0,
+          inits: 0,
+          ratings: 0,
+          adjustments: 0,
+          state_orphans: 0,
+          requests: 0
+        });
         const guards = await sqlRows(
           `select tgname, tgenabled from pg_catalog.pg_trigger
             where tgname in ('player_rating_events_immutable', 'player_rating_calculations_immutable',
-                             'player_rating_initializations_immutable')
+                             'player_rating_initializations_immutable', 'player_rating_adjustments_immutable',
+                             'player_rating_adjustment_states_immutable', 'level_review_requests_guard',
+                             'level_review_requests_no_delete')
             order by tgname`
         );
         expect(guards).toEqual([
+          { tgname: 'level_review_requests_guard', tgenabled: 'O' },
+          { tgname: 'level_review_requests_no_delete', tgenabled: 'O' },
+          { tgname: 'player_rating_adjustment_states_immutable', tgenabled: 'O' },
+          { tgname: 'player_rating_adjustments_immutable', tgenabled: 'O' },
           { tgname: 'player_rating_calculations_immutable', tgenabled: 'O' },
           { tgname: 'player_rating_events_immutable', tgenabled: 'O' },
           { tgname: 'player_rating_initializations_immutable', tgenabled: 'O' }

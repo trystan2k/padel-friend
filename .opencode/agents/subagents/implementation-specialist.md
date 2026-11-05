@@ -158,6 +158,7 @@ Apply these standards during implementation:
 - Follow existing naming, error-handling, and testing patterns.
 - For UI, treat pen.dev file as visual source of truth (colors, typography, spacing, layout intent, overall look). Match as closely as possible while prioritizing production UX, accessibility, responsive layout, and i18n. Literal markup may differ: use fluid flex/percent sizing over fixed widths, Base UI primitives over hand-rolled widgets, tokens over literal pixels, ≥44px touch targets, and translated-text-safe layouts. Cross-renderer pixel identity is unattainable; use exact structural/layout probes and justified nonzero per-screen screenshot budgets, never budget increases masking defects.
 - Ensure backward compatibility unless task scope explicitly allows breaking change.
+- Run long gates with explicit calibrated shell timeouts: timeout = 2× the gate's measured duration, floors 3600000 ms (full `pnpm test`) and 1800000 ms (E2E). A gate killed by its timeout is re-run with a larger timeout, never reported as a test failure or a partial result — the only honest partial is one a larger timeout cannot fix. DB-touching gates run serially; verify spec-path filtering before starting E2E.
 
 ## Tool Usage Rules (OpenCode `permission` model)
 

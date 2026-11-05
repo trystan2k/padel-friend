@@ -1,4 +1,5 @@
 import { spawn } from 'node:child_process';
+import { serializeMatchFixtureSql, withDeadlockRetry } from './match-fixture-sql';
 import { createHash } from 'node:crypto';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
@@ -321,7 +322,11 @@ async function publishFixture(
 
 /** Trusted local SQL harness (single atomic DO block; only immutability/future-start
  * triggers are bypassed, exactly like the functional and integration fixture suites). */
-async function fixtureSql(sql: string): Promise<void> {
+function fixtureSql(sql: string): Promise<void> {
+  return withDeadlockRetry(() => runFixtureSql(sql));
+}
+
+async function runFixtureSql(sql: string): Promise<void> {
   const child = spawn(
     'pnpm',
     [
@@ -332,7 +337,7 @@ async function fixtureSql(sql: string): Promise<void> {
       '--local',
       '--output-format',
       'json',
-      `do $$ begin ${sql} end $$;`
+      serializeMatchFixtureSql(`do $$ begin ${sql} end $$;`)
     ],
     { cwd: process.cwd() }
   );

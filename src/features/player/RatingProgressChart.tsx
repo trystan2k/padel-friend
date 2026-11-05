@@ -14,7 +14,7 @@ const HEIGHT = 120;
 const INSET = 8;
 const MARKER_RADIUS = 4;
 
-type PlotPoint = { key: string; level: number; baseline: boolean };
+type PlotPoint = { key: string; level: number; kind: 'baseline' | 'match' | 'adjustment' };
 
 function plotX(index: number, count: number): number {
   return count === 1 ? WIDTH / 2 : INSET + (index * (WIDTH - 2 * INSET)) / (count - 1);
@@ -26,8 +26,9 @@ function plotY(level: number): number {
 }
 
 /**
- * Lifetime progression: starting level, then one marker per confirmed game in played order.
- * Spacing follows game order (never time), so lines connect games without implying
+ * Lifetime progression: starting level, then one marker per point in played order: confirmed
+ * games (circles) and level-review correction checkpoints (diamonds).
+ * Spacing follows point order (never time), so lines connect points without implying
  * interpolated levels. Every value is also available in the data table.
  */
 export function RatingProgressChart({ progress }: { progress: RatingProgress }) {
@@ -55,11 +56,11 @@ export function RatingProgressChart({ progress }: { progress: RatingProgress }) 
     );
 
   const points: PlotPoint[] = [
-    { key: 'baseline', level: baselineLevel, baseline: true },
+    { key: 'baseline', level: baselineLevel, kind: 'baseline' },
     ...progress.points.map((point) => ({
-      key: point.game_group_id,
+      key: point.event_id,
       level: point.display_level,
-      baseline: false
+      kind: point.kind
     }))
   ];
   const last = progress.points[progress.points.length - 1];
@@ -101,15 +102,29 @@ export function RatingProgressChart({ progress }: { progress: RatingProgress }) 
           ))}
           <polygon points={area} {...stylex.props(s.area)} />
           <polyline points={line} {...stylex.props(s.trend)} />
-          {points.map((point, index) => (
-            <circle
-              key={point.key}
-              cx={coordinates[index]?.[0]}
-              cy={coordinates[index]?.[1]}
-              r={MARKER_RADIUS}
-              {...stylex.props(point.baseline ? s.baselineMarker : s.point)}
-            />
-          ))}
+          {points.map((point, index) => {
+            const [cx = 0, cy = 0] = coordinates[index] ?? [];
+            return point.kind === 'adjustment' ? (
+              // A correction checkpoint: a diamond, never a game marker.
+              <rect
+                key={point.key}
+                x={cx - MARKER_RADIUS}
+                y={cy - MARKER_RADIUS}
+                width={MARKER_RADIUS * 2}
+                height={MARKER_RADIUS * 2}
+                transform={`rotate(45 ${cx} ${cy})`}
+                {...stylex.props(s.adjustmentMarker)}
+              />
+            ) : (
+              <circle
+                key={point.key}
+                cx={cx}
+                cy={cy}
+                r={MARKER_RADIUS}
+                {...stylex.props(point.kind === 'baseline' ? s.baselineMarker : s.point)}
+              />
+            );
+          })}
         </svg>
       </div>
       <div {...stylex.props(s.rangeLabels)}>
@@ -120,7 +135,7 @@ export function RatingProgressChart({ progress }: { progress: RatingProgress }) 
       {progress.abbreviated && (
         <p {...stylex.props(s.copy)}>
           {t('rating.progress.abbreviated', {
-            shown: progress.points.length,
+            shown: progress.points.filter((point) => point.kind === 'match').length,
             total: progress.total_events
           })}
         </p>
@@ -138,6 +153,21 @@ export function RatingProgressChart({ progress }: { progress: RatingProgress }) 
           </svg>
           {t('rating.progress.legendPoint')}
         </li>
+        {progress.points.some((point) => point.kind === 'adjustment') && (
+          <li {...stylex.props(s.legendItem)}>
+            <svg aria-hidden="true" viewBox="0 0 12 12" {...stylex.props(s.legendGlyph)}>
+              <rect
+                x="3"
+                y="3"
+                width="6"
+                height="6"
+                transform="rotate(45 6 6)"
+                {...stylex.props(s.adjustmentMarker)}
+              />
+            </svg>
+            {t('rating.progress.legendAdjustment')}
+          </li>
+        )}
       </ul>
       <p {...stylex.props(s.copy)}>{t('rating.progress.order')}</p>
       <Collapsible.Root open={tableOpen} onOpenChange={setTableOpen}>
@@ -170,9 +200,11 @@ export function RatingProgressChart({ progress }: { progress: RatingProgress }) 
                   <td {...stylex.props(s.td)}>{formatLevel(baselineLevel, locale)}</td>
                 </tr>
                 {progress.points.map((point) => (
-                  <tr key={point.game_group_id}>
+                  <tr key={point.event_id}>
                     <th scope="row" {...stylex.props(s.td)}>
-                      {point.ordinal}
+                      {point.kind === 'adjustment'
+                        ? t('rating.progress.adjustmentRow')
+                        : point.ordinal}
                     </th>
                     <td {...stylex.props(s.td)}>{formatRatingDate(point.played_at, locale)}</td>
                     <td {...stylex.props(s.td)}>{formatLevel(point.display_level, locale)}</td>

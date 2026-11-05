@@ -125,6 +125,45 @@ All four players get +1 group / +6% for every Confirmed Competitive group, regar
 loss, draw, a 0.00 rounded delta or a clamp. The delta uses the reliability **before** the
 group. Pins: `GF-19` (10→16→22→28→34), `GF-20` (94→100 at the 15th group).
 
+### Audited reliability exceptions (engine `1.1.0`)
+
+The schedule above is the contract of engine `app-wide-level` / `1.0.0` and stays unchanged,
+byte for byte, for every stream without an exception. A Platform Admin who approves a level review
+(T14) may additionally record a **reliability exception** next to the corrected level; the
+default is `preserve` (reliability, sigma, game count and the last-match timestamp are not
+touched). An exception is explicit, justified (non-empty text) and permanent evidence on the
+`ADMIN_REVIEW_ADJUSTMENT` event:
+
+| Mode       | Reliability right after the correction | Constraint                             |
+| ---------- | -------------------------------------- | -------------------------------------- |
+| `preserve` | unchanged                              | no justification                       |
+| `reset`    | `10` (the initial reliability)         | current reliability must be above `10` |
+| `reduce`   | the explicit whole percent `0..99`     | strictly below the current reliability |
+
+The genuine `confirmed_competitive_game_groups` never resets, `sigma` stays `1.00`, the initial
+level and every match calculation are preserved, and the highest level is never lowered.
+
+From a recorded exception on, the player's reliability is **off the curve** and progresses from the
+_effective_ value: `reliability_after = min(100, reliability_before + 6)`. Because that cannot be
+expressed by `min(100, 10 + 6n)`, every group that contains at least one exception-bearing
+player is calculated with the versioned kernel `1.1.0`:
+
+- identical expected score, `K(r)`, rounding (half away from zero), clamping and simultaneous
+  update — the golden fixtures produce the same numbers with `1.1.0` for on-curve inputs;
+- only the reliability _input_ rule (any whole `0..100`) and the _output_ rule (`+6` from the
+  effective value) differ;
+- all four results of such a group carry the same `1.1.0` stamp, including players without an
+  exception, whose own reliability simply stays on their curve;
+- the `1.0.0` kernel still refuses an off-curve input, and the database constraints stay strict
+  for `1.0.0` rows; an off-curve current state is only accepted for a `1.1.0` row that is backed
+  by a recorded reset/reduce adjustment (checked by the projection consistency gate).
+
+An adjustment is a **checkpoint in the chronological stream**, ordered after every committed
+match, the decision instant and every earlier checkpoint. Approval never replays history or League
+standings. A later result that is _played before_ the checkpoint is calculated from the
+pre-adjustment state and the checkpoint then re-applies the absolute corrected level (and the
+recorded reliability); a result played after it continues from the corrected state.
+
 ## Eligibility and exclusions
 
 A group is ratable only when `match_type = competitive`, `classification ∈ {team_a, team_b, draw}`

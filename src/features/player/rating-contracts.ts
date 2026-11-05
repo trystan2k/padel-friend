@@ -25,7 +25,9 @@ export type RatingSummaryResult = {
 export type RatingTeam = 'team_a' | 'team_b';
 export type RatingClassification = 'team_a' | 'team_b' | 'draw';
 
-export type RatingHistoryItem = {
+/** A confirmed competitive group: the only timeline item with a match, result and delta. */
+export type RatingMatchHistoryItem = {
+  kind: 'match';
   game_group_id: string;
   match_event_id: string;
   game_group_number: number;
@@ -45,6 +47,30 @@ export type RatingHistoryItem = {
   recalculated: boolean;
 };
 
+/**
+ * An approved level review (ADMIN_REVIEW_ADJUSTMENT). Safe fields only: the decision note, the
+ * displayed before/after level and reliability. No opponents, actor or exception justification;
+ * it is never a win/loss and never counts as a competitive group.
+ */
+export type RatingAdjustmentHistoryItem = {
+  kind: 'adjustment';
+  adjustment_id: string;
+  level_review_request_id: string;
+  event_type: 'ADMIN_REVIEW_ADJUSTMENT';
+  effective_at: string;
+  reason: string;
+  outcome: 'approved';
+  before_display_level: number;
+  after_display_level: number;
+  before_reliability_percent: number;
+  after_reliability_percent: number;
+  reliability_changed: boolean;
+  after_confirmed_groups: number;
+  calculation_revision: number;
+};
+
+export type RatingHistoryItem = RatingMatchHistoryItem | RatingAdjustmentHistoryItem;
+
 export type RatingHistoryCursor = { played_at: string; game_group_id: string };
 export type RatingHistoryPage = {
   revision: number;
@@ -59,9 +85,12 @@ export type RatingHistoryView = Omit<RatingHistoryPage, 'next_cursor'> & {
   next_cursor: string | null;
 };
 
+/** One chart point: a match (game_group_id = event_id) or an adjustment checkpoint. */
 export type RatingProgressPoint = {
   ordinal: number;
-  game_group_id: string;
+  kind: 'match' | 'adjustment';
+  event_id: string;
+  game_group_id: string | null;
   played_at: string;
   display_level: number;
 };
@@ -71,7 +100,9 @@ export type RatingProgress = {
   scope: 'lifetime';
   resolution: 'event' | 'sampled';
   abbreviated: boolean;
+  /** Competitive groups only; adjustments are counted in total_points. */
   total_events: number;
+  total_points: number;
   baseline: { display_level: number } | null;
   range: { from: string; to: string } | null;
   points: RatingProgressPoint[];
@@ -237,10 +268,35 @@ export function parseRatingSummaryResult(value: unknown): RatingSummaryResult | 
   return { revision, state, summary: { ...decoded, last_rating_at: lastRatingAt } };
 }
 
+function adjustmentHistoryItem(item: Rec): RatingAdjustmentHistoryItem | null {
+  if (item['event_type'] !== 'ADMIN_REVIEW_ADJUSTMENT' || item['outcome'] !== 'approved')
+    return null;
+  const decoded = {
+    kind: 'adjustment' as const,
+    adjustment_id: uuid(item['adjustment_id']),
+    level_review_request_id: uuid(item['level_review_request_id']),
+    event_type: 'ADMIN_REVIEW_ADJUSTMENT' as const,
+    effective_at: instant(item['effective_at']),
+    reason: str(item['reason'], 2000),
+    outcome: 'approved' as const,
+    before_display_level: num(item['before_display_level']),
+    after_display_level: num(item['after_display_level']),
+    before_reliability_percent: int(item['before_reliability_percent']),
+    after_reliability_percent: int(item['after_reliability_percent']),
+    reliability_changed: bool(item['reliability_changed']),
+    after_confirmed_groups: int(item['after_confirmed_groups']),
+    calculation_revision: int(item['calculation_revision'])
+  };
+  return isComplete<RatingAdjustmentHistoryItem>(decoded) ? decoded : null;
+}
+
 function historyItem(value: unknown): RatingHistoryItem | null {
   const item = rec(value);
   if (!item) return null;
+  if (item['kind'] === 'adjustment') return adjustmentHistoryItem(item);
+  if (item['kind'] !== 'match') return null;
   const decoded = {
+    kind: 'match' as const,
     game_group_id: uuid(item['game_group_id']),
     match_event_id: uuid(item['match_event_id']),
     game_group_number: int(item['game_group_number']),
@@ -259,7 +315,7 @@ function historyItem(value: unknown): RatingHistoryItem | null {
     calculation_revision: int(item['calculation_revision']),
     recalculated: bool(item['recalculated'])
   };
-  return isComplete<RatingHistoryItem>(decoded) ? decoded : null;
+  return isComplete<RatingMatchHistoryItem>(decoded) ? decoded : null;
 }
 
 export function parseRatingHistoryPage(value: unknown): RatingHistoryPage | null {
@@ -283,24 +339,41 @@ export function parseRatingHistoryPage(value: unknown): RatingHistoryPage | null
 
 function progressPoint(value: unknown): RatingProgressPoint | null {
   const point = rec(value);
+  const kind: RatingProgressPoint['kind'] | null =
+    point?.['kind'] === 'match' ? 'match' : point?.['kind'] === 'adjustment' ? 'adjustment' : null;
+  if (kind === null) return null;
+  const groupId = kind === 'match' ? uuid(point?.['game_group_id']) : null;
+  if (kind === 'adjustment' && point?.['game_group_id'] !== null) return null;
   const decoded = {
     ordinal: int(point?.['ordinal']),
-    game_group_id: uuid(point?.['game_group_id']),
+    kind,
+    event_id: uuid(point?.['event_id']),
     played_at: instant(point?.['played_at']),
     display_level: num(point?.['display_level'])
   };
-  return isComplete<RatingProgressPoint>(decoded) ? decoded : null;
+  if (!isComplete<Omit<RatingProgressPoint, 'game_group_id'>>(decoded)) return null;
+  if (kind === 'match' && (groupId === null || groupId !== decoded.event_id)) return null;
+  return { ...decoded, game_group_id: groupId };
 }
 
 export function parseRatingProgress(value: unknown): RatingProgress | null {
   const input = rec(value);
   const revision = int(input?.['revision']);
   const total = int(input?.['total_events']);
+  const totalPoints = int(input?.['total_points']);
   const points = list(input?.['points'], progressPoint);
   const state = input?.['state'];
   const resolution = input?.['resolution'];
   const abbreviated = bool(input?.['abbreviated']);
-  if (!input || revision === null || total === null || !points || abbreviated === null) return null;
+  if (
+    !input ||
+    revision === null ||
+    total === null ||
+    totalPoints === null ||
+    !points ||
+    abbreviated === null
+  )
+    return null;
   if (state !== 'unavailable' && state !== 'empty' && state !== 'ready') return null;
   if (resolution !== 'event' && resolution !== 'sampled') return null;
   if (input['scope'] !== 'lifetime') return null;
@@ -324,6 +397,7 @@ export function parseRatingProgress(value: unknown): RatingProgress | null {
     resolution,
     abbreviated,
     total_events: total,
+    total_points: totalPoints,
     baseline,
     range,
     points

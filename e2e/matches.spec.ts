@@ -1,7 +1,15 @@
 import { spawn } from 'node:child_process';
+import { serializeMatchFixtureSql, withDeadlockRetry } from './match-fixture-sql';
 import { readFileSync } from 'node:fs';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
-import { expect, test, type Browser, type BrowserContext, type Page } from '@playwright/test';
+import {
+  expect,
+  test,
+  type Browser,
+  type BrowserContext,
+  type Locator,
+  type Page
+} from '@playwright/test';
 import { waitForHydratedPage } from './auth-helpers';
 
 // PAF-76 functional E2E: real journeys for create/discover Match Events against the local
@@ -268,7 +276,11 @@ function captureResponses(page: Page): () => Promise<string> {
 /** Trusted local SQL harness (single atomic DO block so concurrent publications never
  * observe disabled triggers): only the future-start creator trigger is bypassed, exactly
  * like the integration fixture suites do for elapsed events. */
-async function fixtureSql(sql: string): Promise<void> {
+function fixtureSql(sql: string): Promise<void> {
+  return withDeadlockRetry(() => runFixtureSql(sql));
+}
+
+async function runFixtureSql(sql: string): Promise<void> {
   const child = spawn(
     'pnpm',
     [
@@ -279,7 +291,7 @@ async function fixtureSql(sql: string): Promise<void> {
       '--local',
       '--output-format',
       'json',
-      `do $$ begin ${sql} end $$;`
+      serializeMatchFixtureSql(`do $$ begin ${sql} end $$;`)
     ],
     { cwd: process.cwd() }
   );
@@ -314,14 +326,24 @@ async function detailData(actor: Actor, eventId: string): Promise<Record<string,
 
 // Asserts no interactive Ranked/League/booking/payment control. Informational
 // status text (the "Ranked"/"Unranked" competition badge) is deliberately allowed.
-async function expectNoCompetitionControls(page: Page): Promise<void> {
+// The shared Available listing renders every worker's seeded match cards (venue-named links),
+// so on the listing the card links are other suites' data, not controls under test: they are
+// excluded (`outsideListingCards`) while the shell, tabs and any non-card control stay asserted.
+async function expectNoCompetitionControls(
+  page: Page,
+  { outsideListingCards = false }: { outsideListingCards?: boolean } = {}
+): Promise<void> {
   const semantics = /ranked|league|book|pay|purchase/i;
+  const scope = (locator: Locator): Locator =>
+    outsideListingCards ? locator.and(page.locator(':not(article *)')) : locator;
   for (const role of ['button', 'link', 'checkbox', 'radio', 'switch', 'tab', 'combobox'] as const)
-    await expect(page.getByRole(role, { name: semantics })).toHaveCount(0);
+    await expect(scope(page.getByRole(role, { name: semantics }))).toHaveCount(0);
   await expect(
-    page.locator('main').locator('select, input, [role="button"], [role="link"]').filter({
-      hasText: semantics
-    })
+    scope(
+      page.locator('main').locator('select, input, [role="button"], [role="link"]').filter({
+        hasText: semantics
+      })
+    )
   ).toHaveCount(0);
 }
 
@@ -690,7 +712,7 @@ test.describe.serial('public community_open lifecycle', () => {
 
     await creatorPage.goto('/matches');
     await waitForHydratedPage(creatorPage);
-    await expectNoCompetitionControls(creatorPage);
+    await expectNoCompetitionControls(creatorPage, { outsideListingCards: true });
     const tabs = creatorPage.getByRole('navigation', { name: en.matches.navigationLabel });
     await expect(tabs.getByRole('link')).toHaveCount(3);
     // The only button this surface may expose is the pre-existing PAF-4 pagination

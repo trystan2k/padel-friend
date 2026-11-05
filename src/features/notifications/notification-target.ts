@@ -33,6 +33,17 @@ export type ResultNotificationContext = {
   entry_ready: boolean;
 };
 
+export type LevelReviewNotificationContext = {
+  request_id: string;
+  outcome: 'approved' | 'rejected';
+  requested_min_level: number;
+  requested_max_level: number;
+  approved_level: number | null;
+  decided_at: string;
+  decision_note: string;
+  adjustment_id: string | null;
+};
+
 export type NotificationTarget = {
   target_status: string;
   community_id: string | null;
@@ -46,9 +57,14 @@ export type NotificationTarget = {
   kind?: string | null;
   created_at?: string | null;
   result_context?: ResultNotificationContext | null;
+  level_review_context?: LevelReviewNotificationContext | null;
 };
-export type NotificationTargetInput = Omit<NotificationTarget, 'result_context'> & {
+export type NotificationTargetInput = Omit<
+  NotificationTarget,
+  'result_context' | 'level_review_context'
+> & {
   result_context?: unknown;
+  level_review_context?: unknown;
 };
 
 /** Cancelled events intentionally resolve through the same safe target as open
@@ -244,6 +260,48 @@ export function notificationResultHref(context: ResultNotificationContext): stri
   return `/matches/${encodeURIComponent(eventId)}?${query.toString()}#result-group-${context.group_number}`;
 }
 
+function isLevel(value: unknown): value is number {
+  return typeof value === 'number' && Number.isFinite(value) && value >= 0 && value <= 7;
+}
+
+export function decodeLevelReviewNotificationContext(
+  value: unknown
+): LevelReviewNotificationContext {
+  if (!isRecord(value)) throw new Error('INVALID_NOTIFICATION_LEVEL_REVIEW_CONTEXT');
+  const row = value;
+  const outcome = row.outcome;
+  const note = row.decision_note;
+  if (
+    (outcome !== 'approved' && outcome !== 'rejected') ||
+    !isLevel(row.requested_min_level) ||
+    !isLevel(row.requested_max_level) ||
+    row.requested_min_level > row.requested_max_level ||
+    !validTimestamp(row.decided_at) ||
+    typeof note !== 'string' ||
+    note.length === 0
+  )
+    throw new Error('INVALID_NOTIFICATION_LEVEL_REVIEW_CONTEXT');
+  const approvedLevel = row.approved_level;
+  const adjustmentId = row.adjustment_id;
+  // An approval always carries its corrected level and adjustment event; a rejection never does.
+  if (outcome === 'approved') {
+    if (!isLevel(approvedLevel) || adjustmentId === null)
+      throw new Error('INVALID_NOTIFICATION_LEVEL_REVIEW_CONTEXT');
+  } else if (approvedLevel !== null || adjustmentId !== null) {
+    throw new Error('INVALID_NOTIFICATION_LEVEL_REVIEW_CONTEXT');
+  }
+  return {
+    request_id: validateMatchUuid(row.request_id),
+    outcome,
+    requested_min_level: row.requested_min_level,
+    requested_max_level: row.requested_max_level,
+    approved_level: outcome === 'approved' ? approvedLevel : null,
+    decided_at: row.decided_at,
+    decision_note: note,
+    adjustment_id: outcome === 'approved' ? validateMatchUuid(adjustmentId) : null
+  };
+}
+
 export function decodeNotificationTarget(value: NotificationTargetInput): NotificationTarget {
   if (
     value.target_status === 'match_available' &&
@@ -264,10 +322,26 @@ export function decodeNotificationTarget(value: NotificationTargetInput): Notifi
     const resultContext = decodeResultNotificationContext(value.result_context);
     if (resultContext.match_event_id !== value.match_event_id)
       throw new Error('INVALID_NOTIFICATION_TARGET');
-    return { ...value, result_context: resultContext };
+    if (value.level_review_context !== null && value.level_review_context !== undefined)
+      throw new Error('INVALID_NOTIFICATION_TARGET');
+    const { level_review_context: _levelReview, ...resultTarget } = value;
+    return { ...resultTarget, result_context: resultContext };
   }
-  const { result_context: resultContext, ...target } = value;
+  const {
+    result_context: resultContext,
+    level_review_context: levelReviewContext,
+    ...target
+  } = value;
   if (resultContext !== null && resultContext !== undefined)
+    throw new Error('INVALID_NOTIFICATION_TARGET');
+  if (value.target_status === 'level_review_available') {
+    const context = decodeLevelReviewNotificationContext(levelReviewContext);
+    const expectedKind =
+      context.outcome === 'approved' ? 'level_review_approved' : 'level_review_rejected';
+    if (value.kind !== expectedKind) throw new Error('INVALID_NOTIFICATION_TARGET');
+    return { ...target, level_review_context: context };
+  }
+  if (levelReviewContext !== null && levelReviewContext !== undefined)
     throw new Error('INVALID_NOTIFICATION_TARGET');
   return target;
 }
