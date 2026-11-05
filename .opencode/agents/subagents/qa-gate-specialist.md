@@ -1,7 +1,6 @@
 ---
 description: Execute pre-commit quality gates and report pass or fail results without applying fixes.
 mode: subagent
-model: zai-coding-plan/glm-5.3-flash
 permissions:
   - action: subagent
     resource: "*"
