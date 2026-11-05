@@ -28,6 +28,7 @@ const PREDICATE_GATED_READERS = [
   'is_community_member',
   'is_provisional_actor',
   'list_match_events',
+  'result_amendment_reader',
   'search_match_invitees'
 ];
 

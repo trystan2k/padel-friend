@@ -139,8 +139,16 @@ export function createMatchFixtureCleanupRegistry(scopeName: string): FixtureCle
         `select id::text as id from public.match_event_result_proposals where match_event_id = any($1::uuid[])`,
         { values: [eventIds] }
       );
+      const amendments = await queryTrustedSql(
+        `select a.id::text as id from public.result_amendment_requests a where a.match_event_id = any($1::uuid[])`,
+        { values: [eventIds] }
+      );
+      for (const row of amendments.rows)
+        current.register('public.result_amendment_events', { amendment_id: String(row['id']) });
       for (const row of proposals.rows) {
         const proposalId = String(row['id']);
+        current.register('public.result_amendment_candidates', { proposal_id: proposalId });
+        current.register('public.result_amendment_requests', { proposal_id: proposalId });
         current.register('public.match_event_result_proposal_versions', {
           proposal_id: proposalId
         });
@@ -174,6 +182,9 @@ export function createMatchFixtureCleanupRegistry(scopeName: string): FixtureCle
         ['match_event_registration_attempts', 'match_attempt_history_guard'],
         ['match_event_registration_attempts', 'match_attempt_final_state'],
         ['match_event_audit_log', 'match_audit_immutable'],
+        ['result_amendment_events', 'result_amendment_events_immutable'],
+        ['result_amendment_candidates', 'result_amendment_candidates_immutable'],
+        ['result_amendment_requests', 'result_amendment_request_guard'],
         ['match_event_result_reviews', 'match_result_review_immutable'],
         ['match_event_result_confirmations', 'match_result_confirmation_insert_guard'],
         ['match_event_result_proposals', 'match_result_proposal_transition_guard'],
