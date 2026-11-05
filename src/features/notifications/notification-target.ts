@@ -9,7 +9,8 @@ export type ResultNotificationKind =
   | 'result_deadline_reminder'
   | 'result_entry_ready'
   | 'result_amendment_resolved'
-  | 'result_repair_queued';
+  | 'result_repair_queued'
+  | 'result_repair_applied';
 
 export type ResultNotificationContext = {
   notification_id: string;
@@ -81,7 +82,8 @@ const resultKinds = [
   'result_deadline_reminder',
   'result_entry_ready',
   'result_amendment_resolved',
-  'result_repair_queued'
+  'result_repair_queued',
+  'result_repair_applied'
 ] as const satisfies readonly ResultNotificationKind[];
 const resultKindSet: ReadonlySet<string> = new Set(resultKinds);
 

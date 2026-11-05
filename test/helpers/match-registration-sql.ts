@@ -205,6 +205,15 @@ export function createMatchFixtureCleanupRegistry(scopeName: string): FixtureCle
         triggerPairs.push([table, trigger]);
         beforeStatements.push(`alter table public.${table} disable trigger ${trigger}`);
       }
+      // A void leaves the official pointer referencing its audited decision; the pointer follows
+      // its group anyway, so it goes before the decision does.
+      beforeStatements.push(
+        `delete from public.match_event_result_official_state where match_event_id = any(array[${[
+          ...scope.eventIds
+        ]
+          .map((id) => `'${id}'::uuid`)
+          .join(',')}])`
+      );
       // Requests and repair jobs reference each other; break the cycle before deleting either side.
       beforeStatements.push(
         `update public.result_amendment_requests set repair_job_id = null where match_event_id = any(array[${[

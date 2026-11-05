@@ -621,6 +621,7 @@ export type Database = {
       }
       league_standings_snapshots: {
         Row: {
+          amendment_id: string | null
           basis: string
           cause: string
           community_id: string
@@ -631,11 +632,15 @@ export type Database = {
           league_id: string
           minimum_matches_for_final_award: number
           period_start_at: string
+          prior_standings_version: number | null
+          repair_job_id: string | null
+          source_fingerprint: string | null
           standings_version: number
           triggering_confirmation_id: string | null
         }
         ComputedFields: never
         Insert: {
+          amendment_id?: string | null
           basis: string
           cause: string
           community_id: string
@@ -646,10 +651,14 @@ export type Database = {
           league_id: string
           minimum_matches_for_final_award: number
           period_start_at: string
+          prior_standings_version?: number | null
+          repair_job_id?: string | null
+          source_fingerprint?: string | null
           standings_version: number
           triggering_confirmation_id?: string | null
         }
         Update: {
+          amendment_id?: string | null
           basis?: string
           cause?: string
           community_id?: string
@@ -660,16 +669,40 @@ export type Database = {
           league_id?: string
           minimum_matches_for_final_award?: number
           period_start_at?: string
+          prior_standings_version?: number | null
+          repair_job_id?: string | null
+          source_fingerprint?: string | null
           standings_version?: number
           triggering_confirmation_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "league_standings_snapshots_amendment_id_fkey"
+            columns: ["amendment_id"]
+            isOneToOne: false
+            referencedRelation: "result_amendment_requests"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "league_standings_snapshots_league_fk"
             columns: ["league_id", "community_id"]
             isOneToOne: false
             referencedRelation: "leagues"
             referencedColumns: ["id", "community_id"]
+          },
+          {
+            foreignKeyName: "league_standings_snapshots_prior_fk"
+            columns: ["league_id", "prior_standings_version"]
+            isOneToOne: false
+            referencedRelation: "league_standings_snapshots"
+            referencedColumns: ["league_id", "standings_version"]
+          },
+          {
+            foreignKeyName: "league_standings_snapshots_repair_job_id_fkey"
+            columns: ["repair_job_id"]
+            isOneToOne: false
+            referencedRelation: "result_repair_jobs"
+            referencedColumns: ["id"]
           },
           {
             foreignKeyName: "league_standings_snapshots_triggering_confirmation_id_fkey"
@@ -3190,6 +3223,7 @@ export type Database = {
           groups_replayed: number | null
           id: string
           job_id: string
+          publication: Json | null
           result_revision: number | null
           sources_total: number | null
           stage: string | null
@@ -3208,6 +3242,7 @@ export type Database = {
           groups_replayed?: number | null
           id?: string
           job_id: string
+          publication?: Json | null
           result_revision?: number | null
           sources_total?: number | null
           stage?: string | null
@@ -3225,6 +3260,7 @@ export type Database = {
           groups_replayed?: number | null
           id?: string
           job_id?: string
+          publication?: Json | null
           result_revision?: number | null
           sources_total?: number | null
           stage?: string | null
@@ -4940,6 +4976,10 @@ export type Database = {
         Args: { p_as_of?: string; p_community_id: string }
         Returns: Json
       }
+      league_publish_correction: {
+        Args: { p_job_id: string; p_league_id: string }
+        Returns: number
+      }
       league_publish_late_confirmation: {
         Args: {
           p_basis?: string
@@ -4979,6 +5019,11 @@ export type Database = {
       league_rebuild_counters_core: { Args: { p_league_id: string }; Returns: Json }
       league_reconstruct_standings: { Args: { p_league_id: string }; Returns: number }
       league_repair_closed_standings: { Args: { p_league_id: string }; Returns: number }
+      league_snapshot_content_fingerprint: {
+        Args: { p_confirmation_ids: string[] }
+        Returns: string
+      }
+      league_snapshot_fingerprint: { Args: { p_confirmation_ids: string[] }; Returns: string }
       league_standings_entries: {
         Args: { p_league_id: string }
         Returns: {
@@ -5967,6 +6012,7 @@ export type Database = {
         }
         Returns: Json
       }
+      result_repair_lock_league: { Args: { p_job_id: string }; Returns: undefined }
       result_repair_prepare_locked: { Args: { p_job_id: string }; Returns: Json }
       result_repair_publish_derived: {
         Args: { p_job_id: string; p_revision: number }

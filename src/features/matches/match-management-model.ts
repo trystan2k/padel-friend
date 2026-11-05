@@ -143,7 +143,11 @@ const MATCH_AUDIT_ACTIONS: readonly string[] = [
   'result_dispute_upheld',
   'result_dispute_replaced',
   'result_dispute_voided',
-  'result_repair_queued'
+  'result_repair_queued',
+  'result_repair_claimed',
+  'result_repair_retried',
+  'result_repair_failed',
+  'result_repair_applied'
 ];
 export type MatchAuditEntry = {
   id: string;

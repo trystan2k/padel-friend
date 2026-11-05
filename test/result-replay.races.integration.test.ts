@@ -28,6 +28,7 @@ import {
   repairJob,
   repairNow,
   sourceFingerprint,
+  withFailingPublication,
   withNoopPublication
 } from './helpers/result-replay-fixtures';
 import { openDedicatedSqlConnection, type DedicatedSqlConnection } from './helpers/sql-transport';
@@ -86,7 +87,9 @@ describe('result repair claim fencing on separate connections', { timeout: 120_0
     expect(await repairAttempts(job.jobId)).toHaveLength(1);
     const token = one['fence_token'];
     if (typeof token !== 'string') throw new Error('Missing fence token');
-    expect((await executeRepair(job.jobId, token)).outcome).toBe('failed');
+    expect((await withFailingPublication(() => executeRepair(job.jobId, token))).outcome).toBe(
+      'failed'
+    );
   });
   it.skipIf(!environment.env)(
     'reclaims an expired lease and rejects the stale worker token',
@@ -118,7 +121,10 @@ describe('result repair claim fencing on separate connections', { timeout: 120_0
         'expired',
         'running'
       ]);
-      expect((await executeRepair(job.jobId, reclaimed.fence_token)).outcome).toBe('failed');
+      const replacement = reclaimed.fence_token;
+      expect(
+        (await withFailingPublication(() => executeRepair(job.jobId, replacement))).outcome
+      ).toBe('failed');
     }
   );
   it.skipIf(!environment.env)(
@@ -157,8 +163,11 @@ describe('result repair claim fencing on separate connections', { timeout: 120_0
       );
       expect(foreignDenied.ok).toBe(false);
       const claim = await claimRepair(job.jobId);
-      if (!claim.fence_token) throw new Error('Missing fence token');
-      expect((await executeRepair(job.jobId, claim.fence_token)).outcome).toBe('failed');
+      const token = claim.fence_token;
+      if (!token) throw new Error('Missing fence token');
+      expect((await withFailingPublication(() => executeRepair(job.jobId, token))).outcome).toBe(
+        'failed'
+      );
     }
   );
   it.skipIf(!environment.env)(
@@ -183,8 +192,9 @@ describe('result repair claim fencing on separate connections', { timeout: 120_0
         events: await effectiveSources([group.proposalId])
       };
       const claim = await claimRepair(job.jobId);
-      if (!claim.fence_token) throw new Error('Missing fence token');
-      const failed = await executeRepair(job.jobId, claim.fence_token);
+      const token = claim.fence_token;
+      if (!token) throw new Error('Missing fence token');
+      const failed = await withFailingPublication(() => executeRepair(job.jobId, token));
       expect(failed).toMatchObject({ outcome: 'failed', failure_code: 'PUBLICATION_FAILED' });
       expect(await committedRevisionNumber()).toBe(before.revision);
       expect(await ratingStates(ids)).toEqual(before.ratings);
@@ -218,7 +228,7 @@ describe('result repair claim fencing on separate connections', { timeout: 120_0
         'failed',
         'succeeded'
       ]);
-      expect((await executeRepair(job.jobId, claim.fence_token)).outcome).toBe('stale');
+      expect((await executeRepair(job.jobId, token)).outcome).toBe('stale');
     }
   );
   it.skipIf(!environment.env)(
@@ -345,8 +355,11 @@ describe('result repair claim fencing on separate connections', { timeout: 120_0
       });
       const job = await queueCorrection(first, { facts: { classification: 'team_b' } });
       const claim = await claimRepair(job.jobId);
-      if (!claim.fence_token) throw new Error('Missing fence token');
-      expect((await executeRepair(job.jobId, claim.fence_token)).outcome).toBe('failed');
+      const token = claim.fence_token;
+      if (!token) throw new Error('Missing fence token');
+      expect((await withFailingPublication(() => executeRepair(job.jobId, token))).outcome).toBe(
+        'failed'
+      );
       const retry = await world.admin.client.rpc('retry_result_repair', { p_job_id: job.jobId });
       expect(retry.error).toBeNull();
       const attempt = asRecord(asRecord(retry.data)['claim'])['attempt_number'];
@@ -411,8 +424,11 @@ describe('result repair claim fencing on separate connections', { timeout: 120_0
       }
       expect(rejection).toMatch(/result_repair_job_(logical_correction|amendment_unique)/);
       const claim = await claimRepair(job.jobId);
-      if (!claim.fence_token) throw new Error('Missing fence token');
-      expect((await executeRepair(job.jobId, claim.fence_token)).outcome).toBe('failed');
+      const token = claim.fence_token;
+      if (!token) throw new Error('Missing fence token');
+      expect((await withFailingPublication(() => executeRepair(job.jobId, token))).outcome).toBe(
+        'failed'
+      );
     }
   );
   it.skipIf(!environment.env)(

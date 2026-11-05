@@ -190,8 +190,9 @@ export async function repairNow(jobId: string): Promise<ExecutionReceipt> {
 const SEAM = 'public.result_repair_publish_derived(uuid, bigint)';
 
 /**
- * Runs with the publication seam replaced by a no-op (the derived League/statistics
- * publishers do not exist in this unit) and always restores the production definition.
+ * Runs with the publication seam replaced by a no-op, isolating the rating replay from the derived
+ * League/statistics publishers (proven in the result-corrections suites), and always restores the
+ * production definition.
  */
 export async function withNoopPublication<T>(run: () => Promise<T>): Promise<T> {
   const [row] = await sqlRows(`select pg_get_functiondef('${SEAM}'::regprocedure) as def`);
@@ -199,6 +200,25 @@ export async function withNoopPublication<T>(run: () => Promise<T>): Promise<T> 
   await fixtureSql(
     `create or replace function public.result_repair_publish_derived(p_job_id uuid, p_revision bigint) returns void
       language plpgsql security definer set search_path = '' as $$ begin null; end $$;`
+  );
+  try {
+    return await run();
+  } finally {
+    await fixtureSql(original);
+  }
+}
+
+/**
+ * Runs with the publication seam raising, a deterministic publication failure, and always
+ * restores the production definition.
+ */
+export async function withFailingPublication<T>(run: () => Promise<T>): Promise<T> {
+  const [row] = await sqlRows(`select pg_get_functiondef('${SEAM}'::regprocedure) as def`);
+  const original = text(row!['def']);
+  await fixtureSql(
+    `create or replace function public.result_repair_publish_derived(p_job_id uuid, p_revision bigint) returns void
+      language plpgsql security definer set search_path = '' as $$ begin
+        raise exception using errcode = 'P0001', message = 'REPAIR_PUBLICATION_UNAVAILABLE'; end $$;`
   );
   try {
     return await run();

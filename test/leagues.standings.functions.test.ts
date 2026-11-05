@@ -223,6 +223,26 @@ describe('League standings versions decoder', () => {
     expect(decodeLeagueStandingsVersions(payload)).toEqual(payload);
   });
 
+  it('accepts correction causes without a confirmation and still rejects them with one', () => {
+    const payload = page(
+      [
+        versionSummary(3, { cause: 'result_void' }),
+        versionSummary(2, { cause: 'result_amendment' }),
+        versionSummary(1)
+      ],
+      null
+    );
+    expect(decodeLeagueStandingsVersions(payload)).toEqual(payload);
+    expect(() =>
+      decodeLeagueStandingsVersions(
+        page([versionSummary(2, { cause: 'result_amendment', confirmation: lateConfirmation })])
+      )
+    ).toThrow('INVALID_LEAGUE_RESPONSE');
+    expect(decodeLeagueStandings(final({ cause: 'result_amendment' }))).toMatchObject({
+      cause: 'result_amendment'
+    });
+  });
+
   it.each([
     ['ascending versions', () => page([versionSummary(1), versionSummary(2)])],
     ['a repeated version', () => page([versionSummary(2), versionSummary(2)])],

@@ -404,7 +404,11 @@ describe('audit and notification enums', () => {
       'result_dispute_upheld',
       'result_dispute_replaced',
       'result_dispute_voided',
-      'result_repair_queued'
+      'result_repair_queued',
+      'result_repair_claimed',
+      'result_repair_retried',
+      'result_repair_failed',
+      'result_repair_applied'
     ])
       expect(parseMatchAudit([{ ...row, action }])).toHaveLength(1);
     expect(parseMatchAudit([{ ...row, action: 'result_repair_completed' }])).toBeNull();
@@ -434,7 +438,11 @@ describe('audit and notification enums', () => {
       timezone: 'UTC',
       entry_ready: false
     };
-    for (const kind of ['result_amendment_resolved', 'result_repair_queued'])
+    for (const kind of [
+      'result_amendment_resolved',
+      'result_repair_queued',
+      'result_repair_applied'
+    ])
       expect(
         decodeResultNotificationContext({ ...context, notification_kind: kind })
       ).toMatchObject({
