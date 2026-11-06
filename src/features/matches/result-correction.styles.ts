@@ -16,15 +16,21 @@ export const resultCorrectionStyles = stylex.create({
   },
   card: {
     display: 'grid',
-    gap: 'var(--space-8)',
+    gap: 'var(--space-14)',
     minWidth: 0,
-    padding: 'var(--space-11)',
+    padding: 'var(--space-18)',
     borderWidth: 'var(--border-width-sm)',
     borderStyle: 'solid',
     borderColor: 'var(--color-line)',
-    borderRadius: 'var(--radius-14)',
+    borderRadius: 'var(--radius-16)',
     backgroundColor: 'var(--color-surface)',
     overflowWrap: 'anywhere'
+  },
+  cardEmbedded: {
+    padding: 0,
+    borderWidth: 0,
+    borderRadius: 0,
+    backgroundColor: 'transparent'
   },
   banner: {
     display: 'block',
@@ -39,6 +45,22 @@ export const resultCorrectionStyles = stylex.create({
     textTransform: 'uppercase',
     overflowWrap: 'anywhere'
   },
+  // Compact repair-status chip (SluH3 / cuVwp): sentence case, content width. Pair with a tone.
+  chip: {
+    boxSizing: 'border-box',
+    display: 'block',
+    justifySelf: 'start',
+    width: 'fit-content',
+    maxWidth: '100%',
+    margin: 0,
+    padding: 'var(--space-6) var(--space-10)',
+    borderRadius: 'var(--radius-12)',
+    backgroundColor: 'var(--color-green-soft)',
+    color: 'var(--color-green)',
+    fontSize: 'var(--font-size-12)',
+    fontWeight: 'var(--font-weight-semibold)',
+    overflowWrap: 'anywhere'
+  },
   bannerDisputed: { backgroundColor: 'var(--color-surface-2)', color: 'var(--color-red)' },
   bannerPending: { backgroundColor: 'var(--color-surface-2)', color: 'var(--color-amber)' },
   facts: { display: 'grid', gap: 'var(--space-3)', margin: 0, minWidth: 0 },
@@ -50,7 +72,26 @@ export const resultCorrectionStyles = stylex.create({
     letterSpacing: 'var(--font-letter-spacing-1-5)'
   },
   factValue: { margin: 0, fontWeight: 'var(--font-weight-semibold)', overflowWrap: 'anywhere' },
-  proposed: { backgroundColor: 'var(--color-green-soft)' },
+  factCompact: { fontSize: 'var(--font-size-13)' },
+  scoreLine: {
+    margin: 0,
+    fontSize: 'var(--font-size-14)',
+    fontWeight: 'var(--font-weight-semibold)',
+    overflowWrap: 'anywhere'
+  },
+  newScore: {
+    margin: 0,
+    color: 'var(--color-green)',
+    fontSize: 'var(--font-size-14)',
+    fontWeight: 'var(--font-weight-bold)',
+    overflowWrap: 'anywhere'
+  },
+  proposed: {
+    gap: 'var(--space-5)',
+    padding: 'var(--space-11)',
+    borderRadius: 'var(--radius-14)',
+    backgroundColor: 'var(--color-green-soft)'
+  },
   muted: { margin: 0, color: 'var(--color-muted)', overflowWrap: 'anywhere' },
   error: { margin: 0, color: 'var(--color-red)', overflowWrap: 'anywhere' },
   actions: { display: 'flex', flexWrap: 'wrap', gap: 'var(--space-8)', minWidth: 0 },
@@ -59,7 +100,7 @@ export const resultCorrectionStyles = stylex.create({
     display: 'inline-flex',
     alignItems: 'center',
     justifyContent: 'center',
-    flex: '1 1 calc(var(--space-40) * 4)',
+    flex: '1 1 calc(var(--space-40) * 3)',
     minWidth: 0,
     minHeight: touchTarget,
     paddingInline: 'var(--space-9)',
@@ -102,9 +143,44 @@ export const resultCorrectionStyles = stylex.create({
     boxSizing: 'border-box',
     display: 'flex',
     alignItems: 'center',
-    gap: 'var(--space-6)',
+    gap: 'var(--space-8)',
     minHeight: touchTarget,
+    padding: 'var(--space-12)',
+    borderRadius: 'var(--radius-12)',
+    backgroundColor: 'var(--color-surface-2)',
+    fontSize: 'var(--font-size-13)',
+    fontWeight: 'var(--font-weight-bold)',
+    cursor: 'pointer',
+    overflowWrap: 'anywhere',
+    ':focus-within': {
+      outline: 'var(--border-width-lg) solid var(--color-green)',
+      outlineOffset: 'var(--space-1)'
+    }
+  },
+  decisionSelected: { backgroundColor: 'var(--color-green-soft)' },
+  resolveDialogTitle: {
+    margin: 0,
+    fontFamily: 'var(--font-family-heading)',
+    fontSize: 'var(--font-size-24)',
+    fontWeight: 'var(--font-weight-bold)',
     overflowWrap: 'anywhere'
+  },
+  retryDialogTitle: {
+    margin: 0,
+    fontFamily: 'var(--font-family-heading)',
+    fontSize: 'var(--font-size-18)',
+    fontWeight: 'var(--font-weight-bold)',
+    overflowWrap: 'anywhere'
+  },
+  retryDialogDescription: {
+    margin: 0,
+    color: 'var(--color-muted)',
+    fontSize: 'var(--font-size-14)',
+    overflowWrap: 'anywhere'
+  },
+  dialogActionLabel: {
+    fontSize: 'var(--font-size-14)',
+    fontWeight: 'var(--font-weight-bold)'
   },
   table: { width: '100%', borderCollapse: 'collapse', fontSize: 'var(--font-size-12)' },
   cell: {

@@ -89,6 +89,8 @@ describe.skipIf(!environment.env)('statistics rating activation replay', () => {
         expect(Number(extremum?.['actual'])).toBeCloseTo(Number(extremum?.['expected']), 8);
       }
     } finally {
+      // Restore first so a mid-suite failure never leaks a dormant projector to later suites.
+      await setRatingProjectionActive(true);
       await fixtureSql('select public.activate_global_rating_projection()');
       const players = kit.players.map((player) => sqlText(player.id)).join(',');
       await fixtureSql(

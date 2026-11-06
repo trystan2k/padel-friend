@@ -32,6 +32,53 @@ async function removeFailure() {
     `do $cleanup$ begin drop trigger if exists fixture_result_repair_browser_failure on public.statistics_group_facts; drop function if exists ${failureFunction}(); end $cleanup$`
   );
 }
+let retriedJob: Promise<string> | undefined;
+/** Seeds, once per worker community, a repair that failed then succeeded on an admin retry (attempt_count 2). */
+function retriedRepairJob() {
+  retriedJob ??= (async () => {
+    await f.grantAdmin();
+    const group = await f.confirmed();
+    const queued = await f.accepted(group);
+    const suffix = group.original.proposal_id.replaceAll('-', '').slice(0, 12);
+    const fn = `public.fixture_repair_retried_${suffix}`;
+    await sql(`do $setup$ begin create function ${fn}() returns trigger language plpgsql as $failure$ begin raise exception 'FIXTURE_PUBLICATION_FAILURE'; end $failure$;
+      create trigger fixture_repair_retried_${suffix} after insert or update on public.statistics_group_facts for each row when (new.game_group_id='${group.original.proposal_id}'::uuid) execute function ${fn}(); end $setup$`);
+    try {
+      expect(await repairNow(queued.jobId)).toBe('failed');
+    } finally {
+      await sql(
+        `do $cleanup$ begin drop trigger if exists fixture_repair_retried_${suffix} on public.statistics_group_facts; drop function if exists ${fn}(); end $cleanup$`
+      );
+    }
+    const retry = await f.creator.client.rpc('retry_result_repair', { p_job_id: queued.jobId });
+    expect(retry.error).toBeNull();
+    // The retry command claims the job for its caller; execute that claimed attempt.
+    const [claimed] = await sql(
+      `select attempt_count::int as attempts from public.result_repair_jobs where id='${queued.jobId}' and status='running'`
+    );
+    const executed = await f.creator.client.rpc('execute_claimed_result_repair', {
+      p_job_id: queued.jobId,
+      p_attempt_number: Number(claimed?.['attempts'])
+    });
+    expect(executed.error).toBeNull();
+    // A concurrent scheduler may have run the claimed attempt first ("stale"); the terminal state is the contract.
+    expect(['succeeded', 'stale']).toContain(executed.data?.outcome);
+    await expect
+      .poll(
+        async () => {
+          const [job] = await sql(
+            `select status::text as status, attempt_count::int as attempts from public.result_repair_jobs where id='${queued.jobId}'`
+          );
+          const status = job?.['status'];
+          return `${typeof status === 'string' ? status : 'missing'}:${Number(job?.['attempts'] ?? 0)}`;
+        },
+        { timeout: 60_000, intervals: [250, 500, 1000] }
+      )
+      .toMatch(/^succeeded:([2-9]|\d{2,})$/);
+    return queued.jobId;
+  })();
+  return retriedJob;
+}
 async function counts(eventId: string) {
   return sql(`select
     (select count(*)::int from public.match_event_result_confirmations where match_event_id='${eventId}') as facts,
@@ -301,6 +348,8 @@ for (const scope of ['community', 'platform'] as const) {
         scope === 'platform'
           ? '/platform-admin/result-repairs'
           : `/community/${f.community}/repairs`;
+      // Seed before loading: the diagnostics list is server-rendered, so a retry seeded after goto would be missing from it.
+      const completedId = scope === 'platform' ? await retriedRepairJob() : undefined;
       const page = await f.page(f.creator, locale, 1280, 'light');
       const errors: string[] = [];
       page.on('pageerror', (error) => errors.push(error.message));
@@ -322,17 +371,13 @@ for (const scope of ['community', 'platform'] as const) {
         await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)
       ).toBe(true);
       expect(errors).toEqual([]);
-      if (scope === 'platform') {
-        const [completed] = await sql(
-          `select id::text from public.result_repair_jobs where community_id='${f.community}' and status='succeeded' and attempt_count > 1 order by requested_at limit 1`
+      if (completedId) {
+        const job = page.locator(`[data-repair-job="${completedId}"]`);
+        // The selected job's attempt timeline is always visible in the detail region.
+        await job.locator('[data-repair-select]').click();
+        const attempts = page.locator(
+          `[data-repair-detail="${completedId}"] ol[aria-label="${copies[locale].matches.corrections.diagnostics.attemptsCaption}"]`
         );
-        expect(completed?.['id']).toBeTruthy();
-        const job = page.locator(`[data-repair-job="${String(completed!['id'])}"]`);
-        await job.locator('summary').click();
-        const attempts = job.getByRole('table', {
-          name: copies[locale].matches.corrections.diagnostics.attemptsCaption,
-          exact: true
-        });
         await expect(attempts).toContainText(
           copies[locale].matches.corrections.repair.status.failed
         );

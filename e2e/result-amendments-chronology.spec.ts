@@ -8,12 +8,21 @@ import {
   fill,
   sql
 } from './result-amendments-chronology-fixtures';
+import manifest from './references/paf-14/manifest.json' with { type: 'json' };
+import { assertDesignSystemStyles } from './league-standings-visual';
 import {
+  assertColumnStructure,
+  assertFrameContract,
+  childSummary,
+  runCompositionProbes,
   assertContrast,
+  assertNear,
   assertNoOverflow,
   assertStacked,
   assertTargets,
   box,
+  frameViewport,
+  innerBox,
   measureFrame
 } from './result-corrections-visual';
 
@@ -215,8 +224,118 @@ test('October correction after the League close replays later groups, preserves 
   await assertTargets(viewPrior.locator('xpath=..'), 'league history prior version');
   await assertNoOverflow(leaguePage, 'league history');
   await assertContrast(leaguePage.locator('main'), 'league history');
+  const g = manifest.geometryReference;
+  const versionCard = banner.locator('xpath=..');
+  const cardBox = await box(versionCard);
+  assertNear(cardBox.x, g.gutter, 'league version card left gutter equals the frame gutter');
+  assertNear(frameViewport.width - cardBox.right, g.gutter, 'league version card right gutter');
+  const cardInner = await innerBox(versionCard);
+  assertNear((await box(banner)).x, cardInner.x, 'league banner aligned to card content edge');
+  assertNear((await box(viewPrior)).height, g.actionHeight, 'league view-prior action height');
+  const table = leaguePage
+    .locator('section[aria-labelledby="league-standings-heading"]')
+    .getByRole('table')
+    .first();
+  const tableBox = await box(table);
+  expect
+    .soft(tableBox.x, 'league standings table starts inside the frame gutter')
+    .toBeGreaterThanOrEqual(g.gutter - 0.5);
+  expect
+    .soft(tableBox.right, 'league standings table ends inside the frame gutter')
+    .toBeLessThanOrEqual(frameViewport.width - g.gutter + 0.5);
+  await assertColumnStructure(table, 'league standings table');
+  await assertDesignSystemStyles(
+    leaguePage,
+    'light',
+    [
+      {
+        name: 'version card surface',
+        locator: versionCard,
+        palette: { 'background-color': 'surface' }
+      }
+    ],
+    'league history'
+  );
+  const standingsSection = leaguePage.locator(
+    'section[aria-labelledby="league-standings-heading"]'
+  );
+  const historySection = leaguePage.locator('section[aria-labelledby="league-history-heading"]');
+  const leagues = copies.en.leagues;
+  await runCompositionProbes('xbIxj', 'page', {
+    'D1.banner': async () => {
+      await expect(banner).toHaveText(history.correctionBanner);
+      const children = await childSummary(versionCard);
+      const index = children.findIndex((child) => child.text === history.correctionBanner);
+      expect(index, 'banner sits inside the version card after the cutoff line').toBeGreaterThan(1);
+      expect(children[index + 1]?.tag, 'cause text follows the banner').toBe('P');
+    },
+    'D2.blockOrder': async () => {
+      expect(
+        await standingsSection.evaluate(
+          (element, other) =>
+            Boolean(
+              element.compareDocumentPosition(other as Node) & Node.DOCUMENT_POSITION_FOLLOWING
+            ),
+          await historySection.elementHandle()
+        ),
+        'standings section precedes the history section'
+      ).toBe(true);
+      await expect(historySection.locator('[data-standings-correction]')).toHaveCount(1);
+    },
+    'D3.columns': async () => {
+      const headers = await table.locator('thead th').allInnerTexts();
+      expect(headers.slice(0, 5)).toEqual([
+        leagues.standings.position,
+        leagues.standings.player,
+        leagues.standings.record,
+        leagues.counters.setDifferential,
+        leagues.standings.award
+      ]);
+    },
+    'D4.headerOrder': async () => {
+      const main = await childSummary(leaguePage.locator('main'));
+      expect(main[0]?.tag, 'league page starts with its header').toBe('HEADER');
+      assertStacked({
+        header: await box(leaguePage.locator('main header').first()),
+        standings: await box(standingsSection)
+      });
+    },
+    'D5.noShellNav': async () => {
+      await expect(versionCard.locator('nav, [role=navigation]')).toHaveCount(0);
+    }
+  });
+  await assertFrameContract('xbIxj', 'page', [
+    {
+      ref: 'AUDITED CORRECTION label',
+      locator: banner,
+      allow: {
+        caps: 'sentence',
+        color: 'var(--color-text)',
+        weight: 'var(--font-weight-semibold)'
+      },
+      adaptation: 'D1'
+    },
+    { ref: 'Corrected result', locator: versionCard.locator('p').nth(4) },
+    { ref: 'Audit actor', locator: versionCard.locator('p').nth(1) },
+    {
+      ref: 'Correction summary',
+      locator: versionCard,
+      allow: {
+        gap: 'var(--space-6)',
+        padding: 'var(--space-10)',
+        radius: 'var(--radius-14)'
+      },
+      adaptation: 'D2'
+    },
+    {
+      ref: 'Standing 1',
+      locator: table.locator('tbody tr').first().locator('td').first(),
+      allow: { weight: 'var(--font-weight-bold)' },
+      adaptation: 'D3'
+    }
+  ]);
   await banner.evaluate((element) => element.scrollIntoView({ block: 'start' }));
-  await measureFrame('xbIxj', leaguePage, testInfo);
+  await measureFrame('xbIxj', leaguePage, testInfo, 'page', { versionCard });
   await page.goto(league);
   await waitForHydratedPage(page);
   await page.getByRole('button', { name: fill(history.viewPrior, { version: 1 }) }).click();

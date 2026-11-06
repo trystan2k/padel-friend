@@ -6,6 +6,7 @@ import {
 import {
   decodeNotificationTarget,
   decodeResultNotificationContext,
+  notificationRepairDiagnosticsHref,
   notificationResultHref
 } from '../src/features/notifications/notification-target';
 
@@ -278,5 +279,18 @@ describe('notification display model', () => {
         result_context: context
       })
     ).toThrow('INVALID_NOTIFICATION_TARGET');
+  });
+});
+
+describe('repair failure notice diagnostics link', () => {
+  it('links only a failed repair notice to its community repair diagnostics', () => {
+    const failed = decodeResultNotificationContext({
+      ...validResultContext,
+      notification_kind: 'result_repair_failed'
+    });
+    expect(notificationRepairDiagnosticsHref(failed)).toBe(`/community/${communityId}/repairs`);
+    expect(
+      notificationRepairDiagnosticsHref(decodeResultNotificationContext(validResultContext))
+    ).toBeNull();
   });
 });

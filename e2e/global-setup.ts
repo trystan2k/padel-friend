@@ -29,8 +29,15 @@ export { FIXTURE_EMAIL_LIKE, MATCH_FIXTURE_PRUNE_STATEMENTS, runMatchFixturePrun
  * transaction and prove non-fixture rows survive.
  */
 import { assertLocalSupabase } from './match-fixture-cleanup';
+import setupResultRepairScheduler from '../test/helpers/result-repair-scheduler-setup';
 
-export default function globalSetup(): Promise<void> {
+// The correction suites claim and execute repair jobs themselves through the production RPCs. The
+// real cron runner executes every running job with a valid lease (and claims due queued ones), so
+// it would race those manual claims (`stale` outcomes) and change fixture states mid-journey. Same
+// isolation as the integration config: the two repair jobs are paused for the run and restored
+// to their exact prior settings by the returned teardown.
+export default async function globalSetup(): Promise<(() => Promise<void>) | undefined> {
   assertLocalSupabase();
-  return runMatchFixturePrune();
+  await runMatchFixturePrune();
+  return setupResultRepairScheduler();
 }

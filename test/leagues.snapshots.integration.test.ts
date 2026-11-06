@@ -978,15 +978,18 @@ describe.skipIf(!environment.env)(
   { timeout: 120_000 },
   () => {
     it('re-applies idempotently: no error and an identical final state', async () => {
-      const body = readFileSync(
-        resolvePath(
-          process.cwd(),
-          'supabase/migrations/20261101199000_league_closed_rebuild_repair.sql'
-        ),
-        'utf8'
-      )
-        .replace(/^begin;\s*/m, '')
-        .replace(/commit;\s*$/m, '');
+      // The repair comparison is superseded by a later migration; the chain replays in order and
+      // the other four protected functions must stay exactly as this migration defines them.
+      const body = [
+        '20261101199000_league_closed_rebuild_repair.sql',
+        '20261107091000_result_correction_repair_comparison.sql'
+      ]
+        .map((file) =>
+          readFileSync(resolvePath(process.cwd(), 'supabase/migrations', file), 'utf8')
+            .replace(/^begin;\s*/m, '')
+            .replace(/commit;\s*$/m, '')
+        )
+        .join('\n');
       const state = async (run: (sql: string) => Promise<{ rows: Record<string, unknown>[] }>) =>
         (
           await run(

@@ -40,6 +40,8 @@ test.beforeAll(async ({ browser }) => {
 });
 test.afterAll(async () => {
   test.setTimeout(120_000);
+  // Events, rating evidence and profiles go in one transaction; see matches-provisional.spec.ts.
+  await f?.cleanup();
   const ids = (email: string) => `(select id from auth.users where email='${email}')`;
   for (const email of addedEmails)
     await sql(`do $$ begin
@@ -57,7 +59,6 @@ test.afterAll(async () => {
       delete from public.community_members where user_id in ${ids(email)};
       alter table public.community_members enable trigger community_member_guard;
     end $$;`);
-  await f?.cleanup();
   for (const email of addedEmails)
     await sql(`do $$ begin delete from auth.users where email='${email}'; end $$;`);
 });

@@ -133,7 +133,7 @@ function RequestCorrection({
       {...stylex.props(c.card)}
     >
       <p {...stylex.props(c.banner)}>{t('matches.corrections.officialLabel')}</p>
-      <p {...stylex.props(c.factValue)}>
+      <p {...stylex.props(c.scoreLine)}>
         {t('matches.results.group', { number: proposal.group_number })} · {scoreLine(proposal.sets)}
       </p>
       <p {...stylex.props(c.muted)}>{t('matches.corrections.requestNote')}</p>

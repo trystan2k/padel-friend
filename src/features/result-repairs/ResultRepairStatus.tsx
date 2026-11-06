@@ -23,12 +23,15 @@ export function ResultRepairStatus({
   job,
   canRetry,
   onChanged,
-  timezone
+  timezone,
+  embedded = false
 }: {
   job: ResultRepairJob | ResultRepairDiagnosticJob;
   canRetry: boolean;
   onChanged: () => void | Promise<void>;
   timezone?: string;
+  // Rendered inside a job card that already provides the surface.
+  embedded?: boolean;
 }) {
   const { t, i18n } = useTranslation();
   const [confirming, setConfirming] = useState(false);
@@ -46,6 +49,7 @@ export function ResultRepairStatus({
   const retryable = job.status === 'failed' ? !('retryable' in job) || job.retryable : stale;
 
   async function retry() {
+    setFeedback(null);
     setPending(true);
     try {
       const result = await retryResultRepair({ data: { job_id: job.job_id } });
@@ -71,13 +75,13 @@ export function ResultRepairStatus({
       aria-label={t('matches.corrections.repair.title')}
       data-repair-status={job.status}
       data-repair-publication={job.publication}
-      {...stylex.props(c.card)}
+      {...stylex.props(c.card, embedded && c.cardEmbedded)}
     >
       <output
         aria-live="polite"
         aria-atomic="true"
         {...stylex.props(
-          c.banner,
+          c.chip,
           job.status === 'failed' && c.bannerDisputed,
           job.status !== 'succeeded' && job.status !== 'failed' && c.bannerPending
         )}
@@ -89,13 +93,13 @@ export function ResultRepairStatus({
       </p>
       <dl {...stylex.props(c.facts)}>
         <dt {...stylex.props(c.factLabel)}>{t('matches.corrections.repair.attempts')}</dt>
-        <dd {...stylex.props(c.factValue)}>{job.attempt_count}</dd>
+        <dd {...stylex.props(c.factValue, c.factCompact)}>{job.attempt_count}</dd>
         <dt {...stylex.props(c.factLabel)}>{t('matches.corrections.repair.requestedAt')}</dt>
-        <dd {...stylex.props(c.factValue)}>{when(job.requested_at)}</dd>
+        <dd {...stylex.props(c.factValue, c.factCompact)}>{when(job.requested_at)}</dd>
         {job.failure_code && (
           <>
             <dt {...stylex.props(c.factLabel)}>{t('matches.corrections.repair.failure')}</dt>
-            <dd {...stylex.props(c.factValue, c.error)}>
+            <dd {...stylex.props(c.factValue, c.factCompact, c.error)}>
               {t(`matches.corrections.repair.failureCodes.${job.failure_code}`)}
               {'failure_stage' in job &&
                 job.failure_stage &&
@@ -106,13 +110,13 @@ export function ResultRepairStatus({
         {job.next_attempt_at && job.status === 'failed' && (
           <>
             <dt {...stylex.props(c.factLabel)}>{t('matches.corrections.repair.nextAttempt')}</dt>
-            <dd {...stylex.props(c.factValue)}>{when(job.next_attempt_at)}</dd>
+            <dd {...stylex.props(c.factValue, c.factCompact)}>{when(job.next_attempt_at)}</dd>
           </>
         )}
         {job.committed_revision !== null && (
           <>
             <dt {...stylex.props(c.factLabel)}>{t('matches.corrections.repair.revision')}</dt>
-            <dd {...stylex.props(c.factValue)}>{job.committed_revision}</dd>
+            <dd {...stylex.props(c.factValue, c.factCompact)}>{job.committed_revision}</dd>
           </>
         )}
       </dl>
@@ -129,8 +133,12 @@ export function ResultRepairStatus({
             ref={trigger}
             type="button"
             disabled={pending}
-            {...stylex.props(c.action)}
-            onClick={() => setConfirming(true)}
+            data-emphasis="primary"
+            {...stylex.props(c.action, c.primary)}
+            onClick={() => {
+              setFeedback(null);
+              setConfirming(true);
+            }}
           >
             {t('matches.corrections.repair.retry')}
           </button>
@@ -154,25 +162,32 @@ export function ResultRepairStatus({
                 {...stylex.props(s.reviewPopup)}
               >
                 <header {...stylex.props(s.dialogHeader)}>
-                  <Dialog.Title {...stylex.props(s.dialogTitle)}>
+                  <Dialog.Title {...stylex.props(s.dialogTitle, c.retryDialogTitle)}>
                     {t('matches.corrections.repair.confirmTitle')}
                   </Dialog.Title>
-                  <Dialog.Description {...stylex.props(s.dialogDescription)}>
+                  <Dialog.Description
+                    {...stylex.props(s.dialogDescription, c.retryDialogDescription)}
+                  >
                     {t('matches.corrections.repair.confirmBody')}
                   </Dialog.Description>
                 </header>
+                {feedback?.kind === 'error' && (
+                  <p role="alert" {...stylex.props(s.dialogError)}>
+                    {t(`matches.corrections.repair.retryErrors.${feedback.code}`)}
+                  </p>
+                )}
                 <div {...stylex.props(s.dialogActions)}>
                   <Dialog.Close
                     disabled={pending}
                     type="button"
-                    {...stylex.props(base.button, s.dialogAction)}
+                    {...stylex.props(base.button, s.dialogAction, c.dialogActionLabel)}
                   >
                     {t('matches.corrections.dialog.cancel')}
                   </Dialog.Close>
                   <button
                     type="button"
                     disabled={pending}
-                    {...stylex.props(base.button, s.dialogAction, c.primary)}
+                    {...stylex.props(base.button, s.dialogAction, c.primary, c.dialogActionLabel)}
                     onClick={() => void retry().then((done) => done && setConfirming(false))}
                   >
                     {pending

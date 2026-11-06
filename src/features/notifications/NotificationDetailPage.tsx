@@ -1,7 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link } from '@tanstack/react-router';
 import { useTranslation } from 'react-i18next';
-import { notificationResultHref, notificationRosterPosition } from './notification-target';
+import {
+  notificationRepairDiagnosticsHref,
+  notificationResultHref,
+  notificationRosterPosition
+} from './notification-target';
 import { NotificationLevelReviewOutcome } from './NotificationLevelReviewOutcome';
 import { NotificationResultOutcome } from './NotificationResultOutcome';
 import {
@@ -23,7 +27,8 @@ import * as stylex from '@stylexjs/stylex';
 const correctionKinds: ReadonlySet<string> = new Set([
   'result_amendment_resolved',
   'result_repair_queued',
-  'result_repair_applied'
+  'result_repair_applied',
+  'result_repair_failed'
 ]);
 
 async function resolveNotificationTarget(notificationId: string) {
@@ -433,6 +438,14 @@ export function NotificationDetailPage({
                     : 'notifications.result.reviewCurrent'
               )}
             </a>
+            {notificationRepairDiagnosticsHref(target.result_context) && (
+              <a
+                href={notificationRepairDiagnosticsHref(target.result_context) ?? undefined}
+                {...stylex.props(styles.link)}
+              >
+                {t('notifications.result.openRepairs')}
+              </a>
+            )}
             <Link {...stylex.props(styles.link)} to="/notifications">
               {t('notifications.back')}
             </Link>

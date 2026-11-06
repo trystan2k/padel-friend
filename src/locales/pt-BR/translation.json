@@ -524,6 +524,7 @@
       "result_amendment_resolved": "Uma correção de resultado foi decidida",
       "result_repair_queued": "Uma correção de resultado está sendo aplicada",
       "result_repair_applied": "Uma correção de resultado foi aplicada",
+      "result_repair_failed": "Uma correção de resultado não pôde ser aplicada",
       "level_review_approved": "Sua revisão de nível foi aprovada",
       "level_review_rejected": "Sua revisão de nível foi recusada"
     },
@@ -543,12 +544,14 @@
       "historicalVersion": "Versão histórica {{version}}. Revise a proposta atual.",
       "reviewCurrent": "Revisar proposta atual",
       "openResult": "Revisar resultado",
+      "openRepairs": "Abrir diagnóstico de reparos",
       "openEvent": "Abrir partida",
       "entryReady": "O registro do resultado está pronto para {{venue}}.",
       "kindBody": {
         "result_amendment_resolved": "Um Admin da comunidade decidiu sobre uma correção de resultado.",
         "result_repair_queued": "A correção foi aprovada. Ratings, estatísticas e classificação da Liga são atualizados quando ela for aplicada; o resultado confirmado continua oficial até lá.",
-        "result_repair_applied": "A correção foi aplicada. Ratings, estatísticas e classificação da Liga agora refletem o resultado corrigido."
+        "result_repair_applied": "A correção foi aplicada. Ratings, estatísticas e classificação da Liga agora refletem o resultado corrigido.",
+        "result_repair_failed": "A aplicação de uma correção de resultado falhou. Ratings, estatísticas e classificação da Liga não mudaram; o resultado confirmado continua oficial. Veja o diagnóstico do reparo e tente novamente."
       }
     },
     "match": {
@@ -865,6 +868,12 @@
         "attempts": "Tentativas",
         "attemptsUnavailable": "Não foi possível carregar as tentativas.",
         "attemptsCaption": "Tentativas de reparo",
+        "detail": "Detalhe do trabalho",
+        "detailEmpty": "Selecione um reparo para ver o detalhe.",
+        "timeline": "Linha do tempo das tentativas",
+        "noAttempts": "Nenhuma tentativa registrada ainda.",
+        "officialRevision": "Revisão oficial",
+        "correlation": "ID de correlação",
         "columns": {
           "attempt": "Tentativa",
           "status": "Status",

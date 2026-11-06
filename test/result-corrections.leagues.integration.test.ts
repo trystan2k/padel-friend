@@ -223,6 +223,39 @@ describe.skipIf(!environment.env)('corrected League standings', { timeout: 300_0
     expect(await leagueRevisionEvents(leagueId)).toHaveLength(1);
   });
 
+  it('keeps the trusted repair a no-op after a same-result correction, and after a real one', async () => {
+    await freshKit();
+    const leagueId = await manualLeague();
+    const october = await play(leagueId, 2, 'team_a');
+    await play(leagueId, 12, 'team_b');
+    await closeLeague(kit, leagueId);
+    const baseline = await standingsSnapshots(leagueId);
+    const repair = async () => {
+      const [row] = await sqlRows(
+        'select public.league_repair_closed_standings(' + sqlText(leagueId) + ') as v'
+      );
+      return row!['v'];
+    };
+
+    // The correction replaces the confirmation identity but not the sporting content: the repair
+    // compares content, so it must not publish a version for the identical evidence.
+    const same = await queueCorrection(october, { facts: {} });
+    expect((await repairNow(same.jobId)).outcome).toBe('succeeded');
+    expect(await repair()).toBeNull();
+    expect(await standingsSnapshots(leagueId)).toEqual(baseline);
+    expect(await leagueRevisionEvents(leagueId)).toHaveLength(0);
+
+    // A genuine correction still versions once (by the correction path); repair stays a no-op.
+    const flip = await queueCorrection(october, { facts: { classification: 'team_b' } });
+    expect((await repairNow(flip.jobId)).outcome).toBe('succeeded');
+    const afterFlip = await standingsSnapshots(leagueId);
+    expect(afterFlip).toHaveLength(2);
+    expect(afterFlip[1]).toMatchObject({ cause: 'result_amendment', prior: 1 });
+    expect(await repair()).toBeNull();
+    expect(await standingsSnapshots(leagueId)).toEqual(afterFlip);
+    expect(await leagueRevisionEvents(leagueId)).toHaveLength(1);
+  });
+
   it('versions the affected final as result_void when an included fact is voided', async () => {
     await freshKit();
     const leagueId = await manualLeague({ minimumMatches: 2 });

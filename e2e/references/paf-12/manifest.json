@@ -2,7 +2,7 @@
   "status": "chromium-certified-with-scoped-route-adaptations",
   "sourceDesign": {
     "path": "docs/design/padel-friend.pen",
-    "sha256": "927ac4e83f24edacbc2b2fe2fcfa111d8e0822b96f73ce268cf50b5ef2737af2",
+    "sha256": "fe8ed8269e5b81d880ddcdd68f3a7910343d0e0d0817820eef04abed4cfb41ca",
     "exportCommand": "Pencil MCP: Export([\"ywfn7\",\"d6ANDN\",\"xbIxj\"], \"png\", \"<repo>/e2e/references/paf-12\", {scale:2})",
     "provenanceNote": "The three approved PAF-12 League standings references (Active League ywfn7, dark; End this League confirmation d6ANDN, light; Final standings updated xbIxj, light) were exported uncropped from the source Pencil document through Pencil MCP at 2x. The source digest above is the digest of the CURRENT docs/design/padel-friend.pen bytes at export time and is re-checked against the file by test/leagues.standings.visual-references.test.ts. Frame xbIxj depicts a T15 score correction (Community Admin amendment); PAF-12 intentionally adapts that composition to the truthful late-first-confirmation publication copy and never depicts an amendment, so only composition and tokens are compared. Supplemental states without an approved frame (all-zero, threshold-met, closed-empty, unavailable/retry, multiple history versions, no-active-League guidance x2GG9U, pt-BR dark 320px reflow) are gated by structural probes only; no budget exists for them."
   },

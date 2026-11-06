@@ -441,7 +441,8 @@ describe('audit and notification enums', () => {
     for (const kind of [
       'result_amendment_resolved',
       'result_repair_queued',
-      'result_repair_applied'
+      'result_repair_applied',
+      'result_repair_failed'
     ])
       expect(
         decodeResultNotificationContext({ ...context, notification_kind: kind })

@@ -5425,6 +5425,7 @@ export type Database = {
         Args: { p_proposal_id: string; p_proposal_version: number }
         Returns: number
       }
+      notify_result_repair_failure: { Args: { p_job_id: string }; Returns: number }
       onboard_player: {
         Args: {
           p_bio?: string
@@ -5917,6 +5918,7 @@ export type Database = {
         }
         Returns: Json
       }
+      resolve_result_repair_failure_notices: { Args: { p_job_id: string }; Returns: number }
       respond_match_event_invitation: {
         Args: { p_invitation_id: string; p_match_event_id: string; p_response: string }
         Returns: Json

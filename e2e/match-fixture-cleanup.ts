@@ -71,6 +71,8 @@ export function buildMatchFixtureCleanupSql(owner: MatchFixtureOwner = {}): stri
   const events = `create temporary table if not exists owned_match_fixture_events (id uuid primary key) on commit drop; truncate table owned_match_fixture_events; insert into owned_match_fixture_events select e.id from public.match_events e where ${eventPredicate}`;
   return [
     events,
+    // onboard_player writes profiles before rating initializations; take the same order before any DDL.
+    'lock table public.player_profiles in share row exclusive mode',
     'alter table public.match_event_audit_log disable trigger match_audit_immutable',
     'alter table public.match_event_result_reviews disable trigger match_result_review_immutable',
     'alter table public.match_event_result_confirmations disable trigger match_result_confirmation_insert_guard',

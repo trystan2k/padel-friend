@@ -40,7 +40,8 @@ describe('correction translation contracts', () => {
       for (const kind of [
         'result_amendment_resolved',
         'result_repair_queued',
-        'result_repair_applied'
+        'result_repair_applied',
+        'result_repair_failed'
       ]) {
         expect(first.exists(`notifications.kinds.${kind}`)).toBe(true);
       }

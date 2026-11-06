@@ -524,6 +524,7 @@
       "result_amendment_resolved": "A result correction was decided",
       "result_repair_queued": "A result correction is being applied",
       "result_repair_applied": "A result correction was applied",
+      "result_repair_failed": "A result correction could not be applied",
       "level_review_approved": "Your level review was approved",
       "level_review_rejected": "Your level review was declined"
     },
@@ -543,12 +544,14 @@
       "historicalVersion": "Historical version {{version}}. Review current proposal.",
       "reviewCurrent": "Review current proposal",
       "openResult": "Review result",
+      "openRepairs": "Open repair diagnostics",
       "openEvent": "Open match",
       "entryReady": "Result entry is ready for {{venue}}.",
       "kindBody": {
         "result_amendment_resolved": "A Community Admin decided on a result correction.",
         "result_repair_queued": "The correction was approved. Ratings, statistics and League standings update when it is applied; the confirmed result stays official until then.",
-        "result_repair_applied": "The correction was applied. Ratings, statistics and League standings now reflect the corrected result."
+        "result_repair_applied": "The correction was applied. Ratings, statistics and League standings now reflect the corrected result.",
+        "result_repair_failed": "A result correction failed to apply. Ratings, statistics and League standings are unchanged; the confirmed result stays official. Review the repair diagnostics and retry."
       }
     },
     "match": {
@@ -865,6 +868,12 @@
         "attempts": "Attempts",
         "attemptsUnavailable": "Attempts could not be loaded.",
         "attemptsCaption": "Repair attempts",
+        "detail": "Job detail",
+        "detailEmpty": "Select a repair to see its detail.",
+        "timeline": "Attempt timeline",
+        "noAttempts": "No attempts recorded yet.",
+        "officialRevision": "Official revision",
+        "correlation": "Correlation ID",
         "columns": {
           "attempt": "Attempt",
           "status": "Status",

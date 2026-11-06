@@ -237,6 +237,88 @@ describe.skipIf(!environment.env)('atomic correction publication', { timeout: 60
     expect((await repairJob(job.jobId))['status']).toBe('succeeded');
   });
 
+  it('notifies the operators once per failure, dedupes repeated failures, and resolves on success', async () => {
+    const w = await world();
+    const job = await queueCorrection(w.october, { facts: { classification: 'team_b' } });
+    const failNow = async () => {
+      await installFailure(
+        'operator_notice',
+        'public.league_standings_snapshots',
+        'insert',
+        'new.repair_job_id is not null'
+      );
+      try {
+        return await repairNow(job.jobId);
+      } finally {
+        await removeFailure('operator_notice', 'public.league_standings_snapshots');
+      }
+    };
+    const notices = () =>
+      sqlRows(
+        'select recipient_user_id, event_key, kind, category, target_type, read_at is not null as resolved, to_jsonb(n)::text as raw ' +
+          "from public.notifications n where kind = 'result_repair_failed' and target_id = " +
+          sqlText(w.october.eventId) +
+          ' order by recipient_user_id'
+      );
+    const admins = (
+      await sqlRows(
+        'select user_id from public.community_members where community_id = ' +
+          sqlText(w.kit.communityId) +
+          " and status = 'active' and role = 'admin' order by user_id"
+      )
+    ).map((row) => row['user_id']);
+    expect(admins.length).toBeGreaterThan(0);
+
+    // A failed attempt: exactly one sanitized notice per operator, inside the failed receipt.
+    expect(await failNow()).toMatchObject({
+      outcome: 'failed',
+      failure_code: 'PUBLICATION_FAILED'
+    });
+    const first = await notices();
+    expect(first.map((row) => row['recipient_user_id'])).toEqual(admins);
+    for (const row of first) {
+      expect(row).toMatchObject({
+        event_key: 'result.repair_failed:' + job.jobId + ':PUBLICATION_FAILED',
+        category: 'results',
+        target_type: 'result_available',
+        resolved: false
+      });
+      expect(String(row['raw'])).not.toContain('FIXTURE_INJECTED_FAILURE');
+    }
+
+    // The same failure again (automatic or operator retry) adds nothing.
+    await requeueJob(job.jobId);
+    expect((await failNow()).outcome).toBe('failed');
+    expect((await repairAttempts(job.jobId)).map((attempt) => attempt['status'])).toEqual([
+      'failed',
+      'failed'
+    ]);
+    expect((await notices()).map((row) => row['event_key'])).toEqual(
+      first.map((row) => row['event_key'])
+    );
+
+    // An operator reads the notice; the same failure on a NEW attempt re-arms it without a duplicate.
+    await sqlRows(
+      'update public.notifications set read_at = now() where kind = ' +
+        "'result_repair_failed' and target_id = " +
+        sqlText(w.october.eventId) +
+        ' returning id'
+    );
+    expect((await notices()).every((row) => row['resolved'] === true)).toBe(true);
+    await requeueJob(job.jobId);
+    expect((await failNow()).outcome).toBe('failed');
+    const rearmed = await notices();
+    expect(rearmed.map((row) => row['event_key'])).toEqual(first.map((row) => row['event_key']));
+    expect(rearmed.every((row) => row['resolved'] === false)).toBe(true);
+
+    // A later success resolves the notices and adds none.
+    await requeueJob(job.jobId);
+    expect((await repairNow(job.jobId)).outcome).toBe('succeeded');
+    const resolved = await notices();
+    expect(resolved).toHaveLength(first.length);
+    expect(resolved.every((row) => row['resolved'] === true)).toBe(true);
+  });
+
   it('publishes the completion audit and notice once, with the old and new revisions, and repeats add nothing', async () => {
     const w = await world();
     const job = await queueCorrection(w.october, { facts: { classification: 'team_b' } });

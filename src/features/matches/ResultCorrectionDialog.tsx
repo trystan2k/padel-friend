@@ -99,7 +99,9 @@ export function ResultCorrectionDialog<V extends string = string>({
             {...stylex.props(s.reviewPopup)}
           >
             <header {...stylex.props(s.dialogHeader)}>
-              <Dialog.Title {...stylex.props(s.dialogTitle)}>{title}</Dialog.Title>
+              <Dialog.Title {...stylex.props(s.dialogTitle, decisions && c.resolveDialogTitle)}>
+                {title}
+              </Dialog.Title>
               <Dialog.Description {...stylex.props(s.dialogDescription)}>
                 {description}
               </Dialog.Description>
@@ -113,7 +115,13 @@ export function ResultCorrectionDialog<V extends string = string>({
                 >
                   <legend {...stylex.props(s.reasonLegend)}>{decisionLegend}</legend>
                   {decisions.map((option, index) => (
-                    <label key={option.value} {...stylex.props(c.decisionOption)}>
+                    <label
+                      key={option.value}
+                      {...stylex.props(
+                        c.decisionOption,
+                        decision === option.value && c.decisionSelected
+                      )}
+                    >
                       <input
                         ref={index === 0 ? firstRef : undefined}
                         type="radio"

@@ -17,16 +17,31 @@ export function isDeadlockError(cause: unknown): boolean {
 }
 
 /**
+ * Another worker's fixture cleanup removes rating evidence in one transaction, while the global
+ * rating replay reads its player set and rating state in separate statements. A replay that
+ * straddles that commit reports an incomplete player state; the failed call rolled back completely,
+ * and the retry sees the committed state. Production never deletes this evidence.
+ */
+export function isTransientRatingStateError(cause: unknown): boolean {
+  return cause instanceof Error && /Incomplete player state/i.test(cause.message);
+}
+
+/**
  * A Postgres deadlock victim is rolled back completely, so re-running an atomic local-SQL call
- * (one CLI invocation = one implicit transaction) is safe. Only SQLSTATE 40P01 is retried,
- * at most 3 attempts; every other failure surfaces immediately.
+ * (one CLI invocation = one implicit transaction) is safe. Only SQLSTATE 40P01 and the transient
+ * incomplete rating state described above are retried, at most 3 attempts; every other failure
+ * surfaces immediately.
  */
 export async function withDeadlockRetry<T>(run: () => Promise<T>): Promise<T> {
   for (let attempt = 1; ; attempt++) {
     try {
       return await run();
     } catch (cause) {
-      if (!isDeadlockError(cause) || attempt >= DEADLOCK_ATTEMPTS) throw cause;
+      if (
+        !(isDeadlockError(cause) || isTransientRatingStateError(cause)) ||
+        attempt >= DEADLOCK_ATTEMPTS
+      )
+        throw cause;
     }
   }
 }

@@ -125,7 +125,7 @@ export function MatchResultAmendmentCard({
           <h4 {...stylex.props(c.factLabel)}>
             {t('matches.corrections.proposedVersion', { version: candidate.version })}
           </h4>
-          <p {...stylex.props(c.factValue)}>{scoreLine(candidate.sets)}</p>
+          <p {...stylex.props(c.newScore)}>{scoreLine(candidate.sets)}</p>
           <p {...stylex.props(c.muted)}>
             {t('matches.results.teams.team_a')}: {teamLine(candidate.teams.team_a)}
           </p>

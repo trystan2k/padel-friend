@@ -1,10 +1,10 @@
 {
-  "status": "chromium-certified-with-scoped-route-adaptations",
+  "status": "chromium-certified-with-declared-route-adaptations",
   "sourceDesign": {
     "path": "docs/design/padel-friend.pen",
-    "sha256": "927ac4e83f24edacbc2b2fe2fcfa111d8e0822b96f73ce268cf50b5ef2737af2",
-    "exportCommand": "Pencil MCP: Export([\"adujr\",\"s5TRC\",\"CWJkF\",\"xbIxj\"], \"png\", \"<repo>/e2e/references/paf-14\", {scale:2})",
-    "provenanceNote": "Four approved references exported uncropped from the source Pencil document at 2x. adujr, s5TRC and xbIxj are the amendment request, corrected-result review and League correction history frames; CWJkF is the existing dispute frame re-used for dispute resolution (byte-identical to the PAF-8 export). The design file has no operator diagnostics frame: the diagnostics screens follow the product requirements and the existing app patterns, so they carry structural, accessibility and locale gates only."
+    "sha256": "fe8ed8269e5b81d880ddcdd68f3a7910343d0e0d0817820eef04abed4cfb41ca",
+    "exportCommand": "Pencil MCP: Export([\"adujr\",\"s5TRC\",\"CWJkF\",\"xbIxj\"], \"png\", \"<repo>/e2e/references/paf-14\", {scale:2}); Export([\"SluH3\",\"cuVwp\",\"Jjrtb\"], \"png\", \"<repo>/e2e/references/paf-14\", {scale:2})",
+    "provenanceNote": "Seven approved references exported uncropped from the source Pencil document at 2x. adujr, s5TRC and xbIxj are the amendment request, corrected-result review and League correction history frames; CWJkF is the existing dispute frame re-used for dispute resolution (byte-identical to the PAF-8 export). SluH3 (Platform Admin repair diagnostics, desktop dark 1280x1500), cuVwp (mobile light 390x2250) and Jjrtb (mobile dark 390x2250) were added to the design by the product owner after the first PAF-14 certification and replace the earlier \"no diagnostics frame\" gap. The source digest was re-pinned to the design bytes that contain the three new frames. Before re-pinning, adujr, s5TRC, CWJkF and xbIxj were re-exported through Pencil at scale 2 and matched their approved PNG SHA-256 byte-for-byte, and the four frames kept their names and 390x844 sizes: the design change is additions only. The design has no desktop-light diagnostics frame (only desktop dark plus mobile light and dark): the implemented desktop-light rendering carries structural, accessibility and locale gates only, and no raster comparison (design gap observation, not a defect)."
   },
   "approvedReferences": {
     "adujr.png": {
@@ -30,23 +30,1628 @@
       "certifies": "League history: audited correction of a closed final with the superseded final inspectable",
       "sha256": "f26f34fc48b0280cc415d909e42c5dd0cb92f3d062d2a79753c1a4967ac8bf95",
       "pixelSize": [780, 1688]
+    },
+    "SluH3.png": {
+      "frameId": "SluH3",
+      "certifies": "Platform Admin repair diagnostics, desktop dark: scheduler health, repair queue cards with status chips and retry, job detail panel, retry confirmation and queue states",
+      "sha256": "3666864f858c2b21e47b74074386dc2d6e3796a503ac81c18e76618994af7ba5",
+      "pixelSize": [2560, 3000]
+    },
+    "cuVwp.png": {
+      "frameId": "cuVwp",
+      "certifies": "Platform Admin repair diagnostics, mobile light: the same surfaces stacked on one column",
+      "sha256": "1f2ca16c5e8f9debbdc4df1c96ef5641d4082e85ff342cafbeb482792232f9a2",
+      "pixelSize": [780, 4500]
+    },
+    "Jjrtb.png": {
+      "frameId": "Jjrtb",
+      "certifies": "Platform Admin repair diagnostics, mobile dark",
+      "sha256": "abcd2018cd973139b77ec24d2803a02dd1bd0e42b7d0b7ee8be5d3540c0ab088",
+      "pixelSize": [780, 4500]
     }
   },
   "visualBudgets": {
-    "status": "measured-chromium-viewport-pixel-difference",
-    "measurementMethod": "Capture at reference pixelSize / 2 using Chromium deviceScaleFactor 1. Downsample only the uncropped 2x Pencil PNG. Compare same-size RGBA pixels with the pinned perceptual threshold (35215 x 0.1^2); reject any dimension mismatch before applying the per-screen budget.",
+    "status": "measured-chromium-per-region-and-masked-screen-pixel-difference",
+    "measurementMethod": "Capture at reference pixelSize / 2 using Chromium deviceScaleFactor 1. Downsample only the uncropped 2x Pencil PNG. Compare same-size RGBA pixels with the pinned perceptual threshold (35215 x 0.1^2); reject any dimension mismatch. Two scoped measurements: (1) perRegion = top-left aligned crop of one comparable surface; corner squares (cornerRadius), the edge band (edgeInset, production border), production text/control/filled-child boxes (+2px) and the reference foreground pixels (+2px dilation) are excluded, the reference modal fill must equal the recorded fill, and at least minComparedRegionFraction of the crop must remain compared; (2) perScreen mode \"masked\" = whole viewport with every production block inside main and every referenceMasks rect (+1px) removed (what remains is page background and gutters); mode \"excluded\" = no whole-screen raster because a declared adaptation covers the whole viewport.",
+    "minComparedRegionFraction": 0.12,
     "perScreen": {
-      "adujr": 0.2,
-      "s5TRC": 0.19,
-      "CWJkF": 0.21,
-      "xbIxj": 0.13
+      "adujr": {
+        "mode": "masked",
+        "budget": 0.005,
+        "measured": 0,
+        "maxMaskedFraction": 0.94,
+        "measuredMaskedFraction": "0.9057-0.9197 (varies with fixture text wrapping)",
+        "rationale": "Whole-screen compare on the unmasked remainder (page background and gutters) after masking every production block in main and every Pencil block. Measured 0 (full-frame unmasked difference 0.1775-0.1854 is composition, declared below). Masked cap = highest measured + about 0.02."
+      },
+      "s5TRC": {
+        "mode": "masked",
+        "budget": 0.005,
+        "measured": 0,
+        "maxMaskedFraction": 0.94,
+        "measuredMaskedFraction": "0.9197",
+        "rationale": "Same method. Measured 0 (full-frame difference 0.1659 is composition, declared below)."
+      },
+      "CWJkF": {
+        "mode": "excluded",
+        "budget": null,
+        "measured": null,
+        "maxMaskedFraction": null,
+        "informationalFullFrame": 0.1888,
+        "rationale": "Declared adaptation C1: production shows a modal over a dimmed match detail, the frame is a full page. The backdrop covers the whole viewport, so no whole-screen raster is meaningful. The dialog surface is raster-compared per region and the layout is covered by structural probes."
+      },
+      "xbIxj": {
+        "mode": "masked",
+        "budget": 0.005,
+        "measured": 0,
+        "maxMaskedFraction": 0.95,
+        "measuredMaskedFraction": 0.9275,
+        "rationale": "Same method. Measured 0 (full-frame difference 0.1153 is composition, declared below)."
+      },
+      "cuVwp": {
+        "mode": "excluded",
+        "budget": null,
+        "measured": null,
+        "maxMaskedFraction": null,
+        "rationale": "Declared adaptations E1-E3: the route is a live platform queue (real job count, sorting, scheduler health and 10s refresh) in one centered 480px column, while the frame is a static composition (fixed four jobs, side detail panel on desktop, inline confirmation and queue-state cards). Whole-screen raster is excluded; comparable surfaces are raster-compared per region and the layout is covered by structural probes."
+      },
+      "Jjrtb": {
+        "mode": "excluded",
+        "budget": null,
+        "measured": null,
+        "maxMaskedFraction": null,
+        "rationale": "Declared adaptations E1-E3: the route is a live platform queue (real job count, sorting, scheduler health and 10s refresh) in one centered 480px column, while the frame is a static composition (fixed four jobs, side detail panel on desktop, inline confirmation and queue-state cards). Whole-screen raster is excluded; comparable surfaces are raster-compared per region and the layout is covered by structural probes."
+      },
+      "SluH3": {
+        "mode": "excluded",
+        "budget": null,
+        "measured": null,
+        "maxMaskedFraction": null,
+        "rationale": "Declared adaptations E1-E3: the route is a live platform queue (real job count, sorting, scheduler health and 10s refresh) in one centered 480px column, while the frame is a static composition (fixed four jobs, side detail panel on desktop, inline confirmation and queue-state cards). Whole-screen raster is excluded; comparable surfaces are raster-compared per region and the layout is covered by structural probes. The 1280px desktop frame spreads two columns; the production column stays at the shared page max width."
+      }
     },
-    "perScreenRationale": {
-      "adujr": "Measured 0.1775. The match-detail route replaces the standalone request page: the correction card sits under the match header and the reason is entered in a Base UI dialog, so the reason box and the screen title differ by design. Probes pin the official-result banner, note and request action order, the 44px target, labelled dialog and error association.",
-      "s5TRC": "Measured 0.1663. The corrected review lives in the match detail correction card (lifecycle banner, proposed result, approval progress, approve/reject) instead of a dedicated route; probes pin banner, proposed section and action order, 44px targets and the authoritative-result wording.",
-      "CWJkF": "Measured 0.1888. Resolution choices open in a modal dialog over the match detail (three radio options, bounded justification, footer actions) rather than an inline list; probes pin option stacking, labelled field, associated error and dark-theme AA contrast.",
-      "xbIxj": "Measured 0.1153. The League history screen keeps the existing standings table and version selector; the correction banner, supersedes line and view-prior action are added in the existing layout. Probes pin banner above the prior-version action, 44px target and no overflow."
+    "referenceMasks": {
+      "adujr": [
+        {
+          "name": "page title and subtitle (route header differs: no standalone page)",
+          "x": 0,
+          "y": 0,
+          "width": 390,
+          "height": 66
+        },
+        {
+          "name": "banner",
+          "x": 18,
+          "y": 72,
+          "width": 354,
+          "height": 29
+        },
+        {
+          "name": "confirmed result card",
+          "x": 18,
+          "y": 111,
+          "width": 354,
+          "height": 65
+        },
+        {
+          "name": "reason box",
+          "x": 18,
+          "y": 186,
+          "width": 354,
+          "height": 59
+        },
+        {
+          "name": "reason note",
+          "x": 18,
+          "y": 255,
+          "width": 354,
+          "height": 33
+        },
+        {
+          "name": "request action",
+          "x": 18,
+          "y": 298,
+          "width": 354,
+          "height": 44
+        },
+        {
+          "name": "authority note",
+          "x": 18,
+          "y": 352,
+          "width": 354,
+          "height": 50
+        },
+        {
+          "name": "mock-only bottom tab bar (not rendered inside the match/League route viewport)",
+          "x": 18,
+          "y": 774,
+          "width": 354,
+          "height": 56
+        }
+      ],
+      "s5TRC": [
+        {
+          "name": "page title and subtitle (route header differs: no standalone page)",
+          "x": 0,
+          "y": 0,
+          "width": 390,
+          "height": 66
+        },
+        {
+          "name": "banner",
+          "x": 18,
+          "y": 72,
+          "width": 354,
+          "height": 29
+        },
+        {
+          "name": "confirmed result card",
+          "x": 18,
+          "y": 111,
+          "width": 354,
+          "height": 37
+        },
+        {
+          "name": "proposed result",
+          "x": 18,
+          "y": 158,
+          "width": 354,
+          "height": 79
+        },
+        {
+          "name": "approve",
+          "x": 18,
+          "y": 247,
+          "width": 354,
+          "height": 44
+        },
+        {
+          "name": "reject",
+          "x": 18,
+          "y": 301,
+          "width": 354,
+          "height": 44
+        },
+        {
+          "name": "authority note",
+          "x": 18,
+          "y": 355,
+          "width": 354,
+          "height": 65
+        },
+        {
+          "name": "mock-only bottom tab bar (not rendered inside the match/League route viewport)",
+          "x": 18,
+          "y": 774,
+          "width": 354,
+          "height": 56
+        }
+      ],
+      "CWJkF": [],
+      "xbIxj": [
+        {
+          "name": "page title and subtitle (route header differs: no standalone page)",
+          "x": 0,
+          "y": 0,
+          "width": 390,
+          "height": 66
+        },
+        {
+          "name": "banner",
+          "x": 18,
+          "y": 72,
+          "width": 354,
+          "height": 29
+        },
+        {
+          "name": "correction card",
+          "x": 18,
+          "y": 111,
+          "width": 354,
+          "height": 63
+        },
+        {
+          "name": "standings card",
+          "x": 18,
+          "y": 184,
+          "width": 354,
+          "height": 83
+        },
+        {
+          "name": "scope note",
+          "x": 18,
+          "y": 277,
+          "width": 354,
+          "height": 65
+        },
+        {
+          "name": "mock-only bottom tab bar (not rendered inside the match/League route viewport)",
+          "x": 18,
+          "y": 774,
+          "width": 354,
+          "height": 56
+        }
+      ],
+      "cuVwp": [],
+      "Jjrtb": [],
+      "SluH3": []
     },
-    "reason": "Every screen has an exact-dimension production-flow capture and strict structural, accessibility and locale probes. Nonzero budgets are the measured residual plus a small raster margin (about 0.02); all stay below 0.25 and are never widened to mask a structural defect."
+    "perRegion": {
+      "adujr": {
+        "statusBanner": {
+          "reference": {
+            "x": 18,
+            "y": 72,
+            "width": 354,
+            "height": 29
+          },
+          "fill": [224, 243, 232],
+          "cornerRadius": 14,
+          "edgeInset": 0,
+          "budget": 0.005,
+          "measured": 0,
+          "rationale": "Measured residual 0: the production surface is a design-token fill identical to the Pencil fill, so only anti-aliasing at excluded-edge neighbours could differ between Pencil and Chromium rasterization. Budget 0.005 is that raster-noise margin only; it never absorbs size, order or composition differences.",
+          "measuredCrop": [316, 29],
+          "measuredComparedFraction": 0.555,
+          "capture": "page"
+        },
+        "requestAction": {
+          "reference": {
+            "x": 18,
+            "y": 298,
+            "width": 354,
+            "height": 44
+          },
+          "fill": [14, 113, 77],
+          "cornerRadius": 14,
+          "edgeInset": 0,
+          "budget": 0.005,
+          "measured": 0,
+          "rationale": "Measured residual 0: the production surface is a design-token fill identical to the Pencil fill, so only anti-aliasing at excluded-edge neighbours could differ between Pencil and Chromium rasterization. Budget 0.005 is that raster-noise margin only; it never absorbs size, order or composition differences.",
+          "measuredCrop": [316, 44],
+          "measuredComparedFraction": 0.729,
+          "capture": "page"
+        },
+        "correctionCard": {
+          "reference": {
+            "x": 18,
+            "y": 111,
+            "width": 354,
+            "height": 65
+          },
+          "fill": [255, 255, 255],
+          "cornerRadius": 17,
+          "edgeInset": 3,
+          "budget": 0.005,
+          "measured": 0,
+          "rationale": "Measured residual 0: the production surface is a design-token fill identical to the Pencil fill, so only anti-aliasing at excluded-edge neighbours could differ between Pencil and Chromium rasterization. Budget 0.005 is that raster-noise margin only; it never absorbs size, order or composition differences.",
+          "measuredCrop": [354, 65],
+          "measuredComparedFraction": 0.357,
+          "capture": "page"
+        }
+      },
+      "s5TRC": {
+        "proposedResult": {
+          "reference": {
+            "x": 18,
+            "y": 158,
+            "width": 354,
+            "height": 79
+          },
+          "fill": [224, 243, 232],
+          "cornerRadius": 17,
+          "edgeInset": 3,
+          "budget": 0.005,
+          "measured": 0,
+          "rationale": "Measured residual 0: the production surface is a design-token fill identical to the Pencil fill, so only anti-aliasing at excluded-edge neighbours could differ between Pencil and Chromium rasterization. Budget 0.005 is that raster-noise margin only; it never absorbs size, order or composition differences.",
+          "measuredCrop": [316, 79],
+          "measuredComparedFraction": 0.345,
+          "capture": "page"
+        },
+        "approveAction": {
+          "reference": {
+            "x": 18,
+            "y": 247,
+            "width": 354,
+            "height": 44
+          },
+          "fill": [14, 113, 77],
+          "cornerRadius": 14,
+          "edgeInset": 0,
+          "budget": 0.005,
+          "measured": 0,
+          "rationale": "Measured residual 0: the production surface is a design-token fill identical to the Pencil fill, so only anti-aliasing at excluded-edge neighbours could differ between Pencil and Chromium rasterization. Budget 0.005 is that raster-noise margin only; it never absorbs size, order or composition differences.",
+          "measuredCrop": [154, 44],
+          "measuredComparedFraction": 0.693,
+          "capture": "page"
+        },
+        "rejectAction": {
+          "reference": {
+            "x": 18,
+            "y": 301,
+            "width": 354,
+            "height": 44
+          },
+          "fill": [233, 239, 232],
+          "cornerRadius": 14,
+          "edgeInset": 0,
+          "budget": 0.005,
+          "measured": 0,
+          "rationale": "Measured residual 0: the production surface is a design-token fill identical to the Pencil fill, so only anti-aliasing at excluded-edge neighbours could differ between Pencil and Chromium rasterization. Budget 0.005 is that raster-noise margin only; it never absorbs size, order or composition differences.",
+          "measuredCrop": [154, 44],
+          "measuredComparedFraction": 0.746,
+          "capture": "page"
+        },
+        "correctionCard": {
+          "reference": {
+            "x": 18,
+            "y": 111,
+            "width": 354,
+            "height": 37
+          },
+          "fill": [255, 255, 255],
+          "cornerRadius": 17,
+          "edgeInset": 3,
+          "budget": 0.005,
+          "measured": 0,
+          "rationale": "Measured residual 0: the production surface is a design-token fill identical to the Pencil fill, so only anti-aliasing at excluded-edge neighbours could differ between Pencil and Chromium rasterization. Budget 0.005 is that raster-noise margin only; it never absorbs size, order or composition differences.",
+          "measuredCrop": [354, 37],
+          "measuredComparedFraction": 0.309,
+          "capture": "page"
+        }
+      },
+      "CWJkF": {
+        "resolutionSurface": {
+          "reference": {
+            "x": 18,
+            "y": 542,
+            "width": 354,
+            "height": 204
+          },
+          "fill": [21, 35, 30],
+          "cornerRadius": 17,
+          "edgeInset": 3,
+          "budget": 0.005,
+          "measured": 0,
+          "rationale": "Measured residual 0: the production surface is a design-token fill identical to the Pencil fill, so only anti-aliasing at excluded-edge neighbours could differ between Pencil and Chromium rasterization. Budget 0.005 is that raster-noise margin only; it never absorbs size, order or composition differences.",
+          "measuredCrop": [354, 204],
+          "measuredComparedFraction": 0.155,
+          "capture": "dialog"
+        }
+      },
+      "xbIxj": {
+        "versionCard": {
+          "reference": {
+            "x": 18,
+            "y": 111,
+            "width": 354,
+            "height": 63
+          },
+          "fill": [255, 255, 255],
+          "cornerRadius": 17,
+          "edgeInset": 3,
+          "budget": 0.005,
+          "measured": 0,
+          "rationale": "Measured residual 0: the production surface is a design-token fill identical to the Pencil fill, so only anti-aliasing at excluded-edge neighbours could differ between Pencil and Chromium rasterization. Budget 0.005 is that raster-noise margin only; it never absorbs size, order or composition differences.",
+          "measuredCrop": [354, 63],
+          "measuredComparedFraction": 0.323,
+          "capture": "page"
+        }
+      },
+      "cuVwp": {
+        "failedCard": {
+          "reference": {
+            "x": 18,
+            "y": 286,
+            "width": 354,
+            "height": 283
+          },
+          "fill": [255, 255, 255],
+          "cornerRadius": 17,
+          "edgeInset": 3,
+          "budget": 0.005,
+          "measured": 0,
+          "rationale": "Measured residual 0: the production card/dialog surface is a design-token fill identical to the Pencil fill (surface light #FFFFFF, surface dark #15231E); text, controls, nested filled chips, corners and the production border band are excluded. Budget 0.005 is the raster-noise margin only; it never absorbs size, order or composition differences (those are declared adaptations E1-E11).",
+          "measuredCrop": [354, 283],
+          "measuredComparedFraction": 0.428,
+          "capture": "page"
+        },
+        "succeededCard": {
+          "reference": {
+            "x": 18,
+            "y": 905,
+            "width": 354,
+            "height": 180
+          },
+          "fill": [255, 255, 255],
+          "cornerRadius": 17,
+          "edgeInset": 3,
+          "budget": 0.005,
+          "measured": 0,
+          "rationale": "Measured residual 0: the production card/dialog surface is a design-token fill identical to the Pencil fill (surface light #FFFFFF, surface dark #15231E); text, controls, nested filled chips, corners and the production border band are excluded. Budget 0.005 is the raster-noise margin only; it never absorbs size, order or composition differences (those are declared adaptations E1-E11).",
+          "measuredCrop": [354, 180],
+          "measuredComparedFraction": 0.481,
+          "capture": "page"
+        },
+        "confirmDialog": {
+          "reference": {
+            "x": 18,
+            "y": 1509,
+            "width": 354,
+            "height": 147
+          },
+          "fill": [255, 255, 255],
+          "cornerRadius": 17,
+          "edgeInset": 3,
+          "budget": 0.005,
+          "measured": 0,
+          "rationale": "Measured residual 0: the production card/dialog surface is a design-token fill identical to the Pencil fill (surface light #FFFFFF, surface dark #15231E); text, controls, nested filled chips, corners and the production border band are excluded. Budget 0.005 is the raster-noise margin only; it never absorbs size, order or composition differences (those are declared adaptations E1-E11).",
+          "measuredCrop": [354, 146],
+          "measuredComparedFraction": 0.336,
+          "capture": "dialog"
+        },
+        "runningCard": {
+          "capture": "page",
+          "reference": {
+            "x": 18,
+            "y": 581,
+            "width": 354,
+            "height": 150
+          },
+          "fill": [255, 255, 255],
+          "cornerRadius": 17,
+          "edgeInset": 3,
+          "budget": 0.005,
+          "measured": 0,
+          "measuredCrop": [354, 150],
+          "measuredComparedFraction": 0.433,
+          "rationale": "Measured residual 0: the production card surface is a design-token fill identical to the Pencil fill; text, controls, nested filled chips, corners and the production border band are excluded from the crop, and their typography and geometry are asserted by the computed-style contract (not by pixels). Budget 0.005 is the raster-noise margin only."
+        },
+        "queuedCard": {
+          "capture": "page",
+          "reference": {
+            "x": 18,
+            "y": 743,
+            "width": 354,
+            "height": 150
+          },
+          "fill": [255, 255, 255],
+          "cornerRadius": 17,
+          "edgeInset": 3,
+          "budget": 0.005,
+          "measured": 0,
+          "measuredCrop": [354, 150],
+          "measuredComparedFraction": 0.435,
+          "rationale": "Measured residual 0: the production card surface is a design-token fill identical to the Pencil fill; text, controls, nested filled chips, corners and the production border band are excluded from the crop, and their typography and geometry are asserted by the computed-style contract (not by pixels). Budget 0.005 is the raster-noise margin only."
+        }
+      },
+      "Jjrtb": {
+        "failedCard": {
+          "reference": {
+            "x": 18,
+            "y": 286,
+            "width": 354,
+            "height": 283
+          },
+          "fill": [21, 35, 30],
+          "cornerRadius": 17,
+          "edgeInset": 3,
+          "budget": 0.005,
+          "measured": 0,
+          "rationale": "Measured residual 0: the production card/dialog surface is a design-token fill identical to the Pencil fill (surface light #FFFFFF, surface dark #15231E); text, controls, nested filled chips, corners and the production border band are excluded. Budget 0.005 is the raster-noise margin only; it never absorbs size, order or composition differences (those are declared adaptations E1-E11).",
+          "measuredCrop": [354, 283],
+          "measuredComparedFraction": 0.428,
+          "capture": "page"
+        },
+        "succeededCard": {
+          "reference": {
+            "x": 18,
+            "y": 905,
+            "width": 354,
+            "height": 180
+          },
+          "fill": [21, 35, 30],
+          "cornerRadius": 17,
+          "edgeInset": 3,
+          "budget": 0.005,
+          "measured": 0,
+          "rationale": "Measured residual 0: the production card/dialog surface is a design-token fill identical to the Pencil fill (surface light #FFFFFF, surface dark #15231E); text, controls, nested filled chips, corners and the production border band are excluded. Budget 0.005 is the raster-noise margin only; it never absorbs size, order or composition differences (those are declared adaptations E1-E11).",
+          "measuredCrop": [354, 180],
+          "measuredComparedFraction": 0.482,
+          "capture": "page"
+        },
+        "confirmDialog": {
+          "reference": {
+            "x": 18,
+            "y": 1509,
+            "width": 354,
+            "height": 147
+          },
+          "fill": [21, 35, 30],
+          "cornerRadius": 17,
+          "edgeInset": 3,
+          "budget": 0.005,
+          "measured": 0,
+          "rationale": "Measured residual 0: the production card/dialog surface is a design-token fill identical to the Pencil fill (surface light #FFFFFF, surface dark #15231E); text, controls, nested filled chips, corners and the production border band are excluded. Budget 0.005 is the raster-noise margin only; it never absorbs size, order or composition differences (those are declared adaptations E1-E11).",
+          "measuredCrop": [354, 146],
+          "measuredComparedFraction": 0.336,
+          "capture": "dialog"
+        },
+        "runningCard": {
+          "capture": "page",
+          "reference": {
+            "x": 18,
+            "y": 581,
+            "width": 354,
+            "height": 150
+          },
+          "fill": [21, 35, 30],
+          "cornerRadius": 17,
+          "edgeInset": 3,
+          "budget": 0.005,
+          "measured": 0,
+          "measuredCrop": [354, 150],
+          "measuredComparedFraction": 0.433,
+          "rationale": "Measured residual 0: the production card surface is a design-token fill identical to the Pencil fill; text, controls, nested filled chips, corners and the production border band are excluded from the crop, and their typography and geometry are asserted by the computed-style contract (not by pixels). Budget 0.005 is the raster-noise margin only."
+        },
+        "queuedCard": {
+          "capture": "page",
+          "reference": {
+            "x": 18,
+            "y": 743,
+            "width": 354,
+            "height": 150
+          },
+          "fill": [21, 35, 30],
+          "cornerRadius": 17,
+          "edgeInset": 3,
+          "budget": 0.005,
+          "measured": 0,
+          "measuredCrop": [354, 150],
+          "measuredComparedFraction": 0.435,
+          "rationale": "Measured residual 0: the production card surface is a design-token fill identical to the Pencil fill; text, controls, nested filled chips, corners and the production border band are excluded from the crop, and their typography and geometry are asserted by the computed-style contract (not by pixels). Budget 0.005 is the raster-noise margin only."
+        }
+      },
+      "SluH3": {
+        "failedCard": {
+          "reference": {
+            "x": 40,
+            "y": 298,
+            "width": 720,
+            "height": 254
+          },
+          "fill": [21, 35, 30],
+          "cornerRadius": 17,
+          "edgeInset": 3,
+          "budget": 0.005,
+          "measured": 0,
+          "rationale": "Measured residual 0: the production card/dialog surface is a design-token fill identical to the Pencil fill (surface light #FFFFFF, surface dark #15231E); text, controls, nested filled chips, corners and the production border band are excluded. Budget 0.005 is the raster-noise margin only; it never absorbs size, order or composition differences (those are declared adaptations E1-E11).",
+          "measuredCrop": [708, 254],
+          "measuredComparedFraction": 0.453,
+          "capture": "page"
+        },
+        "succeededCard": {
+          "reference": {
+            "x": 40,
+            "y": 832,
+            "width": 720,
+            "height": 152
+          },
+          "fill": [21, 35, 30],
+          "cornerRadius": 17,
+          "edgeInset": 3,
+          "budget": 0.005,
+          "measured": 0,
+          "rationale": "Measured residual 0: the production card/dialog surface is a design-token fill identical to the Pencil fill (surface light #FFFFFF, surface dark #15231E); text, controls, nested filled chips, corners and the production border band are excluded. Budget 0.005 is the raster-noise margin only; it never absorbs size, order or composition differences (those are declared adaptations E1-E11).",
+          "measuredCrop": [708, 152],
+          "measuredComparedFraction": 0.525,
+          "capture": "page"
+        },
+        "confirmDialog": {
+          "reference": {
+            "x": 780,
+            "y": 638,
+            "width": 460,
+            "height": 147
+          },
+          "fill": [21, 35, 30],
+          "cornerRadius": 17,
+          "edgeInset": 3,
+          "budget": 0.005,
+          "measured": 0,
+          "rationale": "Measured residual 0: the production card/dialog surface is a design-token fill identical to the Pencil fill (surface light #FFFFFF, surface dark #15231E); text, controls, nested filled chips, corners and the production border band are excluded. Budget 0.005 is the raster-noise margin only; it never absorbs size, order or composition differences (those are declared adaptations E1-E11).",
+          "measuredCrop": [360, 146],
+          "measuredComparedFraction": 0.335,
+          "capture": "dialog"
+        },
+        "runningCard": {
+          "capture": "page",
+          "reference": {
+            "x": 40,
+            "y": 564,
+            "width": 720,
+            "height": 122
+          },
+          "fill": [21, 35, 30],
+          "cornerRadius": 17,
+          "edgeInset": 3,
+          "budget": 0.005,
+          "measured": 0,
+          "measuredCrop": [708, 122],
+          "measuredComparedFraction": 0.49,
+          "rationale": "Measured residual 0: the production card surface is a design-token fill identical to the Pencil fill; text, controls, nested filled chips, corners and the production border band are excluded from the crop, and their typography and geometry are asserted by the computed-style contract (not by pixels). Budget 0.005 is the raster-noise margin only."
+        },
+        "queuedCard": {
+          "capture": "page",
+          "reference": {
+            "x": 40,
+            "y": 698,
+            "width": 720,
+            "height": 122
+          },
+          "fill": [21, 35, 30],
+          "cornerRadius": 17,
+          "edgeInset": 3,
+          "budget": 0.005,
+          "measured": 0,
+          "measuredCrop": [708, 122],
+          "measuredComparedFraction": 0.498,
+          "rationale": "Measured residual 0: the production card surface is a design-token fill identical to the Pencil fill; text, controls, nested filled chips, corners and the production border band are excluded from the crop, and their typography and geometry are asserted by the computed-style contract (not by pixels). Budget 0.005 is the raster-noise margin only."
+        }
+      }
+    },
+    "minComparedRegionFractionReason": "Guard so the exclusions (text, controls, filled nested surfaces, corners, borders) can never leave a region compared on a token share of its area. Lowest measured share is 0.155 (CWJkF resolutionSurface: the dialog now carries three filled option rows that are excluded); guard 0.12 keeps about 0.03 headroom.",
+    "maskPolicy": "Whole-screen raster (masked mode) removes every production block inside main and every listed Pencil block, so it compares only page background and gutters. No element is silently hidden: each masked Pencil element is listed in inventory.<frame> and is either asserted by the computed-style typography/color/geometry contract in frame-reference.json (probed) or mapped to a declared adaptation that names its covering probes (adapted). Dynamic production values (live names, dates, scores, job ids) are never compared by pixels; their typography is asserted through the contract."
+  },
+  "geometryReference": {
+    "source": "Element rectangles flood-filled from the uncropped 2x Pencil PNGs and halved to 1x (see perRegion.reference and referenceMasks). Every block in all four frames is 354px wide at x=18 (18px gutters on a 390px frame), blocks are 10px apart, actions are 44px high, dialog-style option rows are 44px high 9px apart.",
+    "gutter": 18,
+    "blockGap": 10,
+    "actionHeight": 44,
+    "optionHeight": 44,
+    "optionGap": 9,
+    "chipHeight": 29,
+    "chipHeightMaxDelta": 4,
+    "dialogGutterMaxDelta": 4,
+    "probes": {
+      "adujr": [
+        "card left/right gutter = 18",
+        "section title to card gap = 10",
+        "chip and action span the card content width at its content edge",
+        "action height = 44",
+        "chip height in [29, 33] (type-token padding)",
+        "banner, result, note and action stack with the card gap token (8)",
+        "token/palette: card surface, radius-14, padding-11, chip radius-12/padding-8/9, green-soft/green, action green/bg"
+      ],
+      "s5TRC": [
+        "card left/right gutter = 18",
+        "section title to card gap = 10",
+        "chip and proposed card span the card content width",
+        "approve and reject: height 44, same row, equal width, gap = action gap token, start/end at the card content edges",
+        "proposed to actions gap = card gap token",
+        "token/palette: proposed green-soft/radius-14/padding-11, approve green, reject surface-2/red, pending chip surface-2/amber"
+      ],
+      "CWJkF": [
+        "dialog horizontally centered, edge distance within 4px of the 18px gutter",
+        "three radio rows: height >= 44, same x and width, repeating gap",
+        "justification field spans the dialog content width and stacks above the actions",
+        "cancel and record: same row, height 44, equal width, content-edge aligned",
+        "token/palette: dialog surface (dark)"
+      ],
+      "xbIxj": [
+        "version card left/right gutter = 18",
+        "banner at the card content edge, above the prior-version action",
+        "view-prior action height 44",
+        "standings table inside the gutters; header and first body row share ordered, aligned columns",
+        "palette: version card surface"
+      ],
+      "diagnostics": [
+        "mobile: content gutters = 18 (frame gutter), column <= 480; desktop (>=960px): 40px padding (frame), 1280px max, centered",
+        "full-width header and scheduler card above the regions (width = content width, regions one page-gap token below)",
+        "regions: queue precedes detail in the DOM; desktop two grid columns 3fr/2fr (ratio 1.5), 20px gap (frame 20), queue/detail widths within 14px of the frame 720/460, same row; below 960px one column, stacked one gap apart at the content edges",
+        "jobs heading and cards inside the queue region; status counts table and heading inside the detail region; ordered aligned columns",
+        "job cards aligned to the queue edge, spanning its width, radius-14, padding-11, gap 8, surface palette (light and dark); consecutive cards 10 apart",
+        "status chip: at the card content edge above the facts; palette per status (failed surface-2/red, succeeded green-soft/green, queued and running surface-2/amber)",
+        "retry only on the failed job: height 44, card content edge, data-emphasis=primary, green fill, bg label color",
+        "attempts table 5 ordered columns; retry dialog centred, Cancel/Confirm same row 44px equal width at the content edges, surface palette",
+        "empty queue (all three frames): region layout, zero counts, empty-state typography"
+      ]
+    },
+    "desktopPadding": 40,
+    "desktopRegionGap": 20,
+    "queueWidth": 720,
+    "detailWidth": 460,
+    "regionWidthTolerance": 14
+  },
+  "declaredAdaptations": {
+    "note": "Production composition that intentionally differs from the static Pencil frames. Each adaptation lists composition probes per capture state (renderer-independent DOM assertions of element order, adjacency/alignment and localized content identity) that the frame tests run through an exact-set registry; assertInventory fails an adaptation without a covering probe. Elements that have a production counterpart are additionally asserted by the computed-style contract in frame-reference.json (every allowance is a token expression that must resolve exactly and must really differ from the frame). Elements without a counterpart are listed in inventory.<frame>.adapted.",
+    "adujr": [
+      {
+        "id": "A1",
+        "region": "page title row, back control, subtitle",
+        "reason": "The request lives in the match detail correction card under the section heading, not on a standalone page.",
+        "raster": "excluded",
+        "probes": {
+          "page": ["A1.heading"]
+        }
+      },
+      {
+        "id": "A2",
+        "region": "reason box and reason note rows",
+        "reason": "The reason is entered in a labelled Base UI dialog after pressing the action instead of being shown inline beforehand.",
+        "raster": "excluded",
+        "probes": {
+          "page": ["A2.noInlineReason"],
+          "dialog": ["A2.reasonDialog"]
+        }
+      },
+      {
+        "id": "A3",
+        "region": "confirmed result card and meta row",
+        "reason": "Live data: one \"Group n · score\" line (14px semibold, frame value) replaces the frame card with meta row.",
+        "raster": "excluded",
+        "probes": {
+          "page": ["A3.resultLine"]
+        }
+      },
+      {
+        "id": "A4",
+        "region": "authority note position and styling",
+        "reason": "The authority note is a muted line read before the action (frame: mint block below the action).",
+        "raster": "excluded",
+        "probes": {
+          "page": ["A4.noteOrder"]
+        }
+      },
+      {
+        "id": "A5",
+        "region": "action label casing",
+        "reason": "Label is the sentence-case translated action text (frame: uppercase); width = card content width.",
+        "raster": "excluded",
+        "probes": {
+          "page": ["A5.sentenceCase"]
+        }
+      },
+      {
+        "id": "A6",
+        "region": "status banner",
+        "reason": "Full-width uppercase banner with 1.5px tracking and padding 9 / radius 12 (frame: 7 / 14 and no tracking); height 31 vs 29.",
+        "raster": "excluded",
+        "probes": {
+          "page": ["A6.banner"]
+        }
+      },
+      {
+        "id": "A7",
+        "region": "card chrome",
+        "reason": "The comparable blocks sit inside one bordered surface card (1px border + 18px padding, frame metrics) so blocks are inset 38px; frame blocks are free-standing.",
+        "raster": "excluded",
+        "probes": {
+          "page": ["A7.cardChrome"]
+        }
+      },
+      {
+        "id": "A8",
+        "region": "bottom tab bar",
+        "reason": "Mock-only chrome of the static frame; the route renders no navigation inside the card.",
+        "raster": "excluded",
+        "probes": {
+          "page": ["A8.noShellNav"]
+        }
+      }
+    ],
+    "s5TRC": [
+      {
+        "id": "B1",
+        "region": "status chip tone",
+        "reason": "A pending review uses the neutral surface-2 banner with the amber label (frame: mint authoritative chip).",
+        "raster": "excluded",
+        "probes": {
+          "page": ["B1.banner"]
+        }
+      },
+      {
+        "id": "B2",
+        "region": "confirmed result card",
+        "reason": "The official confirmed result is shown by the match detail card above; the review card does not repeat it.",
+        "raster": "excluded",
+        "probes": {
+          "page": ["B2.childOrder"]
+        }
+      },
+      {
+        "id": "B3",
+        "region": "approve and reject layout",
+        "reason": "Actions share one row and stack automatically at narrow widths (frame stacks at all widths).",
+        "raster": "excluded",
+        "probes": {
+          "page": ["B3.actionRow"]
+        }
+      },
+      {
+        "id": "B4",
+        "region": "reject tone",
+        "reason": "Reject uses the danger color (frame: neutral text color) and follows approve.",
+        "raster": "excluded",
+        "probes": {
+          "page": ["B4.rejectTone"]
+        }
+      },
+      {
+        "id": "B5",
+        "region": "proposed card extra lines",
+        "reason": "Teams, proposer, auto-confirm deadline, approval progress and rejection rule add lines the frame omits.",
+        "raster": "excluded",
+        "probes": {
+          "page": ["B5.proposedLines"]
+        }
+      },
+      {
+        "id": "B6",
+        "region": "authority note",
+        "reason": "There is no separate note block; the rejection rule is the last line inside the proposed card.",
+        "raster": "excluded",
+        "probes": {
+          "page": ["B6.rejectRule"]
+        }
+      },
+      {
+        "id": "B7",
+        "region": "page title row and bottom tab bar",
+        "reason": "Route header and mock-only chrome; the card sits under the section heading.",
+        "raster": "excluded",
+        "probes": {
+          "page": ["B7.headerAndShell"]
+        }
+      }
+    ],
+    "CWJkF": [
+      {
+        "id": "C1",
+        "region": "whole viewport",
+        "reason": "Production opens the resolution in a modal over a dimmed match detail; the frame is a full page. Whole-screen raster is excluded.",
+        "raster": "excluded",
+        "probes": {
+          "dialog": ["C1.modal"]
+        }
+      },
+      {
+        "id": "C2",
+        "region": "header, DARK chip and menu button",
+        "reason": "No standalone page header in a modal: title above description, two footer actions only.",
+        "raster": "excluded",
+        "probes": {
+          "dialog": ["C2.dialogHeader"]
+        }
+      },
+      {
+        "id": "C3",
+        "region": "dispute summary, proposal card, timeline and no-rating cards",
+        "reason": "Rendered by the amendment card in the match detail behind the dialog (banner, card title, reason, correction history).",
+        "raster": "excluded",
+        "probes": {
+          "dialog": ["C3.disputeSummary"]
+        }
+      },
+      {
+        "id": "C4",
+        "region": "resolution choices",
+        "reason": "Three native radio rows (keep, accept, void) inside a labelled fieldset replace the frame arrow buttons; frame fills, radius, padding, gap and 13px bold labels are matched.",
+        "raster": "excluded",
+        "probes": {
+          "dialog": ["C4.options"]
+        }
+      },
+      {
+        "id": "C5",
+        "region": "justification field, audit notice and footer actions",
+        "reason": "Required by the audit trail; the frame has no equivalent.",
+        "raster": "excluded",
+        "probes": {
+          "dialog": ["C5.justification"]
+        }
+      },
+      {
+        "id": "C6",
+        "region": "dialog edge distance",
+        "reason": "Dialog is 360px wide (15px margins) against the frame 354px (18px gutters).",
+        "raster": "excluded",
+        "probes": {
+          "dialog": ["C6.dialogEdges"]
+        }
+      }
+    ],
+    "xbIxj": [
+      {
+        "id": "D1",
+        "region": "correction banner",
+        "reason": "A strong-text line inside the version card, not a mint chip above the cards.",
+        "raster": "excluded",
+        "probes": {
+          "page": ["D1.banner"]
+        }
+      },
+      {
+        "id": "D2",
+        "region": "block order",
+        "reason": "The History section places the version card below the final standings table; the frame shows the correction card first.",
+        "raster": "excluded",
+        "probes": {
+          "page": ["D2.blockOrder"]
+        }
+      },
+      {
+        "id": "D3",
+        "region": "standings columns",
+        "reason": "Production adds an award column; place, player, record and set-difference keep the frame order.",
+        "raster": "excluded",
+        "probes": {
+          "page": ["D3.columns"]
+        }
+      },
+      {
+        "id": "D4",
+        "region": "scope note and page header",
+        "reason": "Period/scope text lives in the details card and rules disclosure; route header differs.",
+        "raster": "excluded",
+        "probes": {
+          "page": ["D4.headerOrder"]
+        }
+      },
+      {
+        "id": "D5",
+        "region": "bottom tab bar",
+        "reason": "Mock-only chrome of the static frame.",
+        "raster": "excluded",
+        "probes": {
+          "page": ["D5.noShellNav"]
+        }
+      }
+    ],
+    "cuVwp": [
+      {
+        "id": "E1",
+        "region": "page composition and queue prompt",
+        "reason": "Live platform queue (real jobs, order, 10s refresh, reload action) with selectable cards; frame fixed to four jobs.",
+        "raster": "excluded",
+        "probes": {
+          "page": ["E1.pageOrder"]
+        }
+      },
+      {
+        "id": "E2",
+        "region": "breadcrumb row",
+        "reason": "The route has a back link and title above the subtitle, not the \"PLATFORM ADMIN / OPERATIONS\" breadcrumb.",
+        "raster": "excluded",
+        "probes": {
+          "page": ["E2.header"]
+        }
+      },
+      {
+        "id": "E3",
+        "region": "scheduler health",
+        "reason": "A scheduler card (surface, frame card metrics, alert when unprovisioned, job table) replaces the mint chip plus warning box.",
+        "raster": "excluded",
+        "probes": {
+          "page": ["E3.scheduler"]
+        }
+      },
+      {
+        "id": "E4",
+        "region": "queue card",
+        "reason": "Heading is a select button; status chip, publication line, facts list and actions live in one embedded status section inside the card (frame: name and chip share a row, error box). Facts use frame 13px with the text colour/semibold instead of muted/normal.",
+        "raster": "excluded",
+        "probes": {
+          "page": ["E4.cardOrder"]
+        }
+      },
+      {
+        "id": "E5",
+        "region": "action primitive",
+        "reason": "Retry is the primary action on the shared action style (padding 9, radius 12, 13px label vs frame padding 20, radius 10, 14px) and spans the card content width; height 44 probed exactly.",
+        "raster": "excluded",
+        "probes": {
+          "page": ["E5.retryPlacement"]
+        }
+      },
+      {
+        "id": "E6",
+        "region": "queued and running chip tone",
+        "reason": "Pending jobs use the amber label on surface-2; the frame uses the muted label.",
+        "raster": "excluded",
+        "probes": {
+          "page": ["E6.pendingChips"]
+        }
+      },
+      {
+        "id": "E7",
+        "region": "detail region",
+        "reason": "The selected job detail (heading, summary line, always-visible attempt timeline list, official revision, correlation id) sits above the status counts. A fixture with one attempt shows one timeline entry (frame shows two).",
+        "raster": "excluded",
+        "probes": {
+          "page": ["E7.detailComposition"]
+        }
+      },
+      {
+        "id": "E8",
+        "region": "retry confirmation",
+        "reason": "A modal dialog replaces the inline card: title above description above Cancel/Confirm, frame typography; dialog padding/gap from the shared dialog.",
+        "raster": "excluded",
+        "probes": {
+          "dialog": ["E8.retryDialog"]
+        }
+      },
+      {
+        "id": "E9",
+        "region": "queue states card",
+        "reason": "Empty queue shows the empty text under the jobs heading and a select-a-repair prompt in the detail region; the frame has a states card with skeleton lines.",
+        "raster": "excluded",
+        "probes": {
+          "empty": ["E9.emptyPrompt"]
+        }
+      }
+    ],
+    "Jjrtb": [
+      {
+        "id": "E1",
+        "region": "page composition and queue prompt",
+        "reason": "Live platform queue (real jobs, order, 10s refresh, reload action) with selectable cards; frame fixed to four jobs.",
+        "raster": "excluded",
+        "probes": {
+          "page": ["E1.pageOrder"]
+        }
+      },
+      {
+        "id": "E2",
+        "region": "breadcrumb row",
+        "reason": "The route has a back link and title above the subtitle, not the \"PLATFORM ADMIN / OPERATIONS\" breadcrumb.",
+        "raster": "excluded",
+        "probes": {
+          "page": ["E2.header"]
+        }
+      },
+      {
+        "id": "E3",
+        "region": "scheduler health",
+        "reason": "A scheduler card (surface, frame card metrics, alert when unprovisioned, job table) replaces the mint chip plus warning box.",
+        "raster": "excluded",
+        "probes": {
+          "page": ["E3.scheduler"]
+        }
+      },
+      {
+        "id": "E4",
+        "region": "queue card",
+        "reason": "Heading is a select button; status chip, publication line, facts list and actions live in one embedded status section inside the card (frame: name and chip share a row, error box). Facts use frame 13px with the text colour/semibold instead of muted/normal.",
+        "raster": "excluded",
+        "probes": {
+          "page": ["E4.cardOrder"]
+        }
+      },
+      {
+        "id": "E5",
+        "region": "action primitive",
+        "reason": "Retry is the primary action on the shared action style (padding 9, radius 12, 13px label vs frame padding 20, radius 10, 14px) and spans the card content width; height 44 probed exactly.",
+        "raster": "excluded",
+        "probes": {
+          "page": ["E5.retryPlacement"]
+        }
+      },
+      {
+        "id": "E6",
+        "region": "queued and running chip tone",
+        "reason": "Pending jobs use the amber label on surface-2; the frame uses the muted label.",
+        "raster": "excluded",
+        "probes": {
+          "page": ["E6.pendingChips"]
+        }
+      },
+      {
+        "id": "E7",
+        "region": "detail region",
+        "reason": "The selected job detail (heading, summary line, always-visible attempt timeline list, official revision, correlation id) sits above the status counts. A fixture with one attempt shows one timeline entry (frame shows two).",
+        "raster": "excluded",
+        "probes": {
+          "page": ["E7.detailComposition"]
+        }
+      },
+      {
+        "id": "E8",
+        "region": "retry confirmation",
+        "reason": "A modal dialog replaces the inline card: title above description above Cancel/Confirm, frame typography; dialog padding/gap from the shared dialog.",
+        "raster": "excluded",
+        "probes": {
+          "dialog": ["E8.retryDialog"]
+        }
+      },
+      {
+        "id": "E9",
+        "region": "queue states card",
+        "reason": "Empty queue shows the empty text under the jobs heading and a select-a-repair prompt in the detail region; the frame has a states card with skeleton lines.",
+        "raster": "excluded",
+        "probes": {
+          "empty": ["E9.emptyPrompt"]
+        }
+      }
+    ],
+    "SluH3": [
+      {
+        "id": "E1",
+        "region": "page composition and queue prompt",
+        "reason": "Live platform queue (real jobs, order, 10s refresh, reload action) with selectable cards; frame fixed to four jobs.",
+        "raster": "excluded",
+        "probes": {
+          "page": ["E1.pageOrder"]
+        }
+      },
+      {
+        "id": "E2",
+        "region": "breadcrumb row",
+        "reason": "The route has a back link and title above the subtitle, not the \"PLATFORM ADMIN / OPERATIONS\" breadcrumb.",
+        "raster": "excluded",
+        "probes": {
+          "page": ["E2.header"]
+        }
+      },
+      {
+        "id": "E3",
+        "region": "scheduler health",
+        "reason": "A scheduler card (surface, frame card metrics, alert when unprovisioned, job table) replaces the mint chip plus warning box.",
+        "raster": "excluded",
+        "probes": {
+          "page": ["E3.scheduler"]
+        }
+      },
+      {
+        "id": "E4",
+        "region": "queue card",
+        "reason": "Heading is a select button; status chip, publication line, facts list and actions live in one embedded status section inside the card (frame: name and chip share a row, error box). Facts use frame 13px with the text colour/semibold instead of muted/normal.",
+        "raster": "excluded",
+        "probes": {
+          "page": ["E4.cardOrder"]
+        }
+      },
+      {
+        "id": "E5",
+        "region": "action primitive",
+        "reason": "Retry is the primary action on the shared action style (padding 9, radius 12, 13px label vs frame padding 20, radius 10, 14px) and spans the card content width; height 44 probed exactly.",
+        "raster": "excluded",
+        "probes": {
+          "page": ["E5.retryPlacement"]
+        }
+      },
+      {
+        "id": "E6",
+        "region": "queued and running chip tone",
+        "reason": "Pending jobs use the amber label on surface-2; the frame uses the muted label.",
+        "raster": "excluded",
+        "probes": {
+          "page": ["E6.pendingChips"]
+        }
+      },
+      {
+        "id": "E7",
+        "region": "detail region",
+        "reason": "The selected job detail (heading, summary line, always-visible attempt timeline list, official revision, correlation id) sits above the status counts. A fixture with one attempt shows one timeline entry (frame shows two).",
+        "raster": "excluded",
+        "probes": {
+          "page": ["E7.detailComposition"]
+        }
+      },
+      {
+        "id": "E8",
+        "region": "retry confirmation",
+        "reason": "A modal dialog replaces the inline card: title above description above Cancel/Confirm, frame typography; dialog padding/gap from the shared dialog.",
+        "raster": "excluded",
+        "probes": {
+          "dialog": ["E8.retryDialog"]
+        }
+      },
+      {
+        "id": "E9",
+        "region": "queue states card",
+        "reason": "Empty queue shows the empty text under the jobs heading and a select-a-repair prompt in the detail region; the frame has a states card with skeleton lines.",
+        "raster": "excluded",
+        "probes": {
+          "empty": ["E9.emptyPrompt"]
+        }
+      },
+      {
+        "id": "E11",
+        "region": "desktop light",
+        "reason": "The design has no desktop-light frame (desktop dark and mobile light/dark only). The implemented desktop-light rendering is certified by structural, contrast, target and no-overflow gates plus the same region composition. Design gap observation for the product owner.",
+        "raster": "excluded",
+        "probes": {
+          "desktop-light": ["E11.desktopLight"]
+        }
+      }
+    ]
+  },
+  "inventory": {
+    "note": "Every Pencil element of every frame is either contract-probed in a named capture state (computed typography, color, geometry vs frame-reference.json, enforced as an exact set) or mapped to a declared adaptation that lists its covering probes. Raster masks never hide an element that is not in this inventory.",
+    "adujr": {
+      "probed": {
+        "page": [
+          "CONFIRMED",
+          "CONFIRMED label",
+          "Score",
+          "Navigation / transition",
+          "Submit amendment",
+          "Button label"
+        ]
+      },
+      "adapted": {
+        "Result amendment — request": "A7",
+        "Back": "A1",
+        "Context": "A1",
+        "Original result": "A3",
+        "Confirmation": "A3",
+        "Proposed correction": "A2",
+        "Request type": "A2",
+        "Corrected score": "A2",
+        "Reason": "A2",
+        "Reason copy": "A2",
+        "Flow annotation": "A4",
+        "Bottom navigation": "A8",
+        "Home label": "A8",
+        "Matches tab": "A8",
+        "Matches label": "A8",
+        "Community label": "A8",
+        "Ranking label": "A8",
+        "Profile label": "A8"
+      }
+    },
+    "s5TRC": {
+      "probed": {
+        "page": [
+          "PROPOSAL PENDING",
+          "PROPOSAL PENDING label",
+          "Corrected proposal",
+          "New score",
+          "Submitter",
+          "Deadline",
+          "Approve corrected result",
+          "Button label",
+          "Reject corrected result",
+          "Button label#2"
+        ]
+      },
+      "adapted": {
+        "Result amendment — corrected result review": "B7",
+        "Back": "B7",
+        "Context": "B7",
+        "Current official result": "B2",
+        "Official score": "B2",
+        "Flow annotation": "B6",
+        "Navigation / transition": "B6",
+        "Bottom navigation": "B7",
+        "Home label": "B7",
+        "Matches tab": "B7",
+        "Matches label": "B7",
+        "Community label": "B7",
+        "Ranking label": "B7",
+        "Profile label": "B7"
+      }
+    },
+    "CWJkF": {
+      "probed": {
+        "dialog": [
+          "Screen title",
+          "Screen subtitle",
+          "Dispute status",
+          "Dispute status text",
+          "Dispute title",
+          "Dispute reason",
+          "Decision title",
+          "Request corrected score option",
+          "Button label",
+          "Approve submitted proposal option",
+          "Button label#2",
+          "Void result option",
+          "Button label#3"
+        ]
+      },
+      "adapted": {
+        "Community dispute resolution": "C1",
+        "Header action": "C2",
+        "Header action text": "C2",
+        "Mode label": "C2",
+        "Mode label text": "C2",
+        "Dispute alert": "C3",
+        "Submitted proposal": "C3",
+        "Proposal version": "C3",
+        "Dispute score": "C3",
+        "Rejecting player": "C3",
+        "Proposal history": "C3",
+        "History title": "C3",
+        "V1 · 6–4, 6–4 marker": "C3",
+        "V1 · 6–4, 6–4 score": "C3",
+        "V1 · 6–4, 6–4 note": "C3",
+        "V2 · 6–4, 4–6, 3–2 marker": "C3",
+        "V2 · 6–4, 4–6, 3–2 score": "C3",
+        "V2 · 6–4, 4–6, 3–2 note": "C3",
+        "Dispute impact": "C3",
+        "Impact title": "C3",
+        "Impact detail": "C3",
+        "Admin decision actions": "C4"
+      }
+    },
+    "xbIxj": {
+      "probed": {
+        "page": [
+          "AUDITED CORRECTION label",
+          "Corrected result",
+          "Audit actor",
+          "Correction summary",
+          "Standing 1"
+        ]
+      },
+      "adapted": {
+        "League history — audited correction": "D4",
+        "Back": "D4",
+        "Context": "D4",
+        "AUDITED CORRECTION": "D1",
+        "Revised standings": "D3",
+        "Standing 2": "D3",
+        "Standing 3": "D3",
+        "Flow annotation": "D4",
+        "Navigation / transition": "D4",
+        "Bottom navigation": "D5",
+        "Home label": "D5",
+        "Matches tab": "D5",
+        "Matches label": "D5",
+        "Community label": "D5",
+        "Ranking label": "D5",
+        "Profile label": "D5"
+      }
+    },
+    "cuVwp": {
+      "probed": {
+        "page": [
+          "Title",
+          "Queue heading",
+          "Scheduler warning example",
+          "Failed repair",
+          "Match context",
+          "Failed chip",
+          "Failed",
+          "Attempt count",
+          "Failure code",
+          "Retry button",
+          "Retry label",
+          "Timestamps",
+          "Running repair",
+          "Running chip",
+          "Running",
+          "Match context#2",
+          "Attempt count#2",
+          "Timestamps#2",
+          "Queued repair",
+          "Queued chip",
+          "Queued",
+          "Match context#3",
+          "Attempt count#3",
+          "Timestamps#3",
+          "Succeeded repair",
+          "Succeeded chip",
+          "Succeeded",
+          "Match context#4",
+          "Attempt count#4",
+          "Timestamps#4",
+          "Result reference"
+        ],
+        "dialog": [
+          "Retry confirmation",
+          "Dialog title",
+          "Dialog description",
+          "Cancel button",
+          "Cancel",
+          "Confirm button",
+          "Confirm"
+        ],
+        "empty": ["Empty state"],
+        "detail": [
+          "Job detail",
+          "Detail heading",
+          "Selected job",
+          "Timeline heading",
+          "Attempt 2 · Failed",
+          "Attempt 2 · Failed chip",
+          "Attempt 2 · Failed#2",
+          "Attempt code and time",
+          "Official revision label",
+          "Official revision value",
+          "Correlation ID label",
+          "Correlation ID value"
+        ]
+      },
+      "adapted": {
+        "Platform Admin — Result Repair Diagnostics — mobile light": "E1",
+        "Section label": "E2",
+        "Scheduler health": "E3",
+        "Healthy indicator": "E3",
+        "Healthy label": "E3",
+        "Warning title": "E3",
+        "Warning helper": "E3",
+        "Queue description": "E1",
+        "Failure detail": "E4",
+        "Failure description": "E4",
+        "Attempt 1 · Failed": "E7",
+        "Attempt 1 · Failed chip": "E7",
+        "Attempt 1 · Failed#2": "E7",
+        "Attempt code and time#2": "E7",
+        "Queue states": "E9",
+        "States heading": "E9",
+        "Loading skeleton": "E9",
+        "Loading placeholder": "E9",
+        "Loading placeholder#2": "E9",
+        "Loading placeholder#3": "E9"
+      }
+    },
+    "Jjrtb": {
+      "probed": {
+        "page": [
+          "Title",
+          "Queue heading",
+          "Scheduler warning example",
+          "Failed repair",
+          "Match context",
+          "Failed chip",
+          "Failed",
+          "Attempt count",
+          "Failure code",
+          "Retry button",
+          "Retry label",
+          "Timestamps",
+          "Running repair",
+          "Running chip",
+          "Running",
+          "Match context#2",
+          "Attempt count#2",
+          "Timestamps#2",
+          "Queued repair",
+          "Queued chip",
+          "Queued",
+          "Match context#3",
+          "Attempt count#3",
+          "Timestamps#3",
+          "Succeeded repair",
+          "Succeeded chip",
+          "Succeeded",
+          "Match context#4",
+          "Attempt count#4",
+          "Timestamps#4",
+          "Result reference"
+        ],
+        "dialog": [
+          "Retry confirmation",
+          "Dialog title",
+          "Dialog description",
+          "Cancel button",
+          "Cancel",
+          "Confirm button",
+          "Confirm"
+        ],
+        "empty": ["Empty state"],
+        "detail": [
+          "Job detail",
+          "Detail heading",
+          "Selected job",
+          "Timeline heading",
+          "Attempt 2 · Failed",
+          "Attempt 2 · Failed chip",
+          "Attempt 2 · Failed#2",
+          "Attempt code and time",
+          "Official revision label",
+          "Official revision value",
+          "Correlation ID label",
+          "Correlation ID value"
+        ]
+      },
+      "adapted": {
+        "Platform Admin — Result Repair Diagnostics — mobile dark": "E1",
+        "Section label": "E2",
+        "Scheduler health": "E3",
+        "Healthy indicator": "E3",
+        "Healthy label": "E3",
+        "Warning title": "E3",
+        "Warning helper": "E3",
+        "Queue description": "E1",
+        "Failure detail": "E4",
+        "Failure description": "E4",
+        "Attempt 1 · Failed": "E7",
+        "Attempt 1 · Failed chip": "E7",
+        "Attempt 1 · Failed#2": "E7",
+        "Attempt code and time#2": "E7",
+        "Queue states": "E9",
+        "States heading": "E9",
+        "Loading skeleton": "E9",
+        "Loading placeholder": "E9",
+        "Loading placeholder#2": "E9",
+        "Loading placeholder#3": "E9"
+      }
+    },
+    "SluH3": {
+      "probed": {
+        "page": [
+          "Title",
+          "Queue heading",
+          "Scheduler warning example",
+          "Failed repair",
+          "Match context",
+          "Failed chip",
+          "Failed",
+          "Attempt count",
+          "Failure code",
+          "Retry button",
+          "Retry label",
+          "Timestamps",
+          "Running repair",
+          "Running chip",
+          "Running",
+          "Match context#2",
+          "Attempt count#2",
+          "Timestamps#2",
+          "Queued repair",
+          "Queued chip",
+          "Queued",
+          "Match context#3",
+          "Attempt count#3",
+          "Timestamps#3",
+          "Succeeded repair",
+          "Succeeded chip",
+          "Succeeded",
+          "Match context#4",
+          "Attempt count#4",
+          "Timestamps#4",
+          "Result reference"
+        ],
+        "dialog": [
+          "Retry confirmation",
+          "Dialog title",
+          "Dialog description",
+          "Cancel button",
+          "Cancel",
+          "Confirm button",
+          "Confirm"
+        ],
+        "empty": ["Empty state"],
+        "detail": [
+          "Job detail",
+          "Detail heading",
+          "Selected job",
+          "Timeline heading",
+          "Attempt 2 · Failed",
+          "Attempt 2 · Failed chip",
+          "Attempt 2 · Failed#2",
+          "Attempt code and time",
+          "Official revision label",
+          "Official revision value",
+          "Correlation ID label",
+          "Correlation ID value"
+        ]
+      },
+      "adapted": {
+        "Platform Admin — Result Repair Diagnostics — desktop dark": "E1",
+        "Section label": "E2",
+        "Scheduler health": "E3",
+        "Healthy indicator": "E3",
+        "Healthy label": "E3",
+        "Warning title": "E3",
+        "Warning helper": "E3",
+        "Queue description": "E1",
+        "Failure detail": "E4",
+        "Failure description": "E4",
+        "Attempt 1 · Failed": "E7",
+        "Attempt 1 · Failed chip": "E7",
+        "Attempt 1 · Failed#2": "E7",
+        "Attempt code and time#2": "E7",
+        "Queue states": "E9",
+        "States heading": "E9",
+        "Loading skeleton": "E9",
+        "Loading placeholder": "E9",
+        "Loading placeholder#2": "E9",
+        "Loading placeholder#3": "E9"
+      }
+    }
   }
 }
