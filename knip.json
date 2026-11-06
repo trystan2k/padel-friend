@@ -8,6 +8,7 @@
     "scripts/test-populated-migration-up.d.mts",
     "scripts/check-client-secrets.d.mts",
     "scripts/e2e-shards.d.mts",
+    "scripts/e2e-fast.d.mts",
     "scripts/run-integration.d.mts"
   ],
   "ignoreDependencies": ["@opencode/plugin"],

@@ -22,6 +22,7 @@
     "test:unit": "vitest run --config vitest.unit.config.ts",
     "test:changed": "vitest run --changed HEAD --passWithNoTests --config vitest.unit.config.ts && vitest run --changed HEAD --passWithNoTests --config vitest.integration.config.ts",
     "test:e2e": "pnpm db:reset && node scripts/free-port.mjs 4173 && playwright test",
+    "test:e2e:fast": "node scripts/e2e-fast.mjs",
     "knip": "knip",
     "deps:audit": "pnpm audit",
     "deps:audit:json": "pnpm audit --json",
