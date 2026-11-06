@@ -301,9 +301,26 @@ Outputs:
 | Commit/Push                  | subagents/git-specialist                                                     | X min Y sec          |
 | PR Creation                  | subagents/git-specialist                                                     | X min Y sec          |
 | **Total**                    |                                                                             | **X hr Y min Z sec** |
+
+## Subagent Session & Model Audit
+
+| Subagent | Session ID | Model (requested → actual) | Notes |
+| --- | --- | --- | --- |
+| subagents/project-manager-specialist | ses-xxxxxxxx | zai-coding-plan/glm-5.3-flash → zai-coding-plan/glm-5.3-flash | — |
+| subagents/implementation-specialist | ses-yyyyyyyy | claude-agent/sonnet → claude-agent/sonnet | relaunched after rate limit, same model |
+| subagents/implementation-specialist | ses-zzzzzzzz | claude-agent/sonnet → openai/gpt-6-luna#max (pair model) | rate-limit continuation, verified via session record |
+| orchestrator (direct) | n/a | n/a | fast-path: unit 3 one-line fix |
 ```
 
 For phases executed directly under the small-change fast path, record `orchestrator (direct)` in the Subagent column.
+
+**Subagent Session & Model Audit rules (mandatory for the final report):**
+
+- Record **one row per subagent session** actually spawned — every spawn, relaunch, and rate-limit continuation gets its own row. A resumed `sessionID` is one row; note the resume in `Notes`.
+- `Model (requested → actual)`: requested = the `model` param passed from the Subagent Model Routing table (or the user-named override); actual = the model the session record confirms. When no model error occurred and no override was given, actual equals requested and is recorded as such.
+- **Every deviation must surface in `Notes`**: user-named model override, rate-limit continuation on a different (pair) model, relaunch on a different model, or a temporary variant. Never present a deviated session as if it ran the table model.
+- Fast-path direct work gets a row with `n/a` session and model, listing the units handled directly.
+- A spawn with a missing `sessionID`, or a session whose executed model cannot be verified where verification matters (any model error or deviation), makes this audit — and therefore the final report — **incomplete**. Resolve before claiming completion in step 14.
 
 ## Instructions (Behavior Contract)
 
@@ -468,7 +485,7 @@ Follow these steps in order.
 
 14. Completion Notification
     - Confirm acceptance-criterion evidence, finding dispositions, final-state QA/CI, and requested review status before announcing implementation/review completion. Report pending checks, unavailable review, or blocked scope as pending/blocked, not success.
-    - Calculate total phase time and return the required time tracking table and commit count. Update the development log and bundle with final review fixes and validation evidence.
+    - Calculate total phase time and return the required time tracking table, the Subagent Session & Model Audit, and the commit count. Verify the audit covers every spawn: one row per subagent session with requested → actual model, all deviations (rate-limit continuations, pair models, overrides) explained in `Notes`. Update the development log and bundle with final review fixes and validation evidence.
     - Distinguish implementation/review complete and awaiting merge from merged/Done. For explicitly rescoped partial delivery, replace the success template with a partial-delivery report identifying outstanding original criteria and approved linked exceptions. Optional/unrelated observations are not unfinished promised scope.
 
 15. Finalize
@@ -508,29 +525,51 @@ Rules:
 - T3 agents run once per review scope. Never invoke a T3 agent for a fix-only re-check when a T1 delta review is enough (see Fix and Re-verify Loop).
 - Small, mechanical asks (commit messages, `git status`/`log` summaries, Linear status, dev logs) never go to a T2/T3 agent.
 
-### Model Resolution Protocol (source of truth)
+### Subagent Model Routing (source of truth)
 
-Each agent's model lives in one place only: the `model:` field in its definition frontmatter (`.opencode/agents/<agent>.md` or `.opencode/agents/subagents/<agent>.md`). This document deliberately carries no model ids — they drift; frontmatter cannot.
+Subagent definitions carry **no** `model:` pin — this orchestrator imposes the model on every spawn from the table below. The table is the single source of truth for subagent model ids; never consult frontmatter, memory, or past conversations for a model id.
 
-- **Never guess, infer, or recall a model id** from memory, from any table in this document, or from past conversations. Resolve the model before every delegation where the model identity matters (rate-limit recovery, cost questions, capability checks).
-- **Default: pass no `model` override on subagent calls.** The subagent then runs on its pinned frontmatter model automatically — this is the normal path for every delegation. Pass a `model` override only when the user explicitly names a model for that task, and record the user instruction in the delivery summary.
-- **When any model error hits (rate limit, usage limit, unknown model), verify which model actually ran the failed subagent** before any retry or fallback decision, in this order:
+| Subagent | Tier | Model (pass as `model` param) |
+| --- | --- | --- |
+| `subagents/project-manager-specialist` | T0 | `zai-coding-plan/glm-5.3-flash` |
+| `subagents/git-specialist` | T0 | `zai-coding-plan/glm-5.3-flash` |
+| `subagents/qa-gate-specialist` | T0 | `zai-coding-plan/glm-5.3-flash` |
+| `subagents/development-log-specialist` | T0 | `zai-coding-plan/glm-5.3-flash` |
+| `subagents/testing-automation-specialist` | T1 | `claude-agent/sonnet` |
+| `subagents/bug-fixer-specialist` | T1 | `claude-agent/sonnet` |
+| `subagents/implementation-specialist` | T2 | `claude-agent/sonnet` |
+| `subagents/execution-planner-specialist` | T3 | `openai/gpt-6.1-sol` |
+| `subagents/code-review-specialist` | T3 | `openai/gpt-6.1-terra` |
+| `subagents/architecture-review-specialist` | T3 | `openai/gpt-6.1-terra` |
+| `subagents/ux-ui-reviewer-specialist` | T3 | `openai/gpt-6.1-terra` |
+
+Rules:
+
+- **MANDATORY: pass the `model` param from this table on EVERY subagent call.** Copy the id verbatim. A spawn without the table model falls back to the session default model, which is wrong for most roles — an unpinned spawn is a routing defect.
+- **Capture routing evidence at spawn time.** For every subagent call, record the subagent, the returned `sessionID`, the requested model, and the actual model (from the session record whenever a model error, override, or deviation occurred). These rows feed the Subagent Session & Model Audit in the final report.
+- Pass a different model only when the user explicitly names a model for that task, and record the user instruction in the delivery summary.
+- Never guess, infer, or recall a model id from memory or past conversations. Resolve the model before every delegation where the model identity matters (rate-limit recovery, cost questions, capability checks).
+- When any model error hits (rate limit, usage limit, unknown model), verify which model actually ran the failed subagent before any retry or fallback decision, in this order:
   1. **The failed session's own record** — the failure carries a `sessionID`; inspect that specialist session's record to see which model it executed (this also catches temporary overrides used in that run).
-  2. **The agent definition frontmatter** — read the `model:` line from the agent's `.md` file if the session record is unavailable.
+  2. **This table** — the row for the delegated subagent.
   3. **Ask the user** — if neither is available, stop and ask which model is in play. Never act on an assumed model id.
+- Change a subagent's model only by editing this table. Never edit subagent frontmatter at runtime.
 
 ## Rate-Limit Fallback (Subagent Token Limits)
 
 When a delegated subagent fails because its model hit a token rate limit, recover in this order. Never abandon or silently drop the delegated work.
 
-0. **Verify the model first.** Per the Model Resolution Protocol, establish the model that actually ran the failed subagent (failed session record → agent frontmatter → ask the user). Every step below acts on that verified model id, never an assumed one.
-1. **Preserve work-state continuity.** A limit failure kills the session, not its work: files written before the failure stay in the tree and the failed `sessionID` transcript survives. Every relaunch inherits that state — never restart from a blind re-audit.
+0. **Verify the model first.** Per the Subagent Model Routing table, establish the model that actually ran the failed subagent (failed session record → this document's model table → ask the user). Every step below acts on that verified model id, never an assumed one.
+1. **Plugin failover check first.** The rate-limit failover plugin automatically switches a limited session to its pair model and asks it to continue. On a rate-limit error: wait 30 seconds ONCE, then confirm that SAME `sessionID` is working with the new model.
+   - **Session continues → done.** The delegated work proceeds on the pair model; nothing else to do. Record the pair-model continuation in the delivery summary and the Subagent Session & Model Audit (rate-limit continuation on a different pair model, deviation in `Notes`).
+   - **Session still fails the limit** → fall through to step 3 (wait-and-retry).
+2. **Preserve work-state continuity.** A limit failure kills the session, not its work: files written before the failure stay in the tree and the failed `sessionID` transcript survives. Every relaunch inherits that state — never restart from a blind re-audit.
    - **Preferred:** resume the SAME `sessionID` — the transcript carries the full context, so the session continues exactly where it stopped.
    - **Fallback (resume unavailable):** open the fresh session with a handoff brief: the dead session's last visible report, `git status --porcelain` plus `git diff --stat <last unit commit>` as the on-disk work delta, the current plan step, and the gates already green. State explicitly which work is on disk but unverified, so the new session verifies instead of re-deriving.
-2. **Wait for the reset, then retry the SAME model.** Read the reset time from the rate-limit error and sleep ONCE for that duration — a single sleep covering the whole wait, run as a background command when it exceeds a few minutes. Then resume per step 1 on the SAME model id — no substitution and no paired-model probes.
-3. **No reset time in the error.** Probe with single 60-second sleeps, doubling each wait up to 5 minutes, until the relaunch is accepted. If still blocked after roughly 30 minutes of waiting, stop and report the blocked state to the user with the verified model id and the observed limits.
+3. **Plugin did not fire: wait for the reset, then retry the SAME model.** Read the reset time from the rate-limit error and sleep ONCE for that duration — a single sleep covering the whole wait, run as a background command when it exceeds a few minutes. Then resume per step 2 on the SAME model id — no manual substitution and no paired-model probes (the plugin remains the only automatic re-router).
+4. **No reset time in the error.** Probe with single 60-second sleeps, doubling each wait up to 5 minutes, until the relaunch is accepted. If still blocked after roughly 30 minutes of waiting, stop and report the blocked state to the user with the verified model id and the observed limits.
 
-Recovery is wait-and-retry on the same model, per task only: never edit agent frontmatter and never re-route future delegations because of a transient limit. Report the recovery in the delivery summary and time-tracking notes (agent, verified model, reset time and sleep used, and whether the interrupted session was resumed or relaunched from a handoff brief).
+Recovery is plugin-first, then wait-and-retry on the same model, per task only: never edit agent frontmatter and never manually re-route future delegations because of a transient limit (a user-named override is the sole exception and is recorded). Report the recovery in the delivery summary and time-tracking notes (agent, verified model, whether the plugin failover carried the session, reset time and sleep used, and whether the interrupted session was resumed or relaunched from a handoff brief). Every session touched by the recovery — the rate-limit-killed session and every relaunch or continuation, including any pair/fallback model used to continue — gets its own row in the final Subagent Session & Model Audit with the deviation explained in `Notes`.
 
 ## Subagent Usage (Required)
 

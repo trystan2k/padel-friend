@@ -23,6 +23,9 @@ describe('match fixture cleanup', () => {
     expect(sql).toContain(proposals);
     expect(sql).toContain(reviews);
     expect(sql).toContain(confirmations);
+    expect(sql.indexOf('delete from public.result_dispute_resolutions')).toBeLessThan(
+      sql.indexOf(reviews)
+    );
     expect(sql.indexOf(reviews)).toBeLessThan(sql.indexOf(confirmations));
     expect(sql.indexOf(confirmations)).toBeLessThan(sql.indexOf(versions));
     expect(sql.indexOf(versions)).toBeLessThan(sql.indexOf(proposals));

@@ -58,6 +58,16 @@ describe('withDeadlockRetry', () => {
     ).rejects.toThrow(/deadlock detected/);
     expect(calls).toBe(3);
   });
+  it('retries a replay that raced another worker cleanup (incomplete player state)', async () => {
+    let calls = 0;
+    await expect(
+      withDeadlockRetry(async () => {
+        if (++calls < 2) throw new Error('Local SQL failed (1): error: Incomplete player state');
+        return 'ok';
+      })
+    ).resolves.toBe('ok');
+    expect(calls).toBe(2);
+  });
   it('never retries other failures', async () => {
     let calls = 0;
     await expect(

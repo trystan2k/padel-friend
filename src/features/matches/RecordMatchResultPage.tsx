@@ -24,6 +24,7 @@ import {
 } from './match-result.validators';
 import { resultGroupPlayers, resultOffsetLabel, resultPlayedOffsets } from './match-result-form';
 import { correctMatchEventResult, submitMatchEventResult } from './match-result.functions';
+import type { ResultAmendment } from './result-amendment-model';
 import { MatchManagementUnavailable } from './MatchManagementUnavailable';
 import { MatchResultPending } from './MatchResultPending';
 import { MatchResultReview } from './MatchResultReview';
@@ -38,6 +39,8 @@ type Props = {
   participants: ManagementParticipant[];
   proposals: ResultProposal[];
   correctionProposalId?: string;
+  // A live amendment lets its corrected candidate use the correction form for a confirmed result.
+  amendment?: ResultAmendment | null;
   initialGroup?: number;
   loadError?: boolean;
   onReload: () => void;
@@ -64,6 +67,7 @@ export function RecordMatchResultPage(props: Props) {
     participants,
     proposals,
     correctionProposalId,
+    amendment,
     initialGroup,
     onReload
   } = props;
@@ -74,7 +78,9 @@ export function RecordMatchResultPage(props: Props) {
     .sort((a, b) => a - b);
   const correctionRequested = correctionProposalId !== undefined;
   const correctionProposal = proposals.find(
-    (proposal) => proposal.proposal_id === correctionProposalId && proposal.can_correct
+    (proposal) =>
+      proposal.proposal_id === correctionProposalId &&
+      (proposal.can_correct || amendment?.proposal_id === proposal.proposal_id)
   );
   const [group, setGroup] = useState(
     correctionProposal?.group_number ?? initialGroup ?? groups[0] ?? 1

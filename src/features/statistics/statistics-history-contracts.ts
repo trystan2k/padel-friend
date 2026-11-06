@@ -95,7 +95,7 @@ export type DetailTimelineEntry = {
   version: number;
   occurred_at: string;
   actor: DetailActor | null;
-  source: 'MANUAL' | 'AUTO_48H' | null;
+  source: 'MANUAL' | 'AUTO_48H' | 'ADMIN_OVERRIDE' | null;
 };
 
 /** Confirmed detail must use pre-match evidence from its committed projection revision. */
@@ -134,7 +134,7 @@ export type GroupDetail = {
     reason: 'friendly' | 'incomplete' | 'missing_evidence' | null;
   };
   confirmation: {
-    source: 'MANUAL' | 'AUTO_48H';
+    source: 'MANUAL' | 'AUTO_48H' | 'ADMIN_OVERRIDE';
     automatic: boolean;
     confirmed_at: string;
     effective_at: string;

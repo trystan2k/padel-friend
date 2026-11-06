@@ -27,7 +27,9 @@ export const LEAGUE_STANDINGS_CAUSES = [
   'closed',
   'late_first_confirmation',
   'repair',
-  'reconstruction'
+  'reconstruction',
+  'result_amendment',
+  'result_void'
 ] as const;
 export type LeagueStandingsCause = (typeof LEAGUE_STANDINGS_CAUSES)[number];
 
@@ -61,7 +63,7 @@ export type LeagueStandingsResult = LeagueLiveStandings | LeagueFinalStandings;
 
 /** Safe publication facts of the confirmation that caused a late revision (no actor, no ids). */
 export type LeagueStandingsVersionConfirmation = {
-  source: 'MANUAL' | 'AUTO_48H';
+  source: 'MANUAL' | 'AUTO_48H' | 'ADMIN_OVERRIDE';
   confirmed_at: string;
   played_at: string;
 };

@@ -21,6 +21,9 @@ export function PlatformAdminEntry({ allowed }: { allowed: boolean }) {
         <Link to="/platform-admin/level-reviews" {...stylex.props(s.primaryLink)}>
           {t('levelReview.admin.entryLink')}
         </Link>
+        <Link to="/platform-admin/result-repairs" {...stylex.props(s.primaryLink)}>
+          {t('matches.corrections.diagnostics.entryLink')}
+        </Link>
       </div>
     </section>
   );

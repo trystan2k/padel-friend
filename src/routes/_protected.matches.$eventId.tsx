@@ -12,7 +12,10 @@ import {
   getMatchEventManagement,
   listMatchEventManagementParticipants
 } from '../features/matches/match-management.functions';
-import { loadMatchResultProposals } from '../features/matches/match-result.routes';
+import {
+  loadMatchResultProposals,
+  loadResultCorrections
+} from '../features/matches/match-result.routes';
 
 export async function loadMatchDetail(eventId: string) {
   try {
@@ -85,23 +88,31 @@ export const Route = createFileRoute('/_protected/matches/$eventId')({
     const registration = await loadMatchRegistration(params.eventId);
     const eventManagement = capabilities?.status === 'ok' ? capabilities.value : null;
     const isCreator = eventManagement?.is_organizer === true;
-    const [callerLevel, requestQueue, roster, invitation, management, resultProposals] =
-      await Promise.all([
-        loadCallerLevel(),
-        isCreator
-          ? loadMatchRequestQueue(params.eventId)
-          : Promise.resolve({ queue: null, queueFailed: false }),
-        loadMatchRoster(params.eventId),
-        getMyMatchInvitation({ data: { event_id: params.eventId } }).catch(() => ({
-          status: 'unavailable' as const
-        })),
-        isCreator
-          ? listMatchEventManagementParticipants({ data: { event_id: params.eventId } }).catch(
-              () => ({ status: 'error' as const })
-            )
-          : Promise.resolve(null),
-        loadMatchResultProposals(params.eventId)
-      ]);
+    const [
+      callerLevel,
+      requestQueue,
+      roster,
+      invitation,
+      management,
+      resultProposals,
+      corrections
+    ] = await Promise.all([
+      loadCallerLevel(),
+      isCreator
+        ? loadMatchRequestQueue(params.eventId)
+        : Promise.resolve({ queue: null, queueFailed: false }),
+      loadMatchRoster(params.eventId),
+      getMyMatchInvitation({ data: { event_id: params.eventId } }).catch(() => ({
+        status: 'unavailable' as const
+      })),
+      isCreator
+        ? listMatchEventManagementParticipants({ data: { event_id: params.eventId } }).catch(
+            () => ({ status: 'error' as const })
+          )
+        : Promise.resolve(null),
+      loadMatchResultProposals(params.eventId),
+      loadResultCorrections(params.eventId, detail.event?.community_id ?? null)
+    ]);
     return {
       ...detail,
       ...registration,
@@ -110,6 +121,7 @@ export const Route = createFileRoute('/_protected/matches/$eventId')({
       proposals: resultProposals.proposals,
       proposalsError: resultProposals.proposalsError,
       proposalsForbidden: resultProposals.proposalsForbidden,
+      corrections,
       callerLevel,
       ...requestQueue,
       ...roster,
@@ -142,6 +154,7 @@ export const Route = createFileRoute('/_protected/matches/$eventId')({
         proposals={data.proposals}
         proposalsError={data.proposalsError}
         proposalsForbidden={data.proposalsForbidden}
+        corrections={data.corrections}
       />
     );
   }

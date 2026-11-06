@@ -48,6 +48,8 @@ test.beforeAll(async ({ browser }) => {
 test.afterAll(async () => {
   test.setTimeout(180_000);
   await cross?.cleanup();
+  // Events and the rating evidence of every player go in one transaction; only then the leftovers.
+  await f?.cleanup();
   await removeProvisionalEvidence(provisionalEmails);
   for (const email of provisionalEmails)
     await sql(`do $$ begin
@@ -62,7 +64,6 @@ test.afterAll(async () => {
       delete from public.community_members where user_id in (select id from auth.users where email='${email}');
       alter table public.community_members enable trigger community_member_guard;
     end $$;`);
-  await f?.cleanup();
   for (const email of provisionalEmails)
     await sql(`do $$ begin delete from auth.users where email='${email}'; end $$;`);
 });

@@ -85555,6 +85555,3920 @@
           ]
         }
       ]
+    },
+    {
+      "type": "frame",
+      "id": "bomAY",
+      "x": 8134,
+      "y": -1600,
+      "name": "Platform Admin — Result Repair Diagnostics — desktop light",
+      "theme": {
+        "mode": "light"
+      },
+      "clip": true,
+      "width": 1280,
+      "height": 1500,
+      "fill": "$bg",
+      "layout": "vertical",
+      "gap": 20,
+      "padding": 40,
+      "children": [
+        {
+          "type": "frame",
+          "id": "b2pHP",
+          "name": "Header",
+          "width": "fill_container",
+          "layout": "vertical",
+          "gap": 10,
+          "children": [
+            {
+              "type": "text",
+              "id": "oS1kp",
+              "name": "Section label",
+              "fill": "$muted",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "PLATFORM ADMIN  /  OPERATIONS",
+              "fontFamily": "Inter",
+              "fontSize": 12,
+              "fontWeight": "600"
+            },
+            {
+              "type": "text",
+              "id": "gBEaP",
+              "name": "Title",
+              "fill": "$text",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "Repair diagnostics",
+              "fontFamily": "Inter",
+              "fontSize": 32,
+              "fontWeight": "700"
+            },
+            {
+              "type": "frame",
+              "id": "X2BQX",
+              "name": "Scheduler health",
+              "fill": "$greenSoft",
+              "cornerRadius": 12,
+              "gap": 8,
+              "padding": [
+                8,
+                12
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "ellipse",
+                  "id": "ekPo5",
+                  "name": "Healthy indicator",
+                  "fill": "$green",
+                  "width": 8,
+                  "height": 8
+                },
+                {
+                  "type": "text",
+                  "id": "OAvoC",
+                  "name": "Healthy label",
+                  "fill": "$green",
+                  "content": "Scheduler healthy · last run 14:32",
+                  "fontFamily": "Inter",
+                  "fontSize": 12,
+                  "fontWeight": "600"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "wp7OE",
+              "name": "Scheduler warning example",
+              "width": "fill_container",
+              "fill": "$surface2",
+              "cornerRadius": 12,
+              "layout": "vertical",
+              "gap": 4,
+              "padding": 12,
+              "children": [
+                {
+                  "type": "text",
+                  "id": "r2BJq",
+                  "name": "Warning title",
+                  "fill": "$amber",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "Scheduler unavailable",
+                  "fontFamily": "Inter",
+                  "fontSize": 13,
+                  "fontWeight": "700"
+                },
+                {
+                  "type": "text",
+                  "id": "P55Gq",
+                  "name": "Warning helper",
+                  "fill": "$text",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "Automatic repairs may be delayed. Check scheduler health.",
+                  "fontFamily": "Inter",
+                  "fontSize": 12,
+                  "fontWeight": "normal"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "CseFj",
+          "name": "Queue and details",
+          "width": "fill_container",
+          "gap": 20,
+          "children": [
+            {
+              "type": "frame",
+              "id": "fKCxz",
+              "name": "Repair queue",
+              "width": 720,
+              "layout": "vertical",
+              "gap": 12,
+              "children": [
+                {
+                  "type": "text",
+                  "id": "y8zgZ",
+                  "name": "Queue heading",
+                  "fill": "$text",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "Repair queue",
+                  "fontFamily": "Inter",
+                  "fontSize": 20,
+                  "fontWeight": "700"
+                },
+                {
+                  "type": "text",
+                  "id": "gdg1Z",
+                  "name": "Queue description",
+                  "fill": "$muted",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "Audit correction repairs across communities.",
+                  "fontFamily": "Inter",
+                  "fontSize": 13,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "frame",
+                  "id": "k1ann",
+                  "name": "Failed repair",
+                  "width": "fill_container",
+                  "fill": "$surface",
+                  "cornerRadius": 16,
+                  "layout": "vertical",
+                  "gap": 14,
+                  "padding": 18,
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "VHMRW",
+                      "name": "Failed heading",
+                      "width": "fill_container",
+                      "gap": 10,
+                      "justifyContent": "space_between",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "s9pDrt",
+                          "name": "Match context",
+                          "fill": "$text",
+                          "textGrowth": "fixed-width",
+                          "width": "fill_container",
+                          "content": "Community A · Oct 5 friendly",
+                          "fontFamily": "Inter",
+                          "fontSize": 16,
+                          "fontWeight": "700"
+                        },
+                        {
+                          "type": "frame",
+                          "id": "BcKtO",
+                          "name": "Failed chip",
+                          "fill": "$surface2",
+                          "cornerRadius": 12,
+                          "gap": 6,
+                          "padding": [
+                            6,
+                            10
+                          ],
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "Mieph",
+                              "name": "Failed",
+                              "fill": "$red",
+                              "content": "Failed",
+                              "fontFamily": "Inter",
+                              "fontSize": 12,
+                              "fontWeight": "600"
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "id": "E6mFA",
+                      "name": "Attempt count",
+                      "fill": "$muted",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "Attempt 2 of 5",
+                      "fontFamily": "Inter",
+                      "fontSize": 13,
+                      "fontWeight": "600"
+                    },
+                    {
+                      "type": "frame",
+                      "id": "nTDj5",
+                      "name": "Failure detail",
+                      "width": "fill_container",
+                      "fill": "$surface2",
+                      "cornerRadius": 10,
+                      "layout": "vertical",
+                      "gap": 4,
+                      "padding": 12,
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "PPT1E",
+                          "name": "Failure code",
+                          "fill": "$red",
+                          "textGrowth": "fixed-width",
+                          "width": "fill_container",
+                          "content": "LOCK_TIMEOUT",
+                          "fontFamily": "Inter",
+                          "fontSize": 13,
+                          "fontWeight": "700"
+                        },
+                        {
+                          "type": "text",
+                          "id": "zaM6T",
+                          "name": "Failure description",
+                          "fill": "$text",
+                          "textGrowth": "fixed-width",
+                          "width": "fill_container",
+                          "content": "Repair could not acquire the required lock.",
+                          "fontFamily": "Inter",
+                          "fontSize": 13,
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "id": "sJGzz",
+                      "name": "Timestamps",
+                      "fill": "$muted",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "Queued Oct 5, 14:20  ·  Started 14:31  ·  Finished 14:32",
+                      "fontFamily": "Inter",
+                      "fontSize": 12,
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "type": "frame",
+                      "id": "KZ4NK",
+                      "name": "Retry button",
+                      "height": 44,
+                      "fill": "$green",
+                      "cornerRadius": 10,
+                      "padding": [
+                        0,
+                        20
+                      ],
+                      "justifyContent": "center",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "Waitl",
+                          "name": "Retry label",
+                          "fill": "$surface",
+                          "content": "Retry",
+                          "fontFamily": "Inter",
+                          "fontSize": 14,
+                          "fontWeight": "700"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "W6XVwU",
+                  "name": "Running repair",
+                  "width": "fill_container",
+                  "fill": "$surface",
+                  "cornerRadius": 16,
+                  "layout": "vertical",
+                  "gap": 14,
+                  "padding": 18,
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "aNaOE",
+                      "name": "Repair heading",
+                      "width": "fill_container",
+                      "gap": 10,
+                      "justifyContent": "space_between",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "lYkFF",
+                          "name": "Match context",
+                          "fill": "$text",
+                          "textGrowth": "fixed-width",
+                          "width": "fill_container",
+                          "content": "Community B · Oct 5 league",
+                          "fontFamily": "Inter",
+                          "fontSize": 15,
+                          "fontWeight": "700"
+                        },
+                        {
+                          "type": "frame",
+                          "id": "F6in3U",
+                          "name": "Running chip",
+                          "fill": "$surface2",
+                          "cornerRadius": 12,
+                          "gap": 6,
+                          "padding": [
+                            6,
+                            10
+                          ],
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "VFK1U",
+                              "name": "Running",
+                              "fill": "$text",
+                              "content": "Running",
+                              "fontFamily": "Inter",
+                              "fontSize": 12,
+                              "fontWeight": "600"
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "id": "o2pbK",
+                      "name": "Attempt count",
+                      "fill": "$muted",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "Attempt 1 of 5",
+                      "fontFamily": "Inter",
+                      "fontSize": 13,
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "type": "text",
+                      "id": "SsJ76",
+                      "name": "Timestamps",
+                      "fill": "$muted",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "Queued 14:24 · Started 14:33",
+                      "fontFamily": "Inter",
+                      "fontSize": 12,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "RHFxn",
+                  "name": "Queued repair",
+                  "width": "fill_container",
+                  "fill": "$surface",
+                  "cornerRadius": 16,
+                  "layout": "vertical",
+                  "gap": 14,
+                  "padding": 18,
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "FAeVJ",
+                      "name": "Repair heading",
+                      "width": "fill_container",
+                      "gap": 10,
+                      "justifyContent": "space_between",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "jjUul",
+                          "name": "Match context",
+                          "fill": "$text",
+                          "textGrowth": "fixed-width",
+                          "width": "fill_container",
+                          "content": "Community C · Oct 4 friendly",
+                          "fontFamily": "Inter",
+                          "fontSize": 15,
+                          "fontWeight": "700"
+                        },
+                        {
+                          "type": "frame",
+                          "id": "oOt9Y",
+                          "name": "Queued chip",
+                          "fill": "$surface2",
+                          "cornerRadius": 12,
+                          "gap": 6,
+                          "padding": [
+                            6,
+                            10
+                          ],
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "JCfjM",
+                              "name": "Queued",
+                              "fill": "$muted",
+                              "content": "Queued",
+                              "fontFamily": "Inter",
+                              "fontSize": 12,
+                              "fontWeight": "600"
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "id": "pSJsC",
+                      "name": "Attempt count",
+                      "fill": "$muted",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "Attempt 0 of 5",
+                      "fontFamily": "Inter",
+                      "fontSize": 13,
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "type": "text",
+                      "id": "WkBbh",
+                      "name": "Timestamps",
+                      "fill": "$muted",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "Queued Oct 5, 14:29",
+                      "fontFamily": "Inter",
+                      "fontSize": 12,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "pm0vL",
+                  "name": "Succeeded repair",
+                  "width": "fill_container",
+                  "fill": "$surface",
+                  "cornerRadius": 16,
+                  "layout": "vertical",
+                  "gap": 14,
+                  "padding": 18,
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "tX27d",
+                      "name": "Repair heading",
+                      "width": "fill_container",
+                      "gap": 10,
+                      "justifyContent": "space_between",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "H3Ns8z",
+                          "name": "Match context",
+                          "fill": "$text",
+                          "textGrowth": "fixed-width",
+                          "width": "fill_container",
+                          "content": "Community D · Oct 4 league",
+                          "fontFamily": "Inter",
+                          "fontSize": 15,
+                          "fontWeight": "700"
+                        },
+                        {
+                          "type": "frame",
+                          "id": "Jm791",
+                          "name": "Succeeded chip",
+                          "fill": "$greenSoft",
+                          "cornerRadius": 12,
+                          "gap": 6,
+                          "padding": [
+                            6,
+                            10
+                          ],
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "Q3bJO6",
+                              "name": "Succeeded",
+                              "fill": "$green",
+                              "content": "Succeeded",
+                              "fontFamily": "Inter",
+                              "fontSize": 12,
+                              "fontWeight": "600"
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "id": "jcxNE",
+                      "name": "Attempt count",
+                      "fill": "$muted",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "Attempt 1 of 5",
+                      "fontFamily": "Inter",
+                      "fontSize": 13,
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "type": "text",
+                      "id": "M8glLP",
+                      "name": "Timestamps",
+                      "fill": "$muted",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "Queued 13:40 · Started 13:41 · Finished 13:42",
+                      "fontFamily": "Inter",
+                      "fontSize": 12,
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "type": "text",
+                      "id": "cmKNo",
+                      "name": "Result reference",
+                      "fill": "$green",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "Official result v2 · standings v3",
+                      "fontFamily": "Inter",
+                      "fontSize": 13,
+                      "fontWeight": "600"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "CGBxe",
+              "name": "Job detail and states",
+              "width": "fill_container",
+              "layout": "vertical",
+              "gap": 12,
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "NUyNu",
+                  "name": "Job detail",
+                  "width": "fill_container",
+                  "fill": "$surface",
+                  "cornerRadius": 16,
+                  "layout": "vertical",
+                  "gap": 14,
+                  "padding": 18,
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "gFmNY",
+                      "name": "Detail heading",
+                      "fill": "$text",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "Job detail",
+                      "fontFamily": "Inter",
+                      "fontSize": 20,
+                      "fontWeight": "700"
+                    },
+                    {
+                      "type": "text",
+                      "id": "fe2Pu",
+                      "name": "Selected job",
+                      "fill": "$muted",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "Community A · Oct 5 friendly",
+                      "fontFamily": "Inter",
+                      "fontSize": 14,
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "type": "text",
+                      "id": "IHxtA",
+                      "name": "Timeline heading",
+                      "fill": "$text",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "Attempt timeline",
+                      "fontFamily": "Inter",
+                      "fontSize": 14,
+                      "fontWeight": "700"
+                    },
+                    {
+                      "type": "frame",
+                      "id": "sEcMR",
+                      "name": "Attempt 2 · Failed",
+                      "width": "fill_container",
+                      "fill": "$surface2",
+                      "cornerRadius": 10,
+                      "layout": "vertical",
+                      "gap": 5,
+                      "padding": 12,
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "G5Poy",
+                          "name": "Attempt 2 · Failed chip",
+                          "fill": "$surface",
+                          "cornerRadius": 12,
+                          "gap": 6,
+                          "padding": [
+                            6,
+                            10
+                          ],
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "oK3dm",
+                              "name": "Attempt 2 · Failed",
+                              "fill": "$red",
+                              "content": "Attempt 2 · Failed",
+                              "fontFamily": "Inter",
+                              "fontSize": 12,
+                              "fontWeight": "600"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "id": "p2rUKQ",
+                          "name": "Attempt code and time",
+                          "fill": "$text",
+                          "textGrowth": "fixed-width",
+                          "width": "fill_container",
+                          "content": "LOCK_TIMEOUT · Oct 5, 14:32",
+                          "fontFamily": "Inter",
+                          "fontSize": 12,
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "kDGAK",
+                      "name": "Attempt 1 · Failed",
+                      "width": "fill_container",
+                      "fill": "$surface2",
+                      "cornerRadius": 10,
+                      "layout": "vertical",
+                      "gap": 5,
+                      "padding": 12,
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "zxdHL",
+                          "name": "Attempt 1 · Failed chip",
+                          "fill": "$surface",
+                          "cornerRadius": 12,
+                          "gap": 6,
+                          "padding": [
+                            6,
+                            10
+                          ],
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "NxMMW",
+                              "name": "Attempt 1 · Failed",
+                              "fill": "$red",
+                              "content": "Attempt 1 · Failed",
+                              "fontFamily": "Inter",
+                              "fontSize": 12,
+                              "fontWeight": "600"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "id": "DPAXj",
+                          "name": "Attempt code and time",
+                          "fill": "$text",
+                          "textGrowth": "fixed-width",
+                          "width": "fill_container",
+                          "content": "LOCK_TIMEOUT · Oct 5, 14:25",
+                          "fontFamily": "Inter",
+                          "fontSize": 12,
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "z8S0eS",
+                      "name": "Official revision",
+                      "width": "fill_container",
+                      "layout": "vertical",
+                      "gap": 4,
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "ltdVK",
+                          "name": "Official revision label",
+                          "fill": "$muted",
+                          "textGrowth": "fixed-width",
+                          "width": "fill_container",
+                          "content": "Official revision",
+                          "fontFamily": "Inter",
+                          "fontSize": 12,
+                          "fontWeight": "600"
+                        },
+                        {
+                          "type": "text",
+                          "id": "R7Ktbn",
+                          "name": "Official revision value",
+                          "fill": "$text",
+                          "textGrowth": "fixed-width",
+                          "width": "fill_container",
+                          "content": "v1 → v2",
+                          "fontFamily": "Inter",
+                          "fontSize": 14,
+                          "fontWeight": "500"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "vlkvJ",
+                      "name": "Correlation ID",
+                      "width": "fill_container",
+                      "layout": "vertical",
+                      "gap": 4,
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "aWtRL",
+                          "name": "Correlation ID label",
+                          "fill": "$muted",
+                          "textGrowth": "fixed-width",
+                          "width": "fill_container",
+                          "content": "Correlation ID",
+                          "fontFamily": "Inter",
+                          "fontSize": 12,
+                          "fontWeight": "600"
+                        },
+                        {
+                          "type": "text",
+                          "id": "L4UAFy",
+                          "name": "Correlation ID value",
+                          "fill": "$text",
+                          "textGrowth": "fixed-width",
+                          "width": "fill_container",
+                          "content": "rep_01J8M7A2Q4",
+                          "fontFamily": "Inter",
+                          "fontSize": 14,
+                          "fontWeight": "500"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "VaN1P",
+                  "name": "Retry confirmation",
+                  "width": "fill_container",
+                  "fill": "$surface",
+                  "cornerRadius": 16,
+                  "layout": "vertical",
+                  "gap": 14,
+                  "padding": 18,
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "JFnkn",
+                      "name": "Dialog title",
+                      "fill": "$text",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "Retry this repair?",
+                      "fontFamily": "Inter",
+                      "fontSize": 18,
+                      "fontWeight": "700"
+                    },
+                    {
+                      "type": "text",
+                      "id": "ttFd4",
+                      "name": "Dialog description",
+                      "fill": "$muted",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "It will replay affected history.",
+                      "fontFamily": "Inter",
+                      "fontSize": 14,
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "type": "frame",
+                      "id": "NrOy4",
+                      "name": "Dialog actions",
+                      "width": "fill_container",
+                      "gap": 10,
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "OpOeI",
+                          "name": "Cancel button",
+                          "width": "fill_container",
+                          "height": 44,
+                          "fill": "$surface2",
+                          "cornerRadius": 10,
+                          "justifyContent": "center",
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "x5bQaw",
+                              "name": "Cancel",
+                              "fill": "$text",
+                              "content": "Cancel",
+                              "fontFamily": "Inter",
+                              "fontSize": 14,
+                              "fontWeight": "700"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "SH5p4",
+                          "name": "Confirm button",
+                          "width": "fill_container",
+                          "height": 44,
+                          "fill": "$green",
+                          "cornerRadius": 10,
+                          "justifyContent": "center",
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "Q5sD1e",
+                              "name": "Confirm",
+                              "fill": "$surface",
+                              "content": "Confirm",
+                              "fontFamily": "Inter",
+                              "fontSize": 14,
+                              "fontWeight": "700"
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "dNf8n",
+                  "name": "Queue states",
+                  "width": "fill_container",
+                  "fill": "$surface",
+                  "cornerRadius": 16,
+                  "layout": "vertical",
+                  "gap": 14,
+                  "padding": 18,
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "ymh1L",
+                      "name": "States heading",
+                      "fill": "$text",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "Queue states",
+                      "fontFamily": "Inter",
+                      "fontSize": 16,
+                      "fontWeight": "700"
+                    },
+                    {
+                      "type": "text",
+                      "id": "o6liH",
+                      "name": "Empty state",
+                      "fill": "$text",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "No repairs — all corrections applied",
+                      "fontFamily": "Inter",
+                      "fontSize": 14,
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "type": "frame",
+                      "id": "wLwi1",
+                      "name": "Loading skeleton",
+                      "width": "fill_container",
+                      "fill": "$surface2",
+                      "cornerRadius": 10,
+                      "layout": "vertical",
+                      "gap": 8,
+                      "padding": 12,
+                      "children": [
+                        {
+                          "type": "rectangle",
+                          "cornerRadius": 5,
+                          "id": "SU03X",
+                          "name": "Loading placeholder",
+                          "opacity": 0.35,
+                          "fill": "$line",
+                          "width": 180,
+                          "height": 10
+                        },
+                        {
+                          "type": "rectangle",
+                          "cornerRadius": 5,
+                          "id": "N5Gxhv",
+                          "name": "Loading placeholder",
+                          "opacity": 0.35,
+                          "fill": "$line",
+                          "width": 240,
+                          "height": 10
+                        },
+                        {
+                          "type": "rectangle",
+                          "cornerRadius": 5,
+                          "id": "I2fxx",
+                          "name": "Loading placeholder",
+                          "opacity": 0.35,
+                          "fill": "$line",
+                          "width": 120,
+                          "height": 10
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "SluH3",
+      "x": 9454,
+      "y": -1600,
+      "name": "Platform Admin — Result Repair Diagnostics — desktop dark",
+      "theme": {
+        "mode": "dark"
+      },
+      "clip": true,
+      "width": 1280,
+      "height": 1500,
+      "fill": "$bg",
+      "layout": "vertical",
+      "gap": 20,
+      "padding": 40,
+      "children": [
+        {
+          "type": "frame",
+          "id": "DpeLY",
+          "name": "Header",
+          "width": "fill_container",
+          "layout": "vertical",
+          "gap": 10,
+          "children": [
+            {
+              "type": "text",
+              "id": "g7EkL",
+              "name": "Section label",
+              "fill": "$muted",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "PLATFORM ADMIN  /  OPERATIONS",
+              "fontFamily": "Inter",
+              "fontSize": 12,
+              "fontWeight": "600"
+            },
+            {
+              "type": "text",
+              "id": "VW6Z1",
+              "name": "Title",
+              "fill": "$text",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "Repair diagnostics",
+              "fontFamily": "Inter",
+              "fontSize": 32,
+              "fontWeight": "700"
+            },
+            {
+              "type": "frame",
+              "id": "WMkeE",
+              "name": "Scheduler health",
+              "fill": "$greenSoft",
+              "cornerRadius": 12,
+              "gap": 8,
+              "padding": [
+                8,
+                12
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "ellipse",
+                  "id": "J8z08",
+                  "name": "Healthy indicator",
+                  "fill": "$green",
+                  "width": 8,
+                  "height": 8
+                },
+                {
+                  "type": "text",
+                  "id": "LFUaL",
+                  "name": "Healthy label",
+                  "fill": "$green",
+                  "content": "Scheduler healthy · last run 14:32",
+                  "fontFamily": "Inter",
+                  "fontSize": 12,
+                  "fontWeight": "600"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "Y4dJC",
+              "name": "Scheduler warning example",
+              "width": "fill_container",
+              "fill": "$surface2",
+              "cornerRadius": 12,
+              "layout": "vertical",
+              "gap": 4,
+              "padding": 12,
+              "children": [
+                {
+                  "type": "text",
+                  "id": "FGL5y",
+                  "name": "Warning title",
+                  "fill": "$amber",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "Scheduler unavailable",
+                  "fontFamily": "Inter",
+                  "fontSize": 13,
+                  "fontWeight": "700"
+                },
+                {
+                  "type": "text",
+                  "id": "eiyAl",
+                  "name": "Warning helper",
+                  "fill": "$text",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "Automatic repairs may be delayed. Check scheduler health.",
+                  "fontFamily": "Inter",
+                  "fontSize": 12,
+                  "fontWeight": "normal"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "eNrry",
+          "name": "Queue and details",
+          "width": "fill_container",
+          "gap": 20,
+          "children": [
+            {
+              "type": "frame",
+              "id": "ihS4o",
+              "name": "Repair queue",
+              "width": 720,
+              "layout": "vertical",
+              "gap": 12,
+              "children": [
+                {
+                  "type": "text",
+                  "id": "YKCEQ",
+                  "name": "Queue heading",
+                  "fill": "$text",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "Repair queue",
+                  "fontFamily": "Inter",
+                  "fontSize": 20,
+                  "fontWeight": "700"
+                },
+                {
+                  "type": "text",
+                  "id": "a5QIK0",
+                  "name": "Queue description",
+                  "fill": "$muted",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "Audit correction repairs across communities.",
+                  "fontFamily": "Inter",
+                  "fontSize": 13,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "frame",
+                  "id": "TZ2fT",
+                  "name": "Failed repair",
+                  "width": "fill_container",
+                  "fill": "$surface",
+                  "cornerRadius": 16,
+                  "layout": "vertical",
+                  "gap": 14,
+                  "padding": 18,
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "fgUpt",
+                      "name": "Failed heading",
+                      "width": "fill_container",
+                      "gap": 10,
+                      "justifyContent": "space_between",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "x2CYrk",
+                          "name": "Match context",
+                          "fill": "$text",
+                          "textGrowth": "fixed-width",
+                          "width": "fill_container",
+                          "content": "Community A · Oct 5 friendly",
+                          "fontFamily": "Inter",
+                          "fontSize": 16,
+                          "fontWeight": "700"
+                        },
+                        {
+                          "type": "frame",
+                          "id": "qak6V",
+                          "name": "Failed chip",
+                          "fill": "$surface2",
+                          "cornerRadius": 12,
+                          "gap": 6,
+                          "padding": [
+                            6,
+                            10
+                          ],
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "l0XXe0",
+                              "name": "Failed",
+                              "fill": "$red",
+                              "content": "Failed",
+                              "fontFamily": "Inter",
+                              "fontSize": 12,
+                              "fontWeight": "600"
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "id": "m3Xz9",
+                      "name": "Attempt count",
+                      "fill": "$muted",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "Attempt 2 of 5",
+                      "fontFamily": "Inter",
+                      "fontSize": 13,
+                      "fontWeight": "600"
+                    },
+                    {
+                      "type": "frame",
+                      "id": "D0q8M",
+                      "name": "Failure detail",
+                      "width": "fill_container",
+                      "fill": "$surface2",
+                      "cornerRadius": 10,
+                      "layout": "vertical",
+                      "gap": 4,
+                      "padding": 12,
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "h9sD7D",
+                          "name": "Failure code",
+                          "fill": "$red",
+                          "textGrowth": "fixed-width",
+                          "width": "fill_container",
+                          "content": "LOCK_TIMEOUT",
+                          "fontFamily": "Inter",
+                          "fontSize": 13,
+                          "fontWeight": "700"
+                        },
+                        {
+                          "type": "text",
+                          "id": "TlM43",
+                          "name": "Failure description",
+                          "fill": "$text",
+                          "textGrowth": "fixed-width",
+                          "width": "fill_container",
+                          "content": "Repair could not acquire the required lock.",
+                          "fontFamily": "Inter",
+                          "fontSize": 13,
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "id": "V5r4te",
+                      "name": "Timestamps",
+                      "fill": "$muted",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "Queued Oct 5, 14:20  ·  Started 14:31  ·  Finished 14:32",
+                      "fontFamily": "Inter",
+                      "fontSize": 12,
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "type": "frame",
+                      "id": "ZXDkf",
+                      "name": "Retry button",
+                      "height": 44,
+                      "fill": "$green",
+                      "cornerRadius": 10,
+                      "padding": [
+                        0,
+                        20
+                      ],
+                      "justifyContent": "center",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "dy3Vk",
+                          "name": "Retry label",
+                          "fill": "$bg",
+                          "content": "Retry",
+                          "fontFamily": "Inter",
+                          "fontSize": 14,
+                          "fontWeight": "700"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "F88Nl",
+                  "name": "Running repair",
+                  "width": "fill_container",
+                  "fill": "$surface",
+                  "cornerRadius": 16,
+                  "layout": "vertical",
+                  "gap": 14,
+                  "padding": 18,
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "Y5Mik",
+                      "name": "Repair heading",
+                      "width": "fill_container",
+                      "gap": 10,
+                      "justifyContent": "space_between",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "RKWov",
+                          "name": "Match context",
+                          "fill": "$text",
+                          "textGrowth": "fixed-width",
+                          "width": "fill_container",
+                          "content": "Community B · Oct 5 league",
+                          "fontFamily": "Inter",
+                          "fontSize": 15,
+                          "fontWeight": "700"
+                        },
+                        {
+                          "type": "frame",
+                          "id": "g6zPnu",
+                          "name": "Running chip",
+                          "fill": "$surface2",
+                          "cornerRadius": 12,
+                          "gap": 6,
+                          "padding": [
+                            6,
+                            10
+                          ],
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "Xk1au",
+                              "name": "Running",
+                              "fill": "$text",
+                              "content": "Running",
+                              "fontFamily": "Inter",
+                              "fontSize": 12,
+                              "fontWeight": "600"
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "id": "OySgR",
+                      "name": "Attempt count",
+                      "fill": "$muted",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "Attempt 1 of 5",
+                      "fontFamily": "Inter",
+                      "fontSize": 13,
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "type": "text",
+                      "id": "PSUJo",
+                      "name": "Timestamps",
+                      "fill": "$muted",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "Queued 14:24 · Started 14:33",
+                      "fontFamily": "Inter",
+                      "fontSize": 12,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "LhLPj",
+                  "name": "Queued repair",
+                  "width": "fill_container",
+                  "fill": "$surface",
+                  "cornerRadius": 16,
+                  "layout": "vertical",
+                  "gap": 14,
+                  "padding": 18,
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "QJA5X",
+                      "name": "Repair heading",
+                      "width": "fill_container",
+                      "gap": 10,
+                      "justifyContent": "space_between",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "GeL7p",
+                          "name": "Match context",
+                          "fill": "$text",
+                          "textGrowth": "fixed-width",
+                          "width": "fill_container",
+                          "content": "Community C · Oct 4 friendly",
+                          "fontFamily": "Inter",
+                          "fontSize": 15,
+                          "fontWeight": "700"
+                        },
+                        {
+                          "type": "frame",
+                          "id": "sz8R5",
+                          "name": "Queued chip",
+                          "fill": "$surface2",
+                          "cornerRadius": 12,
+                          "gap": 6,
+                          "padding": [
+                            6,
+                            10
+                          ],
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "s8Dgr0",
+                              "name": "Queued",
+                              "fill": "$muted",
+                              "content": "Queued",
+                              "fontFamily": "Inter",
+                              "fontSize": 12,
+                              "fontWeight": "600"
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "id": "FPjjo",
+                      "name": "Attempt count",
+                      "fill": "$muted",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "Attempt 0 of 5",
+                      "fontFamily": "Inter",
+                      "fontSize": 13,
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "type": "text",
+                      "id": "BZjy2",
+                      "name": "Timestamps",
+                      "fill": "$muted",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "Queued Oct 5, 14:29",
+                      "fontFamily": "Inter",
+                      "fontSize": 12,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "g6tVKh",
+                  "name": "Succeeded repair",
+                  "width": "fill_container",
+                  "fill": "$surface",
+                  "cornerRadius": 16,
+                  "layout": "vertical",
+                  "gap": 14,
+                  "padding": 18,
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "m0s0C",
+                      "name": "Repair heading",
+                      "width": "fill_container",
+                      "gap": 10,
+                      "justifyContent": "space_between",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "vSRer",
+                          "name": "Match context",
+                          "fill": "$text",
+                          "textGrowth": "fixed-width",
+                          "width": "fill_container",
+                          "content": "Community D · Oct 4 league",
+                          "fontFamily": "Inter",
+                          "fontSize": 15,
+                          "fontWeight": "700"
+                        },
+                        {
+                          "type": "frame",
+                          "id": "DWKdo",
+                          "name": "Succeeded chip",
+                          "fill": "$greenSoft",
+                          "cornerRadius": 12,
+                          "gap": 6,
+                          "padding": [
+                            6,
+                            10
+                          ],
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "rt8KS",
+                              "name": "Succeeded",
+                              "fill": "$green",
+                              "content": "Succeeded",
+                              "fontFamily": "Inter",
+                              "fontSize": 12,
+                              "fontWeight": "600"
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "id": "P9W3jJ",
+                      "name": "Attempt count",
+                      "fill": "$muted",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "Attempt 1 of 5",
+                      "fontFamily": "Inter",
+                      "fontSize": 13,
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "type": "text",
+                      "id": "cjMJ3",
+                      "name": "Timestamps",
+                      "fill": "$muted",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "Queued 13:40 · Started 13:41 · Finished 13:42",
+                      "fontFamily": "Inter",
+                      "fontSize": 12,
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "type": "text",
+                      "id": "qQcUH",
+                      "name": "Result reference",
+                      "fill": "$green",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "Official result v2 · standings v3",
+                      "fontFamily": "Inter",
+                      "fontSize": 13,
+                      "fontWeight": "600"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "EAUP7",
+              "name": "Job detail and states",
+              "width": "fill_container",
+              "layout": "vertical",
+              "gap": 12,
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "OWo56",
+                  "name": "Job detail",
+                  "width": "fill_container",
+                  "fill": "$surface",
+                  "cornerRadius": 16,
+                  "layout": "vertical",
+                  "gap": 14,
+                  "padding": 18,
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "JRdz3",
+                      "name": "Detail heading",
+                      "fill": "$text",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "Job detail",
+                      "fontFamily": "Inter",
+                      "fontSize": 20,
+                      "fontWeight": "700"
+                    },
+                    {
+                      "type": "text",
+                      "id": "MZ3l6",
+                      "name": "Selected job",
+                      "fill": "$muted",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "Community A · Oct 5 friendly",
+                      "fontFamily": "Inter",
+                      "fontSize": 14,
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "type": "text",
+                      "id": "t2ydQJ",
+                      "name": "Timeline heading",
+                      "fill": "$text",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "Attempt timeline",
+                      "fontFamily": "Inter",
+                      "fontSize": 14,
+                      "fontWeight": "700"
+                    },
+                    {
+                      "type": "frame",
+                      "id": "n1bEl",
+                      "name": "Attempt 2 · Failed",
+                      "width": "fill_container",
+                      "fill": "$surface2",
+                      "cornerRadius": 10,
+                      "layout": "vertical",
+                      "gap": 5,
+                      "padding": 12,
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "r8m721",
+                          "name": "Attempt 2 · Failed chip",
+                          "fill": "$surface",
+                          "cornerRadius": 12,
+                          "gap": 6,
+                          "padding": [
+                            6,
+                            10
+                          ],
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "H0Ida",
+                              "name": "Attempt 2 · Failed",
+                              "fill": "$red",
+                              "content": "Attempt 2 · Failed",
+                              "fontFamily": "Inter",
+                              "fontSize": 12,
+                              "fontWeight": "600"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "id": "zJXux",
+                          "name": "Attempt code and time",
+                          "fill": "$text",
+                          "textGrowth": "fixed-width",
+                          "width": "fill_container",
+                          "content": "LOCK_TIMEOUT · Oct 5, 14:32",
+                          "fontFamily": "Inter",
+                          "fontSize": 12,
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "fOVUZ",
+                      "name": "Attempt 1 · Failed",
+                      "width": "fill_container",
+                      "fill": "$surface2",
+                      "cornerRadius": 10,
+                      "layout": "vertical",
+                      "gap": 5,
+                      "padding": 12,
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "iQRSU",
+                          "name": "Attempt 1 · Failed chip",
+                          "fill": "$surface",
+                          "cornerRadius": 12,
+                          "gap": 6,
+                          "padding": [
+                            6,
+                            10
+                          ],
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "UHjpv",
+                              "name": "Attempt 1 · Failed",
+                              "fill": "$red",
+                              "content": "Attempt 1 · Failed",
+                              "fontFamily": "Inter",
+                              "fontSize": 12,
+                              "fontWeight": "600"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "id": "yVlN9",
+                          "name": "Attempt code and time",
+                          "fill": "$text",
+                          "textGrowth": "fixed-width",
+                          "width": "fill_container",
+                          "content": "LOCK_TIMEOUT · Oct 5, 14:25",
+                          "fontFamily": "Inter",
+                          "fontSize": 12,
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "yxUuW",
+                      "name": "Official revision",
+                      "width": "fill_container",
+                      "layout": "vertical",
+                      "gap": 4,
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "p3C9e",
+                          "name": "Official revision label",
+                          "fill": "$muted",
+                          "textGrowth": "fixed-width",
+                          "width": "fill_container",
+                          "content": "Official revision",
+                          "fontFamily": "Inter",
+                          "fontSize": 12,
+                          "fontWeight": "600"
+                        },
+                        {
+                          "type": "text",
+                          "id": "v4iVS",
+                          "name": "Official revision value",
+                          "fill": "$text",
+                          "textGrowth": "fixed-width",
+                          "width": "fill_container",
+                          "content": "v1 → v2",
+                          "fontFamily": "Inter",
+                          "fontSize": 14,
+                          "fontWeight": "500"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "VeFTV",
+                      "name": "Correlation ID",
+                      "width": "fill_container",
+                      "layout": "vertical",
+                      "gap": 4,
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "o0KXQ",
+                          "name": "Correlation ID label",
+                          "fill": "$muted",
+                          "textGrowth": "fixed-width",
+                          "width": "fill_container",
+                          "content": "Correlation ID",
+                          "fontFamily": "Inter",
+                          "fontSize": 12,
+                          "fontWeight": "600"
+                        },
+                        {
+                          "type": "text",
+                          "id": "sim1A",
+                          "name": "Correlation ID value",
+                          "fill": "$text",
+                          "textGrowth": "fixed-width",
+                          "width": "fill_container",
+                          "content": "rep_01J8M7A2Q4",
+                          "fontFamily": "Inter",
+                          "fontSize": 14,
+                          "fontWeight": "500"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "ulQQq",
+                  "name": "Retry confirmation",
+                  "width": "fill_container",
+                  "fill": "$surface",
+                  "cornerRadius": 16,
+                  "layout": "vertical",
+                  "gap": 14,
+                  "padding": 18,
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "V1n6xt",
+                      "name": "Dialog title",
+                      "fill": "$text",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "Retry this repair?",
+                      "fontFamily": "Inter",
+                      "fontSize": 18,
+                      "fontWeight": "700"
+                    },
+                    {
+                      "type": "text",
+                      "id": "bfZXf",
+                      "name": "Dialog description",
+                      "fill": "$muted",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "It will replay affected history.",
+                      "fontFamily": "Inter",
+                      "fontSize": 14,
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "type": "frame",
+                      "id": "qOUJi",
+                      "name": "Dialog actions",
+                      "width": "fill_container",
+                      "gap": 10,
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "wUifh",
+                          "name": "Cancel button",
+                          "width": "fill_container",
+                          "height": 44,
+                          "fill": "$surface2",
+                          "cornerRadius": 10,
+                          "justifyContent": "center",
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "Y1WJD",
+                              "name": "Cancel",
+                              "fill": "$text",
+                              "content": "Cancel",
+                              "fontFamily": "Inter",
+                              "fontSize": 14,
+                              "fontWeight": "700"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "jHd8r",
+                          "name": "Confirm button",
+                          "width": "fill_container",
+                          "height": 44,
+                          "fill": "$green",
+                          "cornerRadius": 10,
+                          "justifyContent": "center",
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "c7z3aW",
+                              "name": "Confirm",
+                              "fill": "$bg",
+                              "content": "Confirm",
+                              "fontFamily": "Inter",
+                              "fontSize": 14,
+                              "fontWeight": "700"
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "Uj35b",
+                  "name": "Queue states",
+                  "width": "fill_container",
+                  "fill": "$surface",
+                  "cornerRadius": 16,
+                  "layout": "vertical",
+                  "gap": 14,
+                  "padding": 18,
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "C9jkzn",
+                      "name": "States heading",
+                      "fill": "$text",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "Queue states",
+                      "fontFamily": "Inter",
+                      "fontSize": 16,
+                      "fontWeight": "700"
+                    },
+                    {
+                      "type": "text",
+                      "id": "w9o9eg",
+                      "name": "Empty state",
+                      "fill": "$text",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "No repairs — all corrections applied",
+                      "fontFamily": "Inter",
+                      "fontSize": 14,
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "type": "frame",
+                      "id": "dVVO5",
+                      "name": "Loading skeleton",
+                      "width": "fill_container",
+                      "fill": "$surface2",
+                      "cornerRadius": 10,
+                      "layout": "vertical",
+                      "gap": 8,
+                      "padding": 12,
+                      "children": [
+                        {
+                          "type": "rectangle",
+                          "cornerRadius": 5,
+                          "id": "TwrwB",
+                          "name": "Loading placeholder",
+                          "opacity": 0.35,
+                          "fill": "$line",
+                          "width": 180,
+                          "height": 10
+                        },
+                        {
+                          "type": "rectangle",
+                          "cornerRadius": 5,
+                          "id": "fLuRY",
+                          "name": "Loading placeholder",
+                          "opacity": 0.35,
+                          "fill": "$line",
+                          "width": 240,
+                          "height": 10
+                        },
+                        {
+                          "type": "rectangle",
+                          "cornerRadius": 5,
+                          "id": "L3Vlm4",
+                          "name": "Loading placeholder",
+                          "opacity": 0.35,
+                          "fill": "$line",
+                          "width": 120,
+                          "height": 10
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "cuVwp",
+      "x": 10774,
+      "y": -1600,
+      "name": "Platform Admin — Result Repair Diagnostics — mobile light",
+      "theme": {
+        "mode": "light"
+      },
+      "clip": true,
+      "width": 390,
+      "height": 2250,
+      "fill": "$bg",
+      "layout": "vertical",
+      "gap": 20,
+      "padding": 18,
+      "children": [
+        {
+          "type": "frame",
+          "id": "vEfSg",
+          "name": "Header",
+          "width": "fill_container",
+          "layout": "vertical",
+          "gap": 10,
+          "children": [
+            {
+              "type": "text",
+              "id": "apltv",
+              "name": "Section label",
+              "fill": "$muted",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "PLATFORM ADMIN  /  OPERATIONS",
+              "fontFamily": "Inter",
+              "fontSize": 12,
+              "fontWeight": "600"
+            },
+            {
+              "type": "text",
+              "id": "jPevo",
+              "name": "Title",
+              "fill": "$text",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "Repair diagnostics",
+              "fontFamily": "Inter",
+              "fontSize": 28,
+              "fontWeight": "700"
+            },
+            {
+              "type": "frame",
+              "id": "IzTws",
+              "name": "Scheduler health",
+              "fill": "$greenSoft",
+              "cornerRadius": 12,
+              "gap": 8,
+              "padding": [
+                8,
+                12
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "ellipse",
+                  "id": "OOmSo",
+                  "name": "Healthy indicator",
+                  "fill": "$green",
+                  "width": 8,
+                  "height": 8
+                },
+                {
+                  "type": "text",
+                  "id": "fTRAm",
+                  "name": "Healthy label",
+                  "fill": "$green",
+                  "content": "Scheduler healthy · last run 14:32",
+                  "fontFamily": "Inter",
+                  "fontSize": 12,
+                  "fontWeight": "600"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "E27ygT",
+              "name": "Scheduler warning example",
+              "width": "fill_container",
+              "fill": "$surface2",
+              "cornerRadius": 12,
+              "layout": "vertical",
+              "gap": 4,
+              "padding": 12,
+              "children": [
+                {
+                  "type": "text",
+                  "id": "j8NjH",
+                  "name": "Warning title",
+                  "fill": "$amber",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "Scheduler unavailable",
+                  "fontFamily": "Inter",
+                  "fontSize": 13,
+                  "fontWeight": "700"
+                },
+                {
+                  "type": "text",
+                  "id": "OZcSq",
+                  "name": "Warning helper",
+                  "fill": "$text",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "Automatic repairs may be delayed. Check scheduler health.",
+                  "fontFamily": "Inter",
+                  "fontSize": 12,
+                  "fontWeight": "normal"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "rPzCV",
+          "name": "Queue and details",
+          "width": "fill_container",
+          "layout": "vertical",
+          "gap": 20,
+          "children": [
+            {
+              "type": "frame",
+              "id": "TnJw5",
+              "name": "Repair queue",
+              "width": "fill_container",
+              "layout": "vertical",
+              "gap": 12,
+              "children": [
+                {
+                  "type": "text",
+                  "id": "pBFMc",
+                  "name": "Queue heading",
+                  "fill": "$text",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "Repair queue",
+                  "fontFamily": "Inter",
+                  "fontSize": 20,
+                  "fontWeight": "700"
+                },
+                {
+                  "type": "text",
+                  "id": "NEwse",
+                  "name": "Queue description",
+                  "fill": "$muted",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "Audit correction repairs across communities.",
+                  "fontFamily": "Inter",
+                  "fontSize": 13,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "frame",
+                  "id": "FXvJe",
+                  "name": "Failed repair",
+                  "width": "fill_container",
+                  "fill": "$surface",
+                  "cornerRadius": 16,
+                  "layout": "vertical",
+                  "gap": 14,
+                  "padding": 18,
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "iau1X",
+                      "name": "Failed heading",
+                      "width": "fill_container",
+                      "layout": "vertical",
+                      "gap": 10,
+                      "justifyContent": "space_between",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "UnxP7",
+                          "name": "Match context",
+                          "fill": "$text",
+                          "textGrowth": "fixed-width",
+                          "width": "fill_container",
+                          "content": "Community A · Oct 5 friendly",
+                          "fontFamily": "Inter",
+                          "fontSize": 16,
+                          "fontWeight": "700"
+                        },
+                        {
+                          "type": "frame",
+                          "id": "AOFX3",
+                          "name": "Failed chip",
+                          "fill": "$surface2",
+                          "cornerRadius": 12,
+                          "gap": 6,
+                          "padding": [
+                            6,
+                            10
+                          ],
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "tazoI",
+                              "name": "Failed",
+                              "fill": "$red",
+                              "content": "Failed",
+                              "fontFamily": "Inter",
+                              "fontSize": 12,
+                              "fontWeight": "600"
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "id": "TKhCK",
+                      "name": "Attempt count",
+                      "fill": "$muted",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "Attempt 2 of 5",
+                      "fontFamily": "Inter",
+                      "fontSize": 13,
+                      "fontWeight": "600"
+                    },
+                    {
+                      "type": "frame",
+                      "id": "Q1A90",
+                      "name": "Failure detail",
+                      "width": "fill_container",
+                      "fill": "$surface2",
+                      "cornerRadius": 10,
+                      "layout": "vertical",
+                      "gap": 4,
+                      "padding": 12,
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "kAUct",
+                          "name": "Failure code",
+                          "fill": "$red",
+                          "textGrowth": "fixed-width",
+                          "width": "fill_container",
+                          "content": "LOCK_TIMEOUT",
+                          "fontFamily": "Inter",
+                          "fontSize": 13,
+                          "fontWeight": "700"
+                        },
+                        {
+                          "type": "text",
+                          "id": "lRQ6C",
+                          "name": "Failure description",
+                          "fill": "$text",
+                          "textGrowth": "fixed-width",
+                          "width": "fill_container",
+                          "content": "Repair could not acquire the required lock.",
+                          "fontFamily": "Inter",
+                          "fontSize": 13,
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "id": "VMTUc",
+                      "name": "Timestamps",
+                      "fill": "$muted",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "Queued Oct 5, 14:20  ·  Started 14:31  ·  Finished 14:32",
+                      "fontFamily": "Inter",
+                      "fontSize": 12,
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "type": "frame",
+                      "id": "Sz1Qp",
+                      "name": "Retry button",
+                      "height": 44,
+                      "fill": "$green",
+                      "cornerRadius": 10,
+                      "padding": [
+                        0,
+                        20
+                      ],
+                      "justifyContent": "center",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "Xi3Gi",
+                          "name": "Retry label",
+                          "fill": "$surface",
+                          "content": "Retry",
+                          "fontFamily": "Inter",
+                          "fontSize": 14,
+                          "fontWeight": "700"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "D5X5UK",
+                  "name": "Running repair",
+                  "width": "fill_container",
+                  "fill": "$surface",
+                  "cornerRadius": 16,
+                  "layout": "vertical",
+                  "gap": 14,
+                  "padding": 18,
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "lKyBr",
+                      "name": "Repair heading",
+                      "width": "fill_container",
+                      "layout": "vertical",
+                      "gap": 10,
+                      "justifyContent": "space_between",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "ouR3w",
+                          "name": "Match context",
+                          "fill": "$text",
+                          "textGrowth": "fixed-width",
+                          "width": "fill_container",
+                          "content": "Community B · Oct 5 league",
+                          "fontFamily": "Inter",
+                          "fontSize": 15,
+                          "fontWeight": "700"
+                        },
+                        {
+                          "type": "frame",
+                          "id": "O6Wyo",
+                          "name": "Running chip",
+                          "fill": "$surface2",
+                          "cornerRadius": 12,
+                          "gap": 6,
+                          "padding": [
+                            6,
+                            10
+                          ],
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "fferd",
+                              "name": "Running",
+                              "fill": "$text",
+                              "content": "Running",
+                              "fontFamily": "Inter",
+                              "fontSize": 12,
+                              "fontWeight": "600"
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "id": "hH1O9",
+                      "name": "Attempt count",
+                      "fill": "$muted",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "Attempt 1 of 5",
+                      "fontFamily": "Inter",
+                      "fontSize": 13,
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "type": "text",
+                      "id": "AWFm7",
+                      "name": "Timestamps",
+                      "fill": "$muted",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "Queued 14:24 · Started 14:33",
+                      "fontFamily": "Inter",
+                      "fontSize": 12,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "TIZCp",
+                  "name": "Queued repair",
+                  "width": "fill_container",
+                  "fill": "$surface",
+                  "cornerRadius": 16,
+                  "layout": "vertical",
+                  "gap": 14,
+                  "padding": 18,
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "zPGDc",
+                      "name": "Repair heading",
+                      "width": "fill_container",
+                      "layout": "vertical",
+                      "gap": 10,
+                      "justifyContent": "space_between",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "n06a23",
+                          "name": "Match context",
+                          "fill": "$text",
+                          "textGrowth": "fixed-width",
+                          "width": "fill_container",
+                          "content": "Community C · Oct 4 friendly",
+                          "fontFamily": "Inter",
+                          "fontSize": 15,
+                          "fontWeight": "700"
+                        },
+                        {
+                          "type": "frame",
+                          "id": "DC3ab",
+                          "name": "Queued chip",
+                          "fill": "$surface2",
+                          "cornerRadius": 12,
+                          "gap": 6,
+                          "padding": [
+                            6,
+                            10
+                          ],
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "krXxK",
+                              "name": "Queued",
+                              "fill": "$muted",
+                              "content": "Queued",
+                              "fontFamily": "Inter",
+                              "fontSize": 12,
+                              "fontWeight": "600"
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "id": "h5yv6N",
+                      "name": "Attempt count",
+                      "fill": "$muted",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "Attempt 0 of 5",
+                      "fontFamily": "Inter",
+                      "fontSize": 13,
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "type": "text",
+                      "id": "nFRGV",
+                      "name": "Timestamps",
+                      "fill": "$muted",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "Queued Oct 5, 14:29",
+                      "fontFamily": "Inter",
+                      "fontSize": 12,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "MblnA",
+                  "name": "Succeeded repair",
+                  "width": "fill_container",
+                  "fill": "$surface",
+                  "cornerRadius": 16,
+                  "layout": "vertical",
+                  "gap": 14,
+                  "padding": 18,
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "I7joZ8",
+                      "name": "Repair heading",
+                      "width": "fill_container",
+                      "layout": "vertical",
+                      "gap": 10,
+                      "justifyContent": "space_between",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "Z1YTF",
+                          "name": "Match context",
+                          "fill": "$text",
+                          "textGrowth": "fixed-width",
+                          "width": "fill_container",
+                          "content": "Community D · Oct 4 league",
+                          "fontFamily": "Inter",
+                          "fontSize": 15,
+                          "fontWeight": "700"
+                        },
+                        {
+                          "type": "frame",
+                          "id": "LhGP5",
+                          "name": "Succeeded chip",
+                          "fill": "$greenSoft",
+                          "cornerRadius": 12,
+                          "gap": 6,
+                          "padding": [
+                            6,
+                            10
+                          ],
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "XvOqS",
+                              "name": "Succeeded",
+                              "fill": "$green",
+                              "content": "Succeeded",
+                              "fontFamily": "Inter",
+                              "fontSize": 12,
+                              "fontWeight": "600"
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "id": "vLsTv",
+                      "name": "Attempt count",
+                      "fill": "$muted",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "Attempt 1 of 5",
+                      "fontFamily": "Inter",
+                      "fontSize": 13,
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "type": "text",
+                      "id": "OXW7m",
+                      "name": "Timestamps",
+                      "fill": "$muted",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "Queued 13:40 · Started 13:41 · Finished 13:42",
+                      "fontFamily": "Inter",
+                      "fontSize": 12,
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "type": "text",
+                      "id": "b2M9e5",
+                      "name": "Result reference",
+                      "fill": "$green",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "Official result v2 · standings v3",
+                      "fontFamily": "Inter",
+                      "fontSize": 13,
+                      "fontWeight": "600"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "M86IW",
+              "name": "Job detail and states",
+              "width": "fill_container",
+              "layout": "vertical",
+              "gap": 12,
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "H1m6GP",
+                  "name": "Job detail",
+                  "width": "fill_container",
+                  "fill": "$surface",
+                  "cornerRadius": 16,
+                  "layout": "vertical",
+                  "gap": 14,
+                  "padding": 18,
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "D39hMj",
+                      "name": "Detail heading",
+                      "fill": "$text",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "Job detail",
+                      "fontFamily": "Inter",
+                      "fontSize": 20,
+                      "fontWeight": "700"
+                    },
+                    {
+                      "type": "text",
+                      "id": "f2NHh",
+                      "name": "Selected job",
+                      "fill": "$muted",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "Community A · Oct 5 friendly",
+                      "fontFamily": "Inter",
+                      "fontSize": 14,
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "type": "text",
+                      "id": "lpUGS",
+                      "name": "Timeline heading",
+                      "fill": "$text",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "Attempt timeline",
+                      "fontFamily": "Inter",
+                      "fontSize": 14,
+                      "fontWeight": "700"
+                    },
+                    {
+                      "type": "frame",
+                      "id": "Oqd68",
+                      "name": "Attempt 2 · Failed",
+                      "width": "fill_container",
+                      "fill": "$surface2",
+                      "cornerRadius": 10,
+                      "layout": "vertical",
+                      "gap": 5,
+                      "padding": 12,
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "GF6FX",
+                          "name": "Attempt 2 · Failed chip",
+                          "fill": "$surface",
+                          "cornerRadius": 12,
+                          "gap": 6,
+                          "padding": [
+                            6,
+                            10
+                          ],
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "miQxg",
+                              "name": "Attempt 2 · Failed",
+                              "fill": "$red",
+                              "content": "Attempt 2 · Failed",
+                              "fontFamily": "Inter",
+                              "fontSize": 12,
+                              "fontWeight": "600"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "id": "Uq1or",
+                          "name": "Attempt code and time",
+                          "fill": "$text",
+                          "textGrowth": "fixed-width",
+                          "width": "fill_container",
+                          "content": "LOCK_TIMEOUT · Oct 5, 14:32",
+                          "fontFamily": "Inter",
+                          "fontSize": 12,
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "hv61o",
+                      "name": "Attempt 1 · Failed",
+                      "width": "fill_container",
+                      "fill": "$surface2",
+                      "cornerRadius": 10,
+                      "layout": "vertical",
+                      "gap": 5,
+                      "padding": 12,
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "O3xGf0",
+                          "name": "Attempt 1 · Failed chip",
+                          "fill": "$surface",
+                          "cornerRadius": 12,
+                          "gap": 6,
+                          "padding": [
+                            6,
+                            10
+                          ],
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "HWeOb",
+                              "name": "Attempt 1 · Failed",
+                              "fill": "$red",
+                              "content": "Attempt 1 · Failed",
+                              "fontFamily": "Inter",
+                              "fontSize": 12,
+                              "fontWeight": "600"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "id": "kkdD3",
+                          "name": "Attempt code and time",
+                          "fill": "$text",
+                          "textGrowth": "fixed-width",
+                          "width": "fill_container",
+                          "content": "LOCK_TIMEOUT · Oct 5, 14:25",
+                          "fontFamily": "Inter",
+                          "fontSize": 12,
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "CKvN6",
+                      "name": "Official revision",
+                      "width": "fill_container",
+                      "layout": "vertical",
+                      "gap": 4,
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "q6W1i",
+                          "name": "Official revision label",
+                          "fill": "$muted",
+                          "textGrowth": "fixed-width",
+                          "width": "fill_container",
+                          "content": "Official revision",
+                          "fontFamily": "Inter",
+                          "fontSize": 12,
+                          "fontWeight": "600"
+                        },
+                        {
+                          "type": "text",
+                          "id": "Bx7st",
+                          "name": "Official revision value",
+                          "fill": "$text",
+                          "textGrowth": "fixed-width",
+                          "width": "fill_container",
+                          "content": "v1 → v2",
+                          "fontFamily": "Inter",
+                          "fontSize": 14,
+                          "fontWeight": "500"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "r5RVW",
+                      "name": "Correlation ID",
+                      "width": "fill_container",
+                      "layout": "vertical",
+                      "gap": 4,
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "cyt9Q",
+                          "name": "Correlation ID label",
+                          "fill": "$muted",
+                          "textGrowth": "fixed-width",
+                          "width": "fill_container",
+                          "content": "Correlation ID",
+                          "fontFamily": "Inter",
+                          "fontSize": 12,
+                          "fontWeight": "600"
+                        },
+                        {
+                          "type": "text",
+                          "id": "mzz4U",
+                          "name": "Correlation ID value",
+                          "fill": "$text",
+                          "textGrowth": "fixed-width",
+                          "width": "fill_container",
+                          "content": "rep_01J8M7A2Q4",
+                          "fontFamily": "Inter",
+                          "fontSize": 14,
+                          "fontWeight": "500"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "t9PO4",
+                  "name": "Retry confirmation",
+                  "width": "fill_container",
+                  "fill": "$surface",
+                  "cornerRadius": 16,
+                  "layout": "vertical",
+                  "gap": 14,
+                  "padding": 18,
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "Z0235c",
+                      "name": "Dialog title",
+                      "fill": "$text",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "Retry this repair?",
+                      "fontFamily": "Inter",
+                      "fontSize": 18,
+                      "fontWeight": "700"
+                    },
+                    {
+                      "type": "text",
+                      "id": "Qju8B",
+                      "name": "Dialog description",
+                      "fill": "$muted",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "It will replay affected history.",
+                      "fontFamily": "Inter",
+                      "fontSize": 14,
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "type": "frame",
+                      "id": "WFbWD",
+                      "name": "Dialog actions",
+                      "width": "fill_container",
+                      "gap": 10,
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "WEo6e",
+                          "name": "Cancel button",
+                          "width": "fill_container",
+                          "height": 44,
+                          "fill": "$surface2",
+                          "cornerRadius": 10,
+                          "justifyContent": "center",
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "tpFJt",
+                              "name": "Cancel",
+                              "fill": "$text",
+                              "content": "Cancel",
+                              "fontFamily": "Inter",
+                              "fontSize": 14,
+                              "fontWeight": "700"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "EU0ZT",
+                          "name": "Confirm button",
+                          "width": "fill_container",
+                          "height": 44,
+                          "fill": "$green",
+                          "cornerRadius": 10,
+                          "justifyContent": "center",
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "FtqCO",
+                              "name": "Confirm",
+                              "fill": "$surface",
+                              "content": "Confirm",
+                              "fontFamily": "Inter",
+                              "fontSize": 14,
+                              "fontWeight": "700"
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "QZk8w",
+                  "name": "Queue states",
+                  "width": "fill_container",
+                  "fill": "$surface",
+                  "cornerRadius": 16,
+                  "layout": "vertical",
+                  "gap": 14,
+                  "padding": 18,
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "S84Ah9",
+                      "name": "States heading",
+                      "fill": "$text",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "Queue states",
+                      "fontFamily": "Inter",
+                      "fontSize": 16,
+                      "fontWeight": "700"
+                    },
+                    {
+                      "type": "text",
+                      "id": "hVwci",
+                      "name": "Empty state",
+                      "fill": "$text",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "No repairs — all corrections applied",
+                      "fontFamily": "Inter",
+                      "fontSize": 14,
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "type": "frame",
+                      "id": "b4AtI",
+                      "name": "Loading skeleton",
+                      "width": "fill_container",
+                      "fill": "$surface2",
+                      "cornerRadius": 10,
+                      "layout": "vertical",
+                      "gap": 8,
+                      "padding": 12,
+                      "children": [
+                        {
+                          "type": "rectangle",
+                          "cornerRadius": 5,
+                          "id": "INK1L",
+                          "name": "Loading placeholder",
+                          "opacity": 0.35,
+                          "fill": "$line",
+                          "width": 180,
+                          "height": 10
+                        },
+                        {
+                          "type": "rectangle",
+                          "cornerRadius": 5,
+                          "id": "dvE0l",
+                          "name": "Loading placeholder",
+                          "opacity": 0.35,
+                          "fill": "$line",
+                          "width": 240,
+                          "height": 10
+                        },
+                        {
+                          "type": "rectangle",
+                          "cornerRadius": 5,
+                          "id": "cV52l",
+                          "name": "Loading placeholder",
+                          "opacity": 0.35,
+                          "fill": "$line",
+                          "width": 120,
+                          "height": 10
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "Jjrtb",
+      "x": 11204,
+      "y": -1600,
+      "name": "Platform Admin — Result Repair Diagnostics — mobile dark",
+      "theme": {
+        "mode": "dark"
+      },
+      "clip": true,
+      "width": 390,
+      "height": 2250,
+      "fill": "$bg",
+      "layout": "vertical",
+      "gap": 20,
+      "padding": 18,
+      "children": [
+        {
+          "type": "frame",
+          "id": "hi0iM",
+          "name": "Header",
+          "width": "fill_container",
+          "layout": "vertical",
+          "gap": 10,
+          "children": [
+            {
+              "type": "text",
+              "id": "ZUpKK",
+              "name": "Section label",
+              "fill": "$muted",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "PLATFORM ADMIN  /  OPERATIONS",
+              "fontFamily": "Inter",
+              "fontSize": 12,
+              "fontWeight": "600"
+            },
+            {
+              "type": "text",
+              "id": "WgoHp",
+              "name": "Title",
+              "fill": "$text",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "Repair diagnostics",
+              "fontFamily": "Inter",
+              "fontSize": 28,
+              "fontWeight": "700"
+            },
+            {
+              "type": "frame",
+              "id": "lJhQn",
+              "name": "Scheduler health",
+              "fill": "$greenSoft",
+              "cornerRadius": 12,
+              "gap": 8,
+              "padding": [
+                8,
+                12
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "ellipse",
+                  "id": "pRadQ",
+                  "name": "Healthy indicator",
+                  "fill": "$green",
+                  "width": 8,
+                  "height": 8
+                },
+                {
+                  "type": "text",
+                  "id": "EojhM",
+                  "name": "Healthy label",
+                  "fill": "$green",
+                  "content": "Scheduler healthy · last run 14:32",
+                  "fontFamily": "Inter",
+                  "fontSize": 12,
+                  "fontWeight": "600"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "IPZMM",
+              "name": "Scheduler warning example",
+              "width": "fill_container",
+              "fill": "$surface2",
+              "cornerRadius": 12,
+              "layout": "vertical",
+              "gap": 4,
+              "padding": 12,
+              "children": [
+                {
+                  "type": "text",
+                  "id": "A9CPdD",
+                  "name": "Warning title",
+                  "fill": "$amber",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "Scheduler unavailable",
+                  "fontFamily": "Inter",
+                  "fontSize": 13,
+                  "fontWeight": "700"
+                },
+                {
+                  "type": "text",
+                  "id": "eIcxW",
+                  "name": "Warning helper",
+                  "fill": "$text",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "Automatic repairs may be delayed. Check scheduler health.",
+                  "fontFamily": "Inter",
+                  "fontSize": 12,
+                  "fontWeight": "normal"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "wkd4Q",
+          "name": "Queue and details",
+          "width": "fill_container",
+          "layout": "vertical",
+          "gap": 20,
+          "children": [
+            {
+              "type": "frame",
+              "id": "VRfES",
+              "name": "Repair queue",
+              "width": "fill_container",
+              "layout": "vertical",
+              "gap": 12,
+              "children": [
+                {
+                  "type": "text",
+                  "id": "R4XgG",
+                  "name": "Queue heading",
+                  "fill": "$text",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "Repair queue",
+                  "fontFamily": "Inter",
+                  "fontSize": 20,
+                  "fontWeight": "700"
+                },
+                {
+                  "type": "text",
+                  "id": "NVzsn",
+                  "name": "Queue description",
+                  "fill": "$muted",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "Audit correction repairs across communities.",
+                  "fontFamily": "Inter",
+                  "fontSize": 13,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "frame",
+                  "id": "E8RCwT",
+                  "name": "Failed repair",
+                  "width": "fill_container",
+                  "fill": "$surface",
+                  "cornerRadius": 16,
+                  "layout": "vertical",
+                  "gap": 14,
+                  "padding": 18,
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "J9aN1t",
+                      "name": "Failed heading",
+                      "width": "fill_container",
+                      "layout": "vertical",
+                      "gap": 10,
+                      "justifyContent": "space_between",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "bx3Nm",
+                          "name": "Match context",
+                          "fill": "$text",
+                          "textGrowth": "fixed-width",
+                          "width": "fill_container",
+                          "content": "Community A · Oct 5 friendly",
+                          "fontFamily": "Inter",
+                          "fontSize": 16,
+                          "fontWeight": "700"
+                        },
+                        {
+                          "type": "frame",
+                          "id": "hHyIl",
+                          "name": "Failed chip",
+                          "fill": "$surface2",
+                          "cornerRadius": 12,
+                          "gap": 6,
+                          "padding": [
+                            6,
+                            10
+                          ],
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "RqLLB",
+                              "name": "Failed",
+                              "fill": "$red",
+                              "content": "Failed",
+                              "fontFamily": "Inter",
+                              "fontSize": 12,
+                              "fontWeight": "600"
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "id": "gVQsg",
+                      "name": "Attempt count",
+                      "fill": "$muted",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "Attempt 2 of 5",
+                      "fontFamily": "Inter",
+                      "fontSize": 13,
+                      "fontWeight": "600"
+                    },
+                    {
+                      "type": "frame",
+                      "id": "JrOn2",
+                      "name": "Failure detail",
+                      "width": "fill_container",
+                      "fill": "$surface2",
+                      "cornerRadius": 10,
+                      "layout": "vertical",
+                      "gap": 4,
+                      "padding": 12,
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "E4NK1y",
+                          "name": "Failure code",
+                          "fill": "$red",
+                          "textGrowth": "fixed-width",
+                          "width": "fill_container",
+                          "content": "LOCK_TIMEOUT",
+                          "fontFamily": "Inter",
+                          "fontSize": 13,
+                          "fontWeight": "700"
+                        },
+                        {
+                          "type": "text",
+                          "id": "qfy0b",
+                          "name": "Failure description",
+                          "fill": "$text",
+                          "textGrowth": "fixed-width",
+                          "width": "fill_container",
+                          "content": "Repair could not acquire the required lock.",
+                          "fontFamily": "Inter",
+                          "fontSize": 13,
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "id": "F0EvBg",
+                      "name": "Timestamps",
+                      "fill": "$muted",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "Queued Oct 5, 14:20  ·  Started 14:31  ·  Finished 14:32",
+                      "fontFamily": "Inter",
+                      "fontSize": 12,
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "type": "frame",
+                      "id": "XTn7K",
+                      "name": "Retry button",
+                      "height": 44,
+                      "fill": "$green",
+                      "cornerRadius": 10,
+                      "padding": [
+                        0,
+                        20
+                      ],
+                      "justifyContent": "center",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "EE0ro",
+                          "name": "Retry label",
+                          "fill": "$bg",
+                          "content": "Retry",
+                          "fontFamily": "Inter",
+                          "fontSize": 14,
+                          "fontWeight": "700"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "t0ICAb",
+                  "name": "Running repair",
+                  "width": "fill_container",
+                  "fill": "$surface",
+                  "cornerRadius": 16,
+                  "layout": "vertical",
+                  "gap": 14,
+                  "padding": 18,
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "J93in",
+                      "name": "Repair heading",
+                      "width": "fill_container",
+                      "layout": "vertical",
+                      "gap": 10,
+                      "justifyContent": "space_between",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "LWIpK",
+                          "name": "Match context",
+                          "fill": "$text",
+                          "textGrowth": "fixed-width",
+                          "width": "fill_container",
+                          "content": "Community B · Oct 5 league",
+                          "fontFamily": "Inter",
+                          "fontSize": 15,
+                          "fontWeight": "700"
+                        },
+                        {
+                          "type": "frame",
+                          "id": "Dj88b",
+                          "name": "Running chip",
+                          "fill": "$surface2",
+                          "cornerRadius": 12,
+                          "gap": 6,
+                          "padding": [
+                            6,
+                            10
+                          ],
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "SJrea",
+                              "name": "Running",
+                              "fill": "$text",
+                              "content": "Running",
+                              "fontFamily": "Inter",
+                              "fontSize": 12,
+                              "fontWeight": "600"
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "id": "GUzk7",
+                      "name": "Attempt count",
+                      "fill": "$muted",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "Attempt 1 of 5",
+                      "fontFamily": "Inter",
+                      "fontSize": 13,
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "type": "text",
+                      "id": "K5ib8n",
+                      "name": "Timestamps",
+                      "fill": "$muted",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "Queued 14:24 · Started 14:33",
+                      "fontFamily": "Inter",
+                      "fontSize": 12,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "I0kzKK",
+                  "name": "Queued repair",
+                  "width": "fill_container",
+                  "fill": "$surface",
+                  "cornerRadius": 16,
+                  "layout": "vertical",
+                  "gap": 14,
+                  "padding": 18,
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "W9a0IW",
+                      "name": "Repair heading",
+                      "width": "fill_container",
+                      "layout": "vertical",
+                      "gap": 10,
+                      "justifyContent": "space_between",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "CHJMW",
+                          "name": "Match context",
+                          "fill": "$text",
+                          "textGrowth": "fixed-width",
+                          "width": "fill_container",
+                          "content": "Community C · Oct 4 friendly",
+                          "fontFamily": "Inter",
+                          "fontSize": 15,
+                          "fontWeight": "700"
+                        },
+                        {
+                          "type": "frame",
+                          "id": "N8Ky5T",
+                          "name": "Queued chip",
+                          "fill": "$surface2",
+                          "cornerRadius": 12,
+                          "gap": 6,
+                          "padding": [
+                            6,
+                            10
+                          ],
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "L6TCf",
+                              "name": "Queued",
+                              "fill": "$muted",
+                              "content": "Queued",
+                              "fontFamily": "Inter",
+                              "fontSize": 12,
+                              "fontWeight": "600"
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "id": "PWSnW",
+                      "name": "Attempt count",
+                      "fill": "$muted",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "Attempt 0 of 5",
+                      "fontFamily": "Inter",
+                      "fontSize": 13,
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "type": "text",
+                      "id": "f46mK",
+                      "name": "Timestamps",
+                      "fill": "$muted",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "Queued Oct 5, 14:29",
+                      "fontFamily": "Inter",
+                      "fontSize": 12,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "URlYw",
+                  "name": "Succeeded repair",
+                  "width": "fill_container",
+                  "fill": "$surface",
+                  "cornerRadius": 16,
+                  "layout": "vertical",
+                  "gap": 14,
+                  "padding": 18,
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "J43CAz",
+                      "name": "Repair heading",
+                      "width": "fill_container",
+                      "layout": "vertical",
+                      "gap": 10,
+                      "justifyContent": "space_between",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "A0hwT",
+                          "name": "Match context",
+                          "fill": "$text",
+                          "textGrowth": "fixed-width",
+                          "width": "fill_container",
+                          "content": "Community D · Oct 4 league",
+                          "fontFamily": "Inter",
+                          "fontSize": 15,
+                          "fontWeight": "700"
+                        },
+                        {
+                          "type": "frame",
+                          "id": "gW4Eb",
+                          "name": "Succeeded chip",
+                          "fill": "$greenSoft",
+                          "cornerRadius": 12,
+                          "gap": 6,
+                          "padding": [
+                            6,
+                            10
+                          ],
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "CHMAw",
+                              "name": "Succeeded",
+                              "fill": "$green",
+                              "content": "Succeeded",
+                              "fontFamily": "Inter",
+                              "fontSize": 12,
+                              "fontWeight": "600"
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "id": "nqesE",
+                      "name": "Attempt count",
+                      "fill": "$muted",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "Attempt 1 of 5",
+                      "fontFamily": "Inter",
+                      "fontSize": 13,
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "type": "text",
+                      "id": "r41gaS",
+                      "name": "Timestamps",
+                      "fill": "$muted",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "Queued 13:40 · Started 13:41 · Finished 13:42",
+                      "fontFamily": "Inter",
+                      "fontSize": 12,
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "type": "text",
+                      "id": "rSIO0",
+                      "name": "Result reference",
+                      "fill": "$green",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "Official result v2 · standings v3",
+                      "fontFamily": "Inter",
+                      "fontSize": 13,
+                      "fontWeight": "600"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "DS8YX",
+              "name": "Job detail and states",
+              "width": "fill_container",
+              "layout": "vertical",
+              "gap": 12,
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "NMyZb",
+                  "name": "Job detail",
+                  "width": "fill_container",
+                  "fill": "$surface",
+                  "cornerRadius": 16,
+                  "layout": "vertical",
+                  "gap": 14,
+                  "padding": 18,
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "IfNiZ",
+                      "name": "Detail heading",
+                      "fill": "$text",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "Job detail",
+                      "fontFamily": "Inter",
+                      "fontSize": 20,
+                      "fontWeight": "700"
+                    },
+                    {
+                      "type": "text",
+                      "id": "A1bRg",
+                      "name": "Selected job",
+                      "fill": "$muted",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "Community A · Oct 5 friendly",
+                      "fontFamily": "Inter",
+                      "fontSize": 14,
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "type": "text",
+                      "id": "ghfTQ",
+                      "name": "Timeline heading",
+                      "fill": "$text",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "Attempt timeline",
+                      "fontFamily": "Inter",
+                      "fontSize": 14,
+                      "fontWeight": "700"
+                    },
+                    {
+                      "type": "frame",
+                      "id": "IajjG",
+                      "name": "Attempt 2 · Failed",
+                      "width": "fill_container",
+                      "fill": "$surface2",
+                      "cornerRadius": 10,
+                      "layout": "vertical",
+                      "gap": 5,
+                      "padding": 12,
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "S8Z8Y",
+                          "name": "Attempt 2 · Failed chip",
+                          "fill": "$surface",
+                          "cornerRadius": 12,
+                          "gap": 6,
+                          "padding": [
+                            6,
+                            10
+                          ],
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "VnlhW",
+                              "name": "Attempt 2 · Failed",
+                              "fill": "$red",
+                              "content": "Attempt 2 · Failed",
+                              "fontFamily": "Inter",
+                              "fontSize": 12,
+                              "fontWeight": "600"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "id": "Rl3H9",
+                          "name": "Attempt code and time",
+                          "fill": "$text",
+                          "textGrowth": "fixed-width",
+                          "width": "fill_container",
+                          "content": "LOCK_TIMEOUT · Oct 5, 14:32",
+                          "fontFamily": "Inter",
+                          "fontSize": 12,
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "rC9h3",
+                      "name": "Attempt 1 · Failed",
+                      "width": "fill_container",
+                      "fill": "$surface2",
+                      "cornerRadius": 10,
+                      "layout": "vertical",
+                      "gap": 5,
+                      "padding": 12,
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "O8xr2K",
+                          "name": "Attempt 1 · Failed chip",
+                          "fill": "$surface",
+                          "cornerRadius": 12,
+                          "gap": 6,
+                          "padding": [
+                            6,
+                            10
+                          ],
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "s5ZGGu",
+                              "name": "Attempt 1 · Failed",
+                              "fill": "$red",
+                              "content": "Attempt 1 · Failed",
+                              "fontFamily": "Inter",
+                              "fontSize": 12,
+                              "fontWeight": "600"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "id": "scknO",
+                          "name": "Attempt code and time",
+                          "fill": "$text",
+                          "textGrowth": "fixed-width",
+                          "width": "fill_container",
+                          "content": "LOCK_TIMEOUT · Oct 5, 14:25",
+                          "fontFamily": "Inter",
+                          "fontSize": 12,
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "dPNHO",
+                      "name": "Official revision",
+                      "width": "fill_container",
+                      "layout": "vertical",
+                      "gap": 4,
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "elwCV",
+                          "name": "Official revision label",
+                          "fill": "$muted",
+                          "textGrowth": "fixed-width",
+                          "width": "fill_container",
+                          "content": "Official revision",
+                          "fontFamily": "Inter",
+                          "fontSize": 12,
+                          "fontWeight": "600"
+                        },
+                        {
+                          "type": "text",
+                          "id": "O5inFF",
+                          "name": "Official revision value",
+                          "fill": "$text",
+                          "textGrowth": "fixed-width",
+                          "width": "fill_container",
+                          "content": "v1 → v2",
+                          "fontFamily": "Inter",
+                          "fontSize": 14,
+                          "fontWeight": "500"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "JtYNy",
+                      "name": "Correlation ID",
+                      "width": "fill_container",
+                      "layout": "vertical",
+                      "gap": 4,
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "SHWx0",
+                          "name": "Correlation ID label",
+                          "fill": "$muted",
+                          "textGrowth": "fixed-width",
+                          "width": "fill_container",
+                          "content": "Correlation ID",
+                          "fontFamily": "Inter",
+                          "fontSize": 12,
+                          "fontWeight": "600"
+                        },
+                        {
+                          "type": "text",
+                          "id": "Z8ySxC",
+                          "name": "Correlation ID value",
+                          "fill": "$text",
+                          "textGrowth": "fixed-width",
+                          "width": "fill_container",
+                          "content": "rep_01J8M7A2Q4",
+                          "fontFamily": "Inter",
+                          "fontSize": 14,
+                          "fontWeight": "500"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "oZXTB",
+                  "name": "Retry confirmation",
+                  "width": "fill_container",
+                  "fill": "$surface",
+                  "cornerRadius": 16,
+                  "layout": "vertical",
+                  "gap": 14,
+                  "padding": 18,
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "s3NEq",
+                      "name": "Dialog title",
+                      "fill": "$text",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "Retry this repair?",
+                      "fontFamily": "Inter",
+                      "fontSize": 18,
+                      "fontWeight": "700"
+                    },
+                    {
+                      "type": "text",
+                      "id": "r5G0c",
+                      "name": "Dialog description",
+                      "fill": "$muted",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "It will replay affected history.",
+                      "fontFamily": "Inter",
+                      "fontSize": 14,
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "type": "frame",
+                      "id": "g6PBJi",
+                      "name": "Dialog actions",
+                      "width": "fill_container",
+                      "gap": 10,
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "avuTq",
+                          "name": "Cancel button",
+                          "width": "fill_container",
+                          "height": 44,
+                          "fill": "$surface2",
+                          "cornerRadius": 10,
+                          "justifyContent": "center",
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "yqrOF",
+                              "name": "Cancel",
+                              "fill": "$text",
+                              "content": "Cancel",
+                              "fontFamily": "Inter",
+                              "fontSize": 14,
+                              "fontWeight": "700"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "qGLfM",
+                          "name": "Confirm button",
+                          "width": "fill_container",
+                          "height": 44,
+                          "fill": "$green",
+                          "cornerRadius": 10,
+                          "justifyContent": "center",
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "wlwaO",
+                              "name": "Confirm",
+                              "fill": "$bg",
+                              "content": "Confirm",
+                              "fontFamily": "Inter",
+                              "fontSize": 14,
+                              "fontWeight": "700"
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "XsAyG",
+                  "name": "Queue states",
+                  "width": "fill_container",
+                  "fill": "$surface",
+                  "cornerRadius": 16,
+                  "layout": "vertical",
+                  "gap": 14,
+                  "padding": 18,
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "h5PBhO",
+                      "name": "States heading",
+                      "fill": "$text",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "Queue states",
+                      "fontFamily": "Inter",
+                      "fontSize": 16,
+                      "fontWeight": "700"
+                    },
+                    {
+                      "type": "text",
+                      "id": "gS7ok",
+                      "name": "Empty state",
+                      "fill": "$text",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "No repairs — all corrections applied",
+                      "fontFamily": "Inter",
+                      "fontSize": 14,
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "type": "frame",
+                      "id": "M9irc5",
+                      "name": "Loading skeleton",
+                      "width": "fill_container",
+                      "fill": "$surface2",
+                      "cornerRadius": 10,
+                      "layout": "vertical",
+                      "gap": 8,
+                      "padding": 12,
+                      "children": [
+                        {
+                          "type": "rectangle",
+                          "cornerRadius": 5,
+                          "id": "LwN8e",
+                          "name": "Loading placeholder",
+                          "opacity": 0.35,
+                          "fill": "$line",
+                          "width": 180,
+                          "height": 10
+                        },
+                        {
+                          "type": "rectangle",
+                          "cornerRadius": 5,
+                          "id": "yGFlc",
+                          "name": "Loading placeholder",
+                          "opacity": 0.35,
+                          "fill": "$line",
+                          "width": 240,
+                          "height": 10
+                        },
+                        {
+                          "type": "rectangle",
+                          "cornerRadius": 5,
+                          "id": "ZYXTy",
+                          "name": "Loading placeholder",
+                          "opacity": 0.35,
+                          "fill": "$line",
+                          "width": 120,
+                          "height": 10
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
     }
   ],
   "themes": {

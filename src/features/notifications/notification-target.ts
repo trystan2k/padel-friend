@@ -7,7 +7,11 @@ export type ResultNotificationKind =
   | 'result_disputed'
   | 'result_confirmed'
   | 'result_deadline_reminder'
-  | 'result_entry_ready';
+  | 'result_entry_ready'
+  | 'result_amendment_resolved'
+  | 'result_repair_queued'
+  | 'result_repair_applied'
+  | 'result_repair_failed';
 
 export type ResultNotificationContext = {
   notification_id: string;
@@ -77,7 +81,11 @@ const resultKinds = [
   'result_disputed',
   'result_confirmed',
   'result_deadline_reminder',
-  'result_entry_ready'
+  'result_entry_ready',
+  'result_amendment_resolved',
+  'result_repair_queued',
+  'result_repair_applied',
+  'result_repair_failed'
 ] as const satisfies readonly ResultNotificationKind[];
 const resultKindSet: ReadonlySet<string> = new Set(resultKinds);
 
@@ -258,6 +266,15 @@ export function notificationResultHref(context: ResultNotificationContext): stri
     result_version: String(context.proposal_version)
   });
   return `/matches/${encodeURIComponent(eventId)}?${query.toString()}#result-group-${context.group_number}`;
+}
+
+/** A failed repair notice also links the community repair diagnostics; its recipients are the
+ * community admins the route already authorizes. Other kinds have no diagnostics link. */
+export function notificationRepairDiagnosticsHref(
+  context: ResultNotificationContext
+): string | null {
+  if (context.notification_kind !== 'result_repair_failed') return null;
+  return `/community/${encodeURIComponent(validateMatchUuid(context.community_id))}/repairs`;
 }
 
 function isLevel(value: unknown): value is number {

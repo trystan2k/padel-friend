@@ -1,7 +1,6 @@
 ---
 description: Execute Git and pull-request workflows with provider-aware CLI commands and repository safety rules.
 mode: subagent
-model: zai-coding-plan/glm-5.3-flash
 permissions:
   - action: subagent
     resource: "*"

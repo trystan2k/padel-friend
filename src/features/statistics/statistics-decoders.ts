@@ -454,7 +454,10 @@ function timeline(value: unknown): DetailTimelineEntry[] {
       version: positiveCount(row.version),
       occurred_at: instant(row.occurred_at),
       actor: actor(row.actor),
-      source: row.source === null ? null : oneOf(row.source, ['MANUAL', 'AUTO_48H'] as const)
+      source:
+        row.source === null
+          ? null
+          : oneOf(row.source, ['MANUAL', 'AUTO_48H', 'ADMIN_OVERRIDE'] as const)
     };
   });
 }
@@ -567,7 +570,7 @@ export function decodeGroupDetail(value: unknown): GroupDetail {
           : oneOf(matchup.reason, ['friendly', 'incomplete', 'missing_evidence'] as const)
     },
     confirmation: {
-      source: oneOf(confirmation.source, ['MANUAL', 'AUTO_48H'] as const),
+      source: oneOf(confirmation.source, ['MANUAL', 'AUTO_48H', 'ADMIN_OVERRIDE'] as const),
       automatic: boolean(confirmation.automatic),
       confirmed_at: instant(confirmation.confirmed_at),
       effective_at: instant(confirmation.effective_at),

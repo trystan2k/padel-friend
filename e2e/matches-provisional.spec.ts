@@ -27,8 +27,10 @@ test.beforeAll(async ({ browser }) => {
 });
 test.afterAll(async () => {
   test.setTimeout(120_000);
-  // The provisional profile references its source event and registrations reference the
-  // user: drop the profile first, let the fixture drop the events, then the identity.
+  // The fixture cleanup removes the events together with the rating evidence and profiles that
+  // reference them in one transaction (a half-removed state breaks every concurrent rating replay);
+  // only the leftovers of the added identities are dropped afterwards.
+  await f?.cleanup();
   const ids = (email: string) => `(select id from auth.users where email='${email}')`;
   for (const email of added)
     await sql(`do $$ begin
@@ -46,7 +48,6 @@ test.afterAll(async () => {
       delete from public.community_members where user_id in ${ids(email)};
       alter table public.community_members enable trigger community_member_guard;
     end $$;`);
-  await f?.cleanup();
   for (const email of added)
     await sql(`do $$ begin
       delete from auth.users where email='${email}';

@@ -1,7 +1,6 @@
 ---
 description: Handle all Linear Project and Issues operations using linear CLI. Manages the full issue lifecycle on a Linear Project board — create, query, move status, breakdown into sub-issues, and link them — without touching product source code.
 mode: subagent
-model: zai-coding-plan/glm-5.3-flash
 permissions:
   - action: subagent
     resource: "*"

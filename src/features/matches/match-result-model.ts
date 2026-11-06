@@ -72,7 +72,7 @@ export type ResultPlayer = {
 };
 export type ResultProposalStatus = 'pending' | 'disputed' | 'confirmed';
 export type ResultDecision = 'approve' | 'reject';
-export type ResultConfirmationSource = 'MANUAL' | 'AUTO_48H';
+export type ResultConfirmationSource = 'MANUAL' | 'AUTO_48H' | 'ADMIN_OVERRIDE';
 export type ResultConfirmation = {
   confirmation_id: string;
   source: ResultConfirmationSource;
@@ -312,7 +312,9 @@ export function parseResultProposals(value: unknown): ResultProposal[] | null {
         (status === 'disputed' && dispute === null) ||
         (status === 'confirmed' && confirmation === null) ||
         (status !== 'confirmed' && confirmation !== null) ||
-        ((status === 'pending' || status === 'confirmed') && callerDecision === 'reject') ||
+        ((status === 'pending' ||
+          (status === 'confirmed' && confirmation?.source !== 'ADMIN_OVERRIDE')) &&
+          callerDecision === 'reject') ||
         (status === 'pending' && receivedCoverage === requiredCoverage) ||
         (row.can_approve && callerDecision === 'approve') ||
         !timeline ||
@@ -340,6 +342,7 @@ export function parseResultProposals(value: unknown): ResultProposal[] | null {
         (status === 'pending' &&
           currentTimeline.decisions.some((item) => item.decision === 'reject')) ||
         (status === 'confirmed' &&
+          confirmation?.source !== 'ADMIN_OVERRIDE' &&
           currentTimeline.decisions.some((item) => item.decision === 'reject')) ||
         (confirmation?.source === 'MANUAL' &&
           (receivedCoverage !== requiredCoverage ||
@@ -478,10 +481,10 @@ export function parseOfficialResultFacts(
       const effectiveAt = item.effective_at;
       const actorId = item.actor_id === null ? null : validateMatchUuid(item.actor_id);
       if (
-        (source !== 'MANUAL' && source !== 'AUTO_48H') ||
+        (source !== 'MANUAL' && source !== 'AUTO_48H' && source !== 'ADMIN_OVERRIDE') ||
         !timestamp(confirmedAt) ||
         !timestamp(effectiveAt) ||
-        (source === 'MANUAL' &&
+        ((source === 'MANUAL' || source === 'ADMIN_OVERRIDE') &&
           (actorId === null || Date.parse(effectiveAt) !== Date.parse(confirmedAt))) ||
         (source === 'AUTO_48H' &&
           (actorId !== null || Date.parse(effectiveAt) > Date.parse(confirmedAt)))
@@ -622,10 +625,10 @@ function parseResultConfirmation(value: unknown): ResultConfirmation | null {
   const confirmedAt = value.confirmed_at;
   const effectiveAt = value.effective_at;
   if (
-    (source !== 'MANUAL' && source !== 'AUTO_48H') ||
+    (source !== 'MANUAL' && source !== 'AUTO_48H' && source !== 'ADMIN_OVERRIDE') ||
     !timestamp(confirmedAt) ||
     !timestamp(effectiveAt) ||
-    (source === 'MANUAL' &&
+    ((source === 'MANUAL' || source === 'ADMIN_OVERRIDE') &&
       (actorId === null || Date.parse(effectiveAt) !== Date.parse(confirmedAt))) ||
     (source === 'AUTO_48H' &&
       (actorId !== null || Date.parse(effectiveAt) > Date.parse(confirmedAt)))
@@ -706,7 +709,8 @@ function parseVersionTimeline(
     if (
       new Set(decisions.map((item) => `${item.reviewer_id}:${item.decision}`)).size !==
         decisions.length ||
-      (status === 'confirmed') !== (confirmationId !== null)
+      (status === 'confirmed' && confirmationId === null) ||
+      (status !== 'confirmed' && status !== 'superseded' && confirmationId !== null)
     )
       return null;
     timeline.push({

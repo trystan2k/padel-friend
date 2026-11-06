@@ -109,6 +109,14 @@ export function LeagueStandingsHistory({
   const next = continued ? continued.next : (versions?.next_before_version ?? null);
   const selected = items.find((item) => item.standings_version === standings.standings_version);
   const when = (iso: string) => formatLeagueInstant(iso, i18n.language, league.timezone);
+  // A corrected result publishes a new version that supersedes the previous one; both stay readable.
+  const corrected = selected?.cause === 'result_amendment' || selected?.cause === 'result_void';
+  const prior = corrected
+    ? items
+        .map((item) => item.standings_version)
+        .filter((version) => version < standings.standings_version)
+        .sort((a, b) => b - a)[0]
+    : undefined;
   const label = (version: number) =>
     version === standings.latest_standings_version
       ? `${t('leagues.history.versionLabel', { version })} · ${t('leagues.history.latest')}`
@@ -243,6 +251,11 @@ export function LeagueStandingsHistory({
             {t('leagues.history.periodCutoff', { date: when(selected.effective_end_at) })}
           </p>
         )}
+        {corrected && (
+          <p data-standings-correction={selected?.cause} {...stylex.props(leagueStyles.strongText)}>
+            {t('leagues.history.correctionBanner')}
+          </p>
+        )}
         {selected?.cause === 'late_first_confirmation' && selected.confirmation ? (
           <>
             <p {...stylex.props(leagueStyles.strongText)}>
@@ -259,6 +272,16 @@ export function LeagueStandingsHistory({
           <p {...stylex.props(leagueStyles.text)}>
             {t(`leagues.history.cause.${selected?.cause ?? standings.cause}`)}
           </p>
+        )}
+        {prior !== undefined && (
+          <div {...stylex.props(styles.linkRow)}>
+            <p {...stylex.props(leagueStyles.muted)}>
+              {t('leagues.history.supersedes', { version: prior })}
+            </p>
+            <Button variant="secondary" onClick={() => onSelect(prior)}>
+              {t('leagues.history.viewPrior', { version: prior })}
+            </Button>
+          </div>
         )}
         {(selected?.basis ?? 'published') === 'reconstructed' && (
           <p {...stylex.props(leagueStyles.muted)}>{t('leagues.history.backfilled')}</p>

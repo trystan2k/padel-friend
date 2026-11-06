@@ -46,7 +46,9 @@ describe.skipIf(!environment.env)(
       alter table public.match_events enable trigger match_event_creator_registration;
       alter table public.match_events enable trigger match_event_published_notification;
       drop table unrelated_clones;
-      analyze public.match_events; analyze public.match_event_registrations;`);
+      -- The lifecycle projection is filled by triggers; without fresh statistics the planner may pick a
+      -- seq scan on it (autovacuum analyze timing), which is a planner-choice flake, not a bound violation.
+      analyze public.match_events; analyze public.match_event_registrations; analyze public.statistics_participant_lifecycle;`);
     });
     afterAll(async () => {
       if (!kit) return;
@@ -93,7 +95,8 @@ describe.skipIf(!environment.env)(
           previousFetches = fetches;
         }
       } finally {
-        await connection.query('rollback');
+        // Closing the session discards the read-only transaction. An explicit rollback would fail with
+        // 25P02 after any in-loop SQL error (the transport issues a SET first), masking that error.
         await connection.close();
       }
     });

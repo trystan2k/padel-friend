@@ -521,6 +521,10 @@
       "result_confirmed": "Um resultado de partida foi confirmado",
       "result_deadline_reminder": "O prazo para revisar o resultado está próximo",
       "result_entry_ready": "Um resultado de partida está pronto para registrar",
+      "result_amendment_resolved": "Uma correção de resultado foi decidida",
+      "result_repair_queued": "Uma correção de resultado está sendo aplicada",
+      "result_repair_applied": "Uma correção de resultado foi aplicada",
+      "result_repair_failed": "Uma correção de resultado não pôde ser aplicada",
       "level_review_approved": "Sua revisão de nível foi aprovada",
       "level_review_rejected": "Sua revisão de nível foi recusada"
     },
@@ -540,8 +544,15 @@
       "historicalVersion": "Versão histórica {{version}}. Revise a proposta atual.",
       "reviewCurrent": "Revisar proposta atual",
       "openResult": "Revisar resultado",
+      "openRepairs": "Abrir diagnóstico de reparos",
       "openEvent": "Abrir partida",
-      "entryReady": "O registro do resultado está pronto para {{venue}}."
+      "entryReady": "O registro do resultado está pronto para {{venue}}.",
+      "kindBody": {
+        "result_amendment_resolved": "Um Admin da comunidade decidiu sobre uma correção de resultado.",
+        "result_repair_queued": "A correção foi aprovada. Ratings, estatísticas e classificação da Liga são atualizados quando ela for aplicada; o resultado confirmado continua oficial até lá.",
+        "result_repair_applied": "A correção foi aplicada. Ratings, estatísticas e classificação da Liga agora refletem o resultado corrigido.",
+        "result_repair_failed": "A aplicação de uma correção de resultado falhou. Ratings, estatísticas e classificação da Liga não mudaram; o resultado confirmado continua oficial. Veja o diagnóstico do reparo e tente novamente."
+      }
     },
     "match": {
       "openEvent": "Abrir evento",
@@ -647,6 +658,232 @@
         "forbidden": "Somente o organizador ou um administrador da comunidade pode adicionar jogadores.",
         "invalid": "Revise os dados e tente novamente.",
         "unavailable": "Não foi possível enviar o convite. Nada foi alterado."
+      }
+    },
+    "corrections": {
+      "title": "Correções de resultado",
+      "unavailable": "Não foi possível carregar as correções de resultado. Recarregue para tentar novamente.",
+      "cardLabel": "Correção do grupo {{number}}",
+      "cardTitle": "Correção · Grupo {{number}}",
+      "requestedAt": "Solicitada em {{date}}",
+      "reason": "Motivo",
+      "proposed": "Correção proposta",
+      "proposedVersion": "Resultado proposto · versão {{version}}",
+      "proposedBy": "Proposto por {{name}} · {{date}}",
+      "autoConfirm": "Confirma automaticamente em {{deadline}} se ninguém rejeitar",
+      "rejectBlocks": "Uma rejeição interrompe a confirmação automática; então um Admin da comunidade decide.",
+      "pendingApplication": "Aprovada, ainda não aplicada. O resultado confirmado continua oficial até a atualização ser aplicada.",
+      "resolvedBy": "Decisão do Admin da comunidade: {{decision}}. {{justification}}",
+      "adminOverride": "Confirmada por uma decisão auditada do Admin da comunidade.",
+      "submitCandidate": "Informar resultado corrigido",
+      "resubmit": "Substituir resultado proposto",
+      "cancel": "Cancelar correção",
+      "history": "Histórico da correção",
+      "historyRequested": "Correção solicitada em {{date}}",
+      "historyCandidate": "Resultado corrigido versão {{version}} proposto em {{date}}",
+      "historyDecision": "Aprovada ({{source}}) em {{date}}",
+      "historyResolution": "Admin da comunidade decidiu: {{decision}} · {{date}}",
+      "historyRepair": "Atualização {{status}} após {{attempts}} tentativa(s)",
+      "historyReference": "Referência: correção {{amendment}} · atualização {{job}}",
+      "historyReviews": "Aprovações de equipe recebidas: Equipe A {{teamA}} · Equipe B {{teamB}} (cobrem {{received}} de {{required}} necessárias)",
+      "historyRevisionPending": "O resultado oficial {{base}} (versão {{version}}) continua vigente até a atualização ser publicada",
+      "historyRevisionApplied": "Resultado oficial {{base}} (versão {{version}}) substituído por {{current}}; o resultado anterior continua consultável",
+      "requestCardLabel": "Resultado confirmado do grupo {{number}}",
+      "officialLabel": "Resultado oficial",
+      "requestNote": "O resultado confirmado continua oficial até que um resultado corrigido seja aprovado ou um Admin da comunidade resolva com uma decisão auditada.",
+      "disputeCardLabel": "Resultado contestado do grupo {{number}}",
+      "disputed": "Contestado",
+      "disputeImpact": "Nenhuma pontuação aplicada ainda. Ratings e classificação da Liga ficam inalterados até um resultado ser confirmado.",
+      "lifecycle": {
+        "requested": "Correção solicitada",
+        "proposal_pending": "Resultado corrigido em revisão",
+        "disputed": "Resultado corrigido contestado",
+        "approved_pending_repair": "Aprovada · resultado confirmado ainda é o oficial",
+        "applied": "Correção aplicada",
+        "rejected": "Correção rejeitada",
+        "canceled": "Correção cancelada"
+      },
+      "decisions": {
+        "uphold": "Manter o resultado",
+        "replace": "Aceitar o resultado corrigido",
+        "void": "Anular o resultado"
+      },
+      "sources": {
+        "MANUAL": "por aprovação dos jogadores",
+        "AUTO_48H": "automaticamente após 48 horas",
+        "ADMIN_OVERRIDE": "por decisão do Admin da comunidade"
+      },
+      "feedback": {
+        "requested": "Correção solicitada. Informe o resultado corrigido para continuar.",
+        "approved": "Sua aprovação foi registrada.",
+        "rejected": "Sua rejeição foi registrada.",
+        "canceled": "Correção cancelada.",
+        "resolved": "Decisão registrada."
+      },
+      "conflicts": {
+        "baseConflict": "O resultado oficial mudou enquanto você trabalhava. A página foi atualizada.",
+        "candidateVersionConflict": "Existe um resultado corrigido mais novo. A página foi atualizada.",
+        "stateConflict": "Esta correção mudou de estado. A página foi atualizada.",
+        "alreadyOpen": "Já existe uma correção aberta para este resultado.",
+        "alreadyResolved": "Já foi registrada uma decisão para este resultado.",
+        "deadlineElapsed": "O prazo de revisão terminou. A página foi atualizada."
+      },
+      "errors": {
+        "notConfirmed": "Apenas um resultado confirmado pode ser corrigido.",
+        "noChange": "O resultado corrigido é igual ao resultado oficial.",
+        "invalidJustification": "Informe uma justificativa de até 500 caracteres.",
+        "invalidDecision": "Escolha uma decisão.",
+        "rankedIneligible": "Este resultado corrigido não é elegível para a Liga."
+      },
+      "dialog": {
+        "cancel": "Cancelar",
+        "submitting": "Salvando…",
+        "required": "(obrigatório)",
+        "hint": "Até 500 caracteres. Fica registrado na trilha de auditoria.",
+        "decisionRequired": "Escolha uma decisão.",
+        "text": {
+          "required": "Informe um motivo.",
+          "tooLong": "Use no máximo 500 caracteres.",
+          "invalid": "Remova caracteres de controle do texto."
+        }
+      },
+      "request": {
+        "open": "Solicitar correção",
+        "title": "Solicitar correção de resultado",
+        "description": "Explique o que está errado no resultado confirmado do grupo {{group}}.",
+        "reason": "O que precisa ser corrigido?",
+        "submit": "Solicitar correção",
+        "notice": "O resultado confirmado continua oficial até que um resultado corrigido seja aprovado."
+      },
+      "resolve": {
+        "open": "Resolver resultado",
+        "title": "Resolver resultado",
+        "description": "Escolha como resolver o resultado contestado do grupo {{group}}.",
+        "legend": "Resolução",
+        "options": {
+          "uphold": "Manter o resultado confirmado",
+          "replace": "Aceitar o resultado corrigido",
+          "void": "Anular resultado"
+        },
+        "hints": {
+          "uphold": "sem alteração de rating",
+          "replace": "ratings e classificação são recalculados",
+          "void": "o resultado deixa de contar"
+        },
+        "firstOptions": {
+          "uphold": "Confirmar o resultado enviado",
+          "void": "Anular resultado"
+        },
+        "firstHints": {
+          "uphold": "decisão auditada do Admin",
+          "void": "o resultado nunca conta"
+        },
+        "justification": "Justificativa",
+        "submit": "Registrar decisão",
+        "notice": "Sua decisão é auditada e não pode ser editada. Substituir ou anular um resultado confirmado enfileira uma atualização que recalcula ratings, estatísticas e classificação da Liga."
+      },
+      "repair": {
+        "title": "Status da atualização",
+        "status": {
+          "queued": "Na fila",
+          "running": "Aplicando",
+          "failed": "Falhou",
+          "succeeded": "Aplicada"
+        },
+        "publication": {
+          "pending": "Ainda não aplicada. O resultado oficial anterior continua ativo.",
+          "failed": "A atualização falhou. O resultado oficial anterior continua ativo.",
+          "published": "Aplicada. O resultado corrigido é o oficial."
+        },
+        "attempts": "Tentativas",
+        "requestedAt": "Enfileirada",
+        "failure": "Falha",
+        "failureCodes": {
+          "BASE_STALE": "O resultado oficial mudou",
+          "CANDIDATE_INVALID": "O resultado corrigido não é mais válido",
+          "PERMISSION_REVOKED": "A permissão foi revogada",
+          "CONFIG_UNSUPPORTED": "Configuração de rating não suportada",
+          "REPLAY_FAILED": "Falha no recálculo dos ratings",
+          "PUBLICATION_FAILED": "Falha ao publicar a atualização",
+          "LEASE_EXPIRED": "O processador parou antes de terminar",
+          "INTERNAL": "Erro interno"
+        },
+        "stages": {
+          "base": "verificando o resultado base",
+          "lock": "bloqueando",
+          "fact": "trocando o resultado",
+          "replay": "recalculando ratings",
+          "publish": "publicando classificação e estatísticas",
+          "complete": "concluindo"
+        },
+        "nextAttempt": "Próxima tentativa automática",
+        "revision": "Revisão de rating",
+        "staleLease": "O processador parou de responder. A atualização pode ser repetida.",
+        "retry": "Tentar atualização novamente",
+        "confirmTitle": "Tentar esta atualização novamente?",
+        "confirmBody": "A atualização recomeça do último estado confirmado. Nada é aplicado duas vezes.",
+        "confirmAction": "Tentar novamente",
+        "retryOutcome": {
+          "succeeded": "A atualização foi aplicada.",
+          "failed": "A atualização falhou novamente. Os detalhes aparecem acima.",
+          "stale": "Outro processador assumiu esta atualização.",
+          "busy": "Outra atualização está em andamento. Tente novamente em instantes."
+        },
+        "retryErrors": {
+          "unauthenticated": "Entre novamente para tentar de novo.",
+          "not_found": "Esta atualização não está disponível para você.",
+          "forbidden": "Você não pode tentar esta atualização novamente.",
+          "invalid_request": "A solicitação de nova tentativa era inválida.",
+          "busy": "Outra atualização está em andamento. Tente novamente em instantes.",
+          "already_applied": "Esta atualização já foi aplicada.",
+          "not_retryable": "Esta falha não pode ser repetida automaticamente.",
+          "unavailable": "Não foi possível tentar a atualização novamente. Tente de novo."
+        }
+      },
+      "diagnostics": {
+        "title": "Reparos de resultado",
+        "back": "Voltar",
+        "entryLink": "Abrir reparos de resultado",
+        "platformSubtitle": "Fila da plataforma · progresso e tentativas sem dados sensíveis",
+        "communitySubtitle": "Sua comunidade · atualizações após correções de resultado",
+        "summary": "Resumo da fila",
+        "summaryCaption": "Reparos por status",
+        "jobs": "Reparos",
+        "empty": "Nenhum reparo ainda.",
+        "never": "nunca",
+        "scheduler": "Saúde do agendador",
+        "schedulerMissing": "O agendador de reparos não está provisionado. As correções aprovadas ficam na fila até ele rodar.",
+        "schedulerUnavailable": "A extensão do agendador não está instalada. As correções aprovadas ficam na fila até um operador executá-las.",
+        "overdue_one": "{{count}} reparo atrasado",
+        "overdue_other": "{{count}} reparos atrasados",
+        "schedulerCaption": "Tarefas agendadas de reparo",
+        "schedulerJob": "Tarefa",
+        "schedulerActive": "Ativa",
+        "schedulerLastRun": "Última execução",
+        "schedulerStatusUnknown": "Estado indisponível",
+        "yes": "Sim",
+        "no": "Não",
+        "jobLabel": "Reparo {{id}}",
+        "jobHeading": "Reparo {{id}} · {{kind}} · grupo {{group}}",
+        "attempts": "Tentativas",
+        "attemptsUnavailable": "Não foi possível carregar as tentativas.",
+        "attemptsCaption": "Tentativas de reparo",
+        "detail": "Detalhe do trabalho",
+        "detailEmpty": "Selecione um reparo para ver o detalhe.",
+        "timeline": "Linha do tempo das tentativas",
+        "noAttempts": "Nenhuma tentativa registrada ainda.",
+        "officialRevision": "Revisão oficial",
+        "correlation": "ID de correlação",
+        "columns": {
+          "attempt": "Tentativa",
+          "status": "Status",
+          "base": "Revisão base",
+          "result": "Revisão do resultado",
+          "failure": "Código da falha"
+        },
+        "denied": "Você não tem acesso aos reparos de resultado.",
+        "unavailable": "Não foi possível carregar os reparos de resultado.",
+        "retry": "Tentar novamente"
       }
     },
     "results": {
@@ -1688,8 +1925,13 @@
       "cause": {
         "closed": "Publicada no encerramento da Liga",
         "repair": "Corrigida a partir dos registros guardados",
-        "reconstruction": "Reconstruída a partir dos registros guardados"
+        "reconstruction": "Reconstruída a partir dos registros guardados",
+        "result_amendment": "Resultado corrigido aplicado após uma alteração auditada",
+        "result_void": "Resultado anulado após uma decisão auditada"
       },
+      "correctionBanner": "Resultado histórico atualizado",
+      "supersedes": "Substitui a versão {{version}}. As versões anteriores continuam disponíveis.",
+      "viewPrior": "Ver versão {{version}}",
       "backfilled": "Reconstruída depois a partir dos registros guardados, não publicada na época.",
       "revisionAvailable": "Há uma versão final mais recente.",
       "viewLatest": "Ver a versão mais recente",

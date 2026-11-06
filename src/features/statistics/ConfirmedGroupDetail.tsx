@@ -318,7 +318,11 @@ function TimelineText({
       : entry.kind;
   return (
     <>
-      <strong>{t(`statistics.detail.timeline.${key}`, { version: entry.version })}</strong>
+      <strong>
+        {entry.kind === 'confirmed' && entry.source === 'ADMIN_OVERRIDE'
+          ? t('matches.corrections.adminOverride')
+          : t(`statistics.detail.timeline.${key}`, { version: entry.version })}
+      </strong>
       {entry.actor && (
         <>
           {' '}

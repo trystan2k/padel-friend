@@ -250,7 +250,17 @@ export async function fixtures(
     await waitForHydratedPage(p);
   }
   async function rpc(who: Actor, name: string, args: Record<string, unknown>) {
-    const result = await who.client.rpc(name, args);
+    // Same bounded retry as sql(): a deadlock victim or a replay racing another worker's cleanup
+    // rolled back completely, so repeating the command is safe.
+    let result = await who.client.rpc(name, args);
+    for (
+      let tries = 1;
+      tries < 3 &&
+      result.error &&
+      (result.error.code === '40P01' || /Incomplete player state/.test(result.error.message));
+      tries++
+    )
+      result = await who.client.rpc(name, args);
     expect(result.error, name).toBeNull();
     return result.data as unknown;
   }
@@ -307,7 +317,7 @@ export async function fixtures(
     // block on the DDL locks and resume only after every guard has been restored.
     await sql(`do $$ begin
       -- Parent-first relation locks match the registration/submission writers.
-      lock table public.match_events, public.match_event_registration_state in share row exclusive mode;
+      lock table public.player_profiles, public.match_events, public.match_event_registration_state in share row exclusive mode;
       alter table public.match_event_result_proposal_versions disable trigger match_result_proposal_version_immutable;
       alter table public.match_event_result_reviews disable trigger match_result_review_immutable;
       alter table public.match_event_result_proposals disable trigger match_result_proposal_transition_guard;
@@ -335,12 +345,18 @@ export async function fixtures(
       -- Immutable rating evidence points at the confirmations below (ON DELETE RESTRICT).
       alter table public.player_rating_event_calculations disable trigger player_rating_calculations_immutable;
       alter table public.player_rating_events disable trigger player_rating_events_immutable;
+      alter table public.player_rating_event_sources disable trigger player_rating_event_sources_immutable;
       delete from public.player_rating_event_calculations where rating_event_id in (
+        select id from public.player_rating_events where match_event_id in
+          (select id from public.match_events where community_id='${community}')
+      );
+      delete from public.player_rating_event_sources where rating_event_id in (
         select id from public.player_rating_events where match_event_id in
           (select id from public.match_events where community_id='${community}')
       );
       delete from public.player_rating_events where match_event_id in
         (select id from public.match_events where community_id='${community}');
+      alter table public.player_rating_event_sources enable trigger player_rating_event_sources_immutable;
       alter table public.player_rating_events enable trigger player_rating_events_immutable;
       alter table public.player_rating_event_calculations enable trigger player_rating_calculations_immutable;
       delete from public.match_event_result_confirmations where match_event_id in
@@ -357,6 +373,29 @@ export async function fixtures(
       delete from public.match_event_registration_attempts where match_event_id in (select id from public.match_events where community_id='${community}');
       delete from public.match_event_registrations where match_event_id in (select id from public.match_events where community_id='${community}');
       delete from public.match_event_registration_state where match_event_id in (select id from public.match_events where community_id='${community}');
+      -- Add-player ledger rows reference the events (ON DELETE RESTRICT).
+      delete from public.match_player_add_recipient_sends where operation_id in (
+        select o.id from public.match_player_add_operations o where o.match_event_id in
+          (select id from public.match_events where community_id='${community}'));
+      delete from public.match_player_add_operations where match_event_id in
+        (select id from public.match_events where community_id='${community}');
+      delete from public.match_player_add_throttle_hits where match_event_id in
+        (select id from public.match_events where community_id='${community}');
+      -- Provisional identities reference their source event. Removing them in this very transaction
+      -- keeps every confirmed result's player set complete for concurrent rating replays.
+      alter table public.player_rating_initializations disable trigger player_rating_initializations_immutable;
+      delete from public.player_rating_initializations where user_id in (
+        select p.user_id from public.player_profiles p where p.source_match_event_id in
+          (select id from public.match_events where community_id='${community}'));
+      alter table public.player_rating_initializations enable trigger player_rating_initializations_immutable;
+      alter table public.player_profiles disable trigger player_profile_provenance_guard;
+      delete from public.player_profiles where source_match_event_id in
+        (select id from public.match_events where community_id='${community}');
+      alter table public.player_profiles enable trigger player_profile_provenance_guard;
+      alter table public.community_members disable trigger community_member_guard;
+      delete from public.community_members where source_match_event_id in
+        (select id from public.match_events where community_id='${community}');
+      alter table public.community_members enable trigger community_member_guard;
       delete from public.match_events where community_id='${community}';
        -- Force deferred FK/pointer checks before restoring the table guards in
        -- this transaction; otherwise PostgreSQL rejects ALTER TABLE.
@@ -389,7 +428,7 @@ export async function fixtures(
     await Promise.all(contexts.map((c) => c.close()));
     await clearEvents();
     await sql(`do $$ begin
-      lock table public.communities in share row exclusive mode;
+      lock table public.player_profiles, public.communities in share row exclusive mode;
       alter table public.community_members disable trigger community_member_guard;
       delete from public.community_members where community_id='${community}';
       delete from public.community_audit_log where community_id='${community}';
@@ -397,13 +436,27 @@ export async function fixtures(
       alter table public.player_rating_event_calculations disable trigger player_rating_calculations_immutable;
       alter table public.player_rating_events disable trigger player_rating_events_immutable;
       alter table public.player_rating_initializations disable trigger player_rating_initializations_immutable;
+      alter table public.player_rating_event_sources disable trigger player_rating_event_sources_immutable;
       delete from public.player_rating_event_calculations where rating_event_id in (
+        select id from public.player_rating_events where user_id in (${actors.map((a) => `'${a.id}'`).join(',')}));
+      delete from public.player_rating_event_sources where rating_event_id in (
         select id from public.player_rating_events where user_id in (${actors.map((a) => `'${a.id}'`).join(',')}));
       delete from public.player_rating_events where user_id in (${actors.map((a) => `'${a.id}'`).join(',')});
       delete from public.player_rating_initializations where user_id in (${actors.map((a) => `'${a.id}'`).join(',')});
+      alter table public.player_rating_event_sources enable trigger player_rating_event_sources_immutable;
       alter table public.player_rating_initializations enable trigger player_rating_initializations_immutable;
       alter table public.player_rating_events enable trigger player_rating_events_immutable;
       alter table public.player_rating_event_calculations enable trigger player_rating_calculations_immutable;
+      -- Add-player ledger rows reference the acting users (ON DELETE RESTRICT).
+      delete from public.match_player_add_recipient_sends where operation_id in (
+        select o.id from public.match_player_add_operations o
+         where o.actor_id in (${actors.map((a) => `'${a.id}'`).join(',')})
+            or o.target_user_id in (${actors.map((a) => `'${a.id}'`).join(',')}));
+      delete from public.match_player_add_operations
+       where actor_id in (${actors.map((a) => `'${a.id}'`).join(',')})
+          or target_user_id in (${actors.map((a) => `'${a.id}'`).join(',')});
+      delete from public.match_player_add_throttle_hits where actor_id in (${actors.map((a) => `'${a.id}'`).join(',')});
+      delete from public.match_player_add_actor_windows where actor_id in (${actors.map((a) => `'${a.id}'`).join(',')});
       delete from auth.users where id in (${actors.map((a) => `'${a.id}'`).join(',')});
       alter table public.community_members enable trigger community_member_guard;
       end $$;`);

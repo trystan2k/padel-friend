@@ -1,7 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link } from '@tanstack/react-router';
 import { useTranslation } from 'react-i18next';
-import { notificationResultHref, notificationRosterPosition } from './notification-target';
+import {
+  notificationRepairDiagnosticsHref,
+  notificationResultHref,
+  notificationRosterPosition
+} from './notification-target';
 import { NotificationLevelReviewOutcome } from './NotificationLevelReviewOutcome';
 import { NotificationResultOutcome } from './NotificationResultOutcome';
 import {
@@ -18,6 +22,14 @@ import {
 } from '../matches/match-registration-model';
 import { styles } from './notifications.styles';
 import * as stylex from '@stylexjs/stylex';
+
+// Correction notices carry no extra payload: the kind selects the explanatory body copy.
+const correctionKinds: ReadonlySet<string> = new Set([
+  'result_amendment_resolved',
+  'result_repair_queued',
+  'result_repair_applied',
+  'result_repair_failed'
+]);
 
 async function resolveNotificationTarget(notificationId: string) {
   const target = await getMyNotificationTargetV3({ data: { notificationId } });
@@ -361,6 +373,9 @@ export function NotificationDetailPage({
         ) : target.target_status === 'result_available' && target.result_context ? (
           <>
             <h1>{t(`notifications.kinds.${target.result_context.notification_kind}`)}</h1>
+            {correctionKinds.has(target.result_context.notification_kind) && (
+              <p>{t(`notifications.result.kindBody.${target.result_context.notification_kind}`)}</p>
+            )}
             {target.result_context.entry_ready ? (
               <p>{t('notifications.result.entryReady', { venue: target.result_context.venue })}</p>
             ) : (
@@ -423,6 +438,14 @@ export function NotificationDetailPage({
                     : 'notifications.result.reviewCurrent'
               )}
             </a>
+            {notificationRepairDiagnosticsHref(target.result_context) && (
+              <a
+                href={notificationRepairDiagnosticsHref(target.result_context) ?? undefined}
+                {...stylex.props(styles.link)}
+              >
+                {t('notifications.result.openRepairs')}
+              </a>
+            )}
             <Link {...stylex.props(styles.link)} to="/notifications">
               {t('notifications.back')}
             </Link>

@@ -18,6 +18,7 @@ import {
   ratingStates,
   ratingWorld,
   setEventType,
+  setRatingProjectionActive,
   stripRevision,
   submitPendingGroup,
   toOracleGroup,
@@ -51,6 +52,9 @@ describe('rating projection of confirmed results', { timeout: 180_000 }, () => {
 
   beforeAll(async () => {
     if (!environment.env) return;
+    // A suite that switches the projector off and fails before reactivating would leak a dormant
+    // projector into this file; every test here needs it active.
+    await setRatingProjectionActive(true);
     world = await ratingWorld(environment.env, 'proj');
     const players = await Promise.all(levels.map((level, i) => world.player(`p${i}`, level)));
     ids = players.map((p) => p.id);

@@ -769,6 +769,22 @@ describe('RatingError sign-in return destination', () => {
 });
 
 describe('MatchResultRatingChanges', () => {
+  it('refetches after a committed correction without changing event or group count', async () => {
+    mocks.changes.mockResolvedValue({ status: 'ok', value: changesPayload });
+    const { rerender } = render(wrap(<MatchResultRatingChanges eventId="e" revision={1} />));
+    await waitFor(() => expect(mocks.changes).toHaveBeenCalledTimes(1));
+    rerender(wrap(<MatchResultRatingChanges eventId="e" revision={2} />));
+    await waitFor(() => expect(mocks.changes).toHaveBeenCalledTimes(2));
+    rerender(wrap(<MatchResultRatingChanges eventId="e" revision={2} />));
+    expect(mocks.changes).toHaveBeenCalledTimes(2);
+  });
+  it('rejects a rating response older than the committed correction revision', async () => {
+    mocks.changes.mockResolvedValue({ status: 'ok', value: { ...changesPayload, revision: 1 } });
+    render(wrap(<MatchResultRatingChanges eventId="e" revision={2} />));
+    expect(await screen.findByRole('alert')).toBeTruthy();
+    expect(screen.queryByRole('button', { name: /Explain rating change/ })).toBeNull();
+  });
+
   it('lists each played participant with change, reliability and an explain action', async () => {
     mocks.changes.mockResolvedValue({ status: 'ok', value: changesPayload });
     mocks.explanation.mockResolvedValue({ status: 'ok', value: explanationPayload });

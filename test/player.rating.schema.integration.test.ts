@@ -20,6 +20,7 @@ const LEDGER_TABLES = [
   'player_rating_projection_control',
   'player_rating_events',
   'player_rating_event_calculations',
+  'player_rating_event_sources',
   'player_rating_initializations'
 ] as const;
 
@@ -50,7 +51,7 @@ function calculationInsert(
   eventRowId: string,
   group: ConfirmedGroup,
   revision: number,
-  overrides: { inputs?: unknown; explanation?: unknown } = {}
+  overrides: { inputs?: unknown; explanation?: unknown; sourceRevision?: number } = {}
 ) {
   const inputs = JSON.stringify(overrides.inputs ?? calculationInputs(group));
   const explanation = JSON.stringify(overrides.explanation ?? { expected_score: 0.5 });
@@ -58,11 +59,11 @@ function calculationInsert(
     (rating_event_id, projection_revision, rating_engine, rating_engine_version, rating_config_version,
      before_mu, before_sigma, before_display_level, before_reliability_percent, before_confirmed_groups, before_highest_display_level,
      after_mu, after_sigma, after_display_level, after_reliability_percent, after_confirmed_groups, after_highest_display_level,
-     last_rating_at, inputs, explanation)
+     last_rating_at, inputs, explanation, source_revision)
     values ('${eventRowId}', ${revision}, 'app-wide-level', '1.0.0', 1,
       4, 1, 4, 10, 0, 4,
       4.1, 1, 4.1, 16, 1, 4.1,
-      '${group.playedAt}', '${inputs}'::jsonb, '${explanation}'::jsonb)`;
+      '${group.playedAt}', '${inputs}'::jsonb, '${explanation}'::jsonb, ${overrides.sourceRevision ?? 1})`;
 }
 
 describe('global rating ledger schema', { timeout: 120_000 }, () => {
@@ -169,6 +170,11 @@ describe('global rating ledger schema', { timeout: 120_000 }, () => {
       );
       expect(stored).toHaveLength(1);
       const eventRowId = String(stored[0]!['id']);
+      // Birth evidence is mirrored by the initial active effective source.
+      await fixtureSql(`insert into public.player_rating_event_sources
+        (rating_event_id, projection_revision, game_group_id, is_active, confirmation_id, proposal_version, played_at, reason)
+        select e.id, 1, e.game_group_id, true, e.confirmation_id, e.proposal_version, e.played_at, 'birth'
+          from public.player_rating_events e where e.id = '${eventRowId}'`);
 
       // Duplicate group/player identity fails, even through a second confirmation pointer.
       expect(await rejection(eventInsert(group, eventId, playerIds[0]))).toContain(
@@ -234,6 +240,9 @@ describe('global rating ledger schema', { timeout: 120_000 }, () => {
         `update public.player_rating_event_calculations set explanation = '{}'::jsonb where rating_event_id = '${eventRowId}'`,
         `delete from public.player_rating_event_calculations where rating_event_id = '${eventRowId}'`,
         'truncate public.player_rating_event_calculations',
+        `update public.player_rating_event_sources set is_active = false where rating_event_id = '${eventRowId}'`,
+        `delete from public.player_rating_event_sources where rating_event_id = '${eventRowId}'`,
+        'truncate public.player_rating_event_sources cascade',
         `update public.player_rating_initializations set initial_level = 1 where user_id = '${playerIds[0]}'`,
         `delete from public.player_rating_initializations where user_id = '${playerIds[0]}'`,
         'truncate public.player_rating_initializations cascade'
@@ -285,7 +294,7 @@ describe('global rating ledger schema', { timeout: 120_000 }, () => {
          from pg_constraint c
         where c.contype = 'f' and c.conrelid = any(array[
           'public.player_rating_events'::regclass, 'public.player_rating_event_calculations'::regclass,
-          'public.player_rating_initializations'::regclass])
+          'public.player_rating_event_sources'::regclass, 'public.player_rating_initializations'::regclass])
         order by 1, 2`
     );
     expect(constraints.length).toBeGreaterThanOrEqual(8);
@@ -327,7 +336,7 @@ describe('global rating ledger schema', { timeout: 120_000 }, () => {
           where c.oid = any(array[${LEDGER_TABLES.map((name) => `'public.${name}'::regclass`).join(',')}])
           group by 1 order by 1`
       );
-      expect(policies.map((row) => row['restrictive'])).toEqual([1, 1, 1, 1]);
+      expect(policies.map((row) => row['restrictive'])).toEqual([1, 1, 1, 1, 1]);
     }
   );
 
@@ -342,6 +351,7 @@ describe('global rating ledger schema', { timeout: 120_000 }, () => {
       expect(outsider.data).toEqual([]);
       for (const table of [
         'player_rating_event_calculations',
+        'player_rating_event_sources',
         'player_rating_initializations',
         'player_rating_projection_control'
       ] as const) {

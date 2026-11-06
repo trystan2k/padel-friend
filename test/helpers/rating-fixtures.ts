@@ -29,7 +29,7 @@ export function toQuartet(ids: readonly string[], offset = 0): Quartet {
 export type Classification = 'team_a' | 'team_b' | 'draw' | 'incomplete';
 export type RatedClassification = Exclude<Classification, 'incomplete'>;
 
-const SETS: Record<Classification, string> = {
+export const SETS: Record<Classification, string> = {
   team_a: '[{"position":1,"team_a_games":6,"team_b_games":4,"completed":true}]',
   team_b: '[{"position":1,"team_a_games":4,"team_b_games":6,"completed":true}]',
   draw: '[{"position":1,"team_a_games":6,"team_b_games":6,"completed":true}]',
