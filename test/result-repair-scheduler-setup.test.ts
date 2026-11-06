@@ -31,7 +31,7 @@ describe('integration repair scheduler isolation', () => {
     mocks.query.mockResolvedValue({ rows: [] });
   });
 
-  it('pauses only repair jobs and restores their exact previous active settings', async () => {
+  it('pauses only repair and amendment jobs and restores their exact previous active settings', async () => {
     const jobs = [
       { jobid: 12, active: true },
       { jobid: 13, active: false }
@@ -43,7 +43,13 @@ describe('integration repair scheduler isolation', () => {
     const teardown = await setupResultRepairScheduler();
     expect(mocks.query).toHaveBeenCalledWith(
       'select jobid, active from cron.job where jobname = any($1::text[])',
-      [['padel-friend-result-repair-claim', 'padel-friend-result-repair-run']]
+      [
+        [
+          'padel-friend-result-repair-claim',
+          'padel-friend-result-repair-run',
+          'padel-friend-result-amendment-auto-accept'
+        ]
+      ]
     );
     expect(mocks.query).toHaveBeenCalledWith(expect.stringContaining('cron.alter_job'), [
       12,

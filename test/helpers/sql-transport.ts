@@ -684,4 +684,4 @@ afterAll(async () => {
 
   if (failures.length > 0)
     throw new AggregateError(failures, 'Trusted SQL transport teardown failed');
-});
+}, 120_000);

@@ -24,7 +24,7 @@ describe('match fixture trigger-state cleanup', () => {
     );
     expect(MATCH_REGISTRATION_SQL_SOURCE).toContain('from pg_temp.paf_fixture_trigger_states s');
     expect(FIXTURE_CLEANUP_SOURCE).toContain(
-      'await executeTrustedSqlBatch(statements.map((sql) => ({ sql })))'
+      'await executeTrustedSqlBatch(\n        statements.map((sql) => ({ sql })),\n        { timeoutMs: FIXTURE_CLEANUP_TIMEOUT_MS }\n      )'
     );
   });
 });

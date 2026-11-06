@@ -21,6 +21,10 @@ type FixtureCleanupEntry = {
 
 const IDENTIFIER = /^[a-z_][a-z\d_]{0,62}$/i;
 
+// One cleanup batch is a single statement for PostgreSQL. Large fixtures (thousands of
+// registrations) plus table-lock waits outgrow the default 30s transport bound on CI runners.
+const FIXTURE_CLEANUP_TIMEOUT_MS = 120_000;
+
 /** Child tables precede parents. Domain fixtures with cyclic FKs supply an executor. */
 export const FIXTURE_CLEANUP_TABLE_ORDER = [
   'public.community_notifications',
@@ -232,7 +236,10 @@ export class FixtureCleanupRegistry {
     if (statements.length === 0) return;
 
     try {
-      await executeTrustedSqlBatch(statements.map((sql) => ({ sql })));
+      await executeTrustedSqlBatch(
+        statements.map((sql) => ({ sql })),
+        { timeoutMs: FIXTURE_CLEANUP_TIMEOUT_MS }
+      );
     } catch (error) {
       if (options.restoreOnFailure?.length)
         throw new Error(
