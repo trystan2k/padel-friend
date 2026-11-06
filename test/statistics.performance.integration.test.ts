@@ -7,6 +7,7 @@ import {
   playedAt,
   type RankedResultKit
 } from './helpers/ranked-result-fixtures';
+import { runPool } from './helpers/promise-pool';
 import { sqlText } from './helpers/provisional-player-fixtures';
 
 const environment = localSupabaseEnv({ filePath: dotEnvPathFromImportMetaUrl(import.meta.url) });
@@ -30,7 +31,9 @@ describe.skipIf(!environment.env)('statistics reader performance contract', () =
       for (let i = 0; i < 4; i += 1) kits.push(await createRankedResultFixtures(environment.env!));
       const today = new Date().toISOString().slice(0, 10);
       const midnight = Date.parse(today + 'T00:00:00Z');
-      for (let i = 0; i < 150; i += 1) {
+      // Same-kit chains share actors and rating history, so each kit is one ordered lane;
+      // independent kits run concurrently through a bounded pool.
+      const buildHistory = async (i: number) => {
         const kit = kits[i % kits.length]!;
         const event = await kit.event(
           null,
@@ -44,7 +47,13 @@ describe.skipIf(!environment.env)('statistics reader performance contract', () =
         if (submission.error) throw submission.error;
         const approval = await kit.approve(String(asRecord(submission.data)['proposal_id']));
         if (approval.error) throw approval.error;
-      }
+      };
+      await runPool(
+        kits.map((_, lane) => async () => {
+          for (let i = lane; i < 150; i += kits.length) await buildHistory(i);
+        }),
+        8
+      );
       await queryTrustedSql(
         'analyze public.statistics_scope_summaries; analyze public.statistics_daily_buckets; analyze public.statistics_group_facts; analyze public.statistics_pair_facts; analyze public.statistics_opponent_facts'
       );

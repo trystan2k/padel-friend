@@ -25,6 +25,8 @@ export default defineConfig({
   globalSetup: './e2e/global-setup.ts',
   snapshotPathTemplate: '{testDir}/{testFileName}-snapshots/{arg}{ext}',
   retries: process.env.CI ? 2 : 0,
+  // CI runners get 4 workers; locally Playwright picks its own default from the CPU count.
+  workers: process.env.CI ? 4 : undefined,
   use: {
     baseURL: 'http://127.0.0.1:4173',
     trace: 'on-first-retry',
@@ -57,7 +59,12 @@ export default defineConfig({
   },
   projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
   webServer: {
-    command: 'pnpm build && pnpm preview --port 4173',
+    // E2E_PREBUILT is set only by CI after it verified the same-run build artifact; everywhere else
+    // (including plain pnpm test:e2e) the preview is built fresh.
+    command:
+      process.env.E2E_PREBUILT === '1'
+        ? 'pnpm preview --port 4173'
+        : 'pnpm build && pnpm preview --port 4173',
     url: 'http://127.0.0.1:4173',
     // Never reuse a running preview: a stale bundle silently fakes failures.
     // `pnpm test:e2e` frees port 4173 before Playwright starts.

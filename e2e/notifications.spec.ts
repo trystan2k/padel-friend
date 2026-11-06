@@ -1384,7 +1384,7 @@ async function assertCardActions(page: Page) {
   return { view, mark };
 }
 
-test.describe('notification visual probes', () => {
+test.describe('notification visual probes', { tag: '@visual' }, () => {
   test('populated center: structure, unread differentiation and 390x844 baseline', async ({
     page
   }) => {
@@ -1555,7 +1555,7 @@ test.describe('notification visual probes', () => {
   });
 });
 
-test.describe('notification desktop probes', () => {
+test.describe('notification desktop probes', { tag: '@visual' }, () => {
   test.use({ viewport: { width: 1280, height: 800 } });
 
   async function assertContentCap(page: Page) {
@@ -1655,7 +1655,7 @@ test.describe('notification desktop probes', () => {
 // literal rgb values are only asserted in the theme they were captured for.
 // ---------------------------------------------------------------------------
 
-test.describe('notification dark-theme probes', () => {
+test.describe('notification dark-theme probes', { tag: '@visual' }, () => {
   test('populated center keeps structure and token treatments in dark theme at 390x844', async ({
     browser
   }) => {

@@ -1180,280 +1180,297 @@ async function auditGeometry(page: Page) {
   }
 }
 
-test('real admin requests, membership, settings, venues and audit stay protected and responsive', async ({
-  browser,
-  page
-}) => {
-  test.setTimeout(120_000);
-  const owner = await createActor('Owner Admin');
-  const request = await createActor('Pending Player');
-  const backup = await createActor('Backup Admin');
-  const communityName = `Padel ${crypto.randomUUID().slice(0, 5)}`;
-  const created = await owner.client.rpc('create_community', {
-    p_name: communityName,
-    p_visibility: 'public',
-    p_join_policy: 'admin_approval'
-  });
-  if (created.error || typeof created.data !== 'string')
-    throw created.error ?? new Error('Community fixture creation failed');
-  const communityId = created.data;
-  const joined = await request.client.rpc('join_public_community', { p_community_id: communityId });
-  if (joined.error) throw joined.error;
-  expect(joined.data).toMatchObject([{ status: 'pending' }]);
-  const backupMembership = await owner.client
-    .from('community_members')
-    .insert({ community_id: communityId, user_id: backup.id, role: 'member', status: 'active' })
-    .select('id')
-    .single();
-  if (backupMembership.error) throw backupMembership.error;
-  // Second real venue (admin RLS insert) so the venues screen shows the supported two-card
-  // structure of the A5Vio frame instead of masking it away; "South Court" sorts after the
-  // UI-created "North Court" so card order stays deterministic.
-  const seededVenue = await owner.client
-    .from('community_venues')
-    .insert({
-      community_id: communityId,
-      name: 'South Court',
-      address: 'Madrid',
-      maps_url: 'https://maps.example.test/south-court'
-    })
-    .select('id')
-    .single();
-  if (seededVenue.error) throw seededVenue.error;
-  const pending = await owner.client.rpc('search_community_members', {
-    p_community_id: communityId,
-    p_query: '',
-    p_status: 'pending',
-    p_offset: 0,
-    p_limit: 50
-  });
-  if (pending.error || pending.data?.length !== 1)
-    throw pending.error ?? new Error('Pending fixture rows missing');
+test(
+  'real admin requests, membership, settings, venues and audit stay protected and responsive',
+  { tag: '@visual' },
+  async ({ browser, page }) => {
+    test.setTimeout(120_000);
+    const owner = await createActor('Owner Admin');
+    const request = await createActor('Pending Player');
+    const backup = await createActor('Backup Admin');
+    const communityName = `Padel ${crypto.randomUUID().slice(0, 5)}`;
+    const created = await owner.client.rpc('create_community', {
+      p_name: communityName,
+      p_visibility: 'public',
+      p_join_policy: 'admin_approval'
+    });
+    if (created.error || typeof created.data !== 'string')
+      throw created.error ?? new Error('Community fixture creation failed');
+    const communityId = created.data;
+    const joined = await request.client.rpc('join_public_community', {
+      p_community_id: communityId
+    });
+    if (joined.error) throw joined.error;
+    expect(joined.data).toMatchObject([{ status: 'pending' }]);
+    const backupMembership = await owner.client
+      .from('community_members')
+      .insert({ community_id: communityId, user_id: backup.id, role: 'member', status: 'active' })
+      .select('id')
+      .single();
+    if (backupMembership.error) throw backupMembership.error;
+    // Second real venue (admin RLS insert) so the venues screen shows the supported two-card
+    // structure of the A5Vio frame instead of masking it away; "South Court" sorts after the
+    // UI-created "North Court" so card order stays deterministic.
+    const seededVenue = await owner.client
+      .from('community_venues')
+      .insert({
+        community_id: communityId,
+        name: 'South Court',
+        address: 'Madrid',
+        maps_url: 'https://maps.example.test/south-court'
+      })
+      .select('id')
+      .single();
+    if (seededVenue.error) throw seededVenue.error;
+    const pending = await owner.client.rpc('search_community_members', {
+      p_community_id: communityId,
+      p_query: '',
+      p_status: 'pending',
+      p_offset: 0,
+      p_limit: 50
+    });
+    if (pending.error || pending.data?.length !== 1)
+      throw pending.error ?? new Error('Pending fixture rows missing');
 
-  const guestContext = await browser.newContext({
-    viewport: { width: 390, height: 844 },
-    deviceScaleFactor: 1
-  });
-  const guest = await guestContext.newPage();
-  await guest.goto(`/community/${communityId}/admin/audit`);
-  await expect(guest).toHaveURL(/\/login\?next=/);
-  await guestContext.close();
+    const guestContext = await browser.newContext({
+      viewport: { width: 390, height: 844 },
+      deviceScaleFactor: 1
+    });
+    const guest = await guestContext.newPage();
+    await guest.goto(`/community/${communityId}/admin/audit`);
+    await expect(guest).toHaveURL(/\/login\?next=/);
+    await guestContext.close();
 
-  await signIn(page, owner);
-  await expect(page.getByRole('link', { name: communityName, exact: true })).toBeVisible();
-  const route = `/community/${communityId}/admin`;
-  await page.goto(`${route}/requests`);
-  await waitForHydratedPage(page);
-  await expect(page.getByRole('heading', { name: en.communityAdmin.title.requests })).toBeVisible();
-  await geometry(page, 'Pending Player');
-  // Mask only unsupported resolved/notification content and fixture-dependent applicant values; keep card geometry exact.
-  // Measured macOS 14,864; Linux 15,723; 2,777px headroom. Linux CI evidence: docs/visual/community-admin-residuals.md.
-  // Original cap-selection target: ≥2,500px headroom, rounded up to the next 500.
-  await visualDiff(page, 'RgqPq.png', 18_500, [
-    [0, 309, 390, 147],
-    [28, 124, 334, 20],
-    [28, 151, 334, 36]
-  ]);
-  for (const name of ['Pending Player']) {
-    const card = page.getByRole('heading', { name }).locator('xpath=..');
-    await card.getByRole('button', { name: en.communityAdmin.action.approve }).click();
-    await expect(page.getByText('Request approved.')).toBeVisible();
-  }
-  const rows = await owner.client.rpc('search_community_members', {
-    p_community_id: communityId,
-    p_query: '',
-    p_offset: 0,
-    p_limit: 50
-  });
-  if (rows.error || !rows.data) throw rows.error ?? new Error('Community roster unavailable');
-  const roster: Database['public']['Functions']['search_community_members']['Returns'] = rows.data;
-  const backupRow = roster.find((row) => row.user_id === backup.id);
-  const requestRow = roster.find((row) => row.user_id === request.id);
-  const ownerRow = roster.find((row) => row.user_id === owner.id);
-  if (!backupRow || !requestRow || !ownerRow) throw new Error('Expected fixture member not found');
-
-  await page.goto(`${route}/members`);
-  await waitForHydratedPage(page);
-  await page.getByRole('heading', { name: en.communityAdmin.title.members }).waitFor();
-  await geometry(page);
-  await backLinkGeometry(page);
-  await memberCardGeometry(page);
-  await assertLinkHitArea(page.getByRole('link', { name: 'Backup Admin' }));
-  // Mask fixture identity/metrics, role badges, avatars and the unsupported invitation copy only;
-  // card layout, search and geometry stay exact and unmasked.
-  // Measured macOS 14,198; Linux 15,435; 65px headroom. Linux CI evidence and flakiness risk: docs/visual/community-admin-residuals.md.
-  // Original cap-selection target: ≥2,500px headroom, rounded up to the next 500.
-  await visualDiff(page, 'wFqGR.png', 15_500, [
-    [18, 46, 354, 22],
-    [25, 82, 340, 26],
-    [28, 243, 34, 44],
-    [294, 239, 79, 31],
-    [25, 239, 340, 25],
-    [25, 263, 340, 18],
-    [25, 280, 340, 18],
-    [28, 324, 34, 44],
-    [294, 320, 79, 31],
-    [25, 320, 340, 25],
-    [25, 344, 340, 18],
-    [25, 361, 340, 18],
-    [28, 405, 34, 44],
-    [294, 401, 79, 31],
-    [25, 401, 340, 25],
-    [25, 425, 340, 18],
-    [25, 442, 340, 18]
-  ]);
-  await page.getByRole('link', { name: 'Backup Admin' }).click();
-  await expect(page).toHaveURL(new RegExp(`/admin/members/${backupRow.membership_id}$`));
-  await geometry(page);
-  await memberControlsGeometry(page);
-  // Mask only dynamic member identity/metrics and community name; card/action geometry stays probed.
-  // Measured macOS 17,397; Linux 19,038; 2,962px headroom. Linux CI evidence: docs/visual/community-admin-residuals.md.
-  // Original cap-selection target: ≥2,500px headroom, rounded up to the next 500.
-  await visualDiff(page, 'jQDkx.png', 22_000, [
-    [18, 46, 354, 22],
-    [28, 124, 334, 20],
-    [28, 145, 334, 20]
-  ]);
-  await page.getByRole('button', { name: en.communityAdmin.action.promote }).click();
-  await expect(page.getByText('Admin role granted.')).toBeVisible();
-
-  const memberContext = await browser.newContext({ viewport: { width: 390, height: 844 } });
-  const memberPage = await memberContext.newPage();
-  await signIn(memberPage, request);
-  await expect(memberPage.getByRole('link', { name: communityName, exact: true })).toHaveCount(0);
-  await memberPage.goto(`${route}/members`);
-  await expect(
-    memberPage.getByRole('heading', { name: en.communityAdmin.accessDeniedTitle })
-  ).toBeVisible();
-  await memberContext.close();
-
-  await page.goto(`${route}/settings`);
-  await waitForHydratedPage(page);
-  await geometry(page);
-  await settingsGeometry(page);
-  // Measured macOS 17,750; Linux 18,920; 3,580px headroom. Linux CI evidence: docs/visual/community-admin-residuals.md.
-  // Original cap-selection target: ≥2,500px headroom, rounded up to the next 500.
-  await visualDiff(page, 'N18Mu4.png', 22_500, [
-    [18, 46, 354, 22],
-    [18, 230, 354, 120]
-  ]);
-  await page.getByText(en.communityAdmin.settings.details).click();
-  await page.getByLabel(en.communityAdmin.settings.city).fill('Madrid');
-  await page.getByRole('button', { name: en.communityAdmin.save }).click();
-  await expect(page.getByText('Community settings saved.')).toBeVisible();
-  for (const [locale, copy] of [
-    ['es', es],
-    ['pt-BR', pt]
-  ] as const) {
-    await switchLocaleWithKeyboard(page, locale);
+    await signIn(page, owner);
+    await expect(page.getByRole('link', { name: communityName, exact: true })).toBeVisible();
+    const route = `/community/${communityId}/admin`;
+    await page.goto(`${route}/requests`);
+    await waitForHydratedPage(page);
     await expect(
-      page.getByRole('heading', { name: copy.communityAdmin.title.settings })
+      page.getByRole('heading', { name: en.communityAdmin.title.requests })
     ).toBeVisible();
-    await assertLocaleControlSizing(page, copy, 390);
-  }
-  await page.setViewportSize({ width: 1280, height: 900 });
-  for (const [locale, copy] of [
-    ['en', en],
-    ['pt-BR', pt],
-    ['es', es]
-  ] as const) {
-    await switchLocaleWithKeyboard(page, locale);
+    await geometry(page, 'Pending Player');
+    // Mask only unsupported resolved/notification content and fixture-dependent applicant values; keep card geometry exact.
+    // Measured macOS 14,864; Linux 15,723; 2,777px headroom. Linux CI evidence: docs/visual/community-admin-residuals.md.
+    // Original cap-selection target: ≥2,500px headroom, rounded up to the next 500.
+    await visualDiff(page, 'RgqPq.png', 18_500, [
+      [0, 309, 390, 147],
+      [28, 124, 334, 20],
+      [28, 151, 334, 36]
+    ]);
+    for (const name of ['Pending Player']) {
+      const card = page.getByRole('heading', { name }).locator('xpath=..');
+      await card.getByRole('button', { name: en.communityAdmin.action.approve }).click();
+      await expect(page.getByText('Request approved.')).toBeVisible();
+    }
+    const rows = await owner.client.rpc('search_community_members', {
+      p_community_id: communityId,
+      p_query: '',
+      p_offset: 0,
+      p_limit: 50
+    });
+    if (rows.error || !rows.data) throw rows.error ?? new Error('Community roster unavailable');
+    const roster: Database['public']['Functions']['search_community_members']['Returns'] =
+      rows.data;
+    const backupRow = roster.find((row) => row.user_id === backup.id);
+    const requestRow = roster.find((row) => row.user_id === request.id);
+    const ownerRow = roster.find((row) => row.user_id === owner.id);
+    if (!backupRow || !requestRow || !ownerRow)
+      throw new Error('Expected fixture member not found');
+
+    await page.goto(`${route}/members`);
+    await waitForHydratedPage(page);
+    await page.getByRole('heading', { name: en.communityAdmin.title.members }).waitFor();
+    await geometry(page);
+    await backLinkGeometry(page);
+    await memberCardGeometry(page);
+    await assertLinkHitArea(page.getByRole('link', { name: 'Backup Admin' }));
+    // Mask fixture identity/metrics, role badges, avatars and the unsupported invitation copy only;
+    // card layout, search and geometry stay exact and unmasked.
+    // Measured macOS 14,198; Linux 15,435; 65px headroom. Linux CI evidence and flakiness risk: docs/visual/community-admin-residuals.md.
+    // Original cap-selection target: ≥2,500px headroom, rounded up to the next 500.
+    await visualDiff(page, 'wFqGR.png', 15_500, [
+      [18, 46, 354, 22],
+      [25, 82, 340, 26],
+      [28, 243, 34, 44],
+      [294, 239, 79, 31],
+      [25, 239, 340, 25],
+      [25, 263, 340, 18],
+      [25, 280, 340, 18],
+      [28, 324, 34, 44],
+      [294, 320, 79, 31],
+      [25, 320, 340, 25],
+      [25, 344, 340, 18],
+      [25, 361, 340, 18],
+      [28, 405, 34, 44],
+      [294, 401, 79, 31],
+      [25, 401, 340, 25],
+      [25, 425, 340, 18],
+      [25, 442, 340, 18]
+    ]);
+    await page.getByRole('link', { name: 'Backup Admin' }).click();
+    await expect(page).toHaveURL(new RegExp(`/admin/members/${backupRow.membership_id}$`));
+    await geometry(page);
+    await memberControlsGeometry(page);
+    // Mask only dynamic member identity/metrics and community name; card/action geometry stays probed.
+    // Measured macOS 17,397; Linux 19,038; 2,962px headroom. Linux CI evidence: docs/visual/community-admin-residuals.md.
+    // Original cap-selection target: ≥2,500px headroom, rounded up to the next 500.
+    await visualDiff(page, 'jQDkx.png', 22_000, [
+      [18, 46, 354, 22],
+      [28, 124, 334, 20],
+      [28, 145, 334, 20]
+    ]);
+    await page.getByRole('button', { name: en.communityAdmin.action.promote }).click();
+    await expect(page.getByText('Admin role granted.')).toBeVisible();
+
+    const memberContext = await browser.newContext({ viewport: { width: 390, height: 844 } });
+    const memberPage = await memberContext.newPage();
+    await signIn(memberPage, request);
+    await expect(memberPage.getByRole('link', { name: communityName, exact: true })).toHaveCount(0);
+    await memberPage.goto(`${route}/members`);
     await expect(
-      page.getByRole('heading', { name: copy.communityAdmin.title.settings })
+      memberPage.getByRole('heading', { name: en.communityAdmin.accessDeniedTitle })
     ).toBeVisible();
-    await assertLocaleControlSizing(page, copy, 1280);
+    await memberContext.close();
+
+    await page.goto(`${route}/settings`);
+    await waitForHydratedPage(page);
+    await geometry(page);
+    await settingsGeometry(page);
+    // Measured macOS 17,750; Linux 18,920; 3,580px headroom. Linux CI evidence: docs/visual/community-admin-residuals.md.
+    // Original cap-selection target: ≥2,500px headroom, rounded up to the next 500.
+    await visualDiff(page, 'N18Mu4.png', 22_500, [
+      [18, 46, 354, 22],
+      [18, 230, 354, 120]
+    ]);
+    await page.getByText(en.communityAdmin.settings.details).click();
+    await page.getByLabel(en.communityAdmin.settings.city).fill('Madrid');
+    await page.getByRole('button', { name: en.communityAdmin.save }).click();
+    await expect(page.getByText('Community settings saved.')).toBeVisible();
+    for (const [locale, copy] of [
+      ['es', es],
+      ['pt-BR', pt]
+    ] as const) {
+      await switchLocaleWithKeyboard(page, locale);
+      await expect(
+        page.getByRole('heading', { name: copy.communityAdmin.title.settings })
+      ).toBeVisible();
+      await assertLocaleControlSizing(page, copy, 390);
+    }
+    await page.setViewportSize({ width: 1280, height: 900 });
+    for (const [locale, copy] of [
+      ['en', en],
+      ['pt-BR', pt],
+      ['es', es]
+    ] as const) {
+      await switchLocaleWithKeyboard(page, locale);
+      await expect(
+        page.getByRole('heading', { name: copy.communityAdmin.title.settings })
+      ).toBeVisible();
+      await assertLocaleControlSizing(page, copy, 1280);
+    }
+    await page.locator('#locale').selectOption('es');
+    await expect(page.context().cookies()).resolves.toContainEqual(
+      expect.objectContaining({ name: 'locale', value: 'es', path: '/' })
+    );
+    await page.reload();
+    await waitForHydratedPage(page);
+    await expect(page.locator('#locale')).toHaveValue('es');
+    await expect(page.locator('#locale')).toHaveAccessibleName(es.language);
+    await expect(page.locator('html')).toHaveAttribute('lang', 'es');
+    await expect(
+      page.getByRole('heading', { name: es.communityAdmin.title.settings })
+    ).toBeVisible();
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.locator('#locale').selectOption('en');
+    await expect(page.locator('html')).toHaveAttribute('lang', 'en');
+    await assertLocaleControlSizing(page, en, 390);
+    await page
+      .context()
+      .addCookies([{ name: 'locale', value: 'en', url: 'http://127.0.0.1:4173' }]);
+    await page.waitForLoadState('networkidle');
+    await page.setViewportSize({ width: 320, height: 844 });
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(
+      320
+    );
+    await page.setViewportSize({ width: 390, height: 844 });
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(
+      390
+    );
+
+    await page.goto(`${route}/venues`);
+    await page
+      .context()
+      .addCookies([{ name: 'locale', value: 'en', url: 'http://127.0.0.1:4173' }]);
+    await page.reload();
+    await waitForHydratedPage(page);
+    await expect(page.locator('html')).toHaveAttribute('lang', 'en');
+    await geometry(page);
+    await page.getByRole('button', { name: en.communityAdmin.venue.add }).click();
+    await page.getByLabel(en.communityAdmin.venue.name).fill('North Court');
+    await page.getByLabel(en.communityAdmin.venue.address).fill('Madrid');
+    await page.getByLabel(en.communityAdmin.venue.mapsUrl).fill('https://maps.example.test/court');
+    await page.getByRole('button', { name: en.communityAdmin.save }).click();
+    await expect(page.getByRole('heading', { name: 'North Court' })).toBeVisible();
+    await page.reload();
+    await waitForHydratedPage(page);
+    await venueGeometry(page);
+    await assertLinkHitArea(
+      page.getByRole('link', { name: en.communityAdmin.venue.openMap }).first()
+    );
+    // Mask fixture venue names and dynamic/unsupported detail copy only; card edges, action labels,
+    // and the supported Open map links remain part of the pixel comparison.
+    // Measured macOS 16,351; Linux 17,771; 3,229px headroom. Linux CI evidence: docs/visual/community-admin-residuals.md.
+    // Original cap-selection target: ≥2,500px headroom, rounded up to the next 500.
+    await visualDiff(page, 'A5Vio.png', 21_000, [
+      [32, 140, 180, 15],
+      [32, 161, 240, 15],
+      [32, 264, 180, 15],
+      [32, 285, 240, 15]
+    ]);
+    await page
+      .getByTestId('community-venue-card')
+      .first()
+      .getByRole('button', { name: en.communityAdmin.venue.archive })
+      .click();
+    await expect(page.getByText('Venue archived.')).toBeVisible();
+
+    await page.goto(`${route}/audit`);
+    await waitForHydratedPage(page);
+    await auditGeometry(page);
+    await expect(page.getByText(/Actor identity unavailable ·/).first()).toBeVisible();
+    await expect(page.getByText(/League result corrected/)).toHaveCount(0);
+    // Actor identity is intentionally a translated generic fallback; timestamps are fixture-dependent.
+    // The fourth Pencil event ("League result corrected") and the 3-row paging control are the
+    // approved unsupported/adapted region, so the band below the third event stays masked.
+    // Measured macOS 16,174; Linux 17,044; 2,956px headroom. Linux CI evidence: docs/visual/community-admin-residuals.md.
+    // Original cap-selection target: ≥2,500px headroom, rounded up to the next 500.
+    await visualDiff(page, 'E5CS5K.png', 20_000, [
+      [18, 140, 354, 24],
+      [18, 210, 354, 24],
+      [18, 280, 354, 24],
+      [18, 317, 354, 72]
+    ]);
+    await page.getByRole('button', { name: en.communityAdmin.loadMore }).click();
+    await assertLinkHitArea(
+      page.getByRole('link', { name: en.communityAdmin.audit.openMember }).first()
+    );
+
+    await page.goto(`${route}/members/${crypto.randomUUID()}`);
+    await waitForHydratedPage(page);
+    await expect(page.getByRole('heading', { name: en.communityAdmin.title.member })).toBeVisible();
+    await expect(page.getByRole('main')).toHaveCount(1);
+
+    await page.goto(`${route}/members/${ownerRow.membership_id}`);
+    await waitForHydratedPage(page);
+    await page.getByRole('button', { name: en.communityAdmin.action.demote }).click();
+    await page.getByRole('button', { name: en.communityAdmin.confirmAction }).click();
+    await expect(
+      page.getByRole('heading', { name: en.communityAdmin.accessDeniedTitle })
+    ).toBeVisible();
+    expect(requestRow.status).toBe('active');
   }
-  await page.locator('#locale').selectOption('es');
-  await expect(page.context().cookies()).resolves.toContainEqual(
-    expect.objectContaining({ name: 'locale', value: 'es', path: '/' })
-  );
-  await page.reload();
-  await waitForHydratedPage(page);
-  await expect(page.locator('#locale')).toHaveValue('es');
-  await expect(page.locator('#locale')).toHaveAccessibleName(es.language);
-  await expect(page.locator('html')).toHaveAttribute('lang', 'es');
-  await expect(page.getByRole('heading', { name: es.communityAdmin.title.settings })).toBeVisible();
-  await page.setViewportSize({ width: 390, height: 844 });
-  await page.locator('#locale').selectOption('en');
-  await expect(page.locator('html')).toHaveAttribute('lang', 'en');
-  await assertLocaleControlSizing(page, en, 390);
-  await page.context().addCookies([{ name: 'locale', value: 'en', url: 'http://127.0.0.1:4173' }]);
-  await page.waitForLoadState('networkidle');
-  await page.setViewportSize({ width: 320, height: 844 });
-  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(320);
-  await page.setViewportSize({ width: 390, height: 844 });
-  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
-
-  await page.goto(`${route}/venues`);
-  await page.context().addCookies([{ name: 'locale', value: 'en', url: 'http://127.0.0.1:4173' }]);
-  await page.reload();
-  await waitForHydratedPage(page);
-  await expect(page.locator('html')).toHaveAttribute('lang', 'en');
-  await geometry(page);
-  await page.getByRole('button', { name: en.communityAdmin.venue.add }).click();
-  await page.getByLabel(en.communityAdmin.venue.name).fill('North Court');
-  await page.getByLabel(en.communityAdmin.venue.address).fill('Madrid');
-  await page.getByLabel(en.communityAdmin.venue.mapsUrl).fill('https://maps.example.test/court');
-  await page.getByRole('button', { name: en.communityAdmin.save }).click();
-  await expect(page.getByRole('heading', { name: 'North Court' })).toBeVisible();
-  await page.reload();
-  await waitForHydratedPage(page);
-  await venueGeometry(page);
-  await assertLinkHitArea(
-    page.getByRole('link', { name: en.communityAdmin.venue.openMap }).first()
-  );
-  // Mask fixture venue names and dynamic/unsupported detail copy only; card edges, action labels,
-  // and the supported Open map links remain part of the pixel comparison.
-  // Measured macOS 16,351; Linux 17,771; 3,229px headroom. Linux CI evidence: docs/visual/community-admin-residuals.md.
-  // Original cap-selection target: ≥2,500px headroom, rounded up to the next 500.
-  await visualDiff(page, 'A5Vio.png', 21_000, [
-    [32, 140, 180, 15],
-    [32, 161, 240, 15],
-    [32, 264, 180, 15],
-    [32, 285, 240, 15]
-  ]);
-  await page
-    .getByTestId('community-venue-card')
-    .first()
-    .getByRole('button', { name: en.communityAdmin.venue.archive })
-    .click();
-  await expect(page.getByText('Venue archived.')).toBeVisible();
-
-  await page.goto(`${route}/audit`);
-  await waitForHydratedPage(page);
-  await auditGeometry(page);
-  await expect(page.getByText(/Actor identity unavailable ·/).first()).toBeVisible();
-  await expect(page.getByText(/League result corrected/)).toHaveCount(0);
-  // Actor identity is intentionally a translated generic fallback; timestamps are fixture-dependent.
-  // The fourth Pencil event ("League result corrected") and the 3-row paging control are the
-  // approved unsupported/adapted region, so the band below the third event stays masked.
-  // Measured macOS 16,174; Linux 17,044; 2,956px headroom. Linux CI evidence: docs/visual/community-admin-residuals.md.
-  // Original cap-selection target: ≥2,500px headroom, rounded up to the next 500.
-  await visualDiff(page, 'E5CS5K.png', 20_000, [
-    [18, 140, 354, 24],
-    [18, 210, 354, 24],
-    [18, 280, 354, 24],
-    [18, 317, 354, 72]
-  ]);
-  await page.getByRole('button', { name: en.communityAdmin.loadMore }).click();
-  await assertLinkHitArea(
-    page.getByRole('link', { name: en.communityAdmin.audit.openMember }).first()
-  );
-
-  await page.goto(`${route}/members/${crypto.randomUUID()}`);
-  await waitForHydratedPage(page);
-  await expect(page.getByRole('heading', { name: en.communityAdmin.title.member })).toBeVisible();
-  await expect(page.getByRole('main')).toHaveCount(1);
-
-  await page.goto(`${route}/members/${ownerRow.membership_id}`);
-  await waitForHydratedPage(page);
-  await page.getByRole('button', { name: en.communityAdmin.action.demote }).click();
-  await page.getByRole('button', { name: en.communityAdmin.confirmAction }).click();
-  await expect(
-    page.getByRole('heading', { name: en.communityAdmin.accessDeniedTitle })
-  ).toBeVisible();
-  expect(requestRow.status).toBe('active');
-});
+);
 
 test('unauthorized community admin routes never disclose confidential fixture payloads', async ({
   browser

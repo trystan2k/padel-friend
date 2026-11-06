@@ -68,6 +68,12 @@ test.afterAll(async () => {
     await sql(`do $$ begin delete from auth.users where email='${email}'; end $$;`);
 });
 test.beforeEach(() => test.setTimeout(180_000));
+// Every f.page() opens a signed-in context that the shared fixture keeps until suite cleanup.
+// Release each test's browsers right away (actors and community stay): the serial suite otherwise
+// holds 20+ live renderers beside the CI workers, starving later tests of CPU and memory.
+test.afterEach(async ({ browser }) => {
+  await Promise.all(browser.contexts().map((context) => context.close()));
+});
 
 // --- helpers -----------------------------------------------------------------------------
 
