@@ -22,6 +22,9 @@ describe.skipIf(!environment.env)(
 
     beforeAll(async () => {
       kit = await createRankedResultFixtures(environment.env!);
+      // Readers fail retryably while statistics lag the committed rating revision. Earlier suites in the shared
+      // database may leave that lag; publishing realigns the baseline (and waits out any in-flight publisher).
+      await fixtureSql('select public.statistics_publish();');
       for (let i = 0; i < 50; i += 1) viewerEvents.push(await kit.event());
       // Distinct past instants let the cursor walk many pages of the viewer's own history.
       await fixtureSql(`alter table public.match_events disable trigger match_event_immutable;

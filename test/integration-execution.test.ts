@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { readdirSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
+import { dirname, relative, resolve } from 'node:path';
 import { PARALLEL_INTEGRATION_FILES } from '../integration-partition';
 import { phaseArgs, runIntegration } from '../scripts/run-integration.mjs';
 
@@ -41,6 +42,55 @@ describe('integration partition', () => {
     );
     expect(unsafe).toEqual([]);
   });
+});
+
+const DDL_PATTERN =
+  /disable\s+trigger|enable\s+trigger|session_replication_role|alter\s+table[^;'`]*trigger/i;
+const DDL_HELPER_MODULES = [
+  'provisional-player-fixtures',
+  'match-management-fixtures',
+  'match-add-player-fixtures',
+  'match-registration-sql'
+];
+
+function resolveImport(from: string, specifier: string): string | undefined {
+  const base = resolve(dirname(from), specifier);
+  return [`${base}.ts`, base, `${base}/index.ts`].find(
+    (candidate) => candidate.endsWith('.ts') && existsSync(candidate)
+  );
+}
+
+function transitiveSources(entry: string): string[] {
+  const seen = new Set<string>();
+  const visit = (file: string) => {
+    if (seen.has(file)) return;
+    seen.add(file);
+    const source = readFileSync(file, 'utf8');
+    for (const match of source.matchAll(
+      /from\s+['"](\.[^'"]+)['"]|import\(\s*['"](\.[^'"]+)['"]/g
+    )) {
+      const specifier = match[1] ?? match[2];
+      const resolved = specifier ? resolveImport(file, specifier) : undefined;
+      if (resolved) visit(resolved);
+    }
+  };
+  visit(resolve(entry));
+  return [...seen];
+}
+
+describe('parallel partition DDL-free contract', () => {
+  it.each([...PARALLEL_INTEGRATION_FILES])(
+    '%s has no trigger DDL in its transitive test imports',
+    (file) => {
+      const sources = transitiveSources(file);
+      const ddlModules = sources.filter((source) => DDL_PATTERN.test(readFileSync(source, 'utf8')));
+      const helperImports = sources.filter((source) =>
+        DDL_HELPER_MODULES.some((helper) => source.endsWith(`/${helper}.ts`))
+      );
+      expect(ddlModules.map((source) => relative(process.cwd(), source))).toEqual([]);
+      expect(helperImports.map((source) => relative(process.cwd(), source))).toEqual([]);
+    }
+  );
 });
 
 describe('phaseArgs', () => {
