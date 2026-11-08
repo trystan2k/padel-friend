@@ -9,6 +9,7 @@ import {
   saveMyNotificationPreferences
 } from './notifications.functions';
 import { PwaInstallPanel } from '../pwa/PwaInstallPanel';
+import { PushDevicePanel } from './PushDevicePanel';
 import { preferenceStyles as styles } from './notification-preferences.styles';
 
 type Preferences = Pick<
@@ -55,6 +56,8 @@ export function NotificationPreferencesPage({
         }
       : defaults
   );
+  // Last server-confirmed intent; the device panel never treats unsaved edits as delivery intent.
+  const [savedEnabled, setSavedEnabled] = useState(initial?.push_enabled ?? false);
   const [saving, setSaving] = useState(false);
   const [status, setStatus] = useState<'saved' | 'error' | null>(null);
   const [online, setOnline] = useState(true);
@@ -75,6 +78,7 @@ export function NotificationPreferencesPage({
     setStatus(null);
     try {
       await saveMyNotificationPreferences({ data: values });
+      setSavedEnabled(values.push_enabled);
       setStatus('saved');
     } catch {
       setStatus('error');
@@ -90,7 +94,6 @@ export function NotificationPreferencesPage({
         </Link>
         <h1 {...stylex.props(styles.title)}>{t('notificationPreferences.title')}</h1>
         <p {...stylex.props(styles.context)}>{t('notificationPreferences.context')}</p>
-        <p {...stylex.props(styles.helper)}>{t('notificationPreferences.pushUnavailable')}</p>
         <fieldset {...stylex.props(styles.group)}>
           <legend {...stylex.props(styles.legend)}>{t('notificationPreferences.pushTitle')}</legend>
           <Switch.Root
@@ -121,6 +124,7 @@ export function NotificationPreferencesPage({
             </label>
           ))}
         </fieldset>
+        <PushDevicePanel savedIntent={savedEnabled} />
         <section aria-labelledby="critical-title" {...stylex.props(styles.always)}>
           <h2 id="critical-title" {...stylex.props(styles.alwaysTitle)}>
             {t('notificationPreferences.criticalTitle')}

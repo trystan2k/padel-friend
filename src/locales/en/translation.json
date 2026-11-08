@@ -462,6 +462,33 @@
       "retry": "Try again"
     }
   },
+  "push": {
+    "title": "Web Push on this device",
+    "loading": "Checking Web Push on this device…",
+    "enable": "Enable push on this device",
+    "enabling": "Enabling…",
+    "disableDevice": "Disable on this device",
+    "disabling": "Disabling…",
+    "enabled": "Web Push is on for this device.",
+    "intentOff": "This device is ready, but Web Push is switched off above. Turn it on and save to receive notifications.",
+    "permissionDefault": "Your browser asks for permission only after you tap Enable.",
+    "grantedNotSubscribed": "Notifications are allowed, but this device is not registered for Web Push yet.",
+    "denied": "Notifications are blocked for Padel Friend. Allow them in your browser or device settings, then come back.",
+    "unsupported": "This browser cannot receive Web Push.",
+    "installRequired": "On iPhone or iPad, install Padel Friend to your Home Screen first, then open it from there to enable Web Push.",
+    "offline": "You are offline. Reconnect to manage Web Push on this device.",
+    "configUnavailable": "Web Push is unavailable right now.",
+    "subscriptionFailed": "Could not set up Web Push on this device.",
+    "saveFailed": "Could not save this device, so Web Push is not enabled. Try again.",
+    "expired": "This device's Web Push registration expired. Enable it again to keep receiving notifications.",
+    "keyChanged": "Web Push settings changed. Enable it again on this device.",
+    "retry": "Try again",
+    "deviceDisabled": "Web Push is off for this device. Your other devices are unchanged.",
+    "cleanupFailed": "Could not fully turn off Web Push on this device. Try again.",
+    "fallback": "In-app notifications still work and remain available.",
+    "otherDevices_one": "{{count}} other device is registered for Web Push.",
+    "otherDevices_other": "{{count}} other devices are registered for Web Push."
+  },
   "notifications": {
     "title": "Notifications",
     "subtitle": "Updates about your padel community.",
@@ -625,7 +652,6 @@
     "context": "In-app notifications remain available even when Web Push is off.",
     "pushTitle": "Web Push",
     "pushHelper": "Save which updates you would like to receive through Web Push.",
-    "pushUnavailable": "Delivery is not available yet. These switches save your preferences only; no notifications will be delivered.",
     "categories": {
       "community": "Community & invitations",
       "matches": "Match updates",

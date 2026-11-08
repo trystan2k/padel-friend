@@ -96,5 +96,63 @@ export const preferenceStyles = stylex.create({
     color: 'var(--color-green)',
     fontWeight: 'var(--font-weight-bold)'
   },
-  save: { minHeight: '44px', paddingInline: 'var(--space-4)' }
+  save: { minHeight: '44px', paddingInline: 'var(--space-4)' },
+  device: {
+    boxSizing: 'border-box',
+    width: '100%',
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'flex-start',
+    gap: 'var(--space-4)',
+    padding: 'var(--space-14)',
+    borderRadius: 'var(--radius-16)',
+    backgroundColor: 'var(--color-surface)'
+  },
+  deviceTitle: {
+    margin: 0,
+    color: 'var(--color-amber)',
+    fontSize: 'var(--font-size-12)',
+    fontWeight: 'var(--font-weight-bold)',
+    textTransform: 'uppercase'
+  },
+  deviceTitleOk: { color: 'var(--color-green)' },
+  deviceTitleFailed: { color: 'var(--color-red)' },
+  deviceCopy: {
+    display: 'block',
+    margin: 0,
+    color: 'var(--color-text)',
+    fontSize: 'var(--font-size-12)',
+    lineHeight: 'var(--font-line-height-body)',
+    overflowWrap: 'anywhere',
+    ':empty': { display: 'none' }
+  },
+  deviceAlert: { color: 'var(--color-red)' },
+  deviceFallback: { color: 'var(--color-green)' },
+  deviceAction: {
+    minHeight: '44px',
+    marginBlockStart: 'var(--space-8)',
+    paddingInline: 'var(--space-16)',
+    borderWidth: 0,
+    borderStyle: 'none',
+    borderRadius: 'var(--radius-14)',
+    backgroundColor: 'var(--color-green)',
+    color: 'var(--color-surface)',
+    fontFamily: 'inherit',
+    fontSize: 'var(--font-size-12)',
+    fontWeight: 'var(--font-weight-bold)',
+    textTransform: 'uppercase',
+    cursor: 'pointer',
+    ':focus-visible': {
+      outline: 'var(--border-width-lg) solid var(--color-text)',
+      outlineOffset: 'var(--space-2)'
+    },
+    ':disabled': { cursor: 'not-allowed', opacity: 0.6 }
+  },
+  deviceSecondary: {
+    backgroundColor: 'transparent',
+    color: 'var(--color-text)',
+    borderWidth: 'var(--border-width-sm)',
+    borderStyle: 'solid',
+    borderColor: 'var(--color-line)'
+  }
 });

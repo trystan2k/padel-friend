@@ -2909,6 +2909,55 @@ export type Database = {
         }
         Relationships: []
       }
+      push_subscriptions: {
+        Row: {
+          auth: string
+          created_at: string
+          endpoint: string
+          expires_at: string | null
+          id: string
+          last_seen_at: string
+          locale: string
+          p256dh: string
+          retired_at: string | null
+          retired_reason: string | null
+          updated_at: string
+          user_id: string
+          vapid_key_id: string
+        }
+        ComputedFields: never
+        Insert: {
+          auth: string
+          created_at?: string
+          endpoint: string
+          expires_at?: string | null
+          id?: string
+          last_seen_at?: string
+          locale: string
+          p256dh: string
+          retired_at?: string | null
+          retired_reason?: string | null
+          updated_at?: string
+          user_id: string
+          vapid_key_id: string
+        }
+        Update: {
+          auth?: string
+          created_at?: string
+          endpoint?: string
+          expires_at?: string | null
+          id?: string
+          last_seen_at?: string
+          locale?: string
+          p256dh?: string
+          retired_at?: string | null
+          retired_reason?: string | null
+          updated_at?: string
+          user_id?: string
+          vapid_key_id?: string
+        }
+        Relationships: []
+      }
       result_amendment_candidates: {
         Row: {
           amendment_id: string
@@ -5801,6 +5850,20 @@ export type Database = {
             }
             Returns: Json
           }
+      reconcile_my_push_devices: {
+        Args: { p_current_endpoint?: string; p_locale?: string }
+        Returns: {
+          device_created_at: string
+          device_expires_at: string
+          device_id: string
+          device_last_seen_at: string
+          device_locale: string
+          device_retired_at: string
+          device_retired_reason: string
+          device_vapid_key_id: string
+          is_current: boolean
+        }[]
+      }
       reconfirm_match_registration: {
         Args: {
           p_attempt_id: string
@@ -5873,6 +5936,17 @@ export type Database = {
           p_data: Json
         }
         Returns: undefined
+      }
+      register_my_push_subscription: {
+        Args: {
+          p_auth: string
+          p_endpoint: string
+          p_expires_at?: string
+          p_locale: string
+          p_p256dh: string
+          p_vapid_key_id: string
+        }
+        Returns: string
       }
       remove_match_registration: {
         Args: {
@@ -6022,6 +6096,10 @@ export type Database = {
       }
       result_repair_retryable: { Args: { p_code: string }; Returns: boolean }
       result_repair_scheduler_health: { Args: Record<PropertyKey, never>; Returns: Json }
+      retire_my_push_subscription: {
+        Args: { p_endpoint: string; p_reason: string }
+        Returns: boolean
+      }
       retry_result_repair: { Args: { p_job_id: string }; Returns: Json }
       review_match_event_result: {
         Args: {

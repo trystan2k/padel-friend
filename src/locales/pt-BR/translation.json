@@ -462,6 +462,33 @@
       "retry": "Tentar novamente"
     }
   },
+  "push": {
+    "title": "Web Push neste dispositivo",
+    "loading": "Verificando o Web Push neste dispositivo…",
+    "enable": "Ativar push neste dispositivo",
+    "enabling": "Ativando…",
+    "disableDevice": "Desativar neste dispositivo",
+    "disabling": "Desativando…",
+    "enabled": "O Web Push está ativo neste dispositivo.",
+    "intentOff": "Este dispositivo está pronto, mas o Web Push está desligado acima. Ligue e salve para receber notificações.",
+    "permissionDefault": "O navegador só pede permissão depois que você tocar em Ativar.",
+    "grantedNotSubscribed": "As notificações estão permitidas, mas este dispositivo ainda não está registrado para Web Push.",
+    "denied": "As notificações estão bloqueadas para o Padel Friend. Permita nas configurações do navegador ou do dispositivo e volte aqui.",
+    "unsupported": "Este navegador não recebe Web Push.",
+    "installRequired": "No iPhone ou iPad, instale o Padel Friend na Tela de Início primeiro e abra por lá para ativar o Web Push.",
+    "offline": "Você está offline. Reconecte para gerenciar o Web Push neste dispositivo.",
+    "configUnavailable": "O Web Push está indisponível no momento.",
+    "subscriptionFailed": "Não foi possível configurar o Web Push neste dispositivo.",
+    "saveFailed": "Não foi possível salvar este dispositivo, então o Web Push não foi ativado. Tente novamente.",
+    "expired": "O registro de Web Push deste dispositivo expirou. Ative novamente para continuar recebendo notificações.",
+    "keyChanged": "As configurações de Web Push mudaram. Ative novamente neste dispositivo.",
+    "retry": "Tentar novamente",
+    "deviceDisabled": "O Web Push está desativado neste dispositivo. Seus outros dispositivos não mudaram.",
+    "cleanupFailed": "Não foi possível desativar totalmente o Web Push neste dispositivo. Tente novamente.",
+    "fallback": "As notificações no app continuam funcionando e disponíveis.",
+    "otherDevices_one": "{{count}} outro dispositivo está registrado para Web Push.",
+    "otherDevices_other": "{{count}} outros dispositivos estão registrados para Web Push."
+  },
   "notifications": {
     "title": "Notificações",
     "subtitle": "Novidades sobre sua comunidade de padel.",
@@ -625,7 +652,6 @@
     "context": "As notificações no app continuam disponíveis mesmo com o Push desativado.",
     "pushTitle": "Notificações Push",
     "pushHelper": "Salve quais atualizações gostaria de receber por Push.",
-    "pushUnavailable": "O envio ainda não está disponível. Estas opções apenas salvam suas preferências; nenhuma notificação será enviada.",
     "categories": {
       "community": "Comunidade e convites",
       "matches": "Atualizações de partidas",
