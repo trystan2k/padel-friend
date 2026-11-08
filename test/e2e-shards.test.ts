@@ -10,6 +10,7 @@ import {
   VISUAL_GREP,
   gateLanes,
   isVisualFile,
+  repoRelativeSpec,
   laneArgs,
   listSpecs,
   planGroups
@@ -39,6 +40,18 @@ describe('listSpecs', () => {
     } finally {
       rmSync(root, { recursive: true, force: true });
     }
+  });
+});
+
+describe('repoRelativeSpec', () => {
+  it('computes repo-relative paths, including nested specs, without assuming a common prefix', () => {
+    expect(repoRelativeSpec('/abs/repo/e2e', '/abs/repo/e2e/home.spec.ts')).toBe(
+      'e2e/home.spec.ts'
+    );
+    expect(repoRelativeSpec('/abs/repo/e2e', '/abs/repo/e2e/nested/deeper/c.spec.ts')).toBe(
+      'e2e/nested/deeper/c.spec.ts'
+    );
+    expect(repoRelativeSpec('/abs/repo/e2e/', '/abs/repo/e2e/a.spec.ts')).toBe('e2e/a.spec.ts');
   });
 });
 

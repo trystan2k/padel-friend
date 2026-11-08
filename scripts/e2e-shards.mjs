@@ -1,4 +1,5 @@
 import { readdirSync } from 'node:fs';
+import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 // Visual selection, shared by every consumer (CI lanes, the local fast lane): a test is visual when it
@@ -81,18 +82,25 @@ export const SERIAL_SPECS = [
 
 const E2E_DIR = fileURLToPath(new URL('../e2e', import.meta.url));
 
+// Repo-relative `e2e/...` spec path (posix separators) for a spec found under `dir`.
+export const repoRelativeSpec = (dir, spec) =>
+  `e2e/${path.relative(dir, spec).split(path.sep).join('/')}`;
+
 /**
  * The local gate's e2e invocations as repo-relative spec lists: the main sweep (every spec except
  * SERIAL_SPECS, found by the same recursive discovery as listSpecs) then the serial specs. Throws when
  * a serial spec no longer exists, so the list cannot rot silently.
  */
 export function gateLanes(dir = E2E_DIR) {
-  const all = listSpecs(dir).map((spec) => `e2e${spec.slice(dir.length)}`);
+  const all = listSpecs(dir).map((spec) => repoRelativeSpec(dir, spec));
   const missing = SERIAL_SPECS.filter((spec) => !all.includes(spec));
   if (missing.length > 0) throw new Error(`Serial E2E spec(s) not found: ${missing.join(', ')}`);
   return { main: all.filter((spec) => !SERIAL_SPECS.includes(spec)), serial: [...SERIAL_SPECS] };
 }
 
+// Filename-only check for standalone visual spec files: used by planGroups to keep them out of the
+// functional lanes. Lane selection itself (visual lane, --grep-invert) uses VISUAL_GREP, which also
+// matches @visual-tagged tests inside non-visual files.
 export const isVisualFile = (spec) => /-visual\.spec\.ts$/.test(spec);
 
 /** Longest-processing-time assignment, deterministic: ties break on spec path, then lowest lane. */

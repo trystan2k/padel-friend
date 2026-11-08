@@ -334,11 +334,10 @@ jobs:
           SERVICE_ROLE_KEY="${SERVICE_ROLE_KEY%\"}"
           echo "::add-mask::$SERVICE_ROLE_KEY"
           printf 'SUPABASE_SERVICE_ROLE_KEY=%s\n' "$SERVICE_ROLE_KEY" >> "$GITHUB_ENV"
-          # The shared build is keyless (the static job has no stack). The preview worker reads the key
-          # from dist/server/.dev.vars, which is where a webServer build would have baked it; add the
-          # live stack's key to this job's extracted copy only, never to the artifact or a tracked file.
-          test -f dist/server/.dev.vars
-          printf 'SUPABASE_SERVICE_ROLE_KEY=%s\n' "$SERVICE_ROLE_KEY" >> dist/server/.dev.vars
+          # The shared build is keyless (the static job has no stack), so it ships no dist/server/.dev.vars.
+          # The preview worker reads the key from there; create it with the live stack's key in this job's
+          # extracted copy only, never in the artifact or a tracked file.
+          printf 'SUPABASE_SERVICE_ROLE_KEY=%s\n' "$SERVICE_ROLE_KEY" > dist/server/.dev.vars
       - run: pnpm exec playwright install --with-deps chromium
       # `pnpm test:e2e` resets the database and frees the preview port itself; E2E_GATE_PREBUILT makes
       # the web server preview the verified same-run build instead of rebuilding per lane.

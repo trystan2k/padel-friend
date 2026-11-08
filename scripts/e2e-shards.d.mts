@@ -5,6 +5,7 @@ export const SPEC_WEIGHTS: Record<string, number>;
 export const SERIAL_SPECS: string[];
 export function listSpecs(dir?: string): string[];
 export function gateLanes(dir?: string): { main: string[]; serial: string[] };
+export function repoRelativeSpec(dir: string, spec: string): string;
 export function isVisualFile(spec: string): boolean;
 export function planGroups(
   specs: string[],
