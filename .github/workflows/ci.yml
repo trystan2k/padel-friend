@@ -71,7 +71,8 @@ jobs:
         run: |
           run=true
           if [[ -n "${BASE_SHA:-}" && ! "$BASE_SHA" =~ ^0+$ ]] && git fetch --no-tags --depth=1 origin "$BASE_SHA" 2>/dev/null; then
-            if changed="$(git diff --name-only "$BASE_SHA" HEAD)"; then
+            # --no-renames lists both endpoints of a move, so leaving a watched path still counts.
+            if changed="$(git diff --name-only --no-renames "$BASE_SHA" HEAD)"; then
               run=false
               pattern='^(supabase/|scripts/test-populated-migration-up\.|test/fixtures/|test/matches\.migration-up-harness\.test\.ts$|package\.json$|pnpm-lock\.yaml$|\.github/workflows/ci\.yml$|\.github/actions/)'
               if grep -Eq "$pattern" <<<"$changed"; then run=true; fi
@@ -260,7 +261,7 @@ jobs:
 
   # Each E2E lane gets its own Supabase stack and a fresh preview of the shared same-run build.
   # Three functional lanes are balanced by measured runtime (scripts/e2e-shards.mjs); the serial lane
-  # isolates the global-repair-lock spec; the visual lane runs every @visual test on every PR and
+  # isolates the specs that race on global state (SERIAL_SPECS in scripts/e2e-shards.mjs); the visual lane runs every @visual test on every PR and
   # main push. The reporting job merges their blob
   # reports; checks aggregates the lane results directly.
   # Never place mutation-heavy unit/integration suites in this job.
@@ -333,17 +334,28 @@ jobs:
           SERVICE_ROLE_KEY="${SERVICE_ROLE_KEY%\"}"
           echo "::add-mask::$SERVICE_ROLE_KEY"
           printf 'SUPABASE_SERVICE_ROLE_KEY=%s\n' "$SERVICE_ROLE_KEY" >> "$GITHUB_ENV"
+          # The shared build is keyless (the static job has no stack). The preview worker reads the key
+          # from dist/server/.dev.vars, which is where a webServer build would have baked it; add the
+          # live stack's key to this job's extracted copy only, never to the artifact or a tracked file.
+          test -f dist/server/.dev.vars
+          printf 'SUPABASE_SERVICE_ROLE_KEY=%s\n' "$SERVICE_ROLE_KEY" >> dist/server/.dev.vars
       - run: pnpm exec playwright install --with-deps chromium
-      # `pnpm test:e2e` resets the database and frees the preview port itself; E2E_PREBUILT makes
+      # `pnpm test:e2e` resets the database and frees the preview port itself; E2E_GATE_PREBUILT makes
       # the web server preview the verified same-run build instead of rebuilding per lane.
       - name: Run fresh-preview E2E lane
         env:
-          E2E_PREBUILT: '1'
+          E2E_GATE_PREBUILT: '1'
           LANE: ${{ matrix.lane }}
         run: |
           set -euo pipefail
           mkdir -p artifacts
-          mapfile -t lane_args < <(node scripts/e2e-shards.mjs "$LANE")
+          # Plain redirect (not process substitution) so a planner failure aborts the lane under set -e.
+          node scripts/e2e-shards.mjs "$LANE" > "$RUNNER_TEMP/lane-args.txt"
+          mapfile -t lane_args < "$RUNNER_TEMP/lane-args.txt"
+          if [[ ${#lane_args[@]} -eq 0 ]]; then
+            printf 'E2E lane planner returned no args for %s\n' "$LANE" >&2
+            exit 1
+          fi
           start_ms="$(date +%s%3N)"
           if pnpm test:e2e "${lane_args[@]}" --reporter=blob; then
             test_exit_code=0

@@ -2,6 +2,7 @@ import { execFile } from 'node:child_process';
 import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { promisify } from 'node:util';
 import { beforeAll, describe, expect, it } from 'vitest';
+import { e2eBuildEnv, localServiceRoleKey } from '../scripts/e2e-build-env.mjs';
 
 const execFileAsync = promisify(execFile);
 const buildTimeoutMs = 120_000;
@@ -27,7 +28,10 @@ describe('admin server-function extraction (production build)', () => {
     // Never run this production build concurrently with Playwright: both use dist.
     buildStartedAtMs = Date.now();
     try {
+      // dist is shared with the complete-check gate build that e2e later previews, so build with the
+      // same env (service-role key baked into dist/server/.dev.vars) instead of clobbering it keyless.
       const { stdout, stderr } = await execFileAsync('pnpm', ['build'], {
+        env: { ...process.env, ...e2eBuildEnv(localServiceRoleKey()) },
         timeout: buildTimeoutMs,
         maxBuffer: 10 * 1024 * 1024
       });

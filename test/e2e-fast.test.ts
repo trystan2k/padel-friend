@@ -37,6 +37,22 @@ describe('e2e fast lane', () => {
     ]);
   });
 
+  it('never forwards an inherited gate-only prebuilt flag, so the build is always fresh', () => {
+    const envs: Array<Record<string, string | undefined>> = [];
+    runFast({
+      env: { E2E_GATE_PREBUILT: '1', KEEP: 'yes' },
+      run: (_command, _args, options) => {
+        envs.push(options.env);
+        return { status: 0 };
+      }
+    });
+
+    expect(envs).toHaveLength(3);
+    for (const env of envs) {
+      expect(env).toEqual({ KEEP: 'yes' });
+    }
+  });
+
   it('stops at the first failing step', () => {
     const calls: string[][] = [];
     const status = runFast({

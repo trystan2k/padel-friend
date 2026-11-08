@@ -1,23 +1,10 @@
-import { execFileSync } from 'node:child_process';
 import { defineConfig, devices } from '@playwright/test';
+import { e2eBuildEnv, localServiceRoleKey } from './scripts/e2e-build-env.mjs';
 
 // The add-player server function needs the server-only service-role key. Resolve it
 // once in the main process (workers inherit process.env) from CI's environment or the
-// local stack, never from a committed file.
-function localServiceRoleKey(): string | undefined {
-  if (process.env.SUPABASE_SERVICE_ROLE_KEY) return process.env.SUPABASE_SERVICE_ROLE_KEY;
-  try {
-    const output = execFileSync('pnpm', ['exec', 'supabase', 'status', '-o', 'env'], {
-      encoding: 'utf8',
-      stdio: ['ignore', 'pipe', 'ignore']
-    });
-    const key = /^SERVICE_ROLE_KEY="?([^"\n]+)"?$/m.exec(output)?.[1];
-    if (key) process.env.SUPABASE_SERVICE_ROLE_KEY = key;
-    return key;
-  } catch {
-    return undefined;
-  }
-}
+// local stack, never from a committed file. scripts/e2e-build-env.mjs is shared with the
+// complete-check build stage so every build e2e previews carries it.
 const serviceRoleKey = localServiceRoleKey();
 
 export default defineConfig({
@@ -59,10 +46,12 @@ export default defineConfig({
   },
   projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
   webServer: {
-    // E2E_PREBUILT is set only by CI after it verified the same-run build artifact; everywhere else
-    // (including plain pnpm test:e2e) the preview is built fresh.
+    // E2E_GATE_PREBUILT is an internal contract: only complete-check (after matching its build
+    // fingerprint) and CI (after verifying the same-run build artifact) set it. Shell users and
+    // scripts/e2e-fast.mjs never do (the latter scrubs it), so a plain `pnpm test:e2e` always
+    // builds fresh. The legacy E2E_PREBUILT name is ignored.
     command:
-      process.env.E2E_PREBUILT === '1'
+      process.env.E2E_GATE_PREBUILT === '1'
         ? 'pnpm preview --port 4173'
         : 'pnpm build && pnpm preview --port 4173',
     url: 'http://127.0.0.1:4173',
@@ -71,8 +60,6 @@ export default defineConfig({
     reuseExistingServer: false,
     timeout: 120000,
     // Forward the process env so the Cloudflare preview exposes the binding to server code.
-    env: serviceRoleKey
-      ? { CLOUDFLARE_INCLUDE_PROCESS_ENV: 'true', SUPABASE_SERVICE_ROLE_KEY: serviceRoleKey }
-      : {}
+    env: e2eBuildEnv(serviceRoleKey)
   }
 });

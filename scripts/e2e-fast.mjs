@@ -18,15 +18,17 @@ export function fastArgs(args) {
   return [...args, '--grep-invert', VISUAL_GREP];
 }
 
-export function runFast({ args = [], run = spawnSync } = {}) {
+export function runFast({ args = [], env = process.env, run = spawnSync } = {}) {
   const playwrightArgs = fastArgs(args);
+  // Always a fresh build: never inherit the gate-only prebuilt flag from the caller's shell.
+  const { E2E_GATE_PREBUILT: _ignored, ...freshEnv } = env;
   // Same order as `pnpm test:e2e`: reset, free the preview port, then Playwright.
   for (const [command, commandArgs] of [
     ['pnpm', ['db:reset']],
     ['node', ['scripts/free-port.mjs', '4173']],
     ['pnpm', ['exec', 'playwright', 'test', ...playwrightArgs]]
   ]) {
-    const result = run(command, commandArgs, { stdio: 'inherit' });
+    const result = run(command, commandArgs, { stdio: 'inherit', env: freshEnv });
     if (result.status !== 0) return result.status ?? 1;
   }
   return 0;
