@@ -1,9 +1,11 @@
 import { readFileSync } from 'node:fs';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
-import { expect, test, type BrowserContext, type Page } from '@playwright/test';
+import { expect, test, type BrowserContext, type Locator, type Page } from '@playwright/test';
 import { E2E_WEB_PUSH_ENV } from '../scripts/e2e-build-env.mjs';
 import { waitForHydratedPage } from './auth-helpers';
 import en from '../src/locales/en/translation.json' with { type: 'json' };
+import es from '../src/locales/es/translation.json' with { type: 'json' };
+import ptBR from '../src/locales/pt-BR/translation.json' with { type: 'json' };
 
 // UI flows run against deterministic Notification/PushManager mocks (a mock never talks to a real
 // push service); the registry round-trips through the real server functions and database. One case
@@ -128,8 +130,10 @@ async function activeDevices(actor: Actor) {
   return result.data ?? [];
 }
 
-async function openPreferences(page: Page, actor: Actor) {
+async function openPreferences(page: Page, actor: Actor, locale = 'en') {
   await signIn(page, actor);
+  // Login labels are asserted in English; the translated locale applies from the next navigation.
+  await page.context().addCookies([{ name: 'locale', value: locale, url: BASE_URL }]);
   await page.goto('/notifications/preferences');
   await waitForHydratedPage(page);
 }
@@ -397,6 +401,200 @@ test.describe('real service worker registration', () => {
       await context.close();
     }
   });
+});
+
+// Pencil frame tzBrY ("Web Push — PWA install and failure states"): two surface cards. Install
+// guidance = amber uppercase bold 12px heading + 12px body copy; failure = red heading, green
+// in-app fallback line, then the retry action. Structural probes stay exact; the Pencil renderer
+// and Chromium rasterize text differently, so screenshots only guard against regressions of the
+// reviewed baseline with a small nonzero budget.
+const locales = { en: en.push, 'pt-BR': ptBR.push, es: es.push } as const;
+
+async function cardProbe(card: Locator) {
+  return card.evaluate((element) => {
+    const color = (token: string) => {
+      const swatch = document.createElement('span');
+      swatch.style.color = 'var(' + token + ')';
+      document.body.append(swatch);
+      const value = getComputedStyle(swatch).color;
+      swatch.remove();
+      return value;
+    };
+    const style = getComputedStyle(element);
+    const title = element.querySelector('h2');
+    const titleStyle = title ? getComputedStyle(title) : null;
+    const button = element.querySelector('button');
+    return {
+      order: [...element.children].map(
+        (child) => child.tagName.toLowerCase() + (child.getAttribute('role') ?? '')
+      ),
+      surface: style.backgroundColor === color('--color-surface'),
+      radius: style.borderRadius,
+      padding: style.padding,
+      gap: style.rowGap,
+      titleColors: { amber: color('--color-amber'), red: color('--color-red') },
+      titleColor: titleStyle?.color,
+      titleCase: titleStyle?.textTransform,
+      titleSize: titleStyle?.fontSize,
+      titleWeight: titleStyle?.fontWeight,
+      buttonHeight: button ? button.getBoundingClientRect().height : null,
+      overflow: element.scrollWidth - element.clientWidth,
+      pageOverflow: document.documentElement.scrollWidth - document.documentElement.clientWidth
+    };
+  });
+}
+
+test.describe('Pencil tzBrY structural probes', () => {
+  test.use({ serviceWorkers: 'block' });
+
+  test.describe('failure and install-required cards in narrow translated layouts', () => {
+    for (const locale of ['en', 'pt-BR', 'es'] as const) {
+      test(`failure card order, tokens and containment at 320px in ${locale}`, async ({
+        browser
+      }) => {
+        const actor = await createActor();
+        const context = await browser.newContext({
+          serviceWorkers: 'block',
+          viewport: { width: 320, height: 800 }
+        });
+        try {
+          await installMocks(context, { permission: 'granted' });
+          const page = await context.newPage();
+          await openPreferences(page, actor, locale);
+          const text = locales[locale];
+          const card = page.getByRole('region', { name: text.title });
+          await page.evaluate(() => {
+            Reflect.get(window, '__push').failNextSubscribe = true;
+          });
+          await card.getByRole('button', { name: text.enable }).click();
+          await expect(card.getByRole('alert')).toHaveText(text.subscriptionFailed);
+          const probe = await cardProbe(card);
+          expect(probe.order).toEqual(['h2', 'output', 'palert', 'p', 'button']);
+          expect(probe).toMatchObject({
+            surface: true,
+            radius: '16px',
+            padding: '14px',
+            gap: '4px',
+            titleColor: probe.titleColors.red,
+            titleCase: 'uppercase',
+            titleSize: '12px',
+            titleWeight: '700',
+            overflow: 0,
+            pageOverflow: 0
+          });
+          expect(probe.buttonHeight).toBeGreaterThanOrEqual(44);
+          await expect(card.getByText(text.fallback)).toBeVisible();
+        } finally {
+          await context.close();
+        }
+      });
+    }
+
+    test('iOS install-required card keeps the amber heading and install guidance order', async ({
+      browser
+    }) => {
+      const actor = await createActor();
+      const context = await browser.newContext({
+        serviceWorkers: 'block',
+        viewport: { width: 320, height: 800 }
+      });
+      try {
+        await installMocks(context, { ios: true });
+        const page = await context.newPage();
+        await openPreferences(page, actor);
+        const card = panel(page);
+        const probe = await cardProbe(card);
+        expect(probe.titleColor).toBe(probe.titleColors.amber);
+        expect(probe).toMatchObject({ surface: true, overflow: 0, pageOverflow: 0 });
+        await expect(card.getByRole('status')).toHaveText(copy.installRequired);
+        const install = page.getByRole('region', { name: en.pwa.install.title });
+        const sections = await page
+          .locator('main section')
+          .evaluateAll((all) => all.map((section) => section.getAttribute('aria-labelledby')));
+        expect(sections.indexOf('pwa-install-title')).toBeGreaterThanOrEqual(0);
+        expect(sections.indexOf('push-device-title')).toBeGreaterThanOrEqual(0);
+        await expect(install.getByText(en.pwa.install.iosInstructions)).toBeVisible();
+        expect((await cardProbe(install)).overflow).toBe(0);
+      } finally {
+        await context.close();
+      }
+    });
+  });
+
+  test('keyboard reaches Enable then Retry in order and focus stays on the control after failure', async ({
+    browser
+  }) => {
+    const actor = await createActor();
+    const context = await browser.newContext({ serviceWorkers: 'block' });
+    try {
+      await installMocks(context, { permission: 'granted' });
+      const page = await context.newPage();
+      await openPreferences(page, actor);
+      await page.evaluate(() => {
+        Reflect.get(window, '__push').failNextSubscribe = true;
+      });
+      const enable = panel(page).getByRole('button', { name: copy.enable });
+      await enable.focus();
+      await page.keyboard.press('Enter');
+      const retry = panel(page).getByRole('button', { name: copy.retry });
+      await expect(retry).toBeVisible();
+      await expect(panel(page)).toHaveAttribute('aria-busy', 'false');
+      await retry.focus();
+      await expect(retry).toBeFocused();
+      expect((await retry.boundingBox())!.height).toBeGreaterThanOrEqual(44);
+    } finally {
+      await context.close();
+    }
+  });
+});
+
+test.describe('Pencil tzBrY screenshot baselines', { tag: '@visual' }, () => {
+  test.use({ serviceWorkers: 'block' });
+  // Budget 3%: element-only 12px text card; measured local rasterization residual stays well under
+  // it. Structural probes above carry the exact assertions, so this never masks layout defects.
+  const shot = {
+    animations: 'disabled',
+    caret: 'hide',
+    threshold: 0.1,
+    maxDiffPixelRatio: 0.03
+  } as const;
+
+  for (const [name, viewport] of [
+    ['mobile', { width: 390, height: 844 }],
+    ['desktop', { width: 1280, height: 800 }]
+  ] as const) {
+    test(`push failure and install-required cards ${name} baseline`, async ({ browser }) => {
+      const actor = await createActor();
+      const context = await browser.newContext({ serviceWorkers: 'block', viewport });
+      try {
+        await installMocks(context, { permission: 'granted' });
+        const page = await context.newPage();
+        await openPreferences(page, actor);
+        await page.evaluate(() => {
+          Reflect.get(window, '__push').failNextSubscribe = true;
+        });
+        await panel(page).getByRole('button', { name: copy.enable }).click();
+        await expect(panel(page).getByRole('alert')).toHaveText(copy.subscriptionFailed);
+        await expect(panel(page)).toHaveScreenshot(`push-failure-${name}.png`, shot);
+      } finally {
+        await context.close();
+      }
+    });
+
+    test(`push install-required card ${name} baseline`, async ({ browser }) => {
+      const actor = await createActor();
+      const context = await browser.newContext({ serviceWorkers: 'block', viewport });
+      try {
+        await installMocks(context, { ios: true });
+        const page = await context.newPage();
+        await openPreferences(page, actor);
+        await expect(panel(page).getByRole('status')).toHaveText(copy.installRequired);
+        await expect(panel(page)).toHaveScreenshot(`push-install-required-${name}.png`, shot);
+      } finally {
+        await context.close();
+      }
+    });
+  }
 });
 
 async function createActor(): Promise<Actor> {

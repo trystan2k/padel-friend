@@ -119,9 +119,13 @@ function cutoffLabel(language: string, iso: string | null, timeZone: string): st
   }).format(new Date(target));
 }
 
-function FeedbackOutput({ message }: { message: string | null }) {
+function FeedbackOutput({ message, failure }: { message: string | null; failure: boolean }) {
   return (
-    <output aria-live="polite" {...stylex.props(s.status)}>
+    <output
+      role={failure ? 'alert' : 'status'}
+      aria-live={failure ? 'assertive' : 'polite'}
+      {...stylex.props(s.status)}
+    >
       {message}
     </output>
   );
@@ -318,7 +322,10 @@ export function MatchRegistrationPanel({
           <span {...stylex.props(s.placeBadge, !isOrganizer && s.positiveBadge)}>{badgeLabel}</span>
         </div>
         <p {...stylex.props(s.copy)}>{copy}</p>
-        <FeedbackOutput message={feedbackMessage} />
+        <FeedbackOutput
+          message={feedbackMessage}
+          failure={controller.feedback?.kind === 'error' || controller.feedback?.kind === 'offline'}
+        />
         {registration.attempt_id && (
           <MatchParticipantActions
             key={`${eventId}:${registration.attempt_id}`}
@@ -367,7 +374,10 @@ export function MatchRegistrationPanel({
           submitButton(t('matches.management.reenter'), controller.pending || !controller.online)}
         {action === 'closed' && <p>{t('matches.management.errors.closed')}</p>}
         {action === 'full' && <p>{t('matchRegistration.full.copy', { maximum })}</p>}
-        <FeedbackOutput message={feedbackMessage} />
+        <FeedbackOutput
+          message={feedbackMessage}
+          failure={controller.feedback?.kind === 'error' || controller.feedback?.kind === 'offline'}
+        />
       </div>
     );
   } else if (registration.state === 'withdrawn' || registration.state === 'removed_by_creator') {
@@ -389,7 +399,10 @@ export function MatchRegistrationPanel({
           submitButton(t('matches.management.reenter'), controller.pending || !controller.online)}
         {action === 'closed' && <p>{t('matches.management.errors.closed')}</p>}
         {action === 'full' && <p>{t('matchRegistration.full.copy', { maximum })}</p>}
-        <FeedbackOutput message={feedbackMessage} />
+        <FeedbackOutput
+          message={feedbackMessage}
+          failure={controller.feedback?.kind === 'error' || controller.feedback?.kind === 'offline'}
+        />
       </div>
     );
   } else if (registration.state === 'pending') {
@@ -411,7 +424,10 @@ export function MatchRegistrationPanel({
             {t('matchRegistration.request.viewMatch')}
           </Link>
         </div>
-        <FeedbackOutput message={feedbackMessage} />
+        <FeedbackOutput
+          message={feedbackMessage}
+          failure={controller.feedback?.kind === 'error' || controller.feedback?.kind === 'offline'}
+        />
         <p {...stylex.props(s.note)}>{t('matchRegistration.request.note')}</p>
       </div>
     );
@@ -423,7 +439,10 @@ export function MatchRegistrationPanel({
       <div {...stylex.props(s.body)}>
         <p {...stylex.props(s.copy)}>{t('matchRegistration.place.openCopy')}</p>
         {submitButton(t('matchRegistration.join.button'), controller.pending || !controller.online)}
-        <FeedbackOutput message={feedbackMessage} />
+        <FeedbackOutput
+          message={feedbackMessage}
+          failure={controller.feedback?.kind === 'error' || controller.feedback?.kind === 'offline'}
+        />
       </div>
     );
   } else if (
@@ -468,7 +487,10 @@ export function MatchRegistrationPanel({
             {t('matchRegistration.request.viewMatch')}
           </Link>
         </div>
-        <FeedbackOutput message={feedbackMessage} />
+        <FeedbackOutput
+          message={feedbackMessage}
+          failure={controller.feedback?.kind === 'error' || controller.feedback?.kind === 'offline'}
+        />
         <p {...stylex.props(s.note)}>{t('matchRegistration.request.note')}</p>
       </div>
     );
@@ -486,7 +508,10 @@ export function MatchRegistrationPanel({
             {t('matchRegistration.request.viewMatchHistory')}
           </Link>
         </div>
-        <FeedbackOutput message={feedbackMessage} />
+        <FeedbackOutput
+          message={feedbackMessage}
+          failure={controller.feedback?.kind === 'error' || controller.feedback?.kind === 'offline'}
+        />
         <p {...stylex.props(s.note)}>{t('matchRegistration.request.note')}</p>
       </div>
     );
@@ -505,7 +530,10 @@ export function MatchRegistrationPanel({
         <div {...stylex.props(s.actions)}>
           {submitButton(t('matchRegistration.full.button'), true)}
         </div>
-        <FeedbackOutput message={feedbackMessage} />
+        <FeedbackOutput
+          message={feedbackMessage}
+          failure={controller.feedback?.kind === 'error' || controller.feedback?.kind === 'offline'}
+        />
         <p {...stylex.props(s.note)}>{t('matchRegistration.full.note')}</p>
       </div>
     );
@@ -531,7 +559,10 @@ export function MatchRegistrationPanel({
         </div>
         {capacity && <p {...stylex.props(s.meta)}>{capacity}</p>}
         {levelRange && <p {...stylex.props(s.meta)}>{levelRange}</p>}
-        <FeedbackOutput message={feedbackMessage} />
+        <FeedbackOutput
+          message={feedbackMessage}
+          failure={controller.feedback?.kind === 'error' || controller.feedback?.kind === 'offline'}
+        />
         <p {...stylex.props(s.note)}>{t('matchRegistration.join.requestNote')}</p>
       </div>
     );
@@ -547,7 +578,10 @@ export function MatchRegistrationPanel({
         </div>
         {capacity && <p {...stylex.props(s.meta)}>{capacity}</p>}
         {levelRange && <p {...stylex.props(s.meta)}>{levelRange}</p>}
-        <FeedbackOutput message={feedbackMessage} />
+        <FeedbackOutput
+          message={feedbackMessage}
+          failure={controller.feedback?.kind === 'error' || controller.feedback?.kind === 'offline'}
+        />
       </div>
     );
   } else {
@@ -556,7 +590,10 @@ export function MatchRegistrationPanel({
         <p {...stylex.props(s.counts)}>
           {counts.accepted} {t('matches.detail.accepted')}
         </p>
-        <FeedbackOutput message={feedbackMessage} />
+        <FeedbackOutput
+          message={feedbackMessage}
+          failure={controller.feedback?.kind === 'error' || controller.feedback?.kind === 'offline'}
+        />
       </div>
     );
   }

@@ -166,6 +166,21 @@ describe('PwaInstallPanel', () => {
     expect(await promptInstall()).toBe('unavailable');
   });
 
+  it('activates install from the keyboard and keeps the control a native focusable button', async () => {
+    mockEnvironment();
+    mount();
+    const { event, prompt } = installPromptEvent();
+    act(() => {
+      window.dispatchEvent(event);
+    });
+    const button = screen.getByRole('button', { name: copy.action });
+    expect(button.tagName).toBe('BUTTON');
+    button.focus();
+    expect(document.activeElement).toBe(button);
+    await userEvent.keyboard('{Enter}');
+    expect(prompt).toHaveBeenCalledTimes(1);
+  });
+
   it('shows the failure alert when the prompt cannot be shown', async () => {
     mockEnvironment();
     mount();

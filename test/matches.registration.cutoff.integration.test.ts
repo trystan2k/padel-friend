@@ -1,3 +1,4 @@
+import { expectNotificationPushJobs } from './helpers/notification-channel-evidence';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { describe, expect, it, vi } from 'vitest';
 import type { Database } from '../src/lib/supabase/database.types';
@@ -114,6 +115,7 @@ describe('match registration cutoff integration', () => {
       .select('id,recipient_user_id,event_key,kind,category,target_type,target_id,community_id')
       .eq('target_id', events[eventKey]!);
     expect(result.error, `${who.name} inbox`).toBeNull();
+    await expectNotificationPushJobs(result.data ?? []);
     return result.data ?? [];
   };
   const cutoffAlerts = (rows: SqlRow[]): SqlRow[] =>
@@ -129,6 +131,7 @@ describe('match registration cutoff integration', () => {
       .eq('kind', kind)
       .eq('target_id', events[eventKey]!);
     expect(result.error, `${who.name} ${kind} inbox`).toBeNull();
+    await expectNotificationPushJobs(result.data ?? []);
     return result.data ?? [];
   };
   /** Revision-keyed key shape for the two cutoff kinds. */

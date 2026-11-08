@@ -117,6 +117,60 @@ describe('transactional Push outbox', () => {
     }
   );
 
+  it.each(
+    ['community', 'matches', 'results', 'rankings', 'leagues'].flatMap((category) =>
+      [false, true].flatMap((global) =>
+        [false, true].flatMap((enabled) =>
+          [0, 1, 2].map((devices) => ({ category, global, enabled, devices }))
+        )
+      )
+    )
+  )(
+    'policy $category global=$global category=$enabled devices=$devices preserves read history',
+    async ({ category, global, enabled, devices }) => {
+      await expect(
+        check(
+          `
+      update public.notification_preferences set push_enabled=${global},push_${category}=${enabled} where user_id=u;
+      update public.notifications set read_at='2026-01-01T00:00:00Z' where id=n;
+      if ${devices}=0 then delete from public.push_subscriptions where id=s; end if;
+      if ${devices}=2 then
+        insert into public.push_subscriptions(user_id,endpoint,p256dh,auth,vapid_key_id,locale,created_at)
+          select user_id,endpoint||'-second',p256dh,auth,vapid_key_id,locale,created_at from public.push_subscriptions where id=s;
+      end if;
+      select * into j from public.claim_notification_push_jobs(25) where notification_id=n; token:=j.claim_token;
+      select count(*) into c from public.materialize_notification_push(n,token);
+      if c <> ${devices} then raise exception 'device count mismatch'; end if;
+      select count(*) into c from public.notification_push_deliveries d where notification_id=n
+        and public.prepare_notification_push(n,d.subscription_id,token) is not null;
+      if c <> ${global && enabled ? devices : 0} then raise exception 'preference cross-product mismatch'; end if;
+      if not exists(select 1 from public.notifications where id=n and read_at='2026-01-01T00:00:00Z') then raise exception 'read history changed'; end if;
+      `,
+          category
+        )
+      ).resolves.toBeUndefined();
+    }
+  );
+
+  it.each([404, 410])(
+    'provider %s retires endpoint but preserves read timestamp and surviving device',
+    async (status) => {
+      await expect(
+        check(`
+      update public.notifications set read_at='2026-01-01T00:00:00Z' where id=n;
+      insert into public.push_subscriptions(user_id,endpoint,p256dh,auth,vapid_key_id,locale,created_at)
+        select user_id,endpoint||'-second',p256dh,auth,vapid_key_id,locale,created_at from public.push_subscriptions where id=s;
+      select * into j from public.claim_notification_push_jobs(25) where notification_id=n; token:=j.claim_token;
+      perform public.materialize_notification_push(n,token);
+      perform public.prepare_notification_push(n,s,token);
+      perform public.settle_notification_push_delivery(n,s,token,'expired',${status});
+      if (select count(*) from public.push_subscriptions where user_id=u and retired_at is null) <> 1 then raise exception 'surviving device lost'; end if;
+      if not exists(select 1 from public.notifications where id=n and read_at='2026-01-01T00:00:00Z') then raise exception 'read history lost'; end if;
+    `)
+      ).resolves.toBeUndefined();
+    }
+  );
+
   it('missing/global/category preferences suppress terminally; future enrollment never materializes', async () => {
     await expect(
       check(`
@@ -221,6 +275,21 @@ describe('transactional Push outbox', () => {
         { values: [JSON.stringify(held)] }
       );
     }
+  });
+
+  it('claiming, reading and settling never create jobs for existing notifications (no backfill storm)', async () => {
+    await expect(
+      check(`
+      select count(*) into c from public.notification_push_jobs;
+      update public.notifications set read_at=now() where id=n;
+      perform public.claim_notification_push_jobs(25);
+      perform public.notification_push_health();
+      if (select count(*) from public.notification_push_jobs) <> c then raise exception 'job created without a new notification'; end if;
+      delete from public.notification_push_jobs where notification_id=n;
+      perform public.claim_notification_push_jobs(25);
+      if exists(select 1 from public.notification_push_jobs where notification_id=n) then raise exception 'historical notification backfilled'; end if;
+    `)
+    ).resolves.toBeUndefined();
   });
 
   it('denies anon and authenticated access to every service RPC and private table', async () => {

@@ -207,3 +207,30 @@ Generate keys once in a trusted operator environment (`pnpm exec web-push genera
 **Rotation.** Put old key ID/private pairs in `WEB_PUSH_VAPID_PRIVATE_KEYS`, then deploy new current ID/public/private pair. Keep old keys until devices reconcile and explicitly re-enable with current key. Never sign old subscriptions with a new unrelated key. Emergency: add compromised IDs to `WEB_PUSH_REVOKED_KEY_IDS`; an enabled scheduled sweep retires only those IDs, or an authorized operator calls service-only `revoke_notification_push_keys(text[])` immediately while kill switch remains off. Remove revoked signing material; affected devices must explicitly re-enable. Never retire notifications.
 
 **Verification.** `test/push.worker-adapter.test.ts` starts isolated wrangler/workerd with production compatibility date/`nodejs_compat`, sends encrypted HTTP to local fake provider, independently decrypts RFC8291 payload and verifies RFC8292 signature/audience. Test provider injection is fixture-only, never deployed. Outbound production URLs require supported HTTPS FCM/Firefox/Apple hosts/default port and never follow redirects. Outbox/matrix integration claimant suites run in serial partition; no live OS credentials required for CI. Physical-device receipt/tap verification remains release acceptance work, not implied by mock-provider success.
+
+### Web Push physical-device acceptance (pending operator execution)
+
+CI mocks certify protocol/UI behavior, not OS delivery. Record date, origin/build, OS/browser version,
+install state, permission, notification IDs, device outcomes and screenshots for every row below.
+Use HTTPS staging with dispatcher enabled and provisioned VAPID secrets. Never record endpoint URLs,
+auth keys, private VAPID keys or session tokens. Provider acceptance is not proof of OS display.
+
+- [ ] Chromium desktop: installed app, explicit permission, enabled account/category and device.
+- [ ] Chromium Android: installed app and authorized device; verify foreground/background display.
+- [ ] Firefox desktop: supported enrollment, delivery and tap; install guidance remains honest.
+- [ ] Safari macOS: supported enrollment, delivery and tap; denied permission gives actionable guidance.
+- [ ] iOS/iPadOS Home Screen: installed standalone app, explicit permission, delivery and tap.
+- [ ] iOS/iPadOS browser tab: install-required guidance; no permission prompt on entry or preference save.
+- [ ] Denied/unsupported device: no false enabled state; critical in-app alerts remain available.
+- [ ] Same recipient on two devices: enable one, deny the other. Trigger actual match invitation and
+      Reserve promotion. Compare exact recipient/event IDs in in-app history, enabled-device display,
+      denied-device absence, and authorized tap destinations. Verify stable tag collapses retries.
+- [ ] Global off and each of five category toggles: no OS send; same authoritative in-app history.
+- [ ] Sign out before tapping private alert: login preserves safe detail; another account sees no target.
+- [ ] Retire one endpoint/key: that device stops receiving; second device and read history survive.
+      Routine key rotation shows re-enable guidance without silently requesting permission.
+- [ ] Deploy SW update with unsent result draft: defer update, preserve fields, explicitly retry later;
+      clean page applies update once, without reload loop. Offline reconnect never submits a mutation.
+
+**Evidence status:** all physical-device rows pending operator execution. Browser emulation and mocked
+provider sends do not check these boxes. Final complete-check and delivery review remain separate gates.

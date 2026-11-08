@@ -163,9 +163,16 @@ test('offline launches of a private URL show only the public document and recove
     await expect(page.getByRole('heading', { name: en.pwa.offline.title })).toBeVisible();
     expect(page.url()).toBe(offlineUrl);
 
-    // Reconnecting reloads the requested page, which now renders from the network.
+    // Chromium's synthetic online event can precede network restoration, so the automatic reload
+    // may land on the public document again. Explicit Retry is the user-visible recovery contract.
     await context.setOffline(false);
-    await waitForHydratedPage(page);
+    await expect(async () => {
+      const retry = page.getByRole('button', { name: en.pwa.offline.retry });
+      if (await retry.count()) await retry.click();
+      await expect(page.locator('html')).toHaveAttribute('data-app-hydrated', 'true', {
+        timeout: 3_000
+      });
+    }).toPass({ timeout: 20_000 });
     await expect(page.getByRole('heading', { name: en.pwa.offline.title })).toHaveCount(0);
     await expect(page).toHaveURL(offlineUrl);
   } finally {

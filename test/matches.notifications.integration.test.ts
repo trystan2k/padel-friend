@@ -1,3 +1,4 @@
+import { expectNotificationPushJobs } from './helpers/notification-channel-evidence';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { describe, expect, it } from 'vitest';
 import { matchPhotoFixture } from './helpers/match-photo-fixtures';
@@ -147,6 +148,7 @@ describe('match notification integration', () => {
           .eq('target_id', eventId)
           .order('event_key');
         expect(result.error).toBeNull();
+        await expectNotificationPushJobs(result.data ?? []);
         return result.data ?? [];
       };
       const published = await createEvent(creator, community, 'community_open');
