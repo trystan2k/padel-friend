@@ -1,4 +1,6 @@
 // Integration files that may run concurrently (2 file workers) against the shared local database.
+// notification Push outbox/channel-matrix suites are intentionally NOT parallel: global claimants,
+// projection publications and fixture DDL require serial execution. New files auto-discovered below.
 // Everything not listed here stays in the serial phase, so new files default to serial until audited.
 //
 // DDL-free rule: a file may only be listed when it is provably free of table-wide DDL. Neither the file

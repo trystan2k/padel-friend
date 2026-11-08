@@ -463,6 +463,28 @@
     }
   },
   "push": {
+    "message": {
+      "community": {
+        "title": "Padel Friend update",
+        "body": "You have a new notification. Open Padel Friend to view it."
+      },
+      "matches": {
+        "title": "Padel Friend update",
+        "body": "You have a new notification. Open Padel Friend to view it."
+      },
+      "results": {
+        "title": "Padel Friend update",
+        "body": "You have a new notification. Open Padel Friend to view it."
+      },
+      "rankings": {
+        "title": "Padel Friend update",
+        "body": "You have a new notification. Open Padel Friend to view it."
+      },
+      "leagues": {
+        "title": "Padel Friend update",
+        "body": "You have a new notification. Open Padel Friend to view it."
+      }
+    },
     "title": "Web Push on this device",
     "loading": "Checking Web Push on this device…",
     "enable": "Enable push on this device",
@@ -537,6 +559,17 @@
       "rankings": "No ranking notifications."
     },
     "kinds": {
+      "community_role_changed": "Your community role changed.",
+      "result_amendment_requested": "A result correction was requested.",
+      "result_amendment_accepted": "A result correction was accepted.",
+      "result_amendment_rejected": "A result correction was declined.",
+      "rating_changed": "Your level or reliability changed.",
+      "level_review_submitted": "Your level review was submitted.",
+      "level_review_requested": "A level review needs your attention.",
+      "league_started": "A League started.",
+      "league_closed": "A League closed.",
+      "league_standings_published": "Final standings were published.",
+      "league_standings_amended": "Final standings were updated.",
       "community_invitation": "You received a community invitation.",
       "community_membership_approved": "Your community membership was approved.",
       "community_membership_denied": "Your community membership was declined.",

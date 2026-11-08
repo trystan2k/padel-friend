@@ -463,6 +463,28 @@
     }
   },
   "push": {
+    "message": {
+      "community": {
+        "title": "Atualização do Padel Friend",
+        "body": "Você tem uma nova notificação. Abra o Padel Friend para ver."
+      },
+      "matches": {
+        "title": "Atualização do Padel Friend",
+        "body": "Você tem uma nova notificação. Abra o Padel Friend para ver."
+      },
+      "results": {
+        "title": "Atualização do Padel Friend",
+        "body": "Você tem uma nova notificação. Abra o Padel Friend para ver."
+      },
+      "rankings": {
+        "title": "Atualização do Padel Friend",
+        "body": "Você tem uma nova notificação. Abra o Padel Friend para ver."
+      },
+      "leagues": {
+        "title": "Atualização do Padel Friend",
+        "body": "Você tem uma nova notificação. Abra o Padel Friend para ver."
+      }
+    },
     "title": "Web Push neste dispositivo",
     "loading": "Verificando o Web Push neste dispositivo…",
     "enable": "Ativar push neste dispositivo",
@@ -537,6 +559,17 @@
       "rankings": "Nenhuma notificação de classificações."
     },
     "kinds": {
+      "community_role_changed": "Seu papel na comunidade mudou.",
+      "result_amendment_requested": "Uma correção de resultado foi solicitada.",
+      "result_amendment_accepted": "Uma correção de resultado foi aceita.",
+      "result_amendment_rejected": "Uma correção de resultado foi recusada.",
+      "rating_changed": "Seu nível ou confiabilidade mudou.",
+      "level_review_submitted": "Sua revisão de nível foi enviada.",
+      "level_review_requested": "Uma revisão de nível precisa de atenção.",
+      "league_started": "Uma Liga começou.",
+      "league_closed": "Uma Liga terminou.",
+      "league_standings_published": "A classificação final foi publicada.",
+      "league_standings_amended": "A classificação final foi atualizada.",
       "community_invitation": "Você recebeu um convite para uma comunidade.",
       "community_membership_approved": "Sua participação na comunidade foi aprovada.",
       "community_membership_denied": "Sua participação na comunidade foi recusada.",

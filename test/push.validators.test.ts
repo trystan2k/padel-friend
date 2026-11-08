@@ -88,7 +88,8 @@ describe('push config', () => {
     ['disabled flag', { ...base, WEB_PUSH_ENABLED: 'false' }],
     ['missing key', { ...base, WEB_PUSH_VAPID_PUBLIC_KEY: undefined }],
     ['malformed key', { ...base, WEB_PUSH_VAPID_PUBLIC_KEY: 'short' }],
-    ['missing key id', { ...base, WEB_PUSH_VAPID_KEY_ID: undefined }]
+    ['missing key id', { ...base, WEB_PUSH_VAPID_KEY_ID: undefined }],
+    ['emergency revoked key', { ...base, WEB_PUSH_REVOKED_KEY_IDS: 'old, k1' }]
   ])('reports unavailable for %s', (_name, env) => {
     expect(toPublicPushConfig(readPushConfig(env))).toEqual({ enabled: false, publicKey: null });
   });

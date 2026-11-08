@@ -1,3 +1,4 @@
+import { expectNotificationPushJobs } from './helpers/notification-channel-evidence';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { ratingEvidenceCleanupSql } from './helpers/fixture-cleanup';
 import { dotEnvPathFromImportMetaUrl, localSupabaseEnv } from './helpers/local-supabase-env';
@@ -94,7 +95,7 @@ describe.skipIf(!environment.env)('transactional result notifications', { timeou
   }, 120_000);
 
   async function resultAlerts(eventId: string) {
-    return sqlRows(`
+    const alerts = await sqlRows(`
       select n.id::text as id, n.recipient_user_id::text as recipient_user_id,
              n.event_key, n.kind, n.category, n.target_type,
              n.target_id::text as target_id, n.community_id::text as community_id
@@ -102,6 +103,8 @@ describe.skipIf(!environment.env)('transactional result notifications', { timeou
        where n.category = 'results' and n.target_id = '${eventId}'
        order by n.event_key, n.recipient_user_id
     `);
+    await expectNotificationPushJobs(alerts);
+    return alerts;
   }
 
   async function links(eventId: string) {

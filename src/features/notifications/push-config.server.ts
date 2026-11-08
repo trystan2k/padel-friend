@@ -17,7 +17,8 @@ export function readPushConfig(env: Record<string, string | undefined> = process
     env.WEB_PUSH_ENABLED === 'true' &&
     isUncompressedP256Point(publicKey) &&
     keyId.length > 0 &&
-    keyId.length <= 64;
+    keyId.length <= 64 &&
+    !(env.WEB_PUSH_REVOKED_KEY_IDS ?? '').split(',').some((id) => id.trim() === keyId);
   return { enabled, publicKey: enabled ? publicKey : null, keyId: enabled ? keyId : null };
 }
 

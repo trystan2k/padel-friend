@@ -1,3 +1,4 @@
+import { expectNotificationPushJobs } from './helpers/notification-channel-evidence';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { describe, expect, it, vi } from 'vitest';
 import type { Database } from '../src/lib/supabase/database.types';
@@ -74,6 +75,7 @@ describe('match registration FIFO notifications integration', () => {
       .eq('target_id', events[eventKey]!)
       .order('sequence', { ascending: true });
     expect(result.error, `${who.name} inbox`).toBeNull();
+    await expectNotificationPushJobs(result.data ?? []);
     return result.data ?? [];
   };
 

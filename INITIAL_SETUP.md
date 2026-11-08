@@ -178,3 +178,32 @@ Organizers and admins can add a not-yet-registered player by name and email. The
    - **`SUPABASE_SERVICE_ROLE_KEY`**: the same server-only secret as step 1; the cron reads it from the Worker environment like request handlers do. Nothing about the schedule is exposed over HTTP.
    - **Local check.** The repository tests call the sweep directly (`test/matches.add-player.reconcile.integration.test.ts`); to exercise the handler itself run `pnpm exec wrangler dev --test-scheduled` and `curl "http://localhost:8787/cdn-cgi/handler/scheduled?cron=*+*+*+*+*"`.
    - **Limits.** Cloudflare may start a cron run a little late, so retries are at least one backoff interval apart, never exact. Each run drives up to three rounds of five due operations; a larger backlog drains over the following runs.
+
+## 9. Web Push delivery operations
+
+Apply subscription, producer and outbox migrations before enabling dispatch. In-app notifications remain authoritative, independent of all Push settings/provider failures. No historical backfill occurs. New devices receive only notifications created after enrollment.
+
+Configure production and preview separately through Workers variables/secrets (local values belong only in ignored `.dev.vars`):
+
+| Binding                       | Purpose                                                                                                             |
+| ----------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| `WEB_PUSH_ENABLED`            | Literal `true` enables dispatch/enrollment; anything else disables it.                                              |
+| `WEB_PUSH_VAPID_KEY_ID`       | Stable current enrollment key identifier (1–64 characters).                                                         |
+| `WEB_PUSH_VAPID_PUBLIC_KEY`   | Base64url uncompressed P-256 public key; returned only by authenticated config read.                                |
+| `WEB_PUSH_VAPID_PRIVATE_KEY`  | Current base64url private key, Workers **secret**.                                                                  |
+| `WEB_PUSH_VAPID_PRIVATE_KEYS` | Optional Workers **secret**, JSON object mapping retained key IDs to private keys. Public keys derived server-side. |
+| `WEB_PUSH_VAPID_SUBJECT`      | Operator contact, `mailto:operator@example.com` or HTTPS URL.                                                       |
+| `WEB_PUSH_REVOKED_KEY_IDS`    | Emergency comma-separated revoked IDs; matching devices retired on next enabled sweep.                              |
+| `SUPABASE_SERVICE_ROLE_KEY`   | Same server-only service key used by existing scheduled invitation recovery.                                        |
+
+Generate keys once in a trusted operator environment (`pnpm exec web-push generate-vapid-keys`), never on builds/deploys. Store private material using `pnpm exec wrangler secret put <BINDING>` (plus `--env preview` for preview). Never prefix any VAPID binding with `VITE_`; never commit values. Browser build guard checks private binding names, configured private values, and `PUSH_PRIVATE_KEY_CANARY` in JS/maps/SW.
+
+**Delivery semantics.** Existing five-minute Cron Trigger runs both invitation recovery and Push independently. Healthy due work normally reaches provider within five minutes; backlog/retry/provider/device conditions can increase latency. HTTP 2xx means **provider accepted**, never proof of OS display or user receipt. External delivery is **at least once**: a worker crash after provider acceptance but before DB acknowledgement can resend. DB event/device identities, fenced leases, and stable browser `notification:<uuid>` tags with `renotify: false` reduce duplicates; never claim exactly once. Lock-screen messages are generic, subscription-locale translated, with no player/community/venue/scores/tokens.
+
+**Health/retry.** Observe `notification_push_sweep` sanitized counters (`pending`, `accepted`, `retried`, `expired`, `failed`, `skipped`, `unavailable`) and queue health (`oldestDue`, `exhausted`). No endpoint, private payload or key appears in logs. 404/410 retires only affected device; other devices and in-app history/read state survive. 429 respects bounded Retry-After; 5xx/network/timeouts use exponential backoff+jitter. Six attempts/24-hour event TTL terminate as durable exhausted. HTTP 400/redirects fail terminally. 401/403 or missing signing keys report configuration faults, never mass-expire endpoints or silently succeed; restore attempts. Fix config/provider issue, then next cron retries pending jobs. Terminal/exhausted rows remain evidence: do not reset/delete them to replay old private alerts. New business transitions produce new notifications normally.
+
+**Kill switch.** Set `WEB_PUSH_ENABLED=false` to stop claiming/sending without deleting queue/subscriptions/in-app rows. Disabled cron reports `PUSH_DISABLED` rather than false success; invitation sweep still runs. Re-enable only after key/config checks pass; event TTL still bounds delayed sends.
+
+**Rotation.** Put old key ID/private pairs in `WEB_PUSH_VAPID_PRIVATE_KEYS`, then deploy new current ID/public/private pair. Keep old keys until devices reconcile and explicitly re-enable with current key. Never sign old subscriptions with a new unrelated key. Emergency: add compromised IDs to `WEB_PUSH_REVOKED_KEY_IDS`; an enabled scheduled sweep retires only those IDs, or an authorized operator calls service-only `revoke_notification_push_keys(text[])` immediately while kill switch remains off. Remove revoked signing material; affected devices must explicitly re-enable. Never retire notifications.
+
+**Verification.** `test/push.worker-adapter.test.ts` starts isolated wrangler/workerd with production compatibility date/`nodejs_compat`, sends encrypted HTTP to local fake provider, independently decrypts RFC8291 payload and verifies RFC8292 signature/audience. Test provider injection is fixture-only, never deployed. Outbound production URLs require supported HTTPS FCM/Firefox/Apple hosts/default port and never follow redirects. Outbox/matrix integration claimant suites run in serial partition; no live OS credentials required for CI. Physical-device receipt/tap verification remains release acceptance work, not implied by mock-provider success.

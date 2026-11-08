@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url';
 // Runs the integration suite as non-overlapping vitest invocations (see vitest.integration.config.ts):
 // audited parallel-safe files first, then every other file serially. INTEGRATION_SERIAL=1 runs
 // everything in one serial invocation; INTEGRATION_PHASE=parallel|serial runs only that phase.
+// Push outbox and notification channel-matrix suites use default serial partition (global claims/projections).
 // Extra args (file filters, reporters) go to every phase.
 export const PHASES = ['parallel', 'serial'];
 

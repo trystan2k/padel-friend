@@ -463,6 +463,28 @@
     }
   },
   "push": {
+    "message": {
+      "community": {
+        "title": "Actualización de Padel Friend",
+        "body": "Tienes una nueva notificación. Abre Padel Friend para verla."
+      },
+      "matches": {
+        "title": "Actualización de Padel Friend",
+        "body": "Tienes una nueva notificación. Abre Padel Friend para verla."
+      },
+      "results": {
+        "title": "Actualización de Padel Friend",
+        "body": "Tienes una nueva notificación. Abre Padel Friend para verla."
+      },
+      "rankings": {
+        "title": "Actualización de Padel Friend",
+        "body": "Tienes una nueva notificación. Abre Padel Friend para verla."
+      },
+      "leagues": {
+        "title": "Actualización de Padel Friend",
+        "body": "Tienes una nueva notificación. Abre Padel Friend para verla."
+      }
+    },
     "title": "Web Push en este dispositivo",
     "loading": "Comprobando Web Push en este dispositivo…",
     "enable": "Activar push en este dispositivo",
@@ -537,6 +559,17 @@
       "rankings": "No hay notificaciones de clasificaciones."
     },
     "kinds": {
+      "community_role_changed": "Tu rol en la comunidad cambió.",
+      "result_amendment_requested": "Se solicitó una corrección de resultado.",
+      "result_amendment_accepted": "Se aceptó una corrección de resultado.",
+      "result_amendment_rejected": "Se rechazó una corrección de resultado.",
+      "rating_changed": "Tu nivel o fiabilidad cambió.",
+      "level_review_submitted": "Se envió tu revisión de nivel.",
+      "level_review_requested": "Una revisión de nivel necesita atención.",
+      "league_started": "Comenzó una Liga.",
+      "league_closed": "Terminó una Liga.",
+      "league_standings_published": "Se publicó la clasificación final.",
+      "league_standings_amended": "Se actualizó la clasificación final.",
       "community_invitation": "Recibiste una invitación a una comunidad.",
       "community_membership_approved": "Aprobaron tu membresía en la comunidad.",
       "community_membership_denied": "Rechazaron tu membresía en la comunidad.",

@@ -1,3 +1,4 @@
+import { expectNotificationPushJobs } from './helpers/notification-channel-evidence';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { decodeNotificationTarget } from '../src/features/notifications/notification-target';
 import { dotEnvPathFromImportMetaUrl, localSupabaseEnv } from './helpers/local-supabase-env';
@@ -35,9 +36,11 @@ async function reviewNotifications(userId: string, requestId?: string): Promise<
        from public.notifications
       where recipient_user_id = $1 and target_type = 'level_review_request'
         and ($2::uuid is null or target_id = $2::uuid)
+        and kind in ('level_review_approved','level_review_rejected')
       order by created_at`,
     { values: [userId, requestId ?? null] }
   );
+  await expectNotificationPushJobs(result.rows);
   return result.rows;
 }
 
@@ -165,7 +168,7 @@ describe('level review resolution notifications', { timeout: 300_000 }, () => {
   );
 
   it.skipIf(!environment.env)(
-    'does not notify for under review, owner cancellation or submission',
+    'submission notifies owner and platform reviewers once; under review/cancellation add no resolution',
     async () => {
       const owner = roles.owner;
       const requestId = await submitRequest(owner);
@@ -208,7 +211,7 @@ describe('level review resolution notifications', { timeout: 300_000 }, () => {
         .select('id,kind,category,target_type,target_id,read_at')
         .eq('target_id', requestId);
       expect(feed.error).toBeNull();
-      expect(feed.data).toHaveLength(1);
+      expect(feed.data).toHaveLength(2);
       // The feed row carries no request content (reason, evidence, note).
       expect(Object.keys(feed.data![0]!).sort()).toEqual([
         'category',

@@ -320,6 +320,30 @@ export type Database = {
           },
         ]
       }
+      community_role_notification_revisions: {
+        Row: {
+          membership_id: string
+          revision: number
+        }
+        ComputedFields: never
+        Insert: {
+          membership_id: string
+          revision: number
+        }
+        Update: {
+          membership_id?: string
+          revision?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "community_role_notification_revisions_membership_id_fkey"
+            columns: ["membership_id"]
+            isOneToOne: true
+            referencedRelation: "community_members"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       community_venues: {
         Row: {
           address: string | null
@@ -2117,6 +2141,97 @@ export type Database = {
         }
         Relationships: []
       }
+      notification_push_deliveries: {
+        Row: {
+          attempt_count: number
+          enrollment_created_at: string
+          last_http_status: number | null
+          next_attempt_at: string
+          notification_id: string
+          status: string
+          subscription_id: string
+          updated_at: string
+        }
+        ComputedFields: never
+        Insert: {
+          attempt_count?: number
+          enrollment_created_at: string
+          last_http_status?: number | null
+          next_attempt_at?: string
+          notification_id: string
+          status?: string
+          subscription_id: string
+          updated_at?: string
+        }
+        Update: {
+          attempt_count?: number
+          enrollment_created_at?: string
+          last_http_status?: number | null
+          next_attempt_at?: string
+          notification_id?: string
+          status?: string
+          subscription_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notification_push_deliveries_notification_id_fkey"
+            columns: ["notification_id"]
+            isOneToOne: false
+            referencedRelation: "notification_push_jobs"
+            referencedColumns: ["notification_id"]
+          },
+          {
+            foreignKeyName: "notification_push_deliveries_subscription_id_fkey"
+            columns: ["subscription_id"]
+            isOneToOne: false
+            referencedRelation: "push_subscriptions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      notification_push_jobs: {
+        Row: {
+          attempt_count: number
+          claim_token: string | null
+          created_at: string
+          lease_expires_at: string | null
+          materialized_at: string | null
+          next_attempt_at: string
+          notification_id: string
+          status: string
+        }
+        ComputedFields: never
+        Insert: {
+          attempt_count?: number
+          claim_token?: string | null
+          created_at?: string
+          lease_expires_at?: string | null
+          materialized_at?: string | null
+          next_attempt_at?: string
+          notification_id: string
+          status?: string
+        }
+        Update: {
+          attempt_count?: number
+          claim_token?: string | null
+          created_at?: string
+          lease_expires_at?: string | null
+          materialized_at?: string | null
+          next_attempt_at?: string
+          notification_id?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notification_push_jobs_notification_id_fkey"
+            columns: ["notification_id"]
+            isOneToOne: true
+            referencedRelation: "notifications"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       notification_result_links: {
         Row: {
           confirmation_id: string | null
@@ -2892,6 +3007,39 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      player_rating_visible_snapshots: {
+        Row: {
+          display_level: number
+          publication_seq: number
+          reliability_percent: number
+          updated_at: string
+          user_id: string
+        }
+        ComputedFields: never
+        Insert: {
+          display_level: number
+          publication_seq?: number
+          reliability_percent: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          display_level?: number
+          publication_seq?: number
+          reliability_percent?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "player_rating_visible_snapshots_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "global_player_ratings"
+            referencedColumns: ["user_id"]
+          },
+        ]
       }
       provisional_claim_password_pending: {
         Row: {
@@ -4508,6 +4656,25 @@ export type Database = {
       }
       claim_due_result_repairs: { Args: { p_limit?: number }; Returns: Json }
       claim_match_player_add_redrives: { Args: { p_limit?: number }; Returns: Json }
+      claim_notification_push_jobs: {
+        Args: { p_limit?: number }
+        Returns: {
+          attempt_count: number
+          claim_token: string | null
+          created_at: string
+          lease_expires_at: string | null
+          materialized_at: string | null
+          next_attempt_at: string
+          notification_id: string
+          status: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "notification_push_jobs"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       claim_provisional_player: {
         Args: {
           p_bio?: string
@@ -4633,6 +4800,10 @@ export type Database = {
           p_proposal_id: string
         }
         Returns: string
+      }
+      finish_notification_push: {
+        Args: { p_claim_token: string; p_notification_id: string; p_unavailable?: boolean }
+        Returns: boolean
       }
       get_community_member_by_id: {
         Args: { p_community_id: string; p_membership_id: string }
@@ -5016,6 +5187,12 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      league_notification_recipients: {
+        Args: { p_community_id: string; p_excluded: string }
+        Returns: {
+          user_id: string
+        }[]
       }
       league_period_instants: {
         Args: { p_end_date: string; p_end_mode: string; p_start_date: string; p_timezone: string }
@@ -5455,6 +5632,26 @@ export type Database = {
         Args: { p_event_id: string; p_played_at: string; p_quartet: string[] }
         Returns: Json
       }
+      materialize_notification_push: {
+        Args: { p_claim_token: string; p_notification_id: string }
+        Returns: {
+          attempt_count: number
+          enrollment_created_at: string
+          last_http_status: number | null
+          next_attempt_at: string
+          notification_id: string
+          status: string
+          subscription_id: string
+          updated_at: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "notification_push_deliveries"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      notification_push_health: { Args: Record<PropertyKey, never>; Returns: Json }
       notify_match_result_deadline: {
         Args: { p_proposal_id: string; p_proposal_version: number }
         Returns: number
@@ -5473,6 +5670,18 @@ export type Database = {
       notify_match_result_version: {
         Args: { p_proposal_id: string; p_proposal_version: number }
         Returns: number
+      }
+      notify_result_amendment_event: {
+        Args: {
+          p_actor: string
+          p_amendment: Omit<
+            Database["public"]["Tables"]["result_amendment_requests"]["Row"],
+            Database["public"]["Tables"]["result_amendment_requests"]["ComputedFields"]
+          >
+          p_candidate_version: number
+          p_event_type: string
+        }
+        Returns: undefined
       }
       notify_result_repair_failure: { Args: { p_job_id: string }; Returns: number }
       onboard_player: {
@@ -5512,6 +5721,10 @@ export type Database = {
       }
       player_has_rated_history: { Args: { p_user_id: string }; Returns: boolean }
       player_rating_calculation_inputs_valid: { Args: { p_inputs: Json }; Returns: boolean }
+      prepare_notification_push: {
+        Args: { p_claim_token: string; p_notification_id: string; p_subscription_id: string }
+        Returns: Json
+      }
       process_due_leagues: { Args: { p_as_of?: string; p_limit?: number }; Returns: Json }
       process_due_match_event_registration_cutoffs: { Args: { p_limit?: number }; Returns: Json }
       process_due_match_event_results: { Args: { p_limit?: number }; Returns: Json }
@@ -6124,6 +6337,7 @@ export type Database = {
         }
         Returns: Json
       }
+      revoke_notification_push_keys: { Args: { p_key_ids: string[] }; Returns: number }
       run_claimed_result_repairs: { Args: { p_limit?: number }; Returns: Json }
       safe_match_photo_uuid: { Args: { p_value: string }; Returns: string }
       safe_venue_photo_uuid: { Args: { p_value: string }; Returns: string }
@@ -6210,6 +6424,17 @@ export type Database = {
           p_request_id: string
         }
         Returns: Json
+      }
+      settle_notification_push_delivery: {
+        Args: {
+          p_claim_token: string
+          p_delay_seconds?: number
+          p_http_status?: number
+          p_notification_id: string
+          p_status: string
+          p_subscription_id: string
+        }
+        Returns: boolean
       }
       snapshot_match_registration_roster_locked: { Args: { p_event_id: string }; Returns: Json }
       statistics_apply_summaries: {
