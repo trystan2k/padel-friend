@@ -44,7 +44,7 @@
     "requestPending": "Solicitud enviada",
     "alreadyMember": "Ya eres miembro o tienes una solicitud pendiente",
     "membershipInactive": "Tu membresía está inactiva. Contacta con un administrador de la comunidad para reactivarla.",
-    "joinFailed": "No se pudo completar. Inténtalo de nuevo.",
+    "joinFailed": "No se pudo confirmar este cambio. Tus campos se conservan. Actualiza antes de volver a intentarlo.",
     "emptySearch": "No hay comunidades que coincidan con tu búsqueda.",
     "noCommunities": "Aún no hay comunidades públicas.",
     "loadFailed": "No se pudieron cargar las comunidades.",
@@ -75,7 +75,8 @@
     "created": "Tu comunidad está lista.",
     "finish": "IR AL PANEL",
     "createFailed": "No se pudo crear la comunidad. Inténtalo de nuevo.",
-    "invalidName": "Introduce un nombre de comunidad de hasta 80 caracteres."
+    "invalidName": "Introduce un nombre de comunidad de hasta 80 caracteres.",
+    "offline": "Sin conexión. No se envió nada. Vuelve a conectarte e inténtalo de nuevo."
   },
   "auth": {
     "invitationEmail": {
@@ -391,7 +392,9 @@
       "session": "Tu sesión ha caducado. Inicia sesión de nuevo.",
       "generic": "No se pudo completar. Actualiza e inténtalo de nuevo.",
       "finalAdmin": "La comunidad debe mantener al menos una persona admin activa.",
-      "transition": "La membresía ha cambiado. Actualiza antes de volver a intentarlo."
+      "transition": "La membresía ha cambiado. Actualiza antes de volver a intentarlo.",
+      "offline": "Sin conexión. No se envió nada. Vuelve a conectarte e inténtalo de nuevo.",
+      "unconfirmed": "No se pudo confirmar este cambio. Tus campos se conservan. Actualiza antes de volver a intentarlo."
     },
     "matchCountUnavailable": "Recuento de partidos no disponible — el historial de partidos aún no está disponible",
     "inviteeSearchPrivateOnly": "La búsqueda de invitados solo está disponible en comunidades privadas.",
@@ -459,7 +462,9 @@
     "offline": {
       "title": "Sin conexión",
       "body": "Padel Friend necesita conexión para mostrar tu cuenta. Vuelve a conectarte e inténtalo de nuevo.",
-      "retry": "Intentar de nuevo"
+      "retry": "Intentar de nuevo",
+      "unconfirmed": "No se pudo confirmar este cambio. Tus campos se conservan. Actualiza antes de volver a intentarlo.",
+      "unsent": "Sin conexión. No se envió nada. Vuelve a conectarte e inténtalo de nuevo."
     }
   },
   "push": {
@@ -676,7 +681,8 @@
       "registrationExpiredBody": "La inscripción cerró antes de una decisión. No se reservó ninguna plaza.",
       "registrationNotPlayingBody": "El plazo pasó antes de que se completara un cuarteto. No se registrará ningún resultado del partido.",
       "unavailable": "Esta notificación de partido ya no está disponible."
-    }
+    },
+    "openTarget": "Abrir detalles actuales"
   },
   "notificationPreferences": {
     "preferencesLink": "Preferencias de notificaciones",
@@ -703,7 +709,10 @@
     "offline": "No tienes conexión. Vuelve a conectarte para guardar tus preferencias."
   },
   "matches": {
-    "competition": { "ranked": "Clasificatoria", "unranked": "Sin clasificación" },
+    "competition": {
+      "ranked": "Clasificatoria",
+      "unranked": "Sin clasificación"
+    },
     "addPlayer": {
       "action": "Añadir jugador",
       "title": "Añadir un jugador",
@@ -1007,8 +1016,15 @@
       "court": "Pista",
       "matrixSet": "S{{number}}",
       "title": "Registrar resultado",
-      "steps": { "players": "JUGADORES", "score": "MARCADOR", "review": "REVISIÓN" },
-      "teams": { "team_a": "Equipo A", "team_b": "Equipo B" },
+      "steps": {
+        "players": "JUGADORES",
+        "score": "MARCADOR",
+        "review": "REVISIÓN"
+      },
+      "teams": {
+        "team_a": "Equipo A",
+        "team_b": "Equipo B"
+      },
       "confirmPlayers": "Confirma quién jugó",
       "suggested": "Los equipos sugeridos siguen el orden de aceptación. Confirma o cambia quién jugó junto.",
       "changeTeams": "Cambiar equipos",
@@ -1055,7 +1071,25 @@
       "courtLabel": "Identificación de pista (opcional)",
       "notProvided": "No indicado",
       "preview": "Revisar resultado",
-      "review": "Revisar resultado",
+      "review": {
+        "approve": "Aprobar",
+        "approving": "Registrando aprobación…",
+        "reject": "Disputar",
+        "retry": "Reintentar revisión",
+        "reviewCurrent": "Revisar propuesta actual",
+        "offline": "No tienes conexión. Vuelve a conectarte para revisar. No se envió ninguna aprobación ni disputa.",
+        "offlineDraft": "Resultado no enviado. Vuelve a conectarte para enviarlo; el borrador sigue aquí.",
+        "decisionRecorded": "{{decision}} registrada por {{name}}.",
+        "recorded": {
+          "approve": "La aprobación de esta versión quedó registrada. El resultado sigue pendiente hasta que lo confirme el servidor.",
+          "approveConfirmed": "Aprobación registrada. El servidor confirmó este resultado; actualizando sus detalles oficiales.",
+          "reject": "Resultado en disputa. No se aplicaron cambios de clasificación ni estadísticas de la Liga."
+        },
+        "decisions": {
+          "approve": "Aprobación",
+          "reject": "Rechazo"
+        }
+      },
       "back": "Volver",
       "reload": "Recargar resultado y jugadores",
       "submit": "Enviar a revisión",
@@ -1091,25 +1125,6 @@
       "confirmation": {
         "manual": "Confirmado · Manual",
         "auto": "Confirmado · Automático 48H"
-      },
-      "review": {
-        "approve": "Aprobar",
-        "approving": "Registrando aprobación…",
-        "reject": "Disputar",
-        "retry": "Reintentar revisión",
-        "reviewCurrent": "Revisar propuesta actual",
-        "offline": "No tienes conexión. Vuelve a conectarte para revisar. No se envió ninguna aprobación ni disputa.",
-        "offlineDraft": "Resultado no enviado. Vuelve a conectarte para enviarlo; el borrador sigue aquí.",
-        "decisionRecorded": "{{decision}} registrada por {{name}}.",
-        "recorded": {
-          "approve": "La aprobación de esta versión quedó registrada. El resultado sigue pendiente hasta que lo confirme el servidor.",
-          "approveConfirmed": "Aprobación registrada. El servidor confirmó este resultado; actualizando sus detalles oficiales.",
-          "reject": "Resultado en disputa. No se aplicaron cambios de clasificación ni estadísticas de la Liga."
-        },
-        "decisions": {
-          "approve": "Aprobación",
-          "reject": "Rechazo"
-        }
       },
       "reject": {
         "title": "Disputar resultado",
@@ -1740,7 +1755,7 @@
       "requesterIneligible": "El solicitante ya no es elegible.",
       "forbidden": "Solo el organizador puede decidir solicitudes.",
       "unauthenticated": "Inicia sesión para continuar.",
-      "unavailable": "El servicio no está disponible. Inténtalo de nuevo.",
+      "unavailable": "No se pudo confirmar este cambio. Tus campos se conservan. Actualiza antes de volver a intentarlo.",
       "invalid": "Esa acción no es válida.",
       "retry": "Reintentar"
     },

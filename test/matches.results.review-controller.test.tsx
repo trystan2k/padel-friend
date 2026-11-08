@@ -11,6 +11,7 @@ import type {
 import { parseResultProposals } from '../src/features/matches/match-result-model';
 import { useMatchResultFreshness } from '../src/features/matches/use-match-result-freshness';
 import { useMatchResultReview } from '../src/features/matches/use-match-result-review';
+import { isUpdateBlocked } from '../src/features/pwa/update-guard';
 import { resultProposal, resultIds } from './helpers/match-result-fixtures';
 
 type ReviewMutation = (options: {
@@ -78,7 +79,16 @@ describe('result review mutation controller', () => {
     await act(async () => {
       await result.current.approve();
     });
-    expect(result.current.feedback).toMatchObject({ kind: 'error', retryable: true });
+    expect(result.current.feedback).toMatchObject({
+      kind: 'error',
+      retryable: true,
+      copy: 'pwa.offline.unconfirmed'
+    });
+    expect(isUpdateBlocked()).toBe(true);
+    await act(async () => {
+      window.dispatchEvent(new Event('online'));
+    });
+    expect(mocks.review).toHaveBeenCalledOnce();
     const requestId = mocks.review.mock.calls[0]?.[0].data.request_id;
 
     await act(async () => {

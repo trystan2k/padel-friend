@@ -4942,6 +4942,23 @@ export type Database = {
           target_status: string
         }[]
       }
+      get_my_notification_target_v4: {
+        Args: { p_notification_id: string }
+        Returns: {
+          community_id: string
+          community_name: string
+          created_at: string
+          destination_href: string
+          invitation_id: string
+          kind: string
+          level_review_context: Json
+          match_available: boolean
+          match_event_id: string
+          membership_status: string
+          result_context: Json
+          target_status: string
+        }[]
+      }
       get_my_notifications_as_of: { Args: Record<PropertyKey, never>; Returns: string }
       get_my_rating_history: {
         Args: {

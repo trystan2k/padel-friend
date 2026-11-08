@@ -114,7 +114,12 @@ export function useMatchRegistration({
     value: MatchRegistrationFeedback;
   } | null>(null);
   const [cutoff, setCutoff] = useState({ eventId, reached: false });
-  useUpdateGuard(pending);
+  useUpdateGuard(
+    pending ||
+      (feedback?.eventId === eventId &&
+        feedback.value.kind === 'error' &&
+        feedback.value.code === 'unavailable')
+  );
   const pendingRef = useRef(false);
   const lastAction = useRef<{ eventId: string; run: () => void } | null>(null);
   const mounted = useRef(true);
@@ -249,6 +254,12 @@ export function useMatchRequestQueue({ eventId }: { eventId: string }) {
     eventId: string;
     value: MatchRequestQueueFeedback;
   } | null>(null);
+  useUpdateGuard(
+    pending ||
+      (feedback?.eventId === eventId &&
+        feedback.value.kind === 'error' &&
+        feedback.value.code === 'unavailable')
+  );
   const pendingRef = useRef(false);
   const lastAction = useRef<{ eventId: string; run: () => void } | null>(null);
   const mounted = useRef(true);

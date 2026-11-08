@@ -31,12 +31,33 @@ function panel(locale: 'en' | 'pt-BR' | 'es', value = invitation) {
   );
   return i18n;
 }
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  Object.defineProperty(navigator, 'onLine', { configurable: true, value: true });
+});
 beforeEach(() => {
   vi.resetAllMocks();
   mocks.invalidate.mockResolvedValue(undefined);
 });
 describe('invitation panel', () => {
+  it('rejects offline invitation acceptance at invocation and shows unconfirmed false-online failure', async () => {
+    const i18n = panel('en');
+    Object.defineProperty(navigator, 'onLine', { configurable: true, value: false });
+    await userEvent.click(
+      screen.getByRole('button', { name: i18n.t('matches.invitations.accept') })
+    );
+    expect(screen.getByText(/Offline. Nothing sent/)).toBeTruthy();
+    expect(mocks.respond).not.toHaveBeenCalled();
+    Object.defineProperty(navigator, 'onLine', { configurable: true, value: true });
+    mocks.respond.mockRejectedValue(new TypeError('Failed to fetch'));
+    await userEvent.click(
+      screen.getByRole('button', { name: i18n.t('matches.invitations.accept') })
+    );
+    await screen.findByText(/Could not confirm this change/);
+    window.dispatchEvent(new Event('online'));
+    expect(mocks.respond).toHaveBeenCalledOnce();
+    expect(mocks.invalidate).not.toHaveBeenCalled();
+  });
   it('announces decline and expiry with translated accessible controls', async () => {
     for (const locale of ['en', 'pt-BR', 'es'] as const) {
       const i18n = panel(locale);

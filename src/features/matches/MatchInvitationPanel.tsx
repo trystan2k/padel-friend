@@ -1,3 +1,4 @@
+import { useUpdateGuard } from '../pwa/update-guard';
 import * as stylex from '@stylexjs/stylex';
 import { useRouter } from '@tanstack/react-router';
 import { useState } from 'react';
@@ -27,7 +28,9 @@ export function MatchInvitationPanel({
   const { t, i18n } = useTranslation();
   const router = useRouter();
   const [busy, setBusy] = useState(false);
+  const [offline, setOffline] = useState(false);
   const [result, setResult] = useState<InvitationResult | null>(null);
+  useUpdateGuard(busy || (result?.status === 'error' && result.code === 'unavailable'));
   const current =
     invitation.status === 'pending' && result && result.status !== 'error'
       ? result.status
@@ -40,7 +43,9 @@ export function MatchInvitationPanel({
         result.registration.lifecycle === 'pending'));
   const errorKey =
     current === 'pending' && result?.status === 'error'
-      ? MATCH_INVITATION_ERROR_COPY[result.code]
+      ? result.code === 'unavailable'
+        ? 'pwa.offline.unconfirmed'
+        : MATCH_INVITATION_ERROR_COPY[result.code]
       : null;
   const unavailable =
     result?.status === 'error' &&
@@ -53,13 +58,18 @@ export function MatchInvitationPanel({
       : null;
   async function respond(response: 'accept' | 'decline') {
     if (busy) return;
+    if (!navigator.onLine) {
+      setOffline(true);
+      return;
+    }
+    setOffline(false);
     setBusy(true);
     try {
       const next = await respondMatchEventInvitation({
         data: { event_id: eventId, invitation_id: invitation.invitation_id, response }
       });
       setResult(next);
-      await router.invalidate();
+      await router.invalidate().catch(() => undefined);
     } catch {
       setResult({ status: 'error', code: 'unavailable' });
     } finally {
@@ -83,6 +93,7 @@ export function MatchInvitationPanel({
         </span>
         {errorKey && <span {...stylex.props(s.copy)}>{t(errorKey)}</span>}
       </output>
+      {offline && <p role="alert">{t('pwa.offline.unsent')}</p>}
       {current === 'pending' && (
         <>
           <p {...stylex.props(s.copy)}>

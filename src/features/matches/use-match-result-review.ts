@@ -1,3 +1,4 @@
+import { useUpdateGuard } from '../pwa/update-guard';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type {
   ResultCommandReceipt,
@@ -46,6 +47,7 @@ export function useMatchResultReview({
   const [pending, setPending] = useState(false);
   const [online, setOnline] = useState(true);
   const [feedback, setFeedback] = useState<MatchResultReviewFeedback | null>(null);
+  useUpdateGuard(pending || feedback?.kind === 'error' || feedback?.kind === 'offline');
   const pendingRef = useRef(false);
   const requestRef = useRef<{ payload: string; requestId: string; command: ReviewCommand } | null>(
     null
@@ -150,14 +152,17 @@ export function useMatchResultReview({
         if (response.code !== 'unavailable') requestRef.current = null;
         setFeedback({
           kind: 'error',
-          copy: MATCH_RESULT_ERROR_COPY[response.code],
+          copy:
+            response.code === 'unavailable'
+              ? 'pwa.offline.unconfirmed'
+              : MATCH_RESULT_ERROR_COPY[response.code],
           retryable: response.code === 'unavailable'
         });
         return false;
       } catch {
         setFeedback({
           kind: 'error',
-          copy: MATCH_RESULT_ERROR_COPY.unavailable,
+          copy: 'pwa.offline.unconfirmed',
           retryable: true
         });
         return false;

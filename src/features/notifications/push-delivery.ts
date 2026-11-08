@@ -13,7 +13,7 @@ export function pushPayload(
     throw new Error('PUSH_INVALID_ID');
   const messages = (locale === 'pt-BR' ? ptBR : locale === 'es' ? es : en).push.message;
   if (!Object.hasOwn(messages, category)) throw new Error('PUSH_INVALID_CATEGORY');
-  return JSON.stringify({ notificationId, category, ...messages[category] });
+  return JSON.stringify({ version: 1, notificationId, category, ...messages[category] });
 }
 
 export function classifyPushResponse(

@@ -117,7 +117,7 @@ describe('level review resolution notifications', { timeout: 300_000 }, () => {
       expect(await reviewNotifications(owner.id, requestId)).toHaveLength(1);
 
       const target = await owner.client
-        .rpc('get_my_notification_target_v3', { p_notification_id: String(notice!['id']) })
+        .rpc('get_my_notification_target_v4', { p_notification_id: String(notice!['id']) })
         .single();
       expect(target.error).toBeNull();
       const decoded = decodeNotificationTarget(target.data!);
@@ -151,7 +151,7 @@ describe('level review resolution notifications', { timeout: 300_000 }, () => {
       const [notice] = await reviewNotifications(owner.id, requestId);
       expect(notice).toMatchObject({ kind: 'level_review_rejected', category: 'rankings' });
       const target = await owner.client
-        .rpc('get_my_notification_target_v3', { p_notification_id: String(notice!['id']) })
+        .rpc('get_my_notification_target_v4', { p_notification_id: String(notice!['id']) })
         .single();
       expect(decodeNotificationTarget(target.data!)).toMatchObject({
         target_status: 'level_review_available',
@@ -270,12 +270,12 @@ describe('level review resolution notifications', { timeout: 300_000 }, () => {
 
       // The other player cannot read the owner's notification at all.
       const foreign = await roles.other.client
-        .rpc('get_my_notification_target_v3', { p_notification_id: String(own!['id']) })
+        .rpc('get_my_notification_target_v4', { p_notification_id: String(own!['id']) })
         .single();
       expect(foreign.error).not.toBeNull();
 
       // Provisional actors stay locked out of the target reader.
-      const provisional = await roles.provisional.client.rpc('get_my_notification_target_v3', {
+      const provisional = await roles.provisional.client.rpc('get_my_notification_target_v4', {
         p_notification_id: String(own!['id'])
       });
       expect(provisional.error).not.toBeNull();
@@ -288,7 +288,7 @@ describe('level review resolution notifications', { timeout: 300_000 }, () => {
       );
       const [forged] = await reviewNotifications(roles.other.id);
       const target = await roles.other.client
-        .rpc('get_my_notification_target_v3', { p_notification_id: String(forged!['id']) })
+        .rpc('get_my_notification_target_v4', { p_notification_id: String(forged!['id']) })
         .single();
       expect(target.error).toBeNull();
       expect(target.data).toMatchObject({

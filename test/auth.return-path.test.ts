@@ -2,6 +2,14 @@ import { describe, expect, it } from 'vitest';
 import { normalizeReturnPath, optionalReturnPath } from '../src/features/auth/return-path';
 
 describe('normalizeReturnPath', () => {
+  it('preserves notification-tap return path across auth and onboarding hops', () => {
+    const path = '/notifications/d7381c74-c888-4fb3-8e6f-6d46113cb949';
+    const login = new URL('/login', 'https://app.example');
+    login.searchParams.set('next', normalizeReturnPath(path));
+    expect(optionalReturnPath(login.searchParams.get('next'))).toEqual({ next: path });
+    expect(normalizeReturnPath('/_protected' + path)).not.toBe(path);
+    expect(normalizeReturnPath('https://evil.example' + path)).toBe('/dashboard');
+  });
   it('keeps relative app paths including query and hash', () => {
     expect(normalizeReturnPath('/dashboard')).toBe('/dashboard');
     expect(normalizeReturnPath('/matches?tab=history#top')).toBe('/matches?tab=history#top');

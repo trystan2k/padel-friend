@@ -425,9 +425,7 @@ describe('record result page', () => {
     played();
     await userEvent.click(screen.getByRole('button', { name: 'Submit for review' }));
     await userEvent.click(screen.getByRole('button', { name: 'Submit for review' }));
-    await waitFor(() =>
-      expect(screen.getByText(/Results could not be loaded or submitted/)).toBeTruthy()
-    );
+    await waitFor(() => expect(screen.getByText(/Could not confirm this change/)).toBeTruthy());
     await userEvent.click(screen.getByRole('button', { name: 'Submit for review' }));
     expect(submit).toHaveBeenCalledTimes(2);
     expect(submit.mock.calls[1]).toEqual(submit.mock.calls[0]);

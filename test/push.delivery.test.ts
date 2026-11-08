@@ -37,7 +37,13 @@ describe('Push delivery contracts', () => {
   it('localizes generic payload with English fallback and no private domain data', () => {
     for (const category of ['community', 'matches', 'results', 'rankings', 'leagues'] as const) {
       const payload = JSON.parse(pushPayload(id, category, 'pt-BR'));
-      expect(Object.keys(payload).sort()).toEqual(['body', 'category', 'notificationId', 'title']);
+      expect(Object.keys(payload).sort()).toEqual([
+        'body',
+        'category',
+        'notificationId',
+        'title',
+        'version'
+      ]);
       expect(payload.body).toContain('notificação');
       expect(pushPayload(id, category, 'unknown')).toBe(pushPayload(id, category, 'en'));
       expect(pushPayload(id, category, 'es')).not.toBe(pushPayload(id, category, 'en'));

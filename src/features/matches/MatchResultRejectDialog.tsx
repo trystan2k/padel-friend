@@ -1,3 +1,4 @@
+import { useUpdateGuard } from '../pwa/update-guard';
 import { Dialog } from '@base-ui/react/dialog';
 import * as stylex from '@stylexjs/stylex';
 import { useId, useRef, useState, type FormEvent, type RefObject } from 'react';
@@ -45,6 +46,8 @@ export function MatchResultRejectDialog({
   const [showReasonError, setShowReasonError] = useState(false);
   const [noteError, setNoteError] = useState<'required' | 'tooLong' | 'invalid' | null>(null);
   const reasonError = showReasonError && reasonCode === null;
+
+  useUpdateGuard(pending || note.length > 0 || reasonCode !== null);
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();

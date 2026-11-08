@@ -154,7 +154,7 @@ export const getMyNotificationTargetV3 = createServerFn({ method: 'GET' })
   .handler(async ({ data }) => {
     const { client } = await requireAuthenticatedClient();
     const { data: result, error } = await client
-      .rpc('get_my_notification_target_v3', { p_notification_id: data.notificationId })
+      .rpc('get_my_notification_target_v4', { p_notification_id: data.notificationId })
       .single();
     if (error) throw error;
     return decodeNotificationTarget(result);
@@ -176,6 +176,22 @@ export const acceptMyNotificationInvitation = createServerFn({ method: 'POST' })
     const { data: result, error } = await client
       .rpc('accept_my_notification_invitation', { p_notification_id: data.notificationId })
       .single();
+    if (
+      error &&
+      [
+        'PJ001',
+        'PJ002',
+        'PJ003',
+        'PJ004',
+        'PJ005',
+        'PJ006',
+        'PJ007',
+        'PJ008',
+        '42501',
+        '28000'
+      ].includes(error.code)
+    )
+      throw new Error('NOTIFICATION_INVITATION_REJECTED');
     if (error) throw error;
     return result;
   });

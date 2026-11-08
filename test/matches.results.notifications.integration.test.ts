@@ -1563,7 +1563,7 @@ describe.skipIf(!environment.env)('transactional result notifications', { timeou
     });
     expect(
       (
-        await outsider.client.rpc('get_my_notification_target_v3', {
+        await outsider.client.rpc('get_my_notification_target_v4', {
           p_notification_id: String(recipientV1['id'])
         })
       ).error?.code
@@ -1602,7 +1602,7 @@ describe.skipIf(!environment.env)('transactional result notifications', { timeou
       is_current: false
     });
     const target = await quartet[0]!.client
-      .rpc('get_my_notification_target_v3', { p_notification_id: String(recipientV1['id']) })
+      .rpc('get_my_notification_target_v4', { p_notification_id: String(recipientV1['id']) })
       .single();
     expect(target.error).toBeNull();
     expect(target.data).toMatchObject({
@@ -1921,7 +1921,7 @@ describe.skipIf(!environment.env)('transactional result notifications', { timeou
       entry_ready: true
     });
     const readyTarget = await f.creator.client
-      .rpc('get_my_notification_target_v3', { p_notification_id: String(ready[0]?.['id']) })
+      .rpc('get_my_notification_target_v4', { p_notification_id: String(ready[0]?.['id']) })
       .single();
     expect(readyTarget.error).toBeNull();
     expect(readyTarget.data).toMatchObject({

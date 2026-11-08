@@ -7,6 +7,8 @@ import {
   removeLegacyCaches
 } from './sw-policy';
 
+import { displayPush, openPushNotification } from './sw-push';
+
 type WaitUntilEvent = Event & { waitUntil(promise: Promise<unknown>): void };
 type FetchEvent = Event & { request: Request; respondWith(response: Promise<Response>): void };
 type MessageEvent = Event & { data: unknown };
@@ -14,7 +16,17 @@ type MessageEvent = Event & { data: unknown };
 declare const PRECACHE_MANIFEST: Parameters<typeof precache>[0];
 type WorkerScope = {
   location: Location;
+  registration: ServiceWorkerRegistration;
+  clients: Parameters<typeof openPushNotification>[2];
   skipWaiting(): Promise<void>;
+  addEventListener(
+    type: 'push',
+    listener: (event: WaitUntilEvent & { data: { json(): unknown } | null }) => void
+  ): void;
+  addEventListener(
+    type: 'notificationclick',
+    listener: (event: WaitUntilEvent & { notification: { data: unknown; close(): void } }) => void
+  ): void;
   addEventListener(type: 'activate', listener: (event: WaitUntilEvent) => void): void;
   addEventListener(type: 'fetch', listener: (event: FetchEvent) => void): void;
   addEventListener(type: 'message', listener: (event: MessageEvent) => void): void;
@@ -25,6 +37,18 @@ const worker = self as unknown as WorkerScope;
 const handleNavigation = createNavigationHandler({
   fetchFn: (request) => fetch(request),
   matchOffline: () => matchPrecache(OFFLINE_DOCUMENT_URL)
+});
+
+worker.addEventListener('push', (event) => {
+  event.waitUntil(displayPush(event.data, worker.registration));
+});
+worker.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  event.waitUntil(
+    openPushNotification(event.notification.data, worker.location.origin, worker.clients).catch(
+      () => undefined
+    )
+  );
 });
 
 precache(PRECACHE_MANIFEST);

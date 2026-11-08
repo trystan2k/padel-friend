@@ -83,6 +83,7 @@ vi.mock('../src/features/community/community-invitee.functions', async (importOr
   setMyInviteeDiscoverability: mocks.setDiscoverability
 }));
 
+import { isUpdateBlocked } from '../src/features/pwa/update-guard';
 import { createI18n } from '../src/i18n/config';
 import { CommunityInbox } from '../src/features/community/CommunityInbox';
 import { InviteeSearch } from '../src/features/community/InviteeSearch';
@@ -175,7 +176,10 @@ beforeEach(() => {
   mocks.getDiscoverability.mockResolvedValue({ enabled: false });
   mocks.setDiscoverability.mockResolvedValue({ enabled: true });
 });
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  Object.defineProperty(navigator, 'onLine', { configurable: true, value: true });
+});
 
 function mockClipboard() {
   const descriptor = Object.getOwnPropertyDescriptor(navigator, 'clipboard');
@@ -227,6 +231,27 @@ async function openInviteeSearch(rows: { user_id: string; display_name: string }
 }
 
 describe('community admin UI', () => {
+  it('rejects approval offline at invocation, without optimistic success or replay', () => {
+    mount('requests');
+    Object.defineProperty(navigator, 'onLine', { configurable: true, value: false });
+    fireEvent.click(screen.getByRole('button', { name: 'Approve request' }));
+    expect(screen.getByText(/Offline. Nothing sent/)).toBeTruthy();
+    expect(mocks.approve).not.toHaveBeenCalled();
+    Object.defineProperty(navigator, 'onLine', { configurable: true, value: true });
+    fireEvent(window, new Event('online'));
+    expect(mocks.approve).not.toHaveBeenCalled();
+  });
+  it('keeps pending request after false-online/lost acknowledgement and blocks update reload', async () => {
+    mocks.approve.mockRejectedValueOnce(new TypeError('Failed to fetch'));
+    mount('requests');
+    fireEvent.click(screen.getByRole('button', { name: 'Approve request' }));
+    await screen.findByText(/Could not confirm this change/);
+    expect(screen.getByText('Alicia Ramos')).toBeTruthy();
+    expect(isUpdateBlocked()).toBe(true);
+    fireEvent(window, new Event('online'));
+    expect(mocks.approve).toHaveBeenCalledOnce();
+    expect(mocks.invalidate).not.toHaveBeenCalled();
+  });
   it('composes request updates through the dialog and reports send errors', async () => {
     const user = userEvent.setup();
     mount('requests');
@@ -809,7 +834,7 @@ describe('community admin UI', () => {
     expect(document.activeElement).toBe(within(dialog).getByRole('button', { name: 'CANCEL' }));
     await user.click(confirm);
     const error = await within(dialog).findByRole('alert');
-    expect(error.textContent).toContain('Could not complete the change');
+    expect(error.textContent).toContain('Could not confirm this change');
     expect(within(dialog).getByRole('button', { name: 'TRY AGAIN' })).toBeTruthy();
     expect(screen.getByRole('alertdialog')).toBe(dialog);
     expect(mocks.remove).toHaveBeenCalledTimes(1);

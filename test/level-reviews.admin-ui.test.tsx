@@ -3,6 +3,7 @@ import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/re
 import userEvent from '@testing-library/user-event';
 import { I18nextProvider } from 'react-i18next';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
+import { isUpdateBlocked } from '../src/features/pwa/update-guard';
 import { createI18n } from '../src/i18n/config';
 import type { LevelReviewAdminDetail } from '../src/features/level-reviews/level-review-contracts';
 const mocks = vi.hoisted(() => ({
@@ -114,7 +115,22 @@ beforeEach(() => {
 });
 afterEach(() => {
   cleanup();
+  Object.defineProperty(navigator, 'onLine', { configurable: true, value: true });
   vi.resetAllMocks();
+});
+it('rejects a decision offline at confirmation and preserves draft and update blocker', async () => {
+  setup();
+  fill();
+  await approve();
+  Object.defineProperty(navigator, 'onLine', { configurable: true, value: false });
+  fireEvent.click(screen.getByRole('button', { name: 'Confirm decision' }));
+  await screen.findAllByText(/Offline. Nothing sent/);
+  expect(mocks.resolve).not.toHaveBeenCalled();
+  expect(screen.getByLabelText<HTMLInputElement>('Decision note').value).toBe('Verified');
+  expect(isUpdateBlocked()).toBe(true);
+  Object.defineProperty(navigator, 'onLine', { configurable: true, value: true });
+  fireEvent(window, new Event('online'));
+  expect(mocks.resolve).not.toHaveBeenCalled();
 });
 it('validates range and focuses first error', () => {
   setup();

@@ -427,7 +427,11 @@ function ResultForm({
   const errorText = visibleFailure
     ? visibleFailure.status === 'conflict' && visibleFailure.code !== 'active_proposal'
       ? t(MATCH_RESULT_CONFLICT_COPY[visibleFailure.code])
-      : t(MATCH_RESULT_ERROR_COPY[visibleFailure.code])
+      : t(
+          visibleFailure.code === 'unavailable'
+            ? 'pwa.offline.unconfirmed'
+            : MATCH_RESULT_ERROR_COPY[visibleFailure.code]
+        )
     : '';
   const rawDetail = visibleFailure?.status === 'error' ? visibleFailure.detail : undefined;
   const badSet = sets.find((set) => set.position === rawDetail?.set_index);

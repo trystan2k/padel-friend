@@ -33,6 +33,7 @@ vi.mock('../src/features/notifications/notifications.functions', () => ({
   acceptMyNotificationInvitation: mocks.accept
 }));
 
+import { isUpdateBlocked } from '../src/features/pwa/update-guard';
 import { createI18n } from '../src/i18n/config';
 import en from '../src/locales/en/translation.json';
 import {
@@ -209,6 +210,49 @@ beforeEach(() => {
 afterEach(cleanup);
 
 describe('notification detail page', () => {
+  it.each(['/players/', '/level-reviews/', '/platform-admin/level-reviews/'])(
+    'renders authorized %s action without stale private names',
+    async (prefix) => {
+      mountPage({
+        ...unavailable,
+        target_status: 'destination_available',
+        destination_href: prefix + notificationId
+      });
+      expect(screen.getByRole('link', { name: copy.openTarget }).getAttribute('href')).toBe(
+        prefix + notificationId
+      );
+      expect(screen.queryByText(communityName)).toBeNull();
+      await waitFor(() => expect(mocks.markRead).toHaveBeenCalledOnce());
+      expect(mocks.accept).not.toHaveBeenCalled();
+    }
+  );
+  it('rejects invitation acceptance at invocation when connectivity event has not fired', async () => {
+    mountPage(invited);
+    setOnline(false);
+    await userEvent.click(screen.getByRole('button', { name: copy.accept }));
+    expect(mocks.accept).not.toHaveBeenCalled();
+    expect(screen.getByText(copy.offline)).toBeTruthy();
+  });
+  it('keeps a single ordinary error for an authoritative invitation rejection', async () => {
+    mocks.accept.mockRejectedValueOnce(new Error('NOTIFICATION_INVITATION_REJECTED'));
+    mountPage(invited);
+    await userEvent.click(screen.getByRole('button', { name: copy.accept }));
+    await screen.findByText(copy.targetError);
+    expect(screen.getAllByRole('alert')).toHaveLength(1);
+    expect(screen.queryByText(en.pwa.offline.unconfirmed)).toBeNull();
+  });
+  it('shows uncertain invitation response without false membership success or reconnect replay', async () => {
+    mocks.accept.mockRejectedValueOnce(new TypeError('Failed to fetch'));
+    mountPage(invited);
+    await userEvent.click(screen.getByRole('button', { name: copy.accept }));
+    await screen.findByText(en.pwa.offline.unconfirmed);
+    expect(isUpdateBlocked()).toBe(true);
+    expect(screen.queryByText(copy.accepted)).toBeNull();
+    await act(async () => {
+      window.dispatchEvent(new Event('online'));
+    });
+    expect(mocks.accept).toHaveBeenCalledOnce();
+  });
   it('accepts safe cancellation targets and rejects malformed match links', () => {
     expect(
       decodeNotificationTarget({ ...availableMatch, kind: 'match_event_cancelled' })

@@ -1,3 +1,4 @@
+import { useUpdateGuard } from '../pwa/update-guard';
 import { Dialog } from '@base-ui/react/dialog';
 import * as stylex from '@stylexjs/stylex';
 import { useId, useRef, useState, type FormEvent, type RefObject } from 'react';
@@ -55,6 +56,8 @@ export function ResultCorrectionDialog<V extends string = string>({
   const [text, setText] = useState('');
   const [decisionError, setDecisionError] = useState(false);
   const [textError, setTextError] = useState<'required' | 'tooLong' | 'invalid' | null>(null);
+
+  useUpdateGuard(pending || text.length > 0 || decision !== null);
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();

@@ -44,7 +44,7 @@
     "requestPending": "Pedido enviado",
     "alreadyMember": "Você já participa ou tem um pedido pendente",
     "membershipInactive": "Sua associação está inativa. Entre em contato com um administrador da comunidade para reativá-la.",
-    "joinFailed": "Não foi possível entrar. Tente novamente.",
+    "joinFailed": "Não foi possível confirmar esta alteração. Seus campos foram preservados. Atualize antes de tentar novamente.",
     "emptySearch": "Nenhuma comunidade corresponde à busca.",
     "noCommunities": "Ainda não há comunidades públicas.",
     "loadFailed": "Não foi possível carregar as comunidades.",
@@ -75,7 +75,8 @@
     "created": "Sua comunidade está pronta.",
     "finish": "IR AO PAINEL",
     "createFailed": "Não foi possível criar a comunidade. Tente novamente.",
-    "invalidName": "Digite um nome de comunidade com até 80 caracteres."
+    "invalidName": "Digite um nome de comunidade com até 80 caracteres.",
+    "offline": "Sem conexão. Nada foi enviado. Reconecte e tente novamente."
   },
   "auth": {
     "invitationEmail": {
@@ -391,7 +392,9 @@
       "session": "Sua sessão expirou. Entre novamente.",
       "generic": "Não foi possível concluir. Atualize e tente novamente.",
       "finalAdmin": "A comunidade precisa manter pelo menos um admin ativo.",
-      "transition": "Esta associação mudou. Atualize antes de tentar novamente."
+      "transition": "Esta associação mudou. Atualize antes de tentar novamente.",
+      "offline": "Sem conexão. Nada foi enviado. Reconecte e tente novamente.",
+      "unconfirmed": "Não foi possível confirmar esta alteração. Seus campos foram preservados. Atualize antes de tentar novamente."
     },
     "matchCountUnavailable": "Contagem de partidas indisponível — o histórico de partidas ainda não é compatível",
     "inviteeSearchPrivateOnly": "A busca por convidados está disponível somente em comunidades privadas.",
@@ -459,7 +462,9 @@
     "offline": {
       "title": "Você está offline",
       "body": "O Padel Friend precisa de conexão para mostrar sua conta. Reconecte e tente novamente.",
-      "retry": "Tentar novamente"
+      "retry": "Tentar novamente",
+      "unconfirmed": "Não foi possível confirmar esta alteração. Seus campos foram preservados. Atualize antes de tentar novamente.",
+      "unsent": "Sem conexão. Nada foi enviado. Reconecte e tente novamente."
     }
   },
   "push": {
@@ -676,7 +681,8 @@
       "registrationExpiredBody": "As inscrições encerraram antes de uma decisão. Nenhuma vaga foi reservada.",
       "registrationNotPlayingBody": "O prazo passou antes de um quarteto ser completado. Nenhum resultado de partida será registrado.",
       "unavailable": "Esta notificação de partida não está mais disponível."
-    }
+    },
+    "openTarget": "Abrir detalhes atuais"
   },
   "notificationPreferences": {
     "preferencesLink": "Preferências de notificações",
@@ -703,7 +709,10 @@
     "offline": "Você está sem conexão. Reconecte-se para salvar suas preferências."
   },
   "matches": {
-    "competition": { "ranked": "Ranqueada", "unranked": "Sem ranking" },
+    "competition": {
+      "ranked": "Ranqueada",
+      "unranked": "Sem ranking"
+    },
     "addPlayer": {
       "action": "Adicionar jogador",
       "title": "Adicionar um jogador",
@@ -1007,8 +1016,15 @@
       "court": "Quadra",
       "matrixSet": "S{{number}}",
       "title": "Registrar resultado",
-      "steps": { "players": "JOGADORES", "score": "PLACAR", "review": "REVISÃO" },
-      "teams": { "team_a": "Time A", "team_b": "Time B" },
+      "steps": {
+        "players": "JOGADORES",
+        "score": "PLACAR",
+        "review": "REVISÃO"
+      },
+      "teams": {
+        "team_a": "Time A",
+        "team_b": "Time B"
+      },
       "confirmPlayers": "Confirme quem jogou",
       "suggested": "Os times sugeridos seguem a ordem de aceitação. Confirme ou altere quem jogou junto.",
       "changeTeams": "Alterar times",
@@ -1055,7 +1071,25 @@
       "courtLabel": "Identificação da quadra (opcional)",
       "notProvided": "Não informado",
       "preview": "Revisar resultado",
-      "review": "Revisar resultado",
+      "review": {
+        "approve": "Aprovar",
+        "approving": "Registrando aprovação…",
+        "reject": "Contestar",
+        "retry": "Tentar revisão novamente",
+        "reviewCurrent": "Revisar proposta atual",
+        "offline": "Você está sem conexão. Reconecte para revisar. Nenhuma aprovação ou contestação foi enviada.",
+        "offlineDraft": "Resultado não enviado. Reconecte para enviar; seu rascunho continua aqui.",
+        "decisionRecorded": "{{decision}} registrada por {{name}}.",
+        "recorded": {
+          "approve": "A aprovação desta versão foi registrada. O resultado continua pendente até a confirmação do servidor.",
+          "approveConfirmed": "A aprovação foi registrada. O servidor confirmou este resultado; atualizando os detalhes oficiais.",
+          "reject": "Resultado contestado. Nenhuma classificação ou estatística da Liga foi aplicada."
+        },
+        "decisions": {
+          "approve": "Aprovação",
+          "reject": "Contestação"
+        }
+      },
       "back": "Voltar",
       "reload": "Recarregar resultado e lista de jogadores",
       "submit": "Enviar para revisão",
@@ -1091,25 +1125,6 @@
       "confirmation": {
         "manual": "Confirmado · Manual",
         "auto": "Confirmado · Automático 48H"
-      },
-      "review": {
-        "approve": "Aprovar",
-        "approving": "Registrando aprovação…",
-        "reject": "Contestar",
-        "retry": "Tentar revisão novamente",
-        "reviewCurrent": "Revisar proposta atual",
-        "offline": "Você está sem conexão. Reconecte para revisar. Nenhuma aprovação ou contestação foi enviada.",
-        "offlineDraft": "Resultado não enviado. Reconecte para enviar; seu rascunho continua aqui.",
-        "decisionRecorded": "{{decision}} registrada por {{name}}.",
-        "recorded": {
-          "approve": "A aprovação desta versão foi registrada. O resultado continua pendente até a confirmação do servidor.",
-          "approveConfirmed": "A aprovação foi registrada. O servidor confirmou este resultado; atualizando os detalhes oficiais.",
-          "reject": "Resultado contestado. Nenhuma classificação ou estatística da Liga foi aplicada."
-        },
-        "decisions": {
-          "approve": "Aprovação",
-          "reject": "Contestação"
-        }
       },
       "reject": {
         "title": "Contestar resultado",
@@ -1740,7 +1755,7 @@
       "requesterIneligible": "O solicitante não é mais elegível.",
       "forbidden": "Somente o organizador pode decidir solicitações.",
       "unauthenticated": "Entre para continuar.",
-      "unavailable": "O serviço está indisponível. Tente novamente.",
+      "unavailable": "Não foi possível confirmar esta alteração. Seus campos foram preservados. Atualize antes de tentar novamente.",
       "invalid": "Essa ação não é válida.",
       "retry": "Tentar novamente"
     },
