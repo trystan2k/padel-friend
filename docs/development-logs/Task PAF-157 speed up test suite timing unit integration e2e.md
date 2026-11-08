@@ -12,11 +12,12 @@ permalink: docs/development-logs/task-PAF-157-speed-up-test-suite-timing-unit-in
 - Date (UTC): 2026-11-08
 - Project: padel-friend
 - Branch: `feature/PAF-157-speed-up-test-suite-timing-unit-integration-e2e` (base `main`)
-- Commits (4, chronological):
+- Commits (5, chronological):
   - `0333486` — `chore: speed up CI test phases with integration parallelism, e2e workers and balanced shards` (2026-11-06; PAF-158 unit, 20 files)
   - `6464c6f` — `chore: share one db:reset and build across gate stages, add fast e2e lane` (2026-11-06; PAF-159 unit, 8 files)
   - `264b8b5` — `fix: harden integration isolation with scoped assertions and DDL-free parallel partition` (2026-11-07; fix loop, 4 files)
   - `f48a08c` — `fix: harden test gates with keyed builds, serial lanes and consistent waits` (2026-11-08; review/QA fix loop, 21 files)
+  - `7ca29bb` — `fix: provision CI dev vars without precondition and use relative lane paths` (2026-11-08; CI lane provisioning fix, PR #44)
 - Related Linear: PAF-157 (epic) with sub-issues PAF-158 (CI speedups) and PAF-159 (local speedups); team PadelFriend
 - Findings ledger: `docs/plan/PAF-157-findings.md` (review + QA findings F1–F28)
 - Baselines targeted: CI critical path ~17–22 min; local `pnpm complete-check` ~35 min. Constraint: no weakening of coverage or assertions.
@@ -24,7 +25,7 @@ permalink: docs/development-logs/task-PAF-157-speed-up-test-suite-timing-unit-in
 ## Objective
 
 - Cut the CI critical path (~17–22 min) and the local `pnpm complete-check` runtime (~35 min) without weakening coverage thresholds, test counts, or assertion strength.
-- Delivered in two units plus two hardening loops: PAF-158 (CI phases: integration parallelism, e2e workers/shards, artifact sharing, docker cache), PAF-159 (local gate: fast e2e lane, shared build, per-phase fresh resets), a review/QA fix loop (integration isolation hardening), and a final review/QA fix batch (keyed builds, serial lanes, consistent waits).
+- Delivered in two units plus three hardening loops: PAF-158 (CI phases: integration parallelism, e2e workers/shards, artifact sharing, docker cache), PAF-159 (local gate: fast e2e lane, shared build, per-phase fresh resets), a review/QA fix loop (integration isolation hardening), a final review/QA fix batch (keyed builds, serial lanes, consistent waits), and a CI lane-provisioning fix (`7ca29bb`) verified green on the final PR #44 CI run.
 
 ## Implementation Summary
 
@@ -53,6 +54,10 @@ permalink: docs/development-logs/task-PAF-157-speed-up-test-suite-timing-unit-in
   - THREE-LAYER service-role-key fix via shared `scripts/e2e-build-env.mjs`: (1) Playwright webServer + gate build keyed, (2) the integration test's own build keyed, (3) reuse-time `.dev.vars` key check; fail-closed `requireServiceRoleKey`; CI e2e job appends the live key to the extracted `.dev.vars`. Root cause of the deterministic add-player e2e failures identified as a keyless `.dev.vars` clobbered mid-gate by the integration test's own build.
   - Poll-based eventual-consistency waits replace raced DB reads in matches-ranked (`:417` + siblings `:304-310`, `:320`).
   - Bounded visibility assertion in player-ratings (fixes the CI 180 s timeout context-leak: bounded failure instead of hang; root-cause evidence from CI run 41939337035 artifacts).
+- Fix loop 3 (`7ca29bb`, CI lane provisioning, PR #44):
+  - PR #44's first CI run failed all 5 e2e lanes at the "Provision local Supabase environment" step: the shared CI build is keyless by design (no stack in the static job), so `dist/server/.dev.vars` never exists and the `test -f` precondition contradicted the step's own design. Fix: lanes create the file fresh (job-local, masked key).
+  - Lane planner now computes spec paths via `path.relative` (`repoRelativeSpec`, nested-safe — Copilot thread resolved) and `isVisualFile` comment aligned.
+  - Both Copilot review threads replied and resolved.
 
 ## Files Changed
 
@@ -88,6 +93,11 @@ Fix loop 2 (`f48a08c`, 21 files):
 - E2E specs: matches-ranked (poll-based waits `:417`, `:304-310`, `:320`), player-ratings (bounded visibility assertion), provisional fixture family, community-admin tags
 - Contract + regression tests for the isolation and partition changes
 
+Fix loop 3 (`7ca29bb`, CI lane provisioning, PR #44):
+
+- `.github/workflows/ci.yml` (e2e lanes provision `dist/server/.dev.vars` fresh — job-local, masked key — replacing the `test -f` precondition)
+- `scripts/e2e-shards.mjs` (`repoRelativeSpec` via `path.relative`, nested-safe; `isVisualFile` comment aligned)
+
 Explicitly untouched: `scripts/free-port` (left as-is by design); coverage thresholds (unchanged); no test removed or skipped.
 
 ## Key Decisions
@@ -112,11 +122,16 @@ Explicitly untouched: `scripts/free-port` (left as-is by design); coverage thres
 - Review + QA findings F1–F28 tracked in `docs/plan/PAF-157-findings.md` and addressed in fix commits `264b8b5` + `f48a08c`; regression tests added fail-before/passing-after (scoped assertions, zero-test filtered runs, left-over proposals).
 - Root-cause evidence taken from CI run 41939337035 artifacts (player-ratings 180 s timeout context-leak; keyless `.dev.vars` mid-gate clobber).
 - CI-only items verified structurally (actionlint clean) + fail-closed checks; actual CI timings to be confirmed by the PR's CI run via `artifacts/*-timing.json`.
+- PR #44 first CI run failed all 5 e2e lanes at the "Provision local Supabase environment" step — the shared CI build is keyless by design (no stack in the static job), so `dist/server/.dev.vars` never exists and the `test -f` precondition contradicted the step's own design; fixed by `7ca29bb` (lanes create the file fresh, job-local, masked key). Both Copilot review threads replied and resolved.
+- Final PR #44 CI run 42473725319 — ALL GREEN: static 56 s, unit 1m56s, integration 16m40s, e2e functional-1/2/3 6m42s / 5m52s / 6m45s, serial 8m18s, visual 16m15s, e2e-report 34 s; aggregate checks ✓, GitGuardian ✓. Local pre-push unit gate: 2993/2993.
+- Timing evidence: functional critical path 15m15s → 6m42s vs the pre-delivery baseline; the CI visual lane (16m15s) is now the pipeline critical path — CI runners render raster screenshots slower than local. Per-lane timing artifacts (`artifacts/*-timing.json`) carry the detail for future visual-lane tuning (observation, not committed scope). This run also confirms the CI timing claims above and shows no AC6 player-ratings timeout recurrence.
 
 ## Risks and Follow-ups
 
 - AC6 (player-ratings 180 s CI timeout): context-leak confirmed via foreign-page snapshot and bounded-failure hardening applied, but the full root cause is unverified until the PR CI runs show no recurrence.
 - CI timing claims (~9–12 min projected) require the PR's CI run to confirm; only the local ≈20% integration win is directly measured so far.
+- Confirmed by the final PR #44 CI run 42473725319 (all green): the timing claims and the AC6 recurrence watch above are now closed.
+- NEW: CI visual lane duration (16m15s) is the new pipeline critical path; visual-combo budget tuning on CI runners is a candidate follow-up observation (not approved as an issue).
 - Findings ledger observations recorded, not fixed: F8/F22 (dirty-DB-alone failures of `result-replay.races` / `result-corrections.statistics`) and a provisional-cluster failure that was unexplained-but-unreproduced — watch for recurrence on CI.
 - User decision embedded in delivery: visual specs remain on PRs in a dedicated lane; revisit only if PR pipeline time becomes a problem.
 - Pooler/imgproxy services do not start locally (no config section, zero consumers) — documented quirk, not a defect.
