@@ -301,13 +301,20 @@ test('date outside the League period: rejection, explicit Unranked repair, parti
   // Explicit Unranked repair keeps the new date and sends participants to reconfirmation.
   await rejection.getByRole('button', { name: edit.rejection.saveUnranked, exact: true }).click();
   await expect(dialog.getByRole('button', { name: edit.save, exact: true })).toBeDisabled();
+  // The disabled save button means the save is still in flight: wait for the committed state, then
+  // assert it exactly as before.
+  await expect
+    .poll(async () => (await f.eventRow(eventId))?.starts_at, { timeout: 10_000 })
+    .not.toBe(before?.starts_at);
   const after = await f.eventRow(eventId);
   expect(after?.league_id).toBeNull();
   expect(after?.starts_at).not.toBe(before?.starts_at);
-  const rows = await f.registrations(eventId);
-  expect(rows.filter((row) => row.required_generation !== row.confirmed_generation)).toHaveLength(
-    4
-  );
+  const staleRows = async () =>
+    (await f.registrations(eventId)).filter(
+      (row) => row.required_generation !== row.confirmed_generation
+    );
+  await expect.poll(async () => (await staleRows()).length, { timeout: 10_000 }).toBe(4);
+  expect(await staleRows()).toHaveLength(4);
 
   const memberPage = await f.page(players[0]!);
   await f.open(memberPage, eventId);
@@ -317,7 +324,19 @@ test('date outside the League period: rejection, explicit Unranked repair, parti
   await expect(terms).toContainText(m.leagueImpact.effect.rankedToUnranked);
   await terms.getByRole('button', { name: m.reconfirmation.confirm, exact: true }).click();
   await expect(memberPage.getByRole('dialog')).toHaveCount(0);
-  const confirmed = (await f.registrations(eventId)).find((row) => row.user_id === players[0]!.id);
+  // The dialog can close before the confirmation commits: poll until the player's generations match.
+  const confirmedRow = async () =>
+    (await f.registrations(eventId)).find((row) => row.user_id === players[0]!.id);
+  await expect
+    .poll(
+      async () => {
+        const row = await confirmedRow();
+        return row?.required_generation === row?.confirmed_generation;
+      },
+      { timeout: 10_000 }
+    )
+    .toBe(true);
+  const confirmed = await confirmedRow();
   expect(confirmed?.required_generation).toBe(confirmed?.confirmed_generation);
 });
 
@@ -414,8 +433,27 @@ test('provisional player joins a Ranked event, is carried on League change and k
   await dialog.getByRole('combobox', { name: comp.league, exact: true }).selectOption(summer);
   await dialog.getByRole('button', { name: edit.save, exact: true }).click();
   await expect(dialog.getByRole('button', { name: edit.save, exact: true })).toBeDisabled();
-  expect((await f.eventRow(eventId))?.league_id).toBe(summer);
-  const rows = await f.registrations(eventId);
+  // The disabled save button means the save is still in flight: wait for the committed state, then
+  // assert it exactly as before.
+  await expect
+    .poll(async () => (await f.eventRow(eventId))?.league_id, { timeout: 10_000 })
+    .toBe(summer);
+  let rows: Awaited<ReturnType<typeof f.registrations>> = [];
+  await expect
+    .poll(
+      async () => {
+        rows = await f.registrations(eventId);
+        const carriedRow = rows.find((row) => row.user_id === userId);
+        const others = rows.filter((row) => row.user_id !== userId);
+        return (
+          carriedRow?.required_generation === carriedRow?.confirmed_generation &&
+          others.length === 3 &&
+          others.every((row) => row.required_generation !== row.confirmed_generation)
+        );
+      },
+      { timeout: 10_000 }
+    )
+    .toBe(true);
   const carried = rows.find((row) => row.user_id === userId)!;
   expect(carried.required_generation).toBe(carried.confirmed_generation);
   expect(carried.participation_status).not.toBeNull();

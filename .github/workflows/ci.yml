@@ -13,12 +13,20 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
-# CI topology: static checks block the three parallel test phases; checks aggregates all results.
+# CI topology: static checks block the parallel test phases; checks aggregates all results.
 # Keep `checks` as final job name for branch-protection continuity.
 jobs:
   static:
     name: static
     runs-on: ubuntu-latest
+    outputs:
+      populated-upgrade: ${{ steps.upgrade-paths.outputs.run }}
+    # Public, test-only values of the Supabase CLI's local stack (same for every runner). Vite embeds
+    # them at build time, so the one shared build below serves every E2E stack; E2E jobs verify the
+    # live stack still reports exactly these values.
+    env:
+      BUILD_SUPABASE_URL: http://127.0.0.1:55321
+      BUILD_SUPABASE_PUBLISHABLE_KEY: sb_publishable_ACJWlzQHlZjBrEguHvfOxg_3BJgxAaH
     steps:
       - name: Start job timing
         run: printf '%s\n' "$(date +%s%3N)" > "$RUNNER_TEMP/ci-job-start-ms"
@@ -31,11 +39,47 @@ jobs:
           node-version: '26'
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: pnpm build
+      - name: Build once for unit and E2E jobs
+        env:
+          VITE_SUPABASE_URL: ${{ env.BUILD_SUPABASE_URL }}
+          VITE_SUPABASE_PUBLISHABLE_KEY: ${{ env.BUILD_SUPABASE_PUBLISHABLE_KEY }}
+        run: pnpm build
+      - name: Package shared build
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/app-build"
+          # Build output, Cloudflare preview metadata and the generated files unit tests import.
+          tar -cf "$RUNNER_TEMP/app-build/app-build.tar" dist .wrangler/deploy/config.json src/routeTree.gen.ts design-tokens/dist
+          printf '{"sha":"%s","supabaseUrl":"%s","runId":"%s"}\n' "$GITHUB_SHA" "$BUILD_SUPABASE_URL" "$GITHUB_RUN_ID" > "$RUNNER_TEMP/app-build/build-manifest.json"
+      - name: Upload shared build
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-build
+          path: ${{ runner.temp }}/app-build/
+          retention-days: 1
+          if-no-files-found: error
       - run: pnpm knip
       - run: pnpm typecheck
       - run: pnpm lint
       - run: pnpm format:check
+      # The populated-upgrade harness only depends on migrations, seeds, config, its own scripts and
+      # fixtures, the toolchain pins and this workflow. Anything unknown or unreadable runs it.
+      - name: Detect populated-upgrade inputs
+        id: upgrade-paths
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+        run: |
+          run=true
+          if [[ -n "${BASE_SHA:-}" && ! "$BASE_SHA" =~ ^0+$ ]] && git fetch --no-tags --depth=1 origin "$BASE_SHA" 2>/dev/null; then
+            # --no-renames lists both endpoints of a move, so leaving a watched path still counts.
+            if changed="$(git diff --name-only --no-renames "$BASE_SHA" HEAD)"; then
+              run=false
+              pattern='^(supabase/|scripts/test-populated-migration-up\.|test/fixtures/|test/matches\.migration-up-harness\.test\.ts$|package\.json$|pnpm-lock\.yaml$|\.github/workflows/ci\.yml$|\.github/actions/)'
+              if grep -Eq "$pattern" <<<"$changed"; then run=true; fi
+            fi
+          fi
+          printf 'Populated upgrade harness required: %s\n' "$run"
+          printf 'run=%s\n' "$run" >> "$GITHUB_OUTPUT"
       - name: Record static job timing
         if: always()
         env:
@@ -69,10 +113,24 @@ jobs:
           node-version: '26'
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      # Unit tests import generated route metadata and design tokens. Each CI job
-      # has a fresh checkout, so create those build-time artifacts before testing.
-      - name: Generate application artifacts required by unit tests
-        run: pnpm build
+      # Unit tests import generated route metadata and design tokens; unpack them from the
+      # same-run build instead of rebuilding.
+      - name: Download shared build
+        uses: actions/download-artifact@v4
+        with:
+          name: app-build
+          path: ${{ runner.temp }}/app-build
+      - name: Verify and unpack shared build
+        run: |
+          set -euo pipefail
+          manifest="$RUNNER_TEMP/app-build/build-manifest.json"
+          built_sha="$(node -p "require(process.argv[1]).sha" "$manifest")"
+          if [[ "$built_sha" != "$GITHUB_SHA" ]]; then
+            printf 'Shared build is for %s but this job runs %s\n' "$built_sha" "$GITHUB_SHA" >&2
+            exit 1
+          fi
+          tar -xf "$RUNNER_TEMP/app-build/app-build.tar"
+          test -f dist/server/wrangler.json && test -f .wrangler/deploy/config.json && test -f src/routeTree.gen.ts && test -f design-tokens/dist/tokens.css
       - name: Run unit tests with coverage and JSON report
         run: |
           set -euo pipefail
@@ -125,16 +183,20 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - name: Start local Supabase
-        run: pnpm exec supabase start
+        uses: ./.github/actions/supabase-start
+        with:
+          save: 'true'
+      # Skipped (not failed) unless a populated-upgrade input changed; see the static job.
       - name: Test populated predecessor migration upgrade
         id: populated-upgrade
+        if: needs.static.outputs.populated-upgrade == 'true'
         env:
           POPULATED_UPGRADE_OPT_IN: '1'
         run: node scripts/test-populated-migration-up.mjs
         continue-on-error: true
       - name: Restore latest local Supabase schema
         id: final-reset
-        if: always()
+        if: always() && needs.static.outputs.populated-upgrade == 'true'
         run: pnpm exec supabase db reset --local
         continue-on-error: true
       - name: Enforce populated upgrade and final reset results
@@ -163,12 +225,14 @@ jobs:
           fi
           printf 'VITE_SUPABASE_URL=%s\nVITE_SUPABASE_PUBLISHABLE_KEY=%s\n' "$API_URL" "$PUBLISHABLE_KEY" >> "$GITHUB_ENV"
           printf 'VITE_SUPABASE_URL=%s\nVITE_SUPABASE_PUBLISHABLE_KEY=%s\n' "$API_URL" "$PUBLISHABLE_KEY" > .env
+      # Audited parallel-safe files run on 2 workers first, then the remaining files serially
+      # (scripts/run-integration.mjs); one JSON report per phase. INTEGRATION_SERIAL=1 is the rollback.
       - name: Run integration tests with JSON report
         run: |
           set -euo pipefail
           mkdir -p artifacts
           start_ms="$(date +%s%3N)"
-          if pnpm exec vitest run --config vitest.integration.config.ts --reporter=default --reporter=json --outputFile.json=artifacts/integration-report.json; then
+          if pnpm test:integration --reporter=default --reporter=json --outputFile.json=artifacts/integration-report.json; then
             test_exit_code=0
           else
             test_exit_code=$?
@@ -190,22 +254,29 @@ jobs:
         with:
           name: integration-evidence
           path: |
-            artifacts/integration-report.json
+            artifacts/integration-report*.json
             artifacts/integration-timing.json
             artifacts/integration-job-timing.json
           if-no-files-found: ignore
 
-  # Each E2E shard gets its own Supabase stack and fresh preview. The reporting
-  # job merges their blob reports; checks aggregates the shard results directly.
+  # Each E2E lane gets its own Supabase stack and a fresh preview of the shared same-run build.
+  # Three functional lanes are balanced by measured runtime (scripts/e2e-shards.mjs); the serial lane
+  # isolates the specs that race on global state (SERIAL_SPECS in scripts/e2e-shards.mjs); the visual lane runs every @visual test on every PR and
+  # main push. The reporting job merges their blob
+  # reports; checks aggregates the lane results directly.
   # Never place mutation-heavy unit/integration suites in this job.
   e2e:
-    name: e2e (shard ${{ matrix.shard }}/3)
+    name: e2e (${{ matrix.lane }})
     runs-on: ubuntu-latest
     needs: static
+    env:
+      BUILD_SUPABASE_URL: http://127.0.0.1:55321
+      BUILD_SUPABASE_PUBLISHABLE_KEY: sb_publishable_ACJWlzQHlZjBrEguHvfOxg_3BJgxAaH
+      PLAYWRIGHT_BLOB_OUTPUT_NAME: report-${{ matrix.lane }}.zip
     strategy:
       fail-fast: false
       matrix:
-        shard: [1, 2, 3]
+        lane: [functional-1, functional-2, functional-3, serial, visual]
     steps:
       - name: Start job timing
         run: printf '%s\n' "$(date +%s%3N)" > "$RUNNER_TEMP/ci-job-start-ms"
@@ -218,10 +289,24 @@ jobs:
           node-version: '26'
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - name: Download shared build
+        uses: actions/download-artifact@v4
+        with:
+          name: app-build
+          path: ${{ runner.temp }}/app-build
+      - name: Verify and unpack shared build
+        run: |
+          set -euo pipefail
+          manifest="$RUNNER_TEMP/app-build/build-manifest.json"
+          built_sha="$(node -p "require(process.argv[1]).sha" "$manifest")"
+          if [[ "$built_sha" != "$GITHUB_SHA" ]]; then
+            printf 'Shared build is for %s but this job runs %s\n' "$built_sha" "$GITHUB_SHA" >&2
+            exit 1
+          fi
+          tar -xf "$RUNNER_TEMP/app-build/app-build.tar"
+          test -f dist/server/wrangler.json && test -f .wrangler/deploy/config.json && test -f src/routeTree.gen.ts && test -f design-tokens/dist/tokens.css
       - name: Start local Supabase
-        run: pnpm exec supabase start
-      - name: Ensure latest local Supabase schema
-        run: pnpm exec supabase db reset --local
+        uses: ./.github/actions/supabase-start
       - name: Provision local Supabase environment
         run: |
           set -euo pipefail
@@ -236,6 +321,11 @@ jobs:
             printf '%s\n' 'Local Supabase API_URL or PUBLISHABLE_KEY missing/invalid' >&2
             exit 1
           fi
+          # The shared build embedded these public values; a stack that disagrees would test the wrong backend.
+          if [[ "$API_URL" != "$BUILD_SUPABASE_URL" || "$PUBLISHABLE_KEY" != "$BUILD_SUPABASE_PUBLISHABLE_KEY" ]]; then
+            printf '%s\n' 'Local Supabase stack differs from the public config baked into the shared build' >&2
+            exit 1
+          fi
           printf 'VITE_SUPABASE_URL=%s\nVITE_SUPABASE_PUBLISHABLE_KEY=%s\n' "$API_URL" "$PUBLISHABLE_KEY" >> "$GITHUB_ENV"
           printf 'VITE_SUPABASE_URL=%s\nVITE_SUPABASE_PUBLISHABLE_KEY=%s\n' "$API_URL" "$PUBLISHABLE_KEY" > .env
           # Server-only key of the ephemeral local stack, for the add-player server function.
@@ -244,41 +334,57 @@ jobs:
           SERVICE_ROLE_KEY="${SERVICE_ROLE_KEY%\"}"
           echo "::add-mask::$SERVICE_ROLE_KEY"
           printf 'SUPABASE_SERVICE_ROLE_KEY=%s\n' "$SERVICE_ROLE_KEY" >> "$GITHUB_ENV"
+          # The shared build is keyless (the static job has no stack), so it ships no dist/server/.dev.vars.
+          # The preview worker reads the key from there; create it with the live stack's key in this job's
+          # extracted copy only, never in the artifact or a tracked file.
+          printf 'SUPABASE_SERVICE_ROLE_KEY=%s\n' "$SERVICE_ROLE_KEY" > dist/server/.dev.vars
       - run: pnpm exec playwright install --with-deps chromium
-      - name: Run fresh-preview E2E shard
+      # `pnpm test:e2e` resets the database and frees the preview port itself; E2E_GATE_PREBUILT makes
+      # the web server preview the verified same-run build instead of rebuilding per lane.
+      - name: Run fresh-preview E2E lane
+        env:
+          E2E_GATE_PREBUILT: '1'
+          LANE: ${{ matrix.lane }}
         run: |
           set -euo pipefail
           mkdir -p artifacts
+          # Plain redirect (not process substitution) so a planner failure aborts the lane under set -e.
+          node scripts/e2e-shards.mjs "$LANE" > "$RUNNER_TEMP/lane-args.txt"
+          mapfile -t lane_args < "$RUNNER_TEMP/lane-args.txt"
+          if [[ ${#lane_args[@]} -eq 0 ]]; then
+            printf 'E2E lane planner returned no args for %s\n' "$LANE" >&2
+            exit 1
+          fi
           start_ms="$(date +%s%3N)"
-          if pnpm test:e2e --shard=${{ matrix.shard }}/3 --reporter=blob; then
+          if pnpm test:e2e "${lane_args[@]}" --reporter=blob; then
             test_exit_code=0
           else
             test_exit_code=$?
           fi
           elapsed_ms=$(( $(date +%s%3N) - start_ms ))
-          printf '{"phase":"e2e","shard":%s,"elapsedMs":%s,"exitCode":%s}\n' "${{ matrix.shard }}" "$elapsed_ms" "$test_exit_code" > artifacts/e2e-timing.json
+          printf '{"phase":"e2e","lane":"%s","elapsedMs":%s,"exitCode":%s}\n' "$LANE" "$elapsed_ms" "$test_exit_code" > artifacts/e2e-timing.json
           exit "$test_exit_code"
-      - name: Record E2E shard timing
+      - name: Record E2E lane timing
         if: always()
         env:
           JOB_STATUS: ${{ job.status }}
-          SHARD: ${{ matrix.shard }}
+          LANE: ${{ matrix.lane }}
         run: |
           mkdir -p artifacts
           start_ms="$(cat "$RUNNER_TEMP/ci-job-start-ms")"
           elapsed_ms=$(( $(date +%s%3N) - start_ms ))
-          printf '{"job":"e2e","shard":%s,"status":"%s","elapsedMs":%s}\n' "$SHARD" "$JOB_STATUS" "$elapsed_ms" > artifacts/e2e-job-timing.json
+          printf '{"job":"e2e","lane":"%s","status":"%s","elapsedMs":%s}\n' "$LANE" "$JOB_STATUS" "$elapsed_ms" > artifacts/e2e-job-timing.json
       - name: Upload E2E blob report
         uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: e2e-blob-report-${{ matrix.shard }}
+          name: e2e-blob-report-${{ matrix.lane }}
           path: blob-report/
           if-no-files-found: error
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: e2e-evidence-${{ matrix.shard }}
+          name: e2e-evidence-${{ matrix.lane }}
           path: |
             test-results/
             artifacts/community-admin-visual/
@@ -286,7 +392,7 @@ jobs:
             artifacts/e2e-job-timing.json
           if-no-files-found: ignore
 
-  # Merge reports after all shards finish, without affecting the required checks gate.
+  # Merge reports after all lanes finish, without affecting the required checks gate.
   e2e-report:
     name: e2e-report
     runs-on: ubuntu-latest
@@ -302,13 +408,13 @@ jobs:
           node-version: '26'
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - name: Download E2E shard blob reports
+      - name: Download E2E lane blob reports
         uses: actions/download-artifact@v4
         with:
           pattern: e2e-blob-report-*
           path: all-blob-reports
           merge-multiple: true
-      - name: Require all three shard reports
+      - name: Require all five lane reports
         run: |
           set -euo pipefail
           if [[ ! -d all-blob-reports ]]; then
@@ -316,8 +422,8 @@ jobs:
             exit 1
           fi
           report_count="$(find all-blob-reports -type f -name '*.zip' | wc -l | tr -d '[:space:]')"
-          if [[ "$report_count" -ne 3 ]]; then
-            printf 'Expected one blob report from each of 3 E2E shards; found %s\n' "$report_count" >&2
+          if [[ "$report_count" -ne 5 ]]; then
+            printf 'Expected one blob report from each of 5 E2E lanes; found %s\n' "$report_count" >&2
             exit 1
           fi
       - name: Merge E2E HTML report

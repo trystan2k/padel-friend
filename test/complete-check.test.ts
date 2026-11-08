@@ -1,33 +1,90 @@
-import { spawnSync } from 'node:child_process';
+import { execFileSync, spawnSync } from 'node:child_process';
 import { existsSync, mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
+import { SERIAL_SPECS, gateLanes } from '../scripts/e2e-shards.mjs';
 
 const repoRoot = process.cwd();
-const allStages = [
-  'db:types:check',
-  'build',
-  'knip',
-  'typecheck',
-  'lint',
-  'format:check',
-  'test',
-  'test:e2e'
+const UNIT = 'exec vitest run --config vitest.unit.config.ts --coverage';
+const STATIC = ['build', 'knip', 'typecheck', 'lint', 'format:check'];
+const lanes = gateLanes();
+// Free the port once, then the main sweep and the serial specs as separate Playwright invocations.
+const E2E_AFTER_RESET = [
+  'exec node scripts/free-port.mjs 4173',
+  `exec playwright test ${lanes.main.join(' ')}`,
+  `exec playwright test ${lanes.serial.join(' ')} --workers=1`
 ];
+const allCommands = [
+  ...STATIC,
+  UNIT,
+  'db:reset',
+  'db:types:check',
+  'test:integration',
+  'db:reset',
+  ...E2E_AFTER_RESET
+];
+const allStageCount = 11;
+const PLAYWRIGHT = E2E_AFTER_RESET[2];
 
-function runCompleteCheck(args: string[], failingCommand?: string) {
+function runCompleteCheck(
+  args: string[],
+  failingCommand?: string,
+  options: {
+    driftOn?: string;
+    driftFile?: string;
+    clobberOn?: string;
+    failNth?: number;
+    env?: Record<string, string>;
+  } = {}
+) {
   const tempDirectory = mkdtempSync(path.join(os.tmpdir(), 'complete-check-test-'));
   const binDirectory = path.join(tempDirectory, 'bin');
   const logPath = path.join(tempDirectory, 'commands.log');
   mkdirSync(binDirectory);
+  // The gate runs inside a throwaway git repository so simulated drift (an untracked source file or a
+  // Vite env file) never touches the real worktree, whatever the test outcome; the temp directory is
+  // always removed in `finally`.
+  const projectDirectory = path.join(tempDirectory, 'project');
+  mkdirSync(projectDirectory);
+  writeFileSync(path.join(projectDirectory, 'package.json'), '{}\n');
+  // Like the real repo, build output is ignored: the fingerprint must not see dist changes.
+  writeFileSync(path.join(projectDirectory, '.gitignore'), 'dist/\n');
+  for (const gitArgs of [
+    ['init', '-q'],
+    ['add', '.'],
+    ['-c', 'user.name=t', '-c', 'user.email=t@example.com', 'commit', '-q', '-m', 'init']
+  ]) {
+    execFileSync('git', gitArgs, { cwd: projectDirectory });
+  }
+  // File the fake pnpm appends to, to simulate inputs changing mid-gate (default: an untracked source file).
+  const driftFile = path.join(projectDirectory, options.driftFile ?? '.complete-check-drift');
 
   writeFileSync(
     path.join(binDirectory, 'pnpm'),
     [
       '#!/bin/sh',
+      // The service-role lookup is the shared build-env helper's, not a gate stage: answer it unlogged.
+      'if [ "$*" = "exec supabase status -o env" ]; then',
+      '  if [ -n "${COMPLETE_CHECK_STACK_FAIL:-}" ]; then echo "supabase local stack is not running" >&2; exit 1; fi',
+      // Realistic `supabase status -o env` shape: quoted KEY="value" lines around the one we need.
+      '  printf \'API_URL="http://127.0.0.1:55321"\\nANON_KEY="anon"\\nSERVICE_ROLE_KEY="%s"\\nSTUDIO_URL="http://127.0.0.1:55323"\\n\' "${COMPLETE_CHECK_STACK_KEY:-}"; exit 0',
+      'fi',
       'printf \'%s\\n\' "$*" >> "$COMPLETE_CHECK_LOG"',
-      'if [ "${COMPLETE_CHECK_FAIL:-}" = "$*" ]; then exit 1; fi',
+      'if [ "$*" = "build" ]; then',
+      '  printf \'%s|%s\\n\' "${CLOUDFLARE_INCLUDE_PROCESS_ENV:-}" "${SUPABASE_SERVICE_ROLE_KEY:-}" >> "$COMPLETE_CHECK_LOG.build"',
+      // Like the real build, bake the key into dist/server/.dev.vars only when the build env has it.
+      '  mkdir -p dist/server; : > dist/server/.dev.vars',
+      '  if [ -n "${SUPABASE_SERVICE_ROLE_KEY:-}" ]; then printf \'SUPABASE_SERVICE_ROLE_KEY=%s\\n\' "$SUPABASE_SERVICE_ROLE_KEY" > dist/server/.dev.vars; fi',
+      'fi',
+      // Simulates a later rebuild (e.g. a keyless build inside a test) wiping the baked key.
+      'if [ -n "${COMPLETE_CHECK_CLOBBER:-}" ] && [ "$COMPLETE_CHECK_CLOBBER" = "$*" ]; then : > dist/server/.dev.vars; fi',
+      'printf \'%s|%s\\n\' "$*" "${E2E_GATE_PREBUILT:-}" >> "$COMPLETE_CHECK_LOG.env"',
+      'if [ -n "${COMPLETE_CHECK_DRIFT:-}" ] && [ "${COMPLETE_CHECK_DRIFT}" = "$*" ]; then printf drift >> "$COMPLETE_CHECK_DRIFT_FILE"; fi',
+      // COMPLETE_CHECK_FAIL_NTH limits the failure to that (1-based) occurrence of the command.
+      'if [ "${COMPLETE_CHECK_FAIL:-}" = "$*" ]; then',
+      '  if [ -z "${COMPLETE_CHECK_FAIL_NTH:-}" ] || [ "$(grep -cxF -- "$*" "$COMPLETE_CHECK_LOG")" = "$COMPLETE_CHECK_FAIL_NTH" ]; then exit 1; fi',
+      'fi',
       ''
     ].join('\n'),
     { mode: 0o755 }
@@ -38,20 +95,35 @@ function runCompleteCheck(args: string[], failingCommand?: string) {
       process.execPath,
       [path.join(repoRoot, 'scripts/complete-check.mjs'), ...args],
       {
-        cwd: repoRoot,
+        cwd: projectDirectory,
         encoding: 'utf8',
         env: {
           ...process.env,
           PATH: `${binDirectory}${path.delimiter}${process.env.PATH ?? ''}`,
           COMPLETE_CHECK_LOG: logPath,
-          COMPLETE_CHECK_FAIL: failingCommand ?? ''
+          COMPLETE_CHECK_FAIL: failingCommand ?? '',
+          COMPLETE_CHECK_FAIL_NTH: options.failNth?.toString() ?? '',
+          COMPLETE_CHECK_DRIFT: options.driftOn ?? '',
+          COMPLETE_CHECK_CLOBBER: options.clobberOn ?? '',
+          COMPLETE_CHECK_STACK_KEY: 'stack-key',
+          SUPABASE_SERVICE_ROLE_KEY: '',
+          COMPLETE_CHECK_DRIFT_FILE: driftFile,
+          ...options.env
         }
       }
     );
     const commands = existsSync(logPath)
       ? readFileSync(logPath, 'utf8').trim().split('\n').filter(Boolean)
       : [];
-    return { result, commands };
+    const envLog = `${logPath}.env`;
+    const prebuilt = existsSync(envLog)
+      ? readFileSync(envLog, 'utf8').trim().split('\n').filter(Boolean)
+      : [];
+    const buildLog = `${logPath}.build`;
+    const buildEnv = existsSync(buildLog)
+      ? readFileSync(buildLog, 'utf8').trim().split('\n').filter(Boolean)
+      : [];
+    return { result, commands, prebuilt, buildEnv };
   } finally {
     rmSync(tempDirectory, { recursive: true, force: true });
   }
@@ -61,53 +133,305 @@ const selectionCases: Array<{
   label: string;
   args: string[];
   expected: string[];
+  stageCount: number;
   successMessage: string;
 }> = [
   {
     label: 'default selection',
     args: [],
-    expected: allStages,
+    expected: allCommands,
+    stageCount: allStageCount,
     successMessage: '[complete-check] all stages passed'
   },
   {
     label: 'static checks',
     args: ['--only=static'],
-    expected: ['build', 'knip', 'typecheck', 'lint', 'format:check'],
+    expected: STATIC,
+    stageCount: 5,
     successMessage: '[complete-check] all selected stages passed'
   },
   {
     label: 'tests only',
     args: ['--only=test'],
-    expected: ['test'],
+    expected: [UNIT, 'db:reset', 'test:integration'],
+    stageCount: 3,
     successMessage: '[complete-check] all selected stages passed'
   },
   {
     label: 'comma-separated groups',
     args: ['--only=static,test'],
-    expected: ['build', 'knip', 'typecheck', 'lint', 'format:check', 'test'],
+    expected: [...STATIC, UNIT, 'db:reset', 'test:integration'],
+    stageCount: 8,
     successMessage: '[complete-check] all selected stages passed'
   },
   {
     label: 'E2E only',
     args: ['--only=e2e'],
-    expected: ['test:e2e'],
+    expected: ['db:reset', ...E2E_AFTER_RESET],
+    stageCount: 2,
     successMessage: '[complete-check] all selected stages passed'
   }
 ];
 
 describe('complete-check stage selection', () => {
-  it.each(selectionCases)('runs $label in declared order', ({ args, expected, successMessage }) => {
-    const { result, commands } = runCompleteCheck(args);
+  it.each(selectionCases)(
+    'runs $label in declared order',
+    ({ args, expected, successMessage, stageCount }) => {
+      const { result, commands } = runCompleteCheck(args);
+
+      expect(result.status).toBe(0);
+      expect(commands).toEqual(expected);
+      expect(result.stdout).toContain('=== complete-check summary ===');
+      expect(result.stdout).toContain(successMessage);
+      expect(result.stdout.match(/^PASS  /gm)).toHaveLength(stageCount);
+    }
+  );
+
+  it('keeps the gate unit stage identical to the standalone test script', () => {
+    const pkg: { scripts: Record<string, string> } = JSON.parse(
+      readFileSync(path.join(repoRoot, 'package.json'), 'utf8')
+    );
+
+    expect(pkg.scripts.test).toBe(
+      'vitest run --config vitest.unit.config.ts --coverage && pnpm db:reset && pnpm test:integration'
+    );
+    expect(pkg.scripts['test:e2e']).toBe(
+      'pnpm db:reset && node scripts/free-port.mjs 4173 && playwright test'
+    );
+    expect(UNIT).toBe('exec vitest run --config vitest.unit.config.ts --coverage');
+  });
+
+  it('gives each test phase a fresh reset and builds once, with e2e on the prebuilt bundle', () => {
+    const { result, commands, prebuilt } = runCompleteCheck([]);
 
     expect(result.status).toBe(0);
-    expect(commands).toEqual(expected);
-    expect(result.stdout).toContain('=== complete-check summary ===');
-    expect(result.stdout).toContain(successMessage);
-    expect(result.stdout.match(/^PASS  /gm)).toHaveLength(expected.length);
+    expect(commands.filter((command) => command === 'db:reset')).toHaveLength(2);
+    expect(commands.filter((command) => command === 'build')).toHaveLength(1);
+    // reset -> db:types:check -> integration, then a second reset immediately before e2e
+    expect(commands.slice(commands.indexOf(UNIT))).toEqual([
+      UNIT,
+      'db:reset',
+      'db:types:check',
+      'test:integration',
+      'db:reset',
+      ...E2E_AFTER_RESET
+    ]);
+    expect(commands).not.toContain('test:e2e');
+    expect(prebuilt.filter((line) => line.endsWith('|1'))).toEqual(
+      E2E_AFTER_RESET.map((command) => `${command}|1`)
+    );
+    expect(prebuilt.filter((line) => line.endsWith('|1'))).toHaveLength(E2E_AFTER_RESET.length);
+  });
+
+  it('resets again between test and e2e without a build', () => {
+    const { commands, prebuilt } = runCompleteCheck(['--only=test,e2e']);
+
+    expect(commands).toEqual([
+      UNIT,
+      'db:reset',
+      'test:integration',
+      'db:reset',
+      ...E2E_AFTER_RESET
+    ]);
+    expect(prebuilt.some((line) => line.endsWith('|1'))).toBe(false);
+  });
+
+  it('reuses the build for an e2e run that resets itself first', () => {
+    const { commands, prebuilt } = runCompleteCheck(['--only=static,e2e']);
+
+    expect(commands).toEqual([...STATIC, 'db:reset', ...E2E_AFTER_RESET]);
+    expect(prebuilt.at(-1)).toBe(`${PLAYWRIGHT}|1`);
+  });
+
+  it('runs the e2e stage as the main sweep without the serial specs, then the serial specs', () => {
+    const { commands } = runCompleteCheck(['--only=e2e']);
+    const playwright = commands.filter((command) => command.startsWith('exec playwright test'));
+
+    expect(
+      commands.filter((command) => command === 'exec node scripts/free-port.mjs 4173')
+    ).toHaveLength(1);
+    expect(playwright).toHaveLength(2);
+    const [main = [], serial = []] = playwright.map((command) => command.split(' ').slice(3));
+    expect(main).toContain('e2e/home.spec.ts');
+    for (const spec of SERIAL_SPECS) expect(main).not.toContain(spec);
+    // The serial invocation is the 7 serial files on a single worker.
+    expect(serial).toEqual([
+      'e2e/level-reviews-admin.spec.ts',
+      'e2e/level-reviews-player.spec.ts',
+      'e2e/level-reviews.spec.ts',
+      'e2e/notifications.spec.ts',
+      'e2e/result-corrections-visual.spec.ts',
+      'e2e/result-repairs.spec.ts',
+      'e2e/statistics.spec.ts',
+      '--workers=1'
+    ]);
+    expect(serial.slice(0, -1)).toEqual(SERIAL_SPECS);
+    expect(main).not.toContain('--workers=1');
+    expect(main).toContain('e2e/level-reviews-visual.spec.ts');
+  });
+
+  it('fails the e2e stage at the first failing Playwright invocation', () => {
+    const { result, commands } = runCompleteCheck(['--only=e2e'], E2E_AFTER_RESET[1]);
+
+    expect(result.status).toBe(1);
+    expect(commands).toEqual(['db:reset', E2E_AFTER_RESET[0], E2E_AFTER_RESET[1]]);
+    expect(result.stderr).toContain('test:e2e FAILED');
+  });
+
+  it('builds with the shared e2e build env so the preview worker has the service-role key', () => {
+    const { buildEnv } = runCompleteCheck(['--only=static,e2e'], undefined, {
+      env: { COMPLETE_CHECK_STACK_KEY: 'stack-key', SUPABASE_SERVICE_ROLE_KEY: '' }
+    });
+
+    expect(buildEnv).toEqual(['true|stack-key']);
+  });
+
+  it('fails the build stage closed, with the reason, when e2e is selected and no key resolves', () => {
+    const { result, commands, buildEnv } = runCompleteCheck(['--only=static,e2e'], undefined, {
+      env: { COMPLETE_CHECK_STACK_FAIL: '1' }
+    });
+
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain('build FAILED');
+    expect(result.stderr).toContain('e2e preview requires the Supabase service-role key');
+    expect(result.stderr).toContain('supabase local stack is not running');
+    expect(result.stderr).toContain('SUPABASE_SERVICE_ROLE_KEY');
+    expect(result.stdout).toMatch(/^FAIL +build/m);
+    expect(commands).not.toContain('build');
+    expect(buildEnv).toEqual([]);
+  });
+
+  it('fails closed when the stack answers without a service-role key', () => {
+    const { result, commands } = runCompleteCheck(['--only=static,e2e'], undefined, {
+      env: { COMPLETE_CHECK_STACK_KEY: '' }
+    });
+
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain('printed no SERVICE_ROLE_KEY');
+    expect(commands).not.toContain('build');
+  });
+
+  it('never looks the key up for static-only runs, even without a stack', () => {
+    const { result, commands } = runCompleteCheck(['--only=static'], undefined, {
+      env: { COMPLETE_CHECK_STACK_FAIL: '1' }
+    });
+
+    expect(result.status).toBe(0);
+    expect(commands).toEqual(STATIC);
+  });
+
+  it('rebuilds in e2e when the gate build lost its key after later stages rebuilt dist', () => {
+    const { result, prebuilt } = runCompleteCheck(['--only=static,e2e'], undefined, {
+      clobberOn: 'lint'
+    });
+
+    expect(result.status).toBe(0);
+    expect(result.stderr).toContain('lost its service-role key');
+    expect(prebuilt.at(-1)).toBe(`${PLAYWRIGHT}|`);
+  });
+
+  it('prefers a caller-provided service-role key for the build', () => {
+    const { buildEnv } = runCompleteCheck(['--only=static,e2e'], undefined, {
+      env: { COMPLETE_CHECK_STACK_KEY: 'stack-key', SUPABASE_SERVICE_ROLE_KEY: 'shell-key' }
+    });
+
+    expect(buildEnv).toEqual(['true|shell-key']);
+  });
+
+  it('leaves the build env untouched when e2e is not selected (service-free runs)', () => {
+    const { commands, buildEnv } = runCompleteCheck(['--only=static'], undefined, {
+      env: { COMPLETE_CHECK_STACK_KEY: 'stack-key', SUPABASE_SERVICE_ROLE_KEY: '' }
+    });
+
+    expect(commands).toEqual(STATIC);
+    expect(buildEnv).toEqual(['|']);
+  });
+
+  it('ignores an inherited E2E_GATE_PREBUILT and fresh-builds without a gate build', () => {
+    const { prebuilt } = runCompleteCheck(['--only=e2e'], undefined, {
+      env: { E2E_GATE_PREBUILT: '1' }
+    });
+
+    expect(prebuilt).toEqual(['db:reset|', ...E2E_AFTER_RESET.map((command) => `${command}|`)]);
+  });
+
+  it('does not enable prebuilt mode when the gate build failed', () => {
+    const { result, prebuilt } = runCompleteCheck(['--only=static,e2e'], 'build');
+
+    expect(result.status).toBe(1);
+    expect(prebuilt.at(-1)).toBe(`${PLAYWRIGHT}|`);
+  });
+
+  it('fails closed to a fresh build when sources change after the gate build', () => {
+    const { result, prebuilt } = runCompleteCheck(['--only=static,e2e'], undefined, {
+      driftOn: 'lint'
+    });
+
+    expect(result.status).toBe(0);
+    expect(result.stderr).toContain('sources changed since the gate build');
+    expect(prebuilt.at(-1)).toBe(`${PLAYWRIGHT}|`);
+  });
+
+  it('fails closed to a fresh build when a Vite env file changes after the gate build', () => {
+    const { result, prebuilt } = runCompleteCheck(['--only=static,e2e'], undefined, {
+      driftOn: 'lint',
+      driftFile: '.env.local'
+    });
+
+    expect(result.status).toBe(0);
+    expect(result.stderr).toContain('sources changed since the gate build');
+    expect(prebuilt.at(-1)).toBe(`${PLAYWRIGHT}|`);
+  });
+
+  it('fails closed to a fresh build when .env.production.local changes after the gate build', () => {
+    const { result, prebuilt } = runCompleteCheck(['--only=static,e2e'], undefined, {
+      driftOn: 'lint',
+      driftFile: '.env.production.local'
+    });
+
+    expect(result.status).toBe(0);
+    expect(result.stderr).toContain('sources changed since the gate build');
+    expect(prebuilt.at(-1)).toBe(`${PLAYWRIGHT}|`);
+  });
+
+  it('blocks integration stages when the integration reset fails, still resetting for e2e', () => {
+    const { result, commands } = runCompleteCheck([], 'db:reset', { failNth: 1 });
+
+    expect(result.status).toBe(1);
+    expect(commands).toEqual([...STATIC, UNIT, 'db:reset', 'db:reset', ...E2E_AFTER_RESET]);
+    expect(result.stdout).toMatch(/^BLOCK +db:types:check/m);
+    expect(result.stdout).toMatch(/^BLOCK +test:integration/m);
+    expect(result.stdout).toMatch(/^PASS +test:e2e/m);
+    expect(result.stderr).toContain(
+      '3 stage(s) failed: db:reset, db:types:check, test:integration'
+    );
+  });
+
+  it('blocks e2e when the e2e reset fails, after integration ran', () => {
+    const { result, commands } = runCompleteCheck([], 'db:reset', { failNth: 2 });
+
+    expect(result.status).toBe(1);
+    expect(commands).toEqual([
+      ...STATIC,
+      UNIT,
+      'db:reset',
+      'db:types:check',
+      'test:integration',
+      'db:reset'
+    ]);
+    expect(result.stdout).toMatch(/^BLOCK +test:e2e/m);
+    expect(result.stderr).toContain('2 stage(s) failed: db:reset:e2e, test:e2e');
+  });
+
+  it('still resets and runs e2e after an unrelated stage failure', () => {
+    const { result, commands } = runCompleteCheck([], 'test:integration');
+
+    expect(result.status).toBe(1);
+    expect(commands).toEqual(allCommands);
   });
 
   it('continues remaining selected stages and summarizes failures', () => {
-    const expected = ['build', 'knip', 'typecheck', 'lint', 'format:check', 'test'];
+    const expected = [...STATIC, UNIT, 'db:reset', 'test:integration'];
     const { result, commands } = runCompleteCheck(['--only=static,test'], 'build');
 
     expect(result.status).toBe(1);

@@ -1,0 +1,43 @@
+name: Start local Supabase
+description: >-
+  Starts the local Supabase stack, loading the Docker images from a versioned cache first.
+  Only image archives are cached (never volumes, data or credentials); a missing or corrupt
+  archive falls back to a normal pull inside `supabase start`.
+inputs:
+  save:
+    description: Save the image archive when the cache missed (one job per workflow should do this).
+    default: 'false'
+runs:
+  using: composite
+  steps:
+    - name: Restore Supabase image archive
+      id: cache
+      uses: actions/cache/restore@v4
+      with:
+        path: ${{ runner.temp }}/supabase-images.tar
+        key: supabase-images-v1-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('pnpm-lock.yaml', 'supabase/config.toml') }}
+    - name: Load cached Supabase images
+      if: steps.cache.outputs.cache-hit == 'true'
+      shell: bash
+      run: |
+        start_ms="$(date +%s%3N)"
+        docker load --input "$RUNNER_TEMP/supabase-images.tar" || printf '%s\n' 'Image cache unreadable; supabase start will pull images'
+        printf 'supabase image load: %sms\n' "$(( $(date +%s%3N) - start_ms ))"
+    - name: Start local Supabase
+      shell: bash
+      run: |
+        start_ms="$(date +%s%3N)"
+        pnpm exec supabase start
+        printf 'supabase start (image cache hit=%s): %sms\n' "${{ steps.cache.outputs.cache-hit == 'true' }}" "$(( $(date +%s%3N) - start_ms ))"
+    - name: Archive Supabase images
+      if: inputs.save == 'true' && steps.cache.outputs.cache-hit != 'true'
+      shell: bash
+      run: |
+        # Running containers name exactly the images this CLI version needs; nothing else is saved.
+        docker save --output "$RUNNER_TEMP/supabase-images.tar" $(docker ps --format '{{.Image}}' | sort -u)
+    - name: Save Supabase image archive
+      if: inputs.save == 'true' && steps.cache.outputs.cache-hit != 'true'
+      uses: actions/cache/save@v4
+      with:
+        path: ${{ runner.temp }}/supabase-images.tar
+        key: ${{ steps.cache.outputs.cache-primary-key }}

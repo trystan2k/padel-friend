@@ -11,6 +11,9 @@ test-results/
 artifacts/community-admin-visual/
 .env
 .env.local
+# Vite loads these for production builds; they may hold secrets (.env.example stays tracked)
+.env.production
+.env.production.local
 .dev.vars
 supabase/.branches/
 supabase/.temp/

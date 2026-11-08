@@ -68,6 +68,12 @@ test.afterAll(async () => {
     await sql(`do $$ begin delete from auth.users where email='${email}'; end $$;`);
 });
 test.beforeEach(() => test.setTimeout(180_000));
+// Every f.page() opens a signed-in context that the shared fixture keeps until suite cleanup.
+// Release each test's browsers right away (actors and community stay): the serial suite otherwise
+// holds 20+ live renderers beside the CI workers, starving later tests of CPU and memory.
+test.afterEach(async ({ browser }) => {
+  await Promise.all(browser.contexts().map((context) => context.close()));
+});
 
 // --- helpers -----------------------------------------------------------------------------
 
@@ -800,6 +806,9 @@ test('sign-in recovery returns to the result detail or the dashboard and ignores
     .locator('xpath=..')
     .getByRole('button', { name: /^Explain rating change for/ })
     .first();
+  // Bound the failure seen in CI: a visible heading with a never-rendering
+  // entry list used to burn the full 180s timeout inside focus().
+  await expect(entry).toBeVisible();
   await detail.context().clearCookies();
   await entry.focus();
   await entry.press('Enter');

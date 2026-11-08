@@ -40,6 +40,18 @@ describe.skipIf(!environment.env)('Ranked result eligibility', { timeout: 300_00
   const target = () => kit.players[3]!;
   const resultError = (response: { error: { message?: string | null } | null }) =>
     response.error?.message;
+  // The processor drains EVERY due proposal in the shared DB, so assert only on our own entries.
+  const blockedItemsOf = (run: Record<string, unknown>, proposalId: string) =>
+    (Array.isArray(run['blocked_items']) ? run['blocked_items'].map(asRecord) : []).filter(
+      (item) => item['proposal_id'] === proposalId
+    );
+  // The run receipt only counts confirmations globally, so read per-proposal confirmations from the DB.
+  const confirmationSourcesOf = async (proposalId: string) =>
+    (
+      await sqlRows(
+        `select source from public.match_event_result_confirmations where proposal_id=${sqlText(proposalId)}`
+      )
+    ).map((row) => row['source']);
   const setWindow = (leagueId: string, startAt: string, endAt: string) =>
     fixtureSql(
       `update public.leagues set start_at=${sqlText(startAt)}::timestamptz, end_at=${sqlText(endAt)}::timestamptz where id=${sqlText(leagueId)};`
@@ -286,8 +298,7 @@ describe.skipIf(!environment.env)('Ranked result eligibility', { timeout: 300_00
       // overdue Ranked proposal stays correctable rather than being pre-empted by finalization.
       await setResultReviewDeadlineOffset(proposalId, 1, -60);
       const run = await processDueMatchEventResults();
-      expect(run).toMatchObject({ blocked: 1, failed: 0, confirmed: 0 });
-      expect(run['blocked_items']).toEqual([
+      expect(blockedItemsOf(run, proposalId)).toEqual([
         expect.objectContaining({ proposal_id: proposalId, code: 'MATCH_RESULT_RANKED_MEMBERSHIP' })
       ]);
       const [state] = await sqlRows(
@@ -315,6 +326,71 @@ describe.skipIf(!environment.env)('Ranked result eligibility', { timeout: 300_00
       expect(await kit.sideEffects(eventId)).toMatchObject({ confirmations: 1, rating_events: 4 });
     });
 
+    it('scopes blocked-run evidence to its own proposal despite unrelated due proposals', async () => {
+      const at = playedAt(120);
+      const leftoverEvent = await rankedEvent();
+      const leftoverSubmitted = await kit.submit(leftoverEvent.eventId, at.played);
+      expect(leftoverSubmitted.error).toBeNull();
+      const leftoverId = String(asRecord(leftoverSubmitted.data)['proposal_id']);
+      try {
+        const { eventId } = await rankedEvent();
+        const submitted = await kit.submit(eventId, at.played);
+        expect(submitted.error).toBeNull();
+        const proposalId = String(asRecord(submitted.data)['proposal_id']);
+        await setMembershipHistory(kit.communityId, target().id, [
+          { activatedAt: dayAgo(), validUntil: at.iso }
+        ]);
+        await setResultReviewDeadlineOffset(leftoverId, 1, -60);
+        await setResultReviewDeadlineOffset(proposalId, 1, -60);
+
+        const run = await processDueMatchEventResults(100);
+        // Both are blocked in the same run; only our own entry is asserted.
+        expect(run['blocked']).toBeGreaterThanOrEqual(2);
+        expect(blockedItemsOf(run, proposalId)).toEqual([
+          expect.objectContaining({
+            proposal_id: proposalId,
+            code: 'MATCH_RESULT_RANKED_MEMBERSHIP'
+          })
+        ]);
+        expect(blockedItemsOf(run, leftoverId)).toHaveLength(1);
+      } finally {
+        // Park the leftover so it cannot be processed by later tests in this file.
+        await setResultReviewDeadlineOffset(leftoverId, 1, 3_600);
+      }
+    });
+
+    it('scopes auto-confirm evidence to its own proposal despite unrelated due proposals', async () => {
+      const leftoverEvent = await rankedEvent();
+      const leftoverSubmitted = await kit.submit(leftoverEvent.eventId, playedAt(120).played);
+      expect(leftoverSubmitted.error).toBeNull();
+      const leftoverId = String(asRecord(leftoverSubmitted.data)['proposal_id']);
+      try {
+        const { eventId } = await rankedEvent();
+        const submitted = await kit.submit(eventId, playedAt(120).played);
+        const proposalId = String(asRecord(submitted.data)['proposal_id']);
+        await setResultReviewDeadlineOffset(leftoverId, 1, -60);
+        await setResultReviewDeadlineOffset(proposalId, 1, -60);
+
+        const run = await processDueMatchEventResults(100);
+        // Both are auto-confirmed in the same run; only our own entries are asserted.
+        expect(run['confirmed']).toBeGreaterThanOrEqual(2);
+        expect(blockedItemsOf(run, proposalId)).toEqual([]);
+        expect(await kit.sideEffects(eventId)).toMatchObject({
+          confirmations: 1,
+          rating_events: 4
+        });
+        expect(await confirmationSourcesOf(proposalId)).toEqual(['AUTO_48H']);
+        expect(await confirmationSourcesOf(leftoverId)).toEqual(['AUTO_48H']);
+      } finally {
+        // Park the leftover if the run never reached it so later tests cannot process it.
+        const [state] = await sqlRows(
+          `select status from public.match_event_result_proposals where id=${sqlText(leftoverId)}`
+        );
+        if (state?.['status'] === 'pending')
+          await setResultReviewDeadlineOffset(leftoverId, 1, 3_600);
+      }
+    });
+
     it('rejects a correction that moves play outside the League window', async () => {
       const { leagueId, eventId } = await rankedEvent();
       const at = playedAt(120);
@@ -336,12 +412,10 @@ describe.skipIf(!environment.env)('Ranked result eligibility', { timeout: 300_00
       const submitted = await kit.submit(eventId, playedAt(120).played);
       const proposalId = String(asRecord(submitted.data)['proposal_id']);
       await setResultReviewDeadlineOffset(proposalId, 1, -60);
-      expect(await processDueMatchEventResults()).toMatchObject({ confirmed: 1, blocked: 0 });
+      const run = await processDueMatchEventResults();
+      expect(blockedItemsOf(run, proposalId)).toEqual([]);
       expect(await kit.sideEffects(eventId)).toMatchObject({ confirmations: 1, rating_events: 4 });
-      const [confirmation] = await sqlRows(
-        `select source from public.match_event_result_confirmations where proposal_id=${sqlText(proposalId)}`
-      );
-      expect(confirmation?.['source']).toBe('AUTO_48H');
+      expect(await confirmationSourcesOf(proposalId)).toEqual(['AUTO_48H']);
     });
   });
 
