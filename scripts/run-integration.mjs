@@ -90,9 +90,8 @@ export function countMatchingFiles(phaseEnv, selection, run = spawnSync) {
     { encoding: 'utf8', env: phaseEnv }
   );
   if (result.status !== 0) return undefined;
-  return String(result.stdout ?? '')
-    .split('\n')
-    .filter((line) => /\.test\.[cm]?[jt]sx?$/.test(line.trim())).length;
+  return result.stdout.split('\n').filter((line) => /\.test\.[cm]?[jt]sx?$/.test(line.trim()))
+    .length;
 }
 
 export function runIntegration({

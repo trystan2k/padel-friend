@@ -8,6 +8,7 @@ import {
   getMyNotificationPreferences,
   saveMyNotificationPreferences
 } from './notifications.functions';
+import { PwaInstallPanel } from '../pwa/PwaInstallPanel';
 import { preferenceStyles as styles } from './notification-preferences.styles';
 
 type Preferences = Pick<
@@ -129,6 +130,7 @@ export function NotificationPreferencesPage({
             {t('notificationPreferences.alwaysOn')}
           </strong>
         </section>
+        <PwaInstallPanel />
         {!online && <p>{t('notificationPreferences.offline')}</p>}
         <button
           type="button"

@@ -31,6 +31,7 @@ export const SPEC_WEIGHTS = {
   'e2e/matches.spec.ts': 38,
   'e2e/onboarding.spec.ts': 34,
   'e2e/player-ratings.spec.ts': 81,
+  'e2e/pwa.spec.ts': 13,
   'e2e/result-amendments-chronology.spec.ts': 21,
   'e2e/result-amendments.spec.ts': 52
 };

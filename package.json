@@ -11,6 +11,7 @@
     "preview": "vite preview --host 127.0.0.1",
     "deploy": "pnpm build && wrangler deploy",
     "cf:typegen": "wrangler types",
+    "pwa:icons": "node scripts/generate-pwa-icons.mjs",
     "tokens:build": "style-dictionary build --config design-tokens/style-dictionary.config.js",
     "prepare": "husky",
     "lint": "oxlint --deny-warnings && stylelint 'src/**/*.css'",
@@ -81,6 +82,7 @@
     "vite": "~8.3.4",
     "vitest": "~5.0.4",
     "workbox-build": "~7.4.1",
+    "workbox-precaching": "~7.4.1",
     "wrangler": "~4.151.0"
   },
   "engines": {

@@ -3,6 +3,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { decideMatchRegistration, submitMatchRegistration } from './match-registration.functions';
 import type { MatchRegistrationErrorCode, MyMatchRegistration } from './match-registration-model';
 import type { MatchRegistrationDecision } from './match-registration.validators';
+import { useUpdateGuard } from '../pwa/update-guard';
 
 // PAF-5.5 mutation controller for the registration surface.
 //
@@ -113,6 +114,7 @@ export function useMatchRegistration({
     value: MatchRegistrationFeedback;
   } | null>(null);
   const [cutoff, setCutoff] = useState({ eventId, reached: false });
+  useUpdateGuard(pending);
   const pendingRef = useRef(false);
   const lastAction = useRef<{ eventId: string; run: () => void } | null>(null);
   const mounted = useRef(true);

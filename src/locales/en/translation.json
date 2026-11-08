@@ -439,6 +439,29 @@
     "discoverabilitySaved": "Discoverability preference saved.",
     "discoverabilityError": "Could not save discoverability preference."
   },
+  "pwa": {
+    "install": {
+      "title": "Install Padel Friend",
+      "action": "Install app",
+      "installed": "Padel Friend is installed on this device.",
+      "unsupported": "This browser cannot install apps. In-app notifications still work.",
+      "iosInstructions": "On iPhone or iPad, tap Share, then Add to Home Screen. Open Padel Friend from your Home Screen afterwards.",
+      "browserInstructions": "Use your browser menu to install Padel Friend or add it to your home screen.",
+      "unavailable": "Installation was not completed. Try again or use your browser menu."
+    },
+    "update": {
+      "available": "A new version of Padel Friend is ready.",
+      "apply": "Update now",
+      "later": "Later",
+      "dirtyForm": "Finish or save your current changes, then update.",
+      "error": "Could not update. Reload the page to try again."
+    },
+    "offline": {
+      "title": "You are offline",
+      "body": "Padel Friend needs a connection to show your account. Reconnect, then try again.",
+      "retry": "Try again"
+    }
+  },
   "notifications": {
     "title": "Notifications",
     "subtitle": "Updates about your padel community.",

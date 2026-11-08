@@ -439,6 +439,29 @@
     "discoverabilitySaved": "Preferência de descoberta salva.",
     "discoverabilityError": "Não foi possível salvar a preferência."
   },
+  "pwa": {
+    "install": {
+      "title": "Instalar o Padel Friend",
+      "action": "Instalar app",
+      "installed": "O Padel Friend está instalado neste dispositivo.",
+      "unsupported": "Este navegador não consegue instalar apps. As notificações no app continuam funcionando.",
+      "iosInstructions": "No iPhone ou iPad, toque em Compartilhar e depois em Adicionar à Tela de Início. Depois, abra o Padel Friend pela Tela de Início.",
+      "browserInstructions": "Use o menu do navegador para instalar o Padel Friend ou adicioná-lo à tela inicial.",
+      "unavailable": "A instalação não foi concluída. Tente novamente ou use o menu do navegador."
+    },
+    "update": {
+      "available": "Uma nova versão do Padel Friend está pronta.",
+      "apply": "Atualizar agora",
+      "later": "Depois",
+      "dirtyForm": "Conclua ou salve suas alterações atuais e depois atualize.",
+      "error": "Não foi possível atualizar. Recarregue a página para tentar de novo."
+    },
+    "offline": {
+      "title": "Você está offline",
+      "body": "O Padel Friend precisa de conexão para mostrar sua conta. Reconecte e tente novamente.",
+      "retry": "Tentar novamente"
+    }
+  },
   "notifications": {
     "title": "Notificações",
     "subtitle": "Novidades sobre sua comunidade de padel.",
