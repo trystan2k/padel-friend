@@ -203,7 +203,10 @@ describe('e2e build env contract', () => {
   it('adds the process-env bake flag and key only when a key exists', () => {
     expect(e2eBuildEnv('k')).toEqual({
       CLOUDFLARE_INCLUDE_PROCESS_ENV: 'true',
-      SUPABASE_SERVICE_ROLE_KEY: 'k'
+      SUPABASE_SERVICE_ROLE_KEY: 'k',
+      WEB_PUSH_ENABLED: 'true',
+      WEB_PUSH_VAPID_PUBLIC_KEY: expect.stringMatching(/^[A-Za-z0-9_-]{87}$/),
+      WEB_PUSH_VAPID_KEY_ID: 'e2e-test'
     });
     expect(e2eBuildEnv(undefined)).toEqual({});
   });

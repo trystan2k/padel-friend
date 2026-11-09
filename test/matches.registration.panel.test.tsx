@@ -139,6 +139,18 @@ afterEach(() => {
 });
 
 describe('match registration panel', () => {
+  it('announces an uncertain network outcome as an alert without moving keyboard focus', async () => {
+    mocks.submit.mockRejectedValue(new TypeError('Network failed'));
+    mount(event(), none);
+    const button = screen.getByRole('button', { name: en.matchRegistration.join.button });
+    await userEvent.setup().click(button);
+    await waitFor(() =>
+      expect(screen.getByRole('alert').textContent).toBe(en.pwa.offline.unconfirmed)
+    );
+    expect(document.activeElement).toBe(button);
+    expect(screen.queryByText(en.matchRegistration.feedback.accepted)).toBeNull();
+  });
+
   it.each(['en', 'pt-BR', 'es'] as const)(
     'keeps organizer-only ownership distinct from a reserved place in %s',
     (locale) => {

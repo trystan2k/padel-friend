@@ -5,12 +5,16 @@ import { openDedicatedSqlConnection, queryTrustedSql } from './helpers/sql-trans
 import {
   createRankedResultFixtures,
   playedAt,
+  rankedSets,
   type RankedResultKit
 } from './helpers/ranked-result-fixtures';
 import { runPool } from './helpers/promise-pool';
 import { sqlText } from './helpers/provisional-player-fixtures';
 
 const environment = localSupabaseEnv({ filePath: dotEnvPathFromImportMetaUrl(import.meta.url) });
+// Slow CI runners exceed the transport's 30s per-statement default on analyze/explain; the test's own
+// 900s vitest timeout still bounds the run, so only the environment-dependent per-statement kill moves.
+const STATEMENT_OPTIONS = { timeoutMs: 300_000 };
 
 /** Recursively flatten PostgreSQL JSON plan nodes without relying on timings. */
 function planNodes(value: unknown): Record<string, unknown>[] {
@@ -40,13 +44,36 @@ describe.skipIf(!environment.env)('statistics reader performance contract', () =
           Math.floor(i / kits.length) % 2 === 0 ? 'competitive' : 'friendly'
         );
         const playedNoon = midnight - ((i % 14) + 1) * 86_400_000 + 12 * 3_600_000;
-        const submission = await kit.submit(
-          event,
-          playedAt(Math.floor((Date.now() - playedNoon) / 1000)).played
+        const played = playedAt(Math.floor((Date.now() - playedNoon) / 1000)).played;
+        // Submit and approve run the real command functions as the acting players inside one trusted
+        // transaction: PostgREST would cap each call at the authenticated role's 8s statement_timeout,
+        // which the growing projection cost eventually exceeds, while trusted SQL honors STATEMENT_OPTIONS.
+        const asPlayer = (id: string) =>
+          "perform set_config('request.jwt.claims', " +
+          sqlText(JSON.stringify({ sub: id, role: 'authenticated' })) +
+          ', true);';
+        await queryTrustedSql(
+          'do $paf$ declare v_proposal uuid; begin ' +
+            asPlayer(kit.players[0]!.id) +
+            ' v_proposal := (public.submit_match_event_result(' +
+            [
+              sqlText(event) + '::uuid',
+              '1',
+              sqlText(JSON.stringify(kit.teamsOf(1))) + '::jsonb',
+              sqlText(JSON.stringify(rankedSets)) + '::jsonb',
+              sqlText(JSON.stringify(played)) + '::jsonb',
+              "'Court 1'",
+              sqlText(crypto.randomUUID()) + '::uuid'
+            ].join(', ') +
+            ")->>'proposal_id')::uuid; " +
+            asPlayer(kit.players[2]!.id) +
+            ' perform public.review_match_event_result(v_proposal, 1, ' +
+            sqlText('approve') +
+            ', null, null, ' +
+            sqlText(crypto.randomUUID()) +
+            '::uuid); end $paf$;',
+          STATEMENT_OPTIONS
         );
-        if (submission.error) throw submission.error;
-        const approval = await kit.approve(String(asRecord(submission.data)['proposal_id']));
-        if (approval.error) throw approval.error;
       };
       await runPool(
         kits.map((_, lane) => async () => {
@@ -55,13 +82,15 @@ describe.skipIf(!environment.env)('statistics reader performance contract', () =
         8
       );
       await queryTrustedSql(
-        'analyze public.statistics_scope_summaries; analyze public.statistics_daily_buckets; analyze public.statistics_group_facts; analyze public.statistics_pair_facts; analyze public.statistics_opponent_facts'
+        'analyze public.statistics_scope_summaries; analyze public.statistics_daily_buckets; analyze public.statistics_group_facts; analyze public.statistics_pair_facts; analyze public.statistics_opponent_facts',
+        STATEMENT_OPTIONS
       );
       const focal = kits[0]!;
       const [matchup] = await sqlRows(
         'select matchup_id::text as id from public.statistics_group_facts where community_id = ' +
           sqlText(focal.communityId) +
-          ' limit 1'
+          ' limit 1',
+        STATEMENT_OPTIONS
       );
       if (typeof matchup?.['id'] !== 'string') throw new Error('Missing matchup fixture');
       const matchupSql =
@@ -73,9 +102,9 @@ describe.skipIf(!environment.env)('statistics reader performance contract', () =
       // index: with sequential scans disabled (rolled-back transaction) the planner must pick it.
       const connection = await openDedicatedSqlConnection();
       try {
-        await connection.query('begin');
-        await connection.query('set local enable_seqscan = off');
-        const planned = await connection.query(matchupSql);
+        await connection.query('begin', STATEMENT_OPTIONS);
+        await connection.query('set local enable_seqscan = off', STATEMENT_OPTIONS);
+        const planned = await connection.query(matchupSql, STATEMENT_OPTIONS);
         const plan = planned.rows[0]?.['QUERY PLAN'];
         if (!Array.isArray(plan) || plan.length !== 1) throw new Error('Invalid explain output');
         const nodes = planNodes(asRecord(asRecord(plan[0])['Plan']));
@@ -85,7 +114,7 @@ describe.skipIf(!environment.env)('statistics reader performance contract', () =
             .map((node) => [node['Node Type'], node['Index Name']])
         ).toEqual([['Index Scan', 'statistics_group_facts_matchup_id']]);
       } finally {
-        await connection.query('rollback');
+        await connection.query('rollback', STATEMENT_OPTIONS);
         await connection.close();
       }
       const community = sqlText(focal.communityId) + '::uuid';
@@ -137,7 +166,7 @@ describe.skipIf(!environment.env)('statistics reader performance contract', () =
         'statistics_opponent_facts'
       ];
       for (const [name, sql] of queries) {
-        const result = await queryTrustedSql('explain (format json) ' + sql);
+        const result = await queryTrustedSql('explain (format json) ' + sql, STATEMENT_OPTIONS);
         const plans = result.rows[0]?.['QUERY PLAN'];
         if (!Array.isArray(plans) || plans.length !== 1) throw new Error('Invalid explain output');
         const top = asRecord(asRecord(plans[0])['Plan']);

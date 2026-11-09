@@ -1,5 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createMatchManagementFixtures } from './helpers/match-management-fixtures';
+import { expectNotificationOutcome } from './helpers/notification-channel-evidence';
 import { localSupabaseEnv, dotEnvPathFromImportMetaUrl } from './helpers/local-supabase-env';
 import { fixtureSql, sqlRows, proveEventLockBarrier } from './helpers/match-registration-sql';
 
@@ -45,6 +46,11 @@ describe('match cancellation integration', () => {
         .sort()
         .map((recipient_user_id) => ({ recipient_user_id }))
     );
+    await expectNotificationOutcome({
+      targetId: e.id,
+      kind: 'match_event_cancelled',
+      recipients: [f.creator.id, departed.id, requester.id, invitee.id]
+    });
     expect(
       await sqlRows(
         `select lifecycle,accepted_order from public.match_event_registrations where match_event_id='${e.id}' and user_id='${departed.id}'`

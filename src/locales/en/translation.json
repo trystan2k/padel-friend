@@ -44,7 +44,7 @@
     "requestPending": "Request sent",
     "alreadyMember": "Already a member or request pending",
     "membershipInactive": "Your membership is inactive. Contact a community Admin to reactivate it.",
-    "joinFailed": "Could not join. Please try again.",
+    "joinFailed": "Could not confirm this change. Your fields are preserved. Refresh before retrying.",
     "emptySearch": "No communities match your search.",
     "noCommunities": "No public communities yet.",
     "loadFailed": "Could not load communities.",
@@ -75,7 +75,8 @@
     "created": "Your community is ready.",
     "finish": "GO TO DASHBOARD",
     "createFailed": "Could not create community. Please try again.",
-    "invalidName": "Enter a community name of up to 80 characters."
+    "invalidName": "Enter a community name of up to 80 characters.",
+    "offline": "Offline. Nothing sent. Reconnect and try again."
   },
   "auth": {
     "invitationEmail": {
@@ -391,7 +392,9 @@
       "session": "Your session expired. Sign in again.",
       "generic": "Could not complete the change. Refresh and try again.",
       "finalAdmin": "The community must keep at least one active admin.",
-      "transition": "This membership changed. Refresh before trying again."
+      "transition": "This membership changed. Refresh before trying again.",
+      "offline": "Offline. Nothing sent. Reconnect and try again.",
+      "unconfirmed": "Could not confirm this change. Your fields are preserved. Refresh before retrying."
     },
     "matchCountUnavailable": "Match count unavailable — match history is not supported yet",
     "inviteeSearchPrivateOnly": "Invitee search is available only in private communities.",
@@ -438,6 +441,80 @@
     "discoverableHelp": "Any Admin of a private community can find your opted-in display name. No emails are exposed.",
     "discoverabilitySaved": "Discoverability preference saved.",
     "discoverabilityError": "Could not save discoverability preference."
+  },
+  "pwa": {
+    "install": {
+      "title": "Install Padel Friend",
+      "action": "Install app",
+      "installed": "Padel Friend is installed on this device.",
+      "unsupported": "This browser cannot install apps. In-app notifications still work.",
+      "iosInstructions": "On iPhone or iPad, tap Share, then Add to Home Screen. Open Padel Friend from your Home Screen afterwards.",
+      "browserInstructions": "Use your browser menu to install Padel Friend or add it to your home screen.",
+      "unavailable": "Installation was not completed. Try again or use your browser menu."
+    },
+    "update": {
+      "available": "A new version of Padel Friend is ready.",
+      "apply": "Update now",
+      "later": "Later",
+      "dirtyForm": "Finish or save your current changes, then update.",
+      "error": "Could not update. Reload the page to try again."
+    },
+    "offline": {
+      "title": "You are offline",
+      "body": "Padel Friend needs a connection to show your account. Reconnect, then try again.",
+      "retry": "Try again",
+      "unconfirmed": "Could not confirm this change. Your fields are preserved. Refresh before retrying.",
+      "unsent": "Offline. Nothing sent. Reconnect and try again."
+    }
+  },
+  "push": {
+    "message": {
+      "community": {
+        "title": "Padel Friend update",
+        "body": "You have a new notification. Open Padel Friend to view it."
+      },
+      "matches": {
+        "title": "Padel Friend update",
+        "body": "You have a new notification. Open Padel Friend to view it."
+      },
+      "results": {
+        "title": "Padel Friend update",
+        "body": "You have a new notification. Open Padel Friend to view it."
+      },
+      "rankings": {
+        "title": "Padel Friend update",
+        "body": "You have a new notification. Open Padel Friend to view it."
+      },
+      "leagues": {
+        "title": "Padel Friend update",
+        "body": "You have a new notification. Open Padel Friend to view it."
+      }
+    },
+    "title": "Web Push on this device",
+    "loading": "Checking Web Push on this device…",
+    "enable": "Enable push on this device",
+    "enabling": "Enabling…",
+    "disableDevice": "Disable on this device",
+    "disabling": "Disabling…",
+    "enabled": "Web Push is on for this device.",
+    "intentOff": "This device is ready, but Web Push is switched off above. Turn it on and save to receive notifications.",
+    "permissionDefault": "Your browser asks for permission only after you tap Enable.",
+    "grantedNotSubscribed": "Notifications are allowed, but this device is not registered for Web Push yet.",
+    "denied": "Notifications are blocked for Padel Friend. Allow them in your browser or device settings, then come back.",
+    "unsupported": "This browser cannot receive Web Push.",
+    "installRequired": "On iPhone or iPad, install Padel Friend to your Home Screen first, then open it from there to enable Web Push.",
+    "offline": "You are offline. Reconnect to manage Web Push on this device.",
+    "configUnavailable": "Web Push is unavailable right now.",
+    "subscriptionFailed": "Could not set up Web Push on this device.",
+    "saveFailed": "Could not save this device, so Web Push is not enabled. Try again.",
+    "expired": "This device's Web Push registration expired. Enable it again to keep receiving notifications.",
+    "keyChanged": "Web Push settings changed. Enable it again on this device.",
+    "retry": "Try again",
+    "deviceDisabled": "Web Push is off for this device. Your other devices are unchanged.",
+    "cleanupFailed": "Could not fully turn off Web Push on this device. Try again.",
+    "fallback": "In-app notifications still work and remain available.",
+    "otherDevices_one": "{{count}} other device is registered for Web Push.",
+    "otherDevices_other": "{{count}} other devices are registered for Web Push."
   },
   "notifications": {
     "title": "Notifications",
@@ -487,6 +564,17 @@
       "rankings": "No ranking notifications."
     },
     "kinds": {
+      "community_role_changed": "Your community role changed.",
+      "result_amendment_requested": "A result correction was requested.",
+      "result_amendment_accepted": "A result correction was accepted.",
+      "result_amendment_rejected": "A result correction was declined.",
+      "rating_changed": "Your level or reliability changed.",
+      "level_review_submitted": "Your level review was submitted.",
+      "level_review_requested": "A level review needs your attention.",
+      "league_started": "A League started.",
+      "league_closed": "A League closed.",
+      "league_standings_published": "Final standings were published.",
+      "league_standings_amended": "Final standings were updated.",
       "community_invitation": "You received a community invitation.",
       "community_membership_approved": "Your community membership was approved.",
       "community_membership_denied": "Your community membership was declined.",
@@ -593,7 +681,8 @@
       "registrationExpiredBody": "Registration closed before a decision. No place was reserved.",
       "registrationNotPlayingBody": "Cutoff passed before a quartet completed. No match result will be recorded.",
       "unavailable": "This match notification is no longer available."
-    }
+    },
+    "openTarget": "Open current details"
   },
   "notificationPreferences": {
     "preferencesLink": "Notification preferences",
@@ -602,7 +691,6 @@
     "context": "In-app notifications remain available even when Web Push is off.",
     "pushTitle": "Web Push",
     "pushHelper": "Save which updates you would like to receive through Web Push.",
-    "pushUnavailable": "Delivery is not available yet. These switches save your preferences only; no notifications will be delivered.",
     "categories": {
       "community": "Community & invitations",
       "matches": "Match updates",
@@ -621,7 +709,10 @@
     "offline": "You are offline. Reconnect to save your preferences."
   },
   "matches": {
-    "competition": { "ranked": "Ranked", "unranked": "Unranked" },
+    "competition": {
+      "ranked": "Ranked",
+      "unranked": "Unranked"
+    },
     "addPlayer": {
       "action": "Add player",
       "title": "Add a player",
@@ -924,8 +1015,15 @@
       "matrixTeams": "Teams",
       "matrixSet": "S{{number}}",
       "title": "Record result",
-      "steps": { "players": "PLAYERS", "score": "SCORE", "review": "REVIEW" },
-      "teams": { "team_a": "Team A", "team_b": "Team B" },
+      "steps": {
+        "players": "PLAYERS",
+        "score": "SCORE",
+        "review": "REVIEW"
+      },
+      "teams": {
+        "team_a": "Team A",
+        "team_b": "Team B"
+      },
       "confirmPlayers": "Confirm who played",
       "suggested": "Suggested teams follow the accepted order. Confirm or change who played together.",
       "changeTeams": "Change teams",
@@ -973,7 +1071,25 @@
       "court": "Court",
       "notProvided": "Not provided",
       "preview": "Review result",
-      "review": "Review result",
+      "review": {
+        "approve": "Approve",
+        "approving": "Recording approval…",
+        "reject": "Reject",
+        "retry": "Retry review",
+        "reviewCurrent": "Review current proposal",
+        "offline": "You’re offline. Reconnect to review. No approval or rejection was sent.",
+        "offlineDraft": "Result not sent. Reconnect to submit; your draft stays here.",
+        "decisionRecorded": "{{decision}} recorded by {{name}}.",
+        "recorded": {
+          "approve": "Approval recorded for this version. Result remains pending until server confirmation.",
+          "approveConfirmed": "Approval recorded. The server confirmed this result; refreshing its official details.",
+          "reject": "Result disputed. No rating or League stats applied."
+        },
+        "decisions": {
+          "approve": "Approval",
+          "reject": "Rejection"
+        }
+      },
       "back": "Back",
       "reload": "Reload latest result and roster",
       "submit": "Submit for review",
@@ -1009,25 +1125,6 @@
       "confirmation": {
         "manual": "Confirmed · Manual",
         "auto": "Confirmed · Auto 48H"
-      },
-      "review": {
-        "approve": "Approve",
-        "approving": "Recording approval…",
-        "reject": "Reject",
-        "retry": "Retry review",
-        "reviewCurrent": "Review current proposal",
-        "offline": "You’re offline. Reconnect to review. No approval or rejection was sent.",
-        "offlineDraft": "Result not sent. Reconnect to submit; your draft stays here.",
-        "decisionRecorded": "{{decision}} recorded by {{name}}.",
-        "recorded": {
-          "approve": "Approval recorded for this version. Result remains pending until server confirmation.",
-          "approveConfirmed": "Approval recorded. The server confirmed this result; refreshing its official details.",
-          "reject": "Result disputed. No rating or League stats applied."
-        },
-        "decisions": {
-          "approve": "Approval",
-          "reject": "Rejection"
-        }
       },
       "reject": {
         "title": "Dispute result",
@@ -1658,7 +1755,7 @@
       "requesterIneligible": "The requester is no longer eligible.",
       "forbidden": "Only the organizer can decide requests.",
       "unauthenticated": "Sign in to continue.",
-      "unavailable": "The service is unavailable. Try again.",
+      "unavailable": "Could not confirm this change. Your fields are preserved. Refresh before retrying.",
       "invalid": "That action is not valid.",
       "retry": "Retry"
     },

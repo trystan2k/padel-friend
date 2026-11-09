@@ -2,6 +2,7 @@ import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { describe, expect, it, vi } from 'vitest';
 import type { Database } from '../src/lib/supabase/database.types';
 import { matchPhotoFixture } from './helpers/match-photo-fixtures';
+import { expectNotificationOutcome } from './helpers/notification-channel-evidence';
 import {
   asRecord,
   fixtureSql,
@@ -598,6 +599,11 @@ describe('match registration actions integration', () => {
     expect(row['participation_status']).toBe('reserve');
     // Guest approval is not a membership backdoor.
     expect(await membershipRows(actors.guest1!.id)).toEqual(before);
+    await expectNotificationOutcome({
+      targetId: events.open!,
+      kind: 'match_registration_approved',
+      recipients: [actors.guest1!.id]
+    });
   });
 
   it('delivers the request alert once and rejects duplicates while pending and accepted', async () => {
@@ -647,6 +653,22 @@ describe('match registration actions integration', () => {
       .eq('user_id', actors.guestDuplicate!.id);
     expect(guestRows.error).toBeNull();
     expect(guestRows.data).toHaveLength(1);
+    // Every creator alert is a single-recipient request with one durable Push job.
+    await expectNotificationOutcome({
+      targetId: events.open!,
+      kind: 'match_registration_requested',
+      recipients: keysAfter.map(() => actors.creator!.id)
+    });
+
+    // Rejecting the guest request notifies only that guest, once.
+    expect(
+      (await decide(actors.creator!, 'open', actors.guestDuplicate!.id, 'reject')).error
+    ).toBeNull();
+    await expectNotificationOutcome({
+      targetId: events.open!,
+      kind: 'match_registration_rejected',
+      recipients: [actors.guestDuplicate!.id]
+    });
   });
 
   it('reuses the identity row for re-application after rejection and expiry without ordinal reuse', async () => {
@@ -705,6 +727,16 @@ describe('match registration actions integration', () => {
     ).map((row) => String(row['event_key']));
     expect(requestsAfter).toHaveLength(requestsBefore.length + 1);
     expect(requestsBefore.every((key) => requestsAfter.includes(key))).toBe(true);
+    await expectNotificationOutcome({
+      targetId: events.ranged!,
+      kind: 'match_registration_requested',
+      recipients: requestsAfter.map(() => actors.creator!.id)
+    });
+    await expectNotificationOutcome({
+      targetId: events.ranged!,
+      kind: 'match_registration_rejected',
+      recipients: [actors.memberC!.id]
+    });
 
     // F21: a stale decision naming the OLD (rejected) attempt must not resolve
     // the NEW pending attempt the creator never reviewed.
@@ -906,6 +938,12 @@ describe('match registration actions integration', () => {
       await notificationsOf(actors.memberNoRating!, 'match_registration_approved', events.ranged)
     ).toHaveLength(1);
     expect(await attemptsOf('ranged', actors.memberNoRating!.id)).toHaveLength(1);
+    // Earlier re-application approvals on this event plus this one: one alert and one job per approval.
+    await expectNotificationOutcome({
+      targetId: events.ranged!,
+      kind: 'match_registration_approved',
+      recipients: [actors.memberC!.id, actors.memberB!.id, actors.memberNoRating!.id]
+    });
   });
 
   it('closes entries approvals and committed approval replays at the DB-time cutoff', async () => {

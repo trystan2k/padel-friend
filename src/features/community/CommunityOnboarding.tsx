@@ -1,3 +1,4 @@
+import { useUpdateGuard } from '../pwa/update-guard';
 import { Radio } from '@base-ui/react/radio';
 import { RadioGroup } from '@base-ui/react/radio-group';
 import * as stylex from '@stylexjs/stylex';
@@ -66,6 +67,7 @@ export function CommunityOnboarding({
     current && (page.failed || (pageError?.query === query && pageError.source === data));
   const [joining, setJoining] = useState<string | null>(null);
   const [results, setResults] = useState<Record<string, string>>({});
+  useUpdateGuard(joining !== null || Object.values(results).includes('joinFailed'));
 
   useEffect(() => {
     const onHistoryNavigation = () => {
@@ -121,7 +123,15 @@ export function CommunityOnboarding({
   }
 
   async function join(community: PublicCommunity) {
-    if (joining || (results[community.id] && results[community.id] !== 'joinFailed')) return;
+    if (
+      joining ||
+      (results[community.id] && !['joinFailed', 'offline'].includes(results[community.id] ?? ''))
+    )
+      return;
+    if (!navigator.onLine) {
+      setResults((previous) => ({ ...previous, [community.id]: 'offline' }));
+      return;
+    }
     setJoining(community.id);
     try {
       const result = await joinCommunity({ data: { community_id: community.id } });
@@ -297,7 +307,8 @@ export function CommunityOnboarding({
                   ]}
                   busy={joining === community.id}
                   disabled={
-                    Boolean(results[community.id]) && results[community.id] !== 'joinFailed'
+                    Boolean(results[community.id]) &&
+                    !['joinFailed', 'offline'].includes(results[community.id] ?? '')
                   }
                   onClick={() => void join(community)}
                 >

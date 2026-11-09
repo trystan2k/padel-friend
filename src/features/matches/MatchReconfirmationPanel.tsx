@@ -1,3 +1,4 @@
+import { useUpdateGuard } from '../pwa/update-guard';
 import { Dialog } from '@base-ui/react/dialog';
 import * as stylex from '@stylexjs/stylex';
 import { useRef, useState } from 'react';
@@ -37,6 +38,7 @@ export function MatchReconfirmationPanel({
   const [open, setOpen] = useState(false);
   const [pending, setPending] = useState(false);
   const [feedback, setFeedback] = useState<string | null>(null);
+  useUpdateGuard(pending || feedback === 'pwa.offline.unconfirmed');
   const [stale, setStale] = useState(false);
   const [unavailable, setUnavailable] = useState<ManagementErrorCode | null>(null);
   const [asOf] = useState(() => Date.now());
@@ -148,7 +150,7 @@ export function MatchReconfirmationPanel({
                     type="button"
                     {...stylex.props(s.button)}
                     onClick={async () => {
-                      await router.invalidate();
+                      await router.invalidate().catch(() => undefined);
                       setOpen(false);
                     }}
                   >
@@ -162,6 +164,10 @@ export function MatchReconfirmationPanel({
                     aria-busy={pending}
                     onClick={async () => {
                       if (pending || stale) return;
+                      if (!navigator.onLine) {
+                        setFeedback('pwa.offline.unsent');
+                        return;
+                      }
                       request.current ??= crypto.randomUUID();
                       setPending(true);
                       setFeedback(null);
@@ -176,7 +182,7 @@ export function MatchReconfirmationPanel({
                         });
                         if (result.status === 'ok') {
                           setFeedback('matches.reconfirmation.confirmed');
-                          await router.invalidate();
+                          await router.invalidate().catch(() => undefined);
                           setOpen(false);
                         } else if (result.status === 'error') {
                           if (
@@ -196,12 +202,14 @@ export function MatchReconfirmationPanel({
                           setFeedback(
                             result.code === 'stale_generation'
                               ? 'matches.reconfirmation.staleGeneration'
-                              : MANAGEMENT_ERROR_COPY[result.code]
+                              : result.code === 'unavailable'
+                                ? 'pwa.offline.unconfirmed'
+                                : MANAGEMENT_ERROR_COPY[result.code]
                           );
                           await router.invalidate().catch(() => undefined);
                         }
                       } catch {
-                        setFeedback('matches.management.errors.unavailable');
+                        setFeedback('pwa.offline.unconfirmed');
                       } finally {
                         setPending(false);
                       }

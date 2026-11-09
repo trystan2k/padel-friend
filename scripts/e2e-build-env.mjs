@@ -43,9 +43,22 @@ export function requireServiceRoleKey(env = process.env, exec = execFileSync) {
   );
 }
 
+// Throwaway PUBLIC VAPID key (its private half was discarded) that lets the enrollment config read
+// report Web Push as available in e2e. No private key or subject is configured, so nothing can send.
+export const E2E_WEB_PUSH_ENV = {
+  WEB_PUSH_ENABLED: 'true',
+  WEB_PUSH_VAPID_PUBLIC_KEY:
+    'BD7OaBbljzNT-T8qXAyjFDuSUf2_-pfv05bxZB1_OrzgHgV80uBt_sSLXNrA6H8f30I7GDmv0_9SYBSQsCeZjEw',
+  WEB_PUSH_VAPID_KEY_ID: 'e2e-test'
+};
+
 /** Env additions for a build (or preview) that e2e specs exercise; empty without a key. */
 export function e2eBuildEnv(serviceRoleKey) {
   return serviceRoleKey
-    ? { CLOUDFLARE_INCLUDE_PROCESS_ENV: 'true', SUPABASE_SERVICE_ROLE_KEY: serviceRoleKey }
+    ? {
+        CLOUDFLARE_INCLUDE_PROCESS_ENV: 'true',
+        SUPABASE_SERVICE_ROLE_KEY: serviceRoleKey,
+        ...E2E_WEB_PUSH_ENV
+      }
     : {};
 }

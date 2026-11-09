@@ -1,3 +1,7 @@
+import {
+  expectNotificationOutcome,
+  expectNotificationPushJobs
+} from './helpers/notification-channel-evidence';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { describe, expect, it, vi } from 'vitest';
 import type { Database } from '../src/lib/supabase/database.types';
@@ -74,6 +78,7 @@ describe('match registration FIFO notifications integration', () => {
       .eq('target_id', events[eventKey]!)
       .order('sequence', { ascending: true });
     expect(result.error, `${who.name} inbox`).toBeNull();
+    await expectNotificationPushJobs(result.data ?? []);
     return result.data ?? [];
   };
 
@@ -295,6 +300,43 @@ describe('match registration FIFO notifications integration', () => {
           );
         }
       }
+      // Exact recipient set and one Push job per notification, for each FIFO kind.
+      await expectNotificationOutcome({
+        targetId: events[eventKey]!,
+        kind: 'match_registration_playing',
+        recipients: [actors.m3!.id, actors.m6!.id]
+      });
+      await expectNotificationOutcome({
+        targetId: events[eventKey]!,
+        kind: 'match_registration_reserve',
+        recipients: [actors.m1!.id, actors.m2!.id, actors.m4!.id, actors.m5!.id, actors.g1!.id]
+      });
+      await expectNotificationOutcome({
+        targetId: events[eventKey]!,
+        kind: 'match_registration_promoted',
+        recipients: [
+          actors.creator!.id,
+          actors.m1!.id,
+          actors.m2!.id,
+          actors.m4!.id,
+          actors.m5!.id,
+          actors.g1!.id
+        ]
+      });
+      await expectNotificationOutcome({
+        targetId: events[eventKey]!,
+        kind: 'match_registration_quartet_complete',
+        recipients: [
+          actors.creator!.id,
+          actors.m1!.id,
+          actors.m2!.id,
+          actors.m3!.id,
+          actors.m4!.id,
+          actors.m5!.id,
+          actors.m6!.id,
+          actors.g1!.id
+        ]
+      });
       // The approval alert keeps its own registration+attempt-scoped key.
       const g1Inbox = await inboxOf(actors.g1!, eventKey);
       const approvedAlert = g1Inbox.find(

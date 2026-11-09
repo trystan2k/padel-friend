@@ -125,7 +125,8 @@ describe('notification preferences page', () => {
       '/notifications'
     );
     expect(screen.getByText(copy.context)).toBeTruthy();
-    expect(screen.getByText(copy.pushUnavailable)).toBeTruthy();
+    // The obsolete future-intent-only notice is gone; the device panel replaces it.
+    expect(screen.getByRole('region', { name: en.push.title })).toBeTruthy();
 
     const group = screen.getByText(copy.pushTitle).closest('fieldset');
     if (!(group instanceof HTMLFieldSetElement)) throw new Error('push group is not a fieldset');

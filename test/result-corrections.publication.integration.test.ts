@@ -1,6 +1,7 @@
 import { afterAll, describe, expect, it } from 'vitest';
 import { dotEnvPathFromImportMetaUrl, localSupabaseEnv } from './helpers/local-supabase-env';
 import { sqlRows } from './helpers/match-registration-sql';
+import { expectNotificationOutcome } from './helpers/notification-channel-evidence';
 import { sqlText } from './helpers/provisional-player-fixtures';
 import { createRankedResultFixtures, type RankedResultKit } from './helpers/ranked-result-fixtures';
 import {
@@ -317,6 +318,11 @@ describe.skipIf(!environment.env)('atomic correction publication', { timeout: 60
     const resolved = await notices();
     expect(resolved).toHaveLength(first.length);
     expect(resolved.every((row) => row['resolved'] === true)).toBe(true);
+    await expectNotificationOutcome({
+      targetId: w.october.eventId,
+      kind: 'result_repair_failed',
+      recipients: admins.map(String)
+    });
   });
 
   it('publishes the completion audit and notice once, with the old and new revisions, and repeats add nothing', async () => {
@@ -357,5 +363,11 @@ describe.skipIf(!environment.env)('atomic correction publication', { timeout: 60
     );
     expect(JSON.parse(String(claim!['r']))).toMatchObject({ claimed: false });
     expect(await observable(w)).toEqual(settled);
+    // The completion notice reaches exactly the corrected quartet, once, each with one Push job.
+    await expectNotificationOutcome({
+      targetId: w.october.eventId,
+      kind: 'result_repair_applied',
+      recipients: w.october.players
+    });
   });
 });

@@ -1,5 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createMatchManagementFixtures } from './helpers/match-management-fixtures';
+import { expectNotificationOutcome } from './helpers/notification-channel-evidence';
 import { localSupabaseEnv, dotEnvPathFromImportMetaUrl } from './helpers/local-supabase-env';
 import { fixtureSql, sqlRows } from './helpers/match-registration-sql';
 import { matchPhotoFixture } from './helpers/match-photo-fixtures';
@@ -159,6 +160,11 @@ describe('match ownership integration', () => {
         `select recipient_user_id from public.notifications where target_id='${e.id}' and kind='match_event_ownership_transferred' order by recipient_user_id`
       )
     ).toEqual([f.creator.id, target.id].sort().map((recipient_user_id) => ({ recipient_user_id })));
+    await expectNotificationOutcome({
+      targetId: e.id,
+      kind: 'match_event_ownership_transferred',
+      recipients: [f.creator.id, target.id]
+    });
   });
   it('pending departed and other-event targets are rejected; stale version returns only current version', async () => {
     const target = await f.member();

@@ -64,8 +64,33 @@ beforeEach(() => {
   vi.resetAllMocks();
   mocks.invalidate.mockResolvedValue(undefined);
 });
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  Object.defineProperty(navigator, 'onLine', { configurable: true, value: true });
+});
 describe('reconfirmation panel', () => {
+  it('rejects offline reconfirmation at invocation without queueing, then retains identity after lost ack', async () => {
+    render(element());
+    await userEvent.click(screen.getByRole('button', { name: 'Review changed terms' }));
+    Object.defineProperty(navigator, 'onLine', { configurable: true, value: false });
+    await userEvent.click(
+      screen.getByRole('button', { name: 'I confirm participation under these terms' })
+    );
+    await screen.findByText(/Offline. Nothing sent/);
+    expect(mocks.confirm).not.toHaveBeenCalled();
+    Object.defineProperty(navigator, 'onLine', { configurable: true, value: true });
+    mocks.confirm.mockRejectedValue(new TypeError('Failed to fetch'));
+    await userEvent.click(
+      screen.getByRole('button', { name: 'I confirm participation under these terms' })
+    );
+    await screen.findByText(/Could not confirm this change/);
+    window.dispatchEvent(new Event('online'));
+    expect(mocks.confirm).toHaveBeenCalledOnce();
+    await userEvent.click(
+      screen.getByRole('button', { name: 'I confirm participation under these terms' })
+    );
+    expect(mocks.confirm.mock.calls[1]).toEqual(mocks.confirm.mock.calls[0]);
+  });
   it.each(['en', 'pt-BR', 'es'] as const)(
     'player and creator see translated requirement and explicit consent: %s',
     async (locale) => {

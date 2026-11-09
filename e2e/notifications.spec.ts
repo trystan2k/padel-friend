@@ -67,13 +67,13 @@ type Copy = {
       reviewCurrent: string;
     };
   };
+  push: { title: string };
   notificationPreferences: {
     preferencesLink: string;
     title: string;
     back: string;
     context: string;
     pushTitle: string;
-    pushUnavailable: string;
     categories: {
       community: string;
       matches: string;
@@ -114,6 +114,14 @@ test.use({
   deviceScaleFactor: 1,
   colorScheme: 'light',
   serviceWorkers: 'block'
+});
+
+// Worker-less browser state keeps the Web Push device panel deterministic ("unsupported") for every
+// screenshot and structural probe in this file; real worker registration is covered by pwa.spec.ts.
+test.beforeEach(async ({ page }) => {
+  await page.addInitScript(() => {
+    Reflect.deleteProperty(Navigator.prototype, 'serviceWorker');
+  });
 });
 
 type ResultBrowserFixtures = Awaited<ReturnType<typeof resultFixtures>>;
@@ -1495,7 +1503,7 @@ test.describe('notification visual probes', { tag: '@visual' }, () => {
     await expect(
       page.getByRole('heading', { level: 1, name: en.notificationPreferences.title })
     ).toBeVisible();
-    await expect(page.getByText(en.notificationPreferences.pushUnavailable)).toBeVisible();
+    await expect(page.getByRole('region', { name: en.push.title })).toBeVisible();
 
     const fieldset = page.getByRole('group', { name: en.notificationPreferences.pushTitle });
     const critical = page.getByRole('region', {
@@ -1521,7 +1529,7 @@ test.describe('notification visual probes', { tag: '@visual' }, () => {
 
     // Full approved hierarchy probe: order, grouped surfaces, token borders, typography.
     await assertPreferencesStructure(page, en);
-    await expect(page.getByText(en.notificationPreferences.pushUnavailable)).toBeVisible();
+    await expect(page.getByRole('region', { name: en.push.title })).toBeVisible();
 
     // Preferences group order: the push fieldset precedes the critical in-app panel, which is
     // a static ALWAYS ON status with no off affordance at all.

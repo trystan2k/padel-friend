@@ -31,7 +31,10 @@ export const SPEC_WEIGHTS = {
   'e2e/matches.spec.ts': 38,
   'e2e/onboarding.spec.ts': 34,
   'e2e/player-ratings.spec.ts': 81,
-  'e2e/result-amendments-chronology.spec.ts': 21,
+  'e2e/push-deep-links.spec.ts': 15,
+  'e2e/offline-mutations.spec.ts': 8,
+  'e2e/push-preferences.spec.ts': 8,
+  'e2e/pwa.spec.ts': 13,
   'e2e/result-amendments.spec.ts': 52
 };
 
@@ -52,7 +55,9 @@ export function listSpecs(dir = 'e2e') {
 // running):
 // - result-repairs: the result-repair retry takes the global repair lock and answers "busy" while any
 //   other worker finalizes or repairs results.
-// - statistics, level-reviews, level-reviews-admin, level-reviews-player: they read and assert GLOBAL
+// - statistics, level-reviews, level-reviews-admin, level-reviews-player, result-amendments-chronology
+//   (its fixtures reuse the level-reviews fixtures and fail with LEVEL_REVIEW_STALE_RATING when a
+//   concurrent test bumps the rating revision; seen in CI and local full sweeps): they read and assert GLOBAL
 //   rating-revision and statistics-projection state, which every concurrent ranked/result test bumps
 //   (observed in complete-check gate runs 1-5, Nov 2026: statistics.spec.ts:177 failed with
 //   projection 404s in all five, level-reviews-admin.spec.ts:43 in two with the approval dialog never
@@ -75,9 +80,20 @@ export const SERIAL_SPECS = [
   'e2e/level-reviews-player.spec.ts',
   'e2e/level-reviews.spec.ts',
   'e2e/notifications.spec.ts',
+  'e2e/result-amendments-chronology.spec.ts',
   'e2e/result-corrections-visual.spec.ts',
   'e2e/result-repairs.spec.ts',
   'e2e/statistics.spec.ts'
+];
+
+// Specs that hold the session-level rating-suite advisory lock (e2e/rating-suite-lock.ts) for their whole
+// run. Two of them in one functional lane contend for it inside one worker pool and can stall a worker
+// until its beforeAll budget expires, so planGroups never co-locates them while a lock-free lane exists.
+export const RATING_LOCK_SPECS = [
+  'e2e/player-ratings.spec.ts',
+  'e2e/result-amendments-chronology.spec.ts',
+  'e2e/result-amendments.spec.ts',
+  'e2e/result-repairs.spec.ts'
 ];
 
 const E2E_DIR = fileURLToPath(new URL('../e2e', import.meta.url));
@@ -111,7 +127,13 @@ export function planGroups(specs, weights = SPEC_WEIGHTS, count = FUNCTIONAL_LAN
     .filter((spec) => !isVisualFile(spec) && !SERIAL_SPECS.includes(spec))
     .sort((a, b) => weight(b) - weight(a) || a.localeCompare(b));
   for (const spec of ordered) {
-    const lightest = groups.reduce((best, group) => (group.seconds < best.seconds ? group : best));
+    const locked = RATING_LOCK_SPECS.includes(spec);
+    const candidates = locked
+      ? groups.filter((group) => !group.specs.some((s) => RATING_LOCK_SPECS.includes(s)))
+      : groups;
+    const lightest = (candidates.length > 0 ? candidates : groups).reduce((best, group) =>
+      group.seconds < best.seconds ? group : best
+    );
     lightest.specs.push(spec);
     lightest.seconds += weight(spec);
   }

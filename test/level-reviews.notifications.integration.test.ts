@@ -1,3 +1,7 @@
+import {
+  expectNotificationOutcome,
+  expectNotificationPushJobs
+} from './helpers/notification-channel-evidence';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { decodeNotificationTarget } from '../src/features/notifications/notification-target';
 import { dotEnvPathFromImportMetaUrl, localSupabaseEnv } from './helpers/local-supabase-env';
@@ -35,9 +39,11 @@ async function reviewNotifications(userId: string, requestId?: string): Promise<
        from public.notifications
       where recipient_user_id = $1 and target_type = 'level_review_request'
         and ($2::uuid is null or target_id = $2::uuid)
+        and kind in ('level_review_approved','level_review_rejected')
       order by created_at`,
     { values: [userId, requestId ?? null] }
   );
+  await expectNotificationPushJobs(result.rows);
   return result.rows;
 }
 
@@ -112,9 +118,14 @@ describe('level review resolution notifications', { timeout: 300_000 }, () => {
       });
       expect(replay.replayed).toBe(true);
       expect(await reviewNotifications(owner.id, requestId)).toHaveLength(1);
+      await expectNotificationOutcome({
+        targetId: requestId,
+        kind: 'level_review_approved',
+        recipients: [owner.id]
+      });
 
       const target = await owner.client
-        .rpc('get_my_notification_target_v3', { p_notification_id: String(notice!['id']) })
+        .rpc('get_my_notification_target_v4', { p_notification_id: String(notice!['id']) })
         .single();
       expect(target.error).toBeNull();
       const decoded = decodeNotificationTarget(target.data!);
@@ -147,8 +158,13 @@ describe('level review resolution notifications', { timeout: 300_000 }, () => {
 
       const [notice] = await reviewNotifications(owner.id, requestId);
       expect(notice).toMatchObject({ kind: 'level_review_rejected', category: 'rankings' });
+      await expectNotificationOutcome({
+        targetId: requestId,
+        kind: 'level_review_rejected',
+        recipients: [owner.id]
+      });
       const target = await owner.client
-        .rpc('get_my_notification_target_v3', { p_notification_id: String(notice!['id']) })
+        .rpc('get_my_notification_target_v4', { p_notification_id: String(notice!['id']) })
         .single();
       expect(decodeNotificationTarget(target.data!)).toMatchObject({
         target_status: 'level_review_available',
@@ -165,7 +181,7 @@ describe('level review resolution notifications', { timeout: 300_000 }, () => {
   );
 
   it.skipIf(!environment.env)(
-    'does not notify for under review, owner cancellation or submission',
+    'submission notifies owner and platform reviewers once; under review/cancellation add no resolution',
     async () => {
       const owner = roles.owner;
       const requestId = await submitRequest(owner);
@@ -208,7 +224,7 @@ describe('level review resolution notifications', { timeout: 300_000 }, () => {
         .select('id,kind,category,target_type,target_id,read_at')
         .eq('target_id', requestId);
       expect(feed.error).toBeNull();
-      expect(feed.data).toHaveLength(1);
+      expect(feed.data).toHaveLength(2);
       // The feed row carries no request content (reason, evidence, note).
       expect(Object.keys(feed.data![0]!).sort()).toEqual([
         'category',
@@ -267,12 +283,12 @@ describe('level review resolution notifications', { timeout: 300_000 }, () => {
 
       // The other player cannot read the owner's notification at all.
       const foreign = await roles.other.client
-        .rpc('get_my_notification_target_v3', { p_notification_id: String(own!['id']) })
+        .rpc('get_my_notification_target_v4', { p_notification_id: String(own!['id']) })
         .single();
       expect(foreign.error).not.toBeNull();
 
       // Provisional actors stay locked out of the target reader.
-      const provisional = await roles.provisional.client.rpc('get_my_notification_target_v3', {
+      const provisional = await roles.provisional.client.rpc('get_my_notification_target_v4', {
         p_notification_id: String(own!['id'])
       });
       expect(provisional.error).not.toBeNull();
@@ -285,7 +301,7 @@ describe('level review resolution notifications', { timeout: 300_000 }, () => {
       );
       const [forged] = await reviewNotifications(roles.other.id);
       const target = await roles.other.client
-        .rpc('get_my_notification_target_v3', { p_notification_id: String(forged!['id']) })
+        .rpc('get_my_notification_target_v4', { p_notification_id: String(forged!['id']) })
         .single();
       expect(target.error).toBeNull();
       expect(target.data).toMatchObject({

@@ -1,6 +1,7 @@
 import { expect, test, type APIRequestContext, type Locator, type Page } from '@playwright/test';
 import { parseResultProposals } from '../src/features/matches/match-result-model';
 import { waitForHydratedPage } from './auth-helpers';
+import { acquireRatingSuite, releaseRatingSuite } from './rating-suite-lock';
 import {
   confirmGroup,
   eventCount,
@@ -42,7 +43,8 @@ test.describe.configure({ mode: 'serial' });
 test.use({ serviceWorkers: 'block' });
 
 test.beforeAll(async ({ browser }) => {
-  test.setTimeout(300_000);
+  test.setTimeout(1_500_000);
+  await acquireRatingSuite();
   f = await resultFixtures(browser, { memberCount: 10 });
 });
 test.afterAll(async () => {
@@ -67,6 +69,8 @@ test.afterAll(async () => {
   for (const email of provisionalEmails)
     await sql(`do $$ begin delete from auth.users where email='${email}'; end $$;`);
 });
+// Declared after the cleanup hook so the suite lock is released last.
+test.afterAll(releaseRatingSuite);
 test.beforeEach(() => test.setTimeout(180_000));
 // Every f.page() opens a signed-in context that the shared fixture keeps until suite cleanup.
 // Release each test's browsers right away (actors and community stay): the serial suite otherwise

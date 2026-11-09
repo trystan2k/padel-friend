@@ -421,7 +421,11 @@ describe.skipIf(!environment.env)('Ranked result eligibility', { timeout: 300_00
 
   describe('concurrency and the global rating lock graph', () => {
     it('confirms Ranked and Unranked groups concurrently without deadlock and rates each exactly once', async () => {
-      const ranked = await Promise.all([rankedEvent(), rankedEvent()]);
+      // Fixture setups lock `communities` rows via lock_match_event_registration and deadlock when raced;
+      // the concurrent contract under test is the confirmation path below, which stays parallel.
+      const firstRanked = await rankedEvent();
+      const secondRanked = await rankedEvent();
+      const ranked = [firstRanked, secondRanked];
       const unranked = await kit.event(null);
       const eventIds = [...ranked.map((entry) => entry.eventId), unranked];
       const proposals: string[] = [];

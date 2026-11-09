@@ -1,6 +1,11 @@
 {
   "$schema": "https://unpkg.com/knip@6/schema.json",
-  "entry": ["design-tokens/style-dictionary.config.js", "src/routes/**/*.tsx"],
+  "entry": [
+    "design-tokens/style-dictionary.config.js",
+    "src/routes/**/*.tsx",
+    "src/features/pwa/service-worker.ts",
+    "test/fixtures/push-worker/worker.ts"
+  ],
   "ignoreExportsUsedInFile": true,
   "ignore": [
     ".agents/**",
@@ -8,6 +13,8 @@
     "scripts/test-populated-migration-up.d.mts",
     "scripts/check-client-secrets.d.mts",
     "scripts/e2e-shards.d.mts",
+    "scripts/pwa-build.d.mts",
+    "scripts/generate-pwa-icons.d.mts",
     "scripts/e2e-fast.d.mts",
     "scripts/e2e-build-env.d.mts",
     "scripts/run-integration.d.mts"

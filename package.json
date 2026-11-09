@@ -11,6 +11,7 @@
     "preview": "vite preview --host 127.0.0.1",
     "deploy": "pnpm build && wrangler deploy",
     "cf:typegen": "wrangler types",
+    "pwa:icons": "node scripts/generate-pwa-icons.mjs",
     "tokens:build": "style-dictionary build --config design-tokens/style-dictionary.config.js",
     "prepare": "husky",
     "lint": "oxlint --deny-warnings && stylelint 'src/**/*.css'",
@@ -45,7 +46,8 @@
     "i18next": "~26.4.5",
     "react": "~19.3.1",
     "react-dom": "~19.3.1",
-    "react-i18next": "~17.0.16"
+    "react-i18next": "~17.0.16",
+    "web-push": "~3.6.7"
   },
   "devDependencies": {
     "@cloudflare/vite-plugin": "~1.64.0",
@@ -61,6 +63,7 @@
     "@types/pg": "~8.23.1",
     "@types/react": "~19.3.0",
     "@types/react-dom": "~19.3.0",
+    "@types/web-push": "~3.6.4",
     "@vitejs/plugin-react": "~6.1.2",
     "@vitest/coverage-v8": "~5.0.4",
     "husky": "~9.1.7",
@@ -81,6 +84,7 @@
     "vite": "~8.3.4",
     "vitest": "~5.0.4",
     "workbox-build": "~7.4.1",
+    "workbox-precaching": "~7.4.1",
     "wrangler": "~4.151.0"
   },
   "engines": {

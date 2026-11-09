@@ -32,7 +32,10 @@ export const Route = createRootRoute({
       { name: 'viewport', content: 'width=device-width, initial-scale=1' },
       { title: 'Padel Friend' }
     ],
-    links: [{ rel: 'manifest', href: '/manifest.webmanifest' }]
+    links: [
+      { rel: 'manifest', href: '/manifest.webmanifest' },
+      { rel: 'apple-touch-icon', href: '/icons/apple-touch-icon.png' }
+    ]
   })
 });
 

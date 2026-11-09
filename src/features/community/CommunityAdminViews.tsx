@@ -1,3 +1,4 @@
+import { useUpdateGuard } from '../pwa/update-guard';
 import * as stylex from '@stylexjs/stylex';
 import { rootStyles } from '../../root.styles';
 import { AlertDialog } from '@base-ui/react/alert-dialog';
@@ -356,6 +357,10 @@ function RequestsView(props: ViewProps<'requests'>) {
 
   async function memberAction(person: CommunityAdminMember, action: 'approve' | 'deny') {
     if (busy || pageLoading) return;
+    if (!navigator.onLine) {
+      setErrorKey('offline');
+      return;
+    }
     setBusy(true);
     setErrorKey('');
     setMessage('');
@@ -374,7 +379,7 @@ function RequestsView(props: ViewProps<'requests'>) {
       setMessage(t(`communityAdmin.result.${action}`));
       await router.invalidate();
     } catch (error) {
-      setErrorKey(failed(error));
+      setErrorKey(failed(error) === 'generic' ? 'unconfirmed' : failed(error));
     } finally {
       setBusy(false);
     }
@@ -450,6 +455,7 @@ function useAdminMutationState() {
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState('');
   const [errorKey, setErrorKey] = useState('');
+  useUpdateGuard(busy || errorKey === 'unconfirmed');
   return { busy, setBusy, message, setMessage, errorKey, setErrorKey };
 }
 
@@ -557,6 +563,10 @@ function MemberView(props: ViewProps<'member'>) {
     action: 'approve' | 'deny' | 'remove' | 'reactivate' | 'promote' | 'demote'
   ): Promise<boolean> {
     if (busy) return false;
+    if (!navigator.onLine) {
+      setErrorKey('offline');
+      return false;
+    }
     setBusy(true);
     setErrorKey('');
     setRefreshError(false);
@@ -575,7 +585,7 @@ function MemberView(props: ViewProps<'member'>) {
         data: { community_id: community.id, membership_id: membershipId }
       });
     } catch (error) {
-      setErrorKey(failed(error));
+      setErrorKey(failed(error) === 'generic' ? 'unconfirmed' : failed(error));
       setBusy(false);
       return false;
     }

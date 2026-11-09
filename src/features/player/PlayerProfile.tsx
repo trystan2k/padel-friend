@@ -5,6 +5,7 @@ import { useRef, useState, type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { stripEdgeWhitespace } from '../../lib/edge-whitespace';
 import { getBrowserClient } from '../../lib/supabase/client';
+import { cleanupPushDeviceForLogout } from '../notifications/push-browser';
 import { AvatarUpload } from './AvatarUpload';
 import { updateMyPlayerProfile } from './player.functions';
 import { playerInitials } from './player-initials';
@@ -310,8 +311,9 @@ export function PlayerProfile({
       <button
         type="button"
         onClick={() =>
-          void getBrowserClient()
-            .auth.signOut()
+          // Retire this device's Web Push registration while the session is still valid.
+          void cleanupPushDeviceForLogout()
+            .then(() => getBrowserClient().auth.signOut())
             .then(({ error: signOutFailure }) => {
               if (signOutFailure) setSignOutError(true);
               else window.location.assign('/');

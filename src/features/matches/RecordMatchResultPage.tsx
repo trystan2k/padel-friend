@@ -25,6 +25,7 @@ import {
 import { resultGroupPlayers, resultOffsetLabel, resultPlayedOffsets } from './match-result-form';
 import { correctMatchEventResult, submitMatchEventResult } from './match-result.functions';
 import type { ResultAmendment } from './result-amendment-model';
+import { useUpdateGuard } from '../pwa/update-guard';
 import { MatchManagementUnavailable } from './MatchManagementUnavailable';
 import { MatchResultPending } from './MatchResultPending';
 import { MatchResultReview } from './MatchResultReview';
@@ -258,6 +259,15 @@ function ResultForm({
   const [online, setOnline] = useState(true);
   const inFlight = useRef(false);
   const attempt = useRef<{ payload: string; id: string } | null>(null);
+  const hasEntries =
+    step > 0 ||
+    sets.length > 1 ||
+    sets.some((set) => set.team_a_games > 0 || set.team_b_games > 0) ||
+    date !== '' ||
+    time !== '' ||
+    court !== '';
+  // A pending submission or an unsaved score form defers any service-worker update reload.
+  useUpdateGuard(!success && !correctionSuccess && (pending || hasEntries));
   const offsets = resultPlayedOffsets(date, time, event.timezone);
   const selectedOffset =
     offsets.length === 1
@@ -417,7 +427,11 @@ function ResultForm({
   const errorText = visibleFailure
     ? visibleFailure.status === 'conflict' && visibleFailure.code !== 'active_proposal'
       ? t(MATCH_RESULT_CONFLICT_COPY[visibleFailure.code])
-      : t(MATCH_RESULT_ERROR_COPY[visibleFailure.code])
+      : t(
+          visibleFailure.code === 'unavailable'
+            ? 'pwa.offline.unconfirmed'
+            : MATCH_RESULT_ERROR_COPY[visibleFailure.code]
+        )
     : '';
   const rawDetail = visibleFailure?.status === 'error' ? visibleFailure.detail : undefined;
   const badSet = sets.find((set) => set.position === rawDetail?.set_index);

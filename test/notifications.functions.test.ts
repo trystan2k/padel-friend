@@ -35,6 +35,20 @@ import {
 } from '../src/features/notifications/notifications.functions';
 const id = '123e4567-e89b-12d3-a456-426614174000';
 describe('notification server functions', () => {
+  it('distinguishes definite invitation rejection from ambiguous transport failure', async () => {
+    const single = vi
+      .fn<() => Promise<unknown>>()
+      .mockResolvedValue({ data: null, error: { code: 'PJ004', message: 'revoked' } });
+    mocks.client = { rpc: () => ({ single }) };
+    await expect(acceptMyNotificationInvitation({ data: { notificationId: id } })).rejects.toThrow(
+      'NOTIFICATION_INVITATION_REJECTED'
+    );
+    const uncertain = { code: 'FETCH_ERROR', message: 'connection lost' };
+    single.mockResolvedValue({ data: null, error: uncertain });
+    await expect(acceptMyNotificationInvitation({ data: { notificationId: id } })).rejects.toBe(
+      uncertain
+    );
+  });
   it('keeps category cursor queries ordered and unread counts whole-store', async () => {
     const databaseAsOf = '2026-10-16T12:34:56.000000+00:00';
     const query = {
@@ -304,7 +318,7 @@ describe('notification server functions', () => {
     await expect(getMyNotificationTargetV3({ data: { notificationId: id } })).resolves.toEqual(
       target
     );
-    expect(rpc).toHaveBeenCalledWith('get_my_notification_target_v3', {
+    expect(rpc).toHaveBeenCalledWith('get_my_notification_target_v4', {
       p_notification_id: id
     });
   });

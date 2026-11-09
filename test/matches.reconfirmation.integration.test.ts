@@ -4,6 +4,7 @@ import {
   type ManagementActor
 } from './helpers/match-management-fixtures';
 import { insertLeague } from './helpers/league-fixtures';
+import { expectNotificationOutcome } from './helpers/notification-channel-evidence';
 import { localSupabaseEnv, dotEnvPathFromImportMetaUrl } from './helpers/local-supabase-env';
 import {
   fixtureSql,
@@ -91,6 +92,16 @@ describe('match participant reconfirmation integration', () => {
         .map((n) => String(n.recipient_user_id))
         .sort((a, b) => a.localeCompare(b))
     ).toEqual([pending.id, invited.id].sort((a, b) => a.localeCompare(b)));
+    await expectNotificationOutcome({
+      targetId: e.id,
+      kind: 'match_reconfirmation_required',
+      recipients: [f.creator.id, player.id]
+    });
+    await expectNotificationOutcome({
+      targetId: e.id,
+      kind: 'match_event_updated',
+      recipients: [pending.id, invited.id]
+    });
     for (const actor of [f.creator, player]) {
       const n = notices.find((notice) => notice.recipient_user_id === actor.id)!;
       expect(n.event_key).toBe(`match.reconfirmation_required:${e.id}:1`);
@@ -224,6 +235,13 @@ describe('match participant reconfirmation integration', () => {
         `select count(*) n from public.match_event_audit_log where match_event_id='${e.id}' and action='reconfirm'`
       )
     ).toEqual([{ n: 4 }]);
+    // Each effective reconfirmation notifies the reconfirming player and the organizer once; replays
+    // and the rejected stale attempt add nothing, and every notification owns one Push job.
+    await expectNotificationOutcome({
+      targetId: e.id,
+      kind: 'match_registration_reconfirmed',
+      recipients: [...players.map((player) => player.id), ...Array(4).fill(f.creator.id)]
+    });
   }, 30000);
   it('second major edit invalidates old-generation confirmation and minor price edit never resets consent', async () => {
     const e = await f.event();
@@ -321,6 +339,11 @@ describe('match participant reconfirmation integration', () => {
       `select id from public.notifications where target_id='${e.id}' and kind='match_reconfirmation_expired'`
     );
     expect(notices).toHaveLength(1);
+    await expectNotificationOutcome({
+      targetId: e.id,
+      kind: 'match_reconfirmation_expired',
+      recipients: [f.creator.id]
+    });
     expect(
       (await sqlRows(`select public.process_match_event_registration_cutoff('${e.id}') result`))[0]
         ?.result

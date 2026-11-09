@@ -1,3 +1,4 @@
+import { useUpdateGuard } from '../pwa/update-guard';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { MATCH_RESULT_ERROR_COPY } from './match-result-error-copy';
 import type { ResultAmendmentResponse } from './result-amendment-model';
@@ -37,6 +38,7 @@ export function correctionErrorCopy(code: string): string {
 export function useCorrectionCommand(onRefresh: () => void | Promise<void>) {
   const [pending, setPending] = useState(false);
   const [feedback, setFeedback] = useState<CorrectionFeedback | null>(null);
+  useUpdateGuard(pending || feedback?.kind === 'error');
   const inFlight = useRef(false);
   const ids = useRef(new Map<string, string>());
   const refreshRef = useRef(onRefresh);
@@ -83,10 +85,16 @@ export function useCorrectionCommand(onRefresh: () => void | Promise<void>) {
           return false;
         }
         if (response.code !== 'unavailable') ids.current.delete(key);
-        setFeedback({ kind: 'error', copy: correctionErrorCopy(response.code) });
+        setFeedback({
+          kind: 'error',
+          copy:
+            response.code === 'unavailable'
+              ? 'pwa.offline.unconfirmed'
+              : correctionErrorCopy(response.code)
+        });
         return false;
       } catch {
-        setFeedback({ kind: 'error', copy: MATCH_RESULT_ERROR_COPY.unavailable });
+        setFeedback({ kind: 'error', copy: 'pwa.offline.unconfirmed' });
         return false;
       } finally {
         inFlight.current = false;

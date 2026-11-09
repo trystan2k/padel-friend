@@ -61,4 +61,15 @@ describe('client secret guard', () => {
     );
     expect(await scan()).toEqual([{ file: 'Widget.tsx', rule: 'admin-client-import-boundary' }]);
   });
+  it('flags private VAPID bindings and private-key canary in JS/maps/SW without printing keys', async () => {
+    const key = 'push-private-key-canary-0123456789abcdef';
+    await writeFile(path.join(clientDir, 'sw.js'), key);
+    await writeFile(path.join(clientDir, 'assets/push.js.map'), 'WEB_PUSH_VAPID_PRIVATE_KEYS');
+    const findings = await scan([JSON.stringify({ retiredKey: key })]);
+    expect(findings.map((finding) => finding.rule).sort()).toEqual([
+      'push-private-key-env-name',
+      'secret-value'
+    ]);
+    expect(JSON.stringify(findings)).not.toContain(key);
+  });
 });

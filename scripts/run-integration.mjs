@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url';
 // Runs the integration suite as non-overlapping vitest invocations (see vitest.integration.config.ts):
 // audited parallel-safe files first, then every other file serially. INTEGRATION_SERIAL=1 runs
 // everything in one serial invocation; INTEGRATION_PHASE=parallel|serial runs only that phase.
+// Push outbox and notification channel-matrix suites use default serial partition (global claims/projections).
 // Extra args (file filters, reporters) go to every phase.
 export const PHASES = ['parallel', 'serial'];
 
@@ -90,9 +91,8 @@ export function countMatchingFiles(phaseEnv, selection, run = spawnSync) {
     { encoding: 'utf8', env: phaseEnv }
   );
   if (result.status !== 0) return undefined;
-  return String(result.stdout ?? '')
-    .split('\n')
-    .filter((line) => /\.test\.[cm]?[jt]sx?$/.test(line.trim())).length;
+  return result.stdout.split('\n').filter((line) => /\.test\.[cm]?[jt]sx?$/.test(line.trim()))
+    .length;
 }
 
 export function runIntegration({

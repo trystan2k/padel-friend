@@ -1,3 +1,4 @@
+import { useUpdateGuard } from '../pwa/update-guard';
 import { AlertDialog } from '@base-ui/react/alert-dialog';
 import * as stylex from '@stylexjs/stylex';
 import { Link } from '@tanstack/react-router';
@@ -72,6 +73,12 @@ export function PlatformLevelReviewDetail({
   const request = detail.request;
   const current = detail.current;
   const active = isActiveLevelReview(request.status) && !closed;
+  useUpdateGuard(pending || (active && !!(target || note || reduction || justification)));
+  function rejectOffline() {
+    if (navigator.onLine) return false;
+    setMessage(t('pwa.offline.unsent'));
+    return true;
+  }
   const fieldId = (field: Field) => authorizeField(id, field);
   const auditId = detail.adjustment ? 'adjustment-' + detail.adjustment.id : undefined;
 
@@ -95,6 +102,7 @@ export function PlatformLevelReviewDetail({
   }
 
   async function showPreview(level: number) {
+    if (rejectOffline()) return;
     if (inFlight.current) return;
     inFlight.current = true;
     setPending(true);
@@ -164,6 +172,7 @@ export function PlatformLevelReviewDetail({
   }
 
   function prepare(next: Decision, button: HTMLButtonElement) {
+    if (rejectOffline()) return;
     const found: Partial<Record<Field, string>> = {};
     const parsed = parseLevelInput(target, i18n.language);
     if (next === 'approve') {
@@ -209,6 +218,7 @@ export function PlatformLevelReviewDetail({
     await onRevalidate();
   }
   async function mark() {
+    if (rejectOffline()) return;
     if (inFlight.current) return;
     inFlight.current = true;
     setPending(true);
@@ -239,6 +249,7 @@ export function PlatformLevelReviewDetail({
     }
   }
   async function confirm() {
+    if (rejectOffline()) return;
     if (inFlight.current || !decision) return;
     let payload:
       | Omit<Extract<ResolveLevelReviewInput, { decision: 'reject' }>, 'command_id'>

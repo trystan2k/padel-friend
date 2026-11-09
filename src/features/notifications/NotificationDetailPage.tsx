@@ -20,6 +20,7 @@ import {
   matchRegistrationGroup,
   matchRegistrationReservePosition
 } from '../matches/match-registration-model';
+import { useUpdateGuard } from '../pwa/update-guard';
 import { styles } from './notifications.styles';
 import * as stylex from '@stylexjs/stylex';
 
@@ -214,6 +215,8 @@ export function NotificationDetailPage({
   >(null);
   const [isOnline, setIsOnline] = useState<boolean | null>(null);
   const [pending, setPending] = useState(false);
+  const [unconfirmed, setUnconfirmed] = useState(false);
+  useUpdateGuard(pending || unconfirmed);
   const [targetError, setTargetError] = useState(false);
   const [readError, setReadError] = useState(false);
   const previousOnline = useRef<boolean | null>(null);
@@ -271,12 +274,17 @@ export function NotificationDetailPage({
   }, [accepted, isOnline, notificationId]);
 
   async function accept() {
+    if (!navigator.onLine) {
+      setIsOnline(false);
+      return;
+    }
     if (pending || isOnline !== true || accepted) return;
     setPending(true);
     setTargetError(false);
     try {
       await acceptMyNotificationInvitation({ data: { notificationId } });
       setAccepted(true);
+      setUnconfirmed(false);
       setAnnouncement('accepted');
       try {
         const next = await resolveNotificationTarget(notificationId);
@@ -285,7 +293,10 @@ export function NotificationDetailPage({
       } catch {
         setTargetError(true);
       }
-    } catch {
+    } catch (error) {
+      setUnconfirmed(
+        !(error instanceof Error && error.message === 'NOTIFICATION_INVITATION_REJECTED')
+      );
       setTargetError(true);
     } finally {
       setPending(false);
@@ -309,6 +320,7 @@ export function NotificationDetailPage({
         setTarget(next.target);
         setCurrentMatchContext(next.matchContext);
         setTargetError(false);
+        setUnconfirmed(false);
         if (accepted && next.target.target_status === 'membership_available')
           setAnnouncement(
             next.target.membership_status === 'active' ? 'activeMembership' : 'pendingMembership'
@@ -352,11 +364,22 @@ export function NotificationDetailPage({
             ? t(`notifications.${announcement}`)
             : ''}
       </output>
+      {unconfirmed && <p role="alert">{t('pwa.offline.unconfirmed')}</p>}
       <section {...stylex.props(styles.panel)}>
-        {target.target_status === 'level_review_available' && target.level_review_context ? (
+        {target.target_status === 'destination_available' && target.destination_href ? (
+          <>
+            <h1>{t('notifications.generic')}</h1>
+            <a href={target.destination_href} {...stylex.props(styles.link)}>
+              {t('notifications.openTarget')}
+            </a>
+            <Link to="/notifications" {...stylex.props(styles.link)}>
+              {t('notifications.back')}
+            </Link>
+          </>
+        ) : target.target_status === 'level_review_available' && target.level_review_context ? (
           <>
             <NotificationLevelReviewOutcome context={target.level_review_context} />
-            {hasError && <p role="alert">{t('notifications.targetError')}</p>}
+            {hasError && !unconfirmed && <p role="alert">{t('notifications.targetError')}</p>}
             {hasError && (
               <button
                 {...stylex.props(styles.button)}
@@ -419,7 +442,7 @@ export function NotificationDetailPage({
                 )}
               </>
             )}
-            {hasError && <p role="alert">{t('notifications.targetError')}</p>}
+            {hasError && !unconfirmed && <p role="alert">{t('notifications.targetError')}</p>}
             {hasError && (
               <button
                 {...stylex.props(styles.button)}
@@ -570,7 +593,7 @@ export function NotificationDetailPage({
             ) : (
               <p>{t('notifications.match.unavailable')}</p>
             )}
-            {hasError && <p role="alert">{t('notifications.targetError')}</p>}
+            {hasError && !unconfirmed && <p role="alert">{t('notifications.targetError')}</p>}
             {hasError && (
               <button
                 {...stylex.props(styles.button)}
@@ -622,7 +645,12 @@ export function NotificationDetailPage({
                 )}
               </p>
             )}
-            {hasError && <p role="alert">{t('notifications.targetError')}</p>}
+            {target.target_status === 'membership_available' && target.community_id && (
+              <a href={'/community/' + target.community_id} {...stylex.props(styles.link)}>
+                {t('notifications.openTarget')}
+              </a>
+            )}
+            {hasError && !unconfirmed && <p role="alert">{t('notifications.targetError')}</p>}
             {hasError && (
               <button
                 {...stylex.props(styles.button)}

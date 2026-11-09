@@ -1,6 +1,7 @@
 import { Collapsible } from '@base-ui/react/collapsible';
 import * as stylex from '@stylexjs/stylex';
 import { Link } from '@tanstack/react-router';
+import { useUpdateGuard } from '../pwa/update-guard';
 import { useEffect, useId, useRef, useState, type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '../../components/ui/Button';
@@ -66,6 +67,9 @@ export function PlayerLevelReviewRequest({
   const [evidenceOpen, setEvidenceOpen] = useState(false);
   const [phase, setPhase] = useState<'idle' | 'pending' | 'done'>('idle');
   const [failure, setFailure] = useState<Failure | null>(null);
+  useUpdateGuard(
+    phase !== 'done' && (phase === 'pending' || JSON.stringify(values) !== JSON.stringify(EMPTY))
+  );
   const [focusRequest, setFocusRequest] = useState<{ field: LevelReviewFormField } | null>(null);
   const inFlight = useRef(false);
   const command = useRef<{ fingerprint: string; id: string } | null>(null);

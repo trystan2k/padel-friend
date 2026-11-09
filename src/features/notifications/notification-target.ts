@@ -9,6 +9,9 @@ export type ResultNotificationKind =
   | 'result_deadline_reminder'
   | 'result_entry_ready'
   | 'result_amendment_resolved'
+  | 'result_amendment_requested'
+  | 'result_amendment_accepted'
+  | 'result_amendment_rejected'
   | 'result_repair_queued'
   | 'result_repair_applied'
   | 'result_repair_failed';
@@ -50,6 +53,7 @@ export type LevelReviewNotificationContext = {
 
 export type NotificationTarget = {
   target_status: string;
+  destination_href?: string | null;
   community_id: string | null;
   community_name: string | null;
   invitation_id: string | null;
@@ -83,6 +87,9 @@ const resultKinds = [
   'result_deadline_reminder',
   'result_entry_ready',
   'result_amendment_resolved',
+  'result_amendment_requested',
+  'result_amendment_accepted',
+  'result_amendment_rejected',
   'result_repair_queued',
   'result_repair_applied',
   'result_repair_failed'
@@ -320,6 +327,28 @@ export function decodeLevelReviewNotificationContext(
 }
 
 export function decodeNotificationTarget(value: NotificationTargetInput): NotificationTarget {
+  if (value.target_status === 'destination_available') {
+    const id = '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}';
+    const path = new RegExp(
+      '^/(?:players/' +
+        id +
+        '|(?:platform-admin/)?level-reviews/' +
+        id +
+        '|community/' +
+        id +
+        '/leagues/' +
+        id +
+        ')$',
+      'i'
+    );
+    if (
+      typeof value.destination_href !== 'string' ||
+      !path.test(value.destination_href) ||
+      value.result_context != null ||
+      value.level_review_context != null
+    )
+      throw new Error('INVALID_NOTIFICATION_TARGET');
+  } else if (value.destination_href != null) throw new Error('INVALID_NOTIFICATION_TARGET');
   if (
     value.target_status === 'match_available' &&
     (value.match_available !== true ||

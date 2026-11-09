@@ -5,6 +5,7 @@ import { describe, expect, it, vi } from 'vitest';
 import {
   DEFAULT_WEIGHT_SECONDS,
   FUNCTIONAL_LANES,
+  RATING_LOCK_SPECS,
   SERIAL_SPECS,
   SPEC_WEIGHTS,
   VISUAL_GREP,
@@ -76,6 +77,15 @@ describe('E2E functional lanes', () => {
     expect(Object.keys(SPEC_WEIGHTS).sort((a, b) => a.localeCompare(b))).toEqual(lanes);
   });
 
+  it('never co-locates two rating-suite-lock specs in one functional lane', () => {
+    for (const group of planGroups(specs))
+      expect(group.specs.filter((spec) => RATING_LOCK_SPECS.includes(spec)).length).toBeLessThan(2);
+  });
+
+  it('has rating-suite-lock specs that exist', () => {
+    for (const spec of RATING_LOCK_SPECS) expect(specs).toContain(spec);
+  });
+
   it('balances lanes within 15% of the heaviest', () => {
     const seconds = planGroups(specs).map((group) => group.seconds);
     expect((Math.max(...seconds) - Math.min(...seconds)) / Math.max(...seconds)).toBeLessThan(0.15);
@@ -98,7 +108,7 @@ describe('E2E functional lanes', () => {
     const nonSerial = specs.filter((spec) => !SERIAL_SPECS.includes(spec));
     expect(laneArgs('visual', specs)).toEqual([...nonSerial, '--grep', VISUAL_GREP]);
     expect(laneArgs('serial', specs)).toEqual(SERIAL_SPECS);
-    expect(SERIAL_SPECS).toHaveLength(7);
+    expect(SERIAL_SPECS).toHaveLength(8);
     expect(SERIAL_SPECS).not.toContain('e2e/level-reviews-visual.spec.ts');
     expect(gateLanes().serial).toEqual(SERIAL_SPECS);
     expect(() => laneArgs('functional-9', specs)).toThrow('Unknown E2E lane');

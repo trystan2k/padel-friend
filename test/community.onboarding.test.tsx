@@ -97,9 +97,34 @@ beforeEach(() => {
   mocks.list.mockReset();
   mocks.routerState.pending = false;
 });
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  Object.defineProperty(navigator, 'onLine', { configurable: true, value: true });
+});
 
 describe('community onboarding', () => {
+  it('rejects offline join at invocation and never replays on reconnect', async () => {
+    mount();
+    Object.defineProperty(navigator, 'onLine', { configurable: true, value: false });
+    fireEvent.click(screen.getByRole('button', { name: 'JOIN COMMUNITY' }));
+    expect(screen.getByText(/Offline. Nothing sent/)).toBeTruthy();
+    expect(mocks.join).not.toHaveBeenCalled();
+    Object.defineProperty(navigator, 'onLine', { configurable: true, value: true });
+    fireEvent(window, new Event('online'));
+    expect(mocks.join).not.toHaveBeenCalled();
+  });
+  it('keeps search draft and shows unconfirmed state after false-online/lost-ack join', async () => {
+    mocks.join.mockRejectedValue(new TypeError('Failed to fetch'));
+    mount();
+    fireEvent.click(screen.getByRole('button', { name: 'JOIN COMMUNITY' }));
+    await screen.findByText(/Could not confirm this change/);
+    expect(screen.queryByText('Joined')).toBeNull();
+    fireEvent(window, new Event('online'));
+    expect(mocks.join).toHaveBeenCalledOnce();
+    expect(screen.getByRole('button', { name: 'JOIN COMMUNITY' }).hasAttribute('disabled')).toBe(
+      false
+    );
+  });
   it.each(['en', 'pt-BR', 'es'] as const)(
     'formats zero, singular and large discovery counts in %s',
     (locale) => {
@@ -473,7 +498,7 @@ describe('community onboarding', () => {
     mount();
     const button = screen.getByRole('button', { name: 'JOIN COMMUNITY' });
     await userEvent.click(button);
-    expect(await screen.findByText('Could not join. Please try again.')).toBeTruthy();
+    expect(await screen.findByText(/Could not confirm this change/)).toBeTruthy();
     await userEvent.click(button);
     await waitFor(() => expect(screen.getByText('Request sent')).toBeTruthy());
     expect(mocks.join).toHaveBeenCalledTimes(2);

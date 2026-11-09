@@ -44,7 +44,7 @@
     "requestPending": "Solicitud enviada",
     "alreadyMember": "Ya eres miembro o tienes una solicitud pendiente",
     "membershipInactive": "Tu membresía está inactiva. Contacta con un administrador de la comunidad para reactivarla.",
-    "joinFailed": "No se pudo completar. Inténtalo de nuevo.",
+    "joinFailed": "No se pudo confirmar este cambio. Tus campos se conservan. Actualiza antes de volver a intentarlo.",
     "emptySearch": "No hay comunidades que coincidan con tu búsqueda.",
     "noCommunities": "Aún no hay comunidades públicas.",
     "loadFailed": "No se pudieron cargar las comunidades.",
@@ -75,7 +75,8 @@
     "created": "Tu comunidad está lista.",
     "finish": "IR AL PANEL",
     "createFailed": "No se pudo crear la comunidad. Inténtalo de nuevo.",
-    "invalidName": "Introduce un nombre de comunidad de hasta 80 caracteres."
+    "invalidName": "Introduce un nombre de comunidad de hasta 80 caracteres.",
+    "offline": "Sin conexión. No se envió nada. Vuelve a conectarte e inténtalo de nuevo."
   },
   "auth": {
     "invitationEmail": {
@@ -391,7 +392,9 @@
       "session": "Tu sesión ha caducado. Inicia sesión de nuevo.",
       "generic": "No se pudo completar. Actualiza e inténtalo de nuevo.",
       "finalAdmin": "La comunidad debe mantener al menos una persona admin activa.",
-      "transition": "La membresía ha cambiado. Actualiza antes de volver a intentarlo."
+      "transition": "La membresía ha cambiado. Actualiza antes de volver a intentarlo.",
+      "offline": "Sin conexión. No se envió nada. Vuelve a conectarte e inténtalo de nuevo.",
+      "unconfirmed": "No se pudo confirmar este cambio. Tus campos se conservan. Actualiza antes de volver a intentarlo."
     },
     "matchCountUnavailable": "Recuento de partidos no disponible — el historial de partidos aún no está disponible",
     "inviteeSearchPrivateOnly": "La búsqueda de invitados solo está disponible en comunidades privadas.",
@@ -438,6 +441,80 @@
     "discoverableHelp": "Cualquier administrador de una comunidad privada puede encontrar tu nombre consentido. No se exponen correos.",
     "discoverabilitySaved": "Preferencia de descubrimiento guardada.",
     "discoverabilityError": "No se pudo guardar la preferencia."
+  },
+  "pwa": {
+    "install": {
+      "title": "Instalar Padel Friend",
+      "action": "Instalar app",
+      "installed": "Padel Friend está instalado en este dispositivo.",
+      "unsupported": "Este navegador no puede instalar apps. Las notificaciones en la app siguen funcionando.",
+      "iosInstructions": "En iPhone o iPad, toca Compartir y luego Añadir a pantalla de inicio. Después abre Padel Friend desde la pantalla de inicio.",
+      "browserInstructions": "Usa el menú del navegador para instalar Padel Friend o añadirlo a la pantalla de inicio.",
+      "unavailable": "La instalación no se completó. Inténtalo de nuevo o usa el menú del navegador."
+    },
+    "update": {
+      "available": "Hay una nueva versión de Padel Friend lista.",
+      "apply": "Actualizar ahora",
+      "later": "Más tarde",
+      "dirtyForm": "Termina o guarda tus cambios actuales y luego actualiza.",
+      "error": "No se pudo actualizar. Recarga la página para intentarlo de nuevo."
+    },
+    "offline": {
+      "title": "Sin conexión",
+      "body": "Padel Friend necesita conexión para mostrar tu cuenta. Vuelve a conectarte e inténtalo de nuevo.",
+      "retry": "Intentar de nuevo",
+      "unconfirmed": "No se pudo confirmar este cambio. Tus campos se conservan. Actualiza antes de volver a intentarlo.",
+      "unsent": "Sin conexión. No se envió nada. Vuelve a conectarte e inténtalo de nuevo."
+    }
+  },
+  "push": {
+    "message": {
+      "community": {
+        "title": "Actualización de Padel Friend",
+        "body": "Tienes una nueva notificación. Abre Padel Friend para verla."
+      },
+      "matches": {
+        "title": "Actualización de Padel Friend",
+        "body": "Tienes una nueva notificación. Abre Padel Friend para verla."
+      },
+      "results": {
+        "title": "Actualización de Padel Friend",
+        "body": "Tienes una nueva notificación. Abre Padel Friend para verla."
+      },
+      "rankings": {
+        "title": "Actualización de Padel Friend",
+        "body": "Tienes una nueva notificación. Abre Padel Friend para verla."
+      },
+      "leagues": {
+        "title": "Actualización de Padel Friend",
+        "body": "Tienes una nueva notificación. Abre Padel Friend para verla."
+      }
+    },
+    "title": "Web Push en este dispositivo",
+    "loading": "Comprobando Web Push en este dispositivo…",
+    "enable": "Activar push en este dispositivo",
+    "enabling": "Activando…",
+    "disableDevice": "Desactivar en este dispositivo",
+    "disabling": "Desactivando…",
+    "enabled": "Web Push está activo en este dispositivo.",
+    "intentOff": "Este dispositivo está listo, pero Web Push está desactivado arriba. Actívalo y guarda para recibir notificaciones.",
+    "permissionDefault": "El navegador solo pide permiso después de que toques Activar.",
+    "grantedNotSubscribed": "Las notificaciones están permitidas, pero este dispositivo aún no está registrado para Web Push.",
+    "denied": "Las notificaciones están bloqueadas para Padel Friend. Permítelas en los ajustes del navegador o del dispositivo y vuelve aquí.",
+    "unsupported": "Este navegador no puede recibir Web Push.",
+    "installRequired": "En iPhone o iPad, instala primero Padel Friend en la pantalla de inicio y ábrelo desde ahí para activar Web Push.",
+    "offline": "Estás sin conexión. Reconecta para gestionar Web Push en este dispositivo.",
+    "configUnavailable": "Web Push no está disponible en este momento.",
+    "subscriptionFailed": "No se pudo configurar Web Push en este dispositivo.",
+    "saveFailed": "No se pudo guardar este dispositivo, así que Web Push no está activado. Inténtalo de nuevo.",
+    "expired": "El registro de Web Push de este dispositivo caducó. Actívalo de nuevo para seguir recibiendo notificaciones.",
+    "keyChanged": "Cambiaron los ajustes de Web Push. Actívalo de nuevo en este dispositivo.",
+    "retry": "Intentar de nuevo",
+    "deviceDisabled": "Web Push está desactivado en este dispositivo. Tus otros dispositivos no cambiaron.",
+    "cleanupFailed": "No se pudo desactivar por completo Web Push en este dispositivo. Inténtalo de nuevo.",
+    "fallback": "Las notificaciones en la app siguen funcionando y disponibles.",
+    "otherDevices_one": "{{count}} otro dispositivo está registrado para Web Push.",
+    "otherDevices_other": "{{count}} otros dispositivos están registrados para Web Push."
   },
   "notifications": {
     "title": "Notificaciones",
@@ -487,6 +564,17 @@
       "rankings": "No hay notificaciones de clasificaciones."
     },
     "kinds": {
+      "community_role_changed": "Tu rol en la comunidad cambió.",
+      "result_amendment_requested": "Se solicitó una corrección de resultado.",
+      "result_amendment_accepted": "Se aceptó una corrección de resultado.",
+      "result_amendment_rejected": "Se rechazó una corrección de resultado.",
+      "rating_changed": "Tu nivel o fiabilidad cambió.",
+      "level_review_submitted": "Se envió tu revisión de nivel.",
+      "level_review_requested": "Una revisión de nivel necesita atención.",
+      "league_started": "Comenzó una Liga.",
+      "league_closed": "Terminó una Liga.",
+      "league_standings_published": "Se publicó la clasificación final.",
+      "league_standings_amended": "Se actualizó la clasificación final.",
       "community_invitation": "Recibiste una invitación a una comunidad.",
       "community_membership_approved": "Aprobaron tu membresía en la comunidad.",
       "community_membership_denied": "Rechazaron tu membresía en la comunidad.",
@@ -593,7 +681,8 @@
       "registrationExpiredBody": "La inscripción cerró antes de una decisión. No se reservó ninguna plaza.",
       "registrationNotPlayingBody": "El plazo pasó antes de que se completara un cuarteto. No se registrará ningún resultado del partido.",
       "unavailable": "Esta notificación de partido ya no está disponible."
-    }
+    },
+    "openTarget": "Abrir detalles actuales"
   },
   "notificationPreferences": {
     "preferencesLink": "Preferencias de notificaciones",
@@ -602,7 +691,6 @@
     "context": "Las notificaciones en la aplicación siguen disponibles aunque Push esté desactivado.",
     "pushTitle": "Notificaciones Push",
     "pushHelper": "Guarda qué actualizaciones quieres recibir mediante Push.",
-    "pushUnavailable": "La entrega aún no está disponible. Estas opciones solo guardan tus preferencias; no se enviarán notificaciones.",
     "categories": {
       "community": "Comunidad e invitaciones",
       "matches": "Actualizaciones de partidos",
@@ -621,7 +709,10 @@
     "offline": "No tienes conexión. Vuelve a conectarte para guardar tus preferencias."
   },
   "matches": {
-    "competition": { "ranked": "Clasificatoria", "unranked": "Sin clasificación" },
+    "competition": {
+      "ranked": "Clasificatoria",
+      "unranked": "Sin clasificación"
+    },
     "addPlayer": {
       "action": "Añadir jugador",
       "title": "Añadir un jugador",
@@ -925,8 +1016,15 @@
       "court": "Pista",
       "matrixSet": "S{{number}}",
       "title": "Registrar resultado",
-      "steps": { "players": "JUGADORES", "score": "MARCADOR", "review": "REVISIÓN" },
-      "teams": { "team_a": "Equipo A", "team_b": "Equipo B" },
+      "steps": {
+        "players": "JUGADORES",
+        "score": "MARCADOR",
+        "review": "REVISIÓN"
+      },
+      "teams": {
+        "team_a": "Equipo A",
+        "team_b": "Equipo B"
+      },
       "confirmPlayers": "Confirma quién jugó",
       "suggested": "Los equipos sugeridos siguen el orden de aceptación. Confirma o cambia quién jugó junto.",
       "changeTeams": "Cambiar equipos",
@@ -973,7 +1071,25 @@
       "courtLabel": "Identificación de pista (opcional)",
       "notProvided": "No indicado",
       "preview": "Revisar resultado",
-      "review": "Revisar resultado",
+      "review": {
+        "approve": "Aprobar",
+        "approving": "Registrando aprobación…",
+        "reject": "Disputar",
+        "retry": "Reintentar revisión",
+        "reviewCurrent": "Revisar propuesta actual",
+        "offline": "No tienes conexión. Vuelve a conectarte para revisar. No se envió ninguna aprobación ni disputa.",
+        "offlineDraft": "Resultado no enviado. Vuelve a conectarte para enviarlo; el borrador sigue aquí.",
+        "decisionRecorded": "{{decision}} registrada por {{name}}.",
+        "recorded": {
+          "approve": "La aprobación de esta versión quedó registrada. El resultado sigue pendiente hasta que lo confirme el servidor.",
+          "approveConfirmed": "Aprobación registrada. El servidor confirmó este resultado; actualizando sus detalles oficiales.",
+          "reject": "Resultado en disputa. No se aplicaron cambios de clasificación ni estadísticas de la Liga."
+        },
+        "decisions": {
+          "approve": "Aprobación",
+          "reject": "Rechazo"
+        }
+      },
       "back": "Volver",
       "reload": "Recargar resultado y jugadores",
       "submit": "Enviar a revisión",
@@ -1009,25 +1125,6 @@
       "confirmation": {
         "manual": "Confirmado · Manual",
         "auto": "Confirmado · Automático 48H"
-      },
-      "review": {
-        "approve": "Aprobar",
-        "approving": "Registrando aprobación…",
-        "reject": "Disputar",
-        "retry": "Reintentar revisión",
-        "reviewCurrent": "Revisar propuesta actual",
-        "offline": "No tienes conexión. Vuelve a conectarte para revisar. No se envió ninguna aprobación ni disputa.",
-        "offlineDraft": "Resultado no enviado. Vuelve a conectarte para enviarlo; el borrador sigue aquí.",
-        "decisionRecorded": "{{decision}} registrada por {{name}}.",
-        "recorded": {
-          "approve": "La aprobación de esta versión quedó registrada. El resultado sigue pendiente hasta que lo confirme el servidor.",
-          "approveConfirmed": "Aprobación registrada. El servidor confirmó este resultado; actualizando sus detalles oficiales.",
-          "reject": "Resultado en disputa. No se aplicaron cambios de clasificación ni estadísticas de la Liga."
-        },
-        "decisions": {
-          "approve": "Aprobación",
-          "reject": "Rechazo"
-        }
       },
       "reject": {
         "title": "Disputar resultado",
@@ -1658,7 +1755,7 @@
       "requesterIneligible": "El solicitante ya no es elegible.",
       "forbidden": "Solo el organizador puede decidir solicitudes.",
       "unauthenticated": "Inicia sesión para continuar.",
-      "unavailable": "El servicio no está disponible. Inténtalo de nuevo.",
+      "unavailable": "No se pudo confirmar este cambio. Tus campos se conservan. Actualiza antes de volver a intentarlo.",
       "invalid": "Esa acción no es válida.",
       "retry": "Reintentar"
     },

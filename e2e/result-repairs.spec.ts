@@ -2,6 +2,7 @@ import { execFileSync } from 'node:child_process';
 import { Client } from 'pg';
 import { expect, test } from '@playwright/test';
 import { waitForHydratedPage } from './auth-helpers';
+import { acquireRatingSuite, releaseRatingSuite } from './rating-suite-lock';
 import { amendmentFixtures, copies, repairNow } from './result-amendments-fixtures';
 import { sql } from './matches-management-fixtures';
 import {
@@ -17,7 +18,8 @@ const c = copies.en.matches.corrections;
 const failureFunction = 'public.fixture_result_repair_browser_failure';
 
 test.beforeAll(async ({ browser }) => {
-  test.setTimeout(240_000);
+  test.setTimeout(1_500_000);
+  await acquireRatingSuite();
   f = await amendmentFixtures(browser);
 });
 test.afterAll(async () => {
@@ -25,6 +27,8 @@ test.afterAll(async () => {
   await removeFailure();
   await f?.cleanup();
 });
+// Declared after the cleanup hook so the suite lock is released last.
+test.afterAll(releaseRatingSuite);
 test.beforeEach(() => test.setTimeout(180_000));
 
 async function removeFailure() {

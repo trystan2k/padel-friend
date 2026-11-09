@@ -39,6 +39,53 @@ const validResultContext = {
 };
 
 describe('notification display model', () => {
+  it.each(['result_amendment_requested', 'result_amendment_accepted', 'result_amendment_rejected'])(
+    'decodes %s with historical proposal anchors',
+    (kind) => {
+      const context = decodeResultNotificationContext({
+        ...validResultContext,
+        notification_kind: kind
+      });
+      expect(notificationResultHref(context)).toContain('result_proposal=' + proposalId);
+      expect(notificationResultHref(context)).toContain('result_version=2');
+      expect(notificationResultHref(context)).toContain('#result-group-3');
+    }
+  );
+  it('allows only fixed authorized destination paths and rejects external/stale context', () => {
+    const base = {
+      target_status: 'destination_available',
+      community_id: null,
+      community_name: null,
+      invitation_id: null,
+      membership_status: null
+    };
+    for (const destination_href of [
+      '/players/' + eventId,
+      '/level-reviews/' + eventId,
+      '/platform-admin/level-reviews/' + eventId,
+      '/community/' + communityId + '/leagues/' + eventId
+    ])
+      expect(decodeNotificationTarget({ ...base, destination_href }).destination_href).toBe(
+        destination_href
+      );
+    for (const destination_href of [
+      '//evil.example',
+      'https://evil.example',
+      '/players/' + eventId + '?next=//evil.example',
+      '/players/../admin',
+      undefined
+    ])
+      expect(() => decodeNotificationTarget({ ...base, destination_href })).toThrow(
+        'INVALID_NOTIFICATION_TARGET'
+      );
+    expect(() =>
+      decodeNotificationTarget({
+        ...base,
+        destination_href: '/players/' + eventId,
+        result_context: validResultContext
+      })
+    ).toThrow('INVALID_NOTIFICATION_TARGET');
+  });
   it('groups dates in UTC and formats with the requested locale', () => {
     const grouped = groupNotifications(
       [

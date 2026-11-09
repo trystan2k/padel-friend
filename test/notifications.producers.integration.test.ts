@@ -1,3 +1,7 @@
+import {
+  expectNotificationOutcome,
+  expectNotificationPushJobs
+} from './helpers/notification-channel-evidence';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { describe, expect, it } from 'vitest';
 import { dotEnvPathFromImportMetaUrl, localSupabaseEnv } from './helpers/local-supabase-env';
@@ -66,6 +70,7 @@ describe.skipIf(!environment.env)('community notification producers (local Supab
       .single();
     expect(result.error).toBeNull();
     expect(result.data).toMatchObject({ recipient_user_id: recipientId, event_key: eventKey });
+    await expectNotificationPushJobs([result.data!]);
     return result.data!;
   }
 
@@ -106,6 +111,11 @@ describe.skipIf(!environment.env)('community notification producers (local Supab
     expect(JSON.stringify(alert)).not.toContain('token');
     expect(JSON.stringify(alert)).not.toContain('settings');
     expect(JSON.stringify(alert)).not.toContain('Producer ');
+    await expectNotificationOutcome({
+      targetId: invitationId,
+      kind: 'community_invitation',
+      recipients: [invitee.id]
+    });
 
     expect(
       (
@@ -117,7 +127,7 @@ describe.skipIf(!environment.env)('community notification producers (local Supab
     ).toHaveLength(1);
   }, 30000);
 
-  it('emits approval, denial and admin-removal alerts; role edits and unauthorized calls emit none', async () => {
+  it('emits approval, denial, admin-removal and role alerts; unauthorized calls emit none', async () => {
     const admin = await actor('Governance Admin');
     const other = await actor('Governance Outsider');
     const approvedMember = await actor('Approved Member');
@@ -171,14 +181,32 @@ describe.skipIf(!environment.env)('community notification producers (local Supab
     ).toMatchObject({ kind: 'community_membership_removed' });
     expect((await govern(admin.client, approvedId, 'promote')).error).toBeNull();
     expect(
-      (await approvedMember.client.from('notifications').select('id').eq('target_id', approvedId))
-        .data
-    ).toHaveLength(1);
+      await notification(
+        approvedMember.client,
+        approvedMember.id,
+        `community.role_changed:${approvedId}:1`
+      )
+    ).toMatchObject({ kind: 'community_role_changed', category: 'community' });
+    await expectNotificationOutcome({
+      targetId: approvedId,
+      kind: 'community_membership_approved',
+      recipients: [approvedMember.id]
+    });
+    await expectNotificationOutcome({
+      targetId: deniedId,
+      kind: 'community_membership_denied',
+      recipients: [deniedMember.id]
+    });
+    await expectNotificationOutcome({
+      targetId: removedId,
+      kind: 'community_membership_removed',
+      recipients: [removedMember.id]
+    });
     expect((await govern(admin.client, approvedId, 'approve')).error).not.toBeNull();
     expect(
       (await approvedMember.client.from('notifications').select('id').eq('target_id', approvedId))
         .data
-    ).toHaveLength(1);
+    ).toHaveLength(2);
   }, 30000);
 
   it('suppresses self-leave, delivers with push disabled, and uses a distinct event for a new interval', async () => {

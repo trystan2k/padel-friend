@@ -1,5 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createMatchManagementFixtures } from './helpers/match-management-fixtures';
+import { expectNotificationOutcome } from './helpers/notification-channel-evidence';
 import { localSupabaseEnv, dotEnvPathFromImportMetaUrl } from './helpers/local-supabase-env';
 import {
   asRecord,
@@ -59,6 +60,16 @@ describe('match management departures integration', () => {
     expect(
       effects.filter((row) => row.kind === 'match_registration_quartet_complete')
     ).toHaveLength(0);
+    await expectNotificationOutcome({
+      targetId: event.id,
+      kind: 'match_registration_removed',
+      recipients: [f.creator.id, target.id]
+    });
+    await expectNotificationOutcome({
+      targetId: event.id,
+      kind: 'match_registration_group_changed',
+      recipients: [f.creator.id, ...members.slice(1, 7).map((member) => member.id)]
+    });
     const notification = await sqlRows(
       `select id from public.notifications where target_id='${event.id}' and recipient_user_id='${members[3]!.id}' and kind='match_registration_group_changed'`
     );
@@ -69,6 +80,40 @@ describe('match management departures integration', () => {
     expect(contexts.data).toEqual([
       expect.objectContaining({ caller_accepted_order: 5, caller_roster_position: 4 })
     ]);
+  });
+  it('withdrawal notifies the organizer and departing player and every changed surviving membership once', async () => {
+    const members = await Promise.all(Array.from({ length: 8 }, () => f.member()));
+    const event = await f.event({ accepted: members });
+    const target = members[0]!;
+    await fixtureSql(`delete from public.notifications where target_id='${event.id}';`);
+    const command = {
+      p_match_event_id: event.id,
+      p_attempt_id: await f.latestAttemptId(event.id, target.id),
+      p_request_id: crypto.randomUUID()
+    };
+    expect((await f.rpc(target, 'withdraw_match_registration', command)).error).toBeNull();
+    await expectNotificationOutcome({
+      targetId: event.id,
+      kind: 'match_registration_withdrawn',
+      recipients: [f.creator.id, target.id]
+    });
+    await expectNotificationOutcome({
+      targetId: event.id,
+      kind: 'match_registration_promoted',
+      recipients: [members[7]!.id]
+    });
+    await expectNotificationOutcome({
+      targetId: event.id,
+      kind: 'match_registration_group_changed',
+      recipients: [f.creator.id, ...members.slice(1, 7).map((member) => member.id)]
+    });
+    // A replayed command adds no notification and therefore no second Push job.
+    expect((await f.rpc(target, 'withdraw_match_registration', command)).error).toBeNull();
+    await expectNotificationOutcome({
+      targetId: event.id,
+      kind: 'match_registration_withdrawn',
+      recipients: [f.creator.id, target.id]
+    });
   });
   it('serializes simultaneous withdraw and remove into one command and one ending', async () => {
     const player = await f.member();
@@ -270,6 +315,11 @@ describe('match management departures integration', () => {
     ).toEqual([target.id, f.creator.id].sort((a, b) => a.localeCompare(b)));
     expect(alerts.filter((a) => a.kind === 'match_registration_group_changed')).toHaveLength(7);
     expect(alerts.filter((a) => a.kind === 'match_registration_quartet_complete')).toHaveLength(0);
+    await expectNotificationOutcome({
+      targetId: event.id,
+      kind: 'match_registration_removed',
+      recipients: [target.id, f.creator.id]
+    });
     expect(
       (await f.rpc(f.creator, 'remove_match_registration', { ...request, p_reason: 'different' }))
         .error?.message
