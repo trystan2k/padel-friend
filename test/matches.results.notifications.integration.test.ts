@@ -1,4 +1,7 @@
-import { expectNotificationPushJobs } from './helpers/notification-channel-evidence';
+import {
+  expectNotificationOutcome,
+  expectNotificationPushJobs
+} from './helpers/notification-channel-evidence';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { ratingEvidenceCleanupSql } from './helpers/fixture-cleanup';
 import { dotEnvPathFromImportMetaUrl, localSupabaseEnv } from './helpers/local-supabase-env';
@@ -1685,6 +1688,34 @@ describe.skipIf(!environment.env)('transactional result notifications', { timeou
       await sqlRows(`select count(*)::int as count from public.match_event_audit_log
         where match_event_id = '${eventId}' and action = 'result_confirmed'`)
     ).toEqual([{ count: 1 }]);
+
+    // Exact recipients and one Push job per notification, per kind, across the three versions.
+    const quartetIds = quartet.map((player) => player.id);
+    await expectNotificationOutcome({
+      targetId: eventId,
+      kind: 'result_added',
+      recipients: [creator.id]
+    });
+    await expectNotificationOutcome({
+      targetId: eventId,
+      kind: 'result_review_needed',
+      recipients: [...quartetIds, ...quartetIds, ...quartetIds]
+    });
+    await expectNotificationOutcome({
+      targetId: eventId,
+      kind: 'result_corrected',
+      recipients: [creator.id, creator.id]
+    });
+    await expectNotificationOutcome({
+      targetId: eventId,
+      kind: 'result_disputed',
+      recipients: [...quartetIds, creator.id]
+    });
+    await expectNotificationOutcome({
+      targetId: eventId,
+      kind: 'result_confirmed',
+      recipients: [...quartetIds, creator.id]
+    });
   });
 
   it.each([
@@ -1898,6 +1929,11 @@ describe.skipIf(!environment.env)('transactional result notifications', { timeou
     const readyKey = `result.entry_ready:${eventId}`;
     const ready = (await resultAlerts(eventId)).filter((row) => row['event_key'] === readyKey);
     expect(ready).toHaveLength(1);
+    await expectNotificationOutcome({
+      targetId: eventId,
+      kind: 'result_deadline_reminder',
+      recipients: f.players.slice(0, 4).map((player) => player.id)
+    });
     expect(ready[0]).toMatchObject({
       recipient_user_id: f.creator.id,
       kind: 'result_entry_ready',
@@ -1965,6 +2001,11 @@ describe.skipIf(!environment.env)('transactional result notifications', { timeou
     expect(
       (await resultAlerts(finishedEvent)).filter((row) => row['event_key'] === finishedKey)
     ).toHaveLength(1);
+    await expectNotificationOutcome({
+      targetId: finishedEvent,
+      kind: 'result_entry_ready',
+      recipients: [f.creator.id]
+    });
 
     const upcomingEvent = await f.protectedEvent();
     expect((await processDueMatchEventResults()).alerts).toMatchObject({ entry_ready: 0 });

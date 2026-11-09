@@ -1,4 +1,7 @@
-import { expectNotificationPushJobs } from './helpers/notification-channel-evidence';
+import {
+  expectNotificationOutcome,
+  expectNotificationPushJobs
+} from './helpers/notification-channel-evidence';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { decodeNotificationTarget } from '../src/features/notifications/notification-target';
 import { dotEnvPathFromImportMetaUrl, localSupabaseEnv } from './helpers/local-supabase-env';
@@ -115,6 +118,11 @@ describe('level review resolution notifications', { timeout: 300_000 }, () => {
       });
       expect(replay.replayed).toBe(true);
       expect(await reviewNotifications(owner.id, requestId)).toHaveLength(1);
+      await expectNotificationOutcome({
+        targetId: requestId,
+        kind: 'level_review_approved',
+        recipients: [owner.id]
+      });
 
       const target = await owner.client
         .rpc('get_my_notification_target_v4', { p_notification_id: String(notice!['id']) })
@@ -150,6 +158,11 @@ describe('level review resolution notifications', { timeout: 300_000 }, () => {
 
       const [notice] = await reviewNotifications(owner.id, requestId);
       expect(notice).toMatchObject({ kind: 'level_review_rejected', category: 'rankings' });
+      await expectNotificationOutcome({
+        targetId: requestId,
+        kind: 'level_review_rejected',
+        recipients: [owner.id]
+      });
       const target = await owner.client
         .rpc('get_my_notification_target_v4', { p_notification_id: String(notice!['id']) })
         .single();

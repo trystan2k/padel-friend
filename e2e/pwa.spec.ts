@@ -71,8 +71,12 @@ test('installs the worker without prompting or showing an update, and precaches 
     expect(entries.some((entry) => entry.path.startsWith('/icons/'))).toBe(true);
 
     expect(await page.evaluate(() => Reflect.get(window, '__permissionRequests').calls)).toBe(0);
-    // The persistent live region is mounted but stays empty: no update is offered.
-    await expect(page.getByTestId('pwa-update-region').filter({ hasText: /\S/ })).toHaveCount(0);
+    // The persistent live region is mounted exactly once and stays empty: no update is offered.
+    const region = page.getByTestId('pwa-update-region');
+    await expect(region).toHaveCount(1);
+    await expect(region).toHaveAttribute('aria-live', 'polite');
+    expect((await region.textContent())?.trim()).toBe('');
+    await expect(page.getByRole('alert')).toHaveCount(0);
   } finally {
     await context.close();
   }

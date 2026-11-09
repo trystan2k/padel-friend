@@ -33,15 +33,18 @@ export async function expectNotificationPushJobs(
 export async function expectNotificationOutcome({
   targetId,
   kind,
-  recipients
+  recipients,
+  excludeNotificationIds = []
 }: {
   targetId: string;
   kind: string;
   recipients: readonly string[];
+  /** Notifications that pre-date the transition under test. */
+  excludeNotificationIds?: readonly string[];
 }) {
   const result = await queryTrustedSql(
-    `select n.recipient_user_id::text as recipient, n.id::text as id, j.notification_id::text as job from public.notifications n left join public.notification_push_jobs j on j.notification_id=n.id where n.target_id=$1 and n.kind=$2 order by n.recipient_user_id`,
-    { values: [targetId, kind] }
+    `select n.recipient_user_id::text as recipient, n.id::text as id, j.notification_id::text as job from public.notifications n left join public.notification_push_jobs j on j.notification_id=n.id where n.target_id=$1 and n.kind=$2 and not (n.id = any($3::uuid[])) order by n.recipient_user_id`,
+    { values: [targetId, kind, [...excludeNotificationIds]] }
   );
   expect(
     result.rows.map((row) => String(row.recipient)),

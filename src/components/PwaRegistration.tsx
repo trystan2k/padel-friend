@@ -31,6 +31,7 @@ export function PwaRegistration() {
     <div {...stylex.props(message !== null && styles.banner)}>
       <div
         data-testid="pwa-update-region"
+        role={phase === 'error' ? 'alert' : undefined}
         aria-live={phase === 'error' ? 'assertive' : 'polite'}
         aria-atomic="true"
         aria-busy={phase === 'applying'}

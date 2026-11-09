@@ -4,6 +4,7 @@ import {
   NOTIFICATION_CHANNEL_MATRIX,
   NOTIFICATION_CHANNEL_MATRIX_VERSION
 } from './fixtures/notification-channel-matrix';
+import { expectNotificationOutcome } from './helpers/notification-channel-evidence';
 import { dotEnvPathFromImportMetaUrl, localSupabaseEnv } from './helpers/local-supabase-env';
 import { insertLeague, leagueWorld, type LeagueWorld } from './helpers/league-fixtures';
 import {
@@ -354,6 +355,13 @@ describe.skipIf(!environment.env)(
         );
         expect(notices.map((row) => row.recipient)).toEqual(expected);
         for (const notice of notices) expect(notice.notification_id).toBe(notice.id);
+        for (const id of ids)
+          await expectNotificationOutcome({
+            targetId: id,
+            kind: 'rating_changed',
+            recipients: expected.includes(id) ? [id] : [],
+            excludeNotificationIds: previous.map((row) => String(row.id))
+          });
       }
     );
 

@@ -1,4 +1,7 @@
-import { expectNotificationPushJobs } from './helpers/notification-channel-evidence';
+import {
+  expectNotificationOutcome,
+  expectNotificationPushJobs
+} from './helpers/notification-channel-evidence';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { describe, expect, it } from 'vitest';
 import { dotEnvPathFromImportMetaUrl, localSupabaseEnv } from './helpers/local-supabase-env';
@@ -108,6 +111,11 @@ describe.skipIf(!environment.env)('community notification producers (local Supab
     expect(JSON.stringify(alert)).not.toContain('token');
     expect(JSON.stringify(alert)).not.toContain('settings');
     expect(JSON.stringify(alert)).not.toContain('Producer ');
+    await expectNotificationOutcome({
+      targetId: invitationId,
+      kind: 'community_invitation',
+      recipients: [invitee.id]
+    });
 
     expect(
       (
@@ -179,6 +187,21 @@ describe.skipIf(!environment.env)('community notification producers (local Supab
         `community.role_changed:${approvedId}:1`
       )
     ).toMatchObject({ kind: 'community_role_changed', category: 'community' });
+    await expectNotificationOutcome({
+      targetId: approvedId,
+      kind: 'community_membership_approved',
+      recipients: [approvedMember.id]
+    });
+    await expectNotificationOutcome({
+      targetId: deniedId,
+      kind: 'community_membership_denied',
+      recipients: [deniedMember.id]
+    });
+    await expectNotificationOutcome({
+      targetId: removedId,
+      kind: 'community_membership_removed',
+      recipients: [removedMember.id]
+    });
     expect((await govern(admin.client, approvedId, 'approve')).error).not.toBeNull();
     expect(
       (await approvedMember.client.from('notifications').select('id').eq('target_id', approvedId))

@@ -1,4 +1,7 @@
-import { expectNotificationPushJobs } from './helpers/notification-channel-evidence';
+import {
+  expectNotificationOutcome,
+  expectNotificationPushJobs
+} from './helpers/notification-channel-evidence';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { describe, expect, it } from 'vitest';
 import { matchPhotoFixture } from './helpers/match-photo-fixtures';
@@ -226,6 +229,21 @@ describe('match notification integration', () => {
         bothRows.map((row) => row.kind).sort((left, right) => left.localeCompare(right))
       ).toEqual(['match_event_invitation', 'match_event_published']);
       expect(await notificationsFor(active, published.eventId)).toHaveLength(1); // preferences OFF do not suppress.
+      await expectNotificationOutcome({
+        targetId: published.eventId,
+        kind: 'match_event_published',
+        recipients: [active.id, invitee.id]
+      });
+      await expectNotificationOutcome({
+        targetId: inviteOnlyPublic.eventId,
+        kind: 'match_event_invitation',
+        recipients: [active.id]
+      });
+      await expectNotificationOutcome({
+        targetId: inviteOnlyPrivate.eventId,
+        kind: 'match_event_invitation',
+        recipients: [privateMember.id, privateOutsider.id]
+      });
 
       const retry = await creator.client.rpc('publish_match_event', {
         p_event_id: published.eventId,

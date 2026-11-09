@@ -10,7 +10,6 @@ export type ProofEvidence = {
   silence?: true;
 };
 
-const JOB_HELPER = /expectNotificationPushJobs|notification_push_jobs/;
 const MAX_HELPER_DEPTH = 2;
 
 function stripComments(source: string) {
@@ -71,9 +70,11 @@ function callsOf(code: string, callee: string) {
 
 /**
  * Analyse a proof test against the transition it is bound to. Comments are ignored. The bound test (with its
- * local helpers) must invoke the event's command and assert the event's notification kind either in a
- * structured `expectNotificationOutcome({ kind, recipients })` call, or with the kind literal next to the
- * Push-job and recipient helpers. A mismatched or vacuous binding reports false for the missing piece.
+ * local helpers) must invoke the event's command and assert the event's notification kind in a single
+ * structured call: `expectNotificationOutcome({ kind: 'K', recipients })` or `channels('K', target, recipients)`.
+ * Kind, recipients and Push-job proof therefore live in one assertion; tokens scattered across the test
+ * (or attached to another kind) do not count. A mismatched or vacuous binding reports false for the
+ * missing piece.
  */
 export function analyzeProofSource(source: string, testName: string, evidence: ProofEvidence) {
   const at = source.indexOf(testName);
@@ -82,13 +83,15 @@ export function analyzeProofSource(source: string, testName: string, evidence: P
   const code = stripComments(
     withHelpers(source, balanced(source, source.lastIndexOf('(', at)), MAX_HELPER_DEPTH)
   );
-  const quoted = new RegExp(`['"\`]${evidence.kind}['"\`]`);
   // `channels(kind, target, recipients)` is the matrix suite's structured recipient + Push-job assertion.
   const structured =
     callsOf(code, 'expectNotificationOutcome').some(
       (call) => new RegExp(`kind:\\s*'${evidence.kind}'`).test(call) && /recipients:/.test(call)
-    ) || callsOf(code, 'channels').some((call) => quoted.test(call) && /\[/.test(call));
-  const kind = structured || (quoted.test(code) && JOB_HELPER.test(code) && /recipient/.test(code));
+    ) ||
+    callsOf(code, 'channels').some((call) =>
+      new RegExp(`^\\([^,]*'${evidence.kind}'[^,]*,[^,]+,\\s*\\S`).test(call)
+    );
+  const kind = structured;
   const command = new RegExp(`\\b${evidence.command.replaceAll('.', '\\.')}\\b`).test(code);
   const silence = !evidence.silence || callsOf(code, 'expectNotificationSilence').length > 0;
   return { found: true, command, kind, silence, ok: command && kind && silence };

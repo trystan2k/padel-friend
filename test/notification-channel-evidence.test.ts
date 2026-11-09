@@ -94,6 +94,39 @@ describe('notification channel proof checker rejects mismatched or vacuous bindi
     ).toMatchObject({ silence: false, ok: false });
   });
 
+  it('rejects a binding whose recipient and job assertions are attached to a different kind', () => {
+    const wrongAttachment = `it('starts a league', async () => {
+      await executeTrustedSql(\`select public.league_process_community_locked('id', now())\`);
+      await expectNotificationPushJobs(rows);
+      const recipient = admin.id;
+      await expectNotificationOutcome({ targetId: id, kind: 'league_closed', recipients: [recipient] });
+      expect(kinds).toContain('league_started');
+    });`;
+    expect(analyzeProofSource(wrongAttachment, 'starts a league', evidence)).toMatchObject({
+      command: true,
+      kind: false,
+      ok: false
+    });
+    // Same shape through the matrix suite's channels() helper.
+    const viaChannels = wrongAttachment.replace(
+      /await expectNotificationOutcome\(.*\);/,
+      "await channels('league_closed', id, [admin.id]);"
+    );
+    expect(analyzeProofSource(viaChannels, 'starts a league', evidence)).toMatchObject({
+      command: true,
+      kind: false,
+      ok: false
+    });
+  });
+
+  it('accepts the same shape once the assertion is attached to the bound kind', () => {
+    const attached = `it('starts a league', async () => {
+      await executeTrustedSql(\`select public.league_process_community_locked('id', now())\`);
+      await expectNotificationOutcome({ targetId: id, kind: 'league_started', recipients: [admin.id] });
+    });`;
+    expect(analyzeProofSource(attached, 'starts a league', evidence).ok).toBe(true);
+  });
+
   it('rejects a missing test', () => {
     expect(analyzeProofSource(wellFormed, 'never written', evidence).found).toBe(false);
   });

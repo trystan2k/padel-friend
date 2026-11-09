@@ -183,14 +183,37 @@ describe('PwaRegistration', () => {
   it('shows an assertive error when the update fails', async () => {
     const worker = container.registration.waiting!;
     await mount();
+    const region = screen.getByTestId('pwa-update-region');
+    expect(region.hasAttribute('role')).toBe(false);
+    expect(screen.queryByRole('alert')).toBeNull();
     await userEvent.click(screen.getByRole('button', { name: copy.apply }));
+    expect(region.hasAttribute('role')).toBe(false);
     act(() => {
       worker.state = 'redundant';
       worker.dispatchEvent(new Event('statechange'));
     });
-    const region = screen.getByTestId('pwa-update-region');
+    // The failure is announced on the same persistent node, now an assertive alert.
+    expect(screen.getByRole('alert')).toBe(region);
+    expect(screen.getByTestId('pwa-update-region')).toBe(region);
     expect(region.textContent).toContain(copy.error);
     expect(region.getAttribute('aria-live')).toBe('assertive');
+    expect(screen.queryByRole('status')).toBeNull();
+  });
+
+  it('keeps a polite region without an alert role while an update offer is available', async () => {
+    container.registration.waiting = null;
+    await mount();
+    const region = screen.getByTestId('pwa-update-region');
+    const failing = new FakeWorker();
+    container.registration.installing = failing;
+    act(() => {
+      container.registration.dispatchEvent(new Event('updatefound'));
+    });
+    act(() => {
+      failing.dispatchEvent(new Event('statechange'));
+    });
+    expect(region.hasAttribute('role')).toBe(false);
+    expect(region.getAttribute('aria-live')).toBe('polite');
   });
 
   it('removes its listeners on unmount', async () => {
