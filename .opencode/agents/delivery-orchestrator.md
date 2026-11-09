@@ -394,6 +394,7 @@ Follow these steps in order.
    - **Start timer** for QA phase.
    - Fast gate (owned by `subagents/implementation-specialist` and `subagents/bug-fixer-specialist`, never by this orchestrator): `pnpm typecheck`, `pnpm lint`, and the affected `test/**/*.test.ts` files. Those agents must run it and fix failures before returning, so a green fast gate is the entry condition for this phase.
    - Verify affected integration/E2E behavior required by the plan and resolve failures before review. Reserve the full `pnpm complete-check` gate for the final code state in step 9, after review fixes.
+   - **Single-run policy (user mandate)**: run each test suite ONCE per delivery code state — green means assume OK and move on. Never run a targeted lane and then the full suite for the same code state; never rerun a green suite as confirmation. On failure, diagnose from logs/error-contexts first, fix, then rerun the failing suite ONCE; diagnosis reruns only when logs cannot explain the failure.
    - On `fail`, route each failure by the `Suggested fixer type` in the QA report. On `blocked`, treat it as an environment failure: report it to the user instead of retrying.
    - **Stop timer** and record QA phase time.
 
