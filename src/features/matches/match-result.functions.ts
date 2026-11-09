@@ -2,6 +2,11 @@ import { createServerFn } from '@tanstack/react-start';
 import { setResponseHeader } from '@tanstack/react-start/server';
 import { requireAuthenticatedClient } from '../auth/auth.server';
 import {
+  classifyCommandResult,
+  emitDiagnostic,
+  traceOperation
+} from '../../lib/diagnostics.server';
+import {
   matchResultActionError,
   matchResultCommandError,
   parseOfficialResultFacts,
@@ -82,41 +87,63 @@ export const submitMatchEventResult = createServerFn({ method: 'POST' })
     } catch {
       return { status: 'error', code: 'invalid_played_at' };
     }
-    const { data: result, error } = await client.rpc('submit_match_event_result', {
-      p_match_event_id: data.event_id,
-      p_group_number: data.group_number,
-      p_teams: data.teams,
-      p_sets: data.sets,
-      p_played_local: { ...data.played_local, instant },
-      p_court_label: data.court_label ?? undefined,
-      p_request_id: data.request_id
+    return traceOperation('result.submit', classifyCommandResult, async () => {
+      const { data: result, error } = await client.rpc('submit_match_event_result', {
+        p_match_event_id: data.event_id,
+        p_group_number: data.group_number,
+        p_teams: data.teams,
+        p_sets: data.sets,
+        p_played_local: { ...data.played_local, instant },
+        p_court_label: data.court_label ?? undefined,
+        p_request_id: data.request_id
+      });
+      return error
+        ? matchResultActionError(error)
+        : (parseResultSubmission(result) ?? { status: 'error', code: 'unavailable' });
     });
-    return error
-      ? matchResultActionError(error)
-      : (parseResultSubmission(result) ?? { status: 'error', code: 'unavailable' });
   });
 
 export const reviewMatchEventResult = createServerFn({ method: 'POST' })
   .validator(validateReviewMatchEventResult)
   .handler(async ({ data }): Promise<ResultCommandResponse<ResultCommandReceipt>> => {
     const client = await resultClient();
-    const { data: result, error } = await client.rpc('review_match_event_result', {
-      p_proposal_id: data.proposal_id,
-      p_expected_version: data.expected_version,
-      p_decision: data.decision,
-      p_reason_code: data.reason_code ?? undefined,
-      p_reason_note: data.reason_note ?? undefined,
-      p_request_id: data.request_id
-    });
-    if (error) return matchResultCommandError(error);
-    const parsed = parseResultCommandReceipt(result);
-    if (!parsed) return { status: 'error', code: 'unavailable' };
-    if (
-      parsed.status === 'ok' &&
-      (parsed.value.proposal_id !== data.proposal_id || parsed.value.request_id !== data.request_id)
-    )
-      return { status: 'error', code: 'unavailable' };
-    return parsed;
+    return traceOperation(
+      'result.review',
+      classifyCommandResult,
+      async (): Promise<ResultCommandResponse<ResultCommandReceipt>> => {
+        const { data: result, error } = await client.rpc('review_match_event_result', {
+          p_proposal_id: data.proposal_id,
+          p_expected_version: data.expected_version,
+          p_decision: data.decision,
+          p_reason_code: data.reason_code ?? undefined,
+          p_reason_note: data.reason_note ?? undefined,
+          p_request_id: data.request_id
+        });
+        if (error) return matchResultCommandError(error);
+        const parsed = parseResultCommandReceipt(result);
+        if (!parsed) return { status: 'error', code: 'unavailable' };
+        if (
+          parsed.status === 'ok' &&
+          (parsed.value.proposal_id !== data.proposal_id ||
+            parsed.value.request_id !== data.request_id)
+        )
+          return { status: 'error', code: 'unavailable' };
+        // A review can remain pending: only a committed receipt proves finality.
+        if (
+          parsed.status === 'ok' &&
+          parsed.value.status === 'disputed' &&
+          data.decision === 'reject'
+        )
+          emitDiagnostic('result.reject', 'success', { reference: parsed.value.proposal_id });
+        if (
+          (parsed.status === 'ok' && parsed.value.status === 'confirmed') ||
+          (parsed.status === 'conflict' && parsed.current_status === 'confirmed')
+        )
+          emitDiagnostic('result.confirm', 'success', { reference: data.proposal_id });
+        return parsed;
+      },
+      { decision: data.decision }
+    );
   });
 
 export const correctMatchEventResult = createServerFn({ method: 'POST' })

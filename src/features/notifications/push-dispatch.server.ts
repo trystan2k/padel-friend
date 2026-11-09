@@ -1,3 +1,4 @@
+import { emitDiagnostic } from '../../lib/diagnostics.server';
 import { getAdminClient, type AdminClient } from '../../lib/supabase/admin.server';
 import type { Json } from '../../lib/supabase/database.types';
 import {
@@ -58,6 +59,17 @@ type Counters = {
   skipped: number;
   unavailable: number;
 };
+
+async function recordPushHealth(client: AdminClient, code: 'PUSH_CONFIG_UNAVAILABLE' | null) {
+  try {
+    const result = await client.rpc('record_operational_push_health', {
+      p_code: code ?? undefined
+    });
+    if (result.error) throw new Error('PUSH_HEALTH_UNAVAILABLE');
+  } catch {
+    emitDiagnostic('push.failure', 'failure', { code: 'PUSH_HEALTH_UNAVAILABLE' });
+  }
+}
 
 // One bounded sweep. Never expose provider errors (they frequently contain endpoint/key material).
 export async function dispatchNotificationPush(
@@ -131,6 +143,12 @@ export async function dispatchNotificationPush(
           p_delay_seconds: pushRetrySeconds(attempt, retryAfter)
         });
         if (settled.error || !settled.data) throw new Error('PUSH_SETTLEMENT_LOST');
+        if (status === 'failed' || status === 'unavailable')
+          emitDiagnostic('push.failure', 'failure', {
+            code: status === 'failed' ? 'PUSH_FAILED' : 'PUSH_CONFIG_UNAVAILABLE',
+            status: httpStatus,
+            attempt
+          });
         if (status === 'unavailable') {
           unavailable = true;
           counters.unavailable++;
@@ -152,21 +170,31 @@ export async function dispatchNotificationPush(
   });
   if (outcomes.some((result) => result.status === 'rejected') || health.error)
     throw new Error('PUSH_SWEEP_FAILED');
+  await recordPushHealth(client, counters.unavailable ? 'PUSH_CONFIG_UNAVAILABLE' : null);
   if (counters.unavailable) throw new Error('PUSH_CONFIG_UNAVAILABLE');
   return counters;
 }
 
-export async function sweepNotificationPushOnSchedule() {
+export async function sweepNotificationPushOnSchedule(options?: {
+  client?: AdminClient;
+  env?: Record<string, string | undefined>;
+}) {
   let keyring: ReturnType<typeof readPushKeyring>;
   try {
-    keyring = readPushKeyring();
+    keyring = readPushKeyring(options?.env);
   } catch {
     console.error('notification_push_unavailable', { reason: 'configuration' });
+    emitDiagnostic('push.failure', 'failure', { code: 'PUSH_CONFIG_UNAVAILABLE' });
+    try {
+      await recordPushHealth(options?.client ?? getAdminClient(), 'PUSH_CONFIG_UNAVAILABLE');
+    } catch {
+      /* Missing admin configuration is already diagnosed by the scheduled sweep. */
+    }
     throw new Error('PUSH_CONFIG_UNAVAILABLE');
   }
   if (!keyring) {
     console.warn('notification_push_unavailable', { reason: 'disabled' });
     throw new Error('PUSH_DISABLED');
   }
-  return dispatchNotificationPush(getAdminClient(), keyring);
+  return dispatchNotificationPush(options?.client ?? getAdminClient(), keyring);
 }

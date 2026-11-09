@@ -1,6 +1,7 @@
 import { createServerFn } from '@tanstack/react-start';
 import { getRequestUrl } from '@tanstack/react-start/server';
 import { requireAuthenticatedClient } from '../auth/auth.server';
+import { emitDiagnostic } from '../../lib/diagnostics.server';
 import { scheduleMatchPlayerAddReconcile } from './match-add-player.server';
 import { signMatchPhotoBatch, signMatchPhoto } from './match-photo.server';
 import type {
@@ -228,12 +229,18 @@ export const publishMatchEvent = createServerFn({ method: 'POST' })
     });
     // Stable League tokens (stale candidate, closed, out of period, ...) reach the form unchanged.
     const leagueToken = error?.message.match(/^MATCH_LEAGUE_[A-Z_]+$/)?.[0];
-    if (leagueToken) throw new Error(leagueToken);
-    if (error || !id)
-      throw new Error(
+    if (leagueToken) {
+      emitDiagnostic('match.create', 'rejected', { code: leagueToken });
+      throw new Error(leagueToken);
+    }
+    if (error || !id) {
+      const code =
         error?.code === '23505' || error?.message === 'MATCH_CONFLICT'
           ? 'MATCH_CONFLICT'
-          : 'MATCH_PUBLISH_FAILED'
-      );
+          : 'MATCH_PUBLISH_FAILED';
+      emitDiagnostic('match.create', code === 'MATCH_CONFLICT' ? 'race' : 'failure', { code });
+      throw new Error(code);
+    }
+    emitDiagnostic('match.create', 'success');
     return { event_id: id };
   });

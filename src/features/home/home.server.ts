@@ -204,7 +204,6 @@ export async function readHome(
   for (const pending of [unread, ratingActivity]) pending.catch(() => undefined);
 
   const communities = await memberships;
-  const [unreadCount, rating] = await Promise.all([unread, ratingActivity]);
   const selection = resolveSelection(
     communities.status === 'ok' ? communities.value : [],
     input.community_id
@@ -214,6 +213,7 @@ export async function readHome(
   const unavailable = unscoped ?? ({ status: 'unavailable' } as const);
 
   if (communityId === null) {
+    const [unreadCount, rating] = await Promise.all([unread, ratingActivity]);
     return {
       asOf,
       communities,
@@ -283,17 +283,14 @@ export async function readHome(
   );
 
   const activity = guard<HomeActivity[]>(async () => {
+    const rating = await ratingActivity;
     if (rating.status !== 'ok') return { status: 'error' };
     const page = await rank;
     return mergedActivity(rating.value, page.transitions, page.truncated);
   });
 
-  const [matchesSection, actionsSection, rankingSection, activitySection] = await Promise.all([
-    matches,
-    actions,
-    ranking,
-    activity
-  ]);
+  const [matchesSection, actionsSection, rankingSection, activitySection, unreadCount] =
+    await Promise.all([matches, actions, ranking, activity, unread]);
   return {
     asOf,
     communities,

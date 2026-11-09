@@ -17,7 +17,11 @@
     "scripts/generate-pwa-icons.d.mts",
     "scripts/e2e-fast.d.mts",
     "scripts/e2e-build-env.d.mts",
-    "scripts/run-integration.d.mts"
+    "scripts/run-integration.d.mts",
+    "scripts/release-rehearsal-lib.d.mts",
+    "scripts/release-backup-restore.d.mts",
+    "scripts/release-migration-rehearsal.d.mts",
+    "scripts/release-performance.d.mts"
   ],
   "ignoreDependencies": ["@opencode/plugin"],
   "ignoreIssues": {

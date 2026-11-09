@@ -1,5 +1,6 @@
 import { createServerFn } from '@tanstack/react-start';
 import { requireAuthenticatedClient } from '../auth/auth.server';
+import { classifyCommandResult, traceOperation } from '../../lib/diagnostics.server';
 import {
   matchRegistrationActionError,
   parseDecideMatchRegistrationResult,
@@ -36,12 +37,14 @@ export const submitMatchRegistration = createServerFn({ method: 'POST' })
   .validator(validateSubmitMatchRegistration)
   .handler(async ({ data }): Promise<SubmitMatchRegistrationResult> => {
     const { client } = await matchRegistrationClient();
-    const { data: result, error } = await client.rpc('submit_match_registration', {
-      p_match_event_id: data.event_id
+    return traceOperation('match.join', classifyCommandResult, async () => {
+      const { data: result, error } = await client.rpc('submit_match_registration', {
+        p_match_event_id: data.event_id
+      });
+      if (error)
+        return matchRegistrationActionError(error) ?? { status: 'error', code: 'unavailable' };
+      return parseSubmitMatchRegistrationResult(result) ?? { status: 'error', code: 'unavailable' };
     });
-    if (error)
-      return matchRegistrationActionError(error) ?? { status: 'error', code: 'unavailable' };
-    return parseSubmitMatchRegistrationResult(result) ?? { status: 'error', code: 'unavailable' };
   });
 
 export const decideMatchRegistration = createServerFn({ method: 'POST' })

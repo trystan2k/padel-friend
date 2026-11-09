@@ -87,6 +87,22 @@ beforeEach(() => {
 });
 
 describe('readHome', () => {
+  it('starts scoped readers without waiting for unrelated rating activity', async () => {
+    let finish!: (value: unknown) => void;
+    mocks.readRatingHistory.mockReturnValue(
+      new Promise((resolve) => {
+        finish = resolve;
+      })
+    );
+    const { client, calls } = fakeClient({});
+    const pending = readHome(client, USER, { community_id: A });
+    await vi.waitFor(() =>
+      expect(calls.some(({ name }) => name === 'list_match_events')).toBe(true)
+    );
+    finish({ status: 'ok', value: { items: [] } });
+    expect((await pending).unread).toBe(4);
+  });
+
   it('reports zero memberships as empty and leaves community sections unavailable', async () => {
     const { client, calls } = fakeClient({ memberships: { data: [], error: null } });
     const home = await readHome(client, USER, { community_id: A });

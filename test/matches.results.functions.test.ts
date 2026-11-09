@@ -157,6 +157,43 @@ describe('result server boundary', () => {
       await getMatchEventOfficialResults({ data: { event_id: resultCommand.event_id } })
     ).toEqual({ status: 'error', code: 'unavailable' });
   });
+  it.each([
+    ['pending', null, null],
+    ['disputed', null, 'result.reject'],
+    ['confirmed', resultProposal.proposal_id, 'result.confirm']
+  ] as const)('records only committed result state: %s', async (status, confirmationId, event) => {
+    const sink = vi.spyOn(console, 'info').mockImplementation(() => undefined);
+    try {
+      mocks.rpc.mockResolvedValue({
+        data: { ...commandReceipt, status, confirmation_id: confirmationId },
+        error: null
+      });
+      await reviewMatchEventResult({
+        data: {
+          ...reviewCommand,
+          ...(status === 'disputed' ? { decision: 'reject', reason_code: 'SCORE_INCORRECT' } : {})
+        }
+      });
+      const logs = sink.mock.calls.map(([line]) => {
+        const value: unknown = JSON.parse(String(line));
+        if (
+          !value ||
+          typeof value !== 'object' ||
+          !('event' in value) ||
+          typeof value.event !== 'string'
+        )
+          throw new Error('Invalid event');
+        return { event: value.event };
+      });
+      expect(
+        logs
+          .filter((line) => ['result.confirm', 'result.reject'].includes(line.event))
+          .map((line) => line.event)
+      ).toEqual(event ? [event] : []);
+    } finally {
+      sink.mockRestore();
+    }
+  });
   it('reviews and corrects through typed RPC receipts with request-scoped auth and no-store', async () => {
     mocks.rpc.mockResolvedValue({ data: commandReceipt, error: null });
     expect(await reviewMatchEventResult({ data: reviewCommand })).toMatchObject({

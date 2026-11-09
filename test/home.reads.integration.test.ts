@@ -1,5 +1,11 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
-import { describe, expect, it } from 'vitest';
+import { afterAll, describe, expect, it } from 'vitest';
+import {
+  createMatchFixtureCleanupRegistry,
+  registerMatchActorFixtureRows,
+  registerMatchCommunityFixtureRows,
+  registerMatchEventFixtureRows
+} from './helpers/match-registration-sql';
 import { readHome } from '../src/features/home/home.server';
 import type { Database } from '../src/lib/supabase/database.types';
 import { matchPhotoFixture } from './helpers/match-photo-fixtures';
@@ -13,14 +19,19 @@ import {
 const environment = localSupabaseEnv({ filePath: dotEnvPathFromImportMetaUrl(import.meta.url) });
 type Actor = { id: string; client: SupabaseClient<Database>; name: string };
 type HomeClient = Parameters<typeof readHome>[0];
+const cleanupRegistry = createMatchFixtureCleanupRegistry('home-reads');
+afterAll(() => cleanupRegistry.cleanup());
 
 async function actor(label: string, displayName: string): Promise<Actor> {
   const { url, key } = environment.env!;
+  const email = `${label}-${crypto.randomUUID()}@test.local`;
+  registerMatchActorFixtureRows(cleanupRegistry, { email });
   const signup = await createClient(url, key, {
     auth: { persistSession: false, autoRefreshToken: false }
-  }).auth.signUp({ email: `${label}-${crypto.randomUUID()}@test.local`, password: 'Password123!' });
+  }).auth.signUp({ email, password: 'Password123!' });
   expect(signup.error).toBeNull();
   expect(signup.data.session, 'local email confirmations must be disabled').not.toBeNull();
+  registerMatchActorFixtureRows(cleanupRegistry, { id: signup.data.user!.id });
   const client = createClient<Database>(url, key, {
     auth: { persistSession: false, autoRefreshToken: false },
     global: { headers: { Authorization: `Bearer ${signup.data.session!.access_token}` } }
@@ -73,7 +84,10 @@ describe('home reads integration', () => {
       ]);
       const alpha = crypto.randomUUID();
       const beta = crypto.randomUUID();
+      registerMatchCommunityFixtureRows(cleanupRegistry, alpha);
+      registerMatchCommunityFixtureRows(cleanupRegistry, beta);
       const names = { alpha: `Home Alpha ${token}`, beta: `Home Beta ${token}` };
+      const tieBase = crypto.randomUUID().slice(0, -2);
       const ids = {
         // Local wall clocks disagree with instant order: Kiritimati is UTC+14, Sao Paulo UTC-3.
         kiritimati: crypto.randomUUID(),
@@ -81,8 +95,8 @@ describe('home reads integration', () => {
         cancelled: crypto.randomUUID(),
         past: crypto.randomUUID(),
         // Exact instant tie in the second community: the lower id wins.
-        tieHigh: '00000000-0000-4000-8000-0000000000f2',
-        tieLow: '00000000-0000-4000-8000-0000000000f1'
+        tieHigh: `${tieBase}f2`,
+        tieLow: `${tieBase}f1`
       };
       const event = (
         key: keyof typeof ids,
@@ -93,11 +107,12 @@ describe('home reads integration', () => {
         extra = ''
       ) => {
         const photo = matchPhotoFixture(communityId, ids[key], creator.id);
+        registerMatchEventFixtureRows(cleanupRegistry, ids[key], photo.path);
         return `${photo.sql}
           insert into public.match_events(id,community_id,created_by,starts_at,timezone,event_type,visibility,team_assignment_mode,venue_name,maps_url,photo_path,registration_cutoff_at${extra ? ',status,cancelled_at,cancelled_by,cancel_reason' : ''})
-          values (${q(ids[key])},${q(communityId)},${q(creator.id)},${startsAt},${q(timezone)},'friendly','community_open','POST_MATCH_TEAMS',${q(venue)},'https://maps.google.com/maps/place/home',${q(photo.path)},${startsAt === "now()-interval '1 hour'" ? "now()-interval '3 hours'" : "now()+interval '1 hour'"}${extra});`;
+          values (${q(ids[key])},${q(communityId)},${q(creator.id)},${startsAt},${q(timezone)},'friendly','community_open','POST_MATCH_TEAMS',${q(venue)},'https://maps.google.com/maps/place/home',${q(photo.path)},${startsAt === "now()-interval '1 hour'" ? "now()-interval '3 hours'" : "now()+interval '30 minutes'"}${extra});`;
       };
-      await executeTrustedSql(`do $$ begin
+      await executeTrustedSql(`do $home$ begin
         insert into public.communities(id,name,visibility,created_by,settings) values
           (${q(alpha)},${q(names.alpha)},'private',${q(creator.id)},'{}'::jsonb),
           (${q(beta)},${q(names.beta)},'private',${q(creator.id)},'{}'::jsonb);
@@ -109,7 +124,9 @@ describe('home reads integration', () => {
           (${q(alpha)},${q(adminOnly.id)},'admin','active',now()-interval '1 minute',now()-interval '1 minute');
         ${event('kiritimati', alpha, "now()+interval '3 hours'", 'Pacific/Kiritimati', 'Kiritimati court')}
         ${event('saoPaulo', alpha, "now()+interval '5 hours'", 'America/Sao_Paulo', 'Sao Paulo court')}
-        ${event('cancelled', alpha, "now()+interval '1 hour'", 'UTC', 'Cancelled court', ",'cancelled',now(),${q(creator.id)},'Rain'")}
+        alter table public.match_events disable trigger match_event_creator_registration;
+        ${event('cancelled', alpha, "now()+interval '1 hour'", 'UTC', 'Cancelled court', `,'cancelled',now(),${q(creator.id)},'Rain'`)}
+        alter table public.match_events enable trigger match_event_creator_registration;
         ${event('tieHigh', beta, "now()+interval '1 day'", 'UTC', 'Tie high court')}
         ${event('tieLow', beta, "now()+interval '1 day'", 'UTC', 'Tie low court')}
         alter table public.match_events disable trigger match_event_creator_registration;
@@ -118,7 +135,7 @@ describe('home reads integration', () => {
         insert into public.match_event_invites(match_event_id,invitee_user_id,invited_by,created_at)
         select id,${q(member.id)},${q(creator.id)},now() from public.match_events
          where community_id in (${q(alpha)},${q(beta)});
-      end $$;`);
+      end $home$;`);
 
       // Default membership is deterministic (name order); nearest is by instant, not local clock.
       const first = await home(member, null);

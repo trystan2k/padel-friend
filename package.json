@@ -32,7 +32,10 @@
     "db:stop": "supabase stop",
     "db:reset": "supabase db reset",
     "db:types": "node scripts/db-types.mjs",
-    "db:types:check": "node scripts/db-types.mjs --check"
+    "db:types:check": "node scripts/db-types.mjs --check",
+    "release:restore": "node scripts/release-backup-restore.mjs",
+    "release:migration": "node scripts/release-migration-rehearsal.mjs",
+    "release:perf": "node scripts/release-performance.mjs"
   },
   "dependencies": {
     "@base-ui/react": "~1.9.0",
