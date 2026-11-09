@@ -154,3 +154,64 @@ test('a stale approval after another reviewer rejected converges to the current 
   const current = await proposalFor(eventId);
   expect(current).toMatchObject({ status: 'disputed', version: 1 });
 });
+
+test('a withdrawal promotes the Reserve into the second quartet and the cutoff forms the groups in every mounted client', async ({
+  browserName
+}) => {
+  expect(browserName).toBe('chromium');
+  const reg = copies.en.matchRegistration;
+  const eventId = await f.event(9);
+  const reserve = f.members[7]!;
+  const leaver = f.members[0]!;
+  const roster = (page: Page) => page.getByRole('region', { name: reg.aria.roster });
+  const reservePage = await f.page(reserve);
+  await f.open(reservePage, eventId);
+  await expect(
+    roster(reservePage).getByText(reg.roster.reserveTitle, { exact: true })
+  ).toBeVisible();
+  const organizer = await f.page(f.creator);
+  await f.open(organizer, eventId);
+  await expect(organizer.getByText(`9 · ${m.detail.accepted}`)).toBeVisible();
+
+  // Real withdrawal by a Playing member of the first quartet.
+  const leaverPage = await f.page(leaver);
+  await f.open(leaverPage, eventId);
+  await leaverPage.getByRole('button', { name: m.management.leave, exact: true }).click();
+  await leaverPage
+    .getByRole('dialog')
+    .getByRole('button', { name: m.management.confirm, exact: true })
+    .click();
+  await expect(leaverPage.getByRole('dialog')).toHaveCount(0);
+
+  // FIFO: the Reserve moves into the second quartet, in the organizer's and the Reserve's view alike.
+  await expect(organizer.getByText(`8 · ${m.detail.accepted}`)).toBeVisible({
+    timeout: CONVERGENCE_BUDGET_MS
+  });
+  await expect(roster(reservePage).getByText(reg.roster.reserveTitle, { exact: true })).toHaveCount(
+    0,
+    { timeout: CONVERGENCE_BUDGET_MS }
+  );
+  await expect(
+    roster(reservePage).getByText(fill(reg.roster.groupTitle, { group: 2 }), { exact: true })
+  ).toBeVisible();
+  const promoted = await f.rpc(f.creator, 'list_match_event_registrations', {
+    p_match_event_id: eventId
+  });
+  const placed = Array.isArray(promoted)
+    ? promoted.filter(
+        (row): row is { display_name: string; group_number: number | null } =>
+          typeof row === 'object' && row !== null && 'display_name' in row && 'group_number' in row
+      )
+    : [];
+  expect(placed.find((row) => row.display_name === reserve.name)?.group_number).toBe(2);
+
+  // Group formation: the production cutoff processor finalizes both quartets for mounted clients.
+  await f.cutoff(eventId);
+  await expect(reservePage.getByRole('region', { name: m.detail.registrationClosed })).toBeVisible({
+    timeout: CONVERGENCE_BUDGET_MS * 2
+  });
+  await expect(
+    roster(reservePage).getByText(fill(reg.roster.groupTitle, { group: 2 }), { exact: true })
+  ).toBeVisible();
+  expect(await f.notifications(reserve, 'match_registration_promoted', eventId)).toHaveLength(1);
+});
