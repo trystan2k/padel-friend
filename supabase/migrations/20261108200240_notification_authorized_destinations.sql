@@ -1,3 +1,5 @@
+begin;
+
 -- Ownership first; notification identity never grants access to its target. No read timestamp writes.
 create function public.get_my_notification_target_v4(p_notification_id uuid)
 returns table (
@@ -61,3 +63,5 @@ begin
 end $$;
 revoke all on function public.get_my_notification_target_v4(uuid) from public, anon, authenticated, service_role;
 grant execute on function public.get_my_notification_target_v4(uuid) to authenticated;
+
+commit;

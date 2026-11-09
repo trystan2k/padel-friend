@@ -96,7 +96,7 @@ export const preferenceStyles = stylex.create({
     color: 'var(--color-green)',
     fontWeight: 'var(--font-weight-bold)'
   },
-  save: { minHeight: '44px', paddingInline: 'var(--space-4)' },
+  save: { minHeight: 'calc(var(--space-40) + var(--space-4))', paddingInline: 'var(--space-4)' },
   device: {
     boxSizing: 'border-box',
     width: '100%',

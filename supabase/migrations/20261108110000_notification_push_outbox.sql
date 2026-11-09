@@ -1,3 +1,5 @@
+begin;
+
 -- Transactional, private Push outbox. No historic backfill, network calls or config dependencies.
 create table public.notification_push_jobs (
   notification_id uuid primary key references public.notifications(id) on delete cascade,
@@ -175,3 +177,5 @@ $$;
 
 revoke execute on function public.claim_notification_push_jobs(integer), public.materialize_notification_push(uuid,uuid), public.prepare_notification_push(uuid,uuid,uuid), public.settle_notification_push_delivery(uuid,uuid,uuid,text,integer,integer), public.finish_notification_push(uuid,uuid,boolean), public.revoke_notification_push_keys(text[]), public.notification_push_health() from public, anon, authenticated;
 grant execute on function public.claim_notification_push_jobs(integer), public.materialize_notification_push(uuid,uuid), public.prepare_notification_push(uuid,uuid,uuid), public.settle_notification_push_delivery(uuid,uuid,uuid,text,integer,integer), public.finish_notification_push(uuid,uuid,boolean), public.revoke_notification_push_keys(text[]), public.notification_push_health() to service_role;
+
+commit;

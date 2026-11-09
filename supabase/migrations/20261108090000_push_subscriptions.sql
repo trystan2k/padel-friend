@@ -1,3 +1,5 @@
+begin;
+
 -- Web Push device registry (PAF-15 U2). One row per browser push endpoint; owners reach it only through
 -- the restricted RPCs below. The service role (later delivery unit) bypasses RLS; browsers never write directly.
 create table public.push_subscriptions (
@@ -187,3 +189,5 @@ revoke execute on function public.retire_my_push_subscription(text, text) from p
 grant execute on function public.register_my_push_subscription(text, text, text, text, text, timestamptz) to authenticated;
 grant execute on function public.reconcile_my_push_devices(text, text) to authenticated;
 grant execute on function public.retire_my_push_subscription(text, text) to authenticated;
+
+commit;

@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 const mocks = vi.hoisted(() => ({
-  fetch: vi.fn<() => Promise<void>>(),
+  fetch: vi.fn<() => Promise<Response>>(),
   sweep: vi.fn<() => Promise<void>>(),
   push: vi.fn<() => Promise<void>>()
 }));

@@ -1,3 +1,5 @@
+begin;
+
 -- PAF-162: notification producers for domain events that raised no alert before Web Push delivery.
 -- Every producer writes through the existing public.persist_notification (immutable, deduped by
 -- (recipient, event_key)) inside the transaction of the domain transition, so Push and in-app gain
@@ -351,3 +353,5 @@ revoke execute on function public.notify_level_review_submission() from public, 
 revoke execute on function public.league_notification_recipients(uuid, uuid) from public, anon, authenticated, service_role;
 revoke execute on function public.notify_league_lifecycle() from public, anon, authenticated, service_role;
 revoke execute on function public.notify_league_standings_publication() from public, anon, authenticated, service_role;
+
+commit;

@@ -1,3 +1,5 @@
+begin;
+
 -- Serialize enrolment per user so concurrent registrations of different endpoints cannot both pass the
 -- 25-active-device count. The user lock is always taken before the endpoint lock (stable lock order).
 create or replace function public.register_my_push_subscription(
@@ -74,3 +76,5 @@ begin
   return v_id;
 end;
 $function$;
+
+commit;

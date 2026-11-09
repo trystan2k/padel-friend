@@ -555,9 +555,23 @@ test.describe('Pencil tzBrY screenshot baselines', { tag: '@visual' }, () => {
   const shot = {
     animations: 'disabled',
     caret: 'hide',
+    // Fail fast with a real error instead of letting a stuck capture burn the whole test timeout.
+    timeout: 30_000,
     threshold: 0.1,
     maxDiffPixelRatio: 0.03
   } as const;
+  // Remove hover/focus state and wait for fonts plus two painted frames so the capture starts from a
+  // quiescent compositor (loaded CI runners otherwise keep re-rasterizing the card).
+  const settle = async (page: Page) => {
+    await page.mouse.move(0, 0);
+    await page.evaluate(async () => {
+      if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
+      await document.fonts.ready;
+      await new Promise<void>((resolve) =>
+        requestAnimationFrame(() => requestAnimationFrame(() => resolve()))
+      );
+    });
+  };
 
   for (const [name, viewport] of [
     ['mobile', { width: 390, height: 844 }],
@@ -575,6 +589,7 @@ test.describe('Pencil tzBrY screenshot baselines', { tag: '@visual' }, () => {
         });
         await panel(page).getByRole('button', { name: copy.enable }).click();
         await expect(panel(page).getByRole('alert')).toHaveText(copy.subscriptionFailed);
+        await settle(page);
         await expect(panel(page)).toHaveScreenshot(`push-failure-${name}.png`, shot);
       } finally {
         await context.close();
@@ -589,6 +604,7 @@ test.describe('Pencil tzBrY screenshot baselines', { tag: '@visual' }, () => {
         const page = await context.newPage();
         await openPreferences(page, actor);
         await expect(panel(page).getByRole('status')).toHaveText(copy.installRequired);
+        await settle(page);
         await expect(panel(page)).toHaveScreenshot(`push-install-required-${name}.png`, shot);
       } finally {
         await context.close();

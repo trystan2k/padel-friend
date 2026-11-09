@@ -11,6 +11,9 @@ import { runPool } from './helpers/promise-pool';
 import { sqlText } from './helpers/provisional-player-fixtures';
 
 const environment = localSupabaseEnv({ filePath: dotEnvPathFromImportMetaUrl(import.meta.url) });
+// Slow CI runners exceed the transport's 30s per-statement default on analyze/explain; the test's own
+// 900s vitest timeout still bounds the run, so only the environment-dependent per-statement kill moves.
+const STATEMENT_OPTIONS = { timeoutMs: 300_000 };
 
 /** Recursively flatten PostgreSQL JSON plan nodes without relying on timings. */
 function planNodes(value: unknown): Record<string, unknown>[] {
@@ -55,13 +58,15 @@ describe.skipIf(!environment.env)('statistics reader performance contract', () =
         8
       );
       await queryTrustedSql(
-        'analyze public.statistics_scope_summaries; analyze public.statistics_daily_buckets; analyze public.statistics_group_facts; analyze public.statistics_pair_facts; analyze public.statistics_opponent_facts'
+        'analyze public.statistics_scope_summaries; analyze public.statistics_daily_buckets; analyze public.statistics_group_facts; analyze public.statistics_pair_facts; analyze public.statistics_opponent_facts',
+        STATEMENT_OPTIONS
       );
       const focal = kits[0]!;
       const [matchup] = await sqlRows(
         'select matchup_id::text as id from public.statistics_group_facts where community_id = ' +
           sqlText(focal.communityId) +
-          ' limit 1'
+          ' limit 1',
+        STATEMENT_OPTIONS
       );
       if (typeof matchup?.['id'] !== 'string') throw new Error('Missing matchup fixture');
       const matchupSql =
@@ -73,9 +78,9 @@ describe.skipIf(!environment.env)('statistics reader performance contract', () =
       // index: with sequential scans disabled (rolled-back transaction) the planner must pick it.
       const connection = await openDedicatedSqlConnection();
       try {
-        await connection.query('begin');
-        await connection.query('set local enable_seqscan = off');
-        const planned = await connection.query(matchupSql);
+        await connection.query('begin', STATEMENT_OPTIONS);
+        await connection.query('set local enable_seqscan = off', STATEMENT_OPTIONS);
+        const planned = await connection.query(matchupSql, STATEMENT_OPTIONS);
         const plan = planned.rows[0]?.['QUERY PLAN'];
         if (!Array.isArray(plan) || plan.length !== 1) throw new Error('Invalid explain output');
         const nodes = planNodes(asRecord(asRecord(plan[0])['Plan']));
@@ -85,7 +90,7 @@ describe.skipIf(!environment.env)('statistics reader performance contract', () =
             .map((node) => [node['Node Type'], node['Index Name']])
         ).toEqual([['Index Scan', 'statistics_group_facts_matchup_id']]);
       } finally {
-        await connection.query('rollback');
+        await connection.query('rollback', STATEMENT_OPTIONS);
         await connection.close();
       }
       const community = sqlText(focal.communityId) + '::uuid';
@@ -137,7 +142,7 @@ describe.skipIf(!environment.env)('statistics reader performance contract', () =
         'statistics_opponent_facts'
       ];
       for (const [name, sql] of queries) {
-        const result = await queryTrustedSql('explain (format json) ' + sql);
+        const result = await queryTrustedSql('explain (format json) ' + sql, STATEMENT_OPTIONS);
         const plans = result.rows[0]?.['QUERY PLAN'];
         if (!Array.isArray(plans) || plans.length !== 1) throw new Error('Invalid explain output');
         const top = asRecord(asRecord(plans[0])['Plan']);

@@ -5,6 +5,7 @@ import { describe, expect, it, vi } from 'vitest';
 import {
   DEFAULT_WEIGHT_SECONDS,
   FUNCTIONAL_LANES,
+  RATING_LOCK_SPECS,
   SERIAL_SPECS,
   SPEC_WEIGHTS,
   VISUAL_GREP,
@@ -74,6 +75,15 @@ describe('E2E functional lanes', () => {
   it('has weights for existing functional specs only', () => {
     const lanes = functional.filter((spec) => !SERIAL_SPECS.includes(spec));
     expect(Object.keys(SPEC_WEIGHTS).sort((a, b) => a.localeCompare(b))).toEqual(lanes);
+  });
+
+  it('never co-locates two rating-suite-lock specs in one functional lane', () => {
+    for (const group of planGroups(specs))
+      expect(group.specs.filter((spec) => RATING_LOCK_SPECS.includes(spec)).length).toBeLessThan(2);
+  });
+
+  it('has rating-suite-lock specs that exist', () => {
+    for (const spec of RATING_LOCK_SPECS) expect(specs).toContain(spec);
   });
 
   it('balances lanes within 15% of the heaviest', () => {

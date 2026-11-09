@@ -1,3 +1,5 @@
+begin;
+
 -- Per-delivery retry budgets drive Push exhaustion. The job-level counter now bounds only consecutive
 -- lease losses (crash recovery), so staggered retries of one device can never consume another device's
 -- remaining attempts. A job completes only once every delivery is terminal.
@@ -45,3 +47,5 @@ begin
   return true;
 end;
 $$;
+
+commit;

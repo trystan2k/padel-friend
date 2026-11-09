@@ -3,6 +3,7 @@ export const FUNCTIONAL_LANES: number;
 export const DEFAULT_WEIGHT_SECONDS: number;
 export const SPEC_WEIGHTS: Record<string, number>;
 export const SERIAL_SPECS: string[];
+export const RATING_LOCK_SPECS: string[];
 export function listSpecs(dir?: string): string[];
 export function gateLanes(dir?: string): { main: string[]; serial: string[] };
 export function repoRelativeSpec(dir: string, spec: string): string;
