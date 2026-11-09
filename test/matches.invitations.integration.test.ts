@@ -1,5 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { localSupabaseEnv, dotEnvPathFromImportMetaUrl } from './helpers/local-supabase-env';
+import { expectNotificationOutcome } from './helpers/notification-channel-evidence';
 import {
   createMatchManagementFixtures,
   type ManagementActor
@@ -150,6 +151,11 @@ describe('match invitations integration', () => {
       recipient_user_id: f.creator.id,
       event_key: `match.invitation_declined:${e.invites.get(invitee.id)}`
     });
+    await expectNotificationOutcome({
+      targetId: e.id,
+      kind: 'match_invitation_declined',
+      recipients: [f.creator.id]
+    });
   });
   it('expiry persists once and notifies creator and invitee once', async () => {
     const e = await f.event({ invites: [invitee] });
@@ -163,6 +169,11 @@ describe('match invitations integration', () => {
     );
     expect((await respond(e)).data).toMatchObject({ status: 'expired', registration: null });
     expect(await alerts(e.id, 'match_invitation_expired')).toHaveLength(2);
+    await expectNotificationOutcome({
+      targetId: e.id,
+      kind: 'match_invitation_expired',
+      recipients: [f.creator.id, invitee.id]
+    });
   });
   it('double accept versus decline has one winner', async () => {
     for (let i = 0; i < 3; i++) {
@@ -267,6 +278,11 @@ describe('match invitations integration', () => {
       (await f.rpc(invitee, 'submit_match_registration', { p_match_event_id: e.id })).error
     ).toBeNull();
     expect((await respond(e)).data).toMatchObject({ status: 'accepted', replayed: true });
+    await expectNotificationOutcome({
+      targetId: e.id,
+      kind: 'match_invitation_accepted',
+      recipients: [f.creator.id]
+    });
     for (const kind of [
       'match_invitation_accepted',
       'match_invitation_declined',

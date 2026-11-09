@@ -1,6 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { insertLeague } from './helpers/league-fixtures';
 import { createMatchManagementFixtures } from './helpers/match-management-fixtures';
+import { expectNotificationOutcome } from './helpers/notification-channel-evidence';
 import { localSupabaseEnv, dotEnvPathFromImportMetaUrl } from './helpers/local-supabase-env';
 import {
   fixtureSql,
@@ -169,6 +170,11 @@ describe('minor match edits integration', () => {
     );
     expect(notices.map((n) => n.recipient_user_id)).toEqual(recipients);
     expect(notices.every((n) => n.event_key === `match.updated:${e.id}:2`)).toBe(true);
+    await expectNotificationOutcome({
+      targetId: e.id,
+      kind: 'match_event_updated',
+      recipients: [f.creator.id, accepted.id, pending.id, invited.id]
+    });
     for (const actor of [f.creator, accepted, pending, invited]) {
       const notice = notices.find((n) => n.recipient_user_id === actor.id)!;
       expect(

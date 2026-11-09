@@ -129,7 +129,7 @@ export const preferenceStyles = stylex.create({
   deviceAlert: { color: 'var(--color-red)' },
   deviceFallback: { color: 'var(--color-green)' },
   deviceAction: {
-    minHeight: '44px',
+    minHeight: 'calc(var(--space-40) + var(--space-4))',
     marginBlockStart: 'var(--space-8)',
     paddingInline: 'var(--space-16)',
     borderWidth: 0,

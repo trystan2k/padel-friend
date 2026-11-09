@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import {
   OFFLINE_DOCUMENT_URL,
   createNavigationHandler,
+  isAuthCallbackNavigation,
   isPrecacheCandidate,
   isSkipWaitingMessage,
   removeLegacyCaches
@@ -89,6 +90,26 @@ describe('createNavigationHandler', () => {
       matchOffline: () => Promise.resolve(undefined)
     });
     await expect(handler(navigate)).rejects.toThrow('Failed to fetch');
+  });
+
+  it('never masks a failed auth callback with the offline document', async () => {
+    const matchOffline = vi.fn<() => Promise<Response | undefined>>(() =>
+      Promise.resolve(new Response('offline'))
+    );
+    const handler = createNavigationHandler({
+      fetchFn: () => Promise.reject(new TypeError('Failed to fetch')),
+      matchOffline
+    });
+    await expect(handler(new Request(origin + '/auth/callback?code=abc'))).rejects.toThrow(
+      'Failed to fetch'
+    );
+    expect(matchOffline).not.toHaveBeenCalled();
+  });
+
+  it('matches only the auth callback path', () => {
+    expect(isAuthCallbackNavigation(new Request(origin + '/auth/callback?code=x'))).toBe(true);
+    for (const path of ['/dashboard', '/auth/callback/extra', '/login?next=/auth/callback'])
+      expect(isAuthCallbackNavigation(new Request(origin + path))).toBe(false);
   });
 
   it('serves the offline document from a stable public URL', () => {

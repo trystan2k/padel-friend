@@ -1,7 +1,7 @@
-import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { NOTIFICATION_CHANNEL_PROOFS } from './fixtures/notification-channel-proofs';
 import { notificationChannelLedger } from './helpers/notification-channel-evidence';
+import { proofSourceAssertions } from './helpers/notification-proof-source';
 
 describe('notification channel proof ledger', () => {
   const ledger = notificationChannelLedger();
@@ -16,9 +16,13 @@ describe('notification channel proof ledger', () => {
       for (const event of proof.events) expect(events.has(event)).toBe(true);
   });
   it.each(ledger)('$event → $proof → $testName → $recipients', (row) => {
-    const source = readFileSync(new URL('../' + row.proof, import.meta.url), 'utf8');
-    expect(source).toContain(row.testName);
     expect(row.recipients.length).toBeGreaterThan(0);
     expect(row.proof).toMatch(/\.integration\.test\.ts$/);
+    // The bound test (with its local helpers) must exist and assert both the recipients and the Push job.
+    expect(proofSourceAssertions(row.proof, row.testName)).toEqual({
+      found: true,
+      recipients: true,
+      jobs: true
+    });
   });
 });

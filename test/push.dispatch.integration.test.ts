@@ -143,4 +143,116 @@ describe.skipIf(!environment.env)('Push dispatcher with real outbox and domain t
     },
     60000
   );
+
+  // Staggered retries (device A backs off on 429 while device B retries on 503 and then succeeds) make
+  // the job claim far more often than either delivery sends. Each delivery owns its attempt budget, so
+  // job claims must never exhaust a device early; exhaustion is durable per device.
+  it('bounds staggered multi-device retries by each delivery budget, not by job claims', async () => {
+    const owner = await signUpFixtureActor(environment.env!, 'push-staggered', {
+      displayName: 'Push Staggered',
+      level: 4
+    });
+    const held =
+      await query(`with held as materialized (select notification_id,next_attempt_at from public.notification_push_jobs where status='pending' for update)
+      update public.notification_push_jobs j set next_attempt_at=now()+interval '2 days' from held h where j.notification_id=h.notification_id returning h.notification_id,h.next_attempt_at`);
+    const vapid = webPush.generateVAPIDKeys();
+    const keyring = {
+      keys: new Map([['test-key', { ...vapid, subject: 'mailto:test@example.test' }]]),
+      revoked: []
+    };
+    const deviceA = `https://fcm.googleapis.com/fcm/send/${crypto.randomUUID()}`;
+    const deviceB = `https://fcm.googleapis.com/fcm/send/${crypto.randomUUID()}`;
+    const log = vi.spyOn(console, 'info').mockImplementation(() => {});
+    try {
+      for (const endpoint of [deviceA, deviceB])
+        expect(
+          (
+            await owner.client.rpc('register_my_push_subscription', {
+              p_endpoint: endpoint,
+              p_p256dh: vapid.publicKey,
+              p_auth: Buffer.alloc(16, 7).toString('base64url'),
+              p_vapid_key_id: 'test-key',
+              p_locale: 'en'
+            })
+          ).error
+        ).toBeNull();
+      expect(
+        (
+          await owner.client.rpc('set_my_notification_preferences', {
+            p_push_enabled: true,
+            p_push_community: true,
+            p_push_matches: true,
+            p_push_results: true,
+            p_push_rankings: true,
+            p_push_leagues: true
+          })
+        ).error
+      ).toBeNull();
+      const requestId = await submitRequest(owner);
+      await query(
+        `update public.notification_push_jobs j set next_attempt_at=now()+interval '2 days' from public.notifications n where n.id=j.notification_id and n.target_id=$1 and n.recipient_user_id<>$2`,
+        [requestId, owner.id]
+      );
+      const [notice] = await query(
+        `select id::text from public.notifications where recipient_user_id=$1 and target_id=$2 and kind='level_review_submitted'`,
+        [owner.id, requestId]
+      );
+      const attempts = new Map([
+        [deviceA, 0],
+        [deviceB, 0]
+      ]);
+      const send = vi.fn<PushTransport>(async (device: { endpoint: string }) => {
+        const attempt = (attempts.get(device.endpoint) ?? 0) + 1;
+        attempts.set(device.endpoint, attempt);
+        if (device.endpoint === deviceA) return { status: 429, retryAfter: '1200' };
+        return attempt < 4 ? { status: 503, retryAfter: null } : { status: 201, retryAfter: null };
+      });
+      const deliveries = () =>
+        query(
+          `select s.endpoint,d.status,d.attempt_count::int as attempts from public.notification_push_deliveries d join public.push_subscriptions s on s.id=d.subscription_id where d.notification_id=$1`,
+          [notice!.id]
+        );
+      let afterEightClaims: Awaited<ReturnType<typeof deliveries>> = [];
+      // Only one device is due per round, so every round is one more job claim for a single send.
+      for (let round = 1; round <= 11; round += 1) {
+        const target = round % 2 === 1 ? deviceA : deviceB;
+        await executeTrustedSql(
+          `update public.notification_push_deliveries d set next_attempt_at = case when s.endpoint='${target}' then now() else now()+interval '1 day' end from public.push_subscriptions s where s.id=d.subscription_id and d.notification_id='${String(notice!.id)}' and d.status='pending';
+          update public.notification_push_jobs set next_attempt_at=now() where notification_id='${String(notice!.id)}' and status='pending'`
+        );
+        await dispatchNotificationPush(client, keyring, send);
+        if (round === 8) afterEightClaims = await deliveries();
+      }
+      // Eight job claims already exceed the old job budget, yet both devices kept their own attempts.
+      expect(afterEightClaims).toEqual(
+        expect.arrayContaining([
+          { endpoint: deviceB, status: 'accepted', attempts: 4 },
+          { endpoint: deviceA, status: 'pending', attempts: 4 }
+        ])
+      );
+      expect(await deliveries()).toEqual(
+        expect.arrayContaining([
+          { endpoint: deviceA, status: 'exhausted', attempts: 6 },
+          { endpoint: deviceB, status: 'accepted', attempts: 4 }
+        ])
+      );
+      expect(attempts.get(deviceA)).toBe(6);
+      expect(attempts.get(deviceB)).toBe(4);
+      expect(
+        await query(
+          'select status,attempt_count::int as claims from public.notification_push_jobs where notification_id=$1',
+          [notice!.id]
+        )
+      ).toEqual([{ status: 'exhausted', claims: 0 }]);
+    } finally {
+      log.mockRestore();
+      await executeTrustedSql(
+        `delete from public.notifications where target_type='level_review_request' and target_id in(select id from public.player_level_review_requests where owner_id='${owner.id}'); ${ratingEvidenceCleanupSql(`'${owner.id}'::uuid`)} delete from auth.users where id='${owner.id}'`
+      );
+      await query(
+        `update public.notification_push_jobs j set next_attempt_at=h.next_attempt_at from jsonb_to_recordset($1::jsonb) as h(notification_id uuid,next_attempt_at timestamptz) where j.notification_id=h.notification_id and j.status='pending'`,
+        [JSON.stringify(held)]
+      );
+    }
+  }, 120000);
 });

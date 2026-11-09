@@ -18,6 +18,9 @@ type ContainerLike = EventTarget & {
 
 export type UpdateController = ReturnType<typeof createUpdateController>;
 
+// "Later" defers the offer; while the same worker keeps waiting it is announced again after this quiet period.
+const REOFFER_DELAY_MS = 5 * 60 * 1000;
+
 // Owns the service-worker update lifecycle: registration, waiting-worker detection, the user-confirmed
 // SKIP_WAITING and exactly one reload. A reload is never automatic while the guard reports pending
 // work: the offer is deferred (phase "blocked") and the page keeps its state.
@@ -26,13 +29,15 @@ export function createUpdateController({
   isBlocked,
   subscribeBlocked,
   reload,
-  scriptUrl = '/sw.js'
+  scriptUrl = '/sw.js',
+  reofferDelayMs = REOFFER_DELAY_MS
 }: {
   container: ContainerLike;
   isBlocked: () => boolean;
   subscribeBlocked: (listener: () => void) => () => void;
   reload: () => void;
   scriptUrl?: string;
+  reofferDelayMs?: number;
 }) {
   let snapshot: UpdateSnapshot = { phase: 'idle' };
   let waiting: WorkerLike | null = null;
@@ -40,6 +45,7 @@ export function createUpdateController({
   let reloadPending = false;
   let reloaded = false;
   let disposed = false;
+  let reofferTimer: ReturnType<typeof setTimeout> | undefined;
   const listeners = new Set<() => void>();
   const cleanups: Array<() => void> = [];
 
@@ -129,9 +135,15 @@ export function createUpdateController({
     },
     dismiss() {
       setPhase('idle');
+      clearTimeout(reofferTimer);
+      reofferTimer = setTimeout(() => {
+        if (!disposed && waiting && waiting.state !== 'redundant' && snapshot.phase === 'idle')
+          setPhase('available');
+      }, reofferDelayMs);
     },
     dispose() {
       disposed = true;
+      clearTimeout(reofferTimer);
       cleanups.splice(0).forEach((cleanup) => cleanup());
       listeners.clear();
     }

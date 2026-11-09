@@ -37,16 +37,17 @@ export const NOTIFICATION_CHANNEL_PROOFS: readonly Proof[] = [
     recipients: '[leagues.owner.id, leagues.admin.id], one per changed membership'
   },
   {
-    events: ['match_event_published'],
+    events: ['match_event_published', 'match_event_invitation'],
     testName:
       'verifies transactional producers, authorization, enrichment, idempotency, and v1 compatibility with publishable JWT actors',
-    recipients: '[active.id, invitee.id]; creator/pending/inactive/outsider []'
+    recipients:
+      '[active.id, invitee.id] for publication; direct invitees (active, privateMember, privateOutsider) for invitation; creator/pending/inactive/outsider []'
   },
   {
-    events: ['match_event_invitation', 'match_invitation_accepted'],
+    events: ['match_invitation_accepted'],
     testName:
       'ordinary join accepts pending invite and every invitation kind resolves both notification readers',
-    recipients: 'invitee for issue; creator for acceptance'
+    recipients: '[f.creator.id]'
   },
   {
     events: ['match_invitation_declined'],
@@ -59,10 +60,9 @@ export const NOTIFICATION_CHANNEL_PROOFS: readonly Proof[] = [
     recipients: '[creator.id, invitee.id]'
   },
   {
-    events: ['guest_registration_requested', 'out_of_range_registration_requested'],
-    testName:
-      'routes the four entry paths: direct accept, pending member, guest request, private denial',
-    recipients: '[actors.creator.id] for each pending request; private outsider []'
+    events: ['guest_registration_requested', 'guest_registration_rejected'],
+    testName: 'delivers the request alert once and rejects duplicates while pending and accepted',
+    recipients: '[actors.creator.id] per request; [actors.guestDuplicate.id] for the rejection'
   },
   {
     events: ['guest_registration_approved'],
@@ -70,15 +70,15 @@ export const NOTIFICATION_CHANNEL_PROOFS: readonly Proof[] = [
     recipients: '[actors.guest1.id]'
   },
   {
-    events: ['guest_registration_rejected', 'out_of_range_registration_rejected'],
+    events: ['out_of_range_registration_requested', 'out_of_range_registration_rejected'],
     testName:
       'reuses the identity row for re-application after rejection and expiry without ordinal reuse',
-    recipients: 'requesting player only, immutable attempt identity'
+    recipients: '[actors.creator.id] per request; [actors.memberC.id] for the rejection'
   },
   {
     events: ['out_of_range_registration_approved'],
     testName: 'approves atomically and replays idempotently without a second ordinal or alert',
-    recipients: 'approved requesting player only'
+    recipients: '[actors.memberC.id, actors.memberB.id, actors.memberNoRating.id], one per approval'
   },
   {
     events: [
@@ -94,49 +94,51 @@ export const NOTIFICATION_CHANNEL_PROOFS: readonly Proof[] = [
   },
   {
     events: ['match_registration_withdrawn', 'match_registration_group_changed'],
-    testName: 'promotes prior ninth player and notifies exactly surviving changed memberships',
+    testName:
+      'withdrawal notifies the organizer and departing player and every changed surviving membership once',
     recipients:
-      'departing player and exact surviving changed-membership set; unrelated roster excluded'
+      '[f.creator.id, target.id] withdrawn; [f.creator.id, members 1-6] group changed; [members[7].id] promoted'
   },
   {
     events: ['match_registration_removed'],
     testName:
       'removes one of eight into four Playing and three Reserve, preserving ordinals and exact effects',
-    recipients: 'removed player and exact changed surviving roster'
+    recipients: '[target.id, f.creator.id] removed; seven group-changed memberships'
   },
   {
     events: ['match_reconfirmation_required'],
     testName:
       'Competitive Friendly change requires every accepted player including creator to reconfirm',
-    recipients: 'every accepted registrant, creator included'
+    recipients: '[f.creator.id, player.id] required; [pending.id, invited.id] updated'
   },
   {
     events: ['match_registration_reconfirmed'],
     testName: 'reconfirm preserves original FIFO and is self-only idempotent',
-    recipients: 'current organizer response contract'
+    recipients:
+      '[players..., f.creator.id x4]: reconfirming player and organizer per effective reconfirmation'
   },
   {
     events: ['match_reconfirmation_expired'],
     testName:
       'unreconfirmed accepted rows expire at cutoff and complete quartets recalculate; cutoff downtime cannot show unreconfirmed as Playing',
-    recipients: 'unreconfirmed accepted registrants only'
+    recipients: '[f.creator.id]: the unreconfirmed accepted registrant'
   },
   {
     events: ['match_event_cancelled'],
     testName:
       'notifies terminal, requesting and invited identities once while retaining departure history',
-    recipients: 'distinct authorized roster/request/invite identities'
+    recipients: '[f.creator.id, departed.id, requester.id, invitee.id]'
   },
   {
     events: ['match_event_updated'],
     testName: 'venue price and notes notify and audit without consent change',
-    recipients: 'authorized management audience; no-op emits []'
+    recipients: '[f.creator.id, accepted.id, pending.id, invited.id]'
   },
   {
     events: ['match_event_ownership_transferred'],
     testName:
       'transfer to accepted Reserve preserves every ordinal, publisher and photo; former creator loses controls',
-    recipients: 'distinct existing management audience'
+    recipients: '[f.creator.id, target.id]'
   },
   {
     events: ['cutoff_playing'],
@@ -190,22 +192,21 @@ export const NOTIFICATION_CHANNEL_PROOFS: readonly Proof[] = [
     recipients: '[amendments.p3.id]'
   },
   {
-    events: ['result_amendment_resolved', 'result_repair_applied'],
-    testName:
-      'publishes the completion audit and notice once, with the old and new revisions, and repeats add nothing',
-    recipients: 'affected confirmed participants, deduped by operation/version'
+    events: ['result_amendment_resolved', 'result_repair_queued'],
+    testName: 'replaces: queues exactly one correction job and never touches the official fact',
+    recipients: '[f.p0.id, f.p1.id, f.p2.id, f.p3.id, event organizer] per kind'
   },
   {
-    events: ['result_repair_queued'],
+    events: ['result_repair_applied'],
     testName:
-      'rolls everything back after the League snapshot and before the statistics, then converges',
-    recipients: 'affected participant set, atomic repair publication'
+      'publishes the completion audit and notice once, with the old and new revisions, and repeats add nothing',
+    recipients: 'w.october.players: the corrected quartet'
   },
   {
     events: ['result_repair_failed'],
     testName:
       'notifies the operators once per failure, dedupes repeated failures, and resolves on success',
-    recipients: 'current authorized platform operators only'
+    recipients: 'admins: current active community administrators of the corrected event'
   },
   {
     events: ['visible_level_changed', 'reliability_changed'],

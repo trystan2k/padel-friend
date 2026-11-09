@@ -153,6 +153,51 @@ describe('update controller', () => {
     expect(worker.postMessage).not.toHaveBeenCalled();
   });
 
+  it('re-announces a deferred offer after the quiet period without reloading or activating', async () => {
+    vi.useFakeTimers();
+    try {
+      const { container, controller, reload } = setup();
+      const worker = new FakeWorker();
+      container.registration.waiting = worker;
+      await controller.start();
+      controller.dismiss();
+      vi.advanceTimersByTime(60_000);
+      expect(controller.getSnapshot().phase).toBe('idle');
+      vi.advanceTimersByTime(5 * 60_000);
+      expect(controller.getSnapshot().phase).toBe('available');
+      expect(worker.postMessage).not.toHaveBeenCalled();
+      expect(reload).not.toHaveBeenCalled();
+      controller.apply();
+      expect(worker.postMessage).toHaveBeenCalledExactlyOnceWith({ type: 'SKIP_WAITING' });
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('does not re-announce after dispose or when the waiting worker became redundant', async () => {
+    vi.useFakeTimers();
+    try {
+      const gone = setup();
+      const worker = new FakeWorker();
+      gone.container.registration.waiting = worker;
+      await gone.controller.start();
+      gone.controller.dismiss();
+      worker.state = 'redundant';
+      vi.advanceTimersByTime(10 * 60_000);
+      expect(gone.controller.getSnapshot().phase).toBe('idle');
+
+      const disposed = setup();
+      disposed.container.registration.waiting = new FakeWorker();
+      await disposed.controller.start();
+      disposed.controller.dismiss();
+      disposed.controller.dispose();
+      vi.advanceTimersByTime(10 * 60_000);
+      expect(disposed.controller.getSnapshot().phase).toBe('idle');
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it('removes every listener on dispose', async () => {
     const { container, controller, reload, guard } = setup();
     const worker = new FakeWorker();

@@ -69,7 +69,7 @@ export const NOTIFICATION_CHANNEL_MATRIX = [
     category: 'matches',
     inventory: 'existing',
     seam: 'notify_match_event_invitation',
-    proof: 'test/matches.invitations.integration.test.ts'
+    proof: 'test/matches.notifications.integration.test.ts'
   },
   {
     event: 'match_invitation_accepted',
@@ -328,14 +328,14 @@ export const NOTIFICATION_CHANNEL_MATRIX = [
     category: 'results',
     inventory: 'existing',
     seam: 'record_result_amendment_event',
-    proof: 'test/result-corrections.publication.integration.test.ts'
+    proof: 'test/result-disputes.transitions.integration.test.ts'
   },
   {
     event: 'result_repair_queued',
     category: 'results',
     inventory: 'existing',
     seam: 'record_result_amendment_event',
-    proof: 'test/result-corrections.publication.integration.test.ts'
+    proof: 'test/result-disputes.transitions.integration.test.ts'
   },
   {
     event: 'result_repair_applied',

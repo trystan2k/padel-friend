@@ -1,6 +1,6 @@
 import { Button } from '@base-ui/react/button';
 import * as stylex from '@stylexjs/stylex';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { promptInstall, useInstallState } from './install-state';
 import { pwaStyles as styles } from './pwa.styles';
@@ -11,6 +11,8 @@ export function PwaInstallPanel() {
   const { t } = useTranslation();
   const state = useInstallState();
   const [failed, setFailed] = useState(false);
+  const [prompting, setPrompting] = useState(false);
+  const titleRef = useRef<HTMLHeadingElement>(null);
   if (!state.ready) return null;
   const message = state.installed
     ? 'pwa.install.installed'
@@ -23,6 +25,8 @@ export function PwaInstallPanel() {
     <section aria-labelledby="pwa-install-title" {...stylex.props(styles.install)}>
       <h2
         id="pwa-install-title"
+        ref={titleRef}
+        tabIndex={-1}
         {...stylex.props(styles.installTitle, state.installed && styles.installedTitle)}
       >
         {t('pwa.install.title')}
@@ -37,8 +41,17 @@ export function PwaInstallPanel() {
         <Button
           type="button"
           {...stylex.props(styles.action)}
-          onClick={() => {
-            void promptInstall().then((outcome) => setFailed(outcome === 'unavailable'));
+          aria-disabled={prompting || undefined}
+          onClick={(event) => {
+            if (prompting) return;
+            // The offer is withdrawn once the outcome is known; focus then moves to the persistent heading.
+            const hadFocus = document.activeElement === event.currentTarget;
+            setPrompting(true);
+            void promptInstall().then((outcome) => {
+              setPrompting(false);
+              setFailed(outcome === 'unavailable');
+              if (hadFocus) titleRef.current?.focus();
+            });
           }}
         >
           {t('pwa.install.action')}

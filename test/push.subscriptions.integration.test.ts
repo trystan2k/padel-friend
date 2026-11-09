@@ -3,7 +3,11 @@ import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { describe, expect, it } from 'vitest';
 import { dotEnvPathFromImportMetaUrl, localSupabaseEnv } from './helpers/local-supabase-env';
 import { ratingEvidenceCleanupSql } from './helpers/fixture-cleanup';
-import { executeTrustedSql, queryTrustedSql } from './helpers/sql-transport';
+import {
+  executeTrustedSql,
+  openDedicatedSqlConnection,
+  queryTrustedSql
+} from './helpers/sql-transport';
 
 const environment = localSupabaseEnv({ filePath: dotEnvPathFromImportMetaUrl(import.meta.url) });
 type Env = NonNullable<typeof environment.env>;
@@ -221,6 +225,49 @@ describe.skipIf(!environment.env)('push subscription registry (real local Supaba
         ).error
       ).not.toBeNull();
     } finally {
+      await executeTrustedSql(
+        `${ratingEvidenceCleanupSql(`${literal(owner.id)}::uuid`)} delete from auth.users where id = ${literal(owner.id)}::uuid`
+      );
+    }
+  }, 60000);
+
+  it('serializes concurrent enrolments per user so the 25-device cap holds at the boundary', async () => {
+    const owner = await actor('Push Concurrent Cap');
+    const first = await openDedicatedSqlConnection();
+    const second = await openDedicatedSqlConnection();
+    const enrol = async (connection: typeof first, endpoint: string) => {
+      await connection.query(
+        `select set_config('request.jwt.claims', '{"sub":"${owner.id}","role":"authenticated"}', true)`
+      );
+      await connection.query('set local role authenticated');
+      await connection.query(
+        `select public.register_my_push_subscription(${literal(endpoint)}, ${literal(p256dh())}, ${literal(authSecret())}, 'key-1', 'en')`
+      );
+    };
+    try {
+      for (let index = 0; index < 24; index += 1)
+        expect((await register(owner.client, endpointFor())).error).toBeNull();
+      // Two open transactions for different endpoints at 24 of 25: the second must wait for the first.
+      await first.query('begin');
+      await second.query('begin');
+      await enrol(first, endpointFor());
+      const racing = enrol(second, endpointFor()).then(
+        () => 'registered',
+        (error: unknown) => (error instanceof Error ? error.message : 'failed')
+      );
+      const early = await Promise.race([
+        racing,
+        new Promise<string>((resolve) => setTimeout(() => resolve('waiting'), 750))
+      ]);
+      expect(early).toBe('waiting');
+      await first.query('commit');
+      expect(await racing).toContain('PUSH_DEVICE_LIMIT');
+      expect(
+        (await devices(owner.client)).filter((row) => row.device_retired_at === null)
+      ).toHaveLength(25);
+    } finally {
+      await first.close();
+      await second.close();
       await executeTrustedSql(
         `${ratingEvidenceCleanupSql(`${literal(owner.id)}::uuid`)} delete from auth.users where id = ${literal(owner.id)}::uuid`
       );

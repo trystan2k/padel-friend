@@ -7,6 +7,7 @@ import {
   waitForRows,
   withDeadline
 } from './helpers/match-registration-sql';
+import { expectNotificationOutcome } from './helpers/notification-channel-evidence';
 import { openDedicatedSqlConnection } from './helpers/sql-transport';
 import { createResultAmendmentFixtures } from './helpers/result-amendment-fixtures';
 
@@ -176,6 +177,13 @@ describe('result dispute resolution and audited override', { timeout: 240000 }, 
         'result_dispute_replaced',
         'result_repair_queued'
       ]);
+      // The resolution and the queued correction each notify the corrected quartet and organizer once.
+      const [organizer] = await sqlRows(
+        "select created_by::text as id from public.match_events where id='" + group.eventId + "'"
+      );
+      const audience = [...new Set([f.p0.id, f.p1.id, f.p2.id, f.p3.id, String(organizer!['id'])])];
+      for (const kind of ['result_amendment_resolved', 'result_repair_queued'])
+        await expectNotificationOutcome({ targetId: group.eventId, kind, recipients: audience });
       // A queued correction still blocks a competing request for the same group.
       expect((await f.request(f.p2, group)).error?.message).toBe('RESULT_AMENDMENT_ALREADY_OPEN');
 

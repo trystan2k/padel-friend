@@ -108,17 +108,26 @@ export function subscribeInstallState(listener: () => void) {
   };
 }
 
-// The browser prompt is single-use: it is consumed whatever the user chooses.
+// App-level capture: Chromium may fire beforeinstallprompt long before the install panel mounts, so
+// the app root holds a subscription from hydration. The event is retained until consumed or installed.
+export function captureInstallPrompt() {
+  return subscribeInstallState(() => undefined);
+}
+
+// The browser prompt is single-use: it is consumed whatever the user chooses. The offer stays
+// published while the native prompt is open so the initiating control keeps its focus, and is
+// withdrawn only once the outcome is known.
 export async function promptInstall(): Promise<InstallOutcome> {
   const event = deferredPrompt;
   if (!event) return 'unavailable';
   deferredPrompt = null;
-  publish({ canPrompt: false });
   try {
     await event.prompt();
     return (await event.userChoice).outcome;
   } catch {
     return 'unavailable';
+  } finally {
+    publish({ canPrompt: false });
   }
 }
 

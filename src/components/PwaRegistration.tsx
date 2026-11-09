@@ -1,16 +1,17 @@
 import { Button } from '@base-ui/react/button';
 import * as stylex from '@stylexjs/stylex';
-import { useState, useSyncExternalStore } from 'react';
+import { useEffect, useState, useSyncExternalStore } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useInstallState } from '../features/pwa/install-state';
+import { captureInstallPrompt } from '../features/pwa/install-state';
 import { pwaStyles as styles } from '../features/pwa/pwa.styles';
 import { createBrowserUpdateStore } from '../features/pwa/update-store';
 
 export function PwaRegistration() {
   const { t } = useTranslation();
   const [store] = useState(createBrowserUpdateStore);
-  // Keeps the install listeners alive for the app lifetime so an early beforeinstallprompt is not lost.
-  useInstallState();
+  // Keeps the install listeners alive for the app lifetime so an early beforeinstallprompt is retained
+  // until the install panel consumes it.
+  useEffect(captureInstallPrompt, []);
   const { phase } = useSyncExternalStore(
     store.subscribe,
     store.getSnapshot,

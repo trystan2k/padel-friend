@@ -33,8 +33,15 @@ export async function removeLegacyCaches(cacheStorage: Pick<CacheStorage, 'keys'
   );
 }
 
+export const AUTH_CALLBACK_PATH = '/auth/callback';
+
+// A failed OAuth/PKCE callback must surface as a failure, never as the offline success-looking page.
+export function isAuthCallbackNavigation(request: Pick<Request, 'url'>) {
+  return new URL(request.url).pathname === AUTH_CALLBACK_PATH;
+}
+
 // Private SSR always goes to the network. Only a failed network falls back to the public offline
-// document; HTTP errors (including failed auth callbacks) are returned untouched.
+// document; HTTP errors are returned untouched and auth callbacks never fall back at all.
 export function createNavigationHandler({
   fetchFn,
   matchOffline
@@ -46,6 +53,7 @@ export function createNavigationHandler({
     try {
       return await fetchFn(request);
     } catch (error) {
+      if (isAuthCallbackNavigation(request)) throw error;
       const offline = await matchOffline();
       if (offline) return offline;
       throw error;

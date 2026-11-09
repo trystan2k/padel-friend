@@ -98,6 +98,83 @@ describe('transactional Push outbox', () => {
     ).resolves.toBeUndefined();
   });
 
+  it("staggered retries across devices never spend another device's attempts through job claims", async () => {
+    await expect(
+      check(`
+      declare s2 uuid; target uuid; i integer;
+      begin
+      insert into public.push_subscriptions(user_id,endpoint,p256dh,auth,vapid_key_id,locale,created_at)
+        select user_id,endpoint||'-second',p256dh,auth,vapid_key_id,locale,created_at from public.push_subscriptions where id=s returning id into s2;
+      -- Ten rounds with one device due per round: ten job claims, five sends per device.
+      for i in 1..10 loop
+        target := case when i % 2 = 1 then s else s2 end;
+        update public.notification_push_deliveries set next_attempt_at = case when subscription_id = target then now() else now() + interval '1 day' end
+          where notification_id = n and status = 'pending';
+        update public.notification_push_jobs set next_attempt_at = now() where notification_id = n;
+        select * into j from public.claim_notification_push_jobs(25) where notification_id = n;
+        if j.claim_token is null then raise exception 'job not claimable in round %', i; end if;
+        perform public.materialize_notification_push(n, j.claim_token);
+        if public.prepare_notification_push(n, target, j.claim_token) is null then raise exception 'send refused in round %', i; end if;
+        perform public.settle_notification_push_delivery(n, target, j.claim_token, 'pending', 429, 60);
+        perform public.finish_notification_push(n, j.claim_token);
+      end loop;
+      if exists(select 1 from public.notification_push_deliveries where notification_id = n and (status <> 'pending' or attempt_count <> 5)) then raise exception 'job claims spent device attempts'; end if;
+      if (select status || attempt_count from public.notification_push_jobs where notification_id = n) <> 'pending0' then raise exception 'job exhausted by claims'; end if;
+      -- Device 1 spends its own sixth attempt: only it exhausts, the job keeps the other device pending.
+      update public.notification_push_deliveries set next_attempt_at = now() where notification_id = n and subscription_id = s;
+      update public.notification_push_jobs set next_attempt_at = now() where notification_id = n;
+      select * into j from public.claim_notification_push_jobs(25) where notification_id = n;
+      perform public.materialize_notification_push(n, j.claim_token);
+      perform public.prepare_notification_push(n, s, j.claim_token);
+      perform public.settle_notification_push_delivery(n, s, j.claim_token, 'pending', 429, 60);
+      perform public.finish_notification_push(n, j.claim_token);
+      if (select status from public.notification_push_deliveries where notification_id = n and subscription_id = s) <> 'exhausted' then raise exception 'own budget ignored'; end if;
+      if (select status || attempt_count from public.notification_push_deliveries where notification_id = n and subscription_id = s2) <> 'pending5' then raise exception 'other device terminated'; end if;
+      if (select status from public.notification_push_jobs where notification_id = n) <> 'pending' then raise exception 'job terminated with a healthy pending device'; end if;
+      -- Once the remaining device succeeds every delivery is terminal and the job completes durably.
+      update public.notification_push_deliveries set next_attempt_at = now() where notification_id = n and subscription_id = s2;
+      update public.notification_push_jobs set next_attempt_at = now() where notification_id = n;
+      select * into j from public.claim_notification_push_jobs(25) where notification_id = n;
+      perform public.materialize_notification_push(n, j.claim_token);
+      perform public.prepare_notification_push(n, s2, j.claim_token);
+      perform public.settle_notification_push_delivery(n, s2, j.claim_token, 'accepted', 201);
+      perform public.finish_notification_push(n, j.claim_token);
+      if (select status from public.notification_push_jobs where notification_id = n) <> 'exhausted' then raise exception 'job not terminal'; end if;
+      if (select count(*) from public.notification_push_deliveries where notification_id = n and status in ('accepted','exhausted')) <> 2 then raise exception 'deliveries not durable terminal'; end if;
+      end;
+    `)
+    ).resolves.toBeUndefined();
+  });
+
+  it('bounds only consecutive lease losses; a finished claim cycle resets the crash counter', async () => {
+    await expect(
+      check(`
+      declare i integer;
+      begin
+      select * into j from public.claim_notification_push_jobs(25) where notification_id=n; token:=j.claim_token;
+      perform public.materialize_notification_push(n,token);
+      if j.attempt_count <> 0 then raise exception 'first claim spent budget'; end if;
+      for i in 1..5 loop
+        update public.notification_push_jobs set lease_expires_at=now()-interval '1 second' where notification_id=n;
+        select * into j from public.claim_notification_push_jobs(25) where notification_id=n;
+        if j.attempt_count <> i then raise exception 'lease loss % not counted', i; end if;
+      end loop;
+      perform public.finish_notification_push(n,j.claim_token);
+      if (select attempt_count from public.notification_push_jobs where notification_id=n) <> 0 then raise exception 'finished cycle kept crash count'; end if;
+      select * into j from public.claim_notification_push_jobs(25) where notification_id=n;
+      for i in 1..6 loop
+        update public.notification_push_jobs set lease_expires_at=now()-interval '1 second' where notification_id=n;
+        select * into j from public.claim_notification_push_jobs(25) where notification_id=n;
+      end loop;
+      update public.notification_push_jobs set lease_expires_at=now()-interval '1 second' where notification_id=n;
+      perform public.claim_notification_push_jobs(25);
+      if (select status from public.notification_push_jobs where notification_id=n) <> 'exhausted' then raise exception 'crash loop unbounded'; end if;
+      if (select status from public.notification_push_deliveries where notification_id=n) <> 'exhausted' then raise exception 'crash loop delivery kept pending'; end if;
+      end;
+    `)
+    ).resolves.toBeUndefined();
+  });
+
   it.each(['community', 'matches', 'results', 'rankings', 'leagues'])(
     'category %s off suppresses Push without touching in-app',
     async (category) => {
@@ -257,9 +334,11 @@ describe('transactional Push outbox', () => {
       await first.query('begin');
       await second.query('begin');
       const a = await first.query(
-        'select notification_id::text,claim_token::text from public.claim_notification_push_jobs(25)'
+        'select notification_id::text,claim_token::text,attempt_count::int from public.claim_notification_push_jobs(25)'
       );
       expect(a.rows.map((row) => row.notification_id)).toEqual([id]);
+      // A normal claim consumes no job-level budget; only lease losses are counted.
+      expect(a.rows.map((row) => row.attempt_count)).toEqual([0]);
       const b = await second.query(
         'select notification_id from public.claim_notification_push_jobs(25)'
       );

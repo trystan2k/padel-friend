@@ -5,7 +5,11 @@ import { renderToString } from 'react-dom/server';
 import { I18nextProvider } from 'react-i18next';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createI18n } from '../src/i18n/config';
-import { detectPwaCapabilities, promptInstall } from '../src/features/pwa/install-state';
+import {
+  captureInstallPrompt,
+  detectPwaCapabilities,
+  promptInstall
+} from '../src/features/pwa/install-state';
 import { PwaInstallPanel } from '../src/features/pwa/PwaInstallPanel';
 import en from '../src/locales/en/translation.json';
 
@@ -200,6 +204,48 @@ describe('PwaInstallPanel', () => {
       window.dispatchEvent(new Event('appinstalled'));
     });
     expect(screen.getByText(copy.installed)).toBeTruthy();
+  });
+
+  it('retains an early beforeinstallprompt for a panel mounted later and consumes it once', async () => {
+    mockEnvironment();
+    const release = captureInstallPrompt();
+    const { event, prompt } = installPromptEvent();
+    act(() => {
+      window.dispatchEvent(event);
+    });
+    expect(event.defaultPrevented).toBe(true);
+    mount();
+    await userEvent.click(screen.getByRole('button', { name: copy.action }));
+    expect(prompt).toHaveBeenCalledTimes(1);
+    expect(await promptInstall()).toBe('unavailable');
+    release();
+  });
+
+  it('keeps the initiating button mounted and focused while the native prompt is open, then restores focus to the panel heading', async () => {
+    mockEnvironment();
+    mount();
+    const { event, prompt } = installPromptEvent('dismissed');
+    let settle: () => void = () => undefined;
+    prompt.mockImplementation(
+      () =>
+        new Promise<void>((resolve) => {
+          settle = resolve;
+        })
+    );
+    act(() => {
+      window.dispatchEvent(event);
+    });
+    const button = screen.getByRole('button', { name: copy.action });
+    button.focus();
+    await userEvent.click(button);
+    expect(prompt).toHaveBeenCalledTimes(1);
+    expect(screen.getByRole('button', { name: copy.action })).toBe(button);
+    expect(document.activeElement).toBe(button);
+    await act(async () => {
+      settle();
+    });
+    expect(screen.queryByRole('button', { name: copy.action })).toBeNull();
+    expect(document.activeElement).toBe(screen.getByRole('heading', { name: copy.title }));
   });
 
   it('attaches listeners only while mounted', async () => {

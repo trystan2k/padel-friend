@@ -30,7 +30,7 @@ export const pwaStyles = stylex.create({
   },
   alert: { color: 'var(--color-red)' },
   action: {
-    minHeight: '44px',
+    minHeight: 'calc(var(--space-40) + var(--space-4))',
     marginBlockStart: 'var(--space-8)',
     paddingInline: 'var(--space-16)',
     borderWidth: 0,

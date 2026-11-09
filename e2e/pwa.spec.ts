@@ -188,8 +188,9 @@ test('offline auth callback fails honestly instead of showing success', async ({
     await waitForHydratedPage(page);
     await controlledByWorker(page);
     await context.setOffline(true);
-    await page.goto('/auth/callback?code=offline-test-code');
-    await expect(page.getByRole('heading', { name: en.pwa.offline.title })).toBeVisible();
+    // The worker must not answer a failed callback with the offline document: the navigation fails.
+    await expect(page.goto('/auth/callback?code=offline-test-code')).rejects.toThrow(/net::ERR_/);
+    await expect(page.getByRole('heading', { name: en.pwa.offline.title })).toHaveCount(0);
     await expect(page).not.toHaveURL(/dashboard/);
     await expect(page.locator('html')).not.toHaveAttribute('data-app-hydrated', 'true');
   } finally {
