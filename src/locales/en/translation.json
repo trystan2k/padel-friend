@@ -442,6 +442,85 @@
     "discoverabilitySaved": "Discoverability preference saved.",
     "discoverabilityError": "Could not save discoverability preference."
   },
+  "home": {
+    "title": "Home",
+    "greeting": "Hello, {{name}}",
+    "switcherLabel": "Switch community",
+    "selectionUnavailable": "That community is not available to you. Showing your default community instead.",
+    "switching": "Loading community…",
+    "error": "Home could not be loaded.",
+    "retry": "Try again",
+    "communitiesError": "Your communities could not be loaded.",
+    "sectionError": "This section could not be loaded.",
+    "sectionUnavailable": "This section is not available right now.",
+    "noCommunity": {
+      "title": "Join a community",
+      "description": "Home shows matches, rankings and activity for your communities.",
+      "action": "Find a community"
+    },
+    "nextMatch": {
+      "title": "Next match",
+      "empty": "No upcoming match in this community.",
+      "playing_one": "{{count}} player confirmed",
+      "playing_other": "{{count}} players confirmed",
+      "moreNeeded_one": "{{count}} more needed",
+      "moreNeeded_other": "{{count}} more needed"
+    },
+    "available": {
+      "title": "Open matches",
+      "all": "All matches"
+    },
+    "actions": {
+      "title": "Needs your attention",
+      "empty": "Nothing needs your attention.",
+      "partial": "Some items could not be checked, so this list may be incomplete.",
+      "open": "Open",
+      "resultReview_one": "{{count}} result awaiting review at {{venue}}",
+      "resultReview_other": "{{count}} results awaiting review at {{venue}}",
+      "reconfirmation": "Reconfirm your spot at {{venue}}",
+      "organizerRequests_one": "{{count}} join request waiting at {{venue}}",
+      "organizerRequests_other": "{{count}} join requests waiting at {{venue}}",
+      "reserveStandby": "You are on the Reserve list at {{venue}}"
+    },
+    "ranking": {
+      "title": "Ranking",
+      "empty": "No ranking available yet.",
+      "skillTitle": "Community skill rank",
+      "skillEmpty": "No rank history in this community yet.",
+      "skillRanked": "#{{position}} of {{total}} ranked players",
+      "skillRankedNoTotal": "#{{position}} in this community",
+      "unrated": "You are not rated in this community yet.",
+      "notMember": "You are not an active member of this community.",
+      "leagueTitle": "League: {{name}}",
+      "leagueEmpty": "No active League in this community.",
+      "leagueOnly": "Your community's only active League",
+      "leagueFirstOf": "First of {{count}} active Leagues",
+      "leagueFirstOfMore": "First of at least {{count}} active Leagues",
+      "you": "You",
+      "unnamed": "Player",
+      "record": "{{wins}}W {{losses}}L",
+      "selfMissing": "You are not in this League's standings yet.",
+      "statistics": "Community statistics",
+      "movement": {
+        "new": "New entry",
+        "same": "No change since the last published rank",
+        "up_one": "Up {{count}} place since the last published rank",
+        "up_other": "Up {{count}} places since the last published rank",
+        "down_one": "Down {{count}} place since the last published rank",
+        "down_other": "Down {{count}} places since the last published rank"
+      }
+    },
+    "activity": {
+      "title": "Recent activity",
+      "empty": "No confirmed activity yet.",
+      "scopeGlobal": "Global rating",
+      "scopeCommunity": "This community",
+      "rating": "Rating {{delta}}, now level {{level}}",
+      "adjustment": "Level reviewed, now level {{level}}",
+      "rank": "Skill rank now #{{position}}, was #{{previous}}",
+      "rankNew": "Skill rank now #{{position}}"
+    }
+  },
   "pwa": {
     "install": {
       "title": "Install Padel Friend",

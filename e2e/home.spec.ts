@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test';
 import { readFileSync } from 'node:fs';
 import { waitForHydratedPage } from './auth-helpers';
+import { copies, fixtures, type Actor } from './matches-management-fixtures';
 
 const BASE_URL = 'http://127.0.0.1:4173';
 
@@ -139,6 +140,104 @@ test.describe('Google sign-in OAuth failure handling', () => {
       ).toBeVisible();
       await expect(google).toBeEnabled();
       expect(new URL(page.url()).pathname).toBe('/login');
+    }
+  });
+});
+
+// Selected-community Home: URL-backed context, deterministic default membership, generic
+// fallback for a stale selection and no private names for non-members.
+test.describe('community Home', () => {
+  const home = copies.en.home;
+  test.use({ serviceWorkers: 'block' });
+  test.describe.configure({ mode: 'serial' });
+
+  let f: Awaited<ReturnType<typeof fixtures>>;
+  let member: Actor;
+  let second: string;
+
+  test.beforeAll(async ({ browser }) => {
+    test.setTimeout(240_000);
+    f = await fixtures(browser, { memberCount: 2, communityName: 'Home Alpha Club' });
+    member = f.members[0]!;
+    const created = await f.creator.client.rpc('create_community', {
+      p_name: 'Home Beta Club',
+      p_visibility: 'public',
+      p_join_policy: 'instant'
+    });
+    if (created.error || typeof created.data !== 'string')
+      throw created.error ?? new Error('No second community');
+    second = created.data;
+    const joined = await member.client.rpc('join_public_community', { p_community_id: second });
+    if (joined.error) throw joined.error;
+    await f.event(2);
+  });
+  test.afterAll(async () => {
+    test.setTimeout(120_000);
+    await f?.cleanup();
+  });
+  test.beforeEach(() => {
+    test.setTimeout(90_000);
+  });
+
+  test('defaults to the first membership, shows its next match and switches by keyboard', async () => {
+    const page = await f.page(member);
+    const switcher = page.getByRole('combobox', { name: new RegExp(home.switcherLabel) });
+    await expect(switcher).toContainText('Home Alpha Club');
+    const next = page.getByRole('region', { name: home.nextMatch.title });
+    await expect(next.getByRole('link', { name: 'Management court' })).toBeVisible();
+
+    await switcher.focus();
+    await page.keyboard.press('Enter');
+    await page.getByRole('option', { name: 'Home Beta Club' }).click();
+    await expect(page).toHaveURL(new RegExp(`/dashboard\\?community=${second}$`));
+    await expect(switcher).toContainText('Home Beta Club');
+    await expect(next.getByText(home.nextMatch.empty)).toBeVisible();
+    await expect(next.getByRole('link', { name: 'Management court' })).toHaveCount(0);
+
+    // Deep link and reload keep the selected community.
+    await page.reload();
+    await waitForHydratedPage(page);
+    await expect(
+      page.getByRole('combobox', { name: new RegExp(home.switcherLabel) })
+    ).toContainText('Home Beta Club');
+    await page.goBack();
+    await expect(
+      page.getByRole('combobox', { name: new RegExp(home.switcherLabel) })
+    ).toContainText('Home Alpha Club');
+  });
+
+  test('a stale or foreign selection falls back without naming any community', async () => {
+    const page = await f.page(member);
+    await page.goto(`/dashboard?community=${crypto.randomUUID()}`);
+    await waitForHydratedPage(page);
+    await expect(page.getByText(home.selectionUnavailable)).toBeVisible();
+    await expect(
+      page.getByRole('combobox', { name: new RegExp(home.switcherLabel) })
+    ).toContainText('Home Alpha Club');
+  });
+
+  test('a player without a community is offered discovery and sees no community data', async () => {
+    const page = await f.page(f.guest);
+    await page.goto(`/dashboard?community=${f.community}`);
+    await waitForHydratedPage(page);
+    await expect(page.getByRole('link', { name: home.noCommunity.action })).toBeVisible();
+    await expect(page.getByText('Home Alpha Club')).toHaveCount(0);
+    await expect(page.getByRole('combobox')).toHaveCount(0);
+  });
+
+  test('keeps profile, community and notification entries and gives every nav item a target', async () => {
+    const page = await f.page(member);
+    await expect(page.getByRole('link', { name: /Notifications/ })).toBeVisible();
+    const nav = page.getByRole('navigation', { name: copies.en.matches.results.navigation });
+    for (const key of ['home', 'matches', 'community', 'ranking', 'profile'] as const)
+      await expect(
+        nav.getByRole('link', { name: copies.en.matches.results.nav[key] })
+      ).toBeVisible();
+    await nav.getByRole('link', { name: copies.en.matches.results.nav.ranking }).click();
+    await expect(page.locator('#home-ranking')).toBeVisible();
+    for (const link of await nav.getByRole('link').all()) {
+      const box = await link.boundingBox();
+      expect(box?.height ?? 0).toBeGreaterThanOrEqual(44);
     }
   });
 });

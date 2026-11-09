@@ -442,6 +442,85 @@
     "discoverabilitySaved": "Preferencia de descubrimiento guardada.",
     "discoverabilityError": "No se pudo guardar la preferencia."
   },
+  "home": {
+    "title": "Inicio",
+    "greeting": "Hola, {{name}}",
+    "switcherLabel": "Cambiar de comunidad",
+    "selectionUnavailable": "Esa comunidad no está disponible para ti. Mostrando tu comunidad predeterminada.",
+    "switching": "Cargando comunidad…",
+    "error": "No se pudo cargar el inicio.",
+    "retry": "Reintentar",
+    "communitiesError": "No se pudieron cargar tus comunidades.",
+    "sectionError": "No se pudo cargar esta sección.",
+    "sectionUnavailable": "Esta sección no está disponible ahora.",
+    "noCommunity": {
+      "title": "Únete a una comunidad",
+      "description": "El inicio muestra partidos, clasificaciones y actividad de tus comunidades.",
+      "action": "Buscar una comunidad"
+    },
+    "nextMatch": {
+      "title": "Próximo partido",
+      "empty": "No hay partidos próximos en esta comunidad.",
+      "playing_one": "{{count}} jugador confirmado",
+      "playing_other": "{{count}} jugadores confirmados",
+      "moreNeeded_one": "falta {{count}}",
+      "moreNeeded_other": "faltan {{count}}"
+    },
+    "available": {
+      "title": "Partidos abiertos",
+      "all": "Todos los partidos"
+    },
+    "actions": {
+      "title": "Necesita tu atención",
+      "empty": "Nada necesita tu atención.",
+      "partial": "Algunos elementos no se pudieron comprobar, así que esta lista puede estar incompleta.",
+      "open": "Abrir",
+      "resultReview_one": "{{count}} resultado pendiente de revisión en {{venue}}",
+      "resultReview_other": "{{count}} resultados pendientes de revisión en {{venue}}",
+      "reconfirmation": "Reconfirma tu plaza en {{venue}}",
+      "organizerRequests_one": "{{count}} solicitud para unirse en espera en {{venue}}",
+      "organizerRequests_other": "{{count}} solicitudes para unirse en espera en {{venue}}",
+      "reserveStandby": "Estás en la lista de reservas en {{venue}}"
+    },
+    "ranking": {
+      "title": "Clasificación",
+      "empty": "Aún no hay clasificación disponible.",
+      "skillTitle": "Clasificación de nivel de la comunidad",
+      "skillEmpty": "Aún no hay historial de clasificación en esta comunidad.",
+      "skillRanked": "Puesto {{position}} de {{total}} jugadores clasificados",
+      "skillRankedNoTotal": "Puesto {{position}} en esta comunidad",
+      "unrated": "Aún no tienes nivel en esta comunidad.",
+      "notMember": "No eres miembro activo de esta comunidad.",
+      "leagueTitle": "Liga: {{name}}",
+      "leagueEmpty": "No hay una Liga activa en esta comunidad.",
+      "leagueOnly": "La única Liga activa de tu comunidad",
+      "leagueFirstOf": "Primera de {{count}} Ligas activas",
+      "leagueFirstOfMore": "Primera de al menos {{count}} Ligas activas",
+      "you": "Tú",
+      "unnamed": "Jugador",
+      "record": "{{wins}}G {{losses}}P",
+      "selfMissing": "Aún no estás en la clasificación de esta Liga.",
+      "statistics": "Estadísticas de la comunidad",
+      "movement": {
+        "new": "Nueva entrada",
+        "same": "Sin cambios desde la última clasificación publicada",
+        "up_one": "Subió {{count}} puesto desde la última clasificación publicada",
+        "up_other": "Subió {{count}} puestos desde la última clasificación publicada",
+        "down_one": "Bajó {{count}} puesto desde la última clasificación publicada",
+        "down_other": "Bajó {{count}} puestos desde la última clasificación publicada"
+      }
+    },
+    "activity": {
+      "title": "Actividad reciente",
+      "empty": "Aún no hay actividad confirmada.",
+      "scopeGlobal": "Nivel global",
+      "scopeCommunity": "Esta comunidad",
+      "rating": "Nivel {{delta}}, ahora nivel {{level}}",
+      "adjustment": "Nivel revisado, ahora nivel {{level}}",
+      "rank": "Puesto ahora {{position}}, antes {{previous}}",
+      "rankNew": "Puesto ahora {{position}}"
+    }
+  },
   "pwa": {
     "install": {
       "title": "Instalar Padel Friend",

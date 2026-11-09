@@ -1,6 +1,5 @@
 import * as stylex from '@stylexjs/stylex';
-import { rootStyles } from '../root.styles';
-import { createFileRoute, useRouter, Link } from '@tanstack/react-router';
+import { createFileRoute, useNavigate, useRouter } from '@tanstack/react-router';
 import { useTranslation } from 'react-i18next';
 import { PlayerProfile } from '../features/player/PlayerProfile';
 import { CommunityAdminEntries } from '../features/community/CommunityAdmin';
@@ -15,83 +14,87 @@ import { listMyCommunityNotifications } from '../features/community/community-re
 import { CommunityInbox } from '../features/community/CommunityInbox';
 import { ui } from '../features/player/player-ui.styles';
 import { InvitationDiscoverability } from '../features/community/InvitationDiscoverability';
-import { getMyUnreadNotificationCount } from '../features/notifications/notifications.functions';
-import { NotificationBadge } from '../features/notifications/NotificationBadge';
+import { getHome } from '../features/home/home.functions';
+import { HomeDashboard } from '../features/home/HomeDashboard';
+import { HomeNavigation } from '../features/home/HomeNavigation';
+import { parseHomeSearch } from '../features/home/home.validators';
+import { homeStyles } from '../features/home/home.styles';
 
-export async function loadDashboardData() {
-  const [
-    profile,
-    rating,
-    adminCommunities,
-    leagueCommunities,
-    inbox,
-    notificationCount,
-    platformAdmin
-  ] = await Promise.all([
-    getMyPlayerProfile(),
-    loadRatingView(),
-    listMyAdminCommunities().catch(() => []),
-    listMyLeagueCommunities().catch(() => []),
-    listMyCommunityNotifications({ data: { offset: 0, limit: 20 } })
-      .then((items) => ({ items, error: false }))
-      .catch(() => ({ items: null, error: true })),
-    getMyUnreadNotificationCount().catch(() => null),
-    getLevelReviewAccess()
-      .then((access) => access.is_platform_admin)
-      .catch(() => false)
-  ]);
+export async function loadDashboardData(deps: { community?: string } = {}) {
+  const [profile, rating, adminCommunities, leagueCommunities, inbox, home, platformAdmin] =
+    await Promise.all([
+      getMyPlayerProfile(),
+      loadRatingView(),
+      listMyAdminCommunities().catch(() => []),
+      listMyLeagueCommunities().catch(() => []),
+      listMyCommunityNotifications({ data: { offset: 0, limit: 20 } })
+        .then((items) => ({ items, error: false }))
+        .catch(() => ({ items: null, error: true })),
+      // An expired session invalidates the whole private view; any other failure is an explicit
+      // Home error, never an empty Home.
+      getHome({ data: { community_id: deps.community ?? null } }).catch((error: unknown) => {
+        if (error instanceof Error && error.message === 'UNAUTHENTICATED') throw error;
+        return null;
+      }),
+      getLevelReviewAccess()
+        .then((access) => access.is_platform_admin)
+        .catch(() => false)
+    ]);
   const dashboardData = {
     profile,
     rating,
     adminCommunities,
     leagueCommunities,
     inbox,
+    home,
     platformAdmin
   };
-  return { ...dashboardData, notificationCount: notificationCount ?? undefined };
+  return { ...dashboardData, notificationCount: home?.unread ?? undefined };
 }
 
 export const Route = createFileRoute('/_protected/dashboard')({
-  loader: loadDashboardData,
+  // The selected community is navigable context in the URL; membership is re-verified server-side.
+  validateSearch: parseHomeSearch,
+  loaderDeps: ({ search }) => ({ community: search.community }),
+  loader: ({ deps }) => loadDashboardData(deps),
   pendingComponent: LoadingProfile,
   errorComponent: ProfileError,
   component: Dashboard
 });
 
 function Dashboard() {
-  const { t } = useTranslation();
   const router = useRouter();
-  const {
-    profile,
-    rating,
-    adminCommunities,
-    leagueCommunities,
-    inbox,
-    notificationCount,
-    platformAdmin
-  } = Route.useLoaderData();
+  const navigate = useNavigate();
+  const { profile, rating, adminCommunities, leagueCommunities, inbox, home, platformAdmin } =
+    Route.useLoaderData();
   return (
     <>
-      <header {...stylex.props(rootStyles.pageHeader)}>
-        <NotificationBadge count={notificationCount ?? null} />
-        <nav aria-label={t('matches.navigationLabel')}>
-          <Link to="/matches">{t('matches.navigationLabel')}</Link>{' '}
-          <Link to="/matches/create">{t('matches.create')}</Link>{' '}
-          <Link to="/players/$playerId" params={{ playerId: profile.user_id }}>
-            {t('statistics.player.myStatistics')}
-          </Link>
-        </nav>
-      </header>
-      <PlayerProfile
-        initialProfile={profile}
-        initialRating={rating}
-        onRatingReload={() => void router.invalidate()}
+      <HomeDashboard
+        home={home}
+        playerId={profile.user_id}
+        displayName={profile.display_name}
+        onSelect={(community) =>
+          void navigate({ to: '/dashboard', search: { community }, replace: false })
+        }
+        onRetry={() => void router.invalidate()}
       />
+      <div id="home-profile">
+        <PlayerProfile
+          initialProfile={profile}
+          initialRating={rating}
+          onRatingReload={() => void router.invalidate()}
+        />
+      </div>
       <PlatformAdminEntry allowed={platformAdmin} />
-      <CommunityAdminEntries communities={adminCommunities} />
-      <LeagueEntries communities={leagueCommunities} />
-      <CommunityInbox initialItems={inbox.items} loadError={inbox.error} />
-      <InvitationDiscoverability />
+      <div id="home-community">
+        <CommunityAdminEntries communities={adminCommunities} />
+        <LeagueEntries communities={leagueCommunities} />
+        <CommunityInbox initialItems={inbox.items} loadError={inbox.error} />
+        <InvitationDiscoverability />
+      </div>
+      <div {...stylex.props(homeStyles.root)}>
+        <HomeNavigation />
+      </div>
     </>
   );
 }

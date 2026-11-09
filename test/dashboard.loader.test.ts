@@ -7,6 +7,7 @@ const mocks = vi.hoisted(() => ({
   getCommunityAdminDefaults: vi.fn<() => Promise<unknown>>(),
   listMyCommunityNotifications: vi.fn<() => Promise<unknown>>(),
   loadRatingView: vi.fn<() => Promise<unknown>>(),
+  getHome: vi.fn<(request: { data: { community_id: string | null } }) => Promise<unknown>>(),
   getLevelReviewAccess: vi.fn<() => Promise<unknown>>()
 }));
 
@@ -37,10 +38,16 @@ vi.mock('../src/features/player/rating-view', () => ({
   loadRatingView: mocks.loadRatingView
 }));
 vi.mock('../src/features/player/PlayerProfile', () => ({ PlayerProfile: () => null }));
+vi.mock('../src/features/home/home.functions', () => ({ getHome: mocks.getHome }));
 
 import { loadDashboardData } from '../src/routes/_protected.dashboard';
 
+const HOME = Object.freeze({ asOf: '2030-06-01T12:00:00.000Z', unread: 5 });
+const COMMUNITY = '00000000-0000-4000-8000-00000000000a';
+
 beforeEach(() => {
+  mocks.getHome.mockReset();
+  mocks.getHome.mockResolvedValue(HOME);
   mocks.getMyPlayerProfile.mockReset();
   mocks.listMyAdminCommunities.mockReset();
   mocks.listMyLeagueCommunities.mockReset();
@@ -66,6 +73,8 @@ describe('dashboard loader', () => {
       adminCommunities: [],
       leagueCommunities: [],
       inbox: { items: null, error: true },
+      home: HOME,
+      notificationCount: 5,
       platformAdmin: false
     });
     expect(mocks.getMyPlayerProfile).toHaveBeenCalledOnce();
@@ -102,6 +111,52 @@ describe('dashboard loader', () => {
 
     await expect(loadDashboardData()).resolves.toMatchObject({ profile, rating });
     expect(mocks.loadRatingView).toHaveBeenCalledOnce();
+  });
+
+  it('reads Home for the selected community and keeps its unread count', async () => {
+    mocks.getMyPlayerProfile.mockResolvedValue(Object.freeze({}));
+    mocks.listMyAdminCommunities.mockResolvedValue([]);
+    mocks.listMyCommunityNotifications.mockResolvedValue([]);
+
+    await expect(loadDashboardData({ community: COMMUNITY })).resolves.toMatchObject({
+      home: HOME,
+      notificationCount: 5
+    });
+    expect(mocks.getHome).toHaveBeenCalledWith({ data: { community_id: COMMUNITY } });
+    await loadDashboardData();
+    expect(mocks.getHome).toHaveBeenLastCalledWith({ data: { community_id: null } });
+  });
+
+  it('turns a failed Home read into an explicit null Home without hiding the profile', async () => {
+    const profile = Object.freeze({});
+    mocks.getMyPlayerProfile.mockResolvedValue(profile);
+    mocks.listMyAdminCommunities.mockResolvedValue([]);
+    mocks.listMyCommunityNotifications.mockResolvedValue([]);
+    mocks.getHome.mockRejectedValue(new Error('HOME_UNAVAILABLE'));
+
+    const result = await loadDashboardData();
+    expect(result.home).toBeNull();
+    expect(result.profile).toBe(profile);
+    expect(result.notificationCount).toBeUndefined();
+  });
+
+  it('keeps an unknown unread count unknown', async () => {
+    mocks.getMyPlayerProfile.mockResolvedValue(Object.freeze({}));
+    mocks.listMyAdminCommunities.mockResolvedValue([]);
+    mocks.listMyCommunityNotifications.mockResolvedValue([]);
+    mocks.getHome.mockResolvedValue({ ...HOME, unread: null });
+
+    await expect(loadDashboardData()).resolves.toMatchObject({ notificationCount: undefined });
+  });
+
+  it('invalidates the whole private view when Home reports an expired session', async () => {
+    mocks.getMyPlayerProfile.mockResolvedValue(Object.freeze({}));
+    mocks.listMyAdminCommunities.mockResolvedValue([]);
+    mocks.listMyCommunityNotifications.mockResolvedValue([]);
+    const expired = new Error('UNAUTHENTICATED');
+    mocks.getHome.mockRejectedValue(expired);
+
+    await expect(loadDashboardData()).rejects.toBe(expired);
   });
 
   it('still surfaces profile failures', async () => {
