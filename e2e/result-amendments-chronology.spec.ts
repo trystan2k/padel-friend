@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { waitForHydratedPage } from './auth-helpers';
+import { acquireRatingSuite, releaseRatingSuite } from './rating-suite-lock';
 import { repairNow } from './result-amendments-fixtures';
 import {
   chronologyFixtures,
@@ -36,7 +37,8 @@ const history = copies.en.leagues.history;
 
 test.describe.configure({ mode: 'serial' });
 test.beforeAll(async ({ browser }) => {
-  test.setTimeout(420_000);
+  test.setTimeout(1_500_000);
+  await acquireRatingSuite();
   f = await chronologyFixtures(browser);
   await f.closeLeague();
 });
@@ -44,6 +46,8 @@ test.afterAll(async () => {
   test.setTimeout(240_000);
   await f?.cleanup();
 });
+// Declared after the cleanup hook so the suite lock is released last.
+test.afterAll(releaseRatingSuite);
 test.beforeEach(() => test.setTimeout(240_000));
 
 const counts = (proposalId: string, eventId: string) =>

@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { waitForHydratedPage } from './auth-helpers';
+import { acquireRatingSuite, releaseRatingSuite } from './rating-suite-lock';
 import { sql } from './matches-management-fixtures';
 import { amendmentFixtures, copies, repairNow } from './result-amendments-fixtures';
 
@@ -9,13 +10,16 @@ const c = copies.en.matches.corrections;
 const r = copies.en.matches.results;
 
 test.beforeAll(async ({ browser }) => {
-  test.setTimeout(240_000);
+  test.setTimeout(1_500_000);
+  await acquireRatingSuite();
   f = await amendmentFixtures(browser);
 });
 test.afterAll(async () => {
   test.setTimeout(180_000);
   await f?.cleanup();
 });
+// Declared after the cleanup hook so the suite lock is released last.
+test.afterAll(releaseRatingSuite);
 test.beforeEach(() => test.setTimeout(180_000));
 
 test('participant requests correction with keyboard, validates reason, reviews candidate and sees pending publication', async ({

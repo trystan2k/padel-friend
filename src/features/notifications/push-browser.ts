@@ -14,6 +14,7 @@ import {
 import type { PushLocale } from './push.validators';
 
 const REGISTRATION_TIMEOUT_MS = 5000;
+const LOGOUT_CLEANUP_TIMEOUT_MS = 2000;
 
 export function toPushLocale(language: string | undefined): PushLocale {
   if (language?.toLowerCase().startsWith('pt')) return 'pt-BR';
@@ -42,6 +43,13 @@ async function getRegistration(): Promise<PushRegistrationLike | null> {
   }
 }
 
+// Logout only needs a worker that already exists; waiting for one that may never come would stall sign-out.
+async function getExistingRegistration(): Promise<PushRegistrationLike | null> {
+  if (!('serviceWorker' in navigator)) return null;
+  const registration = await navigator.serviceWorker.getRegistration();
+  return registration?.active ? registration : null;
+}
+
 export function createBrowserPushDeps(getLanguage: () => string | undefined): PushDeps {
   return {
     api,
@@ -57,10 +65,13 @@ export function createBrowserPushDeps(getLanguage: () => string | undefined): Pu
 
 // Called before sign-out while the session is still valid. Never blocks sign-out for long.
 export async function cleanupPushDeviceForLogout(): Promise<void> {
-  const deps = createBrowserPushDeps(() => undefined);
+  const deps = {
+    ...createBrowserPushDeps(() => undefined),
+    getRegistration: getExistingRegistration
+  };
   let timer: ReturnType<typeof setTimeout> | undefined;
   const limit = new Promise<void>((resolve) => {
-    timer = setTimeout(resolve, REGISTRATION_TIMEOUT_MS);
+    timer = setTimeout(resolve, LOGOUT_CLEANUP_TIMEOUT_MS);
   });
   try {
     await Promise.race([cleanupPushDevice(deps), limit]);
