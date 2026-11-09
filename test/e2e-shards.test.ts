@@ -108,7 +108,7 @@ describe('E2E functional lanes', () => {
     const nonSerial = specs.filter((spec) => !SERIAL_SPECS.includes(spec));
     expect(laneArgs('visual', specs)).toEqual([...nonSerial, '--grep', VISUAL_GREP]);
     expect(laneArgs('serial', specs)).toEqual(SERIAL_SPECS);
-    expect(SERIAL_SPECS).toHaveLength(7);
+    expect(SERIAL_SPECS).toHaveLength(8);
     expect(SERIAL_SPECS).not.toContain('e2e/level-reviews-visual.spec.ts');
     expect(gateLanes().serial).toEqual(SERIAL_SPECS);
     expect(() => laneArgs('functional-9', specs)).toThrow('Unknown E2E lane');

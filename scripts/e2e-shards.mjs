@@ -35,7 +35,6 @@ export const SPEC_WEIGHTS = {
   'e2e/offline-mutations.spec.ts': 8,
   'e2e/push-preferences.spec.ts': 8,
   'e2e/pwa.spec.ts': 13,
-  'e2e/result-amendments-chronology.spec.ts': 21,
   'e2e/result-amendments.spec.ts': 52
 };
 
@@ -56,7 +55,9 @@ export function listSpecs(dir = 'e2e') {
 // running):
 // - result-repairs: the result-repair retry takes the global repair lock and answers "busy" while any
 //   other worker finalizes or repairs results.
-// - statistics, level-reviews, level-reviews-admin, level-reviews-player: they read and assert GLOBAL
+// - statistics, level-reviews, level-reviews-admin, level-reviews-player, result-amendments-chronology
+//   (its fixtures reuse the level-reviews fixtures and fail with LEVEL_REVIEW_STALE_RATING when a
+//   concurrent test bumps the rating revision; seen in CI and local full sweeps): they read and assert GLOBAL
 //   rating-revision and statistics-projection state, which every concurrent ranked/result test bumps
 //   (observed in complete-check gate runs 1-5, Nov 2026: statistics.spec.ts:177 failed with
 //   projection 404s in all five, level-reviews-admin.spec.ts:43 in two with the approval dialog never
@@ -79,6 +80,7 @@ export const SERIAL_SPECS = [
   'e2e/level-reviews-player.spec.ts',
   'e2e/level-reviews.spec.ts',
   'e2e/notifications.spec.ts',
+  'e2e/result-amendments-chronology.spec.ts',
   'e2e/result-corrections-visual.spec.ts',
   'e2e/result-repairs.spec.ts',
   'e2e/statistics.spec.ts'

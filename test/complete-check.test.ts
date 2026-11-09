@@ -254,12 +254,13 @@ describe('complete-check stage selection', () => {
     const [main = [], serial = []] = playwright.map((command) => command.split(' ').slice(3));
     expect(main).toContain('e2e/home.spec.ts');
     for (const spec of SERIAL_SPECS) expect(main).not.toContain(spec);
-    // The serial invocation is the 7 serial files on a single worker.
+    // The serial invocation is the 8 serial files on a single worker.
     expect(serial).toEqual([
       'e2e/level-reviews-admin.spec.ts',
       'e2e/level-reviews-player.spec.ts',
       'e2e/level-reviews.spec.ts',
       'e2e/notifications.spec.ts',
+      'e2e/result-amendments-chronology.spec.ts',
       'e2e/result-corrections-visual.spec.ts',
       'e2e/result-repairs.spec.ts',
       'e2e/statistics.spec.ts',
