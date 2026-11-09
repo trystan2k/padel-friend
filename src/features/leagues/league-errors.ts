@@ -1,3 +1,4 @@
+import { isTransportFailure } from '../../lib/connectivity';
 import type { LeagueErrorCode } from './league-contracts';
 
 const DATABASE_ERRORS: readonly LeagueErrorCode[] = [
@@ -38,6 +39,7 @@ export function leagueErrorFromDatabase(error: { message?: string }): LeagueErro
 
 /** Client-side: server function failures arrive as Error(message=code). */
 export function leagueErrorCode(error: unknown): LeagueErrorCode {
+  if (isTransportFailure(error)) return 'LEAGUE_UNCONFIRMED';
   if (!(error instanceof Error)) return 'LEAGUE_UNAVAILABLE';
   const matched = [...DATABASE_ERRORS, 'INVALID_LEAGUE_INPUT' as const].find(
     (code) => code === error.message

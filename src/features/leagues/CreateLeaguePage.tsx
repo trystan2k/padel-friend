@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { rootStyles } from '../../root.styles';
 import { SurfaceCard } from '../../components/ui/SurfaceCard';
 import type { LeagueListResult } from './league-contracts';
+import { isOffline } from '../../lib/connectivity';
 import { leagueErrorCode } from './league-errors';
 import { defaultLeagueFormValues, type LeagueFormInput } from './league-form';
 import { createLeague } from './league.functions';
@@ -20,6 +21,7 @@ export function CreateLeaguePage({ data, today }: { data: LeagueListResult; toda
   const attempt = useRef<{ fingerprint: string; requestId: string } | null>(null);
 
   const submit = async (input: LeagueFormInput) => {
+    if (isOffline()) return 'LEAGUE_OFFLINE';
     const fingerprint = JSON.stringify(input);
     if (attempt.current?.fingerprint !== fingerprint)
       attempt.current = { fingerprint, requestId: crypto.randomUUID() };

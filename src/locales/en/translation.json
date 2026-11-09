@@ -1000,6 +1000,8 @@
           "busy": "Another update is running. Try again shortly."
         },
         "retryErrors": {
+          "offline": "You are offline. Nothing was sent. Reconnect and retry.",
+          "unconfirmed": "We couldn't confirm the retry. The status was refreshed; check it before retrying.",
           "unauthenticated": "Sign in again to retry.",
           "not_found": "This update is not available to you.",
           "forbidden": "You are not allowed to retry this update.",
@@ -2189,6 +2191,8 @@
       "LEAGUE_STANDINGS_VERSION_INVALID": "That standings version isn't valid.",
       "LEAGUE_STANDINGS_VERSION_NOT_FOUND": "That standings version doesn't exist.",
       "LEAGUE_UNAVAILABLE": "Something went wrong. Try again.",
+      "LEAGUE_OFFLINE": "You are offline. Nothing was sent. Reconnect and try again.",
+      "LEAGUE_UNCONFIRMED": "We couldn't confirm this change. We reloaded the League; check it before trying again.",
       "INVALID_LEAGUE_INPUT": "Those details aren't valid.",
       "INVALID_LEAGUE_RESPONSE": "Something went wrong. Try again."
     }

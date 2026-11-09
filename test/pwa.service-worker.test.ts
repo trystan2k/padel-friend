@@ -4,7 +4,9 @@ import {
   createNavigationHandler,
   isAuthCallbackNavigation,
   isPrecacheCandidate,
+  isPrivatePath,
   isSkipWaitingMessage,
+  purgePrivateCacheEntries,
   removeLegacyCaches
 } from '../src/features/pwa/sw-policy';
 
@@ -44,6 +46,15 @@ describe('isPrecacheCandidate', () => {
   });
 });
 
+describe('private endpoints with asset-like suffixes', () => {
+  it.each(['/api/export.js', '/_serverFn/abc.css', '/auth/v1/logo.png', '/auth/callback'])(
+    'is never a precache candidate: %s',
+    (path) => {
+      expect(isPrecacheCandidate(request(origin + path, { mode: 'cors' }), origin)).toBe(false);
+    }
+  );
+});
+
 describe('removeLegacyCaches', () => {
   it('deletes only the legacy generic runtime cache', async () => {
     const names = ['static-assets', 'workbox-precache-v2-' + origin + '/', 'unrelated-app'];
@@ -56,6 +67,50 @@ describe('removeLegacyCaches', () => {
       }
     });
     expect(deleted).toEqual(['static-assets']);
+  });
+});
+
+describe('purgePrivateCacheEntries', () => {
+  const entry = (path: string) => new Request(origin + path);
+
+  function fakeStorage(contents: Record<string, string[]>) {
+    const deleted: string[] = [];
+    return {
+      deleted,
+      storage: {
+        keys: () => Promise.resolve(Object.keys(contents)),
+        open: (name: string) =>
+          Promise.resolve({
+            keys: () => Promise.resolve((contents[name] ?? []).map(entry)),
+            delete: (entryRequest: RequestInfo | URL) => {
+              deleted.push(name + ':' + new URL(new Request(entryRequest).url).pathname);
+              return Promise.resolve(true);
+            }
+          })
+      }
+    };
+  }
+
+  it('removes private entries from owned precaches and keeps public assets and foreign caches', async () => {
+    const { storage, deleted } = fakeStorage({
+      'workbox-precache-v2-http://x/': [
+        '/assets/app.js',
+        '/_serverFn/old',
+        '/api/me.js',
+        '/offline.html'
+      ],
+      'unrelated-app': ['/api/keep']
+    });
+    await purgePrivateCacheEntries(storage);
+    expect(deleted).toEqual([
+      'workbox-precache-v2-http://x/:/_serverFn/old',
+      'workbox-precache-v2-http://x/:/api/me.js'
+    ]);
+  });
+
+  it('matches the private path prefixes only', () => {
+    expect(['/api/x', '/_serverFn/y', '/auth/callback'].every(isPrivatePath)).toBe(true);
+    expect(['/assets/auth.js', '/offline.html', '/apiary.js'].some(isPrivatePath)).toBe(false);
   });
 });
 

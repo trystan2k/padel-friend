@@ -1000,6 +1000,8 @@
           "busy": "Hay otra actualización en curso. Inténtalo de nuevo en unos instantes."
         },
         "retryErrors": {
+          "offline": "Estás sin conexión. No se envió nada. Reconéctate e inténtalo de nuevo.",
+          "unconfirmed": "No pudimos confirmar el reintento. El estado se actualizó; revísalo antes de reintentar.",
           "unauthenticated": "Inicia sesión de nuevo para reintentar.",
           "not_found": "Esta actualización no está disponible para ti.",
           "forbidden": "No puedes reintentar esta actualización.",
@@ -2189,6 +2191,8 @@
       "LEAGUE_STANDINGS_VERSION_INVALID": "Esa versión de la clasificación no es válida.",
       "LEAGUE_STANDINGS_VERSION_NOT_FOUND": "Esa versión de la clasificación no existe.",
       "LEAGUE_UNAVAILABLE": "Algo salió mal. Inténtalo de nuevo.",
+      "LEAGUE_OFFLINE": "Estás sin conexión. No se envió nada. Reconéctate e inténtalo de nuevo.",
+      "LEAGUE_UNCONFIRMED": "No pudimos confirmar este cambio. Recargamos la Liga; revísala antes de intentarlo de nuevo.",
       "INVALID_LEAGUE_INPUT": "Esos datos no son válidos.",
       "INVALID_LEAGUE_RESPONSE": "Algo salió mal. Inténtalo de nuevo."
     }

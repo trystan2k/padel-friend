@@ -18,7 +18,22 @@ describe('Worker entry', () => {
     mocks.sweep.mockReset().mockResolvedValue(undefined);
     mocks.push.mockReset().mockResolvedValue(undefined);
   });
-  it('keeps TanStack Start fetch handler', () => expect(worker.fetch).toBe(mocks.fetch));
+  it('delegates fetch to the TanStack Start handler', async () => {
+    mocks.fetch.mockResolvedValue(new Response('ok'));
+    const response = await worker.fetch(new Request('http://localhost/assets/app.js'));
+    expect(mocks.fetch).toHaveBeenCalledTimes(1);
+    expect(await response.text()).toBe('ok');
+  });
+  it('forces private/no-store on SSR documents without touching public assets', async () => {
+    mocks.fetch.mockResolvedValueOnce(
+      new Response('<html></html>', { headers: { 'content-type': 'text/html' } })
+    );
+    const page = await worker.fetch(new Request('http://localhost/dashboard'));
+    expect(page.headers.get('cache-control')).toBe('private, no-store');
+    const asset = new Response('js', { headers: { 'cache-control': 'public, immutable' } });
+    mocks.fetch.mockResolvedValueOnce(asset);
+    expect(await worker.fetch(new Request('http://localhost/assets/a.js'))).toBe(asset);
+  });
   it('runs both independent sweeps inside waitUntil', async () => {
     const waitUntil = vi.fn<(promise: Promise<unknown>) => void>();
     worker.scheduled({}, {}, { waitUntil });
