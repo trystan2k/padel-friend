@@ -3,6 +3,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { decideMatchRegistration, submitMatchRegistration } from './match-registration.functions';
 import type { MatchRegistrationErrorCode, MyMatchRegistration } from './match-registration-model';
 import type { MatchRegistrationDecision } from './match-registration.validators';
+import { useRouteRefresh } from '../../lib/use-route-refresh';
 import { useUpdateGuard } from '../pwa/update-guard';
 
 // PAF-5.5 mutation controller for the registration surface.
@@ -10,10 +11,9 @@ import { useUpdateGuard } from '../pwa/update-guard';
 // It owns pending/error/offline/retry state, local double-submit protection
 // (which still trusts the DB constraints: every conflict re-reads authoritative
 // state), router invalidation after success or conflict, stale-feedback clearing
-// when the event changes, focus/return refresh and the cutoff-boundary refresh.
-// It deliberately does not do optimistic Playing assignment, realtime
-// subscription or global caching; the later realtime unit adds those at the
-// feature boundary.
+// when the event changes, the shared authoritative refresh and the cutoff-boundary refresh.
+// It deliberately does not do optimistic Playing assignment, WebSocket subscriptions or
+// global caching: convergence is the authorized re-read in use-authoritative-refresh.
 
 /** Result feedback surfaced after the caller's own submit action. */
 export type MatchRegistrationFeedback =
@@ -141,27 +141,9 @@ export function useMatchRegistration({
     };
   }, []);
 
-  // Refresh on return/focus/visibility, matching the repo's notification badge
-  // pattern; debounced so a burst of focus events collapses into one reload.
-  useEffect(() => {
-    let timer: ReturnType<typeof setTimeout> | null = null;
-    const schedule = () => {
-      if (timer) clearTimeout(timer);
-      timer = setTimeout(() => void invalidate(), 30);
-    };
-    const onVisibility = () => {
-      if (document.visibilityState === 'visible') schedule();
-    };
-    window.addEventListener('focus', schedule);
-    window.addEventListener('online', schedule);
-    document.addEventListener('visibilitychange', onVisibility);
-    return () => {
-      if (timer) clearTimeout(timer);
-      window.removeEventListener('focus', schedule);
-      window.removeEventListener('online', schedule);
-      document.removeEventListener('visibilitychange', onVisibility);
-    };
-  }, [invalidate]);
+  // Shared authoritative refresh: focus/online/visibility return plus a visible-online cadence, so
+  // roster, groups, invitations and Reserve promotion converge without a manual reload.
+  useRouteRefresh({ scope: `registration:${eventId}` });
 
   // Cutoff-boundary refresh: an open screen revalidates with the server exactly
   // at the cutoff so the closed state is never decided by a stale client clock.

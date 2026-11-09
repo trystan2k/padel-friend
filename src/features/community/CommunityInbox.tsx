@@ -36,6 +36,17 @@ export function CommunityInbox({
   const generation = useRef(0);
   const loadingPage = useRef(false);
   const [pending, setPending] = useState<string[]>([]);
+  const [seed, setSeed] = useState({ items: initialItems, loadError });
+  // A refreshed loader seed replaces the first page; a paginated or mid-mutation list keeps its
+  // own state until the next quiet seed.
+  if (seed.items !== initialItems || seed.loadError !== loadError) {
+    setSeed({ items: initialItems, loadError });
+    if (page === 1 && pending.length === 0) {
+      setItems(initialItems ?? []);
+      setLoadFailed(loadError);
+      setHasMore((initialItems?.length ?? 0) === 20);
+    }
+  }
   async function markRead(id: string) {
     if (pending.includes(id)) return;
     setPending((current) => [...current, id]);

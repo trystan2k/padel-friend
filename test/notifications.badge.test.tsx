@@ -157,3 +157,46 @@ describe('notification badge', () => {
     expect(mocks.count).not.toHaveBeenCalled();
   });
 });
+
+describe('notification badge convergence', () => {
+  beforeEach(() => vi.useFakeTimers());
+  afterEach(() => vi.useRealTimers());
+
+  it('follows the account-wide unread count on the shared cadence without a reload', async () => {
+    mocks.count.mockResolvedValueOnce(2).mockResolvedValueOnce(5);
+    render(<NotificationBadge count={1} />);
+
+    await act(async () => vi.advanceTimersByTimeAsync(3_000));
+    expect(
+      screen.getByRole('link', { name: 'Notifications · 2 unread notifications' })
+    ).toBeTruthy();
+    await act(async () => vi.advanceTimersByTimeAsync(3_000));
+    expect(
+      screen.getByRole('link', { name: 'Notifications · 5 unread notifications' })
+    ).toBeTruthy();
+  });
+
+  it('keeps the last known count while reads fail and recovers afterwards', async () => {
+    mocks.count.mockRejectedValueOnce(new Error('network')).mockResolvedValue(4);
+    render(<NotificationBadge count={3} />);
+
+    await act(async () => vi.advanceTimersByTimeAsync(3_000));
+    expect(
+      screen.getByRole('link', { name: 'Notifications · 3 unread notifications' })
+    ).toBeTruthy();
+    await act(async () => vi.advanceTimersByTimeAsync(6_000));
+    expect(
+      screen.getByRole('link', { name: 'Notifications · 4 unread notifications' })
+    ).toBeTruthy();
+  });
+
+  it('clears the private count and stops polling once the session expired', async () => {
+    mocks.count.mockRejectedValue(new Error('UNAUTHENTICATED'));
+    render(<NotificationBadge count={3} />);
+
+    await act(async () => vi.advanceTimersByTimeAsync(3_000));
+    expect(screen.getByRole('link', { name: 'Notifications' })).toBeTruthy();
+    await act(async () => vi.advanceTimersByTimeAsync(60_000));
+    expect(mocks.count).toHaveBeenCalledTimes(1);
+  });
+});

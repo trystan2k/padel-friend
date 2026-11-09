@@ -33,6 +33,14 @@ export type MatchResultReviewFeedback =
     }
   | { kind: 'deadline'; copy: string };
 
+const REREAD_CODES: ReadonlySet<string> = new Set([
+  'review_forbidden',
+  'forbidden',
+  'cancelled',
+  'not_found',
+  'active_proposal'
+]);
+
 function isOnline() {
   return typeof navigator === 'undefined' || navigator.onLine;
 }
@@ -150,6 +158,8 @@ export function useMatchResultReview({
           return false;
         }
         if (response.code !== 'unavailable') requestRef.current = null;
+        // Entitlement/state errors mean the screen no longer matches the server: re-read, never retry.
+        if (REREAD_CODES.has(response.code)) await refresh();
         setFeedback({
           kind: 'error',
           copy:

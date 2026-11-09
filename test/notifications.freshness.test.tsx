@@ -296,4 +296,50 @@ describe('notification freshness', () => {
     await new Promise((resolve) => setTimeout(resolve, 50));
     expect(mocks.list).not.toHaveBeenCalled();
   });
+
+  describe('background convergence', () => {
+    beforeEach(() => {
+      vi.useFakeTimers();
+      makeVisible();
+    });
+    afterEach(() => vi.useRealTimers());
+
+    it('merges new rows and the unread count on the cadence without a loading flash', async () => {
+      const newerId = '00000000-0000-4000-8000-000000000003';
+      const newer = '2026-10-15T12:00:05.000Z';
+      mocks.list.mockResolvedValue(page([notification(newerId, newer), notification(unreadId)], 2));
+      const { result } = renderHook(() => useNotifications(page([notification(unreadId)], 1)));
+
+      await act(async () => vi.advanceTimersByTimeAsync(3_000));
+
+      expect(mocks.list).toHaveBeenCalledTimes(1);
+      expect(result.current.rows.map((row) => row.id)).toEqual([newerId, unreadId]);
+      expect(result.current.unreadCount).toBe(2);
+      expect(result.current.loading).toBe(false);
+      expect(result.current.error).toBe(false);
+    });
+
+    it('keeps already loaded older pages and stays silent when a background read fails', async () => {
+      const olderId = '00000000-0000-4000-8000-000000000004';
+      const older = '2026-10-14T12:00:00.000Z';
+      const initial = {
+        ...page([notification(unreadId), notification(olderId, older)], 1),
+        nextCursor: { sequence: 9, createdAt: cutoff, id: unreadId }
+      };
+      mocks.list.mockRejectedValueOnce(new Error('network')).mockResolvedValue({
+        ...page([notification(unreadId, cutoff, cutoff)], 0),
+        nextCursor: { sequence: 9, createdAt: cutoff, id: unreadId }
+      });
+      const { result } = renderHook(() => useNotifications(initial));
+
+      await act(async () => vi.advanceTimersByTimeAsync(3_000));
+      expect(result.current.error).toBe(false);
+      expect(result.current.rows).toHaveLength(2);
+
+      await act(async () => vi.advanceTimersByTimeAsync(6_000));
+      expect(result.current.rows.map((row) => row.id)).toEqual([unreadId, olderId]);
+      expect(result.current.rows[0]?.read_at).toBe(cutoff);
+      expect(result.current.unreadCount).toBe(0);
+    });
+  });
 });

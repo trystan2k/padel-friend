@@ -97,7 +97,8 @@ export function LeagueDetailPage({
   useRefreshWhenVisible(
     () => router.invalidate(),
     league.status === 'active',
-    league.end_mode === 'fixed_date' ? league.end_at : null
+    league.end_mode === 'fixed_date' ? league.end_at : null,
+    `league:${league.id}`
   );
   const reload = () => {
     setReloading(true);

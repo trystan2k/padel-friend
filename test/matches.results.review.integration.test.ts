@@ -401,4 +401,57 @@ describe('atomic result review commands', { timeout: 120000 }, () => {
     });
     expect(await evidence(current.eventId)).toMatchObject({ reviews: 0, review_audits: 0 });
   });
+
+  it('refuses a stale approval of a superseded proposal without touching the current one', async () => {
+    const stale = await proposal();
+    const rejected = await f.rpc(f.players[1]!, 'review_match_event_result', {
+      p_proposal_id: stale.proposalId,
+      p_expected_version: 1,
+      p_decision: 'reject',
+      p_reason_code: 'SCORE_INCORRECT',
+      p_reason_note: null,
+      p_request_id: crypto.randomUUID()
+    });
+    expect(rejected.data).toMatchObject({ status: 'disputed' });
+    const resubmitted = await f.submit(stale.eventId);
+    expect(resubmitted.error).toBeNull();
+    const currentId = String(asRecord(resubmitted.data).proposal_id);
+    expect(currentId).not.toBe(stale.proposalId);
+
+    expect((await review(f.players[2]!, stale.proposalId)).error?.message).toBe(
+      'MATCH_RESULT_REVIEW_CONFLICT'
+    );
+    expect(
+      await sqlRows(
+        `select count(*)::int as reviews from public.match_event_result_reviews where proposal_id='${currentId}'`
+      )
+    ).toEqual([{ reviews: 0 }]);
+    expect(await evidence(stale.eventId)).toMatchObject({ reviews: 1, confirmations: 0 });
+    // The current proposal stays reviewable by its own identity.
+    expect((await review(f.players[2]!, currentId)).error).toBeNull();
+  });
+
+  it('settles a concurrent approve and reject to one review effect and one typed conflict', async () => {
+    const current = await proposal();
+    const [approve, reject] = await Promise.all([
+      review(f.players[2]!, current.proposalId),
+      f.rpc(f.players[3]!, 'review_match_event_result', {
+        p_proposal_id: current.proposalId,
+        p_expected_version: 1,
+        p_decision: 'reject',
+        p_reason_code: 'SCORE_INCORRECT',
+        p_reason_note: null,
+        p_request_id: crypto.randomUUID()
+      })
+    ]);
+    const failures = [approve, reject].filter(({ error }) => error !== null);
+    // Approval is not terminal for this submitter's team, so both may land; a terminal winner
+    // makes the loser a typed conflict. Either way no second terminal effect exists.
+    expect(failures.every(({ error }) => error?.message === 'MATCH_RESULT_REVIEW_CONFLICT')).toBe(
+      true
+    );
+    const state = await evidence(current.eventId);
+    expect(state.confirmations).toBeLessThanOrEqual(1);
+    expect(state.confirmation_audits).toBe(state.confirmations);
+  });
 });

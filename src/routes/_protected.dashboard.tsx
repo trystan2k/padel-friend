@@ -14,6 +14,7 @@ import { listMyCommunityNotifications } from '../features/community/community-re
 import { CommunityInbox } from '../features/community/CommunityInbox';
 import { ui } from '../features/player/player-ui.styles';
 import { InvitationDiscoverability } from '../features/community/InvitationDiscoverability';
+import { useRouteRefresh } from '../lib/use-route-refresh';
 import { getHome } from '../features/home/home.functions';
 import { HomeDashboard } from '../features/home/HomeDashboard';
 import { HomeNavigation } from '../features/home/HomeNavigation';
@@ -67,6 +68,9 @@ function Dashboard() {
   const navigate = useNavigate();
   const { profile, rating, adminCommunities, leagueCommunities, inbox, home, platformAdmin } =
     Route.useLoaderData();
+  // Home converges with other clients through the authorized loaders; the scope pins the refresh
+  // to this account and selected community so a switch never reuses another view's loop.
+  useRouteRefresh({ scope: `home:${profile.user_id}:${home?.selection.selectedId ?? 'none'}` });
   return (
     <>
       <HomeDashboard

@@ -3,6 +3,7 @@ import { Link } from '@tanstack/react-router';
 import { useEffect, useEffectEvent, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { StatusBadge } from '../../components/ui/StatusBadge';
+import { useAuthoritativeRefresh } from '../../lib/use-authoritative-refresh';
 import { notificationBadge } from './notification-model';
 import { getMyUnreadNotificationCount } from './notifications.functions';
 import { styles } from './notifications.styles';
@@ -13,61 +14,23 @@ export function NotificationBadge({ count }: { count: number | null }) {
   const [announcement, setAnnouncement] = useState('');
   const [refreshResult, setRefreshResult] = useState<{
     initialCount: number | null;
-    count: number;
+    count: number | null;
   } | null>(null);
   const liveCount = refreshResult?.initialCount === count ? refreshResult.count : count;
   const updateCount = useEffectEvent((next: number) => {
     setRefreshResult({ initialCount: count, count: next });
   });
 
-  useEffect(() => {
-    let mounted = true;
-    let pending = false;
-    let trailing = false;
-    let timer: ReturnType<typeof setTimeout> | undefined;
-
-    const refresh = async () => {
-      if (pending) {
-        trailing = true;
-        return;
-      }
-      pending = true;
-      try {
-        const next = await getMyUnreadNotificationCount();
-        if (mounted) updateCount(next);
-      } catch {
-        // Keep unknown counts unknown; notification failures never affect the dashboard profile.
-      } finally {
-        pending = false;
-        if (trailing && mounted) {
-          trailing = false;
-          void refresh();
-        }
-      }
-    };
-
-    const schedule = () => {
-      if (timer) clearTimeout(timer);
-      timer = setTimeout(() => {
-        timer = undefined;
-        void refresh();
-      }, 30);
-    };
-    const onVisible = () => {
-      if (document.visibilityState === 'visible') schedule();
-    };
-
-    window.addEventListener('focus', schedule);
-    window.addEventListener('online', schedule);
-    document.addEventListener('visibilitychange', onVisible);
-    return () => {
-      mounted = false;
-      if (timer) clearTimeout(timer);
-      window.removeEventListener('focus', schedule);
-      window.removeEventListener('online', schedule);
-      document.removeEventListener('visibilitychange', onVisible);
-    };
-  }, []);
+  // Account-wide unread count: re-read on the shared authoritative cadence. A failed read keeps
+  // the last known count (unknown stays unknown); an expired session clears it instead of retrying.
+  useAuthoritativeRefresh({
+    scope: 'notification-badge',
+    refresh: async ({ isCurrent }) => {
+      const next = await getMyUnreadNotificationCount();
+      if (isCurrent()) updateCount(next);
+    },
+    onFatal: () => setRefreshResult({ initialCount: count, count: null })
+  });
 
   useEffect(() => {
     if (previous.current !== liveCount && liveCount !== null) {
