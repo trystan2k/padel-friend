@@ -93,6 +93,7 @@ export const styles = stylex.create({
   },
   filterButton: {
     minHeight: '44px',
+    minWidth: 'calc(var(--space-40) + var(--space-4))',
     paddingInline: 'var(--space-4)',
     borderWidth: 0,
     borderStyle: 'none',

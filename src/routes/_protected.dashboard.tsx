@@ -72,11 +72,12 @@ function Dashboard() {
   // to this account and selected community so a switch never reuses another view's loop.
   useRouteRefresh({ scope: `home:${profile.user_id}:${home?.selection.selectedId ?? 'none'}` });
   return (
-    <>
+    <main>
       <HomeDashboard
         home={home}
         playerId={profile.user_id}
         displayName={profile.display_name}
+        level={(rating.status === 'ok' ? rating.summary.summary : null) ?? profile}
         onSelect={(community) =>
           void navigate({ to: '/dashboard', search: { community }, replace: false })
         }
@@ -84,6 +85,7 @@ function Dashboard() {
       />
       <div id="home-profile">
         <PlayerProfile
+          embedded
           initialProfile={profile}
           initialRating={rating}
           onRatingReload={() => void router.invalidate()}
@@ -99,7 +101,7 @@ function Dashboard() {
       <div {...stylex.props(homeStyles.root)}>
         <HomeNavigation />
       </div>
-    </>
+    </main>
   );
 }
 

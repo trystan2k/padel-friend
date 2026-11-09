@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
 import { readFileSync } from 'node:fs';
 import { waitForHydratedPage } from './auth-helpers';
-import { copies, fixtures, type Actor } from './matches-management-fixtures';
+import { copies, fixtures, sql, type Actor } from './matches-management-fixtures';
 
 const BASE_URL = 'http://127.0.0.1:4173';
 
@@ -54,7 +54,7 @@ test('OAuth callback rejects missing or denied codes without redirecting off-sit
     const response = await request.get(path, { maxRedirects: 0 });
     expect(response.status()).toBe(303);
     expect(response.headers()['location']).toBe(`${BASE_URL}/login?authError=1`);
-    expect(response.headers()['cache-control']).toBe('no-store');
+    expect(response.headers()['cache-control']).toBe('private, no-store');
   }
 
   await page.goto('/login?authError=1');
@@ -173,6 +173,16 @@ test.describe('community Home', () => {
   });
   test.afterAll(async () => {
     test.setTimeout(120_000);
+    if (second)
+      await sql(`do $$ begin
+        lock table public.communities in share row exclusive mode;
+        alter table public.community_members disable trigger community_member_guard;
+        delete from public.notifications where community_id='${second}';
+        delete from public.community_members where community_id='${second}';
+        delete from public.community_audit_log where community_id='${second}';
+        delete from public.communities where id='${second}';
+        alter table public.community_members enable trigger community_member_guard;
+      end $$`);
     await f?.cleanup();
   });
   test.beforeEach(() => {
@@ -184,7 +194,11 @@ test.describe('community Home', () => {
     const switcher = page.getByRole('combobox', { name: new RegExp(home.switcherLabel) });
     await expect(switcher).toContainText('Home Alpha Club');
     const next = page.getByRole('region', { name: home.nextMatch.title });
-    await expect(next.getByRole('link', { name: 'Management court' })).toBeVisible();
+    await expect(
+      next
+        .getByRole('heading', { level: 4 })
+        .getByRole('link', { name: 'Management court', exact: true })
+    ).toBeVisible();
 
     await switcher.focus();
     await page.keyboard.press('Enter');
@@ -222,7 +236,9 @@ test.describe('community Home', () => {
     await waitForHydratedPage(page);
     await expect(page.getByRole('link', { name: home.noCommunity.action })).toBeVisible();
     await expect(page.getByText('Home Alpha Club')).toHaveCount(0);
-    await expect(page.getByRole('combobox')).toHaveCount(0);
+    await expect(page.getByRole('combobox', { name: new RegExp(home.switcherLabel) })).toHaveCount(
+      0
+    );
   });
 
   test('keeps profile, community and notification entries and gives every nav item a target', async () => {

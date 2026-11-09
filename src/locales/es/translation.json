@@ -1,4 +1,8 @@
 {
+  "accessibility": {
+    "skipToContent": "Saltar al contenido principal",
+    "stale": "Las actualizaciones están demoradas. La información mostrada puede estar desactualizada. Las actualizaciones se reanudarán automáticamente."
+  },
   "languageNames": {
     "en": "English",
     "pt-BR": "Português (Brasil)",

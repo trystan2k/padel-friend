@@ -160,9 +160,9 @@ afterEach(cleanup);
 describe('Home dashboard', () => {
   it('renders every section with labelled landmarks and account-wide unread state', () => {
     view(home());
-    expect(screen.getByRole('heading', { level: 1, name: 'Home' })).toBeTruthy();
-    expect(screen.getByText('Hello, Thiago')).toBeTruthy();
-    expect(screen.queryByRole('heading', { name: /Thiago/ })).toBeNull();
+    expect(screen.getByRole('heading', { level: 1, name: 'Hello, Thiago' })).toBeTruthy();
+    expect(document.querySelector('time')?.getAttribute('datetime')).toBe(home().asOf);
+    expect(document.querySelector('time')?.textContent).toBe('Saturday, June 1, 2030');
     for (const name of ['Needs your attention', 'Next match', 'Ranking', 'Recent activity'])
       expect(screen.getByRole('region', { name })).toBeTruthy();
     expect(screen.getByTestId('badge').textContent).toBe('3');
@@ -171,6 +171,13 @@ describe('Home dashboard', () => {
     // 01:30Z on 2 June is still the evening of 1 June in the match's own timezone.
     expect(screen.getAllByText(/Jun 1, 2030/).length).toBeGreaterThan(0);
     expect(screen.getByText('2 results awaiting review at Centre Court')).toBeTruthy();
+  });
+
+  it('renders committed level and reliability as text, never fabricated movement', () => {
+    view(home(), { level: { display_level: 3.82, reliability_percent: 76 } });
+    const hero = screen.getByRole('region', { name: 'GLOBAL LEVEL' });
+    expect(hero.textContent).toContain('3.82');
+    expect(hero.textContent).toContain('76%');
   });
 
   it('keeps an unknown unread count unknown', () => {
@@ -267,11 +274,12 @@ describe('Home dashboard', () => {
     expect(screen.queryByText('Loading community…')).toBeNull();
     expect(screen.getByText('No upcoming match in this community.')).toBeTruthy();
     expect(screen.getByRole('combobox').textContent).toContain('Beta Club');
+    expect(document.activeElement).toBe(screen.getByRole('combobox'));
   });
 
   it('renders translated, locale-formatted copy', () => {
     view(home(), {}, 'pt-BR');
-    expect(screen.getByRole('heading', { level: 1, name: 'Início' })).toBeTruthy();
+    expect(screen.getByRole('heading', { level: 1, name: 'Olá, Thiago' })).toBeTruthy();
     expect(screen.getByText('Olá, Thiago')).toBeTruthy();
     expect(screen.getByRole('region', { name: 'Próxima partida' })).toBeTruthy();
     expect(screen.getByText('2 resultados aguardando revisão em Centre Court')).toBeTruthy();

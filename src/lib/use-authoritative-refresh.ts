@@ -1,3 +1,4 @@
+import { useRefreshFailure } from '../components/RefreshStatusProvider';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   createRefreshLoop,
@@ -52,6 +53,8 @@ export function useAuthoritativeRefresh({
     };
   }, [scope, enabled, intervalMs]);
 
+  const status = enabled && state.scope === scope ? state.status : 'idle';
+  useRefreshFailure(status);
   const refreshNow = useCallback(() => loop.current?.refreshNow(), []);
-  return { status: state.scope === scope ? state.status : 'idle', refreshNow };
+  return { status, refreshNow };
 }

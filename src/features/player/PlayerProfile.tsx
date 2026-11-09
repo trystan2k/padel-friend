@@ -18,10 +18,12 @@ type Profile = Awaited<ReturnType<typeof updateMyPlayerProfile>>;
 
 export function PlayerProfile({
   initialProfile,
+  embedded = false,
   initialRating,
   onRatingReload
 }: {
   initialProfile: Profile;
+  embedded?: boolean;
   initialRating: RatingLoad;
   onRatingReload: () => void;
 }) {
@@ -82,12 +84,14 @@ export function PlayerProfile({
     }
   }
 
+  const Container = embedded ? 'section' : 'main';
+  const Heading = embedded ? 'h2' : 'h1';
   return (
-    <main {...stylex.props(ui.page, ui.profilePage)}>
+    <Container {...stylex.props(ui.page, ui.profilePage)}>
       <div {...stylex.props(ui.profileTop)}>
         <header {...stylex.props(ui.headerRow, rootStyles.pageHeader)}>
           <div {...stylex.props(ui.header)}>
-            <h1 {...stylex.props(ui.title)}>{t('profile.title')}</h1>
+            <Heading {...stylex.props(ui.title)}>{t('profile.title')}</Heading>
             <p {...stylex.props(ui.subtitle)}>{t('profile.subtitle')}</p>
           </div>
           <button
@@ -324,6 +328,6 @@ export function PlayerProfile({
       >
         {t('signOut')}
       </button>
-    </main>
+    </Container>
   );
 }

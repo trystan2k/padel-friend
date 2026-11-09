@@ -1,4 +1,8 @@
 {
+  "accessibility": {
+    "skipToContent": "Pular para o conteúdo principal",
+    "stale": "As atualizações estão atrasadas. As informações exibidas podem estar desatualizadas. As atualizações serão retomadas automaticamente."
+  },
   "languageNames": {
     "en": "English",
     "pt-BR": "Português (Brasil)",

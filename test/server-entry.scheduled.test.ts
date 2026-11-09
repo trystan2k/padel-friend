@@ -23,6 +23,9 @@ import { requestReference } from '../src/lib/diagnostics.server';
 import worker from '../src/server';
 
 describe('Worker entry', () => {
+  it('exports only the Worker handler, never unsupported scalar bindings', async () => {
+    expect(Object.keys(await import('../src/server'))).toEqual(['default']);
+  });
   beforeEach(() => {
     mocks.sweep.mockReset().mockResolvedValue(undefined);
     mocks.push.mockReset().mockResolvedValue(undefined);

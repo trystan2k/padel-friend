@@ -56,20 +56,7 @@ export const styles = stylex.create({
     justifyContent: 'flex-end',
     alignItems: 'center'
   },
-  forgotLink: {
-    position: 'relative',
-    '::before': {
-      content: '""',
-      position: 'absolute',
-      display: 'block',
-      insetBlockStart: '50%',
-      insetInlineEnd: 0,
-      width: '100%',
-      minWidth: 'calc(var(--space-40) + var(--space-4))',
-      height: 'calc(var(--space-40) + var(--space-4))',
-      transform: 'translateY(-50%)'
-    }
-  },
+  forgotLink: { position: 'relative' },
   notice: {
     display: 'flex',
     flexDirection: 'column',

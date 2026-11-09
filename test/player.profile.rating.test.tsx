@@ -78,6 +78,26 @@ const renderProfile = (initialRating: RatingLoad, onRatingReload = vi.fn<() => v
   );
 
 describe('PlayerProfile rating journey', () => {
+  it('uses a section and subordinate heading when embedded in Home', () => {
+    render(
+      <I18nextProvider i18n={createI18n('en')}>
+        <main>
+          <h1>Home</h1>
+          <PlayerProfile
+            embedded
+            initialProfile={profile}
+            initialRating={rating}
+            onRatingReload={vi.fn<() => void>()}
+          />
+        </main>
+      </I18nextProvider>
+    );
+    expect(screen.getAllByRole('main')).toHaveLength(1);
+    expect(screen.getAllByRole('heading', { level: 1 })).toHaveLength(1);
+    expect(
+      screen.getByRole('heading', { level: 2, name: createI18n('en').t('profile.title') })
+    ).toBeTruthy();
+  });
   it('shows current, highest, initial, count and reliability from the committed projection', () => {
     renderProfile(rating);
     // Current and highest level are both 4.12.

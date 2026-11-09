@@ -1,4 +1,8 @@
 {
+  "accessibility": {
+    "skipToContent": "Skip to main content",
+    "stale": "Live updates are delayed. Displayed information may be out of date. Updates will resume automatically."
+  },
   "languageNames": {
     "en": "English",
     "pt-BR": "Português (Brasil)",

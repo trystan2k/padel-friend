@@ -13,7 +13,7 @@ import { applyPrivateResponsePolicy } from './lib/private-response';
 
 type WorkerContext = { waitUntil: (promise: Promise<unknown>) => void };
 
-export const REQUEST_ID_HEADER = 'X-Request-Id';
+const REQUEST_ID_HEADER = 'X-Request-Id';
 
 // Headers of a handler-built Response may be immutable (redirects, fetched assets): mutate in
 // place when allowed, otherwise copy. The copy keeps the body stream and every Set-Cookie.

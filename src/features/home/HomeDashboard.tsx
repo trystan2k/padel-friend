@@ -2,6 +2,7 @@ import * as stylex from '@stylexjs/stylex';
 import { Link } from '@tanstack/react-router';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { formatDisplayLevel } from '../player/rating-config';
 import { NotificationBadge } from '../notifications/NotificationBadge';
 import { CommunitySwitcher } from './CommunitySwitcher';
 import type { HomeData } from './home-contracts';
@@ -15,6 +16,7 @@ export function HomeDashboard({
   home,
   playerId,
   displayName,
+  level,
   onSelect,
   onRetry
 }: {
@@ -22,10 +24,11 @@ export function HomeDashboard({
   home: HomeData | null;
   playerId: string;
   displayName: string | null;
+  level?: { display_level: number; reliability_percent: number };
   onSelect: (communityId: string) => void;
   onRetry: () => void;
 }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [pending, setPending] = useState<PendingSwitch | null>(null);
   const switching = pending !== null && home !== null && home.asOf === pending.since;
   const communities = home?.communities;
@@ -37,15 +40,34 @@ export function HomeDashboard({
     <div id="home-top" {...stylex.props(s.root)}>
       <div {...stylex.props(s.headerRow)}>
         <div {...stylex.props(s.titles)}>
-          <h1 {...stylex.props(s.title)}>{t('home.title')}</h1>
-          {/* Not a heading: the profile heading below is located by the player's name. */}
-          {displayName && (
-            <p {...stylex.props(s.subtitle)}>{t('home.greeting', { name: displayName })}</p>
+          <h1 {...stylex.props(s.title)}>
+            {displayName ? t('home.greeting', { name: displayName }) : t('home.title')}
+          </h1>
+          {home && (
+            <time dateTime={home.asOf} {...stylex.props(s.subtitle)}>
+              {new Intl.DateTimeFormat(i18n.language, {
+                dateStyle: 'full',
+                timeZone: 'UTC'
+              }).format(new Date(home.asOf))}
+            </time>
           )}
           {selectedName && <p {...stylex.props(s.subtitle)}>{selectedName}</p>}
         </div>
         <NotificationBadge count={home?.unread ?? null} />
       </div>
+      {level && (
+        <section aria-labelledby="home-level-heading" {...stylex.props(s.levelHero)}>
+          <h2 id="home-level-heading" {...stylex.props(s.cardTitle)}>
+            {t('profile.globalLevel')}
+          </h2>
+          <strong {...stylex.props(s.levelValue)}>
+            {formatDisplayLevel(level.display_level, i18n.language)}
+          </strong>
+          <p {...stylex.props(s.heroCopy)}>
+            {t('profile.reliability')}: {t('profile.percent', { value: level.reliability_percent })}
+          </p>
+        </section>
+      )}
       <div {...stylex.props(s.quickLinks)}>
         <Link to="/matches/create" {...stylex.props(s.primaryLink)}>
           {t('matches.create')}

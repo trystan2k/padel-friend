@@ -35,6 +35,17 @@ export const homeStyles = stylex.create({
     overflowWrap: 'anywhere'
   },
   subtitle: { margin: 0, fontSize: 'var(--font-size-12)', color: 'var(--color-muted)' },
+  levelHero: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 'var(--space-8)',
+    padding: 'var(--space-16)',
+    borderRadius: 'var(--radius-20)',
+    backgroundColor: 'var(--color-green-deep)',
+    color: 'var(--color-on-hero)'
+  },
+  levelValue: { fontSize: 'var(--font-size-34)', fontFamily: 'var(--font-family-heading)' },
+  heroCopy: { margin: 0, color: 'var(--color-hero-copy)', fontSize: 'var(--font-size-13)' },
   quickLinks: { display: 'flex', flexWrap: 'wrap', gap: 'var(--space-8)', alignItems: 'center' },
   primaryLink: {
     display: 'inline-flex',
