@@ -49,6 +49,7 @@ export const pwaStyles = stylex.create({
     },
     ':disabled': { cursor: 'not-allowed', opacity: 0.6 }
   },
+  disabledLook: { cursor: 'not-allowed', opacity: 0.6 },
   banner: {
     position: 'fixed',
     insetInline: 'var(--space-16)',

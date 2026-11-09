@@ -154,5 +154,6 @@ export const preferenceStyles = stylex.create({
     borderWidth: 'var(--border-width-sm)',
     borderStyle: 'solid',
     borderColor: 'var(--color-line)'
-  }
+  },
+  disabledLook: { cursor: 'not-allowed', opacity: 0.6 }
 });

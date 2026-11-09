@@ -240,6 +240,9 @@ describe('PwaInstallPanel', () => {
     await userEvent.click(button);
     expect(prompt).toHaveBeenCalledTimes(1);
     expect(screen.getByRole('button', { name: copy.action })).toBe(button);
+    expect(button.matches('[disabled], [aria-disabled="true"]')).toBe(true);
+    await userEvent.click(button);
+    expect(prompt).toHaveBeenCalledTimes(1);
     expect(document.activeElement).toBe(button);
     await act(async () => {
       settle();

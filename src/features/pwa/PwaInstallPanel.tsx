@@ -40,8 +40,9 @@ export function PwaInstallPanel() {
       {state.canPrompt && (
         <Button
           type="button"
-          {...stylex.props(styles.action)}
-          aria-disabled={prompting || undefined}
+          {...stylex.props(styles.action, prompting && styles.disabledLook)}
+          disabled={prompting}
+          focusableWhenDisabled
           onClick={(event) => {
             if (prompting) return;
             // The offer is withdrawn once the outcome is known. Focus moves to the persistent heading only

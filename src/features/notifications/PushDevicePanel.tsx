@@ -71,7 +71,7 @@ export function PushDevicePanel({ savedIntent }: { savedIntent: boolean }) {
           disabled={busy}
           focusableWhenDisabled
           onClick={() => void controller.enable()}
-          {...stylex.props(styles.deviceAction)}
+          {...stylex.props(styles.deviceAction, busy && styles.disabledLook)}
         >
           {pending === 'enabling' ? t('push.enabling') : t('push.enable')}
         </Button>
@@ -82,7 +82,11 @@ export function PushDevicePanel({ savedIntent }: { savedIntent: boolean }) {
           disabled={busy}
           focusableWhenDisabled
           onClick={() => void controller.disableDevice()}
-          {...stylex.props(styles.deviceAction, styles.deviceSecondary)}
+          {...stylex.props(
+            styles.deviceAction,
+            styles.deviceSecondary,
+            busy && styles.disabledLook
+          )}
         >
           {pending === 'disabling' ? t('push.disabling') : t('push.disableDevice')}
         </Button>
@@ -93,7 +97,7 @@ export function PushDevicePanel({ savedIntent }: { savedIntent: boolean }) {
           disabled={busy}
           focusableWhenDisabled
           onClick={retry}
-          {...stylex.props(styles.deviceAction)}
+          {...stylex.props(styles.deviceAction, busy && styles.disabledLook)}
         >
           {pending
             ? t(pending === 'enabling' ? 'push.enabling' : 'push.disabling')
