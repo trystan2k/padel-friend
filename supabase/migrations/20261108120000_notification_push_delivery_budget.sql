@@ -48,4 +48,7 @@ begin
 end;
 $$;
 
+revoke execute on function public.claim_notification_push_jobs(integer), public.finish_notification_push(uuid, uuid, boolean) from public, anon, authenticated;
+grant execute on function public.claim_notification_push_jobs(integer), public.finish_notification_push(uuid, uuid, boolean) to service_role;
+
 commit;

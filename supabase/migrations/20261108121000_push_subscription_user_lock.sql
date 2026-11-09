@@ -77,4 +77,7 @@ begin
 end;
 $function$;
 
+revoke execute on function public.register_my_push_subscription(text, text, text, text, text, timestamptz) from public, anon, authenticated;
+grant execute on function public.register_my_push_subscription(text, text, text, text, text, timestamptz) to authenticated;
+
 commit;
