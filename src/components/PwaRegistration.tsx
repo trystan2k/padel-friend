@@ -17,40 +17,48 @@ export function PwaRegistration() {
     store.getSnapshot,
     store.getServerSnapshot
   );
-  if (phase === 'idle') return null;
   const message =
-    phase === 'blocked'
-      ? 'pwa.update.dirtyForm'
-      : phase === 'error'
-        ? 'pwa.update.error'
-        : 'pwa.update.available';
+    phase === 'idle'
+      ? null
+      : phase === 'blocked'
+        ? 'pwa.update.dirtyForm'
+        : phase === 'error'
+          ? 'pwa.update.error'
+          : 'pwa.update.available';
+  // The live region is mounted for the app lifetime and starts empty; offers (initial and re-offers)
+  // only update its content in place, which assistive technology announces reliably.
   return (
-    <section
-      role={phase === 'error' ? 'alert' : 'status'}
-      aria-live={phase === 'error' ? 'assertive' : 'polite'}
-      aria-busy={phase === 'applying'}
-      {...stylex.props(styles.banner)}
-    >
-      <p {...stylex.props(styles.copy)}>{t(message)}</p>
-      <div {...stylex.props(styles.actions)}>
-        {(phase === 'available' || phase === 'applying') && (
+    <div {...stylex.props(message !== null && styles.banner)}>
+      <div
+        data-testid="pwa-update-region"
+        aria-live={phase === 'error' ? 'assertive' : 'polite'}
+        aria-atomic="true"
+        aria-busy={phase === 'applying'}
+        {...stylex.props(styles.copy)}
+      >
+        {message !== null && t(message)}
+      </div>
+      {message !== null && (
+        <div {...stylex.props(styles.actions)}>
+          {(phase === 'available' || phase === 'applying') && (
+            <Button
+              type="button"
+              disabled={phase === 'applying'}
+              {...stylex.props(styles.action)}
+              onClick={() => store.apply()}
+            >
+              {t('pwa.update.apply')}
+            </Button>
+          )}
           <Button
             type="button"
-            disabled={phase === 'applying'}
-            {...stylex.props(styles.action)}
-            onClick={() => store.apply()}
+            {...stylex.props(styles.action, styles.secondary)}
+            onClick={() => store.dismiss()}
           >
-            {t('pwa.update.apply')}
+            {t('pwa.update.later')}
           </Button>
-        )}
-        <Button
-          type="button"
-          {...stylex.props(styles.action, styles.secondary)}
-          onClick={() => store.dismiss()}
-        >
-          {t('pwa.update.later')}
-        </Button>
-      </div>
-    </section>
+        </div>
+      )}
+    </div>
   );
 }

@@ -1,4 +1,8 @@
-import { expectNotificationPushJobs } from './helpers/notification-channel-evidence';
+import {
+  expectNotificationOutcome,
+  expectNotificationPushJobs,
+  expectNotificationSilence
+} from './helpers/notification-channel-evidence';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { describe, expect, it, vi } from 'vitest';
 import type { Database } from '../src/lib/supabase/database.types';
@@ -817,6 +821,22 @@ describe('match registration cutoff integration', () => {
           []
         );
       }
+      // The same transition, by exact recipients and Push jobs: the flipped reserve and each expired
+      // requester are notified; the Playing quartet keeps its state and receives nothing at all.
+      await expectNotificationOutcome({
+        targetId: events.mixed!,
+        kind: 'match_registration_not_playing',
+        recipients: [actors.m4!.id]
+      });
+      await expectNotificationOutcome({
+        targetId: events.mixed!,
+        kind: 'match_registration_expired',
+        recipients: [actors.g1!.id, actors.g2!.id]
+      });
+      await expectNotificationSilence({
+        targetId: events.mixed!,
+        recipients: [actors.creator!.id, actors.m1!.id, actors.m2!.id, actors.m3!.id]
+      });
 
       // Counts never conflate: all four counts, on the counts projection, the
       // detail DTO, the list DTO and the creator queue.

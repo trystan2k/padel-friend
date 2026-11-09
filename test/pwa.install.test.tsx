@@ -248,6 +248,37 @@ describe('PwaInstallPanel', () => {
     expect(document.activeElement).toBe(screen.getByRole('heading', { name: copy.title }));
   });
 
+  it('leaves focus alone when the user moved it elsewhere while the native prompt was open', async () => {
+    mockEnvironment();
+    render(
+      <I18nextProvider i18n={createI18n('en')}>
+        <PwaInstallPanel />
+        <button type="button">Elsewhere</button>
+      </I18nextProvider>
+    );
+    const { event, prompt } = installPromptEvent('dismissed');
+    let settle: () => void = () => undefined;
+    prompt.mockImplementation(
+      () =>
+        new Promise<void>((resolve) => {
+          settle = resolve;
+        })
+    );
+    act(() => {
+      window.dispatchEvent(event);
+    });
+    const button = screen.getByRole('button', { name: copy.action });
+    button.focus();
+    await userEvent.click(button);
+    const elsewhere = screen.getByRole('button', { name: 'Elsewhere' });
+    elsewhere.focus();
+    await act(async () => {
+      settle();
+    });
+    expect(screen.queryByRole('button', { name: copy.action })).toBeNull();
+    expect(document.activeElement).toBe(elsewhere);
+  });
+
   it('attaches listeners only while mounted', async () => {
     mockEnvironment();
     const added = vi.spyOn(window, 'addEventListener');

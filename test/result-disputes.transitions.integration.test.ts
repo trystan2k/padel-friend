@@ -182,8 +182,16 @@ describe('result dispute resolution and audited override', { timeout: 240000 }, 
         "select created_by::text as id from public.match_events where id='" + group.eventId + "'"
       );
       const audience = [...new Set([f.p0.id, f.p1.id, f.p2.id, f.p3.id, String(organizer!['id'])])];
-      for (const kind of ['result_amendment_resolved', 'result_repair_queued'])
-        await expectNotificationOutcome({ targetId: group.eventId, kind, recipients: audience });
+      await expectNotificationOutcome({
+        targetId: group.eventId,
+        kind: 'result_amendment_resolved',
+        recipients: audience
+      });
+      await expectNotificationOutcome({
+        targetId: group.eventId,
+        kind: 'result_repair_queued',
+        recipients: audience
+      });
       // A queued correction still blocks a competing request for the same group.
       expect((await f.request(f.p2, group)).error?.message).toBe('RESULT_AMENDMENT_ALREADY_OPEN');
 

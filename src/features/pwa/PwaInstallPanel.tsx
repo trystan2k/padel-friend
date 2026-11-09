@@ -44,13 +44,18 @@ export function PwaInstallPanel() {
           aria-disabled={prompting || undefined}
           onClick={(event) => {
             if (prompting) return;
-            // The offer is withdrawn once the outcome is known; focus then moves to the persistent heading.
-            const hadFocus = document.activeElement === event.currentTarget;
+            // The offer is withdrawn once the outcome is known. Focus moves to the persistent heading only
+            // if the trigger held it and it was lost with the trigger; focus the user moved elsewhere stays.
+            const trigger = event.currentTarget;
+            const hadFocus = document.activeElement === trigger;
             setPrompting(true);
             void promptInstall().then((outcome) => {
               setPrompting(false);
               setFailed(outcome === 'unavailable');
-              if (hadFocus) titleRef.current?.focus();
+              const owner = document.activeElement;
+              const lost =
+                !owner || owner === document.body || owner === trigger || !owner.isConnected;
+              if (hadFocus && lost) titleRef.current?.focus();
             });
           }}
         >

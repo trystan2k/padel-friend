@@ -1,5 +1,5 @@
 /** @vitest-environment jsdom */
-import { act, cleanup, render, screen } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { I18nextProvider } from 'react-i18next';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -79,7 +79,8 @@ describe('PwaRegistration', () => {
     await mount();
     expect(container.register).toHaveBeenCalledWith('/sw.js', { scope: '/' });
     expect(requestPermission).not.toHaveBeenCalled();
-    expect(screen.queryByRole('status')).toBeNull();
+    expect(screen.getByTestId('pwa-update-region').textContent).toBe('');
+    expect(screen.queryByRole('button')).toBeNull();
   });
 
   it('does not register outside production', async () => {
@@ -92,18 +93,18 @@ describe('PwaRegistration', () => {
     container.register.mockRejectedValueOnce(new Error('insecure'));
     await mount();
     expect(screen.queryByRole('alert')).toBeNull();
-    expect(screen.queryByRole('status')).toBeNull();
+    expect(screen.getByTestId('pwa-update-region').textContent).toBe('');
   });
 
   it('announces a waiting worker and activates it only after the user confirms', async () => {
     const worker = container.registration.waiting!;
     await mount();
-    const status = screen.getByRole('status');
+    const status = screen.getByTestId('pwa-update-region');
     expect(status.textContent).toContain(copy.available);
     expect(worker.postMessage).not.toHaveBeenCalled();
     await userEvent.click(screen.getByRole('button', { name: copy.apply }));
     expect(worker.postMessage).toHaveBeenCalledExactlyOnceWith({ type: 'SKIP_WAITING' });
-    expect(screen.getByRole('status').getAttribute('aria-busy')).toBe('true');
+    expect(screen.getByTestId('pwa-update-region').getAttribute('aria-busy')).toBe('true');
     act(() => {
       container.dispatchEvent(new Event('controllerchange'));
       container.dispatchEvent(new Event('controllerchange'));
@@ -116,15 +117,56 @@ describe('PwaRegistration', () => {
     const worker = container.registration.waiting!;
     await mount();
     await userEvent.click(screen.getByRole('button', { name: copy.later }));
-    expect(screen.queryByRole('status')).toBeNull();
+    expect(screen.getByTestId('pwa-update-region').textContent).toBe('');
+    expect(screen.queryByRole('button')).toBeNull();
     expect(worker.postMessage).not.toHaveBeenCalled();
+  });
+
+  it('fills one persistent, initially empty live region in place for the initial offer', async () => {
+    container.registration.waiting = null;
+    await mount();
+    const region = screen.getByTestId('pwa-update-region');
+    expect(region.textContent).toBe('');
+    expect(region.getAttribute('aria-live')).toBe('polite');
+    const installing = new FakeWorker();
+    container.registration.installing = installing;
+    act(() => {
+      container.registration.dispatchEvent(new Event('updatefound'));
+    });
+    act(() => {
+      installing.dispatchEvent(new Event('statechange'));
+    });
+    expect(screen.getByTestId('pwa-update-region')).toBe(region);
+    expect(region.textContent).toBe(copy.available);
+  });
+
+  it('announces a deferred offer again by updating the same live region node, without reload or activation', async () => {
+    vi.useFakeTimers();
+    try {
+      const worker = container.registration.waiting!;
+      await mount();
+      const region = screen.getByTestId('pwa-update-region');
+      expect(region.textContent).toBe(copy.available);
+      fireEvent.click(screen.getByRole('button', { name: copy.later }));
+      expect(screen.getByTestId('pwa-update-region')).toBe(region);
+      expect(region.textContent).toBe('');
+      act(() => {
+        vi.advanceTimersByTime(5 * 60_000);
+      });
+      expect(screen.getByTestId('pwa-update-region')).toBe(region);
+      expect(region.textContent).toBe(copy.available);
+      expect(worker.postMessage).not.toHaveBeenCalled();
+      expect(reload).not.toHaveBeenCalled();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('defers the update while an unsaved form or pending mutation is active, then offers it again', async () => {
     const worker = container.registration.waiting!;
     const view = await mount(<Dirty />);
     await userEvent.click(screen.getByRole('button', { name: copy.apply }));
-    expect(screen.getByRole('status').textContent).toContain(copy.dirtyForm);
+    expect(screen.getByTestId('pwa-update-region').textContent).toContain(copy.dirtyForm);
     expect(screen.queryByRole('button', { name: copy.apply })).toBeNull();
     expect(worker.postMessage).not.toHaveBeenCalled();
     expect(reload).not.toHaveBeenCalled();
@@ -146,7 +188,9 @@ describe('PwaRegistration', () => {
       worker.state = 'redundant';
       worker.dispatchEvent(new Event('statechange'));
     });
-    expect(screen.getByRole('alert').textContent).toContain(copy.error);
+    const region = screen.getByTestId('pwa-update-region');
+    expect(region.textContent).toContain(copy.error);
+    expect(region.getAttribute('aria-live')).toBe('assertive');
   });
 
   it('removes its listeners on unmount', async () => {
