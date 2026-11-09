@@ -338,6 +338,8 @@ jobs:
           # The preview worker reads the key from there; create it with the live stack's key in this job's
           # extracted copy only, never in the artifact or a tracked file.
           printf 'SUPABASE_SERVICE_ROLE_KEY=%s\n' "$SERVICE_ROLE_KEY" > dist/server/.dev.vars
+          # E2E Web Push env (public key only; nothing can send, the private half is discarded), from the single source of truth.
+          node --input-type=module -e "import('./scripts/e2e-build-env.mjs').then((m) => { for (const [k, v] of Object.entries(m.E2E_WEB_PUSH_ENV)) process.stdout.write(k + '=' + v + '\\n'); })" >> dist/server/.dev.vars
       - run: pnpm exec playwright install --with-deps chromium
       # `pnpm test:e2e` resets the database and frees the preview port itself; E2E_GATE_PREBUILT makes
       # the web server preview the verified same-run build instead of rebuilding per lane.

@@ -5,6 +5,7 @@ import { openDedicatedSqlConnection, queryTrustedSql } from './helpers/sql-trans
 import {
   createRankedResultFixtures,
   playedAt,
+  rankedSets,
   type RankedResultKit
 } from './helpers/ranked-result-fixtures';
 import { runPool } from './helpers/promise-pool';
@@ -43,13 +44,36 @@ describe.skipIf(!environment.env)('statistics reader performance contract', () =
           Math.floor(i / kits.length) % 2 === 0 ? 'competitive' : 'friendly'
         );
         const playedNoon = midnight - ((i % 14) + 1) * 86_400_000 + 12 * 3_600_000;
-        const submission = await kit.submit(
-          event,
-          playedAt(Math.floor((Date.now() - playedNoon) / 1000)).played
+        const played = playedAt(Math.floor((Date.now() - playedNoon) / 1000)).played;
+        // Submit and approve run the real command functions as the acting players inside one trusted
+        // transaction: PostgREST would cap each call at the authenticated role's 8s statement_timeout,
+        // which the growing projection cost eventually exceeds, while trusted SQL honors STATEMENT_OPTIONS.
+        const asPlayer = (id: string) =>
+          "perform set_config('request.jwt.claims', " +
+          sqlText(JSON.stringify({ sub: id, role: 'authenticated' })) +
+          ', true);';
+        await queryTrustedSql(
+          'do $paf$ declare v_proposal uuid; begin ' +
+            asPlayer(kit.players[0]!.id) +
+            ' v_proposal := (public.submit_match_event_result(' +
+            [
+              sqlText(event) + '::uuid',
+              '1',
+              sqlText(JSON.stringify(kit.teamsOf(1))) + '::jsonb',
+              sqlText(JSON.stringify(rankedSets)) + '::jsonb',
+              sqlText(JSON.stringify(played)) + '::jsonb',
+              "'Court 1'",
+              sqlText(crypto.randomUUID()) + '::uuid'
+            ].join(', ') +
+            ")->>'proposal_id')::uuid; " +
+            asPlayer(kit.players[2]!.id) +
+            ' perform public.review_match_event_result(v_proposal, 1, ' +
+            sqlText('approve') +
+            ', null, null, ' +
+            sqlText(crypto.randomUUID()) +
+            '::uuid); end $paf$;',
+          STATEMENT_OPTIONS
         );
-        if (submission.error) throw submission.error;
-        const approval = await kit.approve(String(asRecord(submission.data)['proposal_id']));
-        if (approval.error) throw approval.error;
       };
       await runPool(
         kits.map((_, lane) => async () => {
