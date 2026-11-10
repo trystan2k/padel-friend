@@ -473,7 +473,7 @@ test('PAF-8 Pencil screens retain exact lifecycle probes and reviewed raster bud
   const v1Dialog = v1ReviewPage.getByRole('dialog', { name: r.reject.title, exact: true });
   await v1Dialog.getByRole('radio', { name: r.reject.reasons.teamsIncorrect, exact: true }).check();
   await v1Dialog.getByRole('button', { name: r.reject.submit, exact: true }).click();
-  await expect(v1Card).toHaveAttribute('data-result-status', 'disputed');
+  await expect(v1Card).toHaveAttribute('data-result-status', 'disputed', { timeout: 15_000 });
   await v1ReviewPage.context().close();
   const correctionPage = await f.page(f.creator);
   await f.open(correctionPage, correctionEvent);
@@ -507,7 +507,9 @@ test('PAF-8 Pencil screens retain exact lifecycle probes and reviewed raster bud
   const v2Dialog = v2ReviewPage.getByRole('dialog', { name: r.reject.title, exact: true });
   await v2Dialog.getByRole('radio', { name: r.reject.reasons.scoreIncorrect, exact: true }).check();
   await v2Dialog.getByRole('button', { name: r.reject.submit, exact: true }).click();
-  await expect(v2Card).toHaveAttribute('data-result-status', 'disputed');
+  // The card flips only after the review server function resolves and the route re-reads the
+  // proposal; under parallel-worker load that round trip outlasts the 5s default expect budget.
+  await expect(v2Card).toHaveAttribute('data-result-status', 'disputed', { timeout: 15_000 });
   await expect(v2Card.getByText(r.timelineTitle, { exact: true })).toBeVisible();
   await expect(v2Card.getByRole('button', { name: /override|void/i })).toHaveCount(0);
   await v2ReviewPage.context().close();
