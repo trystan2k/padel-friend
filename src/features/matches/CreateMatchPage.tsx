@@ -405,7 +405,8 @@ export function CreateMatchPage() {
     for (const key of ['community_id', 'date', 'startTime', 'venueName', 'mapsUrl'] as const)
       if (!value[key]) next[key] = 'required';
     if (!photo) next.photo = 'missingPhoto';
-    if (value.type === 'competitive') {
+    // An explicit Unranked needs no League, so it never depends on the option list loading.
+    if (value.type === 'competitive' && value.competitionChoice !== 'unranked') {
       if (leagueOptionsStatus !== 'ready') next.competition = 'leagueOptionsUnavailable';
       else if (resolution.needsSelection) next.competition = 'leagueRequired';
     }
@@ -566,7 +567,18 @@ export function CreateMatchPage() {
         <Link to="/onboarding/community">{t('matchCreate.discoverCommunities')}</Link>
       </main>
     );
-  const requiredInvalid = Object.keys(fieldErrors).length > 0;
+  // A competition error recorded at validation time goes stale once the League list or the
+  // choice changes; only show it while the condition that raised it still holds.
+  const { competition: competitionError, ...otherErrors } = fieldErrors;
+  const competitionErrorActive =
+    value.type === 'competitive' &&
+    value.competitionChoice !== 'unranked' &&
+    (competitionError === 'leagueOptionsUnavailable'
+      ? leagueOptionsStatus !== 'ready'
+      : competitionError === 'leagueRequired' && resolution.needsSelection);
+  const activeErrors: Record<string, string> =
+    competitionError && competitionErrorActive ? fieldErrors : otherErrors;
+  const requiredInvalid = Object.keys(activeErrors).length > 0;
   return (
     <main {...stylex.props(s.page)}>
       <header {...stylex.props(rootStyles.pageHeader)}>
@@ -595,7 +607,7 @@ export function CreateMatchPage() {
             <MatchDetailsForm
               value={{ ...value, community_id: communityId }}
               options={options}
-              errors={fieldErrors}
+              errors={activeErrors}
               competition={competition}
               change={<K extends keyof MatchDraft>(key: K, next: MatchDraft[K]) => {
                 if (key === 'community_id' && typeof next === 'string') selectCommunity(next);
