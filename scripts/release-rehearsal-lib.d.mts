@@ -17,6 +17,10 @@ export type SpawnLike = (
 ) => { status: number | null; stdout?: string | Buffer; stderr?: string | Buffer; error?: Error };
 export const SPAWN_MAX_ATTEMPTS: number;
 export function isTransientSpawnError(error: unknown): boolean;
+export function listDumpToc(
+  docker: { exec: (args: string[], options?: { input?: string | Buffer }) => unknown },
+  dump: Buffer
+): string;
 export function spawnWithTransientRetry<T extends { error?: Error }>(
   run: (command: string, args: string[], options?: Record<string, unknown>) => T,
   command: string,

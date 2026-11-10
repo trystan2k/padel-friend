@@ -125,6 +125,16 @@ export function createDocker({ container = DEFAULT_CONTAINER, run = spawnSync } 
   return { container, exec, sql, sqlFile, admin, dump, restore };
 }
 
+/**
+ * Lists a custom-format dump's TOC. `pg_restore -l` reads only the header and closes stdin, so
+ * piping the whole dump into it raises EPIPE once the dump outgrows the pipe buffer. The dump is
+ * staged into the container by `cat` (which drains stdin) and listed from the file instead.
+ */
+export function listDumpToc(docker, dump) {
+  docker.exec(['sh', '-c', 'cat > /tmp/release-rehearsal.dump'], { input: dump });
+  return String(docker.exec(['pg_restore', '-l', '/tmp/release-rehearsal.dump']));
+}
+
 /** Disposable database with the platform pieces migrations expect (extensions + default ACLs). */
 export function provisionDatabase(docker, name) {
   // Never overwrite a pre-existing database, even if its name resembles a rehearsal.

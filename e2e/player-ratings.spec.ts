@@ -775,6 +775,15 @@ test('a stale explanation reloads the journey, moves focus to its heading and an
   const rows = region.getByRole('listitem').filter({ has: page.locator('time') });
   const before = await rows.count();
 
+  // The home view re-reads every 3 s while visible; on a slower runner that poll lands between the
+  // confirmation and the click, refreshes the journey and leaves no stale revision to report. A
+  // hidden tab pauses the loop (the real `paused` path), so the stale-revision path is exercised
+  // deterministically instead of racing the poll.
+  await page.evaluate(() => {
+    Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => 'hidden' });
+    document.dispatchEvent(new Event('visibilitychange'));
+  });
+
   // A newer confirmation moves the projection revision while this page is still open.
   await confirmGroup({
     eventId: await pastEvent(f),

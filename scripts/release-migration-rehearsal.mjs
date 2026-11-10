@@ -9,6 +9,7 @@ import {
   createDocker,
   diffFingerprints,
   dropDatabase,
+  listDumpToc,
   provisionDatabase,
   schemaFingerprint
 } from './release-rehearsal-lib.mjs';
@@ -91,7 +92,7 @@ function cloneBase(docker, source, destination) {
     )
     .split('\n')
     .filter(Boolean);
-  const toc = String(docker.exec(['pg_restore', '-l'], { input: dump }))
+  const toc = listDumpToc(docker, dump)
     .split('\n')
     .filter(
       (line) =>

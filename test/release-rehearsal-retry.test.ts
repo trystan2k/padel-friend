@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import {
   SPAWN_MAX_ATTEMPTS,
   isTransientSpawnError,
+  listDumpToc,
   spawnWithTransientRetry
 } from '../scripts/release-rehearsal-lib.mjs';
 
@@ -42,5 +43,19 @@ describe('spawnWithTransientRetry', () => {
     expect(isTransientSpawnError({ code: 'EAGAIN' })).toBe(true);
     expect(isTransientSpawnError({ code: 'ENOENT' })).toBe(false);
     expect(isTransientSpawnError(undefined)).toBe(false);
+  });
+});
+
+describe('listDumpToc', () => {
+  it('stages the dump via cat and lists from the file, never piping the dump into pg_restore -l', () => {
+    const dump = Buffer.from('dump');
+    const exec = vi.fn<(args: string[], options?: { input?: string | Buffer }) => string>((args) =>
+      args[0] === 'pg_restore' ? 'toc' : ''
+    );
+    expect(listDumpToc({ exec }, dump)).toBe('toc');
+    expect(exec).toHaveBeenNthCalledWith(1, ['sh', '-c', 'cat > /tmp/release-rehearsal.dump'], {
+      input: dump
+    });
+    expect(exec).toHaveBeenNthCalledWith(2, ['pg_restore', '-l', '/tmp/release-rehearsal.dump']);
   });
 });

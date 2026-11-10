@@ -6,6 +6,7 @@ import {
   createDocker,
   diffFingerprints,
   dropDatabase,
+  listDumpToc,
   provisionDatabase,
   schemaFingerprint,
   sha256
@@ -167,7 +168,7 @@ export function runRestoreRehearsal({
       docker.sql(destination, 'drop schema public cascade;');
       // Platform-owned default privileges (other roles' ALTER DEFAULT PRIVILEGES) belong to the
       // platform image, not the application backup, so they are left out of the restore list.
-      const toc = String(docker.exec(['pg_restore', '-l'], { input: dump }))
+      const toc = listDumpToc(docker, dump)
         .split('\n')
         .filter((line) => !line.includes('DEFAULT ACL'))
         .join('\n');

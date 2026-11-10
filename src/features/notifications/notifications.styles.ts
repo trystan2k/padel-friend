@@ -21,15 +21,15 @@ export const styles = stylex.create({
     marginTop: 'var(--space-5)'
   },
   link: {
-    minHeight: '44px',
+    minHeight: 'calc(var(--space-40) + var(--space-4))',
     display: 'inline-flex',
     alignItems: 'center',
     color: 'var(--color-green)'
   },
-  button: { minHeight: '44px', paddingInline: 'var(--space-4)' },
+  button: { minHeight: 'calc(var(--space-40) + var(--space-4))', paddingInline: 'var(--space-4)' },
   badgeLink: {
-    minHeight: '44px',
-    minWidth: '44px',
+    minHeight: 'calc(var(--space-40) + var(--space-4))',
+    minWidth: 'calc(var(--space-40) + var(--space-4))',
     display: 'inline-flex',
     alignItems: 'center',
     justifyContent: 'center',
@@ -92,7 +92,7 @@ export const styles = stylex.create({
     marginBlock: 0
   },
   filterButton: {
-    minHeight: '44px',
+    minHeight: 'calc(var(--space-40) + var(--space-4))',
     minWidth: 'calc(var(--space-40) + var(--space-4))',
     paddingInline: 'var(--space-4)',
     borderWidth: 0,
