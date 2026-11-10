@@ -38,6 +38,11 @@ export default defineConfig({
     colorScheme: 'light'
   },
   expect: {
+    // Repo convergence budget (15s), matching the per-assertion fixes. Playwright's 5s default
+    // kept expiring on authoritative async conditions (hydration, auth redirects, post-mutation
+    // refetch UI flips, SW registration) when the full suite loads the shared stack. Per-test
+    // timeouts are unchanged; explicit per-assertion timeouts still override this.
+    timeout: 15_000,
     toHaveScreenshot: {
       animations: 'disabled',
       caret: 'hide',

@@ -614,7 +614,8 @@ async function signIn(page: Page, actor: Actor, copy: Copy = en): Promise<void> 
   await page.getByLabel(copy.auth.loginEmailLabel).fill(actor.email);
   await page.getByLabel(copy.auth.loginPasswordLabel).fill(password);
   await page.getByRole('button', { name: copy.auth.loginSubmit }).click();
-  await expect(page).toHaveURL(/\/dashboard$/);
+  // Auth roundtrip exceeds the 5s default under full-suite load; the URL stays the authoritative condition.
+  await expect(page).toHaveURL(/\/dashboard$/, { timeout: 15_000 });
   await waitForHydratedPage(page);
 }
 
