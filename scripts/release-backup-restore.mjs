@@ -150,29 +150,35 @@ export function runRestoreRehearsal({
     .map(([table]) => table);
   if (requireRepresentative && sparse.length)
     throw new Error(`Source is not representative; too few rows in ${sparse.join(', ')}`);
+  // One dump and one filtered TOC are shared by every restore, so all runs restore identical
+  // input. A failure here throws before any destination is provisioned.
+  const dumpStarted = now();
+  const dump = docker.dump(source, [
+    '-Fc',
+    '--no-owner',
+    '-n',
+    'public',
+    '-n',
+    'auth',
+    '-n',
+    'supabase_migrations'
+  ]);
+  // Platform-owned default privileges (other roles' ALTER DEFAULT PRIVILEGES) belong to the
+  // platform image, not the application backup, so they are left out of the restore list.
+  const toc = listDumpToc(docker, dump)
+    .split('\n')
+    .filter((line) => !line.includes('DEFAULT ACL'))
+    .join('\n');
+  docker.exec(['sh', '-c', 'cat > /tmp/release-rehearsal.toc'], { input: toc });
+  // dumpMs: one-time cost of the shared dump plus its staged, filtered TOC. Not part of restoreMs.
+  const dumpMs = now() - dumpStarted;
+  const dumpSha256 = sha256(dump);
   const results = [];
   for (const destination of destinations) {
     const started = now();
-    const dump = docker.dump(source, [
-      '-Fc',
-      '--no-owner',
-      '-n',
-      'public',
-      '-n',
-      'auth',
-      '-n',
-      'supabase_migrations'
-    ]);
     provisionDatabase(docker, destination);
     try {
       docker.sql(destination, 'drop schema public cascade;');
-      // Platform-owned default privileges (other roles' ALTER DEFAULT PRIVILEGES) belong to the
-      // platform image, not the application backup, so they are left out of the restore list.
-      const toc = listDumpToc(docker, dump)
-        .split('\n')
-        .filter((line) => !line.includes('DEFAULT ACL'))
-        .join('\n');
-      docker.exec(['sh', '-c', 'cat > /tmp/release-rehearsal.toc'], { input: toc });
       docker.restore(destination, dump, [
         '--exit-on-error',
         '--use-list=/tmp/release-rehearsal.toc'
@@ -190,8 +196,10 @@ export function runRestoreRehearsal({
       log(`[${pass ? 'PASS' : 'FAIL'}] ${destination}`);
       results.push({
         destination,
-        dumpSha256: sha256(dump),
+        // Same value in every run: all runs restore the one shared dump.
+        dumpSha256,
         dumpBytes: dump.length,
+        // Per-run provision + restore only; the shared dump time is reported once as dumpMs.
         restoreMs,
         tablesCompared: Object.keys(before).length,
         mismatchedTables: mismatched,
@@ -208,6 +216,7 @@ export function runRestoreRehearsal({
   return {
     startedAt,
     source,
+    dumpMs,
     runs: results,
     representative,
     sparseTables: sparse,
