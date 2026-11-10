@@ -292,7 +292,8 @@ test('organizer can leave without transferring then transfer to Reserve', async 
   await f.open(page, id);
   await page.getByRole('button', { name: m.leave, exact: true }).click();
   await page.getByRole('dialog').getByRole('button', { name: m.confirm, exact: true }).click();
-  await expect(page.getByRole('dialog')).toHaveCount(0);
+  // Dialog closes only after the mutation lands; convergence budget per the transfer race note below.
+  await expect(page.getByRole('dialog')).toHaveCount(0, { timeout: 15_000 });
   // Post-mutation refetch UI flip; see the transfer race note below: refetch cadence is slower under full-suite load.
   await expect(page.getByText(m.organizerOnly, { exact: true })).toBeVisible({ timeout: 15_000 });
   expect(await sql(`select created_by::text from public.match_events where id='${id}'`)).toEqual([
@@ -305,7 +306,8 @@ test('organizer can leave without transferring then transfer to Reserve', async 
   const dialog = page.getByRole('dialog');
   await dialog.getByLabel(m.newOrganizer, { exact: true }).selectOption(target.id);
   await dialog.getByRole('button', { name: m.transfer, exact: true }).click();
-  await expect(dialog).toHaveCount(0);
+  // Dialog closes only after the transfer mutation lands; see the race note below.
+  await expect(dialog).toHaveCount(0, { timeout: 15_000 });
   // transfer -> permission refetch -> edit hidden; refetch cadence is slower under full-suite load.
   await expect(page.getByRole('button', { name: m.edit.title, exact: true })).toHaveCount(0, {
     timeout: 15_000
