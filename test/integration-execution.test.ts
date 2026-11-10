@@ -20,11 +20,21 @@ import {
   resolveServiceRoleKey
 } from '../scripts/e2e-build-env.mjs';
 import {
+  INTEGRATION_DB_URL_ENV,
+  LOCAL_DB_NAME,
+  LOCAL_DB_PORT,
+  assertHandoffDatabaseUrl,
+  handoffDatabaseUrl,
+  resolveLocalDatabaseUrl
+} from '../scripts/integration-db-url.mjs';
+import {
   excludeArgs,
   fileFilters,
   phaseArgs,
   runIntegration
 } from '../scripts/run-integration.mjs';
+
+const noUrl = () => undefined;
 
 type Call = { args: string[]; env: Record<string, string | undefined> };
 
@@ -254,13 +264,14 @@ describe('excludeArgs', () => {
 describe('runIntegration', () => {
   it('runs the parallel phase before the serial phase with phase env', () => {
     const { calls, run } = recorder();
-    expect(runIntegration({ args: [], env: {}, run })).toBe(0);
+    expect(runIntegration({ resolveDatabaseUrl: noUrl, args: [], env: {}, run })).toBe(0);
     expect(calls.map((call) => call.env.INTEGRATION_PHASE)).toEqual(['parallel', 'serial']);
   });
 
   it('runs one phase-less invocation for the serial rollback', () => {
     const { calls, run } = recorder();
     runIntegration({
+      resolveDatabaseUrl: noUrl,
       args: [],
       env: { INTEGRATION_SERIAL: '1', INTEGRATION_PHASE: 'parallel' },
       run
@@ -272,6 +283,7 @@ describe('runIntegration', () => {
   it('forwards filters, tolerates empty phases for filters and keeps per-phase reports', () => {
     const { calls, run } = recorder();
     runIntegration({
+      resolveDatabaseUrl: noUrl,
       args: ['test/a.integration.test.ts', '--outputFile.json=o.json'],
       env: {},
       run
@@ -288,14 +300,22 @@ describe('runIntegration', () => {
 
   it('does not tolerate empty runs without filters', () => {
     const { calls, run } = recorder();
-    runIntegration({ args: ['--reporter=default'], env: {}, run });
+    runIntegration({ resolveDatabaseUrl: noUrl, args: ['--reporter=default'], env: {}, run });
     expect(calls[0]?.args).not.toContain('--passWithNoTests');
   });
 
   it('treats a separate option value as no filter', () => {
     const { calls, run } = recorder();
     const countFiles = vi.fn<() => number>(() => 0);
-    expect(runIntegration({ args: ['--reporter', 'basic'], env: {}, run, countFiles })).toBe(0);
+    expect(
+      runIntegration({
+        resolveDatabaseUrl: noUrl,
+        args: ['--reporter', 'basic'],
+        env: {},
+        run,
+        countFiles
+      })
+    ).toBe(0);
     expect(countFiles).not.toHaveBeenCalled();
     expect(calls).toHaveLength(2);
     expect(calls[0]?.args).not.toContain('--passWithNoTests');
@@ -304,7 +324,15 @@ describe('runIntegration', () => {
   it('fails without running vitest when the filters match no file in any phase', () => {
     const { calls, run } = recorder();
     const countFiles = vi.fn<() => number>(() => 0);
-    expect(runIntegration({ args: ['test/nope.test.ts'], env: {}, run, countFiles })).toBe(1);
+    expect(
+      runIntegration({
+        resolveDatabaseUrl: noUrl,
+        args: ['test/nope.test.ts'],
+        env: {},
+        run,
+        countFiles
+      })
+    ).toBe(1);
     expect(countFiles).toHaveBeenCalledTimes(2);
     expect(calls).toEqual([]);
   });
@@ -320,7 +348,13 @@ describe('runIntegration', () => {
     const write = vi.spyOn(process.stderr, 'write').mockReturnValue(true);
     try {
       expect(
-        runIntegration({ args: ['test/a.test.ts', ...exclude], env: {}, run, countFiles })
+        runIntegration({
+          resolveDatabaseUrl: noUrl,
+          args: ['test/a.test.ts', ...exclude],
+          env: {},
+          run,
+          countFiles
+        })
       ).toBe(1);
       expect(String(write.mock.calls[0]?.[0])).toContain('no integration test file matches');
     } finally {
@@ -334,7 +368,15 @@ describe('runIntegration', () => {
     const { calls, run } = recorder();
     const countFiles = (env: Record<string, string | undefined>) =>
       env.INTEGRATION_PHASE === 'serial' ? 1 : 0;
-    expect(runIntegration({ args: ['test/a.test.ts'], env: {}, run, countFiles })).toBe(0);
+    expect(
+      runIntegration({
+        resolveDatabaseUrl: noUrl,
+        args: ['test/a.test.ts'],
+        env: {},
+        run,
+        countFiles
+      })
+    ).toBe(0);
     expect(calls).toHaveLength(2);
     expect(calls[0]?.args).toContain('--passWithNoTests');
   });
@@ -342,7 +384,13 @@ describe('runIntegration', () => {
   it('still runs when the match listing is unavailable', () => {
     const { calls, run } = recorder();
     expect(
-      runIntegration({ args: ['test/a.test.ts'], env: {}, run, countFiles: () => undefined })
+      runIntegration({
+        resolveDatabaseUrl: noUrl,
+        args: ['test/a.test.ts'],
+        env: {},
+        run,
+        countFiles: () => undefined
+      })
     ).toBe(0);
     expect(calls).toHaveLength(2);
   });
@@ -351,7 +399,14 @@ describe('runIntegration', () => {
     'runs only the %s phase when INTEGRATION_PHASE selects it',
     (phase) => {
       const { calls, run } = recorder();
-      expect(runIntegration({ args: [], env: { INTEGRATION_PHASE: phase }, run })).toBe(0);
+      expect(
+        runIntegration({
+          resolveDatabaseUrl: noUrl,
+          args: [],
+          env: { INTEGRATION_PHASE: phase },
+          run
+        })
+      ).toBe(0);
       expect(calls.map((call) => call.env.INTEGRATION_PHASE)).toEqual([phase]);
     }
   );
@@ -360,7 +415,14 @@ describe('runIntegration', () => {
     const { calls, run } = recorder();
     const write = vi.spyOn(process.stderr, 'write').mockReturnValue(true);
     try {
-      expect(runIntegration({ args: [], env: { INTEGRATION_PHASE: 'bogus' }, run })).toBe(2);
+      expect(
+        runIntegration({
+          resolveDatabaseUrl: noUrl,
+          args: [],
+          env: { INTEGRATION_PHASE: 'bogus' },
+          run
+        })
+      ).toBe(2);
       expect(String(write.mock.calls[0]?.[0])).toContain('parallel, serial');
     } finally {
       write.mockRestore();
@@ -370,7 +432,112 @@ describe('runIntegration', () => {
 
   it('runs both phases after a failure and returns the first failing status', () => {
     const { calls, run } = recorder([3, 1]);
-    expect(runIntegration({ args: [], env: {}, run })).toBe(3);
+    expect(runIntegration({ resolveDatabaseUrl: noUrl, args: [], env: {}, run })).toBe(3);
     expect(calls).toHaveLength(2);
+  });
+});
+
+const LOCAL_URL = `postgresql://postgres:s3cr3t-pw@127.0.0.1:${LOCAL_DB_PORT}/${LOCAL_DB_NAME}`;
+
+describe('integration DB URL handoff', () => {
+  it('keeps the expected port equal to the [db] port in supabase/config.toml', () => {
+    const config = readFileSync(resolve(__dirname, '../supabase/config.toml'), 'utf8');
+    expect(/^\[db\]\s*\nport = (\d+)/m.exec(config)?.[1]).toBe(LOCAL_DB_PORT);
+  });
+
+  it('uses a private name that cannot reach browser bundles', () => {
+    expect(INTEGRATION_DB_URL_ENV).not.toMatch(/^VITE_/);
+  });
+
+  it.each([
+    LOCAL_URL,
+    `postgres://u:p@localhost:${LOCAL_DB_PORT}/${LOCAL_DB_NAME}`,
+    `postgresql://u:p@[::1]:${LOCAL_DB_PORT}/${LOCAL_DB_NAME}`
+  ])('accepts the local Supabase URL %#', (value) => {
+    expect(assertHandoffDatabaseUrl(value)).toBe(value);
+  });
+
+  it.each([
+    ['malformed', 'not a url with s3cr3t-pw'],
+    ['empty', ''],
+    ['non-PostgreSQL', `http://u:s3cr3t-pw@127.0.0.1:${LOCAL_DB_PORT}/${LOCAL_DB_NAME}`],
+    ['non-loopback', `postgresql://u:s3cr3t-pw@db.example.com:${LOCAL_DB_PORT}/${LOCAL_DB_NAME}`],
+    ['wrong port', `postgresql://u:s3cr3t-pw@127.0.0.1:5432/${LOCAL_DB_NAME}`],
+    ['missing port', `postgresql://u:s3cr3t-pw@127.0.0.1/${LOCAL_DB_NAME}`],
+    [
+      'connection parameter override',
+      `postgresql://u:s3cr3t-pw@127.0.0.1:${LOCAL_DB_PORT}/${LOCAL_DB_NAME}?host=remote.example`
+    ],
+    ['wrong database', `postgresql://u:s3cr3t-pw@127.0.0.1:${LOCAL_DB_PORT}/other`]
+  ])('fails closed on a %s value without echoing it', (_label, value) => {
+    let message = '';
+    try {
+      assertHandoffDatabaseUrl(value);
+    } catch (error) {
+      message = error instanceof Error ? error.message : String(error);
+    }
+    expect(message).toContain(INTEGRATION_DB_URL_ENV);
+    expect(message).not.toContain('s3cr3t-pw');
+    expect(message).not.toContain(value || '\0');
+  });
+
+  it('reads the variable, treats absence as standalone and an empty value as invalid', () => {
+    expect(handoffDatabaseUrl({ [INTEGRATION_DB_URL_ENV]: LOCAL_URL })).toBe(LOCAL_URL);
+    expect(handoffDatabaseUrl({})).toBeUndefined();
+    expect(() => handoffDatabaseUrl({ [INTEGRATION_DB_URL_ENV]: '' })).toThrow(/is invalid/);
+  });
+
+  it('resolves the launcher URL from supabase status output', () => {
+    const exec = vi.fn<() => string>(
+      () => `API_URL="http://127.0.0.1:55321"\nDB_URL="${LOCAL_URL}"\n`
+    );
+    expect(resolveLocalDatabaseUrl(exec)).toBe(LOCAL_URL);
+    expect(exec).toHaveBeenCalledOnce();
+  });
+
+  it.each([
+    [
+      'status fails',
+      () => {
+        throw new Error('status failed');
+      }
+    ],
+    ['no DB_URL', () => 'API_URL="http://127.0.0.1:55321"'],
+    ['non-loopback DB_URL', () => 'DB_URL="postgresql://u:p@db.example.com:55322/postgres"']
+  ])('leaves the launcher URL unresolved when %s', (_label, exec) => {
+    expect(resolveLocalDatabaseUrl(exec)).toBeUndefined();
+  });
+
+  it('hands the resolved URL to every phase and the file count, replacing a stale inherited value', () => {
+    const { calls, run } = recorder();
+    const countFiles = vi.fn<(env: Record<string, string | undefined>) => number>(() => 1);
+    runIntegration({
+      args: ['test/a.test.ts'],
+      env: { [INTEGRATION_DB_URL_ENV]: 'stale' },
+      run,
+      countFiles,
+      resolveDatabaseUrl: () => LOCAL_URL
+    });
+    expect(calls.map((call) => call.env[INTEGRATION_DB_URL_ENV])).toEqual([LOCAL_URL, LOCAL_URL]);
+    expect(countFiles.mock.calls[0]?.[0][INTEGRATION_DB_URL_ENV]).toBe(LOCAL_URL);
+  });
+
+  it('resolves once per run and never passes the URL as an argument', () => {
+    const { calls, run } = recorder();
+    const resolveDatabaseUrl = vi.fn<() => string>(() => LOCAL_URL);
+    runIntegration({ args: [], env: {}, run, resolveDatabaseUrl });
+    expect(resolveDatabaseUrl).toHaveBeenCalledOnce();
+    expect(JSON.stringify(calls.map((call) => call.args))).not.toContain('s3cr3t-pw');
+  });
+
+  it('drops an inherited value when the launcher cannot resolve, so children discover as before', () => {
+    const { calls, run } = recorder();
+    runIntegration({
+      args: [],
+      env: { [INTEGRATION_DB_URL_ENV]: LOCAL_URL },
+      run,
+      resolveDatabaseUrl: noUrl
+    });
+    expect(calls.every((call) => !(INTEGRATION_DB_URL_ENV in call.env))).toBe(true);
   });
 });

@@ -1,4 +1,5 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { INTEGRATION_DB_URL_ENV } from '../scripts/integration-db-url.mjs';
 import setupResultRepairScheduler from './helpers/result-repair-scheduler-setup';
 
 const mocks = vi.hoisted(() => ({
@@ -21,8 +22,13 @@ vi.mock('pg', () => ({
 }));
 
 describe('integration repair scheduler isolation', () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
   beforeEach(() => {
     vi.resetAllMocks();
+    vi.stubEnv(INTEGRATION_DB_URL_ENV, undefined);
     mocks.status.mockReturnValue(
       'DB_URL="postgresql://postgres:postgres@127.0.0.1:54322/postgres"'
     );
@@ -85,6 +91,37 @@ describe('integration repair scheduler isolation', () => {
     await expect(setupResultRepairScheduler()).rejects.toThrow(/DB_URL|local database/);
     expect(mocks.connect).not.toHaveBeenCalled();
   });
+
+  it('uses the launcher-provided database URL without calling the Supabase CLI', async () => {
+    const handedOff = 'postgresql://postgres:handoff-pw@127.0.0.1:55322/postgres';
+    vi.stubEnv(INTEGRATION_DB_URL_ENV, handedOff);
+    mocks.query.mockResolvedValueOnce({ rows: [{ available: false }] });
+    await setupResultRepairScheduler();
+    expect(mocks.status).not.toHaveBeenCalled();
+    expect(mocks.constructor).toHaveBeenCalledWith(
+      expect.objectContaining({ connectionString: handedOff })
+    );
+  });
+
+  it.each([
+    ['empty', ''],
+    ['malformed', 'handoff-pw not a url'],
+    ['non-loopback', 'postgresql://postgres:handoff-pw@db.example.com:55322/postgres'],
+    ['wrong port', 'postgresql://postgres:handoff-pw@127.0.0.1:5432/postgres']
+  ])(
+    'fails closed on a %s launcher value without CLI fallback or leaking it',
+    async (_l, value) => {
+      vi.stubEnv(INTEGRATION_DB_URL_ENV, value);
+      const failure = await setupResultRepairScheduler().then(
+        () => undefined,
+        (error: unknown) => error
+      );
+      expect(failure).toBeInstanceOf(Error);
+      expect(failure instanceof Error ? failure.message : '').not.toContain('handoff-pw');
+      expect(mocks.status).not.toHaveBeenCalled();
+      expect(mocks.connect).not.toHaveBeenCalled();
+    }
+  );
 
   it('closes the connection and propagates setup failures', async () => {
     mocks.query.mockRejectedValueOnce(new Error('scheduler unavailable'));
