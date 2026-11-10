@@ -209,7 +209,8 @@ export async function fixtures(
     await p.getByLabel(copy.auth.loginEmailLabel).fill(who.email);
     await p.getByLabel(copy.auth.loginPasswordLabel).fill('Password123!');
     await p.getByRole('button', { name: copy.auth.loginSubmit }).click();
-    await expect(p).toHaveURL(/\/dashboard$/);
+    // The post-login navigation is the authoritative signal; the default 5s budget loses to saturated workers.
+    await expect(p).toHaveURL(/\/dashboard$/, { timeout: 15_000 });
     await waitForHydratedPage(p);
     return p;
   }

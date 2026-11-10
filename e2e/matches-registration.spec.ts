@@ -834,9 +834,10 @@ test.describe.serial('registration, FIFO and cutoff journeys', () => {
     ).toBeVisible();
     await page.getByRole('button', { name: en.matchRegistration.join.requestButton }).click();
     await expect(page.getByText(en.matchRegistration.feedback.pending)).toBeVisible();
+    // Badge render is the authoritative signal; the default 5s budget loses to saturated workers.
     await expect(
       page.getByText(en.matchRegistration.request.pendingBadge, { exact: true })
-    ).toBeVisible();
+    ).toBeVisible({ timeout: 15_000 });
 
     expect(
       await notificationRows(family.creator!, 'match_registration_requested', eventId)

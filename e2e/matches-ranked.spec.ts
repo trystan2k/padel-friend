@@ -111,7 +111,8 @@ async function continueToReview(page: Page) {
 async function continueToReviewAndPublish(page: Page) {
   await continueToReview(page);
   await page.getByRole('button', { name: mc.publish }).click();
-  await expect(page).toHaveURL(/\/matches$/);
+  // Publish navigation is the authoritative signal; the default 5s budget loses to saturated workers.
+  await expect(page).toHaveURL(/\/matches$/, { timeout: 15_000 });
   await waitForHydratedPage(page);
 }
 

@@ -31,10 +31,7 @@ export const SPEC_WEIGHTS = {
   'e2e/matches.spec.ts': 38,
   'e2e/onboarding.spec.ts': 34,
   'e2e/player-ratings.spec.ts': 81,
-  'e2e/push-deep-links.spec.ts': 15,
   'e2e/offline-mutations.spec.ts': 8,
-  'e2e/push-preferences.spec.ts': 8,
-  'e2e/pwa.spec.ts': 13,
   'e2e/realtime-convergence.spec.ts': 15,
   'e2e/release-accessibility.spec.ts': 12,
   'e2e/release-integrity.spec.ts': 20,
@@ -71,6 +68,9 @@ export function listSpecs(dir = 'e2e') {
 //   (failed in about 3 of 9 full-sweep runs, passes alone).
 // - result-corrections-visual: its repair-diagnostics probes depend on the repair-lease lifecycle (an
 //   earlier describe deliberately holds a 600s lease), so a changed sweep order shifts their layout.
+// - pwa, push-deep-links, push-preferences: service-worker registration and push mocks stall (zero test
+//   progress, 90-120s timeouts) when parallel browser workers saturate the machine; deterministic in two
+//   consecutive full gate runs, green standalone in seconds.
 // A serial spec runs whole: serial wins over visual, so its @visual tests stay in the serial lane and the
 // visual lane never selects the file (no test is in two lanes). The local gate runs the serial specs
 // with --workers=1 so they are genuinely serial; the CI serial lane keeps the default workers and
@@ -83,6 +83,9 @@ export const SERIAL_SPECS = [
   'e2e/level-reviews-player.spec.ts',
   'e2e/level-reviews.spec.ts',
   'e2e/notifications.spec.ts',
+  'e2e/push-deep-links.spec.ts',
+  'e2e/push-preferences.spec.ts',
+  'e2e/pwa.spec.ts',
   'e2e/result-amendments-chronology.spec.ts',
   'e2e/result-corrections-visual.spec.ts',
   'e2e/result-repairs.spec.ts',
