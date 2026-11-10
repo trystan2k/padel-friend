@@ -89469,6 +89469,252 @@
           ]
         }
       ]
+    },
+    {
+      "type": "frame",
+      "id": "r9r34",
+      "x": 2860,
+      "y": 11816,
+      "name": "State variants — former participant League access",
+      "reusable": true,
+      "width": 430,
+      "fill": "$bg",
+      "stroke": "$line",
+      "strokeWidth": 1,
+      "layout": "vertical",
+      "gap": 10,
+      "padding": 16,
+      "children": [
+        {
+          "type": "text",
+          "id": "PQpiP",
+          "name": "Section title",
+          "fill": "$text",
+          "content": "Former participant access",
+          "fontFamily": "Manrope",
+          "fontSize": 19,
+          "fontWeight": "bold"
+        },
+        {
+          "type": "text",
+          "id": "gKg01",
+          "name": "Section subtitle",
+          "fill": "$muted",
+          "textGrowth": "fixed-width",
+          "width": "fill_container",
+          "content": "League-scoped read-only · membership stays ended",
+          "fontFamily": "Inter",
+          "fontSize": 12,
+          "fontWeight": "regular"
+        },
+        {
+          "type": "frame",
+          "id": "W4obsU",
+          "name": "State examples",
+          "width": "fill_container",
+          "layout": "vertical",
+          "gap": 8,
+          "children": [
+            {
+              "type": "frame",
+              "id": "YYMpT",
+              "name": "League detail — former participant notice",
+              "width": "fill_container",
+              "fill": "$greenSoft",
+              "cornerRadius": 12,
+              "gap": 9,
+              "padding": 12,
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "o9t7h",
+                  "name": "Former participant icon",
+                  "width": 17,
+                  "height": 17,
+                  "icon": "eye",
+                  "library": "lucide",
+                  "fill": "$green"
+                },
+                {
+                  "type": "frame",
+                  "id": "X7ul0i",
+                  "name": "Notice copy",
+                  "width": "fill_container",
+                  "layout": "vertical",
+                  "gap": 3,
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "x9D8x9",
+                      "name": "Notice title",
+                      "fill": "$text",
+                      "content": "Read-only League",
+                      "fontFamily": "Inter",
+                      "fontSize": 12,
+                      "fontWeight": "semibold"
+                    },
+                    {
+                      "type": "text",
+                      "id": "wIJMe",
+                      "name": "Notice description",
+                      "fill": "$muted",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "You played here. Standings stay available; community actions do not. Back returns to your match history.",
+                      "fontFamily": "Inter",
+                      "fontSize": 12,
+                      "fontWeight": "regular"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "dwXLa",
+              "name": "Match history — League link",
+              "width": "fill_container",
+              "fill": "$surface",
+              "cornerRadius": 12,
+              "stroke": "$line",
+              "strokeWidth": 1,
+              "gap": 9,
+              "padding": [
+                9,
+                10
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "cGMuQ",
+                  "name": "League link icon",
+                  "width": 17,
+                  "height": 17,
+                  "icon": "link",
+                  "library": "lucide",
+                  "fill": "$muted"
+                },
+                {
+                  "type": "frame",
+                  "id": "iDBWp",
+                  "name": "League link copy",
+                  "width": "fill_container",
+                  "layout": "vertical",
+                  "gap": 3,
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "i7TKl",
+                      "name": "League link title",
+                      "fill": "$text",
+                      "content": "League name opens the League",
+                      "fontFamily": "Inter",
+                      "fontSize": 12,
+                      "fontWeight": "semibold"
+                    },
+                    {
+                      "type": "text",
+                      "id": "dq96r",
+                      "name": "League link description",
+                      "fill": "$muted",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "Linked from your own match history. No community access needed.",
+                      "fontFamily": "Inter",
+                      "fontSize": 12,
+                      "fontWeight": "regular"
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "dyMqQ",
+                  "name": "League link label",
+                  "fill": "$green",
+                  "content": "Autumn 2026",
+                  "fontFamily": "Inter",
+                  "fontSize": 12,
+                  "fontWeight": "bold"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "S9ZohL",
+              "name": "Private community — League only",
+              "width": "fill_container",
+              "fill": "$surface",
+              "cornerRadius": 12,
+              "stroke": "$line",
+              "strokeWidth": 1,
+              "gap": 9,
+              "padding": [
+                9,
+                10
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "kLWKT",
+                  "name": "Private League icon",
+                  "width": 17,
+                  "height": 17,
+                  "icon": "lock",
+                  "library": "lucide",
+                  "fill": "$muted"
+                },
+                {
+                  "type": "frame",
+                  "id": "h1VtCL",
+                  "name": "Private League copy",
+                  "width": "fill_container",
+                  "layout": "vertical",
+                  "gap": 3,
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "txPjK",
+                      "name": "Private League title",
+                      "fill": "$text",
+                      "content": "League only, community stays closed",
+                      "fontFamily": "Inter",
+                      "fontSize": 12,
+                      "fontWeight": "semibold"
+                    },
+                    {
+                      "type": "text",
+                      "id": "Uge9I",
+                      "name": "Private League description",
+                      "fill": "$muted",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "No members, venues, requests or admin data for a former participant.",
+                      "fontFamily": "Inter",
+                      "fontSize": 12,
+                      "fontWeight": "regular"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "text",
+          "id": "uHjvo",
+          "name": "Reuse annotation",
+          "fill": "$green",
+          "textGrowth": "fixed-width",
+          "width": "fill_container",
+          "content": "Reuses Active league ywfn7, League history xbIxj and Text link QFH5u. Only the notice, the League link and the back target are new.",
+          "fontFamily": "Inter",
+          "fontSize": 12,
+          "fontWeight": "medium"
+        }
+      ]
     }
   ],
   "themes": {
