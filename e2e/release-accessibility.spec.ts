@@ -124,10 +124,8 @@ test.describe('authorized primary-flow accessibility', () => {
                 new Date(asOf!)
               )} · UTC`
             );
-            const hero = page.getByRole('region', { name: copy.profile.globalLevel, exact: true });
-            await expect(hero.getByRole('heading', { level: 2 })).toHaveText(
-              copy.profile.globalLevel
-            );
+            const hero = page.getByRole('region', { name: copy.home.levelTitle, exact: true });
+            await expect(hero.getByRole('heading', { level: 2 })).toHaveText(copy.home.levelTitle);
             await expect(hero.locator('strong')).toHaveText(/\d/);
             await expect(hero).toContainText(copy.profile.reliability);
             expect(await date.evaluate((element) => Boolean(element.closest('main')))).toBe(true);
@@ -184,6 +182,11 @@ test('selected League close dialog traps focus, dismisses and returns focus', as
     await page.keyboard.press('Enter');
     const dialog = page.getByRole('alertdialog');
     await expect(dialog).toBeVisible();
+    // Initial focus moves into the dialog after it mounts; wait for that, not just visibility,
+    // before the Tab walk so the first keypress cannot start from the trigger behind it.
+    await expect
+      .poll(() => dialog.evaluate((element) => element.contains(document.activeElement)))
+      .toBe(true);
     for (let index = 0; index < 8; index++) {
       await page.keyboard.press(index % 2 ? 'Shift+Tab' : 'Tab');
       expect(await dialog.evaluate((element) => element.contains(document.activeElement))).toBe(

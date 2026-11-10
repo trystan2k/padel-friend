@@ -457,6 +457,7 @@
   "home": {
     "title": "Home",
     "greeting": "Hello, {{name}}",
+    "levelTitle": "YOUR LEVEL",
     "switcherLabel": "Switch community",
     "selectionUnavailable": "That community is not available to you. Showing your default community instead.",
     "switching": "Loading community…",

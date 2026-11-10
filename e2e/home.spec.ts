@@ -503,7 +503,7 @@ async function residualAgainst(page: Page, actual: Buffer, reference: Buffer): P
   );
 }
 
-test.describe('Home structure and visual regression @visual', () => {
+test.describe('Home structure and visual regression', { tag: '@visual' }, () => {
   test.use({ serviceWorkers: 'block' });
   test.describe.configure({ mode: 'serial' });
 

@@ -51,6 +51,11 @@ export const styles = stylex.create({
     gap: 'var(--space-14)',
     marginTop: 'calc(-1 * var(--space-2))'
   },
+  // The 44px text-link targets overflow the 15px Pencil text rows; the negative block margin
+  // (15px row - 44px target) / 2 keeps the surrounding flow at the Pencil positions.
+  targetRow: {
+    marginBlock: 'calc((var(--space-15) - var(--space-40) - var(--space-4)) / 2)'
+  },
   forgotRow: {
     display: 'flex',
     justifyContent: 'flex-end',

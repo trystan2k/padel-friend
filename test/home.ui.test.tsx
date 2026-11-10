@@ -186,7 +186,7 @@ describe('Home dashboard', () => {
 
   it('renders committed level and reliability as text, never fabricated movement', () => {
     view(home(), { level: { display_level: 3.82, reliability_percent: 76 } });
-    const hero = screen.getByRole('region', { name: 'GLOBAL LEVEL' });
+    const hero = screen.getByRole('region', { name: 'YOUR LEVEL' });
     expect(hero.textContent).toContain('3.82');
     expect(hero.textContent).toContain('76%');
   });

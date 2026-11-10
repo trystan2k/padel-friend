@@ -526,7 +526,13 @@ describe.skipIf(!environment.env)('release integrity', { timeout: 900_000 }, () 
         `select event from public.operational_job_events where reference='${correction.jobId}' and event='replay.complete'`
       )
     ).toHaveLength(1);
-    expect(await sweepJobDiagnostics(client)).toBeGreaterThan(0);
+    // The outbox read is bounded (100 oldest unlogged rows, globally), so sibling suites' backlog can
+    // push this test's events past the first batch: drain until a sweep comes back short.
+    let swept = await sweepJobDiagnostics(client);
+    expect(swept).toBeGreaterThan(0);
+    for (let batch = 0; swept === 100 && batch < 50; batch++) {
+      swept = await sweepJobDiagnostics(client);
+    }
     expect(
       await sqlRows(
         `select event from public.operational_job_events where reference='${proposal}' and logged_at is null`

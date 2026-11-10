@@ -402,7 +402,7 @@ describe('atomic result review commands', { timeout: 120000 }, () => {
     expect(await evidence(current.eventId)).toMatchObject({ reviews: 0, review_audits: 0 });
   });
 
-  it('refuses a stale approval of a superseded proposal without touching the current one', async () => {
+  it('refuses a stale approval of a disputed proposal and keeps its slot closed to resubmission', async () => {
     const stale = await proposal();
     const rejected = await f.rpc(f.players[1]!, 'review_match_event_result', {
       p_proposal_id: stale.proposalId,
@@ -413,22 +413,21 @@ describe('atomic result review commands', { timeout: 120000 }, () => {
       p_request_id: crypto.randomUUID()
     });
     expect(rejected.data).toMatchObject({ status: 'disputed' });
+    // One proposal row exists per event group: a disputed proposal stays the group's proposal
+    // (only the dispute-resolution path moves it on), so a plain resubmit is refused, not replaced.
     const resubmitted = await f.submit(stale.eventId);
-    expect(resubmitted.error).toBeNull();
-    const currentId = String(asRecord(resubmitted.data).proposal_id);
-    expect(currentId).not.toBe(stale.proposalId);
+    expect(resubmitted.error?.message).toBe('MATCH_RESULT_ACTIVE_PROPOSAL');
+    expect(JSON.parse(resubmitted.error!.details!)).toMatchObject({ active_version: 1 });
 
     expect((await review(f.players[2]!, stale.proposalId)).error?.message).toBe(
       'MATCH_RESULT_REVIEW_CONFLICT'
     );
     expect(
       await sqlRows(
-        `select count(*)::int as reviews from public.match_event_result_reviews where proposal_id='${currentId}'`
+        `select count(*)::int as proposals from public.match_event_result_proposals where match_event_id='${stale.eventId}'`
       )
-    ).toEqual([{ reviews: 0 }]);
+    ).toEqual([{ proposals: 1 }]);
     expect(await evidence(stale.eventId)).toMatchObject({ reviews: 1, confirmations: 0 });
-    // The current proposal stays reviewable by its own identity.
-    expect((await review(f.players[2]!, currentId)).error).toBeNull();
   });
 
   it('settles a concurrent approve and reject to one review effect and one typed conflict', async () => {

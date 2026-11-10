@@ -125,7 +125,7 @@ export function LoginWelcome({
             autoComplete="current-password"
             disabled={!ready || busy}
           />
-          <div {...stylex.props(styles.forgotRow)}>
+          <div {...stylex.props(styles.forgotRow, styles.targetRow)}>
             <TextLink
               to="/forgot-password"
               search={returnPath ? { next } : undefined}
@@ -145,7 +145,7 @@ export function LoginWelcome({
         )}
       </div>
 
-      <div>
+      <div {...stylex.props(styles.targetRow)}>
         <AccountPrompt
           text={t('auth.accountPrompt')}
           action={t('auth.signupLink')}

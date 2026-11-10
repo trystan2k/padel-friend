@@ -693,6 +693,9 @@ async function collectFocusableInventory(
         if (element.matches(':disabled')) return false;
         if (element.getAttribute('aria-disabled') === 'true') return false;
         if (element.closest('[inert]')) return false;
+        // The root-level SkipLink is an intentional, page-independent first Tab stop that precedes
+        // the #locale anchor; it is not screen content and is covered by the release a11y spec.
+        if (element.matches('a[href="#main-content"]')) return false;
         // Chromium hides closed-details children via content-visibility (they keep boxes), so
         // exclude them explicitly: they are unreachable until the disclosure is opened. The
         // summary itself stays — it is the disclosure's keyboard stop.

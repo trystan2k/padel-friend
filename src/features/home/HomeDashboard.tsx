@@ -71,7 +71,7 @@ export function HomeDashboard({
       {level && (
         <section aria-labelledby="home-level-heading" {...stylex.props(s.levelHero)}>
           <h2 id="home-level-heading" {...stylex.props(s.cardTitle)}>
-            {t('profile.globalLevel')}
+            {t('home.levelTitle')}
           </h2>
           <strong {...stylex.props(s.levelValue)}>
             {formatDisplayLevel(level.display_level, i18n.language)}

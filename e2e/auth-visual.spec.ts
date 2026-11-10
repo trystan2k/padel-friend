@@ -450,11 +450,14 @@ test('Welcome matches frame wzWLt', async ({ page }) => {
     height: 44
   });
   const forgotLink = page.getByRole('link', { name: en.auth.forgotLink });
+  // Repo mandate (AGENTS.md): touch targets are >=44px, stricter than Pencil's literal 15px text-link
+  // rows. The row box is the 44px target, pulled by (15-44)/2 = -14.5px so every sibling keeps its
+  // Pencil position; only these rows' own box differs from the literal markup.
   await assertGeometry(forgotLink.locator('..'), 'Forgot password row', {
     x: 18,
-    y: 380,
+    y: 365.5,
     width: 354,
-    height: 15
+    height: 44
   });
   await assertGeometry(page.getByRole('button', { name: en.auth.loginSubmit }), 'Login CTA', {
     x: 18,
@@ -464,17 +467,13 @@ test('Welcome matches frame wzWLt', async ({ page }) => {
   });
   await assertGeometry(page.locator('main > div:last-child'), 'Sign-up prompt container', {
     x: 18,
-    y: 479,
+    y: 464.5, // Pencil 479 - 14.5px: the sign-up link row is a 44px target too
     width: 354,
-    height: 15
+    height: 44
   });
   const effectiveTarget = await forgotLink.evaluate((link) => {
-    const hitArea = getComputedStyle(link, '::before');
-    return {
-      width: Number.parseFloat(hitArea.width),
-      height: Number.parseFloat(hitArea.height),
-      position: getComputedStyle(link).position
-    };
+    const box = link.getBoundingClientRect();
+    return { width: box.width, height: box.height, position: getComputedStyle(link).position };
   });
   expect(effectiveTarget.width).toBeGreaterThanOrEqual(44);
   expect(effectiveTarget.height).toBe(44);
@@ -764,10 +763,11 @@ test('login inbox matches frame FZlHy', async ({ page }) => {
     width: 354,
     height: 44
   });
+  // Same 44px target row as the Welcome forgot-link row (pulled by -14.5px).
   await assertGeometry(
     page.getByRole('link', { name: en.auth.forgotLink }).locator('..'),
     'Inbox forgot-link row',
-    { x: 18, y: 475, width: 354, height: 15 }
+    { x: 18, y: 460.5, width: 354, height: 44 }
   );
   await assertGeometry(page.getByRole('button', { name: en.auth.loginSubmit }), 'Inbox login CTA', {
     x: 18,
@@ -778,7 +778,7 @@ test('login inbox matches frame FZlHy', async ({ page }) => {
   await assertGeometry(
     page.getByText(en.auth.accountPrompt, { exact: false }).locator('..'),
     'Sign-up prompt',
-    { x: 18, y: 574, width: 354, height: 15 }
+    { x: 18, y: 559.5, width: 354, height: 44 } // Pencil 574 - 14.5px; 44px link target
   );
   await compare(page, 'login-inbox.png');
 });

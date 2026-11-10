@@ -195,7 +195,7 @@ describe('rehearsal helpers', () => {
   it('lists every repository migration in order', () => {
     const versions = migrationFiles().map((entry) => entry.version);
     expect(versions).toEqual([...versions].sort());
-    expect(versions.at(-1)).toBe('20261110100000');
+    expect(versions.at(-1)).toBe('20261110110000');
   });
   it('reports the categories whose fingerprints differ', () => {
     expect(diffFingerprints({ a: 1, b: 'x', c: 2 }, { a: 1, b: 'y', c: 2 })).toEqual(['b']);

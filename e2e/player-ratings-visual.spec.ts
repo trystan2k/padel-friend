@@ -163,8 +163,10 @@ async function journeyVerticalViolations(region: Locator): Promise<string[]> {
     };
     // The level card may be followed by other profile blocks only when editing; anchor on the
     // element that actually precedes the journey.
+    // The journey section's own parent owns the declared gap: <main> on the standalone profile,
+    // the Home column when embedded (where a Level review block precedes the journey).
     const before = section.previousElementSibling ?? levelCard;
-    gap('level card → journey heading', before, header, main);
+    gap('level card → journey heading', before, header, section.parentElement ?? main);
     gap('journey heading → chart card', header, chartCard, section);
     gap('chart card → history card', chartCard, historyCard, section);
 
@@ -340,7 +342,8 @@ test('profile keeps the Pencil order, geometry and a reviewed raster budget (mob
   expect(browserName).toBe('chromium');
   const { page, region } = await openProfile('light', 390, 844);
   const name = page.getByRole('heading', { level: 2, name: host.name });
-  const title = page.getByRole('heading', { level: 1, name: copies.en.profile.title });
+  // Embedded in Home, which owns the single h1: the profile title is the section's h2.
+  const title = page.getByRole('heading', { level: 2, name: copies.en.profile.title });
   const levelLabel = page.getByText(copies.en.profile.globalLevel, { exact: true });
   const journeyHeading = region.getByRole('heading', { level: 2, name: rating.journey.title });
   const scope = region.getByText(rating.journey.scope, { exact: true });

@@ -457,6 +457,7 @@
   "home": {
     "title": "Inicio",
     "greeting": "Hola, {{name}}",
+    "levelTitle": "TU NIVEL",
     "switcherLabel": "Cambiar de comunidad",
     "selectionUnavailable": "Esa comunidad no está disponible para ti. Mostrando tu comunidad predeterminada.",
     "switching": "Cargando comunidad…",

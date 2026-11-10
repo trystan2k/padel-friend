@@ -35,6 +35,9 @@ export const SPEC_WEIGHTS = {
   'e2e/offline-mutations.spec.ts': 8,
   'e2e/push-preferences.spec.ts': 8,
   'e2e/pwa.spec.ts': 13,
+  'e2e/realtime-convergence.spec.ts': 15,
+  'e2e/release-accessibility.spec.ts': 12,
+  'e2e/release-integrity.spec.ts': 20,
   'e2e/result-amendments.spec.ts': 52
 };
 

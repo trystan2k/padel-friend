@@ -863,7 +863,10 @@ test.describe.serial('registration, FIFO and cutoff journeys', () => {
       })
       .click();
     await expect(creatorPage.getByText(en.matchRegistration.feedback.approved)).toBeVisible();
-    await expect(creatorPage.getByText(en.matchRegistration.queue.empty)).toBeVisible();
+    // Queue empties via the creator's refreshed seed; allow convergence under suite load.
+    await expect(creatorPage.getByText(en.matchRegistration.queue.empty)).toBeVisible({
+      timeout: 15_000
+    });
 
     // FIFO: approval behind the four earlier acceptances lands the requester in
     // the reserve queue at position #1 — request time reserved nothing.
@@ -924,7 +927,10 @@ test.describe.serial('registration, FIFO and cutoff journeys', () => {
       })
       .click();
     await expect(creatorPage.getByText(en.matchRegistration.feedback.rejected)).toBeVisible();
-    await expect(creatorPage.getByText(en.matchRegistration.queue.empty)).toBeVisible();
+    // Queue empties via the creator's refreshed seed; allow convergence under suite load.
+    await expect(creatorPage.getByText(en.matchRegistration.queue.empty)).toBeVisible({
+      timeout: 15_000
+    });
 
     await page.reload();
     await waitForHydratedPage(page);
@@ -991,7 +997,10 @@ test.describe.serial('registration, FIFO and cutoff journeys', () => {
         name: fill(en.matchRegistration.queue.declineLabel, { name: requester.displayName })
       })
       .click();
-    await expect(creatorPage.getByText(en.matchRegistration.queue.empty)).toBeVisible();
+    // Queue empties via the creator's refreshed seed; allow convergence under suite load.
+    await expect(creatorPage.getByText(en.matchRegistration.queue.empty)).toBeVisible({
+      timeout: 15_000
+    });
     expect(await notificationRows(requester, 'match_registration_rejected', eventId)).toHaveLength(
       2
     );

@@ -743,7 +743,10 @@ test.describe.serial('public community_open lifecycle', () => {
       await expect(creatorPage.getByRole('button', { name, exact: true })).toBeVisible();
     }
     await expect(creatorPage.getByRole('button')).toHaveCount(4);
-    const links = creatorPage.getByRole('link');
+    // The root-level SkipLink (#main-content) is a global, page-independent link; exclude it.
+    const links = creatorPage
+      .getByRole('link')
+      .and(creatorPage.locator(':not([href="#main-content"])'));
     // Frame-driven detail keeps only localized Back and external Maps links;
     // the place card and roster no longer render a View group affordance.
     await expect(links).toHaveCount(2);
