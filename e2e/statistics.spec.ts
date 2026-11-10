@@ -42,7 +42,10 @@ async function pageOf(key: PlayerKey): Promise<Page> {
   const page = await w.f.page(w.actors[key], 'en', 1280, 'light', 900);
   const errors: string[] = [];
   page.on('console', (message) => {
-    if (message.type() === 'error') errors.push(message.text());
+    if (message.type() === 'error') {
+      const url = message.location()?.url;
+      errors.push(url ? `${message.text()} @ ${url}` : message.text());
+    }
   });
   page.on('pageerror', (error) => errors.push(error.message));
   consoleErrors.set(page, errors);
