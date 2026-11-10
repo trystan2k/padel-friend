@@ -296,4 +296,122 @@ describe('notification freshness', () => {
     await new Promise((resolve) => setTimeout(resolve, 50));
     expect(mocks.list).not.toHaveBeenCalled();
   });
+
+  describe('background convergence', () => {
+    beforeEach(() => {
+      vi.useFakeTimers();
+      makeVisible();
+    });
+    afterEach(() => vi.useRealTimers());
+
+    it('merges new rows and the unread count on the cadence without a loading flash', async () => {
+      const newerId = '00000000-0000-4000-8000-000000000003';
+      const newer = '2026-10-15T12:00:05.000Z';
+      mocks.list.mockResolvedValue(page([notification(newerId, newer), notification(unreadId)], 2));
+      const { result } = renderHook(() => useNotifications(page([notification(unreadId)], 1)));
+
+      await act(async () => vi.advanceTimersByTimeAsync(3_000));
+
+      expect(mocks.list).toHaveBeenCalledTimes(1);
+      expect(result.current.rows.map((row) => row.id)).toEqual([newerId, unreadId]);
+      expect(result.current.unreadCount).toBe(2);
+      expect(result.current.loading).toBe(false);
+      expect(result.current.error).toBe(false);
+    });
+
+    it('keeps already loaded older pages and stays silent when a background read fails', async () => {
+      const olderId = '00000000-0000-4000-8000-000000000004';
+      const older = '2026-10-14T12:00:00.000Z';
+      const initial = {
+        ...page([notification(unreadId), notification(olderId, older)], 1),
+        nextCursor: { sequence: 9, createdAt: cutoff, id: unreadId }
+      };
+      mocks.list.mockRejectedValueOnce(new Error('network')).mockResolvedValue({
+        ...page([notification(unreadId, cutoff, cutoff)], 0),
+        nextCursor: { sequence: 9, createdAt: cutoff, id: unreadId }
+      });
+      const { result } = renderHook(() => useNotifications(initial));
+
+      await act(async () => vi.advanceTimersByTimeAsync(3_000));
+      expect(result.current.error).toBe(false);
+      expect(result.current.rows).toHaveLength(2);
+
+      await act(async () => vi.advanceTimersByTimeAsync(6_000));
+      expect(result.current.rows.map((row) => row.id)).toEqual([unreadId, olderId]);
+      expect(result.current.rows[0]?.read_at).toBe(cutoff);
+      expect(result.current.unreadCount).toBe(0);
+    });
+
+    it('keeps loaded rows sharing the boundary timestamp when the first page refreshes', async () => {
+      const [a, b, c] = [unreadId, readId, '00000000-0000-4000-8000-000000000005'];
+      const initial = {
+        ...page([notification(a), notification(b), notification(c)], 3),
+        nextCursor: { sequence: 9, createdAt: cutoff, id: c }
+      };
+      mocks.list.mockResolvedValue({
+        ...page([notification(a), notification(b, cutoff, cutoff)], 1),
+        nextCursor: { sequence: 9, createdAt: cutoff, id: b }
+      });
+      const { result } = renderHook(() => useNotifications(initial));
+
+      await act(async () => vi.advanceTimersByTimeAsync(3_000));
+
+      expect(result.current.rows.map((row) => row.id)).toEqual([a, b, c]);
+      expect(result.current.rows[1]?.read_at).toBe(cutoff);
+      expect(result.current.cursor).toEqual(initial.nextCursor);
+    });
+
+    it('walks the cursors when a burst outgrows one page and keeps older rows reachable', async () => {
+      const [o1, o2, n1, n2, n3] = [
+        '00000000-0000-4000-8000-000000000101',
+        '00000000-0000-4000-8000-000000000102',
+        '00000000-0000-4000-8000-000000000103',
+        '00000000-0000-4000-8000-000000000104',
+        '00000000-0000-4000-8000-000000000105'
+      ] as [string, string, string, string, string];
+      const oldCursor = { sequence: 2, createdAt: cutoff, id: o2 };
+      const newestCursor = { sequence: 4, createdAt: cutoff, id: n2 };
+      const initial = {
+        ...page([notification(o1), notification(o2)], 2),
+        nextCursor: oldCursor
+      };
+      mocks.list.mockImplementation(({ data }) =>
+        Promise.resolve(
+          data.cursor
+            ? {
+                ...page([notification(n3), notification(o1)], 3),
+                nextCursor: { sequence: 3, createdAt: cutoff, id: o1 }
+              }
+            : { ...page([notification(n1), notification(n2)], 4), nextCursor: newestCursor }
+        )
+      );
+      const { result } = renderHook(() => useNotifications(initial));
+
+      await act(async () => vi.advanceTimersByTimeAsync(3_000));
+
+      expect(mocks.list).toHaveBeenCalledTimes(2);
+      expect(mocks.list).toHaveBeenLastCalledWith({
+        data: { category: 'all', cursor: newestCursor, limit: 20 }
+      });
+      expect(result.current.rows.map((row) => row.id)).toEqual([n1, n2, n3, o1, o2]);
+      expect(result.current.cursor).toEqual(oldCursor);
+    });
+
+    it('restarts pagination from the authoritative prefix when a burst never reaches loaded rows', async () => {
+      const o1 = '00000000-0000-4000-8000-000000000201';
+      const n1 = '00000000-0000-4000-8000-000000000202';
+      const newCursor = { sequence: 7, createdAt: cutoff, id: n1 };
+      mocks.list.mockResolvedValue({ ...page([notification(n1)], 1), nextCursor: newCursor });
+      const initial = {
+        ...page([notification(o1)], 1),
+        nextCursor: { sequence: 1, createdAt: cutoff, id: o1 }
+      };
+      const { result } = renderHook(() => useNotifications(initial));
+
+      await act(async () => vi.advanceTimersByTimeAsync(3_000));
+
+      expect(result.current.rows.map((row) => row.id)).toEqual([n1]);
+      expect(result.current.cursor).toEqual(newCursor);
+    });
+  });
 });

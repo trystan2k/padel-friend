@@ -638,17 +638,18 @@ test('search announces pending loader and settles after deterministic response r
   const input = page.getByRole('searchbox', { name: en.communityOnboarding.searchLabel });
   await input.fill(`Pending${crypto.randomUUID().slice(0, 6)}`);
   await requestSeen;
-  await expect(page.getByRole('status')).toHaveText(en.communityOnboarding.searchLoading);
+  const main = page.getByRole('main');
+  await expect(main.getByRole('status')).toHaveText(en.communityOnboarding.searchLoading);
   await expect(page.locator('div[aria-busy="true"]')).toHaveCount(1);
   expect(
-    await page.getByRole('status').evaluate((status) => status.closest('[aria-busy="true"]'))
+    await main.getByRole('status').evaluate((status) => status.closest('[aria-busy="true"]'))
   ).toBeNull();
   await expect(page.getByText(en.communityOnboarding.emptySearch)).toHaveCount(0);
   await expect(input).toBeEnabled();
   await expect(input).toBeFocused();
   release();
   await expect(page.locator('[aria-busy="false"]')).toHaveCount(1);
-  await expect(page.getByRole('status')).not.toHaveText(en.communityOnboarding.searchLoading);
+  await expect(main.getByRole('status')).not.toHaveText(en.communityOnboarding.searchLoading);
 });
 
 test('retry reports pending, blocks duplicate invalidation, and recovers from one controlled failure', async ({
@@ -675,16 +676,17 @@ test('retry reports pending, blocks duplicate invalidation, and recovers from on
   );
   const input = page.getByRole('searchbox', { name: en.communityOnboarding.searchLabel });
   await input.fill(`Retry${crypto.randomUUID().slice(0, 6)}`);
-  await expect(page.getByRole('alert')).toHaveText(en.communityOnboarding.loadFailed);
+  const main = page.getByRole('main');
+  await expect(main.getByRole('alert')).toHaveText(en.communityOnboarding.loadFailed);
   const retry = page.getByRole('button', { name: en.communityOnboarding.retry });
   await retry.click();
   await retrySeen;
-  await expect(page.getByRole('status')).toHaveText(en.communityOnboarding.searchLoading);
+  await expect(main.getByRole('status')).toHaveText(en.communityOnboarding.searchLoading);
   await expect(page.locator('div[aria-busy="true"]')).toHaveCount(1);
   await expect(retry).toBeDisabled();
   release();
   await expect(page.locator('[aria-busy="false"]')).toHaveCount(1);
-  await expect(page.getByRole('alert')).toHaveCount(0);
+  await expect(main.getByRole('alert')).toHaveCount(0);
   expect(calls).toBe(2);
 });
 

@@ -12,8 +12,10 @@ export default defineConfig({
   globalSetup: './e2e/global-setup.ts',
   snapshotPathTemplate: '{testDir}/{testFileName}-snapshots/{arg}{ext}',
   retries: process.env.CI ? 2 : 0,
-  // CI runners get 4 workers; locally Playwright picks its own default from the CPU count.
-  workers: process.env.CI ? 4 : undefined,
+  // 2 workers everywhere: 4-worker contention caused rotating under-load stalls (hydration,
+  // post-mutation refetch, publish navigation) across full-gate runs, all green standalone.
+  // 2 workers trade ~5-8 min of runtime for stability.
+  workers: 2,
   use: {
     baseURL: 'http://127.0.0.1:4173',
     trace: 'on-first-retry',
@@ -38,6 +40,11 @@ export default defineConfig({
     colorScheme: 'light'
   },
   expect: {
+    // Repo convergence budget (15s), matching the per-assertion fixes. Playwright's 5s default
+    // kept expiring on authoritative async conditions (hydration, auth redirects, post-mutation
+    // refetch UI flips, SW registration) when the full suite loads the shared stack. Per-test
+    // timeouts are unchanged; explicit per-assertion timeouts still override this.
+    timeout: 15_000,
     toHaveScreenshot: {
       animations: 'disabled',
       caret: 'hide',

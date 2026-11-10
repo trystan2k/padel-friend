@@ -1,4 +1,8 @@
 {
+  "accessibility": {
+    "skipToContent": "Saltar al contenido principal",
+    "stale": "Las actualizaciones están demoradas. La información mostrada puede estar desactualizada. Las actualizaciones se reanudarán automáticamente."
+  },
   "languageNames": {
     "en": "English",
     "pt-BR": "Português (Brasil)",
@@ -229,6 +233,8 @@
     "errorTitle": "No se pudo cargar esta pantalla",
     "historyEmpty": "Aún no hay historial competitivo. Tus juegos confirmados aparecerán aquí.",
     "saveFailed": "No se pudieron guardar los cambios. Inténtalo de nuevo.",
+    "saveOffline": "Sin conexión. No se guardó nada. Vuelve a conectarte e inténtalo de nuevo.",
+    "saveUnconfirmed": "No pudimos confirmar que se guardaran los cambios. Revisa tu perfil antes de volver a intentarlo.",
     "signOutFailed": "No se pudo cerrar la sesión. Inténtalo de nuevo.",
     "loading": "Cargando perfil del jugador…"
   },
@@ -408,7 +414,9 @@
       "sent": "Mensaje enviado",
       "empty": "Escribe un mensaje",
       "notPending": "Esta solicitud ya no está pendiente",
-      "failed": "No se pudo enviar el mensaje"
+      "failed": "No se pudo enviar el mensaje",
+      "offline": "Sin conexión. No se envió nada. Vuelve a conectarte e inténtalo de nuevo.",
+      "unconfirmed": "No pudimos confirmar que se enviara el mensaje. Reintentar es seguro: no se enviará duplicado."
     }
   },
   "communityInbox": {
@@ -437,10 +445,95 @@
     "copied": "Copiado",
     "shareHelp": "El envío por enlace no está disponible. Comparte este token de un solo uso de forma segura.",
     "error": "No se pudo completar la invitación.",
+    "offline": "Sin conexión. No se emitió ninguna invitación. Vuelve a conectarte e inténtalo de nuevo.",
+    "unconfirmed": "No pudimos confirmar que se emitiera la invitación. Revisa la lista de invitaciones antes de volver a intentarlo.",
     "discoverableLabel": "Permitir que administradores de comunidades privadas encuentren mi nombre",
     "discoverableHelp": "Cualquier administrador de una comunidad privada puede encontrar tu nombre consentido. No se exponen correos.",
     "discoverabilitySaved": "Preferencia de descubrimiento guardada.",
-    "discoverabilityError": "No se pudo guardar la preferencia."
+    "discoverabilityError": "No se pudo guardar la preferencia.",
+    "discoverabilityOffline": "Sin conexión. No se guardó nada. Vuelve a conectarte e inténtalo de nuevo.",
+    "discoverabilityUnconfirmed": "No pudimos confirmar que se guardara la preferencia. Recarga antes de volver a intentarlo."
+  },
+  "home": {
+    "title": "Inicio",
+    "greeting": "Hola, {{name}}",
+    "levelTitle": "TU NIVEL",
+    "switcherLabel": "Cambiar de comunidad",
+    "selectionUnavailable": "Esa comunidad no está disponible para ti. Mostrando tu comunidad predeterminada.",
+    "switching": "Cargando comunidad…",
+    "error": "No se pudo cargar el inicio.",
+    "retry": "Reintentar",
+    "communitiesError": "No se pudieron cargar tus comunidades.",
+    "sectionError": "No se pudo cargar esta sección.",
+    "sectionUnavailable": "Esta sección no está disponible ahora.",
+    "noCommunity": {
+      "title": "Únete a una comunidad",
+      "description": "El inicio muestra partidos, clasificaciones y actividad de tus comunidades.",
+      "action": "Buscar una comunidad"
+    },
+    "nextMatch": {
+      "title": "Próximo partido",
+      "empty": "No hay partidos próximos en esta comunidad.",
+      "playing_one": "{{count}} jugador confirmado",
+      "playing_other": "{{count}} jugadores confirmados",
+      "moreNeeded_one": "falta {{count}}",
+      "moreNeeded_other": "faltan {{count}}"
+    },
+    "available": {
+      "title": "Partidos abiertos",
+      "all": "Todos los partidos"
+    },
+    "actions": {
+      "title": "Necesita tu atención",
+      "empty": "Nada necesita tu atención.",
+      "partial": "Algunos elementos no se pudieron comprobar, así que esta lista puede estar incompleta.",
+      "open": "Abrir",
+      "openVenue": "Abrir {{venue}}",
+      "resultReview_one": "{{count}} resultado pendiente de revisión en {{venue}}",
+      "resultReview_other": "{{count}} resultados pendientes de revisión en {{venue}}",
+      "reconfirmation": "Reconfirma tu plaza en {{venue}}",
+      "organizerRequests_one": "{{count}} solicitud para unirse en espera en {{venue}}",
+      "organizerRequests_other": "{{count}} solicitudes para unirse en espera en {{venue}}",
+      "reserveStandby": "Estás en la lista de reservas en {{venue}}"
+    },
+    "ranking": {
+      "title": "Clasificación",
+      "empty": "Aún no hay clasificación disponible.",
+      "skillTitle": "Clasificación de nivel de la comunidad",
+      "skillEmpty": "Aún no hay historial de clasificación en esta comunidad.",
+      "skillRanked": "Puesto {{position}} de {{total}} jugadores clasificados",
+      "skillRankedNoTotal": "Puesto {{position}} en esta comunidad",
+      "unrated": "Aún no tienes nivel en esta comunidad.",
+      "notMember": "No eres miembro activo de esta comunidad.",
+      "leagueTitle": "Liga: {{name}}",
+      "leagueEmpty": "No hay una Liga activa en esta comunidad.",
+      "leagueOnly": "La única Liga activa de tu comunidad",
+      "leagueFirstOf": "Primera de {{count}} Ligas activas",
+      "leagueFirstOfMore": "Primera de al menos {{count}} Ligas activas",
+      "you": "Tú",
+      "unnamed": "Jugador",
+      "record": "{{wins}}G {{losses}}P",
+      "selfMissing": "Aún no estás en la clasificación de esta Liga.",
+      "statistics": "Estadísticas de la comunidad",
+      "movement": {
+        "new": "Nueva entrada",
+        "same": "Sin cambios desde la última clasificación publicada",
+        "up_one": "Subió {{count}} puesto desde la última clasificación publicada",
+        "up_other": "Subió {{count}} puestos desde la última clasificación publicada",
+        "down_one": "Bajó {{count}} puesto desde la última clasificación publicada",
+        "down_other": "Bajó {{count}} puestos desde la última clasificación publicada"
+      }
+    },
+    "activity": {
+      "title": "Actividad reciente",
+      "empty": "Aún no hay actividad confirmada.",
+      "scopeGlobal": "Nivel global",
+      "scopeCommunity": "Esta comunidad",
+      "rating": "Nivel {{delta}}, ahora nivel {{level}}",
+      "adjustment": "Nivel revisado, ahora nivel {{level}}",
+      "rank": "Puesto ahora {{position}}, antes {{previous}}",
+      "rankNew": "Puesto ahora {{position}}"
+    }
   },
   "pwa": {
     "install": {
@@ -921,6 +1014,8 @@
           "busy": "Hay otra actualización en curso. Inténtalo de nuevo en unos instantes."
         },
         "retryErrors": {
+          "offline": "Estás sin conexión. No se envió nada. Reconéctate e inténtalo de nuevo.",
+          "unconfirmed": "No pudimos confirmar el reintento. El estado se actualizó; revísalo antes de reintentar.",
           "unauthenticated": "Inicia sesión de nuevo para reintentar.",
           "not_found": "Esta actualización no está disponible para ti.",
           "forbidden": "No puedes reintentar esta actualización.",
@@ -1598,6 +1693,8 @@
       "inviteeUnavailable": "Uno o más invitados no están disponibles.",
       "conflict": "Este partido entra en conflicto con una publicación existente.",
       "publishFailed": "No se pudo publicar el partido.",
+      "offline": "Sin conexión. No se publicó nada. Vuelve a conectarte e inténtalo de nuevo.",
+      "unconfirmed": "No pudimos confirmar que se publicara el partido. Reintentar es seguro: no se creará un duplicado.",
       "optionsUnavailable": "No se pudieron cargar las opciones de creación. Inténtalo de nuevo."
     }
   },
@@ -2110,6 +2207,8 @@
       "LEAGUE_STANDINGS_VERSION_INVALID": "Esa versión de la clasificación no es válida.",
       "LEAGUE_STANDINGS_VERSION_NOT_FOUND": "Esa versión de la clasificación no existe.",
       "LEAGUE_UNAVAILABLE": "Algo salió mal. Inténtalo de nuevo.",
+      "LEAGUE_OFFLINE": "Estás sin conexión. No se envió nada. Reconéctate e inténtalo de nuevo.",
+      "LEAGUE_UNCONFIRMED": "No pudimos confirmar este cambio. Recargamos la Liga; revísala antes de intentarlo de nuevo.",
       "INVALID_LEAGUE_INPUT": "Esos datos no son válidos.",
       "INVALID_LEAGUE_RESPONSE": "Algo salió mal. Inténtalo de nuevo."
     }

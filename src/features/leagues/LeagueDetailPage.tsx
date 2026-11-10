@@ -12,6 +12,7 @@ import type {
   LeagueErrorCode,
   UpdateLeagueChanges
 } from './league-contracts';
+import { isOffline } from '../../lib/connectivity';
 import { leagueErrorCode } from './league-errors';
 import {
   formatLeagueInstant,
@@ -97,7 +98,8 @@ export function LeagueDetailPage({
   useRefreshWhenVisible(
     () => router.invalidate(),
     league.status === 'active',
-    league.end_mode === 'fixed_date' ? league.end_at : null
+    league.end_mode === 'fixed_date' ? league.end_at : null,
+    `league:${league.id}`
   );
   const reload = () => {
     setReloading(true);
@@ -131,6 +133,10 @@ export function LeagueDetailPage({
 
   const run = async (command: () => Promise<LeagueDto>, success: string): Promise<boolean> => {
     if (busy) return false;
+    if (isOffline()) {
+      setFeedback({ kind: 'error', code: 'LEAGUE_OFFLINE' });
+      return false;
+    }
     setBusy(true);
     setFeedback(null);
     try {
@@ -141,7 +147,7 @@ export function LeagueDetailPage({
     } catch (error) {
       const code = leagueErrorCode(error);
       setFeedback({ kind: 'error', code });
-      if (code === 'LEAGUE_VERSION_CONFLICT') reload();
+      if (code === 'LEAGUE_VERSION_CONFLICT' || code === 'LEAGUE_UNCONFIRMED') reload();
       return false;
     } finally {
       setBusy(false);
@@ -154,6 +160,7 @@ export function LeagueDetailPage({
       setEditing(false);
       return null;
     }
+    if (isOffline()) return 'LEAGUE_OFFLINE';
     try {
       setResult(
         await updateLeague({
@@ -166,7 +173,7 @@ export function LeagueDetailPage({
       return null;
     } catch (error) {
       const code = leagueErrorCode(error);
-      if (code === 'LEAGUE_VERSION_CONFLICT') reload();
+      if (code === 'LEAGUE_VERSION_CONFLICT' || code === 'LEAGUE_UNCONFIRMED') reload();
       return code;
     }
   };

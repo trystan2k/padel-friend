@@ -1,3 +1,4 @@
+import { retryOnDeadlock } from './deadlock-retry';
 import {
   executeTrustedSqlBatch,
   queryTrustedSql,
@@ -236,9 +237,13 @@ export class FixtureCleanupRegistry {
     if (statements.length === 0) return;
 
     try {
-      await executeTrustedSqlBatch(
-        statements.map((sql) => ({ sql })),
-        { timeoutMs: FIXTURE_CLEANUP_TIMEOUT_MS }
+      // Concurrent workers' cleanup transactions can invert table-lock order (40P01); the victim
+      // rolls back whole, so re-running the same batch is safe.
+      await retryOnDeadlock(() =>
+        executeTrustedSqlBatch(
+          statements.map((sql) => ({ sql })),
+          { timeoutMs: FIXTURE_CLEANUP_TIMEOUT_MS }
+        )
       );
     } catch (error) {
       if (options.restoreOnFailure?.length)

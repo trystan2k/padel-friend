@@ -12,13 +12,23 @@ export function isSkipWaitingMessage(data: unknown) {
   );
 }
 
-// Non-navigation, same-origin, credential-free GET only. The precache lookup then decides whether
-// the URL is on the allowlist; private SSR, server functions, APIs and Supabase never match.
+// Same-origin endpoints that serve private data. They are excluded by path even if the URL ends
+// like an asset (for example /api/export.js), so the allowlist is never the only line of defence.
+export const PRIVATE_PATH_PREFIXES = ['/_serverFn/', '/auth/', '/api/'];
+
+export function isPrivatePath(pathname: string) {
+  return PRIVATE_PATH_PREFIXES.some((prefix) => pathname.startsWith(prefix));
+}
+
+// Non-navigation, same-origin GET without an Authorization header, outside every private path. The
+// precache lookup then decides whether the URL is on the public allowlist.
 export function isPrecacheCandidate(request: RequestLike, origin: string) {
+  const url = new URL(request.url);
   return (
     request.method === 'GET' &&
     request.mode !== 'navigate' &&
-    new URL(request.url).origin === origin &&
+    url.origin === origin &&
+    !isPrivatePath(url.pathname) &&
     !request.headers.has('authorization')
   );
 }
@@ -30,6 +40,41 @@ export async function removeLegacyCaches(cacheStorage: Pick<CacheStorage, 'keys'
     names
       .filter((name) => LEGACY_RUNTIME_CACHES.includes(name))
       .map((name) => cacheStorage.delete(name))
+  );
+}
+
+const PRECACHE_PREFIX = 'workbox-precache';
+
+// Mirrors the build-time precache allowlist (scripts/pwa-build.mjs): content-hashed assets plus the
+// public manifest, icons and offline document. Anything else, HTML documents included, is not public.
+const HASHED_ASSET = /^assets\/.+-[\w-]{8}\.(?:js|css|woff2?)$/;
+const PUBLIC_FILE = /^(?:manifest\.webmanifest|icon\.svg|offline\.html|icons\/[\w-]+\.png)$/;
+
+function isAllowlistedPublicPath(pathname: string) {
+  const path = pathname.slice(1);
+  return HASHED_ASSET.test(path) || PUBLIC_FILE.test(path);
+}
+
+// Drops everything outside the public allowlist that ever reached a cache this worker owns (a
+// private path, or a cached private SSR document such as /dashboard), leaving public assets intact.
+export async function purgePrivateCacheEntries(cacheStorage: {
+  keys(): Promise<string[]>;
+  open(name: string): Promise<Pick<Cache, 'keys' | 'delete'>>;
+}) {
+  const names = (await cacheStorage.keys()).filter((name) => name.startsWith(PRECACHE_PREFIX));
+  await Promise.all(
+    names.map(async (name) => {
+      const cache = await cacheStorage.open(name);
+      const requests = await cache.keys();
+      await Promise.all(
+        requests
+          .filter((entry) => {
+            const { pathname } = new URL(entry.url);
+            return isPrivatePath(pathname) || !isAllowlistedPublicPath(pathname);
+          })
+          .map((entry) => cache.delete(entry))
+      );
+    })
   );
 }
 

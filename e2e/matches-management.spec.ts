@@ -50,7 +50,10 @@ test('invite acceptance joins ordinary FIFO as Reserve', async () => {
     await expect(page.getByRole('button', { name, exact: true })).toBeInViewport({ ratio: 1 });
   }
   await page.getByRole('button', { name: invitation.accept, exact: true }).click();
-  await expect(page.getByText(invitation.accepted, { exact: true })).toBeVisible();
+  // Post-mutation refetch UI flip; see the transfer race note below: refetch cadence is slower under full-suite load.
+  await expect(page.getByText(invitation.accepted, { exact: true })).toBeVisible({
+    timeout: 15_000
+  });
   const rows = await roster(id);
   expect(rows.find((row) => row.user_id === invitee.id)).toMatchObject({
     accepted_order: '7',
@@ -60,7 +63,7 @@ test('invite acceptance joins ordinary FIFO as Reserve', async () => {
     page
       .getByRole('region', { name: en.matchRegistration.aria.roster })
       .getByText(en.matchRegistration.roster.you, { exact: true })
-  ).toBeVisible();
+  ).toBeVisible({ timeout: 15_000 });
   const creatorPage = await f.page(f.creator);
   await f.notice(creatorPage, f.creator, 'match_invitation_accepted', id);
   await f.rpc(f.members[6]!, 'submit_match_registration', { p_match_event_id: id });
@@ -289,8 +292,10 @@ test('organizer can leave without transferring then transfer to Reserve', async 
   await f.open(page, id);
   await page.getByRole('button', { name: m.leave, exact: true }).click();
   await page.getByRole('dialog').getByRole('button', { name: m.confirm, exact: true }).click();
-  await expect(page.getByRole('dialog')).toHaveCount(0);
-  await expect(page.getByText(m.organizerOnly, { exact: true })).toBeVisible();
+  // Dialog closes only after the mutation lands; convergence budget per the transfer race note below.
+  await expect(page.getByRole('dialog')).toHaveCount(0, { timeout: 15_000 });
+  // Post-mutation refetch UI flip; see the transfer race note below: refetch cadence is slower under full-suite load.
+  await expect(page.getByText(m.organizerOnly, { exact: true })).toBeVisible({ timeout: 15_000 });
   expect(await sql(`select created_by::text from public.match_events where id='${id}'`)).toEqual([
     { created_by: f.creator.id }
   ]);
@@ -301,8 +306,12 @@ test('organizer can leave without transferring then transfer to Reserve', async 
   const dialog = page.getByRole('dialog');
   await dialog.getByLabel(m.newOrganizer, { exact: true }).selectOption(target.id);
   await dialog.getByRole('button', { name: m.transfer, exact: true }).click();
-  await expect(dialog).toHaveCount(0);
-  await expect(page.getByRole('button', { name: m.edit.title, exact: true })).toHaveCount(0);
+  // Dialog closes only after the transfer mutation lands; see the race note below.
+  await expect(dialog).toHaveCount(0, { timeout: 15_000 });
+  // transfer -> permission refetch -> edit hidden; refetch cadence is slower under full-suite load.
+  await expect(page.getByRole('button', { name: m.edit.title, exact: true })).toHaveCount(0, {
+    timeout: 15_000
+  });
   const targetPage = await f.page(target);
   await f.open(targetPage, id);
   await expect(targetPage.getByRole('button', { name: m.edit.title, exact: true })).toBeEnabled();
@@ -330,7 +339,10 @@ test('stale minor edit keeps draft and requires review', async () => {
   await expect(dialog.getByRole('button', { name: m.edit.save, exact: true })).toBeDisabled();
   // Conflict copy appears before the controller finishes router.invalidate().
   // Wait for its explicit idle control before asserting programmatic focus.
-  await expect(dialog.getByRole('button', { name: m.edit.reload, exact: true })).toBeEnabled();
+  // Post-mutation refetch UI flip; see the transfer race note below: refetch cadence is slower under full-suite load.
+  await expect(dialog.getByRole('button', { name: m.edit.reload, exact: true })).toBeEnabled({
+    timeout: 15_000
+  });
   await dialog.getByRole('button', { name: m.edit.reviewDraft, exact: true }).click();
   await expect(dialog.locator('input').first()).toBeFocused();
   await expect(field).toHaveValue('Unsaved court draft');

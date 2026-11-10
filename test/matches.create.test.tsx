@@ -181,6 +181,7 @@ beforeEach(() => {
 afterEach(() => {
   cleanup();
   vi.restoreAllMocks();
+  Object.defineProperty(navigator, 'onLine', { configurable: true, value: true });
 });
 
 describe('create match wizard', () => {
@@ -350,6 +351,30 @@ describe('create match wizard', () => {
     await waitFor(() => expect(mocks.publish).toHaveBeenCalledOnce());
     expect(mocks.publish.mock.calls[0]?.[0].data.input.photo_path).toBe('staged/saved-venue.png');
     expect(mocks.upload).not.toHaveBeenCalled();
+  });
+
+  it('publishes nothing offline and reports an unconfirmed lost response, replaying the same event id', async () => {
+    const user = userEvent.setup();
+    await mount();
+    await attachPhoto(user);
+    await fillRequired(user);
+    await goReview(user);
+    Object.defineProperty(navigator, 'onLine', { configurable: true, value: false });
+    await user.click(button(en.matchCreate.publish));
+    expect((await screen.findByRole('alert')).textContent).toBe(en.matchCreate.errors.offline);
+    expect(mocks.publish).not.toHaveBeenCalled();
+
+    Object.defineProperty(navigator, 'onLine', { configurable: true, value: true });
+    mocks.publish.mockRejectedValueOnce(new TypeError('Failed to fetch'));
+    await user.click(button(en.matchCreate.publish));
+    await waitFor(() =>
+      expect(screen.getByRole('alert').textContent).toBe(en.matchCreate.errors.unconfirmed)
+    );
+    await user.click(button(en.matchCreate.publish));
+    await waitFor(() => expect(mocks.publish).toHaveBeenCalledTimes(2));
+    expect(mocks.publish.mock.calls[1]?.[0].data.event_id).toBe(
+      mocks.publish.mock.calls[0]?.[0].data.event_id
+    );
   });
 
   it('discards stale invitee search responses after a newer query resolves', async () => {

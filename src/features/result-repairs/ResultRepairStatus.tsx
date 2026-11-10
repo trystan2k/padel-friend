@@ -9,11 +9,12 @@ import {
 import { resultCorrectionStyles as c } from '../matches/result-correction.styles';
 import type { ResultRepairJob } from '../matches/result-dispute-model';
 import type { ResultRepairDiagnosticJob, ResultRepairErrorCode } from './repair-model';
+import { isOffline, isTransportFailure } from '../../lib/connectivity';
 import { retryResultRepair } from './repair.functions';
 
 type RetryFeedback =
   | { kind: 'succeeded' | 'failed' | 'stale' | 'busy' }
-  | { kind: 'error'; code: ResultRepairErrorCode };
+  | { kind: 'error'; code: ResultRepairErrorCode | 'offline' | 'unconfirmed' };
 
 /**
  * Honest application state of one correction job. Queued, running and failed repairs read as
@@ -49,6 +50,10 @@ export function ResultRepairStatus({
   const retryable = job.status === 'failed' ? !('retryable' in job) || job.retryable : stale;
 
   async function retry() {
+    if (isOffline()) {
+      setFeedback({ kind: 'error', code: 'offline' });
+      return false;
+    }
     setFeedback(null);
     setPending(true);
     try {
@@ -60,8 +65,10 @@ export function ResultRepairStatus({
       );
       await onChanged();
       return true;
-    } catch {
-      setFeedback({ kind: 'error', code: 'unavailable' });
+    } catch (error) {
+      const unknownOutcome = isTransportFailure(error);
+      setFeedback({ kind: 'error', code: unknownOutcome ? 'unconfirmed' : 'unavailable' });
+      if (unknownOutcome) await Promise.resolve(onChanged()).catch(() => undefined);
       return false;
     } finally {
       setPending(false);

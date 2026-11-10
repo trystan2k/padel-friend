@@ -291,6 +291,138 @@ test('backend collision exposes running diagnostics until committed publication'
   }
 });
 
+function localConnectionString(): string {
+  const status = execFileSync('pnpm', ['exec', 'supabase', 'status', '-o', 'env'], {
+    encoding: 'utf8',
+    timeout: 10_000,
+    stdio: ['ignore', 'pipe', 'pipe']
+  });
+  const connectionString = status.match(/^DB_URL="?([^"\n]+)"?$/m)?.[1];
+  if (
+    !connectionString ||
+    !['localhost', '127.0.0.1', '[::1]'].includes(new URL(connectionString).hostname)
+  )
+    throw new Error('Local database required');
+  return connectionString;
+}
+
+test('admin replay during live reads exposes only the prior committed generation, applies once and rejects unauthorized replay', async ({
+  browserName
+}) => {
+  expect(browserName).toBe('chromium');
+  await f.grantAdmin();
+  const group = await f.confirmed();
+  const players = [...group.teams.team_a, ...group.teams.team_b];
+  const snapshot = () =>
+    sql(`select user_id::text, display_level::text, mu::text, reliability_percent::text,
+        confirmed_competitive_game_groups::int as groups
+      from public.global_player_ratings where user_id in ('${players.join("','")}') order by user_id`);
+  const ledgerRows = () =>
+    sql(
+      `select count(*)::int as events from public.player_rating_events where match_event_id='${group.eventId}'`
+    );
+  const official = async () => (await f.proposal(group.eventId)).confirmation?.confirmation_id;
+  const jobStatus = async () =>
+    (
+      await sql(
+        `select status::text as status from public.result_repair_jobs where id='${queued.jobId}'`
+      )
+    )[0]?.['status'];
+  const before = await snapshot();
+  const ledgerBefore = await ledgerRows();
+  expect(await official()).toBe(group.baseId);
+
+  const queued = await f.accepted(group);
+  const claim = await f.claimRepair(queued.jobId);
+  if (claim.status !== 'claimed') throw new Error('Replay fixture needs an owned repair claim');
+
+  // Unauthorized replay: neither a plain player nor a foreign account can claim or execute it.
+  for (const actor of [f.members[0]!, f.guest]) {
+    const claimed = await actor.client.rpc('claim_result_repair_job', {
+      p_job_id: queued.jobId,
+      p_lease_seconds: 600
+    });
+    expect(claimed.error).not.toBeNull();
+    const executed = await actor.client.rpc('execute_result_repair', {
+      p_job_id: queued.jobId,
+      p_fence_token: claim.token
+    });
+    expect(executed.error).not.toBeNull();
+  }
+  expect(await official()).toBe(group.baseId);
+  expect(await snapshot()).toEqual(before);
+
+  const connectionString = localConnectionString();
+  const blocker = new Client({
+    connectionString,
+    connectionTimeoutMillis: 5_000,
+    query_timeout: 60_000
+  });
+  const worker = new Client({
+    connectionString,
+    connectionTimeoutMillis: 5_000,
+    query_timeout: 60_000
+  });
+  await blocker.connect();
+  let execution: Promise<unknown> | undefined;
+  try {
+    await worker.connect();
+    await blocker.query(
+      "select pg_advisory_lock(hashtextextended('padel-friend:test-rating-prelock',0))"
+    );
+    await worker.query("select set_config('app.test_pause','before_rating_lock',false)");
+    const pid = await worker.query<{ pid: number }>('select pg_backend_pid() as pid');
+    const workerPid = pid.rows[0]!.pid;
+    execution = worker.query('select public.execute_result_repair($1,$2) as receipt', [
+      queued.jobId,
+      claim.token
+    ]);
+    await expect
+      .poll(async () => {
+        const result = await blocker.query<{ wait_event: string }>(
+          'select wait_event from pg_stat_activity where pid=$1',
+          [workerPid]
+        );
+        return result.rows[0]?.wait_event;
+      })
+      .toBe('advisory');
+
+    // Live reads while the replay is in flight: the prior committed generation, never a mix.
+    const page = await f.page(f.members[1]!);
+    await f.open(page, group.eventId);
+    await expect(
+      page.locator('[data-amendment-lifecycle=approved_pending_repair]')
+    ).toHaveAttribute('data-pending-application', 'true');
+    for (let sample = 0; sample < 3; sample++) {
+      expect(await official()).toBe(group.baseId);
+      expect(await snapshot()).toEqual(before);
+      expect(await ledgerRows()).toEqual(ledgerBefore);
+    }
+    expect(await jobStatus()).toBe('running');
+
+    await blocker.query('select pg_advisory_unlock_all()');
+    await execution;
+  } finally {
+    await blocker.query('select pg_advisory_unlock_all()');
+    if (execution) await execution;
+    await worker.end();
+    await blocker.end();
+  }
+
+  // One committed generation: new official confirmation, replayed ratings, one audit, one notice set.
+  await expect.poll(jobStatus).toBe('succeeded');
+  expect(await official()).not.toBe(group.baseId);
+  const after = await counts(group.eventId);
+  const ratingAfter = await snapshot();
+  expect(ratingAfter).not.toEqual(before);
+  expect(after[0]?.['audits']).toBe(1);
+  expect(Number(after[0]?.['notices'])).toBeGreaterThan(0);
+  expect(await repairNow(queued.jobId)).toBe('succeeded');
+  expect(await counts(group.eventId)).toEqual(after);
+  expect(await snapshot()).toEqual(ratingAfter);
+  expect(await ledgerRows()).toEqual(ledgerBefore);
+});
+
 test('player and foreign member cannot open community diagnostics or retry directly', async () => {
   const group = await f.confirmed();
   const queued = await f.accepted(group);

@@ -3,7 +3,10 @@ import { expect, type Page } from '@playwright/test';
 /** Waits for the root React effect, not a timing-based animation-frame proxy. */
 export async function waitForHydratedPage(page: Page): Promise<void> {
   await page.waitForLoadState('load');
-  await expect(page.locator('html')).toHaveAttribute('data-app-hydrated', 'true');
+  // Hydration exceeds the 5s default under full-suite load; the attribute stays the authoritative condition.
+  await expect(page.locator('html')).toHaveAttribute('data-app-hydrated', 'true', {
+    timeout: 15_000
+  });
 }
 
 /** Captures the full-document auth response and requires a successful destination response. */
@@ -21,5 +24,6 @@ export async function submitAndWaitForAuthDestination(
     response.status(),
     `Auth destination returned ${response.status()} at ${response.url()}`
   ).toBeLessThan(400);
-  await expect(page).toHaveURL(destination);
+  // Auth roundtrip exceeds the 5s default under full-suite load; the URL stays the authoritative condition.
+  await expect(page).toHaveURL(destination, { timeout: 15_000 });
 }

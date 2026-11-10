@@ -817,6 +817,8 @@ for (const zoom of ZOOMED) {
 
       const reviewer = await f.page(admin, 'en', zoom.width, 'light', zoom.height);
       await open(reviewer, '/platform-admin/level-reviews/' + ids.pending);
+      // Probe only once the decision form exposes its labelled controls.
+      await expect(reviewer.getByRole('textbox', { name: lr.adminDecision.note })).toBeVisible();
       expect(await layoutViolations(reviewer), 'admin detail').toEqual([]);
       for (const name of [lr.adminDecision.approve, lr.adminDecision.reject]) {
         const action = reviewer.getByRole('button', { name, exact: true });

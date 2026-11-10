@@ -195,6 +195,8 @@ describe('useMatchRegistration controller', () => {
       }
     );
 
+    // Hidden page: the shared cadence pauses, so only the cutoff deadline can invalidate here.
+    const visibility = vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('hidden');
     const cutoffAt = '2026-11-20T10:00:00.000Z'; // ~33 days out, beyond the timer range
     const { result } = renderHook(() =>
       useMatchRegistration({ eventId: EVENT_ID, initialRegistration: none, cutoffAt })
@@ -220,6 +222,7 @@ describe('useMatchRegistration controller', () => {
     });
     expect(result.current.cutoffReached).toBe(true);
     expect(mocks.invalidate).toHaveBeenCalled();
+    visibility.mockRestore();
   });
 
   it('refreshes on focus return', async () => {

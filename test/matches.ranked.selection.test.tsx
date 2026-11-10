@@ -296,6 +296,37 @@ describe('Ranked League selection in the create-match wizard', () => {
     await waitFor(() => expect(leagueSelect().value).toBe(springId));
   });
 
+  it('publishes an explicit Unranked choice without the League list and clears stale competition errors', async () => {
+    const user = userEvent.setup();
+    mocks.leagues.mockRejectedValue(new Error('MATCH_LEAGUE_OPTIONS_UNAVAILABLE'));
+    await mount();
+    await makeCompetitive(user);
+    await screen.findByText(en.matchCreate.errors.leagueOptionsUnavailable);
+    await user.click(radio(en.matches.competition.unranked));
+    await readyToPublish(user);
+    await toReview(user);
+    await user.click(screen.getByRole('button', { name: en.matchCreate.publish }));
+    await waitFor(() => expect(mocks.publish).toHaveBeenCalledTimes(1));
+    expect(publishInput()).toMatchObject({ competition: 'unranked', league_id: null });
+  });
+
+  it('drops a stale unavailable error once the League list loads', async () => {
+    const user = userEvent.setup();
+    mocks.leagues.mockRejectedValue(new Error('MATCH_LEAGUE_OPTIONS_UNAVAILABLE'));
+    await mount();
+    await makeCompetitive(user);
+    await screen.findByText(en.matchCreate.errors.leagueOptionsUnavailable);
+    await readyToPublish(user);
+    await toReview(user);
+    await user.click(screen.getByRole('button', { name: en.matchCreate.publish }));
+    expect(mocks.publish).not.toHaveBeenCalled();
+    mocks.leagues.mockResolvedValue(leagueResult([spring, summer]));
+    await user.click(screen.getByRole('button', { name: en.matches.retry }));
+    await waitFor(() => expect(leagueSelect().value).toBe(''));
+    expect(screen.queryByText(en.matchCreate.errors.leagueOptionsUnavailable)).toBeNull();
+    expect(screen.queryByText(en.matchCreate.errors.leagueRequired)).toBeNull();
+  });
+
   it('reloads candidates and unfreezes the payload when the League closed after the options loaded', async () => {
     const user = userEvent.setup();
     mocks.leagues

@@ -147,6 +147,31 @@ describe('localized SSR resources', () => {
     expect(resolveLocale()).toBe('en');
   });
 
+  it('keeps concurrently created request instances isolated per locale', async () => {
+    const instances = (['en', 'pt-BR', 'es', 'pt-BR', 'en'] as const).map((locale) =>
+      createI18n(locale)
+    );
+    await Promise.resolve();
+    const copy = instances.map((instance) => instance.t('leagues.errors.LEAGUE_OFFLINE'));
+    expect(copy).toEqual([
+      en.leagues.errors.LEAGUE_OFFLINE,
+      pt.leagues.errors.LEAGUE_OFFLINE,
+      es.leagues.errors.LEAGUE_OFFLINE,
+      pt.leagues.errors.LEAGUE_OFFLINE,
+      en.leagues.errors.LEAGUE_OFFLINE
+    ]);
+    expect(new Set(instances).size).toBe(instances.length);
+  });
+
+  it('translates every connectivity-guard message in all locales', () => {
+    for (const locale of [en, pt, es]) {
+      expect(locale.leagues.errors.LEAGUE_OFFLINE).toBeTruthy();
+      expect(locale.leagues.errors.LEAGUE_UNCONFIRMED).toBeTruthy();
+      expect(locale.matches.corrections.repair.retryErrors.offline).toBeTruthy();
+      expect(locale.matches.corrections.repair.retryErrors.unconfirmed).toBeTruthy();
+    }
+  });
+
   it('keeps all locale translation keys in sync', () => {
     const locales = [
       { locale: 'pt-BR', translations: pt },

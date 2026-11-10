@@ -19,6 +19,15 @@ vi.mock('../src/features/community/community-admin.functions', () => ({
 vi.mock('../src/features/player/player.functions', () => ({
   getOnboardingStatus: mocks.onboarding
 }));
+// _protected mounts useAuthIdentityGuard, which builds the browser client from VITE_ env that CI lacks.
+vi.mock('../src/lib/supabase/client', () => ({
+  getBrowserClient: () => ({
+    auth: {
+      getSession: () => Promise.resolve({ data: { session: { user: { id: 'viewer' } } } }),
+      onAuthStateChange: () => ({ data: { subscription: { unsubscribe: vi.fn<() => void>() } } })
+    }
+  })
+}));
 vi.mock('../src/i18n/locale.functions', () => ({ getInitialLocale: mocks.locale }));
 vi.mock('../src/features/theme/theme.functions', () => ({ getInitialTheme: mocks.theme }));
 vi.mock('../src/features/community/CommunityAdmin', async (importOriginal) => {

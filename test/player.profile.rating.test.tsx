@@ -1,5 +1,5 @@
 /** @vitest-environment jsdom */
-import { cleanup, render, screen, within } from '@testing-library/react';
+import { cleanup, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { I18nextProvider } from 'react-i18next';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -35,8 +35,12 @@ vi.mock('../src/features/player/rating.functions', () => ({
 }));
 
 import { PlayerProfile } from '../src/features/player/PlayerProfile';
+import { getMyPlayerProfile, updateMyPlayerProfile } from '../src/features/player/player.functions';
 
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  Object.defineProperty(navigator, 'onLine', { configurable: true, value: true });
+});
 
 // The profile row deliberately disagrees with the committed projection to prove which
 // source the level card uses.
@@ -78,6 +82,26 @@ const renderProfile = (initialRating: RatingLoad, onRatingReload = vi.fn<() => v
   );
 
 describe('PlayerProfile rating journey', () => {
+  it('uses a section and subordinate heading when embedded in Home', () => {
+    render(
+      <I18nextProvider i18n={createI18n('en')}>
+        <main>
+          <h1>Home</h1>
+          <PlayerProfile
+            embedded
+            initialProfile={profile}
+            initialRating={rating}
+            onRatingReload={vi.fn<() => void>()}
+          />
+        </main>
+      </I18nextProvider>
+    );
+    expect(screen.getAllByRole('main')).toHaveLength(1);
+    expect(screen.getAllByRole('heading', { level: 1 })).toHaveLength(1);
+    expect(
+      screen.getByRole('heading', { level: 2, name: createI18n('en').t('profile.title') })
+    ).toBeTruthy();
+  });
   it('shows current, highest, initial, count and reliability from the committed projection', () => {
     renderProfile(rating);
     // Current and highest level are both 4.12.
@@ -111,6 +135,48 @@ describe('PlayerProfile rating journey', () => {
     // The level is shown, never editable: no spin button and no field holding it.
     expect(screen.queryByRole('spinbutton')).toBeNull();
     expect(screen.queryByDisplayValue('4.12')).toBeNull();
+  });
+
+  it('saves nothing offline and flags a lost response as unconfirmed', async () => {
+    const user = userEvent.setup();
+    renderProfile(rating);
+    await user.click(screen.getByRole('button', { name: 'Edit profile' }));
+    Object.defineProperty(navigator, 'onLine', { configurable: true, value: false });
+    await user.click(screen.getByRole('button', { name: 'Save changes' }));
+    expect((await screen.findByRole('alert')).textContent).toContain('Nothing was saved');
+    expect(updateMyPlayerProfile).not.toHaveBeenCalled();
+
+    Object.defineProperty(navigator, 'onLine', { configurable: true, value: true });
+    vi.mocked(updateMyPlayerProfile).mockRejectedValueOnce(new TypeError('Failed to fetch'));
+    vi.mocked(getMyPlayerProfile).mockRejectedValueOnce(new TypeError('Failed to fetch'));
+    await user.click(screen.getByRole('button', { name: 'Save changes' }));
+    await waitFor(() =>
+      expect(screen.getByRole('alert').textContent).toContain("couldn't confirm your changes")
+    );
+  });
+
+  it('refetches the authoritative profile after a lost response and keeps the draft', async () => {
+    const user = userEvent.setup();
+    renderProfile(rating);
+    await user.click(screen.getByRole('button', { name: 'Edit profile' }));
+    const name = screen.getByLabelText('DISPLAY NAME');
+    await user.clear(name);
+    await user.type(name, 'Ana Draft');
+    vi.mocked(updateMyPlayerProfile).mockRejectedValueOnce(new TypeError('Failed to fetch'));
+    vi.mocked(getMyPlayerProfile).mockResolvedValueOnce({ ...profile, bio: 'Server bio' });
+    await user.click(screen.getByRole('button', { name: 'Save changes' }));
+    await waitFor(() => expect(getMyPlayerProfile).toHaveBeenCalledOnce());
+    expect(screen.getByRole('alert').textContent).toContain("couldn't confirm your changes");
+    expect(screen.getByLabelText<HTMLInputElement>('DISPLAY NAME').value).toBe('Ana Draft');
+
+    vi.mocked(updateMyPlayerProfile).mockRejectedValueOnce(new TypeError('Failed to fetch'));
+    vi.mocked(getMyPlayerProfile).mockRejectedValueOnce(new TypeError('Failed to fetch'));
+    await user.click(screen.getByRole('button', { name: 'Save changes' }));
+    await waitFor(() => expect(getMyPlayerProfile).toHaveBeenCalledTimes(2));
+    expect(screen.getByRole('alert').textContent).toContain("couldn't confirm your changes");
+    expect(screen.getByRole('button', { name: 'Save changes' }).hasAttribute('disabled')).toBe(
+      false
+    );
   });
 
   it('replaces the empty-history placeholder card', () => {

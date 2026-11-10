@@ -94,8 +94,8 @@ const BASE_URL = 'http://127.0.0.1:4173';
 // rating journey), so a bare level-2 heading query inside <main> is ambiguous.
 function profileNameHeading(page: Page) {
   return page
-    .locator('main section')
-    .filter({ hasText: 'Member since' })
+    .getByText(/^Member since/)
+    .locator('..')
     .getByRole('heading', { level: 2 });
 }
 
@@ -192,7 +192,7 @@ async function skipCommunity(page: Page): Promise<void> {
 }
 
 async function completeOnboarding(page: Page, name: string, level: string): Promise<void> {
-  await page.getByLabel(en.onboarding.name).fill(name);
+  await page.getByLabel(en.onboarding.name, { exact: true }).fill(name);
   await page.getByLabel(en.onboarding.preciseLevel).fill(level);
   const radio = page
     .getByRole('group', { name: en.onboarding.side })
@@ -262,7 +262,7 @@ test('dominant hand stays optional and fits all locales at mobile width', async 
   await page.reload({ waitUntil: 'domcontentloaded' });
   await waitForHydratedPage(page);
   await expect(page.getByRole('radio', { name: en.onboarding.handPreferNot })).toBeChecked();
-  await page.getByLabel(en.onboarding.name).fill('Optional Hand');
+  await page.getByLabel(en.onboarding.name, { exact: true }).fill('Optional Hand');
   await page.getByLabel(en.onboarding.preciseLevel).fill('3.0');
   await page
     .getByRole('group', { name: en.onboarding.side })
@@ -295,7 +295,7 @@ test('a new signup is blocked by onboarding, rejects invalid input, then lands o
   await expect(page.getByText(en.onboarding.validationSide)).toBeVisible();
 
   // Invalid level (not a tenth) shows the level error.
-  await page.getByLabel(en.onboarding.name).fill('   ');
+  await page.getByLabel(en.onboarding.name, { exact: true }).fill('   ');
   await page.getByLabel(en.onboarding.preciseLevel).fill('3.05');
   await page.getByRole('button', { name: en.onboarding.save }).click();
   await expect(page.getByText(en.onboarding.validationName)).toBeVisible();
@@ -325,7 +325,7 @@ test('a new signup is blocked by onboarding, rejects invalid input, then lands o
   await expect(scale).toHaveAttribute('max', '7');
   await expect(scale).toHaveAttribute('step', '0.1');
   await expect(scale).toHaveValue('3');
-  const nameHitbox = await page.getByLabel(en.onboarding.name).boundingBox();
+  const nameHitbox = await page.getByLabel(en.onboarding.name, { exact: true }).boundingBox();
   expect(nameHitbox?.height).toBeGreaterThanOrEqual(44);
   await page.setViewportSize({ width: 320, height: 844 });
   const sliderBox = await scale.boundingBox();
@@ -337,20 +337,20 @@ test('a new signup is blocked by onboarding, rejects invalid input, then lands o
 
   await scale.focus();
   await page.keyboard.press('Home');
-  await expect(page.locator('output')).toHaveText('0.0');
+  await expect(page.locator('output[for=player-level]')).toHaveText('0.0');
   await page.keyboard.press('End');
-  await expect(page.locator('output')).toHaveText('7.0');
+  await expect(page.locator('output[for=player-level]')).toHaveText('7.0');
   await levelInput.fill('1.0');
   await expect(scale).toHaveValue('1');
-  await expect(page.locator('output')).toHaveText('1.0');
+  await expect(page.locator('output[for=player-level]')).toHaveText('1.0');
 
   // The numeric input remains the exact 0.1-step control.
   await levelInput.fill('6.4');
-  await expect(page.locator('output')).toHaveText('6.4');
+  await expect(page.locator('output[for=player-level]')).toHaveText('6.4');
   await page.setViewportSize({ width: 1280, height: 720 });
 
   // Valid save: onboarding shows design's one-decimal level; profile shows two decimals.
-  await page.getByLabel(en.onboarding.name).fill('Taka Onboard');
+  await page.getByLabel(en.onboarding.name, { exact: true }).fill('Taka Onboard');
   await page.getByLabel(en.onboarding.preciseLevel).fill('3.0');
   const sideRadio = page
     .getByRole('group', { name: en.onboarding.side })
@@ -358,7 +358,7 @@ test('a new signup is blocked by onboarding, rejects invalid input, then lands o
   await sideRadio.check();
   // The form is hydrated once a controlled re-render keeps the radio checked.
   await expect(sideRadio).toBeChecked();
-  await expect(page.locator('output')).toHaveText('3.0');
+  await expect(page.locator('output[for=player-level]')).toHaveText('3.0');
   await page.getByRole('button', { name: en.onboarding.save }).click();
   await skipCommunity(page);
   await expect(page.getByRole('heading', { name: en.profile.title })).toBeVisible();
@@ -374,15 +374,20 @@ test('a new signup is blocked by onboarding, rejects invalid input, then lands o
   // The level card is labelled GLOBAL LEVEL (design vARtQ/aWm9C/CKgMi): the label+metric
   // stack and the reliability badge are SIBLINGS in the level row, above the 0.0 /
   // LEVEL SCALE / 7.0 progress track (14px tall).
-  await expect(page.getByText(en.profile.globalLevel)).toBeVisible();
+  await expect(
+    page.locator('#home-profile').getByText(en.profile.globalLevel, { exact: true })
+  ).toBeVisible();
   // Label/metric stack: the GLOBAL LEVEL caption with the two-decimal metric beside it.
-  const levelHeader = page.getByText(en.profile.globalLevel).locator('..');
+  const levelHeader = page
+    .locator('#home-profile')
+    .getByText(en.profile.globalLevel, { exact: true })
+    .locator('..');
   await expect(levelHeader).toContainText('3.00');
   // Enclosing level row: the reliability badge rides beside the header stack.
   const levelRow = levelHeader.locator('..');
   await expect(levelRow).toContainText(en.profile.reliability);
   await expect(levelRow).toContainText('10%');
-  const levelCard = page.locator('section').filter({ has: page.getByText(en.profile.globalLevel) });
+  const levelCard = levelRow.locator('..');
   await expect(levelCard.getByText('0.00', { exact: true })).toBeVisible();
   await expect(levelCard.getByText(en.profile.levelScale)).toBeVisible();
   await expect(levelCard.getByText('7.00', { exact: true })).toBeVisible();
@@ -448,7 +453,7 @@ test('a fresh browser context keeps the onboarding state', async ({ browser, pag
   const secondPage = await secondContext.newPage();
   await secondPage.goto('/dashboard');
   await expect(secondPage.getByRole('heading', { name: en.profile.title })).toBeVisible();
-  await expect(secondPage.getByRole('heading', { name: 'Vera Fresh' })).toBeVisible();
+  await expect(secondPage.getByRole('heading', { name: 'Vera Fresh', exact: true })).toBeVisible();
   await expect(secondPage.locator('main')).toContainText('3.50');
   await secondContext.close();
 });
@@ -464,12 +469,11 @@ test('the dashboard allows profile edits but exposes no level control, and avata
   await expect(page.getByLabel(en.onboarding.preciseLevel)).toHaveCount(0);
 
   await page.getByRole('button', { name: en.profile.edit }).click();
-  // The dashboard also renders an invitee-discovery consent checkbox whose label contains
-  // "display name"; scoping to <main> (the profile region) keeps the query on the edit input.
-  await page.locator('main').getByLabel(en.onboarding.name).fill('Mila Edited');
+  // Exact label excludes the invitee-discovery consent checkbox inside dashboard main.
+  await page.locator('main').getByLabel(en.onboarding.name, { exact: true }).fill('Mila Edited');
   await page.getByLabel(en.profile.bio).fill('Right side player.');
   await page.getByRole('button', { name: en.profile.save }).click();
-  await expect(page.getByRole('heading', { name: 'Mila Edited' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Mila Edited', exact: true })).toBeVisible();
 
   // Invalid MIME type is rejected with the localized error before any upload.
   const fileInput = page.getByLabel(en.profile.avatar);
@@ -516,21 +520,25 @@ test('a whitespace-padded save syncs the trimmed server values into display and 
   // edit input. The padded bio is trimmed client-side too: its trimmed server value must sync
   // back the same way.
   await page.getByRole('button', { name: en.profile.edit }).click();
-  // Scope to <main>: the invitee-discovery checkbox outside main also matches the
-  // "display name" label text, so the unscoped query would be ambiguous.
-  await page.locator('main').getByLabel(en.onboarding.name).fill('  Padded Name  ');
+  // Exact label excludes the invitee-discovery consent checkbox inside dashboard main.
+  await page
+    .locator('main')
+    .getByLabel(en.onboarding.name, { exact: true })
+    .fill('  Padded Name  ');
   await page.getByLabel(en.profile.bio).fill('  Padded bio  ');
   await page.getByRole('button', { name: en.profile.save }).click();
 
   // Display reflects the trimmed values immediately after the save; a visible heading is
   // only possible once the save resolved, so the missing failure alert below is reliable.
-  await expect(page.getByRole('heading', { name: 'Padded Name' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Padded Name', exact: true })).toBeVisible();
   await expect(page.getByText('Padded bio')).toBeVisible();
   await expect(page.getByText(en.profile.saveFailed)).toHaveCount(0);
 
   // Re-opening edit mode shows the refreshed local state, never the stale padded values.
   await page.getByRole('button', { name: en.profile.edit }).click();
-  await expect(page.locator('main').getByLabel(en.onboarding.name)).toHaveValue('Padded Name');
+  await expect(page.locator('main').getByLabel(en.onboarding.name, { exact: true })).toHaveValue(
+    'Padded Name'
+  );
   await expect(page.getByLabel(en.profile.bio)).toHaveValue('Padded bio');
 });
 
@@ -543,7 +551,7 @@ test('first-time onboarding accepts a padded display name and lands on the trimm
   // The very first save is the flow that used to fail silently on padded input: the form
   // now submits name.trim(), so the padded value must be accepted and navigate to the
   // dashboard (navigation only happens after a successful save) showing the trimmed name.
-  await page.getByLabel(en.onboarding.name).fill('  Onboard Trim  ');
+  await page.getByLabel(en.onboarding.name, { exact: true }).fill('  Onboard Trim  ');
   await page.getByLabel(en.onboarding.preciseLevel).fill('3.0');
   const radio = page
     .getByRole('group', { name: en.onboarding.side })
@@ -554,7 +562,7 @@ test('first-time onboarding accepts a padded display name and lands on the trimm
   await page.getByRole('button', { name: en.onboarding.save }).click();
 
   await skipCommunity(page);
-  await expect(page.getByRole('heading', { name: 'Onboard Trim' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Onboard Trim', exact: true })).toBeVisible();
 });
 
 test('an NBSP-edged display name is saved verbatim and persists with its NBSPs', async ({
@@ -568,7 +576,7 @@ test('an NBSP-edged display name is saved verbatim and persists with its NBSPs',
   // drift guard against the old String.prototype.trim() behavior, which silently stripped
   // NBSP edges and diverged from the server policy.
   const nbspName = '\u00A0Ana\u00A0';
-  await page.getByLabel(en.onboarding.name).fill(nbspName);
+  await page.getByLabel(en.onboarding.name, { exact: true }).fill(nbspName);
   await page.getByLabel(en.onboarding.preciseLevel).fill('3.0');
   const radio = page
     .getByRole('group', { name: en.onboarding.side })
@@ -594,7 +602,9 @@ test('an NBSP-edged display name is saved verbatim and persists with its NBSPs',
   // toHaveValue compares raw input values without whitespace normalization, so the exact
   // NBSP-edged value must have round-tripped through the database.
   await page.getByRole('button', { name: en.profile.edit }).click();
-  await expect(page.locator('main').getByLabel(en.onboarding.name)).toHaveValue(nbspName);
+  await expect(page.locator('main').getByLabel(en.onboarding.name, { exact: true })).toHaveValue(
+    nbspName
+  );
 
   // A fresh guarded navigation re-reads the persisted row: the NBSPs survived storage, not
   // just the in-memory profile state.
@@ -614,7 +624,7 @@ test('the emptiness rule is the ASCII class end-to-end: whitespace-only is rejec
   // ASCII whitespace-only (tab/space/LF): the client-side rule — the shared ASCII strip
   // reducing the value to '' — rejects BEFORE any server call, with the localized validation
   // message and no navigation.
-  await page.getByLabel(en.onboarding.name).fill('\t \n');
+  await page.getByLabel(en.onboarding.name, { exact: true }).fill('\t \n');
   await page.getByLabel(en.onboarding.preciseLevel).fill('3.0');
   const radio = page
     .getByRole('group', { name: en.onboarding.side })
@@ -632,7 +642,7 @@ test('the emptiness rule is the ASCII class end-to-end: whitespace-only is rejec
   // and persist the NBSPs verbatim — a client that re-introduces Unicode trim() would reject
   // here and fail this test.
   const nbspOnly = '\u00A0\u00A0';
-  await page.getByLabel(en.onboarding.name).fill(nbspOnly);
+  await page.getByLabel(en.onboarding.name, { exact: true }).fill(nbspOnly);
   await page.getByRole('button', { name: en.onboarding.save }).click();
   await skipCommunity(page);
   await expect(page.getByText(en.onboarding.validationName)).toHaveCount(0);
@@ -644,7 +654,9 @@ test('the emptiness rule is the ASCII class end-to-end: whitespace-only is rejec
   // The dashboard SSR'd from the freshly onboarded row: the edit form carrying the exact
   // NBSP-only value proves the database kept it, whitespace normalization can never apply.
   await page.getByRole('button', { name: en.profile.edit }).click();
-  await expect(page.locator('main').getByLabel(en.onboarding.name)).toHaveValue(nbspOnly);
+  await expect(page.locator('main').getByLabel(en.onboarding.name, { exact: true })).toHaveValue(
+    nbspOnly
+  );
 });
 
 test('the profile edit form preserves NBSP edges and trims only ASCII edges on save', async ({
@@ -657,9 +669,8 @@ test('the profile edit form preserves NBSP edges and trims only ASCII edges on s
   // Save through the PROFILE edit form: the same ASCII-only strip policy must hold there.
   await page.getByRole('button', { name: en.profile.edit }).click();
   const nbspName = '\u00A0Mila\u00A0';
-  // Scoped to <main> so the invitee-discovery consent checkbox (whose label also says
-  // "display name") cannot collide with the profile edit input.
-  await page.locator('main').getByLabel(en.onboarding.name).fill(nbspName);
+  // Exact label excludes the invitee-discovery consent checkbox inside dashboard main.
+  await page.locator('main').getByLabel(en.onboarding.name, { exact: true }).fill(nbspName);
   await page.getByRole('button', { name: en.profile.save }).click();
 
   await expect(page.getByText(en.profile.saveFailed)).toHaveCount(0);
@@ -670,13 +681,15 @@ test('the profile edit form preserves NBSP edges and trims only ASCII edges on s
 
   // Re-opening edit mode shows the refreshed server value with the NBSPs intact.
   await page.getByRole('button', { name: en.profile.edit }).click();
-  await expect(page.locator('main').getByLabel(en.onboarding.name)).toHaveValue(nbspName);
+  await expect(page.locator('main').getByLabel(en.onboarding.name, { exact: true })).toHaveValue(
+    nbspName
+  );
 
   // And the ASCII-only trim still applies on the very same form: padded ASCII edges are
   // stripped before the save lands.
-  await page.locator('main').getByLabel(en.onboarding.name).fill('  Mila Twice  ');
+  await page.locator('main').getByLabel(en.onboarding.name, { exact: true }).fill('  Mila Twice  ');
   await page.getByRole('button', { name: en.profile.save }).click();
-  await expect(page.getByRole('heading', { name: 'Mila Twice' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Mila Twice', exact: true })).toBeVisible();
   expect(await profileNameHeading(page).textContent()).toBe('Mila Twice');
 });
 
@@ -690,7 +703,7 @@ test('the onboarding slider stays operable in light and dark themes', async ({ p
     await slider.focus();
     await page.keyboard.press('ArrowRight');
     await expect(slider).toHaveValue('3.1');
-    await expect(page.locator('output')).toHaveText('3.1');
+    await expect(page.locator('output[for=player-level]')).toHaveText('3.1');
     await page.context().clearCookies();
   }
 });
@@ -813,7 +826,11 @@ test.describe('sign-out failure handling', () => {
   // request deterministically (the flow itself does not depend on the service worker).
   test.use({ serviceWorkers: 'block' });
 
-  test('a failing sign-out shows a translated error and stays put; success reaches login', async ({
+  // supabase-js clears the local session and emits SIGNED_OUT even when the server-side revoke
+  // fails, so the identity guard (U3) retires the private view with a full document load. A
+  // sign-out outage therefore ends at the public entry with no private data left rendered; the
+  // inline error is only reachable when no auth event fires, which the unit suite covers.
+  test('a failing sign-out outage still retires the private view and lands on login', async ({
     page
   }) => {
     const email = uniqueEmail();
@@ -833,12 +850,13 @@ test.describe('sign-out failure handling', () => {
     // before clicking, otherwise the click is silently swallowed (SSR button, no listener).
     await waitForHydratedPage(page);
     await page.getByRole('button', { name: en.signOut }).click();
-    await expect(page.getByText(en.profile.signOutFailed)).toBeVisible();
-    expect(new URL(page.url()).pathname).toBe('/dashboard');
+    await expect(page.getByRole('heading', { name: en.auth.welcomeTitle })).toBeVisible();
+    expect(new URL(page.url()).pathname).toBe('/login');
+    await expect(page.getByText('Sena Out')).toHaveCount(0);
+    await expect(page.getByRole('button', { name: en.signOut })).toHaveCount(0);
 
-    // With the outage gone, the same control signs out and navigates home.
-    await page.unroute('**/auth/v1/logout**');
-    await page.getByRole('button', { name: en.signOut }).click();
+    // The local session is gone: a private route no longer renders and bounces to login.
+    await page.goto('/dashboard');
     await expect(page.getByRole('heading', { name: en.auth.welcomeTitle })).toBeVisible();
     expect(new URL(page.url()).pathname).toBe('/login');
   });
@@ -856,7 +874,7 @@ test.describe('onboarding save failure handling', () => {
     await register(page, email);
 
     // Valid input, so the ONLY possible failure source is the forced server outage below.
-    await page.getByLabel(en.onboarding.name).fill('Nia Retry');
+    await page.getByLabel(en.onboarding.name, { exact: true }).fill('Nia Retry');
     await page.getByLabel(en.onboarding.preciseLevel).fill('3.0');
     const radio = page
       .getByRole('group', { name: en.onboarding.side })
@@ -891,7 +909,7 @@ test.describe('onboarding save failure handling', () => {
     await page.unroute('**/_serverFn/**');
     await page.getByRole('button', { name: en.onboarding.save }).click();
     await skipCommunity(page);
-    await expect(page.getByRole('heading', { name: 'Nia Retry' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Nia Retry', exact: true })).toBeVisible();
   });
 
   test('an expired session on submit redirects to the login deep link without the generic failure alert', async ({
@@ -927,7 +945,7 @@ test.describe('onboarding save failure handling', () => {
     await register(page, email);
 
     // Valid input, so the ONLY possible failure source is the session removal below.
-    await page.getByLabel(en.onboarding.name).fill('Ivo Expired');
+    await page.getByLabel(en.onboarding.name, { exact: true }).fill('Ivo Expired');
     await page.getByLabel(en.onboarding.preciseLevel).fill('3.0');
     const radio = page
       .getByRole('group', { name: en.onboarding.side })

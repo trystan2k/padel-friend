@@ -302,13 +302,13 @@ describe('league page refresh scheduling', () => {
   afterEach(() => vi.useRealTimers());
 
   it('reloads an open Fixed League at its cutoff without touching the selected version', async () => {
-    // The fixture cutoff is 22:59:59.999999: 30 s away, well before the first interval tick.
-    vi.setSystemTime(new Date('2030-12-20T22:59:30.000Z'));
+    // The fixture cutoff is 22:59:59.999999: 3.5 s away, between the first and second cadence tick.
+    vi.setSystemTime(new Date('2030-12-20T22:59:56.500Z'));
     render(wrap(<Detail data={active()} standings={makeLiveStandings([ana])} />));
-    await vi.advanceTimersByTimeAsync(29_998);
-    expect(mocks.invalidate).not.toHaveBeenCalled();
-    await vi.advanceTimersByTimeAsync(2);
+    await vi.advanceTimersByTimeAsync(3_498);
     expect(mocks.invalidate).toHaveBeenCalledTimes(1);
+    await vi.advanceTimersByTimeAsync(2);
+    expect(mocks.invalidate).toHaveBeenCalledTimes(2);
     // A reload only revalidates the loader: the `version` search param is never rewritten.
     expect(mocks.navigate).not.toHaveBeenCalled();
   });
@@ -409,7 +409,8 @@ describe('refresh hook', () => {
         .mockResolvedValue();
       render(<Probe enabled refresh={refresh} />);
       await vi.advanceTimersByTimeAsync(LEAGUE_STANDINGS_REFRESH_INTERVAL_MS);
-      await vi.advanceTimersByTimeAsync(LEAGUE_STANDINGS_REFRESH_INTERVAL_MS);
+      // The failed read backs the cadence off to twice the interval before the next attempt.
+      await vi.advanceTimersByTimeAsync(LEAGUE_STANDINGS_REFRESH_INTERVAL_MS * 2);
       expect(refresh).toHaveBeenCalledTimes(2);
       vi.useRealTimers();
       await new Promise((resolve) => setTimeout(resolve, 0));
@@ -427,10 +428,10 @@ describe('refresh hook', () => {
     });
 
     it('reloads once at the Fixed cutoff, ahead of the next interval tick', async () => {
-      vi.setSystemTime(new Date('2030-12-20T22:59:00.000Z'));
+      vi.setSystemTime(new Date('2030-12-20T22:59:18.000Z'));
       const refresh = vi.fn<() => Promise<void>>().mockResolvedValue();
       render(<Probe enabled refresh={refresh} cutoffAt="2030-12-20T22:59:20.000Z" />);
-      await vi.advanceTimersByTimeAsync(19_999);
+      await vi.advanceTimersByTimeAsync(1_999);
       expect(refresh).not.toHaveBeenCalled();
       await vi.advanceTimersByTimeAsync(1);
       expect(refresh).toHaveBeenCalledTimes(1);

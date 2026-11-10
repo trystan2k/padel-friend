@@ -1,4 +1,5 @@
 import { useEffect, useEffectEvent, useRef, useState } from 'react';
+import { useAuthoritativeRefresh } from '../../lib/use-authoritative-refresh';
 import {
   listMyNotifications,
   markAllNotificationsRead,
@@ -6,6 +7,8 @@ import {
 } from './notifications.functions';
 import type { NotificationCategory, NotificationDto, NotificationPage } from './notification-model';
 
+// Bounds the cursor walk of a background refresh when a burst outgrows the loaded window.
+const MAX_BURST_PAGES = 10;
 const notificationCategories = new Set(['community', 'matches', 'results', 'rankings', 'leagues']);
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -68,15 +71,20 @@ export function useNotifications(
   const trailing = useRef(false);
   const mutationPending = useRef(false);
   const mounted = useRef(false);
-  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isCurrentCategory = useEffectEvent(
     (requestedCategory: NotificationCategory) => requestedCategory === category
   );
 
-  const refresh = async (append = false) => {
+  // `silent` is the background cadence read: no loading flash or error banner, and it merges into
+  // the rows already shown (keeping loaded older pages) instead of resetting pagination.
+  const refresh = async (append = false, silent = false) => {
     // Read liveness from the ref: the online-event handler schedules this refresh before the
     // setOnline re-render, so a captured state would still hold the stale offline value.
-    if (!onlineRef.current || (typeof navigator !== 'undefined' && !navigator.onLine)) {
+    // The background cadence trusts navigator alone (its own online listener may run first).
+    if (
+      (!silent && !onlineRef.current) ||
+      (typeof navigator !== 'undefined' && !navigator.onLine)
+    ) {
       setLoading(false);
       return;
     }
@@ -89,7 +97,7 @@ export function useNotifications(
     trailing.current = false;
     const token = ++generation.current;
     const requestedCategory = category;
-    setLoading(true);
+    if (!silent) setLoading(true);
     try {
       const response: unknown = await listMyNotifications({
         data: {
@@ -99,24 +107,69 @@ export function useNotifications(
         }
       });
       if (!isNotificationPage(response)) throw new Error('INVALID_NOTIFICATION_PAGE');
-      const page = response;
+      let page = response;
       if (token !== generation.current || !mounted.current || !isCurrentCategory(requestedCategory))
         return;
-      setRows((current) =>
-        append
-          ? [...current, ...page.items.filter((item) => !current.some((row) => row.id === item.id))]
-          : page.items
-      );
+      // A burst larger than one page leaves no overlap between the newest page and the rows already
+      // loaded, so the older retained rows would sit past a gap. Follow the cursors until the
+      // authoritative prefix reaches a loaded row; if it never does, pagination restarts from it.
+      const loadedIds = new Set(rows.map((row) => row.id));
+      const overlaps = (items: NotificationDto[]) => items.some((item) => loadedIds.has(item.id));
+      let connected = !silent || append || loadedIds.size === 0 || overlaps(page.items);
+      for (
+        let hops = 0;
+        !connected && page.nextCursor !== null && hops < MAX_BURST_PAGES;
+        hops += 1
+      ) {
+        const nextResponse: unknown = await listMyNotifications({
+          data: { category: requestedCategory, cursor: page.nextCursor, limit: 20 }
+        });
+        if (!isNotificationPage(nextResponse)) throw new Error('INVALID_NOTIFICATION_PAGE');
+        if (
+          token !== generation.current ||
+          !mounted.current ||
+          !isCurrentCategory(requestedCategory)
+        )
+          return;
+        const seen = new Set(page.items.map((item) => item.id));
+        page = {
+          ...page,
+          items: [...page.items, ...nextResponse.items.filter((item) => !seen.has(item.id))],
+          nextCursor: nextResponse.nextCursor
+        };
+        connected = overlaps(nextResponse.items);
+      }
+      // The page is the authoritative newest prefix (ordered by sequence, created_at, id), so any
+      // loaded row it does not contain sits past its boundary. Ordering by created_at alone would
+      // drop rows that share the boundary timestamp.
+      const olderRows = (current: NotificationDto[]) => {
+        if (page.nextCursor === null) return [];
+        const ids = new Set(page.items.map((item) => item.id));
+        return current.filter((row) => !ids.has(row.id));
+      };
+      const keepsOlderRows =
+        silent && (connected || page.nextCursor === null) && olderRows(rows).length > 0;
+      setRows((current) => {
+        if (append)
+          return [
+            ...current,
+            ...page.items.filter((item) => !current.some((row) => row.id === item.id))
+          ];
+        return silent && (connected || page.nextCursor === null)
+          ? [...page.items, ...olderRows(current)]
+          : page.items;
+      });
       setUnreadCount(page.unreadCount);
-      setCursor(page.nextCursor);
+      if (!keepsOlderRows) setCursor(page.nextCursor);
       setAsOf(page.asOf);
       setLoadedCategory(requestedCategory);
       setError(false);
-    } catch {
+    } catch (caught) {
+      if (silent) throw caught;
       if (token === generation.current && mounted.current) setError(true);
     } finally {
       pending.current = false;
-      if (token === generation.current && mounted.current) setLoading(false);
+      if (!silent && token === generation.current && mounted.current) setLoading(false);
       if (trailing.current && mounted.current && !mutationPending.current) {
         trailing.current = false;
         queueMicrotask(refreshLatest);
@@ -139,9 +192,12 @@ export function useNotifications(
     setError(false);
     refreshLatest();
   });
-  const scheduleRefresh = useEffectEvent(() => {
-    if (timer.current) clearTimeout(timer.current);
-    timer.current = setTimeout(refreshLatest, 30);
+  const refreshInBackground = useEffectEvent(async () => {
+    await refresh(false, true);
+  });
+  useAuthoritativeRefresh({
+    scope: `notifications:${category}`,
+    refresh: refreshInBackground
   });
 
   useEffect(() => {
@@ -150,30 +206,17 @@ export function useNotifications(
       onlineRef.current = typeof navigator === 'undefined' || navigator.onLine;
       setOnline(onlineRef.current);
     };
-    const onOnline = () => {
-      setConnection();
-      scheduleRefresh();
-    };
-    const onFocus = () => scheduleRefresh();
-    const onVisibilityChange = () => {
-      if (document.visibilityState === 'visible') scheduleRefresh();
-    };
 
     queueMicrotask(() => {
       if (mounted.current) setConnection();
     });
-    window.addEventListener('focus', onFocus);
-    window.addEventListener('online', onOnline);
+    window.addEventListener('online', setConnection);
     window.addEventListener('offline', setConnection);
-    document.addEventListener('visibilitychange', onVisibilityChange);
     return () => {
       mounted.current = false;
       generation.current += 1;
-      if (timer.current) clearTimeout(timer.current);
-      window.removeEventListener('focus', onFocus);
-      window.removeEventListener('online', onOnline);
+      window.removeEventListener('online', setConnection);
       window.removeEventListener('offline', setConnection);
-      document.removeEventListener('visibilitychange', onVisibilityChange);
     };
   }, []);
 

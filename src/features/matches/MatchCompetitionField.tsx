@@ -59,6 +59,12 @@ export function MatchCompetitionField({
           name={`${id}-competition`}
           checked={!ranked}
           onChange={() => change('competitionChoice', 'unranked')}
+          // Unranked can already be the effective choice (no or unavailable Leagues), where no
+          // change event fires: a click still records the deliberate opt-out. When switching from
+          // Ranked, onChange already records it, so the click stays silent.
+          onClick={() => {
+            if (!ranked) change('competitionChoice', 'unranked');
+          }}
         />
         {t('matches.competition.unranked')}
       </label>

@@ -132,13 +132,33 @@ async function createActor(label: string): Promise<Actor> {
   });
   const sessionResult = await client.auth.setSession(created.data.session);
   if (sessionResult.error) throw sessionResult.error;
-  const profile = await client.rpc('onboard_player', {
-    p_display_name: label,
-    p_preferred_side: 'EITHER',
-    p_initial_level: 3.2
-  });
+  const profile = await retryFixtureDeadlock(() =>
+    client.rpc('onboard_player', {
+      p_display_name: label,
+      p_preferred_side: 'EITHER',
+      p_initial_level: 3.2
+    })
+  );
   if (profile.error) throw profile.error;
   return { email, client, id: created.data.user.id };
+}
+
+const DEADLOCK_SQLSTATE = '40P01';
+const DEADLOCK_ATTEMPTS = 4;
+
+/**
+ * Fixture writes go through PostgREST while another worker's fixture cleanup toggles triggers
+ * (strong table locks in a different order), so Postgres can pick the fixture write as a deadlock
+ * victim. A victim is rolled back completely, so replaying the same write is safe; only SQLSTATE
+ * 40P01 is retried (bounded) and every other error surfaces on the first attempt.
+ */
+async function retryFixtureDeadlock<T extends { error: { code?: string } | null }>(
+  run: () => PromiseLike<T>
+): Promise<T> {
+  for (let attempt = 1; ; attempt++) {
+    const result = await run();
+    if (result.error?.code !== DEADLOCK_SQLSTATE || attempt >= DEADLOCK_ATTEMPTS) return result;
+  }
 }
 
 async function signIn(page: Page, actor: Actor) {
@@ -693,6 +713,9 @@ async function collectFocusableInventory(
         if (element.matches(':disabled')) return false;
         if (element.getAttribute('aria-disabled') === 'true') return false;
         if (element.closest('[inert]')) return false;
+        // The root-level SkipLink is an intentional, page-independent first Tab stop that precedes
+        // the #locale anchor; it is not screen content and is covered by the release a11y spec.
+        if (element.matches('a[href="#main-content"]')) return false;
         // Chromium hides closed-details children via content-visibility (they keep boxes), so
         // exclude them explicitly: they are unreachable until the disclosure is opened. The
         // summary itself stays — it is the disclosure's keyboard stop.
@@ -1624,43 +1647,51 @@ test.describe('community admin 320px locale matrix', () => {
         const owner = await createActor(`Narrow ${destination} ${locale}`);
         const applicant = await createActor(`Narrow applicant ${destination} ${locale}`);
         const requester = await createActor(`Narrow requester ${destination} ${locale}`);
-        const created = await owner.client.rpc('create_community', {
-          p_name: `Narrow ${crypto.randomUUID().slice(0, 6)}`,
-          p_visibility: 'public',
-          p_join_policy: 'admin_approval'
-        });
+        const created = await retryFixtureDeadlock(() =>
+          owner.client.rpc('create_community', {
+            p_name: `Narrow ${crypto.randomUUID().slice(0, 6)}`,
+            p_visibility: 'public',
+            p_join_policy: 'admin_approval'
+          })
+        );
         if (created.error || typeof created.data !== 'string')
           throw created.error ?? new Error('Narrow-screen community fixture creation failed');
         const communityId = created.data;
         const base = `/community/${communityId}/admin`;
-        const active = await owner.client
-          .from('community_members')
-          .insert({
-            community_id: communityId,
-            user_id: applicant.id,
-            role: 'member',
-            status: 'active'
-          })
-          .select('id')
-          .single();
+        const active = await retryFixtureDeadlock(() =>
+          owner.client
+            .from('community_members')
+            .insert({
+              community_id: communityId,
+              user_id: applicant.id,
+              role: 'member',
+              status: 'active'
+            })
+            .select('id')
+            .single()
+        );
         if (active.error) throw active.error;
-        const pending = await owner.client
-          .from('community_members')
-          .insert({
-            community_id: communityId,
-            user_id: requester.id,
-            role: 'member',
-            status: 'pending'
-          })
-          .select('id')
-          .single();
+        const pending = await retryFixtureDeadlock(() =>
+          owner.client
+            .from('community_members')
+            .insert({
+              community_id: communityId,
+              user_id: requester.id,
+              role: 'member',
+              status: 'pending'
+            })
+            .select('id')
+            .single()
+        );
         if (pending.error) throw pending.error;
-        const venue = await owner.client.from('community_venues').insert({
-          community_id: communityId,
-          name: 'Narrow court',
-          address: 'Madrid',
-          maps_url: 'https://maps.example.test/narrow'
-        });
+        const venue = await retryFixtureDeadlock(() =>
+          owner.client.from('community_venues').insert({
+            community_id: communityId,
+            name: 'Narrow court',
+            address: 'Madrid',
+            maps_url: 'https://maps.example.test/narrow'
+          })
+        );
         if (venue.error) throw venue.error;
 
         await signIn(page, owner);

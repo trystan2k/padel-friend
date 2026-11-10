@@ -108,7 +108,7 @@ describe('E2E functional lanes', () => {
     const nonSerial = specs.filter((spec) => !SERIAL_SPECS.includes(spec));
     expect(laneArgs('visual', specs)).toEqual([...nonSerial, '--grep', VISUAL_GREP]);
     expect(laneArgs('serial', specs)).toEqual(SERIAL_SPECS);
-    expect(SERIAL_SPECS).toHaveLength(8);
+    expect(SERIAL_SPECS).toHaveLength(11);
     expect(SERIAL_SPECS).not.toContain('e2e/level-reviews-visual.spec.ts');
     expect(gateLanes().serial).toEqual(SERIAL_SPECS);
     expect(() => laneArgs('functional-9', specs)).toThrow('Unknown E2E lane');
@@ -185,9 +185,9 @@ describe('playwright config', () => {
     }
   }
 
-  it('uses 4 workers on CI and the Playwright default locally', async () => {
-    expect((await configFor('1')).workers).toBe(4);
-    expect((await configFor(undefined)).workers).toBeUndefined();
+  it('uses 2 workers on CI and locally', async () => {
+    expect((await configFor('1')).workers).toBe(2);
+    expect((await configFor(undefined)).workers).toBe(2);
   });
 
   it('builds a fresh preview unless the CI-verified prebuilt flag is set, never reusing a server', async () => {

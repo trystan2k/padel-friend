@@ -22,6 +22,7 @@ const mocks = vi.hoisted(() => ({
   editVenue: vi.fn<() => Promise<unknown>>(),
   archiveVenue: vi.fn<() => Promise<unknown>>(),
   updateSettings: vi.fn<() => Promise<unknown>>(),
+  updateDefaults: vi.fn<() => Promise<unknown>>(),
   sendRequestMessage: vi.fn<() => Promise<unknown>>(),
   listNotifications: vi.fn<() => Promise<unknown>>(),
   markRead: vi.fn<() => Promise<unknown>>(),
@@ -64,7 +65,8 @@ vi.mock('../src/features/community/community-admin.functions', () => ({
   listCommunityVenues: mocks.listVenues,
   addCommunityVenue: mocks.addVenue,
   editCommunityVenue: mocks.editVenue,
-  archiveCommunityVenue: mocks.archiveVenue
+  archiveCommunityVenue: mocks.archiveVenue,
+  updateCommunityAdminDefaults: mocks.updateDefaults
 }));
 vi.mock('../src/features/community/community.functions', () => ({
   updateCommunitySettings: mocks.updateSettings
@@ -342,6 +344,102 @@ describe('community admin UI', () => {
     expect(await screen.findByText('Discoverability preference saved.')).toBeTruthy();
     expect(mocks.setDiscoverability).toHaveBeenCalledWith({ data: { enabled: true } });
   });
+  it('sends no discoverability write offline and reloads the stored value after a lost response', async () => {
+    const user = userEvent.setup();
+    render(
+      <I18nextProvider i18n={createI18n('en')}>
+        <InvitationDiscoverability />
+      </I18nextProvider>
+    );
+    const checkbox = await screen.findByRole('checkbox');
+    await waitFor(() => expect(checkbox.hasAttribute('disabled')).toBe(false));
+
+    Object.defineProperty(navigator, 'onLine', { configurable: true, value: false });
+    await user.click(checkbox);
+    expect((await screen.findByRole('alert')).textContent).toContain('Nothing was saved');
+    expect(mocks.setDiscoverability).not.toHaveBeenCalled();
+
+    Object.defineProperty(navigator, 'onLine', { configurable: true, value: true });
+    mocks.setDiscoverability.mockRejectedValueOnce(new TypeError('Failed to fetch'));
+    mocks.getDiscoverability.mockResolvedValueOnce({ enabled: true });
+    await user.click(checkbox);
+    await waitFor(() =>
+      expect(screen.getByRole('alert').textContent).toContain("couldn't confirm the preference")
+    );
+    await waitFor(() => expect(checkbox).toHaveProperty('checked', true));
+  });
+  it('issues no invitation offline and flags an unconfirmed transport failure', async () => {
+    const { user, dialog } = await openInviteeSearch([
+      { user_id: 'applicant-a', display_name: 'Applicant A' }
+    ]);
+    await user.click(within(dialog).getByRole('radio', { name: /Applicant A/ }));
+    Object.defineProperty(navigator, 'onLine', { configurable: true, value: false });
+    await user.click(within(dialog).getByRole('button', { name: 'Issue invitation' }));
+    expect(await within(dialog).findByText(/No invitation was issued/)).toBeTruthy();
+    expect(mocks.issueInvitation).not.toHaveBeenCalled();
+
+    Object.defineProperty(navigator, 'onLine', { configurable: true, value: true });
+    mocks.issueInvitation.mockRejectedValueOnce(new TypeError('Failed to fetch'));
+    await user.click(within(dialog).getByRole('button', { name: 'Issue invitation' }));
+    expect(await within(dialog).findByText(/couldn't confirm the invitation/)).toBeTruthy();
+    expect(within(dialog).queryByText('invite-token')).toBeNull();
+  });
+  it('sends no community settings write offline and reports an unconfirmed lost response', async () => {
+    const user = userEvent.setup();
+    mount('settings');
+    mocks.updateSettings.mockResolvedValueOnce({});
+    mocks.updateDefaults.mockResolvedValueOnce({});
+    await user.click(screen.getByRole('button', { name: 'SAVE CHANGES' }));
+    expect(await screen.findByText('Community settings saved.')).toBeTruthy();
+    Object.defineProperty(navigator, 'onLine', { configurable: true, value: false });
+    await user.click(screen.getByRole('button', { name: 'SAVE CHANGES' }));
+    expect(screen.getByText(/Offline. Nothing sent/)).toBeTruthy();
+    expect(screen.queryByText('Community settings saved.')).toBeNull();
+    expect(mocks.updateSettings).toHaveBeenCalledTimes(1);
+
+    Object.defineProperty(navigator, 'onLine', { configurable: true, value: true });
+    mocks.updateSettings.mockRejectedValueOnce(new TypeError('Failed to fetch'));
+    await user.click(screen.getByRole('button', { name: 'SAVE CHANGES' }));
+    expect(await screen.findByText(/Could not confirm this change/)).toBeTruthy();
+  });
+  it('sends no venue write offline and reports an unconfirmed lost response', async () => {
+    const user = userEvent.setup();
+    mount('venues');
+    await user.click(screen.getByRole('button', { name: 'Add a venue' }));
+    await user.type(document.querySelector<HTMLInputElement>('#venue-name')!, 'Court One');
+    mocks.addVenue.mockResolvedValueOnce({});
+    await user.click(screen.getByRole('button', { name: 'SAVE CHANGES' }));
+    expect(await screen.findByText('Venue added.')).toBeTruthy();
+    Object.defineProperty(navigator, 'onLine', { configurable: true, value: false });
+    await user.click(screen.getByRole('button', { name: 'Add a venue' }));
+    await user.type(document.querySelector<HTMLInputElement>('#venue-name')!, 'Court Two');
+    await user.click(screen.getByRole('button', { name: 'SAVE CHANGES' }));
+    expect(screen.getByText(/Offline. Nothing sent/)).toBeTruthy();
+    expect(screen.queryByText('Venue added.')).toBeNull();
+    expect(mocks.addVenue).toHaveBeenCalledTimes(1);
+
+    Object.defineProperty(navigator, 'onLine', { configurable: true, value: true });
+    mocks.addVenue.mockRejectedValueOnce(new TypeError('Failed to fetch'));
+    await user.click(screen.getByRole('button', { name: 'SAVE CHANGES' }));
+    expect(await screen.findByText(/Could not confirm this change/)).toBeTruthy();
+  });
+  it('sends no applicant message offline and flags an unconfirmed lost response', async () => {
+    const user = userEvent.setup();
+    mount('requests');
+    await user.click(screen.getByRole('button', { name: 'Send update' }));
+    await user.type(screen.getByLabelText('Message'), 'Hello applicant');
+    Object.defineProperty(navigator, 'onLine', { configurable: true, value: false });
+    await user.click(screen.getByRole('button', { name: 'Send message' }));
+    expect((await screen.findByRole('alert')).textContent).toContain('Nothing was sent');
+    expect(mocks.sendRequestMessage).not.toHaveBeenCalled();
+
+    Object.defineProperty(navigator, 'onLine', { configurable: true, value: true });
+    mocks.sendRequestMessage.mockRejectedValueOnce(new TypeError('Failed to fetch'));
+    await user.click(screen.getByRole('button', { name: 'Send message' }));
+    await waitFor(() =>
+      expect(screen.getByRole('alert').textContent).toContain("couldn't confirm the message")
+    );
+  });
   it('keeps items visible after mark-read errors and retries the item', async () => {
     mocks.markRead.mockRejectedValueOnce(new Error('mutation failed'));
     const user = userEvent.setup();
@@ -456,6 +554,175 @@ describe('community admin UI', () => {
         (article) => article.querySelector('p')?.textContent
       )
     ).toEqual(Array.from({ length: 41 }, (_, index) => `Request ${index}`));
+  });
+  it('merges a refreshed first page into an inbox that already loaded older pages', async () => {
+    const row = (index: number, readAt: string | null = '2026-01-02T00:00:00Z') => ({
+      notification_id: `n${index}`,
+      message_id: `m${index}`,
+      body: `Request ${index}`,
+      created_at: '2026-01-01T00:00:00Z',
+      read_at: readAt,
+      time_zone: 'Europe/Madrid' as const
+    });
+    const firstPage = Array.from({ length: 20 }, (_, index) => row(index + 1, null));
+    mocks.listNotifications.mockResolvedValueOnce([row(21), row(22)]);
+    const user = userEvent.setup();
+    const view = render(
+      <I18nextProvider i18n={createI18n('en')}>
+        <CommunityInbox initialItems={firstPage} loadError={false} />
+      </I18nextProvider>
+    );
+    await user.click(screen.getByRole('button', { name: 'Load more' }));
+    await screen.findByText('Request 22');
+
+    const refreshed = [row(0, null), row(1), ...firstPage.slice(1)];
+    mocks.listNotifications
+      .mockResolvedValueOnce(refreshed)
+      .mockResolvedValueOnce([row(21), row(22)]);
+    view.rerender(
+      <I18nextProvider i18n={createI18n('en')}>
+        <CommunityInbox initialItems={refreshed} loadError={false} />
+      </I18nextProvider>
+    );
+
+    expect(
+      Array.from(document.querySelectorAll('article')).map(
+        (article) => article.querySelector('p')?.textContent
+      )
+    ).toEqual(['Request 0', ...Array.from({ length: 22 }, (_, index) => `Request ${index + 1}`)]);
+    expect(screen.getAllByText('Read')).toHaveLength(1 + 2);
+    expect(screen.queryByRole('button', { name: 'Load more' })).toBeNull();
+  });
+  it('rebuilds a contiguous inbox when a message burst arrives after Load more', async () => {
+    const row = (name: string) => ({
+      notification_id: name,
+      message_id: `m-${name}`,
+      body: name,
+      created_at: '2026-01-01T00:00:00Z',
+      read_at: null,
+      time_zone: 'Europe/Madrid' as const
+    });
+    const old = Array.from({ length: 40 }, (_, index) => row(`old${index}`));
+    const burst = Array.from({ length: 25 }, (_, index) => row(`new${index}`));
+    const window = [...burst, ...old.slice(0, 15)];
+    mocks.listNotifications.mockReset();
+    mocks.listNotifications.mockResolvedValueOnce(old.slice(20));
+    const user = userEvent.setup();
+    const view = render(
+      <I18nextProvider i18n={createI18n('en')}>
+        <CommunityInbox initialItems={old.slice(0, 20)} loadError={false} />
+      </I18nextProvider>
+    );
+    await user.click(screen.getByRole('button', { name: 'Load more' }));
+    await screen.findByText('old39');
+
+    mocks.listNotifications
+      .mockResolvedValueOnce(window.slice(0, 20))
+      .mockResolvedValueOnce(window.slice(20, 40));
+    view.rerender(
+      <I18nextProvider i18n={createI18n('en')}>
+        <CommunityInbox initialItems={window.slice(0, 20)} loadError={false} />
+      </I18nextProvider>
+    );
+
+    await waitFor(() => expect(mocks.listNotifications).toHaveBeenCalledTimes(3));
+    expect(mocks.listNotifications).toHaveBeenNthCalledWith(2, { data: { offset: 0, limit: 20 } });
+    expect(mocks.listNotifications).toHaveBeenNthCalledWith(3, { data: { offset: 20, limit: 20 } });
+    await waitFor(() =>
+      expect(
+        Array.from(document.querySelectorAll('article')).map(
+          (article) => article.querySelector('p')?.textContent
+        )
+      ).toEqual(window.slice(0, 40).map((item) => item.body))
+    );
+  });
+  it('keeps a page appended by Load more while the window rebuild is in flight', async () => {
+    const row = (name: string) => ({
+      notification_id: name,
+      message_id: `m-${name}`,
+      body: name,
+      created_at: '2026-01-01T00:00:00Z',
+      read_at: null,
+      time_zone: 'Europe/Madrid' as const
+    });
+    const pageOf = (prefix: string) =>
+      Array.from({ length: 20 }, (_, index) => row(`${prefix}${index}`));
+    const [page0, page1, page2] = [pageOf('p0-'), pageOf('p1-'), pageOf('p2-')];
+    let releaseRebuild!: () => void;
+    const rebuildGate = new Promise<void>((resolve) => (releaseRebuild = resolve));
+    mocks.listNotifications.mockReset();
+    mocks.listNotifications.mockResolvedValueOnce(page1);
+    const user = userEvent.setup();
+    const view = render(
+      <I18nextProvider i18n={createI18n('en')}>
+        <CommunityInbox initialItems={page0} loadError={false} />
+      </I18nextProvider>
+    );
+    await user.click(screen.getByRole('button', { name: 'Load more' }));
+    await screen.findByText('p1-19');
+
+    // Rebuild reads page 0 (held), Load more reads page 2, the rebuild resumes with its stale
+    // two-page window, then the fenced retry reads all three pages.
+    mocks.listNotifications
+      .mockReturnValueOnce(rebuildGate.then(() => page0))
+      .mockResolvedValueOnce(page2)
+      .mockResolvedValueOnce(page1)
+      .mockResolvedValueOnce(page0)
+      .mockResolvedValueOnce(page1)
+      .mockResolvedValueOnce(page2);
+    view.rerender(
+      <I18nextProvider i18n={createI18n('en')}>
+        <CommunityInbox initialItems={[...page0]} loadError={false} />
+      </I18nextProvider>
+    );
+    await waitFor(() => expect(mocks.listNotifications).toHaveBeenCalledTimes(1));
+    await user.click(screen.getByRole('button', { name: 'Load more' }));
+    await screen.findByText('p2-19');
+    await act(async () => releaseRebuild());
+
+    await waitFor(() =>
+      expect(
+        Array.from(document.querySelectorAll('article')).map(
+          (article) => article.querySelector('p')?.textContent
+        )
+      ).toEqual([...page0, ...page1, ...page2].map((item) => item.body))
+    );
+  });
+  it('discards a pending Load more when a refresh rebuilds the loaded window', async () => {
+    const row = (name: string) => ({
+      notification_id: name,
+      message_id: `m-${name}`,
+      body: name,
+      created_at: '2026-01-01T00:00:00Z',
+      read_at: null,
+      time_zone: 'Europe/Madrid' as const
+    });
+    const first = Array.from({ length: 20 }, (_, index) => row(`a${index}`));
+    const stale = Array.from({ length: 20 }, (_, index) => row(`stale${index}`));
+    let resolveStale!: (rows: typeof stale) => void;
+    mocks.listNotifications.mockReset();
+    mocks.listNotifications.mockReturnValueOnce(
+      new Promise<typeof stale>((resolve) => (resolveStale = resolve))
+    );
+    const user = userEvent.setup();
+    const view = render(
+      <I18nextProvider i18n={createI18n('en')}>
+        <CommunityInbox initialItems={first} loadError={false} />
+      </I18nextProvider>
+    );
+    await user.click(screen.getByRole('button', { name: 'Load more' }));
+    await waitFor(() => expect(mocks.listNotifications).toHaveBeenCalledTimes(1));
+    // Refresh seed lands while the page is still pending; its offset no longer matches.
+    const seed = [row('fresh'), ...first.slice(0, 19)];
+    view.rerender(
+      <I18nextProvider i18n={createI18n('en')}>
+        <CommunityInbox initialItems={seed} loadError={false} />
+      </I18nextProvider>
+    );
+    await act(async () => resolveStale(stale));
+    expect(screen.getByText('fresh')).toBeTruthy();
+    expect(screen.queryByText('stale0')).toBeNull();
+    expect(screen.getAllByRole('article')).toHaveLength(20);
   });
   it('does not carry copied confirmation from applicant A to applicant B', async () => {
     let clipboard: ReturnType<typeof mockClipboard> | undefined;

@@ -9,6 +9,7 @@ import type {
   ResultRejectionReason
 } from '../src/features/matches/match-result-model';
 import { parseResultProposals } from '../src/features/matches/match-result-model';
+import { REFRESH_INTERVAL_MS } from '../src/lib/authoritative-refresh';
 import { useMatchResultFreshness } from '../src/features/matches/use-match-result-freshness';
 import { useMatchResultReview } from '../src/features/matches/use-match-result-review';
 import { isUpdateBlocked } from '../src/features/pwa/update-guard';
@@ -142,6 +143,40 @@ describe('result review mutation controller', () => {
     expect(mocks.review).toHaveBeenCalledTimes(1);
   });
 
+  it.each(['review_forbidden', 'forbidden', 'cancelled', 'not_found', 'active_proposal'] as const)(
+    're-reads authoritative state after a %s rejection without reissuing the mutation',
+    async (code) => {
+      const onRefresh = vi.fn<() => void>();
+      mocks.review.mockResolvedValue({ status: 'error', code });
+      const { result } = renderHook(() =>
+        useMatchResultReview({ proposal: proposal({ can_approve: true }), onRefresh })
+      );
+
+      await act(async () => {
+        await result.current.approve();
+      });
+
+      expect(result.current.feedback).toMatchObject({ kind: 'error', retryable: false });
+      expect(onRefresh).toHaveBeenCalledTimes(1);
+      expect(mocks.review).toHaveBeenCalledTimes(1);
+    }
+  );
+
+  it('does not re-read after a transport failure: the outcome is unknown, retry reuses its identity', async () => {
+    const onRefresh = vi.fn<() => void>();
+    mocks.review.mockResolvedValue({ status: 'error', code: 'unavailable' });
+    const { result } = renderHook(() =>
+      useMatchResultReview({ proposal: proposal({ can_approve: true }), onRefresh })
+    );
+
+    await act(async () => {
+      await result.current.approve();
+    });
+
+    expect(result.current.feedback).toMatchObject({ kind: 'error', retryable: true });
+    expect(onRefresh).not.toHaveBeenCalled();
+  });
+
   it('serializes duplicate clicks while a request is pending', async () => {
     let resolve!: (value: ResultCommandResponse<ResultCommandReceipt>) => void;
     mocks.review.mockReturnValue(
@@ -193,7 +228,7 @@ describe('result freshness controller', () => {
     expect(vi.getTimerCount()).toBe(0);
   });
 
-  it('coalesces focus, visibility, and online refreshes, then polls pending results', async () => {
+  it('coalesces a focus, visibility, and online burst into one read plus one trailing read, then polls', async () => {
     vi.useFakeTimers();
     visible();
     const onRefresh = vi.fn<() => void>();
@@ -215,15 +250,15 @@ describe('result freshness controller', () => {
     await act(async () => {
       await vi.advanceTimersByTimeAsync(30);
     });
-    expect(onRefresh).toHaveBeenCalledTimes(1);
+    expect(onRefresh).toHaveBeenCalledTimes(2);
 
     await act(async () => {
-      await vi.advanceTimersByTimeAsync(RESULT_POLL_INTERVAL + 30);
+      await vi.advanceTimersByTimeAsync(RESULT_POLL_INTERVAL);
     });
-    expect(onRefresh).toHaveBeenCalledTimes(2);
+    expect(onRefresh).toHaveBeenCalledTimes(3);
   });
 
-  it('does not poll terminal proposals', async () => {
+  it('keeps reading terminal proposals on the shared cadence so other clients stay converged', async () => {
     vi.useFakeTimers();
     const onRefresh = vi.fn<() => void>();
     const currentProposal = proposal({
@@ -258,13 +293,14 @@ describe('result freshness controller', () => {
     );
 
     await act(async () => {
-      await vi.advanceTimersByTimeAsync(60_000);
+      await vi.advanceTimersByTimeAsync(REFRESH_INTERVAL_MS * 2);
     });
-    expect(onRefresh).not.toHaveBeenCalled();
+    expect(onRefresh).toHaveBeenCalledTimes(2);
     unmount();
+    expect(vi.getTimerCount()).toBe(0);
   });
 
-  it('refreshes disputed proposals on focus and reconnect without polling', async () => {
+  it('refreshes disputed proposals on a focus and reconnect burst, then on the cadence', async () => {
     vi.useFakeTimers();
     const onRefresh = vi.fn<() => void>();
     const disputed = proposal({
@@ -312,10 +348,10 @@ describe('result freshness controller', () => {
       window.dispatchEvent(new Event('online'));
     });
     await act(async () => await vi.advanceTimersByTimeAsync(30));
-    expect(onRefresh).toHaveBeenCalledTimes(1);
+    expect(onRefresh).toHaveBeenCalledTimes(2);
 
-    await act(async () => vi.advanceTimersByTimeAsync(RESULT_POLL_INTERVAL * 2));
-    expect(onRefresh).toHaveBeenCalledTimes(1);
+    await act(async () => vi.advanceTimersByTimeAsync(REFRESH_INTERVAL_MS));
+    expect(onRefresh).toHaveBeenCalledTimes(3);
   });
 
   it('rebinds lifecycle refreshes when asOf changes and cleans up on unmount', async () => {
@@ -378,4 +414,4 @@ describe('result freshness controller', () => {
   });
 });
 
-const RESULT_POLL_INTERVAL = 30_000;
+const RESULT_POLL_INTERVAL = REFRESH_INTERVAL_MS;

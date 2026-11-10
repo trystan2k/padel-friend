@@ -143,7 +143,7 @@ test('submitting a reset request returns an enumeration-safe inbox notice', asyn
   await email.fill('any-email@example.test');
   await page.getByRole('button', { name: en.auth.forgotSubmit }).click();
   await expect(page).toHaveURL(/\/login\?reset=sent$/);
-  await expect(page.getByRole('status')).toContainText(en.auth.inboxNoticeTitle);
+  await expect(page.getByRole('main').getByRole('status')).toContainText(en.auth.inboxNoticeTitle);
 });
 
 test('unauthenticated visitors cannot reach the create-password screen', async ({ page }) => {
@@ -195,7 +195,7 @@ test('local Mailpit recovery updates a real password and preserves the authentic
   await page.locator('#reset-password-confirmation').fill(RESET_PASSWORD);
   await page.getByRole('button', { name: en.auth.resetSubmit }).click();
   await expect(page).toHaveURL(/\/dashboard$/);
-  await expect(page.getByRole('heading', { name: 'Recovery Player' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Recovery Player', exact: true })).toBeVisible();
 
   await page.getByRole('button', { name: en.signOut }).click();
   await expect(page.getByRole('heading', { name: en.auth.welcomeTitle })).toBeVisible();
@@ -204,5 +204,5 @@ test('local Mailpit recovery updates a real password and preserves the authentic
   await page.getByLabel(en.auth.loginPasswordLabel).fill(RESET_PASSWORD);
   await page.getByRole('button', { name: en.auth.loginSubmit }).click();
   await expect(page).toHaveURL(/\/dashboard$/);
-  await expect(page.getByRole('heading', { name: 'Recovery Player' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Recovery Player', exact: true })).toBeVisible();
 });

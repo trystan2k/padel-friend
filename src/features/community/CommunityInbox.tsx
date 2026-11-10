@@ -1,5 +1,5 @@
 import * as stylex from '@stylexjs/stylex';
-import { useRef, useState } from 'react';
+import { useEffect, useEffectEvent, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '../../components/ui/Button';
 import {
@@ -35,7 +35,73 @@ export function CommunityInbox({
   const [page, setPage] = useState(1);
   const generation = useRef(0);
   const loadingPage = useRef(false);
+  const pageRef = useRef(1);
   const [pending, setPending] = useState<string[]>([]);
+  const [seed, setSeed] = useState({ items: initialItems, loadError });
+  // A refreshed loader seed replaces an untouched first page. Once older pages are loaded or a
+  // mutation is in flight, the seed is merged instead: fresh rows lead (their read state wins,
+  // except for rows being marked read here) and loaded older rows plus pagination stay.
+  if (seed.items !== initialItems || seed.loadError !== loadError) {
+    setSeed({ items: initialItems, loadError });
+    if (page === 1 && pending.length === 0) {
+      setItems(initialItems ?? []);
+      setLoadFailed(loadError);
+      setHasMore((initialItems?.length ?? 0) === 20);
+    } else if (initialItems) {
+      const fresh = initialItems.map(
+        (item) =>
+          (pending.includes(item.notification_id)
+            ? items.find((current) => current.notification_id === item.notification_id)
+            : undefined) ?? item
+      );
+      const freshIds = new Set(initialItems.map((item) => item.notification_id));
+      setItems([...fresh, ...items.filter((item) => !freshIds.has(item.notification_id))]);
+      setLoadFailed(false);
+    }
+  }
+  // The merge above keeps the view stable, but offset pages shift when new rows arrive, leaving a
+  // gap between the fresh first page and the retained older pages. Re-read the whole loaded window
+  // so the list is contiguous again. Any refreshed seed bumps the generation, discarding a pending
+  // Load more whose offset no longer matches.
+  const reloadLoadedWindow = useEffectEvent(async () => {
+    if (pageRef.current === 1) return;
+    const token = generation.current;
+    try {
+      let rows: CommunityNotification[] = [];
+      let last: CommunityNotification[] = [];
+      // A Load more completing mid-rebuild grows the window; fence on the page count and read the
+      // window again so the rebuild never replaces a page that was appended meanwhile.
+      let pages = 0;
+      do {
+        pages = pageRef.current;
+        rows = [];
+        for (let index = 0; index < pages; index += 1) {
+          last = await listMyCommunityNotifications({ data: { offset: index * 20, limit: 20 } });
+          if (token !== generation.current) return;
+          rows.push(...last);
+        }
+      } while (pages !== pageRef.current);
+      const seen = new Set<string>();
+      setItems((current) =>
+        rows
+          .filter((item) => !seen.has(item.notification_id) && !!seen.add(item.notification_id))
+          .map(
+            (item) =>
+              (pending.includes(item.notification_id)
+                ? current.find((row) => row.notification_id === item.notification_id)
+                : undefined) ?? item
+          )
+      );
+      setHasMore(last.length === 20);
+    } catch {
+      // Keep the merged view; the next refresh retries the window.
+    }
+  });
+  useEffect(() => {
+    generation.current += 1;
+    // A failed seed was not merged, so there is no gap to repair.
+    if (!seed.loadError) queueMicrotask(() => void reloadLoadedWindow());
+  }, [seed]);
   async function markRead(id: string) {
     if (pending.includes(id)) return;
     setPending((current) => [...current, id]);
@@ -60,6 +126,7 @@ export function CommunityInbox({
       const result = await listMyCommunityNotifications({ data: { offset: 0, limit: 20 } });
       if (nextGeneration !== generation.current) return;
       setItems(result);
+      pageRef.current = 1;
       setPage(1);
       setHasMore(result.length === 20);
       setLoadFailed(false);
@@ -73,10 +140,12 @@ export function CommunityInbox({
     loadingPage.current = true;
     setPageError(false);
     const requestedPage = page;
+    const token = generation.current;
     try {
       const result = await listMyCommunityNotifications({
         data: { offset: requestedPage * 20, limit: 20 }
       });
+      if (token !== generation.current) return;
       setItems((current) => {
         const seen = new Set(current.map((item) => item.notification_id));
         const additions = result.filter((item) => {
@@ -86,6 +155,7 @@ export function CommunityInbox({
         });
         return [...current, ...additions];
       });
+      pageRef.current = requestedPage + 1;
       setPage(requestedPage + 1);
       setHasMore(result.length === 20);
     } catch {

@@ -185,6 +185,63 @@ test('offline launches of a private URL show only the public document and recove
   }
 });
 
+test('account A then B in one browser: private responses stay uncacheable and no prior identity survives offline or back navigation', async ({
+  browser
+}) => {
+  const [accountA, accountB] = [await createActor(), await createActor()];
+  const context = await browser.newContext({ serviceWorkers: 'allow' });
+  try {
+    const page = await context.newPage();
+    await signIn(page, accountA);
+    await controlledByWorker(page);
+    const privateDocument = await page.goto('/dashboard');
+    await waitForHydratedPage(page);
+    expect(privateDocument?.headers()['cache-control']).toContain('no-store');
+    expect(privateDocument?.headers()['cache-control']).toContain('private');
+
+    // Sign-out ends A's session; B signs in on the same browser storage and worker.
+    await context.clearCookies();
+    await page.evaluate(() => {
+      localStorage.clear();
+      sessionStorage.clear();
+    });
+    await signIn(page, accountB);
+    await page.goto('/dashboard');
+    await waitForHydratedPage(page);
+
+    const entries = await cacheEntries(page);
+    expectPublicCacheOnly(entries);
+    const leaked = await page.evaluate(
+      async ({ names }) => {
+        const found: string[] = [];
+        for (const cacheName of await caches.keys()) {
+          const cache = await caches.open(cacheName);
+          for (const request of await cache.keys()) {
+            const response = await cache.match(request);
+            const type = response?.headers.get('content-type') ?? '';
+            if (!response || !/text|json|javascript|css/.test(type)) continue;
+            const body = await response.text();
+            if (names.some((value) => body.includes(value))) found.push(request.url);
+          }
+        }
+        return found;
+      },
+      { names: [accountA.email, accountA.name, accountB.email, accountB.name] }
+    );
+    expect(leaked).toEqual([]);
+
+    await context.setOffline(true);
+    await page.goto('/matches/my');
+    await expect(page.getByRole('heading', { name: en.pwa.offline.title })).toBeVisible();
+    await page.goBack();
+    const text = await page.locator('body').innerText();
+    for (const value of [accountA.name, accountA.email, accountB.name, accountB.email])
+      expect(text).not.toContain(value);
+  } finally {
+    await context.close();
+  }
+});
+
 test('offline auth callback fails honestly instead of showing success', async ({ browser }) => {
   const context = await browser.newContext({ serviceWorkers: 'allow' });
   try {

@@ -4,6 +4,7 @@ import {
   createNavigationHandler,
   isPrecacheCandidate,
   isSkipWaitingMessage,
+  purgePrivateCacheEntries,
   removeLegacyCaches
 } from './sw-policy';
 
@@ -60,7 +61,7 @@ worker.addEventListener('message', (event) => {
 });
 
 worker.addEventListener('activate', (event) => {
-  event.waitUntil(removeLegacyCaches(caches));
+  event.waitUntil(Promise.all([removeLegacyCaches(caches), purgePrivateCacheEntries(caches)]));
 });
 
 worker.addEventListener('fetch', (event) => {

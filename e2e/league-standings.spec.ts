@@ -793,3 +793,66 @@ test('final standings reflow at 320px in pt-BR dark mode with 44px targets and a
   }
   await expect(page.getByText(pt.history.lateFirstConfirmation)).toBeVisible();
 });
+
+test('premature, repeated, stale and unauthorized closes are rejected and leave the published finals untouched', async () => {
+  const finals = () =>
+    sql(`select standings_version, cause::text, md5(entries::text) as entries
+           from public.league_standings_snapshots where league_id='${leagueId}' order by standings_version`);
+  const leagueRow = async (id: string) => {
+    const [league] = await sql(
+      `select version, status::text as status from public.leagues where id='${id}'`
+    );
+    return { version: Number(league?.['version']), status: String(league?.['status']) };
+  };
+  const closeAs = (who: typeof f.creator, id: string, version: number) =>
+    who.client.rpc('close_league', { p_league_id: id, p_expected_version: version });
+
+  const published = await finals();
+  expect(published).toHaveLength(2);
+  const archived = await leagueRow(leagueId);
+  expect(archived.status).toBe('closed');
+
+  // Closing a closed League is an idempotent replay of the same close (nothing is republished);
+  // a stale version still conflicts and a plain member is forbidden.
+  const replayed = await closeAs(f.creator, leagueId, archived.version);
+  expect(replayed.error).toBeNull();
+  expect(replayed.data).toMatchObject({ id: leagueId, status: 'closed' });
+  expect((await closeAs(f.creator, leagueId, archived.version + 7)).error?.message).toBe(
+    'LEAGUE_VERSION_CONFLICT'
+  );
+  expect((await closeAs(f.members[3]!, leagueId, archived.version)).error).not.toBeNull();
+
+  // Premature: an Upcoming League has nothing to close yet.
+  const premature = await f.createLeague(f.creator, {
+    name: 'Premature League',
+    endMode: 'manual',
+    start: day(20)
+  });
+  const upcoming = await leagueRow(premature);
+  expect(upcoming.status).toBe('upcoming');
+  expect((await closeAs(f.creator, premature, upcoming.version)).error?.message).toBe(
+    'LEAGUE_INVALID_STATE'
+  );
+
+  // The active successor: a plain member is forbidden and a stale version conflicts.
+  const [successorId] = (
+    await sql(
+      `select id::text from public.leagues where community_id='${f.community}' and name='Successor League'`
+    )
+  ).map((found) => String(found['id']));
+  const active = await leagueRow(successorId!);
+  expect(active.status).toBe('active');
+  expect((await closeAs(f.members[3]!, successorId!, active.version)).error?.message).toBe(
+    'LEAGUE_FORBIDDEN'
+  );
+  expect((await closeAs(f.creator, successorId!, active.version + 7)).error?.message).toBe(
+    'LEAGUE_VERSION_CONFLICT'
+  );
+
+  // Every rejection left the League states and the published finals exactly as they were.
+  expect(await leagueRow(successorId!)).toEqual(active);
+  expect(await leagueRow(premature)).toEqual(upcoming);
+  expect(await leagueRow(leagueId)).toEqual(archived);
+  expect(await finals()).toEqual(published);
+  expect(await storedCounters()).toHaveLength(4);
+});

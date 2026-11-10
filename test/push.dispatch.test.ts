@@ -76,6 +76,29 @@ describe('durable Push dispatcher', () => {
       ]);
     }
   );
+  it('emits a push.failure event with codes only (no endpoint, key or provider text)', async () => {
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const { client } = fixture();
+    await dispatchNotificationPush(
+      client,
+      keyring,
+      vi
+        .fn<() => Promise<{ status: number; retryAfter: string | null }>>()
+        .mockResolvedValue({ status: 400, retryAfter: null })
+    );
+    const lines = error.mock.calls
+      .map(([line]) => String(line))
+      .filter((line) => line.startsWith('{'));
+    expect(lines.length).toBeGreaterThan(0);
+    expect(JSON.parse(lines[0]!)).toMatchObject({
+      event: 'push.failure',
+      outcome: 'failure',
+      code: 'PUSH_FAILED',
+      status: 400
+    });
+    for (const line of lines)
+      expect(line).not.toMatch(/fcm\.googleapis|private-endpoint|secret|p256dh/);
+  });
   it.each([429, 500, 503])('schedules durable retry for %s', async (status) => {
     const { rpc, client } = fixture();
     await dispatchNotificationPush(

@@ -29,11 +29,12 @@ function sourceFiles(dir: string): string[] {
   return readdirSync(dir, { withFileTypes: true }).flatMap((entry) =>
     entry.isDirectory()
       ? sourceFiles(join(dir, entry.name))
-      : /\.tsx?$/.test(entry.name)
+      : /\.tsx?$/.test(entry.name) && !/diagnostics\.server\.ts$/.test(entry.name)
         ? [join(dir, entry.name)]
         : []
   );
 }
+// Diagnostic event/code unions (e.g. 'rating.failure') are log identifiers, not i18n keys.
 const source = sourceFiles('src')
   .map((file) => readFileSync(file, 'utf8'))
   .join('\n');

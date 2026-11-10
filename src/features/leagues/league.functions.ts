@@ -1,5 +1,6 @@
 import { createServerFn } from '@tanstack/react-start';
 import { requireAuthenticatedClient } from '../auth/auth.server';
+import { emitDiagnostic, safeErrorCode } from '../../lib/diagnostics.server';
 import type {
   LeagueCommunityEntry,
   LeagueCountersResult,
@@ -198,7 +199,12 @@ export const closeLeague = createServerFn({ method: 'POST' })
       p_league_id: data.league_id,
       p_expected_version: data.expected_version
     });
-    if (error) throw new Error(leagueErrorFromDatabase(error));
+    if (error) {
+      const code = leagueErrorFromDatabase(error);
+      emitDiagnostic('league.close', 'failure', { code: safeErrorCode(code) });
+      throw new Error(code);
+    }
+    emitDiagnostic('league.close', 'success');
     return decoded(decodeLeagueDto, result);
   });
 

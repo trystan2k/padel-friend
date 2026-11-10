@@ -126,7 +126,7 @@ test('a protected deep link survives sign-in and a newcomer is gated before reac
   const landed = new URL(page.url());
   expect(landed.pathname).toBe('/dashboard');
   expect(landed.searchParams.get('src')).toBe('e2e');
-  await expect(page.getByRole('heading', { name: 'Dee Link' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Dee Link', exact: true })).toBeVisible();
 });
 
 test('an existing account signing in returns to the protected deep link', async ({ page }) => {
@@ -149,7 +149,7 @@ test('an existing account signing in returns to the protected deep link', async 
   expect(landed.pathname).toBe('/dashboard');
   expect(landed.search).toBe('?src=return%26check');
   expect(landed.searchParams.get('src')).toBe('return&check');
-  await expect(page.getByRole('heading', { name: 'Rex Return' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Rex Return', exact: true })).toBeVisible();
 });
 
 test('a hostile next parameter falls back to /dashboard', async ({ page }) => {
@@ -529,7 +529,9 @@ test.describe.serial('shared match link returns to the exact event', () => {
       await waitForHydratedPage(plain);
       await plain.getByRole('button', { name: en.communityOnboarding.skip }).click();
       await expect(plain).toHaveURL(/\/dashboard$/);
-      await expect(plain.getByRole('heading', { name: 'Plain Returner' })).toBeVisible();
+      await expect(
+        plain.getByRole('heading', { name: 'Plain Returner', exact: true })
+      ).toBeVisible();
     } finally {
       await Promise.all([freshContext.close(), plainContext.close()]);
     }

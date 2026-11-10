@@ -67,7 +67,7 @@ export function MatchDetailPage({
 }: {
   event: MatchEventDetail | null;
   loadError?: boolean;
-  onRetry?: () => void;
+  onRetry?: () => void | Promise<void>;
   sharePlatform?: Pick<Navigator, 'share' | 'clipboard'>;
   registration?: MyMatchRegistration | null;
   registrationError?: boolean;

@@ -2329,6 +2329,102 @@ export type Database = {
         }
         Relationships: []
       }
+      operational_alerts: {
+        Row: {
+          alert_key: string
+          delivery_lease_until: string | null
+          delivery_token: string | null
+          notified_at: string | null
+          opened_at: string
+          reference: string
+          resolution_notified_at: string | null
+          resolved_at: string | null
+          severity: string
+          source: string
+        }
+        ComputedFields: never
+        Insert: {
+          alert_key: string
+          delivery_lease_until?: string | null
+          delivery_token?: string | null
+          notified_at?: string | null
+          opened_at?: string
+          reference: string
+          resolution_notified_at?: string | null
+          resolved_at?: string | null
+          severity: string
+          source: string
+        }
+        Update: {
+          alert_key?: string
+          delivery_lease_until?: string | null
+          delivery_token?: string | null
+          notified_at?: string | null
+          opened_at?: string
+          reference?: string
+          resolution_notified_at?: string | null
+          resolved_at?: string | null
+          severity?: string
+          source?: string
+        }
+        Relationships: []
+      }
+      operational_job_events: {
+        Row: {
+          attempt: number
+          code: string | null
+          event: string
+          event_key: string
+          logged_at: string | null
+          occurred_at: string
+          outcome: string
+          reference: string
+          stage: string | null
+        }
+        ComputedFields: never
+        Insert: {
+          attempt: number
+          code?: string | null
+          event: string
+          event_key: string
+          logged_at?: string | null
+          occurred_at?: string
+          outcome: string
+          reference: string
+          stage?: string | null
+        }
+        Update: {
+          attempt?: number
+          code?: string | null
+          event?: string
+          event_key?: string
+          logged_at?: string | null
+          occurred_at?: string
+          outcome?: string
+          reference?: string
+          stage?: string | null
+        }
+        Relationships: []
+      }
+      operational_push_health: {
+        Row: {
+          code: string | null
+          singleton: boolean
+          updated_at: string
+        }
+        ComputedFields: never
+        Insert: {
+          code?: string | null
+          singleton?: boolean
+          updated_at?: string
+        }
+        Update: {
+          code?: string | null
+          singleton?: boolean
+          updated_at?: string
+        }
+        Relationships: []
+      }
       platform_admins: {
         Row: {
           granted_at: string
@@ -4605,6 +4701,7 @@ export type Database = {
         Returns: Json
       }
       advance_match_registration_revision_locked: { Args: { p_event_id: string }; Returns: number }
+      apply_operational_alert_signals: { Args: { p_signals: Json }; Returns: Json }
       assert_actor_not_provisional: { Args: Record<PropertyKey, never>; Returns: undefined }
       assert_match_event_active_locked: { Args: { p_event_id: string }; Returns: undefined }
       assert_match_league_binding: {
@@ -4674,6 +4771,10 @@ export type Database = {
           isOneToOne: false
           isSetofReturn: true
         }
+      }
+      claim_operational_alert: {
+        Args: { p_key: string; p_resolution: boolean; p_token: string }
+        Returns: boolean
       }
       claim_provisional_player: {
         Args: {
@@ -5529,6 +5630,11 @@ export type Database = {
         Returns: boolean
       }
       mark_notification_read: { Args: { p_notification_id: string }; Returns: string }
+      mark_operational_alert_sent: {
+        Args: { p_key: string; p_resolution?: boolean; p_token?: string }
+        Returns: boolean
+      }
+      mark_operational_job_events: { Args: { p_keys: string[] }; Returns: undefined }
       match_competition_impact: {
         Args: { p_event_type: Database["public"]["Enums"]["match_event_type"]; p_league_id: string }
         Returns: Json
@@ -5711,6 +5817,7 @@ export type Database = {
         }
         Returns: undefined
       }
+      operational_failure_signals: { Args: Record<PropertyKey, never>; Returns: Json }
       persist_match_result_notification: {
         Args: {
           p_community_id: string
@@ -5755,6 +5862,7 @@ export type Database = {
         Returns: Json
       }
       project_confirmed_rating_group: { Args: { p_proposal_id: string }; Returns: undefined }
+      project_confirmed_rating_group_core: { Args: { p_proposal_id: string }; Returns: undefined }
       project_league_confirmation: { Args: { p_confirmation_id: string }; Returns: boolean }
       protect_match_event_results: { Args: { p_event_id: string }; Returns: undefined }
       provision_provisional_player_locked: {
@@ -6068,8 +6176,10 @@ export type Database = {
         Args: { p_config_version: number; p_engine: string; p_engine_version: string }
         Returns: boolean
       }
+      read_operational_job_events: { Args: Record<PropertyKey, never>; Returns: Json }
       rebuild_league_counters: { Args: { p_league_id: string }; Returns: Json }
       rebuild_statistics: { Args: { p_community_id?: string }; Returns: Json }
+      reconcile_current_operational_alerts: { Args: Record<PropertyKey, never>; Returns: Json }
       reconcile_match_registration_participation:
         | { Args: { p_accepted_registration_id?: string; p_match_event_id: string }; Returns: Json }
         | {
@@ -6094,6 +6204,7 @@ export type Database = {
           is_current: boolean
         }[]
       }
+      reconcile_operational_alerts: { Args: { p_signals: Json }; Returns: Json }
       reconfirm_match_registration: {
         Args: {
           p_attempt_id: string
@@ -6102,6 +6213,10 @@ export type Database = {
           p_request_id: string
         }
         Returns: Json
+      }
+      record_manual_rating_failure: {
+        Args: { p_proposal_id: string; p_request_id: string }
+        Returns: undefined
       }
       record_match_result_alert_attempt: {
         Args: {
@@ -6127,6 +6242,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      record_operational_push_health: { Args: { p_code?: string }; Returns: undefined }
       record_result_amendment_event: {
         Args: {
           p_actor: string
@@ -6178,6 +6294,7 @@ export type Database = {
         }
         Returns: string
       }
+      release_operational_alert: { Args: { p_key: string; p_token: string }; Returns: undefined }
       remove_match_registration: {
         Args: {
           p_attempt_id: string

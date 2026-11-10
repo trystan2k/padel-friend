@@ -32,11 +32,23 @@ export const getOnboardingStatus = createServerFn().handler(async () => {
   const client = getServerClient();
   const { data, error } = await client.auth.getClaims();
   if (error || !data?.claims?.sub)
-    return { authenticated: false, complete: false, needsPasswordSetup: false, claim: null };
+    return {
+      authenticated: false,
+      userId: null,
+      complete: false,
+      needsPasswordSetup: false,
+      claim: null
+    };
   const { profile } = await playerRows(client, data.claims.sub);
   if (profile) {
     const { pending } = await readPasswordSetupState(client);
-    return { authenticated: true, complete: !pending, needsPasswordSetup: pending, claim: null };
+    return {
+      authenticated: true,
+      userId: data.claims.sub,
+      complete: !pending,
+      needsPasswordSetup: pending,
+      claim: null
+    };
   }
   // A provisional session cannot read its own profile (RLS), so a missing profile is
   // either a brand-new account or a provisional player; the restricted claim RPC
@@ -45,6 +57,7 @@ export const getOnboardingStatus = createServerFn().handler(async () => {
   if (claim.error) throw claim.error;
   return {
     authenticated: true,
+    userId: data.claims.sub,
     complete: false,
     needsPasswordSetup: false,
     claim: parseProvisionalClaim(claim.data)

@@ -1,6 +1,7 @@
 import { createServerFn } from '@tanstack/react-start';
 import { setResponseHeader } from '@tanstack/react-start/server';
 import { requireAuthenticatedClient } from '../auth/auth.server';
+import { emitDiagnostic, safeErrorCode } from '../../lib/diagnostics.server';
 import {
   parseResultRepairAttempts,
   parseResultRepairClaim,
@@ -66,15 +67,38 @@ export const retryResultRepair = createServerFn({ method: 'POST' })
     if (!claim) return { status: 'error', code: 'unavailable' };
     if (!claim.claimed) return { status: 'ok', value: { outcome: 'busy', job: null } };
     if (claim.job.job_id !== data.job_id) return { status: 'error', code: 'unavailable' };
+    emitDiagnostic('replay.start', 'success', {
+      reference: data.job_id,
+      attempt: claim.attempt_number
+    });
     const { data: executed, error: executeError } = await client.rpc(
       'execute_claimed_result_repair',
       { p_job_id: data.job_id, p_attempt_number: claim.attempt_number }
     );
-    if (executeError) return resultRepairError(executeError);
+    if (executeError) {
+      emitDiagnostic('replay.fail', 'failure', {
+        reference: data.job_id,
+        attempt: claim.attempt_number,
+        code: safeErrorCode(executeError.message)
+      });
+      return resultRepairError(executeError);
+    }
     const execution = parseResultRepairExecution(executed);
-    return execution && execution.job.job_id === data.job_id
-      ? { status: 'ok', value: execution }
-      : { status: 'error', code: 'unavailable' };
+    if (!execution || execution.job.job_id !== data.job_id) {
+      emitDiagnostic('replay.fail', 'failure', {
+        reference: data.job_id,
+        attempt: claim.attempt_number,
+        code: 'REPLAY_RECEIPT_INVALID'
+      });
+      return { status: 'error', code: 'unavailable' };
+    }
+    if (execution.outcome !== 'stale')
+      emitDiagnostic(
+        execution.job.status === 'succeeded' ? 'replay.complete' : 'replay.fail',
+        execution.job.status === 'succeeded' ? 'success' : 'failure',
+        { reference: data.job_id, attempt: claim.attempt_number, code: execution.job.failure_code }
+      );
+    return { status: 'ok', value: execution };
   });
 
 /** Display gate only: the guarded RPCs authorize every command independently. */

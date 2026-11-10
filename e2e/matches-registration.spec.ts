@@ -725,15 +725,16 @@ test.describe.serial('registration, FIFO and cutoff journeys', () => {
     // Direct join (F27): a member accepted instantly through the CTA carries the
     // JOINED badge — organizer approval wording is reserved for real decisions.
     // Second accepted of two: reserve queue placement #2 until a quartet completes.
+    // Post-mutation refetch flips: same loaded-worker race as the pending badge budget below.
     await expect(
       page.getByText(fill(en.matchRegistration.request.joinedReserveBadge, { position: 2 }))
-    ).toBeVisible();
+    ).toBeVisible({ timeout: 15_000 });
     await expect(page.getByRole('button', { name: en.matchRegistration.join.button })).toHaveCount(
       0
     );
     await expect(
       participationSection(page).getByText(`2 · ${en.matches.detail.accepted}`)
-    ).toBeVisible();
+    ).toBeVisible({ timeout: 15_000 });
 
     // Two more in-range members join; the fourth acceptance promotes all four.
     for (const actor of [family.member2!, family.member3!]) {
@@ -834,9 +835,10 @@ test.describe.serial('registration, FIFO and cutoff journeys', () => {
     ).toBeVisible();
     await page.getByRole('button', { name: en.matchRegistration.join.requestButton }).click();
     await expect(page.getByText(en.matchRegistration.feedback.pending)).toBeVisible();
+    // Badge render is the authoritative signal; the default 5s budget loses to saturated workers.
     await expect(
       page.getByText(en.matchRegistration.request.pendingBadge, { exact: true })
-    ).toBeVisible();
+    ).toBeVisible({ timeout: 15_000 });
 
     expect(
       await notificationRows(family.creator!, 'match_registration_requested', eventId)
@@ -863,7 +865,10 @@ test.describe.serial('registration, FIFO and cutoff journeys', () => {
       })
       .click();
     await expect(creatorPage.getByText(en.matchRegistration.feedback.approved)).toBeVisible();
-    await expect(creatorPage.getByText(en.matchRegistration.queue.empty)).toBeVisible();
+    // Queue empties via the creator's refreshed seed; allow convergence under suite load.
+    await expect(creatorPage.getByText(en.matchRegistration.queue.empty)).toBeVisible({
+      timeout: 15_000
+    });
 
     // FIFO: approval behind the four earlier acceptances lands the requester in
     // the reserve queue at position #1 — request time reserved nothing.
@@ -924,7 +929,10 @@ test.describe.serial('registration, FIFO and cutoff journeys', () => {
       })
       .click();
     await expect(creatorPage.getByText(en.matchRegistration.feedback.rejected)).toBeVisible();
-    await expect(creatorPage.getByText(en.matchRegistration.queue.empty)).toBeVisible();
+    // Queue empties via the creator's refreshed seed; allow convergence under suite load.
+    await expect(creatorPage.getByText(en.matchRegistration.queue.empty)).toBeVisible({
+      timeout: 15_000
+    });
 
     await page.reload();
     await waitForHydratedPage(page);
@@ -944,7 +952,7 @@ test.describe.serial('registration, FIFO and cutoff journeys', () => {
     await expect(page.getByText(en.matchRegistration.feedback.pending)).toBeVisible();
     await expect(
       page.getByText(en.matchRegistration.request.pendingBadge, { exact: true })
-    ).toBeVisible();
+    ).toBeVisible({ timeout: 15_000 });
     const retried = await registrationRowFor(eventId, requester.id);
     expect(retried!['lifecycle']).toBe('pending');
 
@@ -991,7 +999,10 @@ test.describe.serial('registration, FIFO and cutoff journeys', () => {
         name: fill(en.matchRegistration.queue.declineLabel, { name: requester.displayName })
       })
       .click();
-    await expect(creatorPage.getByText(en.matchRegistration.queue.empty)).toBeVisible();
+    // Queue empties via the creator's refreshed seed; allow convergence under suite load.
+    await expect(creatorPage.getByText(en.matchRegistration.queue.empty)).toBeVisible({
+      timeout: 15_000
+    });
     expect(await notificationRows(requester, 'match_registration_rejected', eventId)).toHaveLength(
       2
     );

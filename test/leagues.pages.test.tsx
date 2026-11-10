@@ -624,6 +624,43 @@ describe('League detail management', () => {
     expect(screen.queryByRole('button', { name: 'Close League' })).toBeNull();
   });
 
+  it('sends no lifecycle command while offline and says nothing was sent', async () => {
+    const user = userEvent.setup();
+    Object.defineProperty(navigator, 'onLine', { configurable: true, value: false });
+    try {
+      render(
+        wrap(
+          <Detail
+            data={makeLeagueDetail({ version: 3, blocked_reason: 'explicit_activation_required' })}
+          />
+        )
+      );
+      await user.click(screen.getByRole('button', { name: 'Activate League' }));
+      expect((await screen.findByRole('alert')).textContent).toContain('You are offline');
+      expect(mocks.activateLeague).not.toHaveBeenCalled();
+      expect(screen.queryByText('League activated.')).toBeNull();
+    } finally {
+      Object.defineProperty(navigator, 'onLine', { configurable: true, value: true });
+    }
+  });
+
+  it('reports a lost connection as outcome-unknown, reloads and never claims success', async () => {
+    const user = userEvent.setup();
+    mocks.activateLeague.mockRejectedValue(new TypeError('Failed to fetch'));
+    render(
+      wrap(
+        <Detail
+          data={makeLeagueDetail({ version: 3, blocked_reason: 'explicit_activation_required' })}
+        />
+      )
+    );
+    await user.click(screen.getByRole('button', { name: 'Activate League' }));
+    expect((await screen.findByRole('alert')).textContent).toContain("couldn't confirm");
+    expect(screen.queryByText('League activated.')).toBeNull();
+    expect(mocks.activateLeague).toHaveBeenCalledTimes(1);
+    expect(mocks.invalidate).toHaveBeenCalled();
+  });
+
   it('reloads and explains a version conflict', async () => {
     const user = userEvent.setup();
     mocks.updateLeague.mockRejectedValue(new Error('LEAGUE_VERSION_CONFLICT'));

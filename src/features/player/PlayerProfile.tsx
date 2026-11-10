@@ -3,11 +3,12 @@ import { rootStyles } from '../../root.styles';
 import { Link } from '@tanstack/react-router';
 import { useRef, useState, type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
+import { isOffline, isTransportFailure } from '../../lib/connectivity';
 import { stripEdgeWhitespace } from '../../lib/edge-whitespace';
 import { getBrowserClient } from '../../lib/supabase/client';
 import { cleanupPushDeviceForLogout } from '../notifications/push-browser';
 import { AvatarUpload } from './AvatarUpload';
-import { updateMyPlayerProfile } from './player.functions';
+import { getMyPlayerProfile, updateMyPlayerProfile } from './player.functions';
 import { playerInitials } from './player-initials';
 import { formatDisplayLevel, MAX_LEVEL, MIN_LEVEL } from './rating-config';
 import type { RatingLoad } from './rating-view';
@@ -18,10 +19,12 @@ type Profile = Awaited<ReturnType<typeof updateMyPlayerProfile>>;
 
 export function PlayerProfile({
   initialProfile,
+  embedded = false,
   initialRating,
   onRatingReload
 }: {
   initialProfile: Profile;
+  embedded?: boolean;
   initialRating: RatingLoad;
   onRatingReload: () => void;
 }) {
@@ -54,6 +57,10 @@ export function PlayerProfile({
       nameRef.current?.focus();
       return;
     }
+    if (isOffline()) {
+      setError('profile.saveOffline');
+      return;
+    }
     setSaving(true);
     setError('');
     try {
@@ -76,18 +83,30 @@ export function PlayerProfile({
         window.location.assign('/login?next=/dashboard');
         return;
       }
-      setError('profile.saveFailed');
+      if (!isTransportFailure(cause)) {
+        setError('profile.saveFailed');
+        return;
+      }
+      // Outcome unknown: re-read the authoritative profile before any retry, keeping the draft.
+      setError('profile.saveUnconfirmed');
+      try {
+        setProfile(await getMyPlayerProfile());
+      } catch {
+        // Stay unconfirmed; the retry stays available.
+      }
     } finally {
       setSaving(false);
     }
   }
 
+  const Container = embedded ? 'section' : 'main';
+  const Heading = embedded ? 'h2' : 'h1';
   return (
-    <main {...stylex.props(ui.page, ui.profilePage)}>
+    <Container {...stylex.props(ui.page, ui.profilePage)}>
       <div {...stylex.props(ui.profileTop)}>
         <header {...stylex.props(ui.headerRow, rootStyles.pageHeader)}>
           <div {...stylex.props(ui.header)}>
-            <h1 {...stylex.props(ui.title)}>{t('profile.title')}</h1>
+            <Heading {...stylex.props(ui.title)}>{t('profile.title')}</Heading>
             <p {...stylex.props(ui.subtitle)}>{t('profile.subtitle')}</p>
           </div>
           <button
@@ -324,6 +343,6 @@ export function PlayerProfile({
       >
         {t('signOut')}
       </button>
-    </main>
+    </Container>
   );
 }

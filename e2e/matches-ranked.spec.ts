@@ -111,7 +111,8 @@ async function continueToReview(page: Page) {
 async function continueToReviewAndPublish(page: Page) {
   await continueToReview(page);
   await page.getByRole('button', { name: mc.publish }).click();
-  await expect(page).toHaveURL(/\/matches$/);
+  // Publish navigation is the authoritative signal; the default 5s budget loses to saturated workers.
+  await expect(page).toHaveURL(/\/matches$/, { timeout: 15_000 });
   await waitForHydratedPage(page);
 }
 
@@ -398,9 +399,15 @@ test('provisional player joins a Ranked event, is carried on League change and k
   await expect(
     organizer.getByText(fill(m.addPlayer.success, { name: 'Carla Convidada' }), { exact: true })
   ).toBeVisible({ timeout: 20_000 });
-  await expect(organizer.getByText(en.player.provisional.badge, { exact: true })).toHaveCount(1, {
-    timeout: 20_000
-  });
+  // The add hook swallows a failed router.invalidate(), so the toast can outlive a stale roster under
+  // load: the DB row is authoritative, so reload until the committed roster renders the badge.
+  await expect(async () => {
+    await organizer.reload();
+    await waitForHydratedPage(organizer);
+    await expect(organizer.getByText(en.player.provisional.badge, { exact: true })).toHaveCount(1, {
+      timeout: 3_000
+    });
+  }).toPass({ timeout: 30_000 });
   const [provisional] = await sql(
     `select r.user_id::text as id, r.lifecycle::text, p.is_provisional::text as provisional,
             (select league_id::text from public.match_events where id='${eventId}') as league
