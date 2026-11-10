@@ -725,15 +725,16 @@ test.describe.serial('registration, FIFO and cutoff journeys', () => {
     // Direct join (F27): a member accepted instantly through the CTA carries the
     // JOINED badge — organizer approval wording is reserved for real decisions.
     // Second accepted of two: reserve queue placement #2 until a quartet completes.
+    // Post-mutation refetch flips: same loaded-worker race as the pending badge budget below.
     await expect(
       page.getByText(fill(en.matchRegistration.request.joinedReserveBadge, { position: 2 }))
-    ).toBeVisible();
+    ).toBeVisible({ timeout: 15_000 });
     await expect(page.getByRole('button', { name: en.matchRegistration.join.button })).toHaveCount(
       0
     );
     await expect(
       participationSection(page).getByText(`2 · ${en.matches.detail.accepted}`)
-    ).toBeVisible();
+    ).toBeVisible({ timeout: 15_000 });
 
     // Two more in-range members join; the fourth acceptance promotes all four.
     for (const actor of [family.member2!, family.member3!]) {
@@ -951,7 +952,7 @@ test.describe.serial('registration, FIFO and cutoff journeys', () => {
     await expect(page.getByText(en.matchRegistration.feedback.pending)).toBeVisible();
     await expect(
       page.getByText(en.matchRegistration.request.pendingBadge, { exact: true })
-    ).toBeVisible();
+    ).toBeVisible({ timeout: 15_000 });
     const retried = await registrationRowFor(eventId, requester.id);
     expect(retried!['lifecycle']).toBe('pending');
 

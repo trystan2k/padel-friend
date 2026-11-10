@@ -197,7 +197,10 @@ test('membership to selected Home to Ranked League event, two quartets and a Res
   );
   await review(organizerRecord);
   await organizerRecord.getByRole('button', { name: r.submit, exact: true }).click();
-  await expect(organizerRecord.getByText(r.pending, { exact: true })).toBeVisible();
+  // Post-submit refetch flip: use the convergence budget under suite load.
+  await expect(organizerRecord.getByText(r.pending, { exact: true })).toBeVisible({
+    timeout: CONVERGENCE_BUDGET_MS
+  });
   const first = await proposalRow(eventId, 1);
   const firstTeams = teamsOf(first);
   expect([...firstTeams.team_a, ...firstTeams.team_b].sort()).toEqual(
@@ -222,7 +225,9 @@ test('membership to selected Home to Ranked League event, two quartets and a Res
   await groupCard(reviewer1, 1)
     .getByRole('button', { name: r.review.approve, exact: true })
     .click();
-  await expect(groupCard(reviewer1, 1)).toHaveAttribute('data-result-status', 'confirmed');
+  await expect(groupCard(reviewer1, 1)).toHaveAttribute('data-result-status', 'confirmed', {
+    timeout: CONVERGENCE_BUDGET_MS
+  });
   await expect(groupCard(watcher1, 1)).toHaveAttribute('data-result-status', 'confirmed', {
     timeout: CONVERGENCE_BUDGET_MS
   });
