@@ -15,6 +15,15 @@ export type SpawnLike = (
   args: string[],
   options?: Record<string, unknown>
 ) => { status: number | null; stdout?: string | Buffer; stderr?: string | Buffer; error?: Error };
+export const SPAWN_MAX_ATTEMPTS: number;
+export function isTransientSpawnError(error: unknown): boolean;
+export function spawnWithTransientRetry<T extends { error?: Error }>(
+  run: (command: string, args: string[], options?: Record<string, unknown>) => T,
+  command: string,
+  args: string[],
+  options?: Record<string, unknown>,
+  maxAttempts?: number
+): T;
 export function assertLocalContainer(container: string): string;
 export function assertDisposableDatabase(options: {
   name: string;

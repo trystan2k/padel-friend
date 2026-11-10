@@ -44,6 +44,31 @@ export function sha256(value) {
   return createHash('sha256').update(value).digest('hex');
 }
 
+const TRANSIENT_SPAWN_CODES = new Set(['EPIPE', 'ECONNRESET', 'EAGAIN']);
+export const SPAWN_MAX_ATTEMPTS = 3;
+
+/** Only spawn-level failures (the docker client could not talk to its socket) are transient. */
+export function isTransientSpawnError(error) {
+  return Boolean(error) && TRANSIENT_SPAWN_CODES.has(error.code);
+}
+
+/**
+ * Re-runs a spawn when it fails at the transport level (EPIPE/ECONNRESET/EAGAIN). A command that
+ * ran and exited non-zero is returned untouched so real failures are never masked.
+ */
+export function spawnWithTransientRetry(
+  run,
+  command,
+  args,
+  options,
+  maxAttempts = SPAWN_MAX_ATTEMPTS
+) {
+  for (let attempt = 1; ; attempt++) {
+    const result = run(command, args, options);
+    if (attempt >= maxAttempts || !isTransientSpawnError(result.error)) return result;
+  }
+}
+
 export function createDocker({ container = DEFAULT_CONTAINER, run = spawnSync } = {}) {
   assertLocalContainer(container);
   // Container names alone do not establish locality: Docker contexts can target remote hosts.
@@ -58,12 +83,17 @@ export function createDocker({ container = DEFAULT_CONTAINER, run = spawnSync } 
   if (typeof endpoint !== 'string' || !endpoint.startsWith('unix:///'))
     throw new Error('Refusing nonlocal Docker endpoint');
   const exec = (args, { input, encoding = 'utf8' } = {}) => {
-    const result = run('docker', ['--host', endpoint, 'exec', '-i', container, ...args], {
-      env: { ...process.env, DOCKER_CONTEXT: '', DOCKER_HOST: endpoint },
-      input,
-      encoding,
-      maxBuffer: 1024 * 1024 * 512
-    });
+    const result = spawnWithTransientRetry(
+      run,
+      'docker',
+      ['--host', endpoint, 'exec', '-i', container, ...args],
+      {
+        env: { ...process.env, DOCKER_CONTEXT: '', DOCKER_HOST: endpoint },
+        input,
+        encoding,
+        maxBuffer: 1024 * 1024 * 512
+      }
+    );
     if (result.error) throw result.error;
     if ((result.status ?? 1) !== 0) {
       const stderr = Buffer.isBuffer(result.stderr)
