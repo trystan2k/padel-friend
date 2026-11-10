@@ -10,6 +10,7 @@ import {
   type QueryResult,
   type QueryResultRow
 } from 'pg';
+import { handoffDatabaseUrl } from '../../scripts/integration-db-url.mjs';
 
 export type SqlRow = Record<string, unknown>;
 export type SqlError = { code: string | null; message: string; detail: string | null };
@@ -118,6 +119,10 @@ export function assertLoopbackDatabaseUrl(connectionString: string): string {
 
 export function localDatabaseUrl(): Promise<string> {
   databaseUrlPromise ??= Promise.resolve().then(() => {
+    // Launcher handoff: present means validated here and trusted; malformed fails closed.
+    const handedOff = handoffDatabaseUrl();
+    if (handedOff !== undefined) return assertLoopbackDatabaseUrl(handedOff);
+
     let status: string;
     try {
       status = execFileSync('pnpm', ['exec', 'supabase', 'status', '-o', 'env'], {

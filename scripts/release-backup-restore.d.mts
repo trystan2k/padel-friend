@@ -14,6 +14,7 @@ export type RestoreRun = {
 export type RestoreReport = {
   startedAt: string;
   source: string;
+  dumpMs: number;
   runs: RestoreRun[];
   representative: Record<string, number>;
   sparseTables: string[];

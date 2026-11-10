@@ -3,6 +3,12 @@ import { dotEnvPathFromImportMetaUrl, localSupabaseEnv } from './local-supabase-
 import { createMatchManagementFixtures, type ManagementActor } from './match-management-fixtures';
 import { fixtureSql, sqlRows } from './match-registration-sql';
 import { sqlText } from './provisional-player-fixtures';
+import {
+  communityMemberGuard,
+  matchEventImmutable,
+  matchEventLeagueBinding,
+  withTriggersDisabled
+} from './trigger-state-sql';
 
 /** Two completed sets: team A wins, so the group classifies (and rates) as a decided result. */
 export const rankedSets = [
@@ -59,15 +65,16 @@ export async function setMembershipHistory(
         ${interval.activatedAt ? `${sqlText(interval.activatedAt)}::timestamptz` : 'null'},
         ${closed ? `${sqlText(interval.validUntil!)}::timestamptz` : 'null'});`;
   });
-  await fixtureSql(`do $$ declare v_role public.community_member_role; begin
-    select role into v_role from public.community_members
-     where community_id=${sqlText(communityId)} and user_id=${sqlText(userId)}
-     order by valid_from desc limit 1;
-    alter table public.community_members disable trigger community_member_guard;
-    delete from public.community_members where community_id=${sqlText(communityId)} and user_id=${sqlText(userId)};
-    ${rows.join('\n')}
-    alter table public.community_members enable trigger community_member_guard;
-  end $$;`);
+  await withTriggersDisabled(
+    [communityMemberGuard],
+    `declare v_role public.community_member_role; begin
+      select role into v_role from public.community_members
+       where community_id=${sqlText(communityId)} and user_id=${sqlText(userId)}
+       order by valid_from desc limit 1;
+      delete from public.community_members where community_id=${sqlText(communityId)} and user_id=${sqlText(userId)};
+      ${rows.join('\n')}
+    end;`
+  );
 }
 
 /**
@@ -96,13 +103,12 @@ export async function createRankedResultFixtures(
       )
       .join('\n')
   );
-  await fixtureSql(`do $$ begin
-    alter table public.community_members disable trigger community_member_guard;
-    update public.community_members
+  await withTriggersDisabled(
+    [communityMemberGuard],
+    `update public.community_members
        set valid_from = now() - interval '1 day', activated_at = now() - interval '1 day'
-     where community_id = ${sqlText(base.communityId)};
-    alter table public.community_members enable trigger community_member_guard;
-  end $$;`);
+     where community_id = ${sqlText(base.communityId)};`
+  );
 
   const league = (overrides: Partial<LeagueSeed> = {}) =>
     insertLeague({
@@ -122,15 +128,18 @@ export async function createRankedResultFixtures(
     protect = true
   ) {
     const created = await base.event({ accepted: players.slice(1) });
-    await fixtureSql(`do $$ begin
-      alter table public.match_events disable trigger match_event_immutable;
-      alter table public.match_events disable trigger match_event_league_binding;
-      update public.match_events set event_type='${eventType}',
-        league_id=${leagueId ? sqlText(leagueId) : 'null'} where id=${sqlText(created.id)};
-      alter table public.match_events enable trigger match_event_league_binding;
-      alter table public.match_events enable trigger match_event_immutable;
-    end $$;`);
-    await base.setCutoff(created.id, "now()-interval '1 minute'");
+    // One transaction for the retype/league bind and the overdue cutoff. The binding guard is
+    // re-enabled between the two updates so the cutoff update still runs under it, exactly as
+    // the former separate setCutoff transaction did; the final restore keeps the original state.
+    await withTriggersDisabled(
+      [matchEventImmutable, matchEventLeagueBinding],
+      [
+        `update public.match_events set event_type='${eventType}',
+          league_id=${leagueId ? sqlText(leagueId) : 'null'} where id=${sqlText(created.id)};`,
+        'alter table public.match_events enable trigger match_event_league_binding;',
+        `update public.match_events set registration_cutoff_at=now()-interval '1 minute' where id=${sqlText(created.id)};`
+      ]
+    );
     if (protect) await base.protectResults(created.id);
     return created.id;
   }

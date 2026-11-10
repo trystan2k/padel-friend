@@ -130,9 +130,9 @@ export function createDocker({ container = DEFAULT_CONTAINER, run = spawnSync } 
  * piping the whole dump into it raises EPIPE once the dump outgrows the pipe buffer. The dump is
  * staged into the container by `cat` (which drains stdin) and listed from the file instead.
  */
-export function listDumpToc(docker, dump) {
-  docker.exec(['sh', '-c', 'cat > /tmp/release-rehearsal.dump'], { input: dump });
-  return String(docker.exec(['pg_restore', '-l', '/tmp/release-rehearsal.dump']));
+export function listDumpToc(docker, dump, dumpPath = '/tmp/release-rehearsal.dump') {
+  docker.exec(['sh', '-c', 'cat > "$1"', 'sh', dumpPath], { input: dump });
+  return String(docker.exec(['pg_restore', '-l', dumpPath]));
 }
 
 /** Disposable database with the platform pieces migrations expect (extensions + default ACLs). */

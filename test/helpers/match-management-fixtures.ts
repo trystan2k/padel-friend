@@ -10,6 +10,7 @@ import {
   registerMatchEventFixtureRows,
   sqlRows
 } from './match-registration-sql';
+import { matchEventImmutable, withTriggersDisabled } from './trigger-state-sql';
 
 export type ManagementActor = { id: string; token: string; client: SupabaseClient<Database> };
 
@@ -82,9 +83,10 @@ export async function createMatchManagementFixtures(env: { url: string; key: str
     return { id, invites: new Map(invites.map((i) => [String(i.invitee_user_id), String(i.id)])) };
   }
   async function setCutoff(eventId: string, expression: string) {
-    await fixtureSql(`do $$ begin alter table public.match_events disable trigger match_event_immutable;
-      update public.match_events set registration_cutoff_at=${expression} where id='${eventId}';
-      alter table public.match_events enable trigger match_event_immutable; end $$;`);
+    await withTriggersDisabled(
+      [matchEventImmutable],
+      `update public.match_events set registration_cutoff_at=${expression} where id='${eventId}';`
+    );
   }
   async function latestAttemptId(eventId: string, userId: string) {
     const rows = await sqlRows(
@@ -96,9 +98,10 @@ export async function createMatchManagementFixtures(env: { url: string; key: str
     await fixtureSql(`select public.protect_match_event_results('${eventId}');`);
   }
   async function setStarted(eventId: string) {
-    await fixtureSql(`do $$ begin alter table public.match_events disable trigger match_event_immutable;
-      update public.match_events set registration_cutoff_at=now()-interval '2 minutes',starts_at=now()-interval '1 minute' where id='${eventId}';
-      alter table public.match_events enable trigger match_event_immutable; end $$;`);
+    await withTriggersDisabled(
+      [matchEventImmutable],
+      `update public.match_events set registration_cutoff_at=now()-interval '2 minutes',starts_at=now()-interval '1 minute' where id='${eventId}';`
+    );
   }
   /**
    * PAF-7 fixture: eight accepted players in two full playing quartets with

@@ -1,5 +1,6 @@
 import { execFileSync } from 'node:child_process';
 import { Client } from 'pg';
+import { handoffDatabaseUrl } from '../../scripts/integration-db-url.mjs';
 
 const JOB_NAMES = [
   'padel-friend-result-repair-claim',
@@ -8,13 +9,7 @@ const JOB_NAMES = [
 ];
 type SchedulerJob = { jobid: number; active: boolean };
 
-/**
- * Keep real cron from claiming test-owned repair jobs and auto-accepting test-owned amendments
- * (which rewrites rating and statistics revisions mid-test); restore exact prior settings afterward.
- */
-export default async function setupResultRepairScheduler(): Promise<
-  (() => Promise<void>) | undefined
-> {
+function discoverLocalDatabaseUrl(): string {
   const status = execFileSync('pnpm', ['exec', 'supabase', 'status', '-o', 'env'], {
     encoding: 'utf8',
     timeout: 10_000,
@@ -28,6 +23,17 @@ export default async function setupResultRepairScheduler(): Promise<
   if (!['127.0.0.1', 'localhost', '[::1]'].includes(new URL(connectionString).hostname)) {
     throw new Error('Integration scheduler isolation requires a local database');
   }
+  return connectionString;
+}
+
+/**
+ * Keep real cron from claiming test-owned repair jobs and auto-accepting test-owned amendments
+ * (which rewrites rating and statistics revisions mid-test); restore exact prior settings afterward.
+ */
+export default async function setupResultRepairScheduler(): Promise<
+  (() => Promise<void>) | undefined
+> {
+  const connectionString = handoffDatabaseUrl() ?? discoverLocalDatabaseUrl();
   const client = new Client({
     connectionString,
     connectionTimeoutMillis: 10_000,

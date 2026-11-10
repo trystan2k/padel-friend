@@ -2,7 +2,7 @@
   "status": "references-exported-visual-budgets-measured-u8",
   "sourceDesign": {
     "path": "docs/design/padel-friend.pen",
-    "sha256": "fe8ed8269e5b81d880ddcdd68f3a7910343d0e0d0817820eef04abed4cfb41ca",
+    "sha256": "5dc3813d82a5c64934deee32b30261ed9979129fd3f6b6e79dec22a70ce6c351",
     "exportCommand": "Pencil MCP execute on a byte-identical scratch copy (/tmp, removed after export): Export([\"RN0yw\",\"RRuhH\",\"z6vIR\",\"QVLTH\",\"GrkSH\",\"khmeK\",\"o9iaC1\",\"m8Loju\",\"BcpYH\"], \"png\", \"<repo>/e2e/references/paf-13\", {scale:2})",
     "provenanceNote": "T13 (PAF-13) provenance. The tracked .pen was opened only through Pencil MCP (read-only Get visitors, then Export from a scratch copy whose SHA-256 equals the tracked source and the paf-6/7/8/10/12 manifests); it was not modified. Dedicated statistics frames exist and were not used by T10: RN0yw, RRuhH, z6vIR, QVLTH, GrkSH, khmeK, o9iaC1, m8Loju. Match history detail BcpYH is the group-detail source. No dedicated frame exists for the paginated match history LIST or for a chart/data-table pairing; those adapt component truth (Card RMese, Button B3Uqv, Text link QFH5u) and the Past Matches frame w25dY, and the state-variant frame x2GG9U. Frame existence is verified Pencil-side; test/statistics.visual-references.test.ts only validates manifest structure, component names, coverage, tolerances, PNG digests and ID format."
   },

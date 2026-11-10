@@ -155,8 +155,9 @@ describe('destructive-target guards', () => {
       return statement.includes('jsonb_build_object') ? '{}' : '';
     });
     const dump = vi.fn<() => Buffer>(() => Buffer.from('dump'));
+    const exec = vi.fn<() => string>(() => 'toc');
     // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- database test double
-    const docker = { admin, sql, dump } as unknown as Docker;
+    const docker = { admin, sql, dump, exec } as unknown as Docker;
     expect(() =>
       runRestoreRehearsal({
         docker,
@@ -188,6 +189,205 @@ describe('destructive-target guards', () => {
       '-i',
       'supabase_db_padel-friend'
     ]);
+  });
+});
+
+describe('restore rehearsal flow', () => {
+  const base = 'restore_rehearsal_flow';
+  const representative = Object.fromEntries(
+    [
+      'public.statistics_group_facts',
+      'public.player_rating_events',
+      'public.notifications',
+      'public.notification_push_jobs',
+      'public.league_standings_snapshots',
+      'public.result_repair_jobs'
+    ].map((table) => [table, { rows: 5, md5: 'same' }])
+  );
+  // Records every docker call in order; source and restored databases fingerprint identically.
+  const rehearsalDouble = (overrides: Partial<Record<'dump' | 'restore', () => unknown>> = {}) => {
+    const calls: string[] = [];
+    const admin = vi.fn<(statement: string) => string>((statement) => {
+      calls.push(statement.startsWith('create') ? 'create' : 'drop');
+      return '';
+    });
+    const sql = vi.fn<(database: string, statement: string) => string>((_database, statement) => {
+      if (statement.includes('pg_tables')) return '';
+      if (statement.includes('jsonb_object_agg')) return JSON.stringify(representative);
+      if (statement.includes('to_regclass')) return 't';
+      if (statement.includes('notification_push_jobs set status')) return '0';
+      if (statement.includes('recipient_user_id')) return '';
+      return '{}';
+    });
+    const dump = vi.fn<() => Buffer>(() => {
+      calls.push('dump');
+      return overrides.dump ? Buffer.from(String(overrides.dump())) : Buffer.from('dump-bytes');
+    });
+    const exec = vi.fn<(args: string[], options?: { input?: string }) => string>((args) =>
+      args[0] === 'pg_restore' ? 'keep\n;  DEFAULT ACL x\nkeep2' : ''
+    );
+    const restore = vi.fn<(database: string, data: Buffer, args?: string[]) => string>(() => {
+      calls.push('restore');
+      overrides.restore?.();
+      return '';
+    });
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- call-recording double
+    const docker = { admin, sql, dump, exec, restore } as unknown as Docker;
+    return { docker, calls, dump, restore, exec };
+  };
+
+  it('takes one dump and one filtered TOC, then restores both destinations from them', () => {
+    const { docker, calls, dump, restore, exec } = rehearsalDouble();
+    const report = runRestoreRehearsal({ docker, base, confirm: base });
+    expect(dump).toHaveBeenCalledTimes(1);
+    expect(calls).toEqual(['dump', 'create', 'restore', 'drop', 'create', 'restore', 'drop']);
+    const tocWrites = exec.mock.calls.filter(([args]) => args[4]?.endsWith('.toc'));
+    expect(tocWrites).toHaveLength(1);
+    expect(restore).toHaveBeenCalledTimes(2);
+    expect(restore.mock.calls.map(([database]) => database)).toEqual([`${base}_1`, `${base}_2`]);
+    expect(report.runs).toHaveLength(2);
+    expect(report.runs.every((run) => run.pass)).toBe(true);
+    expect(report.sourceStable).toBe(true);
+    expect(report.pass).toBe(true);
+  });
+
+  it('writes the TOC without platform DEFAULT ACL entries', () => {
+    const { docker, exec } = rehearsalDouble();
+    runRestoreRehearsal({ docker, base, confirm: base });
+    const write = exec.mock.calls.find(([args]) => args[4]?.endsWith('.toc'));
+    expect(write?.[1]).toEqual({ input: 'keep\nkeep2' });
+  });
+
+  // Container paths of the staged artifacts, read from the removal call.
+  const removedPaths = (exec: ReturnType<typeof rehearsalDouble>['exec']) =>
+    exec.mock.calls.filter(([args]) => args[0] === 'rm').flatMap(([args]) => args.slice(2));
+
+  it('stages the dump and TOC at paths unique to each invocation', () => {
+    const first = rehearsalDouble();
+    const second = rehearsalDouble();
+    runRestoreRehearsal({ docker: first.docker, base, confirm: base });
+    runRestoreRehearsal({ docker: second.docker, base, confirm: base });
+    const firstPaths = removedPaths(first.exec);
+    const secondPaths = removedPaths(second.exec);
+    expect(firstPaths).toHaveLength(2);
+    expect(firstPaths.every((path) => /^\/tmp\/release-rehearsal-.+\.(dump|toc)$/.test(path))).toBe(
+      true
+    );
+    expect(firstPaths.some((path) => secondPaths.includes(path))).toBe(false);
+    expect(first.restore.mock.calls[0]?.[2]).toContain(`--use-list=${firstPaths[1]}`);
+  });
+
+  it('removes the staged dump and TOC after a successful run', () => {
+    const { docker, exec } = rehearsalDouble();
+    runRestoreRehearsal({ docker, base, confirm: base });
+    const staged = exec.mock.calls.filter(([args]) => args[0] === 'sh').map(([args]) => args[4]);
+    expect(new Set(removedPaths(exec))).toEqual(new Set(staged));
+    expect(exec.mock.calls.at(-1)?.[0][0]).toBe('rm');
+  });
+
+  it('removes the staged dump and TOC when a restore fails', () => {
+    const { docker, exec } = rehearsalDouble({
+      restore: () => {
+        throw new Error('pg_restore failed');
+      }
+    });
+    expect(() => runRestoreRehearsal({ docker, base, confirm: base })).toThrow('pg_restore failed');
+    expect(removedPaths(exec)).toHaveLength(2);
+  });
+
+  // Makes the staged-artifact removal fail while leaving every other docker exec call intact.
+  const failCleanup = (exec: ReturnType<typeof rehearsalDouble>['exec']) => {
+    const original = exec.getMockImplementation();
+    exec.mockImplementation((args, options) => {
+      if (args[0] === 'rm') throw new Error('rm exploded');
+      return original ? original(args, options) : '';
+    });
+  };
+
+  it('keeps the original restore error when artifact cleanup also fails', () => {
+    const { docker, exec } = rehearsalDouble({
+      restore: () => {
+        throw new Error('pg_restore failed');
+      }
+    });
+    failCleanup(exec);
+    const log = vi.fn<(line: string) => void>();
+    expect(() => runRestoreRehearsal({ docker, base, confirm: base, log })).toThrow(
+      'pg_restore failed'
+    );
+    const warning = log.mock.calls.map(([line]) => line).find((line) => line.includes('[WARN]'));
+    expect(warning).toContain('rm exploded');
+    expect(warning).toContain('/tmp/release-rehearsal-');
+  });
+
+  it('keeps the successful outcome and logs a diagnostic when artifact cleanup fails', () => {
+    const { docker, exec } = rehearsalDouble();
+    failCleanup(exec);
+    const log = vi.fn<(line: string) => void>();
+    const report = runRestoreRehearsal({ docker, base, confirm: base, log });
+    expect(report.pass).toBe(true);
+    expect(
+      log.mock.calls.some(([line]) => line.includes('[WARN]') && line.includes('rm exploded'))
+    ).toBe(true);
+  });
+
+  it('writes the cleanup warning to stderr when no logger is supplied', () => {
+    const { docker, exec } = rehearsalDouble();
+    failCleanup(exec);
+    const stderr = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    try {
+      const report = runRestoreRehearsal({ docker, base, confirm: base });
+      expect(report.pass).toBe(true);
+      expect(
+        stderr.mock.calls.some(
+          ([line]) =>
+            typeof line === 'string' &&
+            line.startsWith('[release-rehearsal] [WARN]') &&
+            line.includes('rm exploded')
+        )
+      ).toBe(true);
+    } finally {
+      stderr.mockRestore();
+    }
+  });
+
+  it('reports the same dump hash and size for every run', () => {
+    const { docker } = rehearsalDouble();
+    const { runs } = runRestoreRehearsal({ docker, base, confirm: base });
+    expect(runs[0]!.dumpSha256).toBe(runs[1]!.dumpSha256);
+    expect(runs[0]!.dumpBytes).toBe(Buffer.byteLength('dump-bytes'));
+    expect(runs[1]!.dumpBytes).toBe(runs[0]!.dumpBytes);
+  });
+
+  it('reports dumpMs once and keeps it out of each run restoreMs', () => {
+    const { docker } = rehearsalDouble();
+    // now() order: startedAt, dump start, dump end, then start/end of each run.
+    const ticks = [0, 1000, 1500, 2000, 2300, 3000, 3700];
+    const now = vi.fn<() => number>(() => ticks.shift() ?? 9999);
+    const report = runRestoreRehearsal({ docker, base, confirm: base, now });
+    expect(report.dumpMs).toBe(500);
+    expect(report.runs.map((run) => run.restoreMs)).toEqual([300, 700]);
+  });
+
+  it('starts no destination work when the shared dump fails', () => {
+    const { docker, calls, restore } = rehearsalDouble({
+      dump: () => {
+        throw new Error('pg_dump failed');
+      }
+    });
+    expect(() => runRestoreRehearsal({ docker, base, confirm: base })).toThrow('pg_dump failed');
+    expect(calls).toEqual(['dump']);
+    expect(restore).not.toHaveBeenCalled();
+  });
+
+  it('drops the destination and stops when a restore fails', () => {
+    const { docker, calls } = rehearsalDouble({
+      restore: () => {
+        throw new Error('pg_restore failed');
+      }
+    });
+    expect(() => runRestoreRehearsal({ docker, base, confirm: base })).toThrow('pg_restore failed');
+    expect(calls).toEqual(['dump', 'create', 'restore', 'drop']);
   });
 });
 

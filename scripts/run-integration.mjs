@@ -1,5 +1,6 @@
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+import { INTEGRATION_DB_URL_ENV, resolveLocalDatabaseUrl } from './integration-db-url.mjs';
 
 // Runs the integration suite as non-overlapping vitest invocations (see vitest.integration.config.ts):
 // audited parallel-safe files first, then every other file serially. INTEGRATION_SERIAL=1 runs
@@ -99,7 +100,8 @@ export function runIntegration({
   args = [],
   env = process.env,
   run = spawnSync,
-  countFiles = countMatchingFiles
+  countFiles = countMatchingFiles,
+  resolveDatabaseUrl = resolveLocalDatabaseUrl
 } = {}) {
   const serialRollback = env.INTEGRATION_SERIAL === '1';
   const requestedPhase = env.INTEGRATION_PHASE || undefined;
@@ -109,6 +111,20 @@ export function runIntegration({
     );
     return 2;
   }
+  // Resolve the local DB URL once so workers skip their own CLI discovery. A stale inherited value
+  // is dropped; when the CLI cannot resolve one the children discover (and fail) exactly as before.
+  // A URL that resolves but fails validation aborts the run: it must never reach the children.
+  const baseEnv = { ...env };
+  delete baseEnv[INTEGRATION_DB_URL_ENV];
+  let databaseUrl;
+  try {
+    databaseUrl = resolveDatabaseUrl();
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : 'invalid local database URL';
+    process.stderr.write(`[run-integration] aborting: ${reason}\n`);
+    return 2;
+  }
+  if (databaseUrl) baseEnv[INTEGRATION_DB_URL_ENV] = databaseUrl;
   const phases = serialRollback ? [undefined] : requestedPhase ? [requestedPhase] : PHASES;
   const filters = fileFilters(args);
   // With file filters one phase may legitimately match nothing while the other runs them, but a
@@ -116,7 +132,7 @@ export function runIntegration({
   const tolerateEmptyPhase = filters.length > 0 && phases.length > 1;
   if (tolerateEmptyPhase) {
     const counts = phases.map((phase) =>
-      countFiles({ ...env, INTEGRATION_PHASE: phase }, [...filters, ...excludeArgs(args)])
+      countFiles({ ...baseEnv, INTEGRATION_PHASE: phase }, [...filters, ...excludeArgs(args)])
     );
     // An unreadable listing falls through to the real runs rather than hiding them.
     if (counts.every((count) => count === 0)) {
@@ -128,7 +144,7 @@ export function runIntegration({
   }
   let status = 0;
   for (const phase of phases) {
-    const phaseEnv = { ...env };
+    const phaseEnv = { ...baseEnv };
     if (phase) phaseEnv.INTEGRATION_PHASE = phase;
     else delete phaseEnv.INTEGRATION_PHASE;
     const vitestArgs = [

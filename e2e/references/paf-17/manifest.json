@@ -2,7 +2,7 @@
   "status": "measured-calibrated",
   "sourceDesign": {
     "path": "docs/design/padel-friend.pen",
-    "sha256": "fe8ed8269e5b81d880ddcdd68f3a7910343d0e0d0817820eef04abed4cfb41ca",
+    "sha256": "5dc3813d82a5c64934deee32b30261ed9979129fd3f6b6e79dec22a70ce6c351",
     "provenanceNote": "Pencil MCP exported qWosG, OKYtp and gGNxk at scale 2 from the current tracked design; the exported PNG digests match the corresponding repository PNGs byte-for-byte.",
     "exportCommand": "Pencil MCP Export([qWosG, OKYtp, gGNxk], png, /tmp, {scale: 2})"
   },
