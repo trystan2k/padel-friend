@@ -488,81 +488,102 @@ describe.skipIf(!environment.env)('League former-participant reads', { timeout: 
       );
     const dropCounters = (leagueId: string) =>
       fixtureSql(`delete from public.league_player_counters where league_id = ${L(leagueId)};`);
+    /** Removal of an active member by the retained Admin, through the production RPC. */
+    const removeByAdmin = async (userId: string) => {
+      const membership = await who(0)
+        .client.from('community_members')
+        .select('id')
+        .eq('community_id', kit.communityId)
+        .eq('user_id', userId)
+        .is('valid_until', null)
+        .single();
+      if (membership.error) throw new Error(`Fixture step failed: ${membership.error.message}`);
+      return who(0).client.rpc('govern_community_member', {
+        p_community_id: kit.communityId,
+        p_membership_id: membership.data.id,
+        p_action: 'remove'
+      });
+    };
 
-    it('ex-Admin and ex-owner keep reads of a played League only; commands, audit and list stay denied', async () => {
-      const exAdmin = await kit.member();
-      const ownLeague = await kit.league({ status: 'upcoming', ownerId: exAdmin.id });
-      await withTriggersDisabled(
-        [communityMemberGuard],
-        `update public.community_members set role = 'admin'
+    // Both ways a privileged member loses authority: leaving, and removal by another Admin.
+    for (const ending of ['leave', 'remove'] as const)
+      it(`ex-Admin and ex-owner (${ending}) keep reads of a played League only; commands, audit and list stay denied`, async () => {
+        const exAdmin = await kit.member();
+        const ownLeague = await kit.league({ status: 'upcoming', ownerId: exAdmin.id });
+        await withTriggersDisabled(
+          [communityMemberGuard],
+          `update public.community_members set role = 'admin'
           where community_id = ${L(kit.communityId)} and user_id = ${L(exAdmin.id)};`
-      );
-      // Positive control while the membership lasts: owner and Admin read the audit.
-      expect(
-        (await kit.rpc(exAdmin, 'get_league_standings_audit', { p_league_id: ownLeague })).error
-      ).toBeNull();
-      expect(
-        (
-          await kit.rpc(exAdmin, 'list_leagues', {
+        );
+        // Positive control while the membership lasts: owner and Admin read the audit.
+        expect(
+          (await kit.rpc(exAdmin, 'get_league_standings_audit', { p_league_id: ownLeague })).error
+        ).toBeNull();
+        expect(
+          (
+            await kit.rpc(exAdmin, 'list_leagues', {
+              p_community_id: kit.communityId,
+              p_after_created_at: null,
+              p_after_id: null
+            })
+          ).error
+        ).toBeNull();
+        const ended =
+          ending === 'leave'
+            ? await kit.rpc(exAdmin, 'leave_community', { p_community_id: kit.communityId })
+            : await removeByAdmin(exAdmin.id);
+        expect(ended.error).toBeNull();
+
+        await grantCounter(idleLeague, exAdmin.id);
+        try {
+          const before = await leagueRows();
+          // Reads of the League they played still work, strictly read-only.
+          const played = await kit.rpc(exAdmin, 'get_league', { p_league_id: idleLeague });
+          expect(played.error).toBeNull();
+          expect(asRecord(played.data)['access_mode']).toBe('former_participant');
+          expect(asRecord(asRecord(played.data)['league'])['can_manage']).toBe(false);
+          expect(
+            (await kit.rpc(exAdmin, 'get_league_counters', { p_league_id: idleLeague })).error
+          ).toBeNull();
+
+          // Their own League, which they never played: every reader stays denied.
+          for (const [name, args] of [
+            ['get_league', { p_league_id: ownLeague }],
+            ['get_league_standings', { p_league_id: ownLeague, p_standings_version: null }],
+            ['get_league_counters', { p_league_id: ownLeague }],
+            ['list_league_standings_versions', { p_league_id: ownLeague, p_before_version: null }]
+          ] as const)
+            expect((await kit.rpc(exAdmin, name, args)).error).toMatchObject(deniedLeague);
+
+          // Commands, audit and the list stay denied on both Leagues.
+          for (const leagueId of [ownLeague, idleLeague]) {
+            const calls = await Promise.all([
+              kit.rpc(exAdmin, 'update_league', {
+                p_league_id: leagueId,
+                p_expected_version: 1,
+                p_changes: { name: 'Hijacked' }
+              }),
+              kit.rpc(exAdmin, 'close_league', { p_league_id: leagueId, p_expected_version: 1 }),
+              kit.rpc(exAdmin, 'activate_league', { p_league_id: leagueId, p_expected_version: 1 }),
+              kit.rpc(exAdmin, 'get_league_standings_audit', { p_league_id: leagueId })
+            ]);
+            for (const call of calls) {
+              expect(call.data).toBeNull();
+              expect(call.error).toMatchObject(deniedLeague);
+            }
+          }
+          const list = await kit.rpc(exAdmin, 'list_leagues', {
             p_community_id: kit.communityId,
             p_after_created_at: null,
             p_after_id: null
-          })
-        ).error
-      ).toBeNull();
-      const left = await kit.rpc(exAdmin, 'leave_community', { p_community_id: kit.communityId });
-      expect(left.error).toBeNull();
-
-      await grantCounter(idleLeague, exAdmin.id);
-      try {
-        const before = await leagueRows();
-        // Reads of the League they played still work, strictly read-only.
-        const played = await kit.rpc(exAdmin, 'get_league', { p_league_id: idleLeague });
-        expect(played.error).toBeNull();
-        expect(asRecord(played.data)['access_mode']).toBe('former_participant');
-        expect(asRecord(asRecord(played.data)['league'])['can_manage']).toBe(false);
-        expect(
-          (await kit.rpc(exAdmin, 'get_league_counters', { p_league_id: idleLeague })).error
-        ).toBeNull();
-
-        // Their own League, which they never played: every reader stays denied.
-        for (const [name, args] of [
-          ['get_league', { p_league_id: ownLeague }],
-          ['get_league_standings', { p_league_id: ownLeague, p_standings_version: null }],
-          ['get_league_counters', { p_league_id: ownLeague }],
-          ['list_league_standings_versions', { p_league_id: ownLeague, p_before_version: null }]
-        ] as const)
-          expect((await kit.rpc(exAdmin, name, args)).error).toMatchObject(deniedLeague);
-
-        // Commands, audit and the list stay denied on both Leagues.
-        for (const leagueId of [ownLeague, idleLeague]) {
-          const calls = await Promise.all([
-            kit.rpc(exAdmin, 'update_league', {
-              p_league_id: leagueId,
-              p_expected_version: 1,
-              p_changes: { name: 'Hijacked' }
-            }),
-            kit.rpc(exAdmin, 'close_league', { p_league_id: leagueId, p_expected_version: 1 }),
-            kit.rpc(exAdmin, 'activate_league', { p_league_id: leagueId, p_expected_version: 1 }),
-            kit.rpc(exAdmin, 'get_league_standings_audit', { p_league_id: leagueId })
-          ]);
-          for (const call of calls) {
-            expect(call.data).toBeNull();
-            expect(call.error).toMatchObject(deniedLeague);
-          }
+          });
+          expect(list.data).toBeNull();
+          expect(list.error).toMatchObject({ message: 'LEAGUE_FORBIDDEN' });
+          expect(await leagueRows()).toEqual(before);
+        } finally {
+          await dropCounters(idleLeague);
         }
-        const list = await kit.rpc(exAdmin, 'list_leagues', {
-          p_community_id: kit.communityId,
-          p_after_created_at: null,
-          p_after_id: null
-        });
-        expect(list.data).toBeNull();
-        expect(list.error).toMatchObject({ message: 'LEAGUE_FORBIDDEN' });
-        expect(await leagueRows()).toEqual(before);
-      } finally {
-        await dropCounters(idleLeague);
-      }
-    });
+      });
 
     it('a confirmation that was rejected, or a provisional actor, grants nothing', async () => {
       // Player 4 played a group that was rejected (never confirmed): denied on all four readers.

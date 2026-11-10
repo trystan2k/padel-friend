@@ -22,9 +22,13 @@ const LEAGUE_NAME = 'Former Participant League';
 const OPEN_NAME = 'Q3';
 let openLeagueId: string;
 
+// Seeding lives in beforeAll (not in a test) so it runs whenever ANY test of this file runs: CI's
+// visual lane selects only the @visual tests (VISUAL_GREP), the functional lanes exclude them.
+// Three members: the quartet plays and nobody else is on the roster, so no two rows tie.
 test.beforeAll(async ({ browser }) => {
   test.setTimeout(420_000);
-  f = await leagueFixtures(browser, { memberCount: 5, communityName: 'Former Club' });
+  f = await leagueFixtures(browser, { memberCount: 3, communityName: 'Former Club' });
+  await seedFormerLeagues();
 });
 test.afterAll(async () => {
   test.setTimeout(120_000);
@@ -65,13 +69,18 @@ async function playedRankedEvent(name: string, league = leagueId) {
   return eventId;
 }
 
-async function submitGroup(eventId: string, sets: [number, number][], minutesAgo: number) {
+async function submitGroup(
+  eventId: string,
+  sets: [number, number][],
+  minutesAgo: number,
+  groupTeams: ReturnType<typeof teams> = teams()
+) {
   const played = new Date(Math.floor((Date.now() - minutesAgo * 60_000) / 1000) * 1000);
   const iso = played.toISOString().replace('.000Z', 'Z');
   await f.rpc(f.creator, 'submit_match_event_result', {
     p_match_event_id: eventId,
     p_group_number: 1,
-    p_teams: teams(),
+    p_teams: groupTeams,
     p_sets: sets.map(([a, b], index) => ({
       position: index + 1,
       team_a_games: a,
@@ -92,8 +101,8 @@ async function submitGroup(eventId: string, sets: [number, number][], minutesAgo
   return String(row?.id);
 }
 
-async function approve(proposal: string) {
-  await f.rpc(players()[2]!, 'review_match_event_result', {
+async function approve(proposal: string, reviewer = players()[2]!) {
+  await f.rpc(reviewer, 'review_match_event_result', {
     p_proposal_id: proposal,
     p_expected_version: 1,
     p_decision: 'approve',
@@ -123,7 +132,8 @@ function watchErrors(page: Page): string[] {
   return errors;
 }
 
-test('seed: private community, closed League with two published versions, former player left', async () => {
+/** Private community, a closed League with two published versions, an open League; the former player leaves. */
+async function seedFormerLeagues() {
   leagueId = await f.createLeague(f.creator, {
     name: LEAGUE_NAME,
     endMode: 'manual',
@@ -205,6 +215,25 @@ test('seed: private community, closed League with two published versions, former
       30
     )
   );
+  // Standings ties are ordered by (random) user id, which would make the full-page baseline
+  // flaky. A second match with different pairs and margin gives all four displayed rows distinct
+  // records (host 2-0, Player 1 1-1 +1, Player 2 1-1 -1, Player 3 0-2), so the order is stable.
+  await approve(
+    await submitGroup(
+      await playedRankedEvent('open two', openLeagueId),
+      [
+        [6, 4],
+        [4, 6],
+        [6, 3]
+      ],
+      20,
+      {
+        team_a: [players()[0]!.id, players()[2]!.id],
+        team_b: [players()[1]!.id, players()[3]!.id]
+      }
+    ),
+    players()[1]
+  );
   const [live] = await sql(
     `select count(*)::int as n from public.league_player_counters where league_id='${openLeagueId}' and user_id='${FORMER().id}' and matches > 0`
   );
@@ -217,7 +246,7 @@ test('seed: private community, closed League with two published versions, former
        where community_id='${f.community}' and user_id='${FORMER().id}' and valid_until is null and status='active'`
   );
   expect(stillMember?.n).toBe(0);
-});
+}
 
 test('former participant: history League link opens the read-only League, back returns to history', async () => {
   const page = await f.page(FORMER());
@@ -263,7 +292,7 @@ test('former participant: open League opens from history with live standings, th
   await expect(page.getByTestId('former-participant-notice')).toBeVisible();
   await expect(page.getByRole('heading', { name: former.title })).toBeVisible();
   await expect(page.getByText(former.body)).toBeVisible();
-  // Live standings of the open League, with the viewer's own earned row (a played loss).
+  // Live standings of the open League, with the viewer's own earned row (two played losses).
   await expect(page.getByText(en.leagues.standings.live, { exact: true }).first()).toBeVisible();
   const own = page.locator('tr:visible').filter({ hasText: FORMER().name }).first();
   await expect(own).toBeVisible();
@@ -349,6 +378,29 @@ test('former participant: layout fits the narrow viewport, keyboard reaches link
   const shortBox = await shortLink.boundingBox();
   expect(shortBox!.height).toBeGreaterThanOrEqual(44);
   expect(shortBox!.width).toBeGreaterThanOrEqual(44);
+  // The rendered "League: Q3" label alone can exceed 44px, so the box above would pass without
+  // the fix. Two-part oracle on the real anchor: (a) the TOUCH min-width token is applied;
+  // (b) with genuinely short content (bare name) the box stays >= 44px, and the same probe with
+  // the min-width neutralised collapses below 44px, proving it fails without the style.
+  const touch = await resolvedPx(page, 'calc(var(--space-40) + var(--space-4))');
+  expect(touch).toBe(44);
+  expect(await shortLink.evaluate((element) => getComputedStyle(element).minWidth)).toBe(
+    `${touch}px`
+  );
+  const bare = await shortLink.evaluate((element) => {
+    if (!(element instanceof HTMLElement)) throw new Error('League link is not an HTMLElement');
+    const anchor = element;
+    const original = anchor.textContent;
+    anchor.textContent = 'Q';
+    const withStyle = anchor.getBoundingClientRect().width;
+    anchor.style.minWidth = '0px';
+    const withoutStyle = anchor.getBoundingClientRect().width;
+    anchor.style.minWidth = '';
+    anchor.textContent = original;
+    return { withStyle, withoutStyle };
+  });
+  expect(bare.withStyle).toBeGreaterThanOrEqual(44);
+  expect(bare.withoutStyle).toBeLessThan(44);
   const overflow = () =>
     page.evaluate(
       () => document.documentElement.scrollWidth - document.documentElement.clientWidth
@@ -398,6 +450,16 @@ test('active member regression: League detail has no notice and keeps the commun
 const noticeCard = (page: Page) => page.getByTestId('former-participant-notice');
 const horizontalOverflow = (page: Page) =>
   page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+/** Resolved px of a length token/expression (computed at the page's own viewport and root). */
+const resolvedPx = (page: Page, length: string) =>
+  page.evaluate((css) => {
+    const probe = document.createElement('div');
+    probe.style.cssText = `position:absolute;visibility:hidden;width:${css}`;
+    document.body.append(probe);
+    const width = parseFloat(getComputedStyle(probe).width);
+    probe.remove();
+    return width;
+  }, length);
 /** The computed colour a CSS value resolves to, so assertions compare tokens, not literals. */
 const resolved = (page: Page, property: 'background-color' | 'color', value: string) =>
   page.evaluate(
@@ -450,6 +512,33 @@ test('former participant: notice has the approved treatment (token surface, icon
   expect(iconBox!.y).toBeGreaterThanOrEqual(card!.y);
   expect(iconBox!.y + iconBox!.height).toBeLessThanOrEqual(card!.y + card!.height);
   expect(titleBox!.y).toBeLessThan(iconBox!.y + iconBox!.height);
+
+  // Pencil YYMpT geometry pinned against the resolved tokens: 12px padding, 17px icon, 9px gap.
+  const [padding, iconSize, gap] = await Promise.all([
+    resolvedPx(page, 'var(--space-12)'),
+    resolvedPx(page, 'var(--space-17)'),
+    resolvedPx(page, 'var(--space-9)')
+  ]);
+  expect([padding, iconSize, gap]).toEqual([12, 17, 9]);
+  const computed = await notice.evaluate((element) => {
+    const style = getComputedStyle(element);
+    return {
+      padding: [style.paddingTop, style.paddingRight, style.paddingBottom, style.paddingLeft],
+      gap: [style.columnGap, style.rowGap]
+    };
+  });
+  expect(computed.padding).toEqual(Array(4).fill(`${padding}px`));
+  expect(computed.gap).toEqual([`${gap}px`, `${gap}px`]);
+  expect(
+    await icon.evaluate((element) => {
+      const style = getComputedStyle(element);
+      return [style.width, style.height];
+    })
+  ).toEqual([`${iconSize}px`, `${iconSize}px`]);
+  expect(Math.abs(iconBox!.width - iconSize)).toBeLessThanOrEqual(0.5);
+  expect(Math.abs(iconBox!.height - iconSize)).toBeLessThanOrEqual(0.5);
+  // Rendered icon-to-copy distance equals the gap (same row at 390px).
+  expect(Math.abs(titleBox!.x - (iconBox!.x + iconBox!.width) - gap)).toBeLessThanOrEqual(1);
 });
 
 // Longer translated copy at the narrowest supported width: no overflow, notice fully reachable.
