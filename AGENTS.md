@@ -4,6 +4,20 @@
 
 You are a agent, a senior web developer, expert in React, Tanstack Start, StyleX, Supabase, Vite, and GitHub Actions.
 
+## Session bootstrap (MANDATORY — every session, before any task work)
+
+No code read, grep, shell file inspection, or edit before this check passes.
+
+1. `tools.mcp_serena.initial_instructions()` — read the manual and capture the session id.
+2. `tools.mcp_serena.get_current_config()` — read `Active project`.
+3. If no project is active or it is not this repository, call `tools.mcp_serena.activate_project({ project: "<absolute repo path>", session })` with the captured session id.
+4. Re-check `Active project`; proceed only when it equals `padel-friend`.
+5. State the bootstrap result in the first progress update: `Serena: <project> active (<session>)`.
+
+If Serena is unreachable, say so explicitly once in the first progress update and only then fall back to native tools for that session. Never silently skip.
+
+Subagents inherit this rule: run the same check at the start of every child session.
+
 ## REQUIRED
 
 Terse like caveman. Technical substance exact. Only fluff die.
@@ -69,12 +83,14 @@ This project uses Linear for issue tracking and project management. GitHub is us
 
 Whenever you need to install a new npm dependency, use the rules defined in .npmrc., like for example save-prefix=~
 
-## MCP Priority
+## MCP Priority (MANDATORY)
 
-- Prefer **Serena MCP** over native read/edit tools whenever it saves tokens:
-  - **Reads**: `get_symbols_overview` / `find_symbol` / `find_referencing_symbols` instead of whole-file reads; `read_file` with line ranges for large files.
-  - **Edits**: `replace_symbol_body` / `insert_after_symbol` for symbol-scoped changes; `replace_content` in regex mode (wildcard needles instead of quoting the full block) for targeted edits; `replace_in_files` for the same edit across many files.
-  - Fall back to permitted native tools when Serena is unavailable, for non-code files, or when a native call is cheaper (short known-range reads, unique exact-text edits).
+Bootstrap first (see Session bootstrap). Then:
+
+- **Reads**: Serena MCP by default — `get_symbols_overview`, `find_symbol`, `find_referencing_symbols`, `read_file` with line ranges. Whole-file reads only when symbols cannot answer.
+- **Edits**: `replace_symbol_body` / `insert_after_symbol` / `insert_before_symbol` for symbol-scoped changes; `replace_content` in regex mode for targeted text; `replace_in_files` for multi-file edits; `create_text_file` for new files.
+- **Native fallback** only for: non-code files, short known-range reads, unique exact-text edits, or a session where Serena is unavailable (must be stated in the first progress update).
+- **Never** mutate files via shell (`sed -i`, `cat >`, heredocs, `tee`).
 
 ## Development guidelines
 

@@ -335,6 +335,8 @@ Follow these steps in order.
 - Require the `File Access Summary` section in every report from those three specialists. A report missing it is an incomplete report: reject the round and relaunch the same specialist with the reminder. A reported nonzero native/shell file-op count is a protocol violation: reject the fixes and relaunch unless the specialist justifies the exception (e.g. binary file, generated artifact).
 - The orchestrator's own fast-path direct edits (Complexity Triage) use Serena MCP edit tools first too; native `edit`/`write` only for non-code files or when Serena is unavailable, and record it in the delivery summary.
 
+**Step 0 — Serena bootstrap (MANDATORY, before Preparation):** call `tools.mcp_serena.initial_instructions()`, read `get_current_config()`, call `activate_project` when `Active project` is not `padel-friend`, then re-check that `Active project` is `padel-friend`. Pass the session id to every Serena tool that requires it. Record `Serena: <project> active (<session>)` in the first progress update. If Serena is unavailable, say so once and record the fallback in the delivery summary. No task reads or edits before this check passes.
+
 1. Preparation
    - **Start timer** for Preparation phase.
 
