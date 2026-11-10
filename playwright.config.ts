@@ -12,8 +12,10 @@ export default defineConfig({
   globalSetup: './e2e/global-setup.ts',
   snapshotPathTemplate: '{testDir}/{testFileName}-snapshots/{arg}{ext}',
   retries: process.env.CI ? 2 : 0,
-  // CI runners get 4 workers; locally Playwright picks its own default from the CPU count.
-  workers: process.env.CI ? 4 : undefined,
+  // 2 workers everywhere: 4-worker contention caused rotating under-load stalls (hydration,
+  // post-mutation refetch, publish navigation) across full-gate runs, all green standalone.
+  // 2 workers trade ~5-8 min of runtime for stability.
+  workers: 2,
   use: {
     baseURL: 'http://127.0.0.1:4173',
     trace: 'on-first-retry',

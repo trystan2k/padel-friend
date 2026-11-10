@@ -185,9 +185,9 @@ describe('playwright config', () => {
     }
   }
 
-  it('uses 4 workers on CI and the Playwright default locally', async () => {
-    expect((await configFor('1')).workers).toBe(4);
-    expect((await configFor(undefined)).workers).toBeUndefined();
+  it('uses 2 workers on CI and locally', async () => {
+    expect((await configFor('1')).workers).toBe(2);
+    expect((await configFor(undefined)).workers).toBe(2);
   });
 
   it('builds a fresh preview unless the CI-verified prebuilt flag is set, never reusing a server', async () => {
