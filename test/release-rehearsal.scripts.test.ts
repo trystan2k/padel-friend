@@ -241,9 +241,7 @@ describe('restore rehearsal flow', () => {
     const report = runRestoreRehearsal({ docker, base, confirm: base });
     expect(dump).toHaveBeenCalledTimes(1);
     expect(calls).toEqual(['dump', 'create', 'restore', 'drop', 'create', 'restore', 'drop']);
-    const tocWrites = exec.mock.calls.filter(([args]) =>
-      args[2]?.includes('release-rehearsal.toc')
-    );
+    const tocWrites = exec.mock.calls.filter(([args]) => args[2]?.endsWith('.toc'));
     expect(tocWrites).toHaveLength(1);
     expect(restore).toHaveBeenCalledTimes(2);
     expect(restore.mock.calls.map(([database]) => database)).toEqual([`${base}_1`, `${base}_2`]);
@@ -256,8 +254,103 @@ describe('restore rehearsal flow', () => {
   it('writes the TOC without platform DEFAULT ACL entries', () => {
     const { docker, exec } = rehearsalDouble();
     runRestoreRehearsal({ docker, base, confirm: base });
-    const write = exec.mock.calls.find(([args]) => args[2]?.includes('release-rehearsal.toc'));
+    const write = exec.mock.calls.find(([args]) => args[2]?.endsWith('.toc'));
     expect(write?.[1]).toEqual({ input: 'keep\nkeep2' });
+  });
+
+  // Container paths of the staged artifacts, read from the removal call.
+  const removedPaths = (exec: ReturnType<typeof rehearsalDouble>['exec']) =>
+    exec.mock.calls.filter(([args]) => args[0] === 'rm').flatMap(([args]) => args.slice(2));
+
+  it('stages the dump and TOC at paths unique to each invocation', () => {
+    const first = rehearsalDouble();
+    const second = rehearsalDouble();
+    runRestoreRehearsal({ docker: first.docker, base, confirm: base });
+    runRestoreRehearsal({ docker: second.docker, base, confirm: base });
+    const firstPaths = removedPaths(first.exec);
+    const secondPaths = removedPaths(second.exec);
+    expect(firstPaths).toHaveLength(2);
+    expect(firstPaths.every((path) => /^\/tmp\/release-rehearsal-.+\.(dump|toc)$/.test(path))).toBe(
+      true
+    );
+    expect(firstPaths.some((path) => secondPaths.includes(path))).toBe(false);
+    expect(first.restore.mock.calls[0]?.[2]).toContain(`--use-list=${firstPaths[1]}`);
+  });
+
+  it('removes the staged dump and TOC after a successful run', () => {
+    const { docker, exec } = rehearsalDouble();
+    runRestoreRehearsal({ docker, base, confirm: base });
+    const staged = exec.mock.calls
+      .filter(([args]) => args[0] === 'sh')
+      .map(([args]) => args[2]?.replace('cat > ', ''));
+    expect(new Set(removedPaths(exec))).toEqual(new Set(staged));
+    expect(exec.mock.calls.at(-1)?.[0][0]).toBe('rm');
+  });
+
+  it('removes the staged dump and TOC when a restore fails', () => {
+    const { docker, exec } = rehearsalDouble({
+      restore: () => {
+        throw new Error('pg_restore failed');
+      }
+    });
+    expect(() => runRestoreRehearsal({ docker, base, confirm: base })).toThrow('pg_restore failed');
+    expect(removedPaths(exec)).toHaveLength(2);
+  });
+
+  // Makes the staged-artifact removal fail while leaving every other docker exec call intact.
+  const failCleanup = (exec: ReturnType<typeof rehearsalDouble>['exec']) => {
+    const original = exec.getMockImplementation();
+    exec.mockImplementation((args, options) => {
+      if (args[0] === 'rm') throw new Error('rm exploded');
+      return original ? original(args, options) : '';
+    });
+  };
+
+  it('keeps the original restore error when artifact cleanup also fails', () => {
+    const { docker, exec } = rehearsalDouble({
+      restore: () => {
+        throw new Error('pg_restore failed');
+      }
+    });
+    failCleanup(exec);
+    const log = vi.fn<(line: string) => void>();
+    expect(() => runRestoreRehearsal({ docker, base, confirm: base, log })).toThrow(
+      'pg_restore failed'
+    );
+    const warning = log.mock.calls.map(([line]) => line).find((line) => line.includes('[WARN]'));
+    expect(warning).toContain('rm exploded');
+    expect(warning).toContain('/tmp/release-rehearsal-');
+  });
+
+  it('keeps the successful outcome and logs a diagnostic when artifact cleanup fails', () => {
+    const { docker, exec } = rehearsalDouble();
+    failCleanup(exec);
+    const log = vi.fn<(line: string) => void>();
+    const report = runRestoreRehearsal({ docker, base, confirm: base, log });
+    expect(report.pass).toBe(true);
+    expect(
+      log.mock.calls.some(([line]) => line.includes('[WARN]') && line.includes('rm exploded'))
+    ).toBe(true);
+  });
+
+  it('writes the cleanup warning to stderr when no logger is supplied', () => {
+    const { docker, exec } = rehearsalDouble();
+    failCleanup(exec);
+    const stderr = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    try {
+      const report = runRestoreRehearsal({ docker, base, confirm: base });
+      expect(report.pass).toBe(true);
+      expect(
+        stderr.mock.calls.some(
+          ([line]) =>
+            typeof line === 'string' &&
+            line.startsWith('[release-rehearsal] [WARN]') &&
+            line.includes('rm exploded')
+        )
+      ).toBe(true);
+    } finally {
+      stderr.mockRestore();
+    }
   });
 
   it('reports the same dump hash and size for every run', () => {

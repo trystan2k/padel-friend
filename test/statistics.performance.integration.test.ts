@@ -300,12 +300,14 @@ describe.skipIf(!environment.env)('statistics reader performance contract', () =
       for (const eventType of ['friendly', 'competitive'] as const) {
         const group = { eventType, played: historyGroup(3, midnight).played } as const;
         const real = await kit.proposalId(await confirmRealGroup(kit, group));
-        const [bulk] = await insertBulkConfirmedGroups(kit, [bulkSpec(group)], STATEMENT_OPTIONS);
-        await rebuildCommunityStatistics(kit.communityId, STATEMENT_OPTIONS);
         // Friendly groups take no part in rating, so every fact column must match exactly;
         // Competitive ones differ only in the rating-ledger-derived columns.
         const ignoreRating = eventType === 'competitive';
+        // The real-command projections are snapshotted BEFORE any rebuild runs, so they stay an
+        // oracle independent of rebuild_statistics (a rebuild defect cannot hide on both sides).
         const realFacts = await groupFacts(real, ignoreRating);
+        const [bulk] = await insertBulkConfirmedGroups(kit, [bulkSpec(group)], STATEMENT_OPTIONS);
+        await rebuildCommunityStatistics(kit.communityId, STATEMENT_OPTIONS);
         expect(realFacts.group).toHaveLength(1);
         expect(realFacts.participants).toHaveLength(4);
         expect(realFacts.pairs).toHaveLength(2);

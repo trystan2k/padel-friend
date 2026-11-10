@@ -112,10 +112,18 @@ export function runIntegration({
     return 2;
   }
   // Resolve the local DB URL once so workers skip their own CLI discovery. A stale inherited value
-  // is dropped; when resolution fails the children discover (and fail) exactly as before.
+  // is dropped; when the CLI cannot resolve one the children discover (and fail) exactly as before.
+  // A URL that resolves but fails validation aborts the run: it must never reach the children.
   const baseEnv = { ...env };
   delete baseEnv[INTEGRATION_DB_URL_ENV];
-  const databaseUrl = resolveDatabaseUrl();
+  let databaseUrl;
+  try {
+    databaseUrl = resolveDatabaseUrl();
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : 'invalid local database URL';
+    process.stderr.write(`[run-integration] aborting: ${reason}\n`);
+    return 2;
+  }
   if (databaseUrl) baseEnv[INTEGRATION_DB_URL_ENV] = databaseUrl;
   const phases = serialRollback ? [undefined] : requestedPhase ? [requestedPhase] : PHASES;
   const filters = fileFilters(args);

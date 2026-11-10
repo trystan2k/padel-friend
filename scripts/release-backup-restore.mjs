@@ -1,4 +1,5 @@
 import { pathToFileURL } from 'node:url';
+import { randomUUID } from 'node:crypto';
 import {
   DEFAULT_CONTAINER,
   RESTORE_PREFIX,
@@ -119,7 +120,7 @@ export function runRestoreRehearsal({
   runs = 2,
   requireRepresentative = false,
   now = () => Date.now(),
-  log = () => undefined
+  log = (line) => console.error(`[release-rehearsal] ${line}`)
 }) {
   if (source !== 'postgres') throw new Error('Only the local postgres source is supported');
   if (runs < 2) throw new Error('Restore must be exercised at least twice');
@@ -153,63 +154,79 @@ export function runRestoreRehearsal({
   // One dump and one filtered TOC are shared by every restore, so all runs restore identical
   // input. A failure here throws before any destination is provisioned.
   const dumpStarted = now();
-  const dump = docker.dump(source, [
-    '-Fc',
-    '--no-owner',
-    '-n',
-    'public',
-    '-n',
-    'auth',
-    '-n',
-    'supabase_migrations'
-  ]);
-  // Platform-owned default privileges (other roles' ALTER DEFAULT PRIVILEGES) belong to the
-  // platform image, not the application backup, so they are left out of the restore list.
-  const toc = listDumpToc(docker, dump)
-    .split('\n')
-    .filter((line) => !line.includes('DEFAULT ACL'))
-    .join('\n');
-  docker.exec(['sh', '-c', 'cat > /tmp/release-rehearsal.toc'], { input: toc });
-  // dumpMs: one-time cost of the shared dump plus its staged, filtered TOC. Not part of restoreMs.
-  const dumpMs = now() - dumpStarted;
-  const dumpSha256 = sha256(dump);
+  // Invocation-owned container paths: concurrent rehearsals must not overwrite each other, and the
+  // staged files are removed on every exit path.
+  const artifactId = randomUUID();
+  const dumpPath = `/tmp/release-rehearsal-${artifactId}.dump`;
+  const tocPath = `/tmp/release-rehearsal-${artifactId}.toc`;
   const results = [];
-  for (const destination of destinations) {
-    const started = now();
-    provisionDatabase(docker, destination);
+  let dumpMs = 0;
+  try {
+    const dump = docker.dump(source, [
+      '-Fc',
+      '--no-owner',
+      '-n',
+      'public',
+      '-n',
+      'auth',
+      '-n',
+      'supabase_migrations'
+    ]);
+    // Platform-owned default privileges (other roles' ALTER DEFAULT PRIVILEGES) belong to the
+    // platform image, not the application backup, so they are left out of the restore list.
+    const toc = listDumpToc(docker, dump, dumpPath)
+      .split('\n')
+      .filter((line) => !line.includes('DEFAULT ACL'))
+      .join('\n');
+    docker.exec(['sh', '-c', `cat > ${tocPath}`], { input: toc });
+    // dumpMs: one-time cost of the shared dump plus its staged, filtered TOC. Not part of restoreMs.
+    dumpMs = now() - dumpStarted;
+    const dumpSha256 = sha256(dump);
+    for (const destination of destinations) {
+      const started = now();
+      provisionDatabase(docker, destination);
+      try {
+        docker.sql(destination, 'drop schema public cascade;');
+        docker.restore(destination, dump, ['--exit-on-error', `--use-list=${tocPath}`]);
+        const restoreMs = now() - started;
+        const restored = dataFingerprint(docker, destination);
+        const mismatched = Object.keys(before).filter(
+          (table) => JSON.stringify(before[table]) !== JSON.stringify(restored[table])
+        );
+        const schemaDiff = diffFingerprints(sourceSchema, schemaFingerprint(docker, destination));
+        const restoredReads = authorizedReads(docker, destination, users);
+        const readsMatch = JSON.stringify(sourceReads) === JSON.stringify(restoredReads);
+        const dispatch = disableDispatch(docker, destination);
+        const pass = !mismatched.length && !schemaDiff.length && readsMatch && dispatch.cronAbsent;
+        log(`[${pass ? 'PASS' : 'FAIL'}] ${destination}`);
+        results.push({
+          destination,
+          // Same value in every run: all runs restore the one shared dump.
+          dumpSha256,
+          dumpBytes: dump.length,
+          // Per-run provision + restore only; the shared dump time is reported once as dumpMs.
+          restoreMs,
+          tablesCompared: Object.keys(before).length,
+          mismatchedTables: mismatched,
+          schemaDiff,
+          authorizedReads: { users: users.length, match: readsMatch },
+          dispatchDisabled: dispatch,
+          pass
+        });
+      } finally {
+        dropDatabase(docker, destination);
+      }
+    }
+  } finally {
+    // Cleanup must never mask the primary outcome: report its failure and keep the original.
     try {
-      docker.sql(destination, 'drop schema public cascade;');
-      docker.restore(destination, dump, [
-        '--exit-on-error',
-        '--use-list=/tmp/release-rehearsal.toc'
-      ]);
-      const restoreMs = now() - started;
-      const restored = dataFingerprint(docker, destination);
-      const mismatched = Object.keys(before).filter(
-        (table) => JSON.stringify(before[table]) !== JSON.stringify(restored[table])
+      docker.exec(['rm', '-f', dumpPath, tocPath]);
+    } catch (cleanupError) {
+      log(
+        `[WARN] failed to remove staged artifacts ${dumpPath} ${tocPath}: ${
+          cleanupError instanceof Error ? cleanupError.message : 'unknown error'
+        }`
       );
-      const schemaDiff = diffFingerprints(sourceSchema, schemaFingerprint(docker, destination));
-      const restoredReads = authorizedReads(docker, destination, users);
-      const readsMatch = JSON.stringify(sourceReads) === JSON.stringify(restoredReads);
-      const dispatch = disableDispatch(docker, destination);
-      const pass = !mismatched.length && !schemaDiff.length && readsMatch && dispatch.cronAbsent;
-      log(`[${pass ? 'PASS' : 'FAIL'}] ${destination}`);
-      results.push({
-        destination,
-        // Same value in every run: all runs restore the one shared dump.
-        dumpSha256,
-        dumpBytes: dump.length,
-        // Per-run provision + restore only; the shared dump time is reported once as dumpMs.
-        restoreMs,
-        tablesCompared: Object.keys(before).length,
-        mismatchedTables: mismatched,
-        schemaDiff,
-        authorizedReads: { users: users.length, match: readsMatch },
-        dispatchDisabled: dispatch,
-        pass
-      });
-    } finally {
-      dropDatabase(docker, destination);
     }
   }
   const sourceStable = JSON.stringify(dataFingerprint(docker, source)) === JSON.stringify(before);

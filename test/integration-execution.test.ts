@@ -484,7 +484,7 @@ describe('integration DB URL handoff', () => {
   it('reads the variable, treats absence as standalone and an empty value as invalid', () => {
     expect(handoffDatabaseUrl({ [INTEGRATION_DB_URL_ENV]: LOCAL_URL })).toBe(LOCAL_URL);
     expect(handoffDatabaseUrl({})).toBeUndefined();
-    expect(() => handoffDatabaseUrl({ [INTEGRATION_DB_URL_ENV]: '' })).toThrow(/is invalid/);
+    expect(() => handoffDatabaseUrl({ [INTEGRATION_DB_URL_ENV]: '' })).toThrow(/is empty/);
   });
 
   it('resolves the launcher URL from supabase status output', () => {
@@ -502,10 +502,78 @@ describe('integration DB URL handoff', () => {
         throw new Error('status failed');
       }
     ],
-    ['no DB_URL', () => 'API_URL="http://127.0.0.1:55321"'],
-    ['non-loopback DB_URL', () => 'DB_URL="postgresql://u:p@db.example.com:55322/postgres"']
+    ['no DB_URL', () => 'API_URL="http://127.0.0.1:55321"']
   ])('leaves the launcher URL unresolved when %s', (_label, exec) => {
     expect(resolveLocalDatabaseUrl(exec)).toBeUndefined();
+  });
+
+  it.each([
+    ['non-loopback host', 'postgresql://u:s3cr3t-pw@db.example.com:55322/postgres'],
+    ['wrong port', 'postgresql://u:s3cr3t-pw@127.0.0.1:5432/postgres'],
+    ['wrong database', `postgresql://u:s3cr3t-pw@127.0.0.1:${LOCAL_DB_PORT}/other`],
+    ['empty value', ''],
+    [
+      'host override query',
+      `postgresql://u:s3cr3t-pw@127.0.0.1:${LOCAL_DB_PORT}/postgres?host=evil`
+    ]
+  ])('throws a secret-free error when the resolved URL has a %s', (_label, value) => {
+    let message = '';
+    try {
+      resolveLocalDatabaseUrl(() => `DB_URL="${value}"`);
+    } catch (error) {
+      message = error instanceof Error ? error.message : String(error);
+    }
+    expect(message).toContain(INTEGRATION_DB_URL_ENV);
+    expect(message).not.toContain('s3cr3t-pw');
+    expect(message).not.toContain(value || '\0');
+  });
+
+  it.each([
+    ['wrong port', 'postgresql://u:s3cr3t-pw@127.0.0.1:5432/postgres'],
+    ['empty value', ''],
+    [
+      'host override query',
+      `postgresql://u:s3cr3t-pw@127.0.0.1:${LOCAL_DB_PORT}/postgres?host=evil`
+    ]
+  ])('aborts the run before any child starts when the resolved URL has a %s', (_label, value) => {
+    const { calls, run } = recorder();
+    const countFiles = vi.fn<() => number>(() => 1);
+    const write = vi.spyOn(process.stderr, 'write').mockReturnValue(true);
+    try {
+      const status = runIntegration({
+        args: ['test/a.test.ts'],
+        env: {},
+        run,
+        countFiles,
+        resolveDatabaseUrl: () => resolveLocalDatabaseUrl(() => `DB_URL="${value}"`)
+      });
+      expect(status).toBe(2);
+      const output = write.mock.calls.map(([chunk]) => String(chunk)).join('');
+      expect(output).toContain('aborting');
+      expect(output).toContain(INTEGRATION_DB_URL_ENV);
+      expect(output).not.toContain('s3cr3t-pw');
+      expect(output).not.toContain(value || '\0');
+    } finally {
+      write.mockRestore();
+    }
+    expect(calls).toHaveLength(0);
+    expect(countFiles).not.toHaveBeenCalled();
+  });
+
+  it('still starts the children when the CLI cannot resolve a URL', () => {
+    const { calls, run } = recorder();
+    const status = runIntegration({
+      args: [],
+      env: {},
+      run,
+      resolveDatabaseUrl: () =>
+        resolveLocalDatabaseUrl(() => {
+          throw new Error('status failed');
+        })
+    });
+    expect(status).toBe(0);
+    expect(calls).toHaveLength(2);
+    expect(calls.every((call) => !(INTEGRATION_DB_URL_ENV in call.env))).toBe(true);
   });
 
   it('hands the resolved URL to every phase and the file count, replacing a stale inherited value', () => {

@@ -2,10 +2,9 @@ import { describe, expect, it } from 'vitest';
 import { dotEnvPathFromImportMetaUrl, localSupabaseEnv } from './local-supabase-env';
 import { executeTrustedSql, queryTrustedSql } from './sql-transport';
 import {
-  communityMemberGuard,
-  matchEventImmutable,
   triggerStatePreservingSql,
-  withTriggersDisabled
+  withTriggersDisabled,
+  type TriggerRef
 } from './trigger-state-sql';
 
 const environment = localSupabaseEnv({ filePath: dotEnvPathFromImportMetaUrl(import.meta.url) });
@@ -29,78 +28,129 @@ const alterSql: Record<string, string> = {
   D: 'disable trigger'
 };
 
-async function setState(table: string, trigger: string, state: string) {
-  await executeTrustedSql(`alter table public.${table} ${alterSql[state]} ${trigger}`);
-}
-
 const assertDisabledSql = (table: string, trigger: string) => `
   if (${stateSql(table, trigger)}) <> 'D' then raise exception 'trigger not disabled during work'; end if;`;
+
+/**
+ * Test-owned scratch table with a dummy trigger in a known `tgenabled` state. The helper under test
+ * only ever touches these objects, so no production guard is ever altered, even on interruption.
+ */
+type Scratch = TriggerRef & { drop: () => Promise<void> };
+
+let scratchCounter = 0;
+
+async function createScratch(
+  state: string,
+  options: { deferredUnique?: boolean } = {}
+): Promise<Scratch> {
+  scratchCounter += 1;
+  const suffix = `${process.pid}_${scratchCounter}_${crypto.randomUUID().slice(0, 8).replaceAll('-', '')}`;
+  const table = `paf_trg_scratch_${suffix}`;
+  const trigger = `paf_trg_scratch_trg_${suffix}`;
+  const fn = `paf_trg_scratch_fn_${suffix}`;
+  const drop = async () => {
+    await executeTrustedSql(`drop table if exists public.${table}`);
+    await executeTrustedSql(`drop function if exists public.${fn}()`);
+  };
+  try {
+    await executeTrustedSql(
+      `create function public.${fn}() returns trigger language plpgsql as $$ begin return new; end $$`
+    );
+    const constraint = options.deferredUnique
+      ? `, constraint ${table}_id_key unique (id) deferrable initially deferred`
+      : '';
+    await executeTrustedSql(`create table public.${table} (id int${constraint})`);
+    await executeTrustedSql(
+      `create trigger ${trigger} before insert on public.${table} for each row execute function public.${fn}()`
+    );
+    await executeTrustedSql(`alter table public.${table} ${alterSql[state]} ${trigger}`);
+  } catch (error) {
+    await drop();
+    throw error;
+  }
+  return { table, trigger, drop };
+}
+
+async function stateOfScratch(scratch: TriggerRef) {
+  return stateOf(scratch.table, scratch.trigger);
+}
+
+async function withScratches<T>(
+  states: readonly string[],
+  run: (scratches: Scratch[]) => Promise<T>,
+  options: { deferredUnique?: boolean } = {}
+): Promise<T> {
+  const created: Scratch[] = [];
+  try {
+    for (const state of states) created.push(await createScratch(state, options));
+    return await run(created);
+  } finally {
+    for (const scratch of created) await scratch.drop();
+  }
+}
 
 describe.skipIf(environment.env === null)('trigger state preserving DDL helper', () => {
   for (const original of ['O', 'A', 'R', 'D']) {
     it(`restores a ${original} trigger exactly after disabling it for the work`, async () => {
-      const first = await stateOf('community_members', 'community_member_guard');
-      try {
-        await setState('community_members', 'community_member_guard', original);
-        await withTriggersDisabled(
-          [communityMemberGuard],
-          assertDisabledSql('community_members', 'community_member_guard')
-        );
-        expect(await stateOf('community_members', 'community_member_guard')).toBe(original);
-      } finally {
-        await setState('community_members', 'community_member_guard', first);
-      }
+      await withScratches([original], async ([scratch]) => {
+        expect(await stateOfScratch(scratch!)).toBe(original);
+        await withTriggersDisabled([scratch!], assertDisabledSql(scratch!.table, scratch!.trigger));
+        expect(await stateOfScratch(scratch!)).toBe(original);
+      });
     });
   }
 
   it('restores each trigger of a multi-trigger call to its own original state', async () => {
-    const guardFirst = await stateOf('community_members', 'community_member_guard');
-    const immutableFirst = await stateOf('match_events', 'match_event_immutable');
-    try {
-      await setState('community_members', 'community_member_guard', 'A');
-      await setState('match_events', 'match_event_immutable', 'R');
+    await withScratches(['A', 'R'], async ([first, second]) => {
       await withTriggersDisabled(
-        [communityMemberGuard, matchEventImmutable, matchEventImmutable],
+        [first!, second!, second!],
         [
-          assertDisabledSql('community_members', 'community_member_guard'),
-          assertDisabledSql('match_events', 'match_event_immutable')
+          assertDisabledSql(first!.table, first!.trigger),
+          assertDisabledSql(second!.table, second!.trigger)
         ]
       );
-      expect(await stateOf('community_members', 'community_member_guard')).toBe('A');
-      expect(await stateOf('match_events', 'match_event_immutable')).toBe('R');
-    } finally {
-      await setState('community_members', 'community_member_guard', guardFirst);
-      await setState('match_events', 'match_event_immutable', immutableFirst);
-    }
+      expect(await stateOfScratch(first!)).toBe('A');
+      expect(await stateOfScratch(second!)).toBe('R');
+    });
   });
 
-  it('rolls back the disable and leaves the original state when the work fails', async () => {
-    const first = await stateOf('community_members', 'community_member_guard');
-    try {
-      await setState('community_members', 'community_member_guard', 'A');
-      await expect(withTriggersDisabled([communityMemberGuard], 'perform 1 / 0;')).rejects.toThrow(
-        /division by zero/
-      );
-      expect(await stateOf('community_members', 'community_member_guard')).toBe('A');
-    } finally {
-      await setState('community_members', 'community_member_guard', first);
-    }
+  for (const original of ['O', 'A', 'R', 'D']) {
+    it(`rolls back the disable and leaves the ${original} state when the work fails`, async () => {
+      await withScratches([original], async ([scratch]) => {
+        await expect(withTriggersDisabled([scratch!], 'perform 1 / 0;')).rejects.toThrow(
+          /division by zero/
+        );
+        expect(await stateOfScratch(scratch!)).toBe(original);
+      });
+    });
+  }
+
+  it('rolls back and restores the original state when a deferred constraint blocks the restore', async () => {
+    await withScratches(
+      ['R'],
+      async ([scratch]) => {
+        await expect(
+          withTriggersDisabled(
+            [scratch!],
+            `insert into public.${scratch!.table} (id) values (1), (1);`
+          )
+        ).rejects.toThrow(/pending trigger events/);
+        expect(await stateOfScratch(scratch!)).toBe('R');
+      },
+      { deferredUnique: true }
+    );
   });
 
   it('rejects a missing trigger without changing any other trigger', async () => {
-    const first = await stateOf('community_members', 'community_member_guard');
-    try {
-      await setState('community_members', 'community_member_guard', 'R');
+    await withScratches(['R'], async ([scratch]) => {
       await expect(
         withTriggersDisabled(
-          [communityMemberGuard, { table: 'community_members', trigger: 'no_such_trigger' }],
+          [scratch!, { table: scratch!.table, trigger: 'no_such_trigger' }],
           'perform 1;'
         )
       ).rejects.toThrow(/expected triggers are missing: expected 2, found 1/);
-      expect(await stateOf('community_members', 'community_member_guard')).toBe('R');
-    } finally {
-      await setState('community_members', 'community_member_guard', first);
-    }
+      expect(await stateOfScratch(scratch!)).toBe('R');
+    });
   });
 });
 
