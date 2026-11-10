@@ -119,9 +119,52 @@ Explicitly untouched: `src/**`, `supabase/migrations`, `package.json`/dependenci
 - `withTriggersDisabled` documented limitation: work that leaves deferred trigger events pending (SQLSTATE `55006 pending-trigger-events`) is unsupported — such work needs its own transaction shape.
 - Local measurements carry n=1 / non-fresh-DB conditions — the comparable performance proof is the PR's CI run vs the 1,615 s / 1,323 s baseline (same runner class), pending at log time.
 - Full `pnpm complete-check` on the final state runs post-log (scheduled; user-approved shared-DB wipes).
+- CI on head `5a99520` was still running at log-update time (integration + e2e lanes) — final CI states pending.
+- Copilot re-review on head `5a99520` was queued at log-update time — final review state pending.
 
 ## Relations
 
 - Linear issue: PAF-174 (PadelFriend team)
 - Related docs: `docs/plan/PAF-174-findings.md` (R1–R9 ledger), `docs/plan/PAF-174-bundle.md`, `docs/plan/Plan PAF-174 Reduce integration test runtime without weakening coverage.md`
 - Related prior work: PAF-109 (persistent SQL transport + test-runtime investigation), PAF-157 (CI topology, gate structure, timing-evidence pattern)
+
+## Copilot Review Round (PR #49)
+
+### Metadata (round)
+
+- Trigger: Copilot review on PR #49 — 2 high-severity findings (C1, C2) on lines this delivery changed.
+- Findings: unquoted `${tocPath}` / `${dumpPath}` interpolation inside `sh -c` strings in `scripts/release-backup-restore.mjs` and `scripts/release-rehearsal-lib.mjs` — introduced by the invocation-owned artifact-path work (commit `a3c22c7`).
+- Classification: related (defect in delivered behavior); fixed in-PR.
+- Round commits (chronological, same review cycle):
+  - `d6b64cd` — `.pen` reference-manifest re-pin (9 manifests, user-approved), pre-push
+  - `5a99520` — `fix: quote staged artifact paths in shell commands` (+17/−10, 5 files incl. findings-ledger disposition updates); pushed, Copilot review re-requested and verified landed (`review_requested` event naming the bot, per the repo's subsequent-push protocol)
+
+### Implementation Summary (round)
+
+- Fix (C1, C2): artifact paths passed as positional arguments with `"$1"` quoting — `['sh','-c','cat > "$1"','sh',tocPath]` — replacing raw `${tocPath}` / `${dumpPath}` interpolation inside `sh -c` strings.
+- Repo scan confirmed no other unquoted path interpolation: `rm -f` and `--use-list` already pass paths as argv.
+- Test assertions updated to the new argv while preserving the order/target/cleanup proofs.
+- Same review cycle, pre-push: unit + e2e were initially red solely from the pre-existing stale `.pen` provenance digest left on `main` by the approved design change — fixed in-PR by re-pinning the 9 reference manifests (`d6b64cd`, user-approved).
+
+### Files Changed (round)
+
+- `scripts/release-backup-restore.mjs`, `scripts/release-rehearsal-lib.mjs` — quoted, argv-passed staged artifact paths (`5a99520`)
+- Affected rehearsal test suites — assertions updated to the new argv (`5a99520`)
+- `docs/plan/PAF-174-findings.md` — findings-ledger disposition updates (`5a99520`)
+- 9 `.pen` reference manifests re-pinned (`d6b64cd`)
+
+### Key Decisions (round)
+
+- C1/C2 accepted as `related` defects in delivered behavior — fixed in-PR, not disputed.
+- Quoting via positional `"$1"` arguments — the same argv-passing style the scan verified for `rm -f` and `--use-list`, avoiding the interpolation/escaping bug class.
+- `.pen` provenance re-pin done in-PR with user approval — the stale digest was pre-existing on `main`, not introduced by this branch.
+
+### Validation Performed (round)
+
+- Affected suites after the quoting fix: 32/32 green (final code state validated green once).
+- Full local `complete-check` (pre-push, earlier in the same review cycle):
+  - Integration stage PASS 598.9 s — 1,142 passed + 1 pre-existing conditional skip (CI test-phase baseline 1,323 s; local-vs-CI caveat).
+  - After `d6b64cd`: unit 3,643/3,643 and e2e 521/521 green.
+- Copilot re-request on the push of `5a99520` verified landed — `review_requested` timeline event naming the bot.
+- Process note (single-run-policy slip): the fixer ran the affected suite 3 times — two intermediate-failure runs, one wasted before an edit applied; final code state validated green once.
+- Pending at log-update time: CI on head `5a99520` (integration + e2e lanes) still running; Copilot re-review on the new head queued — see Risks and Follow-ups.
