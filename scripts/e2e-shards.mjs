@@ -21,6 +21,7 @@ export const SPEC_WEIGHTS = {
   'e2e/community-onboarding.spec.ts': 30,
   'e2e/home.spec.ts': 3,
   'e2e/league-standings.spec.ts': 18,
+  'e2e/leagues-former-participant.spec.ts': 40,
   'e2e/leagues.spec.ts': 16,
   'e2e/matches-management.spec.ts': 87,
   'e2e/matches-provisional.spec.ts': 27,
