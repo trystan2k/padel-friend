@@ -93,7 +93,18 @@ export type LeagueListResult = {
   /** Immutable `(created_at, id)` keyset that continues this list; null on the last page. */
   next_cursor: LeagueListCursor | null;
 };
-export type LeagueDetailResult = { community: LeagueCommunityDto; league: LeagueDto };
+/** Display context of a League detail: no community settings, so a former participant sees none. */
+export type LeagueDetailCommunityDto = Pick<LeagueCommunityDto, 'id' | 'name' | 'timezone'>;
+
+export const LEAGUE_ACCESS_MODES = ['member', 'former_participant'] as const;
+/** Server-derived: `member` whenever the membership is active, else a read-only former participant. */
+export type LeagueAccessMode = (typeof LEAGUE_ACCESS_MODES)[number];
+
+export type LeagueDetailResult = {
+  access_mode: LeagueAccessMode;
+  community: LeagueDetailCommunityDto;
+  league: LeagueDto;
+};
 
 export type CreateLeagueInput = {
   request_id: string;

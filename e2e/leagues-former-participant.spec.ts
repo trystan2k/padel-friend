@@ -1,0 +1,315 @@
+import { expect, test, type Page } from '@playwright/test';
+import { waitForHydratedPage } from './auth-helpers';
+import { day, leagueFixtures } from './leagues-fixtures';
+import { en, fill, sql } from './matches-management-fixtures';
+
+// PAF-173: a former community member reads, read-only, the League they actually played in.
+// Real routes, sessions and RPCs (leave_community, close_league, result review); trusted SQL is
+// used for setup and time anchors only. Assertions use the en locale strings and structure
+// (roles, hrefs, focus, geometry), never screenshots.
+const former = en.leagues.former;
+const h = en.leagues.history;
+const history = en.statistics.history;
+
+test.use({ viewport: { width: 390, height: 844 }, serviceWorkers: 'block' });
+test.describe.configure({ mode: 'serial' });
+
+let f: Awaited<ReturnType<typeof leagueFixtures>>;
+let leagueId: string;
+let proposalB: string;
+const LEAGUE_NAME = 'Former Participant League';
+
+test.beforeAll(async ({ browser }) => {
+  test.setTimeout(420_000);
+  f = await leagueFixtures(browser, { memberCount: 5, communityName: 'Former Club' });
+});
+test.afterAll(async () => {
+  test.setTimeout(120_000);
+  await f?.cleanup();
+});
+test.beforeEach(() => {
+  test.setTimeout(180_000);
+});
+
+// Quartet: creator + member 0 (team A) vs members 1 + 2 (team B). Member 2 leaves the community;
+// member 0 stays; member 3 never played.
+const players = () => [f.creator, f.members[0]!, f.members[1]!, f.members[2]!];
+const FORMER = () => f.members[2]!;
+const MEMBER = () => f.members[0]!;
+const teams = () => ({
+  team_a: [players()[0]!.id, players()[1]!.id],
+  team_b: [players()[2]!.id, players()[3]!.id]
+});
+
+async function playedRankedEvent(name: string) {
+  const eventId = await f.publish(f.creator, {
+    competition: 'ranked',
+    leagueId,
+    date: day(1),
+    venue: `Former E2E ${name}`
+  });
+  for (const player of players().slice(1))
+    await f.rpc(player, 'submit_match_registration', { p_match_event_id: eventId });
+  await f.cutoff(eventId);
+  await sql(`do $$ begin
+    alter table public.match_events disable trigger match_event_immutable;
+    alter table public.match_events disable trigger match_event_league_binding;
+    update public.match_events set starts_at=now()-interval '3 hours',
+      registration_cutoff_at=now()-interval '4 hours' where id='${eventId}';
+    alter table public.match_events enable trigger match_event_league_binding;
+    alter table public.match_events enable trigger match_event_immutable;
+  end $$;`);
+  return eventId;
+}
+
+async function submitGroup(eventId: string, sets: [number, number][], minutesAgo: number) {
+  const played = new Date(Math.floor((Date.now() - minutesAgo * 60_000) / 1000) * 1000);
+  const iso = played.toISOString().replace('.000Z', 'Z');
+  await f.rpc(f.creator, 'submit_match_event_result', {
+    p_match_event_id: eventId,
+    p_group_number: 1,
+    p_teams: teams(),
+    p_sets: sets.map(([a, b], index) => ({
+      position: index + 1,
+      team_a_games: a,
+      team_b_games: b,
+      completed: true
+    })),
+    p_played_local: {
+      local: iso.slice(0, 19).replace('T', ' '),
+      offset_seconds: 0,
+      instant: iso
+    },
+    p_court_label: 'Court 1',
+    p_request_id: crypto.randomUUID()
+  });
+  const [row] = await sql(
+    `select id::text from public.match_event_result_proposals where match_event_id='${eventId}' and group_number=1`
+  );
+  return String(row?.id);
+}
+
+async function approve(proposal: string) {
+  await f.rpc(players()[2]!, 'review_match_event_result', {
+    p_proposal_id: proposal,
+    p_expected_version: 1,
+    p_decision: 'approve',
+    p_request_id: crypto.randomUUID()
+  });
+}
+
+const detailPath = () => `/community/${f.community}/leagues/${leagueId}`;
+async function visit(page: Page, path: string) {
+  await page.goto(path);
+  await waitForHydratedPage(page);
+}
+const leagueLink = (page: Page) =>
+  page.getByRole('link', { name: fill(history.leagueLink, { name: LEAGUE_NAME }) });
+
+function watchErrors(page: Page): string[] {
+  const errors: string[] = [];
+  page.on('console', (message) => {
+    // Denial journeys legitimately log failed resource loads.
+    if (message.type() === 'error' && !/status of 4\d\d/.test(message.text()))
+      errors.push(message.text());
+  });
+  page.on('pageerror', (error) => errors.push(error.message));
+  return errors;
+}
+
+test('seed: private community, closed League with two published versions, former player left', async () => {
+  leagueId = await f.createLeague(f.creator, {
+    name: LEAGUE_NAME,
+    endMode: 'manual',
+    start: day(0),
+    minimum: 1
+  });
+  await sql(`do $$ begin
+    update public.leagues set start_at=now()-interval '10 days' where id='${leagueId}';
+    alter table public.community_members disable trigger community_member_guard;
+    update public.community_members set valid_from=now()-interval '10 days', activated_at=now()-interval '10 days'
+      where community_id='${f.community}';
+    alter table public.community_members enable trigger community_member_guard;
+  end $$;`);
+  const [league] = await sql(
+    `select version, status::text as status from public.leagues where id='${leagueId}'`
+  );
+  if (league?.status !== 'active')
+    await f.rpc(f.creator, 'activate_league', {
+      p_league_id: leagueId,
+      p_expected_version: league?.version
+    });
+
+  const win = await playedRankedEvent('win');
+  await approve(
+    await submitGroup(
+      win,
+      [
+        [6, 4],
+        [6, 3]
+      ],
+      90
+    )
+  );
+  const draw = await playedRankedEvent('draw');
+  proposalB = await submitGroup(
+    draw,
+    [
+      [6, 4],
+      [4, 6]
+    ],
+    45
+  );
+  const [current] = await sql(`select version from public.leagues where id='${leagueId}'`);
+  await f.rpc(f.creator, 'close_league', {
+    p_league_id: leagueId,
+    p_expected_version: current?.version
+  });
+  // Late first confirmation publishes final version 2; version 1 stays inspectable.
+  await approve(proposalB);
+  const [counted] = await sql(
+    `select count(*)::int as versions from public.league_standings_snapshots where league_id='${leagueId}'`
+  );
+  expect(counted?.versions).toBe(2);
+
+  await sql(`update public.communities set visibility='private' where id='${f.community}'`);
+  await f.rpc(FORMER(), 'leave_community', { p_community_id: f.community });
+  const [stillMember] = await sql(
+    `select count(*)::int as n from public.community_members
+       where community_id='${f.community}' and user_id='${FORMER().id}' and valid_until is null and status='active'`
+  );
+  expect(stillMember?.n).toBe(0);
+});
+
+test('former participant: history League link opens the read-only League, back returns to history', async () => {
+  const page = await f.page(FORMER());
+  const errors = watchErrors(page);
+  await visit(page, '/matches/past');
+  const link = leagueLink(page).first();
+  await expect(link).toBeVisible();
+  await expect(link).toHaveAttribute('href', detailPath());
+  await link.click();
+  await expect(page).toHaveURL(new RegExp(`${detailPath()}$`));
+  await waitForHydratedPage(page);
+
+  await expect(page.getByRole('heading', { level: 1, name: LEAGUE_NAME })).toBeVisible();
+  await expect(page.getByRole('heading', { name: former.title })).toBeVisible();
+  await expect(page.getByText(former.body)).toBeVisible();
+  // Read-only: no management actions, no community-level links.
+  await expect(page.getByRole('button', { name: en.leagues.detail.close })).toHaveCount(0);
+  await expect(page.getByRole('link', { name: en.statistics.community.open })).toHaveCount(0);
+  await expect(page.getByRole('link', { name: h.previousLeagues })).toHaveCount(0);
+  await expect(page.getByRole('link', { name: en.leagues.back })).toHaveCount(0);
+
+  const back = page.getByRole('link', { name: former.back });
+  await expect(back).toHaveAttribute('href', '/matches/past');
+  await back.click();
+  await expect(page).toHaveURL(/\/matches\/past$/);
+  await waitForHydratedPage(page);
+  await expect(leagueLink(page).first()).toBeVisible();
+  expect(errors, 'browser console and hydration errors').toEqual([]);
+});
+
+test('former participant: deep link, reload and version switching work without membership', async () => {
+  const page = await f.page(FORMER());
+  await visit(page, detailPath());
+  await expect(page.getByRole('heading', { name: former.title })).toBeVisible();
+  const select = page.getByRole('combobox', { name: h.selectVersion });
+  await expect(select).toHaveValue('2');
+  await expect(page.getByText(h.lateFirstConfirmation)).toBeVisible();
+
+  await select.focus();
+  await select.selectOption('1');
+  await expect(page).toHaveURL(/version=1/);
+  await waitForHydratedPage(page);
+  await expect(page.getByRole('combobox', { name: h.selectVersion })).toHaveValue('1');
+  await expect(page.getByText(h.olderVersion)).toBeVisible();
+  await expect(page.getByRole('heading', { name: former.title })).toBeVisible();
+
+  // A reload of the versioned URL keeps working; the back target stays match history.
+  await page.reload();
+  await waitForHydratedPage(page);
+  await expect(page.getByRole('combobox', { name: h.selectVersion })).toHaveValue('1');
+  await expect(page.getByRole('link', { name: former.back })).toHaveAttribute(
+    'href',
+    '/matches/past'
+  );
+
+  await page.getByRole('combobox', { name: h.selectVersion }).selectOption('2');
+  await waitForHydratedPage(page);
+  await expect(page.getByRole('combobox', { name: h.selectVersion })).toHaveValue('2');
+});
+
+test('former participant of a private community reaches the League but not community surfaces', async () => {
+  const page = await f.page(FORMER());
+  await visit(page, detailPath());
+  await expect(page.getByRole('heading', { name: former.title })).toBeVisible();
+
+  const [community] = await sql(
+    `select visibility::text as v from public.communities where id='${f.community}'`
+  );
+  expect(community?.v).toBe('private');
+
+  // The community League list stays denied through the existing League error contract.
+  await visit(page, `/community/${f.community}/leagues`);
+  await expect(page.getByRole('heading', { name: en.leagues.deniedTitle })).toBeVisible();
+  await expect(page.getByText(LEAGUE_NAME)).toHaveCount(0);
+
+  // Community administration members stay inaccessible: the League name never leaks there.
+  await visit(page, `/community/${f.community}/admin/members`);
+  await expect(page.getByText(LEAGUE_NAME)).toHaveCount(0);
+  await expect(page.getByText(players()[0]!.name)).toHaveCount(0);
+});
+
+test('former participant: layout fits the narrow viewport, keyboard reaches link and back, targets >= 44px', async () => {
+  const page = await f.page(FORMER(), 'en', 320, 'light', 700);
+  await visit(page, '/matches/past');
+  const link = leagueLink(page).first();
+  await link.scrollIntoViewIfNeeded();
+  const linkBox = await link.boundingBox();
+  expect(linkBox!.height).toBeGreaterThanOrEqual(44);
+  const overflow = () =>
+    page.evaluate(
+      () => document.documentElement.scrollWidth - document.documentElement.clientWidth
+    );
+  expect(await overflow()).toBeLessThanOrEqual(0);
+
+  // Keyboard activation of the History League link.
+  await link.focus();
+  await expect(link).toBeFocused();
+  await page.keyboard.press('Enter');
+  await expect(page).toHaveURL(new RegExp(`${detailPath()}$`));
+  await waitForHydratedPage(page);
+
+  const notice = page.getByRole('heading', { name: former.title });
+  await expect(notice).toBeVisible();
+  const card = notice.locator('xpath=ancestor::div[1]');
+  const box = await card.boundingBox();
+  expect(box!.x).toBeGreaterThanOrEqual(0);
+  expect(box!.x + box!.width).toBeLessThanOrEqual(320 + 1);
+  expect(await overflow()).toBeLessThanOrEqual(0);
+
+  const back = page.getByRole('link', { name: former.back });
+  const backBox = await back.boundingBox();
+  expect(backBox!.width).toBeGreaterThanOrEqual(44);
+  expect(backBox!.height).toBeGreaterThanOrEqual(44);
+  await back.focus();
+  await expect(back).toBeFocused();
+  await page.keyboard.press('Enter');
+  await expect(page).toHaveURL(/\/matches\/past$/);
+});
+
+test('active member regression: League detail has no notice and keeps the community back target', async () => {
+  const page = await f.page(MEMBER());
+  await visit(page, detailPath());
+  await expect(page.getByRole('heading', { level: 1, name: LEAGUE_NAME })).toBeVisible();
+  await expect(page.getByRole('heading', { name: former.title })).toHaveCount(0);
+  await expect(page.getByText(former.body)).toHaveCount(0);
+  await expect(page.getByRole('link', { name: former.back })).toHaveCount(0);
+  const back = page.getByRole('link', { name: en.leagues.back });
+  await expect(back).toHaveAttribute('href', `/community/${f.community}/leagues`);
+  await expect(page.getByRole('link', { name: en.statistics.community.open })).toBeVisible();
+  await expect(page.getByRole('link', { name: h.previousLeagues })).toBeVisible();
+  await back.click();
+  await expect(page).toHaveURL(new RegExp(`/community/${f.community}/leagues$`));
+});

@@ -43,12 +43,14 @@ import { LeagueEntries } from '../src/features/leagues/LeagueEntries';
 import { LeagueListPage } from '../src/features/leagues/LeagueListPage';
 import {
   LEAGUE_COMMUNITY_ID,
+  makeFormerParticipantDetail,
   makeLeagueDetail,
   makeLeagueDto,
   makeFinalStandings,
   makeLeagueList,
   makeLiveStandings,
-  makeManualLeagueDto
+  makeManualLeagueDto,
+  makeStandingEntry
 } from './helpers/league-dto-fixtures';
 
 /** The detail page with an empty, matching standings read unless a test passes its own. */
@@ -744,5 +746,65 @@ describe('League detail management', () => {
     expect(screen.getAllByRole('button').map((button) => button.textContent)).toEqual([
       'Reintentar'
     ]);
+  });
+});
+
+describe('League detail for a former participant', () => {
+  afterEach(cleanup);
+
+  it('shows the read-only notice and returns to the match history', () => {
+    render(wrap(<Detail data={makeFormerParticipantDetail({ status: 'active' })} />));
+    expect(screen.getByRole('heading', { name: 'You played in this League' })).toBeTruthy();
+    expect(screen.getByText(/read-only for you/)).toBeTruthy();
+    const back = screen.getByRole('link', { name: 'Back to match history' });
+    expect(back.getAttribute('href')).toBe('/matches/past');
+    expect(screen.queryByRole('link', { name: 'Back to Leagues' })).toBeNull();
+  });
+
+  it('offers no community links, management actions or audit, even for a closed League', () => {
+    render(
+      wrap(
+        <Detail
+          data={makeFormerParticipantDetail({
+            status: 'closed',
+            closed_at: '2030-12-20T22:59:59.999999Z',
+            closed_reason: 'manual'
+          })}
+        />
+      )
+    );
+    const hrefs = screen.getAllByRole('link').map((link) => link.getAttribute('href'));
+    expect(hrefs).toEqual(['/matches/past']);
+    for (const name of [/Activate League/, /Close League/, /Edit League/])
+      expect(screen.queryByRole('button', { name })).toBeNull();
+  });
+
+  it('keeps the member experience unchanged for an ordinary non-manager member', () => {
+    render(wrap(<Detail data={makeLeagueDetail({ status: 'active', can_manage: false })} />));
+    expect(screen.queryByRole('heading', { name: 'You played in this League' })).toBeNull();
+    const back = screen.getByRole('link', { name: 'Back to Leagues' });
+    expect(back.getAttribute('href')).toBe(`/community/${LEAGUE_COMMUNITY_ID}/leagues`);
+    expect(screen.getByRole('link', { name: 'Community statistics' })).toBeTruthy();
+  });
+
+  it('shows live standings in the read-only view', () => {
+    render(
+      wrap(
+        <Detail
+          data={makeFormerParticipantDetail({ status: 'active' })}
+          standings={makeLiveStandings([makeStandingEntry()], { status: 'active' })}
+        />
+      )
+    );
+    expect(screen.getAllByText('Ana').length).toBeGreaterThan(0);
+  });
+
+  it.each([
+    ['pt-BR', 'Você jogou nesta Liga', 'Voltar ao histórico de partidas'],
+    ['es', 'Jugaste en esta Liga', 'Volver al historial de partidos']
+  ] as const)('translates the notice and back link in %s', (locale, title, back) => {
+    render(wrap(<Detail data={makeFormerParticipantDetail({ status: 'active' })} />, locale));
+    expect(screen.getByRole('heading', { name: title })).toBeTruthy();
+    expect(screen.getByRole('link', { name: back }).getAttribute('href')).toBe('/matches/past');
   });
 });

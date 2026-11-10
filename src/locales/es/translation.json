@@ -1963,6 +1963,11 @@
   "leagues": {
     "title": "Ligas",
     "back": "Volver a Ligas",
+    "former": {
+      "title": "Jugaste en esta Liga",
+      "body": "Esta Liga es de solo lectura para ti. Ves su clasificación y resultados porque jugaste en ella, pero ya no eres miembro de esta comunidad.",
+      "back": "Volver al historial de partidos"
+    },
     "backToDashboard": "Volver al panel",
     "loading": "Cargando Ligas…",
     "errorTitle": "No se pudieron cargar las Ligas",
@@ -2445,6 +2450,7 @@
       "ratingChange": "Nivel {{delta}}",
       "noRating": "Sin cambio de nivel",
       "league": "Liga: {{name}}",
+      "leagueLink": "Abrir la Liga {{name}}",
       "viewDetails": "Detalles del resultado",
       "viewMatch": "Abrir partido",
       "detailsLabel": "Detalles del resultado, partido {{type}} el {{date}}",

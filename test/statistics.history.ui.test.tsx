@@ -16,8 +16,24 @@ vi.mock('../src/features/statistics/statistics-history.functions', () => ({
   getStatisticsHistory: mocks.history
 }));
 vi.mock('@tanstack/react-router', () => ({
-  Link: ({ children, 'aria-label': label }: { children: ReactNode; 'aria-label'?: string }) => (
-    <a href="/matches" aria-label={label}>
+  Link: ({
+    children,
+    to,
+    params,
+    'aria-label': label
+  }: {
+    children: ReactNode;
+    to: string;
+    params?: Record<string, string>;
+    'aria-label'?: string;
+  }) => (
+    <a
+      href={Object.entries(params ?? {}).reduce(
+        (path, [key, value]) => path.replace(`$${key}`, value),
+        to
+      )}
+      aria-label={label}
+    >
       {children}
     </a>
   )
@@ -97,6 +113,49 @@ describe('match history UI', () => {
       within(first).getByRole('link', { name: /Result details, Competitive match/ })
     ).toBeTruthy();
     expect(screen.queryByText('0.00')).toBeNull();
+  });
+  describe('League entry point', () => {
+    const communityId = '33333333-3333-4333-8333-333333333333';
+    const leagueId = '44444444-4444-4444-8444-444444444444';
+    const leagueItem = (overrides: Partial<HistoryItem> = {}) => ({
+      ...item('played', 1),
+      community_id: communityId,
+      league_id: leagueId,
+      league_name: 'Autumn League',
+      ...overrides
+    });
+
+    it('links the League name to the League detail with a distinct accessible name', () => {
+      render(wrap(<MatchHistory initial={page([leagueItem()])} filters={filters} />));
+      const link = screen.getByRole('link', { name: 'Open League Autumn League' });
+      expect(link.getAttribute('href')).toBe(`/community/${communityId}/leagues/${leagueId}`);
+      expect(link.textContent).toBe('League: Autumn League');
+    });
+
+    it('keeps plain text when the League identifier is missing', () => {
+      render(
+        wrap(<MatchHistory initial={page([leagueItem({ league_id: null })])} filters={filters} />)
+      );
+      expect(screen.queryByRole('link', { name: /Open League/ })).toBeNull();
+      expect(screen.getByText(/League: Autumn League/)).toBeTruthy();
+    });
+
+    it('shows no League link for an Unranked match', () => {
+      render(wrap(<MatchHistory initial={page([item('played', 1)])} filters={filters} />));
+      expect(screen.queryByRole('link', { name: /Open League/ })).toBeNull();
+    });
+
+    it.each([
+      ['pt-BR', 'Abrir a Liga Autumn League', 'Liga: Autumn League'],
+      ['es', 'Abrir la Liga Autumn League', 'Liga: Autumn League']
+    ] as const)('translates the League link in %s', (language, name, text) => {
+      render(
+        <I18nextProvider i18n={createI18n(language)}>
+          <MatchHistory initial={page([leagueItem()])} filters={filters} />
+        </I18nextProvider>
+      );
+      expect(screen.getByRole('link', { name }).textContent).toBe(text);
+    });
   });
   it('shows unavailable and retry controls instead of an empty state', () => {
     render(

@@ -85,6 +85,15 @@ export const historyStyles = stylex.create({
     textDecoration: 'none',
     ':focus-visible': focusRing
   },
+  inlineLink: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    minHeight: TOUCH,
+    color: 'var(--color-green)',
+    fontWeight: 'var(--font-weight-semibold)',
+    textDecoration: 'underline',
+    ':focus-visible': focusRing
+  },
   button: {
     justifySelf: 'start',
     display: 'inline-flex',

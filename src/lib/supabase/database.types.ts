@@ -5222,6 +5222,7 @@ export type Database = {
         Args: { p_community_id: string; p_owner_id: string }
         Returns: boolean
       }
+      league_actor_has_participation: { Args: { p_league_id: string }; Returns: boolean }
       league_backfill_references_from_audit: { Args: Record<PropertyKey, never>; Returns: number }
       league_community_dto: { Args: { p_community_id: string }; Returns: Json }
       league_confirmed_groups: {

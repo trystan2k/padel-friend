@@ -1,5 +1,7 @@
 import type {
+  LeagueAccessMode,
   LeagueCommunityDto,
+  LeagueDetailCommunityDto,
   LeagueDetailResult,
   LeagueDto,
   LeagueListResult
@@ -79,9 +81,23 @@ export function makeLeagueList(
 
 export function makeLeagueDetail(
   league: Partial<LeagueDto> = {},
-  community: Partial<LeagueCommunityDto> = {}
+  community: Partial<LeagueDetailCommunityDto> = {},
+  accessMode: LeagueAccessMode = 'member'
 ): LeagueDetailResult {
-  return { community: makeLeagueCommunity(community), league: makeLeagueDto(league) };
+  const { id, name, timezone } = makeLeagueCommunity(community);
+  return {
+    access_mode: accessMode,
+    community: { id, name, timezone },
+    league: makeLeagueDto(league)
+  };
+}
+
+/** Detail as served to a former participant: read-only, never manageable. */
+export function makeFormerParticipantDetail(
+  league: Partial<LeagueDto> = {},
+  community: Partial<LeagueDetailCommunityDto> = {}
+): LeagueDetailResult {
+  return makeLeagueDetail({ can_manage: false, ...league }, community, 'former_participant');
 }
 
 export const STANDING_USER_A = '33333333-3333-4333-8333-333333333331';
