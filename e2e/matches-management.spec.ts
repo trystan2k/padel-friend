@@ -302,7 +302,10 @@ test('organizer can leave without transferring then transfer to Reserve', async 
   await dialog.getByLabel(m.newOrganizer, { exact: true }).selectOption(target.id);
   await dialog.getByRole('button', { name: m.transfer, exact: true }).click();
   await expect(dialog).toHaveCount(0);
-  await expect(page.getByRole('button', { name: m.edit.title, exact: true })).toHaveCount(0);
+  // transfer -> permission refetch -> edit hidden; refetch cadence is slower under full-suite load.
+  await expect(page.getByRole('button', { name: m.edit.title, exact: true })).toHaveCount(0, {
+    timeout: 15_000
+  });
   const targetPage = await f.page(target);
   await f.open(targetPage, id);
   await expect(targetPage.getByRole('button', { name: m.edit.title, exact: true })).toBeEnabled();

@@ -481,7 +481,11 @@ describe.skipIf(!environment.env)('release integrity', { timeout: 900_000 }, () 
     );
     expect(failures).toEqual([{ event: 'result.confirm', outcome: 'failure' }]);
     await makeResultProcessingRetryDue(proposal, 1);
-    expect(await processDueMatchEventResults()).toMatchObject({ confirmed: 1 });
+    // The sweep is global: a sibling suite's due result may also confirm, so assert on THIS proposal.
+    expect((await processDueMatchEventResults()).confirmed).toBeGreaterThanOrEqual(1);
+    expect(
+      await sqlRows(`select status from public.match_event_result_proposals where id='${proposal}'`)
+    ).toEqual([{ status: 'confirmed' }]);
     const success = await sqlRows(
       `select event,outcome from public.operational_job_events where reference='${proposal}' and outcome='success'`
     );

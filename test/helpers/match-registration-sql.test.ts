@@ -23,8 +23,9 @@ describe('match fixture trigger-state cleanup', () => {
       'beforeStatements.splice(\n        lockedTables.length,\n        0,\n        `create temporary table paf_fixture_trigger_states'
     );
     expect(MATCH_REGISTRATION_SQL_SOURCE).toContain('from pg_temp.paf_fixture_trigger_states s');
-    expect(FIXTURE_CLEANUP_SOURCE).toContain(
-      'await executeTrustedSqlBatch(\n        statements.map((sql) => ({ sql })),\n        { timeoutMs: FIXTURE_CLEANUP_TIMEOUT_MS }\n      )'
+    // Whitespace-normalized: the batch call may be wrapped (e.g. deadlock retry) but must stay one batch.
+    expect(FIXTURE_CLEANUP_SOURCE.replace(/\s+/g, ' ')).toMatch(
+      /retryOnDeadlock\(\(\) => executeTrustedSqlBatch\( statements\.map\(\(sql\) => \(\{ sql \}\)\), \{ timeoutMs: FIXTURE_CLEANUP_TIMEOUT_MS \} \) \)/
     );
   });
 });
