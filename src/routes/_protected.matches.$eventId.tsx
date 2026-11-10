@@ -139,7 +139,8 @@ export const Route = createFileRoute('/_protected/matches/$eventId')({
       <MatchDetailPage
         event={data.event}
         loadError={data.failed}
-        onRetry={() => void router.invalidate()}
+        // Awaitable so the result freshness loop observes slow and failed reloads.
+        onRetry={() => router.invalidate()}
         registration={data.registration}
         registrationError={data.registrationFailed}
         callerLevel={data.callerLevel}

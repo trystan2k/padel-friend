@@ -98,9 +98,8 @@ function Dashboard() {
         <CommunityInbox initialItems={inbox.items} loadError={inbox.error} />
         <InvitationDiscoverability />
       </div>
-      <div {...stylex.props(homeStyles.root)}>
-        <HomeNavigation />
-      </div>
+      <div aria-hidden="true" {...stylex.props(homeStyles.navClearance)} />
+      <HomeNavigation />
     </main>
   );
 }

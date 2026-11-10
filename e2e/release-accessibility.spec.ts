@@ -118,10 +118,11 @@ test.describe('authorized primary-flow accessibility', () => {
             await expect(date).toBeVisible();
             const asOf = await date.getAttribute('datetime');
             expect(asOf).not.toBeNull();
+            // F27: the Home date is the labeled UTC calendar day, never passed off as local.
             await expect(date).toHaveText(
-              new Intl.DateTimeFormat(locale, { dateStyle: 'full', timeZone: 'UTC' }).format(
+              `${new Intl.DateTimeFormat(locale, { dateStyle: 'full', timeZone: 'UTC' }).format(
                 new Date(asOf!)
-              )
+              )} · UTC`
             );
             const hero = page.getByRole('region', { name: copy.profile.globalLevel, exact: true });
             await expect(hero.getByRole('heading', { level: 2 })).toHaveText(

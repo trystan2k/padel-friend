@@ -45,8 +45,18 @@ export async function removeLegacyCaches(cacheStorage: Pick<CacheStorage, 'keys'
 
 const PRECACHE_PREFIX = 'workbox-precache';
 
-// Drops anything private that ever reached a cache this worker owns (a precache entry for a private
-// path, or an entry that is not a plain public GET), leaving the allowlisted public assets intact.
+// Mirrors the build-time precache allowlist (scripts/pwa-build.mjs): content-hashed assets plus the
+// public manifest, icons and offline document. Anything else, HTML documents included, is not public.
+const HASHED_ASSET = /^assets\/.+-[\w-]{8}\.(?:js|css|woff2?)$/;
+const PUBLIC_FILE = /^(?:manifest\.webmanifest|icon\.svg|offline\.html|icons\/[\w-]+\.png)$/;
+
+function isAllowlistedPublicPath(pathname: string) {
+  const path = pathname.slice(1);
+  return HASHED_ASSET.test(path) || PUBLIC_FILE.test(path);
+}
+
+// Drops everything outside the public allowlist that ever reached a cache this worker owns (a
+// private path, or a cached private SSR document such as /dashboard), leaving public assets intact.
 export async function purgePrivateCacheEntries(cacheStorage: {
   keys(): Promise<string[]>;
   open(name: string): Promise<Pick<Cache, 'keys' | 'delete'>>;
@@ -58,7 +68,10 @@ export async function purgePrivateCacheEntries(cacheStorage: {
       const requests = await cache.keys();
       await Promise.all(
         requests
-          .filter((entry) => isPrivatePath(new URL(entry.url).pathname))
+          .filter((entry) => {
+            const { pathname } = new URL(entry.url);
+            return isPrivatePath(pathname) || !isAllowlistedPublicPath(pathname);
+          })
           .map((entry) => cache.delete(entry))
       );
     })

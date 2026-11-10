@@ -101,7 +101,9 @@ export function emitDiagnostic(
     ...(context ? { [context.kind === 'request' ? 'requestId' : 'jobId']: context.id } : {}),
     ...safe
   };
-  (outcome === 'success' ? console.info : console.error)(JSON.stringify(line));
+  // Business outcomes (success, or a rejected decision without an error code) are not failures.
+  const businessOutcome = outcome === 'success' || (outcome === 'rejected' && !('code' in safe));
+  (businessOutcome ? console.info : console.error)(JSON.stringify(line));
 }
 
 /** Records the ACTUAL outcome of an operation (never "attempted") and its duration. */
@@ -127,14 +129,21 @@ export async function traceOperation<T>(
   }
 }
 
-/** Classifier for the common { status: 'ok' | 'error', code } command result shape. */
+/**
+ * Classifier for command results. Success statuses: 'ok' (most commands), 'accepted' | 'pending'
+ * (match.join), 'approved' (registration decision). 'rejected' without a code is a decision
+ * outcome; { status: 'error' | 'conflict', code } are failures/races.
+ */
 export function classifyCommandResult(result: unknown): {
   outcome: DiagnosticOutcome;
   code?: string;
 } {
   if (!result || typeof result !== 'object') return { outcome: 'failure', code: 'INTERNAL' };
   const status: unknown = Reflect.get(result, 'status');
-  if (status === 'ok') return { outcome: 'success' };
+  if (status === 'ok' || status === 'accepted' || status === 'pending' || status === 'approved')
+    return { outcome: 'success' };
+  // A committed registration decision of "rejected" is a business outcome, not an error: no code.
+  if (status === 'rejected' && !Reflect.has(result, 'code')) return { outcome: 'rejected' };
   if (status === 'conflict') return { outcome: 'race', code: 'CONFLICT' };
   const raw: unknown = Reflect.get(result, 'code');
   const code = typeof raw === 'string' ? raw.toUpperCase().replace(/[^A-Z0-9]+/g, '_') : 'INTERNAL';

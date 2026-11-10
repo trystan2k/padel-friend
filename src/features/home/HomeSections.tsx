@@ -167,7 +167,7 @@ export function ActionsSection({
                   <Link
                     to="/matches/$eventId"
                     params={{ eventId: item.event_id }}
-                    aria-label={`${t('home.actions.open')}: ${item.venue_name}`}
+                    aria-label={t('home.actions.openVenue', { venue: item.venue_name })}
                     {...stylex.props(s.link)}
                   >
                     {t('home.actions.open')}

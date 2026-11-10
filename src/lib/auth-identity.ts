@@ -5,5 +5,8 @@ export function isIdentityReplaced(
   { event, userId }: { event: string; userId: string | null }
 ) {
   if (event === 'SIGNED_OUT') return true;
+  // A session lookup that finds no user means the identity this view was rendered for already
+  // signed out (another tab) before the guard mounted.
+  if (event === 'INITIAL_SESSION' && userId === null) return baselineUserId !== null;
   return baselineUserId !== null && userId !== null && userId !== baselineUserId;
 }

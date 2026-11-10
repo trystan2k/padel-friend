@@ -27,6 +27,7 @@ import {
   validateReviewMatchEventResult,
   validateSubmitMatchEventResult
 } from './match-result.validators';
+import { recordManualRatingFailure } from '../result-repairs/job-diagnostics.server';
 import { localMatchInstant } from './match-time';
 
 async function resultClient() {
@@ -119,7 +120,10 @@ export const reviewMatchEventResult = createServerFn({ method: 'POST' })
           p_reason_note: data.reason_note ?? undefined,
           p_request_id: data.request_id
         });
-        if (error) return matchResultCommandError(error);
+        if (error) {
+          await recordManualRatingFailure(error, data.proposal_id, data.request_id);
+          return matchResultCommandError(error);
+        }
         const parsed = parseResultCommandReceipt(result);
         if (!parsed) return { status: 'error', code: 'unavailable' };
         if (

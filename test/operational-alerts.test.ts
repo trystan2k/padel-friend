@@ -14,13 +14,18 @@ vi.mock('../src/lib/supabase/admin.server', () => ({
 afterEach(() => vi.restoreAllMocks());
 
 type Reply = { data: unknown; error: unknown };
-function fakeAdmin(replies: { signals?: unknown; reconciled?: unknown; marked?: Reply }) {
+function fakeAdmin(replies: {
+  signals?: unknown;
+  reconciled?: { open: unknown[]; resolved: unknown[] };
+  marked?: Reply;
+}) {
   const rpc = vi.fn<(name: string, args?: Record<string, unknown>) => Promise<Reply>>(
     async (name) => {
-      if (name === 'operational_failure_signals')
-        return { data: replies.signals ?? [], error: null };
-      if (name === 'reconcile_operational_alerts')
-        return { data: replies.reconciled ?? { open: [], resolved: [] }, error: null };
+      if (name === 'reconcile_current_operational_alerts')
+        return {
+          data: { open: [], resolved: [], ...replies.reconciled, signals: replies.signals ?? [] },
+          error: null
+        };
       return replies.marked ?? { data: true, error: null };
     }
   );
@@ -71,7 +76,7 @@ describe('alert sweep', () => {
       pending: 0
     });
     expect(getAdminClient).toHaveBeenCalledTimes(1);
-    expect(rpc).toHaveBeenCalledWith('operational_failure_signals');
+    expect(rpc).toHaveBeenCalledWith('reconcile_current_operational_alerts');
   });
   it('sends each pending open alert once, stamps delivery, and emits the failure event', async () => {
     const error = vi.spyOn(console, 'error').mockImplementation(() => undefined);
@@ -99,6 +104,21 @@ describe('alert sweep', () => {
     });
   });
 
+  it('reads and reconciles in one database call, never from an isolate-local snapshot', async () => {
+    const { rpc, client } = fakeAdmin({ signals: [signal] });
+    await Promise.all([sweepOperationalAlerts(client, null), sweepOperationalAlerts(client, null)]);
+    expect(rpc.mock.calls.map(([name]) => name)).toEqual([
+      'reconcile_current_operational_alerts',
+      'reconcile_current_operational_alerts'
+    ]);
+  });
+  it('keeps serving later sweeps after a failed one', async () => {
+    const failing = fakeAdmin({});
+    failing.rpc.mockRejectedValueOnce(new Error('network'));
+    await expect(sweepOperationalAlerts(failing.client, null)).rejects.toThrow('network');
+    const { client } = fakeAdmin({});
+    await expect(sweepOperationalAlerts(client, null)).resolves.toMatchObject({ pending: 0 });
+  });
   it('sends nothing when reconciliation reports no new alert (dedupe lives in the durable state)', async () => {
     const { client } = fakeAdmin({ signals: [signal] });
     const send = vi.fn<(message: AlertMessage) => Promise<void>>();

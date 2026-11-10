@@ -25,8 +25,8 @@ vi.mock('../src/lib/supabase/client', () => ({
 import { useAuthIdentityGuard } from '../src/lib/use-auth-identity-guard';
 
 const retire = vi.fn<() => void>();
-function Probe() {
-  useAuthIdentityGuard(retire);
+function Probe({ ssrUser = 'a' }: { ssrUser?: string | null }) {
+  useAuthIdentityGuard(ssrUser, retire);
   return null;
 }
 
@@ -47,6 +47,36 @@ it('retires the private view on sign-out and on a different account, never on sa
   expect(retire).toHaveBeenCalledTimes(1);
   mocks.listener?.('SIGNED_OUT', null);
   expect(retire).toHaveBeenCalledTimes(2);
+});
+
+it('retires a view rendered for A when the browser session already belongs to B at mount', async () => {
+  mocks.sessionUser = 'b';
+  render(<Probe ssrUser="a" />);
+  await Promise.resolve();
+  await Promise.resolve();
+  expect(retire).toHaveBeenCalledTimes(1);
+});
+
+it('retires a view rendered for A when A already signed out in another tab before mount', async () => {
+  mocks.sessionUser = null;
+  render(<Probe ssrUser="a" />);
+  await Promise.resolve();
+  await Promise.resolve();
+  expect(retire).toHaveBeenCalledTimes(1);
+});
+
+it('does not retire a view with no SSR identity when the session is null', async () => {
+  mocks.sessionUser = null;
+  render(<Probe ssrUser={null} />);
+  await Promise.resolve();
+  await Promise.resolve();
+  expect(retire).not.toHaveBeenCalled();
+});
+
+it('retires when B signs in before any session lookup resolves', () => {
+  render(<Probe ssrUser="a" />);
+  mocks.listener?.('SIGNED_IN', { user: { id: 'b' } });
+  expect(retire).toHaveBeenCalledTimes(1);
 });
 
 it('unsubscribes on unmount', () => {

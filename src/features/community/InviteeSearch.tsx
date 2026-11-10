@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Dialog } from '@base-ui/react/dialog';
 import { Button } from '../../components/ui/Button';
+import { isOffline, isTransportFailure } from '../../lib/connectivity';
 import { issueInvitation } from './community-admin.functions';
 import { searchCommunityInvitees } from './community-invitee.functions';
 import { styles } from './community-admin.styles';
@@ -32,6 +33,7 @@ export function InviteeSearch({ communityId }: { communityId: string }) {
   const [loading, setLoading] = useState(false);
   const [issuing, setIssuing] = useState(false);
   const [error, setError] = useState(false);
+  const [issueError, setIssueError] = useState<'offline' | 'unconfirmed' | null>(null);
   const [open, setOpen] = useState(false);
   const generation = useRef(0);
   const issuanceInFlight = useRef(false);
@@ -68,6 +70,11 @@ export function InviteeSearch({ communityId }: { communityId: string }) {
     const inviteeId = selected;
     const inviteeName = rows.find((person) => person.user_id === inviteeId)?.display_name;
     if (!inviteeName) return;
+    setIssueError(null);
+    if (isOffline()) {
+      setIssueError('offline');
+      return;
+    }
     // Issuance responses contain the only plaintext token; never discard a successful response as stale.
     issuanceInFlight.current = true;
     setIssuing(true);
@@ -80,8 +87,9 @@ export function InviteeSearch({ communityId }: { communityId: string }) {
       const issuedInvitation = { token: result.token, inviteeId, inviteeName };
       invitationRef.current = issuedInvitation;
       setInvitation(issuedInvitation);
-    } catch {
-      setError(true);
+    } catch (cause) {
+      if (isTransportFailure(cause)) setIssueError('unconfirmed');
+      else setError(true);
     } finally {
       issuanceInFlight.current = false;
       setIssuing(false);
@@ -173,6 +181,7 @@ export function InviteeSearch({ communityId }: { communityId: string }) {
                 </div>
               )}
               {error && <p role="alert">{t('communityInvites.error')}</p>}
+              {issueError && <p role="alert">{t(`communityInvites.${issueError}`)}</p>}
               <Dialog.Close render={<Button variant="secondary" />}>
                 {t('communityAdmin.cancel')}
               </Dialog.Close>

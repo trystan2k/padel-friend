@@ -2,6 +2,7 @@ import { getAdminClient, type AdminClient } from '../../lib/supabase/admin.serve
 import {
   emitDiagnostic,
   runWithDiagnostics,
+  safeErrorCode,
   type DiagnosticEvent
 } from '../../lib/diagnostics.server';
 
@@ -16,7 +17,37 @@ const EVENTS: readonly DiagnosticEvent[] = [
   'replay.complete',
   'replay.fail'
 ];
+const RATING_STAGE_MARKER = 'rating_projection';
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/**
+ * A manual confirmation failing at rating projection rolls back entirely, so the database cannot
+ * keep evidence of it. The command's caller reports it here afterwards, in a separate transaction,
+ * only when the database tagged the failure with the fixed rating-stage marker. Writes the same
+ * rating.failure outbox event the due processor produces. Never throws: the user's command result
+ * is already decided, and no raw error text is stored or logged.
+ */
+export async function recordManualRatingFailure(
+  error: { details?: string | null },
+  proposalId: string,
+  requestId: string,
+  client?: AdminClient
+) {
+  if (error.details !== RATING_STAGE_MARKER) return;
+  try {
+    const recorded = await (client ?? getAdminClient()).rpc('record_manual_rating_failure', {
+      p_proposal_id: proposalId,
+      p_request_id: requestId
+    });
+    if (recorded.error) throw new Error('RATING_EVIDENCE_UNAVAILABLE');
+  } catch (failure) {
+    emitDiagnostic('rating.failure', 'failure', {
+      code: safeErrorCode(failure),
+      stage: RATING_STAGE_MARKER,
+      reference: proposalId
+    });
+  }
+}
 
 /** Bounded committed evidence outbox. Original repair/processing ledgers remain authority.
  * Logging/acknowledgement happens outside sporting transactions; a failed sweep leaves backlog.

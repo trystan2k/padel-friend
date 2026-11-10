@@ -133,6 +133,7 @@ describe('getOnboardingStatus', () => {
     supabaseServer.getServerClient.mockReturnValue(clientWith(null, null, null));
     await expect(getOnboardingStatus()).resolves.toEqual({
       authenticated: false,
+      userId: null,
       complete: false,
       needsPasswordSetup: false,
       claim: null
@@ -141,6 +142,7 @@ describe('getOnboardingStatus', () => {
     supabaseServer.getServerClient.mockReturnValue(clientWith({ sub: 'sub-1' }, null, null));
     await expect(getOnboardingStatus()).resolves.toEqual({
       authenticated: true,
+      userId: 'sub-1',
       complete: false,
       needsPasswordSetup: false,
       claim: null
@@ -156,6 +158,7 @@ describe('getOnboardingStatus', () => {
     supabaseServer.getServerClient.mockReturnValue(client);
     await expect(getOnboardingStatus()).resolves.toEqual({
       authenticated: true,
+      userId: 'sub-1',
       complete: true,
       needsPasswordSetup: false,
       claim: null
@@ -171,6 +174,7 @@ describe('getOnboardingStatus', () => {
     supabaseServer.getServerClient.mockReturnValue(client);
     await expect(getOnboardingStatus()).resolves.toEqual({
       authenticated: true,
+      userId: 'sub-1',
       complete: false,
       needsPasswordSetup: true,
       claim: null
@@ -223,6 +227,7 @@ describe('getOnboardingStatus', () => {
     supabaseServer.getServerClient.mockReturnValue(ready);
     await expect(getOnboardingStatus()).resolves.toEqual({
       authenticated: true,
+      userId: 'sub-1',
       complete: false,
       needsPasswordSetup: false,
       claim: {

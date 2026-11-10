@@ -311,6 +311,8 @@ describe('League i18n and styling contracts', () => {
       'LEAGUE_STANDINGS_VERSION_INVALID',
       'LEAGUE_STANDINGS_VERSION_NOT_FOUND',
       'LEAGUE_UNAVAILABLE',
+      'LEAGUE_OFFLINE',
+      'LEAGUE_UNCONFIRMED',
       'INVALID_LEAGUE_INPUT',
       'INVALID_LEAGUE_RESPONSE'
     ];

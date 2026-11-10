@@ -94,7 +94,7 @@ describe('purgePrivateCacheEntries', () => {
   it('removes private entries from owned precaches and keeps public assets and foreign caches', async () => {
     const { storage, deleted } = fakeStorage({
       'workbox-precache-v2-http://x/': [
-        '/assets/app.js',
+        '/assets/app-AbCdEf12.js',
         '/_serverFn/old',
         '/api/me.js',
         '/offline.html'
@@ -105,6 +105,28 @@ describe('purgePrivateCacheEntries', () => {
     expect(deleted).toEqual([
       'workbox-precache-v2-http://x/:/_serverFn/old',
       'workbox-precache-v2-http://x/:/api/me.js'
+    ]);
+  });
+
+  it('purges cached private SSR documents and keeps every allowlisted public entry', async () => {
+    const { storage, deleted } = fakeStorage({
+      'workbox-precache-v2-http://x/': [
+        '/dashboard',
+        '/matches/123',
+        '/index.html',
+        '/assets/app-AbCdEf12.js',
+        '/assets/fonts/inter-Zz09_-aB.woff2',
+        '/manifest.webmanifest',
+        '/icon.svg',
+        '/icons/icon-192.png',
+        '/offline.html'
+      ]
+    });
+    await purgePrivateCacheEntries(storage);
+    expect(deleted).toEqual([
+      'workbox-precache-v2-http://x/:/dashboard',
+      'workbox-precache-v2-http://x/:/matches/123',
+      'workbox-precache-v2-http://x/:/index.html'
     ]);
   });
 

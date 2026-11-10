@@ -11,8 +11,12 @@ import {
   dispatchNotificationPush,
   sweepNotificationPushOnSchedule
 } from '../src/features/notifications/push-dispatch.server';
-import { sweepJobDiagnostics } from '../src/features/result-repairs/job-diagnostics.server';
 import {
+  recordManualRatingFailure,
+  sweepJobDiagnostics
+} from '../src/features/result-repairs/job-diagnostics.server';
+import {
+  installRatingProjectionFailure,
   installResultConfirmationFailure,
   makeResultProcessingRetryDue,
   processDueMatchEventResults,
@@ -21,7 +25,8 @@ import {
 import { playedAt } from './helpers/ranked-result-fixtures';
 import { localAdminClient } from './helpers/match-add-player-fixtures';
 import { dotEnvPathFromImportMetaUrl, localSupabaseEnv } from './helpers/local-supabase-env';
-import { fixtureSql, sqlRows } from './helpers/match-registration-sql';
+import { fixtureSql, sqlRows, waitForRows } from './helpers/match-registration-sql';
+import { openDedicatedSqlConnection } from './helpers/sql-transport';
 import { createRankedResultFixtures, type RankedResultKit } from './helpers/ranked-result-fixtures';
 import {
   backdateMemberships,
@@ -271,6 +276,191 @@ describe.skipIf(!environment.env)('release integrity', { timeout: 900_000 }, () 
     } finally {
       await new Promise<void>((resolve, reject) =>
         receiver.close((error) => (error ? reject(error) : resolve()))
+      );
+    }
+  });
+  it('emits a safe rating-stage diagnostic when a normal confirmation fails at projection', async () => {
+    const eventId = await kit.event(null);
+    await kit.submit(eventId, playedAt(7200).played);
+    const proposal = await kit.proposalId(eventId);
+    await setResultReviewDeadlineOffset(proposal, 1, -1);
+    const removeFailure = await installRatingProjectionFailure(proposal);
+    try {
+      expect(await processDueMatchEventResults()).toMatchObject({ failed: 1 });
+    } finally {
+      await removeFailure();
+    }
+    // The confirmation rolled back; only the committed failure evidence survives, and it is safe.
+    expect(
+      await sqlRows(
+        `select event,outcome,code,stage from public.operational_job_events where reference='${proposal}' order by event`
+      )
+    ).toEqual([
+      {
+        event: 'rating.failure',
+        outcome: 'failure',
+        code: 'RATING_PROJECTION_FAILED',
+        stage: 'rating_projection'
+      },
+      {
+        event: 'result.confirm',
+        outcome: 'failure',
+        code: 'AUTO_CONFIRM_FAILED',
+        stage: 'auto_confirm'
+      }
+    ]);
+    expect(
+      await sqlRows(`select status from public.match_event_result_proposals where id='${proposal}'`)
+    ).toEqual([{ status: 'pending' }]);
+    // Non-rating confirmation failures never claim the rating stage.
+    const other = await kit.event(null);
+    await kit.submit(other, playedAt(10800).played);
+    const otherProposal = await kit.proposalId(other);
+    await setResultReviewDeadlineOffset(otherProposal, 1, -1);
+    const removeOther = await installResultConfirmationFailure(otherProposal);
+    try {
+      expect(await processDueMatchEventResults()).toMatchObject({ failed: 1 });
+    } finally {
+      await removeOther();
+    }
+    expect(
+      await sqlRows(
+        `select event from public.operational_job_events where reference='${otherProposal}'`
+      )
+    ).toEqual([{ event: 'result.confirm' }]);
+  });
+  it('records exactly one rating.failure when a manual confirmation fails at projection, none on success', async () => {
+    const client = localAdminClient(environment.env!);
+    const eventId = await kit.event(null);
+    await kit.submit(eventId, playedAt(14400).played);
+    const proposal = await kit.proposalId(eventId);
+    const requestId = crypto.randomUUID();
+    const events = () =>
+      sqlRows(
+        `select event,outcome,code,stage,attempt from public.operational_job_events where reference='${proposal}'`
+      );
+    const removeFailure = await installRatingProjectionFailure(proposal);
+    let failed: Awaited<ReturnType<typeof kit.approve>>;
+    try {
+      failed = await kit.approve(proposal);
+    } finally {
+      await removeFailure();
+    }
+    expect(failed.error).toMatchObject({ details: 'rating_projection' });
+    // The whole confirmation rolled back: nothing durable exists until the server reports it.
+    expect(await events()).toEqual([]);
+    expect(
+      await sqlRows(`select status from public.match_event_result_proposals where id='${proposal}'`)
+    ).toEqual([{ status: 'pending' }]);
+
+    // A failure without the fixed rating-stage marker is not a rating failure.
+    await recordManualRatingFailure({ details: null }, proposal, requestId, client);
+    expect(await events()).toEqual([]);
+
+    await recordManualRatingFailure(failed.error!, proposal, requestId, client);
+    await recordManualRatingFailure(failed.error!, proposal, requestId, client);
+    expect(await events()).toEqual([
+      {
+        event: 'rating.failure',
+        outcome: 'failure',
+        code: 'RATING_PROJECTION_FAILED',
+        stage: 'rating_projection',
+        attempt: 0
+      }
+    ]);
+
+    // The retried confirmation succeeds: the command never reports, so no further event appears.
+    expect((await kit.approve(proposal)).error).toBeNull();
+    expect(await events()).toHaveLength(1);
+    // A late duplicate of the same command's report stays idempotent after confirmation.
+    await recordManualRatingFailure(failed.error!, proposal, requestId, client);
+    expect(await events()).toHaveLength(1);
+  });
+  it('records a manual rating failure even when the proposal is confirmed before the report runs', async () => {
+    const client = localAdminClient(environment.env!);
+    const eventId = await kit.event(null);
+    await kit.submit(eventId, playedAt(18000).played);
+    const proposal = await kit.proposalId(eventId);
+    const requestId = crypto.randomUUID();
+    const events = () =>
+      sqlRows(
+        `select event,code,stage from public.operational_job_events where reference='${proposal}'`
+      );
+    const removeFailure = await installRatingProjectionFailure(proposal);
+    let failed: Awaited<ReturnType<typeof kit.approve>>;
+    try {
+      failed = await kit.approve(proposal);
+    } finally {
+      await removeFailure();
+    }
+    expect(failed.error).toMatchObject({ details: 'rating_projection' });
+    // Another reviewer (or the due processor) confirms before the diagnostic transaction runs.
+    expect((await kit.approve(proposal)).error).toBeNull();
+    expect(
+      await sqlRows(`select status from public.match_event_result_proposals where id='${proposal}'`)
+    ).toEqual([{ status: 'confirmed' }]);
+    expect(await events()).toEqual([]);
+    // The observed failure is still evidence; a repeat of the same command report adds nothing.
+    await recordManualRatingFailure(failed.error!, proposal, requestId, client);
+    await recordManualRatingFailure(failed.error!, proposal, requestId, client);
+    expect(await events()).toEqual([
+      { event: 'rating.failure', code: 'RATING_PROJECTION_FAILED', stage: 'rating_projection' }
+    ]);
+  });
+  it('fences alert reconciliation in the database across independent clients', async () => {
+    const lockKey = "pg_catalog.hashtextextended('padel-friend:operational-alert-reconcile', 0)";
+    const holder = await openDedicatedSqlConnection();
+    const first = localAdminClient(environment.env!);
+    const second = localAdminClient(environment.env!);
+    try {
+      // An in-flight reconciliation owns the fence; two other isolates start meanwhile.
+      await holder.query('begin');
+      await holder.query(`select pg_catalog.pg_advisory_xact_lock(${lockKey})`);
+      // Postgrest builders are lazy: Promise.resolve starts each request now.
+      const racing = [
+        Promise.resolve(first.rpc('reconcile_current_operational_alerts')),
+        Promise.resolve(second.rpc('reconcile_current_operational_alerts'))
+      ];
+      await waitForRows(
+        `select count(*)::int as waiters from pg_catalog.pg_locks l where l.locktype = 'advisory' and not l.granted and ((l.classid::bigint << 32) | l.objid::bigint) = ${lockKey}`,
+        (rows) => Number(rows[0]?.['waiters']) >= 1,
+        'a reconciliation waiting on the fence',
+        30_000
+      );
+      // Newer state commits while they wait. A snapshot read BEFORE the fence would miss it and
+      // reconcile it away afterwards; behind the fence every run reads after the holder's commit.
+      await fixtureSql(
+        `insert into public.operational_push_health(singleton,code) values(true,'PUSH_CONFIG_UNAVAILABLE') on conflict(singleton) do update set code=excluded.code`
+      );
+      await holder.query('commit');
+      for (const result of await Promise.all(racing)) {
+        expect(result.error).toBeNull();
+        expect(JSON.stringify(result.data)).toContain('push:configuration');
+      }
+      expect(
+        await sqlRows(
+          `select resolved_at is null as open from public.operational_alerts where alert_key='push:configuration'`
+        )
+      ).toEqual([{ open: true }]);
+      // Mixed-version rollout: an old Worker still calling the legacy signature succeeds, gets the
+      // fenced behavior, and its stale self-supplied snapshot ([] would resolve the alert) is ignored.
+      const legacy = await first.rpc('reconcile_operational_alerts', { p_signals: [] });
+      expect(legacy.error).toBeNull();
+      expect(JSON.stringify(legacy.data)).toContain('push:configuration');
+      expect(
+        await sqlRows(
+          `select resolved_at is null as open from public.operational_alerts where alert_key='push:configuration'`
+        )
+      ).toEqual([{ open: true }]);
+      // The snapshot-applying core is not reachable by any API role.
+      expect(
+        (await first.rpc('apply_operational_alert_signals', { p_signals: [] })).error
+      ).not.toBeNull();
+    } finally {
+      await holder.query('rollback').catch(() => undefined);
+      await holder.close();
+      await fixtureSql(
+        `update public.operational_push_health set code=null; delete from public.operational_alerts where alert_key='push:configuration';`
       );
     }
   });

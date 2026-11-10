@@ -99,15 +99,22 @@ export function createDocker({ container = DEFAULT_CONTAINER, run = spawnSync } 
 export function provisionDatabase(docker, name) {
   // Never overwrite a pre-existing database, even if its name resembles a rehearsal.
   docker.admin(`create database "${name}";`);
-  docker.sql(
-    name,
-    `create schema extensions;
-     create extension pgcrypto with schema extensions;
-     create extension "uuid-ossp" with schema extensions;
-     alter default privileges for role postgres in schema public grant all on tables to postgres, anon, authenticated, service_role;
-     alter default privileges for role postgres in schema public grant all on sequences to postgres, anon, authenticated, service_role;
-     alter default privileges for role postgres in schema public grant all on functions to postgres, anon, authenticated, service_role;`
-  );
+  // Past this point the database is ours: a failed setup must not leak it. A failed create above
+  // throws first, so a pre-existing destination is never dropped.
+  try {
+    docker.sql(
+      name,
+      `create schema extensions;
+       create extension pgcrypto with schema extensions;
+       create extension "uuid-ossp" with schema extensions;
+       alter default privileges for role postgres in schema public grant all on tables to postgres, anon, authenticated, service_role;
+       alter default privileges for role postgres in schema public grant all on sequences to postgres, anon, authenticated, service_role;
+       alter default privileges for role postgres in schema public grant all on functions to postgres, anon, authenticated, service_role;`
+    );
+  } catch (error) {
+    dropDatabase(docker, name);
+    throw error;
+  }
 }
 
 export function dropDatabase(docker, name) {

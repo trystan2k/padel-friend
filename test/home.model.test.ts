@@ -183,7 +183,8 @@ describe('actionable items', () => {
         upcoming('00000000-0000-4000-8000-0000000000e1', { caller_badge: 'creator' })
       ],
       [past],
-      new Map([['00000000-0000-4000-8000-0000000000e1', 3]])
+      new Map([['00000000-0000-4000-8000-0000000000e1', 3]]),
+      new Map([[C, 2]])
     );
     expect(items.map(({ kind, count }) => [kind, count])).toEqual([
       ['result_review', 2],
@@ -206,9 +207,24 @@ describe('actionable items', () => {
           upcoming(B, { caller_badge: 'creator' })
         ],
         [past],
-        new Map([[B, 0]])
+        new Map([[B, 0]]),
+        new Map([[C, 1]])
       )
     ).toEqual([]);
+  });
+
+  it('omits result review when the caller is not an eligible reviewer', () => {
+    const past = makeMatchRpcListRow({
+      event_id: C,
+      caller_badge: 'playing',
+      is_past: true,
+      result_summary: { ...makeMatchRpcListRow().result_summary, pending_group_count: 2 }
+    });
+    expect(deriveActions([], [past], new Map(), new Map())).toEqual([]);
+    expect(deriveActions([], [past], new Map(), new Map([[C, 0]]))).toEqual([]);
+    expect(deriveActions([], [past], new Map(), new Map([[C, 1]]))).toMatchObject([
+      { kind: 'result_review', count: 1 }
+    ]);
   });
 });
 

@@ -5,7 +5,7 @@ import { getOnboardingStatus } from '../features/player/player.functions';
 
 // Retires every mounted private view the moment the browser identity ends or is replaced.
 function ProtectedLayout() {
-  useAuthIdentityGuard();
+  useAuthIdentityGuard(Route.useRouteContext({ select: (context) => context.authUserId }));
   return <Outlet />;
 }
 
@@ -21,6 +21,7 @@ export const Route = createFileRoute('/_protected')({
     }
     if (!status.complete)
       throw redirect({ to: '/onboarding', search: optionalReturnPath(location.href) });
+    return { authUserId: status.userId };
   },
   component: ProtectedLayout
 });

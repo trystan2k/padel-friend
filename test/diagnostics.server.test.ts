@@ -121,6 +121,45 @@ describe('diagnostics helper', () => {
     });
     expect(classifyCommandResult(null)).toEqual({ outcome: 'failure', code: 'INTERNAL' });
   });
+
+  it('logs code-less business outcomes at info and coded rejections at error', () => {
+    const info = vi.spyOn(console, 'info').mockImplementation(() => undefined);
+    const error = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    const rejectedDecision = classifyCommandResult({
+      status: 'rejected',
+      replayed: false,
+      registration: {}
+    });
+    emitDiagnostic('match.join', rejectedDecision.outcome, { code: rejectedDecision.code });
+    expect(info).toHaveBeenCalledTimes(1);
+    expect(error).not.toHaveBeenCalled();
+    const failure = classifyCommandResult({ status: 'error', code: 'forbidden' });
+    emitDiagnostic('match.join', failure.outcome, { code: failure.code });
+    emitDiagnostic('match.join', 'race', {});
+    expect(error).toHaveBeenCalledTimes(2);
+    expect(info).toHaveBeenCalledTimes(1);
+    info.mockRestore();
+    error.mockRestore();
+  });
+
+  it('classifies join and registration decision success shapes without INTERNAL', () => {
+    expect(classifyCommandResult({ status: 'accepted', registration: {} })).toEqual({
+      outcome: 'success'
+    });
+    expect(classifyCommandResult({ status: 'pending', registration: {} })).toEqual({
+      outcome: 'success'
+    });
+    expect(
+      classifyCommandResult({ status: 'approved', replayed: false, registration: {} })
+    ).toEqual({ outcome: 'success' });
+    expect(
+      classifyCommandResult({ status: 'rejected', replayed: false, registration: {} })
+    ).toEqual({ outcome: 'rejected' });
+    expect(classifyCommandResult({ status: 'error', code: 'unavailable' })).toEqual({
+      outcome: 'rejected',
+      code: 'UNAVAILABLE'
+    });
+  });
 });
 
 describe('PRD §59 event matrix', () => {

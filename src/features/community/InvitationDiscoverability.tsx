@@ -1,6 +1,7 @@
 import * as stylex from '@stylexjs/stylex';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { isOffline, isTransportFailure } from '../../lib/connectivity';
 import {
   getMyInviteeDiscoverability,
   setMyInviteeDiscoverability
@@ -20,25 +21,35 @@ export function InvitationDiscoverability() {
   const { t } = useTranslation();
   const [enabled, setEnabled] = useState(false);
   const [busy, setBusy] = useState(true);
-  const [error, setError] = useState(false);
+  const [error, setError] = useState('');
   const [saved, setSaved] = useState(false);
   useEffect(() => {
     void getMyInviteeDiscoverability()
       .then(({ enabled: value }) => setEnabled(value))
-      .catch(() => setError(true))
+      .catch(() => setError('discoverabilityError'))
       .finally(() => setBusy(false));
   }, []);
   async function change(value: boolean) {
     setSaved(false);
+    setError('');
+    if (isOffline()) {
+      setError('discoverabilityOffline');
+      return;
+    }
     setBusy(true);
-    setError(false);
     try {
       const result = await setMyInviteeDiscoverability({ data: { enabled: value } });
       setEnabled(result.enabled);
       setSaved(true);
-    } catch {
+    } catch (cause) {
       setSaved(false);
-      setError(true);
+      if (isTransportFailure(cause)) {
+        // The write may have committed: show the stored preference instead of the optimistic one.
+        setError('discoverabilityUnconfirmed');
+        await getMyInviteeDiscoverability()
+          .then(({ enabled: stored }) => setEnabled(stored))
+          .catch(() => undefined);
+      } else setError('discoverabilityError');
     } finally {
       setBusy(false);
     }
@@ -55,7 +66,7 @@ export function InvitationDiscoverability() {
         {t('communityInvites.discoverableLabel')}
       </label>
       <p>{t('communityInvites.discoverableHelp')}</p>
-      {error && <p role="alert">{t('communityInvites.discoverabilityError')}</p>}
+      {error && <p role="alert">{t(`communityInvites.${error}`)}</p>}
       {saved && <p aria-live="polite">{t('communityInvites.discoverabilitySaved')}</p>}
     </section>
   );

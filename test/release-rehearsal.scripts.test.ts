@@ -117,6 +117,58 @@ describe('destructive-target guards', () => {
     expect(admin).toHaveBeenCalledTimes(1);
     expect(admin.mock.calls[0]?.[0]).not.toMatch(/drop/i);
   });
+  it('drops the disposable database when provisioning fails after creation (migration)', () => {
+    const admin = vi.fn<(statement: string) => string>(() => '');
+    const sql = vi.fn<() => string>(() => {
+      throw new Error('extension setup failed');
+    });
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- database test double
+    const docker = { admin, sql } as unknown as Docker;
+    expect(() =>
+      runMigrationRehearsal({
+        docker,
+        destination: 'migration_rehearsal_leak',
+        confirm: 'migration_rehearsal_leak'
+      })
+    ).toThrow('extension setup failed');
+    expect(admin.mock.calls.map(([statement]) => statement)).toEqual([
+      'create database "migration_rehearsal_leak";',
+      'drop database if exists "migration_rehearsal_leak" with (force);'
+    ]);
+  });
+  it('drops the disposable database when provisioning fails after creation (restore)', () => {
+    const representative = Object.fromEntries(
+      [
+        'public.statistics_group_facts',
+        'public.player_rating_events',
+        'public.notifications',
+        'public.notification_push_jobs',
+        'public.league_standings_snapshots',
+        'public.result_repair_jobs'
+      ].map((table) => [table, { rows: 5 }])
+    );
+    const admin = vi.fn<(statement: string) => string>(() => '');
+    const sql = vi.fn<(database: string, statement: string) => string>((database, statement) => {
+      if (database === 'restore_rehearsal_leak_1') throw new Error('extension setup failed');
+      if (statement.includes('jsonb_object_agg')) return JSON.stringify(representative);
+      if (statement.includes('pgcrypto')) return '';
+      return statement.includes('jsonb_build_object') ? '{}' : '';
+    });
+    const dump = vi.fn<() => Buffer>(() => Buffer.from('dump'));
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- database test double
+    const docker = { admin, sql, dump } as unknown as Docker;
+    expect(() =>
+      runRestoreRehearsal({
+        docker,
+        base: 'restore_rehearsal_leak',
+        confirm: 'restore_rehearsal_leak'
+      })
+    ).toThrow('extension setup failed');
+    expect(admin.mock.calls.map(([statement]) => statement)).toEqual([
+      'create database "restore_rehearsal_leak_1";',
+      'drop database if exists "restore_rehearsal_leak_1" with (force);'
+    ]);
+  });
   it('refuses remote Docker contexts before any database operation', () => {
     const run = vi.fn<SpawnLike>(() => ({ status: 0, stdout: '"ssh://production"' }));
     expect(() => createDocker({ run })).toThrow('Refusing nonlocal Docker endpoint');
@@ -143,7 +195,7 @@ describe('rehearsal helpers', () => {
   it('lists every repository migration in order', () => {
     const versions = migrationFiles().map((entry) => entry.version);
     expect(versions).toEqual([...versions].sort());
-    expect(versions.at(-1)).toBe('20261109090000');
+    expect(versions.at(-1)).toBe('20261110100000');
   });
   it('reports the categories whose fingerprints differ', () => {
     expect(diffFingerprints({ a: 1, b: 'x', c: 2 }, { a: 1, b: 'y', c: 2 })).toEqual(['b']);

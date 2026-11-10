@@ -1,4 +1,5 @@
 import { useUpdateGuard } from '../pwa/update-guard';
+import { isOffline, isTransportFailure } from '../../lib/connectivity';
 import * as stylex from '@stylexjs/stylex';
 import { rootStyles } from '../../root.styles';
 import { AlertDialog } from '@base-ui/react/alert-dialog';
@@ -859,9 +860,13 @@ function SettingsView(props: ViewProps<'settings'>) {
   async function saveSettings(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (busy) return;
+    setMessage('');
+    if (isOffline()) {
+      setErrorKey('offline');
+      return;
+    }
     setBusy(true);
     setErrorKey('');
-    setMessage('');
     try {
       await updateCommunitySettings({ data: { community_id: community.id, ...settings } });
       await updateCommunityAdminDefaults({
@@ -875,7 +880,7 @@ function SettingsView(props: ViewProps<'settings'>) {
         setErrorKey('generic');
       }
     } catch (error) {
-      setErrorKey(failed(error));
+      setErrorKey(failed(error) === 'generic' ? 'unconfirmed' : failed(error));
     } finally {
       setBusy(false);
     }
@@ -1129,9 +1134,13 @@ function VenuesView({ community, venues }: ViewProps<'venues'>) {
 
   async function run(action: () => Promise<unknown>, success: string) {
     if (busy || paginationPending) return false;
+    setMessage('');
+    if (isOffline()) {
+      setErrorKey('offline');
+      return false;
+    }
     setBusy(true);
     setErrorKey('');
-    setMessage('');
     try {
       await action();
       setAdditionalVenues([]);
@@ -1145,7 +1154,7 @@ function VenuesView({ community, venues }: ViewProps<'venues'>) {
       }
       return true;
     } catch (error) {
-      setErrorKey(failed(error));
+      setErrorKey(failed(error) === 'generic' ? 'unconfirmed' : failed(error));
       return false;
     } finally {
       setBusy(false);
@@ -1361,7 +1370,9 @@ function RequestMessageComposer({
   const [open, setOpen] = useState(false);
   const [body, setBody] = useState('');
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<'empty' | 'failed' | 'notPending' | null>(null);
+  const [error, setError] = useState<
+    'empty' | 'failed' | 'notPending' | 'offline' | 'unconfirmed' | null
+  >(null);
   const [sent, setSent] = useState(false);
   const requestId = useRef(crypto.randomUUID());
   const lastPayload = useRef('');
@@ -1370,6 +1381,10 @@ function RequestMessageComposer({
     setError(null);
     if (!body.trim()) {
       setError('empty');
+      return;
+    }
+    if (isOffline()) {
+      setError('offline');
       return;
     }
     const payload = body.trim();
@@ -1394,7 +1409,7 @@ function RequestMessageComposer({
       requestId.current = crypto.randomUUID();
     } catch (failure) {
       const notPending = failure instanceof Error && failure.message === 'REQUEST_NOT_PENDING';
-      setError(notPending ? 'notPending' : 'failed');
+      setError(notPending ? 'notPending' : isTransportFailure(failure) ? 'unconfirmed' : 'failed');
       if (notPending) setOpen(false);
     } finally {
       setBusy(false);

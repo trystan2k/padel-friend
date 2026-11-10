@@ -12,6 +12,11 @@ describe('isIdentityReplaced', () => {
     expect(isIdentityReplaced('a', { event: 'TOKEN_REFRESHED', userId: 'b' })).toBe(true);
   });
 
+  it('retires when the session lookup finds no user for a known baseline', () => {
+    expect(isIdentityReplaced('a', { event: 'INITIAL_SESSION', userId: null })).toBe(true);
+    expect(isIdentityReplaced(null, { event: 'INITIAL_SESSION', userId: null })).toBe(false);
+  });
+
   it('keeps the view for same-user refresh, replay and unknown baseline', () => {
     expect(isIdentityReplaced('a', { event: 'TOKEN_REFRESHED', userId: 'a' })).toBe(false);
     expect(isIdentityReplaced('a', { event: 'INITIAL_SESSION', userId: 'a' })).toBe(false);

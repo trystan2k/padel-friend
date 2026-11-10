@@ -7,7 +7,8 @@ const mocks = vi.hoisted(() => ({
   rpc: vi.fn<(...args: unknown[]) => Promise<unknown>>(),
   event: vi.fn<() => Promise<unknown>>(),
   header: vi.fn<(...args: unknown[]) => void>(),
-  from: vi.fn<(...args: unknown[]) => unknown>()
+  from: vi.fn<(...args: unknown[]) => unknown>(),
+  adminRpc: vi.fn<(...args: unknown[]) => Promise<unknown>>()
 }));
 vi.mock('@tanstack/react-start', () => ({
   createServerFn: () => {
@@ -25,6 +26,9 @@ vi.mock('@tanstack/react-start', () => ({
 }));
 vi.mock('@tanstack/react-start/server', () => ({ setResponseHeader: mocks.header }));
 vi.mock('../src/features/auth/auth.server', () => ({ requireAuthenticatedClient: mocks.auth }));
+vi.mock('../src/lib/supabase/admin.server', () => ({
+  getAdminClient: () => ({ rpc: mocks.adminRpc })
+}));
 import {
   correctMatchEventResult,
   getMatchEventOfficialResults,
@@ -190,6 +194,46 @@ describe('result server boundary', () => {
           .filter((line) => ['result.confirm', 'result.reject'].includes(line.event))
           .map((line) => line.event)
       ).toEqual(event ? [event] : []);
+    } finally {
+      sink.mockRestore();
+    }
+  });
+  it('reports a rating-stage confirmation failure durably, and only that failure', async () => {
+    const sink = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    try {
+      mocks.adminRpc.mockResolvedValue({ data: null, error: null });
+      mocks.rpc.mockResolvedValue({
+        data: null,
+        error: { code: 'P0001', message: 'RAW SQL TEXT', details: 'rating_projection' }
+      });
+      expect(await reviewMatchEventResult({ data: reviewCommand })).toMatchObject({
+        status: 'error'
+      });
+      expect(mocks.adminRpc).toHaveBeenCalledExactlyOnceWith('record_manual_rating_failure', {
+        p_proposal_id: reviewCommand.proposal_id,
+        p_request_id: reviewCommand.request_id
+      });
+
+      mocks.adminRpc.mockClear();
+      mocks.rpc.mockResolvedValue({
+        data: null,
+        error: { code: 'P0001', message: 'MATCH_RESULT_REVIEW_CONFLICT', details: null }
+      });
+      await reviewMatchEventResult({ data: reviewCommand });
+      mocks.rpc.mockResolvedValue({ data: commandReceipt, error: null });
+      await reviewMatchEventResult({ data: reviewCommand });
+      expect(mocks.adminRpc).not.toHaveBeenCalled();
+
+      // A failing evidence write never changes the command outcome nor leaks raw error text.
+      mocks.rpc.mockResolvedValue({
+        data: null,
+        error: { code: 'P0001', message: 'RAW SQL TEXT', details: 'rating_projection' }
+      });
+      mocks.adminRpc.mockRejectedValue(new Error('SECRET host down'));
+      await expect(reviewMatchEventResult({ data: reviewCommand })).resolves.toMatchObject({
+        status: 'error'
+      });
+      expect(JSON.stringify(sink.mock.calls)).not.toContain('SECRET');
     } finally {
       sink.mockRestore();
     }

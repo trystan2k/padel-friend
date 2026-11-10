@@ -233,6 +233,8 @@
     "errorTitle": "Não foi possível carregar esta tela",
     "historyEmpty": "Ainda não há histórico competitivo. Seus jogos confirmados aparecerão aqui.",
     "saveFailed": "Não foi possível salvar as alterações. Tente novamente.",
+    "saveOffline": "Você está sem conexão. Nada foi salvo. Reconecte e tente novamente.",
+    "saveUnconfirmed": "Não foi possível confirmar que as alterações foram salvas. Confira seu perfil antes de tentar novamente.",
     "signOutFailed": "Não foi possível sair da conta. Tente novamente.",
     "loading": "Carregando perfil do jogador…"
   },
@@ -412,7 +414,9 @@
       "sent": "Mensagem enviada",
       "empty": "Digite uma mensagem",
       "notPending": "Esta solicitação não está mais pendente",
-      "failed": "Não foi possível enviar a mensagem"
+      "failed": "Não foi possível enviar a mensagem",
+      "offline": "Você está sem conexão. Nada foi enviado. Reconecte e tente novamente.",
+      "unconfirmed": "Não foi possível confirmar que a mensagem foi enviada. Tentar de novo é seguro: não haverá duplicidade."
     }
   },
   "communityInbox": {
@@ -441,10 +445,14 @@
     "copied": "Copiado",
     "shareHelp": "Envio por link não disponível. Compartilhe este token único com segurança.",
     "error": "Não foi possível concluir o convite.",
+    "offline": "Você está sem conexão. Nenhum convite foi emitido. Reconecte e tente novamente.",
+    "unconfirmed": "Não foi possível confirmar que o convite foi emitido. Confira a lista de convites antes de tentar novamente.",
     "discoverableLabel": "Permitir que administradores de comunidades privadas encontrem meu nome",
     "discoverableHelp": "Qualquer administrador de comunidade privada poderá encontrar seu nome consentido. E-mails não são expostos.",
     "discoverabilitySaved": "Preferência de descoberta salva.",
-    "discoverabilityError": "Não foi possível salvar a preferência."
+    "discoverabilityError": "Não foi possível salvar a preferência.",
+    "discoverabilityOffline": "Você está sem conexão. Nada foi salvo. Reconecte e tente novamente.",
+    "discoverabilityUnconfirmed": "Não foi possível confirmar que a preferência foi salva. Recarregue antes de tentar novamente."
   },
   "home": {
     "title": "Início",
@@ -479,6 +487,7 @@
       "empty": "Nada precisa da sua atenção.",
       "partial": "Alguns itens não puderam ser verificados, então esta lista pode estar incompleta.",
       "open": "Abrir",
+      "openVenue": "Abrir {{venue}}",
       "resultReview_one": "{{count}} resultado aguardando revisão em {{venue}}",
       "resultReview_other": "{{count}} resultados aguardando revisão em {{venue}}",
       "reconfirmation": "Reconfirme sua vaga em {{venue}}",
@@ -1683,6 +1692,8 @@
       "inviteeUnavailable": "Um ou mais convidados estão indisponíveis.",
       "conflict": "Esta partida conflita com uma publicação existente.",
       "publishFailed": "Não foi possível publicar a partida.",
+      "offline": "Você está sem conexão. Nada foi publicado. Reconecte e tente novamente.",
+      "unconfirmed": "Não foi possível confirmar que a partida foi publicada. Tentar de novo é seguro: não será criada duplicata.",
       "optionsUnavailable": "Não foi possível carregar as opções de criação. Tente novamente."
     }
   },

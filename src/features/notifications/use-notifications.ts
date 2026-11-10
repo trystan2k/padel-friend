@@ -7,6 +7,8 @@ import {
 } from './notifications.functions';
 import type { NotificationCategory, NotificationDto, NotificationPage } from './notification-model';
 
+// Bounds the cursor walk of a background refresh when a burst outgrows the loaded window.
+const MAX_BURST_PAGES = 10;
 const notificationCategories = new Set(['community', 'matches', 'results', 'rankings', 'leagues']);
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -105,23 +107,57 @@ export function useNotifications(
         }
       });
       if (!isNotificationPage(response)) throw new Error('INVALID_NOTIFICATION_PAGE');
-      const page = response;
+      let page = response;
       if (token !== generation.current || !mounted.current || !isCurrentCategory(requestedCategory))
         return;
+      // A burst larger than one page leaves no overlap between the newest page and the rows already
+      // loaded, so the older retained rows would sit past a gap. Follow the cursors until the
+      // authoritative prefix reaches a loaded row; if it never does, pagination restarts from it.
+      const loadedIds = new Set(rows.map((row) => row.id));
+      const overlaps = (items: NotificationDto[]) => items.some((item) => loadedIds.has(item.id));
+      let connected = !silent || append || loadedIds.size === 0 || overlaps(page.items);
+      for (
+        let hops = 0;
+        !connected && page.nextCursor !== null && hops < MAX_BURST_PAGES;
+        hops += 1
+      ) {
+        const nextResponse: unknown = await listMyNotifications({
+          data: { category: requestedCategory, cursor: page.nextCursor, limit: 20 }
+        });
+        if (!isNotificationPage(nextResponse)) throw new Error('INVALID_NOTIFICATION_PAGE');
+        if (
+          token !== generation.current ||
+          !mounted.current ||
+          !isCurrentCategory(requestedCategory)
+        )
+          return;
+        const seen = new Set(page.items.map((item) => item.id));
+        page = {
+          ...page,
+          items: [...page.items, ...nextResponse.items.filter((item) => !seen.has(item.id))],
+          nextCursor: nextResponse.nextCursor
+        };
+        connected = overlaps(nextResponse.items);
+      }
+      // The page is the authoritative newest prefix (ordered by sequence, created_at, id), so any
+      // loaded row it does not contain sits past its boundary. Ordering by created_at alone would
+      // drop rows that share the boundary timestamp.
       const olderRows = (current: NotificationDto[]) => {
-        const lastCreated = page.items.at(-1)?.created_at;
-        if (page.nextCursor === null || lastCreated === undefined) return [];
+        if (page.nextCursor === null) return [];
         const ids = new Set(page.items.map((item) => item.id));
-        return current.filter((row) => !ids.has(row.id) && row.created_at < lastCreated);
+        return current.filter((row) => !ids.has(row.id));
       };
-      const keepsOlderRows = silent && olderRows(rows).length > 0;
+      const keepsOlderRows =
+        silent && (connected || page.nextCursor === null) && olderRows(rows).length > 0;
       setRows((current) => {
         if (append)
           return [
             ...current,
             ...page.items.filter((item) => !current.some((row) => row.id === item.id))
           ];
-        return silent ? [...page.items, ...olderRows(current)] : page.items;
+        return silent && (connected || page.nextCursor === null)
+          ? [...page.items, ...olderRows(current)]
+          : page.items;
       });
       setUnreadCount(page.unreadCount);
       if (!keepsOlderRows) setCursor(page.nextCursor);

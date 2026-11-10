@@ -2,12 +2,28 @@ import * as stylex from '@stylexjs/stylex';
 import { Link } from '@tanstack/react-router';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { rootStyles } from '../../root.styles';
 import { formatDisplayLevel } from '../player/rating-config';
 import { NotificationBadge } from '../notifications/NotificationBadge';
 import { CommunitySwitcher } from './CommunitySwitcher';
 import type { HomeData } from './home-contracts';
 import { ActionsSection, ActivitySection, NextMatchSection, RankingSection } from './HomeSections';
 import { homeStyles as s } from './home.styles';
+
+/**
+ * The header date is the server instant's UTC calendar day, and says so. Home has no user or
+ * community timezone, so UTC is the one zone identical on server render and hydration; naming it
+ * keeps the label honest near midnight instead of passing UTC off as the viewer's local day.
+ */
+const HOME_DATE_ZONE = 'UTC';
+
+function formatHomeDate(instant: string, locale: string): string {
+  const day = new Intl.DateTimeFormat(locale, {
+    dateStyle: 'full',
+    timeZone: HOME_DATE_ZONE
+  }).format(new Date(instant));
+  return `${day} · ${HOME_DATE_ZONE}`;
+}
 
 /** Switch in flight: community sections stay reset until a response with a newer `asOf` lands. */
 type PendingSwitch = { target: string; since: string };
@@ -38,17 +54,14 @@ export function HomeDashboard({
 
   return (
     <div id="home-top" {...stylex.props(s.root)}>
-      <div {...stylex.props(s.headerRow)}>
+      <div {...stylex.props(s.headerRow, rootStyles.pageHeader)}>
         <div {...stylex.props(s.titles)}>
           <h1 {...stylex.props(s.title)}>
             {displayName ? t('home.greeting', { name: displayName }) : t('home.title')}
           </h1>
           {home && (
             <time dateTime={home.asOf} {...stylex.props(s.subtitle)}>
-              {new Intl.DateTimeFormat(i18n.language, {
-                dateStyle: 'full',
-                timeZone: 'UTC'
-              }).format(new Date(home.asOf))}
+              {formatHomeDate(home.asOf, i18n.language)}
             </time>
           )}
           {selectedName && <p {...stylex.props(s.subtitle)}>{selectedName}</p>}

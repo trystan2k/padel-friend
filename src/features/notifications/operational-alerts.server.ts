@@ -1,5 +1,4 @@
 import { getAdminClient, type AdminClient } from '../../lib/supabase/admin.server';
-import type { Json } from '../../lib/supabase/database.types';
 import { emitDiagnostic, safeErrorCode, type DiagnosticEvent } from '../../lib/diagnostics.server';
 
 // Operational alerts for failed rating/replay/Push work. The durable failure records are the
@@ -25,7 +24,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
-function decodeSignals(value: Json | null): Signal[] {
+function decodeSignals(value: unknown): Signal[] {
   if (!Array.isArray(value)) throw new Error('ALERT_SIGNALS_INVALID');
   return value.map((item) => {
     if (
@@ -111,15 +110,21 @@ function failureEvent(signal: Signal | undefined): DiagnosticEvent {
   return 'scheduled.sweep';
 }
 
+// Reconciliation applies a signal snapshot to durable alert state, so a snapshot read earlier must
+// never land after a newer one (it could resolve or reopen a failure the newer read already settled).
+// Workers isolates cannot coordinate in memory: the database reads the signals and reconciles them
+// in one transaction behind an advisory lock. Delivery stays outside it, fenced by its own leases.
+async function readAndReconcile(client: AdminClient) {
+  const result = await client.rpc('reconcile_current_operational_alerts');
+  if (result.error || !isRecord(result.data)) throw new Error('ALERT_SIGNALS_UNAVAILABLE');
+  return { signals: decodeSignals(result.data.signals), reconciled: result.data };
+}
+
 export async function sweepOperationalAlerts(client: AdminClient, send: AlertSend | null) {
-  const signalsResult = await client.rpc('operational_failure_signals');
-  if (signalsResult.error) throw new Error('ALERT_SIGNALS_UNAVAILABLE');
-  const signals = decodeSignals(signalsResult.data);
-  const reconciled = await client.rpc('reconcile_operational_alerts', { p_signals: signals });
-  if (reconciled.error || !isRecord(reconciled.data)) throw new Error('ALERT_SIGNALS_UNAVAILABLE');
+  const { signals, reconciled } = await readAndReconcile(client);
   const byKey = new Map(signals.map((signal) => [signal.key, signal]));
-  const open = decodePending(reconciled.data.open);
-  const resolved = decodePending(reconciled.data.resolved);
+  const open = decodePending(reconciled.open);
+  const resolved = decodePending(reconciled.resolved);
   const counters = { sent: 0, failed: 0, pending: open.length + resolved.length };
   // Durable failure diagnostics must not depend on transport configuration or receipt.
   for (const message of open) {

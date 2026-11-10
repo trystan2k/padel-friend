@@ -9,6 +9,7 @@ import { MatchInviteePicker } from './MatchInviteePicker';
 import { MatchPhotoUpload } from './MatchPhotoUpload';
 import { MatchReview } from './MatchReview';
 import { createMatchStyles as s } from './create-match.styles';
+import { isOffline, isTransportFailure } from '../../lib/connectivity';
 import { localMatchInstant } from './match-time';
 import type {
   MatchCreationOptions,
@@ -463,6 +464,10 @@ export function CreateMatchPage() {
     if (!photo || photoBusy) return;
     if (!communityId || !value.date || !value.startTime || !value.venueName || !value.mapsUrl)
       return;
+    if (isOffline()) {
+      setError('offline');
+      return;
+    }
     if (!frozen.current) {
       const id = eventId || crypto.randomUUID();
       const input = Object.freeze({
@@ -534,7 +539,7 @@ export function CreateMatchPage() {
         MATCH_INVITEE_UNAVAILABLE: 'inviteeUnavailable',
         MATCH_PHOTO_UNAVAILABLE: 'photoUnauthorized'
       };
-      setError(mapped[code] ?? 'publishFailed');
+      setError(isTransportFailure(cause) ? 'unconfirmed' : (mapped[code] ?? 'publishFailed'));
     } finally {
       publishLock.current = false;
       setBusy(false);

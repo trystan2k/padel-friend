@@ -1,4 +1,5 @@
 /** @vitest-environment jsdom */
+import { readFileSync } from 'node:fs';
 import { cleanup, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { I18nextProvider } from 'react-i18next';
@@ -162,7 +163,7 @@ describe('Home dashboard', () => {
     view(home());
     expect(screen.getByRole('heading', { level: 1, name: 'Hello, Thiago' })).toBeTruthy();
     expect(document.querySelector('time')?.getAttribute('datetime')).toBe(home().asOf);
-    expect(document.querySelector('time')?.textContent).toBe('Saturday, June 1, 2030');
+    expect(document.querySelector('time')?.textContent).toBe('Saturday, June 1, 2030 · UTC');
     for (const name of ['Needs your attention', 'Next match', 'Ranking', 'Recent activity'])
       expect(screen.getByRole('region', { name })).toBeTruthy();
     expect(screen.getByTestId('badge').textContent).toBe('3');
@@ -171,6 +172,16 @@ describe('Home dashboard', () => {
     // 01:30Z on 2 June is still the evening of 1 June in the match's own timezone.
     expect(screen.getAllByText(/Jun 1, 2030/).length).toBeGreaterThan(0);
     expect(screen.getByText('2 results awaiting review at Centre Court')).toBeTruthy();
+  });
+
+  it.each([
+    ['2030-06-01T23:30:00.000Z', 'en' as const, 'Saturday, June 1, 2030 · UTC'],
+    ['2030-06-02T00:30:00.000Z', 'en' as const, 'Sunday, June 2, 2030 · UTC'],
+    ['2030-06-01T23:30:00.000Z', 'pt-BR' as const, 'sábado, 1 de junho de 2030 · UTC'],
+    ['2030-06-02T00:30:00.000Z', 'es' as const, 'domingo, 2 de junio de 2030 · UTC']
+  ])('labels the header date as the UTC day: %s in %s', (asOf, locale, expected) => {
+    view(home({ asOf }), {}, locale);
+    expect(document.querySelector('time')?.textContent).toBe(expected);
   });
 
   it('renders committed level and reliability as text, never fabricated movement', () => {
@@ -277,6 +288,15 @@ describe('Home dashboard', () => {
     expect(document.activeElement).toBe(screen.getByRole('combobox'));
   });
 
+  it.each([
+    ['en' as const, 'Open Centre Court'],
+    ['pt-BR' as const, 'Abrir Centre Court'],
+    ['es' as const, 'Abrir Centre Court']
+  ])('names each action link through a translated interpolated label in %s', (locale, name) => {
+    view(home(), {}, locale);
+    expect(screen.getByRole('link', { name }).getAttribute('href')).toBe(`/matches/${EVENT}`);
+  });
+
   it('renders translated, locale-formatted copy', () => {
     view(home(), {}, 'pt-BR');
     expect(screen.getByRole('heading', { level: 1, name: 'Olá, Thiago' })).toBeTruthy();
@@ -284,6 +304,28 @@ describe('Home dashboard', () => {
     expect(screen.getByRole('region', { name: 'Próxima partida' })).toBeTruthy();
     expect(screen.getByText('2 resultados aguardando revisão em Centre Court')).toBeTruthy();
     expect(screen.getByText(/2º de 10 jogadores no ranking/)).toBeTruthy();
+  });
+});
+
+describe('Home layout contract', () => {
+  const styles = readFileSync('src/features/home/home.styles.ts', 'utf8');
+  const block = (name: string) =>
+    styles.slice(styles.indexOf(`  ${name}: {`)).split('\n  },')[0] ?? '';
+
+  it('keeps the bottom navigation viewport-fixed instead of sticky inside a short wrapper', () => {
+    const navigation = block('navigation');
+    expect(navigation).toContain("position: 'fixed'");
+    expect(navigation).not.toContain('sticky');
+    expect(block('navClearance')).toContain('height:');
+    const route = readFileSync('src/routes/_protected.dashboard.tsx', 'utf8');
+    expect(route).toContain('{...stylex.props(homeStyles.navClearance)}');
+    expect(route).not.toMatch(/<div[^>/]*>\s*<HomeNavigation \/>/);
+  });
+
+  it('guarantees a token-backed minimum width as well as height for text links', () => {
+    const link = block('link');
+    expect(link).toContain('minHeight: target');
+    expect(link).toContain('minWidth: target');
   });
 });
 

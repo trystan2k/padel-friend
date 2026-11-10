@@ -136,21 +136,29 @@ function action(row: ActionRow, kind: HomeAction['kind'], count: number | null):
   };
 }
 
+/** Past events where the caller may have a result to review; the reader confirms eligibility. */
+export function isResultReviewCandidate(row: ActionRow) {
+  const participant = row.caller_badge === 'playing' || row.caller_badge === 'creator';
+  return row.status === 'open' && participant && row.result_summary.pending_group_count > 0;
+}
+
 /**
  * Actionable items from authoritative statuses only. Upcoming rows yield reconfirmation, Reserve
- * standby and organizer requests; past rows yield result review. Ordered by urgency kind, then
+ * standby and organizer requests; past rows yield result review only for groups the caller may
+ * approve or reject (`reviewCounts`). Ordered by urgency kind, then
  * instant and id so the list is stable.
  */
 export function deriveActions(
   upcoming: ActionRow[],
   past: ActionRow[],
-  requestCounts: ReadonlyMap<string, number>
+  requestCounts: ReadonlyMap<string, number>,
+  reviewCounts: ReadonlyMap<string, number>
 ): HomeAction[] {
   const items: HomeAction[] = [];
   for (const row of past) {
-    const participant = row.caller_badge === 'playing' || row.caller_badge === 'creator';
-    if (row.status === 'open' && participant && row.result_summary.pending_group_count > 0)
-      items.push(action(row, 'result_review', row.result_summary.pending_group_count));
+    const reviewable = reviewCounts.get(row.event_id) ?? 0;
+    if (isResultReviewCandidate(row) && reviewable > 0)
+      items.push(action(row, 'result_review', reviewable));
   }
   for (const row of upcoming) {
     if (row.status !== 'open') continue;

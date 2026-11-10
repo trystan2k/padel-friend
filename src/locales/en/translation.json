@@ -233,6 +233,8 @@
     "errorTitle": "Couldn't load this screen",
     "historyEmpty": "No competitive history yet. Your confirmed games will appear here.",
     "saveFailed": "Couldn't save your changes. Try again.",
+    "saveOffline": "You're offline. Nothing was saved. Reconnect and try again.",
+    "saveUnconfirmed": "We couldn't confirm your changes were saved. Check your profile before trying again.",
     "signOutFailed": "Couldn't sign you out. Please try again.",
     "loading": "Loading player profile…"
   },
@@ -412,7 +414,9 @@
       "sent": "Message sent",
       "empty": "Enter a message",
       "notPending": "This request is no longer pending",
-      "failed": "Could not send message"
+      "failed": "Could not send message",
+      "offline": "You are offline. Nothing was sent. Reconnect and try again.",
+      "unconfirmed": "We couldn't confirm the message was sent. Retrying is safe: it won't send a duplicate."
     }
   },
   "communityInbox": {
@@ -441,10 +445,14 @@
     "copied": "Copied",
     "shareHelp": "Link delivery unsupported. Share this one-time token securely.",
     "error": "Could not complete invitation action.",
+    "offline": "You are offline. No invitation was issued. Reconnect and try again.",
+    "unconfirmed": "We couldn't confirm the invitation was issued. Check the invitations list before trying again.",
     "discoverableLabel": "Allow private-community Admins to find my display name",
     "discoverableHelp": "Any Admin of a private community can find your opted-in display name. No emails are exposed.",
     "discoverabilitySaved": "Discoverability preference saved.",
-    "discoverabilityError": "Could not save discoverability preference."
+    "discoverabilityError": "Could not save discoverability preference.",
+    "discoverabilityOffline": "You are offline. Nothing was saved. Reconnect and try again.",
+    "discoverabilityUnconfirmed": "We couldn't confirm the preference was saved. Reload before trying again."
   },
   "home": {
     "title": "Home",
@@ -479,6 +487,7 @@
       "empty": "Nothing needs your attention.",
       "partial": "Some items could not be checked, so this list may be incomplete.",
       "open": "Open",
+      "openVenue": "Open {{venue}}",
       "resultReview_one": "{{count}} result awaiting review at {{venue}}",
       "resultReview_other": "{{count}} results awaiting review at {{venue}}",
       "reconfirmation": "Reconfirm your spot at {{venue}}",
@@ -1683,6 +1692,8 @@
       "inviteeUnavailable": "One or more invitees are unavailable.",
       "conflict": "This match conflicts with an existing publication.",
       "publishFailed": "Could not publish the match.",
+      "offline": "You are offline. Nothing was published. Reconnect and try again.",
+      "unconfirmed": "We couldn't confirm the match was published. Retrying is safe: it won't create a duplicate.",
       "optionsUnavailable": "Could not load match creation options. Try again."
     }
   },

@@ -4701,6 +4701,7 @@ export type Database = {
         Returns: Json
       }
       advance_match_registration_revision_locked: { Args: { p_event_id: string }; Returns: number }
+      apply_operational_alert_signals: { Args: { p_signals: Json }; Returns: Json }
       assert_actor_not_provisional: { Args: Record<PropertyKey, never>; Returns: undefined }
       assert_match_event_active_locked: { Args: { p_event_id: string }; Returns: undefined }
       assert_match_league_binding: {
@@ -5861,6 +5862,7 @@ export type Database = {
         Returns: Json
       }
       project_confirmed_rating_group: { Args: { p_proposal_id: string }; Returns: undefined }
+      project_confirmed_rating_group_core: { Args: { p_proposal_id: string }; Returns: undefined }
       project_league_confirmation: { Args: { p_confirmation_id: string }; Returns: boolean }
       protect_match_event_results: { Args: { p_event_id: string }; Returns: undefined }
       provision_provisional_player_locked: {
@@ -6177,6 +6179,7 @@ export type Database = {
       read_operational_job_events: { Args: Record<PropertyKey, never>; Returns: Json }
       rebuild_league_counters: { Args: { p_league_id: string }; Returns: Json }
       rebuild_statistics: { Args: { p_community_id?: string }; Returns: Json }
+      reconcile_current_operational_alerts: { Args: Record<PropertyKey, never>; Returns: Json }
       reconcile_match_registration_participation:
         | { Args: { p_accepted_registration_id?: string; p_match_event_id: string }; Returns: Json }
         | {
@@ -6210,6 +6213,10 @@ export type Database = {
           p_request_id: string
         }
         Returns: Json
+      }
+      record_manual_rating_failure: {
+        Args: { p_proposal_id: string; p_request_id: string }
+        Returns: undefined
       }
       record_match_result_alert_attempt: {
         Args: {

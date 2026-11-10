@@ -63,7 +63,9 @@ export const homeStyles = stylex.create({
   link: {
     display: 'inline-flex',
     alignItems: 'center',
+    justifyContent: 'center',
     minHeight: target,
+    minWidth: target,
     color: 'var(--color-green)',
     fontWeight: 'var(--font-weight-semibold)',
     ':focus-visible': focusRing
@@ -203,8 +205,12 @@ export const homeStyles = stylex.create({
     fontWeight: 'var(--font-weight-semibold)'
   },
   navigation: {
-    position: 'sticky',
-    insetBlockEnd: 0,
+    position: 'fixed',
+    insetBlockEnd: 'var(--space-8)',
+    insetInline: 'var(--space-18)',
+    marginInline: 'auto',
+    boxSizing: 'border-box',
+    maxWidth: 'calc(var(--space-40) * 12 - var(--space-18) * 2)',
     display: 'flex',
     alignItems: 'center',
     minHeight: 'calc(var(--space-40) + var(--space-16))',
@@ -228,6 +234,9 @@ export const homeStyles = stylex.create({
     textDecoration: 'none',
     borderRadius: 'var(--radius-12)',
     ':focus-visible': focusRing
+  },
+  navClearance: {
+    height: 'calc(var(--space-40) + var(--space-16) + var(--space-8) + var(--space-18))'
   },
   navActive: { backgroundColor: 'var(--color-green-soft)', color: 'var(--color-green)' },
   navIcon: { width: 'var(--space-20)', height: 'var(--space-20)' }

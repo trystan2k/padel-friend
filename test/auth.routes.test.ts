@@ -40,7 +40,7 @@ import { routeTree } from '../src/routeTree.gen';
 
 const ANON = { authenticated: false, complete: false, claim: null };
 const INCOMPLETE = { authenticated: true, complete: false, claim: null };
-const COMPLETE = { authenticated: true, complete: true, claim: null };
+const COMPLETE = { authenticated: true, userId: 'user-a', complete: true, claim: null };
 const CLAIM_READY = {
   authenticated: true,
   complete: false,
@@ -366,9 +366,11 @@ describe('/_protected guard (beforeLoad)', () => {
     ).toEqual({ next: deepLink });
   });
 
-  it('lets a complete player through to the protected content', async () => {
+  it('lets a complete player through and hands the SSR identity to the layout guard', async () => {
     onboardedAs(COMPLETE);
-    await expect(protectedGuard({ location: { href: '/dashboard' } })).resolves.toBeUndefined();
+    await expect(protectedGuard({ location: { href: '/dashboard' } })).resolves.toEqual({
+      authUserId: 'user-a'
+    });
   });
 });
 

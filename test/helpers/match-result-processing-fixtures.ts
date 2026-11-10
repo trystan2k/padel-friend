@@ -187,6 +187,33 @@ export async function installResultConfirmationFailure(
   };
 }
 
+/** Install a failure at the rating-projection stage, isolated to one owned confirmation fixture. */
+export async function installRatingProjectionFailure(
+  proposalId: string
+): Promise<() => Promise<void>> {
+  if (!uuidPattern.test(proposalId)) throw new Error('Invalid result proposal fixture ID');
+  const suffix = crypto.randomUUID().replaceAll('-', '');
+  const functionName = `paf_rating_failure_${suffix}`;
+  const triggerName = `paf_rating_failure_trigger_${suffix}`;
+  await fixtureSql(`
+    create function public.${functionName}()
+    returns trigger language plpgsql set search_path = '' as $$
+    begin
+      raise exception using errcode = 'P0001', message = 'FIXTURE_RATING_PROJECTION_FAILURE';
+    end $$;
+    create trigger ${triggerName}
+      before insert on public.player_rating_events
+      for each row when (new.game_group_id = '${proposalId}'::uuid)
+      execute function public.${functionName}();
+  `);
+  return async () => {
+    await fixtureSql(`
+      drop trigger if exists ${triggerName} on public.player_rating_events;
+      drop function if exists public.${functionName}();
+    `);
+  };
+}
+
 /** Pause the confirmation audit for one fixture to expose lock races. */
 export async function installResultConfirmationAuditPause(
   proposalId: string

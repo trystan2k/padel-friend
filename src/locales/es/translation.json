@@ -233,6 +233,8 @@
     "errorTitle": "No se pudo cargar esta pantalla",
     "historyEmpty": "Aún no hay historial competitivo. Tus juegos confirmados aparecerán aquí.",
     "saveFailed": "No se pudieron guardar los cambios. Inténtalo de nuevo.",
+    "saveOffline": "Sin conexión. No se guardó nada. Vuelve a conectarte e inténtalo de nuevo.",
+    "saveUnconfirmed": "No pudimos confirmar que se guardaran los cambios. Revisa tu perfil antes de volver a intentarlo.",
     "signOutFailed": "No se pudo cerrar la sesión. Inténtalo de nuevo.",
     "loading": "Cargando perfil del jugador…"
   },
@@ -412,7 +414,9 @@
       "sent": "Mensaje enviado",
       "empty": "Escribe un mensaje",
       "notPending": "Esta solicitud ya no está pendiente",
-      "failed": "No se pudo enviar el mensaje"
+      "failed": "No se pudo enviar el mensaje",
+      "offline": "Sin conexión. No se envió nada. Vuelve a conectarte e inténtalo de nuevo.",
+      "unconfirmed": "No pudimos confirmar que se enviara el mensaje. Reintentar es seguro: no se enviará duplicado."
     }
   },
   "communityInbox": {
@@ -441,10 +445,14 @@
     "copied": "Copiado",
     "shareHelp": "El envío por enlace no está disponible. Comparte este token de un solo uso de forma segura.",
     "error": "No se pudo completar la invitación.",
+    "offline": "Sin conexión. No se emitió ninguna invitación. Vuelve a conectarte e inténtalo de nuevo.",
+    "unconfirmed": "No pudimos confirmar que se emitiera la invitación. Revisa la lista de invitaciones antes de volver a intentarlo.",
     "discoverableLabel": "Permitir que administradores de comunidades privadas encuentren mi nombre",
     "discoverableHelp": "Cualquier administrador de una comunidad privada puede encontrar tu nombre consentido. No se exponen correos.",
     "discoverabilitySaved": "Preferencia de descubrimiento guardada.",
-    "discoverabilityError": "No se pudo guardar la preferencia."
+    "discoverabilityError": "No se pudo guardar la preferencia.",
+    "discoverabilityOffline": "Sin conexión. No se guardó nada. Vuelve a conectarte e inténtalo de nuevo.",
+    "discoverabilityUnconfirmed": "No pudimos confirmar que se guardara la preferencia. Recarga antes de volver a intentarlo."
   },
   "home": {
     "title": "Inicio",
@@ -479,6 +487,7 @@
       "empty": "Nada necesita tu atención.",
       "partial": "Algunos elementos no se pudieron comprobar, así que esta lista puede estar incompleta.",
       "open": "Abrir",
+      "openVenue": "Abrir {{venue}}",
       "resultReview_one": "{{count}} resultado pendiente de revisión en {{venue}}",
       "resultReview_other": "{{count}} resultados pendientes de revisión en {{venue}}",
       "reconfirmation": "Reconfirma tu plaza en {{venue}}",
@@ -1683,6 +1692,8 @@
       "inviteeUnavailable": "Uno o más invitados no están disponibles.",
       "conflict": "Este partido entra en conflicto con una publicación existente.",
       "publishFailed": "No se pudo publicar el partido.",
+      "offline": "Sin conexión. No se publicó nada. Vuelve a conectarte e inténtalo de nuevo.",
+      "unconfirmed": "No pudimos confirmar que se publicara el partido. Reintentar es seguro: no se creará un duplicado.",
       "optionsUnavailable": "No se pudieron cargar las opciones de creación. Inténtalo de nuevo."
     }
   },
