@@ -2,7 +2,7 @@
   "status": "chromium-certified-with-scoped-route-adaptations",
   "sourceDesign": {
     "path": "docs/design/padel-friend.pen",
-    "sha256": "fe8ed8269e5b81d880ddcdd68f3a7910343d0e0d0817820eef04abed4cfb41ca",
+    "sha256": "5dc3813d82a5c64934deee32b30261ed9979129fd3f6b6e79dec22a70ce6c351",
     "exportCommand": "Pencil MCP: Export([\"ik5JC\",\"MYsDp\",\"wHaAb\"], \"png\", \"<repo>/e2e/references/paf-11\", {scale:2})",
     "provenanceNote": "The three approved PAF-11 core references (League creation ik5JC, League creation validation variants MYsDp, Create match Ranked selector wHaAb) were exported uncropped from the source Pencil document through Pencil MCP at 2x. The source digest above is the digest of the CURRENT docs/design/padel-friend.pen bytes at export time and is re-checked against the file by test/leagues.visual-references.test.ts, so a later design-source change fails here loudly instead of inheriting a stale digest from an older manifest. Chromium comparisons use fresh-preview captures at the exact half-scale reference dimensions with production actor flows; route adaptations are recorded per frame. Supplemental states without an approved frame (multiple eligible Leagues without selection, no eligible League, outside-period edit warning, provisional auto-carry explanation, invalid Ranked-result resolution) reuse the existing consent/error compositions and are gated by structural probes only; their Pencil frames are requested separately and no budget exists for them."
   },

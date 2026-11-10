@@ -2,7 +2,7 @@
   "status": "chromium-certified-with-scoped-route-adaptations",
   "sourceDesign": {
     "path": "docs/design/padel-friend.pen",
-    "sha256": "fe8ed8269e5b81d880ddcdd68f3a7910343d0e0d0817820eef04abed4cfb41ca",
+    "sha256": "5dc3813d82a5c64934deee32b30261ed9979129fd3f6b6e79dec22a70ce6c351",
     "exportCommand": "Pencil MCP execute on a byte-identical scratch copy (/tmp): Export([\"vARtQ\"], \"png\", \"<repo>/e2e/references/paf-10\", {scale:2})",
     "provenanceNote": "T10 (PAF-10) reference for the Player profile frame vARtQ, exported uncropped at 2x through Pencil MCP from a scratch copy whose SHA-256 equals the tracked source (and the paf-6/7/8 manifests). The tracked .pen was not modified. The frame also carries the \"Rating journey\" section (heading, month-dot chart card, recent-matches card), which is compared as two further separately aligned regions of the same export. The frame is a mockup with stats tiles, a month-based dot chart and a bottom navigation that the production dashboard does not render; the production journey uses a game-ordered chart with text equivalent, a data table and a drill-down explanation dialog, which have no dedicated frame."
   },

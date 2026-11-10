@@ -2,7 +2,7 @@
   "status": "chromium-certified-with-declared-route-adaptations",
   "sourceDesign": {
     "path": "docs/design/padel-friend.pen",
-    "sha256": "fe8ed8269e5b81d880ddcdd68f3a7910343d0e0d0817820eef04abed4cfb41ca",
+    "sha256": "5dc3813d82a5c64934deee32b30261ed9979129fd3f6b6e79dec22a70ce6c351",
     "exportCommand": "Pencil MCP: Export([\"adujr\",\"s5TRC\",\"CWJkF\",\"xbIxj\"], \"png\", \"<repo>/e2e/references/paf-14\", {scale:2}); Export([\"SluH3\",\"cuVwp\",\"Jjrtb\"], \"png\", \"<repo>/e2e/references/paf-14\", {scale:2})",
     "provenanceNote": "Seven approved references exported uncropped from the source Pencil document at 2x. adujr, s5TRC and xbIxj are the amendment request, corrected-result review and League correction history frames; CWJkF is the existing dispute frame re-used for dispute resolution (byte-identical to the PAF-8 export). SluH3 (Platform Admin repair diagnostics, desktop dark 1280x1500), cuVwp (mobile light 390x2250) and Jjrtb (mobile dark 390x2250) were added to the design by the product owner after the first PAF-14 certification and replace the earlier \"no diagnostics frame\" gap. The source digest was re-pinned to the design bytes that contain the three new frames. Before re-pinning, adujr, s5TRC, CWJkF and xbIxj were re-exported through Pencil at scale 2 and matched their approved PNG SHA-256 byte-for-byte, and the four frames kept their names and 390x844 sizes: the design change is additions only. The design has no desktop-light diagnostics frame (only desktop dark plus mobile light and dark): the implemented desktop-light rendering carries structural, accessibility and locale gates only, and no raster comparison (design gap observation, not a defect)."
   },
