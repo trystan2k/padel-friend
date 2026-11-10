@@ -131,7 +131,7 @@ export function createDocker({ container = DEFAULT_CONTAINER, run = spawnSync } 
  * staged into the container by `cat` (which drains stdin) and listed from the file instead.
  */
 export function listDumpToc(docker, dump, dumpPath = '/tmp/release-rehearsal.dump') {
-  docker.exec(['sh', '-c', `cat > ${dumpPath}`], { input: dump });
+  docker.exec(['sh', '-c', 'cat > "$1"', 'sh', dumpPath], { input: dump });
   return String(docker.exec(['pg_restore', '-l', dumpPath]));
 }
 

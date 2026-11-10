@@ -241,7 +241,7 @@ describe('restore rehearsal flow', () => {
     const report = runRestoreRehearsal({ docker, base, confirm: base });
     expect(dump).toHaveBeenCalledTimes(1);
     expect(calls).toEqual(['dump', 'create', 'restore', 'drop', 'create', 'restore', 'drop']);
-    const tocWrites = exec.mock.calls.filter(([args]) => args[2]?.endsWith('.toc'));
+    const tocWrites = exec.mock.calls.filter(([args]) => args[4]?.endsWith('.toc'));
     expect(tocWrites).toHaveLength(1);
     expect(restore).toHaveBeenCalledTimes(2);
     expect(restore.mock.calls.map(([database]) => database)).toEqual([`${base}_1`, `${base}_2`]);
@@ -254,7 +254,7 @@ describe('restore rehearsal flow', () => {
   it('writes the TOC without platform DEFAULT ACL entries', () => {
     const { docker, exec } = rehearsalDouble();
     runRestoreRehearsal({ docker, base, confirm: base });
-    const write = exec.mock.calls.find(([args]) => args[2]?.endsWith('.toc'));
+    const write = exec.mock.calls.find(([args]) => args[4]?.endsWith('.toc'));
     expect(write?.[1]).toEqual({ input: 'keep\nkeep2' });
   });
 
@@ -280,9 +280,7 @@ describe('restore rehearsal flow', () => {
   it('removes the staged dump and TOC after a successful run', () => {
     const { docker, exec } = rehearsalDouble();
     runRestoreRehearsal({ docker, base, confirm: base });
-    const staged = exec.mock.calls
-      .filter(([args]) => args[0] === 'sh')
-      .map(([args]) => args[2]?.replace('cat > ', ''));
+    const staged = exec.mock.calls.filter(([args]) => args[0] === 'sh').map(([args]) => args[4]);
     expect(new Set(removedPaths(exec))).toEqual(new Set(staged));
     expect(exec.mock.calls.at(-1)?.[0][0]).toBe('rm');
   });

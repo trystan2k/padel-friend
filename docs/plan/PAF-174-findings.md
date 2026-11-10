@@ -15,6 +15,13 @@ Single source of truth for proposal decisions and review findings. Status: open 
 | O1 | minor | observed | vitest list vs historical counts | `vitest list --json` enumerates only 286 cases / 54 files (serial) vs historical 1,129 cases / 121 files | observed | orchestrator | 1 | U1 baseline finding; list collection appears incomplete; case-count baseline for U8 comparisons must come from actual run JSON output, not `vitest list`. No action this delivery beyond measurement-method note. |
 | O2 | minor | observed | local baseline conditions | U1 per-file timings ran against non-fresh-reset DB with second Supabase stack loaded on same Docker host | observed | orchestrator | 1 | statistics.performance 67s local vs ~180s CI (2.7×); release-integrity 14s vs 48s (3.4×). Single sample, variance unquantified. U8 comparable measurement must use fresh db:reset + record conditions. |
 
+## Copilot review findings (step 12 — PR #49, review posted 2026-11-10T15:54:47Z)
+
+| id | severity | scope | location | title | status | owner | iteration | disposition evidence |
+| -- | -------- | ----- | -------- | ----- | ------ | ----- | --------- | -------------------- |
+| C1 | major | related | scripts/release-backup-restore.mjs:181 | TOC written via sh -c with unquoted ${tocPath} | fixed | bug-fixer-specialist | 1 | Copilot high-severity finding on lines changed by R4. Fixed: `['sh','-c','cat > "$1"','sh',tocPath]` — positional arg + quoted inside shell; redirection/input/call conventions unchanged. Scan found no other unquoted path interpolation (rm -f and --use-list pass paths as argv, no shell parsing). Test assertions updated to new argv (args[4]); order/target/cleanup proofs retained; suites 32/32 green. Delta verified directly (mechanical quoting change, argv proven by assertions). Note: fixer ran the suite 3× (2 intermediate-failure runs incl. one wasted run before an edit applied) — recorded as process slip against single-run policy, final state green once on final code. |
+| C2 | major | related | scripts/release-rehearsal-lib.mjs:133–136 | dump staged via cat > ${dumpPath} unquoted | fixed | bug-fixer-specialist | 1 | Same pattern as C1. Fixed identically in `listDumpToc` staging call (`['sh','-c','cat > "$1"','sh',dumpPath]`, input: dump preserved); retry-test staging assertion updated; green in the same 32-test run. |
+
 ## Review findings (step 6 full review, ses_e3a4eda5 — code-review-specialist, baseline 0b51ea4)
 
 | id | severity | scope | location | title | status | owner | iteration | disposition evidence |

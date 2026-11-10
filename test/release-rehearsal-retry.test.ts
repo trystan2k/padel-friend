@@ -53,9 +53,11 @@ describe('listDumpToc', () => {
       args[0] === 'pg_restore' ? 'toc' : ''
     );
     expect(listDumpToc({ exec }, dump)).toBe('toc');
-    expect(exec).toHaveBeenNthCalledWith(1, ['sh', '-c', 'cat > /tmp/release-rehearsal.dump'], {
-      input: dump
-    });
+    expect(exec).toHaveBeenNthCalledWith(
+      1,
+      ['sh', '-c', 'cat > "$1"', 'sh', '/tmp/release-rehearsal.dump'],
+      { input: dump }
+    );
     expect(exec).toHaveBeenNthCalledWith(2, ['pg_restore', '-l', '/tmp/release-rehearsal.dump']);
   });
 });

@@ -178,7 +178,7 @@ export function runRestoreRehearsal({
       .split('\n')
       .filter((line) => !line.includes('DEFAULT ACL'))
       .join('\n');
-    docker.exec(['sh', '-c', `cat > ${tocPath}`], { input: toc });
+    docker.exec(['sh', '-c', 'cat > "$1"', 'sh', tocPath], { input: toc });
     // dumpMs: one-time cost of the shared dump plus its staged, filtered TOC. Not part of restoreMs.
     dumpMs = now() - dumpStarted;
     const dumpSha256 = sha256(dump);
