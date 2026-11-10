@@ -756,6 +756,13 @@ describe('League detail for a former participant', () => {
     render(wrap(<Detail data={makeFormerParticipantDetail({ status: 'active' })} />));
     expect(screen.getByRole('heading', { name: 'You played in this League' })).toBeTruthy();
     expect(screen.getByText(/read-only for you/)).toBeTruthy();
+    const notice = screen.getByTestId('former-participant-notice');
+    const icon = screen.getByTestId('former-participant-icon');
+    expect(notice.contains(icon)).toBe(true);
+    expect(icon.getAttribute('aria-hidden')).toBe('true');
+    expect(
+      notice.contains(screen.getByRole('heading', { name: 'You played in this League' }))
+    ).toBe(true);
     const back = screen.getByRole('link', { name: 'Back to match history' });
     expect(back.getAttribute('href')).toBe('/matches/past');
     expect(screen.queryByRole('link', { name: 'Back to Leagues' })).toBeNull();
@@ -782,6 +789,7 @@ describe('League detail for a former participant', () => {
   it('keeps the member experience unchanged for an ordinary non-manager member', () => {
     render(wrap(<Detail data={makeLeagueDetail({ status: 'active', can_manage: false })} />));
     expect(screen.queryByRole('heading', { name: 'You played in this League' })).toBeNull();
+    expect(screen.queryByTestId('former-participant-notice')).toBeNull();
     const back = screen.getByRole('link', { name: 'Back to Leagues' });
     expect(back.getAttribute('href')).toBe(`/community/${LEAGUE_COMMUNITY_ID}/leagues`);
     expect(screen.getByRole('link', { name: 'Community statistics' })).toBeTruthy();

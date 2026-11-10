@@ -89,6 +89,7 @@ export const historyStyles = stylex.create({
     display: 'inline-flex',
     alignItems: 'center',
     minHeight: TOUCH,
+    minWidth: TOUCH,
     color: 'var(--color-green)',
     fontWeight: 'var(--font-weight-semibold)',
     textDecoration: 'underline',

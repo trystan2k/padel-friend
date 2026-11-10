@@ -1,14 +1,20 @@
-import { createClient } from '@supabase/supabase-js';
+import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { Database } from '../src/lib/supabase/database.types';
 import { dotEnvPathFromImportMetaUrl, localSupabaseEnv } from './helpers/local-supabase-env';
 import { asRecord, fixtureSql, sqlRows } from './helpers/match-registration-sql';
-import { sqlText } from './helpers/provisional-player-fixtures';
+import {
+  insertFixtureEvent,
+  provisionProvisionalPlayer,
+  sqlText
+} from './helpers/provisional-player-fixtures';
 import {
   createRankedResultFixtures,
   playedAt,
+  setMembershipHistory,
   type RankedResultKit
 } from './helpers/ranked-result-fixtures';
+import { communityMemberGuard, withTriggersDisabled } from './helpers/trigger-state-sql';
 
 const environment = localSupabaseEnv({ filePath: dotEnvPathFromImportMetaUrl(import.meta.url) });
 const L = (id: string) => sqlText(id);
@@ -27,6 +33,7 @@ describe.skipIf(!environment.env)('League former-participant reads', { timeout: 
   let idleLeague: string; // nobody played
   let incompleteLeague: string; // only a confirmed Incomplete group (no earned counter row)
   let pendingLeague: string; // only a pending (unconfirmed) group
+  let rejectedLeague: string; // only a rejected group (player 4 played it, never confirmed)
 
   const id = (index: number) => kit.players[index]!.id;
   const who = (index: number) => kit.players[index]!;
@@ -105,6 +112,18 @@ describe.skipIf(!environment.env)('League former-participant reads', { timeout: 
     await confirmGroup(await kit.event(incompleteLeague), 2, { sets: incompleteSets });
     pendingLeague = await kit.league({ status: 'upcoming' });
     await confirmGroup(await kit.event(pendingLeague), 2, { approve: false });
+    rejectedLeague = await kit.league({ status: 'upcoming' });
+    const rejectedProposal = await confirmGroup(await kit.event(rejectedLeague), 2, {
+      approve: false
+    });
+    const rejection = await rpc(6, 'review_match_event_result', {
+      p_proposal_id: rejectedProposal,
+      p_expected_version: 1,
+      p_decision: 'reject',
+      p_reason_code: 'SCORE_INCORRECT',
+      p_request_id: crypto.randomUUID()
+    });
+    if (rejection.error) throw new Error(`Fixture step failed: ${rejection.error.message}`);
 
     for (const index of [3, 4, 5, 7]) await leave(index);
   });
@@ -327,13 +346,116 @@ describe.skipIf(!environment.env)('League former-participant reads', { timeout: 
       ).toEqual(before);
     });
 
-    it('keeps the private community closed: no members, venues, invitations or audit', async () => {
+    it('keeps the private community closed: members, requests, venues, invitations, audit and settings', async () => {
+      const applicant = await kit.actor();
+      const invitee = await kit.actor();
+      await fixtureSql(
+        `insert into public.player_profiles(user_id, display_name, preferred_side)
+           values (${L(applicant.id)}, 'Pending Applicant', 'EITHER');`
+      );
+      await setMembershipHistory(kit.communityId, applicant.id, [{ activatedAt: null }]);
+      const tokenHash = Array.from(crypto.getRandomValues(new Uint8Array(32)), (byte) =>
+        byte.toString(16).padStart(2, '0')
+      ).join('');
+      const invited = await who(0)
+        .client.from('community_invitations')
+        .insert({
+          community_id: kit.communityId,
+          invitee_user_id: invitee.id,
+          token_hash: tokenHash,
+          expires_at: new Date(Date.now() + 3_600_000).toISOString()
+        });
+      expect(invited.error).toBeNull();
       await fixtureSql(
         `insert into public.community_venues(community_id, name, created_by)
            values (${L(kit.communityId)}, 'Hidden court', ${L(id(0))});
          insert into public.community_audit_log(community_id, actor_user_id, entity, entity_id, action)
            values (${L(kit.communityId)}, ${L(id(0))}, 'communities', ${L(kit.communityId)}, 'UPDATE');`
       );
+      const outsider = await kit.actor();
+
+      // The production community readers, exactly as the admin server functions call them.
+      const readers = {
+        pendingRequests: (actor: { client: SupabaseClient<Database> }) =>
+          actor.client.rpc('search_community_members', {
+            p_community_id: kit.communityId,
+            p_query: '',
+            p_status: 'pending',
+            p_offset: 0,
+            p_limit: 50
+          }),
+        members: (actor: { client: SupabaseClient<Database> }) =>
+          actor.client.rpc('search_community_members', {
+            p_community_id: kit.communityId,
+            p_query: '',
+            p_status: 'active',
+            p_offset: 0,
+            p_limit: 50
+          }),
+        settings: (actor: { client: SupabaseClient<Database> }) =>
+          actor.client.rpc('get_community_settings', { p_community_id: kit.communityId }),
+        venues: (actor: { client: SupabaseClient<Database> }) =>
+          actor.client
+            .from('community_venues')
+            .select('id,name')
+            .eq('community_id', kit.communityId)
+            .is('archived_at', null),
+        invitations: (actor: { client: SupabaseClient<Database> }) =>
+          actor.client
+            .from('community_invitations')
+            .select('id,invitee_user_id')
+            .eq('community_id', kit.communityId),
+        audit: (actor: { client: SupabaseClient<Database> }) =>
+          actor.client
+            .from('community_audit_log')
+            .select('id,entity')
+            .eq('community_id', kit.communityId)
+      };
+
+      // Positive control: the retained Admin sees every protected record, so the denials below
+      // cannot be vacuous.
+      const adminPending = await readers.pendingRequests(who(0));
+      expect(adminPending.error).toBeNull();
+      expect((adminPending.data ?? []).map((row) => row.user_id)).toContain(applicant.id);
+      const adminMembers = await readers.members(who(0));
+      expect(adminMembers.error).toBeNull();
+      expect((adminMembers.data ?? []).map((row) => row.user_id)).toContain(id(MEMBER));
+      expect((await readers.settings(who(0))).error).toBeNull();
+      expect((await readers.venues(who(0))).data?.map((row) => row.name)).toContain('Hidden court');
+      expect((await readers.invitations(who(0))).data?.map((row) => row.invitee_user_id)).toContain(
+        invitee.id
+      );
+      expect((await readers.audit(who(0))).data?.map((row) => row.entity)).toContain('communities');
+      const membershipId = adminPending.data!.find(
+        (row) => row.user_id === applicant.id
+      )!.membership_id;
+      const adminMember = await who(0).client.rpc('get_community_member_by_id', {
+        p_community_id: kit.communityId,
+        p_membership_id: membershipId
+      });
+      expect(adminMember.error).toBeNull();
+      expect(adminMember.data).toHaveLength(1);
+
+      // The former participant is denied exactly like a never-member, on every reader.
+      for (const reader of [readers.pendingRequests, readers.members, readers.settings] as const) {
+        const former = await reader(who(FORMER));
+        expect(former.data).toBeNull();
+        expect(former.error).not.toBeNull();
+        expect(former.error).toEqual((await reader(outsider)).error);
+      }
+      const formerMember = await who(FORMER).client.rpc('get_community_member_by_id', {
+        p_community_id: kit.communityId,
+        p_membership_id: membershipId
+      });
+      expect(formerMember.error).not.toBeNull();
+      expect(formerMember.data ?? []).toEqual([]);
+      for (const reader of [readers.venues, readers.invitations, readers.audit] as const) {
+        const former = await reader(who(FORMER));
+        // Table grants or RLS: an error or no rows, never the protected records.
+        expect(former.data ?? []).toEqual([]);
+      }
+
+      // Raw tables: nothing foreign beyond the caller's own ended membership row.
       const client = who(FORMER).client;
       for (const table of [
         'communities',
@@ -343,7 +465,6 @@ describe.skipIf(!environment.env)('League former-participant reads', { timeout: 
         'community_audit_log'
       ] as const) {
         const rows = await client.from(table).select('*');
-        // Table grants or RLS: an error or no rows, except the caller's own ended membership row.
         const foreign = (rows.data ?? []).filter(
           (row) =>
             ('community_id' in row ? row.community_id : row.id) === kit.communityId &&
@@ -351,14 +472,135 @@ describe.skipIf(!environment.env)('League former-participant reads', { timeout: 
         );
         expect(foreign).toEqual([]);
       }
-      // Positive control: the retained Admin does see protected rows.
-      const venues = await who(0).client.from('community_venues').select('id');
-      expect(venues.data?.length).toBeGreaterThan(0);
-      const settings = await rpc(FORMER, 'get_community_settings', {
-        p_community_id: kit.communityId
+    });
+  });
+
+  describe('former privileged and restricted actors', () => {
+    const leagueRows = () =>
+      sqlRows(
+        `select id::text, version, name, status from public.leagues
+          where community_id = ${L(kit.communityId)} order by id`
+      );
+    const grantCounter = (leagueId: string, userId: string) =>
+      fixtureSql(
+        `insert into public.league_player_counters(league_id, community_id, user_id, matches, wins)
+           values (${L(leagueId)}, ${L(kit.communityId)}, ${L(userId)}, 1, 1);`
+      );
+    const dropCounters = (leagueId: string) =>
+      fixtureSql(`delete from public.league_player_counters where league_id = ${L(leagueId)};`);
+
+    it('ex-Admin and ex-owner keep reads of a played League only; commands, audit and list stay denied', async () => {
+      const exAdmin = await kit.member();
+      const ownLeague = await kit.league({ status: 'upcoming', ownerId: exAdmin.id });
+      await withTriggersDisabled(
+        [communityMemberGuard],
+        `update public.community_members set role = 'admin'
+          where community_id = ${L(kit.communityId)} and user_id = ${L(exAdmin.id)};`
+      );
+      // Positive control while the membership lasts: owner and Admin read the audit.
+      expect(
+        (await kit.rpc(exAdmin, 'get_league_standings_audit', { p_league_id: ownLeague })).error
+      ).toBeNull();
+      expect(
+        (
+          await kit.rpc(exAdmin, 'list_leagues', {
+            p_community_id: kit.communityId,
+            p_after_created_at: null,
+            p_after_id: null
+          })
+        ).error
+      ).toBeNull();
+      const left = await kit.rpc(exAdmin, 'leave_community', { p_community_id: kit.communityId });
+      expect(left.error).toBeNull();
+
+      await grantCounter(idleLeague, exAdmin.id);
+      try {
+        const before = await leagueRows();
+        // Reads of the League they played still work, strictly read-only.
+        const played = await kit.rpc(exAdmin, 'get_league', { p_league_id: idleLeague });
+        expect(played.error).toBeNull();
+        expect(asRecord(played.data)['access_mode']).toBe('former_participant');
+        expect(asRecord(asRecord(played.data)['league'])['can_manage']).toBe(false);
+        expect(
+          (await kit.rpc(exAdmin, 'get_league_counters', { p_league_id: idleLeague })).error
+        ).toBeNull();
+
+        // Their own League, which they never played: every reader stays denied.
+        for (const [name, args] of [
+          ['get_league', { p_league_id: ownLeague }],
+          ['get_league_standings', { p_league_id: ownLeague, p_standings_version: null }],
+          ['get_league_counters', { p_league_id: ownLeague }],
+          ['list_league_standings_versions', { p_league_id: ownLeague, p_before_version: null }]
+        ] as const)
+          expect((await kit.rpc(exAdmin, name, args)).error).toMatchObject(deniedLeague);
+
+        // Commands, audit and the list stay denied on both Leagues.
+        for (const leagueId of [ownLeague, idleLeague]) {
+          const calls = await Promise.all([
+            kit.rpc(exAdmin, 'update_league', {
+              p_league_id: leagueId,
+              p_expected_version: 1,
+              p_changes: { name: 'Hijacked' }
+            }),
+            kit.rpc(exAdmin, 'close_league', { p_league_id: leagueId, p_expected_version: 1 }),
+            kit.rpc(exAdmin, 'activate_league', { p_league_id: leagueId, p_expected_version: 1 }),
+            kit.rpc(exAdmin, 'get_league_standings_audit', { p_league_id: leagueId })
+          ]);
+          for (const call of calls) {
+            expect(call.data).toBeNull();
+            expect(call.error).toMatchObject(deniedLeague);
+          }
+        }
+        const list = await kit.rpc(exAdmin, 'list_leagues', {
+          p_community_id: kit.communityId,
+          p_after_created_at: null,
+          p_after_id: null
+        });
+        expect(list.data).toBeNull();
+        expect(list.error).toMatchObject({ message: 'LEAGUE_FORBIDDEN' });
+        expect(await leagueRows()).toEqual(before);
+      } finally {
+        await dropCounters(idleLeague);
+      }
+    });
+
+    it('a confirmation that was rejected, or a provisional actor, grants nothing', async () => {
+      // Player 4 played a group that was rejected (never confirmed): denied on all four readers.
+      for (const response of (await read(4, rejectedLeague)).all)
+        expect(response.error).toMatchObject(deniedLeague);
+
+      // A provisional actor stays restricted by the unchanged prologue, even with a played row.
+      const provisional = await kit.actor();
+      const sourceEventId = crypto.randomUUID();
+      await insertFixtureEvent({
+        id: sourceEventId,
+        communityId: kit.communityId,
+        creatorId: id(0),
+        visibility: 'community_open',
+        past: true
       });
-      expect(settings.data).toBeNull();
-      expect(settings.error).not.toBeNull();
+      await provisionProvisionalPlayer({
+        userId: provisional.id,
+        displayName: 'Provisional Former',
+        estimatedLevel: 3.5,
+        invitedBy: id(0),
+        sourceEventId
+      });
+      await grantCounter(idleLeague, provisional.id);
+      try {
+        for (const [name, args] of [
+          ['get_league', { p_league_id: idleLeague }],
+          ['get_league_standings', { p_league_id: idleLeague, p_standings_version: null }],
+          ['get_league_counters', { p_league_id: idleLeague }],
+          ['list_league_standings_versions', { p_league_id: idleLeague, p_before_version: null }]
+        ] as const)
+          expect((await kit.rpc(provisional, name, args)).error).toMatchObject({
+            code: '42501',
+            message: 'PROVISIONAL_PLAYER_RESTRICTED'
+          });
+      } finally {
+        await dropCounters(idleLeague);
+      }
     });
   });
 });

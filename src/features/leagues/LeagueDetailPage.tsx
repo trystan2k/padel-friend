@@ -225,9 +225,25 @@ export function LeagueDetailPage({
         )}
 
         {former && (
-          <SurfaceCard xstyle={styles.card}>
-            <h2 {...stylex.props(styles.sectionTitle)}>{t('leagues.former.title')}</h2>
-            <p {...stylex.props(styles.text)}>{t('leagues.former.body')}</p>
+          <SurfaceCard xstyle={styles.formerNotice} data-testid="former-participant-notice">
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+              data-testid="former-participant-icon"
+              {...stylex.props(styles.formerIcon)}
+            >
+              <path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0" />
+              <circle cx="12" cy="12" r="3" />
+            </svg>
+            <div {...stylex.props(styles.formerCopy)}>
+              <h2 {...stylex.props(styles.formerTitle)}>{t('leagues.former.title')}</h2>
+              <p {...stylex.props(styles.muted)}>{t('leagues.former.body')}</p>
+            </div>
           </SurfaceCard>
         )}
 
