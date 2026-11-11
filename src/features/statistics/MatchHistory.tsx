@@ -144,7 +144,22 @@ function HistoryEntry({ item, locale }: { item: HistoryItem; locale: string }) {
       </p>
       <p {...stylex.props(s.copy)}>
         <time dateTime={item.sort_at}>{when}</time>
-        {item.league_name && <> · {t('statistics.history.league', { name: item.league_name })}</>}
+        {item.league_name &&
+          (item.league_id !== null ? (
+            <>
+              {' · '}
+              <Link
+                to="/community/$communityId/leagues/$leagueId"
+                params={{ communityId: item.community_id, leagueId: item.league_id }}
+                aria-label={t('statistics.history.leagueLink', { name: item.league_name })}
+                {...stylex.props(s.inlineLink)}
+              >
+                {t('statistics.history.league', { name: item.league_name })}
+              </Link>
+            </>
+          ) : (
+            <> · {t('statistics.history.league', { name: item.league_name })}</>
+          ))}
       </p>
       <p {...stylex.props(s.copy)}>{t(`statistics.history.statusHelp.${item.status}`)}</p>
       {confirmed && (

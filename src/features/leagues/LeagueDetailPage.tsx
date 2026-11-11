@@ -82,6 +82,8 @@ export function LeagueDetailPage({
   const { t, i18n } = useTranslation();
   const router = useRouter();
   const { community } = data;
+  // Server-derived: a former participant reads this League but is no longer in its community.
+  const former = data.access_mode === 'former_participant';
   // The latest command result wins until a refreshed loader brings a version at least as new.
   const [result, setResult] = useState<LeagueDto | null>(null);
   const league = result && result.version >= data.league.version ? result : data.league;
@@ -182,14 +184,24 @@ export function LeagueDetailPage({
     <main {...stylex.props(styles.page)}>
       <header {...stylex.props(styles.header, rootStyles.pageHeader)}>
         <div {...stylex.props(styles.headingRow)}>
-          <Link
-            to="/community/$communityId/leagues"
-            params={{ communityId: community.id }}
-            aria-label={t('leagues.back')}
-            {...stylex.props(styles.backLink)}
-          >
-            <span aria-hidden="true">‹</span>
-          </Link>
+          {former ? (
+            <Link
+              to="/matches/past"
+              aria-label={t('leagues.former.back')}
+              {...stylex.props(styles.backLink)}
+            >
+              <span aria-hidden="true">‹</span>
+            </Link>
+          ) : (
+            <Link
+              to="/community/$communityId/leagues"
+              params={{ communityId: community.id }}
+              aria-label={t('leagues.back')}
+              {...stylex.props(styles.backLink)}
+            >
+              <span aria-hidden="true">‹</span>
+            </Link>
+          )}
           <h1 id="league-heading" {...stylex.props(styles.title)}>
             {league.name}
           </h1>
@@ -210,6 +222,29 @@ export function LeagueDetailPage({
           <p role="alert" {...stylex.props(styles.errorText)}>
             {t(`leagues.errors.${feedback.code}`)}
           </p>
+        )}
+
+        {former && (
+          <SurfaceCard xstyle={styles.formerNotice} data-testid="former-participant-notice">
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+              data-testid="former-participant-icon"
+              {...stylex.props(styles.formerIcon)}
+            >
+              <path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0" />
+              <circle cx="12" cy="12" r="3" />
+            </svg>
+            <div {...stylex.props(styles.formerCopy)}>
+              <h2 {...stylex.props(styles.formerTitle)}>{t('leagues.former.title')}</h2>
+              <p {...stylex.props(styles.muted)}>{t('leagues.former.body')}</p>
+            </div>
+          </SurfaceCard>
         )}
 
         <SurfaceCard xstyle={styles.card}>
@@ -283,7 +318,7 @@ export function LeagueDetailPage({
             )}
           </>
         )}
-        {league.status !== 'upcoming' && (
+        {!former && league.status !== 'upcoming' && (
           <Link
             to="/community/$communityId/statistics"
             params={{ communityId: community.id }}
@@ -293,7 +328,7 @@ export function LeagueDetailPage({
             {t('statistics.community.open')}
           </Link>
         )}
-        {league.status === 'closed' && (
+        {!former && league.status === 'closed' && (
           <Link
             to="/community/$communityId/leagues"
             params={{ communityId: community.id }}

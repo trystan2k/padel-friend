@@ -162,7 +162,7 @@ describe.skipIf(!environment.env)('statistics migrations applied over existing h
     expect(applied[0]).toBe('20261102100000_statistics_domain.sql');
     // Later non-statistics migrations also run in this phase; the statistics set must end here.
     expect(applied.filter((file) => file.includes('_statistics_')).at(-1)).toBe(
-      '20261102117000_statistics_lifecycle_projection.sql'
+      '20261111093000_statistics_player_rank_earned_scope.sql'
     );
 
     // Backfill coverage: every pre-existing confirmed group is projected with its exact facts.

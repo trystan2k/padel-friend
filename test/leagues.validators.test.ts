@@ -24,6 +24,7 @@ import {
 import {
   LEAGUE_COMMUNITY_ID,
   LEAGUE_ID,
+  makeFormerParticipantDetail,
   makeLeagueDetail,
   makeLeagueDto,
   makeLeagueList,
@@ -216,12 +217,23 @@ describe('League response decoders', () => {
     expect(() => decodeLeagueList({ ...makeLeagueList(), extra: 1 })).toThrow(
       'INVALID_LEAGUE_RESPONSE'
     );
-    expect(() =>
-      decodeLeagueDetail({
-        community: { ...makeLeagueList().community, can_create: 1 },
-        league: makeLeagueDto()
-      })
-    ).toThrow('INVALID_LEAGUE_RESPONSE');
+  });
+
+  it('decodes the access mode and a minimal community context strictly', () => {
+    const former = makeFormerParticipantDetail();
+    expect(decodeLeagueDetail(former)).toEqual(former);
+    expect(decodeLeagueDetail(makeLeagueDetail()).access_mode).toBe('member');
+    const { access_mode: _mode, ...withoutMode } = former;
+    for (const value of [
+      withoutMode,
+      { ...former, access_mode: 'owner' },
+      { ...former, extra: 1 },
+      // The detail view must never carry community creation settings.
+      { ...former, community: { ...former.community, creation_enabled: true, can_create: true } },
+      { ...former, community: { id: former.community.id, name: former.community.name } },
+      { ...former, community: { ...former.community, id: LEAGUE_ID } }
+    ])
+      expect(() => decodeLeagueDetail(value)).toThrow('INVALID_LEAGUE_RESPONSE');
   });
 });
 

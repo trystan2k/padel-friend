@@ -1,12 +1,15 @@
 import { COMMUNITY_TIMEZONES, type CommunityTimezone } from '../community/community-settings';
 import {
+  LEAGUE_ACCESS_MODES,
   LEAGUE_BLOCKED_REASONS,
   LEAGUE_CLOSED_REASONS,
   LEAGUE_END_MODES,
   LEAGUE_STATUSES,
+  type LeagueAccessMode,
   type LeagueCommunityDto,
   type LeagueCounterEntry,
   type LeagueCountersResult,
+  type LeagueDetailCommunityDto,
   type LeagueDetailResult,
   type LeagueDto,
   type LeagueListResult
@@ -207,7 +210,23 @@ export function decodeLeagueList(value: unknown): LeagueListResult {
   };
 }
 
+function decodeDetailCommunity(value: unknown): LeagueDetailCommunityDto {
+  const row = exactObject(value, ['id', 'name', 'timezone']);
+  return {
+    id: uuid(row.id),
+    name: text(row.name),
+    timezone: oneOf<CommunityTimezone>(row.timezone, COMMUNITY_TIMEZONES)
+  };
+}
+
 export function decodeLeagueDetail(value: unknown): LeagueDetailResult {
-  const row = exactObject(value, ['community', 'league']);
-  return { community: decodeCommunity(row.community), league: decodeLeagueDto(row.league) };
+  const row = exactObject(value, ['access_mode', 'community', 'league']);
+  const community = decodeDetailCommunity(row.community);
+  const league = decodeLeagueDto(row.league);
+  if (league.community_id !== community.id) return fail();
+  return {
+    access_mode: oneOf<LeagueAccessMode>(row.access_mode, LEAGUE_ACCESS_MODES),
+    community,
+    league
+  };
 }

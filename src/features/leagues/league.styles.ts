@@ -131,6 +131,35 @@ export const styles = stylex.create({
     fontSize: 'var(--font-size-12)'
   },
   muted: { margin: 0, color: 'var(--color-muted)', fontSize: 'var(--font-size-12)' },
+  formerNotice: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    gap: 'var(--space-9)',
+    padding: 'var(--space-12)',
+    borderRadius: 'var(--radius-12)',
+    backgroundColor: 'var(--color-green-soft)',
+    minWidth: 0,
+    overflowWrap: 'anywhere'
+  },
+  formerIcon: {
+    flexShrink: 0,
+    width: 'var(--space-17)',
+    height: 'var(--space-17)',
+    color: 'var(--color-green)'
+  },
+  formerCopy: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 'var(--space-3)',
+    flex: '1 1 calc(var(--space-40) * 3)',
+    minWidth: 0
+  },
+  formerTitle: {
+    margin: 0,
+    fontSize: 'var(--font-size-12)',
+    fontWeight: 'var(--font-weight-semibold)'
+  },
   text: { margin: 0, fontSize: 'var(--font-size-12)', overflowWrap: 'anywhere' },
   strongText: {
     margin: 0,

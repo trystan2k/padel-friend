@@ -1963,6 +1963,11 @@
   "leagues": {
     "title": "Leagues",
     "back": "Back to Leagues",
+    "former": {
+      "title": "You played in this League",
+      "body": "This League is read-only for you. You can see its standings and results because you played in it, but you are no longer a member of this community.",
+      "back": "Back to match history"
+    },
     "backToDashboard": "Back to dashboard",
     "loading": "Loading Leagues…",
     "errorTitle": "Couldn't load Leagues",
@@ -2445,6 +2450,7 @@
       "ratingChange": "Rating {{delta}}",
       "noRating": "No rating change",
       "league": "League: {{name}}",
+      "leagueLink": "Open League {{name}}",
       "viewDetails": "Result details",
       "viewMatch": "Open match",
       "detailsLabel": "Result details, {{type}} match on {{date}}",
