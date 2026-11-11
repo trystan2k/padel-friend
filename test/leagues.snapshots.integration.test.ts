@@ -363,8 +363,24 @@ describe.skipIf(!environment.env)('League final standings versions', { timeout: 
 
     // Play after the cutoff is refused outright for a League event (cutoff second has passed).
     const lateEvent = await kit.event(leagueId);
-    await sleep(2_100);
-    const refused = await kit.submit(lateEvent, playedAt(0).played);
+    // Server order: future-check (database clock_timestamp) runs before the period gate. Anchor the
+    // instant on the database clock alone: the first whole second strictly after the stored
+    // closed_at, then let the database clock itself reach it so it is never "future".
+    const [cutoff] = await sqlRows(
+      `select to_char(t at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS".000Z"') as iso,
+              to_char(t at time zone 'UTC', 'YYYY-MM-DD HH24:MI:SS') as local
+         from (select date_trunc('second', closed_at) + interval '1 second' as t
+                 from public.leagues where id = ${L(leagueId)}) c`
+    );
+    await sqlRows(
+      `select pg_sleep(greatest(0, extract(epoch from ${sqlText(String(cutoff?.['iso']))}::timestamptz - clock_timestamp())) + 0.05)`
+    );
+    const afterCutoff = {
+      local: String(cutoff?.['local']),
+      offset_seconds: 0,
+      instant: String(cutoff?.['iso'])
+    };
+    const refused = await kit.submit(lateEvent, afterCutoff);
     expect(refused.error?.message).toMatch(/RANKED_OUT_OF_PERIOD/);
 
     // An Unranked Competitive result confirmed afterwards rates globally but never touches finals.
