@@ -104,7 +104,9 @@ test('approved reference provenance remains immutable', async ({ browserName }, 
 test('Pencil full-frame comparisons require matching composition and reviewed budgets', async ({
   browserName
 }, info) => {
-  test.setTimeout(120_000);
+  // Full-frame raster comparisons + fixture SQL run far past the default under AC1 saturation
+  // (NCPU-2 spinners); the budget is wall-clock headroom for the same assertions, not a loosened oracle.
+  test.setTimeout(180_000);
   expect(browserName).toBe('chromium');
   const r = copies.en.matches.results;
   let page = await f.page(f.creator);

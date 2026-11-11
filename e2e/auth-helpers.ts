@@ -3,9 +3,11 @@ import { expect, type Page } from '@playwright/test';
 /** Waits for the root React effect, not a timing-based animation-frame proxy. */
 export async function waitForHydratedPage(page: Page): Promise<void> {
   await page.waitForLoadState('load');
-  // Hydration exceeds the 5s default under full-suite load; the attribute stays the authoritative condition.
+  // Hydration is CPU-starved under deliberate saturation (AC1 runs NCPU-2 spinners): client JS can
+  // take tens of seconds to flip the attribute. The attribute stays the authoritative condition —
+  // the ceiling is readiness headroom, not a defect oracle, so a still-unhydrated page fails loudly.
   await expect(page.locator('html')).toHaveAttribute('data-app-hydrated', 'true', {
-    timeout: 15_000
+    timeout: 45_000
   });
 }
 
