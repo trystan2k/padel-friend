@@ -31,10 +31,21 @@ const panel = (page: Page) => page.getByRole('region', { name: copy.title });
 
 async function installMocks(context: BrowserContext, options: MockOptions = {}) {
   await context.addInitScript(
-    ({ permission, requested, ios, publicKey }) => {
+    ({ permission, requested, ios, publicKey, origin }) => {
+      // Context init scripts also run in about:blank and opaque frames, where localStorage throws a
+      // SecurityError. Mock only the app origin; a storage failure there is a real defect, so it is
+      // rethrown with its origin instead of being swallowed.
+      if (location.origin !== origin) return;
+      const storage = (() => {
+        try {
+          return window.localStorage;
+        } catch (cause) {
+          throw new Error('Push mock storage unavailable at ' + location.origin, { cause });
+        }
+      })();
       // Permission persists across reloads like a real browser; each context is its own device.
       const state = {
-        permission: localStorage.getItem('fakePermission') ?? permission,
+        permission: storage.getItem('fakePermission') ?? permission,
         permissionRequests: 0,
         subscribeCalls: 0,
         failNextSubscribe: false
@@ -47,7 +58,7 @@ async function installMocks(context: BrowserContext, options: MockOptions = {}) 
       Notification.requestPermission = () => {
         state.permissionRequests += 1;
         state.permission = requested;
-        localStorage.setItem('fakePermission', requested);
+        storage.setItem('fakePermission', requested);
         return Promise.resolve(requested);
       };
       if (ios) {
@@ -69,7 +80,7 @@ async function installMocks(context: BrowserContext, options: MockOptions = {}) 
         expirationTime: null,
         options: { applicationServerKey: toBytes(publicKey).buffer },
         unsubscribe: async () => {
-          localStorage.removeItem('fakeSubscription');
+          storage.removeItem('fakeSubscription');
           return true;
         },
         toJSON: () => ({
@@ -79,7 +90,7 @@ async function installMocks(context: BrowserContext, options: MockOptions = {}) 
         })
       });
       const current = () => {
-        const raw = localStorage.getItem('fakeSubscription');
+        const raw = storage.getItem('fakeSubscription');
         return raw ? build(JSON.parse(raw)) : null;
       };
       const pushManager = {
@@ -97,7 +108,7 @@ async function installMocks(context: BrowserContext, options: MockOptions = {}) 
             p256dh: toBase64Url(p256dh),
             auth: toBase64Url(crypto.getRandomValues(new Uint8Array(16)))
           };
-          localStorage.setItem('fakeSubscription', JSON.stringify(stored));
+          storage.setItem('fakeSubscription', JSON.stringify(stored));
           return build(stored);
         }
       };
@@ -115,7 +126,8 @@ async function installMocks(context: BrowserContext, options: MockOptions = {}) 
       permission: options.permission ?? 'default',
       requested: options.requested ?? 'granted',
       ios: options.ios ?? false,
-      publicKey: E2E_WEB_PUSH_ENV.WEB_PUSH_VAPID_PUBLIC_KEY
+      publicKey: E2E_WEB_PUSH_ENV.WEB_PUSH_VAPID_PUBLIC_KEY,
+      origin: BASE_URL
     }
   );
 }
