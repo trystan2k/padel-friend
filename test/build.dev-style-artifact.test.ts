@@ -266,7 +266,10 @@ describe('dev-only StyleX artifact contract', () => {
 
   // Hostile-env lane: a REAL build under the ambient NODE_ENV that used to bake dev-only code into the
   // artifact. Isolated outDir; the Cloudflare plugin also rewrites the git-ignored deploy redirect
-  // (.wrangler/deploy/config.json) to point at the build it just made, so that file is restored.
+  // (.wrangler/deploy/config.json) to point at the build it just made, so that file is restored (or
+  // removed again when it did not exist). Residual: the redirect is briefly repointed while the build
+  // runs, so a concurrent wrangler/preview invocation in the same checkout could read it; gates that
+  // use it (E2E, complete-check) do not run alongside unit tests.
   describe('build under ambient NODE_ENV=development', () => {
     const VITE_BIN = path.join(ROOT, 'node_modules/vite/bin/vite.js');
     const REDIRECT = path.join(ROOT, '.wrangler/deploy/config.json');
@@ -287,7 +290,10 @@ describe('dev-only StyleX artifact contract', () => {
           timeout: 240_000
         });
       } finally {
+        // Restore the exact prior state: contents when the file existed, ABSENCE when it did not (the
+        // build leaves a redirect to the temp outDir that is deleted afterwards).
         if (redirect !== undefined) writeFileSync(REDIRECT, redirect);
+        else rmSync(REDIRECT, { force: true });
       }
       output = readOutput(outDir);
     }, 300_000);

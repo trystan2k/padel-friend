@@ -943,10 +943,34 @@ async function structure(kind: Kind, page: Page, root: Locator) {
   const theme = kind === 'resolve' ? 'dark' : 'light';
   // Heading semantics: the section heading precedes the card heading in document order.
   // A modal dialog makes the page behind it inert, so its heading is checked in the full tree.
-  await expect(
-    page.getByRole('heading', { name: c.title, exact: true, includeHidden: true })
-  ).toHaveCount(1);
-  assertContained(await box(main), await box(root), `${kind} card inside main`);
+  const sectionHeading = page.getByRole('heading', {
+    name: c.title,
+    exact: true,
+    includeHidden: true
+  });
+  await expect(sectionHeading).toHaveCount(1);
+  const banner = root.locator('p').first();
+  const result = root.locator('p').nth(1);
+  const note = root.getByText(c.requestNote, { exact: true });
+  const action = root.getByRole('button', { name: c.request.open, exact: true });
+  const proposed = root.getByRole('region', { name: c.proposed });
+  const approve = root.getByRole('button', {
+    name: copies.en.matches.results.review.approve,
+    exact: true
+  });
+  const reject = root.getByRole('button', {
+    name: copies.en.matches.results.review.reject,
+    exact: true
+  });
+  // Every box compared below comes from ONE atomic capture, inner (content) boxes included.
+  const targets: Record<string, Locator> = { main, root };
+  if (kind === 'request')
+    Object.assign(targets, { heading: sectionHeading, banner, result, note, action });
+  if (kind === 'review')
+    Object.assign(targets, { heading: sectionHeading, banner, proposed, approve, reject });
+  const sampled: Record<string, Geometry> = await captureGeometry(targets);
+  const at = (name: string) => sampled[name]!;
+  assertContained(at('main').box, at('root').box, `${kind} card inside main`);
   const surface = { 'background-color': 'surface' };
   const cardStyle = {
     name: 'correction card',
@@ -961,26 +985,21 @@ async function structure(kind: Kind, page: Page, root: Locator) {
   };
   if (kind !== 'resolve') {
     // Page-level geometry shared with the frames: 18px gutters and the 10px block rhythm.
-    const card = await box(root);
+    const card = at('root').box;
     assertNear(card.x, g.gutter, `${kind} card left gutter equals the frame gutter`);
     assertNear(frameViewport.width - card.right, g.gutter, `${kind} card right gutter`);
-    const heading = await box(
-      page.getByRole('heading', { name: c.title, exact: true, includeHidden: true })
-    );
+    const heading = at('heading').box;
     assertNear(card.y - heading.bottom, g.blockGap, `${kind} section title to card gap`);
   }
   if (kind === 'request') {
-    const inner = await innerBox(root);
-    const banner = root.locator('p').first();
-    const result = root.locator('p').nth(1);
-    const note = root.getByText(c.requestNote, { exact: true });
-    const action = root.getByRole('button', { name: c.request.open, exact: true });
-    // One atomic sample feeds both the document-order and the gap comparisons.
-    const requestBoxes = await captureBoxes({ banner, result, note, action });
-    const { banner: bannerBox, result: resultBox, note: noteBox, action: actionBox } = requestBoxes;
+    const inner = at('root').inner;
+    const bannerBox = at('banner').box;
+    const resultBox = at('result').box;
+    const noteBox = at('note').box;
+    const actionBox = at('action').box;
     assertStacked({ banner: bannerBox, note: noteBox, action: actionBox });
     // Frame order is banner, result, authority note, action (note below the action in the frame).
-    assertStacked(requestBoxes);
+    assertStacked({ banner: bannerBox, result: resultBox, note: noteBox, action: actionBox });
     for (const [name, item] of Object.entries({ banner: bannerBox, action: actionBox })) {
       assertNear(item.x, inner.x, `request ${name} aligned to card content edge`);
       assertNear(item.width, inner.width, `request ${name} spans the card content width`);
@@ -1009,24 +1028,11 @@ async function structure(kind: Kind, page: Page, root: Locator) {
       kind
     );
   } else if (kind === 'review') {
-    const inner = await innerBox(root);
-    const proposed = root.getByRole('region', { name: c.proposed });
-    const approve = root.getByRole('button', {
-      name: copies.en.matches.results.review.approve,
-      exact: true
-    });
-    const reject = root.getByRole('button', {
-      name: copies.en.matches.results.review.reject,
-      exact: true
-    });
-    const banner = root.locator('p').first();
-    const reviewBoxes = await captureBoxes({ banner, proposed, approve, reject });
-    const {
-      banner: bannerBox,
-      proposed: proposedBox,
-      approve: approveBox,
-      reject: rejectBox
-    } = reviewBoxes;
+    const inner = at('root').inner;
+    const bannerBox = at('banner').box;
+    const proposedBox = at('proposed').box;
+    const approveBox = at('approve').box;
+    const rejectBox = at('reject').box;
     assertStacked({ banner: bannerBox, proposed: proposedBox, approve: approveBox });
     for (const [name, item] of Object.entries({ banner: bannerBox, proposed: proposedBox })) {
       assertNear(item.x, inner.x, `review ${name} aligned to card content edge`);
@@ -1065,7 +1071,14 @@ async function structure(kind: Kind, page: Page, root: Locator) {
   } else {
     const dialog = page.getByRole('dialog', { name: c.resolve.title, exact: true });
     await expect(dialog).toBeVisible();
-    const dialogBox = await box(dialog);
+    const radios = dialog.getByRole('radio');
+    await expect(radios).toHaveCount(3);
+    // The dialog and its three option rows (the radio's label, else the radio) in one capture.
+    const rowTargets: Record<string, Locator> = { dialog };
+    for (const index of [0, 1, 2])
+      rowTargets[`row${index}`] = radios.nth(index).locator('xpath=(ancestor::label[1] | .)[1]');
+    const dialogSample: Record<string, Geometry> = await captureGeometry(rowTargets);
+    const dialogBox = dialogSample.dialog!.box;
     assertNear(
       dialogBox.x,
       frameViewport.width - dialogBox.right,
@@ -1075,21 +1088,7 @@ async function structure(kind: Kind, page: Page, root: Locator) {
     expect
       .soft(Math.abs(dialogBox.x - g.gutter), 'dialog edge distance to the frame gutter')
       .toBeLessThanOrEqual(g.dialogGutterMaxDelta);
-    const radios = dialog.getByRole('radio');
-    await expect(radios).toHaveCount(3);
-    const rows = await radios.evaluateAll((nodes) =>
-      nodes.map((node) => {
-        const rect = (node.closest('label') ?? node).getBoundingClientRect();
-        return {
-          x: rect.x,
-          y: rect.y + window.scrollY,
-          right: rect.right,
-          bottom: rect.bottom + window.scrollY,
-          width: rect.width,
-          height: rect.height
-        };
-      })
-    );
+    const rows = [0, 1, 2].map((index) => dialogSample[`row${index}`]!.box);
     for (const [index, row] of rows.entries()) {
       assertContained(dialogBox, row, `resolution option ${index + 1}`);
       expect
@@ -1622,6 +1621,79 @@ const diagnosticsFrames = [
 test('inventory accounts for every Pencil element of every frame', () => {
   for (const frame of ['adujr', 's5TRC', 'CWJkF', 'xbIxj', 'cuVwp', 'Jjrtb', 'SluH3'] as const)
     assertInventory(frame);
+});
+
+test.describe('geometry snapshot helper', () => {
+  const markup = `<style>body{margin:0;height:3000px}.box{position:absolute;box-sizing:border-box;border:2px solid;padding:5px;width:100px}</style>
+    <div id="a" class="box" style="left:20px;top:10px;height:50px"></div>
+    <div id="b" class="box" style="left:20px;top:100px;height:40px"></div>`;
+
+  /** Replaces #a with a moved copy right after the locator resolved its handle (a live re-render). */
+  const replacedAfterResolve = (page: Page, locator: Locator, times: number) => {
+    let remaining = times;
+    return new Proxy(locator, {
+      get(target, property) {
+        if (property === 'elementHandle')
+          return async () => {
+            const handle = await target.elementHandle();
+            if (remaining-- > 0)
+              await page.evaluate(() => {
+                const element = document.querySelector('#a');
+                const copy = element?.cloneNode(true);
+                if (copy instanceof HTMLElement) copy.style.top = '300px';
+                if (copy) element?.replaceWith(copy);
+              });
+            return handle;
+          };
+        const value: unknown = Reflect.get(target, property);
+        return typeof value === 'function' ? value.bind(target) : value;
+      }
+    });
+  };
+
+  test('returns border and content boxes in document coordinates, in key order', async ({
+    page
+  }) => {
+    await page.setContent(markup);
+    await page.evaluate(() => window.scrollTo(0, 200));
+    const sampled = await captureGeometry({ b: page.locator('#b'), a: page.locator('#a') });
+    expect(Object.keys(sampled)).toEqual(['b', 'a']);
+    expect(sampled.a.box).toEqual({ x: 20, y: 10, right: 120, bottom: 60, width: 100, height: 50 });
+    expect(sampled.a.inner).toEqual({
+      x: 27,
+      y: 17,
+      right: 113,
+      bottom: 53,
+      width: 86,
+      height: 36
+    });
+    expect(sampled.b.box.y).toBe(100);
+    const boxes = await captureBoxes({ a: page.locator('#a'), b: page.locator('#b') });
+    expect(boxes).toEqual({ a: sampled.a.box, b: sampled.b.box });
+  });
+
+  test('retakes the whole snapshot when an element is replaced after its handle resolved', async ({
+    page
+  }) => {
+    await page.setContent(markup);
+    const sampled = await captureGeometry({
+      a: replacedAfterResolve(page, page.locator('#a'), 1),
+      b: page.locator('#b')
+    });
+    // The detached original (top 10) is never reported; the snapshot is the current generation.
+    expect(sampled.a.box.y).toBe(300);
+    expect(sampled.a.box.height).toBe(50);
+    expect(sampled.b.box.y).toBe(100);
+  });
+
+  test('fails loudly instead of returning a degenerate snapshot when elements keep detaching', async ({
+    page
+  }) => {
+    await page.setContent(markup);
+    await expect(
+      captureGeometry({ a: replacedAfterResolve(page, page.locator('#a'), 100) })
+    ).rejects.toThrow(/kept detaching elements.*: a/);
+  });
 });
 
 test.describe('repair diagnostics', () => {

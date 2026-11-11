@@ -18,8 +18,12 @@ export default defineConfig(({ command }) => {
     // preview server answered 404 (surfacing as "Failed to load resource" console errors).
     // The same ambient NODE_ENV would also leave PROD false and silently skip the service-worker
     // registration gated on it (src/features/pwa/update-store.ts). Pinning DEV=false and
-    // PROD=true (and StyleX dev mode) to the Vite command keeps both flags in agreement and
-    // makes build output independent of the ambient NODE_ENV; `vite dev` is left untouched.
+    // PROD=true (and StyleX dev mode) to the Vite command guarantees exactly two things for a build:
+    // the two flags agree, and the StyleX dev-injection branch is excluded; `vite dev` is left
+    // untouched. It does NOT make the whole artifact independent of the ambient NODE_ENV: dependency
+    // bundles still follow it (e.g. React's development build in SSR: 1161kB vs 952kB). That divergence
+    // is known and accepted: no functional defect is evidenced, and the artifact contract
+    // (test/build.dev-style-artifact.test.ts) pins only what this guard guarantees.
     define: isDevServer ? {} : { 'import.meta.env.DEV': 'false', 'import.meta.env.PROD': 'true' },
     plugins: [
       cloudflare({ viteEnvironment: { name: 'ssr' } }),

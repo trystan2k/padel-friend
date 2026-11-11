@@ -29,6 +29,9 @@ export async function box(locator: Locator): Promise<Box> {
 
 export type Geometry = { box: Box; inner: Box };
 
+/** Whole-snapshot retakes when an element is replaced mid-capture (bounded, no fixed sleeps). */
+const snapshotAttempts = 5;
+
 /**
  * Atomic geometry sample: border boxes and content boxes of every locator, read in ONE browser
  * evaluation (a single synchronous task, so no layout change can land between the reads). Compared
@@ -44,48 +47,61 @@ export async function captureGeometry<K extends string>(
   const first = entries[0];
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- no locators, so no keys
   if (!first) return {} as Record<K, Geometry>;
-  const handles = await Promise.all(entries.map(([, locator]) => locator.elementHandle()));
-  try {
-    const sampled = await first[1].page().evaluate((elements) => {
-      const toBox = ({ x, y, right, bottom, width, height }: DOMRect): Box => ({
-        x,
-        y: y + window.scrollY,
-        right,
-        bottom: bottom + window.scrollY,
-        width,
-        height
-      });
-      return elements.map((element) => {
-        const style = getComputedStyle(element);
-        const rect = element.getBoundingClientRect();
-        const left =
-          Number.parseFloat(style.borderLeftWidth) + Number.parseFloat(style.paddingLeft);
-        const right =
-          Number.parseFloat(style.borderRightWidth) + Number.parseFloat(style.paddingRight);
-        const top = Number.parseFloat(style.borderTopWidth) + Number.parseFloat(style.paddingTop);
-        const bottom =
-          Number.parseFloat(style.borderBottomWidth) + Number.parseFloat(style.paddingBottom);
-        return {
-          box: toBox(rect),
-          inner: {
-            x: rect.x + left,
-            y: rect.y + top + window.scrollY,
-            right: rect.right - right,
-            bottom: rect.bottom - bottom + window.scrollY,
-            width: rect.width - left - right,
-            height: rect.height - top - bottom
-          }
-        };
-      });
-    }, handles);
-    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- Object.entries/fromEntries erase the key union; the keys are exactly the locator keys
-    return Object.fromEntries(entries.map(([key], index) => [key, sampled[index]])) as Record<
-      K,
-      Geometry
-    >;
-  } finally {
-    await Promise.all(handles.map((handle) => handle.dispose()));
+  for (let attempt = 1; attempt <= snapshotAttempts; attempt++) {
+    const handles = await Promise.all(entries.map(([, locator]) => locator.elementHandle()));
+    try {
+      // Connectivity is validated in the same browser task that measures: if any element was
+      // replaced after its handle resolved (a live refresh re-rendered it), the whole snapshot is
+      // discarded and retaken from fresh handles, so it never mixes DOM generations and never
+      // reports the zero rect of a detached node.
+      const sampled = await first[1].page().evaluate((elements) => {
+        if (elements.some((element) => !element.isConnected)) return null;
+        const toBox = ({ x, y, right, bottom, width, height }: DOMRect): Box => ({
+          x,
+          y: y + window.scrollY,
+          right,
+          bottom: bottom + window.scrollY,
+          width,
+          height
+        });
+        return elements.map((element) => {
+          const style = getComputedStyle(element);
+          const rect = element.getBoundingClientRect();
+          const left =
+            Number.parseFloat(style.borderLeftWidth) + Number.parseFloat(style.paddingLeft);
+          const right =
+            Number.parseFloat(style.borderRightWidth) + Number.parseFloat(style.paddingRight);
+          const top = Number.parseFloat(style.borderTopWidth) + Number.parseFloat(style.paddingTop);
+          const bottom =
+            Number.parseFloat(style.borderBottomWidth) + Number.parseFloat(style.paddingBottom);
+          return {
+            box: toBox(rect),
+            inner: {
+              x: rect.x + left,
+              y: rect.y + top + window.scrollY,
+              right: rect.right - right,
+              bottom: rect.bottom - bottom + window.scrollY,
+              width: rect.width - left - right,
+              height: rect.height - top - bottom
+            }
+          };
+        });
+      }, handles);
+      if (sampled)
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- Object.entries/fromEntries erase the key union; the keys are exactly the locator keys
+        return Object.fromEntries(entries.map(([key], index) => [key, sampled[index]])) as Record<
+          K,
+          Geometry
+        >;
+    } finally {
+      await Promise.all(handles.map((handle) => handle.dispose()));
+    }
   }
+  throw new Error(
+    `Geometry snapshot kept detaching elements across ${snapshotAttempts} attempts: ${entries
+      .map(([key]) => key)
+      .join(', ')}`
+  );
 }
 
 /** Border boxes of every locator from one atomic sample (see captureGeometry). */
