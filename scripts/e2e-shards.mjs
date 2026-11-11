@@ -65,6 +65,12 @@ export function listSpecs(dir = 'e2e') {
 //   rendering on a stale review, level-reviews-player.spec.ts:207 once with LEVEL_REVIEW_STALE_RATING
 //   from the fixture resolve RPC). CI retries had been masking the same race. The visual variants
 //   (e.g. level-reviews-visual.spec.ts) stay lane-routed: they passed consistently under concurrency.
+//   Mechanism (PAF-175): the statistics 404s were never projection failures; the console-error URL
+//   capture showed /virtual:stylex.css. Vite derives import.meta.env.DEV from NODE_ENV, so a build run
+//   with NODE_ENV !== 'production' in its environment baked DevStyleXInject's dev branch into the
+//   artifact (SSR <link href="/virtual:stylex.css"> + client import of virtual:stylex:runtime). Those
+//   virtual modules exist only behind the dev server, so preview answered 404. vite.config.ts now pins
+//   DEV and StyleX dev mode to the Vite command, making build output independent of ambient NODE_ENV.
 // - notifications: its mark-all-read cutoff test races a concurrently arriving notification by design
 //   (failed in about 3 of 9 full-sweep runs, passes alone).
 // - result-corrections-visual: its repair-diagnostics probes depend on the repair-lease lifecycle (an
