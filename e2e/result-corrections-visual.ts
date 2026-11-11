@@ -124,7 +124,8 @@ export async function captureBoxes<K extends string>(
  * (a wrapped line would explain the ~22px drift that exceeded the 2px assertStacked tolerance). Failure
  * geometry matching fallback-font metrics would confirm it. Every font used by visible text is loaded explicitly, images are decoded, then the layout
  * must be identical across consecutive animation frames. Persistent instability fails with the
- * unsettled element count instead of passing on a lucky sample.
+ * unsettled element count instead of passing on a lucky sample. Quiet frames say nothing about content
+ * that has not arrived yet (an async read still in flight): callers gate that data readiness first.
  */
 export async function waitForRenderSettled(page: Page) {
   await page.evaluate(async () => {

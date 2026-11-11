@@ -30,7 +30,6 @@ import {
   captureGeometry,
   type Geometry,
   frameViewport,
-  innerBox,
   measureFrame
 } from './result-corrections-visual';
 
@@ -166,9 +165,11 @@ function requestProbes(page: Page, root: Locator) {
       expect(await action.evaluate((element) => getComputedStyle(element).textTransform)).toBe(
         'none'
       );
+      // One atomic sample: the action and the card content box are compared together.
+      const sampled = await captureGeometry({ action, card: root });
       assertNear(
-        (await box(action)).width,
-        (await innerBox(root)).width,
+        sampled.action.box.width,
+        sampled.card.inner.width,
         'action spans the card content width'
       );
     },
@@ -176,9 +177,10 @@ function requestProbes(page: Page, root: Locator) {
       const [banner] = await childSummary(root);
       expect(banner?.tag).toBe('P');
       expect(banner?.text).toBe(c.officialLabel.toUpperCase());
+      const sampled = await captureGeometry({ banner: root.locator('p').first(), card: root });
       assertNear(
-        (await box(root.locator('p').first())).width,
-        (await innerBox(root)).width,
+        sampled.banner.box.width,
+        sampled.card.inner.width,
         'banner spans the card content width'
       );
     },
@@ -239,14 +241,11 @@ function reviewProbes(page: Page, root: Locator) {
         review.approve,
         review.reject
       ]);
-      const [approveBox, rejectBox, inner] = [
-        await box(approve),
-        await box(reject),
-        await innerBox(root)
-      ];
-      assertNear(approveBox.y, rejectBox.y, 'approve and reject share a row');
-      assertNear(approveBox.x, inner.x, 'approve at the content edge');
-      assertNear(rejectBox.right, inner.right, 'reject at the opposite content edge');
+      const sampled = await captureGeometry({ approve, reject, card: root });
+      const inner = sampled.card.inner;
+      assertNear(sampled.approve.box.y, sampled.reject.box.y, 'approve and reject share a row');
+      assertNear(sampled.approve.box.x, inner.x, 'approve at the content edge');
+      assertNear(sampled.reject.box.right, inner.right, 'reject at the opposite content edge');
     },
     'B4.rejectTone': async () => {
       const row = approve.locator('xpath=..');
@@ -1262,25 +1261,44 @@ const jobTone: Record<JobKey, [string, string]> = {
   queued: ['surface-2', 'amber']
 };
 
-async function openDiagnostics(
+/** Diagnostics page with every seeded job card rendered; `beforeGoto` installs routes before the first request. */
+async function diagnosticsPage(
   locale: (typeof locales)[number],
   width: number,
   theme: 'light' | 'dark',
-  height = 844
+  height = 844,
+  beforeGoto?: (page: Page) => Promise<void>
 ) {
   await f.grantAdmin();
   await sql(
     `insert into public.platform_admins(user_id) values ('${f.creator.id}') on conflict do nothing`
   );
   const page = await f.page(f.creator, locale, width, theme, height);
+  await beforeGoto?.(page);
   await page.goto(diagnosticsPath);
   await waitForHydratedPage(page);
   const root = page.locator('[data-result-route=repair-diagnostics]');
   await expect(root).toBeVisible();
-  // Data readiness: every seeded job is rendered, then fonts and layout settle before any probe samples it.
   for (const key of jobKeys) await expect(jobArticle(page, key)).toBeVisible();
-  await waitForRenderSettled(page);
   return { page, root };
+}
+/**
+ * Body of the selected job's attempt timeline (list, empty note or error). The detail reads its
+ * attempts after mount, so the section keeps growing past the job cards and any quiet-frame gate
+ * until this body exists.
+ */
+const repairTimelineBody = (page: Page) => page.locator('[data-repair-detail] h3 ~ :is(ol, p)');
+async function openDiagnostics(
+  locale: (typeof locales)[number],
+  width: number,
+  theme: 'light' | 'dark',
+  height = 844
+) {
+  const opened = await diagnosticsPage(locale, width, theme, height);
+  // Content readiness (the timeline read has landed), then fonts and layout settle before any probe samples.
+  await expect(repairTimelineBody(opened.page)).toHaveCount(1);
+  await waitForRenderSettled(opened.page);
+  return opened;
 }
 /** The queue job card (the surface) and the transparent status section embedded in it. */
 const jobArticle = (page: Page, key: JobKey) =>
@@ -1811,6 +1829,38 @@ test.describe('repair diagnostics', () => {
     repairJobs.queued = (await f.accepted(await f.confirmed())).jobId;
   });
 
+  test('diagnostics sampling waits for the attempt timeline, not only for quiet frames', async () => {
+    let release = () => {};
+    const held = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const { page } = await diagnosticsPage('en', 390, 'light', 844, async (target) => {
+      await target.route('**/_serverFn/**', async (route) => {
+        await held;
+        await route.continue();
+      });
+    });
+    try {
+      const detail = page.locator('[data-repair-detail]');
+      // Quiet frames, fonts and images are all ready while the timeline read is still held: this is
+      // the state a frame-stability gate alone would sample.
+      await waitForRenderSettled(page);
+      await expect(repairTimelineBody(page)).toHaveCount(0);
+      const pending = (await captureBoxes({ detail })).detail;
+      release();
+      await expect(repairTimelineBody(page)).toHaveCount(1);
+      await waitForRenderSettled(page);
+      const loaded = (await captureBoxes({ detail })).detail;
+      expect(
+        loaded.height,
+        'the detail section grew after a quiet-frame gate had already passed'
+      ).toBeGreaterThan(pending.height);
+    } finally {
+      release();
+      await page.unrouteAll({ behavior: 'wait' });
+    }
+  });
+
   for (const { frame, theme, width, height } of diagnosticsFrames) {
     test(`diagnostics ${frame} matches its Pencil frame structure, accessibility and regions`, async ({
       browserName
@@ -1864,10 +1914,12 @@ test.describe('repair diagnostics', () => {
             'retry dialog order'
           ).toEqual(['HEADER', 'DIV']);
           expect(parts[1]?.text).toBe(`${d.dialog.cancel} ${d.repair.confirmAction}`);
-          assertStacked({
-            header: await box(dialog.locator('header')),
-            actions: await box(dialog.locator('header + div'))
-          });
+          assertStacked(
+            await captureBoxes({
+              header: dialog.locator('header'),
+              actions: dialog.locator('header + div')
+            })
+          );
         }
       });
       await measureFrame(
@@ -1892,8 +1944,10 @@ test.describe('repair diagnostics', () => {
     await runCompositionProbes('SluH3', 'desktop-light', {
       'E11.desktopLight': async () => {
         await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
-        const queue = await box(page.locator('[data-repair-region=queue]'));
-        const detail = await box(page.locator('[data-repair-region=detail]'));
+        const { queue, detail } = await captureBoxes({
+          queue: page.locator('[data-repair-region=queue]'),
+          detail: page.locator('[data-repair-region=detail]')
+        });
         expect
           .soft(detail.x, 'desktop light keeps the detail beside the queue')
           .toBeGreaterThan(queue.right);
