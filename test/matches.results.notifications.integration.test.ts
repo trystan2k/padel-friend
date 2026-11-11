@@ -95,7 +95,9 @@ describe.skipIf(!environment.env)('transactional result notifications', { timeou
         if (restoreAlertSchedule) await restoreAlertSchedule();
       }
     }
-  }, 120_000);
+    // Fixture teardown + auth-user deletes are DB-bound and CPU-starved under AC1 saturation
+    // (NCPU-2 spinners); the ceiling is wall-clock headroom for the same cleanup, not a loosened oracle.
+  }, 300_000);
 
   async function resultAlerts(eventId: string) {
     const alerts = await sqlRows(`
