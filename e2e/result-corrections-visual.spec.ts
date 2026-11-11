@@ -1123,15 +1123,26 @@ async function structure(kind: Kind, page: Page, root: Locator) {
     await expect(field).toHaveAttribute('aria-invalid', 'true');
     const describedBy = await field.getAttribute('aria-describedby');
     expect(describedBy).toBeTruthy();
-    const resolveBoxes = await captureBoxes({ field, submit, cancel });
-    assertStacked({ field: resolveBoxes.field, submit: resolveBoxes.submit });
-    const { cancel: cancelBox, submit: submitBox } = resolveBoxes;
+    // One post-submit capture: validation may reflow the dialog, so the action boxes and the
+    // dialog inner edges they are compared against must come from the same snapshot generation.
+    const resolveSamples = await captureGeometry({ dialog, field, submit, cancel });
+    assertStacked({ field: resolveSamples.field.box, submit: resolveSamples.submit.box });
+    const cancelBox = resolveSamples.cancel.box;
+    const submitBox = resolveSamples.submit.box;
     assertNear(cancelBox.y, submitBox.y, 'dialog actions share a row');
     assertNear(cancelBox.height, g.actionHeight, 'cancel action height equals the frame action');
     assertNear(submitBox.height, g.actionHeight, 'record action height equals the frame action');
     assertNear(cancelBox.width, submitBox.width, 'dialog actions have equal width', 1);
-    assertNear(cancelBox.x, dialogInner.x, 'cancel starts at the dialog content edge');
-    assertNear(submitBox.right, dialogInner.right, 'record ends at the dialog content edge');
+    assertNear(
+      cancelBox.x,
+      resolveSamples.dialog.inner.x,
+      'cancel starts at the dialog content edge'
+    );
+    assertNear(
+      submitBox.right,
+      resolveSamples.dialog.inner.right,
+      'record ends at the dialog content edge'
+    );
     await assertDesignSystemStyles(
       page,
       theme,
