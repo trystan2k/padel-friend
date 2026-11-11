@@ -72,6 +72,15 @@ export function listSpecs(dir = 'e2e') {
 // - pwa, push-deep-links, push-preferences: service-worker registration and push mocks stall (zero test
 //   progress, 90-120s timeouts) when parallel browser workers saturate the machine; deterministic in two
 //   consecutive full gate runs, green standalone in seconds.
+//   Mechanism (PAF-175): the waits were already signal-based. Every real-worker case runs in a fresh
+//   context with an empty CacheStorage, so it pays a full worker install (the worker precaches the
+//   whole public build through the one preview server) and a controlled reload; under saturation that
+//   install is the long pole and context.close() then stalls on it. The shared helper
+//   (e2e/service-worker-helpers.ts) subscribes to the worker event before navigating, waits for
+//   activated + controlled, verifies script/scope instead of trusting serviceWorkers()[0], and
+//   reloads only when still uncontrolled; the static manifest case no longer installs a worker at
+//   all. Per-case contexts stay (install/privacy/offline cases assert on a clean cache), so the fence
+//   above stays.
 // A serial spec runs whole: serial wins over visual, so its @visual tests stay in the serial lane and the
 // visual lane never selects the file (no test is in two lanes). The local gate runs the serial specs
 // with --workers=1 so they are genuinely serial; the CI serial lane keeps the default workers and

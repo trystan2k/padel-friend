@@ -4,22 +4,22 @@ import { leagueFixtures } from './leagues-fixtures';
 import { cleanupLevelReviews, submitRequest } from './level-reviews-fixtures';
 import { enterScore, openRecord, resultFixtures, review } from './matches-results-fixtures';
 import { waitForHydratedPage } from './auth-helpers';
+import { builtWorker, installBuiltWorker } from './service-worker-helpers';
 
 // Synthetic events enter the REAL built worker. Only the OS notification display boundary is
 // replaced; window focus/navigation and recipient-private server resolution remain real.
+//
+// Worker churn (PAF-175): each case owns one context with exactly one real worker install (fixture
+// contexts block workers). Readiness is the activated + controlled signal from
+// service-worker-helpers.ts and the Worker handle is the verified built `/sw.js` (event subscribed
+// before navigation), never an unchecked `serviceWorkers()[0]`. Patched worker state is restored in
+// `finally` so no override outlives the tap that needed it.
 test.setTimeout(120_000);
 async function worker(context: BrowserContext, page: Page) {
-  await page.goto('/notifications');
-  await waitForHydratedPage(page);
-  await page.evaluate(() => navigator.serviceWorker.ready);
-  await page.reload();
-  await waitForHydratedPage(page);
-  const installed = context.serviceWorkers()[0];
-  if (!installed) throw new Error('Built service worker missing');
-  return installed;
+  return installBuiltWorker(context, page, '/notifications');
 }
 async function tap(context: BrowserContext, data: unknown) {
-  const installed = context.serviceWorkers()[0];
+  const installed = builtWorker(context);
   if (!installed) throw new Error('Built service worker missing');
   await installed.evaluate(async (value) => {
     // Synthetic clicks lack Chromium user activation: replace focus only, not navigation/auth.
@@ -31,21 +31,30 @@ async function tap(context: BrowserContext, data: unknown) {
       { type: 'window', includeUncontrolled: true }
     ]);
     if (!Array.isArray(windows)) throw new Error('Missing app windows');
-    for (const client of windows)
-      Object.defineProperty(Object.getPrototypeOf(client), 'focus', {
+    const patched = windows.map((client) => {
+      const prototype = Object.getPrototypeOf(client);
+      const original = Object.getOwnPropertyDescriptor(prototype, 'focus');
+      Object.defineProperty(prototype, 'focus', {
         configurable: true,
         value: async function () {
           return this;
         }
       });
-    const pending: Promise<unknown>[] = [];
-    const event = new Event('notificationclick');
-    Object.defineProperties(event, {
-      notification: { value: { data: value, close() {} } },
-      waitUntil: { value: (task: Promise<unknown>) => pending.push(task) }
+      return { prototype, original };
     });
-    self.dispatchEvent(event);
-    await Promise.all(pending);
+    try {
+      const pending: Promise<unknown>[] = [];
+      const event = new Event('notificationclick');
+      Object.defineProperties(event, {
+        notification: { value: { data: value, close() {} } },
+        waitUntil: { value: (task: Promise<unknown>) => pending.push(task) }
+      });
+      self.dispatchEvent(event);
+      await Promise.all(pending);
+    } finally {
+      for (const { prototype, original } of patched)
+        if (original) Object.defineProperty(prototype, 'focus', original);
+    }
   }, data);
 }
 
@@ -136,11 +145,7 @@ test('signed-out tap preserves safe detail through login; foreign account receiv
     const [notice] = await f.notifications(f.members[0]!, 'match_event_published', eventId);
     expect(notice).toBeDefined();
     const page = await context.newPage();
-    await page.goto('/login');
-    await waitForHydratedPage(page);
-    await page.evaluate(() => navigator.serviceWorker.ready);
-    await page.reload();
-    await waitForHydratedPage(page);
+    await installBuiltWorker(context, page, '/login');
     await tap(context, { notificationId: notice!.id });
     await expect(page).toHaveURL(/\/login\?next=/);
     await waitForHydratedPage(page);

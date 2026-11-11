@@ -3,11 +3,18 @@ import { createClient } from '@supabase/supabase-js';
 import { expect, test, type Page } from '@playwright/test';
 import { isAllowedPrecacheUrl } from '../scripts/pwa-build.mjs';
 import { waitForHydratedPage } from './auth-helpers';
+import { controlledByBuiltWorker } from './service-worker-helpers';
 import en from '../src/locales/en/translation.json' with { type: 'json' };
 
 // Real built service worker, real CacheStorage. Every test uses its own browser context so worker
 // registrations and caches never leak between cases. The worker does not claim clients, so each case
 // reloads once to be controlled by it (the same thing a second launch does for a real user).
+//
+// Worker churn (PAF-175): every fresh context pays a full worker install (precache of the public
+// build). Only cases that assert install/cache/offline behaviour take that cost; the manifest case
+// blocks workers so it adds none, and readiness is the explicit activated + controlled signal from
+// service-worker-helpers.ts rather than an unverified `serviceWorkers()[0]`. Isolation is kept: each
+// real-worker case still owns its context, caches and registration, and closes it exactly once.
 const BASE_URL = 'http://127.0.0.1:4173';
 const password = 'Password123!';
 const config = localConfig();
@@ -18,31 +25,36 @@ test.setTimeout(90_000);
 
 type CacheEntry = { cache: string; path: string; contentType: string };
 
-test('manifest, icons and apple-touch icon resolve with install metadata', async ({
-  page,
-  request
-}) => {
-  await page.goto('/login');
-  await waitForHydratedPage(page);
-  await expect(page.locator('link[rel="manifest"]')).toHaveAttribute(
-    'href',
-    '/manifest.webmanifest'
-  );
-  const touchIcon = await page.locator('link[rel="apple-touch-icon"]').getAttribute('href');
-  expect(touchIcon).toBe('/icons/apple-touch-icon.png');
+test.describe('static install metadata', () => {
+  // Reads the manifest and icons over HTTP only; a registered worker would be pure install churn.
+  test.use({ serviceWorkers: 'block' });
 
-  const manifestResponse = await request.get('/manifest.webmanifest');
-  expect(manifestResponse.status()).toBe(200);
-  const manifest = await manifestResponse.json();
-  expect(manifest).toMatchObject({ id: '/', scope: '/', start_url: '/', display: 'standalone' });
+  test('manifest, icons and apple-touch icon resolve with install metadata', async ({
+    page,
+    request
+  }) => {
+    await page.goto('/login');
+    await waitForHydratedPage(page);
+    await expect(page.locator('link[rel="manifest"]')).toHaveAttribute(
+      'href',
+      '/manifest.webmanifest'
+    );
+    const touchIcon = await page.locator('link[rel="apple-touch-icon"]').getAttribute('href');
+    expect(touchIcon).toBe('/icons/apple-touch-icon.png');
 
-  const sources = [...manifest.icons.map((icon: { src: string }) => icon.src), touchIcon];
-  for (const source of sources) {
-    const response = await request.get(source);
-    expect(response.status(), source).toBe(200);
-    expect(response.headers()['content-type']).toMatch(/^image\/(png|svg\+xml)/);
-  }
-  expect((await request.get('/offline.html')).status()).toBe(200);
+    const manifestResponse = await request.get('/manifest.webmanifest');
+    expect(manifestResponse.status()).toBe(200);
+    const manifest = await manifestResponse.json();
+    expect(manifest).toMatchObject({ id: '/', scope: '/', start_url: '/', display: 'standalone' });
+
+    const sources = [...manifest.icons.map((icon: { src: string }) => icon.src), touchIcon];
+    for (const source of sources) {
+      const response = await request.get(source);
+      expect(response.status(), source).toBe(200);
+      expect(response.headers()['content-type']).toMatch(/^image\/(png|svg\+xml)/);
+    }
+    expect((await request.get('/offline.html')).status()).toBe(200);
+  });
 });
 
 test('installs the worker without prompting or showing an update, and precaches only public assets', async ({
@@ -62,7 +74,7 @@ test('installs the worker without prompting or showing an update, and precaches 
     });
     await page.goto('/login');
     await waitForHydratedPage(page);
-    await controlledByWorker(page);
+    await controlledByBuiltWorker(page);
 
     const entries = await cacheEntries(page);
     expectPublicCacheOnly(entries);
@@ -94,7 +106,7 @@ test('never stores authenticated navigations, SSR HTML, server functions or Supa
       if (request.url().includes('/auth/v1')) authRequests.push(request.url());
     });
     await signIn(page, actor);
-    await controlledByWorker(page);
+    await controlledByBuiltWorker(page);
     await page.goto('/notifications/preferences');
     await waitForHydratedPage(page);
     await expect(
@@ -146,7 +158,7 @@ test('offline launches of a private URL show only the public document and recove
   try {
     const page = await context.newPage();
     await signIn(page, actor);
-    await controlledByWorker(page);
+    await controlledByBuiltWorker(page);
     const before = await cacheEntries(page);
 
     await context.setOffline(true);
@@ -193,7 +205,7 @@ test('account A then B in one browser: private responses stay uncacheable and no
   try {
     const page = await context.newPage();
     await signIn(page, accountA);
-    await controlledByWorker(page);
+    await controlledByBuiltWorker(page);
     const privateDocument = await page.goto('/dashboard');
     await waitForHydratedPage(page);
     expect(privateDocument?.headers()['cache-control']).toContain('no-store');
@@ -248,7 +260,7 @@ test('offline auth callback fails honestly instead of showing success', async ({
     const page = await context.newPage();
     await page.goto('/login');
     await waitForHydratedPage(page);
-    await controlledByWorker(page);
+    await controlledByBuiltWorker(page);
     await context.setOffline(true);
     // The worker must not answer a failed callback with the offline document: the navigation fails.
     await expect(page.goto('/auth/callback?code=offline-test-code')).rejects.toThrow(/net::ERR_/);
@@ -285,15 +297,6 @@ test('activation removes the legacy generic runtime cache and leaves unrelated c
     await context.close();
   }
 });
-
-async function controlledByWorker(page: Page): Promise<void> {
-  await page.evaluate(() => navigator.serviceWorker.ready);
-  await page.reload();
-  await waitForHydratedPage(page);
-  await expect
-    .poll(() => page.evaluate(() => navigator.serviceWorker.controller !== null))
-    .toBe(true);
-}
 
 async function cacheEntries(page: Page): Promise<CacheEntry[]> {
   const entries = await page.evaluate(async () => {
