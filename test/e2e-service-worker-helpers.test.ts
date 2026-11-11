@@ -1,5 +1,6 @@
 import type { BrowserContext, Page } from '@playwright/test';
 import { describe, expect, it, vi } from 'vitest';
+import { waitForHydratedPage } from '../e2e/auth-helpers';
 import {
   activatedBuiltWorker,
   assertBuiltRegistration,
@@ -200,6 +201,34 @@ describe('activatedBuiltWorker', () => {
     expect(text).toContain('"installing":"installing"');
   });
 
+  it('redacts worker URL queries from the failure evidence', async () => {
+    const { page } = fakePage();
+    const leaky = observation({
+      scope: `${SCOPE}?key=secret-scope`,
+      scriptUrl: `${SCRIPT}?token=secret-script`,
+      installing: 'installing',
+      active: null,
+      controlled: false
+    });
+    const text = await failureOf(
+      activatedBuiltWorker(page, { observe: sequence(leaky), timeout: 300 })
+    );
+    expect(text).toContain('"scriptUrl":"/sw.js"');
+    expect(text).toContain('"scope":"/"');
+    expect(text).not.toContain('secret-script');
+    expect(text).not.toContain('secret-scope');
+  });
+
+  it('redacts queries from deterministic wrong-script failures', async () => {
+    const { page } = fakePage();
+    const observe = sequence(
+      observation({ scriptUrl: 'http://127.0.0.1:4173/x.js?token=secret-x' })
+    );
+    const text = await failureOf(activatedBuiltWorker(page, { observe, timeout: 5_000 }));
+    expect(text).toMatch(/Unexpected worker script: \/x\.js/);
+    expect(text).not.toContain('secret-x');
+  });
+
   it('a redundant worker fails on first sight', async () => {
     const { page } = fakePage();
     const observe = vi.fn<ObserveWorker>(
@@ -241,6 +270,51 @@ describe('controlledByBuiltWorker', () => {
     const { page, reload } = fakePage();
     await controlledByBuiltWorker(page, { observe: sequence(activated(true)), timeout: 5_000 });
     expect(reload).not.toHaveBeenCalled();
+  });
+
+  it('fails inside the budget when an observation after activation never settles', async () => {
+    const { page } = fakePage();
+    let calls = 0;
+    const observe: ObserveWorker = async () => {
+      calls += 1;
+      if (calls <= 1) return activated(false);
+      return new Promise<WorkerObservation>(() => undefined);
+    };
+    const started = Date.now();
+    const text = await failureOf(controlledByBuiltWorker(page, { observe, timeout: 300 }));
+    expect(Date.now() - started).toBeLessThan(5_000);
+    expect(text).toMatch(/worker observation: no answer/);
+    expect(text).toMatch(/Worker evidence: /);
+  });
+
+  it('a stalled poll observation shares the deadline instead of hanging', async () => {
+    const { page } = fakePage();
+    let calls = 0;
+    const observe: ObserveWorker = async () => {
+      calls += 1;
+      if (calls <= 2) return activated(calls === 1);
+      return new Promise<WorkerObservation>(() => undefined);
+    };
+    const started = Date.now();
+    const text = await failureOf(controlledByBuiltWorker(page, { observe, timeout: 300 }));
+    expect(Date.now() - started).toBeLessThan(5_000);
+    expect(text).toMatch(/Worker evidence: /);
+  });
+
+  it('reload and hydration time does not consume the control observation budget', async () => {
+    const { page } = fakePage();
+    vi.mocked(waitForHydratedPage).mockImplementationOnce(
+      () => new Promise((resolve) => setTimeout(resolve, 400))
+    );
+    let calls = 0;
+    const observe: ObserveWorker = async () => {
+      calls += 1;
+      if (calls === 1) return activated(false);
+      if (calls === 2) return activated(false);
+      await new Promise((resolve) => setTimeout(resolve, 50));
+      return activated(true);
+    };
+    await expect(controlledByBuiltWorker(page, { observe, timeout: 300 })).resolves.toBeUndefined();
   });
 
   it('fails with evidence when control never arrives after the reload', async () => {

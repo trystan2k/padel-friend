@@ -6,7 +6,7 @@ import { watchBrowserErrors, withoutSurface } from '../e2e/browser-error-gate';
 // The statistics journeys fail on ANY browser error. This pins the attribution the gate adds so a
 // missing asset (historically /virtual:stylex.css) is named by status, resource type and URL, a clean
 // page records nothing, and an error that lands after a drain is reported on the next drain with the
-// page it surfaced on rather than lost or silently cleared.
+// page URL at observation time rather than lost or silently cleared.
 const ORIGIN = 'http://127.0.0.1:4173';
 
 function fakePage(url = `${ORIGIN}/dashboard`) {
@@ -69,18 +69,32 @@ describe('watchBrowserErrors', () => {
     expect(drain()).toEqual([]);
   });
 
-  it('keeps a late error for the next drain, attributed to the page it surfaced on', () => {
+  it('keeps a late error for the next drain, labelled with the URL at observation time', () => {
     const fake = fakePage();
     const drain = watchBrowserErrors(fake.page);
     expect(drain()).toEqual([]);
     fake.navigate(`${ORIGIN}/players/1`);
     fake.response(404, 'image', `${ORIGIN}/late.png`);
-    expect(drain()).toEqual([`http 404 image ${ORIGIN}/late.png [page ${ORIGIN}/players/1]`]);
+    expect(drain()).toEqual([
+      `http 404 image ${ORIGIN}/late.png [observed on ${ORIGIN}/players/1]`
+    ]);
     expect(drain()).toEqual([]);
   });
 
-  it('strips only the trailing surfaced-on suffix', () => {
-    expect(withoutSurface(`console: x @ ${ORIGIN}/a [page ${ORIGIN}/b]`)).toBe(
+  it('names the failing resource, not the page, when a previous navigation fails late', () => {
+    const fake = fakePage(`${ORIGIN}/dashboard`);
+    const drain = watchBrowserErrors(fake.page);
+    // The image was requested by /dashboard; the page moved on before the failure arrived.
+    fake.navigate(`${ORIGIN}/players/1`);
+    fake.response(404, 'image', `${ORIGIN}/dashboard-hero.png`);
+    const [entry] = drain();
+    expect(withoutSurface(entry!)).toBe(`http 404 image ${ORIGIN}/dashboard-hero.png`);
+    expect(entry).toContain(`[observed on ${ORIGIN}/players/1]`);
+    expect(entry).not.toContain('[page ');
+  });
+
+  it('strips only the trailing observed-on suffix', () => {
+    expect(withoutSurface(`console: x @ ${ORIGIN}/a [observed on ${ORIGIN}/b]`)).toBe(
       `console: x @ ${ORIGIN}/a`
     );
   });

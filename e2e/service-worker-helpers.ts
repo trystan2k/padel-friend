@@ -44,6 +44,16 @@ export type WorkerWaitOptions = {
   timeout?: number;
 };
 
+/** Path-only form of a worker URL: queries, fragments and credentials never reach test output. */
+function publicPath(url: string | null): string | null {
+  if (url === null) return null;
+  try {
+    return new URL(url).pathname;
+  } catch {
+    return 'invalid-url';
+  }
+}
+
 /** True when the URL is the built worker script (any origin, any query). */
 export function isBuiltWorkerUrl(url: string): boolean {
   try {
@@ -56,9 +66,9 @@ export function isBuiltWorkerUrl(url: string): boolean {
 /** Throws unless the snapshot is the activated built worker registered at the root scope. */
 export function assertBuiltRegistration(snapshot: RegistrationSnapshot): void {
   if (snapshot.scope === null || new URL(snapshot.scope).pathname !== BUILT_WORKER_SCOPE)
-    throw new Error(`Unexpected worker scope: ${snapshot.scope ?? 'none'}`);
+    throw new Error(`Unexpected worker scope: ${publicPath(snapshot.scope) ?? 'none'}`);
   if (snapshot.scriptUrl === null || !isBuiltWorkerUrl(snapshot.scriptUrl))
-    throw new Error(`Unexpected worker script: ${snapshot.scriptUrl ?? 'none'}`);
+    throw new Error(`Unexpected worker script: ${publicPath(snapshot.scriptUrl) ?? 'none'}`);
   if (snapshot.state !== 'activated')
     throw new Error(`Built worker is not activated: ${snapshot.state ?? 'none'}`);
 }
@@ -75,11 +85,11 @@ export function classifyWorker(observation: WorkerObservation): WorkerPhase {
     );
   if (observation.scope === null) return 'absent';
   if (new URL(observation.scope).pathname !== BUILT_WORKER_SCOPE)
-    throw new Error(`Unexpected worker scope: ${observation.scope}`);
+    throw new Error(`Unexpected worker scope: ${publicPath(observation.scope)}`);
   const states = [observation.installing, observation.waiting, observation.active];
   if (states.every((state) => state === null)) return 'absent';
   if (observation.scriptUrl === null || !isBuiltWorkerUrl(observation.scriptUrl))
-    throw new Error(`Unexpected worker script: ${observation.scriptUrl ?? 'none'}`);
+    throw new Error(`Unexpected worker script: ${publicPath(observation.scriptUrl) ?? 'none'}`);
   if (states.includes('redundant')) throw new Error('Built worker became redundant');
   if (observation.active === 'activated') return 'activated';
   if (observation.active === 'activating') return 'activating';
@@ -163,7 +173,14 @@ export async function workerEvidence(
   return {
     path: url.pathname,
     hydrated,
-    observation,
+    observation:
+      typeof observation === 'string'
+        ? observation
+        : {
+            ...observation,
+            scope: publicPath(observation.scope),
+            scriptUrl: publicPath(observation.scriptUrl)
+          },
     script: scriptProbe,
     contextWorkers: page
       .context()
@@ -179,6 +196,33 @@ async function withEvidence(page: Page, error: unknown, observe: ObserveWorker):
   return new Error(`${message(error)}\nWorker evidence: ${JSON.stringify(evidence)}`, {
     cause: error
   });
+}
+
+/** Mirrors `expect.timeout` in playwright.config.ts: the budget when the caller passes none. */
+const ASSERTION_BUDGET_MS = 15_000;
+
+/** One shared deadline: every read of `remaining` shrinks toward 1ms, never resets. */
+function deadlineAfter(timeout = ASSERTION_BUDGET_MS): () => number {
+  const end = Date.now() + timeout;
+  return () => Math.max(end - Date.now(), 1);
+}
+
+/** `page.evaluate` has no timeout of its own: reject when the observation outlives the budget. */
+async function observeWithin(
+  page: Page,
+  observe: ObserveWorker,
+  remaining: () => number
+): Promise<WorkerObservation> {
+  const ms = remaining();
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const expired = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => reject(new Error(`worker observation: no answer in ${ms}ms`)), ms);
+  });
+  try {
+    return await Promise.race([observe(page), expired]);
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 async function phaseOf(page: Page, observe: ObserveWorker): Promise<WorkerPhase | 'navigating'> {
@@ -216,15 +260,19 @@ export async function controlledByBuiltWorker(
 ): Promise<void> {
   const { observe = observeWorker, timeout } = options;
   await activatedBuiltWorker(page, options);
+  // The deadline bounds control observations only: the reload and hydration keep their own
+  // allowances, so the post-reload poll starts a fresh budget instead of inheriting their time.
+  let remaining = deadlineAfter(timeout);
   try {
-    if (!(await observe(page)).controlled) {
+    if (!(await observeWithin(page, observe, remaining)).controlled) {
       await page.reload();
       await waitForHydratedPage(page);
+      remaining = deadlineAfter(timeout);
     }
     await expect
-      .poll(async () => (await observe(page)).controlled, {
+      .poll(async () => (await observeWithin(page, observe, remaining)).controlled, {
         message: 'page controlled by the built worker',
-        timeout
+        timeout: remaining()
       })
       .toBe(true);
   } catch (error) {

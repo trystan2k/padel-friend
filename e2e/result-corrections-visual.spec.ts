@@ -1292,11 +1292,16 @@ async function openDiagnostics(
   locale: (typeof locales)[number],
   width: number,
   theme: 'light' | 'dark',
-  height = 844
+  height = 844,
+  beforeGoto?: (page: Page) => Promise<void>,
+  /** Synchronous markers around the timeline gate, so a regression can prove where the helper is. */
+  gateProbe?: { reachedGate: () => void; crossedGate: () => void }
 ) {
-  const opened = await diagnosticsPage(locale, width, theme, height);
+  const opened = await diagnosticsPage(locale, width, theme, height, beforeGoto);
+  gateProbe?.reachedGate();
   // Content readiness (the timeline read has landed), then fonts and layout settle before any probe samples.
   await expect(repairTimelineBody(opened.page)).toHaveCount(1);
+  gateProbe?.crossedGate();
   await waitForRenderSettled(opened.page);
   return opened;
 }
@@ -1829,35 +1834,82 @@ test.describe('repair diagnostics', () => {
     repairJobs.queued = (await f.accepted(await f.confirmed())).jobId;
   });
 
-  test('diagnostics sampling waits for the attempt timeline, not only for quiet frames', async () => {
+  test('openDiagnostics holds sampling until the attempt timeline body exists', async () => {
+    // Cleanup ownership starts before navigation: the page is captured and the route installed in the
+    // beforeGoto hook, so a setup failure after installation still releases the held request.
     let release = () => {};
     const held = new Promise<void>((resolve) => {
       release = resolve;
     });
-    const { page } = await diagnosticsPage('en', 390, 'light', 844, async (target) => {
-      await target.route('**/_serverFn/**', async (route) => {
-        await held;
-        await route.continue();
-      });
+    let heldPage: Page | undefined;
+    let opening: ReturnType<typeof openDiagnostics> | undefined;
+    let openingDone = false;
+    let crossedGate = false;
+    let markReached = () => {};
+    const reached = new Promise<void>((resolve) => {
+      markReached = resolve;
     });
+    const ownedPage = () => {
+      if (!heldPage) throw new Error('beforeGoto did not run');
+      return heldPage;
+    };
     try {
-      const detail = page.locator('[data-repair-detail]');
-      // Quiet frames, fonts and images are all ready while the timeline read is still held: this is
-      // the state a frame-stability gate alone would sample.
-      await waitForRenderSettled(page);
+      opening = openDiagnostics(
+        'en',
+        390,
+        'light',
+        844,
+        async (target) => {
+          heldPage = target;
+          await target.route('**/_serverFn/**', async (route) => {
+            await held;
+            await route.continue();
+          });
+        },
+        {
+          reachedGate: markReached,
+          crossedGate: () => {
+            crossedGate = true;
+          }
+        }
+      );
+      void opening.then(
+        () => {
+          openingDone = true;
+        },
+        () => {}
+      );
+      // Deterministic boundary: the helper itself reports it reached the timeline gate. Without the
+      // gate, `crossedGate` runs in the same microtask chain as `reachedGate` (no Playwright call
+      // between them), so it is set before any macrotask, including the page round trip below.
+      // Racing `opening` surfaces a setup failure instead of hanging on a gate that was never reached.
+      await Promise.race([reached, opening]);
+      const page = ownedPage();
+      await page.evaluate(() => 0);
       await expect(repairTimelineBody(page)).toHaveCount(0);
-      const pending = (await captureBoxes({ detail })).detail;
+      // Mutation: without the timeline-body gate, `crossedGate` is true here (and openDiagnostics goes
+      // on to resolve), so this assertion fails regardless of scheduling.
+      expect(
+        crossedGate,
+        'openDiagnostics crossed the timeline gate while the body was missing'
+      ).toBe(false);
+      expect(openingDone, 'openDiagnostics resolved before the attempt timeline body existed').toBe(
+        false
+      );
+      const pending = (await captureBoxes({ detail: page.locator('[data-repair-detail]') })).detail;
       release();
+      await opening;
       await expect(repairTimelineBody(page)).toHaveCount(1);
-      await waitForRenderSettled(page);
-      const loaded = (await captureBoxes({ detail })).detail;
+      const loaded = (await captureBoxes({ detail: page.locator('[data-repair-detail]') })).detail;
       expect(
         loaded.height,
         'the detail section grew after a quiet-frame gate had already passed'
       ).toBeGreaterThan(pending.height);
     } finally {
       release();
-      await page.unrouteAll({ behavior: 'wait' });
+      // Never mask the original failure with a secondary cleanup error.
+      await opening?.catch(() => {});
+      await heldPage?.unrouteAll({ behavior: 'wait' }).catch(() => {});
     }
   });
 
