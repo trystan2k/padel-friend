@@ -27,6 +27,143 @@ export async function box(locator: Locator): Promise<Box> {
   });
 }
 
+export type Geometry = { box: Box; inner: Box };
+
+/** Whole-snapshot retakes when an element is replaced mid-capture (bounded, no fixed sleeps). */
+const snapshotAttempts = 5;
+
+/**
+ * Atomic geometry sample: border boxes and content boxes of every locator, read in ONE browser
+ * evaluation (a single synchronous task, so no layout change can land between the reads). Compared
+ * sets must come from one call: separate `box()` calls are separate evaluates, and a diagnostics poll
+ * or lease-status refresh between them yields a torn comparison even after waitForRenderSettled.
+ * Locators resolve to elements first (waiting for attachment); the reads then happen together.
+ */
+export async function captureGeometry<K extends string>(
+  locators: Record<K, Locator>
+): Promise<Record<K, Geometry>> {
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- Object.entries/fromEntries erase the key union; the keys are exactly the locator keys
+  const entries = Object.entries<Locator>(locators) as [K, Locator][];
+  const first = entries[0];
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- no locators, so no keys
+  if (!first) return {} as Record<K, Geometry>;
+  for (let attempt = 1; attempt <= snapshotAttempts; attempt++) {
+    const handles = await Promise.all(entries.map(([, locator]) => locator.elementHandle()));
+    try {
+      // Connectivity is validated in the same browser task that measures: if any element was
+      // replaced after its handle resolved (a live refresh re-rendered it), the whole snapshot is
+      // discarded and retaken from fresh handles, so it never mixes DOM generations and never
+      // reports the zero rect of a detached node.
+      const sampled = await first[1].page().evaluate((elements) => {
+        if (elements.some((element) => !element.isConnected)) return null;
+        const toBox = ({ x, y, right, bottom, width, height }: DOMRect): Box => ({
+          x,
+          y: y + window.scrollY,
+          right,
+          bottom: bottom + window.scrollY,
+          width,
+          height
+        });
+        return elements.map((element) => {
+          const style = getComputedStyle(element);
+          const rect = element.getBoundingClientRect();
+          const left =
+            Number.parseFloat(style.borderLeftWidth) + Number.parseFloat(style.paddingLeft);
+          const right =
+            Number.parseFloat(style.borderRightWidth) + Number.parseFloat(style.paddingRight);
+          const top = Number.parseFloat(style.borderTopWidth) + Number.parseFloat(style.paddingTop);
+          const bottom =
+            Number.parseFloat(style.borderBottomWidth) + Number.parseFloat(style.paddingBottom);
+          return {
+            box: toBox(rect),
+            inner: {
+              x: rect.x + left,
+              y: rect.y + top + window.scrollY,
+              right: rect.right - right,
+              bottom: rect.bottom - bottom + window.scrollY,
+              width: rect.width - left - right,
+              height: rect.height - top - bottom
+            }
+          };
+        });
+      }, handles);
+      if (sampled)
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- Object.entries/fromEntries erase the key union; the keys are exactly the locator keys
+        return Object.fromEntries(entries.map(([key], index) => [key, sampled[index]])) as Record<
+          K,
+          Geometry
+        >;
+    } finally {
+      await Promise.all(handles.map((handle) => handle.dispose()));
+    }
+  }
+  throw new Error(
+    `Geometry snapshot kept detaching elements across ${snapshotAttempts} attempts: ${entries
+      .map(([key]) => key)
+      .join(', ')}`
+  );
+}
+
+/** Border boxes of every locator from one atomic sample (see captureGeometry). */
+export async function captureBoxes<K extends string>(
+  locators: Record<K, Locator>
+): Promise<Record<K, Box>> {
+  const geometry = await captureGeometry(locators);
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- Object.entries/fromEntries erase the key union; the keys are exactly the locator keys
+  return Object.fromEntries(
+    Object.entries<Geometry>(geometry).map(([key, value]) => [key, value.box])
+  ) as Record<K, Box>;
+}
+
+/**
+ * Render readiness gate: waits until the page lays out the way it will keep laying out, so the geometry
+ * probes and screenshot captures that follow never sample a layout that is about to reflow.
+ * Hypothesised mechanism (PAF-175, UNCONFIRMED pending the loaded-gate campaign, AC1): the bundled
+ * Inter/Manrope faces are @fontsource subsets with font-display: swap, fetched lazily on first use. Under
+ * full-gate load the first sample may have run on fallback metrics, with the swap reflowing text after it
+ * (a wrapped line would explain the ~22px drift that exceeded the 2px assertStacked tolerance). Failure
+ * geometry matching fallback-font metrics would confirm it. Every font used by visible text is loaded explicitly, images are decoded, then the layout
+ * must be identical across consecutive animation frames. Persistent instability fails with the
+ * unsettled element count instead of passing on a lucky sample.
+ */
+export async function waitForRenderSettled(page: Page) {
+  await page.evaluate(async () => {
+    const faces = new Map<string, string>();
+    for (const element of document.querySelectorAll('body *')) {
+      const text = [...element.childNodes]
+        .filter((node) => node.nodeType === Node.TEXT_NODE)
+        .map((node) => node.textContent ?? '')
+        .join('')
+        .trim();
+      if (!text) continue;
+      const style = getComputedStyle(element);
+      const font = `${style.fontStyle} ${style.fontWeight} ${style.fontSize} ${style.fontFamily}`;
+      faces.set(font, (faces.get(font) ?? '') + text);
+    }
+    await Promise.all([...faces].map(([font, text]) => document.fonts.load(font, text)));
+    await document.fonts.ready;
+    for (const [font, text] of faces)
+      if (!document.fonts.check(font, text)) throw new Error(`Font not ready: ${font}`);
+    await Promise.all([...document.images].map((image) => image.decode()));
+    const sample = () =>
+      [...document.querySelectorAll('body *')]
+        .map((element) => {
+          const { x, y, width, height } = element.getBoundingClientRect();
+          return `${x},${y},${width},${height}`;
+        })
+        .join('|');
+    const frame = () => new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+    let previous = sample();
+    for (let stable = 0, frames = 0; stable < 3; frames++) {
+      if (frames > 600) throw new Error('Layout did not settle within 600 animation frames');
+      await frame();
+      const current = sample();
+      stable = current === previous ? stable + 1 : 0;
+      previous = current;
+    }
+  });
+}
+
 /** Document-order stacking: each box ends before the next begins (small subpixel tolerance). */
 export function assertStacked(boxes: Record<string, Box>) {
   const entries = Object.entries(boxes);

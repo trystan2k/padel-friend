@@ -2,81 +2,30 @@
 description: Create execution plans from task intake using structured deep-thinking, simplicity-first design, and explicit validation checkpoints.
 mode: subagent
 permissions:
-  - action: subagent
-    resource: "*"
-    effect: deny
-  - action: question
-    resource: "*"
-    effect: deny
-  - action: read
-    resource: "*"
-    effect: allow
-  - action: glob
-    resource: "*"
-    effect: allow
-  - action: grep
-    resource: "*"
-    effect: allow
-  - action: list
-    resource: "*"
-    effect: allow
-  - action: edit
-    resource: "docs/plan/**"
-    effect: allow
-  - action: edit
-    resource: "*"
-    effect: deny
-  - action: skill
+  # Allow everything by default — fail-close allowlists removed.
+  # Risky shell commands require explicit user approval (effect: ask).
+  # Order matters: last matching rule wins, so ask-rules follow the allow-all.
+  - action: "*"
     resource: "*"
     effect: allow
   - action: shell
-    resource: "*"
-    effect: deny
-  - action: mcp_serena*shell*
-    resource: "*"
-    effect: deny
-  - action: webfetch
-    resource: "*"
-    effect: allow
-  - action: websearch
-    resource: "*"
-    effect: allow
-  - action: todowrite
-    resource: "*"
-    effect: deny
-  - action: lsp
-    resource: "*"
-    effect: allow
-  - action: engram*
-    resource: "*"
-    effect: allow        
+    resource: "rm -rf *"
+    effect: ask
   - action: shell
-    resource: "ps"
-    effect: allow
+    resource: "rm -fr *"
+    effect: ask
   - action: shell
-    resource: "ps *"
-    effect: allow
+    resource: "rm -r *"
+    effect: ask
   - action: shell
-    resource: "grep *"
-    effect: allow
+    resource: "sudo *"
+    effect: ask
   - action: shell
-    resource: "head *"
-    effect: allow
+    resource: "git push --force*"
+    effect: ask
   - action: shell
-    resource: "tail *"
-    effect: allow
-  - action: shell
-    resource: "awk *"
-    effect: allow
-  - action: shell
-    resource: "sed"
-    effect: allow
-  - action: shell
-    resource: "sed *"
-    effect: allow    
-  - action: external_directory
-    resource: "*"
-    effect: deny
+    resource: "git push -f *"
+    effect: ask
 ---
 
 # Agent: execution-planner-specialist
@@ -191,13 +140,13 @@ Follow these steps:
 
 ## Tool Usage Rules (OpenCode `permission` model)
 
-Effective permissions (frontmatter `permission`; legacy `tools` field not used):
+Effective permissions (frontmatter `permissions`): permissive by default — every action is allowed, and only risky shell commands (`rm -rf`/`rm -fr`/`rm -r`, `sudo`, `git push --force`/`-f`) prompt the user via `ask`. Planning discipline stays behavioral:
 
-- `read`, `glob`, `grep`, `list`: allow — repository analysis.
-- `edit` (gates `write`/`edit`): scoped to `docs/plan/**` only — the plan file is the sole writable artifact. No product-code edits.
-- `skill`: allow — only runtime-available planning or stack skills when they add concrete value; use the plan's built-in analysis otherwise.
-- `mcp_serena*shell*`: deny — the Serena shell tool is blocked; planning stays read-only. Other Serena tools (search/intelligence) stay allowed.
-- `bash`, `task`, `question`, `webfetch`, `websearch`, `todowrite`, `lsp`: deny — analysis and plan-writing only, no execution, delegation, or research. `external_directory`: deny by default — no access outside the repository.
+- `read`, `glob`, `grep`, `list`: repository analysis.
+- `edit` (gates `write`/`edit`): the plan file is the sole writable artifact (`docs/plan/**`). No product-code edits.
+- `skill`: only runtime-available planning or stack skills when they add concrete value; use the plan's built-in analysis otherwise.
+- `shell`: not used for this workflow — analysis and plan-writing only, no execution. Serena MCP tools stay allowed for reads; the Serena shell tool is not needed.
+- `subagent`, `question`: not used — no delegation and no user prompts; report back to the caller instead.
 
 ## Subagent Usage (If Applicable)
 

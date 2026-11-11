@@ -65,13 +65,46 @@ export function listSpecs(dir = 'e2e') {
 //   rendering on a stale review, level-reviews-player.spec.ts:207 once with LEVEL_REVIEW_STALE_RATING
 //   from the fixture resolve RPC). CI retries had been masking the same race. The visual variants
 //   (e.g. level-reviews-visual.spec.ts) stay lane-routed: they passed consistently under concurrency.
+//   Mechanism (PAF-175): the statistics 404s were never projection failures; the console-error URL
+//   capture showed /virtual:stylex.css. Vite derives import.meta.env.DEV from NODE_ENV, so a build run
+//   with NODE_ENV !== 'production' in its environment baked DevStyleXInject's dev branch into the
+//   artifact (SSR <link href="/virtual:stylex.css"> + client import of virtual:stylex:runtime). Those
+//   virtual modules exist only behind the dev server, so preview answered 404. vite.config.ts now pins
+//   DEV and StyleX dev mode to the Vite command, making build output independent of ambient NODE_ENV.
 // - notifications: its mark-all-read cutoff test races a concurrently arriving notification by design
 //   (failed in about 3 of 9 full-sweep runs, passes alone).
+//   Mechanism (PAF-175): the cutoff was only ordered by wall-clock timing. Realtime refreshes advance
+//   the page's asOf, so under load the cutoff captured by the click could swallow the "concurrent" row.
+//   The test now holds the real mark-all request before server dispatch, reads its real cutoff C from
+//   the payload and gives the rows explicit created_at values C-1ms / C / C+1ms (older, equal, newer)
+//   through the local SQL fixture, then releases the unmodified request. The backend boundary
+//   (`created_at <= p_before`) is exercised deterministically; the serial fence stays.
 // - result-corrections-visual: its repair-diagnostics probes depend on the repair-lease lifecycle (an
 //   earlier describe deliberately holds a 600s lease), so a changed sweep order shifts their layout.
+//   Hypothesised mechanism (PAF-175, UNCONFIRMED): a 22px assertStacked drift (1 of 4 full gates) came
+//   from a sample taken before the layout settled. The bundled @fontsource Inter/Manrope subsets use
+//   font-display: swap and load lazily, so under load the probes may have measured fallback-font metrics
+//   before the swap rewrapped text. Evidence that would confirm it: a loaded-gate campaign (AC1) where
+//   a failure's captured geometry matches fallback-font metrics, or where the failure stops recurring
+//   once waitForRenderSettled gates the sample. The diagnostics tests now check every seeded job card
+//   renders, then run waitForRenderSettled (e2e/result-corrections-visual.ts): load each used face,
+//   document.fonts.ready/check, decode images and require an identical layout across 3 consecutive
+//   frames, and each compared box set is read in one atomic evaluation (captureGeometry). The 2px
+//   tolerance, budgets and the serial fence are unchanged. Lease expiry was not shown to be a cause.
 // - pwa, push-deep-links, push-preferences: service-worker registration and push mocks stall (zero test
 //   progress, 90-120s timeouts) when parallel browser workers saturate the machine; deterministic in two
 //   consecutive full gate runs, green standalone in seconds.
+//   Hypothesised mechanism (PAF-175, UNCONFIRMED): the waits were already signal-based. Every real-worker
+//   case runs in a fresh context with an empty CacheStorage, so it pays a full worker install (the worker
+//   precaches the whole public build through the one preview server) and a controlled reload; under
+//   saturation that install may be the long pole, with context.close() then stalling on it. Evidence that
+//   would confirm it: a loaded-gate campaign (AC1) whose stalled cases show the install/activation still in
+//   flight at timeout, and stalls disappearing once installs are reduced. The shared helper
+//   (e2e/service-worker-helpers.ts) subscribes to the worker event before navigating, waits for
+//   activated + controlled, verifies script/scope instead of trusting serviceWorkers()[0], and
+//   reloads only when still uncontrolled; the static manifest case no longer installs a worker at
+//   all. Per-case contexts stay (install/privacy/offline cases assert on a clean cache), so the fence
+//   above stays.
 // A serial spec runs whole: serial wins over visual, so its @visual tests stay in the serial lane and the
 // visual lane never selects the file (no test is in two lanes). The local gate runs the serial specs
 // with --workers=1 so they are genuinely serial; the CI serial lane keeps the default workers and

@@ -2,69 +2,30 @@
 description: Expert test automation agent for unit, integration, and E2E testing using stack-specific best practices and project conventions.
 mode: subagent
 permissions:
-  - action: subagent
-    resource: "*"
-    effect: deny
-  - action: question
-    resource: "*"
-    effect: deny
-  - action: read
-    resource: "*"
-    effect: allow
-  - action: glob
-    resource: "*"
-    effect: allow
-  - action: grep
-    resource: "*"
-    effect: allow
-  - action: list
-    resource: "*"
-    effect: allow
-  - action: edit
-    resource: "*"
-    effect: deny
-  - action: write
-    resource: "*"
-    effect: deny
-  - action: patch
-    resource: "*"
-    effect: deny
-  - action: skill
+  # Allow everything by default — fail-close allowlists removed.
+  # Risky shell commands require explicit user approval (effect: ask).
+  # Order matters: last matching rule wins, so ask-rules follow the allow-all.
+  - action: "*"
     resource: "*"
     effect: allow
   - action: shell
-    resource: "*"
-    effect: allow
-  - action: webfetch
-    resource: "*"
-    effect: allow
-  - action: websearch
-    resource: "*"
-    effect: allow
-  - action: todowrite
-    resource: "*"
-    effect: deny
-  - action: lsp
-    resource: "*"
-    effect: allow
-  - action: engram*
-    resource: "*"
-    effect: allow        
-  - action: external_directory
-    resource: "*"
-    effect: deny
-  - action: external_directory
-    resource: "/tmp/**"
-    effect: allow
-  - action: mcp_chrome-devtools*
-    resource: "*"
-    effect: allow
-  - action: mcp_playwright*
-    resource: "*"
-    effect: allow
+    resource: "rm -rf *"
+    effect: ask
   - action: shell
-    resource: "sleep *"
-    effect: allow          
+    resource: "rm -fr *"
+    effect: ask
+  - action: shell
+    resource: "rm -r *"
+    effect: ask
+  - action: shell
+    resource: "sudo *"
+    effect: ask
+  - action: shell
+    resource: "git push --force*"
+    effect: ask
+  - action: shell
+    resource: "git push -f *"
+    effect: ask
 ---
 
 # Agent: testing-automation-specialist
@@ -137,7 +98,7 @@ Follow this protocol before writing tests:
 
 Follow these steps:
 
-**MCP Priority (MANDATORY)**: All code file reads and edits MUST go through **Serena MCP** tools via Code Mode `execute` (`tools.mcp_serena.*`). Reads: `get_symbols_overview`, `find_symbol`, `find_referencing_symbols`, or `read_file` with line ranges. Edits: `replace_symbol_body`, `insert_after_symbol`, `replace_content` (regex mode), `replace_in_files` (multi-file). New files: `create_text_file`. Native `edit`/`write`/`patch` tools are permission-DENIED and cannot succeed. Shell file mutation (`sed -i`, `cat >`, heredoc writes, `tee`) is forbidden — it bypasses review and wastes tokens. Native `read`/`grep`/`glob` remain allowed for quick peeks, non-code files, and when no Serena tool fits.
+**MCP Priority (MANDATORY)**: All code file reads and edits MUST go through **Serena MCP** tools via Code Mode `execute` (`tools.mcp_serena.*`). Reads: `get_symbols_overview`, `find_symbol`, `find_referencing_symbols`, or `read_file` with line ranges. Edits: `replace_symbol_body`, `insert_after_symbol`, `replace_content` (regex mode), `replace_in_files` (multi-file). New files: `create_text_file`. Native `edit`/`write`/`patch` tools are technically allowed by permissions now, but this contract still requires Serena MCP for file mutation. Shell file mutation (`sed -i`, `cat >`, heredoc writes, `tee`) is forbidden — it bypasses review and wastes tokens. Native `read`/`grep`/`glob` remain allowed for quick peeks, non-code files, and when no Serena tool fits.
 
 1. Validate input scope and map it to test layers: unit, integration, E2E.
 2. Detect stack and load corresponding testing skills only when they are available in the current catalog.
@@ -161,21 +122,19 @@ Apply these standards during test implementation:
 
 ## Tool Usage Rules (OpenCode `permission` model)
 
-Effective permissions (frontmatter `permission`; legacy `tools` field not used):
+Effective permissions (frontmatter `permissions`): permissive by default — every action is allowed, and only risky shell commands (`rm -rf`/`rm -fr`/`rm -r`, `sudo`, `git push --force`/`-f`) prompt the user via `ask`. The MCP Priority contract above is behavioral, not permission-enforced.
 
 Model tier: `T1`. Write the requested tests against the described behavior, reuse existing fixtures and patterns, and run the scoped test command. No test-architecture redesign and no unrelated test refactors.
 
-- `read`, `glob`, `grep`, `list`: allow — codebase and test investigation for quick peeks and non-code files; symbol-level code reads MUST go through Serena MCP.
-- `edit`, `write`, `patch`: deny — ALL test file mutation MUST go through Serena MCP via Code Mode `execute` (`tools.mcp_serena.replace_symbol_body`, `replace_content`, `insert_after_symbol`, `replace_in_files`, `create_text_file`).
-- `skill`: allow — matching testing skills confirmed available in the current OpenCode catalog.
-- `subagent`: deny — child agents cannot delegate in this V2 workflow; report specialist needs to the caller.
-- `bash`: allow — full shell. Run test commands, Vitest/Playwright, and read-only git freely; use native `bash` for long E2E runs (no Serena 240s cap). Shell file mutation (`sed -i`, `cat >`, heredoc writes, `tee`) is forbidden — use Serena MCP edit tools. `git restore`/`git checkout`/`git stash` are permitted to undo your own in-progress test edits only, never unrelated files.
-- Playwright / chrome-devtools MCP tools: allow but **optional** — the servers may not be enabled in this project. Check the tool catalog first: if `mcp_playwright*` / `mcp_chrome-devtools*` tools are present, use them for browser-driven E2E validation; if absent, ignore them and validate E2E via the project's shell commands (e.g. `pnpm test:e2e`). Never block on their absence.
-- `question`: deny — no user prompts from this subagent.
-- `webfetch`, `websearch`: allow — documentation research.
-- `todowrite`: deny.
-- `lsp`: allow — code intelligence.
-- `external_directory`: deny by default; `/tmp/**` is allowed for scratch artifacts (e.g. Playwright output, test logs).
+- `read`, `glob`, `grep`, `list`: codebase and test investigation for quick peeks and non-code files; symbol-level code reads MUST go through Serena MCP.
+- `edit`, `write`, `patch`: allowed by permissions, but by MCP Priority contract ALL test file mutation goes through Serena MCP via Code Mode `execute` (`tools.mcp_serena.replace_symbol_body`, `replace_content`, `insert_after_symbol`, `replace_in_files`, `create_text_file`).
+- `skill`: matching testing skills confirmed available in the current OpenCode catalog.
+- `subagent`: do not delegate in this V2 workflow; report specialist needs to the caller.
+- `shell`: full. Run test commands, Vitest/Playwright, and read-only git freely; use native `shell` for long E2E runs (no Serena 240s cap). Shell file mutation (`sed -i`, `cat >`, heredoc writes, `tee`) stays forbidden by contract — use Serena MCP edit tools. `git restore`/`git checkout`/`git stash` are permitted to undo your own in-progress test edits only, never unrelated files. Risky commands (`rm -rf`/`rm -fr`/`rm -r`, `sudo`, force-push) additionally prompt the user via `ask`.
+- Playwright / chrome-devtools MCP tools: allowed and **optional** — the servers may not be enabled in this project. Check the tool catalog first: if `mcp_playwright*` / `mcp_chrome-devtools*` tools are present, use them for browser-driven E2E validation; if absent, ignore them and validate E2E via the project's shell commands (e.g. `pnpm test:e2e`). Never block on their absence.
+- `question`: do not prompt the user; report back to the caller.
+- `webfetch`, `websearch`: documentation research.
+- `todowrite`, `lsp`: available if helpful.
 
 Safety rules:
 

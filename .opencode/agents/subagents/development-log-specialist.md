@@ -2,96 +2,30 @@
 description: Handle all development log operations.
 mode: subagent
 permissions:
-  - action: subagent
-    resource: "*"
-    effect: deny
-  - action: question
-    resource: "*"
-    effect: deny
-  - action: read
-    resource: "*"
-    effect: allow
-  - action: glob
-    resource: "*"
-    effect: allow
-  - action: grep
-    resource: "*"
-    effect: allow
-  - action: list
-    resource: "*"
-    effect: allow
-  - action: edit
-    resource: "*"
-    effect: deny
-  - action: edit
-    resource: "docs/development-logs/**"
-    effect: allow
-  - action: skill
-    resource: "*"
-    effect: deny
-  - action: shell
-    resource: "*"
-    effect: deny
-  - action: shell
-    resource: "git log*"
-    effect: allow
-  - action: shell
-    resource: "git show*"
-    effect: allow
-  - action: shell
-    resource: "git status*"
-    effect: allow
-  - action: shell
-    resource: "git branch*"
-    effect: allow
-  - action: shell
-    resource: "ls*"
-    effect: allow
-  - action: webfetch
-    resource: "*"
-    effect: deny
-  - action: websearch
-    resource: "*"
-    effect: deny
-  - action: todowrite
-    resource: "*"
-    effect: deny
-  - action: lsp
+  # Allow everything by default — fail-close allowlists removed.
+  # Risky shell commands require explicit user approval (effect: ask).
+  # Order matters: last matching rule wins, so ask-rules follow the allow-all.
+  - action: "*"
     resource: "*"
     effect: allow
   - action: shell
-    resource: "ps"
-    effect: allow
+    resource: "rm -rf *"
+    effect: ask
   - action: shell
-    resource: "ps *"
-    effect: allow
+    resource: "rm -fr *"
+    effect: ask
   - action: shell
-    resource: "grep *"
-    effect: allow
+    resource: "rm -r *"
+    effect: ask
   - action: shell
-    resource: "head *"
-    effect: allow
+    resource: "sudo *"
+    effect: ask
   - action: shell
-    resource: "tail *"
-    effect: allow
+    resource: "git push --force*"
+    effect: ask
   - action: shell
-    resource: "awk *"
-    effect: allow
-  - action: shell
-    resource: "sed"
-    effect: allow
-  - action: shell
-    resource: "sed *"
-    effect: allow    
-  - action: external_directory
-    resource: "*"
-    effect: deny
-  - action: mcp_serena*
-    resource: "*"
-    effect: deny
-  - action: engram*
-    resource: "*"
-    effect: allow        
+    resource: "git push -f *"
+    effect: ask
 ---
 
 # Agent: development-log-specialist

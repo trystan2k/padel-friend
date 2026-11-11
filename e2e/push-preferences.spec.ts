@@ -3,6 +3,7 @@ import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { expect, test, type BrowserContext, type Locator, type Page } from '@playwright/test';
 import { E2E_WEB_PUSH_ENV } from '../scripts/e2e-build-env.mjs';
 import { waitForHydratedPage } from './auth-helpers';
+import { controlledByBuiltWorker } from './service-worker-helpers';
 import en from '../src/locales/en/translation.json' with { type: 'json' };
 import es from '../src/locales/es/translation.json' with { type: 'json' };
 import ptBR from '../src/locales/pt-BR/translation.json' with { type: 'json' };
@@ -10,6 +11,10 @@ import ptBR from '../src/locales/pt-BR/translation.json' with { type: 'json' };
 // UI flows run against deterministic Notification/PushManager mocks (a mock never talks to a real
 // push service); the registry round-trips through the real server functions and database. One case
 // at the end registers the real built service worker and reads the real PushManager.
+//
+// Worker churn (PAF-175): every mocked case blocks native workers (the mock container replaces
+// navigator.serviceWorker), so the only real install is the final case; it waits for the activated,
+// controlled built worker explicitly before reading PushManager.
 const BASE_URL = 'http://127.0.0.1:4173';
 const password = 'Password123!';
 const config = localConfig();
@@ -373,7 +378,7 @@ test.describe('real service worker registration', () => {
     try {
       const page = await context.newPage();
       await signIn(page, actor);
-      await page.evaluate(() => navigator.serviceWorker.ready);
+      await controlledByBuiltWorker(page);
       await page.goto('/notifications/preferences');
       await waitForHydratedPage(page);
       const registration = await page.evaluate(async () => {

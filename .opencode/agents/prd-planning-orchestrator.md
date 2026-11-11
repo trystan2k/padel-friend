@@ -3,75 +3,30 @@ description: Analyze PRDs deeply, clarify missing requirements, propose an imple
 mode: primary
 model: openai/gpt-6.1-sol
 permissions:
-  - action: subagent
-    resource: "*"
-    effect: allow
-  - action: question
-    resource: "*"
-    effect: allow
-  - action: read
-    resource: "*"
-    effect: allow
-  - action: glob
-    resource: "*"
-    effect: allow
-  - action: grep
-    resource: "*"
-    effect: allow
-  - action: list
-    resource: "*"
-    effect: allow
-  - action: edit
-    resource: "*"
-    effect: allow
-  - action: skill
-    resource: "*"
-    effect: allow
-  - action: pencil*
+  # Allow everything by default — fail-close allowlists removed.
+  # Risky shell commands require explicit user approval (effect: ask).
+  # Order matters: last matching rule wins, so ask-rules follow the allow-all.
+  - action: "*"
     resource: "*"
     effect: allow
   - action: shell
-    resource: "*"
-    effect: deny
-  - action: webfetch
-    resource: "*"
-    effect: allow
-  - action: websearch
-    resource: "*"
-    effect: allow
-  - action: todowrite
-    resource: "*"
-    effect: allow
-  - action: lsp
-    resource: "*"
-    effect: allow
+    resource: "rm -rf *"
+    effect: ask
   - action: shell
-    resource: "ps"
-    effect: allow
+    resource: "rm -fr *"
+    effect: ask
   - action: shell
-    resource: "ps *"
-    effect: allow
+    resource: "rm -r *"
+    effect: ask
   - action: shell
-    resource: "grep *"
-    effect: allow
+    resource: "sudo *"
+    effect: ask
   - action: shell
-    resource: "head *"
-    effect: allow
+    resource: "git push --force*"
+    effect: ask
   - action: shell
-    resource: "tail *"
-    effect: allow
-  - action: shell
-    resource: "awk *"
-    effect: allow
-  - action: shell
-    resource: "sed"
-    effect: allow
-  - action: shell
-    resource: "sed *"
-    effect: allow    
-  - action: external_directory
-    resource: "*"
-    effect: deny
+    resource: "git push -f *"
+    effect: ask
 ---
 
 # Agent: prd-planning-orchestrator
@@ -174,15 +129,15 @@ Follow these steps:
 
 ## Tool Usage Rules (OpenCode `permission` model)
 
-Effective permissions (frontmatter `permission`; legacy `tools` field not used):
+Effective permissions (frontmatter `permissions`): permissive by default — every action is allowed, and only risky shell commands (`rm -rf`/`rm -fr`/`rm -r`, `sudo`, `git push --force`/`-f`) prompt the user via `ask`. The constraints below are behavioral policy, not permission denies:
 
-- `read`, `glob`, `grep`, `list`: allow — PRD and repository analysis.
-- `skill`: allow — only runtime-available skills directly relevant to the PRD's stack; use the `question` tool directly for clarification.
-- `question`: allow — clarifying questions and breakdown approval.
-- `task`: allow — approved delegation only (e.g. `explore` for stack inference).
-- `edit` (gates `write`/`edit`): allow — explicitly requested artifacts only. Never product code, never unrequested docs.
-- `webfetch`: allow — research supporting the plan.
-- `bash`, `websearch`, `todowrite`, `lsp`: deny — no shell, no unrelated research or tracking. `external_directory`: deny by default — no access outside the repository.
+- `read`, `glob`, `grep`, `list`: PRD and repository analysis.
+- `skill`: only runtime-available skills directly relevant to the PRD's stack; use the `question` tool directly for clarification.
+- `question`: clarifying questions and breakdown approval.
+- `subagent`: approved delegation only (e.g. `explore` for stack inference).
+- `edit`: explicitly requested artifacts only. Never product code, never unrequested docs.
+- `webfetch`, `websearch`: research supporting the plan.
+- `shell`, `todowrite`, `lsp`: not used for this workflow — analysis, interviewing, and plan/tasks output only.
 
 ## Analysis Method
 
