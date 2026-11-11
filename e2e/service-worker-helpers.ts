@@ -1,10 +1,12 @@
 import { expect, type BrowserContext, type Page, type Worker } from '@playwright/test';
 import { waitForHydratedPage } from './auth-helpers';
 
-// Mechanism (PAF-175, class 1): a fresh context has an empty CacheStorage, so every real-worker case
-// pays one full install (the worker precaches the whole public build through the single preview
-// server) before it can answer a request. Under a saturated gate that install, not the test body,
-// is the long pole, and the previous helpers hid it: they read `context.serviceWorkers()[0]` right
+// Hypothesised mechanism (PAF-175, class 1, UNCONFIRMED pending the loaded-gate campaign, AC1): a fresh
+// context has an empty CacheStorage, so every real-worker case pays one full install (the worker
+// precaches the whole public build through the single preview server) before it can answer a request.
+// Under a saturated gate that install, rather than the test body, is the suspected long pole. It would
+// be confirmed by stalled cases showing the install still in flight at timeout. What is verifiable from
+// the code alone: the previous helpers could proceed against a not-yet-ready worker, because they read `context.serviceWorkers()[0]` right
 // after `ready`, which is either empty (the `serviceworker` event is delivered separately from the
 // page-side promise) or not yet the built worker, so a case could proceed against a worker that was
 // not the installed, activated one and then stall inside `context.close()` with that install still

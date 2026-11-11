@@ -26,6 +26,9 @@ import {
   waitForRenderSettled,
   assertTargets,
   box,
+  captureBoxes,
+  captureGeometry,
+  type Geometry,
   frameViewport,
   innerBox,
   measureFrame
@@ -139,7 +142,7 @@ function requestProbes(page: Page, root: Locator) {
       await expect(heading).toHaveCount(1);
       expect(await heading.evaluate((element) => element.tagName)).toBe('H2');
       await expect(root).toHaveAttribute('aria-label', fill(c.requestCardLabel, { number: 1 }));
-      assertStacked({ heading: await box(heading), card: await box(root) });
+      assertStacked(await captureBoxes({ heading, card: root }));
     },
     'A2.noInlineReason': async () => {
       await expect(root.getByRole('textbox')).toHaveCount(0);
@@ -277,10 +280,12 @@ function reviewProbes(page: Page, root: Locator) {
       ).toBe('DIV');
     },
     'B7.headerAndShell': async () => {
-      assertStacked({
-        heading: await box(page.getByRole('heading', { name: c.title, exact: true })),
-        card: await box(root)
-      });
+      assertStacked(
+        await captureBoxes({
+          heading: page.getByRole('heading', { name: c.title, exact: true }),
+          card: root
+        })
+      );
       await expect(root.locator('nav, [role=navigation]')).toHaveCount(0);
     }
   };
@@ -970,37 +975,29 @@ async function structure(kind: Kind, page: Page, root: Locator) {
     const result = root.locator('p').nth(1);
     const note = root.getByText(c.requestNote, { exact: true });
     const action = root.getByRole('button', { name: c.request.open, exact: true });
-    assertStacked({
-      banner: await box(banner),
-      note: await box(note),
-      action: await box(action)
-    });
-    const [bannerBox, resultBox, noteBox, actionBox] = await Promise.all(
-      [banner, result, note, action].map((locator) => box(locator))
-    );
+    // One atomic sample feeds both the document-order and the gap comparisons.
+    const requestBoxes = await captureBoxes({ banner, result, note, action });
+    const { banner: bannerBox, result: resultBox, note: noteBox, action: actionBox } = requestBoxes;
+    assertStacked({ banner: bannerBox, note: noteBox, action: actionBox });
     // Frame order is banner, result, authority note, action (note below the action in the frame).
-    assertStacked({ banner: bannerBox!, result: resultBox!, note: noteBox!, action: actionBox! });
-    for (const [name, item] of Object.entries({ banner: bannerBox!, action: actionBox! })) {
+    assertStacked(requestBoxes);
+    for (const [name, item] of Object.entries({ banner: bannerBox, action: actionBox })) {
       assertNear(item.x, inner.x, `request ${name} aligned to card content edge`);
       assertNear(item.width, inner.width, `request ${name} spans the card content width`);
     }
-    assertNear(actionBox!.height, g.actionHeight, 'request action height equals the frame action');
+    assertNear(actionBox.height, g.actionHeight, 'request action height equals the frame action');
     expect
-      .soft(bannerBox!.height, 'request chip is not shorter than the frame chip')
+      .soft(bannerBox.height, 'request chip is not shorter than the frame chip')
       .toBeGreaterThanOrEqual(g.chipHeight);
     expect
       .soft(
-        bannerBox!.height,
+        bannerBox.height,
         'request chip height delta stays within the declared type-token delta'
       )
       .toBeLessThanOrEqual(g.chipHeight + g.chipHeightMaxDelta);
-    assertNear(
-      resultBox!.y - bannerBox!.bottom,
-      14,
-      'request banner to result gap = card gap token'
-    );
-    assertNear(noteBox!.y - resultBox!.bottom, 14, 'request result to note gap = card gap token');
-    assertNear(actionBox!.y - noteBox!.bottom, 14, 'request note to action gap = card gap token');
+    assertNear(resultBox.y - bannerBox.bottom, 14, 'request banner to result gap = card gap token');
+    assertNear(noteBox.y - resultBox.bottom, 14, 'request result to note gap = card gap token');
+    assertNear(actionBox.y - noteBox.bottom, 14, 'request note to action gap = card gap token');
     await assertDesignSystemStyles(
       page,
       theme,
@@ -1023,27 +1020,27 @@ async function structure(kind: Kind, page: Page, root: Locator) {
       exact: true
     });
     const banner = root.locator('p').first();
-    assertStacked({
-      banner: await box(banner),
-      proposed: await box(proposed),
-      approve: await box(approve)
-    });
-    const [bannerBox, proposedBox, approveBox, rejectBox] = await Promise.all(
-      [banner, proposed, approve, reject].map((locator) => box(locator))
-    );
-    for (const [name, item] of Object.entries({ banner: bannerBox!, proposed: proposedBox! })) {
+    const reviewBoxes = await captureBoxes({ banner, proposed, approve, reject });
+    const {
+      banner: bannerBox,
+      proposed: proposedBox,
+      approve: approveBox,
+      reject: rejectBox
+    } = reviewBoxes;
+    assertStacked({ banner: bannerBox, proposed: proposedBox, approve: approveBox });
+    for (const [name, item] of Object.entries({ banner: bannerBox, proposed: proposedBox })) {
       assertNear(item.x, inner.x, `review ${name} aligned to card content edge`);
       assertNear(item.width, inner.width, `review ${name} spans the card content width`);
     }
     // Approve and reject are two equal 44px actions in one row separated by the action gap token.
-    assertNear(approveBox!.height, g.actionHeight, 'approve height equals the frame action');
-    assertNear(rejectBox!.height, g.actionHeight, 'reject height equals the frame action');
-    assertNear(approveBox!.y, rejectBox!.y, 'approve and reject share a row');
-    assertNear(approveBox!.width, rejectBox!.width, 'approve and reject have equal width', 1);
-    assertNear(rejectBox!.x - approveBox!.right, 8, 'approve to reject gap = action gap token');
-    assertNear(approveBox!.x, inner.x, 'approve starts at the card content edge');
-    assertNear(rejectBox!.right, inner.right, 'reject ends at the card content edge');
-    assertNear(approveBox!.y - proposedBox!.bottom, 14, 'proposed to actions gap = card gap token');
+    assertNear(approveBox.height, g.actionHeight, 'approve height equals the frame action');
+    assertNear(rejectBox.height, g.actionHeight, 'reject height equals the frame action');
+    assertNear(approveBox.y, rejectBox.y, 'approve and reject share a row');
+    assertNear(approveBox.width, rejectBox.width, 'approve and reject have equal width', 1);
+    assertNear(rejectBox.x - approveBox.right, 8, 'approve to reject gap = action gap token');
+    assertNear(approveBox.x, inner.x, 'approve starts at the card content edge');
+    assertNear(rejectBox.right, inner.right, 'reject ends at the card content edge');
+    assertNear(approveBox.y - proposedBox.bottom, 14, 'proposed to actions gap = card gap token');
     await assertDesignSystemStyles(
       page,
       theme,
@@ -1113,8 +1110,9 @@ async function structure(kind: Kind, page: Page, root: Locator) {
     const field = dialog.getByRole('textbox');
     const submit = dialog.getByRole('button', { name: c.resolve.submit, exact: true });
     const cancel = dialog.getByRole('button', { name: c.dialog.cancel, exact: true });
-    const dialogInner = await innerBox(dialog);
-    const fieldBox = await box(field);
+    const fieldSample = await captureGeometry({ dialog, field });
+    const dialogInner = fieldSample.dialog.inner;
+    const fieldBox = fieldSample.field.box;
     assertNear(fieldBox.x, dialogInner.x, 'justification field aligned to the dialog content edge');
     assertNear(
       fieldBox.width,
@@ -1126,8 +1124,9 @@ async function structure(kind: Kind, page: Page, root: Locator) {
     await expect(field).toHaveAttribute('aria-invalid', 'true');
     const describedBy = await field.getAttribute('aria-describedby');
     expect(describedBy).toBeTruthy();
-    assertStacked({ field: await box(field), submit: await box(submit) });
-    const [cancelBox, submitBox] = await Promise.all([box(cancel), box(submit)]);
+    const resolveBoxes = await captureBoxes({ field, submit, cancel });
+    assertStacked({ field: resolveBoxes.field, submit: resolveBoxes.submit });
+    const { cancel: cancelBox, submit: submitBox } = resolveBoxes;
     assertNear(cancelBox.y, submitBox.y, 'dialog actions share a row');
     assertNear(cancelBox.height, g.actionHeight, 'cancel action height equals the frame action');
     assertNear(submitBox.height, g.actionHeight, 'record action height equals the frame action');
@@ -1289,8 +1288,46 @@ async function diagnosticsStructure(
 ) {
   const g = manifest.geometryReference;
   const desktop = viewportWidth >= 960;
-  const rootBox = await box(root);
-  const inner = await innerBox(root);
+  const title = page.getByRole('heading', { level: 1 });
+  const header = root.locator('header').first();
+  const scheduler = root.locator('[data-repair-scheduler]');
+  const queue = root.locator('[data-repair-region=queue]');
+  const detail = root.locator('[data-repair-region=detail]');
+  const detailSection = detail.locator('[data-repair-detail]');
+  const summary = detail.locator('table').first();
+  await expect(scheduler).toBeVisible();
+  // Data readiness for every element that is compared, before the single atomic sample below.
+  const jobLocators: Record<string, Locator> = {};
+  for (const key of jobKeys) {
+    const article = jobArticle(page, key);
+    const status = jobStatus(page, key);
+    await expect(article).toBeVisible();
+    const retry = status.getByRole('button', { name: d.repair.retry, exact: true });
+    await expect(retry, `${key} retry entry`).toHaveCount(key === 'failed' ? 1 : 0);
+    jobLocators[`${key}:article`] = article;
+    jobLocators[`${key}:status`] = status;
+    jobLocators[`${key}:chip`] = status.locator('output').first();
+    jobLocators[`${key}:facts`] = status.locator('dl');
+    if (key === 'failed') jobLocators[`${key}:retry`] = retry;
+  }
+  // Every compared box comes from ONE evaluation: a diagnostics refresh or lease-status change
+  // between separate samples would otherwise tear the comparison (PAF-175).
+  const sampled: Record<string, Geometry> = await captureGeometry({
+    root,
+    title,
+    header,
+    scheduler,
+    queue,
+    detail,
+    detailSection,
+    summary,
+    jobsHeading: page.getByRole('heading', { name: d.diagnostics.jobs, exact: true }),
+    summaryHeading: page.getByRole('heading', { name: d.diagnostics.summary, exact: true }),
+    ...jobLocators
+  });
+  const at = (name: string) => sampled[name]!;
+  const rootBox = at('root').box;
+  const inner = at('root').inner;
   if (desktop) {
     assertNear(inner.x, g.desktopPadding, 'desktop content padding equals the frame padding');
     assertNear(rootBox.x, (viewportWidth - rootBox.width) / 2, 'desktop column is centered', 1);
@@ -1304,23 +1341,17 @@ async function diagnosticsStructure(
       .soft(rootBox.width, 'mobile column keeps the 480px max width')
       .toBeLessThanOrEqual(480.5);
   }
-  const title = page.getByRole('heading', { level: 1 });
-  const header = root.locator('header').first();
-  const scheduler = root.locator('[data-repair-scheduler]');
-  const queue = root.locator('[data-repair-region=queue]');
-  const detail = root.locator('[data-repair-region=detail]');
-  await expect(scheduler).toBeVisible();
   const [headerBox, schedulerBox, queueBox, detailBox] = [
-    await box(header),
-    await box(scheduler),
-    await box(queue),
-    await box(detail)
+    at('header').box,
+    at('scheduler').box,
+    at('queue').box,
+    at('detail').box
   ];
   assertNear(headerBox.x, inner.x, 'header aligned to the content edge');
   assertNear(headerBox.width, inner.width, 'header spans the full content width');
   assertNear(schedulerBox.x, inner.x, 'scheduler card aligned to the content edge');
   assertNear(schedulerBox.width, inner.width, 'scheduler card spans the full content width');
-  assertStacked({ title: await box(title), scheduler: schedulerBox, regions: queueBox });
+  assertStacked({ title: at('title').box, scheduler: schedulerBox, regions: queueBox });
   assertNear(
     queueBox.y - schedulerBox.bottom,
     10,
@@ -1368,25 +1399,13 @@ async function diagnosticsStructure(
     assertNear(detailBox.y - queueBox.bottom, 10, 'stacked regions are one page gap apart');
   }
   // Queue region: heading and jobs. Detail region: selected-job detail above the status counts.
-  const jobsHeading = await box(
-    page.getByRole('heading', { name: d.diagnostics.jobs, exact: true })
-  );
+  const jobsHeading = at('jobsHeading').box;
   assertContained(queueBox, jobsHeading, 'jobs heading inside the queue region');
-  const detailSection = detail.locator('[data-repair-detail]');
-  const summaryHeading = await box(
-    page.getByRole('heading', { name: d.diagnostics.summary, exact: true })
-  );
-  // Re-measure: live queue refreshes can resize the region after the first layout sample.
-  const settledDetailBox = await box(detail);
-  assertContained(settledDetailBox, summaryHeading, 'summary heading inside the detail region');
-  assertContained(
-    settledDetailBox,
-    await box(detailSection),
-    'job detail inside the detail region'
-  );
-  assertStacked({ detail: await box(detailSection), summary: summaryHeading });
-  const summary = detail.locator('table').first();
-  assertContained(await box(detail), await box(summary), 'status counts inside the detail region');
+  const summaryHeading = at('summaryHeading').box;
+  assertContained(detailBox, summaryHeading, 'summary heading inside the detail region');
+  assertContained(detailBox, at('detailSection').box, 'job detail inside the detail region');
+  assertStacked({ detail: at('detailSection').box, summary: summaryHeading });
+  assertContained(detailBox, at('summary').box, 'status counts inside the detail region');
   await assertColumnStructure(summary, 'repair summary table');
   // The four status headers are real, distinct translated labels (no unresolved placeholder).
   const headers = await summary.locator('thead th').allInnerTexts();
@@ -1430,14 +1449,13 @@ async function diagnosticsStructure(
   for (const key of jobKeys) {
     const article = jobArticle(page, key);
     const status = jobStatus(page, key);
-    await expect(article).toBeVisible();
-    const articleBox = await box(article);
-    const articleInner = await innerBox(article);
+    const articleBox = at(`${key}:article`).box;
+    const articleInner = at(`${key}:article`).inner;
     assertContained(queueBox, articleBox, `${key} job card inside the queue region`);
     assertNear(articleBox.x, queueBox.x, `${key} job card aligned to the queue edge`);
     assertNear(articleBox.width, queueBox.width, `${key} job card spans the queue width`);
     // The embedded status section is transparent and sits at the card content edges.
-    const statusBox = await box(status);
+    const statusBox = at(`${key}:status`).box;
     assertNear(statusBox.x, articleInner.x, `${key} status section at the card content edge`);
     assertNear(
       statusBox.width,
@@ -1445,16 +1463,15 @@ async function diagnosticsStructure(
       `${key} status section spans the card content width`
     );
     const chip = status.locator('output').first();
-    const chipBox = await box(chip);
+    const chipBox = at(`${key}:chip`).box;
     assertNear(chipBox.x, articleInner.x, `${key} status chip at the card content edge`);
     expect
       .soft(chipBox.width, `${key} status chip hugs its label`)
       .toBeLessThan(articleInner.width);
-    assertStacked({ chip: chipBox, facts: await box(status.locator('dl')) });
+    assertStacked({ chip: chipBox, facts: at(`${key}:facts`).box });
     const retry = status.getByRole('button', { name: d.repair.retry, exact: true });
-    await expect(retry, `${key} retry entry`).toHaveCount(key === 'failed' ? 1 : 0);
     if (key === 'failed') {
-      const retryBox = await box(retry);
+      const retryBox = at(`${key}:retry`).box;
       assertNear(retryBox.height, g.actionHeight, 'retry action height equals the frame action');
       assertNear(retryBox.x, articleInner.x, 'retry action at the card content edge');
       assertNear(
@@ -1503,30 +1520,32 @@ async function confirmationStructure(page: Page, theme: 'light' | 'dark', viewpo
   const dialog = page.getByRole('dialog', { name: d.repair.confirmTitle, exact: true });
   await expect(dialog).toBeVisible();
   await waitForRenderSettled(page);
-  const dialogBox = await box(dialog);
+  const cancel = dialog.getByRole('button', { name: d.dialog.cancel, exact: true });
+  const confirm = dialog.getByRole('button', { name: d.repair.confirmAction, exact: true });
+  // One atomic sample for every compared box (see captureGeometry).
+  const sampled = await captureGeometry({
+    dialog,
+    title: dialog.getByRole('heading', { name: d.repair.confirmTitle, exact: true }),
+    cancel,
+    confirm
+  });
+  const dialogBox = sampled.dialog.box;
+  const dialogInner = sampled.dialog.inner;
+  const cancelBox = sampled.cancel.box;
+  const confirmBox = sampled.confirm.box;
   assertNear(
     dialogBox.x,
     viewportWidth - dialogBox.right,
     'retry dialog is horizontally centered',
     1
   );
-  const cancel = dialog.getByRole('button', { name: d.dialog.cancel, exact: true });
-  const confirm = dialog.getByRole('button', { name: d.repair.confirmAction, exact: true });
-  const [cancelBox, confirmBox, dialogInner] = [
-    await box(cancel),
-    await box(confirm),
-    await innerBox(dialog)
-  ];
   assertNear(cancelBox.y, confirmBox.y, 'retry dialog actions share a row');
   assertNear(cancelBox.height, g.actionHeight, 'cancel action height equals the frame action');
   assertNear(confirmBox.height, g.actionHeight, 'confirm action height equals the frame action');
   assertNear(cancelBox.width, confirmBox.width, 'retry dialog actions have equal width', 1);
   assertNear(cancelBox.x, dialogInner.x, 'cancel starts at the dialog content edge');
   assertNear(confirmBox.right, dialogInner.right, 'confirm ends at the dialog content edge');
-  assertStacked({
-    title: await box(dialog.getByRole('heading', { name: d.repair.confirmTitle, exact: true })),
-    actions: cancelBox
-  });
+  assertStacked({ title: sampled.title.box, actions: cancelBox });
   await assertDesignSystemStyles(
     page,
     theme,
@@ -1627,11 +1646,16 @@ test.describe('repair diagnostics', () => {
       for (const count of await root.locator('[data-repair-count]').all())
         await expect(count).toHaveText('0');
       await waitForRenderSettled(page);
-      const inner = await innerBox(root);
-      const jobs = await box(page.getByRole('heading', { name: d.diagnostics.jobs, exact: true }));
-      const summary = await box(
-        page.getByRole('heading', { name: d.diagnostics.summary, exact: true })
-      );
+      const sampled = await captureGeometry({
+        root,
+        title: page.getByRole('heading', { level: 1 }),
+        jobs: page.getByRole('heading', { name: d.diagnostics.jobs, exact: true }),
+        empty,
+        summary: page.getByRole('heading', { name: d.diagnostics.summary, exact: true })
+      });
+      const inner = sampled.root.inner;
+      const jobs = sampled.jobs.box;
+      const summary = sampled.summary.box;
       if (width >= 960) {
         assertNear(
           inner.x,
@@ -1641,12 +1665,7 @@ test.describe('repair diagnostics', () => {
         expect.soft(summary.x, 'status counts sit beside the queue').toBeGreaterThan(jobs.right);
       } else {
         assertNear(inner.x, manifest.geometryReference.gutter, 'empty queue content gutter');
-        assertStacked({
-          title: await box(page.getByRole('heading', { level: 1 })),
-          jobs,
-          empty: await box(empty),
-          summary
-        });
+        assertStacked({ title: sampled.title.box, jobs, empty: sampled.empty.box, summary });
       }
       await assertFrameContract(frame, 'empty', [
         {

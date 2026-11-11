@@ -10,15 +10,17 @@ export default defineConfig(({ command }) => {
   return {
     server: { port: 3000, strictPort: true },
     resolve: { tsconfigPaths: true },
-    // Class 2 (PAF-175): Vite derives `import.meta.env.DEV` from NODE_ENV, not from the command.
-    // A build run with NODE_ENV !== 'production' in its environment therefore baked
-    // DevStyleXInject's dev branch into the artifact: the SSR head emitted
-    // <link href="/virtual:stylex.css"> and the client imported 'virtual:stylex:runtime'.
+    // Class 2 (PAF-175): Vite derives `import.meta.env.DEV` and `import.meta.env.PROD` from
+    // NODE_ENV, not from the command. A build run with NODE_ENV !== 'production' in its
+    // environment therefore baked DevStyleXInject's dev branch into the artifact: the SSR head
+    // emitted <link href="/virtual:stylex.css"> and the client imported 'virtual:stylex:runtime'.
     // Those virtual modules only exist behind the dev server's configureServer hook, so the
     // preview server answered 404 (surfacing as "Failed to load resource" console errors).
-    // Pinning DEV (and StyleX dev mode) to the Vite command makes build output independent of
-    // the ambient NODE_ENV: the dev-only branch is always folded away outside `vite dev`.
-    define: isDevServer ? {} : { 'import.meta.env.DEV': 'false' },
+    // The same ambient NODE_ENV would also leave PROD false and silently skip the service-worker
+    // registration gated on it (src/features/pwa/update-store.ts). Pinning DEV=false and
+    // PROD=true (and StyleX dev mode) to the Vite command keeps both flags in agreement and
+    // makes build output independent of the ambient NODE_ENV; `vite dev` is left untouched.
+    define: isDevServer ? {} : { 'import.meta.env.DEV': 'false', 'import.meta.env.PROD': 'true' },
     plugins: [
       cloudflare({ viteEnvironment: { name: 'ssr' } }),
       tanstackStart(),

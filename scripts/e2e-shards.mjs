@@ -81,20 +81,25 @@ export function listSpecs(dir = 'e2e') {
 //   (`created_at <= p_before`) is exercised deterministically; the serial fence stays.
 // - result-corrections-visual: its repair-diagnostics probes depend on the repair-lease lifecycle (an
 //   earlier describe deliberately holds a 600s lease), so a changed sweep order shifts their layout.
-//   Mechanism (PAF-175): a 22px assertStacked drift (1 of 4 full gates) was a sample taken before the
-//   layout settled. The bundled @fontsource Inter/Manrope subsets use font-display: swap and load lazily,
-//   so under load the probes measured fallback-font metrics and the swap then rewrapped text. The
-//   diagnostics tests now check every seeded job card renders, then run waitForRenderSettled
-//   (e2e/result-corrections-visual.ts): load each used face, document.fonts.ready/check, decode images
-//   and require an identical layout across 3 consecutive frames, before any geometry probe or capture.
-//   The 2px tolerance, budgets and the serial fence are unchanged. Lease expiry was not shown to be a cause.
+//   Hypothesised mechanism (PAF-175, UNCONFIRMED): a 22px assertStacked drift (1 of 4 full gates) came
+//   from a sample taken before the layout settled. The bundled @fontsource Inter/Manrope subsets use
+//   font-display: swap and load lazily, so under load the probes may have measured fallback-font metrics
+//   before the swap rewrapped text. Evidence that would confirm it: a loaded-gate campaign (AC1) where
+//   a failure's captured geometry matches fallback-font metrics, or where the failure stops recurring
+//   once waitForRenderSettled gates the sample. The diagnostics tests now check every seeded job card
+//   renders, then run waitForRenderSettled (e2e/result-corrections-visual.ts): load each used face,
+//   document.fonts.ready/check, decode images and require an identical layout across 3 consecutive
+//   frames, and each compared box set is read in one atomic evaluation (captureGeometry). The 2px
+//   tolerance, budgets and the serial fence are unchanged. Lease expiry was not shown to be a cause.
 // - pwa, push-deep-links, push-preferences: service-worker registration and push mocks stall (zero test
 //   progress, 90-120s timeouts) when parallel browser workers saturate the machine; deterministic in two
 //   consecutive full gate runs, green standalone in seconds.
-//   Mechanism (PAF-175): the waits were already signal-based. Every real-worker case runs in a fresh
-//   context with an empty CacheStorage, so it pays a full worker install (the worker precaches the
-//   whole public build through the one preview server) and a controlled reload; under saturation that
-//   install is the long pole and context.close() then stalls on it. The shared helper
+//   Hypothesised mechanism (PAF-175, UNCONFIRMED): the waits were already signal-based. Every real-worker
+//   case runs in a fresh context with an empty CacheStorage, so it pays a full worker install (the worker
+//   precaches the whole public build through the one preview server) and a controlled reload; under
+//   saturation that install may be the long pole, with context.close() then stalling on it. Evidence that
+//   would confirm it: a loaded-gate campaign (AC1) whose stalled cases show the install/activation still in
+//   flight at timeout, and stalls disappearing once installs are reduced. The shared helper
 //   (e2e/service-worker-helpers.ts) subscribes to the worker event before navigating, waits for
 //   activated + controlled, verifies script/scope instead of trusting serviceWorkers()[0], and
 //   reloads only when still uncontrolled; the static manifest case no longer installs a worker at
