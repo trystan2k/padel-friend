@@ -27,6 +27,54 @@ export async function box(locator: Locator): Promise<Box> {
   });
 }
 
+/**
+ * Render readiness gate: waits until the page lays out the way it will keep laying out, so the geometry
+ * probes and screenshot captures that follow never sample a layout that is about to reflow.
+ * Mechanism (PAF-175): the bundled Inter/Manrope faces are @fontsource subsets with font-display: swap,
+ * fetched lazily on first use. Under full-gate load the first sample ran on fallback metrics and the
+ * swap reflowed text after it (a wrapped line is the ~22px drift that exceeded the 2px assertStacked
+ * tolerance). Every font used by visible text is loaded explicitly, images are decoded, then the layout
+ * must be identical across consecutive animation frames. Persistent instability fails with the
+ * unsettled element count instead of passing on a lucky sample.
+ */
+export async function waitForRenderSettled(page: Page) {
+  await page.evaluate(async () => {
+    const faces = new Map<string, string>();
+    for (const element of document.querySelectorAll('body *')) {
+      const text = [...element.childNodes]
+        .filter((node) => node.nodeType === Node.TEXT_NODE)
+        .map((node) => node.textContent ?? '')
+        .join('')
+        .trim();
+      if (!text) continue;
+      const style = getComputedStyle(element);
+      const font = `${style.fontStyle} ${style.fontWeight} ${style.fontSize} ${style.fontFamily}`;
+      faces.set(font, (faces.get(font) ?? '') + text);
+    }
+    await Promise.all([...faces].map(([font, text]) => document.fonts.load(font, text)));
+    await document.fonts.ready;
+    for (const [font, text] of faces)
+      if (!document.fonts.check(font, text)) throw new Error(`Font not ready: ${font}`);
+    await Promise.all([...document.images].map((image) => image.decode()));
+    const sample = () =>
+      [...document.querySelectorAll('body *')]
+        .map((element) => {
+          const { x, y, width, height } = element.getBoundingClientRect();
+          return `${x},${y},${width},${height}`;
+        })
+        .join('|');
+    const frame = () => new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+    let previous = sample();
+    for (let stable = 0, frames = 0; stable < 3; frames++) {
+      if (frames > 600) throw new Error('Layout did not settle within 600 animation frames');
+      await frame();
+      const current = sample();
+      stable = current === previous ? stable + 1 : 0;
+      previous = current;
+    }
+  });
+}
+
 /** Document-order stacking: each box ends before the next begins (small subpixel tolerance). */
 export function assertStacked(boxes: Record<string, Box>) {
   const entries = Object.entries(boxes);

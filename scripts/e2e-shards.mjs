@@ -81,6 +81,13 @@ export function listSpecs(dir = 'e2e') {
 //   (`created_at <= p_before`) is exercised deterministically; the serial fence stays.
 // - result-corrections-visual: its repair-diagnostics probes depend on the repair-lease lifecycle (an
 //   earlier describe deliberately holds a 600s lease), so a changed sweep order shifts their layout.
+//   Mechanism (PAF-175): a 22px assertStacked drift (1 of 4 full gates) was a sample taken before the
+//   layout settled. The bundled @fontsource Inter/Manrope subsets use font-display: swap and load lazily,
+//   so under load the probes measured fallback-font metrics and the swap then rewrapped text. The
+//   diagnostics tests now check every seeded job card renders, then run waitForRenderSettled
+//   (e2e/result-corrections-visual.ts): load each used face, document.fonts.ready/check, decode images
+//   and require an identical layout across 3 consecutive frames, before any geometry probe or capture.
+//   The 2px tolerance, budgets and the serial fence are unchanged. Lease expiry was not shown to be a cause.
 // - pwa, push-deep-links, push-preferences: service-worker registration and push mocks stall (zero test
 //   progress, 90-120s timeouts) when parallel browser workers saturate the machine; deterministic in two
 //   consecutive full gate runs, green standalone in seconds.

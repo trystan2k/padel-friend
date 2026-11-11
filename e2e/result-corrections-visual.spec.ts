@@ -23,6 +23,7 @@ import {
   assertNoOverflow,
   assertReducedMotion,
   assertStacked,
+  waitForRenderSettled,
   assertTargets,
   box,
   frameViewport,
@@ -1267,6 +1268,9 @@ async function openDiagnostics(
   await waitForHydratedPage(page);
   const root = page.locator('[data-result-route=repair-diagnostics]');
   await expect(root).toBeVisible();
+  // Data readiness: every seeded job is rendered, then fonts and layout settle before any probe samples it.
+  for (const key of jobKeys) await expect(jobArticle(page, key)).toBeVisible();
+  await waitForRenderSettled(page);
   return { page, root };
 }
 /** The queue job card (the surface) and the transparent status section embedded in it. */
@@ -1498,6 +1502,7 @@ async function confirmationStructure(page: Page, theme: 'light' | 'dark', viewpo
   const g = manifest.geometryReference;
   const dialog = page.getByRole('dialog', { name: d.repair.confirmTitle, exact: true });
   await expect(dialog).toBeVisible();
+  await waitForRenderSettled(page);
   const dialogBox = await box(dialog);
   assertNear(
     dialogBox.x,
@@ -1621,6 +1626,7 @@ test.describe('repair diagnostics', () => {
       await expect(empty).toBeVisible();
       for (const count of await root.locator('[data-repair-count]').all())
         await expect(count).toHaveText('0');
+      await waitForRenderSettled(page);
       const inner = await innerBox(root);
       const jobs = await box(page.getByRole('heading', { name: d.diagnostics.jobs, exact: true }));
       const summary = await box(
