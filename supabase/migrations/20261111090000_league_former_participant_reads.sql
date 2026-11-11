@@ -109,6 +109,8 @@ begin
     union
     select m.user_id from public.community_members m
      where v_league.status <> 'closed'
+       -- The roster overlay is a member-only view: a former participant reads earned facts only.
+       and public.is_community_member(v_league.community_id)
        and m.community_id = v_league.community_id and m.status = 'active'
        and m.valid_until is null and m.activated_at is not null
   )
@@ -150,6 +152,7 @@ declare
   v_entries jsonb;
   v_latest integer;
   v_snapshot public.league_standings_snapshots;
+  v_member boolean;
 begin
   if (select auth.uid()) is null or coalesce((select auth.jwt() ->> 'is_anonymous'), 'false') = 'true' then
     raise exception using errcode = '28000', message = 'UNAUTHENTICATED';
@@ -170,6 +173,7 @@ begin
     if p_standings_version is not null then
       raise exception using errcode = '22023', message = 'LEAGUE_STANDINGS_VERSION_INVALID';
     end if;
+    v_member := public.is_community_member(v_league.community_id);
     select coalesce(pg_catalog.jsonb_agg(pg_catalog.jsonb_build_object(
         'user_id', s.user_id,
         'display_name', profile.display_name,
@@ -186,7 +190,18 @@ begin
         'matches_remaining', s.matches_remaining
       ) order by s.place, s.user_id), '[]'::jsonb)
       into v_entries
-      from public.league_standings_entries(p_league_id) s
+      from (
+        -- Members read the live table with its zero-match roster overlay. A former participant
+        -- reads earned facts only: the same sporting rank, over the earned counter rows alone.
+        select e.* from public.league_standings_entries(p_league_id) e where v_member
+        union all
+        select k.* from public.league_rank_counters(
+          (select coalesce(pg_catalog.jsonb_agg(pg_catalog.to_jsonb(c)), '[]'::jsonb)
+             from public.league_player_counters c
+            where c.league_id = p_league_id and c.matches > 0),
+          v_league.minimum_matches_for_final_award) k
+         where not v_member
+      ) s
       left join public.player_profiles profile on profile.user_id = s.user_id;
     return pg_catalog.jsonb_build_object(
       'league_id', v_league.id,

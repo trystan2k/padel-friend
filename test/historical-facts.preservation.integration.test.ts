@@ -88,6 +88,10 @@ function assertCaptureUnchanged(actual: Capture, baseline: Capture) {
   for (const table of Object.keys(baseline)) expect(actual[table]).toEqual(baseline[table]);
 }
 
+// Counters rows with matches > 0 are earned; zero-match rows are the member-only roster overlay.
+const earnedRowsOf = (rows: unknown[]): unknown[] =>
+  rows.filter((row) => Number(asRecord(row)['matches']) > 0);
+
 const userRows = (value: unknown, userIds: Set<string>): unknown[] => {
   if (Array.isArray(value))
     return value.flatMap((item) => {
@@ -390,8 +394,30 @@ describe.skipIf(!environment.env).each(['leave', 'admin removal'] as const)(
           withoutViewerFields(admin['get_league'])
         );
         expect(asRecord(asRecord(former['get_league'])['league'])['can_manage']).toBe(false);
-        expect(former['get_league_standings']).toEqual(admin['get_league_standings']);
-        expect(former['get_league_counters']).toEqual(admin['get_league_counters']);
+        // The member-only roster overlay (zero-match rows of open Leagues) is the sole difference:
+        // earned rows are identical, and the former participant never receives the overlay. The
+        // overlay can shift the derived live `position` of the tied tail, so the open live table is
+        // compared on earned rows without it; a closed (final) table is compared in full.
+        const earnedOnly = (value: unknown) => earnedRowsOf(userRows(value, earnedIds));
+        const standingView = (value: unknown) =>
+          leagueId === openLeague
+            ? earnedOnly(asRecord(value)['entries']).map((row) => {
+                const { position: _position, ...rest } = asRecord(row);
+                return rest;
+              })
+            : value;
+        expect(standingView(former['get_league_standings'])).toEqual(
+          standingView(admin['get_league_standings'])
+        );
+        expect(asRecord(former['get_league_standings'])['entries']).toHaveLength(
+          earnedOnly(asRecord(former['get_league_standings'])['entries']).length
+        );
+        expect(earnedOnly(former['get_league_counters'])).toEqual(
+          earnedOnly(admin['get_league_counters'])
+        );
+        expect(asRecord(former['get_league_counters'])['participants']).toHaveLength(
+          earnedOnly(former['get_league_counters']).length
+        );
         expect(former['list_league_standings_versions']).toEqual(
           admin['list_league_standings_versions']
         );
@@ -418,7 +444,7 @@ describe.skipIf(!environment.env).each(['leave', 'admin removal'] as const)(
         // (counters, wins, sets, matches_remaining) stays identical. The closed table is compared
         // in full above, including positions.
         const comparable = (reading: Reading, key: string) =>
-          userRows(reading.leagues[leagueId]![key], earnedIds).map((row) => {
+          earnedRowsOf(userRows(reading.leagues[leagueId]![key], earnedIds)).map((row) => {
             const { position, ...rest } = asRecord(row);
             return leagueId === openLeague && key === 'get_league_standings'
               ? rest

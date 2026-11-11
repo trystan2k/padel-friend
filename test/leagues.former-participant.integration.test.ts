@@ -79,6 +79,14 @@ describe.skipIf(!environment.env)('League former-participant reads', { timeout: 
     ]);
     return { detail, standings, counters, versions, all: [detail, standings, counters, versions] };
   };
+  const counterRows = (data: unknown) => {
+    const participants = asRecord(data)['participants'];
+    return Array.isArray(participants) ? participants.map((row) => asRecord(row)) : [];
+  };
+  const standingEntries = (entries: unknown) =>
+    Array.isArray(entries) ? entries.map((row) => asRecord(row)) : [];
+  const earnedRows = (data: unknown) =>
+    counterRows(data).filter((row) => Number(row['matches']) > 0);
   const leave = async (index: number) => {
     const left = await rpc(index, 'leave_community', { p_community_id: kit.communityId });
     expect(left.error).toBeNull();
@@ -155,14 +163,68 @@ describe.skipIf(!environment.env)('League former-participant reads', { timeout: 
         access_mode: null
       });
       expect(asRecord(asRecord(former.detail.data)['league'])['can_manage']).toBe(false);
-      expect(former.standings.data).toEqual(member.standings.data);
+      // Live standings differ only by the member-only zero-match roster overlay (see next test):
+      // earned rows are identical apart from the derived position, which the overlay can shift.
+      const { entries: formerEntries, ...formerLive } = asRecord(former.standings.data);
+      const { entries: memberEntries, ...memberLive } = asRecord(member.standings.data);
+      expect(formerLive).toEqual(memberLive);
+      const withoutPosition = (entries: unknown) =>
+        standingEntries(entries)
+          .filter((row) => Number(row['matches']) > 0)
+          .map(({ position: _position, ...rest }) => rest);
+      expect(withoutPosition(formerEntries)).toEqual(withoutPosition(memberEntries));
       expect(asRecord(former.standings.data)['source']).toBe('live');
-      expect(former.counters.data).toEqual(member.counters.data);
+      // Counters differ only by the active-member roster overlay (zero-match rows of members who
+      // never played): earned rows are identical, the overlay is member-only (see next test).
+      expect(counterRows(former.counters.data)).toEqual(earnedRows(member.counters.data));
       expect(former.versions.data).toEqual(member.versions.data);
-      const participants = asRecord(former.counters.data)['participants'];
+      expect(counterRows(former.counters.data).map((row) => row['user_id'])).toContain(id(FORMER));
+    });
+
+    it('keeps the active-member roster overlay out of a former participant open-League live standings', async () => {
+      const former = await read(FORMER, openLeague);
+      const member = await read(MEMBER, openLeague);
+      expect(former.standings.error).toBeNull();
+      const formerEntries = standingEntries(asRecord(former.standings.data)['entries']);
+      // Immutable facts only: the earned participants (players 0-3), ranked among themselves.
       expect(
-        Array.isArray(participants) ? participants.map((row) => asRecord(row)['user_id']) : []
-      ).toContain(id(FORMER));
+        formerEntries
+          .map((row) => row['user_id'])
+          .sort((a, b) => String(a).localeCompare(String(b)))
+      ).toEqual([0, 1, 2, 3].map(id).sort((a, b) => a.localeCompare(b)));
+      expect(formerEntries.every((row) => Number(row['matches']) > 0)).toBe(true);
+      expect(
+        formerEntries.map((row) => row['position']).sort((a, b) => Number(a) - Number(b))
+      ).toEqual([1, 1, 3, 3]);
+      // No current non-playing member leaks: neither id, display name nor provisional flag.
+      const leaked = { id: id(MEMBER), displayName: `Ranked Player ${MEMBER + 1}` };
+      expect(JSON.stringify(former.standings.data)).not.toContain(leaked.id);
+      expect(JSON.stringify(former.standings.data)).not.toContain(leaked.displayName);
+      // Positive control: an active member keeps the overlay in the live table.
+      const overlay = standingEntries(asRecord(member.standings.data)['entries']).find(
+        (row) => row['user_id'] === leaked.id
+      );
+      expect(overlay).toMatchObject({ matches: 0, display_name: leaked.displayName });
+      expect(overlay).toHaveProperty('is_provisional', false);
+    });
+
+    it('keeps the active-member roster overlay out of a former participant open-League counters', async () => {
+      const former = await read(FORMER, openLeague);
+      const member = await read(MEMBER, openLeague);
+      expect(former.counters.error).toBeNull();
+      // Immutable facts only: exactly the earned participants (players 0-3), no current member.
+      const formerIds = counterRows(former.counters.data).map((row) => row['user_id']);
+      expect([...formerIds].sort((a, b) => String(a).localeCompare(String(b)))).toEqual(
+        [0, 1, 2, 3].map(id).sort((a, b) => a.localeCompare(b))
+      );
+      expect(formerIds).not.toContain(id(MEMBER));
+      expect(counterRows(former.counters.data).every((row) => Number(row['matches']) > 0)).toBe(
+        true
+      );
+      // Positive control: an active member keeps the overlay and sees the non-playing member.
+      const memberRows = counterRows(member.counters.data);
+      const overlay = memberRows.find((row) => row['user_id'] === id(MEMBER));
+      expect(overlay).toMatchObject({ matches: 0 });
     });
 
     it('shows every published version of a closed League equal to the member view', async () => {
@@ -622,6 +684,52 @@ describe.skipIf(!environment.env)('League former-participant reads', { timeout: 
       } finally {
         await dropCounters(idleLeague);
       }
+    });
+  });
+
+  describe('player statistics live League position', () => {
+    // The caller reads their own scope: the rank block must not reflect the member roster overlay.
+    const livePosition = async (actorIndex: number, playerIndex: number) => {
+      const result = await rpc(actorIndex, 'get_player_statistics', {
+        p_player_id: id(playerIndex),
+        p_community_id: kit.communityId,
+        p_league_id: openLeague
+      });
+      expect(result.error).toBeNull();
+      const active = asRecord(asRecord(asRecord(result.data)['rating'])['activeLeaguePosition']);
+      expect(active['state']).toBe('ready');
+      return Number(asRecord(active['value'])['position']);
+    };
+
+    it('keeps a former participant rank equal to the earned-only rank whatever the roster', async () => {
+      const earned = counterRows((await read(FORMER, openLeague)).counters.data).map((row) =>
+        String(row['user_id'])
+      );
+      expect(earned).toHaveLength(4);
+      const earnedPositions = new Map(
+        standingEntries(asRecord((await read(FORMER, openLeague)).standings.data)['entries']).map(
+          (row) => [String(row['user_id']), Number(row['position'])]
+        )
+      );
+      const before = await livePosition(FORMER, FORMER);
+      expect(before).toBe(earnedPositions.get(id(FORMER)));
+
+      // Roster growth: non-playing members join the community. Positions of members are shifted by
+      // the overlay, but the former participant's position must stay exactly the same.
+      await kit.member();
+      await kit.member();
+      expect(await livePosition(FORMER, FORMER)).toBe(before);
+
+      // Positive control (member view pinned): a member who lost ranks below the zero-match
+      // roster overlay, so their position moves past their earned-only position.
+      const loser = [0, 1, 2].find((index) => earnedPositions.get(id(index)) === 3)!;
+      expect(loser).toBeDefined();
+      const overlaySize = counterRows((await read(loser, openLeague)).counters.data).filter(
+        (row) => Number(row['matches']) === 0
+      ).length;
+      expect(overlaySize).toBeGreaterThanOrEqual(3);
+      expect(await livePosition(loser, loser)).toBe(3 + overlaySize);
+      expect(await livePosition(loser, loser)).not.toBe(earnedPositions.get(id(loser)));
     });
   });
 });
