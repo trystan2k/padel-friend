@@ -213,10 +213,7 @@ test('account A then B in one browser: private responses stay uncacheable and no
 
     // Sign-out ends A's session; B signs in on the same browser storage and worker.
     await context.clearCookies();
-    await page.evaluate(() => {
-      localStorage.clear();
-      sessionStorage.clear();
-    });
+    await clearBrowserStorage(page);
     await signIn(page, accountB);
     await page.goto('/dashboard');
     await waitForHydratedPage(page);
@@ -297,6 +294,29 @@ test('activation removes the legacy generic runtime cache and leaves unrelated c
     await context.close();
   }
 });
+
+// Dropping A's cookies under a live page and worker lets the app's auth teardown navigate the
+// document (e.g. to /login) at an unpredictable moment, which destroys the JS execution context
+// while the storage-clear evaluate is dispatching. Settling the load state first and retrying only
+// on that specific error guarantees the clear lands on a stable document; any other error, or a
+// context that keeps dying, fails loudly.
+async function clearBrowserStorage(page: Page): Promise<void> {
+  const attempts = 3;
+  for (let attempt = 1; ; attempt += 1) {
+    await page.waitForLoadState('load');
+    try {
+      await page.evaluate(() => {
+        localStorage.clear();
+        sessionStorage.clear();
+      });
+      return;
+    } catch (error) {
+      const destroyed =
+        error instanceof Error && /execution context was destroyed/i.test(error.message);
+      if (!destroyed || attempt >= attempts) throw error;
+    }
+  }
+}
 
 async function cacheEntries(page: Page): Promise<CacheEntry[]> {
   const entries = await page.evaluate(async () => {
