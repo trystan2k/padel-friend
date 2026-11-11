@@ -1,5 +1,6 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
 import { waitForHydratedPage } from './auth-helpers';
+import { watchBrowserErrors, withoutSurface } from './browser-error-gate';
 import { en, fill } from './matches-management-fixtures';
 import {
   A_ALL_TOTALS,
@@ -21,7 +22,7 @@ import {
 const t = en.statistics;
 let w: StatisticsWorld;
 const pages = new Map<PlayerKey, Page>();
-const consoleErrors = new WeakMap<Page, string[]>();
+const drainErrors = new WeakMap<Page, () => string[]>();
 
 test.describe.configure({ mode: 'serial' });
 test.use({ serviceWorkers: 'block' });
@@ -40,24 +41,15 @@ async function pageOf(key: PlayerKey): Promise<Page> {
   const cached = pages.get(key);
   if (cached) return cached;
   const page = await w.f.page(w.actors[key], 'en', 1280, 'light', 900);
-  const errors: string[] = [];
-  page.on('console', (message) => {
-    if (message.type() === 'error') {
-      const url = message.location()?.url;
-      errors.push(url ? `${message.text()} @ ${url}` : message.text());
-    }
-  });
-  page.on('pageerror', (error) => errors.push(error.message));
-  consoleErrors.set(page, errors);
+  drainErrors.set(page, watchBrowserErrors(page));
   pages.set(key, page);
   return page;
 }
 
-/** Console / hydration errors fail the journey (denial journeys expect 4xx resource logs). */
+/** Console errors, hydration errors and any HTTP >= 400 response fail the journey. */
 function expectNoBrowserErrors(page: Page) {
-  const errors = consoleErrors.get(page) ?? [];
-  expect(errors, 'browser console and hydration errors').toEqual([]);
-  errors.length = 0;
+  const errors = drainErrors.get(page)?.() ?? [];
+  expect(errors, 'browser console, hydration and failed-resource errors').toEqual([]);
 }
 
 async function visit(page: Page, path: string) {
@@ -517,6 +509,24 @@ test('an outsider cannot read the private community, its aggregates or its group
   await visit(page, playerPath('A', `?communityId=${w.cross.communityId}`));
   await expect(page.getByText(w.cross.name)).toHaveCount(0);
   await expect(stat(page, 'Matches played')).toHaveCount(0);
+
+  // The only browser errors this denial journey may produce are the three not-found documents it
+  // requested (each answered 404 once, reported by the response and by the console), exact URL and
+  // status. Any other failure - a missing stylesheet, script, font or image, a different status, a
+  // page error - still fails here.
+  const denied = [
+    `/community/${w.cross.communityId}/statistics`,
+    `/matches/${gx.eventId}/groups/${gx.proposalId}`,
+    playerPath('A', `?communityId=${w.cross.communityId}`)
+  ].flatMap((path) => {
+    const url = new URL(path, page.url()).href;
+    return [
+      `http 404 document ${url}`,
+      `console: Failed to load resource: the server responded with a status of 404 (Not Found) @ ${url}`
+    ];
+  });
+  const errors = (drainErrors.get(page)?.() ?? []).map(withoutSurface);
+  expect(errors.sort(), 'denial journey browser errors').toEqual(denied.sort());
 });
 
 test('an inactive community member keeps the history of matches they actually played', async () => {
