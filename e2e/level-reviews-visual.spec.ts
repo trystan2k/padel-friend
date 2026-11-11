@@ -803,6 +803,9 @@ for (const zoom of ZOOMED) {
     async () => {
       const owner = await f.page(requester, 'en', zoom.width, 'light', zoom.height);
       await open(owner, '/level-reviews/new');
+      // Probe only once the request form exposes its labelled controls.
+      await expect(owner.getByRole('textbox', { name: lr.request.levelExact })).toBeVisible();
+      await expect(owner.getByRole('textbox', { name: lr.request.reasonLabel })).toBeVisible();
       expect(await layoutViolations(owner), 'request form').toEqual([]);
       const submit = owner.getByRole('button', { name: lr.request.submit });
       await submit.scrollIntoViewIfNeeded();
