@@ -2,153 +2,30 @@
 description: Execute pre-commit quality gates and report pass or fail results without applying fixes.
 mode: subagent
 permissions:
-  - action: subagent
-    resource: "*"
-    effect: deny
-  - action: question
-    resource: "*"
-    effect: deny
-  - action: read
-    resource: "*"
-    effect: allow
-  - action: glob
-    resource: "*"
-    effect: allow
-  - action: grep
-    resource: "*"
-    effect: allow
-  - action: list
-    resource: "*"
-    effect: allow
-  - action: edit
-    resource: "*"
-    effect: deny
-  - action: skill
+  # Allow everything by default — fail-close allowlists removed.
+  # Risky shell commands require explicit user approval (effect: ask).
+  # Order matters: last matching rule wins, so ask-rules follow the allow-all.
+  - action: "*"
     resource: "*"
     effect: allow
   - action: shell
-    resource: "*"
-    effect: deny
+    resource: "rm -rf *"
+    effect: ask
   - action: shell
-    resource: "pnpm complete-check*"
-    effect: allow
+    resource: "rm -fr *"
+    effect: ask
   - action: shell
-    resource: "pnpm build*"
-    effect: allow
+    resource: "rm -r *"
+    effect: ask
   - action: shell
-    resource: "pnpm knip*"
-    effect: allow
+    resource: "sudo *"
+    effect: ask
   - action: shell
-    resource: "pnpm typecheck*"
-    effect: allow
+    resource: "git push --force*"
+    effect: ask
   - action: shell
-    resource: "pnpm lint*"
-    effect: allow
-  - action: shell
-    resource: "pnpm format:check*"
-    effect: allow
-  - action: shell
-    resource: "pnpm test*"
-    effect: allow
-  - action: shell
-    resource: "pnpm tokens:build*"
-    effect: allow
-  - action: shell
-    resource: "pnpm db:start*"
-    effect: allow
-  - action: shell
-    resource: "pnpm db:stop*"
-    effect: allow
-  - action: shell
-    resource: "pnpm exec playwright*"
-    effect: allow
-  - action: shell
-    resource: "pnpm exec vitest*"
-    effect: allow
-  - action: shell
-    resource: "pnpm exec supabase status*"
-    effect: allow
-  - action: shell
-    resource: "pnpm exec supabase start*"
-    effect: allow
-  - action: shell
-    resource: "pnpm exec supabase stop*"
-    effect: allow
-  - action: shell
-    resource: "git status*"
-    effect: allow
-  - action: shell
-    resource: "git diff*"
-    effect: allow
-  - action: shell
-    resource: "git log*"
-    effect: allow
-  - action: shell
-    resource: "git show*"
-    effect: allow
-  - action: shell
-    resource: "git rev-parse*"
-    effect: allow
-  - action: shell
-    resource: "ls*"
-    effect: allow
-  - action: shell
-    resource: "cat *"
-    effect: allow
-  - action: shell
-    resource: "head *"
-    effect: allow
-  - action: shell
-    resource: "tail *"
-    effect: allow
-  - action: webfetch
-    resource: "*"
-    effect: allow
-  - action: websearch
-    resource: "*"
-    effect: deny
-  - action: todowrite
-    resource: "*"
-    effect: deny
-  - action: lsp
-    resource: "*"
-    effect: deny
-  - action: engram*
-    resource: "*"
-    effect: deny
-  - action: external_directory
-    resource: "*"
-    effect: deny
-  - action: shell
-    resource: "ps"
-    effect: allow
-  - action: shell
-    resource: "ps *"
-    effect: allow
-  - action: shell
-    resource: "grep *"
-    effect: allow
-  - action: shell
-    resource: "head *"
-    effect: allow
-  - action: shell
-    resource: "tail *"
-    effect: allow
-  - action: shell
-    resource: "awk *"
-    effect: allow
-  - action: shell
-    resource: "sed"
-    effect: allow
-  - action: shell
-    resource: "sed *"
-    effect: allow    
-  - action: shell
-    resource: "sleep *"
-    effect: allow        
-  - action: external_directory
-    resource: "/tmp/**"
-    effect: allow
+    resource: "git push -f *"
+    effect: ask
 ---
 
 # Agent: qa-gate-specialist
@@ -244,16 +121,15 @@ Follow these steps:
 
 ## Tool Usage Rules (OpenCode `permission` model)
 
-Effective permissions (frontmatter `permission`; legacy `tools` field not used):
+Effective permissions (frontmatter `permissions`): permissive by default — every action is allowed, and only risky shell commands (`rm -rf`/`rm -fr`/`rm -r`, `sudo`, `git push --force`/`-f`) prompt the user via `ask`. This agent stays report-only by contract, not by permission:
 
 Model tier: `T0` mechanical. Execute the resolved gate commands and report their output. Never re-derive the gate list from scratch when a gate list or the project command is already known, never expand the gate list, and never fix anything.
 
-- `read`, `glob`, `grep`, `list`: allow — gate investigation.
-- `bash`: fail-closed allowlist — this agent is report-only, so only the gate commands are permitted and everything else is denied by default. Allowed: `pnpm complete-check`, `pnpm build`, `pnpm knip`, `pnpm typecheck`, `pnpm lint`, `pnpm format:check`, `pnpm test`, `pnpm test:e2e`, `pnpm tokens:build`, `pnpm db:start`, `pnpm db:stop`, `pnpm exec playwright|vitest`, `pnpm exec supabase status|start|stop`, read-only git (`status`/`diff`/`log`/`show`/`rev-parse`), `ls`, and `cat`/`head`/`tail` for logs. Denied by default: `pnpm db:reset`, `pnpm db:types`, and every git-state change. Never prefix a command with an env assignment (`CI=1 pnpm ...`) — OpenCode matches the whole command from the start, so it will not match the allowlist; use `pnpm test:e2e` (which starts a fresh preview) instead.
-- `skill`: allow — QA/quality skills confirmed available in the current OpenCode catalog, when they improve gate interpretation.
-- `edit`, `task`, `question`, `websearch`, `todowrite`, `lsp`: deny.
-- `webfetch`: allow — documentation lookup for gate interpretation.
-- `external_directory`: deny by default; `/tmp/**` is allowed for gate logs and scratch output.
+- `read`, `glob`, `grep`, `list`: gate investigation.
+- `shell`: run the gate commands (`pnpm complete-check`, `pnpm build`, `pnpm knip`, `pnpm typecheck`, `pnpm lint`, `pnpm format:check`, `pnpm test`, `pnpm test:e2e`, `pnpm tokens:build`, `pnpm db:start`, `pnpm db:stop`, `pnpm exec playwright|vitest`, `pnpm exec supabase status|start|stop`), read-only git (`status`/`diff`/`log`/`show`/`rev-parse`), and `cat`/`head`/`tail` for logs. Never run `pnpm db:reset`, `pnpm db:types`, or any command that mutates the local database, regenerates types, or changes git state.
+- `skill`: QA/quality skills confirmed available in the current OpenCode catalog, when they improve gate interpretation.
+- `edit`, `subagent`, `question`, `todowrite`: not used — report-only agent; report gate failures back to the orchestrator instead of fixing or asking.
+- `webfetch`: documentation lookup for gate interpretation.
 
 Safety rules:
 

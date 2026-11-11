@@ -3,168 +3,30 @@ description: Orchestrate completion-first delivery of a Linear issue, sub-issue,
 mode: primary
 model: zai-coding-plan/glm-5.3-flash#high
 permissions:
-  - action: subagent
-    resource: "*"
-    effect: allow
-  - action: read
-    resource: "*"
-    effect: allow
-  - action: glob
-    resource: "*"
-    effect: allow
-  - action: grep
-    resource: "*"
-    effect: allow
-  - action: list
-    resource: "*"
-    effect: allow
-  - action: edit
-    resource: "*"
-    effect: allow
-  - action: skill
-    resource: "*"
-    effect: allow
-  - action: pencil*
-    resource: "*"
-    effect: allow
-  - action: mcp_serena*shell*
-    resource: "*"
-    effect: deny
-  - action: question
+  # Allow everything by default — fail-close allowlists removed.
+  # Risky shell commands require explicit user approval (effect: ask).
+  # Order matters: last matching rule wins, so ask-rules follow the allow-all.
+  - action: "*"
     resource: "*"
     effect: allow
   - action: shell
-    resource: "*"
-    effect: deny
+    resource: "rm -rf *"
+    effect: ask
   - action: shell
-    resource: "ls"
-    effect: allow
+    resource: "rm -fr *"
+    effect: ask
   - action: shell
-    resource: "ls *"
-    effect: allow
+    resource: "rm -r *"
+    effect: ask
   - action: shell
-    resource: "pwd"
-    effect: allow
+    resource: "sudo *"
+    effect: ask
   - action: shell
-    resource: "date"
-    effect: allow
+    resource: "git push --force*"
+    effect: ask
   - action: shell
-    resource: "date *"
-    effect: allow
-  - action: shell
-    resource: "cat *"
-    effect: allow
-  - action: shell
-    resource: "head *"
-    effect: allow
-  - action: shell
-    resource: "tail *"
-    effect: allow
-  - action: shell
-    resource: "wc *"
-    effect: allow
-  - action: shell
-    resource: "echo *"
-    effect: allow
-  - action: shell
-    resource: "printf *"
-    effect: allow
-  - action: shell
-    resource: "sort*"
-    effect: allow
-  - action: shell
-    resource: "uniq*"
-    effect: allow
-  - action: shell
-    resource: "find *"
-    effect: allow
-  - action: shell
-    resource: "grep *"
-    effect: allow
-  - action: shell
-    resource: "ps"
-    effect: allow
-  - action: shell
-    resource: "ps *"
-    effect: allow
-  - action: shell
-    resource: "sed"
-    effect: allow
-  - action: shell
-    resource: "sed *"
-    effect: allow
-  - action: shell
-    resource: "awk *"
-    effect: allow
-  - action: shell
-    resource: "rg *"
-    effect: allow
-  - action: shell
-    resource: "cd *"
-    effect: allow
-  - action: shell
-    resource: "mv *"
-    effect: allow
-  - action: shell
-    resource: "mkdir *"
-    effect: allow
-  - action: shell
-    resource: "git status *"
-    effect: allow
-  - action: shell
-    resource: "git diff*"
-    effect: allow
-  - action: shell
-    resource: "git log*"
-    effect: allow
-  - action: shell
-    resource: "git rev-parse*"
-    effect: allow
-  - action: shell
-    resource: "git show*"
-    effect: allow
-  - action: shell
-    resource: "git ls-files*"
-    effect: allow
-  - action: shell
-    resource: "git branch*"
-    effect: allow
-  - action: shell
-    resource: "gh pr checks*"
-    effect: allow
-  - action: shell
-    resource: "gh pr view*"
-    effect: allow
-  - action: shell
-    resource: "gh pr list*"
-    effect: allow
-  - action: shell
-    resource: "gh pr diff*"
-    effect: allow
-  - action: shell
-    resource: "curl -I*"
-    effect: allow
-  - action: shell
-    resource: "curl --head*"
-    effect: allow
-  - action: webfetch
-    resource: "*"
-    effect: allow
-  - action: websearch
-    resource: "*"
-    effect: allow
-  - action: todowrite
-    resource: "*"
-    effect: allow
-  - action: lsp
-    resource: "*"
-    effect: allow
-  - action: external_directory
-    resource: "*"
-    effect: deny
-  - action: shell
-    resource: "sleep *"
-    effect: allow          
+    resource: "git push -f *"
+    effect: ask
 ---
 
 # Agent: delivery-orchestrator
@@ -326,7 +188,7 @@ For phases executed directly under the small-change fast path, record `orchestra
 
 Follow these steps in order.
 
-**MCP Priority (MANDATORY — File Access Protocol)**: Symbol-level reads and ALL file mutation in delegated specialists go through **Serena MCP** via Code Mode `execute` (`tools.mcp_serena.*`). Reads: `get_symbols_overview`, `find_symbol`, `find_referencing_symbols`, `read_file` with line ranges. Edits: `replace_symbol_body`, `insert_after_symbol`, `replace_content` (regex mode), `replace_in_files` (multi-file). New files: `create_text_file`. Native `edit`/`write`/`patch` are permission-DENIED in `implementation-specialist`, `bug-fixer-specialist`, and `testing-automation-specialist`; shell file mutation (`sed -i`, `cat >`, heredoc writes, `tee`) is forbidden for them even though `bash` stays allowed for tests/builds.
+**MCP Priority (MANDATORY — File Access Protocol)**: Symbol-level reads and ALL file mutation in delegated specialists go through **Serena MCP** via Code Mode `execute` (`tools.mcp_serena.*`). Reads: `get_symbols_overview`, `find_symbol`, `find_referencing_symbols`, `read_file` with line ranges. Edits: `replace_symbol_body`, `insert_after_symbol`, `replace_content` (regex mode), `replace_in_files` (multi-file). New files: `create_text_file`. Native `edit`/`write`/`patch` are no longer permission-denied anywhere (permissions are permissive now), but by contract `implementation-specialist`, `bug-fixer-specialist`, and `testing-automation-specialist` still MUST mutate files through Serena MCP; shell file mutation (`sed -i`, `cat >`, heredoc writes, `tee`) stays forbidden for them even though `bash` stays allowed for tests/builds.
 
 **Enforcement rules for delegation:**
 
@@ -498,18 +360,18 @@ Follow these steps in order.
 
 ## Tool Usage Rules (OpenCode `permission` model)
 
-Tool access is configured in this file's frontmatter via `permission` (the legacy `tools` frontmatter field is deprecated — do not reintroduce it). Effective permissions:
+Tool access is configured in this file's frontmatter via `permissions` (the legacy `tools` frontmatter field is deprecated — do not reintroduce it). Permissions are permissive: every action is allowed by default, and only risky shell commands (`rm -rf`/`rm -fr`/`rm -r`, `sudo`, `git push --force`/`-f`) trigger an `ask` prompt for explicit user approval. The limits below are behavioral policy, not permission denies:
 
-- `task`: allow — delegation to specialist subagents.
-- `read`, `glob`, `grep`, `list`: allow — read-only investigation.
-- `edit` (gates `write`/`edit`): allow — small-change fast path (see Complexity Triage; Serena MCP edit tools first) plus exactly two workflow artifacts: `docs/plan/<ID>-bundle.md` and `docs/plan/<ID>-findings.md`. No other file is ever written directly.
-- `skill`: allow — only skills available in the current OpenCode skill catalog and directly relevant to the task. Use the `question` tool directly for interviews.
-- `question`: allow — user interviews and approval prompts.
-- `bash`: scoped — read-only inspection (`ls`, `pwd`, `cat`, `head`, `tail`, `wc`, `echo`, `printf`, `sort`, `uniq`, `find`, `grep`, `rg`, `cd`, `date`), read-only `git` (`status`, `diff`, `log`, `rev-parse`, `show`, `ls-files`), read-only provider reads (`gh pr checks|view|list|diff`, `curl -I`/`--head`), and trivial file ops (`mv`, `mkdir`). The read-only set exists so inspection pipelines (`ls -R … | head`, `echo "---" && git status`) do not get denied. Every mutating command (git write ops, `pnpm`, tests, builds, lint, deploy CLIs, Linear) stays denied and delegated; never add a mutating pattern here.
-- `webfetch`, `websearch`: allow — plan-time research only; not used for git, Linear, QA, or review actions.
-- `todowrite`, `lsp`: allow — progress tracking and code intelligence.
-- `external_directory`: deny by default — no access outside the repository.
-- Serena MCP tools: allowed for reads (symbol overview/search, chunked `read_file`) and targeted edits (`replace_symbol_body`, `insert_after_symbol`, `replace_content`/`replace_in_files`) on the S-path; the Serena shell tool (`mcp_serena*shell*`) is denied — the orchestrator never runs shell; substantive mutating work stays delegated. Fall back to native tools when Serena is unavailable.
+- `subagent`: allowed — delegation to specialist subagents per the Model Routing table.
+- `read`, `glob`, `grep`, `list`: allowed — read-only investigation.
+- `edit` (gates `write`/`edit`): allowed — small-change fast path (see Complexity Triage; Serena MCP edit tools first) plus exactly two workflow artifacts: `docs/plan/<ID>-bundle.md` and `docs/plan/<ID>-findings.md`. No other file is ever written directly.
+- `skill`: allowed — only skills available in the current OpenCode skill catalog and directly relevant to the task. Use the `question` tool directly for interviews.
+- `question`: allowed — user interviews and approval prompts.
+- `shell`: allowed — inspection pipelines (`ls -R … | head`, `echo "---" && git status`) run without prompting; risky commands (`rm -rf`/`rm -fr`/`rm -r`, `sudo`, force-push) prompt the user via `ask`. Every substantive mutating action (git write ops, `pnpm`, tests, builds, lint, deploy CLIs, Linear) stays DELEGATED to the owning specialist; the orchestrator does not run them itself.
+- `webfetch`, `websearch`: allowed — plan-time research only; not used for git, Linear, QA, or review actions.
+- `todowrite`, `lsp`: allowed — progress tracking and code intelligence.
+- `external_directory`: allowed — prefer staying inside the repository.
+- Serena MCP tools: allowed for reads (symbol overview/search, chunked `read_file`) and targeted edits (`replace_symbol_body`, `insert_after_symbol`, `replace_content`/`replace_in_files`) on the S-path. The orchestrator still does not run shell itself; substantive mutating work stays delegated. Fall back to native tools when Serena is unavailable.
 
 ## Model Routing Tiers
 

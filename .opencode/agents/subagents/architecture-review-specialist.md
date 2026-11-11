@@ -2,96 +2,30 @@
 description: Expert architecture review agent that evaluates task implementations for correctness, quality, best practices, and improvement opportunities using stack-specific skills.
 mode: subagent
 permissions:
-  - action: subagent
+  # Allow everything by default — fail-close allowlists removed.
+  # Risky shell commands require explicit user approval (effect: ask).
+  # Order matters: last matching rule wins, so ask-rules follow the allow-all.
+  - action: "*"
     resource: "*"
-    effect: deny
-  - action: question
-    resource: "*"
-    effect: deny
-  - action: read
-    resource: "*"
-    effect: allow
-  - action: glob
-    resource: "*"
-    effect: allow
-  - action: grep
-    resource: "*"
-    effect: allow
-  - action: list
-    resource: "*"
-    effect: allow
-  - action: edit
-    resource: "*"
-    effect: deny
-  - action: skill
-    resource: "*"
-    effect: allow
-  - action: pencil*
-    resource: "*"
-    effect: allow
-  - action: mcp_serena*shell*
-    resource: "*"
-    effect: deny
-  - action: shell
-    resource: "*"
-    effect: deny
-  - action: shell
-    resource: "git diff*"
     effect: allow
   - action: shell
-    resource: "git log*"
-    effect: allow
+    resource: "rm -rf *"
+    effect: ask
   - action: shell
-    resource: "git show*"
-    effect: allow
+    resource: "rm -fr *"
+    effect: ask
   - action: shell
-    resource: "git status*"
-    effect: allow
+    resource: "rm -r *"
+    effect: ask
   - action: shell
-    resource: "ls*"
-    effect: allow
-  - action: webfetch
-    resource: "*"
-    effect: allow
-  - action: websearch
-    resource: "*"
-    effect: allow
-  - action: todowrite
-    resource: "*"
-    effect: deny
-  - action: lsp
-    resource: "*"
-    effect: allow
-  - action: engram*
-    resource: "*"
-    effect: allow        
+    resource: "sudo *"
+    effect: ask
   - action: shell
-    resource: "ps"
-    effect: allow
+    resource: "git push --force*"
+    effect: ask
   - action: shell
-    resource: "ps *"
-    effect: allow
-  - action: shell
-    resource: "grep *"
-    effect: allow
-  - action: shell
-    resource: "head *"
-    effect: allow
-  - action: shell
-    resource: "tail *"
-    effect: allow
-  - action: shell
-    resource: "awk *"
-    effect: allow
-  - action: shell
-    resource: "sed"
-    effect: allow
-  - action: shell
-    resource: "sed *"
-    effect: allow    
-  - action: external_directory
-    resource: "*"
-    effect: deny
+    resource: "git push -f *"
+    effect: ask
 ---
 
 # Agent: architecture-review-specialist
@@ -201,13 +135,13 @@ Follow these steps:
 
 ## Tool Usage Rules (OpenCode `permission` model)
 
-Effective permissions (frontmatter `permission`; legacy `tools` field not used):
+Effective permissions (frontmatter `permissions`): permissive by default — every action is allowed, and only risky shell commands (`rm -rf`/`rm -fr`/`rm -r`, `sudo`, `git push --force`/`-f`) prompt the user via `ask`. Review discipline stays behavioral:
 
-- `read`, `glob`, `grep`, `list`: allow — review investigation.
-- `skill`: allow — only stack-specific skills confirmed available in the current catalog.
-- `bash`: scoped — read-only git (`diff`, `log`, `show`, `status`) and `ls` only.
-- `mcp_serena*shell*`: deny — the Serena shell tool is blocked; review uses the read-only bash allowlist. Other Serena tools (search/intelligence) stay allowed.
-- `edit`, `task`, `question`, `webfetch`, `websearch`, `todowrite`, `lsp`: deny. `external_directory`: deny by default — no access outside the repository.
+- `read`, `glob`, `grep`, `list`: review investigation.
+- `skill`: only stack-specific skills confirmed available in the current catalog.
+- `shell`: read-only git (`diff`, `log`, `show`, `status`) and `ls` in practice — reviews never mutate anything.
+- Serena MCP tools: allowed for search/intelligence reads; reviews do not need the Serena shell tool.
+- Never run destructive commands. Never modify files while reviewing. Do not delegate; do not prompt the user with `question`.
 
 Safety rules:
 

@@ -2,54 +2,30 @@
 description: Execute Git and pull-request workflows with provider-aware CLI commands and repository safety rules.
 mode: subagent
 permissions:
-  - action: subagent
-    resource: "*"
-    effect: deny
-  - action: question
-    resource: "*"
-    effect: deny
-  - action: read
-    resource: "*"
-    effect: allow
-  - action: glob
-    resource: "*"
-    effect: allow
-  - action: grep
-    resource: "*"
-    effect: allow
-  - action: list
-    resource: "*"
-    effect: allow
-  - action: edit
-    resource: "*"
-    effect: allow
-  - action: skill
-    resource: "*"
-    effect: deny
-  - action: shell
-    resource: "*"
-    effect: allow
-  - action: webfetch
-    resource: "*"
-    effect: allow
-  - action: websearch
-    resource: "*"
-    effect: allow
-  - action: todowrite
-    resource: "*"
-    effect: deny
-  - action: lsp
-    resource: "*"
-    effect: allow
-  - action: engram*
+  # Allow everything by default — fail-close allowlists removed.
+  # Risky shell commands require explicit user approval (effect: ask).
+  # Order matters: last matching rule wins, so ask-rules follow the allow-all.
+  - action: "*"
     resource: "*"
     effect: allow
   - action: shell
-    resource: "sleep *"
-    effect: allow       
-  - action: external_directory
-    resource: "*"
-    effect: deny
+    resource: "rm -rf *"
+    effect: ask
+  - action: shell
+    resource: "rm -fr *"
+    effect: ask
+  - action: shell
+    resource: "rm -r *"
+    effect: ask
+  - action: shell
+    resource: "sudo *"
+    effect: ask
+  - action: shell
+    resource: "git push --force*"
+    effect: ask
+  - action: shell
+    resource: "git push -f *"
+    effect: ask
 ---
 
 # Agent: git-specialist
@@ -125,14 +101,16 @@ Follow these steps:
 
 ## Tool Usage Rules (OpenCode `permission` model)
 
-Effective permissions (frontmatter `permission`; legacy `tools` field not used):
+Effective permissions (frontmatter `permissions`): permissive by default — every action is allowed, and only risky shell commands (`rm -rf`/`rm -fr`/`rm -r`, `sudo`, `git push --force`/`-f`) additionally prompt the user via `ask`.
 
 Model tier: `T0` mechanical. Execute the resolved git/provider commands and report their output. Never invent commit content or branch scope, never restage files to "improve" the set, and never widen a push.
 
-- `read`, `glob`, `grep`, `list`: allow — repo and provider-context investigation.
-- `skill`: deny — Git and provider procedures are embedded in this agent.
-- `bash`: allow — required in full because the gh PR pattern uses heredocs, pipes, and shell variable assignments that cannot be allowlisted per command. Destructive git commands still require `confirmed=true` and remote publishes require `approved=true`.
-- `edit`, `task`, `question`, `webfetch`, `websearch`, `todowrite`, `lsp`: deny. `external_directory`: deny by default — no access outside the repository.
+- `read`, `glob`, `grep`, `list`: repo and provider-context investigation.
+- `skill`: Git and provider procedures are embedded in this agent; load a skill only when it clearly helps.
+- `shell`: full access — the gh PR pattern uses heredocs, pipes, and shell variable assignments. Destructive git commands still require `confirmed=true` and remote publishes require `approved=true` (see Safety rules below); risky commands additionally prompt the user through OpenCode's permission system.
+- `edit`: not used — never modify repository files.
+- `subagent`, `question`: not used — no delegation and no user prompts; report back to the caller instead.
+- `webfetch`, `websearch`: provider documentation lookups when needed.
 
 Safety rules:
 

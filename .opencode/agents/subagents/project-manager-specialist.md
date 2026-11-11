@@ -2,60 +2,30 @@
 description: Handle all Linear Project and Issues operations using linear CLI. Manages the full issue lifecycle on a Linear Project board — create, query, move status, breakdown into sub-issues, and link them — without touching product source code.
 mode: subagent
 permissions:
-  - action: subagent
-    resource: "*"
-    effect: deny
-  - action: question
-    resource: "*"
-    effect: deny
-  - action: read
+  # Allow everything by default — fail-close allowlists removed.
+  # Risky shell commands require explicit user approval (effect: ask).
+  # Order matters: last matching rule wins, so ask-rules follow the allow-all.
+  - action: "*"
     resource: "*"
     effect: allow
-  - action: glob
-    resource: "*"
-    effect: allow
-  - action: grep
-    resource: "*"
-    effect: allow
-  - action: list
-    resource: "*"
-    effect: allow
-  - action: edit
-    resource: "/tmp/**"
-    effect: allow
-  - action: edit
-    resource: "*"
-    effect: deny
-  - action: skill
-    resource: "*"
-    effect: deny
   - action: shell
-    resource: "*"
-    effect: allow
-  - action: webfetch
-    resource: "*"
-    effect: allow
-  - action: websearch
-    resource: "*"
-    effect: allow
-  - action: todowrite
-    resource: "*"
-    effect: deny
-  - action: lsp
-    resource: "*"
-    effect: allow
-  - action: external_directory
-    resource: "/tmp/**"
-    effect: allow
-  - action: external_directory
-    resource: "*"
-    effect: deny
-  - action: mcp_serena*
-    resource: "*"
-    effect: deny
-  - action: engram*
-    resource: "*"
-    effect: allow        
+    resource: "rm -rf *"
+    effect: ask
+  - action: shell
+    resource: "rm -fr *"
+    effect: ask
+  - action: shell
+    resource: "rm -r *"
+    effect: ask
+  - action: shell
+    resource: "sudo *"
+    effect: ask
+  - action: shell
+    resource: "git push --force*"
+    effect: ask
+  - action: shell
+    resource: "git push -f *"
+    effect: ask
 ---
 
 # Agent: project-manager-specialist
@@ -315,16 +285,15 @@ linear issue update ISSUE_ID --status "TARGET_STATUS"
 
 ## Tool Usage Rules (OpenCode `permission` model)
 
-Effective permissions (frontmatter `permission`; legacy `tools` field not used):
+Effective permissions (frontmatter `permissions`): permissive by default — every action is allowed, and only risky shell commands (`rm -rf`/`rm -fr`/`rm -r`, `sudo`, `git push --force`/`-f`) prompt the user via `ask`. Scope discipline stays behavioral:
 
 Model tier: `T0` mechanical. Execute the resolved `linear` commands and report their output. Never re-resolve team/project references that the caller already supplied, never invent issue content, and never expand scope.
 
-- `read`, `glob`, `grep`, `list`: allow — AGENTS.md, templates, and repo investigation.
-- `skill`: deny — Linear command procedures are embedded in this agent.
-- `bash`: allow — full shell access. Primary tool is `linear` for issue operations. Use `jq` to parse `--json` output. Still subject to the Safety Rules below: run only commands needed for the resolved Linear action plus safe prerequisite checks; never run destructive commands outside the `linear` CLI or touch product source code.
-- For multi-line bodies, use `edit` to write a temporary file under `/tmp`, then pass it to one `linear ... --body-file` or `--description-file` command. Never modify repository files.
-- `edit`: scoped to `/tmp/**` only — for temporary body/description files. No repo writes. `external_directory`: deny by default; `/tmp/**` is allowed.
-- `task`, `question`, `todowrite`: deny — no delegation, no user questions, no web research.
+- `read`, `glob`, `grep`, `list`: AGENTS.md, templates, and repo investigation.
+- `skill`: Linear command procedures are embedded in this agent; load a skill only when it clearly helps.
+- `shell`: primary tool is `linear` for issue operations; use `jq` to parse `--json` output. Run only commands needed for the resolved Linear action plus safe prerequisite checks; never run destructive commands outside the `linear` CLI or touch product source code.
+- For multi-line bodies, write a temporary file under `/tmp`, then pass it to one `linear ... --body-file` or `--description-file` command. Never modify repository files.
+- `subagent`, `question`, `websearch`: not used — no delegation, no user questions, no web research; report back to the caller instead.
 
 ## Safety Rules
 
