@@ -73,6 +73,12 @@ export function listSpecs(dir = 'e2e') {
 //   DEV and StyleX dev mode to the Vite command, making build output independent of ambient NODE_ENV.
 // - notifications: its mark-all-read cutoff test races a concurrently arriving notification by design
 //   (failed in about 3 of 9 full-sweep runs, passes alone).
+//   Mechanism (PAF-175): the cutoff was only ordered by wall-clock timing. Realtime refreshes advance
+//   the page's asOf, so under load the cutoff captured by the click could swallow the "concurrent" row.
+//   The test now holds the real mark-all request before server dispatch, reads its real cutoff C from
+//   the payload and gives the rows explicit created_at values C-1ms / C / C+1ms (older, equal, newer)
+//   through the local SQL fixture, then releases the unmodified request. The backend boundary
+//   (`created_at <= p_before`) is exercised deterministically; the serial fence stays.
 // - result-corrections-visual: its repair-diagnostics probes depend on the repair-lease lifecycle (an
 //   earlier describe deliberately holds a 600s lease), so a changed sweep order shifts their layout.
 // - pwa, push-deep-links, push-preferences: service-worker registration and push mocks stall (zero test

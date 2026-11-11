@@ -11,6 +11,7 @@ import {
   type Response
 } from '@playwright/test';
 import { submitAndWaitForAuthDestination, waitForHydratedPage } from './auth-helpers';
+import { sql } from './matches-management-fixtures';
 import {
   copies,
   enterScore,
@@ -447,6 +448,16 @@ async function insertInvitation(owner: Actor, communityId: string, invitee: Acto
   return { id: invitation.data.id, token };
 }
 
+async function listNotificationIds(actor: Actor): Promise<string[]> {
+  const rows = await actor.client
+    .from('notifications')
+    .select('id')
+    .order('created_at', { ascending: true })
+    .order('id', { ascending: true });
+  if (rows.error) throw rows.error;
+  return (rows.data ?? []).map((row: { id: string }) => row.id);
+}
+
 async function latestNotification(
   actor: Actor,
   kind: string
@@ -875,14 +886,96 @@ test('mark-all-read honors its cutoff so a concurrently arriving notification st
     await waitForHydratedPage(page);
     await expect(unreadChip(page, 2)).toBeVisible();
 
-    // New event arrives AFTER the page's authoritative asOf cutoff was captured.
-    const thirdCommunity = await createPrivateCommunity(
-      admin,
-      `Cutoff three ${crypto.randomUUID().slice(0, 6)}`
-    );
-    await insertInvitation(admin, thirdCommunity, recipient);
+    // Mechanism (PAF-175): the old test inserted the third invitation before the click and relied on
+    // wall-clock ordering. Realtime refreshes advance the page's asOf, so under load the cutoff
+    // captured by the click could swallow the "concurrent" row (or the row landed at the same
+    // millisecond as the cutoff). Here the real mark-all request is held before server dispatch,
+    // its real cutoff C is read from the payload, and the three rows get explicit created_at values
+    // C-1ms / C / C+1ms. The unmodified backend then proves `created_at <= p_before`: the
+    // strictly-older and equal rows are marked read, the strictly-newer row stays unread.
+    const [firstRow, secondRow] = await listNotificationIds(recipient);
+    if (!firstRow || !secondRow) throw new Error('Seed notifications were not delivered');
+    let captureCutoff!: (cutoff: string) => void;
+    const cutoffCaptured = new Promise<string>((resolve) => {
+      captureCutoff = resolve;
+    });
+    let releaseRequest!: () => void;
+    const requestReleased = new Promise<void>((resolve) => {
+      releaseRequest = resolve;
+    });
+    await page.route('**/_serverFn/**', async (route) => {
+      const request = route.request();
+      // The serialized payload carries the "before" key and its ISO cutoff (database clock, so
+      // microsecond precision with a numeric offset); no other server function on this page
+      // sends both.
+      const body = request.method() === 'POST' ? (request.postData() ?? '') : '';
+      const cutoff = body.includes('before')
+        ? body.match(/\d{4}-\d{2}-\d{2}T[\d:.]+(?:Z|[+-]\d{2}:\d{2})/)?.[0]
+        : undefined;
+      if (!cutoff) {
+        await route.continue();
+        return;
+      }
+      captureCutoff(cutoff);
+      await requestReleased;
+      await route.continue();
+    });
 
-    await page.getByRole('button', { name: en.notifications.markAllRead }).click();
+    let thirdRow = '';
+    try {
+      await page.getByRole('button', { name: en.notifications.markAllRead }).click();
+      const cutoff = await cutoffCaptured;
+      // Offsets are applied in SQL so the cutoff keeps its microsecond precision.
+      const cutoffSql = `'${cutoff}'::timestamptz`;
+
+      // The new event arrives while the mutation is held, so it is concurrent with the click by
+      // construction instead of by timing.
+      const thirdCommunity = await createPrivateCommunity(
+        admin,
+        `Cutoff three ${crypto.randomUUID().slice(0, 6)}`
+      );
+      await insertInvitation(admin, thirdCommunity, recipient);
+      const delivered = (await listNotificationIds(recipient)).find(
+        (id) => id !== firstRow && id !== secondRow
+      );
+      if (!delivered) throw new Error('Third notification was not delivered');
+      thirdRow = delivered;
+
+      await sql(
+        `update public.notifications set created_at = case id
+          when '${firstRow}'::uuid then ${cutoffSql} - interval '1 millisecond'
+          when '${secondRow}'::uuid then ${cutoffSql}
+          else ${cutoffSql} + interval '1 millisecond' end
+        where recipient_user_id = '${recipient.id}'::uuid
+          and id in ('${firstRow}'::uuid, '${secondRow}'::uuid, '${thirdRow}'::uuid)`
+      );
+      // Authoritative list reads are bounded by the database clock; wait until C+1ms is in the past.
+      await expect
+        .poll(
+          async () =>
+            (
+              await sql(
+                `select clock_timestamp() >= ${cutoffSql} + interval '1 millisecond' as reached`
+              )
+            )[0]?.reached,
+          { intervals: [50, 100, 250] }
+        )
+        .toBe(true);
+      const boundary = await sql(
+        `select id, created_at <= ${cutoffSql} as within_cutoff
+        from public.notifications where recipient_user_id = '${recipient.id}'::uuid`
+      );
+      expect(new Map(boundary.map((row) => [row.id, row.within_cutoff]))).toEqual(
+        new Map([
+          [firstRow, true],
+          [secondRow, true],
+          [thirdRow, false]
+        ])
+      );
+    } finally {
+      releaseRequest();
+    }
+
     await expect(unreadChip(page, 1)).toBeVisible();
     const unreadCards = page.locator('main li', {
       has: page.getByRole('button', { name: en.notifications.markRead })
@@ -890,15 +983,14 @@ test('mark-all-read honors its cutoff so a concurrently arriving notification st
     await expect(unreadCards).toHaveCount(1);
     await expect(page.locator('main li')).toHaveCount(3);
 
-    const rows = await recipient.client
-      .from('notifications')
-      .select('id,read_at')
-      .order('created_at', { ascending: true });
+    const rows = await recipient.client.from('notifications').select('id,read_at');
     expect(rows.data).toHaveLength(3);
-    const readStates = (rows.data ?? []).map((row: { read_at: string | null }) => row.read_at);
-    expect(typeof readStates[0]).toBe('string');
-    expect(typeof readStates[1]).toBe('string');
-    expect(readStates[2]).toBeNull();
+    const readAt = new Map(
+      (rows.data ?? []).map((row: { id: string; read_at: string | null }) => [row.id, row.read_at])
+    );
+    expect(typeof readAt.get(firstRow)).toBe('string');
+    expect(typeof readAt.get(secondRow)).toBe('string');
+    expect(readAt.get(thirdRow)).toBeNull();
   } finally {
     await context.close();
   }
