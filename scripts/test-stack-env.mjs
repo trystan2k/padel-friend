@@ -132,19 +132,44 @@ export function resolveTestStackEnv(exec = execFileSync) {
 }
 
 /**
- * Installs the authoritative test tuple into env, overriding inherited dev VITE_*, DATABASE_URL,
- * handoff and service key. An already-complete valid tuple (e.g. from the launcher) is kept; an
- * incomplete or invalid one is replaced by the status-derived tuple, never merged with it.
+ * Installs the authoritative test tuple into env at a test entrypoint (integration Vitest config,
+ * Playwright config). The live test stack's status is ALWAYS the authority (one pinned CLI call), so a
+ * missing stack fails here before collection or workers whatever the ambient env holds.
+ *
+ * An ambient tuple is only a launcher handoff: a complete test-shaped tuple must equal the live status
+ * exactly (stale or mixed credentials throw a reason-only error naming no value). An ambient env that is
+ * incomplete or not test-shaped (e.g. an inherited dev Supabase URL, DATABASE_URL or service key) is discarded and
+ * replaced as one unit, never merged.
  */
 export function ensureTestStackEnv(env = process.env, exec = execFileSync) {
-  let tuple;
+  const live = resolveTestStackEnv(exec);
+  let ambient;
   try {
-    tuple = validateTestEnv(env);
+    ambient = validateTestEnv(env);
   } catch {
-    tuple = resolveTestStackEnv(exec);
+    // Not a usable test tuple: nothing to authenticate, the live status replaces it.
   }
-  Object.assign(env, tuple);
-  return tuple;
+  if (ambient) {
+    const stale = TEST_ENV_NAMES.filter((name) => ambient[name] !== live[name]);
+    if (stale.length > 0)
+      throw new TestStackEnvError(
+        'Ambient test environment does not match the running test stack (' +
+          stale.join(', ') +
+          '). Unset it or restart through pnpm test:integration / pnpm test:e2e.'
+      );
+  }
+  Object.assign(env, live);
+  return live;
+}
+
+/**
+ * Value of NAME in a baked dist/server/.dev.vars, or undefined. The Cloudflare plugin writes values
+ * single-quoted (double-quoted when they contain a single quote), so both pairs are unwrapped; comparing
+ * the raw text would never match the live tuple.
+ */
+export function readDevVarsValue(text, name) {
+  const raw = new RegExp('^' + name + '=(.+)$', 'm').exec(text)?.[1]?.trim();
+  return raw?.replace(/^(['"])(.*)\1$/, '$2');
 }
 
 /** The validated tuple already present in env (no CLI call). Throws when absent or wrong stack. */

@@ -71,6 +71,8 @@ Follow this checklist for **each project created from this template**. Replace e
 
 ### Local stacks reference
 
+The opt-in isolation proof cleanup takes a short exclusive lock on affected history tables; concurrent dev reads and writes stall briefly (trigger DDL takes ACCESS EXCLUSIVE) until cleanup commits or rolls back.
+
 Two independent Supabase CLI projects run side by side: **dev** (`supabase/`, project `padel-friend`) and **test** (`test/stack/supabase/`, project `padel-friend-test`). Each has its own containers, network and data volumes (`supabase_db_<project>`, `supabase_storage_<project>`, ...), so test runs and resets never touch dev data. Test tooling never falls back to dev.
 
 | Script                                                        | Target | Effect                                                         |

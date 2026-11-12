@@ -6,6 +6,7 @@ import {
   TEST_ENV_NAMES,
   TestStackEnvError,
   ensureTestStackEnv,
+  readDevVarsValue,
   requireTestEnv,
   resolveTestStackEnv,
   testCliArgs,
@@ -146,11 +147,37 @@ describe('test stack environment resolution', () => {
     expect(exec).toHaveBeenCalledOnce();
   });
 
-  it('keeps an already-complete valid tuple without another CLI call', () => {
-    const exec = vi.fn<() => string>();
+  it('honors a launcher handoff only when it matches the live status exactly, with one CLI call', () => {
+    const exec = vi.fn<(...args: unknown[]) => string>(() => testStatusOutput());
     const env: Record<string, string | undefined> = { ...TEST_TUPLE };
     expect(ensureTestStackEnv(env, exec)).toEqual(TEST_TUPLE);
-    expect(exec).not.toHaveBeenCalled();
+    expect(exec).toHaveBeenCalledOnce();
+    expect(env).toMatchObject(TEST_TUPLE);
+  });
+
+  it.each([
+    ['service key', { SUPABASE_SERVICE_ROLE_KEY: 'stale-service-key' }],
+    ['publishable key', { VITE_SUPABASE_PUBLISHABLE_KEY: 'stale-publishable-key' }]
+  ])(
+    'rejects a complete ambient tuple with a stale %s before anything is collected',
+    (_l, stale) => {
+      const exec = vi.fn<(...args: unknown[]) => string>(() => testStatusOutput());
+      const env: Record<string, string | undefined> = { ...TEST_TUPLE, ...stale };
+      const message = failure(() => ensureTestStackEnv(env, exec));
+      expect(message).toContain('does not match the running test stack');
+      for (const value of Object.values(stale)) expect(message).not.toContain(value);
+      for (const secret of SECRETS) expect(message).not.toContain(secret);
+      // The stale tuple is not silently replaced or merged.
+      expect(env).toMatchObject(stale);
+    }
+  );
+
+  it('fails closed when no test stack is running even with a complete ambient tuple', () => {
+    const exec = () => {
+      throw Object.assign(new Error('exit 1'), { stderr: 'not running' });
+    };
+    const env: Record<string, string | undefined> = { ...TEST_TUPLE };
+    expect(failure(() => ensureTestStackEnv(env, exec))).toContain('pnpm test:stack:up');
   });
 
   it('requireTestEnv refuses an absent or wrong-stack tuple without any dev fallback', () => {
@@ -158,5 +185,19 @@ describe('test stack environment resolution', () => {
     const message = failure(() => requireTestEnv({ VITE_SUPABASE_URL: 'http://127.0.0.1:55321' }));
     expect(message).toContain('test entrypoint');
     expect(() => requireTestEnv({})).toThrow(TestStackEnvError);
+  });
+
+  it('reads a baked .dev.vars value whatever quoting the Cloudflare plugin used', () => {
+    const key = 'eyJ.fake.service-key';
+    const read = (line: string) =>
+      readDevVarsValue(
+        `OTHER=x\n${line}\nSUPABASE_SERVICE_ROLE_KEY_X=y\n`,
+        'SUPABASE_SERVICE_ROLE_KEY'
+      );
+
+    expect(read(`SUPABASE_SERVICE_ROLE_KEY='${key}'`)).toBe(key);
+    expect(read(`SUPABASE_SERVICE_ROLE_KEY="${key}"`)).toBe(key);
+    expect(read(`SUPABASE_SERVICE_ROLE_KEY=${key}`)).toBe(key);
+    expect(readDevVarsValue('OTHER=x\n', 'SUPABASE_SERVICE_ROLE_KEY')).toBeUndefined();
   });
 });

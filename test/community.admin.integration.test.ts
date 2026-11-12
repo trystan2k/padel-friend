@@ -2,6 +2,7 @@ import { spawn } from 'node:child_process';
 import { createRequire } from 'node:module';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
+import { TEST_WORKDIR } from '../scripts/test-stack.mjs';
 import { assertLocalSupabaseEnvInCi, localSupabaseEnv } from './helpers/local-supabase-env';
 
 const serverClient = vi.hoisted(() => ({ current: null as SupabaseClient | null }));
@@ -223,10 +224,13 @@ function startLocalSql(sql: string): LocalSqlCommand {
   // translates a signal-killed child into its own status (pnpm 11 died by the
   // signal -> null; pnpm 12 exits 130 for a SIGTERM-killed child). The Supabase
   // launcher forwards SIGTERM/SIGINT/SIGHUP and re-signals itself when the native
-  // CLI dies by signal, so the exit observed here is the CLI's, not pnpm's.
+  // CLI dies by signal, so the exit observed here is the CLI's, not pnpm's. The pinned test workdir
+  // keeps the query on the isolated test database the suite's data lives in (never the dev stack).
   const supabaseCliEntry = createRequire(import.meta.url).resolve('supabase/dist/supabase.js');
   return startLocalProcess(process.execPath, [
     supabaseCliEntry,
+    '--workdir',
+    TEST_WORKDIR,
     'db',
     'query',
     '--local',

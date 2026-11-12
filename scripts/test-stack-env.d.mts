@@ -40,3 +40,4 @@ export function ensureTestStackEnv(
   exec?: StatusExec
 ): TestStackEnv;
 export function requireTestEnv(env?: Record<string, string | undefined>): TestStackEnv;
+export function readDevVarsValue(text: string, name: string): string | undefined;

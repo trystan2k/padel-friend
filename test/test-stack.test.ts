@@ -73,6 +73,56 @@ describe('test stack lifecycle', () => {
     ]);
   });
 
+  it('retries post-reset readiness while the database container is recreated', async () => {
+    let reset = false;
+    let attempts = 0;
+    const delays: number[] = [];
+    const runner = fakeRunner((call) => {
+      if (call.args.includes('reset')) reset = true;
+      if (reset && call.args.includes('status') && ++attempts < 3)
+        return { code: 1, stderr: 'database container recreating' };
+      return { code: 0 };
+    });
+    await runTestStack(['reset'], {
+      ...options(runner),
+      sleep: async (ms) => {
+        delays.push(ms);
+      }
+    });
+    expect(attempts).toBe(3);
+    expect(delays).toEqual([1000, 1000]);
+  });
+
+  it('bounds post-reset readiness retries and propagates the last error', async () => {
+    let reset = false;
+    const runner = fakeRunner((call) => {
+      if (call.args.includes('reset')) reset = true;
+      return reset && call.args.includes('status')
+        ? { code: 1, stderr: 'still unavailable' }
+        : { code: 0 };
+    });
+    await expect(
+      runTestStack(['reset'], { ...options(runner), sleep: async () => {} })
+    ).rejects.toThrow('still unavailable');
+    expect(runner.calls.filter((call) => call.args.includes('status'))).toHaveLength(16);
+  });
+
+  it('recovers a partial test project through scoped stop/start without deleting volumes', async () => {
+    let starts = 0;
+    const runner = fakeRunner((call) => ({
+      code: call.args.includes('start') && ++starts === 1 ? 1 : 0
+    }));
+    await runTestStack(['up'], options(runner));
+    expect(runner.calls.map((call) => call.args.slice(4).join(' '))).toEqual([
+      'start',
+      'stop',
+      'start',
+      'status -o env'
+    ]);
+    expect(runner.calls.flatMap((call) => call.args)).not.toContain('--no-backup');
+    expect(runner.calls.flatMap((call) => call.args)).not.toContain('--all');
+  });
+
   it('down only stops the test project without global or volume flags', async () => {
     const runner = fakeRunner();
     await runTestStack(['down'], options(runner));

@@ -35,6 +35,7 @@ export function runTestStack(
       options: { cwd: string }
     ) => Promise<ProcessResult>;
     log?: (message: string) => void;
+    sleep?: (ms: number) => Promise<void>;
     readConfig?: () => Promise<Record<string, unknown>>;
   }
 ): Promise<void>;

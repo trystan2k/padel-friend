@@ -93,9 +93,10 @@ function runCompleteCheck(
       'printf \'%s\\n\' "$*" >> "$COMPLETE_CHECK_LOG"',
       'if [ "$*" = "build" ]; then',
       '  printf \'%s|%s|%s|%s\\n\' "${CLOUDFLARE_INCLUDE_PROCESS_ENV:-}" "${SUPABASE_SERVICE_ROLE_KEY:-}" "${VITE_SUPABASE_URL:-}" "${DATABASE_URL:-}" >> "$COMPLETE_CHECK_LOG.build"',
-      // Like the real build, bake the key into dist/server/.dev.vars only when the build env has it.
+      // Like the real build, bake the key (single-quoted, as the Cloudflare plugin writes it) into
+      // dist/server/.dev.vars only when the build env has it.
       '  mkdir -p dist/server; : > dist/server/.dev.vars',
-      '  if [ -n "${SUPABASE_SERVICE_ROLE_KEY:-}" ]; then printf \'SUPABASE_SERVICE_ROLE_KEY=%s\\n\' "$SUPABASE_SERVICE_ROLE_KEY" > dist/server/.dev.vars; fi',
+      '  if [ -n "${SUPABASE_SERVICE_ROLE_KEY:-}" ]; then printf "SUPABASE_SERVICE_ROLE_KEY=\\047%s\\047\\n" "$SUPABASE_SERVICE_ROLE_KEY" > dist/server/.dev.vars; fi',
       'fi',
       // Simulates a later rebuild (e.g. a keyless build inside a test) wiping the baked key.
       'if [ -n "${COMPLETE_CHECK_CLOBBER:-}" ] && [ "$COMPLETE_CHECK_CLOBBER" = "$*" ]; then : > dist/server/.dev.vars; fi',

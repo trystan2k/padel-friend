@@ -198,21 +198,42 @@ async function readStatus(runProcess) {
   return cli(runProcess, ['status', '-o', 'env']);
 }
 
-async function validateHealthy(runProcess) {
-  const result = await readStatus(runProcess);
-  assertSucceeded(result, 'status check');
-  assertHealthyStatus(result.stdout);
+async function validateHealthy(runProcess, sleep, attempts = 15) {
+  for (let attempt = 1; ; attempt += 1) {
+    const result = await readStatus(runProcess);
+    if (!result.signal && result.code === 0) {
+      // Endpoint drift is not a startup race: fail closed immediately.
+      assertHealthyStatus(result.stdout);
+      return;
+    }
+    if (result.signal || attempt >= attempts) assertSucceeded(result, 'status check');
+    await sleep(1000);
+  }
 }
 
 export async function runTestStack(
   argv,
-  { env = process.env, runProcess = run, log = console.log, readConfig = readTestConfig } = {}
+  {
+    env = process.env,
+    runProcess = run,
+    log = console.log,
+    readConfig = readTestConfig,
+    sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
+  } = {}
 ) {
   const verb = parseArgs(argv, env);
   assertTestConfig(await readConfig());
   if (verb === 'up') {
-    assertSucceeded(await cli(runProcess, ['start']), 'start');
-    await validateHealthy(runProcess);
+    const started = await cli(runProcess, ['start']);
+    if (!started.signal && started.code !== 0) {
+      // A killed reset can leave a partial project (missing DB, live gateway/realtime).
+      // CLI start cannot always reconcile those containers. Stop THIS project only,
+      // retaining its volumes, then give the normal start path one recovery attempt.
+      log('Test stack start incomplete; recovering test project only (volumes kept).');
+      assertSucceeded(await cli(runProcess, ['stop']), 'recovery stop');
+      assertSucceeded(await cli(runProcess, ['start']), 'recovery start');
+    } else assertSucceeded(started, 'start');
+    await validateHealthy(runProcess, sleep);
     log('Test stack up (' + TEST_PROJECT_ID + ', API ' + TEST_API_URL + ').');
   } else if (verb === 'down') {
     assertSucceeded(await cli(runProcess, ['stop']), 'stop');
@@ -222,7 +243,7 @@ export async function runTestStack(
     if (status.signal || status.code !== 0)
       throw new TestStackError('Test stack is not running. Run pnpm test:stack:up first.');
     assertSucceeded(await cli(runProcess, ['db', 'reset', '--local']), 'reset');
-    await validateHealthy(runProcess);
+    await validateHealthy(runProcess, sleep);
     log('Test stack reset (' + TEST_PROJECT_ID + '): migrations and seed applied.');
   }
 }

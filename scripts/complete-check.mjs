@@ -4,7 +4,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { e2eBuildEnv, resolveTestBuildEnv } from './e2e-build-env.mjs';
 import { gateLanes } from './e2e-shards.mjs';
 import { sourceFingerprint } from './source-fingerprint.mjs';
-import { TEST_ENV_NAMES } from './test-stack-env.mjs';
+import { TEST_ENV_NAMES, readDevVarsValue } from './test-stack-env.mjs';
 
 // Mirrors the `test` package script (unit coverage, db:reset, integration) so the gate can own the
 // reset before integration; test/complete-check.test.ts pins the two together. `db:reset` is the
@@ -79,8 +79,8 @@ const sha256 = (value) => createHash('sha256').update(value).digest('hex');
 // A key merely being present is not proof it belongs to THIS test stack: compare digests of the baked
 // server binding and the current test tuple's key (neither value is ever logged).
 const distBindingDigest = () => {
-  const key = /^SUPABASE_SERVICE_ROLE_KEY=(.+)$/m.exec(readFileSync(DEV_VARS, 'utf8'))?.[1];
-  return key === undefined ? undefined : sha256(key.trim().replace(/^"(.*)"$/, '$1'));
+  const key = readDevVarsValue(readFileSync(DEV_VARS, 'utf8'), 'SUPABASE_SERVICE_ROLE_KEY');
+  return key === undefined ? undefined : sha256(key);
 };
 const distMatchesTestStack = (tuple) =>
   distHasServiceRoleKey() && distBindingDigest() === sha256(tuple.SUPABASE_SERVICE_ROLE_KEY);

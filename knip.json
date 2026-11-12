@@ -28,7 +28,8 @@
     "scripts/source-fingerprint.d.mts",
     "scripts/with-test-stack.d.mts",
     "scripts/ci-test-env.d.mts",
-    "scripts/verify-test-stack-isolation.d.mts"
+    "scripts/verify-test-stack-isolation.d.mts",
+    "scripts/isolation-proof-product-fixtures.d.mts"
   ],
   "ignoreDependencies": ["@opencode/plugin"],
   "ignoreIssues": {
