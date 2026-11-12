@@ -1,3 +1,4 @@
+import { spawnSync } from 'node:child_process';
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -242,4 +243,28 @@ describe('ci.yml test-stack contract', () => {
     expect(body).toContain("E2E_GATE_PREBUILT: '1'");
     expect(body).not.toMatch(/GITHUB_ENV|SERVICE_ROLE/);
   });
+});
+
+describe('static job knip is service-free', () => {
+  it('never lets knip execute the stack-bound Playwright/Vitest integration configs', () => {
+    const knip: unknown = JSON.parse(readFileSync('knip.json', 'utf8'));
+    expect(knip).toMatchObject({ vitest: false, playwright: { config: [] } });
+  });
+
+  it('passes with no test stack available (static job has no Supabase)', () => {
+    const dir = mkdtempSync(path.join(tmpdir(), 'knip-no-stack-'));
+    try {
+      writeFileSync(path.join(dir, 'pnpm'), '#!/bin/sh\necho no stack >&2\nexit 1\n', {
+        mode: 0o755
+      });
+      const result = spawnSync('node_modules/.bin/knip', [], {
+        encoding: 'utf8',
+        env: { ...process.env, PATH: dir + path.delimiter + process.env.PATH }
+      });
+      expect(result.stdout + result.stderr).not.toMatch(/Error loading|Test Supabase stack/);
+      expect(result.status).toBe(0);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  }, 60_000);
 });
