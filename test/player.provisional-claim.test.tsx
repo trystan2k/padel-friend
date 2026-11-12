@@ -183,7 +183,9 @@ describe('claim onboarding', () => {
         preferred_side: 'LEFT',
         initial_level: 3.5,
         dominant_hand: null,
-        bio: null
+        bio: null,
+        preferred_playing_days: null,
+        preferred_playing_times: null
       }
     });
     expect(mocks.onboard).not.toHaveBeenCalled();

@@ -274,6 +274,8 @@ describe.each([
       'display_name',
       'dominant_hand',
       'initial_level',
+      'preferred_playing_days',
+      'preferred_playing_times',
       'preferred_side'
     ]);
   });

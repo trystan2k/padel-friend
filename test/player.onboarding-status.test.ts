@@ -57,6 +57,7 @@ vi.mock('../src/features/player/player.server', async (importOriginal) => {
 import { verifiedAvatarKey } from '../src/features/player/player.server';
 import {
   claimProvisionalPlayer,
+  getMyPlayerProfile,
   onboardPlayer,
   updateMyPlayerProfile
 } from '../src/features/player/player.functions';
@@ -317,12 +318,115 @@ describe('private player server functions', () => {
     await claimProvisionalPlayer({
       data: { display_name: 'Marta', preferred_side: 'LEFT', initial_level: 3.5, bio: 'hi' }
     });
-    expect(client.rpc).toHaveBeenCalledWith('claim_provisional_player', {
+    expect(client.rpc).toHaveBeenCalledWith('claim_provisional_player_with_availability', {
       p_display_name: 'Marta',
       p_preferred_side: 'LEFT',
       p_initial_level: 3.5,
       p_bio: 'hi'
     });
+  });
+
+  it('creates through the availability wrapper, sending only supplied selections', async () => {
+    const client = clientWith({ sub: 'sub-1' }, PROFILE_ROW, RATING_ROW);
+    supabaseServer.getServerClient.mockReturnValue(client);
+    const base = { display_name: 'Ana', preferred_side: 'LEFT' as const, initial_level: 3 };
+    await onboardPlayer({ data: base });
+    expect(client.rpc).toHaveBeenLastCalledWith('onboard_player_with_availability', {
+      p_display_name: 'Ana',
+      p_preferred_side: 'LEFT',
+      p_initial_level: 3
+    });
+    await onboardPlayer({
+      data: {
+        ...base,
+        preferred_playing_days: ['SUN', 'MON'],
+        preferred_playing_times: null
+      }
+    });
+    expect(client.rpc).toHaveBeenLastCalledWith('onboard_player_with_availability', {
+      p_display_name: 'Ana',
+      p_preferred_side: 'LEFT',
+      p_initial_level: 3,
+      p_preferred_playing_days: ['MON', 'SUN']
+    });
+  });
+
+  it('claims through the availability wrapper with both selections', async () => {
+    const client = clientWith({ sub: 'sub-1' }, null, null, { data: null, error: null });
+    supabaseServer.getServerClient.mockReturnValue(client);
+    await claimProvisionalPlayer({
+      data: {
+        display_name: 'Marta',
+        preferred_side: 'LEFT',
+        initial_level: 3,
+        preferred_playing_days: ['SAT'],
+        preferred_playing_times: ['EVENING', 'MORNING']
+      }
+    });
+    expect(client.rpc).toHaveBeenCalledWith('claim_provisional_player_with_availability', {
+      p_display_name: 'Marta',
+      p_preferred_side: 'LEFT',
+      p_initial_level: 3,
+      p_preferred_playing_days: ['SAT'],
+      p_preferred_playing_times: ['MORNING', 'EVENING']
+    });
+  });
+
+  it('rejects invalid availability and unauthenticated writes before any RPC', async () => {
+    const unauthenticated = clientWith(null, null, null);
+    supabaseServer.getServerClient.mockReturnValue(unauthenticated);
+    const base = { display_name: 'Ana', preferred_side: 'LEFT' as const, initial_level: 3 };
+    await expect(
+      onboardPlayer({ data: { ...base, preferred_playing_days: ['FUNDAY'] } })
+    ).rejects.toThrow('INVALID_PLAYER_INPUT');
+    await expect(
+      onboardPlayer({ data: { ...base, preferred_playing_times: ['NOON'] } })
+    ).rejects.toThrow('INVALID_PLAYER_INPUT');
+    await expect(
+      onboardPlayer({ data: { ...base, preferred_playing_days: ['MON'] } })
+    ).rejects.toThrow('UNAUTHENTICATED');
+    expect(unauthenticated.rpc).not.toHaveBeenCalled();
+  });
+
+  it('projects stored availability as typed canonical arrays or explicit null', async () => {
+    supabaseServer.getServerClient.mockReturnValue(
+      clientWith(
+        { sub: 'sub-1' },
+        {
+          ...PROFILE_ROW,
+          preferred_playing_days: ['SUN', 'MON'],
+          preferred_playing_times: null
+        },
+        RATING_ROW
+      )
+    );
+    const profile = await getMyPlayerProfile();
+    expect(profile.preferred_playing_days).toEqual(['MON', 'SUN']);
+    expect(profile.preferred_playing_times).toBeNull();
+  });
+
+  it('writes validated availability on owner updates and clears with explicit null', async () => {
+    const updates: unknown[] = [];
+    const client = {
+      ...clientWith({ sub: 'sub-1' }, PROFILE_ROW, RATING_ROW),
+      from: (table: string) => ({
+        ...rowResult(table === 'player_profiles' ? PROFILE_ROW : RATING_ROW),
+        update: (values: unknown) => {
+          updates.push(values);
+          return { eq: async () => ({ error: null }) };
+        }
+      })
+    };
+    supabaseServer.getServerClient.mockReturnValue(client);
+    await updateMyPlayerProfile({
+      data: { preferred_playing_days: ['TUE', 'MON', 'MON'], preferred_playing_times: [] }
+    });
+    expect(updates).toEqual([
+      { preferred_playing_days: ['MON', 'TUE'], preferred_playing_times: null }
+    ]);
+    await expect(
+      updateMyPlayerProfile({ data: { preferred_playing_days: 'MON' } })
+    ).rejects.toThrow('INVALID_PLAYER_INPUT');
   });
 
   it('maps claim RPC failures to stable application errors', async () => {

@@ -2548,6 +2548,8 @@ export type Database = {
           invited_at: string | null
           invited_by: string | null
           is_provisional: boolean
+          preferred_playing_days: string[] | null
+          preferred_playing_times: string[] | null
           preferred_side: string
           rating_input_source: string
           source_match_event_id: string | null
@@ -2565,6 +2567,8 @@ export type Database = {
           invited_at?: string | null
           invited_by?: string | null
           is_provisional?: boolean
+          preferred_playing_days?: string[] | null
+          preferred_playing_times?: string[] | null
           preferred_side: string
           rating_input_source?: string
           source_match_event_id?: string | null
@@ -2581,6 +2585,8 @@ export type Database = {
           invited_at?: string | null
           invited_by?: string | null
           is_provisional?: boolean
+          preferred_playing_days?: string[] | null
+          preferred_playing_times?: string[] | null
           preferred_side?: string
           rating_input_source?: string
           source_match_event_id?: string | null
@@ -4786,6 +4792,18 @@ export type Database = {
         }
         Returns: undefined
       }
+      claim_provisional_player_with_availability: {
+        Args: {
+          p_bio?: string
+          p_display_name: string
+          p_dominant_hand?: string
+          p_initial_level: number
+          p_preferred_playing_days?: string[]
+          p_preferred_playing_times?: string[]
+          p_preferred_side: string
+        }
+        Returns: undefined
+      }
       claim_result_repair_job: {
         Args: { p_job_id?: string; p_lease_seconds?: number }
         Returns: Json
@@ -5814,6 +5832,18 @@ export type Database = {
           p_display_name: string
           p_dominant_hand?: string
           p_initial_level: number
+          p_preferred_side: string
+        }
+        Returns: undefined
+      }
+      onboard_player_with_availability: {
+        Args: {
+          p_bio?: string
+          p_display_name: string
+          p_dominant_hand?: string
+          p_initial_level: number
+          p_preferred_playing_days?: string[]
+          p_preferred_playing_times?: string[]
           p_preferred_side: string
         }
         Returns: undefined

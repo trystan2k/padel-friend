@@ -1,10 +1,12 @@
 import { getServerClient } from '../../lib/supabase/server';
 import { AVATAR_FILENAME_PATTERN } from './avatar-key';
+import { projectPlayingDays, projectPlayingTimes } from './player-availability';
 
 export type PlayerClient = ReturnType<typeof getServerClient>;
 export const AVATAR_BUCKET = 'player-avatars';
 const SIGNED_URL_SECONDS = 60;
-const PROFILE_FIELDS = 'display_name, avatar_url, preferred_side, dominant_hand, bio, created_at';
+const PROFILE_FIELDS =
+  'display_name, avatar_url, preferred_side, dominant_hand, bio, preferred_playing_days, preferred_playing_times, created_at';
 const RATING_FIELDS =
   'initial_display_level, display_level, highest_display_level, reliability_percent, confirmed_competitive_game_groups';
 export async function playerRows(client: PlayerClient, userId: string) {
@@ -42,6 +44,8 @@ export async function sportingProfile(client: PlayerClient, userId: string) {
     preferred_side: profile.preferred_side,
     dominant_hand: profile.dominant_hand,
     bio: profile.bio,
+    preferred_playing_days: projectPlayingDays(profile.preferred_playing_days),
+    preferred_playing_times: projectPlayingTimes(profile.preferred_playing_times),
     initial_display_level: rating.initial_display_level,
     display_level: rating.display_level,
     highest_display_level: rating.highest_display_level,

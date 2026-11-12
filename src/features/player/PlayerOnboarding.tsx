@@ -8,6 +8,7 @@ import { SurfaceCard } from '../../components/ui/SurfaceCard';
 import { TextField } from '../../components/ui/TextField';
 import { stripEdgeWhitespace } from '../../lib/edge-whitespace';
 import { ClaimPasswordStep } from './ClaimPasswordStep';
+import { AvailabilityFields } from './AvailabilityFields';
 import { OnboardingAvatar } from './OnboardingAvatar';
 import { uploadOwnerAvatar } from './avatar-upload';
 import {
@@ -17,6 +18,7 @@ import {
   getPasswordSetupState,
   onboardPlayer
 } from './player.functions';
+import type { PlayingDay, PlayingTime } from './player-availability';
 import { INITIAL_RELIABILITY_PERCENT, LEVEL_STEP, MAX_LEVEL, MIN_LEVEL } from './rating-config';
 import {
   validateInitialLevel,
@@ -53,6 +55,8 @@ export function PlayerOnboarding({
   const levelLocked = claim ? !claim.canEditLevel : false;
   const [hand, setHand] = useState<'LEFT' | 'RIGHT' | null>(null);
   const [bio, setBio] = useState('');
+  const [days, setDays] = useState<PlayingDay[] | null>(null);
+  const [times, setTimes] = useState<PlayingTime[] | null>(null);
   const [errors, setErrors] = useState<Partial<Record<'name' | 'side' | 'level', string>>>({});
   const [failed, setFailed] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -113,7 +117,9 @@ export function PlayerOnboarding({
       preferred_side: side,
       initial_level: initialLevel,
       dominant_hand: hand,
-      bio: bio.trim() || null
+      bio: bio.trim() || null,
+      preferred_playing_days: days,
+      preferred_playing_times: times
     };
     await complete({ profile, withPhoto: true });
   }
@@ -473,6 +479,16 @@ export function PlayerOnboarding({
             onChange={(event) => setBio(event.target.value)}
             disabled={locked}
             {...stylex.props(ui.input, ui.textarea)}
+          />
+        </SurfaceCard>
+        <SurfaceCard>
+          <h2 {...stylex.props(ui.label)}>{t('profile.availability')}</h2>
+          <AvailabilityFields
+            days={days}
+            times={times}
+            onDaysChange={setDays}
+            onTimesChange={setTimes}
+            disabled={locked}
           />
         </SurfaceCard>
       </form>

@@ -221,6 +221,25 @@
     "handRight": "Mão direita",
     "handNone": "Não informada",
     "bio": "BIOGRAFIA",
+    "availability": "Disponibilidade",
+    "availabilityHelp": "Opcional. Informe os dias e os períodos do dia em que você costuma gostar de jogar. São duas preferências separadas, não compromissos marcados.",
+    "availabilityDaysLegend": "Dias em que você costuma jogar",
+    "availabilityTimesLegend": "Períodos do dia em que você costuma jogar",
+    "availabilityNotProvided": "Não informada",
+    "availabilityDays": {
+      "MON": "Segunda-feira",
+      "TUE": "Terça-feira",
+      "WED": "Quarta-feira",
+      "THU": "Quinta-feira",
+      "FRI": "Sexta-feira",
+      "SAT": "Sábado",
+      "SUN": "Domingo"
+    },
+    "availabilityTimes": {
+      "MORNING": "Manhã",
+      "AFTERNOON": "Tarde",
+      "EVENING": "Noite"
+    },
     "avatar": "Foto do perfil",
     "avatarUploadAction": "Enviar foto",
     "avatarAlt": "Foto do perfil de {{name}}",

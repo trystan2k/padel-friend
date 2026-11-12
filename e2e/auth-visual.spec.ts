@@ -94,7 +94,7 @@ type LocaleCopy = {
     advanced: string;
     handPreferNot: string;
   };
-  profile: { dominantHand: string };
+  profile: { dominantHand: string; bio: string; availabilityDaysLegend: string };
 };
 
 const en: LocaleCopy = JSON.parse(
@@ -637,6 +637,20 @@ test('incomplete authenticated player setup matches frame PdRtP', async ({ page 
   expect(pickerBox!.height).toBeGreaterThanOrEqual(44);
   expect(skipBox!.height).toBeGreaterThanOrEqual(44);
   expect(await avatarCard.evaluate((card) => getComputedStyle(card).gap)).toBe('9px');
+  // Optional availability closes the form: a full-width card after the CTA and the bio, below
+  // the first viewport, so the screenshot baselines above are unaffected.
+  const availabilityCard = page
+    .locator('form > div')
+    .filter({ has: page.getByRole('group', { name: en.profile.availabilityDaysLegend }) });
+  const [availabilityBox, bioBox] = await Promise.all([
+    availabilityCard.boundingBox(),
+    page.getByLabel(en.profile.bio).boundingBox()
+  ]);
+  expect(availabilityBox, 'availability card must be rendered').not.toBeNull();
+  expect(availabilityBox!.y).toBeGreaterThan(ctaBox!.y + ctaBox!.height);
+  expect(availabilityBox!.y).toBeGreaterThan(bioBox!.y + bioBox!.height);
+  expect(availabilityBox!.x).toBeCloseTo(18, 0);
+  expect(availabilityBox!.width).toBeCloseTo(354, 0);
   await comparePhase2(page, 'player-setup-phase2.png');
   // 320px: the translated-text-safe card wraps instead of overflowing the viewport.
   await page.setViewportSize({ width: 320, height: 844 });

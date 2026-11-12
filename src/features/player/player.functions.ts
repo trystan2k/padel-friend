@@ -9,6 +9,7 @@ import {
   parseProvisionalClaim
 } from './provisional-claim';
 import {
+  type OnboardPlayerInput,
   validateAvatarUpload,
   validateOnboardPlayer,
   validateUpdatePlayerProfile
@@ -20,6 +21,19 @@ async function readPasswordSetupState(client: ReturnType<typeof getServerClient>
   const state = parsePasswordSetupState(data);
   if (!state) throw new Error('PASSWORD_SETUP_UNAVAILABLE');
   return state;
+}
+
+// Availability is optional on create/claim: only supplied selections are sent, so an
+// omitted or cleared one stays NULL (the SQL default).
+function availabilityArgs(data: OnboardPlayerInput) {
+  return {
+    ...(data.preferred_playing_days
+      ? { p_preferred_playing_days: data.preferred_playing_days }
+      : {}),
+    ...(data.preferred_playing_times
+      ? { p_preferred_playing_times: data.preferred_playing_times }
+      : {})
+  };
 }
 
 /**
@@ -75,12 +89,13 @@ export const onboardPlayer = createServerFn({ method: 'POST' })
   .handler(async ({ data }) => {
     const { client, userId } = await requireAuthenticatedClient();
     try {
-      const { error } = await client.rpc('onboard_player', {
+      const { error } = await client.rpc('onboard_player_with_availability', {
         p_display_name: data.display_name,
         p_preferred_side: data.preferred_side,
         p_initial_level: data.initial_level,
         ...(data.dominant_hand ? { p_dominant_hand: data.dominant_hand } : {}),
-        ...(data.bio != null ? { p_bio: data.bio } : {})
+        ...(data.bio != null ? { p_bio: data.bio } : {}),
+        ...availabilityArgs(data)
       });
       if (error) throw error;
     } catch (error) {
@@ -95,12 +110,13 @@ export const claimProvisionalPlayer = createServerFn({ method: 'POST' })
   .validator(validateOnboardPlayer)
   .handler(async ({ data }) => {
     const { client } = await requireAuthenticatedClient();
-    const { error } = await client.rpc('claim_provisional_player', {
+    const { error } = await client.rpc('claim_provisional_player_with_availability', {
       p_display_name: data.display_name,
       p_preferred_side: data.preferred_side,
       p_initial_level: data.initial_level,
       ...(data.dominant_hand ? { p_dominant_hand: data.dominant_hand } : {}),
-      ...(data.bio != null ? { p_bio: data.bio } : {})
+      ...(data.bio != null ? { p_bio: data.bio } : {}),
+      ...availabilityArgs(data)
     });
     if (error) throw new Error(claimErrorCode(error) ?? 'PLAYER_CLAIM_FAILED', { cause: error });
   });

@@ -7,6 +7,7 @@ import { isOffline, isTransportFailure } from '../../lib/connectivity';
 import { stripEdgeWhitespace } from '../../lib/edge-whitespace';
 import { getBrowserClient } from '../../lib/supabase/client';
 import { cleanupPushDeviceForLogout } from '../notifications/push-browser';
+import { AvailabilityFields } from './AvailabilityFields';
 import { AvatarUpload } from './AvatarUpload';
 import { getMyPlayerProfile, updateMyPlayerProfile } from './player.functions';
 import { playerInitials } from './player-initials';
@@ -35,6 +36,8 @@ export function PlayerProfile({
   const [side, setSide] = useState(profile.preferred_side);
   const [hand, setHand] = useState(profile.dominant_hand ?? '');
   const [bio, setBio] = useState(profile.bio ?? '');
+  const [days, setDays] = useState(profile.preferred_playing_days);
+  const [times, setTimes] = useState(profile.preferred_playing_times);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [signOutError, setSignOutError] = useState(false);
@@ -69,7 +72,9 @@ export function PlayerProfile({
           display_name: normalizedName,
           preferred_side: side,
           dominant_hand: hand || null,
-          bio: bio.trim() || null
+          bio: bio.trim() || null,
+          preferred_playing_days: days,
+          preferred_playing_times: times
         }
       });
       setProfile(next);
@@ -77,6 +82,8 @@ export function PlayerProfile({
       setSide(next.preferred_side);
       setHand(next.dominant_hand ?? '');
       setBio(next.bio ?? '');
+      setDays(next.preferred_playing_days);
+      setTimes(next.preferred_playing_times);
       setEditing(false);
     } catch (cause) {
       if (cause instanceof Error && cause.message === 'UNAUTHENTICATED') {
@@ -98,6 +105,12 @@ export function PlayerProfile({
       setSaving(false);
     }
   }
+
+  const listFormat = new Intl.ListFormat(i18n.language, { style: 'long', type: 'conjunction' });
+  const listChoices = (values: readonly string[] | null, prefix: string) =>
+    values?.length
+      ? listFormat.format(values.map((value) => t(`${prefix}.${value}`)))
+      : t('profile.availabilityNotProvided');
 
   const Container = embedded ? 'section' : 'main';
   const Heading = embedded ? 'h2' : 'h1';
@@ -292,6 +305,13 @@ export function PlayerProfile({
             onChange={(event) => setBio(event.target.value)}
             {...stylex.props(ui.input, ui.textarea)}
           />
+          <AvailabilityFields
+            days={days}
+            times={times}
+            onDaysChange={setDays}
+            onTimesChange={setTimes}
+            disabled={saving}
+          />
           {error && (
             <p role="alert" {...stylex.props(ui.error)}>
               {t(error)}
@@ -309,6 +329,18 @@ export function PlayerProfile({
               {profile.dominant_hand
                 ? t(profile.dominant_hand === 'LEFT' ? 'profile.handLeft' : 'profile.handRight')
                 : t('profile.handNone')}
+            </span>
+          </div>
+          <div {...stylex.props(ui.row)}>
+            <span>{t('profile.availabilityDaysLegend')}</span>
+            <span {...stylex.props(ui.availabilitySummaryValue)}>
+              {listChoices(profile.preferred_playing_days, 'profile.availabilityDays')}
+            </span>
+          </div>
+          <div {...stylex.props(ui.row)}>
+            <span>{t('profile.availabilityTimesLegend')}</span>
+            <span {...stylex.props(ui.availabilitySummaryValue)}>
+              {listChoices(profile.preferred_playing_times, 'profile.availabilityTimes')}
             </span>
           </div>
           {profile.bio && <p>{profile.bio}</p>}

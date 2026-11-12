@@ -236,6 +236,15 @@ test('added player opens the invitation, claims the prefilled profile and gains 
 
     await player.getByLabel(en.onboarding.name).fill('Carla Reclamada');
     await player.getByLabel(en.onboarding.sideLeftShort).first().check();
+    // Optional availability: both groups persist with the claim, in the same transaction.
+    await player
+      .getByRole('group', { name: en.profile.availabilityDaysLegend })
+      .getByRole('checkbox', { name: en.profile.availabilityDays.SAT })
+      .check();
+    await player
+      .getByRole('group', { name: en.profile.availabilityTimesLegend })
+      .getByRole('checkbox', { name: en.profile.availabilityTimes.EVENING })
+      .check();
     // Optional photo: chosen locally, uploaded only once the claim succeeded (the restricted
     // provisional session cannot write storage before that), then the password step follows.
     await player
@@ -255,6 +264,9 @@ test('added player opens the invitation, claims the prefilled profile and gains 
       `select p.is_provisional::text as provisional, p.display_name,
               (select count(*)::int from auth.users where email='${email}') as accounts,
               (select count(*)::int from public.match_event_audit_log where target_user_id=p.user_id and action='player_claimed') as audits,
+              array_to_string(p.preferred_playing_days, ',') as days,
+              array_to_string(p.preferred_playing_times, ',') as times,
+              (select initial_display_level::float8 from public.global_player_ratings where user_id=p.user_id) as initial_level,
               (p.avatar_url ~ ('^' || p.user_id || '/[0-9a-f-]{36}\\.png$'))::text as avatar_key_valid
          from public.player_profiles p where p.user_id='${userId}'`
     );
@@ -264,6 +276,9 @@ test('added player opens the invitation, claims the prefilled profile and gains 
         display_name: 'Carla Reclamada',
         accounts: 1,
         audits: 1,
+        days: 'SAT',
+        times: 'EVENING',
+        initial_level: 3.5,
         avatar_key_valid: 'true'
       }
     ]);
