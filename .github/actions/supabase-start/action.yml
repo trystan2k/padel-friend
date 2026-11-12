@@ -1,6 +1,6 @@
-name: Start local Supabase
+name: Start local test Supabase
 description: >-
-  Starts the local Supabase stack, loading the Docker images from a versioned cache first.
+  Starts ONLY the isolated test Supabase stack (pnpm test:stack:up; dev stack never runs on CI), loading the Docker images from a versioned cache first.
   Only image archives are cached (never volumes, data or credentials); a missing or corrupt
   archive falls back to a normal pull inside `supabase start`.
 inputs:
@@ -15,7 +15,7 @@ runs:
       uses: actions/cache/restore@v4
       with:
         path: ${{ runner.temp }}/supabase-images.tar
-        key: supabase-images-v1-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('pnpm-lock.yaml', 'supabase/config.toml') }}
+        key: supabase-images-v2-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('pnpm-lock.yaml', 'supabase/config.toml', 'test/stack/supabase/config.toml') }}
     - name: Load cached Supabase images
       if: steps.cache.outputs.cache-hit == 'true'
       shell: bash
@@ -23,12 +23,12 @@ runs:
         start_ms="$(date +%s%3N)"
         docker load --input "$RUNNER_TEMP/supabase-images.tar" || printf '%s\n' 'Image cache unreadable; supabase start will pull images'
         printf 'supabase image load: %sms\n' "$(( $(date +%s%3N) - start_ms ))"
-    - name: Start local Supabase
+    - name: Start local test Supabase
       shell: bash
       run: |
         start_ms="$(date +%s%3N)"
-        pnpm exec supabase start
-        printf 'supabase start (image cache hit=%s): %sms\n' "${{ steps.cache.outputs.cache-hit == 'true' }}" "$(( $(date +%s%3N) - start_ms ))"
+        pnpm test:stack:up
+        printf 'supabase test stack start (image cache hit=%s): %sms\n' "${{ steps.cache.outputs.cache-hit == 'true' }}" "$(( $(date +%s%3N) - start_ms ))"
     - name: Archive Supabase images
       if: inputs.save == 'true' && steps.cache.outputs.cache-hit != 'true'
       shell: bash
