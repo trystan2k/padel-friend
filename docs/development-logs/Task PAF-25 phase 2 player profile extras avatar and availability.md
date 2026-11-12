@@ -51,6 +51,7 @@ permalink: docs/development-logs/task-PAF-25-phase-2-player-profile-extras-avata
 - Full review (code + architecture + UX/UI in parallel) surfaced 4 findings: F1 (major) avatar-retry key ambiguity; F2 (major) ambiguous claim commit; F3 (minor) visual probe gaps; F4 (minor) indicator reflow.
 - 3 fix iterations with delta re-reviews after each. Round 2 caught the reconcile→finalize race + NOT_PENDING-doesn't-prove-commit + password-bypass — fixed with the atomic `expectedPreviousKey` CAS, authoritative `profileExists()` check, and unified continuation. Round 3 fixed the test-double CAS oracle, the controls-column gap probe, and an UNAUTHENTICATED swallow (now a login redirect), plus conflict-focus management.
 - Final verification: all findings RESOLVED, review clean. Ledger `docs/plan/PAF-25-findings.md` F0–F6 all closed.
+- Final gate `pnpm complete-check`: **all 11 stages PASS on run 1** — build/static/knip + 3,796 unit + 1,240 integration (1 planned skip) + 545 E2E tests, 0 failures, 0 flaky (~34 min). Delivered as PR #54 (`feature/PAF-25-phase-2-player-profile-extras`, 4 commits through `088167e`); CI static/unit/GitGuardian green at open, integration + e2e lanes pending at report time.
 
 ## Files Changed
 
