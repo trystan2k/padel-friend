@@ -5,13 +5,9 @@ import { matchPhotoFixture } from './helpers/match-photo-fixtures';
 import { matchRegistrationFixtureHistory } from './helpers/match-registration-fixture-history';
 import { sqlRows, makeRawRpc } from './helpers/match-registration-sql';
 import { executeTrustedSql } from './helpers/sql-transport';
-import {
-  assertLocalSupabaseEnvInCi,
-  dotEnvPathFromImportMetaUrl,
-  localSupabaseEnv
-} from './helpers/local-supabase-env';
+import { assertLocalSupabaseEnvInCi, localSupabaseEnv } from './helpers/local-supabase-env';
 
-const environment = localSupabaseEnv({ filePath: dotEnvPathFromImportMetaUrl(import.meta.url) });
+const environment = localSupabaseEnv();
 type Env = NonNullable<typeof environment.env>;
 type Actor = { id: string; client: SupabaseClient<Database>; name: string };
 

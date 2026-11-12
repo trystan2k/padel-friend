@@ -1,6 +1,6 @@
 import { beforeAll, describe, expect, it } from 'vitest';
 import { decodeLeagueDetail, decodeLeagueDto } from '../src/features/leagues/league-decoders';
-import { dotEnvPathFromImportMetaUrl, localSupabaseEnv } from './helpers/local-supabase-env';
+import { localSupabaseEnv } from './helpers/local-supabase-env';
 import {
   createLeagueArgs,
   insertLeague,
@@ -17,7 +17,7 @@ import {
 import { sqlText } from './helpers/provisional-player-fixtures';
 import { executeTrustedSql, openDedicatedSqlConnection } from './helpers/sql-transport';
 
-const environment = localSupabaseEnv({ filePath: dotEnvPathFromImportMetaUrl(import.meta.url) });
+const environment = localSupabaseEnv();
 
 const iso = (value: unknown) => new Date(String(value)).toISOString();
 /** ISO instant moved by whole microseconds, computed by PostgreSQL (JS Dates stop at milliseconds). */

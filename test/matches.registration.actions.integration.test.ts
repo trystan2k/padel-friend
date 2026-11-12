@@ -15,15 +15,11 @@ import {
   type SqlHandle,
   type SqlRow
 } from './helpers/match-registration-sql';
-import {
-  assertLocalSupabaseEnvInCi,
-  dotEnvPathFromImportMetaUrl,
-  localSupabaseEnv
-} from './helpers/local-supabase-env';
+import { assertLocalSupabaseEnvInCi, localSupabaseEnv } from './helpers/local-supabase-env';
 
 vi.setConfig({ testTimeout: 120000, hookTimeout: 120000 });
 
-const environment = localSupabaseEnv({ filePath: dotEnvPathFromImportMetaUrl(import.meta.url) });
+const environment = localSupabaseEnv();
 type Actor = { id: string; token: string; client: SupabaseClient<Database>; name: string };
 
 describe('match registration actions integration', () => {

@@ -1,5 +1,5 @@
-import { execFileSync } from 'node:child_process';
 import { Client } from 'pg';
+import { testDatabaseUrl } from './test-supabase-config';
 import { expect, test } from '@playwright/test';
 import { waitForHydratedPage } from './auth-helpers';
 import { acquireRatingSuite, releaseRatingSuite } from './rating-suite-lock';
@@ -213,17 +213,7 @@ test('backend collision exposes running diagnostics until committed publication'
   const queued = await f.accepted(group);
   const claim = await f.claimRepair(queued.jobId);
   if (claim.status !== 'claimed') throw new Error('Collision fixture needs an owned repair claim');
-  const status = execFileSync('pnpm', ['exec', 'supabase', 'status', '-o', 'env'], {
-    encoding: 'utf8',
-    timeout: 10_000,
-    stdio: ['ignore', 'pipe', 'pipe']
-  });
-  const connectionString = status.match(/^DB_URL="?([^"\n]+)"?$/m)?.[1];
-  if (
-    !connectionString ||
-    !['localhost', '127.0.0.1', '[::1]'].includes(new URL(connectionString).hostname)
-  )
-    throw new Error('Local database required');
+  const connectionString = testDatabaseUrl();
   const blocker = new Client({
     connectionString,
     connectionTimeoutMillis: 5_000,
@@ -292,18 +282,7 @@ test('backend collision exposes running diagnostics until committed publication'
 });
 
 function localConnectionString(): string {
-  const status = execFileSync('pnpm', ['exec', 'supabase', 'status', '-o', 'env'], {
-    encoding: 'utf8',
-    timeout: 10_000,
-    stdio: ['ignore', 'pipe', 'pipe']
-  });
-  const connectionString = status.match(/^DB_URL="?([^"\n]+)"?$/m)?.[1];
-  if (
-    !connectionString ||
-    !['localhost', '127.0.0.1', '[::1]'].includes(new URL(connectionString).hostname)
-  )
-    throw new Error('Local database required');
-  return connectionString;
+  return testDatabaseUrl();
 }
 
 test('admin replay during live reads exposes only the prior committed generation, applies once and rejects unauthorized replay', async ({

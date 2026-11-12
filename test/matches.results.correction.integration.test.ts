@@ -6,7 +6,7 @@ import {
   setMembershipHistory,
   type RankedResultKit
 } from './helpers/ranked-result-fixtures';
-import { dotEnvPathFromImportMetaUrl, localSupabaseEnv } from './helpers/local-supabase-env';
+import { localSupabaseEnv } from './helpers/local-supabase-env';
 import { asRecord, fixtureSql, sqlRows } from './helpers/match-registration-sql';
 import { scoringCases } from './helpers/match-result-scoring-cases';
 import {
@@ -19,9 +19,7 @@ describe('atomic corrected result versions', { timeout: 120000 }, () => {
   let f: Awaited<ReturnType<typeof createMatchResultReviewFixtures>>;
 
   beforeAll(async () => {
-    const { env, reason } = localSupabaseEnv({
-      filePath: dotEnvPathFromImportMetaUrl(import.meta.url)
-    });
+    const { env, reason } = localSupabaseEnv();
     if (!env) throw new Error(reason);
     f = await createMatchResultReviewFixtures(env);
   });
@@ -373,13 +371,13 @@ describe('atomic corrected result versions', { timeout: 120000 }, () => {
   });
 });
 
-describe.skipIf(!rankedKitEnv(import.meta.url))(
+describe.skipIf(!rankedKitEnv())(
   'Ranked eligibility on correction (U4)',
   { timeout: 60000 },
   () => {
     let kit: RankedResultKit;
     beforeAll(async () => {
-      kit = await createRankedResultFixtures(rankedKitEnv(import.meta.url)!);
+      kit = await createRankedResultFixtures(rankedKitEnv()!);
     });
     afterAll(async () => {
       if (kit) await kit.cleanup();

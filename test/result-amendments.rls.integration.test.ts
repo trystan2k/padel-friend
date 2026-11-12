@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { dotEnvPathFromImportMetaUrl, localSupabaseEnv } from './helpers/local-supabase-env';
+import { localSupabaseEnv } from './helpers/local-supabase-env';
 import { asRecord, sqlRows } from './helpers/match-registration-sql';
 import { createResultAmendmentFixtures } from './helpers/result-amendment-fixtures';
 
@@ -28,9 +28,7 @@ describe('result amendment access control', { timeout: 120000 }, () => {
   let amendmentId: string;
 
   beforeAll(async () => {
-    const { env, reason } = localSupabaseEnv({
-      filePath: dotEnvPathFromImportMetaUrl(import.meta.url)
-    });
+    const { env, reason } = localSupabaseEnv();
     if (!env) throw new Error(reason);
     f = await createResultAmendmentFixtures(env);
     foreign = await createResultAmendmentFixtures(env);

@@ -4,6 +4,7 @@ import { join } from 'node:path';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '../src/lib/supabase/database.types';
 import { expect, test, type Locator, type Page } from '@playwright/test';
+import { testSupabaseConfig } from './test-supabase-config';
 import { waitForHydratedPage } from './auth-helpers';
 
 type Copy = {
@@ -90,27 +91,7 @@ test.use({
 });
 
 function localConfig() {
-  const vars = new Map(
-    readFileSync(new URL('../.env', import.meta.url), 'utf8')
-      .split('\n')
-      .filter((line) => line.includes('=') && !line.trim().startsWith('#'))
-      .map((line) => {
-        const index = line.indexOf('=');
-        return [
-          line.slice(0, index).trim(),
-          line
-            .slice(index + 1)
-            .trim()
-            .replace(/^['"]|['"]$/g, '')
-        ] as const;
-      })
-  );
-  const url = process.env.VITE_SUPABASE_URL ?? vars.get('VITE_SUPABASE_URL') ?? '';
-  const key =
-    process.env.VITE_SUPABASE_PUBLISHABLE_KEY ?? vars.get('VITE_SUPABASE_PUBLISHABLE_KEY') ?? '';
-  if (!url || !key || !['localhost', '127.0.0.1'].includes(new URL(url).hostname))
-    throw new Error('Community admin E2E requires loopback Supabase');
-  return { url, key };
+  return testSupabaseConfig();
 }
 const config = localConfig();
 const password = 'Password123!';

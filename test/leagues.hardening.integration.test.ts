@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { resolve as resolvePath } from 'node:path';
 import { beforeAll, describe, expect, it } from 'vitest';
 import { decodeLeagueDto, decodeLeagueList } from '../src/features/leagues/league-decoders';
-import { dotEnvPathFromImportMetaUrl, localSupabaseEnv } from './helpers/local-supabase-env';
+import { localSupabaseEnv } from './helpers/local-supabase-env';
 import {
   createLeagueArgs,
   insertLeague,
@@ -16,7 +16,7 @@ import { isoDay, publishCompetitive, sqlMessage } from './helpers/ranked-fixture
 import { sqlText } from './helpers/provisional-player-fixtures';
 import { executeTrustedSql, openDedicatedSqlConnection } from './helpers/sql-transport';
 
-const environment = localSupabaseEnv({ filePath: dotEnvPathFromImportMetaUrl(import.meta.url) });
+const environment = localSupabaseEnv();
 const day = (offset: number) => `${isoDay(offset)}T00:00:00Z`;
 
 /** PAF-11 review round 1: F1 (reference history), F2 (lock-time anchor), F4 (batch fairness), F5 (list cap). */

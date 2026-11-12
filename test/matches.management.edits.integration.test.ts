@@ -2,7 +2,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { insertLeague } from './helpers/league-fixtures';
 import { createMatchManagementFixtures } from './helpers/match-management-fixtures';
 import { expectNotificationOutcome } from './helpers/notification-channel-evidence';
-import { localSupabaseEnv, dotEnvPathFromImportMetaUrl } from './helpers/local-supabase-env';
+import { localSupabaseEnv } from './helpers/local-supabase-env';
 import {
   fixtureSql,
   sqlRows,
@@ -13,9 +13,7 @@ import {
 describe('minor match edits integration', () => {
   let f: Awaited<ReturnType<typeof createMatchManagementFixtures>>;
   beforeAll(async () => {
-    const { env, reason } = localSupabaseEnv({
-      filePath: dotEnvPathFromImportMetaUrl(import.meta.url)
-    });
+    const { env, reason } = localSupabaseEnv();
     if (!env) throw new Error(reason);
     f = await createMatchManagementFixtures(env);
   });

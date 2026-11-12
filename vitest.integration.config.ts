@@ -1,6 +1,14 @@
 import { configDefaults, defineConfig } from 'vitest/config';
 import { INTEGRATION_INCLUDE, PARALLEL_INTEGRATION_FILES } from './integration-partition';
 import baseConfig from './vitest.config';
+import { ensureTestStackEnv } from './scripts/test-stack-env.mjs';
+
+// Every integration entrypoint (launcher worker, `vitest run`, `test:changed`) loads this config in
+// the main process BEFORE any test file is collected, so module-scope fixture resolution already sees
+// the validated TEST tuple. A launcher-provided valid tuple is kept; anything else (including inherited
+// dev VITE_*/DATABASE_URL) is replaced as one unit by the pinned test workdir's status, and a missing
+// or wrong test stack throws here, before collection and workers. The unit config never imports this.
+const testEnv = ensureTestStackEnv();
 
 // Integration files share one local database, so concurrency is opt-in per audited file
 // (see integration-partition.ts) and phases never overlap: scripts/run-integration.mjs runs
@@ -46,6 +54,7 @@ export default defineConfig({
     // Retries must not hide instability in the parallelization proof.
     retry: 0,
     repeats: 0,
-    ...phaseTest
+    ...phaseTest,
+    env: { ...testEnv, ...phaseTest.env }
   }
 });

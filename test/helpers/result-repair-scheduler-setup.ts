@@ -1,6 +1,5 @@
-import { execFileSync } from 'node:child_process';
 import { Client } from 'pg';
-import { handoffDatabaseUrl } from '../../scripts/integration-db-url.mjs';
+import { discoverTestDatabaseUrl } from '../../scripts/integration-db-url.mjs';
 
 const JOB_NAMES = [
   'padel-friend-result-repair-claim',
@@ -9,23 +8,6 @@ const JOB_NAMES = [
 ];
 type SchedulerJob = { jobid: number; active: boolean };
 
-function discoverLocalDatabaseUrl(): string {
-  const status = execFileSync('pnpm', ['exec', 'supabase', 'status', '-o', 'env'], {
-    encoding: 'utf8',
-    timeout: 10_000,
-    stdio: ['ignore', 'pipe', 'pipe']
-  });
-  const connectionString = status
-    .match(/^DB_URL=(.*)$/m)?.[1]
-    ?.trim()
-    .replace(/^(?:"(.*)"|'(.*)')$/, '$1$2');
-  if (!connectionString) throw new Error('Supabase status did not report DB_URL');
-  if (!['127.0.0.1', 'localhost', '[::1]'].includes(new URL(connectionString).hostname)) {
-    throw new Error('Integration scheduler isolation requires a local database');
-  }
-  return connectionString;
-}
-
 /**
  * Keep real cron from claiming test-owned repair jobs and auto-accepting test-owned amendments
  * (which rewrites rating and statistics revisions mid-test); restore exact prior settings afterward.
@@ -33,7 +15,8 @@ function discoverLocalDatabaseUrl(): string {
 export default async function setupResultRepairScheduler(): Promise<
   (() => Promise<void>) | undefined
 > {
-  const connectionString = handoffDatabaseUrl() ?? discoverLocalDatabaseUrl();
+  // Launcher handoff or the TEST stack's status via the pinned workdir; a missing/wrong test stack throws.
+  const connectionString = discoverTestDatabaseUrl();
   const client = new Client({
     connectionString,
     connectionTimeoutMillis: 10_000,

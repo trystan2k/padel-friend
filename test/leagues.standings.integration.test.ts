@@ -2,7 +2,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { LeagueStandingEntry } from '../src/features/leagues/league-standings-contracts';
 import { decodeLeagueStandings } from '../src/features/leagues/league-standings-decoders';
 import { insertLeague, leagueWorld, type LeagueWorld } from './helpers/league-fixtures';
-import { dotEnvPathFromImportMetaUrl, localSupabaseEnv } from './helpers/local-supabase-env';
+import { localSupabaseEnv } from './helpers/local-supabase-env';
 import { asRecord, fixtureSql, sqlRows } from './helpers/match-registration-sql';
 import { sqlText } from './helpers/provisional-player-fixtures';
 import {
@@ -12,7 +12,7 @@ import {
   type RankedResultKit
 } from './helpers/ranked-result-fixtures';
 
-const environment = localSupabaseEnv({ filePath: dotEnvPathFromImportMetaUrl(import.meta.url) });
+const environment = localSupabaseEnv();
 
 const teamAWins = [
   { position: 1, team_a_games: 6, team_b_games: 4, completed: true },

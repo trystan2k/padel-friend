@@ -17,11 +17,11 @@ import {
   decodeLevelReviewQueue
 } from '../src/features/level-reviews/level-review-decoders';
 import type { LevelReviewCursor } from '../src/features/level-reviews/level-review-contracts';
-import { dotEnvPathFromImportMetaUrl, localSupabaseEnv } from './helpers/local-supabase-env';
+import { localSupabaseEnv } from './helpers/local-supabase-env';
 import { signUpFixtureActor } from './helpers/provisional-player-fixtures';
 import { openDedicatedSqlConnection, queryTrustedSql } from './helpers/sql-transport';
 
-const environment = localSupabaseEnv({ filePath: dotEnvPathFromImportMetaUrl(import.meta.url) });
+const environment = localSupabaseEnv();
 
 describe('level review transitions', { timeout: 300_000 }, () => {
   let world: LevelReviewWorld;

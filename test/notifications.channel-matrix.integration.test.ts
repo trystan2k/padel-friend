@@ -5,7 +5,7 @@ import {
   NOTIFICATION_CHANNEL_MATRIX_VERSION
 } from './fixtures/notification-channel-matrix';
 import { expectNotificationOutcome } from './helpers/notification-channel-evidence';
-import { dotEnvPathFromImportMetaUrl, localSupabaseEnv } from './helpers/local-supabase-env';
+import { localSupabaseEnv } from './helpers/local-supabase-env';
 import { insertLeague, leagueWorld, type LeagueWorld } from './helpers/league-fixtures';
 import {
   levelReviewWorld,
@@ -24,7 +24,7 @@ import { createRankedResultFixtures, playedAt } from './helpers/ranked-result-fi
 import { asRecord } from './helpers/match-registration-sql';
 import { executeTrustedSql, queryTrustedSql } from './helpers/sql-transport';
 
-const environment = localSupabaseEnv({ filePath: dotEnvPathFromImportMetaUrl(import.meta.url) });
+const environment = localSupabaseEnv();
 const rows = async (sql: string, values: unknown[] = []) =>
   (await queryTrustedSql(sql, { values })).rows;
 async function channels(kind: string, target: string, expected: readonly string[]) {

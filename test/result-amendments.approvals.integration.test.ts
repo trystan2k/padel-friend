@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { dotEnvPathFromImportMetaUrl, localSupabaseEnv } from './helpers/local-supabase-env';
+import { localSupabaseEnv } from './helpers/local-supabase-env';
 import { asRecord, fixtureSql, sqlRows } from './helpers/match-registration-sql';
 
 const rowsOf = (value: unknown): unknown[] => (Array.isArray(value) ? value : []);
@@ -17,9 +17,7 @@ describe(
     let foreign: Awaited<ReturnType<typeof createResultAmendmentFixtures>>;
 
     beforeAll(async () => {
-      const { env, reason } = localSupabaseEnv({
-        filePath: dotEnvPathFromImportMetaUrl(import.meta.url)
-      });
+      const { env, reason } = localSupabaseEnv();
       if (!env) throw new Error(reason);
       f = await createResultAmendmentFixtures(env);
       foreign = await createResultAmendmentFixtures(env);
@@ -247,7 +245,7 @@ describe(
     });
 
     it('blocks provisional actors and lets other corrected-team members cover the approval', async () => {
-      const { env } = localSupabaseEnv({ filePath: dotEnvPathFromImportMetaUrl(import.meta.url) });
+      const { env } = localSupabaseEnv();
       const isolated = await createResultAmendmentFixtures(env!, { onboard: false });
       try {
         await isolated.p0.client.rpc('onboard_player', {

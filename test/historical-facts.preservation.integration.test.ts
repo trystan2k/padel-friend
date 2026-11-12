@@ -3,7 +3,7 @@ import {
   decodeGroupDetail,
   decodeHistoryPage
 } from '../src/features/statistics/statistics-decoders';
-import { dotEnvPathFromImportMetaUrl, localSupabaseEnv } from './helpers/local-supabase-env';
+import { localSupabaseEnv } from './helpers/local-supabase-env';
 import { asRecord, fixtureSql, sqlRows } from './helpers/match-registration-sql';
 import { sqlText } from './helpers/provisional-player-fixtures';
 import {
@@ -12,7 +12,7 @@ import {
   type RankedResultKit
 } from './helpers/ranked-result-fixtures';
 
-const environment = localSupabaseEnv({ filePath: dotEnvPathFromImportMetaUrl(import.meta.url) });
+const environment = localSupabaseEnv();
 const L = (id: string) => sqlText(id);
 const idList = (values: string[]) => values.map(L).join(',');
 const deniedLeague = { code: 'P0002', message: 'LEAGUE_NOT_FOUND' };

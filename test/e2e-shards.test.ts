@@ -2,6 +2,8 @@ import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'nod
 import os from 'node:os';
 import path from 'node:path';
 import { describe, expect, it, vi } from 'vitest';
+import { TEST_ENV_NAMES } from '../scripts/test-stack-env.mjs';
+import { testStatusOutput } from './helpers/test-stack-status';
 import {
   DEFAULT_WEIGHT_SECONDS,
   FUNCTIONAL_LANES,
@@ -160,14 +162,20 @@ describe('playwright config', () => {
   async function configFor(
     ci: string | undefined,
     prebuilt?: string,
-    prebuiltKey = 'E2E_GATE_PREBUILT'
+    prebuiltKey = 'E2E_GATE_PREBUILT',
+    stack = true
   ) {
     vi.resetModules();
+    // The config resolves the TEST tuple at load; the unit suite answers with a fake status and
+    // restores the process env it installs.
     vi.doMock('node:child_process', () => ({
       execFileSync: () => {
-        throw new Error('no local stack');
+        if (!stack) throw new Error('no local stack');
+        return testStatusOutput();
       }
     }));
+    const previousTuple = TEST_ENV_NAMES.map((name) => [name, process.env[name]] as const);
+    for (const name of TEST_ENV_NAMES) delete process.env[name];
     const previousCi = process.env.CI;
     const previousPrebuilt = process.env[prebuiltKey];
     const restore = (key: string, value: string | undefined) => {
@@ -181,6 +189,7 @@ describe('playwright config', () => {
     } finally {
       restore('CI', previousCi);
       restore(prebuiltKey, previousPrebuilt);
+      for (const [name, value] of previousTuple) restore(name, value);
       vi.doUnmock('node:child_process');
     }
   }
@@ -199,6 +208,31 @@ describe('playwright config', () => {
       command: 'pnpm preview --port 4173',
       reuseExistingServer: false
     });
+  });
+
+  it('builds the webServer env from the test tuple, replacing an inherited dev tuple', async () => {
+    const previous = process.env.VITE_SUPABASE_URL;
+    process.env.VITE_SUPABASE_URL = 'http://127.0.0.1:55321';
+    try {
+      const env = (await configFor(undefined)).webServer;
+      expect(env).toMatchObject({
+        env: {
+          CLOUDFLARE_INCLUDE_PROCESS_ENV: 'true',
+          VITE_SUPABASE_URL: 'http://127.0.0.1:55421',
+          SUPABASE_SERVICE_ROLE_KEY: 'fake-service-role-key',
+          DATABASE_URL: ''
+        }
+      });
+    } finally {
+      if (previous === undefined) delete process.env.VITE_SUPABASE_URL;
+      else process.env.VITE_SUPABASE_URL = previous;
+    }
+  });
+
+  it('refuses to load without the test stack instead of falling back to a dev or keyless config', async () => {
+    await expect(configFor(undefined, undefined, 'E2E_GATE_PREBUILT', false)).rejects.toThrow(
+      /pnpm test:stack:up/
+    );
   });
 
   it('ignores the legacy E2E_PREBUILT flag inherited from a shell', async () => {

@@ -2,11 +2,7 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { matchPhotoFixture } from './helpers/match-photo-fixtures';
 import { startCliSql } from './helpers/match-registration-sql';
-import {
-  assertLocalSupabaseEnvInCi,
-  dotEnvPathFromImportMetaUrl,
-  localSupabaseEnv
-} from './helpers/local-supabase-env';
+import { assertLocalSupabaseEnvInCi, localSupabaseEnv } from './helpers/local-supabase-env';
 
 // F20/F30 regression guard for the PAF-5 registration domain migration.
 //
@@ -22,7 +18,7 @@ import {
 // roster. Everything runs in one DO block that raises a sentinel at the end, so
 // the whole transaction rolls back and the local database is left untouched.
 
-const environment = localSupabaseEnv({ filePath: dotEnvPathFromImportMetaUrl(import.meta.url) });
+const environment = localSupabaseEnv();
 const MIGRATION_PATH = 'supabase/migrations/20261017173426_match_registration_domain.sql';
 const LEGACY_TRIGGER =
   'drop trigger match_registration_immutable on public.match_event_registrations;';

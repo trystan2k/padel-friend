@@ -1,7 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { decodeNotificationTarget } from '../src/features/notifications/notification-target';
-import { dotEnvPathFromImportMetaUrl, localSupabaseEnv } from './helpers/local-supabase-env';
+import { localSupabaseEnv } from './helpers/local-supabase-env';
 import { insertLeague, leagueWorld, type LeagueWorld } from './helpers/league-fixtures';
 import {
   levelReviewWorld,
@@ -13,7 +13,7 @@ import { createResultAmendmentFixtures } from './helpers/result-amendment-fixtur
 import { asRecord } from './helpers/match-registration-sql';
 import { queryTrustedSql } from './helpers/sql-transport';
 
-const environment = localSupabaseEnv({ filePath: dotEnvPathFromImportMetaUrl(import.meta.url) });
+const environment = localSupabaseEnv();
 const sql = (text: string, values: unknown[] = []) => queryTrustedSql(text, { values });
 
 describe.skipIf(!environment.env)('push recipient-private destinations (real RLS)', () => {

@@ -1,4 +1,5 @@
 import { expect, test, type APIRequestContext, type Page } from '@playwright/test';
+import { testMailpitUrl } from './test-supabase-config';
 import { waitForHydratedPage } from './auth-helpers';
 import { day, leagueFixtures } from './leagues-fixtures';
 import { en, organizerMenu } from './matches-management-fixtures';
@@ -17,7 +18,7 @@ const m = en.matches;
 const edit = m.management.edit;
 const comp = en.matchCreate.competition;
 const mc = en.matchCreate;
-const MAILPIT_URL = 'http://127.0.0.1:55324';
+const MAILPIT_URL = testMailpitUrl();
 const venue = (name: string) => `Ranked E2E ${name}`;
 
 test.use({ viewport: { width: 390, height: 844 }, serviceWorkers: 'block' });

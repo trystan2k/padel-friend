@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { dotEnvPathFromImportMetaUrl, localSupabaseEnv } from './local-supabase-env';
+import { localSupabaseEnv } from './local-supabase-env';
 import { executeTrustedSql, queryTrustedSql } from './sql-transport';
 import {
   triggerStatePreservingSql,
@@ -7,7 +7,7 @@ import {
   type TriggerRef
 } from './trigger-state-sql';
 
-const environment = localSupabaseEnv({ filePath: dotEnvPathFromImportMetaUrl(import.meta.url) });
+const environment = localSupabaseEnv();
 
 const stateSql = (table: string, trigger: string) => `select t.tgenabled::text as state
   from pg_catalog.pg_trigger t

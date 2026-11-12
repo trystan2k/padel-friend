@@ -3,13 +3,9 @@ import { describe, expect, it } from 'vitest';
 import { FIXTURE_EMAIL_LIKE, MATCH_FIXTURE_PRUNE_STATEMENTS } from '../e2e/global-setup';
 import { matchPhotoFixture } from './helpers/match-photo-fixtures';
 import { queryTrustedSql, sqlErrorMessage } from './helpers/sql-transport';
-import {
-  assertLocalSupabaseEnvInCi,
-  dotEnvPathFromImportMetaUrl,
-  localSupabaseEnv
-} from './helpers/local-supabase-env';
+import { assertLocalSupabaseEnvInCi, localSupabaseEnv } from './helpers/local-supabase-env';
 
-const environment = localSupabaseEnv({ filePath: dotEnvPathFromImportMetaUrl(import.meta.url) });
+const environment = localSupabaseEnv();
 
 async function trustedSqlOutput(sql: string): Promise<string> {
   try {

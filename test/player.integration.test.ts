@@ -1,7 +1,7 @@
-import { readFileSync } from 'node:fs';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { describe, expect, it, vi } from 'vitest';
 import { sportingProfile } from '../src/features/player/player.server';
+import { localSupabaseEnv, type LocalSupabaseEnv } from './helpers/local-supabase-env';
 
 // Integration suite against the LOCAL Supabase project only. Every client is built from the
 // public (publishable) key exactly like the browser, optionally carrying a real user JWT.
@@ -10,73 +10,7 @@ import { sportingProfile } from '../src/features/player/player.server';
 // can never receive the throwaway users and objects this suite creates.
 vi.setConfig({ testTimeout: 30000, hookTimeout: 30000 });
 
-type LocalEnv = { url: string; key: string; source: 'environment' | '.env file' };
-
-const LOOPBACK_HOSTS = new Set(['127.0.0.1', 'localhost']);
-
-function usableLocalEnv(
-  rawUrl: string | undefined,
-  key: string | undefined,
-  source: LocalEnv['source']
-): LocalEnv | null {
-  if (!rawUrl || !key || key.startsWith('replace-with')) return null;
-  // Tolerate shell/env quoting (supabase status -o env prints quoted values).
-  const url = rawUrl.replace(/^["']+|["']+$/g, '');
-  let parsed: URL;
-  try {
-    parsed = new URL(url);
-  } catch {
-    return null;
-  }
-  if (!LOOPBACK_HOSTS.has(parsed.hostname)) return null;
-  return { url, key, source };
-}
-
-function localSupabaseEnv(): { env: LocalEnv | null; reason: string } {
-  // CI exports both variables after provisioning the pinned local stack, so the process
-  // environment wins and no .env file is needed there. Once both variables are configured
-  // they are authoritative: a non-loopback value must never silently fall back to .env.
-  const url = process.env.VITE_SUPABASE_URL;
-  const key = process.env.VITE_SUPABASE_PUBLISHABLE_KEY;
-  if (url && key && !key.startsWith('replace-with')) {
-    const fromEnvironment = usableLocalEnv(url, key, 'environment');
-    return fromEnvironment
-      ? { env: fromEnvironment, reason: '' }
-      : {
-          env: null,
-          reason: `VITE_SUPABASE_URL '${url}' is not a loopback (127.0.0.1/localhost) local Supabase project — the suite refuses to run so it cannot create users or objects on a hosted instance`
-        };
-  }
-  try {
-    const raw = readFileSync(new URL('../.env', import.meta.url), 'utf8');
-    const vars = new Map(
-      raw
-        .split('\n')
-        .filter((line) => line.includes('=') && !line.trim().startsWith('#'))
-        .map((line) => {
-          const index = line.indexOf('=');
-          return [line.slice(0, index).trim(), line.slice(index + 1).trim()] as const;
-        })
-    );
-    const fileUrl = vars.get('VITE_SUPABASE_URL');
-    const fileKey = vars.get('VITE_SUPABASE_PUBLISHABLE_KEY');
-    const fromFile = usableLocalEnv(fileUrl, fileKey, '.env file');
-    if (fromFile) return { env: fromFile, reason: '' };
-    if (fileUrl && fileKey && !fileKey.startsWith('replace-with')) {
-      return {
-        env: null,
-        reason: `VITE_SUPABASE_URL '${fileUrl}' from .env is not a loopback (127.0.0.1/localhost) local Supabase project — the suite refuses to run so it cannot create users or objects on a hosted instance`
-      };
-    }
-  } catch {
-    // No .env file — treated like missing env vars.
-  }
-  return {
-    env: null,
-    reason:
-      'VITE_SUPABASE_URL / VITE_SUPABASE_PUBLISHABLE_KEY are missing (or the key is a placeholder) — start the local stack (pnpm db:start && pnpm db:reset) and export both variables to enable the suite'
-  };
-}
+type LocalEnv = LocalSupabaseEnv;
 
 const environment = localSupabaseEnv();
 if (environment.env === null)

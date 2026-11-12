@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { expect, test, type BrowserContext, type Page } from '@playwright/test';
+import { testSupabaseConfig } from './test-supabase-config';
 import { waitForHydratedPage } from './auth-helpers';
 
 type Copy = {
@@ -47,29 +48,7 @@ test.use({
 type Actor = { id: string; email: string; displayName: string; client: SupabaseClient };
 
 function localConfig() {
-  const variables = new Map(
-    readFileSync(new URL('../.env', import.meta.url), 'utf8')
-      .split('\n')
-      .filter((line) => line.includes('=') && !line.trim().startsWith('#'))
-      .map((line) => {
-        const index = line.indexOf('=');
-        return [
-          line.slice(0, index).trim(),
-          line
-            .slice(index + 1)
-            .trim()
-            .replace(/^['"]|['"]$/g, '')
-        ] as const;
-      })
-  );
-  const url = process.env.VITE_SUPABASE_URL ?? variables.get('VITE_SUPABASE_URL') ?? '';
-  const key =
-    process.env.VITE_SUPABASE_PUBLISHABLE_KEY ??
-    variables.get('VITE_SUPABASE_PUBLISHABLE_KEY') ??
-    '';
-  if (!url || !key || !['127.0.0.1', 'localhost'].includes(new URL(url).hostname))
-    throw new Error('Community lifecycle E2E requires loopback Supabase');
-  return { url, key };
+  return testSupabaseConfig();
 }
 
 async function createActor(label: string): Promise<Actor> {

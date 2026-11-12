@@ -2,11 +2,7 @@ import { spawn } from 'node:child_process';
 import { createRequire } from 'node:module';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
-import {
-  assertLocalSupabaseEnvInCi,
-  dotEnvPathFromImportMetaUrl,
-  localSupabaseEnv
-} from './helpers/local-supabase-env';
+import { assertLocalSupabaseEnvInCi, localSupabaseEnv } from './helpers/local-supabase-env';
 
 const serverClient = vi.hoisted(() => ({ current: null as SupabaseClient | null }));
 vi.mock('@tanstack/react-start', () => ({
@@ -55,7 +51,7 @@ import {
 import { isCommunityAdminDefaults } from '../src/features/community/community-settings';
 
 vi.setConfig({ testTimeout: 60000, hookTimeout: 60000 });
-const environment = localSupabaseEnv({ filePath: dotEnvPathFromImportMetaUrl(import.meta.url) });
+const environment = localSupabaseEnv();
 if (!environment.env)
   process.stderr.write(`[community.admin.integration] suite NOT RUN: ${environment.reason}\n`);
 const url = environment.env?.url ?? '';

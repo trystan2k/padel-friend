@@ -4,12 +4,12 @@ import type { LocalSupabaseEnv } from './local-supabase-env';
 
 /**
  * Controlled stand-in for Google: a tiny OAuth2 provider the test process serves on the
- * port supabase/config.toml points the local `keycloak` provider at. Auth runs its real
+ * port test/stack/supabase/config.toml points the local `keycloak` provider at. Auth runs its real
  * authorize -> callback -> token -> userinfo -> identity-linking code against it, so the
  * tests prove how this stack links a provider identity to an existing Auth user. It
  * does NOT prove anything about Google itself (no external Google client is used).
  */
-export const CONTROLLED_PROVIDER_PORT = 55399;
+export const CONTROLLED_PROVIDER_PORT = 55499;
 const REALM = '/realms/controlled/protocol/openid-connect';
 
 export type ProviderIdentity = { sub: string; email: string; emailVerified: boolean };

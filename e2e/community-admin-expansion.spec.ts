@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import { deflateSync } from 'node:zlib';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { expect, test, type Page } from '@playwright/test';
+import { testSupabaseConfig } from './test-supabase-config';
 import { waitForHydratedPage } from './auth-helpers';
 
 const en: {
@@ -23,29 +24,7 @@ const en: {
 } = JSON.parse(
   readFileSync(new URL('../src/locales/en/translation.json', import.meta.url), 'utf8')
 );
-const config = (() => {
-  const values = new Map(
-    readFileSync(new URL('../.env', import.meta.url), 'utf8')
-      .split('\n')
-      .filter((line) => line.includes('=') && !line.trim().startsWith('#'))
-      .map((line) => {
-        const index = line.indexOf('=');
-        return [
-          line.slice(0, index).trim(),
-          line
-            .slice(index + 1)
-            .trim()
-            .replace(/^['"]|['"]$/g, '')
-        ] as const;
-      })
-  );
-  const url = process.env.VITE_SUPABASE_URL ?? values.get('VITE_SUPABASE_URL') ?? '';
-  const key =
-    process.env.VITE_SUPABASE_PUBLISHABLE_KEY ?? values.get('VITE_SUPABASE_PUBLISHABLE_KEY') ?? '';
-  if (!url || !key || !['localhost', '127.0.0.1'].includes(new URL(url).hostname))
-    throw new Error('Request message E2E requires loopback Supabase');
-  return { url, key };
-})();
+const config = testSupabaseConfig();
 const password = 'Password123!';
 type Actor = { email: string; id: string; client: SupabaseClient };
 async function createActor(label: string): Promise<Actor> {

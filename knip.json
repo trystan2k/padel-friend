@@ -23,7 +23,11 @@
     "scripts/release-backup-restore.d.mts",
     "scripts/release-migration-rehearsal.d.mts",
     "scripts/release-performance.d.mts",
-    "scripts/test-stack.d.mts"
+    "scripts/test-stack.d.mts",
+    "scripts/test-stack-env.d.mts",
+    "scripts/source-fingerprint.d.mts",
+    "scripts/with-test-stack.d.mts",
+    "scripts/verify-test-stack-isolation.d.mts"
   ],
   "ignoreDependencies": ["@opencode/plugin"],
   "ignoreIssues": {

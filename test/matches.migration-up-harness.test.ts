@@ -1,9 +1,11 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it, vi } from 'vitest';
 import { databaseHost, runHarness } from '../scripts/test-populated-migration-up.mjs';
+import { TEST_WORKDIR } from '../scripts/test-stack.mjs';
 import { matchRegistrationFixtureHistory } from './helpers/match-registration-fixture-history';
+import { testStatusOutput } from './helpers/test-stack-status';
 
-const status = 'DB_URL="postgresql://postgres:postgres@127.0.0.1:54322/postgres"\n';
+const status = testStatusOutput() + '\n';
 const quiet = {
   log: vi.fn<(...args: unknown[]) => void>(),
   error: vi.fn<(...args: unknown[]) => void>()
@@ -49,6 +51,8 @@ describe('populated migration-up harness safety and ordering', () => {
       'pnpm',
       'exec',
       'supabase',
+      '--workdir',
+      TEST_WORKDIR,
       'db',
       'reset',
       '--local',
@@ -74,6 +78,8 @@ describe('populated migration-up harness safety and ordering', () => {
       'pnpm',
       'exec',
       'supabase',
+      '--workdir',
+      TEST_WORKDIR,
       'db',
       'reset',
       '--local',
@@ -95,6 +101,8 @@ describe('populated migration-up harness safety and ordering', () => {
       'pnpm',
       'exec',
       'supabase',
+      '--workdir',
+      TEST_WORKDIR,
       'db',
       'reset',
       '--local',
@@ -120,6 +128,8 @@ describe('populated migration-up harness safety and ordering', () => {
       'pnpm',
       'exec',
       'supabase',
+      '--workdir',
+      TEST_WORKDIR,
       'db',
       'reset',
       '--local',
@@ -141,6 +151,8 @@ describe('populated migration-up harness safety and ordering', () => {
       'pnpm',
       'exec',
       'supabase',
+      '--workdir',
+      TEST_WORKDIR,
       'db',
       'reset',
       '--local',
@@ -166,6 +178,8 @@ describe('populated migration-up harness safety and ordering', () => {
       'pnpm',
       'exec',
       'supabase',
+      '--workdir',
+      TEST_WORKDIR,
       'db',
       'reset',
       '--local',
@@ -207,6 +221,8 @@ describe('populated migration-up harness safety and ordering', () => {
       'pnpm',
       'exec',
       'supabase',
+      '--workdir',
+      TEST_WORKDIR,
       'db',
       'reset',
       '--local',
@@ -258,7 +274,9 @@ describe('populated migration-up harness safety and ordering', () => {
       calls.push([command, ...args]);
       return {
         status: 0,
-        stdout: 'DB_URL="postgresql://postgres:secret@database.example:5432/postgres"',
+        stdout: testStatusOutput({
+          DB_URL: 'postgresql://postgres:secret@database.example:55422/postgres'
+        }),
         stderr: ''
       };
     };
@@ -267,6 +285,51 @@ describe('populated migration-up harness safety and ordering', () => {
     ).toThrow('non-loopback');
     expect(calls).toHaveLength(1);
     expect(calls[0]).toContain('status');
+  });
+
+  it('refuses a dev-stack status (wrong ports) before any reset', () => {
+    const calls: string[][] = [];
+    const run = (command: string, args: string[]) => {
+      calls.push([command, ...args]);
+      return {
+        status: 0,
+        stdout: testStatusOutput({
+          API_URL: 'http://127.0.0.1:55321',
+          DB_URL: 'postgresql://postgres:secret@127.0.0.1:55322/postgres'
+        }),
+        stderr: ''
+      };
+    };
+    expect(() =>
+      runHarness({ env: { CI: 'true', POPULATED_UPGRADE_OPT_IN: '1' }, run, log: quiet })
+    ).toThrow(/VITE_SUPABASE_URL/);
+    expect(calls).toHaveLength(1);
+    expect(calls[0]).toEqual([
+      'pnpm',
+      'exec',
+      'supabase',
+      '--workdir',
+      TEST_WORKDIR,
+      'status',
+      '-o',
+      'env'
+    ]);
+  });
+
+  it('keeps every CLI call pinned to the test workdir, including the finally restoration', () => {
+    const calls: string[][] = [];
+    const run = (command: string, args: string[]) => {
+      calls.push([command, ...args]);
+      if (args.includes('status')) return { status: 0, stdout: status, stderr: '' };
+      if (args.includes('migration')) return { status: 1, stdout: '', stderr: '' };
+      return { status: 0, stdout: '', stderr: '' };
+    };
+    expect(() =>
+      runHarness({ env: { CI: 'true', POPULATED_UPGRADE_OPT_IN: '1' }, run, log: quiet })
+    ).toThrow('migration up --local failed');
+    for (const call of calls)
+      expect(call.slice(0, 5)).toEqual(['pnpm', 'exec', 'supabase', '--workdir', TEST_WORKDIR]);
+    expect(calls.at(-1)).toContain('reset');
   });
 
   it('accepts only loopback hosts', () => {
@@ -283,8 +346,11 @@ describe('populated migration-up harness safety and ordering', () => {
       run: successfulRunner([]),
       log
     });
-    expect(log.log.mock.calls.flat().join('\n')).not.toContain(status.trim());
-    expect(log.log.mock.calls.flat().join('\n')).toContain('database host is loopback');
+    const logged = log.log.mock.calls.flat().join('\n');
+    for (const secret of ['fake-db-pw', 'fake-service-role-key', 'sb_publishable_fake'])
+      expect(logged).not.toContain(secret);
+    expect(logged).toContain('database host is loopback');
+    expect(logged).toContain('status reports the isolated test stack');
   });
 
   it('uses exact predecessor reset; fixture precedes up and assertions follow it', () => {
@@ -298,6 +364,8 @@ describe('populated migration-up harness safety and ordering', () => {
       'pnpm',
       'exec',
       'supabase',
+      '--workdir',
+      TEST_WORKDIR,
       'db',
       'reset',
       '--local',
@@ -343,6 +411,8 @@ describe('populated migration-up harness safety and ordering', () => {
       'pnpm',
       'exec',
       'supabase',
+      '--workdir',
+      TEST_WORKDIR,
       'db',
       'reset',
       '--local',
@@ -368,6 +438,8 @@ describe('populated migration-up harness safety and ordering', () => {
       'pnpm',
       'exec',
       'supabase',
+      '--workdir',
+      TEST_WORKDIR,
       'db',
       'reset',
       '--local',
@@ -399,7 +471,16 @@ describe('populated migration-up harness safety and ordering', () => {
     expect(() =>
       runHarness({ env: { CI: 'true', POPULATED_UPGRADE_OPT_IN: '1' }, run, log: quiet })
     ).toThrow('migration up --local failed (1)');
-    expect(calls.at(-1)).toEqual(['pnpm', 'exec', 'supabase', 'db', 'reset', '--local']);
+    expect(calls.at(-1)).toEqual([
+      'pnpm',
+      'exec',
+      'supabase',
+      '--workdir',
+      TEST_WORKDIR,
+      'db',
+      'reset',
+      '--local'
+    ]);
   });
 
   it('does not write or alter migration source files', () => {

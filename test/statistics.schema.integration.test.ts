@@ -2,12 +2,12 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createClient } from '@supabase/supabase-js';
 import { DEFAULT_STATISTICS_THRESHOLDS } from '../src/features/statistics/statistics-config';
 import { decodeStatisticsConfig } from '../src/features/statistics/statistics-decoders';
-import { dotEnvPathFromImportMetaUrl, localSupabaseEnv } from './helpers/local-supabase-env';
+import { localSupabaseEnv } from './helpers/local-supabase-env';
 import { sqlRows } from './helpers/match-registration-sql';
 import { createRankedResultFixtures, type RankedResultKit } from './helpers/ranked-result-fixtures';
 import { queryTrustedSql } from './helpers/sql-transport';
 
-const environment = localSupabaseEnv({ filePath: dotEnvPathFromImportMetaUrl(import.meta.url) });
+const environment = localSupabaseEnv();
 
 const TABLES = [
   'statistics_config',

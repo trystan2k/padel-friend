@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
-import { localSupabaseEnv, dotEnvPathFromImportMetaUrl } from './helpers/local-supabase-env';
+import { localSupabaseEnv } from './helpers/local-supabase-env';
 import { expectNotificationOutcome } from './helpers/notification-channel-evidence';
 import {
   createMatchManagementFixtures,
@@ -13,7 +13,7 @@ import {
 } from './helpers/match-registration-sql';
 
 vi.setConfig({ testTimeout: 120000, hookTimeout: 120000 });
-const environment = localSupabaseEnv({ filePath: dotEnvPathFromImportMetaUrl(import.meta.url) });
+const environment = localSupabaseEnv();
 
 describe('match invitations integration', () => {
   let f: Awaited<ReturnType<typeof createMatchManagementFixtures>>;

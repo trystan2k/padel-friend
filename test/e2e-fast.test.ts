@@ -19,7 +19,7 @@ describe('e2e fast lane', () => {
     }
   );
 
-  it('resets, frees the port, then runs Playwright with the inverse filter', () => {
+  it('resets the TEST stack, frees the port, then runs Playwright under the resolved test tuple with the inverse filter', () => {
     const calls: string[][] = [];
     const status = runFast({
       args: ['e2e/home.spec.ts'],
@@ -33,7 +33,17 @@ describe('e2e fast lane', () => {
     expect(calls).toEqual([
       ['pnpm', 'db:reset'],
       ['node', 'scripts/free-port.mjs', '4173'],
-      ['pnpm', 'exec', 'playwright', 'test', 'e2e/home.spec.ts', '--grep-invert', VISUAL_GREP]
+      [
+        'node',
+        'scripts/with-test-stack.mjs',
+        'pnpm',
+        'exec',
+        'playwright',
+        'test',
+        'e2e/home.spec.ts',
+        '--grep-invert',
+        VISUAL_GREP
+      ]
     ]);
   });
 

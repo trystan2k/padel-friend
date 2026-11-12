@@ -1,4 +1,3 @@
-import { spawn } from 'node:child_process';
 import { serializeMatchFixtureSql, withDeadlockRetry } from './match-fixture-sql';
 import { readFileSync } from 'node:fs';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
@@ -10,6 +9,7 @@ import {
   type Locator,
   type Page
 } from '@playwright/test';
+import { spawnTestSql, testSupabaseConfig } from './test-supabase-config';
 import { waitForHydratedPage } from './auth-helpers';
 
 // PAF-76 functional E2E: real journeys for create/discover Match Events against the local
@@ -95,29 +95,7 @@ test.use({
 type Actor = { id: string; email: string; displayName: string; client: SupabaseClient };
 
 function localConfig() {
-  const variables = new Map(
-    readFileSync(new URL('../.env', import.meta.url), 'utf8')
-      .split('\n')
-      .filter((line) => line.includes('=') && !line.trim().startsWith('#'))
-      .map((line) => {
-        const index = line.indexOf('=');
-        return [
-          line.slice(0, index).trim(),
-          line
-            .slice(index + 1)
-            .trim()
-            .replace(/^['"]|['"]$/g, '')
-        ] as const;
-      })
-  );
-  const url = process.env.VITE_SUPABASE_URL ?? variables.get('VITE_SUPABASE_URL') ?? '';
-  const key =
-    process.env.VITE_SUPABASE_PUBLISHABLE_KEY ??
-    variables.get('VITE_SUPABASE_PUBLISHABLE_KEY') ??
-    '';
-  if (!url || !key || !['127.0.0.1', 'localhost'].includes(new URL(url).hostname))
-    throw new Error('Matches E2E requires loopback Supabase');
-  return { url, key };
+  return testSupabaseConfig();
 }
 
 function rand(): string {
@@ -281,20 +259,7 @@ function fixtureSql(sql: string): Promise<void> {
 }
 
 async function runFixtureSql(sql: string): Promise<void> {
-  const child = spawn(
-    'pnpm',
-    [
-      'exec',
-      'supabase',
-      'db',
-      'query',
-      '--local',
-      '--output-format',
-      'json',
-      serializeMatchFixtureSql(`do $$ begin ${sql} end $$;`)
-    ],
-    { cwd: process.cwd() }
-  );
+  const child = spawnTestSql(serializeMatchFixtureSql(`do $$ begin ${sql} end $$;`));
   let stdout = '';
   let stderr = '';
   child.stdout.setEncoding('utf8').on('data', (chunk: string) => (stdout += chunk));

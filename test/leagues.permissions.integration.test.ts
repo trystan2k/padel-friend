@@ -6,7 +6,7 @@ import {
   decodeLeagueList
 } from '../src/features/leagues/league-decoders';
 import type { Database, Json } from '../src/lib/supabase/database.types';
-import { dotEnvPathFromImportMetaUrl, localSupabaseEnv } from './helpers/local-supabase-env';
+import { localSupabaseEnv } from './helpers/local-supabase-env';
 import {
   createLeagueArgs,
   insertLeague,
@@ -26,7 +26,7 @@ import {
 import { matchPhotoFixture } from './helpers/match-photo-fixtures';
 import { openDedicatedSqlConnection } from './helpers/sql-transport';
 
-const environment = localSupabaseEnv({ filePath: dotEnvPathFromImportMetaUrl(import.meta.url) });
+const environment = localSupabaseEnv();
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 describe('League permissions', { timeout: 300_000 }, () => {

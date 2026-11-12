@@ -10,13 +10,9 @@ import { readHome } from '../src/features/home/home.server';
 import type { Database } from '../src/lib/supabase/database.types';
 import { matchPhotoFixture } from './helpers/match-photo-fixtures';
 import { executeTrustedSql } from './helpers/sql-transport';
-import {
-  assertLocalSupabaseEnvInCi,
-  dotEnvPathFromImportMetaUrl,
-  localSupabaseEnv
-} from './helpers/local-supabase-env';
+import { assertLocalSupabaseEnvInCi, localSupabaseEnv } from './helpers/local-supabase-env';
 
-const environment = localSupabaseEnv({ filePath: dotEnvPathFromImportMetaUrl(import.meta.url) });
+const environment = localSupabaseEnv();
 type Actor = { id: string; client: SupabaseClient<Database>; name: string };
 type HomeClient = Parameters<typeof readHome>[0];
 const cleanupRegistry = createMatchFixtureCleanupRegistry('home-reads');

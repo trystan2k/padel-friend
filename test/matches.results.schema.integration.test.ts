@@ -1,15 +1,12 @@
 import { spawn } from 'node:child_process';
 import { createClient } from '@supabase/supabase-js';
+import { TEST_CLI_OPTIONS, testCliArgs } from '../scripts/test-stack-env.mjs';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import {
   createMatchManagementFixtures,
   type ManagementActor
 } from './helpers/match-management-fixtures';
-import {
-  assertLocalSupabaseEnvInCi,
-  dotEnvPathFromImportMetaUrl,
-  localSupabaseEnv
-} from './helpers/local-supabase-env';
+import { assertLocalSupabaseEnvInCi, localSupabaseEnv } from './helpers/local-supabase-env';
 import { fixtureSql, sqlRows, startSql, withDeadline } from './helpers/match-registration-sql';
 import { matchPhotoFixture } from './helpers/match-photo-fixtures';
 
@@ -18,7 +15,7 @@ import { matchPhotoFixture } from './helpers/match-photo-fixtures';
 // Proves the exact result-table constraints, transition guard, RLS/grants,
 // preserved fact CHECKs and migration-history stability on real local Supabase.
 
-const environment = localSupabaseEnv({ filePath: dotEnvPathFromImportMetaUrl(import.meta.url) });
+const environment = localSupabaseEnv();
 const MIGRATION_VERSION = '20261028180302';
 const PROBE_OK = 'PAF7_RESULTS_SCHEMA_PROBE_OK';
 
@@ -26,7 +23,7 @@ const q = (value: string) => `'${value.replaceAll("'", "''")}'`;
 
 function runCli(args: string[]): Promise<{ code: number | null; stdout: string; stderr: string }> {
   return new Promise((resolve, reject) => {
-    const child = spawn('pnpm', ['exec', 'supabase', ...args], { cwd: process.cwd() });
+    const child = spawn('pnpm', testCliArgs(...args), { cwd: TEST_CLI_OPTIONS.cwd });
     let stdout = '';
     let stderr = '';
     child.stdout.setEncoding('utf8').on('data', (chunk: string) => (stdout += chunk));

@@ -1,4 +1,5 @@
 import { expect, test, type APIRequestContext, type Locator, type Page } from '@playwright/test';
+import { testMailpitUrl } from './test-supabase-config';
 import { parseResultProposals } from '../src/features/matches/match-result-model';
 import { waitForHydratedPage } from './auth-helpers';
 import { acquireRatingSuite, releaseRatingSuite } from './rating-suite-lock';
@@ -571,7 +572,7 @@ test('a player shared by two communities keeps one global state and continuous h
 
 // --- AC8–AC13: provisional identities, either side, claim continuity ----------------------
 
-const MAILPIT_URL = 'http://127.0.0.1:55324';
+const MAILPIT_URL = testMailpitUrl();
 
 async function invitationLink(request: APIRequestContext, email: string) {
   const query = encodeURIComponent(`to:"${email}"`);

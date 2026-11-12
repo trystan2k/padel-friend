@@ -1,5 +1,5 @@
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
-import { dotEnvPathFromImportMetaUrl, localSupabaseEnv } from './helpers/local-supabase-env';
+import { localSupabaseEnv } from './helpers/local-supabase-env';
 import {
   drainDueRegistrationCutoffs,
   adjustmentCount,
@@ -31,7 +31,7 @@ import {
 } from './helpers/rating-fixtures';
 import { openDedicatedSqlConnection, type DedicatedSqlConnection } from './helpers/sql-transport';
 
-const environment = localSupabaseEnv({ filePath: dotEnvPathFromImportMetaUrl(import.meta.url) });
+const environment = localSupabaseEnv();
 
 /** Bounded wait for every contender: a lock-graph deadlock must fail, never hang. */
 const BOUND_MS = 30_000;

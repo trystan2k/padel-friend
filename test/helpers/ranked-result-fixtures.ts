@@ -1,5 +1,5 @@
 import { insertLeague, type LeagueSeed } from './league-fixtures';
-import { dotEnvPathFromImportMetaUrl, localSupabaseEnv } from './local-supabase-env';
+import { localSupabaseEnv } from './local-supabase-env';
 import { createMatchManagementFixtures, type ManagementActor } from './match-management-fixtures';
 import { fixtureSql, sqlRows } from './match-registration-sql';
 import { sqlText } from './provisional-player-fixtures';
@@ -255,5 +255,4 @@ export async function createRankedResultFixtures(
 export type RankedResultKit = Awaited<ReturnType<typeof createRankedResultFixtures>>;
 
 /** Local Supabase env for a test file, or null when none is configured (suites then skip). */
-export const rankedKitEnv = (importMetaUrl: string) =>
-  localSupabaseEnv({ filePath: dotEnvPathFromImportMetaUrl(importMetaUrl) }).env;
+export const rankedKitEnv = () => localSupabaseEnv().env;

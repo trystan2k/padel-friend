@@ -2,11 +2,7 @@ import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { describe, expect, it, vi } from 'vitest';
 import type { Database } from '../src/lib/supabase/database.types';
 import { matchPhotoFixture } from './helpers/match-photo-fixtures';
-import {
-  assertLocalSupabaseEnvInCi,
-  dotEnvPathFromImportMetaUrl,
-  localSupabaseEnv
-} from './helpers/local-supabase-env';
+import { assertLocalSupabaseEnvInCi, localSupabaseEnv } from './helpers/local-supabase-env';
 import {
   asRecord,
   expectDomainError,
@@ -25,7 +21,7 @@ import {
 
 vi.setConfig({ testTimeout: 240000, hookTimeout: 120000 });
 
-const environment = localSupabaseEnv({ filePath: dotEnvPathFromImportMetaUrl(import.meta.url) });
+const environment = localSupabaseEnv();
 
 type Actor = { id: string; token: string; client: SupabaseClient<Database>; name: string };
 type SqlRow = Record<string, unknown>;

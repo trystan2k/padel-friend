@@ -11,6 +11,7 @@ import {
   type Response,
   type Route
 } from '@playwright/test';
+import { testSupabaseConfig } from './test-supabase-config';
 import { submitAndWaitForAuthDestination, waitForHydratedPage } from './auth-helpers';
 import { sql } from './matches-management-fixtures';
 import {
@@ -338,29 +339,7 @@ test.describe('result notification browser coverage', () => {
 type Actor = { id: string; email: string; displayName: string; client: SupabaseClient };
 
 function localConfig() {
-  const variables = new Map(
-    readFileSync(new URL('../.env', import.meta.url), 'utf8')
-      .split('\n')
-      .filter((line) => line.includes('=') && !line.trim().startsWith('#'))
-      .map((line) => {
-        const index = line.indexOf('=');
-        return [
-          line.slice(0, index).trim(),
-          line
-            .slice(index + 1)
-            .trim()
-            .replace(/^['"]|['"]$/g, '')
-        ] as const;
-      })
-  );
-  const url = process.env.VITE_SUPABASE_URL ?? variables.get('VITE_SUPABASE_URL') ?? '';
-  const key =
-    process.env.VITE_SUPABASE_PUBLISHABLE_KEY ??
-    variables.get('VITE_SUPABASE_PUBLISHABLE_KEY') ??
-    '';
-  if (!url || !key || !['127.0.0.1', 'localhost'].includes(new URL(url).hostname))
-    throw new Error('Notifications E2E requires loopback Supabase');
-  return { url, key };
+  return testSupabaseConfig();
 }
 
 async function newContext(browser: Browser, options: { colorScheme?: 'light' | 'dark' } = {}) {

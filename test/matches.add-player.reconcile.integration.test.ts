@@ -11,11 +11,7 @@ import {
   operation,
   uniqueEmail
 } from './helpers/match-add-player-fixtures';
-import {
-  assertLocalSupabaseEnvInCi,
-  dotEnvPathFromImportMetaUrl,
-  localSupabaseEnv
-} from './helpers/local-supabase-env';
+import { assertLocalSupabaseEnvInCi, localSupabaseEnv } from './helpers/local-supabase-env';
 import {
   insertFixtureCommunity,
   insertFixtureEvent,
@@ -32,7 +28,7 @@ import {
 // F9/F10/F12: invitation delivery runs after the response, so the ledger must bring every
 // undelivered add back by itself. Each test breaks one step (failed send, crashed holder,
 // racing waiter, abandoned dispatch) and proves later add/read activity completes it.
-const environment = localSupabaseEnv({ filePath: dotEnvPathFromImportMetaUrl(import.meta.url) });
+const environment = localSupabaseEnv();
 
 function deferred() {
   let resolve: () => void = () => undefined;

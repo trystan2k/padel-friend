@@ -10,11 +10,7 @@ import {
   patchFixtureEvent,
   uniqueEmail
 } from './helpers/match-add-player-fixtures';
-import {
-  assertLocalSupabaseEnvInCi,
-  dotEnvPathFromImportMetaUrl,
-  localSupabaseEnv
-} from './helpers/local-supabase-env';
+import { assertLocalSupabaseEnvInCi, localSupabaseEnv } from './helpers/local-supabase-env';
 import {
   insertFixtureCommunity,
   insertFixtureEvent,
@@ -22,7 +18,7 @@ import {
 } from './helpers/provisional-player-fixtures';
 import { executeTrustedSql } from './helpers/sql-transport';
 
-const environment = localSupabaseEnv({ filePath: dotEnvPathFromImportMetaUrl(import.meta.url) });
+const environment = localSupabaseEnv();
 
 const locales = [
   { locale: 'en', copy: en.auth.invitationEmail },

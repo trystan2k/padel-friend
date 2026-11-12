@@ -1,10 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import {
-  assertLocalSupabaseEnvInCi,
-  dotEnvPathFromImportMetaUrl,
-  localSupabaseEnv
-} from './helpers/local-supabase-env';
+import { assertLocalSupabaseEnvInCi, localSupabaseEnv } from './helpers/local-supabase-env';
 import {
   startControlledProvider,
   type ControlledProvider
@@ -22,7 +18,7 @@ import {
 } from './helpers/provisional-claim-fixtures';
 import { queryTrustedSql } from './helpers/sql-transport';
 
-const environment = localSupabaseEnv({ filePath: dotEnvPathFromImportMetaUrl(import.meta.url) });
+const environment = localSupabaseEnv();
 
 // These drive Auth's real OAuth and account-linking code against a controlled provider
 // stub (see helpers/controlled-oauth-provider.ts). They prove the linking behavior of this

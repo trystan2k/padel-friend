@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { dotEnvPathFromImportMetaUrl, localSupabaseEnv } from './helpers/local-supabase-env';
+import { localSupabaseEnv } from './helpers/local-supabase-env';
 import {
   asRecord,
   fixtureSql,
@@ -18,9 +18,7 @@ describe('result dispute resolution and audited override', { timeout: 240000 }, 
   let foreign: Awaited<ReturnType<typeof createResultAmendmentFixtures>>;
 
   beforeAll(async () => {
-    const { env, reason } = localSupabaseEnv({
-      filePath: dotEnvPathFromImportMetaUrl(import.meta.url)
-    });
+    const { env, reason } = localSupabaseEnv();
     if (!env) throw new Error(reason);
     f = await createResultAmendmentFixtures(env);
     foreign = await createResultAmendmentFixtures(env);

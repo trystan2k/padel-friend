@@ -1,11 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { dotEnvPathFromImportMetaUrl, localSupabaseEnv } from './helpers/local-supabase-env';
+import { localSupabaseEnv } from './helpers/local-supabase-env';
 import { asRecord, sqlRows } from './helpers/match-registration-sql';
 import { createRankedResultFixtures } from './helpers/ranked-result-fixtures';
 import { sqlText } from './helpers/provisional-player-fixtures';
 import { openDedicatedSqlConnection } from './helpers/sql-transport';
 
-const environment = localSupabaseEnv({ filePath: dotEnvPathFromImportMetaUrl(import.meta.url) });
+const environment = localSupabaseEnv();
 
 describe.skipIf(!environment.env)('lifecycle event cursor ordering', { timeout: 300_000 }, () => {
   it('pages by proposal stable ID rather than its event ID', async () => {

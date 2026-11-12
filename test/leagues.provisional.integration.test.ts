@@ -1,7 +1,7 @@
 import { beforeAll, describe, expect, it } from 'vitest';
 import { decodeLeagueCounters } from '../src/features/leagues/league-decoders';
 import { insertLeague } from './helpers/league-fixtures';
-import { dotEnvPathFromImportMetaUrl, localSupabaseEnv } from './helpers/local-supabase-env';
+import { localSupabaseEnv } from './helpers/local-supabase-env';
 import { sqlRows } from './helpers/match-registration-sql';
 import {
   addInvitedPlayer,
@@ -26,7 +26,7 @@ import {
   type PendingGroup
 } from './helpers/rating-fixtures';
 
-const environment = localSupabaseEnv({ filePath: dotEnvPathFromImportMetaUrl(import.meta.url) });
+const environment = localSupabaseEnv();
 const dayAgo = () => new Date(Date.now() - 86_400_000).toISOString();
 
 /**

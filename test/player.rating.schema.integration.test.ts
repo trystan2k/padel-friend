@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { dotEnvPathFromImportMetaUrl, localSupabaseEnv } from './helpers/local-supabase-env';
+import { localSupabaseEnv } from './helpers/local-supabase-env';
 import { createMatchResultReviewFixtures } from './helpers/match-result-review-fixtures';
 import { fixtureSql, sqlRows } from './helpers/match-registration-sql';
 import {
@@ -14,7 +14,7 @@ import {
 import { setRatingProjectionActive } from './helpers/rating-fixtures';
 import { queryTrustedSql, sqlErrorMessage } from './helpers/sql-transport';
 
-const environment = localSupabaseEnv({ filePath: dotEnvPathFromImportMetaUrl(import.meta.url) });
+const environment = localSupabaseEnv();
 
 const LEDGER_TABLES = [
   'player_rating_projection_control',

@@ -1,11 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { dotEnvPathFromImportMetaUrl, localSupabaseEnv } from './helpers/local-supabase-env';
+import { localSupabaseEnv } from './helpers/local-supabase-env';
 import { asRecord, fixtureSql, sqlRows } from './helpers/match-registration-sql';
 import { createRankedResultFixtures, playedAt } from './helpers/ranked-result-fixtures';
 import { setRatingProjectionActive } from './helpers/rating-fixtures';
 import { sqlText } from './helpers/provisional-player-fixtures';
 
-const environment = localSupabaseEnv({ filePath: dotEnvPathFromImportMetaUrl(import.meta.url) });
+const environment = localSupabaseEnv();
 
 describe.skipIf(!environment.env)('statistics rating activation replay', () => {
   it('publishes replayed rating evidence and aligned revisions before readers return', async () => {

@@ -8,7 +8,7 @@ import {
   parseRatingProgress,
   parseRatingSummaryResult
 } from '../src/features/player/rating-contracts';
-import { dotEnvPathFromImportMetaUrl, localSupabaseEnv } from './helpers/local-supabase-env';
+import { localSupabaseEnv } from './helpers/local-supabase-env';
 import {
   addInvitedPlayer,
   CLAIM_PROFILE,
@@ -34,7 +34,7 @@ import {
 } from './helpers/rating-fixtures';
 import { queryTrustedSql } from './helpers/sql-transport';
 
-const environment = localSupabaseEnv({ filePath: dotEnvPathFromImportMetaUrl(import.meta.url) });
+const environment = localSupabaseEnv();
 
 /** Match items carry the game group; level-review adjustments (none in these fixtures) do not. */
 function groupIdOf(item: { kind: string; game_group_id?: string }): string | undefined {

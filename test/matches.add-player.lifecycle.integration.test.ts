@@ -1,10 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { addPlayer, authUsersByEmail, uniqueEmail } from './helpers/match-add-player-fixtures';
-import {
-  assertLocalSupabaseEnvInCi,
-  dotEnvPathFromImportMetaUrl,
-  localSupabaseEnv
-} from './helpers/local-supabase-env';
+import { assertLocalSupabaseEnvInCi, localSupabaseEnv } from './helpers/local-supabase-env';
 import {
   insertFixtureCommunity,
   insertFixtureEvent,
@@ -12,7 +8,7 @@ import {
 } from './helpers/provisional-player-fixtures';
 import { queryTrustedSql } from './helpers/sql-transport';
 
-const environment = localSupabaseEnv({ filePath: dotEnvPathFromImportMetaUrl(import.meta.url) });
+const environment = localSupabaseEnv();
 
 // Lifecycle commands operate on registration rows; a provisional registration
 // created by the add command must behave exactly like any other one.

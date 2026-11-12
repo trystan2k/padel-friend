@@ -4,11 +4,11 @@ import { readHome } from '../src/features/home/home.server';
 import { summarize, TARGETS, type Sample } from '../scripts/release-performance.mjs';
 import { buildCommunityWorld, type CommunityWorld } from './helpers/community-statistics-world';
 import type { ManagementActor } from './helpers/match-management-fixtures';
-import { dotEnvPathFromImportMetaUrl, localSupabaseEnv } from './helpers/local-supabase-env';
+import { localSupabaseEnv } from './helpers/local-supabase-env';
 import { sqlRows } from './helpers/match-registration-sql';
 import { playedAt } from './helpers/ranked-result-fixtures';
 
-const environment = localSupabaseEnv({ filePath: dotEnvPathFromImportMetaUrl(import.meta.url) });
+const environment = localSupabaseEnv();
 type HomeClient = Parameters<typeof readHome>[0];
 type Labelled = Sample & { label: string; cold: boolean };
 

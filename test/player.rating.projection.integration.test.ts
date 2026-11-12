@@ -1,5 +1,5 @@
 import { beforeAll, describe, expect, it } from 'vitest';
-import { dotEnvPathFromImportMetaUrl, localSupabaseEnv } from './helpers/local-supabase-env';
+import { localSupabaseEnv } from './helpers/local-supabase-env';
 import { fixtureSql, sqlRows } from './helpers/match-registration-sql';
 import {
   activateRatingProjection,
@@ -43,7 +43,7 @@ import {
 import { asRecord } from './helpers/match-registration-sql';
 import { queryTrustedSql, sqlErrorMessage } from './helpers/sql-transport';
 
-const environment = localSupabaseEnv({ filePath: dotEnvPathFromImportMetaUrl(import.meta.url) });
+const environment = localSupabaseEnv();
 
 describe('rating projection of confirmed results', { timeout: 180_000 }, () => {
   let world: RatingWorld;

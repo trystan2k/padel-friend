@@ -1,4 +1,5 @@
 import { expect, test, type Page, type APIRequestContext } from '@playwright/test';
+import { testMailpitUrl } from './test-supabase-config';
 import { readFileSync } from 'node:fs';
 import { submitAndWaitForAuthDestination, waitForHydratedPage } from './auth-helpers';
 
@@ -35,7 +36,7 @@ type LocaleCopy = {
 const en: LocaleCopy = JSON.parse(
   readFileSync(new URL('../src/locales/en/translation.json', import.meta.url), 'utf8')
 );
-const MAILPIT_URL = 'http://127.0.0.1:55324';
+const MAILPIT_URL = testMailpitUrl();
 const ORIGINAL_PASSWORD = 'Password123!';
 const RESET_PASSWORD = 'FreshPassword456!';
 

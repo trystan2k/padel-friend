@@ -1,5 +1,5 @@
 import { beforeAll, describe, expect, it } from 'vitest';
-import { dotEnvPathFromImportMetaUrl, localSupabaseEnv } from './helpers/local-supabase-env';
+import { localSupabaseEnv } from './helpers/local-supabase-env';
 import {
   addInvitedPlayer,
   CLAIM_PROFILE,
@@ -37,7 +37,7 @@ import { insertLeague } from './helpers/league-fixtures';
 import { setMembershipHistory } from './helpers/ranked-result-fixtures';
 import { queryTrustedSql } from './helpers/sql-transport';
 
-const environment = localSupabaseEnv({ filePath: dotEnvPathFromImportMetaUrl(import.meta.url) });
+const environment = localSupabaseEnv();
 
 async function initializationCount(userId: string): Promise<number> {
   const result = await queryTrustedSql(

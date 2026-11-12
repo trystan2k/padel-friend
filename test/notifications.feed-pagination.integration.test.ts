@@ -1,7 +1,7 @@
 import { readFile } from 'node:fs/promises';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { dotEnvPathFromImportMetaUrl, localSupabaseEnv } from './helpers/local-supabase-env';
+import { localSupabaseEnv } from './helpers/local-supabase-env';
 import {
   createFixtureCleanupRegistry,
   type FixtureCleanupRegistry
@@ -36,7 +36,7 @@ vi.mock('../src/features/auth/auth.server', () => ({
 }));
 import { listMyNotifications } from '../src/features/notifications/notifications.functions';
 
-const environment = localSupabaseEnv({ filePath: dotEnvPathFromImportMetaUrl(import.meta.url) });
+const environment = localSupabaseEnv();
 const password = 'Password123!';
 type Env = NonNullable<typeof environment.env>;
 type Actor = { client: SupabaseClient; id: string };

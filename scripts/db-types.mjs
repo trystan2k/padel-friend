@@ -2,6 +2,7 @@ import { spawn } from 'node:child_process';
 import { mkdtemp, readFile, rename, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { testCliArgs } from './test-stack-env.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const destination = path.join(root, 'src/lib/supabase/database.types.ts');
@@ -31,16 +32,15 @@ export async function generateTypes({
   try {
     const generated = await runProcess(
       'pnpm',
-      [
-        'exec',
-        'supabase',
+      // Always the TEST stack's schema (pinned workdir); the dev stack is never a dependency.
+      testCliArgs(
         'gen',
         'types',
         'typescript',
         '--local',
         '--schema',
         'public,storage,graphql_public'
-      ],
+      ),
       { cwd: rootDir, stdio: ['ignore', 'pipe', 'pipe'] }
     );
     if (generated.signal || generated.code !== 0)

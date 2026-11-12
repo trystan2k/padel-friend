@@ -1,6 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { INTEGRATION_DB_URL_ENV } from '../scripts/integration-db-url.mjs';
+import { TEST_WORKDIR } from '../scripts/test-stack.mjs';
 import setupResultRepairScheduler from './helpers/result-repair-scheduler-setup';
+import { testStatusOutput } from './helpers/test-stack-status';
 
 const mocks = vi.hoisted(() => ({
   status: vi.fn<(...args: unknown[]) => string>(),
@@ -29,9 +31,7 @@ describe('integration repair scheduler isolation', () => {
   beforeEach(() => {
     vi.resetAllMocks();
     vi.stubEnv(INTEGRATION_DB_URL_ENV, undefined);
-    mocks.status.mockReturnValue(
-      'DB_URL="postgresql://postgres:postgres@127.0.0.1:54322/postgres"'
-    );
+    mocks.status.mockReturnValue(testStatusOutput());
     mocks.connect.mockResolvedValue(undefined);
     mocks.end.mockResolvedValue(undefined);
     mocks.query.mockResolvedValue({ rows: [] });
@@ -83,17 +83,44 @@ describe('integration repair scheduler isolation', () => {
     expect(mocks.end).toHaveBeenCalledOnce();
   });
 
+  it('discovers the database through the pinned test workdir, not the root CLI project', async () => {
+    mocks.query.mockResolvedValueOnce({ rows: [{ available: false }] });
+    await setupResultRepairScheduler();
+    expect(mocks.status).toHaveBeenCalledWith(
+      'pnpm',
+      ['exec', 'supabase', '--workdir', TEST_WORKDIR, 'status', '-o', 'env'],
+      expect.anything()
+    );
+    expect(mocks.constructor).toHaveBeenCalledWith(
+      expect.objectContaining({
+        connectionString: 'postgresql://postgres:fake-db-pw@127.0.0.1:55422/postgres'
+      })
+    );
+  });
+
   it.each([
-    'API_URL="http://localhost"',
-    'DB_URL="postgresql://postgres:postgres@db.example.com/postgres"'
-  ])('rejects missing or nonlocal database configuration before connecting: %s', async (status) => {
+    ['no DB_URL', testStatusOutput({ DB_URL: null })],
+    [
+      'remote host',
+      testStatusOutput({ DB_URL: 'postgresql://postgres:x@db.example.com:55422/postgres' })
+    ],
+    ['dev port', testStatusOutput({ DB_URL: 'postgresql://postgres:x@127.0.0.1:55322/postgres' })]
+  ])('rejects %s before connecting (no silent skip, no dev fallback)', async (_label, status) => {
     mocks.status.mockReturnValue(status);
-    await expect(setupResultRepairScheduler()).rejects.toThrow(/DB_URL|local database/);
+    await expect(setupResultRepairScheduler()).rejects.toThrow(/DATABASE_URL/);
+    expect(mocks.connect).not.toHaveBeenCalled();
+  });
+
+  it('hard-fails when the test stack is not running', async () => {
+    mocks.status.mockImplementation(() => {
+      throw new Error('not running');
+    });
+    await expect(setupResultRepairScheduler()).rejects.toThrow(/test:stack:up/);
     expect(mocks.connect).not.toHaveBeenCalled();
   });
 
   it('uses the launcher-provided database URL without calling the Supabase CLI', async () => {
-    const handedOff = 'postgresql://postgres:handoff-pw@127.0.0.1:55322/postgres';
+    const handedOff = 'postgresql://postgres:handoff-pw@127.0.0.1:55422/postgres';
     vi.stubEnv(INTEGRATION_DB_URL_ENV, handedOff);
     mocks.query.mockResolvedValueOnce({ rows: [{ available: false }] });
     await setupResultRepairScheduler();
@@ -106,7 +133,7 @@ describe('integration repair scheduler isolation', () => {
   it.each([
     ['empty', ''],
     ['malformed', 'handoff-pw not a url'],
-    ['non-loopback', 'postgresql://postgres:handoff-pw@db.example.com:55322/postgres'],
+    ['non-loopback', 'postgresql://postgres:handoff-pw@db.example.com:55422/postgres'],
     ['wrong port', 'postgresql://postgres:handoff-pw@127.0.0.1:5432/postgres']
   ])(
     'fails closed on a %s launcher value without CLI fallback or leaking it',

@@ -1,12 +1,15 @@
 import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
+import { TEST_DB_CONTAINER } from './test-stack-env.mjs';
 
 // Shared guards and transport for the release-integrity rehearsals (backup/restore and
 // migration). Every operation runs inside the LOCAL Supabase Postgres container through
 // `docker exec`, so there is no code path that can address a hosted database: the only
 // reachable server is the container's own loopback Postgres.
 
-export const DEFAULT_CONTAINER = 'supabase_db_padel-friend';
+// The isolated TEST stack's database container (project padel-friend-test): the only target the
+// rehearsals may address. The developer stack's container is refused by the allowlist below.
+export const DEFAULT_CONTAINER = TEST_DB_CONTAINER;
 export const RESTORE_PREFIX = 'restore_rehearsal_';
 export const MIGRATION_PREFIX = 'migration_rehearsal_';
 const CONTAINER_PATTERN = /^supabase_db_[a-z0-9_-]+$/;

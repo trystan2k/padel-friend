@@ -5,6 +5,7 @@ import {
   type APIResponse,
   type Page
 } from '@playwright/test';
+import { testMailpitUrl } from './test-supabase-config';
 import { waitForHydratedPage } from './auth-helpers';
 import {
   en,
@@ -131,7 +132,7 @@ test('members without management rights never see the entry point', async () => 
   await expect(page.getByRole('menuitem', { name: a.action })).toHaveCount(0);
 });
 
-const MAILPIT_URL = 'http://127.0.0.1:55324';
+const MAILPIT_URL = testMailpitUrl();
 
 async function mailpitJson(response: APIResponse): Promise<Record<string, unknown>> {
   const body: unknown = await response.json();

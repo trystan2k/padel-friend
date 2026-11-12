@@ -1,7 +1,7 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { Database } from '../src/lib/supabase/database.types';
-import { dotEnvPathFromImportMetaUrl, localSupabaseEnv } from './helpers/local-supabase-env';
+import { localSupabaseEnv } from './helpers/local-supabase-env';
 import { asRecord, fixtureSql, sqlRows } from './helpers/match-registration-sql';
 import {
   insertFixtureEvent,
@@ -16,7 +16,7 @@ import {
 } from './helpers/ranked-result-fixtures';
 import { communityMemberGuard, withTriggersDisabled } from './helpers/trigger-state-sql';
 
-const environment = localSupabaseEnv({ filePath: dotEnvPathFromImportMetaUrl(import.meta.url) });
+const environment = localSupabaseEnv();
 const L = (id: string) => sqlText(id);
 const incompleteSets = [{ position: 1, team_a_games: 6, team_b_games: 4, completed: true }];
 const deniedLeague = { code: 'P0002', message: 'LEAGUE_NOT_FOUND' };

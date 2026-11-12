@@ -1,5 +1,5 @@
 import { afterAll, describe, expect, it } from 'vitest';
-import { dotEnvPathFromImportMetaUrl, localSupabaseEnv } from './helpers/local-supabase-env';
+import { localSupabaseEnv } from './helpers/local-supabase-env';
 import { asRecord, fixtureSql, sqlRows } from './helpers/match-registration-sql';
 import { createRankedResultFixtures, playedAt } from './helpers/ranked-result-fixtures';
 import {
@@ -16,7 +16,7 @@ import {
 } from './helpers/statistics-upgrade-fixtures';
 import { sqlText } from './helpers/provisional-player-fixtures';
 
-const environment = localSupabaseEnv({ filePath: dotEnvPathFromImportMetaUrl(import.meta.url) });
+const environment = localSupabaseEnv();
 
 // db:reset exercises the fresh migration chain, so this block proves current-schema backfill
 // equivalence only. The in-place upgrade over pre-existing history is proven by the next describe.

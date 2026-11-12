@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { dotEnvPathFromImportMetaUrl, localSupabaseEnv } from './helpers/local-supabase-env';
+import { localSupabaseEnv } from './helpers/local-supabase-env';
 import { createMatchManagementFixtures } from './helpers/match-management-fixtures';
 import { sqlRows } from './helpers/match-registration-sql';
 import { queryTrustedSql } from './helpers/sql-transport';
@@ -19,7 +19,7 @@ import {
   toQuartet
 } from './helpers/rating-fixtures';
 
-const environment = localSupabaseEnv({ filePath: dotEnvPathFromImportMetaUrl(import.meta.url) });
+const environment = localSupabaseEnv();
 
 describe('rating evidence fixture teardown', { timeout: 120_000 }, () => {
   it.skipIf(!environment.env)(

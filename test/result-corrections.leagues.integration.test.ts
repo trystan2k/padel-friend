@@ -1,7 +1,7 @@
 import { afterAll, describe, expect, it } from 'vitest';
 import { decodeLeagueStandings } from '../src/features/leagues/league-standings-decoders';
 import { leagueRow } from './helpers/league-fixtures';
-import { dotEnvPathFromImportMetaUrl, localSupabaseEnv } from './helpers/local-supabase-env';
+import { localSupabaseEnv } from './helpers/local-supabase-env';
 import { fixtureSql, sqlRows } from './helpers/match-registration-sql';
 import { sqlText } from './helpers/provisional-player-fixtures';
 import {
@@ -36,7 +36,7 @@ import {
   repairNow
 } from './helpers/result-replay-fixtures';
 
-const environment = localSupabaseEnv({ filePath: dotEnvPathFromImportMetaUrl(import.meta.url) });
+const environment = localSupabaseEnv();
 
 type Result = 'team_a' | 'team_b' | 'draw';
 
