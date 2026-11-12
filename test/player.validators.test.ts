@@ -287,6 +287,93 @@ describe('profile update validation', () => {
   });
 });
 
+describe('availability validation', () => {
+  const base = { display_name: 'Ana', preferred_side: 'LEFT' as const, initial_level: 3 };
+
+  it('accepts independent and mixed selections, deduplicated in canonical order', () => {
+    expect(
+      validateOnboardPlayer({
+        ...base,
+        preferred_playing_days: ['SUN', 'MON', 'SUN'],
+        preferred_playing_times: ['EVENING', 'MORNING']
+      })
+    ).toMatchObject({
+      preferred_playing_days: ['MON', 'SUN'],
+      preferred_playing_times: ['MORNING', 'EVENING']
+    });
+    expect(validateOnboardPlayer({ ...base, preferred_playing_days: ['FRI'] })).toMatchObject({
+      preferred_playing_days: ['FRI']
+    });
+    const timesOnly = validateOnboardPlayer({ ...base, preferred_playing_times: ['AFTERNOON'] });
+    expect(timesOnly.preferred_playing_times).toEqual(['AFTERNOON']);
+    expect('preferred_playing_days' in timesOnly).toBe(false);
+  });
+
+  it('keeps omission distinct from null and treats empty as cleared', () => {
+    expect('preferred_playing_days' in validateOnboardPlayer(base)).toBe(false);
+    expect(
+      validateOnboardPlayer({ ...base, preferred_playing_days: null, preferred_playing_times: [] })
+    ).toMatchObject({ preferred_playing_days: null, preferred_playing_times: null });
+  });
+
+  it('accepts every weekday and bucket at the SQL cardinality limits', () => {
+    const days = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'];
+    const times = ['MORNING', 'AFTERNOON', 'EVENING'];
+    expect(
+      validateOnboardPlayer({
+        ...base,
+        preferred_playing_days: [...days].reverse(),
+        preferred_playing_times: [...times].reverse()
+      })
+    ).toMatchObject({ preferred_playing_days: days, preferred_playing_times: times });
+  });
+
+  it('rejects unknown, wrong-case, null, nested, non-array and oversized payloads', () => {
+    const bad: unknown[] = [
+      ['FUNDAY'],
+      ['mon'],
+      [null],
+      [undefined],
+      [['MON']],
+      ['MON', 1],
+      'MON',
+      {},
+      0,
+      ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN', 'MON']
+    ];
+    for (const value of bad) {
+      expect(() => validateOnboardPlayer({ ...base, preferred_playing_days: value })).toThrow(
+        INVALID_INPUT
+      );
+      expect(() => validateUpdatePlayerProfile({ preferred_playing_days: value })).toThrow(
+        INVALID_INPUT
+      );
+    }
+    for (const value of [['MON'], ['MORNING', 'AFTERNOON', 'EVENING', 'MORNING'], undefined]) {
+      expect(() => validateOnboardPlayer({ ...base, preferred_playing_times: value })).toThrow(
+        INVALID_INPUT
+      );
+    }
+  });
+
+  it('updates availability partially: omitted stays out, null and empty clear', () => {
+    expect(validateUpdatePlayerProfile({ bio: 'x' })).toEqual({ bio: 'x' });
+    expect(
+      validateUpdatePlayerProfile({ preferred_playing_days: null, preferred_playing_times: [] })
+    ).toEqual({ preferred_playing_days: null, preferred_playing_times: null });
+    expect(validateUpdatePlayerProfile({ preferred_playing_times: ['EVENING'] })).toEqual({
+      preferred_playing_times: ['EVENING']
+    });
+  });
+
+  it('still rejects unknown keys alongside availability', () => {
+    expect(() =>
+      validateUpdatePlayerProfile({ preferred_playing_days: ['MON'], phone: '1' })
+    ).toThrow(INVALID_INPUT);
+    expect(() => validateOnboardPlayer({ ...base, availability: ['MON'] })).toThrow(INVALID_INPUT);
+  });
+});
+
 describe('avatar_url object key validation', () => {
   it('accepts a well-formed <uuid>/<uuid>.<ext> key and trims surrounding whitespace', () => {
     expect(validateUpdatePlayerProfile({ avatar_url: `  ${avatarKey()}  ` })).toEqual({

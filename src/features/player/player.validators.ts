@@ -1,5 +1,11 @@
 import { hasEdgeWhitespace, stripEdgeWhitespace } from '../../lib/edge-whitespace';
 import { isAvatarObjectKey } from './avatar-key';
+import {
+  normalizePlayingDays,
+  normalizePlayingTimes,
+  type PlayingDay,
+  type PlayingTime
+} from './player-availability';
 import { MAX_LEVEL, MIN_LEVEL } from './rating-config';
 
 export type PreferredSide = 'LEFT' | 'RIGHT' | 'EITHER';
@@ -10,6 +16,8 @@ export type OnboardPlayerInput = {
   initial_level: number;
   dominant_hand?: DominantHand;
   bio?: string | null;
+  preferred_playing_days?: PlayingDay[] | null;
+  preferred_playing_times?: PlayingTime[] | null;
 };
 export type UpdatePlayerProfileInput = Partial<{
   display_name: string;
@@ -17,8 +25,14 @@ export type UpdatePlayerProfileInput = Partial<{
   dominant_hand: DominantHand;
   bio: string | null;
   avatar_url: string | null;
+  preferred_playing_days: PlayingDay[] | null;
+  preferred_playing_times: PlayingTime[] | null;
 }>;
-export type AvatarUploadInput = { objectKey: string };
+/**
+ * `expectedPreviousKey` is the avatar the caller expects to replace (`null` = none stored):
+ * the single guarded write enforces it. Omitted = replace whatever is stored when read.
+ */
+export type AvatarUploadInput = { objectKey: string; expectedPreviousKey?: string | null };
 
 export const AVATAR_MAX_BYTES = 2097152;
 export const AVATAR_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp'] as const;
@@ -82,7 +96,9 @@ export function validateOnboardPlayer(value: unknown): OnboardPlayerInput {
     'preferred_side',
     'initial_level',
     'dominant_hand',
-    'bio'
+    'bio',
+    'preferred_playing_days',
+    'preferred_playing_times'
   ]);
   const hand = input.dominant_hand ?? null;
   if (hand !== null && hand !== 'LEFT' && hand !== 'RIGHT') throw new Error('INVALID_PLAYER_INPUT');
@@ -91,7 +107,13 @@ export function validateOnboardPlayer(value: unknown): OnboardPlayerInput {
     preferred_side: preferredSide(input.preferred_side),
     initial_level: validateInitialLevel(input.initial_level),
     ...('dominant_hand' in input ? { dominant_hand: hand } : {}),
-    ...('bio' in input ? { bio: input.bio === null ? null : trimmedText(input.bio, 280) } : {})
+    ...('bio' in input ? { bio: input.bio === null ? null : trimmedText(input.bio, 280) } : {}),
+    ...('preferred_playing_days' in input
+      ? { preferred_playing_days: normalizePlayingDays(input.preferred_playing_days) }
+      : {}),
+    ...('preferred_playing_times' in input
+      ? { preferred_playing_times: normalizePlayingTimes(input.preferred_playing_times) }
+      : {})
   };
 }
 
@@ -101,7 +123,9 @@ export function validateUpdatePlayerProfile(value: unknown): UpdatePlayerProfile
     'preferred_side',
     'dominant_hand',
     'bio',
-    'avatar_url'
+    'avatar_url',
+    'preferred_playing_days',
+    'preferred_playing_times'
   ]);
   if (!Object.keys(input).length) throw new Error('INVALID_PLAYER_INPUT');
   const result: UpdatePlayerProfileInput = {};
@@ -117,6 +141,10 @@ export function validateUpdatePlayerProfile(value: unknown): UpdatePlayerProfile
     result.dominant_hand = input.dominant_hand;
   }
   if ('bio' in input) result.bio = input.bio === null ? null : trimmedText(input.bio, 280);
+  if ('preferred_playing_days' in input)
+    result.preferred_playing_days = normalizePlayingDays(input.preferred_playing_days);
+  if ('preferred_playing_times' in input)
+    result.preferred_playing_times = normalizePlayingTimes(input.preferred_playing_times);
   if ('avatar_url' in input) {
     if (input.avatar_url === null) {
       result.avatar_url = null;
@@ -133,9 +161,14 @@ export function validateUpdatePlayerProfile(value: unknown): UpdatePlayerProfile
 }
 
 export function validateAvatarUpload(value: unknown): AvatarUploadInput {
-  const input = objectWithKeys(value, ['objectKey']);
+  const input = objectWithKeys(value, ['objectKey', 'expectedPreviousKey']);
   if (typeof input.objectKey !== 'string') throw new Error('INVALID_PLAYER_INPUT');
-  return { objectKey: input.objectKey };
+  const expected = input.expectedPreviousKey;
+  if (expected !== undefined && expected !== null && typeof expected !== 'string')
+    throw new Error('INVALID_PLAYER_INPUT');
+  return expected === undefined
+    ? { objectKey: input.objectKey }
+    : { objectKey: input.objectKey, expectedPreviousKey: expected };
 }
 
 export function validateAvatarFile(value: unknown): {

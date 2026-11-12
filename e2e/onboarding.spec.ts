@@ -31,6 +31,11 @@ type LocaleCopy = {
   onboarding: {
     title: string;
     name: string;
+    avatarLabel: string;
+    avatarInvalid: string;
+    avatarSkip: string;
+    avatarFailed: string;
+    avatarRetry: string;
     side: string;
     level: string;
     preciseLevel: string;
@@ -70,6 +75,11 @@ type LocaleCopy = {
     signOutFailed: string;
     dominantHand: string;
     handNone: string;
+    availabilityDaysLegend: string;
+    availabilityTimesLegend: string;
+    availabilityNotProvided: string;
+    availabilityDays: Record<'MON' | 'TUE' | 'WED' | 'THU' | 'FRI' | 'SAT' | 'SUN', string>;
+    availabilityTimes: Record<'MORNING' | 'AFTERNOON' | 'EVENING', string>;
   };
 };
 
@@ -508,6 +518,130 @@ test('the dashboard allows profile edits but exposes no level control, and avata
   await expect(avatar).toHaveAttribute('src', /\/object\/sign\//);
 });
 
+const TINY_PNG = Buffer.from(
+  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
+  'base64'
+);
+
+async function fillOnboardingRequired(page: Page, name: string): Promise<void> {
+  await page.getByLabel(en.onboarding.name, { exact: true }).fill(name);
+  await page.getByLabel(en.onboarding.preciseLevel).fill('3.0');
+  const radio = page
+    .getByRole('group', { name: en.onboarding.side })
+    .getByRole('radio', { name: en.onboarding.sideLeftShort });
+  await radio.check();
+  // The form is hydrated once a controlled re-render keeps the radio checked.
+  await expect(radio).toBeChecked();
+}
+
+test('an optional onboarding photo sits before the primary action and survives the profile reload', async ({
+  page
+}) => {
+  await register(page, uniqueEmail());
+  await fillOnboardingRequired(page, 'Pia Photo');
+
+  const picker = page.getByLabel(en.onboarding.avatarLabel);
+  const save = page.getByRole('button', { name: en.onboarding.save });
+  const nameBox = await page.getByLabel(en.onboarding.name, { exact: true }).boundingBox();
+  const pickerBox = await picker.boundingBox();
+  const saveBox = await save.boundingBox();
+  expect(nameBox!.y).toBeLessThan(pickerBox!.y);
+  expect(pickerBox!.y).toBeLessThan(saveBox!.y);
+  expect(pickerBox!.height).toBeGreaterThanOrEqual(44);
+  const skipBox = await page.getByRole('button', { name: en.onboarding.avatarSkip }).boundingBox();
+  expect(skipBox!.height).toBeGreaterThanOrEqual(44);
+
+  // Initials fallback until a photo is chosen; the choice is previewed locally, not uploaded.
+  await expect(page.getByText('PP', { exact: true })).toBeVisible();
+  await picker.setInputFiles({ name: 'pia.png', mimeType: 'image/png', buffer: TINY_PNG });
+  await expect(page.getByAltText(avatarAlt('Pia Photo'))).toHaveAttribute('src', /^blob:/);
+
+  await save.click();
+  await skipCommunity(page);
+  const avatar = page.getByAltText(avatarAlt('Pia Photo')).first();
+  await expect(avatar).toHaveAttribute('src', /\/object\/sign\//);
+  await page.reload();
+  await waitForHydratedPage(page);
+  await expect(page.getByAltText(avatarAlt('Pia Photo')).first()).toHaveAttribute(
+    'src',
+    /\/object\/sign\//
+  );
+});
+
+test('skipping the onboarding photo keeps the initials and never blocks the profile', async ({
+  page
+}) => {
+  await register(page, uniqueEmail());
+  await fillOnboardingRequired(page, 'Sam Skip');
+  await page
+    .getByLabel(en.onboarding.avatarLabel)
+    .setInputFiles({ name: 'sam.png', mimeType: 'image/png', buffer: TINY_PNG });
+  await expect(page.getByAltText(avatarAlt('Sam Skip'))).toHaveAttribute('src', /^blob:/);
+  await page.getByRole('button', { name: en.onboarding.avatarSkip }).click();
+  await expect(page.getByAltText(avatarAlt('Sam Skip'))).toHaveCount(0);
+  await expect(page.getByLabel(en.onboarding.avatarLabel)).toHaveValue('');
+
+  await page.getByRole('button', { name: en.onboarding.save }).click();
+  await skipCommunity(page);
+  await expect(page.getByRole('heading', { name: 'Sam Skip', exact: true })).toBeVisible();
+  await expect(page.getByAltText(avatarAlt('Sam Skip'))).toHaveCount(0);
+});
+
+test('an invalid onboarding photo is rejected locally and the profile can still be saved', async ({
+  page
+}) => {
+  await register(page, uniqueEmail());
+  await fillOnboardingRequired(page, 'Ian Invalid');
+  const picker = page.getByLabel(en.onboarding.avatarLabel);
+  await picker.setInputFiles({
+    name: 'note.txt',
+    mimeType: 'text/plain',
+    buffer: Buffer.from('x')
+  });
+  await expect(page.getByText(en.onboarding.avatarInvalid)).toBeVisible();
+  await picker.setInputFiles({
+    name: 'big.png',
+    mimeType: 'image/png',
+    buffer: Buffer.alloc(2 * 1024 * 1024 + 1, 1)
+  });
+  await expect(page.getByText(en.onboarding.avatarInvalid)).toBeVisible();
+
+  await page.getByRole('button', { name: en.onboarding.save }).click();
+  await skipCommunity(page);
+  await expect(page.getByRole('heading', { name: 'Ian Invalid', exact: true })).toBeVisible();
+});
+
+test('a failed onboarding photo upload keeps the saved profile and offers retry or continue', async ({
+  page
+}) => {
+  await register(page, uniqueEmail());
+  await fillOnboardingRequired(page, 'Fay Failure');
+  await page
+    .getByLabel(en.onboarding.avatarLabel)
+    .setInputFiles({ name: 'fay.png', mimeType: 'image/png', buffer: TINY_PNG });
+
+  // Storage rejects the first upload only; the profile was already committed by then.
+  let blocked = true;
+  await page.route(/\/storage\/v1\/object\/player-avatars\//, async (route) => {
+    if (blocked) {
+      blocked = false;
+      await route.fulfill({ status: 500, contentType: 'application/json', body: '{}' });
+      return;
+    }
+    await route.continue();
+  });
+  await page.getByRole('button', { name: en.onboarding.save }).click();
+  await expect(page.getByText(en.onboarding.avatarFailed)).toBeVisible();
+  expect(new URL(page.url()).pathname).toBe('/onboarding');
+
+  await page.getByRole('button', { name: en.onboarding.avatarRetry }).click();
+  await skipCommunity(page);
+  await expect(page.getByAltText(avatarAlt('Fay Failure')).first()).toHaveAttribute(
+    'src',
+    /\/object\/sign\//
+  );
+});
+
 test('a whitespace-padded save syncs the trimmed server values into display and edit form', async ({
   page
 }) => {
@@ -860,6 +994,189 @@ test.describe('sign-out failure handling', () => {
     await expect(page.getByRole('heading', { name: en.auth.welcomeTitle })).toBeVisible();
     expect(new URL(page.url()).pathname).toBe('/login');
   });
+});
+
+function availabilityGroup(page: Page, legend: string) {
+  return page.getByRole('group', { name: legend });
+}
+
+async function chooseAvailability(page: Page, days: string[], times: string[]): Promise<void> {
+  for (const day of days)
+    await availabilityGroup(page, en.profile.availabilityDaysLegend)
+      .getByRole('checkbox', { name: day })
+      .check();
+  for (const time of times)
+    await availabilityGroup(page, en.profile.availabilityTimesLegend)
+      .getByRole('checkbox', { name: time })
+      .check();
+}
+
+const days = en.profile.availabilityDays;
+const times = en.profile.availabilityTimes;
+
+test('optional availability sits after the primary action, persists, edits and clears', async ({
+  page
+}) => {
+  await register(page, uniqueEmail());
+  await fillOnboardingRequired(page, 'Ava Available');
+
+  // Trailing optional section: below the primary action, the precise-level input and the bio.
+  const daysGroup = availabilityGroup(page, en.profile.availabilityDaysLegend);
+  const groupBox = await daysGroup.boundingBox();
+  const saveBox = await page.getByRole('button', { name: en.onboarding.save }).boundingBox();
+  const preciseBox = await page.getByLabel(en.onboarding.preciseLevel).boundingBox();
+  const bioBox = await page.getByLabel(en.profile.bio).boundingBox();
+  expect(groupBox!.y).toBeGreaterThan(saveBox!.y);
+  expect(groupBox!.y).toBeGreaterThan(preciseBox!.y);
+  expect(groupBox!.y).toBeGreaterThan(bioBox!.y);
+  await expect(daysGroup.getByRole('checkbox')).toHaveCount(7);
+  await expect(
+    availabilityGroup(page, en.profile.availabilityTimesLegend).getByRole('checkbox')
+  ).toHaveCount(3);
+
+  // Keyboard multi-select inside the native checkbox group.
+  const monday = daysGroup.getByRole('checkbox', { name: days.MON });
+  await monday.focus();
+  await page.keyboard.press('Space');
+  await expect(monday).toBeChecked();
+  await chooseAvailability(page, [days.WED, days.SUN], [times.MORNING, times.EVENING]);
+
+  await page.getByRole('button', { name: en.onboarding.save }).click();
+  await skipCommunity(page);
+  await expect(page.getByText('Monday, Wednesday, and Sunday')).toBeVisible();
+  await expect(page.getByText('Morning and Evening')).toBeVisible();
+
+  await page.reload();
+  await waitForHydratedPage(page);
+  await expect(page.getByText('Monday, Wednesday, and Sunday')).toBeVisible();
+
+  // Edit: the stored selections are prefilled and individually changeable.
+  await page.getByRole('button', { name: en.profile.edit }).click();
+  await expect(
+    availabilityGroup(page, en.profile.availabilityDaysLegend).getByRole('checkbox', {
+      name: days.MON
+    })
+  ).toBeChecked();
+  await availabilityGroup(page, en.profile.availabilityDaysLegend)
+    .getByRole('checkbox', { name: days.MON })
+    .uncheck();
+  await availabilityGroup(page, en.profile.availabilityDaysLegend)
+    .getByRole('checkbox', { name: days.TUE })
+    .check();
+  await availabilityGroup(page, en.profile.availabilityTimesLegend)
+    .getByRole('checkbox', { name: times.MORNING })
+    .uncheck();
+  await page.getByRole('button', { name: en.profile.save }).click();
+  await expect(page.getByText('Tuesday, Wednesday, and Sunday')).toBeVisible();
+  await expect(page.getByText(times.EVENING, { exact: true })).toBeVisible();
+
+  // Clear both groups: stored as NULL and shown as not provided after a reload.
+  await page.getByRole('button', { name: en.profile.edit }).click();
+  for (const day of [days.TUE, days.WED, days.SUN])
+    await availabilityGroup(page, en.profile.availabilityDaysLegend)
+      .getByRole('checkbox', { name: day })
+      .uncheck();
+  await availabilityGroup(page, en.profile.availabilityTimesLegend)
+    .getByRole('checkbox', { name: times.EVENING })
+    .uncheck();
+  await page.getByRole('button', { name: en.profile.save }).click();
+  await expect(page.getByText(en.profile.availabilityNotProvided)).toHaveCount(2);
+  await page.reload();
+  await waitForHydratedPage(page);
+  await expect(page.getByText(en.profile.availabilityNotProvided)).toHaveCount(2);
+});
+
+test('availability groups are independent: days only, then times only, and omission never blocks', async ({
+  page
+}) => {
+  await register(page, uniqueEmail());
+  await fillOnboardingRequired(page, 'Ida Independent');
+  await chooseAvailability(page, [days.SAT], []);
+  await page.getByRole('button', { name: en.onboarding.save }).click();
+  await skipCommunity(page);
+  await expect(page.getByText(days.SAT, { exact: true })).toBeVisible();
+  await expect(page.getByText(en.profile.availabilityNotProvided)).toHaveCount(1);
+
+  await page.getByRole('button', { name: en.profile.edit }).click();
+  await availabilityGroup(page, en.profile.availabilityDaysLegend)
+    .getByRole('checkbox', { name: days.SAT })
+    .uncheck();
+  await chooseAvailability(page, [], [times.AFTERNOON]);
+  await page.getByRole('button', { name: en.profile.save }).click();
+  await expect(page.getByText(times.AFTERNOON, { exact: true })).toBeVisible();
+  await expect(page.getByText(en.profile.availabilityNotProvided)).toHaveCount(1);
+});
+
+test('onboarding without any availability succeeds and reads as not provided', async ({ page }) => {
+  await register(page, uniqueEmail());
+  await completeOnboarding(page, 'Omar Omitted', '3.0');
+  await expect(page.getByText(en.profile.availabilityNotProvided)).toHaveCount(2);
+});
+
+test('availability groups are localized, touch-sized and never overflow in light and dark', async ({
+  page
+}) => {
+  await register(page, uniqueEmail());
+  for (const viewport of [
+    { width: 320, height: 844 },
+    { width: 1280, height: 900 }
+  ]) {
+    await page.setViewportSize(viewport);
+    for (const theme of ['light', 'dark'] as const) {
+      await page.context().addCookies([{ name: 'theme', value: theme, url: BASE_URL }]);
+      for (const { locale, copy } of [
+        { locale: 'en', copy: en },
+        { locale: 'pt-BR', copy: ptBr },
+        { locale: 'es', copy: es }
+      ] as const) {
+        await page.context().addCookies([{ name: 'locale', value: locale, url: BASE_URL }]);
+        await page.reload({ waitUntil: 'domcontentloaded' });
+        await waitForHydratedPage(page);
+        const daysGroup = availabilityGroup(page, copy.profile.availabilityDaysLegend);
+        const timesGroup = availabilityGroup(page, copy.profile.availabilityTimesLegend);
+        await expect(daysGroup.getByRole('checkbox')).toHaveCount(7);
+        await expect(timesGroup.getByRole('checkbox')).toHaveCount(3);
+        await expect(
+          daysGroup.getByRole('checkbox', { name: copy.profile.availabilityDays.SAT })
+        ).toBeAttached();
+        await expect(
+          timesGroup.getByRole('checkbox', { name: copy.profile.availabilityTimes.EVENING })
+        ).toBeAttached();
+
+        const layout = await page.evaluate(() => {
+          const labels = Array.from(
+            document.querySelectorAll<HTMLInputElement>('input[name^="preferred-playing-"]')
+          ).map((input) => input.closest('label')!.getBoundingClientRect());
+          return {
+            minHeight: Math.min(...labels.map((box) => box.height)),
+            minWidth: Math.min(...labels.map((box) => box.width)),
+            rows: new Set(labels.slice(0, 7).map((box) => Math.round(box.top))).size,
+            documentWidth: document.documentElement.clientWidth,
+            documentScrollWidth: document.documentElement.scrollWidth
+          };
+        });
+        expect(layout.minHeight).toBeGreaterThanOrEqual(44);
+        expect(layout.minWidth).toBeGreaterThanOrEqual(44);
+        expect(layout.documentScrollWidth).toBe(layout.documentWidth);
+        if (viewport.width === 320) expect(layout.rows).toBeGreaterThan(1);
+      }
+    }
+  }
+
+  // Visible keyboard focus and a non-color selected cue.
+  await page.context().addCookies([{ name: 'locale', value: 'en', url: BASE_URL }]);
+  await page.reload({ waitUntil: 'domcontentloaded' });
+  await waitForHydratedPage(page);
+  const friday = availabilityGroup(page, en.profile.availabilityDaysLegend).getByRole('checkbox', {
+    name: days.FRI
+  });
+  await friday.focus();
+  const focusedOutline = await friday.evaluate(
+    (input) => getComputedStyle(input.closest('label')!).outlineStyle
+  );
+  expect(focusedOutline).not.toBe('none');
+  await page.keyboard.press('Space');
+  await expect(friday.locator('xpath=..')).toContainText('✓');
 });
 
 test.describe('onboarding save failure handling', () => {

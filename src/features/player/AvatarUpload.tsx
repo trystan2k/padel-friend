@@ -1,7 +1,7 @@
 import * as stylex from '@stylexjs/stylex';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { getBrowserClient } from '../../lib/supabase/client';
+import { uploadOwnerAvatar } from './avatar-upload';
 import { completeAvatarUpload } from './player.functions';
 import { playerInitials } from './player-initials';
 import { validateAvatarFile } from './player.validators';
@@ -44,17 +44,9 @@ export function AvatarUpload({ name, avatarUrl, onUploaded }: Props) {
     if (!file) return;
     setUploading(true);
     setError('');
-    const client = getBrowserClient();
     try {
-      const { data: claims, error: authError } = await client.auth.getClaims();
-      if (authError || !claims?.claims?.sub) throw new Error('UNAUTHENTICATED');
-      const ext = file.type === 'image/jpeg' ? 'jpg' : file.type === 'image/png' ? 'png' : 'webp';
-      const key = `${claims.claims.sub}/${crypto.randomUUID()}.${ext}`;
-      const { data, error: uploadError } = await client.storage
-        .from('player-avatars')
-        .upload(key, file, { upsert: false, contentType: file.type });
-      if (uploadError) throw uploadError;
-      const profile = await completeAvatarUpload({ data: { objectKey: data.path } });
+      const objectKey = await uploadOwnerAvatar(file);
+      const profile = await completeAvatarUpload({ data: { objectKey } });
       onUploaded(profile);
       setFile(null);
       setPreview(null);

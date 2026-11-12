@@ -194,7 +194,18 @@
     "validationSide": "Select your preferred court side.",
     "validationLevel": "Choose a level from 0.0 to 7.0 in steps of 0.1.",
     "saving": "Saving…",
-    "failed": "Couldn't save your player profile. Try again."
+    "failed": "Couldn't save your player profile. Try again.",
+    "avatarLabel": "PROFILE PHOTO (OPTIONAL)",
+    "avatarHelp": "JPEG, PNG, or WebP · up to 2 MB. You can also add one later from your profile.",
+    "avatarInvalid": "Choose a JPEG, PNG, or WebP image no larger than 2 MB.",
+    "avatarAlt": "Profile photo of {{name}}",
+    "avatarAltUnnamed": "Profile photo placeholder",
+    "avatarSkip": "Skip photo",
+    "avatarFailed": "Your profile was saved, but the photo couldn't be uploaded.",
+    "avatarConflict": "Your profile was saved, but the photo you selected was not saved because another photo is now on your profile. That photo stays.",
+    "avatarRetry": "Retry photo upload",
+    "avatarContinue": "Continue without photo",
+    "avatarConflictContinue": "Continue with the current photo"
   },
   "player": {
     "provisional": {
@@ -212,6 +223,25 @@
     "handRight": "Right hand",
     "handNone": "Not specified",
     "bio": "BIO",
+    "availability": "Availability",
+    "availabilityHelp": "Optional. Share the days and times of day you usually like to play. They are two separate preferences, not fixed appointments.",
+    "availabilityDaysLegend": "Days you usually play",
+    "availabilityTimesLegend": "Times of day you usually play",
+    "availabilityNotProvided": "Not provided",
+    "availabilityDays": {
+      "MON": "Monday",
+      "TUE": "Tuesday",
+      "WED": "Wednesday",
+      "THU": "Thursday",
+      "FRI": "Friday",
+      "SAT": "Saturday",
+      "SUN": "Sunday"
+    },
+    "availabilityTimes": {
+      "MORNING": "Morning",
+      "AFTERNOON": "Afternoon",
+      "EVENING": "Evening"
+    },
     "avatar": "Profile photo",
     "avatarUploadAction": "Upload photo",
     "avatarAlt": "Profile photo of {{name}}",

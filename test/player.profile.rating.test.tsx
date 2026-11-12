@@ -50,6 +50,8 @@ const profile: Parameters<typeof PlayerProfile>[0]['initialProfile'] = {
   preferred_side: 'LEFT',
   dominant_hand: null,
   bio: null,
+  preferred_playing_days: null,
+  preferred_playing_times: null,
   avatar_signed_url: null,
   joined_at: '2026-01-01T00:00:00.000Z',
   initial_display_level: 1,

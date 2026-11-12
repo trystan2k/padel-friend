@@ -9,6 +9,7 @@ import {
   parseProvisionalClaim
 } from './provisional-claim';
 import {
+  type OnboardPlayerInput,
   validateAvatarUpload,
   validateOnboardPlayer,
   validateUpdatePlayerProfile
@@ -20,6 +21,19 @@ async function readPasswordSetupState(client: ReturnType<typeof getServerClient>
   const state = parsePasswordSetupState(data);
   if (!state) throw new Error('PASSWORD_SETUP_UNAVAILABLE');
   return state;
+}
+
+// Availability is optional on create/claim: only supplied selections are sent, so an
+// omitted or cleared one stays NULL (the SQL default).
+function availabilityArgs(data: OnboardPlayerInput) {
+  return {
+    ...(data.preferred_playing_days
+      ? { p_preferred_playing_days: data.preferred_playing_days }
+      : {}),
+    ...(data.preferred_playing_times
+      ? { p_preferred_playing_times: data.preferred_playing_times }
+      : {})
+  };
 }
 
 /**
@@ -75,12 +89,13 @@ export const onboardPlayer = createServerFn({ method: 'POST' })
   .handler(async ({ data }) => {
     const { client, userId } = await requireAuthenticatedClient();
     try {
-      const { error } = await client.rpc('onboard_player', {
+      const { error } = await client.rpc('onboard_player_with_availability', {
         p_display_name: data.display_name,
         p_preferred_side: data.preferred_side,
         p_initial_level: data.initial_level,
         ...(data.dominant_hand ? { p_dominant_hand: data.dominant_hand } : {}),
-        ...(data.bio != null ? { p_bio: data.bio } : {})
+        ...(data.bio != null ? { p_bio: data.bio } : {}),
+        ...availabilityArgs(data)
       });
       if (error) throw error;
     } catch (error) {
@@ -95,12 +110,13 @@ export const claimProvisionalPlayer = createServerFn({ method: 'POST' })
   .validator(validateOnboardPlayer)
   .handler(async ({ data }) => {
     const { client } = await requireAuthenticatedClient();
-    const { error } = await client.rpc('claim_provisional_player', {
+    const { error } = await client.rpc('claim_provisional_player_with_availability', {
       p_display_name: data.display_name,
       p_preferred_side: data.preferred_side,
       p_initial_level: data.initial_level,
       ...(data.dominant_hand ? { p_dominant_hand: data.dominant_hand } : {}),
-      ...(data.bio != null ? { p_bio: data.bio } : {})
+      ...(data.bio != null ? { p_bio: data.bio } : {}),
+      ...availabilityArgs(data)
     });
     if (error) throw new Error(claimErrorCode(error) ?? 'PLAYER_CLAIM_FAILED', { cause: error });
   });
@@ -129,7 +145,10 @@ export const completeAvatarUpload = createServerFn({ method: 'POST' })
     const { profile } = await playerRows(client, userId);
     if (!profile) throw new Error('PLAYER_NOT_ONBOARDED');
     await verifiedAvatarKey(client, userId, data.objectKey);
-    const previousKey = profile.avatar_url;
+    // The caller's expectation (e.g. onboarding: no avatar yet) wins over the value just read,
+    // so an avatar stored by another session after the caller's last check fails the guard.
+    const previousKey =
+      data.expectedPreviousKey === undefined ? profile.avatar_url : data.expectedPreviousKey;
     const update = client
       .from('player_profiles')
       .update({ avatar_url: data.objectKey })
@@ -146,4 +165,20 @@ export const completeAvatarUpload = createServerFn({ method: 'POST' })
     // Do not delete avatar objects here: deletion cannot be atomic with avatar_url writes.
     // Leave orphaned keys for a future garbage-collection task.
     return sportingProfile(client, userId);
+  });
+
+/**
+ * Owner-authenticated reconciliation of a candidate avatar key against the stored one, decided
+ * on the key itself (never the signed URL, which can fail independently): `same` means this
+ * upload already finalized, `none` that no avatar is stored, `conflict` that a different
+ * avatar (e.g. from another session) is stored and must not be overwritten blindly.
+ */
+export const reconcileAvatarUpload = createServerFn({ method: 'POST' })
+  .validator(validateAvatarUpload)
+  .handler(async ({ data }) => {
+    const { client, userId } = await requireAuthenticatedClient();
+    const { profile } = await playerRows(client, userId);
+    if (!profile) throw new Error('PLAYER_NOT_ONBOARDED');
+    if (profile.avatar_url === null) return 'none' as const;
+    return profile.avatar_url === data.objectKey ? ('same' as const) : ('conflict' as const);
   });

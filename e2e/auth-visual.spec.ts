@@ -86,13 +86,15 @@ type LocaleCopy = {
   };
   onboarding: {
     title: string;
+    avatarLabel: string;
+    avatarSkip: string;
     levelHelp: string;
     level: string;
     levelScale: string;
     advanced: string;
     handPreferNot: string;
   };
-  profile: { dominantHand: string };
+  profile: { dominantHand: string; bio: string; availabilityDaysLegend: string };
 };
 
 const en: LocaleCopy = JSON.parse(
@@ -200,6 +202,29 @@ const VISUAL_BUDGETS: Record<VisualReference, number> = {
   // macOS 7,201/329,160 = 2.1877%; Linux 9,664/329,160 = 2.9363% → 3.09% (margin 0.1537pp).
   'reset-password.png': 0.0309
 };
+
+// Phase-2 (PAF-25) current player-setup composition: the optional avatar card sits between the
+// display name and the level card, a section the historical PdRtP frame does not contain. The
+// PAF-1 reference stays pinned and is still compared (with the avatar card taken out of flow);
+// this separate, self-generated baseline guards the composition the product actually ships.
+// The 0.025 figure is a macOS-side ESTIMATE, not a measured Linux residual: Linux CI is its real
+// validation. Widening it later requires per-pixel diff evidence from CI artifacts, never
+// budget-first; card height and control geometry are guarded by exact probes, not this budget.
+// Budget: nonzero cross-renderer allowance only (macOS-generated baseline vs Linux CI font
+// rasterization of Inter/Manrope; same screen as 'player-setup.png', whose measured macOS-to-Linux
+// residual gap is ~1.5pp). Structural probes below stay exact; never raise this to hide layout.
+const PHASE2_VISUAL_BUDGETS = {
+  'player-setup-phase2.png': 0.025
+} as const;
+
+async function comparePhase2(page: Page, name: keyof typeof PHASE2_VISUAL_BUDGETS): Promise<void> {
+  await expect(page).toHaveScreenshot(name, {
+    animations: 'disabled',
+    caret: 'hide',
+    threshold: 0.1,
+    maxDiffPixelRatio: PHASE2_VISUAL_BUDGETS[name]
+  });
+}
 
 type Geometry = { x?: number; y?: number; width?: number; height?: number };
 
@@ -592,6 +617,159 @@ test('incomplete authenticated player setup matches frame PdRtP', async ({ page 
   await expect(page.getByRole('heading', { name: en.onboarding.title })).toBeVisible();
   await expect(page.getByRole('group', { name: en.profile.dominantHand })).toBeVisible();
   await expect(page.getByRole('radio', { name: en.onboarding.handPreferNot })).toBeChecked();
+  // Phase-2 composition probes (structure first, then the reviewed current-layout snapshot).
+  const avatarPicker = page.getByLabel(en.onboarding.avatarLabel);
+  const avatarCard = page.locator('form > div').filter({ has: avatarPicker });
+  const nameField = page.locator('form > div').first();
+  const levelCard = page.locator('form > div').nth(2);
+  const [nameBox, avatarBox, levelBox, ctaBox, pickerBox, skipBox] = await Promise.all([
+    nameField.boundingBox(),
+    avatarCard.boundingBox(),
+    levelCard.boundingBox(),
+    page.locator('form button[type="submit"]').boundingBox(),
+    avatarPicker.boundingBox(),
+    page.getByRole('button', { name: en.onboarding.avatarSkip }).boundingBox()
+  ]);
+  expect(avatarBox, 'avatar card must be rendered').not.toBeNull();
+  // Form gap is 12px: avatar card directly after the display name, level card directly after it.
+  expect(Math.abs(avatarBox!.y - (nameBox!.y + nameBox!.height + 12))).toBeLessThanOrEqual(1);
+  expect(Math.abs(levelBox!.y - (avatarBox!.y + avatarBox!.height + 12))).toBeLessThanOrEqual(1);
+  expect(avatarBox!.y + avatarBox!.height).toBeLessThan(ctaBox!.y);
+  expect(avatarBox!.x).toBeCloseTo(18, 0);
+  expect(avatarBox!.width).toBeCloseTo(354, 0);
+  expect(pickerBox!.height).toBeGreaterThanOrEqual(44);
+  expect(skipBox!.height).toBeGreaterThanOrEqual(44);
+  expect(await avatarCard.evaluate((card) => getComputedStyle(card).gap)).toBe('9px');
+  // Exact card + control geometry (PAF-25 F3): the screenshot budget below must never be the only
+  // guard for card height or the picker/skip control boxes. Derived from existing roles/labels only.
+  const avatarLabel = avatarCard.locator(`label[for="${await avatarPicker.getAttribute('id')}"]`);
+  const avatarThumb = avatarCard.locator('span').first();
+  const avatarBody = avatarLabel.locator('..');
+  const [labelBox, thumbBox, bodyBox, cardPad] = await Promise.all([
+    avatarLabel.boundingBox(),
+    avatarThumb.boundingBox(),
+    avatarBody.boundingBox(),
+    avatarCard.evaluate((card) => {
+      const style = getComputedStyle(card);
+      return {
+        top: parseFloat(style.paddingTop),
+        bottom: parseFloat(style.paddingBottom),
+        left: parseFloat(style.paddingLeft),
+        right: parseFloat(style.paddingRight)
+      };
+    })
+  ]);
+  expect(labelBox, 'avatar label must be rendered').not.toBeNull();
+  expect(thumbBox, 'avatar preview must be rendered').not.toBeNull();
+  expect(bodyBox, 'avatar controls column must be rendered').not.toBeNull();
+  // Card height is exactly padding + the taller of preview and controls column (±1px).
+  const avatarContentHeight = Math.max(thumbBox!.height, bodyBox!.height);
+  expect(
+    Math.abs(avatarBox!.height - (cardPad.top + cardPad.bottom + avatarContentHeight))
+  ).toBeLessThanOrEqual(1);
+  // Independent ABSOLUTE bounds (PAF-25 F3-it2): the relational check above is self-referential, so
+  // these come from design sources only (never from live child boxes). Tokens: card padding
+  // --space-14 = 14px (x2 = 28px vertical), column gap --space-9 = 9px (3 gaps = 27px, label/
+  // picker/help/skip), controls min-height --space-40 + --space-4 = 44px (plan A3/AC5), preview
+  // avatar --space-40 + --space-16 = 56px, caption/label font --font-size-12 = 12px. Text lines
+  // are bounded by line-height 1.1-1.5 x 12px = 13-18px: the label is 1 line, the help 1-3 lines.
+  //   min = 28 + 27 + 13 (label) + 44 (picker) + 13 (help, 1 line) + 44 (skip) = 169px
+  //   max = 28 + 27 + 18 (label) + 52 (picker, padding 12 + text) + 54 (help, 3 lines) + 52 (skip) = 231px
+  // A growth in padding, gaps, or control heights beyond these bounds fails here even though the
+  // relational check would still pass.
+  const expectedCardMinHeight = 28 + 27 + 13 + 44 + 13 + 44;
+  const expectedCardMaxHeight = 28 + 27 + 18 + 52 + 54 + 52;
+  expect(avatarBox!.height, 'avatar card absolute min height').toBeGreaterThanOrEqual(
+    expectedCardMinHeight
+  );
+  expect(avatarBox!.height, 'avatar card absolute max height').toBeLessThanOrEqual(
+    expectedCardMaxHeight
+  );
+  expect(cardPad, 'avatar card padding is the 14px token on every side').toEqual({
+    top: 14,
+    bottom: 14,
+    left: 14,
+    right: 14
+  });
+  // Controls-column gap (PAF-25 F3-it3): onboardingAvatarBody is a flex column with gap
+  // --space-9; the height window above could absorb ~30px of internal gap growth, so pin the
+  // applied gap properties exactly (shorthand + both axes, flex-direction column).
+  expect(
+    await avatarBody.evaluate((body) => {
+      const style = getComputedStyle(body);
+      return {
+        display: style.display,
+        flexDirection: style.flexDirection,
+        gap: style.gap,
+        rowGap: style.rowGap,
+        columnGap: style.columnGap
+      };
+    }),
+    'avatar controls column gap is the 9px token'
+  ).toEqual({
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '9px',
+    rowGap: '9px',
+    columnGap: '9px'
+  });
+  expect(thumbBox!.width, 'avatar preview width (56px token)').toBeCloseTo(56, 0);
+  expect(thumbBox!.height, 'avatar preview height (56px token)').toBeCloseTo(56, 0);
+  // Controls column starts at the card's inner top edge and is fully contained horizontally.
+  expect(Math.abs(bodyBox!.y - (avatarBox!.y + cardPad.top))).toBeLessThanOrEqual(1);
+  expect(bodyBox!.x).toBeGreaterThanOrEqual(avatarBox!.x + cardPad.left - 1);
+  expect(bodyBox!.x + bodyBox!.width).toBeLessThanOrEqual(
+    avatarBox!.x + avatarBox!.width - cardPad.right + 1
+  );
+  // Preview sits left of the controls, inside the card, without overlapping them.
+  expect(Math.abs(thumbBox!.x - (avatarBox!.x + cardPad.left))).toBeLessThanOrEqual(1);
+  expect(thumbBox!.x + thumbBox!.width).toBeLessThanOrEqual(bodyBox!.x + 1);
+  // Vertical order inside the column: label, file picker, skip; no overlap, all inside the card.
+  expect(labelBox!.y + labelBox!.height).toBeLessThanOrEqual(pickerBox!.y + 1);
+  expect(pickerBox!.y + pickerBox!.height).toBeLessThanOrEqual(skipBox!.y + 1);
+  expect(skipBox!.y + skipBox!.height).toBeLessThanOrEqual(
+    avatarBox!.y + avatarBox!.height - cardPad.bottom + 1
+  );
+  // Interactive targets: full column width, >=44px (plan A3/AC5), inside the card horizontally.
+  for (const [control, box] of [
+    ['file picker', pickerBox!],
+    ['skip button', skipBox!]
+  ] as const) {
+    expect(box.height, `${control} target height`).toBeGreaterThanOrEqual(44);
+    expect(box.width, `${control} target width`).toBeGreaterThanOrEqual(44);
+    expect(box.x, `${control} left edge`).toBeGreaterThanOrEqual(avatarBox!.x);
+    expect(box.x + box.width, `${control} right edge`).toBeLessThanOrEqual(
+      avatarBox!.x + avatarBox!.width + 1
+    );
+  }
+  // Optional availability closes the form: a full-width card after the CTA and the bio, below
+  // the first viewport, so the screenshot baselines above are unaffected.
+  const availabilityCard = page
+    .locator('form > div')
+    .filter({ has: page.getByRole('group', { name: en.profile.availabilityDaysLegend }) });
+  const [availabilityBox, bioBox] = await Promise.all([
+    availabilityCard.boundingBox(),
+    page.getByLabel(en.profile.bio).boundingBox()
+  ]);
+  expect(availabilityBox, 'availability card must be rendered').not.toBeNull();
+  expect(availabilityBox!.y).toBeGreaterThan(ctaBox!.y + ctaBox!.height);
+  expect(availabilityBox!.y).toBeGreaterThan(bioBox!.y + bioBox!.height);
+  expect(availabilityBox!.x).toBeCloseTo(18, 0);
+  expect(availabilityBox!.width).toBeCloseTo(354, 0);
+  await comparePhase2(page, 'player-setup-phase2.png');
+  // 320px: the translated-text-safe card wraps instead of overflowing the viewport.
+  await page.setViewportSize({ width: 320, height: 844 });
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= document.documentElement.clientWidth
+    )
+  ).toBe(true);
+  await page.setViewportSize({ width: 390, height: 844 });
+  // The historical PdRtP frame has no photo section: take the card out of flow so every
+  // original frame probe and the pinned PAF-1 comparison below keep their exact coordinates.
+  await avatarCard.evaluate((card) => {
+    card.style.display = 'none';
+  });
   // PdRtP frame coordinates: badge, hero, card stack, hand row and CTA.
   await assertGeometry(
     page.locator('main > div').first().locator('span').first(),
@@ -624,7 +802,7 @@ test('incomplete authenticated player setup matches frame PdRtP', async ({ page 
     width: 354,
     height: 44
   });
-  await assertGeometry(page.locator('form > div').nth(1), 'Starting level card', {
+  await assertGeometry(levelCard, 'Starting level card', {
     x: 18,
     y: 302,
     width: 354,
@@ -656,7 +834,7 @@ test('incomplete authenticated player setup matches frame PdRtP', async ({ page 
       height: 44
     }
   );
-  await assertGeometry(page.locator('form > div').nth(2), 'Preferred side and hand card', {
+  await assertGeometry(page.locator('form > div').nth(3), 'Preferred side and hand card', {
     x: 18,
     y: 459,
     width: 354,

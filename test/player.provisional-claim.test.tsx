@@ -15,6 +15,7 @@ import ptBR from '../src/locales/pt-BR/translation.json';
 const mocks = vi.hoisted(() => ({
   claim: vi.fn<(input: { data: Record<string, unknown> }) => Promise<void>>(),
   onboard: vi.fn<(input: { data: Record<string, unknown> }) => Promise<void>>(),
+  profile: vi.fn<() => Promise<unknown>>(),
   signOut: vi.fn<() => Promise<{ error: unknown }>>(),
   updateUser: vi.fn<(attrs: { password: string }) => Promise<{ error: unknown }>>(),
   passwordState: vi.fn<() => Promise<{ pending: boolean; canSkip: boolean }>>(),
@@ -24,6 +25,7 @@ const mocks = vi.hoisted(() => ({
 vi.mock('../src/features/player/player.functions', () => ({
   claimProvisionalPlayer: mocks.claim,
   onboardPlayer: mocks.onboard,
+  getMyPlayerProfile: mocks.profile,
   getPasswordSetupState: mocks.passwordState
 }));
 vi.mock('../src/lib/supabase/client', () => ({
@@ -183,7 +185,9 @@ describe('claim onboarding', () => {
         preferred_side: 'LEFT',
         initial_level: 3.5,
         dominant_hand: null,
-        bio: null
+        bio: null,
+        preferred_playing_days: null,
+        preferred_playing_times: null
       }
     });
     expect(mocks.onboard).not.toHaveBeenCalled();
@@ -322,12 +326,26 @@ describe('claim onboarding', () => {
     await waitFor(() => expect(mocks.assign).toHaveBeenCalledWith('/matches/e1'));
   });
 
+  it('stays on the form when NOT_PENDING is reported but no committed profile exists', async () => {
+    mocks.claim.mockRejectedValueOnce(new Error('PLAYER_CLAIM_NOT_PENDING'));
+    mocks.profile.mockRejectedValue(new Error('PLAYER_NOT_ONBOARDED'));
+    mount({ canEditLevel: true }, '/matches/e1');
+    await pickSide();
+    await userEvent.click(screen.getByRole('button', { name: new RegExp(t.submit) }));
+    expect((await screen.findByRole('alert')).textContent).toBe(t.failed);
+    expect(mocks.assign).not.toHaveBeenCalled();
+    expect(mocks.passwordState).not.toHaveBeenCalled();
+  });
+
   it('continues when the identity was already claimed and reloads when verification was lost', async () => {
     mocks.claim.mockRejectedValueOnce(new Error('PLAYER_CLAIM_NOT_PENDING'));
+    mocks.profile.mockResolvedValue({});
+    mocks.passwordState.mockResolvedValue({ pending: false, canSkip: false });
     mount({ canEditLevel: true }, '/matches/e1');
     await pickSide();
     await userEvent.click(screen.getByRole('button', { name: new RegExp(t.submit) }));
     await waitFor(() => expect(mocks.assign).toHaveBeenCalledWith('/matches/e1'));
+    expect(mocks.passwordState).toHaveBeenCalledTimes(1);
 
     cleanup();
     mocks.claim.mockRejectedValueOnce(new Error('PLAYER_CLAIM_NOT_VERIFIED'));

@@ -57,7 +57,10 @@ vi.mock('../src/features/player/player.server', async (importOriginal) => {
 import { verifiedAvatarKey } from '../src/features/player/player.server';
 import {
   claimProvisionalPlayer,
+  completeAvatarUpload,
+  getMyPlayerProfile,
   onboardPlayer,
+  reconcileAvatarUpload,
   updateMyPlayerProfile
 } from '../src/features/player/player.functions';
 
@@ -317,12 +320,115 @@ describe('private player server functions', () => {
     await claimProvisionalPlayer({
       data: { display_name: 'Marta', preferred_side: 'LEFT', initial_level: 3.5, bio: 'hi' }
     });
-    expect(client.rpc).toHaveBeenCalledWith('claim_provisional_player', {
+    expect(client.rpc).toHaveBeenCalledWith('claim_provisional_player_with_availability', {
       p_display_name: 'Marta',
       p_preferred_side: 'LEFT',
       p_initial_level: 3.5,
       p_bio: 'hi'
     });
+  });
+
+  it('creates through the availability wrapper, sending only supplied selections', async () => {
+    const client = clientWith({ sub: 'sub-1' }, PROFILE_ROW, RATING_ROW);
+    supabaseServer.getServerClient.mockReturnValue(client);
+    const base = { display_name: 'Ana', preferred_side: 'LEFT' as const, initial_level: 3 };
+    await onboardPlayer({ data: base });
+    expect(client.rpc).toHaveBeenLastCalledWith('onboard_player_with_availability', {
+      p_display_name: 'Ana',
+      p_preferred_side: 'LEFT',
+      p_initial_level: 3
+    });
+    await onboardPlayer({
+      data: {
+        ...base,
+        preferred_playing_days: ['SUN', 'MON'],
+        preferred_playing_times: null
+      }
+    });
+    expect(client.rpc).toHaveBeenLastCalledWith('onboard_player_with_availability', {
+      p_display_name: 'Ana',
+      p_preferred_side: 'LEFT',
+      p_initial_level: 3,
+      p_preferred_playing_days: ['MON', 'SUN']
+    });
+  });
+
+  it('claims through the availability wrapper with both selections', async () => {
+    const client = clientWith({ sub: 'sub-1' }, null, null, { data: null, error: null });
+    supabaseServer.getServerClient.mockReturnValue(client);
+    await claimProvisionalPlayer({
+      data: {
+        display_name: 'Marta',
+        preferred_side: 'LEFT',
+        initial_level: 3,
+        preferred_playing_days: ['SAT'],
+        preferred_playing_times: ['EVENING', 'MORNING']
+      }
+    });
+    expect(client.rpc).toHaveBeenCalledWith('claim_provisional_player_with_availability', {
+      p_display_name: 'Marta',
+      p_preferred_side: 'LEFT',
+      p_initial_level: 3,
+      p_preferred_playing_days: ['SAT'],
+      p_preferred_playing_times: ['MORNING', 'EVENING']
+    });
+  });
+
+  it('rejects invalid availability and unauthenticated writes before any RPC', async () => {
+    const unauthenticated = clientWith(null, null, null);
+    supabaseServer.getServerClient.mockReturnValue(unauthenticated);
+    const base = { display_name: 'Ana', preferred_side: 'LEFT' as const, initial_level: 3 };
+    await expect(
+      onboardPlayer({ data: { ...base, preferred_playing_days: ['FUNDAY'] } })
+    ).rejects.toThrow('INVALID_PLAYER_INPUT');
+    await expect(
+      onboardPlayer({ data: { ...base, preferred_playing_times: ['NOON'] } })
+    ).rejects.toThrow('INVALID_PLAYER_INPUT');
+    await expect(
+      onboardPlayer({ data: { ...base, preferred_playing_days: ['MON'] } })
+    ).rejects.toThrow('UNAUTHENTICATED');
+    expect(unauthenticated.rpc).not.toHaveBeenCalled();
+  });
+
+  it('projects stored availability as typed canonical arrays or explicit null', async () => {
+    supabaseServer.getServerClient.mockReturnValue(
+      clientWith(
+        { sub: 'sub-1' },
+        {
+          ...PROFILE_ROW,
+          preferred_playing_days: ['SUN', 'MON'],
+          preferred_playing_times: null
+        },
+        RATING_ROW
+      )
+    );
+    const profile = await getMyPlayerProfile();
+    expect(profile.preferred_playing_days).toEqual(['MON', 'SUN']);
+    expect(profile.preferred_playing_times).toBeNull();
+  });
+
+  it('writes validated availability on owner updates and clears with explicit null', async () => {
+    const updates: unknown[] = [];
+    const client = {
+      ...clientWith({ sub: 'sub-1' }, PROFILE_ROW, RATING_ROW),
+      from: (table: string) => ({
+        ...rowResult(table === 'player_profiles' ? PROFILE_ROW : RATING_ROW),
+        update: (values: unknown) => {
+          updates.push(values);
+          return { eq: async () => ({ error: null }) };
+        }
+      })
+    };
+    supabaseServer.getServerClient.mockReturnValue(client);
+    await updateMyPlayerProfile({
+      data: { preferred_playing_days: ['TUE', 'MON', 'MON'], preferred_playing_times: [] }
+    });
+    expect(updates).toEqual([
+      { preferred_playing_days: ['MON', 'TUE'], preferred_playing_times: null }
+    ]);
+    await expect(
+      updateMyPlayerProfile({ data: { preferred_playing_days: 'MON' } })
+    ).rejects.toThrow('INVALID_PLAYER_INPUT');
   });
 
   it('maps claim RPC failures to stable application errors', async () => {
@@ -458,6 +564,161 @@ describe('updateMyPlayerProfile avatar verification', () => {
     );
     expect(verifiedAvatarKey).toHaveBeenCalledTimes(1);
     expect(updates).toEqual([]);
+  });
+
+  it('reconciles the candidate key against the stored key: same, none, conflict', async () => {
+    const other = `${OWNER_ID}/33333333-3333-4333-8333-333333333333.png`;
+    for (const [stored, expected] of [
+      [AVATAR_KEY, 'same'],
+      [null, 'none'],
+      [other, 'conflict']
+    ] as const) {
+      supabaseServer.getServerClient.mockReturnValue(
+        clientWithAvatarFolder([`${OBJECT_ID}.png`], stored).client
+      );
+      await expect(reconcileAvatarUpload({ data: { objectKey: AVATAR_KEY } })).resolves.toBe(
+        expected
+      );
+    }
+  });
+
+  // Guarded-write double: records the predicate of the single UPDATE and answers like the
+  // database would, so a competing avatar (stored != expected) affects 0 rows.
+  function clientWithGuardedWrite(storedAtRead: string | null, storedAtWrite: string | null) {
+    const guards: string[] = [];
+    const base = clientWithAvatarFolder([`${OBJECT_ID}.png`], storedAtRead).client;
+    const client = {
+      ...base,
+      from: (table: string) => ({
+        ...base.from(table),
+        update: () => {
+          const guarded = {
+            eq: () => guarded,
+            is: (_column: string, value: null) => (guards.push(`is:${value}`), guarded),
+            select: () => guarded,
+            maybeSingle: async () => {
+              const expected = guards.at(-1);
+              // Real SQL equality: `is null` matches only an empty column, `= key` only that key.
+              const matches =
+                expected === 'is:null'
+                  ? storedAtWrite === null
+                  : storedAtWrite !== null && expected === `eq:${storedAtWrite}`;
+              return { data: matches ? { avatar_url: AVATAR_KEY } : null, error: null };
+            }
+          };
+          const eqGuard = Object.assign(guarded, {
+            eq: (column: string, value: string) =>
+              column === 'avatar_url' ? (guards.push(`eq:${value}`), guarded) : guarded
+          });
+          return eqGuard;
+        }
+      })
+    };
+    return { client, guards };
+  }
+
+  it('finalize enforces the caller-expected previous key in the guarded write: competing avatar => AVATAR_CONFLICT', async () => {
+    const competing = `${OWNER_ID}/33333333-3333-4333-8333-333333333333.png`;
+    // Reconcile/read saw no avatar; a competing one is stored by the time the write runs.
+    const { client, guards } = clientWithGuardedWrite(competing, competing);
+    supabaseServer.getServerClient.mockReturnValue(client);
+    await expect(
+      completeAvatarUpload({ data: { objectKey: AVATAR_KEY, expectedPreviousKey: null } })
+    ).rejects.toThrow('AVATAR_CONFLICT');
+    expect(guards).toEqual(['is:null']);
+  });
+
+  it('finalize succeeds with the expected-none guard when no avatar is stored', async () => {
+    const { client, guards } = clientWithGuardedWrite(null, null);
+    supabaseServer.getServerClient.mockReturnValue(client);
+    await expect(
+      completeAvatarUpload({ data: { objectKey: AVATAR_KEY, expectedPreviousKey: null } })
+    ).resolves.toBeTruthy();
+    expect(guards).toEqual(['is:null']);
+  });
+
+  it('finalize without an expectation keeps guarding on the key it just read', async () => {
+    const stored = `${OWNER_ID}/33333333-3333-4333-8333-333333333333.png`;
+    const competing = `${OWNER_ID}/55555555-5555-4555-8555-555555555555.png`;
+    const { client, guards } = clientWithGuardedWrite(stored, competing);
+    supabaseServer.getServerClient.mockReturnValue(client);
+    await expect(completeAvatarUpload({ data: { objectKey: AVATAR_KEY } })).rejects.toThrow(
+      'AVATAR_CONFLICT'
+    );
+    expect(guards).toEqual([`eq:${stored}`]);
+  });
+
+  it('finalize without an expectation replaces an unchanged stored key (read-then-guard)', async () => {
+    const stored = `${OWNER_ID}/33333333-3333-4333-8333-333333333333.png`;
+    const { client, guards } = clientWithGuardedWrite(stored, stored);
+    supabaseServer.getServerClient.mockReturnValue(client);
+    await expect(completeAvatarUpload({ data: { objectKey: AVATAR_KEY } })).resolves.toBeTruthy();
+    expect(guards).toEqual([`eq:${stored}`]);
+  });
+
+  it('finalize without an expectation conflicts when the key changes between read and write', async () => {
+    const stored = `${OWNER_ID}/33333333-3333-4333-8333-333333333333.png`;
+    const changed = `${OWNER_ID}/44444444-4444-4444-8444-444444444444.png`;
+    const { client } = clientWithGuardedWrite(stored, changed);
+    supabaseServer.getServerClient.mockReturnValue(client);
+    await expect(completeAvatarUpload({ data: { objectKey: AVATAR_KEY } })).rejects.toThrow(
+      'AVATAR_CONFLICT'
+    );
+  });
+
+  it('finalize with a matching explicit string expectation replaces the avatar (profile page)', async () => {
+    const stored = `${OWNER_ID}/33333333-3333-4333-8333-333333333333.png`;
+    const { client, guards } = clientWithGuardedWrite(stored, stored);
+    supabaseServer.getServerClient.mockReturnValue(client);
+    await expect(
+      completeAvatarUpload({ data: { objectKey: AVATAR_KEY, expectedPreviousKey: stored } })
+    ).resolves.toBeTruthy();
+    expect(guards).toEqual([`eq:${stored}`]);
+  });
+
+  it('finalize with a competing explicit string expectation => AVATAR_CONFLICT', async () => {
+    const stored = `${OWNER_ID}/33333333-3333-4333-8333-333333333333.png`;
+    const stale = `${OWNER_ID}/44444444-4444-4444-8444-444444444444.png`;
+    const { client, guards } = clientWithGuardedWrite(stored, stored);
+    supabaseServer.getServerClient.mockReturnValue(client);
+    await expect(
+      completeAvatarUpload({ data: { objectKey: AVATAR_KEY, expectedPreviousKey: stale } })
+    ).rejects.toThrow('AVATAR_CONFLICT');
+    expect(guards).toEqual([`eq:${stale}`]);
+  });
+
+  it('rejects a non-string, non-null expectedPreviousKey', async () => {
+    supabaseServer.getServerClient.mockReturnValue(clientWithGuardedWrite(null, null).client);
+    await expect(
+      completeAvatarUpload({ data: { objectKey: AVATAR_KEY, expectedPreviousKey: 5 } })
+    ).rejects.toThrow('INVALID_PLAYER_INPUT');
+  });
+
+  it('decides on the key even when signing the stored avatar fails', async () => {
+    const { client } = clientWithAvatarFolder([`${OBJECT_ID}.png`], AVATAR_KEY);
+    supabaseServer.getServerClient.mockReturnValue({
+      ...client,
+      storage: {
+        from: () => ({
+          list: async () => ({ data: [], error: null }),
+          createSignedUrl: async () => ({ data: null, error: new Error('sign failed') })
+        })
+      }
+    });
+    await expect(reconcileAvatarUpload({ data: { objectKey: AVATAR_KEY } })).resolves.toBe('same');
+    const other = `${OWNER_ID}/33333333-3333-4333-8333-333333333333.png`;
+    await expect(reconcileAvatarUpload({ data: { objectKey: other } })).resolves.toBe('conflict');
+  });
+
+  it('rejects reconciliation without a profile or a session', async () => {
+    supabaseServer.getServerClient.mockReturnValue(clientWith({ sub: OWNER_ID }, null, null));
+    await expect(reconcileAvatarUpload({ data: { objectKey: AVATAR_KEY } })).rejects.toThrow(
+      'PLAYER_NOT_ONBOARDED'
+    );
+    supabaseServer.getServerClient.mockReturnValue(clientWith(null, null, null));
+    await expect(reconcileAvatarUpload({ data: { objectKey: AVATAR_KEY } })).rejects.toThrow(
+      'UNAUTHENTICATED'
+    );
   });
 
   it('rejects malformed or unsupported avatar keys through the validator before any client call', async () => {

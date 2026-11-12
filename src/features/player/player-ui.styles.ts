@@ -80,6 +80,24 @@ export const ui = stylex.create({
   },
   onboardingLevelValue: { fontSize: 'var(--font-size-29)' },
   onboardingExtras: { marginTop: 'calc(var(--space-40) * 3)' },
+  onboardingAvatar: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    alignItems: 'flex-start',
+    gap: 'var(--space-12)'
+  },
+  onboardingAvatarBody: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 'var(--space-9)',
+    flex: 1,
+    minWidth: 'calc(var(--space-40) * 4)'
+  },
+  onboardingAvatarSkip: {
+    backgroundColor: 'var(--color-bg)',
+    color: 'var(--color-text)',
+    fontWeight: 'var(--font-weight-semibold)'
+  },
   sliderGroup: {
     display: 'flex',
     flexDirection: 'column',
@@ -430,6 +448,46 @@ export const ui = stylex.create({
       outlineOffset: 'var(--space-2)'
     }
   },
+  availabilityGroups: { display: 'flex', flexDirection: 'column', gap: 'var(--space-12)' },
+  availabilityChoices: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    gap: 'var(--space-7)',
+    marginTop: 'var(--space-9)'
+  },
+  availabilityChoice: {
+    boxSizing: 'border-box',
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 'var(--space-3)',
+    minWidth: 'calc(var(--space-40) + var(--space-4))',
+    minHeight: 'calc(var(--space-40) + var(--space-4))',
+    paddingInline: 'var(--space-9)',
+    backgroundColor: 'var(--color-surface-2)',
+    borderWidth: 'var(--border-width-lg)',
+    borderStyle: 'solid',
+    borderColor: 'transparent',
+    borderRadius: 'var(--radius-10)',
+    fontSize: 'var(--font-size-12)',
+    fontWeight: 'var(--font-weight-semibold)',
+    textAlign: 'center',
+    cursor: 'pointer',
+    ':focus-within': {
+      outline: 'var(--border-width-lg) solid var(--color-green)',
+      outlineOffset: 'var(--space-2)'
+    }
+  },
+  availabilityChoiceSelected: {
+    backgroundColor: 'var(--color-green-soft)',
+    borderColor: 'var(--color-green)',
+    color: 'var(--color-green)'
+  },
+  availabilityChoiceDisabled: { cursor: 'default', opacity: 0.6 },
+  availabilityChoiceMark: { display: 'inline-block', width: '1em', textAlign: 'center' },
+  availabilityChoiceMarkHidden: { visibility: 'hidden' },
+  availabilitySummary: { display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' },
+  availabilitySummaryValue: { overflowWrap: 'anywhere', textAlign: 'end' },
   srOnly: {
     position: 'absolute',
     width: 'var(--space-1)',
