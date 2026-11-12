@@ -200,6 +200,28 @@ describe('AvailabilityFields', () => {
     expect(onChange).toHaveBeenLastCalledWith(null, null);
   });
 
+  it('reserves the same indicator slot whether a choice is selected or not', async () => {
+    render(<Harness />);
+    const box = screen.getByRole<HTMLInputElement>('checkbox', {
+      name: en.profile.availabilityDays.MON
+    });
+    const mark = () => box.closest('label')!.querySelector<HTMLElement>('span[aria-hidden="true"]');
+    // jsdom has no layout engine and StyleX CSS is not applied, so assert the slot contract:
+    // the aria-hidden glyph is always in the DOM and only its visibility class differs.
+    const before = mark();
+    expect(before).not.toBeNull();
+    expect(before!.textContent?.trim()).toBe('✓');
+    const unselectedClasses = before!.className.split(' ').filter(Boolean);
+    await userEvent.click(box);
+    const after = mark();
+    expect(after).toBe(before);
+    expect(after!.textContent?.trim()).toBe('✓');
+    const selectedClasses = after!.className.split(' ').filter(Boolean);
+    expect(unselectedClasses.length).toBe(selectedClasses.length + 1);
+    expect(selectedClasses.every((name) => unselectedClasses.includes(name))).toBe(true);
+    expect(box.getAttribute('aria-hidden')).toBeNull();
+  });
+
   it('disables every checkbox when frozen', () => {
     render(<Harness disabled />);
     for (const box of screen.getAllByRole<HTMLInputElement>('checkbox'))

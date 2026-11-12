@@ -1,5 +1,5 @@
 import * as stylex from '@stylexjs/stylex';
-import { useRef, useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '../../components/ui/Button';
 import { HeroCard } from '../../components/ui/HeroCard';
@@ -16,7 +16,8 @@ import {
   completeAvatarUpload,
   getMyPlayerProfile,
   getPasswordSetupState,
-  onboardPlayer
+  onboardPlayer,
+  reconcileAvatarUpload
 } from './player.functions';
 import type { PlayingDay, PlayingTime } from './player-availability';
 import { INITIAL_RELIABILITY_PERCENT, LEVEL_STEP, MAX_LEVEL, MIN_LEVEL } from './rating-config';
@@ -61,16 +62,22 @@ export function PlayerOnboarding({
   const [failed, setFailed] = useState(false);
   const [saving, setSaving] = useState(false);
   const [photo, setPhoto] = useState<File | null>(null);
-  const [photoFailed, setPhotoFailed] = useState(false);
+  // `conflict`: a different avatar is already stored (another session); never overwritten.
+  const [photoIssue, setPhotoIssue] = useState<'failed' | 'conflict' | null>(null);
   const [committed, setCommitted] = useState(false);
   // The profile (or claim) is committed exactly once; later photo retries never resubmit it.
   const committedRef = useRef(false);
   // Storage key of the uploaded photo, kept so a finalize retry does not upload a duplicate.
   const photoKeyRef = useRef<string | null>(null);
   const navigatingRef = useRef(false);
+  const conflictContinueRef = useRef<HTMLButtonElement>(null);
   const [passwordStep, setPasswordStep] = useState<{ canSkip: boolean } | null>(null);
   // Inputs freeze while saving and once the profile is committed (only the photo can still change).
   const locked = saving || committed;
+  // The conflict state replaces the focused retry/submit button; hand focus to its primary action.
+  useEffect(() => {
+    if (photoIssue === 'conflict') conflictContinueRef.current?.focus();
+  }, [photoIssue]);
   const selectedLevel = Number(level);
   const sliderLevel = Number.isFinite(selectedLevel)
     ? Math.min(MAX_LEVEL, Math.max(MIN_LEVEL, selectedLevel))
@@ -129,8 +136,8 @@ export function PlayerOnboarding({
     window.location.assign(target);
   }
 
-  // Original success continuation, shared by the normal submit, a photo retry and the
-  // "continue without photo" recovery so all three behave identically.
+  // Success continuation shared by every outcome (normal submit, already-committed profile,
+  // photo retry, continue with/without photo) so all behave identically.
   async function continueAfterProfile() {
     if (claim) {
       // The claim reset the password, so ask for a new one before leaving. The server says
@@ -152,17 +159,37 @@ export function PlayerOnboarding({
     navigate(`/onboarding/community${search ? `?${search}` : ''}`);
   }
 
-  // Uploads (once) and finalizes the chosen photo. Returns false on a recoverable failure.
-  async function savePhoto(file: File): Promise<boolean> {
+  // Uploads (once) and finalizes the chosen photo. Reports a recoverable failure or a
+  // competing avatar instead of throwing.
+  async function savePhoto(file: File): Promise<'saved' | 'failed' | 'conflict'> {
     try {
       if (photoKeyRef.current) {
-        // A previous finalize may have succeeded without a response: trust the authoritative
-        // profile instead of overwriting whatever avatar it already has.
-        const current = await getMyPlayerProfile();
-        if (current.avatar_signed_url) return true;
+        // A previous finalize may have succeeded without a response: the server compares this
+        // upload's key with the stored one so a different concurrent avatar is never overwritten.
+        const verdict = await reconcileAvatarUpload({ data: { objectKey: photoKeyRef.current } });
+        if (verdict === 'same') return 'saved';
+        if (verdict === 'conflict') return 'conflict';
       }
       photoKeyRef.current ??= await uploadOwnerAvatar(file);
-      await completeAvatarUpload({ data: { objectKey: photoKeyRef.current } });
+      // Onboarding expects no stored avatar; the server enforces that in its single guarded
+      // write, so a photo stored by another session after the check above is never replaced.
+      await completeAvatarUpload({
+        data: { objectKey: photoKeyRef.current, expectedPreviousKey: null }
+      });
+      return 'saved';
+    } catch (error) {
+      if (error instanceof Error && error.message === 'UNAUTHENTICATED') throw error;
+      return error instanceof Error && error.message === 'AVATAR_CONFLICT' ? 'conflict' : 'failed';
+    }
+  }
+
+  // The authoritative profile decides whether a create/claim committed (lost response, failed
+  // readback, or a claim reported as no longer pending): a missing profile or a failed read is
+  // NOT proof, so the caller fails closed. An expired session is not an answer either: it is
+  // rethrown so the caller redirects to login.
+  async function profileExists(): Promise<boolean> {
+    try {
+      await getMyPlayerProfile();
       return true;
     } catch (error) {
       if (error instanceof Error && error.message === 'UNAUTHENTICATED') throw error;
@@ -179,27 +206,33 @@ export function PlayerOnboarding({
   }) {
     setSaving(true);
     setFailed(false);
-    setPhotoFailed(false);
+    setPhotoIssue(null);
     try {
       if (profile && !committedRef.current) {
-        if (claim) await claimProvisionalPlayer({ data: profile });
-        else await onboardPlayer({ data: profile });
+        try {
+          if (claim) await claimProvisionalPlayer({ data: profile });
+          else await onboardPlayer({ data: profile });
+        } catch (error) {
+          if (!(error instanceof Error) || error.message === 'UNAUTHENTICATED') throw error;
+          // A lost response, or a claim reported as no longer pending, only counts as committed
+          // when the profile really exists; otherwise the original error stays a retryable failure.
+          const ambiguous = claim ? error.message === 'PLAYER_CLAIM_NOT_PENDING' : true;
+          if (!ambiguous || !(await profileExists())) throw error;
+        }
         committedRef.current = true;
         setCommitted(true);
       }
-      if (withPhoto && photo && !(await savePhoto(photo))) {
-        setPhotoFailed(true);
-        return;
+      if (withPhoto && photo) {
+        const result = await savePhoto(photo);
+        if (result !== 'saved') {
+          setPhotoIssue(result);
+          return;
+        }
       }
       await continueAfterProfile();
     } catch (error) {
       if (error instanceof Error && error.message === 'UNAUTHENTICATED') {
         navigate('/login?next=/onboarding');
-        return;
-      }
-      if (claim && error instanceof Error && error.message === 'PLAYER_CLAIM_NOT_PENDING') {
-        // Already claimed (double submit or another tab): continue to the destination.
-        navigate(normalizeReturnPath(returnPath));
         return;
       }
       if (claim && error instanceof Error && error.message === 'PLAYER_CLAIM_NOT_VERIFIED') {
@@ -414,20 +447,30 @@ export function PlayerOnboarding({
             {t(claim ? 'auth.claim.failed' : 'onboarding.failed')}
           </p>
         )}
-        {photoFailed ? (
+        {photoIssue ? (
           <div {...stylex.props(ui.stack)}>
             <p role="alert" {...stylex.props(ui.error)}>
-              {t('onboarding.avatarFailed')}
+              {t(
+                photoIssue === 'conflict' ? 'onboarding.avatarConflict' : 'onboarding.avatarFailed'
+              )}
             </p>
-            <Button busy={saving} onClick={() => void complete({ withPhoto: true })}>
-              {t('onboarding.avatarRetry')}
-            </Button>
+            {photoIssue === 'failed' && (
+              <Button busy={saving} onClick={() => void complete({ withPhoto: true })}>
+                {t('onboarding.avatarRetry')}
+              </Button>
+            )}
             <Button
-              variant="secondary"
+              ref={photoIssue === 'conflict' ? conflictContinueRef : undefined}
+              variant={photoIssue === 'failed' ? 'secondary' : 'primary'}
+              busy={photoIssue === 'conflict' && saving}
               disabled={saving}
               onClick={() => void complete({ withPhoto: false })}
             >
-              {t('onboarding.avatarContinue')}
+              {t(
+                photoIssue === 'conflict'
+                  ? 'onboarding.avatarConflictContinue'
+                  : 'onboarding.avatarContinue'
+              )}
             </Button>
           </div>
         ) : (

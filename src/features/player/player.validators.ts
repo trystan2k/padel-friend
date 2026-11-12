@@ -28,7 +28,11 @@ export type UpdatePlayerProfileInput = Partial<{
   preferred_playing_days: PlayingDay[] | null;
   preferred_playing_times: PlayingTime[] | null;
 }>;
-export type AvatarUploadInput = { objectKey: string };
+/**
+ * `expectedPreviousKey` is the avatar the caller expects to replace (`null` = none stored):
+ * the single guarded write enforces it. Omitted = replace whatever is stored when read.
+ */
+export type AvatarUploadInput = { objectKey: string; expectedPreviousKey?: string | null };
 
 export const AVATAR_MAX_BYTES = 2097152;
 export const AVATAR_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp'] as const;
@@ -157,9 +161,14 @@ export function validateUpdatePlayerProfile(value: unknown): UpdatePlayerProfile
 }
 
 export function validateAvatarUpload(value: unknown): AvatarUploadInput {
-  const input = objectWithKeys(value, ['objectKey']);
+  const input = objectWithKeys(value, ['objectKey', 'expectedPreviousKey']);
   if (typeof input.objectKey !== 'string') throw new Error('INVALID_PLAYER_INPUT');
-  return { objectKey: input.objectKey };
+  const expected = input.expectedPreviousKey;
+  if (expected !== undefined && expected !== null && typeof expected !== 'string')
+    throw new Error('INVALID_PLAYER_INPUT');
+  return expected === undefined
+    ? { objectKey: input.objectKey }
+    : { objectKey: input.objectKey, expectedPreviousKey: expected };
 }
 
 export function validateAvatarFile(value: unknown): {

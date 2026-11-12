@@ -106,7 +106,12 @@ function AvailabilityChoice({
         onChange={(event) => onChange(event.target.checked)}
         {...stylex.props(ui.radio)}
       />
-      {checked && <span aria-hidden="true">✓</span>}
+      <span
+        aria-hidden="true"
+        {...stylex.props(ui.availabilityChoiceMark, !checked && ui.availabilityChoiceMarkHidden)}
+      >
+        ✓
+      </span>
       {label}
     </label>
   );

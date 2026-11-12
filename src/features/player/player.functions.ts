@@ -145,7 +145,10 @@ export const completeAvatarUpload = createServerFn({ method: 'POST' })
     const { profile } = await playerRows(client, userId);
     if (!profile) throw new Error('PLAYER_NOT_ONBOARDED');
     await verifiedAvatarKey(client, userId, data.objectKey);
-    const previousKey = profile.avatar_url;
+    // The caller's expectation (e.g. onboarding: no avatar yet) wins over the value just read,
+    // so an avatar stored by another session after the caller's last check fails the guard.
+    const previousKey =
+      data.expectedPreviousKey === undefined ? profile.avatar_url : data.expectedPreviousKey;
     const update = client
       .from('player_profiles')
       .update({ avatar_url: data.objectKey })
@@ -162,4 +165,20 @@ export const completeAvatarUpload = createServerFn({ method: 'POST' })
     // Do not delete avatar objects here: deletion cannot be atomic with avatar_url writes.
     // Leave orphaned keys for a future garbage-collection task.
     return sportingProfile(client, userId);
+  });
+
+/**
+ * Owner-authenticated reconciliation of a candidate avatar key against the stored one, decided
+ * on the key itself (never the signed URL, which can fail independently): `same` means this
+ * upload already finalized, `none` that no avatar is stored, `conflict` that a different
+ * avatar (e.g. from another session) is stored and must not be overwritten blindly.
+ */
+export const reconcileAvatarUpload = createServerFn({ method: 'POST' })
+  .validator(validateAvatarUpload)
+  .handler(async ({ data }) => {
+    const { client, userId } = await requireAuthenticatedClient();
+    const { profile } = await playerRows(client, userId);
+    if (!profile) throw new Error('PLAYER_NOT_ONBOARDED');
+    if (profile.avatar_url === null) return 'none' as const;
+    return profile.avatar_url === data.objectKey ? ('same' as const) : ('conflict' as const);
   });

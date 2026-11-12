@@ -202,8 +202,10 @@
     "avatarAltUnnamed": "Espaço reservado da foto do perfil",
     "avatarSkip": "Pular foto",
     "avatarFailed": "Seu perfil foi salvo, mas não foi possível enviar a foto.",
+    "avatarConflict": "Seu perfil foi salvo, mas a foto que você escolheu não foi salva porque já há outra foto no seu perfil. Essa foto permanece.",
     "avatarRetry": "Tentar enviar a foto novamente",
-    "avatarContinue": "Continuar sem foto"
+    "avatarContinue": "Continuar sem foto",
+    "avatarConflictContinue": "Continuar com a foto atual"
   },
   "player": {
     "provisional": {

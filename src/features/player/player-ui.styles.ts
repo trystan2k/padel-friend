@@ -484,6 +484,8 @@ export const ui = stylex.create({
     color: 'var(--color-green)'
   },
   availabilityChoiceDisabled: { cursor: 'default', opacity: 0.6 },
+  availabilityChoiceMark: { display: 'inline-block', width: '1em', textAlign: 'center' },
+  availabilityChoiceMarkHidden: { visibility: 'hidden' },
   availabilitySummary: { display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' },
   availabilitySummaryValue: { overflowWrap: 'anywhere', textAlign: 'end' },
   srOnly: {

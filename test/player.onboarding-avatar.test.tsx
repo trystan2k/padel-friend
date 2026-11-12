@@ -16,6 +16,8 @@ const mocks = vi.hoisted(() => ({
   onboard: vi.fn<(input: { data: Record<string, unknown> }) => Promise<void>>(),
   finalize: vi.fn<(input: { data: { objectKey: string } }) => Promise<unknown>>(),
   profile: vi.fn<() => Promise<{ avatar_signed_url: string | null }>>(),
+  reconcile:
+    vi.fn<(input: { data: { objectKey: string } }) => Promise<'same' | 'none' | 'conflict'>>(),
   passwordState: vi.fn<() => Promise<{ pending: boolean; canSkip: boolean }>>(),
   upload: vi.fn<(file: File) => Promise<string>>(),
   assign: vi.fn<(url: string) => void>(),
@@ -26,6 +28,7 @@ vi.mock('../src/features/player/player.functions', () => ({
   onboardPlayer: mocks.onboard,
   completeAvatarUpload: mocks.finalize,
   getMyPlayerProfile: mocks.profile,
+  reconcileAvatarUpload: mocks.reconcile,
   getPasswordSetupState: mocks.passwordState
 }));
 vi.mock('../src/features/player/avatar-upload', () => ({ uploadOwnerAvatar: mocks.upload }));
@@ -79,7 +82,9 @@ beforeEach(() => {
   mocks.claim.mockResolvedValue();
   mocks.onboard.mockResolvedValue();
   mocks.finalize.mockResolvedValue({});
-  mocks.profile.mockResolvedValue({ avatar_signed_url: null });
+  // Profile reads only prove existence after an ambiguous create: default = not onboarded.
+  mocks.profile.mockRejectedValue(new Error('PLAYER_NOT_ONBOARDED'));
+  mocks.reconcile.mockResolvedValue('none');
   mocks.passwordState.mockResolvedValue({ pending: true, canSkip: false });
   mocks.upload.mockResolvedValue(KEY);
   Object.defineProperty(window, 'location', {
@@ -262,7 +267,9 @@ describe.each([
         ? ['create', 'upload', 'finalize', 'password', 'navigate']
         : ['create', 'upload', 'finalize', 'navigate']
     );
-    expect(mocks.finalize).toHaveBeenCalledWith({ data: { objectKey: KEY } });
+    expect(mocks.finalize).toHaveBeenCalledWith({
+      data: { objectKey: KEY, expectedPreviousKey: null }
+    });
     expect(mocks.assign).toHaveBeenCalledWith(
       claim ? '/matches/e1' : '/onboarding/community?next=%2Fmatches%2Fe1'
     );
@@ -340,7 +347,7 @@ describe.each([
   });
 
   it('reuses the uploaded key when only the finalize step failed', async () => {
-    mocks.finalize.mockRejectedValueOnce(new Error('AVATAR_CONFLICT'));
+    mocks.finalize.mockRejectedValueOnce(new Error('network'));
     mountFlow(claim);
     await fillAndPick({ claim });
     await userEvent.click(screen.getByRole('button', { name: submitName(claim) }));
@@ -348,14 +355,17 @@ describe.each([
     await userEvent.click(screen.getByRole('button', { name: copy.avatarRetry }));
     await waitFor(() => expect(mocks.finalize).toHaveBeenCalledTimes(2));
     expect(mocks.upload).toHaveBeenCalledTimes(1);
-    expect(mocks.profile).toHaveBeenCalledTimes(1);
-    expect(mocks.finalize.mock.calls.map((call) => call[0].data.objectKey)).toEqual([KEY, KEY]);
+    expect(mocks.reconcile).toHaveBeenCalledWith({ data: { objectKey: KEY } });
+    expect(mocks.finalize.mock.calls.map((call) => call[0].data)).toEqual([
+      { objectKey: KEY, expectedPreviousKey: null },
+      { objectKey: KEY, expectedPreviousKey: null }
+    ]);
     expect(create()).toHaveBeenCalledTimes(1);
   });
 
-  it('trusts the authoritative profile when an unknown finalize outcome already stored an avatar', async () => {
+  it('treats the same stored key after an unknown finalize outcome as success without re-finalizing', async () => {
     mocks.finalize.mockRejectedValueOnce(new Error('timeout'));
-    mocks.profile.mockResolvedValue({ avatar_signed_url: 'https://signed.example/a.png' });
+    mocks.reconcile.mockResolvedValue('same');
     mountFlow(claim);
     await fillAndPick({ claim });
     await userEvent.click(screen.getByRole('button', { name: submitName(claim) }));
@@ -364,6 +374,112 @@ describe.each([
     await waitFor(() => expect(claim ? mocks.passwordState : mocks.assign).toHaveBeenCalled());
     expect(mocks.finalize).toHaveBeenCalledTimes(1);
     expect(mocks.upload).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not overwrite a different stored avatar on retry and offers recovery', async () => {
+    mocks.finalize.mockRejectedValueOnce(new Error('timeout'));
+    mocks.reconcile.mockResolvedValue('conflict');
+    mountFlow(claim, '/matches/e1');
+    await fillAndPick({ claim });
+    await userEvent.click(screen.getByRole('button', { name: submitName(claim) }));
+    await screen.findByText(copy.avatarFailed);
+    await userEvent.click(screen.getByRole('button', { name: copy.avatarRetry }));
+    expect((await screen.findByRole('alert')).textContent).toBe(copy.avatarConflict);
+    expect(mocks.finalize).toHaveBeenCalledTimes(1);
+    expect(mocks.upload).toHaveBeenCalledTimes(1);
+    expect(mocks.assign).not.toHaveBeenCalled();
+    // Truthful actions: no ineffective retry, no misleading "without photo"; continue keeps the current photo.
+    expect(screen.queryByRole('button', { name: copy.avatarRetry })).toBeNull();
+    expect(screen.queryByRole('button', { name: copy.avatarContinue })).toBeNull();
+    await userEvent.click(screen.getByRole('button', { name: copy.avatarConflictContinue }));
+    await waitFor(() =>
+      expect(claim ? mocks.passwordState : mocks.assign).toHaveBeenCalledTimes(1)
+    );
+    expect(mocks.finalize).toHaveBeenCalledTimes(1);
+    expect(create()).toHaveBeenCalledTimes(1);
+  });
+
+  it('moves focus to the conflict continue action when the conflict replaces the retry button', async () => {
+    mocks.finalize.mockRejectedValueOnce(new Error('timeout'));
+    mocks.reconcile.mockResolvedValue('conflict');
+    mountFlow(claim);
+    await fillAndPick({ claim });
+    await userEvent.click(screen.getByRole('button', { name: submitName(claim) }));
+    await screen.findByText(copy.avatarFailed);
+    await userEvent.click(screen.getByRole('button', { name: copy.avatarRetry }));
+    await screen.findByText(copy.avatarConflict);
+    const continueButton = screen.getByRole('button', { name: copy.avatarConflictContinue });
+    await waitFor(() => expect(document.activeElement).toBe(continueButton));
+    // Cleared conflict: the action is gone and focus is not forced back onto anything stale.
+    await userEvent.click(continueButton);
+    await waitFor(() =>
+      expect(screen.queryByRole('button', { name: copy.avatarConflictContinue })).toBeNull()
+    );
+    expect(document.activeElement).not.toBe(continueButton);
+  });
+
+  it('routes an expired session during the ambiguous-create readback to login, not a form error', async () => {
+    if (claim) mocks.claim.mockRejectedValueOnce(new Error('PLAYER_CLAIM_NOT_PENDING'));
+    else mocks.onboard.mockRejectedValueOnce(new Error('network'));
+    mocks.profile.mockRejectedValue(new Error('UNAUTHENTICATED'));
+    mountFlow(claim, '/matches/e1');
+    await fillAndPick({ claim });
+    await userEvent.click(screen.getByRole('button', { name: submitName(claim) }));
+    await waitFor(() => expect(mocks.assign).toHaveBeenCalledWith('/login?next=/onboarding'));
+    expect(mocks.assign).toHaveBeenCalledTimes(1);
+    expect(screen.queryByRole('alert')).toBeNull();
+    expect(mocks.upload).not.toHaveBeenCalled();
+  });
+
+  it('surfaces a competing avatar stored between reconcile and finalize as a conflict without overwriting', async () => {
+    // Reconcile saw no avatar, then another session stored one: the guarded write hits 0 rows.
+    mocks.reconcile.mockResolvedValue('none');
+    mocks.finalize.mockRejectedValueOnce(new Error('timeout'));
+    mocks.finalize.mockRejectedValueOnce(new Error('AVATAR_CONFLICT'));
+    mountFlow(claim, '/matches/e1');
+    await fillAndPick({ claim });
+    await userEvent.click(screen.getByRole('button', { name: submitName(claim) }));
+    await screen.findByText(copy.avatarFailed);
+    await userEvent.click(screen.getByRole('button', { name: copy.avatarRetry }));
+    expect((await screen.findByRole('alert')).textContent).toBe(copy.avatarConflict);
+    expect(mocks.reconcile).toHaveBeenCalledWith({ data: { objectKey: KEY } });
+    expect(mocks.finalize).toHaveBeenCalledTimes(2);
+    expect(mocks.finalize).toHaveBeenLastCalledWith({
+      data: { objectKey: KEY, expectedPreviousKey: null }
+    });
+    expect(mocks.assign).not.toHaveBeenCalled();
+    expect(screen.queryByRole('button', { name: copy.avatarRetry })).toBeNull();
+    await userEvent.click(screen.getByRole('button', { name: copy.avatarConflictContinue }));
+    await waitFor(() =>
+      expect(claim ? mocks.passwordState : mocks.assign).toHaveBeenCalledTimes(1)
+    );
+    expect(mocks.finalize).toHaveBeenCalledTimes(2);
+    expect(mocks.upload).toHaveBeenCalledTimes(1);
+    expect(create()).toHaveBeenCalledTimes(1);
+  });
+
+  it('treats a lost claim/create response as committed: retry uploads the photo once without replaying', async () => {
+    mocks.passwordState.mockResolvedValue({ pending: false, canSkip: false });
+    if (claim) mocks.claim.mockRejectedValueOnce(new Error('network'));
+    else mocks.onboard.mockRejectedValueOnce(new Error('readback failed'));
+    mocks.profile.mockResolvedValue({ avatar_signed_url: null });
+    mountFlow(claim, '/matches/e1');
+    await fillAndPick({ claim });
+    await userEvent.click(screen.getByRole('button', { name: submitName(claim) }));
+    if (claim) {
+      await screen.findByText(en.auth.claim.failed);
+      // Server committed the claim: replay is rejected as no longer pending.
+      mocks.claim.mockRejectedValueOnce(new Error('PLAYER_CLAIM_NOT_PENDING'));
+      await userEvent.click(screen.getByRole('button', { name: submitName(claim) }));
+    }
+    await waitFor(() =>
+      expect(mocks.assign).toHaveBeenCalledWith(
+        claim ? '/matches/e1' : '/onboarding/community?next=%2Fmatches%2Fe1'
+      )
+    );
+    expect(mocks.upload).toHaveBeenCalledTimes(1);
+    expect(mocks.finalize).toHaveBeenCalledTimes(1);
+    expect(create()).toHaveBeenCalledTimes(claim ? 2 : 1);
   });
 
   it('continues without the photo using the original continuation and no new profile call', async () => {
@@ -410,13 +526,85 @@ describe.each([
 });
 
 describe('photo with claim error routing', () => {
-  it('skips the upload when the identity was already claimed elsewhere', async () => {
-    mocks.claim.mockRejectedValueOnce(new Error('PLAYER_CLAIM_NOT_PENDING'));
+  const notPending = () => mocks.claim.mockRejectedValueOnce(new Error('PLAYER_CLAIM_NOT_PENDING'));
+  const submitClaim = async (photo: File | null = png()) => {
     mountFlow(true, '/matches/e1');
-    await fillAndPick({ claim: true });
+    await fillAndPick({ claim: true, photo });
+    await userEvent.click(screen.getByRole('button', { name: submitName(true) }));
+  };
+
+  it('NOT_PENDING without a profile is not committed: retryable error, no upload, no navigation', async () => {
+    notPending();
+    mocks.profile.mockRejectedValue(new Error('PLAYER_NOT_ONBOARDED'));
+    await submitClaim();
+    expect((await screen.findByRole('alert')).textContent).toBe(en.auth.claim.failed);
+    expect(mocks.upload).not.toHaveBeenCalled();
+    expect(mocks.passwordState).not.toHaveBeenCalled();
+    expect(mocks.assign).not.toHaveBeenCalled();
+    // Retry is allowed and replays the claim (nothing was committed).
+    mocks.passwordState.mockResolvedValue({ pending: false, canSkip: false });
     await userEvent.click(screen.getByRole('button', { name: submitName(true) }));
     await waitFor(() => expect(mocks.assign).toHaveBeenCalledWith('/matches/e1'));
+    expect(mocks.claim).toHaveBeenCalledTimes(2);
+    expect(mocks.finalize).toHaveBeenCalledTimes(1);
+  });
+
+  it('NOT_PENDING with a failed profile read fails closed', async () => {
+    notPending();
+    mocks.profile.mockRejectedValue(new Error('network'));
+    await submitClaim();
+    expect((await screen.findByRole('alert')).textContent).toBe(en.auth.claim.failed);
     expect(mocks.upload).not.toHaveBeenCalled();
+    expect(mocks.assign).not.toHaveBeenCalled();
+  });
+
+  it('NOT_PENDING with an existing profile uploads the photo then runs the password lookup', async () => {
+    notPending();
+    mocks.profile.mockResolvedValue({ avatar_signed_url: null });
+    mocks.passwordState.mockResolvedValue({ pending: false, canSkip: false });
+    await submitClaim();
+    await waitFor(() => expect(mocks.assign).toHaveBeenCalledWith('/matches/e1'));
+    expect(mocks.upload).toHaveBeenCalledTimes(1);
+    expect(mocks.finalize).toHaveBeenCalledWith({
+      data: { objectKey: KEY, expectedPreviousKey: null }
+    });
+    expect(mocks.passwordState).toHaveBeenCalledTimes(1);
+    expect(mocks.claim).toHaveBeenCalledTimes(1);
+  });
+
+  it('NOT_PENDING with an existing profile and no photo still does the password lookup', async () => {
+    notPending();
+    mocks.profile.mockResolvedValue({ avatar_signed_url: null });
+    mocks.passwordState.mockResolvedValue({ pending: false, canSkip: false });
+    await submitClaim(null);
+    await waitFor(() => expect(mocks.assign).toHaveBeenCalledWith('/matches/e1'));
+    expect(mocks.passwordState).toHaveBeenCalledTimes(1);
+    expect(mocks.upload).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    { label: 'pending', state: { pending: true, canSkip: false } },
+    { label: 'canSkip', state: { pending: false, canSkip: true } }
+  ])('NOT_PENDING + profile + password $label shows the password step', async ({ state }) => {
+    notPending();
+    mocks.profile.mockResolvedValue({ avatar_signed_url: null });
+    mocks.passwordState.mockResolvedValue(state);
+    await submitClaim();
+    expect(
+      await screen.findByRole('heading', { level: 1, name: en.auth.claim.passwordTitle })
+    ).toBeTruthy();
+    expect(mocks.assign).not.toHaveBeenCalled();
+  });
+
+  it('NOT_PENDING + profile + password lookup failure fails closed to the password step', async () => {
+    notPending();
+    mocks.profile.mockResolvedValue({ avatar_signed_url: null });
+    mocks.passwordState.mockRejectedValue(new Error('network'));
+    await submitClaim();
+    expect(
+      await screen.findByRole('heading', { level: 1, name: en.auth.claim.passwordTitle })
+    ).toBeTruthy();
+    expect(mocks.assign).not.toHaveBeenCalled();
   });
 
   it('reloads without uploading when mailbox verification was lost', async () => {

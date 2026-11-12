@@ -202,8 +202,10 @@
     "avatarAltUnnamed": "Profile photo placeholder",
     "avatarSkip": "Skip photo",
     "avatarFailed": "Your profile was saved, but the photo couldn't be uploaded.",
+    "avatarConflict": "Your profile was saved, but the photo you selected was not saved because another photo is now on your profile. That photo stays.",
     "avatarRetry": "Retry photo upload",
-    "avatarContinue": "Continue without photo"
+    "avatarContinue": "Continue without photo",
+    "avatarConflictContinue": "Continue with the current photo"
   },
   "player": {
     "provisional": {

@@ -202,8 +202,10 @@
     "avatarAltUnnamed": "Marcador de la foto de perfil",
     "avatarSkip": "Omitir foto",
     "avatarFailed": "Tu perfil se guardó, pero no se pudo subir la foto.",
+    "avatarConflict": "Tu perfil se guardó, pero la foto que elegiste no se guardó porque ya hay otra foto en tu perfil. Esa foto se mantiene.",
     "avatarRetry": "Reintentar la subida de la foto",
-    "avatarContinue": "Continuar sin foto"
+    "avatarContinue": "Continuar sin foto",
+    "avatarConflictContinue": "Continuar con la foto actual"
   },
   "player": {
     "provisional": {
