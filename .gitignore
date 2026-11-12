@@ -17,5 +17,8 @@ artifacts/community-admin-visual/
 .dev.vars
 supabase/.branches/
 supabase/.temp/
+test/stack/supabase/.branches/
+test/stack/supabase/.temp/
+test/stack/supabase/volumes/
 src/routeTree.gen.ts
 .opencode/state/
