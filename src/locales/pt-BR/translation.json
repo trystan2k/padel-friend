@@ -194,7 +194,16 @@
     "validationSide": "Selecione seu lado preferido da quadra.",
     "validationLevel": "Escolha um nível de 0,0 a 7,0 em passos de 0,1.",
     "saving": "Salvando…",
-    "failed": "Não foi possível salvar seu perfil. Tente novamente."
+    "failed": "Não foi possível salvar seu perfil. Tente novamente.",
+    "avatarLabel": "FOTO DE PERFIL (OPCIONAL)",
+    "avatarHelp": "JPEG, PNG ou WebP · até 2 MB. Você também pode adicionar uma depois, no seu perfil.",
+    "avatarInvalid": "Escolha uma imagem JPEG, PNG ou WebP de até 2 MB.",
+    "avatarAlt": "Foto do perfil de {{name}}",
+    "avatarAltUnnamed": "Espaço reservado da foto do perfil",
+    "avatarSkip": "Pular foto",
+    "avatarFailed": "Seu perfil foi salvo, mas não foi possível enviar a foto.",
+    "avatarRetry": "Tentar enviar a foto novamente",
+    "avatarContinue": "Continuar sem foto"
   },
   "player": {
     "provisional": {

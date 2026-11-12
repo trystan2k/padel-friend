@@ -86,6 +86,8 @@ type LocaleCopy = {
   };
   onboarding: {
     title: string;
+    avatarLabel: string;
+    avatarSkip: string;
     levelHelp: string;
     level: string;
     levelScale: string;
@@ -200,6 +202,26 @@ const VISUAL_BUDGETS: Record<VisualReference, number> = {
   // macOS 7,201/329,160 = 2.1877%; Linux 9,664/329,160 = 2.9363% → 3.09% (margin 0.1537pp).
   'reset-password.png': 0.0309
 };
+
+// Phase-2 (PAF-25) current player-setup composition: the optional avatar card sits between the
+// display name and the level card, a section the historical PdRtP frame does not contain. The
+// PAF-1 reference stays pinned and is still compared (with the avatar card taken out of flow);
+// this separate, self-generated baseline guards the composition the product actually ships.
+// Budget: nonzero cross-renderer allowance only (macOS-generated baseline vs Linux CI font
+// rasterization of Inter/Manrope; same screen as 'player-setup.png', whose measured macOS-to-Linux
+// residual gap is ~1.5pp). Structural probes below stay exact; never raise this to hide layout.
+const PHASE2_VISUAL_BUDGETS = {
+  'player-setup-phase2.png': 0.025
+} as const;
+
+async function comparePhase2(page: Page, name: keyof typeof PHASE2_VISUAL_BUDGETS): Promise<void> {
+  await expect(page).toHaveScreenshot(name, {
+    animations: 'disabled',
+    caret: 'hide',
+    threshold: 0.1,
+    maxDiffPixelRatio: PHASE2_VISUAL_BUDGETS[name]
+  });
+}
 
 type Geometry = { x?: number; y?: number; width?: number; height?: number };
 
@@ -592,6 +614,43 @@ test('incomplete authenticated player setup matches frame PdRtP', async ({ page 
   await expect(page.getByRole('heading', { name: en.onboarding.title })).toBeVisible();
   await expect(page.getByRole('group', { name: en.profile.dominantHand })).toBeVisible();
   await expect(page.getByRole('radio', { name: en.onboarding.handPreferNot })).toBeChecked();
+  // Phase-2 composition probes (structure first, then the reviewed current-layout snapshot).
+  const avatarPicker = page.getByLabel(en.onboarding.avatarLabel);
+  const avatarCard = page.locator('form > div').filter({ has: avatarPicker });
+  const nameField = page.locator('form > div').first();
+  const levelCard = page.locator('form > div').nth(2);
+  const [nameBox, avatarBox, levelBox, ctaBox, pickerBox, skipBox] = await Promise.all([
+    nameField.boundingBox(),
+    avatarCard.boundingBox(),
+    levelCard.boundingBox(),
+    page.locator('form button[type="submit"]').boundingBox(),
+    avatarPicker.boundingBox(),
+    page.getByRole('button', { name: en.onboarding.avatarSkip }).boundingBox()
+  ]);
+  expect(avatarBox, 'avatar card must be rendered').not.toBeNull();
+  // Form gap is 12px: avatar card directly after the display name, level card directly after it.
+  expect(Math.abs(avatarBox!.y - (nameBox!.y + nameBox!.height + 12))).toBeLessThanOrEqual(1);
+  expect(Math.abs(levelBox!.y - (avatarBox!.y + avatarBox!.height + 12))).toBeLessThanOrEqual(1);
+  expect(avatarBox!.y + avatarBox!.height).toBeLessThan(ctaBox!.y);
+  expect(avatarBox!.x).toBeCloseTo(18, 0);
+  expect(avatarBox!.width).toBeCloseTo(354, 0);
+  expect(pickerBox!.height).toBeGreaterThanOrEqual(44);
+  expect(skipBox!.height).toBeGreaterThanOrEqual(44);
+  expect(await avatarCard.evaluate((card) => getComputedStyle(card).gap)).toBe('9px');
+  await comparePhase2(page, 'player-setup-phase2.png');
+  // 320px: the translated-text-safe card wraps instead of overflowing the viewport.
+  await page.setViewportSize({ width: 320, height: 844 });
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= document.documentElement.clientWidth
+    )
+  ).toBe(true);
+  await page.setViewportSize({ width: 390, height: 844 });
+  // The historical PdRtP frame has no photo section: take the card out of flow so every
+  // original frame probe and the pinned PAF-1 comparison below keep their exact coordinates.
+  await avatarCard.evaluate((card) => {
+    card.style.display = 'none';
+  });
   // PdRtP frame coordinates: badge, hero, card stack, hand row and CTA.
   await assertGeometry(
     page.locator('main > div').first().locator('span').first(),
@@ -624,7 +683,7 @@ test('incomplete authenticated player setup matches frame PdRtP', async ({ page 
     width: 354,
     height: 44
   });
-  await assertGeometry(page.locator('form > div').nth(1), 'Starting level card', {
+  await assertGeometry(levelCard, 'Starting level card', {
     x: 18,
     y: 302,
     width: 354,
@@ -656,7 +715,7 @@ test('incomplete authenticated player setup matches frame PdRtP', async ({ page 
       height: 44
     }
   );
-  await assertGeometry(page.locator('form > div').nth(2), 'Preferred side and hand card', {
+  await assertGeometry(page.locator('form > div').nth(3), 'Preferred side and hand card', {
     x: 18,
     y: 459,
     width: 354,

@@ -80,6 +80,24 @@ export const ui = stylex.create({
   },
   onboardingLevelValue: { fontSize: 'var(--font-size-29)' },
   onboardingExtras: { marginTop: 'calc(var(--space-40) * 3)' },
+  onboardingAvatar: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    alignItems: 'flex-start',
+    gap: 'var(--space-12)'
+  },
+  onboardingAvatarBody: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 'var(--space-9)',
+    flex: 1,
+    minWidth: 'calc(var(--space-40) * 4)'
+  },
+  onboardingAvatarSkip: {
+    backgroundColor: 'var(--color-bg)',
+    color: 'var(--color-text)',
+    fontWeight: 'var(--font-weight-semibold)'
+  },
   sliderGroup: {
     display: 'flex',
     flexDirection: 'column',

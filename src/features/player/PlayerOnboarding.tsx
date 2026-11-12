@@ -8,9 +8,21 @@ import { SurfaceCard } from '../../components/ui/SurfaceCard';
 import { TextField } from '../../components/ui/TextField';
 import { stripEdgeWhitespace } from '../../lib/edge-whitespace';
 import { ClaimPasswordStep } from './ClaimPasswordStep';
-import { claimProvisionalPlayer, getPasswordSetupState, onboardPlayer } from './player.functions';
+import { OnboardingAvatar } from './OnboardingAvatar';
+import { uploadOwnerAvatar } from './avatar-upload';
+import {
+  claimProvisionalPlayer,
+  completeAvatarUpload,
+  getMyPlayerProfile,
+  getPasswordSetupState,
+  onboardPlayer
+} from './player.functions';
 import { INITIAL_RELIABILITY_PERCENT, LEVEL_STEP, MAX_LEVEL, MIN_LEVEL } from './rating-config';
-import { validateInitialLevel, type PreferredSide } from './player.validators';
+import {
+  validateInitialLevel,
+  type OnboardPlayerInput,
+  type PreferredSide
+} from './player.validators';
 import type { ProvisionalClaim } from './provisional-claim';
 import { ui } from './player-ui.styles';
 import { normalizeReturnPath, optionalReturnPath } from '../auth/return-path';
@@ -44,7 +56,17 @@ export function PlayerOnboarding({
   const [errors, setErrors] = useState<Partial<Record<'name' | 'side' | 'level', string>>>({});
   const [failed, setFailed] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [photo, setPhoto] = useState<File | null>(null);
+  const [photoFailed, setPhotoFailed] = useState(false);
+  const [committed, setCommitted] = useState(false);
+  // The profile (or claim) is committed exactly once; later photo retries never resubmit it.
+  const committedRef = useRef(false);
+  // Storage key of the uploaded photo, kept so a finalize retry does not upload a duplicate.
+  const photoKeyRef = useRef<string | null>(null);
+  const navigatingRef = useRef(false);
   const [passwordStep, setPasswordStep] = useState<{ canSkip: boolean } | null>(null);
+  // Inputs freeze while saving and once the profile is committed (only the photo can still change).
+  const locked = saving || committed;
   const selectedLevel = Number(level);
   const sliderLevel = Number.isFinite(selectedLevel)
     ? Math.min(MAX_LEVEL, Math.max(MIN_LEVEL, selectedLevel))
@@ -69,7 +91,7 @@ export function PlayerOnboarding({
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (saving) return;
+    if (saving || committedRef.current) return;
     const nextErrors: typeof errors = {};
     const normalizedName = stripEdgeWhitespace(name);
     if (!normalizedName || Array.from(normalizedName).length > NAME_MAX_CODE_POINTS)
@@ -86,61 +108,103 @@ export function PlayerOnboarding({
     else if (nextErrors.side) sideRef.current?.focus();
     else if (nextErrors.level) levelRef.current?.focus();
     if (Object.keys(nextErrors).length || !side || initialLevel === undefined) return;
-    setSaving(true);
-    setFailed(false);
-    let navigating = false;
-    try {
-      const profile = {
-        display_name: normalizedName,
-        preferred_side: side,
-        initial_level: initialLevel,
-        dominant_hand: hand,
-        bio: bio.trim() || null
-      };
-      if (claim) await claimProvisionalPlayer({ data: profile });
-      else await onboardPlayer({ data: profile });
-      if (claim) {
-        // The claim reset the password, so ask for a new one before leaving. The server says
-        // whether one is owed and whether a verified provider identity lets the claimant skip
-        // it. `saving` stays set until the lookup is done, so the form cannot be resubmitted
-        // in between. If the lookup fails the step is shown without a skip (fail closed).
-        const state = await getPasswordSetupState().catch(() => ({
-          pending: true,
-          canSkip: false
-        }));
-        if (state.pending || state.canSkip) {
-          setPasswordStep({ canSkip: state.canSkip });
-          return;
-        }
-        navigating = true;
-        window.location.assign(normalizeReturnPath(returnPath));
+    const profile = {
+      display_name: normalizedName,
+      preferred_side: side,
+      initial_level: initialLevel,
+      dominant_hand: hand,
+      bio: bio.trim() || null
+    };
+    await complete({ profile, withPhoto: true });
+  }
+
+  function navigate(target: string) {
+    navigatingRef.current = true;
+    window.location.assign(target);
+  }
+
+  // Original success continuation, shared by the normal submit, a photo retry and the
+  // "continue without photo" recovery so all three behave identically.
+  async function continueAfterProfile() {
+    if (claim) {
+      // The claim reset the password, so ask for a new one before leaving. The server says
+      // whether one is owed and whether a verified provider identity lets the claimant skip
+      // it. `saving` stays set until the lookup is done, so the form cannot be resubmitted
+      // in between. If the lookup fails the step is shown without a skip (fail closed).
+      const state = await getPasswordSetupState().catch(() => ({
+        pending: true,
+        canSkip: false
+      }));
+      if (state.pending || state.canSkip) {
+        setPasswordStep({ canSkip: state.canSkip });
         return;
       }
-      navigating = true;
-      const search = new URLSearchParams(optionalReturnPath(returnPath)).toString();
-      const target = `/onboarding/community${search ? `?${search}` : ''}`;
-      window.location.assign(target);
+      navigate(normalizeReturnPath(returnPath));
+      return;
+    }
+    const search = new URLSearchParams(optionalReturnPath(returnPath)).toString();
+    navigate(`/onboarding/community${search ? `?${search}` : ''}`);
+  }
+
+  // Uploads (once) and finalizes the chosen photo. Returns false on a recoverable failure.
+  async function savePhoto(file: File): Promise<boolean> {
+    try {
+      if (photoKeyRef.current) {
+        // A previous finalize may have succeeded without a response: trust the authoritative
+        // profile instead of overwriting whatever avatar it already has.
+        const current = await getMyPlayerProfile();
+        if (current.avatar_signed_url) return true;
+      }
+      photoKeyRef.current ??= await uploadOwnerAvatar(file);
+      await completeAvatarUpload({ data: { objectKey: photoKeyRef.current } });
+      return true;
+    } catch (error) {
+      if (error instanceof Error && error.message === 'UNAUTHENTICATED') throw error;
+      return false;
+    }
+  }
+
+  async function complete({
+    profile,
+    withPhoto
+  }: {
+    profile?: OnboardPlayerInput;
+    withPhoto: boolean;
+  }) {
+    setSaving(true);
+    setFailed(false);
+    setPhotoFailed(false);
+    try {
+      if (profile && !committedRef.current) {
+        if (claim) await claimProvisionalPlayer({ data: profile });
+        else await onboardPlayer({ data: profile });
+        committedRef.current = true;
+        setCommitted(true);
+      }
+      if (withPhoto && photo && !(await savePhoto(photo))) {
+        setPhotoFailed(true);
+        return;
+      }
+      await continueAfterProfile();
     } catch (error) {
       if (error instanceof Error && error.message === 'UNAUTHENTICATED') {
-        navigating = true;
-        window.location.assign('/login?next=/onboarding');
+        navigate('/login?next=/onboarding');
         return;
       }
       if (claim && error instanceof Error && error.message === 'PLAYER_CLAIM_NOT_PENDING') {
         // Already claimed (double submit or another tab): continue to the destination.
-        navigating = true;
-        window.location.assign(normalizeReturnPath(returnPath));
+        navigate(normalizeReturnPath(returnPath));
         return;
       }
       if (claim && error instanceof Error && error.message === 'PLAYER_CLAIM_NOT_VERIFIED') {
         // Mailbox proof is gone or never existed: the loader shows the verification step.
-        navigating = true;
+        navigatingRef.current = true;
         window.location.reload();
         return;
       }
       setFailed(true);
     } finally {
-      if (!navigating) setSaving(false);
+      if (!navigatingRef.current) setSaving(false);
     }
   }
 
@@ -195,8 +259,10 @@ export function PlayerOnboarding({
           value={name}
           onChange={(event) => changeName(event.target.value)}
           required
+          disabled={locked}
           error={errors.name ? t(errors.name) : undefined}
         />
+        <OnboardingAvatar name={name} file={photo} onFileChange={setPhoto} disabled={locked} />
         <SurfaceCard xstyle={ui.onboardingCard}>
           <div {...stylex.props(ui.onboardingLevelHeading)}>
             <span {...stylex.props(ui.label)}>{t('onboarding.level')}</span>
@@ -219,7 +285,7 @@ export function PlayerOnboarding({
                 step={LEVEL_STEP}
                 value={sliderLevel}
                 onChange={(event) => setLevel(Number(event.target.value).toFixed(1))}
-                disabled={levelLocked}
+                disabled={levelLocked || locked}
                 aria-label={t('onboarding.levelScale')}
                 aria-describedby={
                   levelLocked
@@ -272,6 +338,7 @@ export function PlayerOnboarding({
                       name="side"
                       value={value}
                       checked={side === value}
+                      disabled={locked}
                       onChange={() => setSide(value)}
                       aria-describedby={errors.side ? 'player-side-error' : undefined}
                       {...stylex.props(ui.radio)}
@@ -312,6 +379,7 @@ export function PlayerOnboarding({
                       name="dominant_hand"
                       value={value ?? ''}
                       checked={hand === value}
+                      disabled={locked}
                       onChange={() => setHand(value)}
                       {...stylex.props(ui.radio)}
                     />
@@ -340,15 +408,34 @@ export function PlayerOnboarding({
             {t(claim ? 'auth.claim.failed' : 'onboarding.failed')}
           </p>
         )}
-        <Button type="submit" busy={saving}>
-          {saving ? (
-            t('onboarding.saving')
-          ) : (
-            <>
-              {t(claim ? 'auth.claim.submit' : 'onboarding.save')} <span aria-hidden="true">→</span>
-            </>
-          )}
-        </Button>
+        {photoFailed ? (
+          <div {...stylex.props(ui.stack)}>
+            <p role="alert" {...stylex.props(ui.error)}>
+              {t('onboarding.avatarFailed')}
+            </p>
+            <Button busy={saving} onClick={() => void complete({ withPhoto: true })}>
+              {t('onboarding.avatarRetry')}
+            </Button>
+            <Button
+              variant="secondary"
+              disabled={saving}
+              onClick={() => void complete({ withPhoto: false })}
+            >
+              {t('onboarding.avatarContinue')}
+            </Button>
+          </div>
+        ) : (
+          <Button type="submit" busy={saving}>
+            {saving ? (
+              t('onboarding.saving')
+            ) : (
+              <>
+                {t(claim ? 'auth.claim.submit' : 'onboarding.save')}{' '}
+                <span aria-hidden="true">→</span>
+              </>
+            )}
+          </Button>
+        )}
         <SurfaceCard xstyle={ui.onboardingExtras}>
           <label htmlFor="player-level" {...stylex.props(ui.label)}>
             {t('onboarding.preciseLevel')}
@@ -364,7 +451,7 @@ export function PlayerOnboarding({
             value={level}
             onChange={(event) => setLevel(event.target.value)}
             required
-            disabled={levelLocked}
+            disabled={levelLocked || locked}
             aria-invalid={Boolean(errors.level)}
             aria-describedby={errors.level ? 'player-level-error' : undefined}
             {...stylex.props(ui.input)}
@@ -384,6 +471,7 @@ export function PlayerOnboarding({
             maxLength={280}
             value={bio}
             onChange={(event) => setBio(event.target.value)}
+            disabled={locked}
             {...stylex.props(ui.input, ui.textarea)}
           />
         </SurfaceCard>

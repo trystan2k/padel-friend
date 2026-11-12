@@ -57,6 +57,10 @@ test.beforeEach(() => {
   test.setTimeout(90_000);
 });
 const a = en.matches.addPlayer;
+const TINY_PNG = Buffer.from(
+  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
+  'base64'
+);
 
 async function openDialog(page: Page) {
   await organizerMenu(page, a.action);
@@ -232,6 +236,11 @@ test('added player opens the invitation, claims the prefilled profile and gains 
 
     await player.getByLabel(en.onboarding.name).fill('Carla Reclamada');
     await player.getByLabel(en.onboarding.sideLeftShort).first().check();
+    // Optional photo: chosen locally, uploaded only once the claim succeeded (the restricted
+    // provisional session cannot write storage before that), then the password step follows.
+    await player
+      .getByLabel(en.onboarding.avatarLabel)
+      .setInputFiles({ name: 'carla.png', mimeType: 'image/png', buffer: TINY_PNG });
     await player.getByRole('button', { name: claim.submit }).click();
     await expect(
       player.getByRole('heading', { level: 1, name: claim.passwordTitle })
@@ -245,17 +254,27 @@ test('added player opens the invitation, claims the prefilled profile and gains 
     const rows = await sql(
       `select p.is_provisional::text as provisional, p.display_name,
               (select count(*)::int from auth.users where email='${email}') as accounts,
-              (select count(*)::int from public.match_event_audit_log where target_user_id=p.user_id and action='player_claimed') as audits
+              (select count(*)::int from public.match_event_audit_log where target_user_id=p.user_id and action='player_claimed') as audits,
+              (p.avatar_url ~ ('^' || p.user_id || '/[0-9a-f-]{36}\\.png$'))::text as avatar_key_valid
          from public.player_profiles p where p.user_id='${userId}'`
     );
     expect(rows).toEqual([
-      { provisional: 'false', display_name: 'Carla Reclamada', accounts: 1, audits: 1 }
+      {
+        provisional: 'false',
+        display_name: 'Carla Reclamada',
+        accounts: 1,
+        audits: 1,
+        avatar_key_valid: 'true'
+      }
     ]);
     await player.goto(`/matches/${pastId}`);
     await waitForHydratedPage(player);
     await expect(player.getByText('Past private court').first()).toBeVisible();
     await player.goto('/dashboard');
     await expect(player).toHaveURL(/\/dashboard$/);
+    await expect(
+      player.getByAltText(en.profile.avatarAlt.replace('{{name}}', 'Carla Reclamada')).first()
+    ).toHaveAttribute('src', /\/object\/sign\//);
   } finally {
     await context.close();
   }

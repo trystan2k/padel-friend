@@ -31,6 +31,11 @@ type LocaleCopy = {
   onboarding: {
     title: string;
     name: string;
+    avatarLabel: string;
+    avatarInvalid: string;
+    avatarSkip: string;
+    avatarFailed: string;
+    avatarRetry: string;
     side: string;
     level: string;
     preciseLevel: string;
@@ -506,6 +511,130 @@ test('the dashboard allows profile edits but exposes no level control, and avata
   const avatar = page.getByAltText(avatarAlt('Mila Edited')).first();
   await expect(avatar).toBeVisible();
   await expect(avatar).toHaveAttribute('src', /\/object\/sign\//);
+});
+
+const TINY_PNG = Buffer.from(
+  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
+  'base64'
+);
+
+async function fillOnboardingRequired(page: Page, name: string): Promise<void> {
+  await page.getByLabel(en.onboarding.name, { exact: true }).fill(name);
+  await page.getByLabel(en.onboarding.preciseLevel).fill('3.0');
+  const radio = page
+    .getByRole('group', { name: en.onboarding.side })
+    .getByRole('radio', { name: en.onboarding.sideLeftShort });
+  await radio.check();
+  // The form is hydrated once a controlled re-render keeps the radio checked.
+  await expect(radio).toBeChecked();
+}
+
+test('an optional onboarding photo sits before the primary action and survives the profile reload', async ({
+  page
+}) => {
+  await register(page, uniqueEmail());
+  await fillOnboardingRequired(page, 'Pia Photo');
+
+  const picker = page.getByLabel(en.onboarding.avatarLabel);
+  const save = page.getByRole('button', { name: en.onboarding.save });
+  const nameBox = await page.getByLabel(en.onboarding.name, { exact: true }).boundingBox();
+  const pickerBox = await picker.boundingBox();
+  const saveBox = await save.boundingBox();
+  expect(nameBox!.y).toBeLessThan(pickerBox!.y);
+  expect(pickerBox!.y).toBeLessThan(saveBox!.y);
+  expect(pickerBox!.height).toBeGreaterThanOrEqual(44);
+  const skipBox = await page.getByRole('button', { name: en.onboarding.avatarSkip }).boundingBox();
+  expect(skipBox!.height).toBeGreaterThanOrEqual(44);
+
+  // Initials fallback until a photo is chosen; the choice is previewed locally, not uploaded.
+  await expect(page.getByText('PP', { exact: true })).toBeVisible();
+  await picker.setInputFiles({ name: 'pia.png', mimeType: 'image/png', buffer: TINY_PNG });
+  await expect(page.getByAltText(avatarAlt('Pia Photo'))).toHaveAttribute('src', /^blob:/);
+
+  await save.click();
+  await skipCommunity(page);
+  const avatar = page.getByAltText(avatarAlt('Pia Photo')).first();
+  await expect(avatar).toHaveAttribute('src', /\/object\/sign\//);
+  await page.reload();
+  await waitForHydratedPage(page);
+  await expect(page.getByAltText(avatarAlt('Pia Photo')).first()).toHaveAttribute(
+    'src',
+    /\/object\/sign\//
+  );
+});
+
+test('skipping the onboarding photo keeps the initials and never blocks the profile', async ({
+  page
+}) => {
+  await register(page, uniqueEmail());
+  await fillOnboardingRequired(page, 'Sam Skip');
+  await page
+    .getByLabel(en.onboarding.avatarLabel)
+    .setInputFiles({ name: 'sam.png', mimeType: 'image/png', buffer: TINY_PNG });
+  await expect(page.getByAltText(avatarAlt('Sam Skip'))).toHaveAttribute('src', /^blob:/);
+  await page.getByRole('button', { name: en.onboarding.avatarSkip }).click();
+  await expect(page.getByAltText(avatarAlt('Sam Skip'))).toHaveCount(0);
+  await expect(page.getByLabel(en.onboarding.avatarLabel)).toHaveValue('');
+
+  await page.getByRole('button', { name: en.onboarding.save }).click();
+  await skipCommunity(page);
+  await expect(page.getByRole('heading', { name: 'Sam Skip', exact: true })).toBeVisible();
+  await expect(page.getByAltText(avatarAlt('Sam Skip'))).toHaveCount(0);
+});
+
+test('an invalid onboarding photo is rejected locally and the profile can still be saved', async ({
+  page
+}) => {
+  await register(page, uniqueEmail());
+  await fillOnboardingRequired(page, 'Ian Invalid');
+  const picker = page.getByLabel(en.onboarding.avatarLabel);
+  await picker.setInputFiles({
+    name: 'note.txt',
+    mimeType: 'text/plain',
+    buffer: Buffer.from('x')
+  });
+  await expect(page.getByText(en.onboarding.avatarInvalid)).toBeVisible();
+  await picker.setInputFiles({
+    name: 'big.png',
+    mimeType: 'image/png',
+    buffer: Buffer.alloc(2 * 1024 * 1024 + 1, 1)
+  });
+  await expect(page.getByText(en.onboarding.avatarInvalid)).toBeVisible();
+
+  await page.getByRole('button', { name: en.onboarding.save }).click();
+  await skipCommunity(page);
+  await expect(page.getByRole('heading', { name: 'Ian Invalid', exact: true })).toBeVisible();
+});
+
+test('a failed onboarding photo upload keeps the saved profile and offers retry or continue', async ({
+  page
+}) => {
+  await register(page, uniqueEmail());
+  await fillOnboardingRequired(page, 'Fay Failure');
+  await page
+    .getByLabel(en.onboarding.avatarLabel)
+    .setInputFiles({ name: 'fay.png', mimeType: 'image/png', buffer: TINY_PNG });
+
+  // Storage rejects the first upload only; the profile was already committed by then.
+  let blocked = true;
+  await page.route(/\/storage\/v1\/object\/player-avatars\//, async (route) => {
+    if (blocked) {
+      blocked = false;
+      await route.fulfill({ status: 500, contentType: 'application/json', body: '{}' });
+      return;
+    }
+    await route.continue();
+  });
+  await page.getByRole('button', { name: en.onboarding.save }).click();
+  await expect(page.getByText(en.onboarding.avatarFailed)).toBeVisible();
+  expect(new URL(page.url()).pathname).toBe('/onboarding');
+
+  await page.getByRole('button', { name: en.onboarding.avatarRetry }).click();
+  await skipCommunity(page);
+  await expect(page.getByAltText(avatarAlt('Fay Failure')).first()).toHaveAttribute(
+    'src',
+    /\/object\/sign\//
+  );
 });
 
 test('a whitespace-padded save syncs the trimmed server values into display and edit form', async ({

@@ -194,7 +194,16 @@
     "validationSide": "Selecciona tu lado preferido de la pista.",
     "validationLevel": "Elige un nivel de 0,0 a 7,0 en pasos de 0,1.",
     "saving": "Guardando…",
-    "failed": "No se pudo guardar tu perfil. Inténtalo de nuevo."
+    "failed": "No se pudo guardar tu perfil. Inténtalo de nuevo.",
+    "avatarLabel": "FOTO DE PERFIL (OPCIONAL)",
+    "avatarHelp": "JPEG, PNG o WebP · hasta 2 MB. También puedes añadir una más tarde desde tu perfil.",
+    "avatarInvalid": "Elige una imagen JPEG, PNG o WebP de hasta 2 MB.",
+    "avatarAlt": "Foto de perfil de {{name}}",
+    "avatarAltUnnamed": "Marcador de la foto de perfil",
+    "avatarSkip": "Omitir foto",
+    "avatarFailed": "Tu perfil se guardó, pero no se pudo subir la foto.",
+    "avatarRetry": "Reintentar la subida de la foto",
+    "avatarContinue": "Continuar sin foto"
   },
   "player": {
     "provisional": {
