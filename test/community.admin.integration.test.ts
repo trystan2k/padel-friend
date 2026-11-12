@@ -1,4 +1,5 @@
 import { spawn } from 'node:child_process';
+import { createRequire } from 'node:module';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
 import {
@@ -151,7 +152,7 @@ const QUEUE_PROBE_POLL_MS = 200;
 
 function startLocalProcess(command: string, args: string[]): LocalSqlCommand {
   // detached: true makes the child a process-group leader so stop() can signal the
-  // whole tree (pnpm → supabase CLI → psql) instead of orphaning grandchildren.
+  // whole tree (child and its descendants) instead of orphaning grandchildren.
   const child = spawn(command, args, {
     cwd: process.cwd(),
     stdio: ['ignore', 'pipe', 'pipe'],
@@ -222,9 +223,14 @@ function startLocalProcess(command: string, args: string[]): LocalSqlCommand {
 }
 
 function startLocalSql(sql: string): LocalSqlCommand {
-  return startLocalProcess('pnpm', [
-    'exec',
-    'supabase',
+  // Spawn Supabase's own JS entry with node, never `pnpm exec`: the pnpm wrapper
+  // translates a signal-killed child into its own status (pnpm 11 died by the
+  // signal -> null; pnpm 12 exits 130 for a SIGTERM-killed child). The Supabase
+  // launcher forwards SIGTERM/SIGINT/SIGHUP and re-signals itself when the native
+  // CLI dies by signal, so the exit observed here is the CLI's, not pnpm's.
+  const supabaseCliEntry = createRequire(import.meta.url).resolve('supabase/dist/supabase.js');
+  return startLocalProcess(process.execPath, [
+    supabaseCliEntry,
     'db',
     'query',
     '--local',
@@ -334,6 +340,8 @@ type HolderTeardown = {
 type HolderTeardownResult = {
   elapsedMs: number;
   sweep?: LocalSqlResult;
+  sweepCommand: LocalSqlCommand;
+  sweepTimedOut: boolean;
 };
 
 /**
@@ -359,9 +367,11 @@ async function releaseHolderAndSweep(
           and pid <> pg_catalog.pg_backend_pid()`
   );
   let sweep: LocalSqlResult | undefined;
+  let sweepTimedOut = false;
   try {
     sweep = await withDeadline(sweepCommand.done, sliceMs, 'marker backend sweep');
   } catch {
+    sweepTimedOut = true;
     // Stalled or failed sweep: bound the stop inside its own slice, then
     // collect the killed child's result. The holder stop below is the backstop.
     await withDeadline(sweepCommand.stop(), sliceMs, 'stalled sweep child stop').catch(
@@ -379,7 +389,7 @@ async function releaseHolderAndSweep(
   }
   if (teardown.outstanding?.length)
     await Promise.race([Promise.allSettled([...teardown.outstanding]), sleep(sliceMs)]);
-  return { elapsedMs: Date.now() - startedAt, sweep };
+  return { elapsedMs: Date.now() - startedAt, sweep, sweepCommand, sweepTimedOut };
 }
 
 function timestampMicroseconds(value: string): bigint {
@@ -446,18 +456,26 @@ describe('LocalSqlCommand process-group cleanup', () => {
   it.skipIf(environment.env === null)(
     'stops a stalled cleanup command within its deadline slice',
     async () => {
-      const { elapsedMs, sweep } = await releaseHolderAndSweep({
+      const { elapsedMs, sweep, sweepCommand, sweepTimedOut } = await releaseHolderAndSweep({
         marker: 'paf44-stalled-sweep-',
         sweepSql: 'select pg_catalog.pg_sleep(4) as value'
       });
       expect(elapsedMs).toBeLessThan(TEARDOWN_DEADLINE_MS);
-      // Killed through the retained handle, never a clean exit: pnpm 12's
-      // `pnpm exec` wrapper exits 130 for a SIGTERM-killed child (pnpm 11 died by
-      // signal, giving null), and a runner slow enough to force the SIGKILL
-      // escalation also reports null. A clean exit would mean the stalled sweep
-      // reached its own query deadline instead of being reaped.
+      // A stalled sweep never finishes inside its deadline slice, so teardown
+      // records that the timeout branch ran and the stop path was invoked. An
+      // early CLI failure (connection error, spawn failure) resolves before the
+      // slice expires and fails this check.
+      expect(sweepTimedOut).toBe(true);
+      // Contract: the Supabase CLI child was really spawned, did not finish
+      // cleanly (a 0 exit would mean the sleep ran to completion instead of being
+      // reaped), and its whole process group is gone. The exact nonzero status or
+      // signal (null) is deliberately not pinned: it depends on how the CLI
+      // launcher reports termination, not on what this test verifies.
+      expect(sweepCommand.pid).toBeDefined();
       expect(sweep).toBeDefined();
-      expect([null, 130]).toContain(sweep?.code);
+      if (!sweep) throw new Error('Stalled sweep produced no result');
+      expect(sweep.code).not.toBe(0);
+      expect(sweepCommand.isGroupAlive()).toBe(false);
     },
     30000
   );
