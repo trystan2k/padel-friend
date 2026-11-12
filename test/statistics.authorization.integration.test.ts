@@ -1,13 +1,13 @@
 import { createClient } from '@supabase/supabase-js';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { dotEnvPathFromImportMetaUrl, localSupabaseEnv } from './helpers/local-supabase-env';
+import { localSupabaseEnv } from './helpers/local-supabase-env';
 import { asRecord, sqlRows } from './helpers/match-registration-sql';
 import type { ManagementActor } from './helpers/match-management-fixtures';
 import { buildCommunityWorld, type CommunityWorld } from './helpers/community-statistics-world';
 import { setMembershipHistory } from './helpers/ranked-result-fixtures';
 import { sqlText } from './helpers/provisional-player-fixtures';
 
-const environment = localSupabaseEnv({ filePath: dotEnvPathFromImportMetaUrl(import.meta.url) });
+const environment = localSupabaseEnv();
 const READER = 'get_community_statistics(uuid,uuid,text,date,date)';
 const HELPERS = [
   'statistics_community_top(jsonb,integer,integer,text)',

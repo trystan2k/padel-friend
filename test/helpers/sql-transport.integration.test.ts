@@ -2,11 +2,7 @@ import { readFileSync } from 'node:fs';
 import { randomUUID } from 'node:crypto';
 import { describe, expect, it, vi } from 'vitest';
 import { Client } from 'pg';
-import {
-  assertLocalSupabaseEnvInCi,
-  dotEnvPathFromImportMetaUrl,
-  localSupabaseEnv
-} from './local-supabase-env';
+import { assertLocalSupabaseEnvInCi, localSupabaseEnv } from './local-supabase-env';
 import {
   openDedicatedSqlConnection,
   assertLoopbackDatabaseUrl,
@@ -16,7 +12,7 @@ import {
   startSql
 } from './sql-transport';
 
-const environment = localSupabaseEnv({ filePath: dotEnvPathFromImportMetaUrl(import.meta.url) });
+const environment = localSupabaseEnv();
 
 describe('trusted SQL transport integration', () => {
   it('keeps PostgreSQL dependency ranges aligned with the tilde save-prefix', () => {

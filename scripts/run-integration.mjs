@@ -1,6 +1,6 @@
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { INTEGRATION_DB_URL_ENV, resolveLocalDatabaseUrl } from './integration-db-url.mjs';
+import { TEST_ENV_NAMES, resolveTestStackEnv } from './test-stack-env.mjs';
 
 // Runs the integration suite as non-overlapping vitest invocations (see vitest.integration.config.ts):
 // audited parallel-safe files first, then every other file serially. INTEGRATION_SERIAL=1 runs
@@ -101,7 +101,7 @@ export function runIntegration({
   env = process.env,
   run = spawnSync,
   countFiles = countMatchingFiles,
-  resolveDatabaseUrl = resolveLocalDatabaseUrl
+  resolveTestEnv = resolveTestStackEnv
 } = {}) {
   const serialRollback = env.INTEGRATION_SERIAL === '1';
   const requestedPhase = env.INTEGRATION_PHASE || undefined;
@@ -111,20 +111,19 @@ export function runIntegration({
     );
     return 2;
   }
-  // Resolve the local DB URL once so workers skip their own CLI discovery. A stale inherited value
-  // is dropped; when the CLI cannot resolve one the children discover (and fail) exactly as before.
-  // A URL that resolves but fails validation aborts the run: it must never reach the children.
+  // Resolve the TEST stack tuple once (pinned test workdir) and hand it to every child, replacing any
+  // inherited dev VITE_*, DATABASE_URL, handoff or service key as one unit. A missing test stack or a
+  // tuple that fails validation aborts the run with a reason-only error: children never fall back to
+  // their own discovery, the dev stack or root .env files.
   const baseEnv = { ...env };
-  delete baseEnv[INTEGRATION_DB_URL_ENV];
-  let databaseUrl;
+  for (const name of TEST_ENV_NAMES) delete baseEnv[name];
   try {
-    databaseUrl = resolveDatabaseUrl();
+    Object.assign(baseEnv, resolveTestEnv());
   } catch (error) {
-    const reason = error instanceof Error ? error.message : 'invalid local database URL';
+    const reason = error instanceof Error ? error.message : 'invalid test Supabase environment';
     process.stderr.write(`[run-integration] aborting: ${reason}\n`);
     return 2;
   }
-  if (databaseUrl) baseEnv[INTEGRATION_DB_URL_ENV] = databaseUrl;
   const phases = serialRollback ? [undefined] : requestedPhase ? [requestedPhase] : PHASES;
   const filters = fileFilters(args);
   // With file filters one phase may legitimately match nothing while the other runs them, but a

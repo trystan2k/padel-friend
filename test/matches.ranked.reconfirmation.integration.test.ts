@@ -7,7 +7,7 @@ import {
   type LeagueActor,
   type LeagueWorld
 } from './helpers/league-fixtures';
-import { dotEnvPathFromImportMetaUrl, localSupabaseEnv } from './helpers/local-supabase-env';
+import { localSupabaseEnv } from './helpers/local-supabase-env';
 import {
   ensureProvisionalMembership,
   provisionProvisionalPlayer,
@@ -17,7 +17,7 @@ import {
 import { isoDay, publishCompetitive } from './helpers/ranked-fixtures';
 import { executeTrustedSql } from './helpers/sql-transport';
 
-const environment = localSupabaseEnv({ filePath: dotEnvPathFromImportMetaUrl(import.meta.url) });
+const environment = localSupabaseEnv();
 const day = (offset: number) => `${isoDay(offset)}T00:00:00Z`;
 const at = (offset: number, time = '10:00:00') => `${isoDay(offset)}T${time}.000Z`;
 

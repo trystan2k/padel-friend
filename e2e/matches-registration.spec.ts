@@ -1,4 +1,3 @@
-import { spawn } from 'node:child_process';
 import { serializeMatchFixtureSql, withDeadlockRetry } from './match-fixture-sql';
 import { readFileSync } from 'node:fs';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
@@ -10,6 +9,7 @@ import {
   type Locator,
   type Page
 } from '@playwright/test';
+import { spawnTestSql, testSupabaseConfig } from './test-supabase-config';
 import { waitForHydratedPage } from './auth-helpers';
 
 // PAF-5.6 functional E2E (PAF-83): real registration/FIFO journeys against the fresh
@@ -142,29 +142,7 @@ type RpcError = { code?: string | null; message?: string | null } | null;
 type SqlRow = Record<string, unknown>;
 
 function localConfig() {
-  const variables = new Map(
-    readFileSync(new URL('../.env', import.meta.url), 'utf8')
-      .split('\n')
-      .filter((line) => line.includes('=') && !line.trim().startsWith('#'))
-      .map((line) => {
-        const index = line.indexOf('=');
-        return [
-          line.slice(0, index).trim(),
-          line
-            .slice(index + 1)
-            .trim()
-            .replace(/^['"]|['"]$/g, '')
-        ] as const;
-      })
-  );
-  const url = process.env.VITE_SUPABASE_URL ?? variables.get('VITE_SUPABASE_URL') ?? '';
-  const key =
-    process.env.VITE_SUPABASE_PUBLISHABLE_KEY ??
-    variables.get('VITE_SUPABASE_PUBLISHABLE_KEY') ??
-    '';
-  if (!url || !key || !['127.0.0.1', 'localhost'].includes(new URL(url).hostname))
-    throw new Error('Registration E2E requires loopback Supabase');
-  return { url, key };
+  return testSupabaseConfig();
 }
 
 function rand(): string {
@@ -349,11 +327,7 @@ function runSupabaseQuery(
   sql: string
 ): Promise<{ code: number | null; stdout: string; stderr: string }> {
   return new Promise((resolve, reject) => {
-    const child = spawn(
-      'pnpm',
-      ['exec', 'supabase', 'db', 'query', '--local', '--output-format', 'json', sql],
-      { cwd: process.cwd() }
-    );
+    const child = spawnTestSql(sql);
     let stdout = '';
     let stderr = '';
     child.stdout.setEncoding('utf8').on('data', (chunk: string) => (stdout += chunk));

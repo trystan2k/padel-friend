@@ -10,11 +10,7 @@ import {
   uniqueEmail,
   INVITE_ORIGIN
 } from './helpers/match-add-player-fixtures';
-import {
-  assertLocalSupabaseEnvInCi,
-  dotEnvPathFromImportMetaUrl,
-  localSupabaseEnv
-} from './helpers/local-supabase-env';
+import { assertLocalSupabaseEnvInCi, localSupabaseEnv } from './helpers/local-supabase-env';
 import {
   insertFixtureCommunity,
   insertFixtureEvent,
@@ -25,7 +21,7 @@ import { queryTrustedSql } from './helpers/sql-transport';
 import { deliverMatchPlayerAdd } from '../src/features/matches/match-add-player.server';
 import { AuthApiError, createClient } from '@supabase/supabase-js';
 
-const environment = localSupabaseEnv({ filePath: dotEnvPathFromImportMetaUrl(import.meta.url) });
+const environment = localSupabaseEnv();
 
 async function event(admin: ProvisionalFixtureActor, owner: ProvisionalFixtureActor) {
   const communityId = crypto.randomUUID();

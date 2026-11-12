@@ -1,4 +1,4 @@
-import { execFileSync, spawn } from 'node:child_process';
+import { spawn } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
 import { afterAll } from 'vitest';
 import { parse as parseConnectionString } from 'pg-connection-string';
@@ -10,7 +10,8 @@ import {
   type QueryResult,
   type QueryResultRow
 } from 'pg';
-import { handoffDatabaseUrl } from '../../scripts/integration-db-url.mjs';
+import { discoverTestDatabaseUrl } from '../../scripts/integration-db-url.mjs';
+import { TEST_CLI_OPTIONS, testQueryArgs } from '../../scripts/test-stack-env.mjs';
 
 export type SqlRow = Record<string, unknown>;
 export type SqlError = { code: string | null; message: string; detail: string | null };
@@ -119,27 +120,9 @@ export function assertLoopbackDatabaseUrl(connectionString: string): string {
 
 export function localDatabaseUrl(): Promise<string> {
   databaseUrlPromise ??= Promise.resolve().then(() => {
-    // Launcher handoff: present means validated here and trusted; malformed fails closed.
-    const handedOff = handoffDatabaseUrl();
-    if (handedOff !== undefined) return assertLoopbackDatabaseUrl(handedOff);
-
-    let status: string;
-    try {
-      status = execFileSync('pnpm', ['exec', 'supabase', 'status', '-o', 'env'], {
-        cwd: process.cwd(),
-        encoding: 'utf8',
-        timeout: CONNECTION_TIMEOUT_MS,
-        maxBuffer: 1024 * 1024,
-        stdio: ['ignore', 'pipe', 'pipe']
-      });
-    } catch {
-      throw new Error('Could not resolve local Supabase DB_URL with `supabase status -o env`');
-    }
-
-    const rawUrl = status.match(/^DB_URL=(.*)$/m)?.[1]?.trim();
-    const connectionString = rawUrl?.replace(/^(?:"(.*)"|'(.*)')$/, '$1$2');
-    if (!connectionString) throw new Error('Supabase status did not report DB_URL');
-    return assertLoopbackDatabaseUrl(connectionString);
+    // Launcher handoff (validated, trusted; malformed fails closed) or the TEST stack's own status via
+    // the pinned test workdir. Never root-CLI discovery: a missing test stack is a hard failure.
+    return assertLoopbackDatabaseUrl(discoverTestDatabaseUrl());
   });
   return databaseUrlPromise;
 }
@@ -568,15 +551,12 @@ export function startSql(sql: string, options: SqlQueryOptions = {}): SqlHandle 
 
 /** Retained per-call Supabase CLI path for CLI/migration contract tests only. */
 export function startCliSql(sql: string): CliSqlHandle {
-  const child = spawn(
-    'pnpm',
-    ['exec', 'supabase', 'db', 'query', '--local', '--output-format', 'json', sql],
-    {
-      cwd: process.cwd(),
-      stdio: ['ignore', 'pipe', 'pipe'],
-      detached: process.platform !== 'win32'
-    }
-  );
+  // Pinned to the test workdir and the repo root cwd: never the root (dev) CLI project.
+  const child = spawn('pnpm', testQueryArgs(sql), {
+    cwd: TEST_CLI_OPTIONS.cwd,
+    stdio: ['ignore', 'pipe', 'pipe'],
+    detached: process.platform !== 'win32'
+  });
   let stdout = '';
   let stderr = '';
   child.stdout.setEncoding('utf8');

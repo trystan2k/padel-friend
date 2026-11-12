@@ -4,6 +4,9 @@
     "design-tokens/style-dictionary.config.js",
     "src/routes/**/*.tsx",
     "src/features/pwa/service-worker.ts",
+    "test/**/*.test.{ts,tsx}",
+    "vitest.{unit,integration}.config.ts",
+    "test/helpers/result-repair-scheduler-setup.ts",
     "test/fixtures/push-worker/worker.ts"
   ],
   "ignoreExportsUsedInFile": true,
@@ -22,8 +25,20 @@
     "scripts/release-rehearsal-lib.d.mts",
     "scripts/release-backup-restore.d.mts",
     "scripts/release-migration-rehearsal.d.mts",
-    "scripts/release-performance.d.mts"
+    "scripts/release-performance.d.mts",
+    "scripts/test-stack.d.mts",
+    "scripts/test-stack-env.d.mts",
+    "scripts/source-fingerprint.d.mts",
+    "scripts/with-test-stack.d.mts",
+    "scripts/ci-test-env.d.mts",
+    "scripts/verify-test-stack-isolation.d.mts",
+    "scripts/isolation-proof-product-fixtures.d.mts"
   ],
+  "vitest": false,
+  "playwright": {
+    "config": [],
+    "entry": ["playwright.config.ts", "e2e/**/*.{spec,test}.ts", "e2e/global-setup.ts"]
+  },
   "ignoreDependencies": ["@opencode/plugin"],
   "ignoreIssues": {
     "src/routes/**/*.{ts,tsx}": ["exports"],

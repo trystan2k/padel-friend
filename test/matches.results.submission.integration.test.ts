@@ -10,7 +10,7 @@ import {
   createMatchManagementFixtures,
   type ManagementActor
 } from './helpers/match-management-fixtures';
-import { dotEnvPathFromImportMetaUrl, localSupabaseEnv } from './helpers/local-supabase-env';
+import { localSupabaseEnv } from './helpers/local-supabase-env';
 import {
   asRecord,
   fixtureSql,
@@ -38,9 +38,7 @@ describe('actual result submission transaction', { timeout: 60000 }, () => {
   let reserve: ManagementActor;
   let anon: { token: string };
   beforeAll(async () => {
-    const { env, reason } = localSupabaseEnv({
-      filePath: dotEnvPathFromImportMetaUrl(import.meta.url)
-    });
+    const { env, reason } = localSupabaseEnv();
     if (!env) throw new Error(reason);
     f = await createMatchManagementFixtures(env);
     other = await createMatchManagementFixtures(env);
@@ -518,13 +516,13 @@ describe('actual result submission transaction', { timeout: 60000 }, () => {
   });
 });
 
-describe.skipIf(!rankedKitEnv(import.meta.url))(
+describe.skipIf(!rankedKitEnv())(
   'Ranked eligibility on submission (U4)',
   { timeout: 60000 },
   () => {
     let kit: RankedResultKit;
     beforeAll(async () => {
-      kit = await createRankedResultFixtures(rankedKitEnv(import.meta.url)!);
+      kit = await createRankedResultFixtures(rankedKitEnv()!);
     });
     afterAll(async () => {
       if (kit) await kit.cleanup();

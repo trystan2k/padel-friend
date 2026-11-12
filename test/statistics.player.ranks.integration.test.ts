@@ -1,7 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { decodePlayerRankHistory } from '../src/features/statistics/statistics-player.server';
-import { dotEnvPathFromImportMetaUrl, localSupabaseEnv } from './helpers/local-supabase-env';
+import { localSupabaseEnv } from './helpers/local-supabase-env';
 import { asRecord, fixtureSql, sqlRows } from './helpers/match-registration-sql';
 import { sqlText } from './helpers/provisional-player-fixtures';
 import {
@@ -12,7 +12,7 @@ import {
 } from './helpers/ranked-result-fixtures';
 import { openDedicatedSqlConnection } from './helpers/sql-transport';
 
-const environment = localSupabaseEnv({ filePath: dotEnvPathFromImportMetaUrl(import.meta.url) });
+const environment = localSupabaseEnv();
 const T = sqlText;
 
 type Latest = {

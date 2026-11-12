@@ -7,7 +7,7 @@ import {
   parseRatingHistoryPage,
   parseRatingProgress
 } from '../src/features/player/rating-contracts';
-import { dotEnvPathFromImportMetaUrl, localSupabaseEnv } from './helpers/local-supabase-env';
+import { localSupabaseEnv } from './helpers/local-supabase-env';
 import {
   drainDueRegistrationCutoffs,
   addActiveMember,
@@ -40,7 +40,7 @@ import {
 } from './helpers/rating-fixtures';
 import { executeTrustedSql, queryTrustedSql } from './helpers/sql-transport';
 
-const environment = localSupabaseEnv({ filePath: dotEnvPathFromImportMetaUrl(import.meta.url) });
+const environment = localSupabaseEnv();
 
 describe('immutable ADMIN_REVIEW_ADJUSTMENT approval', { timeout: 180_000 }, () => {
   let world: RatingWorld;

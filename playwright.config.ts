@@ -1,11 +1,14 @@
 import { defineConfig, devices } from '@playwright/test';
-import { e2eBuildEnv, localServiceRoleKey } from './scripts/e2e-build-env.mjs';
+import { e2eBuildEnv } from './scripts/e2e-build-env.mjs';
+import { ensureTestStackEnv } from './scripts/test-stack-env.mjs';
 
-// The add-player server function needs the server-only service-role key. Resolve it
-// once in the main process (workers inherit process.env) from CI's environment or the
-// local stack, never from a committed file. scripts/e2e-build-env.mjs is shared with the
-// complete-check build stage so every build e2e previews carries it.
-const serviceRoleKey = localServiceRoleKey();
+// Initialize the authoritative TEST tuple in the main process BEFORE workers are collected (workers
+// and the preview webServer inherit process.env): a launcher-provided valid tuple is kept, anything
+// else (including an inherited dev VITE_*/service key) is replaced as one unit by the pinned test
+// workdir's status, and a missing test stack throws here. This covers direct gate lanes too.
+// scripts/e2e-build-env.mjs is shared with the complete-check build stage so every build e2e
+// previews carries the same tuple.
+const testEnv = ensureTestStackEnv();
 
 export default defineConfig({
   testDir: './e2e',
@@ -67,6 +70,6 @@ export default defineConfig({
     reuseExistingServer: false,
     timeout: 120000,
     // Forward the process env so the Cloudflare preview exposes the binding to server code.
-    env: e2eBuildEnv(serviceRoleKey)
+    env: e2eBuildEnv(testEnv)
   }
 });

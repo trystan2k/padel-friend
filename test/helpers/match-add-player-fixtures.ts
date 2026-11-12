@@ -1,34 +1,21 @@
-import { execFileSync } from 'node:child_process';
 import { AuthApiError, createClient, type SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '../../src/lib/supabase/database.types';
 import { deliverMatchPlayerAdd } from '../../src/features/matches/match-add-player.server';
 import type { AddMatchPlayerResult } from '../../src/features/matches/match-add-player-model';
 import type { LocalSupabaseEnv } from './local-supabase-env';
 import type { ProvisionalFixtureActor } from './provisional-player-fixtures';
+import { requireTestEnv } from '../../scripts/test-stack-env.mjs';
 import { executeTrustedSql, queryTrustedSql } from './sql-transport';
 
 /** Allowlisted in supabase/config.toml, like the app origin the server function sends. */
 export const INVITE_ORIGIN = 'http://127.0.0.1:3000';
 
 type LocalStatus = { serviceRoleKey: string; mailpitUrl: string };
-let status: LocalStatus | undefined;
 
-/** Local-only service role key and Mailpit URL from `supabase status` (never committed). */
+/** Test-stack service role key and Mailpit URL from the validated test tuple (never committed). */
 function localStatus(): LocalStatus {
-  if (status) return status;
-  const output = execFileSync('pnpm', ['exec', 'supabase', 'status', '-o', 'env'], {
-    encoding: 'utf8',
-    stdio: ['ignore', 'pipe', 'pipe']
-  });
-  const value = (name: string) =>
-    output
-      .match(new RegExp(`^${name}=(.*)$`, 'm'))?.[1]
-      ?.trim()
-      .replace(/^"(.*)"$/, '$1') ?? '';
-  status = { serviceRoleKey: value('SERVICE_ROLE_KEY'), mailpitUrl: value('MAILPIT_URL') };
-  if (!status.serviceRoleKey || !/^http:\/\/127\.0\.0\.1:\d+$/.test(status.mailpitUrl))
-    throw new Error('Local Supabase service role key or Mailpit URL unavailable');
-  return status;
+  const tuple = requireTestEnv();
+  return { serviceRoleKey: tuple.SUPABASE_SERVICE_ROLE_KEY, mailpitUrl: tuple.MAILPIT_URL };
 }
 
 export function localAdminClient(env: LocalSupabaseEnv): SupabaseClient<Database> {

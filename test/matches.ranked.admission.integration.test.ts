@@ -7,12 +7,12 @@ import {
   type LeagueActor,
   type LeagueWorld
 } from './helpers/league-fixtures';
-import { dotEnvPathFromImportMetaUrl, localSupabaseEnv } from './helpers/local-supabase-env';
+import { localSupabaseEnv } from './helpers/local-supabase-env';
 import { signUpFixtureActor, sqlText } from './helpers/provisional-player-fixtures';
 import { isoDay, publishCompetitive } from './helpers/ranked-fixtures';
 import { executeTrustedSql } from './helpers/sql-transport';
 
-const environment = localSupabaseEnv({ filePath: dotEnvPathFromImportMetaUrl(import.meta.url) });
+const environment = localSupabaseEnv();
 
 describe.skipIf(!environment.env)('Ranked members-only admission', { timeout: 300_000 }, () => {
   let world: LeagueWorld;

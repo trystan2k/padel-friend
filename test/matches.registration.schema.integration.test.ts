@@ -3,13 +3,9 @@ import { describe, expect, it } from 'vitest';
 import type { Database } from '../src/lib/supabase/database.types';
 import { matchPhotoFixture } from './helpers/match-photo-fixtures';
 import { queryTrustedSql } from './helpers/sql-transport';
-import {
-  assertLocalSupabaseEnvInCi,
-  dotEnvPathFromImportMetaUrl,
-  localSupabaseEnv
-} from './helpers/local-supabase-env';
+import { assertLocalSupabaseEnvInCi, localSupabaseEnv } from './helpers/local-supabase-env';
 
-const environment = localSupabaseEnv({ filePath: dotEnvPathFromImportMetaUrl(import.meta.url) });
+const environment = localSupabaseEnv();
 type Env = NonNullable<typeof environment.env>;
 
 /** Trusted fixture SQL that must succeed; PostgreSQL reports `DO` for a passed block. */

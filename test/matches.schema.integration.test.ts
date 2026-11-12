@@ -2,13 +2,9 @@ import { createClient } from '@supabase/supabase-js';
 import { describe, expect, it } from 'vitest';
 import { matchPhotoFixture } from './helpers/match-photo-fixtures';
 import { queryTrustedSql } from './helpers/sql-transport';
-import {
-  assertLocalSupabaseEnvInCi,
-  dotEnvPathFromImportMetaUrl,
-  localSupabaseEnv
-} from './helpers/local-supabase-env';
+import { assertLocalSupabaseEnvInCi, localSupabaseEnv } from './helpers/local-supabase-env';
 
-const environment = localSupabaseEnv({ filePath: dotEnvPathFromImportMetaUrl(import.meta.url) });
+const environment = localSupabaseEnv();
 describe('match event schema integration', () => {
   it('requires local Supabase in CI', () => {
     expect(() => assertLocalSupabaseEnvInCi(environment.env, process.env.CI)).not.toThrow();

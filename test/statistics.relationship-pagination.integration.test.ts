@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { dotEnvPathFromImportMetaUrl, localSupabaseEnv } from './helpers/local-supabase-env';
+import { localSupabaseEnv } from './helpers/local-supabase-env';
 import { asRecord, fixtureSql } from './helpers/match-registration-sql';
 import { sqlText } from './helpers/provisional-player-fixtures';
 import { createRankedResultFixtures, playedAt } from './helpers/ranked-result-fixtures';
 
-const environment = localSupabaseEnv({ filePath: dotEnvPathFromImportMetaUrl(import.meta.url) });
+const environment = localSupabaseEnv();
 
 describe.skipIf(!environment.env)('relationship meeting pagination', { timeout: 600_000 }, () => {
   it('walks every pair and opponent meeting exactly once', async () => {

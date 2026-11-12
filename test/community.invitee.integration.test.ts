@@ -1,8 +1,8 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { describe, expect, it } from 'vitest';
-import { dotEnvPathFromImportMetaUrl, localSupabaseEnv } from './helpers/local-supabase-env';
+import { localSupabaseEnv } from './helpers/local-supabase-env';
 
-const environment = localSupabaseEnv({ filePath: dotEnvPathFromImportMetaUrl(import.meta.url) });
+const environment = localSupabaseEnv();
 if (!environment.env)
   throw new Error(`Invitee integration suite requires live local Supabase: ${environment.reason}`);
 const rowIds = (rows: unknown) =>

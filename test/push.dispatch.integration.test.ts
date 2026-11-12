@@ -5,11 +5,11 @@ import { dispatchNotificationPush } from '../src/features/notifications/push-dis
 import { localAdminClient } from './helpers/match-add-player-fixtures';
 import { signUpFixtureActor } from './helpers/provisional-player-fixtures';
 import { submitRequest } from './helpers/level-review-fixtures';
-import { dotEnvPathFromImportMetaUrl, localSupabaseEnv } from './helpers/local-supabase-env';
+import { localSupabaseEnv } from './helpers/local-supabase-env';
 import { executeTrustedSql, queryTrustedSql } from './helpers/sql-transport';
 import { ratingEvidenceCleanupSql } from './helpers/fixture-cleanup';
 
-const environment = localSupabaseEnv({ filePath: dotEnvPathFromImportMetaUrl(import.meta.url) });
+const environment = localSupabaseEnv();
 const query = async (sql: string, values: unknown[] = []) =>
   (await queryTrustedSql(sql, { values })).rows;
 

@@ -1,5 +1,13 @@
 import { execFileSync, spawnSync } from 'node:child_process';
-import { existsSync, mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import {
+  existsSync,
+  mkdtempSync,
+  mkdirSync,
+  readFileSync,
+  rmSync,
+  symlinkSync,
+  writeFileSync
+} from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
@@ -35,6 +43,8 @@ function runCompleteCheck(
     driftFile?: string;
     clobberOn?: string;
     failNth?: number;
+    rekeyOn?: string;
+    symlink?: boolean;
     env?: Record<string, string>;
   } = {}
 ) {
@@ -50,6 +60,12 @@ function runCompleteCheck(
   writeFileSync(path.join(projectDirectory, 'package.json'), '{}\n');
   // Like the real repo, build output is ignored: the fingerprint must not see dist changes.
   writeFileSync(path.join(projectDirectory, '.gitignore'), 'dist/\n');
+  if (options.symlink) {
+    // Like test/stack/supabase/migrations: a tracked directory symlink git hash-object cannot hash.
+    mkdirSync(path.join(projectDirectory, 'real-dir'));
+    writeFileSync(path.join(projectDirectory, 'real-dir/file.sql'), 'select 1;\n');
+    symlinkSync('real-dir', path.join(projectDirectory, 'linked-dir'));
+  }
   for (const gitArgs of [
     ['init', '-q'],
     ['add', '.'],
@@ -64,22 +80,30 @@ function runCompleteCheck(
     path.join(binDirectory, 'pnpm'),
     [
       '#!/bin/sh',
-      // The service-role lookup is the shared build-env helper's, not a gate stage: answer it unlogged.
-      'if [ "$*" = "exec supabase status -o env" ]; then',
-      '  if [ -n "${COMPLETE_CHECK_STACK_FAIL:-}" ]; then echo "supabase local stack is not running" >&2; exit 1; fi',
-      // Realistic `supabase status -o env` shape: quoted KEY="value" lines around the one we need.
-      '  printf \'API_URL="http://127.0.0.1:55321"\\nANON_KEY="anon"\\nSERVICE_ROLE_KEY="%s"\\nSTUDIO_URL="http://127.0.0.1:55323"\\n\' "${COMPLETE_CHECK_STACK_KEY:-}"; exit 0',
-      'fi',
+      // The tuple lookup is the shared test-stack resolver's, not a gate stage: answer it unlogged. Only
+      // the pinned TEST workdir is answered; a root-CLI status call (no --workdir) is a hard failure.
+      'case "$*" in',
+      '  "exec supabase --workdir "*" status -o env")',
+      '    printf \'%s\\n\' "$*" >> "$COMPLETE_CHECK_LOG.status"',
+      '    if [ -n "${COMPLETE_CHECK_STACK_FAIL:-}" ]; then echo "supabase local stack is not running" >&2; exit 1; fi',
+      // Realistic test-stack status shape: quoted KEY="value" lines.
+      '    printf \'API_URL="http://127.0.0.1:55421"\\nDB_URL="postgresql://postgres:fake-db-pw@127.0.0.1:55422/postgres"\\nMAILPIT_URL="http://127.0.0.1:55424"\\nPUBLISHABLE_KEY="sb_publishable_fake"\\nSERVICE_ROLE_KEY="%s"\\n\' "${COMPLETE_CHECK_STACK_KEY:-}"; exit 0 ;;',
+      '  "exec supabase status -o env") echo "root dev stack status must never be used" >&2; exit 1 ;;',
+      'esac',
       'printf \'%s\\n\' "$*" >> "$COMPLETE_CHECK_LOG"',
       'if [ "$*" = "build" ]; then',
-      '  printf \'%s|%s\\n\' "${CLOUDFLARE_INCLUDE_PROCESS_ENV:-}" "${SUPABASE_SERVICE_ROLE_KEY:-}" >> "$COMPLETE_CHECK_LOG.build"',
-      // Like the real build, bake the key into dist/server/.dev.vars only when the build env has it.
+      '  printf \'%s|%s|%s|%s\\n\' "${CLOUDFLARE_INCLUDE_PROCESS_ENV:-}" "${SUPABASE_SERVICE_ROLE_KEY:-}" "${VITE_SUPABASE_URL:-}" "${DATABASE_URL:-}" >> "$COMPLETE_CHECK_LOG.build"',
+      // Like the real build, bake the key (single-quoted, as the Cloudflare plugin writes it) into
+      // dist/server/.dev.vars only when the build env has it.
       '  mkdir -p dist/server; : > dist/server/.dev.vars',
-      '  if [ -n "${SUPABASE_SERVICE_ROLE_KEY:-}" ]; then printf \'SUPABASE_SERVICE_ROLE_KEY=%s\\n\' "$SUPABASE_SERVICE_ROLE_KEY" > dist/server/.dev.vars; fi',
+      '  if [ -n "${SUPABASE_SERVICE_ROLE_KEY:-}" ]; then printf "SUPABASE_SERVICE_ROLE_KEY=\\047%s\\047\\n" "$SUPABASE_SERVICE_ROLE_KEY" > dist/server/.dev.vars; fi',
       'fi',
       // Simulates a later rebuild (e.g. a keyless build inside a test) wiping the baked key.
       'if [ -n "${COMPLETE_CHECK_CLOBBER:-}" ] && [ "$COMPLETE_CHECK_CLOBBER" = "$*" ]; then : > dist/server/.dev.vars; fi',
       'printf \'%s|%s\\n\' "$*" "${E2E_GATE_PREBUILT:-}" >> "$COMPLETE_CHECK_LOG.env"',
+      'printf \'%s|%s|%s|%s|%s\\n\' "$*" "${VITE_SUPABASE_URL:-}" "${VITE_SUPABASE_PUBLISHABLE_KEY:-}" "${DATABASE_URL:-}" "${SUPABASE_SERVICE_ROLE_KEY:-}" >> "$COMPLETE_CHECK_LOG.tuple"',
+      // Simulates a rebuild that baked a different (stale/dev) key into the server binding.
+      'if [ -n "${COMPLETE_CHECK_REKEY:-}" ] && [ "$COMPLETE_CHECK_REKEY" = "$*" ]; then printf \'SUPABASE_SERVICE_ROLE_KEY=other-key\\n\' > dist/server/.dev.vars; fi',
       'if [ -n "${COMPLETE_CHECK_DRIFT:-}" ] && [ "${COMPLETE_CHECK_DRIFT}" = "$*" ]; then printf drift >> "$COMPLETE_CHECK_DRIFT_FILE"; fi',
       // COMPLETE_CHECK_FAIL_NTH limits the failure to that (1-based) occurrence of the command.
       'if [ "${COMPLETE_CHECK_FAIL:-}" = "$*" ]; then',
@@ -105,6 +129,7 @@ function runCompleteCheck(
           COMPLETE_CHECK_FAIL_NTH: options.failNth?.toString() ?? '',
           COMPLETE_CHECK_DRIFT: options.driftOn ?? '',
           COMPLETE_CHECK_CLOBBER: options.clobberOn ?? '',
+          COMPLETE_CHECK_REKEY: options.rekeyOn ?? '',
           COMPLETE_CHECK_STACK_KEY: 'stack-key',
           SUPABASE_SERVICE_ROLE_KEY: '',
           COMPLETE_CHECK_DRIFT_FILE: driftFile,
@@ -123,7 +148,18 @@ function runCompleteCheck(
     const buildEnv = existsSync(buildLog)
       ? readFileSync(buildLog, 'utf8').trim().split('\n').filter(Boolean)
       : [];
-    return { result, commands, prebuilt, buildEnv };
+    const readLog = (suffix: string) =>
+      existsSync(`${logPath}.${suffix}`)
+        ? readFileSync(`${logPath}.${suffix}`, 'utf8').trim().split('\n').filter(Boolean)
+        : [];
+    return {
+      result,
+      commands,
+      prebuilt,
+      buildEnv,
+      tuples: readLog('tuple'),
+      statusCalls: readLog('status')
+    };
   } finally {
     rmSync(tempDirectory, { recursive: true, force: true });
   }
@@ -196,8 +232,11 @@ describe('complete-check stage selection', () => {
       'vitest run --config vitest.unit.config.ts --coverage && pnpm db:reset && pnpm test:integration'
     );
     expect(pkg.scripts['test:e2e']).toBe(
-      'pnpm db:reset && node scripts/free-port.mjs 4173 && playwright test'
+      'pnpm db:reset && node scripts/free-port.mjs 4173 && node scripts/with-test-stack.mjs pnpm exec playwright test'
     );
+    // Bare reset is the TEST stack reset; the dev wipe is the explicit, rooted db:reset:dev.
+    expect(pkg.scripts['db:reset']).toBe('pnpm test:stack:reset');
+    expect(pkg.scripts['db:reset:dev']).toBe('supabase --workdir . db reset --local');
     expect(UNIT).toBe('exec vitest run --config vitest.unit.config.ts --coverage');
   });
 
@@ -287,7 +326,8 @@ describe('complete-check stage selection', () => {
       env: { COMPLETE_CHECK_STACK_KEY: 'stack-key', SUPABASE_SERVICE_ROLE_KEY: '' }
     });
 
-    expect(buildEnv).toEqual(['true|stack-key']);
+    // Public pair and service key both come from the TEST status; DATABASE_URL is blanked for the bundle.
+    expect(buildEnv).toEqual(['true|stack-key|http://127.0.0.1:55421|']);
   });
 
   it('fails the build stage closed, with the reason, when e2e is selected and no key resolves', () => {
@@ -297,9 +337,9 @@ describe('complete-check stage selection', () => {
 
     expect(result.status).toBe(1);
     expect(result.stderr).toContain('build FAILED');
-    expect(result.stderr).toContain('e2e preview requires the Supabase service-role key');
-    expect(result.stderr).toContain('supabase local stack is not running');
-    expect(result.stderr).toContain('SUPABASE_SERVICE_ROLE_KEY');
+    expect(result.stderr).toContain('e2e build requires the test Supabase stack');
+    expect(result.stderr).toContain('pnpm test:stack:up');
+    expect(result.stderr).not.toContain('root dev stack status');
     expect(result.stdout).toMatch(/^FAIL +build/m);
     expect(commands).not.toContain('build');
     expect(buildEnv).toEqual([]);
@@ -311,7 +351,7 @@ describe('complete-check stage selection', () => {
     });
 
     expect(result.status).toBe(1);
-    expect(result.stderr).toContain('printed no SERVICE_ROLE_KEY');
+    expect(result.stderr).toContain('SUPABASE_SERVICE_ROLE_KEY is missing');
     expect(commands).not.toContain('build');
   });
 
@@ -334,21 +374,102 @@ describe('complete-check stage selection', () => {
     expect(prebuilt.at(-1)).toBe(`${PLAYWRIGHT}|`);
   });
 
-  it('prefers a caller-provided service-role key for the build', () => {
-    const { buildEnv } = runCompleteCheck(['--only=static,e2e'], undefined, {
-      env: { COMPLETE_CHECK_STACK_KEY: 'stack-key', SUPABASE_SERVICE_ROLE_KEY: 'shell-key' }
+  it('replaces an inherited service key and dev tuple with the test status-derived one', () => {
+    const { buildEnv, result } = runCompleteCheck(['--only=static,e2e'], undefined, {
+      env: {
+        COMPLETE_CHECK_STACK_KEY: 'stack-key',
+        SUPABASE_SERVICE_ROLE_KEY: 'shell-key',
+        VITE_SUPABASE_URL: 'http://127.0.0.1:55321',
+        DATABASE_URL: 'postgresql://postgres:dev@127.0.0.1:55322/postgres'
+      }
     });
 
-    expect(buildEnv).toEqual(['true|shell-key']);
+    expect(buildEnv).toEqual(['true|stack-key|http://127.0.0.1:55421|']);
+    expect(result.stdout + result.stderr).not.toContain('shell-key');
+  });
+
+  it('hands the same test tuple to every stage of a full run and discovers it exactly once', () => {
+    const { tuples, statusCalls, result } = runCompleteCheck([], undefined, {
+      env: {
+        VITE_SUPABASE_URL: 'http://127.0.0.1:55321',
+        VITE_SUPABASE_PUBLISHABLE_KEY: 'dev-publishable',
+        DATABASE_URL: 'postgresql://postgres:dev@127.0.0.1:55322/postgres'
+      }
+    });
+
+    expect(result.status).toBe(0);
+    expect(statusCalls).toHaveLength(1);
+    expect(statusCalls[0]).toMatch(/^exec supabase --workdir .*test\/stack status -o env$/);
+    const wanted = (name: string) => tuples.find((line) => line.startsWith(name + '|'));
+    for (const stage of [
+      'typecheck',
+      'test:integration',
+      E2E_AFTER_RESET[1]!,
+      E2E_AFTER_RESET[2]!
+    ]) {
+      const line = wanted(stage);
+      expect(line).toBeDefined();
+      const [, url, key, database, service] = line!.split('|');
+      expect(url).toBe('http://127.0.0.1:55421');
+      expect(key).toBe('sb_publishable_fake');
+      expect(database).toContain(':55422/');
+      expect(service).toBe('stack-key');
+    }
+    expect(result.stdout + result.stderr).not.toContain('fake-db-pw');
+  });
+
+  it('stays service-free for static-only runs: no discovery, inherited env untouched', () => {
+    const { tuples, statusCalls } = runCompleteCheck(['--only=static'], undefined, {
+      env: { VITE_SUPABASE_URL: 'https://static.example.test' }
+    });
+
+    expect(statusCalls).toEqual([]);
+    for (const line of tuples) expect(line.split('|')[1]).toBe('https://static.example.test');
+  });
+
+  it('keeps prebuilt reuse when a directory symlink is tracked (git hash-object cannot hash it)', () => {
+    const { result, prebuilt } = runCompleteCheck(['--only=static,e2e'], undefined, {
+      symlink: true
+    });
+
+    expect(result.status).toBe(0);
+    expect(result.stderr).not.toContain('fatal');
+    expect(result.stderr).not.toContain('sources changed');
+    expect(prebuilt.at(-1)).toBe(`${PLAYWRIGHT}|1`);
+  });
+
+  it('rebuilds when the baked server binding is a key from a different stack, without logging it', () => {
+    const { result, prebuilt } = runCompleteCheck(['--only=static,e2e'], undefined, {
+      rekeyOn: 'lint'
+    });
+
+    expect(result.status).toBe(0);
+    expect(result.stderr).toContain('server binding does not match the current test stack');
+    expect(prebuilt.at(-1)).toBe(`${PLAYWRIGHT}|`);
+    expect(result.stdout + result.stderr).not.toContain('other-key');
+    expect(result.stdout + result.stderr).not.toContain('stack-key');
+  });
+
+  it('is unaffected by a conflicting dev VITE_SUPABASE_URL: the test tuple is explicit process env', () => {
+    const { buildEnv } = runCompleteCheck(['--only=static,e2e'], undefined, {
+      env: { VITE_SUPABASE_URL: 'http://127.0.0.1:55321' }
+    });
+
+    expect(buildEnv[0]).toContain('|http://127.0.0.1:55421|');
   });
 
   it('leaves the build env untouched when e2e is not selected (service-free runs)', () => {
     const { commands, buildEnv } = runCompleteCheck(['--only=static'], undefined, {
-      env: { COMPLETE_CHECK_STACK_KEY: 'stack-key', SUPABASE_SERVICE_ROLE_KEY: '' }
+      env: {
+        COMPLETE_CHECK_STACK_KEY: 'stack-key',
+        SUPABASE_SERVICE_ROLE_KEY: '',
+        VITE_SUPABASE_URL: '',
+        DATABASE_URL: ''
+      }
     });
 
     expect(commands).toEqual(STATIC);
-    expect(buildEnv).toEqual(['|']);
+    expect(buildEnv).toEqual(['|||']);
   });
 
   it('ignores an inherited E2E_GATE_PREBUILT and fresh-builds without a gate build', () => {

@@ -2,14 +2,10 @@ import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { describe, expect, it } from 'vitest';
 import type { Database } from '../src/lib/supabase/database.types';
 import { matchPhotoFixture } from './helpers/match-photo-fixtures';
-import {
-  assertLocalSupabaseEnvInCi,
-  dotEnvPathFromImportMetaUrl,
-  localSupabaseEnv
-} from './helpers/local-supabase-env';
+import { assertLocalSupabaseEnvInCi, localSupabaseEnv } from './helpers/local-supabase-env';
 import { executeTrustedSql } from './helpers/sql-transport';
 
-const environment = localSupabaseEnv({ filePath: dotEnvPathFromImportMetaUrl(import.meta.url) });
+const environment = localSupabaseEnv();
 type Env = NonNullable<typeof environment.env>;
 type Actor = { id: string; client: SupabaseClient<Database>; name: string };
 

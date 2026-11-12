@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { ManagementActor } from './helpers/match-management-fixtures';
-import { dotEnvPathFromImportMetaUrl, localSupabaseEnv } from './helpers/local-supabase-env';
+import { localSupabaseEnv } from './helpers/local-supabase-env';
 import { asRecord, fixtureSql, sqlRows } from './helpers/match-registration-sql';
 import { setResultReviewDeadlineOffset } from './helpers/match-result-processing-fixtures';
 import { createMatchResultReviewFixtures } from './helpers/match-result-review-fixtures';
@@ -14,9 +14,7 @@ describe('result lifecycle projections and privacy', { timeout: 120000 }, () => 
   let restoreResultSchedule: (() => Promise<void>) | null = null;
 
   beforeAll(async () => {
-    const { env, reason } = localSupabaseEnv({
-      filePath: dotEnvPathFromImportMetaUrl(import.meta.url)
-    });
+    const { env, reason } = localSupabaseEnv();
     if (!env) throw new Error(reason);
     f = await createMatchResultReviewFixtures(env);
   });

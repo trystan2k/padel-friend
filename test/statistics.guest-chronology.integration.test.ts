@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { dotEnvPathFromImportMetaUrl, localSupabaseEnv } from './helpers/local-supabase-env';
+import { localSupabaseEnv } from './helpers/local-supabase-env';
 import { createRankedResultFixtures, playedAt, rankedSets } from './helpers/ranked-result-fixtures';
 import { createMatchManagementFixtures } from './helpers/match-management-fixtures';
 import { asRecord, sqlRows } from './helpers/match-registration-sql';
 import { sqlText } from './helpers/provisional-player-fixtures';
 import { GOLDEN_GUEST_LEAGUE } from './helpers/statistics-golden-fixtures';
 
-const environment = localSupabaseEnv({ filePath: dotEnvPathFromImportMetaUrl(import.meta.url) });
+const environment = localSupabaseEnv();
 
 describe.skipIf(!environment.env)('subject history across communities', () => {
   it('includes public unranked guest play in global chronology without exposing it to another viewer', async () => {

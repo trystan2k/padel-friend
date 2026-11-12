@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { decodeSummaryRow } from '../src/features/statistics/statistics-decoders';
-import { dotEnvPathFromImportMetaUrl, localSupabaseEnv } from './helpers/local-supabase-env';
+import { localSupabaseEnv } from './helpers/local-supabase-env';
 import { asRecord, fixtureSql, sqlRows } from './helpers/match-registration-sql';
 import { sqlText } from './helpers/provisional-player-fixtures';
 import {
@@ -9,7 +9,7 @@ import {
   type RankedResultKit
 } from './helpers/ranked-result-fixtures';
 
-const environment = localSupabaseEnv({ filePath: dotEnvPathFromImportMetaUrl(import.meta.url) });
+const environment = localSupabaseEnv();
 const NIL = '00000000-0000-0000-0000-000000000000';
 
 const set = (position: number, a: number, b: number) => ({

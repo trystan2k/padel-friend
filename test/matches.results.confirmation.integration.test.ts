@@ -11,10 +11,10 @@ import {
   createMatchManagementFixtures,
   type ManagementActor
 } from './helpers/match-management-fixtures';
-import { dotEnvPathFromImportMetaUrl, localSupabaseEnv } from './helpers/local-supabase-env';
+import { localSupabaseEnv } from './helpers/local-supabase-env';
 import { fixtureSql, sqlRows } from './helpers/match-registration-sql';
 
-const environment = localSupabaseEnv({ filePath: dotEnvPathFromImportMetaUrl(import.meta.url) });
+const environment = localSupabaseEnv();
 
 describe('authoritative result confirmation contract', { timeout: 120_000 }, () => {
   let f: Awaited<ReturnType<typeof createMatchManagementFixtures>>;
@@ -431,13 +431,13 @@ describe('authoritative result confirmation contract', { timeout: 120_000 }, () 
   );
 });
 
-describe.skipIf(!rankedKitEnv(import.meta.url))(
+describe.skipIf(!rankedKitEnv())(
   'Ranked eligibility on confirmation (U4)',
   { timeout: 60000 },
   () => {
     let kit: RankedResultKit;
     beforeAll(async () => {
-      kit = await createRankedResultFixtures(rankedKitEnv(import.meta.url)!);
+      kit = await createRankedResultFixtures(rankedKitEnv()!);
     });
     afterAll(async () => {
       if (kit) await kit.cleanup();

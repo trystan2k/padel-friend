@@ -1,5 +1,5 @@
 import { afterAll, describe, expect, it } from 'vitest';
-import { dotEnvPathFromImportMetaUrl, localSupabaseEnv } from './helpers/local-supabase-env';
+import { localSupabaseEnv } from './helpers/local-supabase-env';
 import {
   createMatchFixtureCleanupRegistry,
   registerMatchCommunityFixtureRows,
@@ -40,7 +40,7 @@ import {
 } from './helpers/result-correction-statistics';
 import { queueCorrection, repairNow } from './helpers/result-replay-fixtures';
 
-const environment = localSupabaseEnv({ filePath: dotEnvPathFromImportMetaUrl(import.meta.url) });
+const environment = localSupabaseEnv();
 
 type Tracked = { confirmed: ConfirmedGroup; stat: StatGroup };
 

@@ -65,9 +65,40 @@ Follow this checklist for **each project created from this template**. Replace e
 
 ## 5. Local setup and validation
 
-1. Run `pnpm install`, `pnpm db:start`, then `pnpm db:reset` and `pnpm db:types`. Use `pnpm exec supabase status` to obtain the **local** publishable key (local API: `http://127.0.0.1:55321`). Copy `.env.example` to `.env.local` and `.dev.vars.example` to `.dev.vars`, replacing the placeholders. Both files are gitignored. Run `pnpm dev` at `http://127.0.0.1:3000`.
-2. Run `pnpm exec playwright install chromium`, then `pnpm complete-check`. For **full-stack** local Supabase signup/RLS E2E tests, export `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY` in the **test process**; `.env.local` alone is read by Vite but not by Playwright. Check SSR, login, onboarding, locale/theme persistence, and the callback error path. Run `pnpm db:stop` when finished.
+1. **Dev stack (your own data).** Run `pnpm install` and `pnpm db:start` (CLI project `padel-friend`, API `http://127.0.0.1:55321`). Read its **local** publishable key from the root project's `pnpm exec supabase status`, copy `.env.example` to `.env.local` and `.dev.vars.example` to `.dev.vars`, and replace the placeholders. Both files are gitignored. Run `pnpm dev` at `http://127.0.0.1:3000`. `pnpm db:reset:dev` wipes and re-seeds the dev database; run it only when you intend to lose your dev data. `pnpm db:stop` stops dev (data kept).
+2. **Test stack (disposable data, independent of dev).** Run `pnpm exec playwright install chromium`, then `pnpm test:stack:up`, `pnpm db:reset` (bare `db:reset` resets the **test** stack) and `pnpm db:types:check` (types are generated from the test stack; after editing a migration run `pnpm db:reset` before the check). Run `pnpm test`, `pnpm test:e2e` or the full gate `pnpm complete-check`; they read the test stack's own `supabase status` and never use `.env`, `.env.local` or exported dev credentials, so do not export any for tests. A missing test stack fails the command with an instruction to run `pnpm test:stack:up`. Run `pnpm test:stack:down` when finished (volumes, so test data, are kept). Check SSR, login, onboarding, locale/theme persistence, and the callback error path.
 3. For hosted Google end-to-end validation, deploy, click **Continue with Google**, confirm the consent screen redirects through Supabase back to `/auth/callback`, and check that `/onboarding` blocks a new player until profile completion, then `/dashboard` loads the profile. Also test a cancelled/denied consent flow: it should return to `/login` with a translated error. This last step requires real Google credentials and cannot be automated from this template alone.
+
+### Local stacks reference
+
+The opt-in isolation proof cleanup takes a short exclusive lock on affected history tables; concurrent dev reads and writes stall briefly (trigger DDL takes ACCESS EXCLUSIVE) until cleanup commits or rolls back.
+
+Two independent Supabase CLI projects run side by side: **dev** (`supabase/`, project `padel-friend`) and **test** (`test/stack/supabase/`, project `padel-friend-test`). Each has its own containers, network and data volumes (`supabase_db_<project>`, `supabase_storage_<project>`, ...), so test runs and resets never touch dev data. Test tooling never falls back to dev.
+
+| Script                                                        | Target | Effect                                                         |
+| ------------------------------------------------------------- | ------ | -------------------------------------------------------------- |
+| `pnpm db:start` / `pnpm db:stop`                              | dev    | Start / stop the dev stack (data kept)                         |
+| `pnpm db:reset:dev`                                           | dev    | **Wipes** the dev database, re-applies migrations and seed     |
+| `pnpm test:stack:up` / `down`                                 | test   | Start / stop the test stack (`down` keeps volumes)             |
+| `pnpm test:stack:reset`, `pnpm db:reset`                      | test   | Wipe and re-apply migrations and seed on the test stack        |
+| `pnpm db:types` / `pnpm db:types:check`                       | test   | Generate / verify `database.types.ts` from the test schema     |
+| `pnpm test`, `test:integration`, `test:e2e`, `complete-check` | test   | Resolve the test tuple from the test stack; fail if it is down |
+
+| Service                                 | Dev                      | Test                               |
+| --------------------------------------- | ------------------------ | ---------------------------------- |
+| API (Auth, REST, Storage)               | `http://127.0.0.1:55321` | `http://127.0.0.1:55421`           |
+| Database                                | `127.0.0.1:55322`        | `127.0.0.1:55422` (shadow `55420`) |
+| Studio                                  | `http://127.0.0.1:55323` | `http://127.0.0.1:55423`           |
+| Mailpit (web + API)                     | `http://127.0.0.1:55324` | `http://127.0.0.1:55424`           |
+| Analytics / edge inspector              | `55327` / CLI default    | `55427` / `55483`                  |
+| Controlled OAuth stub (host, test only) | n/a                      | `55499`                            |
+
+- `test/stack/supabase/migrations` and `seed.sql` are relative symlinks to the canonical `supabase/` files, so both stacks apply the same schema. `test/stack/supabase/templates` is a tracked **copy** (the CLI rejects symlinked template paths); `test/test-stack.test.ts` keeps it identical to `supabase/templates`.
+- The shared seed removes the pg_cron jobs, so unattended jobs cannot make tests flaky; it applies to dev too after `pnpm db:reset:dev`. Fixtures remove their own `storage.objects` rows on cleanup, and `pnpm db:reset` clears whatever remains in the test stack.
+- **One test run at a time.** The test stack has a fixed identity and fixed ports: never run two test/reset commands concurrently, and do not run tests from parallel worktrees on the same machine.
+- **Port collision.** If `pnpm test:stack:up` reports a port in use, inspect the owner (`lsof -nP -iTCP:<port> -sTCP:LISTEN`, `docker ps`) and stop that service yourself; the scripts never kill other processes and never pick another port.
+- **Memory.** Upstream recommends at least 7 GB RAM per full stack. Budget about 14 GB of Docker memory for both, with a host of 16 GB or more preferred (24 GB or more is comfortable once the app, browsers and Playwright run). That is a recommendation, not a measured minimum. Observed on a developer machine (`docker stats --no-stream`, idle): test stack about 1.7 GiB, dev stack about 2.4 GiB. Images are shared; data volumes are separate and disk use grows with database and Storage content. On a constrained machine stop dev (`pnpm db:stop`) while tests run; never point tests at dev.
+- **CI** starts only the test stack (`pnpm test:stack:up` through `.github/actions/supabase-start`) on each disposable runner; no dev stack exists there. The static job stays service-free and bakes the public pair from `test/stack/public-build.json`; each E2E lane verifies its live test stack reports exactly that pair.
 
 See [Supabase Google OAuth](https://supabase.com/docs/guides/auth/social-login/auth-google), [Supabase redirect URLs](https://supabase.com/docs/guides/auth/redirect-urls), and [Supabase SSR Auth](https://supabase.com/docs/guides/auth/server-side/creating-a-client) for current provider configuration guidance.
 

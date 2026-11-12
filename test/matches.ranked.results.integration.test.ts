@@ -1,5 +1,5 @@
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
-import { dotEnvPathFromImportMetaUrl, localSupabaseEnv } from './helpers/local-supabase-env';
+import { localSupabaseEnv } from './helpers/local-supabase-env';
 import { asRecord, fixtureSql, sqlRows } from './helpers/match-registration-sql';
 import {
   processDueMatchEventResults,
@@ -15,7 +15,7 @@ import {
   type RankedResultKit
 } from './helpers/ranked-result-fixtures';
 
-const environment = localSupabaseEnv({ filePath: dotEnvPathFromImportMetaUrl(import.meta.url) });
+const environment = localSupabaseEnv();
 const dayAgo = () => new Date(Date.now() - 86_400_000).toISOString();
 
 /**

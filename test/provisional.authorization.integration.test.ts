@@ -1,9 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import {
-  assertLocalSupabaseEnvInCi,
-  dotEnvPathFromImportMetaUrl,
-  localSupabaseEnv
-} from './helpers/local-supabase-env';
+import { assertLocalSupabaseEnvInCi, localSupabaseEnv } from './helpers/local-supabase-env';
 import {
   ensureProvisionalMembership,
   insertAcceptedRegistration,
@@ -15,7 +11,7 @@ import {
 import { insertLeague } from './helpers/league-fixtures';
 import { queryTrustedSql } from './helpers/sql-transport';
 
-const environment = localSupabaseEnv({ filePath: dotEnvPathFromImportMetaUrl(import.meta.url) });
+const environment = localSupabaseEnv();
 
 // SQL-language readers gate every row on these provisional-aware predicates,
 // so they need no injected statement of their own.

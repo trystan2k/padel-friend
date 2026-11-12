@@ -2,6 +2,7 @@ import { spawnSync } from 'node:child_process';
 import { readdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
+import { testCliArgs, testEnvFromStatus } from './test-stack-env.mjs';
 
 export const PREDECESSOR = '20261016120300';
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
@@ -114,7 +115,9 @@ export function runHarness({ env = process.env, run = spawnSync, log = console }
                   : ASSERTIONS;
 
   const execute = (args, options = {}) => {
-    const result = run('pnpm', ['exec', 'supabase', ...args], {
+    // Every call pins the absolute TEST workdir (predecessor reset, status/query, migration up and the
+    // finally restoration alike); the dev CLI project is unreachable from this harness.
+    const result = run('pnpm', testCliArgs(...args), {
       cwd: ROOT,
       encoding: 'utf8',
       ...options
@@ -139,6 +142,9 @@ export function runHarness({ env = process.env, run = spawnSync, log = console }
     const status = must('Supabase CLI status resolves local DB', ['status', '-o', 'env']);
     databaseHost(status);
     log.log('[assert] database host is loopback');
+    // Reason-only validation of the exact test API/DB/Mailpit endpoints and credentials.
+    testEnvFromStatus(status);
+    log.log('[assert] status reports the isolated test stack');
     // GitHub supplies a per-job local Supabase service. Schema-level data checks
     // cannot run before the predecessor reset because a fresh DB may have no app tables yet.
     started = true;
@@ -264,7 +270,7 @@ export function runHarness({ env = process.env, run = spawnSync, log = console }
           ? ['--no-seed']
           : [])
       ]);
-      log.log('[restore] pnpm exec supabase db reset --local');
+      log.log('[restore] pnpm exec supabase --workdir test/stack db reset --local');
       log.log(restore.stdout);
       if (restore.stderr) log.log(restore.stderr);
       if (restore.status !== 0) {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { dotEnvPathFromImportMetaUrl, localSupabaseEnv } from './helpers/local-supabase-env';
+import { localSupabaseEnv } from './helpers/local-supabase-env';
 import { asRecord, sqlRows } from './helpers/match-registration-sql';
 import { openDedicatedSqlConnection, queryTrustedSql } from './helpers/sql-transport';
 import {
@@ -16,7 +16,7 @@ import {
   type BulkConfirmedGroup
 } from './helpers/statistics-bulk-history-fixtures';
 
-const environment = localSupabaseEnv({ filePath: dotEnvPathFromImportMetaUrl(import.meta.url) });
+const environment = localSupabaseEnv();
 // Slow CI runners exceed the transport's 30s per-statement default on analyze/explain; the test's own
 // 900s vitest timeout still bounds the run, so only the environment-dependent per-statement kill moves.
 const STATEMENT_OPTIONS = { timeoutMs: 300_000 };

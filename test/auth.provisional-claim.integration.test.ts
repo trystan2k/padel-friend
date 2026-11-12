@@ -6,11 +6,7 @@ import {
   mailFor,
   uniqueEmail
 } from './helpers/match-add-player-fixtures';
-import {
-  assertLocalSupabaseEnvInCi,
-  dotEnvPathFromImportMetaUrl,
-  localSupabaseEnv
-} from './helpers/local-supabase-env';
+import { assertLocalSupabaseEnvInCi, localSupabaseEnv } from './helpers/local-supabase-env';
 import {
   addInvitedPlayer,
   authenticationMethods,
@@ -30,7 +26,7 @@ import {
 } from './helpers/provisional-player-fixtures';
 import { executeTrustedSql, queryTrustedSql } from './helpers/sql-transport';
 
-const environment = localSupabaseEnv({ filePath: dotEnvPathFromImportMetaUrl(import.meta.url) });
+const environment = localSupabaseEnv();
 
 async function memberships(userId: string) {
   const result = await queryTrustedSql(

@@ -1,5 +1,5 @@
 import { afterEach, beforeAll, describe, expect, it } from 'vitest';
-import { dotEnvPathFromImportMetaUrl, localSupabaseEnv } from './helpers/local-supabase-env';
+import { localSupabaseEnv } from './helpers/local-supabase-env';
 import {
   asRecord,
   fixtureSql,
@@ -33,7 +33,7 @@ import {
 } from './helpers/result-replay-fixtures';
 import { openDedicatedSqlConnection, type DedicatedSqlConnection } from './helpers/sql-transport';
 
-const environment = localSupabaseEnv({ filePath: dotEnvPathFromImportMetaUrl(import.meta.url) });
+const environment = localSupabaseEnv();
 const BOUND_MS = 30_000;
 
 describe('result repair claim fencing on separate connections', { timeout: 120_000 }, () => {

@@ -1,0 +1,13 @@
+<!doctype html>
+<html lang="{{ .Data.padel_invite_lang }}">
+  <body style="font-family: sans-serif; line-height: 1.5; color: #1a1a1a">
+    <h1>{{ .Data.padel_invite_heading }}</h1>
+    <p>{{ .Data.padel_invite_body }}</p>
+    <p>
+      <a href="{{ .RedirectTo }}&token_hash={{ .TokenHash }}&type=invite"
+        >{{ .Data.padel_invite_cta }}</a
+      >
+    </p>
+    <p style="color: #666666">{{ .Data.padel_invite_footer }}</p>
+  </body>
+</html>

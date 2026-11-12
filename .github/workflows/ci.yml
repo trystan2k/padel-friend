@@ -21,12 +21,6 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       populated-upgrade: ${{ steps.upgrade-paths.outputs.run }}
-    # Public, test-only values of the Supabase CLI's local stack (same for every runner). Vite embeds
-    # them at build time, so the one shared build below serves every E2E stack; E2E jobs verify the
-    # live stack still reports exactly these values.
-    env:
-      BUILD_SUPABASE_URL: http://127.0.0.1:55321
-      BUILD_SUPABASE_PUBLISHABLE_KEY: sb_publishable_ACJWlzQHlZjBrEguHvfOxg_3BJgxAaH
     steps:
       - name: Start job timing
         run: printf '%s\n' "$(date +%s%3N)" > "$RUNNER_TEMP/ci-job-start-ms"
@@ -39,6 +33,11 @@ jobs:
           node-version: '26'
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      # Static stays service-free (no containers, no stack). Vite embeds the public, local-only pair of the
+      # test stack (API 55421) from the checked-in descriptor at build time, so the one shared build
+      # serves every E2E stack; each E2E lane verifies its live stack reports exactly this pair.
+      - name: Resolve public test build config
+        run: node scripts/ci-test-env.mjs build-env >> "$GITHUB_ENV"
       - name: Build once for unit and E2E jobs
         env:
           VITE_SUPABASE_URL: ${{ env.BUILD_SUPABASE_URL }}
@@ -50,7 +49,8 @@ jobs:
           mkdir -p "$RUNNER_TEMP/app-build"
           # Build output, Cloudflare preview metadata and the generated files unit tests import.
           tar -cf "$RUNNER_TEMP/app-build/app-build.tar" dist .wrangler/deploy/config.json src/routeTree.gen.ts design-tokens/dist
-          printf '{"sha":"%s","supabaseUrl":"%s","runId":"%s"}\n' "$GITHUB_SHA" "$BUILD_SUPABASE_URL" "$GITHUB_RUN_ID" > "$RUNNER_TEMP/app-build/build-manifest.json"
+          # Manifest: SHA, run id and the public pair baked into the build; no private values.
+          node scripts/ci-test-env.mjs manifest "$GITHUB_SHA" "$GITHUB_RUN_ID" > "$RUNNER_TEMP/app-build/build-manifest.json"
       - name: Upload shared build
         uses: actions/upload-artifact@v4
         with:
@@ -62,8 +62,8 @@ jobs:
       - run: pnpm typecheck
       - run: pnpm lint
       - run: pnpm format:check
-      # The populated-upgrade harness only depends on migrations, seeds, config, its own scripts and
-      # fixtures, the toolchain pins and this workflow. Anything unknown or unreadable runs it.
+      # The populated-upgrade harness only depends on migrations, seeds, config (dev and the test stack
+      # project/launcher modules it runs through), its own scripts and fixtures, the toolchain pins and this workflow. Anything unknown or unreadable runs it.
       - name: Detect populated-upgrade inputs
         id: upgrade-paths
         env:
@@ -74,7 +74,7 @@ jobs:
             # --no-renames lists both endpoints of a move, so leaving a watched path still counts.
             if changed="$(git diff --name-only --no-renames "$BASE_SHA" HEAD)"; then
               run=false
-              pattern='^(supabase/|scripts/test-populated-migration-up\.|test/fixtures/|test/matches\.migration-up-harness\.test\.ts$|package\.json$|pnpm-lock\.yaml$|\.github/workflows/ci\.yml$|\.github/actions/)'
+              pattern='^(supabase/|test/stack/|scripts/test-stack|scripts/test-populated-migration-up\.|test/fixtures/|test/matches\.migration-up-harness\.test\.ts$|package\.json$|pnpm-lock\.yaml$|\.github/workflows/ci\.yml$|\.github/actions/)'
               if grep -Eq "$pattern" <<<"$changed"; then run=true; fi
             fi
           fi
@@ -164,7 +164,8 @@ jobs:
             artifacts/unit-job-timing.json
           if-no-files-found: ignore
 
-  # One disposable local Supabase stack; no other job can mutate this runner's DB.
+  # One disposable local TEST Supabase stack (pnpm test:stack:up); no dev stack exists on CI and no
+  # other job can mutate this runner's DB.
   # Integration tests exercise DB-backed feature modules, not build-generated route/token artifacts.
   integration:
     name: integration
@@ -197,7 +198,7 @@ jobs:
       - name: Restore latest local Supabase schema
         id: final-reset
         if: always() && needs.static.outputs.populated-upgrade == 'true'
-        run: pnpm exec supabase db reset --local
+        run: pnpm db:reset
         continue-on-error: true
       - name: Enforce populated upgrade and final reset results
         if: always()
@@ -206,25 +207,11 @@ jobs:
             printf '%s\n' 'Populated migration upgrade or latest-schema restore failed' >&2
             exit 1
           fi
-      # `db:types:check` runs `supabase gen types --local`, so it needs this live stack.
+      # `db:types:check` generates types from the test stack's schema, so it needs this live stack.
       - name: Check generated database types
         run: pnpm db:types:check
-      - name: Provision local Supabase environment
-        run: |
-          set -euo pipefail
-          status="$(pnpm exec supabase status -o env)"
-          API_URL="$(printf '%s\n' "$status" | sed -n 's/^API_URL=//p' | tail -n 1)"
-          PUBLISHABLE_KEY="$(printf '%s\n' "$status" | sed -n 's/^PUBLISHABLE_KEY=//p' | tail -n 1)"
-          API_URL="${API_URL#\"}"
-          API_URL="${API_URL%\"}"
-          PUBLISHABLE_KEY="${PUBLISHABLE_KEY#\"}"
-          PUBLISHABLE_KEY="${PUBLISHABLE_KEY%\"}"
-          if [[ -z ${API_URL:-} || ! ${API_URL:-} =~ ^http://(127\.0\.0\.1|localhost|\[::1\]):[0-9]+/?$ || -z ${PUBLISHABLE_KEY:-} ]]; then
-            printf '%s\n' 'Local Supabase API_URL or PUBLISHABLE_KEY missing/invalid' >&2
-            exit 1
-          fi
-          printf 'VITE_SUPABASE_URL=%s\nVITE_SUPABASE_PUBLISHABLE_KEY=%s\n' "$API_URL" "$PUBLISHABLE_KEY" >> "$GITHUB_ENV"
-          printf 'VITE_SUPABASE_URL=%s\nVITE_SUPABASE_PUBLISHABLE_KEY=%s\n' "$API_URL" "$PUBLISHABLE_KEY" > .env
+      # The integration launcher (pnpm test:integration) resolves the test stack tuple itself and
+      # aborts when the stack is missing; nothing is written to a root .env.
       # Audited parallel-safe files run on 2 workers first, then the remaining files serially
       # (scripts/run-integration.mjs); one JSON report per phase. INTEGRATION_SERIAL=1 is the rollback.
       - name: Run integration tests with JSON report
@@ -259,7 +246,7 @@ jobs:
             artifacts/integration-job-timing.json
           if-no-files-found: ignore
 
-  # Each E2E lane gets its own Supabase stack and a fresh preview of the shared same-run build.
+  # Each E2E lane gets its own TEST Supabase stack (pnpm test:stack:up) and a fresh preview of the shared same-run build.
   # Three functional lanes are balanced by measured runtime (scripts/e2e-shards.mjs); the serial lane
   # isolates the specs that race on global state (SERIAL_SPECS in scripts/e2e-shards.mjs); the visual lane runs every @visual test on every PR and
   # main push. The reporting job merges their blob
@@ -270,8 +257,6 @@ jobs:
     runs-on: ubuntu-latest
     needs: static
     env:
-      BUILD_SUPABASE_URL: http://127.0.0.1:55321
-      BUILD_SUPABASE_PUBLISHABLE_KEY: sb_publishable_ACJWlzQHlZjBrEguHvfOxg_3BJgxAaH
       PLAYWRIGHT_BLOB_OUTPUT_NAME: report-${{ matrix.lane }}.zip
     strategy:
       fail-fast: false
@@ -307,39 +292,12 @@ jobs:
           test -f dist/server/wrangler.json && test -f .wrangler/deploy/config.json && test -f src/routeTree.gen.ts && test -f design-tokens/dist/tokens.css
       - name: Start local Supabase
         uses: ./.github/actions/supabase-start
+      # The live test stack must report exactly the public pair baked into the shared build (manifest,
+      # cross-checked against the checked-in descriptor). Only the per-run extracted
+      # dist/server/.dev.vars receives the masked service key; the keyless artifact never does, and no
+      # root .env is written (pnpm test:e2e resolves the tuple through the central test launcher).
       - name: Provision local Supabase environment
-        run: |
-          set -euo pipefail
-          status="$(pnpm exec supabase status -o env)"
-          API_URL="$(printf '%s\n' "$status" | sed -n 's/^API_URL=//p' | tail -n 1)"
-          PUBLISHABLE_KEY="$(printf '%s\n' "$status" | sed -n 's/^PUBLISHABLE_KEY=//p' | tail -n 1)"
-          API_URL="${API_URL#\"}"
-          API_URL="${API_URL%\"}"
-          PUBLISHABLE_KEY="${PUBLISHABLE_KEY#\"}"
-          PUBLISHABLE_KEY="${PUBLISHABLE_KEY%\"}"
-          if [[ -z ${API_URL:-} || ! ${API_URL:-} =~ ^http://(127\.0\.0\.1|localhost|\[::1\]):[0-9]+/?$ || -z ${PUBLISHABLE_KEY:-} ]]; then
-            printf '%s\n' 'Local Supabase API_URL or PUBLISHABLE_KEY missing/invalid' >&2
-            exit 1
-          fi
-          # The shared build embedded these public values; a stack that disagrees would test the wrong backend.
-          if [[ "$API_URL" != "$BUILD_SUPABASE_URL" || "$PUBLISHABLE_KEY" != "$BUILD_SUPABASE_PUBLISHABLE_KEY" ]]; then
-            printf '%s\n' 'Local Supabase stack differs from the public config baked into the shared build' >&2
-            exit 1
-          fi
-          printf 'VITE_SUPABASE_URL=%s\nVITE_SUPABASE_PUBLISHABLE_KEY=%s\n' "$API_URL" "$PUBLISHABLE_KEY" >> "$GITHUB_ENV"
-          printf 'VITE_SUPABASE_URL=%s\nVITE_SUPABASE_PUBLISHABLE_KEY=%s\n' "$API_URL" "$PUBLISHABLE_KEY" > .env
-          # Server-only key of the ephemeral local stack, for the add-player server function.
-          SERVICE_ROLE_KEY="$(printf '%s\n' "$status" | sed -n 's/^SERVICE_ROLE_KEY=//p' | tail -n 1)"
-          SERVICE_ROLE_KEY="${SERVICE_ROLE_KEY#\"}"
-          SERVICE_ROLE_KEY="${SERVICE_ROLE_KEY%\"}"
-          echo "::add-mask::$SERVICE_ROLE_KEY"
-          printf 'SUPABASE_SERVICE_ROLE_KEY=%s\n' "$SERVICE_ROLE_KEY" >> "$GITHUB_ENV"
-          # The shared build is keyless (the static job has no stack), so it ships no dist/server/.dev.vars.
-          # The preview worker reads the key from there; create it with the live stack's key in this job's
-          # extracted copy only, never in the artifact or a tracked file.
-          printf 'SUPABASE_SERVICE_ROLE_KEY=%s\n' "$SERVICE_ROLE_KEY" > dist/server/.dev.vars
-          # E2E Web Push env (public key only; nothing can send, the private half is discarded), from the single source of truth.
-          node --input-type=module -e "import('./scripts/e2e-build-env.mjs').then((m) => { for (const [k, v] of Object.entries(m.E2E_WEB_PUSH_ENV)) process.stdout.write(k + '=' + v + '\\n'); })" >> dist/server/.dev.vars
+        run: node scripts/ci-test-env.mjs provision-e2e "$RUNNER_TEMP/app-build/build-manifest.json" dist/server/.dev.vars
       - run: pnpm exec playwright install --with-deps chromium
       # `pnpm test:e2e` resets the database and frees the preview port itself; E2E_GATE_PREBUILT makes
       # the web server preview the verified same-run build instead of rebuilding per lane.

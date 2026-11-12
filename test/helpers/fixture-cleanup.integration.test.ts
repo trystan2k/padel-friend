@@ -5,10 +5,10 @@ import {
   createMatchFixtureCleanupRegistry,
   registerMatchCommunityFixtureRows
 } from './match-registration-sql';
-import { dotEnvPathFromImportMetaUrl, localSupabaseEnv } from './local-supabase-env';
+import { localSupabaseEnv } from './local-supabase-env';
 import { executeTrustedSql, queryTrustedSql } from './sql-transport';
 
-const environment = localSupabaseEnv({ filePath: dotEnvPathFromImportMetaUrl(import.meta.url) });
+const environment = localSupabaseEnv();
 const communityMemberGuardStateSql = `select tgenabled from pg_catalog.pg_trigger t
   join pg_catalog.pg_class c on c.oid = t.tgrelid
   join pg_catalog.pg_namespace n on n.oid = c.relnamespace

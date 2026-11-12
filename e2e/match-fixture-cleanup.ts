@@ -1,6 +1,5 @@
-import { spawn } from 'node:child_process';
-import { readFileSync } from 'node:fs';
 import { serializeMatchFixtureSql, withDeadlockRetry } from './match-fixture-sql';
+import { spawnTestSql, testSupabaseConfig } from './test-supabase-config';
 
 export const FIXTURE_EMAIL_LIKE = '%@test.local';
 const FIXTURE_USERS = `(select u.id from auth.users u where u.email ilike '${FIXTURE_EMAIL_LIKE}')`;
@@ -172,20 +171,9 @@ export function assertLoopbackUrl(url: string | undefined): void {
   }
 }
 
+/** Fails closed unless the validated TEST tuple (never a root .env or dev tuple) is available. */
 export function assertLocalSupabase(): void {
-  const variables = new Map(
-    readFileSync(new URL('../.env', import.meta.url), 'utf8')
-      .split('\n')
-      .filter((line) => line.includes('=') && !line.trim().startsWith('#'))
-      .map((line) => {
-        const index = line.indexOf('=');
-        return [line.slice(0, index).trim(), line.slice(index + 1).trim()] as const;
-      })
-  );
-  assertLoopbackUrl(
-    process.env.VITE_SUPABASE_URL ??
-      (variables.get('VITE_SUPABASE_URL') ?? '').replace(/^['"]|['"]$/g, '')
-  );
+  assertLoopbackUrl(testSupabaseConfig().url);
 }
 
 /** One DO block = one transaction; a deadlock victim rolls back fully, so retry is idempotent. */
@@ -199,11 +187,7 @@ function runMatchFixtureCleanupOnce(owner: MatchFixtureOwner): Promise<void> {
     `do $$ begin ${buildMatchFixtureCleanupSql(owner)}; end $$;`
   );
   return new Promise((resolve, reject) => {
-    const child = spawn(
-      'pnpm',
-      ['exec', 'supabase', 'db', 'query', '--local', '--output-format', 'json', sql],
-      { cwd: process.cwd(), stdio: ['ignore', 'pipe', 'pipe'] }
-    );
+    const child = spawnTestSql(sql);
     let stdout = '';
     child.stdout.setEncoding('utf8').on('data', (chunk: string) => {
       stdout += chunk;

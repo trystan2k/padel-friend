@@ -15,18 +15,20 @@ import { dirname, relative, resolve } from 'node:path';
 import { PARALLEL_INTEGRATION_FILES } from '../integration-partition';
 import {
   e2eBuildEnv,
-  localServiceRoleKey,
-  requireServiceRoleKey,
-  resolveServiceRoleKey
+  requireTestBuildEnv,
+  resolveTestBuildEnv
 } from '../scripts/e2e-build-env.mjs';
+import { TEST_TUPLE, testStatusOutput } from './helpers/test-stack-status';
 import {
   INTEGRATION_DB_URL_ENV,
   LOCAL_DB_NAME,
   LOCAL_DB_PORT,
   assertHandoffDatabaseUrl,
+  discoverTestDatabaseUrl,
   handoffDatabaseUrl,
   resolveLocalDatabaseUrl
 } from '../scripts/integration-db-url.mjs';
+import { testEnvFromStatus } from '../scripts/test-stack-env.mjs';
 import {
   excludeArgs,
   fileFilters,
@@ -34,7 +36,7 @@ import {
   runIntegration
 } from '../scripts/run-integration.mjs';
 
-const noUrl = () => undefined;
+const stubTestEnv = () => TEST_TUPLE;
 
 type Call = { args: string[]; env: Record<string, string | undefined> };
 
@@ -200,20 +202,26 @@ describe('e2e build env contract', () => {
     const config = readFileSync('playwright.config.ts', 'utf8');
     const gate = readFileSync('scripts/complete-check.mjs', 'utf8');
     expect(config).toMatch(/from '\.\/scripts\/e2e-build-env\.mjs'/);
-    expect(config).toContain('localServiceRoleKey(');
-    // The gate must fail closed (require), never fall back to a keyless build.
+    // The config initializes the authoritative test tuple before workers and builds the webServer env from it.
+    expect(config).toContain('ensureTestStackEnv(');
+    expect(config).toContain('e2eBuildEnv(testEnv)');
+    // The gate must fail closed on an unresolvable test stack, never build keyless or against dev.
     expect(gate).toMatch(/from '\.\/e2e-build-env\.mjs'/);
-    expect(gate).toContain('requireServiceRoleKey(');
-    expect(gate).not.toContain('localServiceRoleKey(');
+    expect(gate).toContain('resolveTestBuildEnv(');
     for (const source of [config, gate]) expect(source).toContain('e2eBuildEnv(');
     expect(config).not.toContain('CLOUDFLARE_INCLUDE_PROCESS_ENV');
     expect(gate).not.toContain('CLOUDFLARE_INCLUDE_PROCESS_ENV');
   });
 
-  it('adds the process-env bake flag and key only when a key exists', () => {
-    expect(e2eBuildEnv('k')).toEqual({
+  it('adds the process-env bake flag, the public pair and the key only when a tuple exists', () => {
+    expect(e2eBuildEnv(TEST_TUPLE)).toEqual({
       CLOUDFLARE_INCLUDE_PROCESS_ENV: 'true',
-      SUPABASE_SERVICE_ROLE_KEY: 'k',
+      VITE_SUPABASE_URL: 'http://127.0.0.1:55421',
+      VITE_SUPABASE_PUBLISHABLE_KEY: TEST_TUPLE.VITE_SUPABASE_PUBLISHABLE_KEY,
+      SUPABASE_SERVICE_ROLE_KEY: TEST_TUPLE.SUPABASE_SERVICE_ROLE_KEY,
+      // Blanked so Cloudflare cannot bake the database password into the server bundle vars.
+      DATABASE_URL: '',
+      INTEGRATION_SUPABASE_DB_URL: '',
       WEB_PUSH_ENABLED: 'true',
       WEB_PUSH_VAPID_PUBLIC_KEY: expect.stringMatching(/^[A-Za-z0-9_-]{87}$/),
       WEB_PUSH_VAPID_KEY_ID: 'e2e-test'
@@ -221,35 +229,40 @@ describe('e2e build env contract', () => {
     expect(e2eBuildEnv(undefined)).toEqual({});
   });
 
-  it('resolves the key from the env first, then the local stack, and exports a found key', () => {
-    const exec = vi.fn<() => string>(() => 'SERVICE_ROLE_KEY="from-stack"\n');
-    expect(localServiceRoleKey({ SUPABASE_SERVICE_ROLE_KEY: 'from-env' }, exec)).toBe('from-env');
-    expect(exec).not.toHaveBeenCalled();
-    const env: Record<string, string | undefined> = {};
-    expect(localServiceRoleKey(env, exec)).toBe('from-stack');
-    expect(env.SUPABASE_SERVICE_ROLE_KEY).toBe('from-stack');
-    expect(
-      localServiceRoleKey({}, () => {
-        throw new Error('no stack');
-      })
-    ).toBeUndefined();
+  it('resolves the tuple from the pinned test status, replacing a mismatching inherited key', () => {
+    const exec = vi.fn<(...args: unknown[]) => string>(() => testStatusOutput());
+    const env: Record<string, string | undefined> = {
+      SUPABASE_SERVICE_ROLE_KEY: 'inherited-dev-key',
+      VITE_SUPABASE_URL: 'http://127.0.0.1:55321'
+    };
+    expect(resolveTestBuildEnv(env, exec)).toEqual({ tuple: TEST_TUPLE });
+    expect(env).toMatchObject(TEST_TUPLE);
+    expect(exec.mock.calls[0]?.[1]).toEqual([
+      'exec',
+      'supabase',
+      '--workdir',
+      expect.stringMatching(/test\/stack$/),
+      'status',
+      '-o',
+      'env'
+    ]);
   });
 
-  it('parses the key out of realistic supabase status output', () => {
-    const output =
-      'API_URL="http://127.0.0.1:55321"\nANON_KEY="a.b.c"\nSERVICE_ROLE_KEY="x.y.z"\nSTUDIO_URL="http://127.0.0.1:55323"\n';
-    expect(resolveServiceRoleKey({}, () => output)).toEqual({ key: 'x.y.z' });
-  });
-
-  it('propagates the exec failure instead of swallowing it, and requireServiceRoleKey throws it', () => {
+  it('reports the failure instead of building keyless, and requireTestBuildEnv throws it', () => {
     const failing = () => {
       throw Object.assign(new Error('exit 1'), { stderr: 'docker daemon not running\n' });
     };
-    expect(resolveServiceRoleKey({}, failing).reason).toContain('docker daemon not running');
-    expect(() => requireServiceRoleKey({}, failing)).toThrow(/docker daemon not running/);
-    expect(() => requireServiceRoleKey({}, failing)).toThrow(/SUPABASE_SERVICE_ROLE_KEY/);
-    expect(() => requireServiceRoleKey({}, () => 'API_URL="u"\n')).toThrow(/no SERVICE_ROLE_KEY/);
-    expect(requireServiceRoleKey({ SUPABASE_SERVICE_ROLE_KEY: 'k' }, failing)).toBe('k');
+    const env: Record<string, string | undefined> = { SUPABASE_SERVICE_ROLE_KEY: 'k' };
+    expect(resolveTestBuildEnv(env, failing).reason).toContain('pnpm test:stack:up');
+    expect(env.SUPABASE_SERVICE_ROLE_KEY).toBe('k');
+    expect(() => requireTestBuildEnv({}, failing)).toThrow(/test Supabase stack/);
+    expect(() => requireTestBuildEnv({}, failing)).toThrow(/never used/);
+    expect(
+      resolveTestBuildEnv({}, () => testStatusOutput({ SERVICE_ROLE_KEY: null })).reason
+    ).toContain('SUPABASE_SERVICE_ROLE_KEY');
+    expect(
+      resolveTestBuildEnv({}, () => testStatusOutput({ API_URL: 'http://127.0.0.1:55321' })).reason
+    ).toContain('VITE_SUPABASE_URL');
   });
 });
 
@@ -264,14 +277,14 @@ describe('excludeArgs', () => {
 describe('runIntegration', () => {
   it('runs the parallel phase before the serial phase with phase env', () => {
     const { calls, run } = recorder();
-    expect(runIntegration({ resolveDatabaseUrl: noUrl, args: [], env: {}, run })).toBe(0);
+    expect(runIntegration({ resolveTestEnv: stubTestEnv, args: [], env: {}, run })).toBe(0);
     expect(calls.map((call) => call.env.INTEGRATION_PHASE)).toEqual(['parallel', 'serial']);
   });
 
   it('runs one phase-less invocation for the serial rollback', () => {
     const { calls, run } = recorder();
     runIntegration({
-      resolveDatabaseUrl: noUrl,
+      resolveTestEnv: stubTestEnv,
       args: [],
       env: { INTEGRATION_SERIAL: '1', INTEGRATION_PHASE: 'parallel' },
       run
@@ -283,7 +296,7 @@ describe('runIntegration', () => {
   it('forwards filters, tolerates empty phases for filters and keeps per-phase reports', () => {
     const { calls, run } = recorder();
     runIntegration({
-      resolveDatabaseUrl: noUrl,
+      resolveTestEnv: stubTestEnv,
       args: ['test/a.integration.test.ts', '--outputFile.json=o.json'],
       env: {},
       run
@@ -300,7 +313,7 @@ describe('runIntegration', () => {
 
   it('does not tolerate empty runs without filters', () => {
     const { calls, run } = recorder();
-    runIntegration({ resolveDatabaseUrl: noUrl, args: ['--reporter=default'], env: {}, run });
+    runIntegration({ resolveTestEnv: stubTestEnv, args: ['--reporter=default'], env: {}, run });
     expect(calls[0]?.args).not.toContain('--passWithNoTests');
   });
 
@@ -309,7 +322,7 @@ describe('runIntegration', () => {
     const countFiles = vi.fn<() => number>(() => 0);
     expect(
       runIntegration({
-        resolveDatabaseUrl: noUrl,
+        resolveTestEnv: stubTestEnv,
         args: ['--reporter', 'basic'],
         env: {},
         run,
@@ -326,7 +339,7 @@ describe('runIntegration', () => {
     const countFiles = vi.fn<() => number>(() => 0);
     expect(
       runIntegration({
-        resolveDatabaseUrl: noUrl,
+        resolveTestEnv: stubTestEnv,
         args: ['test/nope.test.ts'],
         env: {},
         run,
@@ -349,7 +362,7 @@ describe('runIntegration', () => {
     try {
       expect(
         runIntegration({
-          resolveDatabaseUrl: noUrl,
+          resolveTestEnv: stubTestEnv,
           args: ['test/a.test.ts', ...exclude],
           env: {},
           run,
@@ -370,7 +383,7 @@ describe('runIntegration', () => {
       env.INTEGRATION_PHASE === 'serial' ? 1 : 0;
     expect(
       runIntegration({
-        resolveDatabaseUrl: noUrl,
+        resolveTestEnv: stubTestEnv,
         args: ['test/a.test.ts'],
         env: {},
         run,
@@ -385,7 +398,7 @@ describe('runIntegration', () => {
     const { calls, run } = recorder();
     expect(
       runIntegration({
-        resolveDatabaseUrl: noUrl,
+        resolveTestEnv: stubTestEnv,
         args: ['test/a.test.ts'],
         env: {},
         run,
@@ -401,7 +414,7 @@ describe('runIntegration', () => {
       const { calls, run } = recorder();
       expect(
         runIntegration({
-          resolveDatabaseUrl: noUrl,
+          resolveTestEnv: stubTestEnv,
           args: [],
           env: { INTEGRATION_PHASE: phase },
           run
@@ -417,7 +430,7 @@ describe('runIntegration', () => {
     try {
       expect(
         runIntegration({
-          resolveDatabaseUrl: noUrl,
+          resolveTestEnv: stubTestEnv,
           args: [],
           env: { INTEGRATION_PHASE: 'bogus' },
           run
@@ -432,7 +445,7 @@ describe('runIntegration', () => {
 
   it('runs both phases after a failure and returns the first failing status', () => {
     const { calls, run } = recorder([3, 1]);
-    expect(runIntegration({ resolveDatabaseUrl: noUrl, args: [], env: {}, run })).toBe(3);
+    expect(runIntegration({ resolveTestEnv: stubTestEnv, args: [], env: {}, run })).toBe(3);
     expect(calls).toHaveLength(2);
   });
 });
@@ -440,9 +453,10 @@ describe('runIntegration', () => {
 const LOCAL_URL = `postgresql://postgres:s3cr3t-pw@127.0.0.1:${LOCAL_DB_PORT}/${LOCAL_DB_NAME}`;
 
 describe('integration DB URL handoff', () => {
-  it('keeps the expected port equal to the [db] port in supabase/config.toml', () => {
-    const config = readFileSync(resolve(__dirname, '../supabase/config.toml'), 'utf8');
+  it('keeps the expected port equal to the [db] port in the TEST stack config, not the dev one', () => {
+    const config = readFileSync(resolve(__dirname, '../test/stack/supabase/config.toml'), 'utf8');
     expect(/^\[db\]\s*\nport = (\d+)/m.exec(config)?.[1]).toBe(LOCAL_DB_PORT);
+    expect(LOCAL_DB_PORT).toBe('55422');
   });
 
   it('uses a private name that cannot reach browser bundles', () => {
@@ -487,11 +501,17 @@ describe('integration DB URL handoff', () => {
     expect(() => handoffDatabaseUrl({ [INTEGRATION_DB_URL_ENV]: '' })).toThrow(/is empty/);
   });
 
-  it('resolves the launcher URL from supabase status output', () => {
-    const exec = vi.fn<() => string>(
-      () => `API_URL="http://127.0.0.1:55321"\nDB_URL="${LOCAL_URL}"\n`
-    );
+  it('resolves the launcher URL from the test stack status output', () => {
+    const exec = vi.fn<() => string>(() => testStatusOutput({ DB_URL: LOCAL_URL }));
     expect(resolveLocalDatabaseUrl(exec)).toBe(LOCAL_URL);
+    expect(exec).toHaveBeenCalledOnce();
+  });
+
+  it('discovers via the handoff first, then the test status, never root-CLI discovery', () => {
+    const exec = vi.fn<() => string>(() => testStatusOutput({ DB_URL: LOCAL_URL }));
+    expect(discoverTestDatabaseUrl({ [INTEGRATION_DB_URL_ENV]: LOCAL_URL }, exec)).toBe(LOCAL_URL);
+    expect(exec).not.toHaveBeenCalled();
+    expect(discoverTestDatabaseUrl({}, exec)).toBe(LOCAL_URL);
     expect(exec).toHaveBeenCalledOnce();
   });
 
@@ -502,13 +522,17 @@ describe('integration DB URL handoff', () => {
         throw new Error('status failed');
       }
     ],
-    ['no DB_URL', () => 'API_URL="http://127.0.0.1:55321"']
-  ])('leaves the launcher URL unresolved when %s', (_label, exec) => {
-    expect(resolveLocalDatabaseUrl(exec)).toBeUndefined();
+    ['no DB_URL', () => testStatusOutput({ DB_URL: null })],
+    [
+      'dev database port',
+      () => testStatusOutput({ DB_URL: 'postgresql://u:p@127.0.0.1:55322/postgres' })
+    ]
+  ])('hard-fails the launcher URL when %s (no weaker discovery)', (_label, exec) => {
+    expect(() => resolveLocalDatabaseUrl(exec)).toThrow(/Supabase stack|DATABASE_URL/);
   });
 
   it.each([
-    ['non-loopback host', 'postgresql://u:s3cr3t-pw@db.example.com:55322/postgres'],
+    ['non-loopback host', 'postgresql://u:s3cr3t-pw@db.example.com:55422/postgres'],
     ['wrong port', 'postgresql://u:s3cr3t-pw@127.0.0.1:5432/postgres'],
     ['wrong database', `postgresql://u:s3cr3t-pw@127.0.0.1:${LOCAL_DB_PORT}/other`],
     ['empty value', ''],
@@ -519,11 +543,11 @@ describe('integration DB URL handoff', () => {
   ])('throws a secret-free error when the resolved URL has a %s', (_label, value) => {
     let message = '';
     try {
-      resolveLocalDatabaseUrl(() => `DB_URL="${value}"`);
+      resolveLocalDatabaseUrl(() => testStatusOutput({ DB_URL: value }));
     } catch (error) {
       message = error instanceof Error ? error.message : String(error);
     }
-    expect(message).toContain(INTEGRATION_DB_URL_ENV);
+    expect(message).toMatch(/DATABASE_URL|INTEGRATION_SUPABASE_DB_URL/);
     expect(message).not.toContain('s3cr3t-pw');
     expect(message).not.toContain(value || '\0');
   });
@@ -545,12 +569,12 @@ describe('integration DB URL handoff', () => {
         env: {},
         run,
         countFiles,
-        resolveDatabaseUrl: () => resolveLocalDatabaseUrl(() => `DB_URL="${value}"`)
+        resolveTestEnv: () => testEnvFromStatus(testStatusOutput({ DB_URL: value }))
       });
       expect(status).toBe(2);
       const output = write.mock.calls.map(([chunk]) => String(chunk)).join('');
       expect(output).toContain('aborting');
-      expect(output).toContain(INTEGRATION_DB_URL_ENV);
+      expect(output).toContain('DATABASE_URL');
       expect(output).not.toContain('s3cr3t-pw');
       expect(output).not.toContain(value || '\0');
     } finally {
@@ -560,52 +584,52 @@ describe('integration DB URL handoff', () => {
     expect(countFiles).not.toHaveBeenCalled();
   });
 
-  it('still starts the children when the CLI cannot resolve a URL', () => {
+  it('aborts without starting any child when the test stack is unavailable (no fallback)', () => {
     const { calls, run } = recorder();
-    const status = runIntegration({
-      args: [],
-      env: {},
-      run,
-      resolveDatabaseUrl: () =>
-        resolveLocalDatabaseUrl(() => {
-          throw new Error('status failed');
-        })
-    });
-    expect(status).toBe(0);
-    expect(calls).toHaveLength(2);
-    expect(calls.every((call) => !(INTEGRATION_DB_URL_ENV in call.env))).toBe(true);
+    const write = vi.spyOn(process.stderr, 'write').mockReturnValue(true);
+    try {
+      const status = runIntegration({
+        args: [],
+        env: { VITE_SUPABASE_URL: 'http://127.0.0.1:55321', [INTEGRATION_DB_URL_ENV]: LOCAL_URL },
+        run,
+        resolveTestEnv: () => {
+          throw new Error('Test Supabase stack is unavailable. Run pnpm test:stack:up first.');
+        }
+      });
+      expect(status).toBe(2);
+      expect(write.mock.calls.map(([chunk]) => String(chunk)).join('')).toContain('test:stack:up');
+    } finally {
+      write.mockRestore();
+    }
+    expect(calls).toHaveLength(0);
   });
 
-  it('hands the resolved URL to every phase and the file count, replacing a stale inherited value', () => {
+  it('hands the whole test tuple to every phase and the file count, replacing every inherited dev value', () => {
     const { calls, run } = recorder();
     const countFiles = vi.fn<(env: Record<string, string | undefined>) => number>(() => 1);
     runIntegration({
       args: ['test/a.test.ts'],
-      env: { [INTEGRATION_DB_URL_ENV]: 'stale' },
+      env: {
+        [INTEGRATION_DB_URL_ENV]: 'stale',
+        VITE_SUPABASE_URL: 'http://127.0.0.1:55321',
+        VITE_SUPABASE_PUBLISHABLE_KEY: 'dev-key',
+        DATABASE_URL: 'postgresql://postgres:dev@127.0.0.1:55322/postgres',
+        SUPABASE_SERVICE_ROLE_KEY: 'dev-service',
+        UNRELATED: 'kept'
+      },
       run,
       countFiles,
-      resolveDatabaseUrl: () => LOCAL_URL
+      resolveTestEnv: stubTestEnv
     });
-    expect(calls.map((call) => call.env[INTEGRATION_DB_URL_ENV])).toEqual([LOCAL_URL, LOCAL_URL]);
-    expect(countFiles.mock.calls[0]?.[0][INTEGRATION_DB_URL_ENV]).toBe(LOCAL_URL);
+    for (const call of calls) expect(call.env).toMatchObject({ ...TEST_TUPLE, UNRELATED: 'kept' });
+    expect(countFiles.mock.calls[0]?.[0]).toMatchObject(TEST_TUPLE);
   });
 
-  it('resolves once per run and never passes the URL as an argument', () => {
+  it('resolves once per run and never passes the tuple as an argument', () => {
     const { calls, run } = recorder();
-    const resolveDatabaseUrl = vi.fn<() => string>(() => LOCAL_URL);
-    runIntegration({ args: [], env: {}, run, resolveDatabaseUrl });
-    expect(resolveDatabaseUrl).toHaveBeenCalledOnce();
-    expect(JSON.stringify(calls.map((call) => call.args))).not.toContain('s3cr3t-pw');
-  });
-
-  it('drops an inherited value when the launcher cannot resolve, so children discover as before', () => {
-    const { calls, run } = recorder();
-    runIntegration({
-      args: [],
-      env: { [INTEGRATION_DB_URL_ENV]: LOCAL_URL },
-      run,
-      resolveDatabaseUrl: noUrl
-    });
-    expect(calls.every((call) => !(INTEGRATION_DB_URL_ENV in call.env))).toBe(true);
+    const resolveTestEnv = vi.fn<() => typeof TEST_TUPLE>(() => TEST_TUPLE);
+    runIntegration({ args: [], env: {}, run, resolveTestEnv });
+    expect(resolveTestEnv).toHaveBeenCalledOnce();
+    expect(JSON.stringify(calls.map((call) => call.args))).not.toContain('fake-db-pw');
   });
 });

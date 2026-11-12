@@ -1,5 +1,5 @@
 import { afterAll, describe, expect, it } from 'vitest';
-import { dotEnvPathFromImportMetaUrl, localSupabaseEnv } from './helpers/local-supabase-env';
+import { localSupabaseEnv } from './helpers/local-supabase-env';
 import { sqlRows } from './helpers/match-registration-sql';
 import { expectNotificationOutcome } from './helpers/notification-channel-evidence';
 import { sqlText } from './helpers/provisional-player-fixtures';
@@ -28,7 +28,7 @@ import {
   sourceFingerprint
 } from './helpers/result-replay-fixtures';
 
-const environment = localSupabaseEnv({ filePath: dotEnvPathFromImportMetaUrl(import.meta.url) });
+const environment = localSupabaseEnv();
 
 /**
  * PAF-14 / T15.4: the League standings, the statistics replacement, the rating revision, the audit

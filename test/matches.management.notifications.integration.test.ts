@@ -8,7 +8,7 @@ import { decodeNotificationTarget } from '../src/features/notifications/notifica
 import { insertLeague } from './helpers/league-fixtures';
 import { createMatchManagementFixtures } from './helpers/match-management-fixtures';
 import { MANAGEMENT_NOTIFICATION_COPY } from './helpers/match-management-contract';
-import { localSupabaseEnv, dotEnvPathFromImportMetaUrl } from './helpers/local-supabase-env';
+import { localSupabaseEnv } from './helpers/local-supabase-env';
 import { fixtureSql, sqlRows } from './helpers/match-registration-sql';
 
 vi.mock('@tanstack/react-router', () => ({
@@ -25,7 +25,7 @@ vi.mock('../src/features/notifications/notifications.functions', () => ({
 import { NotificationDetailPage } from '../src/features/notifications/NotificationDetailPage';
 
 vi.setConfig({ testTimeout: 120000, hookTimeout: 120000 });
-const environment = localSupabaseEnv({ filePath: dotEnvPathFromImportMetaUrl(import.meta.url) });
+const environment = localSupabaseEnv();
 
 describe('management notification SQL / renderer parity', () => {
   let fixtures: Awaited<ReturnType<typeof createMatchManagementFixtures>>;

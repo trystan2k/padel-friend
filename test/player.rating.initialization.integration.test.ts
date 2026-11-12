@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { dotEnvPathFromImportMetaUrl, localSupabaseEnv } from './helpers/local-supabase-env';
+import { localSupabaseEnv } from './helpers/local-supabase-env';
 import {
   addInvitedPlayer,
   CLAIM_PROFILE,
@@ -17,7 +17,7 @@ import { insertConfirmedGroup } from './helpers/rating-ledger-fixtures';
 import { withDormantProjection } from './helpers/rating-fixtures';
 import { queryTrustedSql, sqlErrorMessage } from './helpers/sql-transport';
 
-const environment = localSupabaseEnv({ filePath: dotEnvPathFromImportMetaUrl(import.meta.url) });
+const environment = localSupabaseEnv();
 
 async function initializations(userId: string) {
   const result = await queryTrustedSql(

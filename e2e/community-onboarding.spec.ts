@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { expect, test, type Locator, type Page, type TestInfo } from '@playwright/test';
+import { testSupabaseConfig } from './test-supabase-config';
 import { createClient } from '@supabase/supabase-js';
 import { submitAndWaitForAuthDestination, waitForHydratedPage } from './auth-helpers';
 
@@ -57,25 +58,7 @@ test.use({
 });
 
 function localClient() {
-  const vars = new Map(
-    readFileSync(new URL('../.env', import.meta.url), 'utf8')
-      .split('\n')
-      .filter((line) => line.includes('=') && !line.startsWith('#'))
-      .map((line) => {
-        const index = line.indexOf('=');
-        return [
-          line.slice(0, index).trim(),
-          line
-            .slice(index + 1)
-            .trim()
-            .replace(/^['"]|['"]$/g, '')
-        ] as const;
-      })
-  );
-  const url = vars.get('VITE_SUPABASE_URL');
-  const key = vars.get('VITE_SUPABASE_PUBLISHABLE_KEY');
-  if (!url || !key || !['127.0.0.1', 'localhost'].includes(new URL(url).hostname))
-    throw new Error('E2E requires loopback Supabase');
+  const { url, key } = testSupabaseConfig();
   return createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
 }
 

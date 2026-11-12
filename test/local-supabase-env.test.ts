@@ -1,116 +1,61 @@
-import { describe, expect, it, vi } from 'vitest';
-import {
-  assertLocalSupabaseEnvInCi,
-  dotEnvPathFromImportMetaUrl,
-  localSupabaseEnv
-} from './helpers/local-supabase-env';
+import { describe, expect, it } from 'vitest';
+import { readFileSync } from 'node:fs';
+import { assertLocalSupabaseEnvInCi, localSupabaseEnv } from './helpers/local-supabase-env';
+import { TEST_TUPLE } from './helpers/test-stack-status';
 
-const localUrl = 'http://127.0.0.1:54321';
-const localKey = 'local-publishable-key';
-const filePath = '/project/.env';
-const file = `VITE_SUPABASE_URL=${localUrl}\nVITE_SUPABASE_PUBLISHABLE_KEY=${localKey}`;
+const devPair = {
+  VITE_SUPABASE_URL: 'http://127.0.0.1:55321',
+  VITE_SUPABASE_PUBLISHABLE_KEY: 'dev-publishable-key'
+};
 
 describe('local Supabase test environment', () => {
-  it('uses valid environment credentials without reading a file', () => {
-    const readFile = vi.fn<() => string>(() => file);
-    expect(
-      localSupabaseEnv({
-        env: { VITE_SUPABASE_URL: localUrl, VITE_SUPABASE_PUBLISHABLE_KEY: localKey },
-        filePath,
-        readFile
-      }).env
-    ).toEqual({ url: localUrl, key: localKey, source: 'environment' });
-    expect(readFile).not.toHaveBeenCalled();
-  });
-
-  it('accepts a quoted loopback URL', () => {
-    expect(
-      localSupabaseEnv({
-        env: { VITE_SUPABASE_URL: `'${localUrl}'`, VITE_SUPABASE_PUBLISHABLE_KEY: localKey },
-        filePath,
-        readFile: vi.fn<() => string>()
-      }).env?.url
-    ).toBe(localUrl);
-  });
-
-  it('strips quotes from an environment-supplied publishable key', () => {
-    expect(
-      localSupabaseEnv({
-        env: { VITE_SUPABASE_URL: localUrl, VITE_SUPABASE_PUBLISHABLE_KEY: `"${localKey}"` },
-        filePath,
-        readFile: vi.fn<() => string>()
-      }).env
-    ).toEqual({ url: localUrl, key: localKey, source: 'environment' });
-  });
-
-  it('rejects a quoted placeholder key instead of treating the quotes as content', () => {
-    const result = localSupabaseEnv({
-      env: { VITE_SUPABASE_URL: localUrl, VITE_SUPABASE_PUBLISHABLE_KEY: `'replace-with-key'` },
-      filePath,
-      readFile: () => ''
+  it('accepts only the complete validated TEST tuple from the environment', () => {
+    expect(localSupabaseEnv({ env: { ...TEST_TUPLE } }).env).toEqual({
+      url: TEST_TUPLE.VITE_SUPABASE_URL,
+      key: TEST_TUPLE.VITE_SUPABASE_PUBLISHABLE_KEY,
+      source: 'environment'
     });
+  });
+
+  it('rejects the dev pair even though it is a valid loopback pair', () => {
+    const result = localSupabaseEnv({ env: { ...TEST_TUPLE, ...devPair } });
     expect(result.env).toBeNull();
+    expect(result.reason).toContain('VITE_SUPABASE_URL');
+    expect(result.reason).not.toContain('dev-publishable-key');
   });
 
-  it('strips quotes from both values in a .env file', () => {
-    const quotedFile = `VITE_SUPABASE_URL="${localUrl}"\nVITE_SUPABASE_PUBLISHABLE_KEY='${localKey}'`;
-    expect(localSupabaseEnv({ env: {}, filePath, readFile: () => quotedFile }).env).toEqual({
-      url: localUrl,
-      key: localKey,
-      source: '.env file'
-    });
-  });
-
-  it('falls back to a valid local environment file when credentials are absent', () => {
-    expect(localSupabaseEnv({ env: {}, filePath, readFile: () => file }).env).toEqual({
-      url: localUrl,
-      key: localKey,
-      source: '.env file'
-    });
-  });
-
-  it('reports a missing file without exposing credentials', () => {
-    const result = localSupabaseEnv({
-      env: {},
-      filePath,
-      readFile: () => {
-        throw new Error(file);
-      }
-    });
-    expect(result.env).toBeNull();
-    expect(result.reason).not.toContain(localKey);
-    expect(result.reason).not.toContain(localUrl);
-  });
-
-  it.each(['not a url', 'https://example.com'])('rejects malformed or remote URL %s', (url) => {
-    const result = localSupabaseEnv({
-      env: { VITE_SUPABASE_URL: url, VITE_SUPABASE_PUBLISHABLE_KEY: localKey },
-      filePath,
-      readFile: vi.fn<() => string>()
-    });
-    expect(result.env).toBeNull();
-    expect(result.reason).not.toContain(url);
-  });
-
-  it('does not fall back when a complete remote environment pair is supplied', () => {
-    const readFile = vi.fn<() => string>(() => file);
+  it('rejects a bare public pair: the tuple is used together, never independently', () => {
     expect(
       localSupabaseEnv({
-        env: { VITE_SUPABASE_URL: 'https://example.com', VITE_SUPABASE_PUBLISHABLE_KEY: localKey },
-        filePath,
-        readFile
+        env: {
+          VITE_SUPABASE_URL: TEST_TUPLE.VITE_SUPABASE_URL,
+          VITE_SUPABASE_PUBLISHABLE_KEY: TEST_TUPLE.VITE_SUPABASE_PUBLISHABLE_KEY
+        }
       }).env
     ).toBeNull();
-    expect(readFile).not.toHaveBeenCalled();
   });
 
   it.each([
-    {},
-    { VITE_SUPABASE_URL: localUrl },
-    { VITE_SUPABASE_PUBLISHABLE_KEY: localKey },
-    { VITE_SUPABASE_URL: localUrl, VITE_SUPABASE_PUBLISHABLE_KEY: 'replace-with-key' }
-  ])('rejects missing or placeholder environment credentials %#', (env) => {
-    expect(localSupabaseEnv({ env, filePath, readFile: () => '' }).env).toBeNull();
+    ['wrong API port', { VITE_SUPABASE_URL: 'http://127.0.0.1:55321' }],
+    ['wrong DB port', { DATABASE_URL: 'postgresql://postgres:x@127.0.0.1:55322/postgres' }],
+    ['wrong mail port', { MAILPIT_URL: 'http://127.0.0.1:55324' }],
+    ['remote API', { VITE_SUPABASE_URL: 'https://project.supabase.co' }],
+    ['malformed API URL', { VITE_SUPABASE_URL: 'not a url' }],
+    ['empty key', { VITE_SUPABASE_PUBLISHABLE_KEY: '' }],
+    ['placeholder key', { VITE_SUPABASE_PUBLISHABLE_KEY: 'replace-with-key' }],
+    ['empty service key', { SUPABASE_SERVICE_ROLE_KEY: '' }]
+  ])('rejects %s without leaking the supplied values', (_label, patch) => {
+    const result = localSupabaseEnv({ env: { ...TEST_TUPLE, ...patch } });
+    expect(result.env).toBeNull();
+    for (const value of Object.values(patch).filter(Boolean))
+      expect(result.reason).not.toContain(value);
+  });
+
+  it('reads process env by default and never a root .env file', () => {
+    // A stray root .env cannot rescue a missing tuple: there is no file reader left.
+    expect(localSupabaseEnv({ env: {} }).env).toBeNull();
+    const source = readFileSync('test/helpers/local-supabase-env.ts', 'utf8');
+    expect(source).not.toMatch(/readFileSync|\.env['"]\)|readFile\b/);
   });
 
   it('fails closed in CI when local credentials are unavailable', () => {
@@ -118,32 +63,5 @@ describe('local Supabase test environment', () => {
       'Local Supabase credentials are required in CI'
     );
     expect(() => assertLocalSupabaseEnvInCi(null, undefined)).not.toThrow();
-  });
-});
-
-describe('dotEnvPathFromImportMetaUrl', () => {
-  it('decodes percent-encoded spaces and unicode segments into real paths', () => {
-    expect(
-      dotEnvPathFromImportMetaUrl(
-        'file:///Users/dev/my%20repos/p%C3%A1del-friend/test/suite.test.ts'
-      )
-    ).toBe('/Users/dev/my repos/pádel-friend/.env');
-  });
-
-  it('loads .env through the decoded path where the raw percent-encoded pathname cannot', () => {
-    const encodedUrl = 'file:///Users/dev/my%20repos/test/suite.test.ts';
-    const decoded = dotEnvPathFromImportMetaUrl(encodedUrl);
-    const rawPathname = new URL('../.env', encodedUrl).pathname;
-    expect(rawPathname).toContain('%20');
-    const readFile = (path: string) => {
-      if (path === decoded) return file;
-      throw new Error(`ENOENT: ${path}`);
-    };
-    expect(localSupabaseEnv({ env: {}, filePath: decoded, readFile }).env).toEqual({
-      url: localUrl,
-      key: localKey,
-      source: '.env file'
-    });
-    expect(localSupabaseEnv({ env: {}, filePath: rawPathname, readFile }).env).toBeNull();
   });
 });

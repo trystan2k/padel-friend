@@ -3,6 +3,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { generateTypes } from '../scripts/db-types.mjs';
+import { TEST_WORKDIR } from '../scripts/test-stack.mjs';
 import type { generateTypes as GenerateTypes } from '../scripts/db-types.d.mts';
 
 const directories: string[] = [];
@@ -100,6 +101,36 @@ describe('database type generation', () => {
     const first = await readFile(f.destination);
     await generateTypes({ rootDir: f.dir, destinationPath: f.destination, runProcess });
     expect(await readFile(f.destination)).toEqual(first);
+  });
+
+  it('generates from the TEST workdir with the unchanged schema list and a repo-root cwd', async () => {
+    const f = await fixture();
+    const calls: Array<{ args: string[]; cwd: unknown }> = [];
+    await generateTypes({
+      check: true,
+      rootDir: f.dir,
+      destinationPath: f.destination,
+      runProcess: async (_cmd, args, options) => {
+        calls.push({ args, cwd: options?.cwd });
+        if (args.includes('--local')) return { code: 0, signal: null, stdout: 'raw', stderr: '' };
+        await writeFile(args.at(-1)!, 'original');
+        return { code: 0, signal: null, stdout: '', stderr: '' };
+      }
+    });
+    expect(calls[0]?.args).toEqual([
+      'exec',
+      'supabase',
+      '--workdir',
+      TEST_WORKDIR,
+      'gen',
+      'types',
+      'typescript',
+      '--local',
+      '--schema',
+      'public,storage,graphql_public'
+    ]);
+    expect(path.isAbsolute(TEST_WORKDIR)).toBe(true);
+    expect(calls[0]?.cwd).toBe(f.dir);
   });
 
   it('checks equality and reports drift without mutating destination', async () => {

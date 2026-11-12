@@ -14,7 +14,7 @@ import {
   type LeagueActor,
   type LeagueWorld
 } from './helpers/league-fixtures';
-import { dotEnvPathFromImportMetaUrl, localSupabaseEnv } from './helpers/local-supabase-env';
+import { localSupabaseEnv } from './helpers/local-supabase-env';
 import { asRecord, fixtureSql, sqlRows } from './helpers/match-registration-sql';
 import { setResultReviewDeadlineOffset } from './helpers/match-result-processing-fixtures';
 import { sqlText } from './helpers/provisional-player-fixtures';
@@ -31,7 +31,7 @@ import {
   type DedicatedSqlConnection
 } from './helpers/sql-transport';
 
-const environment = localSupabaseEnv({ filePath: dotEnvPathFromImportMetaUrl(import.meta.url) });
+const environment = localSupabaseEnv();
 const dayAgo = () => new Date(Date.now() - 86_400_000).toISOString();
 const L = (id: string) => sqlText(id);
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));

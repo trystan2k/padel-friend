@@ -1,4 +1,5 @@
 import { expect, test, type BrowserContext, type Page } from '@playwright/test';
+import { testMailpitUrl, testSupabaseConfig } from './test-supabase-config';
 import { readFileSync } from 'node:fs';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { submitAndWaitForAuthDestination, waitForHydratedPage } from './auth-helpers';
@@ -199,32 +200,10 @@ test('callback code errors fall back to /login?authError=1 without leaking provi
 // path, and after a full fresh signup through both onboarding stages.
 // ---------------------------------------------------------------------------
 
-const MAILPIT_URL = 'http://127.0.0.1:55324';
+const MAILPIT_URL = testMailpitUrl();
 
 function localSupabaseConfig() {
-  const variables = new Map(
-    readFileSync(new URL('../.env', import.meta.url), 'utf8')
-      .split('\n')
-      .filter((line) => line.includes('=') && !line.trim().startsWith('#'))
-      .map((line) => {
-        const index = line.indexOf('=');
-        return [
-          line.slice(0, index).trim(),
-          line
-            .slice(index + 1)
-            .trim()
-            .replace(/^['"]|['"]$/g, '')
-        ] as const;
-      })
-  );
-  const url = process.env.VITE_SUPABASE_URL ?? variables.get('VITE_SUPABASE_URL') ?? '';
-  const key =
-    process.env.VITE_SUPABASE_PUBLISHABLE_KEY ??
-    variables.get('VITE_SUPABASE_PUBLISHABLE_KEY') ??
-    '';
-  if (!url || !key || !['127.0.0.1', 'localhost'].includes(new URL(url).hostname))
-    throw new Error('Match return journeys require loopback Supabase');
-  return { url, key };
+  return testSupabaseConfig();
 }
 
 const supabaseConfig = localSupabaseConfig();

@@ -1,13 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import {
-  assertLocalSupabaseEnvInCi,
-  dotEnvPathFromImportMetaUrl,
-  localSupabaseEnv
-} from './helpers/local-supabase-env';
+import { assertLocalSupabaseEnvInCi, localSupabaseEnv } from './helpers/local-supabase-env';
 import { scoringCases } from './helpers/match-result-scoring-cases';
 import { fixtureSql, sqlRows } from './helpers/match-registration-sql';
 
-const environment = localSupabaseEnv({ filePath: dotEnvPathFromImportMetaUrl(import.meta.url) });
+const environment = localSupabaseEnv();
 
 describe('SQL match result scoring parity', () => {
   it

@@ -23,5 +23,5 @@ export function runIntegration(options?: {
     phaseEnv: Record<string, string | undefined>,
     filters: string[]
   ) => number | undefined;
-  resolveDatabaseUrl?: () => string | undefined;
+  resolveTestEnv?: () => Record<string, string>;
 }): number;

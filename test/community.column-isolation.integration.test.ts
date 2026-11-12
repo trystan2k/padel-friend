@@ -1,6 +1,6 @@
-import { readFileSync } from 'node:fs';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { describe, expect, it, vi } from 'vitest';
+import { localSupabaseEnv, type LocalSupabaseEnv } from './helpers/local-supabase-env';
 import { queryTrustedSql } from './helpers/sql-transport';
 
 const serverClient = vi.hoisted(() => ({ current: null as SupabaseClient | null }));
@@ -28,51 +28,8 @@ import {
 
 vi.setConfig({ testTimeout: 30000, hookTimeout: 30000 });
 
-type LocalEnv = { url: string; key: string; source: 'environment' | '.env file' };
-const LOOPBACK_HOSTS = new Set(['127.0.0.1', 'localhost']);
-function usableLocalEnv(
-  rawUrl: string | undefined,
-  key: string | undefined,
-  source: LocalEnv['source']
-): LocalEnv | null {
-  if (!rawUrl || !key || key.startsWith('replace-with')) return null;
-  const url = rawUrl.replace(/^["']+|["']+$/g, '');
-  try {
-    if (!LOOPBACK_HOSTS.has(new URL(url).hostname)) return null;
-  } catch {
-    return null;
-  }
-  return { url, key, source };
-}
-function localSupabaseEnv(): { env: LocalEnv | null; reason: string } {
-  const url = process.env.VITE_SUPABASE_URL;
-  const key = process.env.VITE_SUPABASE_PUBLISHABLE_KEY;
-  if (url && key && !key.startsWith('replace-with')) {
-    return {
-      env: usableLocalEnv(url, key, 'environment'),
-      reason: `Non-loopback environment URL: ${url}`
-    };
-  }
-  try {
-    const vars = new Map(
-      readFileSync(new URL('../.env', import.meta.url), 'utf8')
-        .split('\n')
-        .filter((line) => line.includes('=') && !line.trim().startsWith('#'))
-        .map((line) => {
-          const index = line.indexOf('=');
-          return [line.slice(0, index).trim(), line.slice(index + 1).trim()] as const;
-        })
-    );
-    const fileUrl = vars.get('VITE_SUPABASE_URL');
-    const fileKey = vars.get('VITE_SUPABASE_PUBLISHABLE_KEY');
-    return {
-      env: usableLocalEnv(fileUrl, fileKey, '.env file'),
-      reason: `Missing or non-loopback .env URL: ${fileUrl ?? 'unset'}`
-    };
-  } catch {
-    return { env: null, reason: 'Missing loopback Supabase environment and .env' };
-  }
-}
+type LocalEnv = LocalSupabaseEnv;
+
 const environment = localSupabaseEnv();
 if (!environment.env)
   process.stderr.write(`[community.column-isolation] suite NOT RUN: ${environment.reason}\n`);

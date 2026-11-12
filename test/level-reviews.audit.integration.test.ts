@@ -3,7 +3,7 @@ import {
   decodeLevelReviewAdminDetail,
   decodeLevelReviewDetail
 } from '../src/features/level-reviews/level-review-decoders';
-import { dotEnvPathFromImportMetaUrl, localSupabaseEnv } from './helpers/local-supabase-env';
+import { localSupabaseEnv } from './helpers/local-supabase-env';
 import {
   drainDueRegistrationCutoffs,
   adjustmentRowFor,
@@ -24,7 +24,7 @@ import {
 import { sqlText } from './helpers/provisional-player-fixtures';
 import { executeTrustedSql, queryTrustedSql } from './helpers/sql-transport';
 
-const environment = localSupabaseEnv({ filePath: dotEnvPathFromImportMetaUrl(import.meta.url) });
+const environment = localSupabaseEnv();
 
 describe('level review audit chain', { timeout: 300_000 }, () => {
   let world: RatingWorld;

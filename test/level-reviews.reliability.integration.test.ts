@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { dotEnvPathFromImportMetaUrl, localSupabaseEnv } from './helpers/local-supabase-env';
+import { localSupabaseEnv } from './helpers/local-supabase-env';
 import {
   drainDueRegistrationCutoffs,
   adjustmentStates,
@@ -28,7 +28,7 @@ import {
 } from './helpers/rating-fixtures';
 import { executeTrustedSql, queryTrustedSql } from './helpers/sql-transport';
 
-const environment = localSupabaseEnv({ filePath: dotEnvPathFromImportMetaUrl(import.meta.url) });
+const environment = localSupabaseEnv();
 
 const IDS = [
   '00000000-0000-4000-8000-000000000001',

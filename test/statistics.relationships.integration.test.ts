@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { dotEnvPathFromImportMetaUrl, localSupabaseEnv } from './helpers/local-supabase-env';
+import { localSupabaseEnv } from './helpers/local-supabase-env';
 import { asRecord, fixtureSql, sqlRows } from './helpers/match-registration-sql';
 import type { ManagementActor } from './helpers/match-management-fixtures';
 import {
@@ -18,7 +18,7 @@ import {
 } from '../src/features/statistics/statistics-relationships.server';
 import { validateStatisticsFilters } from '../src/features/statistics/statistics.validators';
 
-const environment = localSupabaseEnv({ filePath: dotEnvPathFromImportMetaUrl(import.meta.url) });
+const environment = localSupabaseEnv();
 const FUNCTIONS = [
   'get_pair_statistics(uuid,uuid,uuid,uuid,text,date,date,integer)',
   'get_opponent_statistics(uuid,uuid,uuid,uuid,text,date,date,integer)',

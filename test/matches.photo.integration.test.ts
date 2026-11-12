@@ -6,11 +6,7 @@ import {
   copySavedVenueMatchPhoto,
   signMatchPhotoBatch
 } from '../src/features/matches/match-photo.server';
-import {
-  assertLocalSupabaseEnvInCi,
-  dotEnvPathFromImportMetaUrl,
-  localSupabaseEnv
-} from './helpers/local-supabase-env';
+import { assertLocalSupabaseEnvInCi, localSupabaseEnv } from './helpers/local-supabase-env';
 import { executeTrustedSql, startSql } from './helpers/sql-transport';
 
 // signMatchPhotoBatch sets a response header through the Start server runtime,
@@ -20,7 +16,7 @@ vi.mock('@tanstack/react-start/server', () => ({
   setResponseHeader: vi.fn<(name: string, value: string) => void>()
 }));
 
-const environment = localSupabaseEnv({ filePath: dotEnvPathFromImportMetaUrl(import.meta.url) });
+const environment = localSupabaseEnv();
 type Env = NonNullable<typeof environment.env>;
 type Actor = { id: string; client: SupabaseClient<Database> };
 

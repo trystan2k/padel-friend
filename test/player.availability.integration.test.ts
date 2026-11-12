@@ -2,11 +2,7 @@ import { readFileSync } from 'node:fs';
 import { createClient } from '@supabase/supabase-js';
 import { describe, expect, it } from 'vitest';
 import type { Database } from '../src/lib/supabase/database.types';
-import {
-  assertLocalSupabaseEnvInCi,
-  dotEnvPathFromImportMetaUrl,
-  localSupabaseEnv
-} from './helpers/local-supabase-env';
+import { assertLocalSupabaseEnvInCi, localSupabaseEnv } from './helpers/local-supabase-env';
 import {
   addInvitedPlayer,
   claimAudits,
@@ -18,7 +14,7 @@ import {
 import { signUpFixtureActor } from './helpers/provisional-player-fixtures';
 import { queryTrustedSql, sqlErrorMessage } from './helpers/sql-transport';
 
-const environment = localSupabaseEnv({ filePath: dotEnvPathFromImportMetaUrl(import.meta.url) });
+const environment = localSupabaseEnv();
 
 const PROFILE = {
   p_display_name: 'Avail Player',

@@ -16,10 +16,10 @@ import {
   decodeLevelReviewList,
   decodeLevelReviewQueue
 } from '../src/features/level-reviews/level-review-decoders';
-import { dotEnvPathFromImportMetaUrl, localSupabaseEnv } from './helpers/local-supabase-env';
+import { localSupabaseEnv } from './helpers/local-supabase-env';
 import { signUpFixtureActor } from './helpers/provisional-player-fixtures';
 
-const environment = localSupabaseEnv({ filePath: dotEnvPathFromImportMetaUrl(import.meta.url) });
+const environment = localSupabaseEnv();
 const ID = '11111111-1111-4111-8111-111111111111';
 
 describe('level review RLS and role denial', { timeout: 240_000 }, () => {

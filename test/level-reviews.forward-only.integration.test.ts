@@ -5,7 +5,7 @@ import {
   parseRatingProgress,
   type RatingHistoryItem
 } from '../src/features/player/rating-contracts';
-import { dotEnvPathFromImportMetaUrl, localSupabaseEnv } from './helpers/local-supabase-env';
+import { localSupabaseEnv } from './helpers/local-supabase-env';
 import {
   drainDueRegistrationCutoffs,
   adjustmentFingerprint,
@@ -37,7 +37,7 @@ import {
 } from './helpers/rating-fixtures';
 import { queryTrustedSql } from './helpers/sql-transport';
 
-const environment = localSupabaseEnv({ filePath: dotEnvPathFromImportMetaUrl(import.meta.url) });
+const environment = localSupabaseEnv();
 
 type Player = Awaited<ReturnType<RatingWorld['player']>>;
 

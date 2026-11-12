@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { dotEnvPathFromImportMetaUrl, localSupabaseEnv } from './helpers/local-supabase-env';
+import { localSupabaseEnv } from './helpers/local-supabase-env';
 import { asRecord, fixtureSql, sqlRows } from './helpers/match-registration-sql';
 import {
   createRankedResultFixtures,
@@ -16,7 +16,7 @@ import {
   GOLDEN_SCORES
 } from './helpers/statistics-golden-fixtures';
 
-const environment = localSupabaseEnv({ filePath: dotEnvPathFromImportMetaUrl(import.meta.url) });
+const environment = localSupabaseEnv();
 const nil = '00000000-0000-0000-0000-000000000000';
 const columns =
   'confirmed_groups, wins, losses, draws, incomplete_groups, competitive_groups, friendly_groups, sets_won, sets_lost, games_won, games_lost';

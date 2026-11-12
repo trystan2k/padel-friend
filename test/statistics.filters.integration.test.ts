@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { dotEnvPathFromImportMetaUrl, localSupabaseEnv } from './helpers/local-supabase-env';
+import { localSupabaseEnv } from './helpers/local-supabase-env';
 import { asRecord, sqlRows } from './helpers/match-registration-sql';
 import type { ManagementActor } from './helpers/match-management-fixtures';
 import {
@@ -11,7 +11,7 @@ import {
 import { sqlText } from './helpers/provisional-player-fixtures';
 import { decodeCommunityStatistics } from '../src/features/statistics/statistics-community.server';
 
-const environment = localSupabaseEnv({ filePath: dotEnvPathFromImportMetaUrl(import.meta.url) });
+const environment = localSupabaseEnv();
 const TYPES = ['all', 'competitive', 'friendly'] as const;
 
 type Scope = 'all' | 'main' | 'active' | 'closed';

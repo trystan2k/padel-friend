@@ -1,9 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import {
-  assertLocalSupabaseEnvInCi,
-  dotEnvPathFromImportMetaUrl,
-  localSupabaseEnv
-} from './helpers/local-supabase-env';
+import { assertLocalSupabaseEnvInCi, localSupabaseEnv } from './helpers/local-supabase-env';
 import {
   ensureProvisionalMembership,
   insertFixtureCommunity,
@@ -14,7 +10,7 @@ import {
 } from './helpers/provisional-player-fixtures';
 import { executeTrustedSql, queryTrustedSql, sqlErrorMessage } from './helpers/sql-transport';
 
-const environment = localSupabaseEnv({ filePath: dotEnvPathFromImportMetaUrl(import.meta.url) });
+const environment = localSupabaseEnv();
 
 async function sqlRejection(sql: string, values?: unknown[]): Promise<string> {
   try {

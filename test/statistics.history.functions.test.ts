@@ -4,7 +4,7 @@ import {
   playedAt,
   type RankedResultKit
 } from './helpers/ranked-result-fixtures';
-import { dotEnvPathFromImportMetaUrl, localSupabaseEnv } from './helpers/local-supabase-env';
+import { localSupabaseEnv } from './helpers/local-supabase-env';
 import { asRecord, fixtureSql } from './helpers/match-registration-sql';
 import { sqlText } from './helpers/provisional-player-fixtures';
 import { validateStatisticsHistoryInput } from '../src/features/statistics/statistics.validators';
@@ -74,7 +74,7 @@ describe('statistics server-function boundary', () => {
   });
 });
 
-const environment = localSupabaseEnv({ filePath: dotEnvPathFromImportMetaUrl(import.meta.url) });
+const environment = localSupabaseEnv();
 describe.skipIf(!environment.env)(
   'history reader with database fixtures',
   { timeout: 300_000 },

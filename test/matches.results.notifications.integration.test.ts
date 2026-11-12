@@ -4,7 +4,7 @@ import {
 } from './helpers/notification-channel-evidence';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { ratingEvidenceCleanupSql } from './helpers/fixture-cleanup';
-import { dotEnvPathFromImportMetaUrl, localSupabaseEnv } from './helpers/local-supabase-env';
+import { localSupabaseEnv } from './helpers/local-supabase-env';
 import {
   asRecord,
   fixtureSql,
@@ -25,7 +25,7 @@ import {
   setResultReviewDeadlineOffset
 } from './helpers/match-result-processing-fixtures';
 
-const environment = localSupabaseEnv({ filePath: dotEnvPathFromImportMetaUrl(import.meta.url) });
+const environment = localSupabaseEnv();
 const sortIds = (values: readonly string[]) =>
   [...values].sort((left, right) => left.localeCompare(right));
 

@@ -1,7 +1,7 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { deflateSync } from 'node:zlib';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
-import { dotEnvPathFromImportMetaUrl, localSupabaseEnv } from './helpers/local-supabase-env';
+import { localSupabaseEnv } from './helpers/local-supabase-env';
 import { executeTrustedSql } from './helpers/sql-transport';
 
 const serverClient = vi.hoisted(() => ({ current: null as SupabaseClient | null }));
@@ -28,7 +28,7 @@ import { finalizeCommunityVenuePhoto } from '../src/features/community/community
 import { listCommunityVenues } from '../src/features/community/community-admin.functions';
 import { validateVenuePhotoKey } from '../src/features/community/venue-photo';
 
-const environment = localSupabaseEnv({ filePath: dotEnvPathFromImportMetaUrl(import.meta.url) });
+const environment = localSupabaseEnv();
 const localOnly = environment.env ? describe : describe.skip;
 const password = 'Password123!';
 type Actor = { id: string; email: string; client: SupabaseClient };

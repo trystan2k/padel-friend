@@ -4,7 +4,7 @@ import {
 } from './helpers/notification-channel-evidence';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { decodeNotificationTarget } from '../src/features/notifications/notification-target';
-import { dotEnvPathFromImportMetaUrl, localSupabaseEnv } from './helpers/local-supabase-env';
+import { localSupabaseEnv } from './helpers/local-supabase-env';
 import {
   drainDueRegistrationCutoffs,
   adjustmentCount,
@@ -30,7 +30,7 @@ import {
 import { sqlText } from './helpers/provisional-player-fixtures';
 import { executeTrustedSql, queryTrustedSql, type SqlRow } from './helpers/sql-transport';
 
-const environment = localSupabaseEnv({ filePath: dotEnvPathFromImportMetaUrl(import.meta.url) });
+const environment = localSupabaseEnv();
 
 /** Every notification of a recipient that targets a level review request. */
 async function reviewNotifications(userId: string, requestId?: string): Promise<SqlRow[]> {

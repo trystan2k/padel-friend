@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { dotEnvPathFromImportMetaUrl, localSupabaseEnv } from './helpers/local-supabase-env';
+import { localSupabaseEnv } from './helpers/local-supabase-env';
 import { asRecord, fixtureSql, sqlRows } from './helpers/match-registration-sql';
 import {
   createRankedResultFixtures,
@@ -10,7 +10,7 @@ import { sqlText } from './helpers/provisional-player-fixtures';
 import { readPlayerStatistics } from '../src/features/statistics/statistics-player.server';
 import { validateStatisticsPlayerInput } from '../src/features/statistics/statistics.validators';
 
-const environment = localSupabaseEnv({ filePath: dotEnvPathFromImportMetaUrl(import.meta.url) });
+const environment = localSupabaseEnv();
 describe.skipIf(!environment.env)('player statistics SQL reader', { timeout: 300_000 }, () => {
   let kit: RankedResultKit;
   beforeAll(async () => {

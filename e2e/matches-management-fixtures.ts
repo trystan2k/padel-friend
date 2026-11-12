@@ -1,10 +1,10 @@
-import { spawn } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { expect, type Browser, type BrowserContext, type Page } from '@playwright/test';
 import { matchPhotoFixture } from '../test/helpers/match-photo-fixtures';
 import { waitForHydratedPage } from './auth-helpers';
 import { serializeMatchFixtureSql, withDeadlockRetry } from './match-fixture-sql';
+import { spawnTestSql, testSupabaseConfig } from './test-supabase-config';
 import enCopy from '../src/locales/en/translation.json' with { type: 'json' };
 import ptCopy from '../src/locales/pt-BR/translation.json' with { type: 'json' };
 import esCopy from '../src/locales/es/translation.json' with { type: 'json' };
@@ -35,16 +35,7 @@ export function sql(query: string): Promise<Row[]> {
 
 function runSql(query: string): Promise<Row[]> {
   return new Promise((resolve, reject) => {
-    const child = spawn('pnpm', [
-      'exec',
-      'supabase',
-      'db',
-      'query',
-      '--local',
-      '--output-format',
-      'json',
-      serializeMatchFixtureSql(query)
-    ]);
+    const child = spawnTestSql(serializeMatchFixtureSql(query));
     let out = '';
     let err = '';
     child.stdout.on('data', (chunk: Buffer) => {
@@ -127,23 +118,7 @@ export async function fixtures(
     communityName?: string;
   } = {}
 ) {
-  const vars = new Map(
-    readFileSync(new URL('../.env', import.meta.url), 'utf8')
-      .split('\n')
-      .filter((s) => s.includes('=') && !s.startsWith('#'))
-      .map((s) => [
-        s.slice(0, s.indexOf('=')).trim(),
-        s
-          .slice(s.indexOf('=') + 1)
-          .trim()
-          .replace(/^['"]|['"]$/g, '')
-      ])
-  );
-  const url = process.env.VITE_SUPABASE_URL ?? vars.get('VITE_SUPABASE_URL') ?? '';
-  const key =
-    process.env.VITE_SUPABASE_PUBLISHABLE_KEY ?? vars.get('VITE_SUPABASE_PUBLISHABLE_KEY') ?? '';
-  if (!['localhost', '127.0.0.1'].includes(new URL(url).hostname))
-    throw new Error('LOCAL_SUPABASE_REQUIRED');
+  const { url, key } = testSupabaseConfig();
   const actors: Actor[] = [];
   const contexts: BrowserContext[] = [];
   const photos: string[] = [];

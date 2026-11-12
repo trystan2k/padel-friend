@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { dotEnvPathFromImportMetaUrl, localSupabaseEnv } from './helpers/local-supabase-env';
+import { localSupabaseEnv } from './helpers/local-supabase-env';
 import {
   adjustmentFingerprint,
   adjustmentStates,
@@ -46,7 +46,7 @@ import {
   type CorrectionFacts
 } from './helpers/result-replay-fixtures';
 
-const environment = localSupabaseEnv({ filePath: dotEnvPathFromImportMetaUrl(import.meta.url) });
+const environment = localSupabaseEnv();
 
 type Player = Awaited<ReturnType<RatingWorld['player']>>;
 type Confirmed = PendingGroup & { confirmationId: string };

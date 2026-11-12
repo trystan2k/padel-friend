@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { dotEnvPathFromImportMetaUrl, localSupabaseEnv } from './helpers/local-supabase-env';
+import { localSupabaseEnv } from './helpers/local-supabase-env';
 import { asRecord, fixtureSql, sqlRows } from './helpers/match-registration-sql';
 import { createRankedResultFixtures, playedAt } from './helpers/ranked-result-fixtures';
 import { setResultReviewDeadlineOffset } from './helpers/match-result-processing-fixtures';
 import { sqlText } from './helpers/provisional-player-fixtures';
 import { openDedicatedSqlConnection, queryTrustedSql } from './helpers/sql-transport';
 
-const environment = localSupabaseEnv({ filePath: dotEnvPathFromImportMetaUrl(import.meta.url) });
+const environment = localSupabaseEnv();
 
 describe.skipIf(!environment.env)('statistics concurrent publication', () => {
   it('serializes a finalizer against rebuild, retries idempotently, and rolls back failed publication', async () => {

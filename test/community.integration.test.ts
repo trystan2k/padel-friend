@@ -1,10 +1,6 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
-import {
-  assertLocalSupabaseEnvInCi,
-  dotEnvPathFromImportMetaUrl,
-  localSupabaseEnv
-} from './helpers/local-supabase-env';
+import { assertLocalSupabaseEnvInCi, localSupabaseEnv } from './helpers/local-supabase-env';
 
 const serverClient = vi.hoisted(() => ({ current: null as SupabaseClient | null }));
 vi.mock('@tanstack/react-start', () => ({
@@ -59,7 +55,7 @@ import { executeTrustedSqlBatch, queryTrustedSql } from './helpers/sql-transport
 
 vi.setConfig({ testTimeout: 30000, hookTimeout: 30000 });
 type LocalEnv = NonNullable<ReturnType<typeof localSupabaseEnv>['env']>;
-const environment = localSupabaseEnv({ filePath: dotEnvPathFromImportMetaUrl(import.meta.url) });
+const environment = localSupabaseEnv();
 if (!environment.env)
   process.stderr.write(`[community.integration] suite NOT RUN: ${environment.reason}\n`);
 describe('community domain — CI backend guard', () => {

@@ -1,5 +1,5 @@
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
-import { dotEnvPathFromImportMetaUrl, localSupabaseEnv } from './helpers/local-supabase-env';
+import { localSupabaseEnv } from './helpers/local-supabase-env';
 import { fixtureSql, sqlRows, waitForRows, withDeadline } from './helpers/match-registration-sql';
 import {
   addInvitedPlayer,
@@ -43,7 +43,7 @@ import {
   type DedicatedSqlConnection
 } from './helpers/sql-transport';
 
-const environment = localSupabaseEnv({ filePath: dotEnvPathFromImportMetaUrl(import.meta.url) });
+const environment = localSupabaseEnv();
 
 /** Bounded wait for every contender: a lock-graph deadlock must fail, never hang. */
 const BOUND_MS = 30_000;
@@ -701,7 +701,7 @@ describe('rating projection races (real separate connections)', { timeout: 240_0
   });
 });
 
-describe.skipIf(!rankedKitEnv(import.meta.url))(
+describe.skipIf(!rankedKitEnv())(
   'League validation against the rating lock graph (U4)',
   { timeout: 120_000 },
   () => {
@@ -714,7 +714,7 @@ describe.skipIf(!rankedKitEnv(import.meta.url))(
     };
 
     beforeAll(async () => {
-      kit = await createRankedResultFixtures(rankedKitEnv(import.meta.url)!);
+      kit = await createRankedResultFixtures(rankedKitEnv()!);
     });
     afterAll(async () => {
       await Promise.all(open.splice(0).map((c) => c.close()));

@@ -3,6 +3,7 @@ import {
   assertDisposableDatabase,
   assertLocalContainer,
   createDocker,
+  DEFAULT_CONTAINER,
   diffFingerprints,
   type Docker,
   type SpawnLike
@@ -50,8 +51,18 @@ describe('destructive-target guards', () => {
       guard('restore_rehearsal_abcd', { confirmation: 'restore_rehearsal_other' })
     ).toThrow(/not confirmed/);
   });
-  it('only addresses a local supabase_db container', () => {
-    expect(assertLocalContainer('supabase_db_padel-friend')).toBe('supabase_db_padel-friend');
+  it('only addresses the isolated TEST stack supabase_db container', () => {
+    expect(assertLocalContainer('supabase_db_padel-friend-test')).toBe(
+      'supabase_db_padel-friend-test'
+    );
+    expect(DEFAULT_CONTAINER).toBe('supabase_db_padel-friend-test');
+    // The developer stack's container is protected by the strict allowlist.
+    expect(() => assertLocalContainer('supabase_db_padel-friend')).toThrow(
+      /Refusing database container/
+    );
+    expect(() => createDocker({ container: 'supabase_db_padel-friend' })).toThrow(
+      /Refusing database container/
+    );
     expect(() => assertLocalContainer('db.prod.example.com')).toThrow(
       /Refusing database container/
     );
@@ -187,7 +198,7 @@ describe('destructive-target guards', () => {
       'unix:///var/run/docker.sock',
       'exec',
       '-i',
-      'supabase_db_padel-friend'
+      'supabase_db_padel-friend-test'
     ]);
   });
 });

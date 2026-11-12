@@ -21,7 +21,7 @@ import {
 // so no production data, secret or dump can reach git.
 //
 //   node scripts/release-backup-restore.mjs --confirm-disposable restore_rehearsal_<id>
-//        [--source-db postgres] [--runs 2] [--container supabase_db_padel-friend] [--require-representative]
+//        [--source-db postgres] [--runs 2] [--container supabase_db_padel-friend-test] [--require-representative]
 
 const AUTH_TABLES = ['auth.users', 'auth.identities', 'supabase_migrations.schema_migrations'];
 const REPRESENTATIVE_MINIMUMS = {

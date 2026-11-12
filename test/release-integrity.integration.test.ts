@@ -24,7 +24,7 @@ import {
 } from './helpers/match-result-processing-fixtures';
 import { playedAt } from './helpers/ranked-result-fixtures';
 import { localAdminClient } from './helpers/match-add-player-fixtures';
-import { dotEnvPathFromImportMetaUrl, localSupabaseEnv } from './helpers/local-supabase-env';
+import { localSupabaseEnv } from './helpers/local-supabase-env';
 import { fixtureSql, sqlRows, waitForRows } from './helpers/match-registration-sql';
 import { openDedicatedSqlConnection } from './helpers/sql-transport';
 import { createRankedResultFixtures, type RankedResultKit } from './helpers/ranked-result-fixtures';
@@ -43,7 +43,7 @@ import {
   withNoopPublication
 } from './helpers/result-replay-fixtures';
 
-const environment = localSupabaseEnv({ filePath: dotEnvPathFromImportMetaUrl(import.meta.url) });
+const environment = localSupabaseEnv();
 
 /**
  * PAF-168: representative data (two quartets, rating history, a closed League snapshot, notification

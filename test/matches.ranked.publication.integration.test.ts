@@ -6,12 +6,12 @@ import {
   type LeagueActor,
   type LeagueWorld
 } from './helpers/league-fixtures';
-import { dotEnvPathFromImportMetaUrl, localSupabaseEnv } from './helpers/local-supabase-env';
+import { localSupabaseEnv } from './helpers/local-supabase-env';
 import { insertFixtureEvent, sqlText } from './helpers/provisional-player-fixtures';
 import { isoDay, publishCompetitive, sqlMessage } from './helpers/ranked-fixtures';
 import { executeTrustedSql } from './helpers/sql-transport';
 
-const environment = localSupabaseEnv({ filePath: dotEnvPathFromImportMetaUrl(import.meta.url) });
+const environment = localSupabaseEnv();
 const day = (offset: number) => `${isoDay(offset)}T00:00:00Z`;
 
 describe.skipIf(!environment.env)('Ranked event publication', { timeout: 300_000 }, () => {

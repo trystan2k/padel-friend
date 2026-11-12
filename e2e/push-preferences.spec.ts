@@ -1,6 +1,6 @@
-import { readFileSync } from 'node:fs';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { expect, test, type BrowserContext, type Locator, type Page } from '@playwright/test';
+import { testSupabaseConfig } from './test-supabase-config';
 import { E2E_WEB_PUSH_ENV } from '../scripts/e2e-build-env.mjs';
 import { waitForHydratedPage } from './auth-helpers';
 import { controlledByBuiltWorker } from './service-worker-helpers';
@@ -664,27 +664,5 @@ async function signIn(page: Page, actor: { email: string }): Promise<void> {
 }
 
 function localConfig() {
-  const variables = new Map(
-    readFileSync(new URL('../.env', import.meta.url), 'utf8')
-      .split('\n')
-      .filter((line) => line.includes('=') && !line.trim().startsWith('#'))
-      .map((line) => {
-        const index = line.indexOf('=');
-        return [
-          line.slice(0, index).trim(),
-          line
-            .slice(index + 1)
-            .trim()
-            .replace(/^['"]|['"]$/g, '')
-        ] as const;
-      })
-  );
-  const url = process.env.VITE_SUPABASE_URL ?? variables.get('VITE_SUPABASE_URL') ?? '';
-  const key =
-    process.env.VITE_SUPABASE_PUBLISHABLE_KEY ??
-    variables.get('VITE_SUPABASE_PUBLISHABLE_KEY') ??
-    '';
-  if (!url || !key || !['127.0.0.1', 'localhost'].includes(new URL(url).hostname))
-    throw new Error('Push E2E requires loopback Supabase');
-  return { url, key };
+  return testSupabaseConfig();
 }

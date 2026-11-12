@@ -2,6 +2,7 @@ import { readFileSync, readdirSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
+import { TEST_DB_PORT, testCliArgs } from './test-stack-env.mjs';
 import {
   DEFAULT_CONTAINER,
   MIGRATION_PREFIX,
@@ -22,7 +23,7 @@ import {
 // forward migration applies. Nothing here touches the source database except reading it.
 //
 //   node scripts/release-migration-rehearsal.mjs --confirm-disposable migration_rehearsal_<id>
-//        [--source-db postgres] [--container supabase_db_padel-friend]
+//        [--source-db postgres] [--container supabase_db_padel-friend-test]
 
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
 const MIGRATIONS_DIR = path.join(ROOT, 'supabase/migrations');
@@ -199,9 +200,10 @@ export function runMigrationRehearsal({
       step('RPC grants, table grants, policies and functions equal the live migrated schema');
     if (checkTypes) {
       const generate = (args) => {
+        // Test workdir pinned: the type oracle is the isolated test stack's CLI project.
         const generated = spawnSync(
           'pnpm',
-          ['exec', 'supabase', 'gen', 'types', 'typescript', ...args, '--schema', 'public'],
+          testCliArgs('gen', 'types', 'typescript', ...args, '--schema', 'public'),
           { cwd: ROOT, encoding: 'utf8', maxBuffer: 4 * 1024 * 1024 }
         );
         if (generated.status !== 0 || !generated.stdout.includes('operational_job_events'))
@@ -210,13 +212,9 @@ export function runMigrationRehearsal({
           );
         return generated.stdout;
       };
-      // Repository's local port only; never assume Supabase's default (another project
-      // can own it). URL accepts neither a hosted server nor an arbitrary caller target.
-      const port = readFileSync(path.join(ROOT, 'supabase/config.toml'), 'utf8').match(
-        /\[db\][\s\S]*?^port\s*=\s*(\d+)/m
-      )?.[1];
-      if (!port || Number(port) < 1 || Number(port) > 65535)
-        throw new Error('Local database port missing');
+      // The test stack's fixed database port only; never assume Supabase's default (another project
+      // can own it) or the dev stack's. URL accepts neither a hosted server nor an arbitrary caller target.
+      const port = TEST_DB_PORT;
       const upgraded = generate([
         '--db-url',
         `postgresql://postgres:postgres@127.0.0.1:${port}/${destination}?sslmode=disable`

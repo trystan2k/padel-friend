@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { ManagementActor } from './helpers/match-management-fixtures';
-import { dotEnvPathFromImportMetaUrl, localSupabaseEnv } from './helpers/local-supabase-env';
+import { localSupabaseEnv } from './helpers/local-supabase-env';
 import { asRecord, fixtureSql, sqlRows } from './helpers/match-registration-sql';
 import {
   createMatchResultReviewFixtures,
@@ -13,9 +13,7 @@ describe('atomic result review commands', { timeout: 120000 }, () => {
   let foreignEventId: string;
 
   beforeAll(async () => {
-    const { env, reason } = localSupabaseEnv({
-      filePath: dotEnvPathFromImportMetaUrl(import.meta.url)
-    });
+    const { env, reason } = localSupabaseEnv();
     if (!env) throw new Error(reason);
     f = await createMatchResultReviewFixtures(env);
     foreign = await createMatchResultReviewFixtures(env);

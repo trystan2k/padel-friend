@@ -1,5 +1,5 @@
-import { execFileSync } from 'node:child_process';
 import { Client } from 'pg';
+import { testDatabaseUrl } from './test-supabase-config';
 
 // The rating projection is one global stream: its consistency gate counts every game group in the
 // database and level approvals compare a global revision. Specs that confirm results, replay
@@ -8,18 +8,7 @@ import { Client } from 'pg';
 let holder: Client | undefined;
 
 function localConnectionString(): string {
-  const status = execFileSync('pnpm', ['exec', 'supabase', 'status', '-o', 'env'], {
-    encoding: 'utf8',
-    timeout: 10_000,
-    stdio: ['ignore', 'pipe', 'pipe']
-  });
-  const connectionString = status.match(/^DB_URL="?([^"\n]+)"?$/m)?.[1];
-  if (
-    !connectionString ||
-    !['localhost', '127.0.0.1', '[::1]'].includes(new URL(connectionString).hostname)
-  )
-    throw new Error('Local database required');
-  return connectionString;
+  return testDatabaseUrl();
 }
 
 const LOCK_WAIT_SECONDS = 120;
