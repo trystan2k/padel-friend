@@ -341,6 +341,7 @@ type HolderTeardownResult = {
   elapsedMs: number;
   sweep?: LocalSqlResult;
   sweepCommand: LocalSqlCommand;
+  sweepTimedOut: boolean;
 };
 
 /**
@@ -366,9 +367,11 @@ async function releaseHolderAndSweep(
           and pid <> pg_catalog.pg_backend_pid()`
   );
   let sweep: LocalSqlResult | undefined;
+  let sweepTimedOut = false;
   try {
     sweep = await withDeadline(sweepCommand.done, sliceMs, 'marker backend sweep');
   } catch {
+    sweepTimedOut = true;
     // Stalled or failed sweep: bound the stop inside its own slice, then
     // collect the killed child's result. The holder stop below is the backstop.
     await withDeadline(sweepCommand.stop(), sliceMs, 'stalled sweep child stop').catch(
@@ -386,7 +389,7 @@ async function releaseHolderAndSweep(
   }
   if (teardown.outstanding?.length)
     await Promise.race([Promise.allSettled([...teardown.outstanding]), sleep(sliceMs)]);
-  return { elapsedMs: Date.now() - startedAt, sweep, sweepCommand };
+  return { elapsedMs: Date.now() - startedAt, sweep, sweepCommand, sweepTimedOut };
 }
 
 function timestampMicroseconds(value: string): bigint {
@@ -453,11 +456,16 @@ describe('LocalSqlCommand process-group cleanup', () => {
   it.skipIf(environment.env === null)(
     'stops a stalled cleanup command within its deadline slice',
     async () => {
-      const { elapsedMs, sweep, sweepCommand } = await releaseHolderAndSweep({
+      const { elapsedMs, sweep, sweepCommand, sweepTimedOut } = await releaseHolderAndSweep({
         marker: 'paf44-stalled-sweep-',
         sweepSql: 'select pg_catalog.pg_sleep(4) as value'
       });
       expect(elapsedMs).toBeLessThan(TEARDOWN_DEADLINE_MS);
+      // A stalled sweep never finishes inside its deadline slice, so teardown
+      // records that the timeout branch ran and the stop path was invoked. An
+      // early CLI failure (connection error, spawn failure) resolves before the
+      // slice expires and fails this check.
+      expect(sweepTimedOut).toBe(true);
       // Contract: the Supabase CLI child was really spawned, did not finish
       // cleanly (a 0 exit would mean the sleep ran to completion instead of being
       // reaped), and its whole process group is gone. The exact nonzero status or
