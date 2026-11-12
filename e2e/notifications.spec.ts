@@ -8,10 +8,16 @@ import {
   type Browser,
   type Locator,
   type Page,
-  type Response
+  type Response,
+  type Route
 } from '@playwright/test';
 import { submitAndWaitForAuthDestination, waitForHydratedPage } from './auth-helpers';
 import { sql } from './matches-management-fixtures';
+import {
+  CUTOFF_TIMESTAMP,
+  describeServerFnPayload,
+  parseMarkAllCutoff
+} from './notification-cutoff';
 import {
   copies,
   enterScore,
@@ -448,14 +454,15 @@ async function insertInvitation(owner: Actor, communityId: string, invitee: Acto
   return { id: invitation.data.id, token };
 }
 
-async function listNotificationIds(actor: Actor): Promise<string[]> {
-  const rows = await actor.client
+async function invitationNotificationId(actor: Actor, invitationId: string): Promise<string> {
+  const row = await actor.client
     .from('notifications')
     .select('id')
-    .order('created_at', { ascending: true })
-    .order('id', { ascending: true });
-  if (rows.error) throw rows.error;
-  return (rows.data ?? []).map((row: { id: string }) => row.id);
+    .eq('kind', 'community_invitation')
+    .eq('target_id', invitationId)
+    .single();
+  if (row.error) throw row.error;
+  return row.data.id;
 }
 
 async function latestNotification(
@@ -875,8 +882,8 @@ test('mark-all-read honors its cutoff so a concurrently arriving notification st
     admin,
     `Cutoff two ${crypto.randomUUID().slice(0, 6)}`
   );
-  await insertInvitation(admin, firstCommunity, recipient);
-  await insertInvitation(admin, secondCommunity, recipient);
+  const firstInvitation = await insertInvitation(admin, firstCommunity, recipient);
+  const secondInvitation = await insertInvitation(admin, secondCommunity, recipient);
 
   const context = await newContext(browser);
   try {
@@ -893,38 +900,43 @@ test('mark-all-read honors its cutoff so a concurrently arriving notification st
     // its real cutoff C is read from the payload, and the three rows get explicit created_at values
     // C-1ms / C / C+1ms. The unmodified backend then proves `created_at <= p_before`: the
     // strictly-older and equal rows are marked read, the strictly-newer row stays unread.
-    const [firstRow, secondRow] = await listNotificationIds(recipient);
-    if (!firstRow || !secondRow) throw new Error('Seed notifications were not delivered');
-    let captureCutoff!: (cutoff: string) => void;
-    const cutoffCaptured = new Promise<string>((resolve) => {
-      captureCutoff = resolve;
-    });
+    // Rows are identified by the invitation they target (the producer trigger commits the
+    // notification in the invitation's own transaction), never by list order.
+    const [firstRow, secondRow] = await Promise.all([
+      invitationNotificationId(recipient, firstInvitation.id),
+      invitationNotificationId(recipient, secondInvitation.id)
+    ]);
+    // The mark-all payload is { data: { before } } in the server-function serializer's format;
+    // only that exact shape is held (once), every other call continues untouched.
+    const held: { cutoff: string | null; skipped: string[] } = { cutoff: null, skipped: [] };
     let releaseRequest!: () => void;
     const requestReleased = new Promise<void>((resolve) => {
       releaseRequest = resolve;
     });
-    await page.route('**/_serverFn/**', async (route) => {
+    const serverFnRoute = async (route: Route) => {
       const request = route.request();
-      // The serialized payload carries the "before" key and its ISO cutoff (database clock, so
-      // microsecond precision with a numeric offset); no other server function on this page
-      // sends both.
       const body = request.method() === 'POST' ? (request.postData() ?? '') : '';
-      const cutoff = body.includes('before')
-        ? body.match(/\d{4}-\d{2}-\d{2}T[\d:.]+(?:Z|[+-]\d{2}:\d{2})/)?.[0]
-        : undefined;
-      if (!cutoff) {
+      const cutoff = held.cutoff === null ? parseMarkAllCutoff(body) : null;
+      if (cutoff === null) {
+        if (body) held.skipped.push(describeServerFnPayload(body));
         await route.continue();
         return;
       }
-      captureCutoff(cutoff);
+      held.cutoff = cutoff;
       await requestReleased;
       await route.continue();
-    });
+    };
+    await page.route('**/_serverFn/**', serverFnRoute);
 
     let thirdRow = '';
     try {
       await page.getByRole('button', { name: en.notifications.markAllRead }).click();
-      const cutoff = await cutoffCaptured;
+      // Bounded observation; a miss reports what the route saw (payload keys only, no values).
+      await expect
+        .poll(() => held.cutoff ?? `mark-all POST not held; saw ${JSON.stringify(held.skipped)}`)
+        .toMatch(CUTOFF_TIMESTAMP);
+      const cutoff = held.cutoff;
+      if (cutoff === null) throw new Error('Mark-all cutoff was not captured');
       // Offsets are applied in SQL so the cutoff keeps its microsecond precision.
       const cutoffSql = `'${cutoff}'::timestamptz`;
 
@@ -934,12 +946,8 @@ test('mark-all-read honors its cutoff so a concurrently arriving notification st
         admin,
         `Cutoff three ${crypto.randomUUID().slice(0, 6)}`
       );
-      await insertInvitation(admin, thirdCommunity, recipient);
-      const delivered = (await listNotificationIds(recipient)).find(
-        (id) => id !== firstRow && id !== secondRow
-      );
-      if (!delivered) throw new Error('Third notification was not delivered');
-      thirdRow = delivered;
+      const thirdInvitation = await insertInvitation(admin, thirdCommunity, recipient);
+      thirdRow = await invitationNotificationId(recipient, thirdInvitation.id);
 
       await sql(
         `update public.notifications set created_at = case id
@@ -974,6 +982,8 @@ test('mark-all-read honors its cutoff so a concurrently arriving notification st
       );
     } finally {
       releaseRequest();
+      // 'wait' lets the released handler finish its unmodified continue() before removal.
+      await page.unrouteAll({ behavior: 'wait' });
     }
 
     await expect(unreadChip(page, 1)).toBeVisible();

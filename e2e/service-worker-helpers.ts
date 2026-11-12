@@ -1,17 +1,19 @@
 import { expect, type BrowserContext, type Page, type Worker } from '@playwright/test';
 import { waitForHydratedPage } from './auth-helpers';
 
-// Hypothesised mechanism (PAF-175, class 1, UNCONFIRMED pending the loaded-gate campaign, AC1): a fresh
-// context has an empty CacheStorage, so every real-worker case pays one full install (the worker
-// precaches the whole public build through the single preview server) before it can answer a request.
-// Under a saturated gate that install, rather than the test body, is the suspected long pole. It would
-// be confirmed by stalled cases showing the install still in flight at timeout. What is verifiable from
-// the code alone: the previous helpers could proceed against a not-yet-ready worker, because they read `context.serviceWorkers()[0]` right
-// after `ready`, which is either empty (the `serviceworker` event is delivered separately from the
-// page-side promise) or not yet the built worker, so a case could proceed against a worker that was
-// not the installed, activated one and then stall inside `context.close()` with that install still
-// in flight. The helper subscribes to the worker event BEFORE navigating, then waits on explicit
-// signals only: registration shape, "activated", and controller (reload only when still uncontrolled).
+// Hypothesised mechanism (PAF-175, class 1, UNCONFIRMED): a fresh context has an empty CacheStorage,
+// so every real-worker case pays one full install (the worker precaches the whole public build
+// through the single preview server) before it can answer a request. Under a saturated gate that
+// install is the suspected long pole; it would be confirmed by a failure snapshot showing the
+// worker still `installing` at timeout.
+//
+// Liveness contract (PAF-171): nothing here awaits a promise that may never settle. `ready` stays
+// pending forever when no registration succeeds, `page.evaluate` and `Worker.evaluate` have no
+// timeout of their own, and `waitForEvent` is unbounded under the repo's zero actionTimeout. Every
+// wait is therefore an `expect.poll` (bounded by the global assertion budget) over an IMMEDIATE
+// observation of the registration (`getRegistration` resolves without waiting for activation).
+// Deterministic defects (wrong script/scope, redundant worker, no support) fail on first sight; a
+// failure carries a non-blocking evidence snapshot instead of a bare "received undefined".
 
 export const BUILT_WORKER_PATH = '/sw.js';
 export const BUILT_WORKER_SCOPE = '/';
@@ -21,6 +23,36 @@ export type RegistrationSnapshot = {
   scriptUrl: string | null;
   state: string | null;
 };
+
+/** One immediate, non-waiting read of the page's root worker registration. */
+export type WorkerObservation = {
+  supported: boolean;
+  secureContext: boolean;
+  scope: string | null;
+  scriptUrl: string | null;
+  installing: string | null;
+  waiting: string | null;
+  active: string | null;
+  controlled: boolean;
+};
+
+export type WorkerPhase = 'absent' | 'installing' | 'installed' | 'activating' | 'activated';
+export type ObserveWorker = (page: Page) => Promise<WorkerObservation>;
+export type WorkerWaitOptions = {
+  observe?: ObserveWorker;
+  /** Defaults to the global assertion budget. */
+  timeout?: number;
+};
+
+/** Path-only form of a worker URL: queries, fragments and credentials never reach test output. */
+function publicPath(url: string | null): string | null {
+  if (url === null) return null;
+  try {
+    return new URL(url).pathname;
+  } catch {
+    return 'invalid-url';
+  }
+}
 
 /** True when the URL is the built worker script (any origin, any query). */
 export function isBuiltWorkerUrl(url: string): boolean {
@@ -34,11 +66,35 @@ export function isBuiltWorkerUrl(url: string): boolean {
 /** Throws unless the snapshot is the activated built worker registered at the root scope. */
 export function assertBuiltRegistration(snapshot: RegistrationSnapshot): void {
   if (snapshot.scope === null || new URL(snapshot.scope).pathname !== BUILT_WORKER_SCOPE)
-    throw new Error(`Unexpected worker scope: ${snapshot.scope ?? 'none'}`);
+    throw new Error(`Unexpected worker scope: ${publicPath(snapshot.scope) ?? 'none'}`);
   if (snapshot.scriptUrl === null || !isBuiltWorkerUrl(snapshot.scriptUrl))
-    throw new Error(`Unexpected worker script: ${snapshot.scriptUrl ?? 'none'}`);
+    throw new Error(`Unexpected worker script: ${publicPath(snapshot.scriptUrl) ?? 'none'}`);
   if (snapshot.state !== 'activated')
     throw new Error(`Built worker is not activated: ${snapshot.state ?? 'none'}`);
+}
+
+/**
+ * Maps an observation to its lifecycle phase. Throws for states that can never recover into the
+ * built, root-scoped worker (unsupported, wrong scope/script, redundant); `absent` and the
+ * in-flight phases are the only ones worth waiting through.
+ */
+export function classifyWorker(observation: WorkerObservation): WorkerPhase {
+  if (!observation.supported)
+    throw new Error(
+      `Service workers unavailable (secureContext=${observation.secureContext}); the built worker cannot register`
+    );
+  if (observation.scope === null) return 'absent';
+  if (new URL(observation.scope).pathname !== BUILT_WORKER_SCOPE)
+    throw new Error(`Unexpected worker scope: ${publicPath(observation.scope)}`);
+  const states = [observation.installing, observation.waiting, observation.active];
+  if (states.every((state) => state === null)) return 'absent';
+  if (observation.scriptUrl === null || !isBuiltWorkerUrl(observation.scriptUrl))
+    throw new Error(`Unexpected worker script: ${publicPath(observation.scriptUrl) ?? 'none'}`);
+  if (states.includes('redundant')) throw new Error('Built worker became redundant');
+  if (observation.active === 'activated') return 'activated';
+  if (observation.active === 'activating') return 'activating';
+  if (observation.waiting !== null) return 'installed';
+  return 'installing';
 }
 
 /** The built worker already known to the context, if any. */
@@ -46,51 +102,205 @@ export function builtWorker(context: BrowserContext): Worker | undefined {
   return context.serviceWorkers().find((worker) => isBuiltWorkerUrl(worker.url()));
 }
 
-/**
- * Waits for the page to be controlled by the activated built worker. `ready` resolves with the
- * active registration; the worker does not claim clients, so one reload is needed only when the
- * page is still uncontrolled (a second launch does the same for a real user).
- */
-export async function controlledByBuiltWorker(page: Page): Promise<void> {
-  const registration = () =>
-    page.evaluate(async (): Promise<RegistrationSnapshot> => {
-      const ready = await navigator.serviceWorker.ready;
-      return {
-        scope: ready.scope,
-        scriptUrl: ready.active?.scriptURL ?? null,
-        state: ready.active?.state ?? null
-      };
-    });
-  await expect.poll(async () => (await registration()).state).toBe('activated');
-  assertBuiltRegistration(await registration());
-  if (!(await page.evaluate(() => navigator.serviceWorker.controller !== null))) {
-    await page.reload();
-    await waitForHydratedPage(page);
+/** Reads the root registration without waiting for `ready` (which never settles unregistered). */
+export const observeWorker: ObserveWorker = (page) =>
+  page.evaluate(async (): Promise<WorkerObservation> => {
+    const container = navigator.serviceWorker;
+    const base = {
+      supported: container !== undefined,
+      secureContext: window.isSecureContext,
+      controlled: container?.controller != null
+    };
+    const registration = container ? await container.getRegistration('/') : undefined;
+    const current = registration?.active ?? registration?.waiting ?? registration?.installing;
+    return {
+      ...base,
+      scope: registration?.scope ?? null,
+      scriptUrl: current?.scriptURL ?? null,
+      installing: registration?.installing?.state ?? null,
+      waiting: registration?.waiting?.state ?? null,
+      active: registration?.active?.state ?? null
+    };
+  });
+
+const CONTEXT_DESTROYED = /execution context was destroyed|navigation/i;
+
+async function bounded<T>(work: Promise<T>, label: string, ms = 3_000): Promise<T | string> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const expired = new Promise<string>((resolve) => {
+    timer = setTimeout(() => resolve(`${label}: no answer in ${ms}ms`), ms);
+  });
+  try {
+    return await Promise.race([
+      work.catch((error: unknown) => `${label}: ${message(error)}`),
+      expired
+    ]);
+  } finally {
+    clearTimeout(timer);
   }
-  await expect
-    .poll(() => page.evaluate(() => navigator.serviceWorker.controller !== null))
-    .toBe(true);
+}
+
+const message = (error: unknown) => (error instanceof Error ? error.message : String(error));
+
+/**
+ * Non-blocking snapshot appended to a lifecycle failure. Never awaits `ready`, every probe is
+ * individually bounded, and only public facts are read (paths, states, status codes: no storage,
+ * cookies, query strings or tokens).
+ */
+export async function workerEvidence(
+  page: Page,
+  observe: ObserveWorker = observeWorker
+): Promise<Record<string, unknown>> {
+  if (page.isClosed()) return { page: 'closed' };
+  const url = new URL(page.url(), 'http://invalid.test');
+  const script = url.origin === 'http://invalid.test' ? null : new URL(BUILT_WORKER_PATH, url);
+  const [observation, hydrated, scriptProbe] = await Promise.all([
+    bounded(observe(page), 'observation'),
+    bounded(page.locator('html').getAttribute('data-app-hydrated', { timeout: 1_000 }), 'hydrated'),
+    script
+      ? bounded(
+          page
+            .context()
+            .request.get(script.href, { timeout: 3_000, failOnStatusCode: false })
+            .then((response) => ({
+              status: response.status(),
+              contentType: response.headers()['content-type'] ?? null
+            })),
+          'script'
+        )
+      : 'script: page has no http origin'
+  ]);
+  return {
+    path: url.pathname,
+    hydrated,
+    observation:
+      typeof observation === 'string'
+        ? observation
+        : {
+            ...observation,
+            scope: publicPath(observation.scope),
+            scriptUrl: publicPath(observation.scriptUrl)
+          },
+    script: scriptProbe,
+    contextWorkers: page
+      .context()
+      .serviceWorkers()
+      .map((worker) => new URL(worker.url()).pathname)
+  };
+}
+
+async function withEvidence(page: Page, error: unknown, observe: ObserveWorker): Promise<Error> {
+  const evidence = await workerEvidence(page, observe).catch((cause: unknown) => ({
+    evidence: message(cause)
+  }));
+  return new Error(`${message(error)}\nWorker evidence: ${JSON.stringify(evidence)}`, {
+    cause: error
+  });
+}
+
+/** Mirrors `expect.timeout` in playwright.config.ts: the budget when the caller passes none. */
+const ASSERTION_BUDGET_MS = 15_000;
+
+/** One shared deadline: every read of `remaining` shrinks toward 1ms, never resets. */
+function deadlineAfter(timeout = ASSERTION_BUDGET_MS): () => number {
+  const end = Date.now() + timeout;
+  return () => Math.max(end - Date.now(), 1);
+}
+
+/** `page.evaluate` has no timeout of its own: reject when the observation outlives the budget. */
+async function observeWithin(
+  page: Page,
+  observe: ObserveWorker,
+  remaining: () => number
+): Promise<WorkerObservation> {
+  const ms = remaining();
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const expired = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => reject(new Error(`worker observation: no answer in ${ms}ms`)), ms);
+  });
+  try {
+    return await Promise.race([observe(page), expired]);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+async function phaseOf(page: Page, observe: ObserveWorker): Promise<WorkerPhase | 'navigating'> {
+  try {
+    return classifyWorker(await observe(page));
+  } catch (error) {
+    // A navigation between polls only invalidates this sample; a closed page or any other error stays loud.
+    if (error instanceof Error && CONTEXT_DESTROYED.test(error.message)) return 'navigating';
+    throw error;
+  }
+}
+
+/** Waits (bounded) until the page's root registration is the activated built worker. */
+export async function activatedBuiltWorker(
+  page: Page,
+  { observe = observeWorker, timeout }: WorkerWaitOptions = {}
+): Promise<void> {
+  try {
+    await expect
+      .poll(() => phaseOf(page, observe), { message: 'built worker activation', timeout })
+      .toBe('activated');
+  } catch (error) {
+    throw await withEvidence(page, error, observe);
+  }
+}
+
+/**
+ * Waits for the page to be controlled by the activated built worker. The worker does not claim
+ * clients, so one reload is needed only when the page is still uncontrolled (a second launch does
+ * the same for a real user).
+ */
+export async function controlledByBuiltWorker(
+  page: Page,
+  options: WorkerWaitOptions = {}
+): Promise<void> {
+  const { observe = observeWorker, timeout } = options;
+  await activatedBuiltWorker(page, options);
+  // The deadline bounds control observations only: the reload and hydration keep their own
+  // allowances, so the post-reload poll starts a fresh budget instead of inheriting their time.
+  let remaining = deadlineAfter(timeout);
+  try {
+    if (!(await observeWithin(page, observe, remaining)).controlled) {
+      await page.reload();
+      await waitForHydratedPage(page);
+      remaining = deadlineAfter(timeout);
+    }
+    await expect
+      .poll(async () => (await observeWithin(page, observe, remaining)).controlled, {
+        message: 'page controlled by the built worker',
+        timeout: remaining()
+      })
+      .toBe(true);
+  } catch (error) {
+    throw await withEvidence(page, error, observe);
+  }
 }
 
 /**
  * Navigates to `path`, waits for the built worker to install, activate and control the page, and
- * returns it. The worker event is subscribed before navigation so it cannot be missed.
+ * returns its handle. The handle is read from the context after control is proven, so a late
+ * `serviceworker` event cannot hang the case: the bounded poll reports a missing worker instead.
  */
 export async function installBuiltWorker(
   context: BrowserContext,
   page: Page,
-  path: string
+  path: string,
+  options: WorkerWaitOptions = {}
 ): Promise<Worker> {
-  const known = builtWorker(context);
-  const announced = known
-    ? Promise.resolve(known)
-    : context.waitForEvent('serviceworker', {
-        predicate: (worker) => isBuiltWorkerUrl(worker.url())
-      });
-  // The page may be torn down before the event; the awaited branch below still reports that.
-  announced.catch(() => undefined);
   await page.goto(path);
   await waitForHydratedPage(page);
-  await controlledByBuiltWorker(page);
-  return announced;
+  await controlledByBuiltWorker(page, options);
+  await expect
+    .poll(() => builtWorker(context) !== undefined, {
+      message: 'built worker handle announced to the context',
+      timeout: options.timeout
+    })
+    .toBe(true);
+  const installed = builtWorker(context);
+  if (!installed) throw new Error('Built service worker handle disappeared');
+  return installed;
 }

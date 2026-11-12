@@ -3,7 +3,7 @@ import { createClient } from '@supabase/supabase-js';
 import { expect, test, type Page } from '@playwright/test';
 import { isAllowedPrecacheUrl } from '../scripts/pwa-build.mjs';
 import { waitForHydratedPage } from './auth-helpers';
-import { controlledByBuiltWorker } from './service-worker-helpers';
+import { activatedBuiltWorker, controlledByBuiltWorker } from './service-worker-helpers';
 import en from '../src/locales/en/translation.json' with { type: 'json' };
 
 // Real built service worker, real CacheStorage. Every test uses its own browser context so worker
@@ -285,7 +285,7 @@ test('activation removes the legacy generic runtime cache and leaves unrelated c
     });
     await page.unroute('**/sw.js');
     await page.reload();
-    await page.evaluate(() => navigator.serviceWorker.ready);
+    await activatedBuiltWorker(page);
     await expect.poll(() => page.evaluate(() => caches.keys())).not.toContain('static-assets');
     const names = await page.evaluate(() => caches.keys());
     expect(names).toContain('unrelated-app');
