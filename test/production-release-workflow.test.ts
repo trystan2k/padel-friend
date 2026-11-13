@@ -81,7 +81,7 @@ describe('production release workflow safety contract', () => {
     expect(deploy).not.toMatch(/ref: (main|latest)|git checkout/);
   });
 
-  it('chains identity, install, pinned CLI, credentials and build before reserved SQL boundary', () => {
+  it('chains identity, install, pinned CLI, credentials and build before SQL', () => {
     const ordered = [
       'ref: refs/tags/',
       'node scripts/production-release-guard.mjs verify',
@@ -89,7 +89,7 @@ describe('production release workflow safety contract', () => {
       'test "$(pnpm exec supabase --version)" = \'2.121.0\'',
       'node scripts/production-release-guard.mjs credentials',
       'run: pnpm build',
-      '# U2 migration insertion point:',
+      'node scripts/production-migrations.mjs',
       'node scripts/production-release-guard.mjs verify',
       'run: pnpm exec wrangler deploy'
     ];
@@ -113,6 +113,7 @@ describe('production release workflow safety contract', () => {
     for (const step of steps(deploy)) {
       const allowed =
         step.includes('production-release-guard.mjs credentials') ||
+        step.includes('node scripts/production-migrations.mjs') ||
         step.includes('pnpm exec wrangler deploy');
       expect(privateNames.filter((name) => !allowed && step.includes(name))).toEqual([]);
       for (const line of step.split('\n').filter((source) => source.trimStart().startsWith('run:')))
@@ -125,6 +126,26 @@ describe('production release workflow safety contract', () => {
     );
     const worker = stepContaining(deploy, 'pnpm exec wrangler deploy');
     expect(worker).not.toContain('SUPABASE_');
+    for (const name of ['SUPABASE_ACCESS_TOKEN', 'SUPABASE_DB_PASSWORD'])
+      expect(
+        steps(deploy).filter((step) => step.includes(name + ': ${{ secrets.' + name + ' }}'))
+      ).toHaveLength(1);
+    for (const name of ['CLOUDFLARE_API_TOKEN', 'CLOUDFLARE_ACCOUNT_ID'])
+      expect(
+        steps(deploy).filter((step) => step.includes(name + ': ${{ secrets.' + name + ' }}'))
+      ).toEqual([worker]);
+    const migration = stepContaining(deploy, 'node scripts/production-migrations.mjs');
+    expect(migration).toContain(
+      "CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID != '' && 'present' || '' }}"
+    );
+    expect(migration).toContain(
+      "CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN != '' && 'present' || '' }}"
+    );
+    expect(migration).toContain('SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}');
+    expect(migration).toContain('SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}');
+    expect(migration.indexOf('production-release-guard.mjs verify')).toBeLessThan(
+      migration.indexOf('production-migrations.mjs')
+    );
     expect(deploy).not.toContain('GITHUB_ENV');
   });
 
