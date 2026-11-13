@@ -9,12 +9,12 @@ Follow this checklist for **each project created from this template**. Replace e
 - Create accounts/workspaces in [GitHub](https://github.com), [Cloudflare](https://dash.cloudflare.com), [Supabase](https://supabase.com/dashboard), [Google Cloud](https://console.cloud.google.com) and [Linear](https://linear.app). Install Node 26+, pnpm 12+, Docker and (for local E2E) Playwright Chromium.
 - Create a GitHub repository from this template. Rename `package.json` (`name`), `wrangler.jsonc` (production Worker `name` and `env.preview.name`), `supabase/config.toml` (`project_id`), the app's title, PWA manifest/icon, and release package/version as appropriate. Worker names must be unique in the Cloudflare account. Push to `main`.
 - Copy `.linear.toml.example` to `.linear.toml`, fill in your Linear workspace/team, create the Linear project, and replace the example team/issue prefix in `AGENTS.md`. Track work as Linear issues and use the issue ID in feature branches/PRs.
-- In GitHub, enable Actions and protect `main` with the **CI / checks** required status check. The workflows use `main` and the `release-please--branches--main` release PR branch. Review GitHub `production` and `preview` environments (approval rules, branch restrictions, and environment-specific variables).
+- In GitHub, enable Actions and protect `main` with the **CI / checks** required status check. The workflows use `main` and the `release-please--branches--main` release PR branch. Configure the GitHub `production` and `preview` environments as described in section 4.5 (the `production` environment gates every release).
 
 ## 2. Supabase project and database
 
 1. Create a [Supabase project](https://supabase.com/dashboard/projects). Record its **Project URL** (`https://<project-ref>.supabase.co`), **project reference**, and **publishable key** (`sb_publishable_...`) from the dashboard's Connect/API Keys view. The publishable key is safe to expose in client code; **never use a secret/service-role key** in any `VITE_` variable.
-2. Apply the checked-in migrations in `supabase/migrations/` before users sign in. For a new project: `pnpm exec supabase login`, `pnpm exec supabase link --project-ref <project-ref>`, `pnpm exec supabase db push`. Inspect player profile/rating tables, their RLS policies, the private avatar bucket and Auth users in the dashboard. Private server functions call `getClaims()` before every query; do not replace those checks with `getSession()`.
+2. Production migrations are applied **only** by the approval-controlled release workflow (section 4 and the [production release runbook](docs/production-release-runbook.md)): after you approve a release, the pending `supabase/migrations/*.sql` of that exact release tag are applied to project `nojecmdknaebczpfnfwa` before the Worker deploys. Do not push migrations to production by hand as a normal path. A manual `pnpm exec supabase login` / `link` / `db push` is an **owner-authorized exception** (initial bootstrap of a brand-new project, or incident recovery with exclusive production ownership and no release running or pending); always pass `--skip-vault`, never pass `--include-all`, `--include-seed` or `--include-roles`, and prefer the dry-run first. Local and preview databases are separate projects and are not touched by the release workflow. Inspect player profile/rating tables, their RLS policies, the private avatar bucket and Auth users in the dashboard. Private server functions call `getClaims()` before every query; do not replace those checks with `getSession()`.
 3. In **Authentication → URL Configuration**, set the Site URL to the canonical production origin, e.g. `https://app.example.com`. Add **Redirect URLs** for the app's callback route (exact URLs):
 
    ```text
@@ -48,7 +48,7 @@ Follow this checklist for **each project created from this template**. Replace e
 ## 4. Cloudflare Workers and GitHub Actions
 
 1. Set up a Cloudflare account and a `workers.dev` subdomain or custom domain. Note the **Account ID** in Cloudflare. Make a scoped **API token** with permission to deploy Workers (Workers Scripts: Edit, and other account permissions your configuration requires). Ensure both Worker names in `wrangler.jsonc` are valid in that account. Configure production and preview domains/DNS as needed before entering URLs in Supabase and Google.
-2. In the GitHub repository, set the following **Actions secrets** (repository or the indicated environment):
+2. In the GitHub repository, set the following **Actions secrets** (repository or the indicated environment; see step 5 for the production environment values the release workflow reads):
 
    | Secret                  | Used by                       | Source                                                                                                  |
    | ----------------------- | ----------------------------- | ------------------------------------------------------------------------------------------------------- |
@@ -63,7 +63,26 @@ Follow this checklist for **each project created from this template**. Replace e
    | `VITE_SUPABASE_URL`             | Supabase Project URL for that environment     |
    | `VITE_SUPABASE_PUBLISHABLE_KEY` | Publishable key for the same Supabase project |
 
-4. Verify the `preview` workflow deploys only successful **Release Please PRs**. A successful push to `main` runs CI, then Release Please creates/updates its release PR. After the release PR is merged, successful main CI can create a published release; `.github/workflows/release.yml` rebuilds that release tag and deploys the production Worker. CI checks alone do not deploy ordinary PRs. Review/enable `preview` and `production` GitHub environments so deployments do not wait for unconfigured approvals.
+4. Verify the `preview` workflow deploys only successful **Release Please PRs**. A successful push to `main` runs CI, then Release Please creates/updates its release PR. After the release PR is merged, successful main CI publishes a release and tag, and `.github/workflows/release.yml` then waits for **one manual approval** in the `production` environment. After approval it checks out that exact tag, validates identity and freshness, builds, applies the pending Supabase migrations (or a checked no-op) and only then deploys the Worker. Publication can precede approval; production changes cannot. CI checks alone do not deploy ordinary PRs. Operations, reviewer checklist, failure handling and rotation: [production release runbook](docs/production-release-runbook.md).
+5. **Production environment secrets and variables.** Besides the table above, the release workflow reads these from the GitHub `production` **environment** (not job-wide; each secret is exposed to a single step):
+
+   | Name                            | Kind     | Scope in workflow                      | Notes                                                                                                                                                                                          |
+   | ------------------------------- | -------- | -------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+   | `SUPABASE_ACCESS_TOKEN`         | secret   | migration step only                    | Scoped personal access token limited to project `nojecmdknaebczpfnfwa`; permissions Project Settings Read, API Keys Read, API Key Secrets Read (what `supabase link` needs); give it an expiry |
+   | `SUPABASE_DB_PASSWORD`          | secret   | migration step only                    | Database password of that project. `db push` uses it with full database authority; the token scopes do **not** limit SQL                                                                       |
+   | `CLOUDFLARE_API_TOKEN`          | secret   | Worker deploy step only                | Workers deploy permission as in step 1                                                                                                                                                         |
+   | `CLOUDFLARE_ACCOUNT_ID`         | secret   | Worker deploy step only                | Cloudflare account ID                                                                                                                                                                          |
+   | `VITE_SUPABASE_URL`             | variable | build and migration steps              | Must equal exactly `https://nojecmdknaebczpfnfwa.supabase.co` or the release fails before any remote call                                                                                      |
+   | `VITE_SUPABASE_PUBLISHABLE_KEY` | variable | build and migration steps              | Public `sb_publishable_…` key of the same project; never a secret/service key                                                                                                                  |
+   | `RELEASE_PLEASE_TOKEN`          | secret   | `release` job only (repository secret) | Not available to the deploy job. Not yet exercised by a successful run                                                                                                                         |
+
+   Preview deployments need their own Cloudflare secrets (repository or `preview` environment); do not rely on the production environment for them. A presence check in the workflow only proves a secret is non-empty, not that it is valid or correctly scoped: the owner must verify values and scopes (never paste them anywhere).
+
+6. **Required GitHub settings (outside the repository, owner-verified).**
+   - Environment `production`: required reviewer `trystan2k`; deployment branch rule that allows the workflow ref `main` (the job runs from `main` and checks out a tag, so do not restrict deployments to tags only); no unintended bypass. **Prevent self-review is intentionally left disabled** so the sole maintainer can approve their own deployments. This is weaker separation of duties; the reviewer checklist in the runbook is the compensating control.
+   - Branch protection or ruleset on `main`: require **CI / checks**, forbid force pushes and deletion. Release tags (`v*`) must be immutable: forbid tag update and deletion. The freshness guard assumes `main` is never rewritten and tags are never moved.
+   - Do not run manual Dashboard, Wrangler or SQL changes against production while a release is pending or running; the workflow lock cannot coordinate them.
+   - The first real approved release is the live proof of these settings; until observed, environment protection is unverified. Alpha has no automated production backups (see the backup note at the top).
 
 ## 5. Local setup and validation
 
@@ -180,7 +199,7 @@ T08.3 confirms each still-Pending result proposal at its database deadline (`sub
 
 ## 8. Added-player invitations (service-role secret, SMTP, templates)
 
-Organizers and admins can add a not-yet-registered player by name and email. The server creates the Auth identity with Supabase Admin Invite, so this needs a server-only secret, working Auth email delivery and the localized invite template. Apply the migrations first (`pnpm exec supabase db push`).
+Organizers and admins can add a not-yet-registered player by name and email. The server creates the Auth identity with Supabase Admin Invite, so this needs a server-only secret, working Auth email delivery and the localized invite template. Apply the migrations first (they reach production through the approved release, see section 2).
 
 1. **Service-role secret (server only).** The server reads `SUPABASE_SERVICE_ROLE_KEY` (`src/lib/supabase/admin.server.ts`). Copy the **secret/service-role key** from **Supabase → Project Settings → API Keys** and store it as a Workers **secret**, never as a `VITE_` variable, GitHub variable, `wrangler.jsonc` value or committed file:
 

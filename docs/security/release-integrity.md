@@ -1,5 +1,7 @@
 # Release integrity — local evidence and operator runbook
 
+> **Current operations:** this document is historical local-rehearsal evidence. The live production flow (single approval, pending-only migrations, freshness guard, Worker deploy, failure handling and rotation) is documented in the [production release runbook](../production-release-runbook.md). The migration rollback notes below describe local rehearsal only; production never rolls the database back automatically.
+
 ## Scope and status
 
 U4 local implementation/rehearsals verified. **Not production release approval.** Binding scope leaves production backup configuration and real external alert receipt as operator findings. §57 permits honest unmet/unmeasured performance findings; numbers below are not a benchmark pass.
