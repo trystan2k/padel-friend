@@ -2,6 +2,8 @@
 
 Follow this checklist for **each project created from this template**. Replace every example name, URL and project reference with values belonging to that project. The Google OAuth credentials are configured in **Supabase**, not in the Worker or the browser.
 
+**Production backups:** Alpha currently has no automated production backups; the owner accepts possible data loss temporarily. See [production backup plan](docs/production-backup-plan.md) and [PAF-177](https://linear.app/trystanworkspace2/issue/PAF-177/implement-automated-production-backups-and-recovery) before users depend on retained data.
+
 ## 1. Accounts, tools and repository
 
 - Create accounts/workspaces in [GitHub](https://github.com), [Cloudflare](https://dash.cloudflare.com), [Supabase](https://supabase.com/dashboard), [Google Cloud](https://console.cloud.google.com) and [Linear](https://linear.app). Install Node 26+, pnpm 12+, Docker and (for local E2E) Playwright Chromium.
