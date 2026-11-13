@@ -186,13 +186,15 @@ function fixture(initiallyApplied = 1) {
   const fetch = vi.fn<MigrationOptions['fetch']>(async (url) => {
     trace.push('GET ' + url);
     if (url === RELEASE_URL) {
-      const marker =
-        state.marker ??
+      // The release body is fixed by the first lookup (what the reviewer approved) and
+      // never regenerated from later history; tests must change state.marker explicitly.
+      state.marker ??=
         'Approved-pending: ' +
-          (state.names
-            .slice(state.applied)
-            .map((name) => name.slice(0, 14))
-            .join(',') || 'none');
+        (state.names
+          .slice(state.applied)
+          .map((name) => name.slice(0, 14))
+          .join(',') || 'none');
+      const marker = state.marker;
       const release =
         state.release === undefined
           ? { tag_name: 'v0.1.1', draft: false, body: `Notes ${CANARIES[4]}\n${marker}\n` }
@@ -566,34 +568,81 @@ describe('production migration operation', () => {
     expect(f.entries.has(ROOT)).toBe(false);
   });
 
-  it('reports verified migrations before Worker failure; same-SHA retry becomes no-op and older retry stops', async () => {
-    const f = fixture();
-    const refs = releaseRefs();
-    const worker = vi
-      .fn<() => Promise<void>>()
-      .mockRejectedValueOnce(new Error('Worker deployment failed'))
-      .mockResolvedValue(undefined);
-    await expect(approvedAttempt(f, refs, worker)).rejects.toThrow('Worker deployment failed');
-    expect(f.out.write).toHaveBeenLastCalledWith(
-      'Production migrations verified: applied=1 total=2\n'
-    );
-    expect(f.state.applied).toBe(2);
-    await expect(approvedAttempt(f, refs, worker)).resolves.toEqual({ applied: 0, total: 2 });
-    expect(worker).toHaveBeenCalledTimes(2);
-    refs.main = NEWER_SHA;
-    const calls = f.exec.mock.calls.length;
-    await expect(approvedAttempt(f, refs, worker)).rejects.toThrow('stale release');
-    expect(f.exec).toHaveBeenCalledTimes(calls);
-    expect(worker).toHaveBeenCalledTimes(2);
+  describe('same-SHA retry after migrations succeeded but Worker deployment failed', () => {
+    const APPROVED = 'Approved-pending: ' + SECOND.slice(0, 14);
+
+    async function failedWorkerAttempt() {
+      const f = fixture();
+      const refs = releaseRefs();
+      const worker = vi
+        .fn<() => Promise<void>>()
+        .mockRejectedValueOnce(new Error('Worker deployment failed'))
+        .mockResolvedValue(undefined);
+      await expect(approvedAttempt(f, refs, worker)).rejects.toThrow('Worker deployment failed');
+      expect(f.out.write).toHaveBeenLastCalledWith(
+        'Production migrations verified: applied=1 total=2\n'
+      );
+      expect(f.state.applied).toBe(2);
+      expect(f.state.marker).toBe(APPROVED);
+      return { f, refs, worker };
+    }
+
+    it('fails closed on the stale approved marker before apply or Worker when the release body is unchanged', async () => {
+      const { f, refs, worker } = await failedWorkerAttempt();
+      const applies = f.trace.filter((command) => command === APPLY).length;
+      const pushes = f.trace.filter((command) => command.startsWith('db push')).length;
+      const error = await approvedAttempt(f, refs, worker).catch((cause: unknown) => cause);
+      expect(String(error)).toBe(
+        'Error: approval: approved pending set mismatch (reviewed=1 derived=0)'
+      );
+      expect(error).not.toHaveProperty('cause');
+      expect(f.trace.filter((command) => command === APPLY)).toHaveLength(applies);
+      expect(f.trace.filter((command) => command.startsWith('db push'))).toHaveLength(pushes + 1);
+      expect(f.trace.at(-1)).toBe(`GET ${RELEASE_URL}`);
+      expect(worker).toHaveBeenCalledTimes(1);
+      expect(f.state.applied).toBe(2);
+      expect(f.state.marker).toBe(APPROVED);
+      expect(f.entries.has(ROOT)).toBe(false);
+      const evidence = JSON.stringify({ error: String(error), out: f.out.write.mock.calls });
+      for (const canary of CANARIES) expect(evidence).not.toContain(canary);
+    });
+
+    it('accepts the retry only after the operator explicitly updates the marker to none, as a checked no-op', async () => {
+      const { f, refs, worker } = await failedWorkerAttempt();
+      await expect(approvedAttempt(f, refs, worker)).rejects.toThrow(
+        'approval: approved pending set mismatch (reviewed=1 derived=0)'
+      );
+      expect(worker).toHaveBeenCalledTimes(1);
+      const applies = f.trace.filter((command) => command === APPLY).length;
+      // Documented recovery: reviewer rechecks history (nothing pending) and edits the release body.
+      f.state.marker = 'Approved-pending: none';
+      await expect(approvedAttempt(f, refs, worker)).resolves.toEqual({ applied: 0, total: 2 });
+      expect(worker).toHaveBeenCalledTimes(2);
+      expect(f.trace.filter((command) => command === APPLY)).toHaveLength(applies + 1);
+      expect(f.state.applied).toBe(2);
+      expect(f.entries.has(ROOT)).toBe(false);
+      expect(JSON.stringify(f.out.write.mock.calls)).not.toContain('canary');
+    });
+
+    it('stops an older-SHA retry before any CLI call', async () => {
+      const { f, refs, worker } = await failedWorkerAttempt();
+      f.state.marker = 'Approved-pending: none';
+      refs.main = NEWER_SHA;
+      const calls = f.exec.mock.calls.length;
+      await expect(approvedAttempt(f, refs, worker)).rejects.toThrow('stale release');
+      expect(f.exec).toHaveBeenCalledTimes(calls);
+      expect(worker).toHaveBeenCalledTimes(1);
+    });
   });
 
-  it('permits duplicate current-SHA attempts with idempotent checked no-op', async () => {
+  it('permits duplicate current-SHA attempts with idempotent checked no-op after explicit marker update', async () => {
     const f = fixture();
     const worker = vi.fn<() => Promise<void>>(async () => {});
     await expect(approvedAttempt(f, releaseRefs(), worker)).resolves.toEqual({
       applied: 1,
       total: 2
     });
+    f.state.marker = 'Approved-pending: none';
     await expect(approvedAttempt(f, releaseRefs(), worker)).resolves.toEqual({
       applied: 0,
       total: 2
@@ -634,6 +683,16 @@ describe('production migration operation', () => {
     expect(worker).not.toHaveBeenCalled();
     expect(f.state.applied).toBe(1);
     expect(f.entries.has(ROOT)).toBe(false);
+    // The approved body still lists both versions; remote-pending is now only the suffix.
+    expect(f.state.marker).toBe(
+      'Approved-pending: ' + FIRST.slice(0, 14) + ',' + SECOND.slice(0, 14)
+    );
+    await expect(approvedAttempt(f, releaseRefs(), worker)).rejects.toThrow(
+      'approved pending set mismatch (reviewed=2 derived=1)'
+    );
+    expect(worker).not.toHaveBeenCalled();
+    // Explicit operator recovery: reviewer rechecks history and re-approves the remaining suffix.
+    f.state.marker = 'Approved-pending: ' + SECOND.slice(0, 14);
     await expect(approvedAttempt(f, releaseRefs(), worker)).resolves.toEqual({
       applied: 1,
       total: 2
