@@ -3,12 +3,17 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 
 const workflow = readFileSync('.github/workflows/release.yml', 'utf8');
+const jobsSource = workflow.split('\njobs:\n')[1]!;
+const jobNames = [...jobsSource.matchAll(/^  ([A-Za-z_][A-Za-z0-9_-]*):$/gm)].map(
+  (match) => match[1]
+);
 
 // Match indentation boundaries, like ci-workflow.test.ts; inspect only each job/step's body.
 function job(name: string): string {
-  const body = new RegExp(`^  ${name}:\\n([\\s\\S]*?)(?=^  [a-z0-9-]+:\\n|(?![\\s\\S]))`, 'm').exec(
-    workflow
-  )?.[1];
+  const body = new RegExp(
+    `^  ${name}:\\n([\\s\\S]*?)(?=^  [A-Za-z_][A-Za-z0-9_-]*:\\n|(?![\\s\\S]))`,
+    'm'
+  ).exec(jobsSource)?.[1];
   if (body === undefined) throw new Error(`job ${name} not found`);
   return body;
 }
@@ -21,6 +26,17 @@ function stepContaining(body: string, text: string): string {
   const matches = steps(body).filter((step) => step.includes(text));
   expect(matches).toHaveLength(1);
   return matches[0]!;
+}
+
+function shellSource(step: string): string {
+  const lines = step.split('\n');
+  const start = lines.findIndex((line) => /^(?:run:|        run:)/.test(line));
+  if (start < 0) return '';
+  if (lines[start]!.trim() !== 'run: |') return lines[start]!;
+  const end = lines.findIndex(
+    (line, index) => index > start && line.trim() !== '' && !line.startsWith('          ')
+  );
+  return lines.slice(start + 1, end < 0 ? undefined : end).join('\n');
 }
 
 const release = job('release');
@@ -57,7 +73,8 @@ describe('production release workflow safety contract', () => {
   });
 
   it('places every production step behind one approval gate and shared noncancelling lock', () => {
-    expect(workflow.match(/^  [a-z0-9-]+:$/gm)).toEqual(['  release:', '  deploy:']);
+    expect(jobNames).toEqual(['release', 'deploy']);
+    expect(workflow).not.toMatch(/<<:|[&*][A-Za-z_]/);
     expect(workflow.match(/environment: production/g)).toHaveLength(1);
     expect(deploy).toContain('    environment: production\n');
     expect(deploy).toContain('    permissions:\n      contents: read\n');
@@ -99,10 +116,12 @@ describe('production release workflow safety contract', () => {
       expect({ text, ordered: index > previous }).toEqual({ text, ordered: true });
       previous = index;
     }
-    const allSteps = steps(deploy);
+    const allSteps = steps(deploy).filter(
+      (step) => !step.includes('Report incomplete production release')
+    );
     expect(allSteps.at(-2)).toContain('node scripts/production-release-guard.mjs verify');
     expect(allSteps.at(-1)).toContain('run: pnpm exec wrangler deploy');
-    expect(deploy).not.toMatch(/always\(\)|continue-on-error|\|\|\s*(true|:)|set \+e/);
+    expect(allSteps.join('\n')).not.toMatch(/always\(\)|continue-on-error|\|\|\s*(true|:)|set \+e/);
     expect(allSteps.every((step) => !/^\s+if:/m.test(step))).toBe(true);
     expect(deploy).not.toMatch(/supabase (db|migration|link)|--include-|--debug/);
   });
@@ -147,6 +166,54 @@ describe('production release workflow safety contract', () => {
       migration.indexOf('production-migrations.mjs')
     );
     expect(deploy).not.toContain('GITHUB_ENV');
+  });
+
+  it('confines pending/rejected/cancelled approvals and no-op releases to the same protected job', () => {
+    // Structural proof only: GitHub enforces review/queue states. Required reviewers,
+    // bypass posture and actual rerun approvals require settings/live-run evidence.
+    const mutations = steps(deploy).filter((step) =>
+      /production-migrations\.mjs|wrangler deploy/.test(step)
+    );
+    expect(mutations).toHaveLength(2);
+    expect(release).not.toMatch(/production-migrations|wrangler/);
+    expect(deploy.split('    steps:')[0]).toContain('environment: production');
+    expect(mutations.every((step) => !/^\s+if:/m.test(step))).toBe(true);
+    expect(deploy).not.toMatch(
+      /pending.*==|migration_count|skip.migration|workflow_dispatch|queue:.*fifo/i
+    );
+    expect(steps(deploy).filter((step) => step.includes('pnpm exec wrangler deploy'))).toHaveLength(
+      1
+    );
+  });
+
+  it('reports schema-ahead risk after migration or Worker failure without enabling mutation', () => {
+    const summary = stepContaining(deploy, 'Report incomplete production release');
+    expect(summary).toContain(
+      "if: always() && (steps.migrations.outcome == 'failure' || (steps.migrations.outcome == 'success' && steps.worker.outcome != 'success'))"
+    );
+    expect(stepContaining(deploy, 'node scripts/production-migrations.mjs')).toContain(
+      'id: migrations'
+    );
+    expect(stepContaining(deploy, 'pnpm exec wrangler deploy')).toContain('id: worker');
+    expect(summary).toContain('Schema may be ahead or partially changed.');
+    expect(summary).toContain('GITHUB_STEP_SUMMARY');
+    expect(summary).not.toMatch(/secrets\.|node |pnpm |supabase |wrangler |continue-on-error/);
+    expect(steps(deploy).filter((step) => step.includes('always()'))).toEqual([summary]);
+    expect(steps(deploy).at(-1)).toBe(summary);
+  });
+
+  it('keeps every shell line expression-free and build/install credentials-free', () => {
+    for (const step of steps(deploy)) {
+      const command = shellSource(step);
+      expect(command).not.toContain('${{');
+    }
+    for (const command of ['pnpm build', 'pnpm install --frozen-lockfile']) {
+      const step = stepContaining(deploy, 'run: ' + command);
+      expect(step).not.toMatch(
+        /secrets\.|SUPABASE_ACCESS_TOKEN|SUPABASE_DB_PASSWORD|CLOUDFLARE_|GITHUB_ENV/
+      );
+    }
+    expect(deploy).not.toMatch(/cancel-in-progress: true|group:.*\$\{\{/);
   });
 
   it('preserves preview byte-for-byte outside production lock', () => {

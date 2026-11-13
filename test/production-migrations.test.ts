@@ -9,6 +9,8 @@ import {
   type MigrationOptions
 } from '../scripts/production-migrations.mjs';
 
+import { guardRelease, type GuardExec } from '../scripts/production-release-guard.mjs';
+
 vi.mock('node:child_process', () => ({
   spawnSync: vi.fn<() => never>(() => {
     throw new Error('Real executor forbidden');
@@ -101,9 +103,10 @@ function fixture(initiallyApplied = 1) {
   put('/checkout/supabase/seed.sql', 'FORBIDDEN seed');
   put('/checkout/supabase/roles.sql', 'FORBIDDEN roles');
   put('/checkout/.env', 'FORBIDDEN env');
-  let applied = initiallyApplied;
   const trace: string[] = [];
   const state = {
+    applied: initiallyApplied,
+    afterLink: () => {},
     failCommand: '',
     throwCommand: '',
     version: '2.121.0',
@@ -123,7 +126,23 @@ function fixture(initiallyApplied = 1) {
       .slice(2, args.indexOf('--workdir') === -1 ? undefined : args.indexOf('--workdir'))
       .join(' ');
     trace.push(command);
-    if (file !== 'pnpm') throw new Error('Unexpected executor');
+    if (file !== 'pnpm' || args[0] !== 'exec' || args[1] !== 'supabase')
+      throw new Error('Unexpected executor');
+    const allowed = [
+      '--version',
+      `link --project-ref ${PROJECT}`,
+      'migration list --linked',
+      'db push --linked --skip-vault --dry-run',
+      'db push --linked --skip-vault'
+    ];
+    const suffix = args.slice(args.indexOf('--workdir'));
+    if (
+      !allowed.includes(command) ||
+      (command !== '--version' &&
+        JSON.stringify(suffix) !==
+          JSON.stringify(['--workdir', ROOT, '--output-format', 'json', '--yes']))
+    )
+      throw new Error('Unexpected CLI stage or flags');
     if (command === state.throwCommand) throw new Error(failure);
     if (command === state.failCommand) return { status: 17, stdout: failure, stderr: failure };
     if (command === '--version')
@@ -133,21 +152,22 @@ function fixture(initiallyApplied = 1) {
       put(ROOT + '/supabase/.temp/project-ref', state.linked);
       put(ROOT + '/supabase/.temp/linked-project.json', JSON.stringify({ ref: state.linked }));
       put(ROOT + '/supabase/.temp/pooler-url', state.pooler);
+      state.afterLink();
       return encoded({ project_ref: state.linked, message: '' });
     }
     if (command === state.malformed) return { status: 0, stdout: failure, stderr: failure };
     if (command === 'migration list --linked') {
-      const result = history(applied);
+      const result = history(state.applied);
       if (state.badHistory)
         result.migrations.push({ local: '', remote: '20261103090000', time: '' });
       if (state.gapHistory) result.migrations.reverse();
       return encoded(result);
     }
     if (command.startsWith('db push ')) {
-      const pending = [FIRST, SECOND].slice(applied);
+      const pending = [FIRST, SECOND].slice(state.applied);
       const dryRun = command.includes('--dry-run');
       if (dryRun) state.afterDry();
-      else if (!state.noApply) applied = 2;
+      else if (!state.noApply) state.applied = 2;
       return encoded(pushResult(state.badPlan ? ['20261103090000_unknown.sql'] : pending, dryRun));
     }
     throw new Error('Unexpected command');
@@ -185,6 +205,76 @@ function fixture(initiallyApplied = 1) {
     out
   };
   return { options, entries, put, state, trace, exec, fetch, out };
+}
+
+type Fixture = ReturnType<typeof fixture>;
+const RELEASE_SHA = 'a'.repeat(40);
+const NEWER_SHA = 'b'.repeat(40);
+const APPLY = 'db push --linked --skip-vault';
+const DRY = APPLY + ' --dry-run';
+
+function replaceResult(
+  f: Fixture,
+  command: string,
+  change: (result: ReturnType<MigrationOptions['exec']>) => ReturnType<MigrationOptions['exec']>,
+  occurrence = 1
+) {
+  const original = f.exec.getMockImplementation()!;
+  let seen = 0;
+  f.exec.mockImplementation((file, args, options) => {
+    const result = original(file, args, options);
+    const stage = args.slice(2, args.indexOf('--workdir')).join(' ');
+    return stage === command && ++seen === occurrence ? change(result) : result;
+  });
+}
+
+function releaseRefs() {
+  return { head: RELEASE_SHA, tag: RELEASE_SHA, main: RELEASE_SHA };
+}
+
+function verifyRelease(refs: ReturnType<typeof releaseRefs>) {
+  const exec: GuardExec = (_file, args) => {
+    const command = args.join(' ');
+    if (command === 'rev-parse --verify HEAD^{commit}') return refs.head;
+    if (command === 'ls-remote --exit-code origin refs/tags/v0.1.1 refs/tags/v0.1.1^{}')
+      return `${refs.tag}\trefs/tags/v0.1.1\n`;
+    if (command === 'ls-remote --exit-code origin refs/heads/main')
+      return `${refs.main}\trefs/heads/main\n`;
+    throw new Error('Unexpected git command');
+  };
+  guardRelease(
+    {
+      repository: 'owner/repo',
+      created: 'true',
+      tag: 'v0.1.1',
+      releaseSha: RELEASE_SHA,
+      event: {
+        repository: { full_name: 'owner/repo' },
+        workflow_run: {
+          event: 'push',
+          conclusion: 'success',
+          head_branch: 'main',
+          head_sha: RELEASE_SHA,
+          head_repository: { full_name: 'owner/repo' }
+        }
+      }
+    },
+    exec
+  );
+}
+
+// Real helper composition, not a GitHub scheduler/approval emulator. Workflow tests
+// independently prove these commands are success-chained in one protected job.
+async function approvedAttempt(
+  f: Fixture,
+  refs: ReturnType<typeof releaseRefs>,
+  worker: () => Promise<void>
+) {
+  verifyRelease(refs);
+  const result = await runMigrations(f.options);
+  verifyRelease(refs);
+  await worker();
+  return result;
 }
 
 beforeEach(() => {
@@ -440,6 +530,292 @@ describe('production migration operation', () => {
     await expect(runMigrations(f.options)).rejects.toThrow(/^workspace: operation failed$/);
     expect(f.fetch).not.toHaveBeenCalled();
     expect(f.entries.has(ROOT)).toBe(false);
+  });
+
+  it('reports verified migrations before Worker failure; same-SHA retry becomes no-op and older retry stops', async () => {
+    const f = fixture();
+    const refs = releaseRefs();
+    const worker = vi
+      .fn<() => Promise<void>>()
+      .mockRejectedValueOnce(new Error('Worker deployment failed'))
+      .mockResolvedValue(undefined);
+    await expect(approvedAttempt(f, refs, worker)).rejects.toThrow('Worker deployment failed');
+    expect(f.out.write).toHaveBeenLastCalledWith(
+      'Production migrations verified: applied=1 total=2\n'
+    );
+    expect(f.state.applied).toBe(2);
+    await expect(approvedAttempt(f, refs, worker)).resolves.toEqual({ applied: 0, total: 2 });
+    expect(worker).toHaveBeenCalledTimes(2);
+    refs.main = NEWER_SHA;
+    const calls = f.exec.mock.calls.length;
+    await expect(approvedAttempt(f, refs, worker)).rejects.toThrow('stale release');
+    expect(f.exec).toHaveBeenCalledTimes(calls);
+    expect(worker).toHaveBeenCalledTimes(2);
+  });
+
+  it('permits duplicate current-SHA attempts with idempotent checked no-op', async () => {
+    const f = fixture();
+    const worker = vi.fn<() => Promise<void>>(async () => {});
+    await expect(approvedAttempt(f, releaseRefs(), worker)).resolves.toEqual({
+      applied: 1,
+      total: 2
+    });
+    await expect(approvedAttempt(f, releaseRefs(), worker)).resolves.toEqual({
+      applied: 0,
+      total: 2
+    });
+    expect(worker).toHaveBeenCalledTimes(2);
+    expect(f.trace.filter((command) => command === APPLY)).toHaveLength(2);
+  });
+
+  it('blocks Worker when main advances during migration even though SQL completed', async () => {
+    const f = fixture();
+    const refs = releaseRefs();
+    replaceResult(f, APPLY, (result) => {
+      refs.main = NEWER_SHA;
+      return result;
+    });
+    const worker = vi.fn<() => Promise<void>>(async () => {});
+    await expect(approvedAttempt(f, refs, worker)).rejects.toThrow('stale release');
+    expect(f.state.applied).toBe(2);
+    expect(worker).not.toHaveBeenCalled();
+    expect(f.entries.has(ROOT)).toBe(false);
+  });
+
+  it('blocks Worker on partial multi-file apply failure; retry applies only the remaining suffix', async () => {
+    const f = fixture(0);
+    const original = f.exec.getMockImplementation()!;
+    let partial = true;
+    f.exec.mockImplementation((file, args, options) => {
+      if (partial && args.join(' ').includes(APPLY) && !args.includes('--dry-run')) {
+        partial = false;
+        f.state.applied = 1;
+        f.trace.push(APPLY);
+        return { status: 17, stdout: failure, stderr: failure };
+      }
+      return original(file, args, options);
+    });
+    const worker = vi.fn<() => Promise<void>>(async () => {});
+    await expect(approvedAttempt(f, releaseRefs(), worker)).rejects.toThrow('apply: CLI exit 17');
+    expect(worker).not.toHaveBeenCalled();
+    expect(f.state.applied).toBe(1);
+    expect(f.entries.has(ROOT)).toBe(false);
+    await expect(approvedAttempt(f, releaseRefs(), worker)).resolves.toEqual({
+      applied: 1,
+      total: 2
+    });
+    expect(worker).toHaveBeenCalledTimes(1);
+    expect(f.trace.join(' ')).not.toMatch(/repair|reset|--include-/);
+  });
+
+  it.each([
+    ['link', `link --project-ref ${PROJECT}`, 1],
+    ['history', 'migration list --linked', 1],
+    ['dry-run', DRY, 1],
+    ['apply', APPLY, 1],
+    ['post-check', DRY, 2],
+    ['post-check', 'migration list --linked', 2]
+  ] as const)('blocks downstream Worker on %s CLI failure', async (stage, command, occurrence) => {
+    const f = fixture();
+    replaceResult(f, command, () => ({ status: 17, stdout: failure, stderr: failure }), occurrence);
+    const worker = vi.fn<() => Promise<void>>(async () => {});
+    await expect(approvedAttempt(f, releaseRefs(), worker)).rejects.toThrow(
+      stage + ': CLI exit 17'
+    );
+    expect(worker).not.toHaveBeenCalled();
+    expect(f.entries.has(ROOT)).toBe(false);
+  });
+
+  it('fails closed on process timeout with bounded capture and no Worker or secret cause', async () => {
+    const f = fixture();
+    replaceResult(f, APPLY, () => ({ status: null, stdout: failure, stderr: failure }));
+    const worker = vi.fn<() => Promise<void>>(async () => {});
+    const error = await approvedAttempt(f, releaseRefs(), worker).catch((cause: unknown) => cause);
+    expect(error).toMatchObject({ message: 'apply: CLI exit unavailable' });
+    expect(error).not.toHaveProperty('cause');
+    expect(worker).not.toHaveBeenCalled();
+    expect(f.entries.has(ROOT)).toBe(false);
+    expect(
+      f.exec.mock.calls.every(
+        ([, , options]) =>
+          options.timeout > 0 &&
+          options.maxBuffer === 4 * 1024 * 1024 &&
+          options.stdio.join(' ') === 'ignore pipe pipe'
+      )
+    ).toBe(true);
+    expect(
+      f.exec.mock.calls.find(
+        ([, args]) => args.includes('push') && !args.includes('--dry-run')
+      )?.[2].timeout
+    ).toBe(1_800_000);
+  });
+
+  it.each([
+    'null',
+    '[]',
+    '{}',
+    '{',
+    JSON.stringify({ _tag: 'Error', error: failure }),
+    JSON.stringify({ migrations: [null, null] })
+  ])('rejects malformed history output without apply: %s', async (stdout) => {
+    const f = fixture();
+    replaceResult(f, 'migration list --linked', () => ({ status: 0, stdout, stderr: failure }));
+    await expect(runMigrations(f.options)).rejects.toThrow(/^history:/);
+    expect(f.trace).not.toContain(APPLY);
+    expect(f.entries.has(ROOT)).toBe(false);
+  });
+
+  it.each([
+    { seeds: ['seed.sql'] },
+    { roles: ['roles.sql'] },
+    { dryRun: false },
+    { upToDate: true },
+    { migrations: [SECOND, FIRST] },
+    { migrations: [SECOND, SECOND] },
+    { migrations: null }
+  ])('rejects unsupported or malformed dry-run plan: %j', async (override) => {
+    const f = fixture();
+    replaceResult(f, DRY, () => encoded({ ...pushResult([SECOND], true), ...override }));
+    await expect(runMigrations(f.options)).rejects.toThrow(/^dry-run: unexpected/);
+    expect(f.trace).not.toContain(APPLY);
+  });
+
+  it('rejects inconsistent post-apply history even when post-dry-run claims no pending', async () => {
+    const f = fixture();
+    replaceResult(f, 'migration list --linked', () => encoded(history(1)), 2);
+    const worker = vi.fn<() => Promise<void>>(async () => {});
+    await expect(approvedAttempt(f, releaseRefs(), worker)).rejects.toThrow(
+      'post-check: post-apply history inconsistent'
+    );
+    expect(worker).not.toHaveBeenCalled();
+    expect(f.entries.has(ROOT)).toBe(false);
+  });
+
+  it.each([
+    null,
+    [],
+    {},
+    { ref: PROJECT, status: 'INACTIVE' },
+    { ref: PROJECT, status: 'ACTIVE_HEALTHY', database: { host: 'db.foreign.supabase.co' } }
+  ])('rejects malformed/unhealthy project identity: %j', async (project) => {
+    const f = fixture();
+    f.fetch.mockResolvedValue({ ok: true, json: async () => project });
+    await expect(runMigrations(f.options)).rejects.toThrow('project: project identity mismatch');
+    expect(f.trace).not.toContain(APPLY);
+    expect(f.trace).not.toContain(`link --project-ref ${PROJECT}`);
+  });
+
+  it.each(['project-ref', 'linked-project.json'] as const)(
+    'rejects missing/symlinked linked metadata %s',
+    async (name) => {
+      const f = fixture();
+      f.state.afterLink = () => {
+        f.put(ROOT + '/supabase/.temp/' + name, failure, 'symlink');
+      };
+      await expect(runMigrations(f.options)).rejects.toThrow('link: linked metadata invalid');
+      expect(f.trace).not.toContain(DRY);
+    }
+  );
+
+  it('independently rejects mismatched cached project metadata and missing ref', async () => {
+    const f = fixture();
+    f.state.afterLink = () => {
+      f.put(ROOT + '/supabase/.temp/linked-project.json', JSON.stringify({ ref: 'foreign' }));
+    };
+    await expect(runMigrations(f.options)).rejects.toThrow('linked project mismatch');
+    f.state.afterLink = () => {
+      f.entries.delete(ROOT + '/supabase/.temp/project-ref');
+    };
+    await expect(runMigrations(f.options)).rejects.toThrow(/^link:/);
+    expect(f.trace).not.toContain(DRY);
+  });
+
+  it.each([
+    `postgresql://postgres.foreign@aws-0-us-east-1.pooler.supabase.com:5432/postgres`,
+    `postgresql://postgres.${PROJECT}@foreign.example:5432/postgres`,
+    `postgresql://postgres.${PROJECT}:password@aws-0-us-east-1.pooler.supabase.com:5432/postgres`,
+    `postgresql://postgres.${PROJECT}@aws-0-us-east-1.pooler.supabase.com:5432/postgres?host=foreign`
+  ])('rejects tampered pooler routing before history/push: %s', async (pooler) => {
+    const f = fixture();
+    f.state.pooler = pooler;
+    await expect(runMigrations(f.options)).rejects.toThrow('linked routing invalid');
+    expect(f.trace).not.toContain('migration list --linked');
+  });
+
+  it.each(['roles.sql', '.env', 'templates'] as const)(
+    'rejects extra deployment input %s before apply',
+    async (name) => {
+      const f = fixture();
+      f.state.afterDry = () => {
+        f.put(ROOT + '/supabase/' + name, failure, name === 'templates' ? 'directory' : 'file');
+      };
+      await expect(runMigrations(f.options)).rejects.toThrow('unexpected deployment input');
+      expect(f.trace).not.toContain(APPLY);
+      expect(f.entries.has(ROOT)).toBe(false);
+    }
+  );
+
+  it('does not copy or read root config, seed, roles, env or pre-existing link state', async () => {
+    const f = fixture();
+    f.put('/checkout/supabase/.temp/project-ref', 'foreign');
+    const original = f.options.fs.read.bind(f.options.fs);
+    const reads: string[] = [];
+    f.options.fs.read = async (file) => {
+      reads.push(file);
+      return original(file);
+    };
+    await runMigrations(f.options);
+    expect(
+      reads
+        .filter((file) => file.startsWith('/checkout/'))
+        .every((file) => file === SOURCE + '/' + FIRST || file === SOURCE + '/' + SECOND)
+    ).toBe(true);
+    expect(f.fetch.mock.calls[0]?.[0]).toBe(`https://api.supabase.com/v1/projects/${PROJECT}`);
+    expect(f.fetch.mock.calls[0]?.[1].redirect).toBe('error');
+  });
+
+  it.each(['stdout', 'exception', 'http-json', 'http-error'] as const)(
+    'keeps canaries out of evidence on %s path',
+    async (channel) => {
+      const f = fixture();
+      if (channel === 'stdout')
+        replaceResult(f, DRY, () => ({ status: 0, stdout: failure, stderr: failure }));
+      else if (channel === 'exception') f.state.throwCommand = APPLY;
+      else if (channel === 'http-json')
+        f.fetch.mockResolvedValue({
+          ok: true,
+          json: async () => {
+            throw new Error(failure, { cause: failure });
+          }
+        });
+      else f.fetch.mockResolvedValue({ ok: false, json: async () => ({ error: failure }) });
+      const error = await runMigrations(f.options).catch((cause: unknown) => cause);
+      expect(error).toBeInstanceOf(Error);
+      expect(error).not.toHaveProperty('cause');
+      const evidence = JSON.stringify({
+        error: String(error),
+        out: f.out.write.mock.calls,
+        argv: f.exec.mock.calls.map(([file, args]) => [file, args])
+      });
+      for (const canary of CANARIES) expect(evidence).not.toContain(canary);
+      expect(evidence).not.toContain('postgres://');
+      expect(f.entries.has(ROOT)).toBe(false);
+    }
+  );
+
+  it('ignores raw successful CLI messages/stderr and emits only allowlisted manifest/count summaries', async () => {
+    const f = fixture();
+    replaceResult(f, DRY, () => encoded({ ...pushResult([SECOND], true), message: failure }));
+    await runMigrations(f.options);
+    const lines = f.out.write.mock.calls.map(([line]) => line);
+    expect(
+      lines.every((line) =>
+        /^Migration manifest: \d{14} [a-f0-9]{64}\n$|^Production migrations verified: applied=\d+ total=\d+\n$/.test(
+          line
+        )
+      )
+    ).toBe(true);
+    for (const canary of CANARIES) expect(lines.join('')).not.toContain(canary);
   });
 
   it('sanitizes HTTP and cleanup errors; rejects unknown CLI arguments', async () => {

@@ -77,6 +77,7 @@ jobs:
           VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}
           VITE_SUPABASE_PUBLISHABLE_KEY: ${{ vars.VITE_SUPABASE_PUBLISHABLE_KEY }}
       - name: Apply approved pending production migrations
+        id: migrations
         run: |
           node scripts/production-release-guard.mjs verify
           node scripts/production-migrations.mjs
@@ -91,6 +92,11 @@ jobs:
       - name: Revalidate identity and freshness before Worker deployment
         run: node scripts/production-release-guard.mjs verify
       - run: pnpm exec wrangler deploy
+        id: worker
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      - name: Report incomplete production release
+        if: always() && (steps.migrations.outcome == 'failure' || (steps.migrations.outcome == 'success' && steps.worker.outcome != 'success'))
+        run: |
+          printf '%s\n' 'Production release incomplete after migration step. Schema may be ahead or partially changed. Review applied history and Worker version before retrying.' >> "$GITHUB_STEP_SUMMARY"

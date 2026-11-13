@@ -1,4 +1,6 @@
-import { describe, expect, it, vi } from 'vitest';
+import { execFileSync } from 'node:child_process';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+
 import {
   assertCredentials,
   guardRelease,
@@ -7,6 +9,15 @@ import {
   type GuardExec,
   type ReleaseCandidate
 } from '../scripts/production-release-guard.mjs';
+
+vi.mock('node:child_process', () => ({
+  execFileSync: vi.fn<() => never>(() => {
+    throw new Error('Real git executor forbidden');
+  })
+}));
+afterEach(() => {
+  if (vi.mocked(execFileSync).mock.calls.length > 0) throw new Error('Default git IO reached');
+});
 
 const SHA = 'a'.repeat(40);
 const OTHER = 'b'.repeat(40);
@@ -32,15 +43,24 @@ const candidate = (overrides: Partial<ReleaseCandidate> = {}): ReleaseCandidate 
   ...overrides
 });
 
-function executor({ head = SHA, tag = SHA, main: remoteMain = SHA, annotated = false } = {}) {
+function executor({
+  head = SHA,
+  tag = SHA,
+  main: remoteMain = SHA,
+  annotated = false,
+  releaseTag = TAG
+} = {}) {
   return vi.fn<GuardExec>((file, args, options) => {
     expect(file).toBe('git');
     expect(options).toMatchObject({ timeout: 60_000, stdio: ['ignore', 'pipe', 'pipe'] });
     if (args.join(' ') === 'rev-parse --verify HEAD^{commit}') return head + '\n';
-    if (args.join(' ') === `ls-remote --exit-code origin refs/tags/${TAG} refs/tags/${TAG}^{}`)
+    if (
+      args.join(' ') ===
+      `ls-remote --exit-code origin refs/tags/${releaseTag} refs/tags/${releaseTag}^{}`
+    )
       return (
-        `${annotated ? OTHER : tag}\trefs/tags/${TAG}\n` +
-        (annotated ? `${tag}\trefs/tags/${TAG}^{}\n` : '')
+        `${annotated ? OTHER : tag}\trefs/tags/${releaseTag}\n` +
+        (annotated ? `${tag}\trefs/tags/${releaseTag}^{}\n` : '')
       );
     if (args.join(' ') === 'ls-remote --exit-code origin refs/heads/main')
       return `${remoteMain}\trefs/heads/main\n`;
@@ -131,6 +151,82 @@ describe('production release identity guard', () => {
     const exec = executor();
     exec.mockImplementationOnce(() => SHA).mockImplementationOnce(() => output);
     expect(() => guardRelease(candidate(), exec)).toThrow(/release|ref/);
+  });
+});
+
+describe('release retries and overlapping candidate identity', () => {
+  it('permits duplicate current-SHA failed-job reruns without rediscovering latest', () => {
+    const exec = executor();
+    const recorded = candidate();
+    expect(guardRelease(recorded, exec)).toEqual(guardRelease(recorded, exec));
+    expect(exec).toHaveBeenCalledTimes(6);
+  });
+
+  it('rejects rerun-all created=false rather than falling back to latest', () => {
+    const exec = executor();
+    const append = vi.fn<(file: string, text: string) => void>();
+    const out = { write: vi.fn<(text: string) => unknown>() };
+    expect(() =>
+      main(['record'], {
+        env: {
+          GITHUB_EVENT_PATH: 'event',
+          GITHUB_REPOSITORY: REPOSITORY,
+          RELEASE_CREATED: 'false',
+          RELEASE_TAG: TAG
+        },
+        read: () => JSON.stringify(event()),
+        exec,
+        append,
+        out
+      })
+    ).toThrow('release was not created');
+    expect(exec).not.toHaveBeenCalled();
+    expect(append).not.toHaveBeenCalled();
+    expect(out.write).not.toHaveBeenCalled();
+  });
+
+  it('rejects A when B is current and checked first; makes no FIFO assumption', () => {
+    const newer = candidate({
+      tag: 'v0.1.2',
+      releaseSha: OTHER,
+      event: event({ head_sha: OTHER })
+    });
+    expect(
+      guardRelease(newer, executor({ head: OTHER, tag: OTHER, main: OTHER, releaseTag: 'v0.1.2' }))
+    ).toEqual({ tag: 'v0.1.2', releaseSha: OTHER });
+    expect(() => guardRelease(candidate(), executor({ main: OTHER }))).toThrow('stale release');
+  });
+
+  it('rechecks tag mutation after a previously successful boundary', () => {
+    const exec = executor();
+    guardRelease(candidate(), exec);
+    exec.mockImplementation(executor({ tag: OTHER, annotated: true }));
+    expect(() => guardRelease(candidate(), exec)).toThrow('remote tag identity mismatch');
+  });
+
+  it.each([undefined, '', 'abc', 'A'.repeat(40), SHA + '\n'])(
+    'rejects malformed CI SHA %j before ref lookup',
+    (head_sha) => {
+      const exec = executor();
+      expect(() => guardRelease(candidate({ event: event({ head_sha }) }), exec)).toThrow(
+        /SHA|identity/
+      );
+      expect(exec).not.toHaveBeenCalled();
+    }
+  );
+
+  it('fails closed on missing peeled-tag base and inaccessible main responses', () => {
+    const tagOnly = executor({ annotated: true });
+    tagOnly
+      .mockImplementationOnce(() => SHA)
+      .mockImplementationOnce(() => `${SHA}\trefs/tags/${TAG}^{}\n`);
+    expect(() => guardRelease(candidate(), tagOnly)).toThrow('release tag inaccessible');
+    const noMain = executor();
+    noMain
+      .mockImplementationOnce(() => SHA)
+      .mockImplementationOnce(() => `${SHA}\trefs/tags/${TAG}\n`)
+      .mockImplementationOnce(() => '');
+    expect(() => guardRelease(candidate(), noMain)).toThrow('invalid remote ref response');
   });
 });
 
