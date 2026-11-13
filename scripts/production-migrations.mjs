@@ -130,6 +130,62 @@ async function linkedIdentity(root, fs) {
   }
 }
 
+const RELEASE_TAG = /^v\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/;
+const REPOSITORY = /^[\w.-]+\/[\w.-]+$/;
+const MARKER = /^Approved-pending:[ \t]*(.*?)[ \t]*\r?$/gm;
+
+// Reviewer binding: the pre-approval review records the reviewed pending versions in the release
+// body as one `Approved-pending: <v1>,<v2>` line (or `none`). Only versions and counts are surfaced.
+function approvedPending(body, files) {
+  if (typeof body !== 'string') fail('approved pending marker missing');
+  const markers = [...body.matchAll(MARKER)];
+  if (markers.length === 0) fail('approved pending marker missing');
+  if (markers.length > 1) fail('approved pending marker ambiguous');
+  const value = markers[0][1];
+  if (value === 'none') return [];
+  const versions = value.split(/\s*,\s*/);
+  const known = new Set(files.map((file) => file.version));
+  if (
+    versions.some((version) => !/^\d{14}$/.test(version) || !known.has(version)) ||
+    new Set(versions).size !== versions.length
+  )
+    fail('approved pending marker invalid');
+  return versions.sort();
+}
+
+async function releaseBody({ env, fetch }) {
+  const url =
+    'https://api.github.com/repos/' +
+    env.GITHUB_REPOSITORY +
+    '/releases/tags/' +
+    encodeURIComponent(env.RELEASE_TAG);
+  let release;
+  try {
+    const response = await fetch(url, {
+      headers: {
+        Accept: 'application/vnd.github+json',
+        Authorization: 'Bearer ' + env.GITHUB_TOKEN,
+        'X-GitHub-Api-Version': '2022-11-28'
+      },
+      signal: AbortSignal.timeout(30_000),
+      redirect: 'error'
+    });
+    if (!response.ok) fail('release lookup failed');
+    release = await response.json();
+  } catch (error) {
+    fail(error instanceof MigrationError ? error.message : 'release lookup failed');
+  }
+  if (
+    !release ||
+    Array.isArray(release) ||
+    typeof release !== 'object' ||
+    release.tag_name !== env.RELEASE_TAG ||
+    release.draft !== false
+  )
+    fail('release identity mismatch');
+  return release.body;
+}
+
 async function cleanup(root, fs) {
   try {
     await fs.remove(root);
@@ -151,6 +207,13 @@ export async function runMigrations({ env, checkout, runnerTemp, fs, exec, fetch
     if (env.VITE_SUPABASE_URL !== PUBLIC_URL) fail('public project URL mismatch');
     if (!/^sb_publishable_[\w-]+$/.test(env.VITE_SUPABASE_PUBLISHABLE_KEY ?? ''))
       fail('publishable key invalid');
+    if (
+      typeof env.GITHUB_TOKEN !== 'string' ||
+      env.GITHUB_TOKEN.trim() === '' ||
+      !REPOSITORY.test(env.GITHUB_REPOSITORY ?? '') ||
+      !RELEASE_TAG.test(env.RELEASE_TAG ?? '')
+    )
+      fail('release context invalid');
     if (!path.isAbsolute(checkout) || !path.isAbsolute(runnerTemp)) fail('workspace path invalid');
     // Never inherit PG*, SUPABASE_PROJECT_ID/profile/host overrides, release PAT, or Cloudflare
     // values. CLI reads only the fresh explicit workdir and an isolated, empty home.
@@ -241,6 +304,17 @@ export async function runMigrations({ env, checkout, runnerTemp, fs, exec, fetch
     const pending = pendingHistory(history(), files);
     stage = 'dry-run';
     checkPush(push(true), pending, true);
+    stage = 'approval';
+    const reviewed = approvedPending(await releaseBody({ env, fetch }), files);
+    const derived = pending.map((name) => files.find((file) => file.name === name).version).sort();
+    if (JSON.stringify(reviewed) !== JSON.stringify(derived))
+      fail(
+        'approved pending set mismatch (reviewed=' +
+          reviewed.length +
+          ' derived=' +
+          derived.length +
+          ')'
+      );
     stage = 'verify-manifest';
     same(await manifest(copied, fs), files, 'copied migration manifest mismatch');
     same(

@@ -26,7 +26,14 @@ const SOURCE = '/checkout/supabase/migrations';
 const COPY = ROOT + '/supabase/migrations';
 const FIRST = '20261101090000_first.sql';
 const SECOND = '20261102090000_second.sql';
-const CANARIES = ['canary-access-token', 'canary-db-password', 'canary-cloudflare-token'];
+const CANARIES = [
+  'canary-access-token',
+  'canary-db-password',
+  'canary-cloudflare-token',
+  'canary-github-token',
+  'canary-release-body'
+];
+const RELEASE_URL = 'https://api.github.com/repos/owner/repo/releases/tags/v0.1.1';
 const bytes = (value: string) => Buffer.from(value);
 const sql = bytes('select 1;\r\n-- exact bytes\n');
 const failure = CANARIES.join(' ') + ' postgres://private SQL';
@@ -114,6 +121,9 @@ function fixture(initiallyApplied = 1) {
     linked: PROJECT,
     pooler: `postgresql://postgres.${PROJECT}@aws-0-us-east-1.pooler.supabase.com:5432/postgres`,
     names: [FIRST, SECOND],
+    marker: undefined as string | undefined,
+    release: undefined as unknown,
+    releaseOk: true,
     badHistory: false,
     gapHistory: false,
     malformed: '',
@@ -175,6 +185,20 @@ function fixture(initiallyApplied = 1) {
   });
   const fetch = vi.fn<MigrationOptions['fetch']>(async (url) => {
     trace.push('GET ' + url);
+    if (url === RELEASE_URL) {
+      const marker =
+        state.marker ??
+        'Approved-pending: ' +
+          (state.names
+            .slice(state.applied)
+            .map((name) => name.slice(0, 14))
+            .join(',') || 'none');
+      const release =
+        state.release === undefined
+          ? { tag_name: 'v0.1.1', draft: false, body: `Notes ${CANARIES[4]}\n${marker}\n` }
+          : state.release;
+      return { ok: state.releaseOk, json: async () => release };
+    }
     return {
       ok: true,
       json: async () => ({
@@ -196,7 +220,10 @@ function fixture(initiallyApplied = 1) {
       VITE_SUPABASE_PUBLISHABLE_KEY: 'sb_publishable_fixture',
       SUPABASE_PROJECT_ID: 'foreign',
       PGHOST: 'foreign',
-      RELEASE_PLEASE_TOKEN: 'private-release-pat'
+      RELEASE_PLEASE_TOKEN: 'private-release-pat',
+      GITHUB_TOKEN: CANARIES[3],
+      GITHUB_REPOSITORY: 'owner/repo',
+      RELEASE_TAG: 'v0.1.1'
     },
     checkout: '/checkout',
     runnerTemp: '/runner',
@@ -310,6 +337,7 @@ describe('production migration operation', () => {
       `link --project-ref ${PROJECT}`,
       'migration list --linked',
       'db push --linked --skip-vault --dry-run',
+      `GET ${RELEASE_URL}`,
       'db push --linked --skip-vault',
       'db push --linked --skip-vault --dry-run',
       'migration list --linked'
@@ -343,7 +371,10 @@ describe('production migration operation', () => {
     'CLOUDFLARE_ACCOUNT_ID',
     'CLOUDFLARE_API_TOKEN',
     'VITE_SUPABASE_URL',
-    'VITE_SUPABASE_PUBLISHABLE_KEY'
+    'VITE_SUPABASE_PUBLISHABLE_KEY',
+    'GITHUB_TOKEN',
+    'GITHUB_REPOSITORY',
+    'RELEASE_TAG'
   ])('rejects missing %s before remote calls', async (name) => {
     const f = fixture();
     delete f.options.env[name];
@@ -494,7 +525,9 @@ describe('production migration operation', () => {
     expect(
       childEnvs.every(
         (env) =>
-          !Object.keys(env).some((name) => /CLOUDFLARE|PGHOST|PROJECT_ID|RELEASE_PLEASE/.test(name))
+          !Object.keys(env).some((name) =>
+            /CLOUDFLARE|PGHOST|PROJECT_ID|RELEASE_PLEASE|GITHUB|RELEASE_TAG/.test(name)
+          )
       )
     ).toBe(true);
     expect(childEnvs[1]).toMatchObject({
@@ -817,6 +850,180 @@ describe('production migration operation', () => {
       )
     ).toBe(true);
     for (const canary of CANARIES) expect(lines.join('')).not.toContain(canary);
+  });
+
+  describe('reviewer-approved pending set binding', () => {
+    const V1 = FIRST.slice(0, 14);
+    const V2 = SECOND.slice(0, 14);
+
+    it('proceeds when the marker matches the derived pending set (order-insensitive)', async () => {
+      const f = fixture(0);
+      f.state.marker = `Approved-pending:  ${V2}, ${V1} `;
+      await expect(runMigrations(f.options)).resolves.toEqual({ applied: 2, total: 2 });
+      expect(f.fetch.mock.calls.map(([url]) => url)).toContain(RELEASE_URL);
+      const release = f.fetch.mock.calls.find(([url]) => url === RELEASE_URL)!;
+      expect(release[1]).toMatchObject({ redirect: 'error' });
+      expect(release[1].headers.Authorization).toBe('Bearer ' + CANARIES[3]);
+    });
+
+    it('treats `none` with empty pending as a checked no-op', async () => {
+      const f = fixture(2);
+      f.state.marker = 'Approved-pending: none';
+      await expect(runMigrations(f.options)).resolves.toEqual({ applied: 0, total: 2 });
+    });
+
+    it.each([
+      ['missing marker', 'Release notes only', 'approved pending marker missing'],
+      [
+        'ambiguous markers',
+        `Approved-pending: none\nApproved-pending: none`,
+        'approved pending marker ambiguous'
+      ],
+      ['malformed version', 'Approved-pending: 2026', 'approved pending marker invalid'],
+      ['empty value', 'Approved-pending:', 'approved pending marker invalid'],
+      [
+        'version outside manifest',
+        'Approved-pending: 20261201000000',
+        'approved pending marker invalid'
+      ],
+      [
+        'duplicate version',
+        'Approved-pending: 20261102090000,20261102090000',
+        'approved pending marker invalid'
+      ],
+      [
+        'none mixed with versions',
+        'Approved-pending: none,20261102090000',
+        'approved pending marker invalid'
+      ]
+    ])('fails closed before apply: %s', async (_name, marker, reason) => {
+      const f = fixture(1);
+      f.state.marker = marker;
+      await expect(runMigrations(f.options)).rejects.toThrow(`approval: ${reason}`);
+      expect(f.trace).not.toContain(APPLY);
+      expect(f.state.applied).toBe(1);
+      expect(f.entries.has(ROOT)).toBe(false);
+    });
+
+    it.each([
+      ['extra reviewed version', 'Approved-pending: ' + V1 + ',' + V2, 1, 'reviewed=2 derived=1'],
+      ['missing reviewed version', 'Approved-pending: none', 1, 'reviewed=0 derived=1'],
+      ['different reviewed version', 'Approved-pending: ' + V1, 1, 'reviewed=1 derived=1'],
+      ['history drifted after review', 'Approved-pending: ' + V2, 0, 'reviewed=1 derived=2']
+    ])('fails closed before apply on mismatch: %s', async (_name, marker, applied, shape) => {
+      const f = fixture(applied);
+      f.state.marker = marker;
+      await expect(runMigrations(f.options)).rejects.toThrow(
+        `approval: approved pending set mismatch (${shape})`
+      );
+      expect(f.trace).not.toContain(APPLY);
+      expect(f.state.applied).toBe(applied);
+    });
+
+    it.each([
+      [
+        'http failure',
+        (f: Fixture) => {
+          f.state.releaseOk = false;
+        },
+        'release lookup failed'
+      ],
+      [
+        'network failure',
+        (f: Fixture) => {
+          f.fetch.mockImplementation(async (url) => {
+            if (url === RELEASE_URL) throw new Error(failure);
+            return {
+              ok: true,
+              json: async () => ({
+                ref: PROJECT,
+                status: 'ACTIVE_HEALTHY',
+                database: { host: `db.${PROJECT}.supabase.co` }
+              })
+            };
+          });
+        },
+        'release lookup failed'
+      ],
+      [
+        'non-JSON body',
+        (f: Fixture) => {
+          f.fetch.mockImplementation(async (url) => ({
+            ok: true,
+            json: async () => {
+              if (url === RELEASE_URL) throw new Error(failure);
+              return {
+                ref: PROJECT,
+                status: 'ACTIVE_HEALTHY',
+                database: { host: `db.${PROJECT}.supabase.co` }
+              };
+            }
+          }));
+        },
+        'release lookup failed'
+      ],
+      [
+        'empty list for tag',
+        (f: Fixture) => {
+          f.state.release = [];
+        },
+        'release identity mismatch'
+      ],
+      [
+        'null response',
+        (f: Fixture) => {
+          f.state.release = null;
+        },
+        'release identity mismatch'
+      ],
+      [
+        'other tag',
+        (f: Fixture) => {
+          f.state.release = { tag_name: 'v9.9.9', draft: false, body: 'Approved-pending: none' };
+        },
+        'release identity mismatch'
+      ],
+      [
+        'draft release',
+        (f: Fixture) => {
+          f.state.release = { tag_name: 'v0.1.1', draft: true, body: 'Approved-pending: ' + V2 };
+        },
+        'release identity mismatch'
+      ],
+      [
+        'null body',
+        (f: Fixture) => {
+          f.state.release = { tag_name: 'v0.1.1', draft: false, body: null };
+        },
+        'approved pending marker missing'
+      ]
+    ])('fails closed before apply on release API %s', async (_name, arrange, reason) => {
+      const f = fixture(1);
+      arrange(f);
+      await expect(runMigrations(f.options)).rejects.toThrow(`approval: ${reason}`);
+      expect(f.trace).not.toContain(APPLY);
+      expect(f.entries.has(ROOT)).toBe(false);
+    });
+
+    it.each(['http', 'mismatch', 'marker'] as const)(
+      'never leaks the token or release body on %s failure paths',
+      async (kind) => {
+        const f = fixture(1);
+        if (kind === 'http') f.state.releaseOk = false;
+        if (kind === 'mismatch') f.state.marker = 'Approved-pending: none';
+        if (kind === 'marker') f.state.marker = 'no marker';
+        const error = await runMigrations(f.options).catch((cause: unknown) => cause);
+        expect(error).not.toHaveProperty('cause');
+        const evidence = JSON.stringify({
+          error: String(error),
+          out: f.out.write.mock.calls,
+          argv: f.exec.mock.calls.map(([file, args]) => [file, args]),
+          childEnv: f.exec.mock.calls.map(([, , options]) => options.env)
+        });
+        for (const canary of [CANARIES[3], CANARIES[4]]) expect(evidence).not.toContain(canary);
+        expect(f.trace).not.toContain(APPLY);
+      }
+    );
   });
 
   describe('remote history behind the previously deployed release', () => {
