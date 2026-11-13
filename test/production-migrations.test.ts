@@ -43,10 +43,10 @@ function pushResult(names: string[], dryRun: boolean) {
     message: names.length ? 'Finished supabase db push.' : 'Remote database is up to date.'
   };
 }
-function history(applied: number) {
+function history(applied: number, names: string[] = [FIRST, SECOND]) {
   return {
     message: 'Migrations listed',
-    migrations: [FIRST, SECOND].map((name, index) => ({
+    migrations: names.map((name, index) => ({
       local: name.slice(0, 14),
       remote: index < applied ? name.slice(0, 14) : '',
       time: '2026-11-01 09:00:00'
@@ -113,6 +113,7 @@ function fixture(initiallyApplied = 1) {
     project: PROJECT,
     linked: PROJECT,
     pooler: `postgresql://postgres.${PROJECT}@aws-0-us-east-1.pooler.supabase.com:5432/postgres`,
+    names: [FIRST, SECOND],
     badHistory: false,
     gapHistory: false,
     malformed: '',
@@ -157,17 +158,17 @@ function fixture(initiallyApplied = 1) {
     }
     if (command === state.malformed) return { status: 0, stdout: failure, stderr: failure };
     if (command === 'migration list --linked') {
-      const result = history(state.applied);
+      const result = history(state.applied, state.names);
       if (state.badHistory)
         result.migrations.push({ local: '', remote: '20261103090000', time: '' });
       if (state.gapHistory) result.migrations.reverse();
       return encoded(result);
     }
     if (command.startsWith('db push ')) {
-      const pending = [FIRST, SECOND].slice(state.applied);
+      const pending = state.names.slice(state.applied);
       const dryRun = command.includes('--dry-run');
       if (dryRun) state.afterDry();
-      else if (!state.noApply) state.applied = 2;
+      else if (!state.noApply) state.applied = state.names.length;
       return encoded(pushResult(state.badPlan ? ['20261103090000_unknown.sql'] : pending, dryRun));
     }
     throw new Error('Unexpected command');
@@ -810,12 +811,84 @@ describe('production migration operation', () => {
     const lines = f.out.write.mock.calls.map(([line]) => line);
     expect(
       lines.every((line) =>
-        /^Migration manifest: \d{14} [a-f0-9]{64}\n$|^Production migrations verified: applied=\d+ total=\d+\n$/.test(
+        /^Migration manifest: \d{14} [a-f0-9]{64}\n$|^Migration pending: \d{14}\n$|^Production migrations verified: applied=\d+ total=\d+\n$/.test(
           line
         )
       )
     ).toBe(true);
     for (const canary of CANARIES) expect(lines.join('')).not.toContain(canary);
+  });
+
+  describe('remote history behind the previously deployed release', () => {
+    const OLDER = '20261030090000_older_release.sql';
+    const OLDEST = '20261029090000_oldest_release.sql';
+    // Release tag contains OLDEST, OLDER (shipped by an earlier release) plus FIRST, SECOND.
+    function behind(applied: number) {
+      const f = fixture(applied);
+      f.put(SOURCE + '/' + OLDER, 'select 0;\n');
+      f.put(SOURCE + '/' + OLDEST, 'select -1;\n');
+      f.state.names = [OLDEST, OLDER, FIRST, SECOND];
+      return f;
+    }
+
+    it('applies exactly the remote-pending suffix, including older-release files absent from the tag diff', async () => {
+      const f = behind(1);
+      await expect(runMigrations(f.options)).resolves.toEqual({ applied: 3, total: 4 });
+      expect(f.state.applied).toBe(4);
+      const versions = f.out.write.mock.calls
+        .map(([line]) => line)
+        .filter((line) => line.startsWith('Migration manifest:'));
+      expect(versions).toHaveLength(4);
+      const pendingLines = f.out.write.mock.calls
+        .map(([line]) => line)
+        .filter((line) => line.startsWith('Migration pending:'));
+      expect(pendingLines).toEqual(
+        [OLDER, FIRST, SECOND].map((name) => `Migration pending: ${name.slice(0, 14)}\n`)
+      );
+      expect(f.out.write).toHaveBeenLastCalledWith(
+        'Production migrations verified: applied=3 total=4\n'
+      );
+      expect(f.trace.filter((command) => command === APPLY)).toHaveLength(1);
+    });
+
+    it('fails closed before apply when the dry-run plan differs from the remote-pending set', async () => {
+      for (const plan of [
+        [FIRST, SECOND], // silently skips older pending files
+        [OLDER, FIRST, SECOND, '20261103090000_extra.sql'], // file outside remote-pending set
+        [SECOND, FIRST, OLDER] // reordered
+      ]) {
+        const f = behind(1);
+        replaceResult(f, DRY, () => encoded({ ...pushResult(plan, true) }));
+        await expect(runMigrations(f.options)).rejects.toThrow(
+          /^dry-run: unexpected migration plan$/
+        );
+        expect(f.trace).not.toContain(APPLY);
+        expect(f.state.applied).toBe(1);
+        expect(f.entries.has(ROOT)).toBe(false);
+      }
+    });
+
+    it('fails closed when an older file is missing remotely but later versions are applied', async () => {
+      const f = behind(0);
+      const original = f.exec.getMockImplementation()!;
+      f.exec.mockImplementation((file, args, options) => {
+        if (args.join(' ').includes('migration list')) {
+          const result = history(4, f.state.names);
+          result.migrations[1]!.remote = '';
+          return encoded(result);
+        }
+        return original(file, args, options);
+      });
+      await expect(runMigrations(f.options)).rejects.toThrow(
+        'history: migration history out of order'
+      );
+      expect(f.trace).not.toContain(APPLY);
+    });
+
+    it('is a checked no-op once history has caught up', async () => {
+      const f = behind(4);
+      await expect(runMigrations(f.options)).resolves.toEqual({ applied: 0, total: 4 });
+    });
   });
 
   it('sanitizes HTTP and cleanup errors; rejects unknown CLI arguments', async () => {

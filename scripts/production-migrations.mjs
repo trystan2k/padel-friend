@@ -257,6 +257,8 @@ export async function runMigrations({ env, checkout, runnerTemp, fs, exec, fetch
     await linkedIdentity(root, fs);
     for (const file of files)
       out.write('Migration manifest: ' + file.version + ' ' + file.hash + '\n');
+    for (const file of files.filter((candidate) => pending.includes(candidate.name)))
+      out.write('Migration pending: ' + file.version + '\n');
     stage = 'apply';
     checkPush(push(false), pending, false);
     stage = 'post-check';
