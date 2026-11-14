@@ -11,7 +11,9 @@
     ".tanstack/**",
     ".agents/**",
     ".opencode/**",
-    "docs/plan/**"
+    "docs/plan/**",
+    "CHANGELOG.md",
+    "release-please-manifest.json"
   ],
   "overrides": [
     {
