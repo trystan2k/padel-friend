@@ -98,10 +98,8 @@ test('October correction after the League close replays later groups, preserves 
   await page.getByRole('button', { name: r.correctSubmit, exact: true }).click();
   await expect(page.getByRole('heading', { name: r.matchRecap, exact: true })).toBeVisible();
   await page.getByRole('button', { name: r.correctSubmit, exact: true }).click();
-  await expect(
-    page.getByRole('heading', { name: fill(r.correctionSubmitted, { version: 2 }), exact: true })
-  ).toBeVisible();
-  await f.open(page, f.october.eventId);
+  // Successful submission navigates to match details; the receipt can disappear before it is observed.
+  await expect(page).toHaveURL(new RegExp(`/matches/${f.october.eventId}$`));
   const card = page.locator('[data-amendment-lifecycle=proposal_pending]');
   await expect(card).toContainText('2–6');
   const amendment = (await f.amendments(f.october.eventId))[0]!;
