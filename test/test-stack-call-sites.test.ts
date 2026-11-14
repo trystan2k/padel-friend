@@ -108,6 +108,10 @@ describe('test backend call sites route through the shared TEST resolver', () =>
       .map((name) => 'scripts/' + name)
       // The opt-in isolation proof deliberately addresses BOTH projects, non-destructively.
       .filter((file) => file !== 'scripts/verify-test-stack-isolation.mjs')
+      // The release-pipeline migration runner targets the PRODUCTION project only
+      // (linked project ref + pooler, never the test stack or local ports), so it
+      // does not fall under this guard's test-stack isolation intent.
+      .filter((file) => file !== 'scripts/production-migrations.mjs')
       .filter((file) => !central.has(file) && /\[\s*'exec',\s*'supabase'/.test(read(file)));
     expect(offenders).toEqual([]);
   });
