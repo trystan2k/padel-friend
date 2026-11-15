@@ -2082,28 +2082,6 @@ export type Database = {
         }
         Relationships: []
       }
-      notes: {
-        Row: {
-          body: string
-          created_at: string
-          id: string
-          user_id: string
-        }
-        ComputedFields: never
-        Insert: {
-          body: string
-          created_at?: string
-          id?: string
-          user_id: string
-        }
-        Update: {
-          body?: string
-          created_at?: string
-          id?: string
-          user_id?: string
-        }
-        Relationships: []
-      }
       notification_preferences: {
         Row: {
           critical_in_app_enabled: boolean
