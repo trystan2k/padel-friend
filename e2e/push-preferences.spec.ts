@@ -104,7 +104,7 @@ async function installMocks(context: BrowserContext, options: MockOptions = {}) 
           const p256dh = crypto.getRandomValues(new Uint8Array(65));
           p256dh[0] = 4;
           const stored = {
-            endpoint: 'https://push.example.test/send/' + crypto.randomUUID(),
+            endpoint: 'https://updates.push.services.mozilla.com/wpush/v2/' + crypto.randomUUID(),
             p256dh: toBase64Url(p256dh),
             auth: toBase64Url(crypto.getRandomValues(new Uint8Array(16)))
           };
