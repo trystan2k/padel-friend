@@ -79,6 +79,8 @@
     "created": "Your community is ready.",
     "finish": "GO TO DASHBOARD",
     "createFailed": "Could not create community. Please try again.",
+    "createRateLimited": "You have created too many communities recently. Try again later.",
+    "createOwnedLimit": "You have reached the maximum number of communities you can own.",
     "invalidName": "Enter a community name of up to 80 characters.",
     "offline": "Offline. Nothing sent. Reconnect and try again."
   },
@@ -448,6 +450,7 @@
       "empty": "Enter a message",
       "notPending": "This request is no longer pending",
       "failed": "Could not send message",
+      "rateLimited": "Too many messages to this applicant. Try again later.",
       "offline": "You are offline. Nothing was sent. Reconnect and try again.",
       "unconfirmed": "We couldn't confirm the message was sent. Retrying is safe: it won't send a duplicate."
     }
@@ -1726,6 +1729,7 @@
       "inviteeUnavailable": "One or more invitees are unavailable.",
       "conflict": "This match conflicts with an existing publication.",
       "publishFailed": "Could not publish the match.",
+      "rateLimited": "You have published too many matches today. Try again later.",
       "offline": "You are offline. Nothing was published. Reconnect and try again.",
       "unconfirmed": "We couldn't confirm the match was published. Retrying is safe: it won't create a duplicate.",
       "optionsUnavailable": "Could not load match creation options. Try again."
@@ -2242,6 +2246,7 @@
       "LEAGUE_START_LOCKED": "The start date can't change after the League has started.",
       "LEAGUE_VERSION_CONFLICT": "This League changed in the meantime. We reloaded it; review it and try again.",
       "LEAGUE_REQUEST_CONFLICT": "This request was already used with different details. Review and submit again.",
+      "LEAGUE_CREATE_RATE_LIMITED": "You have created too many Leagues today. Try again later.",
       "LEAGUE_STANDINGS_VERSION_INVALID": "That standings version isn't valid.",
       "LEAGUE_STANDINGS_VERSION_NOT_FOUND": "That standings version doesn't exist.",
       "LEAGUE_UNAVAILABLE": "Something went wrong. Try again.",

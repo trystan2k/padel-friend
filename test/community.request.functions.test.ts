@@ -22,10 +22,34 @@ import {
   validateNotificationPage,
   validateSendCommunityRequestMessage
 } from '../src/features/community/community-request.validators';
-import { listMyCommunityNotifications } from '../src/features/community/community-request.functions';
+import {
+  listMyCommunityNotifications,
+  sendCommunityRequestMessage
+} from '../src/features/community/community-request.functions';
 
 const id = '123e4567-e89b-42d3-a456-426614174000';
 describe('community request validators', () => {
+  it('passes the request-message quota code through the central sanitizer', async () => {
+    mocks.client = {
+      rpc: () => ({
+        single: async () => ({
+          data: null,
+          error: {
+            code: 'P0001',
+            message: 'COMMUNITY_REQUEST_MESSAGE_RATE_LIMITED',
+            details: 'secret',
+            hint: 'secret'
+          }
+        })
+      })
+    };
+    await expect(
+      sendCommunityRequestMessage({
+        data: { community_id: id, membership_id: id, body: 'Hello', client_request_id: id }
+      })
+    ).rejects.toThrow('COMMUNITY_REQUEST_MESSAGE_RATE_LIMITED');
+  });
+
   it('trims valid plain text and validates identifiers', () => {
     expect(
       validateSendCommunityRequestMessage({

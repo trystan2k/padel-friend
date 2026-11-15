@@ -24,8 +24,10 @@ export const sendCommunityRequestMessage = createServerFn({ method: 'POST' })
         p_client_request_id: data.client_request_id
       })
       .single();
-    if (error)
+    if (error) {
+      if (error.message === 'COMMUNITY_REQUEST_MESSAGE_RATE_LIMITED') throw toClientError(error);
       throw new Error(error.code === '22023' ? 'REQUEST_NOT_PENDING' : 'REQUEST_MESSAGE_FAILED');
+    }
     return result;
   });
 

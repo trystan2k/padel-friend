@@ -53,6 +53,7 @@ import {
 } from './helpers/fixture-cleanup';
 import { executeTrustedSqlBatch, queryTrustedSql } from './helpers/sql-transport';
 import { trustedClient } from './helpers/trusted-client';
+import { seedHistoricalCommunity } from './helpers/community-fixtures';
 
 vi.setConfig({ testTimeout: 30000, hookTimeout: 30000 });
 type LocalEnv = NonNullable<ReturnType<typeof localSupabaseEnv>['env']>;
@@ -273,6 +274,11 @@ describe.skipIf(environment.env === null)('community domain (local Supabase inte
       if (result.error) throw result.error;
       if (typeof result.data !== 'string') throw new Error('create_community returned no ID');
       registerCommunityRows(testCleanup!, result.data);
+      // Historical setup rows preserve RPC bootstrap coverage without consuming today's quota.
+      await queryTrustedSql(
+        "update public.communities set created_at = now() - interval '2 days' where id = $1",
+        { values: [result.data] }
+      );
       return result.data;
     }
     privateId = await create('Private ' + crypto.randomUUID(), 'private');
@@ -439,7 +445,7 @@ describe.skipIf(environment.env === null)('community domain (local Supabase inte
     );
 
     const literalName = `Literal %_\\ ${crypto.randomUUID()}`;
-    const literal = await admin.client.rpc('create_community', {
+    const literal = await seedHistoricalCommunity(admin.id, {
       p_name: literalName,
       p_visibility: 'public',
       p_join_policy: 'instant'
@@ -456,7 +462,7 @@ describe.skipIf(environment.env === null)('community domain (local Supabase inte
     ];
     const probeIds: string[] = [];
     for (const name of probeNames) {
-      const created = await admin.client.rpc('create_community', {
+      const created = await seedHistoricalCommunity(admin.id, {
         p_name: name,
         p_visibility: 'public',
         p_join_policy: 'instant'
@@ -465,13 +471,13 @@ describe.skipIf(environment.env === null)('community domain (local Supabase inte
       probeIds.push(created.data);
     }
     const cityOnly = `City-(x),"\\-${crypto.randomUUID()}`;
-    const cityRow = await admin.client.rpc('create_community', {
+    const cityRow = await seedHistoricalCommunity(admin.id, {
       p_name: `Unrelated-${crypto.randomUUID()}`,
       p_visibility: 'public',
       p_join_policy: 'instant',
       p_city_label: cityOnly
     });
-    const hiddenCity = await admin.client.rpc('create_community', {
+    const hiddenCity = await seedHistoricalCommunity(admin.id, {
       p_name: `Hidden-${crypto.randomUUID()}`,
       p_visibility: 'private',
       p_join_policy: 'admin_approval',
@@ -1618,7 +1624,7 @@ describe.skipIf(environment.env === null)('community domain (local Supabase inte
       visibility: 'public' | 'private',
       policy: 'instant' | 'admin_approval'
     ) {
-      const created = await owner.client.rpc('create_community', {
+      const created = await seedHistoricalCommunity(owner.id, {
         p_name: `Join ${crypto.randomUUID()}`,
         p_visibility: visibility,
         p_join_policy: policy

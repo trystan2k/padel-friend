@@ -1371,7 +1371,7 @@ function RequestMessageComposer({
   const [body, setBody] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<
-    'empty' | 'failed' | 'notPending' | 'offline' | 'unconfirmed' | null
+    'empty' | 'failed' | 'notPending' | 'offline' | 'rateLimited' | 'unconfirmed' | null
   >(null);
   const [sent, setSent] = useState(false);
   const requestId = useRef(crypto.randomUUID());
@@ -1409,7 +1409,17 @@ function RequestMessageComposer({
       requestId.current = crypto.randomUUID();
     } catch (failure) {
       const notPending = failure instanceof Error && failure.message === 'REQUEST_NOT_PENDING';
-      setError(notPending ? 'notPending' : isTransportFailure(failure) ? 'unconfirmed' : 'failed');
+      const rateLimited =
+        failure instanceof Error && failure.message === 'COMMUNITY_REQUEST_MESSAGE_RATE_LIMITED';
+      setError(
+        notPending
+          ? 'notPending'
+          : rateLimited
+            ? 'rateLimited'
+            : isTransportFailure(failure)
+              ? 'unconfirmed'
+              : 'failed'
+      );
       if (notPending) setOpen(false);
     } finally {
       setBusy(false);

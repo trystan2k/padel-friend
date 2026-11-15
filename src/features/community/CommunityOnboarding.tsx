@@ -18,6 +18,11 @@ import { normalizeReturnPath, optionalReturnPath } from '../auth/return-path';
 type Search = { q?: string; view?: 'create'; next?: string };
 type Page = { communities: PublicCommunity[]; next_offset: number | null; failed: boolean };
 
+const createLimitErrors: Record<string, string> = {
+  COMMUNITY_CREATE_RATE_LIMITED: 'createRateLimited',
+  COMMUNITY_OWNED_LIMIT_REACHED: 'createOwnedLimit'
+};
+
 function expired(error: unknown): boolean {
   return error instanceof Error && error.message === 'UNAUTHENTICATED';
 }
@@ -361,7 +366,7 @@ function CreateCommunityView({ onBack, onFinish }: { onBack: () => void; onFinis
   const [description, setDescription] = useState('');
   const [city, setCity] = useState('');
   const [nameError, setNameError] = useState(false);
-  const [createError, setCreateError] = useState(false);
+  const [createError, setCreateError] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
   const [created, setCreated] = useState(false);
   const nameRef = useRef<HTMLInputElement>(null);
@@ -376,7 +381,7 @@ function CreateCommunityView({ onBack, onFinish }: { onBack: () => void; onFinis
       return;
     }
     setNameError(false);
-    setCreateError(false);
+    setCreateError(null);
     setCreating(true);
     try {
       await createCommunity({
@@ -394,7 +399,12 @@ function CreateCommunityView({ onBack, onFinish }: { onBack: () => void; onFinis
         window.location.assign('/login?next=/onboarding/community');
         return;
       }
-      setCreateError(true);
+      const message = error instanceof Error ? error.message : '';
+      setCreateError(
+        Object.hasOwn(createLimitErrors, message)
+          ? (createLimitErrors[message] ?? 'createFailed')
+          : 'createFailed'
+      );
     } finally {
       setCreating(false);
     }
@@ -492,7 +502,7 @@ function CreateCommunityView({ onBack, onFinish }: { onBack: () => void; onFinis
           <p {...stylex.props(ui.help)}>{t('communityOnboarding.adminNote')}</p>
           {createError && (
             <p role="alert" {...stylex.props(ui.error)}>
-              {t('communityOnboarding.createFailed')}
+              {t(`communityOnboarding.${createError}`)}
             </p>
           )}
           <Button type="submit" busy={creating}>

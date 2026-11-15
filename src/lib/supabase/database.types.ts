@@ -4715,7 +4715,10 @@ export type Database = {
         }[]
       }
       assert_actor_not_provisional: { Args: Record<PropertyKey, never>; Returns: undefined }
+      assert_community_create_allowed: { Args: { p_actor: string }; Returns: undefined }
+      assert_league_create_allowed: { Args: { p_actor: string }; Returns: undefined }
       assert_match_event_active_locked: { Args: { p_event_id: string }; Returns: undefined }
+      assert_match_event_create_allowed: { Args: { p_actor: string }; Returns: undefined }
       assert_match_league_binding: {
         Args: {
           p_community_id: string
@@ -4747,6 +4750,10 @@ export type Database = {
         Returns: undefined
       }
       assert_match_player_add_window_locked: { Args: { p_event_id: string }; Returns: undefined }
+      assert_request_message_allowed: {
+        Args: { p_actor: string; p_membership_id: string }
+        Returns: undefined
+      }
       can_read_community: { Args: { p_community_id: string }; Returns: boolean }
       can_read_match_event: { Args: { p_event_id: string }; Returns: boolean }
       cancel_level_review_request: { Args: { p_request_id: string }; Returns: Json }
@@ -5568,6 +5575,10 @@ export type Database = {
           p_type?: string
         }
         Returns: Json
+      }
+      lock_actor_rate_scope: {
+        Args: { p_actor: string; p_key?: string; p_scope: string }
+        Returns: undefined
       }
       lock_global_rating_projection: { Args: Record<PropertyKey, never>; Returns: undefined }
       lock_match_event_registration: {
@@ -6574,6 +6585,20 @@ export type Database = {
         Returns: {
           display_name: string
           user_id: string
+        }[]
+      }
+      security_rate_limits: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          community_create_max: number
+          community_create_window: string
+          community_owned_max: number
+          league_create_max: number
+          league_create_window: string
+          match_event_max: number
+          match_event_window: string
+          request_message_max: number
+          request_message_window: string
         }[]
       }
       send_community_request_message: {

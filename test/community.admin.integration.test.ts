@@ -1,7 +1,7 @@
 import { spawn } from 'node:child_process';
 import { createRequire } from 'node:module';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
-import { beforeAll, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { TEST_WORKDIR } from '../scripts/test-stack.mjs';
 import { assertLocalSupabaseEnvInCi, localSupabaseEnv } from './helpers/local-supabase-env';
 import { trustedClient } from './helpers/trusted-client';
@@ -483,7 +483,7 @@ describe('LocalSqlCommand process-group cleanup', () => {
 });
 
 describe.skipIf(environment.env === null)('community governance with real JWTs', () => {
-  beforeAll(async () => {
+  beforeEach(async () => {
     [admin, member, outsider, target, alternate] = await Promise.all([
       actor('Admin'),
       actor('Member'),

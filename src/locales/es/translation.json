@@ -79,6 +79,8 @@
     "created": "Tu comunidad está lista.",
     "finish": "IR AL PANEL",
     "createFailed": "No se pudo crear la comunidad. Inténtalo de nuevo.",
+    "createRateLimited": "Has creado demasiadas comunidades recientemente. Inténtalo de nuevo más tarde.",
+    "createOwnedLimit": "Has alcanzado el máximo de comunidades que puedes tener como propietario.",
     "invalidName": "Introduce un nombre de comunidad de hasta 80 caracteres.",
     "offline": "Sin conexión. No se envió nada. Vuelve a conectarte e inténtalo de nuevo."
   },
@@ -448,6 +450,7 @@
       "empty": "Escribe un mensaje",
       "notPending": "Esta solicitud ya no está pendiente",
       "failed": "No se pudo enviar el mensaje",
+      "rateLimited": "Demasiados mensajes para este solicitante. Inténtalo de nuevo más tarde.",
       "offline": "Sin conexión. No se envió nada. Vuelve a conectarte e inténtalo de nuevo.",
       "unconfirmed": "No pudimos confirmar que se enviara el mensaje. Reintentar es seguro: no se enviará duplicado."
     }
@@ -1726,6 +1729,7 @@
       "inviteeUnavailable": "Uno o más invitados no están disponibles.",
       "conflict": "Este partido entra en conflicto con una publicación existente.",
       "publishFailed": "No se pudo publicar el partido.",
+      "rateLimited": "Has publicado demasiados partidos hoy. Inténtalo de nuevo más tarde.",
       "offline": "Sin conexión. No se publicó nada. Vuelve a conectarte e inténtalo de nuevo.",
       "unconfirmed": "No pudimos confirmar que se publicara el partido. Reintentar es seguro: no se creará un duplicado.",
       "optionsUnavailable": "No se pudieron cargar las opciones de creación. Inténtalo de nuevo."
@@ -2242,6 +2246,7 @@
       "LEAGUE_START_LOCKED": "La fecha de inicio no puede cambiar una vez que la Liga ha empezado.",
       "LEAGUE_VERSION_CONFLICT": "Esta Liga cambió mientras tanto. La hemos recargado; revísala e inténtalo de nuevo.",
       "LEAGUE_REQUEST_CONFLICT": "Esta solicitud ya se usó con otros datos. Revisa y envía de nuevo.",
+      "LEAGUE_CREATE_RATE_LIMITED": "Has creado demasiadas Ligas hoy. Inténtalo de nuevo más tarde.",
       "LEAGUE_STANDINGS_VERSION_INVALID": "Esa versión de la clasificación no es válida.",
       "LEAGUE_STANDINGS_VERSION_NOT_FOUND": "Esa versión de la clasificación no existe.",
       "LEAGUE_UNAVAILABLE": "Algo salió mal. Inténtalo de nuevo.",

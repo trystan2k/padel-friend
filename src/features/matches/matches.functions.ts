@@ -1,6 +1,7 @@
 import { createServerFn } from '@tanstack/react-start';
 import { getRequestUrl } from '@tanstack/react-start/server';
 import { requireAuthenticatedClient } from '../auth/auth.server';
+import { toClientError } from '../../lib/client-error.server';
 import { emitDiagnostic } from '../../lib/diagnostics.server';
 import { scheduleMatchPlayerAddReconcile } from './match-add-player.server';
 import { signMatchPhotoBatch, signMatchPhoto } from './match-photo.server';
@@ -232,6 +233,10 @@ export const publishMatchEvent = createServerFn({ method: 'POST' })
     if (leagueToken) {
       emitDiagnostic('match.create', 'rejected', { code: leagueToken });
       throw new Error(leagueToken);
+    }
+    if (error?.message === 'MATCH_EVENT_CREATE_RATE_LIMITED') {
+      emitDiagnostic('match.create', 'rejected', { code: error.message });
+      throw toClientError(error);
     }
     if (error || !id) {
       const code =

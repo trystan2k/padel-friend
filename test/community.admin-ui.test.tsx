@@ -254,6 +254,20 @@ describe('community admin UI', () => {
     expect(mocks.approve).toHaveBeenCalledOnce();
     expect(mocks.invalidate).not.toHaveBeenCalled();
   });
+  it('localizes the request-message quota without displaying a database code', async () => {
+    const user = userEvent.setup();
+    mount('requests');
+    await user.click(screen.getByRole('button', { name: 'Send update' }));
+    await user.type(screen.getByLabelText('Message'), 'Hello applicant');
+    mocks.sendRequestMessage.mockRejectedValueOnce(
+      new Error('COMMUNITY_REQUEST_MESSAGE_RATE_LIMITED')
+    );
+    await user.click(screen.getByRole('button', { name: 'Send message' }));
+    expect((await screen.findByRole('alert')).textContent).toBe(
+      'Too many messages to this applicant. Try again later.'
+    );
+  });
+
   it('composes request updates through the dialog and reports send errors', async () => {
     const user = userEvent.setup();
     mount('requests');

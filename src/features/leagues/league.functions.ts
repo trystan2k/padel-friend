@@ -1,4 +1,5 @@
 import { createServerFn } from '@tanstack/react-start';
+import { toClientError } from '../../lib/client-error.server';
 import { requireAuthenticatedClient } from '../auth/auth.server';
 import { emitDiagnostic, safeErrorCode } from '../../lib/diagnostics.server';
 import type {
@@ -162,6 +163,7 @@ export const createLeague = createServerFn({ method: 'POST' })
       p_end_date: data.end_date ?? undefined,
       p_minimum_matches: data.minimum_matches
     });
+    if (error?.message === 'LEAGUE_CREATE_RATE_LIMITED') throw toClientError(error);
     if (error) throw new Error(leagueErrorFromDatabase(error));
     return decoded(decodeLeagueDto, result);
   });
