@@ -1,11 +1,13 @@
 begin;
 
--- Table-level mirror of the RPC grammar: the authority ends at the first '/' or '?', so '@' in a
--- query string is ordinary query text. Superset of the previous check, so existing rows stay valid.
+-- Table-level mirror of the RPC grammar: the authority may end at the first '/' or '?', so '@' in a
+-- query string is ordinary query text. Strict superset of the previous check (the first alternative IS the
+-- previous grammar, including path-less/query-only rows such as 'https://?abcdefghijklmnop'), so every
+-- existing row stays valid when the constraint is re-added.
 alter table public.push_subscriptions drop constraint push_subscriptions_endpoint_check;
 alter table public.push_subscriptions add constraint push_subscriptions_endpoint_check
   check (octet_length(endpoint) between 20 and 2048
-    and endpoint ~ '^https://[^/?@[:space:]]+([/?][^[:space:]]*)?$');
+    and endpoint ~ '^https://([^/@[:space:]]+(/[^[:space:]]*)?|[^/?@[:space:]]+\?[^[:space:]]*)$');
 
 -- Serialize enrolment per user so concurrent registrations of different endpoints cannot both pass the
 -- 25-active-device count. The user lock is always taken before the endpoint lock (stable lock order).

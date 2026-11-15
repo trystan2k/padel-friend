@@ -160,6 +160,7 @@
     "passwordLegacyHint": "Esta contraseña es más corta o simple que los requisitos actuales ({{min}}+ caracteres, mayúsculas y minúsculas, un número y un símbolo). Aún puedes iniciar sesión y luego elegir una más segura.",
     "captchaRequired": "Completa la verificación de seguridad para continuar.",
     "captchaError": "No se pudo cargar la verificación de seguridad. Recarga la página e inténtalo de nuevo.",
+    "captchaRetry": "No se aceptó la verificación de seguridad. Complétala de nuevo y vuelve a enviar.",
     "captchaLoading": "Cargando la verificación de seguridad…",
     "captchaExpired": "La verificación de seguridad caducó. Complétala de nuevo.",
     "signupSignIn": "INICIAR SESIÓN",

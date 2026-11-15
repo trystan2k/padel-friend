@@ -55,7 +55,10 @@ const styles = stylex.create({
   status: {
     margin: 0,
     color: 'var(--color-muted)',
-    fontSize: 'var(--font-size-12)'
+    fontSize: 'var(--font-size-12)',
+    lineHeight: 'var(--font-line-height-body)',
+    // Reserve one status line so the status appearing/clearing never shifts the controls below.
+    minHeight: 'calc(var(--font-size-12) * var(--font-line-height-body))'
   },
   statusError: { color: 'var(--color-red)' }
 });

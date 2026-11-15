@@ -160,6 +160,7 @@
     "passwordLegacyHint": "This password is shorter or simpler than the current requirements ({{min}}+ characters, upper and lower case letters, a number and a symbol). You can still sign in, then choose a stronger one.",
     "captchaRequired": "Complete the security check to continue.",
     "captchaError": "The security check failed to load. Reload the page and try again.",
+    "captchaRetry": "The security check was not accepted. Complete it again and resubmit.",
     "captchaLoading": "Loading the security check…",
     "captchaExpired": "The security check expired. Complete it again.",
     "signupSignIn": "SIGN IN",

@@ -7,7 +7,11 @@ import { readInviteConfirmation } from '../src/features/auth/invite-confirmation
 type SessionCookie = { name: string; value: string; options?: object };
 
 const supabaseSsr = vi.hoisted(() => {
-  let capturedCookies: { setAll: (cookies: SessionCookie[]) => void } | null = null;
+  type CapturedCookies = {
+    getAll: () => { name: string; value: string }[];
+    setAll: (cookies: SessionCookie[]) => void;
+  };
+  let capturedCookies: CapturedCookies | null = null;
   const exchangeCodeForSession = vi.fn<(code: string) => Promise<{ error: unknown }>>();
   const verifyOtp =
     vi.fn<(params: { token_hash: string; type: string }) => Promise<{ error: unknown }>>();
@@ -23,7 +27,7 @@ const supabaseSsr = vi.hoisted(() => {
     (
       url: string,
       key: string,
-      options: { cookies: { setAll: (cookies: SessionCookie[]) => void } }
+      options: { cookies: CapturedCookies }
     ) => {
       auth: {
         exchangeCodeForSession: typeof exchangeCodeForSession;
@@ -42,6 +46,9 @@ const supabaseSsr = vi.hoisted(() => {
     getClaims,
     setSessionCookies(cookies: SessionCookie[]) {
       capturedCookies?.setAll(cookies);
+    },
+    readSessionCookies() {
+      return capturedCookies?.getAll() ?? [];
     }
   };
 });
@@ -280,6 +287,57 @@ describe('/auth/callback handler', () => {
     expect(supabaseSsr.exchangeCodeForSession).not.toHaveBeenCalled();
 
     expect((await submit('', body)).status).toBe(403);
+    expect(supabaseSsr.verifyOtp).toHaveBeenCalledTimes(1);
+  });
+
+  it('threads one cookie state through claims rotation and OTP exchange without stale chunks', async () => {
+    supabaseSsr.getClaims.mockResolvedValue({
+      data: { claims: { sub: 'current', email: 'current@example.test' } },
+      error: null
+    });
+    const { cookie: pending, body } = await staged();
+    const cookie = `${pending}; sb-project-auth-token.0=old0; sb-project-auth-token.1=old1; sb-project-auth-token.2=old2`;
+    const gone = { path: '/', maxAge: 0 };
+    supabaseSsr.getClaims.mockImplementationOnce(async () => {
+      supabaseSsr.setSessionCookies([
+        { name: 'sb-project-auth-token.0', value: 'new0', options: { path: '/' } },
+        { name: 'sb-project-auth-token.1', value: 'new1', options: { path: '/' } },
+        { name: 'sb-project-auth-token.2', value: '', options: gone }
+      ]);
+      return { data: { claims: { sub: 'current', email: 'current@example.test' } }, error: null };
+    });
+    let seenByOtp: { name: string; value: string }[] = [];
+    supabaseSsr.verifyOtp.mockImplementation(async () => {
+      seenByOtp = supabaseSsr.readSessionCookies();
+      supabaseSsr.setSessionCookies([
+        { name: 'sb-project-auth-token', value: 'switched', options: { path: '/' } },
+        { name: 'sb-project-auth-token.0', value: '', options: gone },
+        { name: 'sb-project-auth-token.1', value: '', options: gone }
+      ]);
+      return { error: null };
+    });
+    supabaseSsr.createServerClient.mockClear();
+
+    const response = await submit(cookie, body);
+
+    expect(supabaseSsr.createServerClient).toHaveBeenCalledTimes(1);
+    expect(seenByOtp.filter((entry) => entry.name.startsWith('sb-project-auth-token'))).toEqual([
+      { name: 'sb-project-auth-token.0', value: 'new0' },
+      { name: 'sb-project-auth-token.1', value: 'new1' }
+    ]);
+    const setCookies = response.headers.getSetCookie();
+    const names = setCookies.map((entry) => entry.split('=')[0]);
+    expect(new Set(names).size).toBe(names.length);
+    expect(setCookies.find((entry) => entry.startsWith('sb-project-auth-token='))).toContain(
+      'switched'
+    );
+    for (const chunk of ['.0', '.1', '.2']) {
+      expect(
+        setCookies.find((entry) => entry.startsWith(`sb-project-auth-token${chunk}=`))
+      ).toContain('Max-Age=0');
+    }
+    const joined = setCookies.join('\n');
+    expect(joined).not.toMatch(/old[012]|new[01]/);
     expect(supabaseSsr.verifyOtp).toHaveBeenCalledTimes(1);
   });
 

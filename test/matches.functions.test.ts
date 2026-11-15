@@ -32,6 +32,11 @@ vi.mock('../src/features/matches/match-add-player.server', () => ({
 vi.mock('../src/features/auth/auth.server', () => ({
   requireAuthenticatedClient: mocks.requireAuthenticatedClient
 }));
+// The publish payload shape is covered by its own validator tests; here it passes through.
+vi.mock('../src/features/matches/matches.validators', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../src/features/matches/matches.validators')>()),
+  validatePublishMatch: (value: unknown) => value
+}));
 // Only the per-card signer is replaced; signMatchPhotoBatch stays real so the
 // listing's call counts, dedupe and path-keyed mapping are exercised end to end.
 vi.mock('../src/features/matches/match-photo.server', async (importOriginal) => ({
@@ -39,7 +44,11 @@ vi.mock('../src/features/matches/match-photo.server', async (importOriginal) => 
   signMatchPhoto: mocks.signMatchPhoto
 }));
 
-import { getMatchEvent, listMatchEvents } from '../src/features/matches/matches.functions';
+import {
+  getMatchEvent,
+  listMatchEvents,
+  publishMatchEvent
+} from '../src/features/matches/matches.functions';
 import { makeMatchRpcDetail, makeMatchRpcListRow } from './helpers/match-fixtures';
 
 const eventId = '00000000-0000-4000-8000-000000000001';
@@ -611,4 +620,40 @@ describe('listMatchEvents database-issued snapshot', () => {
       'MATCH_LIST_SNAPSHOT_MISMATCH'
     );
   });
+});
+
+describe('publishMatchEvent database error tokens', () => {
+  const photoPath =
+    '00000000-0000-4000-8000-000000000001/00000000-0000-4000-8000-000000000002/00000000-0000-4000-8000-000000000003/00000000-0000-4000-8000-000000000004.png';
+
+  async function publishRejectedWith(message: string): Promise<string> {
+    const png = new Blob(
+      [new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 0])],
+      { type: 'image/png' }
+    );
+    const client = {
+      auth: { getClaims: async () => ({ data: { claims: { sub: 'u1' } }, error: null }) },
+      storage: { from: () => ({ download: async () => ({ data: png, error: null }) }) },
+      rpc: async () => ({ data: null, error: { message, code: 'P0001' } })
+    };
+    mocks.requireAuthenticatedClient.mockReset().mockResolvedValue({ client });
+    const outcome: unknown = await Reflect.apply(publishMatchEvent, undefined, [
+      { data: { event_id: eventId, input: { photo_path: photoPath }, invitee_ids: [] } }
+    ]).then(
+      () => 'resolved',
+      (error: unknown) => error
+    );
+    return outcome instanceof Error ? outcome.message : String(outcome);
+  }
+
+  it('passes a registered League token through unchanged', async () => {
+    expect(await publishRejectedWith('MATCH_LEAGUE_CLOSED')).toBe('MATCH_LEAGUE_CLOSED');
+  });
+
+  it.each(['MATCH_LEAGUE_NOT_REGISTERED', 'MATCH_LEAGUE_', 'SOME_OTHER_DB_TOKEN', '23505x'])(
+    'never exposes the unregistered token %s',
+    async (token) => {
+      expect(await publishRejectedWith(token)).toBe('MATCH_PUBLISH_FAILED');
+    }
+  );
 });

@@ -2,6 +2,7 @@ import { createServerFn } from '@tanstack/react-start';
 import { requireAppOrigin } from '../../lib/app-origin.server';
 import { requireAuthenticatedClient } from '../auth/auth.server';
 import { toClientError } from '../../lib/client-error.server';
+import { isMatchLeagueErrorCode } from '../../lib/client-error-codes';
 import { emitDiagnostic } from '../../lib/diagnostics.server';
 import { scheduleMatchPlayerAddReconcile } from './match-add-player.server';
 import { signMatchPhotoBatch, signMatchPhoto } from './match-photo.server';
@@ -232,12 +233,10 @@ export const publishMatchEvent = createServerFn({ method: 'POST' })
       p_input: data.input,
       p_invitee_ids: data.invitee_ids
     });
-    // Stable League tokens (stale candidate, closed, out of period, ...) reach the form unchanged.
-    const leagueToken = error?.message.match(/^MATCH_LEAGUE_[A-Z_]+$/)?.[0];
-    if (leagueToken) {
-      emitDiagnostic('match.create', 'rejected', { code: leagueToken });
-      // guard-allow: dynamic-error — fixed MATCH_LEAGUE_* token matched by anchored regex
-      throw new Error(leagueToken);
+    // Registered League tokens (stale candidate, closed, out of period, ...) reach the form unchanged.
+    if (isMatchLeagueErrorCode(error?.message)) {
+      emitDiagnostic('match.create', 'rejected', { code: error.message });
+      throw toClientError(error);
     }
     if (error?.message === 'MATCH_EVENT_CREATE_RATE_LIMITED') {
       emitDiagnostic('match.create', 'rejected', { code: error.message });

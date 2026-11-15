@@ -23,7 +23,13 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 //   raw-cause                  `{ cause … }` keeps the raw error on the thrown object. Allowed only
 //                              with an inline `// guard-allow: cause` (server-side-only paths, e.g.
 //                              cron work whose error never reaches a client).
-//   promise-reject             `Promise.reject(…)` / `reject(<not new … / toClientError(…)>)`
+//   promise-reject             `Promise.reject(…)` / `reject(<anything but new …Error(…) / toClientError(…)>)`;
+//                              `reject(new Object(error))`, `reject(err)` and other indirections are findings
+//
+// Annotations: a `guard-allow` tag counts ONLY as a real line comment
+// `// guard-allow: <tag> <non-empty reason>` on the flagged line or the line directly above it. Text
+// inside strings, template literals, identifiers or block comments never counts, the tag must end at a
+// token boundary (`cause` does not match `causes`), and a bare tag without a reason is ignored.
 //
 // KNOWN LIMIT (documented, not pretended): a helper that RETURNS a rejecting promise built from an
 // arbitrary expression (`return client.rpc(…).then((r) => r.error ?? r)`, a stored promise, an
@@ -39,14 +45,98 @@ const RAW_THROW = /\bthrow\s+(?!new\b|toClientError\s*\()/g;
 const RAW_CAUSE = /\{\s*cause\b/g;
 const MESSAGE_PASSTHROUGH = /new\s+Error\(\s*[\w.]+\.(?:message|details|hint)\b/g;
 const NEW_ERROR = /\bnew\s+\w*Error\s*\(/g;
-const PROMISE_REJECT =
-  /\bPromise\s*\.\s*reject\s*\(|(?<![.\w])reject\s*\(\s*(?!new\b|toClientError\s*\()/g;
+const PROMISE_REJECT = /\bPromise\s*\.\s*reject\s*\(|(?<![.\w])reject\s*\(/g;
+// A rejection argument is safe only as a fresh `new …Error(…)` (its own argument is checked by the
+// dynamic-error rule) or a `toClientError(…)` result.
+const SAFE_REJECTION = /^(?:new\s+\w*Error\s*\(|toClientError\s*\()/;
 
-function blankComments(text) {
-  const blank = (match) => match.replace(/[^\n]/g, ' ');
-  return text
-    .replace(/\/\*[\s\S]*?\*\//g, blank)
-    .replace(/(^|[^:])\/\/[^\n]*/g, (match, lead) => lead + blank(match.slice(lead.length)));
+/**
+ * Lexes `text` once: returns the source with comments blanked (newlines kept) and the line comments
+ * keyed by 1-based line. String, template and block-comment content is never mistaken for a line comment.
+ */
+function lexComments(text) {
+  const lineComments = new Map();
+  let code = '';
+  let line = 1;
+  let i = 0;
+  const templateDepths = [];
+  let braceDepth = 0;
+  const blank = (segment) => segment.replace(/[^\n]/g, ' ');
+  while (i < text.length) {
+    const char = text[i];
+    const next = text[i + 1];
+    if (char === '/' && next === '/') {
+      const end = text.indexOf('\n', i);
+      const stop = end === -1 ? text.length : end;
+      lineComments.set(line, text.slice(i + 2, stop));
+      code += blank(text.slice(i, stop));
+      i = stop;
+    } else if (char === '/' && next === '*') {
+      const end = text.indexOf('*/', i + 2);
+      const stop = end === -1 ? text.length : end + 2;
+      const segment = text.slice(i, stop);
+      code += blank(segment);
+      line += segment.split('\n').length - 1;
+      i = stop;
+    } else if (char === "'" || char === '"' || char === '`') {
+      let j = i + 1;
+      let inTemplateExpression = false;
+      for (; j < text.length; j++) {
+        if (text[j] === '\\') j++;
+        else if (text[j] === char) break;
+        else if (char === '`' && text[j] === '$' && text[j + 1] === '{') {
+          inTemplateExpression = true;
+          break;
+        } else if (char !== '`' && text[j] === '\n') break;
+      }
+      if (inTemplateExpression) {
+        code += text.slice(i, j + 2);
+        templateDepths.push(braceDepth);
+        braceDepth++;
+        i = j + 2;
+      } else {
+        const segment = text.slice(i, j + 1);
+        code += segment;
+        line += segment.split('\n').length - 1;
+        i = j + 1;
+      }
+    } else {
+      if (char === '{') braceDepth++;
+      else if (char === '}') {
+        braceDepth--;
+        if (templateDepths.length > 0 && templateDepths.at(-1) === braceDepth) {
+          // Closing a `${…}`: resume the enclosing template literal.
+          templateDepths.pop();
+          let j = i + 1;
+          for (; j < text.length; j++) {
+            if (text[j] === '\\') j++;
+            else if (text[j] === '`') break;
+            else if (text[j] === '$' && text[j + 1] === '{') {
+              templateDepths.push(braceDepth);
+              braceDepth++;
+              j++;
+              break;
+            }
+          }
+          const segment = text.slice(i, j + 1);
+          code += segment;
+          line += segment.split('\n').length - 1;
+          i = j + 1;
+          continue;
+        }
+      }
+      if (char === '\n') line++;
+      code += char;
+      i++;
+    }
+  }
+  return { code, lineComments };
+}
+
+/** True when `comment` is `guard-allow: <tag> <reason>` with an exact tag token and a non-empty reason. */
+function isAllowComment(comment, tag) {
+  const match = /^\s*guard-allow:\s*([\w-]+)\s+(\S[\s\S]*)$/.exec(comment ?? '');
+  return match !== null && match[1] === tag;
 }
 
 function lineOf(text, index) {
@@ -81,10 +171,9 @@ export function scanServerFunctionErrors(sources) {
   const findings = [];
   for (const { file, text } of sources) {
     if (!SCANNED.test(file)) continue;
-    const code = blankComments(text);
-    const rawLines = text.split('\n');
+    const { code, lineComments } = lexComments(text);
     const allowed = (line, tag) =>
-      [rawLines[line - 1], rawLines[line - 2]].some((raw) => raw?.includes('guard-allow: ' + tag));
+      [line, line - 1].some((candidate) => isAllowComment(lineComments.get(candidate), tag));
     const report = (index, rule, allowTag) => {
       const line = lineOf(code, index);
       if (allowTag && allowed(line, allowTag)) return;
@@ -97,7 +186,11 @@ export function scanServerFunctionErrors(sources) {
       report(match.index, 'error-message-passthrough');
     }
     for (const match of code.matchAll(RAW_CAUSE)) report(match.index, 'raw-cause', 'cause');
-    for (const match of code.matchAll(PROMISE_REJECT)) report(match.index, 'promise-reject');
+    for (const match of code.matchAll(PROMISE_REJECT)) {
+      const isMethod = match[0].startsWith('Promise');
+      const argument = firstArgument(code, match.index + match[0].length);
+      if (isMethod || !SAFE_REJECTION.test(argument)) report(match.index, 'promise-reject');
+    }
     if (file.replaceAll('\\', '/') !== BOUNDARY_FILE)
       for (const match of code.matchAll(NEW_ERROR)) {
         const argument = firstArgument(code, match.index + match[0].length);

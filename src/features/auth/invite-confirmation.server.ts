@@ -90,33 +90,53 @@ export function stageInvite(request: Request, tokenHash: string, next: string) {
   return new Response(null, { status: 303, headers });
 }
 
-function inviteClient(request: Request, headers?: Headers) {
-  return createServerClient<Database>(
+type CookieWrite = { value: string; options: Parameters<typeof serializeCookieHeader>[2] };
+
+// One request-scoped cookie state shared by every Auth call of a request: writes (rotated refresh
+// token, re-chunked or cleared session fragments) feed back into later reads, and only the final
+// write per cookie name reaches the response, so no stale chunk or spent token is left behind.
+function inviteSession(request: Request) {
+  const jar = new Map(
+    parseCookieHeader(request.headers.get('cookie') ?? '').flatMap((cookie) =>
+      cookie.value === undefined ? [] : [[cookie.name, cookie.value] as const]
+    )
+  );
+  const writes = new Map<string, CookieWrite>();
+  const client = createServerClient<Database>(
     import.meta.env.VITE_SUPABASE_URL,
     import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
     {
       cookieOptions: authCookieOptions(new URL(request.url).protocol),
       cookies: {
-        getAll: () =>
-          parseCookieHeader(request.headers.get('cookie') ?? '').filter(
-            (cookie): cookie is { name: string; value: string } => cookie.value !== undefined
-          ),
+        getAll: () => Array.from(jar, ([name, value]) => ({ name, value })),
         setAll(cookies) {
-          // Reading confirmation must not replace/refresh the browser's session.
           for (const { name, value, options } of cookies) {
-            headers?.append('Set-Cookie', serializeCookieHeader(name, value, options));
+            if (value === '') jar.delete(name);
+            else jar.set(name, value);
+            writes.set(name, { value, options });
           }
         }
       }
     }
   );
+  return {
+    client,
+    flush(headers: Headers) {
+      for (const [name, { value, options }] of writes) {
+        headers.append('Set-Cookie', serializeCookieHeader(name, value, options));
+      }
+      writes.clear();
+    }
+  };
 }
+
+type InviteSession = ReturnType<typeof inviteSession>;
 
 // getClaims may rotate the refresh token, so its cookie updates must reach the browser. A failed
 // check is "unknown", never "no account": callers fail closed instead of replacing the session.
-async function currentAccount(request: Request, headers: Headers) {
+async function currentAccount(session: InviteSession) {
   try {
-    const { data, error } = await inviteClient(request, headers).auth.getClaims();
+    const { data, error } = await session.client.auth.getClaims();
     if (error) return null;
     const claims = data?.claims;
     return {
@@ -147,7 +167,9 @@ function signingKey(secret: string) {
 export async function readInviteConfirmation(request: Request, headers = new Headers()) {
   const pending = pendingInvite(request);
   if (!pending) return null;
-  const identity = await currentAccount(request, headers);
+  const session = inviteSession(request);
+  const identity = await currentAccount(session);
+  session.flush(headers);
   if (!identity) return { error: 'verification_failed' as const };
   const signature = await crypto.subtle.sign(
     'HMAC',
@@ -193,12 +215,17 @@ export async function confirmInvite(request: Request) {
     return forbidden();
   // A stale tab must not switch an account different from the warning shown. An unverifiable
   // current session never proceeds to verifyOtp.
-  const current = await currentAccount(request, headers);
+  const session = inviteSession(request);
+  const current = await currentAccount(session);
   if (!current) {
+    session.flush(headers);
     headers.set('Location', new URL('/login?authError=1', url).toString());
     return new Response(null, { status: 303, headers });
   }
-  if (current.account !== account) return forbidden();
+  if (current.account !== account) {
+    session.flush(headers);
+    return forbidden();
+  }
 
   headers.append(
     'Set-Cookie',
@@ -207,10 +234,11 @@ export async function confirmInvite(request: Request) {
       maxAge: 0
     })
   );
-  const { error } = await inviteClient(request, headers).auth.verifyOtp({
+  const { error } = await session.client.auth.verifyOtp({
     token_hash: pending.tokenHash,
     type: 'invite'
   });
+  session.flush(headers);
   const destination = error
     ? new URL('/login?authError=1', url)
     : new URL(normalizeReturnPath(pending.next), url);

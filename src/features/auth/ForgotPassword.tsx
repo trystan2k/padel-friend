@@ -36,6 +36,12 @@ function isCaptchaRejection(error: unknown): boolean {
   );
 }
 
+// A server rejection already reset the widget: ask for a new check, not a page reload.
+function captchaMessageKey(rejected: boolean, failedToLoad: boolean) {
+  if (rejected) return 'auth.captchaRetry';
+  return failedToLoad ? 'auth.captchaError' : 'auth.captchaRequired';
+}
+
 export function ForgotPassword({ next: returnPath }: ForgotPasswordProps) {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -135,7 +141,7 @@ export function ForgotPassword({ next: returnPath }: ForgotPasswordProps) {
         <TurnstileWidget {...captcha.widgetProps} />
         {(captchaMissing || captchaRejected) && (
           <p role="alert" {...stylex.props(styles.error)}>
-            {t(captcha.failed || captchaRejected ? 'auth.captchaError' : 'auth.captchaRequired')}
+            {t(captchaMessageKey(captchaRejected, captcha.failed))}
           </p>
         )}
         <Button type="submit" size="large" disabled={!ready} busy={busy}>

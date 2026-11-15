@@ -1,4 +1,5 @@
 import { AsyncLocalStorage } from 'node:async_hooks';
+import { toClientError } from './client-error.server';
 
 // Server-only structured diagnostics (PRD §59). Correlation context is request-scoped through
 // AsyncLocalStorage (available under nodejs_compat): concurrent requests on one isolate never see
@@ -125,8 +126,8 @@ export async function traceOperation<T>(
       code: safeErrorCode(error),
       durationMs: Date.now() - started
     });
-    // guard-allow: raw-throw — rethrows what the wrapped operation already threw (mapped upstream)
-    throw error;
+    // The diagnostic above already holds the safe server-side code; the caller only ever sees the mapped error.
+    throw toClientError(error);
   }
 }
 

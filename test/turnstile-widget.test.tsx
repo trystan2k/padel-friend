@@ -55,6 +55,47 @@ it.each(['en', 'pt-BR', 'es'] as const)(
   }
 );
 
+it('keeps the reserved-space status class in idle, loading, error and expired states', async () => {
+  vi.stubEnv('VITE_TURNSTILE_SITE_KEY', 'site-key');
+  const i18n = createI18n('en');
+  let callbacks: Parameters<NonNullable<Window['turnstile']>['render']>[1] | undefined;
+  window.turnstile = {
+    render: vi.fn<NonNullable<Window['turnstile']>['render']>((_container, options) => {
+      callbacks = options;
+      return 'widget';
+    }),
+    remove: vi.fn<NonNullable<Window['turnstile']>['remove']>()
+  };
+  const { TurnstileWidget: Widget } = await import('../src/components/ui/TurnstileWidget');
+  render(
+    <I18nextProvider i18n={i18n}>
+      <Widget
+        resetCount={0}
+        onToken={vi.fn<(token: string | null) => void>()}
+        onError={vi.fn<() => void>()}
+      />
+    </I18nextProvider>
+  );
+  const status = screen.getByRole('status');
+  const base = [...status.classList].filter((name) => name.length > 0);
+  expect(base.length).toBeGreaterThan(0);
+  const script = document.querySelector('script[src*="turnstile"]');
+  if (!script) throw new Error('missing provider script');
+  fireEvent.load(script);
+  await waitFor(() => expect(callbacks).toBeDefined());
+  // The error variant may only swap the colour class; every layout class stays.
+  const keepsLayout = () =>
+    base.filter((name) => status.classList.contains(name)).length >= base.length - 1 &&
+    status.classList.length === base.length;
+  act(() => callbacks?.callback('token'));
+  expect(status.textContent).toBe('');
+  expect(keepsLayout()).toBe(true);
+  act(() => callbacks?.['expired-callback']());
+  expect(keepsLayout()).toBe(true);
+  act(() => callbacks?.['error-callback']());
+  expect(keepsLayout()).toBe(true);
+});
+
 it('renders no widget or status when disabled', () => {
   vi.stubEnv('VITE_TURNSTILE_SITE_KEY', '');
   const view = render(

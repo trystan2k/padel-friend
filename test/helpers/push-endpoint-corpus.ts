@@ -32,6 +32,8 @@ export const rejectedPushEndpoints = [
   'https://fcm。googleapis.com/a',
   'https://fcm.googleapis.com\\@evil.test/a',
   'https://fcm.googleapis.com/a\\b',
+  // Legacy table-constraint shape (authority-less, query-only): never a supported push service.
+  'https://?abcdefghijklmnop',
   'https://fcm.googleapis.com/\na',
   ' https://fcm.googleapis.com/a',
   'https://fcm.googleapis.com/a\n',

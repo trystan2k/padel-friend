@@ -139,7 +139,9 @@ describe('ForgotPassword', () => {
       await waitForEnabled('#forgot-email');
       await userEvent.type(screen.getByLabelText(en.auth.emailAddress), email);
       submitForm();
-      expect((await screen.findByRole('alert')).textContent).toBe(en.auth.captchaError);
+      const alert = await screen.findByRole('alert');
+      expect(alert.textContent).toBe(en.auth.captchaRetry);
+      expect(alert.textContent).not.toMatch(/reload/i);
       expect(router.state.location.pathname).toBe('/forgot-password');
       expect(screen.getByLabelText<HTMLInputElement>(en.auth.emailAddress).disabled).toBe(false);
     }

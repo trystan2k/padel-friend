@@ -21,6 +21,19 @@ export const COMMUNITY_RPC_ERROR_CODES = [
 ] as const;
 
 /**
+ * Stable League binding tokens `publish_match_event` raises (stale candidate, closed, out of
+ * period, ...). The create form maps each one to its own message.
+ */
+export const MATCH_LEAGUE_ERROR_CODES = [
+  'MATCH_LEAGUE_NOT_FOUND',
+  'MATCH_LEAGUE_CLOSED',
+  'MATCH_LEAGUE_OUT_OF_PERIOD',
+  'MATCH_LEAGUE_SELECTION_REQUIRED',
+  'MATCH_LEAGUE_FRIENDLY_NOT_ALLOWED',
+  'MATCH_LEAGUE_INTENT_CONFLICT'
+] as const;
+
+/**
  * Generic outcomes the central mapper (`toClientError`) collapses SQLSTATE classes and unexpected
  * failures into. They carry no database detail; the UI shows its generic failure copy for them.
  */
@@ -35,18 +48,25 @@ export const GENERIC_CLIENT_ERROR_CODES = [
 ] as const;
 
 export type GenericClientErrorCode = (typeof GENERIC_CLIENT_ERROR_CODES)[number];
-export type ClientErrorCode = CommunityRpcErrorCode | GenericClientErrorCode;
+export type MatchLeagueErrorCode = (typeof MATCH_LEAGUE_ERROR_CODES)[number];
+export type ClientErrorCode = CommunityRpcErrorCode | MatchLeagueErrorCode | GenericClientErrorCode;
 
 export type CommunityRpcErrorCode = (typeof COMMUNITY_RPC_ERROR_CODES)[number];
 
 const communityRpcErrorCodes: ReadonlySet<string> = new Set(COMMUNITY_RPC_ERROR_CODES);
+const matchLeagueErrorCodes: ReadonlySet<string> = new Set(MATCH_LEAGUE_ERROR_CODES);
 const clientErrorCodes: ReadonlySet<string> = new Set([
   ...COMMUNITY_RPC_ERROR_CODES,
+  ...MATCH_LEAGUE_ERROR_CODES,
   ...GENERIC_CLIENT_ERROR_CODES
 ]);
 
 export function isCommunityRpcErrorCode(value: unknown): value is CommunityRpcErrorCode {
   return typeof value === 'string' && communityRpcErrorCodes.has(value);
+}
+
+export function isMatchLeagueErrorCode(value: unknown): value is MatchLeagueErrorCode {
+  return typeof value === 'string' && matchLeagueErrorCodes.has(value);
 }
 
 export function isClientErrorCode(value: unknown): value is ClientErrorCode {

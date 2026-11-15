@@ -20,7 +20,7 @@ export type PushSubscriptionInput = {
 const base64Url = (length: number) => new RegExp(`^[A-Za-z0-9_-]{${length}}$`);
 const p256dhPattern = base64Url(87);
 const authPattern = base64Url(22);
-const endpointPattern = /^https:\/\/[^/@\s]+(\/\S*)?$/;
+const endpointPattern = /^https:\/\/(?:[^/@\s]+(?:\/\S*)?|[^/?@\s]+\?\S*)$/;
 
 function object(value: unknown, keys: string[]): Record<string, unknown> {
   if (

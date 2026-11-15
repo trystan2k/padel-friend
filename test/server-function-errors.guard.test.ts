@@ -101,6 +101,53 @@ describe('server-function error guard', () => {
     ]);
   });
 
+  it.each([
+    ['new Object wrapper', 'new Promise((_, reject) => reject(new Object(error)));'],
+    [
+      'identifier indirection',
+      'const wrapped = error;\nnew Promise((_, reject) => reject(wrapped));'
+    ],
+    ['call result', 'new Promise((_, reject) => reject(build(error)));'],
+    ['multiline wrapper', 'new Promise((_, reject) =>\n  reject(\n    new Object(error),\n  ));']
+  ])('rejects a rejection through %s', (_name, text) => {
+    expect(scan('src/lib/x.server.ts', text)).toEqual([
+      expect.objectContaining({ rule: 'promise-reject' })
+    ]);
+  });
+
+  it('accepts rejection with a fresh literal error or a mapped error', () => {
+    expect(
+      scan(
+        'src/lib/x.server.ts',
+        "new Promise((_, reject) => reject(new Error('CODE')));\nnew Promise((_, reject) => reject(toClientError(error)));"
+      )
+    ).toEqual([]);
+  });
+
+  it('counts guard-allow only as a well-formed line comment with a reason', () => {
+    const throwing = 'throw new Error(code);';
+    for (const text of [
+      `const s = '// guard-allow: dynamic-error forged';\n${throwing}`,
+      `const s = \`// guard-allow: dynamic-error forged\`;\n${throwing}`,
+      `const guardAllowDynamicError = 1; // guard-allowed: dynamic-error x\n${throwing}`,
+      `/* guard-allow: dynamic-error block */\n${throwing}`,
+      `// guard-allow: dynamic-error\n${throwing}`,
+      `// guard-allow: dynamic-errors reason\n${throwing}`,
+      `// see guard-allow: dynamic-error reason\n${throwing}`,
+      `const s = 'x'; throw new Error(code + '// guard-allow: dynamic-error reason');`
+    ])
+      expect(scan('src/lib/x.server.ts', text)).toEqual([
+        expect.objectContaining({ rule: 'dynamic-error' })
+      ]);
+    for (const text of [
+      `// guard-allow: dynamic-error — closed union\n${throwing}`,
+      `${throwing} // guard-allow: dynamic-error closed union`,
+      `const s = 'a // b'; // guard-allow: dynamic-error closed union\n${throwing}`,
+      `const s = \`\${a}\`; // guard-allow: dynamic-error closed union\n${throwing}`
+    ])
+      expect(scan('src/lib/x.server.ts', text)).toEqual([]);
+  });
+
   it('accepts mapped and fresh errors, comments and unrelated files', () => {
     expect(
       scan(
