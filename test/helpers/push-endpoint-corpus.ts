@@ -1,5 +1,7 @@
 // Shared JS/SQL RPC corpus: normalization tricks must never expand supported authorities.
 export const acceptedPushEndpoints = [
+  'https://fcm.googleapis.com?token=a@b',
+  'https://fcm.googleapis.com?token=user:pass@host/path',
   'https://fcm.googleapis.com/fcm/send/a',
   'https://fcm.googleapis.com:443/send/a?key=abc',
   'https://updates.push.services.mozilla.com/wpush/v2/a',

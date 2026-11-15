@@ -381,6 +381,30 @@ describe('provisional actor authorization', () => {
       expect(sessions.rows).toEqual([{ count: 1 }]);
       expect((await stale.rpc('is_provisional_actor')).data).toBe(true);
       expect((await live.rpc('is_provisional_actor')).data).toBe(false);
+      // Platform-admin identity must not bypass the revoked pre-claim session guard.
+      await queryTrustedSql('insert into public.platform_admins(user_id) values ($1)', {
+        values: [player.id]
+      });
+      try {
+        for (const [client, allowed] of [
+          [stale, false],
+          [live, true]
+        ] as const) {
+          for (const p_community_id of [world.communityId]) {
+            const diagnostics = await client.rpc('result_repair_diagnostics_reader', {
+              p_community_id
+            });
+            expect({ data: diagnostics.data, error: diagnostics.error }).toEqual({
+              data: allowed,
+              error: null
+            });
+          }
+        }
+      } finally {
+        await queryTrustedSql('delete from public.platform_admins where user_id = $1', {
+          values: [player.id]
+        });
+      }
       for (const [client, allowed] of [
         [stale, false],
         [live, true]

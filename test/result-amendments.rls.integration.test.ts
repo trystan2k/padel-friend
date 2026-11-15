@@ -123,6 +123,22 @@ describe('result amendment access control', { timeout: 120000 }, () => {
     expect(secret.error?.code).toBe('42501');
   });
 
+  it('correlates historical proposal membership to the requested event', async () => {
+    const unrelated = await foreign.confirmedGroup();
+    const args = { p_proposal_id: group.proposalId, p_base_version: 1 };
+    // p0 belongs to the original teams, never the foreign event/community.
+    const mismatch = await f.p0.client.rpc('result_amendment_reader', {
+      ...args,
+      p_match_event_id: unrelated.eventId
+    });
+    expect({ data: mismatch.data, error: mismatch.error }).toEqual({ data: false, error: null });
+    const correlated = await f.p0.client.rpc('result_amendment_reader', {
+      ...args,
+      p_match_event_id: group.eventId
+    });
+    expect({ data: correlated.data, error: correlated.error }).toEqual({ data: true, error: null });
+  });
+
   it('shows amendment rows to event readers and original participants only', async () => {
     for (const reader of [f.p0, f.p1, f.p2, f.p3, f.admin]) {
       const rows = await reader.client

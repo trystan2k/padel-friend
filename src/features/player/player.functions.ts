@@ -115,6 +115,7 @@ export const claimProvisionalPlayer = createServerFn({ method: 'POST' })
       ...(data.bio != null ? { p_bio: data.bio } : {}),
       ...availabilityArgs(data)
     });
+    // guard-allow: dynamic-error — claimErrorCode returns a fixed token or null, fallback literal
     if (error) throw new Error(claimErrorCode(error) ?? 'PLAYER_CLAIM_FAILED');
   });
 

@@ -188,7 +188,7 @@ describe('/auth/callback handler', () => {
     const confirmation = await readInviteConfirmation(
       new Request(`${BASE}/auth/confirm-invite`, { headers: { cookie } })
     );
-    if (!confirmation) throw new Error('missing confirmation');
+    if (!confirmation || 'error' in confirmation) throw new Error('missing confirmation');
     const body = new URLSearchParams({ csrf: confirmation.csrf, account: confirmation.account });
     return { cookie, confirmation, body };
   }
@@ -208,6 +208,52 @@ describe('/auth/callback handler', () => {
       })
     });
   }
+
+  it('forwards rotated near-expiry session cookies during confirmation read', async () => {
+    const response = await callbackRequest('?token_hash=abc123&type=invite');
+    const cookie = response.headers.getSetCookie()[0]!.split(';')[0]!;
+    supabaseSsr.getClaims.mockImplementationOnce(async () => {
+      supabaseSsr.setSessionCookies([
+        { name: 'sb-project-auth-token.0', value: 'rotated-access', options: { path: '/' } },
+        { name: 'sb-project-auth-token.1', value: 'rotated-refresh', options: { path: '/' } }
+      ]);
+      return { data: { claims: { sub: 'current', email: 'current@example.test' } }, error: null };
+    });
+    const headers = new Headers();
+    // Extra argument is deliberately exercised before the cookie-forwarding fix.
+    await Reflect.apply(readInviteConfirmation, undefined, [
+      new Request(`${BASE}/auth/confirm-invite`, { headers: { cookie } }),
+      headers
+    ]);
+    expect(headers.getSetCookie()).toEqual([
+      'sb-project-auth-token.0=rotated-access; Path=/',
+      'sb-project-auth-token.1=rotated-refresh; Path=/'
+    ]);
+  });
+
+  it.each(['returned', 'rejected'])(
+    'fails closed when current claims verification %s',
+    async (failure) => {
+      const { cookie, body } = await staged();
+      const fail = () =>
+        failure === 'rejected'
+          ? supabaseSsr.getClaims.mockRejectedValueOnce(new Error('private provider failure'))
+          : supabaseSsr.getClaims.mockResolvedValueOnce({
+              data: null,
+              error: new Error('private provider failure')
+            });
+      fail();
+      const confirmation = await readInviteConfirmation(
+        new Request(`${BASE}/auth/confirm-invite`, { headers: { cookie } })
+      );
+      expect(confirmation).toEqual({ error: 'verification_failed' });
+      fail();
+      const response = await submit(cookie, body);
+      expect(response.status).toBe(303);
+      expect(response.headers.get('location')).toBe(`${BASE}/login?authError=1`);
+      expect(supabaseSsr.verifyOtp).not.toHaveBeenCalled();
+    }
+  );
 
   it('verifies exactly once after same-origin signed confirmation, forwarding session cookies', async () => {
     const { cookie, body } = await staged();
@@ -235,6 +281,44 @@ describe('/auth/callback handler', () => {
 
     expect((await submit('', body)).status).toBe(403);
     expect(supabaseSsr.verifyOtp).toHaveBeenCalledTimes(1);
+  });
+
+  it('resists replay of the original link, cookie and form after a successful confirmation', async () => {
+    // Mirrors GoTrue: an invite token hash verifies once; a spent hash is rejected.
+    const spent = new Set<string>();
+    supabaseSsr.verifyOtp.mockImplementation(async ({ token_hash }) => {
+      if (spent.has(token_hash))
+        return { error: new Error('Email link is invalid or has expired') };
+      spent.add(token_hash);
+      supabaseSsr.setSessionCookies([
+        { name: 'sb-project-auth-token', value: 'invite-session', options: { path: '/' } }
+      ]);
+      return { error: null };
+    });
+    // Original pending-invite cookie and exact form payload captured from the first request.
+    const { cookie, body } = await staged();
+    const original = new URLSearchParams(body);
+
+    const first = await submit(cookie, body);
+    expect(first.headers.get('location')).toBe(`${BASE}/matches/e1`);
+    expect(first.headers.getSetCookie().join('\n')).toContain(
+      'sb-project-auth-token=invite-session'
+    );
+
+    // A stolen copy of the cookie still reads the confirmation (stateless) but grants no session.
+    const readHeaders = new Headers();
+    const reread = await readInviteConfirmation(
+      new Request(`${BASE}/auth/confirm-invite`, { headers: { cookie } }),
+      readHeaders
+    );
+    expect(reread).not.toBeNull();
+    expect(readHeaders.getSetCookie()).toEqual([]);
+
+    const replay = await submit(cookie, original);
+    expect(replay.status).toBe(303);
+    expect(replay.headers.get('location')).toBe(`${BASE}/login?authError=1&next=%2Fmatches%2Fe1`);
+    expect(replay.headers.getSetCookie().join('\n')).not.toContain('sb-project-auth-token');
+    expect(supabaseSsr.verifyOtp).toHaveBeenCalledTimes(2);
   });
 
   it('rejects cross-site, missing/null Origin, foreign Fetch Metadata and wrong content type before Auth', async () => {

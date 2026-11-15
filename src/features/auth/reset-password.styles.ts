@@ -36,7 +36,7 @@ export const styles = stylex.create({
     padding: 'var(--space-16)',
     backgroundColor: 'var(--color-surface)',
     color: 'var(--color-text)',
-    border: 'var(--space-1) solid var(--color-muted)',
+    border: 'var(--border-width-sm) solid var(--color-muted)',
     borderRadius: 'var(--radius-12)',
     overflowWrap: 'anywhere',
     fontSize: 'var(--font-size-14)'

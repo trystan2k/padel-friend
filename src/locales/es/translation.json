@@ -93,6 +93,7 @@
     "inviteConfirm": "ACEPTAR INVITACIÓN",
     "inviteCancel": "CANCELAR Y MANTENER CUENTA ACTUAL",
     "inviteConfirmExpired": "Esta confirmación ha caducado o no está disponible. Abre de nuevo tu invitación original para continuar.",
+    "inviteConfirmVerificationFailed": "No pudimos verificar tu cuenta actual. Intenta abrir tu invitación de nuevo.",
     "invitationEmail": {
       "subject": "Te han añadido a un partido de pádel",
       "heading": "Estás en el partido",
@@ -159,6 +160,8 @@
     "passwordLegacyHint": "Esta contraseña es más corta o simple que los requisitos actuales ({{min}}+ caracteres, mayúsculas y minúsculas, un número y un símbolo). Aún puedes iniciar sesión y luego elegir una más segura.",
     "captchaRequired": "Completa la verificación de seguridad para continuar.",
     "captchaError": "No se pudo cargar la verificación de seguridad. Recarga la página e inténtalo de nuevo.",
+    "captchaLoading": "Cargando la verificación de seguridad…",
+    "captchaExpired": "La verificación de seguridad caducó. Complétala de nuevo.",
     "signupSignIn": "INICIAR SESIÓN",
     "unauthorized": "No se pudo iniciar sesión. Comprueba tus datos e inténtalo de nuevo.",
     "sessionExpired": "Tu sesión ha caducado. Inicia sesión de nuevo.",

@@ -112,13 +112,20 @@ function inviteClient(request: Request, headers?: Headers) {
   );
 }
 
-async function currentAccount(request: Request) {
-  const { data, error } = await inviteClient(request).auth.getClaims();
-  const claims = error ? null : data?.claims;
-  return {
-    account: typeof claims?.sub === 'string' ? claims.sub : '',
-    email: typeof claims?.email === 'string' ? claims.email : null
-  };
+// getClaims may rotate the refresh token, so its cookie updates must reach the browser. A failed
+// check is "unknown", never "no account": callers fail closed instead of replacing the session.
+async function currentAccount(request: Request, headers: Headers) {
+  try {
+    const { data, error } = await inviteClient(request, headers).auth.getClaims();
+    if (error) return null;
+    const claims = data?.claims;
+    return {
+      account: typeof claims?.sub === 'string' ? claims.sub : '',
+      email: typeof claims?.email === 'string' ? claims.email : null
+    };
+  } catch {
+    return null;
+  }
 }
 
 function message(pending: PendingInvite, account: string) {
@@ -137,10 +144,11 @@ function signingKey(secret: string) {
   );
 }
 
-export async function readInviteConfirmation(request: Request) {
+export async function readInviteConfirmation(request: Request, headers = new Headers()) {
   const pending = pendingInvite(request);
   if (!pending) return null;
-  const identity = await currentAccount(request);
+  const identity = await currentAccount(request, headers);
+  if (!identity) return { error: 'verification_failed' as const };
   const signature = await crypto.subtle.sign(
     'HMAC',
     await signingKey(pending.secret),
@@ -183,8 +191,14 @@ export async function confirmInvite(request: Request) {
     ))
   )
     return forbidden();
-  // A stale tab must not switch an account different from the warning shown.
-  if ((await currentAccount(request)).account !== account) return forbidden();
+  // A stale tab must not switch an account different from the warning shown. An unverifiable
+  // current session never proceeds to verifyOtp.
+  const current = await currentAccount(request, headers);
+  if (!current) {
+    headers.set('Location', new URL('/login?authError=1', url).toString());
+    return new Response(null, { status: 303, headers });
+  }
+  if (current.account !== account) return forbidden();
 
   headers.append(
     'Set-Cookie',

@@ -233,10 +233,20 @@ describe('per-user rate limits (PAF-189)', { timeout: 300_000 }, () => {
     expect(retry.data).toBe(accepted.data);
     expect((await publish(other, otherCommunityId)).error).toBeNull();
 
+    // Transferring the published events (organizer ownership transfer) must not restore quota:
+    // the limit counts the immutable publisher, not the current created_by owner.
+    await executeTrustedSql(
+      `update public.match_events set created_by = ${sqlText(other.id)}, version = version + 1
+         where published_by = ${sqlText(creator.id)}`
+    );
+    const afterTransfer = await publish(creator, communityId);
+    expect(afterTransfer.error?.message).toBe('MATCH_EVENT_CREATE_RATE_LIMITED');
+    expect((await publish(other, otherCommunityId)).error).toBeNull();
+
     await executeTrustedSql(`
       alter table public.match_events disable trigger match_event_immutable;
       update public.match_events set published_at = published_at - interval '25 hours'
-        where created_by = ${sqlText(creator.id)};
+        where published_by = ${sqlText(creator.id)};
       alter table public.match_events enable trigger match_event_immutable;`);
     expect((await publish(creator, communityId)).error).toBeNull();
   });

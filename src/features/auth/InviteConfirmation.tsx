@@ -4,7 +4,10 @@ import { Button } from '../../components/ui/Button';
 import { styles } from './reset-password.styles';
 
 type InviteConfirmationProps = {
-  confirmation: { csrf: string; account: string; email: string | null } | null;
+  confirmation:
+    | { csrf: string; account: string; email: string | null }
+    | { error: 'verification_failed' }
+    | null;
 };
 
 export function InviteConfirmation({ confirmation }: InviteConfirmationProps) {
@@ -18,7 +21,7 @@ export function InviteConfirmation({ confirmation }: InviteConfirmationProps) {
         </h1>
         <p {...stylex.props(styles.subtitle)}>{t('auth.inviteConfirmDescription')}</p>
       </header>
-      {confirmation ? (
+      {confirmation && 'csrf' in confirmation ? (
         <form
           method="post"
           action="/auth/callback"
@@ -49,7 +52,7 @@ export function InviteConfirmation({ confirmation }: InviteConfirmationProps) {
       ) : (
         <div {...stylex.props(styles.form)}>
           <p role="alert" {...stylex.props(styles.error)}>
-            {t('auth.inviteConfirmExpired')}
+            {t(confirmation ? 'auth.inviteConfirmVerificationFailed' : 'auth.inviteConfirmExpired')}
           </p>
           <Button
             render={<a href="/login" aria-label={t('auth.inviteCancel')} />}

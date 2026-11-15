@@ -57,8 +57,9 @@ create or replace function public.result_amendment_reader(
               where r.match_event_id = e.id and r.user_id = (select auth.uid())
                 and r.lifecycle = 'accepted' and r.cancelled_at is null)
            or exists (
-             select 1 from public.match_event_result_proposal_versions v
-              where v.proposal_id = p_proposal_id and v.version = p_base_version
+             select 1 from public.match_event_result_proposals p
+               join public.match_event_result_proposal_versions v on v.proposal_id = p.id
+              where p.id = p_proposal_id and p.match_event_id = e.id and v.version = p_base_version
                 and (v.teams -> 'team_a' ? (select auth.uid())::text
                   or v.teams -> 'team_b' ? (select auth.uid())::text))
          ));

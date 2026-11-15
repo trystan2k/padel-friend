@@ -24,7 +24,10 @@ $$;
 create index if not exists communities_created_by_created_at on public.communities (created_by, created_at);
 create index if not exists community_request_messages_sender_membership_created
   on public.community_request_messages (sender_user_id, membership_id, created_at);
-create index if not exists match_events_created_by_published_at on public.match_events (created_by, published_at);
+-- Quota counts published_by (immutable, set to the publisher at insert), never created_by: the
+-- ownership-transfer RPC rewrites created_by, so counting it would let an organizer hand published
+-- events to a participant and restore their own quota.
+create index if not exists match_events_published_by_published_at on public.match_events (published_by, published_at);
 create index if not exists leagues_owner_created_at on public.leagues (owner_id, created_at);
 
 -- Serializes an actor's quota check + write per scope (last-slot concurrency accepts exactly one).
@@ -72,7 +75,7 @@ begin
   perform public.lock_actor_rate_scope('match_event_create', p_actor);
   v_now := pg_catalog.clock_timestamp();
   if (select pg_catalog.count(*) from public.match_events e
-      where e.created_by = p_actor and e.published_at > v_now - v_l.match_event_window) >= v_l.match_event_max then
+      where e.published_by = p_actor and e.published_at > v_now - v_l.match_event_window) >= v_l.match_event_max then
     raise exception 'MATCH_EVENT_CREATE_RATE_LIMITED' using errcode = 'P0001';
   end if;
 end $$;

@@ -32,6 +32,7 @@ const joinErrors: Record<string, string> = {
 };
 
 function throwJoinError(error: { code: string }): never {
+  // guard-allow: dynamic-error — value of a fixed lookup table of literal codes
   if (Object.hasOwn(joinErrors, error.code)) throw new Error(joinErrors[error.code]);
   throw toClientError(error);
 }
@@ -119,6 +120,7 @@ export const leaveCommunity = createServerFn({ method: 'POST' })
       .rpc('leave_community', { p_community_id: data.community_id })
       .single();
     if (error) {
+      // guard-allow: dynamic-error — value of a fixed lookup table of literal codes
       if (Object.hasOwn(leaveErrors, error.code)) throw new Error(leaveErrors[error.code]);
       throw toClientError(error);
     }

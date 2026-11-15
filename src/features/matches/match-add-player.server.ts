@@ -213,6 +213,7 @@ export async function reconcileMatchPlayerAdds(
     // cron must not mistake a failing claim for an empty queue, or a persistent DB failure
     // would leave every run "successful" while operations strand.
     if (claimed.error && options.throwOnClaimError)
+      // guard-allow: cause — cron-only path, the error never reaches a client response
       throw new Error('MATCH_PLAYER_ADD_CLAIM_FAILED', { cause: claimed.error });
     const due = claimed.error ? [] : parseAddKeys(claimed.data);
     if (due.length === 0) return;

@@ -1,5 +1,12 @@
 begin;
 
+-- Table-level mirror of the RPC grammar: the authority ends at the first '/' or '?', so '@' in a
+-- query string is ordinary query text. Superset of the previous check, so existing rows stay valid.
+alter table public.push_subscriptions drop constraint push_subscriptions_endpoint_check;
+alter table public.push_subscriptions add constraint push_subscriptions_endpoint_check
+  check (octet_length(endpoint) between 20 and 2048
+    and endpoint ~ '^https://[^/?@[:space:]]+([/?][^[:space:]]*)?$');
+
 -- Serialize enrolment per user so concurrent registrations of different endpoints cannot both pass the
 -- 25-active-device count. The user lock is always taken before the endpoint lock (stable lock order).
 create or replace function public.register_my_push_subscription(
@@ -34,7 +41,7 @@ begin
   end if;
   if p_endpoint is null or p_p256dh is null or p_auth is null or p_vapid_key_id is null or p_locale is null
     or octet_length(p_endpoint) not between 20 and 2048
-    or p_endpoint !~ '^https://[^/@[:space:]]+(/[^[:space:]]*)?$'
+    or p_endpoint !~ '^https://[^/?@[:space:]]+([/?][^[:space:]]*)?$'
     or p_p256dh !~ '^[A-Za-z0-9_-]{87}$'
     or p_auth !~ '^[A-Za-z0-9_-]{22}$'
     or char_length(p_vapid_key_id) not between 1 and 64

@@ -35,6 +35,72 @@ describe('server-function error guard', () => {
     ).toEqual([expect.objectContaining({ rule: 'raw-cause' })]);
   });
 
+  it('rejects dynamic new Error arguments but accepts literals and the boundary file', () => {
+    for (const text of [
+      'throw new Error(code);',
+      'throw new Error(mapper(error));',
+      "throw new Error('X: ' + detail);",
+      'throw new Error(`X ${detail}`);',
+      'return new Error(\n  code,\n);'
+    ])
+      expect(scan('src/lib/x.server.ts', text)).toEqual([
+        expect.objectContaining({ rule: 'dynamic-error' })
+      ]);
+    expect(
+      scan('src/lib/x.server.ts', "throw new Error('CODE');\nthrow new Error(`CODE`);")
+    ).toEqual([]);
+    expect(scan('src/lib/client-error.server.ts', 'return new Error(code);')).toEqual([]);
+  });
+
+  it('allows dynamic errors only with an inline guard-allow annotation', () => {
+    expect(
+      scan(
+        'src/lib/x.server.ts',
+        '// guard-allow: dynamic-error — closed union\nthrow new Error(code);'
+      )
+    ).toEqual([]);
+    expect(
+      scan('src/lib/x.server.ts', '// guard-allow: cause — wrong tag\nthrow new Error(code);')
+    ).toEqual([expect.objectContaining({ rule: 'dynamic-error' })]);
+    expect(
+      scan('src/lib/x.server.ts', '// guard-allow: dynamic-error\n\n\nthrow new Error(code);')
+    ).toEqual([expect.objectContaining({ rule: 'dynamic-error' })]);
+  });
+
+  it('rejects cause wrapping in .server.ts unless annotated', () => {
+    const text = "throw new Error('X', { cause: error });";
+    expect(scan('src/features/x/x.server.ts', text)).toEqual([
+      expect.objectContaining({ rule: 'raw-cause' })
+    ]);
+    expect(
+      scan('src/features/x/x.server.ts', '// guard-allow: cause — cron only\n' + text)
+    ).toEqual([]);
+  });
+
+  it('scans server modules outside src/features', () => {
+    expect(scan('src/lib/x.server.ts', 'throw error;')).toEqual([
+      expect.objectContaining({ rule: 'raw-throw' })
+    ]);
+    expect(scan('src/i18n/x.functions.ts', 'throw error;')).toEqual([
+      expect.objectContaining({ rule: 'raw-throw' })
+    ]);
+    expect(
+      scan('src/lib/x.server.ts', '// guard-allow: raw-throw — mapped upstream\nthrow error;')
+    ).toEqual([]);
+  });
+
+  it('rejects explicit rejected-promise helpers', () => {
+    expect(scan('src/lib/x.server.ts', 'return Promise.reject(error);')).toEqual([
+      expect.objectContaining({ rule: 'promise-reject' })
+    ]);
+    expect(scan('src/lib/x.server.ts', 'new Promise((_, reject) => reject(error));')).toEqual([
+      expect.objectContaining({ rule: 'promise-reject' })
+    ]);
+    expect(scan('src/lib/x.server.ts', 'return Promise.reject(toClientError(error));')).toEqual([
+      expect.objectContaining({ rule: 'promise-reject' })
+    ]);
+  });
+
   it('accepts mapped and fresh errors, comments and unrelated files', () => {
     expect(
       scan(

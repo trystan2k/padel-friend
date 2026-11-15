@@ -48,6 +48,20 @@ describe('Worker entry', () => {
     mocks.fetch.mockResolvedValueOnce(asset);
     expect(await worker.fetch(new Request('http://localhost/assets/a.js'))).toBe(asset);
   });
+  it.each(['no-referrer', null])(
+    'preserves route referrer policy %s or supplies default',
+    async (policy) => {
+      const headers = new Headers({ location: 'https://app.example/dashboard' });
+      if (policy) headers.set('Referrer-Policy', policy);
+      mocks.fetch.mockResolvedValueOnce(new Response(null, { status: 303, headers }));
+      const response = await worker.fetch(
+        new Request('https://app.example/auth/callback?code=secret')
+      );
+      expect(response.headers.get('referrer-policy')).toBe(
+        policy ?? 'strict-origin-when-cross-origin'
+      );
+    }
+  );
   it('adds security headers to success, error, redirect and immutable responses', async () => {
     const cases: [string, () => Promise<Response> | Response][] = [
       ['success', () => new Response('ok')],

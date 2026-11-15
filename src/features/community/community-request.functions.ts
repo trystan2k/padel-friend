@@ -26,6 +26,7 @@ export const sendCommunityRequestMessage = createServerFn({ method: 'POST' })
       .single();
     if (error) {
       if (error.message === 'COMMUNITY_REQUEST_MESSAGE_RATE_LIMITED') throw toClientError(error);
+      // guard-allow: dynamic-error — conditional between two fixed literals
       throw new Error(error.code === '22023' ? 'REQUEST_NOT_PENDING' : 'REQUEST_MESSAGE_FAILED');
     }
     return result;

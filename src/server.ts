@@ -51,11 +51,16 @@ export default {
     // One unpredictable nonce per request, minted here and never taken from the client. It reaches
     // SSR through request-scoped storage (router.tsx) and the Start request context.
     const nonce = newCspNonce();
-    const finalize = (response: Response) =>
-      withHeaders(response, {
+    const finalize = (response: Response) => {
+      const headers: Record<string, string> = {
         [REQUEST_ID_HEADER]: requestId,
         ...securityHeaders(args[0].url, nonce)
-      });
+      };
+      // A route-level Referrer-Policy (e.g. no-referrer on invite/callback redirects) is stricter
+      // than the global default and must never be downgraded.
+      if (response.headers.has('Referrer-Policy')) delete headers['Referrer-Policy'];
+      return withHeaders(response, headers);
+    };
     return runWithDiagnostics({ kind: 'request', id: requestId }, () =>
       runWithNonce(nonce, async () => {
         try {

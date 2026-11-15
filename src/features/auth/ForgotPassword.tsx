@@ -27,6 +27,15 @@ function isRetryableFailure(error: unknown): boolean {
   );
 }
 
+function isCaptchaRejection(error: unknown): boolean {
+  return (
+    typeof error === 'object' &&
+    error !== null &&
+    'code' in error &&
+    error.code === 'captcha_failed'
+  );
+}
+
 export function ForgotPassword({ next: returnPath }: ForgotPasswordProps) {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -36,6 +45,7 @@ export function ForgotPassword({ next: returnPath }: ForgotPasswordProps) {
   const [emailInvalid, setEmailInvalid] = useState(false);
   const [requestFailed, setRequestFailed] = useState(false);
   const [captchaMissing, setCaptchaMissing] = useState(false);
+  const [captchaRejected, setCaptchaRejected] = useState(false);
   const captcha = useCaptcha();
 
   async function submit(event: FormEvent<HTMLFormElement>) {
@@ -55,6 +65,7 @@ export function ForgotPassword({ next: returnPath }: ForgotPasswordProps) {
 
     setBusy(true);
     setCaptchaMissing(false);
+    setCaptchaRejected(false);
     setEmailInvalid(false);
     setRequestFailed(false);
     try {
@@ -68,6 +79,12 @@ export function ForgotPassword({ next: returnPath }: ForgotPasswordProps) {
         ...captcha.authOptions
       });
       captcha.reset();
+      // No email was sent: stay on the form. Same error whatever the account state.
+      if (isCaptchaRejection(error)) {
+        setCaptchaRejected(true);
+        setBusy(false);
+        return;
+      }
       if (error && isRetryableFailure(error)) {
         setRequestFailed(true);
         setBusy(false);
@@ -75,6 +92,11 @@ export function ForgotPassword({ next: returnPath }: ForgotPasswordProps) {
       }
     } catch (error) {
       captcha.reset();
+      if (isCaptchaRejection(error)) {
+        setCaptchaRejected(true);
+        setBusy(false);
+        return;
+      }
       if (isRetryableFailure(error)) {
         setRequestFailed(true);
         setBusy(false);
@@ -111,9 +133,9 @@ export function ForgotPassword({ next: returnPath }: ForgotPasswordProps) {
         />
         <p {...stylex.props(styles.note)}>{t('auth.forgotEmailNote')}</p>
         <TurnstileWidget {...captcha.widgetProps} />
-        {captchaMissing && (
+        {(captchaMissing || captchaRejected) && (
           <p role="alert" {...stylex.props(styles.error)}>
-            {t(captcha.failed ? 'auth.captchaError' : 'auth.captchaRequired')}
+            {t(captcha.failed || captchaRejected ? 'auth.captchaError' : 'auth.captchaRequired')}
           </p>
         )}
         <Button type="submit" size="large" disabled={!ready} busy={busy}>

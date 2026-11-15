@@ -35,6 +35,7 @@ const governanceErrors: Record<string, string> = {
 };
 function throwGovernanceError(error: { code: string; message?: string }): never {
   if (isCommunityRpcErrorCode(error.message)) throw toClientError(error);
+  // guard-allow: dynamic-error — value of a fixed lookup table of literal codes
   if (Object.hasOwn(governanceErrors, error.code)) throw new Error(governanceErrors[error.code]);
   if (error.code === '23505' && error.message?.includes('community_members_open'))
     throw new Error('ALREADY_MEMBER_OR_PENDING');

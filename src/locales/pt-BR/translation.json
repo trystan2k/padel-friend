@@ -93,6 +93,7 @@
     "inviteConfirm": "ACEITAR CONVITE",
     "inviteCancel": "CANCELAR E MANTER CONTA ATUAL",
     "inviteConfirmExpired": "Esta confirmação expirou ou não está disponível. Abra o convite original novamente para continuar.",
+    "inviteConfirmVerificationFailed": "Não foi possível verificar sua conta atual. Tente abrir o convite novamente.",
     "invitationEmail": {
       "subject": "Você foi adicionado a uma partida de padel",
       "heading": "Você está no jogo",
@@ -159,6 +160,8 @@
     "passwordLegacyHint": "Esta senha é mais curta ou simples que os requisitos atuais ({{min}}+ caracteres, letras maiúsculas e minúsculas, um número e um símbolo). Você ainda pode entrar e depois escolher uma senha mais forte.",
     "captchaRequired": "Conclua a verificação de segurança para continuar.",
     "captchaError": "Não foi possível carregar a verificação de segurança. Recarregue a página e tente novamente.",
+    "captchaLoading": "Carregando a verificação de segurança…",
+    "captchaExpired": "A verificação de segurança expirou. Conclua-a novamente.",
     "signupSignIn": "ENTRAR",
     "unauthorized": "Falha ao entrar. Confira seus dados e tente novamente.",
     "sessionExpired": "Sua sessão expirou. Entre novamente.",

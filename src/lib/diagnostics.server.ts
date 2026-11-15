@@ -125,6 +125,7 @@ export async function traceOperation<T>(
       code: safeErrorCode(error),
       durationMs: Date.now() - started
     });
+    // guard-allow: raw-throw — rethrows what the wrapped operation already threw (mapped upstream)
     throw error;
   }
 }

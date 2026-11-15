@@ -1,4 +1,6 @@
-import { useEffect, useRef } from 'react';
+import * as stylex from '@stylexjs/stylex';
+import { useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { getTurnstileSiteKey, type CaptchaState } from '../../lib/captcha';
 
 type TurnstileApi = {
@@ -40,10 +42,30 @@ function loadTurnstile(): Promise<TurnstileApi> {
   return scriptPromise;
 }
 
+type WidgetStatus = 'loading' | 'ready' | 'error' | 'expired';
+
+const STATUS_KEYS = {
+  loading: 'auth.captchaLoading',
+  error: 'auth.captchaError',
+  expired: 'auth.captchaExpired'
+} as const;
+
+// Static text only: no motion, so prefers-reduced-motion needs no special handling.
+const styles = stylex.create({
+  status: {
+    margin: 0,
+    color: 'var(--color-muted)',
+    fontSize: 'var(--font-size-12)'
+  },
+  statusError: { color: 'var(--color-red)' }
+});
+
 type MountProps = Pick<CaptchaState['widgetProps'], 'onToken' | 'onError'> & { siteKey: string };
 
 function TurnstileMount({ siteKey, onToken, onError }: MountProps) {
+  const { t } = useTranslation();
   const containerRef = useRef<HTMLDivElement>(null);
+  const [status, setStatus] = useState<WidgetStatus>('loading');
 
   useEffect(() => {
     const container = containerRef.current;
@@ -55,19 +77,43 @@ function TurnstileMount({ siteKey, onToken, onError }: MountProps) {
         if (cancelled) return;
         widgetId = turnstile.render(container, {
           sitekey: siteKey,
-          callback: (token) => onToken(token),
-          'expired-callback': () => onToken(null),
-          'error-callback': onError
+          callback: (token) => {
+            setStatus('ready');
+            onToken(token);
+          },
+          'expired-callback': () => {
+            setStatus('expired');
+            onToken(null);
+          },
+          'error-callback': () => {
+            setStatus('error');
+            onError();
+          }
         });
       })
-      .catch(onError);
+      .catch(() => {
+        if (cancelled) return;
+        setStatus('error');
+        onError();
+      });
     return () => {
       cancelled = true;
       if (widgetId) window.turnstile?.remove(widgetId);
     };
   }, [siteKey, onToken, onError]);
 
-  return <div ref={containerRef} />;
+  const key = status === 'ready' ? undefined : STATUS_KEYS[status];
+  return (
+    <>
+      <div ref={containerRef} />
+      <output
+        aria-live="polite"
+        {...stylex.props(styles.status, status === 'error' && styles.statusError)}
+      >
+        {key ? t(key) : ''}
+      </output>
+    </>
+  );
 }
 
 /** Renders nothing unless a Turnstile site key is configured. */

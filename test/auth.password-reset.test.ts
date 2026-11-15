@@ -129,6 +129,22 @@ describe('ForgotPassword', () => {
     expect(screen.queryByRole('alert')).toBeNull();
   });
 
+  it.each(['player@example.test', 'unknown@example.test'])(
+    'keeps captcha rejection on form without disclosure (%s)',
+    async (email) => {
+      supabaseBrowser.resetPasswordForEmail.mockResolvedValueOnce({
+        error: { code: 'captcha_failed', status: 400 }
+      });
+      const router = await renderAuthForm('/forgot-password');
+      await waitForEnabled('#forgot-email');
+      await userEvent.type(screen.getByLabelText(en.auth.emailAddress), email);
+      submitForm();
+      expect((await screen.findByRole('alert')).textContent).toBe(en.auth.captchaError);
+      expect(router.state.location.pathname).toBe('/forgot-password');
+      expect(screen.getByLabelText<HTMLInputElement>(en.auth.emailAddress).disabled).toBe(false);
+    }
+  );
+
   it('rejects malformed email before calling Supabase and announces field feedback', async () => {
     const user = userEvent.setup();
     await renderAuthForm('/forgot-password');

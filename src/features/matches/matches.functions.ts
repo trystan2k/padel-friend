@@ -236,6 +236,7 @@ export const publishMatchEvent = createServerFn({ method: 'POST' })
     const leagueToken = error?.message.match(/^MATCH_LEAGUE_[A-Z_]+$/)?.[0];
     if (leagueToken) {
       emitDiagnostic('match.create', 'rejected', { code: leagueToken });
+      // guard-allow: dynamic-error — fixed MATCH_LEAGUE_* token matched by anchored regex
       throw new Error(leagueToken);
     }
     if (error?.message === 'MATCH_EVENT_CREATE_RATE_LIMITED') {
@@ -248,6 +249,7 @@ export const publishMatchEvent = createServerFn({ method: 'POST' })
           ? 'MATCH_CONFLICT'
           : 'MATCH_PUBLISH_FAILED';
       emitDiagnostic('match.create', code === 'MATCH_CONFLICT' ? 'race' : 'failure', { code });
+      // guard-allow: dynamic-error — closed MATCH_CONFLICT | MATCH_PUBLISH_FAILED union
       throw new Error(code);
     }
     emitDiagnostic('match.create', 'success');
