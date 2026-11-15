@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { Button } from '../../components/ui/Button';
 import { PasswordField } from '../../components/ui/PasswordField';
 import { getBrowserClient } from '../../lib/supabase/client';
+import { PASSWORD_MIN_LENGTH, isPasswordValid } from '../auth/password-policy';
 import { normalizeReturnPath } from '../auth/return-path';
 import { getPasswordSetupState } from './player.functions';
 import { ui } from './player-ui.styles';
@@ -39,7 +40,7 @@ export function ClaimPasswordStep({ canSkip = false, next }: { canSkip?: boolean
     const confirmationValue = form.get('confirmation');
     const password = typeof passwordValue === 'string' ? passwordValue : '';
     const confirmation = typeof confirmationValue === 'string' ? confirmationValue : '';
-    if (password.length < 8) {
+    if (!isPasswordValid(password)) {
       setValidationError('short');
       return;
     }
@@ -91,7 +92,11 @@ export function ClaimPasswordStep({ canSkip = false, next }: { canSkip?: boolean
           autoComplete="new-password"
           required
           disabled={busy}
-          error={validationError === 'short' ? t('auth.resetInvalid') : undefined}
+          error={
+            validationError === 'short'
+              ? t('auth.passwordInvalid', { min: PASSWORD_MIN_LENGTH })
+              : undefined
+          }
           onChange={() => setValidationError(null)}
         />
         <PasswordField
@@ -102,7 +107,7 @@ export function ClaimPasswordStep({ canSkip = false, next }: { canSkip?: boolean
           autoComplete="new-password"
           required
           disabled={busy}
-          helper={t('auth.resetRequirements')}
+          helper={t('auth.resetRequirements', { min: PASSWORD_MIN_LENGTH })}
           error={validationError === 'mismatch' ? t('auth.resetMismatch') : undefined}
           onChange={() => setValidationError(null)}
         />

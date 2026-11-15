@@ -95,7 +95,7 @@ describe('AccountSignup', () => {
     expect(screen.getByRole('heading', { level: 1 }).textContent).toBe(en.auth.accountTitle);
     expect(screen.getByLabelText(en.auth.emailAddress)).toBeTruthy();
     expect(screen.getByLabelText(en.auth.signupPasswordLabel)).toBeTruthy();
-    expect(screen.getByText(en.auth.signupEmailHelp)).toBeTruthy();
+    expect(screen.getByText(en.auth.passwordRequirements.replace('{{min}}', '10'))).toBeTruthy();
     expect(screen.getByRole('button', { name: en.auth.signupSubmit })).toBeTruthy();
 
     const backLink = screen.getByRole('link', { name: en.auth.signupSignIn });
@@ -126,17 +126,16 @@ describe('AccountSignup', () => {
 
     submitForm();
 
-    let alert = await screen.findByRole('alert');
+    const alert = await screen.findByRole('alert');
     expect(alert.textContent).toBe(en.auth.signupInvalid);
     expect(supabaseBrowser.signUp).not.toHaveBeenCalled();
 
-    // A password below the documented 6 characters is rejected by the same local guard.
+    // A password outside the shared policy is rejected by the same local guard, on the field.
     await user.type(screen.getByLabelText(en.auth.emailAddress), 'player@test.local');
-    await user.type(screen.getByLabelText(en.auth.signupPasswordLabel), 'abc');
+    await user.type(screen.getByLabelText(en.auth.signupPasswordLabel), 'abc123');
     submitForm();
 
-    alert = await screen.findByRole('alert');
-    expect(alert.textContent).toBe(en.auth.signupInvalid);
+    expect(await screen.findByText(en.auth.passwordInvalid.replace('{{min}}', '10'))).toBeTruthy();
     expect(supabaseBrowser.signUp).not.toHaveBeenCalled();
   });
 

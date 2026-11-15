@@ -1,4 +1,5 @@
 import { AsyncLocalStorage } from 'node:async_hooks';
+import { getTurnstileSiteKey } from './captcha';
 
 // Worker-level security headers. Every response (pages, assets, redirects, server functions,
 // caught errors) is finalized here so no route has to remember them.
@@ -54,19 +55,33 @@ export function supabaseCspOrigins(rawUrl: string | undefined): { http: string; 
   return [];
 }
 
-export function buildCsp(nonce: string, supabaseUrl: string | undefined): string {
+// Cloudflare Turnstile loads its script, renders in an iframe and calls home; added only when a
+// site key is configured so a captcha-free build keeps the tighter policy.
+const TURNSTILE_ORIGIN = 'https://challenges.cloudflare.com';
+
+export function buildCsp(
+  nonce: string,
+  supabaseUrl: string | undefined,
+  captchaEnabled = false
+): string {
   const supabase = supabaseCspOrigins(supabaseUrl);
-  const connect = ["'self'", ...supabase.flatMap((origin) => [origin.http, origin.ws])];
+  const turnstile = captchaEnabled ? [TURNSTILE_ORIGIN] : [];
+  const connect = [
+    "'self'",
+    ...supabase.flatMap((origin) => [origin.http, origin.ws]),
+    ...turnstile
+  ];
   const images = ["'self'", 'data:', 'blob:', ...supabase.map((origin) => origin.http)];
   return [
     "default-src 'self'",
-    `script-src 'self' 'nonce-${nonce}'`,
+    `script-src 'self' 'nonce-${nonce}'${turnstile.map((origin) => ` ${origin}`).join('')}`,
     // StyleX ships static CSS files; React/Base UI set style attributes, which need inline styles.
     "style-src 'self' 'unsafe-inline'",
     `img-src ${images.join(' ')}`,
     "font-src 'self' data:",
     `connect-src ${connect.join(' ')}`,
     "manifest-src 'self'",
+    ...(captchaEnabled ? [`frame-src 'self' ${TURNSTILE_ORIGIN}`] : []),
     "worker-src 'self'",
     "object-src 'none'",
     "base-uri 'self'",
@@ -79,10 +94,15 @@ export function buildCsp(nonce: string, supabaseUrl: string | undefined): string
 export function securityHeaders(
   requestUrl: string,
   nonce: string,
-  supabaseUrl: string | undefined = import.meta.env.VITE_SUPABASE_URL
+  supabaseUrl: string | undefined = import.meta.env.VITE_SUPABASE_URL,
+  captchaEnabled = getTurnstileSiteKey() !== undefined
 ): Record<string, string> {
   const headers: Record<string, string> = {
-    [ENFORCE_CSP ? CSP_HEADER : CSP_REPORT_ONLY_HEADER]: buildCsp(nonce, supabaseUrl),
+    [ENFORCE_CSP ? CSP_HEADER : CSP_REPORT_ONLY_HEADER]: buildCsp(
+      nonce,
+      supabaseUrl,
+      captchaEnabled
+    ),
     // frame-ancestors is not honoured in Report-Only mode, so framing is denied separately.
     'X-Frame-Options': 'DENY',
     'X-Content-Type-Options': 'nosniff',

@@ -171,14 +171,14 @@ describe('claim onboarding', () => {
     expect(await screen.findByRole('heading', { level: 1, name: t.passwordTitle })).toBeTruthy();
     expect(mocks.assign).not.toHaveBeenCalled();
     expect(screen.queryByRole('button', { name: t.passwordSkip })).toBeNull();
-    await userEvent.type(screen.getByLabelText(en.auth.resetNewPasswordLabel), 'new-password-1');
+    await userEvent.type(screen.getByLabelText(en.auth.resetNewPasswordLabel), 'New-password-1!');
     await userEvent.type(
       screen.getByLabelText(en.auth.resetConfirmPasswordLabel),
-      'new-password-1'
+      'New-password-1!'
     );
     await userEvent.click(screen.getByRole('button', { name: en.auth.resetSubmit }));
     await waitFor(() => expect(mocks.assign).toHaveBeenCalledWith('/matches/e1'));
-    expect(mocks.updateUser).toHaveBeenCalledWith({ password: 'new-password-1' });
+    expect(mocks.updateUser).toHaveBeenCalledWith({ password: 'New-password-1!' });
     expect(mocks.claim).toHaveBeenCalledWith({
       data: {
         display_name: 'Marta Provisional',
@@ -214,15 +214,15 @@ describe('claim onboarding', () => {
     const submit = screen.getByRole('button', { name: en.auth.resetSubmit });
     await userEvent.type(password, 'short');
     await userEvent.click(submit);
-    expect(screen.getByText(en.auth.resetInvalid)).toBeTruthy();
+    expect(screen.getByText(en.auth.passwordInvalid.replace('{{min}}', '10'))).toBeTruthy();
     await userEvent.clear(password);
-    await userEvent.type(password, 'new-password-1');
-    await userEvent.type(confirmation, 'different-1');
+    await userEvent.type(password, 'New-password-1!');
+    await userEvent.type(confirmation, 'Different-1!');
     await userEvent.click(submit);
     expect(screen.getByText(en.auth.resetMismatch)).toBeTruthy();
     expect(mocks.updateUser).not.toHaveBeenCalled();
     await userEvent.clear(confirmation);
-    await userEvent.type(confirmation, 'new-password-1');
+    await userEvent.type(confirmation, 'New-password-1!');
     await userEvent.click(submit);
     expect((await screen.findByRole('alert')).textContent).toBe(en.auth.resetFailed);
     expect(mocks.assign).not.toHaveBeenCalled();
@@ -240,11 +240,11 @@ describe('claim onboarding', () => {
     await userEvent.click(screen.getByRole('button', { name: new RegExp(t.submit) }));
     await userEvent.type(
       await screen.findByLabelText(en.auth.resetNewPasswordLabel),
-      'new-password-1'
+      'New-password-1!'
     );
     await userEvent.type(
       screen.getByLabelText(en.auth.resetConfirmPasswordLabel),
-      'new-password-1'
+      'New-password-1!'
     );
     await userEvent.click(screen.getByRole('button', { name: en.auth.resetSubmit }));
     await waitFor(() => expect(mocks.assign).toHaveBeenCalledWith('/login?expired=1'));
@@ -314,10 +314,10 @@ describe('claim onboarding', () => {
     expect(document.activeElement).toBe(heading);
     expect(screen.queryByRole('button', { name: t.passwordSkip })).toBeNull();
     mocks.updateUser.mockImplementationOnce(async () => ({ error: null })); // password write did not stick
-    await userEvent.type(screen.getByLabelText(en.auth.resetNewPasswordLabel), 'new-password-1');
+    await userEvent.type(screen.getByLabelText(en.auth.resetNewPasswordLabel), 'New-password-1!');
     await userEvent.type(
       screen.getByLabelText(en.auth.resetConfirmPasswordLabel),
-      'new-password-1'
+      'New-password-1!'
     );
     await userEvent.click(screen.getByRole('button', { name: en.auth.resetSubmit }));
     expect((await screen.findByRole('alert')).textContent).toBe(en.auth.resetFailed);

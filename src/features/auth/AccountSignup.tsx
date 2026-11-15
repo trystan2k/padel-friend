@@ -8,10 +8,13 @@ import { PasswordField } from '../../components/ui/PasswordField';
 import { StepBadge } from '../../components/ui/StepBadge';
 import { SurfaceCard } from '../../components/ui/SurfaceCard';
 import { TextField } from '../../components/ui/TextField';
+import { TurnstileWidget } from '../../components/ui/TurnstileWidget';
+import { useCaptcha } from '../../lib/captcha';
 import { getBrowserClient } from '../../lib/supabase/client';
 import { useHydrated } from '../../lib/use-hydrated';
 import { styles } from './account-signup.styles';
 import { navigateAfterAuth } from './navigate';
+import { PASSWORD_MIN_LENGTH, isPasswordValid } from './password-policy';
 import { normalizeReturnPath } from './return-path';
 
 export function AccountSignup({ next: returnPath }: { next?: string }) {
@@ -21,6 +24,8 @@ export function AccountSignup({ next: returnPath }: { next?: string }) {
   const [message, setMessage] = useState('');
   const [busy, setBusy] = useState(false);
   const [confirmationRequired, setConfirmationRequired] = useState(false);
+  const [passwordInvalid, setPasswordInvalid] = useState(false);
+  const captcha = useCaptcha();
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -30,14 +35,28 @@ export function AccountSignup({ next: returnPath }: { next?: string }) {
     const passwordValue = form.get('password');
     const email = typeof emailValue === 'string' ? emailValue.trim() : '';
     const password = typeof passwordValue === 'string' ? passwordValue : '';
-    if (!email || password.length < 6) {
+    if (!email) {
       setMessage('auth.signupInvalid');
+      return;
+    }
+    if (!isPasswordValid(password)) {
+      setPasswordInvalid(true);
+      return;
+    }
+    if (captcha.enabled && !captcha.token) {
+      setMessage(captcha.failed ? 'auth.captchaError' : 'auth.captchaRequired');
       return;
     }
     setBusy(true);
     setMessage('');
+    setPasswordInvalid(false);
     try {
-      const { data, error } = await getBrowserClient().auth.signUp({ email, password });
+      const { data, error } = await getBrowserClient().auth.signUp({
+        email,
+        password,
+        ...(captcha.enabled ? { options: captcha.authOptions } : {})
+      });
+      captcha.reset();
       if (error) {
         // Generic errors prevent enumeration; confirmation-enabled Supabase may return synthetic users.
         setMessage('auth.unauthorized');
@@ -51,6 +70,7 @@ export function AccountSignup({ next: returnPath }: { next?: string }) {
       }
       navigateAfterAuth(next);
     } catch {
+      captcha.reset();
       setMessage('auth.unauthorized');
       setBusy(false);
     }
@@ -90,13 +110,19 @@ export function AccountSignup({ next: returnPath }: { next?: string }) {
               id="signup-password"
               name="password"
               autoComplete="new-password"
-              minLength={6}
               required
               disabled={!ready || busy}
               label={t('auth.signupPasswordLabel')}
-              helper={t('auth.signupEmailHelp')}
+              helper={t('auth.passwordRequirements', { min: PASSWORD_MIN_LENGTH })}
               placeholder={t('auth.signupPasswordPlaceholder')}
+              error={
+                passwordInvalid
+                  ? t('auth.passwordInvalid', { min: PASSWORD_MIN_LENGTH })
+                  : undefined
+              }
+              onChange={() => setPasswordInvalid(false)}
             />
+            <TurnstileWidget {...captcha.widgetProps} />
           </SurfaceCard>
           <Button type="submit" disabled={!ready} busy={busy} xstyle={styles.submit}>
             {t('auth.signupSubmit')}

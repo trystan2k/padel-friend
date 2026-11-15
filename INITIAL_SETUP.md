@@ -305,7 +305,48 @@ arrived over HTTPS, so local http dev/preview is unaffected; no `includeSubDomai
   reports on a preview deployment (watch `securitypolicyviolation`), then set
   `ENFORCE_CSP = true` in `src/lib/security-headers.server.ts`. Only one of the two CSP headers is
   ever sent. Rollback = set it back to `false`; the other headers are unaffected.
-- **Adding a third-party origin** (e.g. a captcha widget) means extending `buildCsp` in the same file.
+- **Adding a third-party origin** means extending `buildCsp` in the same file. Cloudflare Turnstile
+  (`https://challenges.cloudflare.com` for script, frame and connect) is already wired and only
+  added when `VITE_TURNSTILE_SITE_KEY` is set (see section 11).
 - **Auth cookies:** `src/lib/supabase/cookie-options.ts` sets `secure` on the Supabase server,
   callback and browser clients whenever the page is served over HTTPS; local http keeps working.
   `httpOnly` stays off by design (required by the `@supabase/ssr` cookie contract).
+
+## 11. Auth hardening: password policy, captcha, hosted checklist
+
+**Password policy (one source of truth per layer).** Minimum 10 characters with lower case, upper
+case, digit and symbol. Enforced by Supabase Auth (`minimum_password_length` +
+`password_requirements = "lower_upper_letters_digits_symbols"` in `supabase/config.toml` and
+`test/stack/supabase/config.toml`) and mirrored client-side by
+`src/features/auth/password-policy.ts`, used by signup, reset and claim-invite (blocking) and by
+login (non-blocking hint only, so legacy weak-password accounts can still sign in and then change
+it). Existing passwords stay valid after tightening the setting. Hosted projects do **not** read
+`config.toml`: set the same values under Auth → Sign In / Providers → Email (see checklist).
+
+**Captcha (Cloudflare Turnstile), opt-in.**
+
+- Public site key: `VITE_TURNSTILE_SITE_KEY` (build-time `VITE_` value; public by design). Unset =
+  no widget, no token sent, no Turnstile origin in the CSP.
+- Secret key: only in the Supabase Auth settings (hosted dashboard: Auth → Attack Protection →
+  Enable CAPTCHA protection → Turnstile → secret). Locally, `[auth.captcha]` reads
+  `env(SUPABASE_AUTH_CAPTCHA_SECRET)`. Never put the secret in a `VITE_` variable.
+- **TEST stack bypass:** `test/stack/supabase/config.toml` keeps `[auth.captcha] enabled = false`
+  and no test env file sets `VITE_TURNSTILE_SITE_KEY`, so suites sign up/in without Cloudflare
+  credentials. Production never accepts a fixed bypass token. To try the widget locally, set
+  `enabled = true` in `supabase/config.toml`, export Cloudflare's dummy secret as
+  `SUPABASE_AUTH_CAPTCHA_SECRET` and use a Cloudflare test site key.
+- Deployment order: enable captcha in Supabase **after** the build with the site key is live
+  (otherwise sign-in requests without a token are rejected).
+
+**Hosted Supabase settings checklist (operator, per environment; local config does not apply):**
+
+- [ ] Auth → Password: minimum length 10, required characters lower + upper + digits + symbols.
+- [ ] Leaked-password protection (HaveIBeenPwned) ON. Requires Supabase Pro plan or above; there is
+      no local `config.toml` key, so it is a hosted-only control. Record the plan/verification.
+- [ ] Auth → Rate Limits: review sign-in/sign-up/OTP/password-recovery limits for the expected load.
+- [ ] Attack Protection → CAPTCHA ON with the Turnstile **secret** (after the site-key build ships).
+- [ ] Sign In / Providers → "Allow anonymous sign-ins" OFF (the app also rejects `is_anonymous`
+      sessions in `requireAuthenticatedClient`).
+- [ ] Email → "Confirm email" ON (local `enable_confirmations = false` is a fixture convenience only).
+- [ ] URL Configuration: Site URL = the exact deployed origin; Redirect URLs = exactly
+      `<origin>/auth/callback` for each production/preview origin (no wildcards beyond need).

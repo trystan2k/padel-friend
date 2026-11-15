@@ -5,6 +5,8 @@ import { useTranslation } from 'react-i18next';
 import { Button } from '../../components/ui/Button';
 import { TextField } from '../../components/ui/TextField';
 import { TextLink } from '../../components/ui/TextLink';
+import { TurnstileWidget } from '../../components/ui/TurnstileWidget';
+import { useCaptcha } from '../../lib/captcha';
 import { getBrowserClient } from '../../lib/supabase/client';
 import { useHydrated } from '../../lib/use-hydrated';
 import { styles } from './forgot-password.styles';
@@ -33,6 +35,8 @@ export function ForgotPassword({ next: returnPath }: ForgotPasswordProps) {
   const [busy, setBusy] = useState(false);
   const [emailInvalid, setEmailInvalid] = useState(false);
   const [requestFailed, setRequestFailed] = useState(false);
+  const [captchaMissing, setCaptchaMissing] = useState(false);
+  const captcha = useCaptcha();
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -44,7 +48,13 @@ export function ForgotPassword({ next: returnPath }: ForgotPasswordProps) {
       return;
     }
 
+    if (captcha.enabled && !captcha.token) {
+      setCaptchaMissing(true);
+      return;
+    }
+
     setBusy(true);
+    setCaptchaMissing(false);
     setEmailInvalid(false);
     setRequestFailed(false);
     try {
@@ -53,13 +63,18 @@ export function ForgotPassword({ next: returnPath }: ForgotPasswordProps) {
         '/auth/callback?next=/reset-password',
         window.location.origin
       ).toString();
-      const { error } = await getBrowserClient().auth.resetPasswordForEmail(email, { redirectTo });
+      const { error } = await getBrowserClient().auth.resetPasswordForEmail(email, {
+        redirectTo,
+        ...captcha.authOptions
+      });
+      captcha.reset();
       if (error && isRetryableFailure(error)) {
         setRequestFailed(true);
         setBusy(false);
         return;
       }
     } catch (error) {
+      captcha.reset();
       if (isRetryableFailure(error)) {
         setRequestFailed(true);
         setBusy(false);
@@ -95,6 +110,12 @@ export function ForgotPassword({ next: returnPath }: ForgotPasswordProps) {
           onChange={() => setEmailInvalid(false)}
         />
         <p {...stylex.props(styles.note)}>{t('auth.forgotEmailNote')}</p>
+        <TurnstileWidget {...captcha.widgetProps} />
+        {captchaMissing && (
+          <p role="alert" {...stylex.props(styles.error)}>
+            {t(captcha.failed ? 'auth.captchaError' : 'auth.captchaRequired')}
+          </p>
+        )}
         <Button type="submit" size="large" disabled={!ready} busy={busy}>
           {t('auth.forgotSubmit')}
         </Button>

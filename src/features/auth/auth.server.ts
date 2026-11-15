@@ -6,7 +6,8 @@ export async function requireAuthenticatedClient() {
   setResponseHeader('Cache-Control', 'private, no-store');
   const client = getServerClient();
   const { data, error } = await client.auth.getClaims();
-  if (error || !data?.claims?.sub) {
+  // Anonymous sign-ins are off (config + hosted checklist); reject them here regardless of that setting.
+  if (error || !data?.claims?.sub || data.claims.is_anonymous === true) {
     emitDiagnostic('auth.failure', 'rejected', { code: 'UNAUTHENTICATED' });
     throw new Error('UNAUTHENTICATED');
   }

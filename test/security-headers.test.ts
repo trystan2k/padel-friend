@@ -70,6 +70,33 @@ describe('buildCsp', () => {
   });
 });
 
+describe('buildCsp with captcha', () => {
+  const off = buildCsp('NONCE', HOSTED);
+  const on = buildCsp('NONCE', HOSTED, true);
+  const directive = (policy: string, name: string) =>
+    policy.split('; ').find((entry) => entry.startsWith(`${name} `));
+  it('adds no Turnstile origin or frame-src when captcha is disabled', () => {
+    expect(off).not.toContain('challenges.cloudflare.com');
+    expect(directive(off, 'frame-src')).toBeUndefined();
+  });
+  it('allows exactly the Turnstile origin for script, frame and connect when enabled', () => {
+    expect(directive(on, 'script-src')).toBe(
+      "script-src 'self' 'nonce-NONCE' https://challenges.cloudflare.com"
+    );
+    expect(directive(on, 'frame-src')).toBe("frame-src 'self' https://challenges.cloudflare.com");
+    expect(directive(on, 'connect-src')).toBe(
+      "connect-src 'self' https://abc.supabase.co wss://abc.supabase.co https://challenges.cloudflare.com"
+    );
+    expect(on).not.toContain('*');
+  });
+  it('threads the flag through securityHeaders', () => {
+    const header = securityHeaders('https://app.example/', 'N', HOSTED, true)[
+      'Content-Security-Policy-Report-Only'
+    ];
+    expect(header).toContain('https://challenges.cloudflare.com');
+  });
+});
+
 describe('securityHeaders', () => {
   it('sends the Report-Only CSP (not the enforcing one) with the fixed header set', () => {
     const headers = securityHeaders('https://app.example/x', 'N', HOSTED);

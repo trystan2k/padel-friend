@@ -6,6 +6,7 @@ import { Button } from '../../components/ui/Button';
 import { PasswordField } from '../../components/ui/PasswordField';
 import { getBrowserClient } from '../../lib/supabase/client';
 import { useHydrated } from '../../lib/use-hydrated';
+import { PASSWORD_MIN_LENGTH, isPasswordValid } from './password-policy';
 import { styles } from './reset-password.styles';
 
 type ValidationError = 'short' | 'mismatch' | null;
@@ -27,7 +28,7 @@ export function ResetPassword() {
     const password = typeof passwordValue === 'string' ? passwordValue : '';
     const confirmation = typeof confirmationValue === 'string' ? confirmationValue : '';
 
-    if (password.length < 8) {
+    if (!isPasswordValid(password)) {
       setValidationError('short');
       return;
     }
@@ -70,7 +71,11 @@ export function ResetPassword() {
           autoComplete="new-password"
           required
           disabled={!ready || busy}
-          error={validationError === 'short' ? t('auth.resetInvalid') : undefined}
+          error={
+            validationError === 'short'
+              ? t('auth.passwordInvalid', { min: PASSWORD_MIN_LENGTH })
+              : undefined
+          }
           onChange={() => setValidationError(null)}
         />
         <PasswordField
@@ -81,7 +86,7 @@ export function ResetPassword() {
           autoComplete="new-password"
           required
           disabled={!ready || busy}
-          helper={t('auth.resetRequirements')}
+          helper={t('auth.resetRequirements', { min: PASSWORD_MIN_LENGTH })}
           helperXstyle={styles.requirementsHelper}
           error={validationError === 'mismatch' ? t('auth.resetMismatch') : undefined}
           onChange={() => setValidationError(null)}
