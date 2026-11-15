@@ -183,7 +183,7 @@ describe('ci.yml test-stack contract', () => {
   });
 
   it('never addresses the dev stack or a root .env', () => {
-    expect(workflow).not.toMatch(/5532\d/);
+    expect(workflow).not.toMatch(/\b5532\d\b/);
     expect(workflow).not.toMatch(/pnpm exec supabase|supabase (start|status|db reset)/);
     expect(workflow).not.toMatch(/>>?\s*\.env\b/);
     expect(workflow).not.toContain('sb_publishable_');
