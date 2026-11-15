@@ -1,3 +1,5 @@
+import { validatePushEndpoint } from './push-endpoint';
+
 export const pushLocales = ['en', 'pt-BR', 'es'] as const;
 export type PushLocale = (typeof pushLocales)[number];
 export const clientRetireReasons = [
@@ -60,8 +62,10 @@ export function validateRegisterPushSubscription(value: unknown) {
     (expiration !== null && (typeof expiration !== 'number' || !Number.isSafeInteger(expiration)))
   )
     throw new Error('INVALID_PUSH_INPUT');
+  const endpoint = parseEndpoint(raw.endpoint);
+  validatePushEndpoint(endpoint);
   const subscription: PushSubscriptionInput = {
-    endpoint: parseEndpoint(raw.endpoint),
+    endpoint,
     keys: { p256dh, auth },
     expirationTime: expiration
   };

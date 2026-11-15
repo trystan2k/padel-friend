@@ -1,4 +1,5 @@
 import webPush from 'web-push';
+import { validatePushEndpoint } from './push-endpoint';
 
 export type VapidKey = { publicKey: string; privateKey: string; subject: string };
 export type PushDevice = { endpoint: string; p256dh: string; auth: string };
@@ -8,32 +9,6 @@ export type PushTransport = (
   payload: string,
   key: VapidKey
 ) => Promise<PushResponse>;
-
-export function validatePushEndpoint(endpoint: string): void {
-  let url: URL;
-  try {
-    url = new URL(endpoint);
-  } catch {
-    throw new Error('PUSH_INVALID_ENDPOINT');
-  }
-  const supported =
-    url.hostname === 'fcm.googleapis.com' ||
-    url.hostname === 'updates.push.services.mozilla.com' ||
-    /^[a-z0-9-]+\.push\.services\.mozilla\.com$/.test(url.hostname) ||
-    url.hostname === 'web.push.apple.com' ||
-    /^[a-z0-9-]+\.web\.push\.apple\.com$/.test(url.hostname);
-  if (
-    !supported ||
-    url.protocol !== 'https:' ||
-    url.port ||
-    url.username ||
-    url.password ||
-    url.hash ||
-    endpoint.length > 2048
-  ) {
-    throw new Error('PUSH_INVALID_ENDPOINT');
-  }
-}
 
 // web-push supplies RFC8291 encryption and RFC8292 VAPID; native fetch supplies Workers HTTP,
 // bounded timeout and explicit redirect rejection (node https follows a different compatibility path).

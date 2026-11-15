@@ -355,3 +355,24 @@ it). Existing passwords stay valid after tightening the setting. Hosted projects
 - [ ] Email → "Confirm email" ON (local `enable_confirmations = false` is a fixture convenience only).
 - [ ] URL Configuration: Site URL = the exact deployed origin; Redirect URLs = exactly
       `<origin>/auth/callback` for each production/preview origin (no wildcards beyond need).
+
+## 12. Push endpoints and REST schema discovery
+
+Push registration and delivery share `push-endpoint.ts`. Registration RPC mirrors its strict
+ASCII URL grammar, so direct REST calls cannot store arbitrary hosts. Supported hosts:
+`fcm.googleapis.com`, one label under `push.services.mozilla.com` (including
+`updates.push.services.mozilla.com`), `web.push.apple.com`, and one label under
+`web.push.apple.com`. HTTPS only; optional explicit `:443`; no credentials, fragments,
+backslashes, whitespace, encoded/unicode hosts, trailing-dot hosts, or URLs over 2048 bytes.
+**WNS (`*.notify.windows.com`) deliberately unsupported** at both boundaries, preserving
+existing delivery behavior. Supporting WNS requires a reviewed constrained provider allowance
+and parity tests, never a wildcard Windows-domain exception.
+
+Migration `20261115130000_push_endpoint_and_openapi_hardening.sql` sets
+`authenticator.pgrst.openapi_mode = 'disabled'` and reloads PostgREST configuration. The REST
+root `/rest/v1/` returns 404, including with the anon key; ordinary REST/RPC remains available.
+Tradeoff: interactive OpenAPI/Swagger schema docs disappear, including privileged root discovery.
+This only reduces reconnaissance; grants, RLS and RPC authorization remain mandatory.
+`pnpm db:types` and `pnpm db:types:check` use CLI PostgreSQL introspection, not the REST root,
+and were verified against the migrated TEST stack. Hosted rollout uses the reviewed migration
+through the normal release process; local verification does not claim production settings changed.
