@@ -1,4 +1,5 @@
 import { createServerFn } from '@tanstack/react-start';
+import { toClientError } from '../../lib/client-error.server';
 import { requireAuthenticatedClient } from '../auth/auth.server';
 import { finalizeVenuePhoto } from './community-venue-photo.server';
 import { validateVenuePhotoKey } from './venue-photo';
@@ -34,7 +35,7 @@ export const finalizeCommunityVenuePhoto = createServerFn({ method: 'POST' })
     const { data: isAdmin, error } = await client.rpc('is_community_admin', {
       p_community_id: data.community_id
     });
-    if (error) throw error;
+    if (error) throw toClientError(error);
     if (!isAdmin) throw new Error('NOT_COMMUNITY_ADMIN');
     return finalizeVenuePhoto(client, data.community_id, data.venue_id, data.object_key, userId);
   });

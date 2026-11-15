@@ -64,6 +64,7 @@ jobs:
       - run: pnpm typecheck
       - run: pnpm lint
       - run: pnpm format:check
+      - run: pnpm check:server-errors
       # The populated-upgrade harness only depends on migrations, seeds, config (dev and the test stack
       # project/launcher modules it runs through), its own scripts and fixtures, the toolchain pins and this workflow. Anything unknown or unreadable runs it.
       - name: Detect populated-upgrade inputs

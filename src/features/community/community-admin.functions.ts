@@ -1,4 +1,5 @@
 import { createServerFn } from '@tanstack/react-start';
+import { toClientError } from '../../lib/client-error.server';
 import { isCommunityRpcErrorCode } from '../../lib/client-error-codes';
 import { requireAuthenticatedClient } from '../auth/auth.server';
 import { signVenuePhoto } from './community-venue-photo.server';
@@ -33,11 +34,11 @@ const governanceErrors: Record<string, string> = {
   PG005: 'ALREADY_MEMBER_OR_PENDING'
 };
 function throwGovernanceError(error: { code: string; message?: string }): never {
-  if (isCommunityRpcErrorCode(error.message)) throw new Error(error.message);
+  if (isCommunityRpcErrorCode(error.message)) throw toClientError(error);
   if (Object.hasOwn(governanceErrors, error.code)) throw new Error(governanceErrors[error.code]);
   if (error.code === '23505' && error.message?.includes('community_members_open'))
     throw new Error('ALREADY_MEMBER_OR_PENDING');
-  throw error;
+  throw toClientError(error);
 }
 type MemberAction = 'approve' | 'deny' | 'remove' | 'reactivate' | 'promote' | 'demote';
 
@@ -88,7 +89,7 @@ export const listMyAdminCommunities = createServerFn({ method: 'GET' }).handler(
     .eq('status', 'active')
     .is('valid_until', null)
     .lte('valid_from', new Date().toISOString());
-  if (error) throw error;
+  if (error) throw toClientError(error);
   const ids = (memberships ?? []).map(({ community_id }) => community_id);
   if (!ids.length) return [];
   const { data: communities, error: communityError } = await client
@@ -96,7 +97,7 @@ export const listMyAdminCommunities = createServerFn({ method: 'GET' }).handler(
     .select('id,name')
     .in('id', ids)
     .order('name');
-  if (communityError) throw communityError;
+  if (communityError) throw toClientError(communityError);
   return communities ?? [];
 });
 
@@ -117,7 +118,7 @@ export const getCommunityAdminContext = createServerFn({ method: 'GET' })
       .select('id,name,city_label,description,visibility,join_policy')
       .eq('id', data.community_id)
       .single();
-    if (error) throw error;
+    if (error) throw toClientError(error);
     return community;
   });
 
@@ -128,7 +129,7 @@ export const getCommunityAdminDefaults = createServerFn({ method: 'GET' })
     const { data: rows, error } = await client.rpc('get_community_settings', {
       p_community_id: data.community_id
     });
-    if (error) throw error;
+    if (error) throw toClientError(error);
     const stored: unknown = rows?.[0]?.settings;
     if (stored === null || stored === undefined) return DEFAULT_COMMUNITY_ADMIN_DEFAULTS;
     if (typeof stored !== 'object' || Array.isArray(stored))
@@ -147,7 +148,7 @@ export const updateCommunityAdminDefaults = createServerFn({ method: 'POST' })
       p_community_id: data.community_id,
       p_defaults: data.defaults
     });
-    if (error) throw error;
+    if (error) throw toClientError(error);
     return parseCommunityAdminDefaults(result);
   });
 
@@ -191,7 +192,7 @@ export const listCommunityAudit = createServerFn({ method: 'GET' })
       .order('occurred_at', { ascending: false })
       .order('id', { ascending: false })
       .range(data.offset, data.offset + data.limit - 1);
-    if (error) throw error;
+    if (error) throw toClientError(error);
     return rows ?? [];
   });
 
@@ -209,7 +210,7 @@ export const listCommunityVenues = createServerFn({ method: 'GET' })
       .order('name')
       .order('id')
       .range(data.offset, data.offset + data.limit - 1);
-    if (error) throw error;
+    if (error) throw toClientError(error);
     return Promise.all(
       (rows ?? []).map(async (row) => ({
         id: row.id,

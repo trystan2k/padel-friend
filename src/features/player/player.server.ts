@@ -1,3 +1,4 @@
+import { toClientError } from '../../lib/client-error.server';
 import { getServerClient } from '../../lib/supabase/server';
 import { AVATAR_FILENAME_PATTERN } from './avatar-key';
 import { projectPlayingDays, projectPlayingTimes } from './player-availability';
@@ -14,8 +15,8 @@ export async function playerRows(client: PlayerClient, userId: string) {
     client.from('player_profiles').select(PROFILE_FIELDS).eq('user_id', userId).maybeSingle(),
     client.from('global_player_ratings').select(RATING_FIELDS).eq('user_id', userId).maybeSingle()
   ]);
-  if (profileResult.error) throw profileResult.error;
-  if (ratingResult.error) throw ratingResult.error;
+  if (profileResult.error) throw toClientError(profileResult.error);
+  if (ratingResult.error) throw toClientError(ratingResult.error);
   const profile = profileResult.data;
   const rating = ratingResult.data;
   if (Boolean(profile) !== Boolean(rating)) throw new Error('INCOMPLETE_PLAYER_STATE');
@@ -67,6 +68,6 @@ export async function verifiedAvatarKey(client: PlayerClient, userId: string, ob
   const { data, error } = await client.storage
     .from(AVATAR_BUCKET)
     .list(userId, { search: filename });
-  if (error) throw error;
+  if (error) throw toClientError(error);
   if (!data?.some((object) => object.name === filename)) throw new Error('AVATAR_NOT_FOUND');
 }

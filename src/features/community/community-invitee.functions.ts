@@ -1,4 +1,5 @@
 import { createServerFn } from '@tanstack/react-start';
+import { toClientError } from '../../lib/client-error.server';
 import { requireAuthenticatedClient } from '../auth/auth.server';
 import { validateDiscoverability, validateInviteeSearch } from './community-invitee.validators';
 
@@ -17,7 +18,7 @@ export const getMyInviteeDiscoverability = createServerFn({ method: 'GET' }).han
     .select('user_id')
     .eq('user_id', userId)
     .maybeSingle();
-  if (error) throw error;
+  if (error) throw toClientError(error);
   return { enabled: Boolean(data) };
 });
 
@@ -29,13 +30,13 @@ export const setMyInviteeDiscoverability = createServerFn({ method: 'POST' })
       const { error } = await client
         .from('community_invitee_directory_preferences')
         .upsert({ user_id: userId }, { onConflict: 'user_id', ignoreDuplicates: true });
-      if (error) throw error;
+      if (error) throw toClientError(error);
     } else {
       const { error } = await client
         .from('community_invitee_directory_preferences')
         .delete()
         .eq('user_id', userId);
-      if (error) throw error;
+      if (error) throw toClientError(error);
     }
     return { enabled: data.enabled };
   });
@@ -49,6 +50,6 @@ export const searchCommunityInvitees = createServerFn({ method: 'GET' })
       p_query: data.query,
       p_limit: 20
     });
-    if (error) throw error;
+    if (error) throw toClientError(error);
     return (rows ?? []).map(({ user_id, display_name }) => ({ user_id, display_name }));
   });

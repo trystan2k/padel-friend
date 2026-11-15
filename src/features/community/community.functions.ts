@@ -1,4 +1,5 @@
 import { createServerFn } from '@tanstack/react-start';
+import { toClientError } from '../../lib/client-error.server';
 import { requireAuthenticatedClient } from '../auth/auth.server';
 import type {
   CommunitySettingsReadResult,
@@ -32,7 +33,7 @@ const joinErrors: Record<string, string> = {
 
 function throwJoinError(error: { code: string }): never {
   if (Object.hasOwn(joinErrors, error.code)) throw new Error(joinErrors[error.code]);
-  throw error;
+  throw toClientError(error);
 }
 
 export const listPublicCommunities = createServerFn({ method: 'GET' })
@@ -55,7 +56,7 @@ export const listPublicCommunities = createServerFn({ method: 'GET' })
       .order('created_at', { ascending: false })
       .order('id', { ascending: false })
       .range(offset, offset + limit);
-    if (error) throw error;
+    if (error) throw toClientError(error);
     const communities: PublicCommunity[] = (rows ?? [])
       .slice(0, limit)
       .map(validatePublicCommunity);
@@ -73,7 +74,7 @@ export const getPublicCommunity = createServerFn({ method: 'GET' })
       .rpc('public_community_discovery')
       .eq('id', data.community_id)
       .maybeSingle();
-    if (error) throw error;
+    if (error) throw toClientError(error);
     return community === null ? null : validatePublicCommunity(community);
   });
 
@@ -88,7 +89,7 @@ export const createCommunity = createServerFn({ method: 'POST' })
       ...(data.description != null ? { p_description: data.description } : {}),
       ...(data.city_label != null ? { p_city_label: data.city_label } : {})
     });
-    if (error) throw error;
+    if (error) throw toClientError(error);
     return { id };
   });
 
@@ -119,7 +120,7 @@ export const leaveCommunity = createServerFn({ method: 'POST' })
       .single();
     if (error) {
       if (Object.hasOwn(leaveErrors, error.code)) throw new Error(leaveErrors[error.code]);
-      throw error;
+      throw toClientError(error);
     }
     if (!left) throw new Error('COMMUNITY_LEAVE_FAILED');
     return {
@@ -156,7 +157,7 @@ export const getMyMembershipTimeline = createServerFn({ method: 'GET' })
       .order('valid_from', { ascending: true })
       .order('id', { ascending: true })
       .range(data.offset, data.offset + data.limit);
-    if (error) throw error;
+    if (error) throw toClientError(error);
     const page = rows ?? [];
     const hasLookahead = page.length > data.limit;
     const nextOffset =
@@ -199,7 +200,7 @@ export const updateCommunitySettings = createServerFn({ method: 'POST' })
       if (error.code === '23514' && knownConstraint) throw new Error('INVALID_COMMUNITY_INPUT');
       if (error.code === '22023' && error.message === 'Invalid community patch')
         throw new Error('INVALID_COMMUNITY_INPUT');
-      throw error;
+      throw toClientError(error);
     }
     if (!updated) throw new Error('NOT_COMMUNITY_ADMIN');
     return updated;
@@ -216,7 +217,7 @@ export const getCommunitySettings = createServerFn({ method: 'GET' })
     if (error) {
       if (error.code === 'PG006') throw new Error('NOT_COMMUNITY_MEMBER');
       if (error.code === '28000') throw new Error('UNAUTHENTICATED');
-      throw error;
+      throw toClientError(error);
     }
     return result;
   });

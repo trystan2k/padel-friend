@@ -1,3 +1,4 @@
+import { toClientError } from '../../lib/client-error.server';
 import { decodeLeagueList } from '../leagues/league-decoders';
 import { decodeLeagueStandings } from '../leagues/league-standings-decoders';
 import { decodeMatchRpcListRows } from '../matches/match-decoders';
@@ -56,7 +57,7 @@ async function guard<T>(read: () => Promise<HomeSection<T>>): Promise<HomeSectio
   try {
     return await read();
   } catch (cause) {
-    if (cause instanceof Error && cause.message === 'UNAUTHENTICATED') throw cause;
+    if (cause instanceof Error && cause.message === 'UNAUTHENTICATED') throw toClientError(cause);
     return { status: 'error' };
   }
 }

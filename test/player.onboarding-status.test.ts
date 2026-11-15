@@ -201,7 +201,7 @@ describe('getOnboardingStatus', () => {
         error: failure
       })
     );
-    await expect(getOnboardingStatus()).rejects.toThrow('rpc down');
+    await expect(getOnboardingStatus()).rejects.toThrow('OPERATION_FAILED');
   });
 
   it('exposes the server-validated password-setup state to the claim step', async () => {
@@ -263,7 +263,7 @@ describe('getOnboardingStatus', () => {
     supabaseServer.getServerClient.mockReturnValue(
       clientWith({ sub: 'sub-1' }, null, null, { data: null, error: failure })
     );
-    await expect(getOnboardingStatus()).rejects.toThrow('rpc down');
+    await expect(getOnboardingStatus()).rejects.toThrow('OPERATION_FAILED');
   });
 
   it('fails with the stable INCOMPLETE_PLAYER_STATE error for a one-row state', async () => {

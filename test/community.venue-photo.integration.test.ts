@@ -430,7 +430,7 @@ localOnly('private venue photo authorization and finalization with real local St
       finalizeCommunityVenuePhoto({
         data: { community_id: communityId, venue_id: archiveVenueId, object_key: archiveRaceKey }
       })
-    ).rejects.toThrow('Venue unavailable');
+    ).rejects.toThrow('REQUEST_INVALID');
     const after = await owner.client
       .from('community_venues')
       .select('photo_path')

@@ -1,3 +1,4 @@
+import { toClientError } from '../../lib/client-error.server';
 import { setResponseHeader } from '@tanstack/react-start/server';
 import type { requireAuthenticatedClient } from '../auth/auth.server';
 import {
@@ -28,14 +29,14 @@ export async function finalizeMatchPhotoUpload(
   const { data: objects, error: listError } = await client.storage
     .from(MATCH_PHOTO_BUCKET)
     .list(`${communityId}/${eventId}/${userId}`, { search: segments[3] });
-  if (listError) throw listError;
+  if (listError) throw toClientError(listError);
   const metadata = objects?.find((object) => object.name === segments[3]);
   if (!metadata || !metadata.metadata || metadata.metadata.size > MATCH_PHOTO_MAX_BYTES)
     throw new Error('INVALID_MATCH_PHOTO');
   const { data: blob, error: downloadError } = await client.storage
     .from(MATCH_PHOTO_BUCKET)
     .download(key);
-  if (downloadError) throw downloadError;
+  if (downloadError) throw toClientError(downloadError);
   if (blob.size < 1 || blob.size > MATCH_PHOTO_MAX_BYTES) throw new Error('INVALID_MATCH_PHOTO');
   const bytes = new Uint8Array(await blob.slice(0, 12).arrayBuffer());
   if (!matchesMatchPhotoMagicBytes(blob.type, bytes)) throw new Error('INVALID_MATCH_PHOTO');
@@ -74,14 +75,14 @@ export async function copySavedVenueMatchPhoto(
   const { error } = await client.storage
     .from(MATCH_PHOTO_BUCKET)
     .upload(key, source, { contentType: mime, upsert: false });
-  if (error) throw error;
+  if (error) throw toClientError(error);
   return key;
 }
 
 export async function removeUnpublishedMatchPhoto(client: AuthClient, objectKey: string) {
   validateMatchPhotoKey(objectKey);
   const { error } = await client.storage.from(MATCH_PHOTO_BUCKET).remove([objectKey]);
-  if (error) throw error;
+  if (error) throw toClientError(error);
 }
 
 export async function signMatchPhoto(client: AuthClient, eventId: string) {

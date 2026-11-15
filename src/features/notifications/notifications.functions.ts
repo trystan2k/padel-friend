@@ -1,4 +1,5 @@
 import { createServerFn } from '@tanstack/react-start';
+import { toClientError } from '../../lib/client-error.server';
 import { requireAuthenticatedClient } from '../auth/auth.server';
 import {
   validateListMyNotifications,
@@ -16,7 +17,7 @@ export const listMyNotifications = createServerFn({ method: 'GET' })
     const { client } = await requireAuthenticatedClient();
     // Mark-all validates against the database clock; keep the read cutoff on that same clock.
     const { data: asOf, error: asOfError } = await client.rpc('get_my_notifications_as_of');
-    if (asOfError) throw asOfError;
+    if (asOfError) throw toClientError(asOfError);
     if (typeof asOf !== 'string') throw new Error('INVALID_NOTIFICATION_CUTOFF');
     let query = client.from('notifications').select(columns).lte('created_at', asOf);
     if (data.category !== 'all') query = query.eq('category', data.category);
@@ -37,8 +38,8 @@ export const listMyNotifications = createServerFn({ method: 'GET' })
         .limit(data.limit + 1),
       client.rpc('count_my_unread_notifications')
     ]);
-    if (error) throw error;
-    if (countError) throw countError;
+    if (error) throw toClientError(error);
+    if (countError) throw toClientError(countError);
     const page = rows ?? [];
     const hasMore = page.length > data.limit;
     const items = page.slice(0, data.limit);
@@ -57,8 +58,8 @@ export const listMyNotifications = createServerFn({ method: 'GET' })
         ? client.rpc('get_my_result_notification_contexts', { p_notification_ids: resultIds })
         : Promise.resolve({ data: [], error: null })
     ]);
-    if (matchContextResult.error) throw matchContextResult.error;
-    if (resultContextResult.error) throw resultContextResult.error;
+    if (matchContextResult.error) throw toClientError(matchContextResult.error);
+    if (resultContextResult.error) throw toClientError(resultContextResult.error);
     const matchContexts = new Map(
       (matchContextResult.data ?? []).map((context) => [context.notification_id, context])
     );
@@ -89,7 +90,7 @@ export const listMyNotifications = createServerFn({ method: 'GET' })
 export const getMyUnreadNotificationCount = createServerFn({ method: 'GET' }).handler(async () => {
   const { client } = await requireAuthenticatedClient();
   const { data, error } = await client.rpc('count_my_unread_notifications');
-  if (error) throw error;
+  if (error) throw toClientError(error);
   return data ?? 0;
 });
 export const markNotificationRead = createServerFn({ method: 'POST' })
@@ -99,7 +100,7 @@ export const markNotificationRead = createServerFn({ method: 'POST' })
     const { data: result, error } = await client.rpc('mark_notification_read', {
       p_notification_id: data.notificationId
     });
-    if (error) throw error;
+    if (error) throw toClientError(error);
     return result;
   });
 export const markAllNotificationsRead = createServerFn({ method: 'POST' })
@@ -109,7 +110,7 @@ export const markAllNotificationsRead = createServerFn({ method: 'POST' })
     const { data: result, error } = await client.rpc('mark_all_notifications_read', {
       p_before: data.before
     });
-    if (error) throw error;
+    if (error) throw toClientError(error);
     return result;
   });
 export const getMyNotificationPreferences = createServerFn({ method: 'GET' }).handler(async () => {
@@ -121,7 +122,7 @@ export const getMyNotificationPreferences = createServerFn({ method: 'GET' }).ha
     )
     .eq('user_id', userId)
     .maybeSingle();
-  if (error) throw error;
+  if (error) throw toClientError(error);
   return data;
 });
 export const saveMyNotificationPreferences = createServerFn({ method: 'POST' })
@@ -136,7 +137,7 @@ export const saveMyNotificationPreferences = createServerFn({ method: 'POST' })
       p_push_rankings: data.push_rankings ?? true,
       p_push_leagues: data.push_leagues ?? true
     });
-    if (error) throw error;
+    if (error) throw toClientError(error);
     return result;
   });
 export const getMyNotificationTarget = createServerFn({ method: 'GET' })
@@ -146,7 +147,7 @@ export const getMyNotificationTarget = createServerFn({ method: 'GET' })
     const { data: result, error } = await client
       .rpc('get_my_notification_target', { p_notification_id: data.notificationId })
       .single();
-    if (error) throw error;
+    if (error) throw toClientError(error);
     return result;
   });
 export const getMyNotificationTargetV3 = createServerFn({ method: 'GET' })
@@ -156,7 +157,7 @@ export const getMyNotificationTargetV3 = createServerFn({ method: 'GET' })
     const { data: result, error } = await client
       .rpc('get_my_notification_target_v4', { p_notification_id: data.notificationId })
       .single();
-    if (error) throw error;
+    if (error) throw toClientError(error);
     return decodeNotificationTarget(result);
   });
 export const getMyMatchNotificationContext = createServerFn({ method: 'GET' })
@@ -166,7 +167,7 @@ export const getMyMatchNotificationContext = createServerFn({ method: 'GET' })
     const { data: contexts, error } = await client.rpc('get_my_match_notification_contexts', {
       p_notification_ids: [data.notificationId]
     });
-    if (error) throw error;
+    if (error) throw toClientError(error);
     return contexts?.[0] ?? null;
   });
 export const acceptMyNotificationInvitation = createServerFn({ method: 'POST' })
@@ -192,6 +193,6 @@ export const acceptMyNotificationInvitation = createServerFn({ method: 'POST' })
       ].includes(error.code)
     )
       throw new Error('NOTIFICATION_INVITATION_REJECTED');
-    if (error) throw error;
+    if (error) throw toClientError(error);
     return result;
   });

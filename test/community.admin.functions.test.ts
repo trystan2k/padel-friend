@@ -325,8 +325,8 @@ describe('admin function boundary', () => {
     );
     const readFailure = { code: 'XX000', message: 'database unavailable' };
     client.rpc.mockResolvedValueOnce({ data: null, error: readFailure });
-    await expect(getCommunityMemberById({ data: { community_id, membership_id } })).rejects.toBe(
-      readFailure
+    await expect(getCommunityMemberById({ data: { community_id, membership_id } })).rejects.toThrow(
+      'OPERATION_FAILED'
     );
   });
 
@@ -380,8 +380,8 @@ describe('admin function boundary', () => {
     }
     const unexpected = { code: '23514', message: 'Different check' };
     mockClient(unexpected);
-    await expect(approveCommunityMember({ data: { community_id, membership_id } })).rejects.toBe(
-      unexpected
+    await expect(approveCommunityMember({ data: { community_id, membership_id } })).rejects.toThrow(
+      'REQUEST_INVALID'
     );
   });
   it.each(['40P01', '40001'])(
@@ -401,7 +401,9 @@ describe('admin function boundary', () => {
     const unknown = { code: 'XX000', message: 'unmapped failure' };
     for (const fn of functions) {
       const { rpc } = mockClient(unknown);
-      await expect(fn({ data: { community_id, membership_id } })).rejects.toBe(unknown);
+      await expect(fn({ data: { community_id, membership_id } })).rejects.toThrow(
+        'OPERATION_FAILED'
+      );
       expect(rpc).toHaveBeenCalledTimes(1);
     }
   });
@@ -448,9 +450,9 @@ describe('admin function boundary', () => {
     ])
       await expect(attemptIssue({ code: 'P0001', message: code })).rejects.toThrow(code);
     const infrastructureError = { code: '42501', message: 'permission denied for relation' };
-    await expect(attemptIssue(infrastructureError)).rejects.toBe(infrastructureError);
+    await expect(attemptIssue(infrastructureError)).rejects.toThrow('FORBIDDEN');
     const lookalike = { code: 'P0001', message: 'NOT_COMMUNITY_ADMIN: details' };
-    await expect(attemptIssue(lookalike)).rejects.toBe(lookalike);
+    await expect(attemptIssue(lookalike)).rejects.toThrow('OPERATION_FAILED');
   });
   it('routes venue and invitation writes through RPCs only', async () => {
     const venue_id = '44444444-4444-4444-8444-444444444444';

@@ -260,7 +260,9 @@ describe('community lifecycle server functions', () => {
     const unknown = { code: '23514', message: 'unexpected constraint' };
     const actor = client({ rpcError: unknown });
     mocks.getServerClient.mockReturnValue(actor);
-    await expect(leaveCommunity({ data: { community_id: communityId } })).rejects.toBe(unknown);
+    await expect(leaveCommunity({ data: { community_id: communityId } })).rejects.toThrow(
+      'REQUEST_INVALID'
+    );
     const empty = client();
     mocks.getServerClient.mockReturnValue(empty);
     await expect(leaveCommunity({ data: { community_id: communityId } })).rejects.toThrow(

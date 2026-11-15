@@ -1,4 +1,5 @@
 import { createServerFn } from '@tanstack/react-start';
+import { toClientError } from '../../lib/client-error.server';
 import { requireAuthenticatedClient } from '../auth/auth.server';
 import {
   validateNotificationId,
@@ -40,7 +41,7 @@ export const listMyCommunityNotifications = createServerFn({ method: 'GET' })
       .order('created_at', { ascending: false })
       .order('id', { ascending: false })
       .range(data.offset, data.offset + data.limit - 1);
-    if (error) throw error;
+    if (error) throw toClientError(error);
     const notificationRows = rows ?? [];
     if (notificationRows.length === 0) return [];
 
@@ -48,7 +49,7 @@ export const listMyCommunityNotifications = createServerFn({ method: 'GET' })
       'get_my_community_notification_timezones',
       { p_notification_ids: notificationRows.map((row) => row.id) }
     );
-    if (timezoneError) throw timezoneError;
+    if (timezoneError) throw toClientError(timezoneError);
 
     const timeZonesByNotificationId = new Map<string, string>();
     for (const row of timeZones ?? [])
@@ -76,6 +77,6 @@ export const markCommunityNotificationRead = createServerFn({ method: 'POST' })
     const { data: result, error } = await client
       .rpc('mark_community_notification_read', { p_notification_id: data.notification_id })
       .single();
-    if (error) throw error;
+    if (error) throw toClientError(error);
     return result;
   });
