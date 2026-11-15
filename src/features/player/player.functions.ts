@@ -1,6 +1,7 @@
 import { createServerFn } from '@tanstack/react-start';
 import { toClientError } from '../../lib/client-error.server';
 import { setResponseHeader } from '@tanstack/react-start/server';
+import { getAdminClient } from '../../lib/supabase/admin.server';
 import { getServerClient } from '../../lib/supabase/server';
 import { requireAuthenticatedClient } from '../auth/auth.server';
 import { playerRows, sportingProfile, verifiedAvatarKey } from './player.server';
@@ -128,7 +129,6 @@ export const updateMyPlayerProfile = createServerFn({ method: 'POST' })
     const { client, userId } = await requireAuthenticatedClient();
     const { profile } = await playerRows(client, userId);
     if (!profile) throw new Error('PLAYER_NOT_ONBOARDED');
-    if (data.avatar_url != null) await verifiedAvatarKey(client, userId, data.avatar_url);
     const { error } = await client.from('player_profiles').update(data).eq('user_id', userId);
     if (error) throw toClientError(error);
     return sportingProfile(client, userId);
@@ -140,12 +140,12 @@ export const completeAvatarUpload = createServerFn({ method: 'POST' })
     const { client, userId } = await requireAuthenticatedClient();
     const { profile } = await playerRows(client, userId);
     if (!profile) throw new Error('PLAYER_NOT_ONBOARDED');
-    await verifiedAvatarKey(client, userId, data.objectKey);
+    await verifiedAvatarKey(client, userId, data.objectKey, profile.avatar_url);
     // The caller's expectation (e.g. onboarding: no avatar yet) wins over the value just read,
     // so an avatar stored by another session after the caller's last check fails the guard.
     const previousKey =
       data.expectedPreviousKey === undefined ? profile.avatar_url : data.expectedPreviousKey;
-    const update = client
+    const update = getAdminClient()
       .from('player_profiles')
       .update({ avatar_url: data.objectKey })
       .eq('user_id', userId);

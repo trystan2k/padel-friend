@@ -29,7 +29,9 @@ export const GENERIC_CLIENT_ERROR_CODES = [
   'REQUEST_CONFLICT',
   'RESOURCE_NOT_FOUND',
   'FORBIDDEN',
-  'OPERATION_FAILED'
+  'OPERATION_FAILED',
+  'INVALID_AVATAR',
+  'AVATAR_CLEANUP_FAILED'
 ] as const;
 
 export type GenericClientErrorCode = (typeof GENERIC_CLIENT_ERROR_CODES)[number];

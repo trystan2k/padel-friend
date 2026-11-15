@@ -1,10 +1,10 @@
+import { isVerifiedImage } from '../../lib/image-verification';
 import { toClientError } from '../../lib/client-error.server';
 import { setResponseHeader } from '@tanstack/react-start/server';
 import type { requireAuthenticatedClient } from '../auth/auth.server';
 import {
   MATCH_PHOTO_BUCKET,
   MATCH_PHOTO_MAX_BYTES,
-  matchesMatchPhotoMagicBytes,
   matchPhotoExtension,
   validateMatchPhotoKey
 } from './match-photo';
@@ -37,9 +37,7 @@ export async function finalizeMatchPhotoUpload(
     .from(MATCH_PHOTO_BUCKET)
     .download(key);
   if (downloadError) throw toClientError(downloadError);
-  if (blob.size < 1 || blob.size > MATCH_PHOTO_MAX_BYTES) throw new Error('INVALID_MATCH_PHOTO');
-  const bytes = new Uint8Array(await blob.slice(0, 12).arrayBuffer());
-  if (!matchesMatchPhotoMagicBytes(blob.type, bytes)) throw new Error('INVALID_MATCH_PHOTO');
+  if (!(await isVerifiedImage(blob, MATCH_PHOTO_MAX_BYTES))) throw new Error('INVALID_MATCH_PHOTO');
   return key;
 }
 
@@ -62,13 +60,9 @@ export async function copySavedVenueMatchPhoto(
   const { data: source, error: downloadError } = await client.storage
     .from('community-venue-photos')
     .download(sourceKey);
-  if (downloadError || !source || source.size < 1 || source.size > MATCH_PHOTO_MAX_BYTES)
+  if (downloadError || !source || !(await isVerifiedImage(source, MATCH_PHOTO_MAX_BYTES)))
     throw new Error('INVALID_MATCH_PHOTO');
   const mime = source.type;
-  if (!['image/jpeg', 'image/png', 'image/webp'].includes(mime))
-    throw new Error('INVALID_MATCH_PHOTO');
-  const bytes = new Uint8Array(await source.slice(0, 12).arrayBuffer());
-  if (!matchesMatchPhotoMagicBytes(mime, bytes)) throw new Error('INVALID_MATCH_PHOTO');
   const key = validateMatchPhotoKey(
     `${communityId}/${eventId}/${userId}/${crypto.randomUUID()}.${matchPhotoExtension(mime)}`
   );

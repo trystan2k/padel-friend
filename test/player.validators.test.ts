@@ -256,10 +256,6 @@ describe('profile update validation', () => {
     }
     expect(validateUpdatePlayerProfile({ bio: null })).toEqual({ bio: null });
     expect(validateUpdatePlayerProfile({ bio: '  hi  ' })).toEqual({ bio: 'hi' });
-    expect(validateUpdatePlayerProfile({ avatar_url: null })).toEqual({ avatar_url: null });
-    expect(validateUpdatePlayerProfile({ avatar_url: avatarKey() })).toEqual({
-      avatar_url: avatarKey()
-    });
   });
 
   it('rejects empty payloads', () => {
@@ -374,100 +370,10 @@ describe('availability validation', () => {
   });
 });
 
-describe('avatar_url object key validation', () => {
-  it('accepts a well-formed <uuid>/<uuid>.<ext> key and trims surrounding whitespace', () => {
-    expect(validateUpdatePlayerProfile({ avatar_url: `  ${avatarKey()}  ` })).toEqual({
-      avatar_url: avatarKey()
-    });
-  });
-
-  it('accepts every supported extension in any letter case', () => {
-    for (const extension of ['png', 'PNG', 'jpg', 'JPG', 'jpeg', 'Jpg', 'webp', 'WebP']) {
-      expect(validateUpdatePlayerProfile({ avatar_url: avatarKey(extension) }).avatar_url).toBe(
-        avatarKey(extension)
-      );
-    }
-  });
-
-  it('accepts any well-formed user prefix — ownership verification stays the server function job', () => {
-    const foreignKey = avatarKey('png', OBJECT_ID, OTHER_USER_ID);
-    expect(validateUpdatePlayerProfile({ avatar_url: foreignKey })).toEqual({
-      avatar_url: foreignKey
-    });
-  });
-
-  it('keeps absent and null avatar_url untouched', () => {
-    expect(validateUpdatePlayerProfile({ avatar_url: null })).toEqual({ avatar_url: null });
-    expect(validateUpdatePlayerProfile({ display_name: 'Ana' })).not.toHaveProperty('avatar_url');
-  });
-
-  it('rejects empty and whitespace-only values', () => {
-    for (const value of ['', '   ', '\t\n']) {
+describe('avatar writes are finalize-only', () => {
+  it('rejects avatar_url even when null or a syntactically valid key', () => {
+    for (const value of [null, avatarKey(), avatarKey('png', OBJECT_ID, OTHER_USER_ID)])
       expect(() => validateUpdatePlayerProfile({ avatar_url: value })).toThrow(INVALID_INPUT);
-    }
-  });
-
-  it('rejects bare filenames and wrong-prefix shapes, including the old permissive shape', () => {
-    for (const value of [
-      'a.png',
-      'u1/a.png',
-      `/${OBJECT_ID}.png`,
-      `${USER_ID}/folder/${OBJECT_ID}.png`,
-      `${USER_ID}/${OBJECT_ID}.png/`,
-      `${USER_ID}/${OBJECT_ID}`
-    ]) {
-      expect(() => validateUpdatePlayerProfile({ avatar_url: value })).toThrow(INVALID_INPUT);
-    }
-  });
-
-  it('rejects unsupported extensions', () => {
-    for (const extension of ['gif', 'txt', 'avif']) {
-      expect(() => validateUpdatePlayerProfile({ avatar_url: avatarKey(extension) })).toThrow(
-        INVALID_INPUT
-      );
-    }
-  });
-
-  it('accepts a canonical v4 object UUID with every legal variant nibble [89ab]', () => {
-    for (const variant of ['8', '9', 'a', 'b']) {
-      const key = avatarKey('png', `22222222-2222-4222-${variant}222-222222222222`);
-      expect(validateUpdatePlayerProfile({ avatar_url: key }).avatar_url).toBe(key);
-    }
-  });
-
-  it('accepts uppercase hex UUIDs and mixed-case extensions (case-insensitive)', () => {
-    const key = avatarKey('PnG', OBJECT_ID.toUpperCase(), USER_ID.toUpperCase());
-    expect(validateUpdatePlayerProfile({ avatar_url: key }).avatar_url).toBe(key);
-  });
-
-  it('rejects object UUIDs whose version nibble is not 4', () => {
-    for (const version of '012356789abcdef') {
-      const key = avatarKey('png', `22222222-2222-${version}222-8222-222222222222`);
-      expect(() => validateUpdatePlayerProfile({ avatar_url: key })).toThrow(INVALID_INPUT);
-    }
-  });
-
-  it('rejects object UUIDs whose variant nibble is outside [89ab]', () => {
-    for (const variant of '01234567cdef') {
-      const key = avatarKey('png', `22222222-2222-4222-${variant}222-222222222222`);
-      expect(() => validateUpdatePlayerProfile({ avatar_url: key })).toThrow(INVALID_INPUT);
-    }
-  });
-
-  it('rejects nested or extra path segments beyond <user>/<file>', () => {
-    for (const key of [
-      `${USER_ID}/nested/${OBJECT_ID}.png`,
-      `${USER_ID}/${OBJECT_ID}/nested.png`,
-      `${USER_ID}/${OBJECT_ID}/nested/${OBJECT_ID}.png`
-    ]) {
-      expect(() => validateUpdatePlayerProfile({ avatar_url: key })).toThrow(INVALID_INPUT);
-    }
-  });
-
-  it('rejects non-string values', () => {
-    for (const value of [5, true, {}, ['a.png']]) {
-      expect(() => validateUpdatePlayerProfile({ avatar_url: value })).toThrow(INVALID_INPUT);
-    }
   });
 });
 
@@ -568,6 +474,7 @@ describe('avatar file validation', () => {
       INVALID_AVATAR
     );
     expect(() => validateAvatarFile({ type: 'image/png', size: -1 })).toThrow(INVALID_AVATAR);
+    expect(() => validateAvatarFile({ type: 'image/png', size: 0 })).toThrow(INVALID_AVATAR);
     expect(() => validateAvatarFile({ type: 'image/png', size: 1.5 })).toThrow(INVALID_AVATAR);
     expect(() => validateAvatarFile({ type: 'image/png', size: NaN })).toThrow(INVALID_AVATAR);
     expect(() => validateAvatarFile({ type: 'image/png', size: '1024' })).toThrow(INVALID_AVATAR);

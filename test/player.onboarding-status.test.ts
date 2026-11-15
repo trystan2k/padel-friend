@@ -12,7 +12,10 @@ import {
 const tanstackServer = vi.hoisted(() => ({
   setResponseHeader: vi.fn<(name: string, value: string) => void>()
 }));
-const supabaseServer = vi.hoisted(() => ({ getServerClient: vi.fn<() => unknown>() }));
+const supabaseServer = vi.hoisted(() => ({
+  getServerClient: vi.fn<() => unknown>(),
+  getAdminClient: vi.fn<() => unknown>()
+}));
 
 vi.mock('@tanstack/react-start', () => ({
   createServerFn: (options?: { method?: string }) => {
@@ -44,6 +47,9 @@ vi.mock('@tanstack/react-start/server', () => ({
   setResponseHeader: tanstackServer.setResponseHeader
 }));
 vi.mock('../src/lib/supabase/server', () => ({ getServerClient: supabaseServer.getServerClient }));
+vi.mock('../src/lib/supabase/admin.server', () => ({
+  getAdminClient: supabaseServer.getAdminClient
+}));
 // verifiedAvatarKey is wrapped in a spy that keeps the REAL implementation: avatar-key
 // ownership/not-found behavior stays under test while call wiring is asserted per scenario.
 vi.mock('../src/features/player/player.server', async (importOriginal) => {
@@ -518,7 +524,16 @@ describe('updateMyPlayerProfile avatar verification', () => {
       }),
       storage: {
         from: () => ({
-          list: async () => ({ data: objectNames.map((name) => ({ name })), error: null }),
+          list: async () => ({
+            data: objectNames.map((name) => ({ name, metadata: { size: 8 } })),
+            error: null
+          }),
+          download: async () => ({
+            data: new Blob([new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10])], {
+              type: 'image/png'
+            }),
+            error: null
+          }),
           createSignedUrl: async () => ({
             data: { signedUrl: 'https://signed.example/avatar' },
             error: null
@@ -529,41 +544,22 @@ describe('updateMyPlayerProfile avatar verification', () => {
     return { client, updates };
   }
 
-  it('verifies a provided avatar key before writing, even when it equals the stored key', async () => {
-    const { client, updates } = clientWithAvatarFolder([`${OBJECT_ID}.png`], AVATAR_KEY);
-    supabaseServer.getServerClient.mockReturnValue(client);
-    await expect(
-      updateMyPlayerProfile({ data: { avatar_url: AVATAR_KEY } })
-    ).resolves.toMatchObject({ display_name: 'Status Player' });
-    expect(verifiedAvatarKey).toHaveBeenCalledTimes(1);
-    expect(verifiedAvatarKey).toHaveBeenCalledWith(client, OWNER_ID, AVATAR_KEY);
-    expect(updates).toEqual([{ avatar_url: AVATAR_KEY }]);
-  });
-
-  it('never verifies when avatar_url is null or absent', async () => {
-    const { client, updates } = clientWithAvatarFolder([], null);
-    supabaseServer.getServerClient.mockReturnValue(client);
-    await expect(
-      updateMyPlayerProfile({ data: { avatar_url: null, display_name: 'Null Key' } })
-    ).resolves.toMatchObject({ display_name: 'Status Player' });
-    await expect(
-      updateMyPlayerProfile({ data: { display_name: 'No Key' } })
-    ).resolves.toMatchObject({ display_name: 'Status Player' });
+  it('rejects generic avatar writes before authentication or Storage access', async () => {
+    for (const value of [AVATAR_KEY, null]) {
+      await expect(updateMyPlayerProfile({ data: { avatar_url: value } })).rejects.toThrow(
+        'INVALID_PLAYER_INPUT'
+      );
+    }
+    expect(supabaseServer.getServerClient).not.toHaveBeenCalled();
     expect(verifiedAvatarKey).not.toHaveBeenCalled();
-    expect(updates).toEqual([
-      { avatar_url: null, display_name: 'Null Key' },
-      { display_name: 'No Key' }
-    ]);
   });
 
-  it('rejects an avatar key whose object is absent from the owner folder before any write', async () => {
+  it('keeps ordinary profile updates caller-scoped', async () => {
     const { client, updates } = clientWithAvatarFolder([], null);
     supabaseServer.getServerClient.mockReturnValue(client);
-    await expect(updateMyPlayerProfile({ data: { avatar_url: AVATAR_KEY } })).rejects.toThrow(
-      'AVATAR_NOT_FOUND'
-    );
-    expect(verifiedAvatarKey).toHaveBeenCalledTimes(1);
-    expect(updates).toEqual([]);
+    await updateMyPlayerProfile({ data: { display_name: 'No Key' } });
+    expect(updates).toEqual([{ display_name: 'No Key' }]);
+    expect(verifiedAvatarKey).not.toHaveBeenCalled();
   });
 
   it('reconciles the candidate key against the stored key: same, none, conflict', async () => {
@@ -614,6 +610,7 @@ describe('updateMyPlayerProfile avatar verification', () => {
         }
       })
     };
+    supabaseServer.getAdminClient.mockReturnValue(client);
     return { client, guards };
   }
 

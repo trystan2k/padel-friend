@@ -76,10 +76,7 @@ describe('avatar object-key shared pattern module contract', () => {
 describe('avatar object-key no-drift contract between the client and server layers', () => {
   it('is the ONLY place the avatar UUID shape is declared — consumers import it, never re-declare it', () => {
     expect(AVATAR_KEY_SOURCE).toContain(V4_UUID);
-    for (const [name, source] of [
-      ['player.validators.ts', VALIDATORS_SOURCE],
-      ['player.server.ts', SERVER_SOURCE]
-    ] as const) {
+    for (const [name, source] of [['player.server.ts', SERVER_SOURCE]] as const) {
       expect(source, `${name} must import from the shared avatar-key module`).toContain(
         "from './avatar-key'"
       );
@@ -93,7 +90,7 @@ describe('avatar object-key no-drift contract between the client and server laye
       );
     }
     // Each layer uses the export it actually needs.
-    expect(VALIDATORS_SOURCE).toContain('isAvatarObjectKey');
+    expect(VALIDATORS_SOURCE).not.toContain('avatar_url');
     expect(SERVER_SOURCE).toContain('AVATAR_FILENAME_PATTERN');
   });
 });

@@ -1,5 +1,4 @@
 import { hasEdgeWhitespace, stripEdgeWhitespace } from '../../lib/edge-whitespace';
-import { isAvatarObjectKey } from './avatar-key';
 import {
   normalizePlayingDays,
   normalizePlayingTimes,
@@ -24,7 +23,6 @@ export type UpdatePlayerProfileInput = Partial<{
   preferred_side: PreferredSide;
   dominant_hand: DominantHand;
   bio: string | null;
-  avatar_url: string | null;
   preferred_playing_days: PlayingDay[] | null;
   preferred_playing_times: PlayingTime[] | null;
 }>;
@@ -123,7 +121,6 @@ export function validateUpdatePlayerProfile(value: unknown): UpdatePlayerProfile
     'preferred_side',
     'dominant_hand',
     'bio',
-    'avatar_url',
     'preferred_playing_days',
     'preferred_playing_times'
   ]);
@@ -145,18 +142,6 @@ export function validateUpdatePlayerProfile(value: unknown): UpdatePlayerProfile
     result.preferred_playing_days = normalizePlayingDays(input.preferred_playing_days);
   if ('preferred_playing_times' in input)
     result.preferred_playing_times = normalizePlayingTimes(input.preferred_playing_times);
-  if ('avatar_url' in input) {
-    if (input.avatar_url === null) {
-      result.avatar_url = null;
-    } else if (
-      typeof input.avatar_url !== 'string' ||
-      !isAvatarObjectKey(input.avatar_url.trim())
-    ) {
-      throw new Error('INVALID_PLAYER_INPUT');
-    } else {
-      result.avatar_url = input.avatar_url.trim();
-    }
-  }
   return result;
 }
 
@@ -180,7 +165,7 @@ export function validateAvatarFile(value: unknown): {
     !isAvatarMime(input.type) ||
     typeof input.size !== 'number' ||
     !Number.isInteger(input.size) ||
-    input.size < 0 ||
+    input.size < 1 ||
     input.size > AVATAR_MAX_BYTES
   )
     throw new Error('INVALID_AVATAR');
