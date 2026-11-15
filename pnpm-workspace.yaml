@@ -33,5 +33,9 @@ minimumReleaseAgeExclude:
 overrides:
   'sharp@<0.35.5': '0.35.5'
   'tinypool@<2.1.2': '2.1.2'
-  'undici@<7.29.1': '7.29.1'
+  # Security patches stay within each parent's supported major.
+  'undici@>=7.0.0 <7.30.1': '7.30.1'
+  'undici@>=8.0.0 <8.12.2': '8.12.2'
+  'fast-uri@>=3.0.0 <3.1.9': '3.1.9'
+  'serialize-javascript@>=7.0.0 <7.1.3': '7.1.3'
   'source-map-js@<1.2.2': '1.2.2'
