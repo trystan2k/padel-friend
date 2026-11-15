@@ -182,6 +182,38 @@ describe('F24/F25 guard hardening', () => {
   });
 
   it.each([
+    ['shorthand after message', "throw new Error('X', { message: 'X', cause });"],
+    ['shorthand leading', "throw new Error('X', { cause });"],
+    ['shorthand trailing', "throw new Error('X', { a, cause, b });"],
+    ['multiline shorthand', "const o = {\n  message: 'X',\n  cause\n};"],
+    ['quoted key', "const o = { 'cause': raw };"],
+    ['computed literal key', "const o = { ['cause']: raw };"],
+    ['destructuring', 'const { cause } = error;'],
+    ['catch variable', 'try { f(); } catch (cause) { log(cause); }']
+  ])('F28 flags a cause token via %s', (_name, text) => {
+    expect(scan('src/lib/x.server.ts', text).map((finding) => finding.rule)).toContain('raw-cause');
+  });
+
+  it('F28 ignores look-alike tokens, reads and strings', () => {
+    const text = [
+      'const o = { paused: true, causes: [], because: 1, cause_id: 2, uncause: 3 };',
+      'const a = e.cause;\nconst b = e?.cause;',
+      "const m = 'the cause of it';\nconst t = `cause ${x}`;",
+      '// cause in a comment'
+    ].join('\n');
+    expect(scan('src/lib/x.server.ts', text)).toEqual([]);
+  });
+
+  it('F28 accepts a tagged shorthand cause', () => {
+    expect(
+      scan(
+        'src/lib/x.server.ts',
+        "// guard-allow: cause — cron only\nconst o = { message: 'X', cause };"
+      )
+    ).toEqual([]);
+  });
+
+  it.each([
     ['escaped slash', 'const r = /foo\\/">//;\nthrow error;'],
     ['escaped slash then flags', 'const r = /a\\/b/gi;\nthrow error;'],
     ['slash in character class', 'const r = /[/]x\\//;\nthrow error;'],

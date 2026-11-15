@@ -50,18 +50,21 @@ const STATUS_KEYS = {
   expired: 'auth.captchaExpired'
 } as const;
 
-// Static text only: no motion, so prefers-reduced-motion needs no special handling.
+// The Turnstile widget draws its own visual state; this status is announced to screen readers
+// only, so it takes no layout space and nothing below it can shift at any wrap or zoom level.
 const styles = stylex.create({
-  status: {
-    margin: 0,
-    color: 'var(--color-muted)',
-    fontSize: 'var(--font-size-12)',
-    lineHeight: 'var(--font-line-height-body)',
-    // Reserve two status lines: the longest translations wrap at narrow widths, and the status
-    // appearing/clearing must never shift the controls below.
-    minHeight: 'calc(var(--font-size-12) * var(--font-line-height-body) * 2)'
-  },
-  statusError: { color: 'var(--color-red)' }
+  visuallyHidden: {
+    position: 'absolute',
+    width: 'var(--space-1)',
+    height: 'var(--space-1)',
+    padding: 0,
+    margin: 'calc(-1 * var(--space-1))',
+    overflow: 'hidden',
+    clip: 'rect(0, 0, 0, 0)',
+    whiteSpace: 'nowrap',
+    borderWidth: 0,
+    borderStyle: 'none'
+  }
 });
 
 type MountProps = Pick<CaptchaState['widgetProps'], 'onToken' | 'onError'> & { siteKey: string };
@@ -110,10 +113,7 @@ function TurnstileMount({ siteKey, onToken, onError }: MountProps) {
   return (
     <>
       <div ref={containerRef} />
-      <output
-        aria-live="polite"
-        {...stylex.props(styles.status, status === 'error' && styles.statusError)}
-      >
+      <output aria-live="polite" {...stylex.props(styles.visuallyHidden)}>
         {key ? t(key) : ''}
       </output>
     </>

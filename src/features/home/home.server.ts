@@ -56,8 +56,8 @@ function assertSession(error: ErrorLike): void {
 async function guard<T>(read: () => Promise<HomeSection<T>>): Promise<HomeSection<T>> {
   try {
     return await read();
-  } catch (cause) {
-    if (cause instanceof Error && cause.message === 'UNAUTHENTICATED') throw toClientError(cause);
+  } catch (error) {
+    if (error instanceof Error && error.message === 'UNAUTHENTICATED') throw toClientError(error);
     return { status: 'error' };
   }
 }

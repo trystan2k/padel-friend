@@ -55,7 +55,7 @@ it.each(['en', 'pt-BR', 'es'] as const)(
   }
 );
 
-it('keeps the reserved-space status class in idle, loading, error and expired states', async () => {
+it('keeps one constant visually-hidden status class set in every state', async () => {
   vi.stubEnv('VITE_TURNSTILE_SITE_KEY', 'site-key');
   const i18n = createI18n('en');
   let callbacks: Parameters<NonNullable<Window['turnstile']>['render']>[1] | undefined;
@@ -83,9 +83,8 @@ it('keeps the reserved-space status class in idle, loading, error and expired st
   if (!script) throw new Error('missing provider script');
   fireEvent.load(script);
   await waitFor(() => expect(callbacks).toBeDefined());
-  // The error variant may only swap the colour class; every layout class stays.
   const keepsLayout = () =>
-    base.filter((name) => status.classList.contains(name)).length >= base.length - 1 &&
+    base.every((name) => status.classList.contains(name)) &&
     status.classList.length === base.length;
   act(() => callbacks?.callback('token'));
   expect(status.textContent).toBe('');
@@ -96,14 +95,14 @@ it('keeps the reserved-space status class in idle, loading, error and expired st
   expect(keepsLayout()).toBe(true);
 });
 
-it('reserves two status lines from design tokens so a wrapped translation cannot shift layout', async () => {
+it('styles the status visually hidden and reserves no layout space', async () => {
   const source = await import('node:fs').then((fs) =>
     fs.readFileSync('src/components/ui/TurnstileWidget.tsx', 'utf8')
   );
-  expect(source).toContain(
-    "minHeight: 'calc(var(--font-size-12) * var(--font-line-height-body) * 2)'"
-  );
-  expect(source).not.toMatch(/minHeight: '[0-9]+px'/);
+  expect(source).toContain("position: 'absolute'");
+  expect(source).toContain("clip: 'rect(0, 0, 0, 0)'");
+  expect(source).toContain("overflow: 'hidden'");
+  expect(source).not.toMatch(/minHeight/);
 });
 
 it('renders no widget or status when disabled', () => {

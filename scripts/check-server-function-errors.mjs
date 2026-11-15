@@ -20,9 +20,13 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 //                              allowed only in the sanctioned boundary (client-error.server.ts) or
 //                              with an inline `// guard-allow: dynamic-error` on the same or the
 //                              previous line, which makes every typed code-mapper site auditable.
-//   raw-cause                  `{ cause … }` keeps the raw error on the thrown object. Allowed only
-//                              with an inline `// guard-allow: cause` (server-side-only paths, e.g.
-//                              cron work whose error never reaches a client).
+//   raw-cause                  FAIL-CLOSED token rule: ANY `cause` identifier token outside strings and
+//                              comments (leading, non-leading or shorthand object key, `{ cause }`
+//                              destructuring, a `cause` variable) and any quoted `'cause'` key
+//                              (`{ 'cause': x }`, `['cause']: x`) is a finding. `obj.cause` reads and
+//                              longer names (`paused`, `causes`, `because`) never match. Over-approximation
+//                              on purpose: legit uses carry an inline `// guard-allow: cause <reason>`
+//                              (server-side-only paths, e.g. cron work whose error never reaches a client).
 //                              Cause MUTATION is covered too: `.cause =` and `['cause'] =` assignments
 //                              (e.g. `reject(new Error('X').cause = raw)`) and `Object.assign(e, { cause })`
 //                              are findings; `Object.assign(e, props)` with a non-literal `props` is not
@@ -57,7 +61,13 @@ const RAW_THROW = /\bthrow\s+(?!new\b|toClientError\s*\()/g;
 // Also covers non-leading `, cause:` properties, quoted keys, and `.cause =` / `['cause'] =` assignments
 // (never legitimate in client-boundary code; `==`/`===` comparisons do not match).
 const RAW_CAUSE =
-  /\{\s*['"`]?cause\b|,\s*['"`]?cause['"`]?\s*:|\.\s*cause\s*=(?![=>])|\[\s*['"`]cause['"`]\s*\]\s*=(?![=>])/g;
+  /(?<![\w$.])cause(?![\w$])|\.\s*cause\s*=(?![=>])|\[\s*['"`]cause['"`]\s*\]\s*=(?![=>])|['"`]cause['"`](?=\s*[:\]])/g;
+// String literals are blanked before the cause scan, except a literal that is exactly `cause` (quoted key).
+const STRING_LITERAL = /'(?:[^'\\\n]|\\.)*'|"(?:[^"\\\n]|\\.)*"|`(?:[^`\\]|\\.)*`/g;
+const maskStrings = (code) =>
+  code.replace(STRING_LITERAL, (literal) =>
+    /^['"`]cause['"`]$/.test(literal) ? literal : literal.replace(/[^\n]/g, ' ')
+  );
 const MESSAGE_PASSTHROUGH = /new\s+Error\(\s*[\w.]+\.(?:message|details|hint)\b/g;
 const NEW_ERROR = /\bnew\s+\w*Error\s*\(/g;
 const PROMISE_REJECT = /\bPromise\s*\.\s*reject\s*\(|(?<![.\w])reject\s*\(/g;
@@ -249,7 +259,8 @@ export function scanServerFunctionErrors(sources) {
       passthrough.add(match.index);
       report(match.index, 'error-message-passthrough');
     }
-    for (const match of code.matchAll(RAW_CAUSE)) report(match.index, 'raw-cause', 'cause');
+    for (const match of maskStrings(code).matchAll(RAW_CAUSE))
+      report(match.index, 'raw-cause', 'cause');
     for (const match of code.matchAll(PROMISE_REJECT)) {
       const isMethod = match[0].startsWith('Promise');
       const argument = firstArgument(code, match.index + match[0].length);
