@@ -14,7 +14,7 @@ import {
   signUpFixtureActor,
   sqlText
 } from './helpers/provisional-player-fixtures';
-import { isoDay, publishCompetitive } from './helpers/ranked-fixtures';
+import { isoDay, publishCompetitive, releasePublishQuota } from './helpers/ranked-fixtures';
 import { executeTrustedSql } from './helpers/sql-transport';
 
 const environment = localSupabaseEnv();
@@ -52,9 +52,14 @@ describe.skipIf(!environment.env)(
         ...overrides
       });
     }
-    const unranked = async (overrides: Record<string, unknown> = {}) =>
-      (await publishCompetitive(owner, world.communityId, overrides)).eventId;
+    const unranked = async (overrides: Record<string, unknown> = {}) => {
+      await releasePublishQuota(owner.id);
+      const published = await publishCompetitive(owner, world.communityId, overrides);
+      expect(published.result.error).toBeNull();
+      return published.eventId;
+    };
     const ranked = async (leagueId: string, overrides: Record<string, unknown> = {}) => {
+      await releasePublishQuota(owner.id);
       const published = await publishCompetitive(owner, world.communityId, {
         competition: 'ranked',
         league_id: leagueId,

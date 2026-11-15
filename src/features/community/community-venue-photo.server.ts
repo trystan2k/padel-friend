@@ -1,8 +1,9 @@
+import { isVerifiedImage } from '../../lib/image-verification';
+import { toClientError } from '../../lib/client-error.server';
 import { setResponseHeader } from '@tanstack/react-start/server';
 import {
   COMMUNITY_VENUE_PHOTO_BUCKET,
   COMMUNITY_VENUE_PHOTO_MAX_BYTES,
-  matchesVenuePhotoMagicBytes,
   validateVenuePhotoKey
 } from './venue-photo';
 import type { CommunityAdminClient } from './community-venue-photo.functions';
@@ -21,24 +22,22 @@ export async function finalizeVenuePhoto(
   const { data: objects, error: listError } = await client.storage
     .from(COMMUNITY_VENUE_PHOTO_BUCKET)
     .list(`${communityId}/${venueId}/${userId}`, { search: segments[3] });
-  if (listError) throw listError;
+  if (listError) throw toClientError(listError);
   const metadata = objects?.find((object) => object.name === segments[3]);
   if (!metadata || !metadata.metadata || metadata.metadata.size > COMMUNITY_VENUE_PHOTO_MAX_BYTES)
     throw new Error('INVALID_VENUE_PHOTO');
   const { data: blob, error: downloadError } = await client.storage
     .from(COMMUNITY_VENUE_PHOTO_BUCKET)
     .download(objectKey);
-  if (downloadError) throw downloadError;
-  if (blob.size > COMMUNITY_VENUE_PHOTO_MAX_BYTES) throw new Error('INVALID_VENUE_PHOTO');
-  const bytes = new Uint8Array(await blob.slice(0, 12).arrayBuffer());
-  const mime = blob.type;
-  if (!matchesVenuePhotoMagicBytes(mime, bytes)) throw new Error('INVALID_VENUE_PHOTO');
+  if (downloadError) throw toClientError(downloadError);
+  if (!(await isVerifiedImage(blob, COMMUNITY_VENUE_PHOTO_MAX_BYTES)))
+    throw new Error('INVALID_VENUE_PHOTO');
   const { error } = await client.rpc('finalize_community_venue_photo', {
     p_community_id: communityId,
     p_venue_id: venueId,
     p_object_key: objectKey
   });
-  if (error) throw error;
+  if (error) throw toClientError(error);
   return objectKey;
 }
 

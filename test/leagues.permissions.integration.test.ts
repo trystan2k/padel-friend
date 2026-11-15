@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
-import { beforeAll, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
 import {
   decodeLeagueDetail,
   decodeLeagueDto,
@@ -61,7 +61,7 @@ describe('League permissions', { timeout: 300_000 }, () => {
     );
   const version = async (id: string) => Number((await leagueRow(id))['version']);
 
-  beforeAll(async () => {
+  beforeEach(async () => {
     if (!environment.env) return;
     world = await leagueWorld(environment.env, 'perms');
   });

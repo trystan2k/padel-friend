@@ -1,6 +1,8 @@
 import { createServerFn } from '@tanstack/react-start';
-import { getRequestUrl } from '@tanstack/react-start/server';
+import { requireAppOrigin } from '../../lib/app-origin.server';
 import { requireAuthenticatedClient } from '../auth/auth.server';
+import { toClientError } from '../../lib/client-error.server';
+import { isMatchLeagueErrorCode } from '../../lib/client-error-codes';
 import { emitDiagnostic } from '../../lib/diagnostics.server';
 import { scheduleMatchPlayerAddReconcile } from './match-add-player.server';
 import { signMatchPhotoBatch, signMatchPhoto } from './match-photo.server';
@@ -187,7 +189,11 @@ export const getMatchEvent = createServerFn({ method: 'GET' })
     if (event == null) return { status: 'unavailable' };
     // Any reader (not just the organizer) reconciles undelivered player invitations, so an
     // otherwise idle event cannot strand them (best effort, after the response).
-    await scheduleMatchPlayerAddReconcile(getRequestUrl().origin).catch(() => undefined);
+    try {
+      await scheduleMatchPlayerAddReconcile(requireAppOrigin(process.env.APP_ORIGIN));
+    } catch {
+      // Reconciliation is best effort; invalid configuration must never mail request-host links.
+    }
     let decoded;
     try {
       decoded = decodeMatchRpcDetail(event);
@@ -227,11 +233,14 @@ export const publishMatchEvent = createServerFn({ method: 'POST' })
       p_input: data.input,
       p_invitee_ids: data.invitee_ids
     });
-    // Stable League tokens (stale candidate, closed, out of period, ...) reach the form unchanged.
-    const leagueToken = error?.message.match(/^MATCH_LEAGUE_[A-Z_]+$/)?.[0];
-    if (leagueToken) {
-      emitDiagnostic('match.create', 'rejected', { code: leagueToken });
-      throw new Error(leagueToken);
+    // Registered League tokens (stale candidate, closed, out of period, ...) reach the form unchanged.
+    if (isMatchLeagueErrorCode(error?.message)) {
+      emitDiagnostic('match.create', 'rejected', { code: error.message });
+      throw toClientError(error);
+    }
+    if (error?.message === 'MATCH_EVENT_CREATE_RATE_LIMITED') {
+      emitDiagnostic('match.create', 'rejected', { code: error.message });
+      throw toClientError(error);
     }
     if (error || !id) {
       const code =
@@ -239,6 +248,7 @@ export const publishMatchEvent = createServerFn({ method: 'POST' })
           ? 'MATCH_CONFLICT'
           : 'MATCH_PUBLISH_FAILED';
       emitDiagnostic('match.create', code === 'MATCH_CONFLICT' ? 'race' : 'failure', { code });
+      // guard-allow: dynamic-error — closed MATCH_CONFLICT | MATCH_PUBLISH_FAILED union
       throw new Error(code);
     }
     emitDiagnostic('match.create', 'success');

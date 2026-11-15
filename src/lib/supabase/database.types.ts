@@ -2082,28 +2082,6 @@ export type Database = {
         }
         Relationships: []
       }
-      notes: {
-        Row: {
-          body: string
-          created_at: string
-          id: string
-          user_id: string
-        }
-        ComputedFields: never
-        Insert: {
-          body: string
-          created_at?: string
-          id?: string
-          user_id: string
-        }
-        Update: {
-          body?: string
-          created_at?: string
-          id?: string
-          user_id?: string
-        }
-        Relationships: []
-      }
       notification_preferences: {
         Row: {
           critical_in_app_enabled: boolean
@@ -4695,6 +4673,20 @@ export type Database = {
       activate_global_rating_projection: { Args: Record<PropertyKey, never>; Returns: Json }
       activate_league: { Args: { p_expected_version: number; p_league_id: string }; Returns: Json }
       actor_session_revoked: { Args: Record<PropertyKey, never>; Returns: boolean }
+      add_community_venue: {
+        Args: { p_address?: string; p_community_id: string; p_maps_url?: string; p_name: string }
+        Returns: {
+          address: string
+          archived_at: string
+          community_id: string
+          created_at: string
+          id: string
+          maps_url: string
+          name: string
+          photo_path: string
+          updated_at: string
+        }[]
+      }
       add_match_player: {
         Args: {
           p_display_name: string
@@ -4708,8 +4700,25 @@ export type Database = {
       }
       advance_match_registration_revision_locked: { Args: { p_event_id: string }; Returns: number }
       apply_operational_alert_signals: { Args: { p_signals: Json }; Returns: Json }
+      archive_community_venue: {
+        Args: { p_community_id: string; p_venue_id: string }
+        Returns: {
+          address: string
+          archived_at: string
+          community_id: string
+          created_at: string
+          id: string
+          maps_url: string
+          name: string
+          photo_path: string
+          updated_at: string
+        }[]
+      }
       assert_actor_not_provisional: { Args: Record<PropertyKey, never>; Returns: undefined }
+      assert_community_create_allowed: { Args: { p_actor: string }; Returns: undefined }
+      assert_league_create_allowed: { Args: { p_actor: string }; Returns: undefined }
       assert_match_event_active_locked: { Args: { p_event_id: string }; Returns: undefined }
+      assert_match_event_create_allowed: { Args: { p_actor: string }; Returns: undefined }
       assert_match_league_binding: {
         Args: {
           p_community_id: string
@@ -4741,6 +4750,10 @@ export type Database = {
         Returns: undefined
       }
       assert_match_player_add_window_locked: { Args: { p_event_id: string }; Returns: undefined }
+      assert_request_message_allowed: {
+        Args: { p_actor: string; p_membership_id: string }
+        Returns: undefined
+      }
       can_read_community: { Args: { p_community_id: string }; Returns: boolean }
       can_read_match_event: { Args: { p_event_id: string }; Returns: boolean }
       cancel_level_review_request: { Args: { p_request_id: string }; Returns: Json }
@@ -4868,6 +4881,20 @@ export type Database = {
       dispatch_match_player_add: {
         Args: { p_actor_id: string; p_match_event_id: string; p_request_id: string }
         Returns: Json
+      }
+      edit_community_venue: {
+        Args: { p_changes: Json; p_community_id: string; p_venue_id: string }
+        Returns: {
+          address: string
+          archived_at: string
+          community_id: string
+          created_at: string
+          id: string
+          maps_url: string
+          name: string
+          photo_path: string
+          updated_at: string
+        }[]
       }
       edit_match_event: {
         Args: {
@@ -5229,6 +5256,14 @@ export type Database = {
       is_private_match_event: { Args: { p_event_id: string }; Returns: boolean }
       is_provisional_actor: { Args: Record<PropertyKey, never>; Returns: boolean }
       is_provisional_player: { Args: { p_user_id: string }; Returns: boolean }
+      issue_community_invitation: {
+        Args: { p_community_id: string; p_invitee_user_id: string }
+        Returns: {
+          expires_at: string
+          invitation_id: string
+          token: string
+        }[]
+      }
       join_public_community: {
         Args: { p_community_id: string }
         Returns: {
@@ -5540,6 +5575,10 @@ export type Database = {
           p_type?: string
         }
         Returns: Json
+      }
+      lock_actor_rate_scope: {
+        Args: { p_actor: string; p_key?: string; p_scope: string }
+        Returns: undefined
       }
       lock_global_rating_projection: { Args: Record<PropertyKey, never>; Returns: undefined }
       lock_match_event_registration: {
@@ -6502,6 +6541,13 @@ export type Database = {
         }
         Returns: Json
       }
+      revoke_community_invitation: {
+        Args: { p_community_id: string; p_invitation_id: string }
+        Returns: {
+          id: string
+          revoked_at: string
+        }[]
+      }
       revoke_notification_push_keys: { Args: { p_key_ids: string[] }; Returns: number }
       run_claimed_result_repairs: { Args: { p_limit?: number }; Returns: Json }
       safe_match_photo_uuid: { Args: { p_value: string }; Returns: string }
@@ -6539,6 +6585,20 @@ export type Database = {
         Returns: {
           display_name: string
           user_id: string
+        }[]
+      }
+      security_rate_limits: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          community_create_max: number
+          community_create_window: string
+          community_owned_max: number
+          league_create_max: number
+          league_create_window: string
+          match_event_max: number
+          match_event_window: string
+          request_message_max: number
+          request_message_window: string
         }[]
       }
       send_community_request_message: {

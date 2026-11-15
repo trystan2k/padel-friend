@@ -59,10 +59,18 @@ describe('invitation email metadata', () => {
     ).toContain('Central Court');
   });
 
-  it('does not escape names; the Auth template does', () => {
-    const metadata = buildInvitationEmailMetadata({ ...context, inviterName: 'A <b>&</b>' });
-    expect(metadata.padel_invite_body).toContain('A <b>&</b>');
-  });
+  it.each(supportedLocales)(
+    'keeps hostile names as plain text for GoTrue to escape exactly once (%s)',
+    (locale) => {
+      const inviterName = '<img src=x onerror=alert(1)> André "Ana" & \'João\' &lt;b&gt;';
+      const venueName = '<script>alert(2)</script> Pátio & "Court"';
+      const metadata = buildInvitationEmailMetadata({ ...context, locale, inviterName, venueName });
+      expect(metadata.padel_invite_body).toContain(inviterName);
+      expect(metadata.padel_invite_body).toContain(venueName);
+      // Actual HTML safety and browser-visible text are asserted through GoTrue/Mailpit integration.
+      expect(metadata.padel_invite_body).not.toContain('&amp;lt;');
+    }
+  );
 
   it('keeps subjects free of HTML-special characters, which Auth escapes in subjects', () => {
     for (const copy of [en, ptBR, es])

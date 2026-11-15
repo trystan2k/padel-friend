@@ -62,7 +62,10 @@ describe('production release workflow safety contract', () => {
     expect(release).toContain('created: ${{ steps.release.outputs.release_created }}');
     expect(release).toContain('tag: ${{ steps.release.outputs.tag_name }}');
     expect(release).toContain('release_sha: ${{ steps.identity.outputs.release_sha }}');
-    const please = stepContaining(release, 'googleapis/release-please-action@v4');
+    const please = stepContaining(
+      release,
+      'googleapis/release-please-action@5c625bfb5d1ff62eadeeb3772007f7f66fdcf071'
+    );
     expect(please).toContain('token: ${{ secrets.RELEASE_PLEASE_TOKEN }}');
     expect(please).toContain('config-file: release-please-config.json');
     expect(please).toContain('manifest-file: release-please-manifest.json');
@@ -219,7 +222,7 @@ describe('production release workflow safety contract', () => {
   it('preserves preview byte-for-byte outside production lock', () => {
     const preview = readFileSync('.github/workflows/preview.yml');
     expect(createHash('sha256').update(preview).digest('hex')).toBe(
-      'da3e15f7fb4f27dcd9972b7ad94249736d96c7113979d80841466e1b782ead16'
+      'e5bb019891e941b99402432017ad98830facf4a5997bced20392456876ed1f2b'
     );
     expect(preview.toString()).not.toContain('padel-friend-production-release');
   });

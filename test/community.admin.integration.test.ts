@@ -1,9 +1,10 @@
 import { spawn } from 'node:child_process';
 import { createRequire } from 'node:module';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
-import { beforeAll, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { TEST_WORKDIR } from '../scripts/test-stack.mjs';
 import { assertLocalSupabaseEnvInCi, localSupabaseEnv } from './helpers/local-supabase-env';
+import { trustedClient } from './helpers/trusted-client';
 
 const serverClient = vi.hoisted(() => ({ current: null as SupabaseClient | null }));
 vi.mock('@tanstack/react-start', () => ({
@@ -95,13 +96,13 @@ async function community(admin: Actor) {
   return created.data;
 }
 async function membership(
-  admin: Actor,
+  _admin: Actor,
   community_id: string,
   user: Actor,
   status: 'pending' | 'active',
   role: 'member' | 'admin' = 'member'
 ) {
-  const result = await admin.client
+  const result = await trustedClient()
     .from('community_members')
     .insert({ community_id, user_id: user.id, status, role })
     .select('id')
@@ -482,7 +483,7 @@ describe('LocalSqlCommand process-group cleanup', () => {
 });
 
 describe.skipIf(environment.env === null)('community governance with real JWTs', () => {
-  beforeAll(async () => {
+  beforeEach(async () => {
     [admin, member, outsider, target, alternate] = await Promise.all([
       actor('Admin'),
       actor('Member'),
@@ -708,7 +709,7 @@ describe.skipIf(environment.env === null)('community governance with real JWTs',
       await expect(
         fn({ data: { community_id: id, membership_id: mine.data!.id } })
       ).rejects.toThrow('FINAL_COMMUNITY_ADMIN');
-    const direct = await admin.client
+    const direct = await trustedClient()
       .from('community_members')
       .update({ role: 'member' })
       .eq('id', mine.data!.id);

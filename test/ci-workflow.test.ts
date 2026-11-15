@@ -101,6 +101,7 @@ describe('E2E lane provisioning', () => {
       const text = readFileSync(devVarsFile, 'utf8');
       expect(text).toBe(devVarsContent(TEST_TUPLE));
       expect(text).toContain(`SUPABASE_SERVICE_ROLE_KEY=${FAKE_SERVICE_KEY}\n`);
+      expect(text).toContain('APP_ORIGIN=http://127.0.0.1:4173\n');
       expect(text).toContain('WEB_PUSH_ENABLED=true');
       expect(text).not.toMatch(/postgres|DATABASE_URL/);
     });
@@ -183,7 +184,7 @@ describe('ci.yml test-stack contract', () => {
   });
 
   it('never addresses the dev stack or a root .env', () => {
-    expect(workflow).not.toMatch(/5532\d/);
+    expect(workflow).not.toMatch(/\b5532\d\b/);
     expect(workflow).not.toMatch(/pnpm exec supabase|supabase (start|status|db reset)/);
     expect(workflow).not.toMatch(/>>?\s*\.env\b/);
     expect(workflow).not.toContain('sb_publishable_');

@@ -3,6 +3,7 @@ import { deflateSync } from 'node:zlib';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { expect, test, type Page } from '@playwright/test';
 import { testSupabaseConfig } from './test-supabase-config';
+import { trustedClient } from '../test/helpers/trusted-client';
 import { waitForHydratedPage } from './auth-helpers';
 
 const en: {
@@ -175,9 +176,9 @@ test('admin uploads a real venue photo to local Storage and sees it after refres
   });
   if (created.error || typeof created.data !== 'string')
     throw created.error ?? new Error('Photo community creation failed');
-  const venue = await admin.client
+  const venue = await trustedClient()
     .from('community_venues')
-    .insert({ community_id: created.data, name: 'Preview Court' })
+    .insert({ community_id: created.data, name: 'Preview Court', created_by: admin.id })
     .select('id')
     .single();
   if (venue.error || !venue.data) throw venue.error ?? new Error('Photo venue creation failed');

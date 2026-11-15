@@ -17,6 +17,7 @@
     "lint": "oxlint --deny-warnings && stylelint 'src/**/*.css'",
     "format": "oxfmt .",
     "format:check": "oxfmt --check .",
+    "check:server-errors": "node scripts/check-server-function-errors.mjs",
     "typecheck": "tsc --noEmit",
     "test": "vitest run --config vitest.unit.config.ts --coverage && pnpm db:reset && pnpm test:integration",
     "test:integration": "node scripts/run-integration.mjs",

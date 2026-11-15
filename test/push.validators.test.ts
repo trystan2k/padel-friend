@@ -12,7 +12,7 @@ import {
 const KEY =
   'BD7OaBbljzNT-T8qXAyjFDuSUf2_-pfv05bxZB1_OrzgHgV80uBt_sSLXNrA6H8f30I7GDmv0_9SYBSQsCeZjEw';
 const subscription = {
-  endpoint: 'https://push.example/send/abc',
+  endpoint: 'https://fcm.googleapis.com/send/abc',
   expirationTime: null,
   keys: { p256dh: 'p'.repeat(87), auth: 'a'.repeat(22) }
 };

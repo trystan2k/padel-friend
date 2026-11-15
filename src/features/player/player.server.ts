@@ -1,3 +1,8 @@
+import { isVerifiedImage } from '../../lib/image-verification';
+import { emitDiagnostic } from '../../lib/diagnostics.server';
+import { getAdminClient } from '../../lib/supabase/admin.server';
+import { AVATAR_MAX_BYTES } from './player.validators';
+import { toClientError } from '../../lib/client-error.server';
 import { getServerClient } from '../../lib/supabase/server';
 import { AVATAR_FILENAME_PATTERN } from './avatar-key';
 import { projectPlayingDays, projectPlayingTimes } from './player-availability';
@@ -14,8 +19,8 @@ export async function playerRows(client: PlayerClient, userId: string) {
     client.from('player_profiles').select(PROFILE_FIELDS).eq('user_id', userId).maybeSingle(),
     client.from('global_player_ratings').select(RATING_FIELDS).eq('user_id', userId).maybeSingle()
   ]);
-  if (profileResult.error) throw profileResult.error;
-  if (ratingResult.error) throw ratingResult.error;
+  if (profileResult.error) throw toClientError(profileResult.error);
+  if (ratingResult.error) throw toClientError(ratingResult.error);
   const profile = profileResult.data;
   const rating = ratingResult.data;
   if (Boolean(profile) !== Boolean(rating)) throw new Error('INCOMPLETE_PLAYER_STATE');
@@ -55,7 +60,12 @@ export async function sportingProfile(client: PlayerClient, userId: string) {
   };
 }
 
-export async function verifiedAvatarKey(client: PlayerClient, userId: string, objectKey: string) {
+export async function verifiedAvatarKey(
+  client: PlayerClient,
+  userId: string,
+  objectKey: string,
+  protectedKey: string | null = null
+) {
   const prefix = `${userId}/`;
   if (
     !objectKey.startsWith(prefix) ||
@@ -64,9 +74,36 @@ export async function verifiedAvatarKey(client: PlayerClient, userId: string, ob
   )
     throw new Error('INVALID_AVATAR_KEY');
   const filename = objectKey.slice(prefix.length);
-  const { data, error } = await client.storage
-    .from(AVATAR_BUCKET)
-    .list(userId, { search: filename });
-  if (error) throw error;
-  if (!data?.some((object) => object.name === filename)) throw new Error('AVATAR_NOT_FOUND');
+  const bucket = client.storage.from(AVATAR_BUCKET);
+  const { data, error } = await bucket.list(userId, { search: filename });
+  if (error) throw toClientError(error);
+  const object = data?.find((entry) => entry.name === filename);
+  if (!object) throw new Error('AVATAR_NOT_FOUND');
+  let valid = false;
+  if (object.metadata && object.metadata.size > 0 && object.metadata.size <= AVATAR_MAX_BYTES) {
+    const { data: blob, error: downloadError } = await bucket.download(objectKey);
+    if (downloadError) throw toClientError(downloadError);
+    const extension = filename.split('.').at(-1)?.toLowerCase();
+    const expectedMime =
+      extension === 'png' ? 'image/png' : extension === 'webp' ? 'image/webp' : 'image/jpeg';
+    valid = !!blob && blob.type === expectedMime && (await isVerifiedImage(blob, AVATAR_MAX_BYTES));
+  }
+  if (!valid) {
+    // The key has already passed exact owner/filename validation. Never delete a stored avatar.
+    if (objectKey !== protectedKey) {
+      try {
+        const { error: cleanupError } = await getAdminClient()
+          .storage.from(AVATAR_BUCKET)
+          .remove([objectKey]);
+        if (cleanupError) throw new Error('AVATAR_CLEANUP_FAILED');
+      } catch {
+        emitDiagnostic('request.failure', 'failure', {
+          code: 'AVATAR_CLEANUP_FAILED',
+          stage: 'avatar_cleanup'
+        });
+        throw toClientError(new Error('AVATAR_CLEANUP_FAILED'));
+      }
+    }
+    throw toClientError(new Error('INVALID_AVATAR'));
+  }
 }

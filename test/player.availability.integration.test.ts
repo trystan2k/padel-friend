@@ -90,8 +90,9 @@ describe('player availability schema and contracts', () => {
         where table_schema = 'public' and table_name = 'player_profiles'
           and grantee = 'authenticated' and privilege_type = 'UPDATE' order by 1`
       );
+      // avatar_url is deliberately absent: migration 20261115120000_verified_avatar_writer.sql
+      // revoked the authenticated UPDATE grant (avatar writes are server-path-only).
       expect(columns.rows.map((row) => row.column_name)).toEqual([
-        'avatar_url',
         'bio',
         'display_name',
         'dominant_hand',

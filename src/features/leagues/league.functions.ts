@@ -1,4 +1,5 @@
 import { createServerFn } from '@tanstack/react-start';
+import { toClientError } from '../../lib/client-error.server';
 import { requireAuthenticatedClient } from '../auth/auth.server';
 import { emitDiagnostic, safeErrorCode } from '../../lib/diagnostics.server';
 import type {
@@ -60,6 +61,7 @@ export const listLeagues = createServerFn({ method: 'GET' })
     const { data: result, error } = await client.rpc('list_leagues', {
       p_community_id: data.community_id
     });
+    // guard-allow: dynamic-error — closed LeagueErrorCode union
     if (error) throw new Error(leagueErrorFromDatabase(error));
     return decoded(decodeLeagueList, result);
   });
@@ -74,6 +76,7 @@ export const listMoreLeagues = createServerFn({ method: 'GET' })
       p_after_created_at: data.cursor.created_at,
       p_after_id: data.cursor.id
     });
+    // guard-allow: dynamic-error — closed LeagueErrorCode union
     if (error) throw new Error(leagueErrorFromDatabase(error));
     return decoded(decodeLeagueList, result);
   });
@@ -83,6 +86,7 @@ export const getLeague = createServerFn({ method: 'GET' })
   .handler(async ({ data }): Promise<LeagueDetailResult> => {
     const { client } = await authenticatedClient();
     const { data: result, error } = await client.rpc('get_league', { p_league_id: data.league_id });
+    // guard-allow: dynamic-error — closed LeagueErrorCode union
     if (error) throw new Error(leagueErrorFromDatabase(error));
     return decoded(decodeLeagueDetail, result);
   });
@@ -95,6 +99,7 @@ export const getLeagueCounters = createServerFn({ method: 'GET' })
     const { data: result, error } = await client.rpc('get_league_counters', {
       p_league_id: data.league_id
     });
+    // guard-allow: dynamic-error — closed LeagueErrorCode union
     if (error) throw new Error(leagueErrorFromDatabase(error));
     return decoded(decodeLeagueCounters, result);
   });
@@ -111,6 +116,7 @@ export const getLeagueStandings = createServerFn({ method: 'GET' })
       p_league_id: data.league_id,
       p_standings_version: data.standings_version ?? undefined
     });
+    // guard-allow: dynamic-error — closed LeagueErrorCode union
     if (error) throw new Error(leagueErrorFromDatabase(error));
     return decoded(decodeLeagueStandings, result);
   });
@@ -124,6 +130,7 @@ export const listLeagueStandingsVersions = createServerFn({ method: 'GET' })
       p_league_id: data.league_id,
       p_before_version: data.before_version ?? undefined
     });
+    // guard-allow: dynamic-error — closed LeagueErrorCode union
     if (error) throw new Error(leagueErrorFromDatabase(error));
     return decoded(decodeLeagueStandingsVersions, result);
   });
@@ -136,6 +143,7 @@ export const getLeagueStandingsAudit = createServerFn({ method: 'GET' })
     const { data: result, error } = await client.rpc('get_league_standings_audit', {
       p_league_id: data.league_id
     });
+    // guard-allow: dynamic-error — closed LeagueErrorCode union
     if (error) throw new Error(leagueErrorFromDatabase(error));
     return decoded(decodeLeagueStandingsAudit, result);
   });
@@ -162,6 +170,8 @@ export const createLeague = createServerFn({ method: 'POST' })
       p_end_date: data.end_date ?? undefined,
       p_minimum_matches: data.minimum_matches
     });
+    if (error?.message === 'LEAGUE_CREATE_RATE_LIMITED') throw toClientError(error);
+    // guard-allow: dynamic-error — closed LeagueErrorCode union
     if (error) throw new Error(leagueErrorFromDatabase(error));
     return decoded(decodeLeagueDto, result);
   });
@@ -175,6 +185,7 @@ export const updateLeague = createServerFn({ method: 'POST' })
       p_expected_version: data.expected_version,
       p_changes: data.changes
     });
+    // guard-allow: dynamic-error — closed LeagueErrorCode union
     if (error) throw new Error(leagueErrorFromDatabase(error));
     return decoded(decodeLeagueDto, result);
   });
@@ -187,6 +198,7 @@ export const activateLeague = createServerFn({ method: 'POST' })
       p_league_id: data.league_id,
       p_expected_version: data.expected_version
     });
+    // guard-allow: dynamic-error — closed LeagueErrorCode union
     if (error) throw new Error(leagueErrorFromDatabase(error));
     return decoded(decodeLeagueDto, result);
   });
@@ -202,6 +214,7 @@ export const closeLeague = createServerFn({ method: 'POST' })
     if (error) {
       const code = leagueErrorFromDatabase(error);
       emitDiagnostic('league.close', 'failure', { code: safeErrorCode(code) });
+      // guard-allow: dynamic-error — closed LeagueErrorCode union
       throw new Error(code);
     }
     emitDiagnostic('league.close', 'success');

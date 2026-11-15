@@ -48,6 +48,78 @@ describe('Worker entry', () => {
     mocks.fetch.mockResolvedValueOnce(asset);
     expect(await worker.fetch(new Request('http://localhost/assets/a.js'))).toBe(asset);
   });
+  it.each(['no-referrer', null])(
+    'preserves route referrer policy %s or supplies default',
+    async (policy) => {
+      const headers = new Headers({ location: 'https://app.example/dashboard' });
+      if (policy) headers.set('Referrer-Policy', policy);
+      mocks.fetch.mockResolvedValueOnce(new Response(null, { status: 303, headers }));
+      const response = await worker.fetch(
+        new Request('https://app.example/auth/callback?code=secret')
+      );
+      expect(response.headers.get('referrer-policy')).toBe(
+        policy ?? 'strict-origin-when-cross-origin'
+      );
+    }
+  );
+  it('adds security headers to success, error, redirect and immutable responses', async () => {
+    const cases: [string, () => Promise<Response> | Response][] = [
+      ['success', () => new Response('ok')],
+      ['error', () => new Response('nope', { status: 404 })],
+      ['redirect', () => Response.redirect('http://localhost/login', 303)],
+      [
+        'thrown',
+        () => {
+          throw new Error('boom');
+        }
+      ]
+    ];
+    for (const [, build] of cases) {
+      mocks.fetch.mockImplementationOnce(async () => build());
+      const response = await worker.fetch(new Request('https://app.example/p'));
+      expect(response.headers.get('content-security-policy-report-only')).toContain('script-src');
+      expect(response.headers.get('x-frame-options')).toBe('DENY');
+      expect(response.headers.get('x-content-type-options')).toBe('nosniff');
+      expect(response.headers.get('referrer-policy')).toBeTruthy();
+      expect(response.headers.get('permissions-policy')).toBeTruthy();
+      expect(response.headers.get('strict-transport-security')).toBeTruthy();
+    }
+  });
+  it('omits HSTS on http and keeps Set-Cookie when copying immutable responses', async () => {
+    const headers = new Headers({ location: 'http://localhost/x' });
+    headers.append('set-cookie', 'a=1; Path=/');
+    headers.append('set-cookie', 'b=2; Path=/');
+    mocks.fetch.mockResolvedValueOnce(Response.redirect('http://localhost/x', 303));
+    const redirect = await worker.fetch(new Request('http://localhost/r'));
+    expect(redirect.headers.get('strict-transport-security')).toBeNull();
+    mocks.fetch.mockResolvedValueOnce(new Response(null, { status: 303, headers }));
+    const cookies = await worker.fetch(new Request('http://localhost/r'));
+    expect(cookies.headers.getSetCookie()).toEqual(['a=1; Path=/', 'b=2; Path=/']);
+  });
+  it('gives each request its own nonce, matching header and request context', async () => {
+    const contexts: (string | undefined)[] = [];
+    mocks.fetch.mockImplementation(async (...args: unknown[]) => {
+      const opts = args[1];
+      const nonce =
+        typeof opts === 'object' && opts !== null && 'context' in opts
+          ? Object.assign({ nonce: undefined }, opts.context).nonce
+          : undefined;
+      contexts.push(typeof nonce === 'string' ? nonce : undefined);
+      return new Response('ok');
+    });
+    const [first, second] = await Promise.all([
+      worker.fetch(new Request('https://app.example/a')),
+      worker.fetch(new Request('https://app.example/b'))
+    ]);
+    mocks.fetch.mockReset();
+    const nonceOf = (response: Response) =>
+      /'nonce-([^']+)'/.exec(
+        response.headers.get('content-security-policy-report-only') ?? ''
+      )?.[1];
+    expect(nonceOf(first)).toBeTruthy();
+    expect(nonceOf(first)).not.toBe(nonceOf(second));
+    expect(new Set(contexts)).toEqual(new Set([nonceOf(first), nonceOf(second)]));
+  });
   it('runs independent server-only sweeps inside waitUntil', async () => {
     const waitUntil = vi.fn<(promise: Promise<unknown>) => void>();
     worker.scheduled({}, {}, { waitUntil });

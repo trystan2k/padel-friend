@@ -1,4 +1,12 @@
+import { createClient } from '@supabase/supabase-js';
 import { describe, expect, it } from 'vitest';
+import {
+  addInvitedPlayer,
+  CLAIM_PROFILE,
+  claimScenario,
+  recoverySession,
+  sessionClient
+} from './helpers/provisional-claim-fixtures';
 import { assertLocalSupabaseEnvInCi, localSupabaseEnv } from './helpers/local-supabase-env';
 import {
   ensureProvisionalMembership,
@@ -275,6 +283,162 @@ describe('provisional actor authorization', () => {
           expect.objectContaining({ user_id: provisional.id, is_provisional: true })
         ])
       );
+    }
+  );
+
+  it.skipIf(!environment.env)(
+    'isolates all creation options, including own rating defaults, from provisional actors',
+    async () => {
+      const { provisional, regular, organizer, communityId } = await scenario();
+      for (const p_community_id of [undefined, communityId]) {
+        const restricted = await provisional.client.rpc('get_match_creation_options', {
+          p_community_id
+        });
+        expect(restricted.error).toBeNull();
+        expect(restricted.data).toEqual({
+          communities: [],
+          level_defaults: null,
+          saved_venues: []
+        });
+        for (const [actor, level] of [
+          [regular, 3.5],
+          [organizer, 4]
+        ] as const) {
+          const options = await actor.client.rpc('get_match_creation_options', { p_community_id });
+          expect(options.error).toBeNull();
+          expect(options.data).toMatchObject({
+            communities: [expect.objectContaining({ id: communityId })],
+            level_defaults: { min: level - 0.5, max: level + 1.5, level },
+            saved_venues: []
+          });
+        }
+      }
+    }
+  );
+
+  it.skipIf(!environment.env)(
+    'denies amendment reader rights to provisional accepted participants',
+    async () => {
+      const { provisional, regular, organizer, eventId } = await scenario();
+      const args = {
+        p_match_event_id: eventId,
+        p_proposal_id: crypto.randomUUID(),
+        p_base_version: 1
+      };
+      for (const [actor, allowed] of [
+        [provisional, false],
+        [regular, true],
+        [organizer, true]
+      ] as const) {
+        const result = await actor.client.rpc('result_amendment_reader', args);
+        expect({ data: result.data, error: result.error }).toEqual({ data: allowed, error: null });
+      }
+    }
+  );
+
+  it.skipIf(!environment.env)(
+    'denies dispute reader rights to provisional accepted participants',
+    async () => {
+      const { provisional, regular, organizer, eventId } = await scenario();
+      for (const [actor, allowed] of [
+        [provisional, false],
+        [regular, true],
+        [organizer, true]
+      ] as const) {
+        const result = await actor.client.rpc('result_dispute_event_reader', {
+          p_match_event_id: eventId
+        });
+        expect({ data: result.data, error: result.error }).toEqual({ data: allowed, error: null });
+      }
+    }
+  );
+
+  it.skipIf(!environment.env)(
+    'keeps revoked pre-claim JWTs isolated while the live claimed session reads normally',
+    async () => {
+      const env = environment.env!;
+      const world = await claimScenario(env, 'reader-revoke');
+      const player = await addInvitedPlayer(world, {
+        displayName: 'Reader Rae',
+        level: 3.5,
+        label: 'reader-revoke'
+      });
+      const signup = await createClient(env.url, env.key, {
+        auth: { persistSession: false, autoRefreshToken: false }
+      }).auth.signUp({ email: player.email, password: 'Password123!' });
+      expect(signup.error).toBeNull();
+      expect(signup.data.session).not.toBeNull();
+      const stale = sessionClient(env, signup.data.session!);
+      const recovered = await recoverySession(env, player.email);
+      const live = sessionClient(env, recovered.session);
+      expect((await live.rpc('claim_provisional_player', CLAIM_PROFILE)).error).toBeNull();
+
+      // Claim removes other auth.sessions; stale clients still carry genuine unexpired JWTs.
+      const sessions = await queryTrustedSql(
+        'select count(*)::int as count from auth.sessions where user_id = $1',
+        { values: [player.id] }
+      );
+      expect(sessions.rows).toEqual([{ count: 1 }]);
+      expect((await stale.rpc('is_provisional_actor')).data).toBe(true);
+      expect((await live.rpc('is_provisional_actor')).data).toBe(false);
+      // Platform-admin identity must not bypass the revoked pre-claim session guard.
+      await queryTrustedSql('insert into public.platform_admins(user_id) values ($1)', {
+        values: [player.id]
+      });
+      try {
+        for (const [client, allowed] of [
+          [stale, false],
+          [live, true]
+        ] as const) {
+          for (const p_community_id of [world.communityId]) {
+            const diagnostics = await client.rpc('result_repair_diagnostics_reader', {
+              p_community_id
+            });
+            expect({ data: diagnostics.data, error: diagnostics.error }).toEqual({
+              data: allowed,
+              error: null
+            });
+          }
+        }
+      } finally {
+        await queryTrustedSql('delete from public.platform_admins where user_id = $1', {
+          values: [player.id]
+        });
+      }
+      for (const [client, allowed] of [
+        [stale, false],
+        [live, true]
+      ] as const) {
+        const options = await client.rpc('get_match_creation_options', {
+          p_community_id: world.communityId
+        });
+        expect(options.error).toBeNull();
+        const liveOptions = expect.objectContaining({
+          communities: [expect.objectContaining({ id: world.communityId })],
+          level_defaults: { min: 3.7, max: 5.7, level: 4.2 }
+        });
+        expect(options.data).toEqual(
+          allowed ? liveOptions : { communities: [], level_defaults: null, saved_venues: [] }
+        );
+        for (const result of [
+          await client.rpc('result_amendment_reader', {
+            p_match_event_id: world.eventId,
+            p_proposal_id: crypto.randomUUID(),
+            p_base_version: 1
+          }),
+          await client.rpc('result_dispute_event_reader', { p_match_event_id: world.eventId }),
+          await client.rpc('can_read_match_event', { p_event_id: world.eventId })
+        ]) {
+          expect({ data: result.data, error: result.error }).toEqual({
+            data: allowed,
+            error: null
+          });
+        }
+        const event = await client.rpc('get_match_event', { p_event_id: world.eventId });
+        expect(event.error).toBeNull();
+        const liveEvent = expect.objectContaining({ event_id: world.eventId });
+        expect(event.data).toEqual(allowed ? liveEvent : null);
+      }
     }
   );
 

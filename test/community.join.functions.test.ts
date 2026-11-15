@@ -129,8 +129,8 @@ describe('community join server functions', () => {
   it('preserves unknown database errors and rejects absent results', async () => {
     const unknown = { code: '23505', message: 'unrelated unique violation' };
     mocks.getServerClient.mockReturnValue(client(true, 'active', unknown));
-    await expect(joinCommunity({ data: { community_id: id } })).rejects.toBe(unknown);
-    await expect(acceptInvitation({ data: { token } })).rejects.toBe(unknown);
+    await expect(joinCommunity({ data: { community_id: id } })).rejects.toThrow('REQUEST_CONFLICT');
+    await expect(acceptInvitation({ data: { token } })).rejects.toThrow('REQUEST_CONFLICT');
     const empty = client();
     empty.single.mockResolvedValue({ data: null, error: null });
     mocks.getServerClient.mockReturnValue(empty);

@@ -1,4 +1,4 @@
-import { beforeAll, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
 import { decodeLeagueDetail, decodeLeagueDto } from '../src/features/leagues/league-decoders';
 import { localSupabaseEnv } from './helpers/local-supabase-env';
 import {
@@ -75,7 +75,7 @@ describe('League lifecycle', { timeout: 300_000 }, () => {
     expect(result.error).toBeNull();
   };
 
-  beforeAll(async () => {
+  beforeEach(async () => {
     if (!environment.env) return;
     world = await leagueWorld(environment.env, 'lifecycle');
   });

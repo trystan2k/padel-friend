@@ -5,10 +5,8 @@ import {
   pushPayload,
   pushRetrySeconds
 } from '../src/features/notifications/push-delivery';
-import {
-  createPushTransport,
-  validatePushEndpoint
-} from '../src/features/notifications/push-transport.server';
+import { createPushTransport } from '../src/features/notifications/push-transport.server';
+import { validatePushEndpoint } from '../src/features/notifications/push-endpoint';
 import { readPushKeyring } from '../src/features/notifications/push-keyring.server';
 
 const id = 'f74b5d16-a581-4b51-b006-805cddca5abe';

@@ -37,6 +37,11 @@ port = 55427
 inspector_port = 55483
 
 [auth]
+# Must match src/features/auth/password-policy.ts (PASSWORD_MIN_LENGTH + composition rules).
+minimum_password_length = 10
+password_requirements = "lower_upper_letters_digits_symbols"
+# Defense in depth: no anonymous sign-ins (src/features/auth/auth.server.ts also rejects them).
+enable_anonymous_sign_ins = false
 site_url = "http://127.0.0.1:3000"
 additional_redirect_urls = [
   "http://127.0.0.1:3000/auth/callback",
@@ -46,6 +51,13 @@ additional_redirect_urls = [
   "http://localhost:3000/**",
   "http://127.0.0.1:4173/**"
 ]
+
+[auth.captcha]
+# TEST stack bypass: captcha stays disabled so suites sign up/in without Cloudflare keys. The
+# client renders no widget either, because VITE_TURNSTILE_SITE_KEY is unset in test env files.
+enabled = false
+provider = "turnstile"
+secret = "env(SUPABASE_AUTH_CAPTCHA_SECRET)"
 
 [auth.email]
 # Local only: makes the starter auth/notes example immediately testable.

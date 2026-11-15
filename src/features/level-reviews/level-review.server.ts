@@ -39,6 +39,7 @@ async function run<T>(
   decode: (value: unknown) => T
 ): Promise<T> {
   const { data, error } = await call;
+  // guard-allow: dynamic-error — closed LevelReviewErrorCode union
   if (error) throw new Error(levelReviewErrorFromDatabase(error));
   try {
     return decode(data);

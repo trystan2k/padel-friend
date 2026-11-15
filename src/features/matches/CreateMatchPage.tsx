@@ -538,7 +538,8 @@ export function CreateMatchPage() {
         MATCH_NOT_MEMBER: 'notMember',
         MATCH_SAVED_VENUE_UNAVAILABLE: 'savedVenueUnavailable',
         MATCH_INVITEE_UNAVAILABLE: 'inviteeUnavailable',
-        MATCH_PHOTO_UNAVAILABLE: 'photoUnauthorized'
+        MATCH_PHOTO_UNAVAILABLE: 'photoUnauthorized',
+        MATCH_EVENT_CREATE_RATE_LIMITED: 'rateLimited'
       };
       setError(isTransportFailure(cause) ? 'unconfirmed' : (mapped[code] ?? 'publishFailed'));
     } finally {

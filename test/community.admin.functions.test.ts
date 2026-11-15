@@ -29,6 +29,10 @@ import {
   promoteCommunityMember,
   demoteCommunityMember,
   issueInvitation,
+  addCommunityVenue,
+  editCommunityVenue,
+  archiveCommunityVenue,
+  revokeInvitation,
   listMyAdminCommunities,
   searchCommunityMembers,
   getCommunityAdminContext
@@ -321,8 +325,8 @@ describe('admin function boundary', () => {
     );
     const readFailure = { code: 'XX000', message: 'database unavailable' };
     client.rpc.mockResolvedValueOnce({ data: null, error: readFailure });
-    await expect(getCommunityMemberById({ data: { community_id, membership_id } })).rejects.toBe(
-      readFailure
+    await expect(getCommunityMemberById({ data: { community_id, membership_id } })).rejects.toThrow(
+      'OPERATION_FAILED'
     );
   });
 
@@ -376,8 +380,8 @@ describe('admin function boundary', () => {
     }
     const unexpected = { code: '23514', message: 'Different check' };
     mockClient(unexpected);
-    await expect(approveCommunityMember({ data: { community_id, membership_id } })).rejects.toBe(
-      unexpected
+    await expect(approveCommunityMember({ data: { community_id, membership_id } })).rejects.toThrow(
+      'REQUEST_INVALID'
     );
   });
   it.each(['40P01', '40001'])(
@@ -397,49 +401,108 @@ describe('admin function boundary', () => {
     const unknown = { code: 'XX000', message: 'unmapped failure' };
     for (const fn of functions) {
       const { rpc } = mockClient(unknown);
-      await expect(fn({ data: { community_id, membership_id } })).rejects.toBe(unknown);
+      await expect(fn({ data: { community_id, membership_id } })).rejects.toThrow(
+        'OPERATION_FAILED'
+      );
       expect(rpc).toHaveBeenCalledTimes(1);
     }
   });
-  it('maps invitation RLS denial only and preserves infrastructure 42501 errors', async () => {
-    const attemptIssue = async (writeError: { code: string; message: string }) => {
-      const invitationQuery = {
-        select: () => invitationQuery,
-        single: async () => ({ data: null, error: writeError })
-      };
-      const pendingQuery = {
-        select: () => pendingQuery,
-        eq: () => pendingQuery,
-        is: () => pendingQuery,
-        limit: () => Promise.resolve({ data: [], error: null })
-      };
-      const communityQuery = {
-        select: () => communityQuery,
-        eq: () => communityQuery,
-        single: async () => ({ data: { visibility: 'private' }, error: null })
-      };
-      const client = {
+  it('issues invitations through the RPC and maps its typed codes without direct writes', async () => {
+    const attemptIssue = async (error: { code: string; message: string } | null) => {
+      const single = async () => ({
+        data: error ? null : { invitation_id: 'inv-1', token: 'raw-token', expires_at: 'later' },
+        error
+      });
+      const rpc = vi.fn<(name: string, args: object) => { single: typeof single }>(() => ({
+        single
+      }));
+      const from = vi.fn<() => never>();
+      mocks.client.mockReturnValue({
         auth: {
           getClaims: async () => ({ data: { claims: { sub: membership_id } }, error: null })
         },
-        rpc: async () => ({ data: true, error: null }),
-        from: (table: string) => {
-          if (table === 'communities') return communityQuery;
-          if (table === 'community_members') return pendingQuery;
-          return { insert: () => invitationQuery };
+        rpc,
+        from
+      });
+      const invitee_user_id = '33333333-3333-4333-8333-333333333333';
+      const result = await issueInvitation({ data: { community_id, invitee_user_id } }).finally(
+        () => {
+          expect(from).not.toHaveBeenCalled();
+          expect(rpc).toHaveBeenCalledExactlyOnceWith('issue_community_invitation', {
+            p_community_id: community_id,
+            p_invitee_user_id: invitee_user_id
+          });
         }
-      };
-      mocks.client.mockReturnValue(client);
-      return issueInvitation({ data: { community_id, invitee_user_id: membership_id } });
+      );
+      return result;
     };
-    await expect(
-      attemptIssue({
-        code: '42501',
-        message: 'new row violates row-level security policy for table "community_invitations"'
-      })
-    ).rejects.toThrow('NOT_COMMUNITY_ADMIN');
+    await expect(attemptIssue(null)).resolves.toEqual({
+      invitation_id: 'inv-1',
+      token: 'raw-token',
+      expires_at: 'later'
+    });
+    for (const code of [
+      'NOT_COMMUNITY_ADMIN',
+      'COMMUNITY_NOT_ELIGIBLE',
+      'ALREADY_MEMBER_OR_PENDING',
+      'INVITATION_ALREADY_OPEN',
+      'INVITEE_NOT_FOUND'
+    ])
+      await expect(attemptIssue({ code: 'P0001', message: code })).rejects.toThrow(code);
     const infrastructureError = { code: '42501', message: 'permission denied for relation' };
-    await expect(attemptIssue(infrastructureError)).rejects.toBe(infrastructureError);
+    await expect(attemptIssue(infrastructureError)).rejects.toThrow('FORBIDDEN');
+    const lookalike = { code: 'P0001', message: 'NOT_COMMUNITY_ADMIN: details' };
+    await expect(attemptIssue(lookalike)).rejects.toThrow('OPERATION_FAILED');
+  });
+  it('routes venue and invitation writes through RPCs only', async () => {
+    const venue_id = '44444444-4444-4444-8444-444444444444';
+    const single = vi
+      .fn<
+        () => Promise<{
+          data: { id: string } | null;
+          error: { code: string; message: string } | null;
+        }>
+      >()
+      .mockResolvedValue({ data: { id: venue_id }, error: null });
+    const rpc = vi.fn<(name: string, args: object) => { single: typeof single }>(() => ({
+      single
+    }));
+    const from = vi.fn<() => never>();
+    mocks.client.mockReturnValue({
+      auth: { getClaims: async () => ({ data: { claims: { sub: membership_id } }, error: null }) },
+      rpc,
+      from
+    });
+    await addCommunityVenue({
+      data: { community_id, name: 'Court', maps_url: 'https://x.test/c' }
+    });
+    await editCommunityVenue({ data: { community_id, venue_id, name: 'Court 2', address: null } });
+    await archiveCommunityVenue({ data: { community_id, venue_id } });
+    await revokeInvitation({ data: { community_id, invitation_id: venue_id } });
+    expect(rpc.mock.calls).toEqual([
+      [
+        'add_community_venue',
+        { p_community_id: community_id, p_name: 'Court', p_maps_url: 'https://x.test/c' }
+      ],
+      [
+        'edit_community_venue',
+        {
+          p_community_id: community_id,
+          p_venue_id: venue_id,
+          p_changes: { name: 'Court 2', address: null }
+        }
+      ],
+      ['archive_community_venue', { p_community_id: community_id, p_venue_id: venue_id }],
+      ['revoke_community_invitation', { p_community_id: community_id, p_invitation_id: venue_id }]
+    ]);
+    expect(from).not.toHaveBeenCalled();
+    single.mockResolvedValueOnce({
+      data: null,
+      error: { code: 'P0001', message: 'COMMUNITY_VENUE_NOT_FOUND' }
+    });
+    await expect(archiveCommunityVenue({ data: { community_id, venue_id } })).rejects.toThrow(
+      'COMMUNITY_VENUE_NOT_FOUND'
+    );
   });
   it('rejects malformed member search and never exposes unvalidated SQL input', async () => {
     for (const query of ['\u0000', '\uD800', 'x'.repeat(81)])

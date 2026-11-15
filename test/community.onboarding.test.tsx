@@ -103,6 +103,24 @@ afterEach(() => {
 });
 
 describe('community onboarding', () => {
+  it.each([
+    [
+      'COMMUNITY_CREATE_RATE_LIMITED',
+      'You have created too many communities recently. Try again later.'
+    ],
+    [
+      'COMMUNITY_OWNED_LIMIT_REACHED',
+      'You have reached the maximum number of communities you can own.'
+    ]
+  ])('localizes %s without showing the database code', async (code, copy) => {
+    mocks.create.mockRejectedValue(new Error(code));
+    mount('create');
+    await userEvent.type(screen.getByRole('textbox', { name: 'COMMUNITY NAME' }), 'Northside');
+    await userEvent.click(screen.getByRole('button', { name: 'CREATE COMMUNITY' }));
+    expect((await screen.findByRole('alert')).textContent).toBe(copy);
+    expect(screen.queryByText(code)).toBeNull();
+  });
+
   it('rejects offline join at invocation and never replays on reconnect', async () => {
     mount();
     Object.defineProperty(navigator, 'onLine', { configurable: true, value: false });

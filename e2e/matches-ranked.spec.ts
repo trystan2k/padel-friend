@@ -479,6 +479,9 @@ test('provisional player joins a Ranked event, is carried on League change and k
   try {
     const player = await context.newPage();
     await player.goto(link);
+    await expect(player).toHaveURL(/\/auth\/confirm-invite$/);
+    await waitForHydratedPage(player);
+    await player.getByRole('button', { name: en.auth.inviteConfirm, exact: true }).click();
     await expect(player).toHaveURL(/\/onboarding\?next=/);
     await waitForHydratedPage(player);
     await player.getByLabel(en.onboarding.name).fill('Carla Reclamada');

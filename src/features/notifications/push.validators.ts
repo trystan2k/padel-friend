@@ -1,3 +1,5 @@
+import { validatePushEndpoint } from './push-endpoint';
+
 export const pushLocales = ['en', 'pt-BR', 'es'] as const;
 export type PushLocale = (typeof pushLocales)[number];
 export const clientRetireReasons = [
@@ -18,7 +20,7 @@ export type PushSubscriptionInput = {
 const base64Url = (length: number) => new RegExp(`^[A-Za-z0-9_-]{${length}}$`);
 const p256dhPattern = base64Url(87);
 const authPattern = base64Url(22);
-const endpointPattern = /^https:\/\/[^/@\s]+(\/\S*)?$/;
+const endpointPattern = /^https:\/\/(?:[^/@\s]+(?:\/\S*)?|[^/?@\s]+\?\S*)$/;
 
 function object(value: unknown, keys: string[]): Record<string, unknown> {
   if (
@@ -60,8 +62,10 @@ export function validateRegisterPushSubscription(value: unknown) {
     (expiration !== null && (typeof expiration !== 'number' || !Number.isSafeInteger(expiration)))
   )
     throw new Error('INVALID_PUSH_INPUT');
+  const endpoint = parseEndpoint(raw.endpoint);
+  validatePushEndpoint(endpoint);
   const subscription: PushSubscriptionInput = {
-    endpoint: parseEndpoint(raw.endpoint),
+    endpoint,
     keys: { p256dh, auth },
     expirationTime: expiration
   };

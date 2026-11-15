@@ -358,17 +358,17 @@ describe('community server functions', () => {
       mocks.getServerClient.mockReturnValue(client(true, null, error));
       await expect(
         updateCommunitySettings({ data: { community_id: id, name: 'Updated' } })
-      ).rejects.toBe(error);
+      ).rejects.toThrow(error.code === '42501' ? 'FORBIDDEN' : 'REQUEST_INVALID');
     }
   });
 
   it('propagates database failures without disguising them as authorization errors', async () => {
     const error = new Error('database unavailable');
     mocks.getServerClient.mockReturnValue(client(true, null, error));
-    await expect(createCommunity({ data: createInput })).rejects.toBe(error);
+    await expect(createCommunity({ data: createInput })).rejects.toThrow('OPERATION_FAILED');
     await expect(
       updateCommunitySettings({ data: { community_id: id, name: 'Other' } })
-    ).rejects.toBe(error);
+    ).rejects.toThrow('OPERATION_FAILED');
   });
 
   it('reads settings with validated args, claims, no-store and member error mapping', async () => {

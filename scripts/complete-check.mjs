@@ -34,6 +34,7 @@ const stages = [
   { name: 'typecheck', command: 'pnpm typecheck' },
   { name: 'lint', command: 'pnpm lint' },
   { name: 'format:check', command: 'pnpm format:check' },
+  { name: 'check:server-errors', command: 'pnpm check:server-errors' },
   { name: 'test:unit', command: UNIT_COVERAGE },
   { name: 'db:reset', command: 'pnpm db:reset' },
   // db:types:check requires the live latest schema, so it runs right after the gate's reset.
@@ -46,7 +47,7 @@ const stages = [
 const stageGroups = {
   // db:types:check requires live local Supabase; exclude it from the service-free pre-commit
   // group while retaining it in the full gate and CI integration job.
-  static: ['build', 'knip', 'typecheck', 'lint', 'format:check'],
+  static: ['build', 'knip', 'typecheck', 'lint', 'format:check', 'check:server-errors'],
   test: ['test:unit', 'db:reset', 'test:integration'],
   e2e: ['db:reset:e2e', 'test:e2e']
 };

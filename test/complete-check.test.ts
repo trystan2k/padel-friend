@@ -15,7 +15,7 @@ import { SERIAL_SPECS, gateLanes } from '../scripts/e2e-shards.mjs';
 
 const repoRoot = process.cwd();
 const UNIT = 'exec vitest run --config vitest.unit.config.ts --coverage';
-const STATIC = ['build', 'knip', 'typecheck', 'lint', 'format:check'];
+const STATIC = ['build', 'knip', 'typecheck', 'lint', 'format:check', 'check:server-errors'];
 const lanes = gateLanes();
 // Free the port once, then the main sweep and the serial specs as separate Playwright invocations.
 const E2E_AFTER_RESET = [
@@ -32,7 +32,7 @@ const allCommands = [
   'db:reset',
   ...E2E_AFTER_RESET
 ];
-const allStageCount = 11;
+const allStageCount = 12;
 const PLAYWRIGHT = E2E_AFTER_RESET[2];
 
 function runCompleteCheck(
@@ -183,7 +183,7 @@ const selectionCases: Array<{
     label: 'static checks',
     args: ['--only=static'],
     expected: STATIC,
-    stageCount: 5,
+    stageCount: 6,
     successMessage: '[complete-check] all selected stages passed'
   },
   {
@@ -197,7 +197,7 @@ const selectionCases: Array<{
     label: 'comma-separated groups',
     args: ['--only=static,test'],
     expected: [...STATIC, UNIT, 'db:reset', 'test:integration'],
-    stageCount: 8,
+    stageCount: 9,
     successMessage: '[complete-check] all selected stages passed'
   },
   {

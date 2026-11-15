@@ -5,6 +5,8 @@ import { useTranslation } from 'react-i18next';
 import { Button } from '../../components/ui/Button';
 import { TextField } from '../../components/ui/TextField';
 import { TextLink } from '../../components/ui/TextLink';
+import { TurnstileWidget } from '../../components/ui/TurnstileWidget';
+import { useCaptcha } from '../../lib/captcha';
 import { getBrowserClient } from '../../lib/supabase/client';
 import { useHydrated } from '../../lib/use-hydrated';
 import { styles } from './forgot-password.styles';
@@ -25,6 +27,21 @@ function isRetryableFailure(error: unknown): boolean {
   );
 }
 
+function isCaptchaRejection(error: unknown): boolean {
+  return (
+    typeof error === 'object' &&
+    error !== null &&
+    'code' in error &&
+    error.code === 'captcha_failed'
+  );
+}
+
+// A server rejection already reset the widget: ask for a new check, not a page reload.
+function captchaMessageKey(rejected: boolean, failedToLoad: boolean) {
+  if (rejected) return 'auth.captchaRetry';
+  return failedToLoad ? 'auth.captchaError' : 'auth.captchaRequired';
+}
+
 export function ForgotPassword({ next: returnPath }: ForgotPasswordProps) {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -33,6 +50,9 @@ export function ForgotPassword({ next: returnPath }: ForgotPasswordProps) {
   const [busy, setBusy] = useState(false);
   const [emailInvalid, setEmailInvalid] = useState(false);
   const [requestFailed, setRequestFailed] = useState(false);
+  const [captchaMissing, setCaptchaMissing] = useState(false);
+  const [captchaRejected, setCaptchaRejected] = useState(false);
+  const captcha = useCaptcha();
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -44,7 +64,14 @@ export function ForgotPassword({ next: returnPath }: ForgotPasswordProps) {
       return;
     }
 
+    if (captcha.enabled && !captcha.token) {
+      setCaptchaMissing(true);
+      return;
+    }
+
     setBusy(true);
+    setCaptchaMissing(false);
+    setCaptchaRejected(false);
     setEmailInvalid(false);
     setRequestFailed(false);
     try {
@@ -53,13 +80,29 @@ export function ForgotPassword({ next: returnPath }: ForgotPasswordProps) {
         '/auth/callback?next=/reset-password',
         window.location.origin
       ).toString();
-      const { error } = await getBrowserClient().auth.resetPasswordForEmail(email, { redirectTo });
+      const { error } = await getBrowserClient().auth.resetPasswordForEmail(email, {
+        redirectTo,
+        ...captcha.authOptions
+      });
+      captcha.reset();
+      // No email was sent: stay on the form. Same error whatever the account state.
+      if (isCaptchaRejection(error)) {
+        setCaptchaRejected(true);
+        setBusy(false);
+        return;
+      }
       if (error && isRetryableFailure(error)) {
         setRequestFailed(true);
         setBusy(false);
         return;
       }
     } catch (error) {
+      captcha.reset();
+      if (isCaptchaRejection(error)) {
+        setCaptchaRejected(true);
+        setBusy(false);
+        return;
+      }
       if (isRetryableFailure(error)) {
         setRequestFailed(true);
         setBusy(false);
@@ -95,6 +138,12 @@ export function ForgotPassword({ next: returnPath }: ForgotPasswordProps) {
           onChange={() => setEmailInvalid(false)}
         />
         <p {...stylex.props(styles.note)}>{t('auth.forgotEmailNote')}</p>
+        <TurnstileWidget {...captcha.widgetProps} />
+        {(captchaMissing || captchaRejected) && (
+          <p role="alert" {...stylex.props(styles.error)}>
+            {t(captchaMessageKey(captchaRejected, captcha.failed))}
+          </p>
+        )}
         <Button type="submit" size="large" disabled={!ready} busy={busy}>
           {t('auth.forgotSubmit')}
         </Button>

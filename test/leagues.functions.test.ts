@@ -177,6 +177,8 @@ describe('League server functions', () => {
   });
 
   it('surfaces stable codes and never raw database text', async () => {
+    rpc.mockResolvedValueOnce({ data: null, error: { message: 'LEAGUE_CREATE_RATE_LIMITED' } });
+    await expect(createLeague({ data: creation })).rejects.toThrow('LEAGUE_CREATE_RATE_LIMITED');
     rpc.mockResolvedValueOnce({ data: null, error: { message: 'LEAGUE_CREATION_DISABLED' } });
     await expect(createLeague({ data: creation })).rejects.toThrow('LEAGUE_CREATION_DISABLED');
     rpc.mockResolvedValueOnce({

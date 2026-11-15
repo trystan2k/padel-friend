@@ -16,10 +16,11 @@ jobs:
       tag: ${{ steps.release.outputs.tag_name }}
       release_sha: ${{ steps.identity.outputs.release_sha }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
+          persist-credentials: false
           ref: ${{ github.event.workflow_run.head_sha }}
-      - uses: googleapis/release-please-action@v4
+      - uses: googleapis/release-please-action@5c625bfb5d1ff62eadeeb3772007f7f66fdcf071 # v4.4.1
         id: release
         with:
           token: ${{ secrets.RELEASE_PLEASE_TOKEN }}
@@ -49,15 +50,16 @@ jobs:
       RELEASE_SHA: ${{ needs.release.outputs.release_sha }}
     steps:
       # GitHub production approval gates every step, including checkout.
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
+          persist-credentials: false
           ref: refs/tags/${{ needs.release.outputs.tag }}
       - name: Validate approved identity and freshness
         run: node scripts/production-release-guard.mjs verify
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v4.4.0
         with:
           version: 12.13.0
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: '26'
           cache: pnpm
@@ -76,6 +78,8 @@ jobs:
         env:
           VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}
           VITE_SUPABASE_PUBLISHABLE_KEY: ${{ vars.VITE_SUPABASE_PUBLISHABLE_KEY }}
+          # Optional public Turnstile site key (empty = captcha off); see INITIAL_SETUP.md §11.
+          VITE_TURNSTILE_SITE_KEY: ${{ vars.VITE_TURNSTILE_SITE_KEY }}
       - name: Apply approved pending production migrations
         id: migrations
         run: |

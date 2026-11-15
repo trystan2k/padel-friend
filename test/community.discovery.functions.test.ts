@@ -234,10 +234,12 @@ describe('public community discovery server functions', () => {
     }
   });
 
-  it('propagates list and detail database failures without mapping to absence', async () => {
+  it('maps list and detail database failures to a generic error without mapping to absence', async () => {
     const error = new Error('database unavailable');
     mocks.getServerClient.mockReturnValue(client(true, [], null, error));
-    await expect(listPublicCommunities({ data: {} })).rejects.toBe(error);
-    await expect(getPublicCommunity({ data: { community_id: id } })).rejects.toBe(error);
+    await expect(listPublicCommunities({ data: {} })).rejects.toThrow('OPERATION_FAILED');
+    await expect(getPublicCommunity({ data: { community_id: id } })).rejects.toThrow(
+      'OPERATION_FAILED'
+    );
   });
 });

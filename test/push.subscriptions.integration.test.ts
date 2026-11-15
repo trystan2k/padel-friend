@@ -9,6 +9,8 @@ import {
   queryTrustedSql
 } from './helpers/sql-transport';
 
+import { acceptedPushEndpoints, rejectedPushEndpoints } from './helpers/push-endpoint-corpus';
+
 const environment = localSupabaseEnv();
 type Env = NonNullable<typeof environment.env>;
 type Actor = { client: SupabaseClient; id: string };
@@ -83,6 +85,49 @@ describe.skipIf(!environment.env)('push subscription registry (real local Supaba
         `select user_id, retired_at, retired_reason, created_at from public.push_subscriptions where endpoint = ${literal(endpoint)}`
       )
     ).rows[0];
+
+  it('hides OpenAPI while ordinary REST and authenticated RPC remain usable', async () => {
+    const { url, key } = env();
+    const response = await fetch(`${url}/rest/v1/`, {
+      headers: { apikey: key, Authorization: `Bearer ${key}` }
+    });
+    expect(response.status).toBe(404);
+    expect(await response.text()).not.toMatch(/swagger|definitions|register_my_push_subscription/);
+    const owner = await actor('Push REST');
+    try {
+      const rest = await owner.client.from('player_profiles').select('user_id').limit(1);
+      expect(rest.error).toBeNull();
+    } finally {
+      await executeTrustedSql(
+        `${ratingEvidenceCleanupSql(`${literal(owner.id)}::uuid`)} delete from auth.users where id = ${literal(owner.id)}::uuid`
+      );
+    }
+  });
+
+  it('mirrors the shared endpoint corpus at direct RPC registration', async () => {
+    const owner = await actor('Push Endpoint Corpus');
+    try {
+      for (const endpoint of rejectedPushEndpoints) {
+        const result = await register(owner.client, endpoint);
+        // NUL is rejected by PostgreSQL text decoding before the RPC.
+        expect(result.error).not.toBeNull();
+        expect(message(result.error)).toBe(
+          endpoint.includes('\u0000')
+            ? 'unsupported Unicode escape sequence'
+            : 'PUSH_INVALID_ENDPOINT'
+        );
+      }
+      expect(await devices(owner.client)).toEqual([]);
+      for (const endpoint of acceptedPushEndpoints) {
+        expect((await register(owner.client, endpoint)).error).toBeNull();
+      }
+      expect(await devices(owner.client)).toHaveLength(acceptedPushEndpoints.length);
+    } finally {
+      await executeTrustedSql(
+        `${ratingEvidenceCleanupSql(`${literal(owner.id)}::uuid`)} delete from auth.users where id = ${literal(owner.id)}::uuid`
+      );
+    }
+  }, 60000);
 
   it('keeps two devices of one user side by side and retires exactly one', async () => {
     const owner = await actor('Push Owner');

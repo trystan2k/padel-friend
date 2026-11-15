@@ -1,4 +1,6 @@
 import { createServerFn } from '@tanstack/react-start';
+import { toClientError } from '../../lib/client-error.server';
+import { isCommunityRpcErrorCode } from '../../lib/client-error-codes';
 import { requireAuthenticatedClient } from '../auth/auth.server';
 import { signVenuePhoto } from './community-venue-photo.server';
 import type { CommunityMemberSearchResult } from './community-admin.types';
@@ -32,10 +34,12 @@ const governanceErrors: Record<string, string> = {
   PG005: 'ALREADY_MEMBER_OR_PENDING'
 };
 function throwGovernanceError(error: { code: string; message?: string }): never {
+  if (isCommunityRpcErrorCode(error.message)) throw toClientError(error);
+  // guard-allow: dynamic-error — value of a fixed lookup table of literal codes
   if (Object.hasOwn(governanceErrors, error.code)) throw new Error(governanceErrors[error.code]);
   if (error.code === '23505' && error.message?.includes('community_members_open'))
     throw new Error('ALREADY_MEMBER_OR_PENDING');
-  throw error;
+  throw toClientError(error);
 }
 type MemberAction = 'approve' | 'deny' | 'remove' | 'reactivate' | 'promote' | 'demote';
 
@@ -86,7 +90,7 @@ export const listMyAdminCommunities = createServerFn({ method: 'GET' }).handler(
     .eq('status', 'active')
     .is('valid_until', null)
     .lte('valid_from', new Date().toISOString());
-  if (error) throw error;
+  if (error) throw toClientError(error);
   const ids = (memberships ?? []).map(({ community_id }) => community_id);
   if (!ids.length) return [];
   const { data: communities, error: communityError } = await client
@@ -94,7 +98,7 @@ export const listMyAdminCommunities = createServerFn({ method: 'GET' }).handler(
     .select('id,name')
     .in('id', ids)
     .order('name');
-  if (communityError) throw communityError;
+  if (communityError) throw toClientError(communityError);
   return communities ?? [];
 });
 
@@ -115,7 +119,7 @@ export const getCommunityAdminContext = createServerFn({ method: 'GET' })
       .select('id,name,city_label,description,visibility,join_policy')
       .eq('id', data.community_id)
       .single();
-    if (error) throw error;
+    if (error) throw toClientError(error);
     return community;
   });
 
@@ -126,7 +130,7 @@ export const getCommunityAdminDefaults = createServerFn({ method: 'GET' })
     const { data: rows, error } = await client.rpc('get_community_settings', {
       p_community_id: data.community_id
     });
-    if (error) throw error;
+    if (error) throw toClientError(error);
     const stored: unknown = rows?.[0]?.settings;
     if (stored === null || stored === undefined) return DEFAULT_COMMUNITY_ADMIN_DEFAULTS;
     if (typeof stored !== 'object' || Array.isArray(stored))
@@ -145,7 +149,7 @@ export const updateCommunityAdminDefaults = createServerFn({ method: 'POST' })
       p_community_id: data.community_id,
       p_defaults: data.defaults
     });
-    if (error) throw error;
+    if (error) throw toClientError(error);
     return parseCommunityAdminDefaults(result);
   });
 
@@ -189,7 +193,7 @@ export const listCommunityAudit = createServerFn({ method: 'GET' })
       .order('occurred_at', { ascending: false })
       .order('id', { ascending: false })
       .range(data.offset, data.offset + data.limit - 1);
-    if (error) throw error;
+    if (error) throw toClientError(error);
     return rows ?? [];
   });
 
@@ -207,7 +211,7 @@ export const listCommunityVenues = createServerFn({ method: 'GET' })
       .order('name')
       .order('id')
       .range(data.offset, data.offset + data.limit - 1);
-    if (error) throw error;
+    if (error) throw toClientError(error);
     return Promise.all(
       (rows ?? []).map(async (row) => ({
         id: row.id,
@@ -226,116 +230,76 @@ export const listCommunityVenues = createServerFn({ method: 'GET' })
 export const addCommunityVenue = createServerFn({ method: 'POST' })
   .validator(validateVenue)
   .handler(async ({ data }) => {
-    const client = await requireAdmin(data.community_id);
+    const { client } = await requireAuthenticatedClient();
     const { data: venue, error } = await client
-      .from('community_venues')
-      .insert(data)
-      .select(venueColumns)
+      .rpc('add_community_venue', {
+        p_community_id: data.community_id,
+        p_name: data.name,
+        p_address: data.address ?? undefined,
+        p_maps_url: data.maps_url ?? undefined
+      })
       .single();
-    if (error) throw error;
+    if (error) throwGovernanceError(error);
     return venue;
   });
 export const editCommunityVenue = createServerFn({ method: 'POST' })
   .validator(validateVenueEdit)
   .handler(async ({ data }) => {
-    const client = await requireAdmin(data.community_id);
+    const { client } = await requireAuthenticatedClient();
     const { community_id, venue_id, ...changes } = data;
     const { data: venue, error } = await client
-      .from('community_venues')
-      .update(changes)
-      .eq('community_id', community_id)
-      .eq('id', venue_id)
-      .is('archived_at', null)
-      .select(venueColumns)
-      .maybeSingle();
-    if (error) throw error;
-    if (!venue) throw new Error('COMMUNITY_VENUE_NOT_FOUND');
+      .rpc('edit_community_venue', {
+        p_community_id: community_id,
+        p_venue_id: venue_id,
+        p_changes: changes
+      })
+      .single();
+    if (error) throwGovernanceError(error);
     return venue;
   });
 export const archiveCommunityVenue = createServerFn({ method: 'POST' })
   .validator(validateVenueId)
   .handler(async ({ data }) => {
-    const client = await requireAdmin(data.community_id);
+    const { client } = await requireAuthenticatedClient();
     const { data: venue, error } = await client
-      .from('community_venues')
-      .update({ archived_at: new Date().toISOString() })
-      .eq('community_id', data.community_id)
-      .eq('id', data.venue_id)
-      .is('archived_at', null)
-      .select(venueColumns)
-      .maybeSingle();
-    if (error) throw error;
-    if (!venue) throw new Error('COMMUNITY_VENUE_NOT_FOUND');
+      .rpc('archive_community_venue', {
+        p_community_id: data.community_id,
+        p_venue_id: data.venue_id
+      })
+      .single();
+    if (error) throwGovernanceError(error);
     return venue;
   });
 
 export const issueInvitation = createServerFn({ method: 'POST' })
   .validator(validateInvitation)
   .handler(async ({ data }) => {
-    const client = await requireAdmin(data.community_id);
-    const { data: community, error: communityError } = await client
-      .from('communities')
-      .select('visibility')
-      .eq('id', data.community_id)
-      .single();
-    if (communityError) throw communityError;
-    if (community.visibility !== 'private') throw new Error('COMMUNITY_NOT_ELIGIBLE');
-    const { data: existing, error: memberError } = await client
-      .from('community_members')
-      .select('id')
-      .eq('community_id', data.community_id)
-      .eq('user_id', data.invitee_user_id)
-      .is('valid_until', null)
-      .limit(1);
-    if (memberError) throw memberError;
-    if (existing.length) throw new Error('ALREADY_MEMBER_OR_PENDING');
-    const token = Array.from(crypto.getRandomValues(new Uint8Array(32)), (byte) =>
-      byte.toString(16).padStart(2, '0')
-    ).join('');
-    const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(token));
-    const token_hash = Array.from(new Uint8Array(digest), (byte) =>
-      byte.toString(16).padStart(2, '0')
-    ).join('');
-    const expires_at = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+    const { client } = await requireAuthenticatedClient();
     const { data: invitation, error } = await client
-      .from('community_invitations')
-      .insert({ ...data, token_hash, expires_at })
-      .select('id,expires_at')
+      .rpc('issue_community_invitation', {
+        p_community_id: data.community_id,
+        p_invitee_user_id: data.invitee_user_id
+      })
       .single();
-    if (error) {
-      if (error.code === '23505' && error.message.includes('community_invitations_open'))
-        throw new Error('INVITATION_ALREADY_OPEN');
-      if (
-        error.code === '23503' &&
-        error.message.includes('community_invitations_invitee_user_id_fkey')
-      )
-        throw new Error('INVITEE_NOT_FOUND');
-      if (
-        error.code === '42501' &&
-        error.message.includes('row-level security policy') &&
-        error.message.includes('community_invitations')
-      )
-        throw new Error('NOT_COMMUNITY_ADMIN');
-      throw error;
-    }
+    if (error) throwGovernanceError(error);
     if (!invitation) throw new Error('INVITATION_ISSUE_FAILED');
-    return { invitation_id: invitation.id, token, expires_at: invitation.expires_at };
+    return {
+      invitation_id: invitation.invitation_id,
+      token: invitation.token,
+      expires_at: invitation.expires_at
+    };
   });
 
 export const revokeInvitation = createServerFn({ method: 'POST' })
   .validator(validateRevokeInvitation)
   .handler(async ({ data }) => {
-    const client = await requireAdmin(data.community_id);
+    const { client } = await requireAuthenticatedClient();
     const { data: invitation, error } = await client
-      .from('community_invitations')
-      .update({ revoked_at: new Date().toISOString() })
-      .eq('community_id', data.community_id)
-      .eq('id', data.invitation_id)
-      .is('revoked_at', null)
-      .is('redeemed_at', null)
-      .select('id,revoked_at')
-      .maybeSingle();
-    if (error) throw error;
-    if (!invitation) throw new Error('INVITATION_NOT_FOUND');
+      .rpc('revoke_community_invitation', {
+        p_community_id: data.community_id,
+        p_invitation_id: data.invitation_id
+      })
+      .single();
+    if (error) throwGovernanceError(error);
     return invitation;
   });

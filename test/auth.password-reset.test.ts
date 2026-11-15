@@ -129,6 +129,24 @@ describe('ForgotPassword', () => {
     expect(screen.queryByRole('alert')).toBeNull();
   });
 
+  it.each(['player@example.test', 'unknown@example.test'])(
+    'keeps captcha rejection on form without disclosure (%s)',
+    async (email) => {
+      supabaseBrowser.resetPasswordForEmail.mockResolvedValueOnce({
+        error: { code: 'captcha_failed', status: 400 }
+      });
+      const router = await renderAuthForm('/forgot-password');
+      await waitForEnabled('#forgot-email');
+      await userEvent.type(screen.getByLabelText(en.auth.emailAddress), email);
+      submitForm();
+      const alert = await screen.findByRole('alert');
+      expect(alert.textContent).toBe(en.auth.captchaRetry);
+      expect(alert.textContent).not.toMatch(/reload/i);
+      expect(router.state.location.pathname).toBe('/forgot-password');
+      expect(screen.getByLabelText<HTMLInputElement>(en.auth.emailAddress).disabled).toBe(false);
+    }
+  );
+
   it('rejects malformed email before calling Supabase and announces field feedback', async () => {
     const user = userEvent.setup();
     await renderAuthForm('/forgot-password');
@@ -173,7 +191,7 @@ describe('ForgotPassword', () => {
 });
 
 describe('ResetPassword', () => {
-  it('rejects passwords shorter than eight characters', async () => {
+  it('rejects passwords that miss the shared policy', async () => {
     const user = userEvent.setup();
     await renderAuthForm('/reset-password');
     await waitForEnabled('#reset-password');
@@ -181,7 +199,9 @@ describe('ResetPassword', () => {
     await user.type(screen.getByLabelText(en.auth.resetConfirmPasswordLabel), 'short12');
     submitForm();
 
-    expect((await screen.findByRole('alert')).textContent).toBe(en.auth.resetInvalid);
+    expect((await screen.findByRole('alert')).textContent).toBe(
+      en.auth.passwordInvalid.replace('{{min}}', '10')
+    );
     expect(supabaseBrowser.updateUser).not.toHaveBeenCalled();
   });
 
@@ -189,7 +209,7 @@ describe('ResetPassword', () => {
     const user = userEvent.setup();
     await renderAuthForm('/reset-password');
     await waitForEnabled('#reset-password');
-    await user.type(screen.getByLabelText(en.auth.resetNewPasswordLabel), 'Password123');
+    await user.type(screen.getByLabelText(en.auth.resetNewPasswordLabel), 'Password123!');
     await user.type(screen.getByLabelText(en.auth.resetConfirmPasswordLabel), 'short12');
     submitForm();
 
@@ -205,11 +225,11 @@ describe('ResetPassword', () => {
     supabaseBrowser.updateUser.mockResolvedValueOnce({ error: null });
     const router = await renderAuthForm('/reset-password');
     await waitForEnabled('#reset-password');
-    await user.type(screen.getByLabelText(en.auth.resetNewPasswordLabel), 'NewPassword123');
-    await user.type(screen.getByLabelText(en.auth.resetConfirmPasswordLabel), 'NewPassword123');
+    await user.type(screen.getByLabelText(en.auth.resetNewPasswordLabel), 'NewPassword123!');
+    await user.type(screen.getByLabelText(en.auth.resetConfirmPasswordLabel), 'NewPassword123!');
     submitForm();
 
     await waitFor(() => expect(router.state.location.pathname).toBe('/dashboard'));
-    expect(supabaseBrowser.updateUser).toHaveBeenCalledWith({ password: 'NewPassword123' });
+    expect(supabaseBrowser.updateUser).toHaveBeenCalledWith({ password: 'NewPassword123!' });
   });
 });

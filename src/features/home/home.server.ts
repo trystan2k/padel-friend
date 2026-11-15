@@ -1,3 +1,4 @@
+import { toClientError } from '../../lib/client-error.server';
 import { decodeLeagueList } from '../leagues/league-decoders';
 import { decodeLeagueStandings } from '../leagues/league-standings-decoders';
 import { decodeMatchRpcListRows } from '../matches/match-decoders';
@@ -55,8 +56,8 @@ function assertSession(error: ErrorLike): void {
 async function guard<T>(read: () => Promise<HomeSection<T>>): Promise<HomeSection<T>> {
   try {
     return await read();
-  } catch (cause) {
-    if (cause instanceof Error && cause.message === 'UNAUTHENTICATED') throw cause;
+  } catch (error) {
+    if (error instanceof Error && error.message === 'UNAUTHENTICATED') throw toClientError(error);
     return { status: 'error' };
   }
 }

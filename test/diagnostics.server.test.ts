@@ -178,17 +178,40 @@ describe('PRD §59 event matrix', () => {
     expect(lines(sink)[0]!['durationMs']).toBeTypeOf('number');
   });
 
-  it('records a thrown failure with its safe code and rethrows', async () => {
+  it('records a thrown failure with its safe code and rethrows the registry-mapped error', async () => {
     const error = vi.spyOn(console, 'error').mockImplementation(() => undefined);
     await expect(
       traceOperation('league.close', classifyCommandResult, async () => {
-        throw new Error('LEAGUE_STALE');
+        throw new Error('REQUEST_CONFLICT');
       })
-    ).rejects.toThrow('LEAGUE_STALE');
+    ).rejects.toThrow('REQUEST_CONFLICT');
     expect(lines(error)[0]).toMatchObject({
       event: 'league.close',
       outcome: 'failure',
-      code: 'LEAGUE_STALE'
+      code: 'REQUEST_CONFLICT'
     });
+  });
+
+  it('never lets a raw database error escape traceOperation to the client', async () => {
+    const error = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    const raw = Object.assign(new Error('duplicate key value violates "secret_idx"'), {
+      code: '23505',
+      details: 'Key (email)=(a@b.c) already exists.',
+      hint: 'internal hint'
+    });
+    const thrown: unknown = await traceOperation(
+      'league.close',
+      classifyCommandResult,
+      async () => {
+        throw raw;
+      }
+    ).catch((caught: unknown) => caught);
+    expect(thrown).not.toBe(raw);
+    expect(thrown).toBeInstanceOf(Error);
+    expect(thrown).toMatchObject({ message: 'REQUEST_CONFLICT' });
+    expect(Object.keys(Object(thrown))).toEqual([]);
+    expect(Reflect.get(Object(thrown), 'cause')).toBeUndefined();
+    expect(JSON.stringify(thrown)).not.toMatch(/secret_idx|details|hint|a@b\.c/);
+    expect(lines(error)[0]).toMatchObject({ event: 'league.close', outcome: 'failure' });
   });
 });

@@ -45,9 +45,27 @@ describe('notification server functions', () => {
     );
     const uncertain = { code: 'FETCH_ERROR', message: 'connection lost' };
     single.mockResolvedValue({ data: null, error: uncertain });
-    await expect(acceptMyNotificationInvitation({ data: { notificationId: id } })).rejects.toBe(
-      uncertain
+    await expect(acceptMyNotificationInvitation({ data: { notificationId: id } })).rejects.toThrow(
+      'OPERATION_FAILED'
     );
+  });
+  it('returns only a safe client error when mark_notification_read fails (L-1 leak)', async () => {
+    const leaked = {
+      code: '42501',
+      message: 'permission denied for table notifications',
+      details: 'Failing row contains (secret)',
+      hint: 'grant it'
+    };
+    mocks.client = { rpc: async () => ({ data: null, error: leaked }) };
+    const failure = await markNotificationRead({ data: { notificationId: id } }).catch(
+      (error: unknown) => error
+    );
+    expect(failure).toBeInstanceOf(Error);
+    expect(failure).toHaveProperty('message', 'FORBIDDEN');
+    expect(JSON.stringify(failure, Object.getOwnPropertyNames(failure))).not.toMatch(
+      /42501|details|hint|secret|permission denied|cause/
+    );
+    expect(failure).not.toHaveProperty('cause');
   });
   it('keeps category cursor queries ordered and unread counts whole-store', async () => {
     const databaseAsOf = '2026-10-16T12:34:56.000000+00:00';

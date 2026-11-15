@@ -1,5 +1,6 @@
 import { createServerFn } from '@tanstack/react-start';
-import { getRequestUrl } from '@tanstack/react-start/server';
+import { toClientError } from '../../lib/client-error.server';
+import { requireAppOrigin } from '../../lib/app-origin.server';
 import { getAdminClient } from '../../lib/supabase/admin.server';
 import { requireAuthenticatedClient } from '../auth/auth.server';
 import {
@@ -21,6 +22,12 @@ export const addMatchPlayer = createServerFn({ method: 'POST' })
       throw new Error('UNAUTHENTICATED');
     // Resolve the server-only admin client first: a missing secret fails before any write.
     const admin = getAdminClient();
+    let origin: string;
+    try {
+      origin = requireAppOrigin(process.env.APP_ORIGIN);
+    } catch (error) {
+      throw toClientError(error);
+    }
     const { data: result, error } = await client.rpc('add_match_player', {
       p_match_event_id: data.event_id,
       p_display_name: data.display_name,
@@ -39,7 +46,7 @@ export const addMatchPlayer = createServerFn({ method: 'POST' })
       actor_id: actorId,
       event_id: data.event_id,
       request_id: data.request_id,
-      origin: getRequestUrl().origin
+      origin
     });
     return ADD_MATCH_PLAYER_OK;
   });

@@ -211,6 +211,33 @@ describe('LoginWelcome', () => {
     expect(supabaseBrowser.signUp).not.toHaveBeenCalled();
   });
 
+  it('shows a non-blocking policy hint for a legacy password and still attempts sign-in', async () => {
+    const user = userEvent.setup();
+    supabaseBrowser.signInWithPassword.mockResolvedValueOnce({ error: null });
+    await renderWelcome({});
+
+    const hint = en.auth.passwordLegacyHint.replace('{{min}}', '10');
+    await user.type(screen.getByLabelText(en.auth.loginEmailLabel), 'player@test.local');
+    await user.type(screen.getByLabelText(en.auth.loginPasswordLabel), '123456');
+    expect(screen.getByText(hint)).toBeTruthy();
+    submitSignInForm();
+
+    await waitFor(() => expect(supabaseBrowser.signInWithPassword).toHaveBeenCalledTimes(1));
+    expect(supabaseBrowser.signInWithPassword).toHaveBeenCalledWith({
+      email: 'player@test.local',
+      password: '123456'
+    });
+  });
+
+  it('shows no policy hint for a compliant or empty password', async () => {
+    const user = userEvent.setup();
+    await renderWelcome({});
+
+    const hint = en.auth.passwordLegacyHint.replace('{{min}}', '10');
+    await user.type(screen.getByLabelText(en.auth.loginPasswordLabel), 'Password123!');
+    expect(screen.queryByText(hint)).toBeNull();
+  });
+
   it('shows the localized unauthorized alert and re-enables the form when sign-in fails', async () => {
     const user = userEvent.setup();
     supabaseBrowser.signInWithPassword.mockResolvedValueOnce({ error: new Error('invalid') });

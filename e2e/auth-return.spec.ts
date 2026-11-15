@@ -18,6 +18,10 @@ type LocaleCopy = {
     signupPasswordLabel: string;
     emailAddress: string;
     welcomeTitle: string;
+    inviteConfirmTitle: string;
+    inviteConfirm: string;
+    inviteSwitchConfirm: string;
+    inviteCancel: string;
   };
   onboarding: {
     name: string;
@@ -191,6 +195,45 @@ test('callback code errors fall back to /login?authError=1 without leaking provi
 
   await page.goto('/login?authError=1');
   await expect(page.getByText(en.googleSignInError)).toBeVisible();
+});
+
+test('invite GET requires explicit confirmation and rejects cross-site POST', async ({ page }) => {
+  const response = await page.goto(
+    '/auth/callback?token_hash=unverified-invite&type=invite&next=//evil.com'
+  );
+  await expect(page).toHaveURL(/\/auth\/confirm-invite$/);
+  expect(response?.headers()['cache-control']).toBe('private, no-store');
+  await expect(page.getByRole('heading', { name: en.auth.inviteConfirmTitle })).toBeVisible();
+  await waitForHydratedPage(page);
+  const confirm = page.getByRole('button', { name: en.auth.inviteConfirm, exact: true });
+  await confirm.focus();
+  await expect(confirm).toBeFocused();
+  const csrf = await page.locator('input[name="csrf"]').inputValue();
+  const rejected = await page.request.post('/auth/callback', {
+    headers: { Origin: 'https://attacker.example', 'Sec-Fetch-Site': 'cross-site' },
+    form: { csrf, account: '' },
+    maxRedirects: 0
+  });
+  expect(rejected.status()).toBe(403);
+  expect(rejected.headers()['cache-control']).toBe('private, no-store');
+  await confirm.press('Enter');
+  await expect(page).toHaveURL(/\/login\?authError=1$/);
+});
+
+test('an active account is named before an invitation can replace its session', async ({
+  page
+}) => {
+  const email = uniqueEmail();
+  await createOnboardedUser(page, email, 'Invite Keeper');
+  await signIn(page, email);
+  await page.goto('/auth/callback?token_hash=unverified-invite&type=invite');
+  await expect(page).toHaveURL(/\/auth\/confirm-invite$/);
+  await expect(page.getByRole('alert')).toContainText(email);
+  await expect(page.getByRole('button', { name: en.auth.inviteSwitchConfirm })).toBeVisible();
+  await waitForHydratedPage(page);
+  await page.getByText(en.auth.inviteCancel, { exact: true }).click();
+  await expect(page).toHaveURL(/\/dashboard$/);
+  await expect(page.getByRole('heading', { name: 'Invite Keeper', exact: true })).toBeVisible();
 });
 
 // ---------------------------------------------------------------------------

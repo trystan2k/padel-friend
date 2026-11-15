@@ -2,7 +2,7 @@ import { execFileSync } from 'node:child_process';
 import { readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { E2E_WEB_PUSH_ENV } from './e2e-build-env.mjs';
+import { E2E_APP_ORIGIN, E2E_WEB_PUSH_ENV } from './e2e-build-env.mjs';
 import { TEST_API_URL } from './test-stack.mjs';
 import { resolveTestStackEnv } from './test-stack-env.mjs';
 
@@ -71,9 +71,15 @@ export function assertTupleMatchesBuild(tuple, build) {
     );
 }
 
-/** Server-only preview env: the live stack's service key plus the public Web Push e2e config. */
+/**
+ * Server-only preview env: the live stack's service key, the trusted app origin (the shared build is
+ * keyless and origin-less; the preview reads only this file) and the public Web Push e2e config.
+ */
 export function devVarsContent(tuple) {
-  const lines = ['SUPABASE_SERVICE_ROLE_KEY=' + tuple.SUPABASE_SERVICE_ROLE_KEY];
+  const lines = [
+    'SUPABASE_SERVICE_ROLE_KEY=' + tuple.SUPABASE_SERVICE_ROLE_KEY,
+    'APP_ORIGIN=' + E2E_APP_ORIGIN
+  ];
   for (const [key, value] of Object.entries(E2E_WEB_PUSH_ENV)) lines.push(key + '=' + value);
   return lines.join('\n') + '\n';
 }

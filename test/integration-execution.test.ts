@@ -216,6 +216,7 @@ describe('e2e build env contract', () => {
   it('adds the process-env bake flag, the public pair and the key only when a tuple exists', () => {
     expect(e2eBuildEnv(TEST_TUPLE)).toEqual({
       CLOUDFLARE_INCLUDE_PROCESS_ENV: 'true',
+      APP_ORIGIN: 'http://127.0.0.1:4173',
       VITE_SUPABASE_URL: 'http://127.0.0.1:55421',
       VITE_SUPABASE_PUBLISHABLE_KEY: TEST_TUPLE.VITE_SUPABASE_PUBLISHABLE_KEY,
       SUPABASE_SERVICE_ROLE_KEY: TEST_TUPLE.SUPABASE_SERVICE_ROLE_KEY,

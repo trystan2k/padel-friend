@@ -24,15 +24,20 @@ jobs:
     steps:
       - name: Start job timing
         run: printf '%s\n' "$(date +%s%3N)" > "$RUNNER_TEMP/ci-job-start-ms"
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v4.4.0
         with:
           version: 12.13.0
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: '26'
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - name: Audit production dependencies (high severity)
+        # pnpm audit --prod --audit-level=high; retry transient registry failures only.
+        run: node scripts/audit-production.mjs
       # Static stays service-free (no containers, no stack). Vite embeds the public, local-only pair of the
       # test stack (API 55421) from the checked-in descriptor at build time, so the one shared build
       # serves every E2E stack; each E2E lane verifies its live stack reports exactly this pair.
@@ -52,7 +57,7 @@ jobs:
           # Manifest: SHA, run id and the public pair baked into the build; no private values.
           node scripts/ci-test-env.mjs manifest "$GITHUB_SHA" "$GITHUB_RUN_ID" > "$RUNNER_TEMP/app-build/build-manifest.json"
       - name: Upload shared build
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: app-build
           path: ${{ runner.temp }}/app-build/
@@ -62,6 +67,7 @@ jobs:
       - run: pnpm typecheck
       - run: pnpm lint
       - run: pnpm format:check
+      - run: pnpm check:server-errors
       # The populated-upgrade harness only depends on migrations, seeds, config (dev and the test stack
       # project/launcher modules it runs through), its own scripts and fixtures, the toolchain pins and this workflow. Anything unknown or unreadable runs it.
       - name: Detect populated-upgrade inputs
@@ -89,7 +95,7 @@ jobs:
           start_ms="$(cat "$RUNNER_TEMP/ci-job-start-ms")"
           elapsed_ms=$(( $(date +%s%3N) - start_ms ))
           printf '{"job":"static","status":"%s","elapsedMs":%s}\n' "$JOB_STATUS" "$elapsed_ms" > artifacts/static-timing.json
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         if: always()
         with:
           name: static-evidence
@@ -104,11 +110,13 @@ jobs:
     steps:
       - name: Start job timing
         run: printf '%s\n' "$(date +%s%3N)" > "$RUNNER_TEMP/ci-job-start-ms"
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v4.4.0
         with:
           version: 12.13.0
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: '26'
           cache: pnpm
@@ -116,7 +124,7 @@ jobs:
       # Unit tests import generated route metadata and design tokens; unpack them from the
       # same-run build instead of rebuilding.
       - name: Download shared build
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with:
           name: app-build
           path: ${{ runner.temp }}/app-build
@@ -153,7 +161,7 @@ jobs:
           start_ms="$(cat "$RUNNER_TEMP/ci-job-start-ms")"
           elapsed_ms=$(( $(date +%s%3N) - start_ms ))
           printf '{"job":"unit","status":"%s","elapsedMs":%s}\n' "$JOB_STATUS" "$elapsed_ms" > artifacts/unit-job-timing.json
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         if: always()
         with:
           name: unit-evidence
@@ -174,11 +182,13 @@ jobs:
     steps:
       - name: Start job timing
         run: printf '%s\n' "$(date +%s%3N)" > "$RUNNER_TEMP/ci-job-start-ms"
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v4.4.0
         with:
           version: 12.13.0
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: '26'
           cache: pnpm
@@ -236,7 +246,7 @@ jobs:
           start_ms="$(cat "$RUNNER_TEMP/ci-job-start-ms")"
           elapsed_ms=$(( $(date +%s%3N) - start_ms ))
           printf '{"job":"integration","status":"%s","elapsedMs":%s}\n' "$JOB_STATUS" "$elapsed_ms" > artifacts/integration-job-timing.json
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         if: always()
         with:
           name: integration-evidence
@@ -265,17 +275,19 @@ jobs:
     steps:
       - name: Start job timing
         run: printf '%s\n' "$(date +%s%3N)" > "$RUNNER_TEMP/ci-job-start-ms"
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v4.4.0
         with:
           version: 12.13.0
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: '26'
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - name: Download shared build
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with:
           name: app-build
           path: ${{ runner.temp }}/app-build
@@ -335,13 +347,13 @@ jobs:
           elapsed_ms=$(( $(date +%s%3N) - start_ms ))
           printf '{"job":"e2e","lane":"%s","status":"%s","elapsedMs":%s}\n' "$LANE" "$JOB_STATUS" "$elapsed_ms" > artifacts/e2e-job-timing.json
       - name: Upload E2E blob report
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         if: always()
         with:
           name: e2e-blob-report-${{ matrix.lane }}
           path: blob-report/
           if-no-files-found: error
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         if: always()
         with:
           name: e2e-evidence-${{ matrix.lane }}
@@ -359,17 +371,19 @@ jobs:
     needs: e2e
     if: ${{ always() }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v4.4.0
         with:
           version: 12.13.0
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: '26'
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - name: Download E2E lane blob reports
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with:
           pattern: e2e-blob-report-*
           path: all-blob-reports
@@ -388,7 +402,7 @@ jobs:
           fi
       - name: Merge E2E HTML report
         run: pnpm exec playwright merge-reports --reporter=html ./all-blob-reports
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         if: always()
         with:
           name: e2e-html-report
@@ -425,7 +439,7 @@ jobs:
           start_ms="$(cat "$RUNNER_TEMP/ci-job-start-ms")"
           elapsed_ms=$(( $(date +%s%3N) - start_ms ))
           printf '{"job":"checks","status":"%s","elapsedMs":%s}\n' "$JOB_STATUS" "$elapsed_ms" > artifacts/checks-timing.json
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         if: always()
         with:
           name: checks-evidence

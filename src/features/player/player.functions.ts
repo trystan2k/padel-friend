@@ -1,5 +1,7 @@
 import { createServerFn } from '@tanstack/react-start';
+import { toClientError } from '../../lib/client-error.server';
 import { setResponseHeader } from '@tanstack/react-start/server';
+import { getAdminClient } from '../../lib/supabase/admin.server';
 import { getServerClient } from '../../lib/supabase/server';
 import { requireAuthenticatedClient } from '../auth/auth.server';
 import { playerRows, sportingProfile, verifiedAvatarKey } from './player.server';
@@ -17,7 +19,7 @@ import {
 
 async function readPasswordSetupState(client: ReturnType<typeof getServerClient>) {
   const { data, error } = await client.rpc('get_password_setup_state');
-  if (error) throw error;
+  if (error) throw toClientError(error);
   const state = parsePasswordSetupState(data);
   if (!state) throw new Error('PASSWORD_SETUP_UNAVAILABLE');
   return state;
@@ -68,7 +70,7 @@ export const getOnboardingStatus = createServerFn().handler(async () => {
   // either a brand-new account or a provisional player; the restricted claim RPC
   // tells them apart and only discloses prefill after verified mailbox ownership.
   const claim = await client.rpc('get_provisional_claim_context');
-  if (claim.error) throw claim.error;
+  if (claim.error) throw toClientError(claim.error);
   return {
     authenticated: true,
     userId: data.claims.sub,
@@ -88,21 +90,16 @@ export const onboardPlayer = createServerFn({ method: 'POST' })
   .validator(validateOnboardPlayer)
   .handler(async ({ data }) => {
     const { client, userId } = await requireAuthenticatedClient();
-    try {
-      const { error } = await client.rpc('onboard_player_with_availability', {
-        p_display_name: data.display_name,
-        p_preferred_side: data.preferred_side,
-        p_initial_level: data.initial_level,
-        ...(data.dominant_hand ? { p_dominant_hand: data.dominant_hand } : {}),
-        ...(data.bio != null ? { p_bio: data.bio } : {}),
-        ...availabilityArgs(data)
-      });
-      if (error) throw error;
-    } catch (error) {
-      if (typeof error === 'object' && error !== null && 'code' in error && error.code === '23514')
-        throw new Error('INCOMPLETE_PLAYER_STATE', { cause: error });
-      throw error;
-    }
+    const { error } = await client.rpc('onboard_player_with_availability', {
+      p_display_name: data.display_name,
+      p_preferred_side: data.preferred_side,
+      p_initial_level: data.initial_level,
+      ...(data.dominant_hand ? { p_dominant_hand: data.dominant_hand } : {}),
+      ...(data.bio != null ? { p_bio: data.bio } : {}),
+      ...availabilityArgs(data)
+    });
+    if (error?.code === '23514') throw new Error('INCOMPLETE_PLAYER_STATE');
+    if (error) throw toClientError(error);
     return sportingProfile(client, userId);
   });
 
@@ -118,7 +115,8 @@ export const claimProvisionalPlayer = createServerFn({ method: 'POST' })
       ...(data.bio != null ? { p_bio: data.bio } : {}),
       ...availabilityArgs(data)
     });
-    if (error) throw new Error(claimErrorCode(error) ?? 'PLAYER_CLAIM_FAILED', { cause: error });
+    // guard-allow: dynamic-error — claimErrorCode returns a fixed token or null, fallback literal
+    if (error) throw new Error(claimErrorCode(error) ?? 'PLAYER_CLAIM_FAILED');
   });
 
 export const getMyPlayerProfile = createServerFn().handler(async () => {
@@ -132,9 +130,8 @@ export const updateMyPlayerProfile = createServerFn({ method: 'POST' })
     const { client, userId } = await requireAuthenticatedClient();
     const { profile } = await playerRows(client, userId);
     if (!profile) throw new Error('PLAYER_NOT_ONBOARDED');
-    if (data.avatar_url != null) await verifiedAvatarKey(client, userId, data.avatar_url);
     const { error } = await client.from('player_profiles').update(data).eq('user_id', userId);
-    if (error) throw error;
+    if (error) throw toClientError(error);
     return sportingProfile(client, userId);
   });
 
@@ -144,12 +141,12 @@ export const completeAvatarUpload = createServerFn({ method: 'POST' })
     const { client, userId } = await requireAuthenticatedClient();
     const { profile } = await playerRows(client, userId);
     if (!profile) throw new Error('PLAYER_NOT_ONBOARDED');
-    await verifiedAvatarKey(client, userId, data.objectKey);
+    await verifiedAvatarKey(client, userId, data.objectKey, profile.avatar_url);
     // The caller's expectation (e.g. onboarding: no avatar yet) wins over the value just read,
     // so an avatar stored by another session after the caller's last check fails the guard.
     const previousKey =
       data.expectedPreviousKey === undefined ? profile.avatar_url : data.expectedPreviousKey;
-    const update = client
+    const update = getAdminClient()
       .from('player_profiles')
       .update({ avatar_url: data.objectKey })
       .eq('user_id', userId);
@@ -159,7 +156,7 @@ export const completeAvatarUpload = createServerFn({ method: 'POST' })
       .select('avatar_url')
       .maybeSingle();
     if (error) {
-      throw error;
+      throw toClientError(error);
     }
     if (!updated) throw new Error('AVATAR_CONFLICT');
     // Do not delete avatar objects here: deletion cannot be atomic with avatar_url writes.

@@ -52,6 +52,8 @@ import {
   type FixtureCleanupRegistry
 } from './helpers/fixture-cleanup';
 import { executeTrustedSqlBatch, queryTrustedSql } from './helpers/sql-transport';
+import { trustedClient } from './helpers/trusted-client';
+import { seedHistoricalCommunity } from './helpers/community-fixtures';
 
 vi.setConfig({ testTimeout: 30000, hookTimeout: 30000 });
 type LocalEnv = NonNullable<ReturnType<typeof localSupabaseEnv>['env']>;
@@ -272,6 +274,11 @@ describe.skipIf(environment.env === null)('community domain (local Supabase inte
       if (result.error) throw result.error;
       if (typeof result.data !== 'string') throw new Error('create_community returned no ID');
       registerCommunityRows(testCleanup!, result.data);
+      // Historical setup rows preserve RPC bootstrap coverage without consuming today's quota.
+      await queryTrustedSql(
+        "update public.communities set created_at = now() - interval '2 days' where id = $1",
+        { values: [result.data] }
+      );
       return result.data;
     }
     privateId = await create('Private ' + crypto.randomUUID(), 'private');
@@ -281,7 +288,7 @@ describe.skipIf(environment.env === null)('community domain (local Supabase inte
       [pending, 'pending'],
       [inactive, 'active']
     ] as const) {
-      const result = await admin.client
+      const result = await trustedClient()
         .from('community_members')
         .insert({ community_id: privateId, user_id: user.id, status })
         .select('id')
@@ -291,15 +298,16 @@ describe.skipIf(environment.env === null)('community domain (local Supabase inte
       if (user === pending) pendingRow = result.data.id;
       if (user === inactive) inactiveRow = result.data.id;
     }
-    const closed = await admin.client
+    const closed = await trustedClient()
       .from('community_members')
       .update({ status: 'inactive', valid_until: new Date(Date.now() + 5000).toISOString() })
       .eq('id', inactiveRow);
     if (closed.error) throw closed.error;
-    const invitation = await admin.client
+    const invitation = await trustedClient()
       .from('community_invitations')
       .insert({
         community_id: privateId,
+        issued_by: admin.id,
         invitee_user_id: invited.id,
         token_hash: (fixtureTokenHash = crypto.randomUUID().replaceAll('-', '').padEnd(64, '0')),
         expires_at: new Date(Date.now() + 86400000).toISOString()
@@ -308,9 +316,9 @@ describe.skipIf(environment.env === null)('community domain (local Supabase inte
       .single();
     if (invitation.error) throw invitation.error;
     inviteId = invitation.data.id;
-    const venue = await admin.client
+    const venue = await trustedClient()
       .from('community_venues')
-      .insert({ community_id: privateId, name: 'Court' })
+      .insert({ community_id: privateId, name: 'Court', created_by: admin.id })
       .select('id')
       .single();
     if (venue.error) throw venue.error;
@@ -388,14 +396,14 @@ describe.skipIf(environment.env === null)('community domain (local Supabase inte
     ).toBe('22P02');
     expect(
       (
-        await admin.client
+        await trustedClient()
           .from('community_members')
           .insert({ community_id: privateId, user_id: outsider.id, status: 'unknown' })
       ).error?.code
     ).toBe('22P02');
     expect(
       (
-        await admin.client.from('community_members').insert({
+        await trustedClient().from('community_members').insert({
           community_id: privateId,
           user_id: outsider.id,
           status: 'pending',
@@ -410,7 +418,7 @@ describe.skipIf(environment.env === null)('community domain (local Supabase inte
     const privateName: unknown = (await rows(admin.client, 'communities', privateId))[0].name;
     if (typeof publicName !== 'string' || typeof privateName !== 'string')
       throw new Error('Missing community fixture names');
-    const seeded = await admin.client
+    const seeded = await trustedClient()
       .from('communities')
       .update({ settings: { private_note: 'not for discovery' } })
       .eq('id', publicId);
@@ -437,7 +445,7 @@ describe.skipIf(environment.env === null)('community domain (local Supabase inte
     );
 
     const literalName = `Literal %_\\ ${crypto.randomUUID()}`;
-    const literal = await admin.client.rpc('create_community', {
+    const literal = await seedHistoricalCommunity(admin.id, {
       p_name: literalName,
       p_visibility: 'public',
       p_join_policy: 'instant'
@@ -454,7 +462,7 @@ describe.skipIf(environment.env === null)('community domain (local Supabase inte
     ];
     const probeIds: string[] = [];
     for (const name of probeNames) {
-      const created = await admin.client.rpc('create_community', {
+      const created = await seedHistoricalCommunity(admin.id, {
         p_name: name,
         p_visibility: 'public',
         p_join_policy: 'instant'
@@ -463,13 +471,13 @@ describe.skipIf(environment.env === null)('community domain (local Supabase inte
       probeIds.push(created.data);
     }
     const cityOnly = `City-(x),"\\-${crypto.randomUUID()}`;
-    const cityRow = await admin.client.rpc('create_community', {
+    const cityRow = await seedHistoricalCommunity(admin.id, {
       p_name: `Unrelated-${crypto.randomUUID()}`,
       p_visibility: 'public',
       p_join_policy: 'instant',
       p_city_label: cityOnly
     });
-    const hiddenCity = await admin.client.rpc('create_community', {
+    const hiddenCity = await seedHistoricalCommunity(admin.id, {
       p_name: `Hidden-${crypto.randomUUID()}`,
       p_visibility: 'private',
       p_join_policy: 'admin_approval',
@@ -703,7 +711,7 @@ describe.skipIf(environment.env === null)('community domain (local Supabase inte
       expect(activated).toBeGreaterThanOrEqual(start);
       expect(activated).toBeLessThanOrEqual(Date.now() + 5000);
     }
-    const insert = await admin.client.from('community_members').insert({
+    const insert = await trustedClient().from('community_members').insert({
       community_id: created.id,
       user_id: member.id,
       status: 'active'
@@ -746,7 +754,7 @@ describe.skipIf(environment.env === null)('community domain (local Supabase inte
     ).toEqual(hiddenAudits.map((event) => event.id));
 
     const secondAdmin = await actor('demoted-admin');
-    const secondMember = await admin.client
+    const secondMember = await trustedClient()
       .from('community_members')
       .insert({
         community_id: created.id,
@@ -758,7 +766,7 @@ describe.skipIf(environment.env === null)('community domain (local Supabase inte
       .single();
     expect(secondMember.error).toBeNull();
     if (!secondMember.data) throw new Error('second admin membership missing');
-    const demoted = await admin.client
+    const demoted = await trustedClient()
       .from('community_members')
       .update({ role: 'member' })
       .eq('id', secondMember.data.id);
@@ -988,7 +996,7 @@ describe.skipIf(environment.env === null)('community domain (local Supabase inte
     );
     expect(
       (
-        await admin.client.from('community_members').insert({
+        await trustedClient().from('community_members').insert({
           community_id: privateId,
           user_id: outsider.id,
           status: 'inactive'
@@ -997,7 +1005,7 @@ describe.skipIf(environment.env === null)('community domain (local Supabase inte
     ).toBe('23514');
     expect(
       (
-        await admin.client
+        await trustedClient()
           .from('community_members')
           .update({ status: 'inactive' })
           .eq('id', pendingRow)
@@ -1008,7 +1016,7 @@ describe.skipIf(environment.env === null)('community domain (local Supabase inte
     );
     expect(
       (
-        await admin.client
+        await trustedClient()
           .from('community_members')
           .update({ status: 'active', valid_until: null })
           .eq('id', inactiveRow)
@@ -1017,7 +1025,7 @@ describe.skipIf(environment.env === null)('community domain (local Supabase inte
     expect(
       (await admin.client.from('community_members').delete().eq('id', inactiveRow)).error?.code
     ).toBe('42501');
-    const rejoin = await admin.client
+    const rejoin = await trustedClient()
       .from('community_members')
       .insert({ community_id: privateId, user_id: inactive.id, status: 'pending' })
       .select('id')
@@ -1031,7 +1039,7 @@ describe.skipIf(environment.env === null)('community domain (local Supabase inte
     ).toHaveLength(2);
     expect(
       (
-        await admin.client
+        await trustedClient()
           .from('community_members')
           .insert({ community_id: privateId, user_id: inactive.id, status: 'pending' })
       ).error?.code
@@ -1138,7 +1146,7 @@ describe.skipIf(environment.env === null)('community domain (local Supabase inte
     expect((await rows(admin.client, 'community_members', privateId)).length).toBeGreaterThan(3);
     const communityUpdatedAt = (await rows(admin.client, 'communities', privateId))[0].updated_at;
     const venueUpdatedAt = (await rows(admin.client, 'community_venues', privateId))[0].updated_at;
-    const update = await admin.client
+    const update = await trustedClient()
       .from('communities')
       .update({ settings: { courts: 2 } })
       .eq('id', privateId);
@@ -1152,7 +1160,7 @@ describe.skipIf(environment.env === null)('community domain (local Supabase inte
       new Date(communityUpdatedAt).getTime()
     );
     expect(
-      (await admin.client.from('community_venues').update({ name: 'Court 2' }).eq('id', venueId))
+      (await trustedClient().from('community_venues').update({ name: 'Court 2' }).eq('id', venueId))
         .error
     ).toBeNull();
     expect(
@@ -1160,16 +1168,17 @@ describe.skipIf(environment.env === null)('community domain (local Supabase inte
     ).toBeGreaterThan(new Date(venueUpdatedAt).getTime());
     expect(
       (
-        await admin.client
+        await trustedClient()
           .from('community_invitations')
           .update({ revoked_at: new Date().toISOString() })
           .eq('id', inviteId)
       ).error
     ).toBeNull();
-    const openInvitation = await admin.client
+    const openInvitation = await trustedClient()
       .from('community_invitations')
       .insert({
         community_id: privateId,
+        issued_by: admin.id,
         invitee_user_id: outsider.id,
         token_hash: crypto.randomUUID().replaceAll('-', '').padEnd(64, '0'),
         expires_at: new Date(Date.now() + 86400000).toISOString()
@@ -1183,8 +1192,8 @@ describe.skipIf(environment.env === null)('community domain (local Supabase inte
       .update({ revoked_at: new Date().toISOString() })
       .eq('id', openInvitation.data!.id)
       .select(invitationColumns);
-    expect(forgedRevoke.error).toBeNull();
-    expect(forgedRevoke.data).toEqual([]);
+    expect(forgedRevoke.error?.code).toBe('42501');
+    expect(forgedRevoke.data).toBeNull();
     const openAfterForgedRevoke = await admin.client
       .from('community_invitations')
       .select(invitationColumns)
@@ -1230,7 +1239,7 @@ describe.skipIf(environment.env === null)('community domain (local Supabase inte
           .update({ settings: { forged: true } })
           .eq('id', privateId)
       ])
-        expect(result.error).toBeNull();
+        expect(result.error?.code).toBe('42501');
       expect(
         (await user.client.rpc('is_community_admin', { p_community_id: privateId })).data
       ).toBe(false);
@@ -1240,8 +1249,8 @@ describe.skipIf(environment.env === null)('community domain (local Supabase inte
       .update({ status: 'active' })
       .eq('id', pendingRow)
       .select('id');
-    expect(ownActivation.error).toBeNull();
-    expect(ownActivation.data).toEqual([]);
+    expect(ownActivation.error?.code).toBe('42501');
+    expect(ownActivation.data).toBeNull();
     expect(
       (await rows(admin.client, 'community_members', privateId)).find((m) => m.id === pendingRow)
     ).toMatchObject({ status: 'pending', activated_at: null });
@@ -1294,7 +1303,7 @@ describe.skipIf(environment.env === null)('community domain (local Supabase inte
     const secretText = 'private-text-' + crypto.randomUUID();
     const before = await rows(admin.client, 'community_audit_log', privateId);
 
-    const settingsChange = await admin.client
+    const settingsChange = await trustedClient()
       .from('communities')
       .update({ settings: { private_marker: secretSettings } })
       .eq('id', privateId);
@@ -1302,7 +1311,7 @@ describe.skipIf(environment.env === null)('community domain (local Supabase inte
     const settingsAudit = (await rows(admin.client, 'community_audit_log', privateId)).at(-1)!;
     expect(settingsAudit.details).toMatchObject({ changed_fields: ['settings'], transitions: {} });
 
-    const scalarChange = await admin.client
+    const scalarChange = await trustedClient()
       .from('communities')
       .update({ name: `Changed ${crypto.randomUUID()}`, description: secretText })
       .eq('id', privateId);
@@ -1310,7 +1319,7 @@ describe.skipIf(environment.env === null)('community domain (local Supabase inte
     const scalarAudit = (await rows(admin.client, 'community_audit_log', privateId)).at(-1)!;
     expect(scalarAudit.details.changed_fields).toEqual(['name', 'description']);
 
-    const enumChange = await admin.client
+    const enumChange = await trustedClient()
       .from('communities')
       .update({ visibility: 'public', join_policy: 'instant' })
       .eq('id', privateId);
@@ -1325,7 +1334,7 @@ describe.skipIf(environment.env === null)('community domain (local Supabase inte
       }
     });
 
-    const venueChange = await admin.client
+    const venueChange = await trustedClient()
       .from('community_venues')
       .update({ name: `Court ${crypto.randomUUID()}`, address: secretText })
       .eq('id', venueId);
@@ -1336,7 +1345,7 @@ describe.skipIf(environment.env === null)('community domain (local Supabase inte
       transitions: {}
     });
 
-    const archive = await admin.client
+    const archive = await trustedClient()
       .from('community_venues')
       .update({ archived_at: new Date().toISOString() })
       .eq('id', venueId);
@@ -1348,7 +1357,7 @@ describe.skipIf(environment.env === null)('community domain (local Supabase inte
       transitions: { archived: { before: false, after: true } }
     });
 
-    const nullableChange = await admin.client
+    const nullableChange = await trustedClient()
       .from('communities')
       .update({ city_label: secretText })
       .eq('id', privateId);
@@ -1356,7 +1365,7 @@ describe.skipIf(environment.env === null)('community domain (local Supabase inte
     expect(
       (await rows(admin.client, 'community_audit_log', privateId)).at(-1)!.details.changed_fields
     ).toEqual(['city_label']);
-    const clearNullable = await admin.client
+    const clearNullable = await trustedClient()
       .from('communities')
       .update({ city_label: null })
       .eq('id', privateId);
@@ -1365,7 +1374,7 @@ describe.skipIf(environment.env === null)('community domain (local Supabase inte
       (await rows(admin.client, 'community_audit_log', privateId)).at(-1)!.details.changed_fields
     ).toEqual(['city_label']);
 
-    const multiple = await admin.client
+    const multiple = await trustedClient()
       .from('communities')
       .update({ logo_path: 'logos/safe.svg', settings: { replacement: true } })
       .eq('id', privateId);
@@ -1373,7 +1382,7 @@ describe.skipIf(environment.env === null)('community domain (local Supabase inte
     expect(
       (await rows(admin.client, 'community_audit_log', privateId)).at(-1)!.details.changed_fields
     ).toEqual(['logo_path', 'settings']);
-    const noOp = await admin.client
+    const noOp = await trustedClient()
       .from('communities')
       .update({ logo_path: 'logos/safe.svg', settings: { replacement: true } })
       .eq('id', privateId);
@@ -1445,27 +1454,27 @@ describe.skipIf(environment.env === null)('community domain (local Supabase inte
       (m) => m.user_id === admin.id
     )!;
     expect(
-      (await admin.client.from('community_members').update({ role: 'member' }).eq('id', only.id))
+      (await trustedClient().from('community_members').update({ role: 'member' }).eq('id', only.id))
         .error?.code
     ).toBe('23514');
-    const promoted = await admin.client
+    const promoted = await trustedClient()
       .from('community_members')
       .update({ role: 'admin' })
       .eq('id', memberRow);
     expect(promoted.error).toBeNull();
-    const seededSettings = await admin.client
+    const seededSettings = await trustedClient()
       .from('communities')
       .update({ settings: { ac7: true } })
       .eq('id', privateId);
     expect(seededSettings.error).toBeNull();
-    const seededVenue = await admin.client
+    const seededVenue = await trustedClient()
       .from('community_venues')
       .update({ name: 'AC7 court' })
       .eq('id', venueId);
     expect(seededVenue.error).toBeNull();
     const [a, b] = await Promise.all([
-      admin.client.from('community_members').update({ role: 'member' }).eq('id', only.id),
-      member.client.from('community_members').update({ role: 'member' }).eq('id', memberRow)
+      trustedClient().from('community_members').update({ role: 'member' }).eq('id', only.id),
+      trustedClient().from('community_members').update({ role: 'member' }).eq('id', memberRow)
     ]);
     expect([a.error?.code, b.error?.code].filter(Boolean)).toEqual(['23514']);
     const ownAdmin = (await rows(admin.client, 'community_members', privateId)).find(
@@ -1512,7 +1521,7 @@ describe.skipIf(environment.env === null)('community domain (local Supabase inte
     ).data
       ? admin
       : member;
-    const denied = await currentAdmin.client
+    const denied = await trustedClient()
       .from('community_members')
       .update({ status: 'inactive', valid_until: new Date(Date.now() + 1000).toISOString() })
       .eq('id', pendingRow);
@@ -1523,14 +1532,14 @@ describe.skipIf(environment.env === null)('community domain (local Supabase inte
     expect(deniedRow).toMatchObject({ status: 'inactive', activated_at: null });
 
     const approved = await actor('approved');
-    const request = await currentAdmin.client
+    const request = await trustedClient()
       .from('community_members')
       .insert({ community_id: privateId, user_id: approved.id, status: 'pending' })
       .select('id,activated_at')
       .single();
     expect(request.error).toBeNull();
     expect(request.data?.activated_at).toBeNull();
-    const activated = await currentAdmin.client
+    const activated = await trustedClient()
       .from('community_members')
       .update({ status: 'active' })
       .eq('id', request.data!.id);
@@ -1552,7 +1561,7 @@ describe.skipIf(environment.env === null)('community domain (local Supabase inte
       ? admin
       : member;
     const applicant = await actor('interval');
-    const request = await currentAdmin.client
+    const request = await trustedClient()
       .from('community_members')
       .insert({ community_id: privateId, user_id: applicant.id, status: 'pending' })
       .select('id,valid_from,activated_at')
@@ -1560,7 +1569,7 @@ describe.skipIf(environment.env === null)('community domain (local Supabase inte
     expect(request.error).toBeNull();
     expect(request.data?.activated_at).toBeNull();
     await new Promise((resolve) => setTimeout(resolve, 100));
-    const approval = await currentAdmin.client
+    const approval = await trustedClient()
       .from('community_members')
       .update({ status: 'active' })
       .eq('id', request.data!.id)
@@ -1574,7 +1583,7 @@ describe.skipIf(environment.env === null)('community domain (local Supabase inte
     const activation = new Date(activeRow.activated_at).getTime();
     expect(activation - start).toBeGreaterThan(1);
     const prematureEnd = new Date(Math.floor((start + activation) / 2)).toISOString();
-    const rejected = await currentAdmin.client
+    const rejected = await trustedClient()
       .from('community_members')
       .update({ status: 'inactive', valid_until: prematureEnd })
       .eq('id', activeRow.id);
@@ -1588,7 +1597,7 @@ describe.skipIf(environment.env === null)('community domain (local Supabase inte
     expect(afterRejection.error).toBeNull();
     expect(afterRejection.data).toEqual(activeRow);
 
-    const closed = await currentAdmin.client
+    const closed = await trustedClient()
       .from('community_members')
       .update({ status: 'inactive', valid_until: activeRow.activated_at })
       .eq('id', activeRow.id)
@@ -1615,7 +1624,7 @@ describe.skipIf(environment.env === null)('community domain (local Supabase inte
       visibility: 'public' | 'private',
       policy: 'instant' | 'admin_approval'
     ) {
-      const created = await owner.client.rpc('create_community', {
+      const created = await seedHistoricalCommunity(owner.id, {
         p_name: `Join ${crypto.randomUUID()}`,
         p_visibility: visibility,
         p_join_policy: policy
@@ -1631,10 +1640,11 @@ describe.skipIf(environment.env === null)('community domain (local Supabase inte
       const tokenHash = Array.from(new Uint8Array(digest), (byte) =>
         byte.toString(16).padStart(2, '0')
       ).join('');
-      const seeded = await owner.client
+      const seeded = await trustedClient()
         .from('community_invitations')
         .insert({
           community_id: communityId,
+          issued_by: owner.id,
           invitee_user_id: user.id,
           token_hash: tokenHash,
           expires_at: new Date(expiry).toISOString()
@@ -1778,9 +1788,9 @@ describe.skipIf(environment.env === null)('community domain (local Supabase inte
       expect(
         (await secondInvitee.client.rpc(helper, { p_community_id: privateApproval })).data
       ).toBe(false);
-    const venue = await owner.client
+    const venue = await trustedClient()
       .from('community_venues')
-      .insert({ community_id: privateApproval, name: 'Private court' });
+      .insert({ community_id: privateApproval, name: 'Private court', created_by: owner.id });
     expect(venue.error).toBeNull();
     expect(await rows(secondInvitee.client, 'community_venues', privateApproval)).toEqual([]);
     expect(
@@ -1832,7 +1842,7 @@ describe.skipIf(environment.env === null)('community domain (local Supabase inte
     const revoked = await invitation(privateApproval, thief);
     expect(
       (
-        await owner.client
+        await trustedClient()
           .from('community_invitations')
           .update({
             revoked_at: new Date(
@@ -1964,10 +1974,11 @@ describe.skipIf(environment.env === null)('community domain (local Supabase inte
       const tokenHash = Array.from(new Uint8Array(digest), (byte) =>
         byte.toString(16).padStart(2, '0')
       ).join('');
-      const inserted = await owner.client
+      const inserted = await trustedClient()
         .from('community_invitations')
         .insert({
           community_id: communityId,
+          issued_by: owner.id,
           invitee_user_id: inviteeActor.id,
           token_hash: tokenHash,
           expires_at: new Date(Date.now() + 86400000).toISOString()
@@ -2127,9 +2138,9 @@ describe.skipIf(environment.env === null)('community domain (local Supabase inte
     );
 
     const lifecyclePrivateId = await create('private', 'admin_approval');
-    const venue = await owner.client
+    const venue = await trustedClient()
       .from('community_venues')
-      .insert({ community_id: lifecyclePrivateId, name: 'Lifecycle Court' })
+      .insert({ community_id: lifecyclePrivateId, name: 'Lifecycle Court', created_by: owner.id })
       .select('id,name')
       .single();
     expect(venue.error).toBeNull();
@@ -2373,14 +2384,14 @@ describe.skipIf(environment.env === null)('community domain (local Supabase inte
 
     const historyPrivateId = await createHistoryCommunity(privateOwner, 'private');
     serverClient.current = privateOwner.client;
-    const seededMembership = await privateOwner.client
+    const seededMembership = await trustedClient()
       .from('community_members')
       .insert({ community_id: historyPrivateId, user_id: privateFormer.id, status: 'active' })
       .select('id')
       .single();
     expect(seededMembership.error).toBeNull();
     const freshToken = await addInvitation(privateOwner, historyPrivateId, privateFormer);
-    const closedResult = await privateOwner.client
+    const closedResult = await trustedClient()
       .from('community_members')
       .update({ status: 'inactive', valid_until: new Date(Date.now() + 5000).toISOString() })
       .eq('id', seededMembership.data!.id);
@@ -2447,10 +2458,11 @@ describe.skipIf(environment.env === null)('community domain (local Supabase inte
     const tokenHash = Array.from(new Uint8Array(digest), (byte) =>
       byte.toString(16).padStart(2, '0')
     ).join('');
-    const invitation = await owner.client
+    const invitation = await trustedClient()
       .from('community_invitations')
       .insert({
         community_id: communityId,
+        issued_by: owner.id,
         invitee_user_id: invitee.id,
         token_hash: tokenHash,
         expires_at: new Date(Date.now() + 86400000).toISOString()
@@ -2459,7 +2471,7 @@ describe.skipIf(environment.env === null)('community domain (local Supabase inte
       .single();
     expect(invitation.error).toBeNull();
     const auditBefore = await rows(owner.client, 'community_audit_log', communityId);
-    const flipped = await owner.client
+    const flipped = await trustedClient()
       .from('communities')
       .update({ visibility: 'public' })
       .eq('id', communityId);
@@ -2491,7 +2503,7 @@ describe.skipIf(environment.env === null)('community domain (local Supabase inte
             (event.entity === 'community_members' && event.action === 'INSERT')
         )
     ).toEqual([]);
-    const flippedBack = await owner.client
+    const flippedBack = await trustedClient()
       .from('communities')
       .update({ visibility: 'private' })
       .eq('id', communityId);

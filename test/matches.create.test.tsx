@@ -616,6 +616,18 @@ describe('create match wizard', () => {
     await waitFor(() => expect(mocks.navigate).toHaveBeenCalled());
   });
 
+  it('localizes the match publication quota without displaying a database code', async () => {
+    const user = userEvent.setup();
+    mocks.publish.mockRejectedValueOnce(new Error('MATCH_EVENT_CREATE_RATE_LIMITED'));
+    await mount();
+    await fillRequired(user);
+    await attachPhoto(user);
+    await goReview(user);
+    await user.click(button(en.matchCreate.publish));
+    expect(await screen.findByText(en.matchCreate.errors.rateLimited)).toBeTruthy();
+    expect(screen.queryByText('MATCH_EVENT_CREATE_RATE_LIMITED')).toBeNull();
+  });
+
   it('publishes corrected details after a rejection with a fresh publication identity', async () => {
     const user = userEvent.setup();
     mocks.publish

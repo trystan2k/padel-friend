@@ -16,6 +16,19 @@ export const sqlMessage = async (sql: string): Promise<string | null> => {
 };
 
 /**
+ * Moves an actor's published events out of the PAF-189 rolling publish window so a fixture-heavy
+ * suite does not exhaust the per-user quota. The quota itself is covered by
+ * security.rate-limits.integration.test.ts.
+ */
+export async function releasePublishQuota(actorId: string): Promise<void> {
+  await executeTrustedSql(`
+    alter table public.match_events disable trigger match_event_immutable;
+    update public.match_events set published_at = published_at - interval '25 hours'
+      where published_by = '${actorId}' and published_at > now() - interval '24 hours';
+    alter table public.match_events enable trigger match_event_immutable;`);
+}
+
+/**
  * Publishes a Competitive event through the real RPC with an explicit Unranked default, so a
  * League created by the same test can never flip the event to Ranked by accident.
  */

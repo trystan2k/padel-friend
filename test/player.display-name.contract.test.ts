@@ -43,10 +43,12 @@ const SOURCE_LANGUAGE: Record<keyof typeof DISPLAY_NAME_SOURCES, SourceLanguage>
 
 // String.prototype.trim() strips the whole Unicode whitespace class, so applying it to a
 // display name silently drops NBSP edges and drifts away from the server's ASCII-only
-// btrim rule. Bio is exempt (no server-side whitespace rule) and the validator's avatar_url
-// and bio paths trim by design.
+// btrim rule. Bio is exempt (no server-side whitespace rule) and the validator's bio path
+// trims by design. avatar_url is deliberately no longer an allowed receiver: the authenticated
+// UPDATE(avatar_url) grant was revoked (verified avatar writer), so the server never writes
+// avatar_url from client input and trimming it there is intentionally dead.
 const ALLOWED_TRIM_RECEIVERS: Record<keyof typeof DISPLAY_NAME_SOURCES, readonly string[]> = {
-  'player.validators.ts': ['value', 'avatar_url'],
+  'player.validators.ts': ['value'],
   'PlayerOnboarding.tsx': ['bio'],
   'PlayerProfile.tsx': ['bio']
 };
@@ -285,7 +287,7 @@ describe('display-name ASCII edge-whitespace rule single-source contract', () =>
     );
   });
 
-  it('never applies String.prototype.trim() to a display name in any wrapper form (bio and avatar_url are the only exempt receivers)', () => {
+  it('never applies String.prototype.trim() to a display name in any wrapper form (bio is the only exempt receiver)', () => {
     for (const name of [
       'player.validators.ts',
       'PlayerOnboarding.tsx',

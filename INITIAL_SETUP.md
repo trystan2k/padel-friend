@@ -26,7 +26,9 @@ Follow this checklist for **each project created from this template**. Replace e
    http://127.0.0.1:4173/auth/callback                                     # if testing the production build locally
    ```
 
-   Use only actual origins you intend to allow; do not use broad wildcards for production OAuth redirects. The `redirectTo` passed by the app must match an allowlisted URL. If using a **separate preview Supabase project**, configure its own keys, Google provider and redirect URLs instead of granting preview access to production data.
+   Use only actual origins you intend to allow. Hosted entries are exactly `/auth/callback` on each explicitly configured HTTPS origin above: never `/**`, `/*`, wildcard subdomains, or wildcard preview deployments. Examples are not deployed hostnames; replace them with the approved deployment origins before configuring Auth. Keep local HTTP entries only in the local project, not hosted production.
+
+   **Invitation `next` query:** set each environment's Supabase **Site URL** to the same exact origin as that environment's `APP_ORIGIN`. GoTrue accepts return URLs on its Site URL origin, including `/auth/callback?next=%2Fmatches%2F<event-uuid>`; the callback normalizes `next` to an app-local path. An exact callback allowlist entry alone does not cover arbitrary query strings on a _different_ origin. Use a separate preview Supabase project with its own matching Site URL rather than loosening production allowlists to make preview invitations work. APP_ORIGIN must be HTTPS, origin-only (optional trailing slash), without credentials, path, query or fragment. Only explicit loopback origins may use HTTP locally.
 
 4. Review **Authentication → Providers → Email** and confirmation behavior for production. Local `supabase/config.toml` disables email confirmation for quick testing; that local setting does **not** configure hosted Supabase.
 
@@ -83,6 +85,9 @@ Follow this checklist for **each project created from this template**. Replace e
    - Environment `production`: required reviewer `trystan2k`; deployment branch rule that allows the workflow ref `main` (the job runs from `main` and checks out a tag, so do not restrict deployments to tags only); no unintended bypass. **Prevent self-review is intentionally left disabled** so the sole maintainer can approve their own deployments. This is weaker separation of duties; the reviewer checklist in the runbook is the compensating control.
    - Branch protection or ruleset on `main`: require **CI / checks**, forbid force pushes and deletion. Release tags (`v*`) must be immutable: forbid tag update and deletion. The freshness guard assumes `main` is never rewritten and tags are never moved.
    - Do not run manual Dashboard, Wrangler or SQL changes against production while a release is pending or running; the workflow lock cannot coordinate them.
+   - Environment protection checklist (owner, manual): [ ] `production` has required reviewers and a deployment branch rule; [ ] `preview` exists and holds only preview credentials (no production secrets); [ ] production secrets are environment-scoped, not repository-wide, except `RELEASE_PLEASE_TOKEN`.
+   - `RELEASE_PLEASE_TOKEN` must be a **fine-grained** PAT limited to this single repository with only Contents and Pull requests read/write, with an expiry; do not use a classic `repo`-scope token. Rotate it on expiry and re-verify its scope after any rotation.
+   - Workflow actions are pinned to full commit SHAs (version kept in a trailing comment); `.github/dependabot.yml` proposes weekly bumps. Review the diff of the SHA bump, not just the comment.
    - The first real approved release is the live proof of these settings; until observed, environment protection is unverified. Alpha has no automated production backups (see the backup note at the top).
 
 ## 5. Local setup and validation
@@ -227,7 +232,7 @@ Organizers and admins can add a not-yet-registered player by name and email. The
    - **What claiming does.** One transaction: validates the profile fields, locks and, only when the player has no rated history, applies the edited starting level to the initial rating (a level change is rejected once rated games or rating movement exist), keeps the same memberships and registrations, clears the marker, drops unverified identities, other sessions, the stored password and any pending email change, and writes one `player_claimed` audit row on the originating event. The creator-estimated provenance stays on the profile.
 
 7. **Scheduled invitation retries (Worker cron).** An invitation that Auth could not send is kept in the service-only ledger (`match_player_add_operations`) and re-driven with exponential backoff and a bounded attempt count; a spent budget retires it as `exhausted` (recipient slot released, never shown in any audit). The deadline-driven trigger is a Cloudflare **Cron Trigger** (`triggers.crons` in `wrangler.jsonc`, every 5 minutes, production and `preview`), handled by the Worker's `scheduled` export in the custom entry `src/server.ts` (`wrangler.jsonc` `main`). It runs the same sweep as the traffic-driven path (`claim_match_player_add_redrives` → dispatch → Auth → settle), so an idle installation still recovers. Deploy requirements:
-   - **`APP_ORIGIN`** (plain Worker variable or secret, per environment): the public origin of the app, for example `https://padel.example`. A cron has no request, so the invite links take their origin from here; it must be in **Authentication → URL Configuration → Redirect URLs** (step 4). Without a valid value every scheduled run fails with `APP_ORIGIN_UNAVAILABLE` (visible under the Worker's **Cron Triggers → Past events** and in observability logs) instead of mailing bad links. Set it with `pnpm exec wrangler secret put APP_ORIGIN` (and `--env preview`) or as a dashboard variable; for local `wrangler dev` put it in `.dev.vars`.
+   - **`APP_ORIGIN`** (plain Worker variable or secret, per environment): the public origin of the app, for example `https://padel.example`. All invitation links (requests and cron) take their origin from this trusted configuration, never Host/X-Forwarded-Host. Set Auth Site URL to this exact origin and configure the exact `/auth/callback` redirect entry (section 2). APP_ORIGIN is required before add-player writes; invalid/missing values fail closed. TEST preview pins `http://127.0.0.1:4173` via `scripts/e2e-build-env.mjs`; local development must configure `http://127.0.0.1:3000` explicitly. Without a valid value every scheduled run fails with `APP_ORIGIN_UNAVAILABLE` (visible under the Worker's **Cron Triggers → Past events** and in observability logs) instead of mailing bad links. Set it with `pnpm exec wrangler secret put APP_ORIGIN` (and `--env preview`) or as a dashboard variable; for local `wrangler dev` put it in `.dev.vars`.
    - **`SUPABASE_SERVICE_ROLE_KEY`**: the same server-only secret as step 1; the cron reads it from the Worker environment like request handlers do. Nothing about the schedule is exposed over HTTP.
    - **Local check.** The repository tests call the sweep directly (`test/matches.add-player.reconcile.integration.test.ts`); to exercise the handler itself run `pnpm exec wrangler dev --test-scheduled` and `curl "http://localhost:8787/cdn-cgi/handler/scheduled?cron=*+*+*+*+*"`.
    - **Limits.** Cloudflare may start a cron run a little late, so retries are at least one backoff interval apart, never exact. Each run drives up to three rounds of five due operations; a larger backlog drains over the following runs.
@@ -287,3 +292,87 @@ auth keys, private VAPID keys or session tokens. Provider acceptance is not proo
 
 **Evidence status:** all physical-device rows pending operator execution. Browser emulation and mocked
 provider sends do not check these boxes. Final complete-check and delivery review remain separate gates.
+
+## 10. Security response headers and Secure auth cookies
+
+The Worker entry (`src/server.ts`) finalizes **every** response (pages, assets, redirects, server
+functions, caught errors) with the headers from `src/lib/security-headers.server.ts`:
+`Content-Security-Policy-Report-Only`, `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`,
+`Referrer-Policy`, `Permissions-Policy`, and `Strict-Transport-Security` (only when the request
+arrived over HTTPS, so local http dev/preview is unaffected; no `includeSubDomains`/`preload`).
+
+- **Nonce:** one random nonce per request is minted in the Worker, held in request-scoped
+  `AsyncLocalStorage`, and read by `getRouter()` (`router.options.ssr.nonce`). TanStack Start then
+  stamps it on hydration/stream scripts and emits the `csp-nonce` meta tag the client reads back.
+- **Supabase origins:** `connect-src`/`img-src` allow only the exact origin of `VITE_SUPABASE_URL`
+  (`https://` + `wss://` hosted; `http://`/`ws://` only for a loopback URL such as the local stack).
+- **Report-Only → enforce:** the policy ships as Report-Only. Review the browser console / violation
+  reports on a preview deployment (watch `securitypolicyviolation`), then set
+  `ENFORCE_CSP = true` in `src/lib/security-headers.server.ts`. Only one of the two CSP headers is
+  ever sent. Rollback = set it back to `false`; the other headers are unaffected.
+- **Adding a third-party origin** means extending `buildCsp` in the same file. Cloudflare Turnstile
+  (`https://challenges.cloudflare.com` for script, frame and connect) is already wired and only
+  added when `VITE_TURNSTILE_SITE_KEY` is set (see section 11).
+- **Auth cookies:** `src/lib/supabase/cookie-options.ts` sets `secure` on the Supabase server,
+  callback and browser clients whenever the page is served over HTTPS; local http keeps working.
+  `httpOnly` stays off by design (required by the `@supabase/ssr` cookie contract).
+
+## 11. Auth hardening: password policy, captcha, hosted checklist
+
+**Password policy (one source of truth per layer).** Minimum 10 characters with lower case, upper
+case, digit and symbol. Enforced by Supabase Auth (`minimum_password_length` +
+`password_requirements = "lower_upper_letters_digits_symbols"` in `supabase/config.toml` and
+`test/stack/supabase/config.toml`) and mirrored client-side by
+`src/features/auth/password-policy.ts`, used by signup, reset and claim-invite (blocking) and by
+login (non-blocking hint only, so legacy weak-password accounts can still sign in and then change
+it). Existing passwords stay valid after tightening the setting. Hosted projects do **not** read
+`config.toml`: set the same values under Auth → Sign In / Providers → Email (see checklist).
+
+**Captcha (Cloudflare Turnstile), opt-in.**
+
+- Public site key: `VITE_TURNSTILE_SITE_KEY` (build-time `VITE_` value; public by design). Unset =
+  no widget, no token sent, no Turnstile origin in the CSP.
+- Secret key: only in the Supabase Auth settings (hosted dashboard: Auth → Attack Protection →
+  Enable CAPTCHA protection → Turnstile → secret). Locally, `[auth.captcha]` reads
+  `env(SUPABASE_AUTH_CAPTCHA_SECRET)`. Never put the secret in a `VITE_` variable.
+- **TEST stack bypass:** `test/stack/supabase/config.toml` keeps `[auth.captcha] enabled = false`
+  and no test env file sets `VITE_TURNSTILE_SITE_KEY`, so suites sign up/in without Cloudflare
+  credentials. Production never accepts a fixed bypass token. To try the widget locally, set
+  `enabled = true` in `supabase/config.toml`, export Cloudflare's dummy secret as
+  `SUPABASE_AUTH_CAPTCHA_SECRET` and use a Cloudflare test site key.
+- Deployment order: enable captcha in Supabase **after** the build with the site key is live
+  (otherwise sign-in requests without a token are rejected).
+
+**Hosted Supabase settings checklist (operator, per environment; local config does not apply):**
+
+- [ ] Auth → Password: minimum length 10, required characters lower + upper + digits + symbols.
+- [ ] Leaked-password protection (HaveIBeenPwned) ON. Requires Supabase Pro plan or above; there is
+      no local `config.toml` key, so it is a hosted-only control. Record the plan/verification.
+- [ ] Auth → Rate Limits: review sign-in/sign-up/OTP/password-recovery limits for the expected load.
+- [ ] Attack Protection → CAPTCHA ON with the Turnstile **secret** (after the site-key build ships).
+- [ ] Sign In / Providers → "Allow anonymous sign-ins" OFF (the app also rejects `is_anonymous`
+      sessions in `requireAuthenticatedClient`).
+- [ ] Email → "Confirm email" ON (local `enable_confirmations = false` is a fixture convenience only).
+- [ ] URL Configuration: Site URL = the exact deployed origin; Redirect URLs = exactly
+      `<origin>/auth/callback` for each production/preview origin (no wildcards beyond need).
+
+## 12. Push endpoints and REST schema discovery
+
+Push registration and delivery share `push-endpoint.ts`. Registration RPC mirrors its strict
+ASCII URL grammar, so direct REST calls cannot store arbitrary hosts. Supported hosts:
+`fcm.googleapis.com`, one label under `push.services.mozilla.com` (including
+`updates.push.services.mozilla.com`), `web.push.apple.com`, and one label under
+`web.push.apple.com`. HTTPS only; optional explicit `:443`; no credentials, fragments,
+backslashes, whitespace, encoded/unicode hosts, trailing-dot hosts, or URLs over 2048 bytes.
+**WNS (`*.notify.windows.com`) deliberately unsupported** at both boundaries, preserving
+existing delivery behavior. Supporting WNS requires a reviewed constrained provider allowance
+and parity tests, never a wildcard Windows-domain exception.
+
+Migration `20261115130000_push_endpoint_and_openapi_hardening.sql` sets
+`authenticator.pgrst.openapi_mode = 'disabled'` and reloads PostgREST configuration. The REST
+root `/rest/v1/` returns 404, including with the anon key; ordinary REST/RPC remains available.
+Tradeoff: interactive OpenAPI/Swagger schema docs disappear, including privileged root discovery.
+This only reduces reconnaissance; grants, RLS and RPC authorization remain mandatory.
+`pnpm db:types` and `pnpm db:types:check` use CLI PostgreSQL introspection, not the REST root,
+and were verified against the migrated TEST stack. Hosted rollout uses the reviewed migration
+through the normal release process; local verification does not claim production settings changed.

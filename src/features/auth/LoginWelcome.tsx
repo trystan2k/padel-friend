@@ -7,10 +7,13 @@ import { OrDivider } from '../../components/ui/OrDivider';
 import { PasswordField } from '../../components/ui/PasswordField';
 import { TextField } from '../../components/ui/TextField';
 import { TextLink } from '../../components/ui/TextLink';
+import { TurnstileWidget } from '../../components/ui/TurnstileWidget';
+import { useCaptcha } from '../../lib/captcha';
 import { getBrowserClient } from '../../lib/supabase/client';
 import { useHydrated } from '../../lib/use-hydrated';
 import { styles } from './login-welcome.styles';
 import { navigateAfterAuth } from './navigate';
+import { PASSWORD_MIN_LENGTH, isPasswordValid } from './password-policy';
 import { normalizeReturnPath } from './return-path';
 
 type LoginWelcomeProps = {
@@ -31,6 +34,9 @@ export function LoginWelcome({
   const ready = useHydrated();
   const [message, setMessage] = useState('');
   const [busy, setBusy] = useState(false);
+  // Guidance only: legacy accounts may predate the policy, so it never blocks a sign-in attempt.
+  const [legacyPassword, setLegacyPassword] = useState(false);
+  const captcha = useCaptcha();
 
   async function signInWithGoogle() {
     setMessage('');
@@ -60,10 +66,19 @@ export function LoginWelcome({
     const passwordValue = form.get('password');
     const email = typeof emailValue === 'string' ? emailValue : '';
     const password = typeof passwordValue === 'string' ? passwordValue : '';
+    if (captcha.enabled && !captcha.token) {
+      setMessage(captcha.failed ? 'auth.captchaError' : 'auth.captchaRequired');
+      return;
+    }
     setBusy(true);
     setMessage('');
     try {
-      const { error } = await getBrowserClient().auth.signInWithPassword({ email, password });
+      const { error } = await getBrowserClient().auth.signInWithPassword({
+        email,
+        password,
+        ...(captcha.enabled ? { options: captcha.authOptions } : {})
+      });
+      captcha.reset();
       if (error) {
         setMessage('auth.unauthorized');
         setBusy(false);
@@ -71,6 +86,7 @@ export function LoginWelcome({
       }
       navigateAfterAuth(next);
     } catch {
+      captcha.reset();
       setMessage('auth.unauthorized');
       setBusy(false);
     }
@@ -121,10 +137,18 @@ export function LoginWelcome({
             label={t('auth.loginPasswordLabel')}
             placeholder={t('auth.loginPasswordPlaceholder')}
             required
-            minLength={6}
             autoComplete="current-password"
             disabled={!ready || busy}
+            helper={
+              legacyPassword
+                ? t('auth.passwordLegacyHint', { min: PASSWORD_MIN_LENGTH })
+                : undefined
+            }
+            onChange={(event) =>
+              setLegacyPassword(event.target.value !== '' && !isPasswordValid(event.target.value))
+            }
           />
+          <TurnstileWidget {...captcha.widgetProps} />
           <div {...stylex.props(styles.forgotRow, styles.targetRow)}>
             <TextLink
               to="/forgot-password"

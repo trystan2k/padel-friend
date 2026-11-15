@@ -1,6 +1,7 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { describe, expect, it } from 'vitest';
 import { localSupabaseEnv } from './helpers/local-supabase-env';
+import { trustedClient } from './helpers/trusted-client';
 import { executeTrustedSql } from './helpers/sql-transport';
 
 const environment = localSupabaseEnv();
@@ -76,10 +77,11 @@ describe.skipIf(!environment.env)(
     /** Issues a live invitation and returns the raw token plus the recipient's alert id. */
     async function invite(admin: Actor, communityId: string, invitee: Actor) {
       const token = rawToken();
-      const inserted = await admin.client
+      const inserted = await trustedClient()
         .from('community_invitations')
         .insert({
           community_id: communityId,
+          issued_by: admin.id,
           invitee_user_id: invitee.id,
           token_hash: await sha256Hex(token),
           expires_at: new Date(Date.now() + 60 * 60 * 1000).toISOString()
@@ -338,7 +340,7 @@ describe.skipIf(!environment.env)(
 
       expect(
         (
-          await admin.client.from('community_members').insert({
+          await trustedClient().from('community_members').insert({
             community_id: communityId,
             user_id: pendingMember.id,
             role: 'member',
@@ -436,7 +438,7 @@ describe.skipIf(!environment.env)(
       const member = await actor('Target Removed Member');
       const communityId = await community(admin);
 
-      const inserted = await admin.client
+      const inserted = await trustedClient()
         .from('community_members')
         .insert({
           community_id: communityId,

@@ -1,5 +1,6 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { describe, expect, it, vi } from 'vitest';
+import { executeTrustedSql } from './helpers/sql-transport';
 import { sportingProfile } from '../src/features/player/player.server';
 import { localSupabaseEnv, type LocalSupabaseEnv } from './helpers/local-supabase-env';
 
@@ -523,86 +524,24 @@ describe.skipIf(environment.env === null)(
         });
       expect(wrongMime.error).not.toBeNull();
 
-      // Owner deletes their own object (explicit owner delete path).
+      // Keys are immutable even for their owner: no delete/reinsert verification race.
       const ownerDelete = await alice.client.storage.from(bucket).remove([aliceKey]);
       expect(ownerDelete.error).toBeNull();
-      const gone = await alice.client.storage.from(bucket).download(aliceKey);
-      expect(gone.error).not.toBeNull();
+      expect(ownerDelete.data).toEqual([]);
+      expect((await alice.client.storage.from(bucket).download(aliceKey)).error).toBeNull();
     });
 
-    it('enforces the avatar_url CHECK on direct owner updates: nested/extra segments, non-v4 object UUIDs and an uppercased owner prefix rejected with 23514; a canonical v4 key, a mixed-case extension and NULL accepted', async () => {
+    it('denies every direct avatar_url update while ordinary profile columns remain writable', async () => {
       const { client, userId } = await signUpPlayer('avatarurl');
       await onboard(client, 'Avatar Url Player', 'LEFT', 3);
-
-      const v4Object = '22222222-2222-4222-8222-222222222222';
-      const validKey = `${userId}/${v4Object}.png`;
-      const setAvatar = (avatarUrl: string | null) =>
-        client.from('player_profiles').update({ avatar_url: avatarUrl }).eq('user_id', userId);
-      const currentAvatar = async () => (await ownProfile(client, userId))?.avatar_url;
-
-      // Starts clean: onboarding never sets an avatar.
-      expect(await currentAvatar()).toBeNull();
-
-      // Nested/extra path segments break the `^<owner>/<v4>.<ext>$` anchor → SQLSTATE 23514.
-      for (const nestedKey of [
-        `${userId}/nested/${v4Object}.png`,
-        `${userId}/${v4Object}/nested.png`,
-        `${userId}/${v4Object}/nested/${v4Object}.png`
-      ]) {
-        const rejected = await setAvatar(nestedKey);
-        expect(
-          rejected.error?.code,
-          `nested avatar key ${nestedKey} must violate the avatar_url CHECK`
-        ).toBe('23514');
+      for (const avatar of [null, `${userId}/${crypto.randomUUID()}.png`, 'invalid']) {
+        const result = await client
+          .from('player_profiles')
+          .update({ avatar_url: avatar })
+          .eq('user_id', userId);
+        expect(result.error?.code).toBe('42501');
       }
-
-      // Version nibble != 4 and a variant nibble outside [89ab] are equally rejected.
-      for (const badObject of [
-        '22222222-2222-3222-8222-222222222222',
-        '22222222-2222-4222-c222-222222222222'
-      ]) {
-        const rejected = await setAvatar(`${userId}/${badObject}.png`);
-        expect(
-          rejected.error?.code,
-          `object uuid ${badObject} must violate the avatar_url CHECK`
-        ).toBe('23514');
-      }
-      expect(await currentAvatar()).toBeNull();
-
-      // Owner-prefix matching is exact (case-sensitive): an UPPERCASED owner UUID with an
-      // otherwise valid filename violates the `left(avatar_url, …) = user_id::text || '/'`
-      // equality → SQLSTATE 23514, and the stored value stays untouched.
-      const uppercasedPrefix = await setAvatar(`${userId.toUpperCase()}/${v4Object}.png`);
-      expect(
-        uppercasedPrefix.error?.code,
-        'an uppercased owner prefix must violate the avatar_url CHECK'
-      ).toBe('23514');
-      expect(await currentAvatar()).toBeNull();
-
-      // The canonical v4 key for the owner is accepted and read back verbatim.
-      const accepted = await setAvatar(validKey);
-      expect(accepted.error, `valid avatar key failed: ${accepted.error?.message}`).toBeNull();
-      expect(await currentAvatar()).toBe(validKey);
-
-      // A rejected write never clobbers an already-saved avatar_url.
-      const rejectedAfterSave = await setAvatar(`${userId}/nested/${v4Object}.png`);
-      expect(rejectedAfterSave.error?.code).toBe('23514');
-      expect(await currentAvatar()).toBe(validKey);
-
-      // Case-insensitivity is filename-scoped: a mixed-case extension on the SAME key is
-      // accepted and read back verbatim.
-      const upperExtensionKey = `${userId}/${v4Object}.PNG`;
-      const acceptedUpperExtension = await setAvatar(upperExtensionKey);
-      expect(
-        acceptedUpperExtension.error,
-        `mixed-case extension failed: ${acceptedUpperExtension.error?.message}`
-      ).toBeNull();
-      expect(await currentAvatar()).toBe(upperExtensionKey);
-
-      // Clearing back to NULL stays allowed.
-      const cleared = await setAvatar(null);
-      expect(cleared.error, `null avatar failed: ${cleared.error?.message}`).toBeNull();
-      expect(await currentAvatar()).toBeNull();
+      expect((await ownProfile(client, userId))?.avatar_url).toBeNull();
     });
 
     it('degrades an accepted-but-nonexistent avatar object key to a null signed URL instead of failing the profile read', async () => {
@@ -612,11 +551,11 @@ describe.skipIf(environment.env === null)(
       // A syntactically valid v4+variant key for an object the owner never uploaded passes
       // the avatar_url CHECK and is stored verbatim.
       const ghostKey = `${userId}/33333333-2222-4333-8444-555555555555.png`;
-      const stored = await client
-        .from('player_profiles')
-        .update({ avatar_url: ghostKey })
-        .eq('user_id', userId);
-      expect(stored.error, `ghost avatar key failed: ${stored.error?.message}`).toBeNull();
+      // Trusted fixture models a legacy missing object; browsers can no longer store it.
+      await executeTrustedSql(
+        'update public.player_profiles set avatar_url = $1 where user_id = $2',
+        { values: [ghostKey, userId] }
+      );
       expect((await ownProfile(client, userId))?.avatar_url).toBe(ghostKey);
 
       // The profile read path (sportingProfile) must NOT throw on the unresolvable key:
