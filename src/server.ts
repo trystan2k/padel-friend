@@ -10,6 +10,7 @@ import {
   safeErrorCode
 } from './lib/diagnostics.server';
 import { applyPrivateResponsePolicy } from './lib/private-response';
+import { newCspNonce, runWithNonce, securityHeaders } from './lib/security-headers.server';
 
 type WorkerContext = { waitUntil: (promise: Promise<unknown>) => void };
 
@@ -17,13 +18,13 @@ const REQUEST_ID_HEADER = 'X-Request-Id';
 
 // Headers of a handler-built Response may be immutable (redirects, fetched assets): mutate in
 // place when allowed, otherwise copy. The copy keeps the body stream and every Set-Cookie.
-function withRequestId(response: Response, requestId: string) {
+function withHeaders(response: Response, headers: Record<string, string>) {
   try {
-    response.headers.set(REQUEST_ID_HEADER, requestId);
+    for (const [name, value] of Object.entries(headers)) response.headers.set(name, value);
     return response;
   } catch {
     const copy = new Response(response.body, response);
-    copy.headers.set(REQUEST_ID_HEADER, requestId);
+    for (const [name, value] of Object.entries(headers)) copy.headers.set(name, value);
     return copy;
   }
 }
@@ -47,18 +48,27 @@ export default {
   async fetch(...args: Parameters<typeof handler.fetch>) {
     // Ingress mints the correlation ID; a client-supplied one is never trusted or echoed.
     const requestId = newCorrelationId();
-    return runWithDiagnostics({ kind: 'request', id: requestId }, async () => {
-      try {
-        const response = await handler.fetch(...args);
-        return withRequestId(applyPrivateResponsePolicy(args[0], response), requestId);
-      } catch (error) {
-        emitDiagnostic('request.failure', 'failure', { code: safeErrorCode(error) });
-        return withRequestId(
-          new Response(null, { status: 500, headers: { 'Cache-Control': 'private, no-store' } }),
-          requestId
-        );
-      }
-    });
+    // One unpredictable nonce per request, minted here and never taken from the client. It reaches
+    // SSR through request-scoped storage (router.tsx) and the Start request context.
+    const nonce = newCspNonce();
+    const finalize = (response: Response) =>
+      withHeaders(response, {
+        [REQUEST_ID_HEADER]: requestId,
+        ...securityHeaders(args[0].url, nonce)
+      });
+    return runWithDiagnostics({ kind: 'request', id: requestId }, () =>
+      runWithNonce(nonce, async () => {
+        try {
+          const response = await handler.fetch(args[0], { context: { nonce } });
+          return finalize(applyPrivateResponsePolicy(args[0], response));
+        } catch (error) {
+          emitDiagnostic('request.failure', 'failure', { code: safeErrorCode(error) });
+          return finalize(
+            new Response(null, { status: 500, headers: { 'Cache-Control': 'private, no-store' } })
+          );
+        }
+      })
+    );
   },
   scheduled(_controller: unknown, _env: unknown, ctx: WorkerContext) {
     // Start independently. A disabled/misconfigured Push channel must never starve player-add

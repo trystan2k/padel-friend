@@ -287,3 +287,25 @@ auth keys, private VAPID keys or session tokens. Provider acceptance is not proo
 
 **Evidence status:** all physical-device rows pending operator execution. Browser emulation and mocked
 provider sends do not check these boxes. Final complete-check and delivery review remain separate gates.
+
+## 10. Security response headers and Secure auth cookies
+
+The Worker entry (`src/server.ts`) finalizes **every** response (pages, assets, redirects, server
+functions, caught errors) with the headers from `src/lib/security-headers.server.ts`:
+`Content-Security-Policy-Report-Only`, `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`,
+`Referrer-Policy`, `Permissions-Policy`, and `Strict-Transport-Security` (only when the request
+arrived over HTTPS, so local http dev/preview is unaffected; no `includeSubDomains`/`preload`).
+
+- **Nonce:** one random nonce per request is minted in the Worker, held in request-scoped
+  `AsyncLocalStorage`, and read by `getRouter()` (`router.options.ssr.nonce`). TanStack Start then
+  stamps it on hydration/stream scripts and emits the `csp-nonce` meta tag the client reads back.
+- **Supabase origins:** `connect-src`/`img-src` allow only the exact origin of `VITE_SUPABASE_URL`
+  (`https://` + `wss://` hosted; `http://`/`ws://` only for a loopback URL such as the local stack).
+- **Report-Only → enforce:** the policy ships as Report-Only. Review the browser console / violation
+  reports on a preview deployment (watch `securitypolicyviolation`), then set
+  `ENFORCE_CSP = true` in `src/lib/security-headers.server.ts`. Only one of the two CSP headers is
+  ever sent. Rollback = set it back to `false`; the other headers are unaffected.
+- **Adding a third-party origin** (e.g. a captcha widget) means extending `buildCsp` in the same file.
+- **Auth cookies:** `src/lib/supabase/cookie-options.ts` sets `secure` on the Supabase server,
+  callback and browser clients whenever the page is served over HTTPS; local http keeps working.
+  `httpOnly` stays off by design (required by the `@supabase/ssr` cookie contract).

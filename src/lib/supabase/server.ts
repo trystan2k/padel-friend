@@ -1,5 +1,11 @@
 import { createServerClient, parseCookieHeader } from '@supabase/ssr';
-import { getRequestHeader, setCookie, setResponseHeader } from '@tanstack/react-start/server';
+import {
+  getRequestHeader,
+  getRequestUrl,
+  setCookie,
+  setResponseHeader
+} from '@tanstack/react-start/server';
+import { authCookieOptions } from './cookie-options';
 import type { Database } from './database.types';
 
 export function getServerClient() {
@@ -7,6 +13,7 @@ export function getServerClient() {
     import.meta.env.VITE_SUPABASE_URL,
     import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
     {
+      cookieOptions: authCookieOptions(getRequestUrl().protocol),
       cookies: {
         getAll() {
           return parseCookieHeader(getRequestHeader('cookie') ?? '').filter(

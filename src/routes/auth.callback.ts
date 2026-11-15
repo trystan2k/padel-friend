@@ -1,6 +1,7 @@
 import { createServerClient, parseCookieHeader, serializeCookieHeader } from '@supabase/ssr';
 import { createFileRoute } from '@tanstack/react-router';
 import { normalizeReturnPath } from '../features/auth/return-path';
+import { authCookieOptions } from '../lib/supabase/cookie-options';
 import type { Database } from '../lib/supabase/database.types';
 
 export const Route = createFileRoute('/auth/callback')({
@@ -23,6 +24,7 @@ export const Route = createFileRoute('/auth/callback')({
             import.meta.env.VITE_SUPABASE_URL,
             import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
             {
+              cookieOptions: authCookieOptions(url.protocol),
               cookies: {
                 getAll() {
                   return parseCookieHeader(request.headers.get('cookie') ?? '').filter(
