@@ -83,6 +83,9 @@ Follow this checklist for **each project created from this template**. Replace e
    - Environment `production`: required reviewer `trystan2k`; deployment branch rule that allows the workflow ref `main` (the job runs from `main` and checks out a tag, so do not restrict deployments to tags only); no unintended bypass. **Prevent self-review is intentionally left disabled** so the sole maintainer can approve their own deployments. This is weaker separation of duties; the reviewer checklist in the runbook is the compensating control.
    - Branch protection or ruleset on `main`: require **CI / checks**, forbid force pushes and deletion. Release tags (`v*`) must be immutable: forbid tag update and deletion. The freshness guard assumes `main` is never rewritten and tags are never moved.
    - Do not run manual Dashboard, Wrangler or SQL changes against production while a release is pending or running; the workflow lock cannot coordinate them.
+   - Environment protection checklist (owner, manual): [ ] `production` has required reviewers and a deployment branch rule; [ ] `preview` exists and holds only preview credentials (no production secrets); [ ] production secrets are environment-scoped, not repository-wide, except `RELEASE_PLEASE_TOKEN`.
+   - `RELEASE_PLEASE_TOKEN` must be a **fine-grained** PAT limited to this single repository with only Contents and Pull requests read/write, with an expiry; do not use a classic `repo`-scope token. Rotate it on expiry and re-verify its scope after any rotation.
+   - Workflow actions are pinned to full commit SHAs (version kept in a trailing comment); `.github/dependabot.yml` proposes weekly bumps. Review the diff of the SHA bump, not just the comment.
    - The first real approved release is the live proof of these settings; until observed, environment protection is unverified. Alpha has no automated production backups (see the backup note at the top).
 
 ## 5. Local setup and validation
