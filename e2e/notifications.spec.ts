@@ -12,6 +12,7 @@ import {
   type Route
 } from '@playwright/test';
 import { testSupabaseConfig } from './test-supabase-config';
+import { trustedClient } from '../test/helpers/trusted-client';
 import { submitAndWaitForAuthDestination, waitForHydratedPage } from './auth-helpers';
 import { sql } from './matches-management-fixtures';
 import {
@@ -418,10 +419,11 @@ async function insertInvitation(owner: Actor, communityId: string, invitee: Acto
   const tokenHash = Array.from(new Uint8Array(digest), (byte) =>
     byte.toString(16).padStart(2, '0')
   ).join('');
-  const invitation = await owner.client
+  const invitation = await trustedClient()
     .from('community_invitations')
     .insert({
       community_id: communityId,
+      issued_by: owner.id,
       invitee_user_id: invitee.id,
       token_hash: tokenHash,
       expires_at: new Date(Date.now() + 86400000).toISOString()
@@ -682,7 +684,7 @@ test('invitation revoked between detail load and accept degrades gracefully with
     await expect(accept).toBeVisible();
 
     // Admin revokes the invitation after the detail is loaded but before Accept is clicked.
-    const revoked = await admin.client
+    const revoked = await trustedClient()
       .from('community_invitations')
       .update({ revoked_at: new Date().toISOString() })
       .eq('id', notification.target_id)

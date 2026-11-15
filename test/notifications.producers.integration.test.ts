@@ -5,6 +5,7 @@ import {
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { describe, expect, it } from 'vitest';
 import { localSupabaseEnv } from './helpers/local-supabase-env';
+import { trustedClient } from './helpers/trusted-client';
 import { executeTrustedSql } from './helpers/sql-transport';
 
 const environment = localSupabaseEnv();
@@ -51,8 +52,8 @@ describe.skipIf(!environment.env)('community notification producers (local Supab
     return result.data;
   }
 
-  async function membership(admin: Actor, communityId: string, member: Actor, status: string) {
-    const result = await admin.client
+  async function membership(_admin: Actor, communityId: string, member: Actor, status: string) {
+    const result = await trustedClient()
       .from('community_members')
       .insert({ community_id: communityId, user_id: member.id, status })
       .select('id')
@@ -289,10 +290,11 @@ describe.skipIf(!environment.env)('community notification producers (local Supab
     const tokenHash = () => crypto.randomUUID().replaceAll('-', '').padEnd(64, '0');
     const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
 
-    const firstInvite = await admin.client
+    const firstInvite = await trustedClient()
       .from('community_invitations')
       .insert({
         community_id: communityId,
+        issued_by: admin.id,
         invitee_user_id: invitee.id,
         token_hash: tokenHash(),
         expires_at: expiresAt
@@ -308,8 +310,9 @@ describe.skipIf(!environment.env)('community notification producers (local Supab
       `community.invitation:${invitationId}`
     );
 
-    const duplicateInvite = await admin.client.from('community_invitations').insert({
+    const duplicateInvite = await trustedClient().from('community_invitations').insert({
       community_id: communityId,
+      issued_by: admin.id,
       invitee_user_id: invitee.id,
       token_hash: tokenHash(),
       expires_at: expiresAt

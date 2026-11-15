@@ -3,6 +3,7 @@ import { deflateSync } from 'node:zlib';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
 import { localSupabaseEnv } from './helpers/local-supabase-env';
 import { executeTrustedSql } from './helpers/sql-transport';
+import { trustedClient } from './helpers/trusted-client';
 
 const serverClient = vi.hoisted(() => ({ current: null as SupabaseClient | null }));
 vi.mock('@tanstack/react-start', () => ({
@@ -139,22 +140,22 @@ localOnly('private venue photo authorization and finalization with real local St
     if (community.error || typeof community.data !== 'string')
       throw community.error ?? new Error('Community setup failed');
     communityId = community.data;
-    const venue = await owner.client
+    const venue = await trustedClient()
       .from('community_venues')
-      .insert({ community_id: communityId, name: 'Photo Court' })
+      .insert({ community_id: communityId, name: 'Photo Court', created_by: owner.id })
       .select('id')
       .single();
     if (venue.error || !venue.data) throw venue.error ?? new Error('Venue setup failed');
     venueId = venue.data.id;
-    const archiveVenue = await owner.client
+    const archiveVenue = await trustedClient()
       .from('community_venues')
-      .insert({ community_id: communityId, name: 'Archive Race Court' })
+      .insert({ community_id: communityId, name: 'Archive Race Court', created_by: owner.id })
       .select('id')
       .single();
     if (archiveVenue.error || !archiveVenue.data)
       throw archiveVenue.error ?? new Error('Archive venue setup failed');
     archiveVenueId = archiveVenue.data.id;
-    const adminMembership = await owner.client
+    const adminMembership = await trustedClient()
       .from('community_members')
       .insert({
         community_id: communityId,
@@ -167,7 +168,7 @@ localOnly('private venue photo authorization and finalization with real local St
     if (adminMembership.error || !adminMembership.data)
       throw adminMembership.error ?? new Error('Admin membership setup failed');
     photoAdminMembershipId = adminMembership.data.id;
-    const memberMembership = await owner.client
+    const memberMembership = await trustedClient()
       .from('community_members')
       .insert({ community_id: communityId, user_id: member.id, role: 'member', status: 'active' });
     if (memberMembership.error) throw memberMembership.error;
@@ -260,9 +261,13 @@ localOnly('private venue photo authorization and finalization with real local St
     });
     if (otherCommunity.error || typeof otherCommunity.data !== 'string')
       throw otherCommunity.error ?? new Error('Second community setup failed');
-    const otherVenue = await photoAdmin.client
+    const otherVenue = await trustedClient()
       .from('community_venues')
-      .insert({ community_id: otherCommunity.data, name: 'Other RPC Scope Court' })
+      .insert({
+        community_id: otherCommunity.data,
+        name: 'Other RPC Scope Court',
+        created_by: photoAdmin.id
+      })
       .select('id')
       .single();
     if (otherVenue.error || !otherVenue.data)
@@ -415,7 +420,7 @@ localOnly('private venue photo authorization and finalization with real local St
     expect(prior.data?.photo_path).toBe(firstKey);
     const archiveRaceKey = keyFor(communityId, archiveVenueId, owner.id, 'png');
     expect((await upload(owner.client, archiveRaceKey, png, 'image/png')).error).toBeNull();
-    const archived = await owner.client
+    const archived = await trustedClient()
       .from('community_venues')
       .update({ archived_at: new Date().toISOString() })
       .eq('id', archiveVenueId);
@@ -435,9 +440,9 @@ localOnly('private venue photo authorization and finalization with real local St
   });
 
   it('does not permit upsert/update and never serializes signed URLs to unauthorized actors', async () => {
-    const freshVenue = await owner.client
+    const freshVenue = await trustedClient()
       .from('community_venues')
-      .insert({ community_id: communityId, name: 'No Upsert Court' })
+      .insert({ community_id: communityId, name: 'No Upsert Court', created_by: owner.id })
       .select('id')
       .single();
     if (freshVenue.error || !freshVenue.data)

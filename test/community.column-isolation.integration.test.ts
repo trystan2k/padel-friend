@@ -2,6 +2,7 @@ import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { describe, expect, it, vi } from 'vitest';
 import { localSupabaseEnv, type LocalSupabaseEnv } from './helpers/local-supabase-env';
 import { queryTrustedSql } from './helpers/sql-transport';
+import { trustedClient } from './helpers/trusted-client';
 
 const serverClient = vi.hoisted(() => ({ current: null as SupabaseClient | null }));
 vi.mock('@tanstack/react-start', () => ({
@@ -103,13 +104,13 @@ describe.skipIf(environment.env === null)('community column isolation (local Sup
     expect(simulatedAnonymous).toContain('false');
     expect(
       (
-        await admin.client
+        await trustedClient()
           .from('communities')
           .update({ settings: { original: true } })
           .eq('id', id)
       ).error
     ).toBeNull();
-    const membership = await admin.client
+    const membership = await trustedClient()
       .from('community_members')
       .insert({ community_id: id, user_id: member.id, status: 'active', role: 'member' });
     expect(membership.error).toBeNull();
@@ -131,13 +132,13 @@ describe.skipIf(environment.env === null)('community column isolation (local Sup
       .eq('id', id);
     expect(safe.error).toBeNull();
     expect(safe.data).toHaveLength(1);
-    const privateRow = await admin.client
+    const privateRow = await trustedClient()
       .from('communities')
       .update({ visibility: 'private' })
       .eq('id', id);
     expect(privateRow.error).toBeNull();
     expect((await outsider.client.from('communities').select('id').eq('id', id)).data).toEqual([]);
-    await admin.client.from('communities').update({ visibility: 'public' }).eq('id', id);
+    await trustedClient().from('communities').update({ visibility: 'public' }).eq('id', id);
 
     const memberRead = await member.client
       .rpc('get_community_settings', { p_community_id: id })

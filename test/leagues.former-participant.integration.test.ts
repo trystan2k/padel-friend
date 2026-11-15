@@ -2,6 +2,7 @@ import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { Database } from '../src/lib/supabase/database.types';
 import { localSupabaseEnv } from './helpers/local-supabase-env';
+import { trustedClient } from './helpers/trusted-client';
 import { asRecord, fixtureSql, sqlRows } from './helpers/match-registration-sql';
 import {
   insertFixtureEvent,
@@ -419,10 +420,11 @@ describe.skipIf(!environment.env)('League former-participant reads', { timeout: 
       const tokenHash = Array.from(crypto.getRandomValues(new Uint8Array(32)), (byte) =>
         byte.toString(16).padStart(2, '0')
       ).join('');
-      const invited = await who(0)
-        .client.from('community_invitations')
+      const invited = await trustedClient()
+        .from('community_invitations')
         .insert({
           community_id: kit.communityId,
+          issued_by: id(0),
           invitee_user_id: invitee.id,
           token_hash: tokenHash,
           expires_at: new Date(Date.now() + 3_600_000).toISOString()

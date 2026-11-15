@@ -4695,6 +4695,20 @@ export type Database = {
       activate_global_rating_projection: { Args: Record<PropertyKey, never>; Returns: Json }
       activate_league: { Args: { p_expected_version: number; p_league_id: string }; Returns: Json }
       actor_session_revoked: { Args: Record<PropertyKey, never>; Returns: boolean }
+      add_community_venue: {
+        Args: { p_address?: string; p_community_id: string; p_maps_url?: string; p_name: string }
+        Returns: {
+          address: string
+          archived_at: string
+          community_id: string
+          created_at: string
+          id: string
+          maps_url: string
+          name: string
+          photo_path: string
+          updated_at: string
+        }[]
+      }
       add_match_player: {
         Args: {
           p_display_name: string
@@ -4708,6 +4722,20 @@ export type Database = {
       }
       advance_match_registration_revision_locked: { Args: { p_event_id: string }; Returns: number }
       apply_operational_alert_signals: { Args: { p_signals: Json }; Returns: Json }
+      archive_community_venue: {
+        Args: { p_community_id: string; p_venue_id: string }
+        Returns: {
+          address: string
+          archived_at: string
+          community_id: string
+          created_at: string
+          id: string
+          maps_url: string
+          name: string
+          photo_path: string
+          updated_at: string
+        }[]
+      }
       assert_actor_not_provisional: { Args: Record<PropertyKey, never>; Returns: undefined }
       assert_match_event_active_locked: { Args: { p_event_id: string }; Returns: undefined }
       assert_match_league_binding: {
@@ -4868,6 +4896,20 @@ export type Database = {
       dispatch_match_player_add: {
         Args: { p_actor_id: string; p_match_event_id: string; p_request_id: string }
         Returns: Json
+      }
+      edit_community_venue: {
+        Args: { p_changes: Json; p_community_id: string; p_venue_id: string }
+        Returns: {
+          address: string
+          archived_at: string
+          community_id: string
+          created_at: string
+          id: string
+          maps_url: string
+          name: string
+          photo_path: string
+          updated_at: string
+        }[]
       }
       edit_match_event: {
         Args: {
@@ -5229,6 +5271,14 @@ export type Database = {
       is_private_match_event: { Args: { p_event_id: string }; Returns: boolean }
       is_provisional_actor: { Args: Record<PropertyKey, never>; Returns: boolean }
       is_provisional_player: { Args: { p_user_id: string }; Returns: boolean }
+      issue_community_invitation: {
+        Args: { p_community_id: string; p_invitee_user_id: string }
+        Returns: {
+          expires_at: string
+          invitation_id: string
+          token: string
+        }[]
+      }
       join_public_community: {
         Args: { p_community_id: string }
         Returns: {
@@ -6501,6 +6551,13 @@ export type Database = {
           p_reason_note?: string
         }
         Returns: Json
+      }
+      revoke_community_invitation: {
+        Args: { p_community_id: string; p_invitation_id: string }
+        Returns: {
+          id: string
+          revoked_at: string
+        }[]
       }
       revoke_notification_push_keys: { Args: { p_key_ids: string[] }; Returns: number }
       run_claimed_result_repairs: { Args: { p_limit?: number }; Returns: Json }

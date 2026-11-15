@@ -5,6 +5,7 @@ import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '../src/lib/supabase/database.types';
 import { expect, test, type Locator, type Page } from '@playwright/test';
 import { testSupabaseConfig } from './test-supabase-config';
+import { trustedClient } from '../test/helpers/trusted-client';
 import { waitForHydratedPage } from './auth-helpers';
 
 type Copy = {
@@ -1206,7 +1207,7 @@ test(
     });
     if (joined.error) throw joined.error;
     expect(joined.data).toMatchObject([{ status: 'pending' }]);
-    const backupMembership = await owner.client
+    const backupMembership = await trustedClient()
       .from('community_members')
       .insert({ community_id: communityId, user_id: backup.id, role: 'member', status: 'active' })
       .select('id')
@@ -1215,10 +1216,11 @@ test(
     // Second real venue (admin RLS insert) so the venues screen shows the supported two-card
     // structure of the A5Vio frame instead of masking it away; "South Court" sorts after the
     // UI-created "North Court" so card order stays deterministic.
-    const seededVenue = await owner.client
+    const seededVenue = await trustedClient()
       .from('community_venues')
       .insert({
         community_id: communityId,
+        created_by: owner.id,
         name: 'South Court',
         address: 'Madrid',
         maps_url: 'https://maps.example.test/south-court'
@@ -1504,27 +1506,28 @@ test('unauthorized community admin routes never disclose confidential fixture pa
   if (community.error || typeof community.data !== 'string')
     throw community.error ?? new Error('Private community fixture creation failed');
   const communityId = community.data;
-  const ownerCommunity = await owner.client
+  const ownerCommunity = await trustedClient()
     .from('communities')
     .update({ settings: { confidential: confidential.setting } })
     .eq('id', communityId);
   if (ownerCommunity.error) throw ownerCommunity.error;
-  const activeMembership = await owner.client
+  const activeMembership = await trustedClient()
     .from('community_members')
     .insert({ community_id: communityId, user_id: active.id, role: 'member', status: 'active' })
     .select('id')
     .single();
   if (activeMembership.error) throw activeMembership.error;
-  const pendingMembership = await owner.client
+  const pendingMembership = await trustedClient()
     .from('community_members')
     .insert({ community_id: communityId, user_id: pending.id, role: 'member', status: 'pending' })
     .select('id')
     .single();
   if (pendingMembership.error) throw pendingMembership.error;
-  const venue = await owner.client
+  const venue = await trustedClient()
     .from('community_venues')
     .insert({
       community_id: communityId,
+      created_by: owner.id,
       name: confidential.venue,
       address: confidential.address,
       maps_url: 'https://maps.example.test/private'
@@ -1640,7 +1643,7 @@ test.describe('community admin 320px locale matrix', () => {
         const communityId = created.data;
         const base = `/community/${communityId}/admin`;
         const active = await retryFixtureDeadlock(() =>
-          owner.client
+          trustedClient()
             .from('community_members')
             .insert({
               community_id: communityId,
@@ -1653,7 +1656,7 @@ test.describe('community admin 320px locale matrix', () => {
         );
         if (active.error) throw active.error;
         const pending = await retryFixtureDeadlock(() =>
-          owner.client
+          trustedClient()
             .from('community_members')
             .insert({
               community_id: communityId,
@@ -1666,8 +1669,9 @@ test.describe('community admin 320px locale matrix', () => {
         );
         if (pending.error) throw pending.error;
         const venue = await retryFixtureDeadlock(() =>
-          owner.client.from('community_venues').insert({
+          trustedClient().from('community_venues').insert({
             community_id: communityId,
+            created_by: owner.id,
             name: 'Narrow court',
             address: 'Madrid',
             maps_url: 'https://maps.example.test/narrow'

@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { expect, test, type BrowserContext, type Page } from '@playwright/test';
 import { testSupabaseConfig } from './test-supabase-config';
+import { trustedClient } from '../test/helpers/trusted-client';
 import { waitForHydratedPage } from './auth-helpers';
 
 type Copy = {
@@ -119,10 +120,11 @@ async function insertInvitation(owner: Actor, communityId: string, invitee: Acto
   const tokenHash = Array.from(new Uint8Array(digest), (byte) =>
     byte.toString(16).padStart(2, '0')
   ).join('');
-  const invitation = await owner.client
+  const invitation = await trustedClient()
     .from('community_invitations')
     .insert({
       community_id: communityId,
+      issued_by: owner.id,
       invitee_user_id: invitee.id,
       token_hash: tokenHash,
       expires_at: new Date(Date.now() + 86400000).toISOString()
@@ -246,9 +248,9 @@ test('real lifecycle journey: UI membership controls, RPC-only leave/redemption,
     await waitForHydratedPage(joinerPage);
     await expect(joinerPage.getByText(en.communityOnboarding.emptySearch)).toBeVisible();
     const privateMarker = `Restricted venue ${crypto.randomUUID()}`;
-    const venue = await owner.client
+    const venue = await trustedClient()
       .from('community_venues')
-      .insert({ community_id: privateId, name: privateMarker })
+      .insert({ community_id: privateId, name: privateMarker, created_by: owner.id })
       .select('id')
       .single();
     if (venue.error) throw venue.error;
