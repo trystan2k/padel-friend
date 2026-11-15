@@ -204,6 +204,36 @@ describe('F24/F25 guard hardening', () => {
     expect(scan('src/lib/x.server.ts', text)).toEqual([]);
   });
 
+  it.each([
+    ['single-quoted value', "const m = 'cause';"],
+    ['double-quoted value', 'const m = "cause";'],
+    ['object value position', "const o = { reason: 'cause' };"],
+    ['ternary branch', "const m = ok ? 'cause' : 'other';"],
+    ['switch case label', "switch (k) { case 'cause': break; }"],
+    ['array literal', "const l = ['cause'];"],
+    ['apostrophe in template text', "const t = `don't ${a} cause`;\nconst u = 'cause';"]
+  ])('F32 ignores a cause string literal via %s', (_name, text) => {
+    expect(scan('src/lib/x.server.ts', text)).toEqual([]);
+  });
+
+  it.each([
+    ['shorthand in interpolation', 'const t = `${cause}`;'],
+    ['mutation in interpolation', 'const t = `x ${e.cause = raw} y`;'],
+    ['object in interpolation', 'const t = `${f({ cause })}`;'],
+    ['nested template interpolation', 'const t = `a ${`b ${cause}`}`;'],
+    ['after a template with literal cause text', 'const t = `cause ${a}`;\nconst o = { cause };'],
+    ['computed template key', 'const o = { [`cause`]: raw };']
+  ])('F31 flags cause usage via %s', (_name, text) => {
+    expect(scan('src/lib/x.server.ts', text).map((finding) => finding.rule)).toContain('raw-cause');
+  });
+
+  it('F31 ignores cause text in template literal chunks and keeps line numbers', () => {
+    expect(scan('src/lib/x.server.ts', 'const t = `cause ${a} cause`;')).toEqual([]);
+    expect(scan('src/lib/x.server.ts', 'const t = `a\nb ${c}`;\nthrow error;')).toEqual([
+      { file: 'src/lib/x.server.ts', line: 3, rule: 'raw-throw' }
+    ]);
+  });
+
   it('F28 accepts a tagged shorthand cause', () => {
     expect(
       scan(

@@ -42,17 +42,37 @@ function loadTurnstile(): Promise<TurnstileApi> {
   return scriptPromise;
 }
 
-type WidgetStatus = 'loading' | 'ready' | 'error' | 'expired';
+// 'unavailable' = the provider script failed or stalled before the widget rendered, so no
+// provider visuals exist and the status must be shown to sighted users too.
+type WidgetStatus = 'loading' | 'ready' | 'error' | 'expired' | 'unavailable';
 
 const STATUS_KEYS = {
   loading: 'auth.captchaLoading',
   error: 'auth.captchaError',
-  expired: 'auth.captchaExpired'
+  expired: 'auth.captchaExpired',
+  unavailable: 'auth.captchaError'
 } as const;
 
-// The Turnstile widget draws its own visual state; this status is announced to screen readers
-// only, so it takes no layout space and nothing below it can shift at any wrap or zoom level.
+const LOAD_TIMEOUT_MS = 15000;
+
+// Once rendered, the Turnstile widget draws its own visual state; the status is announced to
+// screen readers only, so it takes no layout space and nothing below can shift. The visible
+// fallback reserves the standard Turnstile box (65px) so showing it adds no later shift.
 const styles = stylex.create({
+  fallback: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    minBlockSize: 'calc(var(--space-40) + var(--space-20) + var(--space-5))',
+    padding: 'var(--space-8)',
+    borderWidth: 'var(--space-1)',
+    borderStyle: 'solid',
+    borderColor: 'var(--color-line)',
+    borderRadius: 'var(--radius-8)',
+    color: 'var(--color-text)',
+    fontSize: 'var(--font-size-14)',
+    textAlign: 'center'
+  },
   visuallyHidden: {
     position: 'absolute',
     width: 'var(--space-1)',
@@ -79,9 +99,17 @@ function TurnstileMount({ siteKey, onToken, onError }: MountProps) {
     if (!container) return undefined;
     let widgetId: string | undefined;
     let cancelled = false;
+    let rendered = false;
+    const timer = window.setTimeout(() => {
+      if (cancelled || rendered) return;
+      setStatus('unavailable');
+      onError();
+    }, LOAD_TIMEOUT_MS);
     loadTurnstile()
       .then((turnstile) => {
         if (cancelled) return;
+        window.clearTimeout(timer);
+        rendered = true;
         widgetId = turnstile.render(container, {
           sitekey: siteKey,
           callback: (token) => {
@@ -100,11 +128,13 @@ function TurnstileMount({ siteKey, onToken, onError }: MountProps) {
       })
       .catch(() => {
         if (cancelled) return;
-        setStatus('error');
+        window.clearTimeout(timer);
+        setStatus(rendered ? 'error' : 'unavailable');
         onError();
       });
     return () => {
       cancelled = true;
+      window.clearTimeout(timer);
       if (widgetId) window.turnstile?.remove(widgetId);
     };
   }, [siteKey, onToken, onError]);
@@ -113,7 +143,10 @@ function TurnstileMount({ siteKey, onToken, onError }: MountProps) {
   return (
     <>
       <div ref={containerRef} />
-      <output aria-live="polite" {...stylex.props(styles.visuallyHidden)}>
+      <output
+        aria-live="polite"
+        {...stylex.props(status === 'unavailable' ? styles.fallback : styles.visuallyHidden)}
+      >
         {key ? t(key) : ''}
       </output>
     </>

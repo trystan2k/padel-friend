@@ -46,6 +46,13 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 // `)` or `]` it is division (so `if (x) /re/.test(s)` is misread as division). A regex-looking `/`
 // with no closing `/` on its line is treated as division. Regex bodies are blanked before scanning.
 //
+// STRING MASKING (cause scan): the lexer blanks string contents and the LITERAL chunks of template
+// literals while keeping `${ … }` interpolation code scanned, at any nesting depth, so `${cause}` or
+// `${e.cause = raw}` is a finding and `cause` text inside a string/template is not. A string that is
+// exactly `cause` is kept only as a key (`{ 'cause': x }`, `{ ['cause']: x }`, `e['cause']`); values,
+// ternary branches, `case 'cause':` labels and array literals are ignored. Computed keys built at
+// runtime (`obj[\`${'ca' + 'use'}\`]`, `obj[k]`) are not statically detectable (see KNOWN LIMIT).
+//
 // KNOWN LIMIT (documented, not pretended): `Object.assign(e, props)` / spreads that carry a `cause`
 // key from a non-literal object, and a helper that RETURNS a rejecting promise built from an
 // arbitrary expression (`return client.rpc(…).then((r) => r.error ?? r)`, a stored promise, an
@@ -62,12 +69,33 @@ const RAW_THROW = /\bthrow\s+(?!new\b|toClientError\s*\()/g;
 // (never legitimate in client-boundary code; `==`/`===` comparisons do not match).
 const RAW_CAUSE =
   /(?<![\w$.])cause(?![\w$])|\.\s*cause\s*=(?![=>])|\[\s*['"`]cause['"`]\s*\]\s*=(?![=>])|['"`]cause['"`](?=\s*[:\]])/g;
-// String literals are blanked before the cause scan, except a literal that is exactly `cause` (quoted key).
-const STRING_LITERAL = /'(?:[^'\\\n]|\\.)*'|"(?:[^"\\\n]|\\.)*"|`(?:[^`\\]|\\.)*`/g;
-const maskStrings = (code) =>
-  code.replace(STRING_LITERAL, (literal) =>
-    /^['"`]cause['"`]$/.test(literal) ? literal : literal.replace(/[^\n]/g, ' ')
-  );
+const blank = (segment) => segment.replace(/[^\n]/g, ' ');
+const isIdentifierChar = (char) => char !== undefined && /[\w$)\]]/.test(char);
+/**
+ * Masked form of a string/template segment for the cause scan: contents are blanked (quotes, `${` and
+ * `}` delimiters stay) so literal text never feeds the token scan. The one exception is a literal that
+ * is exactly `cause` used as a KEY (`{ 'cause': x }`, `{ ['cause']: x }`, `e['cause']`), kept verbatim.
+ */
+function maskLiteral(segment, before, after) {
+  const quote = segment[0];
+  if (quote !== '}' && segment === quote + 'cause' + quote) {
+    const previous = before.trimEnd().at(-1);
+    const following = after.trimStart()[0];
+    if (previous === '{' || previous === ',') {
+      if (following === ':') return segment;
+    } else if (previous === '[' && following === ']') {
+      // index access (`e['cause']`) or computed key; an array literal `['cause']` is a plain value.
+      const opener = before.trimEnd().slice(0, -1).trimEnd().at(-1);
+      if (isIdentifierChar(opener) || opener === '{' || opener === ',') return segment;
+    }
+  }
+  const tail = segment.endsWith('${')
+    ? '${'
+    : segment.length > 1 && segment.endsWith(quote === '}' ? '`' : quote)
+      ? segment.at(-1)
+      : '';
+  return segment[0] + blank(segment.slice(1, segment.length - tail.length)) + tail;
+}
 const MESSAGE_PASSTHROUGH = /new\s+Error\(\s*[\w.]+\.(?:message|details|hint)\b/g;
 const NEW_ERROR = /\bnew\s+\w*Error\s*\(/g;
 const PROMISE_REJECT = /\bPromise\s*\.\s*reject\s*\(|(?<![.\w])reject\s*\(/g;
@@ -126,11 +154,11 @@ function regexEnd(text, start) {
 function lexComments(text) {
   const lineComments = new Map();
   let code = '';
+  let masked = '';
   let line = 1;
   let i = 0;
   const templateDepths = [];
   let braceDepth = 0;
-  const blank = (segment) => segment.replace(/[^\n]/g, ' ');
   while (i < text.length) {
     const char = text[i];
     const next = text[i + 1];
@@ -139,18 +167,21 @@ function lexComments(text) {
       const stop = end === -1 ? text.length : end;
       lineComments.set(line, text.slice(i + 2, stop));
       code += blank(text.slice(i, stop));
+      masked += blank(text.slice(i, stop));
       i = stop;
     } else if (char === '/' && next === '*') {
       const end = text.indexOf('*/', i + 2);
       const stop = end === -1 ? text.length : end + 2;
       const segment = text.slice(i, stop);
       code += blank(segment);
+      masked += blank(segment);
       line += segment.split('\n').length - 1;
       i = stop;
     } else if (char === '/' && startsRegex(code) && regexEnd(text, i) !== -1) {
       // Regex literal: blanked so its body is never scanned and a `/` inside it never starts a comment.
       const stop = regexEnd(text, i);
       code += blank(text.slice(i, stop));
+      masked += blank(text.slice(i, stop));
       i = stop;
     } else if (char === "'" || char === '"' || char === '`') {
       let j = i + 1;
@@ -164,13 +195,17 @@ function lexComments(text) {
         } else if (char !== '`' && text[j] === '\n') break;
       }
       if (inTemplateExpression) {
-        code += text.slice(i, j + 2);
+        const segment = text.slice(i, j + 2);
+        code += segment;
+        masked += maskLiteral(segment, masked, '');
+        line += segment.split('\n').length - 1;
         templateDepths.push(braceDepth);
         braceDepth++;
         i = j + 2;
       } else {
         const segment = text.slice(i, j + 1);
         code += segment;
+        masked += maskLiteral(segment, masked, text.slice(i + segment.length));
         line += segment.split('\n').length - 1;
         i = j + 1;
       }
@@ -194,6 +229,7 @@ function lexComments(text) {
           }
           const segment = text.slice(i, j + 1);
           code += segment;
+          masked += maskLiteral(segment, masked, '');
           line += segment.split('\n').length - 1;
           i = j + 1;
           continue;
@@ -201,10 +237,11 @@ function lexComments(text) {
       }
       if (char === '\n') line++;
       code += char;
+      masked += char;
       i++;
     }
   }
-  return { code, lineComments };
+  return { code, masked, lineComments };
 }
 
 /** True when `comment` is `guard-allow: <tag> <reason>` with an exact tag token and a non-empty reason. */
@@ -245,7 +282,7 @@ export function scanServerFunctionErrors(sources) {
   const findings = [];
   for (const { file, text } of sources) {
     if (!SCANNED.test(file)) continue;
-    const { code, lineComments } = lexComments(text);
+    const { code, masked, lineComments } = lexComments(text);
     const allowed = (line, tag) =>
       [line, line - 1].some((candidate) => isAllowComment(lineComments.get(candidate), tag));
     const report = (index, rule, allowTag) => {
@@ -259,8 +296,7 @@ export function scanServerFunctionErrors(sources) {
       passthrough.add(match.index);
       report(match.index, 'error-message-passthrough');
     }
-    for (const match of maskStrings(code).matchAll(RAW_CAUSE))
-      report(match.index, 'raw-cause', 'cause');
+    for (const match of masked.matchAll(RAW_CAUSE)) report(match.index, 'raw-cause', 'cause');
     for (const match of code.matchAll(PROMISE_REJECT)) {
       const isMethod = match[0].startsWith('Promise');
       const argument = firstArgument(code, match.index + match[0].length);
