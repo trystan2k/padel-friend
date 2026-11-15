@@ -85,6 +85,14 @@
     "offline": "Offline. Nothing sent. Reconnect and try again."
   },
   "auth": {
+    "inviteConfirmTitle": "Confirm your invitation",
+    "inviteConfirmDescription": "Only continue if you expected this invitation. Confirming signs you in to the account linked to the invitation.",
+    "inviteAccountWarning": "You are currently signed in as {{email}}. Continuing will replace this session with the invited account. Cancel to keep your current account.",
+    "inviteAccountWarningUnknown": "You are currently signed in. Continuing will replace your current session with the invited account. Cancel to keep your current account.",
+    "inviteSwitchConfirm": "SWITCH ACCOUNT AND ACCEPT INVITATION",
+    "inviteConfirm": "ACCEPT INVITATION",
+    "inviteCancel": "CANCEL AND KEEP CURRENT ACCOUNT",
+    "inviteConfirmExpired": "This confirmation has expired or is unavailable. Open your original invitation again to continue.",
     "invitationEmail": {
       "subject": "You were added to a padel match",
       "heading": "You're in the game",

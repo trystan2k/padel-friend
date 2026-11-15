@@ -52,7 +52,8 @@ function Root() {
         '/onboarding/account',
         '/onboarding/community',
         '/forgot-password',
-        '/reset-password'
+        '/reset-password',
+        '/auth/confirm-invite'
       ].includes(state.location.pathname)
   });
   const [locale, setLocale] = useState(() => resolveLocale(initialLocale));

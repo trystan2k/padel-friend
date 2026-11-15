@@ -83,6 +83,7 @@ describe('normalizeReturnPath', () => {
     expect(normalizeReturnPath('/auth/callback')).toBe('/dashboard');
     expect(normalizeReturnPath('/auth/callback?code=abc&next=/dashboard')).toBe('/dashboard');
     expect(normalizeReturnPath('/auth/callback/')).toBe('/dashboard');
+    expect(normalizeReturnPath('/auth/confirm-invite')).toBe('/dashboard');
   });
 
   it('falls back for oversized input', () => {

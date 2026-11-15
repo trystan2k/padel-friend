@@ -85,6 +85,14 @@
     "offline": "Sem conexão. Nada foi enviado. Reconecte e tente novamente."
   },
   "auth": {
+    "inviteConfirmTitle": "Confirme seu convite",
+    "inviteConfirmDescription": "Continue apenas se você esperava este convite. Ao confirmar, você entrará na conta vinculada ao convite.",
+    "inviteAccountWarning": "Você está conectado como {{email}}. Continuar substituirá esta sessão pela conta convidada. Cancele para manter sua conta atual.",
+    "inviteAccountWarningUnknown": "Você está conectado. Continuar substituirá sua sessão atual pela conta convidada. Cancele para manter sua conta atual.",
+    "inviteSwitchConfirm": "TROCAR DE CONTA E ACEITAR CONVITE",
+    "inviteConfirm": "ACEITAR CONVITE",
+    "inviteCancel": "CANCELAR E MANTER CONTA ATUAL",
+    "inviteConfirmExpired": "Esta confirmação expirou ou não está disponível. Abra o convite original novamente para continuar.",
     "invitationEmail": {
       "subject": "Você foi adicionado a uma partida de padel",
       "heading": "Você está no jogo",

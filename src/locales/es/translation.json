@@ -85,6 +85,14 @@
     "offline": "Sin conexión. No se envió nada. Vuelve a conectarte e inténtalo de nuevo."
   },
   "auth": {
+    "inviteConfirmTitle": "Confirma tu invitación",
+    "inviteConfirmDescription": "Continúa solo si esperabas esta invitación. Al confirmar, iniciarás sesión en la cuenta vinculada a la invitación.",
+    "inviteAccountWarning": "Has iniciado sesión como {{email}}. Si continúas, esta sesión se sustituirá por la cuenta invitada. Cancela para mantener tu cuenta actual.",
+    "inviteAccountWarningUnknown": "Has iniciado sesión. Si continúas, tu sesión actual se sustituirá por la cuenta invitada. Cancela para mantener tu cuenta actual.",
+    "inviteSwitchConfirm": "CAMBIAR DE CUENTA Y ACEPTAR INVITACIÓN",
+    "inviteConfirm": "ACEPTAR INVITACIÓN",
+    "inviteCancel": "CANCELAR Y MANTENER CUENTA ACTUAL",
+    "inviteConfirmExpired": "Esta confirmación ha caducado o no está disponible. Abre de nuevo tu invitación original para continuar.",
     "invitationEmail": {
       "subject": "Te han añadido a un partido de pádel",
       "heading": "Estás en el partido",

@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { Route } from '../src/routes/auth.callback';
+import { readInviteConfirmation } from '../src/features/auth/invite-confirmation.server';
 
 // The /auth/callback handler is unit tested with a fully mocked Supabase server client so the
 // PKCE code exchange never touches the network (no fake server-side fetch interception).
@@ -10,22 +11,35 @@ const supabaseSsr = vi.hoisted(() => {
   const exchangeCodeForSession = vi.fn<(code: string) => Promise<{ error: unknown }>>();
   const verifyOtp =
     vi.fn<(params: { token_hash: string; type: string }) => Promise<{ error: unknown }>>();
+  const getClaims = vi
+    .fn<
+      () => Promise<{
+        data: { claims: { sub: string; email: string } } | null;
+        error: unknown;
+      }>
+    >()
+    .mockResolvedValue({ data: null, error: null });
   const createServerClient = vi.fn<
     (
       url: string,
       key: string,
       options: { cookies: { setAll: (cookies: SessionCookie[]) => void } }
     ) => {
-      auth: { exchangeCodeForSession: typeof exchangeCodeForSession; verifyOtp: typeof verifyOtp };
+      auth: {
+        exchangeCodeForSession: typeof exchangeCodeForSession;
+        verifyOtp: typeof verifyOtp;
+        getClaims: typeof getClaims;
+      };
     }
   >((_url: string, _key: string, options) => {
     capturedCookies = options.cookies;
-    return { auth: { exchangeCodeForSession, verifyOtp } };
+    return { auth: { exchangeCodeForSession, verifyOtp, getClaims } };
   });
   return {
     createServerClient,
     exchangeCodeForSession,
     verifyOtp,
+    getClaims,
     setSessionCookies(cookies: SessionCookie[]) {
       capturedCookies?.setAll(cookies);
     }
@@ -43,12 +57,16 @@ vi.mock('@supabase/ssr', async (importOriginal) => {
 // callable shape with a type guard instead of an unsafe type assertion.
 type CallbackGet = (context: { request: Request }) => Promise<Response>;
 
-function isCallbackHandlerRecord(value: unknown): value is { GET?: CallbackGet } {
+function isCallbackHandlerRecord(
+  value: unknown
+): value is { GET?: CallbackGet; POST?: CallbackGet } {
   return typeof value === 'object' && value !== null && 'GET' in value;
 }
 
 const handlers: unknown = Route.options.server?.handlers;
 const GET = isCallbackHandlerRecord(handlers) ? handlers.GET : undefined;
+const POST = isCallbackHandlerRecord(handlers) ? handlers.POST : undefined;
+if (!POST) throw new Error('auth callback route must expose a server POST handler');
 if (!GET) throw new Error('auth callback route must expose a server GET handler');
 
 const BASE = 'http://127.0.0.1:4173';
@@ -63,6 +81,7 @@ describe('/auth/callback handler', () => {
     supabaseSsr.createServerClient.mockClear();
     supabaseSsr.exchangeCodeForSession.mockReset();
     supabaseSsr.verifyOtp.mockReset();
+    supabaseSsr.getClaims.mockReset().mockResolvedValue({ data: null, error: null });
   });
 
   it('forwards every Set-Cookie from the exchange and responds 303 to the safe next', async () => {
@@ -77,7 +96,7 @@ describe('/auth/callback handler', () => {
     const response = await callbackRequest('?code=abc123');
     expect(response.status).toBe(303);
     expect(response.headers.get('location')).toBe(`${BASE}/dashboard`);
-    expect(response.headers.get('cache-control')).toBe('no-store');
+    expect(response.headers.get('cache-control')).toBe('private, no-store');
     const cookies = response.headers.getSetCookie();
     expect(cookies).toHaveLength(2);
     expect(cookies[0]).toContain('sb-project-auth-token=token-a');
@@ -128,31 +147,24 @@ describe('/auth/callback handler', () => {
     expect(supabaseSsr.exchangeCodeForSession).not.toHaveBeenCalled();
   });
 
-  it('verifies an invitation token hash, sets the session cookies and honours next', async () => {
-    supabaseSsr.verifyOtp.mockImplementation(async () => {
-      supabaseSsr.setSessionCookies([
-        { name: 'sb-project-auth-token', value: 'invite', options: { path: '/' } }
-      ]);
-      return { error: null };
-    });
+  it('stages an invitation without consuming it or changing an existing session on GET', async () => {
     const response = await callbackRequest('?next=%2Fmatches%2Fe1&token_hash=abc123&type=invite');
     expect(response.status).toBe(303);
-    expect(response.headers.get('location')).toBe(`${BASE}/matches/e1`);
-    expect(response.headers.getSetCookie()[0]).toContain('sb-project-auth-token=invite');
-    expect(supabaseSsr.verifyOtp).toHaveBeenCalledWith({ token_hash: 'abc123', type: 'invite' });
+    expect(response.headers.get('location')).toBe(`${BASE}/auth/confirm-invite`);
+    expect(response.headers.get('cache-control')).toBe('private, no-store');
+    expect(response.headers.get('referrer-policy')).toBe('no-referrer');
+    const cookies = response.headers.getSetCookie();
+    expect(cookies).toHaveLength(1);
+    expect(cookies[0]).toContain('HttpOnly');
+    expect(cookies[0]).toContain('SameSite=Lax');
+    expect(cookies[0]).toContain('Max-Age=600');
+    expect(cookies[0]).not.toContain('sb-project-auth-token');
+    expect(supabaseSsr.createServerClient).not.toHaveBeenCalled();
+    expect(supabaseSsr.verifyOtp).not.toHaveBeenCalled();
     expect(supabaseSsr.exchangeCodeForSession).not.toHaveBeenCalled();
   });
 
-  it('rejects a failed, replayed or non-invite token hash without a session', async () => {
-    supabaseSsr.verifyOtp.mockResolvedValue({
-      error: new Error('Token has expired or is invalid')
-    });
-    const replayed = await callbackRequest('?next=%2Fmatches%2Fe1&token_hash=used&type=invite');
-    expect(replayed.status).toBe(303);
-    expect(replayed.headers.get('location')).toBe(`${BASE}/login?authError=1&next=%2Fmatches%2Fe1`);
-    expect(replayed.headers.getSetCookie()).toEqual([]);
-
-    supabaseSsr.verifyOtp.mockClear();
+  it('rejects unsupported invitation types without contacting Auth', async () => {
     for (const type of ['recovery', 'signup', 'magiclink', 'email_change', '']) {
       const response = await callbackRequest(`?token_hash=abc&type=${type}`);
       expect(response.headers.get('location')).toBe(`${BASE}/login?authError=1`);
@@ -165,6 +177,154 @@ describe('/auth/callback handler', () => {
   it('never verifies a token hash when the provider reported an error', async () => {
     const response = await callbackRequest('?token_hash=abc&type=invite&error=access_denied');
     expect(response.headers.get('location')).toBe(`${BASE}/login?authError=1`);
+    expect(supabaseSsr.verifyOtp).not.toHaveBeenCalled();
+  });
+
+  async function staged(next = '/matches/e1') {
+    const response = await callbackRequest(
+      `?token_hash=abc123&type=invite&next=${encodeURIComponent(next)}`
+    );
+    const cookie = response.headers.getSetCookie()[0]!.split(';')[0]!;
+    const confirmation = await readInviteConfirmation(
+      new Request(`${BASE}/auth/confirm-invite`, { headers: { cookie } })
+    );
+    if (!confirmation) throw new Error('missing confirmation');
+    const body = new URLSearchParams({ csrf: confirmation.csrf, account: confirmation.account });
+    return { cookie, confirmation, body };
+  }
+
+  function submit(cookie: string, body: URLSearchParams, overrides: Record<string, string> = {}) {
+    return POST!({
+      request: new Request(`${BASE}/auth/callback`, {
+        method: 'POST',
+        headers: {
+          cookie,
+          origin: BASE,
+          'sec-fetch-site': 'same-origin',
+          'content-type': 'application/x-www-form-urlencoded',
+          ...overrides
+        },
+        body
+      })
+    });
+  }
+
+  it('verifies exactly once after same-origin signed confirmation, forwarding session cookies', async () => {
+    const { cookie, body } = await staged();
+    supabaseSsr.verifyOtp.mockImplementation(async () => {
+      supabaseSsr.setSessionCookies([
+        { name: 'sb-project-auth-token', value: 'invite', options: { path: '/' } },
+        { name: 'sb-project-auth-token.0', value: 'chunk', options: { path: '/' } }
+      ]);
+      return { error: null };
+    });
+    const response = await submit(cookie, body);
+    expect(response.status).toBe(303);
+    expect(response.headers.get('location')).toBe(`${BASE}/matches/e1`);
+    expect(response.headers.get('cache-control')).toBe('private, no-store');
+    expect(response.headers.get('referrer-policy')).toBe('no-referrer');
+    expect(response.headers.getSetCookie()).toHaveLength(3);
+    expect(response.headers.getSetCookie()[0]).toContain('Max-Age=0');
+    expect(response.headers.getSetCookie()[1]).toContain('sb-project-auth-token=invite');
+    expect(response.headers.getSetCookie()[2]).toContain('sb-project-auth-token.0=chunk');
+    expect(supabaseSsr.verifyOtp).toHaveBeenCalledExactlyOnceWith({
+      token_hash: 'abc123',
+      type: 'invite'
+    });
+    expect(supabaseSsr.exchangeCodeForSession).not.toHaveBeenCalled();
+
+    expect((await submit('', body)).status).toBe(403);
+    expect(supabaseSsr.verifyOtp).toHaveBeenCalledTimes(1);
+  });
+
+  it('rejects cross-site, missing/null Origin, foreign Fetch Metadata and wrong content type before Auth', async () => {
+    const { cookie, body } = await staged();
+    supabaseSsr.createServerClient.mockClear();
+    const invalidHeaders: Record<string, string>[] = [
+      { origin: 'https://attacker.test' },
+      { origin: '' },
+      { origin: 'null' },
+      { 'sec-fetch-site': 'cross-site' },
+      { 'sec-fetch-site': 'same-site' },
+      { 'content-type': 'application/json' }
+    ];
+    for (const overrides of invalidHeaders) {
+      const response = await submit(cookie, body, overrides);
+      expect(response.status).toBe(403);
+      expect(response.headers.get('cache-control')).toBe('private, no-store');
+    }
+    expect(supabaseSsr.createServerClient).not.toHaveBeenCalled();
+    expect(supabaseSsr.verifyOtp).not.toHaveBeenCalled();
+  });
+
+  it('rejects missing, forged, mismatched and expired signed state before verifyOtp', async () => {
+    const { cookie, body } = await staged();
+    expect((await submit('', body)).status).toBe(403);
+    expect((await submit(cookie, new URLSearchParams())).status).toBe(403);
+    expect((await submit(cookie, new URLSearchParams({ csrf: '0'.repeat(64) }))).status).toBe(403);
+    const other = await staged('/matches/another');
+    expect((await submit(other.cookie, body)).status).toBe(403);
+    const clock = vi.spyOn(Date, 'now').mockReturnValue(Date.now() + 601_000);
+    try {
+      expect((await submit(cookie, body)).status).toBe(403);
+      expect(
+        await readInviteConfirmation(
+          new Request(`${BASE}/auth/confirm-invite`, { headers: { cookie } })
+        )
+      ).toBeNull();
+    } finally {
+      clock.mockRestore();
+    }
+    expect(supabaseSsr.verifyOtp).not.toHaveBeenCalled();
+  });
+
+  it('binds the warning to trusted claims and refuses stale account switches', async () => {
+    supabaseSsr.getClaims.mockResolvedValue({
+      data: { claims: { sub: 'current-account', email: 'current@example.test' } },
+      error: null
+    });
+    const { cookie, confirmation, body } = await staged();
+    expect(confirmation.email).toBe('current@example.test');
+    expect(confirmation.account).toBe('current-account');
+    supabaseSsr.getClaims.mockResolvedValue({
+      data: { claims: { sub: 'another-account', email: 'another@example.test' } },
+      error: null
+    });
+    expect((await submit(cookie, body)).status).toBe(403);
+    expect(supabaseSsr.verifyOtp).not.toHaveBeenCalled();
+  });
+
+  it('normalizes hostile next on invitation success and safely handles spent/forged hashes', async () => {
+    for (const next of ['//evil.com', 'https://evil.com', '/auth/confirm-invite']) {
+      const { cookie, body } = await staged(next);
+      supabaseSsr.verifyOtp.mockResolvedValue({ error: null });
+      expect((await submit(cookie, body)).headers.get('location')).toBe(`${BASE}/dashboard`);
+    }
+    const { cookie, body } = await staged();
+    supabaseSsr.verifyOtp.mockResolvedValue({ error: new Error('provider-private-detail') });
+    const failure = await submit(cookie, body);
+    expect(failure.status).toBe(303);
+    expect(failure.headers.get('location')).toBe(`${BASE}/login?authError=1&next=%2Fmatches%2Fe1`);
+    expect(failure.headers.getSetCookie()[0]).toContain('Max-Age=0');
+  });
+
+  it('uses Secure host-only confirmation cookies on HTTPS, retaining authCookieOptions', async () => {
+    const response = await GET({
+      request: new Request('https://app.example/auth/callback?token_hash=abc&type=invite')
+    });
+    const cookie = response.headers.getSetCookie()[0];
+    expect(cookie).toContain('__Host-pf-invite-confirmation=');
+    expect(cookie).toContain('Secure');
+    expect(cookie).toContain('HttpOnly');
+    expect(cookie).toContain('Path=/');
+    expect(cookie).not.toContain('Domain=');
+  });
+
+  it('keeps PKCE exchange authoritative when both code and hash are supplied', async () => {
+    supabaseSsr.exchangeCodeForSession.mockResolvedValue({ error: null });
+    const response = await callbackRequest('?code=pkce&token_hash=abc&type=invite');
+    expect(response.headers.get('location')).toBe(`${BASE}/dashboard`);
+    expect(supabaseSsr.exchangeCodeForSession).toHaveBeenCalledExactlyOnceWith('pkce');
     expect(supabaseSsr.verifyOtp).not.toHaveBeenCalled();
   });
 

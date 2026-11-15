@@ -215,6 +215,10 @@ test('added player opens the invitation, claims the prefilled profile and gains 
   // The invitation link goes through the real callback and lands on the restricted claim form.
   const link = await invitationLink(request, email);
   expect(new URL(link).origin).toBe('http://127.0.0.1:4173');
+  // Email scanners may open GET, but must never consume the one-use invitation.
+  const scan = await request.get(link, { maxRedirects: 0 });
+  expect(scan.status()).toBe(303);
+  expect(scan.headers()['location']).toBe('http://127.0.0.1:4173/auth/confirm-invite');
   const context = await browser.newContext({
     viewport: { width: 390, height: 844 },
     serviceWorkers: 'block'
@@ -222,6 +226,10 @@ test('added player opens the invitation, claims the prefilled profile and gains 
   try {
     const player = await context.newPage();
     await player.goto(link);
+    await expect(player).toHaveURL(/\/auth\/confirm-invite$/);
+    await expect(player.getByRole('heading', { name: en.auth.inviteConfirmTitle })).toBeVisible();
+    await waitForHydratedPage(player);
+    await player.getByRole('button', { name: en.auth.inviteConfirm, exact: true }).click();
     await expect(player).toHaveURL(/\/onboarding\?next=/);
     await waitForHydratedPage(player);
     const claim = en.auth.claim;
@@ -321,6 +329,10 @@ test('a reload before password setup cannot bypass the password step on any prot
   try {
     const player = await context.newPage();
     await player.goto(link);
+    await expect(player).toHaveURL(/\/auth\/confirm-invite$/);
+    await expect(player.getByRole('heading', { name: en.auth.inviteConfirmTitle })).toBeVisible();
+    await waitForHydratedPage(player);
+    await player.getByRole('button', { name: en.auth.inviteConfirm, exact: true }).click();
     await expect(player).toHaveURL(/\/onboarding\?next=/);
     await waitForHydratedPage(player);
     await player.getByLabel(en.onboarding.sideLeftShort).first().check();
@@ -355,5 +367,8 @@ test('a reload before password setup cannot bypass the password step on any prot
 
 test('a spent or forged invitation link never opens a session', async ({ page }) => {
   await page.goto('/auth/callback?token_hash=deadbeefdeadbeefdeadbeef&type=invite&next=/dashboard');
+  await expect(page).toHaveURL(/\/auth\/confirm-invite$/);
+  await waitForHydratedPage(page);
+  await page.getByRole('button', { name: en.auth.inviteConfirm, exact: true }).click();
   await expect(page).toHaveURL(/\/login\?authError=1/);
 });

@@ -47,12 +47,15 @@ describe('isPrecacheCandidate', () => {
 });
 
 describe('private endpoints with asset-like suffixes', () => {
-  it.each(['/api/export.js', '/_serverFn/abc.css', '/auth/v1/logo.png', '/auth/callback'])(
-    'is never a precache candidate: %s',
-    (path) => {
-      expect(isPrecacheCandidate(request(origin + path, { mode: 'cors' }), origin)).toBe(false);
-    }
-  );
+  it.each([
+    '/api/export.js',
+    '/_serverFn/abc.css',
+    '/auth/v1/logo.png',
+    '/auth/callback',
+    '/auth/confirm-invite'
+  ])('is never a precache candidate: %s', (path) => {
+    expect(isPrecacheCandidate(request(origin + path, { mode: 'cors' }), origin)).toBe(false);
+  });
 });
 
 describe('removeLegacyCaches', () => {
@@ -131,7 +134,9 @@ describe('purgePrivateCacheEntries', () => {
   });
 
   it('matches the private path prefixes only', () => {
-    expect(['/api/x', '/_serverFn/y', '/auth/callback'].every(isPrivatePath)).toBe(true);
+    expect(
+      ['/api/x', '/_serverFn/y', '/auth/callback', '/auth/confirm-invite'].every(isPrivatePath)
+    ).toBe(true);
     expect(['/assets/auth.js', '/offline.html', '/apiary.js'].some(isPrivatePath)).toBe(false);
   });
 });

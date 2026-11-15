@@ -43,7 +43,7 @@ export function normalizeReturnPath(value: unknown): string {
   if (
     /%[0-9a-f]{2}/i.test(pathname) ||
     /^\/(?:login|onboarding)(?:\/|$)/i.test(pathname) ||
-    /^\/auth\/callback(?:\/|$)/i.test(pathname)
+    /^\/auth\/(?:callback|confirm-invite)(?:\/|$)/i.test(pathname)
   )
     return DEFAULT_RETURN_PATH;
   return encodedPath + suffix;
