@@ -44,6 +44,10 @@ export const E2E_WEB_PUSH_ENV = {
   WEB_PUSH_VAPID_KEY_ID: 'e2e-test'
 };
 
+// Trusted email-link origin of the e2e preview (src/lib/app-origin.server.ts rejects add-player
+// writes without it). Must equal the Playwright baseURL/webServer origin.
+export const E2E_APP_ORIGIN = 'http://127.0.0.1:4173';
+
 /**
  * Env additions for a build (or preview) that e2e specs exercise; empty without a tuple. Explicit
  * process env wins over root .env*, so the public pair is pinned here too. The DB connection strings
@@ -53,7 +57,7 @@ export function e2eBuildEnv(tuple) {
   return tuple
     ? {
         CLOUDFLARE_INCLUDE_PROCESS_ENV: 'true',
-        APP_ORIGIN: 'http://127.0.0.1:4173',
+        APP_ORIGIN: E2E_APP_ORIGIN,
         VITE_SUPABASE_URL: tuple.VITE_SUPABASE_URL,
         VITE_SUPABASE_PUBLISHABLE_KEY: tuple.VITE_SUPABASE_PUBLISHABLE_KEY,
         SUPABASE_SERVICE_ROLE_KEY: tuple.SUPABASE_SERVICE_ROLE_KEY,

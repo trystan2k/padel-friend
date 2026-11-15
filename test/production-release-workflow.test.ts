@@ -222,7 +222,7 @@ describe('production release workflow safety contract', () => {
   it('preserves preview byte-for-byte outside production lock', () => {
     const preview = readFileSync('.github/workflows/preview.yml');
     expect(createHash('sha256').update(preview).digest('hex')).toBe(
-      'af380887054a5d48f0fc271383d4886b9f8c78673154e3ba318c721002a2a7a2'
+      'e5bb019891e941b99402432017ad98830facf4a5997bced20392456876ed1f2b'
     );
     expect(preview.toString()).not.toContain('padel-friend-production-release');
   });

@@ -101,6 +101,7 @@ describe('E2E lane provisioning', () => {
       const text = readFileSync(devVarsFile, 'utf8');
       expect(text).toBe(devVarsContent(TEST_TUPLE));
       expect(text).toContain(`SUPABASE_SERVICE_ROLE_KEY=${FAKE_SERVICE_KEY}\n`);
+      expect(text).toContain('APP_ORIGIN=http://127.0.0.1:4173\n');
       expect(text).toContain('WEB_PUSH_ENABLED=true');
       expect(text).not.toMatch(/postgres|DATABASE_URL/);
     });
