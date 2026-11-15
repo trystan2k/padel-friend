@@ -625,6 +625,9 @@ async function claim(
   });
   const page = await context.newPage();
   await page.goto(await invitationLink(request, email));
+  await expect(page).toHaveURL(/\/auth\/confirm-invite$/);
+  await waitForHydratedPage(page);
+  await page.getByRole('button', { name: en.auth.inviteConfirm, exact: true }).click();
   await expect(page).toHaveURL(/\/onboarding\?next=/);
   await waitForHydratedPage(page);
   const locked = page.getByText(en.auth.claim.levelLocked);

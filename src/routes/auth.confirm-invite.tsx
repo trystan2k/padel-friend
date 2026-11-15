@@ -4,7 +4,7 @@ import { getInviteConfirmation } from '../features/auth/invite-confirmation.func
 
 export const Route = createFileRoute('/auth/confirm-invite')({
   loader: () => getInviteConfirmation(),
-  head: () => ({ meta: [{ name: 'referrer', content: 'no-referrer' }] }),
+  head: () => ({ meta: [{ name: 'referrer', content: 'same-origin' }] }),
   component: ConfirmationRoute
 });
 

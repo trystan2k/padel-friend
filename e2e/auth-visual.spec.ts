@@ -191,16 +191,22 @@ type VisualReference =
 const VISUAL_BUDGETS: Record<VisualReference, number> = {
   // macOS 6,077/329,160 = 1.8462%; Linux 8,278/329,160 = 2.5155% → 2.67% (margin 0.1545pp).
   'login-welcome.png': 0.0267,
-  // macOS 9,779/329,160 = 2.9709%; Linux 14,024/329,160 = 4.2600% → 4.41% (margin 0.1500pp).
-  'account-adapted.png': 0.0441,
+  // M-3 password-policy copy wraps the helper to two lines (Pencil EGb2g has one), shifting the card
+  // and everything below it down 15px; the Pencil-derived reference cannot be regenerated.
+  // macOS 20,871/329,160 = 6.3406%; Linux ESTIMATE = macOS + prior Linux-macOS gap (1.2891pp) +
+  // 0.15pp margin → 7.78%. Geometry probes stay exact (card height 188 → 203); CI validates Linux.
+  'account-adapted.png': 0.0778,
   // macOS 7,342/329,160 = 2.2304%; Linux 12,420/329,160 = 3.7730% → 3.92% (margin 0.1500pp).
   'player-setup.png': 0.0392,
   // macOS 5,938/329,160 = 1.8040%; Linux 9,656/329,160 = 2.9335% → 3.09% (margin 0.1565pp).
   'forgot-password.png': 0.0309,
   // macOS 7,734/329,160 = 2.3496%; Linux 11,513/329,160 = 3.4977% → 3.65% (margin 0.1523pp).
   'login-inbox.png': 0.0365,
-  // macOS 7,201/329,160 = 2.1877%; Linux 9,664/329,160 = 2.9363% → 3.09% (margin 0.1537pp).
-  'reset-password.png': 0.0309
+  // M-3 password-policy copy wraps the helper to two lines (Pencil ZthyR has one), shifting the
+  // update CTA down 15px; the Pencil-derived reference cannot be regenerated.
+  // macOS 19,383/329,160 = 5.8888%; Linux ESTIMATE = macOS + prior Linux-macOS gap (0.7486pp) +
+  // 0.15pp margin → 6.79%. Geometry probes stay exact (helper 15 → 30, CTA y 316 → 331).
+  'reset-password.png': 0.0679
 };
 
 // Phase-2 (PAF-25) current player-setup composition: the optional avatar card sits between the
@@ -572,7 +578,10 @@ test('account matches approved password adaptation of EGb2g', async ({ page }) =
     x: 18,
     y: 230,
     width: 354,
-    height: 188
+    // Pencil 188px + 15px: the M-3 password-policy copy (`auth.passwordRequirements`, min length
+    // plus lower/upper/digit/symbol) wraps to a second 15px helper line at the 390px spec viewport.
+    // pt-BR/es strings are the same length class and wrap to the same two lines.
+    height: 203
   });
   const emailControl = page.locator('#signup-email');
   await assertGeometry(emailControl, 'Account email control', {
@@ -1001,11 +1010,13 @@ test('create new password matches frame ZthyR with an authenticated session', as
   await assertGeometry(
     page.locator('#reset-password-confirmation-helper'),
     'Password requirements helper',
-    { x: 18, y: 288, width: 354, height: 15 }
+    // Pencil height 15px + 15px: the M-3 password-policy copy (`auth.passwordRequirements`) wraps to
+    // a second line at the 390px spec viewport (pt-BR/es wrap to the same two lines).
+    { x: 18, y: 288, width: 354, height: 30 }
   );
   await assertGeometry(page.getByRole('button', { name: en.auth.resetSubmit }), 'Update CTA', {
     x: 18,
-    y: 316,
+    y: 331, // Pencil 316 + 15px second helper line
     width: 354,
     height: 50
   });
