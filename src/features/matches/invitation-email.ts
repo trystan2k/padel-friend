@@ -4,7 +4,11 @@ import { createI18n, resolveLocale } from '../../i18n/config';
  * Copy for the "player added by name and email" invitation, rendered per send.
  * GoTrue has one invite template (supabase/templates/invite.html) that prints
  * these user-metadata fields, so one template serves every locale. The template
- * HTML-escapes every value, which is why nothing here escapes.
+ * HTML-escapes every value (verified against real GoTrue + TEST Mailpit).
+ * Metadata is plain text, not HTML: pre-escaping here would double-escape names,
+ * quotes, ampersands and literal entity-like input. Keep i18n escapeValue false;
+ * GoTrue owns the single HTML escape at the template interpolation boundary.
+ * Regression: test/auth.invitation-email.integration.test.ts.
  */
 export const INVITATION_EMAIL_METADATA_KEYS = [
   'padel_invite_lang',

@@ -1,5 +1,5 @@
 import { createServerFn } from '@tanstack/react-start';
-import { getRequestUrl } from '@tanstack/react-start/server';
+import { requireAppOrigin } from '../../lib/app-origin.server';
 import { requireAuthenticatedClient } from '../auth/auth.server';
 import { toClientError } from '../../lib/client-error.server';
 import { emitDiagnostic } from '../../lib/diagnostics.server';
@@ -188,7 +188,11 @@ export const getMatchEvent = createServerFn({ method: 'GET' })
     if (event == null) return { status: 'unavailable' };
     // Any reader (not just the organizer) reconciles undelivered player invitations, so an
     // otherwise idle event cannot strand them (best effort, after the response).
-    await scheduleMatchPlayerAddReconcile(getRequestUrl().origin).catch(() => undefined);
+    try {
+      await scheduleMatchPlayerAddReconcile(requireAppOrigin(process.env.APP_ORIGIN));
+    } catch {
+      // Reconciliation is best effort; invalid configuration must never mail request-host links.
+    }
     let decoded;
     try {
       decoded = decodeMatchRpcDetail(event);

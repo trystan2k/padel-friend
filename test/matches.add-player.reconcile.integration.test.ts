@@ -678,7 +678,11 @@ describe('match player add reconciliation', () => {
       expect(await mailCount(email)).toBe(0);
       // ... once due, the cron alone brings it home.
       await makeDue(email);
-      await runScheduledMatchPlayerAddSweep(localAdminClient(env), `${INVITE_ORIGIN}/ignored/path`);
+      await expect(
+        runScheduledMatchPlayerAddSweep(localAdminClient(env), `${INVITE_ORIGIN}/ignored/path`)
+      ).rejects.toThrow('APP_ORIGIN_UNAVAILABLE');
+      expect(await mailCount(email)).toBe(0);
+      await runScheduledMatchPlayerAddSweep(localAdminClient(env), INVITE_ORIGIN);
       expect(await operation(owner.id, eventId, requestId)).toMatchObject({
         state: 'completed',
         branch: 'new',

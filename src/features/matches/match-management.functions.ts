@@ -1,5 +1,5 @@
 import { createServerFn } from '@tanstack/react-start';
-import { getRequestUrl } from '@tanstack/react-start/server';
+import { requireAppOrigin } from '../../lib/app-origin.server';
 import { requireAuthenticatedClient } from '../auth/auth.server';
 import { scheduleMatchPlayerAddReconcile } from './match-add-player.server';
 import {
@@ -79,8 +79,13 @@ export const getMatchEventManagement = createServerFn({ method: 'GET' })
     const value = parseMatchEventManagement(result);
     if (!value) return { status: 'error', code: 'unavailable' };
     // An organizer opening the event reconciles undelivered player invitations (best effort).
-    if (value.is_organizer)
-      await scheduleMatchPlayerAddReconcile(getRequestUrl().origin).catch(() => undefined);
+    if (value.is_organizer) {
+      try {
+        await scheduleMatchPlayerAddReconcile(requireAppOrigin(process.env.APP_ORIGIN));
+      } catch {
+        // Reconciliation is best effort; invalid configuration must never mail request-host links.
+      }
+    }
     return { status: 'ok', value, replayed: false };
   });
 export const transferMatchEventOwnership = createServerFn({ method: 'POST' })

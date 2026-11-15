@@ -53,6 +53,7 @@ export function e2eBuildEnv(tuple) {
   return tuple
     ? {
         CLOUDFLARE_INCLUDE_PROCESS_ENV: 'true',
+        APP_ORIGIN: 'http://127.0.0.1:4173',
         VITE_SUPABASE_URL: tuple.VITE_SUPABASE_URL,
         VITE_SUPABASE_PUBLISHABLE_KEY: tuple.VITE_SUPABASE_PUBLISHABLE_KEY,
         SUPABASE_SERVICE_ROLE_KEY: tuple.SUPABASE_SERVICE_ROLE_KEY,

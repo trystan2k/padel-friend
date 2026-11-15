@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
   requireAuthenticatedClient: vi.fn<() => Promise<{ client: unknown }>>(),
@@ -45,6 +45,8 @@ import { makeMatchRpcDetail, makeMatchRpcListRow } from './helpers/match-fixture
 const eventId = '00000000-0000-4000-8000-000000000001';
 
 describe('getMatchEvent result contract', () => {
+  beforeEach(() => vi.stubEnv('APP_ORIGIN', 'https://padel.example'));
+  afterEach(() => vi.unstubAllEnvs());
   let client: {
     auth: {
       getClaims: ReturnType<

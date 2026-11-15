@@ -1,3 +1,4 @@
+import { requireAppOrigin } from '../../lib/app-origin.server';
 import { afterResponse } from '../../lib/post-response.server';
 import { getAdminClient, type AdminClient } from '../../lib/supabase/admin.server';
 import {
@@ -237,16 +238,7 @@ export async function runScheduledMatchPlayerAddSweep(
   admin: AdminClient,
   origin: string | undefined
 ): Promise<void> {
-  const appOrigin = origin && URL.canParse(origin) ? new URL(origin) : undefined;
-  // Only http(s) has a usable origin; data:/mailto:/file:/ftp: would yield "null" or a
-  // non-web callback and burn the retry budget instead of failing fast.
-  if (
-    !appOrigin ||
-    (appOrigin.protocol !== 'http:' && appOrigin.protocol !== 'https:') ||
-    appOrigin.origin === 'null'
-  )
-    throw new Error('APP_ORIGIN_UNAVAILABLE');
-  await reconcileMatchPlayerAdds(admin, appOrigin.origin, { throwOnClaimError: true });
+  await reconcileMatchPlayerAdds(admin, requireAppOrigin(origin), { throwOnClaimError: true });
 }
 
 /** The Worker `scheduled` handler's body: service-role client and origin from the Worker's own config. */

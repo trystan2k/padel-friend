@@ -96,7 +96,9 @@ describe('afterResponse', () => {
 });
 
 describe('addMatchPlayer response path', () => {
+  afterEach(() => vi.unstubAllEnvs());
   beforeEach(() => {
+    vi.stubEnv('APP_ORIGIN', 'https://padel.example');
     mocks.authClient.mockReset();
     mocks.admin.mockReset();
   });
