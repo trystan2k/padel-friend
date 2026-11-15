@@ -23,6 +23,10 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 //   raw-cause                  `{ cause … }` keeps the raw error on the thrown object. Allowed only
 //                              with an inline `// guard-allow: cause` (server-side-only paths, e.g.
 //                              cron work whose error never reaches a client).
+//                              Cause MUTATION is covered too: `.cause =` and `['cause'] =` assignments
+//                              (e.g. `reject(new Error('X').cause = raw)`) and `Object.assign(e, { cause })`
+//                              are findings; `Object.assign(e, props)` with a non-literal `props` is not
+//                              statically detectable (see limits).
 //   promise-reject             `Promise.reject(…)` / `reject(<anything but new …Error(…) / toClientError(…)>)`;
 //                              `reject(new Object(error))`, `reject(err)` and other indirections are findings
 //
@@ -31,7 +35,15 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 // inside strings, template literals, identifiers or block comments never counts, the tag must end at a
 // token boundary (`cause` does not match `causes`), and a bare tag without a reason is ignored.
 //
-// KNOWN LIMIT (documented, not pretended): a helper that RETURNS a rejecting promise built from an
+// LEXER LIMITS: no JS/TS parser is a direct dependency (acorn/espree/oxc-parser/@babel/parser are not
+// resolvable from the repo root; TypeScript 7 exposes no stable JS API), so comments and regex
+// literals are found by a hand-written lexer. A `/` starts a regex when the previous significant token
+// is an operator, opener, `;`, `{`, `}` or a keyword such as `return`; after an identifier, number,
+// `)` or `]` it is division (so `if (x) /re/.test(s)` is misread as division). A regex-looking `/`
+// with no closing `/` on its line is treated as division. Regex bodies are blanked before scanning.
+//
+// KNOWN LIMIT (documented, not pretended): `Object.assign(e, props)` / spreads that carry a `cause`
+// key from a non-literal object, and a helper that RETURNS a rejecting promise built from an
 // arbitrary expression (`return client.rpc(…).then((r) => r.error ?? r)`, a stored promise, an
 // awaited-elsewhere rejection) cannot be classified by a regex scan. Only the explicit
 // `Promise.reject`/`reject(` forms and any `throw` inside the chain are caught. The remaining
@@ -42,13 +54,60 @@ const BOUNDARY_FILE = 'src/lib/client-error.server.ts';
 // `throw` followed by anything other than `new …` or `toClientError(…)`; \s covers multiline forms.
 const RAW_THROW = /\bthrow\s+(?!new\b|toClientError\s*\()/g;
 // Wrapping the raw error as `cause` keeps it on the thrown object.
-const RAW_CAUSE = /\{\s*cause\b/g;
+// Also covers non-leading `, cause:` properties, quoted keys, and `.cause =` / `['cause'] =` assignments
+// (never legitimate in client-boundary code; `==`/`===` comparisons do not match).
+const RAW_CAUSE =
+  /\{\s*['"`]?cause\b|,\s*['"`]?cause['"`]?\s*:|\.\s*cause\s*=(?![=>])|\[\s*['"`]cause['"`]\s*\]\s*=(?![=>])/g;
 const MESSAGE_PASSTHROUGH = /new\s+Error\(\s*[\w.]+\.(?:message|details|hint)\b/g;
 const NEW_ERROR = /\bnew\s+\w*Error\s*\(/g;
 const PROMISE_REJECT = /\bPromise\s*\.\s*reject\s*\(|(?<![.\w])reject\s*\(/g;
 // A rejection argument is safe only as a fresh `new …Error(…)` (its own argument is checked by the
 // dynamic-error rule) or a `toClientError(…)` result.
 const SAFE_REJECTION = /^(?:new\s+\w*Error\s*\(|toClientError\s*\()/;
+
+const REGEX_PRECEDING_KEYWORDS = new Set([
+  'return',
+  'typeof',
+  'case',
+  'throw',
+  'in',
+  'of',
+  'delete',
+  'void',
+  'new',
+  'else',
+  'do',
+  'yield',
+  'await'
+]);
+
+/** True when a `/` at the end of `code` starts a regex literal (previous significant token decides). */
+function startsRegex(code) {
+  const previous = code.trimEnd();
+  if (previous === '') return true;
+  const last = previous.at(-1);
+  if (/[\w$]/.test(last)) return REGEX_PRECEDING_KEYWORDS.has(/[\w$]+$/.exec(previous)[0]);
+  // `)` and `]` end an expression (division); everything else (operators, `(`, `,`, `{`, `}`, `;`) opens one.
+  return !')]'.includes(last);
+}
+
+/** End index (exclusive, flags included) of the regex literal starting at `start`, or -1 when unterminated on the line. */
+function regexEnd(text, start) {
+  let inClass = false;
+  for (let j = start + 1; j < text.length; j++) {
+    const char = text[j];
+    if (char === '\n') return -1;
+    if (char === '\\') j++;
+    else if (char === '[') inClass = true;
+    else if (char === ']') inClass = false;
+    else if (char === '/' && !inClass) {
+      let end = j + 1;
+      while (end < text.length && /[a-z]/i.test(text[end])) end++;
+      return end;
+    }
+  }
+  return -1;
+}
 
 /**
  * Lexes `text` once: returns the source with comments blanked (newlines kept) and the line comments
@@ -77,6 +136,11 @@ function lexComments(text) {
       const segment = text.slice(i, stop);
       code += blank(segment);
       line += segment.split('\n').length - 1;
+      i = stop;
+    } else if (char === '/' && startsRegex(code) && regexEnd(text, i) !== -1) {
+      // Regex literal: blanked so its body is never scanned and a `/` inside it never starts a comment.
+      const stop = regexEnd(text, i);
+      code += blank(text.slice(i, stop));
       i = stop;
     } else if (char === "'" || char === '"' || char === '`') {
       let j = i + 1;

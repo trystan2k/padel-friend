@@ -341,6 +341,37 @@ describe('/auth/callback handler', () => {
     expect(supabaseSsr.verifyOtp).toHaveBeenCalledTimes(1);
   });
 
+  it('flushes rotated cookies and fails closed when verifyOtp throws after rotating them', async () => {
+    supabaseSsr.getClaims.mockResolvedValue({
+      data: { claims: { sub: 'current', email: 'current@example.test' } },
+      error: null
+    });
+    const { cookie: pending, body } = await staged();
+    const cookie = `${pending}; sb-project-auth-token.0=old0; sb-project-auth-token.1=old1`;
+    const gone = { path: '/', maxAge: 0 };
+    supabaseSsr.verifyOtp.mockImplementationOnce(async () => {
+      supabaseSsr.setSessionCookies([
+        { name: 'sb-project-auth-token.0', value: 'rotated0', options: { path: '/' } },
+        { name: 'sb-project-auth-token.1', value: '', options: gone }
+      ]);
+      throw new Error('private provider failure');
+    });
+
+    const response = await submit(cookie, body);
+
+    expect(response.status).toBe(303);
+    expect(response.headers.get('location')).toBe(`${BASE}/login?authError=1&next=%2Fmatches%2Fe1`);
+    const setCookies = response.headers.getSetCookie();
+    expect(setCookies.find((entry) => entry.startsWith('sb-project-auth-token.0='))).toContain(
+      'rotated0'
+    );
+    expect(setCookies.find((entry) => entry.startsWith('sb-project-auth-token.1='))).toContain(
+      'Max-Age=0'
+    );
+    expect(setCookies.join('\n')).not.toMatch(/old[01]/);
+    expect(response.headers.get('cache-control')).toBe('private, no-store');
+  });
+
   it('resists replay of the original link, cookie and form after a successful confirmation', async () => {
     // Mirrors GoTrue: an invite token hash verifies once; a spent hash is rejected.
     const spent = new Set<string>();

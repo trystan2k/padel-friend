@@ -158,3 +158,53 @@ describe('server-function error guard', () => {
     expect(scan('src/features/x/X.tsx', 'throw error;')).toEqual([]);
   });
 });
+
+describe('F24/F25 guard hardening', () => {
+  it.each([
+    ['assignment on a fresh error', "reject(new Error('X').cause = raw);"],
+    ['plain member assignment', "const e = new Error('X');\ne.cause = raw;"],
+    ['bracket assignment', "e['cause'] = raw;"],
+    ['spaced assignment', 'e . cause\n  = raw;'],
+    ['Object.assign cause', 'Object.assign(e, { cause: raw });'],
+    ['non-leading cause property', "throw new Error('X', { a: 1, cause: raw });"]
+  ])('flags cause mutation via %s', (_name, text) => {
+    const findings = scan('src/lib/x.server.ts', text);
+    expect(findings.map((finding) => finding.rule)).toContain('raw-cause');
+  });
+
+  it('allows cause mutation only with a tagged comment, and ignores comparisons', () => {
+    expect(
+      scan('src/lib/x.server.ts', '// guard-allow: cause — cron only\ne.cause = raw;')
+    ).toEqual([]);
+    expect(scan('src/lib/x.server.ts', 'if (e.cause === raw) log();\nconst c = e.cause;')).toEqual(
+      []
+    );
+  });
+
+  it.each([
+    ['escaped slash', 'const r = /foo\\/">//;\nthrow error;'],
+    ['escaped slash then flags', 'const r = /a\\/b/gi;\nthrow error;'],
+    ['slash in character class', 'const r = /[/]x\\//;\nthrow error;'],
+    ['regex after return', 'function f() { return /\\//.test(s); }\nthrow error;'],
+    ['regex as argument', 'x.replace(/\\/\\//g, "");\nthrow error;'],
+    ['division after paren', 'const a = (b) / 2; const c = d / 3;\nthrow error;'],
+    ['division after identifier', 'const a = b / c / d;\nthrow error;']
+  ])('keeps scanning after a %s and detects the throw', (_name, text) => {
+    expect(scan('src/lib/x.server.ts', text)).toEqual([
+      { file: 'src/lib/x.server.ts', line: 2, rule: 'raw-throw' }
+    ]);
+  });
+
+  it('does not report throw-like text inside regex literals', () => {
+    expect(scan('src/lib/x.server.ts', 'const r = /throw error;/;')).toEqual([]);
+  });
+
+  it('keeps a trailing guard-allow comment after a regex literal', () => {
+    expect(
+      scan(
+        'src/lib/x.server.ts',
+        'const r = /a\\//; // guard-allow: dynamic-error closed union\nthrow new Error(code);'
+      )
+    ).toEqual([]);
+  });
+});

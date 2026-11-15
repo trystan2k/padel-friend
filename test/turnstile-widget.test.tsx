@@ -96,6 +96,16 @@ it('keeps the reserved-space status class in idle, loading, error and expired st
   expect(keepsLayout()).toBe(true);
 });
 
+it('reserves two status lines from design tokens so a wrapped translation cannot shift layout', async () => {
+  const source = await import('node:fs').then((fs) =>
+    fs.readFileSync('src/components/ui/TurnstileWidget.tsx', 'utf8')
+  );
+  expect(source).toContain(
+    "minHeight: 'calc(var(--font-size-12) * var(--font-line-height-body) * 2)'"
+  );
+  expect(source).not.toMatch(/minHeight: '[0-9]+px'/);
+});
+
 it('renders no widget or status when disabled', () => {
   vi.stubEnv('VITE_TURNSTILE_SITE_KEY', '');
   const view = render(

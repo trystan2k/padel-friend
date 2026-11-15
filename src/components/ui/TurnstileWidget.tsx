@@ -57,8 +57,9 @@ const styles = stylex.create({
     color: 'var(--color-muted)',
     fontSize: 'var(--font-size-12)',
     lineHeight: 'var(--font-line-height-body)',
-    // Reserve one status line so the status appearing/clearing never shifts the controls below.
-    minHeight: 'calc(var(--font-size-12) * var(--font-line-height-body))'
+    // Reserve two status lines: the longest translations wrap at narrow widths, and the status
+    // appearing/clearing must never shift the controls below.
+    minHeight: 'calc(var(--font-size-12) * var(--font-line-height-body) * 2)'
   },
   statusError: { color: 'var(--color-red)' }
 });

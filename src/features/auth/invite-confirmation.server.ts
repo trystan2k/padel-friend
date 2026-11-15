@@ -168,8 +168,12 @@ export async function readInviteConfirmation(request: Request, headers = new Hea
   const pending = pendingInvite(request);
   if (!pending) return null;
   const session = inviteSession(request);
-  const identity = await currentAccount(session);
-  session.flush(headers);
+  let identity: Awaited<ReturnType<typeof currentAccount>>;
+  try {
+    identity = await currentAccount(session);
+  } finally {
+    session.flush(headers);
+  }
   if (!identity) return { error: 'verification_failed' as const };
   const signature = await crypto.subtle.sign(
     'HMAC',
@@ -214,35 +218,40 @@ export async function confirmInvite(request: Request) {
   )
     return forbidden();
   // A stale tab must not switch an account different from the warning shown. An unverifiable
-  // current session never proceeds to verifyOtp.
+  // current session never proceeds to verifyOtp. Every Auth call below may rotate cookies, so the
+  // single flush sits in `finally`: it runs on every return and on any throw, before the response
+  // is built, and a thrown Auth call fails closed like a failed one.
   const session = inviteSession(request);
-  const current = await currentAccount(session);
-  if (!current) {
+  const login = (next?: string) => {
+    const destination = new URL('/login?authError=1', url);
+    if (next && next !== '/dashboard') destination.searchParams.set('next', next);
+    return destination;
+  };
+  let status = 303;
+  let destination: URL | undefined;
+  try {
+    const current = await currentAccount(session);
+    if (!current) destination = login();
+    else if (current.account !== account) status = 403;
+    else {
+      headers.append(
+        'Set-Cookie',
+        serializeCookieHeader(cookieName(request), '', {
+          ...cookieOptions(url),
+          maxAge: 0
+        })
+      );
+      const { error } = await session.client.auth.verifyOtp({
+        token_hash: pending.tokenHash,
+        type: 'invite'
+      });
+      destination = error ? login(pending.next) : new URL(normalizeReturnPath(pending.next), url);
+    }
+  } catch {
+    destination = login(pending.next);
+  } finally {
     session.flush(headers);
-    headers.set('Location', new URL('/login?authError=1', url).toString());
-    return new Response(null, { status: 303, headers });
   }
-  if (current.account !== account) {
-    session.flush(headers);
-    return forbidden();
-  }
-
-  headers.append(
-    'Set-Cookie',
-    serializeCookieHeader(cookieName(request), '', {
-      ...cookieOptions(url),
-      maxAge: 0
-    })
-  );
-  const { error } = await session.client.auth.verifyOtp({
-    token_hash: pending.tokenHash,
-    type: 'invite'
-  });
-  session.flush(headers);
-  const destination = error
-    ? new URL('/login?authError=1', url)
-    : new URL(normalizeReturnPath(pending.next), url);
-  if (error && pending.next !== '/dashboard') destination.searchParams.set('next', pending.next);
-  headers.set('Location', destination.toString());
-  return new Response(null, { status: 303, headers });
+  if (destination) headers.set('Location', destination.toString());
+  return new Response(null, { status, headers });
 }
