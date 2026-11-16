@@ -49,6 +49,11 @@ const privateNames = [
 ];
 
 describe('production release workflow safety contract', () => {
+  it('configures version-only release tags accepted by the identity guard', () => {
+    const config: unknown = JSON.parse(readFileSync('release-please-config.json', 'utf8'));
+    expect(config).toMatchObject({ 'include-component-in-tag': false });
+  });
+
   it('preserves successful push-CI/main provenance and root Release Please outputs', () => {
     expect(workflow).toContain('workflows: [CI]\n    types: [completed]\n    branches: [main]');
     for (const predicate of [

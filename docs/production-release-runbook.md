@@ -18,6 +18,13 @@ No value in this document is a secret. Never paste tokens, passwords, keys, raw 
 
 **A published GitHub release is not proof of deployment.** Publication can precede approval, and the production job can be pending, rejected, cancelled or failed. Treat a release as deployed only after §11 is complete.
 
+Release Please is configured to generate `vX.Y.Z` tags, matching the guard. The historical
+`padel-friend-v0.2.0` release was published before this format change but did not deploy. Before
+merging the first release PR after the change, verify its version advances from 0.2.0 and its
+changelog uses the correct baseline; a format change can affect Release Please's historical
+release lookup. Do not rename or delete the historical tag to force recovery. The next release
+still requires the full preflight and production approval below.
+
 ## 2. Reviewer checklist (before approving)
 
 The approver is the only human gate. In the pending run, check:
