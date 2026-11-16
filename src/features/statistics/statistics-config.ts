@@ -18,5 +18,13 @@ export const DEFAULT_STATISTICS_THRESHOLDS: StatisticsThresholds = {
   upset_expected_score_max: 0.35
 };
 
+/**
+ * Activity series are bounded to the latest 366 inclusive UTC days of the selected scope (a
+ * leap-year-sized visualization). 366 days span at most 54 ISO weeks and 13 calendar months.
+ */
+export const STATISTICS_ACTIVITY_WINDOW_MAX_DAYS = 366;
+export const STATISTICS_ACTIVITY_WINDOW_MAX_WEEKS = 54;
+export const STATISTICS_ACTIVITY_WINDOW_MAX_MONTHS = 13;
+
 export const STATISTICS_HISTORY_PAGE_DEFAULT = 20;
 export const STATISTICS_HISTORY_PAGE_MAX = 100;
