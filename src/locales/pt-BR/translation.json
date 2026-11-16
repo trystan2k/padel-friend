@@ -2717,7 +2717,8 @@
         "empty": "Ainda não há partidas nesta seleção.",
         "caption": "Partidas jogadas por mês",
         "month": "Mês",
-        "matches": "Partidas"
+        "matches": "Partidas",
+        "windowNote": "O gráfico de atividade mostra apenas de {{from}} a {{through}}, os últimos {{days}} dias desta seleção. Os meses nas pontas contam apenas os dias exibidos. Os totais e recordes desta página usam todo o período selecionado."
       },
       "reasons": {
         "no_denominator": "Ainda não há partidas suficientes para calcular isto.",

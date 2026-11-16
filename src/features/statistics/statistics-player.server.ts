@@ -1,6 +1,11 @@
 import type { PlayerClient } from '../player/player.server';
 import { decodeStatisticsConfig } from './statistics-decoders';
 import {
+  STATISTICS_ACTIVITY_WINDOW_MAX_DAYS,
+  STATISTICS_ACTIVITY_WINDOW_MAX_MONTHS,
+  STATISTICS_ACTIVITY_WINDOW_MAX_WEEKS
+} from './statistics-config';
+import {
   STATISTICS_REASONS,
   type ExtremumCandidate,
   type MetricState,
@@ -11,6 +16,7 @@ import { statisticsErrorCode, type StatisticsResponse } from './statistics-histo
 import type {
   PlayerActivity,
   PlayerActivityBucket,
+  PlayerActivityWindow,
   PlayerAdvancedStatistics,
   PlayerFormSample,
   PlayerLeaguePosition,
@@ -27,6 +33,7 @@ import type {
   PlayerTypeRates
 } from './statistics-player-contracts';
 import {
+  isStatisticsCalendarDate,
   validateStatisticsFilters,
   validateStatisticsPlayerInput,
   type StatisticsPlayerInput,
@@ -266,17 +273,69 @@ function decodeBucket(value: unknown): PlayerActivityBucket {
   const data = object(value);
   return { period: text(data.period), groups: count(data.groups) };
 }
+function calendarDayOrNull(value: unknown): string | null {
+  if (value === null) return null;
+  return isStatisticsCalendarDate(value) ? value : invalid();
+}
+const dayIndex = (day: string) => Date.parse(`${day}T00:00:00Z`) / 86_400_000;
+/** Window metadata is required; its dates must nest inside the full scope and agree with truncation. */
+function decodeActivityWindow(
+  value: unknown,
+  fromDay: string | null,
+  throughDay: string | null
+): PlayerActivityWindow {
+  const data = object(value);
+  const window: PlayerActivityWindow = {
+    fromDay: calendarDayOrNull(data.fromDay),
+    throughDay: calendarDayOrNull(data.throughDay),
+    maxDays: count(data.maxDays),
+    truncated: typeof data.truncated === 'boolean' ? data.truncated : invalid()
+  };
+  if (window.maxDays !== STATISTICS_ACTIVITY_WINDOW_MAX_DAYS) return invalid();
+  if (window.fromDay === null || window.throughDay === null || fromDay === null) {
+    return window.fromDay === null &&
+      window.throughDay === null &&
+      fromDay === null &&
+      !window.truncated
+      ? window
+      : invalid();
+  }
+  const length = dayIndex(window.throughDay) - dayIndex(window.fromDay) + 1;
+  if (
+    window.throughDay !== throughDay ||
+    window.fromDay < fromDay ||
+    length < 1 ||
+    length > window.maxDays ||
+    window.truncated !== window.fromDay > fromDay
+  )
+    return invalid();
+  return window;
+}
+function boundedList(value: unknown, limit: number): PlayerActivityBucket[] {
+  const items = array(value);
+  return items.length <= limit ? items.map(decodeBucket) : invalid();
+}
 function decodeActivity(value: unknown): PlayerActivity {
   const data = object(value);
+  const fromDay = calendarDayOrNull(data.fromDay);
+  const throughDay = calendarDayOrNull(data.throughDay);
+  if ((fromDay === null) !== (throughDay === null) || (fromDay ?? '') > (throughDay ?? ''))
+    return invalid();
+  const window = decodeActivityWindow(data.window, fromDay, throughDay);
+  const days = boundedList(data.days, STATISTICS_ACTIVITY_WINDOW_MAX_DAYS);
+  const weeks = boundedList(data.weeks, STATISTICS_ACTIVITY_WINDOW_MAX_WEEKS);
+  const months = boundedList(data.months, STATISTICS_ACTIVITY_WINDOW_MAX_MONTHS);
+  if (window.fromDay === null && days.length + weeks.length + months.length > 0) return invalid();
   return {
-    fromDay: textOrNull(data.fromDay),
-    throughDay: textOrNull(data.throughDay),
+    fromDay,
+    throughDay,
+    window,
     weeklyAverage: metric(data.weeklyAverage),
     mostActiveWeek: metricOf(data.mostActiveWeek, decodeBucket),
     mostActiveMonth: metricOf(data.mostActiveMonth, decodeBucket),
-    days: array(data.days).map(decodeBucket),
-    weeks: array(data.weeks).map(decodeBucket),
-    months: array(data.months).map(decodeBucket)
+    days,
+    weeks,
+    months
   };
 }
 function decodeLeader(value: unknown): PlayerRelationshipLeader {

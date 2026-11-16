@@ -86,10 +86,22 @@ export type PlayerRatingStatistics = {
 };
 
 export type PlayerActivityBucket = { period: string; groups: number };
-export type PlayerActivity = {
-  /** Inclusive observed UTC days defining the weekly-average denominator. */
+/**
+ * The bounded span the days/weeks/months series describe: the latest at most maxDays inclusive UTC
+ * days of the selected scope. Dates are null when the scope has no activity. Truncated means the
+ * window starts after the effective fromDay; edge week/month values are then window portions.
+ */
+export type PlayerActivityWindow = {
   fromDay: string | null;
   throughDay: string | null;
+  maxDays: number;
+  truncated: boolean;
+};
+export type PlayerActivity = {
+  /** Inclusive observed UTC days defining the weekly-average denominator (the full scope). */
+  fromDay: string | null;
+  throughDay: string | null;
+  window: PlayerActivityWindow;
   weeklyAverage: MetricState;
   mostActiveWeek: MetricState<PlayerActivityBucket>;
   mostActiveMonth: MetricState<PlayerActivityBucket>;

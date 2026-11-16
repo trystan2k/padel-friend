@@ -144,6 +144,7 @@ export function makePlayerStatistics(overrides: Partial<PlayerStatistics> = {}):
     activity: {
       fromDay: '2030-01-01',
       throughDay: '2030-03-31',
+      window: { fromDay: '2030-01-01', throughDay: '2030-03-31', maxDays: 366, truncated: false },
       weeklyAverage: ready(0.9, 12, 13),
       mostActiveWeek: ready(bucket('2030-02-04', 3)),
       mostActiveMonth: ready(bucket('2030-02', 5)),

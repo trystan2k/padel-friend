@@ -41,6 +41,7 @@ describe('statistics filter validation', () => {
     ['malformed community', { communityId: 'abc' }],
     ['League without community', { leagueId: LEAGUE }],
     ['impossible date', { from: '2030-02-31' }],
+    ['year before the supported calendar', { from: '0000-12-31' }],
     ['non-ISO date', { from: '01/02/2030' }],
     ['reversed range', { from: '2030-02-02', through: '2030-02-01' }],
     ['non-object', 'all']

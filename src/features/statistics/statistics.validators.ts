@@ -20,14 +20,19 @@ function optionalUuid(value: unknown): string | null {
   if (value === undefined || value === null) return null;
   return typeof value === 'string' && UUID.test(value) ? value.toLowerCase() : invalid();
 }
-/** Whole UTC calendar date; impossible days (2030-02-31) are rejected, not rolled over. */
+/**
+ * Whole UTC calendar date within the finite range PostgreSQL date arithmetic supports
+ * (0001-01-01..9999-12-31); impossible days (2030-02-31) are rejected, not rolled over.
+ */
+export function isStatisticsCalendarDate(value: unknown): value is string {
+  if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value) || value < '0001-01-01')
+    return false;
+  const instant = Date.parse(`${value}T00:00:00Z`);
+  return Number.isFinite(instant) && new Date(instant).toISOString().startsWith(value);
+}
 function optionalDate(value: unknown): string | null {
   if (value === undefined || value === null) return null;
-  if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return invalid();
-  const instant = Date.parse(`${value}T00:00:00Z`);
-  return Number.isFinite(instant) && new Date(instant).toISOString().startsWith(value)
-    ? value
-    : invalid();
+  return isStatisticsCalendarDate(value) ? value : invalid();
 }
 function matchType(value: unknown): StatisticsMatchType {
   if (value === undefined || value === null) return 'all';

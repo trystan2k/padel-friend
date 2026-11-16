@@ -24,7 +24,8 @@ export function StatisticsChart({
   valueLabel,
   points,
   plotLimit,
-  formatValue
+  formatValue,
+  descriptionId
 }: {
   title: string;
   headerLabel: string;
@@ -33,6 +34,8 @@ export function StatisticsChart({
   /** Newest points that are drawn; the table always keeps all of them. */
   plotLimit: number;
   formatValue: (value: number) => string;
+  /** Id of a sibling note that qualifies the series (for example a truncated window). */
+  descriptionId?: string;
 }) {
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
@@ -46,7 +49,11 @@ export function StatisticsChart({
   const scale = Math.max(1, ...plotted.map((point) => point.value));
   const slot = WIDTH / plotted.length;
   return (
-    <figure aria-labelledby={headingId} {...stylex.props(c.figure)}>
+    <figure
+      aria-labelledby={headingId}
+      aria-describedby={descriptionId}
+      {...stylex.props(c.figure)}
+    >
       <h3 id={headingId} {...stylex.props(s.subheading)}>
         {title}
       </h3>

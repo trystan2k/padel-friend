@@ -180,6 +180,99 @@ describe('player statistics core surface', () => {
     expect(screen.queryByRole('table')).toBeNull();
   });
 
+  describe('bounded activity window disclosure', () => {
+    const truncated = () => {
+      const base = makePlayerStatistics();
+      return {
+        ...base,
+        activity: {
+          ...base.activity,
+          fromDay: '2020-01-01',
+          window: {
+            fromDay: '2029-04-01',
+            throughDay: '2030-03-31',
+            maxDays: 366,
+            truncated: true
+          }
+        }
+      };
+    };
+
+    it('describes the chart with a localized note only when the window is truncated', () => {
+      render(wrap(<PlayerStatistics stats={truncated()} />));
+      const note = screen.getByText(/The activity chart shows only .* the latest 366 days/);
+      expect(note.textContent).toMatch(/2029/);
+      expect(note.textContent).toMatch(/2030/);
+      expect(note.textContent).toContain(
+        'Totals and records on this page use the full selected range.'
+      );
+      const chart = screen.getByRole('figure', { name: 'Matches played per month' });
+      expect(note.id).not.toBe('');
+      expect(chart.getAttribute('aria-describedby')).toBe(note.id);
+    });
+
+    it('stays silent for an untruncated or empty window', () => {
+      const base = makePlayerStatistics();
+      const { unmount } = render(wrap(<PlayerStatistics stats={base} />));
+      expect(screen.queryByText(/the latest 366 days/)).toBeNull();
+      expect(screen.getByRole('figure').getAttribute('aria-describedby')).toBeNull();
+      unmount();
+      render(
+        wrap(
+          <PlayerStatistics
+            stats={{
+              ...base,
+              activity: {
+                ...base.activity,
+                fromDay: null,
+                throughDay: null,
+                window: { fromDay: null, throughDay: null, maxDays: 366, truncated: false },
+                months: []
+              }
+            }}
+          />
+        )
+      );
+      expect(screen.queryByText(/the latest 366 days/)).toBeNull();
+      expect(screen.getByText('No matches in this selection yet.')).toBeTruthy();
+    });
+
+    it.each([
+      [
+        'pt-BR',
+        /últimos 366 dias/,
+        'Os totais e recordes desta página usam todo o período selecionado.'
+      ],
+      [
+        'es',
+        /últimos 366 días/,
+        'Los totales y récords de esta página usan todo el período seleccionado.'
+      ]
+    ] as const)('renders the %s note', (locale, latest, scope) => {
+      render(wrap(<PlayerStatistics stats={truncated()} />, locale));
+      const note = screen.getByText(latest);
+      expect(note.textContent).toContain(scope);
+      expect(note.textContent).not.toMatch(/{{|}}/);
+    });
+
+    it('keeps the note placeholders identical across the three locales', () => {
+      const placeholders = (text: unknown) =>
+        String(text)
+          .match(/{{\w+}}/g)
+          ?.sort()
+          .join(',');
+      const key = 'statistics.player.activity.windowNote';
+      const expected = placeholders(resolve(en, key));
+      expect(expected).toBe('{{days}},{{from}},{{through}}');
+      for (const file of ['pt-BR', 'es']) {
+        const locale: unknown = JSON.parse(
+          readFileSync('src/locales/' + file + '/translation.json', 'utf8')
+        );
+        expect(placeholders(resolve(locale, key))).toBe(expected);
+      }
+    });
+  });
+
   it('shows the filter context and the rating-lag notice', () => {
     const base = makePlayerStatistics();
     render(

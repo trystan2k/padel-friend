@@ -1,4 +1,5 @@
 import * as stylex from '@stylexjs/stylex';
+import { useId } from 'react';
 import { useTranslation } from 'react-i18next';
 import { StatusBadge } from '../../components/ui/StatusBadge';
 import type { StatisticsFilters } from './statistics-contracts';
@@ -132,25 +133,41 @@ function CurrentStreak({ current }: { current: Statistics['form']['current'] }) 
 }
 
 /** Matches per month; the chart's table holds every month, so no figure is conveyed by shape alone. */
-function ActivitySeries({ months }: { months: Statistics['activity']['months'] }) {
+function ActivitySeries({ activity }: { activity: Statistics['activity'] }) {
   const { t } = useTranslation();
-  const { count, month } = usePlayerFormat();
+  const { count, date, month } = usePlayerFormat();
+  const noteId = useId();
+  const { months, window } = activity;
   if (months.length === 0) {
     return <StatisticsEmpty>{t('statistics.player.activity.empty')}</StatisticsEmpty>;
   }
+  const { fromDay, throughDay } = window;
+  const showNote = window.truncated && fromDay !== null && throughDay !== null;
   return (
-    <StatisticsChart
-      title={t('statistics.player.activity.caption')}
-      headerLabel={t('statistics.player.activity.month')}
-      valueLabel={t('statistics.player.activity.matches')}
-      points={months.map((entry) => ({
-        key: entry.period,
-        label: month(entry.period),
-        value: entry.groups
-      }))}
-      plotLimit={CHART_MONTHS}
-      formatValue={count}
-    />
+    <>
+      {showNote && (
+        <p id={noteId} {...stylex.props(s.detail)}>
+          {t('statistics.player.activity.windowNote', {
+            from: date(fromDay),
+            through: date(throughDay),
+            days: count(window.maxDays)
+          })}
+        </p>
+      )}
+      <StatisticsChart
+        descriptionId={showNote ? noteId : undefined}
+        title={t('statistics.player.activity.caption')}
+        headerLabel={t('statistics.player.activity.month')}
+        valueLabel={t('statistics.player.activity.matches')}
+        points={months.map((entry) => ({
+          key: entry.period,
+          label: month(entry.period),
+          value: entry.groups
+        }))}
+        plotLimit={CHART_MONTHS}
+        formatValue={count}
+      />
+    </>
   );
 }
 
@@ -434,7 +451,7 @@ export function PlayerStatistics({
       </Section>
 
       <Section id="player-stats-activity" title={t('statistics.player.sections.activity')}>
-        <ActivitySeries months={activity.months} />
+        <ActivitySeries activity={activity} />
       </Section>
 
       <PlayerStatisticsRecords stats={stats} />

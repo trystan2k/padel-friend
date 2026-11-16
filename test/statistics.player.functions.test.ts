@@ -230,6 +230,7 @@ describe('player statistics server boundary', () => {
       activity: {
         fromDay: '2026-10-01',
         throughDay: '2026-10-07',
+        window: { fromDay: '2026-10-01', throughDay: '2026-10-07', maxDays: 366, truncated: false },
         weeklyAverage: ready(5, 5, 1),
         mostActiveWeek: ready(bucket),
         mostActiveMonth: ready({ period: '2026-10', groups: 5 }),
@@ -302,6 +303,12 @@ describe('player statistics server boundary', () => {
           },
           activity: {
             fromDay: '2026-10-01',
+            window: {
+              fromDay: '2026-10-01',
+              throughDay: '2026-10-07',
+              maxDays: 366,
+              truncated: false
+            },
             weeklyAverage: { value: 5 },
             mostActiveMonth: { value: { period: '2026-10', groups: 5 } },
             days: [bucket]
@@ -337,6 +344,102 @@ describe('player statistics server boundary', () => {
           rating: { highestLevel: { state: 'insufficient', reason: 'not_established' } }
         }
       });
+    });
+    // Placed before the mutating rejection test below: payload() shares nested fixture objects.
+    it('decodes a truncated window and an empty-scope window', async () => {
+      const truncated = payload();
+      Object.assign(truncated.activity, {
+        fromDay: '2020-01-01',
+        throughDay: '2026-10-07',
+        window: { fromDay: '2025-10-07', throughDay: '2026-10-07', maxDays: 366, truncated: true }
+      });
+      await expect(read(truncated)).resolves.toMatchObject({
+        status: 'ok',
+        value: { activity: { window: { fromDay: '2025-10-07', truncated: true } } }
+      });
+      const empty = payload();
+      Object.assign(empty.activity, {
+        fromDay: null,
+        throughDay: null,
+        window: { fromDay: null, throughDay: null, maxDays: 366, truncated: false },
+        days: [],
+        weeks: [],
+        months: []
+      });
+      await expect(read(empty)).resolves.toMatchObject({
+        status: 'ok',
+        value: { activity: { window: { fromDay: null, throughDay: null, truncated: false } } }
+      });
+    });
+    it('rejects missing or malformed activity window metadata', async () => {
+      const mutate = (change: (activity: Record<string, unknown>) => void) => {
+        const body = payload();
+        change(body.activity);
+        return body;
+      };
+      const withWindow = (window: Record<string, unknown>) =>
+        mutate((activity) => {
+          activity.window = {
+            fromDay: '2026-10-01',
+            throughDay: '2026-10-07',
+            maxDays: 366,
+            truncated: false,
+            ...window
+          };
+        });
+      const bucketList = (length: number) =>
+        Array.from({ length }, () => ({ period: '2026-10-01', groups: 1 }));
+      const bodies = [
+        mutate((activity) => delete activity.window),
+        withWindow({ fromDay: '2026-02-30' }),
+        withWindow({ fromDay: 'not-a-date' }),
+        withWindow({ fromDay: '0000-01-01' }),
+        withWindow({ fromDay: '2026-10-08' }),
+        withWindow({ throughDay: '2026-10-06' }),
+        withWindow({ fromDay: '2026-09-30' }),
+        withWindow({ truncated: 'false' }),
+        withWindow({ truncated: true }),
+        withWindow({ maxDays: 365 }),
+        withWindow({ maxDays: '366' }),
+        withWindow({ fromDay: null, throughDay: null }),
+        mutate((activity) => {
+          activity.window = { fromDay: null, throughDay: null, maxDays: 366, truncated: true };
+          activity.fromDay = null;
+          activity.throughDay = null;
+        }),
+        mutate((activity) => {
+          activity.fromDay = '2020-01-01';
+          activity.window = {
+            fromDay: '2026-01-01',
+            throughDay: '2026-10-07',
+            maxDays: 366,
+            truncated: false
+          };
+        }),
+        mutate((activity) => {
+          activity.fromDay = '2024-01-01';
+          activity.window = {
+            fromDay: '2024-01-01',
+            throughDay: '2026-10-07',
+            maxDays: 366,
+            truncated: false
+          };
+        }),
+        mutate((activity) => {
+          activity.days = bucketList(367);
+        }),
+        mutate((activity) => {
+          activity.weeks = bucketList(55);
+        }),
+        mutate((activity) => {
+          activity.months = bucketList(14);
+        })
+      ];
+      for (const body of bodies)
+        await expect(read(body)).resolves.toEqual({
+          status: 'error',
+          code: 'INVALID_STATISTICS_RESPONSE'
+        });
     });
     it('rejects partial or inconsistent payloads', async () => {
       const missing = payload() as Record<string, unknown>;

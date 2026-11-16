@@ -2717,7 +2717,8 @@
         "empty": "No matches in this selection yet.",
         "caption": "Matches played per month",
         "month": "Month",
-        "matches": "Matches"
+        "matches": "Matches",
+        "windowNote": "The activity chart shows only {{from}} to {{through}}, the latest {{days}} days of this selection. Months at the edges count only the days shown. Totals and records on this page use the full selected range."
       },
       "reasons": {
         "no_denominator": "Not enough matches yet to calculate this.",
