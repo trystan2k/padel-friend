@@ -200,7 +200,9 @@ describe('player statistics core surface', () => {
 
     it('describes the chart with a localized note only when the window is truncated', () => {
       render(wrap(<PlayerStatistics stats={truncated()} />));
-      const note = screen.getByText(/The activity chart shows only .* the latest 366 days/);
+      const note = screen.getByText(/Activity data covers .* the latest 366 days/);
+      expect(note.textContent).toContain('The chart plots the most recent months of that window');
+      expect(note.textContent).toContain("the chart's table has the full detail");
       expect(note.textContent).toMatch(/2029/);
       expect(note.textContent).toMatch(/2030/);
       expect(note.textContent).toContain(
@@ -241,16 +243,19 @@ describe('player statistics core surface', () => {
       [
         'pt-BR',
         /últimos 366 dias/,
+        'a tabela do gráfico traz o detalhe completo',
         'Os totais e recordes desta página usam todo o período selecionado.'
       ],
       [
         'es',
         /últimos 366 días/,
+        'la tabla del gráfico tiene el detalle completo',
         'Los totales y récords de esta página usan todo el período seleccionado.'
       ]
-    ] as const)('renders the %s note', (locale, latest, scope) => {
+    ] as const)('renders the %s note', (locale, latest, detail, scope) => {
       render(wrap(<PlayerStatistics stats={truncated()} />, locale));
       const note = screen.getByText(latest);
+      expect(note.textContent).toContain(detail);
       expect(note.textContent).toContain(scope);
       expect(note.textContent).not.toMatch(/{{|}}/);
     });

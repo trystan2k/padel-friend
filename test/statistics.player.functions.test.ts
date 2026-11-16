@@ -143,6 +143,15 @@ describe('player statistics server boundary', () => {
     };
     const candidate = { k: 1, v: 12, at: '2026-10-01T10:00:00Z', g: id };
     const bucket = { period: '2026-10-01', groups: 3 };
+    // Gap-filled inclusive UTC day series, as the RPC emits it for the activity window.
+    const dayRange = (from: string, through: string) => {
+      const start = Date.parse(`${from}T00:00:00Z`);
+      const length = (Date.parse(`${through}T00:00:00Z`) - start) / 86_400_000 + 1;
+      return Array.from({ length }, (_, offset) => ({
+        period: new Date(start + offset * 86_400_000).toISOString().slice(0, 10),
+        groups: offset === 0 ? 3 : 0
+      }));
+    };
     const outcome = { g: id, o: 'W', at: '2026-10-01T10:00:00Z' };
     const payload = () => ({
       player_id: id,
@@ -234,7 +243,7 @@ describe('player statistics server boundary', () => {
         weeklyAverage: ready(5, 5, 1),
         mostActiveWeek: ready(bucket),
         mostActiveMonth: ready({ period: '2026-10', groups: 5 }),
-        days: [bucket],
+        days: dayRange('2026-10-01', '2026-10-07'),
         weeks: [bucket],
         months: [{ period: '2026-10', groups: 5 }]
       },
@@ -311,7 +320,7 @@ describe('player statistics server boundary', () => {
             },
             weeklyAverage: { value: 5 },
             mostActiveMonth: { value: { period: '2026-10', groups: 5 } },
-            days: [bucket]
+            days: dayRange('2026-10-01', '2026-10-07')
           },
           relationships: {
             uniquePartners: 2,
@@ -351,7 +360,8 @@ describe('player statistics server boundary', () => {
       Object.assign(truncated.activity, {
         fromDay: '2020-01-01',
         throughDay: '2026-10-07',
-        window: { fromDay: '2025-10-07', throughDay: '2026-10-07', maxDays: 366, truncated: true }
+        window: { fromDay: '2025-10-07', throughDay: '2026-10-07', maxDays: 366, truncated: true },
+        days: dayRange('2025-10-07', '2026-10-07')
       });
       await expect(read(truncated)).resolves.toMatchObject({
         status: 'ok',
@@ -433,6 +443,94 @@ describe('player statistics server boundary', () => {
         }),
         mutate((activity) => {
           activity.months = bucketList(14);
+        })
+      ];
+      for (const body of bodies)
+        await expect(read(body)).resolves.toEqual({
+          status: 'error',
+          code: 'INVALID_STATISTICS_RESPONSE'
+        });
+    });
+    it('rejects malformed bucket periods', async () => {
+      const mutate = (change: (activity: Record<string, any>) => void) => {
+        const body = payload();
+        change(body.activity);
+        return body;
+      };
+      const bodies = [
+        mutate((a) => (a.days[2].period = 'yesterday')),
+        mutate((a) => (a.days[2].period = '2026-02-30')),
+        mutate((a) => (a.days[2].period = '2026-10')),
+        mutate((a) => (a.days[2].period = 20261003)),
+        mutate((a) => (a.weeks[0].period = '10/01/2026')),
+        mutate((a) => (a.weeks[0].period = '2026-02-30')),
+        mutate((a) => (a.weeks[0].period = '2026-10')),
+        mutate((a) => (a.months[0].period = '2026-13')),
+        mutate((a) => (a.months[0].period = '2026-00')),
+        mutate((a) => (a.months[0].period = '2026-10-01')),
+        mutate((a) => (a.months[0].period = '2026-1')),
+        mutate((a) => (a.months[0].period = 202610)),
+        mutate((a) => (a.mostActiveWeek.value.period = 'soon')),
+        mutate((a) => (a.mostActiveMonth.value.period = '2026-13'))
+      ];
+      for (const body of bodies)
+        await expect(read(body)).resolves.toEqual({
+          status: 'error',
+          code: 'INVALID_STATISTICS_RESPONSE'
+        });
+    });
+    it('rejects incomplete or inexact activity windows and day series', async () => {
+      const mutate = (change: (activity: Record<string, any>) => void) => {
+        const body = payload();
+        change(body.activity);
+        return body;
+      };
+      const bodies = [
+        // 100-day truncated window claimed on a 1000+ day scope
+        mutate((a) => {
+          a.fromDay = '2023-01-01';
+          a.window = {
+            fromDay: '2026-06-30',
+            throughDay: '2026-10-07',
+            maxDays: 366,
+            truncated: true
+          };
+          a.days = dayRange('2026-06-30', '2026-10-07');
+        }),
+        // non-truncated window with a scope longer than the window
+        mutate((a) => {
+          a.fromDay = '2026-09-01';
+          a.window = {
+            fromDay: '2026-10-01',
+            throughDay: '2026-10-07',
+            maxDays: 366,
+            truncated: true
+          };
+        }),
+        // earliest window day missing
+        mutate((a) => (a.days = dayRange('2026-10-02', '2026-10-07'))),
+        // latest window day missing
+        mutate((a) => (a.days = dayRange('2026-10-01', '2026-10-06'))),
+        // gap in the middle with the same endpoints
+        mutate((a) => (a.days = a.days.filter((_: unknown, index: number) => index !== 3))),
+        // length differs (duplicate entry)
+        mutate((a) => a.days.push({ period: '2026-10-07', groups: 0 })),
+        // out of order
+        mutate((a) => a.days.reverse()),
+        // empty series for a non-null window
+        mutate((a) => (a.days = [])),
+        // out-of-window series
+        mutate((a) => (a.days = dayRange('2026-10-08', '2026-10-14'))),
+        // truncated window with a missing earliest day
+        mutate((a) => {
+          a.fromDay = '2020-01-01';
+          a.window = {
+            fromDay: '2025-10-07',
+            throughDay: '2026-10-07',
+            maxDays: 366,
+            truncated: true
+          };
+          a.days = dayRange('2025-10-08', '2026-10-07');
         })
       ];
       for (const body of bodies)

@@ -269,16 +269,28 @@ function decodeAdvanced(value: unknown): PlayerAdvancedStatistics {
     toughestLoss: extremum(data.toughestLoss)
   };
 }
-function decodeBucket(value: unknown): PlayerActivityBucket {
+/** Day and week buckets carry a UTC calendar date; month buckets carry `YYYY-MM`. */
+const isStatisticsMonth = (value: unknown): value is string =>
+  typeof value === 'string' && /^\d{4}-(0[1-9]|1[0-2])$/.test(value);
+function decodeBucket(value: unknown, validPeriod: (period: unknown) => boolean) {
   const data = object(value);
-  return { period: text(data.period), groups: count(data.groups) };
+  const period = text(data.period);
+  return validPeriod(period) ? { period, groups: count(data.groups) } : invalid();
 }
+const decodeDayBucket = (value: unknown): PlayerActivityBucket =>
+  decodeBucket(value, isStatisticsCalendarDate);
+const decodeMonthBucket = (value: unknown): PlayerActivityBucket =>
+  decodeBucket(value, isStatisticsMonth);
 function calendarDayOrNull(value: unknown): string | null {
   if (value === null) return null;
   return isStatisticsCalendarDate(value) ? value : invalid();
 }
 const dayIndex = (day: string) => Date.parse(`${day}T00:00:00Z`) / 86_400_000;
-/** Window metadata is required; its dates must nest inside the full scope and agree with truncation. */
+const dayFromIndex = (index: number) => new Date(index * 86_400_000).toISOString().slice(0, 10);
+/**
+ * Window metadata is required; it must be exactly the latest max-days of the scope
+ * (`greatest(fromDay, throughDay - 365)`..`throughDay`) and agree with truncation.
+ */
 function decodeActivityWindow(
   value: unknown,
   fromDay: string | null,
@@ -301,19 +313,37 @@ function decodeActivityWindow(
       : invalid();
   }
   const length = dayIndex(window.throughDay) - dayIndex(window.fromDay) + 1;
+  const expectedLength = Math.min(
+    dayIndex(window.throughDay) - dayIndex(fromDay) + 1,
+    window.maxDays
+  );
   if (
     window.throughDay !== throughDay ||
     window.fromDay < fromDay ||
     length < 1 ||
-    length > window.maxDays ||
+    length !== expectedLength ||
     window.truncated !== window.fromDay > fromDay
   )
     return invalid();
   return window;
 }
-function boundedList(value: unknown, limit: number): PlayerActivityBucket[] {
+function boundedList(
+  value: unknown,
+  limit: number,
+  decode: (item: unknown) => PlayerActivityBucket
+): PlayerActivityBucket[] {
   const items = array(value);
-  return items.length <= limit ? items.map(decodeBucket) : invalid();
+  return items.length <= limit ? items.map(decode) : invalid();
+}
+/** The day series must be the complete, gap-filled, ascending window coverage. */
+function assertDaysCoverWindow(days: PlayerActivityBucket[], window: PlayerActivityWindow): void {
+  const first = window.fromDay === null ? 0 : dayIndex(window.fromDay);
+  const length = window.throughDay === null ? 0 : dayIndex(window.throughDay) - first + 1;
+  if (
+    days.length !== length ||
+    days.some((day, offset) => day.period !== dayFromIndex(first + offset))
+  )
+    invalid();
 }
 function decodeActivity(value: unknown): PlayerActivity {
   const data = object(value);
@@ -322,17 +352,18 @@ function decodeActivity(value: unknown): PlayerActivity {
   if ((fromDay === null) !== (throughDay === null) || (fromDay ?? '') > (throughDay ?? ''))
     return invalid();
   const window = decodeActivityWindow(data.window, fromDay, throughDay);
-  const days = boundedList(data.days, STATISTICS_ACTIVITY_WINDOW_MAX_DAYS);
-  const weeks = boundedList(data.weeks, STATISTICS_ACTIVITY_WINDOW_MAX_WEEKS);
-  const months = boundedList(data.months, STATISTICS_ACTIVITY_WINDOW_MAX_MONTHS);
+  const days = boundedList(data.days, STATISTICS_ACTIVITY_WINDOW_MAX_DAYS, decodeDayBucket);
+  const weeks = boundedList(data.weeks, STATISTICS_ACTIVITY_WINDOW_MAX_WEEKS, decodeDayBucket);
+  const months = boundedList(data.months, STATISTICS_ACTIVITY_WINDOW_MAX_MONTHS, decodeMonthBucket);
   if (window.fromDay === null && days.length + weeks.length + months.length > 0) return invalid();
+  assertDaysCoverWindow(days, window);
   return {
     fromDay,
     throughDay,
     window,
     weeklyAverage: metric(data.weeklyAverage),
-    mostActiveWeek: metricOf(data.mostActiveWeek, decodeBucket),
-    mostActiveMonth: metricOf(data.mostActiveMonth, decodeBucket),
+    mostActiveWeek: metricOf(data.mostActiveWeek, decodeDayBucket),
+    mostActiveMonth: metricOf(data.mostActiveMonth, decodeMonthBucket),
     days,
     weeks,
     months

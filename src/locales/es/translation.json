@@ -2718,7 +2718,7 @@
         "caption": "Partidos jugados por mes",
         "month": "Mes",
         "matches": "Partidos",
-        "windowNote": "El gráfico de actividad muestra solo del {{from}} al {{through}}, los últimos {{days}} días de esta selección. Los meses de los extremos cuentan solo los días mostrados. Los totales y récords de esta página usan todo el período seleccionado."
+        "windowNote": "Los datos de actividad abarcan del {{from}} al {{through}}, los últimos {{days}} días de esta selección. El gráfico muestra los meses más recientes de esa ventana; la tabla del gráfico tiene el detalle completo. Los meses de los extremos cuentan solo los días mostrados. Los totales y récords de esta página usan todo el período seleccionado."
       },
       "reasons": {
         "no_denominator": "Todavía no hay suficientes partidos para calcular esto.",
