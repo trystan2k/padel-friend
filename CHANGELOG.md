@@ -1,6 +1,8 @@
 # Changelog
 
-## [0.3.0](https://github.com/trystan2k/padel-friend/compare/v0.2.0...v0.3.0) (2026-11-16)
+## [0.3.0](https://github.com/trystan2k/padel-friend/compare/padel-friend-v0.2.0...v0.3.0) (2026-11-16)
+
+> **Cumulative first production release.** 0.3.0 is the first version deployed to production. The entries below include history from the earlier non-deployed releases (`padel-friend-v0.1.0`, `padel-friend-v0.2.0`) and are not all new since `padel-friend-v0.2.0`.
 
 
 ### Features
