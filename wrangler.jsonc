@@ -5,8 +5,18 @@
   "compatibility_date": "2026-09-25",
   "compatibility_flags": ["nodejs_compat"],
   "observability": { "enabled": true },
+  "vars": {
+    "APP_ORIGIN": "https://padel-friend.trystan2k.workers.dev",
+    "WEB_PUSH_VAPID_PUBLIC_KEY": "BJLwThvGLSIsnFbsHGCQVRXkZtDE7MQns80Eeb8HXhTH7rkVLhHJnwsIGRxKJWozQlMdKlhB8Tz8gVtjryeX6IA",
+    "WEB_PUSH_VAPID_KEY_ID": "v1",
+    "WEB_PUSH_VAPID_SUBJECT": "mailto:trystan2k@gmail.com",
+    "WEB_PUSH_ENABLED": "true"
+  },
   "triggers": { "crons": ["*/5 * * * *"] },
   "env": {
-    "preview": { "name": "padel-friend-preview", "triggers": { "crons": ["*/5 * * * *"] } }
+    "preview": {
+      "name": "padel-friend-preview",
+      "triggers": { "crons": ["*/5 * * * *"] }
+    }
   }
 }
