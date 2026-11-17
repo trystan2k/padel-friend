@@ -124,6 +124,13 @@ describe('LoginWelcome', () => {
     expect(precedes(forgot, submit)).toBe(true);
   });
 
+  it('links to the public privacy policy', async () => {
+    await renderWelcome();
+
+    const link = screen.getByRole('link', { name: en.auth.privacyLink });
+    expect(link.getAttribute('href')).toBe('/privacy');
+  });
+
   it('links to password recovery and preserves an optional validated next path', async () => {
     await renderWelcome({ next: '/matches?tab=history' });
 

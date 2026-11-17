@@ -18,6 +18,7 @@ describe('real GoTrue invitation HTML in TEST Mailpit', () => {
     const inviterName = '<img src=x onerror=alert(1)> André "Ana" & \'João\' &lt;b&gt;';
     const venueName = '<script>alert(2)</script> Pátio & "Court"';
     const metadata = buildInvitationEmailMetadata({
+      origin: 'http://127.0.0.1:4173',
       locale,
       inviterName,
       venueName,

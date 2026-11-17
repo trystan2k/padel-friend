@@ -99,6 +99,13 @@ async function waitForEnabled(selector: string): Promise<void> {
 }
 
 describe('ForgotPassword', () => {
+  it('links to the public privacy policy', async () => {
+    await renderAuthForm('/forgot-password');
+
+    const link = screen.getByRole('link', { name: en.auth.privacyLink });
+    expect(link.getAttribute('href')).toBe('/privacy');
+  });
+
   it('sends a reset request to the callback route and uses an enumeration-safe result', async () => {
     const user = userEvent.setup();
     supabaseBrowser.resetPasswordForEmail.mockResolvedValueOnce({ error: null });

@@ -5,6 +5,7 @@ import { AccountPrompt } from '../../components/ui/AccountPrompt';
 import { Button } from '../../components/ui/Button';
 import { HeroCard } from '../../components/ui/HeroCard';
 import { PasswordField } from '../../components/ui/PasswordField';
+import { PrivacyLink } from '../../components/ui/PrivacyLink';
 import { StepBadge } from '../../components/ui/StepBadge';
 import { SurfaceCard } from '../../components/ui/SurfaceCard';
 import { TextField } from '../../components/ui/TextField';
@@ -143,6 +144,7 @@ export function AccountSignup({ next: returnPath }: { next?: string }) {
           search={{ next }}
         />
       </div>
+      <PrivacyLink />
     </main>
   );
 }

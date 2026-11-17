@@ -3,6 +3,7 @@ import { useNavigate } from '@tanstack/react-router';
 import { useState, type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '../../components/ui/Button';
+import { PrivacyLink } from '../../components/ui/PrivacyLink';
 import { TextField } from '../../components/ui/TextField';
 import { TextLink } from '../../components/ui/TextLink';
 import { TurnstileWidget } from '../../components/ui/TurnstileWidget';
@@ -159,6 +160,7 @@ export function ForgotPassword({ next: returnPath }: ForgotPasswordProps) {
           {t('auth.backToSignIn')}
         </TextLink>
       </footer>
+      <PrivacyLink />
     </main>
   );
 }

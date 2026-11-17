@@ -1,4 +1,5 @@
 import { createI18n, resolveLocale } from '../../i18n/config';
+import { PRIVACY_CONTACT_EMAIL } from '../privacy/privacy-content';
 
 /**
  * Copy for the "player added by name and email" invitation, rendered per send.
@@ -16,7 +17,10 @@ export const INVITATION_EMAIL_METADATA_KEYS = [
   'padel_invite_heading',
   'padel_invite_body',
   'padel_invite_cta',
-  'padel_invite_footer'
+  'padel_invite_footer',
+  'padel_invite_privacy',
+  'padel_invite_privacy_cta',
+  'padel_invite_privacy_url'
 ] as const;
 
 export type InvitationEmailMetadata = Record<
@@ -25,6 +29,8 @@ export type InvitationEmailMetadata = Record<
 >;
 
 export type InvitationEmailContext = {
+  /** App origin (APP_ORIGIN): the privacy notice links to its /privacy page. */
+  origin: string;
   locale: string;
   inviterName: string;
   venueName: string;
@@ -61,7 +67,13 @@ export function buildInvitationEmailMetadata(
       event: when ? `${context.venueName} · ${when}` : context.venueName
     }),
     padel_invite_cta: t('auth.invitationEmail.cta'),
-    padel_invite_footer: t('auth.invitationEmail.footer')
+    padel_invite_footer: t('auth.invitationEmail.footer'),
+    padel_invite_privacy: t('auth.invitationEmail.privacy', {
+      inviter: context.inviterName,
+      contact: PRIVACY_CONTACT_EMAIL
+    }),
+    padel_invite_privacy_cta: t('auth.invitationEmail.privacyCta'),
+    padel_invite_privacy_url: new URL('/privacy', context.origin).toString()
   };
 }
 

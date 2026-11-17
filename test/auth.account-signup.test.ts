@@ -105,6 +105,13 @@ describe('AccountSignup', () => {
     ).toBe('/matches');
   });
 
+  it('links to the public privacy policy', async () => {
+    await renderSignup();
+
+    const link = screen.getByRole('link', { name: en.auth.privacyLink });
+    expect(link.getAttribute('href')).toBe('/privacy');
+  });
+
   it('keeps the signup autofill contract: email autocomplete and new-password on the password field', async () => {
     await renderSignup();
 

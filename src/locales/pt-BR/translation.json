@@ -99,7 +99,9 @@
       "heading": "Você está no jogo",
       "body": "{{inviter}} adicionou você a {{event}} no Padel Friends. Aceite o convite para configurar seu perfil de jogador e ver a partida.",
       "cta": "Aceitar convite",
-      "footer": "Não esperava este e-mail? Você pode ignorá-lo com segurança."
+      "footer": "Não esperava este e-mail? Você pode ignorá-lo com segurança.",
+      "privacy": "{{inviter}} informou seu nome e seu e-mail, e estimou seu nível, para adicionar você a esta partida. Guardamos esses dados para enviar o convite e configurar seu perfil de jogador, e os demais jogadores da partida podem ver seu nome. Para saber como tratamos seus dados ou fazer uma solicitação de privacidade, use o link abaixo ou escreva para {{contact}}.",
+      "privacyCta": "Política de privacidade"
     },
     "claim": {
       "step": "CONCLUA SEU CADASTRO",
@@ -177,7 +179,8 @@
     "accountSubtitle": "Entre para sincronizar suas partidas e seu nível.",
     "accountDescription": "Crie uma conta segura para salvar seu perfil de jogador, histórico de partidas e classificações da comunidade.",
     "or": "OU",
-    "profileFollows": "Seus dados de acesso são privados. Depois, defina seu nome, lado da quadra e nível inicial."
+    "profileFollows": "Seus dados de acesso são privados. Depois, defina seu nome, lado da quadra e nível inicial.",
+    "privacyLink": "Política de privacidade"
   },
   "onboarding": {
     "step": "ETAPA 2 DE 3 · PERFIL DO JOGADOR",
@@ -3297,6 +3300,125 @@
       "confirm": "Cancelar solicitação",
       "keep": "Manter solicitação",
       "canceling": "Cancelando…"
+    }
+  },
+  "privacy": {
+    "title": "Política de privacidade",
+    "updated": "Última atualização: {{date}}",
+    "reviewNotice": "Rascunho: esta política aguarda confirmação final do responsável pelo serviço e revisão jurídica, e pode mudar antes de ser definitiva.",
+    "who": {
+      "title": "Sobre esta política",
+      "p1": "O Padel Friends é operado por Thiago Mendonça, pessoa física com sede na Espanha, que decide como os dados pessoais descritos aqui são usados (controlador de dados). Esta política explica quais dados pessoais o app trata, para quê e quais são os seus direitos."
+    },
+    "collect": {
+      "title": "O que coletamos",
+      "p1": "Dependendo de como você usa o Padel Friends, tratamos:",
+      "i1": "Dados da conta: seu e-mail e senha, ou a identidade da sua conta Google se você entrar com o Google.",
+      "i2": "Dados de perfil: seu nome de exibição, lado da quadra, nível e, se você adicionar, sua imagem de avatar.",
+      "i3": "Dados de atividade: partidas, comunidades e participações, resultados, avaliações, revisões de nível, fotos que você adiciona a partidas ou locais de comunidades e as estatísticas derivadas.",
+      "i4": "Dados de notificações: notificações no app, suas preferências de notificação e, se você ativar as notificações push do navegador, a assinatura push do seu navegador.",
+      "i5": "Dados de convites: quando você convida alguém, o nome e o e-mail que você informa. Se alguém convidar você, essa pessoa pode ter informado seu nome e e-mail antes de você criar uma conta.",
+      "i6": "Dados técnicos: cookies de sessão que mantêm você conectado e cookies que lembram seu idioma e tema.",
+      "i7": "Dados de requisição: seu endereço IP e detalhes técnicos semelhantes são tratados pelos nossos prestadores de hospedagem e infraestrutura quando você usa o serviço."
+    },
+    "invitees": {
+      "title": "Se alguém adicionar você a uma partida",
+      "p1": "Se quem organiza uma partida ou administra uma comunidade adicionar você a uma partida com seu nome e e-mail, recebemos dessa pessoa, e não de você, seu nome, seu e-mail e um nível estimado. Usamos esses dados para enviar o convite e configurar seu perfil de jogador, e os demais jogadores da partida podem ver seu nome.",
+      "p2": "Ao aceitar o convite, você pode revisar e corrigir esses dados. Você também pode pedir para acessar, corrigir ou excluir os dados informados sobre você, conforme descrito em Suas solicitações."
+    },
+    "use": {
+      "title": "Como usamos",
+      "p1": "Usamos esses dados para:",
+      "i1": "criar e proteger sua conta e permitir que você entre;",
+      "i2": "oferecer os recursos que você usa, como perfis, comunidades, partidas, resultados, avaliações e estatísticas;",
+      "i3": "enviar mensagens do serviço, como convites, confirmações de conta, redefinições de senha e notificações que você escolheu receber;",
+      "i4": "proteger o serviço contra abuso, por exemplo com uma verificação anti-bot nos formulários de acesso;",
+      "i5": "responder às suas solicitações e dúvidas sobre privacidade."
+    },
+    "legalBases": {
+      "title": "Bases legais",
+      "p1": "A lei de proteção de dados exige uma base legal para cada finalidade. Nos baseamos em:",
+      "p2": "Quando nos baseamos em legítimo interesse, você pode se opor a esse tratamento, conforme explicado em Seus direitos.",
+      "i1": "Prestar o serviço que você solicita (sua conta, perfil, comunidades, partidas, resultados, avaliações e notificações no app): execução do contrato entre você e nós, artigo 6(1)(b) do GDPR.",
+      "i2": "Entregar convites e e-mails do serviço, incluindo e-mails sobre pessoas convidadas por outro usuário: nossos legítimos interesses, e os do usuário que convida, em permitir que jogadores organizem partidas e se contatem, artigo 6(1)(f) do GDPR.",
+      "i3": "Proteger o serviço contra abuso e mantê-lo seguro, por exemplo com uma verificação anti-bot e logs técnicos: nosso legítimo interesse em segurança, artigo 6(1)(f) do GDPR.",
+      "i4": "Notificações push do navegador: seu consentimento, dado ao permitir notificações no navegador, artigo 6(1)(a) do GDPR. Você pode retirá-lo a qualquer momento nas preferências de notificação ou nas configurações do navegador, sem afetar o tratamento anterior.",
+      "i5": "Responder às suas solicitações de privacidade e manter os registros necessários para comprovar isso: cumprimento de obrigações legais, artigo 6(1)(c) do GDPR.",
+      "i6": "Cookies e armazenamento semelhante: cookies de sessão são usados apenas para manter você conectado, e cookies de idioma e tema apenas para lembrar as escolhas que você faz."
+    },
+    "google": {
+      "title": "Login com o Google",
+      "p1": "Se você escolher entrar com o Google, o Google compartilha informações básicas de perfil com nosso prestador de autenticação, o Supabase, como seu e-mail e, quando o Google fornece, seu nome e foto de perfil. Usamos isso apenas para criar sua conta e fazer seu login.",
+      "p2": "Não usamos dados de usuário do Google para publicidade, não os vendemos nem os repassamos a corretores de dados, não os usamos para treinar modelos de IA ou aprendizado de máquina, e os compartilhamos apenas com os prestadores de serviço listados abaixo que operam o Padel Friends."
+    },
+    "sharing": {
+      "title": "Quem pode ver suas informações",
+      "p1": "O que outras pessoas podem ver depende de onde suas informações aparecem. Conforme o serviço funciona atualmente:",
+      "i1": "Partidas abertas em uma comunidade pública: qualquer usuário conectado, inclusive pessoas que não são membros dessa comunidade, pode ver os detalhes da partida, a lista de jogadores (nomes de exibição e níveis) e qualquer foto da partida.",
+      "i2": "Membros da comunidade: os membros de uma comunidade podem ver seus locais e as fotos dos locais, e podem ver as estatísticas, os nomes de exibição e os resultados de outros membros nas partidas dessa comunidade.",
+      "i3": "Participantes da partida: os jogadores de uma partida podem ver seus resultados, as mudanças de avaliação e os nomes de exibição e níveis dos demais jogadores dessa partida.",
+      "i4": "Organizadores de partidas e administradores da comunidade: quem organiza uma partida pode ver quem se inscreveu e pode adicionar jogadores por nome e e-mail. Os administradores de uma comunidade podem ver seus membros, inclusive ex-membros, com nome de exibição, nível e confiabilidade, além de seus convites, mensagens, inscrições em partidas e histórico de auditoria.",
+      "i5": "Administradores da plataforma: um número reduzido de administradores da plataforma pode acessar pedidos de revisão de nível e informações de reparo de resultados de todas as comunidades para operar o serviço.",
+      "i6": "Pessoas adicionadas por nome e e-mail: se um organizador adicionar você a uma partida, o nome que ele informou pode ser mostrado aos demais jogadores dessa partida até você criar ou assumir sua conta."
+    },
+    "photos": {
+      "title": "Fotos",
+      "p1": "Fotos adicionadas a partidas ou locais de comunidades podem mostrar outras pessoas. Adicione apenas fotos que você tenha direito de compartilhar. Se uma foto sua foi adicionada e você quer que seja removida, escreva para o endereço da seção Contato."
+    },
+    "advertising": {
+      "title": "Publicidade e venda de dados",
+      "p1": "Não vendemos seus dados pessoais, não os compartilhamos para publicidade de terceiros e não enviamos e-mails promocionais. No momento, não usamos serviços de publicidade ou análise de terceiros."
+    },
+    "providers": {
+      "title": "Prestadores de serviço",
+      "p1": "Contamos com estes prestadores para operar o Padel Friends. Eles tratam dados conforme necessário para prestar seu serviço, segundo seus próprios termos e políticas de privacidade:",
+      "i1": "Supabase: banco de dados, autenticação e armazenamento de arquivos.",
+      "i2": "Cloudflare: hospedagem e entrega do site e, quando ativada, a verificação anti-bot Turnstile.",
+      "i3": "Google: login com o Google, se você escolher.",
+      "i4": "Resend: envio de e-mails.",
+      "i5": "O serviço push do seu navegador: entrega de notificações push, se você as ativar."
+    },
+    "transfers": {
+      "title": "Transferências internacionais",
+      "p1": "Alguns prestadores operam em ou a partir de fora da Espanha e do Espaço Econômico Europeu, portanto seus dados pessoais podem ser tratados em outros países, incluindo os Estados Unidos. Nosso banco de dados está hospedado em Londres, Reino Unido. Conforme os termos de tratamento de dados publicados pelos prestadores:",
+      "p2": "O Google e o serviço push do seu navegador transferem dados conforme seus próprios termos e políticas de privacidade. Os termos dos prestadores podem mudar, então consulte os documentos vigentes de cada um para detalhes.",
+      "i1": "Supabase (Supabase Pte. Ltd., Singapura): seu adendo de tratamento de dados está incorporado aos seus termos e inclui as cláusulas contratuais padrão da UE.",
+      "i2": "Cloudflare, Inc. (Estados Unidos): seu adendo de tratamento de dados está incorporado ao seu contrato de autoatendimento e inclui as cláusulas contratuais padrão da UE, e ela declara cumprir o Marco de Privacidade de Dados UE-EUA.",
+      "i3": "Resend (Plus Five Five, Inc., Estados Unidos): seu adendo de tratamento de dados vincula ao aceitar seus termos e inclui as cláusulas contratuais padrão da UE, e ela declara ser certificada no Marco de Privacidade de Dados UE-EUA."
+    },
+    "retention": {
+      "title": "Por quanto tempo guardamos",
+      "p1": "Guardamos os dados da sua conta, perfil e atividade enquanto sua conta existir e até tratarmos um pedido de exclusão seu. No momento, não excluímos contas inativas automaticamente.",
+      "p2": "Não definimos outros prazos fixos de retenção. A Cloudflare mantém logs de requisições por um período curto definido por ela (atualmente 3 dias no nosso plano, o que pode mudar). No momento, não mantemos backups agendados separados do banco de dados. Outros prestadores, como o de envio de e-mails, mantêm seus próprios registros conforme suas próprias práticas de retenção.",
+      "p3": "Quando a lei exige ou permite que guardemos certos dados, por exemplo para tratar uma reivindicação legal ou manter registros de solicitações de privacidade, guardamos apenas enquanto essa necessidade durar."
+    },
+    "security": {
+      "title": "Segurança",
+      "p1": "As conexões com o Padel Friends usam HTTPS. As senhas são tratadas pelo nosso prestador de autenticação e não as armazenamos em forma legível. O acesso aos dados no banco de dados é restrito por permissões baseadas em conta. Nenhum sistema é perfeitamente seguro e não podemos garantir segurança absoluta."
+    },
+    "requests": {
+      "title": "Suas solicitações",
+      "p1": "Para exercer qualquer um dos seus direitos, incluindo pedir para acessar, corrigir ou excluir seus dados pessoais, escreva para o endereço da seção Contato.",
+      "p2": "Como meta interna, analisamos as solicitações de privacidade recebidas por e-mail aproximadamente a cada 24 horas. Isso não substitui os prazos fixados em lei: respondemos em até um mês após receber sua solicitação, prazo que a lei permite prorrogar em alguns casos.",
+      "p3": "Seu direito de exclusão está sujeito às condições e exceções da lei de proteção de dados. Se não pudermos atender integralmente a uma solicitação, explicaremos o motivo."
+    },
+    "rights": {
+      "title": "Seus direitos",
+      "p1": "Segundo o Regulamento Geral de Proteção de Dados da UE, você tem direito de acessar seus dados pessoais, corrigi-los, excluí-los, restringir seu tratamento, se opor ao tratamento baseado em legítimo interesse e receber os dados que forneceu em formato portável.",
+      "p2": "Quando o tratamento se baseia no seu consentimento, você pode retirá-lo a qualquer momento.",
+      "p3": "Você também pode apresentar uma reclamação à Agência Espanhola de Proteção de Dados (Agencia Española de Protección de Datos, www.aepd.es) ou à autoridade de controle do local onde você mora ou trabalha."
+    },
+    "age": {
+      "title": "Idade",
+      "p1": "O Padel Friends é destinado a pessoas com 16 anos ou mais. Não verificamos a idade. Se você acredita que alguém mais jovem nos forneceu dados pessoais, entre em contato para que possamos analisar."
+    },
+    "changes": {
+      "title": "Alterações nesta política",
+      "p1": "Podemos atualizar esta política conforme o Padel Friends mudar. A data no topo mostra quando ela mudou pela última vez."
+    },
+    "contact": {
+      "title": "Contato",
+      "p1": "Para dúvidas ou solicitações de privacidade, escreva para:"
     }
   }
 }

@@ -11,6 +11,7 @@ import es from '../src/locales/es/translation.json';
 import ptBR from '../src/locales/pt-BR/translation.json';
 
 const context = {
+  origin: 'https://app.example.com',
   locale: 'en',
   inviterName: 'Ines Inviter',
   venueName: 'Central Court',
@@ -79,9 +80,28 @@ describe('invitation email metadata', () => {
 
   it('has the same invitation keys in every locale', () => {
     const keys = Object.keys(en.auth.invitationEmail).sort();
-    expect(keys).toEqual(['body', 'cta', 'footer', 'heading', 'subject']);
+    expect(keys).toEqual(['body', 'cta', 'footer', 'heading', 'privacy', 'privacyCta', 'subject']);
     expect(Object.keys(ptBR.auth.invitationEmail).sort()).toEqual(keys);
     expect(Object.keys(es.auth.invitationEmail).sort()).toEqual(keys);
+  });
+});
+
+describe('invitee privacy notice', () => {
+  it.each(supportedLocales)(
+    'names the organizer, the stored data and the contact in %s',
+    (locale) => {
+      const metadata = buildInvitationEmailMetadata({ ...context, locale });
+      expect(metadata.padel_invite_privacy).toContain('Ines Inviter');
+      expect(metadata.padel_invite_privacy).toContain('trystan2k@gmail.com');
+      expect(metadata.padel_invite_privacy).not.toContain('{{');
+      expect(metadata.padel_invite_privacy_cta.length).toBeGreaterThan(0);
+    }
+  );
+
+  it('links to /privacy on the app origin', () => {
+    expect(buildInvitationEmailMetadata(context).padel_invite_privacy_url).toBe(
+      'https://app.example.com/privacy'
+    );
   });
 });
 
@@ -104,7 +124,9 @@ describe('Auth invite template wiring', () => {
       (name) => name !== 'padel_invite_subject'
     ))
       expect(template).toContain(`.Data.${key}`);
-    expect(template.match(/<a /g)).toHaveLength(1);
+    // The verification link plus the privacy policy link.
+    expect(template.match(/<a /g)).toHaveLength(2);
+    expect(template).toContain('{{ .Data.padel_invite_privacy_url }}');
     expect(template).toContain('{{ .RedirectTo }}&token_hash={{ .TokenHash }}&type=invite');
   });
 

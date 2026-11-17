@@ -99,7 +99,9 @@
       "heading": "You're in the game",
       "body": "{{inviter}} added you to {{event}} on Padel Friends. Accept the invitation to set up your player profile and see the match.",
       "cta": "Accept invitation",
-      "footer": "Didn't expect this email? You can safely ignore it."
+      "footer": "Didn't expect this email? You can safely ignore it.",
+      "privacy": "{{inviter}} entered your name and email address, and estimated your level, to add you to this match. We store this data to send the invitation and to set up your player profile, and other players in the match can see your name. To read how we handle your data or to make a privacy request, use the link below or email {{contact}}.",
+      "privacyCta": "Privacy policy"
     },
     "claim": {
       "step": "FINISH SETTING UP",
@@ -177,7 +179,8 @@
     "accountSubtitle": "Sign in to sync your matches and level.",
     "accountDescription": "Create a secure account to save your player profile, match history, and community rankings.",
     "or": "OR",
-    "profileFollows": "Your sign-in stays private. Next, set your display name, court side, and starting level."
+    "profileFollows": "Your sign-in stays private. Next, set your display name, court side, and starting level.",
+    "privacyLink": "Privacy policy"
   },
   "onboarding": {
     "step": "STEP 2 OF 3 · PLAYER PROFILE",
@@ -3297,6 +3300,125 @@
       "confirm": "Cancel request",
       "keep": "Keep request",
       "canceling": "Canceling…"
+    }
+  },
+  "privacy": {
+    "title": "Privacy Policy",
+    "updated": "Last updated: {{date}}",
+    "reviewNotice": "Draft: this policy is awaiting final confirmation by the service owner and legal review, and may change before it is final.",
+    "who": {
+      "title": "About this policy",
+      "p1": "Padel Friends is run by Thiago Mendonça, an individual based in Spain, who decides how the personal data described here is used (the data controller). This policy explains what personal data the app handles, why, and what rights you have."
+    },
+    "collect": {
+      "title": "What we collect",
+      "p1": "Depending on how you use Padel Friends, we process:",
+      "i1": "Account data: your email address and password, or your Google account identity if you sign in with Google.",
+      "i2": "Profile data: your display name, court side, level and, if you add one, your avatar image.",
+      "i3": "Activity data: matches, communities and memberships, results, ratings, level reviews, photos you add to matches or community venues, and the statistics derived from them.",
+      "i4": "Notification data: in-app notifications, your notification preferences and, if you turn on browser push notifications, the push subscription from your browser.",
+      "i5": "Invitation data: when you invite someone, the name and email address you enter for them. If someone invites you, they may have entered your name and email address before you created an account.",
+      "i6": "Technical data: session cookies that keep you signed in, and cookies that remember your language and theme choices.",
+      "i7": "Request data: your IP address and similar technical details are processed by our hosting and infrastructure providers when you use the service."
+    },
+    "invitees": {
+      "title": "If someone adds you to a match",
+      "p1": "If a match organizer or community admin adds you to a match by name and email, we receive your name, email address and an estimated level from that person, not from you. We use them to send you the invitation and to set up your player profile, and other players in the match can see your name.",
+      "p2": "When you accept the invitation you can review and correct these details. You can also ask us to access, correct or delete the data entered about you, as described under Your requests."
+    },
+    "use": {
+      "title": "How we use it",
+      "p1": "We use this data to:",
+      "i1": "create and secure your account and sign you in;",
+      "i2": "run the features you use, such as profiles, communities, matches, results, ratings and statistics;",
+      "i3": "send service messages, such as invitations, account confirmations, password resets and notifications you have chosen to receive;",
+      "i4": "protect the service against abuse, for example with a bot check on sign-in forms;",
+      "i5": "answer your privacy requests and questions."
+    },
+    "legalBases": {
+      "title": "Legal bases",
+      "p1": "Data protection law requires a legal basis for each purpose. We rely on:",
+      "p2": "Where we rely on legitimate interests, you can object to that processing, as explained under Your rights.",
+      "i1": "Providing the service you ask for (your account, profile, communities, matches, results, ratings and in-app notifications): performance of the contract between you and us, Article 6(1)(b) GDPR.",
+      "i2": "Delivering invitations and service emails, including emails about people another user invites: our legitimate interests, and those of the inviting user, in letting players organize matches and reach each other, Article 6(1)(f) GDPR.",
+      "i3": "Protecting the service against abuse and keeping it secure, for example with a bot check and technical logs: our legitimate interest in security, Article 6(1)(f) GDPR.",
+      "i4": "Browser push notifications: your consent, given when you allow notifications in your browser, Article 6(1)(a) GDPR. You can withdraw it at any time in your notification preferences or browser settings, without affecting earlier processing.",
+      "i5": "Answering your privacy requests and keeping the records needed to show we did: compliance with legal obligations, Article 6(1)(c) GDPR.",
+      "i6": "Cookies and similar storage: session cookies are used only to keep you signed in, and language and theme cookies only to remember choices you make."
+    },
+    "google": {
+      "title": "Sign in with Google",
+      "p1": "If you choose Sign in with Google, Google shares basic profile information with our authentication provider, Supabase, such as your email address and, where Google provides them, your name and profile picture. We use it only to create your account and sign you in.",
+      "p2": "We do not use Google user data for advertising, we do not sell it or give it to data brokers, we do not use it to train AI or machine learning models, and we share it only with the service providers listed below that run Padel Friends."
+    },
+    "sharing": {
+      "title": "Who can see your information",
+      "p1": "What other people can see depends on where your information appears. Based on how the service currently works:",
+      "i1": "Open matches in a public community: any signed-in user, including people who are not members of that community, can see the match details, the player list (display names and levels) and any match photo.",
+      "i2": "Community members: members of a community can see its venues and venue photos, and can see other members' statistics, display names and results from matches in that community.",
+      "i3": "Match participants: players in a match can see its results, rating changes and the other players' display names and levels for that match.",
+      "i4": "Match organizers and community admins: a match organizer can see who registered for their match and can add players by name and email. Community admins can see their community's members, including past members, with display names, level and reliability, as well as its invitations, messages, match registrations and audit history.",
+      "i5": "Platform administrators: a small number of platform administrators can access level-review requests and result-repair information across communities in order to operate the service.",
+      "i6": "People added by name and email: if an organizer adds you to a match, the name they entered may be shown to other players of that match until you create or claim your account."
+    },
+    "photos": {
+      "title": "Photos",
+      "p1": "Photos added to matches or community venues may show other people. Only add photos you are entitled to share. If a photo showing you was added and you want it removed, email us at the address in the Contact section."
+    },
+    "advertising": {
+      "title": "Advertising and sale of data",
+      "p1": "We do not sell your personal data, we do not share it for third-party advertising, and we do not send promotional emails. We do not currently use third-party advertising or analytics services."
+    },
+    "providers": {
+      "title": "Service providers",
+      "p1": "We rely on these service providers to run Padel Friends. They process data as needed to provide their service, under their own terms and privacy policies:",
+      "i1": "Supabase: database, authentication and file storage.",
+      "i2": "Cloudflare: hosting and delivery of the website and, where enabled, the Turnstile bot check.",
+      "i3": "Google: sign-in with Google, if you choose it.",
+      "i4": "Resend: delivery of emails.",
+      "i5": "Your browser's push service: delivery of push notifications, if you enable them."
+    },
+    "transfers": {
+      "title": "International transfers",
+      "p1": "Some providers operate in or from outside Spain and the European Economic Area, so your personal data may be processed in other countries, including the United States. Our database is hosted in London, United Kingdom. Based on the providers' published data processing terms:",
+      "p2": "Google and your browser's push service transfer data under their own terms and privacy policies. Provider terms can change, so check each provider's current documents for details.",
+      "i1": "Supabase (Supabase Pte. Ltd., Singapore): its data processing addendum is incorporated into its terms and includes the EU standard contractual clauses.",
+      "i2": "Cloudflare, Inc. (United States): its data processing addendum is incorporated into its self-serve agreement and includes the EU standard contractual clauses, and it states that it complies with the EU-US Data Privacy Framework.",
+      "i3": "Resend (Plus Five Five, Inc., United States): its data processing addendum binds on acceptance of its terms and includes the EU standard contractual clauses, and it states that it is certified under the EU-US Data Privacy Framework."
+    },
+    "retention": {
+      "title": "How long we keep it",
+      "p1": "We keep your account, profile and activity data for as long as your account exists, and until we have handled a deletion request from you. We do not currently delete inactive accounts automatically.",
+      "p2": "We have not set other fixed retention periods. Cloudflare keeps request logs for a short period set by Cloudflare (currently 3 days on our plan, which may change). We do not currently keep separate scheduled backups of the database. Other providers, such as email delivery, keep their own records under their own retention practices.",
+      "p3": "Where the law requires or allows us to keep certain data, for example to handle a legal claim or to keep records of privacy requests, we keep it only for as long as that need lasts."
+    },
+    "security": {
+      "title": "Security",
+      "p1": "Connections to Padel Friends use HTTPS. Passwords are handled by our authentication provider and are not stored by us in readable form. Access to data in the database is restricted by account-based permissions. No system is perfectly secure, and we cannot guarantee absolute security."
+    },
+    "requests": {
+      "title": "Your requests",
+      "p1": "To exercise any of your rights, including to ask us to access, correct or delete your personal data, email us at the address in the Contact section.",
+      "p2": "As an internal aim, we review privacy requests received by email about once every 24 hours. This does not replace the time limits set by law: we respond within one month of receiving your request, which the law allows to be extended in some cases.",
+      "p3": "Your right to erasure is subject to the conditions and exceptions in data protection law. If we cannot fully act on a request, we will tell you why."
+    },
+    "rights": {
+      "title": "Your rights",
+      "p1": "Under the EU General Data Protection Regulation you have the right to access your personal data, to have it corrected, to have it erased, to restrict its processing, to object to processing based on legitimate interests, and to receive the data you provided in a portable format.",
+      "p2": "Where processing is based on your consent, you can withdraw it at any time.",
+      "p3": "You can also lodge a complaint with the Spanish Data Protection Agency (Agencia Española de Protección de Datos, www.aepd.es) or with the supervisory authority of the place where you live or work."
+    },
+    "age": {
+      "title": "Age",
+      "p1": "Padel Friends is intended for people aged 16 or over. We do not verify age. If you believe someone younger has given us personal data, contact us so we can look into it."
+    },
+    "changes": {
+      "title": "Changes to this policy",
+      "p1": "We may update this policy as Padel Friends changes. The date at the top shows when it last changed."
+    },
+    "contact": {
+      "title": "Contact",
+      "p1": "For privacy questions or requests, email:"
     }
   }
 }

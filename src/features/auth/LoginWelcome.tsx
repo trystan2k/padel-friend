@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { AccountPrompt } from '../../components/ui/AccountPrompt';
 import { Button } from '../../components/ui/Button';
 import { OrDivider } from '../../components/ui/OrDivider';
+import { PrivacyLink } from '../../components/ui/PrivacyLink';
 import { PasswordField } from '../../components/ui/PasswordField';
 import { TextField } from '../../components/ui/TextField';
 import { TextLink } from '../../components/ui/TextLink';
@@ -178,6 +179,7 @@ export function LoginWelcome({
           xstyle={styles.promptText}
         />
       </div>
+      <PrivacyLink />
     </main>
   );
 }

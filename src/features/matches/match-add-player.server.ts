@@ -49,7 +49,7 @@ export function parsePlayerAddDispatch(value: unknown): PlayerAddDispatch | null
   return null;
 }
 
-type InviteContext = InvitationEmailContext & { targetUserId: string | null };
+type InviteContext = Omit<InvitationEmailContext, 'origin'> & { targetUserId: string | null };
 
 function parseInviteContext(value: unknown, locale: string): InviteContext | null {
   if (typeof value !== 'object' || value === null) return null;
@@ -89,7 +89,7 @@ export async function deliverPlayerAddInvite(
   });
   const context = loaded.error ? null : parseInviteContext(loaded.data, dispatch.locale);
   if (!context) return false;
-  const metadata = buildInvitationEmailMetadata(context);
+  const metadata = buildInvitationEmailMetadata({ ...context, origin: input.origin });
   if (dispatch.action === 'resend') {
     if (!context.targetUserId) return false;
     const refreshed = await admin.auth.admin.updateUserById(context.targetUserId, {
