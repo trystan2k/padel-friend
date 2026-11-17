@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.4.0](https://github.com/trystan2k/padel-friend/compare/v0.3.0...v0.4.0) (2026-11-17)
+
+
+### Features
+
+* add public privacy policy page and invitee privacy notice ([4726517](https://github.com/trystan2k/padel-friend/commit/472651726fb26b7133ffd3c20c820b1e8767745d))
+
+
+### Bug Fixes
+
+* keep auth privacy link out of pinned layouts and invite link tests ([96bc2b1](https://github.com/trystan2k/padel-friend/commit/96bc2b1385e9ac1860e5238f2e45a115292ef63b))
+* preserve production app origin on deploy ([9b758ea](https://github.com/trystan2k/padel-friend/commit/9b758ea27f531fc83187510876131f910231a86e))
+* use app.padelfriend.es as production app origin ([577c820](https://github.com/trystan2k/padel-friend/commit/577c8206c83e06a61c4e5b67caef9fa653e1c50d))
+
 ## [0.3.0](https://github.com/trystan2k/padel-friend/compare/padel-friend-v0.2.0...v0.3.0) (2026-11-16)
 
 > **Cumulative first production release.** 0.3.0 is the first version deployed to production. The entries below include history from the earlier non-deployed releases (`padel-friend-v0.1.0`, `padel-friend-v0.2.0`) and are not all new since `padel-friend-v0.2.0`.
