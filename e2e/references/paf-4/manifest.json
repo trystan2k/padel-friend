@@ -7,7 +7,7 @@
   },
   "sourceDesign": {
     "path": "docs/design/padel-friend.pen",
-    "sha256": "f04e9f71ba2b5121b41833cf4355b8406ded4e62d042df1789ac8438f675e1b6",
+    "sha256": "7da6d6c9b6b84e9afe77a14507f7f558fd0407a7e4b259ace2fc6b59125b3968",
     "managementDesignVerification": "User added ten approved T06 frames under OkNwP. Re-exported all thirteen PAF-4 source frames through read-only Pencil MCP at scale 1; decoded RGBA comparisons equal every retained approved reference, using only each existing documented top crop. Approved reference digests and budgets unchanged. Only the separately authorized derived invitee baseline migration below changed a baseline digest.",
     "invitationPanelMigrationReview": "User authorized a bounded derived-baseline update only for the intentional invitation-panel move above the fold. All existing structural probes passed. An isolated DOM-order audit moved only the same panel back to its previous parent-end position: original approved-reference comparison passed unchanged 0.23 budget. Current composition measures 0.27 against that old reference. Refreshed only derived detail-invitee snapshot using the same dynamic masks; approved Fyhbv reference and 0.23 budget unchanged. No additional mismatch absorbed.",
     "exportCommand": "Pencil MCP only: copy docs/design/padel-friend.pen to a scratch file, then execute({ filePath: <scratch>, input: 'Export([\"wHaAb\",\"vAxZh\",\"b5RR4\",\"RDV2r\",\"JLqMT\",\"eYIgj\",\"ENn8Q\",\"kYI9H\",\"uePpj\",\"w25dY\",\"Fyhbv\",\"t1ywa\",\"n6zFq\"], \"png\", <scratch>/refs, {scale:1})' }); copy/rename exports into e2e/references/paf-4/ with the named references below. The encrypted source .pen is never read or grepped by other tooling.",
