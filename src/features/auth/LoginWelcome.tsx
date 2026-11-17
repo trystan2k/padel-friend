@@ -94,92 +94,94 @@ export function LoginWelcome({
   }
 
   return (
-    <main {...stylex.props(styles.page)}>
-      <header {...stylex.props(styles.header)}>
-        <span {...stylex.props(styles.brand)}>{t('auth.welcomeBrand')}</span>
-        <h1 {...stylex.props(styles.title)}>{t('auth.welcomeTitle')}</h1>
-        <p {...stylex.props(styles.subtitle)}>{t('auth.welcomeSubtitle')}</p>
-      </header>
+    <>
+      <main {...stylex.props(styles.page)}>
+        <header {...stylex.props(styles.header)}>
+          <span {...stylex.props(styles.brand)}>{t('auth.welcomeBrand')}</span>
+          <h1 {...stylex.props(styles.title)}>{t('auth.welcomeTitle')}</h1>
+          <p {...stylex.props(styles.subtitle)}>{t('auth.welcomeSubtitle')}</p>
+        </header>
 
-      {resetSent && (
-        <output aria-live="polite" {...stylex.props(styles.notice)}>
-          <h2 {...stylex.props(styles.noticeTitle)}>{t('auth.inboxNoticeTitle')}</h2>
-          <p {...stylex.props(styles.noticeCopy)}>{t('auth.inboxNoticeCopy')}</p>
-        </output>
-      )}
-
-      <div {...stylex.props(styles.actions)}>
-        <Button
-          variant="secondary"
-          size="large"
-          busy={busy}
-          onClick={() => void signInWithGoogle()}
-        >
-          <span aria-hidden="true" {...stylex.props(styles.googleMark)}>
-            G
-          </span>
-          {t('signInWithGoogle')}
-        </Button>
-        <OrDivider label={t('auth.or')} />
-        <form onSubmit={(event) => void submit(event)} {...stylex.props(styles.form)}>
-          <TextField
-            id="login-email"
-            name="email"
-            type="email"
-            label={t('auth.loginEmailLabel')}
-            placeholder={t('auth.loginEmailPlaceholder')}
-            autoComplete="email"
-            required
-            disabled={!ready || busy}
-          />
-          <PasswordField
-            id="login-password"
-            name="password"
-            label={t('auth.loginPasswordLabel')}
-            placeholder={t('auth.loginPasswordPlaceholder')}
-            required
-            autoComplete="current-password"
-            disabled={!ready || busy}
-            helper={
-              legacyPassword
-                ? t('auth.passwordLegacyHint', { min: PASSWORD_MIN_LENGTH })
-                : undefined
-            }
-            onChange={(event) =>
-              setLegacyPassword(event.target.value !== '' && !isPasswordValid(event.target.value))
-            }
-          />
-          <TurnstileWidget {...captcha.widgetProps} />
-          <div {...stylex.props(styles.forgotRow, styles.targetRow)}>
-            <TextLink
-              to="/forgot-password"
-              search={returnPath ? { next } : undefined}
-              xstyle={styles.forgotLink}
-            >
-              {t('auth.forgotLink')}
-            </TextLink>
-          </div>
-          <Button type="submit" size="large" disabled={!ready} busy={busy}>
-            {t('auth.loginSubmit')}
-          </Button>
-        </form>
-        {(message || authError || expired) && (
-          <p role="alert" {...stylex.props(styles.error)}>
-            {t(message || (expired ? 'auth.sessionExpired' : 'googleSignInError'))}
-          </p>
+        {resetSent && (
+          <output aria-live="polite" {...stylex.props(styles.notice)}>
+            <h2 {...stylex.props(styles.noticeTitle)}>{t('auth.inboxNoticeTitle')}</h2>
+            <p {...stylex.props(styles.noticeCopy)}>{t('auth.inboxNoticeCopy')}</p>
+          </output>
         )}
-      </div>
 
-      <div {...stylex.props(styles.targetRow)}>
-        <AccountPrompt
-          text={t('auth.accountPrompt')}
-          action={t('auth.signupLink')}
-          to="/onboarding/account"
-          search={{ next }}
-          xstyle={styles.promptText}
-        />
-      </div>
+        <div {...stylex.props(styles.actions)}>
+          <Button
+            variant="secondary"
+            size="large"
+            busy={busy}
+            onClick={() => void signInWithGoogle()}
+          >
+            <span aria-hidden="true" {...stylex.props(styles.googleMark)}>
+              G
+            </span>
+            {t('signInWithGoogle')}
+          </Button>
+          <OrDivider label={t('auth.or')} />
+          <form onSubmit={(event) => void submit(event)} {...stylex.props(styles.form)}>
+            <TextField
+              id="login-email"
+              name="email"
+              type="email"
+              label={t('auth.loginEmailLabel')}
+              placeholder={t('auth.loginEmailPlaceholder')}
+              autoComplete="email"
+              required
+              disabled={!ready || busy}
+            />
+            <PasswordField
+              id="login-password"
+              name="password"
+              label={t('auth.loginPasswordLabel')}
+              placeholder={t('auth.loginPasswordPlaceholder')}
+              required
+              autoComplete="current-password"
+              disabled={!ready || busy}
+              helper={
+                legacyPassword
+                  ? t('auth.passwordLegacyHint', { min: PASSWORD_MIN_LENGTH })
+                  : undefined
+              }
+              onChange={(event) =>
+                setLegacyPassword(event.target.value !== '' && !isPasswordValid(event.target.value))
+              }
+            />
+            <TurnstileWidget {...captcha.widgetProps} />
+            <div {...stylex.props(styles.forgotRow, styles.targetRow)}>
+              <TextLink
+                to="/forgot-password"
+                search={returnPath ? { next } : undefined}
+                xstyle={styles.forgotLink}
+              >
+                {t('auth.forgotLink')}
+              </TextLink>
+            </div>
+            <Button type="submit" size="large" disabled={!ready} busy={busy}>
+              {t('auth.loginSubmit')}
+            </Button>
+          </form>
+          {(message || authError || expired) && (
+            <p role="alert" {...stylex.props(styles.error)}>
+              {t(message || (expired ? 'auth.sessionExpired' : 'googleSignInError'))}
+            </p>
+          )}
+        </div>
+
+        <div {...stylex.props(styles.targetRow)}>
+          <AccountPrompt
+            text={t('auth.accountPrompt')}
+            action={t('auth.signupLink')}
+            to="/onboarding/account"
+            search={{ next }}
+            xstyle={styles.promptText}
+          />
+        </div>
+      </main>
       <PrivacyLink />
-    </main>
+    </>
   );
 }

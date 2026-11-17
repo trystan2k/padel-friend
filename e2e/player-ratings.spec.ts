@@ -591,7 +591,9 @@ async function invitationLink(request: APIRequestContext, email: string) {
     await json(`${MAILPIT_URL}/api/v1/message/${String(Reflect.get((await found())[0], 'ID'))}`)
   )['HTML'];
   if (typeof html !== 'string') throw new Error('Unexpected Mailpit message');
-  const links = [...html.matchAll(/href="([^"]+)"/g)].map((m) => m[1]!.replaceAll('&amp;', '&'));
+  const links = [...html.matchAll(/href="([^"]+)"/g)]
+    .map((m) => m[1]!.replaceAll('&amp;', '&'))
+    .filter((link) => link.includes('token_hash='));
   expect(links).toHaveLength(1);
   return links[0]!;
 }

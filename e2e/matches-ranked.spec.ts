@@ -364,9 +364,9 @@ async function invitationLink(request: APIRequestContext, email: string) {
   );
   const html = (await mailpitJson(message)).HTML;
   if (typeof html !== 'string') throw new Error('Unexpected Mailpit message response');
-  const links = [...html.matchAll(/href="([^"]+)"/g)].map((match) =>
-    match[1]!.replaceAll('&amp;', '&')
-  );
+  const links = [...html.matchAll(/href="([^"]+)"/g)]
+    .map((match) => match[1]!.replaceAll('&amp;', '&'))
+    .filter((link) => link.includes('token_hash='));
   expect(links).toHaveLength(1);
   return links[0]!;
 }

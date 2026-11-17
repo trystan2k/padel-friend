@@ -60,9 +60,9 @@ const escapeHtml = (value: string) =>
 
 /** The single claim link in the mail, entity-decoded the way a mail client opens it. */
 function claimLink(html: string): URL {
-  const links = [...html.matchAll(/href="([^"]+)"/g)].map((match) =>
-    match[1]!.replaceAll('&amp;', '&')
-  );
+  const links = [...html.matchAll(/href="([^"]+)"/g)]
+    .map((match) => match[1]!.replaceAll('&amp;', '&'))
+    .filter((link) => link.includes('token_hash='));
   expect(links).toHaveLength(1);
   return new URL(links[0]!);
 }

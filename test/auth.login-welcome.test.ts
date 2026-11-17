@@ -129,6 +129,8 @@ describe('LoginWelcome', () => {
 
     const link = screen.getByRole('link', { name: en.auth.privacyLink });
     expect(link.getAttribute('href')).toBe('/privacy');
+    // Outside <main>: the Pencil frame inside it keeps its exact geometry.
+    expect(link.closest('main')).toBeNull();
   });
 
   it('links to password recovery and preserves an optional validated next path', async () => {

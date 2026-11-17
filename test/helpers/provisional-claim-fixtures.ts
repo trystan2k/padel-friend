@@ -64,9 +64,9 @@ export function authenticationMethods(session: Session): string[] {
 
 /** The single claim link of an invitation mail, entity-decoded the way a mail client opens it. */
 export function invitationTokenHash(html: string): string {
-  const links = [...html.matchAll(/href="([^"]+)"/g)].map((match) =>
-    match[1]!.replaceAll('&amp;', '&')
-  );
+  const links = [...html.matchAll(/href="([^"]+)"/g)]
+    .map((match) => match[1]!.replaceAll('&amp;', '&'))
+    .filter((link) => link.includes('token_hash='));
   expect(links).toHaveLength(1);
   const hash = new URL(links[0]!).searchParams.get('token_hash');
   expect(hash).toBeTruthy();

@@ -496,7 +496,10 @@ test('Welcome matches frame wzWLt', async ({ page }) => {
     width: 354,
     height: 50
   });
-  await assertGeometry(page.locator('main > div:last-child'), 'Sign-up prompt container', {
+  const signupRow = page
+    .locator('main > div')
+    .filter({ has: page.getByRole('link', { name: en.auth.signupLink }) });
+  await assertGeometry(signupRow, 'Sign-up prompt container', {
     x: 18,
     y: 464.5, // Pencil 479 - 14.5px: the sign-up link row is a 44px target too
     width: 354,

@@ -104,6 +104,8 @@ describe('ForgotPassword', () => {
 
     const link = screen.getByRole('link', { name: en.auth.privacyLink });
     expect(link.getAttribute('href')).toBe('/privacy');
+    // Outside <main>: the Pencil frame inside it keeps its exact geometry.
+    expect(link.closest('main')).toBeNull();
   });
 
   it('sends a reset request to the callback route and uses an enumeration-safe result', async () => {

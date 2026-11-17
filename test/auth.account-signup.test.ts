@@ -110,6 +110,8 @@ describe('AccountSignup', () => {
 
     const link = screen.getByRole('link', { name: en.auth.privacyLink });
     expect(link.getAttribute('href')).toBe('/privacy');
+    // Outside <main>: the Pencil frame inside it keeps its exact geometry.
+    expect(link.closest('main')).toBeNull();
   });
 
   it('keeps the signup autofill contract: email autocomplete and new-password on the password field', async () => {
