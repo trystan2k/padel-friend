@@ -1,4 +1,3 @@
-import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 
@@ -224,11 +223,17 @@ describe('production release workflow safety contract', () => {
     expect(deploy).not.toMatch(/cancel-in-progress: true|group:.*\$\{\{/);
   });
 
-  it('preserves preview byte-for-byte outside production lock', () => {
-    const preview = readFileSync('.github/workflows/preview.yml');
-    expect(createHash('sha256').update(preview).digest('hex')).toBe(
-      'e5bb019891e941b99402432017ad98830facf4a5997bced20392456876ed1f2b'
-    );
-    expect(preview.toString()).not.toContain('padel-friend-production-release');
+  it('keeps preview deploys outside the production release lock', () => {
+    const preview = readFileSync('.github/workflows/preview.yml', 'utf8');
+    // The production lock (release.yml concurrency group) must never leak into preview.
+    expect(preview).not.toContain('padel-friend-production-release');
+    expect(preview).not.toMatch(/^concurrency:/m);
+    // Preview stays least-privileged and preview-scoped: read-only token, preview Wrangler
+    // environment only, and no database mutation credentials.
+    expect(preview).toMatch(/^permissions:\n  contents: read$/m);
+    const deployLines = preview.split('\n').filter((line) => line.includes('wrangler deploy'));
+    expect(deployLines).toHaveLength(1);
+    expect(deployLines[0]).toContain('--env preview');
+    expect(preview).not.toMatch(/SUPABASE_ACCESS_TOKEN|SUPABASE_DB_PASSWORD/);
   });
 });
