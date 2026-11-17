@@ -39,3 +39,9 @@ overrides:
   'fast-uri@>=3.0.0 <3.1.9': '3.1.9'
   'serialize-javascript@>=7.0.0 <7.1.3': '7.1.3'
   'source-map-js@<1.2.2': '1.2.2'
+auditConfig:
+  # Temporary: picomatch <=4.0.7 ReDoS (build-time transitive dep via TanStack Start,
+  # not runtime attacker-facing). No patched release exists yet. Remove once picomatch
+  # ships a fix and the lockfile picks it up.
+  ignoreGhsas:
+    - GHSA-fc5q-39xc-vjpf

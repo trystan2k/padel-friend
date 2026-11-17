@@ -29,8 +29,14 @@ export function runProductionAudit({
       // pnpm can fail before returning JSON (DNS/registry transport failure).
     }
     if (report?.metadata?.vulnerabilities) {
-      const { high = 0, critical = 0 } = report.metadata.vulnerabilities;
-      return high > 0 || critical > 0 ? 1 : (result.status ?? 1);
+      // pnpm 12 still counts ignored advisories (auditConfig.ignoreGhsas) in
+      // `metadata`, but drops them from `advisories`. Judge on the post-ignore
+      // findings, then fall back to pnpm's own exit status.
+      const findings = Object.values(report.advisories ?? {});
+      const blocked = findings.some(
+        (finding) => finding.severity === 'high' || finding.severity === 'critical'
+      );
+      return blocked ? 1 : (result.status ?? 1);
     }
     const failure = `${report?.error?.code ?? ''} ${report?.error?.message ?? ''} ${stderr} ${result.error?.code ?? ''}`;
     // Plain-text network diagnostics sometimes go to stdout, but never match advisory JSON.

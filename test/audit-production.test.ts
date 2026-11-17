@@ -57,6 +57,36 @@ describe('production dependency audit', () => {
     }
   );
 
+  it('passes an allowlisted advisory that pnpm dropped from advisories', () => {
+    const deps = runner([
+      {
+        status: 0,
+        stdout: JSON.stringify({
+          advisories: {},
+          metadata: { vulnerabilities: { high: 1 } }
+        }),
+        stderr: ''
+      }
+    ]);
+    expect(runProductionAudit(deps)).toBe(0);
+  });
+
+  it('fails on a high finding present in advisories even when metadata undercounts', () => {
+    const deps = runner([
+      {
+        status: 0,
+        stdout: JSON.stringify({
+          advisories: {
+            'GHSA-test': { module_name: 'picomatch', severity: 'high' }
+          },
+          metadata: { vulnerabilities: { high: 0 } }
+        }),
+        stderr: ''
+      }
+    ]);
+    expect(runProductionAudit(deps)).toBe(1);
+  });
+
   it('retries once, then falls back to corepack for transient failures', () => {
     const deps = runner([network, network, clean]);
     expect(runProductionAudit(deps)).toBe(0);
