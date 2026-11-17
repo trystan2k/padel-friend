@@ -1,5 +1,5 @@
 {
-  "version": "2.21",
+  "version": "2.22",
   "children": [
     {
       "type": "frame",
@@ -89713,6 +89713,2810 @@
           "fontFamily": "Inter",
           "fontSize": 12,
           "fontWeight": "medium"
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "FswwZ",
+      "x": 11714,
+      "y": -1600,
+      "name": "Public homepage — mobile light",
+      "theme": {
+        "mode": "light"
+      },
+      "clip": true,
+      "width": 390,
+      "fill": "$bg",
+      "layout": "vertical",
+      "children": [
+        {
+          "type": "frame",
+          "id": "TuhHF",
+          "name": "header",
+          "width": "fill_container",
+          "layout": "vertical",
+          "padding": [
+            56,
+            18,
+            0,
+            18
+          ],
+          "children": [
+            {
+              "type": "text",
+              "id": "F16SRH",
+              "name": "brandWordmark",
+              "fill": "$green",
+              "content": "PADEL FRIENDS",
+              "fontFamily": "Manrope",
+              "fontSize": 12,
+              "fontWeight": "bold",
+              "letterSpacing": 1.5
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "DY6iQ",
+          "name": "main",
+          "width": "fill_container",
+          "layout": "vertical",
+          "gap": 32,
+          "padding": [
+            32,
+            18
+          ],
+          "children": [
+            {
+              "type": "frame",
+              "id": "UCM5B",
+              "name": "hero",
+              "width": "fill_container",
+              "layout": "vertical",
+              "gap": 16,
+              "children": [
+                {
+                  "type": "text",
+                  "id": "IvXZJ",
+                  "name": "heroTitle",
+                  "fill": "$text",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "Find your next padel match.",
+                  "lineHeight": 1.15,
+                  "fontFamily": "Manrope",
+                  "fontSize": 32,
+                  "fontWeight": "bold"
+                },
+                {
+                  "type": "text",
+                  "id": "jVkYS",
+                  "name": "heroDescription",
+                  "fill": "$muted",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "Padel Friends helps you organize matches, invite your friends and keep track of results and ratings.",
+                  "lineHeight": 1.5,
+                  "fontFamily": "Inter",
+                  "fontSize": 15,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "frame",
+                  "id": "elY7h",
+                  "name": "ctaGroup",
+                  "width": "fill_container",
+                  "layout": "vertical",
+                  "gap": 12,
+                  "padding": [
+                    8,
+                    0,
+                    0,
+                    0
+                  ],
+                  "children": [
+                    {
+                      "id": "s6h6L",
+                      "type": "ref",
+                      "ref": "B3Uqv",
+                      "name": "signInButton",
+                      "width": "fill_container",
+                      "height": "fit_content",
+                      "padding": 16,
+                      "descendants": {
+                        "xWUkK": {
+                          "content": "Sign in",
+                          "fill": "$bg",
+                          "textGrowth": "fixed-width",
+                          "width": "fill_container",
+                          "textAlign": "center",
+                          "fontSize": 14
+                        }
+                      }
+                    },
+                    {
+                      "id": "Nq4Me",
+                      "type": "ref",
+                      "ref": "B3Uqv",
+                      "name": "createAccountButton",
+                      "width": "fill_container",
+                      "height": "fit_content",
+                      "padding": 16,
+                      "fill": "$surface",
+                      "stroke": "$line",
+                      "strokeWidth": 1,
+                      "descendants": {
+                        "xWUkK": {
+                          "content": "Create account",
+                          "fill": "$text",
+                          "textGrowth": "fixed-width",
+                          "width": "fill_container",
+                          "textAlign": "center",
+                          "fontSize": 14
+                        }
+                      }
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "IwuT8",
+              "name": "features",
+              "width": "fill_container",
+              "layout": "vertical",
+              "gap": 12,
+              "children": [
+                {
+                  "id": "GlJDR",
+                  "type": "ref",
+                  "ref": "RMese",
+                  "name": "featureCard",
+                  "width": "fill_container",
+                  "height": "fit_content",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "E34tm",
+                      "name": "featureContent",
+                      "width": "fill_container",
+                      "layout": "vertical",
+                      "gap": 10,
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "icJjy",
+                          "name": "featureIcon",
+                          "width": 40,
+                          "height": 40,
+                          "fill": "$greenSoft",
+                          "cornerRadius": 12,
+                          "justifyContent": "center",
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "icon",
+                              "id": "CpdSY",
+                              "width": 20,
+                              "height": 20,
+                              "icon": "search",
+                              "library": "lucide",
+                              "fill": "$green"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "id": "fcD4z",
+                          "name": "featureTitle",
+                          "fill": "$text",
+                          "textGrowth": "fixed-width",
+                          "width": "fill_container",
+                          "content": "Find matches",
+                          "fontFamily": "Manrope",
+                          "fontSize": 16,
+                          "fontWeight": "bold"
+                        },
+                        {
+                          "type": "text",
+                          "id": "Q6yfvK",
+                          "name": "featureText",
+                          "fill": "$muted",
+                          "textGrowth": "fixed-width",
+                          "width": "fill_container",
+                          "content": "Browse open matches or create your own.",
+                          "lineHeight": 1.45,
+                          "fontFamily": "Inter",
+                          "fontSize": 14,
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "id": "e8xsz",
+                  "type": "ref",
+                  "ref": "RMese",
+                  "name": "featureCard",
+                  "width": "fill_container",
+                  "height": "fit_content",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "KdK8n",
+                      "name": "featureContent",
+                      "width": "fill_container",
+                      "layout": "vertical",
+                      "gap": 10,
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "C8OF2",
+                          "name": "featureIcon",
+                          "width": 40,
+                          "height": 40,
+                          "fill": "$greenSoft",
+                          "cornerRadius": 12,
+                          "justifyContent": "center",
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "icon",
+                              "id": "kooo3",
+                              "width": 20,
+                              "height": 20,
+                              "icon": "user-plus",
+                              "library": "lucide",
+                              "fill": "$green"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "id": "p8DHGD",
+                          "name": "featureTitle",
+                          "fill": "$text",
+                          "textGrowth": "fixed-width",
+                          "width": "fill_container",
+                          "content": "Invite friends",
+                          "fontFamily": "Manrope",
+                          "fontSize": 16,
+                          "fontWeight": "bold"
+                        },
+                        {
+                          "type": "text",
+                          "id": "d2dYwI",
+                          "name": "featureText",
+                          "fill": "$muted",
+                          "textGrowth": "fixed-width",
+                          "width": "fill_container",
+                          "content": "Share a link and fill the court.",
+                          "lineHeight": 1.45,
+                          "fontFamily": "Inter",
+                          "fontSize": 14,
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "id": "MtdYR",
+                  "type": "ref",
+                  "ref": "RMese",
+                  "name": "featureCard",
+                  "width": "fill_container",
+                  "height": "fit_content",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "rcWbE",
+                      "name": "featureContent",
+                      "width": "fill_container",
+                      "layout": "vertical",
+                      "gap": 10,
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "NXUm2",
+                          "name": "featureIcon",
+                          "width": 40,
+                          "height": 40,
+                          "fill": "$greenSoft",
+                          "cornerRadius": 12,
+                          "justifyContent": "center",
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "icon",
+                              "id": "LIvz9",
+                              "width": 20,
+                              "height": 20,
+                              "icon": "trophy",
+                              "library": "lucide",
+                              "fill": "$green"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "id": "u0gUe",
+                          "name": "featureTitle",
+                          "fill": "$text",
+                          "textGrowth": "fixed-width",
+                          "width": "fill_container",
+                          "content": "Track results",
+                          "fontFamily": "Manrope",
+                          "fontSize": 16,
+                          "fontWeight": "bold"
+                        },
+                        {
+                          "type": "text",
+                          "id": "sw2qT",
+                          "name": "featureText",
+                          "fill": "$muted",
+                          "textGrowth": "fixed-width",
+                          "width": "fill_container",
+                          "content": "Record scores, ratings and history, plus leagues.",
+                          "lineHeight": 1.45,
+                          "fontFamily": "Inter",
+                          "fontSize": 14,
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "x3Nhe",
+          "name": "footer",
+          "width": "fill_container",
+          "layout": "vertical",
+          "gap": 8,
+          "padding": [
+            24,
+            18,
+            32,
+            18
+          ],
+          "children": [
+            {
+              "type": "rectangle",
+              "id": "Zusln",
+              "name": "footerDivider",
+              "fill": "$line",
+              "width": "fill_container",
+              "height": 1
+            },
+            {
+              "type": "frame",
+              "id": "jGUrS",
+              "name": "privacyLinkRow",
+              "width": "fill_container",
+              "height": 44,
+              "alignItems": "center",
+              "children": [
+                {
+                  "id": "Yne1t",
+                  "type": "ref",
+                  "ref": "QFH5u",
+                  "name": "privacyLink",
+                  "descendants": {
+                    "XuJGu": {
+                      "content": "Privacy policy",
+                      "fontSize": 14
+                    }
+                  }
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "jrPM3",
+              "name": "contact",
+              "width": "fill_container",
+              "layout": "vertical",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "YzGmc",
+                  "name": "contactLabel",
+                  "fill": "$muted",
+                  "content": "Contact",
+                  "fontFamily": "Inter",
+                  "fontSize": 13,
+                  "fontWeight": "semibold"
+                },
+                {
+                  "type": "frame",
+                  "id": "M935v",
+                  "name": "contactEmailRow",
+                  "height": 44,
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "id": "jEdZ7",
+                      "type": "ref",
+                      "ref": "QFH5u",
+                      "name": "contactEmailLink",
+                      "descendants": {
+                        "XuJGu": {
+                          "content": "trystan2k@gmail.com",
+                          "fontSize": 14
+                        }
+                      }
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "id": "IcFvW",
+              "name": "operatorLine",
+              "fill": "$muted",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "Run by Thiago Mendonça, individual operator, Spain.",
+              "lineHeight": 1.45,
+              "fontFamily": "Inter",
+              "fontSize": 13,
+              "fontWeight": "normal"
+            },
+            {
+              "type": "text",
+              "id": "I5zM6",
+              "name": "audienceNote",
+              "fill": "$muted",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "For players aged 16+.",
+              "fontFamily": "Inter",
+              "fontSize": 13,
+              "fontWeight": "normal"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "JzVIa",
+      "x": 12184,
+      "y": -1600,
+      "name": "Public homepage — mobile dark",
+      "theme": {
+        "mode": "dark"
+      },
+      "clip": true,
+      "width": 390,
+      "fill": "$bg",
+      "layout": "vertical",
+      "children": [
+        {
+          "type": "frame",
+          "id": "e2GcFx",
+          "name": "header",
+          "width": "fill_container",
+          "layout": "vertical",
+          "padding": [
+            56,
+            18,
+            0,
+            18
+          ],
+          "children": [
+            {
+              "type": "text",
+              "id": "H0WcL7",
+              "name": "brandWordmark",
+              "fill": "$green",
+              "content": "PADEL FRIENDS",
+              "fontFamily": "Manrope",
+              "fontSize": 12,
+              "fontWeight": "bold",
+              "letterSpacing": 1.5
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "siBZo",
+          "name": "main",
+          "width": "fill_container",
+          "layout": "vertical",
+          "gap": 32,
+          "padding": [
+            32,
+            18
+          ],
+          "children": [
+            {
+              "type": "frame",
+              "id": "h69sT9",
+              "name": "hero",
+              "width": "fill_container",
+              "layout": "vertical",
+              "gap": 16,
+              "children": [
+                {
+                  "type": "text",
+                  "id": "MAhUF",
+                  "name": "heroTitle",
+                  "fill": "$text",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "Find your next padel match.",
+                  "lineHeight": 1.15,
+                  "fontFamily": "Manrope",
+                  "fontSize": 32,
+                  "fontWeight": "bold"
+                },
+                {
+                  "type": "text",
+                  "id": "fB6RX",
+                  "name": "heroDescription",
+                  "fill": "$muted",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "Padel Friends helps you organize matches, invite your friends and keep track of results and ratings.",
+                  "lineHeight": 1.5,
+                  "fontFamily": "Inter",
+                  "fontSize": 15,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "frame",
+                  "id": "L2CiK",
+                  "name": "ctaGroup",
+                  "width": "fill_container",
+                  "layout": "vertical",
+                  "gap": 12,
+                  "padding": [
+                    8,
+                    0,
+                    0,
+                    0
+                  ],
+                  "children": [
+                    {
+                      "id": "wYVAF",
+                      "type": "ref",
+                      "ref": "B3Uqv",
+                      "name": "signInButton",
+                      "width": "fill_container",
+                      "height": "fit_content",
+                      "padding": 16,
+                      "descendants": {
+                        "xWUkK": {
+                          "content": "Sign in",
+                          "fill": "$bg",
+                          "textGrowth": "fixed-width",
+                          "width": "fill_container",
+                          "textAlign": "center",
+                          "fontSize": 14
+                        }
+                      }
+                    },
+                    {
+                      "id": "T39cC",
+                      "type": "ref",
+                      "ref": "B3Uqv",
+                      "name": "createAccountButton",
+                      "width": "fill_container",
+                      "height": "fit_content",
+                      "padding": 16,
+                      "fill": "$surface",
+                      "stroke": "$line",
+                      "strokeWidth": 1,
+                      "descendants": {
+                        "xWUkK": {
+                          "content": "Create account",
+                          "fill": "$text",
+                          "textGrowth": "fixed-width",
+                          "width": "fill_container",
+                          "textAlign": "center",
+                          "fontSize": 14
+                        }
+                      }
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "iP9Py",
+              "name": "features",
+              "width": "fill_container",
+              "layout": "vertical",
+              "gap": 12,
+              "children": [
+                {
+                  "id": "idE7V",
+                  "type": "ref",
+                  "ref": "RMese",
+                  "name": "featureCard",
+                  "width": "fill_container",
+                  "height": "fit_content",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "cXVZU",
+                      "name": "featureContent",
+                      "width": "fill_container",
+                      "layout": "vertical",
+                      "gap": 10,
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "y0HgZG",
+                          "name": "featureIcon",
+                          "width": 40,
+                          "height": 40,
+                          "fill": "$greenSoft",
+                          "cornerRadius": 12,
+                          "justifyContent": "center",
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "icon",
+                              "id": "EeDcj",
+                              "width": 20,
+                              "height": 20,
+                              "icon": "search",
+                              "library": "lucide",
+                              "fill": "$green"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "id": "VGAvn",
+                          "name": "featureTitle",
+                          "fill": "$text",
+                          "textGrowth": "fixed-width",
+                          "width": "fill_container",
+                          "content": "Find matches",
+                          "fontFamily": "Manrope",
+                          "fontSize": 16,
+                          "fontWeight": "bold"
+                        },
+                        {
+                          "type": "text",
+                          "id": "gN7Ij",
+                          "name": "featureText",
+                          "fill": "$muted",
+                          "textGrowth": "fixed-width",
+                          "width": "fill_container",
+                          "content": "Browse open matches or create your own.",
+                          "lineHeight": 1.45,
+                          "fontFamily": "Inter",
+                          "fontSize": 14,
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "id": "WfJF6",
+                  "type": "ref",
+                  "ref": "RMese",
+                  "name": "featureCard",
+                  "width": "fill_container",
+                  "height": "fit_content",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "dlffc",
+                      "name": "featureContent",
+                      "width": "fill_container",
+                      "layout": "vertical",
+                      "gap": 10,
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "f5dW7",
+                          "name": "featureIcon",
+                          "width": 40,
+                          "height": 40,
+                          "fill": "$greenSoft",
+                          "cornerRadius": 12,
+                          "justifyContent": "center",
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "icon",
+                              "id": "WrBV4",
+                              "width": 20,
+                              "height": 20,
+                              "icon": "user-plus",
+                              "library": "lucide",
+                              "fill": "$green"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "id": "C2qUP",
+                          "name": "featureTitle",
+                          "fill": "$text",
+                          "textGrowth": "fixed-width",
+                          "width": "fill_container",
+                          "content": "Invite friends",
+                          "fontFamily": "Manrope",
+                          "fontSize": 16,
+                          "fontWeight": "bold"
+                        },
+                        {
+                          "type": "text",
+                          "id": "fjVUa",
+                          "name": "featureText",
+                          "fill": "$muted",
+                          "textGrowth": "fixed-width",
+                          "width": "fill_container",
+                          "content": "Share a link and fill the court.",
+                          "lineHeight": 1.45,
+                          "fontFamily": "Inter",
+                          "fontSize": 14,
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "id": "SXtVD",
+                  "type": "ref",
+                  "ref": "RMese",
+                  "name": "featureCard",
+                  "width": "fill_container",
+                  "height": "fit_content",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "rvQDB",
+                      "name": "featureContent",
+                      "width": "fill_container",
+                      "layout": "vertical",
+                      "gap": 10,
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "tzyRW",
+                          "name": "featureIcon",
+                          "width": 40,
+                          "height": 40,
+                          "fill": "$greenSoft",
+                          "cornerRadius": 12,
+                          "justifyContent": "center",
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "icon",
+                              "id": "N6JZk4",
+                              "width": 20,
+                              "height": 20,
+                              "icon": "trophy",
+                              "library": "lucide",
+                              "fill": "$green"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "id": "b0Oyze",
+                          "name": "featureTitle",
+                          "fill": "$text",
+                          "textGrowth": "fixed-width",
+                          "width": "fill_container",
+                          "content": "Track results",
+                          "fontFamily": "Manrope",
+                          "fontSize": 16,
+                          "fontWeight": "bold"
+                        },
+                        {
+                          "type": "text",
+                          "id": "rEkzh",
+                          "name": "featureText",
+                          "fill": "$muted",
+                          "textGrowth": "fixed-width",
+                          "width": "fill_container",
+                          "content": "Record scores, ratings and history, plus leagues.",
+                          "lineHeight": 1.45,
+                          "fontFamily": "Inter",
+                          "fontSize": 14,
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "Xvfr9",
+          "name": "footer",
+          "width": "fill_container",
+          "layout": "vertical",
+          "gap": 8,
+          "padding": [
+            24,
+            18,
+            32,
+            18
+          ],
+          "children": [
+            {
+              "type": "rectangle",
+              "id": "gABSW",
+              "name": "footerDivider",
+              "fill": "$line",
+              "width": "fill_container",
+              "height": 1
+            },
+            {
+              "type": "frame",
+              "id": "VmOZo",
+              "name": "privacyLinkRow",
+              "width": "fill_container",
+              "height": 44,
+              "alignItems": "center",
+              "children": [
+                {
+                  "id": "Z7gPi",
+                  "type": "ref",
+                  "ref": "QFH5u",
+                  "name": "privacyLink",
+                  "descendants": {
+                    "XuJGu": {
+                      "content": "Privacy policy",
+                      "fontSize": 14
+                    }
+                  }
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "wgxQz",
+              "name": "contact",
+              "width": "fill_container",
+              "layout": "vertical",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "aFl4O",
+                  "name": "contactLabel",
+                  "fill": "$muted",
+                  "content": "Contact",
+                  "fontFamily": "Inter",
+                  "fontSize": 13,
+                  "fontWeight": "semibold"
+                },
+                {
+                  "type": "frame",
+                  "id": "MbTMP",
+                  "name": "contactEmailRow",
+                  "height": 44,
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "id": "JPqGo",
+                      "type": "ref",
+                      "ref": "QFH5u",
+                      "name": "contactEmailLink",
+                      "descendants": {
+                        "XuJGu": {
+                          "content": "trystan2k@gmail.com",
+                          "fontSize": 14
+                        }
+                      }
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "id": "B8HAV8",
+              "name": "operatorLine",
+              "fill": "$muted",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "Run by Thiago Mendonça, individual operator, Spain.",
+              "lineHeight": 1.45,
+              "fontFamily": "Inter",
+              "fontSize": 13,
+              "fontWeight": "normal"
+            },
+            {
+              "type": "text",
+              "id": "Ra1C6",
+              "name": "audienceNote",
+              "fill": "$muted",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "For players aged 16+.",
+              "fontFamily": "Inter",
+              "fontSize": 13,
+              "fontWeight": "normal"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "eIW0i",
+      "x": 12654,
+      "y": -1600,
+      "name": "Public homepage — mobile signed-in",
+      "theme": {
+        "mode": "light"
+      },
+      "clip": true,
+      "width": 390,
+      "fill": "$bg",
+      "layout": "vertical",
+      "children": [
+        {
+          "type": "frame",
+          "id": "VkpeC",
+          "name": "header",
+          "width": "fill_container",
+          "layout": "vertical",
+          "padding": [
+            56,
+            18,
+            0,
+            18
+          ],
+          "children": [
+            {
+              "type": "text",
+              "id": "w5SFgt",
+              "name": "brandWordmark",
+              "fill": "$green",
+              "content": "PADEL FRIENDS",
+              "fontFamily": "Manrope",
+              "fontSize": 12,
+              "fontWeight": "bold",
+              "letterSpacing": 1.5
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "c3KT8b",
+          "name": "main",
+          "width": "fill_container",
+          "layout": "vertical",
+          "gap": 32,
+          "padding": [
+            32,
+            18
+          ],
+          "children": [
+            {
+              "type": "frame",
+              "id": "e3M3E",
+              "name": "hero",
+              "width": "fill_container",
+              "layout": "vertical",
+              "gap": 16,
+              "children": [
+                {
+                  "type": "text",
+                  "id": "QnJnk",
+                  "name": "heroTitle",
+                  "fill": "$text",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "Find your next padel match.",
+                  "lineHeight": 1.15,
+                  "fontFamily": "Manrope",
+                  "fontSize": 32,
+                  "fontWeight": "bold"
+                },
+                {
+                  "type": "text",
+                  "id": "S8jXh5",
+                  "name": "heroDescription",
+                  "fill": "$muted",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "Padel Friends helps you organize matches, invite your friends and keep track of results and ratings.",
+                  "lineHeight": 1.5,
+                  "fontFamily": "Inter",
+                  "fontSize": 15,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "frame",
+                  "id": "DaAdp",
+                  "name": "ctaGroup",
+                  "width": "fill_container",
+                  "layout": "vertical",
+                  "gap": 12,
+                  "padding": [
+                    8,
+                    0,
+                    0,
+                    0
+                  ],
+                  "children": [
+                    {
+                      "id": "Rl46d",
+                      "type": "ref",
+                      "ref": "B3Uqv",
+                      "name": "dashboardButton",
+                      "width": "fill_container",
+                      "height": "fit_content",
+                      "padding": 16,
+                      "descendants": {
+                        "xWUkK": {
+                          "content": "Go to dashboard",
+                          "fill": "$bg",
+                          "textGrowth": "fixed-width",
+                          "width": "fill_container",
+                          "textAlign": "center",
+                          "fontSize": 14
+                        }
+                      }
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "N4iEs",
+              "name": "features",
+              "width": "fill_container",
+              "layout": "vertical",
+              "gap": 12,
+              "children": [
+                {
+                  "id": "bbEam",
+                  "type": "ref",
+                  "ref": "RMese",
+                  "name": "featureCard",
+                  "width": "fill_container",
+                  "height": "fit_content",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "ZOdFP",
+                      "name": "featureContent",
+                      "width": "fill_container",
+                      "layout": "vertical",
+                      "gap": 10,
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "s01uXT",
+                          "name": "featureIcon",
+                          "width": 40,
+                          "height": 40,
+                          "fill": "$greenSoft",
+                          "cornerRadius": 12,
+                          "justifyContent": "center",
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "icon",
+                              "id": "Ea9cj",
+                              "width": 20,
+                              "height": 20,
+                              "icon": "search",
+                              "library": "lucide",
+                              "fill": "$green"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "id": "mH1OF",
+                          "name": "featureTitle",
+                          "fill": "$text",
+                          "textGrowth": "fixed-width",
+                          "width": "fill_container",
+                          "content": "Find matches",
+                          "fontFamily": "Manrope",
+                          "fontSize": 16,
+                          "fontWeight": "bold"
+                        },
+                        {
+                          "type": "text",
+                          "id": "p74ixC",
+                          "name": "featureText",
+                          "fill": "$muted",
+                          "textGrowth": "fixed-width",
+                          "width": "fill_container",
+                          "content": "Browse open matches or create your own.",
+                          "lineHeight": 1.45,
+                          "fontFamily": "Inter",
+                          "fontSize": 14,
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "id": "n892ps",
+                  "type": "ref",
+                  "ref": "RMese",
+                  "name": "featureCard",
+                  "width": "fill_container",
+                  "height": "fit_content",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "hnMhB",
+                      "name": "featureContent",
+                      "width": "fill_container",
+                      "layout": "vertical",
+                      "gap": 10,
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "NLdOM",
+                          "name": "featureIcon",
+                          "width": 40,
+                          "height": 40,
+                          "fill": "$greenSoft",
+                          "cornerRadius": 12,
+                          "justifyContent": "center",
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "icon",
+                              "id": "mdnzT",
+                              "width": 20,
+                              "height": 20,
+                              "icon": "user-plus",
+                              "library": "lucide",
+                              "fill": "$green"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "id": "CmFM2",
+                          "name": "featureTitle",
+                          "fill": "$text",
+                          "textGrowth": "fixed-width",
+                          "width": "fill_container",
+                          "content": "Invite friends",
+                          "fontFamily": "Manrope",
+                          "fontSize": 16,
+                          "fontWeight": "bold"
+                        },
+                        {
+                          "type": "text",
+                          "id": "Pw3ZP",
+                          "name": "featureText",
+                          "fill": "$muted",
+                          "textGrowth": "fixed-width",
+                          "width": "fill_container",
+                          "content": "Share a link and fill the court.",
+                          "lineHeight": 1.45,
+                          "fontFamily": "Inter",
+                          "fontSize": 14,
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "id": "wHtN0",
+                  "type": "ref",
+                  "ref": "RMese",
+                  "name": "featureCard",
+                  "width": "fill_container",
+                  "height": "fit_content",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "iq07Q",
+                      "name": "featureContent",
+                      "width": "fill_container",
+                      "layout": "vertical",
+                      "gap": 10,
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "BB2fs",
+                          "name": "featureIcon",
+                          "width": 40,
+                          "height": 40,
+                          "fill": "$greenSoft",
+                          "cornerRadius": 12,
+                          "justifyContent": "center",
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "icon",
+                              "id": "cKK0E",
+                              "width": 20,
+                              "height": 20,
+                              "icon": "trophy",
+                              "library": "lucide",
+                              "fill": "$green"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "id": "r5AVtE",
+                          "name": "featureTitle",
+                          "fill": "$text",
+                          "textGrowth": "fixed-width",
+                          "width": "fill_container",
+                          "content": "Track results",
+                          "fontFamily": "Manrope",
+                          "fontSize": 16,
+                          "fontWeight": "bold"
+                        },
+                        {
+                          "type": "text",
+                          "id": "lXCXU",
+                          "name": "featureText",
+                          "fill": "$muted",
+                          "textGrowth": "fixed-width",
+                          "width": "fill_container",
+                          "content": "Record scores, ratings and history, plus leagues.",
+                          "lineHeight": 1.45,
+                          "fontFamily": "Inter",
+                          "fontSize": 14,
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "l9I0OV",
+          "name": "footer",
+          "width": "fill_container",
+          "layout": "vertical",
+          "gap": 8,
+          "padding": [
+            24,
+            18,
+            32,
+            18
+          ],
+          "children": [
+            {
+              "type": "rectangle",
+              "id": "LyT1C",
+              "name": "footerDivider",
+              "fill": "$line",
+              "width": "fill_container",
+              "height": 1
+            },
+            {
+              "type": "frame",
+              "id": "uWuR1",
+              "name": "privacyLinkRow",
+              "width": "fill_container",
+              "height": 44,
+              "alignItems": "center",
+              "children": [
+                {
+                  "id": "uvd9n",
+                  "type": "ref",
+                  "ref": "QFH5u",
+                  "name": "privacyLink",
+                  "descendants": {
+                    "XuJGu": {
+                      "content": "Privacy policy",
+                      "fontSize": 14
+                    }
+                  }
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "XsnUn",
+              "name": "contact",
+              "width": "fill_container",
+              "layout": "vertical",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "H3jww",
+                  "name": "contactLabel",
+                  "fill": "$muted",
+                  "content": "Contact",
+                  "fontFamily": "Inter",
+                  "fontSize": 13,
+                  "fontWeight": "semibold"
+                },
+                {
+                  "type": "frame",
+                  "id": "q1y037",
+                  "name": "contactEmailRow",
+                  "height": 44,
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "id": "jFPPh",
+                      "type": "ref",
+                      "ref": "QFH5u",
+                      "name": "contactEmailLink",
+                      "descendants": {
+                        "XuJGu": {
+                          "content": "trystan2k@gmail.com",
+                          "fontSize": 14
+                        }
+                      }
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "id": "o0RSy0",
+              "name": "operatorLine",
+              "fill": "$muted",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "Run by Thiago Mendonça, individual operator, Spain.",
+              "lineHeight": 1.45,
+              "fontFamily": "Inter",
+              "fontSize": 13,
+              "fontWeight": "normal"
+            },
+            {
+              "type": "text",
+              "id": "zQn0I",
+              "name": "audienceNote",
+              "fill": "$muted",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "For players aged 16+.",
+              "fontFamily": "Inter",
+              "fontSize": 13,
+              "fontWeight": "normal"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "aebnS",
+      "x": 13124,
+      "y": -1600,
+      "name": "Public homepage — es",
+      "theme": {
+        "mode": "light"
+      },
+      "clip": true,
+      "width": 390,
+      "fill": "$bg",
+      "layout": "vertical",
+      "children": [
+        {
+          "type": "frame",
+          "id": "YQvnt",
+          "name": "header",
+          "width": "fill_container",
+          "layout": "vertical",
+          "padding": [
+            56,
+            18,
+            0,
+            18
+          ],
+          "children": [
+            {
+              "type": "text",
+              "id": "Mhiff",
+              "name": "brandWordmark",
+              "fill": "$green",
+              "content": "PADEL FRIENDS",
+              "fontFamily": "Manrope",
+              "fontSize": 12,
+              "fontWeight": "bold",
+              "letterSpacing": 1.5
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "bFp9b",
+          "name": "main",
+          "width": "fill_container",
+          "layout": "vertical",
+          "gap": 32,
+          "padding": [
+            32,
+            18
+          ],
+          "children": [
+            {
+              "type": "frame",
+              "id": "b7D7rq",
+              "name": "hero",
+              "width": "fill_container",
+              "layout": "vertical",
+              "gap": 16,
+              "children": [
+                {
+                  "type": "text",
+                  "id": "K7xE9r",
+                  "name": "heroTitle",
+                  "fill": "$text",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "Encuentra tu próximo partido de pádel.",
+                  "lineHeight": 1.15,
+                  "fontFamily": "Manrope",
+                  "fontSize": 32,
+                  "fontWeight": "bold"
+                },
+                {
+                  "type": "text",
+                  "id": "mBBFW",
+                  "name": "heroDescription",
+                  "fill": "$muted",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "Padel Friends te ayuda a organizar partidos, invitar a tus amigos y llevar el control de resultados y valoraciones.",
+                  "lineHeight": 1.5,
+                  "fontFamily": "Inter",
+                  "fontSize": 15,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "frame",
+                  "id": "z5ECp8",
+                  "name": "ctaGroup",
+                  "width": "fill_container",
+                  "layout": "vertical",
+                  "gap": 12,
+                  "padding": [
+                    8,
+                    0,
+                    0,
+                    0
+                  ],
+                  "children": [
+                    {
+                      "id": "pCjjI",
+                      "type": "ref",
+                      "ref": "B3Uqv",
+                      "name": "signInButton",
+                      "width": "fill_container",
+                      "height": "fit_content",
+                      "padding": 16,
+                      "descendants": {
+                        "xWUkK": {
+                          "content": "Iniciar sesión",
+                          "fill": "$bg",
+                          "textGrowth": "fixed-width",
+                          "width": "fill_container",
+                          "textAlign": "center",
+                          "fontSize": 14
+                        }
+                      }
+                    },
+                    {
+                      "id": "yimJr",
+                      "type": "ref",
+                      "ref": "B3Uqv",
+                      "name": "createAccountButton",
+                      "width": "fill_container",
+                      "height": "fit_content",
+                      "padding": 16,
+                      "fill": "$surface",
+                      "stroke": "$line",
+                      "strokeWidth": 1,
+                      "descendants": {
+                        "xWUkK": {
+                          "content": "Crear cuenta",
+                          "fill": "$text",
+                          "textGrowth": "fixed-width",
+                          "width": "fill_container",
+                          "textAlign": "center",
+                          "fontSize": 14
+                        }
+                      }
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "A4CqoT",
+              "name": "features",
+              "width": "fill_container",
+              "layout": "vertical",
+              "gap": 12,
+              "children": [
+                {
+                  "id": "xCIFA",
+                  "type": "ref",
+                  "ref": "RMese",
+                  "name": "featureCard",
+                  "width": "fill_container",
+                  "height": "fit_content",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "Ru4lo",
+                      "name": "featureContent",
+                      "width": "fill_container",
+                      "layout": "vertical",
+                      "gap": 10,
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "M7zcH",
+                          "name": "featureIcon",
+                          "width": 40,
+                          "height": 40,
+                          "fill": "$greenSoft",
+                          "cornerRadius": 12,
+                          "justifyContent": "center",
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "icon",
+                              "id": "JfTnj",
+                              "width": 20,
+                              "height": 20,
+                              "icon": "search",
+                              "library": "lucide",
+                              "fill": "$green"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "id": "rYYsQ",
+                          "name": "featureTitle",
+                          "fill": "$text",
+                          "textGrowth": "fixed-width",
+                          "width": "fill_container",
+                          "content": "Encuentra partidos",
+                          "fontFamily": "Manrope",
+                          "fontSize": 16,
+                          "fontWeight": "bold"
+                        },
+                        {
+                          "type": "text",
+                          "id": "P6c0OM",
+                          "name": "featureText",
+                          "fill": "$muted",
+                          "textGrowth": "fixed-width",
+                          "width": "fill_container",
+                          "content": "Explora partidos abiertos o crea el tuyo.",
+                          "lineHeight": 1.45,
+                          "fontFamily": "Inter",
+                          "fontSize": 14,
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "id": "flS32",
+                  "type": "ref",
+                  "ref": "RMese",
+                  "name": "featureCard",
+                  "width": "fill_container",
+                  "height": "fit_content",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "QLv26",
+                      "name": "featureContent",
+                      "width": "fill_container",
+                      "layout": "vertical",
+                      "gap": 10,
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "W7nQaM",
+                          "name": "featureIcon",
+                          "width": 40,
+                          "height": 40,
+                          "fill": "$greenSoft",
+                          "cornerRadius": 12,
+                          "justifyContent": "center",
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "icon",
+                              "id": "E1NXl",
+                              "width": 20,
+                              "height": 20,
+                              "icon": "user-plus",
+                              "library": "lucide",
+                              "fill": "$green"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "id": "rC6h6",
+                          "name": "featureTitle",
+                          "fill": "$text",
+                          "textGrowth": "fixed-width",
+                          "width": "fill_container",
+                          "content": "Invita a tus amigos",
+                          "fontFamily": "Manrope",
+                          "fontSize": 16,
+                          "fontWeight": "bold"
+                        },
+                        {
+                          "type": "text",
+                          "id": "hUUYB",
+                          "name": "featureText",
+                          "fill": "$muted",
+                          "textGrowth": "fixed-width",
+                          "width": "fill_container",
+                          "content": "Comparte un enlace y completa la pista.",
+                          "lineHeight": 1.45,
+                          "fontFamily": "Inter",
+                          "fontSize": 14,
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "id": "fmZdL",
+                  "type": "ref",
+                  "ref": "RMese",
+                  "name": "featureCard",
+                  "width": "fill_container",
+                  "height": "fit_content",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "Wg6pt",
+                      "name": "featureContent",
+                      "width": "fill_container",
+                      "layout": "vertical",
+                      "gap": 10,
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "yPlDb",
+                          "name": "featureIcon",
+                          "width": 40,
+                          "height": 40,
+                          "fill": "$greenSoft",
+                          "cornerRadius": 12,
+                          "justifyContent": "center",
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "icon",
+                              "id": "YB4TY",
+                              "width": 20,
+                              "height": 20,
+                              "icon": "trophy",
+                              "library": "lucide",
+                              "fill": "$green"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "id": "BDGiq",
+                          "name": "featureTitle",
+                          "fill": "$text",
+                          "textGrowth": "fixed-width",
+                          "width": "fill_container",
+                          "content": "Sigue tus resultados",
+                          "fontFamily": "Manrope",
+                          "fontSize": 16,
+                          "fontWeight": "bold"
+                        },
+                        {
+                          "type": "text",
+                          "id": "I3wb8",
+                          "name": "featureText",
+                          "fill": "$muted",
+                          "textGrowth": "fixed-width",
+                          "width": "fill_container",
+                          "content": "Registra marcadores, valoraciones e historial, y ligas.",
+                          "lineHeight": 1.45,
+                          "fontFamily": "Inter",
+                          "fontSize": 14,
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "MbrSD",
+          "name": "footer",
+          "width": "fill_container",
+          "layout": "vertical",
+          "gap": 8,
+          "padding": [
+            24,
+            18,
+            32,
+            18
+          ],
+          "children": [
+            {
+              "type": "rectangle",
+              "id": "z2m65",
+              "name": "footerDivider",
+              "fill": "$line",
+              "width": "fill_container",
+              "height": 1
+            },
+            {
+              "type": "frame",
+              "id": "BV8uw",
+              "name": "privacyLinkRow",
+              "width": "fill_container",
+              "height": 44,
+              "alignItems": "center",
+              "children": [
+                {
+                  "id": "RhqlB",
+                  "type": "ref",
+                  "ref": "QFH5u",
+                  "name": "privacyLink",
+                  "descendants": {
+                    "XuJGu": {
+                      "content": "Política de privacidad",
+                      "fontSize": 14
+                    }
+                  }
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "w8cYQS",
+              "name": "contact",
+              "width": "fill_container",
+              "layout": "vertical",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "Ao50A",
+                  "name": "contactLabel",
+                  "fill": "$muted",
+                  "content": "Contacto",
+                  "fontFamily": "Inter",
+                  "fontSize": 13,
+                  "fontWeight": "semibold"
+                },
+                {
+                  "type": "frame",
+                  "id": "wYymW",
+                  "name": "contactEmailRow",
+                  "height": 44,
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "id": "Z2r5hp",
+                      "type": "ref",
+                      "ref": "QFH5u",
+                      "name": "contactEmailLink",
+                      "descendants": {
+                        "XuJGu": {
+                          "content": "trystan2k@gmail.com",
+                          "fontSize": 14
+                        }
+                      }
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "id": "AUwr2",
+              "name": "operatorLine",
+              "fill": "$muted",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "Gestionada por Thiago Mendonça, operador individual, España.",
+              "lineHeight": 1.45,
+              "fontFamily": "Inter",
+              "fontSize": 13,
+              "fontWeight": "normal"
+            },
+            {
+              "type": "text",
+              "id": "l7Uoz",
+              "name": "audienceNote",
+              "fill": "$muted",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "Para jugadores de 16 años o más.",
+              "fontFamily": "Inter",
+              "fontSize": 13,
+              "fontWeight": "normal"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "Jt31N",
+      "x": 13594,
+      "y": -1600,
+      "name": "Public homepage — pt-BR",
+      "theme": {
+        "mode": "light"
+      },
+      "clip": true,
+      "width": 390,
+      "fill": "$bg",
+      "layout": "vertical",
+      "children": [
+        {
+          "type": "frame",
+          "id": "bLgon",
+          "name": "header",
+          "width": "fill_container",
+          "layout": "vertical",
+          "padding": [
+            56,
+            18,
+            0,
+            18
+          ],
+          "children": [
+            {
+              "type": "text",
+              "id": "EXnHa",
+              "name": "brandWordmark",
+              "fill": "$green",
+              "content": "PADEL FRIENDS",
+              "fontFamily": "Manrope",
+              "fontSize": 12,
+              "fontWeight": "bold",
+              "letterSpacing": 1.5
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "fhVr9",
+          "name": "main",
+          "width": "fill_container",
+          "layout": "vertical",
+          "gap": 32,
+          "padding": [
+            32,
+            18
+          ],
+          "children": [
+            {
+              "type": "frame",
+              "id": "hqQpd",
+              "name": "hero",
+              "width": "fill_container",
+              "layout": "vertical",
+              "gap": 16,
+              "children": [
+                {
+                  "type": "text",
+                  "id": "skSFL",
+                  "name": "heroTitle",
+                  "fill": "$text",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "Encontre sua próxima partida de padel.",
+                  "lineHeight": 1.15,
+                  "fontFamily": "Manrope",
+                  "fontSize": 32,
+                  "fontWeight": "bold"
+                },
+                {
+                  "type": "text",
+                  "id": "ACCJA",
+                  "name": "heroDescription",
+                  "fill": "$muted",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "O Padel Friends ajuda você a organizar partidas, convidar seus amigos e acompanhar resultados e avaliações.",
+                  "lineHeight": 1.5,
+                  "fontFamily": "Inter",
+                  "fontSize": 15,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "frame",
+                  "id": "N7ysw",
+                  "name": "ctaGroup",
+                  "width": "fill_container",
+                  "layout": "vertical",
+                  "gap": 12,
+                  "padding": [
+                    8,
+                    0,
+                    0,
+                    0
+                  ],
+                  "children": [
+                    {
+                      "id": "IX8Cp",
+                      "type": "ref",
+                      "ref": "B3Uqv",
+                      "name": "signInButton",
+                      "width": "fill_container",
+                      "height": "fit_content",
+                      "padding": 16,
+                      "descendants": {
+                        "xWUkK": {
+                          "content": "Entrar",
+                          "fill": "$bg",
+                          "textGrowth": "fixed-width",
+                          "width": "fill_container",
+                          "textAlign": "center",
+                          "fontSize": 14
+                        }
+                      }
+                    },
+                    {
+                      "id": "b4mxZ",
+                      "type": "ref",
+                      "ref": "B3Uqv",
+                      "name": "createAccountButton",
+                      "width": "fill_container",
+                      "height": "fit_content",
+                      "padding": 16,
+                      "fill": "$surface",
+                      "stroke": "$line",
+                      "strokeWidth": 1,
+                      "descendants": {
+                        "xWUkK": {
+                          "content": "Criar conta",
+                          "fill": "$text",
+                          "textGrowth": "fixed-width",
+                          "width": "fill_container",
+                          "textAlign": "center",
+                          "fontSize": 14
+                        }
+                      }
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "r4XbJZ",
+              "name": "features",
+              "width": "fill_container",
+              "layout": "vertical",
+              "gap": 12,
+              "children": [
+                {
+                  "id": "F4oeIc",
+                  "type": "ref",
+                  "ref": "RMese",
+                  "name": "featureCard",
+                  "width": "fill_container",
+                  "height": "fit_content",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "C10tGs",
+                      "name": "featureContent",
+                      "width": "fill_container",
+                      "layout": "vertical",
+                      "gap": 10,
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "qc1vW",
+                          "name": "featureIcon",
+                          "width": 40,
+                          "height": 40,
+                          "fill": "$greenSoft",
+                          "cornerRadius": 12,
+                          "justifyContent": "center",
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "icon",
+                              "id": "l2ehXs",
+                              "width": 20,
+                              "height": 20,
+                              "icon": "search",
+                              "library": "lucide",
+                              "fill": "$green"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "id": "F0WcN0",
+                          "name": "featureTitle",
+                          "fill": "$text",
+                          "textGrowth": "fixed-width",
+                          "width": "fill_container",
+                          "content": "Encontre partidas",
+                          "fontFamily": "Manrope",
+                          "fontSize": 16,
+                          "fontWeight": "bold"
+                        },
+                        {
+                          "type": "text",
+                          "id": "jDWnL",
+                          "name": "featureText",
+                          "fill": "$muted",
+                          "textGrowth": "fixed-width",
+                          "width": "fill_container",
+                          "content": "Veja partidas abertas ou crie a sua.",
+                          "lineHeight": 1.45,
+                          "fontFamily": "Inter",
+                          "fontSize": 14,
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "id": "MeZhe",
+                  "type": "ref",
+                  "ref": "RMese",
+                  "name": "featureCard",
+                  "width": "fill_container",
+                  "height": "fit_content",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "oWZE7",
+                      "name": "featureContent",
+                      "width": "fill_container",
+                      "layout": "vertical",
+                      "gap": 10,
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "lUTcK",
+                          "name": "featureIcon",
+                          "width": 40,
+                          "height": 40,
+                          "fill": "$greenSoft",
+                          "cornerRadius": 12,
+                          "justifyContent": "center",
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "icon",
+                              "id": "DQlua",
+                              "width": 20,
+                              "height": 20,
+                              "icon": "user-plus",
+                              "library": "lucide",
+                              "fill": "$green"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "id": "NCu32",
+                          "name": "featureTitle",
+                          "fill": "$text",
+                          "textGrowth": "fixed-width",
+                          "width": "fill_container",
+                          "content": "Convide amigos",
+                          "fontFamily": "Manrope",
+                          "fontSize": 16,
+                          "fontWeight": "bold"
+                        },
+                        {
+                          "type": "text",
+                          "id": "x0jdSd",
+                          "name": "featureText",
+                          "fill": "$muted",
+                          "textGrowth": "fixed-width",
+                          "width": "fill_container",
+                          "content": "Compartilhe um link e complete a quadra.",
+                          "lineHeight": 1.45,
+                          "fontFamily": "Inter",
+                          "fontSize": 14,
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "id": "RwNOO",
+                  "type": "ref",
+                  "ref": "RMese",
+                  "name": "featureCard",
+                  "width": "fill_container",
+                  "height": "fit_content",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "BITTo",
+                      "name": "featureContent",
+                      "width": "fill_container",
+                      "layout": "vertical",
+                      "gap": 10,
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "N8PBx",
+                          "name": "featureIcon",
+                          "width": 40,
+                          "height": 40,
+                          "fill": "$greenSoft",
+                          "cornerRadius": 12,
+                          "justifyContent": "center",
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "icon",
+                              "id": "p1v0zR",
+                              "width": 20,
+                              "height": 20,
+                              "icon": "trophy",
+                              "library": "lucide",
+                              "fill": "$green"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "id": "DH7Ic",
+                          "name": "featureTitle",
+                          "fill": "$text",
+                          "textGrowth": "fixed-width",
+                          "width": "fill_container",
+                          "content": "Acompanhe resultados",
+                          "fontFamily": "Manrope",
+                          "fontSize": 16,
+                          "fontWeight": "bold"
+                        },
+                        {
+                          "type": "text",
+                          "id": "aaMOq",
+                          "name": "featureText",
+                          "fill": "$muted",
+                          "textGrowth": "fixed-width",
+                          "width": "fill_container",
+                          "content": "Registre placares, avaliações e histórico, além de ligas.",
+                          "lineHeight": 1.45,
+                          "fontFamily": "Inter",
+                          "fontSize": 14,
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "b7oaEk",
+          "name": "footer",
+          "width": "fill_container",
+          "layout": "vertical",
+          "gap": 8,
+          "padding": [
+            24,
+            18,
+            32,
+            18
+          ],
+          "children": [
+            {
+              "type": "rectangle",
+              "id": "ZEzsl",
+              "name": "footerDivider",
+              "fill": "$line",
+              "width": "fill_container",
+              "height": 1
+            },
+            {
+              "type": "frame",
+              "id": "up9nB",
+              "name": "privacyLinkRow",
+              "width": "fill_container",
+              "height": 44,
+              "alignItems": "center",
+              "children": [
+                {
+                  "id": "DJ3FI",
+                  "type": "ref",
+                  "ref": "QFH5u",
+                  "name": "privacyLink",
+                  "descendants": {
+                    "XuJGu": {
+                      "content": "Política de privacidade",
+                      "fontSize": 14
+                    }
+                  }
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "srhuk",
+              "name": "contact",
+              "width": "fill_container",
+              "layout": "vertical",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "c1aHvy",
+                  "name": "contactLabel",
+                  "fill": "$muted",
+                  "content": "Contato",
+                  "fontFamily": "Inter",
+                  "fontSize": 13,
+                  "fontWeight": "semibold"
+                },
+                {
+                  "type": "frame",
+                  "id": "i1GvCT",
+                  "name": "contactEmailRow",
+                  "height": 44,
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "id": "YJv8L",
+                      "type": "ref",
+                      "ref": "QFH5u",
+                      "name": "contactEmailLink",
+                      "descendants": {
+                        "XuJGu": {
+                          "content": "trystan2k@gmail.com",
+                          "fontSize": 14
+                        }
+                      }
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "id": "XgeXX",
+              "name": "operatorLine",
+              "fill": "$muted",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "Operado por Thiago Mendonça, operador individual, Espanha.",
+              "lineHeight": 1.45,
+              "fontFamily": "Inter",
+              "fontSize": 13,
+              "fontWeight": "normal"
+            },
+            {
+              "type": "text",
+              "id": "fuK5z",
+              "name": "audienceNote",
+              "fill": "$muted",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "Para jogadores com 16 anos ou mais.",
+              "fontFamily": "Inter",
+              "fontSize": 13,
+              "fontWeight": "normal"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "R91tQr",
+      "x": 14064,
+      "y": -1600,
+      "name": "Public homepage — mobile 320 fluid check (es)",
+      "theme": {
+        "mode": "light"
+      },
+      "clip": true,
+      "width": 320,
+      "fill": "$bg",
+      "layout": "vertical",
+      "children": [
+        {
+          "type": "frame",
+          "id": "X172o",
+          "name": "header",
+          "width": "fill_container",
+          "layout": "vertical",
+          "padding": [
+            56,
+            18,
+            0,
+            18
+          ],
+          "children": [
+            {
+              "type": "text",
+              "id": "euaZj",
+              "name": "brandWordmark",
+              "fill": "$green",
+              "content": "PADEL FRIENDS",
+              "fontFamily": "Manrope",
+              "fontSize": 12,
+              "fontWeight": "bold",
+              "letterSpacing": 1.5
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "cCiNf",
+          "name": "main",
+          "width": "fill_container",
+          "layout": "vertical",
+          "gap": 32,
+          "padding": [
+            32,
+            18
+          ],
+          "children": [
+            {
+              "type": "frame",
+              "id": "pOvmo",
+              "name": "hero",
+              "width": "fill_container",
+              "layout": "vertical",
+              "gap": 16,
+              "children": [
+                {
+                  "type": "text",
+                  "id": "kmEYy",
+                  "name": "heroTitle",
+                  "fill": "$text",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "Encuentra tu próximo partido de pádel.",
+                  "lineHeight": 1.15,
+                  "fontFamily": "Manrope",
+                  "fontSize": 32,
+                  "fontWeight": "bold"
+                },
+                {
+                  "type": "text",
+                  "id": "SCgBJ",
+                  "name": "heroDescription",
+                  "fill": "$muted",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "Padel Friends te ayuda a organizar partidos, invitar a tus amigos y llevar el control de resultados y valoraciones.",
+                  "lineHeight": 1.5,
+                  "fontFamily": "Inter",
+                  "fontSize": 15,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "frame",
+                  "id": "bHzbd",
+                  "name": "ctaGroup",
+                  "width": "fill_container",
+                  "layout": "vertical",
+                  "gap": 12,
+                  "padding": [
+                    8,
+                    0,
+                    0,
+                    0
+                  ],
+                  "children": [
+                    {
+                      "id": "MUPLi",
+                      "type": "ref",
+                      "ref": "B3Uqv",
+                      "name": "signInButton",
+                      "width": "fill_container",
+                      "height": "fit_content",
+                      "padding": 16,
+                      "descendants": {
+                        "xWUkK": {
+                          "content": "Iniciar sesión",
+                          "fill": "$bg",
+                          "textGrowth": "fixed-width",
+                          "width": "fill_container",
+                          "textAlign": "center",
+                          "fontSize": 14
+                        }
+                      }
+                    },
+                    {
+                      "id": "IXXVU",
+                      "type": "ref",
+                      "ref": "B3Uqv",
+                      "name": "createAccountButton",
+                      "width": "fill_container",
+                      "height": "fit_content",
+                      "padding": 16,
+                      "fill": "$surface",
+                      "stroke": "$line",
+                      "strokeWidth": 1,
+                      "descendants": {
+                        "xWUkK": {
+                          "content": "Crear cuenta",
+                          "fill": "$text",
+                          "textGrowth": "fixed-width",
+                          "width": "fill_container",
+                          "textAlign": "center",
+                          "fontSize": 14
+                        }
+                      }
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "dAegT",
+              "name": "features",
+              "width": "fill_container",
+              "layout": "vertical",
+              "gap": 12,
+              "children": [
+                {
+                  "id": "M3DaMQ",
+                  "type": "ref",
+                  "ref": "RMese",
+                  "name": "featureCard",
+                  "width": "fill_container",
+                  "height": "fit_content",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "wbfqe",
+                      "name": "featureContent",
+                      "width": "fill_container",
+                      "layout": "vertical",
+                      "gap": 10,
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "mjMMi",
+                          "name": "featureIcon",
+                          "width": 40,
+                          "height": 40,
+                          "fill": "$greenSoft",
+                          "cornerRadius": 12,
+                          "justifyContent": "center",
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "icon",
+                              "id": "PFCxz",
+                              "width": 20,
+                              "height": 20,
+                              "icon": "search",
+                              "library": "lucide",
+                              "fill": "$green"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "id": "N3jis",
+                          "name": "featureTitle",
+                          "fill": "$text",
+                          "textGrowth": "fixed-width",
+                          "width": "fill_container",
+                          "content": "Encuentra partidos",
+                          "fontFamily": "Manrope",
+                          "fontSize": 16,
+                          "fontWeight": "bold"
+                        },
+                        {
+                          "type": "text",
+                          "id": "cP9dD",
+                          "name": "featureText",
+                          "fill": "$muted",
+                          "textGrowth": "fixed-width",
+                          "width": "fill_container",
+                          "content": "Explora partidos abiertos o crea el tuyo.",
+                          "lineHeight": 1.45,
+                          "fontFamily": "Inter",
+                          "fontSize": 14,
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "id": "j6Vjs",
+                  "type": "ref",
+                  "ref": "RMese",
+                  "name": "featureCard",
+                  "width": "fill_container",
+                  "height": "fit_content",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "E5Qjle",
+                      "name": "featureContent",
+                      "width": "fill_container",
+                      "layout": "vertical",
+                      "gap": 10,
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "G3dUb3",
+                          "name": "featureIcon",
+                          "width": 40,
+                          "height": 40,
+                          "fill": "$greenSoft",
+                          "cornerRadius": 12,
+                          "justifyContent": "center",
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "icon",
+                              "id": "lqVTI",
+                              "width": 20,
+                              "height": 20,
+                              "icon": "user-plus",
+                              "library": "lucide",
+                              "fill": "$green"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "id": "aJRdQ",
+                          "name": "featureTitle",
+                          "fill": "$text",
+                          "textGrowth": "fixed-width",
+                          "width": "fill_container",
+                          "content": "Invita a tus amigos",
+                          "fontFamily": "Manrope",
+                          "fontSize": 16,
+                          "fontWeight": "bold"
+                        },
+                        {
+                          "type": "text",
+                          "id": "boh2K",
+                          "name": "featureText",
+                          "fill": "$muted",
+                          "textGrowth": "fixed-width",
+                          "width": "fill_container",
+                          "content": "Comparte un enlace y completa la pista.",
+                          "lineHeight": 1.45,
+                          "fontFamily": "Inter",
+                          "fontSize": 14,
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "id": "ppeJA",
+                  "type": "ref",
+                  "ref": "RMese",
+                  "name": "featureCard",
+                  "width": "fill_container",
+                  "height": "fit_content",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "O7NwMR",
+                      "name": "featureContent",
+                      "width": "fill_container",
+                      "layout": "vertical",
+                      "gap": 10,
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "r4Bnc",
+                          "name": "featureIcon",
+                          "width": 40,
+                          "height": 40,
+                          "fill": "$greenSoft",
+                          "cornerRadius": 12,
+                          "justifyContent": "center",
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "icon",
+                              "id": "kpDDV",
+                              "width": 20,
+                              "height": 20,
+                              "icon": "trophy",
+                              "library": "lucide",
+                              "fill": "$green"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "id": "crMVX",
+                          "name": "featureTitle",
+                          "fill": "$text",
+                          "textGrowth": "fixed-width",
+                          "width": "fill_container",
+                          "content": "Sigue tus resultados",
+                          "fontFamily": "Manrope",
+                          "fontSize": 16,
+                          "fontWeight": "bold"
+                        },
+                        {
+                          "type": "text",
+                          "id": "LyfpX",
+                          "name": "featureText",
+                          "fill": "$muted",
+                          "textGrowth": "fixed-width",
+                          "width": "fill_container",
+                          "content": "Registra marcadores, valoraciones e historial, y ligas.",
+                          "lineHeight": 1.45,
+                          "fontFamily": "Inter",
+                          "fontSize": 14,
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "H3Szcx",
+          "name": "footer",
+          "width": "fill_container",
+          "layout": "vertical",
+          "gap": 8,
+          "padding": [
+            24,
+            18,
+            32,
+            18
+          ],
+          "children": [
+            {
+              "type": "rectangle",
+              "id": "hmmco",
+              "name": "footerDivider",
+              "fill": "$line",
+              "width": "fill_container",
+              "height": 1
+            },
+            {
+              "type": "frame",
+              "id": "azrpl",
+              "name": "privacyLinkRow",
+              "width": "fill_container",
+              "height": 44,
+              "alignItems": "center",
+              "children": [
+                {
+                  "id": "BCMO8",
+                  "type": "ref",
+                  "ref": "QFH5u",
+                  "name": "privacyLink",
+                  "descendants": {
+                    "XuJGu": {
+                      "content": "Política de privacidad",
+                      "fontSize": 14
+                    }
+                  }
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "VYJQt",
+              "name": "contact",
+              "width": "fill_container",
+              "layout": "vertical",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "WIl79",
+                  "name": "contactLabel",
+                  "fill": "$muted",
+                  "content": "Contacto",
+                  "fontFamily": "Inter",
+                  "fontSize": 13,
+                  "fontWeight": "semibold"
+                },
+                {
+                  "type": "frame",
+                  "id": "WEuSq",
+                  "name": "contactEmailRow",
+                  "height": 44,
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "id": "qgYKl",
+                      "type": "ref",
+                      "ref": "QFH5u",
+                      "name": "contactEmailLink",
+                      "descendants": {
+                        "XuJGu": {
+                          "content": "trystan2k@gmail.com",
+                          "fontSize": 14
+                        }
+                      }
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "id": "ADazw",
+              "name": "operatorLine",
+              "fill": "$muted",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "Gestionada por Thiago Mendonça, operador individual, España.",
+              "lineHeight": 1.45,
+              "fontFamily": "Inter",
+              "fontSize": 13,
+              "fontWeight": "normal"
+            },
+            {
+              "type": "text",
+              "id": "WoIwZ",
+              "name": "audienceNote",
+              "fill": "$muted",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "Para jugadores de 16 años o más.",
+              "fontFamily": "Inter",
+              "fontSize": 13,
+              "fontWeight": "normal"
+            }
+          ]
         }
       ]
     }
