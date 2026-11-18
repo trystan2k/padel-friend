@@ -13,12 +13,44 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
-# CI topology: static checks block the parallel test phases; checks aggregates all results.
-# Keep `checks` as final job name for branch-protection continuity.
+# CI topology: the changes gate classifies the diff, static checks block the parallel test phases,
+# and checks aggregates all results. Keep `checks` as final job name for branch-protection
+# continuity.
 jobs:
+  # Path gate. Required checks cannot be skipped at the workflow level: a workflow skipped by
+  # `on.*.paths-ignore` never reports `CI / checks`, so every documentation-only PR stays
+  # "Expected" and can never merge. The workflow therefore always runs and this job decides whether
+  # the change set can affect the build, the database or the browser. Unknown or unreadable diffs
+  # mean CODE (scripts/ci-changes.mjs owns the classification).
+  changes:
+    name: changes
+    runs-on: ubuntu-latest
+    outputs:
+      code: ${{ steps.classify.outputs.code }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Classify changed paths
+        id: classify
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+        run: |
+          code=true
+          if [[ -n "${BASE_SHA:-}" && ! "$BASE_SHA" =~ ^0+$ ]] && git fetch --no-tags --depth=1 origin "$BASE_SHA" 2>/dev/null; then
+            # -z keeps spaced and non-ASCII paths intact; --no-renames lists both endpoints of a move.
+            if git diff --name-only --no-renames -z "$BASE_SHA" HEAD > "$RUNNER_TEMP/changed-paths"; then
+              code="$(node scripts/ci-changes.mjs < "$RUNNER_TEMP/changed-paths")"
+            fi
+          fi
+          printf 'Full CI required: %s\n' "$code"
+          printf 'code=%s\n' "$code" >> "$GITHUB_OUTPUT"
+
   static:
     name: static
     runs-on: ubuntu-latest
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
     outputs:
       populated-upgrade: ${{ steps.upgrade-paths.outputs.run }}
     steps:
@@ -102,11 +134,34 @@ jobs:
           path: artifacts/static-timing.json
           if-no-files-found: ignore
 
+  # Documentation-only change set (plans, logs, runbooks, root markdown, agent configuration): no
+  # build, no Supabase stack, no unit/integration/E2E work. The format gate still runs so prose
+  # cannot land unformatted, and it is the only work a documentation-only PR pays for.
+  static-docs:
+    name: static-docs
+    runs-on: ubuntu-latest
+    needs: changes
+    if: needs.changes.outputs.code == 'false'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+        with:
+          version: 12.13.0
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '26'
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm format:check
+
   # Unit tests own coverage collection; thresholds remain in vitest.config.ts.
   unit:
     name: unit
     runs-on: ubuntu-latest
-    needs: static
+    needs: [changes, static]
+    if: needs.changes.outputs.code == 'true'
     steps:
       - name: Start job timing
         run: printf '%s\n' "$(date +%s%3N)" > "$RUNNER_TEMP/ci-job-start-ms"
@@ -178,7 +233,8 @@ jobs:
   integration:
     name: integration
     runs-on: ubuntu-latest
-    needs: static
+    needs: [changes, static]
+    if: needs.changes.outputs.code == 'true'
     steps:
       - name: Start job timing
         run: printf '%s\n' "$(date +%s%3N)" > "$RUNNER_TEMP/ci-job-start-ms"
@@ -266,7 +322,8 @@ jobs:
   e2e:
     name: e2e (${{ matrix.lane }})
     runs-on: ubuntu-latest
-    needs: static
+    needs: [changes, static]
+    if: needs.changes.outputs.code == 'true'
     env:
       PLAYWRIGHT_BLOB_OUTPUT_NAME: report-${{ matrix.lane }}.zip
     strategy:
@@ -365,12 +422,13 @@ jobs:
             artifacts/e2e-job-timing.json
           if-no-files-found: ignore
 
-  # Merge reports after all lanes finish, without affecting the required checks gate.
+  # Merge reports after all lanes finish, without affecting the required checks gate. A skipped
+  # lane (documentation-only change set) has no blob reports to merge.
   e2e-report:
     name: e2e-report
     runs-on: ubuntu-latest
     needs: e2e
-    if: ${{ always() }}
+    if: ${{ always() && needs.e2e.result != 'skipped' }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -410,26 +468,52 @@ jobs:
           path: playwright-report/
           if-no-files-found: ignore
 
-  # Final aggregate preserves the full CI result for branch protection.
+  # Final aggregate preserves the full CI result for branch protection. It must report a verdict for
+  # every change set, which is why the workflow is never skipped by a path filter.
   checks:
     name: checks
     runs-on: ubuntu-latest
-    needs: [static, unit, integration, e2e]
+    needs: [changes, static, static-docs, unit, integration, e2e]
     if: ${{ always() }}
     steps:
       - name: Start job timing
         run: printf '%s\n' "$(date +%s%3N)" > "$RUNNER_TEMP/ci-job-start-ms"
-      - name: Require every CI phase to succeed
+      - name: Require every CI phase the change set needs
         env:
+          CHANGES_RESULT: ${{ needs.changes.result }}
+          CODE: ${{ needs.changes.outputs.code }}
           STATIC_RESULT: ${{ needs.static.result }}
+          STATIC_DOCS_RESULT: ${{ needs.static-docs.result }}
           UNIT_RESULT: ${{ needs.unit.result }}
           INTEGRATION_RESULT: ${{ needs.integration.result }}
           E2E_RESULT: ${{ needs.e2e.result }}
         run: |
-          printf 'CI results: static=%s unit=%s integration=%s e2e=%s\n' "$STATIC_RESULT" "$UNIT_RESULT" "$INTEGRATION_RESULT" "$E2E_RESULT"
-          if [[ "$STATIC_RESULT" != success || "$UNIT_RESULT" != success || "$INTEGRATION_RESULT" != success || "$E2E_RESULT" != success ]]; then
-            printf '%s\n' 'Required CI phase failed, was cancelled, or was unexpectedly skipped' >&2
+          printf 'CI results: code=%s static=%s static-docs=%s unit=%s integration=%s e2e=%s\n' \
+            "$CODE" "$STATIC_RESULT" "$STATIC_DOCS_RESULT" "$UNIT_RESULT" "$INTEGRATION_RESULT" "$E2E_RESULT"
+          if [[ "$CHANGES_RESULT" != success || ( "$CODE" != true && "$CODE" != false ) ]]; then
+            printf '%s\n' 'Change classification failed or reported no verdict' >&2
             exit 1
+          fi
+          if [[ "$CODE" == true ]]; then
+            if [[ "$STATIC_RESULT" != success || "$UNIT_RESULT" != success || "$INTEGRATION_RESULT" != success || "$E2E_RESULT" != success ]]; then
+              printf '%s\n' 'Required CI phase failed, was cancelled, or was unexpectedly skipped' >&2
+              exit 1
+            fi
+            if [[ "$STATIC_DOCS_RESULT" != skipped ]]; then
+              printf '%s\n' 'Documentation-only lane must not run for a code change set' >&2
+              exit 1
+            fi
+          else
+            # Documentation-only change set: every build and test phase must be skipped, and the
+            # format lane must pass. Anything else means the classifier and the workflow disagree.
+            if [[ "$STATIC_RESULT" != skipped || "$UNIT_RESULT" != skipped || "$INTEGRATION_RESULT" != skipped || "$E2E_RESULT" != skipped ]]; then
+              printf '%s\n' 'A build or test phase ran for a documentation-only change set' >&2
+              exit 1
+            fi
+            if [[ "$STATIC_DOCS_RESULT" != success ]]; then
+              printf '%s\n' 'Documentation-only format lane did not succeed' >&2
+              exit 1
+            fi
           fi
       - name: Record checks timing
         if: always()
