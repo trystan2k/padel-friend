@@ -16,6 +16,7 @@
     "scripts/test-populated-migration-up.d.mts",
     "scripts/check-client-secrets.d.mts",
     "scripts/audit-production.d.mts",
+    "scripts/production-release-notice.d.mts",
     "scripts/check-server-function-errors.d.mts",
     "scripts/e2e-shards.d.mts",
     "scripts/pwa-build.d.mts",

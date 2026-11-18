@@ -222,6 +222,19 @@ describe('production release workflow safety contract', () => {
     expect(deploy).not.toMatch(/cancel-in-progress: true|group:.*\$\{\{/);
   });
 
+  it('posts the preflight notice when a release is created', () => {
+    const notice = stepContaining(release, 'node scripts/production-release-notice.mjs');
+    expect(notice).toContain("release_created == 'true'");
+    // The notice is availability-safe: a reminder failure never blocks the release pipeline.
+    expect(notice).toContain('continue-on-error: true');
+    expect(notice).toContain('RELEASE_TAG: ${{ steps.release.outputs.tag_name }}');
+    // Job token carries the workflow's contents: write, enough to edit the fresh release body.
+    expect(notice).toContain('GITHUB_TOKEN: ${{ github.token }}');
+    expect(
+      steps(release).filter((step) => step.includes('production-release-notice'))
+    ).toHaveLength(1);
+  });
+
   it('keeps preview deploys outside the production release lock', () => {
     const preview = readFileSync('.github/workflows/preview.yml', 'utf8');
     // The production lock (release.yml concurrency group) must never leak into preview.

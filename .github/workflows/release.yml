@@ -33,6 +33,15 @@ jobs:
         env:
           RELEASE_CREATED: ${{ steps.release.outputs.release_created }}
           RELEASE_TAG: ${{ steps.release.outputs.tag_name }}
+      # Reminder for the human gate: visible on the release page (body) and this run's summary.
+      # continue-on-error keeps availability independent of the notice; failures stay visible.
+      - name: Post release preflight notice
+        if: steps.release.outputs.release_created == 'true'
+        continue-on-error: true
+        run: node scripts/production-release-notice.mjs
+        env:
+          RELEASE_TAG: ${{ steps.release.outputs.tag_name }}
+          GITHUB_TOKEN: ${{ github.token }}
   deploy:
     name: Production ${{ needs.release.outputs.tag }} @ ${{ needs.release.outputs.release_sha }}
     needs: release

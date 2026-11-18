@@ -28,7 +28,9 @@ procedure for the first production release (0.3.0), including the confirmed base
 
 ## 2. Reviewer checklist (before approving)
 
-The approver is the only human gate. In the pending run, check:
+The approver is the only human gate. The OpenCode command `/release-preflight <tag>` automates
+the §5 preflight and records the §2 marker after explicit approval; the checklist below is the
+contract it follows. In the pending run, check:
 
 - [ ] The job label shows tag `vX.Y.Z` and `release_sha`. The SHA equals the CI run's head commit and the current tip of `main`. If `main` has advanced the run will be rejected anyway (§6); reject it instead of approving.
 - [ ] **True pending set (read-only production-history comparison, required before approving).** The tag diff (`git diff <previous-tag>..<tag> -- supabase/migrations`) is **not** the pending set. The helper applies **everything production history reports as pending among the files in this tag**, which can include older files that are absent from the diff: for example when an earlier release was never fully applied or a manual recovery left production behind. Run the owner preflight in §5 (hosted, read-only: `link`, `migration list --linked`, `db push --linked --dry-run --skip-vault`; never the apply form) against project `nojecmdknaebczpfnfwa` from a checkout of this tag, and record the pending file names it reports. Read the **full SQL of every one of those files**, not just the tag diff. No pending files means a no-op release; it still needs approval.
