@@ -39,17 +39,18 @@ Collect and report:
 ## 3. Credentials (never echoed)
 
 The preflight needs `SUPABASE_ACCESS_TOKEN` and `SUPABASE_DB_PASSWORD` for the production
-project (INITIAL_SETUP §4). If they are not already in this process environment
-(check `printenv` presence only, never values), ask the user to write them to a temporary
-file with mode 0600, for example:
+project (INITIAL_SETUP §4). Load them from the gitignored repo file first:
 
-```sh
-umask 077; printf '%s\n' 'SUPABASE_ACCESS_TOKEN=...' 'SUPABASE_DB_PASSWORD=...' > "$TMPDIR/release-preflight.env"
-```
+- If `.env.production.local` (or `.env.production`) exists in the repo root and contains both
+  keys, source it only inside the specific preflight commands
+  (`set -a; . .env.production.local; set +a`). Never print, store in the session, or include
+  credential values in summaries. Leave the file in place — it persists for future preflights.
+- Otherwise create it once: `umask 077` + the two keys, mirroring `.env.example`, and confirm
+  `git check-ignore .env.production.local` reports a hit before writing values.
+- If the user prefers a one-off, the temporary `$TMPDIR` file works too; delete it afterwards.
 
-Source it with `set -a; . "$TMPDIR/release-preflight.env"; set +a` only inside the specific
-preflight commands, and delete the file at the end. Never print, store in the session, or
-include credential values in summaries.
+Never export the values into your shell profile, pass them as command arguments, or echo
+them; sanitized output only (§5).
 
 ## 4. Read-only production preflight (§5)
 
