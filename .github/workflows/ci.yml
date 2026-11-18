@@ -26,7 +26,7 @@ jobs:
     name: changes
     runs-on: ubuntu-latest
     outputs:
-      code: ${{ steps.classify.outputs.code }}
+      mode: ${{ steps.classify.outputs.mode }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -35,22 +35,26 @@ jobs:
         id: classify
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+          # Release PRs get the static lane only; the classifier also requires a same-repository head.
+          PR_HEAD_REF: ${{ github.event.pull_request.head.ref }}
+          PR_HEAD_REPO: ${{ github.event.pull_request.head.repo.full_name }}
+          BASE_REPO: ${{ github.repository }}
         run: |
-          code=true
+          mode=code
           if [[ -n "${BASE_SHA:-}" && ! "$BASE_SHA" =~ ^0+$ ]] && git fetch --no-tags --depth=1 origin "$BASE_SHA" 2>/dev/null; then
             # -z keeps spaced and non-ASCII paths intact; --no-renames lists both endpoints of a move.
             if git diff --name-only --no-renames -z "$BASE_SHA" HEAD > "$RUNNER_TEMP/changed-paths"; then
-              code="$(node scripts/ci-changes.mjs < "$RUNNER_TEMP/changed-paths")"
+              mode="$(node scripts/ci-changes.mjs < "$RUNNER_TEMP/changed-paths")"
             fi
           fi
-          printf 'Full CI required: %s\n' "$code"
-          printf 'code=%s\n' "$code" >> "$GITHUB_OUTPUT"
+          printf 'CI mode: %s\n' "$mode"
+          printf 'mode=%s\n' "$mode" >> "$GITHUB_OUTPUT"
 
   static:
     name: static
     runs-on: ubuntu-latest
     needs: changes
-    if: needs.changes.outputs.code == 'true'
+    if: needs.changes.outputs.mode != 'docs'
     outputs:
       populated-upgrade: ${{ steps.upgrade-paths.outputs.run }}
     steps:
@@ -141,7 +145,7 @@ jobs:
     name: static-docs
     runs-on: ubuntu-latest
     needs: changes
-    if: needs.changes.outputs.code == 'false'
+    if: needs.changes.outputs.mode == 'docs'
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -161,7 +165,7 @@ jobs:
     name: unit
     runs-on: ubuntu-latest
     needs: [changes, static]
-    if: needs.changes.outputs.code == 'true'
+    if: needs.changes.outputs.mode == 'code'
     steps:
       - name: Start job timing
         run: printf '%s\n' "$(date +%s%3N)" > "$RUNNER_TEMP/ci-job-start-ms"
@@ -234,7 +238,7 @@ jobs:
     name: integration
     runs-on: ubuntu-latest
     needs: [changes, static]
-    if: needs.changes.outputs.code == 'true'
+    if: needs.changes.outputs.mode == 'code'
     steps:
       - name: Start job timing
         run: printf '%s\n' "$(date +%s%3N)" > "$RUNNER_TEMP/ci-job-start-ms"
@@ -323,7 +327,7 @@ jobs:
     name: e2e (${{ matrix.lane }})
     runs-on: ubuntu-latest
     needs: [changes, static]
-    if: needs.changes.outputs.code == 'true'
+    if: needs.changes.outputs.mode == 'code'
     env:
       PLAYWRIGHT_BLOB_OUTPUT_NAME: report-${{ matrix.lane }}.zip
     strategy:
@@ -481,26 +485,36 @@ jobs:
       - name: Require every CI phase the change set needs
         env:
           CHANGES_RESULT: ${{ needs.changes.result }}
-          CODE: ${{ needs.changes.outputs.code }}
+          MODE: ${{ needs.changes.outputs.mode }}
           STATIC_RESULT: ${{ needs.static.result }}
           STATIC_DOCS_RESULT: ${{ needs.static-docs.result }}
           UNIT_RESULT: ${{ needs.unit.result }}
           INTEGRATION_RESULT: ${{ needs.integration.result }}
           E2E_RESULT: ${{ needs.e2e.result }}
         run: |
-          printf 'CI results: code=%s static=%s static-docs=%s unit=%s integration=%s e2e=%s\n' \
-            "$CODE" "$STATIC_RESULT" "$STATIC_DOCS_RESULT" "$UNIT_RESULT" "$INTEGRATION_RESULT" "$E2E_RESULT"
-          if [[ "$CHANGES_RESULT" != success || ( "$CODE" != true && "$CODE" != false ) ]]; then
+          printf 'CI results: mode=%s static=%s static-docs=%s unit=%s integration=%s e2e=%s\n' \
+            "$MODE" "$STATIC_RESULT" "$STATIC_DOCS_RESULT" "$UNIT_RESULT" "$INTEGRATION_RESULT" "$E2E_RESULT"
+          if [[ "$CHANGES_RESULT" != success || ( "$MODE" != code && "$MODE" != release && "$MODE" != docs ) ]]; then
             printf '%s\n' 'Change classification failed or reported no verdict' >&2
             exit 1
           fi
-          if [[ "$CODE" == true ]]; then
+          if [[ "$MODE" == code ]]; then
             if [[ "$STATIC_RESULT" != success || "$UNIT_RESULT" != success || "$INTEGRATION_RESULT" != success || "$E2E_RESULT" != success ]]; then
               printf '%s\n' 'Required CI phase failed, was cancelled, or was unexpectedly skipped' >&2
               exit 1
             fi
             if [[ "$STATIC_DOCS_RESULT" != skipped ]]; then
               printf '%s\n' 'Documentation-only lane must not run for a code change set' >&2
+              exit 1
+            fi
+          elif [[ "$MODE" == release ]]; then
+            # Release PR: the static lane is the whole gate. Build and test phases ran on the main push.
+            if [[ "$STATIC_RESULT" != success ]]; then
+              printf '%s\n' 'Release PR static lane failed or was cancelled' >&2
+              exit 1
+            fi
+            if [[ "$UNIT_RESULT" != skipped || "$INTEGRATION_RESULT" != skipped || "$E2E_RESULT" != skipped || "$STATIC_DOCS_RESULT" != skipped ]]; then
+              printf '%s\n' 'A build or test phase ran for a release pull request' >&2
               exit 1
             fi
           else

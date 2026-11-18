@@ -6,6 +6,7 @@ import {
   DOC_ONLY_PATTERNS,
   classify,
   isCodePath,
+  isReleasePr,
   main,
   matchesPattern,
   normalizePath,
@@ -85,21 +86,71 @@ describe('CI change classification', () => {
   });
 
   it('runs full CI when any changed path is code', () => {
-    expect(classify(['README.md', 'src/app.tsx']).code).toBe(true);
-    expect(classify(['README.md', 'docs/plan/x.md']).code).toBe(false);
-    expect(classify(['docs/plan/x.md', 'docs/design/padel-friend.pen']).code).toBe(true);
+    expect(classify(['README.md', 'src/app.tsx']).mode).toBe('code');
+    expect(classify(['README.md', 'docs/plan/x.md']).mode).toBe('docs');
+    expect(classify(['docs/plan/x.md', 'docs/design/padel-friend.pen']).mode).toBe('code');
   });
 
   it('treats an empty or unreadable change set as code', () => {
-    expect(classify([])).toEqual({ code: true, codeFiles: [], docFiles: [] });
-    expect(classify(['', '  ', '\n'])).toEqual({ code: true, codeFiles: [], docFiles: [] });
+    expect(classify([])).toEqual({ mode: 'code', codeFiles: [], docFiles: [] });
+    expect(classify(['', '  ', '\n'])).toEqual({ mode: 'code', codeFiles: [], docFiles: [] });
   });
 
   it('reports both sides of a mixed change set', () => {
     expect(classify(['README.md', './src/app.tsx', 'README.md'])).toEqual({
-      code: true,
+      mode: 'code',
       codeFiles: ['src/app.tsx'],
       docFiles: ['README.md']
+    });
+  });
+
+  describe('release-please pull request', () => {
+    const sameRepoRelease = {
+      headRef: 'release-please--branches--main',
+      headRepo: 'trystan2k/padel-friend',
+      baseRepo: 'trystan2k/padel-friend'
+    };
+
+    it('runs the static lane only when the PR changes just the version files', () => {
+      expect(
+        classify(['.release-please-manifest.json', 'CHANGELOG.md', 'package.json'], sameRepoRelease)
+      ).toEqual({
+        mode: 'release',
+        codeFiles: ['.release-please-manifest.json', 'package.json'],
+        docFiles: ['CHANGELOG.md']
+      });
+    });
+
+    it('keeps full CI when the release PR also touches any other file', () => {
+      expect(classify(['package.json', 'src/app.tsx'], sameRepoRelease).mode).toBe('code');
+      expect(classify(['package.json', 'pnpm-lock.yaml'], sameRepoRelease).mode).toBe('code');
+    });
+
+    it('ignores the release shape for a fork, a foreign branch or a push', () => {
+      const files = ['package.json', 'CHANGELOG.md'];
+      expect(classify(files, { ...sameRepoRelease, headRepo: 'someone/padel-friend' }).mode).toBe(
+        'code'
+      );
+      expect(classify(files, { ...sameRepoRelease, headRef: 'feature/PAF-1-x' }).mode).toBe('code');
+      expect(classify(files, { ...sameRepoRelease, headRepo: '' }).mode).toBe('code');
+      expect(classify(files).mode).toBe('code');
+    });
+
+    it('never grants the release lane to an empty diff', () => {
+      expect(classify([], sameRepoRelease).mode).toBe('code');
+    });
+
+    it('matches only the release-please branch prefix', () => {
+      expect(isReleasePr(sameRepoRelease)).toBe(true);
+      expect(
+        isReleasePr({
+          ...sameRepoRelease,
+          headRef: 'release-please--branches--main--components--x'
+        })
+      ).toBe(true);
+      expect(
+        isReleasePr({ ...sameRepoRelease, headRef: 'my-release-please--branches--main' })
+      ).toBe(false);
     });
   });
 
@@ -153,9 +204,9 @@ describe('CI change classification input handling', () => {
       out: { write: (text: string) => (stdout += text) },
       err: { write: (text: string) => (stderr += text) }
     };
-    expect(main([], io).code).toBe(false);
-    expect(stdout).toBe('false\n');
-    expect(stderr).toContain('[ci-changes] code=false');
+    expect(main([], io).mode).toBe('docs');
+    expect(stdout).toBe('docs\n');
+    expect(stderr).toContain('[ci-changes] mode=docs');
     expect(stderr).not.toContain('code inputs');
   });
 
@@ -167,7 +218,7 @@ describe('CI change classification input handling', () => {
       out: { write: (text: string) => (stdout += text) },
       err: { write: (text: string) => (stderr += text) }
     });
-    expect(stdout).toBe('true\n');
+    expect(stdout).toBe('code\n');
     expect(stderr).toContain('code inputs: src/a.ts, src/b.ts');
     stderr = '';
     main([], {
@@ -176,6 +227,22 @@ describe('CI change classification input handling', () => {
       err: { write: (text: string) => (stderr += text) }
     });
     expect(stderr).toContain('no changed paths reported');
+  });
+
+  it('reads the pull request context from the environment', () => {
+    let stdout = '';
+    const io = {
+      stdin: 'package.json\0CHANGELOG.md\0',
+      env: {
+        PR_HEAD_REF: 'release-please--branches--main',
+        PR_HEAD_REPO: 'trystan2k/padel-friend',
+        BASE_REPO: 'trystan2k/padel-friend'
+      },
+      out: { write: (text: string) => (stdout += text) },
+      err: { write: () => {} }
+    };
+    expect(main([], io).mode).toBe('release');
+    expect(stdout).toBe('release\n');
   });
 
   it('rejects positional arguments', () => {

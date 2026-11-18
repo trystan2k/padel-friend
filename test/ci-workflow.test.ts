@@ -265,12 +265,27 @@ describe('ci.yml change-set gate', () => {
   });
 
   it('gates every build and test job on the classifier verdict', () => {
-    for (const name of ['static', 'unit', 'integration', 'e2e'])
-      expect(job(name)).toContain("if: needs.changes.outputs.code == 'true'");
-    expect(job('static-docs')).toContain("if: needs.changes.outputs.code == 'false'");
+    expect(job('static')).toContain("if: needs.changes.outputs.mode != 'docs'");
+    for (const name of ['unit', 'integration', 'e2e'])
+      expect(job(name)).toContain("if: needs.changes.outputs.mode == 'code'");
+    expect(job('static-docs')).toContain("if: needs.changes.outputs.mode == 'docs'");
     expect(job('changes')).toContain('run: |');
     expect(job('changes')).toContain('node scripts/ci-changes.mjs');
-    expect(job('changes')).toContain('code: ${{ steps.classify.outputs.code }}');
+    expect(job('changes')).toContain('mode: ${{ steps.classify.outputs.mode }}');
+  });
+
+  it('hands the release-please PR context to the classifier', () => {
+    const body = job('changes');
+    expect(body).toContain('PR_HEAD_REF: ${{ github.event.pull_request.head.ref }}');
+    expect(body).toContain('PR_HEAD_REPO: ${{ github.event.pull_request.head.repo.full_name }}');
+    expect(body).toContain('BASE_REPO: ${{ github.repository }}');
+  });
+
+  it('runs the static lane only for a release PR and no build or test phase', () => {
+    const body = job('checks');
+    expect(body).toContain('elif [[ "$MODE" == release ]]; then');
+    expect(body).toContain('Release PR static lane failed or was cancelled');
+    expect(body).toContain('A build or test phase ran for a release pull request');
   });
 
   it('runs only the format lane for a documentation-only change set', () => {
