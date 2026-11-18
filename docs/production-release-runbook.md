@@ -88,7 +88,7 @@ Job logs carry only: `Migration manifest: <14-digit version> <sha256>` per file 
 
 ### Owner preflight (read-only, authorized hosted use only)
 
-Run only with the owner's explicit authorization, from a clean checkout of the candidate tag. It performs a hosted `link` and read-only history/dry-run; it applies nothing. Do not export secrets in your shell profile, do not put them in arguments and do not echo them.
+Run only with the owner's explicit authorization, from a clean checkout of the candidate tag. It performs a hosted `link` and read-only history/dry-run; it applies nothing. Do not export secrets in your shell profile, do not put them in arguments and do not echo them. Keeping them in the gitignored `.env.production.local` (see `.env.example`) and sourcing that file only into the preflight commands is the supported local pattern; the token must never reach a committed file.
 
 ```sh
 unset SUPABASE_PROJECT_ID PGHOST PGUSER PGPASSWORD PGDATABASE
