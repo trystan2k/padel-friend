@@ -367,7 +367,8 @@ export function PlayerProfile({
             .then(() => getBrowserClient().auth.signOut())
             .then(({ error: signOutFailure }) => {
               if (signOutFailure) setSignOutError(true);
-              else window.location.assign('/');
+              // Root is a public Google-facing landing page now; sign-out targets /login directly.
+              else window.location.assign('/login');
             })
             .catch(() => setSignOutError(true))
         }

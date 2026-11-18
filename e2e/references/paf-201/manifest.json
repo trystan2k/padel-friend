@@ -1,0 +1,138 @@
+{
+  "runtimeEnforcement": {
+    "approvedReferencePngDigests": "Runtime-enforced by public-homepage-visual.spec.ts before screenshot comparisons.",
+    "derivedBaselineDigests": "Runtime-enforced by public-homepage-visual.spec.ts before and after screenshot comparisons; baselines are re-derived from the approved exports and compared byte for byte.",
+    "perFrameAllowance": "maxDiffPixelRatio per screenshot, read by the spec from this manifest."
+  },
+  "sourceDesign": {
+    "path": "docs/design/padel-friend.pen",
+    "provenanceNote": "Six PAF-201 frames exported through Pencil MCP Export at scale 1 and committed unchanged. Approved as one family. The app-wide locale/theme chips are not drawn in the frames: only their two rectangles are masked. No desktop frame exists, so no desktop image baseline is claimed."
+  },
+  "comparison": {
+    "viewport": "CSS width = frame width, CSS height = frame height, deviceScaleFactor 1, viewport (not full page) screenshot; the spec first asserts the document is not taller than the frame and that the content height (last footer line + 32px) is within 2px of the frame height, so the last footer line is inside the capture.",
+    "transform": "none (no scaling, no cropping)",
+    "diff": { "comparator": "playwright pixelmatch", "threshold": 0.1 },
+    "environment": "Chromium with the playwright.config.ts deterministic raster flags (--font-render-hinting=none, --disable-font-subpixel-positioning, --disable-lcd-text, --force-color-profile=srgb, --disable-skia-runtime-opts, --hide-scrollbars), service worker blocked, reduced motion, animations disabled, caret hidden, fonts and used Manrope/Inter faces loaded before capture."
+  },
+  "chipMask": {
+    "maskColor": "#FF00FF",
+    "evidence": "src/root.styles.ts: controls top = space-18 + space-8 = 26px (line 11), right = space-18 = 18px (line 12), gap = space-8 = 8px (line 17), chip = space-40 + space-4 = 44px square (lines 23-24); src/routes/__root.tsx renders the locale chip then the theme chip (lines 80-155).",
+    "derivation": "Decode the approved Pencil export; paint only the two chip rectangles opaque #FF00FF; encode PNG with the pinned Playwright PNG implementation (e2e/png-mask.ts deriveMaskedPng). The spec paints the same two rectangles with the same color over the actual capture. Baselines are never regenerated from Chromium."
+  },
+  "calibration": {
+    "date": "2026-11-18",
+    "environment": "macOS (Darwin), Playwright 1.64.1 Chromium, pnpm test:e2e e2e/public-homepage-visual.spec.ts, allowance 0 so every nonzero residual is reported by the comparator",
+    "allowancePolicy": "Measured ratio rounded up to 0.05pp, plus 0.25pp headroom for Pencil-vs-Chromium rasterization drift across OS (Linux CI measurement not available locally). Geometry probes stay exact and are never widened.",
+    "measured": {
+      "public-homepage-mobile-light.png": { "differing": 3643, "total": 421200, "ratio": 0.008649 },
+      "public-homepage-mobile-dark.png": { "differing": 4264, "total": 421200, "ratio": 0.010123 },
+      "public-homepage-mobile-signed-in.png": {
+        "differing": 2861,
+        "total": 397410,
+        "ratio": 0.007199
+      },
+      "public-homepage-mobile-es.png": { "differing": 7168, "total": 445380, "ratio": 0.016094 },
+      "public-homepage-mobile-pt-br.png": { "differing": 7079, "total": 445380, "ratio": 0.015894 },
+      "public-homepage-mobile-320-es.png": { "differing": 8506, "total": 390080, "ratio": 0.021807 }
+    },
+    "localization": "Residual is text antialiasing/half-pixel placement (Pencil lays out fractional y, Chromium snaps) plus the secondary CTA stroke, which Pencil draws across two rows at 50% coverage and Chromium paints on one row. Flat fills and tokens match exactly."
+  },
+  "frames": {
+    "public-homepage-mobile-light.png": {
+      "frameId": "FswwZ",
+      "frameName": "Public homepage — mobile light",
+      "width": 390,
+      "height": 1080,
+      "locale": "en",
+      "theme": "light",
+      "source": "public-homepage-mobile-light.png",
+      "sourceSha256": "7ff4e77a5f2a8915b8018e7faf1f62a263098767ca787b9955e8da4735c2b9db",
+      "baselineSha256": "67b883f733060697c2647ada2a43c76ffa6117a3888833bc6bb381bd2c51c8b3",
+      "maskRectangles": [
+        { "name": "locale", "x": 276, "y": 26, "width": 44, "height": 44 },
+        { "name": "theme", "x": 328, "y": 26, "width": 44, "height": 44 }
+      ],
+      "maxDiffPixelRatio": 0.0115
+    },
+    "public-homepage-mobile-dark.png": {
+      "frameId": "JzVIa",
+      "frameName": "Public homepage — mobile dark",
+      "width": 390,
+      "height": 1080,
+      "locale": "en",
+      "theme": "dark",
+      "source": "public-homepage-mobile-dark.png",
+      "sourceSha256": "45d531cdc08d94bc6a758d58027cdd21302135716d37257b38f37fb151fdf91d",
+      "baselineSha256": "0e33fb6d917fe5faeb1b20bcb33c8361d5436d1ebdefcccd90344b1e97ab0cc6",
+      "maskRectangles": [
+        { "name": "locale", "x": 276, "y": 26, "width": 44, "height": 44 },
+        { "name": "theme", "x": 328, "y": 26, "width": 44, "height": 44 }
+      ],
+      "maxDiffPixelRatio": 0.013
+    },
+    "public-homepage-mobile-signed-in.png": {
+      "frameId": "eIW0i",
+      "frameName": "Public homepage — mobile signed-in",
+      "width": 390,
+      "height": 1019,
+      "locale": "en",
+      "theme": "light",
+      "source": "public-homepage-mobile-signed-in.png",
+      "sourceSha256": "00f4b866af0e893b1a876fdf8e945a81bec9cf167c2f699936fce4e3ebe2eeb6",
+      "baselineSha256": "8c77cd89dd826a4cb04ee39df46d0c1c39a21f51ac5cef24703b204975079eeb",
+      "maskRectangles": [
+        { "name": "locale", "x": 276, "y": 26, "width": 44, "height": 44 },
+        { "name": "theme", "x": 328, "y": 26, "width": 44, "height": 44 }
+      ],
+      "maxDiffPixelRatio": 0.01
+    },
+    "public-homepage-mobile-es.png": {
+      "frameId": "aebnS",
+      "frameName": "Public homepage — es",
+      "width": 390,
+      "height": 1142,
+      "locale": "es",
+      "theme": "light",
+      "source": "public-homepage-mobile-es.png",
+      "sourceSha256": "2fcb7b325bfb3772a069c31967ffad9b99d7351601362cc8a73b927b78a69d60",
+      "baselineSha256": "c7e3d560e1f7d8de8441d51e0be8015945341b7da9fcb1bfe6d8d0251b08d160",
+      "maskRectangles": [
+        { "name": "locale", "x": 276, "y": 26, "width": 44, "height": 44 },
+        { "name": "theme", "x": 328, "y": 26, "width": 44, "height": 44 }
+      ],
+      "maxDiffPixelRatio": 0.019
+    },
+    "public-homepage-mobile-pt-br.png": {
+      "frameId": "Jt31N",
+      "frameName": "Public homepage — pt-BR",
+      "width": 390,
+      "height": 1142,
+      "locale": "pt-BR",
+      "theme": "light",
+      "source": "public-homepage-mobile-pt-br.png",
+      "sourceSha256": "53969f8ce116e215c81c3594f209127905e97c496dac563c517b287fe2f5cbdc",
+      "baselineSha256": "35468e28f4b10921378e8cd9ba31662de6456d254516e8cacb64818c09f3d052",
+      "maskRectangles": [
+        { "name": "locale", "x": 276, "y": 26, "width": 44, "height": 44 },
+        { "name": "theme", "x": 328, "y": 26, "width": 44, "height": 44 }
+      ],
+      "maxDiffPixelRatio": 0.0185
+    },
+    "public-homepage-mobile-320-es.png": {
+      "frameId": "R91tQr",
+      "frameName": "Public homepage — mobile 320 fluid check (es)",
+      "width": 320,
+      "height": 1219,
+      "locale": "es",
+      "theme": "light",
+      "source": "public-homepage-mobile-320-es.png",
+      "sourceSha256": "ce708c51646a3c6a6d71f4ff57368c4725135294e4aaf066c190f8f6e34331d6",
+      "baselineSha256": "e7708f82182e21db95fd761854bd0b055c21392571e7ea89a9762e1a78941b21",
+      "maskRectangles": [
+        { "name": "locale", "x": 206, "y": 26, "width": 44, "height": 44 },
+        { "name": "theme", "x": 258, "y": 26, "width": 44, "height": 44 }
+      ],
+      "maxDiffPixelRatio": 0.0245
+    }
+  }
+}

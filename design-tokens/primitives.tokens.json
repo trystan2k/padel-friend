@@ -106,6 +106,8 @@
     },
     "line-height": {
       "tight": { "$type": "number", "$value": 1.1 },
+      "snug": { "$type": "number", "$value": 1.15 },
+      "comfortable": { "$type": "number", "$value": 1.45 },
       "body": { "$type": "number", "$value": 1.5 }
     },
     "letter-spacing": {

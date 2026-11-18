@@ -79,6 +79,45 @@ it('retires when B signs in before any session lookup resolves', () => {
   expect(retire).toHaveBeenCalledTimes(1);
 });
 
+function DefaultProbe({ ssrUser = 'a' }: { ssrUser?: string | null }) {
+  useAuthIdentityGuard(ssrUser);
+  return null;
+}
+
+it('default teardown does a full-document navigation straight to /login on account replacement and sign-out', async () => {
+  const assign = vi.fn<(url: string) => void>();
+  vi.stubGlobal('location', { assign });
+  try {
+    render(<DefaultProbe />);
+    await Promise.resolve();
+    mocks.listener?.('TOKEN_REFRESHED', { user: { id: 'a' } });
+    expect(assign).not.toHaveBeenCalled();
+    mocks.listener?.('SIGNED_IN', { user: { id: 'b' } });
+    expect(assign).toHaveBeenCalledTimes(1);
+    expect(assign).toHaveBeenLastCalledWith('/login');
+    mocks.listener?.('SIGNED_OUT', null);
+    expect(assign).toHaveBeenCalledTimes(2);
+    expect(assign).toHaveBeenLastCalledWith('/login');
+  } finally {
+    vi.unstubAllGlobals();
+  }
+});
+
+it('default teardown lands on /login when the browser session already belongs to another account at mount', async () => {
+  const assign = vi.fn<(url: string) => void>();
+  vi.stubGlobal('location', { assign });
+  try {
+    mocks.sessionUser = 'b';
+    render(<DefaultProbe ssrUser="a" />);
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(assign).toHaveBeenCalledTimes(1);
+    expect(assign).toHaveBeenCalledWith('/login');
+  } finally {
+    vi.unstubAllGlobals();
+  }
+});
+
 it('unsubscribes on unmount', () => {
   const view = render(<Probe />);
   view.unmount();
