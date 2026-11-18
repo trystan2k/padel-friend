@@ -1,5 +1,6 @@
 export const VISUAL_GREP: string;
 export const FUNCTIONAL_LANES: number;
+export const VISUAL_SHARDS: number;
 export const DEFAULT_WEIGHT_SECONDS: number;
 export const SPEC_WEIGHTS: Record<string, number>;
 export const SERIAL_SPECS: string[];

@@ -11,6 +11,7 @@ import {
   SERIAL_SPECS,
   SPEC_WEIGHTS,
   VISUAL_GREP,
+  VISUAL_SHARDS,
   gateLanes,
   isVisualFile,
   repoRelativeSpec,
@@ -108,12 +109,24 @@ describe('E2E functional lanes', () => {
       expect(args.slice(0, -2).every((arg) => arg.endsWith('.spec.ts'))).toBe(true);
     }
     const nonSerial = specs.filter((spec) => !SERIAL_SPECS.includes(spec));
-    expect(laneArgs('visual', specs)).toEqual([...nonSerial, '--grep', VISUAL_GREP]);
+    for (let lane = 1; lane <= VISUAL_SHARDS; lane++) {
+      // Every shard selects the same @visual tests; --shard splits them, so the union across
+      // visual-1..VISUAL_SHARDS is one full sweep of the old single visual lane.
+      expect(laneArgs(`visual-${lane}`, specs)).toEqual([
+        ...nonSerial,
+        '--grep',
+        VISUAL_GREP,
+        `--shard=${lane}/${VISUAL_SHARDS}`
+      ]);
+    }
     expect(laneArgs('serial', specs)).toEqual(SERIAL_SPECS);
     expect(SERIAL_SPECS).toHaveLength(11);
     expect(SERIAL_SPECS).not.toContain('e2e/level-reviews-visual.spec.ts');
     expect(gateLanes().serial).toEqual(SERIAL_SPECS);
     expect(() => laneArgs('functional-9', specs)).toThrow('Unknown E2E lane');
+    expect(() => laneArgs('visual-0', specs)).toThrow('Unknown E2E lane');
+    expect(() => laneArgs(`visual-${VISUAL_SHARDS + 1}`, specs)).toThrow('Unknown E2E lane');
+    expect(() => laneArgs('visual', specs)).toThrow('Unknown E2E lane');
   });
 });
 
@@ -122,17 +135,19 @@ describe('serial lane precedence', () => {
     const serialVisual = SERIAL_SPECS.filter(isVisualFile);
     expect(serialVisual).toEqual(['e2e/result-corrections-visual.spec.ts']);
     const serialArgs = laneArgs('serial', specs);
-    const visualArgs = laneArgs('visual', specs);
+    const visualArgs = Array.from({ length: VISUAL_SHARDS }, (_, index) =>
+      laneArgs(`visual-${index + 1}`, specs)
+    );
     for (const spec of serialVisual) {
       expect(serialArgs).toContain(spec);
       expect(serialArgs).not.toContain('--grep-invert');
-      expect(visualArgs).not.toContain(spec);
+      for (const args of visualArgs) expect(args).not.toContain(spec);
     }
     // Every serial spec is selected by exactly one lane.
     const lanes = [
       ...Array.from({ length: FUNCTIONAL_LANES }, (_, index) => 'functional-' + String(index + 1)),
       'serial',
-      'visual'
+      ...Array.from({ length: VISUAL_SHARDS }, (_, index) => 'visual-' + String(index + 1))
     ].map((lane) => laneArgs(lane, specs).filter((arg) => arg.endsWith('.spec.ts')));
     for (const spec of SERIAL_SPECS) {
       expect(lanes.filter((lane) => lane.includes(spec))).toHaveLength(1);
