@@ -1,7 +1,7 @@
 ---
 description: Analyze PRDs deeply, clarify missing requirements, propose an implementation plan, and create approved tasks.
 mode: primary
-model: openai/gpt-6.1-sol
+model: openai/gpt-6.2-sol
 permissions:
   # Allow everything by default — fail-close allowlists removed.
   # Risky shell commands require explicit user approval (effect: ask).

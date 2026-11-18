@@ -403,7 +403,7 @@ Subagent definitions carry **no** `model:` pin — this orchestrator imposes the
 | `subagents/testing-automation-specialist` | T1 | `claude-agent/sonnet` |
 | `subagents/bug-fixer-specialist` | T1 | `claude-agent/sonnet` |
 | `subagents/implementation-specialist` | T2 | `claude-agent/sonnet` |
-| `subagents/execution-planner-specialist` | T3 | `openai/gpt-6.1-sol` |
+| `subagents/execution-planner-specialist` | T3 | `openai/gpt-6.2-sol` |
 | `subagents/code-review-specialist` | T3 | `openai/gpt-6.1-terra` |
 | `subagents/architecture-review-specialist` | T3 | `openai/gpt-6.1-terra` |
 | `subagents/ux-ui-reviewer-specialist` | T3 | `openai/gpt-6.1-terra` |
