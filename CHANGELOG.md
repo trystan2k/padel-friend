@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.6.0](https://github.com/trystan2k/padel-friend/compare/v0.5.0...v0.6.0) (2026-11-18)
+
+
+### Features
+
+* release preflight command and approver notice for fresh releases ([7535927](https://github.com/trystan2k/padel-friend/commit/7535927f41a1b11a6c40dcc1e1a3f8adfb3e408a))
+
 ## [0.5.0](https://github.com/trystan2k/padel-friend/compare/v0.4.0...v0.5.0) (2026-11-18)
 
 
