@@ -52,7 +52,7 @@ export const styles = stylex.create({
     fontFamily: 'var(--font-family-heading)',
     fontSize: 'var(--font-size-32)',
     fontWeight: 'var(--font-weight-bold)',
-    lineHeight: 1.15,
+    lineHeight: 'var(--font-line-height-snug)',
     overflowWrap: 'break-word'
   },
   description: {
@@ -145,7 +145,7 @@ export const styles = stylex.create({
     margin: 0,
     color: 'var(--color-muted)',
     fontSize: 'var(--font-size-14)',
-    lineHeight: 1.45,
+    lineHeight: 'var(--font-line-height-comfortable)',
     overflowWrap: 'break-word'
   },
   // Pencil footer: 24px above the divider (on top of the 32px major gap), then 8px between rows.
@@ -181,5 +181,5 @@ export const styles = stylex.create({
     fontSize: 'var(--font-size-13)',
     overflowWrap: 'break-word'
   },
-  footerNote: { lineHeight: 1.45 }
+  footerNote: { lineHeight: 'var(--font-line-height-comfortable)' }
 });

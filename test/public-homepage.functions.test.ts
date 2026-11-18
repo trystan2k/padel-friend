@@ -78,11 +78,37 @@ describe('getPublicHomepageAuthenticated', () => {
       expect(call).toEqual(['Cache-Control', 'private, no-store']);
   });
 
-  it('does not swallow unrelated programming errors', async () => {
+  it('is false (guest) when getClaims throws an invalid-claims verification error', async () => {
+    supabaseServer.getServerClient.mockReturnValue({
+      auth: {
+        getClaims: vi.fn<() => Promise<unknown>>(async () => {
+          throw new Error('Invalid alg claim');
+        })
+      }
+    });
+
+    await expect(getPublicHomepageAuthenticated()).resolves.toBe(false);
+  });
+
+  it('propagates unrelated errors thrown by getClaims', async () => {
+    supabaseServer.getServerClient.mockReturnValue({
+      auth: {
+        getClaims: vi.fn<() => Promise<unknown>>(async () => {
+          throw new Error('fetch failed');
+        })
+      }
+    });
+
+    await expect(getPublicHomepageAuthenticated()).rejects.toThrow('OPERATION_FAILED');
+  });
+
+  it('does not swallow client-creation programming errors', async () => {
     supabaseServer.getServerClient.mockImplementation(() => {
       throw new Error('missing env');
     });
 
+    // getServerClient() failures propagate raw by repo convention (see requireAuthenticatedClient);
+    // only claims-lookup failures cross the toClientError boundary.
     await expect(getPublicHomepageAuthenticated()).rejects.toThrow('missing env');
   });
 });
