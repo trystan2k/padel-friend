@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.5.0](https://github.com/trystan2k/padel-friend/compare/v0.4.0...v0.5.0) (2026-11-18)
+
+
+### Features
+
+* update design with homepage ([01034ad](https://github.com/trystan2k/padel-friend/commit/01034adba050cb1468896861218064643ead0af8))
+
+
+### Bug Fixes
+
+* allowlist picomatch ReDoS advisory in production audit ([e6d0d59](https://github.com/trystan2k/padel-friend/commit/e6d0d59d5f0fc8e74ba27d5ba603d03d49415b0d))
+* locate release-please step by action name, not pinned SHA ([4f26412](https://github.com/trystan2k/padel-friend/commit/4f26412d3667aba6c01fc1a4d2491f2a19bd96b8))
+* refresh design source digests after homepage frames ([fecdbfa](https://github.com/trystan2k/padel-friend/commit/fecdbfa54868a33a45913b69b344c1f8f35055b2))
+* replace preview workflow byte-pin with semantic release-lock pins ([4b808c0](https://github.com/trystan2k/padel-friend/commit/4b808c0eff556bd3af4ec48b4b8ee71b50c9a886))
+
 ## [0.4.0](https://github.com/trystan2k/padel-friend/compare/v0.3.0...v0.4.0) (2026-11-17)
 
 
