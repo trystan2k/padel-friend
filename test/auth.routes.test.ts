@@ -25,6 +25,11 @@ vi.mock('../src/features/community/community.functions', () => ({
   createCommunity: vi.fn<() => void>()
 }));
 
+const publicHomepage = vi.hoisted(() => ({
+  getPublicHomepageAuthenticated: vi.fn<() => Promise<boolean>>(async () => false)
+}));
+vi.mock('../src/features/public-homepage/public-homepage.functions', () => publicHomepage);
+
 // The app root's beforeLoad reads the locale/theme server functions during router.load();
 // they are irrelevant to the auth guards, so both modules are stubbed for the test tree.
 vi.mock('../src/features/theme/theme.functions', () => ({
@@ -101,7 +106,6 @@ async function redirectOf(guard: Promise<unknown>): Promise<ReturnType<typeof th
 }
 
 const loginGuard = guardOf(LoginRoute.options, '/login');
-const homeGuard = guardOf(HomeRoute.options, '/');
 const accountGuard = guardOf(AccountRoute.options, '/onboarding/account');
 const communityGuard = guardOf(CommunityRoute.options, '/onboarding/community');
 const onboardingGuard = guardOf(OnboardingRoute.options, '/onboarding');
@@ -194,28 +198,15 @@ describe('/onboarding/community route', () => {
   });
 });
 
-describe('/ root guard (beforeLoad)', () => {
-  it('redirects anonymous visitors to login without rendering public content', async () => {
-    onboardedAs(ANON);
-    const redirect = await redirectOf(homeGuard({}));
-    expect(redirect.options.to).toBe('/login');
-    expect(redirect.headers.get('cache-control')).toBe('private, no-store');
-    expect(await landedOn('/')).toEqual({ pathname: '/login', search: {} });
-  });
-
-  it('sends both incomplete and complete players through the protected dashboard guard', async () => {
-    for (const [status, destination] of [
-      [INCOMPLETE, '/onboarding'],
-      [COMPLETE, '/dashboard']
-    ] as const) {
-      onboardedAs(status);
-      const redirect = await redirectOf(homeGuard({}));
-      expect(redirect.options.to).toBe('/dashboard');
-      expect(await landedOn('/')).toEqual({
-        pathname: destination,
-        search: {}
-      });
+// Root is a public Google-facing landing page: no guard, no redirect, no onboarding lookup.
+describe('/ public homepage route', () => {
+  it('has no beforeLoad guard and stays on / for guests and signed-in visitors', async () => {
+    expect(HomeRoute.options.beforeLoad).toBeUndefined();
+    for (const authenticated of [false, true]) {
+      publicHomepage.getPublicHomepageAuthenticated.mockResolvedValue(authenticated);
+      expect(await landedOn('/')).toEqual({ pathname: '/', search: {} });
     }
+    expect(playerFunctions.getOnboardingStatus).not.toHaveBeenCalled();
   });
 });
 

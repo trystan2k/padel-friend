@@ -2,8 +2,9 @@ import { useEffect } from 'react';
 import { isIdentityReplaced } from './auth-identity';
 import { getBrowserClient } from './supabase/client';
 
-function restartFromPublicEntry() {
-  window.location.assign('/');
+// Root is a public Google-facing landing page now, so teardown targets /login directly.
+function restartFromLogin() {
+  window.location.assign('/login');
 }
 
 /**
@@ -16,7 +17,7 @@ function restartFromPublicEntry() {
  */
 export function useAuthIdentityGuard(
   baseline: string | null,
-  retire: () => void = restartFromPublicEntry
+  retire: () => void = restartFromLogin
 ) {
   useEffect(() => {
     const client = getBrowserClient();

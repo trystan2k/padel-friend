@@ -3420,5 +3420,36 @@
       "title": "Contact",
       "p1": "For privacy questions or requests, email:"
     }
+  },
+  "publicHomepage": {
+    "hero": {
+      "title": "Find your next padel match.",
+      "description": "Padel Friends helps you organize matches, invite your friends and keep track of results and ratings."
+    },
+    "actions": {
+      "signIn": "Sign in",
+      "createAccount": "Create account",
+      "dashboard": "Go to dashboard"
+    },
+    "features": {
+      "findMatches": {
+        "title": "Find matches",
+        "description": "Browse open matches or create your own."
+      },
+      "inviteFriends": {
+        "title": "Invite friends",
+        "description": "Share a link and fill the court."
+      },
+      "trackResults": {
+        "title": "Track results",
+        "description": "Record scores, ratings and history, plus leagues."
+      }
+    },
+    "footer": {
+      "contact": "Contact",
+      "contactEmail": "{{email}}",
+      "operator": "Run by Thiago Mendonça, individual operator, Spain.",
+      "audience": "For players aged 16+."
+    }
   }
 }

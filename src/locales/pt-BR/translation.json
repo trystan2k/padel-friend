@@ -3420,5 +3420,36 @@
       "title": "Contato",
       "p1": "Para dúvidas ou solicitações de privacidade, escreva para:"
     }
+  },
+  "publicHomepage": {
+    "hero": {
+      "title": "Encontre sua próxima partida de padel.",
+      "description": "O Padel Friends ajuda você a organizar partidas, convidar seus amigos e acompanhar resultados e avaliações."
+    },
+    "actions": {
+      "signIn": "Entrar",
+      "createAccount": "Criar conta",
+      "dashboard": "Ir ao painel"
+    },
+    "features": {
+      "findMatches": {
+        "title": "Encontre partidas",
+        "description": "Veja partidas abertas ou crie a sua."
+      },
+      "inviteFriends": {
+        "title": "Convide amigos",
+        "description": "Compartilhe um link e complete a quadra."
+      },
+      "trackResults": {
+        "title": "Acompanhe resultados",
+        "description": "Registre placares, avaliações e histórico, além de ligas."
+      }
+    },
+    "footer": {
+      "contact": "Contato",
+      "contactEmail": "{{email}}",
+      "operator": "Operado por Thiago Mendonça, operador individual, Espanha.",
+      "audience": "Para jogadores com 16 anos ou mais."
+    }
   }
 }
