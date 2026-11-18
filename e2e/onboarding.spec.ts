@@ -842,7 +842,7 @@ test('the onboarding slider stays operable in light and dark themes', async ({ p
   }
 });
 
-test('signing out redirects through root to login and protected routes stay gated', async ({
+test('signing out navigates directly to login and protected routes stay gated', async ({
   page
 }) => {
   const email = uniqueEmail();
@@ -850,7 +850,9 @@ test('signing out redirects through root to login and protected routes stay gate
   await completeOnboarding(page, 'Rio Logout', '3.0');
 
   await waitForHydratedPage(page);
+  // Root is now the public homepage: sign-out must full-load /login, not bounce through /.
   await page.getByRole('button', { name: en.signOut }).click();
+  await expect(page).toHaveURL(/\/login$/);
   await expect(page.getByRole('heading', { name: en.auth.welcomeTitle })).toBeVisible();
 
   await page.goto('/dashboard');

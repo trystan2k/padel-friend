@@ -1,31 +1,169 @@
 import { expect, test, type Page } from '@playwright/test';
 import { existsSync, readFileSync } from 'node:fs';
 import { waitForHydratedPage } from './auth-helpers';
+import { watchBrowserErrors } from './browser-error-gate';
 import { copies, fixtures, sql, type Actor } from './matches-management-fixtures';
 
 const BASE_URL = 'http://127.0.0.1:4173';
 
-function localeCopy(locale: string): {
-  auth: { welcomeTitle: string; loginSubmit: string; or: string; accountPrompt: string };
+// Root (`/`) is the Google-facing public landing page, not a redirect. `/login` stays the
+// unchanged auth surface, so every auth-screen assertion below loads it directly.
+const PRIVACY_CONTACT_EMAIL = 'trystan2k@gmail.com';
+
+const homepageLocales = ['en', 'es', 'pt-BR'] as const;
+
+function homepageCopy(locale: string): {
+  auth: { welcomeTitle: string; or: string; accountPrompt: string; privacyLink: string };
+  privacy: { title: string };
+  publicHomepage: {
+    hero: { title: string };
+    actions: { signIn: string; createAccount: string };
+  };
 } {
   return JSON.parse(
     readFileSync(new URL(`../src/locales/${locale}/translation.json`, import.meta.url), 'utf8')
   );
 }
 
-test('anonymous root redirects server-side to localized login, without public demo content', async ({
-  request,
-  page
-}) => {
-  const response = await request.get('/', { maxRedirects: 0 });
-  expect([302, 303, 307, 308]).toContain(response.status());
-  expect(new URL(response.headers()['location']!, BASE_URL).pathname).toBe('/login');
-  expect(response.headers()['cache-control']).toBe('private, no-store');
+async function expectPublicLinks(page: Page, locale: string): Promise<void> {
+  const copy = homepageCopy(locale);
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText(copy.publicHomepage.hero.title);
+  await expect(
+    page.getByRole('link', { name: copy.publicHomepage.actions.signIn })
+  ).toHaveAttribute('href', '/login');
+  await expect(
+    page.getByRole('link', { name: copy.publicHomepage.actions.createAccount })
+  ).toHaveAttribute('href', '/onboarding/account');
+  await expect(page.getByRole('link', { name: copy.auth.privacyLink })).toHaveAttribute(
+    'href',
+    '/privacy'
+  );
+  await expect(page.getByRole('link', { name: PRIVACY_CONTACT_EMAIL })).toHaveAttribute(
+    'href',
+    `mailto:${PRIVACY_CONTACT_EMAIL}`
+  );
+}
 
-  for (const locale of ['en', 'pt-BR', 'es']) {
-    const copy = localeCopy(locale);
+test.describe('public homepage at root', () => {
+  test('serves localized SSR HTML without redirect for every locale cookie', async ({
+    request,
+    page
+  }) => {
+    for (const locale of homepageLocales) {
+      const copy = homepageCopy(locale);
+      const response = await request.get('/', {
+        maxRedirects: 0,
+        headers: { cookie: `locale=${locale}` }
+      });
+      expect(response.status(), locale).toBe(200);
+      expect(response.headers()['location']).toBeUndefined();
+      expect(response.headers()['content-type']).toContain('text/html');
+      const cacheControl = response.headers()['cache-control'] ?? '';
+      expect(cacheControl).toContain('private');
+      expect(cacheControl).toContain('no-store');
+      const vary = (response.headers()['vary'] ?? '').toLowerCase();
+      expect(vary).toContain('cookie');
+      expect(vary).toContain('accept-language');
+      const html = await response.text();
+      expect(html).toContain(`lang="${locale}"`);
+      expect(html).toContain(copy.publicHomepage.hero.title);
+      for (const href of [
+        '/login',
+        '/onboarding/account',
+        '/privacy',
+        `mailto:${PRIVACY_CONTACT_EMAIL}`
+      ])
+        expect(html).toContain(`href="${href}"`);
+
+      await page.context().addCookies([{ name: 'locale', value: locale, url: BASE_URL }]);
+      const watched = watchBrowserErrors(page);
+      await page.goto('/');
+      expect(new URL(page.url()).pathname).toBe('/');
+      await waitForHydratedPage(page);
+      await expect(page.locator('html')).toHaveAttribute('lang', locale);
+      await expectPublicLinks(page, locale);
+      expect(watched()).toEqual([]);
+    }
+  });
+
+  test('negotiates Accept-Language without a cookie and lets the cookie win', async ({
+    request
+  }) => {
+    for (const [header, locale] of [
+      ['es-ES,es;q=0.9', 'es'],
+      ['pt-BR,pt;q=0.9', 'pt-BR'],
+      ['fr-FR,fr;q=0.9', 'en']
+    ] as const) {
+      const response = await request.get('/', {
+        maxRedirects: 0,
+        headers: { 'accept-language': header }
+      });
+      expect(response.status(), header).toBe(200);
+      const html = await response.text();
+      expect(html, header).toContain(`lang="${locale}"`);
+      expect(html, header).toContain(homepageCopy(locale).publicHomepage.hero.title);
+    }
+
+    const cookieWins = await request.get('/', {
+      maxRedirects: 0,
+      headers: { 'accept-language': 'es-ES,es;q=0.9', cookie: 'locale=pt-BR' }
+    });
+    expect(await cookieWins.text()).toContain('lang="pt-BR"');
+  });
+
+  test('the native locale selector changes copy and agrees after reload', async ({ page }) => {
+    await page.context().addCookies([{ name: 'locale', value: 'en', url: BASE_URL }]);
+    await page.goto('/');
+    await waitForHydratedPage(page);
+    await expectPublicLinks(page, 'en');
+
+    for (const locale of ['es', 'pt-BR'] as const) {
+      await page.locator('#locale').selectOption(locale);
+      await expect(page.locator('html')).toHaveAttribute('lang', locale);
+      await expectPublicLinks(page, locale);
+      await page.reload();
+      await waitForHydratedPage(page);
+      await expect(page.locator('html')).toHaveAttribute('lang', locale);
+      await expect(page.locator('#locale')).toHaveValue(locale);
+      await expectPublicLinks(page, locale);
+    }
+  });
+
+  test('a guest reaches every real destination from the homepage', async ({ page }) => {
+    const copy = homepageCopy('en');
+    const targets = [
+      {
+        link: copy.publicHomepage.actions.signIn,
+        path: '/login',
+        landmark: () => page.getByRole('heading', { name: copy.auth.welcomeTitle })
+      },
+      {
+        link: copy.publicHomepage.actions.createAccount,
+        path: '/onboarding/account',
+        landmark: () => page.locator('#signup-email')
+      },
+      {
+        link: copy.auth.privacyLink,
+        path: '/privacy',
+        landmark: () => page.getByRole('heading', { level: 1, name: copy.privacy.title })
+      }
+    ];
+    for (const { link, path, landmark } of targets) {
+      await page.context().addCookies([{ name: 'locale', value: 'en', url: BASE_URL }]);
+      await page.goto('/');
+      await waitForHydratedPage(page);
+      await page.getByRole('link', { name: link }).click();
+      await expect(page).toHaveURL(new RegExp(`${path}$`));
+      await expect(landmark()).toBeVisible();
+    }
+  });
+});
+
+test('login keeps its localized Welcome screen when loaded directly', async ({ page }) => {
+  for (const locale of homepageLocales) {
+    const copy = homepageCopy(locale);
     await page.context().addCookies([{ name: 'locale', value: locale, url: BASE_URL }]);
-    const login = await page.goto('/');
+    const login = await page.goto('/login');
     expect(new URL(page.url()).pathname).toBe('/login');
     expect(await login?.text()).toContain(copy.auth.welcomeTitle);
     await expect(page.getByRole('heading', { name: copy.auth.welcomeTitle })).toBeVisible();
@@ -38,7 +176,7 @@ test('anonymous root redirects server-side to localized login, without public de
 test('login controls retain design typography across themes', async ({ page }) => {
   for (const theme of ['light', 'dark'] as const) {
     await page.context().addCookies([{ name: 'theme', value: theme, url: BASE_URL }]);
-    await page.goto('/');
+    await page.goto('/login');
     await expect(page.locator('html')).toHaveAttribute('data-theme', theme);
     const submit = page.locator('form button[type="submit"]');
     await expect(submit).toBeVisible();

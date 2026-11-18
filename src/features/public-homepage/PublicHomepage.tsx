@@ -99,10 +99,10 @@ export function PublicHomepage({ authenticated }: { authenticated: boolean }) {
             {t('publicHomepage.footer.contactEmail', { email: PRIVACY_CONTACT_EMAIL })}
           </a>
         </div>
-        <div {...stylex.props(styles.legal)}>
-          <p {...stylex.props(styles.footerText)}>{t('publicHomepage.footer.operator')}</p>
-          <p {...stylex.props(styles.footerText)}>{t('publicHomepage.footer.audience')}</p>
-        </div>
+        <p {...stylex.props(styles.footerText, styles.footerNote)}>
+          {t('publicHomepage.footer.operator')}
+        </p>
+        <p {...stylex.props(styles.footerText)}>{t('publicHomepage.footer.audience')}</p>
       </footer>
     </div>
   );

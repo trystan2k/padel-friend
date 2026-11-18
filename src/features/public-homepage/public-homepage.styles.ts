@@ -28,6 +28,7 @@ export const styles = stylex.create({
     gap: 'calc(var(--space-16) * 2)'
   },
   brand: {
+    display: 'block',
     color: 'var(--color-green)',
     fontFamily: 'var(--font-family-heading)',
     fontSize: 'var(--font-size-12)',
@@ -51,7 +52,7 @@ export const styles = stylex.create({
     fontFamily: 'var(--font-family-heading)',
     fontSize: 'var(--font-size-32)',
     fontWeight: 'var(--font-weight-bold)',
-    lineHeight: 1.25,
+    lineHeight: 1.15,
     overflowWrap: 'break-word'
   },
   description: {
@@ -93,9 +94,11 @@ export const styles = stylex.create({
     borderColor: 'var(--color-green)',
     color: 'var(--color-bg)'
   },
+  // The Pencil stroke sits outside the 49px box, so it is a spread shadow, not layout.
   ctaSecondary: {
     backgroundColor: 'var(--color-surface)',
-    borderColor: 'var(--color-line)',
+    borderColor: 'transparent',
+    boxShadow: '0 0 0 var(--border-width-sm) var(--color-line)',
     color: 'var(--color-text)'
   },
   features: {
@@ -142,29 +145,28 @@ export const styles = stylex.create({
     margin: 0,
     color: 'var(--color-muted)',
     fontSize: 'var(--font-size-14)',
-    lineHeight: 'var(--font-line-height-body)',
+    lineHeight: 1.45,
     overflowWrap: 'break-word'
   },
+  // Pencil footer: 24px above the divider (on top of the 32px major gap), then 8px between rows.
   footer: {
     display: 'flex',
     flexDirection: 'column',
-    gap: 'calc(var(--space-12) * 2)',
+    gap: 'var(--space-8)',
     minWidth: 0,
-    paddingTop: 'calc(var(--space-12) * 2)',
+    marginTop: 'calc(var(--space-12) * 2)',
+    paddingTop: 'var(--space-8)',
     borderTopStyle: 'solid',
     borderTopWidth: 'var(--border-width-sm)',
     borderTopColor: 'var(--color-line)'
   },
-  contact: { display: 'flex', flexDirection: 'column', gap: 'var(--space-8)', minWidth: 0 },
-  legal: { display: 'flex', flexDirection: 'column', gap: 'var(--space-8)', minWidth: 0 },
-  // The 44px anchor overflows the 15px Pencil text row; the negative block margin
-  // (15px row - 44px target) / 2 keeps the surrounding flow at the Pencil positions.
+  contact: { display: 'flex', flexDirection: 'column', minWidth: 0 },
+  // Link rows are real 44px targets, as in the Pencil footer rows.
   footerLink: {
     display: 'flex',
     alignItems: 'center',
     boxSizing: 'border-box',
     minHeight: target,
-    marginBlock: 'calc((var(--space-15) - var(--space-40) - var(--space-4)) / 2)',
     color: 'var(--color-green)',
     fontFamily: 'var(--font-family-body)',
     fontSize: 'var(--font-size-14)',
@@ -177,7 +179,7 @@ export const styles = stylex.create({
     margin: 0,
     color: 'var(--color-muted)',
     fontSize: 'var(--font-size-13)',
-    lineHeight: 'var(--font-line-height-body)',
     overflowWrap: 'break-word'
-  }
+  },
+  footerNote: { lineHeight: 1.45 }
 });

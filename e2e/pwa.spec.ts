@@ -211,15 +211,38 @@ test('account A then B in one browser: private responses stay uncacheable and no
     expect(privateDocument?.headers()['cache-control']).toContain('no-store');
     expect(privateDocument?.headers()['cache-control']).toContain('private');
 
+    // The PWA start_url is now the public homepage: online launch shows the dashboard CTA for A,
+    // as a private, uncacheable response that never carries A's identity.
+    const homeA = await page.goto('/');
+    await waitForHydratedPage(page);
+    expect(homeA?.status()).toBe(200);
+    expect(homeA?.headers()['cache-control']).toBe('private, no-store');
+    await expect(
+      page.getByRole('link', { name: en.publicHomepage.actions.dashboard })
+    ).toBeVisible();
+    await expect(page.getByRole('link', { name: en.publicHomepage.actions.signIn })).toHaveCount(0);
+    expect(await cacheEntries(page)).not.toContainEqual(expect.objectContaining({ path: '/' }));
+    const homeTextA = await page.locator('body').innerText();
+    for (const value of [accountA.name, accountA.email]) expect(homeTextA).not.toContain(value);
+
     // Sign-out ends A's session; B signs in on the same browser storage and worker.
     await context.clearCookies();
     await clearBrowserStorage(page);
     await signIn(page, accountB);
     await page.goto('/dashboard');
     await waitForHydratedPage(page);
+    await page.goto('/');
+    await waitForHydratedPage(page);
+    await expect(
+      page.getByRole('link', { name: en.publicHomepage.actions.dashboard })
+    ).toBeVisible();
+    const homeTextB = await page.locator('body').innerText();
+    for (const value of [accountA.name, accountA.email, accountB.name, accountB.email])
+      expect(homeTextB).not.toContain(value);
 
     const entries = await cacheEntries(page);
     expectPublicCacheOnly(entries);
+    expect(entries.map((entry) => entry.path)).not.toContain('/');
     const leaked = await page.evaluate(
       async ({ names }) => {
         const found: string[] = [];
@@ -242,6 +265,13 @@ test('account A then B in one browser: private responses stay uncacheable and no
     await context.setOffline(true);
     await page.goto('/matches/my');
     await expect(page.getByRole('heading', { name: en.pwa.offline.title })).toBeVisible();
+    // Root offline: the public offline document, never a stale homepage.
+    await page.goto('/');
+    await expect(page.getByRole('heading', { name: en.pwa.offline.title })).toBeVisible();
+    await expect(page.getByRole('heading', { name: en.publicHomepage.hero.title })).toHaveCount(0);
+    await expect(page.getByRole('link', { name: en.publicHomepage.actions.dashboard })).toHaveCount(
+      0
+    );
     await page.goBack();
     const text = await page.locator('body').innerText();
     for (const value of [accountA.name, accountA.email, accountB.name, accountB.email])
