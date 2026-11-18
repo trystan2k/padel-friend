@@ -79,6 +79,7 @@ describe('getPublicHomepageAuthenticated', () => {
   });
 
   it('is false (guest) when getClaims throws an invalid-claims verification error', async () => {
+    // Regression: auth-js rethrows non-AuthError failures, e.g. getAlgorithm's 'Invalid alg claim'.
     supabaseServer.getServerClient.mockReturnValue({
       auth: {
         getClaims: vi.fn<() => Promise<unknown>>(async () => {
@@ -90,7 +91,19 @@ describe('getPublicHomepageAuthenticated', () => {
     await expect(getPublicHomepageAuthenticated()).resolves.toBe(false);
   });
 
-  it('propagates unrelated errors thrown by getClaims', async () => {
+  it('is false (guest) when getClaims throws a malformed-token decode error', async () => {
+    supabaseServer.getServerClient.mockReturnValue({
+      auth: {
+        getClaims: vi.fn<() => Promise<unknown>>(async () => {
+          throw new SyntaxError('Unexpected token at position 3');
+        })
+      }
+    });
+
+    await expect(getPublicHomepageAuthenticated()).resolves.toBe(false);
+  });
+
+  it('is false (guest) when the auth lookup fails transiently', async () => {
     supabaseServer.getServerClient.mockReturnValue({
       auth: {
         getClaims: vi.fn<() => Promise<unknown>>(async () => {
@@ -99,7 +112,8 @@ describe('getPublicHomepageAuthenticated', () => {
       }
     });
 
-    await expect(getPublicHomepageAuthenticated()).rejects.toThrow('OPERATION_FAILED');
+    // Recoverable lookup failures never take the public page down.
+    await expect(getPublicHomepageAuthenticated()).resolves.toBe(false);
   });
 
   it('does not swallow client-creation programming errors', async () => {
@@ -108,7 +122,7 @@ describe('getPublicHomepageAuthenticated', () => {
     });
 
     // getServerClient() failures propagate raw by repo convention (see requireAuthenticatedClient);
-    // only claims-lookup failures cross the toClientError boundary.
+    // only failures inside the claims lookup resolve as guest.
     await expect(getPublicHomepageAuthenticated()).rejects.toThrow('missing env');
   });
 });

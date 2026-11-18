@@ -1,15 +1,7 @@
 import { createServerFn } from '@tanstack/react-start';
 import { setResponseHeader } from '@tanstack/react-start/server';
-import { toClientError } from '../../lib/client-error.server';
+import { emitDiagnostic } from '../../lib/diagnostics.server';
 import { getServerClient } from '../../lib/supabase/server';
-
-// Token verification failures thrown by auth-js (getAlgorithm / getClaims). Anything else is a
-// configuration or programming error and must surface.
-const INVALID_CLAIMS_MESSAGE = /^invalid (alg|jwt|jwk)\b|\binvalid .*claim/i;
-
-function isInvalidClaimsError(error: unknown) {
-  return error instanceof Error && INVALID_CLAIMS_MESSAGE.test(error.message);
-}
 
 /**
  * Public homepage variant: only whether verified claims exist, never who they belong to.
@@ -22,11 +14,16 @@ export const getPublicHomepageAuthenticated = createServerFn().handler(async () 
   try {
     const { data, error } = await client.auth.getClaims();
     return Boolean(!error && data?.claims?.sub);
-  } catch (error) {
-    // auth-js can throw (not return) while verifying a malformed token, e.g. an unsupported alg.
-    if (isInvalidClaimsError(error)) return false;
-    // Unrelated errors leave the boolean contract through the sanctioned client-error boundary:
-    // raw detail never serializes, and a safe server-side diagnostic keeps them diagnosable.
-    throw toClientError(error);
+  } catch {
+    // getClaims() is the auth-lookup boundary: every failure it throws (malformed token decode,
+    // unsupported alg, unreachable auth server) is a recoverable lookup failure, so the public
+    // page renders guest. Raw detail never serializes; the safe server-side diagnostic keeps the
+    // failure diagnosable. Client/configuration errors still surface because getServerClient()
+    // runs outside this try (repo convention, see requireAuthenticatedClient).
+    emitDiagnostic('request.failure', 'failure', {
+      code: 'OPERATION_FAILED',
+      source: 'server-function'
+    });
+    return false;
   }
 });
