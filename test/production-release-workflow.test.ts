@@ -66,10 +66,9 @@ describe('production release workflow safety contract', () => {
     expect(release).toContain('created: ${{ steps.release.outputs.release_created }}');
     expect(release).toContain('tag: ${{ steps.release.outputs.tag_name }}');
     expect(release).toContain('release_sha: ${{ steps.identity.outputs.release_sha }}');
-    const please = stepContaining(
-      release,
-      'googleapis/release-please-action@5c625bfb5d1ff62eadeeb3772007f7f66fdcf071'
-    );
+    // Locate by action name only: Dependabot updates the pinned commit SHA on every bump.
+    const please = stepContaining(release, 'googleapis/release-please-action@');
+    expect(please).toMatch(/uses: googleapis\/release-please-action@[0-9a-f]{40}(?: # v[\w.]+)?$/m);
     expect(please).toContain('token: ${{ secrets.RELEASE_PLEASE_TOKEN }}');
     expect(please).toContain('config-file: release-please-config.json');
     expect(please).toContain('manifest-file: release-please-manifest.json');
