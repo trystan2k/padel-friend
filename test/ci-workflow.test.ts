@@ -174,12 +174,14 @@ describe('E2E lane provisioning', () => {
 });
 
 describe('ci.yml test-stack contract', () => {
-  it('keeps job names, the five-lane matrix and the checks aggregate', () => {
+  it('keeps job names, the six-lane matrix and the checks aggregate', () => {
     for (const name of ['static', 'unit', 'integration', 'e2e', 'e2e-report', 'checks'])
       expect(workflow).toMatch(
         new RegExp(`^  ${name}:\\n    name: ${name === 'e2e' ? 'e2e \\(' : name}`, 'm')
       );
-    expect(workflow).toContain('lane: [functional-1, functional-2, functional-3, serial, visual]');
+    expect(workflow).toContain(
+      'lane: [functional-1, functional-2, functional-3, serial, visual-1, visual-2]'
+    );
     expect(workflow).toContain('needs: [static, unit, integration, e2e]');
   });
 

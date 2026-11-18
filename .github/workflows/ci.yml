@@ -258,8 +258,9 @@ jobs:
 
   # Each E2E lane gets its own TEST Supabase stack (pnpm test:stack:up) and a fresh preview of the shared same-run build.
   # Three functional lanes are balanced by measured runtime (scripts/e2e-shards.mjs); the serial lane
-  # isolates the specs that race on global state (SERIAL_SPECS in scripts/e2e-shards.mjs); the visual lane runs every @visual test on every PR and
-  # main push. The reporting job merges their blob
+  # isolates the specs that race on global state (SERIAL_SPECS in scripts/e2e-shards.mjs); the
+  # visual-1..2 shards run every @visual test, split across the jobs by Playwright --shard
+  # (VISUAL_SHARDS in scripts/e2e-shards.mjs), on every PR and main push. The reporting job merges their blob
   # reports; checks aggregates the lane results directly.
   # Never place mutation-heavy unit/integration suites in this job.
   e2e:
@@ -271,7 +272,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        lane: [functional-1, functional-2, functional-3, serial, visual]
+        lane: [functional-1, functional-2, functional-3, serial, visual-1, visual-2]
     steps:
       - name: Start job timing
         run: printf '%s\n' "$(date +%s%3N)" > "$RUNNER_TEMP/ci-job-start-ms"
@@ -388,7 +389,7 @@ jobs:
           pattern: e2e-blob-report-*
           path: all-blob-reports
           merge-multiple: true
-      - name: Require all five lane reports
+      - name: Require all six lane reports
         run: |
           set -euo pipefail
           if [[ ! -d all-blob-reports ]]; then
@@ -396,8 +397,8 @@ jobs:
             exit 1
           fi
           report_count="$(find all-blob-reports -type f -name '*.zip' | wc -l | tr -d '[:space:]')"
-          if [[ "$report_count" -ne 5 ]]; then
-            printf 'Expected one blob report from each of 5 E2E lanes; found %s\n' "$report_count" >&2
+          if [[ "$report_count" -ne 6 ]]; then
+            printf 'Expected one blob report from each of 6 E2E lanes; found %s\n' "$report_count" >&2
             exit 1
           fi
       - name: Merge E2E HTML report

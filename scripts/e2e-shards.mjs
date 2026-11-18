@@ -6,6 +6,12 @@ import { fileURLToPath } from 'node:url';
 // is tagged @visual or lives in a *-visual.spec.ts file (Playwright greps tags and the file path).
 export const VISUAL_GREP = '@visual|-visual\\.spec\\.ts';
 export const FUNCTIONAL_LANES = 3;
+// Number of parallel CI jobs for the @visual selection. Each visual-N lane runs the same
+// non-serial spec list with --grep and lets Playwright's --shard split the tests, so the shard
+// union stays exactly the old single visual lane. Two shards put the visual jobs (~470-530s
+// measured) under the serial lane (~575-717s), which then bounds the E2E phase; a third shard
+// gains nothing while serial stays whole.
+export const VISUAL_SHARDS = 2;
 // Conservative weight (seconds) for a functional spec missing from SPEC_WEIGHTS: it still joins a lane.
 export const DEFAULT_WEIGHT_SECONDS = 60;
 
@@ -182,16 +188,24 @@ export function planGroups(specs, weights = SPEC_WEIGHTS, count = FUNCTIONAL_LAN
 }
 
 /**
- * Playwright CLI args for a CI lane: functional-1..N run explicit specs minus @visual; serial runs its
- * specs whole (serial wins over visual); visual runs the @visual tests of every non-serial spec.
+ * Playwright CLI args for a CI lane: functional-1..N run explicit specs minus @visual; serial runs
+ * its specs whole (serial wins over visual); visual-1..VISUAL_SHARDS run the @visual tests of every
+ * non-serial spec, split across the shards by Playwright's --shard.
  */
 export function laneArgs(lane, specs = listSpecs()) {
-  if (lane === 'visual') {
-    return [...specs.filter((spec) => !SERIAL_SPECS.includes(spec)), '--grep', VISUAL_GREP];
-  }
   if (lane === 'serial') return [...SERIAL_SPECS];
-  const index = /^functional-(\d+)$/.exec(lane)?.[1];
-  const group = index ? planGroups(specs)[Number(index) - 1] : undefined;
+  const match = /^(functional|visual)-(\d+)$/.exec(lane);
+  if (match?.[1] === 'visual') {
+    const index = Number(match[2]);
+    if (!(index >= 1 && index <= VISUAL_SHARDS)) throw new Error(`Unknown E2E lane "${lane}"`);
+    return [
+      ...specs.filter((spec) => !SERIAL_SPECS.includes(spec)),
+      '--grep',
+      VISUAL_GREP,
+      `--shard=${index}/${VISUAL_SHARDS}`
+    ];
+  }
+  const group = match ? planGroups(specs)[Number(match[2]) - 1] : undefined;
   if (!group) throw new Error(`Unknown E2E lane "${lane}"`);
   return [...group.specs, '--grep-invert', VISUAL_GREP];
 }
