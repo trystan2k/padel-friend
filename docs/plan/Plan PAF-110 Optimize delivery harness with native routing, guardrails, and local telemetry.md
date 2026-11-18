@@ -95,7 +95,7 @@
 5. **Apply native V2 config, role boundaries, exact IDs and finite child bounds.** [AC1, AC3, AC6, AC8]
    - After step 1 contract confirmation, migrate legacy `permission` maps to documented native V2 `permissions` rules in config/frontmatter as appropriate, including tools/resources/agent routing subjects. Do not transpose legacy syntax mechanically or invent a YAML map shape.
    - Set documented default agent to delivery-orchestrator and retain GLM Flash coordinator. Existing model bases remain byte-identical:
-     - PRD/planner: `openai/gpt-6.1-sol`.
+     - PRD/planner: `openai/gpt-6.2-sol`.
      - Implementation/code review/architecture/UX: `openai/gpt-6.1-terra`.
      - Bug fixer: `openai/gpt-6.1-luna`; testing: `openai/gpt-6-luna` — preserve this distinction, do not “correct” model names.
      - Git/QA/Linear/log and delivery: `zai-coding-plan/glm-5.3-flash`.

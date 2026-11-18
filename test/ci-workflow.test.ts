@@ -175,14 +175,23 @@ describe('E2E lane provisioning', () => {
 
 describe('ci.yml test-stack contract', () => {
   it('keeps job names, the six-lane matrix and the checks aggregate', () => {
-    for (const name of ['static', 'unit', 'integration', 'e2e', 'e2e-report', 'checks'])
+    for (const name of [
+      'changes',
+      'static',
+      'static-docs',
+      'unit',
+      'integration',
+      'e2e',
+      'e2e-report',
+      'checks'
+    ])
       expect(workflow).toMatch(
         new RegExp(`^  ${name}:\\n    name: ${name === 'e2e' ? 'e2e \\(' : name}`, 'm')
       );
     expect(workflow).toContain(
       'lane: [functional-1, functional-2, functional-3, serial, visual-1, visual-2]'
     );
-    expect(workflow).toContain('needs: [static, unit, integration, e2e]');
+    expect(workflow).toContain('needs: [changes, static, static-docs, unit, integration, e2e]');
   });
 
   it('never addresses the dev stack or a root .env', () => {
@@ -245,6 +254,43 @@ describe('ci.yml test-stack contract', () => {
     expect(body).toContain('pnpm test:e2e');
     expect(body).toContain("E2E_GATE_PREBUILT: '1'");
     expect(body).not.toMatch(/GITHUB_ENV|SERVICE_ROLE/);
+  });
+});
+
+describe('ci.yml change-set gate', () => {
+  it('never filters the workflow trigger by path', () => {
+    // A workflow skipped by a path filter reports no check run, so a required `CI / checks` would
+    // stay "Expected" forever and block every documentation-only pull request.
+    expect(workflow).not.toMatch(/^\s+(paths|paths-ignore):/m);
+  });
+
+  it('gates every build and test job on the classifier verdict', () => {
+    for (const name of ['static', 'unit', 'integration', 'e2e'])
+      expect(job(name)).toContain("if: needs.changes.outputs.code == 'true'");
+    expect(job('static-docs')).toContain("if: needs.changes.outputs.code == 'false'");
+    expect(job('changes')).toContain('run: |');
+    expect(job('changes')).toContain('node scripts/ci-changes.mjs');
+    expect(job('changes')).toContain('code: ${{ steps.classify.outputs.code }}');
+  });
+
+  it('runs only the format lane for a documentation-only change set', () => {
+    const body = job('static-docs');
+    expect(body).toContain('run: pnpm format:check');
+    expect(body).not.toMatch(/pnpm build|pnpm test|test:stack|supabase|playwright/i);
+  });
+
+  it('fails closed when the classifier and the jobs disagree', () => {
+    const body = job('checks');
+    expect(body).toContain('needs: [changes, static, static-docs, unit, integration, e2e]');
+    expect(body).toContain('Change classification failed or reported no verdict');
+    expect(body).toContain('Required CI phase failed, was cancelled, or was unexpectedly skipped');
+    expect(body).toContain('Documentation-only lane must not run for a code change set');
+    expect(body).toContain('A build or test phase ran for a documentation-only change set');
+    expect(body).toContain('Documentation-only format lane did not succeed');
+  });
+
+  it('does not merge E2E reports when the lanes were skipped', () => {
+    expect(job('e2e-report')).toContain("if: ${{ always() && needs.e2e.result != 'skipped' }}");
   });
 });
 

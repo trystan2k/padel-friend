@@ -18,6 +18,7 @@
     "scripts/audit-production.d.mts",
     "scripts/production-release-notice.d.mts",
     "scripts/check-server-function-errors.d.mts",
+    "scripts/ci-changes.d.mts",
     "scripts/e2e-shards.d.mts",
     "scripts/pwa-build.d.mts",
     "scripts/generate-pwa-icons.d.mts",
