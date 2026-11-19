@@ -903,6 +903,13 @@
     "offline": "No tienes conexión. Vuelve a conectarte para guardar tus preferencias."
   },
   "matches": {
+    "new": "Nuevo",
+    "emptyHint": {
+      "available": "Crea el partido que quieras o vuelve pronto.",
+      "my": "Los partidos en los que te apuntes u organices aparecen aquí.",
+      "past": "Los partidos que has jugado aparecen aquí."
+    },
+    "group": { "count_one": "{{count}} partido", "count_other": "{{count}} partidos" },
     "competition": {
       "ranked": "Clasificatoria",
       "unranked": "Sin clasificación"
@@ -1625,6 +1632,7 @@
       "notes": "Incluye notas",
       "pricePerPlayer": "Precio por jugador",
       "openMaps": "Abrir mapa de {{venue}}",
+      "map": "Mapa",
       "photoAlt": "Lugar del partido",
       "unlimited": "Sin límite"
     },

@@ -903,6 +903,13 @@
     "offline": "You are offline. Reconnect to save your preferences."
   },
   "matches": {
+    "new": "New",
+    "emptyHint": {
+      "available": "Create the match you want, or check back soon.",
+      "my": "Matches you join or organize show up here.",
+      "past": "Matches you have played show up here."
+    },
+    "group": { "count_one": "{{count}} match", "count_other": "{{count}} matches" },
     "competition": {
       "ranked": "Ranked",
       "unranked": "Unranked"
@@ -1579,7 +1586,7 @@
     "loadMore": "Load more",
     "tabs": {
       "available": "Available",
-      "my": "My Matches",
+      "my": "My matches",
       "past": "Past"
     },
     "empty": {
@@ -1625,6 +1632,7 @@
       "notes": "Notes included",
       "pricePerPlayer": "Price per player",
       "openMaps": "Open map for {{venue}}",
+      "map": "Map",
       "photoAlt": "Match venue",
       "unlimited": "Unlimited"
     },

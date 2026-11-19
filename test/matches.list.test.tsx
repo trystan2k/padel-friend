@@ -67,26 +67,26 @@ const event = (
     caller_requires_approval: false
   });
 const copy = en.matches;
-it('reserves global chip space for the longest MatchesPage locale at 320px', () => {
-  const previousWidth = window.innerWidth;
-  Object.defineProperty(window, 'innerWidth', { configurable: true, value: 320 });
-  try {
-    const i18n = createI18n('es');
+it.each(['en', 'pt-BR', 'es'] as const)(
+  'keeps the title and the New action on one header row in %s without a subtitle',
+  (locale) => {
+    const i18n = createI18n(locale);
     const { container } = render(
       <I18nextProvider i18n={i18n}>
         <MatchesPage entry="available" />
       </I18nextProvider>
     );
     const header = container.querySelector('main > header')!;
-    expect(window.innerWidth).toBe(320);
     expect(header.querySelector('h1')?.textContent).toBe(i18n.t('matches.title'));
-    expect(header.querySelector('p')?.textContent).toBe(i18n.t('matches.subtitle'));
+    expect(header.querySelector('p')).toBeNull();
     for (const className of stylex.props(rootStyles.pageHeader).className!.split(' '))
       expect(header.classList.contains(className)).toBe(true);
-  } finally {
-    Object.defineProperty(window, 'innerWidth', { configurable: true, value: previousWidth });
+    const action = header.querySelector('a')!;
+    expect(action.getAttribute('href')).toBe('/matches/create');
+    expect(action.textContent).toBe(`+ ${i18n.t('matches.new')}`);
+    cleanup();
   }
-});
+);
 function mount(props: Partial<ComponentProps<typeof MatchesPage>> = {}, locale: Locale = 'en') {
   return render(
     <I18nextProvider i18n={createI18n(locale)}>
@@ -122,7 +122,8 @@ describe('match list surfaces', () => {
     mount({ initialItems: [event(1, 1)] });
     const card = screen.getByRole('article');
     expect(card.textContent).toContain('Court Central');
-    expect(card.textContent).toContain('Oct 20, 2026');
+    expect(card.textContent).toContain('8:30 PM');
+    expect(screen.getByRole('heading', { level: 2, name: 'Tue, Oct 20' })).toBeTruthy();
     expect(card.textContent).toContain('Competitive');
     expect(card.textContent).toContain('Ana Silva');
     expect(card.textContent).toContain('3.5');
@@ -382,5 +383,114 @@ describe('match list surfaces', () => {
     });
     expect(screen.getAllByRole('article')).toHaveLength(2);
     expect(screen.queryByRole('button', { name: copy.loadMore })).toBeNull();
+  });
+});
+
+describe('clubhouse match list structure', () => {
+  const at = (id: number, startsAt: string): MatchEventListItem => ({
+    ...event(id, 1),
+    starts_at: startsAt
+  });
+  it('orders card content time and price, venue, chips, then participation', () => {
+    mount({ initialItems: [{ ...event(60, 2, 'reserve'), registration_open: false }] });
+    const card = screen.getByRole('article');
+    const time = card.querySelector('time')!;
+    const price = screen.getByText(/€12\.50/);
+    const venue = within(card).getByRole('heading', { level: 3, name: 'Court Central' });
+    const chip = within(card).getByText(copy.type.competitive);
+    const participation = within(card).getByText(/2 reserve · /);
+    const follows = (a: Node, b: Node) =>
+      Boolean(a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING);
+    expect(follows(time, price)).toBe(true);
+    expect(follows(price, venue)).toBe(true);
+    expect(follows(venue, chip)).toBe(true);
+    expect(follows(chip, within(card).getByText(copy.detail.registrationClosed))).toBe(true);
+    expect(follows(chip, participation)).toBe(true);
+    expect(follows(within(card).getByText(copy.badges.reserve), participation)).toBe(true);
+  });
+  it('gives the price an accessible label and tones the personal badges', () => {
+    mount({ entry: 'my', initialItems: [event(61, 4, 'invited')] });
+    expect(screen.getByRole('article').textContent).toContain(
+      `${copy.card.pricePerPlayer}: €12.50`
+    );
+    expect(screen.getByText(copy.badges.invited).tagName).toBe('STRONG');
+  });
+  it('groups Available and My by event-local day, hiding the count of a day that may continue', () => {
+    const items = [
+      at(70, '2026-10-20T08:30:00.000Z'),
+      at(71, '2026-10-20T10:00:00.000Z'),
+      at(72, '2026-10-21T10:00:00.000Z')
+    ];
+    mount({ entry: 'my', initialItems: items });
+    const groups = within(screen.getByRole('region', { name: copy.tabs.my })).getAllByRole(
+      'region'
+    );
+    expect(groups).toHaveLength(2);
+    expect(within(groups[0]!).getAllByRole('article')).toHaveLength(2);
+    expect(within(groups[0]!).getByText('2 matches')).toBeTruthy();
+    expect(within(groups[1]!).getByText('1 match')).toBeTruthy();
+    cleanup();
+    mount({ entry: 'my', initialItems: items, initialCursor: 'more' });
+    const open = within(screen.getByRole('region', { name: copy.tabs.my })).getAllByRole('region');
+    expect(within(open[0]!).getByText('2 matches')).toBeTruthy();
+    expect(within(open[1]!).queryByText(/match/)).toBeNull();
+  });
+  it('keeps Past flat and ungrouped with level-2 venue headings', () => {
+    mount({ entry: 'past', initialItems: [{ ...event(73, 0), is_past: true }] });
+    expect(
+      within(screen.getByRole('region', { name: copy.tabs.past })).queryByRole('region')
+    ).toBeNull();
+    expect(screen.getByRole('heading', { level: 2, name: 'Court Central' })).toBeTruthy();
+  });
+  it('renders the segments as one labelled navigation of three keyboard-focusable links', async () => {
+    mount({ entry: 'my' });
+    const nav = screen.getByRole('navigation', { name: copy.navigationLabel });
+    const links = within(nav).getAllByRole('link');
+    expect(links.map((link) => link.textContent)).toEqual([
+      copy.tabs.available,
+      copy.tabs.my,
+      copy.tabs.past
+    ]);
+    expect(links.map((link) => link.getAttribute('aria-current'))).toEqual([null, 'page', null]);
+    const user = userEvent.setup();
+    await user.tab();
+    expect(document.activeElement).toBe(screen.getByRole('link', { name: copy.new }));
+    await user.tab();
+    expect(document.activeElement).toBe(links[0]);
+  });
+  it.each([
+    ['en', 'No available matches yet.', 'Create the match you want, or check back soon.'],
+    [
+      'pt-BR',
+      'Nenhuma partida disponível ainda.',
+      'Crie a partida que você quer ou volte em breve.'
+    ],
+    ['es', 'Aún no hay partidos disponibles.', 'Crea el partido que quieras o vuelve pronto.']
+  ] as const)(
+    'renders the honest empty state with one create action in %s',
+    (locale, title, hint) => {
+      mount({}, locale);
+      const empty = screen.getByText(title).closest('section')!;
+      expect(within(empty).getByText(hint)).toBeTruthy();
+      expect(within(empty).getAllByRole('link')).toHaveLength(1);
+      expect(within(empty).getByRole('link').getAttribute('href')).toBe('/matches/create');
+      expect(screen.queryByRole('button')).toBeNull();
+    }
+  );
+  it('draws no filter controls because the list contract has no filter arguments', () => {
+    mount({ initialItems: [event(74, 1)] });
+    expect(screen.queryByRole('checkbox')).toBeNull();
+    expect(screen.queryByRole('combobox')).toBeNull();
+    expect(screen.queryByRole('switch')).toBeNull();
+    expect(screen.queryByRole('button')).toBeNull();
+  });
+  it('shows the league beside a Ranked chip only when the server returned one', () => {
+    mount({
+      initialItems: [
+        { ...event(75, 1), competition_status: 'ranked', league_name: 'Spring League' }
+      ]
+    });
+    expect(screen.getByText(en.matches.competition.ranked)).toBeTruthy();
+    expect(screen.getByText('Spring League')).toBeTruthy();
   });
 });

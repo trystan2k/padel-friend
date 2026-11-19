@@ -62,8 +62,9 @@ describe('match styles', () => {
       /pageHeader: \{[^}]*paddingInlineEnd: 'calc\(var\(--space-40\) \* 2 \+ var\(--space-8\) \* 3\)'/
     );
     expect(root).toMatch(/pageHeader: \{[^}]*overflowWrap: 'anywhere'/);
+    // The global language/theme chips still float top-right, so the Clubhouse header reserves them.
     expect(readFileSync('src/features/matches/MatchesPage.tsx', 'utf8')).toContain(
-      's.heading, rootStyles.pageHeader'
+      's.header, rootStyles.pageHeader'
     );
     expect(readFileSync('src/features/matches/MatchDetailPage.tsx', 'utf8')).not.toContain(
       'rootStyles.pageHeader'
@@ -168,14 +169,18 @@ describe('match styles', () => {
     );
   });
   it('matches the measured match surfaces, rhythm, tab treatment, and card radius', () => {
-    const styles = readFileSync('src/features/matches/matches.styles.ts', 'utf8');
+    const list = readFileSync('src/features/matches/match-list.styles.ts', 'utf8');
     const createStyles = readFileSync('src/features/matches/create-match.styles.ts', 'utf8');
-    expect(styles).toContain("padding: 'var(--space-18)'");
-    expect(styles).toContain("gap: 'var(--space-8)',\n    width: '100%'");
-    expect(styles).toContain("gap: 'var(--space-8)' },");
-    expect(styles).toContain("backgroundColor: 'var(--color-surface-2)'");
-    expect(styles).toContain("backgroundColor: 'var(--color-surface)',\n    fontWeight");
-    expect(styles).toContain("borderRadius: 'var(--radius-12)'");
+    // Clubhouse lists (ENn8Q/uePpj/w25dY): 20px safe-area gutter, 12px rhythm, 56px segment track
+    // on surface-2 holding surface pills, 18px cards.
+    expect(list).toContain("paddingInlineStart: 'max(var(--space-20), env(safe-area-inset-left))'");
+    expect(list).toContain("gap: 'var(--space-12)',\n    width: '100%'");
+    expect(list).toMatch(/segments: \{[^}]*backgroundColor: 'var\(--color-surface-2\)'/);
+    expect(list).toMatch(/segmentActive: \{ backgroundColor: 'var\(--color-surface\)'/);
+    expect(list).toMatch(/card: \{[^}]*borderRadius: 'var\(--radius-18\)'/);
+    expect(list).toMatch(
+      /segment: \{[^}]*minHeight: 'calc\(var\(--space-40\) \+ var\(--space-8\)\)'/
+    );
     expect(createStyles).toContain("padding: 'var(--space-18)'");
     expect(createStyles).toContain("form: { display: 'grid', gap: 'var(--space-10)' }");
     expect(createStyles).toContain("width: '100%',\n    backgroundColor: 'var(--color-green)'");

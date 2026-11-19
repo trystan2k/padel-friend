@@ -32,6 +32,7 @@ type Copy = {
     retry: string;
     loadMore: string;
     empty: { available: string; past: string };
+    emptyHint: { available: string; my: string; past: string };
     badges: { invited: string; reserve: string };
     invitations: { accept: string; decline: string };
     counts: Record<string, string>;
@@ -672,7 +673,7 @@ async function assertPrimaryActionTokens(
   page: Page,
   action: Locator,
   label: string,
-  copyToken: '--color-on-hero' | '--color-bg' = '--color-bg'
+  copyToken: '--color-on-hero' | '--color-bg' | '--color-on-green' = '--color-bg'
 ): Promise<void> {
   const green = await tokenColor(page, '--color-green');
   const copy = await tokenColor(page, copyToken);
@@ -740,31 +741,177 @@ async function assertFullWidthPrimaryAction(
  * fail here. */
 async function assertCardGrouping(page: Page, label: string): Promise<void> {
   const surface = await tokenColor(page, '--color-surface');
+  const radius = await tokenValue(page, '--radius-18');
+  const padding = await tokenValue(page, '--space-16');
   const cards = page.locator('main article');
   const count = await cards.count();
   for (let index = 0; index < count; index += 1) {
     const style = await cards.nth(index).evaluate((node) => {
       const computed = getComputedStyle(node);
+      // Frame order: [photo] → time/price row → venue heading → chips row → participation lines.
+      const kids = Array.from(node.children).filter((child) => child.tagName !== 'IMG');
       return {
         backgroundColor: computed.backgroundColor,
-        borderWidth: computed.borderTopWidth,
         borderStyle: computed.borderTopStyle,
-        radius: computed.borderTopLeftRadius
+        radius: computed.borderTopLeftRadius,
+        padding: computed.paddingTop,
+        tags: kids.slice(0, 4).map((child) => child.tagName),
+        topHasTime: kids[0]?.querySelector('time') !== null,
+        tops: kids.slice(0, 4).map((child) => child.getBoundingClientRect().top),
+        priceOnTimeRow: (() => {
+          const time = kids[0]?.querySelector('time')?.getBoundingClientRect();
+          const price =
+            kids[0]?.children.length === 2
+              ? kids[0].lastElementChild?.getBoundingClientRect()
+              : undefined;
+          return time && price ? { timeLeft: time.left, priceLeft: price.left } : null;
+        })()
       };
     });
+    expect(style.backgroundColor, `${label}: card ${index} surface`).toBe(surface);
+    expect(style.borderStyle, `${label}: card ${index} is borderless like the frame`).toBe('none');
+    expect(style.radius, `${label}: card ${index} radius must be --radius-18`).toBe(radius);
+    expect(style.padding, `${label}: card ${index} padding must be --space-16`).toBe(padding);
+    expect(style.topHasTime, `${label}: card ${index} opens with the time row`).toBe(true);
+    expect(style.tags[0], `${label}: card ${index} starts with the time/price row`).toBe('DIV');
+    expect(style.tags[1], `${label}: card ${index} venue heading follows`).toMatch(/^H[23]$/);
+    expect(style.tags[2], `${label}: card ${index} chips follow the venue`).toBe('DIV');
     expect(
-      style.backgroundColor,
-      `${label}: card ${index} must render on the --color-surface grouping surface`
-    ).toBe(surface);
-    expect(
-      style.borderStyle === 'none' || Number.parseFloat(style.borderWidth) === 0,
-      `${label}: card ${index} must be borderless like the reference cards`
+      style.tops[0]! < style.tops[1]! &&
+        style.tops[1]! < style.tops[2]! &&
+        style.tops[2]! < style.tops[3]!,
+      `${label}: card ${index} blocks must descend time/price → venue → chips → participation (got ${style.tops.join(', ')})`
     ).toBe(true);
-    expect(
-      Number.parseFloat(style.radius),
-      `${label}: card ${index} corner radius must be --radius-12 exactly (reference ~12px corner profile)`
-    ).toBe(12);
+    if (style.priceOnTimeRow)
+      expect(
+        style.priceOnTimeRow.priceLeft,
+        `${label}: card ${index} price sits to the right of the time`
+      ).toBeGreaterThan(style.priceOnTimeRow.timeLeft);
   }
+}
+
+/** Clubhouse list chrome (frames ENn8Q, kYI9H, uePpj, w25dY): 20px gutter (centered 640px column on
+ * wide viewports), 28px extrabold title, a 44px --color-surface "New" action beside it, the 12px
+ * rhythm between header, segments and list, and (Available/My) one day heading per group. */
+async function assertListChrome(
+  page: Page,
+  label: string,
+  options: { grouped?: boolean } = {}
+): Promise<void> {
+  const gutter = Number.parseFloat(await tokenValue(page, '--space-20'));
+  const chrome = await page.evaluate(() => {
+    const main = document.querySelector('main')!;
+    const h1 = main.querySelector('h1')!;
+    const action = main.querySelector('header > a')!;
+    const h1Style = getComputedStyle(h1);
+    const actionStyle = getComputedStyle(action);
+    return {
+      innerWidth: window.innerWidth,
+      mainLeft: main.getBoundingClientRect().left,
+      mainWidth: main.getBoundingClientRect().width,
+      paddingLeft: getComputedStyle(main).paddingLeft,
+      font: h1Style.fontFamily,
+      size: h1Style.fontSize,
+      weight: h1Style.fontWeight,
+      color: h1Style.color,
+      actionBackground: actionStyle.backgroundColor,
+      actionColor: actionStyle.color,
+      actionHeight: action.getBoundingClientRect().height,
+      actionHref: action.getAttribute('href'),
+      actionRight: action.getBoundingClientRect().right,
+      mainRight: main.getBoundingClientRect().right,
+      dayHeadings: Array.from(main.querySelectorAll('h2[id^="matches-day-"]')).map(
+        (node) => node.textContent
+      ),
+      groupedArticles: main.querySelectorAll('section[aria-labelledby^="matches-day-"] article')
+        .length,
+      articles: main.querySelectorAll('article').length,
+      venueLevels: Array.from(main.querySelectorAll('article h2, article h3')).map(
+        (node) => node.tagName
+      )
+    };
+  });
+  expect(chrome.paddingLeft, `${label}: main gutter must be --space-20`).toBe(
+    await tokenValue(page, '--space-20')
+  );
+  expect(chrome.mainWidth, `${label}: column is at most 640px`).toBeLessThanOrEqual(640);
+  expect(chrome.mainLeft + chrome.mainWidth / 2, `${label}: column stays centered`).toBeCloseTo(
+    chrome.innerWidth / 2,
+    0
+  );
+  // The global language/theme chips float top-right, so the header reserves their width.
+  const reserve =
+    2 * Number.parseFloat(await tokenValue(page, '--space-40')) +
+    3 * Number.parseFloat(await tokenValue(page, '--space-8'));
+  expect(
+    chrome.mainRight - chrome.actionRight,
+    `${label}: New action stays clear of the global chips`
+  ).toBeGreaterThanOrEqual(gutter + reserve - 0.5);
+  expect(chrome.font.startsWith('Figtree'), `${label}: h1 uses Figtree`).toBe(true);
+  expect(chrome.size, `${label}: h1 is --font-size-28 (frame 30px, nearest token)`).toBe('28px');
+  expect(chrome.weight, `${label}: h1 is extrabold`).toBe('800');
+  expect(chrome.color, `${label}: h1 renders on --color-text`).toBe(
+    await tokenColor(page, '--color-text')
+  );
+  expect(chrome.actionHref, `${label}: New action creates a match`).toBe('/matches/create');
+  expect(chrome.actionBackground, `${label}: New action is the surface button`).toBe(
+    await tokenColor(page, '--color-surface')
+  );
+  expect(chrome.actionColor, `${label}: New action copy`).toBe(
+    await tokenColor(page, '--color-text')
+  );
+  expect(chrome.actionHeight, `${label}: New action is the 44px frame button`).toBeCloseTo(44, 0);
+  await assertRhythm(page, label, 'main', '--space-12');
+  if (options.grouped) {
+    expect(chrome.dayHeadings.length, `${label}: at least one day heading`).toBeGreaterThan(0);
+    expect(chrome.groupedArticles, `${label}: every card sits under a day heading`).toBe(
+      chrome.articles
+    );
+    expect(new Set(chrome.venueLevels), `${label}: grouped venue headings are h3`).toEqual(
+      new Set(['H3'])
+    );
+  } else {
+    expect(chrome.dayHeadings, `${label}: Past is flat, no day headings`).toEqual([]);
+    expect(new Set(chrome.venueLevels), `${label}: flat venue headings are h2`).toEqual(
+      chrome.articles > 0 ? new Set(['H2']) : new Set()
+    );
+  }
+}
+
+type MatchesReferences = {
+  frames: Record<string, { sha256: string }>;
+  toleranceEvidence: Record<string, { maxDiffPixelRatio: number }>;
+};
+const matchesReferences: MatchesReferences = JSON.parse(
+  readFileSync(new URL('./references/paf-202-matches/manifest.json', import.meta.url), 'utf8')
+);
+
+/** Fixture instants move with the clock, so times and day rows are masked in baselines. */
+function dynamicMask(page: Page): Locator[] {
+  return [
+    page.locator('main time'),
+    page.locator('main section[aria-labelledby^="matches-day-"] > div:first-child')
+  ];
+}
+
+/** Chromium baseline for one Clubhouse frame. The Pencil export is hash-pinned design evidence
+ * (manifest.json); fixture dates, times and history rows differ from the sample data, so those are
+ * masked and the exact structural probes carry the layout assertions. */
+async function assertMatchesFrame(page: Page, frame: string, mask: Locator[]): Promise<void> {
+  const source = readFileSync(
+    new URL(`./references/paf-202-matches/${frame}.png`, import.meta.url)
+  );
+  expect(createHash('sha256').update(source).digest('hex')).toBe(
+    matchesReferences.frames[frame]!.sha256
+  );
+  await page.evaluate(() => document.fonts.ready);
+  await expect(page).toHaveScreenshot(`${frame}-light.png`, {
+    animations: 'disabled',
+    caret: 'hide',
+    clip: { x: 0, y: 0, width: 390, height: 844 },
+    maxDiffPixelRatio: matchesReferences.toleranceEvidence[frame]!.maxDiffPixelRatio,
+    mask
+  });
 }
 
 /** Reference measurement: every frame aligns all content blocks to one shared
@@ -938,32 +1085,35 @@ async function assertTabSet(
   const tabs = nav.getByRole('link');
   await expect(tabs).toHaveCount(3);
   const labels = ['available', 'my', 'past'] as const;
-  // F18: aria-current="page" must appear on the active tab ONLY — asserted
-  // document-wide, not merely "attached somewhere".
+  // aria-current="page" must appear on the active segment ONLY within the page content.
   await expect(
-    page.locator('[aria-current="page"]'),
-    'exactly one element carries aria-current="page" document-wide'
+    page.locator('main [aria-current="page"]'),
+    'exactly one segment carries aria-current="page" inside main (the app shell nav marks Matches itself)'
   ).toHaveCount(1);
-  // Reference ENn8Q y=83..126 (pixel-verified): the tab row is a 44px full-content-width
-  // track filled #e9efe8 (--color-surface-2) and the active tab is the only white
-  // #ffffff pill on it; inactive labels sit directly on the track. F28 is fixed: the
-  // implementation renders exactly that treatment, so both colors are pinned to their
-  // tokens exactly (token-relative so the dark-theme run gates its own palette).
+  // Frames ENn8Q/uePpj/w25dY: a 56px --color-surface-2 track (4px inset) holds three 48px
+  // segments; the active one is the only --color-surface pill with --color-text copy, inactive
+  // labels are --color-muted on the bare track; every label is bold.
   const track = await tokenColor(page, '--color-surface-2');
   const pill = await tokenColor(page, '--color-surface');
-  const trackTreatment = await page
-    .getByRole('navigation', { name: copy.matches.navigationLabel })
-    .evaluate((node) => {
-      const computed = getComputedStyle(node);
-      const box = node.getBoundingClientRect();
-      return { background: computed.backgroundColor, height: box.height };
-    });
-  expect(
-    trackTreatment.background,
-    'tab track must be filled with --color-surface-2 (reference #e9efe8, F28 fixed)'
-  ).toBe(track);
-  expect(trackTreatment.height, 'tab track must be the 44px reference row').toBeGreaterThanOrEqual(
-    44
+  const text = await tokenColor(page, '--color-text');
+  const muted = await tokenColor(page, '--color-muted');
+  const trackTreatment = await nav.evaluate((node) => {
+    const computed = getComputedStyle(node);
+    const box = node.getBoundingClientRect();
+    return {
+      background: computed.backgroundColor,
+      height: box.height,
+      padding: computed.paddingTop,
+      radius: computed.borderTopLeftRadius
+    };
+  });
+  expect(trackTreatment.background, 'segment track must be --color-surface-2').toBe(track);
+  expect(trackTreatment.height, 'segment track must be the 56px frame row').toBeCloseTo(56, 0);
+  expect(trackTreatment.padding, 'segment track inset must be --space-4').toBe(
+    await tokenValue(page, '--space-4')
+  );
+  expect(trackTreatment.radius, 'segment track radius must be --radius-14').toBe(
+    await tokenValue(page, '--radius-14')
   );
   for (const [index, tab] of labels.entries()) {
     await expect(tabs.nth(index)).toHaveAccessibleName(copy.matches.tabs[tab]);
@@ -973,29 +1123,30 @@ async function assertTabSet(
       return {
         ariaCurrent: node.getAttribute('aria-current'),
         background: computed.backgroundColor,
+        color: computed.color,
         weight: computed.fontWeight,
-        minHeight: computed.minHeight,
-        height: box.height
+        height: box.height,
+        radius: computed.borderTopLeftRadius
       };
     });
-    expect(
-      Math.max(Number.parseFloat(treatment.minHeight), treatment.height),
-      `tab ${tab} must meet the 44px target (reference tab row is 44px tall)`
-    ).toBeGreaterThanOrEqual(44);
+    expect(treatment.height, `segment ${tab} must be the 48px frame segment`).toBeCloseTo(48, 0);
+    expect(treatment.weight, `segment ${tab} label must be bold`).toBe('700');
+    expect(treatment.radius, `segment ${tab} radius must be --radius-11`).toBe(
+      await tokenValue(page, '--radius-11')
+    );
     if (tab === active) {
       await expect(tabs.nth(index)).toHaveAttribute('aria-current', 'page');
-      // Reference ENn8Q: the active tab is the only white pill and the only semibold
-      // label in the row (F28 fixed — white --color-surface pill on the surface-2 track).
-      expect(treatment.background, 'active tab must carry the white --color-surface pill').toBe(
-        pill
-      );
-      expect(treatment.weight, 'active tab label must be semibold').toBe('600');
+      expect(treatment.background, 'active segment must carry the --color-surface pill').toBe(pill);
+      expect(treatment.color, 'active segment copy must be --color-text').toBe(text);
     } else {
-      expect(treatment.ariaCurrent, `non-active tab ${tab} must not carry aria-current`).toBeNull();
-      expect(treatment.background, `non-active tab ${tab} must stay unpilled`).toBe(
+      expect(
+        treatment.ariaCurrent,
+        `inactive segment ${tab} must not carry aria-current`
+      ).toBeNull();
+      expect(treatment.background, `inactive segment ${tab} must stay unpilled`).toBe(
         'rgba(0, 0, 0, 0)'
       );
-      expect(treatment.weight, `non-active tab ${tab} must stay regular weight`).toBe('400');
+      expect(treatment.color, `inactive segment ${tab} copy must be --color-muted`).toBe(muted);
     }
   }
 }
@@ -1015,15 +1166,12 @@ async function assertFocusRing(page: Page, label: string): Promise<void> {
   expect(ring, `${label}: keyboard focus must land on a focusable element`).not.toBeNull();
   expect(ring!.matches, `${label}: active element must be focus-visible`).toBe(true);
   expect(ring!.outlineStyle, `${label}: visible focus ring style`).toBe('solid');
-  // The corrected token ring is --border-width-lg (2px), matching the design states
-  // board (n6zFq) 2px visible ring. Pinned exactly so a silent downgrade back to the
-  // 1px --border-width-md ring cannot pass.
-  expect(
-    ring!.outlineWidth,
-    `${label}: focus ring must be the design-required 2px (--border-width-lg)`
-  ).toBe(2);
+  // Clubhouse focus ring: --focus-width (3px) solid --color-focus.
+  expect(ring!.outlineWidth, `${label}: focus ring must be the Clubhouse --focus-width token`).toBe(
+    Number.parseFloat(await tokenValue(page, '--focus-width'))
+  );
   await test.info().attach(`${label} — measured focus ring`, {
-    body: `${ring!.outlineWidth}px ${ring!.outlineStyle} ${ring!.outlineColor} (design states board: 2px visible ring)`
+    body: `${ring!.outlineWidth}px ${ring!.outlineStyle} ${ring!.outlineColor} (Clubhouse --focus-width ring)`
   });
 }
 
@@ -1912,8 +2060,9 @@ test.describe.serial('PAF-4 match event visual and structural QA', () => {
       // Creator, counts and price lines are real projected facts; the reserve card
       // carries the personal badge while no badge is fabricated on the other card.
       await expect(
-        competitive.getByText(`${copy.matches.type.competitive} · Marina Alves`, { exact: false })
+        competitive.getByText(copy.matches.type.competitive, { exact: true })
       ).toBeVisible();
+      await expect(competitive.getByText('Marina Alves', { exact: false })).toBeVisible();
       await assertLocalizedCountText(reserve, copy, options.locale ?? 'en', 2);
       await expect(reserve.getByRole('strong')).toHaveText(copy.matches.badges.reserve);
       await expect(competitive.getByRole('strong')).toHaveCount(0);
@@ -1923,20 +2072,9 @@ test.describe.serial('PAF-4 match event visual and structural QA', () => {
         ).toBeVisible();
 
       await assertTabsKeyboardReachable(page, copy);
-      await assertHeadingTypography(page, `available ${options.label}`);
-      await assertGutterAxis(page, `available ${options.label}`, '--space-18');
-      await assertRhythm(
-        page,
-        `available ${options.label}`,
-        'main > section[aria-label]',
-        '--space-8'
-      );
+      await assertListChrome(page, `available ${options.label}`, { grouped: true });
       await assertCardGrouping(page, `available ${options.label}`);
-      await assertPrimaryActionTokens(
-        page,
-        page.locator('main > header > a').first(),
-        `available ${options.label} create action`
-      );
+      if (options.label === 'populated') await assertMatchesFrame(page, 'ENn8Q', dynamicMask(page));
       await assertPhotoAspectTreatment(page, `available ${options.label}`);
       await assertNoHorizontalOverflow(page, `available ${options.label}`);
       await assertPrimaryHitTargets(page, `available ${options.label}`);
@@ -2005,18 +2143,21 @@ test.describe.serial('PAF-4 match event visual and structural QA', () => {
     await assertTabSet(page, en, 'available');
     await assertTabsKeyboardReachable(page, en);
     await expect(page.locator('main article')).toHaveCount(0);
-    await assertHeadingTypography(page, 'available empty');
-    await assertGutterAxis(page, 'available empty', '--space-18');
+    await assertListChrome(page, 'available empty');
+    const emptyCard = page
+      .locator('main > section')
+      .filter({ hasText: en.matches.empty.available });
+    await expect(emptyCard.getByText(en.matches.emptyHint.available)).toBeVisible();
+    await expect(emptyCard.getByRole('link')).toHaveCount(1);
     await assertPrimaryActionTokens(
       page,
-      page.locator('main > header > a').first(),
-      'available empty header create action'
+      emptyCard.getByRole('link'),
+      'available empty state create action',
+      '--color-on-green'
     );
-    await assertPrimaryActionTokens(
-      page,
-      page.locator('main > section').filter({ hasText: en.matches.empty.available }).locator('a'),
-      'available empty state create action'
-    );
+    // D6: the frame draws filter chips; list_match_events has no filter arguments, so none render.
+    await expect(page.locator('main [aria-pressed], main [role="checkbox"]')).toHaveCount(0);
+    await assertMatchesFrame(page, 'kYI9H', dynamicMask(page));
     await assertNoHorizontalOverflow(page, 'available empty');
     await assertPrimaryHitTargets(page, 'available empty');
   });
@@ -2038,15 +2179,9 @@ test.describe.serial('PAF-4 match event visual and structural QA', () => {
     await expect(card.getByRole('strong')).toHaveText(en.matches.badges.reserve);
     await assertLocalizedCountText(card, en, 'en', 2);
     await expect(card.getByRole('link', { name: VENUES.reserve, exact: true })).toBeVisible();
-    await assertHeadingTypography(page, 'my matches reserve');
-    await assertGutterAxis(page, 'my matches reserve', '--space-18');
-    await assertRhythm(page, 'my matches reserve', 'main > section[aria-label]', '--space-8');
+    await assertListChrome(page, 'my matches reserve', { grouped: true });
     await assertCardGrouping(page, 'my matches reserve');
-    await assertPrimaryActionTokens(
-      page,
-      page.locator('main > header > a').first(),
-      'my matches reserve create action'
-    );
+    await assertMatchesFrame(page, 'uePpj', dynamicMask(page));
     await assertPhotoAspectTreatment(page, 'my matches reserve');
     await assertNoHorizontalOverflow(page, 'my matches reserve');
     await assertPrimaryHitTargets(page, 'my matches reserve');
@@ -2068,9 +2203,7 @@ test.describe.serial('PAF-4 match event visual and structural QA', () => {
     await expect(card).toHaveCount(1);
     await expect(page.locator('main article')).toHaveCount(1);
     await expect(card.getByRole('strong')).toHaveText(en.matches.badges.invited);
-    await assertHeadingTypography(page, 'my matches invited');
-    await assertGutterAxis(page, 'my matches invited', '--space-18');
-    await assertRhythm(page, 'my matches invited', 'main > section[aria-label]', '--space-8');
+    await assertListChrome(page, 'my matches invited', { grouped: true });
     await assertCardGrouping(page, 'my matches invited');
     await assertNoHorizontalOverflow(page, 'my matches invited');
     await assertPrimaryHitTargets(page, 'my matches invited');
@@ -2144,9 +2277,11 @@ test.describe.serial('PAF-4 match event visual and structural QA', () => {
     // The elapsed fixture bypasses the creator-registration trigger, so the projected
     // accepted count is truthfully 0.
     await assertLocalizedCountText(card, en, 'en', 0);
-    await assertHeadingTypography(page, 'past elapsed');
-    await assertGutterAxis(page, 'past elapsed', '--space-18');
-    await assertRhythm(page, 'past elapsed', 'main > section[aria-label]', '--space-8');
+    await assertListChrome(page, 'past elapsed');
+    await assertMatchesFrame(page, 'w25dY', [
+      ...dynamicMask(page),
+      page.locator('main section[aria-labelledby="statistics-history-title"]')
+    ]);
     await assertCardGrouping(page, 'past elapsed');
     await assertNoHorizontalOverflow(page, 'past elapsed');
     await assertPrimaryHitTargets(page, 'past elapsed');
@@ -2158,8 +2293,7 @@ test.describe.serial('PAF-4 match event visual and structural QA', () => {
     await expect(guestPage.getByText(en.matches.empty.past)).toBeVisible();
     await expect(guestPage.locator('main article')).toHaveCount(0);
     await assertTabSet(guestPage, en, 'past');
-    await assertHeadingTypography(guestPage, 'past empty');
-    await assertGutterAxis(guestPage, 'past empty', '--space-18');
+    await assertListChrome(guestPage, 'past empty');
     await assertNoHorizontalOverflow(guestPage, 'past empty');
     await assertPrimaryHitTargets(guestPage, 'past empty');
   });
@@ -2336,7 +2470,7 @@ test.describe.serial('PAF-4 match event visual and structural QA', () => {
     await loadMore.click();
     await expect(loadMore).toHaveText(en.matches.loading);
     await expect(loadMore).toBeDisabled();
-    await assertGutterAxis(page, 'loading', '--space-18');
+    await assertListChrome(page, 'loading', { grouped: true });
     await assertNoHorizontalOverflow(page, 'loading');
 
     // Going offline while the request is in flight must surface the offline output and
@@ -2345,7 +2479,7 @@ test.describe.serial('PAF-4 match event visual and structural QA', () => {
     await context.setOffline(true);
     await expect(page.getByText(en.matches.offline)).toBeVisible({ timeout: 15_000 });
     await expect(loadMore).toBeDisabled();
-    await assertGutterAxis(page, 'offline', '--space-18');
+    await assertListChrome(page, 'offline', { grouped: true });
     await assertNoHorizontalOverflow(page, 'offline');
   });
 
@@ -2375,7 +2509,7 @@ test.describe.serial('PAF-4 match event visual and structural QA', () => {
     await expect(page.getByText(en.matches.error)).toBeVisible();
     await expect(page.getByRole('button', { name: en.matches.retry })).toBeVisible();
     await expect(page.locator('main [role="alert"]')).toBeVisible();
-    await assertGutterAxis(page, 'error', '--space-18');
+    await assertListChrome(page, 'error');
     await assertNoHorizontalOverflow(page, 'error');
     await assertPrimaryHitTargets(page, 'error');
   });

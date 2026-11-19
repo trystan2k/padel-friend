@@ -1,0 +1,59 @@
+{
+  "sourceDesign": "docs/design/padel-friend-clubhouse.pen",
+  "exportCommand": "Pencil MCP Export(['ENn8Q','kYI9H','uePpj','w25dY'], 'png', '<repo>/e2e/references/paf-202-matches', {scale:1})",
+  "width": 390,
+  "height": 844,
+  "filters": "D6: list_match_events accepts community, cursor, entry, limit and as_of only. The frame filter chips are not rendered; no filter behavior is invented.",
+  "frames": {
+    "ENn8Q": {
+      "state": "Available matches — populated",
+      "route": "/matches",
+      "sha256": "3ce5772923d9b5eb7531be43f88d09d4fff23ef387ced0c305e29283dcb389c7",
+      "snapshot": "e2e/matches-visual.spec.ts-snapshots/ENn8Q-light.png",
+      "snapshotSha256": "883e4f553de7111683a08cf3cdcb42e9095d3c9fb8c825fe033b6992eb3127a0"
+    },
+    "kYI9H": {
+      "state": "Available matches — empty",
+      "route": "/matches (empty)",
+      "sha256": "de701afcf8e49ef3db1209fc6cb2c2c6ad5ca1c9c92e4dd180d9dab9f58fc472",
+      "snapshot": "e2e/matches-visual.spec.ts-snapshots/kYI9H-light.png",
+      "snapshotSha256": "66a097403e9046fbd1034b167fbfc55d58f89cd633d429b56fbbe6a03ecac24d"
+    },
+    "uePpj": {
+      "state": "My matches",
+      "route": "/matches/my",
+      "sha256": "de64ad23d480e7243d8d6d72fd889a1f8ef8f209939688fdee3a9918ebe2dafd",
+      "snapshot": "e2e/matches-visual.spec.ts-snapshots/uePpj-light.png",
+      "snapshotSha256": "5f4c47d6798f72a23ddd8aecc5e3f5880265878becbca703ac9d29ebc8f52317"
+    },
+    "w25dY": {
+      "state": "Past matches",
+      "route": "/matches/past",
+      "sha256": "f6902e226df26876e8cfb26d31eb60fe180c9c98af7d97c1314309840ddc7452",
+      "snapshot": "e2e/matches-visual.spec.ts-snapshots/w25dY-light.png",
+      "snapshotSha256": "0f16596bf99d79f04749b684ce8f0401eaec55bb8bb818a29e15ee94b94dbc11"
+    }
+  },
+  "toleranceEvidence": {
+    "ENn8Q": {
+      "maxDiffPixelRatio": 0.01,
+      "reference": "Playwright Chromium, en/light, viewport 390×844, scale 1, clip 0,0,390,844",
+      "justification": "The frame draws filter chips (This week, Competitive, Friendly, My level) and one fused meta line. list_match_events has no filter arguments (D6), so the chips are omitted and participation, level range and creator render as separate muted lines. Card order (time/price, venue, chips, participation), day headings, segment track, 20px gutter and 44px/48px controls are probed exactly. Times and day rows are masked because fixture instants move with the clock. The budget absorbs font rasterization only; it is not widened to hide layout differences."
+    },
+    "kYI9H": {
+      "maxDiffPixelRatio": 0.01,
+      "reference": "Playwright Chromium, en/light, viewport 390×844, scale 1, clip 0,0,390,844",
+      "justification": "The frame is the filtered-empty state (Clear filters + Create match). No filter exists (D6), so the route renders the truthful empty state with one Create match action and a hint line. Header, segment track and empty card are probed exactly. The budget absorbs font rasterization only; it is not widened to hide layout differences."
+    },
+    "uePpj": {
+      "maxDiffPixelRatio": 0.01,
+      "reference": "Playwright Chromium, en/light, viewport 390×844, scale 1, clip 0,0,390,844",
+      "justification": "Fixture venues, times and counts differ from the sample. Creator/organizer badges are not rendered as personal chips (existing behavior is preserved). Day heading, card order and chip tones are probed exactly; times and day rows are masked. The budget absorbs font rasterization only; it is not widened to hide layout differences."
+    },
+    "w25dY": {
+      "maxDiffPixelRatio": 0.01,
+      "reference": "Playwright Chromium, en/light, viewport 390×844, scale 1, clip 0,0,390,844",
+      "justification": "The frame rows (W/L glyph, score, disputed/cancelled copy) are the statistics MatchHistory feature, masked here and owned by the statistics units; the event cards follow the Clubhouse card. Past is flat with no day headings. The budget absorbs font rasterization only; it is not widened to hide layout differences."
+    }
+  }
+}

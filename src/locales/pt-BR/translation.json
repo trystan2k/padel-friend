@@ -903,6 +903,13 @@
     "offline": "Você está sem conexão. Reconecte-se para salvar suas preferências."
   },
   "matches": {
+    "new": "Nova",
+    "emptyHint": {
+      "available": "Crie a partida que você quer ou volte em breve.",
+      "my": "As partidas em que você entra ou organiza aparecem aqui.",
+      "past": "As partidas que você jogou aparecem aqui."
+    },
+    "group": { "count_one": "{{count}} partida", "count_other": "{{count}} partidas" },
     "competition": {
       "ranked": "Ranqueada",
       "unranked": "Sem ranking"
@@ -1625,6 +1632,7 @@
       "notes": "Inclui observações",
       "pricePerPlayer": "Preço por jogador",
       "openMaps": "Abrir mapa de {{venue}}",
+      "map": "Mapa",
       "photoAlt": "Local da partida",
       "unlimited": "Ilimitado"
     },
