@@ -2,6 +2,7 @@ import { Menu } from '@base-ui/react/menu';
 import * as stylex from '@stylexjs/stylex';
 import { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Button } from '../../components/ui/Button';
 import { MatchTransferDialog } from './MatchTransferDialog';
 import { MatchCancelDialog } from './MatchCancelDialog';
 import { AddMatchPlayerDialog } from './AddMatchPlayerDialog';
@@ -61,7 +62,7 @@ export function MatchOrganizerActions({
           <Menu.Trigger
             ref={trigger}
             disabled={controller.pending}
-            {...stylex.props(s.button, s.actionsTrigger)}
+            render={<Button variant="secondary" />}
           >
             <span aria-hidden="true">⋯</span>
             {t('matches.management.actions')}

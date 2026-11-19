@@ -109,7 +109,14 @@ describe('minor edit dialog', () => {
         'cutoff'
       ])
         expect(screen.getByLabelText(i18n.t(`matchCreate.fields.${field}`))).toBeTruthy();
+      expect(screen.getByText(i18n.t('matches.management.edit.minorNotice'))).toBeTruthy();
+      const type = screen.getByLabelText(i18n.t('matchCreate.fields.type'));
+      await userEvent.selectOptions(type, 'competitive');
       expect(screen.getByText(i18n.t('matches.reconfirmation.description'))).toBeTruthy();
+      expect(
+        screen.getByRole('region', { name: i18n.t('matches.management.edit.reviewMajor') })
+      ).toBeTruthy();
+      await userEvent.selectOptions(type, 'friendly');
       expect(screen.getByLabelText(i18n.t('matchCreate.fields.type'))).toBeTruthy();
       const capacity = screen.getByLabelText(i18n.t('matchCreate.fields.maximumRegistrations'));
       await userEvent.clear(capacity);

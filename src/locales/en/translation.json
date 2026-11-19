@@ -931,7 +931,7 @@
       "submit": "Add player",
       "submitting": "Adding…",
       "success": "{{name}} was added and invited.",
-      "offline": "You're offline. Reconnect to add a player.",
+      "offline": "You’re offline. Nothing was sent. Reconnect and try again.",
       "validation": {
         "name": "Enter a name of up to 80 characters.",
         "email": "Enter a valid email address",
@@ -1435,6 +1435,7 @@
         "cutoff": "Registration has closed. Participation and match details can no longer change.",
         "resultProtected": "Existing results protect this match from management changes.",
         "correctionExplanation": "Changes involving existing results require the correction or dispute process.",
+        "title": "Match changes locked",
         "correctionUnavailable": "Result correction and disputes are not available yet.",
         "backToMatch": "Back to match"
       },
@@ -1442,6 +1443,8 @@
         "title": "Edit match details",
         "save": "Save changes",
         "minorNotice": "Update venue, price, notes, capacity, or registration deadline. These changes do not require reconfirmation.",
+        "reviewMajor": "Review major change",
+        "changeSummary": "Was: {{before}}. Now: {{after}}.",
         "conflictTitle": "Match changed elsewhere",
         "conflictDescription": "Your draft is still here. Review it, or reload the match to discard this draft and reopen editing with the latest details.",
         "reload": "Reload details",
@@ -1494,6 +1497,7 @@
       "cancelTitle": "Cancel this match?",
       "cancelDescription": "Cancellation is permanent. Everyone involved will be notified.",
       "cancelReason": "Cancellation reason",
+      "keepMatch": "Keep match",
       "cancelled": "Cancelled",
       "ownershipTransferred": "Organization transferred.",
       "participants": "Manage participants",

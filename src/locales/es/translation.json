@@ -931,7 +931,7 @@
       "submit": "Añadir jugador",
       "submitting": "Añadiendo…",
       "success": "{{name}} se añadió y recibió una invitación.",
-      "offline": "Estás sin conexión. Vuelve a conectarte para añadir un jugador.",
+      "offline": "No tienes conexión. No se envió nada. Vuelve a conectarte e inténtalo de nuevo.",
       "validation": {
         "name": "Introduce un nombre de hasta 80 caracteres.",
         "email": "Introduce un correo electrónico válido",
@@ -1435,6 +1435,7 @@
         "cutoff": "La inscripción ha cerrado. La participación y los detalles del partido ya no pueden cambiar.",
         "resultProtected": "Los resultados existentes protegen este partido contra cambios de gestión.",
         "correctionExplanation": "Los cambios que afectan a resultados existentes requieren el proceso de corrección o disputa.",
+        "title": "Cambios del partido bloqueados",
         "correctionUnavailable": "La corrección y las disputas de resultados aún no están disponibles.",
         "backToMatch": "Volver al partido"
       },
@@ -1442,6 +1443,8 @@
         "title": "Editar detalles del partido",
         "save": "Guardar cambios",
         "minorNotice": "Actualiza lugar, precio, notas, capacidad o plazo de inscripción. Estos cambios no requieren reconfirmación.",
+        "reviewMajor": "Revisar cambio importante",
+        "changeSummary": "Antes: {{before}}. Ahora: {{after}}.",
         "conflictTitle": "Partido modificado en otro lugar",
         "conflictDescription": "Tu borrador sigue aquí. Revísalo o recarga el partido para descartarlo y volver a editar con los detalles actuales.",
         "reload": "Recargar detalles",
@@ -1494,6 +1497,7 @@
       "cancelTitle": "¿Cancelar este partido?",
       "cancelDescription": "La cancelación es permanente. Se notificará a todas las personas involucradas.",
       "cancelReason": "Motivo de cancelación",
+      "keepMatch": "Mantener partido",
       "cancelled": "Cancelado",
       "ownershipTransferred": "Organización transferida.",
       "participants": "Gestionar participantes",

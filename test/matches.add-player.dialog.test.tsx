@@ -150,6 +150,26 @@ describe('add player entry point', () => {
 });
 
 describe('add player dialog', () => {
+  it('keeps pending state accessible and does not dismiss on Escape', async () => {
+    let finish: (result: unknown) => void = () => undefined;
+    mocks.add.mockReturnValueOnce(
+      new Promise((resolve) => {
+        finish = resolve;
+      })
+    );
+    mount();
+    await openDialog();
+    await fillValid();
+    await submit();
+    const pending = await screen.findByRole('button', { name: en.matches.addPlayer.submitting });
+    expect(pending.getAttribute('aria-busy')).toBe('true');
+    await userEvent.keyboard('{Escape}');
+    expect(screen.getByRole('dialog')).toBeTruthy();
+    expect(mocks.add).toHaveBeenCalledTimes(1);
+    finish({ status: 'ok' });
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+  });
+
   it('labels fields, describes the level and mirrors validation before any request', async () => {
     mount();
     const dialog = await openDialog();

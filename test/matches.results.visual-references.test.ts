@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import manifest from '../e2e/references/paf-7/manifest.json';
+import clubhouse from '../e2e/references/paf-202-match-management/manifest.json';
 
 describe('result visual reference provenance', () => {
   it('uses semantic hero and amber tokens instead of primitive palette tokens', () => {
@@ -11,12 +12,10 @@ describe('result visual reference provenance', () => {
     }
     expect(styles).not.toContain('--palette-');
   });
-  it('compares the approved started-entry successor, not the historical frame', () => {
+  it('preserves the historical started-entry successor and migrates the management pin', () => {
     expect(manifest.successorStates['started-unavailable'].frameId).toBe('iXRPp');
     expect(manifest.successorStates['started-unavailable'].supersedes).toBe('tVzco');
-    const suite = readFileSync('e2e/matches-management-visual.spec.ts', 'utf8');
-    expect(suite).toContain("['started-unavailable', 'iXRPp']");
-    expect(suite).not.toContain("['started-unavailable', 'tVzco']");
+    expect(clubhouse.frames['started-unavailable']).toBe('ccicygl');
     expect(manifest.approvedReferences['iXRPp.png'].maskRegions).toEqual([
       { x: 32, y: 426, width: 326, height: 38 }
     ]);

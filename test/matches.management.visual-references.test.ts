@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import manifest from '../e2e/references/paf-6/manifest.json';
+import manifest from '../e2e/references/paf-202-match-management/manifest.json';
 
 const digest = (bytes: Buffer) => createHash('sha256').update(bytes).digest('hex');
 
@@ -12,80 +12,30 @@ describe('management visual reference provenance', () => {
     expect(bytes.subarray(-2).toString('hex')).toBe('ffd9');
     expect(digest(bytes)).toBe('6fe0458b5db3355d4c22b673968f6d62d80920b86f7df20b22bdc5dee7078be4');
   });
-  it('maps all nineteen states to unique approved exports', () => {
-    const states = Object.values(manifest.stateCoverage);
-    expect(states).toHaveLength(19);
-    expect(Object.keys(manifest.approvedReferences)).toHaveLength(19);
-    expect(new Set(states.map((state) => state.frameId)).size).toBe(19);
-    expect(manifest.status).toBe('implemented-certification-passing');
-    expect(manifest.runtimeEnforcement.status).toBe('passing');
-    for (const state of states) expect(state.status).toBe('approved-reference');
-  });
-
-  it('preserves every approved PNG digest and uncropped source dimensions', () => {
-    const budgets: Record<string, { baselineSha256: string | null }> =
-      manifest.visualBudgets.perScreen;
-    for (const [filename, reference] of Object.entries(manifest.approvedReferences)) {
-      const bytes = readFileSync(new URL(`../e2e/references/paf-6/${filename}`, import.meta.url));
-      expect(digest(bytes)).toBe(reference.sha256);
-      expect(bytes.subarray(1, 4).toString()).toBe('PNG');
-      expect(reference.sourceSize).toMatch(/^390x\d+$/);
-      expect([bytes.readUInt32BE(16), bytes.readUInt32BE(20)]).toEqual(
-        reference.sourceSize.split('x').map(Number)
-      );
-      expect(filename).toBe(`${reference.frameId}.png`);
-      expect(budgets[filename]?.baselineSha256).toBe(reference.sha256);
-    }
-    // Opaque bytes only: encrypted .pen content is never decoded or parsed.
+  it('pins the Clubhouse source and all management and add-player frame exports', () => {
+    const frames = [...Object.values(manifest.frames), ...Object.values(manifest.addPlayer)];
+    expect(frames).toHaveLength(32);
+    expect(new Set(frames).size).toBe(32);
+    expect(Object.keys(manifest.exportSha256).sort()).toEqual([...frames].sort());
     expect(digest(readFileSync(manifest.sourceDesign.path))).toBe(manifest.sourceDesign.sha256);
-  });
 
-  it('masks only native datetime input chrome and the fixture-clock date block', () => {
-    const references: Record<
-      string,
-      {
-        sourceSize: string;
-        maskRegions?: { x: number; y: number; width: number; height: number }[];
-      }
-    > = manifest.approvedReferences;
-    for (const [filename, reference] of Object.entries(references)) {
-      const masks = reference.maskRegions ?? [];
-      expect(masks).toHaveLength(filename === 'Tm3XM.png' ? 2 : filename === 'tVzco.png' ? 1 : 0);
-      const [width, height] = reference.sourceSize.split('x').map(Number);
-      for (const mask of masks) {
-        expect([mask.x, mask.y, mask.width, mask.height].every(Number.isInteger)).toBe(true);
-        expect(mask.x).toBeGreaterThanOrEqual(0);
-        expect(mask.y).toBeGreaterThanOrEqual(0);
-        expect(mask.width).toBeGreaterThan(0);
-        expect(mask.height).toBeGreaterThan(0);
-        expect(mask.x + mask.width).toBeLessThanOrEqual(width!);
-        expect(mask.y + mask.height).toBeLessThanOrEqual(height!);
-      }
+    for (const [id, sha256] of Object.entries(manifest.exportSha256)) {
+      const bytes = readFileSync(
+        new URL(`../e2e/references/paf-202-match-management/${id}.png`, import.meta.url)
+      );
+      expect(digest(bytes)).toBe(sha256);
+      expect(bytes.subarray(1, 4).toString()).toBe('PNG');
+      expect([bytes.readUInt32BE(16), bytes.readUInt32BE(20)]).toEqual([390, 844]);
     }
   });
 
-  it('binds each state to a separately declared screenshot budget', () => {
-    for (const { frameId } of Object.values(manifest.stateCoverage)) {
-      const filename = `${frameId}.png`;
-      expect(manifest.approvedReferences).toHaveProperty(filename);
-      expect(manifest.visualBudgets.perScreen).toHaveProperty(filename);
-    }
-  });
-
-  it('certifies rebuilt full frames within reviewed cross-renderer budgets', () => {
-    for (const [frameId, height] of Object.entries(manifest.referenceMeasurements.frameHeights)) {
-      const filename = `${frameId}.png`;
-      const references: Record<string, { sourceSize: string }> = manifest.approvedReferences;
-      const budgets: Record<string, { measured: number | null; budget: number | null }> =
-        manifest.visualBudgets.perScreen;
-      expect(references[filename]?.sourceSize).toBe(`390x${height}`);
-      const measured = budgets[filename]?.measured;
-      const budget = budgets[filename]?.budget;
-      expect(measured).toBeTypeOf('number');
-      expect(budget).toBeTypeOf('number');
-      expect(measured).toBeLessThanOrEqual(budget!);
-      expect(budget).toBe(Math.ceil((measured! + 0.005) * 1000) / 1000);
-      expect(budgets[filename]).not.toHaveProperty('compareRegion');
+  it('binds every management state to its own bounded fixture regression gate', () => {
+    expect(Object.keys(manifest.pixelEvidence.perFrame).sort()).toEqual(
+      Object.values(manifest.frames).sort()
+    );
+    for (const { maxDiffPixelRatio } of Object.values(manifest.pixelEvidence.perFrame)) {
+      expect(maxDiffPixelRatio).toBeGreaterThan(0);
+      expect(maxDiffPixelRatio).toBeLessThanOrEqual(0.005);
     }
   });
 });

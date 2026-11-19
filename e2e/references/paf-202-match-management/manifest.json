@@ -1,0 +1,165 @@
+{
+  "sourceDesign": {
+    "path": "docs/design/Padel-friend App Redesign/padel-friend-clubhouse.pen",
+    "sha256": "41f3b06db61a180ed1d0eebe0fb3ff71e0086a703b5497ad7b47cd7ba7bb971e"
+  },
+  "route": "/matches/$eventId",
+  "frames": {
+    "invitation-pending": "Fyhbv",
+    "minor-edit": "lJHUZ",
+    "major-change": "t0SZec",
+    "player-required": "oVtuS",
+    "reconfirmation-excluded": "uiRqp",
+    "removal-reason-dialog": "q2TCnQ",
+    "cancel": "Ht2Oq",
+    "transfer": "m7hh3",
+    "cutoff-unavailable": "dmvWu",
+    "invitation-accepted": "c27ucrt",
+    "invitation-declined": "c37x0cg",
+    "invitation-expired": "c4aviyi",
+    "creator-action-menu": "c5xzgnc",
+    "organizer-only": "c7o7c5e",
+    "cancelled-tombstone": "c8dcjv8",
+    "minor-edit-conflict": "c9n78kb",
+    "creator-required": "cb5peff",
+    "started-unavailable": "ccicygl",
+    "result-protected-unavailable": "cdqb0a4"
+  },
+  "composites": {
+    "OkNwP": "Organizer and invitation variants; top-level management references take precedence (D7).",
+    "cnU76": "Add-player entry, form and outcome variants. Offline requests are not sent or queued (D2)."
+  },
+  "addPlayer": {
+    "empty": "cf0upja",
+    "valid": "cfwdgnk",
+    "validation": "cguq9eu",
+    "submitting": "chqpyh1",
+    "light": "cil0251",
+    "rateLimited": "cjkbpht",
+    "invitationFailed": "ckj6w7i",
+    "offline": "cli9h0q",
+    "cutoff": "cltiau0",
+    "menu": "cmq22f9",
+    "roster": "co8jidd",
+    "playing": "cpyqqne",
+    "reserve": "cr29n0n"
+  },
+  "exportSha256": {
+    "c27ucrt": "878ed6e514900a6425031f726f58a1b11f9e4351e6d1c57c3b10fc071f11cddd",
+    "c37x0cg": "0645592e6013f7e15666eb03bc760cdad0fb7cde8087473c52500a79c7b03f12",
+    "c4aviyi": "d1faef1c0df49042e62394fb5ac6c56c766b9607c7884a0b78fd233b634f82c3",
+    "c5xzgnc": "4ab89dbb103d8b731c3fd35c1d19d62e26393646da4061cfcd63220364ac6005",
+    "c7o7c5e": "1136e0580c56e744a8fa6dc0d6f678d3456d76776d5232a5866fbe177d5683b1",
+    "c8dcjv8": "2bf9c81646ea0b42e869beea8ad471c9a01408e4585975e7c572cdf88d36bd65",
+    "c9n78kb": "d46341597ef0c96d8503f485afa2aa1a304288f72fdd1f03ca9ccae15c46abee",
+    "cb5peff": "660235471a559d595c78bd238856fce8a3533bd728a001ac02b2ec879c68932c",
+    "ccicygl": "3ae5fef7e298f68123082d929ba517a3da45360419e60b693244c9ccfef462ec",
+    "cdqb0a4": "5caabfafe860989c92056c9111e522ccc741efd2b6c8a405e3d29231c3af1228",
+    "cf0upja": "b3abbce34451addf5e59b671034f9821e6eaa95fde8aef28b67cdfe4a30b7340",
+    "cfwdgnk": "0b19ba7fa6d8130b9ef4a46a1e5f0d1645a3cadd25092fdb208feb9cef24782a",
+    "cguq9eu": "3cdfa1cc17ab15d5f7c67b9197457e28ff81a5505708d66a07c586965d4df940",
+    "chqpyh1": "bff01b2b547bcf25a2feae7074c3d15853c27331ecd94c8322b89a01b693912f",
+    "cil0251": "2ccbf860b4f0bb4c5245c3afffcfa1a54cd05e6a5985e68c713e67b44e283b2f",
+    "cjkbpht": "05544c0ce6f1725b449dbb6f7bdc2f372e795d6c39e28185b6c773ef6ec74a43",
+    "ckj6w7i": "f2da9a0ddcbf065e008d20013c0b9b6445a49341a831b946a3f79b81ce37ba34",
+    "cli9h0q": "ffa2804437a6df69dd660dd69f2721f99adf22c947d1702f8806372f93014ee5",
+    "cltiau0": "4317dfd1ca7bb7094568edc77e5b25722173d77bbda4ae481b4fd600308a1d4b",
+    "cmq22f9": "4d959c2a9c0202bc61d4903de8fcba5426cf3404f75439c75927b8938c5d8dc5",
+    "co8jidd": "2aaac385df96d0bed5ecc5bbbd963fcea143a58b3ab725baab5bea52fa7f5db4",
+    "cpyqqne": "1cc0f776f44dd9b71788a35e97f127cdd473fda58423631db604bdfb28a5c3ac",
+    "cr29n0n": "7df6821fa7a0de65d5cc9adc5b74cea6b148be7027ff8ae4cf94f3545641dbfd",
+    "dmvWu": "1bb1ef1636c6a32eaa5a345c163ade3b666bfc4d5fc548cc9cfa040d7734d8a4",
+    "Fyhbv": "48b190fad35e96534207ca8c5f66b3e7e1fcf7efd7e2072e3b313fa2973ede79",
+    "Ht2Oq": "3cd18f2117ecd479538b3c3a067a73fc1881814f158e379c1f6221fb28f25e7b",
+    "lJHUZ": "42ab7b8f28652f9a6f078637aea59e09ad041204c8478cecf50133ca4147c307",
+    "m7hh3": "9c8ecfa63bca7b58a8da2d555618815b4fdbd13f030c0ed68dfb735f48c72d77",
+    "oVtuS": "16fb223823db82fd7656fa468d6b126a262945ac00650c8668ad35824f1df101",
+    "q2TCnQ": "ef53072e4f55238a78bd7e74784914cd5db727fc92981e2ca717bd2214de7c34",
+    "t0SZec": "f790480095c7f6101b98ba4d19033432eb3fec0d02aeb197c6a6b50af5e668b7",
+    "uiRqp": "255449eff156f0bb086109c726848c61d3104b776b8086b0b66b974a14ac50d6"
+  },
+  "pixelEvidence": {
+    "kind": "Chromium fixture regression",
+    "reason": "Pencil uses illustrative text, device chrome and roster fixtures; browser snapshots guard shipped UI separately from semantic and layout checks against the pinned Pencil references.",
+    "perFrame": {
+      "Fyhbv": {
+        "maxDiffPixelRatio": 0.005,
+        "measuredConsecutivePixelRatio": 0
+      },
+      "lJHUZ": {
+        "maxDiffPixelRatio": 0.005,
+        "measuredConsecutivePixelRatio": 0
+      },
+      "t0SZec": {
+        "maxDiffPixelRatio": 0.005,
+        "measuredConsecutivePixelRatio": 0
+      },
+      "oVtuS": {
+        "maxDiffPixelRatio": 0.005,
+        "measuredConsecutivePixelRatio": 0
+      },
+      "uiRqp": {
+        "maxDiffPixelRatio": 0.005,
+        "measuredConsecutivePixelRatio": 0
+      },
+      "q2TCnQ": {
+        "maxDiffPixelRatio": 0.005,
+        "measuredConsecutivePixelRatio": 0
+      },
+      "Ht2Oq": {
+        "maxDiffPixelRatio": 0.005,
+        "measuredConsecutivePixelRatio": 0
+      },
+      "m7hh3": {
+        "maxDiffPixelRatio": 0.005,
+        "measuredConsecutivePixelRatio": 0
+      },
+      "dmvWu": {
+        "maxDiffPixelRatio": 0.005,
+        "measuredConsecutivePixelRatio": 0
+      },
+      "c27ucrt": {
+        "maxDiffPixelRatio": 0.005,
+        "measuredConsecutivePixelRatio": 0
+      },
+      "c37x0cg": {
+        "maxDiffPixelRatio": 0.005,
+        "measuredConsecutivePixelRatio": 0
+      },
+      "c4aviyi": {
+        "maxDiffPixelRatio": 0.005,
+        "measuredConsecutivePixelRatio": 0
+      },
+      "c5xzgnc": {
+        "maxDiffPixelRatio": 0.005,
+        "measuredConsecutivePixelRatio": 0
+      },
+      "c7o7c5e": {
+        "maxDiffPixelRatio": 0.005,
+        "measuredConsecutivePixelRatio": 0
+      },
+      "c8dcjv8": {
+        "maxDiffPixelRatio": 0.005,
+        "measuredConsecutivePixelRatio": 0
+      },
+      "c9n78kb": {
+        "maxDiffPixelRatio": 0.005,
+        "measuredConsecutivePixelRatio": 0
+      },
+      "cb5peff": {
+        "maxDiffPixelRatio": 0.005,
+        "measuredConsecutivePixelRatio": 0
+      },
+      "ccicygl": {
+        "maxDiffPixelRatio": 0.005,
+        "measuredConsecutivePixelRatio": 0
+      },
+      "cdqb0a4": {
+        "maxDiffPixelRatio": 0.005,
+        "measuredConsecutivePixelRatio": 0
+      }
+    },
+    "tolerance": "0.5% cap for minor rasterization drift, not a tolerance for matching the Pencil pixels. Structural checks independently guard field order, access, layout, hit targets and focus.",
+    "measurement": "Initial baseline capture: two consecutive PNGs matched byte-for-byte for all 19 fixtures after Playwright screenshot settling (390×844, Chromium, en/light)."
+  }
+}

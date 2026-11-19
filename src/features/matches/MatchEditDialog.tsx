@@ -52,7 +52,8 @@ export function MatchEditDialog({
 }) {
   const { t, i18n } = useTranslation();
   const [snapshot] = useState(() => ({ event, version }));
-  const [draft, setDraft] = useState(() => matchEditDraft(event));
+  const [original] = useState(() => matchEditDraft(event));
+  const [draft, setDraft] = useState(original);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [saved, setSaved] = useState(false);
   const form = useRef<HTMLFormElement>(null);
@@ -89,6 +90,8 @@ export function MatchEditDialog({
   const rankedWithoutLeague =
     competitive && resolution.competition === 'ranked' && resolution.league === null;
   const impact = !rankedWithoutLeague && competitionEffect(before, after) !== 'unchanged';
+  const major =
+    impact || draft.eventType !== original.eventType || draft.startsAt !== original.startsAt;
   // Ranked intent with no usable League while the options are loading or failed: hold the save
   // (the reason is shown next to it). An invalid date is not held; submitting reports it.
   const competitionUnresolved =
@@ -160,7 +163,7 @@ export function MatchEditDialog({
       disablePointerDismissal={action.pending}
     >
       <Dialog.Portal>
-        <Dialog.Backdrop {...stylex.props(s.backdrop, edit.backdrop)} />
+        <Dialog.Backdrop {...stylex.props(s.backdrop)} />
         <Dialog.Popup
           {...stylex.props(s.popup, edit.popup)}
           finalFocus={() =>
@@ -170,7 +173,7 @@ export function MatchEditDialog({
           }
         >
           <div {...stylex.props(edit.header)}>
-            <Dialog.Title {...stylex.props(edit.title)}>
+            <Dialog.Title {...stylex.props(s.dialogTitle)}>
               {t('matches.management.edit.title')}
             </Dialog.Title>
             <Dialog.Close
@@ -191,8 +194,26 @@ export function MatchEditDialog({
             </Dialog.Close>
           </div>
           <Dialog.Description {...stylex.props(edit.copy)}>
-            {t('matches.reconfirmation.description')}
+            {t(
+              major && snapshot.event.accepted_count > 0
+                ? 'matches.reconfirmation.description'
+                : 'matches.management.edit.minorNotice'
+            )}
           </Dialog.Description>
+          {major && (
+            <section {...stylex.props(edit.conflict)} aria-labelledby="match-edit-review-heading">
+              <h3 id="match-edit-review-heading" {...stylex.props(edit.conflictHeading)}>
+                {t('matches.management.edit.reviewMajor')}
+              </h3>
+              <p {...stylex.props(edit.copy)}>
+                {t('matches.management.edit.changeSummary', {
+                  before: `${t(`matches.type.${original.eventType}`)} · ${original.startsAt.replace('T', ' ')}`,
+                  after: `${t(`matches.type.${draft.eventType}`)} · ${draft.startsAt.replace('T', ' ')}`
+                })}
+              </p>
+              {impact && <MatchLeagueImpact from={before} to={after} />}
+            </section>
+          )}
           {action.unavailable && (
             <MatchManagementUnavailable reason={action.unavailable} onBack={onClose} focus />
           )}
@@ -328,15 +349,10 @@ export function MatchEditDialog({
                   error={errors.leagueId}
                 />
               )}
-              {impact && (
-                <>
-                  <MatchLeagueImpact from={before} to={after} />
-                  {snapshot.event.accepted_count > 0 && (
-                    <p {...stylex.props(edit.helper)}>
-                      {t('matches.management.edit.competitionConsent')}
-                    </p>
-                  )}
-                </>
+              {impact && snapshot.event.accepted_count > 0 && (
+                <p {...stylex.props(edit.helper)}>
+                  {t('matches.management.edit.competitionConsent')}
+                </p>
               )}
               {field('venueName')}
               {field('mapsUrl', 'url')}

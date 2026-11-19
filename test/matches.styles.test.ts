@@ -34,7 +34,8 @@ describe('match styles', () => {
     expect(edit).toMatch(
       /button: \{[^}]*appearance: 'none'[^}]*borderWidth: 0[^}]*borderStyle: 'none'/
     );
-    expect(edit).toContain('backdrop: { opacity: 0.97 }');
+    const management = readFileSync('src/features/matches/match-management.styles.ts', 'utf8');
+    expect(management).toMatch(/popup: \{[^}]*overscrollBehavior: 'contain'/);
   });
   it('uses body-family card content and bold card headings, retaining the heading-family venue heading', () => {
     const shell = readFileSync('src/features/matches/match-detail-shell.styles.ts', 'utf8');
@@ -48,9 +49,11 @@ describe('match styles', () => {
       'match-invitation'
     ]) {
       const source = readFileSync(`src/features/matches/${name}.styles.ts`, 'utf8');
-      expect(source).not.toContain('var(--font-family-heading)');
       expect(source).toContain('var(--font-family-body)');
     }
+    const management = readFileSync('src/features/matches/match-management.styles.ts', 'utf8');
+    expect(management).toMatch(/dialogTitle: \{[^}]*fontFamily: 'var\(--font-family-heading\)'/);
+    expect(management).not.toMatch(/cardTitle: \{[^}]*fontFamily: 'var\(--font-family-heading\)'/);
   });
   it('reserves global chip width on non-detail headers without changing detail composition', () => {
     const root = readFileSync('src/root.styles.ts', 'utf8');
@@ -118,7 +121,7 @@ describe('match styles', () => {
     expect(management).toContain("minWidth: 'calc(var(--space-40) + var(--space-4))'");
     expect(management).toContain("minHeight: 'calc(var(--space-40) * 2)'");
     expect(management).toMatch(
-      /menuItem: \{[^}]*minHeight: 'calc\(var\(--space-40\) \+ var\(--space-4\)\)'/
+      /menuItem: \{[^}]*minHeight: 'calc\(var\(--space-40\) \+ var\(--space-12\)\)'/
     );
     const registration = readFileSync('src/features/matches/match-registration.styles.ts', 'utf8');
     expect(registration).toContain("const target = 'calc(var(--space-40) + var(--space-4))'");
@@ -134,7 +137,7 @@ describe('match styles', () => {
       ];
       for (const control of controls)
         expect(control[2], `Control style: ${component}`).toMatch(
-          /stylex\.props\((?:s\.(?:button|input|menuItem)|(?:buttons|card)\.(?:primaryButton|secondaryButton))/
+          /stylex\.props\((?:s\.(?:button|input|menuItem)|(?:buttons|card)\.(?:primaryButton|secondaryButton))|render=\{<Button/
         );
     }
   });
@@ -210,7 +213,7 @@ describe('match styles', () => {
     for (const file of ['match-management', 'match-edit']) {
       const styles = readFileSync(`src/features/matches/${file}.styles.ts`, 'utf8');
       expect(styles).toMatch(
-        /backgroundColor: 'var\(--color-green\)',\s*color: 'var\(--color-bg\)'/
+        /backgroundColor: 'var\(--color-green\)',\s*color: 'var\(--color-on-green\)'/
       );
       expect(styles).not.toContain('var(--color-on-hero)');
     }

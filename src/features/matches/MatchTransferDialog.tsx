@@ -2,6 +2,7 @@ import { Dialog } from '@base-ui/react/dialog';
 import * as stylex from '@stylexjs/stylex';
 import { useId, useState, type RefObject } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Button } from '../../components/ui/Button';
 import type { ManagementParticipant } from './match-management-model';
 import { matchManagementStyles as s } from './match-management.styles';
 
@@ -41,18 +42,24 @@ export function MatchTransferDialog({
               ? returnFocus.current
               : document.getElementById('match-detail-heading')
           }
-          {...stylex.props(s.popup)}
+          {...stylex.props(s.popup, s.sheet)}
         >
-          <Dialog.Title>{t('matches.management.transferTitle')}</Dialog.Title>
-          <Dialog.Description>{t('matches.management.organizerOnly')}</Dialog.Description>
+          <Dialog.Title {...stylex.props(s.dialogTitle)}>
+            {t('matches.management.transferTitle')}
+          </Dialog.Title>
+          <Dialog.Description {...stylex.props(s.copy)}>
+            {t('matches.management.organizerOnly')}
+          </Dialog.Description>
           <form
-            {...stylex.props(s.section)}
+            {...stylex.props(s.dialogForm)}
             onSubmit={async (event) => {
               event.preventDefault();
               if (await onConfirm(target)) onOpenChange(false);
             }}
           >
-            <label htmlFor={id}>{t('matches.management.newOrganizer')}</label>
+            <label htmlFor={id} {...stylex.props(s.fieldLabel)}>
+              {t('matches.management.newOrganizer')}
+            </label>
             <select
               id={id}
               required
@@ -69,18 +76,17 @@ export function MatchTransferDialog({
               ))}
             </select>
             <output aria-live="polite">{feedback ? t(feedback) : null}</output>
-            <div {...stylex.props(s.row)}>
-              <Dialog.Close disabled={pending} {...stylex.props(s.button)}>
-                {t('matches.management.cancel')}
-              </Dialog.Close>
-              <button
+            <div {...stylex.props(s.dialogActions)}>
+              <Button
                 type="submit"
-                disabled={pending || !targets.some((player) => player.user_id === target)}
-                aria-busy={pending}
-                {...stylex.props(s.button)}
+                disabled={!targets.some((player) => player.user_id === target)}
+                busy={pending}
               >
                 {t('matches.management.transfer')}
-              </button>
+              </Button>
+              <Dialog.Close disabled={pending} render={<Button variant="secondary" />}>
+                {t('matches.management.cancel')}
+              </Dialog.Close>
             </div>
           </form>
         </Dialog.Popup>

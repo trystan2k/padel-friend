@@ -931,7 +931,7 @@
       "submit": "Adicionar jogador",
       "submitting": "Adicionando…",
       "success": "{{name}} foi adicionado(a) e convidado(a).",
-      "offline": "Você está offline. Reconecte para adicionar um jogador.",
+      "offline": "Você está offline. Nada foi enviado. Reconecte-se e tente novamente.",
       "validation": {
         "name": "Informe um nome de até 80 caracteres.",
         "email": "Informe um e-mail válido",
@@ -1435,6 +1435,7 @@
         "cutoff": "As inscrições foram encerradas. A participação e os detalhes da partida não podem mais mudar.",
         "resultProtected": "Os resultados existentes protegem esta partida contra alterações de gerenciamento.",
         "correctionExplanation": "Alterações envolvendo resultados existentes exigem o processo de correção ou contestação.",
+        "title": "Alterações da partida bloqueadas",
         "correctionUnavailable": "A correção e a contestação de resultados ainda não estão disponíveis.",
         "backToMatch": "Voltar à partida"
       },
@@ -1442,6 +1443,8 @@
         "title": "Editar detalhes da partida",
         "save": "Salvar alterações",
         "minorNotice": "Atualize local, preço, observações, capacidade ou prazo de inscrição. Estas alterações não exigem reconfirmação.",
+        "reviewMajor": "Revisar alteração importante",
+        "changeSummary": "Antes: {{before}}. Agora: {{after}}.",
         "conflictTitle": "Partida alterada em outro lugar",
         "conflictDescription": "Seu rascunho foi mantido. Revise-o ou recarregue a partida para descartá-lo e reabrir a edição com os detalhes atuais.",
         "reload": "Recarregar detalhes",
@@ -1494,6 +1497,7 @@
       "cancelTitle": "Cancelar esta partida?",
       "cancelDescription": "O cancelamento é permanente. Todas as pessoas envolvidas serão notificadas.",
       "cancelReason": "Motivo do cancelamento",
+      "keepMatch": "Manter partida",
       "cancelled": "Cancelada",
       "ownershipTransferred": "Organização transferida.",
       "participants": "Gerenciar participantes",

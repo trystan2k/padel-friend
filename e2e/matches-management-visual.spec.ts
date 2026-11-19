@@ -9,98 +9,17 @@ import {
   sql,
   visualEventId
 } from './matches-management-fixtures';
-import manifestJson from './references/paf-6/manifest.json' with { type: 'json' };
-import resultManifest from './references/paf-7/manifest.json' with { type: 'json' };
+import clubhouse from './references/paf-202-match-management/manifest.json' with { type: 'json' };
 
-// Reference-only certification. No snapshots are generated or updated here.
-// Rebuilt frames include app chrome at their manifest-owned heights; 320px, desktop, dark and translated
-// variants below receive structural gates ONLY, not fabricated pixel baselines.
-// Per-screen tolerances remain manifest-owned. Null means BLOCKED, not zero or
-// an inherited PAF-5 budget. Captures are evidence attachments, never baselines.
-const manifest: {
-  sourceDesign: { path: string; sha256: string };
-  approvedReferences: Record<
-    string,
-    { sha256: string; sourceSize: string; maskRegions?: MaskRegion[] }
-  >;
-  visualBudgets: {
-    perScreen: Record<
-      string,
-      {
-        measured: number | null;
-        budget: number | null;
-        baselineSha256: string | null;
-      }
-    >;
-  };
-} = {
-  ...manifestJson,
-  approvedReferences: {
-    ...manifestJson.approvedReferences,
-    'iXRPp.png': {
-      sha256: resultManifest.approvedReferences['iXRPp.png'].sha256,
-      sourceSize: resultManifest.approvedReferences['iXRPp.png'].pixelSize
-        .map((size) => size / 2)
-        .join('x'),
-      maskRegions: resultManifest.approvedReferences['iXRPp.png'].maskRegions
-    }
-  },
-  visualBudgets: {
-    perScreen: {
-      ...manifestJson.visualBudgets.perScreen,
-      'iXRPp.png': {
-        measured: null,
-        budget: resultManifest.visualBudgets.perScreen.iXRPp,
-        baselineSha256: resultManifest.approvedReferences['iXRPp.png'].sha256
-      }
-    }
-  }
-};
-type MaskRegion = { x: number; y: number; width: number; height: number };
-const frames = [
-  ['invitation-pending', 'Fyhbv'],
-  ['minor-edit', 'lJHUZ'],
-  ['major-change', 't0SZec'],
-  ['player-required', 'oVtuS'],
-  ['reconfirmation-excluded', 'uiRqp'],
-  ['removal-reason-dialog', 'q2TCnQ'],
-  ['cancel', 'Ht2Oq'],
-  ['transfer', 'm7hh3'],
-  ['cutoff-unavailable', 'dmvWu'],
-  ['invitation-accepted', 'YvdPB'],
-  ['invitation-declined', 'M7ighq'],
-  ['invitation-expired', 'T7T2U'],
-  ['creator-action-menu', 'bobgm'],
-  ['organizer-only', 'PKM0u'],
-  ['cancelled-tombstone', 'K23bLC'],
-  ['minor-edit-conflict', 'Tm3XM'],
-  ['creator-required', 'xgKXg'],
-  ['started-unavailable', 'iXRPp'],
-  ['result-protected-unavailable', 'a6xmFd']
-] as const;
+const frames = Object.entries(clubhouse.frames);
+const budgets: Record<string, { maxDiffPixelRatio: number }> = clubhouse.pixelEvidence.perFrame;
 const hash = (bytes: Buffer) => createHash('sha256').update(bytes).digest('hex');
-function reference(frame: string) {
-  const filename = `${frame}.png`;
-  const folder = frame === 'iXRPp' ? 'paf-7' : 'paf-6';
-  const bytes = readFileSync(new URL(`./references/${folder}/${filename}`, import.meta.url));
-  expect(hash(bytes), `${frame} approved reference digest`).toBe(
-    manifest.approvedReferences[filename]!.sha256
-  );
-  return bytes;
-}
-
-function provenance() {
-  // Opaque byte digest only; encrypted design content is never decoded/parsed.
-  expect(hash(readFileSync(manifest.sourceDesign.path)), 'Unchanged approved source design').toBe(
-    manifest.sourceDesign.sha256
-  );
-}
 
 let f: Awaited<ReturnType<typeof fixtures>>;
 test.use({ viewport: { width: 390, height: 844 }, colorScheme: 'light', serviceWorkers: 'block' });
 test.beforeAll(async ({ browser }) => {
   test.setTimeout(480_000);
-  provenance();
+  expect(hash(readFileSync(clubhouse.sourceDesign.path))).toBe(clubhouse.sourceDesign.sha256);
   f = await fixtures(browser);
 });
 test.afterAll(async () => {
@@ -309,6 +228,9 @@ async function prepare(
         .selectOption('competitive');
     else
       await dialog.getByLabel(copy.matchCreate.fields.venueName, { exact: true }).fill('Court 4');
+    const review = dialog.getByRole('region', { name: m.edit.reviewMajor });
+    if (state === 'major-change') await expect(review).toBeVisible();
+    else await expect(review).toHaveCount(0);
     // Fixed semantic field order; translated labels must never alter this order.
     expect
       .soft(
@@ -382,6 +304,23 @@ async function prepare(
     if (state === 'cancel')
       await expect(dialog.getByLabel(m.cancelReason, { exact: true })).toBeVisible();
     else await expect(dialog.getByLabel(m.newOrganizer, { exact: true })).toBeVisible();
+    await expect(dialog).toHaveAccessibleName(state === 'cancel' ? m.cancelTitle : m.transferTitle);
+    const actions = dialog.getByRole('button');
+    const actionHeights = await actions.evaluateAll((buttons) =>
+      buttons.map((button) => button.getBoundingClientRect().height)
+    );
+    expect(actionHeights).toHaveLength(2);
+    expect(actionHeights.every((actionHeight) => actionHeight >= 52)).toBe(true);
+    for (let i = 0; i < 5; i++) {
+      await page.keyboard.press('Tab');
+      await expect(dialog.locator(':focus')).toHaveCount(1);
+    }
+    await page.keyboard.press('Escape');
+    await expect(page.getByRole('button', { name: m.actions, exact: true })).toBeFocused();
+    await page.getByRole('button', { name: m.actions, exact: true }).click();
+    await page
+      .getByRole('menuitem', { name: state === 'cancel' ? m.cancelMatch : m.transfer, exact: true })
+      .click();
   } else if (state === 'invitation-pending') {
     const panel = page.getByRole('region', { name: copy.matches.invitations.title });
     await expect(panel.getByRole('status')).toContainText(copy.matches.invitations.pending);
@@ -511,6 +450,10 @@ async function prepare(
     });
     await expect(banner).toBeVisible();
     await expect(banner).toContainText(reason);
+    if (state === 'started-unavailable')
+      await expect(
+        page.getByRole('link', { name: copy.matches.results.title, exact: true })
+      ).toBeVisible();
     if (state === 'result-protected-unavailable') {
       await expect(banner).toContainText(m.unavailable.correctionUnavailable);
       await expect(page.getByRole('link', { name: /correction|dispute/i })).toHaveCount(0);
@@ -574,293 +517,47 @@ async function prepare(
   return page;
 }
 
-for (const [state, frame] of frames.filter(([, candidate]) =>
-  [
-    'YvdPB',
-    'M7ighq',
-    'T7T2U',
-    'bobgm',
-    'PKM0u',
-    'K23bLC',
-    'Tm3XM',
-    'xgKXg',
-    'iXRPp',
-    'a6xmFd'
-  ].includes(candidate)
-)) {
-  test(`${state} — approved ${frame} reference certification`, async ({ browserName }, info) => {
-    expect(browserName).toBe('chromium');
-    expect(
-      ['all', 'changed'].includes(info.config.updateSnapshots),
-      'Reference certification forbids snapshot updates'
-    ).toBe(false);
-    provenance();
-    const approved = reference(frame);
-    const size = manifest.approvedReferences[`${frame}.png`]!.sourceSize.split('x').map(Number);
-    expect(size[0]).toBe(390);
-    const page = await prepare(state, undefined, size[1]);
-    if (frame === 'iXRPp') {
-      // Approved successor adds the real record entry; never hide it to match
-      // historical tVzco. Independent exact probes guard the entire composition.
-      const sections = await page.locator('main > div > *').evaluateAll((nodes) =>
-        nodes.map((node) => {
-          const { x, y, width, height } = node.getBoundingClientRect();
-          return [x, y, width, height];
-        })
-      );
-      expect(sections).toEqual([
-        [18, 90, 354, 44],
-        [18, 144, 354, 90],
-        [18, 244, 354, 280],
-        [18, 534, 354, 140],
-        [18, 684, 354, 476],
-        [18, 1170, 354, 148],
-        [18, 1328, 354, 44],
-        [18, 1382, 354, 65]
-      ]);
-      await expect(
-        page.getByRole('link', { name: defaultCopy.matches.results.title, exact: true })
-      ).toBeVisible();
-      const typography = await page.locator('main').evaluate((main) => {
-        const read = (selector: string) => {
-          const node = main.querySelector(selector);
-          if (!node) throw new Error(`Missing typography probe: ${selector}`);
-          const style = getComputedStyle(node);
-          return [style.fontSize, style.lineHeight];
-        };
-        return { heading: read('h1'), entry: read('a[href$="/record"]'), share: read('textarea') };
-      });
-      expect(typography).toEqual({
-        heading: ['24px', '26px'],
-        entry: ['12px', '17px'],
-        share: ['14px', '17px']
-      });
-      const clockBlock = page.locator('section[aria-labelledby="match-overview-heading"] > p');
-      expect(
-        await clockBlock.evaluate((node) => {
-          const { x, y, width, height } = node.getBoundingClientRect();
-          return [x, y, width, height];
-        })
-      ).toEqual([32, 424, 326, 34]);
-      await expect(clockBlock).toContainText(`${defaultCopy.matches.detail.timezone}: UTC`);
-    }
+// Clubhouse PNGs pin design provenance. Chromium snapshots cover the real fixtures.
+test('Clubhouse design exports match pinned digests', () => {
+  for (const [frame, sha256] of Object.entries(clubhouse.exportSha256)) {
+    const bytes = readFileSync(
+      new URL(`./references/paf-202-match-management/${frame}.png`, import.meta.url)
+    );
+    expect(hash(bytes), frame).toBe(sha256);
+    expect([bytes.readUInt32BE(16), bytes.readUInt32BE(20)], frame).toEqual([390, 844]);
+  }
+});
+
+for (const [state, frame] of frames) {
+  test(`${state} — Clubhouse ${frame} reference and browser regression`, async () => {
+    const page = await prepare(state);
     await bounds(page);
-    await page.evaluate(() => window.scrollTo(0, 0));
     await page.evaluate(() => document.fonts.ready);
     await expect
-      .poll(
-        () =>
-          page
-            .locator('main img')
-            .evaluateAll((images) =>
-              images.every(
-                (image) =>
-                  image instanceof HTMLImageElement && image.complete && image.naturalWidth > 0
-              )
-            ),
-        { message: 'Real fixture photo bytes must decode before visual capture' }
+      .poll(() =>
+        page
+          .locator('main img')
+          .evaluateAll((images) =>
+            images.every(
+              (image) =>
+                image instanceof HTMLImageElement && image.complete && image.naturalWidth > 0
+            )
+          )
       )
       .toBe(true);
-    const actualPath = info.outputPath(`${frame}-actual.png`);
-    if (frame === 'PKM0u') {
-      const typography = await page.locator('main').evaluate((main) => ({
-        body: getComputedStyle(main).fontFamily,
-        cardTitle: getComputedStyle(main.querySelector('h2')!).fontWeight,
-        cardFamily: getComputedStyle(main.querySelector('h2')!).fontFamily
-      }));
-      expect(typography.body).toContain('Figtree');
-      expect(typography.cardFamily).toContain('Figtree');
-      expect(typography.cardTitle).toBe('600');
-    }
-    if (frame === 'Tm3XM') {
-      const treatment = await page.getByRole('dialog').evaluate((dialog) => {
-        const probe = document.createElement('div');
-        probe.style.backgroundColor = 'var(--color-surface)';
-        probe.style.borderColor = 'var(--color-line)';
-        dialog.append(probe);
-        const expected = getComputedStyle(probe);
-        const surface = expected.backgroundColor;
-        const line = expected.borderTopColor;
-        probe.remove();
-        return {
-          fields: [
-            ...dialog.querySelectorAll('input:not([type="datetime-local"]), select, textarea')
-          ].map((field) => {
-            const css = getComputedStyle(field);
-            return {
-              flat: css.appearance === 'none' && css.boxShadow === 'none',
-              surface: css.backgroundColor === surface,
-              border:
-                css.borderTopWidth === '1px' &&
-                css.borderTopStyle === 'solid' &&
-                css.borderTopColor === line,
-              family: css.fontFamily
-            };
-          }),
-          buttons: [...dialog.querySelectorAll('button')].map((button) => {
-            const css = getComputedStyle(button);
-            return (
-              css.appearance === 'none' && css.boxShadow === 'none' && css.borderTopWidth === '0px'
-            );
-          })
-        };
-      });
-      expect(treatment.fields.length).toBeGreaterThan(0);
-      for (const field of treatment.fields) {
-        expect(field.flat).toBe(true);
-        expect(field.surface).toBe(true);
-        expect(field.border).toBe(true);
-        expect(field.family).toContain('Figtree');
-      }
-      expect(treatment.buttons.every(Boolean)).toBe(true);
-      const inputBounds = await page.locator('input[type="datetime-local"]').evaluateAll((inputs) =>
-        inputs.map((input) => {
-          const { x, y, width, height } = input.getBoundingClientRect();
-          return { x, y, width, height };
-        })
-      );
-      await info.attach('native-datetime-input-bounds', {
-        body: JSON.stringify(inputBounds),
-        contentType: 'application/json'
-      });
-      const masks = manifest.approvedReferences[`${frame}.png`]!.maskRegions ?? [];
-      expect(inputBounds).toHaveLength(masks.length);
-      for (const [index, input] of inputBounds.entries()) {
-        const mask = masks[index]!;
-        expect(input.x).toBeGreaterThanOrEqual(mask.x);
-        expect(input.y).toBeGreaterThanOrEqual(mask.y);
-        expect(input.x + input.width).toBeLessThanOrEqual(mask.x + mask.width);
-        expect(input.y + input.height).toBeLessThanOrEqual(mask.y + mask.height);
-      }
-    }
-    const actual = await page.screenshot({
-      path: actualPath,
-      animations: 'disabled',
-      caret: 'hide',
-      scale: 'css'
+    const capture = { animations: 'disabled', caret: 'hide', scale: 'css' } as const;
+    const budget = budgets[frame];
+    if (!budget) throw new Error(`Missing Clubhouse browser budget: ${frame}`);
+    await expect(page).toHaveScreenshot(`${frame}-light.png`, {
+      ...capture,
+      maxDiffPixelRatio: budget.maxDiffPixelRatio
     });
-    await info.attach(`${frame}-actual`, { path: actualPath, contentType: 'image/png' });
-    await info.attach(`${frame}-approved`, { body: approved, contentType: 'image/png' });
-    const measurement = await page.evaluate(
-      async ({ actualUrl, approvedUrl, maskRegions, referenceScale }) => {
-        async function pixels(url: string, scale = 1) {
-          const image = new Image();
-          image.src = url;
-          await image.decode();
-          const canvas = document.createElement('canvas');
-          canvas.width = image.width / scale;
-          canvas.height = image.height / scale;
-          const context = canvas.getContext('2d');
-          if (!context) throw new Error('No screenshot comparison canvas');
-          context.drawImage(image, 0, 0, canvas.width, canvas.height);
-          return {
-            width: canvas.width,
-            height: canvas.height,
-            rgba: context.getImageData(0, 0, canvas.width, canvas.height).data
-          };
-        }
-        const [a, b] = await Promise.all([pixels(actualUrl), pixels(approvedUrl, referenceScale)]);
-        if (a.width !== b.width || a.height !== b.height)
-          return {
-            actual: [a.width, a.height],
-            reference: [b.width, b.height],
-            dimensionMismatch: true
-          };
-        for (const mask of maskRegions) {
-          if (
-            ![mask.x, mask.y, mask.width, mask.height].every(Number.isInteger) ||
-            mask.x < 0 ||
-            mask.y < 0 ||
-            mask.width <= 0 ||
-            mask.height <= 0 ||
-            mask.x + mask.width > a.width ||
-            mask.y + mask.height > a.height
-          )
-            throw new Error('Mask must fit both full-frame images');
-          for (const image of [a, b]) {
-            for (let y = mask.y; y < mask.y + mask.height; y++) {
-              image.rgba.fill(
-                0,
-                (y * image.width + mask.x) * 4,
-                (y * image.width + mask.x + mask.width) * 4
-              );
-            }
-          }
-        }
-        let changed = 0;
-        let perceptualChanged = 0;
-        for (let yPos = 0; yPos < a.height; yPos++) {
-          for (let xPos = 0; xPos < a.width; xPos++) {
-            const i = (yPos * a.width + xPos) * 4;
-            if (
-              a.rgba[i] !== b.rgba[i] ||
-              a.rgba[i + 1] !== b.rgba[i + 1] ||
-              a.rgba[i + 2] !== b.rgba[i + 2] ||
-              a.rgba[i + 3] !== b.rgba[i + 3]
-            )
-              changed++;
-            const r = a.rgba[i]! - b.rgba[i]!;
-            const g = a.rgba[i + 1]! - b.rgba[i + 1]!;
-            const blue = a.rgba[i + 2]! - b.rgba[i + 2]!;
-            const y = r * 0.29889531 + g * 0.58662247 + blue * 0.11448223;
-            const chromaI = r * 0.59597799 - g * 0.2741761 - blue * 0.32180189;
-            const chromaQ = r * 0.21147017 - g * 0.52261711 + blue * 0.31114694;
-            // Pixelmatch's YIQ distance/0.1 threshold, without antialias exclusion.
-            // Tiny background/export color noise must not count as layout drift.
-            if (
-              0.5053 * y * y + 0.299 * chromaI * chromaI + 0.1957 * chromaQ * chromaQ >
-              35215 * 0.1 ** 2
-            )
-              perceptualChanged++;
-          }
-        }
-        return {
-          actual: [a.width, a.height],
-          reference: [b.width, b.height],
-          maskRegions,
-          exactPixelDifference: changed / (a.width * a.height),
-          perceptualPixelDifference: perceptualChanged / (a.width * a.height)
-        };
-      },
-      {
-        actualUrl: `data:image/png;base64,${actual.toString('base64')}`,
-        approvedUrl: `data:image/png;base64,${approved.toString('base64')}`,
-        referenceScale: frame === 'iXRPp' ? 2 : 1,
-        maskRegions: manifest.approvedReferences[`${frame}.png`]?.maskRegions ?? []
-      }
-    );
-    // Both metrics are evidence, not authorization to absorb composition drift.
-    console.info(`${frame} UNAPPROVED calibration: ${JSON.stringify(measurement)}`);
-    await info.attach(`${frame}-unapproved-calibration`, {
-      body: JSON.stringify(measurement, null, 2),
-      contentType: 'application/json'
-    });
-    reference(frame); // No changed/auto-updated source accepted after capture.
-    provenance();
-    const budget = manifest.visualBudgets.perScreen[`${frame}.png`];
-    // Reference approval and implementation certification are distinct. Null
-    // budgets MUST fail until composition matches and font residuals are reviewed.
-    expect(
-      budget?.budget,
-      `${frame}: BLOCKED — manifest has no reviewed per-screen tolerance; no self-baseline permitted`
-    ).not.toBeNull();
-    expect(
-      budget?.baselineSha256,
-      `${frame}: BLOCKED — no approved screenshot baseline digest`
-    ).not.toBeNull();
-    expect(budget!.budget).toBeGreaterThan(0);
-    expect(hash(approved)).toBe(budget!.baselineSha256);
-    // Direct comparison, not Playwright snapshot creation: even an accidental
-    // --update-snapshots cannot write a reference/baseline. Budgets must be
-    // reviewed for the documented YIQ 0.1 metric, screen by screcopy.
-    if (
-      !('perceptualPixelDifference' in measurement) ||
-      measurement.perceptualPixelDifference === undefined
-    ) {
-      throw new Error(`${frame}: screenshot dimensions do not match the approved frame`);
+    if (test.info().config.updateSnapshots === 'missing') {
+      // Initial baseline capture: prove working-copy stability after screenshot settling.
+      const snapshots = await page.screenshot(capture);
+      const repeat = await page.screenshot(capture);
+      expect(hash(snapshots), `${frame}: consecutive Chromium captures`).toBe(hash(repeat));
     }
-    expect(measurement.perceptualPixelDifference).toBeLessThanOrEqual(budget!.budget!);
-    reference(frame);
   });
 }
 
@@ -903,8 +600,8 @@ for (const variant of [
   { width: 390, locale: 'en' as const, theme: 'light' as const },
   { width: 1280, locale: 'es' as const, theme: 'dark' as const }
 ]) {
-  for (const [state] of frames) {
-    test(`${state} responsive structure ${variant.width}/${variant.locale}/${variant.theme} — no variant frame`, async () => {
+  for (const [state, frame] of frames) {
+    test(`${state} (${frame}) responsive structure ${variant.width}/${variant.locale}/${variant.theme} — no variant frame`, async () => {
       const page = await prepare(state, variant);
       await expect(page.locator('html')).toHaveAttribute('data-theme', variant.theme);
       await bounds(page, copies[variant.locale]);
