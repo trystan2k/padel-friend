@@ -3,6 +3,31 @@
     "skipToContent": "Saltar al contenido principal",
     "stale": "Las actualizaciones están demoradas. La información mostrada puede estar desactualizada. Las actualizaciones se reanudarán automáticamente."
   },
+  "communitySurface": {
+    "navigation": "Secciones de la comunidad",
+    "overview": "Vista general",
+    "leagues": "Ligas",
+    "skill": "Nivel",
+    "league": "Liga",
+    "rankingKind": "Tipo de clasificación",
+    "settings": "Ajustes de la comunidad",
+    "public": "Pública",
+    "private": "Privada",
+    "visibilityUnavailable": "Visibilidad no disponible",
+    "members": "Miembros",
+    "activeWeek": "Activos esta semana",
+    "unavailable": "No disponible",
+    "invite": "Invitar jugadores",
+    "inviteUnavailable": "Las invitaciones no están disponibles aquí.",
+    "joinCountUnavailable": "Número de solicitudes de ingreso no disponible.",
+    "upcoming": "Próximos partidos",
+    "noUpcoming": "No hay próximos partidos para mostrar.",
+    "skillDescription": "Tu nivel en la app y tu posición en esta comunidad. Una fiabilidad inferior al 50 % indica un nivel provisional.",
+    "skillListUnavailable": "La clasificación completa por nivel de la comunidad no está disponible.",
+    "provisional": "Nivel provisional",
+    "noStandings": "Aún no hay posiciones en la clasificación.",
+    "selfName": "{{name}} (tú)"
+  },
   "appShell": {
     "navigation": "Navegación principal",
     "nav": {

@@ -61,46 +61,6 @@ beforeEach(() => {
 });
 
 describe('dashboard loader', () => {
-  it('keeps the profile available when optional admin-community lookup fails', async () => {
-    const profile = Object.freeze({});
-    mocks.getMyPlayerProfile.mockResolvedValue(profile);
-    mocks.listMyAdminCommunities.mockRejectedValue(new Error('temporary admin lookup failure'));
-    mocks.listMyCommunityNotifications.mockRejectedValue(new Error('temporary inbox failure'));
-
-    await expect(loadDashboardData()).resolves.toEqual({
-      profile,
-      rating: { status: 'error', code: 'unavailable' },
-      adminCommunities: [],
-      leagueCommunities: [],
-      inbox: { items: null, error: true },
-      home: HOME,
-      notificationCount: 5,
-      platformAdmin: false
-    });
-    expect(mocks.getMyPlayerProfile).toHaveBeenCalledOnce();
-    expect(mocks.listMyAdminCommunities).toHaveBeenCalledOnce();
-  });
-
-  it('keeps the dashboard available when the optional League entry lookup fails', async () => {
-    mocks.getMyPlayerProfile.mockResolvedValue(Object.freeze({}));
-    mocks.listMyAdminCommunities.mockResolvedValue([]);
-    mocks.listMyLeagueCommunities.mockRejectedValue(new Error('LEAGUE_UNAVAILABLE'));
-    mocks.listMyCommunityNotifications.mockResolvedValue([]);
-
-    await expect(loadDashboardData()).resolves.toMatchObject({ leagueCommunities: [] });
-  });
-
-  it('reports platform-admin access only from the server access context', async () => {
-    mocks.getMyPlayerProfile.mockResolvedValue(Object.freeze({}));
-    mocks.listMyAdminCommunities.mockResolvedValue([]);
-    mocks.listMyCommunityNotifications.mockResolvedValue([]);
-    mocks.getLevelReviewAccess.mockResolvedValue({ is_platform_admin: true });
-    await expect(loadDashboardData()).resolves.toMatchObject({ platformAdmin: true });
-
-    mocks.getLevelReviewAccess.mockRejectedValue(new Error('LEVEL_REVIEW_UNAVAILABLE'));
-    await expect(loadDashboardData()).resolves.toMatchObject({ platformAdmin: false });
-  });
-
   it('hands the committed rating view to the profile alongside the profile row', async () => {
     const profile = Object.freeze({});
     const rating = Object.freeze({ status: 'ok', revision: 4 });

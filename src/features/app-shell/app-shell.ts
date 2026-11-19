@@ -7,9 +7,6 @@ export type ShellState = {
   active: ShellDestination | null;
 };
 
-/** Hash of the existing Community surface on the dashboard until the community routes land. */
-export const communityHash = 'home-community';
-
 const detailSections = new Set(['my', 'past']);
 
 function isSuppressed(segments: string[]): boolean {
@@ -34,10 +31,10 @@ function isSuppressed(segments: string[]): boolean {
   }
 }
 
-function activeDestination(segments: string[], hash: string): ShellDestination | null {
+function activeDestination(segments: string[]): ShellDestination | null {
   switch (segments[0]) {
     case 'dashboard':
-      return hash === communityHash ? 'community' : 'home';
+      return 'home';
     case 'notifications':
       return 'home';
     case 'matches':
@@ -55,10 +52,10 @@ function activeDestination(segments: string[], hash: string): ShellDestination |
 }
 
 /** Single source of truth for where the bottom navigation shows and which tab is current. */
-export function resolveAppShell(pathname: string, hash = ''): ShellState {
+export function resolveAppShell(pathname: string): ShellState {
   const segments = pathname.split('/').filter(Boolean);
   return {
     visible: !isSuppressed(segments),
-    active: activeDestination(segments, hash.replace(/^#/, ''))
+    active: activeDestination(segments)
   };
 }

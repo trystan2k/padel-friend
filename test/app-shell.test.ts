@@ -7,9 +7,9 @@ const community = '00000000-0000-4000-8000-0000000000c1';
 describe('resolveAppShell active destination', () => {
   it.each([
     ['/dashboard', '', 'home'],
-    ['/dashboard', '#home-community', 'community'],
-    ['/dashboard', 'home-community', 'community'],
-    ['/dashboard', '#home-ranking', 'home'],
+    ['/community', '', 'community'],
+    [`/community/${community}`, '', 'community'],
+    [`/community/${community}/ranking`, '', 'community'],
     ['/notifications', '', 'home'],
     ['/notifications/preferences', '', 'home'],
     ['/matches', '', 'matches'],
@@ -23,8 +23,8 @@ describe('resolveAppShell active destination', () => {
     ['/players/p1', '', 'me'],
     ['/level-reviews', '', 'me'],
     ['/platform-admin/result-repairs', '', 'me']
-  ])('%s %s highlights %s', (path, hash, active) => {
-    expect(resolveAppShell(path, hash).active).toBe(active);
+  ])('%s %s highlights %s', (path, _hash, active) => {
+    expect(resolveAppShell(path).active).toBe(active);
   });
 
   it('has no current tab for routes outside the destinations', () => {

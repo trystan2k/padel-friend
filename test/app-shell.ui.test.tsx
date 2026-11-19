@@ -48,7 +48,7 @@ describe('AppShell', () => {
       '/dashboard',
       '/matches',
       '/matches/create',
-      '/dashboard#home-community',
+      '/community',
       '/me'
     ]);
     expect(links.map((link) => link.getAttribute('aria-label') ?? link.textContent)).toEqual([
@@ -63,7 +63,8 @@ describe('AppShell', () => {
 
   it.each([
     ['/dashboard', 'Home'],
-    ['/dashboard#home-community', 'Community'],
+    ['/community', 'Community'],
+    ['/community/00000000-0000-4000-8000-0000000000c1/ranking', 'Community'],
     ['/matches', 'Matches'],
     ['/matches/my', 'Matches'],
     ['/matches/past', 'Matches'],

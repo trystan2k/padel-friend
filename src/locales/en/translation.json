@@ -3,6 +3,31 @@
     "skipToContent": "Skip to main content",
     "stale": "Live updates are delayed. Displayed information may be out of date. Updates will resume automatically."
   },
+  "communitySurface": {
+    "navigation": "Community sections",
+    "overview": "Overview",
+    "leagues": "Leagues",
+    "skill": "Skill",
+    "league": "League",
+    "rankingKind": "Ranking type",
+    "settings": "Community settings",
+    "public": "Public",
+    "private": "Private",
+    "visibilityUnavailable": "Visibility unavailable",
+    "members": "Members",
+    "activeWeek": "Active this week",
+    "unavailable": "Unavailable",
+    "invite": "Invite players",
+    "inviteUnavailable": "Invitations are not available here.",
+    "joinCountUnavailable": "Join request count unavailable.",
+    "upcoming": "Upcoming matches",
+    "noUpcoming": "No upcoming matches to show.",
+    "skillDescription": "Your app-wide level and rank in this community. Reliability below 50% is shown as provisional.",
+    "skillListUnavailable": "The full community skill leaderboard is unavailable.",
+    "provisional": "Provisional level",
+    "noStandings": "No standings rows yet.",
+    "selfName": "{{name}} (you)"
+  },
   "appShell": {
     "navigation": "Main navigation",
     "nav": {

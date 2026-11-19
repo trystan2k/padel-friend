@@ -1,19 +1,13 @@
 import * as stylex from '@stylexjs/stylex';
 import { Link } from '@tanstack/react-router';
-import { useState, type ReactNode } from 'react';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { rootStyles } from '../../root.styles';
 import { formatDisplayLevel } from '../player/rating-config';
 import { NotificationBadge } from '../notifications/NotificationBadge';
 import { CommunitySwitcher } from './CommunitySwitcher';
 import type { HomeData } from './home-contracts';
-import {
-  ActionsSection,
-  ActivitySection,
-  NextMatchSection,
-  RankingSection,
-  RankSummary
-} from './HomeSections';
+import { ActionsSection, NextMatchSection } from './HomeSections';
 import { homeStyles as s } from './home.styles';
 
 /**
@@ -34,20 +28,15 @@ function formatHomeDate(instant: string, locale: string): string {
 /** Switch in flight: community sections stay reset until a response with a newer `asOf` lands. */
 type PendingSwitch = { target: string; since: string };
 
-export type HomeSurface = 'home' | 'community';
-
 /**
  * Home surface order: community switcher + bell + date, greeting with the light level summary,
- * next match, attention. The bottom navigation is the protected shell's. The community surface
- * shares the header and hosts the entries that no longer live on Home.
+ * next match and attention. The bottom navigation is the protected shell's.
  */
 export function HomeDashboard({
   home,
   playerId,
   displayName,
   level,
-  surface = 'home',
-  communityEntries,
   onSelect,
   onRetry
 }: {
@@ -56,9 +45,6 @@ export function HomeDashboard({
   playerId: string;
   displayName: string | null;
   level?: { display_level: number; reliability_percent: number };
-  surface?: HomeSurface;
-  /** Management, League, inbox and discovery entries rendered on the community surface. */
-  communityEntries?: ReactNode;
   onSelect: (communityId: string) => void;
   onRetry: () => void;
 }) {
@@ -68,7 +54,6 @@ export function HomeDashboard({
   const communities = home?.communities;
   const list = communities?.status === 'ok' ? communities.value : [];
   const selectedId = pending && switching ? pending.target : (home?.selection.selectedId ?? null);
-  const onCommunity = surface === 'community';
 
   const states =
     home === null ? (
@@ -126,48 +111,31 @@ export function HomeDashboard({
         </div>
         <NotificationBadge count={home?.unread ?? null} />
       </div>
-      {onCommunity ? (
+      <section aria-labelledby="home-greeting" {...stylex.props(s.levelHero)}>
+        <h1 id="home-greeting" {...stylex.props(s.greeting)}>
+          {displayName ? t('home.greeting', { name: displayName }) : t('home.title')}
+        </h1>
+        {level && (
+          <>
+            <p {...stylex.props(s.heroLabel)}>{t('home.levelTitle')}</p>
+            <strong {...stylex.props(s.levelValue)}>
+              {formatDisplayLevel(level.display_level, i18n.language)}
+            </strong>
+            <p {...stylex.props(s.heroCopy)}>
+              {t('profile.reliability')}:{' '}
+              {t('profile.percent', { value: level.reliability_percent })}
+            </p>
+          </>
+        )}
+        <Link to="/players/$playerId" params={{ playerId }} {...stylex.props(s.heroLink)}>
+          {t('statistics.player.myStatistics')}
+        </Link>
+      </section>
+      {states}
+      {ready && (
         <>
-          <h1 {...stylex.props(s.title)}>{t('appShell.nav.community')}</h1>
-          {states}
-          {ready && (
-            <>
-              <RankingSection section={home.ranking} communityId={selectedId} />
-              <ActivitySection section={home.activity} />
-            </>
-          )}
-          {communityEntries}
-        </>
-      ) : (
-        <>
-          <section aria-labelledby="home-greeting" {...stylex.props(s.levelHero)}>
-            <h1 id="home-greeting" {...stylex.props(s.greeting)}>
-              {displayName ? t('home.greeting', { name: displayName }) : t('home.title')}
-            </h1>
-            {level && (
-              <>
-                <p {...stylex.props(s.heroLabel)}>{t('home.levelTitle')}</p>
-                <strong {...stylex.props(s.levelValue)}>
-                  {formatDisplayLevel(level.display_level, i18n.language)}
-                </strong>
-                <p {...stylex.props(s.heroCopy)}>
-                  {t('profile.reliability')}:{' '}
-                  {t('profile.percent', { value: level.reliability_percent })}
-                </p>
-              </>
-            )}
-            {ready && <RankSummary section={home.ranking} />}
-            <Link to="/players/$playerId" params={{ playerId }} {...stylex.props(s.heroLink)}>
-              {t('statistics.player.myStatistics')}
-            </Link>
-          </section>
-          {states}
-          {ready && (
-            <>
-              <NextMatchSection section={home.matches} />
-              <ActionsSection section={home.actions} />
-            </>
-          )}
+          <NextMatchSection section={home.matches} />
+          <ActionsSection section={home.actions} />
         </>
       )}
     </div>

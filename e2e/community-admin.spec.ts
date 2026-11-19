@@ -291,8 +291,8 @@ async function openCommunityTab(page: Page) {
     .getByRole('navigation', { name: en.appShell.navigation })
     .getByRole('link', { name: en.appShell.nav.community, exact: true })
     .click();
-  await expect(page).toHaveURL(/\/dashboard#home-community$/);
-  await expect(page.locator('#home-community')).toBeVisible();
+  await expect(page).toHaveURL(/\/community\/?(?:\?|$)/);
+  await expect(page.locator('[data-community-entries]')).toBeVisible();
 }
 
 async function mainOffset(page: Page) {
@@ -1262,7 +1262,7 @@ test(
     const adminEntry = { name: communityName, exact: true };
     await expect(page.getByRole('link', adminEntry)).toHaveCount(0);
     await openCommunityTab(page);
-    const adminLink = page.locator('#home-community').getByRole('link', adminEntry);
+    const adminLink = page.locator('[data-community-entries]').getByRole('link', adminEntry);
     await expect(adminLink).toHaveAttribute('href', `${route}/requests`);
     await adminLink.click();
     await waitForHydratedPage(page);
@@ -1347,9 +1347,9 @@ test(
     const memberPage = await memberContext.newPage();
     await signIn(memberPage, request);
     await openCommunityTab(memberPage);
-    await expect(memberPage.locator('#home-community').getByRole('link', adminEntry)).toHaveCount(
-      0
-    );
+    await expect(
+      memberPage.locator('[data-community-entries]').getByRole('link', adminEntry)
+    ).toHaveCount(0);
     await memberPage.goto(`${route}/members`);
     await expect(
       memberPage.getByRole('heading', { name: en.communityAdmin.accessDeniedTitle })

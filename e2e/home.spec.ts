@@ -357,6 +357,25 @@ test.describe('community Home', () => {
     await expect(
       page.getByRole('combobox', { name: new RegExp(home.switcherLabel) })
     ).toContainText('Home Alpha Club');
+
+    await page
+      .getByRole('navigation', { name: copies.en.appShell.navigation })
+      .getByRole('link', { name: copies.en.appShell.nav.community })
+      .click();
+    const overview = page.locator('[data-community-view="overview"]');
+    const communitySwitcher = overview.getByRole('combobox', {
+      name: new RegExp(home.switcherLabel)
+    });
+    await expect(communitySwitcher).toContainText('Home Alpha Club');
+    await communitySwitcher.focus();
+    await page.keyboard.press('Enter');
+    await page.getByRole('option', { name: 'Home Beta Club' }).click();
+    await expect(page).toHaveURL(new RegExp(`/community/${second}/?$`));
+    await expect(page.getByRole('heading', { level: 1 })).toHaveText('Home Beta Club');
+    await expect(page.getByRole('link', { name: home.ranking.title, exact: true })).toHaveAttribute(
+      'href',
+      `/community/${second}/ranking`
+    );
   });
 
   test('a stale or foreign selection falls back without naming any community', async () => {
@@ -388,9 +407,12 @@ test.describe('community Home', () => {
     for (const name of [labels.home, labels.matches, labels.create, labels.community, labels.me])
       await expect(nav.getByRole('link', { name, exact: true })).toBeVisible();
     await expect(nav.getByRole('link')).toHaveCount(5);
-    // Ranking is no destination of its own; the Community surface hosts its section.
+    await expect(page.getByRole('region', { name: home.ranking.title })).toHaveCount(0);
+    await expect(page.getByRole('region', { name: home.activity.title })).toHaveCount(0);
     await nav.getByRole('link', { name: labels.community }).click();
-    await expect(page.locator('#home-ranking')).toBeVisible();
+    await expect(page).toHaveURL(/\/community\/?$/);
+    await expect(page.locator('[data-community-view="overview"]')).toBeVisible();
+    await expect(page.getByRole('link', { name: home.ranking.title, exact: true })).toBeVisible();
     for (const link of await nav.getByRole('link').all()) {
       const box = await link.boundingBox();
       expect(box?.height ?? 0).toBeGreaterThanOrEqual(44);
@@ -416,9 +438,7 @@ test.describe('community Home', () => {
 
   test('gives every Home text link a 44px target in both dimensions', async () => {
     const page = await f.page(member);
-    for (const link of await page
-      .locator('#home-actions a, #home-next-match a, #home-ranking a')
-      .all()) {
+    for (const link of await page.locator('#home-actions a, #home-next-match a').all()) {
       const box = await link.boundingBox();
       expect(box?.width ?? 0).toBeGreaterThanOrEqual(44);
       expect(box?.height ?? 0).toBeGreaterThanOrEqual(44);
@@ -428,7 +448,7 @@ test.describe('community Home', () => {
 
 // --- F28: Home structural + visual regression evidence -------------------------------------
 // Pencil frames hKncV (mobile) and AlfRD (desktop): header title/subtitle/bell, level hero,
-// attention cards, next-match card, ranking, activity and the fixed bottom navigation. Two layers:
+// attention cards, next-match card and the fixed bottom navigation. Two layers:
 //  1. exact structural probes over live DOM rectangles (strict, never relaxed): containment, order,
 //     no overlap, no text clipping, >=44px targets, fixed nav visible at top and end of scroll;
 //  2. screenshot references (viewport) per theme x viewport x translated locale. Pixels are only a
@@ -445,15 +465,16 @@ test.describe('community Home', () => {
 //    renderer (one pinned Chromium config, raster flags fixed in playwright.config.ts).
 //  - Baselines were deliberately regenerated for PAF-202 (Clubhouse redesign) because the true
 //    rendering changed: Figtree replaced Inter/Manrope (different glyph metrics), the Home sections
-//    were recomposed (greeting hero with rank summary, next match, attention; profile/admin surfaces
+//    were recomposed (greeting hero, next match, attention; profile/admin surfaces
 //    moved to /me and the Community surface) and the shell bar was added. Residuals of the old
 //    references against the new rendering were home-mobile-light 17.8%, home-mobile-dark 11.5%,
 //    home-desktop-light 5.9%, home-desktop-dark 3.7%, home-mobile-pt-br 18.3%, home-mobile-es 17.9%.
 //    That delta is the intended redesign, not a defect: the strict structural probes above (which
 //    pass) are the structural gate; the screenshots were re-baselined to the new rendering and the
 //    budget was NOT widened.
-//  - Measured Chromium residuals against the regenerated references (2026-11-19): all six
-//    baselines 0. The budget is a ceiling over a measured zero.
+//  - Removing the hero rank line in U9 moved all content below it. Old-reference residuals
+//    were 6.95%, 4.74%, 2.59%, 1.82%, 7.64% and 7.43% in the order listed above.
+//    Baselines reflect that intended removal; the 1% budget is unchanged.
 //  - Cross-renderer (WebKit/Firefox) residuals: not measured (unavailable in the verification
 //    environment: no non-Chromium Playwright project is configured). Cross-renderer pixel equality
 //    (including Pencil vs Chromium font rasterization) is explicitly out of scope per AGENTS.md.
@@ -602,8 +623,8 @@ async function homeStructureFailures(page: Page): Promise<string[]> {
     inViewport('at top');
     window.scrollTo(0, doc.scrollHeight);
     inViewport('at end');
-    const community = document.getElementById('home-community');
-    if (community && rect(community).bottom > navBox().top + 0.5)
+    const lastSection = home?.lastElementChild;
+    if (lastSection && rect(lastSection).bottom > navBox().top + 0.5)
       failures.push('content is covered by the nav at the end of the page');
     window.scrollTo(0, 0);
     return failures;
@@ -707,9 +728,7 @@ test.describe('Home structure and visual regression', { tag: '@visual' }, () => 
         if (!('shot' in config)) return;
         await page.evaluate((text) => {
           // Header date and activity days follow the wall clock; fixture match times are fixed.
-          for (const time of document.querySelectorAll(
-            '#home-top > div:first-child time, #home-activity time'
-          ))
+          for (const time of document.querySelectorAll('#home-top > div:first-child time'))
             time.textContent = text;
         }, NORMALIZED_DATE);
         await page.evaluate(() => window.scrollTo(0, 0));

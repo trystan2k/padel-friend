@@ -5,13 +5,9 @@ import { useTranslation } from 'react-i18next';
 import type {
   HomeAction,
   HomeActivity,
-  HomeLeagueRank,
   HomeMatchCard,
   HomeMatches,
-  HomeRankMovement,
-  HomeRanking,
-  HomeSection,
-  HomeSkillRank
+  HomeSection
 } from './home-contracts';
 import { homeStyles as s } from './home.styles';
 
@@ -175,135 +171,6 @@ export function ActionsSection({
                 </li>
               ))}
             </ul>
-          </>
-        )}
-      </Outcome>
-    </SectionShell>
-  );
-}
-
-function movementText(t: Translate, movement: HomeRankMovement | null): string | null {
-  if (movement === null) return null;
-  if (movement.state === 'new') return t('home.ranking.movement.new');
-  if (movement.state === 'same') return t('home.ranking.movement.same');
-  return t(`home.ranking.movement.${movement.state}`, { count: movement.places });
-}
-
-function SkillRank({ rank, inHero = false }: { rank: HomeSkillRank; inHero?: boolean }) {
-  const { t, number } = useFormat();
-  const movement = movementText(t, rank.movement);
-  if (rank.status !== 'ranked' || rank.position === null)
-    return (
-      <p {...stylex.props(inHero ? s.heroCopy : s.state)}>
-        {t(rank.status === 'unrated' ? 'home.ranking.unrated' : 'home.ranking.notMember')}
-      </p>
-    );
-  return (
-    <p {...stylex.props(inHero ? s.heroCopy : s.body)}>
-      {rank.rankedMembers === null
-        ? t('home.ranking.skillRankedNoTotal', { position: number(rank.position) })
-        : t('home.ranking.skillRanked', {
-            position: number(rank.position),
-            total: number(rank.rankedMembers)
-          })}
-      {movement && ` · ${movement}`}
-    </p>
-  );
-}
-
-/**
- * Light rank line of the Home level summary. The rank is real own-rank data; any read that did not
- * produce one says so instead of showing a made-up position.
- */
-export function RankSummary({ section }: { section: HomeSection<HomeRanking> }) {
-  const { t } = useFormat();
-  if (section.status === 'ok' && section.value.skill.status === 'ok')
-    return <SkillRank rank={section.value.skill.value} inHero />;
-  const key =
-    section.status === 'ok' && section.value.skill.status === 'empty'
-      ? 'home.ranking.skillEmpty'
-      : 'home.levelSummary.rankUnavailable';
-  return <p {...stylex.props(s.heroCopy)}>{t(key)}</p>;
-}
-
-function LeagueRank({ league, communityId }: { league: HomeLeagueRank; communityId: string }) {
-  const { t, number } = useFormat();
-  const movement = movementText(t, league.movement);
-  const rows =
-    league.self && !league.top.some((row) => row.isSelf)
-      ? [...league.top, league.self]
-      : league.top;
-  return (
-    <>
-      <h3 {...stylex.props(s.cardTitle)}>
-        <Link
-          to="/community/$communityId/leagues/$leagueId"
-          params={{ communityId, leagueId: league.league_id }}
-          {...stylex.props(s.link)}
-        >
-          {t('home.ranking.leagueTitle', { name: league.name })}
-        </Link>
-      </h3>
-      <p {...stylex.props(s.meta)}>
-        {league.activeCount === 1
-          ? t('home.ranking.leagueOnly')
-          : t(
-              league.activeCountExact
-                ? 'home.ranking.leagueFirstOf'
-                : 'home.ranking.leagueFirstOfMore',
-              {
-                count: league.activeCount
-              }
-            )}
-      </p>
-      <ol {...stylex.props(s.list)}>
-        {rows.map((row) => (
-          <li key={row.user_id} {...stylex.props(s.rankRow, row.isSelf && s.rankSelf)}>
-            <span>
-              {number(row.position)}.{' '}
-              {row.isSelf ? t('home.ranking.you') : (row.display_name ?? t('home.ranking.unnamed'))}
-            </span>
-            <span>{t('home.ranking.record', { wins: row.wins, losses: row.losses })}</span>
-          </li>
-        ))}
-      </ol>
-      {league.self === null && <p {...stylex.props(s.meta)}>{t('home.ranking.selfMissing')}</p>}
-      {movement && <p {...stylex.props(s.meta)}>{movement}</p>}
-    </>
-  );
-}
-
-export function RankingSection({
-  section,
-  communityId
-}: {
-  section: HomeSection<HomeRanking>;
-  communityId: string | null;
-}) {
-  const { t } = useFormat();
-  return (
-    <SectionShell id="home-ranking" title={t('home.ranking.title')}>
-      <Outcome section={section} empty="home.ranking.empty">
-        {({ skill, league }) => (
-          <>
-            <h3 {...stylex.props(s.cardTitle)}>{t('home.ranking.skillTitle')}</h3>
-            <Outcome section={skill} empty="home.ranking.skillEmpty">
-              {(rank) => <SkillRank rank={rank} />}
-            </Outcome>
-            <Outcome section={league} empty="home.ranking.leagueEmpty">
-              {(value) =>
-                communityId ? <LeagueRank league={value} communityId={communityId} /> : null
-              }
-            </Outcome>
-            {communityId && (
-              <Link
-                to="/community/$communityId/statistics"
-                params={{ communityId }}
-                {...stylex.props(s.link)}
-              >
-                {t('home.ranking.statistics')}
-              </Link>
-            )}
           </>
         )}
       </Outcome>

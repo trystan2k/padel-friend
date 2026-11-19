@@ -102,7 +102,7 @@ test('admin sends one-way request update; applicant reads it after refresh; outs
   await page.context().clearCookies();
   await page.evaluate(() => localStorage.clear());
   await signIn(page, applicant);
-  await page.goto('/dashboard#home-community');
+  await page.goto('/community');
   await waitForHydratedPage(page);
   await expect(page.getByRole('region', { name: en.communityInbox.title })).toBeVisible();
   await page.reload();
@@ -128,7 +128,7 @@ test('admin sends one-way request update; applicant reads it after refresh; outs
   await page.context().clearCookies();
   await page.evaluate(() => localStorage.clear());
   await signIn(page, outsider);
-  await page.goto('/dashboard#home-community');
+  await page.goto('/community');
   await waitForHydratedPage(page);
   await expect(page.getByRole('region', { name: en.communityInbox.title })).toBeVisible();
   await page.reload();
@@ -289,7 +289,7 @@ test('private Admin invites an opted-in player; withdrawal removes directory res
   };
   page.on('response', capture);
   await signIn(page, outsider);
-  await page.goto('/dashboard#home-community');
+  await page.goto('/community');
   await waitForHydratedPage(page);
   await expect(page.getByRole('region', { name: en.communityInbox.title })).toBeVisible();
   await page.reload();

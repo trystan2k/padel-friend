@@ -1,7 +1,8 @@
 import * as stylex from '@stylexjs/stylex';
-import { Link, useHydrated, useRouterState } from '@tanstack/react-router';
+import { Link, useRouterState } from '@tanstack/react-router';
 import { useTranslation } from 'react-i18next';
-import { communityHash, resolveAppShell } from './app-shell';
+import { parseHomeSearch } from '../home/home.validators';
+import { resolveAppShell } from './app-shell';
 import { appShellStyles as s } from './app-shell.styles';
 
 const icons = {
@@ -32,10 +33,6 @@ const icons = {
   create: <path d="M12 5v14M5 12h14" />
 };
 
-// Home and Community share the dashboard path. The router marks a link current by itself, so both
-// opt into an exact match including the hash; the tab state set here covers the remaining paths.
-const sameSurface = { exact: true, includeHash: true };
-
 function Icon({ name, large = false }: { name: keyof typeof icons; large?: boolean }) {
   return (
     <svg
@@ -56,16 +53,17 @@ function Icon({ name, large = false }: { name: keyof typeof icons; large?: boole
 /**
  * The one bottom navigation of the protected app: Home, Matches, central Create, Community, Me.
  * Ranking is not a destination; it is reached inside Community. Visibility and the current tab
- * come from the path alone (`resolveAppShell`). Community is the existing dashboard community
- * surface until the community routes replace it.
+ * come from the path alone (resolveAppShell).
  */
 export function AppShell() {
   const { t } = useTranslation();
-  const pathname = useRouterState({ select: (state) => state.location.pathname });
-  const rawHash = useRouterState({ select: (state) => state.location.hash });
-  // The server never sees the hash; reading it before hydration would mismatch the markup.
-  const hydrated = useHydrated();
-  const { visible, active } = resolveAppShell(pathname, hydrated ? rawHash : '');
+  const location = useRouterState({ select: (state) => state.location });
+  const { visible, active } = resolveAppShell(location.pathname);
+  const community = parseHomeSearch(location.search).community;
+  const scopedId =
+    active === 'community'
+      ? parseHomeSearch({ community: location.pathname.split('/')[2] }).community
+      : undefined;
   if (!visible) return null;
   const tab = (destination: 'home' | 'matches' | 'community' | 'me') => ({
     'aria-current': active === destination ? ('page' as const) : undefined,
@@ -77,7 +75,7 @@ export function AppShell() {
       <nav data-app-nav aria-label={t('appShell.navigation')} {...stylex.props(s.bar)}>
         <ul {...stylex.props(s.list)}>
           <li {...stylex.props(s.item)}>
-            <Link to="/dashboard" activeOptions={sameSurface} {...tab('home')}>
+            <Link to="/dashboard" activeOptions={{ exact: true }} {...tab('home')}>
               <Icon name="home" />
               {t('appShell.nav.home')}
             </Link>
@@ -98,15 +96,27 @@ export function AppShell() {
             </Link>
           </li>
           <li {...stylex.props(s.item)}>
-            <Link
-              to="/dashboard"
-              hash={communityHash}
-              activeOptions={sameSurface}
-              {...tab('community')}
-            >
-              <Icon name="community" />
-              {t('appShell.nav.community')}
-            </Link>
+            {scopedId ? (
+              <Link
+                to="/community/$communityId"
+                params={{ communityId: scopedId }}
+                activeOptions={{ exact: true }}
+                {...tab('community')}
+              >
+                <Icon name="community" />
+                {t('appShell.nav.community')}
+              </Link>
+            ) : (
+              <Link
+                to="/community"
+                search={{ community }}
+                activeOptions={{ exact: true }}
+                {...tab('community')}
+              >
+                <Icon name="community" />
+                {t('appShell.nav.community')}
+              </Link>
+            )}
           </li>
           <li {...stylex.props(s.item)}>
             <Link to="/me" {...tab('me')}>

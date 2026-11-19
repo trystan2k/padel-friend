@@ -201,8 +201,7 @@ describe('Home dashboard', () => {
   });
 
   it('keeps the full profile, management entries and inbox off Home', () => {
-    view(home(), { communityEntries: <p>entries</p> });
-    expect(screen.queryByText('entries')).toBeNull();
+    view(home());
     expect(document.getElementById('home-profile')).toBeNull();
     expect(document.getElementById('home-community')).toBeNull();
     expect(screen.queryByRole('region', { name: /Ranking|Recent activity/ })).toBeNull();
@@ -214,48 +213,16 @@ describe('Home dashboard', () => {
     expect(hero.textContent).toContain('Your level');
     expect(hero.textContent).toContain('3.82');
     expect(hero.textContent).toContain('Reliability: 76%');
-    expect(hero.textContent).toContain('#2 of 10 ranked players · New entry');
+    expect(hero.textContent).not.toContain('ranked players');
     expect(hero.textContent).not.toMatch(/↑|↓|to 100%|this season/);
     expect(within(hero).getByRole('link', { name: 'My statistics' }).getAttribute('href')).toBe(
       '/players/me'
     );
   });
 
-  it.each([
-    [{ status: 'unavailable' } as const, 'Your rank is not available right now.'],
-    [{ status: 'error' } as const, 'Your rank is not available right now.'],
-    [
-      { status: 'ok', value: { skill: { status: 'empty' }, league: { status: 'empty' } } } as const,
-      'No rank history in this community yet.'
-    ]
-  ])('says so when the rank has no real value: %j', (ranking, copy) => {
-    view(home({ ranking: ranking as HomeData['ranking'] }));
-    expect(
-      within(screen.getByRole('region', { name: 'Hello, Thiago' })).getByText(copy)
-    ).toBeTruthy();
-  });
-
   it('keeps an unknown unread count unknown', () => {
     view(home({ unread: null }));
     expect(screen.getByTestId('badge').textContent).toBe('unknown');
-  });
-
-  it('moves ranking, League context and activity to the community surface', () => {
-    view(home(), { surface: 'community', communityEntries: <p>entries</p> });
-    expect(screen.getByRole('heading', { level: 1, name: 'Community' })).toBeTruthy();
-    expect(screen.queryByRole('region', { name: 'Next match' })).toBeNull();
-    expect(screen.queryByRole('region', { name: 'Hello, Thiago' })).toBeNull();
-    expect(screen.getByText('entries')).toBeTruthy();
-    const ranking = screen.getByRole('region', { name: 'Ranking' });
-    expect(within(ranking).getByText(/#2 of 10 ranked players · New entry/)).toBeTruthy();
-    expect(within(ranking).getByText('Community skill rank')).toBeTruthy();
-    expect(within(ranking).getByRole('link', { name: 'League: Summer League' })).toBeTruthy();
-    expect(within(ranking).getByText('First of 2 active Leagues')).toBeTruthy();
-    expect(within(ranking).getByText('Up 2 places since the last published rank')).toBeTruthy();
-    expect(within(ranking).getByText(/You/)).toBeTruthy();
-    expect(within(ranking).getByRole('link', { name: 'Community statistics' })).toBeTruthy();
-    const activity = screen.getByRole('region', { name: 'Recent activity' });
-    expect(within(activity).getByText(/Global rating/)).toBeTruthy();
   });
 
   it('shows errors, unavailable and empty states instead of fake content', () => {
@@ -267,20 +234,6 @@ describe('Home dashboard', () => {
     );
     expect(screen.getByRole('alert').textContent).toBe('This section could not be loaded.');
     expect(screen.getByText('Nothing needs your attention.')).toBeTruthy();
-  });
-
-  it('keeps community async states truthful on the community surface', () => {
-    view(home({ ranking: { status: 'unavailable' }, activity: { status: 'empty' } }), {
-      surface: 'community'
-    });
-    expect(screen.getByText('This section is not available right now.')).toBeTruthy();
-    expect(screen.getByText('No confirmed activity yet.')).toBeTruthy();
-  });
-
-  it('still renders the community entries when the Home read failed', () => {
-    view(null, { surface: 'community', communityEntries: <p>entries</p> });
-    expect(screen.getByRole('alert').textContent).toContain('Home could not be loaded.');
-    expect(screen.getByText('entries')).toBeTruthy();
   });
 
   it('flags an incomplete action list', () => {
@@ -361,7 +314,6 @@ describe('Home dashboard', () => {
     expect(screen.getByText('Olá, Thiago')).toBeTruthy();
     expect(screen.getByRole('region', { name: 'Próxima partida' })).toBeTruthy();
     expect(screen.getByText('2 resultados aguardando revisão em Centre Court')).toBeTruthy();
-    expect(screen.getByText(/2º de 10 jogadores no ranking/)).toBeTruthy();
   });
 });
 
@@ -382,7 +334,8 @@ describe('Home layout contract', () => {
     const route = readFileSync('src/routes/_protected.dashboard.tsx', 'utf8');
     expect(route).not.toContain('<PlayerProfile');
     expect(route).not.toContain('home-profile');
-    const entries = route.slice(route.indexOf('communityEntries='));
+    expect(route).not.toContain('home-community');
+    const entries = readFileSync('src/features/community/CommunitySurface.tsx', 'utf8');
     for (const entry of [
       'PlatformAdminEntry',
       'CommunityAdminEntries',
