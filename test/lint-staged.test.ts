@@ -86,7 +86,9 @@ describe('lint-staged oxlint coverage', () => {
     const config: Record<string, string> = JSON.parse(
       readFileSync(path.join(repoRoot, '.lintstagedrc.json'), 'utf8')
     );
-    expect(config['*.{ts,tsx,js,mjs}']).toBe('oxlint --fix --deny-warnings');
+    expect(config['*.{ts,tsx,js,mjs}']).toBe(
+      'oxlint --fix --deny-warnings --no-error-on-unmatched-pattern'
+    );
     expect(Object.keys(config).every((key) => !key.includes('/'))).toBe(true);
     expect(config['*.css']).toBe('stylelint --fix');
     expect(config['*']).toBe('oxfmt --no-error-on-unmatched-pattern');
@@ -128,6 +130,16 @@ describe('lint-staged oxlint coverage', () => {
     const generatedResult = runHook(generatedDir);
     expect(generatedResult.status).toBe(0);
     expect(existsSync(path.join(generatedDir, 'src/lib/supabase/database.types.ts'))).toBe(true);
+  }, 30_000);
+
+  // Design assets under `docs/design/**` are oxlint-ignored. Without
+  // --no-error-on-unmatched-pattern oxlint exits 1 when every staged match is ignored, which
+  // blocked a docs-only commit at the pre-commit hook.
+  it('passes when every staged script is ignored by oxlint', () => {
+    const dir = createFixture();
+    copyFileSync(path.join(repoRoot, '.oxfmtrc.json'), path.join(dir, '.oxfmtrc.json'));
+    stage(dir, 'docs/design/probe/vendored.js', 'const value = missingProbeIdentifier;\n');
+    expect(runHook(dir).status).toBe(0);
   }, 30_000);
 
   // Spawns git (status) against the real repository; worker contention can add
