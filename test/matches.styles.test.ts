@@ -150,16 +150,17 @@ describe('match styles', () => {
     const touchMinimum = 'calc(var(--space-40) + var(--space-4))';
     expect(styles).toContain('var(--border-width-lg) solid var(--color-green)');
     expect(styles).toContain(touchMinimum); // detail input and unavailable/back links
-    expect(createStyles).toContain(touchMinimum); // file control and team radio labels
+    expect(createStyles).toContain(touchMinimum); // checkbox label and chip targets
     expect(createStyles).toContain('touchLabel');
-    expect(createStyles).toContain("minInlineSize: 'calc(var(--space-40) + var(--space-4))'");
-    expect(createStyles).toContain("minBlockSize: 'calc(var(--space-40) + var(--space-4))'");
+    expect(createStyles).toContain('minInlineSize: target');
+    expect(createStyles).toContain('minBlockSize: control');
     expect(createStyles).toContain('fileInput');
     expect(createStyles).toContain('minInlineSize: 0');
     expect(createStyles).toContain("maxInlineSize: '100%'");
     expect(createStyles).toContain("inlineSize: '100%'");
+    // Remove chips and result rows are the invitee picker's controls (rows 56, chips 44 minimum).
     expect(readFileSync('src/features/matches/MatchInviteePicker.tsx', 'utf8')).toContain(
-      'stylex.props(s.button)'
+      'stylex.props(s.chip)'
     );
   });
   it('matches the measured match surfaces, rhythm, tab treatment, and card radius', () => {
@@ -175,12 +176,18 @@ describe('match styles', () => {
     expect(list).toMatch(
       /segment: \{[^}]*minHeight: 'calc\(var\(--space-40\) \+ var\(--space-8\)\)'/
     );
-    expect(createStyles).toContain("padding: 'var(--space-18)'");
-    expect(createStyles).toContain("form: { display: 'grid', gap: 'var(--space-10)' }");
-    expect(createStyles).toContain("width: '100%',\n    backgroundColor: 'var(--color-green)'");
-    expect(readFileSync('src/features/matches/CreateMatchPage.tsx', 'utf8')).toContain(
-      'stylex.props(s.button, s.primaryButton)'
+    // Create wizard (wHaAb/vAxZh/b5RR4/RDV2r): 20-unit safe-area gutter, 14-unit content rhythm, 52-unit
+    // controls, surface-2 segmented tracks, 18-unit list cards and a sticky surface action bar.
+    expect(createStyles).toContain(
+      "const gutterStart = 'max(var(--space-20), env(safe-area-inset-left))'"
     );
+    expect(createStyles).toMatch(/content: \{[^}]*gap: 'var\(--space-14\)'/);
+    expect(createStyles).toMatch(/segmented: \{[^}]*backgroundColor: 'var\(--color-surface-2\)'/);
+    expect(createStyles).toMatch(/list: \{[^}]*borderRadius: 'var\(--radius-18\)'/);
+    expect(createStyles).toMatch(/actions: \{[^}]*position: 'sticky'/);
+    const page = readFileSync('src/features/matches/CreateMatchPage.tsx', 'utf8');
+    expect(page).toContain('xstyle={s.primaryAction}');
+    expect(page).toContain('xstyle={s.secondaryAction}');
   });
   it('matches rebuilt detail shell card rhythm and compact native global controls', () => {
     const shell = readFileSync('src/features/matches/match-detail-shell.styles.ts', 'utf8');
@@ -212,9 +219,8 @@ describe('match styles', () => {
     expect(
       styles.match(/backgroundColor: 'var\(--color-green\)',\s*color: 'var\(--color-bg\)'/g)
     ).toHaveLength(2);
-    expect(createStyles).toContain(
-      "backgroundColor: 'var(--color-green)',\n    color: 'var(--color-bg)'"
-    );
+    // The wizard's primary action is the shared Button primitive (green fill, on-green label).
+    expect(createStyles).not.toContain('var(--color-bg)');
     expect(readFileSync('design-tokens/dist/tokens.css', 'utf8')).toContain(
       '--color-bg: var(--palette-bg-dark)'
     );

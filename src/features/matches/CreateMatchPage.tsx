@@ -1,5 +1,6 @@
 import * as stylex from '@stylexjs/stylex';
-import { rootStyles } from '../../root.styles';
+import { Button } from '../../components/ui/Button';
+import { TextLink } from '../../components/ui/TextLink';
 import { validMatchMapsUrl } from './match-management-edit';
 import { Link, useNavigate } from '@tanstack/react-router';
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
@@ -548,24 +549,51 @@ export function CreateMatchPage() {
     }
   }
 
+  const wizardHeader = (
+    <header {...stylex.props(s.topBar)}>
+      {step > 0 ? (
+        <button
+          type="button"
+          aria-label={t('matchCreate.previousStep')}
+          {...stylex.props(s.back)}
+          onClick={() => setStep(step - 1)}
+        >
+          <BackIcon />
+        </button>
+      ) : (
+        <Link to="/matches" aria-label={t('matches.back')} {...stylex.props(s.back)}>
+          <BackIcon />
+        </Link>
+      )}
+      <h1 {...stylex.props(s.title)} ref={heading} tabIndex={-1}>
+        {t('matchCreate.title')}
+      </h1>
+    </header>
+  );
   if (optionsLoading && !options.communities.length)
     return <main {...stylex.props(s.page)} aria-busy="true" />;
   if (optionsError && !options.communities.length)
     return (
       <main {...stylex.props(s.page)}>
-        <h1 {...stylex.props(s.title)}>{t('matchCreate.title')}</h1>
-        <p role="alert">{t('matchCreate.errors.optionsUnavailable')}</p>
-        <button type="button" {...stylex.props(s.button)} onClick={() => window.location.reload()}>
-          {t('matches.retry')}
-        </button>
+        {wizardHeader}
+        <div {...stylex.props(s.centered)}>
+          <p role="alert" {...stylex.props(s.formMessage)}>
+            {t('matchCreate.errors.optionsUnavailable')}
+          </p>
+          <Button variant="secondary" onClick={() => window.location.reload()}>
+            {t('matches.retry')}
+          </Button>
+        </div>
       </main>
     );
   if (!options.communities.length)
     return (
       <main {...stylex.props(s.page)}>
-        <h1 {...stylex.props(s.title)}>{t('matchCreate.title')}</h1>
-        <p>{t('matchCreate.noCommunities')}</p>
-        <Link to="/onboarding/community">{t('matchCreate.discoverCommunities')}</Link>
+        {wizardHeader}
+        <div {...stylex.props(s.centered)}>
+          <p {...stylex.props(s.body)}>{t('matchCreate.noCommunities')}</p>
+          <TextLink to="/onboarding/community">{t('matchCreate.discoverCommunities')}</TextLink>
+        </div>
       </main>
     );
   // A competition error recorded at validation time goes stale once the League list or the
@@ -582,137 +610,174 @@ export function CreateMatchPage() {
   const requiredInvalid = Object.keys(activeErrors).length > 0;
   return (
     <main {...stylex.props(s.page)}>
-      <header {...stylex.props(rootStyles.pageHeader)}>
-        <h1 {...stylex.props(s.title)} ref={heading} tabIndex={-1}>
-          {t('matchCreate.title')}
-        </h1>
-        <p>{t('matchCreate.subtitle')}</p>
-        <p>{t(`matchCreate.steps.${headingLabels[step]}`)}</p>
-      </header>
+      {wizardHeader}
       {optionsError && (
-        <>
-          <p role="alert">{t('matchCreate.errors.optionsUnavailable')}</p>
-          <button
-            type="button"
-            disabled={optionsLoading}
-            {...stylex.props(s.button)}
-            onClick={retryScopedOptions}
-          >
+        <div {...stylex.props(s.centered)}>
+          <p role="alert" {...stylex.props(s.formMessage)}>
+            {t('matchCreate.errors.optionsUnavailable')}
+          </p>
+          <Button variant="secondary" disabled={optionsLoading} onClick={retryScopedOptions}>
             {t('matches.retry')}
-          </button>
-        </>
+          </Button>
+        </div>
       )}
       <div ref={formRef} {...stylex.props(s.form)}>
-        {step === 0 && (
-          <>
-            <MatchDetailsForm
-              value={{ ...value, community_id: communityId }}
-              options={options}
-              errors={activeErrors}
-              competition={competition}
-              change={<K extends keyof MatchDraft>(key: K, next: MatchDraft[K]) => {
-                if (key === 'community_id' && typeof next === 'string') selectCommunity(next);
-                else change(key, next);
-              }}
-            />
-            <MatchPhotoUpload
-              key={`${communityId}:${eventId}`}
-              communityId={communityId}
-              eventId={eventId}
-              photo={photo}
-              onChange={changePhoto}
-              onBusyChange={setPhotoBusy}
-              copying={photoCopyBusy}
-              copyFailed={photoCopyError}
-              invalid={Boolean(fieldErrors.photo)}
-            />
-          </>
-        )}
-        {step === 1 && (
-          <MatchInviteePicker
-            communityId={communityId}
-            selected={invitees}
-            onChange={(next) => {
-              if (frozen.current) frozen.current = null;
-              setInvitees(next);
-            }}
-          />
-        )}
-        {step === 2 && (
-          <fieldset>
-            <legend>{t('matchCreate.helpers.teamMode')}</legend>
-            {(['PREDEFINED_TEAMS', 'POST_MATCH_TEAMS'] as const).map((mode) => (
-              <label key={mode} {...stylex.props(s.touchLabel)}>
-                <input
-                  type="radio"
-                  name="teamMode"
-                  checked={(value.teamMode ?? 'POST_MATCH_TEAMS') === mode}
-                  onChange={() => change('teamMode', mode)}
-                />
-                {t(`matches.teamMode.${mode}`)}
-              </label>
+        <div {...stylex.props(s.content)}>
+          <ol aria-hidden="true" {...stylex.props(s.progress)}>
+            {headingLabels.map((label, index) => (
+              <li
+                key={label}
+                data-step-state={index < step ? 'done' : index === step ? 'current' : 'todo'}
+                {...stylex.props(index <= step ? s.segmentDone : s.segmentTodo)}
+              />
             ))}
-          </fieldset>
-        )}
-        {step === 3 && (
-          <>
-            <MatchReview
-              value={{
-                ...value,
-                timezone,
-                cutoffInstant: cutoffInstant
-                  ? `${dateFormatter.format(cutoffInstant)} · ${timezone}`
-                  : ''
-              }}
-              photo={photo}
-              count={invitees.length}
-              competition={resolution}
-            />
-            {fieldErrors.cutoff && (
-              <p {...stylex.props(s.formMessage)} role="alert">
-                {t(`matchCreate.errors.${fieldErrors.cutoff}`)}
-              </p>
-            )}
-            <p {...stylex.props(s.formMessage)}>{t('matchCreate.helpers.invitesOnPublish')}</p>
-          </>
-        )}
-        {error && (
-          <p {...stylex.props(s.formMessage)} role="alert">
-            {t(`matchCreate.errors.${error}`)}
+          </ol>
+          <p {...stylex.props(s.stepLabel)}>
+            {t('matchCreate.stepOf', { current: step + 1, total: headingLabels.length })} ·{' '}
+            <span>{t(`matchCreate.steps.${headingLabels[step]}`)}</span>
           </p>
-        )}
-        {requiredInvalid && (
-          <output aria-live="polite">{t('matchCreate.errors.invalidInput')}</output>
-        )}
-        <div {...stylex.props(s.row)}>
-          {step > 0 && (
-            <button type="button" {...stylex.props(s.button)} onClick={() => setStep(step - 1)}>
+          {step === 0 && (
+            <>
+              <MatchDetailsForm
+                value={{ ...value, community_id: communityId }}
+                options={options}
+                errors={activeErrors}
+                competition={competition}
+                change={<K extends keyof MatchDraft>(key: K, next: MatchDraft[K]) => {
+                  if (key === 'community_id' && typeof next === 'string') selectCommunity(next);
+                  else change(key, next);
+                }}
+              />
+              <MatchPhotoUpload
+                key={`${communityId}:${eventId}`}
+                communityId={communityId}
+                eventId={eventId}
+                photo={photo}
+                onChange={changePhoto}
+                onBusyChange={setPhotoBusy}
+                copying={photoCopyBusy}
+                copyFailed={photoCopyError}
+                invalid={Boolean(fieldErrors.photo)}
+              />
+            </>
+          )}
+          {step === 1 && (
+            <MatchInviteePicker
+              communityId={communityId}
+              selected={invitees}
+              onChange={(next) => {
+                if (frozen.current) frozen.current = null;
+                setInvitees(next);
+              }}
+            />
+          )}
+          {step === 2 && (
+            <fieldset {...stylex.props(s.group)}>
+              <legend {...stylex.props(s.legend)}>{t('matchCreate.helpers.teamMode')}</legend>
+              <div {...stylex.props(s.segmented)}>
+                {(['POST_MATCH_TEAMS', 'PREDEFINED_TEAMS'] as const).map((mode) => (
+                  <label key={mode} {...stylex.props(stylex.defaultMarker(), s.segment)}>
+                    <input
+                      type="radio"
+                      name="teamMode"
+                      {...stylex.props(s.segmentInput)}
+                      checked={(value.teamMode ?? 'POST_MATCH_TEAMS') === mode}
+                      onChange={() => change('teamMode', mode)}
+                    />
+                    {t(`matches.teamMode.${mode}`)}
+                  </label>
+                ))}
+              </div>
+            </fieldset>
+          )}
+          {step === 3 && (
+            <>
+              <MatchReview
+                value={{
+                  ...value,
+                  timezone,
+                  cutoffInstant: cutoffInstant
+                    ? `${dateFormatter.format(cutoffInstant)} · ${timezone}`
+                    : ''
+                }}
+                photo={photo}
+                count={invitees.length}
+                competition={resolution}
+              />
+              {fieldErrors.cutoff && (
+                <p {...stylex.props(s.formMessage)} role="alert">
+                  {t(`matchCreate.errors.${fieldErrors.cutoff}`)}
+                </p>
+              )}
+              <p {...stylex.props(s.muted)}>{t('matchCreate.helpers.invitesOnPublish')}</p>
+            </>
+          )}
+          {error && (
+            <p {...stylex.props(s.formMessage)} role="alert">
+              {t(`matchCreate.errors.${error}`)}
+            </p>
+          )}
+          {requiredInvalid && (
+            <output aria-live="polite" {...stylex.props(s.formMessage)}>
+              {t('matchCreate.errors.invalidInput')}
+            </output>
+          )}
+        </div>
+        <div {...stylex.props(s.actions)}>
+          {step > 0 ? (
+            <Button
+              variant="secondary"
+              xstyle={s.secondaryAction}
+              onClick={() => setStep(step - 1)}
+            >
               {t('matchCreate.previous')}
-            </button>
+            </Button>
+          ) : (
+            <Button
+              variant="secondary"
+              xstyle={s.secondaryAction}
+              onClick={() => void navigate({ to: '/matches' })}
+            >
+              {t('matchCreate.cancel')}
+            </Button>
           )}
           {step < 3 ? (
-            <button
-              type="button"
-              {...stylex.props(s.button, s.primaryButton)}
+            <Button
+              xstyle={s.primaryAction}
               onClick={() => {
                 setError('');
                 setStep(step + 1);
               }}
             >
               {t('matchCreate.next')}
-            </button>
+            </Button>
           ) : (
-            <button
-              type="button"
-              disabled={busy || photoBusy || photoCopyBusy || !photo}
-              {...stylex.props(s.button, s.primaryButton)}
+            <Button
+              xstyle={s.primaryAction}
+              busy={busy}
+              disabled={photoBusy || photoCopyBusy || !photo}
               onClick={() => void publish(Date.now())}
             >
               {t(busy ? 'matchCreate.publishing' : 'matchCreate.publish')}
-            </button>
+            </Button>
           )}
         </div>
       </div>
     </main>
+  );
+}
+
+function BackIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      aria-hidden="true"
+      {...stylex.props(s.backIcon)}
+    >
+      <path d="m14 6-6 6 6 6" />
+    </svg>
   );
 }

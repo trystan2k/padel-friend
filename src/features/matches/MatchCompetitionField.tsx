@@ -1,6 +1,7 @@
 import * as stylex from '@stylexjs/stylex';
 import { useId } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Button } from '../../components/ui/Button';
 import { createMatchStyles as s } from './create-match.styles';
 import { formatMatchLeaguePeriod, type MatchCompetitionState } from './match-league-selection';
 import type { MatchDraft } from './match-contracts';
@@ -39,35 +40,39 @@ export function MatchCompetitionField({
   const rankedAvailable = status === 'ready' && candidates.length > 0;
   return (
     <fieldset
-      {...stylex.props(s.field)}
+      {...stylex.props(s.group)}
       aria-describedby={`${id}-guidance${error ? ` ${id}-error` : ''}`}
     >
-      <legend>{t('matchCreate.competition.legend')}</legend>
-      <label {...stylex.props(s.touchLabel)}>
-        <input
-          type="radio"
-          name={`${id}-competition`}
-          checked={ranked}
-          disabled={!rankedAvailable}
-          onChange={() => change('competitionChoice', 'ranked')}
-        />
-        {t('matches.competition.ranked')}
-      </label>
-      <label {...stylex.props(s.touchLabel)}>
-        <input
-          type="radio"
-          name={`${id}-competition`}
-          checked={!ranked}
-          onChange={() => change('competitionChoice', 'unranked')}
-          // Unranked can already be the effective choice (no or unavailable Leagues), where no
-          // change event fires: a click still records the deliberate opt-out. When switching from
-          // Ranked, onChange already records it, so the click stays silent.
-          onClick={() => {
-            if (!ranked) change('competitionChoice', 'unranked');
-          }}
-        />
-        {t('matches.competition.unranked')}
-      </label>
+      <legend {...stylex.props(s.legend)}>{t('matchCreate.competition.legend')}</legend>
+      <div {...stylex.props(s.segmented)}>
+        <label {...stylex.props(stylex.defaultMarker(), s.segment)}>
+          <input
+            type="radio"
+            {...stylex.props(s.segmentInput)}
+            name={`${id}-competition`}
+            checked={ranked}
+            disabled={!rankedAvailable}
+            onChange={() => change('competitionChoice', 'ranked')}
+          />
+          {t('matches.competition.ranked')}
+        </label>
+        <label {...stylex.props(stylex.defaultMarker(), s.segment)}>
+          <input
+            type="radio"
+            {...stylex.props(s.segmentInput)}
+            name={`${id}-competition`}
+            checked={!ranked}
+            onChange={() => change('competitionChoice', 'unranked')}
+            // Unranked can already be the effective choice (no or unavailable Leagues), where no
+            // change event fires: a click still records the deliberate opt-out. When switching from
+            // Ranked, onChange already records it, so the click stays silent.
+            onClick={() => {
+              if (!ranked) change('competitionChoice', 'unranked');
+            }}
+          />
+          {t('matches.competition.unranked')}
+        </label>
+      </div>
       {ranked && rankedAvailable && (
         <label {...stylex.props(s.field)}>
           {t('matchCreate.competition.league')}
@@ -98,14 +103,16 @@ export function MatchCompetitionField({
       </p>
       {status === 'error' && (
         <>
-          <p role="alert">{t('matchCreate.errors.leagueOptionsUnavailable')}</p>
-          <button type="button" {...stylex.props(s.button)} onClick={competition.retry}>
+          <p role="alert" {...stylex.props(s.fieldError)}>
+            {t('matchCreate.errors.leagueOptionsUnavailable')}
+          </p>
+          <Button variant="secondary" onClick={competition.retry}>
             {t('matches.retry')}
-          </button>
+          </Button>
         </>
       )}
       {error && (
-        <span id={`${id}-error`} role="alert">
+        <span id={`${id}-error`} role="alert" {...stylex.props(s.fieldError)}>
           {t(`matchCreate.errors.${error}`)}
         </span>
       )}

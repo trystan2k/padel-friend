@@ -118,7 +118,7 @@ async function mount(locale: Locale = 'en') {
           ? pt.matchCreate.title
           : es.matchCreate.title
   });
-  await screen.findByRole('combobox', { name: /community|comunidade/i });
+  await screen.findByRole('combobox', { name: /community|comunidade|comunidad/i });
   return view;
 }
 async function attachPhoto(
@@ -774,5 +774,190 @@ describe('create match wizard', () => {
     expect(mocks.options.mock.calls[3]?.[0]).toEqual({ data: { community_id: idB } });
     expect(input(en.matchCreate.fields.venueName).value).toBe('Current court');
     expect(input(en.matchCreate.fields.price).value).toBe('12.5');
+  });
+});
+
+describe('create match wizard — Clubhouse structure (wHaAb, vAxZh, b5RR4, RDV2r)', () => {
+  const copies = { en, 'pt-BR': pt, es } as const;
+  const stepText = (locale: keyof typeof copies, current: number, label: string) =>
+    `${copies[locale].matchCreate.stepOf
+      .replace('{{current}}', String(current))
+      .replace('{{total}}', '4')} · ${label}`;
+  const stepLabel = () => document.querySelector('main ol + p')?.textContent;
+  const actionBar = () => {
+    const bar = document.querySelector('main ol')?.parentElement?.nextElementSibling;
+    if (!bar) throw new Error('Missing action bar');
+    return bar;
+  };
+
+  it('renders the four-step progress with the current step, in order, and a localized step label', async () => {
+    const user = userEvent.setup();
+    await mount();
+    const states = () =>
+      Array.from(document.querySelectorAll('main ol[aria-hidden="true"] > li'), (node) =>
+        node.getAttribute('data-step-state')
+      );
+    expect(states()).toEqual(['current', 'todo', 'todo', 'todo']);
+    expect(stepLabel()).toBe(stepText('en', 1, en.matchCreate.steps.details));
+    await user.click(button(en.matchCreate.next));
+    expect(states()).toEqual(['done', 'current', 'todo', 'todo']);
+    expect(stepLabel()).toBe(stepText('en', 2, en.matchCreate.steps.players));
+    await user.click(button(en.matchCreate.next));
+    expect(states()).toEqual(['done', 'done', 'current', 'todo']);
+    expect(stepLabel()).toBe(stepText('en', 3, en.matchCreate.steps.teams));
+    await user.click(button(en.matchCreate.next));
+    expect(states()).toEqual(['done', 'done', 'done', 'current']);
+    expect(stepLabel()).toBe(stepText('en', 4, en.matchCreate.steps.review));
+  });
+
+  it.each(['pt-BR', 'es'] as const)('localizes step progress and actions in %s', async (locale) => {
+    const user = userEvent.setup();
+    await mount(locale);
+    const copy = copies[locale].matchCreate;
+    expect(stepLabel()).toBe(stepText(locale, 1, copy.steps.details));
+    expect(button(copy.cancel)).toBeTruthy();
+    await user.click(button(copy.next));
+    expect(stepLabel()).toBe(stepText(locale, 2, copy.steps.players));
+    expect(button(copy.previous)).toBeTruthy();
+    expect(button(copy.previousStep)).toBeTruthy();
+  });
+
+  it('keeps the same keys for the new wizard copy in en, pt-BR and es', () => {
+    for (const copy of [en, pt, es].map((locale) => locale.matchCreate)) {
+      for (const key of ['cancel', 'previousStep', 'stepOf', 'readyTitle'] as const)
+        expect(copy[key]).toBeTruthy();
+      expect(Object.keys(copy.reviewRows).sort()).toEqual(
+        ['level', 'teams', 'when', 'where', 'yes'].sort()
+      );
+      expect(copy.stepOf).toContain('{{current}}');
+      expect(copy.stepOf).toContain('{{total}}');
+    }
+    expect('subtitle' in en.matchCreate).toBe(false);
+  });
+
+  it('owns a sticky action bar after the content: Cancel+Continue, Back+Continue, Back+Publish', async () => {
+    const user = userEvent.setup();
+    await mount();
+    const order = () => Array.from(actionBar().querySelectorAll('button'), (b) => b.textContent);
+    expect(actionBar().querySelectorAll('button')).toHaveLength(2);
+    expect(order()).toEqual([en.matchCreate.cancel, en.matchCreate.next]);
+    await user.click(button(en.matchCreate.next));
+    expect(order()).toEqual([en.matchCreate.previous, en.matchCreate.next]);
+    await user.click(button(en.matchCreate.next));
+    expect(order()).toEqual([en.matchCreate.previous, en.matchCreate.next]);
+    await user.click(button(en.matchCreate.next));
+    expect(order()).toEqual([en.matchCreate.previous, en.matchCreate.publish]);
+  });
+
+  it('cancels back to the matches list from the first step and links the top bar to it', async () => {
+    const user = userEvent.setup();
+    await mount();
+    expect(document.querySelector('main header a')?.getAttribute('href')).toBe('/matches');
+    await user.click(button(en.matchCreate.cancel));
+    expect(mocks.navigate).toHaveBeenCalledWith({ to: '/matches' });
+  });
+
+  it('steps back from the top bar chevron and keeps the draft between steps', async () => {
+    const user = userEvent.setup();
+    await mount();
+    await user.type(input(en.matchCreate.fields.venueName), 'Draft court');
+    await user.click(button(en.matchCreate.next));
+    await user.click(button(en.matchCreate.next));
+    await user.click(button(en.matchCreate.previousStep));
+    expect(stepLabel()).toBe(stepText('en', 2, en.matchCreate.steps.players));
+    await user.click(button(en.matchCreate.previous));
+    expect(input(en.matchCreate.fields.venueName).value).toBe('Draft court');
+    expect(screen.getByRole('heading', { level: 1, name: en.matchCreate.title })).toBeTruthy();
+  });
+
+  it('keeps Details field order: community, schedule, type, venue, level, price, cutoff, photo', async () => {
+    await mount();
+    const captions = Array.from(document.querySelectorAll('main label'), (label) =>
+      Array.from(label.childNodes)
+        .find((node) => node.nodeType === Node.TEXT_NODE)
+        ?.textContent?.trim()
+    ).filter(Boolean);
+    const f = en.matchCreate.fields;
+    expect(captions).toEqual([
+      f.community,
+      f.date,
+      f.startTime,
+      f.type,
+      f.visibility,
+      f.savedVenue,
+      f.venueName,
+      f.mapsUrl,
+      f.courtNotes,
+      f.duration,
+      f.notes,
+      f.levelRestriction,
+      f.minLevel,
+      f.maxLevel,
+      f.courtBooked,
+      f.price,
+      f.currency,
+      f.paymentNote,
+      f.maximumRegistrations,
+      f.cutoff,
+      f.photo
+    ]);
+  });
+
+  it('renders team mode as two segmented radios only, never predefined-team pair pickers (D6)', async () => {
+    const user = userEvent.setup();
+    await mount();
+    await user.click(button(en.matchCreate.next));
+    await user.click(button(en.matchCreate.next));
+    const radios = screen.getAllByRole('radio');
+    const checked = () => radios.map((radio) => radio instanceof HTMLInputElement && radio.checked);
+    expect(radios.map((radio) => radio.closest('label')?.textContent)).toEqual([
+      en.matches.teamMode.POST_MATCH_TEAMS,
+      en.matches.teamMode.PREDEFINED_TEAMS
+    ]);
+    expect(checked()).toEqual([true, false]);
+    expect(screen.queryAllByRole('combobox')).toHaveLength(0);
+    expect(screen.queryAllByRole('textbox')).toHaveLength(0);
+    expect(screen.queryByText(/pair|open spot/i)).toBeNull();
+    expect(document.activeElement).toBe(radios[0]);
+    await user.click(radios[1]!);
+    expect(checked()).toEqual([false, true]);
+  });
+
+  it('presents the review as a definition list in frame order with a ready-to-publish heading', async () => {
+    const user = userEvent.setup();
+    await mount();
+    await fillRequired(user);
+    await attachPhoto(user);
+    await goReview(user);
+    expect(screen.getByRole('heading', { level: 2, name: en.matchCreate.readyTitle })).toBeTruthy();
+    const labels = Array.from(document.querySelectorAll('main dl dt'), (node) => node.textContent);
+    expect(labels).toEqual([
+      en.matchCreate.reviewRows.when,
+      en.matchCreate.fields.cutoff,
+      en.matchCreate.reviewRows.where,
+      en.matchCreate.fields.type,
+      en.matchCreate.fields.visibility,
+      en.matchCreate.reviewRows.level,
+      en.matchCreate.reviewRows.teams,
+      en.matchCreate.invitees.selected
+    ]);
+    expect(screen.getByText('Court Central')).toBeTruthy();
+    expect(screen.getByText(en.matchCreate.informationalOnly)).toBeTruthy();
+    expect(button(en.matchCreate.publish).disabled).toBe(false);
+  });
+
+  it('shows search results as full-row buttons and selected invitees as an accessible list with remove chips', async () => {
+    const user = userEvent.setup();
+    mocks.search.mockResolvedValue([makeMatchInvitee({ display_name: 'Ana Martínez' })]);
+    await mount();
+    await user.click(button(en.matchCreate.next));
+    expect(screen.queryAllByRole('listitem')).toHaveLength(0);
+    await user.type(input(en.matchCreate.invitees.search), 'Ana');
+    await user.click(await screen.findByRole('button', { name: 'Ana Martínez' }));
+    const list = screen.getByRole('list', { name: en.matchCreate.invitees.selected });
+    expect(within(list).getAllByRole('listitem')).toHaveLength(1);
+    expect(within(list).getByText('AM')).toBeTruthy();
+    await user.click(within(list).getByRole('button', { name: en.matchCreate.invitees.remove }));
+    expect(screen.queryAllByRole('listitem')).toHaveLength(0);
   });
 });

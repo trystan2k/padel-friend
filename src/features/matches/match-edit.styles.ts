@@ -62,6 +62,28 @@ export const matchEditStyles = stylex.create({
     margin: 0,
     minWidth: 0
   },
+  // Shared field components keep the legacy edit-dialog presentation until its redesign.
+  sharedField: { display: 'grid', gap: 'var(--space-1)' },
+  sharedInput: {
+    minHeight: 'calc(var(--space-40) + var(--space-4))',
+    width: '100%',
+    paddingInline: 'var(--space-3)',
+    borderRadius: 'var(--radius-8)',
+    backgroundColor: 'var(--color-surface)',
+    color: 'var(--color-text)',
+    ':focus-visible': {
+      outline: 'var(--border-width-lg) solid var(--color-green)',
+      outlineOffset: 'var(--space-1)'
+    }
+  },
+  competitionLabel: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    minInlineSize: 'calc(var(--space-40) + var(--space-4))',
+    minBlockSize: 'calc(var(--space-40) + var(--space-4))',
+    paddingBlock: 'var(--space-2)'
+  },
   field: {
     display: 'grid',
     gap: 'var(--space-4)',

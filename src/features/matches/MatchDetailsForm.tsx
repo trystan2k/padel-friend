@@ -3,6 +3,7 @@ import { useId, type HTMLInputTypeAttribute, type InputHTMLAttributes } from 're
 import { useTranslation } from 'react-i18next';
 import type { MatchCreationOptions, MatchDraft } from './match-contracts';
 import { createMatchStyles as s } from './create-match.styles';
+import { matchEditStyles as edit } from './match-edit.styles';
 import { MatchCompetitionField } from './MatchCompetitionField';
 import type { MatchCompetitionState } from './match-league-selection';
 
@@ -53,10 +54,10 @@ export function MatchDetailTextField({
   const { t } = useTranslation();
   const id = useId();
   return (
-    <label {...stylex.props(s.field, fieldStyle)}>
+    <label {...stylex.props(fieldStyle ? edit.sharedField : s.field, fieldStyle)}>
       {t(`matchCreate.fields.${name}`)}
       <input
-        {...stylex.props(s.input, inputStyle)}
+        {...stylex.props(inputStyle ? edit.sharedInput : s.input, inputStyle)}
         placeholder={placeholder}
         type={type}
         value={value}
@@ -66,7 +67,7 @@ export function MatchDetailTextField({
         {...constraints}
       />
       {error && (
-        <span id={`${id}-error`} role="alert">
+        <span id={`${id}-error`} role="alert" {...stylex.props(!fieldStyle && s.fieldError)}>
           {t(`matchCreate.errors.${error}`)}
         </span>
       )}
@@ -89,10 +90,10 @@ export function MatchDetailCurrencyField({
   const { t } = useTranslation();
   const id = useId();
   return (
-    <label {...stylex.props(s.field, fieldStyle)}>
+    <label {...stylex.props(fieldStyle ? edit.sharedField : s.field, fieldStyle)}>
       {t('matchCreate.fields.currency')}
       <select
-        {...stylex.props(s.input, inputStyle)}
+        {...stylex.props(inputStyle ? edit.sharedInput : s.input, inputStyle)}
         value={value}
         aria-invalid={Boolean(error)}
         aria-describedby={error ? `${id}-error` : undefined}
@@ -106,7 +107,7 @@ export function MatchDetailCurrencyField({
         ))}
       </select>
       {error && (
-        <span id={`${id}-error`} role="alert">
+        <span id={`${id}-error`} role="alert" {...stylex.props(!fieldStyle && s.fieldError)}>
           {t(`matchCreate.errors.${error}`)}
         </span>
       )}
@@ -172,7 +173,7 @@ export function MatchDetailsForm({
   const community = options.communities.find((item) => item.id === value.community_id);
 
   return (
-    <div {...stylex.props(s.fields, s.section)}>
+    <div {...stylex.props(s.fields)}>
       <label {...stylex.props(s.field)}>
         {t('matchCreate.fields.community')}
         <select
@@ -189,7 +190,7 @@ export function MatchDetailsForm({
       </label>
       {field('date', 'date')}
       {field('startTime', 'time')}
-      <p>
+      <p {...stylex.props(s.muted)}>
         {t('matchCreate.fields.timezone')}: {community?.timezone ?? ''}
       </p>
       {enumSelect('type', eventTypes)}
@@ -221,18 +222,19 @@ export function MatchDetailsForm({
       {field('courtNotes')}
       {field('duration', 'number', { min: 1, step: 1 })}
       {field('notes')}
-      <fieldset>
-        <legend>{t('matchCreate.fields.levelRestriction')}</legend>
+      <fieldset {...stylex.props(s.group)}>
+        <legend {...stylex.props(s.hidden)}>{t('matchCreate.fields.levelRestriction')}</legend>
         <label {...stylex.props(s.touchLabel)}>
           <input
             type="checkbox"
+            {...stylex.props(s.check)}
             checked={value.levelRestriction}
             onChange={(event) => change('levelRestriction', event.currentTarget.checked)}
           />
           {t('matchCreate.fields.levelRestriction')}
         </label>
         {value.levelRestriction && (
-          <div {...stylex.props(s.row)}>
+          <div {...stylex.props(s.levels)}>
             {field('minLevel', 'number', { step: 0.5, min: 0, max: 7 })}
             {field('maxLevel', 'number', { step: 0.5, min: 0, max: 7 })}
           </div>
@@ -241,6 +243,7 @@ export function MatchDetailsForm({
       <label {...stylex.props(s.touchLabel)}>
         <input
           type="checkbox"
+          {...stylex.props(s.check)}
           checked={value.courtBooked}
           onChange={(event) => change('courtBooked', event.currentTarget.checked)}
         />

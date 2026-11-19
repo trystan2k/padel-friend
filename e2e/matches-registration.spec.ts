@@ -39,7 +39,7 @@ type Copy = {
   matchCreate: {
     title: string;
     next: string;
-    review: string;
+    readyTitle: string;
     publish: string;
     steps: { players: string; teams: string };
     fields: {
@@ -471,7 +471,7 @@ async function publishMatchViaUi(
     .getByRole('radio', { name: en.matches.teamMode[options.teamMode ?? 'POST_MATCH_TEAMS'] })
     .check();
   await page.getByRole('button', { name: en.matchCreate.next }).click();
-  await expect(page.getByRole('heading', { name: en.matchCreate.review })).toBeVisible();
+  await expect(page.getByRole('heading', { name: en.matchCreate.readyTitle })).toBeVisible();
   await page.getByRole('button', { name: en.matchCreate.publish }).click();
   await expect(page).toHaveURL(/\/matches$/);
   await waitForHydratedPage(page);

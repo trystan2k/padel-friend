@@ -1703,10 +1703,20 @@
       }
     },
     "title": "Create match",
-    "subtitle": "Publish a padel match and invite players.",
+    "cancel": "Cancel",
+    "previousStep": "Previous step",
+    "stepOf": "Step {{current}} of {{total}}",
+    "readyTitle": "Ready to publish?",
+    "reviewRows": {
+      "when": "When",
+      "where": "Where",
+      "level": "Level",
+      "teams": "Teams",
+      "yes": "Yes"
+    },
     "noCommunities": "Join a community before creating a match.",
     "discoverCommunities": "Discover communities",
-    "next": "Next",
+    "next": "Continue",
     "previous": "Back",
     "review": "Review",
     "publish": "Publish & send invites",
@@ -1716,7 +1726,7 @@
     "steps": {
       "details": "Details",
       "players": "Players",
-      "teams": "Team mode",
+      "teams": "Teams",
       "review": "Review"
     },
     "fields": {

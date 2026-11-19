@@ -25,6 +25,7 @@ type Copy = {
     tabs: { available: string; my: string; past: string };
     visibility: { community_open: string; invite_only: string };
     type: { competitive: string; friendly: string };
+    teamMode: { PREDEFINED_TEAMS: string; POST_MATCH_TEAMS: string };
     unavailable: string;
     offline: string;
     loading: string;
@@ -59,10 +60,15 @@ type Copy = {
   matchCreate: {
     title: string;
     next: string;
+    previous: string;
+    cancel: string;
+    stepOf: string;
+    readyTitle: string;
+    reviewRows: { when: string; where: string; level: string; teams: string; yes: string };
     review: string;
     publish: string;
     informationalOnly: string;
-    steps: { details: string; players: string; teams: string };
+    steps: { details: string; players: string; teams: string; review: string };
     fields: {
       community: string;
       date: string;
@@ -736,35 +742,192 @@ async function assertPrimaryActionTokens(
   expect(style.height, `${label}: primary action rendered height`).toBeGreaterThanOrEqual(44);
 }
 
-/** Reference measurement (F30, wHaAb/vAxZh/b5RR4 y=777..820): the wizard's continue
- * action is the full-content-width --color-green 44px primary on EVERY step. F30 is
- * fixed, so on top of the primary tokens this gate pins the full-width geometry: the
- * action must span its container's content box exactly (±1px), failing any future
- * regression to a shrunk secondary-style button. */
-async function assertFullWidthPrimaryAction(
+// ---------------------------------------------------------------------------
+// Clubhouse create wizard (frames wHaAb, vAxZh, b5RR4, RDV2r) — exact structural probes plus
+// hash-pinned reference frames. The predefined-team pair pickers of b5RR4 have no data source (D6):
+// only the two team-mode radios exist and are asserted as such.
+// ---------------------------------------------------------------------------
+
+type WizardReferences = {
+  frames: Record<string, { sha256: string }>;
+  toleranceEvidence: Record<string, { maxDiffPixelRatio: number }>;
+};
+const wizardReferences: WizardReferences = JSON.parse(
+  readFileSync(new URL('./references/paf-202-create-wizard/manifest.json', import.meta.url), 'utf8')
+);
+
+async function assertWizardFrame(page: Page, frame: string, mask: Locator[]): Promise<void> {
+  const source = readFileSync(
+    new URL(`./references/paf-202-create-wizard/${frame}.png`, import.meta.url)
+  );
+  expect(createHash('sha256').update(source).digest('hex')).toBe(
+    wizardReferences.frames[frame]!.sha256
+  );
+  await page.evaluate(() => window.scrollTo(0, 0));
+  await page.evaluate(() => document.fonts.ready);
+  await expect(page).toHaveScreenshot(`${frame}-light.png`, {
+    animations: 'disabled',
+    caret: 'hide',
+    clip: { x: 0, y: 0, width: 390, height: 844 },
+    maxDiffPixelRatio: wizardReferences.toleranceEvidence[frame]!.maxDiffPixelRatio,
+    mask
+  });
+}
+
+/** Top bar → progress → step label order, 20px gutter on the content (not on main), 14px rhythm,
+ * four 6px progress segments (green up to the current step, surface-2 after it) and the 17px bold
+ * title, exactly as the frames draw them. */
+async function assertWizardChrome(
   page: Page,
-  action: Locator,
   label: string,
-  copyToken: '--color-on-hero' | '--color-bg' = '--color-on-hero'
+  stepIndex: number,
+  stepName: string
 ): Promise<void> {
-  await assertPrimaryActionTokens(page, action, label, copyToken);
-  const widths = await action.evaluate((node) => {
-    const parent = node.parentElement;
-    if (!parent) return null;
-    const parentStyle = getComputedStyle(parent);
+  const green = await tokenColor(page, '--color-green');
+  const track = await tokenColor(page, '--color-surface-2');
+  const gutter = await tokenValue(page, '--space-20');
+  const rhythm = await tokenValue(page, '--space-14');
+  const reading = await page.evaluate(() => {
+    const main = document.querySelector('main');
+    const header = main?.querySelector(':scope > header');
+    const heading = header?.querySelector('h1');
+    const back = header?.firstElementChild;
+    const progress = main?.querySelector('ol[aria-hidden="true"]');
+    const content = progress?.parentElement;
+    const stepLabel = progress?.nextElementSibling;
+    if (!main || !header || !heading || !back || !progress || !content || !stepLabel) return null;
+    const heads = getComputedStyle(heading);
+    const contentStyle = getComputedStyle(content);
+    const mainStyle = getComputedStyle(main);
+    const backBox = back.getBoundingClientRect();
     return {
-      action: node.getBoundingClientRect().width,
-      parentContent:
-        parent.clientWidth -
-        Number.parseFloat(parentStyle.paddingLeft) -
-        Number.parseFloat(parentStyle.paddingRight)
+      mainPadding: [mainStyle.paddingLeft, mainStyle.paddingRight],
+      headerTags: Array.from(header.children, (node) => node.tagName.toLowerCase()),
+      headerHeight: header.getBoundingClientRect().height,
+      backSize: [backBox.width, backBox.height],
+      headingFont: [heads.fontFamily, heads.fontSize, heads.fontWeight, heads.color],
+      contentPadding: [contentStyle.paddingLeft, contentStyle.paddingRight],
+      contentGap: contentStyle.rowGap,
+      segments: Array.from(progress.children, (node) => ({
+        height: node.getBoundingClientRect().height,
+        background: getComputedStyle(node).backgroundColor,
+        state: node.getAttribute('data-step-state')
+      })),
+      stepLabel: stepLabel.textContent,
+      order: [header, content].map((node) => node.getBoundingClientRect().top)
     };
   });
-  expect(widths, `${label}: primary action must have a measurable container`).not.toBeNull();
+  expect(reading, `${label}: wizard chrome must render`).not.toBeNull();
+  expect(reading!.mainPadding, `${label}: main carries no gutter (content owns it)`).toEqual([
+    '0px',
+    '0px'
+  ]);
+  expect(reading!.headerTags, `${label}: top bar order back → title`).toEqual([
+    stepIndex > 0 ? 'button' : 'a',
+    'h1'
+  ]);
+  expect(reading!.headerHeight, `${label}: top bar height`).toBeGreaterThanOrEqual(56);
+  expect(reading!.backSize, `${label}: back control 48×48`).toEqual([48, 48]);
+  expect(reading!.headingFont[0]!.startsWith('Figtree'), `${label}: h1 heading face`).toBe(true);
+  expect(reading!.headingFont.slice(1, 3), `${label}: h1 17px bold (frame top bar title)`).toEqual([
+    '17px',
+    '700'
+  ]);
+  expect(normColor(reading!.headingFont[3]!), `${label}: h1 on --color-text`).toBe(
+    await tokenColor(page, '--color-text')
+  );
+  expect(reading!.contentPadding, `${label}: content gutter is --space-20`).toEqual([
+    gutter,
+    gutter
+  ]);
+  expect(reading!.contentGap, `${label}: content rhythm is --space-14`).toBe(rhythm);
+  expect(reading!.order[0]!, `${label}: top bar sits above the content`).toBeLessThan(
+    reading!.order[1]!
+  );
+  expect(reading!.segments.length, `${label}: four progress segments`).toBe(4);
+  for (const [index, segment] of reading!.segments.entries()) {
+    expect(segment.height, `${label}: segment ${index} is 6px`).toBe(6);
+    expect(
+      segment.background,
+      `${label}: segment ${index} fill (green up to and including the current step)`
+    ).toBe(index <= stepIndex ? green : track);
+    expect(segment.state).toBe(
+      index < stepIndex ? 'done' : index === stepIndex ? 'current' : 'todo'
+    );
+  }
+  expect(reading!.stepLabel, `${label}: step label`).toBe(
+    `${en.matchCreate.stepOf.replace('{{current}}', String(stepIndex + 1)).replace('{{total}}', '4')} · ${stepName}`
+  );
+}
+
+/** Sticky action bar (frames "Sticky actions"): the last block of the wizard, pinned to the bottom of
+ * the viewport on surface with a hairline top border, secondary 112 min width + flexible 52px
+ * primary; scrolling to the end leaves the last content block fully clear of the bar. */
+async function assertWizardActions(
+  page: Page,
+  label: string,
+  secondaryName: string,
+  primaryName: string
+): Promise<void> {
+  const secondary = page.getByRole('button', { name: secondaryName, exact: true });
+  const primary = page.getByRole('button', { name: primaryName, exact: true });
+  await assertPrimaryActionTokens(page, primary, label, '--color-on-green');
+  const bar = primary.locator('xpath=..');
+  const surface = await tokenColor(page, '--color-surface');
+  const hairline = await tokenColor(page, '--color-hairline');
+  const gutter = await tokenValue(page, '--space-20');
+  const probe = await bar.evaluate((node) => {
+    const style = getComputedStyle(node);
+    const kids = Array.from(node.children, (child) => child.getBoundingClientRect());
+    const content = node.previousElementSibling;
+    return {
+      position: style.position,
+      bottom: style.bottom,
+      background: style.backgroundColor,
+      borderTop: [style.borderTopWidth, style.borderTopColor],
+      padding: [style.paddingLeft, style.paddingRight],
+      kids: kids.map((box) => ({ width: box.width, height: box.height })),
+      lastChild: node.parentElement?.lastElementChild === node,
+      contentBottom: content ? content.getBoundingClientRect().bottom : null,
+      barTop: node.getBoundingClientRect().top,
+      barBottom: node.getBoundingClientRect().bottom,
+      viewport: window.innerHeight
+    };
+  });
+  expect(probe.position, `${label}: action bar is sticky`).toBe('sticky');
+  expect(probe.bottom, `${label}: action bar pins to the bottom`).toBe('0px');
+  expect(probe.lastChild, `${label}: action bar closes the wizard`).toBe(true);
+  expect(normColor(probe.background), `${label}: action bar on --color-surface`).toBe(surface);
+  expect(probe.borderTop[0], `${label}: hairline top border`).toBe('1px');
+  expect(normColor(probe.borderTop[1]!), `${label}: hairline colour`).toBe(hairline);
+  expect(probe.padding, `${label}: action bar gutter`).toEqual([gutter, gutter]);
+  expect(probe.kids.length, `${label}: exactly secondary + primary`).toBe(2);
+  expect(probe.kids[0]!.height, `${label}: secondary 52px`).toBe(52);
+  expect(probe.kids[0]!.width, `${label}: secondary ≥112px`).toBeGreaterThanOrEqual(112);
+  expect(probe.kids[1]!.height, `${label}: primary 52px`).toBe(52);
+  expect(probe.kids[1]!.width, `${label}: primary takes the remaining width`).toBeGreaterThan(
+    probe.kids[0]!.width
+  );
+  const secondaryBox = await secondary.boundingBox();
+  const primaryBox = await primary.boundingBox();
+  expect(secondaryBox!.x, `${label}: secondary precedes primary`).toBeLessThan(primaryBox!.x);
+  // At the top of the page the bar rests on the viewport bottom, and after scrolling to the end the
+  // last content block is fully clear of it.
+  await page.evaluate(() => window.scrollTo(0, 0));
+  const resting = await bar.evaluate((node) => node.getBoundingClientRect().bottom);
   expect(
-    Math.abs(widths!.action - widths!.parentContent),
-    `${label}: primary action must span the full content width (reference full-width continue action, F30 fixed)`
+    Math.abs(resting - probe.viewport),
+    `${label}: bar rests on the viewport bottom`
   ).toBeLessThanOrEqual(1);
+  await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
+  const cleared = await bar.evaluate((node) => {
+    const content = node.previousElementSibling;
+    const last = content?.lastElementChild;
+    return last ? node.getBoundingClientRect().top - last.getBoundingClientRect().bottom : null;
+  });
+  expect(cleared, `${label}: last content block clears the sticky bar`).not.toBeNull();
+  expect(cleared!, `${label}: scroll clearance`).toBeGreaterThanOrEqual(-0.5);
+  await page.evaluate(() => window.scrollTo(0, 0));
 }
 
 /** Reference measurement: cards are pure-white #ffffff surfaces sitting directly on
@@ -1640,12 +1803,8 @@ test.describe.serial('PAF-4 match event visual and structural QA', () => {
     await ready(page);
     await expect(page.getByRole('heading', { level: 1, name: en.matchCreate.title })).toBeVisible();
 
-    // Header order: title → subtitle → current step label.
-    const headerChildren = await page
-      .locator('main > header')
-      .evaluate((header) => Array.from(header.children, (node) => node.tagName.toLowerCase()));
-    expect(headerChildren).toEqual(['h1', 'p', 'p']);
-    await expect(page.locator('main > header > p').nth(1)).toHaveText(en.matchCreate.steps.details);
+    // Top bar → progress → step label order, four progress segments (frame wHaAb).
+    await assertWizardChrome(page, 'create details 390', 0, en.matchCreate.steps.details);
 
     // Exactly the two scoped enums; no Ranked/League state anywhere.
     const enumOptions = (label: string): Promise<string[]> =>
@@ -1720,17 +1879,14 @@ test.describe.serial('PAF-4 match event visual and structural QA', () => {
       );
     expect(communityName).toBe('Vale Padel Society');
 
-    await assertHeadingTypography(page, 'create details 390');
-    await assertGutterAxis(page, 'create details 390', '--space-18');
-    await assertRhythm(page, 'create details 390', 'main > div', '--space-10');
-    // F30 fixed: the continue action is the full-width green 44px primary on every step.
-    await assertFullWidthPrimaryAction(
+    await assertWizardActions(
       page,
-      page.getByRole('button', { name: en.matchCreate.next }),
-      'create details continue',
-      '--color-bg'
+      'create details 390',
+      en.matchCreate.cancel,
+      en.matchCreate.next
     );
     await assertNoHorizontalOverflow(page, 'create details 390');
+    await assertWizardFrame(page, 'wHaAb', []);
     await assertCheckboxLabelTargets(page, en, 'create details 390');
     await assertPrimaryHitTargets(page, 'create details 390');
 
@@ -1740,27 +1896,24 @@ test.describe.serial('PAF-4 match event visual and structural QA', () => {
     await darkPage.goto('/matches/create');
     await ready(darkPage);
     expect(await darkPage.evaluate(() => document.documentElement.dataset.theme)).toBe('dark');
-    await assertHeadingTypography(darkPage, 'create details dark');
-    await assertGutterAxis(darkPage, 'create details dark', '--space-18');
+    await assertWizardChrome(darkPage, 'create details dark', 0, en.matchCreate.steps.details);
     await assertNoHorizontalOverflow(darkPage, 'create details dark');
     await darkContext.close();
 
     // Players step: member search with no preselected chips (no fake participants).
     await page.getByRole('button', { name: en.matchCreate.next }).click();
     await ready(page);
-    await expect(page.locator('main > header > p').nth(1)).toHaveText(en.matchCreate.steps.players);
+    await assertWizardChrome(page, 'create players 390', 1, en.matchCreate.steps.players);
     await expect(page.getByLabel(en.matchCreate.invitees.search)).toBeVisible();
     await expect(page.getByRole('listitem')).toHaveCount(0);
-    await assertHeadingTypography(page, 'create players 390');
-    await assertGutterAxis(page, 'create players 390', '--space-18');
-    await assertRhythm(page, 'create players 390', 'main > div', '--space-10');
-    await assertFullWidthPrimaryAction(
+    await assertWizardActions(
       page,
-      page.getByRole('button', { name: en.matchCreate.next }),
-      'create players continue',
-      '--color-bg'
+      'create players 390',
+      en.matchCreate.previous,
+      en.matchCreate.next
     );
     await assertNoHorizontalOverflow(page, 'create players 390');
+    await assertWizardFrame(page, 'vAxZh', []);
     await assertPrimaryHitTargets(page, 'create players 390');
     // Wizard navigation moves focus into the form for keyboard users.
     expect(
@@ -1774,30 +1927,40 @@ test.describe.serial('PAF-4 match event visual and structural QA', () => {
     // Team-mode step: exactly the two scoped assignment modes, POST_MATCH_TEAMS default.
     await page.getByRole('button', { name: en.matchCreate.next }).click();
     await ready(page);
-    await expect(page.locator('main > header > p').nth(1)).toHaveText(en.matchCreate.steps.teams);
+    await assertWizardChrome(page, 'create team mode 390', 2, en.matchCreate.steps.teams);
+    // D6: only the two team-mode radios exist (frame order: after play, then predefined) — no
+    // predefined-team pair pickers, no selects, no text inputs.
     const radios = page.getByRole('radio');
     await expect(radios).toHaveCount(2);
-    await expect(radios.nth(0)).not.toBeChecked();
-    await expect(radios.nth(1)).toBeChecked();
+    await expect(radios.nth(0)).toBeChecked();
+    await expect(radios.nth(1)).not.toBeChecked();
+    await expect(page.locator('main').getByRole('combobox')).toHaveCount(0);
+    await expect(page.locator('main').getByRole('textbox')).toHaveCount(0);
+    expect(
+      await page
+        .getByRole('radio')
+        .evaluateAll((nodes) => nodes.map((radio) => radio.closest('label')?.textContent))
+    ).toEqual([en.matches.teamMode.POST_MATCH_TEAMS, en.matches.teamMode.PREDEFINED_TEAMS]);
+    // D9: the wizard suppresses the bottom navigation and owns its sticky actions.
+    await expect(page.locator('[data-route-chrome="navigation"]')).toHaveCount(0);
     const radioLabels = await page.getByRole('radio').evaluateAll((nodes) =>
       nodes.map((radio) => {
         const label = radio.closest('label');
         return label ? label.getBoundingClientRect().height : 0;
       })
     );
-    await test.info().attach('team-mode radio label heights (known deviation)', {
-      body: radioLabels.map((height) => `label height ${height}px`).join('\n')
-    });
-    await assertHeadingTypography(page, 'create team mode 390');
-    await assertGutterAxis(page, 'create team mode 390', '--space-18');
-    await assertRhythm(page, 'create team mode 390', 'main > div', '--space-10');
-    await assertFullWidthPrimaryAction(
+    expect(
+      radioLabels.every((height) => height >= 48),
+      `segmented team-mode labels must be at least 48px tall (got ${radioLabels.join(', ')})`
+    ).toBe(true);
+    await assertWizardActions(
       page,
-      page.getByRole('button', { name: en.matchCreate.next }),
-      'create team mode continue',
-      '--color-bg'
+      'create team mode 390',
+      en.matchCreate.previous,
+      en.matchCreate.next
     );
     await assertNoHorizontalOverflow(page, 'create team mode 390');
+    await assertWizardFrame(page, 'b5RR4', []);
     await assertPrimaryHitTargets(page, 'create team mode 390');
   });
 
@@ -2037,30 +2200,47 @@ test.describe.serial('PAF-4 match event visual and structural QA', () => {
     for (let step = 0; step < 3; step += 1)
       await page.getByRole('button', { name: en.matchCreate.next }).click();
     await ready(page);
-    await expect(page.getByRole('heading', { name: en.matchCreate.review })).toBeVisible();
+    await expect(page.getByRole('heading', { name: en.matchCreate.readyTitle })).toBeVisible();
+    await assertWizardChrome(page, 'create review 390', 3, en.matchCreate.steps.review);
 
-    // Required review facts: the cutoff instant (clock-derived, masked in the capture),
-    // the informational cost, the invite count and an enabled publication action.
-    await expect(page.locator('main section > p').first()).toContainText('· UTC');
+    // Review rows (frame RDV2r): muted key left, bold value right, in frame order. The cutoff instant
+    // is clock-derived (masked in the capture); cost, invite count and publication are asserted.
+    const review = await page
+      .locator('main dl > div')
+      .evaluateAll((rows) =>
+        rows.map((row) => [
+          row.querySelector('dt')?.textContent,
+          row.querySelector('dd')?.textContent
+        ])
+      );
+    expect(review.map(([key]) => key)).toEqual([
+      en.matchCreate.reviewRows.when,
+      en.matchCreate.fields.cutoff,
+      en.matchCreate.reviewRows.where,
+      en.matchCreate.fields.type,
+      en.matchCreate.fields.visibility,
+      en.matchCreate.reviewRows.level,
+      en.matchCreate.fields.price,
+      en.matchCreate.reviewRows.teams,
+      en.matchCreate.fields.maximumRegistrations,
+      en.matchCreate.invitees.selected
+    ]);
+    expect(review[1]![1]).toContain('· UTC');
+    expect(review.find(([key]) => key === en.matchCreate.fields.price)![1]).toContain('€12.00');
+    expect(review.at(-1)![1]).toBe('0');
     await expect(page.getByText(en.matchCreate.informationalOnly)).toBeVisible();
-    await expect(page.getByText('€12.00', { exact: false })).toBeVisible();
-    await expect(
-      page.getByText(`${en.matchCreate.invitees.selected}: 0`, { exact: false })
-    ).toBeVisible();
     const publish = page.getByRole('button', { name: en.matchCreate.publish });
     await expect(publish).toBeVisible();
     await expect(publish).toBeEnabled();
-    await assertHeadingTypography(page, 'create review 390');
-    await assertGutterAxis(page, 'create review 390', '--space-18');
-    await assertRhythm(page, 'create review 390', 'main > div', '--space-10');
-    await assertFullWidthPrimaryAction(
+    await assertWizardActions(
       page,
-      page.getByRole('button', { name: en.matchCreate.publish }),
-      'create review publish',
-      '--color-bg'
+      'create review 390',
+      en.matchCreate.previous,
+      en.matchCreate.publish
     );
     await assertNoHorizontalOverflow(page, 'create review 390');
     await assertPrimaryHitTargets(page, 'create review 390');
+    await assertWizardFrame(page, 'RDV2r', [page.locator('main dl dd'), page.locator('main img')]);
   });
 
   test('Available — populated listing stays inside the approved visual envelope', async ({
@@ -2275,16 +2455,11 @@ test.describe.serial('PAF-4 match event visual and structural QA', () => {
     }
     await expect(page.getByRole('button')).toHaveCount(3);
     await assertHeadingTypography(page, 'invite detail');
-    await assertGutterAxis(page, 'invite detail', '--space-18');
-    // frame-driven redesign: root gap 12 per T06 frames
+    await assertGutterAxis(page, 'invite detail', '--space-20');
+    // Clubhouse detail (eYIgj/fo8Zn): 12px rhythm on main and between its cards.
     await assertRhythm(page, 'invite detail', 'main', '--space-12');
-    // Frame-driven card stack uses 10px; retain exact geometry and zero margins.
-    await assertRhythm(page, 'invite detail', 'main > div', '--space-10');
-    await assertPrimaryActionTokens(
-      page,
-      page.getByRole('button', { name: en.matches.detail.share }),
-      'invite detail share'
-    );
+    await assertRhythm(page, 'invite detail', 'main > div', '--space-12');
+    await assertHeaderShare(page, 'invite detail share');
     await assertNoHorizontalOverflow(page, 'invite detail');
     await assertPrimaryHitTargets(page, 'invite detail');
   });

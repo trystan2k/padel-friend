@@ -1703,10 +1703,20 @@
       }
     },
     "title": "Criar partida",
-    "subtitle": "Publique uma partida de padel e convide jogadores.",
+    "cancel": "Cancelar",
+    "previousStep": "Passo anterior",
+    "stepOf": "Passo {{current}} de {{total}}",
+    "readyTitle": "Pronto para publicar?",
+    "reviewRows": {
+      "when": "Quando",
+      "where": "Onde",
+      "level": "Nível",
+      "teams": "Equipes",
+      "yes": "Sim"
+    },
     "noCommunities": "Participe de uma comunidade para criar uma partida.",
     "discoverCommunities": "Descobrir comunidades",
-    "next": "Próximo",
+    "next": "Continuar",
     "previous": "Voltar",
     "review": "Revisão",
     "publish": "Publicar e enviar convites",
@@ -1716,7 +1726,7 @@
     "steps": {
       "details": "Detalhes",
       "players": "Jogadores",
-      "teams": "Modo de equipes",
+      "teams": "Equipes",
       "review": "Revisão"
     },
     "fields": {

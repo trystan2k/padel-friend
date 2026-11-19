@@ -36,7 +36,7 @@ type LocaleCopy = {
   matchCreate: {
     title: string;
     next: string;
-    review: string;
+    readyTitle: string;
     publish: string;
     fields: { date: string; startTime: string; venueName: string; mapsUrl: string; photo: string };
     photo: { remove: string };
@@ -311,7 +311,7 @@ async function publishSharedMatch(page: Page, venue: string): Promise<void> {
   });
   for (let step = 0; step < 3; step += 1)
     await page.getByRole('button', { name: en.matchCreate.next }).click();
-  await expect(page.getByRole('heading', { name: en.matchCreate.review })).toBeVisible();
+  await expect(page.getByRole('heading', { name: en.matchCreate.readyTitle })).toBeVisible();
   await page.getByRole('button', { name: en.matchCreate.publish }).click();
   await expect(page).toHaveURL(/\/matches$/);
   await waitForHydratedPage(page);

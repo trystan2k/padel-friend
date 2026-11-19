@@ -106,7 +106,7 @@ async function continueToReview(page: Page) {
   await expect(page.getByText(mc.steps.teams, { exact: true })).toBeVisible();
   await page.getByRole('radio', { name: m.teamMode.POST_MATCH_TEAMS }).check();
   await page.getByRole('button', { name: mc.next }).click();
-  await expect(page.getByRole('heading', { name: mc.review })).toBeVisible();
+  await expect(page.getByRole('heading', { name: mc.readyTitle })).toBeVisible();
 }
 
 async function continueToReviewAndPublish(page: Page) {
