@@ -668,8 +668,8 @@ for (const [state, frame] of frames.filter(([, candidate]) =>
         cardTitle: getComputedStyle(main.querySelector('h2')!).fontWeight,
         cardFamily: getComputedStyle(main.querySelector('h2')!).fontFamily
       }));
-      expect(typography.body).toContain('Inter');
-      expect(typography.cardFamily).toContain('Inter');
+      expect(typography.body).toContain('Figtree');
+      expect(typography.cardFamily).toContain('Figtree');
       expect(typography.cardTitle).toBe('600');
     }
     if (frame === 'Tm3XM') {
@@ -710,7 +710,7 @@ for (const [state, frame] of frames.filter(([, candidate]) =>
         expect(field.flat).toBe(true);
         expect(field.surface).toBe(true);
         expect(field.border).toBe(true);
-        expect(field.family).toContain('Inter');
+        expect(field.family).toContain('Figtree');
       }
       expect(treatment.buttons.every(Boolean)).toBe(true);
       const inputBounds = await page.locator('input[type="datetime-local"]').evaluateAll((inputs) =>

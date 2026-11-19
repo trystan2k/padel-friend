@@ -123,13 +123,11 @@ async function ready(page: Page): Promise<void> {
     );
   });
   const fonts = await page.evaluate(() => ({
-    inter: document.fonts.check('400 12px Inter') && document.fonts.check('600 12px Inter'),
-    manrope: document.fonts.check('700 24px Manrope')
+    figtree: ['400', '600', '700', '800'].every((weight) =>
+      document.fonts.check(`${weight} 16px Figtree`)
+    )
   }));
-  expect(fonts, 'Inter and Manrope must be available before screenshot').toEqual({
-    inter: true,
-    manrope: true
-  });
+  expect(fonts, 'Figtree must be available before screenshot').toEqual({ figtree: true });
 }
 
 function digestBuffer(buffer: Buffer): string {

@@ -49,9 +49,24 @@ describe.each([
       expect(contrast(tokens, 'color-line', background)).toBeGreaterThanOrEqual(3);
     });
   }
-  it.each(['color-bg', 'color-surface'])('primary action %s on green ≥4.5:1', (foreground) => {
-    expect(contrast(tokens, foreground, 'color-green')).toBeGreaterThanOrEqual(4.5);
+  it('on-green text and icons on green ≥4.5:1', () => {
+    expect(contrast(tokens, 'color-on-green', 'color-green')).toBeGreaterThanOrEqual(4.5);
   });
+  it('green-ink on green-soft ≥4.5:1', () => {
+    expect(contrast(tokens, 'color-green-ink', 'color-green-soft')).toBeGreaterThanOrEqual(4.5);
+  });
+  it.each([
+    ['color-amber', 'color-amber-soft'],
+    ['color-red', 'color-red-soft']
+  ])('%s text on %s ≥4.5:1', (foreground, background) => {
+    expect(contrast(tokens, foreground, background)).toBeGreaterThanOrEqual(4.5);
+  });
+  it.each(['color-bg', 'color-surface', 'color-surface-2'])(
+    'focus ring on %s ≥3:1',
+    (background) => {
+      expect(contrast(tokens, 'color-focus', background)).toBeGreaterThanOrEqual(3);
+    }
+  );
   it.each(['color-on-hero', 'color-hero-copy', 'color-hero-muted', 'color-hero-label'])(
     'hero %s ≥4.5:1',
     (foreground) => {

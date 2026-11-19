@@ -1142,21 +1142,19 @@ async function ready(page: Page): Promise<void> {
   // Force-load the exact faces the frames use: a page that never renders a given face would
   // otherwise leave it unloaded and make the screenshot depend on navigation timing.
   await page.evaluate(async () => {
-    await Promise.all([
-      document.fonts.load('400 12px Inter'),
-      document.fonts.load('600 12px Inter'),
-      document.fonts.load('700 24px Manrope')
-    ]);
+    await Promise.all(
+      ['400', '500', '600', '700', '800'].map((weight) =>
+        document.fonts.load(`${weight} 16px Figtree`)
+      )
+    );
     await document.fonts.ready;
   });
   const fonts = await page.evaluate(() => ({
-    inter: document.fonts.check('400 12px Inter') && document.fonts.check('600 12px Inter'),
-    manrope: document.fonts.check('700 24px Manrope')
+    figtree: ['400', '600', '700', '800'].every((weight) =>
+      document.fonts.check(`${weight} 16px Figtree`)
+    )
   }));
-  expect(fonts, 'Inter and Manrope must be available before screenshot').toEqual({
-    inter: true,
-    manrope: true
-  });
+  expect(fonts, 'Figtree must be available before screenshot').toEqual({ figtree: true });
 }
 
 async function assertCenterStructure(page: Page, copy: Copy = en) {
@@ -1222,10 +1220,10 @@ async function expectTokenStyle(
 // center shipped unstyled headings (UA h1 32px serif) and unstyled card copy.
 async function assertAppliedCenterTypography(page: Page, copy: Copy = en) {
   const title = page.getByRole('heading', { level: 1, name: copy.notifications.title });
-  expect(await title.evaluate((node) => getComputedStyle(node).fontFamily)).toMatch(/^Manrope/);
+  expect(await title.evaluate((node) => getComputedStyle(node).fontFamily)).toMatch(/^Figtree/);
   await expect(title).toHaveCSS('font-size', '24px');
   const subtitle = page.getByText(copy.notifications.subtitle);
-  expect(await subtitle.evaluate((node) => getComputedStyle(node).fontFamily)).toMatch(/^Inter/);
+  expect(await subtitle.evaluate((node) => getComputedStyle(node).fontFamily)).toMatch(/^Figtree/);
   await expect(subtitle).toHaveCSS('font-size', '12px');
 }
 
@@ -1233,12 +1231,12 @@ async function assertAppliedCenterTypography(page: Page, copy: Copy = en) {
 async function assertPopulatedTypography(page: Page, copy: Copy = en) {
   const sectionTitle = page.getByRole('heading', { level: 2, name: copy.notifications.today });
   expect(await sectionTitle.evaluate((node) => getComputedStyle(node).fontFamily)).toMatch(
-    /^Manrope/
+    /^Figtree/
   );
   await expect(sectionTitle).toHaveCSS('font-size', '16px');
   const card = page.locator('main li').first();
   const cardTitle = card.getByRole('heading', { level: 3 });
-  expect(await cardTitle.evaluate((node) => getComputedStyle(node).fontFamily)).toMatch(/^Inter/);
+  expect(await cardTitle.evaluate((node) => getComputedStyle(node).fontFamily)).toMatch(/^Figtree/);
   await expect(cardTitle).toHaveCSS('font-size', '14px');
   await expect(card.locator('p[aria-label]')).toHaveCSS('font-size', '12px');
 }
@@ -1430,7 +1428,7 @@ async function assertPreferencesStructure(page: Page, copy: Copy) {
   await expectTokenStyle(critical, 'border-inline-start-color', '--color-green', 'always-on edge');
 
   // Applied preferences typography: compact 20px back link/title, 12px context/legend.
-  expect(await back.evaluate((node) => getComputedStyle(node).fontFamily)).toMatch(/^Inter/);
+  expect(await back.evaluate((node) => getComputedStyle(node).fontFamily)).toMatch(/^Figtree/);
   await expect(back).toHaveCSS('font-size', '20px');
   await expect(back).toHaveCSS('font-weight', '700');
   await expect(title).toHaveCSS('font-size', '20px');

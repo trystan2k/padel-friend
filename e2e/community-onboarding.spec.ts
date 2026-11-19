@@ -518,7 +518,7 @@ test(
     await geometry(cards.nth(1).locator('p').nth(1), { x: 32, y: 454, width: 326, height: 15 });
     for (const title of [firstTitle, secondTitle])
       await typography(title, {
-        family: 'Manrope',
+        family: 'Figtree',
         size: '14px',
         weight: '700',
         lineHeight: 'normal',
@@ -526,7 +526,7 @@ test(
       });
     for (const meta of [firstMeta, secondMeta])
       await typography(meta, {
-        family: 'Inter',
+        family: 'Figtree',
         size: '12px',
         weight: '400',
         lineHeight: 'normal',
@@ -534,7 +534,7 @@ test(
       });
     for (const count of [cards.nth(0).locator('p').nth(1), cards.nth(1).locator('p').nth(1)])
       await typography(count, {
-        family: 'Inter',
+        family: 'Figtree',
         size: '12px',
         weight: '400',
         lineHeight: 'normal',

@@ -40,7 +40,7 @@ describe('match styles', () => {
     );
     expect(edit).toContain('backdrop: { opacity: 0.97 }');
   });
-  it('uses Inter body/card content and semibold card headings, retaining Manrope venue headings', () => {
+  it('uses body-family card content and semibold card headings, retaining the heading-family venue heading', () => {
     const shell = readFileSync('src/features/matches/match-detail-shell.styles.ts', 'utf8');
     expect(shell).toMatch(/page: \{[^}]*fontFamily: 'var\(--font-family-body\)'/);
     expect(shell).toMatch(/title: \{[^}]*fontWeight: 'var\(--font-weight-semibold\)'/);

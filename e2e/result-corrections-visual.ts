@@ -119,7 +119,7 @@ export async function captureBoxes<K extends string>(
  * Render readiness gate: waits until the page lays out the way it will keep laying out, so the geometry
  * probes and screenshot captures that follow never sample a layout that is about to reflow.
  * Hypothesised mechanism (PAF-175, UNCONFIRMED pending the loaded-gate campaign, AC1): the bundled
- * Inter/Manrope faces are @fontsource subsets with font-display: swap, fetched lazily on first use. Under
+ * Figtree faces are @fontsource subsets with font-display: swap, fetched lazily on first use. Under
  * full-gate load the first sample may have run on fallback metrics, with the swap reflowing text after it
  * (a wrapped line would explain the ~22px drift that exceeded the 2px assertStacked tolerance). Failure
  * geometry matching fallback-font metrics would confirm it. Every font used by visible text is loaded explicitly, images are decoded, then the layout

@@ -23,7 +23,7 @@ export default defineConfig({
     baseURL: 'http://127.0.0.1:4173',
     trace: 'on-first-retry',
     // Deterministic Chromium rasterization so macOS and Linux render the bundled
-    // webfonts (Inter/Manrope) identically: no hinting, integral glyph positions,
+    // webfonts (Figtree) identically: no hinting, integral glyph positions,
     // grayscale antialiasing, sRGB color and no Skia CPU-dispatch drift. Baselines
     // stay platform-portable instead of absorbing a per-OS font-rasterization delta
     // (PR #21: macOS-captured baseline measured 0.03 on ubuntu-latest against a 0.02

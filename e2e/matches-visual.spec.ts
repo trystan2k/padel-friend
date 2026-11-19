@@ -356,15 +356,11 @@ async function ready(page: Page): Promise<void> {
   await page.evaluate(async () => {
     // Text-driven font loading is lazy: force the exact faces the app renders with so
     // screenshots never race a pending webfont.
-    await Promise.all([
-      document.fonts.load('400 12px Inter'),
-      document.fonts.load('500 12px Inter'),
-      document.fonts.load('600 12px Inter'),
-      document.fonts.load('700 12px Inter'),
-      document.fonts.load('400 12px Manrope'),
-      document.fonts.load('600 12px Manrope'),
-      document.fonts.load('700 24px Manrope')
-    ]);
+    await Promise.all(
+      ['400', '500', '600', '700', '800'].map((weight) =>
+        document.fonts.load(`${weight} 16px Figtree`)
+      )
+    );
     await document.fonts.ready;
     await Promise.all(
       Array.from(document.images, async (image) => {
@@ -373,13 +369,11 @@ async function ready(page: Page): Promise<void> {
     );
   });
   const fonts = await page.evaluate(() => ({
-    inter: document.fonts.check('400 12px Inter') && document.fonts.check('600 12px Inter'),
-    manrope: document.fonts.check('700 24px Manrope')
+    figtree: ['400', '600', '700', '800'].every((weight) =>
+      document.fonts.check(`${weight} 16px Figtree`)
+    )
   }));
-  expect(fonts, 'Inter and Manrope must be available before screenshot').toEqual({
-    inter: true,
-    manrope: true
-  });
+  expect(fonts, 'Figtree must be available before screenshot').toEqual({ figtree: true });
 }
 
 // ---------------------------------------------------------------------------
@@ -654,8 +648,8 @@ async function assertHeadingTypography(page: Page, label: string): Promise<void>
     };
   });
   expect(
-    style.fontFamily.startsWith('Manrope'),
-    `${label}: h1 must use the Manrope heading face`
+    style.fontFamily.startsWith('Figtree'),
+    `${label}: h1 must use the Figtree heading face`
   ).toBe(true);
   expect(style.fontSize, `${label}: h1 must be --font-size-24 (reference cap band 19–20px)`).toBe(
     '24px'
