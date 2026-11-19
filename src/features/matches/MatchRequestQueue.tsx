@@ -1,5 +1,6 @@
 import * as stylex from '@stylexjs/stylex';
 import { useState } from 'react';
+import { Button } from '../../components/ui/Button';
 import { ProvisionalBadge } from '../../components/ui/ProvisionalBadge';
 import { StatusBadge } from '../../components/ui/StatusBadge';
 import { RosterRow } from '../../components/ui/RosterRow';
@@ -71,9 +72,9 @@ export function MatchRequestQueue({
         </h2>
         <p {...stylex.props(s.copy)}>{t('matchRegistration.queue.error')}</p>
         <div {...stylex.props(s.actions)}>
-          <button type="button" onClick={onRetry} {...stylex.props(s.secondaryButton)}>
+          <Button variant="secondary" onClick={onRetry}>
             {t('matchRegistration.queue.retry')}
-          </button>
+          </Button>
         </div>
       </section>
     );
@@ -156,25 +157,22 @@ export function MatchRequestQueue({
                     when
                   })}
                 </p>
-                <div {...stylex.props(s.actions)}>
-                  <button
-                    type="button"
-                    onClick={() => controller.decide(request.attempt_id, 'approve')}
-                    disabled={busy}
-                    aria-label={t('matchRegistration.queue.approveLabel', { name })}
-                    {...stylex.props(s.primaryButton, busy && s.disabledButton)}
-                  >
-                    {t('matchRegistration.queue.approve')}
-                  </button>
-                  <button
-                    type="button"
+                <div {...stylex.props(s.actionsPair)}>
+                  <Button
+                    variant="secondary"
                     onClick={() => controller.decide(request.attempt_id, 'reject')}
                     disabled={busy}
                     aria-label={t('matchRegistration.queue.declineLabel', { name })}
-                    {...stylex.props(s.secondaryButton, busy && s.disabledButton)}
                   >
                     {t('matchRegistration.queue.decline')}
-                  </button>
+                  </Button>
+                  <Button
+                    onClick={() => controller.decide(request.attempt_id, 'approve')}
+                    disabled={busy}
+                    aria-label={t('matchRegistration.queue.approveLabel', { name })}
+                  >
+                    {t('matchRegistration.queue.approve')}
+                  </Button>
                 </div>
               </li>
             );

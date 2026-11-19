@@ -546,15 +546,52 @@ async function assertTouchLabelActivation(
 }
 
 /** Photo aspect treatment: 16/9 cover cropping, matching the design's venue imagery. */
+/** Clubhouse detail header (frames eYIgj/fo8Zn): the Share action is a 44px surface chip. */
+async function assertHeaderShare(page: Page, label: string): Promise<void> {
+  const share = page.locator('main header').getByRole('button', { name: en.matches.detail.share });
+  await expect(share, `${label}: header share must be visible`).toBeVisible();
+  const style = await share.evaluate((node) => {
+    const computed = getComputedStyle(node);
+    return {
+      backgroundColor: computed.backgroundColor,
+      color: computed.color,
+      height: node.getBoundingClientRect().height
+    };
+  });
+  expect(style.backgroundColor, `${label}: surface fill`).toBe(
+    await tokenColor(page, '--color-surface')
+  );
+  expect(style.color, `${label}: text copy`).toBe(await tokenColor(page, '--color-text'));
+  expect(style.height, `${label}: ≥44px target`).toBeGreaterThanOrEqual(44);
+}
+
+/** Hero-to-action order (frames fo8Zn/SYMLa/tYXlh): header, hero, participation, then the action. */
+async function assertHeroOrder(page: Page, label: string): Promise<void> {
+  const tops = await page.evaluate(() => {
+    const top = (selector: string) =>
+      document.querySelector(selector)?.getBoundingClientRect().top ?? null;
+    return [
+      top('main header'),
+      top('#match-overview-heading'),
+      top('#match-participation-heading'),
+      top('#match-registration-heading')
+    ];
+  });
+  for (const [index, value] of tops.entries())
+    expect(value, `${label}: landmark ${index} must render`).not.toBeNull();
+  const ordered = tops.map(Number);
+  expect(
+    ordered.every((value, index) => index === 0 || value > ordered[index - 1]!),
+    `${label}: header → hero → participation → action must read top-down (${ordered.join(', ')})`
+  ).toBe(true);
+}
+
 async function assertPhotoAspectTreatment(
   page: Page,
   label: string,
   detail = false
 ): Promise<void> {
-  const detailHeight = detail
-    ? 3 * Number.parseFloat(await tokenValue(page, '--space-40')) +
-      Number.parseFloat(await tokenValue(page, '--space-8'))
-    : null;
+  const detailHeight = detail ? 4 * Number.parseFloat(await tokenValue(page, '--space-40')) : null;
   const images = page.locator('main img');
   const count = await images.count();
   for (let index = 0; index < count; index += 1) {
@@ -924,7 +961,7 @@ async function assertMatchesFrame(page: Page, frame: string, mask: Locator[]): P
 async function assertGutterAxis(
   page: Page,
   label: string,
-  insetToken: '--space-18'
+  insetToken: '--space-18' | '--space-20'
 ): Promise<void> {
   const expectedInset = await tokenValue(page, insetToken);
   const metrics = await page.evaluate(() => {
@@ -2325,7 +2362,8 @@ test.describe.serial('PAF-4 match event visual and structural QA', () => {
     ).toBeVisible();
     await expect(page.getByRole('link', { name: en.matches.back })).toBeVisible();
     await expect(page.getByText(en.matches.detail.creatorAccepted)).toBeVisible();
-    await expect(page.getByText(`${en.matches.card.pricePerPlayer}: €12.00`)).toBeVisible();
+    // Hero metrics (frame eYIgj): price is a metric tile from the real event price.
+    await expect(page.getByText('€12.00', { exact: true })).toBeVisible();
     await expect(page.getByText('Timezone: UTC')).toBeVisible();
     await expect(
       page.getByRole('heading', { level: 2, name: en.matches.detail.participation })
@@ -2348,17 +2386,13 @@ test.describe.serial('PAF-4 match event visual and structural QA', () => {
       new RegExp(`/matches/${family.friendlyId}$`)
     );
     await assertHeadingTypography(page, 'friendly detail 390');
-    await assertGutterAxis(page, 'friendly detail 390', '--space-18');
-    // frame-driven redesign: root gap 12 per T06 frames
+    await assertGutterAxis(page, 'friendly detail 390', '--space-20');
     await assertRhythm(page, 'friendly detail 390', 'main', '--space-12');
-    // The grouped white section surfaces are the reference-measured "detail section
-    // cards" (eYIgj): gate their rendered spacing and box wrap directly.
-    await assertRhythm(page, 'friendly detail 390', 'main > div', '--space-10');
-    await assertPrimaryActionTokens(
-      page,
-      page.getByRole('button', { name: en.matches.detail.share }),
-      'friendly detail share'
-    );
+    // Clubhouse detail cards (eYIgj, nNzWb): 12px rhythm between hero, participation,
+    // registration and eligibility cards.
+    await assertRhythm(page, 'friendly detail 390', 'main > div', '--space-12');
+    await assertHeaderShare(page, 'friendly detail share');
+    await assertHeroOrder(page, 'friendly detail hero');
     await assertPhotoAspectTreatment(page, 'friendly detail', true);
     await assertNoHorizontalOverflow(page, 'friendly detail 390');
     await assertPrimaryHitTargets(page, 'friendly detail 390');
@@ -2369,7 +2403,7 @@ test.describe.serial('PAF-4 match event visual and structural QA', () => {
     await darkPage.goto(`/matches/${family.friendlyId}`);
     await ready(darkPage);
     await assertHeadingTypography(darkPage, 'friendly detail dark');
-    await assertGutterAxis(darkPage, 'friendly detail dark', '--space-18');
+    await assertGutterAxis(darkPage, 'friendly detail dark', '--space-20');
     await assertNoHorizontalOverflow(darkPage, 'friendly detail dark');
     await darkContext.close();
 
@@ -2407,16 +2441,17 @@ test.describe.serial('PAF-4 match event visual and structural QA', () => {
     for (const link of await guestPage.getByRole('link').all())
       expect((await link.textContent()) ?? '').not.toMatch(/book|pay|purchase|join|register/i);
     await assertHeadingTypography(guestPage, 'guest detail');
-    await assertGutterAxis(guestPage, 'guest detail', '--space-18');
-    // frame-driven redesign: root gap 12 per T06 frames
+    await assertGutterAxis(guestPage, 'guest detail', '--space-20');
     await assertRhythm(guestPage, 'guest detail', 'main', '--space-12');
-    // The grouped white section surfaces are the reference-measured "detail section
-    // cards" (JLqMT): gate their rendered spacing and box wrap directly.
-    await assertRhythm(guestPage, 'guest detail', 'main > div', '--space-10');
+    // JLqMT composition for an authorized non-member (D3): same card rhythm, request action only.
+    await assertRhythm(guestPage, 'guest detail', 'main > div', '--space-12');
+    await assertHeaderShare(guestPage, 'guest detail share');
+    await assertHeroOrder(guestPage, 'guest detail hero');
     await assertPrimaryActionTokens(
       guestPage,
-      guestPage.getByRole('button', { name: en.matches.detail.share }),
-      'guest detail share'
+      guestPage.getByRole('button', { name: en.matchRegistration.join.requestButton }),
+      'guest detail request',
+      '--color-on-green'
     );
     await assertPhotoAspectTreatment(guestPage, 'guest detail', true);
     await assertNoHorizontalOverflow(guestPage, 'guest detail');

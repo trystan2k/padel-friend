@@ -76,9 +76,9 @@ describe('frame-driven roster card', () => {
       ]
     });
     expect(screen.getByRole('heading', { name: 'Players in this match' })).toBeTruthy();
-    expect(screen.getByRole('heading', { name: 'RESERVE QUEUE' })).toBeTruthy();
-    const notPlaying = screen.getByRole('heading', { name: 'NOT PLAYING' }).parentElement!;
-    const reserve = screen.getByRole('heading', { name: 'RESERVE QUEUE' }).parentElement!;
+    expect(screen.getByRole('heading', { name: 'Reserve queue' })).toBeTruthy();
+    const notPlaying = screen.getByRole('heading', { name: 'Not playing' }).parentElement!;
+    const reserve = screen.getByRole('heading', { name: 'Reserve queue' }).parentElement!;
     expect(within(notPlaying).getByText('Management Player 5')).toBeTruthy();
     expect(within(reserve).getByText('Live reserve')).toBeTruthy();
     expect(within(reserve).queryByText('Management Player 5')).toBeNull();

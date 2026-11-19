@@ -1,0 +1,91 @@
+{
+  "sourceDesign": "docs/design/Padel-friend App Redesign/padel-friend-clubhouse.pen",
+  "exportCommand": "Pencil MCP Export([12 frame ids], 'png', '<repo>/e2e/references/paf-202-match-detail', {scale:1})",
+  "width": 390,
+  "frames": {
+    "JLqMT": {
+      "state": "Match detail — public guest (visuals reused for authorized non-member only; D3)",
+      "route": "/matches/$eventId (signed-in non-member / reserve-bound caller)",
+      "probe": "structural: hero order, request action only, no anonymous access",
+      "sha256": "cea6e1bda39c23dc03358c98af2334e93ba2345c25050b41bdd5974cf3fef5ef"
+    },
+    "eYIgj": {
+      "state": "Match detail — friendly, approval required",
+      "route": "/matches/$eventId (request state)",
+      "probe": "structural: hero order, header share, 12px rhythm, request action",
+      "sha256": "6eb7b734be81351783fffe7dd9339c7d60e7acb84b25e13246e280b1fd9417e6"
+    },
+    "nNzWb": {
+      "state": "Match detail — competitive unranked, approval required",
+      "route": "/matches/$eventId (request state, Unranked chip)",
+      "probe": "structural: chips, request action",
+      "sha256": "7591cf0d2099a9a6fdd7fd275eecb4ee1ade22e8277ed8f827cd7e061e839600"
+    },
+    "fo8Zn": {
+      "state": "Match detail — direct join",
+      "route": "/matches/$eventId (join state)",
+      "probe": "structural: join CTA, capacity, level range",
+      "sha256": "f32426684587d4474ebe50c597fd83ea065b244f35b2c94f70936552b6ba2933"
+    },
+    "SYMLa": {
+      "state": "Match detail — registration full",
+      "route": "/matches/$eventId (full state)",
+      "probe": "structural: disabled Match full action (no reserve-join mutation exists)",
+      "sha256": "adb8e1afe32f04983b3cc26097aa1f8426f1ae3d55378a635c686dc71a479834"
+    },
+    "tYXlh": {
+      "state": "Match detail — registration closed",
+      "route": "/matches/$eventId (closed state)",
+      "probe": "structural: no join/request action, closed copy",
+      "sha256": "1b050011fc0780878abf871d152f303d266037e029a00ca2574f6df2c5c5b839"
+    },
+    "CLn9x": {
+      "state": "Match requests — organizer",
+      "route": "/matches/$eventId (MatchRequestQueue, creator only)",
+      "probe": "structural: Decline | Approve pair, newest first",
+      "sha256": "de26a553029279696d2066818b0c3006269da54695a90e24dc6fe30810912563"
+    },
+    "Za6r4": {
+      "state": "Match requests — requester states",
+      "route": "/matches/$eventId (pending / approved / declined / expired)",
+      "probe": "state board: one state per fixture",
+      "sha256": "3744719ab6b1a0cdc16d83a38f0aa7c41ec10c9bd3c39a81f2ed8da894928ba0"
+    },
+    "xC04T": {
+      "state": "Match roster — participation states",
+      "route": "/matches/$eventId (MatchRosterCard, accepted viewers)",
+      "probe": "state board: playing → reserve → not playing",
+      "sha256": "691374df11c4b4b3c9b68b795e5143ad1fb11cd5c6b526d08d7dfaf0643effb1"
+    },
+    "Cpd7L": {
+      "state": "Match participation — quartet filled",
+      "route": "/matches/$eventId (accepted playing/promoted)",
+      "probe": "state board: playing / promoted copy",
+      "sha256": "66f73c62cab08a80f7da368536c4f600a7f2cc6bb0b0f7f8fb25ff26bd39d407"
+    },
+    "t1ywa": {
+      "state": "Match participation — status variants",
+      "route": "/matches/$eventId (playing / reserve / promoted / removed / not playing)",
+      "probe": "state board",
+      "sha256": "326aeccb2217b58d87ba5ab873153f461409dca3c5c3b39959e5a7f69030cb32"
+    },
+    "Fyhbv": {
+      "state": "Match invitation — invited player",
+      "route": "/matches/$eventId (MatchInvitationPanel)",
+      "probe": "structural: Accept | Decline stacked, expiry hint",
+      "sha256": "48b190fad35e96534207ca8c5f66b3e7e1fcf7efd7e2072e3b313fa2973ede79"
+    }
+  },
+  "decisions": {
+    "D3": "JLqMT shows anonymous 'public guest' access. Not approved: visuals apply to AUTHORIZED states only; /matches/$eventId stays under _protected (no anonymous route, no onboarding bypass, no auth/RLS change).",
+    "D6": "Hero metrics render real event data: playing/maximum, level range or 'Any', price when present, reserve count. Group average levels (frames) have no source for non-roster viewers and are not rendered.",
+    "deviations": [
+      "SYMLa draws 'Join reserve queue'; no reserve-join mutation exists for a full match, so the control is a disabled 'Match full' action.",
+      "Frames draw Share top-right; the global language/theme chips still float there, so the header reserves their width and the Share chip sits left of it.",
+      "Roster is gated to accepted viewers (PAF-5.5 recorded deviation, unchanged)."
+    ]
+  },
+  "toleranceEvidence": {
+    "screenshots": "none. Detail screens are structural-probe gated (hero order, rhythm, gutter, token fills, hit targets); fixture venues, dates, photo and roster names differ from the frame samples, so no per-screen pixel budget is claimed and none is widened to mask a defect."
+  }
+}

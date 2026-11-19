@@ -494,7 +494,7 @@ test.describe.serial('public community_open lifecycle', () => {
       })
     ).toBeVisible();
     await expect(creatorPage.getByText(en.matches.detail.creatorAccepted)).toBeVisible();
-    await expect(creatorPage.getByText(`${en.matches.card.pricePerPlayer}: €12.00`)).toBeVisible();
+    await expect(creatorPage.getByText('€12.00', { exact: true })).toBeVisible();
     await expect(creatorPage.getByText('Timezone: UTC')).toBeVisible();
     const mapsLink = creatorPage.getByRole('link', {
       name: en.matches.detail.viewCourtLocationFor.replace('{{venue}}', venue)

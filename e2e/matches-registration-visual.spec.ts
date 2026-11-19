@@ -661,11 +661,11 @@ async function assertPrimaryHitTargets(
   }
 }
 
-/** Reference measurement (manifest fact): every frame aligns content to one
- * shared axis inset exactly 18px per side at 390px. Gated on the detail surface
+/** Clubhouse measurement: every detail frame aligns content to one shared axis inset exactly
+ * 20px per side at 390px (paf-202 hero frames; the PAF-5 18px axis is superseded). Gated on the detail surface
  * exactly as the PAF-4 gate does (padding + measured border per side). */
 async function assertGutterAxis(page: Page, label: string): Promise<void> {
-  const expectedInset = await tokenValue(page, '--space-18');
+  const expectedInset = await tokenValue(page, '--space-20');
   const metrics = await page.evaluate(() => {
     const main = document.querySelector('main');
     if (!main) return null;
@@ -685,7 +685,7 @@ async function assertGutterAxis(page: Page, label: string): Promise<void> {
   expect(metrics, `${label}: main must be present`).not.toBeNull();
   expect(
     metrics!.paddingLeft,
-    `${label}: main gutter must equal --space-18 exactly (manifest fact: 18px shared axis)`
+    `${label}: main gutter must equal --space-20 exactly (Clubhouse 20px shared axis)`
   ).toBe(expectedInset);
   expect(metrics!.paddingRight, `${label}: main gutter must be symmetric`).toBe(expectedInset);
   const inset =
@@ -779,39 +779,33 @@ async function assertRegistrationCta(
   if (options.disabled) await expect(action).toBeDisabled();
   else await expect(action).toBeEnabled();
   const green = await tokenColor(page, '--color-green');
-  const copy = await tokenColor(page, '--color-bg');
-  const surface2 = await tokenColor(page, '--color-surface-2');
-  const muted = await tokenColor(page, '--color-muted');
+  const copy = await tokenColor(page, '--color-on-green');
   const style = await action.evaluate((node) => {
     const computed = getComputedStyle(node);
     const box = node.getBoundingClientRect();
     return {
       backgroundColor: computed.backgroundColor,
       color: computed.color,
+      opacity: Number.parseFloat(computed.opacity),
       minHeight: computed.minHeight,
       height: box.height,
       width: box.width
     };
   });
-  if (options.disabled) {
-    expect(
-      style.backgroundColor,
-      `${label}: disabled CTA must render the explicit surface-2 treatment`
-    ).toBe(surface2);
-    expect(style.color, `${label}: disabled CTA copy must be --color-muted`).toBe(muted);
-  } else {
-    expect(
-      style.backgroundColor,
-      `${label}: registration CTA background must be --color-green (reference #0e714d)`
-    ).toBe(green);
-    expect(style.color, `${label}: registration CTA copy must be --color-bg`).toBe(copy);
-  }
+  // The shared Button primitive keeps the green fill and on-green copy; disabled is the primitive's
+  // dimmed treatment (native disabled + opacity), never a live-looking action.
+  expect(style.backgroundColor, `${label}: registration CTA background must be --color-green`).toBe(
+    green
+  );
+  expect(style.color, `${label}: registration CTA copy must be --color-on-green`).toBe(copy);
+  if (options.disabled)
+    expect(style.opacity, `${label}: disabled CTA must read as dimmed`).toBeLessThan(1);
   expect(
     Math.max(Number.parseFloat(style.minHeight), style.height),
     `${label}: registration CTA must meet the 44px target (manifest fact: 44px-tall CTA blocks)`
   ).toBeGreaterThanOrEqual(44);
   await test.info().attach(`${label} — measured CTA box vs frame fact`, {
-    body: `rendered ${Math.round(style.width)}x${Math.round(style.height)}; frame fact: 354x44 full-content-width block${options.disabled ? ' (disabled treatment)' : ''}`
+    body: `rendered ${Math.round(style.width)}x${Math.round(style.height)}; Clubhouse fact: full-content-width 52px control${options.disabled ? ' (disabled treatment)' : ''}`
   });
 }
 
@@ -1019,10 +1013,10 @@ async function assertRequesterState(
     muted: { color: string; background: string };
     danger: { color: string; background: string };
   } = {
-    playing: { color: '--color-green', background: '--color-green-soft' },
+    playing: { color: '--color-green-ink', background: '--color-green-soft' },
     reserve: { color: '--color-text', background: '--color-surface-2' },
     muted: { color: '--color-muted', background: '--color-surface-2' },
-    danger: { color: '--color-red', background: '--color-surface-2' }
+    danger: { color: '--color-red', background: '--color-red-soft' }
   };
   const badge = panel.getByText(state.badge, { exact: true }).first();
   await expect(badge).toBeVisible();
@@ -1620,6 +1614,42 @@ async function ensureNotificationFixtures(): Promise<void> {
 // ---------------------------------------------------------------------------
 // Screens
 // ---------------------------------------------------------------------------
+
+test('PAF-202 match detail references are hash-pinned and cover all twelve frames', () => {
+  const manifest: unknown = JSON.parse(
+    readFileSync(
+      new URL('./references/paf-202-match-detail/manifest.json', import.meta.url),
+      'utf8'
+    )
+  );
+  if (!isRecord(manifest) || !isRecord(manifest.frames))
+    throw new Error('Invalid PAF-202 match detail manifest');
+  const ids = [
+    'JLqMT',
+    'eYIgj',
+    'nNzWb',
+    'fo8Zn',
+    'SYMLa',
+    'tYXlh',
+    'CLn9x',
+    'Za6r4',
+    'xC04T',
+    'Cpd7L',
+    't1ywa',
+    'Fyhbv'
+  ];
+  expect(Object.keys(manifest.frames).sort()).toEqual([...ids].sort());
+  for (const id of ids) {
+    const frame = manifest.frames[id];
+    if (!isRecord(frame)) throw new Error(`Missing frame ${id}`);
+    const source = readFileSync(
+      new URL(`./references/paf-202-match-detail/${id}.png`, import.meta.url)
+    );
+    expect(createHash('sha256').update(source).digest('hex'), `${id} export digest`).toBe(
+      frame.sha256
+    );
+  }
+});
 
 test('match fixture cleanup waits for database deletion before photo removal', async () => {
   const completed: string[] = [];

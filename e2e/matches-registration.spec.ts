@@ -1576,7 +1576,9 @@ test.describe.serial('registration, FIFO and cutoff journeys', () => {
     await requesterPage.goto(`/matches/${eventId}`);
     await waitForHydratedPage(requesterPage);
     await expect(
-      requesterPage.getByText(en.matchRegistration.closed.badge, { exact: true })
+      requesterPage
+        .locator('section[aria-labelledby="match-registration-heading"]')
+        .getByText(en.matchRegistration.closed.badge, { exact: true })
     ).toBeVisible();
     await expect(
       requesterPage.getByText(
@@ -1597,7 +1599,9 @@ test.describe.serial('registration, FIFO and cutoff journeys', () => {
     await requesterPage.getByRole('link', { name: en.notifications.match.openEvent }).click();
     await expect(requesterPage).toHaveURL(new RegExp(`/matches/${eventId}$`));
     await expect(
-      requesterPage.getByText(en.matchRegistration.closed.badge, { exact: true })
+      requesterPage
+        .locator('section[aria-labelledby="match-registration-heading"]')
+        .getByText(en.matchRegistration.closed.badge, { exact: true })
     ).toBeVisible();
 
     // A viewer without a registration row sees the explicit closed state with the
