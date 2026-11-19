@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.7.0](https://github.com/trystan2k/padel-friend/compare/v0.6.0...v0.7.0) (2026-11-19)
+
+
+### Features
+
+* **design:** add design assets and documentation for padel friend app redesign ([7bc98dd](https://github.com/trystan2k/padel-friend/commit/7bc98dd9d9d1e1781ddea3afa6239065244b96e4))
+
 ## [0.6.0](https://github.com/trystan2k/padel-friend/compare/v0.5.0...v0.6.0) (2026-11-18)
 
 
