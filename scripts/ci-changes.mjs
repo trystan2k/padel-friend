@@ -41,7 +41,7 @@ export const ALWAYS_CODE_PATTERNS = ['docs/design/**', 'docs/rating/**', 'INITIA
 // bumps the version and writes the changelog: the push to main that produced it already ran full CI
 // on the same code, and release.yml waits for that run before tagging. So the PR runs static only.
 export const RELEASE_PR_BRANCH_PREFIX = 'release-please--branches--main';
-export const RELEASE_PR_FILES = ['.release-please-manifest.json', 'CHANGELOG.md', 'package.json'];
+export const RELEASE_PR_FILES = ['release-please-manifest.json', 'CHANGELOG.md', 'package.json'];
 
 /** Matches an exact path, a `dir/**` subtree, or a repository-root `*.ext` suffix. */
 export function matchesPattern(file, pattern) {

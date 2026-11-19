@@ -7,6 +7,7 @@ import {
   classify,
   isCodePath,
   isReleasePr,
+  RELEASE_PR_FILES,
   main,
   matchesPattern,
   normalizePath,
@@ -113,10 +114,10 @@ describe('CI change classification', () => {
 
     it('runs the static lane only when the PR changes just the version files', () => {
       expect(
-        classify(['.release-please-manifest.json', 'CHANGELOG.md', 'package.json'], sameRepoRelease)
+        classify(['release-please-manifest.json', 'CHANGELOG.md', 'package.json'], sameRepoRelease)
       ).toEqual({
         mode: 'release',
-        codeFiles: ['.release-please-manifest.json', 'package.json'],
+        codeFiles: ['package.json', 'release-please-manifest.json'],
         docFiles: ['CHANGELOG.md']
       });
     });
@@ -134,6 +135,11 @@ describe('CI change classification', () => {
       expect(classify(files, { ...sameRepoRelease, headRef: 'feature/PAF-1-x' }).mode).toBe('code');
       expect(classify(files, { ...sameRepoRelease, headRepo: '' }).mode).toBe('code');
       expect(classify(files).mode).toBe('code');
+    });
+
+    it('allowlists only files that exist at the repository root', () => {
+      // A misspelled name never matches the diff, so the release lane silently stops applying.
+      for (const file of RELEASE_PR_FILES) expect(existsSync(file)).toBe(true);
     });
 
     it('never grants the release lane to an empty diff', () => {
