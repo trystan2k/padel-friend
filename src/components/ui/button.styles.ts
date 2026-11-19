@@ -1,7 +1,10 @@
 import * as stylex from '@stylexjs/stylex';
 
+// Frame B3Uqv: 52px tall, radius 14, 16px bold label. Secondary and destructive keep the 1.5px
+// outline from the state-board buttons; foreground on green uses on-green, never the page text token.
 export const styles = stylex.create({
   base: {
+    boxSizing: 'border-box',
     display: 'inline-flex',
     alignItems: 'center',
     justifyContent: 'center',
@@ -9,28 +12,33 @@ export const styles = stylex.create({
     width: '100%',
     borderWidth: 0,
     borderStyle: 'solid',
-    borderRadius: 'var(--radius-12)',
+    borderRadius: 'var(--radius-14)',
+    paddingBlock: 'var(--space-12)',
     paddingInline: 'var(--space-12)',
     fontFamily: 'var(--font-family-body)',
-    fontSize: 'var(--font-size-13)',
+    fontSize: 'var(--font-size-16)',
     fontWeight: 'var(--font-weight-bold)',
+    lineHeight: 'var(--font-line-height-snug)',
+    textAlign: 'center',
     cursor: 'pointer',
-    ':focus-visible': {
-      outline: 'var(--border-width-lg) solid var(--color-green)',
-      outlineOffset: 'var(--space-2)'
-    },
-    ':disabled': { cursor: 'not-allowed', opacity: 0.6 }
+    ':disabled': { cursor: 'not-allowed', opacity: 0.6 },
+    '[aria-busy="true"]': { cursor: 'progress' }
   },
   primary: {
     backgroundColor: 'var(--color-green)',
-    color: 'var(--color-bg)'
+    color: 'var(--color-on-green)'
   },
   secondary: {
     backgroundColor: 'var(--color-surface)',
-    borderWidth: 'var(--border-width-sm)',
+    borderWidth: 'var(--border-width-md)',
     borderColor: 'var(--color-line)',
     color: 'var(--color-text)'
   },
-  standard: { minHeight: 'calc(var(--space-40) + var(--space-4))' },
-  large: { minHeight: 'calc(var(--space-40) + var(--space-10))' }
+  destructive: {
+    backgroundColor: 'var(--color-surface)',
+    borderWidth: 'var(--border-width-md)',
+    borderColor: 'var(--color-red)',
+    color: 'var(--color-red)'
+  },
+  large: { minHeight: 'calc(var(--space-40) + var(--space-16))' }
 });

@@ -5,6 +5,6 @@ export const styles = stylex.create({
     margin: 0,
     textAlign: 'center',
     color: 'var(--color-muted)',
-    fontSize: 'var(--font-size-12)'
+    fontSize: 'var(--font-size-14)'
   }
 });
