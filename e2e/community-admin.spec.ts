@@ -11,6 +11,7 @@ import { waitForHydratedPage } from './auth-helpers';
 type Copy = {
   language: string;
   theme: string;
+  appShell: { navigation: string; nav: { community: string } };
   auth: { loginEmailLabel: string; loginPasswordLabel: string; loginSubmit: string };
   onboarding: {
     name: string;
@@ -285,6 +286,15 @@ async function visualDiff(
 // bottom navigation x18/y774 354×56. All box probes are exact ±1px for CSS boxes. Static-page
 // probes are frame-relative: global locale/theme controls above <main> shift the document, so
 // absolute y expectations are compared against the frame offset (main top) captured per screen.
+async function openCommunityTab(page: Page) {
+  await page
+    .getByRole('navigation', { name: en.appShell.navigation })
+    .getByRole('link', { name: en.appShell.nav.community, exact: true })
+    .click();
+  await expect(page).toHaveURL(/\/dashboard#home-community$/);
+  await expect(page.locator('#home-community')).toBeVisible();
+}
+
 async function mainOffset(page: Page) {
   const main = await page.locator('main').boundingBox();
   expect(main).not.toBeNull();
@@ -1248,9 +1258,13 @@ test(
     await guestContext.close();
 
     await signIn(page, owner);
-    await expect(page.getByRole('link', { name: communityName, exact: true })).toBeVisible();
     const route = `/community/${communityId}/admin`;
-    await page.goto(`${route}/requests`);
+    const adminEntry = { name: communityName, exact: true };
+    await expect(page.getByRole('link', adminEntry)).toHaveCount(0);
+    await openCommunityTab(page);
+    const adminLink = page.locator('#home-community').getByRole('link', adminEntry);
+    await expect(adminLink).toHaveAttribute('href', `${route}/requests`);
+    await adminLink.click();
     await waitForHydratedPage(page);
     await expect(
       page.getByRole('heading', { name: en.communityAdmin.title.requests })
@@ -1332,7 +1346,10 @@ test(
     const memberContext = await browser.newContext({ viewport: { width: 390, height: 844 } });
     const memberPage = await memberContext.newPage();
     await signIn(memberPage, request);
-    await expect(memberPage.getByRole('link', { name: communityName, exact: true })).toHaveCount(0);
+    await openCommunityTab(memberPage);
+    await expect(memberPage.locator('#home-community').getByRole('link', adminEntry)).toHaveCount(
+      0
+    );
     await memberPage.goto(`${route}/members`);
     await expect(
       memberPage.getByRole('heading', { name: en.communityAdmin.accessDeniedTitle })

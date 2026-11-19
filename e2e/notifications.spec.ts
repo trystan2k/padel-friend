@@ -565,6 +565,12 @@ test('invitation journey with Push permission denied: badge, center, detail, acc
     await waitForHydratedPage(recipientPage);
     await expect(recipientPage.getByRole('heading', { name: communityName })).toBeVisible();
     await expect(recipientPage.getByText(en.notifications.invitationContext)).toBeVisible();
+    const invitation = recipientPage.locator('[data-community-invitation="available"]');
+    await expect(invitation.locator('header')).toBeVisible();
+    const accept = invitation
+      .locator('footer')
+      .getByRole('button', { name: en.notifications.accept });
+    expect((await accept.boundingBox())?.height).toBeGreaterThanOrEqual(52);
 
     // Opening the detail marks it read server-side; acceptance joins the private community.
     await recipientPage.getByRole('button', { name: en.notifications.accept }).click();
@@ -575,6 +581,8 @@ test('invitation journey with Push permission denied: badge, center, detail, acc
       0
     );
     await expect(recipientPage.getByText(en.notifications.activeMembership)).toBeVisible();
+
+    await expect(recipientPage.locator('[data-community-invitation="active"]')).toBeVisible();
 
     // Full page reload: read state and target state persist from the database.
     await recipientPage.reload();
@@ -705,6 +713,8 @@ test('invitation revoked between detail load and accept degrades gracefully with
     await expect(
       page.getByRole('heading', { name: en.notifications.targetUnavailable })
     ).toBeVisible();
+    await expect(page.locator('[data-community-invitation="unavailable"]')).toBeVisible();
+    await expect(page.getByText(communityName, { exact: true })).toHaveCount(0);
     await expect(page.getByRole('link', { name: en.notifications.back })).toBeVisible();
 
     const membership = await recipient.client

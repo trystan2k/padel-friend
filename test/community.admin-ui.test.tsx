@@ -225,7 +225,7 @@ async function openInviteeSearch(rows: { user_id: string; display_name: string }
   );
   await user.click(screen.getByRole('button', { name: 'Issue invitation' }));
   const dialog = screen.getByRole('dialog');
-  const input = within(dialog).getByRole('textbox', {
+  const input = within(dialog).getByRole('searchbox', {
     name: 'Search opted-in display names'
   });
   await searchInvitees(input, 'applicants', rows);
@@ -750,7 +750,7 @@ describe('community admin UI', () => {
       mocks.issueInvitation.mockResolvedValueOnce({ token: 'token-a' });
       await user.click(within(dialog).getByRole('button', { name: 'Issue invitation' }));
       expect(await within(dialog).findByText('token-a')).toBeTruthy();
-      await user.click(within(dialog).getByRole('button', { name: 'Copy link' }));
+      await user.click(within(dialog).getByRole('button', { name: 'Copy token' }));
       expect(await within(dialog).findByText('Copied')).toBeTruthy();
 
       await user.click(within(dialog).getByRole('radio', { name: /Applicant B/ }));
@@ -856,7 +856,7 @@ describe('community admin UI', () => {
       expect(await within(dialog).findByText('token-b')).toBeTruthy();
       expect(within(dialog).queryByText('Copied')).toBeNull();
 
-      await user.click(within(dialog).getByRole('button', { name: 'Copy link' }));
+      await user.click(within(dialog).getByRole('button', { name: 'Copy token' }));
 
       expect(await within(dialog).findByText('Copied')).toBeTruthy();
       expect(clipboard.writeText).toHaveBeenCalledTimes(1);
@@ -877,7 +877,7 @@ describe('community admin UI', () => {
       mocks.issueInvitation.mockResolvedValueOnce({ token: 'token-a' });
       await user.click(within(dialog).getByRole('button', { name: 'Issue invitation' }));
       await within(dialog).findByText('token-a');
-      await user.click(within(dialog).getByRole('button', { name: 'Copy link' }));
+      await user.click(within(dialog).getByRole('button', { name: 'Copy token' }));
       expect(await within(dialog).findByText('Copied')).toBeTruthy();
 
       await searchInvitees(input, 'new applicants', [
@@ -905,7 +905,7 @@ describe('community admin UI', () => {
       </I18nextProvider>
     );
     await user.click(screen.getByRole('button', { name: 'Issue invitation' }));
-    const search = screen.getByRole('textbox', { name: 'Search opted-in display names' });
+    const search = screen.getByRole('searchbox', { name: 'Search opted-in display names' });
     await user.type(search, 'failure');
     expect(await screen.findByRole('alert')).toBeTruthy();
 
@@ -930,7 +930,7 @@ describe('community admin UI', () => {
       </I18nextProvider>
     );
     await user.click(screen.getByRole('button', { name: 'Issue invitation' }));
-    const search = screen.getByRole('textbox', { name: 'Search opted-in display names' });
+    const search = screen.getByRole('searchbox', { name: 'Search opted-in display names' });
     await user.type(search, 'failure');
     expect(await screen.findByRole('alert')).toBeTruthy();
 
@@ -964,7 +964,7 @@ describe('community admin UI', () => {
       </I18nextProvider>
     );
     await user.click(screen.getByRole('button', { name: 'Issue invitation' }));
-    const search = screen.getByRole('textbox', { name: 'Search opted-in display names' });
+    const search = screen.getByRole('searchbox', { name: 'Search opted-in display names' });
     vi.useFakeTimers();
     try {
       fireEvent.change(search, { target: { value: 'older query' } });

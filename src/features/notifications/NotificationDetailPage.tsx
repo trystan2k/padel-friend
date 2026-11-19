@@ -1,3 +1,7 @@
+import { Button } from '../../components/ui/Button';
+import { StatusBadge } from '../../components/ui/StatusBadge';
+import { SurfaceCard } from '../../components/ui/SurfaceCard';
+import { invitationStyles } from '../community/community-invitation.styles';
 import { useEffect, useRef, useState } from 'react';
 import { Link } from '@tanstack/react-router';
 import { useTranslation } from 'react-i18next';
@@ -355,8 +359,30 @@ export function NotificationDetailPage({
       ? reserveBody(currentMatchContext)
       : null;
   const hasError = targetError || readError;
+  const isCommunityInvitation =
+    initialTarget.kind === 'community_invitation' ||
+    initialTarget.target_status === 'invitation_available' ||
+    target.kind === 'community_invitation';
+  const invitationState =
+    target.target_status === 'invitation_available'
+      ? 'available'
+      : isCommunityInvitation && target.target_status === 'unavailable'
+        ? 'unavailable'
+        : isCommunityInvitation && target.target_status === 'membership_available'
+          ? target.membership_status === 'active'
+            ? 'active'
+            : 'pending'
+          : null;
   return (
-    <main {...stylex.props(styles.page)}>
+    <main
+      {...stylex.props(styles.page, invitationState && invitationStyles.page)}
+      data-community-invitation={invitationState ?? undefined}
+    >
+      {invitationState && (
+        <header {...stylex.props(invitationStyles.header)}>
+          {t('communityInvites.detailLabel')}
+        </header>
+      )}
       <output aria-live="polite">
         {isOnline === false
           ? t('notifications.offline')
@@ -365,8 +391,101 @@ export function NotificationDetailPage({
             : ''}
       </output>
       {unconfirmed && <p role="alert">{t('pwa.offline.unconfirmed')}</p>}
-      <section {...stylex.props(styles.panel)}>
-        {target.target_status === 'destination_available' && target.destination_href ? (
+      <section {...stylex.props(invitationState ? invitationStyles.content : styles.panel)}>
+        {invitationState ? (
+          <>
+            {invitationState === 'unavailable' ? (
+              <>
+                <h1 {...stylex.props(invitationStyles.title)}>
+                  {t('notifications.targetUnavailable')}
+                </h1>
+                <SurfaceCard xstyle={invitationStyles.notice}>
+                  <p {...stylex.props(invitationStyles.body)}>
+                    {t('communityInvites.unavailableHelp')}
+                  </p>
+                </SurfaceCard>
+              </>
+            ) : (
+              <>
+                <span
+                  aria-hidden="true"
+                  {...stylex.props(
+                    invitationStyles.glyph,
+                    invitationState === 'pending' && invitationStyles.pendingGlyph
+                  )}
+                >
+                  {invitationState === 'pending'
+                    ? '◷'
+                    : Array.from(target.community_name ?? '')[0]?.toLocaleUpperCase(i18n.language)}
+                </span>
+                <h1 {...stylex.props(invitationStyles.title)}>
+                  {invitationState === 'pending'
+                    ? t('communityInvites.pendingTitle')
+                    : target.community_name}
+                </h1>
+                {invitationState === 'available' && (
+                  <div>
+                    <StatusBadge tone="muted">
+                      {t('communityInvites.memberCountUnavailable')}
+                    </StatusBadge>
+                  </div>
+                )}
+                <p {...stylex.props(invitationStyles.body)}>
+                  {t(
+                    invitationState === 'available'
+                      ? 'notifications.invitationContext'
+                      : invitationState === 'active'
+                        ? 'notifications.activeMembership'
+                        : 'notifications.pendingMembership'
+                  )}
+                </p>
+                {(invitationState === 'available' || invitationState === 'pending') && (
+                  <SurfaceCard xstyle={invitationStyles.notice}>
+                    <p {...stylex.props(invitationStyles.body)}>
+                      {t(
+                        invitationState === 'pending'
+                          ? 'communityInvites.pendingHelp'
+                          : 'communityInvites.approvalNotice'
+                      )}
+                    </p>
+                  </SurfaceCard>
+                )}
+              </>
+            )}
+            {invitationState !== 'unavailable' && hasError && !unconfirmed && (
+              <p role="alert">{t('notifications.targetError')}</p>
+            )}
+            <footer {...stylex.props(invitationStyles.actions)}>
+              {invitationState === 'available' && !accepted && (
+                <Button
+                  busy={pending}
+                  disabled={pending || isOnline !== true}
+                  onClick={() => void accept()}
+                >
+                  {pending ? t('notifications.accepting') : t('notifications.accept')}
+                </Button>
+              )}
+              {target.target_status === 'membership_available' && target.community_id && (
+                <a href={'/community/' + target.community_id} {...stylex.props(styles.link)}>
+                  {t('notifications.openTarget')}
+                </a>
+              )}
+              {invitationState !== 'unavailable' && hasError && (
+                <Button
+                  variant="secondary"
+                  busy={pending}
+                  disabled={pending || isOnline !== true}
+                  onClick={() => void retry()}
+                >
+                  {t('notifications.retry')}
+                </Button>
+              )}
+              <Link {...stylex.props(styles.link)} to="/notifications">
+                {t('notifications.back')}
+              </Link>
+            </footer>
+          </>
+        ) : target.target_status === 'destination_available' && target.destination_href ? (
           <>
             <h1>{t('notifications.generic')}</h1>
             <a href={target.destination_href} {...stylex.props(styles.link)}>
@@ -623,28 +742,13 @@ export function NotificationDetailPage({
         ) : (
           <>
             <h1>{target.community_name}</h1>
-            {target.target_status === 'invitation_available' ? (
-              <>
-                <p>{t('notifications.invitationContext')}</p>
-                {!accepted && (
-                  <button
-                    {...stylex.props(styles.button)}
-                    disabled={pending || isOnline !== true}
-                    onClick={() => void accept()}
-                  >
-                    {pending ? t('notifications.accepting') : t('notifications.accept')}
-                  </button>
-                )}
-              </>
-            ) : (
-              <p>
-                {t(
-                  target.membership_status === 'active'
-                    ? 'notifications.activeMembership'
-                    : 'notifications.pendingMembership'
-                )}
-              </p>
-            )}
+            <p>
+              {t(
+                target.membership_status === 'active'
+                  ? 'notifications.activeMembership'
+                  : 'notifications.pendingMembership'
+              )}
+            </p>
             {target.target_status === 'membership_available' && target.community_id && (
               <a href={'/community/' + target.community_id} {...stylex.props(styles.link)}>
                 {t('notifications.openTarget')}

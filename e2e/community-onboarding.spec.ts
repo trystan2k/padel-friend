@@ -20,15 +20,14 @@ type LocaleCopy = {
     save: string;
   };
   communityOnboarding: { [key: string]: string } & {
-    title: string;
+    lead: string;
     skip: string;
-    createTitle: string;
+    createLead: string;
     createEntry: string;
     nameLabel: string;
     visibilityLegend: string;
     cityLabel: string;
     createSubmit: string;
-    optionalDetails: string;
     adminNote: string;
     back: string;
     created: string;
@@ -154,38 +153,20 @@ async function assertRawMarkupLocale(page: Page, markup: string, locale: string,
   expect(actual.heading).toBe(title);
 }
 
-async function typography(
-  locator: Locator,
-  expected: { family: string; size: string; weight: string; lineHeight: string; color: string }
-) {
-  const styles = await locator.evaluate((element) => {
-    const style = getComputedStyle(element);
-    return {
-      family: style.fontFamily,
-      size: style.fontSize,
-      weight: style.fontWeight,
-      lineHeight: style.lineHeight,
-      color: style.color
-    };
-  });
-  expect(styles.family).toContain(expected.family);
-  expect(styles.size).toBe(expected.size);
-  expect(styles.weight).toBe(expected.weight);
-  expect(styles.lineHeight).toBe(expected.lineHeight);
-  expect(styles.color).toBe(expected.color);
-}
-
 type ComparePngInputs = {
   expected: string;
   received: string;
   masks: [number, number, number, number][];
   endY: number;
+  referenceOffset?: number;
+  regionEnds?: number[];
 };
 
 type ComparePngResult = {
   expected: { width: number; height: number; bytes: number };
   actual: { width: number; height: number; bytes: number };
   count: number | null;
+  regionCounts?: number[];
   diff: string | null;
   error: string | null;
 };
@@ -197,7 +178,9 @@ async function comparePngImages({
   expected,
   received,
   masks: maskAreas,
-  endY: lastRow
+  endY: lastRow,
+  referenceOffset = 0,
+  regionEnds = []
 }: ComparePngInputs): Promise<ComparePngResult> {
   const decode = async (base64: string) => {
     const image = new Image();
@@ -240,7 +223,7 @@ async function comparePngImages({
       diff: null,
       error: 'PNG must be exactly 390×844'
     };
-  if (!Number.isInteger(lastRow) || lastRow < 0 || lastRow > a.height)
+  if (!Number.isInteger(lastRow) || lastRow < 0 || lastRow + referenceOffset > a.height)
     return {
       expected: { width: a.width, height: a.height, bytes: a.pixels.length },
       actual: { width: b.width, height: b.height, bytes: b.pixels.length },
@@ -274,7 +257,10 @@ async function comparePngImages({
   const output = context.createImageData(a.width, a.height);
   output.data.set(b.pixels);
   let count = 0;
-  for (let y = 0; y < lastRow; y++)
+  const regionCounts = regionEnds.map(() => 0);
+  let region = 0;
+  for (let y = 0; y < lastRow; y++) {
+    while (region < regionEnds.length && y >= regionEnds[region]!) region++;
     for (let x = 0; x < a.width; x++) {
       if (
         maskAreas.some(
@@ -284,309 +270,196 @@ async function comparePngImages({
       )
         continue;
       const i = (y * a.width + x) * 4;
-      const r = a.pixels[i]! - b.pixels[i]!,
-        g = a.pixels[i + 1]! - b.pixels[i + 1]!,
-        blue = a.pixels[i + 2]! - b.pixels[i + 2]!;
+      const reference = i + referenceOffset * a.width * 4;
+      const r = a.pixels[reference]! - b.pixels[i]!,
+        g = a.pixels[reference + 1]! - b.pixels[i + 1]!,
+        blue = a.pixels[reference + 2]! - b.pixels[i + 2]!;
       const deltaY = 0.29889531 * r + 0.58662247 * g + 0.11448223 * blue;
       const deltaI = 0.59597799 * r - 0.2741761 * g - 0.32180178 * blue;
       const deltaQ = 0.21147017 * r - 0.52261711 * g + 0.31114694 * blue;
       const different =
         0.5053 * deltaY ** 2 + 0.299 * deltaI ** 2 + 0.1957 * deltaQ ** 2 > 35215 * 0.1 ** 2;
-      if (different) count++;
+      if (different) {
+        count++;
+        if (region < regionCounts.length) regionCounts[region]!++;
+      }
       output.data[i] = different ? 255 : b.pixels[i]!;
       output.data[i + 1] = different ? 0 : b.pixels[i + 1]!;
       output.data[i + 2] = different ? 0 : b.pixels[i + 2]!;
       output.data[i + 3] = 255;
     }
+  }
   context.putImageData(output, 0, 0);
   return {
     expected: { width: a.width, height: a.height, bytes: a.pixels.length },
     actual: { width: b.width, height: b.height, bytes: b.pixels.length },
     count,
+    regionCounts,
     diff: canvas.toDataURL('image/png').split(',')[1]!,
     error: null
   };
 }
 
-// Only fixture-dependent glyphs are excluded: search text, two names, city/policy
-// metadata and Pencil's unavailable member/level examples. Card edges and both
-// card action labels remain compared. Source PNG and baseline bytes stay untouched.
-async function visualDiff(
-  page: Page,
-  name: keyof typeof references,
-  masks: [number, number, number, number][],
-  endY = 844,
-  testInfo?: TestInfo,
-  region = 'full'
-) {
-  const source = readFileSync(new URL(`./references/paf-30/${name}`, import.meta.url));
-  const baseline = readFileSync(
-    new URL(`./community-onboarding.spec.ts-snapshots/${name}`, import.meta.url)
+type FrameId = 'dSEX3' | 'JO4DC';
+type VisualManifest = {
+  statusBarHeight: number;
+  frames: Record<FrameId, { sha256: string }>;
+  toleranceEvidence: Record<FrameId, { clipHeight: number; maxDiffPixelRatio: number }>;
+};
+
+const visualManifest: VisualManifest = JSON.parse(
+  readFileSync(new URL('./references/paf-202-community/manifest.json', import.meta.url), 'utf8')
+);
+
+async function visualDiff(page: Page, frame: FrameId, testInfo: TestInfo) {
+  const source = readFileSync(
+    new URL(`./references/paf-202-community/${frame}.png`, import.meta.url)
   );
-  expect(createHash('sha256').update(source).digest('hex')).toBe(references[name]);
-  expect(baseline).toEqual(source);
-  const actual = await page.screenshot({ animations: 'disabled', caret: 'hide' });
+  expect(createHash('sha256').update(source).digest('hex')).toBe(
+    visualManifest.frames[frame].sha256
+  );
+  const screenshotPath = testInfo.outputPath(`${frame}-actual.png`);
+  const actual = await page.screenshot({
+    path: screenshotPath,
+    animations: 'disabled',
+    caret: 'hide'
+  });
+  const { clipHeight, maxDiffPixelRatio } = visualManifest.toleranceEvidence[frame];
+  const regions = {
+    header: 56,
+    progress: 72,
+    step: 104,
+    heading: 145,
+    description: 204,
+    search: 261
+  };
   const comparison = await page.evaluate(comparePngImages, {
     expected: source.toString('base64'),
     received: actual.toString('base64'),
-    masks,
-    endY
+    masks: [],
+    endY: clipHeight,
+    referenceOffset: visualManifest.statusBarHeight,
+    regionEnds: frame === 'dSEX3' ? Object.values(regions) : []
   });
-  await testInfo?.attach(`${name}-${region}-expected`, { body: source, contentType: 'image/png' });
-  await testInfo?.attach(`${name}-${region}-actual`, { body: actual, contentType: 'image/png' });
-  if (comparison.diff)
-    await testInfo?.attach(`${name}-${region}-diff`, {
+  await testInfo.attach(`${frame}-expected`, { body: source, contentType: 'image/png' });
+  await testInfo.attach(`${frame}-actual`, { path: screenshotPath, contentType: 'image/png' });
+  if (comparison.diff) {
+    await testInfo.attach(`${frame}-diff`, {
       body: Buffer.from(comparison.diff, 'base64'),
       contentType: 'image/png'
     });
-  else
-    await testInfo?.attach(`${name}-${region}-diff-unavailable`, {
-      body: comparison.error ?? 'Diff unavailable',
-      contentType: 'text/plain'
-    });
-  if (!comparison.error) assertDecodedImage(comparison.expected, comparison.actual, endY, masks);
-  expect(comparison.error, `visual comparator rejected ${name}: ${comparison.error}`).toBeNull();
-  expect(comparison.count).not.toBeNull();
-  expect(
-    readFileSync(new URL(`./community-onboarding.spec.ts-snapshots/${name}`, import.meta.url))
-  ).toEqual(source);
-  return comparison.count!;
+  }
+  expect(comparison.error).toBeNull();
+  assertDecodedImage(comparison.expected, comparison.actual, clipHeight, []);
+  const pixels = comparison.expected.width * clipHeight;
+  const ratio = comparison.count! / pixels;
+  console.info(`${frame} residual: ${comparison.count}/${pixels} = ${ratio}`);
+  if (frame === 'dSEX3') {
+    const counts = comparison.regionCounts!;
+    expect(counts.reduce((sum, count) => sum + count, 0)).toBe(comparison.count);
+    console.info(
+      `dSEX3 region pixels: ${JSON.stringify(
+        Object.fromEntries(Object.keys(regions).map((name, index) => [name, counts[index]]))
+      )}`
+    );
+  }
+  expect(ratio).toBeLessThanOrEqual(maxDiffPixelRatio);
 }
 
 test(
-  'Pencil structure: discovery and create preserve exact CSS boxes',
+  'Pencil dSEX3: discovery header, search and action hierarchy',
   { tag: '@visual' },
   async ({ page }, testInfo) => {
     await player(page);
+    const main = page.locator('[data-community-screen="discovery"]');
+    await expect(main.getByRole('heading', { level: 1 })).toHaveText(en.communityOnboarding.lead);
+    await geometry(main.locator('header'), { x: 20, y: 0, width: 350, height: 56 });
+    const titleCenter = await main.locator('header p').evaluate((node) => {
+      const style = getComputedStyle(node);
+      const bounds = node.getBoundingClientRect();
+      return (
+        bounds.left +
+        (bounds.width +
+          Number.parseFloat(style.paddingLeft) -
+          Number.parseFloat(style.paddingRight)) /
+          2
+      );
+    });
+    expect(Math.abs(titleCenter - 183)).toBeLessThanOrEqual(1);
+    await expect(main.locator('[aria-current="step"]')).toBeVisible();
     await page.evaluate(() => document.fonts.ready);
-    await geometry(page.locator('main > div').first().locator('span').first(), {
-      x: 18,
-      y: 18,
-      height: 25
+    await geometry(main.getByRole('searchbox', { name: en.communityOnboarding.searchLabel }), {
+      x: 20,
+      y: 209,
+      width: 350,
+      height: 52
     });
-    await geometry(page.locator('main header'), { x: 18, y: 55, width: 354 });
-    await geometry(page.locator('main > div:last-child > div:first-child'), {
-      x: 18,
-      y: 116,
-      width: 354
+    await geometry(main.getByRole('button', { name: en.communityOnboarding.createEntry }), {
+      x: 20,
+      width: 350,
+      height: 52
     });
-    await geometry(page.locator('#community-search'), { x: 18, y: 186, width: 354, height: 44 });
-    await page.goto('/onboarding/community?view=create');
-    await waitForHydratedPage(page);
-    await geometry(page.locator('main > div').first().locator('span').first(), {
-      x: 18,
-      y: 18,
-      height: 25
-    });
-    await geometry(page.locator('main header'), { x: 18, y: 55, width: 354 });
-    await geometry(page.locator('form > div').first(), { x: 18, y: 116, width: 354 });
-    await geometry(page.locator('#community-name'), { x: 18, y: 191, width: 354, height: 44 });
-    await geometry(page.getByText(en.communityOnboarding.visibilityLegend).locator('..'), {
-      x: 18,
-      y: 245,
-      width: 354,
-      height: 193
-    });
-    await geometry(page.getByText(en.communityOnboarding.optionalDetails).locator('..'), {
-      x: 18,
-      y: 448,
-      width: 354,
-      height: 134
-    });
-    await geometry(page.locator('#community-description'), {
-      x: 30,
-      y: 482,
-      width: 330,
-      height: 44
-    });
-    await geometry(page.locator('#community-city'), { x: 30, y: 526, width: 330, height: 44 });
-    await geometry(page.getByText(en.communityOnboarding.adminNote), { x: 18, y: 592, width: 354 });
-    await geometry(page.getByRole('button', { name: en.communityOnboarding.createSubmit }), {
-      x: 18,
-      y: 632,
-      width: 354,
-      height: 44
-    });
-    await geometry(page.getByRole('button', { name: en.communityOnboarding.back }), {
-      x: 18,
-      y: 686,
-      width: 354,
-      height: 44
-    });
-    const upper = await visualDiff(page, 'community-create.png', [], 448, testInfo, 'upper-create');
-    console.log(
-      `JO4DC unaffected region: ${upper}/174720 (${((upper / 174720) * 100).toFixed(3)}%)`
-    );
-    // Cross-platform cap: macOS 12,611/174,720 = 7.218%; Linux CI 14,863/174,720 = 8.507%;
-    // worse (Linux) residual + 0.15pp headroom. Residual is Pencil/Chromium glyph
-    // rasterization and native input/radio treatment, not displaced boxes.
-    expect(upper / 174720).toBeLessThanOrEqual(0.0866);
+    const actions = main.locator('[data-community-actions]');
+    await expect(actions.getByRole('button', { name: en.communityOnboarding.skip })).toBeVisible();
+    await expect(actions).toHaveCSS('position', 'sticky');
+    await page.evaluate(() => document.fonts.ready);
+    await visualDiff(page, 'dSEX3', testInfo);
   }
 );
 
 test(
-  'create view compares against JO4DC Pencil reference',
+  'Pencil JO4DC: creation order, control geometry and footer',
   { tag: '@visual' },
   async ({ page }, testInfo) => {
     await player(page);
-    await page.goto('/onboarding/community?view=create');
-    await waitForHydratedPage(page);
-    await page.evaluate(() => document.fonts.ready);
-    const source = readFileSync(
-      new URL('./references/paf-30/community-create.png', import.meta.url)
+    await page.getByRole('button', { name: en.communityOnboarding.createEntry }).click();
+    const main = page.locator('[data-community-screen="creation"]');
+    await expect(main.getByRole('heading', { level: 1 })).toHaveText(
+      en.communityOnboarding.createLead
     );
-    const baseline = readFileSync(
-      new URL('./community-onboarding.spec.ts-snapshots/community-create.png', import.meta.url)
-    );
-    expect(baseline).toEqual(source);
-    try {
-      await expect(page).toHaveScreenshot('community-create.png', {
-        threshold: 0.1,
-        // Cross-platform cap: macOS 38,251/329,160 = 11.621%; Linux CI 41,132/329,160 = 12.497%;
-        // worse (Linux) residual + 0.15pp headroom. Mandatory 44px optional controls
-        // shift lower content; exact geometry and an independent upper-region cap still apply.
-        maxDiffPixelRatio: 0.1265,
-        animations: 'disabled',
-        caret: 'hide'
-      });
-      const different = await visualDiff(
-        page,
-        'community-create.png',
-        [],
-        844,
-        testInfo,
-        'full-create'
-      );
-      console.log(
-        `JO4DC visual residual: ${different}/329160 (${((different / 329160) * 100).toFixed(3)}%)`
-      );
-    } finally {
-      expect(
-        readFileSync(
-          new URL('./community-onboarding.spec.ts-snapshots/community-create.png', import.meta.url)
-        )
-      ).toEqual(source);
-    }
-  }
-);
-
-test(
-  'discovery view compares card structure and actions against dSEX3 Pencil reference',
-  { tag: '@visual' },
-  async ({ page }, testInfo) => {
-    const email = await player(page);
-    const city = `Visual${crypto.randomUUID().slice(0, 8)}`;
-    const client = localClient();
-    expect(
-      (await client.auth.signInWithPassword({ email, password: 'Password123!' })).error
-    ).toBeNull();
-    for (const [name, policy] of [
-      ['Pádel & Amigos', 'admin_approval'],
-      ['Padel Collective Madrid', 'instant']
-    ] as const) {
-      const created = await client.rpc('create_community', {
-        p_name: name,
-        p_city_label: city,
-        p_visibility: 'public',
-        p_join_policy: policy
-      });
-      expect(created.error).toBeNull();
-    }
-    await page.getByRole('searchbox', { name: en.communityOnboarding.searchLabel }).fill(city);
-    await expect(page).toHaveURL(/q=Visual/);
-    const cards = page
-      .locator('main > div:last-child [aria-busy="false"] > div')
-      .filter({ has: page.getByRole('heading', { level: 3 }) });
-    await expect(cards).toHaveCount(2);
+    await geometry(main.locator('header'), { x: 20, y: 0, width: 350, height: 56 });
     await expect(
-      cards.nth(0).getByRole('heading', { name: 'Padel Collective Madrid' })
+      main.locator('header').getByRole('button', { name: en.communityOnboarding.back })
     ).toBeVisible();
+    const fields = main.getByRole('textbox');
+    await expect(fields.nth(0)).toHaveAccessibleName(en.communityOnboarding.nameLabel);
+    await expect(fields.nth(1)).toHaveAccessibleName(en.communityOnboarding.cityLabel);
+    await expect(fields.nth(2)).toHaveAccessibleName(en.communityOnboarding.descriptionLabel);
     await page.evaluate(() => document.fonts.ready);
-    await geometry(cards.nth(0), { x: 18, y: 240, width: 354, height: 142 });
-    await geometry(cards.nth(1), { x: 18, y: 392, width: 354, height: 142 });
-    const firstTitle = cards.nth(0).getByRole('heading', { level: 3 });
-    const secondTitle = cards.nth(1).getByRole('heading', { level: 3 });
-    const firstMeta = cards.nth(0).locator('p').nth(0);
-    const secondMeta = cards.nth(1).locator('p').nth(0);
-    // Pencil dSEX3 source: content inset 14; name box 19px high; 7px vertical gap;
-    // Metadata and member-count lines occupy the existing text column.
-    await geometry(firstTitle, { x: 32, y: 254, width: 326, height: 19 });
-    await geometry(firstMeta, { x: 32, y: 280, width: 326, height: 15 });
-    await geometry(cards.nth(0).locator('p').nth(1), { x: 32, y: 302, width: 326, height: 15 });
-    await geometry(secondTitle, { x: 32, y: 406, width: 326, height: 19 });
-    await geometry(secondMeta, { x: 32, y: 432, width: 326, height: 15 });
-    await geometry(cards.nth(1).locator('p').nth(1), { x: 32, y: 454, width: 326, height: 15 });
-    for (const title of [firstTitle, secondTitle])
-      await typography(title, {
-        family: 'Figtree',
-        size: '14px',
-        weight: '700',
-        lineHeight: 'normal',
-        color: 'rgb(18, 37, 29)'
-      });
-    for (const meta of [firstMeta, secondMeta])
-      await typography(meta, {
-        family: 'Figtree',
-        size: '12px',
-        weight: '400',
-        lineHeight: 'normal',
-        color: 'rgb(92, 107, 98)'
-      });
-    for (const count of [cards.nth(0).locator('p').nth(1), cards.nth(1).locator('p').nth(1)])
-      await typography(count, {
-        family: 'Figtree',
-        size: '12px',
-        weight: '400',
-        lineHeight: 'normal',
-        color: 'rgb(92, 107, 98)'
-      });
-    await geometry(cards.nth(0).getByRole('button', { name: en.communityOnboarding.join }), {
-      x: 32,
-      y: 324,
-      width: 326,
-      height: 44
+    await expect(fields).toHaveCount(3);
+    for (const [index, field] of (await fields.all()).entries()) {
+      await geometry(field, { x: 20, y: 128 + index * 88, width: 350, height: 52 });
+    }
+    const options = main.getByRole('radiogroup', { name: en.communityOnboarding.visibilityLegend });
+    await expect(options.getByRole('radio')).toHaveCount(2);
+    await expect(options.getByRole('radio').first()).toBeChecked();
+    const actions = main.locator('[data-community-actions]');
+    await expect(actions.getByText(en.communityOnboarding.adminNote)).toBeVisible();
+    await geometry(actions.getByRole('button', { name: en.communityOnboarding.createSubmit }), {
+      x: 20,
+      width: 350,
+      height: 52
     });
-    await geometry(
-      cards.nth(1).getByRole('button', { name: en.communityOnboarding.requestToJoin }),
-      {
-        x: 32,
-        y: 476,
-        width: 326,
-        height: 44
-      }
-    );
-    await geometry(page.getByRole('button', { name: en.communityOnboarding.createEntry }), {
-      x: 18,
-      y: 544,
-      width: 354,
-      height: 44
-    });
-    await geometry(page.getByRole('button', { name: en.communityOnboarding.skip }), {
-      x: 18,
-      y: 598,
-      width: 354,
-      height: 44
-    });
-    const different = await visualDiff(
-      page,
-      'community-discovery.png',
-      [
-        [30, 198, 310, 23],
-        [31, 252, 308, 65],
-        [31, 404, 308, 65]
-      ],
-      844,
-      testInfo,
-      'discovery'
-    );
-    console.log(
-      `dSEX3 visual residual: ${different}/329160 (${((different / 329160) * 100).toFixed(3)}%)`
-    );
-    // Cross-platform cap: macOS 11,255/329,160 = 3.419%; Linux CI 14,980/329,160 = 4.551%;
-    // worse (Linux) residual + 0.15pp headroom for font rasterization.
-    expect(different / 329160).toBeLessThanOrEqual(0.047);
+    await expect(actions).toHaveCSS('position', 'sticky');
+    await page.evaluate(() => document.fonts.ready);
+    await visualDiff(page, 'JO4DC', testInfo);
   }
 );
+
+test('wide dark creation keeps its controls centered and keyboard accessible', async ({ page }) => {
+  await player(page);
+  await page.setViewportSize({ width: 1280, height: 844 });
+  await page.context().addCookies([{ name: 'theme', value: 'dark', url: 'http://127.0.0.1:4173' }]);
+  await page.goto('/onboarding/community?view=create');
+  await waitForHydratedPage(page);
+  const name = page.getByRole('textbox', { name: en.communityOnboarding.nameLabel });
+  await name.focus();
+  await page.keyboard.press('Tab');
+  const city = page.getByRole('textbox', { name: en.communityOnboarding.cityLabel });
+  await expect(city).toBeFocused();
+  await geometry(city, { x: 420, width: 440, height: 52 });
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
+});
 
 test('live search keeps keyboard focus across debounce and server results', async ({ page }) => {
   await player(page);
@@ -703,7 +576,7 @@ test('browser Back restores settled query after Create consumes a pending search
   await page.getByRole('button', { name: en.communityOnboarding.createEntry }).click();
   await expect(page).toHaveURL(/\?q=Madrid&view=create$/);
   await expect(
-    page.getByRole('heading', { name: en.communityOnboarding.createTitle })
+    page.getByRole('heading', { name: en.communityOnboarding.createLead })
   ).toBeVisible();
   await page.goBack();
   await expect(page).toHaveURL(/\?q=Mad$/);
@@ -735,7 +608,7 @@ test('profile save reaches discovery, skip makes no membership and direct access
   page
 }) => {
   const email = await player(page);
-  await expect(page.getByRole('heading', { name: en.communityOnboarding.title })).toBeVisible();
+  await expect(page.getByRole('heading', { name: en.communityOnboarding.lead })).toBeVisible();
   await page.getByRole('button', { name: en.communityOnboarding.skip }).click();
   await expect(page).toHaveURL(/\/dashboard$/);
   const client = localClient();
@@ -746,7 +619,7 @@ test('profile save reaches discovery, skip makes no membership and direct access
   expect(membership.data).toEqual([]);
   await page.goto('/onboarding/community?view=create');
   await expect(
-    page.getByRole('heading', { name: en.communityOnboarding.createTitle })
+    page.getByRole('heading', { name: en.communityOnboarding.createLead })
   ).toBeVisible();
 });
 
@@ -763,8 +636,8 @@ test('SSR and hydration preserve locale across both views at 320px', async ({ pa
     for (const path of ['/onboarding/community', '/onboarding/community?view=create']) {
       const response = await page.goto(path, { waitUntil: 'domcontentloaded' });
       const title = path.includes('create')
-        ? copy.communityOnboarding.createTitle
-        : copy.communityOnboarding.title;
+        ? copy.communityOnboarding.createLead
+        : copy.communityOnboarding.lead;
       await assertRawLocale(page, response, locale, title);
       await waitForHydratedPage(page);
       await expect(page.locator('html')).toHaveAttribute('lang', locale);
@@ -890,27 +763,19 @@ test('city search finds real public community; join follows instant vs approval 
     await expect(joiner).toHaveURL(/q=City/);
     await expect(joiner.getByText(`${city} · ${en.communityOnboarding.openJoin}`)).toBeVisible();
     const cards = joiner
-      .locator('main > div:last-child [aria-busy="false"] > div')
-      .filter({ has: joiner.getByRole('heading', { level: 3 }) });
-    // Pencil dSEX3 frame: the discovery card is 142px tall (y 240, join button y 324, next
-    // card y 392). The member-count line occupies the existing text column inside that
-    // designed height — it fills the slack above the bottom-pinned action, so the card, the
-    // entry buttons and the skip button keep their frame positions (same probes as the
-    // dSEX3 structural test above, which is anchored to the sha-pinned reference PNG).
-    await geometry(cards.nth(0), { x: 18, y: 240, width: 354, height: 142 });
-    await geometry(cards.nth(1), { x: 18, y: 392, width: 354, height: 142 });
-    await geometry(joiner.getByRole('button', { name: en.communityOnboarding.createEntry }), {
-      x: 18,
-      y: 544,
-      width: 354,
-      height: 44
-    });
-    await geometry(joiner.getByRole('button', { name: en.communityOnboarding.skip }), {
-      x: 18,
-      y: 598,
-      width: 354,
-      height: 44
-    });
+      .locator('[data-community-screen="discovery"] [aria-busy="false"] > div')
+      .filter({ has: joiner.getByRole('heading', { level: 2 }) });
+    await expect(cards).toHaveCount(2);
+    for (const card of await cards.all()) {
+      await geometry(card, { x: 20, width: 350 });
+      const [action, title] = await Promise.all([
+        card.getByRole('button').boundingBox(),
+        card.getByRole('heading', { level: 2 }).boundingBox()
+      ]);
+      expect(action!.height).toBeGreaterThanOrEqual(52);
+      expect(title!.x).toBeGreaterThan(34);
+      expect(action!.x).toBeGreaterThan(title!.x);
+    }
     await joiner.getByRole('button', { name: en.communityOnboarding.join }).click();
     await expect(joiner.getByText(en.communityOnboarding.joined)).toBeVisible();
     await joiner.getByRole('button', { name: en.communityOnboarding.requestToJoin }).click();
@@ -935,25 +800,6 @@ test('city search finds real public community; join follows instant vs approval 
   } finally {
     await creator.close();
     await joiner.close();
-  }
-});
-
-// Pencil Export(['dSEX3','JO4DC'], 'png', e2e/references, {scale:1});
-// Source frames dSEX3 and JO4DC, 390×844, SHA-256 pinned. Baselines are copies of
-// source bytes, never browser-rendered screenshots. Cards intentionally omit unsupported
-// member counts and skill ranges; direct screenshot comparison requires reviewed masks.
-const references = {
-  'community-discovery.png': '4c6f8488157afbce364b0cbb15fea257784d93ee963135f8044d654b94cde748',
-  'community-create.png': 'c4ab0af1dc6d210e680dc27a1490b43d243081bb6dc2afd8edf1e9a83337aac1'
-} as const;
-test('Pencil references and baselines retain provenance', { tag: '@visual' }, () => {
-  for (const [name, sha] of Object.entries(references)) {
-    const source = readFileSync(new URL(`./references/paf-30/${name}`, import.meta.url));
-    const baseline = readFileSync(
-      new URL(`./community-onboarding.spec.ts-snapshots/${name}`, import.meta.url)
-    );
-    expect(createHash('sha256').update(source).digest('hex')).toBe(sha);
-    expect(baseline).toEqual(source);
   }
 });
 

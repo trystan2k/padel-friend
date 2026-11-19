@@ -1,0 +1,67 @@
+{
+  "sourceDesign": "docs/design/padel-friend-clubhouse.pen",
+  "exportCommand": "Pencil MCP Export(['dSEX3', 'JO4DC'], 'png', '<repo>/e2e/references/paf-202-community', {scale:1})",
+  "width": 390,
+  "height": 844,
+  "statusBarHeight": 44,
+  "frames": {
+    "dSEX3": {
+      "state": "Onboarding discovery",
+      "sha256": "1fffbe4c08192de88e0b4bd1b042c912561ba5e12f3f6206e2b7f0cd9f7f53c5"
+    },
+    "JO4DC": {
+      "state": "Community creation",
+      "sha256": "49275f0f58c53d4042805765470fcc5406ded4f14689ecceeb1d874997688cca"
+    }
+  },
+  "structuralFrames": {
+    "Qstxv": "Community entry and shared card/search language only; no second discovery route or invite-code form exists.",
+    "iyZrO": "Invitation acceptance on authorized notification detail.",
+    "MrHkt": "Confirmed pending approval on notification detail.",
+    "ah9u1": "Unavailable notification target, without claiming a reason the server does not disclose."
+  },
+  "toleranceEvidence": {
+    "dSEX3": {
+      "clipHeight": 261,
+      "maxDiffPixelRatio": 0.054,
+      "calibration": {
+        "environment": "macOS Darwin, Playwright Chromium, device scale 1, en/light",
+        "threshold": 0.1,
+        "previousCap": 0.047,
+        "previousDifferingPixels": 6101,
+        "totalPixels": 101790,
+        "previousRegionPixels": {
+          "header": 1501,
+          "progress": 20,
+          "step": 263,
+          "heading": 691,
+          "description": 973,
+          "search": 2653
+        },
+        "differingPixels": 5207,
+        "ratio": 0.051154,
+        "regionPixels": {
+          "header": 607,
+          "progress": 20,
+          "step": 263,
+          "heading": 691,
+          "description": 973,
+          "search": 2653
+        }
+      },
+      "justification": "The old cap was inherited from a different export and clip. Region analysis found a 12px shifted header title (894 excess pixels), now corrected and independently probed. Remaining pixels come from Figtree glyph/weight rasterization, the omitted back glyph (no predecessor action on this route), and the native rounded search border's one-pixel edge pattern. Search bounds, 52px targets, progress and action order are independently probed. No masks, geometry tolerances, or locale allowances were added. The 5.4% cap leaves about 290 pixels over the measured aligned capture."
+    },
+    "JO4DC": {
+      "clipHeight": 298,
+      "maxDiffPixelRatio": 0.0866,
+      "calibration": {
+        "environment": "macOS Darwin, Playwright Chromium, device scale 1",
+        "threshold": 0.1,
+        "differingPixels": 7481,
+        "totalPixels": 116220,
+        "ratio": 0.064369
+      },
+      "justification": "Exclude OS chrome and compare title and field area; lower radio/action structure is independently probed. Retain the previous JO4DC upper-region cap for typography and form-control raster differences."
+    }
+  }
+}

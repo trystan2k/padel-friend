@@ -2,6 +2,8 @@ import * as stylex from '@stylexjs/stylex';
 import { useEffect, useEffectEvent, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '../../components/ui/Button';
+import { StatusBadge } from '../../components/ui/StatusBadge';
+import { SurfaceCard } from '../../components/ui/SurfaceCard';
 import {
   listMyCommunityNotifications,
   markCommunityNotificationRead
@@ -167,7 +169,9 @@ export function CommunityInbox({
   }
   return (
     <section aria-labelledby="community-inbox-title" {...stylex.props(inboxStyles.section)}>
-      <h2 id="community-inbox-title">{t('communityInbox.title')}</h2>
+      <h2 id="community-inbox-title" {...stylex.props(inboxStyles.title)}>
+        {t('communityInbox.title')}
+      </h2>
       <p {...stylex.props(inboxStyles.notice)}>{t('communityInbox.oneWayNotice')}</p>
       {loadFailed ? (
         <div role="alert">
@@ -175,32 +179,39 @@ export function CommunityInbox({
           <Button onClick={() => void loadInitial()}>{t('communityInbox.retry')}</Button>
         </div>
       ) : !items.length ? (
-        <p>{t('communityInbox.empty')}</p>
+        <SurfaceCard xstyle={inboxStyles.card}>
+          <p {...stylex.props(inboxStyles.body)}>{t('communityInbox.empty')}</p>
+        </SurfaceCard>
       ) : (
         items.map((item) => (
-          <article key={item.notification_id} {...stylex.props(inboxStyles.card)}>
-            <p {...stylex.props(inboxStyles.body)}>{item.body}</p>
-            <time dateTime={item.created_at}>
-              {formatCommunityRequestTimestamp(item.created_at, locale, item.time_zone)}
-            </time>
-            {mutationErrors.includes(item.notification_id) && (
-              <div role="alert">
-                <p>{t('communityInbox.mutationError')}</p>
-                <Button onClick={() => void markRead(item.notification_id)}>
-                  {t('communityInbox.retry')}
+          <article key={item.notification_id}>
+            <SurfaceCard xstyle={inboxStyles.card}>
+              <p {...stylex.props(inboxStyles.body)}>{item.body}</p>
+              <time dateTime={item.created_at} {...stylex.props(inboxStyles.notice)}>
+                {formatCommunityRequestTimestamp(item.created_at, locale, item.time_zone)}
+              </time>
+              {mutationErrors.includes(item.notification_id) && (
+                <div role="alert">
+                  <p>{t('communityInbox.mutationError')}</p>
+                  <Button onClick={() => void markRead(item.notification_id)}>
+                    {t('communityInbox.retry')}
+                  </Button>
+                </div>
+              )}
+              {item.read_at ? (
+                <div>
+                  <StatusBadge tone="muted">{t('communityInbox.read')}</StatusBadge>
+                </div>
+              ) : (
+                <Button
+                  variant="secondary"
+                  busy={pending.includes(item.notification_id)}
+                  onClick={() => void markRead(item.notification_id)}
+                >
+                  {t('communityInbox.markRead')}
                 </Button>
-              </div>
-            )}
-            {item.read_at ? (
-              <span>{t('communityInbox.read')}</span>
-            ) : (
-              <Button
-                disabled={pending.includes(item.notification_id)}
-                onClick={() => void markRead(item.notification_id)}
-              >
-                {t('communityInbox.markRead')}
-              </Button>
-            )}
+              )}
+            </SurfaceCard>
           </article>
         ))
       )}
