@@ -172,6 +172,7 @@ function MembersView({ community, members }: ViewProps<'members'>) {
       ) : (
         <Button
           disabled
+          variant="secondary"
           aria-label={t('communityAdmin.inviteUnavailable')}
           title={t('communityAdmin.inviteeSearchPrivateOnly')}
           xstyle={styles.unavailableInvite}
@@ -204,6 +205,7 @@ function MembersView({ community, members }: ViewProps<'members'>) {
             onClick={() => setMemberFilter(status)}
             {...stylex.props(styles.filterTab, memberFilter === status && styles.filterTabSelected)}
           >
+            {memberFilter === status && <span aria-hidden="true">✓ </span>}
             {t(`communityAdmin.status.${status}`)}
           </button>
         ))}
@@ -213,38 +215,42 @@ function MembersView({ community, members }: ViewProps<'members'>) {
           {t('communityAdmin.searchLoading')}
         </output>
       )}
-      <div {...stylex.props(styles.list, styles.memberList)}>
-        {visibleMembers.map((person) => (
-          <SurfaceCard
-            key={person.membership_id}
-            data-testid="community-member-card"
-            xstyle={[styles.card, styles.memberCard]}
-          >
-            <span aria-hidden="true" {...stylex.props(styles.avatar)}>
-              {initials(person.display_name)}
-            </span>
-            <div {...stylex.props(styles.memberDetails)}>
-              <div {...stylex.props(styles.memberRowHeader)}>
-                <Link
-                  to="/community/$communityId/admin/members/$membershipId"
-                  params={{ communityId, membershipId: person.membership_id }}
-                  {...stylex.props(styles.memberLink)}
-                >
-                  <h3 {...stylex.props(styles.cardCompactTitle)}>{person.display_name}</h3>
-                </Link>
-                <span {...stylex.props(styles.roleBadge)}>
-                  {t(`communityAdmin.role.${person.role}`)}
-                </span>
+      {visibleMembers.length > 0 && (
+        <div {...stylex.props(styles.listSurface)}>
+          {visibleMembers.map((person) => (
+            <SurfaceCard
+              key={person.membership_id}
+              data-testid="community-member-card"
+              xstyle={[styles.card, styles.listRow]}
+            >
+              <span aria-hidden="true" {...stylex.props(styles.avatar)}>
+                {initials(person.display_name)}
+              </span>
+              <div {...stylex.props(styles.memberDetails)}>
+                <div {...stylex.props(styles.memberRowHeader)}>
+                  <Link
+                    to="/community/$communityId/admin/members/$membershipId"
+                    params={{ communityId, membershipId: person.membership_id }}
+                    {...stylex.props(styles.memberLink)}
+                  >
+                    <h3 {...stylex.props(styles.cardCompactTitle)}>{person.display_name}</h3>
+                  </Link>
+                  <span {...stylex.props(styles.roleBadge)}>
+                    {t(`communityAdmin.role.${person.role}`)}
+                  </span>
+                </div>
+                <p {...stylex.props(styles.copy)}>
+                  {t('communityAdmin.memberJoined', { date: dateLabel(person.valid_from, locale) })}
+                </p>
+                <p {...stylex.props(styles.copy)}>{ratingLabel(person, t, locale)}</p>
               </div>
-              <p {...stylex.props(styles.copy)}>
-                {t('communityAdmin.memberJoined', { date: dateLabel(person.valid_from, locale) })}
-              </p>
-              <p {...stylex.props(styles.copy)}>{ratingLabel(person, t, locale)}</p>
-            </div>
-          </SurfaceCard>
-        ))}
-        {!visibleMembers.length && !searchingMembers && <p>{t('communityAdmin.empty.members')}</p>}
-      </div>
+            </SurfaceCard>
+          ))}
+        </div>
+      )}
+      {!visibleMembers.length && !searchingMembers && (
+        <p {...stylex.props(styles.copy, styles.emptyState)}>{t('communityAdmin.empty.members')}</p>
+      )}
       {matchSummary.status === 'unsupported' && (
         <p {...stylex.props(styles.note)}>{t('communityAdmin.matchCountUnavailable')}</p>
       )}
@@ -391,18 +397,26 @@ function RequestsView(props: ViewProps<'requests'>) {
       <p {...stylex.props(styles.banner)}>{t('communityAdmin.requestBanner')}</p>
       <div {...stylex.props(styles.list)}>
         {[...members, ...additionalRequests].map((person) => (
-          <SurfaceCard key={person.membership_id} xstyle={[styles.card, styles.requestCard]}>
-            <h3 {...stylex.props(styles.cardCompactTitle)}>{person.display_name}</h3>
-            <p {...stylex.props(styles.copy, styles.requestRating)}>
-              {ratingLabel(person, t, locale)}
-            </p>
+          <SurfaceCard
+            key={person.membership_id}
+            data-testid="community-request-card"
+            xstyle={[styles.card, styles.requestCard]}
+          >
+            <div {...stylex.props(styles.requestHeader)}>
+              <span aria-hidden="true" {...stylex.props(styles.avatar, styles.avatarLarge)}>
+                {initials(person.display_name)}
+              </span>
+              <div {...stylex.props(styles.requestIdentity)}>
+                <h3 {...stylex.props(styles.cardCompactTitle)}>{person.display_name}</h3>
+                <p {...stylex.props(styles.copy)}>{ratingLabel(person, t, locale)}</p>
+              </div>
+              <RequestMessageComposer
+                communityId={community.id}
+                membershipId={person.membership_id}
+                t={t}
+              />
+            </div>
             <div {...stylex.props(styles.actions, styles.requestActions)}>
-              <Button
-                busy={busy || pageLoading}
-                onClick={() => void memberAction(person, 'approve')}
-              >
-                {t('communityAdmin.action.approve')}
-              </Button>
               <Button
                 variant="secondary"
                 busy={busy || pageLoading}
@@ -410,12 +424,13 @@ function RequestsView(props: ViewProps<'requests'>) {
               >
                 {t('communityAdmin.action.deny')}
               </Button>
+              <Button
+                busy={busy || pageLoading}
+                onClick={() => void memberAction(person, 'approve')}
+              >
+                {t('communityAdmin.action.approve')}
+              </Button>
             </div>
-            <RequestMessageComposer
-              communityId={community.id}
-              membershipId={person.membership_id}
-              t={t}
-            />
             <p {...stylex.props(styles.copy, styles.requestMeta)}>
               {t('communityAdmin.requestMeta', {
                 date: communityDateLabel(person.valid_from, locale, timezone),
@@ -425,7 +440,9 @@ function RequestsView(props: ViewProps<'requests'>) {
           </SurfaceCard>
         ))}
         {!members.length && !additionalRequests.length && (
-          <p>{t('communityAdmin.empty.requests')}</p>
+          <p {...stylex.props(styles.copy, styles.emptyState)}>
+            {t('communityAdmin.empty.requests')}
+          </p>
         )}
         {hasMoreRequests ? (
           <Button
@@ -495,10 +512,7 @@ function AdminViewFrame({
     { key: 'audit', to: '/community/$communityId/admin/audit' }
   ] as const;
   return (
-    <section
-      aria-labelledby="admin-screen-title"
-      {...stylex.props(styles.content, screen === 'venues' && styles.venueContent)}
-    >
+    <section aria-labelledby="admin-screen-title" {...stylex.props(styles.content)}>
       <header {...stylex.props(styles.header, rootStyles.pageHeader)}>
         <div {...stylex.props(styles.screenHeading)}>
           <Link
@@ -677,9 +691,7 @@ function MemberView(props: ViewProps<'member'>) {
               })}
         </h3>
         {matchSummary.status === 'unsupported' && (
-          <p {...stylex.props(styles.memberMatchUnavailable)}>
-            {t('communityAdmin.matchCountUnavailable')}
-          </p>
+          <p {...stylex.props(styles.copy)}>{t('communityAdmin.matchCountUnavailable')}</p>
         )}
         <p {...stylex.props(styles.copy)}>
           {t('communityAdmin.memberMeta', {
@@ -713,12 +725,7 @@ function MemberView(props: ViewProps<'member'>) {
           </Button>
         )}
         {member.status === 'active' && member.role === 'member' && (
-          <Button
-            variant="secondary"
-            busy={busy}
-            xstyle={styles.softAction}
-            onClick={() => requestMemberAction('promote')}
-          >
+          <Button variant="secondary" busy={busy} onClick={() => requestMemberAction('promote')}>
             {t('communityAdmin.action.promote')}
           </Button>
         )}
@@ -742,7 +749,7 @@ function MemberView(props: ViewProps<'member'>) {
             completedConfirmation.action === 'remove'
           ) && (
             <Button
-              variant="secondary"
+              variant="destructive"
               busy={busy}
               onClick={(event) => requestMemberAction('remove', event.currentTarget)}
             >
@@ -1277,26 +1284,34 @@ function VenuesView({ community, venues }: ViewProps<'venues'>) {
             data-testid="community-venue-card"
             xstyle={[styles.card, styles.venueCard]}
           >
-            <h3 {...stylex.props(styles.cardCompactTitle)}>{venue.name}</h3>
-            <div {...stylex.props(styles.venueMeta)}>
-              <p {...stylex.props(styles.copy)}>
-                {venue.address || community.city_label || t('communityAdmin.cityUnavailable')}
-              </p>
-              {venue.maps_url && (
+            <div {...stylex.props(styles.venueHead)}>
+              {venue.photo_signed_url ? (
+                <img src={venue.photo_signed_url} alt="" {...stylex.props(styles.venuePhoto)} />
+              ) : (
+                <span aria-hidden="true" {...stylex.props(styles.venuePhoto)} />
+              )}
+              <div {...stylex.props(styles.memberDetails)}>
+                <h3 {...stylex.props(styles.cardCompactTitle)}>{venue.name}</h3>
+                <p {...stylex.props(styles.copy)}>
+                  {venue.address || community.city_label || t('communityAdmin.cityUnavailable')}
+                </p>
+              </div>
+            </div>
+            {venue.maps_url && (
+              <div {...stylex.props(styles.venueMeta)}>
                 <a
                   href={venue.maps_url}
                   target="_blank"
                   rel="noreferrer"
-                  {...stylex.props(styles.memberLink, styles.venueMapLink)}
+                  {...stylex.props(styles.memberLink, styles.inlineLink)}
                 >
                   {t('communityAdmin.venue.openMap')}
                 </a>
-              )}
-            </div>
+              </div>
+            )}
             <div {...stylex.props(styles.venueActions)}>
               <Button
                 variant="secondary"
-                xstyle={styles.venueAction}
                 busy={busy || paginationPending}
                 onClick={() => {
                   setVenueDraft({
@@ -1312,7 +1327,6 @@ function VenuesView({ community, venues }: ViewProps<'venues'>) {
               </Button>
               <Button
                 variant="secondary"
-                xstyle={styles.venueAction}
                 busy={busy || paginationPending}
                 onClick={() =>
                   void run(
@@ -1329,7 +1343,11 @@ function VenuesView({ community, venues }: ViewProps<'venues'>) {
             </div>
           </SurfaceCard>
         ))}
-        {!venues.length && !additionalVenues.length && <p>{t('communityAdmin.empty.venues')}</p>}
+        {!venues.length && !additionalVenues.length && (
+          <p {...stylex.props(styles.copy, styles.emptyState)}>
+            {t('communityAdmin.empty.venues')}
+          </p>
+        )}
       </div>
       {hasMoreVenues ? (
         <Button
@@ -1557,35 +1575,45 @@ function AuditView(props: ViewProps<'audit'>) {
     <AdminViewFrame communityId={communityId} communityName={community.name} screen="audit">
       <div {...stylex.props(styles.list)}>
         <p {...stylex.props(styles.banner)}>{t('communityAdmin.audit.recentChanges')}</p>
-        {auditRows.map((event) => (
-          <SurfaceCard
-            key={event.id}
-            data-testid="community-audit-event"
-            xstyle={[styles.card, styles.auditCard]}
-          >
-            <p {...stylex.props(styles.auditAction)}>
-              {t(auditEventKey(event), { defaultValue: t('communityAdmin.audit.unknown') })}
-              {auditMemberDetails(event) &&
-                ` · ${t(`communityAdmin.role.${auditMemberDetails(event)?.role}`)} · ${t(`communityAdmin.status.${auditMemberDetails(event)?.status}`)}`}
-            </p>
-            <p {...stylex.props(styles.copy)}>
-              {t('communityAdmin.audit.unknownActor')} · {auditDateLabel(event.occurred_at, locale)}
-            </p>
-            {event.entity === 'community_members' && (
-              <Link
-                to="/community/$communityId/admin/members/$membershipId"
-                params={{ communityId, membershipId: event.entity_id }}
-                {...stylex.props(styles.memberLink)}
+        {auditRows.length > 0 && (
+          <div {...stylex.props(styles.listSurface)}>
+            {auditRows.map((event) => (
+              <SurfaceCard
+                key={event.id}
+                data-testid="community-audit-event"
+                xstyle={[styles.card, styles.listRow]}
               >
-                {t('communityAdmin.audit.openMember')}
-              </Link>
-            )}
-          </SurfaceCard>
-        ))}
-        <p {...stylex.props(styles.copy, styles.auditUnsupportedNotice)}>
+                <span aria-hidden="true" {...stylex.props(styles.auditDot)} />
+                <div {...stylex.props(styles.memberDetails)}>
+                  <p {...stylex.props(styles.auditAction)}>
+                    {t(auditEventKey(event), { defaultValue: t('communityAdmin.audit.unknown') })}
+                    {auditMemberDetails(event) &&
+                      ` · ${t(`communityAdmin.role.${auditMemberDetails(event)?.role}`)} · ${t(`communityAdmin.status.${auditMemberDetails(event)?.status}`)}`}
+                  </p>
+                  <p {...stylex.props(styles.copy)}>
+                    {t('communityAdmin.audit.unknownActor')} ·{' '}
+                    {auditDateLabel(event.occurred_at, locale)}
+                  </p>
+                  {event.entity === 'community_members' && (
+                    <Link
+                      to="/community/$communityId/admin/members/$membershipId"
+                      params={{ communityId, membershipId: event.entity_id }}
+                      {...stylex.props(styles.memberLink, styles.inlineLink)}
+                    >
+                      {t('communityAdmin.audit.openMember')}
+                    </Link>
+                  )}
+                </div>
+              </SurfaceCard>
+            ))}
+          </div>
+        )}
+        <p {...stylex.props(styles.note)}>
           {t('communityAdmin.audit.leagueCorrectionsUnavailable')}
         </p>
-        {!auditRows.length && <p>{t('communityAdmin.empty.audit')}</p>}
+        {!auditRows.length && (
+          <p {...stylex.props(styles.copy, styles.emptyState)}>{t('communityAdmin.empty.audit')}</p>
+        )}
         {hasMoreAudit ? (
           <Button variant="secondary" busy={paginationPending} onClick={() => void loadMoreAudit()}>
             {t('communityAdmin.loadMore')}

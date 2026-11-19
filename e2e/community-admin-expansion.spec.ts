@@ -88,7 +88,9 @@ test('admin sends one-way request update; applicant reads it after refresh; outs
   await signIn(page, admin);
   await page.goto(`/community/${community.data}/admin/requests`);
   await waitForHydratedPage(page);
-  const requestCard = page.getByRole('heading', { name: 'Request Applicant' }).locator('xpath=..');
+  const requestCard = page
+    .getByTestId('community-request-card')
+    .filter({ hasText: 'Request Applicant' });
   await requestCard.getByRole('button', { name: en.communityAdmin.requestMessage.action }).click();
   await expect(
     page.getByRole('heading', { name: en.communityAdmin.requestMessage.title })

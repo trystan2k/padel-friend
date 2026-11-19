@@ -15,7 +15,7 @@ function isSuppressed(segments: string[]): boolean {
     // Create wizard, match detail, result recording and groups; only the lists keep the bar.
     case 'matches':
       return second !== undefined && !detailSections.has(second);
-    // Admin keeps its own section navigation until its redesign takes it over.
+    // Admin frames draw no app bar; the admin section navigation is its one bar (never two).
     case 'community':
       return third === 'admin' || (third === 'leagues' && fourth !== undefined);
     case 'notifications':
