@@ -5,7 +5,6 @@ import type { MatchEventDetail } from './match-contracts';
 import type { ResultProposal } from './match-result-model';
 import { MatchResultCorrections, type ResultCorrectionsData } from './MatchResultCorrections';
 import { MatchResultReview } from './MatchResultReview';
-import { MatchResultNavigation } from './MatchResultNavigation';
 import { MatchResultRatingChanges } from './MatchResultRatingChanges';
 import {
   matchResultReviewStyles as reviewStyles,
@@ -228,7 +227,6 @@ export function MatchResultDetail({
             />
           )}
       </div>
-      <MatchResultNavigation />
     </main>
   );
 }

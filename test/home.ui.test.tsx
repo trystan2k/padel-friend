@@ -29,7 +29,6 @@ vi.mock('../src/features/notifications/NotificationBadge', () => ({
 }));
 
 import { HomeDashboard } from '../src/features/home/HomeDashboard';
-import { HomeNavigation } from '../src/features/home/HomeNavigation';
 
 const A = '00000000-0000-4000-8000-00000000000a';
 const B = '00000000-0000-4000-8000-00000000000b';
@@ -312,44 +311,17 @@ describe('Home layout contract', () => {
   const block = (name: string) =>
     styles.slice(styles.indexOf(`  ${name}: {`)).split('\n  },')[0] ?? '';
 
-  it('keeps the bottom navigation viewport-fixed instead of sticky inside a short wrapper', () => {
-    const navigation = block('navigation');
-    expect(navigation).toContain("position: 'fixed'");
-    expect(navigation).not.toContain('sticky');
-    expect(block('navClearance')).toContain('height:');
+  it('leaves the bottom navigation to the protected shell instead of mounting its own bar', () => {
+    expect(styles).not.toContain('navigation:');
+    expect(styles).not.toContain('navClearance');
     const route = readFileSync('src/routes/_protected.dashboard.tsx', 'utf8');
-    expect(route).toContain('{...stylex.props(homeStyles.navClearance)}');
-    expect(route).not.toMatch(/<div[^>/]*>\s*<HomeNavigation \/>/);
+    expect(route).not.toContain('Navigation');
+    expect(route).not.toContain('navClearance');
   });
 
   it('guarantees a token-backed minimum width as well as height for text links', () => {
     const link = block('link');
     expect(link).toContain('minHeight: target');
     expect(link).toContain('minWidth: target');
-  });
-});
-
-describe('Home navigation', () => {
-  it('exposes working destinations for every item', () => {
-    render(
-      <I18nextProvider i18n={createI18n('en')}>
-        <div id="home-top" />
-        <HomeNavigation />
-      </I18nextProvider>
-    );
-    const nav = screen.getByRole('navigation', { name: 'Main navigation' });
-    const hrefs = within(nav)
-      .getAllByRole('link')
-      .map((link) => [link.textContent, link.getAttribute('href')]);
-    expect(hrefs).toEqual([
-      ['Home', '#home-top'],
-      ['Matches', '/matches'],
-      ['Community', '#home-community'],
-      ['Ranking', '#home-ranking'],
-      ['Profile', '#home-profile']
-    ]);
-    expect(within(nav).getByRole('link', { name: 'Home' }).getAttribute('aria-current')).toBe(
-      'page'
-    );
   });
 });

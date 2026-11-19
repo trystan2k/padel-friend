@@ -3,6 +3,16 @@
     "skipToContent": "Pular para o conteúdo principal",
     "stale": "As atualizações estão atrasadas. As informações exibidas podem estar desatualizadas. As atualizações serão retomadas automaticamente."
   },
+  "appShell": {
+    "navigation": "Navegação principal",
+    "nav": {
+      "home": "Início",
+      "matches": "Partidas",
+      "create": "Criar uma partida",
+      "community": "Comunidade",
+      "me": "Eu"
+    }
+  },
   "languageNames": {
     "en": "English",
     "pt-BR": "Português (Brasil)",
@@ -1124,19 +1134,10 @@
       }
     },
     "results": {
-      "navigation": "Navegação principal",
       "globalRating": "Somente nível global",
       "venueHeadline": "Jogue sob as luzes.",
       "overviewDate": "{{weekday}}, {{date}}",
       "openMap": "Abrir mapa ↗",
-      "navigationUnavailable": "Esta seção ainda não está disponível.",
-      "nav": {
-        "home": "Início",
-        "matches": "Partidas",
-        "community": "Comunidade",
-        "ranking": "Ranking",
-        "profile": "Perfil"
-      },
       "matchDetails": "Detalhes da partida",
       "playedAtLabel": "Jogado em",
       "choosePlayedAt": "Escolha a data e a hora da partida",

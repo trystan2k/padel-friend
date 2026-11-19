@@ -140,35 +140,6 @@ export const matchResultStyles = stylex.create({
     fontSize: 'var(--font-size-16)',
     fontWeight: 'var(--font-weight-bold)'
   },
-  navigation: {
-    display: 'flex',
-    alignItems: 'center',
-    minHeight: 'calc(var(--space-40) + var(--space-16))',
-    paddingBlock: 'var(--space-4)',
-    paddingInline: 'var(--space-1)',
-    borderRadius: 'var(--radius-16)',
-    backgroundColor: 'var(--color-surface)'
-  },
-  navItem: {
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 'var(--space-2)',
-    flex: 1,
-    minWidth: 0,
-    minHeight: 'calc(var(--space-40) + var(--space-4))',
-    fontFamily: 'var(--font-family-body)',
-    fontSize: 'var(--font-size-12)',
-    color: 'var(--color-muted)',
-    backgroundColor: 'transparent',
-    borderWidth: 0,
-    textDecoration: 'none',
-    padding: 0,
-    borderRadius: 'var(--radius-12)'
-  },
-  navActive: { backgroundColor: 'var(--color-green-soft)', color: 'var(--color-green)' },
-  navIcon: { width: 'var(--space-20)', height: 'var(--space-20)' },
   compactNumber: {
     width: '100%',
     minWidth: 0,

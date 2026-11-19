@@ -46,9 +46,7 @@ describe('home copy', () => {
     expect(incomplete).toEqual([]);
   });
 
-  it('reuses the shared navigation copy instead of duplicating it', () => {
-    expect(Object.keys(en.matches.results.nav)).toEqual(
-      expect.arrayContaining(['home', 'matches', 'community', 'ranking', 'profile'])
-    );
+  it('reuses the shared app shell navigation copy instead of duplicating it', () => {
+    expect(Object.keys(en.appShell.nav)).toEqual(['home', 'matches', 'create', 'community', 'me']);
   });
 });

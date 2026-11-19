@@ -30,7 +30,6 @@ import { MatchManagementUnavailable } from './MatchManagementUnavailable';
 import { MatchResultPending } from './MatchResultPending';
 import { MatchResultReview } from './MatchResultReview';
 import { MatchResultScores, resultSetWins } from './MatchResultFacts';
-import { MatchResultNavigation } from './MatchResultNavigation';
 import { matchResultStyles as s } from './match-result.styles';
 
 type Props = {
@@ -204,7 +203,6 @@ export function RecordMatchResultPage(props: Props) {
       ) : (
         <p role="alert">{t('matches.results.errors.invalidGroup')}</p>
       )}
-      <MatchResultNavigation />
     </main>
   );
 }

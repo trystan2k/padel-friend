@@ -3,6 +3,16 @@
     "skipToContent": "Skip to main content",
     "stale": "Live updates are delayed. Displayed information may be out of date. Updates will resume automatically."
   },
+  "appShell": {
+    "navigation": "Main navigation",
+    "nav": {
+      "home": "Home",
+      "matches": "Matches",
+      "create": "Create a match",
+      "community": "Community",
+      "me": "Me"
+    }
+  },
   "languageNames": {
     "en": "English",
     "pt-BR": "Português (Brasil)",
@@ -1124,19 +1134,10 @@
       }
     },
     "results": {
-      "navigation": "Main navigation",
       "globalRating": "Global rating only",
       "venueHeadline": "Play under the lights.",
       "overviewDate": "{{weekday}}, {{date}}",
       "openMap": "Open map ↗",
-      "navigationUnavailable": "This section is not available yet.",
-      "nav": {
-        "home": "Home",
-        "matches": "Matches",
-        "community": "Community",
-        "ranking": "Ranking",
-        "profile": "Profile"
-      },
       "matchDetails": "Match details",
       "playedAtLabel": "Played at",
       "choosePlayedAt": "Choose date and time played",

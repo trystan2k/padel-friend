@@ -23,6 +23,7 @@ import { RefreshStatusProvider } from '../components/RefreshStatusProvider';
 import { SkipLink } from '../components/SkipLink';
 import { accessibilityStyles } from '../components/accessibility.styles';
 import { rootStyles } from '../root.styles';
+import { appShellStyles } from '../features/app-shell/app-shell.styles';
 
 export const Route = createRootRoute({
   beforeLoad: async () => ({ locale: await getInitialLocale(), theme: await getInitialTheme() }),
@@ -30,7 +31,7 @@ export const Route = createRootRoute({
   head: () => ({
     meta: [
       { charSet: 'utf-8' },
-      { name: 'viewport', content: 'width=device-width, initial-scale=1' },
+      { name: 'viewport', content: 'width=device-width, initial-scale=1, viewport-fit=cover' },
       { title: 'Padel Friend' }
     ],
     links: [
@@ -65,7 +66,7 @@ function Root() {
     document.documentElement.dataset.appHydrated = 'true';
   }, []);
   return (
-    <html lang={locale} data-theme={theme}>
+    <html lang={locale} data-theme={theme} {...stylex.props(appShellStyles.documentInset)}>
       <head>
         <HeadContent />
         <DevStyleXInject />

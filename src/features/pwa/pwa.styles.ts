@@ -53,7 +53,12 @@ export const pwaStyles = stylex.create({
   banner: {
     position: 'fixed',
     insetInline: 'var(--space-16)',
-    insetBlockEnd: 'var(--space-16)',
+    // Rises above the bottom navigation when the protected shell is mounted.
+    insetBlockEnd: {
+      default: 'var(--space-16)',
+      [stylex.when.ancestor(':has([data-app-nav])')]:
+        'calc(var(--space-6) + var(--space-40) + var(--space-16) + max(var(--space-18), env(safe-area-inset-bottom)) + var(--space-16))'
+    },
     zIndex: 30,
     boxSizing: 'border-box',
     maxWidth: 'calc(var(--space-40) * 12)',

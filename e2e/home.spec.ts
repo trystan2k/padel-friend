@@ -382,12 +382,12 @@ test.describe('community Home', () => {
   test('keeps profile, community and notification entries and gives every nav item a target', async () => {
     const page = await f.page(member);
     await expect(page.getByRole('link', { name: /Notifications/ })).toBeVisible();
-    const nav = page.getByRole('navigation', { name: copies.en.matches.results.navigation });
-    for (const key of ['home', 'matches', 'community', 'ranking', 'profile'] as const)
-      await expect(
-        nav.getByRole('link', { name: copies.en.matches.results.nav[key] })
-      ).toBeVisible();
-    await nav.getByRole('link', { name: copies.en.matches.results.nav.ranking }).click();
+    const nav = page.getByRole('navigation', { name: copies.en.appShell.navigation });
+    const { nav: labels } = copies.en.appShell;
+    for (const name of [labels.home, labels.matches, labels.create, labels.community, labels.me])
+      await expect(nav.getByRole('link', { name })).toBeVisible();
+    await expect(nav.getByRole('link')).toHaveCount(5);
+    // Ranking is no destination of its own; its section stays on Home until Community hosts it.
     await expect(page.locator('#home-ranking')).toBeVisible();
     for (const link of await nav.getByRole('link').all()) {
       const box = await link.boundingBox();
@@ -397,7 +397,7 @@ test.describe('community Home', () => {
 
   test('keeps the bottom navigation visible at the top and after scrolling to the end', async () => {
     const page = await f.page(member);
-    const nav = page.getByRole('navigation', { name: copies.en.matches.results.navigation });
+    const nav = page.getByRole('navigation', { name: copies.en.appShell.navigation });
     const viewport = page.viewportSize();
     const withinViewport = async () => {
       const box = await nav.boundingBox();
