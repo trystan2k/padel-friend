@@ -1181,6 +1181,23 @@
       }
     },
     "results": {
+      "record": {
+        "scoreTitle": "Enter the score",
+        "reviewTitle": "Check and submit",
+        "reviewAction": "Review",
+        "matchup": "{{first}} vs {{second}}",
+        "setSummary": "{{set}}: {{first}} to {{second}} · {{status}}",
+        "ratingUnavailable": "Estimated rating change unavailable before confirmation.",
+        "competitiveUnranked": "Competitive · Unranked",
+        "competitive": "Competitive",
+        "confirmationNote": "Eligible players have 48 hours to approve or report a problem. If nobody rejects the result, it confirms automatically.",
+        "outcome": {
+          "team_a": "Team A wins · {{winnerSets}}–{{loserSets}}",
+          "team_b": "Team B wins · {{winnerSets}}–{{loserSets}}",
+          "draw": "Draw · third set unfinished",
+          "incomplete": "Incomplete"
+        }
+      },
       "globalRating": "Global rating only",
       "venueHeadline": "Play under the lights.",
       "overviewDate": "{{weekday}}, {{date}}",
@@ -1210,9 +1227,9 @@
       "matrixSet": "S{{number}}",
       "title": "Record result",
       "steps": {
-        "players": "PLAYERS",
-        "score": "SCORE",
-        "review": "REVIEW"
+        "players": "Players",
+        "score": "Score",
+        "review": "Review"
       },
       "teams": {
         "team_a": "Team A",
@@ -1227,12 +1244,12 @@
       "groupLabel": "Game group",
       "group": "Group {{number}}",
       "sets": "Enter each set",
-      "setNumber": "SET {{number}}",
+      "setNumber": "Set {{number}}",
       "setState": {
-        "complete": "COMPLETE",
-        "inProgress": "IN PROGRESS",
-        "notPlayed": "NOT PLAYED",
-        "invalid": "INVALID"
+        "complete": "Complete",
+        "inProgress": "In progress",
+        "notPlayed": "Not played",
+        "invalid": "Invalid"
       },
       "setStateLabel": "Set {{number}} completion",
       "addSet": "Add set",
@@ -1286,7 +1303,7 @@
       },
       "back": "Back",
       "reload": "Reload latest result and roster",
-      "submit": "Submit for review",
+      "submit": "Submit result",
       "submitting": "Submitting result…",
       "pending": "PENDING · NOT CONFIRMED",
       "pendingDescription": "No rating or League stats apply yet. Eligible players may approve or reject.",

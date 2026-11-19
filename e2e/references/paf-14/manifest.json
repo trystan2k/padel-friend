@@ -740,7 +740,7 @@
       "xbIxj": [
         "version card left/right gutter = 18",
         "banner at the card content edge, above the prior-version action",
-        "view-prior action height 44",
+        "view-prior action height 52 (Clubhouse Button)",
         "standings table inside the gutters; header and first body row share ordered, aligned columns",
         "palette: version card surface"
       ],
@@ -964,7 +964,7 @@
       {
         "id": "D1",
         "region": "correction banner",
-        "reason": "A strong-text line inside the version card, not a mint chip above the cards.",
+        "reason": "A strong-text line inside the version card, not a mint chip above the cards; its family follows the Clubhouse body token.",
         "raster": "excluded",
         "probes": {
           "page": ["D1.banner"]
@@ -982,7 +982,7 @@
       {
         "id": "D3",
         "region": "standings columns",
-        "reason": "Production adds an award column; place, player, record and set-difference keep the frame order.",
+        "reason": "Production adds an award column; place, player, record and set-difference keep the frame order and use Clubhouse body and text tokens.",
         "raster": "excluded",
         "probes": {
           "page": ["D3.columns"]
@@ -1004,6 +1004,15 @@
         "raster": "excluded",
         "probes": {
           "page": ["D5.noShellNav"]
+        }
+      },
+      {
+        "id": "D6",
+        "region": "Clubhouse control and body tokens",
+        "reason": "Clubhouse uses the shared 52px Button and Figtree with semantic text colors. Keep the legacy raster budgets and assert the replacement control height and token values exactly.",
+        "raster": "excluded",
+        "probes": {
+          "page": ["D6.clubhouseControl"]
         }
       }
     ],

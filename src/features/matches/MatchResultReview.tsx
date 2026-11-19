@@ -24,6 +24,7 @@ export function MatchResultReview({
   timezone,
   asOf,
   compact = false,
+  recording = false,
   onRefresh
 }: {
   eventId: string;
@@ -31,6 +32,7 @@ export function MatchResultReview({
   timezone: string;
   asOf: string;
   compact?: boolean;
+  recording?: boolean;
   onRefresh: () => void | Promise<void>;
 }) {
   const { t, i18n } = useTranslation();
@@ -295,7 +297,7 @@ export function MatchResultReview({
         </section>
       )}
       {proposal.status !== 'confirmed' && (
-        <MatchResultRankedBlocked eventId={eventId} proposal={proposal} />
+        <MatchResultRankedBlocked eventId={eventId} proposal={proposal} recording={recording} />
       )}
       {feedbackCopy && !rejectOpen && review.feedback?.kind !== 'stale' && (
         <output

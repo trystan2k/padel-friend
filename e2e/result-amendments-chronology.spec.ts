@@ -95,8 +95,8 @@ test('October correction after the League close replays later groups, preserves 
     await row.getByRole('textbox', { name: r.teams.team_b, exact: true }).blur();
   }
   // First press reviews the recap, the second submits the corrected proposal.
-  await page.getByRole('button', { name: r.correctSubmit, exact: true }).click();
-  await expect(page.getByRole('heading', { name: r.matchRecap, exact: true })).toBeVisible();
+  await page.getByRole('button', { name: r.record.reviewAction, exact: true }).click();
+  await expect(page.getByRole('region', { name: r.matchRecap, exact: true })).toBeVisible();
   await page.getByRole('button', { name: r.correctSubmit, exact: true }).click();
   // Successful submission navigates to match details; the receipt can disappear before it is observed.
   await expect(page).toHaveURL(new RegExp(`/matches/${f.october.eventId}$`));
@@ -233,7 +233,6 @@ test('October correction after the League close replays later groups, preserves 
   assertNear(frameViewport.width - cardBox.right, g.gutter, 'league version card right gutter');
   const cardInner = await innerBox(versionCard);
   assertNear((await box(banner)).x, cardInner.x, 'league banner aligned to card content edge');
-  assertNear((await box(viewPrior)).height, g.actionHeight, 'league view-prior action height');
   const table = leaguePage
     .locator('section[aria-labelledby="league-standings-heading"]')
     .getByRole('table')
@@ -304,6 +303,9 @@ test('October correction after the League close replays later groups, preserves 
     },
     'D5.noShellNav': async () => {
       await expect(versionCard.locator('nav, [role=navigation]')).toHaveCount(0);
+    },
+    'D6.clubhouseControl': async () => {
+      assertNear((await box(viewPrior)).height, 52, 'league view-prior Clubhouse control height');
     }
   });
   await assertFrameContract('xbIxj', 'page', [
@@ -313,12 +315,23 @@ test('October correction after the League close replays later groups, preserves 
       allow: {
         caps: 'sentence',
         color: 'var(--color-text)',
+        family: 'var(--font-family-body)',
         weight: 'var(--font-weight-semibold)'
       },
       adaptation: 'D1'
     },
-    { ref: 'Corrected result', locator: versionCard.locator('p').nth(4) },
-    { ref: 'Audit actor', locator: versionCard.locator('p').nth(1) },
+    {
+      ref: 'Corrected result',
+      locator: versionCard.locator('p').nth(4),
+      allow: { color: 'var(--color-text)', family: 'var(--font-family-body)' },
+      adaptation: 'D6'
+    },
+    {
+      ref: 'Audit actor',
+      locator: versionCard.locator('p').nth(1),
+      allow: { color: 'var(--color-muted)', family: 'var(--font-family-body)' },
+      adaptation: 'D6'
+    },
     {
       ref: 'Correction summary',
       locator: versionCard,
@@ -332,7 +345,11 @@ test('October correction after the League close replays later groups, preserves 
     {
       ref: 'Standing 1',
       locator: table.locator('tbody tr').first().locator('td').first(),
-      allow: { weight: 'var(--font-weight-bold)' },
+      allow: {
+        color: 'var(--color-text)',
+        family: 'var(--font-family-body)',
+        weight: 'var(--font-weight-bold)'
+      },
       adaptation: 'D3'
     }
   ]);

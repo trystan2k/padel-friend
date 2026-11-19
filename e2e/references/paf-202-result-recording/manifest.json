@@ -1,0 +1,75 @@
+{
+  "sourceDesign": {
+    "path": "docs/design/Padel-friend App Redesign/padel-friend-clubhouse.pen",
+    "sha256": "41f3b06db61a180ed1d0eebe0fb3ff71e0086a703b5497ad7b47cd7ba7bb971e"
+  },
+  "route": "/matches/$eventId/record",
+  "precedence": "D7: Route fragments govern their own regions; generic references cover unshown conventions only.",
+  "blocked": "No dedicated ranked-blocked result fragment; uses the n6zFq state conventions without changing ranked eligibility.",
+  "pixelEvidence": {
+    "kind": "Chromium screenshot luma-grid regression",
+    "reason": "Pencil uses illustrative facts and device chrome. Chromium screenshots are attached; lossless luma grids pin fixture composition. Recording grids sample body sections only (rows 4–37 for score, 4–31 for review). Independent probes pin shell suppression, action order, stickiness and 112×52 Back. A 12-level delta filters antialiasing; 0.5% allows at most 3 recording cells or 4 lifecycle cells. The 390×70 navigation band requires zero changed RGB pixels against the measured solid background.",
+    "width": 20,
+    "height": 42,
+    "pixelThreshold": 12,
+    "frames": {
+      "XySt5": {
+        "fallback": "lKv9B",
+        "region": "Score entry",
+        "baseline": "9PPy8/X19fX19fX19fX09PT09PTz9frt09va3tng8vX19PDo8uzr8/P3/ezO1dPZ09zy9fX07eDv5eTy8+ro6+zs7u3s7O3t7vTz8PPx8fTtvbm6uLnNwLm6vLzF8PLy8vLy9Oy9wMfIwsPJwtTz9fX19fX19fX18dvZ2uHc2NzY4PHx8fPx8vPy9PXw0dbT2OXV3uXX2tLU4dTf1t3v9fXy6+nq6+nr7PT06enu7Onq7fL19fTq4Ozn5+fu9vbq5uzo6ufr9PX1+/z9/v7+/v7+/v7+/v34+fn69fXj1/v/////////////98y/xOz19fz7+/v7+/v7/f37+/v7+fj5+/X19O3u7uru7+vz8+3v7uvu7uzz9fXx6uvq4urs5u/v6uzq4err6PH19fTx8fHx8fHx9fXx8PDx8PHx9PX19/j4+Pj4+Pj4+Pj4+Pj4+Pj39fX07/z/////////////++jm5/b19fr5/v/////////////87evs9/X1+/n5+fn5+fn7+/n5+fn5+fn79fXx6evq4+rr5O/v6Ozq5Orr5/H19fHp6+ri6uzj8PDo7Ori6urm8fX19PT09PT09PT19fT09PT09PT19fX8/v7//////////////fz8/fz19ffz/f////////////7z5+Xp9vX1+ff+/////////////vnw7vL59vXz7u7u7u3u7vLy7u7u7u7u7vP19fDj6unf6ezU7+/f7OnZ6Onc7/X18/Hx8fDx8fDz8/Hx8PDx8fHz9fX4+fn5+fn5+fr6+fn5+fn5+fj19fHo6erm8/7+/v7+/v7+/v7+/fX28dzf3eHw/v/////////////+9vby4uTn/Pz8/Pz8/Pz8/Pz8/P329fjw8vX4+fn4+/z8/Pz8/Pz6+vX1+OHc3NLl2Nr7//////////z69fb48vHv8/f39/f39/f39/f39/v29e/Y2M/e7u7u7u7u7u7u7u7w+fb07evy8PP29vb29vb29vb29u/u9Pv59v358fT09PT09PT09PT08vH7/Ozl9NBaWFhYWWVpaV5YWFhYcOz759n0w0tLS0tLX2ZnVEtLS0ta5/349vjsqaenp6eoqamop6enp7v3",
+        "measuredSelfDiffRatio": 0,
+        "maxDiffRatio": 0.005
+      },
+      "GPo9z": {
+        "fallback": "Hzcid",
+        "region": "Competitive win review",
+        "baseline": "9PPy8/X19fX19fX19fX09PT09PTz9frt09va3tng8vX19PDo8uzr8/P3/ezO1dPZ09zy9fX07eDv5eTy8+ro6+zs7u3s7O3t7vDr6ezq6/PtvLm5ubnMwLm5uLvD0Ly8vLzC7u3BvMLIvcLDvcDA7fX19fX19fX18uHa3N/Y3tza3N7y9vb29vb29fX1+vv8+vz7+/v7+/z9+/v8/P789fb039zg3+Dj6eLd6Ori4eHz//729ureye7Q2fPW4PL//////////vb18uzh9eXp+Ont9//////////99vX3+fn5+fn5+fn5+fn5+fn5+ff19O3s6uDk5ePl5Ofq6urq6urq7PTz7fLqz9bc1NnZ4+jo5+fn5+fp8/Pr6+fMx8XMyczLxs/HxsvJz+Lz8+np58fFwsLg6enp6enp6enp6fP07+7u7u7u7u7u7u7u7u7u7u7v9PX5+fn5+vv7+/v7+/v6+fn5+fn19fPf3drm/v////////jc3OTb7/X2/v7+/v7+//////7+/v7+/v7+9vb68fD27/f+///+8u7x7vnx8Pv29vnv7fbs9f7///3w6+/s+O/u+vb2/v/////////////+/v7+/v7+9vby1dLZ////////99zd3NLw3PH29v7+//////////////////7+/vb29eXu///////////////84+X19vb9/P3///////////////78/P329vv2+PX6//////r39Pb6+PX2+vb18+Tq4PD+/v7+8ube5vHp4uLy9fPw8vP08/Tz8PTz9PT09PT09Pb18d7d4Nnk5Ofk4+Tl2+Pj4+Lr8vXx3d3i4uDi5OPm5+Tl6efm6PX19fXr6+rp8Pf39/f39/f39/f39/f3/Pf39+iXlZWVlZWVlZWVlZWVrPT74NP0wEtLS05nbW9jblxLS0tY5/zv5vXMYWBgYmxzcG9zZ2BgYHHr+/f39/LNzc3Nzc3Nzc3Nzc3N2Pf19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX1",
+        "measuredSelfDiffRatio": 0,
+        "maxDiffRatio": 0.005
+      },
+      "c0wbmu": {
+        "fallback": "BnwEB",
+        "region": "Incomplete review",
+        "baseline": "9PPy8/X19fX19fX19fX09PT09PTz9frt09va3tng8vX19PDo8uzr8/P3/ezO1dPZ09zy9fX07eDv5eTy8+ro6+zs7u3s7O3t7vDr6ezq6/PtvLm5ubnMwLm5uLvD0Ly8vLzC7u3BvMLIvcLDvcDA7fX19fX19fX18uHa3N/Y3tza3N7y9vb29vb29fX1+vv8+vz7+/v7+/z9+/v8/P789fb039zg3uDk6+Pe6Ori4eHz//729ureye/T3vr//////////////vb18uzh9ePs/P/////////////99vX3+fr6+vr6+vr6+vr6+vr6+ff19PHw7+nq6env7+/v7+/v7+/v8PT07+7v3d7b2+3u7u7u7/Dw8PDv9PTv7u7TzsvV29XQ09Li8PDw8O/09PHw8PDw8PDw8PDw8PDw8PDw8fT19/j4+Pn6+vr6+vr6+fj39/j49fb37e3q7/7////////66+ru6/X29vz6+fn6/v////////35+fr5+/b2+/r7+/r9/v///fj4+fr8+fr89vb46ufz5vH+///96uXq5vbp5vn29vz9/v7////////9+vz7+v37/Pb29Nzd4/////////jj5OTb8+T09vb+/v7///////////////7+/v729vny9////////////////fHx+Pb2+vP3///////////////98vP69vb8/f7////////8/v78/vz+/f329fPh59ft/v7+/vDj2OHv5t7e8PXz8PT19fT19fL19fb19fX19fb39fLh4eTg5ufo5eXm6OHm5uXm7fP18eHg5ebi4OHg5eXh4+fk5eb09PXz5ubl5O329vb29vb29vb29vb29vz5+vnrs7Ozs7Ozs7Ozs7Ozs8H2++LT8shTU1NVbXV1a3VjU1NTZOn87+j3w0tLS0xXXVtZXlFLS0tZ5/z39/fyw8HBwcHBwcHBwcHBwdH49vb29vb29vb29vb29vb29vb29vb19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX1",
+        "measuredSelfDiffRatio": 0,
+        "maxDiffRatio": 0.005
+      },
+      "NZk5H": {
+        "fallback": "u78yF",
+        "region": "Friendly review",
+        "baseline": "9PPy8/X19fX19fX19fX09PT09PTz9frt09va3tng8vX19PDo8uzr8/P3/ezO1dPZ09zy9fX07eDv5eTy8+ro6+zs7u3s7O3t7vDr6ezq6/PtvLm5ubnMwLm5uLvD0Ly8vLzC7u3BvMLIvcLDvcDA7fX19fX19fX18uHa3N/Y3tza3N7y9vb29vb29fX1+vv8+vz7+/v7+/z9+/v8/P789fb039zg3+Dj6eLd6Ori4eHz//729ureye7Q2fPW4PL//////////vb18uzh9eXp+Ont9//////////99vX3+fn5+fn5+fn5+fn5+fn5+ff19O/v7OHl5+Tn5ers7Ozs7Ozs7vT07/Hrzdbc1NrY5Orr7Ozs7Ozs9PTt7evTydjSzc3OzuXs7Ozs7Oz09O7t7e3t7e3t7e3t7e3t7e3t7vT19/j4+Pn6+vr6+vr6+fj39/j49fb37e3q7/7////////66+ru6/X29vz6+fn6/v////////35+fr5+/b2+/r7+/r9/v///fj4+fr8+fr89vb46ufz5vH+///96uXq5vbp5vn29vz9/v7////////9+vz7+v37/Pb29Nzd4/////////jj5OTb8+T09vb+/v7///////////////7+/v729vny9////////////////fHx+Pb2+vP3///////////////98vP69vb8/f7//////////vn9/fz+/f329fPh59ft/v7+/v7859zs5t7e8PXz8PT19fT19fL19fb19fX19fb39fLh4eTg5ufo5eXm6OHm5uXm7fP18eHg5ebi4OHg5eXh4+fk5eb09PXz5ubl5O329vb29vb29vb29vb29vz5+vnrs7Ozs7Ozs7Ozs7Ozs8H2++LT8shTU1NVbXV1a3VjU1NTZOn87+j3w0tLS0xXXVtZXlFLS0tZ5/z39/fyw8HBwcHBwcHBwcHBwdH49vb29vb29vb29vb29vb29vb29vb19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX1",
+        "measuredSelfDiffRatio": 0,
+        "maxDiffRatio": 0.005
+      },
+      "wsXWA": {
+        "fallback": "LD9Jv",
+        "region": "Inline invalid set",
+        "baseline": "9PPy8/X19fX19fX19fX09PT09PTz9frt09va3tng8vX19PDo8uzr8/P3/ezO1dPZ09zy9fX07eDv5eTy8+ro6+zs7u3s7O3t7vTz8PPx8fTtvbm6uLnNwLm6vLzF8PLy8vLy9Oy9wMfIwsPJwtTz9fX19fX19fX18dvZ2uHc2NzY4PHx8fPx8vPy9PXw0dbT2OXV3uXX2tLU4dTf1t3v9fXy6+nq6+nr7PT06enu7Onq7fL19fTq4Ozn5+fu9vbq5uzo6ufr9PX1+/z9/v7+/v7+/v7+/v79+fn69fXj1/v///////////////nIyOz19fz7+/v7+/v7/f37+vf39vj5+/X19O3u7uru7+vz8+3r4+Lm6ezz9fXx6uvq4urs5u/v6unm5Orl6PH19fbx8fHx8fHx9fXx7uTm5e/x9vX17+jr7Orp6ezr7url6Ofq7vP+9vX18u/28/X08vLz9PLy8vv9/fz19ff4+Pj4+Pj4+Pj4+Pj4+Pn59/X1+/v+//////////////75+Pn89fXo3Pr/////////////+NfN0fD19fr39/f39/f3+vr39/b29fX2+fX18uzs7Ovs7Ovw8Ozs7Ojs7Ozy9fXx6uzq4ers5vDw6uzq4Orr6PH19fTx8fHx8fHx9PTx8fHx8fHx9PX1+vv7+/v7+/v7+/v7+/v7+/v69fXx6fz////////////+7+Tg4/T19fn4/f7+/v7+/v7+/v737evv+Pb19/T09PT09PT29vT09PT09PT39fXx5+vq4ers3O/v5ezq3Onq4fD19fHr6+vq6+zq8PDr7Ovq6+vr8fX19/f39/f39/f4+Pf39/f39/f39fXu3+Li3/D9/v7+/v7+/v7+/vz19fPh5OLg8f7//////////////vb15cjGzf/////////////////+9vX46urs8vTz8/f39/f39/f39/v29fns6+zl8Onq/f/////////7+fX1+vT08/L18/T4+Pj4+Pj4+Pj69fz9/v7+/v7+/v7+/v7+/v7+/v38/Ozl9Pft7e3t7ePg4Ont7e3t7/z759n09ezs7Ozr29bV5Ozs7Ozt/P349vj89fX19fX19PT19fX19ff+",
+        "measuredSelfDiffRatio": 0,
+        "maxDiffRatio": 0.005
+      },
+      "alZmm": {
+        "fallback": null,
+        "region": "Lifecycle bottom band without global navigation",
+        "solidRgb": [245, 246, 242],
+        "measuredChangedPixels": 0
+      }
+    },
+    "recordingStartRow": 4,
+    "navigationBottomStart": 972,
+    "lifecycle": {
+      "sLXK7": {
+        "region": "Pending approval after shared Clubhouse shell. Old Pencil diff measured 22.9104% vs 18%; retain structural checks and compare the current fixture without widening the historical budget.",
+        "maxDiffRatio": 0.005,
+        "measuredSelfDiffRatio": 0,
+        "baseline": "ImWCjoKhjzAmRVlnYnJybScFAA0dV2d0c3lyTSg2SV9lZWRjHwUADR5ZYmFmam5lRTBCUVpfZGEeBQANGUdMUFdcYlxVLDdCSUtSUhkEAg0RFhoaGxwcGhkXFxgZGRkZFBMRERImNjczNS0iLzEtLy4uLi0dHBsRFT9KR0VFQzRBQzAjIiIjIhwcGxIULz5LV0A8MD08JhwcHBwcHBwbEhIlKi4jLiEaGhoaGhoaGhoaGhgRGDMyLy4uHxEREREREREREREREREVJycmJiQbFBQUFBQUFBQUFBQUERUdMklKQkRBSk5GIBwcHBwcHB0VFSMoJywpKSgmJyckJiomKCYkIRUWJSswLzAwKycnKCEeHh4eHR0eFRQfISQjIyUjIyMjIB8fHx8fHx8UEyEkJyYnKCgnJiQjIyMjIyMjIRMWJDtOS1hdVVNUMicoKCgoHRwdFRYlMT9BQjYrKy4rKy0sLCsdHB0VEhgcHyAgHBkZGRkZGRkZGRoZFxIWMScnMSoqMzQyLz8oISswKyMSERMdHR0cIB8bHBwdHBsTExMTExIREik4Niw0NDAyHRoaGhoaGhoaGRESICUkIiQlKyMcHBwcHBwcHBwbEhIuSD4cHBwcHBwcHBwcHBwcHBsSEh8nJiYgJiYcHBwcHBwcHBwcGxISIS8xLSMuLR0cHBwcHBwcHBwbEhIbHB0cHBwcHBwcHBwcHBwcHBsSEiUyMBwcHBwcHBwcHBwcHBwcGxISITMxHyU1MR0cHBwcHBwcHBwbEhIhMTAgJTMvHRwcHBwcHBwcHBsSERkbGxsbGxsbGxsbGxsbGxsbGRESGR4cGxsbGxsbGxscGxsbGxwYERQsNS4mJiYmJiYmJisoKionLSYUFTZNQCcmJiYmJiYkIiEhISIkIxQVQGBDWTUmJiYmJiIpIyMhISkjFBQsOTErJyYmJiYmIyIhIiAiISIUFTlNQDwzJiYmJiYiJSIjISAjIRQVND89PTc3PTE4Njc2NCgkJCQkFBMmLS0sKystKionJycnJCMjIyASInuGhX1+g4aFXyIfHyInJB8fHhIws7q5pqmzubmKLiYmLDYuJiYlFBhJUlJPUFFSUTkYGBgYGhkYGBcR"
+      },
+      "alZmm": {
+        "region": "Pending detail with D9 bottom bar suppressed. Old Pencil diff measured 12.1822% vs 12%; bottom 70px separately pinned.",
+        "maxDiffRatio": 0.005,
+        "measuredSelfDiffRatio": 0,
+        "baseline": "9O/n5unr5+bu9fX19fX19fX19fXy59fM0NfJyt719fX19fX19fX19e3K0dbW29bZ3Nzr5d/m5uHOxtDw23SswLnUwdTTuo2HhaejkTYHB8bdh8DOwuPAgmuMpLaWq6mZOgcGxd53n7ioxqMzLGB9hXuam440BgXF1VtjcXB8dk4wP05cYGRhXh4FBcXYaW1qb3N2dEszSVdjZmpsHwUFxeiVeHuBiZCIgWFocXZ3fHpRQmjj9fDj4Obj7PTn4+jl5efl6Pj9+/X2+/n5+fn6/Pr6+vr6+vr6/v/+9vLXubLZrb21w/D///////////729fn7+vz6+vr8/f39/f39/f39+vXtzs/Lx83j9PX19fX19fX19fX19fP08erq6+zs6urr9vf39/f39/Tz8u7k4NXZ2tTY1dTh5N7h2t/k8PLy9+ve4+Dd6PDx8Pr////////78vTt7Ozs7Ozs7Ozs7Ozs7Ozs7O308vHo4eff2t3i4PP6+fn3+f39+vPy8evd29jj7e3q7Ozq7O7u/P368vHo6ubk5+jn5ujn5+rr6Ojl6/P079vg3d7Z293b3NrW4PDv7e7x9PX1+vz8/Pz8/P38/Pz8/f39/f379fXnztDd1NPQ1Pz///////////729fLg5f///////////////////vb19ODd5fHf4vz////////////+9vb68/P3+/X2/v////////////729vn09f///////////////////vb29+fn9vLk6Pv////////////+9vb57+/69+3w/P////////////729fb39/f39/f39/f39/f39/f39vXy2cfY7Ozs7Ozs7Oze5eHg6dvn8/LcxM/p7Ozs7Ozs7vLy8/Xx8PDz8s6jyazW7Ozs7Ozw+ff4/PP58/Py4dre6evs7Ozs7PDq8O708vLx8/Lf1NnT2uPg5uLj4+vq8PXv9PDz8+rl5Obn5+Xo5ebl5ebr7e3t7vTdamBhdXNpYWGQ5e3t593k7e3t89lVS0tOTktLS4Dj7Ozr6ers7Ozz9PDu7u7u7u7u8vT09PT09PT09PX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX1"
+      }
+    }
+  }
+}

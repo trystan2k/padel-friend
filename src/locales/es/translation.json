@@ -1181,6 +1181,23 @@
       }
     },
     "results": {
+      "record": {
+        "scoreTitle": "Introduce el marcador",
+        "reviewTitle": "Revisa y envía",
+        "reviewAction": "Revisar",
+        "matchup": "{{first}} contra {{second}}",
+        "setSummary": "{{set}}: {{first}} a {{second}} · {{status}}",
+        "ratingUnavailable": "Estimación del cambio de clasificación no disponible antes de la confirmación.",
+        "competitiveUnranked": "Competitivo · No clasificatorio",
+        "competitive": "Competitivo",
+        "confirmationNote": "Los jugadores elegibles tienen 48 horas para aprobar o informar de un problema. Si nadie rechaza el resultado, se confirma automáticamente.",
+        "outcome": {
+          "team_a": "Gana el equipo A · {{winnerSets}}–{{loserSets}}",
+          "team_b": "Gana el equipo B · {{winnerSets}}–{{loserSets}}",
+          "draw": "Empate · tercer set sin terminar",
+          "incomplete": "Incompleto"
+        }
+      },
       "globalRating": "Solo nivel global",
       "venueHeadline": "Juega bajo las luces.",
       "overviewDate": "{{weekday}}, {{date}}",
@@ -1211,9 +1228,9 @@
       "matrixSet": "S{{number}}",
       "title": "Registrar resultado",
       "steps": {
-        "players": "JUGADORES",
-        "score": "MARCADOR",
-        "review": "REVISIÓN"
+        "players": "Jugadores",
+        "score": "Marcador",
+        "review": "Revisión"
       },
       "teams": {
         "team_a": "Equipo A",
@@ -1228,12 +1245,12 @@
       "groupLabel": "Grupo de juego",
       "group": "Grupo {{number}}",
       "sets": "Introduce cada set",
-      "setNumber": "SET {{number}}",
+      "setNumber": "Set {{number}}",
       "setState": {
-        "complete": "COMPLETO",
-        "inProgress": "EN CURSO",
-        "notPlayed": "NO JUGADO",
-        "invalid": "INVÁLIDO"
+        "complete": "Completo",
+        "inProgress": "En curso",
+        "notPlayed": "No jugado",
+        "invalid": "Inválido"
       },
       "setStateLabel": "Finalización del set {{number}}",
       "addSet": "Añadir set",
@@ -1286,7 +1303,7 @@
       },
       "back": "Volver",
       "reload": "Recargar resultado y jugadores",
-      "submit": "Enviar a revisión",
+      "submit": "Enviar resultado",
       "submitting": "Enviando resultado…",
       "pending": "PENDIENTE · SIN CONFIRMAR",
       "pendingDescription": "Aún no afecta al nivel ni a las estadísticas de la Liga. Los jugadores elegibles pueden aprobar o rechazar.",

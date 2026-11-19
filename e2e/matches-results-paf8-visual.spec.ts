@@ -3,6 +3,7 @@ import { expect, test, type Locator, type Page, type TestInfo } from '@playwrigh
 import type { ResultProposal } from '../src/features/matches/match-result-model';
 import { parseResultProposals } from '../src/features/matches/match-result-model';
 import manifest from './references/paf-8/manifest.json' with { type: 'json' };
+import { assertResultScreenshot } from './result-recording-visual';
 import {
   copies,
   enterScore,
@@ -318,10 +319,17 @@ async function compareFrame(frame: Frame, page: Page, info: TestInfo) {
     .soft(measured.dimensionMismatch, `${frame} dimensions must match the 2x Pencil export`)
     .toBe(false);
   expect.soft(budget, `${frame} needs a reviewed nonzero screenshot budget`).not.toBeNull();
-  if (budget !== null && measured.perceptualPixelDifference !== null)
+  if (frame === 'sLXK7' || frame === 'alZmm') {
+    await expect(page.getByRole('navigation', { name: copies.en.appShell.navigation })).toHaveCount(
+      0
+    );
+    await assertResultScreenshot(page, actual, frame, 'lifecycle');
+    if (frame === 'alZmm') await assertResultScreenshot(page, actual, frame, 'recording');
+  } else if (budget !== null && measured.perceptualPixelDifference !== null) {
     expect
       .soft(measured.perceptualPixelDifference, `${frame} reviewed raster budget`)
       .toBeLessThanOrEqual(budget);
+  }
   await info.attach(`${frame}-actual`, { body: actual, contentType: 'image/png' });
   await info.attach(`${frame}-approved`, { body: approved, contentType: 'image/png' });
   await info.attach(`${frame}-measurement`, {
@@ -491,7 +499,7 @@ test('PAF-8 Pencil screens retain exact lifecycle probes and reviewed raster bud
     await correctionPage.locator(`#score-${index}-team_b`).fill(String(b));
     await correctionPage.locator(`#score-${index}-team_b`).blur();
   }
-  await correctionPage.getByRole('button', { name: r.correctSubmit, exact: true }).click();
+  await correctionPage.getByRole('button', { name: r.record.reviewAction, exact: true }).click();
   await correctionPage.getByRole('button', { name: r.correctSubmit, exact: true }).click();
   await expect(correctionPage.locator('article[data-result-status="pending"]')).toBeVisible();
   await correctionPage.context().close();

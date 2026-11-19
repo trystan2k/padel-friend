@@ -269,7 +269,7 @@ test('correction creates v2 without carrying v1 approvals and starts fresh deadl
     await correctionPage.locator(`#score-${index}-team_b`).fill(String(b));
     await correctionPage.locator(`#score-${index}-team_b`).blur();
   }
-  await correctionPage.getByRole('button', { name: r.correctSubmit, exact: true }).click();
+  await correctionPage.getByRole('button', { name: r.record.reviewAction, exact: true }).click();
   await correctionPage.getByRole('button', { name: r.correctSubmit, exact: true }).click();
   await expect(correctionPage.locator('article[data-result-status="pending"]')).toBeVisible();
 
@@ -539,7 +539,7 @@ test('result alerts lead through review, correction, fresh deadline and schedule
     await correctionPage.locator(`#score-${index}-team_b`).fill(String(teamB));
     await correctionPage.locator(`#score-${index}-team_b`).blur();
   }
-  await correctionPage.getByRole('button', { name: r.correctSubmit, exact: true }).click();
+  await correctionPage.getByRole('button', { name: r.record.reviewAction, exact: true }).click();
   await correctionPage.getByRole('button', { name: r.correctSubmit, exact: true }).click();
   await expect(correctionPage.locator('article[data-result-status="pending"]')).toBeVisible();
   await correctionPage.context().close();

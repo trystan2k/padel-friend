@@ -54,6 +54,7 @@ describe('result copy', () => {
   });
   it.each([en, pt, es])('includes every result state and mapped error', (catalog) => {
     for (const key of [
+      'record',
       'steps',
       'teams',
       'suggested',
