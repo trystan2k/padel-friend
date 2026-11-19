@@ -69,7 +69,8 @@ export default defineConfig({
     // `pnpm test:e2e` frees port 4173 before Playwright starts.
     reuseExistingServer: false,
     timeout: 120000,
-    // Forward the process env so the Cloudflare preview exposes the binding to server code.
+    // Pin the build env. The preview Worker reads the generated dist/server/.dev.vars,
+    // provisioned by pnpm build locally and by CI for its shared build.
     env: e2eBuildEnv(testEnv)
   }
 });

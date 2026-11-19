@@ -7,13 +7,13 @@ import {
   PUBLIC_BUILD_FILE,
   assertTupleMatchesBuild,
   buildEnvLines,
-  devVarsContent,
   main,
   manifestJson,
   parsePublicBuild,
   provisionE2e,
   readPublicBuild
 } from '../scripts/ci-test-env.mjs';
+import { devVarsContent } from '../scripts/e2e-build-env.mjs';
 import { FAKE_SERVICE_KEY, TEST_TUPLE, testStatusOutput } from './helpers/test-stack-status';
 
 const workflow = readFileSync('.github/workflows/ci.yml', 'utf8');
