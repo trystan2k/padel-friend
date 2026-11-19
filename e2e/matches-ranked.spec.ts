@@ -485,7 +485,10 @@ test('provisional player joins a Ranked event, is carried on League change and k
     await expect(player).toHaveURL(/\/onboarding\?next=/);
     await waitForHydratedPage(player);
     await player.getByLabel(en.onboarding.name).fill('Carla Reclamada');
-    await player.getByLabel(en.onboarding.sideLeftShort).first().check();
+    await player
+      .getByRole('group', { name: en.onboarding.side })
+      .getByRole('radio', { name: en.onboarding.sideLeftShort })
+      .check();
     await player.getByRole('button', { name: en.auth.claim.submit }).click();
     await expect(
       player.getByRole('heading', { level: 1, name: en.auth.claim.passwordTitle })

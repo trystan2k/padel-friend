@@ -1,10 +1,12 @@
 import * as stylex from '@stylexjs/stylex';
 import { useEffect, useId, useRef, useState, type ChangeEvent } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Button } from '../../components/ui/Button';
 import { SurfaceCard } from '../../components/ui/SurfaceCard';
 import { playerInitials } from './player-initials';
 import { validateAvatarFile } from './player.validators';
 import { ui } from './player-ui.styles';
+import { onboardingStyles as styles } from './player-onboarding.styles';
 
 type Props = {
   name: string;
@@ -64,8 +66,8 @@ export function OnboardingAvatar({ name, file, onFileChange, disabled = false }:
   }
 
   return (
-    <SurfaceCard xstyle={ui.onboardingCard}>
-      <div {...stylex.props(ui.onboardingAvatar)}>
+    <SurfaceCard data-testid="onboarding-avatar">
+      <div {...stylex.props(styles.avatar)}>
         {file && preview ? (
           <img src={preview} alt={alt} {...stylex.props(ui.avatar)} />
         ) : (
@@ -74,21 +76,26 @@ export function OnboardingAvatar({ name, file, onFileChange, disabled = false }:
             <span {...stylex.props(ui.srOnly)}>{alt}</span>
           </span>
         )}
-        <div {...stylex.props(ui.onboardingAvatarBody)}>
-          <label htmlFor={`${id}-file`} {...stylex.props(ui.label)}>
+        <div {...stylex.props(styles.avatarBody)}>
+          <label htmlFor={`${id}-file`} {...stylex.props(styles.label)}>
             {t('onboarding.avatarLabel')}
           </label>
-          <input
-            ref={inputRef}
-            id={`${id}-file`}
-            type="file"
-            accept="image/jpeg,image/png,image/webp"
-            disabled={disabled}
-            aria-invalid={invalid}
-            aria-describedby={invalid ? `${id}-error` : `${id}-help`}
-            onChange={chooseFile}
-            {...stylex.props(ui.input)}
-          />
+          <div {...stylex.props(styles.avatarPicker, disabled && styles.disabled)}>
+            <span aria-hidden="true" {...stylex.props(styles.fileName)}>
+              {file?.name ?? t('onboarding.avatarChoose')}
+            </span>
+            <input
+              ref={inputRef}
+              id={`${id}-file`}
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              disabled={disabled}
+              aria-invalid={invalid}
+              aria-describedby={invalid ? `${id}-error` : `${id}-help`}
+              onChange={chooseFile}
+              {...stylex.props(styles.avatarFile)}
+            />
+          </div>
           <p id={`${id}-help`} {...stylex.props(ui.muted)}>
             {t('onboarding.avatarHelp')}
           </p>
@@ -97,14 +104,9 @@ export function OnboardingAvatar({ name, file, onFileChange, disabled = false }:
               {t('onboarding.avatarInvalid')}
             </p>
           )}
-          <button
-            type="button"
-            onClick={skip}
-            disabled={disabled}
-            {...stylex.props(ui.button, ui.onboardingAvatarSkip)}
-          >
+          <Button type="button" variant="secondary" onClick={skip} disabled={disabled}>
             {t('onboarding.avatarSkip')}
-          </button>
+          </Button>
         </div>
       </div>
     </SurfaceCard>

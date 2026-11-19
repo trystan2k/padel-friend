@@ -14,10 +14,6 @@ const profileSource = readFileSync(
   new URL('../src/features/player/PlayerProfile.tsx', import.meta.url),
   'utf8'
 );
-const onboardingSource = readFileSync(
-  new URL('../src/features/player/PlayerOnboarding.tsx', import.meta.url),
-  'utf8'
-);
 const semanticTokens: unknown = JSON.parse(
   readFileSync(new URL('../design-tokens/semantic.tokens.json', import.meta.url), 'utf8')
 );
@@ -63,21 +59,12 @@ function tokenValue(file: unknown, path: string[]): unknown {
 }
 
 describe('player dashboard state-card and metric styling contract', () => {
-  it('keeps profile endpoint captions full-width while onboarding uses a local inset', () => {
+  it('keeps profile endpoint captions full-width', () => {
     expect(styleBlock('scaleCaption')).toContain("width: '100%'");
-    expect(styleBlock('onboardingScaleCaption')).toContain("width: 'calc(80% + var(--space-3))'");
     expect(profileSource).toContain('stylex.props(ui.progressTrack)');
     expect(profileSource).toContain('stylex.props(ui.scaleCaption)');
     expect(profileSource).toContain('formatDisplayLevel(MIN_LEVEL, i18n.language)');
     expect(profileSource).toContain('formatDisplayLevel(MAX_LEVEL, i18n.language)');
-    expect(onboardingSource).toContain('ui.scaleCaption, ui.onboardingScaleCaption');
-  });
-
-  it('uses the shared name field and gives the level slider a 44px touch target', () => {
-    expect(onboardingSource).toContain('<TextField');
-    expect(onboardingSource).toContain('ref={nameRef}');
-    expect(onboardingSource).toContain('type="range"');
-    expect(styleBlock('sliderInput')).toContain("height: 'calc(var(--space-40) + var(--space-4))'");
   });
 
   it('maps fixed hero titles to a semantic token with light and dark contrast', () => {

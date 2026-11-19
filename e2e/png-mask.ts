@@ -40,16 +40,42 @@ const { PNG } = pngModule;
 
 // Pencil frames include a 44px OS status bar ("9:41", signal glyphs) that the app never renders.
 // Dropping those rows turns the frame into the page viewport, with no scaling or recoloring.
-export function deriveCroppedTopPng(buffer: Buffer, top: number): Buffer {
+export function deriveCroppedTopPng(buffer: Buffer, top: number, bottom = 0): Buffer {
   const image = PNG.sync.read(buffer);
-  if (!Number.isInteger(top) || top < 0 || top >= image.height)
+  if (
+    !Number.isInteger(top) ||
+    !Number.isInteger(bottom) ||
+    top < 0 ||
+    bottom < 0 ||
+    top + bottom >= image.height
+  )
     throw new Error('Top crop must leave rows of the approved reference frame');
   const rowBytes = image.width * 4;
   return PNG.sync.write({
     width: image.width,
-    height: image.height - top,
-    data: image.data.subarray(top * rowBytes)
+    height: image.height - top - bottom,
+    data: image.data.subarray(top * rowBytes, (image.height - bottom) * rowBytes)
   });
+}
+
+export function comparePng(
+  actual: Buffer,
+  expected: Buffer,
+  maxDiffPixelRatio: number
+): { errorMessage: string; diff?: Buffer } | null {
+  const core: unknown = playwrightCoreRequire('playwright-core/lib/coreBundle');
+  if (!isRecord(core) || !isRecord(core.utils) || typeof core.utils.getComparator !== 'function')
+    throw new Error('Playwright PNG comparator is unavailable');
+  const compare: unknown = core.utils.getComparator('image/png');
+  if (typeof compare !== 'function') throw new Error('Invalid Playwright PNG comparator');
+  const result: unknown = compare(actual, expected, { threshold: 0.1, maxDiffPixelRatio });
+  if (result === null) return null;
+  if (!isRecord(result) || typeof result.errorMessage !== 'string')
+    throw new Error('Invalid Playwright image comparison result');
+  return {
+    errorMessage: result.errorMessage,
+    diff: Buffer.isBuffer(result.diff) ? result.diff : undefined
+  };
 }
 
 // D8 requires the supplied app icon rather than the illustrative Pencil tile. The spec checks

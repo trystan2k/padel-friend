@@ -1,14 +1,14 @@
 {
   "runtimeEnforcement": {
     "sourceDesignSha256": "Provenance metadata only; not runtime-enforced.",
-    "approvedReferencePngDigests": "Runtime-enforced by the auth-visual gate before screenshot comparisons.",
-    "derivedBaselineDigests": "Runtime-enforced by the auth-visual gate before and after screenshot comparisons."
+    "approvedReferencePngDigests": "Historical record; active onboarding references are pinned in references/paf-202-onboarding.",
+    "derivedBaselineDigests": "Retained as the deterministic PNG-mask unit-test fixture, not a browser visual baseline."
   },
   "sourceDesign": {
     "path": "docs/design/padel-friend.pen",
     "sha256": "7da6d6c9b6b84e9afe77a14507f7f558fd0407a7e4b259ace2fc6b59125b3968",
     "exportCommand": "pen interactive -i <TEMP>/padel-friend-temp.pen -o <TEMP>/padel-friend-export.pen; execute({ input: 'Export([\"wzWLt\",\"FZlHy\",\"EGb2g\",\"PdRtP\",\"ieoni\",\"ZthyR\"], \"png\", \"<TEMP>/paf-1-refs\", {scale:1})' })",
-    "provenanceNote": "PAF-202 U6 retired the five auth frames (wzWLt, FZlHy, EGb2g, ieoni, ZthyR): they are now certified from the Clubhouse pen in references/paf-202-auth. Only PdRtP remains here until U7 re-exports it. Original note: all six PAF-1 frames verified against the current design (sha256 above) with pen CLI 0.3.10 exports from a temporary copy; double export reproduced byte-identical PNGs. Only PdRtP had drifted (copy/ink refresh, identical layout, tiles and selected states); it was re-approved and re-exported. PNGs are 390×844 at 1×. Source design remains untouched; sample-data mask rectangles were re-verified to still cover the name field text and the selected Right side tile."
+    "provenanceNote": "PAF-202 U6 retired the five auth frames (wzWLt, FZlHy, EGb2g, ieoni, ZthyR): they are now certified from the Clubhouse pen in references/paf-202-auth. PAF-202 U7 moved the player setup browser gate to the Clubhouse PdRtP export in references/paf-202-onboarding. This legacy PNG remains as a historical PNG-mask unit-test fixture. Original note: all six PAF-1 frames verified against the current design (sha256 above) with pen CLI 0.3.10 exports from a temporary copy; double export reproduced byte-identical PNGs. Only PdRtP had drifted (copy/ink refresh, identical layout, tiles and selected states); it was re-approved and re-exported. PNGs are 390×844 at 1×. Source design remains untouched; sample-data mask rectangles were re-verified to still cover the name field text and the selected Right side tile."
   },
   "approvedReferences": {
     "player-setup.png": {

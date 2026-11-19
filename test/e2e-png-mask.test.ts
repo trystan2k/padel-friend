@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { deriveCroppedTopPng, deriveMaskedPng, type PngMask } from '../e2e/png-mask';
+import { comparePng, deriveCroppedTopPng, deriveMaskedPng, type PngMask } from '../e2e/png-mask';
 
 type VisualManifest = {
   playerSampleDataMask: PngMask;
@@ -53,6 +53,20 @@ describe('deriveCroppedTopPng', () => {
       'Top crop must leave rows'
     );
     expect(() => deriveCroppedTopPng(reference, -1)).toThrow('Top crop must leave rows');
+  }, 15_000);
+});
+
+describe('onboarding crop comparator', () => {
+  it('compares only the frame-owned rows and reports pixel differences', () => {
+    const frame = deriveCroppedTopPng(reference, 44, 205);
+    expect(frame.readUInt32BE(20)).toBe(595);
+    expect(comparePng(frame, frame, 0)).toBeNull();
+    const different = deriveMaskedPng(frame, {
+      maskColor: '#FF00FF',
+      rectangles: [{ name: 'probe', x: 0, y: 0, width: 10, height: 10 }]
+    });
+    expect(comparePng(different, frame, 0)?.errorMessage).toContain('100 pixels');
+    expect(() => deriveCroppedTopPng(reference, 44, 800)).toThrow('Top crop must leave rows');
   }, 15_000);
 });
 

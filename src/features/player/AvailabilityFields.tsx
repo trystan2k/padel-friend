@@ -9,6 +9,7 @@ import {
   type PlayingTime
 } from './player-availability';
 import { ui } from './player-ui.styles';
+import { onboardingStyles as styles } from './player-onboarding.styles';
 
 type Props = {
   days: readonly PlayingDay[] | null;
@@ -16,6 +17,7 @@ type Props = {
   onDaysChange: (next: PlayingDay[] | null) => void;
   onTimesChange: (next: PlayingTime[] | null) => void;
   disabled?: boolean;
+  onboarding?: boolean;
 };
 
 /**
@@ -27,7 +29,8 @@ export function AvailabilityFields({
   times,
   onDaysChange,
   onTimesChange,
-  disabled = false
+  disabled = false,
+  onboarding = false
 }: Props) {
   const { t } = useTranslation();
   const helpId = useId();
@@ -37,7 +40,9 @@ export function AvailabilityFields({
         {t('profile.availabilityHelp')}
       </p>
       <fieldset aria-describedby={helpId} {...stylex.props(ui.fieldset, ui.bareFieldset)}>
-        <legend {...stylex.props(ui.label)}>{t('profile.availabilityDaysLegend')}</legend>
+        <legend {...stylex.props(ui.label, onboarding && styles.label)}>
+          {t('profile.availabilityDaysLegend')}
+        </legend>
         <div {...stylex.props(ui.availabilityChoices)}>
           {PLAYING_DAYS.map((value) => (
             <AvailabilityChoice
@@ -47,13 +52,16 @@ export function AvailabilityFields({
               label={t(`profile.availabilityDays.${value}`)}
               checked={days?.includes(value) ?? false}
               disabled={disabled}
+              onboarding={onboarding}
               onChange={(checked) => onDaysChange(toggleChoice(days, PLAYING_DAYS, value, checked))}
             />
           ))}
         </div>
       </fieldset>
       <fieldset aria-describedby={helpId} {...stylex.props(ui.fieldset, ui.bareFieldset)}>
-        <legend {...stylex.props(ui.label)}>{t('profile.availabilityTimesLegend')}</legend>
+        <legend {...stylex.props(ui.label, onboarding && styles.label)}>
+          {t('profile.availabilityTimesLegend')}
+        </legend>
         <div {...stylex.props(ui.availabilityChoices)}>
           {PLAYING_TIMES.map((value) => (
             <AvailabilityChoice
@@ -63,6 +71,7 @@ export function AvailabilityFields({
               label={t(`profile.availabilityTimes.${value}`)}
               checked={times?.includes(value) ?? false}
               disabled={disabled}
+              onboarding={onboarding}
               onChange={(checked) =>
                 onTimesChange(toggleChoice(times, PLAYING_TIMES, value, checked))
               }
@@ -80,6 +89,7 @@ function AvailabilityChoice({
   label,
   checked,
   disabled,
+  onboarding,
   onChange
 }: {
   name: string;
@@ -87,12 +97,14 @@ function AvailabilityChoice({
   label: string;
   checked: boolean;
   disabled: boolean;
+  onboarding: boolean;
   onChange: (checked: boolean) => void;
 }) {
   return (
     <label
       {...stylex.props(
         ui.availabilityChoice,
+        onboarding && styles.availabilityChoice,
         checked && ui.availabilityChoiceSelected,
         disabled && ui.availabilityChoiceDisabled
       )}

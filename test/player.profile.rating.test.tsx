@@ -10,6 +10,7 @@ import {
   parseRatingSummaryResult
 } from '../src/features/player/rating-contracts';
 import type { RatingLoad } from '../src/features/player/rating-view';
+import en from '../src/locales/en/translation.json';
 import { historyPayload, progressPayload, summaryPayload } from './helpers/rating-read-fixtures';
 
 vi.mock('@tanstack/react-router', async (original) => ({
@@ -161,7 +162,7 @@ describe('PlayerProfile rating journey', () => {
     const user = userEvent.setup();
     renderProfile(rating);
     await user.click(screen.getByRole('button', { name: 'Edit profile' }));
-    const name = screen.getByLabelText('DISPLAY NAME');
+    const name = screen.getByLabelText(en.onboarding.name);
     await user.clear(name);
     await user.type(name, 'Ana Draft');
     vi.mocked(updateMyPlayerProfile).mockRejectedValueOnce(new TypeError('Failed to fetch'));
@@ -169,7 +170,7 @@ describe('PlayerProfile rating journey', () => {
     await user.click(screen.getByRole('button', { name: 'Save changes' }));
     await waitFor(() => expect(getMyPlayerProfile).toHaveBeenCalledOnce());
     expect(screen.getByRole('alert').textContent).toContain("couldn't confirm your changes");
-    expect(screen.getByLabelText<HTMLInputElement>('DISPLAY NAME').value).toBe('Ana Draft');
+    expect(screen.getByLabelText<HTMLInputElement>(en.onboarding.name).value).toBe('Ana Draft');
 
     vi.mocked(updateMyPlayerProfile).mockRejectedValueOnce(new TypeError('Failed to fetch'));
     vi.mocked(getMyPlayerProfile).mockRejectedValueOnce(new TypeError('Failed to fetch'));

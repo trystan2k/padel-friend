@@ -31,6 +31,8 @@ type LocaleCopy = {
   onboarding: {
     title: string;
     name: string;
+    hand: string;
+    bio: string;
     avatarLabel: string;
     avatarInvalid: string;
     avatarSkip: string;
@@ -233,7 +235,7 @@ test('dominant hand stays optional and fits all locales at mobile width', async 
     await waitForHydratedPage(page);
     await expect(page.locator('html')).toHaveAttribute('lang', locale);
 
-    const handGroup = page.getByRole('group', { name: copy.profile.dominantHand });
+    const handGroup = page.getByRole('group', { name: copy.onboarding.hand });
     const preferNotRadio = page.getByRole('radio', { name: copy.onboarding.handPreferNot });
     await expect(handGroup).toBeVisible();
     await expect(preferNotRadio).toBeChecked();
@@ -261,9 +263,9 @@ test('dominant hand stays optional and fits all locales at mobile width', async 
     expect(responsiveLayout.options).toHaveLength(3);
     expect(responsiveLayout.rowScrollWidth).toBe(responsiveLayout.rowWidth);
     expect(responsiveLayout.documentScrollWidth).toBe(responsiveLayout.documentWidth);
-    expect(
-      responsiveLayout.options.every(({ height, textFits }) => height === 44 && textFits)
-    ).toBe(true);
+    expect(responsiveLayout.options.every(({ height, textFits }) => height >= 48 && textFits)).toBe(
+      true
+    );
 
     if (locale === 'en') {
       await preferNotRadio.focus();
@@ -351,16 +353,16 @@ test('a new signup is blocked by onboarding, rejects invalid input, then lands o
 
   await scale.focus();
   await page.keyboard.press('Home');
-  await expect(page.locator('output[for=player-level]')).toHaveText('0.0');
+  await expect(page.locator('output[for~=player-level]')).toHaveText('0.0');
   await page.keyboard.press('End');
-  await expect(page.locator('output[for=player-level]')).toHaveText('7.0');
+  await expect(page.locator('output[for~=player-level]')).toHaveText('7.0');
   await levelInput.fill('1.0');
   await expect(scale).toHaveValue('1');
-  await expect(page.locator('output[for=player-level]')).toHaveText('1.0');
+  await expect(page.locator('output[for~=player-level]')).toHaveText('1.0');
 
   // The numeric input remains the exact 0.1-step control.
   await levelInput.fill('6.4');
-  await expect(page.locator('output[for=player-level]')).toHaveText('6.4');
+  await expect(page.locator('output[for~=player-level]')).toHaveText('6.4');
   await page.setViewportSize({ width: 1280, height: 720 });
 
   // Valid save: onboarding shows design's one-decimal level; profile shows two decimals.
@@ -372,7 +374,7 @@ test('a new signup is blocked by onboarding, rejects invalid input, then lands o
   await sideRadio.check();
   // The form is hydrated once a controlled re-render keeps the radio checked.
   await expect(sideRadio).toBeChecked();
-  await expect(page.locator('output[for=player-level]')).toHaveText('3.0');
+  await expect(page.locator('output[for~=player-level]')).toHaveText('3.0');
   await page.getByRole('button', { name: en.onboarding.save }).click();
   await skipCommunity(page);
 
@@ -543,9 +545,17 @@ test('an optional onboarding photo sits before the primary action and survives t
   const save = page.getByRole('button', { name: en.onboarding.save });
   const nameBox = await page.getByLabel(en.onboarding.name, { exact: true }).boundingBox();
   const pickerBox = await picker.boundingBox();
-  const saveBox = await save.boundingBox();
   expect(nameBox!.y).toBeLessThan(pickerBox!.y);
-  expect(pickerBox!.y).toBeLessThan(saveBox!.y);
+  expect(
+    await picker.evaluate((input) => {
+      const action = input.closest('form')?.querySelector('button[type="submit"]');
+      return Boolean(
+        action && input.compareDocumentPosition(action) & Node.DOCUMENT_POSITION_FOLLOWING
+      );
+    })
+  ).toBe(true);
+  await picker.scrollIntoViewIfNeeded();
+  expect((await picker.boundingBox())!.y).toBeLessThan((await save.boundingBox())!.y);
   expect(pickerBox!.height).toBeGreaterThanOrEqual(44);
   const skipBox = await page.getByRole('button', { name: en.onboarding.avatarSkip }).boundingBox();
   expect(skipBox!.height).toBeGreaterThanOrEqual(44);
@@ -836,7 +846,7 @@ test('the onboarding slider stays operable in light and dark themes', async ({ p
     await slider.focus();
     await page.keyboard.press('ArrowRight');
     await expect(slider).toHaveValue('3.1');
-    await expect(page.locator('output[for=player-level]')).toHaveText('3.1');
+    await expect(page.locator('output[for~=player-level]')).toHaveText('3.1');
     await page.context().clearCookies();
   }
 });
@@ -1015,19 +1025,27 @@ async function chooseAvailability(page: Page, days: string[], times: string[]): 
 const days = en.profile.availabilityDays;
 const times = en.profile.availabilityTimes;
 
-test('optional availability sits after the primary action, persists, edits and clears', async ({
+test('optional availability precedes the sticky action, persists, edits and clears', async ({
   page
 }) => {
   await register(page, uniqueEmail());
   await fillOnboardingRequired(page, 'Ava Available');
 
-  // Trailing optional section: below the primary action, the precise-level input and the bio.
+  // Trailing optional section remains after the precise level and bio but precedes the action in DOM order.
   const daysGroup = availabilityGroup(page, en.profile.availabilityDaysLegend);
   const groupBox = await daysGroup.boundingBox();
-  const saveBox = await page.getByRole('button', { name: en.onboarding.save }).boundingBox();
+  const save = page.getByRole('button', { name: en.onboarding.save });
   const preciseBox = await page.getByLabel(en.onboarding.preciseLevel).boundingBox();
-  const bioBox = await page.getByLabel(en.profile.bio).boundingBox();
-  expect(groupBox!.y).toBeGreaterThan(saveBox!.y);
+  const bioBox = await page.getByLabel(en.onboarding.bio).boundingBox();
+  expect(
+    await daysGroup.evaluate((group) => {
+      const action = group.closest('form')?.querySelector('button[type="submit"]');
+      return Boolean(
+        action && group.compareDocumentPosition(action) & Node.DOCUMENT_POSITION_FOLLOWING
+      );
+    })
+  ).toBe(true);
+  await expect(save).toBeVisible();
   expect(groupBox!.y).toBeGreaterThan(preciseBox!.y);
   expect(groupBox!.y).toBeGreaterThan(bioBox!.y);
   await expect(daysGroup.getByRole('checkbox')).toHaveCount(7);

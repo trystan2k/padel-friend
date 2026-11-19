@@ -1,5 +1,4 @@
 /** @vitest-environment jsdom */
-import { readFileSync } from 'node:fs';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -76,9 +75,49 @@ beforeEach(() => {
 afterEach(cleanup);
 
 describe('claim onboarding', () => {
+  it.each([
+    ['en', en],
+    ['pt-BR', ptBR],
+    ['es', es]
+  ] as const)('orders Clubhouse step 2 and names the native slider in %s', (locale, copy) => {
+    const view = render(
+      <I18nextProvider i18n={createI18n(locale)}>
+        <PlayerOnboarding />
+      </I18nextProvider>
+    );
+    const progress = screen.getByTestId('onboarding-progress');
+    expect(progress.childElementCount).toBe(3);
+    expect(progress.getAttribute('aria-hidden')).toBe('true');
+    const slider = screen.getByRole('slider', { name: copy.onboarding.levelScale });
+    const precise = screen.getByLabelText<HTMLInputElement>(copy.onboarding.preciseLevel);
+    const order = [
+      progress,
+      screen.getByText(copy.onboarding.step),
+      screen.getByRole('heading', { name: copy.onboarding.title }),
+      slider,
+      screen.getByRole('group', { name: copy.onboarding.side }),
+      screen.getByRole('group', { name: copy.onboarding.hand }),
+      screen.getByLabelText(copy.onboarding.name),
+      screen.getByLabelText(copy.onboarding.avatarLabel),
+      precise,
+      screen.getByRole('group', { name: copy.profile.availabilityDaysLegend }),
+      screen.getByRole('button', { name: copy.onboarding.save })
+    ];
+    for (const [index, current] of order.slice(1).entries())
+      expect(
+        order[index]!.compareDocumentPosition(current) & Node.DOCUMENT_POSITION_FOLLOWING
+      ).toBeTruthy();
+    expect(slider.getAttribute('aria-valuetext')).toBe(locale === 'en' ? '3.0' : '3,0');
+    fireEvent.change(slider, { target: { value: '4.2' } });
+    expect(precise.value).toBe('4.2');
+    expect(slider.getAttribute('aria-valuetext')).toBe(locale === 'en' ? '4.2' : '4,2');
+    const copyBlock = view.container.textContent;
+    expect(copyBlock).toContain(copy.onboarding.avatarChoose);
+    expect(copyBlock).toContain(copy.onboarding.barTitle);
+  });
   it('prefills the provisional name and level with claim copy', () => {
     mount({ canEditLevel: true });
-    expect(screen.getByRole('heading', { level: 1, name: t.title })).toBeTruthy();
+    expect(screen.getByRole('heading', { level: 1, name: en.onboarding.title })).toBeTruthy();
     expect(screen.getByLabelText<HTMLInputElement>(en.onboarding.name).value).toBe(
       'Marta Provisional'
     );
@@ -90,7 +129,12 @@ describe('claim onboarding', () => {
 
   it('locks both level controls and explains why once rated history exists', () => {
     mount({ canEditLevel: false });
-    expect(screen.getByRole<HTMLInputElement>('slider').disabled).toBe(true);
+    const slider = screen.getByRole<HTMLInputElement>('slider');
+    expect(slider.disabled).toBe(true);
+    expect(screen.getByTestId('onboarding-level').contains(slider)).toBe(false);
+    expect(screen.getByRole('heading', { level: 1, name: t.lockedLevelTitle })).toBeTruthy();
+    expect(screen.getByText(t.locked)).toBeTruthy();
+    expect(screen.getByLabelText<HTMLInputElement>(en.onboarding.name).disabled).toBe(false);
     expect(screen.getByLabelText<HTMLInputElement>(en.onboarding.preciseLevel).disabled).toBe(true);
     expect(screen.getByText(t.levelLocked)).toBeTruthy();
     expect(screen.queryByText(t.levelNote)).toBeNull();
@@ -121,10 +165,10 @@ describe('claim onboarding', () => {
     expect(mocks.claim).toHaveBeenCalledTimes(1);
   });
 
-  it('shows the localized invited-match notice above the step badge, singular and plural', () => {
+  it('shows the localized invited-match notice between progress and title, singular and plural', () => {
     const view = mount({ canEditLevel: true });
     const notice = screen.getByText('You were invited to 2 matches.');
-    expect(notice.compareDocumentPosition(screen.getByText(t.step))).toBe(
+    expect(screen.getByText(en.onboarding.step).compareDocumentPosition(notice)).toBe(
       Node.DOCUMENT_POSITION_FOLLOWING
     );
     view.unmount();
@@ -143,25 +187,13 @@ describe('claim onboarding', () => {
     expect(screen.getByText('Te invitaron a 3 partidos.')).toBeTruthy();
   });
 
-  it('renders the notice with a decorative information icon and Pencil token styles (F22)', () => {
+  it('places the decorative invitation icon inside the notice', () => {
     mount({ canEditLevel: true });
     const icon = screen.getByTestId('claim-notice-icon');
     expect(icon.getAttribute('aria-hidden')).toBe('true');
     const text = screen.getByText('You were invited to 2 matches.');
     expect(icon.parentElement).toBe(text.parentElement);
     expect(icon.nextElementSibling).toBe(text);
-
-    const source = readFileSync('src/features/player/player-ui.styles.ts', 'utf8');
-    const block = (name: string) =>
-      source.match(new RegExp(`\\n  ${name}: \\{[\\s\\S]*?\\n  \\},?\\n`))?.[0] ?? '';
-    expect(block('claimNotice')).toContain("gap: 'var(--space-8)'");
-    expect(block('claimNotice')).toContain("padding: 'var(--space-10)'");
-    expect(block('claimNotice')).toContain("borderRadius: 'var(--radius-9)'");
-    expect(block('claimNoticeText')).toContain("fontSize: 'var(--font-size-12)'");
-    expect(block('claimNoticeText')).toContain("fontWeight: 'var(--font-weight-regular)'");
-    expect(block('claimNoticeIcon')).toContain("width: 'var(--space-16)'");
-    for (const name of ['claimNotice', 'claimNoticeIcon', 'claimNoticeText'])
-      expect(block(name)).not.toMatch(/:\s*'?\d+px/);
   });
 
   it('claims through the claim function only, then sets a password before continuing', async () => {
@@ -256,6 +288,7 @@ describe('claim onboarding', () => {
     await userEvent.click(screen.getByRole('button', { name: new RegExp(t.submit) }));
     const heading = await screen.findByRole('heading', { level: 1, name: t.passwordTitle });
     expect(document.activeElement).toBe(heading);
+    expect(screen.queryByTestId('onboarding-progress')).toBeNull();
   });
 
   it('shows the skip only when the server says a verified provider identity exists', async () => {
@@ -312,6 +345,7 @@ describe('claim onboarding', () => {
     );
     const heading = screen.getByRole('heading', { level: 1, name: t.passwordTitle });
     expect(document.activeElement).toBe(heading);
+    expect(screen.queryByTestId('onboarding-progress')).toBeNull();
     expect(screen.queryByRole('button', { name: t.passwordSkip })).toBeNull();
     mocks.updateUser.mockImplementationOnce(async () => ({ error: null })); // password write did not stick
     await userEvent.type(screen.getByLabelText(en.auth.resetNewPasswordLabel), 'New-password-1!');

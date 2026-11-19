@@ -1,4 +1,5 @@
 import * as stylex from '@stylexjs/stylex';
+import type { StyleXStyles } from '@stylexjs/stylex';
 import type { LinkProps } from '@tanstack/react-router';
 import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -40,6 +41,12 @@ export function AuthTopBar({ title, back }: AuthTopBarProps) {
   );
 }
 
-export function AuthActionBar({ children }: { children: ReactNode }) {
-  return <div {...stylex.props(styles.actionBar)}>{children}</div>;
+export function AuthActionBar({
+  children,
+  xstyle
+}: {
+  children: ReactNode;
+  xstyle?: StyleXStyles;
+}) {
+  return <div {...stylex.props(styles.actionBar, xstyle)}>{children}</div>;
 }

@@ -5,61 +5,12 @@ import { readFileSync } from 'node:fs';
 import es from '../src/locales/es/translation.json' with { type: 'json' };
 import ptBR from '../src/locales/pt-BR/translation.json' with { type: 'json' };
 import { waitForHydratedPage, submitAndWaitForAuthDestination } from './auth-helpers';
-import {
-  authLogoMask,
-  deriveCroppedTopPng,
-  deriveMaskedPng,
-  type PngMaskRectangle
-} from './png-mask';
-
-type MaskRectangle = PngMaskRectangle;
-type VisualManifest = {
-  approvedReferences: Record<string, { sha256: string }>;
-  screenshotBaselines: Record<string, { sha256: string }>;
-  playerSampleDataMask: { maskColor: string; rectangles: MaskRectangle[] };
-};
+import { authLogoMask, comparePng, deriveCroppedTopPng, deriveMaskedPng } from './png-mask';
+import onboardingManifest from './references/paf-202-onboarding/manifest.json' with { type: 'json' };
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
-
-function isReferenceMap(value: unknown): value is Record<string, { sha256: string }> {
-  return (
-    isRecord(value) &&
-    Object.values(value).every(
-      (reference) => isRecord(reference) && typeof reference.sha256 === 'string'
-    )
-  );
-}
-
-function isMaskRectangle(value: unknown): value is MaskRectangle {
-  return (
-    isRecord(value) &&
-    typeof value.name === 'string' &&
-    typeof value.x === 'number' &&
-    typeof value.y === 'number' &&
-    typeof value.width === 'number' &&
-    typeof value.height === 'number'
-  );
-}
-
-function isVisualManifest(value: unknown): value is VisualManifest {
-  if (!isRecord(value) || !isRecord(value.playerSampleDataMask)) return false;
-  const mask = value.playerSampleDataMask;
-  return (
-    isReferenceMap(value.approvedReferences) &&
-    isReferenceMap(value.screenshotBaselines) &&
-    typeof mask.maskColor === 'string' &&
-    Array.isArray(mask.rectangles) &&
-    mask.rectangles.every(isMaskRectangle)
-  );
-}
-
-const rawManifest: unknown = JSON.parse(
-  readFileSync(new URL('./references/paf-1/manifest.json', import.meta.url), 'utf8')
-);
-if (!isVisualManifest(rawManifest)) throw new Error('Invalid PAF-1 visual provenance manifest');
-const visualManifest = rawManifest;
 
 // Clubhouse auth frames (PAF-202 U6): wzWLt, EGb2g, ieoni, FZlHy, ZthyR from
 // docs/design/padel-friend-clubhouse.pen, committed unchanged under references/paf-202-auth and
@@ -139,16 +90,20 @@ type LocaleCopy = {
     resetSubmit: string;
   };
   onboarding: {
+    step: string;
+    barTitle: string;
     title: string;
+    hand: string;
+    bio: string;
+    side: string;
+    sideRightShort: string;
+    handRight: string;
+    save: string;
     avatarLabel: string;
     avatarSkip: string;
-    levelHelp: string;
-    level: string;
     levelScale: string;
-    advanced: string;
-    handPreferNot: string;
   };
-  profile: { dominantHand: string; bio: string; availabilityDaysLegend: string };
+  profile: { availabilityDaysLegend: string };
 };
 
 const en: LocaleCopy = JSON.parse(
@@ -197,74 +152,6 @@ function digest(path: URL): string {
   return digestBuffer(readFileSync(path));
 }
 
-function assertApprovedReferenceDigests(): void {
-  for (const [reference, approved] of Object.entries(visualManifest.approvedReferences)) {
-    const path = new URL(`./references/paf-1/${reference}`, import.meta.url);
-    expect(digest(path), `${reference} must match its reviewed PAF-1 digest`).toBe(approved.sha256);
-  }
-}
-
-test.beforeAll(() => assertApprovedReferenceDigests());
-
-function assertReferenceProvenance(reference: string, maskSampleData = false): void {
-  const baseline = new URL(`./auth-visual.spec.ts-snapshots/${reference}`, import.meta.url);
-  const design = new URL(`./references/paf-1/${reference}`, import.meta.url);
-  const baselineApproval = visualManifest.screenshotBaselines[reference];
-  if (!baselineApproval) throw new Error(`Missing reviewed screenshot baseline for ${reference}`);
-  const source = readFileSync(design);
-  const expected = maskSampleData
-    ? deriveMaskedPng(source, visualManifest.playerSampleDataMask)
-    : source;
-
-  expect(digestBuffer(expected), `${reference} expected baseline derivation must stay pinned`).toBe(
-    baselineApproval.sha256
-  );
-  expect(
-    digest(baseline),
-    `${reference} baseline must match its reviewed reference derivation`
-  ).toBe(baselineApproval.sha256);
-  if (maskSampleData)
-    expect(
-      readFileSync(baseline),
-      `${reference} baseline must be the masked approved reference`
-    ).toEqual(expected);
-}
-
-// Tolerance evidence (PAF-202 U6). The five Clubhouse auth frames are compared against exports of
-// the new Figtree/Clubhouse design, so the earlier Inter/Manrope-era PAF-1 baselines and their
-// budgets are retired: both the redesign (new structure, 52px controls, sticky action bar, top
-// bar) and the font swap (Figtree metrics) invalidate them. Per-frame allowances now live in
-// references/paf-202-auth/manifest.json next to their measured residuals and are read by
-// compareFrame(). Budgets only absorb Pencil-vs-Chromium glyph rasterization (fractional text
-// placement, 1.5px stroke antialiasing); structure is gated by the exact geometry probes below,
-// never by these allowances, and a budget is never raised to hide a layout defect.
-//
-// Legacy PdRtP (player setup) keeps its PAF-1 reference until U7 (PAF-212) re-exports it.
-type VisualReference = 'player-setup.png';
-
-const VISUAL_BUDGETS: Record<VisualReference, number> = {
-  // macOS 7,342/329,160 = 2.2304%; Linux 12,420/329,160 = 3.7730% → 3.92% (margin 0.1500pp).
-  'player-setup.png': 0.0392
-};
-
-// Transitional screenshot only: until U7 (PAF-212) migrates player setup, this Chromium golden
-// captures its existing composition with inherited Figtree / SurfaceCard / control styles. Its
-// legacy PAF-1 export and probes remain pinned but are not Clubhouse evidence. The original 2.5%
-// cross-platform screenshot budget is unchanged; avatar/card order, padding and targets still
-// have their own structural probes.
-const PHASE2_VISUAL_BUDGETS = {
-  'player-setup-phase2.png': 0.025
-} as const;
-
-async function comparePhase2(page: Page, name: keyof typeof PHASE2_VISUAL_BUDGETS): Promise<void> {
-  await expect(page).toHaveScreenshot(name, {
-    animations: 'disabled',
-    caret: 'hide',
-    threshold: 0.1,
-    maxDiffPixelRatio: PHASE2_VISUAL_BUDGETS[name]
-  });
-}
-
 type Geometry = { x?: number; y?: number; width?: number; height?: number };
 
 // Tolerance is ±1px per asserted axis by default: every probe measures CSS-driven layout boxes.
@@ -288,50 +175,6 @@ async function assertGeometry(
       Math.abs(box![key] - expected),
       `${name} ${key}: Pencil ${expected}px, actual ${box![key]}px`
     ).toBeLessThanOrEqual(allowed);
-  }
-}
-
-async function compare(
-  page: Page,
-  reference: VisualReference,
-  maskSampleData = false
-): Promise<void> {
-  assertReferenceProvenance(reference, maskSampleData);
-  if (maskSampleData) {
-    // PAF-21 mask rectangles are sourced from the reviewed manifest and applied to both images.
-    await page.evaluate(({ rectangles }) => {
-      for (const { name, x, y, width, height } of rectangles) {
-        const mask = document.createElement('div');
-        mask.dataset.visualMask = name;
-        Object.assign(mask.style, {
-          position: 'fixed',
-          left: `${x}px`,
-          top: `${y}px`,
-          width: `${width}px`,
-          height: `${height}px`,
-          pointerEvents: 'none'
-        });
-        document.body.appendChild(mask);
-      }
-    }, visualManifest.playerSampleDataMask);
-  }
-  try {
-    // Each screen's cross-platform budget lives in VISUAL_BUDGETS; geometry probes guard layout.
-    await expect(page).toHaveScreenshot(reference, {
-      animations: 'disabled',
-      caret: 'hide',
-      threshold: 0.1,
-      maxDiffPixelRatio: VISUAL_BUDGETS[reference],
-      ...(maskSampleData && {
-        mask: visualManifest.playerSampleDataMask.rectangles.map(({ name }) =>
-          page.locator(`[data-visual-mask="${name}"]`)
-        ),
-        maskColor: visualManifest.playerSampleDataMask.maskColor
-      })
-    });
-  } finally {
-    // Detect --update-snapshots overwriting any reference-derived baseline.
-    assertReferenceProvenance(reference, maskSampleData);
   }
 }
 
@@ -831,10 +674,18 @@ test('account matches frame EGb2g', async ({ page }) => {
   await compareFrame(page, 'account-signup.png');
 });
 
-// U7 owns the Clubhouse migration for this legacy player-setup frame.
-test('incomplete authenticated player setup matches frame PdRtP', async ({ page }) => {
-  // Same real Supabase signup/onboarding gate as e2e/onboarding.spec.ts; generated
-  // identity stays out of screenshot (player form never displays auth email).
+// Tolerance evidence: approved exports, crop, and bounded raster allowance are pinned in
+// references/paf-202-onboarding/manifest.json. Structural probes run before image comparison.
+test('incomplete authenticated player setup matches Clubhouse frame PdRtP', async ({
+  page
+}, info) => {
+  const { frames, width, height, statusBarHeight, toleranceEvidence } = onboardingManifest;
+  for (const [id, frame] of Object.entries(frames)) {
+    const png = readFileSync(new URL(`./references/paf-202-onboarding/${id}.png`, import.meta.url));
+    expect(digestBuffer(png), `Approved onboarding frame ${id}`).toBe(frame.sha256);
+    expect([png.readUInt32BE(16), png.readUInt32BE(20)]).toEqual([width, height]);
+  }
+  await page.setViewportSize({ width, height: height - statusBarHeight });
   await page.goto('/login');
   await ready(page);
   await page.getByRole('link', { name: en.auth.signupLink }).click();
@@ -849,254 +700,117 @@ test('incomplete authenticated player setup matches frame PdRtP', async ({ page 
     page.getByRole('button', { name: en.auth.signupSubmit }).click()
   );
   await ready(page);
-  await expect(page.getByRole('heading', { name: en.onboarding.title })).toBeVisible();
-  await expect(page.getByRole('group', { name: en.profile.dominantHand })).toBeVisible();
-  await expect(page.getByRole('radio', { name: en.onboarding.handPreferNot })).toBeChecked();
-  // Phase-2 composition probes (structure first, then the reviewed current-layout snapshot).
-  const avatarPicker = page.getByLabel(en.onboarding.avatarLabel);
-  const avatarCard = page.locator('form > div').filter({ has: avatarPicker });
-  const nameField = page.locator('form > div').first();
-  const levelCard = page.locator('form > div').nth(2);
-  const [nameBox, avatarBox, levelBox, ctaBox, pickerBox, skipBox] = await Promise.all([
-    nameField.boundingBox(),
-    avatarCard.boundingBox(),
-    levelCard.boundingBox(),
-    page.locator('form button[type="submit"]').boundingBox(),
-    avatarPicker.boundingBox(),
-    page.getByRole('button', { name: en.onboarding.avatarSkip }).boundingBox()
-  ]);
-  expect(avatarBox, 'avatar card must be rendered').not.toBeNull();
-  // Form gap is 12px: avatar card directly after the display name, level card directly after it.
-  expect(Math.abs(avatarBox!.y - (nameBox!.y + nameBox!.height + 12))).toBeLessThanOrEqual(1);
-  expect(Math.abs(levelBox!.y - (avatarBox!.y + avatarBox!.height + 12))).toBeLessThanOrEqual(1);
-  expect(avatarBox!.y + avatarBox!.height).toBeLessThan(ctaBox!.y);
-  expect(avatarBox!.x).toBeCloseTo(18, 0);
-  expect(avatarBox!.width).toBeCloseTo(354, 0);
-  expect(pickerBox!.height).toBeGreaterThanOrEqual(44);
-  expect(skipBox!.height).toBeGreaterThanOrEqual(44);
-  expect(await avatarCard.evaluate((card) => getComputedStyle(card).gap)).toBe('9px');
-  // Exact card + control geometry (PAF-25 F3): the screenshot budget below must never be the only
-  // guard for card height or the picker/skip control boxes. Derived from existing roles/labels only.
-  const avatarLabel = avatarCard.locator(`label[for="${await avatarPicker.getAttribute('id')}"]`);
-  const avatarThumb = avatarCard.locator('span').first();
-  const avatarBody = avatarLabel.locator('..');
-  const [labelBox, thumbBox, bodyBox, cardPad] = await Promise.all([
-    avatarLabel.boundingBox(),
-    avatarThumb.boundingBox(),
-    avatarBody.boundingBox(),
-    avatarCard.evaluate((card) => {
-      const style = getComputedStyle(card);
-      return {
-        top: parseFloat(style.paddingTop),
-        bottom: parseFloat(style.paddingBottom),
-        left: parseFloat(style.paddingLeft),
-        right: parseFloat(style.paddingRight)
-      };
-    })
-  ]);
-  expect(labelBox, 'avatar label must be rendered').not.toBeNull();
-  expect(thumbBox, 'avatar preview must be rendered').not.toBeNull();
-  expect(bodyBox, 'avatar controls column must be rendered').not.toBeNull();
-  // The inherited SurfaceCard now adds a 1px outline on every side.
-  const border = await avatarCard.evaluate((card) => getComputedStyle(card).borderWidth);
-  expect(border).toBe('1px');
-  const avatarContentHeight = Math.max(thumbBox!.height, bodyBox!.height);
-  expect(
-    Math.abs(avatarBox!.height - (cardPad.top + cardPad.bottom + avatarContentHeight + 2))
-  ).toBeLessThanOrEqual(1);
-  // Independent ABSOLUTE bounds (PAF-25 F3-it2): the relational check above is self-referential, so
-  // these come from design sources only (never from live child boxes). Tokens: card padding
-  // --space-16 = 16px (32px vertical) + 2px border, column gap --space-9 = 9px (27px; label/
-  // picker/help/skip), controls min-height --space-40 + --space-4 = 44px (plan A3/AC5), preview
-  // avatar --space-40 + --space-16 = 56px, caption/label font --font-size-12 = 12px. Text lines
-  // are bounded by line-height 1.1-1.5 x 12px = 13-18px: the label is 1 line, the help 1-3 lines.
-  //   min = 34 + 27 + 13 (label) + 44 (picker) + 13 (help, 1 line) + 44 (skip) = 175px
-  //   max = 34 + 27 + 18 (label) + 52 (picker, padding 12 + text) + 54 (help, 3 lines) + 52 (skip) = 237px
-  // A growth in padding, gaps, or control heights beyond these bounds fails here even though the
-  // relational check would still pass.
-  const expectedCardMinHeight = 34 + 27 + 13 + 44 + 13 + 44;
-  const expectedCardMaxHeight = 34 + 27 + 18 + 52 + 54 + 52;
-  expect(avatarBox!.height, 'avatar card absolute min height').toBeGreaterThanOrEqual(
-    expectedCardMinHeight
+  await assertTopBar(page, en.onboarding.barTitle, false);
+  const progress = page.getByTestId('onboarding-progress');
+  const segments = progress.locator('span');
+  await expect(segments).toHaveCount(3);
+  await assertGeometry(progress, 'Step progress', { x: 20, y: 60, width: 350, height: 6 });
+  await assertGeometry(segments.nth(1), 'Current step', { x: 138.7, width: 112.7, height: 6 });
+  const colors = await segments.evaluateAll((nodes) =>
+    nodes.map((node) => getComputedStyle(node).backgroundColor)
   );
-  expect(avatarBox!.height, 'avatar card absolute max height').toBeLessThanOrEqual(
-    expectedCardMaxHeight
-  );
-  expect(cardPad, 'avatar card padding is the 16px token on every side').toEqual({
-    top: 16,
-    bottom: 16,
-    left: 16,
-    right: 16
+  expect(colors[0]).toBe(colors[1]);
+  expect(colors[1]).not.toBe(colors[2]);
+  await assertGeometry(page.getByText(en.onboarding.step), 'Step label', { x: 20, y: 80 });
+  await assertGeometry(page.getByRole('heading', { name: en.onboarding.title }), 'Setup title', {
+    x: 20,
+    y: 111,
+    width: 350,
+    height: 32
   });
-  // Controls-column gap (PAF-25 F3-it3): onboardingAvatarBody is a flex column with gap
-  // --space-9; the height window above could absorb ~30px of internal gap growth, so pin the
-  // applied gap properties exactly (shorthand + both axes, flex-direction column).
-  expect(
-    await avatarBody.evaluate((body) => {
-      const style = getComputedStyle(body);
-      return {
-        display: style.display,
-        flexDirection: style.flexDirection,
-        gap: style.gap,
-        rowGap: style.rowGap,
-        columnGap: style.columnGap
-      };
-    }),
-    'avatar controls column gap is the 9px token'
-  ).toEqual({
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '9px',
-    rowGap: '9px',
-    columnGap: '9px'
+  await assertGeometry(
+    page.getByTestId('onboarding-level'),
+    'Level card',
+    {
+      x: 20,
+      y: 217,
+      width: 350,
+      height: 174
+    },
+    2
+  );
+  const slider = page.getByRole('slider', { name: en.onboarding.levelScale });
+  await assertGeometry(slider, 'Native slider hit target', { x: 36, width: 318, height: 48 });
+  const side = page.getByRole('group', { name: en.onboarding.side });
+  const hand = page.getByRole('group', { name: en.onboarding.hand });
+  await assertGeometry(side.locator('div'), 'Side segmented control', {
+    x: 20,
+    width: 350,
+    height: 56
   });
-  expect(thumbBox!.width, 'avatar preview width (56px token)').toBeCloseTo(56, 0);
-  expect(thumbBox!.height, 'avatar preview height (56px token)').toBeCloseTo(56, 0);
-  // Controls column starts at the card's inner top edge and is fully contained horizontally.
-  expect(Math.abs(bodyBox!.y - (avatarBox!.y + cardPad.top + 1))).toBeLessThanOrEqual(1);
-  expect(bodyBox!.x).toBeGreaterThanOrEqual(avatarBox!.x + cardPad.left - 1);
-  expect(bodyBox!.x + bodyBox!.width).toBeLessThanOrEqual(
-    avatarBox!.x + avatarBox!.width - cardPad.right + 1
-  );
-  // Preview sits left of the controls, inside the card, without overlapping them.
-  expect(Math.abs(thumbBox!.x - (avatarBox!.x + cardPad.left + 1))).toBeLessThanOrEqual(1);
-  expect(thumbBox!.x + thumbBox!.width).toBeLessThanOrEqual(bodyBox!.x + 1);
-  // Vertical order inside the column: label, file picker, skip; no overlap, all inside the card.
-  expect(labelBox!.y + labelBox!.height).toBeLessThanOrEqual(pickerBox!.y + 1);
-  expect(pickerBox!.y + pickerBox!.height).toBeLessThanOrEqual(skipBox!.y + 1);
-  expect(skipBox!.y + skipBox!.height).toBeLessThanOrEqual(
-    avatarBox!.y + avatarBox!.height - cardPad.bottom + 1
-  );
-  // Interactive targets: full column width, >=44px (plan A3/AC5), inside the card horizontally.
-  for (const [control, box] of [
-    ['file picker', pickerBox!],
-    ['skip button', skipBox!]
-  ] as const) {
-    expect(box.height, `${control} target height`).toBeGreaterThanOrEqual(44);
-    expect(box.width, `${control} target width`).toBeGreaterThanOrEqual(44);
-    expect(box.x, `${control} left edge`).toBeGreaterThanOrEqual(avatarBox!.x);
-    expect(box.x + box.width, `${control} right edge`).toBeLessThanOrEqual(
-      avatarBox!.x + avatarBox!.width + 1
-    );
-  }
-  // Optional availability closes the form: a full-width card after the CTA and the bio, below
-  // the first viewport, so the screenshot baselines above are unaffected.
-  const availabilityCard = page
-    .locator('form > div')
-    .filter({ has: page.getByRole('group', { name: en.profile.availabilityDaysLegend }) });
-  const [availabilityBox, bioBox] = await Promise.all([
-    availabilityCard.boundingBox(),
-    page.getByLabel(en.profile.bio).boundingBox()
+  await assertGeometry(hand.locator('#player-hand-options'), 'Hand segmented control', {
+    x: 20,
+    width: 350,
+    height: 56
+  });
+  const submit = page.getByRole('button', { name: en.onboarding.save });
+  await assertActionBar(page, 89, [
+    [submit, 'Continue', { x: 20, y: 724, width: 350, height: 52 }]
   ]);
-  expect(availabilityBox, 'availability card must be rendered').not.toBeNull();
-  expect(availabilityBox!.y).toBeGreaterThan(ctaBox!.y + ctaBox!.height);
-  expect(availabilityBox!.y).toBeGreaterThan(bioBox!.y + bioBox!.height);
-  expect(availabilityBox!.x).toBeCloseTo(18, 0);
-  expect(availabilityBox!.width).toBeCloseTo(354, 0);
-  await comparePhase2(page, 'player-setup-phase2.png');
-  // 320px: the translated-text-safe card wraps instead of overflowing the viewport.
-  await page.setViewportSize({ width: 320, height: 844 });
-  expect(
-    await page.evaluate(
-      () => document.documentElement.scrollWidth <= document.documentElement.clientWidth
-    )
-  ).toBe(true);
-  await page.setViewportSize({ width: 390, height: 844 });
-  await page.setViewportSize({ width: 390, height: 844 });
-  await test.step.skip(
-    'PAF-212: migrate the historical PdRtP comparison to Clubhouse',
-    async () => {
-      // The historical PdRtP frame has no photo section: take the card out of flow so every
-      // original frame probe and the pinned PAF-1 comparison below keep their exact coordinates.
-      await avatarCard.evaluate((card) => {
-        card.style.display = 'none';
-      });
-      // PdRtP frame coordinates: badge, hero, card stack, hand row and CTA.
-      await assertGeometry(
-        page.locator('main > div').first().locator('span').first(),
-        'Player step badge',
-        {
-          x: 18,
-          y: 18,
-          height: 25
-        }
-      );
-      await assertGeometry(
-        page.getByRole('heading', { name: en.onboarding.levelHelp }).locator('..'),
-        'Player hero',
-        {
-          x: 18,
-          y: 116,
-          width: 354,
-          height: 97
-        }
-      );
-      await assertGeometry(page.locator('form > div').first(), 'Display name field', {
-        x: 18,
-        y: 225,
-        width: 354,
-        height: 65
-      });
-      await assertGeometry(page.locator('#player-name'), 'Display name control', {
-        x: 18,
-        y: 246,
-        width: 354,
-        height: 44
-      });
-      await assertGeometry(levelCard, 'Starting level card', {
-        x: 18,
-        y: 302,
-        width: 354,
-        height: 145
-      });
-      await assertGeometry(
-        page.getByText(en.onboarding.level, { exact: true }),
-        'Level heading label',
-        {
-          x: 32,
-          y: 316
-        }
-      );
-      const advancedCaption = page.getByText(en.onboarding.advanced, { exact: true });
-      await assertGeometry(advancedCaption.locator('..'), 'Scale caption row', {
-        x: 32,
-        y: 419,
-        width: 264
-      });
-      // ADVANCED is end-anchored in the constrained caption row: x tracks Inter advance widths
-      // (glyph metrics differ per platform), so ±2px on x only; the row y stays CSS-exact at ±1px.
-      await assertGeometry(advancedCaption, 'Advanced caption inset', { x: 228, y: 419 }, { x: 2 });
-      await assertGeometry(
-        page.getByRole('slider', { name: en.onboarding.levelScale }),
-        'Level slider hit target',
-        {
-          x: 32,
-          width: 326,
-          height: 44
-        }
-      );
-      await assertGeometry(page.locator('form > div').nth(3), 'Preferred side and hand card', {
-        x: 18,
-        y: 459,
-        width: 354,
-        height: 170
-      });
-      await assertGeometry(page.locator('#player-hand-options'), 'Dominant hand options row', {
-        x: 32,
-        y: 571,
-        width: 326,
-        height: 44
-      });
-      await assertGeometry(page.locator('form button[type="submit"]'), 'Save profile CTA', {
-        x: 18,
-        y: 761,
-        width: 354,
-        height: 44
-      });
-      // Native 0.1-step slider maps 3.0 to 3/7 of the track (Pencil places 3.0 near its center).
-      await compare(page, 'player-setup.png', true);
-    }
+  await assertNoTextTransform([submit, progress]);
+  const avatar = page.getByTestId('onboarding-avatar');
+  const picker = avatar.getByLabel(en.onboarding.avatarLabel);
+  const skip = avatar.getByRole('button', { name: en.onboarding.avatarSkip });
+  await assertGeometry(avatar, 'Additional photo card', { x: 20, width: 350 });
+  await assertGeometry(picker, 'Photo picker target', { height: 52 }, 2);
+  await assertGeometry(skip, 'Skip photo target', { height: 52 });
+  const bio = page.getByLabel(en.onboarding.bio);
+  const availability = page.getByRole('group', { name: en.profile.availabilityDaysLegend });
+  expect((await availability.boundingBox())!.y).toBeGreaterThan((await bio.boundingBox())!.y);
+  // Match the illustrative selection without changing live defaults or submitting the form.
+  await slider.focus();
+  for (let step = 0; step < 5; step++) await page.keyboard.press('ArrowRight');
+  await expect(slider).toHaveValue('3.5');
+  await expect(slider).toHaveAttribute('aria-valuetext', '3.5');
+  await side.getByRole('radio', { name: en.onboarding.sideRightShort }).check();
+  await hand.getByRole('radio', { name: en.onboarding.handRight }).check();
+  await page.evaluate(() => {
+    if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
+    window.scrollTo(0, 0);
+  });
+  const { reference, chromium } = toleranceEvidence;
+  const original = readFileSync(
+    new URL(`./references/paf-202-onboarding/${reference.frameId}.png`, import.meta.url)
   );
+  const expected = deriveCroppedTopPng(
+    original,
+    statusBarHeight,
+    height - statusBarHeight - reference.clipHeight
+  );
+  const actual = await page.screenshot({
+    animations: 'disabled',
+    caret: 'hide',
+    clip: { x: 0, y: 0, width, height: reference.clipHeight }
+  });
+  const residual = comparePng(actual, expected, 0);
+  if (residual)
+    info.annotations.push({ type: 'Pencil pixel residual', description: residual.errorMessage });
+  const difference = comparePng(actual, expected, reference.maxDiffPixelRatio);
+  if (difference?.diff)
+    await info.attach('PdRtP-pixel-diff', { body: difference.diff, contentType: 'image/png' });
+  expect(difference?.errorMessage).toBeUndefined();
+  await expect(page).toHaveScreenshot('player-setup-phase2.png', {
+    threshold: 0.1,
+    maxDiffPixelRatio: chromium.maxDiffPixelRatio
+  });
+
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.context().addCookies([
+    { name: 'theme', value: 'dark', url: baseURL },
+    { name: 'locale', value: 'es', url: baseURL }
+  ]);
+  await page.reload();
+  await ready(page);
+  await expect(page.locator('html')).toHaveAttribute('lang', 'es');
+  await expect(page.getByRole('heading', { name: es.onboarding.title })).toBeVisible();
+  await assertGeometry(page.getByTestId('onboarding-progress'), 'Centered wide form', {
+    x: 420,
+    width: 440
+  });
+  await expect(page).toHaveScreenshot('player-setup-wide-dark-es.png', {
+    threshold: 0.1,
+    maxDiffPixelRatio: chromium.maxDiffPixelRatio
+  });
 });
 
 test('forgot password matches frame ieoni', async ({ page }) => {

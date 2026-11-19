@@ -72,32 +72,6 @@ export const ui = stylex.create({
     flexDirection: 'column',
     gap: 'var(--space-9)'
   },
-  onboardingCard: { gap: 'var(--space-9)' },
-  onboardingLevelHeading: {
-    display: 'flex',
-    alignItems: 'flex-start',
-    gap: 'var(--space-9)'
-  },
-  onboardingLevelValue: { fontSize: 'var(--font-size-29)' },
-  onboardingExtras: { marginTop: 'calc(var(--space-40) * 3)' },
-  onboardingAvatar: {
-    display: 'flex',
-    flexWrap: 'wrap',
-    alignItems: 'flex-start',
-    gap: 'var(--space-12)'
-  },
-  onboardingAvatarBody: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: 'var(--space-9)',
-    flex: 1,
-    minWidth: 'calc(var(--space-40) * 4)'
-  },
-  onboardingAvatarSkip: {
-    backgroundColor: 'var(--color-bg)',
-    color: 'var(--color-text)',
-    fontWeight: 'var(--font-weight-semibold)'
-  },
   sliderGroup: {
     display: 'flex',
     flexDirection: 'column',
@@ -150,66 +124,7 @@ export const ui = stylex.create({
     color: 'var(--color-muted)',
     fontSize: 'var(--font-size-12)'
   },
-  sliderCurrent: {
-    position: 'absolute',
-    transform: 'translateX(-50%)',
-    color: 'var(--color-green)',
-    fontWeight: 'var(--font-weight-bold)'
-  },
-  onboardingChoices: { marginTop: 0 },
-  onboardingChoiceStack: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: 'var(--space-10)'
-  },
-  choiceSection: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: 'var(--space-10)'
-  },
-  choiceLabel: { lineHeight: 'var(--space-14)' },
-  handSection: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: 'var(--space-6)'
-  },
-  handChoices: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: 'var(--space-7)',
-    width: '100%',
-    minWidth: 0
-  },
-  handChoice: {
-    display: 'flex',
-    flex: 1,
-    minWidth: 0,
-    height: 'calc(var(--space-40) + var(--space-4))',
-    minHeight: 'calc(var(--space-40) + var(--space-4))',
-    boxSizing: 'border-box',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 'var(--space-6)',
-    backgroundColor: 'var(--color-surface-2)',
-    borderRadius: 'var(--radius-10)',
-    fontSize: 'var(--font-size-12)',
-    fontWeight: 'var(--font-weight-semibold)',
-    cursor: 'pointer',
-    ':focus-within': {
-      outline: 'var(--border-width-lg) solid var(--color-green)',
-      outlineOffset: 'var(--space-2)'
-    }
-  },
-  handChoiceText: {
-    display: 'block',
-    width: '100%',
-    minWidth: 0,
-    overflowWrap: 'anywhere',
-    textAlign: 'center'
-  },
-  handChoiceTextCompact: { fontSize: 'var(--font-size-10)' },
   profileCard: { padding: 'var(--space-14)', borderRadius: 'var(--radius-16)' },
-  onboardingForm: { gap: 'var(--space-12)', marginTop: 'var(--space-2)' },
   label: {
     color: 'var(--color-muted)',
     fontSize: 'var(--font-size-12)',
@@ -301,7 +216,6 @@ export const ui = stylex.create({
     fontSize: 'var(--font-size-12)',
     fontWeight: 'var(--font-weight-semibold)'
   },
-  onboardingScaleCaption: { width: 'calc(80% + var(--space-3))' },
   scaleEndpoint: { fontWeight: 'var(--font-weight-medium)' },
   identityHero: { padding: 'var(--space-15)', gap: 'var(--space-12)' },
   heroSide: { color: 'var(--color-hero-accent)' },
@@ -370,23 +284,6 @@ export const ui = stylex.create({
   },
   muted: { color: 'var(--color-muted)', fontSize: 'var(--font-size-12)', margin: 0 },
   error: { color: 'var(--color-red)', fontSize: 'var(--font-size-12)', margin: 0 },
-  // Pencil claim notice: icon + 12px regular text, padding 10, radius 9, gap 8. The design's
-  // 1.25 line-height has no token, so the text keeps the inherited line height.
-  claimNotice: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: 'var(--space-8)',
-    padding: 'var(--space-10)',
-    borderRadius: 'var(--radius-9)',
-    backgroundColor: 'var(--color-green-soft)',
-    color: 'var(--color-green)'
-  },
-  claimNoticeIcon: { flexShrink: 0, width: 'var(--space-16)', height: 'var(--space-16)' },
-  claimNoticeText: {
-    margin: 0,
-    fontSize: 'var(--font-size-12)',
-    fontWeight: 'var(--font-weight-regular)'
-  },
   identity: { display: 'flex', alignItems: 'center', gap: 'var(--space-12)' },
   avatar: {
     width: 'calc(var(--space-40) + var(--space-16))',
