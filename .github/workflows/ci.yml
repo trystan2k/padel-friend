@@ -8,10 +8,12 @@ on:
 permissions:
   contents: read
 
-# Superseded runs on the same PR/ref add no required-gate evidence; stop them.
+# Superseded pull request runs add no required-gate evidence; stop them. Pushes to main are never
+# cancelled: each commit gets its own group, because release.yml needs the CI run of the exact
+# release commit, and a newer push would otherwise drop it.
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 # CI topology: the changes gate classifies the diff, static checks block the parallel test phases,
 # and checks aggregates all results. Keep `checks` as final job name for branch-protection

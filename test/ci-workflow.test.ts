@@ -257,6 +257,15 @@ describe('ci.yml test-stack contract', () => {
   });
 });
 
+describe('ci.yml concurrency', () => {
+  it('cancels superseded pull request runs only', () => {
+    expect(workflow).toContain("cancel-in-progress: ${{ github.event_name == 'pull_request' }}");
+    // A group keyed on the ref would let a newer push to main cancel the release commit's CI run.
+    expect(workflow).toContain('|| github.sha }}');
+    expect(workflow).not.toMatch(/cancel-in-progress: true/);
+  });
+});
+
 describe('ci.yml change-set gate', () => {
   it('never filters the workflow trigger by path', () => {
     // A workflow skipped by a path filter reports no check run, so a required `CI / checks` would
