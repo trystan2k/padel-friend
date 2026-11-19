@@ -197,6 +197,10 @@ async function skipCommunity(page: Page): Promise<void> {
   await waitForHydratedPage(page);
   await page.getByRole('button', { name: en.communityOnboarding.skip }).click();
   await expect(page).toHaveURL(/\/dashboard$/);
+  // Home greeting heading marks the post-onboarding landing; the profile now lives on /me.
+  await expect(page.locator('#home-greeting')).toBeVisible();
+  await waitForHydratedPage(page);
+  await page.goto('/me');
   await expect(page.getByRole('heading', { name: en.profile.title })).toBeVisible();
   await waitForHydratedPage(page);
 }
@@ -371,7 +375,6 @@ test('a new signup is blocked by onboarding, rejects invalid input, then lands o
   await expect(page.locator('output[for=player-level]')).toHaveText('3.0');
   await page.getByRole('button', { name: en.onboarding.save }).click();
   await skipCommunity(page);
-  await expect(page.getByRole('heading', { name: en.profile.title })).toBeVisible();
 
   // The profile header action is a 44×44 icon-only button carrying its own accessible name
   // (round-2 header): no visible text label to target.
@@ -384,14 +387,9 @@ test('a new signup is blocked by onboarding, rejects invalid input, then lands o
   // The level card is labelled GLOBAL LEVEL (design vARtQ/aWm9C/CKgMi): the label+metric
   // stack and the reliability badge are SIBLINGS in the level row, above the 0.0 /
   // LEVEL SCALE / 7.0 progress track (14px tall).
-  await expect(
-    page.locator('#home-profile').getByText(en.profile.globalLevel, { exact: true })
-  ).toBeVisible();
+  await expect(page.getByText(en.profile.globalLevel, { exact: true })).toBeVisible();
   // Label/metric stack: the GLOBAL LEVEL caption with the two-decimal metric beside it.
-  const levelHeader = page
-    .locator('#home-profile')
-    .getByText(en.profile.globalLevel, { exact: true })
-    .locator('..');
+  const levelHeader = page.getByText(en.profile.globalLevel, { exact: true }).locator('..');
   await expect(levelHeader).toContainText('3.00');
   // Enclosing level row: the reliability badge rides beside the header stack.
   const levelRow = levelHeader.locator('..');
@@ -462,7 +460,8 @@ test('a fresh browser context keeps the onboarding state', async ({ browser, pag
   const secondContext = await browser.newContext({ storageState: state });
   const secondPage = await secondContext.newPage();
   await secondPage.goto('/dashboard');
-  await expect(secondPage.getByRole('heading', { name: en.profile.title })).toBeVisible();
+  await expect(secondPage.locator('#home-greeting')).toBeVisible();
+  await secondPage.goto('/me');
   await expect(secondPage.getByRole('heading', { name: 'Vera Fresh', exact: true })).toBeVisible();
   await expect(secondPage.locator('main')).toContainText('3.50');
   await secondContext.close();

@@ -180,7 +180,8 @@ test('login controls retain design typography across themes', async ({ page }) =
     await expect(page.locator('html')).toHaveAttribute('data-theme', theme);
     const submit = page.locator('form button[type="submit"]');
     await expect(submit).toBeVisible();
-    expect(await submit.evaluate((element) => getComputedStyle(element).fontSize)).toBe('13px');
+    // Clubhouse frame B3Uqv: 16px bold button labels (control.styles.ts).
+    expect(await submit.evaluate((element) => getComputedStyle(element).fontSize)).toBe('16px');
   }
 });
 
@@ -385,9 +386,10 @@ test.describe('community Home', () => {
     const nav = page.getByRole('navigation', { name: copies.en.appShell.navigation });
     const { nav: labels } = copies.en.appShell;
     for (const name of [labels.home, labels.matches, labels.create, labels.community, labels.me])
-      await expect(nav.getByRole('link', { name })).toBeVisible();
+      await expect(nav.getByRole('link', { name, exact: true })).toBeVisible();
     await expect(nav.getByRole('link')).toHaveCount(5);
-    // Ranking is no destination of its own; its section stays on Home until Community hosts it.
+    // Ranking is no destination of its own; the Community surface hosts its section.
+    await nav.getByRole('link', { name: labels.community }).click();
     await expect(page.locator('#home-ranking')).toBeVisible();
     for (const link of await nav.getByRole('link').all()) {
       const box = await link.boundingBox();
@@ -441,9 +443,17 @@ test.describe('community Home', () => {
 //    and never relaxed. The pixel budget is not a structural gate.
 //  - The 1% budget exists solely to absorb font-rasterization drift within the supported CI
 //    renderer (one pinned Chromium config, raster flags fixed in playwright.config.ts).
-//  - Measured Chromium residuals against the stored references (2026-11-10): home-mobile-light 0,
-//    home-mobile-dark 0, home-desktop-light 0, home-desktop-dark 0, home-mobile-pt-br 0,
-//    home-mobile-es 0. The budget is a ceiling over a measured zero.
+//  - Baselines were deliberately regenerated for PAF-202 (Clubhouse redesign) because the true
+//    rendering changed: Figtree replaced Inter/Manrope (different glyph metrics), the Home sections
+//    were recomposed (greeting hero with rank summary, next match, attention; profile/admin surfaces
+//    moved to /me and the Community surface) and the shell bar was added. Residuals of the old
+//    references against the new rendering were home-mobile-light 17.8%, home-mobile-dark 11.5%,
+//    home-desktop-light 5.9%, home-desktop-dark 3.7%, home-mobile-pt-br 18.3%, home-mobile-es 17.9%.
+//    That delta is the intended redesign, not a defect: the strict structural probes above (which
+//    pass) are the structural gate; the screenshots were re-baselined to the new rendering and the
+//    budget was NOT widened.
+//  - Measured Chromium residuals against the regenerated references (2026-11-19): all six
+//    baselines 0. The budget is a ceiling over a measured zero.
 //  - Cross-renderer (WebKit/Firefox) residuals: not measured (unavailable in the verification
 //    environment: no non-Chromium Playwright project is configured). Cross-renderer pixel equality
 //    (including Pencil vs Chromium font rasterization) is explicitly out of scope per AGENTS.md.
@@ -467,20 +477,20 @@ async function homeStructureFailures(page: Page): Promise<string[]> {
     if (doc.scrollWidth - doc.clientWidth > 0)
       failures.push('horizontal overflow ' + (doc.scrollWidth - doc.clientWidth) + 'px');
 
-    // Header: title, subtitle(s) stacked, bell beside or below, all contained.
+    // Header row (community switcher, date, bell) first, then the greeting h1 in the hero.
     const title = document.querySelector('#home-top h1');
     if (document.querySelectorAll('#home-top h1').length !== 1) failures.push('expected one h1');
-    const titles = title?.parentElement ?? null;
-    const headerRow = titles?.parentElement ?? null;
+    const headerRow = document.querySelector('#home-top > div:first-child');
+    const titles = headerRow?.firstElementChild ?? null;
     const bell = headerRow?.querySelector('a[href="/notifications"]') ?? null;
     const dateLine = titles?.querySelector('time') ?? null;
-    const communityLine = titles?.querySelector('p') ?? null;
+    const communityLine = [...(titles?.children ?? [])].find((child) => child !== dateLine) ?? null;
     if (!visible(title) || !visible(dateLine) || !visible(communityLine) || !visible(bell))
       failures.push('header title/date/community/bell must all be visible');
     else if (titles && headerRow) {
-      if (rect(dateLine).top < rect(title).bottom - 0.5) failures.push('date overlaps title');
-      if (rect(communityLine).top < rect(dateLine).bottom - 0.5)
-        failures.push('community line overlaps date');
+      if (rect(title).top < rect(dateLine).bottom - 0.5) failures.push('greeting overlaps date');
+      if (rect(dateLine).top < rect(communityLine).bottom - 0.5)
+        failures.push('date overlaps community switcher');
       const side = rect(bell).left >= rect(titles).right - 0.5;
       const below = rect(bell).top >= rect(titles).bottom - 0.5;
       if (!side && !below) failures.push('bell overlaps title block');
@@ -511,15 +521,14 @@ async function homeStructureFailures(page: Page): Promise<string[]> {
       }
 
     // Level hero: below the header, carries the level figure.
-    const heroHeading = document.querySelector('#home-level-heading');
-    const hero = heroHeading?.closest('section') ?? null;
+    const hero = title?.closest('section') ?? null;
     if (!visible(hero) || !visible(hero.querySelector('strong')))
       failures.push('level hero with level figure must be visible');
     else if (headerRow && rect(hero).top < rect(headerRow).bottom - 0.5)
       failures.push('level hero overlaps header');
 
     // Home sections: ordered, non-overlapping, contained.
-    const sectionIds = ['home-actions', 'home-next-match', 'home-ranking', 'home-activity'];
+    const sectionIds = ['home-next-match', 'home-actions'];
     let previous: Element | null = hero;
     for (const id of sectionIds) {
       const section = document.getElementById(id);
@@ -569,7 +578,7 @@ async function homeStructureFailures(page: Page): Promise<string[]> {
     }
 
     // Fixed bottom navigation: five targets, viewport-fixed, centered, visible at top and at end.
-    const nav = document.querySelector('main > nav');
+    const nav = document.querySelector('nav[data-app-nav]');
     if (!nav) return [...failures, 'no bottom navigation'];
     if (getComputedStyle(nav).position !== 'fixed') failures.push('nav is not position:fixed');
     const links = [...nav.querySelectorAll('a')];
@@ -690,7 +699,7 @@ test.describe('Home structure and visual regression', { tag: '@visual' }, () => 
         await expect(page.locator('#home-actions li').first()).toBeVisible();
         await expect(page.locator('#home-next-match article').first()).toBeVisible();
         await expect(page.getByRole('heading', { level: 1 })).toContainText(player.name);
-        await expect(page.locator('#home-top h1 + time')).toContainText('UTC');
+        await expect(page.locator('#home-top > div:first-child time')).toContainText('UTC');
 
         const failures = await homeStructureFailures(page);
         expect(failures, failures.join('\n')).toEqual([]);
@@ -698,7 +707,9 @@ test.describe('Home structure and visual regression', { tag: '@visual' }, () => 
         if (!('shot' in config)) return;
         await page.evaluate((text) => {
           // Header date and activity days follow the wall clock; fixture match times are fixed.
-          for (const time of document.querySelectorAll('#home-top h1 + time, #home-activity time'))
+          for (const time of document.querySelectorAll(
+            '#home-top > div:first-child time, #home-activity time'
+          ))
             time.textContent = text;
         }, NORMALIZED_DATE);
         await page.evaluate(() => window.scrollTo(0, 0));

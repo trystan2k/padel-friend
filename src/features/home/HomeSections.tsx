@@ -189,17 +189,17 @@ function movementText(t: Translate, movement: HomeRankMovement | null): string |
   return t(`home.ranking.movement.${movement.state}`, { count: movement.places });
 }
 
-function SkillRank({ rank }: { rank: HomeSkillRank }) {
+function SkillRank({ rank, inHero = false }: { rank: HomeSkillRank; inHero?: boolean }) {
   const { t, number } = useFormat();
   const movement = movementText(t, rank.movement);
   if (rank.status !== 'ranked' || rank.position === null)
     return (
-      <p {...stylex.props(s.state)}>
+      <p {...stylex.props(inHero ? s.heroCopy : s.state)}>
         {t(rank.status === 'unrated' ? 'home.ranking.unrated' : 'home.ranking.notMember')}
       </p>
     );
   return (
-    <p {...stylex.props(s.body)}>
+    <p {...stylex.props(inHero ? s.heroCopy : s.body)}>
       {rank.rankedMembers === null
         ? t('home.ranking.skillRankedNoTotal', { position: number(rank.position) })
         : t('home.ranking.skillRanked', {
@@ -209,6 +209,21 @@ function SkillRank({ rank }: { rank: HomeSkillRank }) {
       {movement && ` · ${movement}`}
     </p>
   );
+}
+
+/**
+ * Light rank line of the Home level summary. The rank is real own-rank data; any read that did not
+ * produce one says so instead of showing a made-up position.
+ */
+export function RankSummary({ section }: { section: HomeSection<HomeRanking> }) {
+  const { t } = useFormat();
+  if (section.status === 'ok' && section.value.skill.status === 'ok')
+    return <SkillRank rank={section.value.skill.value} inHero />;
+  const key =
+    section.status === 'ok' && section.value.skill.status === 'empty'
+      ? 'home.ranking.skillEmpty'
+      : 'home.levelSummary.rankUnavailable';
+  return <p {...stylex.props(s.heroCopy)}>{t(key)}</p>;
 }
 
 function LeagueRank({ league, communityId }: { league: HomeLeagueRank; communityId: string }) {

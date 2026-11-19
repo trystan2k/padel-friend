@@ -518,7 +518,10 @@
   "home": {
     "title": "Home",
     "greeting": "Hello, {{name}}",
-    "levelTitle": "YOUR LEVEL",
+    "levelTitle": "Your level",
+    "levelSummary": {
+      "rankUnavailable": "Your rank is not available right now."
+    },
     "switcherLabel": "Switch community",
     "selectionUnavailable": "That community is not available to you. Showing your default community instead.",
     "switching": "Loading community…",

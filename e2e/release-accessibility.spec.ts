@@ -124,8 +124,9 @@ test.describe('authorized primary-flow accessibility', () => {
                 new Date(asOf!)
               )} · UTC`
             );
-            const hero = page.getByRole('region', { name: copy.home.levelTitle, exact: true });
-            await expect(hero.getByRole('heading', { level: 2 })).toHaveText(copy.home.levelTitle);
+            const hero = page.locator('#home-top section[aria-labelledby="home-greeting"]');
+            await expect(hero.getByRole('heading', { level: 1 })).toBeVisible();
+            await expect(hero).toContainText(copy.home.levelTitle);
             await expect(hero.locator('strong')).toHaveText(/\d/);
             await expect(hero).toContainText(copy.profile.reliability);
             expect(await date.evaluate((element) => Boolean(element.closest('main')))).toBe(true);

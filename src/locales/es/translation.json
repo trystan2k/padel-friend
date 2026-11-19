@@ -518,7 +518,10 @@
   "home": {
     "title": "Inicio",
     "greeting": "Hola, {{name}}",
-    "levelTitle": "TU NIVEL",
+    "levelTitle": "Tu nivel",
+    "levelSummary": {
+      "rankUnavailable": "Tu posición no está disponible en este momento."
+    },
     "switcherLabel": "Cambiar de comunidad",
     "selectionUnavailable": "Esa comunidad no está disponible para ti. Mostrando tu comunidad predeterminada.",
     "switching": "Cargando comunidad…",

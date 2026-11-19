@@ -1,5 +1,11 @@
-import { createFileRoute, useNavigate, useRouter } from '@tanstack/react-router';
-import { PlayerProfile } from '../features/player/PlayerProfile';
+import {
+  createFileRoute,
+  useHydrated,
+  useNavigate,
+  useRouter,
+  useRouterState
+} from '@tanstack/react-router';
+import { communityHash } from '../features/app-shell/app-shell';
 import { CommunityAdminEntries } from '../features/community/CommunityAdmin';
 import { listMyAdminCommunities } from '../features/community/community-admin.functions';
 import { getMyPlayerProfile } from '../features/player/player.functions';
@@ -64,6 +70,11 @@ function Dashboard() {
   const navigate = useNavigate();
   const { profile, rating, adminCommunities, leagueCommunities, inbox, home, platformAdmin } =
     Route.useLoaderData();
+  // The Community tab is this route with the community hash; the server never sees the hash, so
+  // the surface switches only after hydration, like the shell's current-tab state.
+  const hydrated = useHydrated();
+  const hash = useRouterState({ select: (state) => state.location.hash });
+  const surface = hydrated && hash.replace(/^#/, '') === communityHash ? 'community' : 'home';
   // Home converges with other clients through the authorized loaders; the scope pins the refresh
   // to this account and selected community so a switch never reuses another view's loop.
   useRouteRefresh({ scope: `home:${profile.user_id}:${home?.selection.selectedId ?? 'none'}` });
@@ -74,26 +85,26 @@ function Dashboard() {
         playerId={profile.user_id}
         displayName={profile.display_name}
         level={(rating.status === 'ok' ? rating.summary.summary : null) ?? profile}
+        surface={surface}
+        communityEntries={
+          <div id={communityHash}>
+            <PlatformAdminEntry allowed={platformAdmin} />
+            <CommunityAdminEntries communities={adminCommunities} />
+            <LeagueEntries communities={leagueCommunities} />
+            <CommunityInbox initialItems={inbox.items} loadError={inbox.error} />
+            <InvitationDiscoverability />
+          </div>
+        }
         onSelect={(community) =>
-          void navigate({ to: '/dashboard', search: { community }, replace: false })
+          void navigate({
+            to: '/dashboard',
+            search: { community },
+            hash: surface === 'community' ? communityHash : undefined,
+            replace: false
+          })
         }
         onRetry={() => void router.invalidate()}
       />
-      <div id="home-profile">
-        <PlayerProfile
-          embedded
-          initialProfile={profile}
-          initialRating={rating}
-          onRatingReload={() => void router.invalidate()}
-        />
-      </div>
-      <PlatformAdminEntry allowed={platformAdmin} />
-      <div id="home-community">
-        <CommunityAdminEntries communities={adminCommunities} />
-        <LeagueEntries communities={leagueCommunities} />
-        <CommunityInbox initialItems={inbox.items} loadError={inbox.error} />
-        <InvitationDiscoverability />
-      </div>
     </main>
   );
 }
