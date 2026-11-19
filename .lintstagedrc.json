@@ -1,5 +1,5 @@
 {
-  "*.{ts,tsx,js,mjs}": "oxlint --fix --deny-warnings",
+  "*.{ts,tsx,js,mjs}": "oxlint --fix --deny-warnings --no-error-on-unmatched-pattern",
   "*.css": "stylelint --fix",
   "*": "oxfmt --no-error-on-unmatched-pattern"
 }

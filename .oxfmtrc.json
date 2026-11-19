@@ -12,6 +12,7 @@
     ".agents/**",
     ".opencode/**",
     "docs/plan/**",
+    "docs/design/**",
     "CHANGELOG.md",
     "release-please-manifest.json"
   ],

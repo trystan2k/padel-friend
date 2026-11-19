@@ -12,6 +12,7 @@
   "ignoreExportsUsedInFile": true,
   "ignore": [
     ".agents/**",
+    "docs/design/**",
     ".opencode/plugins/**",
     "scripts/test-populated-migration-up.d.mts",
     "scripts/check-client-secrets.d.mts",
