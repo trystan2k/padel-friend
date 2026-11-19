@@ -59,7 +59,7 @@ describe('password policy', () => {
         'passwordRequirements',
         'passwordInvalid',
         'passwordLegacyHint',
-        'resetRequirements',
+        'resetRuleMatch',
         'captchaRequired',
         'captchaError'
       ] as const) {

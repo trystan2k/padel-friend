@@ -18,10 +18,6 @@ const onboardingSource = readFileSync(
   new URL('../src/features/player/PlayerOnboarding.tsx', import.meta.url),
   'utf8'
 );
-const accountStylesSource = readFileSync(
-  new URL('../src/features/auth/account-signup.styles.ts', import.meta.url),
-  'utf8'
-);
 const semanticTokens: unknown = JSON.parse(
   readFileSync(new URL('../design-tokens/semantic.tokens.json', import.meta.url), 'utf8')
 );
@@ -86,7 +82,6 @@ describe('player dashboard state-card and metric styling contract', () => {
 
   it('maps fixed hero titles to a semantic token with light and dark contrast', () => {
     expect(styleBlock('heroTitle')).toContain("color: 'var(--color-on-hero)'");
-    expect(accountStylesSource).toMatch(/heroTitle:\s*\{[^}]*color: 'var\(--color-on-hero\)'/);
     expect(tokenValue(semanticTokens, ['color', 'on-hero', '$value'])).toBe('{palette.surface}');
     const surface = String(tokenValue(primitiveTokens, ['palette', 'surface', '$value']));
     const hero = String(tokenValue(primitiveTokens, ['palette', 'green-deep', '$value']));

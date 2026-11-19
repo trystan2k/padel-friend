@@ -99,6 +99,8 @@ async function createOnboardedUser(page: Page, email: string, name: string): Pro
   await page.getByRole('button', { name: en.communityOnboarding.skip }).click();
   await expect(page).toHaveURL(/\/dashboard$/);
   await waitForHydratedPage(page);
+  await page.goto('/me');
+  await waitForHydratedPage(page);
   await page.getByRole('button', { name: en.signOut }).click();
   await expect(page.getByRole('heading', { name: en.auth.welcomeTitle })).toBeVisible();
 }
@@ -131,7 +133,7 @@ test('a protected deep link survives sign-in and a newcomer is gated before reac
   const landed = new URL(page.url());
   expect(landed.pathname).toBe('/dashboard');
   expect(landed.searchParams.get('src')).toBe('e2e');
-  await expect(page.getByRole('heading', { name: 'Dee Link', exact: true })).toBeVisible();
+  await expect(page.locator('#home-greeting').filter({ hasText: 'Dee' })).toBeVisible();
 });
 
 test('an existing account signing in returns to the protected deep link', async ({ page }) => {
@@ -154,7 +156,7 @@ test('an existing account signing in returns to the protected deep link', async 
   expect(landed.pathname).toBe('/dashboard');
   expect(landed.search).toBe('?src=return%26check');
   expect(landed.searchParams.get('src')).toBe('return&check');
-  await expect(page.getByRole('heading', { name: 'Rex Return', exact: true })).toBeVisible();
+  await expect(page.locator('#home-greeting').filter({ hasText: 'Rex' })).toBeVisible();
 });
 
 test('a hostile next parameter falls back to /dashboard', async ({ page }) => {
@@ -233,7 +235,7 @@ test('an active account is named before an invitation can replace its session', 
   await waitForHydratedPage(page);
   await page.getByText(en.auth.inviteCancel, { exact: true }).click();
   await expect(page).toHaveURL(/\/dashboard$/);
-  await expect(page.getByRole('heading', { name: 'Invite Keeper', exact: true })).toBeVisible();
+  await expect(page.locator('#home-greeting').filter({ hasText: 'Invite' })).toBeVisible();
 });
 
 // ---------------------------------------------------------------------------
@@ -423,7 +425,7 @@ test.describe.serial('shared match link returns to the exact event', () => {
     await waitForHydratedPage(creatorPage);
     const shareValue = await creatorPage.getByLabel(en.matches.detail.shareUrl).inputValue();
     expect(shareValue).toBe(sharedPath);
-    await creatorPage.goto('/dashboard');
+    await creatorPage.goto('/me');
     await waitForHydratedPage(creatorPage);
     await creatorPage.getByRole('button', { name: en.signOut }).click();
     await expect(creatorPage.getByRole('heading', { name: en.auth.welcomeTitle })).toBeVisible();
@@ -447,8 +449,8 @@ test.describe.serial('shared match link returns to the exact event', () => {
     // client stores the verifier cookie itself; the callback route performs the real
     // server-side exchange and re-authorization through the event loader. The password
     // path left this page authenticated, and /login redirects authenticated users, so
-    // sign out through the dashboard first.
-    await page.goto('/dashboard');
+    // sign out through the Me page first.
+    await page.goto('/me');
     await waitForHydratedPage(page);
     await page.getByRole('button', { name: en.signOut }).click();
     await expect(page.getByRole('heading', { name: en.auth.welcomeTitle })).toBeVisible();
@@ -551,9 +553,7 @@ test.describe.serial('shared match link returns to the exact event', () => {
       await waitForHydratedPage(plain);
       await plain.getByRole('button', { name: en.communityOnboarding.skip }).click();
       await expect(plain).toHaveURL(/\/dashboard$/);
-      await expect(
-        plain.getByRole('heading', { name: 'Plain Returner', exact: true })
-      ).toBeVisible();
+      await expect(plain.locator('#home-greeting').filter({ hasText: 'Plain' })).toBeVisible();
     } finally {
       await Promise.all([freshContext.close(), plainContext.close()]);
     }

@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { deriveMaskedPng, type PngMask } from '../e2e/png-mask';
+import { deriveCroppedTopPng, deriveMaskedPng, type PngMask } from '../e2e/png-mask';
 
 type VisualManifest = {
   playerSampleDataMask: PngMask;
@@ -42,6 +42,19 @@ const rawManifest: unknown = JSON.parse(
 if (!isVisualManifest(rawManifest)) throw new Error('Invalid PAF-1 visual mask manifest');
 const manifest = rawManifest;
 const approvedBaselineDigest = manifest.screenshotBaselines['player-setup.png'].sha256;
+
+describe('deriveCroppedTopPng', () => {
+  it('drops exactly the top rows and rejects a crop that leaves no rows', () => {
+    const cropped = deriveCroppedTopPng(reference, 44);
+    expect(cropped.readUInt32BE(16)).toBe(reference.readUInt32BE(16));
+    expect(cropped.readUInt32BE(20)).toBe(reference.readUInt32BE(20) - 44);
+    expect(deriveCroppedTopPng(reference, 44)).toEqual(cropped);
+    expect(() => deriveCroppedTopPng(reference, reference.readUInt32BE(20))).toThrow(
+      'Top crop must leave rows'
+    );
+    expect(() => deriveCroppedTopPng(reference, -1)).toThrow('Top crop must leave rows');
+  }, 15_000);
+});
 
 describe('deriveMaskedPng', () => {
   // Two PNG codec round-trips per run: CPU-bound, and the default 5s budget is not

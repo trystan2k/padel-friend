@@ -102,12 +102,12 @@ describe('LoginWelcome', () => {
   it('renders the Welcome brand, title and subtitle from the i18n catalog', async () => {
     await renderWelcome();
 
-    expect(screen.getByText(en.auth.welcomeBrand)).toBeTruthy();
+    expect(screen.getByText(en.auth.loginBrand)).toBeTruthy();
     expect(screen.getByRole('heading', { level: 1 }).textContent).toBe(en.auth.welcomeTitle);
     expect(screen.getByText(en.auth.welcomeSubtitle)).toBeTruthy();
   });
 
-  it('orders Google sign-in first, then the OR divider, then the email/password form', async () => {
+  it('follows frame wzWLt: brand, title, body, credentials, Log in, the "or" divider, Google, sign-up', async () => {
     await renderWelcome();
 
     const google = screen.getByRole('button', { name: en.signInWithGoogle });
@@ -117,11 +117,32 @@ describe('LoginWelcome', () => {
     const forgot = screen.getByRole('link', { name: en.auth.forgotLink });
     const submit = screen.getByRole('button', { name: en.auth.loginSubmit });
 
-    expect(precedes(google, or)).toBe(true);
-    expect(precedes(or, email)).toBe(true);
+    const brand = screen.getByText(en.auth.loginBrand);
+    const title = screen.getByRole('heading', { level: 1 });
+    const body = screen.getByText(en.auth.welcomeSubtitle);
+    const signup = screen.getByRole('link', { name: en.auth.signupLink });
+
+    expect(precedes(brand, title)).toBe(true);
+    expect(precedes(title, body)).toBe(true);
+    expect(precedes(body, email)).toBe(true);
     expect(precedes(email, password)).toBe(true);
     expect(precedes(password, forgot)).toBe(true);
     expect(precedes(forgot, submit)).toBe(true);
+    expect(precedes(submit, or)).toBe(true);
+    expect(precedes(or, google)).toBe(true);
+    expect(precedes(google, signup)).toBe(true);
+    // Google stays outside the credential form: it never submits it.
+    expect(google.closest('form')).toBeNull();
+  });
+
+  it('renders the brand tile as decoration and the copy in sentence case', async () => {
+    await renderWelcome();
+
+    const brand = screen.getByText(en.auth.loginBrand);
+    expect(brand.previousElementSibling?.getAttribute('aria-hidden')).toBe('true');
+    for (const label of [en.signInWithGoogle, en.auth.loginSubmit, en.auth.or]) {
+      expect(label).not.toBe(label.toUpperCase());
+    }
   });
 
   it('links to the public privacy policy', async () => {
@@ -148,8 +169,10 @@ describe('LoginWelcome', () => {
     await renderWelcome({ resetSent: true });
 
     const notice = screen.getByRole('status');
-    expect(notice.textContent).toContain(en.auth.inboxNoticeTitle);
     expect(notice.textContent).toContain(en.auth.inboxNoticeCopy);
+    // Frame FZlHy: the envelope glyph is decoration, the message is the only announced text.
+    expect(notice.querySelector('[aria-hidden="true"]')?.textContent).toBe('✉');
+    expect(screen.getByRole('heading', { level: 1 }).textContent).toBe(en.auth.welcomeTitle);
     expect(screen.getByLabelText(en.auth.loginEmailLabel)).toBeTruthy();
     expect(screen.getByRole('button', { name: en.auth.loginSubmit })).toBeTruthy();
   });

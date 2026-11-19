@@ -8,7 +8,7 @@ type LocaleCopy = {
   language: string;
   signInWithGoogle: string;
   auth: {
-    welcomeBrand: string;
+    loginBrand: string;
     welcomeTitle: string;
     welcomeSubtitle: string;
     or: string;
@@ -862,14 +862,14 @@ test('signing out navigates directly to login and protected routes stay gated', 
   await expect(page.getByLabel(en.auth.loginEmailLabel)).toBeVisible();
 });
 
-test('the Welcome screen shows brand and Google-first sign-in and routes newcomers to the account page', async ({
+test('the Welcome screen shows brand, credentials-first sign-in with Google below and routes newcomers to the account page', async ({
   page
 }) => {
   await page.goto('/login');
   await waitForHydratedPage(page);
 
   // Welcome copy (design wzWLt): brand wordmark, title and subtitle.
-  await expect(page.getByText(en.auth.welcomeBrand, { exact: true })).toBeVisible();
+  await expect(page.getByText(en.auth.loginBrand, { exact: true })).toBeVisible();
   await expect(page.getByRole('heading', { name: en.auth.welcomeTitle })).toBeVisible();
   await expect(page.getByText(en.auth.welcomeSubtitle)).toBeVisible();
 
@@ -894,14 +894,14 @@ test('the Welcome screen shows brand and Google-first sign-in and routes newcome
   await expect(google.locator('span[aria-hidden="true"]')).toHaveText('G');
   await expect(page.getByRole('button', { name: en.auth.loginSubmit })).toBeVisible();
 
-  // DOM order is Google-first (design wzWLt): Google button, OR divider, email, password,
-  // LOG IN — and NO register toggle or signup submit on the Welcome screen.
+  // DOM order follows the Clubhouse frame (wzWLt): email, password, Log in, "or" divider, Google
+  // button — and NO register toggle or signup submit on the Welcome screen.
   const order = [
-    google,
-    page.getByText(en.auth.or, { exact: true }),
     emailField,
     page.getByLabel(en.auth.loginPasswordLabel),
-    page.getByRole('button', { name: en.auth.loginSubmit })
+    page.getByRole('button', { name: en.auth.loginSubmit }),
+    page.getByText(en.auth.or, { exact: true }),
+    google
   ];
   for (let index = 0; index < order.length - 1; index += 1) {
     const first = await order[index]!.elementHandle();

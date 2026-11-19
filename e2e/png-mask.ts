@@ -38,6 +38,27 @@ const pngModule: unknown = playwrightCoreRequire('playwright-core/lib/utilsBundl
 if (!isPngModule(pngModule)) throw new Error('Playwright PNG decoder is unavailable');
 const { PNG } = pngModule;
 
+// Pencil frames include a 44px OS status bar ("9:41", signal glyphs) that the app never renders.
+// Dropping those rows turns the frame into the page viewport, with no scaling or recoloring.
+export function deriveCroppedTopPng(buffer: Buffer, top: number): Buffer {
+  const image = PNG.sync.read(buffer);
+  if (!Number.isInteger(top) || top < 0 || top >= image.height)
+    throw new Error('Top crop must leave rows of the approved reference frame');
+  const rowBytes = image.width * 4;
+  return PNG.sync.write({
+    width: image.width,
+    height: image.height - top,
+    data: image.data.subarray(top * rowBytes)
+  });
+}
+
+// D8 requires the supplied app icon rather than the illustrative Pencil tile. The spec checks
+// its exact position and served bytes separately; mask only that tile for pixel comparison.
+export const authLogoMask: PngMask = {
+  maskColor: '#FF00FF',
+  rectangles: [{ name: 'brand tile', x: 24, y: 28, width: 64, height: 64 }]
+};
+
 export function deriveMaskedPng(buffer: Buffer, mask: PngMask): Buffer {
   const image = PNG.sync.read(buffer);
   const red = Number.parseInt(mask.maskColor.slice(1, 3), 16);

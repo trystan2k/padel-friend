@@ -1,7 +1,7 @@
 import * as stylex from '@stylexjs/stylex';
 import { useTranslation } from 'react-i18next';
 import { Button } from '../../components/ui/Button';
-import { styles } from './reset-password.styles';
+import { styles } from './invite-confirmation.styles';
 
 type InviteConfirmationProps = {
   confirmation:
