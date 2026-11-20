@@ -1,4 +1,4 @@
-import { Button } from '@base-ui/react/button';
+import { Button } from './ui/Button';
 import * as stylex from '@stylexjs/stylex';
 import { useEffect, useState, useSyncExternalStore } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -45,17 +45,13 @@ export function PwaRegistration() {
             <Button
               type="button"
               disabled={phase === 'applying'}
-              {...stylex.props(styles.action)}
+              size="large"
               onClick={() => store.apply()}
             >
               {t('pwa.update.apply')}
             </Button>
           )}
-          <Button
-            type="button"
-            {...stylex.props(styles.action, styles.secondary)}
-            onClick={() => store.dismiss()}
-          >
+          <Button type="button" size="large" variant="secondary" onClick={() => store.dismiss()}>
             {t('pwa.update.later')}
           </Button>
         </div>

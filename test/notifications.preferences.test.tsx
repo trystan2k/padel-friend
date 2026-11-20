@@ -27,8 +27,10 @@ const mocks = vi.hoisted(() => ({
 vi.mock('@tanstack/react-router', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@tanstack/react-router')>()),
   useRouter: () => ({ invalidate: mocks.invalidate }),
-  Link: ({ children, to }: { children: import('react').ReactNode; to: string }) => (
-    <a href={to}>{children}</a>
+  Link: ({ children, to, ...props }: import('react').ComponentProps<'a'> & { to: string }) => (
+    <a href={to} {...props}>
+      {children}
+    </a>
   )
 }));
 vi.mock('../src/features/notifications/notifications.functions', () => ({
@@ -132,8 +134,10 @@ describe('notification preferences page', () => {
     if (!(group instanceof HTMLFieldSetElement)) throw new Error('push group is not a fieldset');
     expect(within(group).getByText(copy.pushHelper)).toBeTruthy();
     expect(within(group).getByRole('switch', { name: copy.pushTitle })).toBeTruthy();
-    for (const name of categoryNames) {
-      expect(screen.getByRole('switch', { name })).toBeTruthy();
+    for (const key of ['community', 'matches', 'results', 'rankings', 'leagues'] as const) {
+      const control = screen.getByRole('switch', { name: copy.categories[key] });
+      const hintId = control.getAttribute('aria-describedby');
+      expect(document.getElementById(hintId ?? '')?.textContent).toBe(copy.categoryHelp[key]);
     }
     expect(screen.getAllByRole('switch')).toHaveLength(6);
 

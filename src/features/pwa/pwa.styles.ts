@@ -13,49 +13,34 @@ export const pwaStyles = stylex.create({
     backgroundColor: 'var(--color-surface)',
     fontFamily: 'var(--font-family-body)'
   },
-  installTitle: {
-    margin: 0,
-    color: 'var(--color-amber)',
-    fontSize: 'var(--font-size-12)',
-    fontWeight: 'var(--font-weight-bold)',
-    textTransform: 'uppercase'
+  installHeader: { display: 'flex', alignItems: 'center', gap: 'var(--space-12)' },
+  installGlyph: {
+    display: 'grid',
+    placeItems: 'center',
+    width: 'var(--space-40)',
+    height: 'var(--space-40)',
+    flexShrink: 0,
+    borderRadius: 'var(--radius-12)',
+    backgroundColor: 'var(--color-green-soft)',
+    color: 'var(--color-green-ink)'
   },
-  installedTitle: { color: 'var(--color-green)' },
+  installTitle: { margin: 0, fontSize: 'var(--font-size-16)' },
+  installedTitle: { color: 'var(--color-green-ink)' },
   copy: {
     margin: 0,
-    color: 'var(--color-text)',
-    fontSize: 'var(--font-size-12)',
+    color: 'var(--color-muted)',
+    fontSize: 'var(--font-size-14)',
     lineHeight: 'var(--font-line-height-body)',
     overflowWrap: 'anywhere'
   },
   alert: { color: 'var(--color-red)' },
-  action: {
-    minHeight: 'calc(var(--space-40) + var(--space-4))',
-    marginBlockStart: 'var(--space-8)',
-    paddingInline: 'var(--space-16)',
-    borderWidth: 0,
-    borderStyle: 'none',
-    borderRadius: 'var(--radius-14)',
-    backgroundColor: 'var(--color-green)',
-    color: 'var(--color-surface)',
-    fontFamily: 'inherit',
-    fontSize: 'var(--font-size-12)',
-    fontWeight: 'var(--font-weight-bold)',
-    textTransform: 'uppercase',
-    cursor: 'pointer',
-    ':focus-visible': {
-      outline: 'var(--border-width-lg) solid var(--color-text)',
-      outlineOffset: 'var(--space-2)'
-    },
-    ':disabled': { cursor: 'not-allowed', opacity: 0.6 }
-  },
-  disabledLook: { cursor: 'not-allowed', opacity: 0.6 },
+  action: { alignSelf: 'stretch' },
   banner: {
     position: 'fixed',
     insetInline: 'var(--space-16)',
     // Rises above the bottom navigation when the protected shell is mounted.
     insetBlockEnd: {
-      default: 'var(--space-16)',
+      default: 'max(var(--space-16), env(safe-area-inset-bottom))',
       [stylex.when.ancestor(':has([data-app-nav])')]:
         'calc(var(--space-6) + var(--space-40) + var(--space-16) + max(var(--space-18), env(safe-area-inset-bottom)) + var(--space-16))'
     },
@@ -76,12 +61,5 @@ export const pwaStyles = stylex.create({
     color: 'var(--color-text)',
     fontFamily: 'var(--font-family-body)'
   },
-  actions: { display: 'flex', flexWrap: 'wrap', gap: 'var(--space-8)' },
-  secondary: {
-    backgroundColor: 'transparent',
-    color: 'var(--color-text)',
-    borderWidth: 'var(--border-width-sm)',
-    borderStyle: 'solid',
-    borderColor: 'var(--color-line)'
-  }
+  actions: { display: 'flex', flexWrap: 'wrap', gap: 'var(--space-8)' }
 });

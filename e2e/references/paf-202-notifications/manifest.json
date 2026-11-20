@@ -1,0 +1,88 @@
+{
+  "status": "structural-probes-and-browser-baselines",
+  "sourceDesign": {
+    "path": "docs/design/Padel-friend App Redesign/padel-friend-clubhouse.pen",
+    "sha256": "41f3b06db61a180ed1d0eebe0fb3ff71e0086a703b5497ad7b47cd7ba7bb971e",
+    "exportCommand": "Pencil MCP Export, six individual PNG crops, scale 1"
+  },
+  "approvedReferences": {
+    "cAqsQ": {
+      "frameId": "cAqsQ",
+      "file": "cAqsQ.png/cAqsQ.png",
+      "sha256": "6206f3de99018ab106cb0dc2bb6608f0c87417efb2c0fcfc682b9800d254f614",
+      "pixelSize": [390, 844]
+    },
+    "Z0gRd": {
+      "frameId": "Z0gRd",
+      "file": "Z0gRd.png/Z0gRd.png",
+      "sha256": "a5f108d86d25ba506d86de5988f4bcfc67853bf8227a06265a5184f6a88e8777",
+      "pixelSize": [390, 844]
+    },
+    "qNVpA": {
+      "frameId": "qNVpA",
+      "file": "qNVpA.png/qNVpA.png",
+      "sha256": "f5a038da26d3715128434f495c3a7f232b4f01b2e4d371134891d89a53ddda57",
+      "pixelSize": [390, 844]
+    },
+    "y8ErQ": {
+      "frameId": "y8ErQ",
+      "file": "y8ErQ.png/y8ErQ.png",
+      "sha256": "084d1e7a68c2ddb02b6f1bca75b89c98e3527fcd14eb91d8242f2270e958fc6f",
+      "pixelSize": [390, 844]
+    },
+    "nRn4M": {
+      "frameId": "nRn4M",
+      "file": "nRn4M.png/nRn4M.png",
+      "sha256": "ef78b35a992fec5259e10f28cbd65b9757bd6d8d9e339ef537d9a441e7a5e947",
+      "pixelSize": [390, 844]
+    },
+    "tzBrY": {
+      "frameId": "tzBrY",
+      "file": "tzBrY.png/tzBrY.png",
+      "sha256": "1c0ab607439dbc8f17ce6a39959cd65e8d36e4d0868892ff60fb345b4a203d66",
+      "pixelSize": [430, 360]
+    }
+  },
+  "surfaces": {
+    "NotificationsPage": ["cAqsQ", "Z0gRd", "qNVpA"],
+    "NotificationBadge": ["cAqsQ"],
+    "NotificationResultOutcome": ["cAqsQ"],
+    "NotificationLevelReviewOutcome": [],
+    "NotificationDetailPage": [],
+    "NotificationPreferencesPage": ["y8ErQ"],
+    "PushDevicePanel": ["y8ErQ", "nRn4M", "tzBrY"],
+    "PwaInstallPanel": ["tzBrY"],
+    "PwaRegistration": ["tzBrY"]
+  },
+  "blockedDetail": "D1: no approved detail frame. Legacy shell, invite, result and level-review presentation stay. Only the result outcome in the feed uses the badge treatment.",
+  "intentionalDifferences": [
+    "Keep the ranking filter, UTC times, true context fields, explicit mark-read action, and Today/Earlier order. Mock rows cannot replace real feed data.",
+    "Settings retain the account master switch, all five existing categories and explicit persistence. No test-push action, new category or implicit permission prompt.",
+    "The cAqsQ unread count is plain muted text. The existing U3 summary chip is retained as a small contrast-positive adaptation; its green-ink on green-soft pair matches the positive glyph palette in cAqsQ and qNVpA.",
+    "Navigation chrome owns the top bars. Locale and theme remain in Me instead of overlapping the notification settings action.",
+    "Update banner borrows the shared card and button treatment; tzBrY is an install/failure board, not a dedicated update frame."
+  ],
+  "baselineReview": {
+    "notifications-center-populated.png": "Replaces the legacy inset panel and green-wash rows with standalone filters, grouped hairline rows and an unread dot.",
+    "notifications-center-populated-dark.png": "Same intentional layout changes; dark semantic palette and unread distinction pinned independently.",
+    "notifications-center-empty.png": "Empty state follows the Clubhouse back/settings bar and filter/summary sequence instead of the old title block and segmented toolbar.",
+    "notifications-preferences.png": "Previous baseline drift: 34,896 pixels (about 10.6%). Setup precedes switches; visible helper text, switch tracks and card rhythm change layout.",
+    "notifications-center-populated-desktop.png": "Same grouped-list structure as mobile at the unchanged 480px content cap. Timestamp text masked.",
+    "notifications-center-empty-desktop.png": "Same back/settings bar and empty-state rhythm as mobile, retaining the existing content cap.",
+    "notifications-preferences-desktop.png": "Previous baseline drift: 37,319 pixels (about 3.6%). Switch hierarchy and setup-first order change the rendered composition.",
+    "push-preferences.spec.ts": "Four card crops changed by 4,933–7,610 pixels across viewport and state. New glyph, sentence-case hierarchy, mobile gutters and larger retry button explain the change; the existing 3% per-card budget stays."
+  },
+  "visualBudgets": {
+    "kind": "Playwright browser baselines, not literal Pencil image equality",
+    "rationale": "Existing per-screen budgets unchanged; cross-platform text rasterization only. Exact probes guard layout, palette, semantics and controls. UTC timestamps masked when present.",
+    "perScreen": {
+      "notifications-center-populated.png": 0.04,
+      "notifications-center-populated-dark.png": 0.04,
+      "notifications-center-empty.png": 0.03,
+      "notifications-preferences.png": 0.06,
+      "notifications-center-populated-desktop.png": 0.02,
+      "notifications-center-empty-desktop.png": 0.02,
+      "notifications-preferences-desktop.png": 0.02
+    }
+  }
+}
