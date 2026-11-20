@@ -1,28 +1,6 @@
 import * as stylex from '@stylexjs/stylex';
 
 export const matchEditStyles = stylex.create({
-  popup: {
-    maxWidth: 'calc(var(--space-40) * 14)',
-    gap: 'var(--space-16)',
-    fontSize: 'var(--font-size-14)',
-    lineHeight: 'var(--font-line-height-body)'
-  },
-  header: {
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 'var(--space-12)'
-  },
-  close: {
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    width: 'calc(var(--space-40) + var(--space-4))',
-    height: 'calc(var(--space-40) + var(--space-4))',
-    flexShrink: 0,
-    borderWidth: 0,
-    borderRadius: 'var(--radius-36)'
-  },
   copy: { margin: 0, color: 'var(--color-muted)' },
   conflict: {
     display: 'grid',

@@ -32,7 +32,7 @@ const SHARED = [
   'StatisticsFilterSection',
   'StatisticsChart',
   'StatisticsDataTable',
-  'StatisticsBreadcrumb',
+  'RelationshipHeadline',
   'StatisticsStates'
 ];
 

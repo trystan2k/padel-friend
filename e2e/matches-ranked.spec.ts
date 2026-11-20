@@ -130,9 +130,10 @@ async function eventIdByVenue(name: string) {
 
 async function openEdit(page: Page) {
   await page.getByRole('button', { name: m.management.edit.title, exact: true }).click();
-  const dialog = page.getByRole('dialog');
-  await expect(dialog.getByRole('heading', { name: edit.title, exact: true })).toBeVisible();
-  return dialog;
+  // The edit flow is a page: its scope is the page main.
+  const editPage = page.locator('main');
+  await expect(editPage.getByRole('heading', { name: edit.title, exact: true })).toBeVisible();
+  return editPage;
 }
 
 const optionValue = (scope: ReturnType<Page['locator']>, text: string) =>

@@ -86,7 +86,7 @@ export function AppShell() {
               {t('appShell.nav.matches')}
             </Link>
           </li>
-          <li {...stylex.props(s.item)}>
+          <li {...stylex.props(s.item, s.createItem)}>
             <Link
               to="/matches/create"
               aria-label={t('appShell.nav.create')}

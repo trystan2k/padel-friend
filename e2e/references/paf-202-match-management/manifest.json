@@ -12,7 +12,6 @@
     "reconfirmation-excluded": "uiRqp",
     "removal-reason-dialog": "q2TCnQ",
     "cancel": "Ht2Oq",
-    "transfer": "m7hh3",
     "cutoff-unavailable": "dmvWu",
     "invitation-accepted": "c27ucrt",
     "invitation-declined": "c37x0cg",
@@ -23,7 +22,20 @@
     "minor-edit-conflict": "c9n78kb",
     "creator-required": "cb5peff",
     "started-unavailable": "ccicygl",
-    "result-protected-unavailable": "cdqb0a4"
+    "result-protected-unavailable": "cdqb0a4",
+    "organizer-participation": "m7hh3"
+  },
+  "mappingReview": {
+    "organizer-participation": {
+      "frame": "m7hh3",
+      "status": "remapped",
+      "note": "UX adjudication: m7hh3 is the Organizer participation sheet (Withdraw, Transfer and withdraw, Cancel match), the withdraw/transfer CHOICE state. The live counterpart is the organizer leaving the roster (Leave match dialog, which states that leaving keeps the organizer role and points to Transfer). The Transfer organization dialog is no longer mapped to it."
+    },
+    "transfer": {
+      "frame": null,
+      "status": "no dedicated frame",
+      "note": "no dedicated frame: m7hh3 draws the Organizer participation sheet, and c5xzgnc contains only a Transfer entry in the action menu, not the Transfer organization dialog. The dialog is covered by structural probes and a Chromium regression baseline only."
+    }
   },
   "composites": {
     "OkNwP": "Organizer and invitation variants; top-level management references take precedence (D7).",
@@ -77,6 +89,362 @@
     "q2TCnQ": "ef53072e4f55238a78bd7e74784914cd5db727fc92981e2ca717bd2214de7c34",
     "t0SZec": "f790480095c7f6101b98ba4d19033432eb3fec0d02aeb197c6a6b50af5e668b7",
     "uiRqp": "255449eff156f0bb086109c726848c61d3104b776b8086b0b66b974a14ac50d6"
+  },
+  "frameRegions": {
+    "Fyhbv": {
+      "acceptAction": {
+        "status": "finding",
+        "reference": { "x": 20, "y": 712, "width": 350, "height": 52 },
+        "offsetY": 0,
+        "geometry": ["height"],
+        "classification": "Layout: the frame is a dedicated Invitation page with Accept pinned in a 350x52 footer at y=712; live keeps Accept inside the \"Your match invitation\" panel on Match details, 32px narrower (panel inset) and ~414px higher. Height stays gated (52px); residual 0.1508 is surface and position, not budgeted."
+      },
+      "declineAction": {
+        "status": "finding",
+        "reference": { "x": 20, "y": 772, "width": 350, "height": 52 },
+        "offsetY": 0,
+        "geometry": ["height"],
+        "classification": "Layout: Decline is the outlined 350x52 footer action in the frame; live keeps it in the invitation panel directly under Accept, 32px narrower and ~414px higher. Height stays gated; residual 0.134 is surface and position, not budgeted."
+      },
+      "statusNotice": {
+        "status": "finding",
+        "reference": { "x": 20, "y": 427, "width": 350, "height": 68 },
+        "offsetY": 0,
+        "classification": "Layout: the frame draws a 350x68 info notice (\"Accepting joins the queue now...\") under the stats card; live renders the pending status line as plain text inside the invitation panel (318x42, 32px narrower, 26px shorter, copy differs). Reported, not masked; residual 0.2103."
+      }
+    },
+    "c27ucrt": {
+      "statusBanner": {
+        "status": "finding",
+        "reference": { "x": 20, "y": 395, "width": 350, "height": 89 },
+        "offsetY": 0,
+        "geometry": ["x", "width"],
+        "classification": "Layout: the frame draws a white 350x89 \"Joined · reserve 3\" card; live shows a green \"Invitation accepted\" status banner of the same width and gutter (gated) but 13px taller at a different position, with different copy. The frame's pinned \"Leave reserve queue\" action has no live counterpart in this state. Residual 0.1657 is surface and copy, not budgeted."
+      }
+    },
+    "c37x0cg": {
+      "statusBanner": {
+        "status": "finding",
+        "reference": { "x": 20, "y": 395, "width": 350, "height": 46 },
+        "offsetY": 0,
+        "geometry": ["x", "width"],
+        "classification": "Layout: the frame draws a single-row 350x46 notice (\"You declined this invitation.\"); live renders a titled banner (icon heading + copy) with the same gutter and width (gated) but 35px taller. The frame's pinned \"Join match\" action has no live counterpart. Residual 0.1024 is surface and copy, not budgeted."
+      }
+    },
+    "c4aviyi": {
+      "statusBanner": {
+        "status": "finding",
+        "reference": { "x": 20, "y": 395, "width": 350, "height": 46 },
+        "offsetY": 0,
+        "geometry": ["x", "width"],
+        "classification": "Layout: the frame draws a single-row 350x46 notice (\"This invitation has expired.\"); live renders a titled banner with the same gutter and width (gated) but 35px taller. The frame's disabled \"Registration closed\" footer action has no live counterpart. Residual 0.0999 is surface and copy, not budgeted."
+      }
+    },
+    "c5xzgnc": {
+      "menu": {
+        "status": "finding",
+        "reference": { "x": 0, "y": 190, "width": 390, "height": 654 },
+        "offsetY": 0,
+        "geometry": [],
+        "pixels": "none",
+        "pixelsReason": "The live popup menu is 232x168; a 390x654 crop of the frame sheet cannot be an identical rect and would be clipped in the live capture.",
+        "classification": "Surface: the frame draws a full-height \"Manage match\" bottom sheet (7 rows with subtitles); live opens the Base UI popup menu anchored under the Actions trigger (232x168 at x=124, y=313) with the three organizer actions (Transfer organization, Add player, Cancel match); Edit and Leave are separate page controls. Different surface by design, reported, not masked."
+      }
+    },
+    "c7o7c5e": {
+      "organizerNotice": {
+        "status": "finding",
+        "reference": { "x": 20, "y": 319, "width": 350, "height": 90 },
+        "offsetY": 0,
+        "classification": "Layout: the frame draws a 350x90 notice (\"You left the roster. You still organize this match...\"); live shows the organizer-only explanation as 322x42 text inside the Match management panel (14px inset per side, 48px shorter). Reported, not masked; residual 0.1857."
+      },
+      "manageAction": {
+        "status": "finding",
+        "reference": { "x": 20, "y": 772, "width": 350, "height": 52 },
+        "offsetY": 0,
+        "geometry": ["height"],
+        "classification": "Layout: the frame pins an outlined 350x52 \"Manage match\" footer action; live renders the outlined \"Actions\" trigger inside the Match management panel (322x52, 14px inset per side, ~517px higher). Height stays gated; residual 0.1288 is position and copy, not budgeted."
+      }
+    },
+    "c8dcjv8": {
+      "cancelledBanner": {
+        "status": "finding",
+        "reference": { "x": 20, "y": 325, "width": 347, "height": 134 },
+        "offsetY": 0,
+        "classification": "Layout: the frame draws an unframed 347x134 text block (\"Match cancelled\" heading plus two paragraphs); live renders a 350x102 grey status banner (icon title + copy) ~126px higher. The frame's pinned \"Find another match\" action has no live counterpart (a tombstone renders no actions). Reported, not masked; residual 0.3057."
+      }
+    },
+    "ccicygl": {
+      "lockedBanner": {
+        "status": "finding",
+        "reference": { "x": 20, "y": 319, "width": 350, "height": 68 },
+        "offsetY": 0,
+        "geometry": [],
+        "classification": "Layout: the frame draws a 350x68 \"Match started · management actions are locked.\" notice at x=20; live renders a 102px banner (title + two-line copy) ~100px higher. Live content sits 2px wider than the frame on this state (x=18, width 354: a 2px gutter delta that other states do not have), so no axis is gated. Residual 0.1518, reported, not budgeted."
+      },
+      "recordResultAction": {
+        "status": "finding",
+        "reference": { "x": 20, "y": 768, "width": 350, "height": 52 },
+        "offsetY": 0,
+        "classification": "Layout: the frame pins a green 350x52 \"Record result\" footer action; live renders the Record result link as a 354x44 green bar at the top of the page (x=18, 8px shorter, ~605px higher). Residual 0.2074 is position and size, not budgeted."
+      }
+    },
+    "cdqb0a4": {
+      "protectedBanner": {
+        "status": "finding",
+        "reference": { "x": 20, "y": 319, "width": 350, "height": 68 },
+        "offsetY": 0,
+        "geometry": ["x", "width"],
+        "classification": "Layout: the frame draws an amber 350x68 notice (\"A result was submitted. Roster and details are protected.\") followed by a locked-actions card and a pinned \"View result\" action; live renders a grey 350x165 \"Results protected\" banner (title + four-line copy) with the same gutter and width (gated) and no action card or footer action. Residual 0.1596 is surface and copy, not budgeted."
+      }
+    },
+    "cb5peff": {
+      "reconfirmPanel": {
+        "status": "finding",
+        "reference": { "x": 20, "y": 242, "width": 350, "height": 323 },
+        "offsetY": 0,
+        "geometry": ["x", "width"],
+        "classification": "Layout: the frame is a dedicated \"Reconfirm participation\" page with a Group 1 card and an awaiting card; live shows an inline 350x317 grey panel (ranking impact summary + awaiting list) on Match details, ~147px lower. The frame's pinned \"Send reminder\" and \"Reconfirm my place\" actions have no live counterpart. Gutter and width equal the frame; residual 0.1094 is surface and copy, not budgeted."
+      },
+      "awaitingEntry": {
+        "status": "finding",
+        "reference": { "x": 20, "y": 497, "width": 350, "height": 68 },
+        "offsetY": 0,
+        "geometry": ["height"],
+        "classification": "Layout: the frame draws a 350x68 \"Player 4 · Awaiting\" card with an Awaiting pill; live renders the awaiting participant as a 326x68 white row inset 12px per side without a pill (copy differs). Height stays gated; residual 0.1425 is surface and copy, not budgeted."
+      }
+    },
+    "c9n78kb": {
+      "conflictAlert": {
+        "status": "finding",
+        "reference": { "x": 20, "y": 104, "width": 350, "height": 68 },
+        "offsetY": 0,
+        "geometry": ["x", "width"],
+        "classification": "Page flow: the frame is the Edit match page with a 350x68 red conflict alert at the top; live keeps the same page and gutter (gated) but the alert is 170px tall (title, three-line explanation and the inline Reload details / Review my draft buttons) and sits 12px lower. Residual 0.1963 is size and copy, not budgeted."
+      },
+      "reviewDraftAction": {
+        "status": "finding",
+        "reference": { "x": 20, "y": 712, "width": 350, "height": 52 },
+        "offsetY": 0,
+        "pixels": "none",
+        "pixelsReason": "The live button is 157x44 at x=201: a 350x52 crop would overflow the live viewport and cannot be an identical rect. The fill colour is gated through reviewDraftFill.",
+        "classification": "Page flow: the frame pins a full-width 350x52 \"Review latest changes\" action in the footer; live renders \"Review my draft\" as a page-level 157x44 button inside the conflict alert (44px hit target, x=201). The solid fill is compared in reviewDraftFill; size and position are reported, not budgeted."
+      },
+      "reviewDraftFill": {
+        "status": "gated",
+        "reference": { "x": 20, "y": 712, "width": 350, "height": 52 },
+        "offsetY": 0,
+        "crop": { "dx": 20, "dy": 4, "width": 100, "height": 8 },
+        "geometry": [],
+        "budget": 0.01,
+        "classification": "Fill band of the primary action: the same solid green (primary token) in the frame's \"Review latest changes\" and live's \"Review my draft\", measured in a text-free 100x8 band 4px below the top edge; geometry is not gated because the live button is a smaller page-level button (see reviewDraftAction)."
+      },
+      "reloadAction": {
+        "status": "finding",
+        "reference": { "x": 20, "y": 772, "width": 350, "height": 52 },
+        "offsetY": 0,
+        "classification": "Page flow: the frame pins an outlined 350x52 \"Reload and discard draft\" footer action; live renders \"Reload details\" as a page-level 157x44 secondary button inside the conflict alert (x=32, ~540px higher, 8px shorter). Residual 0.4693 is surface and position, not budgeted."
+      },
+      "pinnedFooter": {
+        "status": "finding",
+        "reference": { "x": 0, "y": 672, "width": 390, "height": 172 },
+        "offsetY": 0,
+        "crop": { "dx": 0, "dy": 0, "width": 390, "height": 80 },
+        "geometry": ["x", "width"],
+        "classification": "Page flow: the frame pins a 390x172 footer (hint + Review latest changes + Reload); live pins a 390x89 sticky bar (Cancel + disabled Save changes) at the viewport bottom, so Save stays visibly unavailable during the conflict. Full width is gated; height (-83), position and content differ, residual 0.6375 over the top 80px is reported, not budgeted."
+      }
+    },
+    "lJHUZ": {
+      "saveActionFill": {
+        "status": "gated",
+        "reference": { "x": 140, "y": 768, "width": 230, "height": 52 },
+        "offsetY": 0,
+        "crop": { "dx": 20, "dy": 0, "width": 190, "height": 12 },
+        "budget": 0.01,
+        "classification": "Deferred comparison completed: the frame's single 350x52 Save action and live's 230x52 Save (Cancel shares the bar) differ in width, so the comparable rect is the frame's right-hand 230px at x=140. Gated: x, y, width and height match that rect exactly (all deltas 0) and the 190x12 text-free band under the top edge (solid primary fill, clear of the rounded corners and the label) has residual 0 against the Pencil export; budget 0.01. The full-action width difference stays reported in saveAction."
+      },
+      "saveAction": {
+        "status": "finding",
+        "reference": {
+          "x": 20,
+          "y": 768,
+          "width": 350,
+          "height": 52
+        },
+        "offsetY": 0,
+        "geometry": ["y", "height"],
+        "classification": "Page flow: the edit is a page (Edit match details) with the Save action pinned in a sticky footer, like the frame's full page with a pinned \"Save and notify\" footer. Live keeps a Cancel beside Save (explicit exit next to the commit, plus the back arrow), so Save is narrower than the frame's single 350px action; y and height stay gated, x/width and copy are reported, not budgeted.",
+        "pixels": "none",
+        "pixelsReason": "Live Save is 230x52 at x=140 (Cancel shares the pinned bar) while the frame draws one 350x52 action: the crop cannot be compared as an identical rect. Measured geometry: y delta 0 and height delta 0 (pinned footer matches the frame), x +120 / width -120."
+      }
+    },
+    "t0SZec": {
+      "saveActionFill": {
+        "status": "gated",
+        "reference": { "x": 140, "y": 712, "width": 230, "height": 52 },
+        "offsetY": 0,
+        "crop": { "dx": 20, "dy": 0, "width": 190, "height": 12 },
+        "geometry": ["x", "width", "height"],
+        "budget": 0.01,
+        "classification": "Deferred comparison completed: live's 230x52 Save is compared with the frame's right-hand 230px of the pinned \"Send change request\" action (x=140). Gated: x, width and height deltas are 0 and the 190x12 text-free band under the top edge (solid primary fill) has residual 0 against the Pencil export; budget 0.01. The y axis is not gated here: live pins Save at the viewport bottom (+56px vs the frame, recorded in saveAction)."
+      },
+      "saveAction": {
+        "status": "finding",
+        "reference": {
+          "x": 20,
+          "y": 712,
+          "width": 350,
+          "height": 52
+        },
+        "offsetY": 0,
+        "geometry": ["height"],
+        "classification": "Page flow: the major-change review is the same edit page with the review region above the fields and Save pinned in the sticky footer. The frame draws a dedicated review page whose pinned \"Send change request\" action sits at y=712 under a taller summary footer; live pins Save at the viewport bottom, narrower because Cancel shares the bar. Height stays gated; position, width and copy are reported, not budgeted.",
+        "pixels": "none",
+        "pixelsReason": "Live Save is 230x52 at x=140 pinned at the viewport bottom (y delta +56 against the frame y=712) with Cancel sharing the bar; the crop cannot be compared as an identical rect. Height delta 0 is gated."
+      }
+    },
+    "oVtuS": {
+      "reconfirmAction": {
+        "status": "finding",
+        "reference": {
+          "x": 20,
+          "y": 712,
+          "width": 350,
+          "height": 52
+        },
+        "offsetY": 0,
+        "geometry": ["height"],
+        "classification": "Layout: the frame is a dedicated \"Confirm match update\" page with a pinned 350x52 Reconfirm footer action; live shows an inline panel on Match details whose \"Review changed terms\" button is 52px tall (gated) but 24px narrower (panel inset) and ~368px higher. Residual 0.9879 is copy and surface, not budgeted."
+      }
+    },
+    "uiRqp": {
+      "excludedNotice": {
+        "status": "finding",
+        "pixels": "none",
+        "pixelsReason": "The excluded notice sits at y≈987, below the 844px viewport; the earlier pixel residual of 1.0 compared 0 pixels (vacuous).",
+        "reference": {
+          "x": 266,
+          "y": 512,
+          "width": 89,
+          "height": 24
+        },
+        "offsetY": 0,
+        "classification": "Accepted adaptation (UX adjudication): the frame is a dedicated \"Registration cutoff\" page with a Playable quartet card and an Excluded pill; live shows Match details where the excluded notice is a full-width text row (private roster data is not rendered for excluded viewers). Privacy-preserving, reported, not masked."
+      }
+    },
+    "q2TCnQ": {
+      "dialog": {
+        "status": "finding",
+        "reference": {
+          "x": 25,
+          "y": 228,
+          "width": 340,
+          "height": 388
+        },
+        "offsetY": 0,
+        "classification": "Layout: the frame draws a centered 340px confirmation card with a context summary (Playing/Reserve); live uses a 350px dialog that is 54px taller (reason field, translated copy) and anchored higher. Fixture copy differs (Paulo vs Management Player 1). Reported, not masked."
+      },
+      "confirmAction": {
+        "status": "finding",
+        "reference": {
+          "x": 48,
+          "y": 477,
+          "width": 294,
+          "height": 52
+        },
+        "offsetY": 0,
+        "geometry": ["height"],
+        "classification": "Layout: destructive action is 52px tall like the frame (gated) but 310px wide at x=40 vs the frame 294px at x=48 (card padding differs); residual 0.9602 includes the disabled (faded) state: the frame shows the enabled button. Not budgeted."
+      },
+      "dismissAction": {
+        "status": "finding",
+        "reference": {
+          "x": 48,
+          "y": 541,
+          "width": 294,
+          "height": 52
+        },
+        "offsetY": 0,
+        "geometry": ["height"],
+        "classification": "Layout: dismiss action is 52px tall like the frame (gated) but 310px wide at x=40 vs 294px at x=48 and 30px lower; residual 0.0755 is the outlined button at different width. Not budgeted."
+      }
+    },
+    "Ht2Oq": {
+      "dialog": {
+        "status": "finding",
+        "reference": {
+          "x": 25,
+          "y": 282,
+          "width": 340,
+          "height": 280
+        },
+        "offsetY": 0,
+        "classification": "Layout: the frame draws a centered 340px confirmation card without a reason field; live uses a 350px dialog that is 96px taller (cancellation reason textarea) and anchored higher. Reported, not masked."
+      },
+      "confirmAction": {
+        "status": "finding",
+        "reference": {
+          "x": 48,
+          "y": 423,
+          "width": 294,
+          "height": 52
+        },
+        "offsetY": 0,
+        "geometry": ["height"],
+        "classification": "Layout: destructive action is 52px tall like the frame (gated) but 310px wide at x=40 vs 294px at x=48; residual 0.9613 includes the disabled (faded) state, the frame shows it enabled. Not budgeted."
+      },
+      "dismissAction": {
+        "status": "finding",
+        "reference": {
+          "x": 48,
+          "y": 487,
+          "width": 294,
+          "height": 52
+        },
+        "offsetY": 0,
+        "geometry": ["height"],
+        "classification": "Layout: dismiss action is 52px tall like the frame (gated) but 310px wide at x=40 vs 294px at x=48 and 51px lower; residual 0.0866. Not budgeted."
+      }
+    },
+    "m7hh3": {
+      "dialogSurface": {
+        "status": "gated",
+        "reference": { "x": 0, "y": 528, "width": 390, "height": 316 },
+        "offsetY": 0,
+        "crop": { "dx": 20, "dy": 22, "width": 100, "height": 8 },
+        "geometry": [],
+        "budget": 0.01,
+        "classification": "Deferred comparison completed: the live centered Leave match dialog (350x258) and the frame's 390x316 bottom sheet differ in surface and size (see dialog), so only the comparable part is gated: a text-free 100x8 band of the white surface 22px below the top edge, clear of the sheet handle and the rounded corners, has residual 0 against the Pencil export (surface token); budget 0.01. Geometry is not gated because the surfaces differ by design."
+      },
+      "dialog": {
+        "status": "finding",
+        "reference": {
+          "x": 0,
+          "y": 528,
+          "width": 390,
+          "height": 316
+        },
+        "offsetY": 0,
+        "geometry": [],
+        "classification": "Remapped (UX adjudication): m7hh3 is the Organizer participation sheet; live renders the organizer Leave match dialog (a centered dialog, not a bottom sheet) as the closest withdraw choice. Surface and size differ; reported, not masked.",
+        "pixels": "none",
+        "pixelsReason": "The live Leave match dialog is a centered card shorter than the 390x316 sheet crop, so the crop would be clipped; surface and size differ by design."
+      }
+    },
+    "dmvWu": {
+      "closedBanner": {
+        "status": "finding",
+        "reference": {
+          "x": 20,
+          "y": 148,
+          "width": 350,
+          "height": 46
+        },
+        "offsetY": 0,
+        "geometry": ["x", "width"],
+        "classification": "Layout: the frame draws a single-row 46px \"Registration closed · groups are final.\" banner on a dedicated \"Match changes locked\" page; live renders a 102px banner (title + two-line copy) on Match details, 15.33px lower. Gutter and width stay gated; height and position are reported, not budgeted."
+      }
+    }
   },
   "pixelEvidence": {
     "kind": "Chromium fixture regression",
@@ -161,5 +529,20 @@
     },
     "tolerance": "0.5% cap for minor rasterization drift, not a tolerance for matching the Pencil pixels. Structural checks independently guard field order, access, layout, hit targets and focus.",
     "measurement": "Initial baseline capture: two consecutive PNGs matched byte-for-byte for all 19 fixtures after Playwright screenshot settling (390×844, Chromium, en/light)."
+  },
+  "unframedStates": {
+    "transfer": {
+      "frame": null,
+      "status": "no dedicated frame",
+      "maxDiffPixelRatio": 0.005,
+      "note": "no dedicated frame: m7hh3 draws the Organizer participation sheet, and c5xzgnc contains only a Transfer entry in the action menu, not the Transfer organization dialog. The dialog is covered by structural probes and a Chromium regression baseline only."
+    }
+  },
+  "acceptedAdaptations": {
+    "oVtuS": "Reconfirmation is an inline panel on Match details instead of a dedicated page; its actions stay reachable and the pinned-footer position is reported as a finding.",
+    "uiRqp": "Excluded notice is a text row without the quartet card: excluded viewers must not receive private roster data.",
+    "q2TCnQ": "Remove-player dialog is taller than the 340px card: the required reason field and translated copy justify the size; actions keep the 52px height.",
+    "Ht2Oq": "Cancel dialog is taller than the 340px card: the required cancellation reason field justifies the size; actions keep the 52px height.",
+    "dmvWu": "Locked state is an inline status banner on Match details with explanatory copy for each unavailable action, not a dedicated page."
   }
 }

@@ -124,12 +124,12 @@
     },
     "PairStatistics": {
       "frames": ["GrkSH"],
-      "note": "Breadcrumb and 21/800 title lead into the compact headline card before filters. Record sections remain 20px cards, meetings use hairline rows.",
+      "note": "Compact top bar (back chevron + 21/800 title) leads into the two-player composition (initials avatars, plus, other player's name and caption) and three headline tiles (matches, W-L-D, win rate; unavailable win rate renders the typed reason), then recent meetings, then the filter section and the detailed record cards (20px).",
       "route": "/players/$playerId/partners/$partnerId"
     },
     "OpponentStatistics": {
       "frames": ["khmeK"],
-      "note": "Recent meetings now lead, with exact filters and detailed head-to-head evidence still available below.",
+      "note": "Two-player composition and three tiles (meetings, W-L-D, set diff) lead, then recent meetings, with exact filters and detailed head-to-head evidence still available below.",
       "route": "/players/$playerId/opponents/$opponentId"
     },
     "RelationshipList": {
@@ -159,17 +159,17 @@
       },
       "GrkSH": {
         "cardEdge": 0,
-        "viewport": 0.1528,
         "header": 0.1044,
-        "primary": 0.1361,
-        "followUp": 0.1717
+        "primary": 0.2072,
+        "followUp": 0.1345,
+        "note": "Re-measured after the two-person composition and three tiles were restored. Bands realigned to the frame regions (header 0-104, composition+tiles 104-257, rest 257-844); they are not comparable to the earlier 104-355 band. The remaining primary residual is the live breadcrumb/title/filter chips/back link above the composition, which push it below the frame's single top bar."
       },
       "khmeK": {
         "cardEdge": 0,
-        "viewport": 0.0911,
-        "header": 0.1357,
-        "primary": 0.1225,
-        "followUp": 0.0473
+        "header": 0.1335,
+        "primary": 0.2033,
+        "followUp": 0.0687,
+        "note": "Re-measured after the two-person composition and three tiles were restored. Bands realigned to the frame regions (header 0-104, composition+tiles 104-257, rest 257-844); they are not comparable to the earlier 104-473 band. The remaining primary residual is the live breadcrumb/title/filter chips/back link above the composition."
       },
       "o9iaC1": {
         "cardEdge": 0,
@@ -216,7 +216,7 @@
       },
       "GrkSH": {
         "surface": "pair",
-        "cardSelector": "main > section[aria-label] > div",
+        "cardSelector": "main > section[aria-label] > dl > div",
         "referenceTop": 172,
         "previousViewportResidual": 0.1508,
         "budget": 0.015,
@@ -230,21 +230,21 @@
           {
             "name": "primary",
             "top": 104,
-            "bottom": 355,
-            "classification": "Fixture: player names, dates and record totals differ. Layout: summary now precedes filters; avatars and separate metric tiles are not implemented. Compare the first tile’s shared surface edge to the live summary card."
+            "bottom": 257,
+            "classification": "Restored hierarchy: two initials avatars with a plus, the other player's name and caption, then three 20px hairline tiles (matches, W-L-D, win rate) from the real pair record. Fixture: names and totals differ. Layout: the live breadcrumb, title, filter chips and back link above the composition push it below the frame's single top bar. Avatars are the initials fallback only: the sporting DTO carries display names, no avatar URL."
           },
           {
             "name": "follow-up",
-            "top": 355,
+            "top": 257,
             "bottom": 844,
-            "classification": "Layout: real filters and detailed records remain; meetings use seeded dates and scores. Structural coverage, not a broad raster tolerance."
+            "classification": "Layout: real filters and detailed records remain between the tiles and the meetings; meetings use seeded dates and scores. Structural coverage, not a broad raster tolerance."
           }
         ]
       },
       "khmeK": {
         "surface": "opponent",
-        "cardSelector": "section[aria-labelledby=\"relationship-recent\"] > div",
-        "referenceTop": 293,
+        "cardSelector": "main > section[aria-label] > dl > div",
+        "referenceTop": 172,
         "previousViewportResidual": 0.1507,
         "budget": 0.015,
         "bands": [
@@ -257,14 +257,14 @@
           {
             "name": "primary",
             "top": 104,
-            "bottom": 473,
-            "classification": "Fixture: player names, dates and scores differ. Layout: meetings now precede filters and detail; the separate avatar and three-tile row are absent. Compare the meetings card edge independently."
+            "bottom": 257,
+            "classification": "Restored hierarchy: two initials avatars with vs, the other player's name and caption, then three 20px hairline tiles (meetings, W-L-D, set diff) from the real head-to-head record. Fixture: names and totals differ. Layout: the live breadcrumb, title, filter chips and back link above the composition push it below the frame's single top bar. Avatars are the initials fallback only: the sporting DTO carries display names, no avatar URL."
           },
           {
             "name": "follow-up",
-            "top": 473,
+            "top": 257,
             "bottom": 844,
-            "classification": "Layout: exact date/league filters and real detailed evidence have no equivalent in this frame."
+            "classification": "Layout: recent meetings follow the tiles as in the frame (table with date, result, sets, games, rating and match link versus the frame's chip rows); exact date/league filters and real detailed evidence have no equivalent in this frame."
           }
         ]
       },
@@ -352,9 +352,9 @@
       "frames": ["o9iaC1"],
       "note": "Focusable scroll region with caption, scoped headers and every value; 14px type and hairline row separators."
     },
-    "StatisticsBreadcrumb": {
+    "RelationshipHeadline": {
       "frames": ["GrkSH", "khmeK"],
-      "note": "The frame back chevron maps to the breadcrumb (player statistics link keeps the filters in the URL, current page aria-current); 44px links, 14px muted trail."
+      "note": "Compact top bar: 44px back chevron (named Back to player statistics, keeps the filters in the URL) and the title on one 56px row; a 44px Statistics filters jump below it; the active-filter chips sit with the filter section under the meetings. Players and tiles follow, then recent meetings, then filters and detailed records."
     },
     "StatisticsStates": {
       "frames": [],

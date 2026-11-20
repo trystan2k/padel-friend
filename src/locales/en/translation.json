@@ -2489,18 +2489,21 @@
         "title": "Partnership",
         "heading": "{{first}} & {{second}}",
         "subtitle": "Results when these two players were on the same team.",
-        "played": "Matches together",
-        "headline": "{{played}} together · W {{wins}} · L {{losses}} · D {{draws}}",
-        "lastMeeting": "Last played together {{date}}",
-        "streak": "Current streak: {{length}} · {{kind}}",
-        "noStreak": "Current streak: none",
-        "noMeeting": "No matches together yet"
+        "played": "Matches together"
       },
       "opponent": {
         "title": "Head to head",
         "heading": "{{first}} vs {{second}}",
         "subtitle": "Results when these two players were on opposite teams, from the first player’s point of view.",
-        "played": "Meetings"
+        "played": "Meetings",
+        "versus": "vs"
+      },
+      "tiles": {
+        "matches": "Matches",
+        "meetings": "Meetings",
+        "record": "W–L–D",
+        "winRate": "Win rate",
+        "setDiff": "Set diff"
       },
       "sections": {
         "record": "Record",

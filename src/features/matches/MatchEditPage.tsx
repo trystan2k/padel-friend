@@ -1,7 +1,7 @@
-import { Dialog } from '@base-ui/react/dialog';
 import * as stylex from '@stylexjs/stylex';
-import { useRef, useState, type RefObject } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Button } from '../../components/ui/Button';
 import type { MatchEventDetail, MatchLeagueOption } from './match-contracts';
 import { MatchDetailTextField, MatchDetailCurrencyField } from './MatchDetailsForm';
 import { matchEditDraft, type MatchEditDraft } from './match-management-edit';
@@ -15,6 +15,7 @@ import { MatchEditCompetitionField } from './MatchEditCompetitionField';
 import { MatchLeagueImpact } from './MatchLeagueImpact';
 import { matchManagementStyles as s } from './match-management.styles';
 import { matchEditStyles as edit } from './match-edit.styles';
+import { createMatchStyles as page } from './create-match.styles';
 import { MatchManagementUnavailable } from './MatchManagementUnavailable';
 
 /** The bound League stays selectable even if the options reader no longer lists it. */
@@ -39,16 +40,14 @@ function withCurrentLeague(event: MatchEventDetail, leagues: MatchLeagueOption[]
 }
 
 /** Mount per explicit open, not per loader version: conflicts must retain drafts. */
-export function MatchEditDialog({
+export function MatchEditPage({
   event,
   version,
-  onClose,
-  returnFocus
+  onClose
 }: {
   event: MatchEventDetail;
   version: number;
   onClose: () => void;
-  returnFocus: RefObject<HTMLButtonElement | null>;
 }) {
   const { t, i18n } = useTranslation();
   const [snapshot] = useState(() => ({ event, version }));
@@ -57,6 +56,7 @@ export function MatchEditDialog({
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [saved, setSaved] = useState(false);
   const form = useRef<HTMLFormElement>(null);
+  const heading = useRef<HTMLHeadingElement>(null);
   const action = useMatchEdit(snapshot.event.event_id, snapshot.version);
   const competitive = draft.eventType === 'competitive';
   const options = useMatchLeagueOptions(snapshot.event, draft.startsAt, competitive);
@@ -97,6 +97,8 @@ export function MatchEditDialog({
   const competitionUnresolved =
     rankedWithoutLeague && (options.status === 'loading' || options.status === 'error');
   const rejectionWindow = competitionImpactWindow(action.rejection?.detail?.league ?? null);
+  // Entering the flow lands on its heading, like the other page flows.
+  useEffect(() => heading.current?.focus(), []);
   const change = <K extends keyof MatchEditDraft>(key: K, value: MatchEditDraft[K]) => {
     setDraft((current) => ({ ...current, [key]: value }));
     setErrors({});
@@ -154,57 +156,55 @@ export function MatchEditDialog({
       }
     />
   );
+  const busy = action.pending;
+  const blocked = busy || action.conflict || saved || !!action.unavailable || competitionUnresolved;
   return (
-    <Dialog.Root
-      open
-      onOpenChange={(open) => {
-        if (!open && !action.pending) onClose();
-      }}
-      disablePointerDismissal={action.pending}
-    >
-      <Dialog.Portal>
-        <Dialog.Backdrop {...stylex.props(s.backdrop)} />
-        <Dialog.Popup
-          {...stylex.props(s.popup, edit.popup)}
-          finalFocus={() =>
-            returnFocus.current?.isConnected
-              ? returnFocus.current
-              : document.getElementById('match-detail-heading')
-          }
+    <main {...stylex.props(page.page)}>
+      <header {...stylex.props(page.topBar)}>
+        <button
+          type="button"
+          aria-label={t('matches.management.close')}
+          disabled={busy}
+          onClick={onClose}
+          {...stylex.props(page.back)}
         >
-          <div {...stylex.props(edit.header)}>
-            <Dialog.Title {...stylex.props(s.dialogTitle)}>
-              {t('matches.management.edit.title')}
-            </Dialog.Title>
-            <Dialog.Close
-              disabled={action.pending}
-              aria-label={t('matches.management.close')}
-              {...stylex.props(s.button, edit.button, edit.close)}
-            >
-              <svg
-                aria-hidden="true"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.5"
-                {...stylex.props(s.icon)}
-              >
-                <path d="m6 6 12 12M18 6 6 18" />
-              </svg>
-            </Dialog.Close>
-          </div>
-          <Dialog.Description {...stylex.props(edit.copy)}>
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            aria-hidden="true"
+            {...stylex.props(page.backIcon)}
+          >
+            <path d="m14 6-6 6 6 6" />
+          </svg>
+        </button>
+        <h1 id="match-edit-heading" ref={heading} tabIndex={-1} {...stylex.props(page.title)}>
+          {t('matches.management.edit.title')}
+        </h1>
+      </header>
+      <form
+        ref={form}
+        noValidate
+        {...stylex.props(page.form)}
+        onSubmit={async (e) => {
+          e.preventDefault();
+          await submit(draft);
+        }}
+      >
+        <div {...stylex.props(page.content)}>
+          <p {...stylex.props(edit.copy)}>
             {t(
               major && snapshot.event.accepted_count > 0
                 ? 'matches.reconfirmation.description'
                 : 'matches.management.edit.minorNotice'
             )}
-          </Dialog.Description>
+          </p>
           {major && (
             <section {...stylex.props(edit.conflict)} aria-labelledby="match-edit-review-heading">
-              <h3 id="match-edit-review-heading" {...stylex.props(edit.conflictHeading)}>
+              <h2 id="match-edit-review-heading" {...stylex.props(edit.conflictHeading)}>
                 {t('matches.management.edit.reviewMajor')}
-              </h3>
+              </h2>
               <p {...stylex.props(edit.copy)}>
                 {t('matches.management.edit.changeSummary', {
                   before: `${t(`matches.type.${original.eventType}`)} · ${original.startsAt.replace('T', ' ')}`,
@@ -219,7 +219,7 @@ export function MatchEditDialog({
           )}
           {action.conflict && (
             <section role="alert" {...stylex.props(edit.conflict)}>
-              <h3 {...stylex.props(edit.conflictHeading)}>
+              <h2 {...stylex.props(edit.conflictHeading)}>
                 <svg
                   aria-hidden="true"
                   viewBox="0 0 24 24"
@@ -232,7 +232,7 @@ export function MatchEditDialog({
                   <path d="M12 8v6m0 3v1" />
                 </svg>
                 {t('matches.management.edit.conflictTitle')}
-              </h3>
+              </h2>
               <p {...stylex.props(edit.copy)}>{t('matches.management.edit.conflictDescription')}</p>
               <div {...stylex.props(edit.columns)}>
                 <button
@@ -257,9 +257,9 @@ export function MatchEditDialog({
           )}
           {action.rejection && (
             <section role="alert" {...stylex.props(edit.conflict)}>
-              <h3 {...stylex.props(edit.conflictHeading)}>
+              <h2 {...stylex.props(edit.conflictHeading)}>
                 {t(`matches.management.edit.rejection.${action.rejection.code}.title`)}
-              </h3>
+              </h2>
               <p {...stylex.props(edit.copy)}>
                 {t(`matches.management.edit.rejection.${action.rejection.code}.description`, {
                   league: action.rejection.detail?.league?.league_name ?? '',
@@ -307,103 +307,90 @@ export function MatchEditDialog({
               )}
             </section>
           )}
-          <form
-            ref={form}
-            noValidate
-            {...stylex.props(edit.form)}
-            onSubmit={async (e) => {
-              e.preventDefault();
-              await submit(draft);
-            }}
+          <fieldset
+            disabled={action.pending || saved || !!action.unavailable}
+            {...stylex.props(edit.fields)}
           >
-            <fieldset
-              disabled={action.pending || saved || !!action.unavailable}
-              {...stylex.props(edit.fields)}
-            >
-              <label {...stylex.props(edit.field)}>
-                {t('matchCreate.fields.type')}
-                <select
-                  value={draft.eventType}
-                  onChange={(e) =>
-                    change(
-                      'eventType',
-                      e.target.value === 'competitive' ? 'competitive' : 'friendly'
-                    )
-                  }
-                  {...stylex.props(s.input, edit.input)}
-                >
-                  <option value="friendly">{t('matches.type.friendly')}</option>
-                  <option value="competitive">{t('matches.type.competitive')}</option>
-                </select>
-              </label>
-              {field('startsAt', 'datetime-local')}
-              {competitive && (
-                <MatchEditCompetitionField
-                  competition={{
-                    status: options.status,
-                    candidates,
-                    resolution,
-                    retry: options.retry
-                  }}
-                  change={change}
-                  error={errors.leagueId}
-                />
-              )}
-              {impact && snapshot.event.accepted_count > 0 && (
-                <p {...stylex.props(edit.helper)}>
-                  {t('matches.management.edit.competitionConsent')}
-                </p>
-              )}
-              {field('venueName')}
-              {field('mapsUrl', 'url')}
-              {field('courtNotes')}
-              <div {...stylex.props(edit.columns)}>
-                {field('price', 'number')}
-                <MatchDetailCurrencyField
-                  value={draft.currency}
-                  onChange={(value) => change('currency', value)}
-                  error={errors.currency}
-                  fieldStyle={edit.field}
-                  inputStyle={edit.input}
-                />
-              </div>
-              {field('paymentNote')}
-              {field('notes')}
-              {field('maximumRegistrations', 'number')}
-              {field('cutoff', 'datetime-local')}
-            </fieldset>
-            {action.conflict && (
-              <p {...stylex.props(edit.helper)}>{t('matches.management.edit.conflictHelper')}</p>
+            <label {...stylex.props(edit.field)}>
+              {t('matchCreate.fields.type')}
+              <select
+                value={draft.eventType}
+                onChange={(e) =>
+                  change('eventType', e.target.value === 'competitive' ? 'competitive' : 'friendly')
+                }
+                {...stylex.props(s.input, edit.input)}
+              >
+                <option value="friendly">{t('matches.type.friendly')}</option>
+                <option value="competitive">{t('matches.type.competitive')}</option>
+              </select>
+            </label>
+            {field('startsAt', 'datetime-local')}
+            {competitive && (
+              <MatchEditCompetitionField
+                competition={{
+                  status: options.status,
+                  candidates,
+                  resolution,
+                  retry: options.retry
+                }}
+                change={change}
+                error={errors.leagueId}
+              />
             )}
-            {action.feedback && <output aria-live="polite">{t(action.feedback)}</output>}
-            {competitionUnresolved && (
-              <p id="match-edit-save-blocked" {...stylex.props(edit.helper)}>
-                {t('matches.management.edit.competition.saveBlocked')}
+            {impact && snapshot.event.accepted_count > 0 && (
+              <p {...stylex.props(edit.helper)}>
+                {t('matches.management.edit.competitionConsent')}
               </p>
             )}
+            {field('venueName')}
+            {field('mapsUrl', 'url')}
+            {field('courtNotes')}
             <div {...stylex.props(edit.columns)}>
-              <Dialog.Close disabled={action.pending} {...stylex.props(s.button, edit.button)}>
-                {t('matches.management.cancel')}
-              </Dialog.Close>
-              <button
-                type="submit"
-                {...stylex.props(s.button, edit.button, edit.primary)}
-                disabled={
-                  action.pending ||
-                  action.conflict ||
-                  saved ||
-                  !!action.unavailable ||
-                  competitionUnresolved
-                }
-                aria-busy={action.pending}
-                aria-describedby={competitionUnresolved ? 'match-edit-save-blocked' : undefined}
-              >
-                {t('matches.management.edit.save')}
-              </button>
+              {field('price', 'number')}
+              <MatchDetailCurrencyField
+                value={draft.currency}
+                onChange={(value) => change('currency', value)}
+                error={errors.currency}
+                fieldStyle={edit.field}
+                inputStyle={edit.input}
+              />
             </div>
-          </form>
-        </Dialog.Popup>
-      </Dialog.Portal>
-    </Dialog.Root>
+            {field('paymentNote')}
+            {field('notes')}
+            {field('maximumRegistrations', 'number')}
+            {field('cutoff', 'datetime-local')}
+          </fieldset>
+
+          {action.conflict && (
+            <p {...stylex.props(edit.helper)}>{t('matches.management.edit.conflictHelper')}</p>
+          )}
+          {action.feedback && <output aria-live="polite">{t(action.feedback)}</output>}
+          {competitionUnresolved && (
+            <p id="match-edit-save-blocked" {...stylex.props(edit.helper)}>
+              {t('matches.management.edit.competition.saveBlocked')}
+            </p>
+          )}
+        </div>
+        <div {...stylex.props(page.actions)}>
+          <Button
+            variant="secondary"
+            xstyle={page.secondaryAction}
+            disabled={busy}
+            onClick={onClose}
+          >
+            {t('matches.management.cancel')}
+          </Button>
+          <Button
+            type="submit"
+            xstyle={page.primaryAction}
+            busy={busy}
+            disabled={blocked}
+            aria-describedby={competitionUnresolved ? 'match-edit-save-blocked' : undefined}
+          >
+            {t('matches.management.edit.save')}
+          </Button>
+        </div>
+      </form>
+    </main>
   );
 }

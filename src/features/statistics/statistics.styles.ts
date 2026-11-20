@@ -57,28 +57,6 @@ export const statisticsStyles = stylex.create({
     color: 'var(--color-red)',
     fontSize: 'var(--font-size-14)'
   },
-  breadcrumbList: {
-    display: 'flex',
-    flexWrap: 'wrap',
-    alignItems: 'center',
-    columnGap: 'var(--space-6)',
-    listStyle: 'none',
-    margin: 0,
-    padding: 0,
-    fontSize: 'var(--font-size-14)',
-    color: 'var(--color-muted)'
-  },
-  breadcrumbLink: {
-    display: 'inline-flex',
-    alignItems: 'center',
-    minHeight: TOUCH,
-    minWidth: TOUCH,
-    color: 'var(--color-text)',
-    fontWeight: 'var(--font-weight-semibold)',
-    textDecoration: 'underline',
-    ':focus-visible': focusRing
-  },
-  breadcrumbCurrent: { overflowWrap: 'anywhere' },
   retry: {
     display: 'inline-flex',
     alignItems: 'center',

@@ -30,8 +30,8 @@ describe('statistics styles', () => {
   it('keeps interactive statistics controls at the 44px floor', () => {
     const source = readFileSync(join(dir, 'statistics.styles.ts'), 'utf8');
     expect(source).toContain('calc(var(--space-40) + var(--space-4))');
-    // Controls are 48px (CONTROL); the 44px floor stays for compact targets such as breadcrumb links.
+    // Controls are 48px (CONTROL); the 44px floor stays for compact targets such as the back link.
     expect(source).toContain("const CONTROL = 'calc(var(--space-40) + var(--space-8))'");
-    expect(source.match(/minHeight: (?:TOUCH|CONTROL)/g)?.length).toBeGreaterThanOrEqual(3);
+    expect(source.match(/minHeight: (?:TOUCH|CONTROL)/g)?.length).toBeGreaterThanOrEqual(2);
   });
 });

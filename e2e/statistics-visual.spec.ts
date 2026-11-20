@@ -288,6 +288,11 @@ async function compositionFailures(page: Page, regions: Region[]): Promise<strin
 }
 
 const FILTER_BADGES: Region = { name: 'filter context', selector: 'main > header ul[aria-label]' };
+/** GrkSH / khmeK keep the active-filter chips with the filter section, below the summary. */
+const RELATIONSHIP_FILTER_BADGES: Region = {
+  name: 'filter context',
+  selector: 'main > ul[aria-label]'
+};
 const SCOPE_NAME = (id: string): Region => ({
   name: id,
   selector: `section[aria-labelledby="${id}"]`
@@ -315,16 +320,18 @@ const PLAYER_REGIONS: Region[] = [
   SCOPE_NAME('player-stats-records')
 ];
 
-/** GrkSH: breadcrumb, pair title, compact headline card, then record regions and recent matches. */
+/** GrkSH / khmeK lead: the two-player composition, then the three headline metric tiles. */
+const HEADLINE_REGIONS: Region[] = [
+  { name: 'player composition', selector: 'main > header + div' },
+  { name: 'headline tiles', selector: 'main > section[aria-label] > dl > div', count: 3 }
+];
+
+/** GrkSH: compact top bar, players, three tiles, recent meetings, then filters and record regions. */
 const PAIR_REGIONS: Region[] = [
-  { name: 'breadcrumb', selector: 'main > header nav' },
   { name: 'title', selector: 'main > header h1', count: 1 },
-  FILTER_BADGES,
-  {
-    name: 'compact headline',
-    selector: 'main > section[aria-label] > * > p:first-child',
-    count: 1
-  },
+  ...HEADLINE_REGIONS,
+  SCOPE_NAME('relationship-recent'),
+  RELATIONSHIP_FILTER_BADGES,
   SCOPE_NAME('pair-stats-filters'),
   {
     name: 'community selector',
@@ -335,16 +342,15 @@ const PAIR_REGIONS: Region[] = [
   SCOPE_NAME('pair-stats-scores'),
   SCOPE_NAME('pair-stats-streaks'),
   SCOPE_NAME('pair-stats-rating'),
-  SCOPE_NAME('pair-stats-leagues'),
-  SCOPE_NAME('relationship-recent')
+  SCOPE_NAME('pair-stats-leagues')
 ];
 
-/** khmeK: opponent record, head-to-head sections, recent meetings (no pair-only regions). */
+/** khmeK: players, three tiles, recent meetings, then head-to-head sections (no pair-only regions). */
 const OPPONENT_REGIONS: Region[] = [
-  { name: 'breadcrumb', selector: 'main > header nav' },
   { name: 'title', selector: 'main > header h1', count: 1 },
-  FILTER_BADGES,
+  ...HEADLINE_REGIONS,
   SCOPE_NAME('relationship-recent'),
+  RELATIONSHIP_FILTER_BADGES,
   SCOPE_NAME('opponent-stats-filters'),
   {
     name: 'community selector',
@@ -414,12 +420,35 @@ for (const [locale, width] of LOCALES.flatMap((language) =>
       for (const failure of await compositionFailures(page, regions))
         failures.push(`${surface.name}: ${failure}`);
     }
-    // Pair is the compact summary: it never draws the player highlight tiles; opponent has no
-    // pair-only league region.
-    await page.goto(surfaces().find((candidate) => candidate.name === 'pair')!.path);
-    await waitForHydratedPage(page);
-    if ((await page.locator('main > section[aria-label] > dl').count()) !== 0)
-      failures.push('pair: unexpected highlight tiles');
+    // GrkSH / khmeK: a compact top bar, not a stacked breadcrumb + title + link column. Back chevron
+    // and title share one row inside a bar of at most 64px, and the summary starts right under it.
+    for (const name of ['pair', 'opponent']) {
+      await page.goto(surfaces().find((candidate) => candidate.name === name)!.path);
+      await waitForHydratedPage(page);
+      const bar = await page.evaluate(() => {
+        const back = document.querySelector('main > header nav a')!.getBoundingClientRect();
+        const title = document.querySelector('main > header h1')!.getBoundingClientRect();
+        const identity = document.querySelector('main > header + div')!.getBoundingClientRect();
+        return { back, title, identity };
+      });
+      if (bar.back.width < 44 || bar.back.height < 44)
+        failures.push(name + ': back link under 44px');
+      if (Math.abs(bar.back.top + bar.back.height / 2 - (bar.title.top + bar.title.height / 2)) > 8)
+        failures.push(name + ': back link and title are not on one row');
+      if (bar.title.left < bar.back.right) failures.push(name + ': title overlaps the back link');
+      if ((await page.locator('main > header a[href^="#"]').count()) !== 1)
+        failures.push(name + ': filter access link missing');
+      const meetings = await page.locator('#relationship-recent').boundingBox();
+      const filters = await page.locator('#' + name + '-stats-filters').boundingBox();
+      if (!meetings || !filters || meetings.y > filters.y)
+        failures.push(name + ': meetings must come before the filter section');
+      // 56px bar plus the 44px filter access row (title may wrap at 320px); was ~300px stacked.
+      if (bar.identity.top > 150)
+        failures.push(
+          name + ': summary starts too far below the bar (' + Math.round(bar.identity.top) + 'px)'
+        );
+    }
+    // Opponent has no pair-only league region.
     await page.goto(surfaces().find((candidate) => candidate.name === 'opponent')!.path);
     await waitForHydratedPage(page);
     if ((await page.locator('#pair-stats-leagues').count()) !== 0)

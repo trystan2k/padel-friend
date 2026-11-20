@@ -137,7 +137,7 @@ describe('match styles', () => {
       ];
       for (const control of controls)
         expect(control[2], `Control style: ${component}`).toMatch(
-          /stylex\.props\((?:s\.(?:button|input|menuItem)|(?:buttons|card)\.(?:primaryButton|secondaryButton))|render=\{<Button/
+          /stylex\.props\((?:s\.(?:button|input|menuItem)|page\.back|(?:buttons|card)\.(?:primaryButton|secondaryButton))|render=\{<Button/
         );
     }
   });

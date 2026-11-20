@@ -18,6 +18,11 @@ export const appShellStyles = stylex.create({
     zIndex: 5,
     paddingBlockStart: 'var(--space-6)',
     paddingBlockEnd: 'max(var(--space-18), env(safe-area-inset-bottom))',
+    // Inline room keeps the focus ring of the edge tabs inside the scroll container.
+    paddingInline: 'var(--space-4)',
+    // Below five targets of width the row scrolls instead of shrinking tabs under 44px.
+    overflowX: 'auto',
+    scrollbarWidth: 'none',
     backgroundColor: 'var(--color-surface)',
     borderBlockStartWidth: 'var(--border-width-sm)',
     borderBlockStartStyle: 'solid',
@@ -32,7 +37,14 @@ export const appShellStyles = stylex.create({
     listStyle: 'none',
     maxWidth: 'calc(var(--space-40) * 12)'
   },
-  item: { flex: 1, minWidth: 0, display: 'flex', justifyContent: 'center' },
+  item: {
+    flex: 1,
+    flexShrink: 0,
+    minWidth: 'calc(var(--space-40) + var(--space-4))',
+    display: 'flex',
+    justifyContent: 'center'
+  },
+  createItem: { minWidth: target },
   tab: {
     boxSizing: 'border-box',
     display: 'flex',

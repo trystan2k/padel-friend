@@ -130,7 +130,12 @@ async function layoutViolations(page: Page): Promise<string[]> {
         element.closest('[aria-hidden="true"], [data-base-ui-focus-guard]')
       )
         continue;
-      if (bounds.right > root.clientWidth + 1 || bounds.left < -1)
+      // The app-shell tabs scroll inside their own overflow container; their 44px targets are
+      // asserted in the controls loop below.
+      if (
+        !element.closest('[data-app-nav]') &&
+        (bounds.right > root.clientWidth + 1 || bounds.left < -1)
+      )
         out.push(element.tagName + ' leaves the viewport');
       if (
         style.overflowX !== 'visible' &&
@@ -145,9 +150,6 @@ async function layoutViolations(page: Page): Promise<string[]> {
     );
     for (const control of controls) {
       if (control.closest('[aria-hidden="true"], [data-base-ui-focus-guard]')) continue;
-      // Five app-shell tabs cannot each be 44px wide below 220px (200% zoom of a 390px phone); the
-      // shell navigation is not a level review surface and keeps its own reflow coverage.
-      if (control.closest('[data-app-nav]') && root.clientWidth < 5 * 44) continue;
       const checkable =
         control instanceof HTMLInputElement &&
         (control.type === 'radio' || control.type === 'checkbox');

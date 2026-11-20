@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Locator, type Page } from '@playwright/test';
 import {
   copies,
   en as defaultCopy,
@@ -9,10 +9,18 @@ import {
   sql,
   visualEventId
 } from './matches-management-fixtures';
+import { assertFrameRegions, type FrameRegionRecord } from './frame-regions';
 import clubhouse from './references/paf-202-match-management/manifest.json' with { type: 'json' };
 
 const frames = Object.entries(clubhouse.frames);
 const budgets: Record<string, { maxDiffPixelRatio: number }> = clubhouse.pixelEvidence.perFrame;
+// JSON.parse keeps the manifest's literal status strings assignable to FrameRegionRecord.
+const frameRegions: Record<string, Record<string, FrameRegionRecord>> = JSON.parse(
+  readFileSync(
+    new URL('./references/paf-202-match-management/manifest.json', import.meta.url),
+    'utf8'
+  )
+).frameRegions;
 const hash = (bytes: Buffer) => createHash('sha256').update(bytes).digest('hex');
 
 let f: Awaited<ReturnType<typeof fixtures>>;
@@ -221,7 +229,20 @@ async function prepare(
     ).toBeVisible();
   if (state === 'minor-edit' || state === 'major-change' || state === 'minor-edit-conflict') {
     await page.getByRole('button', { name: m.edit.title, exact: true }).click();
-    const dialog = page.getByRole('dialog');
+    // lJHUZ / t0SZec are page flows: the edit replaces the detail inside main, with pinned actions.
+    const dialog = page.locator('main');
+    await expect(page.getByRole('dialog')).toHaveCount(0);
+    await expect(
+      dialog.getByRole('heading', { level: 1, name: m.edit.title, exact: true })
+    ).toBeFocused();
+    const save = dialog.getByRole('button', { name: m.edit.save, exact: true });
+    expect(await save.evaluate((el) => getComputedStyle(el.parentElement!).position)).toBe(
+      'sticky'
+    );
+    await expect(save).toBeInViewport();
+    await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
+    await expect(save).toBeInViewport();
+    await page.evaluate(() => window.scrollTo(0, 0));
     if (state === 'major-change')
       await dialog
         .getByRole('combobox', { name: copy.matchCreate.fields.type, exact: true })
@@ -281,9 +302,7 @@ async function prepare(
         .getByLabel(copy.matchCreate.fields.mapsUrl, { exact: true })
         .fill('maps.google.com/../management');
       await dialog.getByLabel(copy.matchCreate.fields.mapsUrl, { exact: true }).blur();
-      await dialog.evaluate((element) => {
-        element.scrollTop = 0;
-      });
+      await page.evaluate(() => window.scrollTo(0, 0));
     }
   } else if (state === 'removal-reason-dialog') {
     await page
@@ -294,6 +313,10 @@ async function prepare(
     await expect(
       page.getByRole('dialog').getByRole('button', { name: m.remove, exact: true })
     ).toBeDisabled();
+  } else if (state === 'organizer-participation') {
+    // m7hh3 (remapped): the organizer leaving the roster is the live withdraw choice.
+    await page.getByRole('button', { name: m.leave, exact: true }).click();
+    await expect(page.getByRole('dialog')).toHaveAccessibleName(m.leaveTitle);
   } else if (state === 'cancel' || state === 'transfer') {
     await page.getByRole('button', { name: m.actions, exact: true }).click();
     await page
@@ -517,6 +540,105 @@ async function prepare(
   return page;
 }
 
+/** Live regions compared with the same region of the Pencil export (manifest.frameRegions). */
+function frameRegionLocators(
+  page: Page,
+  state: string,
+  copy: typeof defaultCopy
+): Record<string, Locator> | null {
+  const m = copy.matches.management;
+  const dialog = page.getByRole('dialog');
+  const reconfirmation = page.getByRole('region', { name: copy.matches.reconfirmation.title });
+  const invitations = page.getByRole('region', { name: copy.matches.invitations.title });
+  const save = page.getByRole('button', { name: m.edit.save, exact: true });
+  const reviewDraft = page.getByRole('button', { name: m.edit.reviewDraft, exact: true });
+  const statusRegion = (title: keyof typeof copy.matches.detail.statusTitles) =>
+    page.getByRole('region', { name: copy.matches.detail.statusTitles[title], exact: true });
+  switch (state) {
+    case 'minor-edit':
+    case 'major-change':
+      return { saveAction: save, saveActionFill: save };
+    case 'minor-edit-conflict':
+      return {
+        conflictAlert: page.getByRole('main').getByRole('alert'),
+        reviewDraftAction: reviewDraft,
+        reviewDraftFill: reviewDraft,
+        reloadAction: page.getByRole('button', { name: m.edit.reload, exact: true }),
+        pinnedFooter: save.locator('..')
+      };
+    case 'invitation-pending':
+      return {
+        statusNotice: invitations.getByRole('status'),
+        acceptAction: invitations.getByRole('button', {
+          name: copy.matches.invitations.accept,
+          exact: true
+        }),
+        declineAction: invitations.getByRole('button', {
+          name: copy.matches.invitations.decline,
+          exact: true
+        })
+      };
+    case 'invitation-accepted':
+      return { statusBanner: statusRegion('accepted') };
+    case 'invitation-declined':
+      return { statusBanner: statusRegion('declined') };
+    case 'invitation-expired':
+      return { statusBanner: statusRegion('expired') };
+    case 'creator-action-menu':
+      return { menu: page.getByRole('menu') };
+    case 'organizer-only':
+      return {
+        organizerNotice: page.getByText(m.organizerOnly, { exact: true }),
+        manageAction: page.getByRole('button', { name: m.actions, exact: true })
+      };
+    case 'cancelled-tombstone':
+      return { cancelledBanner: statusRegion('cancelled') };
+    case 'started-unavailable':
+      return {
+        lockedBanner: statusRegion('started'),
+        recordResultAction: page.getByRole('link', {
+          name: copy.matches.results.title,
+          exact: true
+        })
+      };
+    case 'result-protected-unavailable':
+      return { protectedBanner: statusRegion('result_protected') };
+    case 'creator-required':
+      return {
+        reconfirmPanel: reconfirmation,
+        awaitingEntry: reconfirmation.getByRole('listitem')
+      };
+    case 'player-required':
+      return {
+        reconfirmAction: page
+          .getByRole('region', { name: copy.matches.reconfirmation.title })
+          .getByRole('button', { name: copy.matches.reconfirmation.reviewTerms, exact: true })
+      };
+    case 'reconfirmation-excluded':
+      return {
+        excludedNotice: page.getByText(copy.matches.reconfirmation.excluded, { exact: true })
+      };
+    case 'removal-reason-dialog':
+    case 'cancel':
+      return {
+        dialog,
+        confirmAction: dialog.getByRole('button').first(),
+        dismissAction: dialog.getByRole('button').last()
+      };
+    case 'organizer-participation':
+      return { dialog, dialogSurface: dialog };
+    case 'cutoff-unavailable':
+      return {
+        closedBanner: page.getByRole('region', {
+          name: copy.matches.detail.statusTitles.closed,
+          exact: true
+        })
+      };
+    default:
+      return null;
+  }
+}
+
 // Clubhouse PNGs pin design provenance. Chromium snapshots cover the real fixtures.
 test('Clubhouse design exports match pinned digests', () => {
   for (const [frame, sha256] of Object.entries(clubhouse.exportSha256)) {
@@ -546,6 +668,22 @@ for (const [state, frame] of frames) {
       )
       .toBe(true);
     const capture = { animations: 'disabled', caret: 'hide', scale: 'css' } as const;
+    const regions = frameRegions[frame];
+    const locators = frameRegionLocators(page, state, defaultCopy);
+    // Design layer first: the Pencil export is the reference, the Chromium snapshot only guards
+    // browser regressions. A mapped state without manifest regions must not skip the comparison.
+    if (locators) {
+      if (!regions) throw new Error(`Missing frame regions: ${state} ${frame}`);
+      await assertFrameRegions({
+        page,
+        frame,
+        reference: readFileSync(
+          new URL(`./references/paf-202-match-management/${frame}.png`, import.meta.url)
+        ),
+        regions,
+        locators
+      });
+    }
     const budget = budgets[frame];
     if (!budget) throw new Error(`Missing Clubhouse browser budget: ${frame}`);
     await expect(page).toHaveScreenshot(`${frame}-light.png`, {
@@ -595,12 +733,26 @@ test('MatchesPage 320px longest translated header clears global chips', async ()
   }
 });
 
+// The Transfer organization dialog has no dedicated frame (manifest.unframedStates): structural
+// probes in prepare() plus a Chromium regression baseline, never a design-frame comparison.
+test('transfer — no dedicated frame, browser regression', async () => {
+  const page = await prepare('transfer');
+  await bounds(page);
+  await page.evaluate(() => document.fonts.ready);
+  await expect(page).toHaveScreenshot('transfer-light.png', {
+    animations: 'disabled',
+    caret: 'hide',
+    scale: 'css',
+    maxDiffPixelRatio: clubhouse.unframedStates.transfer.maxDiffPixelRatio
+  });
+});
+
 for (const variant of [
   { width: 320, locale: 'pt-BR' as const, theme: 'dark' as const },
   { width: 390, locale: 'en' as const, theme: 'light' as const },
   { width: 1280, locale: 'es' as const, theme: 'dark' as const }
 ]) {
-  for (const [state, frame] of frames) {
+  for (const [state, frame] of [...frames, ['transfer', 'unframed'] as const]) {
     test(`${state} (${frame}) responsive structure ${variant.width}/${variant.locale}/${variant.theme} — no variant frame`, async () => {
       const page = await prepare(state, variant);
       await expect(page.locator('html')).toHaveAttribute('data-theme', variant.theme);

@@ -2489,18 +2489,21 @@
         "title": "Pareja",
         "heading": "{{first}} y {{second}}",
         "subtitle": "Resultados cuando estos dos jugadores estaban en el mismo equipo.",
-        "played": "Partidos juntos",
-        "headline": "{{played}} juntos · G {{wins}} · P {{losses}} · E {{draws}}",
-        "lastMeeting": "Último partido juntos el {{date}}",
-        "streak": "Racha actual: {{length}} · {{kind}}",
-        "noStreak": "Racha actual: ninguna",
-        "noMeeting": "Aún sin partidos juntos"
+        "played": "Partidos juntos"
       },
       "opponent": {
         "title": "Cara a cara",
         "heading": "{{first}} contra {{second}}",
         "subtitle": "Resultados cuando estos dos jugadores estaban en equipos contrarios, desde el punto de vista del primer jugador.",
-        "played": "Enfrentamientos"
+        "played": "Enfrentamientos",
+        "versus": "vs"
+      },
+      "tiles": {
+        "matches": "Partidos",
+        "meetings": "Enfrentamientos",
+        "record": "V–D–E",
+        "winRate": "% de victorias",
+        "setDiff": "Dif. de sets"
       },
       "sections": {
         "record": "Balance",

@@ -12,6 +12,7 @@ import {
 } from '@playwright/test';
 import { spawnTestSql, testSupabaseConfig } from './test-supabase-config';
 import { waitForHydratedPage } from './auth-helpers';
+import { assertFrameRegions, type FrameRegionRecord } from './frame-regions';
 
 // Pixel baselines superseded by the PAF-6 frame-driven redesign; re-baselining requires product approval.
 // Retain structural/role/a11y coverage. Historical exports remain provenance only.
@@ -1043,6 +1044,7 @@ async function assertListChrome(
 
 type MatchesReferences = {
   frames: Record<string, { sha256: string }>;
+  frameRegions: Record<string, Record<string, FrameRegionRecord>>;
   toleranceEvidence: Record<string, { maxDiffPixelRatio: number }>;
 };
 const matchesReferences: MatchesReferences = JSON.parse(
@@ -1057,9 +1059,25 @@ function dynamicMask(page: Page): Locator[] {
   ];
 }
 
-/** Chromium baseline for one Clubhouse frame. The Pencil export is hash-pinned design evidence
- * (manifest.json); fixture dates, times and history rows differ from the sample data, so those are
- * masked and the exact structural probes carry the layout assertions. */
+/** Live regions compared with the same region of the Pencil export (design layer). The card is
+ * the first article, or the empty-state section when the list has none. */
+function frameRegionLocators(page: Page, frame: string): Record<string, Locator> {
+  const card = frame === 'kYI9H' ? page.locator('main > section') : page.locator('main article');
+  return {
+    title: page.locator('main h1'),
+    newAction: page.locator('main a[href="/matches/create"]'),
+    tabs: page.locator('main nav'),
+    bottomNav: page.locator('nav[data-app-nav]'),
+    card,
+    cardEdge: card
+  };
+}
+
+/** Two layers per Clubhouse frame. The Pencil export is hash-pinned and compared region by region
+ * with the live page (design layer, manifest.frameRegions: gated regions carry measured budgets,
+ * finding regions record real divergences and are never masked). The Chromium snapshot below is the
+ * browser regression layer: fixture dates, times and history rows differ from the sample data, so
+ * those are masked and the exact structural probes carry the layout assertions. */
 async function assertMatchesFrame(page: Page, frame: string, mask: Locator[]): Promise<void> {
   const source = readFileSync(
     new URL(`./references/paf-202-matches/${frame}.png`, import.meta.url)
@@ -1068,6 +1086,14 @@ async function assertMatchesFrame(page: Page, frame: string, mask: Locator[]): P
     matchesReferences.frames[frame]!.sha256
   );
   await page.evaluate(() => document.fonts.ready);
+  await assertFrameRegions({
+    page,
+    frame,
+    reference: source,
+    regions: matchesReferences.frameRegions[frame]!,
+    locators: frameRegionLocators(page, frame),
+    mask
+  });
   await expect(page).toHaveScreenshot(`${frame}-light.png`, {
     animations: 'disabled',
     caret: 'hide',

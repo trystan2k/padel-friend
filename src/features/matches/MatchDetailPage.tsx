@@ -3,8 +3,8 @@ import { Button } from '../../components/ui/Button';
 import { StatusBadge } from '../../components/ui/StatusBadge';
 import { MatchCompetitionBadge } from './MatchCompetitionBadge';
 import { Link } from '@tanstack/react-router';
-import { useRef, useState } from 'react';
-import { MatchEditDialog } from './MatchEditDialog';
+import { useEffect, useRef, useState } from 'react';
+import { MatchEditPage } from './MatchEditPage';
 import { MatchReconfirmationPanel } from './MatchReconfirmationPanel';
 import { useTranslation } from 'react-i18next';
 import { MatchRegistrationPanel } from './MatchRegistrationPanel';
@@ -89,6 +89,13 @@ export function MatchDetailPage({
   const { t, i18n } = useTranslation();
   const editTrigger = useRef<HTMLButtonElement>(null);
   const [editing, setEditing] = useState(false);
+  const wasEditing = useRef(false);
+  // Leaving the edit page returns focus to its trigger (or the page heading when it is gone).
+  useEffect(() => {
+    if (wasEditing.current && !editing)
+      (editTrigger.current ?? document.getElementById('match-detail-heading'))?.focus();
+    wasEditing.current = editing;
+  }, [editing]);
   const [asOf] = useState(() => Date.now());
   const [feedback, setFeedback] = useState<{ id: string; copied: boolean; failed: boolean } | null>(
     null
@@ -142,6 +149,11 @@ export function MatchDetailPage({
           currency: event.currency
         }).format(event.price_minor / 100)
       : null;
+  // The edit flow is a page of its own: persistent actions, no modal over the detail.
+  if (editing && management && !unavailable)
+    return (
+      <MatchEditPage event={event} version={management.version} onClose={() => setEditing(false)} />
+    );
   if (
     (proposals.length > 0 || (event.result_summary.expected_group_count > 0 && event.is_past)) &&
     event.status !== 'cancelled' &&
@@ -258,14 +270,6 @@ export function MatchDetailPage({
           >
             {t('matches.management.edit.title')}
           </button>
-        )}
-        {editing && management && !unavailable && (
-          <MatchEditDialog
-            event={event}
-            version={management.version}
-            onClose={() => setEditing(false)}
-            returnFocus={editTrigger}
-          />
         )}
         {invitation && event.status !== 'cancelled' && (
           <MatchInvitationPanel

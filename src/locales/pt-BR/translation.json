@@ -2489,18 +2489,21 @@
         "title": "Dupla",
         "heading": "{{first}} e {{second}}",
         "subtitle": "Resultados quando estes dois jogadores estavam no mesmo time.",
-        "played": "Partidas juntos",
-        "headline": "{{played}} juntos · V {{wins}} · D {{losses}} · E {{draws}}",
-        "lastMeeting": "Última partida juntos em {{date}}",
-        "streak": "Sequência atual: {{length}} · {{kind}}",
-        "noStreak": "Sequência atual: nenhuma",
-        "noMeeting": "Ainda sem partidas juntos"
+        "played": "Partidas juntos"
       },
       "opponent": {
         "title": "Confronto direto",
         "heading": "{{first}} x {{second}}",
         "subtitle": "Resultados quando estes dois jogadores estavam em times opostos, do ponto de vista do primeiro jogador.",
-        "played": "Confrontos"
+        "played": "Confrontos",
+        "versus": "x"
+      },
+      "tiles": {
+        "matches": "Partidas",
+        "meetings": "Confrontos",
+        "record": "V–D–E",
+        "winRate": "% de vitórias",
+        "setDiff": "Saldo de sets"
       },
       "sections": {
         "record": "Retrospecto",
