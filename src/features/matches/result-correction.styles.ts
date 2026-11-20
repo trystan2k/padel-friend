@@ -23,6 +23,11 @@ export const resultCorrectionStyles = stylex.create({
     backgroundColor: 'var(--color-surface)',
     overflowWrap: 'anywhere'
   },
+  requestCard: {
+    borderWidth: 'var(--border-width-sm)',
+    borderStyle: 'solid',
+    borderColor: 'var(--color-hairline)'
+  },
   cardEmbedded: {
     padding: 0,
     borderWidth: 0,
@@ -71,6 +76,7 @@ export const resultCorrectionStyles = stylex.create({
     textTransform: 'uppercase',
     letterSpacing: 'var(--font-letter-spacing-1-5)'
   },
+  proposedLabel: { textTransform: 'none', letterSpacing: 'normal' },
   factValue: { margin: 0, fontWeight: 'var(--font-weight-semibold)', overflowWrap: 'anywhere' },
   factCompact: { fontSize: 'var(--font-size-13)' },
   scoreLine: {
@@ -122,6 +128,7 @@ export const resultCorrectionStyles = stylex.create({
   },
   primary: { backgroundColor: 'var(--color-green)', color: 'var(--color-on-green)' },
   danger: { color: 'var(--color-red)' },
+  reviewReject: { minHeight: 'calc(var(--space-40) + var(--space-8))' },
   list: {
     display: 'grid',
     gap: 'var(--space-6)',

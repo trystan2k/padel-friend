@@ -8,7 +8,9 @@ const sentenceCase = (copy: string) => copy === copy.charAt(0).toUpperCase() + c
 
 describe('result decision visual references', () => {
   it('shares the Clubhouse source design and treats CWJkF as record-only', () => {
-    expect(manifest.sourceDesign.sha256).toBe(recording.sourceDesign.sha256);
+    expect(manifest.sourceDesign.path).toBe('docs/design/padel-friend-clubhouse.pen');
+    const source = readFileSync(new URL(`../${manifest.sourceDesign.path}`, import.meta.url));
+    expect(createHash('sha256').update(source).digest('hex')).toBe(manifest.sourceDesign.sha256);
     expect(Object.keys(manifest.recordOnly)).toEqual(['CWJkF']);
     const mapped = Object.values(manifest.surfaces).flatMap((surface) => surface.frames);
     expect(mapped).toEqual(expect.arrayContaining(['sLXK7', 'JXjNs', 'H6VcqC', 'GMcbD', 'adujr']));

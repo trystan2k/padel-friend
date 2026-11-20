@@ -109,47 +109,8 @@ const es = localeCopy('es');
 const copyFor = (locale: string): Copy => (locale === 'pt-BR' ? ptBr : locale === 'es' ? es : en);
 
 // ---------------------------------------------------------------------------
-// Historical Pencil exports retain runtime digest checks. Current source design
-// and full-frame certification belong to PAF-6; no snapshot files are consumed.
-// ---------------------------------------------------------------------------
-
-type VisualManifest = {
-  sourceDesign: { path: string; sha256: string };
-  approvedReferences: Record<string, { frameId: string; sha256: string; derivation: string }>;
-};
-
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
-
-function isVisualManifest(value: unknown): value is VisualManifest {
-  if (!isRecord(value) || !isRecord(value.sourceDesign) || !isRecord(value.approvedReferences))
-    return false;
-  return Object.values(value.approvedReferences).every(
-    (reference) => isRecord(reference) && typeof reference.sha256 === 'string'
-  );
-}
-
-const visualManifest: VisualManifest = (() => {
-  const raw: unknown = JSON.parse(
-    readFileSync(new URL('./references/paf-4/manifest.json', import.meta.url), 'utf8')
-  );
-  if (!isVisualManifest(raw)) throw new Error('Invalid PAF-4 visual provenance manifest');
-  return raw;
-})();
-
-function digestFile(path: URL): string {
-  return createHash('sha256').update(readFileSync(path)).digest('hex');
-}
-
-function assertManifestProvenance(): void {
-  // Source-design digest is historical: PAF-6 now owns the current .pen digest.
-  for (const [reference, approved] of Object.entries(visualManifest.approvedReferences)) {
-    expect(
-      digestFile(new URL(`./references/paf-4/${reference}`, import.meta.url)),
-      `${reference} must match its reviewed Pencil export digest`
-    ).toBe(approved.sha256);
-  }
 }
 
 // ---------------------------------------------------------------------------
@@ -783,6 +744,8 @@ async function assertWizardChrome(
   stepIndex: number,
   stepName: string
 ): Promise<void> {
+  await expect(page.locator('main > header h1')).toBeVisible();
+  await expect(page.locator('main ol[aria-hidden="true"]')).toBeAttached();
   const green = await tokenColor(page, '--color-green');
   const track = await tokenColor(page, '--color-surface-2');
   const gutter = await tokenValue(page, '--space-20');
@@ -1785,7 +1748,6 @@ async function createFillerEvents(): Promise<void> {
 test.describe.serial('PAF-4 match event visual and structural QA', () => {
   test.beforeAll(() => {
     test.setTimeout(240_000);
-    assertManifestProvenance();
   });
 
   test('create wizard — Details, Players and Team mode match the approved frames', async ({

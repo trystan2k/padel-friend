@@ -386,14 +386,13 @@ function budget(key: string): number {
 
 // --- provenance --------------------------------------------------------------------------
 
-test('reference provenance pins the design source and all three exported frames', () => {
-  const design = readFileSync(new URL('../docs/design/padel-friend.pen', import.meta.url));
+test('D1 current-truth provenance pins the blocked platform reference', () => {
+  const design = readFileSync(new URL(`../${manifest.sourceDesign.path}`, import.meta.url));
   expect(createHash('sha256').update(design).digest('hex')).toBe(manifest.sourceDesign.sha256);
-  for (const [frame, reference] of Object.entries(manifest.approvedReferences)) {
-    const png = readFileSync(new URL('./references/paf-17/' + reference.file, import.meta.url));
-    expect(createHash('sha256').update(png).digest('hex'), frame).toBe(reference.sha256);
-    expect([png.readUInt32BE(16), png.readUInt32BE(20)], frame).toEqual(reference.pixelSize);
-  }
+  const reference = manifest.approvedReferences.gGNxk;
+  const png = readFileSync(new URL(`./references/paf-17/${reference.file}`, import.meta.url));
+  expect(createHash('sha256').update(png).digest('hex')).toBe(reference.sha256);
+  expect([png.readUInt32BE(16), png.readUInt32BE(20)]).toEqual(reference.pixelSize);
 });
 
 // --- request (qWosG) and status (OKYtp): Clubhouse frames ---------------------------------
@@ -896,6 +895,11 @@ for (const variant of MATRIX) {
       await open(reviewer, '/platform-admin/level-reviews/' + ids.pending);
       await expect(
         reviewer.getByRole('heading', { name: copy.adminDecision.preview })
+      ).toBeVisible();
+      // Hydration wires the Field labels after first paint: wait for the accessible names.
+      await expect(reviewer.getByRole('textbox', { name: copy.adminDecision.note })).toBeVisible();
+      await expect(
+        reviewer.getByRole('textbox', { name: copy.adminDecision.target })
       ).toBeVisible();
       expect(await layoutViolations(reviewer), 'admin detail').toEqual([]);
       await reviewer.getByRole('radio', { name: copy.adminDecision.reduce }).check();

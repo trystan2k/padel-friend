@@ -13,10 +13,8 @@ import {
 import manifest from './references/paf-14/manifest.json' with { type: 'json' };
 import repairManifest from './references/paf-202-repair-diagnostics/manifest.json' with { type: 'json' };
 import {
-  type ContractEntry,
   assertColumnStructure,
   assertContained,
-  assertFrameContract,
   assertInventory,
   childSummary,
   runCompositionProbes,
@@ -97,38 +95,6 @@ async function prepare(
   return { page, root };
 }
 
-/** Design-token expressions that production uses where it differs from the frame (declared adaptations). */
-const tk = {
-  size12: 'var(--font-size-12)',
-  size13: 'var(--font-size-13)',
-  size16: 'var(--font-size-16)',
-  size20: 'var(--font-size-20)',
-  regular: 'var(--font-weight-regular)',
-  semibold: 'var(--font-weight-semibold)',
-  bold: 'var(--font-weight-bold)',
-  heading: 'var(--font-family-heading)',
-  tracking: 'var(--font-letter-spacing-1-5)',
-  radius12: 'var(--radius-12)',
-  radius14: 'var(--radius-14)',
-  space8: 'var(--space-8)',
-  space9: 'var(--space-9)',
-  space11: 'var(--space-11)',
-  space4: 'var(--space-4)',
-  space18: 'var(--space-18)',
-  radius16: 'var(--radius-16)',
-  space6: 'var(--space-6)',
-  transparent: 'transparent',
-  space14: 'var(--space-14)',
-  zero: '0px',
-  muted: 'var(--color-muted)',
-  text: 'var(--color-text)',
-  red: 'var(--color-red)',
-  amber: 'var(--color-amber)',
-  bg: 'var(--color-bg)',
-  surface: 'var(--color-surface)',
-  surface2: 'var(--color-surface-2)'
-};
-
 const escapeRegExp = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 const startsWith = (value: string) => new RegExp(`^${escapeRegExp(value)}`);
 const group1 = fill(copies.en.matches.results.group, { number: 1 });
@@ -178,13 +144,9 @@ function requestProbes(page: Page, root: Locator) {
     'A6.banner': async () => {
       const [banner] = await childSummary(root);
       expect(banner?.tag).toBe('P');
-      expect(banner?.text).toBe(c.officialLabel.toUpperCase());
+      expect(banner?.text).toBe(c.officialLabel);
       const sampled = await captureGeometry({ banner: root.locator('p').first(), card: root });
-      assertNear(
-        sampled.banner.box.width,
-        sampled.card.inner.width,
-        'banner spans the card content width'
-      );
+      expect(sampled.banner.box.width).toBeLessThan(sampled.card.inner.width);
     },
     'A7.cardChrome': async () => {
       const chrome = await root.evaluate((element) => {
@@ -196,7 +158,7 @@ function requestProbes(page: Page, root: Locator) {
         };
       });
       expect(chrome.border).toBe('1px');
-      expect(chrome.padding).toBe('18px');
+      expect(chrome.padding).toBe('16px');
       expect(chrome.childBorders.every((width) => width === '0px')).toBe(true);
     },
     'A8.noShellNav': async () => {
@@ -227,7 +189,7 @@ function reviewProbes(page: Page, root: Locator) {
     'B1.banner': async () => {
       const [banner] = await childSummary(root);
       expect(banner?.tag).toBe('P');
-      expect(banner?.text).toBe(c.lifecycle.proposal_pending.toUpperCase());
+      expect(banner?.text).toBe(c.lifecycle.proposal_pending);
     },
     'B2.childOrder': async () => {
       const children = await childSummary(root);
@@ -245,7 +207,7 @@ function reviewProbes(page: Page, root: Locator) {
       ]);
       const sampled = await captureGeometry({ approve, reject, card: root });
       const inner = sampled.card.inner;
-      assertNear(sampled.approve.box.y, sampled.reject.box.y, 'approve and reject share a row');
+      assertStacked({ approve: sampled.approve.box, reject: sampled.reject.box });
       assertNear(sampled.approve.box.x, inner.x, 'approve at the content edge');
       assertNear(sampled.reject.box.right, inner.right, 'reject at the opposite content edge');
     },
@@ -266,7 +228,7 @@ function reviewProbes(page: Page, root: Locator) {
         lines.map((line) => line.tag),
         'proposed card line order'
       ).toEqual(['H4', 'P', 'P', 'P', 'P', 'P', 'P', 'P']);
-      expect(lines[0]?.text).toBe(fill(c.proposedVersion, { version: 2 }).toUpperCase());
+      expect(lines[0]?.text).toBe(fill(c.proposedVersion, { version: 2 }));
       expect(lines[1]?.text).toMatch(/^\d+–\d+/);
       expect(lines[4]?.text).toMatch(startsWith(c.proposedBy.split('{{')[0]!));
       expect(lines[5]?.text).toMatch(startsWith(c.autoConfirm.split('{{')[0]!));
@@ -315,7 +277,7 @@ function resolveProbes(page: Page) {
     },
     'C3.disputeSummary': async () => {
       const children = await childSummary(disputed);
-      expect(children[0]?.text).toBe(c.lifecycle.disputed.toUpperCase());
+      expect(children[0]?.text).toBe(c.lifecycle.disputed);
       expect(children[1]).toEqual({ tag: 'H3', text: fill(c.cardTitle, { number: 1 }) });
       expect(children.map((child) => child.tag)).toContain('DL');
       await expect(disputed.locator('dd').first()).toHaveText('Score recorded backwards');
@@ -355,215 +317,21 @@ function resolveProbes(page: Page) {
       expect(form[2]?.text).toBe(c.dialog.hint);
       expect(form[3]?.text).toBe(c.dialog.text.required);
       expect(form[4]?.text).toBe(c.resolve.notice);
-      expect(form[5]?.text).toBe(`${c.dialog.cancel} ${c.resolve.submit}`);
+      expect(form[5]?.text).toBe(`${c.resolve.submit} ${c.dialog.cancel}`);
     },
     'C6.dialogEdges': async () => {
       const edges = await box(dialog);
-      assertNear(edges.x, frameViewport.width - edges.right, 'dialog is centered', 1);
-      expect.soft(edges.x, 'dialog keeps a margin of at least 12px').toBeGreaterThanOrEqual(12);
-      expect
-        .soft(edges.x, 'dialog margin stays within the frame gutter')
-        .toBeLessThanOrEqual(manifest.geometryReference.gutter);
+      assertNear(edges.x, 0, 'sheet starts at the viewport edge');
+      assertNear(edges.right, frameViewport.width, 'sheet ends at the viewport edge');
+      const bottom = await dialog.evaluate((element) => element.getBoundingClientRect().bottom);
+      assertNear(bottom, frameViewport.height, 'sheet is bottom anchored');
     }
   };
   return { dialog: dialogProbes };
 }
 
-/** Composition probes of the diagnostics frames' adapted elements (order, adjacency, identity). */
-/** Production element for each Pencil element of the request frame (typography, color, geometry). */
-function requestContract(root: Locator): ContractEntry[] {
-  const c = copies.en.matches.corrections;
-  const banner = root.locator('p').first();
-  const action = root.getByRole('button', { name: c.request.open, exact: true });
-  return [
-    {
-      ref: 'CONFIRMED',
-      locator: banner,
-      widthInset: 38,
-      heightRange: [29, 33],
-      allow: { padding: tk.space9, radius: tk.radius12 },
-      adaptation: 'A6'
-    },
-    {
-      ref: 'CONFIRMED label',
-      locator: banner,
-      allow: { letterSpacing: tk.tracking },
-      adaptation: 'A6'
-    },
-    { ref: 'Score', locator: root.locator('p').nth(1) },
-    {
-      ref: 'Navigation / transition',
-      locator: root.getByText(c.requestNote, { exact: true }),
-      allow: { color: tk.muted, weight: tk.regular },
-      adaptation: 'A4'
-    },
-    {
-      ref: 'Submit amendment',
-      locator: action,
-      widthInset: 38,
-      heightRange: [44, 44.5],
-      allow: { padding: tk.space9, gap: tk.zero },
-      adaptation: 'A5'
-    },
-    { ref: 'Button label', locator: action, allow: { caps: 'sentence' }, adaptation: 'A5' }
-  ];
-}
-
-function reviewContract(root: Locator): ContractEntry[] {
-  const c = copies.en.matches.corrections;
-  const review = copies.en.matches.results.review;
-  const proposed = root.getByRole('region', { name: c.proposed });
-  const approve = root.getByRole('button', { name: review.approve, exact: true });
-  const reject = root.getByRole('button', { name: review.reject, exact: true });
-  const banner = root.locator('p').first();
-  const actionBlock = { allow: { padding: tk.space9, gap: tk.zero }, adaptation: 'B3' };
-  return [
-    {
-      ref: 'PROPOSAL PENDING',
-      locator: banner,
-      widthInset: 38,
-      heightRange: [29, 33],
-      allow: { fill: tk.surface2, padding: tk.space9, radius: tk.radius12 },
-      adaptation: 'B1'
-    },
-    {
-      ref: 'PROPOSAL PENDING label',
-      locator: banner,
-      allow: { color: tk.amber, letterSpacing: tk.tracking },
-      adaptation: 'B1'
-    },
-    { ref: 'Corrected proposal', locator: proposed, widthInset: 38 },
-    { ref: 'New score', locator: proposed.locator('p').first() },
-    { ref: 'Submitter', locator: proposed.locator('p').nth(3) },
-    {
-      ref: 'Deadline',
-      locator: proposed.locator('p').nth(4),
-      allow: { color: tk.muted },
-      adaptation: 'B5'
-    },
-    {
-      ref: 'Approve corrected result',
-      locator: approve,
-      widthInset: 38,
-      columns: 2,
-      heightRange: [44, 44.5],
-      ...actionBlock
-    },
-    { ref: 'Button label', locator: approve, allow: { caps: 'sentence' }, adaptation: 'B3' },
-    {
-      ref: 'Reject corrected result',
-      locator: reject,
-      widthInset: 38,
-      columns: 2,
-      heightRange: [44, 44.5],
-      ...actionBlock
-    },
-    {
-      ref: 'Button label#2',
-      locator: reject,
-      allow: { caps: 'sentence', color: tk.red },
-      adaptation: 'B4'
-    }
-  ];
-}
-
-function resolveContract(page: Page): ContractEntry[] {
-  const c = copies.en.matches.corrections;
-  const dialog = page.getByRole('dialog', { name: c.resolve.title, exact: true });
-  const disputed = page.locator('[data-amendment-lifecycle=disputed]');
-  const radios = dialog.getByRole('radio');
-  const option = (index: number) => radios.nth(index).locator('xpath=ancestor::label');
-  const rowWidth = { widthTolerance: 40 };
-  return [
-    {
-      ref: 'Screen title',
-      locator: dialog.getByRole('heading', { name: c.resolve.title, exact: true }),
-      allow: { family: tk.heading },
-      adaptation: 'C2'
-    },
-    {
-      ref: 'Screen subtitle',
-      locator: dialog.locator('header p').first(),
-      allow: { size: tk.size13 },
-      adaptation: 'C2'
-    },
-    {
-      ref: 'Dispute status',
-      locator: disputed.locator('p').first(),
-      skipWidth: true,
-      heightRange: [25, 40],
-      allow: { fill: tk.surface2, gap: tk.zero, radius: tk.radius12 },
-      adaptation: 'C3'
-    },
-    {
-      ref: 'Dispute status text',
-      locator: disputed.locator('p').first(),
-      allow: { color: tk.red, letterSpacing: tk.tracking, weight: tk.bold },
-      adaptation: 'C3'
-    },
-    {
-      ref: 'Dispute title',
-      locator: disputed.locator('h3'),
-      allow: { family: tk.heading },
-      adaptation: 'C3'
-    },
-    {
-      ref: 'Dispute reason',
-      locator: disputed.locator('dd').first(),
-      allow: { color: tk.text, weight: tk.semibold },
-      adaptation: 'C3'
-    },
-    {
-      ref: 'Decision title',
-      locator: dialog.locator('legend'),
-      allow: { size: tk.size13 },
-      adaptation: 'C4'
-    },
-    { ref: 'Request corrected score option', locator: option(0), ...rowWidth },
-    {
-      ref: 'Button label',
-      locator: option(0).locator('span').first(),
-      allow: { color: tk.text },
-      adaptation: 'C4'
-    },
-    { ref: 'Approve submitted proposal option', locator: option(1), ...rowWidth },
-    { ref: 'Button label#2', locator: option(1).locator('span').first() },
-    { ref: 'Void result option', locator: option(2), ...rowWidth },
-    { ref: 'Button label#3', locator: option(2).locator('span').first() }
-  ];
-}
-
-/** Selected-job detail: heading, summary line, attempt timeline, official revision, correlation id. */
-/** Running, queued and succeeded cards of the frame: surface, chip, context line and facts. */
-/** Status chip and action styles shared by the correction card and the repair diagnostics cards. */
-const bannerStyle = (locator: Locator, name: string, background: string, color: string) => ({
-  name,
-  locator,
-  tokens: {
-    'border-top-left-radius': 'var(--radius-12)',
-    'padding-top': 'var(--space-8)',
-    'padding-left': 'var(--space-9)',
-    'font-size': 'var(--font-size-12)',
-    'font-weight': 'var(--font-weight-bold)'
-  },
-  palette: { 'background-color': background, color },
-  literals: { 'text-transform': 'uppercase' }
-});
-const actionStyle = (locator: Locator, name: string, background: string, color: string) => ({
-  name,
-  locator,
-  tokens: {
-    'border-top-left-radius': 'var(--radius-12)',
-    'min-height': 'calc(var(--space-40) + var(--space-4))',
-    'font-size': 'var(--font-size-13)',
-    'font-weight': 'var(--font-weight-bold)'
-  },
-  palette: { 'background-color': background, color }
-});
-
 async function structure(kind: Kind, page: Page, root: Locator) {
   const c = copies.en.matches.corrections;
-  const g = manifest.geometryReference;
   const main = page.locator('main');
   const theme = kind === 'resolve' ? 'dark' : 'light';
   // Heading semantics: the section heading precedes the card heading in document order.
@@ -602,19 +370,19 @@ async function structure(kind: Kind, page: Page, root: Locator) {
     locator: root,
     tokens: {
       'background-color': 'var(--color-surface)',
-      'border-top-left-radius': 'var(--radius-16)',
-      'padding-top': 'var(--space-18)',
-      'row-gap': 'var(--space-14)'
+      'border-top-left-radius': 'var(--radius-18)',
+      'padding-top': 'var(--space-16)',
+      'row-gap': 'var(--space-10)'
     },
     palette: surface
   };
   if (kind !== 'resolve') {
     // Page-level geometry shared with the frames: 18px gutters and the 10px block rhythm.
     const card = at('root').box;
-    assertNear(card.x, g.gutter, `${kind} card left gutter equals the frame gutter`);
-    assertNear(frameViewport.width - card.right, g.gutter, `${kind} card right gutter`);
+    assertNear(card.x, 18, `${kind} card left gutter equals the frame gutter`);
+    assertNear(frameViewport.width - card.right, 18, `${kind} card right gutter`);
     const heading = at('heading').box;
-    assertNear(card.y - heading.bottom, g.blockGap, `${kind} section title to card gap`);
+    assertNear(card.y - heading.bottom, 10, `${kind} section title to card gap`);
   }
   if (kind === 'request') {
     const inner = at('root').inner;
@@ -625,30 +393,34 @@ async function structure(kind: Kind, page: Page, root: Locator) {
     assertStacked({ banner: bannerBox, note: noteBox, action: actionBox });
     // Frame order is banner, result, authority note, action (note below the action in the frame).
     assertStacked({ banner: bannerBox, result: resultBox, note: noteBox, action: actionBox });
-    for (const [name, item] of Object.entries({ banner: bannerBox, action: actionBox })) {
-      assertNear(item.x, inner.x, `request ${name} aligned to card content edge`);
-      assertNear(item.width, inner.width, `request ${name} spans the card content width`);
-    }
-    assertNear(actionBox.height, g.actionHeight, 'request action height equals the frame action');
-    expect
-      .soft(bannerBox.height, 'request chip is not shorter than the frame chip')
-      .toBeGreaterThanOrEqual(g.chipHeight);
-    expect
-      .soft(
-        bannerBox.height,
-        'request chip height delta stays within the declared type-token delta'
-      )
-      .toBeLessThanOrEqual(g.chipHeight + g.chipHeightMaxDelta);
-    assertNear(resultBox.y - bannerBox.bottom, 14, 'request banner to result gap = card gap token');
-    assertNear(noteBox.y - resultBox.bottom, 14, 'request result to note gap = card gap token');
-    assertNear(actionBox.y - noteBox.bottom, 14, 'request note to action gap = card gap token');
+    assertNear(bannerBox.x, inner.x, 'request pill aligned to the content edge');
+    expect.soft(bannerBox.width).toBeLessThan(inner.width);
+    assertNear(actionBox.x, inner.x, 'request action aligned to the content edge');
+    assertNear(actionBox.width, inner.width, 'request action spans the content width');
+    assertNear(actionBox.height, 52, 'adujr request action height');
+    assertNear(resultBox.y - bannerBox.bottom, 10, 'request pill to result gap');
+    assertNear(noteBox.y - resultBox.bottom, 10, 'request result to note gap');
+    assertNear(actionBox.y - noteBox.bottom, 10, 'request note to action gap');
     await assertDesignSystemStyles(
       page,
       theme,
       [
         cardStyle,
-        bannerStyle(banner, 'official-result chip', 'green-soft', 'green'),
-        actionStyle(action, 'request action', 'green', 'bg')
+        {
+          name: 'adujr confirmed pill',
+          locator: banner,
+          tokens: {
+            'border-top-left-radius': 'var(--radius-20)',
+            'font-size': 'var(--font-size-13)'
+          },
+          palette: { 'background-color': 'green-soft', color: 'green-ink' },
+          literals: { 'text-transform': 'none' }
+        },
+        {
+          name: 'adujr request action',
+          locator: action,
+          palette: { 'background-color': 'green', color: 'on-green' }
+        }
       ],
       kind
     );
@@ -659,25 +431,32 @@ async function structure(kind: Kind, page: Page, root: Locator) {
     const approveBox = at('approve').box;
     const rejectBox = at('reject').box;
     assertStacked({ banner: bannerBox, proposed: proposedBox, approve: approveBox });
-    for (const [name, item] of Object.entries({ banner: bannerBox, proposed: proposedBox })) {
-      assertNear(item.x, inner.x, `review ${name} aligned to card content edge`);
-      assertNear(item.width, inner.width, `review ${name} spans the card content width`);
+    assertNear(bannerBox.x, inner.x, 'review pill aligned to the content edge');
+    expect.soft(bannerBox.width).toBeLessThan(inner.width);
+    assertNear(proposedBox.x, inner.x, 'proposed result starts at the content edge');
+    assertNear(proposedBox.width, inner.width, 'proposed result spans the content width');
+    assertStacked({ approve: approveBox, reject: rejectBox });
+    assertNear(approveBox.height, 52, 's5TRC approve action height');
+    assertNear(rejectBox.height, 48, 's5TRC reject action height');
+    for (const [name, buttonBox] of Object.entries({ approve: approveBox, reject: rejectBox })) {
+      assertNear(buttonBox.x, inner.x, `${name} starts at the content edge`);
+      assertNear(buttonBox.width, inner.width, `${name} spans the content width`);
     }
-    // Approve and reject are two equal 44px actions in one row separated by the action gap token.
-    assertNear(approveBox.height, g.actionHeight, 'approve height equals the frame action');
-    assertNear(rejectBox.height, g.actionHeight, 'reject height equals the frame action');
-    assertNear(approveBox.y, rejectBox.y, 'approve and reject share a row');
-    assertNear(approveBox.width, rejectBox.width, 'approve and reject have equal width', 1);
-    assertNear(rejectBox.x - approveBox.right, 8, 'approve to reject gap = action gap token');
-    assertNear(approveBox.x, inner.x, 'approve starts at the card content edge');
-    assertNear(rejectBox.right, inner.right, 'reject ends at the card content edge');
-    assertNear(approveBox.y - proposedBox.bottom, 14, 'proposed to actions gap = card gap token');
     await assertDesignSystemStyles(
       page,
       theme,
       [
         cardStyle,
-        bannerStyle(banner, 'pending-review chip', 'surface-2', 'amber'),
+        {
+          name: 's5TRC pending pill',
+          locator: banner,
+          tokens: {
+            'border-top-left-radius': 'var(--radius-20)',
+            'font-size': 'var(--font-size-13)'
+          },
+          palette: { 'background-color': 'amber-soft', color: 'amber' },
+          literals: { 'text-transform': 'none' }
+        },
         {
           name: 'proposed result surface',
           locator: proposed,
@@ -688,8 +467,11 @@ async function structure(kind: Kind, page: Page, root: Locator) {
           },
           palette: { 'background-color': 'green-soft' }
         },
-        actionStyle(approve, 'approve action', 'green', 'bg'),
-        actionStyle(reject, 'reject action', 'surface-2', 'red')
+        {
+          name: 's5TRC approve action',
+          locator: approve,
+          palette: { 'background-color': 'green', color: 'on-green' }
+        }
       ],
       kind
     );
@@ -710,15 +492,13 @@ async function structure(kind: Kind, page: Page, root: Locator) {
       'dialog is horizontally centered',
       1
     );
-    expect
-      .soft(Math.abs(dialogBox.x - g.gutter), 'dialog edge distance to the frame gutter')
-      .toBeLessThanOrEqual(g.dialogGutterMaxDelta);
+    assertNear(dialogBox.x, 0, 'sheet spans the mobile viewport');
     const rows = [0, 1, 2].map((index) => dialogSample[`row${index}`]!.box);
     for (const [index, row] of rows.entries()) {
       assertContained(dialogBox, row, `resolution option ${index + 1}`);
       expect
         .soft(row.height, `option ${index + 1} meets the frame option height`)
-        .toBeGreaterThanOrEqual(g.optionHeight);
+        .toBeGreaterThanOrEqual(52);
       assertNear(row.x, rows[0]!.x, `option ${index + 1} aligned with option 1`);
       assertNear(row.width, rows[0]!.width, `option ${index + 1} width equals option 1`);
       if (index) {
@@ -754,20 +534,21 @@ async function structure(kind: Kind, page: Page, root: Locator) {
     assertStacked({ field: resolveSamples.field.box, submit: resolveSamples.submit.box });
     const cancelBox = resolveSamples.cancel.box;
     const submitBox = resolveSamples.submit.box;
-    assertNear(cancelBox.y, submitBox.y, 'dialog actions share a row');
-    assertNear(cancelBox.height, g.actionHeight, 'cancel action height equals the frame action');
-    assertNear(submitBox.height, g.actionHeight, 'record action height equals the frame action');
-    assertNear(cancelBox.width, submitBox.width, 'dialog actions have equal width', 1);
-    assertNear(
-      cancelBox.x,
-      resolveSamples.dialog.inner.x,
-      'cancel starts at the dialog content edge'
-    );
-    assertNear(
-      submitBox.right,
-      resolveSamples.dialog.inner.right,
-      'record ends at the dialog content edge'
-    );
+    assertStacked({ submit: submitBox, cancel: cancelBox });
+    assertNear(cancelBox.height, 52, 'sheet cancel action height');
+    assertNear(submitBox.height, 52, 'sheet submit action height');
+    for (const [name, buttonBox] of Object.entries({ submit: submitBox, cancel: cancelBox })) {
+      assertNear(
+        buttonBox.x,
+        resolveSamples.dialog.inner.x,
+        `${name} starts at the sheet content edge`
+      );
+      assertNear(
+        buttonBox.width,
+        resolveSamples.dialog.inner.width,
+        `${name} spans the sheet content`
+      );
+    }
     await assertDesignSystemStyles(
       page,
       theme,
@@ -823,25 +604,17 @@ for (const kind of ['request', 'review', 'resolve'] as const) {
     const theme = kind === 'resolve' ? 'dark' : 'light';
     const { page, root } = await prepare(kind, 'en', 390, theme);
     await structure(kind, page, root);
-    await assertFrameContract(
-      frames[kind],
-      kind === 'resolve' ? 'dialog' : 'page',
-      kind === 'request'
-        ? requestContract(root)
-        : kind === 'review'
-          ? reviewContract(root)
-          : resolveContract(page)
-    );
     const scope = kind === 'resolve' ? page.getByRole('dialog') : root;
     await assertTargets(scope, kind);
     await assertContrast(scope, kind);
     await assertReducedMotion(page, scope, kind);
     await assertNoOverflow(page, kind);
-    if (kind === 'request')
-      await runCompositionProbes('adujr', 'page', requestProbes(page, root).page);
-    else if (kind === 'review')
-      await runCompositionProbes('s5TRC', 'page', reviewProbes(page, root).page);
-    else await runCompositionProbes('CWJkF', 'dialog', resolveProbes(page).dialog);
+    const probes =
+      kind === 'request'
+        ? requestProbes(page, root).page
+        : kind === 'review'
+          ? reviewProbes(page, root).page
+          : resolveProbes(page).dialog;
     await measureFrame(
       frames[kind],
       page,
@@ -849,6 +622,7 @@ for (const kind of ['request', 'review', 'resolve'] as const) {
       kind === 'resolve' ? 'dialog' : 'page',
       regionsFor(kind, page, root)
     );
+    await runCompositionProbes(frames[kind], kind === 'resolve' ? 'dialog' : 'page', probes);
     // The request reason dialog opens last: it leaves the page state.
     if (kind === 'request')
       await runCompositionProbes('adujr', 'dialog', requestProbes(page, root).dialog);

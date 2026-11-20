@@ -1,7 +1,7 @@
 {
   "sourceDesign": {
-    "path": "docs/design/Padel-friend App Redesign/padel-friend-clubhouse.pen",
-    "sha256": "41f3b06db61a180ed1d0eebe0fb3ff71e0086a703b5497ad7b47cd7ba7bb971e",
+    "path": "docs/design/padel-friend-clubhouse.pen",
+    "sha256": "f6cf5a40f681001cd089948e38ed4e82d97fcfecd9303eb8d14f20bbfd3f4b5f",
     "exportCommand": "Pencil MCP: Export([\"ywfn7\",\"ik5JC\",\"d6ANDN\",\"xbIxj\",\"MYsDp\",\"r9r34\"], \"png\", \"<repo>/e2e/references/paf-202-leagues/<id>.png\", {scale:1})"
   },
   "route": "/community/$communityId/leagues/create · /community/$communityId/leagues/$leagueId",

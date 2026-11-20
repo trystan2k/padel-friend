@@ -12,7 +12,6 @@ import {
   sqlWithFixtureTriggersDisabled,
   type Locale
 } from './matches-results-fixtures';
-import manifest from './references/paf-7/manifest.json' with { type: 'json' };
 import clubhouseManifest from './references/paf-202-result-recording/manifest.json' with { type: 'json' };
 import { assertResultScreenshot, type RecordingReference } from './result-recording-visual';
 
@@ -91,18 +90,12 @@ async function geometry(page: Page) {
   }
 }
 
-test('approved reference provenance remains immutable', async ({ browserName }, info) => {
+test('Clubhouse recording source provenance remains immutable', ({ browserName }) => {
   expect(browserName).toBe('chromium');
   const hash = (bytes: Buffer) => createHash('sha256').update(bytes).digest('hex');
-  expect(hash(readFileSync(manifest.sourceDesign.path))).toBe(manifest.sourceDesign.sha256);
   expect(hash(readFileSync(clubhouseManifest.sourceDesign.path))).toBe(
     clubhouseManifest.sourceDesign.sha256
   );
-  for (const [name, reference] of Object.entries(manifest.approvedReferences)) {
-    const bytes = readFileSync(new URL(`./references/paf-7/${name}`, import.meta.url));
-    expect(hash(bytes)).toBe(reference.sha256);
-    await info.attach(name, { body: bytes, contentType: 'image/png' });
-  }
 });
 
 test('Clubhouse result fragments retain approved structure and measured visual budgets', async ({

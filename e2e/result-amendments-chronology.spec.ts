@@ -9,11 +9,9 @@ import {
   fill,
   sql
 } from './result-amendments-chronology-fixtures';
-import manifest from './references/paf-14/manifest.json' with { type: 'json' };
 import { assertDesignSystemStyles } from './league-standings-visual';
 import {
   assertColumnStructure,
-  assertFrameContract,
   childSummary,
   runCompositionProbes,
   assertContrast,
@@ -226,11 +224,11 @@ test('October correction after the League close replays later groups, preserves 
   await assertTargets(viewPrior.locator('xpath=..'), 'league history prior version');
   await assertNoOverflow(leaguePage, 'league history');
   await assertContrast(leaguePage.locator('main'), 'league history');
-  const g = manifest.geometryReference;
+  const gutter = 20; // U17's Clubhouse xbIxj owns the League history surface.
   const versionCard = banner.locator('xpath=..');
   const cardBox = await box(versionCard);
-  assertNear(cardBox.x, g.gutter, 'league version card left gutter equals the frame gutter');
-  assertNear(frameViewport.width - cardBox.right, g.gutter, 'league version card right gutter');
+  assertNear(cardBox.x, gutter, 'league version card left gutter equals the frame gutter');
+  assertNear(frameViewport.width - cardBox.right, gutter, 'league version card right gutter');
   const cardInner = await innerBox(versionCard);
   assertNear((await box(banner)).x, cardInner.x, 'league banner aligned to card content edge');
   const table = leaguePage
@@ -240,10 +238,10 @@ test('October correction after the League close replays later groups, preserves 
   const tableBox = await box(table);
   expect
     .soft(tableBox.x, 'league standings table starts inside the frame gutter')
-    .toBeGreaterThanOrEqual(g.gutter - 0.5);
+    .toBeGreaterThanOrEqual(gutter - 0.5);
   expect
     .soft(tableBox.right, 'league standings table ends inside the frame gutter')
-    .toBeLessThanOrEqual(frameViewport.width - g.gutter + 0.5);
+    .toBeLessThanOrEqual(frameViewport.width - gutter + 0.5);
   await assertColumnStructure(table, 'league standings table');
   await assertDesignSystemStyles(
     leaguePage,
@@ -262,7 +260,7 @@ test('October correction after the League close replays later groups, preserves 
   );
   const historySection = leaguePage.locator('section[aria-labelledby="league-history-heading"]');
   const leagues = copies.en.leagues;
-  await runCompositionProbes('xbIxj', 'page', {
+  const historyProbes = {
     'D1.banner': async () => {
       await expect(banner).toHaveText(history.correctionBanner);
       const children = await childSummary(versionCard);
@@ -307,53 +305,26 @@ test('October correction after the League close replays later groups, preserves 
     'D6.clubhouseControl': async () => {
       assertNear((await box(viewPrior)).height, 52, 'league view-prior Clubhouse control height');
     }
-  });
-  await assertFrameContract('xbIxj', 'page', [
-    {
-      ref: 'AUDITED CORRECTION label',
-      locator: banner,
-      allow: {
-        caps: 'sentence',
-        color: 'var(--color-text)',
-        family: 'var(--font-family-body)',
-        weight: 'var(--font-weight-semibold)'
-      },
-      adaptation: 'D1'
-    },
-    {
-      ref: 'Corrected result',
-      locator: versionCard.locator('p').nth(4),
-      allow: { color: 'var(--color-text)', family: 'var(--font-family-body)' },
-      adaptation: 'D6'
-    },
-    {
-      ref: 'Audit actor',
-      locator: versionCard.locator('p').nth(1),
-      allow: { color: 'var(--color-muted)', family: 'var(--font-family-body)' },
-      adaptation: 'D6'
-    },
-    {
-      ref: 'Correction summary',
-      locator: versionCard,
-      allow: {
-        gap: 'var(--space-6)',
-        padding: 'var(--space-10)',
-        radius: 'var(--radius-14)'
-      },
-      adaptation: 'D2'
-    },
-    {
-      ref: 'Standing 1',
-      locator: table.locator('tbody tr').first().locator('td').first(),
-      allow: {
-        color: 'var(--color-text)',
-        family: 'var(--font-family-body)',
-        weight: 'var(--font-weight-bold)'
-      },
-      adaptation: 'D3'
-    }
-  ]);
-  await banner.evaluate((element) => element.scrollIntoView({ block: 'start' }));
+  };
+  await runCompositionProbes('xbIxj', 'page', historyProbes);
+  await assertDesignSystemStyles(
+    leaguePage,
+    'light',
+    [
+      {
+        name: 'correction notice',
+        locator: banner,
+        tokens: {
+          'font-family': 'var(--font-family-body)',
+          'font-size': 'var(--font-size-15)'
+        },
+        palette: { 'background-color': 'amber-soft' },
+        literals: { 'text-transform': 'none' }
+      }
+    ],
+    'Clubhouse League history'
+  );
+  await leaguePage.evaluate(() => window.scrollTo(0, 0));
   await measureFrame('xbIxj', leaguePage, testInfo, 'page', { versionCard });
   await page.goto(league);
   await waitForHydratedPage(page);

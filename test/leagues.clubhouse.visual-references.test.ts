@@ -8,9 +8,7 @@ const sentenceCase = (copy: string) => copy === copy.charAt(0).toUpperCase() + c
 
 describe('league Clubhouse visual references', () => {
   it('pins the source design digest to the current Clubhouse design bytes', () => {
-    expect(manifest.sourceDesign.path).toBe(
-      'docs/design/Padel-friend App Redesign/padel-friend-clubhouse.pen'
-    );
+    expect(manifest.sourceDesign.path).toBe('docs/design/padel-friend-clubhouse.pen');
     expect(
       createHash('sha256')
         .update(read(`../${manifest.sourceDesign.path}`))

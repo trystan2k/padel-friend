@@ -130,7 +130,7 @@ function RequestCorrection({
       ref={card}
       tabIndex={-1}
       aria-label={t('matches.corrections.requestCardLabel', { number: proposal.group_number })}
-      {...stylex.props(c.card)}
+      {...stylex.props(c.card, c.requestCard)}
     >
       <p {...stylex.props(c.banner)}>{t('matches.corrections.officialLabel')}</p>
       <p {...stylex.props(c.scoreLine)}>

@@ -8,47 +8,16 @@ import {
   derivePaddedRowsPng,
   type PngMask
 } from '../e2e/png-mask';
+import onboarding from '../e2e/references/paf-202-onboarding/manifest.json';
 import publicManifest from '../e2e/references/paf-202-public/manifest.json';
 
-type VisualManifest = {
-  playerSampleDataMask: PngMask;
-  screenshotBaselines: { 'player-setup.png': { sha256: string } };
-};
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
-
-function isPngMask(value: unknown): value is PngMask {
-  if (!isRecord(value) || typeof value.maskColor !== 'string' || !Array.isArray(value.rectangles))
-    return false;
-  return value.rectangles.every(
-    (rectangle) =>
-      isRecord(rectangle) &&
-      typeof rectangle.name === 'string' &&
-      typeof rectangle.x === 'number' &&
-      typeof rectangle.y === 'number' &&
-      typeof rectangle.width === 'number' &&
-      typeof rectangle.height === 'number'
-  );
-}
-
-function isVisualManifest(value: unknown): value is VisualManifest {
-  if (!isRecord(value) || !isPngMask(value.playerSampleDataMask)) return false;
-  if (!isRecord(value.screenshotBaselines)) return false;
-  const playerBaseline = value.screenshotBaselines['player-setup.png'];
-  return isRecord(playerBaseline) && typeof playerBaseline.sha256 === 'string';
-}
-
 const reference = readFileSync(
-  new URL('../e2e/references/paf-1/player-setup.png', import.meta.url)
+  new URL('../e2e/references/paf-202-onboarding/PdRtP.png', import.meta.url)
 );
-const rawManifest: unknown = JSON.parse(
-  readFileSync(new URL('../e2e/references/paf-1/manifest.json', import.meta.url), 'utf8')
-);
-if (!isVisualManifest(rawManifest)) throw new Error('Invalid PAF-1 visual mask manifest');
-const manifest = rawManifest;
-const approvedBaselineDigest = manifest.screenshotBaselines['player-setup.png'].sha256;
+const testMask: PngMask = {
+  maskColor: '#FF00FF',
+  rectangles: [{ name: 'probe', x: 0, y: 0, width: 10, height: 10 }]
+};
 
 describe('deriveCroppedTopPng', () => {
   it('drops exactly the top rows and rejects a crop that leaves no rows', () => {
@@ -123,14 +92,15 @@ describe('onboarding crop comparator', () => {
 describe('deriveMaskedPng', () => {
   // Two PNG codec round-trips per run: CPU-bound, and the default 5s budget is not
   // reliable when parallel suite workers saturate the machine (observed 6.2s).
-  it('is deterministic, preserves source bytes, and keeps the approved baseline digest', () => {
+  it('is deterministic and preserves the approved source bytes', () => {
     const sourceBeforeMasking = Buffer.from(reference);
-    const firstDerivation = deriveMaskedPng(reference, manifest.playerSampleDataMask);
-    const secondDerivation = deriveMaskedPng(reference, manifest.playerSampleDataMask);
-    const derivedDigest = createHash('sha256').update(firstDerivation).digest('hex');
-
+    const firstDerivation = deriveMaskedPng(reference, testMask);
+    const secondDerivation = deriveMaskedPng(reference, testMask);
     expect(reference).toEqual(sourceBeforeMasking);
+    expect(createHash('sha256').update(reference).digest('hex')).toBe(
+      onboarding.frames.PdRtP.sha256
+    );
     expect(secondDerivation).toEqual(firstDerivation);
-    expect(derivedDigest).toBe(approvedBaselineDigest);
+    expect(comparePng(firstDerivation, reference, 0)?.errorMessage).toContain('100 pixels');
   }, 15_000);
 });

@@ -31,7 +31,7 @@
       "route": "/matches/past",
       "sha256": "f6902e226df26876e8cfb26d31eb60fe180c9c98af7d97c1314309840ddc7452",
       "snapshot": "e2e/matches-visual.spec.ts-snapshots/w25dY-light.png",
-      "snapshotSha256": "0f16596bf99d79f04749b684ce8f0401eaec55bb8bb818a29e15ee94b94dbc11"
+      "snapshotSha256": "384c95a1363a51b5c0a0062785b15c06af77bb2d5b502c24714d8787ddeeec0a"
     }
   },
   "toleranceEvidence": {

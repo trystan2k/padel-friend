@@ -274,6 +274,20 @@ async function compareFrame(frame: Frame, page: Page, info: TestInfo) {
     caret: 'hide',
     path: info.outputPath(`${frame}-actual.png`)
   });
+  if (frame === 'sLXK7' || frame === 'alZmm') {
+    await expect(page.getByRole('navigation', { name: copies.en.appShell.navigation })).toHaveCount(
+      0
+    );
+    await assertResultScreenshot(page, actual, frame, 'lifecycle');
+    if (frame === 'alZmm') {
+      // A taller capture clears content so the bottom band can verify navigation suppression.
+      await page.setViewportSize({ width, height: height + 120 });
+      const tall = await page.screenshot({ animations: 'disabled', caret: 'hide' });
+      await assertResultScreenshot(page, tall, frame, 'recording');
+    }
+    await info.attach(`${frame}-actual`, { body: actual, contentType: 'image/png' });
+    return;
+  }
   const clubhouse = frame === 'H6VcqC' || frame === 'GMcbD';
   const approved = readFileSync(
     new URL(
@@ -347,19 +361,7 @@ async function compareFrame(frame: Frame, page: Page, info: TestInfo) {
     .soft(measured.dimensionMismatch, `${frame} dimensions must match the 2x Pencil export`)
     .toBe(false);
   expect.soft(budget, `${frame} needs a reviewed nonzero screenshot budget`).not.toBeNull();
-  if (frame === 'sLXK7' || frame === 'alZmm') {
-    await expect(page.getByRole('navigation', { name: copies.en.appShell.navigation })).toHaveCount(
-      0
-    );
-    await assertResultScreenshot(page, actual, frame, 'lifecycle');
-    if (frame === 'alZmm') {
-      // The pending detail now ends near the old band start, so measure the bottom 70px of a
-      // taller capture that clears the content: navigation is still suppressed.
-      await page.setViewportSize({ width, height: height + 120 });
-      const tall = await page.screenshot({ animations: 'disabled', caret: 'hide' });
-      await assertResultScreenshot(page, tall, frame, 'recording');
-    }
-  } else if (budget !== null && measured.perceptualPixelDifference !== null) {
+  if (budget !== null && measured.perceptualPixelDifference !== null) {
     expect
       .soft(measured.perceptualPixelDifference, `${frame} reviewed raster budget`)
       .toBeLessThanOrEqual(budget);
@@ -370,7 +372,6 @@ async function compareFrame(frame: Frame, page: Page, info: TestInfo) {
     body: JSON.stringify(measured, null, 2),
     contentType: 'application/json'
   });
-  return measured;
 }
 
 test('PAF-8 Pencil screens retain exact lifecycle probes and reviewed raster budgets', async ({

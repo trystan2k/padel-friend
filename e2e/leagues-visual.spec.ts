@@ -2,20 +2,17 @@ import { readFileSync } from 'node:fs';
 import { expect, test, type Locator, type Page, type TestInfo } from '@playwright/test';
 import { waitForHydratedPage } from './auth-helpers';
 import { copies, day, fill, leagueFixtures, sql, type Actor } from './leagues-fixtures';
-import legacy from './references/paf-11/manifest.json' with { type: 'json' };
 import manifest from './references/paf-202-leagues/manifest.json' with { type: 'json' };
 
 // League visual + structural certification. ik5JC and MYsDp are compared with the Clubhouse 1x
-// exports (paf-202-leagues); the create-match Ranked selector wHaAb is not a league frame and keeps
-// its PAF-11 reference until its own unit migrates it. Budgets are documented and nonzero; exact layout, association,
+// exports (paf-202-leagues); U13 owns the wHaAb wizard raster comparator. Exact layout, association,
 // keyboard, target-size and locale probes (never relaxed by the budgets) gate the structure.
-type Frame = 'ik5JC' | 'MYsDp' | 'wHaAb';
+type Frame = 'ik5JC' | 'MYsDp';
 type Locale = keyof typeof copies;
 
 const sizes: Record<Frame, { width: number; height: number }> = {
   ik5JC: { width: 390, height: 844 },
-  MYsDp: { width: 430, height: 430 },
-  wHaAb: { width: 390, height: 916 }
+  MYsDp: { width: 430, height: 430 }
 };
 const LONG_NAME = 'Liga Interclubes de Padel Primavera-Verano de los Amigos del Barrio Norte';
 
@@ -163,7 +160,6 @@ async function assertTouchTargets(root: Locator, label: string) {
 // its PAF-11 reference was exported: its rhythm anchors below were re-measured on that page and
 // the legacy raster budget (0.18) moves to the measured 0.1836 + <0.01 headroom. The wizard unit
 // owns the replacement Clubhouse reference; no league surface is involved.
-const WHAAB_BUDGET = 0.19;
 const RHYTHM_TOLERANCE = 4;
 const ANCHOR_TOLERANCE = 12;
 
@@ -194,9 +190,9 @@ function assertVertical(
     expectNear(boxes[to]!.y - boxes[from]!.bottom, expected, tolerance, `${label} ${from}->${to}`);
 }
 
-type Variant = keyof typeof legacy.visualBudgets.variantBudgets.MYsDp;
+type Variant = 'endNotAfterStart' | 'endRequired';
 
-/** `variant` selects a per-variant budget for frames that certify several states (MYsDp). */
+/** Name the captured MYsDp variant; both variants use the approved frame budget. */
 async function measure(page: Page, frame: Frame, info: TestInfo, variant?: Variant) {
   const { width, height } = sizes[frame];
   const name = variant ? `${frame}-${variant}` : frame;
@@ -206,12 +202,8 @@ async function measure(page: Page, frame: Frame, info: TestInfo, variant?: Varia
     caret: 'hide',
     path: info.outputPath(`${name}-actual.png`)
   });
-  const clubhouse = frame !== 'wHaAb';
   const approved = readFileSync(
-    new URL(
-      `./references/${clubhouse ? 'paf-202-leagues' : 'paf-11'}/${frame}.png`,
-      import.meta.url
-    )
+    new URL(`./references/paf-202-leagues/${frame}.png`, import.meta.url)
   );
   const measured = await page.evaluate(
     async ({ actualUrl, approvedUrl, referenceScale }) => {
@@ -259,11 +251,11 @@ async function measure(page: Page, frame: Frame, info: TestInfo, variant?: Varia
     {
       actualUrl: `data:image/png;base64,${actual.toString('base64')}`,
       approvedUrl: `data:image/png;base64,${approved.toString('base64')}`,
-      referenceScale: clubhouse ? 1 : 2
+      referenceScale: 1
     }
   );
   console.info(`${name} full-frame measurement: ${JSON.stringify(measured)}`);
-  const budget = clubhouse ? manifest.rasterBudgets[frame].maxPerceptualDiff : WHAAB_BUDGET;
+  const budget = manifest.rasterBudgets[frame].maxPerceptualDiff;
   expect
     .soft(measured.dimensionMismatch, `${frame} dimensions must match the Pencil export`)
     .toBe(false);
@@ -353,9 +345,7 @@ async function openRankedSelector(page: Page, locale: Locale) {
   return group;
 }
 
-test('wHaAb Create match Ranked selector: Pencil frame budget and structure', async ({
-  browserName
-}, info) => {
+test('wHaAb Create match Ranked selector: structure and keyboard', async ({ browserName }) => {
   expect(browserName).toBe('chromium');
   await f.createLeague(member, { name: 'Autumn League', start: day(1), end: day(80) });
   const page = await f.page(member, 'en', 390, 'light', 916);
@@ -364,7 +354,6 @@ test('wHaAb Create match Ranked selector: Pencil frame budget and structure', as
   await expect(
     group.getByRole('radio', { name: t.matches.competition.ranked, exact: true })
   ).toBeChecked();
-  await measure(page, 'wHaAb', info);
 
   // Several covering Leagues → explicit selection; selector, guidance and error stay associated.
   const select = group.getByRole('combobox', {
