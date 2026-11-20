@@ -474,10 +474,10 @@ const resolved = (page: Page, property: 'background-color' | 'color', value: str
     [property, value]
   );
 
-// Design intent (Pencil frame YYMpT, "State variants - former participant League access"): a
-// distinct notice (green-soft surface, eye icon, compact horizontal layout, muted body copy),
+// Design intent (Clubhouse frame r9r34, "State variants - former participant League access"): a
+// distinct card (surface, 40px surface-2 glyph holding the eye icon, 16/800 title, muted body),
 // asserted through tokens, roles and geometry so it survives restyling within the intent.
-test('former participant: notice has the approved treatment (token surface, icon beside copy, muted body)', async () => {
+test('former participant: notice has the approved treatment (card surface, glyph beside copy, muted body)', async () => {
   const page = await f.page(FORMER(), 'en', 390, 'light', 844);
   await visit(page, openDetailPath());
   const notice = noticeCard(page);
@@ -492,7 +492,7 @@ test('former participant: notice has the approved treatment (token surface, icon
     surface: getComputedStyle(element).backgroundColor,
     page: getComputedStyle(document.body).backgroundColor
   }));
-  expect(colors.surface).toBe(await resolved(page, 'background-color', 'var(--color-green-soft)'));
+  expect(colors.surface).toBe(await resolved(page, 'background-color', 'var(--color-surface)'));
   expect(colors.surface).not.toBe(colors.page);
   expect(await body.evaluate((element) => getComputedStyle(element).color)).toBe(
     await resolved(page, 'color', 'var(--color-muted)')
@@ -502,10 +502,12 @@ test('former participant: notice has the approved treatment (token surface, icon
   );
 
   // Compact horizontal layout: the icon sits left of the copy, inside the notice, same row.
-  const [card, iconBox, titleBox] = await Promise.all([
+  const glyph = icon.locator('xpath=..');
+  const [card, iconBox, titleBox, glyphBox] = await Promise.all([
     notice.boundingBox(),
     icon.boundingBox(),
-    title.boundingBox()
+    title.boundingBox(),
+    glyph.boundingBox()
   ]);
   expect(iconBox!.x + iconBox!.width).toBeLessThanOrEqual(titleBox!.x + 1);
   expect(iconBox!.x).toBeGreaterThanOrEqual(card!.x);
@@ -513,13 +515,17 @@ test('former participant: notice has the approved treatment (token surface, icon
   expect(iconBox!.y + iconBox!.height).toBeLessThanOrEqual(card!.y + card!.height);
   expect(titleBox!.y).toBeLessThan(iconBox!.y + iconBox!.height);
 
-  // Pencil YYMpT geometry pinned against the resolved tokens: 12px padding, 17px icon, 9px gap.
-  const [padding, iconSize, gap] = await Promise.all([
-    resolvedPx(page, 'var(--space-12)'),
+  // Frame r9r34 geometry pinned against the resolved tokens: 14px padding, 17px icon inside a
+  // 40px glyph, 12px gap between glyph and copy.
+  const [padding, iconSize, gap, glyphSize] = await Promise.all([
+    resolvedPx(page, 'var(--space-14)'),
     resolvedPx(page, 'var(--space-17)'),
-    resolvedPx(page, 'var(--space-9)')
+    resolvedPx(page, 'var(--space-12)'),
+    resolvedPx(page, 'var(--space-40)')
   ]);
-  expect([padding, iconSize, gap]).toEqual([12, 17, 9]);
+  expect([padding, iconSize, gap, glyphSize]).toEqual([14, 17, 12, 40]);
+  expect(Math.abs(glyphBox!.width - glyphSize)).toBeLessThanOrEqual(0.5);
+  expect(Math.abs(glyphBox!.height - glyphSize)).toBeLessThanOrEqual(0.5);
   const computed = await notice.evaluate((element) => {
     const style = getComputedStyle(element);
     return {
@@ -537,8 +543,8 @@ test('former participant: notice has the approved treatment (token surface, icon
   ).toEqual([`${iconSize}px`, `${iconSize}px`]);
   expect(Math.abs(iconBox!.width - iconSize)).toBeLessThanOrEqual(0.5);
   expect(Math.abs(iconBox!.height - iconSize)).toBeLessThanOrEqual(0.5);
-  // Rendered icon-to-copy distance equals the gap (same row at 390px).
-  expect(Math.abs(titleBox!.x - (iconBox!.x + iconBox!.width) - gap)).toBeLessThanOrEqual(1);
+  // Rendered glyph-to-copy distance equals the gap (same row at 390px).
+  expect(Math.abs(titleBox!.x - (glyphBox!.x + glyphBox!.width) - gap)).toBeLessThanOrEqual(1);
 });
 
 // Longer translated copy at the narrowest supported width: no overflow, notice fully reachable.
@@ -592,6 +598,11 @@ for (const locale of ['pt-BR', 'es'] as const) {
 //  - Cross-renderer (Pencil vs Chromium) pixel equality is out of scope per AGENTS.md; the notice
 //    treatment is gated against the Pencil intent by the token probes, not by a Pencil raster.
 //  - Never widen a budget to mask a defect; re-bless only after a reviewed design change.
+//  - PAF-222 re-bless (reviewed design change): the notice became the Clubhouse r9r34 card (surface,
+//    40px glyph, 16/800 title, 14px body, 14px padding) and the page column the frame's 20px margin,
+//    so the crops are 350px wide. The earlier 0.12 failure (354x87 baseline vs 85px render) was not
+//    a layout defect: the Figtree typography migration and the 1px hairline/20px-radius SurfaceCard
+//    changed glyph metrics and wrapping under the old green-soft treatment. Budgets are unchanged.
 const FORMER_VISUAL_BUDGETS = {
   'former-notice-en-390.png': 0.02,
   'former-notice-pt-BR-320.png': 0.03,

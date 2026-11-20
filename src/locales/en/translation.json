@@ -2103,8 +2103,8 @@
     "title": "Leagues",
     "back": "Back to Leagues",
     "former": {
-      "title": "You played in this League",
-      "body": "This League is read-only for you. You can see its standings and results because you played in it, but you are no longer a member of this community.",
+      "title": "Read-only league",
+      "body": "You played here. Standings stay visible; community actions are hidden.",
       "back": "Back to match history"
     },
     "backToDashboard": "Back to dashboard",
@@ -2147,15 +2147,15 @@
       }
     },
     "form": {
-      "title": "Create a League",
+      "title": "New league",
       "nameLabel": "League name",
       "namePlaceholder": "Autumn League",
       "descriptionLabel": "Description (optional)",
-      "endModeLegend": "How does the League end?",
+      "endModeLegend": "How it ends",
       "mode": {
         "fixed_date": "Fixed end date",
         "fixed_dateHelp": "Ends automatically after the last day.",
-        "manual": "Open-ended · manual",
+        "manual": "Manual",
         "manualHelp": "Stays active until an owner or Admin closes it."
       },
       "startDateLabel": "Start date",
@@ -2166,13 +2166,13 @@
       "periodLocked": "Dates can no longer change because this League is closed or already used by matches.",
       "minimumLabel": "Minimum matches for final award",
       "minimumHelp": "Players need at least this many matches to qualify for the final award.",
-      "submit": "Create League",
+      "submit": "Create league",
       "submitting": "Creating…",
-      "guidance": "Fixed End Date must follow start date. Only one Active League per community.",
+      "guidance": "Only ranked competitive matches between these dates count. One league at a time.",
       "conflict": {
-        "title": "{{name}} · ACTIVE",
-        "body": "This community already has one Active League. A League starting now cannot activate while it remains Active.",
-        "review": "Review Active League"
+        "title": "Another league is active",
+        "body": "This community already has one active league. A league starting now can't activate until {{name}} ends.",
+        "review": "Open {{name}}"
       },
       "errors": {
         "nameRequired": "Enter a League name.",
@@ -2180,9 +2180,9 @@
         "descriptionTooLong": "The description must be 500 characters or fewer.",
         "startRequired": "Choose a start date.",
         "startInPast": "The start date cannot be in the past.",
-        "endRequired": "Fixed End Date requires an end date.",
+        "endRequired": "A fixed end date needs an end date.",
         "endInPast": "The end date cannot be in the past.",
-        "endNotAfterStart": "End date must be later than start date.",
+        "endNotAfterStart": "End date must be after the start date.",
         "minimumInvalid": "Enter a whole number from 1 to 100."
       }
     },
@@ -2267,7 +2267,7 @@
         "result_amendment": "Corrected result applied after an audited amendment",
         "result_void": "Result voided after an audited decision"
       },
-      "correctionBanner": "Historical result updated",
+      "correctionBanner": "Final standings updated after a corrected result.",
       "supersedes": "Replaces version {{version}}. Earlier versions stay available.",
       "viewPrior": "View version {{version}}",
       "backfilled": "Rebuilt afterwards from stored records, not published at the time.",
@@ -2307,7 +2307,7 @@
       },
       "activate": "Activate League",
       "activateHint": "Another League is Active. Close it or wait until it ends, then activate this one.",
-      "close": "Close League",
+      "close": "End league",
       "edit": "Edit League",
       "save": "Save changes",
       "saving": "Saving…",
@@ -2316,10 +2316,10 @@
       "activated": "League activated.",
       "closedDone": "League closed.",
       "closeConfirm": {
-        "title": "Close {{name}}?",
+        "title": "End {{name}} now?",
         "body": "The League ends now and cannot be reopened. Matches played after this moment never count. A match played before it that is confirmed for the first time later still counts and adds a new final version; earlier finals stay available. This is recorded in its history.",
-        "cancel": "Keep open",
-        "confirm": "Close League"
+        "cancel": "Keep it",
+        "confirm": "End league"
       }
     },
     "errors": {
@@ -2334,9 +2334,9 @@
       "LEAGUE_END_MODE_INVALID": "Choose how the League ends.",
       "LEAGUE_START_DATE_INVALID": "Choose a valid start date.",
       "LEAGUE_START_IN_PAST": "The start date cannot be in the past.",
-      "LEAGUE_END_DATE_REQUIRED": "Fixed End Date requires an end date.",
+      "LEAGUE_END_DATE_REQUIRED": "A fixed end date needs an end date.",
       "LEAGUE_END_DATE_NOT_ALLOWED": "An open-ended League has no end date.",
-      "LEAGUE_END_NOT_AFTER_START": "End date must be later than start date.",
+      "LEAGUE_END_NOT_AFTER_START": "End date must be after the start date.",
       "LEAGUE_END_IN_PAST": "The end date cannot be in the past.",
       "LEAGUE_CHANGES_INVALID": "Those changes aren't valid.",
       "LEAGUE_INVALID_INPUT": "Those details aren't valid.",

@@ -154,70 +154,77 @@ export function LeagueStandings({
             </p>
           )}
           {/* Primary ranking view: fits the narrowest viewport without sideways scrolling. */}
-          <table aria-labelledby="league-standings-heading" {...stylex.props(styles.compactTable)}>
-            <thead>
-              <tr>
-                <th scope="col" {...stylex.props(styles.headCell)}>
-                  {t('leagues.standings.position')}
-                </th>
-                <th scope="col" {...stylex.props(styles.headCell, styles.compactPlayer)}>
-                  {t('leagues.standings.player')}
-                </th>
-                <th scope="col" {...stylex.props(styles.headCell)}>
-                  <abbr title={t('leagues.standings.recordLabel')}>
-                    {t('leagues.standings.record')}
-                  </abbr>
-                </th>
-                <th scope="col" {...stylex.props(styles.headCell)}>
-                  {t('leagues.counters.setDifferential')}
-                </th>
-                <th scope="col" {...stylex.props(styles.headCell)}>
-                  {t('leagues.standings.award')}
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {entries.map((entry) => {
-                const isOwn = entry.user_id === viewerId;
-                return (
-                  <tr
-                    key={entry.user_id}
-                    aria-current={isOwn ? 'true' : undefined}
-                    {...stylex.props(isOwn && styles.ownRow)}
-                  >
-                    <PositionCell entry={entry} shared={shared(entry)} />
-                    <th scope="row" {...stylex.props(styles.cell, styles.compactPlayer)}>
-                      <PlayerLabel entry={entry} isOwn={isOwn} />
-                    </th>
-                    <td {...stylex.props(styles.cell)}>
-                      <span aria-hidden="true">
-                        {number.format(entry.wins)}–{number.format(entry.losses)}–
-                        {number.format(entry.draws)}
-                      </span>
-                      <span {...stylex.props(styles.hidden)}>
-                        {t('leagues.standings.recordSpoken', {
-                          wins: t('leagues.standings.winsSpoken', {
-                            count: entry.wins,
-                            formattedCount: number.format(entry.wins)
-                          }),
-                          losses: t('leagues.standings.lossesSpoken', {
-                            count: entry.losses,
-                            formattedCount: number.format(entry.losses)
-                          }),
-                          draws: t('leagues.standings.drawsSpoken', {
-                            count: entry.draws,
-                            formattedCount: number.format(entry.draws)
-                          })
-                        })}
-                      </span>
-                    </td>
-                    <td {...stylex.props(styles.cell)}>{signed.format(entry.set_differential)}</td>
-                    <td {...stylex.props(styles.cell)}>{awardText(entry)}</td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+          <div {...stylex.props(styles.tableCard)}>
+            <table
+              aria-labelledby="league-standings-heading"
+              {...stylex.props(styles.compactTable)}
+            >
+              <thead>
+                <tr>
+                  <th scope="col" {...stylex.props(styles.headCell)}>
+                    {t('leagues.standings.position')}
+                  </th>
+                  <th scope="col" {...stylex.props(styles.headCell, styles.compactPlayer)}>
+                    {t('leagues.standings.player')}
+                  </th>
+                  <th scope="col" {...stylex.props(styles.headCell)}>
+                    <abbr title={t('leagues.standings.recordLabel')}>
+                      {t('leagues.standings.record')}
+                    </abbr>
+                  </th>
+                  <th scope="col" {...stylex.props(styles.headCell)}>
+                    {t('leagues.counters.setDifferential')}
+                  </th>
+                  <th scope="col" {...stylex.props(styles.headCell)}>
+                    {t('leagues.standings.award')}
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {entries.map((entry) => {
+                  const isOwn = entry.user_id === viewerId;
+                  return (
+                    <tr
+                      key={entry.user_id}
+                      aria-current={isOwn ? 'true' : undefined}
+                      {...stylex.props(isOwn && styles.ownRow)}
+                    >
+                      <PositionCell entry={entry} shared={shared(entry)} />
+                      <th scope="row" {...stylex.props(styles.cell, styles.compactPlayer)}>
+                        <PlayerLabel entry={entry} isOwn={isOwn} />
+                      </th>
+                      <td {...stylex.props(styles.cell)}>
+                        <span aria-hidden="true">
+                          {number.format(entry.wins)}–{number.format(entry.losses)}–
+                          {number.format(entry.draws)}
+                        </span>
+                        <span {...stylex.props(styles.hidden)}>
+                          {t('leagues.standings.recordSpoken', {
+                            wins: t('leagues.standings.winsSpoken', {
+                              count: entry.wins,
+                              formattedCount: number.format(entry.wins)
+                            }),
+                            losses: t('leagues.standings.lossesSpoken', {
+                              count: entry.losses,
+                              formattedCount: number.format(entry.losses)
+                            }),
+                            draws: t('leagues.standings.drawsSpoken', {
+                              count: entry.draws,
+                              formattedCount: number.format(entry.draws)
+                            })
+                          })}
+                        </span>
+                      </td>
+                      <td {...stylex.props(styles.cell)}>
+                        {signed.format(entry.set_differential)}
+                      </td>
+                      <td {...stylex.props(styles.cell)}>{awardText(entry)}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
           {/* Secondary view: every statistic, in a focusable, named scroll region. */}
           <details>
             <summary {...stylex.props(styles.detailsSummary)}>

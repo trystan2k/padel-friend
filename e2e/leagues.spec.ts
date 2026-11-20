@@ -43,7 +43,10 @@ async function submitCreate(page: Page) {
 
 test('member creates an Upcoming Fixed End Date League and sees it in list and detail', async () => {
   const page = await f.page(member);
-  // Member-reachable entry point from the dashboard, not only an admin route.
+  // Member-reachable entry point from the Community tab (league entries left Home with D5), not
+  // only an admin route.
+  await page.goto('/community');
+  await waitForHydratedPage(page);
   await expect(
     page.getByRole('link', { name: fill(l.entries.link, { community: 'League Club' }) })
   ).toBeVisible();
@@ -147,8 +150,10 @@ test('one Active League: conflict guidance, rejection and blocked-conflict resol
   await openCreate(page);
   const note = page.getByRole('note');
   await expect(note).toContainText(fill(l.form.conflict.title, { name: 'Current League' }));
-  await expect(note).toContainText(l.form.conflict.body);
-  await expect(note.getByRole('link', { name: new RegExp(l.form.conflict.review) })).toBeVisible();
+  await expect(note).toContainText(fill(l.form.conflict.body, { name: 'Current League' }));
+  await expect(
+    note.getByRole('link', { name: fill(l.form.conflict.review, { name: 'Current League' }) })
+  ).toBeVisible();
 
   // A second League starting now cannot activate while the first remains Active: it is
   // created Upcoming and the blocked reason is visible in the list and on its detail.

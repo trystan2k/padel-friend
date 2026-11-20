@@ -2103,8 +2103,8 @@
     "title": "Ligas",
     "back": "Voltar para Ligas",
     "former": {
-      "title": "Você jogou nesta Liga",
-      "body": "Esta Liga é somente leitura para você. Você vê a classificação e os resultados porque jogou nela, mas não é mais membro desta comunidade.",
+      "title": "Liga somente leitura",
+      "body": "Você jogou aqui. A classificação continua visível; as ações da comunidade ficam ocultas.",
       "back": "Voltar ao histórico de partidas"
     },
     "backToDashboard": "Voltar ao painel",
@@ -2147,15 +2147,15 @@
       }
     },
     "form": {
-      "title": "Criar uma Liga",
+      "title": "Nova liga",
       "nameLabel": "Nome da Liga",
       "namePlaceholder": "Liga de Outono",
       "descriptionLabel": "Descrição (opcional)",
-      "endModeLegend": "Como a Liga termina?",
+      "endModeLegend": "Como termina",
       "mode": {
         "fixed_date": "Data final fixa",
         "fixed_dateHelp": "Termina automaticamente após o último dia.",
-        "manual": "Sem data final · manual",
+        "manual": "Manual",
         "manualHelp": "Continua ativa até o responsável ou um Admin encerrá-la."
       },
       "startDateLabel": "Data de início",
@@ -2166,13 +2166,13 @@
       "periodLocked": "As datas não podem mais mudar porque esta Liga está encerrada ou já é usada por partidas.",
       "minimumLabel": "Mínimo de partidas para o prêmio final",
       "minimumHelp": "Os jogadores precisam de pelo menos essa quantidade de partidas para disputar o prêmio final.",
-      "submit": "Criar Liga",
+      "submit": "Criar liga",
       "submitting": "Criando…",
-      "guidance": "A data final fixa deve ser posterior à data de início. Apenas uma Liga ativa por comunidade.",
+      "guidance": "Só contam partidas ranqueadas competitivas entre estas datas. Uma liga por vez.",
       "conflict": {
-        "title": "{{name}} · ATIVA",
-        "body": "Esta comunidade já tem uma Liga ativa. Uma Liga que começa agora não pode ser ativada enquanto ela continuar ativa.",
-        "review": "Ver Liga ativa"
+        "title": "Outra liga está ativa",
+        "body": "Esta comunidade já tem uma liga ativa. Uma liga que começa agora não pode ser ativada até {{name}} terminar.",
+        "review": "Abrir {{name}}"
       },
       "errors": {
         "nameRequired": "Informe o nome da Liga.",
@@ -2180,7 +2180,7 @@
         "descriptionTooLong": "A descrição deve ter no máximo 500 caracteres.",
         "startRequired": "Escolha uma data de início.",
         "startInPast": "A data de início não pode estar no passado.",
-        "endRequired": "A data final fixa exige uma data final.",
+        "endRequired": "Uma data final fixa precisa de uma data final.",
         "endInPast": "A data final não pode estar no passado.",
         "endNotAfterStart": "A data final deve ser posterior à data de início.",
         "minimumInvalid": "Informe um número inteiro de 1 a 100."
@@ -2267,7 +2267,7 @@
         "result_amendment": "Resultado corrigido aplicado após uma alteração auditada",
         "result_void": "Resultado anulado após uma decisão auditada"
       },
-      "correctionBanner": "Resultado histórico atualizado",
+      "correctionBanner": "Classificação final atualizada após um resultado corrigido.",
       "supersedes": "Substitui a versão {{version}}. As versões anteriores continuam disponíveis.",
       "viewPrior": "Ver versão {{version}}",
       "backfilled": "Reconstruída depois a partir dos registros guardados, não publicada na época.",
@@ -2307,7 +2307,7 @@
       },
       "activate": "Ativar Liga",
       "activateHint": "Outra Liga está ativa. Encerre-a ou aguarde o fim dela e depois ative esta.",
-      "close": "Encerrar Liga",
+      "close": "Encerrar liga",
       "edit": "Editar Liga",
       "save": "Salvar alterações",
       "saving": "Salvando…",
@@ -2316,10 +2316,10 @@
       "activated": "Liga ativada.",
       "closedDone": "Liga encerrada.",
       "closeConfirm": {
-        "title": "Encerrar {{name}}?",
+        "title": "Encerrar {{name}} agora?",
         "body": "A Liga termina agora e não pode ser reaberta. Partidas jogadas depois deste momento nunca contam. Uma partida jogada antes dele e confirmada pela primeira vez mais tarde ainda conta e gera uma nova versão final; as finais anteriores continuam disponíveis. Isso fica registrado no histórico.",
-        "cancel": "Manter aberta",
-        "confirm": "Encerrar Liga"
+        "cancel": "Manter",
+        "confirm": "Encerrar liga"
       }
     },
     "errors": {
@@ -2334,7 +2334,7 @@
       "LEAGUE_END_MODE_INVALID": "Escolha como a Liga termina.",
       "LEAGUE_START_DATE_INVALID": "Escolha uma data de início válida.",
       "LEAGUE_START_IN_PAST": "A data de início não pode estar no passado.",
-      "LEAGUE_END_DATE_REQUIRED": "A data final fixa exige uma data final.",
+      "LEAGUE_END_DATE_REQUIRED": "Uma data final fixa precisa de uma data final.",
       "LEAGUE_END_DATE_NOT_ALLOWED": "Uma Liga sem data final não tem data final.",
       "LEAGUE_END_NOT_AFTER_START": "A data final deve ser posterior à data de início.",
       "LEAGUE_END_IN_PAST": "A data final não pode estar no passado.",

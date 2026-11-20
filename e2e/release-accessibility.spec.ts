@@ -190,9 +190,11 @@ test('selected League close dialog traps focus, dismisses and returns focus', as
       .toBe(true);
     for (let index = 0; index < 8; index++) {
       await page.keyboard.press(index % 2 ? 'Shift+Tab' : 'Tab');
-      expect(await dialog.evaluate((element) => element.contains(document.activeElement))).toBe(
-        true
-      );
+      // Base UI's focus guard briefly holds focus when Tab leaves the last control; the trap wraps
+      // it back asynchronously, so poll for containment instead of sampling once.
+      await expect
+        .poll(() => dialog.evaluate((element) => element.contains(document.activeElement)))
+        .toBe(true);
     }
     await page.keyboard.press('Escape');
     await expect(dialog).toBeHidden();

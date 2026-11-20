@@ -330,14 +330,18 @@ async function closeDialogVisual(page: Page) {
   const dialog = page.getByRole('alertdialog');
   await expect(dialog).toBeVisible();
   await page.setViewportSize({ width: 390, height: 844 });
-  const box = await docBox(dialog);
+  // The dialog is fixed: its edges are checked in viewport coordinates, whatever the page scroll.
+  const box = await dialog.evaluate((element) => {
+    const { x, y, right, bottom, width, height } = element.getBoundingClientRect();
+    return { x, y, right, bottom, width, height };
+  });
   expect.soft(box.x, 'd6ANDN dialog left edge').toBeGreaterThanOrEqual(0);
   expect.soft(box.right, 'd6ANDN dialog right edge').toBeLessThanOrEqual(390);
   expect.soft(box.y, 'd6ANDN dialog top').toBeGreaterThanOrEqual(0);
   expect.soft(box.bottom, 'd6ANDN dialog bottom').toBeLessThanOrEqual(844);
   const confirm = dialog.getByRole('button', { name: en.leagues.detail.closeConfirm.confirm });
   const cancel = dialog.getByRole('button', { name: en.leagues.detail.closeConfirm.cancel });
-  // Reference: warning copy, then two stacked full-row 44px actions (End, Cancel).
+  // Reference: warning copy, then two stacked full-row 52px actions (End league, Keep it).
   const [body, confirmBox, cancelBox] = await Promise.all([
     docBox(dialog.getByText(en.leagues.detail.closeConfirm.body)),
     docBox(confirm),
@@ -356,15 +360,15 @@ async function closeDialogVisual(page: Page) {
   expect
     .soft(upper!.bottom, 'd6ANDN actions are stacked, not overlapping')
     .toBeLessThanOrEqual(lower!.y);
-  // Accepted composition: Cancel first (holds initial focus), End second; identical column and width.
-  expect.soft(cancelBox.y, 'd6ANDN Cancel precedes End').toBeLessThan(confirmBox.y);
+  // Frame d6ANDN order: End league above Keep it; identical column and width.
+  expect.soft(confirmBox.y, 'd6ANDN End precedes Keep it').toBeLessThan(cancelBox.y);
   expect
     .soft(Math.abs(cancelBox.x - confirmBox.x), 'd6ANDN actions share a left edge')
     .toBeLessThanOrEqual(1);
   expect
     .soft(Math.abs(cancelBox.width - confirmBox.width), 'd6ANDN actions share a width')
     .toBeLessThanOrEqual(1);
-  expect.soft(confirmBox.y, 'd6ANDN actions keep a gap').toBeGreaterThanOrEqual(cancelBox.bottom);
+  expect.soft(cancelBox.y, 'd6ANDN actions keep a gap').toBeGreaterThanOrEqual(confirmBox.bottom);
   expect
     .soft(Math.abs(box.x + box.width / 2 - 195), 'd6ANDN dialog is centered')
     .toBeLessThanOrEqual(1);
@@ -380,22 +384,22 @@ async function closeDialogVisual(page: Page) {
         tokens: {
           'background-color': 'var(--color-surface)',
           color: 'var(--color-text)',
-          'border-top-left-radius': 'var(--radius-14)',
-          'padding-top': 'var(--space-14)',
-          'row-gap': 'var(--space-8)'
+          'border-top-left-radius': 'var(--radius-20)',
+          'padding-top': 'calc(var(--space-12) * 2)',
+          'row-gap': 'var(--space-12)'
         },
         palette: { 'background-color': 'surface', color: 'text' },
-        literals: { 'border-top-left-radius': '14px', 'padding-top': '14px' }
+        literals: { 'border-top-left-radius': '20px', 'padding-top': '24px' }
       },
       {
         name: 'close dialog title',
         locator: dialog.getByRole('heading'),
         tokens: {
           'font-family': 'var(--font-family-heading)',
-          'font-size': 'var(--font-size-16)',
-          'font-weight': 'var(--font-weight-bold)'
+          'font-size': 'var(--font-size-20)',
+          'font-weight': 'var(--font-weight-extrabold)'
         },
-        literals: { 'font-size': '16px', 'font-weight': '700' }
+        literals: { 'font-size': '20px', 'font-weight': '800' }
       }
     ],
     'd6ANDN masked content'
@@ -428,10 +432,13 @@ test('ywfn7 active standings: Pencil frame budget and structure', async ({ brows
     await docBox(table),
     await docBox(callout)
   ];
+  // Centers, because the Live chip shares the heading row and is taller than the heading text.
+  const centerY = (box: (typeof order)[number]) => box.y + box.height / 2;
   for (let index = 1; index < order.length; index++)
-    expect(order[index]!.y, `ywfn7 section ${index} follows ${index - 1}`).toBeGreaterThanOrEqual(
-      order[index - 1]!.y - 1
-    );
+    expect(
+      centerY(order[index]!),
+      `ywfn7 section ${index} follows ${index - 1}`
+    ).toBeGreaterThanOrEqual(centerY(order[index - 1]!) - 1);
 
   // Primary table: five columns inside the 390px viewport, no sideways page scroll, 44px controls.
   await expect(table.getByRole('columnheader')).toHaveCount(5);
@@ -474,7 +481,7 @@ test('ywfn7 active standings: Pencil frame budget and structure', async ({ brows
         locator: title,
         tokens: {
           'font-family': 'var(--font-family-heading)',
-          'font-size': 'var(--font-size-14)',
+          'font-size': 'var(--font-size-15)',
           'font-weight': 'var(--font-weight-bold)'
         },
         palette: { color: 'text' },
@@ -485,15 +492,15 @@ test('ywfn7 active standings: Pencil frame budget and structure', async ({ brows
         locator: callout,
         tokens: {
           'background-color': 'var(--color-green-soft)',
-          color: 'var(--color-green)',
+          color: 'var(--color-green-ink)',
           'border-top-left-radius': 'var(--radius-14)',
           'padding-top': 'var(--space-12)',
-          'padding-left': 'var(--space-12)',
-          'font-size': 'var(--font-size-12)',
-          'font-weight': 'var(--font-weight-medium)'
+          'padding-left': 'var(--space-14)',
+          'font-size': 'var(--font-size-15)',
+          'font-weight': 'var(--font-weight-semibold)'
         },
-        palette: { 'background-color': 'green-soft', color: 'green' },
-        literals: { 'border-top-left-radius': '14px', 'font-size': '12px', 'font-weight': '500' }
+        palette: { 'background-color': 'green-soft', color: 'green-ink' },
+        literals: { 'border-top-left-radius': '14px', 'font-size': '15px', 'font-weight': '600' }
       }
     ],
     'ywfn7 masked content'
@@ -616,21 +623,21 @@ async function historyVisual(page: Page, info: TestInfo) {
           'border-top-color': 'var(--color-line)',
           'border-top-left-radius': 'var(--radius-12)',
           'font-family': 'var(--font-family-body)',
-          'font-size': 'var(--font-size-14)',
-          'padding-left': 'var(--space-12)'
+          'font-size': 'var(--font-size-16)',
+          'padding-left': 'var(--space-14)'
         },
         palette: { 'background-color': 'surface', color: 'text', 'border-top-color': 'line' },
-        literals: { 'border-top-left-radius': '12px', 'font-size': '14px' }
+        literals: { 'border-top-left-radius': '12px', 'font-size': '16px' }
       },
       {
         name: 'late-first-confirmation notice',
         locator: notice,
         tokens: {
-          'font-size': 'var(--font-size-12)',
-          'font-weight': 'var(--font-weight-semibold)'
+          'font-size': 'var(--font-size-16)',
+          'font-weight': 'var(--font-weight-extrabold)'
         },
         palette: { color: 'text' },
-        literals: { 'font-size': '12px', 'font-weight': '600' }
+        literals: { 'font-size': '16px', 'font-weight': '800' }
       },
       {
         name: 'history notice card',
@@ -638,12 +645,12 @@ async function historyVisual(page: Page, info: TestInfo) {
         tokens: {
           'background-color': 'var(--color-surface)',
           color: 'var(--color-text)',
-          'border-top-left-radius': 'var(--radius-14)',
-          'padding-top': 'var(--space-10)',
-          'row-gap': 'var(--space-6)'
+          'border-top-left-radius': 'var(--radius-18)',
+          'padding-top': 'var(--space-14)',
+          'row-gap': 'var(--space-10)'
         },
         palette: { 'background-color': 'surface' },
-        literals: { 'border-top-left-radius': '14px', 'padding-top': '10px', 'row-gap': '6px' }
+        literals: { 'border-top-left-radius': '18px', 'padding-top': '14px', 'row-gap': '10px' }
       }
     ],
     'xbIxj masked content'

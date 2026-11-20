@@ -8,7 +8,7 @@ const touchTarget = 'calc(var(--space-40) + var(--space-4))';
 const rowBorder = {
   borderBottomWidth: 'var(--border-width-sm)',
   borderBottomStyle: 'solid',
-  borderBottomColor: 'var(--color-line)'
+  borderBottomColor: 'var(--color-hairline)'
 } as const;
 
 export const styles = stylex.create({
@@ -24,8 +24,11 @@ export const styles = stylex.create({
     gridTemplateColumns: 'repeat(auto-fit, minmax(calc(var(--space-40) * 2), 1fr))',
     gap: 'var(--space-8)',
     margin: 0,
-    padding: 'var(--space-12)',
-    borderRadius: 'var(--radius-14)',
+    padding: 'var(--space-14)',
+    borderWidth: 'var(--border-width-sm)',
+    borderStyle: 'solid',
+    borderColor: 'var(--color-hairline)',
+    borderRadius: 'var(--radius-18)',
     backgroundColor: 'var(--color-surface)'
   },
   summaryStat: {
@@ -39,22 +42,31 @@ export const styles = stylex.create({
   summaryLabel: {
     margin: 0,
     color: 'var(--color-muted)',
-    fontSize: 'var(--font-size-11)',
-    fontWeight: 'var(--font-weight-semibold)',
-    letterSpacing: 'var(--font-letter-spacing-1-5)',
-    textTransform: 'uppercase'
+    fontSize: 'var(--font-size-13)',
+    fontWeight: 'var(--font-weight-semibold)'
   },
   summaryValue: {
     margin: 0,
     fontFamily: 'var(--font-family-heading)',
     fontSize: 'var(--font-size-24)',
-    fontWeight: 'var(--font-weight-bold)',
+    fontWeight: 'var(--font-weight-extrabold)',
     lineHeight: 'var(--font-line-height-tight)'
   },
   summaryValueAccent: { color: 'var(--color-green)' },
+  tableCard: {
+    overflow: 'hidden',
+    borderWidth: 'var(--border-width-sm)',
+    borderStyle: 'solid',
+    borderColor: 'var(--color-hairline)',
+    borderRadius: 'var(--radius-18)',
+    backgroundColor: 'var(--color-surface)'
+  },
   scroll: {
     overflowX: 'auto',
-    borderRadius: 'var(--radius-14)',
+    borderWidth: 'var(--border-width-sm)',
+    borderStyle: 'solid',
+    borderColor: 'var(--color-hairline)',
+    borderRadius: 'var(--radius-18)',
     backgroundColor: 'var(--color-surface)',
     ':focus-visible': focusRing
   },
@@ -62,15 +74,13 @@ export const styles = stylex.create({
     width: '100%',
     minWidth: 'calc(var(--space-40) * 11)',
     borderCollapse: 'collapse',
-    fontSize: 'var(--font-size-12)',
+    fontSize: 'var(--font-size-15)',
     fontVariantNumeric: 'tabular-nums'
   },
   compactTable: {
     width: '100%',
     borderCollapse: 'collapse',
-    borderRadius: 'var(--radius-14)',
-    backgroundColor: 'var(--color-surface)',
-    fontSize: 'var(--font-size-12)',
+    fontSize: 'var(--font-size-15)',
     fontVariantNumeric: 'tabular-nums'
   },
   compactPlayer: {
@@ -82,7 +92,7 @@ export const styles = stylex.create({
     alignItems: 'center',
     minHeight: touchTarget,
     color: 'var(--color-green)',
-    fontSize: 'var(--font-size-12)',
+    fontSize: 'var(--font-size-15)',
     fontWeight: 'var(--font-weight-semibold)',
     cursor: 'pointer',
     ':focus-visible': focusRing
@@ -91,7 +101,7 @@ export const styles = stylex.create({
     ...rowBorder,
     padding: 'var(--space-8) var(--space-6)',
     color: 'var(--color-muted)',
-    fontSize: 'var(--font-size-11)',
+    fontSize: 'var(--font-size-13)',
     fontWeight: 'var(--font-weight-semibold)',
     textAlign: 'center',
     verticalAlign: 'bottom'
@@ -107,15 +117,14 @@ export const styles = stylex.create({
     minWidth: 'calc(var(--space-40) * 3)',
     overflowWrap: 'anywhere'
   },
-  ownRow: { backgroundColor: 'var(--color-green-soft)', color: 'var(--color-green)' },
-  position: { fontWeight: 'var(--font-weight-bold)' },
-  playerName: { fontWeight: 'var(--font-weight-semibold)' },
+  ownRow: { backgroundColor: 'var(--color-green-soft)', color: 'var(--color-text)' },
+  position: { fontWeight: 'var(--font-weight-extrabold)' },
+  playerName: { fontWeight: 'var(--font-weight-regular)' },
   tag: {
     marginInlineStart: 'var(--space-6)',
     color: 'var(--color-muted)',
-    fontSize: 'var(--font-size-11)',
-    fontWeight: 'var(--font-weight-semibold)',
-    textTransform: 'uppercase'
+    fontSize: 'var(--font-size-13)',
+    fontWeight: 'var(--font-weight-semibold)'
   },
   hidden: {
     position: 'absolute',
@@ -127,18 +136,18 @@ export const styles = stylex.create({
   },
   callout: {
     margin: 0,
-    padding: 'var(--space-12)',
+    padding: 'var(--space-12) var(--space-14)',
     borderRadius: 'var(--radius-14)',
     backgroundColor: 'var(--color-green-soft)',
-    color: 'var(--color-green)',
-    fontSize: 'var(--font-size-12)',
-    fontWeight: 'var(--font-weight-medium)'
+    color: 'var(--color-green-ink)',
+    fontSize: 'var(--font-size-15)',
+    fontWeight: 'var(--font-weight-semibold)'
   },
   select: {
     boxSizing: 'border-box',
     width: '100%',
-    minHeight: touchTarget,
-    padding: 'var(--space-8) var(--space-12)',
+    minHeight: 'calc(var(--space-40) + var(--space-12))',
+    padding: 'var(--space-8) var(--space-14)',
     borderWidth: 'var(--border-width-sm)',
     borderStyle: 'solid',
     borderColor: 'var(--color-line)',
@@ -146,22 +155,37 @@ export const styles = stylex.create({
     backgroundColor: 'var(--color-surface)',
     color: 'var(--color-text)',
     fontFamily: 'var(--font-family-body)',
-    fontSize: 'var(--font-size-14)',
+    fontSize: 'var(--font-size-16)',
     ':focus-visible': focusRing
   },
-  field: { display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' },
+  field: { display: 'flex', flexDirection: 'column', gap: 'var(--space-6)' },
   fieldLabel: {
     color: 'var(--color-text)',
-    fontSize: 'var(--font-size-12)',
+    fontSize: 'var(--font-size-15)',
     fontWeight: 'var(--font-weight-semibold)'
   },
   auditList: {
     display: 'flex',
     flexDirection: 'column',
-    gap: 'var(--space-6)',
     margin: 0,
-    paddingInlineStart: 'var(--space-18)',
-    fontSize: 'var(--font-size-12)'
+    padding: 0,
+    listStyle: 'none',
+    overflow: 'hidden',
+    borderWidth: 'var(--border-width-sm)',
+    borderStyle: 'solid',
+    borderColor: 'var(--color-hairline)',
+    borderRadius: 'var(--radius-18)',
+    backgroundColor: 'var(--color-surface)',
+    fontSize: 'var(--font-size-15)'
+  },
+  auditItem: {
+    boxSizing: 'border-box',
+    minHeight: 'calc(var(--space-40) + var(--space-16))',
+    display: 'flex',
+    alignItems: 'center',
+    padding: 'var(--space-12) var(--space-16)',
+    ...rowBorder,
+    overflowWrap: 'anywhere'
   },
   linkRow: { display: 'flex', flexWrap: 'wrap', gap: 'var(--space-8)' }
 });

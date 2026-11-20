@@ -10,6 +10,7 @@ import { leagueErrorCode } from './league-errors';
 import { defaultLeagueFormValues, type LeagueFormInput } from './league-form';
 import { createLeague } from './league.functions';
 import { LeagueForm } from './LeagueForm';
+import { LeagueBackIcon } from './LeagueSummary';
 import { styles } from './league.styles';
 
 export function CreateLeaguePage({ data, today }: { data: LeagueListResult; today: string }) {
@@ -49,7 +50,7 @@ export function CreateLeaguePage({ data, today }: { data: LeagueListResult; toda
             aria-label={t('leagues.back')}
             {...stylex.props(styles.backLink)}
           >
-            <span aria-hidden="true">‹</span>
+            <LeagueBackIcon />
           </Link>
           <h1 {...stylex.props(styles.title)}>{t('leagues.form.title')}</h1>
         </div>
@@ -61,16 +62,25 @@ export function CreateLeaguePage({ data, today }: { data: LeagueListResult; toda
         <>
           {active && (
             <SurfaceCard role="note" xstyle={styles.conflict}>
-              <p {...stylex.props(styles.strongText)}>
-                {t('leagues.form.conflict.title', { name: active.name })}
-              </p>
-              <p {...stylex.props(styles.errorText)}>{t('leagues.form.conflict.body')}</p>
+              <div {...stylex.props(styles.conflictHeader)}>
+                <span aria-hidden="true" {...stylex.props(styles.conflictGlyph)}>
+                  !
+                </span>
+                <div {...stylex.props(styles.formerCopy)}>
+                  <p {...stylex.props(styles.strongText)}>
+                    {t('leagues.form.conflict.title', { name: active.name })}
+                  </p>
+                  <p {...stylex.props(styles.muted)}>
+                    {t('leagues.form.conflict.body', { name: active.name })}
+                  </p>
+                </div>
+              </div>
               <Link
                 to="/community/$communityId/leagues/$leagueId"
                 params={{ communityId: community.id, leagueId: active.id }}
-                {...stylex.props(styles.actionLink)}
+                {...stylex.props(styles.primaryLink, styles.secondaryLink)}
               >
-                {t('leagues.form.conflict.review')} →
+                {t('leagues.form.conflict.review', { name: active.name })}
               </Link>
             </SurfaceCard>
           )}

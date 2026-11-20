@@ -129,7 +129,7 @@ export function LeagueForm({
 
   return (
     <form noValidate onSubmit={submit} {...stylex.props(styles.content)}>
-      <SurfaceCard xstyle={styles.card}>
+      <SurfaceCard xstyle={styles.flatCard}>
         <TextField
           id={fieldId(base, 'name')}
           label={t('leagues.form.nameLabel')}
@@ -172,7 +172,7 @@ export function LeagueForm({
         </Field.Root>
       </SurfaceCard>
 
-      <SurfaceCard xstyle={styles.datesCard}>
+      <SurfaceCard xstyle={styles.flatCard}>
         <fieldset {...stylex.props(styles.fieldset)} disabled={periodLocked}>
           <legend {...stylex.props(styles.legend)}>{t('leagues.form.endModeLegend')}</legend>
           <RadioGroup
@@ -237,7 +237,7 @@ export function LeagueForm({
         </fieldset>
       </SurfaceCard>
 
-      <SurfaceCard xstyle={styles.card}>
+      <SurfaceCard xstyle={styles.flatCard}>
         <TextField
           id={fieldId(base, 'minimumMatches')}
           type="number"
@@ -258,7 +258,7 @@ export function LeagueForm({
           {t(`leagues.errors.${formError}`)}
         </p>
       )}
-      <Button type="submit" size="large" busy={busy}>
+      <Button type="submit" busy={busy}>
         {busy ? submittingLabel : submitLabel}
       </Button>
     </form>

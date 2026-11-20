@@ -600,30 +600,35 @@ describe('League detail management', () => {
         />
       )
     );
-    await user.click(screen.getByRole('button', { name: 'Close League' }));
+    await user.click(screen.getByRole('button', { name: 'End league' }));
     const dialog = await screen.findByRole('alertdialog');
-    expect(within(dialog).getByText('Close Autumn League?')).toBeTruthy();
+    expect(within(dialog).getByText('End Autumn League now?')).toBeTruthy();
+    // Frame d6ANDN: End league above Keep it, while the safe action holds initial focus.
+    const confirm = within(dialog).getByRole('button', { name: 'End league' });
+    const keep = within(dialog).getByRole('button', { name: 'Keep it' });
+    expect(confirm.compareDocumentPosition(keep) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    await waitFor(() => expect(document.activeElement).toBe(keep));
     expect(mocks.closeLeague).not.toHaveBeenCalled();
-    await user.click(within(dialog).getByRole('button', { name: 'Keep open' }));
+    await user.click(within(dialog).getByRole('button', { name: 'Keep it' }));
     await waitFor(() => expect(screen.queryByRole('alertdialog')).toBeNull());
     expect(mocks.closeLeague).not.toHaveBeenCalled();
 
-    await user.click(screen.getByRole('button', { name: 'Close League' }));
+    await user.click(screen.getByRole('button', { name: 'End league' }));
     await user.click(
-      within(await screen.findByRole('alertdialog')).getByRole('button', { name: 'Close League' })
+      within(await screen.findByRole('alertdialog')).getByRole('button', { name: 'End league' })
     );
     expect(mocks.closeLeague).toHaveBeenCalledWith({
       data: { league_id: makeLeagueDto().id, expected_version: 2 }
     });
     expect(await screen.findByText('League closed.')).toBeTruthy();
     expect(screen.getByText(/closed manually/)).toBeTruthy();
-    expect(screen.queryByRole('button', { name: 'Close League' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'End league' })).toBeNull();
     expect(screen.queryByRole('button', { name: 'Edit League' })).toBeNull();
   });
 
   it('never offers a manual close for a Fixed League', () => {
     render(wrap(<Detail data={makeLeagueDetail({ status: 'active' })} />));
-    expect(screen.queryByRole('button', { name: 'Close League' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'End league' })).toBeNull();
   });
 
   it('sends no lifecycle command while offline and says nothing was sent', async () => {
@@ -700,7 +705,7 @@ describe('League detail management', () => {
     mocks.updateLeague.mockResolvedValue(makeManualLeagueDto({ version: 2 }));
     render(wrap(<Detail data={makeLeagueDetail()} />));
     await user.click(screen.getByRole('button', { name: 'Edit League' }));
-    await user.click(screen.getByRole('radio', { name: /Open-ended · manual/ }));
+    await user.click(screen.getByRole('radio', { name: /Manual/ }));
     await user.click(screen.getByRole('button', { name: 'Save changes' }));
     expect(mocks.updateLeague).toHaveBeenCalledWith({
       data: {
@@ -754,15 +759,13 @@ describe('League detail for a former participant', () => {
 
   it('shows the read-only notice and returns to the match history', () => {
     render(wrap(<Detail data={makeFormerParticipantDetail({ status: 'active' })} />));
-    expect(screen.getByRole('heading', { name: 'You played in this League' })).toBeTruthy();
-    expect(screen.getByText(/read-only for you/)).toBeTruthy();
+    expect(screen.getByRole('heading', { name: 'Read-only league' })).toBeTruthy();
+    expect(screen.getByText(/community actions are hidden/)).toBeTruthy();
     const notice = screen.getByTestId('former-participant-notice');
     const icon = screen.getByTestId('former-participant-icon');
     expect(notice.contains(icon)).toBe(true);
     expect(icon.getAttribute('aria-hidden')).toBe('true');
-    expect(
-      notice.contains(screen.getByRole('heading', { name: 'You played in this League' }))
-    ).toBe(true);
+    expect(notice.contains(screen.getByRole('heading', { name: 'Read-only league' }))).toBe(true);
     const back = screen.getByRole('link', { name: 'Back to match history' });
     expect(back.getAttribute('href')).toBe('/matches/past');
     expect(screen.queryByRole('link', { name: 'Back to Leagues' })).toBeNull();
@@ -782,13 +785,13 @@ describe('League detail for a former participant', () => {
     );
     const hrefs = screen.getAllByRole('link').map((link) => link.getAttribute('href'));
     expect(hrefs).toEqual(['/matches/past']);
-    for (const name of [/Activate League/, /Close League/, /Edit League/])
+    for (const name of [/Activate League/, /End league/, /Edit League/])
       expect(screen.queryByRole('button', { name })).toBeNull();
   });
 
   it('keeps the member experience unchanged for an ordinary non-manager member', () => {
     render(wrap(<Detail data={makeLeagueDetail({ status: 'active', can_manage: false })} />));
-    expect(screen.queryByRole('heading', { name: 'You played in this League' })).toBeNull();
+    expect(screen.queryByRole('heading', { name: 'Read-only league' })).toBeNull();
     expect(screen.queryByTestId('former-participant-notice')).toBeNull();
     const back = screen.getByRole('link', { name: 'Back to Leagues' });
     expect(back.getAttribute('href')).toBe(`/community/${LEAGUE_COMMUNITY_ID}/leagues`);
@@ -808,8 +811,8 @@ describe('League detail for a former participant', () => {
   });
 
   it.each([
-    ['pt-BR', 'Você jogou nesta Liga', 'Voltar ao histórico de partidas'],
-    ['es', 'Jugaste en esta Liga', 'Volver al historial de partidos']
+    ['pt-BR', 'Liga somente leitura', 'Voltar ao histórico de partidas'],
+    ['es', 'Liga de solo lectura', 'Volver al historial de partidos']
   ] as const)('translates the notice and back link in %s', (locale, title, back) => {
     render(wrap(<Detail data={makeFormerParticipantDetail({ status: 'active' })} />, locale));
     expect(screen.getByRole('heading', { name: title })).toBeTruthy();
