@@ -88,6 +88,7 @@ export function PairStatistics({
           {t('statistics.relationships.backToPlayer')}
         </Link>
       </header>
+      <PairSummary pair={pair} />
       {filterControls && (
         <StatisticsFilterSection
           id="pair-stats-filters"
@@ -95,7 +96,6 @@ export function PairStatistics({
           controls={filterControls}
         />
       )}
-      <PairSummary pair={pair} />
       <RelationshipSections
         compact
         record={pair.record}

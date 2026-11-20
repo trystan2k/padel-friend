@@ -51,6 +51,13 @@ export function OpponentStatistics({
           {t('statistics.relationships.backToPlayer')}
         </Link>
       </header>
+      <RelationshipMeetings
+        key={JSON.stringify([opponent.focalId, opponent.otherId, opponent.filters])}
+        subject={opponent}
+        kind="opponent"
+        offset={recentOffset}
+        onOffsetChange={onRecentOffsetChange}
+      />
       {filterControls && (
         <StatisticsFilterSection
           id="opponent-stats-filters"
@@ -62,13 +69,6 @@ export function OpponentStatistics({
         record={opponent.record}
         kind="opponent"
         upsetThreshold={opponent.config.thresholds.upset_expected_score_max}
-      />
-      <RelationshipMeetings
-        key={JSON.stringify([opponent.focalId, opponent.otherId, opponent.filters])}
-        subject={opponent}
-        kind="opponent"
-        offset={recentOffset}
-        onOffsetChange={onRecentOffsetChange}
       />
     </main>
   );

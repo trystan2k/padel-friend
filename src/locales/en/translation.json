@@ -2379,9 +2379,9 @@
       "community": "Community",
       "allCommunities": "All communities",
       "league": "League",
-      "noLeague": "No League",
-      "activeLeague": "Active League: {{name}}",
-      "historicalLeague": "Past League: {{name}}",
+      "noLeague": "No league",
+      "activeLeague": "Active league: {{name}}",
+      "historicalLeague": "Past league: {{name}}",
       "type": "Match type",
       "types": {
         "all": "All",
@@ -2408,12 +2408,12 @@
       "rivalryPair": "{{first}} and {{second}}: {{wins}}-{{losses}}-{{draws}}",
       "rivalryDetail": "Gap of {{gap}} across {{matches}} decided meetings",
       "leagueScope": {
-        "upcoming": "Showing League {{name}}: eligible ranked matches only.",
-        "active": "Showing the active League {{name}}: eligible ranked matches only.",
-        "closed": "Showing the past League {{name}}: eligible ranked matches in its period only."
+        "upcoming": "Showing league {{name}}: eligible ranked matches only.",
+        "active": "Showing the active league {{name}}: eligible ranked matches only.",
+        "closed": "Showing the past league {{name}}: eligible ranked matches in its period only."
       },
       "notice": {
-        "friendly_league": "Friendly matches never count towards a League, so this selection is empty. Choose All or Competitive, or remove the League."
+        "friendly_league": "Friendly matches never count towards a league, so this selection is empty. Choose all or competitive, or remove the league."
       },
       "matches": {
         "title": "Matches",
@@ -2596,7 +2596,7 @@
       "ratingChange": "Rating {{delta}}",
       "noRating": "No rating change",
       "league": "League: {{name}}",
-      "leagueLink": "Open League {{name}}",
+      "leagueLink": "Open league {{name}}",
       "viewDetails": "Result details",
       "viewMatch": "Open match",
       "detailsLabel": "Result details, {{type}} match on {{date}}",
@@ -2608,8 +2608,8 @@
       "summary": {
         "played": "Played {{date}} at {{time}}",
         "court": "Court {{label}}",
-        "leagueCounts": "Counts for the League standings",
-        "leagueNotCounted": "Does not count for the League standings",
+        "leagueCounts": "Counts for the league standings",
+        "leagueNotCounted": "Does not count for the league standings",
         "community": "Community",
         "venue": "Venue",
         "type": "Match type",
@@ -2653,8 +2653,8 @@
         "reliability": "Reliability {{before}}% to {{after}}%",
         "expected": "Expected score {{value}}",
         "absent": {
-          "friendly": "No rating change: Friendly match",
-          "incomplete": "No rating change: Incomplete result",
+          "friendly": "No rating change: friendly match",
+          "incomplete": "No rating change: incomplete result",
           "not_rated": "No rating change: not rated",
           "missing_evidence": "Rating evidence missing"
         }
@@ -2870,7 +2870,7 @@
           "help": "Distinct players who played a confirmed match in this selection; not the member count."
         },
         "ranking": {
-          "help": "Eligible matches of the active League."
+          "help": "Eligible matches of the active league."
         },
         "frequency": {
           "average": {
@@ -3013,13 +3013,13 @@
             "help": "Position among the community players by level."
           },
           "leaguePosition": {
-            "help": "Position in the active League standings."
+            "help": "Position in the active league standings."
           },
           "bestCommunityRank": {
             "help": "Best community position held; the note says when the stored history starts."
           },
           "bestLeaguePosition": {
-            "help": "Best League position held; the note says when the stored history starts."
+            "help": "Best league position held; the note says when the stored history starts."
           }
         },
         "form": {

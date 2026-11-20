@@ -3,6 +3,7 @@ import * as stylex from '@stylexjs/stylex';
 // Match history and confirmed-group detail. Tokens only; interactive targets keep the 44px floor
 // and every outcome carries text, never colour alone.
 const TOUCH = 'calc(var(--space-40) + var(--space-4))';
+const CONTROL = 'calc(var(--space-40) + var(--space-8))';
 const focusRing = {
   outline: 'var(--border-width-lg) solid var(--color-green)',
   outlineOffset: 'var(--space-2)'
@@ -13,40 +14,43 @@ export const historyStyles = stylex.create({
   heading: {
     margin: 0,
     fontFamily: 'var(--font-family-heading)',
-    fontSize: 'var(--font-size-18)',
-    fontWeight: 'var(--font-weight-bold)',
+    fontSize: 'var(--font-size-17)',
+    fontWeight: 'var(--font-weight-extrabold)',
     color: 'var(--color-text)'
   },
   subheading: {
     margin: 0,
     fontFamily: 'var(--font-family-heading)',
-    fontSize: 'var(--font-size-14)',
-    fontWeight: 'var(--font-weight-semibold)',
+    fontSize: 'var(--font-size-15)',
+    fontWeight: 'var(--font-weight-bold)',
     color: 'var(--color-text)'
   },
   copy: {
     margin: 0,
-    fontSize: 'var(--font-size-12)',
+    fontSize: 'var(--font-size-14)',
     color: 'var(--color-muted)',
     overflowWrap: 'anywhere'
   },
   strong: {
     margin: 0,
-    fontSize: 'var(--font-size-14)',
+    fontSize: 'var(--font-size-15)',
     fontWeight: 'var(--font-weight-semibold)',
     color: 'var(--color-text)',
     overflowWrap: 'anywhere'
   },
-  error: { margin: 0, color: 'var(--color-red)', fontSize: 'var(--font-size-12)' },
+  error: { margin: 0, color: 'var(--color-red)', fontSize: 'var(--font-size-14)' },
   list: { display: 'grid', gap: 'var(--space-8)', margin: 0, padding: 0, listStyle: 'none' },
+  // History rows are hairline cards, one per match (frame list rows: 20px radius, 16px padding).
   entry: {
     display: 'grid',
-    gap: 'var(--space-5)',
+    gap: 'var(--space-6)',
     minWidth: 0,
-    paddingBlockEnd: 'var(--space-8)',
-    borderBottomWidth: 'var(--border-width-sm)',
-    borderBottomStyle: 'solid',
-    borderBottomColor: 'var(--color-line)'
+    padding: 'var(--space-14) var(--space-16)',
+    borderWidth: 'var(--border-width-sm)',
+    borderStyle: 'solid',
+    borderColor: 'var(--color-hairline)',
+    borderRadius: 'var(--radius-20)',
+    backgroundColor: 'var(--color-surface)'
   },
   badges: { display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 'var(--space-4)' },
   scoreLine: {
@@ -57,12 +61,12 @@ export const historyStyles = stylex.create({
     fontVariantNumeric: 'tabular-nums'
   },
   outcome: {
-    fontSize: 'var(--font-size-14)',
-    fontWeight: 'var(--font-weight-bold)',
+    fontSize: 'var(--font-size-16)',
+    fontWeight: 'var(--font-weight-extrabold)',
     color: 'var(--color-text)'
   },
   delta: {
-    fontSize: 'var(--font-size-12)',
+    fontSize: 'var(--font-size-14)',
     fontWeight: 'var(--font-weight-semibold)',
     color: 'var(--color-muted)',
     fontVariantNumeric: 'tabular-nums'
@@ -73,15 +77,18 @@ export const historyStyles = stylex.create({
     justifySelf: 'start',
     display: 'inline-flex',
     alignItems: 'center',
-    minHeight: TOUCH,
+    minHeight: CONTROL,
     minWidth: TOUCH,
-    paddingInline: 'var(--space-9)',
-    borderRadius: 'var(--radius-12)',
-    backgroundColor: 'var(--color-surface-2)',
+    paddingInline: 'var(--space-16)',
+    borderWidth: 'var(--border-width-md)',
+    borderStyle: 'solid',
+    borderColor: 'var(--color-line)',
+    borderRadius: 'var(--radius-14)',
+    backgroundColor: 'var(--color-surface)',
     color: 'var(--color-text)',
     fontFamily: 'var(--font-family-body)',
-    fontSize: 'var(--font-size-12)',
-    fontWeight: 'var(--font-weight-semibold)',
+    fontSize: 'var(--font-size-14)',
+    fontWeight: 'var(--font-weight-bold)',
     textDecoration: 'none',
     ':focus-visible': focusRing
   },
@@ -100,43 +107,54 @@ export const historyStyles = stylex.create({
     display: 'inline-flex',
     alignItems: 'center',
     justifyContent: 'center',
-    minHeight: TOUCH,
+    minHeight: CONTROL,
     minWidth: TOUCH,
-    paddingInline: 'var(--space-9)',
-    borderWidth: 0,
-    borderRadius: 'var(--radius-12)',
-    backgroundColor: 'var(--color-surface-2)',
+    paddingInline: 'var(--space-16)',
+    borderWidth: 'var(--border-width-md)',
+    borderStyle: 'solid',
+    borderColor: 'var(--color-line)',
+    borderRadius: 'var(--radius-14)',
+    backgroundColor: 'var(--color-surface)',
     color: 'var(--color-text)',
     fontFamily: 'var(--font-family-body)',
-    fontSize: 'var(--font-size-12)',
-    fontWeight: 'var(--font-weight-semibold)',
+    fontSize: 'var(--font-size-14)',
+    fontWeight: 'var(--font-weight-bold)',
     cursor: 'pointer',
     ':focus-visible': focusRing,
     ':disabled': { cursor: 'not-allowed', opacity: 0.6 }
   },
+  // Clubhouse page (BcpYH): page background, 20px gutters, 14px rhythm.
   page: {
+    boxSizing: 'border-box',
     display: 'grid',
-    gap: 'var(--space-8)',
+    alignContent: 'start',
+    gap: 'var(--space-14)',
     width: '100%',
+    maxWidth: 'calc(var(--space-40) * 12)',
+    minHeight: '100vh',
     marginInline: 'auto',
-    padding: 'var(--space-18)',
+    padding: 'var(--space-4) var(--space-20) var(--space-20)',
+    backgroundColor: 'var(--color-bg)',
     color: 'var(--color-text)',
+    fontFamily: 'var(--font-family-body)',
     minWidth: 0
   },
-  pageHeader: { display: 'grid', gap: 'var(--space-4)' },
+  pageHeader: { display: 'grid', gap: 'var(--space-8)' },
   title: {
     margin: 0,
     fontFamily: 'var(--font-family-heading)',
-    fontSize: 'var(--font-size-24)',
-    lineHeight: 'var(--font-line-height-tight)'
+    fontSize: 'var(--font-size-28)',
+    fontWeight: 'var(--font-weight-extrabold)',
+    lineHeight: 'var(--font-line-height-tight)',
+    overflowWrap: 'anywhere'
   },
   facts: {
     display: 'grid',
     gridTemplateColumns: 'minmax(0, auto) minmax(0, 1fr)',
     columnGap: 'var(--space-8)',
-    rowGap: 'var(--space-3)',
+    rowGap: 'var(--space-6)',
     margin: 0,
-    fontSize: 'var(--font-size-12)'
+    fontSize: 'var(--font-size-14)'
   },
   factLabel: { margin: 0, color: 'var(--color-muted)' },
   factValue: { margin: 0, fontWeight: 'var(--font-weight-semibold)', overflowWrap: 'anywhere' },
@@ -147,45 +165,44 @@ export const historyStyles = stylex.create({
     gap: 'var(--space-6)',
     fontVariantNumeric: 'tabular-nums'
   },
-  setScore: { fontSize: 'var(--font-size-16)', fontWeight: 'var(--font-weight-bold)' },
+  setScore: { fontSize: 'var(--font-size-17)', fontWeight: 'var(--font-weight-extrabold)' },
   team: { display: 'grid', gap: 'var(--space-6)', minWidth: 0 },
-  // Result hero: team A, the set scores and team B side by side, the verdict line underneath.
-  hero: { gap: 'var(--space-10)', minWidth: 0 },
+  // BcpYH: one score row per team, followed by a separate verdict notice.
+  hero: { gap: 'var(--space-8)', minWidth: 0 },
   heroLabel: {
     margin: 0,
-    fontSize: 'var(--font-size-12)',
+    fontSize: 'var(--font-size-13)',
     fontWeight: 'var(--font-weight-semibold)',
-    color: 'var(--color-hero-label)',
-    textTransform: 'uppercase'
+    color: 'var(--color-muted)'
   },
-  heroGrid: {
-    display: 'grid',
-    gridTemplateColumns: 'minmax(0, 1fr) auto minmax(0, 1fr)',
-    alignItems: 'start',
-    gap: 'var(--space-8)',
-    minWidth: 0
+  scoreTable: {
+    width: '100%',
+    borderCollapse: 'collapse'
   },
-  heroTeam: { display: 'grid', gap: 'var(--space-2)', minWidth: 0 },
+  hidden: {
+    position: 'absolute',
+    width: 'var(--border-width-sm)',
+    height: 'var(--border-width-sm)',
+    clipPath: 'inset(50%)',
+    whiteSpace: 'nowrap'
+  },
   heroNames: {
-    fontSize: 'var(--font-size-14)',
-    color: 'var(--color-on-hero)',
+    width: '100%',
+    textAlign: 'start',
+    fontSize: 'var(--font-size-16)',
+    fontWeight: 'var(--font-weight-bold)',
+    color: 'var(--color-text)',
     overflowWrap: 'anywhere'
-  },
-  heroScores: {
-    margin: 0,
-    padding: 'var(--space-8)',
-    borderRadius: 'var(--radius-12)',
-    backgroundColor: 'var(--color-hero-avatar)',
-    textAlign: 'center'
   },
   heroScore: {
-    display: 'block',
+    paddingBlock: 'var(--space-4)',
+    paddingInlineStart: 'var(--space-8)',
+    textAlign: 'end',
     fontFamily: 'var(--font-family-heading)',
-    fontSize: 'var(--font-size-18)',
-    fontWeight: 'var(--font-weight-bold)',
-    color: 'var(--color-on-hero)',
-    fontVariantNumeric: 'tabular-nums',
-    overflowWrap: 'anywhere'
+    fontSize: 'var(--font-size-21)',
+    fontWeight: 'var(--font-weight-extrabold)',
+    color: 'var(--color-text)',
+    fontVariantNumeric: 'tabular-nums'
   },
   heroLine: {
     display: 'flex',
@@ -193,10 +210,12 @@ export const historyStyles = stylex.create({
     columnGap: 'var(--space-8)',
     rowGap: 'var(--space-2)',
     margin: 0,
-    fontSize: 'var(--font-size-12)',
+    padding: 'var(--space-12) var(--space-14)',
+    borderRadius: 'var(--radius-20)',
+    backgroundColor: 'var(--color-green-soft)',
+    fontSize: 'var(--font-size-15)',
     fontWeight: 'var(--font-weight-bold)',
-    color: 'var(--color-hero-accent)',
-    textTransform: 'uppercase',
+    color: 'var(--color-green-ink)',
     overflowWrap: 'anywhere'
   },
   teamScore: {
@@ -207,10 +226,9 @@ export const historyStyles = stylex.create({
   },
   teamLabel: {
     margin: 0,
-    fontSize: 'var(--font-size-12)',
+    fontSize: 'var(--font-size-13)',
     fontWeight: 'var(--font-weight-bold)',
-    color: 'var(--color-green)',
-    textTransform: 'uppercase'
+    color: 'var(--color-green)'
   },
   player: {
     display: 'grid',

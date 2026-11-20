@@ -233,16 +233,6 @@ export function CommunityStatistics({
         <FilterContext filters={filters} />
       </header>
 
-      <Section id="community-filters" title={t('statistics.filters.title')}>
-        <StatisticsFilters
-          key={JSON.stringify(filters)}
-          filters={filters}
-          leagues={stats.leagues}
-          activeLeagueId={stats.activeLeagueId}
-          onApply={onApply}
-        />
-      </Section>
-
       {stats.league && (
         <p {...stylex.props(c.notice)}>
           {t(`statistics.community.leagueScope.${stats.league.status}`, {
@@ -314,6 +304,16 @@ export function CommunityStatistics({
             value={stats.totals.games}
           />
         </dl>
+      </Section>
+
+      <Section id="community-filters" title={t('statistics.filters.title')}>
+        <StatisticsFilters
+          key={JSON.stringify(filters)}
+          filters={filters}
+          leagues={stats.leagues}
+          activeLeagueId={stats.activeLeagueId}
+          onApply={onApply}
+        />
       </Section>
 
       <Section id="community-leaders" title={t('statistics.community.leaders.title')}>

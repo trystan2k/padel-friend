@@ -3,6 +3,7 @@ import * as stylex from '@stylexjs/stylex';
 // Shared statistics chart, disclosure and state styles. Tokens only; the 44px floor applies to every
 // control and nothing relies on colour alone (values are always repeated as text and in the table).
 const TOUCH = 'calc(var(--space-40) + var(--space-4))';
+const CONTROL = 'calc(var(--space-40) + var(--space-8))';
 const focusRing = {
   outline: 'var(--border-width-lg) solid var(--color-green)',
   outlineOffset: 'var(--space-2)'
@@ -12,7 +13,7 @@ export const statisticsStyles = stylex.create({
   figure: { display: 'grid', gap: 'var(--space-6)', margin: 0, minWidth: 0 },
   summary: {
     margin: 0,
-    fontSize: 'var(--font-size-12)',
+    fontSize: 'var(--font-size-14)',
     color: 'var(--color-muted)',
     overflowWrap: 'anywhere'
   },
@@ -21,17 +22,17 @@ export const statisticsStyles = stylex.create({
     justifySelf: 'start',
     display: 'inline-flex',
     alignItems: 'center',
-    minHeight: TOUCH,
+    minHeight: CONTROL,
     minWidth: TOUCH,
-    paddingInline: 'var(--space-12)',
-    borderRadius: 'var(--radius-9)',
-    borderWidth: 'var(--border-width-sm)',
+    paddingInline: 'var(--space-16)',
+    borderRadius: 'var(--radius-14)',
+    borderWidth: 'var(--border-width-md)',
     borderStyle: 'solid',
     borderColor: 'var(--color-line)',
     backgroundColor: 'transparent',
     color: 'var(--color-text)',
     fontFamily: 'var(--font-family-body)',
-    fontSize: 'var(--font-size-12)',
+    fontSize: 'var(--font-size-14)',
     fontWeight: 'var(--font-weight-semibold)',
     cursor: 'pointer',
     ':focus-visible': focusRing
@@ -46,7 +47,7 @@ export const statisticsStyles = stylex.create({
     display: 'grid',
     gap: 'var(--space-6)',
     margin: 0,
-    fontSize: 'var(--font-size-12)',
+    fontSize: 'var(--font-size-14)',
     color: 'var(--color-muted)'
   },
   errorState: {
@@ -54,7 +55,7 @@ export const statisticsStyles = stylex.create({
     gap: 'var(--space-6)',
     justifyItems: 'start',
     color: 'var(--color-red)',
-    fontSize: 'var(--font-size-12)'
+    fontSize: 'var(--font-size-14)'
   },
   breadcrumbList: {
     display: 'flex',
@@ -64,7 +65,7 @@ export const statisticsStyles = stylex.create({
     listStyle: 'none',
     margin: 0,
     padding: 0,
-    fontSize: 'var(--font-size-12)',
+    fontSize: 'var(--font-size-14)',
     color: 'var(--color-muted)'
   },
   breadcrumbLink: {
@@ -82,15 +83,17 @@ export const statisticsStyles = stylex.create({
     display: 'inline-flex',
     alignItems: 'center',
     justifyContent: 'center',
-    minHeight: TOUCH,
+    minHeight: CONTROL,
     minWidth: TOUCH,
-    paddingInline: 'var(--space-9)',
-    borderWidth: 0,
-    borderRadius: 'var(--radius-12)',
-    backgroundColor: 'var(--color-surface-2)',
+    paddingInline: 'var(--space-16)',
+    borderWidth: 'var(--border-width-md)',
+    borderStyle: 'solid',
+    borderColor: 'var(--color-line)',
+    borderRadius: 'var(--radius-14)',
+    backgroundColor: 'var(--color-surface)',
     color: 'var(--color-text)',
     fontFamily: 'var(--font-family-body)',
-    fontSize: 'var(--font-size-12)',
+    fontSize: 'var(--font-size-14)',
     fontWeight: 'var(--font-weight-semibold)',
     cursor: 'pointer',
     ':focus-visible': focusRing

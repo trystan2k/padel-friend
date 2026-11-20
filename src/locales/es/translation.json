@@ -2379,7 +2379,7 @@
       "community": "Comunidad",
       "allCommunities": "Todas las comunidades",
       "league": "Liga",
-      "noLeague": "Sin Liga",
+      "noLeague": "Sin liga",
       "activeLeague": "Liga activa: {{name}}",
       "historicalLeague": "Liga pasada: {{name}}",
       "type": "Tipo de partido",
@@ -2408,12 +2408,12 @@
       "rivalryPair": "{{first}} y {{second}}: {{wins}}-{{losses}}-{{draws}}",
       "rivalryDetail": "Diferencia de {{gap}} en {{matches}} enfrentamientos decididos",
       "leagueScope": {
-        "upcoming": "Mostrando la Liga {{name}}: solo partidos elegibles para el ranking.",
-        "active": "Mostrando la Liga activa {{name}}: solo partidos elegibles para el ranking.",
-        "closed": "Mostrando la Liga pasada {{name}}: solo partidos elegibles de su periodo."
+        "upcoming": "Mostrando la liga {{name}}: solo partidos elegibles para el ranking.",
+        "active": "Mostrando la liga activa {{name}}: solo partidos elegibles para el ranking.",
+        "closed": "Mostrando la liga pasada {{name}}: solo partidos elegibles de su periodo."
       },
       "notice": {
-        "friendly_league": "Los partidos amistosos nunca cuentan para una Liga, así que esta selección está vacía. Elige Todos o Competitivo, o quita la Liga."
+        "friendly_league": "Los partidos amistosos nunca cuentan para una liga, así que esta selección está vacía. Elige todos o competitivo, o quita la liga."
       },
       "matches": {
         "title": "Partidos",
@@ -2596,7 +2596,7 @@
       "ratingChange": "Nivel {{delta}}",
       "noRating": "Sin cambio de nivel",
       "league": "Liga: {{name}}",
-      "leagueLink": "Abrir la Liga {{name}}",
+      "leagueLink": "Abrir la liga {{name}}",
       "viewDetails": "Detalles del resultado",
       "viewMatch": "Abrir partido",
       "detailsLabel": "Detalles del resultado, partido {{type}} el {{date}}",
@@ -2608,8 +2608,8 @@
       "summary": {
         "played": "Jugado el {{date}} a las {{time}}",
         "court": "Pista {{label}}",
-        "leagueCounts": "Cuenta para la clasificación de la Liga",
-        "leagueNotCounted": "No cuenta para la clasificación de la Liga",
+        "leagueCounts": "Cuenta para la clasificación de la liga",
+        "leagueNotCounted": "No cuenta para la clasificación de la liga",
         "community": "Comunidad",
         "venue": "Lugar",
         "type": "Tipo de partido",
@@ -2870,7 +2870,7 @@
           "help": "Jugadores distintos que jugaron un partido confirmado en esta selección; no es el número de miembros."
         },
         "ranking": {
-          "help": "Partidos elegibles de la Liga activa."
+          "help": "Partidos elegibles de la liga activa."
         },
         "frequency": {
           "average": {
@@ -3013,13 +3013,13 @@
             "help": "Posición entre los jugadores de la comunidad por nivel."
           },
           "leaguePosition": {
-            "help": "Posición en la clasificación de la Liga activa."
+            "help": "Posición en la clasificación de la liga activa."
           },
           "bestCommunityRank": {
             "help": "Mejor posición en la comunidad; la nota indica cuándo empieza el historial guardado."
           },
           "bestLeaguePosition": {
-            "help": "Mejor posición en la Liga; la nota indica cuándo empieza el historial guardado."
+            "help": "Mejor posición en la liga; la nota indica cuándo empieza el historial guardado."
           }
         },
         "form": {

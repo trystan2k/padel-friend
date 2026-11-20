@@ -322,13 +322,13 @@ describe('PairStatistics composition (Pencil GrkSH)', () => {
     expect(summary.textContent).toContain('No matches together yet');
   });
 
-  it('orders summary, record, scores, streaks, rating, Leagues, then recent meetings', () => {
+  it('shows the summary before filters and detailed pair evidence', () => {
     render(
       wrap(<PairStatistics pair={makePair()} filterControls={controls(vi.fn<() => void>())} />)
     );
     const names = [
-      'Statistics filters',
       'Record',
+      'Statistics filters',
       'Sets and games',
       'Streaks',
       'Rating evidence',

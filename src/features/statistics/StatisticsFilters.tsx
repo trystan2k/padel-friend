@@ -108,6 +108,11 @@ export function StatisticsFilters({ filters, leagues, activeLeagueId, onApply }:
               {...stylex.props(s.radioOption, draft.type === type && s.radioSelected)}
             >
               <Radio.Root id={`${base}-type-${type}`} value={type} {...stylex.props(s.radio)} />
+              {draft.type === type && (
+                <span aria-hidden="true" {...stylex.props(s.check)}>
+                  ✓
+                </span>
+              )}
               {t(`statistics.filters.types.${type}`)}
             </label>
           ))}

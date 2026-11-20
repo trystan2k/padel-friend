@@ -24,6 +24,16 @@ function placeholders(text: string): string[] {
 }
 
 describe('statistics copy', () => {
+  it.each(Object.entries(locales))(
+    'keeps statistics noun and status copy in sentence case (%s)',
+    (_locale, data) => {
+      const copy = JSON.stringify(data.statistics);
+      const titleCaseLeague = /\b(?:[Nn]o|Active|Past|Open|the|a|da|la|Sem|Sin) (?:League|Liga)\b/u;
+      expect(copy).not.toMatch(titleCaseLeague);
+      expect(copy).not.toMatch(/: (?:Friendly match|Incomplete result)\b/u);
+    }
+  );
+
   it.each(components)('%s has no hardcoded user-facing text', (file) => {
     const source = readFileSync(join(dir, file), 'utf8');
     // Text between tags that is not an expression: >Some words<

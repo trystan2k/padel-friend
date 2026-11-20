@@ -127,7 +127,7 @@ describe('match history UI', () => {
 
     it('links the League name to the League detail with a distinct accessible name', () => {
       render(wrap(<MatchHistory initial={page([leagueItem()])} filters={filters} />));
-      const link = screen.getByRole('link', { name: 'Open League Autumn League' });
+      const link = screen.getByRole('link', { name: 'Open league Autumn League' });
       expect(link.getAttribute('href')).toBe(`/community/${communityId}/leagues/${leagueId}`);
       expect(link.textContent).toBe('League: Autumn League');
     });
@@ -136,18 +136,18 @@ describe('match history UI', () => {
       render(
         wrap(<MatchHistory initial={page([leagueItem({ league_id: null })])} filters={filters} />)
       );
-      expect(screen.queryByRole('link', { name: /Open League/ })).toBeNull();
+      expect(screen.queryByRole('link', { name: /Open league/ })).toBeNull();
       expect(screen.getByText(/League: Autumn League/)).toBeTruthy();
     });
 
     it('shows no League link for an Unranked match', () => {
       render(wrap(<MatchHistory initial={page([item('played', 1)])} filters={filters} />));
-      expect(screen.queryByRole('link', { name: /Open League/ })).toBeNull();
+      expect(screen.queryByRole('link', { name: /Open league/ })).toBeNull();
     });
 
     it.each([
-      ['pt-BR', 'Abrir a Liga Autumn League', 'Liga: Autumn League'],
-      ['es', 'Abrir la Liga Autumn League', 'Liga: Autumn League']
+      ['pt-BR', 'Abrir a liga Autumn League', 'Liga: Autumn League'],
+      ['es', 'Abrir la liga Autumn League', 'Liga: Autumn League']
     ] as const)('translates the League link in %s', (language, name, text) => {
       render(
         <I18nextProvider i18n={createI18n(language)}>
@@ -240,7 +240,7 @@ describe('match history UI', () => {
       timeline: []
     });
     const { rerender } = render(wrap(<ConfirmedGroupDetail detail={detail} />));
-    expect(screen.getAllByText('No rating change: Friendly match')).toHaveLength(5);
+    expect(screen.getAllByText('No rating change: friendly match')).toHaveLength(5);
     expect(screen.queryByLabelText(/Upset:/)).toBeNull();
     const override = decodeGroupDetail({
       ...detail,
@@ -385,7 +385,14 @@ describe('confirmed group detail composition (Pencil BcpYH)', () => {
     const hero = screen.getByRole('region', { name: 'Result' });
     expect(hero.textContent).toContain('Thiago and Ana');
     expect(hero.textContent).toContain('Pedro and Carlos');
-    for (const score of ['6–4', '3–6', '6–3']) expect(hero.textContent).toContain(score);
+    const table = within(hero).getByRole('table', { name: 'Result' });
+    const [first, second] = within(table).getAllByRole('row').slice(1);
+    const scores = (row: HTMLElement) =>
+      within(row)
+        .getAllByRole('cell')
+        .map((cell) => cell.textContent);
+    expect(scores(first!)).toEqual(['6', '3', '6']);
+    expect(scores(second!)).toEqual(['4', '6', '3']);
     expect(within(hero).getByText('Team A won')).toBeTruthy();
     expect(within(hero).getByText('Sets 2–1 · Games 15–13')).toBeTruthy();
   });
