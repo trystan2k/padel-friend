@@ -2,7 +2,6 @@ import { getHome } from '../home/home.functions';
 import { parseHomeSearch } from '../home/home.validators';
 import type { HomeData } from '../home/home-contracts';
 import { listMyLeagueCommunities } from '../leagues/league.functions';
-import { getLevelReviewAccess } from '../level-reviews/level-review.functions';
 import { getMyPlayerProfile } from '../player/player.functions';
 import { loadRatingView } from '../player/rating-view';
 import { getCommunityAdminContext, listMyAdminCommunities } from './community-admin.functions';
@@ -59,7 +58,7 @@ export async function loadCommunitySurface(communityId: string | null, view: Com
     selection.status === 'ready' && adminCommunities.some(({ id }) => id === selection.selected.id)
       ? selection.selected.id
       : null;
-  const [metadata, adminContext, leagueCommunities, inbox, platformAdmin] = await Promise.all([
+  const [metadata, adminContext, leagueCommunities, inbox] = await Promise.all([
     selection.status === 'ready'
       ? optional(getPublicCommunity({ data: { community_id: selection.selected.id } }), undefined)
       : null,
@@ -71,10 +70,6 @@ export async function loadCommunitySurface(communityId: string | null, view: Com
         error: false
       })),
       { items: null, error: true }
-    ),
-    optional(
-      getLevelReviewAccess().then((access) => access.is_platform_admin),
-      false
     )
   ]);
   return {
@@ -85,7 +80,6 @@ export async function loadCommunitySurface(communityId: string | null, view: Com
     adminContext,
     leagueCommunities,
     inbox,
-    platformAdmin,
     matches: home.matches,
     activity: home.activity
   } as const;

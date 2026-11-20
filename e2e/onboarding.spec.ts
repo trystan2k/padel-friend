@@ -102,13 +102,10 @@ const ptBr: LocaleCopy = JSON.parse(
 const PASSWORD = 'Password123!';
 const BASE_URL = 'http://127.0.0.1:4173';
 
-// The profile identity card holds the display-name h2; the dashboard has other h2s (e.g. the
-// rating journey), so a bare level-2 heading query inside <main> is ambiguous.
+// The Me identity header holds the display-name h2; the page has other h2s (e.g. the rating
+// journey), so a bare level-2 heading query inside <main> is ambiguous.
 function profileNameHeading(page: Page) {
-  return page
-    .getByText(/^Member since/)
-    .locator('..')
-    .getByRole('heading', { level: 2 });
+  return page.locator('main > header').getByRole('heading', { level: 2 });
 }
 
 function uniqueEmail(): string {

@@ -40,6 +40,24 @@ async function open(page: Page, path: string) {
   await waitForHydratedPage(page);
 }
 
+test('the platform-admin entry lives on Me for admins only and not on the Community surface', async () => {
+  const adminPage = await f.page(admin);
+  await open(adminPage, '/me');
+  const entry = adminPage.getByRole('region', { name: lr.admin.entryTitle });
+  await expect(entry).toBeVisible();
+  await expect(entry.getByRole('link', { name: lr.admin.entryLink })).toHaveAttribute(
+    'href',
+    '/platform-admin/level-reviews'
+  );
+  await open(adminPage, '/community');
+  await expect(adminPage.getByRole('region', { name: lr.admin.entryTitle })).toHaveCount(0);
+
+  const playerPage = await f.page(player);
+  await open(playerPage, '/me');
+  await expect(playerPage.getByRole('region', { name: lr.entry.title })).toBeVisible();
+  await expect(playerPage.getByRole('region', { name: lr.admin.entryTitle })).toHaveCount(0);
+});
+
 test('admin approves from queue and player sees the adjustment', async () => {
   test.setTimeout(180_000);
   const id = await submitRequest(player, { min: 4, max: 4.2 });
@@ -66,7 +84,7 @@ test('admin approves from queue and player sees the adjustment', async () => {
     decision_note: 'Evidence supports correction.'
   });
   const ownerPage = await f.page(player);
-  await open(ownerPage, '/dashboard');
+  await open(ownerPage, '/me');
   const adjustment = ownerPage
     .getByRole('listitem')
     .filter({ hasText: ratingCopy.history.adjustmentTitle });

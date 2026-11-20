@@ -156,7 +156,7 @@ test('request, admin decision, player notification and corrected profile, then t
   ).toHaveCount(0);
 
   // Profile timeline carries the correction as a non-game item.
-  await open(ownerPage, '/dashboard');
+  await open(ownerPage, '/me');
   const adjustment = ownerPage
     .getByRole('listitem')
     .filter({ hasText: copies.en.rating.history.adjustmentTitle });

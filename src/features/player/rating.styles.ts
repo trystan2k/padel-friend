@@ -22,33 +22,49 @@ export const rating = stylex.create({
   heading: {
     margin: 0,
     fontFamily: 'var(--font-family-heading)',
-    fontSize: 'var(--font-size-16)',
-    fontWeight: 'var(--font-weight-bold)',
+    fontSize: 'var(--font-size-20)',
+    fontWeight: 'var(--font-weight-extrabold)',
     color: 'var(--color-text)'
   },
   subheading: {
     margin: 0,
     fontFamily: 'var(--font-family-heading)',
-    fontSize: 'var(--font-size-13)',
+    fontSize: 'var(--font-size-15)',
     fontWeight: 'var(--font-weight-semibold)',
     color: 'var(--color-text)'
   },
   scope: {
     fontSize: 'var(--font-size-13)',
     fontWeight: 'var(--font-weight-semibold)',
-    color: 'var(--color-green)',
-    textTransform: 'uppercase'
+    color: 'var(--color-green-ink)'
   },
   card: { minWidth: 0, overflowWrap: 'anywhere' },
   copy: {
     margin: 0,
-    fontSize: 'var(--font-size-12)',
+    fontSize: 'var(--font-size-14)',
     color: 'var(--color-muted)',
     overflowWrap: 'anywhere'
   },
   strong: { fontSize: 'var(--font-size-12)', fontWeight: 'var(--font-weight-semibold)' },
-  emptyState: { display: 'flex', alignItems: 'center', gap: 'var(--space-9)' },
-  emptyIcon: { fontSize: 'var(--font-size-17)', color: 'var(--color-muted)', flexShrink: 0 },
+  // Frame x2GG9U: 40px green-soft glyph tile, 16/800 title, muted 14px body.
+  emptyState: { display: 'flex', alignItems: 'flex-start', gap: 'var(--space-12)' },
+  emptyGlyph: {
+    display: 'grid',
+    placeItems: 'center',
+    width: 'var(--space-40)',
+    height: 'var(--space-40)',
+    flexShrink: 0,
+    borderRadius: 'var(--radius-12)',
+    backgroundColor: 'var(--color-green-soft)',
+    color: 'var(--color-green-ink)',
+    fontSize: 'var(--font-size-16)',
+    fontWeight: 'var(--font-weight-extrabold)'
+  },
+  emptyTitle: {
+    margin: 0,
+    fontSize: 'var(--font-size-16)',
+    fontWeight: 'var(--font-weight-extrabold)'
+  },
   stateCopy: { display: 'grid', gap: 'var(--space-3)', minWidth: 0 },
   stateTitle: {
     margin: 0,

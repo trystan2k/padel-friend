@@ -552,7 +552,7 @@ describe('PlayerLevelReviewStatus', () => {
       screen
         .getByRole('link', { name: 'See the correction in your rating history' })
         .getAttribute('href')
-    ).toBe('/dashboard');
+    ).toBe('/me');
   });
 
   it('shows the rejection note without a correction link or approved level', () => {

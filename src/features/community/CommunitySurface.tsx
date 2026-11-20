@@ -8,7 +8,6 @@ import { useRouteRefresh } from '../../lib/use-route-refresh';
 import { CommunitySwitcher } from '../home/CommunitySwitcher';
 import { ActivitySection } from '../home/HomeSections';
 import { LeagueEntries } from '../leagues/LeagueEntries';
-import { PlatformAdminEntry } from '../level-reviews/PlatformAdminEntry';
 import { ProfileError } from '../player/ProfileStates';
 import { CommunityAdminEntries } from './CommunityAdmin';
 import { CommunityInbox } from './CommunityInbox';
@@ -147,7 +146,6 @@ function CommunityOverview({ data }: { data: OverviewData }) {
         </SurfaceCard>
       )}
       <div data-community-entries {...stylex.props(s.stack)}>
-        <PlatformAdminEntry allowed={data.platformAdmin} />
         <CommunityAdminEntries communities={data.adminCommunities} />
         <LeagueEntries communities={data.leagueCommunities} />
         <CommunityInbox initialItems={data.inbox.items} loadError={data.inbox.error} />

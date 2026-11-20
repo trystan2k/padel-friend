@@ -85,26 +85,65 @@ const renderProfile = (initialRating: RatingLoad, onRatingReload = vi.fn<() => v
   );
 
 describe('PlayerProfile rating journey', () => {
-  it('uses a section and subordinate heading when embedded in Home', () => {
-    render(
-      <I18nextProvider i18n={createI18n('en')}>
-        <main>
-          <h1>Home</h1>
-          <PlayerProfile
-            embedded
-            initialProfile={profile}
-            initialRating={rating}
-            onRatingReload={vi.fn<() => void>()}
-          />
-        </main>
-      </I18nextProvider>
-    );
+  it('is the Me page: one main, a hidden page heading and the identity as the visible name', () => {
+    renderProfile(rating);
     expect(screen.getAllByRole('main')).toHaveLength(1);
     expect(screen.getAllByRole('heading', { level: 1 })).toHaveLength(1);
-    expect(
-      screen.getByRole('heading', { level: 2, name: createI18n('en').t('profile.title') })
-    ).toBeTruthy();
+    expect(screen.getByRole('heading', { level: 1 }).textContent).toBe(en.profile.title);
+    expect(screen.getByRole('heading', { level: 2, name: 'Ana Souza' })).toBeTruthy();
+    // vARtQ meta line: side · member since (real data only).
+    expect(screen.getByText(/Left side · Member since/)).toBeTruthy();
   });
+
+  it('keeps every cross-link: statistics, match history, notifications and level reviews', () => {
+    renderProfile(rating);
+    const shortcuts = within(screen.getByRole('navigation', { name: en.profile.links.label }));
+    const hrefs = shortcuts
+      .getAllByRole('link')
+      .map((link) => [link.textContent, link.getAttribute('href')]);
+    expect(hrefs).toEqual([
+      [en.profile.links.statistics.concat('›'), '/players/$playerId'],
+      [en.profile.links.matchHistory.concat('›'), '/matches/past'],
+      [en.profile.links.notifications.concat('›'), '/notifications']
+    ]);
+    const review = within(screen.getByRole('region', { name: en.levelReview.entry.title }));
+    expect(
+      review
+        .getByRole('link', { name: new RegExp(en.levelReview.entry.request) })
+        .getAttribute('href')
+    ).toBe('/level-reviews/new');
+    expect(
+      review.getByRole('link', { name: en.levelReview.entry.history }).getAttribute('href')
+    ).toBe('/level-reviews');
+  });
+
+  it('shows the platform-admin entry on Me only for server-confirmed admins', () => {
+    const { unmount } = renderProfile(rating);
+    expect(screen.queryByRole('region', { name: en.levelReview.admin.entryTitle })).toBeNull();
+    unmount();
+    render(
+      <I18nextProvider i18n={createI18n('en')}>
+        <PlayerProfile
+          initialProfile={profile}
+          initialRating={rating}
+          onRatingReload={vi.fn<() => void>()}
+          platformAdmin
+        />
+      </I18nextProvider>
+    );
+    const admin = within(screen.getByRole('region', { name: en.levelReview.admin.entryTitle }));
+    expect(admin.getAllByRole('link').map((link) => link.getAttribute('href'))).toEqual([
+      '/platform-admin/level-reviews',
+      '/platform-admin/result-repairs'
+    ]);
+  });
+
+  it('does not fabricate a level trend the frame draws: no season delta on the level card', () => {
+    renderProfile(rating);
+    expect(screen.queryByText(/this season/i)).toBeNull();
+    expect(screen.queryByText(/[↑↓]\s*\d/)).toBeNull();
+  });
+
   it('shows current, highest, initial, count and reliability from the committed projection', () => {
     renderProfile(rating);
     // Current and highest level are both 4.12.

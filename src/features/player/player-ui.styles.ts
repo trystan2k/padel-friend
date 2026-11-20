@@ -17,16 +17,8 @@ export const ui = stylex.create({
     marginInline: 'auto'
   },
   onboardingPage: { gap: 'var(--space-10)' },
-  profilePage: { gap: 'var(--space-8)' },
   topContent: { display: 'flex', flexDirection: 'column', gap: 'var(--space-12)' },
-  profileTop: { display: 'flex', flexDirection: 'column', gap: 'var(--space-13)' },
   header: { display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' },
-  headerRow: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    gap: 'var(--space-12)'
-  },
   title: {
     margin: 0,
     fontFamily: 'var(--font-family-heading)',
@@ -46,15 +38,6 @@ export const ui = stylex.create({
     color: 'var(--color-green)',
     fontSize: 'var(--font-size-12)',
     fontWeight: 'var(--font-weight-semibold)'
-  },
-  hero: {
-    backgroundColor: 'var(--color-green-deep)',
-    borderRadius: 'var(--radius-18)',
-    padding: 'var(--space-17)',
-    color: 'var(--color-on-hero)',
-    display: 'flex',
-    flexDirection: 'column',
-    gap: 'var(--space-7)'
   },
   heroTitle: {
     margin: 0,
@@ -167,24 +150,6 @@ export const ui = stylex.create({
     },
     ':disabled': { cursor: 'not-allowed', opacity: 0.6 }
   },
-  secondaryButton: {
-    backgroundColor: 'var(--color-surface)',
-    color: 'var(--color-text)',
-    borderWidth: 0,
-    fontWeight: 'var(--font-weight-semibold)',
-    padding: 'var(--space-12)'
-  },
-  headerAction: {
-    width: 'calc(var(--space-40) + var(--space-4))',
-    height: 'calc(var(--space-40) + var(--space-4))',
-    minHeight: 'calc(var(--space-40) + var(--space-4))',
-    flexShrink: 0,
-    padding: 0,
-    borderRadius: 'var(--radius-20)',
-    backgroundColor: 'var(--color-surface-2)',
-    color: 'var(--color-text)'
-  },
-  headerActionIcon: { width: 'var(--space-16)', height: 'var(--space-16)' },
   fieldset: { borderWidth: 0, borderStyle: 'none', margin: 0, minWidth: 0 },
   bareFieldset: { padding: 0 },
   choices: { display: 'flex', gap: 'var(--space-7)', marginTop: 'var(--space-9)' },
@@ -208,48 +173,6 @@ export const ui = stylex.create({
   },
   selected: { backgroundColor: 'var(--color-green-soft)', color: 'var(--color-green)' },
   radio: { position: 'absolute', opacity: 0, width: 'var(--space-1)', height: 'var(--space-1)' },
-  scaleCaption: {
-    display: 'flex',
-    width: '100%',
-    justifyContent: 'space-between',
-    color: 'var(--color-muted)',
-    fontSize: 'var(--font-size-12)',
-    fontWeight: 'var(--font-weight-semibold)'
-  },
-  scaleEndpoint: { fontWeight: 'var(--font-weight-medium)' },
-  identityHero: { padding: 'var(--space-15)', gap: 'var(--space-12)' },
-  heroSide: { color: 'var(--color-hero-accent)' },
-  heroJoined: { color: 'var(--color-hero-muted)' },
-  levelLabel: {
-    fontSize: 'var(--font-size-12)',
-    fontWeight: 'var(--font-weight-semibold)',
-    color: 'var(--color-muted)'
-  },
-  levelMetric: {
-    fontFamily: 'var(--font-family-heading)',
-    fontSize: 'var(--font-size-32)',
-    fontWeight: 'var(--font-weight-bold)',
-    color: 'var(--color-text)'
-  },
-  levelHeader: { display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' },
-  levelTop: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    gap: 'var(--space-8)'
-  },
-  progressTrack: {
-    width: '100%',
-    height: 'var(--space-14)',
-    borderRadius: 'var(--radius-7)',
-    backgroundColor: 'var(--color-surface-2)',
-    overflow: 'hidden'
-  },
-  progressFill: {
-    height: '100%',
-    backgroundColor: 'var(--color-green)',
-    borderRadius: 'var(--radius-7)'
-  },
   stateCard: {
     backgroundColor: 'var(--color-surface)',
     borderRadius: 'var(--radius-12)',
@@ -270,21 +193,8 @@ export const ui = stylex.create({
     margin: 0
   },
   stateDescription: { fontSize: 'var(--font-size-12)', color: 'var(--color-muted)', margin: 0 },
-  level: {
-    color: 'var(--color-green)',
-    fontFamily: 'var(--font-family-heading)',
-    fontSize: 'var(--font-size-29)',
-    fontWeight: 'var(--font-weight-bold)'
-  },
-  row: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    gap: 'var(--space-8)'
-  },
   muted: { color: 'var(--color-muted)', fontSize: 'var(--font-size-12)', margin: 0 },
   error: { color: 'var(--color-red)', fontSize: 'var(--font-size-12)', margin: 0 },
-  identity: { display: 'flex', alignItems: 'center', gap: 'var(--space-12)' },
   avatar: {
     width: 'calc(var(--space-40) + var(--space-16))',
     height: 'calc(var(--space-40) + var(--space-16))',
@@ -297,54 +207,7 @@ export const ui = stylex.create({
     flexShrink: 0,
     fontWeight: 'var(--font-weight-bold)'
   },
-  name: {
-    margin: 0,
-    fontFamily: 'var(--font-family-heading)',
-    fontSize: 'var(--font-size-18)',
-    fontWeight: 'var(--font-weight-bold)'
-  },
   stack: { display: 'flex', flexDirection: 'column', gap: 'var(--space-9)' },
-  levelReviewTitle: {
-    margin: 0,
-    fontFamily: 'var(--font-family-heading)',
-    fontSize: 'var(--font-size-14)',
-    fontWeight: 'var(--font-weight-bold)'
-  },
-  levelReviewActions: { display: 'flex', flexWrap: 'wrap', gap: 'var(--space-8)' },
-  levelReviewActionLink: {
-    boxSizing: 'border-box',
-    display: 'inline-flex',
-    alignItems: 'center',
-    alignSelf: 'flex-start',
-    minHeight: 'calc(var(--space-40) + var(--space-4))',
-    color: 'var(--color-green)',
-    fontSize: 'var(--font-size-12)',
-    fontWeight: 'var(--font-weight-bold)',
-    textDecoration: 'underline',
-    ':focus-visible': {
-      outline: 'var(--border-width-lg) solid var(--color-green)',
-      outlineOffset: 'var(--space-2)'
-    }
-  },
-  levelReviewPrimaryLink: {
-    boxSizing: 'border-box',
-    display: 'inline-flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    minHeight: 'calc(var(--space-40) + var(--space-4))',
-    paddingInline: 'var(--space-14)',
-    borderRadius: 'var(--radius-12)',
-    backgroundColor: 'var(--color-green)',
-    color: 'var(--color-bg)',
-    fontSize: 'var(--font-size-13)',
-    fontWeight: 'var(--font-weight-bold)',
-    textAlign: 'center',
-    textDecoration: 'none',
-    ':focus-visible': {
-      outline: 'var(--border-width-lg) solid var(--color-green)',
-      outlineOffset: 'var(--space-2)'
-    }
-  },
   availabilityGroups: { display: 'flex', flexDirection: 'column', gap: 'var(--space-12)' },
   availabilityChoices: {
     display: 'flex',
@@ -383,7 +246,6 @@ export const ui = stylex.create({
   availabilityChoiceDisabled: { cursor: 'default', opacity: 0.6 },
   availabilityChoiceMark: { display: 'inline-block', width: '1em', textAlign: 'center' },
   availabilityChoiceMarkHidden: { visibility: 'hidden' },
-  availabilitySummary: { display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' },
   availabilitySummaryValue: { overflowWrap: 'anywhere', textAlign: 'end' },
   srOnly: {
     position: 'absolute',

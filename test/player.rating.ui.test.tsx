@@ -560,7 +560,7 @@ describe('RatingJourney', () => {
   it('renders the Pencil journey structure: heading, scope, chart, recent games', () => {
     render(wrap(<RatingJourney load={okLoad()} onReload={vi.fn<() => void>()} />));
     const region = screen.getByRole('region', { name: 'Rating journey' });
-    expect(within(region).getByText('ALL TIME')).toBeTruthy();
+    expect(within(region).getByText('All time')).toBeTruthy();
     expect(within(region).getByRole('heading', { name: 'Rating progression' })).toBeTruthy();
     expect(within(region).getByRole('heading', { name: 'Recent games' })).toBeTruthy();
   });

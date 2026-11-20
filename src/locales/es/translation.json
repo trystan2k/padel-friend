@@ -276,14 +276,19 @@
   },
   "profile": {
     "title": "Perfil del jugador",
-    "subtitle": "Tu identidad de pádel en toda la aplicación",
+    "links": {
+      "label": "Accesos del perfil",
+      "statistics": "Estadísticas",
+      "matchHistory": "Historial de partidos",
+      "notifications": "Notificaciones"
+    },
     "edit": "Editar perfil",
     "save": "Guardar cambios",
-    "dominantHand": "MANO DOMINANTE",
+    "dominantHand": "Mano dominante",
     "handLeft": "Mano izquierda",
     "handRight": "Mano derecha",
     "handNone": "No especificada",
-    "bio": "BIOGRAFÍA",
+    "bio": "Biografía",
     "availability": "Disponibilidad",
     "availabilityHelp": "Opcional. Indica los días y los momentos del día en que sueles querer jugar. Son dos preferencias independientes, no citas fijas.",
     "availabilityDaysLegend": "Días en que sueles jugar",
@@ -317,8 +322,8 @@
     "confirmedGroups": "Grupos competitivos confirmados",
     "joined": "Miembro desde",
     "joinedOn": "Miembro desde {{date}}",
-    "globalLevel": "NIVEL GLOBAL",
-    "levelScale": "ESCALA DE NIVEL",
+    "globalLevel": "Nivel global",
+    "levelScale": "Escala de nivel",
     "percent": "{{value}}%",
     "loadingTitle": "Cargando perfil",
     "errorTitle": "No se pudo cargar esta pantalla",
@@ -2004,7 +2009,7 @@
   "rating": {
     "journey": {
       "title": "Evolución del rating",
-      "scope": "TODO EL TIEMPO",
+      "scope": "Todo el tiempo",
       "refreshed": "Evolución del rating actualizada.",
       "refreshFailed": "No se pudo actualizar la evolución del rating. Usa la opción de reintento de abajo."
     },
@@ -2032,6 +2037,7 @@
     },
     "history": {
       "title": "Partidos recientes",
+      "emptyTitle": "Tu historial de nivel empieza aquí",
       "groupTitle": "Grupo {{number}}",
       "levelChange": "Nivel {{before}} a {{after}}",
       "reliabilityChange": "Fiabilidad {{before}} a {{after}}",

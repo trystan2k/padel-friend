@@ -276,14 +276,19 @@
   },
   "profile": {
     "title": "Player profile",
-    "subtitle": "Your app-wide padel identity",
+    "links": {
+      "label": "Profile shortcuts",
+      "statistics": "Statistics",
+      "matchHistory": "Match history",
+      "notifications": "Notifications"
+    },
     "edit": "Edit profile",
     "save": "Save changes",
-    "dominantHand": "DOMINANT HAND",
+    "dominantHand": "Dominant hand",
     "handLeft": "Left hand",
     "handRight": "Right hand",
     "handNone": "Not specified",
-    "bio": "BIO",
+    "bio": "Bio",
     "availability": "Availability",
     "availabilityHelp": "Optional. Share the days and times of day you usually like to play. They are two separate preferences, not fixed appointments.",
     "availabilityDaysLegend": "Days you usually play",
@@ -317,8 +322,8 @@
     "confirmedGroups": "Confirmed competitive groups",
     "joined": "Member since",
     "joinedOn": "Member since {{date}}",
-    "globalLevel": "GLOBAL LEVEL",
-    "levelScale": "LEVEL SCALE",
+    "globalLevel": "Global level",
+    "levelScale": "Level scale",
     "percent": "{{value}}%",
     "loadingTitle": "Loading profile",
     "errorTitle": "Couldn't load this screen",
@@ -2004,7 +2009,7 @@
   "rating": {
     "journey": {
       "title": "Rating journey",
-      "scope": "ALL TIME",
+      "scope": "All time",
       "refreshed": "Rating journey updated.",
       "refreshFailed": "Could not refresh the rating journey. Use the retry option below."
     },
@@ -2032,6 +2037,7 @@
     },
     "history": {
       "title": "Recent games",
+      "emptyTitle": "Your level history starts here",
       "groupTitle": "Group {{number}}",
       "levelChange": "Level {{before}} to {{after}}",
       "reliabilityChange": "Reliability {{before}} to {{after}}",

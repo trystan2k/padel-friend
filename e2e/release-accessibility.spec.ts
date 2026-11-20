@@ -96,6 +96,7 @@ test.describe('authorized primary-flow accessibility', () => {
       const page = await f.page(f.creator, locale, 320, locale === 'es' ? 'dark' : 'light');
       for (const path of [
         '/dashboard',
+        '/me',
         '/onboarding/community',
         '/matches/create',
         `/matches/${upcoming}`,
@@ -157,9 +158,11 @@ test.describe('authorized primary-flow accessibility', () => {
     await review(page);
     await auditControls(page);
     const copy = copies.en.matches.results;
-    await expect(page.getByRole('heading', { name: copy.preview, exact: true })).toBeVisible();
+    await expect(
+      page.getByRole('heading', { name: copy.record.reviewTitle, exact: true })
+    ).toBeVisible();
     // The fixture's third set is unfinished. Text remains available independent of colour.
-    await expect(page.getByText(copy.outcome.draw, { exact: true })).toBeVisible();
+    await expect(page.getByText(copy.record.outcome.draw, { exact: true })).toBeVisible();
     await page.context().close();
   });
 });

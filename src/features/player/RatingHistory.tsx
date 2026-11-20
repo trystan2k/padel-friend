@@ -79,7 +79,15 @@ export function RatingHistory({
     <SurfaceCard xstyle={s.card}>
       <h3 {...stylex.props(s.subheading)}>{t('rating.history.title')}</h3>
       {items.length === 0 ? (
-        <p {...stylex.props(s.copy)}>{t('profile.historyEmpty')}</p>
+        <div {...stylex.props(s.emptyState)}>
+          <span aria-hidden="true" {...stylex.props(s.emptyGlyph)}>
+            ↗
+          </span>
+          <div {...stylex.props(s.stateCopy)}>
+            <p {...stylex.props(s.emptyTitle)}>{t('rating.history.emptyTitle')}</p>
+            <p {...stylex.props(s.copy)}>{t('profile.historyEmpty')}</p>
+          </div>
+        </div>
       ) : (
         <ul {...stylex.props(s.list)}>
           {items.map((item) => (

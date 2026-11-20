@@ -336,8 +336,13 @@ describe('Home layout contract', () => {
     expect(route).not.toContain('home-profile');
     expect(route).not.toContain('home-community');
     const entries = readFileSync('src/features/community/CommunitySurface.tsx', 'utf8');
+    // D5 (U18): the platform-admin entry lives on Me; community-scoped entries stay here.
+    expect(entries).not.toContain('PlatformAdminEntry');
+    expect(entries).not.toContain('platformAdmin');
+    expect(readFileSync('src/features/player/PlayerProfile.tsx', 'utf8')).toContain(
+      '<PlatformAdminEntry'
+    );
     for (const entry of [
-      'PlatformAdminEntry',
       'CommunityAdminEntries',
       'LeagueEntries',
       'CommunityInbox',

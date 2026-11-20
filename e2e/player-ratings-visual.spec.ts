@@ -9,7 +9,7 @@ import {
   type TestInfo
 } from '@playwright/test';
 import { waitForHydratedPage } from './auth-helpers';
-import manifest from './references/paf-10/manifest.json' with { type: 'json' };
+import manifest from './references/paf-202-me/manifest.json' with { type: 'json' };
 import { confirmGroup, pastEvent, removeProvisionalEvidence } from './player-ratings-fixtures';
 import { copies, resultFixtures, type Actor } from './matches-results-fixtures';
 
@@ -55,17 +55,15 @@ test.beforeEach(() => test.setTimeout(120_000));
 
 const FRAME = 'vARtQ';
 const WIDTH = 390;
-// Two separately aligned regions of the one frame export (CSS px, frame coordinates):
-// the header/identity/level card; the "Rating journey" heading + progression card; and the
-// recent-matches card. Each is aligned on its own anchor so one shifted block never skews another.
+// Clubhouse vARtQ regions (CSS px at scale 1, frame coordinates). The frame's stats tiles, season
+// trend, bar chart and link list have no real source or differ per row, so only the identity
+// header and the level card heading/value are compared as raster; each region aligns on its own
+// DOM anchor. The rating journey is not drawn in vARtQ: it is covered by structural probes.
 const REGIONS = {
-  top: { name: 'top', y: 0, height: 308, budgetKey: FRAME },
-  journey: { name: 'journey', y: 396, height: 184, budgetKey: `${FRAME}:journey` },
-  history: { name: 'history', y: 588, height: 160, budgetKey: `${FRAME}:history` }
+  identity: { name: 'identity', y: 48, height: 72, budgetKey: `${FRAME}:identity` },
+  level: { name: 'level', y: 212, height: 78, budgetKey: `${FRAME}:level` }
 } as const;
 type Region = (typeof REGIONS)[keyof typeof REGIONS];
-// The frame's journey heading text is centred 22px below the journey crop top.
-const JOURNEY_HEADING_CENTRE = 22;
 
 // --- helpers -----------------------------------------------------------------------------
 
@@ -244,7 +242,7 @@ async function openProfile(
   height: number
 ): Promise<{ page: Page; region: Locator }> {
   const page = await f.page(host, 'en', width, theme, height);
-  await page.goto('/dashboard');
+  await page.goto('/me');
   await waitForHydratedPage(page);
   const region = page.getByRole('region', { name: rating.journey.title });
   await expect(region).toBeVisible();
@@ -266,7 +264,7 @@ async function compareRegion(
     clip: { x: 0, y: top, width: WIDTH, height: region.height },
     path: info.outputPath(`${FRAME}-${region.name}-actual.png`)
   });
-  const approved = readFileSync(new URL(`./references/paf-10/${FRAME}.png`, import.meta.url));
+  const approved = readFileSync(new URL(`./references/paf-202-me/${FRAME}.png`, import.meta.url));
   const measured = await page.evaluate(
     async ({ actualUrl, approvedUrl, area }) => {
       const load = async (url: string, crop: number, offset: number) => {
@@ -292,7 +290,7 @@ async function compareRegion(
       };
       const [rendered, reference] = await Promise.all([
         load(actualUrl, 1, 0),
-        load(approvedUrl, 2, area.y)
+        load(approvedUrl, 1, area.y)
       ]);
       let changed = 0;
       for (let index = 0; index < rendered.length; index += 4) {
@@ -316,7 +314,7 @@ async function compareRegion(
       area: { width: WIDTH, height: region.height, y: region.y }
     }
   );
-  console.info(`${FRAME} PAF-10 ${region.name} region measurement: ${measured}`);
+  console.info(`${FRAME} PAF-202 Me ${region.name} region measurement: ${measured}`);
   await info.attach(`${FRAME}-${region.name}-actual`, { body: actual, contentType: 'image/png' });
   return measured;
 }
@@ -324,9 +322,11 @@ async function compareRegion(
 // --- provenance --------------------------------------------------------------------------
 
 test('reference provenance pins the current design source and exported frame', () => {
-  const design = readFileSync(new URL('../docs/design/padel-friend.pen', import.meta.url));
+  const design = readFileSync(
+    new URL('../docs/design/Padel-friend App Redesign/padel-friend-clubhouse.pen', import.meta.url)
+  );
   expect(createHash('sha256').update(design).digest('hex')).toBe(manifest.sourceDesign.sha256);
-  const png = readFileSync(new URL(`./references/paf-10/${FRAME}.png`, import.meta.url));
+  const png = readFileSync(new URL(`./references/paf-202-me/${FRAME}.png`, import.meta.url));
   expect(createHash('sha256').update(png).digest('hex')).toBe(
     manifest.approvedReferences[FRAME].sha256
   );
@@ -336,40 +336,54 @@ test('reference provenance pins the current design source and exported frame', (
 
 // --- structure + raster ------------------------------------------------------------------
 
-test('profile keeps the Pencil order, geometry and a reviewed raster budget (mobile light)', async ({
+test('Me keeps the vARtQ order, geometry and reviewed raster budgets (mobile light)', async ({
   browserName
 }, info) => {
   expect(browserName).toBe('chromium');
   const { page, region } = await openProfile('light', 390, 844);
+  const title = page.getByRole('heading', { level: 1, name: copies.en.profile.title });
   const name = page.getByRole('heading', { level: 2, name: host.name });
-  // Embedded in Home, which owns the single h1: the profile title is the section's h2.
-  const title = page.getByRole('heading', { level: 2, name: copies.en.profile.title });
+  const avatar = page.locator('main > header > span, main > header > img').first();
   const levelLabel = page.getByText(copies.en.profile.globalLevel, { exact: true });
+  const levelCard = levelLabel.locator('xpath=ancestor::div[.//progress][1]');
+  const shortcuts = page.getByRole('navigation', { name: copies.en.profile.links.label });
   const journeyHeading = region.getByRole('heading', { level: 2, name: rating.journey.title });
   const scope = region.getByText(rating.journey.scope, { exact: true });
-  const [t, n, l, j, s] = await Promise.all(
-    [title, name, levelLabel, journeyHeading, scope].map(box)
+  const [n, a, l, sc, j, s] = await Promise.all(
+    [name, avatar, levelLabel, shortcuts, journeyHeading, scope].map(box)
   );
+  await expect(title).toHaveCount(1);
 
-  // Exact structural order of the frame: title → identity hero → level card → journey header.
-  expect(t!.bottom).toBeLessThanOrEqual(n!.y);
+  // Exact structural order of the frame: identity → level card → shortcut list → journey.
+  expect(a!.right).toBeLessThanOrEqual(n!.x + 1);
   expect(n!.bottom).toBeLessThanOrEqual(l!.y);
-  expect(l!.bottom).toBeLessThanOrEqual(j!.y);
+  expect(l!.bottom).toBeLessThanOrEqual(sc!.y);
+  expect(sc!.bottom).toBeLessThanOrEqual(j!.y);
   expect(Math.abs(s!.y - j!.y), 'scope tag shares the heading row').toBeLessThanOrEqual(12);
   expect(s!.x).toBeGreaterThan(j!.x);
+  // Avatar is the frame's 72px circle.
+  expect(Math.round(a!.width)).toBe(72);
+  expect(Math.round(a!.height)).toBe(72);
 
-  // Journey cards share the page gutter and never leave the viewport.
-  const cards = region.locator('> div');
-  expect(await cards.count()).toBeGreaterThanOrEqual(2);
-  const levelCard = await box(levelLabel.locator('xpath=ancestor::section[1]'));
-  for (const [index, card] of (await cards.all()).entries()) {
-    const b = await box(card);
-    expect(b.x, `card ${index} left gutter`).toBeGreaterThanOrEqual(levelCard.x - 2);
-    expect(b.right, `card ${index} right gutter`).toBeLessThanOrEqual(levelCard.right + 2);
+  // Shortcut rows: hairline card, ≥60px rows, every destination present, chevrons decorative.
+  const rowLinks = await shortcuts.getByRole('link').all();
+  expect(rowLinks).toHaveLength(3);
+  for (const link of rowLinks) expect((await box(link)).height).toBeGreaterThanOrEqual(60);
+  const levelBox = await box(levelCard);
+  for (const [what, element] of [
+    ['shortcut list', shortcuts.locator('ul')],
+    ['journey card', region.locator('> div').first()]
+  ] as const) {
+    const b = await box(element);
+    expect(Math.abs(b.x - levelBox.x), `${what} left gutter`).toBeLessThanOrEqual(1);
+    expect(Math.abs(b.right - levelBox.right), `${what} right gutter`).toBeLessThanOrEqual(1);
     expect(b.right).toBeLessThanOrEqual(390);
   }
+  expect(
+    await shortcuts.locator('ul').evaluate((element) => getComputedStyle(element).borderTopWidth)
+  ).toBe('1px');
 
-  // Chart: plot fills its card, axis labels precede it, text equivalent follows it.
+  // Chart: plot fills its card, text equivalent follows it.
   const svg = region.locator('svg').first();
   const plot = await box(svg);
   const chartCard = await box(
@@ -392,7 +406,7 @@ test('profile keeps the Pencil order, geometry and a reviewed raster budget (mob
     if (previous) expect(previous.bottom).toBeLessThanOrEqual(b.y + 1);
     previous = b;
   }
-  for (const control of await region.locator('button').all()) {
+  for (const control of await page.locator('main button').all()) {
     const b = await box(control);
     expect.soft(b.height).toBeGreaterThanOrEqual(44);
     expect.soft(b.width).toBeGreaterThanOrEqual(44);
@@ -403,17 +417,21 @@ test('profile keeps the Pencil order, geometry and a reviewed raster budget (mob
     )
   ).toBeLessThanOrEqual(0);
 
-  // The app shell above the profile is out of this frame: align on the title (frame offset 20px).
-  const measured = await compareRegion(page, info, REGIONS.top, Math.max(0, Math.round(t!.y) - 20));
-  expect(measured, `${FRAME} raster budget`).toBeLessThanOrEqual(
-    manifest.visualBudgets.perScreen[FRAME]
-  );
-  expect(manifest.visualBudgets.perScreen[FRAME]).toBeGreaterThan(0);
+  // Raster regions aligned on their own anchors (identity: avatar top; level: card top).
+  for (const [frameRegion, top] of [
+    [REGIONS.identity, Math.round(a!.y)],
+    [REGIONS.level, Math.round(levelBox.y)]
+  ] as const) {
+    const measured = await compareRegion(page, info, frameRegion, top);
+    const budget = manifest.visualBudgets.perScreen[frameRegion.budgetKey];
+    expect(measured, `${frameRegion.budgetKey} raster budget`).toBeLessThanOrEqual(budget);
+    expect(budget).toBeGreaterThan(0);
+  }
 });
 
-test('rating journey keeps the Pencil order, card geometry and a reviewed raster budget (mobile light)', async ({
+test('rating journey keeps its order, card geometry and vertical probes (mobile light)', async ({
   browserName
-}, info) => {
+}) => {
   expect(browserName).toBe('chromium');
   const { page, region } = await openProfile('light', 390, 844);
   const journeyHeading = region.getByRole('heading', { level: 2, name: rating.journey.title });
@@ -426,7 +444,7 @@ test('rating journey keeps the Pencil order, card geometry and a reviewed raster
   const historyCard = firstRow.locator('xpath=ancestor::*[self::div or self::section][1]');
   const levelCard = page
     .getByText(copies.en.profile.globalLevel, { exact: true })
-    .locator('xpath=ancestor::section[1]');
+    .locator('xpath=ancestor::div[.//progress][1]');
 
   // Order: heading → chart card → history card, in the DOM and on screen.
   const order = await page.evaluate(
@@ -557,23 +575,6 @@ test('rating journey keeps the Pencil order, card geometry and a reviewed raster
   await page.reload();
   await waitForHydratedPage(page);
   expect(await journeyVerticalViolations(region), 'geometry restored after reload').toEqual([]);
-
-  // The frame centres the "Rating journey" heading 22px below the region top: align on it.
-  const top = Math.max(0, Math.round(j!.y + j!.height / 2 - JOURNEY_HEADING_CENTRE));
-  const journeyMeasured = await compareRegion(page, info, REGIONS.journey, top);
-  const journeyBudget = manifest.visualBudgets.perScreen[REGIONS.journey.budgetKey];
-  expect(journeyMeasured, `${REGIONS.journey.budgetKey} raster budget`).toBeLessThanOrEqual(
-    journeyBudget
-  );
-  expect(journeyBudget).toBeGreaterThan(0);
-
-  // The history card is aligned on its own top edge (frame card top = 588px).
-  const historyMeasured = await compareRegion(page, info, REGIONS.history, Math.round(h!.y));
-  const historyBudget = manifest.visualBudgets.perScreen[REGIONS.history.budgetKey];
-  expect(historyMeasured, `${REGIONS.history.budgetKey} raster budget`).toBeLessThanOrEqual(
-    historyBudget
-  );
-  expect(historyBudget).toBeGreaterThan(0);
 });
 
 test('explanation dialog fits the viewport, scrolls inside itself and keeps readable contrast (light, dark, narrow, desktop)', async ({

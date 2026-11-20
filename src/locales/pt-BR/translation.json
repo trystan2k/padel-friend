@@ -276,14 +276,19 @@
   },
   "profile": {
     "title": "Perfil do jogador",
-    "subtitle": "Sua identidade no padel em todo o aplicativo",
+    "links": {
+      "label": "Atalhos do perfil",
+      "statistics": "Estatísticas",
+      "matchHistory": "Histórico de partidas",
+      "notifications": "Notificações"
+    },
     "edit": "Editar perfil",
     "save": "Salvar alterações",
-    "dominantHand": "MÃO DOMINANTE",
+    "dominantHand": "Mão dominante",
     "handLeft": "Mão esquerda",
     "handRight": "Mão direita",
     "handNone": "Não informada",
-    "bio": "BIOGRAFIA",
+    "bio": "Biografia",
     "availability": "Disponibilidade",
     "availabilityHelp": "Opcional. Informe os dias e os períodos do dia em que você costuma gostar de jogar. São duas preferências separadas, não compromissos marcados.",
     "availabilityDaysLegend": "Dias em que você costuma jogar",
@@ -317,8 +322,8 @@
     "confirmedGroups": "Grupos competitivos confirmados",
     "joined": "Membro desde",
     "joinedOn": "Membro desde {{date}}",
-    "globalLevel": "NÍVEL GLOBAL",
-    "levelScale": "ESCALA DE NÍVEL",
+    "globalLevel": "Nível global",
+    "levelScale": "Escala de nível",
     "percent": "{{value}}%",
     "loadingTitle": "Carregando perfil",
     "errorTitle": "Não foi possível carregar esta tela",
@@ -2004,7 +2009,7 @@
   "rating": {
     "journey": {
       "title": "Jornada de rating",
-      "scope": "TODO O PERÍODO",
+      "scope": "Todo o período",
       "refreshed": "Jornada de rating atualizada.",
       "refreshFailed": "Não foi possível atualizar a jornada de rating. Use a opção de tentar novamente abaixo."
     },
@@ -2032,6 +2037,7 @@
     },
     "history": {
       "title": "Jogos recentes",
+      "emptyTitle": "Seu histórico de nível começa aqui",
       "groupTitle": "Grupo {{number}}",
       "levelChange": "Nível {{before}} para {{after}}",
       "reliabilityChange": "Confiabilidade {{before}} para {{after}}",

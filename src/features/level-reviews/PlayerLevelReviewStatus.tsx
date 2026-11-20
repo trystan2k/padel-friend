@@ -200,7 +200,7 @@ export function PlayerLevelReviewStatus({
           <h3 {...stylex.props(s.strong)}>{t('levelReview.detail.decisionNote')}</h3>
           <p {...stylex.props(s.userText)}>{request.decision_note ?? '—'}</p>
           {request.status === 'approved' && request.adjustment_id && (
-            <Link to="/dashboard" {...stylex.props(s.actionLink)}>
+            <Link to="/me" {...stylex.props(s.actionLink)}>
               {t('levelReview.detail.appliedLink')}
             </Link>
           )}
